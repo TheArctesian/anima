@@ -1,7 +1,7 @@
 //! A heartbeat queues its notifications in its own transaction, through the push route as the
-//! hub mounts it: one row per selected channel, none under maintenance, and a notification
-//! fault never loses the beat and logs only the check's id (NOT-001, D-16, Section 6.5,
-//! R-104, LOG-007).
+//! hub mounts it: one row per selected channel, none under maintenance (an Up after an
+//! announced Down included), and a notification fault never loses the beat and logs only the
+//! check's id (NOT-001, D-16, Section 6.5, R-104, LOG-007).
 
 use std::sync::{
     Arc,
@@ -14,7 +14,7 @@ use anima_hub::{
     events::Bus,
     schema::{HubSchema, build_schema},
 };
-use async_graphql::Variables;
+use async_graphql::{Response, Variables};
 use axum::{
     Router,
     body::Body,
@@ -67,10 +67,15 @@ pub(super) async fn rig(pool: &PgPool) -> Rig {
 }
 
 impl Rig {
+    /// The whole response to a signed-in request.
+    pub(super) async fn run(&self, query: &str, variables: Value) -> Response {
+        let request = signed_in(query).variables(Variables::from_json(variables));
+        self.schema.execute(request).await
+    }
+
     /// The data of a signed-in request that must have no errors.
     pub(super) async fn data(&self, query: &str, variables: Value) -> Value {
-        let request = signed_in(query).variables(Variables::from_json(variables));
-        let response = self.schema.execute(request).await;
+        let response = self.run(query, variables).await;
         assert!(response.errors.is_empty(), "{:?}", response.errors);
         response.data.into_json().unwrap()
     }
@@ -170,6 +175,10 @@ async fn not_001_a_pushed_down_queues_one_row_per_selected_channel_and_up_follow
     assert_eq!(payload["check"], "Backup job");
     assert_eq!(payload["status"], "down");
     assert_eq!(payload["message"], "disk full");
+    assert_eq!(payload["previous"], "unknown", "a new check");
+    let (_, up) = &rows[2];
+    assert_eq!(up["status"], "up");
+    assert_eq!(up["previous"], "down");
     assert_eq!(rig.beats(&id).await, ["down", "down", "up"]);
 }
 
@@ -186,6 +195,31 @@ async fn not_001_a_pushed_down_under_maintenance_queues_nothing(pool: PgPool) {
 
     assert_eq!(rig.beats(&id).await, ["maintenance"]);
     assert_eq!(rig.queued(&id).await, []);
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn not_001_an_up_pushed_once_maintenance_starts_queues_nothing(pool: PgPool) {
+    let rig = rig(&pool).await;
+    let a = rig.channel("Alpha", false).await;
+    let (id, path) = rig.push_check(PVE_01, "Backup job", &[&a]).await;
+    rig.push(&path, "status=down").await;
+    sqlx::query("UPDATE devices.devices SET maintenance = true WHERE id = $1::text::uuid")
+        .bind(PVE_01)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    rig.push(&path, "status=up").await;
+
+    assert_eq!(rig.beats(&id).await, ["down", "up"]);
+    assert_eq!(
+        kinds(&rig.queued(&id).await),
+        ["down"],
+        "no Up under maintenance"
+    );
 }
 
 #[sqlx::test(
@@ -259,7 +293,15 @@ async fn r_104_an_unreadable_notification_state_keeps_the_beat_and_logs_only_the
     assert_eq!(rig.beats(&id).await, ["down"], "the beat is kept");
     assert_eq!(rig.queued(&id).await, []);
     let token = path.trim_start_matches("/push/");
-    let hidden = [a.as_str(), "Alpha", "msg-s3cr3t", "state-s3cr3t", token];
+    let hidden = [
+        a.as_str(),
+        "Alpha",
+        "pve-01",
+        "Backup job",
+        "msg-s3cr3t",
+        "state-s3cr3t",
+        token,
+    ];
     names_only_the_check(&log, &id, "unreadable", &hidden);
 }
 
@@ -294,7 +336,7 @@ async fn r_104_a_statement_that_fails_inside_observe_keeps_the_beat_and_its_stat
         &log,
         &id,
         "database",
-        &[a.as_str(), "Alpha", "outbox-s3cr3t"],
+        &[a.as_str(), "Alpha", "pve-01", "Backup job", "outbox-s3cr3t"],
     );
     let notified: Option<String> = sqlx::query_scalar(
         "SELECT notified_status FROM notifications.check_state WHERE check_id = $1::text::uuid",

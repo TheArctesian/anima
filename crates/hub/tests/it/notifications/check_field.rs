@@ -1,18 +1,15 @@
-//! `createCheck` turns on the channels marked "on by default", and `Check.notifications`
-//! answers through the hub's schema in a bounded number of statements however many checks a
-//! query selects (NOT-003, API-005).
+//! `createCheck` turns on the channels marked "on by default" in its own transaction, and
+//! `Check.notifications` answers through the hub's schema from a loader that reads a batch of
+//! checks in three statements (NOT-003, API-005).
 
-use std::sync::{
-    Arc,
-    atomic::{AtomicUsize, Ordering},
-};
+use std::sync::atomic::Ordering;
 
+use anima_hub::{checks::graphql::check_notifications_loader, ids::CheckId};
 use serde_json::{Value, json};
 use sqlx::PgPool;
-use tracing::{Event, Subscriber, subscriber::set_default};
-use tracing_subscriber::{Layer, layer::Context, layer::SubscriberExt as _, registry::Registry};
 
 use super::heartbeats::{Rig, rig};
+use crate::devices::batching::counting_pool;
 
 const PVE_01: &str = "0190a000-0000-7000-8002-000000000001";
 
@@ -98,61 +95,128 @@ async fn not_003_check_notifications_answers_the_choices_set_for_the_check(pool:
     assert_eq!(notifications["resendEveryBeats"], 3);
 }
 
-/// Counts the statements sqlx runs on this thread.
-struct Statements(Arc<AtomicUsize>);
+const CREATE: &str = "mutation($input: CreateCheckInput!) { createCheck(input: $input) { id } }";
 
-impl<S: Subscriber> Layer<S> for Statements {
-    fn on_event(&self, event: &Event<'_>, _: Context<'_, S>) {
-        if event.metadata().target() == "sqlx::query" {
-            self.0.fetch_add(1, Ordering::SeqCst);
-        }
+/// Makes every insert into `table` fail with an SQL error.
+async fn refuse_inserts(pool: &PgPool, table: &str) {
+    for statement in [
+        "CREATE FUNCTION public.refuse_insert() RETURNS trigger LANGUAGE plpgsql AS \
+         $$ BEGIN RAISE EXCEPTION 'refused'; END $$"
+            .to_owned(),
+        format!(
+            "CREATE TRIGGER refuse_insert BEFORE INSERT ON {table} \
+             FOR EACH ROW EXECUTE FUNCTION public.refuse_insert()"
+        ),
+    ] {
+        sqlx::query(&statement).execute(pool).await.unwrap();
     }
 }
 
-/// The statements one query reading `selection` on each of `checks` takes.
-async fn statements(rig: &Rig, checks: &[String], selection: &str) -> usize {
-    let fields: Vec<String> = checks
-        .iter()
-        .enumerate()
-        .map(|(index, id)| format!("c{index}: check(id: \"{id}\") {{ id {selection} }}"))
-        .collect();
-    let query = format!("query {{ {} }}", fields.join(" "));
-    let count = Arc::new(AtomicUsize::new(0));
-    let guard = set_default(Registry::default().with(Statements(count.clone())));
-    tracing::callsite::rebuild_interest_cache();
-    let read = rig.data(&query, json!({})).await;
-    drop(guard);
-    assert_eq!(read.as_object().unwrap().len(), checks.len());
-    count.load(Ordering::SeqCst)
-}
-
-/// What `Check.notifications` adds to a query of `checks`.
-async fn notifications_cost(rig: &Rig, checks: &[String]) -> usize {
-    let with = statements(rig, checks, NOTIFICATIONS).await;
-    let without = statements(rig, checks, "").await;
-    with.saturating_sub(without)
+/// Creates the check `SSH` on pve-01, which must fail; returns how many checks and channel
+/// links are stored afterwards.
+async fn failed_create(rig: &Rig) -> (i64, i64) {
+    let input = json!({ "deviceId": PVE_01, "name": "SSH", "config": { "tcp": { "port": 22 } } });
+    let response = rig.run(CREATE, json!({ "input": input })).await;
+    assert_eq!(response.errors.len(), 1, "{:?}", response.errors);
+    let checks: i64 = sqlx::query_scalar("SELECT count(*) FROM checks.checks WHERE name = 'SSH'")
+        .fetch_one(&rig.pool)
+        .await
+        .unwrap();
+    let links: i64 = sqlx::query_scalar("SELECT count(*) FROM notifications.check_channels")
+        .fetch_one(&rig.pool)
+        .await
+        .unwrap();
+    (checks, links)
 }
 
 #[sqlx::test(
     migrations = "./migrations",
     fixtures(path = "../../fixtures", scripts("devices"))
 )]
-async fn api_005_check_notifications_cost_the_same_statements_for_1_or_12_checks(pool: PgPool) {
+async fn not_003_a_create_whose_audit_cannot_be_written_keeps_no_check_and_no_link(pool: PgPool) {
     let rig = rig(&pool).await;
-    let pager = rig.channel("Pager", true).await;
+    rig.channel("Pager", true).await;
+    refuse_inserts(&pool, "events.audit_log").await;
+
+    assert_eq!(failed_create(&rig).await, (0, 0));
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn not_003_a_create_whose_channel_links_cannot_be_written_keeps_no_check(pool: PgPool) {
+    let rig = rig(&pool).await;
+    rig.channel("Pager", true).await;
+    refuse_inserts(&pool, "notifications.check_channels").await;
+
+    assert_eq!(failed_create(&rig).await, (0, 0));
+}
+
+/// Twelve TCP checks on pve-01, created while `Pager` is on by default.
+async fn twelve_checks(rig: &Rig) -> Vec<String> {
     let mut checks = Vec::new();
     for port in 0..12 {
         let config = json!({ "tcp": { "port": 2000 + port } });
         checks.push(rig.check(PVE_01, &format!("Port {port}"), config).await);
     }
+    checks
+}
 
-    let one = notifications_cost(&rig, &checks[..1]).await;
-    let twelve = notifications_cost(&rig, &checks).await;
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn api_005_the_loader_reads_1_or_12_checks_in_the_same_3_statements(pool: PgPool) {
+    let rig = rig(&pool).await;
+    let pager = rig.channel("Pager", true).await;
+    let checks: Vec<CheckId> = twelve_checks(&rig)
+        .await
+        .iter()
+        .map(|id| id.parse().unwrap())
+        .collect();
+    let (counted, statements) = counting_pool(&pool).await;
+    sqlx::query("SELECT 1").execute(&counted).await.unwrap();
+    let loader = check_notifications_loader(counted);
 
-    // `for_checks` reads the links, the settings and the channels: three statements per batch.
-    // One per check would be 36 for twelve.
-    assert!(one <= 3, "1 check took {one} statements");
-    assert!(twelve <= 3, "12 checks took {twelve} statements");
-    let last = notifications_of(&rig, &checks[11]).await;
-    assert_eq!(last["channels"][0]["id"], json!(pager));
+    statements.store(0, Ordering::SeqCst);
+    let one = loader.load_one(checks[0]).await.unwrap().unwrap();
+    let for_one = statements.swap(0, Ordering::SeqCst);
+    let all = loader.load_many(checks.iter().copied()).await.unwrap();
+    let for_twelve = statements.load(Ordering::SeqCst);
+
+    // `for_checks` reads the links, the settings and the channels once per batch. Read per
+    // check, twelve checks would take 36.
+    assert_eq!((for_one, for_twelve), (3, 3));
+    assert_eq!(one.channels.len(), 1);
+    assert_eq!(all.len(), 12);
+    for found in all.values() {
+        assert_eq!(found.channels[0].id.to_string(), pager);
+    }
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn not_003_check_notifications_answers_for_each_of_many_checks_in_one_query(pool: PgPool) {
+    let rig = rig(&pool).await;
+    rig.channel("Pager", true).await;
+    let checks = twelve_checks(&rig).await;
+    let fields: Vec<String> = checks
+        .iter()
+        .enumerate()
+        .map(|(index, id)| format!("c{index}: check(id: \"{id}\") {{ {NOTIFICATIONS} }}"))
+        .collect();
+
+    let read = rig
+        .data(&format!("query {{ {} }}", fields.join(" ")), json!({}))
+        .await;
+
+    for index in 0..checks.len() {
+        assert_eq!(
+            names(&read[format!("c{index}")]["notifications"]),
+            ["Pager"]
+        );
+    }
 }
