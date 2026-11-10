@@ -8,23 +8,20 @@ checking them. The tests in `tests/` check both.
 | --- | --- | --- | --- | --- |
 | `hs.anima.ing` | A | `${VPS_PUBLIC_IPV4}` | no | Headscale on the VPS (DNS-004) |
 | `hub.anima.ing` | A | `${HUB_VPN_IPV4}` | no | The hub node's VPN address (DNS-004, DNS-005, NET-005) |
+| `updates.anima.ing` | AAAA | `100::` | yes | Placeholder origin for the update redirect rule (WP-04 stage B, DNS-007) |
 | `anima.ing` | CAA | `0 issue "letsencrypt.org"` | no | Keeps CAs other than Let's Encrypt and Cloudflare's out |
 
 `HUB_VPN_IPV4` is a 100.64.0.0/10 address: the address Headscale gave the VPS host node `hub`.
 It is known only after the VPS has joined the VPN (`tailscale ip -4` on the VPS).
 `VPS_PUBLIC_IPV4` is the VPS public IPv4 address.
 
-`releases.anima.ing` has no record in this file: it is the custom domain of the R2 bucket
-`anima-releases`, and Cloudflare creates its record when the operator connects the domain
-(DNS-007, R-107; see `docs/releases.md`). No other name serves updates.
-
 Names under `net.anima.ing` (the Headscale MagicDNS domain) have **no** public records (DNS-006).
 
 ### What the CAA record does
 
 The CAA record covers the whole zone. Let's Encrypt issues the certificates for `hs.anima.ing`
-(Headscale, TLS-ALPN-01) and `hub.anima.ing` (hub, DNS-01, DNS-002). The R2 custom domain
-`releases.anima.ing` needs Cloudflare Universal SSL, and with Universal SSL on, Cloudflare adds
+(Headscale, TLS-ALPN-01) and `hub.anima.ing` (hub, DNS-01, DNS-002). The proxied
+`updates.anima.ing` needs Cloudflare Universal SSL, and with Universal SSL on, Cloudflare adds
 its own CAA entries for the CAs it uses. These entries are hidden in the dashboard but are
 served in DNS. So the effective set of allowed issuers is Let's Encrypt plus Cloudflare's CAs.
 The record still keeps every other CA out. There is no `issuewild` record, so wildcard issuance
@@ -155,6 +152,7 @@ go away when you finish.
    | hs | Before Headscale first starts and requests its certificate | `absent hs.anima.ing A && post '.name == "hs.anima.ing"'` |
    | CAA | With `hs`, before any certificate is requested | `absent anima.ing CAA && post '.type == "CAA"'` |
    | hub | After the VPS has joined the VPN | `export HUB_VPN_IPV4=<address>`, then `bun deploy/dns/fill.ts --out "$FILLED" hub.anima.ing && absent hub.anima.ing A && post '.name == "hub.anima.ing"'` |
+   | updates | With WP-04 stage B (the redirect rule) | `bun deploy/dns/fill.ts --out "$FILLED" updates.anima.ing && absent updates.anima.ing AAAA && post '.name == "updates.anima.ing"'` |
 
 7. Finish: `exit` (the trap deletes the header file and the filled records), then revoke the
    operator token in the dashboard. If the shell died before `exit`, run
@@ -167,7 +165,7 @@ dig +short hs.anima.ing @1.1.1.1      # the VPS public IPv4
 dig +short hub.anima.ing @1.1.1.1     # the hub VPN address, in 100.64.0.0/10
 dig +short hub.anima.ing              # same answer through the local resolver
 dig +short CAA anima.ing @1.1.1.1
-curl -q -sSI https://releases.anima.ing/  # after the R2 custom domain is connected: a valid certificate
+curl -q -sSI https://updates.anima.ing/  # after WP-04 stage B: a valid certificate and a 302
 ```
 
 `dig +short CAA anima.ing` should show the record from this file and the entries Cloudflare

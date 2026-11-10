@@ -2,8 +2,16 @@
 
 Spec: Section 3.9 (UPD-001 to UPD-012) and Section 3.10 (BLD-001 to BLD-082), DNS-007, R-107 and
 R-108. A release is a feature of Anima: an operator computer on the VPN builds it, uploads it to the
-R2 bucket `anima-releases`, and the hub verifies it and writes the feed. There is no release
-workflow and no GitHub release.
+R2 bucket `anima-releases`, and the hub verifies it and writes the feed. This is the way forward.
+
+**Fallback until WP-36 is accepted (UPD-007).** `.github/workflows/release.yml` still exists and runs
+only by hand ("Run workflow" on `main`). It builds, signs and publishes a GitHub release with its own
+`latest.json`, but the app no longer reads that feed: it reads `releases.anima.ing` only. To use the
+fallback, copy the release files and a per-target `latest.json` into the bucket by hand (the same
+layout the hub writes, `<target>/<version>/`, `latest.json` last). The workflow needs the `release`
+GitHub environment and the secrets `TAURI_SIGNING_PRIVATE_KEY` (and its password). The workflow and
+`deploy/release/make-feed.ts` are deleted when WP-36 is accepted. The `updates.anima.ing` DNS record
+stays in `deploy/dns/` until the operator confirms its removal in Cloudflare (DNS-007, DNS-008).
 
 ## How an installed app updates
 
@@ -61,8 +69,9 @@ the bucket `anima-releases`, and set the hub's R2 variables (`deploy/README.md`)
 curl -sI https://releases.anima.ing/linux-x86_64/latest.json
 ```
 
-It answers 404 until the first release and 200 after it. There is no `updates.anima.ing` record and
-no redirect rule; delete them in the zone if an older setup made them.
+It answers 404 until the first release and 200 after it. The old `updates.anima.ing` record and its
+redirect rule are not used by the app any more; remove them in the zone only after you decide to
+(DNS-007).
 
 **d. 🔒 Optional: Developer ID signing and notarization.** With a Developer ID the macOS builder
 signs and notarizes, and the hub can write the Mac feeds. Keys stay in the builder's key store.

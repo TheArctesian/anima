@@ -87,7 +87,7 @@ pub(crate) fn sign_prehashed(
     Ok(STANDARD.encode(text))
 }
 
-/// The `version:` field of a verified trusted comment, as the updater reads it.
+/// The `version:` field of a verified trusted comment, as the updater and `signed-version.ts` read it.
 fn signed_version(trusted_comment: &str) -> Option<&str> {
     trusted_comment
         .split('\t')

@@ -1,6 +1,6 @@
 // The release feed (UPD-009, UPD-010, BLD-063, DNS-007): what latest.json lists, which stable names the release
-// carries and what SHA256SUMS says. Pure: the date and the file digests are parameters, so the
-// builder can share it without a crypto module.
+// carries and what SHA256SUMS says. Pure: the date and the file digests are parameters, so the builder and the
+// release script share it without a crypto module.
 
 export interface UpdateFile {
   /** File name of the updater bundle in the release. */

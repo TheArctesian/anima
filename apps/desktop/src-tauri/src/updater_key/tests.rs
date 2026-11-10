@@ -166,7 +166,7 @@ fn bld_046_the_reference_minisign_accepts_the_signature_and_reads_the_version() 
     let text = String::from_utf8(STANDARD.decode(&signature).unwrap()).unwrap();
     let parsed = SignatureBox::from_string(&text).unwrap();
     minisign::verify(&public, &parsed, Cursor::new(DATA), true, false, false).unwrap();
-    // The trusted comment as tauri-plugin-updater reads it.
+    // The trusted comment as signed-version.ts and tauri-plugin-updater read it.
     assert_eq!(
         parsed.trusted_comment().unwrap(),
         "timestamp:1700000000\tfile:Anima_0.1.12_amd64.AppImage\tversion:0.1.12"

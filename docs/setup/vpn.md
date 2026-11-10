@@ -55,7 +55,7 @@ Names:
 | `hs.anima.ing` | Public A record to the VPS. Headscale control server and DERP relay. |
 | `hub.anima.ing` | Public A record to the hub's VPN address (`100.64.0.0/10`). Only VPN members can connect (DNS-005). |
 | `<host>.net.anima.ing` | VPN-only names from Headscale (MagicDNS), for example `hub.net.anima.ing`. No public records (DNS-006). |
-| `releases.anima.ing` | The R2 bucket for desktop releases (DNS-007). Set up by the operator in Cloudflare, not by this guide. |
+| `updates.anima.ing` | Update redirect, set up with WP-04. Not part of this guide. |
 
 ### Operator changes, in order
 

@@ -36,9 +36,9 @@ function singleRecord(name: string, type: string): DnsRecord {
 }
 
 describe('anima.ing public records', () => {
-  test('DNS-001 the records are exactly A hs, A hub and CAA on the apex', () => {
+  test('DNS-001 the records are exactly A hs, A hub, AAAA updates and CAA on the apex', () => {
     const pairs = zone.records.map((record) => `${record.type} ${record.name}`).sort();
-    expect(pairs).toEqual(['A hs.anima.ing', 'A hub.anima.ing', 'CAA anima.ing']);
+    expect(pairs).toEqual(['A hs.anima.ing', 'A hub.anima.ing', 'AAAA updates.anima.ing', 'CAA anima.ing']);
   });
 
   test('DNS-001 every record name is a fully qualified name inside the zone', () => {
@@ -80,14 +80,14 @@ describe('anima.ing public records', () => {
 });
 
 describe('anima.ing proxied and CAA records, and the README', () => {
-  test('DNS-007 no record is proxied and none is named updates: releases.anima.ing is an R2 custom domain', () => {
-    expect(zone.records.filter((record) => record.proxied === true)).toEqual([]);
-    expect(zone.records.filter((record) => record.name === 'updates.anima.ing')).toEqual([]);
+  test('DNS-007 handoff updates.anima.ing is the only proxied record', () => {
+    const proxied = zone.records.filter((record) => record.proxied === true);
+    expect(proxied.map((record) => `${record.type} ${record.name}`)).toEqual(['AAAA updates.anima.ing']);
+    expect(singleRecord('updates.anima.ing', 'AAAA').content).toBe('100::');
   });
 
-  test('DNS-007 the README says releases.anima.ing is made by the R2 bucket, not by a record here', () => {
-    expect(readme).toContain('`releases.anima.ing`');
-    expect(readme).not.toContain('updates.anima.ing');
+  test('DNS-007 handoff a proxied record has ttl 1 (automatic)', () => {
+    for (const record of zone.records.filter((r) => r.proxied === true)) expect(record.ttl).toBe(1);
   });
 
   test('DNS-002 the only CAA property is issue letsencrypt.org on the apex', () => {
