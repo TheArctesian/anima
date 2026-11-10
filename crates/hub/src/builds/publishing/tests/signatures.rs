@@ -79,12 +79,8 @@ fn r_108_text_that_is_not_a_key_or_signature_is_refused() {
     assert!(signature_of("not base64 !").is_none());
 }
 
-/// The placeholder `tauri.conf.json` carries until the operator's step (WP-04b D-3).
-const PLACEHOLDER: &str = "REPLACE_WITH_OPERATOR_PUBLIC_KEY";
-
 /// R-108: `ANIMA_UPDATER_PUBLIC_KEY` must be the app's `plugins.updater.pubkey`, so the app's
-/// value must stay a key the hub reads. Until the operator commits the key, the placeholder is
-/// the only other value allowed.
+/// value must be a key the hub reads: the operator's, never the old placeholder.
 #[test]
 fn r_108_the_app_updater_key_is_one_the_hub_reads() {
     let path = concat!(
@@ -95,7 +91,7 @@ fn r_108_the_app_updater_key_is_one_the_hub_reads() {
         serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
     let pubkey = config["plugins"]["updater"]["pubkey"].as_str().unwrap();
     assert!(
-        pubkey == PLACEHOLDER || UpdaterKey::parse(pubkey).is_some(),
-        "plugins.updater.pubkey is neither the placeholder nor a minisign public key"
+        UpdaterKey::parse(pubkey).is_some(),
+        "plugins.updater.pubkey is not a minisign public key"
     );
 }

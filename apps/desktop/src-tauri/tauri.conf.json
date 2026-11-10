@@ -40,7 +40,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "REPLACE_WITH_OPERATOR_PUBLIC_KEY",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDU5NDNEQUVBNzA4NEU2NzcKUldSMzVvUnc2dHBEV1FrdklIYktINWhRZ0V6T1RYZ0svQzRpM0dOSGxQN2hwRklOUGRJY3ZpTG4K",
       "endpoints": ["https://releases.anima.ing/{{target}}-{{arch}}/latest.json"],
       "allowDowngrades": true,
       "requireSignedVersion": true

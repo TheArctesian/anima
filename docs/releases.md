@@ -50,7 +50,7 @@ safe place. If you lose them, every installed app must be installed again by han
 private key into the key store of each builder from Settings > Builds (BLD-026).
 
 **b. Public key into the app and the hub.** Put the text of `~/.tauri/anima-updater.key.pub` in
-`tauri.conf.json` as `plugins.updater.pubkey` (it is `REPLACE_WITH_OPERATOR_PUBLIC_KEY` until then),
+`tauri.conf.json` as `plugins.updater.pubkey` (set; key ID 5943DAEA7084E677),
 commit it, and set the same text as `ANIMA_UPDATER_PUBLIC_KEY` on the hub (BLD-064). The public key
 is not a secret. A builder whose app still has the placeholder claims no job.
 
