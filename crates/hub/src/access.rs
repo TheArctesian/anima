@@ -37,6 +37,7 @@ pub use connection::{MESSAGE_LIMIT, SUBPROTOCOL, SocketAccess, accept_socket};
 pub use guard::{Authenticated, SignInRequired};
 pub use identity::{Identity, client_addr, identify, identify_connection, operator_for_token};
 pub use layer::{Edge, permitted_networks_layer};
+pub use login::{record_failure, throttled};
 pub use origin::PublicOrigin;
 pub use password::Password;
 pub use tokens::{Scope, TokenKind};
