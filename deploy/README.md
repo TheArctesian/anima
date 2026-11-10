@@ -80,6 +80,8 @@ Each service writes its log as JSON files, 10 MB each, 10 files.
    | `ANIMA_RECORDING_MAX_BYTES` | no | `2147483648` | The most plaintext bytes one recording may hold (2 GiB). |
    | `APPRISE_ALLOW_SERVICES` | no | `discord,tgram,slack` | The services Apprise may send to. See "Apprise". |
    | `ANIMA_ACME_SERVER` | no | Let's Encrypt production | Use the staging URL to test. |
+   | `ANIMA_RELEASES_ENDPOINT` | no | empty (publishing off) | The R2 S3 API origin, `https://<account>.r2.cloudflarestorage.com`. See "Release publishing". |
+   | `ANIMA_UPDATER_PUBLIC_KEY` | no | empty (every publish fails) | The updater's public key, the same text as `plugins.updater.pubkey` in `tauri.conf.json`. |
 
    The compose file sets two more hub variables as fixed values: `ANIMA_WEB_ROOT`
    (`/usr/share/anima/web`, the web client; empty turns it off) and `ANIMA_RECORDING_ROOT`
@@ -260,7 +262,8 @@ step (VPS-005): agents do not create the R2 token or change `deploy/.env` on the
 - **Two secret files** hold the R2 API token: its access key ID and its secret access key. Make the
   token in Cloudflare with Object Read and Write on `anima-releases` only. Put each value in its own
   file, `secrets/r2_access_key_id` and `secrets/r2_secret_access_key`, owned `root:10001`, mode
-  `0440`, and give them to the hub as Docker secrets. The hub reads them once at start
+  `0440`. `compose.yaml` gives them to the hub as Docker secrets and `bin/preflight` checks them;
+  `bin/make-secrets` cannot make them, because the values come from Cloudflare. The hub reads them once at start
   (`ANIMA_RELEASES_ACCESS_KEY_ID_FILE`, `ANIMA_RELEASES_SECRET_ACCESS_KEY_FILE`) and never logs them.
 - **`ANIMA_RELEASES_ENDPOINT`** is the bucket's S3 API origin,
   `https://<account>.r2.cloudflarestorage.com`. `ANIMA_RELEASES_BUCKET` (default `anima-releases`)
