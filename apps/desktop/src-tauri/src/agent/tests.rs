@@ -4,6 +4,8 @@
 //! launchctl is touched.
 
 mod flow;
+mod folders;
+mod rig;
 mod trust;
 
 use std::{
