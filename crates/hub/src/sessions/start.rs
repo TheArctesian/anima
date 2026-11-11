@@ -257,8 +257,7 @@ fn random_token() -> Result<TicketToken, Error> {
 /// the limit refuses, unless another start passed the same early count and wins the device's
 /// lock. Under that lock the transaction reads the device's recording flag again and holds the
 /// device row until it commits, so recording turned on during the wake is checked then (and
-/// may refuse a start whose packet went), and recording turned off then is followed. Once the row commits, its start is published on `live`'s feed of changes (RA-034); a
-/// refused or rolled-back start publishes nothing.
+/// X
 ///
 /// If the hub shut down while the commit was in flight, `shut_down` took the ticket but could
 /// not yet see the row; the start is then not published, the row ends here with
