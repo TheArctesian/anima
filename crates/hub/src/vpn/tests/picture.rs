@@ -365,7 +365,10 @@ fn vpn_009_a_relayed_path_keeps_its_region_for_three_unknown_reads() {
         shown = carry(&shown, idle());
         assert_eq!(router_path(&shown), (VpnPath::Relayed, Some("sfo")));
     }
-    assert_eq!(router_path(&carry(&shown, idle())), (VpnPath::Unknown, None));
+    assert_eq!(
+        router_path(&carry(&shown, idle())),
+        (VpnPath::Unknown, None)
+    );
 }
 
 /// The idle fixture's mac with `dns_name` and `host_name`, matched against `devices`.

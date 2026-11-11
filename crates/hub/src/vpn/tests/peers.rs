@@ -175,7 +175,10 @@ fn vpn_009_the_hub_reads_the_real_tailscale_captures() {
 fn vpn_008_an_unreadable_peer_is_skipped_and_the_rest_are_kept() {
     let mut raw = json("status-idle.json");
     let peers = raw["Peer"].as_object_mut().unwrap();
-    peers.insert("nodekey:odd".to_owned(), serde_json::json!({ "Online": "yes" }));
+    peers.insert(
+        "nodekey:odd".to_owned(),
+        serde_json::json!({ "Online": "yes" }),
+    );
     peers.insert("nodekey:none".to_owned(), serde_json::json!(7));
 
     let shown = picture(&reparse(&raw));
