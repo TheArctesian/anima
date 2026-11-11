@@ -152,15 +152,15 @@ async fn met_012_a_device_name_with_control_characters_is_refused_and_nothing_is
     assert!(home.read_config().expect("reads").is_none());
 }
 
+/// T8 S1: a name the hub's device rule takes (64 characters, here 192 bytes) is kept, so the
+/// spent code is never thrown away for its name.
 #[tokio::test]
-async fn met_012_a_device_name_must_be_1_to_128_bytes() {
-    assert!(!anima_agent::hub::enrolment::is_device_name(""));
-    assert!(anima_agent::hub::enrolment::is_device_name(
-        &"a".repeat(128)
-    ));
-    assert!(!anima_agent::hub::enrolment::is_device_name(
-        &"a".repeat(129)
-    ));
+async fn met_012_every_name_the_hub_takes_is_kept() {
+    let name = "漢".repeat(64);
+    let (done, home, _store, _dir) = enrol_with(enrolled_with(&name, "2027-11-08T10:00:00Z")).await;
+    assert_eq!(done.expect("enrolled"), name);
+    let config = home.read_config().expect("reads").expect("a configuration");
+    assert_eq!(config.device_name, name);
 }
 
 #[tokio::test]

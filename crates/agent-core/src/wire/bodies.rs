@@ -17,6 +17,18 @@ pub struct EnrolRequest {
     pub code: EnrolmentCode,
 }
 
+/// The most characters a device name has (K8 Section 3, DEV-010): the hub's device rule takes 1
+/// to this many, so the agent keeps every name the hub can hold.
+pub const DEVICE_NAME_CHARS: usize = 64;
+
+/// Whether `name` is a device name the agent keeps and prints: 1 to [`DEVICE_NAME_CHARS`]
+/// characters, no control character. The hub's device rule has the same length and refuses
+/// more characters than this, so every name the hub holds passes (MET-012, K8 Section 3).
+#[must_use]
+pub fn is_device_name(name: &str) -> bool {
+    (1..=DEVICE_NAME_CHARS).contains(&name.chars().count()) && !name.chars().any(char::is_control)
+}
+
 /// The answer to a good enrolment: the device the agent now speaks for and its token.
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

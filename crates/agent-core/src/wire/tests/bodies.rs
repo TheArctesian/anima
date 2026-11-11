@@ -4,7 +4,9 @@ use serde::{Serialize, de::DeserializeOwned};
 use serde_json::Value;
 
 use super::*;
-use crate::wire::{EnrolRequest, Enrolled, Refusal, RenewRequest, Renewed};
+use crate::wire::{
+    DEVICE_NAME_CHARS, EnrolRequest, Enrolled, Refusal, RenewRequest, Renewed, is_device_name,
+};
 
 /// Reads `fixture` as `T`, writes it back, and compares the two as JSON values.
 fn round_trip<T: Serialize + DeserializeOwned>(fixture: &str) -> T {
@@ -148,4 +150,22 @@ fn k8_1_a_time_is_read_only_in_the_form_k8_writes() {
         serde_json::from_str::<Batch>(&body).is_err(),
         "a point's at too"
     );
+}
+
+#[test]
+fn met_012_a_device_name_is_1_to_64_characters_of_any_width() {
+    // 64 three-byte characters: 192 bytes, a name the hub's device rule takes.
+    assert!(is_device_name(&"漢".repeat(DEVICE_NAME_CHARS)));
+    assert!(is_device_name(&"🖥".repeat(DEVICE_NAME_CHARS)));
+    assert!(is_device_name("a"));
+    assert!(!is_device_name(""));
+    assert!(!is_device_name(&"a".repeat(DEVICE_NAME_CHARS + 1)));
+    assert!(!is_device_name(&"漢".repeat(DEVICE_NAME_CHARS + 1)));
+}
+
+#[test]
+fn met_012_a_device_name_has_no_control_character() {
+    for name in ["pop\u{1b}[2Kos", "pop-os\n", "pop\u{7}", "\u{9b}31m"] {
+        assert!(!is_device_name(name), "{name:?}");
+    }
 }
