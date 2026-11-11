@@ -108,31 +108,6 @@ describe('plan for register and renew', () => {
     expect(plan({ verb: 'renew', node: 7 }, view, foreign, moment)).toBe('not-allowed');
   });
 
-  describe('VP-12: renew refuses a key that expired more than 30 days ago', () => {
-    const renewAt = (expired: Date | null): ReturnType<typeof plan> =>
-      plan({ verb: 'renew', node: 6 }, view, nodesReply(tailnetOfNodes([listed(6, { expiry: expired })]), view).nodes, moment);
-
-    it('VP-12: exactly 30 days past expiry still renews', () => {
-      expect(renewAt(new Date(NOW.getTime() - RENEW_GRACE_MS))).not.toBeString();
-    });
-
-    it('VP-12: 30 days and one second past expiry is refused with the fixed detail', () => {
-      const expired = new Date(NOW.getTime() - RENEW_GRACE_MS - 1000);
-      expect(() => renewAt(expired)).toThrow(RENEW_TOO_LATE);
-      try {
-        renewAt(expired);
-      } catch (error) {
-        expect(error).toMatchObject({ refusal: 'not-allowed', message: 'the key expired more than 30 days ago; enrol the computer again' });
-      }
-    });
-
-    it('VP-12: an expiring, a recently expired and a never-expiring key still renew', () => {
-      expect(renewAt(inDays(5))).not.toBeString();
-      expect(renewAt(inDays(-3))).not.toBeString();
-      expect(renewAt(null)).not.toBeString();
-    });
-  });
-
   it('VP-10: renew staggers against the other Macs', () => {
     const macs = nodesReply(tailnetOfNodes([listed(1, { expiry: inDays(180) }), listed(2, { expiry: inDays(150) }), listed(3, { expiry: inDays(10) })]), view).nodes;
     const planned = plan({ verb: 'renew', node: 3 }, view, macs, moment);
@@ -162,5 +137,30 @@ describe('plan for register and renew', () => {
         else expect([arg, step[index - 1]?.startsWith('-') ?? false]).toEqual([arg, false]);
       }
     }
+  });
+});
+
+describe('VP-12: renew refuses a key that expired more than 30 days ago', () => {
+  const renewAt = (expired: Date | null): ReturnType<typeof plan> =>
+    plan({ verb: 'renew', node: 6 }, view, nodesReply(tailnetOfNodes([listed(6, { expiry: expired })]), view).nodes, moment);
+
+  it('VP-12: exactly 30 days past expiry still renews', () => {
+    expect(renewAt(new Date(NOW.getTime() - RENEW_GRACE_MS))).not.toBeString();
+  });
+
+  it('VP-12: 30 days and one second past expiry is refused with the fixed detail', () => {
+    const expired = new Date(NOW.getTime() - RENEW_GRACE_MS - 1000);
+    expect(() => renewAt(expired)).toThrow(RENEW_TOO_LATE);
+    try {
+      renewAt(expired);
+    } catch (error) {
+      expect(error).toMatchObject({ refusal: 'not-allowed', message: 'the key expired more than 30 days ago; enrol the computer again' });
+    }
+  });
+
+  it('VP-12: an expiring, a recently expired and a never-expiring key still renew', () => {
+    expect(renewAt(inDays(5))).not.toBeString();
+    expect(renewAt(inDays(-3))).not.toBeString();
+    expect(renewAt(null)).not.toBeString();
   });
 });
