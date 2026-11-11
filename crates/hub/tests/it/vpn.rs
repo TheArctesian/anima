@@ -3,4 +3,5 @@
 
 mod broker;
 mod graphql;
+mod mutations;
 mod proxy;

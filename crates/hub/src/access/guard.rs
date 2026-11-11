@@ -227,8 +227,9 @@ fn refusal(identity: Option<&Identity>, document: &ExecutableDocument) -> Option
 /// moving a device and accepting the new host key would send its stored password to another
 /// host (R-100). Enrolling or revoking a builder, and publishing or cancelling a release, are
 /// supply-chain actions only a login or browser token may take: a builder token outlives the key
-/// that enrolled it (D-23, R-107).
-pub(super) const API_KEY_REFUSED_ROOTS: [&str; 27] = [
+/// that enrolled it (D-23, R-107). A VPN key, a registration or a renewal admits a computer to
+/// the network: login or browser token only (VP-7, VP-10).
+pub(super) const API_KEY_REFUSED_ROOTS: [&str; 31] = [
     "createApiKey",
     "revokeApiKey",
     "apiKeys",
@@ -256,6 +257,10 @@ pub(super) const API_KEY_REFUSED_ROOTS: [&str; 27] = [
     "revokeBuilder",
     "createRelease",
     "cancelBuildJob",
+    "createVpnInvite",
+    "createRouterKey",
+    "registerVpnNode",
+    "renewVpnKey",
 ];
 
 /// The root selections a token of `kind` may make, in every operation type. A new kind of

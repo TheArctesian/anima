@@ -57,6 +57,11 @@ pub fn ok(value: &Value) -> String {
     json!({ "ok": true, "value": value }).to_string()
 }
 
+/// A broker refusal line.
+pub fn refusal(word: &str, detail: &str) -> String {
+    json!({ "ok": false, "refusal": word, "detail": detail }).to_string()
+}
+
 /// A broker that answers each request line with `answer(line)` after `delay`; `None` closes
 /// the connection with no reply.
 pub fn start(

@@ -91,10 +91,6 @@ pub(super) struct PreAuthKey(Zeroizing<String>);
 
 impl PreAuthKey {
     /// The key, for the one reply that hands it to the operator.
-    #[cfg_attr(
-        not(test),
-        expect(dead_code, reason = "the key mutations (B4) hand it out")
-    )]
     pub fn expose(&self) -> &str {
         &self.0
     }
@@ -114,14 +110,19 @@ impl<'de> Deserialize<'de> for PreAuthKey {
 
 /// The broker's reply to `personal-key` and `router-key`.
 #[derive(Debug, Deserialize)]
-#[cfg_attr(
-    not(test),
-    expect(dead_code, reason = "the key mutations (B4) read it")
-)]
 pub(super) struct NewKey {
     pub key: PreAuthKey,
     #[serde(rename = "expiresAt")]
     pub expires_at: DateTime<Utc>,
+}
+
+/// The broker's reply to `register` and `renew`: the node's name, IPv4 address and expiry.
+#[derive(Debug, Deserialize)]
+pub(super) struct Registered {
+    pub name: String,
+    pub address: Ipv4Addr,
+    #[serde(rename = "keyExpiry")]
+    pub key_expiry: Option<DateTime<Utc>>,
 }
 
 /// Why the broker refused a request; the words of its wire format.
@@ -174,6 +175,28 @@ impl Broker {
     /// Every node and the policy sites (`nodes`).
     pub(super) async fn nodes(&self) -> Result<BrokerView, Error> {
         self.call(&json!({ "verb": "nodes" })).await
+    }
+
+    /// A one-use, one-hour key for an untagged node of the user `operator` (VPN-003).
+    pub(super) async fn personal_key(&self) -> Result<NewKey, Error> {
+        self.call(&json!({ "verb": "personal-key" })).await
+    }
+
+    /// A one-use, one-hour key tagged for the router of the policy site `site` (VPN-001).
+    pub(super) async fn router_key(&self, site: &str) -> Result<NewKey, Error> {
+        self.call(&json!({ "verb": "router-key", "site": site }))
+            .await
+    }
+
+    /// Registers the node that waits with `auth_id` to the user `operator` (vpn.md 6B).
+    pub(super) async fn register(&self, auth_id: &str) -> Result<Registered, Error> {
+        self.call(&json!({ "verb": "register", "authId": auth_id }))
+            .await
+    }
+
+    /// Sets a staggered key expiry on the untagged operator node `node` (BD-17, VP-10).
+    pub(super) async fn renew(&self, node: u64) -> Result<Registered, Error> {
+        self.call(&json!({ "verb": "renew", "node": node })).await
     }
 
     /// Sends `request` and reads its reply, holding the turn from connect to close.

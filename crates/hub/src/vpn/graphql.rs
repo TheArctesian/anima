@@ -1,5 +1,8 @@
-//! The `vpn` query and the `vpnChanged` subscription (VPN-005, VPN-009, K1). Each view borrows
-//! from the shared picture, so a picture is never copied for each field.
+//! The `vpn` query and the `vpnChanged` subscription (VPN-005, VPN-009, K1), and the face of
+//! the VPN mutations (`mutations`). Each view borrows from the shared picture, so a picture is
+//! never copied for each field.
+
+mod mutations;
 
 use std::sync::Arc;
 
@@ -20,6 +23,8 @@ use crate::{
     devices::{Device, DevicesById, Site, SitesById},
     scalars::{Cidr, IpAddr},
 };
+
+pub use mutations::{Mutation, VpnKey, VpnRegistration};
 
 #[derive(Default)]
 pub struct Query;

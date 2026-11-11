@@ -1863,3 +1863,24 @@ its intent.
   went over 300 lines; the two LocalAPI tests and the broker test moved to
   `config/vpn_tests.rs`. `deploy/test/compose.test.ts` skips the broker bind in the SELinux
   label rule, as it does for `localapi` (R-054).
+- **B4a: the steps are a pure file, `vpn/steps.rs`**; the login server `https://hs.anima.ing` is
+  a constant there. The router steps use the policy site name (`--hostname <name>-router`),
+  never the Anima site name, which can hold spaces.
+- **B4a: `VALIDATION` lists a field (K7).** A refusal about the input is
+  `invalid([{field, message}])` on the mutation's argument (`siteId`, `authId`, `name`).
+  `createVpnInvite` has no argument, so a `bad-request`, `unknown-site`, `not-allowed` or
+  `undone` there is the hub's own mistake and answers `INTERNAL`. `not-allowed` and `undone`
+  carry the broker's cleaned detail (a subnet another router already serves, an auth ID of a
+  tagged node, "the node had a tag"). An `UNAVAILABLE` answer logs the fault word only.
+- **B4a: the hub checks the auth ID** against `^hskey-authreq-[A-Za-z0-9_-]{24}$` before it
+  calls the broker, so a pasted command or an extra space never reaches it.
+- **B4a: `renewVpnKey(name)`** finds an untagged node of user `operator` with that name in the
+  latest broker list; another name is `VALIDATION` on `name` before any broker call. Its audit
+  action is `update`; `registerVpnNode` is `accept`, the keys are `create`. The audit `change`
+  is `{site, expiresAt}` for a key (`site` null for an invite) and `{node, address, keyExpiry}`
+  for a node.
+- **B4a: a closed connection with no reply** (the broker drops a request that waits more than
+  8 s behind its audit, lead's note on `8ff57c21`) is `BrokerUnreadable` → `UNAVAILABLE` "The
+  broker did not answer; it may be busy checking its nodes. Try again in a minute."
+- **B4a: the mutations need the reader's broker list** (`roster`); with no LocalAPI proxy, or
+  before the first `READY` read, `createRouterKey` and `renewVpnKey` answer `UNAVAILABLE`.

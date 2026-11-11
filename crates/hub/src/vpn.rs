@@ -9,6 +9,7 @@ mod model;
 mod peers;
 mod picture;
 mod reader;
+mod steps;
 mod store;
 #[cfg(test)]
 mod tests;

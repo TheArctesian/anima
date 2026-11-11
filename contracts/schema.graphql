@@ -131,6 +131,22 @@ type VpnPicture {
   broker: BrokerState!
 }
 
+"""A one-use, one-hour pre-auth key, shown once (VPN-001, VPN-003, LOG-007)."""
+type VpnKey {
+  "The pre-auth key: shown once, never stored by the hub."
+  key: String!
+  expiresAt: DateTime!
+  "The commands for the new computer, in order; none holds the key."
+  steps: [String!]!
+}
+
+"""A node the broker registered or renewed (vpn.md 6B and Section 7)."""
+type VpnRegistration {
+  name: String!
+  address: IpAddr!
+  keyExpiry: DateTime
+}
+
 """Whether the hub can reach the VPN broker on the VPS (VP-7, BD-15)."""
 enum BrokerState {
   "ANIMA_VPN_BROKER is not set."
@@ -1735,6 +1751,16 @@ type Mutation {
   buildUploadUrls(id: ID!, files: [BuildFileInput!]!): [BuildUploadUrl!]!
   "Builder token only. Ends the lease; the hub then verifies and publishes in the background, ending PUBLISHED or FAILED (BLD-063 to BLD-070)."
   reportBuildUploaded(id: ID!, files: [BuildFileInput!]!, feed: String!): BuildJob!
+
+  # Phase 3: VPN (VP-7, VP-10)
+  "A one-use, one-hour key for a Linux computer of the operator (VPN-003). Login or browser token only (D-23)."
+  createVpnInvite: VpnKey!
+  "A one-use, one-hour key for the subnet router of a site (VPN-001). Login or browser token only (D-23)."
+  createRouterKey(siteId: ID!): VpnKey!
+  "Registers the computer that shows this auth ID on its own screen (vpn.md 6B). Login or browser token only (D-23)."
+  registerVpnNode(authId: String!): VpnRegistration!
+  "Sets the key expiry of an untagged operator node to a staggered date 90 to 180 days from now (vpn.md Section 7). Login or browser token only (D-23)."
+  renewVpnKey(name: String!): VpnRegistration!
 }
 
 type Subscription {
