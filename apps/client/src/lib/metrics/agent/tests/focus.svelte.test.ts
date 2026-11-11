@@ -2,6 +2,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CODE, settle, showPending, ENROLMENT, button, click, pass, setUp, show, tearDown, text } from './panel.fixture';
 
+const ENROLLED = { AgentStatus: { device: { id: 'd1', metricsSource: 'AGENT', metricsStale: false } } };
+
 vi.mock('motion', async (importOriginal) => ({
   ...(await importOriginal<typeof import('motion')>()),
   animate: (await import('$lib/motion/engine.fixture')).fakeRun,
@@ -18,10 +20,12 @@ describe('Install agent: focus, busy, copy and layout (WCAG 2.4.3, MET-019)', ()
     await click(label);
   }
 
-  it('MET-019: after Install agent focus lands on the code, not on the page body', async () => {
+  it('MET-019: after Install agent focus lands on the line that holds the label and the code, so both are read out', async () => {
     await show(ENROLMENT);
     await focusAndClick('Install agent');
-    expect(active()?.textContent).toBe('Enrolment code');
+    expect(active()?.tagName).toBe('P');
+    expect(active()?.textContent).toContain('Enrolment code');
+    expect(active()?.querySelector('code')?.textContent).toBe(CODE);
   });
 
   it('MET-019: after Close focus returns to the Install agent button', async () => {
@@ -36,6 +40,22 @@ describe('Install agent: focus, busy, copy and layout (WCAG 2.4.3, MET-019)', ()
     await focusAndClick('Install agent');
     await pass(15 * 60);
     expect(active()).toBe(button('Install agent'));
+  });
+
+  it('MET-011: Close on a code that was used moves focus to the agent view, not to the page body', async () => {
+    await show({ ...ENROLMENT, ...ENROLLED });
+    await focusAndClick('Install agent');
+    await focusAndClick('Close');
+    expect(text()).toContain('Metrics are current.');
+    expect(active()).toBe(button('Install agent again'));
+  });
+
+  it('MET-011, MET-012: a code that expires after it was used moves focus to the agent view, not to the page body', async () => {
+    await show({ ...ENROLMENT, ...ENROLLED });
+    await focusAndClick('Install agent');
+    await pass(15 * 60);
+    expect(text()).toContain('Metrics are current.');
+    expect(active()).toBe(button('Install agent again'));
   });
 
   it('MET-012: an expiry does not take focus from a control outside the panel', async () => {

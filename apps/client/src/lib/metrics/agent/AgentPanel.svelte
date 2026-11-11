@@ -66,7 +66,8 @@
   let opening = $state(0);
   let section = $state<HTMLElement>();
   let heading = $state<HTMLElement>();
-  let codeLabel = $state<HTMLElement>();
+  /** The line with the label and the code: focused when the code opens, so both are read out. */
+  let codeLine = $state<HTMLElement>();
   const result = $derived(install.code === null ? null : installCommand({ release, target, code: install.code, origin }));
   const commandText = $derived(result?.ok === true ? result.command.text : null);
   // A read after Close or expiry can show that the code was used: the device is then an AGENT device.
@@ -99,12 +100,16 @@
     }
   }
 
-  /** Focus follows the view: to the code when it opens, back to the button that opened it when it goes (WCAG 2.4.3). */
+  /**
+   * Focus follows the view (WCAG 2.4.3): to the code when it opens; to the new view's start button when the code goes, or
+   * when the view that held focus went (a read after Close or expiry shows the code was used); to the heading when the view
+   * has no start button.
+   */
   function moveFocus(from: string, to: string): void {
-    const lost = document.activeElement === document.body || document.activeElement === null || section?.contains(document.activeElement) === true;
-    if (!lost || from === to) return;
-    if (to === 'code') codeLabel?.focus();
-    else if (from === 'code') section?.querySelector<HTMLElement>('[data-agent-start]')?.focus();
+    const gone = document.activeElement === document.body || document.activeElement === null;
+    if (from === to || !(gone || section?.contains(document.activeElement) === true)) return;
+    if (to === 'code') codeLine?.focus();
+    else if (from === 'code' || gone) (section?.querySelector<HTMLElement>('[data-agent-start]') ?? heading)?.focus();
   }
 
   onMount(() => {
@@ -155,8 +160,8 @@
 {/snippet}
 
 {#snippet code(shown: string)}
-  <p>
-    <span tabindex="-1" bind:this={codeLabel}>Enrolment code</span>
+  <p tabindex="-1" bind:this={codeLine}>
+    <span>Enrolment code</span>
     <code class="code">{shown}</code>
   </p>
   <p class="state timer" role="timer" aria-live="off">Works once and expires in {clockText(install.left)}.</p>
@@ -256,7 +261,8 @@
     font-variant-numeric: tabular-nums;
   }
 
-  h3:focus-visible {
+  h3:focus-visible,
+  p[tabindex]:focus-visible {
     outline: var(--border-focus) solid var(--accent);
     outline-offset: var(--border-focus);
   }
