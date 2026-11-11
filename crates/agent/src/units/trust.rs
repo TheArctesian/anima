@@ -100,6 +100,11 @@ fn group_write_safe(stat: Stat, by: Installer) -> bool {
 /// write only when it is the user's folder in the user's private group. For the system unit,
 /// which runs the binary as another account: owned by root and writable by no one else, sticky
 /// or not.
+///
+/// The desktop shell keeps a stricter copy of the user rule (`apps/desktop/src-tauri/src/agent/
+/// trust.rs`) that differs in two ways: it refuses a sticky folder others can write (1777), and
+/// a sticky folder whose group may write outside the user's private group (1775). The shell may
+/// be stricter, never looser; `tests/trust-cases.txt` pins both differences and every other case.
 pub(super) fn folder_trusted(stat: Stat, by: Installer) -> bool {
     match by.target {
         Target::User => {
@@ -241,27 +246,6 @@ mod tests {
     }
 
     #[test]
-    fn met_019_group_write_is_trusted_only_in_the_user_s_private_group() {
-        assert!(
-            folder_trusted(stat(0o040_775, 1000, 1000), ADA),
-            "~/.local/bin, umask 002"
-        );
-        assert!(
-            !folder_trusted(stat(0o040_775, 1000, 4), ADA),
-            "group adm may write the user's folder"
-        );
-        let no_private = Installer {
-            private_group: None,
-            ..ADA
-        };
-        assert!(!folder_trusted(stat(0o040_775, 1000, 1000), no_private));
-        assert!(
-            !folder_trusted(stat(0o042_775, 0, 1000), ADA),
-            "root's, not the user's"
-        );
-    }
-
-    #[test]
     fn met_019_a_binary_from_umask_002_is_trusted_and_one_others_can_write_is_not() {
         assert!(
             binary_trusted(stat(0o100_775, 1000, 1000), ADA),
@@ -317,5 +301,100 @@ mod tests {
             !folder_trusted(stat(0o041_777, 0, 0), root),
             "sticky is not enough"
         );
+    }
+
+    const TABLE: &str = include_str!("../../tests/trust-cases.txt");
+
+    /// One row of the table of trust cases, with its account files resolved.
+    struct Case {
+        name: String,
+        mode: u32,
+        owner: u32,
+        group: u32,
+        acl: bool,
+        uid: u32,
+        passwd: Option<String>,
+        group_file: Option<String>,
+        private: Option<u32>,
+        agent: bool,
+        shell: bool,
+        differs: bool,
+    }
+
+    /// The rows of `trust-cases.txt`; a malformed row panics, so the table cannot rot quietly.
+    fn cases() -> Vec<Case> {
+        let mut sets = std::collections::HashMap::new();
+        let mut rows = Vec::new();
+        for line in TABLE
+            .lines()
+            .filter(|l| !l.is_empty() && !l.starts_with('#'))
+        {
+            if let Some(rest) = line
+                .strip_prefix("passwd ")
+                .map(|r| ("passwd", r))
+                .or_else(|| line.strip_prefix("group ").map(|r| ("group", r)))
+            {
+                let (name, text) = rest.1.split_once(' ').expect("set name and text");
+                let text = (text != "none").then(|| text.replace(';', "\n") + "\n");
+                sets.insert((rest.0, name.to_owned()), text);
+            } else {
+                rows.push(line);
+            }
+        }
+        let set = |kind: &str, name: &str| {
+            sets.get(&(kind, name.to_owned()))
+                .unwrap_or_else(|| panic!("no {kind} set {name}"))
+                .clone()
+        };
+        let octal = |s: &str| u32::from_str_radix(s, 8).expect("octal");
+        rows.into_iter()
+            .map(|row| {
+                let f: Vec<&str> = row.split('|').map(str::trim).collect();
+                assert_eq!(f.len(), 12, "row {row}");
+                Case {
+                    name: f[0].to_owned(),
+                    mode: octal(f[1]),
+                    owner: f[2].parse().expect("owner"),
+                    group: f[3].parse().expect("group"),
+                    acl: f[4] == "1",
+                    uid: f[5].parse().expect("uid"),
+                    passwd: set("passwd", f[6]),
+                    group_file: set("group", f[7]),
+                    private: (f[8] != "-").then(|| f[8].parse().expect("private")),
+                    agent: f[9] == "trust",
+                    shell: f[10] == "trust",
+                    differs: f[11] == "DIFF",
+                }
+            })
+            .collect()
+    }
+
+    #[test]
+    fn met_019_every_row_of_the_trust_table_gets_the_agent_s_answer() {
+        let cases = cases();
+        assert!(cases.len() >= 20, "the table is read");
+        for case in cases {
+            let passwd = case.passwd.as_deref().unwrap_or("");
+            let private = private_group(case.uid, passwd, case.group_file.as_deref());
+            assert_eq!(private, case.private, "{}: private group", case.name);
+            let by = Installer {
+                target: Target::User,
+                uid: case.uid,
+                private_group: private,
+            };
+            let stat = Stat {
+                mode: case.mode,
+                owner: case.owner,
+                group: case.group,
+                acl: case.acl,
+            };
+            assert_eq!(folder_trusted(stat, by), case.agent, "{}", case.name);
+            assert_eq!(
+                case.differs,
+                case.agent != case.shell,
+                "{}: DIFF mark",
+                case.name
+            );
+        }
     }
 }
