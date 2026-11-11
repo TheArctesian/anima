@@ -1,14 +1,23 @@
-//! The code and origin checks, the destination, folder trust, the agent's environment and its
-//! arguments are pure; `tests/flow.rs` installs a stand-in agent into a temporary HOME inside
-//! the crate's `target/` folder, so no real `~/.local`, systemctl or launchctl is touched.
+//! The code and origin checks, the destination, the agent's environment and its arguments are
+//! pure; `tests/trust.rs` holds the folder rule; `tests/flow.rs` installs a stand-in agent into a
+//! temporary HOME inside the crate's own `target/` folder, so no real `~/.local`, systemctl or
+//! launchctl is touched.
 
 mod flow;
+mod trust;
 
-use std::path::Path;
+use std::{
+    ffi::OsString,
+    fs,
+    path::Path,
+    sync::atomic::Ordering,
+    thread,
+    time::{Duration, Instant},
+};
 
 use super::{
-    AgentError, Installing,
-    placement::{bundled_beside, destination, folder_trusted},
+    AgentError, Installing, bundled,
+    placement::{bundled_beside, destination},
     request::{EnrolmentCode, HubOrigin},
     run::{INSTALL_ARGS, agent_env, enrol_args},
 };
@@ -101,36 +110,23 @@ fn met_019_the_agent_goes_to_local_bin_and_is_found_beside_the_app() {
 }
 
 #[test]
-fn met_019_a_folder_is_trusted_when_the_user_or_root_owns_it_and_others_cannot_write() {
-    let (user, other) = (1000, 1001);
-    assert!(folder_trusted(0o040_755, user, user));
-    assert!(folder_trusted(0o040_700, user, user));
-    assert!(folder_trusted(0o040_755, 0, user));
-    // Group write is left to the agent's own install check, which knows private groups.
-    assert!(folder_trusted(0o040_775, user, user));
-    assert!(!folder_trusted(0o040_755, other, user));
-    assert!(!folder_trusted(0o040_777, user, user));
-    assert!(!folder_trusted(0o041_777, 0, user));
-    assert!(!folder_trusted(0o040_757, user, user));
-}
-
-#[test]
 fn met_019_the_agent_gets_home_and_the_session_bus_only() {
-    let everything = |name: &str| Some(format!("{name}-value"));
+    let everything = |name: &str| Some(OsString::from(format!("{name}-value")));
     let env = agent_env(Path::new("/home/ada"), everything);
+    let os = OsString::from;
     assert_eq!(
         env,
         vec![
-            ("HOME", "/home/ada".to_owned()),
-            ("XDG_RUNTIME_DIR", "XDG_RUNTIME_DIR-value".to_owned()),
+            ("HOME", os("/home/ada")),
+            ("XDG_RUNTIME_DIR", os("XDG_RUNTIME_DIR-value")),
             (
                 "DBUS_SESSION_BUS_ADDRESS",
-                "DBUS_SESSION_BUS_ADDRESS-value".to_owned()
+                os("DBUS_SESSION_BUS_ADDRESS-value")
             ),
         ]
     );
-    let empty = agent_env(Path::new("/home/ada"), |_| Some(String::new()));
-    assert_eq!(empty, vec![("HOME", "/home/ada".to_owned())]);
+    let empty = agent_env(Path::new("/home/ada"), |_| Some(OsString::new()));
+    assert_eq!(empty, vec![("HOME", os("/home/ada"))]);
 }
 
 #[test]
@@ -145,21 +141,7 @@ fn log_007_the_code_is_never_an_argument_and_install_is_user_level() {
 
 #[test]
 fn log_007_every_error_is_a_code_and_fixed_text() {
-    let all = [
-        AgentError::Unavailable,
-        AgentError::NotBundled,
-        AgentError::Busy,
-        AgentError::Code,
-        AgentError::Origin,
-        AgentError::NoHome,
-        AgentError::Untrusted,
-        AgentError::Copy,
-        AgentError::Enrol,
-        AgentError::Install,
-        AgentError::TimedOut,
-        AgentError::Failed,
-    ];
-    for error in all {
+    for error in AgentError::ALL {
         let json = serde_json::to_value(error).expect("serialised");
         assert_eq!(json["code"], error.code());
         assert_eq!(json["message"], error.to_string());
@@ -174,4 +156,51 @@ fn met_019_one_install_runs_at_a_time() {
     assert_eq!(installing.claim().err(), Some(AgentError::Busy));
     drop(first);
     assert!(installing.claim().is_ok());
+}
+
+#[test]
+fn met_019_the_untrusted_message_names_the_group_the_acl_and_the_fix() {
+    let text = AgentError::Untrusted.to_string();
+    for part in ["its group", "an ACL", "`chmod g-w,o-w`", "`setfacl -b`"] {
+        assert!(text.contains(part), "{text}");
+    }
+}
+
+#[test]
+fn d_10_only_a_release_build_offers_the_agent_beside_the_app() {
+    let scratch = concat!(env!("CARGO_MANIFEST_DIR"), "/target/agent-rig");
+    fs::create_dir_all(scratch).expect("the scratch folder");
+    let dir = tempfile::tempdir_in(scratch).expect("a folder");
+    let app = dir.path().join("anima-desktop");
+    assert_eq!(
+        bundled(&app, true),
+        Err(AgentError::NotBundled),
+        "none beside"
+    );
+    fs::write(dir.path().join("anima-agent"), b"agent").expect("the agent");
+    assert_eq!(bundled(&app, true), Ok(dir.path().join("anima-agent")));
+    // A debug build's target folder may hold an agent built from another commit.
+    assert_eq!(bundled(&app, false), Err(AgentError::NotBundled));
+}
+
+#[test]
+fn met_019_on_exit_the_stop_reaches_the_running_install_and_waits_for_its_claim() {
+    let installing = Installing::default();
+    let claim = installing.claim().expect("free");
+    let work = thread::spawn(move || {
+        let give_up = Instant::now() + Duration::from_secs(5);
+        while !claim.stop.load(Ordering::Acquire) && Instant::now() < give_up {
+            thread::sleep(Duration::from_millis(5));
+        }
+        thread::sleep(Duration::from_millis(100));
+        drop(claim);
+    });
+    let started = Instant::now();
+    installing.stop();
+    assert!(
+        started.elapsed() >= Duration::from_millis(100),
+        "it did not wait"
+    );
+    assert!(installing.claim().is_ok(), "the claim was not freed");
+    work.join().expect("the work");
 }

@@ -78,10 +78,12 @@ fn main() {
         .run(|app, event| on_run_event(app, &event));
 }
 
-/// No build step outlives the app (BLD-026), and the opened key goes with it (D-19).
+/// No build step or agent run outlives the app (BLD-026, MET-019), and the opened key goes with
+/// it (D-19).
 fn on_run_event(app: &tauri::AppHandle, event: &tauri::RunEvent) {
     if matches!(event, tauri::RunEvent::Exit) {
         app.state::<builder::Running>().cancel();
         app.state::<updater_key::UnlockedKey>().lock();
+        app.state::<agent::Installing>().stop();
     }
 }

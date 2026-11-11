@@ -1,12 +1,14 @@
 //! Runs the installed agent once (MET-019, D-10 d): an absolute program and fixed arguments, no
 //! shell, an environment that holds only the variables the agent needs, the code on standard
 //! input only, output thrown away, and a deadline after which the child is killed and reaped by
-//! its own handle. It logs nothing (LOG-007).
+//! its own handle, as it is when the app stops it on exit. It logs nothing (LOG-007).
 
 use std::{
+    ffi::OsString,
     io::{ErrorKind, Write},
     path::Path,
     process::{Child, Command, Stdio},
+    sync::atomic::{AtomicBool, Ordering},
     thread,
     time::{Duration, Instant},
 };
@@ -28,19 +30,26 @@ pub struct Run<'a> {
     pub args: &'a [&'a str],
     /// Written to standard input, which is then closed; `None` gives it no input at all.
     pub input: Option<&'a [u8]>,
-    pub env: &'a [(&'static str, String)],
+    pub env: &'a [(&'static str, OsString)],
     pub deadline: Duration,
+    /// Set when the app exits: the child is then killed and reaped at once.
+    pub stop: &'a AtomicBool,
 }
 
-/// Why a run did not succeed. Carries no OS text, no argument and no input.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// Why a run did not succeed. Fixed text: no OS text, no argument and no input.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
 pub enum RunError {
+    #[error("the agent could not start")]
     CouldNotStart,
-    /// The input could not be handed over.
+    #[error("the agent could not be given its input")]
     Input,
+    #[error("the agent exited with a failure")]
     Failed,
+    #[error("the agent ran past its deadline")]
     TimedOut,
-    /// Its exit status could not be read.
+    #[error("the app stopped the agent as it exited")]
+    Stopped,
+    #[error("the agent's exit status could not be read")]
     Unreadable,
 }
 
@@ -56,9 +65,9 @@ pub const INSTALL_ARGS: [&str; 1] = ["install"];
 /// is not empty. Nothing else of the app's environment reaches the agent.
 pub fn agent_env(
     home: &Path,
-    lookup: impl Fn(&str) -> Option<String>,
-) -> Vec<(&'static str, String)> {
-    let mut env = vec![("HOME", home.display().to_string())];
+    lookup: impl Fn(&str) -> Option<OsString>,
+) -> Vec<(&'static str, OsString)> {
+    let mut env = vec![("HOME", home.as_os_str().to_owned())];
     for name in PASSED_ON {
         if let Some(value) = lookup(name).filter(|value| !value.is_empty()) {
             env.push((name, value));
@@ -67,12 +76,15 @@ pub fn agent_env(
     env
 }
 
-/// Runs `run` and waits for it until its deadline.
+/// Runs `run` and waits for it until its deadline or its stop.
 ///
 /// # Errors
-/// [`RunError`]: the program could not start, take its input, or exit successfully in time. A
-/// child still running at the deadline is killed and reaped first.
+/// [`RunError`]: the program could not start, take its input, or exit successfully in time, or
+/// it was stopped. A child still running then is killed and reaped first.
 pub fn run(run: &Run<'_>) -> Result<(), RunError> {
+    if run.stop.load(Ordering::Acquire) {
+        return Err(RunError::Stopped);
+    }
     let mut child = start(run)?;
     if let Err(error) = hand_over(&mut child, run.input) {
         reap(child);
@@ -83,6 +95,10 @@ pub fn run(run: &Run<'_>) -> Result<(), RunError> {
         match child.try_wait() {
             Ok(Some(status)) if status.success() => return Ok(()),
             Ok(Some(_)) => return Err(RunError::Failed),
+            Ok(None) if run.stop.load(Ordering::Acquire) => {
+                reap(child);
+                return Err(RunError::Stopped);
+            }
             Ok(None) if Instant::now() < end => thread::sleep(POLL),
             Ok(None) => {
                 reap(child);

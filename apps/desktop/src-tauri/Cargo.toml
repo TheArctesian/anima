@@ -61,9 +61,10 @@ tauri-plugin-process.workspace = true
 [target.'cfg(unix)'.dependencies]
 nix = { version = "0.31", default-features = false, features = ["signal", "process", "user"] }
 
-# pidfd_open and pidfd_send_signal for the reaper (D-20): nix 0.31 has neither.
+# pidfd_open and pidfd_send_signal for the reaper (D-20): nix 0.31 has neither. `fs`: the POSIX
+# ACL read on the agent's install folders (MET-019), as the agent's own check reads it.
 [target.'cfg(target_os = "linux")'.dependencies]
-rustix = { version = "1.1", default-features = false, features = ["std", "process"] }
+rustix = { version = "1.1", default-features = false, features = ["std", "process", "fs"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 # Downcasts keyring's macOS PlatformFailure to tell a refused Keychain prompt from a failure;

@@ -1,7 +1,8 @@
 //! Where the agent binary goes and how it gets there (MET-019, D-10 d): `~/.local/bin` on both
 //! systems, the folder the page's install command uses, so either way of installing replaces the
-//! same file and the unit or `LaunchAgent` that points at it stays right. The copy is atomic, mode
-//! 0755, and refused when the folder or any folder above it can be written by others.
+//! same file and the unit or `LaunchAgent` that points at it stays right. The copy is atomic,
+//! mode 0755, and refused when the folder or any folder above it can be changed by another user
+//! ([`super::trust`]).
 
 use std::{
     fs::{self, DirBuilder, File, OpenOptions},
@@ -10,6 +11,8 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use super::trust::{self, Stat, User};
+
 /// The agent's file name, in the app bundle and in the destination folder. The release config
 /// (`tauri.release.conf.json`) names the sidecar `binaries/anima-agent`; Tauri drops the target
 /// triple and puts it beside the app's own executable.
@@ -17,23 +20,20 @@ pub const AGENT_FILE: &str = "anima-agent";
 
 /// The installed binary's mode: the user runs it, everyone may read and run it.
 const BINARY_MODE: u32 = 0o755;
-/// A folder made on the way to the destination.
+/// A folder made on the way to the destination: public, and only its owner may change it.
 const FOLDER_MODE: u32 = 0o755;
 /// No agent binary is this large; a larger file is not the agent.
 const SIZE_LIMIT: u64 = 256 * 1024 * 1024;
 
-const OTHERS_WRITE: u32 = 0o002;
-const ROOT: u32 = 0;
-
-/// Why the binary was not put in place.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// Why the binary was not put in place. Fixed text: no path, no OS error.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
 pub enum PlacementError {
-    /// The destination folder, or one above it, is not owned by the user or root, or others may
-    /// write to it.
+    /// A folder on the way is not the user's or root's, or another user may write to it.
+    #[error("a folder on the way to the agent can be changed by another user")]
     Untrusted,
-    /// The bundled binary is not a regular file of a sane size.
+    #[error("the bundled agent is not a regular file of a sane size")]
     Source,
-    /// A folder could not be made, or the file could not be written or renamed.
+    #[error("a folder could not be made, or the agent could not be written or renamed")]
     Write,
 }
 
@@ -47,49 +47,92 @@ pub fn bundled_beside(executable: &Path) -> Option<PathBuf> {
     executable.parent().map(|folder| folder.join(AGENT_FILE))
 }
 
-/// Whether a folder with `mode` and `owner` may hold, or lie above, the binary that the user's
-/// unit starts at each login: owned by the user or root, and not writable by others. A sticky
-/// folder (`/tmp`) is refused too: the agent's units hide `/tmp`, and no home lies under one.
-pub fn folder_trusted(mode: u32, owner: u32, uid: u32) -> bool {
-    (owner == uid || owner == ROOT) && mode & OTHERS_WRITE == 0
-}
-
-/// Makes the destination folder if needed, checks it and every folder above it, then copies
-/// `source` beside the destination under a fresh name and renames it into place.
+/// Makes the destination folder through checked folders only, then copies `source` beside the
+/// destination under a fresh name and renames it into place. Returns the real path of the
+/// installed binary: the path that was checked, and the one to run.
 ///
 /// # Errors
 /// [`PlacementError`] for the first step that fails; nothing is left at the destination then.
-pub fn place(source: &Path, destination: &Path, uid: u32) -> Result<(), PlacementError> {
-    let folder = destination.parent().ok_or(PlacementError::Write)?;
-    DirBuilder::new()
-        .recursive(true)
-        .mode(FOLDER_MODE)
-        .create(folder)
-        .map_err(|_| PlacementError::Write)?;
-    let folder = folder.canonicalize().map_err(|_| PlacementError::Write)?;
-    check_chain(&folder, uid)?;
+pub fn place(source: &Path, destination: &Path, by: User) -> Result<PathBuf, PlacementError> {
+    let folder = make_folder(destination.parent().ok_or(PlacementError::Write)?, by)?;
     let mut input = open_source(source)?;
     let part = folder.join(part_name()?);
+    let installed = folder.join(AGENT_FILE);
     let copied = copy_to(&mut input, &part).and_then(|()| {
-        fs::rename(&part, folder.join(AGENT_FILE))?;
+        fs::rename(&part, &installed)?;
         File::open(&folder)?.sync_all()
     });
     copied.map_err(|_| {
         // The part file may not exist (the create failed); the error that matters is the copy's.
         let _ = fs::remove_file(&part);
         PlacementError::Write
-    })
+    })?;
+    Ok(installed)
 }
 
-/// Checks `folder` (canonical) and every folder above it.
-fn check_chain(folder: &Path, uid: u32) -> Result<(), PlacementError> {
+/// Makes `dir` and returns its real path, as T6a's `make_folder` does: the deepest part that
+/// exists is resolved and checked with every folder above it first, then each missing part is
+/// made in that checked folder, resolved and checked in turn. No folder is made through a link
+/// to a folder another user may write.
+fn make_folder(dir: &Path, by: User) -> Result<PathBuf, PlacementError> {
+    let existing = dir
+        .ancestors()
+        .find(|folder| fs::metadata(folder).is_ok())
+        .unwrap_or_else(|| Path::new("/"));
+    let mut real = existing.canonicalize().map_err(|_| PlacementError::Write)?;
+    check_chain(&real, by)?;
+    let missing = dir.strip_prefix(existing).unwrap_or_else(|_| Path::new(""));
+    for part in missing.components() {
+        real.push(part);
+        match DirBuilder::new().mode(FOLDER_MODE).create(&real) {
+            Err(error) if error.kind() != io::ErrorKind::AlreadyExists => {
+                return Err(PlacementError::Write);
+            }
+            _ => {}
+        }
+        real = real.canonicalize().map_err(|_| PlacementError::Write)?;
+        check_chain(&real, by)?;
+    }
+    Ok(real)
+}
+
+/// Checks `folder` (a real path) and every folder above it.
+fn check_chain(folder: &Path, by: User) -> Result<(), PlacementError> {
     for each in folder.ancestors() {
-        let stat = fs::symlink_metadata(each).map_err(|_| PlacementError::Untrusted)?;
-        if !stat.is_dir() || !folder_trusted(stat.mode(), stat.uid(), uid) {
+        let metadata = fs::symlink_metadata(each).map_err(|_| PlacementError::Untrusted)?;
+        let stat = Stat {
+            mode: metadata.mode(),
+            owner: metadata.uid(),
+            group: metadata.gid(),
+            acl: has_acl(each)?,
+        };
+        if !metadata.is_dir() || !trust::folder_trusted(stat, by) {
             return Err(PlacementError::Untrusted);
         }
     }
     Ok(())
+}
+
+/// Whether `path` carries a POSIX access ACL (`system.posix_acl_access`); a file system without
+/// ACLs has none. One that cannot be read is not trusted.
+#[cfg(target_os = "linux")]
+fn has_acl(path: &Path) -> Result<bool, PlacementError> {
+    use rustix::io::Errno;
+    match rustix::fs::getxattr_query(path, "system.posix_acl_access") {
+        Ok(_) => Ok(true),
+        Err(Errno::NODATA | Errno::NOTSUP) => Ok(false),
+        Err(_) => Err(PlacementError::Untrusted),
+    }
+}
+
+/// macOS ACLs (`chmod +a`) do not show in the mode and are not read here; T6a has the same limit.
+#[cfg(not(target_os = "linux"))]
+#[expect(
+    clippy::unnecessary_wraps,
+    reason = "the same signature as the Linux reader"
+)]
+fn has_acl(_path: &Path) -> Result<bool, PlacementError> {
+    Ok(false)
 }
 
 /// The bundled binary, opened; refused when it is a link, not a regular file, or too large.

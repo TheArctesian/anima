@@ -1,2 +1,6 @@
-# The release build puts the agent here before `tauri build --config tauri.release.conf.json` (MET-019, D-10 d).
+# The agent sidecar of a release build (MET-019, D-10 d). The release build must:
+#   1. build `anima-agent` for the app's target triple from the same commit;
+#   2. place it at `binaries/anima-agent-<target-triple>` (this folder; never committed);
+#   3. pass `--config tauri.release.conf.json` to `tauri build`, which names it in `bundle.externalBin`.
+# Without that config no build needs the folder, so the gates pass on a clean checkout.
 /binaries/
