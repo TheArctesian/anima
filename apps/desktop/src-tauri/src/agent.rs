@@ -144,8 +144,8 @@ fn carried() -> Result<PathBuf, AgentError> {
 
 /// Refuses every caller but the main web view; the capability already does, this is the second
 /// wall (WEB-007).
-fn from_main<R: Runtime>(webview: &Webview<R>) -> Result<(), AgentError> {
-    crate::web_view::caller(webview.label()).map_err(|_| AgentError::Caller)
+fn from_main(label: &str) -> Result<(), AgentError> {
+    crate::web_view::caller(label).map_err(|_| AgentError::Caller)
 }
 
 /// Checks the request, claims the one install and runs it off the async runtime. The claim
@@ -156,7 +156,7 @@ async fn install<R: Runtime>(
     code: Zeroizing<String>,
     origin: &str,
 ) -> Result<(), AgentError> {
-    from_main(webview)?;
+    from_main(webview.label())?;
     let code = EnrolmentCode::parse(&code).ok_or(AgentError::Code)?;
     let hub = HubOrigin::parse(origin).ok_or(AgentError::Origin)?;
     let claim = installing.claim()?;
@@ -176,7 +176,7 @@ async fn install<R: Runtime>(
 /// Whether this build of the app carries the agent, so the client can offer to install it.
 #[tauri::command]
 pub async fn agent_bundled<R: Runtime>(webview: Webview<R>) -> Result<bool, AgentError> {
-    from_main(&webview)?;
+    from_main(webview.label())?;
     Ok(carried().is_ok())
 }
 

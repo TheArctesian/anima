@@ -18,7 +18,7 @@ use std::{
 };
 
 use super::{
-    AgentError, Installing, bundled,
+    AgentError, Installing, bundled, from_main,
     placement::{bundled_beside, destination},
     request::{EnrolmentCode, HubOrigin},
     run::{INSTALL_ARGS, agent_env, enrol_args},
@@ -205,4 +205,12 @@ fn met_019_on_exit_the_stop_reaches_the_running_install_and_waits_for_its_claim(
     );
     assert!(installing.claim().is_ok(), "the claim was not freed");
     work.join().expect("the work");
+}
+
+#[test]
+fn web_007_only_the_main_web_view_may_ask() {
+    assert_eq!(from_main("main"), Ok(()));
+    for label in ["web-0b9f", "builder", ""] {
+        assert_eq!(from_main(label), Err(AgentError::Caller), "{label}");
+    }
 }

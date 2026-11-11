@@ -31,6 +31,10 @@ fn met_019_a_folder_others_can_write_is_refused_before_anything_runs() {
         assert_eq!(rig.install(), Err(AgentError::Untrusted), "{open}");
         assert!(!rig.installed().exists(), "{open}");
         assert_eq!(rig.runs(), "", "{open}");
+        if open != ".local/bin" {
+            // Checked before anything is made: no folder goes inside an untrusted one.
+            assert!(!rig.home.join(".local/bin").exists(), "{open}");
+        }
     }
 }
 
