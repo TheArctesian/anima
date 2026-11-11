@@ -1460,6 +1460,8 @@ any expiry you did not set is a reason to act. Also look at the policy file on t
 server and compare it with the repository. Automatic alerting for this is deferred work, tracked
 on [GitHub issue #1](https://github.com/TheArctesian/anima/issues/1) (R-007).
 
+**The broker (Tier B).** The VPN build adds a small program, the broker, on the VPS. It is the only path from the hub to Headscale: the hub has no Headscale API key and no access to the Headscale socket. The broker runs one request for each connection on a unix socket. It has six verbs: `nodes`, `personal-key`, `router-key`, `approve-route`, `register` and `renew`. It refuses a tag that is not in the policy, strips every key from what it returns, limits the number of keys for each day and the number of nodes, and writes one log line for each request. It does not change the policy. The broker mount works only while SELinux is disabled (R-054); turning SELinux on needs a policy module first.
+
 **Residual risk.** If an attacker gets root on the VPS (by SSH, by the Hostinger console, or by a
 takeover of the Hostinger account), they can add a node and widen the policy, and reach every site,
 until you notice. The hub and its credential vault run on the same VPS (OD-9): once WP-04 installs

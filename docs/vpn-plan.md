@@ -3,7 +3,7 @@
 | Item | Value |
 | --- | --- |
 | Document | VPN plan: status, key expiry, policy checks and enrolment |
-| Version | 0.3 (rulings applied) |
+| Version | 0.4 (build decisions BD-1 to BD-17 folded in; [vpn-build.md](vpn-build.md) wins where they differ) |
 | Date | 2026-11-10 |
 | Language | ASD-STE100 Simplified Technical English (STE) |
 | Status | Accepted by the operator, 2026-11-10 (Section 9) |
@@ -11,6 +11,10 @@
 | Related | [design-spec.md](design-spec.md) Sections 4.1, 4.2, 6.7, 7, 13; `docs/setup/vpn.md` Sections 5, 6, 7, 8, 11, 13; `docs/programme/proposals/in-app-enrolment.md`, `add-this-machine.md` |
 
 This document obeys the writing rules in Section 0 of the design specification.
+
+Version 0.4 folds in the decisions of vpn-build.md Section 1 (BD-1 to BD-17). Where a passage below
+contradicts a BD row, the passage now points to that row. The requirement text of VPN-008 to
+VPN-014 is in design-spec.md Section 4.2 and Section 7 (SET-003); it is not repeated here.
 
 Version 0.2 applies an adversarial review of version 0.1 against the code. The main changes:
 VPN-011 no longer claims to detect nodes that the hub cannot see; the path rules follow the
@@ -144,28 +148,10 @@ publishes changes. It stores only the marks for warnings that it has written.
 **New requirements (spec delta, Section 4.2).** VPN-008 to VPN-014 are free; the highest
 existing ID is VPN-007.
 
-- **VPN-008.** The hub must read the status of its own VPN node through the LocalAPI proxy each
-  60 seconds. The hub must not log or store the raw status (LOG-007). Before the hub uses
-  `HostName` or `OS`, it must limit the length (63 and 32 characters) and permit only printable
-  characters.
-- **VPN-009.** For each site, the hub must show the subnet router that serves the site subnet, if
-  it is online, and the path. The path is:
-  - direct, when the router is active and `CurAddr` is set;
-  - peer relay, when `PeerRelay` is set;
-  - relayed through DERP, with the region, when the router is active and `CurAddr` is empty;
-  - not known, when there is no recent traffic.
-
-  A Tailscale ping check (CHK-009) on the router keeps traffic flowing, so the path stays known.
-  When a site has no such check, the client must suggest one. This makes VPN-005 exact.
-- **VPN-010.** For each VPN node that the hub sees, the hub must show the key expiry. A node with
-  a tag must show "never". If a tagged node has an expiry, the hub must write a warning event. For
-  a client key, the hub must write one event at 30, 14, 7 and 1 days before expiry. The hub must
-  write each of these events once, also after a restart.
-- **VPN-011.** A peer of the hub that is not the hub, not a site router and not a device in Anima
-  is "not in Anima". The hub must show it and write one event for it. **This covers only nodes
-  that the policy makes peers of the hub (Section 3, item 3).** The detection of OD-10 nodes
-  (another user, an unknown tag, a router with no approved route) is the job of the inventory
-  check (A3, VPN-013), because the hub cannot see those nodes.
+VPN-008 to VPN-011 are in design-spec.md Section 4.2. They include BD-5 (role from tags), BD-6
+(a router serves a site when `PrimaryRoutes` holds the subnet exactly), BD-13 (the last known
+path is kept for 3 reads) and BD-14 (a node matches a device by address or `DNSName`, never by
+`HostName`).
 
 The hub writes no event when a router goes offline. The Tailscale ping check (CHK-009) already
 does this, and its events go to notifications.
@@ -182,12 +168,12 @@ crates/hub/src/
     ├── peers.rs           Serde types for the status subset; parse; limit untrusted text. Pure.
     ├── picture.rs         Pure: (status, sites, devices, now) -> VpnPicture. Matches PrimaryRoutes to
     │                      Site.subnet. Matches a peer to a device by TailscaleIPs = Device.ip, or by
-    │                      DNSName or HostName = Device.host (case-insensitive). Applies VPN-009 to VPN-011.
+    │                      DNSName = Device.host (case-insensitive; BD-14, never HostName). Applies VPN-009 to VPN-011.
     ├── warnings.rs        Pure: (picture, stored marks, now) -> warnings to write (VPN-010, VPN-011).
     ├── store.rs           The only SQL: the warning marks table.
     ├── localapi.rs        I/O edge: GET status only. reqwest, no proxy, no redirects, 1 MiB cap.
     ├── reader.rs          The loop: read, build, publish, write new warnings and their marks.
-    ├── feed.rs            broadcast channel, as metrics/feed.rs.
+    ├── feed.rs            tokio watch channel of Option<Arc<Picture>> (BD-2).
     ├── graphql.rs         VpnQuery, VpnSubscription.
     ├── tests.rs
     └── tests/             Fixtures from the A4 harness (invented names and addresses), picture, warning
@@ -198,8 +184,8 @@ The hub does not send pings from `vpn`. The ping stays in `checks` (CHK-009). Th
 not import `vpn`, and `vpn` has one LocalAPI call. The two clients share no code; each is about
 15 lines and they call different paths.
 
-**Database (K2 delta).** One table in a new schema, numbered in the range that the programme
-gives:
+**Database (K2 delta).** One table in a new schema, numbered `1000–1019` (BD-1; `1000_events_source_vpn.sql`,
+`1001_vpn_schema.sql`):
 
 ```sql
 create schema vpn;
@@ -209,7 +195,7 @@ create table vpn.warnings (
                                                     'tagged_expiry','not_in_anima')),
   key_expiry timestamptz,           -- a renewal gives a new expiry, so the marks start again
   written_at timestamptz not null,
-  primary key (node_key, kind, key_expiry)
+  unique nulls not distinct (node_key, kind, key_expiry)  -- BD-4: no primary key
 );
 ```
 
@@ -230,13 +216,13 @@ create table vpn.warnings (
 | --- | --- |
 | `crates/hub/src/lib.rs` | `pub mod vpn;` |
 | `crates/hub/src/upkeep.rs` | Start the reader with the proxy address, the pool, the bus and the feed. |
-| `crates/hub/src/main.rs` | One line: pass `config.tailscale_localapi` and the feed to `upkeep`. Hand-off line (R-082). |
+| `crates/hub/src/main.rs` | BD-3: move the start of the four background loops into `upkeep::spawn` first, then pass `config.tailscale_localapi` and the feed. Hand-off lines (R-082). |
 | `crates/hub/src/schema.rs` | `VpnQuery`, `VpnSubscription` in the tuples; a `Dependencies` field for the feed; `.data(feed)`. Hand-off lines (R-082). |
-| `quality/hub-modules.json` | `"vpn": ["devices", "events"]`; `vpn` graphql: `["access", "checks"]` (for `hasPingCheck`); `upkeep` may import `vpn`. |
+| `quality/hub-modules.json` | `"vpn": ["devices", "events", "checks"]`; `vpn` graphql: `["access"]` (`checks` is a domain import for `hasPingCheck` and `vpn::Error`); `upkeep` may import `vpn`. |
 | `contracts/schema.graphql` (K1) | New types with `@pending` first; the `EventSource` value `VPN`. |
-| `crates/hub/src/events/model.rs` + migration | The `vpn` event `Source`. The migration drops and adds the CHECK with the full list, as `0701_events_source_metrics.sql`, and is numbered after the WP-45 `notification` migration. |
+| `crates/hub/src/events/model.rs` + migration | The `vpn` event `Source`. The migration drops and adds the CHECK with the full list, as `0701_events_source_metrics.sql`, and is numbered `1000`, after 0852 (BD-1). |
 | `tests/it/hub.rs`, `tests/it/wiring.rs` | Build the new `Dependencies` field. |
-| `crates/hub/tests/it/main.rs` | `mod vpn;`, as `tests/it/vpn.rs` with a `tests/it/vpn/` folder, because `tests/it` is at 11. |
+| `crates/hub/tests/it/main.rs` | `mod vpn;`, as `tests/it/vpn.rs` with a `tests/it/vpn/` folder, because `tests/it` is at 12 (vpn-build.md Section 2). |
 | Notifications (WP-45, WP-47) | Add the `vpn` source to the notification rules when they land. |
 
 **GraphQL (K1 delta).**
@@ -453,15 +439,16 @@ The broker returns a pre-auth key once and never logs it. The hub redaction alre
 
 | Kind | Items |
 | --- | --- |
-| Hub folders at 12 | `tests/it/checks/api`, `checks/scheduler/tests`, `metrics/tests`, `sessions/tests`, `sessions/files/tests` |
-| Hub folders at 11 | `checks/probe`, `checks/graphql`, `checks/tests/probe`, `tests/it`, `tests/it/devices`, `tests/it/sessions` |
-| Hub files near 300 | `events/store.rs` (299), `devices/store.rs` (296), `devices/graphql.rs` (291), `main.rs` (287), `checks/graphql/form.rs` (283) |
+| Hub folders at 12 | `tests/it`, `tests/it/checks/api`, `checks/scheduler/tests`, `metrics/tests`, `sessions/tests`, `sessions/files/tests` |
+| Hub folders at 11 | `checks/probe`, `checks/graphql`, `checks/tests/probe`, `tests/it/devices`, `tests/it/sessions` |
+| Hub files near 300 | `events/store.rs` (299), `devices/store.rs` (296), `devices/graphql.rs` (291), `main.rs` (300; BD-3), `checks/graphql/form.rs` (283) |
 | Client folders at 12 | `lib/devices/form/form`, `lib/checks/form`, `lib/desktop`, `routes/devices/[id]`, `lib/motion`, `lib/metrics`, `lib/forms/modal` |
 | Client files near 300 | `DeviceForm.svelte`, `lib/devices/api.ts` |
 
 These counts are from `b4f7051d`. Phase 3 packages add files: `crates/hub/src` gets `text.rs`,
-`fingerprint.rs` and `web_client.rs` (10 to 13 if they are not faces), and `checks/probe` gets
-`rdap.rs` (11 to 12). Count again before each task starts.
+`fingerprint.rs` and `web_client.rs` (10 counted files at `c6517bce`), and `tests/it` is at 12
+(the tests go in `tests/it/vpn/`). The counts that vpn-build.md Section 2 gives at `c6517bce`
+are correct. Count again before each task starts (vpn-build.md Section 0, rule 2).
 
 This is why Tier A uses a new `vpn` domain and does not add a check type: a new check type
 touches `checks/probe`, `checks/graphql` and `checks/graphql/form.rs`, which are near their limits.

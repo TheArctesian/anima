@@ -41,6 +41,8 @@ Status: **frozen for Phase 3** (change only through a programme ruling, CON-001)
 | 0940–0959 | reserved | — | Phase 4 |
 | 0960–0979 (Phase 3, WP-36, R-107) | builds (WP-36) | `builds` | `releases`, `builders`, `jobs`, `job_files`, `feeds`, `log_lines` (outlines below) |
 | 0980–0999 | reserved | — | Phase 4 |
+| 1000–1019 (Phase 3, VP-5) | vpn | `vpn` | warnings |
+| 1000 (Phase 3, VP-5) | events (vpn) | `events` | `event_log_source_check` lists all eight sources, adding `vpn`; numbered after 0852 |
 
 ## Roles (R-016, LOG-006)
 
