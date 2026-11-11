@@ -2,6 +2,7 @@
 //! written relative to the test clock, `2030-05-05T12:00:00Z`.
 
 mod broker;
+mod close_wait;
 mod matching;
 mod peers;
 mod picture;

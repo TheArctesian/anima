@@ -2024,10 +2024,12 @@ A security review of the broker found the points below; each fix has regression 
     `Identity::api_key_for_tests` under `test-support`).
   - *Audit of the broker id.* `approveSiteRoute` and `renewVpnKey` add `brokerNode`, the node
     id the hub sent, to the audit `change`; never a key or an auth ID.
-  - *Open (not fixed here).* The hub lets go of the turn as soon as it has the reply line,
-    while the broker instance may not have exited yet; with `MaxConnections=1` systemd can
-    close the next call's connection at once (`NO_ANSWER`). Waiting for the broker's EOF
-    (bounded) before letting go of the turn would close that gap.
+  - *Close wait (BD-15).* The hub let go of the turn as soon as it had the reply line, while
+    the broker instance might not have exited yet; with `MaxConnections=1` systemd could close
+    the next call's connection at once (`NO_ANSWER`). After the reply line a call now keeps
+    the turn and reads (and drops) until the broker's EOF, at most `CLOSE_WAIT` (2 s) and
+    never past `CALL_LIMIT` from connect. A broker that does not close in time fails nothing:
+    the call keeps its reply and nothing is logged (`vpn/tests/close_wait.rs`).
 
 ### Client lane (B4b, B5)
 
