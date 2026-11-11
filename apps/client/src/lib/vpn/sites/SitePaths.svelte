@@ -53,7 +53,7 @@
     border-block-start: var(--border-thin) solid var(--border);
   }
 
-  /* A narrow card keeps the name and the state on the first line, the subnet and the path on the second. */
+  /* A narrow card keeps the name and the state on the first line; the subnet and the path each take a full line, so a wide state cannot squeeze them. */
   @container (max-inline-size: 28rem) {
     .row {
       grid-template-columns: minmax(0, 1fr) auto;
@@ -70,13 +70,13 @@
     }
 
     .subnet {
-      grid-column: 1;
+      grid-column: 1 / -1;
       grid-row: 2;
     }
 
     .path {
-      grid-column: 2;
-      grid-row: 2;
+      grid-column: 1 / -1;
+      grid-row: 3;
     }
   }
 

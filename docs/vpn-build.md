@@ -1850,6 +1850,7 @@ its intent.
    stopped the gates at step 1); `cargo fmt` fixed it in its own commit.
 9. **Interface review fixes.** (MOT-007) The VPN section is now the last section on Settings and the VPN card follows
    Metrics on the Overview, so a late picture moves nothing above it. (UI-013) The "Add a ping check" link has a
-   `--target-min-desktop` target. Site rows collapse to name + state over subnet + path in a container under 28 rem
-   (same breakpoint as `SettingRow`). (VPN-002) The toolbar Site button reads "Site: Lab" for a chosen site. Open
+   `--target-min-desktop` target. Site rows collapse in a container under 28 rem
+   (same breakpoint as `SettingRow`): name + state on line 1, then the subnet and the path each on a full line, because
+   a wide state ("Router offline") left the subnet 66 px in a two-column second line (re-measure at 360 px). (VPN-002) The toolbar Site button reads "Site: Lab" for a chosen site. Open
    (UI-002): the design tokens have no text-safe accent, so the link stays `--accent` (4.31:1 in dark on the card).
