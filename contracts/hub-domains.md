@@ -230,6 +230,19 @@ pub async fn wake_relay(db: &Db, site: SiteId) -> Result<Option<Device>, Error>;
 pub struct Device { ..., pub session_limit: Option<std::num::NonZeroU8>, pub record_sessions: bool }
 ```
 
+(Phase 3, CR-24) the functions other domains already call, listed here so K3 is complete again:
+
+```rust
+pub struct Distribution { /* the Linux distribution read from the device, DEV-016 */ }
+pub async fn record_distribution(db: &Db, id: DeviceId, distribution: &Distribution) -> Result<(), Error>;   // metrics collector
+pub async fn lock(conn: &mut PgConnection, id: DeviceId) -> Result<(), Error>;                                  // FOR UPDATE; metrics enrolment
+pub async fn lock_metrics_source(conn: &mut PgConnection, id: DeviceId) -> Result<MetricsSource, Error>;       // FOR UPDATE; MET-011, MET-018
+pub async fn use_agent_metrics(conn: &mut PgConnection, id: DeviceId) -> Result<String, Error>;                // agent enrolment only; R-092 D-7
+pub async fn session_limit<'e>(db: impl PgExecutor<'e>, id: DeviceId) -> Result<Option<NonZeroU8>, Error>;   // RA-036
+```
+
+A new cross-domain function is listed here in the same commit as its code (CR-24).
+
 ## credentials (WP-07)
 
 ```rust
