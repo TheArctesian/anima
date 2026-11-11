@@ -9,6 +9,7 @@ use axum::{
     body::{Body, Bytes},
     http::StatusCode,
 };
+use chrono::TimeDelta;
 use serde_json::json;
 use sqlx::PgPool;
 
@@ -18,7 +19,7 @@ use super::{
 };
 use crate::metrics::ingest::{
     routes::Deadlines,
-    tests::{database_now, enrolled, enrolment::waits_for_locks, pve},
+    tests::{database_now, enrolled, enrolled_pve, enrolment::waits_for_locks, pve},
     turns::{ADDRESS_REQUESTS, AGENT_REQUESTS},
 };
 
@@ -181,5 +182,56 @@ async fn met_017_a_body_that_never_ends_is_unavailable_at_its_deadline(pool: PgP
     for push in endless_pushes(&router, &[token]) {
         let answer = within(Duration::from_secs(10), async { push.await.unwrap() }).await;
         assert_eq!(answer, unavailable());
+    }
+}
+
+/// T8a review probe R3 N1 held still: while the event log is locked, four enrolments with junk
+/// codes from four nodes wait to write their refusal events. They hold no database turn while
+/// they wait, so an honest push from a fifth node is stored at once.
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
+)]
+async fn met_017_refusal_events_that_wait_hold_no_request_turn(pool: PgPool) {
+    let now = database_now(&pool).await;
+    let token = enrolled_pve(&pool, now, 1).await;
+    let router = router(&hub_pool(&pool).await, now);
+    let first = send(router.clone(), address(7), &token, batch(pve(), now)).await;
+    assert_eq!(
+        first.0,
+        StatusCode::NO_CONTENT,
+        "a first push writes its event now"
+    );
+    let mut log = pool.begin().await.unwrap();
+    sqlx::query("LOCK TABLE events.event_log IN EXCLUSIVE MODE")
+        .execute(&mut *log)
+        .await
+        .unwrap();
+
+    let junk: Vec<_> = (0..AGENT_REQUESTS)
+        .map(|n| {
+            let n = u8::try_from(n).unwrap();
+            let code = EnrolmentCode::from_random([200 + n; 16]);
+            let body = Body::from(json!({ "code": code.expose() }).to_string());
+            tokio::spawn(post(
+                router.clone(),
+                ("/agent/v1/enrol", address(40 + n)),
+                None,
+                body,
+            ))
+        })
+        .collect();
+    let count = i64::try_from(AGENT_REQUESTS).unwrap();
+    assert!(
+        waits_for_locks(&pool, junk.last().unwrap(), count).await,
+        "each refusal waits to write its event"
+    );
+
+    let later = batch(pve(), now + TimeDelta::seconds(10));
+    let honest = send(router.clone(), address(8), &token, later);
+    assert_eq!(at_once(honest).await.0, StatusCode::NO_CONTENT);
+    log.rollback().await.unwrap();
+    for enrolment in junk {
+        assert_eq!(enrolment.await.unwrap().0, StatusCode::UNAUTHORIZED);
     }
 }

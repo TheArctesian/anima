@@ -39,8 +39,8 @@ The hub reads at most the limit and answers 413 without reading further. A body 
 - The prefixes let a scanner find a leaked value. An API key (`anima_` + 43) never has the length of an agent
   token. The access guard refuses, before any lookup, a bearer spelled exactly as an agent token or an
   enrolment code: the prefix, then exactly 43 or 22 base64url characters. Any other text that starts with
-  `anima_agent_` or `anima_enrol_` is read as any other bearer: as an API key when it is `anima_` and 43
-  base64url characters, as a plain API token when it is 43 base64url characters in all, and is refused
+  `anima_agent_` or `anima_enrol_` is read as any other bearer: as an API key when it is `anima_` and the
+  43-character spelling of 32 bytes, as a plain API token when it is that spelling in all, and is refused
   otherwise. Either way it is looked up only among API tokens and keys, so an agent token never reaches
   GraphQL, a session or a read (MET-013).
 - No log, event, metric, error message or response other than `Enrolled` and `Renewed` holds a code or a token
@@ -195,8 +195,9 @@ and tries again after its wait (Section 7).
   stores. It never holds it while its body arrives. A request whose token is valid holds its turn until its
   store ends, at most until its answer's deadline (10 seconds): so the holders of 4 valid tokens can keep the
   other agents waiting that long.
-- **Refusal events** are written outside these turns, at most once a minute per client address, or per
-  device when the token was valid (above).
+- **Refusal events** are written after the request's turns end, at most once a minute per client address,
+  or per device when the token was valid (above). Once a minute, one more event says how many refusals were
+  left out ("Left out N more agent refusals ...").
 
 ## 7. Agent buffer (MET-014)
 

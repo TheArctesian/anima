@@ -8,7 +8,10 @@
 
 use std::{future::Future, net::IpAddr, sync::Arc, time::Duration};
 
-use agent_core::wire::{AgentToken, EnrolRequest, RefusalCode, RenewRequest, Renewed, TOKEN_BYTES};
+use agent_core::wire::{
+    AgentToken, EnrolRequest, Enrolled, EnrolmentCode, RefusalCode, RenewRequest, Renewed,
+    TOKEN_BYTES,
+};
 use axum::{
     Router,
     body::{Body, to_bytes},
@@ -158,36 +161,29 @@ async fn serve_enrol(state: AgentState, request: Request) -> Response {
         client,
         device: None,
     };
-    let Some(_address) = state.turns.address(client.0) else {
+    let Some(address) = state.turns.address(client.0) else {
         return busy();
     };
     let (parts, body) = request.into_parts();
     let code = match read_body(&state, &parts.headers, body, BODY_LIMIT).await {
         Ok(body) => serde_json::from_slice::<EnrolRequest>(&body).ok(),
-        Err(code) => return state.refuse(refused(code), now).await,
-    };
-    let Some(EnrolRequest { code }) = code else {
-        return state
-            .refuse(refused(RefusalCode::EnrolmentRefused), now)
-            .await;
-    };
-    let Some(_request) = state.turns.request().await else {
-        return busy();
-    };
-    let redeemed = match enrolment::redeem(&state.db, &code, now).await {
-        Ok(Some(redeemed)) => redeemed,
-        Ok(None) => {
-            return state
-                .refuse(refused(RefusalCode::EnrolmentRefused), now)
-                .await;
+        Err(code) => {
+            drop(address);
+            return state.refuse(refused(code), now).await;
         }
-        Err(error) => return unavailable(&error),
     };
-    drop(code);
-    let enrolled = match new_token() {
-        Ok(token) => enrolment::enrol(&state.db, &state.bus, (redeemed, token), now).await,
-        Err(error) => Err(error),
+    // One turn covers the redeem and the enrolment: a code used by the one must not meet a
+    // busy answer before the other. A refusal is written after the turns end (K8 Section 6).
+    let enrolled = match code {
+        Some(EnrolRequest { code }) => {
+            let Some(_request) = state.turns.request().await else {
+                return busy();
+            };
+            redeem_and_enrol(&state, &code, now).await
+        }
+        None => Ok(None),
     };
+    drop(address);
     match enrolled {
         Ok(Some(enrolled)) => refusals::json(StatusCode::OK, &enrolled),
         Ok(None) | Err(Error::NoDevice) => {
@@ -197,6 +193,19 @@ async fn serve_enrol(state: AgentState, request: Request) -> Response {
         }
         Err(error) => unavailable(&error),
     }
+}
+
+/// The enrolment `code` gives at `now`; `None` when the code is not usable or its device
+/// cannot take it.
+async fn redeem_and_enrol(
+    state: &AgentState,
+    code: &EnrolmentCode,
+    now: DateTime<Utc>,
+) -> Result<Option<Enrolled>, Error> {
+    let Some(redeemed) = enrolment::redeem(&state.db, code, now).await? else {
+        return Ok(None);
+    };
+    enrolment::enrol(&state.db, &state.bus, (redeemed, new_token()?), now).await
 }
 
 /// Stores a renewed token for the holder of the bearer token (K8 Section 5). The bearer is

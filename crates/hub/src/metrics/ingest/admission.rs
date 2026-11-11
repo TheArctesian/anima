@@ -30,7 +30,9 @@ pub(super) struct Admitted {
 
 /// The device whose usable token `token` is at `now`, while it takes its metrics from the agent,
 /// with its turn. The lookups run under a request turn and under the client `address`'s turn;
-/// both end before this returns, so the body that follows arrives holding neither.
+/// both end before this returns, so the body that follows arrives holding neither. A
+/// `Stop::Busy` for the device turn comes after the address turn has ended, and leaves the
+/// device turn untaken.
 pub(super) async fn admit(
     state: &AgentState,
     token: &AgentToken,

@@ -13,8 +13,8 @@
 //! row. Each turn ends when its guard drops, also when the answer's future is dropped at its
 //! deadline. The locks here are never held across an await.
 //!
-//! A refusal's event is written outside these turns, but at most once a minute per client
-//! address, or per device when its token was valid (`throttle`).
+//! A refusal's event is written after the request's turns end, at most once a minute per
+//! client address, or per device when its token was valid (`throttle`).
 
 use std::{
     collections::HashMap,
