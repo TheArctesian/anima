@@ -1,14 +1,16 @@
 /**
  * The broker's files (R-055, VP-8): its config, the policy it reads, and the state that
- * survives between requests. `MaxConnections=1` runs one request at a time, so no lock is
- * needed; the state is written to a temporary file and renamed, so a kill never leaves half.
+ * survives between requests. One process at a time reads and writes the state: the socket
+ * (`MaxConnections=1`) and the audit timer both run the broker under `flock` on
+ * /var/lib/anima-broker/lock (H2). The state is written to a temporary file and renamed, so a
+ * kill never leaves half.
  */
 
 import { open, readFile, rename, rm } from 'node:fs/promises';
 import { parseHujson } from '../src/hujson.ts';
 import { parsePolicy } from '../src/policy.ts';
 import type { LimitState } from './limits.ts';
-import type { Issued } from './outcome.ts';
+import type { Issued, Registering } from './outcome.ts';
 import { policyView, type PolicyView } from './verbs.ts';
 
 export interface BrokerFiles {
@@ -21,8 +23,8 @@ export interface BrokerFiles {
 
 export interface BrokerState extends LimitState {
   readonly issued: readonly Issued[];
-  /** The node a killed `register` request left unchecked. */
-  readonly pendingRegister: number | null;
+  /** What a `register` request left unchecked; set before its step runs, cleared after the audit. */
+  readonly pendingRegister: Registering | null;
 }
 
 export class StateError extends Error {
@@ -58,6 +60,13 @@ function isIssued(value: unknown): value is Issued {
   return isId(entry.keyId) && (entry.verb === 'personal-key' || entry.verb === 'router-key') && site && isTime(entry.at) && typeof entry.passed === 'boolean';
 }
 
+function isRegistering(value: unknown): value is Registering {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
+  const entry = value as Record<string, unknown>;
+  const fields = Object.keys(entry).sort().join(',') === 'before,node';
+  return fields && Array.isArray(entry.before) && entry.before.every(isId) && (entry.node === null || isId(entry.node));
+}
+
 /** Parses the state file text; a state the broker did not write is an error, never "empty". */
 export function parseState(text: string): BrokerState {
   let value: unknown;
@@ -70,7 +79,7 @@ export function parseState(text: string): BrokerState {
   const { keys, registrations, issued, pendingRegister } = state;
   const lists = [keys, registrations].every((list) => Array.isArray(list) && list.every(isTime));
   const entries = Array.isArray(issued) && issued.every(isIssued);
-  if (!lists || !entries || !(pendingRegister === null || isId(pendingRegister))) throw new StateError('state.json has an unknown shape');
+  if (!lists || !entries || !(pendingRegister === null || isRegistering(pendingRegister))) throw new StateError('state.json has an unknown shape');
   return { keys, registrations, issued, pendingRegister } as BrokerState;
 }
 

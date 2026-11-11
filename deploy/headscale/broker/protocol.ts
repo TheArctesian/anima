@@ -73,3 +73,25 @@ export function parseRequest(line: string): Request | Refusal {
   for (const field of fields) request[field] = body[field];
   return request as Request;
 }
+
+/** The reply detail of each refusal, unless the step that refuses gives a sharper one. */
+export const DETAILS: Readonly<Record<Refusal, string>> = {
+  'bad-request': 'the request is not one of the broker verbs',
+  'unknown-site': 'the site or its tag is not in the VPN policy',
+  'rate-limited': 'at most 3 keys and 3 registrations in 24 hours',
+  'node-limit': 'the tailnet is at max_nodes (/etc/anima/broker.conf), counting keys not yet used',
+  'not-allowed': 'the node does not qualify for this verb',
+  undone: 'the new node was deleted',
+  'headscale-failed': 'Headscale or a broker file failed',
+};
+
+/** A refusal thrown inside a request; `serve` turns it into the reply. */
+export class Refused extends Error {
+  readonly refusal: Refusal;
+
+  constructor(refusal: Refusal, detail = DETAILS[refusal]) {
+    super(detail);
+    this.name = 'Refused';
+    this.refusal = refusal;
+  }
+}

@@ -95,21 +95,24 @@ function keyIdOf(value: unknown): number | null {
   return key.id === undefined ? null : count(key.id, 'pre_auth_key.id');
 }
 
-/** Parses the node list; drops every key field; throws InventoryError on a shape it does not know. */
+/** Parses one entry of the node list; drops every key field; throws InventoryError on a shape it does not know. */
+export function parseNode(entry: unknown): ListedNode {
+  const node = object(entry, 'node');
+  return {
+    id: count(node.id, 'id'),
+    name: text(node.name, 'name'),
+    user: text(object(node.user, 'user').name, 'user.name'),
+    tags: strings(node.tags, 'tags'),
+    ips: strings(array(node.ip_addresses, 'ip_addresses'), 'ip_addresses'),
+    online: node.online === true,
+    expiry: expiryOf(node.expiry),
+    preAuthKeyId: keyIdOf(node.pre_auth_key),
+  };
+}
+
+/** Parses the node list; throws InventoryError when the list or any node has a shape it does not know. */
 export function parseNodes(json: unknown): readonly ListedNode[] {
-  return array(json, 'nodes').map((entry) => {
-    const node = object(entry, 'node');
-    return {
-      id: count(node.id, 'id'),
-      name: text(node.name, 'name'),
-      user: text(object(node.user, 'user').name, 'user.name'),
-      tags: strings(node.tags, 'tags'),
-      ips: strings(array(node.ip_addresses, 'ip_addresses'), 'ip_addresses'),
-      online: node.online === true,
-      expiry: expiryOf(node.expiry),
-      preAuthKeyId: keyIdOf(node.pre_auth_key),
-    };
-  });
+  return array(json, 'nodes').map(parseNode);
 }
 
 /** Parses `headscale nodes list-routes -o json`. */

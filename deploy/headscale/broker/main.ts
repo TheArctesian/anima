@@ -1,14 +1,18 @@
 /**
  * The broker process on the VPS (R-055, VP-8, BD-7): systemd starts one for each connection
  * to /run/anima-broker/broker.sock (`Accept=yes`, `MaxConnections=1`). With no argument it
- * serves one request from stdin to stdout. `count-nodes` prints the node count and `check`
- * asks the running socket for the node list; the install (`harden.sh broker`) uses both.
+ * serves one request from stdin to stdout. `audit` runs the audit alone (the audit timer, H2).
+ * `count-nodes` prints the node count and `check` asks the running socket for the node list;
+ * the install (`harden.sh broker`) uses both. The units run the serve and audit entry points
+ * under `flock /var/lib/anima-broker/lock`, so only one of them reads and writes the state.
  */
 
 import { connect } from 'node:net';
+import { STEP_MS, withDeadline } from './deadline.ts';
 import { MAX_REQUEST_BYTES, type Reply } from './protocol.ts';
-import { tailnetOf } from './nodes.ts';
+import { nodeCountOf, tailnetOf } from './nodes.ts';
 import { serve } from './serve.ts';
+import { auditTailnet, StepError, type Runner } from './settle.ts';
 import type { BrokerFiles } from './state.ts';
 import { LIST_STEPS, type Step } from './verbs.ts';
 
@@ -21,19 +25,11 @@ const FILES: BrokerFiles = {
 // BD-8: the Headscale socket is on the container's tmpfs, so the CLI runs inside the container.
 const HEADSCALE = ['/usr/bin/docker', 'compose', '-f', '/opt/anima/headscale/compose.yaml', 'exec', '-T', 'headscale', 'headscale'];
 const STEP_ENV = { PATH: '/usr/bin:/bin', DOCKER_CONFIG: '/var/lib/anima-broker/docker' };
-const STEP_MS = 8_000;
 const READ_MS = 5_000;
 const REQUEST_MS = 45_000;
 const CHECK_MS = 55_000;
 const MAX_OUTPUT_BYTES = 1_048_576;
 const USAGE = 64;
-
-export class StepError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'StepError';
-  }
-}
 
 /** Reads a stream up to `limit` bytes; null when it is longer. */
 async function capped(stream: ReadableStream<Uint8Array>, limit: number): Promise<string | null> {
@@ -48,8 +44,11 @@ async function capped(stream: ReadableStream<Uint8Array>, limit: number): Promis
 }
 
 /**
- * Runs `headscale <step>` in the Headscale container. The argv never holds a key; stderr is
- * dropped because it can echo the arguments (an auth ID).
+ * Runs `headscale <step>` in the Headscale container. The argv never holds a pre-auth key. It
+ * does hold the auth ID of `register` (`--auth-id=`): the broker never logs it, but the docker
+ * CLI's argv is visible in /proc to other local users unless /proc is mounted with hidepid=2,
+ * and Docker's event log records each `exec` command (L1). Only a Headscale admin can use an
+ * auth ID. stderr is dropped because it can echo the arguments.
  */
 export async function headscale(step: Step): Promise<string> {
   const child = Bun.spawn([...HEADSCALE, ...step], { stdin: 'ignore', stdout: 'pipe', stderr: 'ignore', env: STEP_ENV, timeout: STEP_MS, killSignal: 'SIGKILL' });
@@ -91,14 +90,26 @@ async function serveOnce(): Promise<number> {
     process.stderr.write('anima-broker verb=- outcome=no-request node=- fixes=0\n');
     return 0;
   }
+  const started = Date.now();
   const deadline = setTimeout(() => {
     process.stderr.write('anima-broker verb=- outcome=deadline node=- fixes=-\n');
     process.exit(1);
   }, REQUEST_MS);
-  const result = await serve(line, headscale, FILES, new Date());
+  const result = await serve(line, guarded(started), FILES, new Date(started));
   clearTimeout(deadline);
   await Bun.write(Bun.stdout, `${JSON.stringify(result.reply)}\n`);
   process.stderr.write(`${result.log}\n`);
+  return 0;
+}
+
+/** `headscale`, refusing a change that could not finish before the request deadline (H1). */
+function guarded(started: number): Runner {
+  return withDeadline(headscale, started + REQUEST_MS, Date.now);
+}
+
+async function auditOnce(): Promise<number> {
+  const started = Date.now();
+  process.stderr.write(`${await auditTailnet(guarded(started), FILES, new Date(started))}\n`);
   return 0;
 }
 
@@ -106,7 +117,7 @@ async function countNodes(): Promise<number> {
   const [list] = LIST_STEPS;
   if (list === undefined) return 1;
   const tailnet = tailnetOf(JSON.parse(await headscale(list)), []);
-  process.stdout.write(`${String(tailnet.nodes.length)}\n`);
+  process.stdout.write(`${String(nodeCountOf(tailnet))}\n`);
   return 0;
 }
 
@@ -146,12 +157,14 @@ async function main(args: readonly string[]): Promise<number> {
     switch (args[0]) {
       case undefined:
         return await serveOnce();
+      case 'audit':
+        return await auditOnce();
       case 'count-nodes':
         return await countNodes();
       case 'check':
         return await check();
       default:
-        process.stderr.write('usage: anima-broker [count-nodes | check]\n');
+        process.stderr.write('usage: anima-broker [audit | count-nodes | check]\n');
         return USAGE;
     }
   } catch (error) {

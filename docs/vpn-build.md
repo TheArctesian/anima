@@ -1826,6 +1826,60 @@ its intent.
 - **B2: `tests/broker-process.test.ts`** covers `readLine`, the entry points and the files, besides the
   `broker-main.test.ts` rows (which call `serve` with `tests/broker-fake.ts`).
 
+#### Broker security fixes (review of B1 and B2)
+
+A security review of the broker found the points below; each fix has regression tests in
+`deploy/headscale/tests/` (`broker-register`, `broker-audit`, `broker-limits`, `broker-verbs`,
+`broker-nodes`, `vps-broker`). They replace the B2 text where the two differ.
+
+- **H1: a `register` step cut off after Headscale ran it left the node unaudited.** The request
+  now writes `pendingRegister: { before: <node ids>, node: null }` with the count, before the
+  step. When the step fails, and in the next run after a kill, every node not in `before` with no
+  pre-auth key gets the personal check (`outcome.ts` `audit` takes a `Registering`); once the
+  reply is read, `node` is set and only that node is checked. `pendingRegister` is cleared only
+  after that audit. `broker/deadline.ts` refuses a changing step (anything but the list steps)
+  that could not finish 8 s before the 45 s deadline, instead of starting it. A `state.json` with
+  the old numeric `pendingRegister` is refused (`headscale-failed`) until the operator removes it.
+- **H2: the audit ran only when the hub called.** `anima-broker audit` runs the audit alone
+  (`settle.ts` `auditTailnet`). `anima-broker-audit.unit` (installed as
+  `anima-broker-audit.service`, the request unit's user and sandbox) and
+  `anima-broker-audit.timer` (`OnBootSec=2min`, `OnUnitActiveSec=5min`) run it; `harden.sh broker`
+  installs, enables and restarts both. The request and the audit run under
+  `flock /var/lib/anima-broker/lock` (8 s and 10 s waits), so one process at a time reads and
+  writes the state.
+- **M1: `max_nodes` counted only nodes.** `limits.ts` `admit` adds `outstandingKeys`: issued keys
+  not passed, at most 1 hour old, and on no node. A key whose node the audit deleted still counts
+  until its hour ends (it is used, but the over-count is on the safe side).
+- **M2: a second router could be approved for a site.** `approve-route` refuses (`not-allowed`)
+  when another node has the subnet approved; `router-key` refuses while any node has the site
+  subnet approved. The operator frees the site first (README).
+- **L1: the auth ID is not secret on the VPS.** The broker never logs it, but it is in the docker
+  CLI's argv (`/proc`) and in Docker's event log. README and the `headscale` comment say so; the
+  README adds the operator step `hidepid=2` for `/proc` (not done by `harden.sh`).
+- **L2: an auth ID of an existing tagged or foreign node.** If `auth register` returns a node id
+  that was in the list before the step with tags, with a user other than `operator`, or
+  unreadable, the broker replies `not-allowed`, leaves the node as it was and logs
+  `outcome=not-allowed node=<id>`.
+- **L3: one unreadable node blocked every verb.** `nodes.ts` `tailnetOf` reads each node on its own
+  (`src/inventory.ts` gains `parseNode`; its `parseNodes` still refuses the whole list). Unreadable
+  nodes are left out of the audit and the `nodes` reply, count against `max_nodes`, keep their id
+  in `before` when it is readable, and add `unreadable=<n>` to the log line.
+- **L5: install and upgrade.** `harden.sh broker` stops `anima-broker.socket` and the audit timer on
+  an upgrade, installs the binary to a `mktemp` file beside it and renames it, runs
+  `daemon-reload`, then enables and restarts the socket and the timer. `bin/broker-build.ts` prints
+  the binary's SHA-256; `harden.sh --sha256=<hash> broker` refuses a missing or different hash
+  before it runs the binary. The README stages the upload in a `mktemp -d` folder in the admin's
+  home. `--dry-run` prints the `count-nodes` step instead of running it.
+- **M3 (short term): more sandbox.** Both broker units add `ProtectProc=invisible`,
+  `ProcSubset=pid`, `SystemCallFilter=@system-service` and `SystemCallFilter=~@privileged
+  @resources`. They have not run on the VPS: the README install step 4 checks them and removes
+  them one line at a time if `docker compose exec` fails. Removing `/run/docker.sock` access is
+  not done.
+- **L4 (`renew` revives any operator node, not rate limited) is unchanged**; it waits for an
+  operator ruling.
+- **Code layout.** `serve.ts` keeps the request; `settle.ts` holds the audit run (`settle`,
+  `auditTailnet`, `Runner`, `StepError`, the log line); `register.ts` holds the `register` verb;
+  `protocol.ts` holds `Refused` and the refusal details.
 
 ### Client lane (A2-T2, A2-T3)
 

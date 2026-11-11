@@ -14,7 +14,7 @@ import { dirname, join } from "node:path";
 export const HARDEN_TIMEOUT_MS = 30_000;
 
 export const VPS_DIR = join(import.meta.dir, "..", "vps");
-const BROKER_UNITS = ["anima-broker.socket", "anima-broker@.unit"];
+const BROKER_UNITS = ["anima-broker.socket", "anima-broker@.unit", "anima-broker-audit.unit", "anima-broker-audit.timer"];
 export const VPN_SESSION = "100.64.0.2 51000 100.64.0.1 22";
 export const ALLOWED_SS = [
   'tcp LISTEN 0 4096 203.0.113.7:443 0.0.0.0:* users:(("headscale",pid=10,fd=3))',

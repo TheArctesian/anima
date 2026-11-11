@@ -1,6 +1,6 @@
 // The broker's reading of Headscale 0.29.7 replies (BD-9), against the contract harness captures.
 import { describe, expect, it } from 'bun:test';
-import { newKeyOf, nodesReply, operatorIdOf, registered, registeredIdOf, tailnetOf } from '../broker/nodes.ts';
+import { newKeyOf, nodeCountOf, nodeIdsOf, nodesReply, operatorIdOf, registered, registeredIdOf, tailnetOf } from '../broker/nodes.ts';
 import { InventoryError } from '../src/inventory.ts';
 import { parsePrefix, prefixText } from '../src/policy.ts';
 import { view } from './broker-fixture.ts';
@@ -18,8 +18,19 @@ describe('broker replies', () => {
   });
 
   it('VPN-014: Headscale prints null for an empty list', () => {
-    expect(tailnetOf(null, [])).toEqual({ nodes: [], routes: [] });
+    expect(tailnetOf(null, [])).toEqual({ nodes: [], routes: [], unreadable: [] });
     expect(operatorIdOf(null)).toBeNull();
+  });
+
+  it('L3: a node the broker cannot read is set aside and counted; the others are read', async () => {
+    const nodes = (await fixture('nodes.json')) as Record<string, unknown>[];
+    const odd = [...nodes, { ...nodes[0], id: 40, expiry: { seconds: -62_135_596_800 } }, { id: 'x' }];
+    const tailnet = tailnetOf(odd, []);
+    expect(tailnet.nodes).toHaveLength(nodes.length);
+    expect(tailnet.unreadable).toEqual([40, null]);
+    expect(nodeCountOf(tailnet)).toBe(nodes.length + 2);
+    expect(nodeIdsOf(tailnet)).toContain(40);
+    expect(() => tailnetOf({ nodes: [] }, [])).toThrow(InventoryError);
   });
 
   it('VPN-014: the operator user id comes from users list', () => {

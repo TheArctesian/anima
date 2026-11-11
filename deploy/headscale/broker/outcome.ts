@@ -2,7 +2,8 @@
  * Checks what a broker change left in Headscale and undoes a wrong result (vpn-plan.md
  * Section 5.1, VPN-003): a personal node must have no tag and an expiry of at most 180 days; a
  * router node must have exactly its two tags and no expiry. Only nodes that joined with a key
- * this broker issued, and the node it just registered, are checked. Pure; time is a parameter.
+ * this broker issued, and the nodes a `register` request may have made, are checked. Pure;
+ * time is a parameter.
  */
 
 import type { ListedNode, Tailnet } from '../src/inventory.ts';
@@ -15,6 +16,15 @@ export interface Issued {
   /** ISO time the key was made. */
   readonly at: string;
   readonly passed: boolean;
+}
+
+/**
+ * What a `register` request leaves to check, saved before its step runs (H1): the node ids
+ * before the step, and the node `auth register` returned once its reply was read.
+ */
+export interface Registering {
+  readonly before: readonly number[];
+  readonly node: number | null;
 }
 
 export type Fix =
@@ -92,8 +102,19 @@ function issuedFix(entry: Issued, node: ListedNode, check: Check): Fix | null {
   return entry.verb === 'personal-key' ? personalFix(node, check) : routerFix(node, entry.site);
 }
 
-/** Checks the nodes that joined with keys this broker issued, and the node just registered. */
-export function audit(tailnet: Tailnet, issued: readonly Issued[], registered: number | null, now: Date): Audit {
+/**
+ * The nodes a `register` request may have made: the node its reply named, or, when the reply
+ * was never read (the step was cut off), every node that is new since the step and joined
+ * without a pre-auth key, as `auth register` does.
+ */
+function registeredNodes(tailnet: Tailnet, registering: Registering): readonly ListedNode[] {
+  if (registering.node !== null) return tailnet.nodes.filter((node) => node.id === registering.node);
+  const before = new Set(registering.before);
+  return tailnet.nodes.filter((node) => !before.has(node.id) && node.preAuthKeyId === null);
+}
+
+/** Checks the nodes that joined with keys this broker issued, and the nodes of a `register` request. */
+export function audit(tailnet: Tailnet, issued: readonly Issued[], registering: Registering | null, now: Date): Audit {
   const check: Check = { now, nodes: [...tailnet.nodes] };
   const fixes = new Map<number, Fix>();
   const add = (fix: Fix | null): void => {
@@ -109,7 +130,6 @@ export function audit(tailnet: Tailnet, issued: readonly Issued[], registered: n
     add(fix);
     return [{ ...entry, passed: fix?.kind !== 'delete' }];
   });
-  const node = tailnet.nodes.find((candidate) => candidate.id === registered);
-  if (node !== undefined) add(personalFix(node, check));
+  if (registering !== null) for (const node of registeredNodes(tailnet, registering)) add(personalFix(node, check));
   return { fixes: [...fixes.values()], issued: kept };
 }

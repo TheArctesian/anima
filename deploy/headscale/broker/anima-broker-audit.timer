@@ -1,0 +1,11 @@
+# Runs the Anima broker audit every 5 minutes (H2). Install as
+# /etc/systemd/system/anima-broker-audit.timer (harden.sh broker).
+[Unit]
+Description=Anima broker audit every 5 minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+
+[Install]
+WantedBy=timers.target

@@ -64,7 +64,8 @@ describe('broker files', () => {
   });
 
   it('5.1: a state the broker did not write is an error', () => {
-    for (const text of ['', '[]', '{"keys":[]}', '{"keys":[],"registrations":[],"issued":[{"keyId":"1"}],"pendingRegister":null}']) expect(() => parseState(text)).toThrow(StateError);
+    const bad = ['', '[]', '{"keys":[]}', '{"keys":[],"registrations":[],"issued":[{"keyId":"1"}],"pendingRegister":null}', '{"keys":[],"registrations":[],"issued":[],"pendingRegister":6}', '{"keys":[],"registrations":[],"issued":[],"pendingRegister":{"before":["1"],"node":null}}'];
+    for (const text of bad) expect(() => parseState(text)).toThrow(StateError);
     expect(parseState(JSON.stringify(EMPTY_STATE))).toEqual(EMPTY_STATE);
   });
 
@@ -73,7 +74,7 @@ describe('broker files', () => {
     folders.push(folder);
     const path = join(folder, 'state.json');
     expect(await readState(path)).toEqual(EMPTY_STATE);
-    const state = { ...EMPTY_STATE, keys: ['2026-11-10T00:00:00.000Z'], pendingRegister: 6 };
+    const state = { ...EMPTY_STATE, keys: ['2026-11-10T00:00:00.000Z'], pendingRegister: { before: [1, 2], node: 6 } };
     await writeState(path, state);
     expect(await readState(path)).toEqual(state);
     expect(statSync(path).mode & 0o777).toBe(0o600);
