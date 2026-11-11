@@ -167,7 +167,7 @@ fn vpn_008_debug_output_leaves_the_node_key_out() {
 
     let text = format!("{shown:?} {warnings:?}");
 
-    assert!(!warnings.is_empty());
+    assert_ne!(warnings, []);
     assert!(!text.contains("nodekey"), "{text}");
 }
 
