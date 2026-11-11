@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { DEFAULT_QUERY } from '../query';
-import { NAME_DEBOUNCE_MS, debounced, isFiltered, menuLabel, shiftInsideViewport, toggled, withoutFilters } from './toolbar';
+import { NAME_DEBOUNCE_MS, debounced, isFiltered, menuLabel, siteOptions, shiftInsideViewport, toggled, withoutFilters } from './toolbar';
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -20,11 +20,20 @@ it('DEV-005: sort and view are not filters; name, status and tags are', () => {
   expect(isFiltered({ ...DEFAULT_QUERY, name: 'x' })).toBe(true);
   expect(isFiltered({ ...DEFAULT_QUERY, statuses: ['UP'] })).toBe(true);
   expect(isFiltered({ ...DEFAULT_QUERY, tags: ['lab'] })).toBe(true);
+  expect(isFiltered({ ...DEFAULT_QUERY, site: 's1' })).toBe(true);
 });
 
 it('DEV-005: Clear filters keeps the sort and the view', () => {
-  const query = { view: 'table', name: 'x', statuses: ['UP'], tags: ['lab'], sort: 'UPTIME' } as const;
-  expect(withoutFilters(query)).toEqual({ view: 'table', name: '', statuses: [], tags: [], sort: 'UPTIME' });
+  const query = { view: 'table', name: 'x', statuses: ['UP'], tags: ['lab'], site: 's1', sort: 'UPTIME' } as const;
+  expect(withoutFilters(query)).toEqual({ view: 'table', name: '', statuses: [], tags: [], site: null, sort: 'UPTIME' });
+});
+
+it('VPN-002: the site menu lists All sites then each site', () => {
+  expect(siteOptions([{ id: 's1', name: 'Home' }, { id: 's2', name: 'Lab' }])).toEqual([
+    { value: '', label: 'All sites' },
+    { value: 's1', label: 'Home' },
+    { value: 's2', label: 'Lab' },
+  ]);
 });
 
 it('DEV-003: a menu label counts the chosen values', () => {

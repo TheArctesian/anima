@@ -4,18 +4,22 @@
   import { press } from '$lib/motion/roles/press';
   import type { ListQuery } from '../query';
   import Menu from './Menu.svelte';
-  import { NAME_DEBOUNCE_MS, SORT_OPTIONS, STATUS_OPTIONS, debounced, toggled } from './toolbar';
+  import { ALL_SITES, NAME_DEBOUNCE_MS, SORT_OPTIONS, STATUS_OPTIONS, debounced, toggled, type MenuOption } from './toolbar';
 
   interface Props {
     query: ListQuery;
     tags: readonly string[];
     /** The text for an empty tag menu: why there are no tags. */
     tagsNote: string;
+    /** The Site menu options: "All sites" and each site; none while there is nothing to choose (VPN-002). */
+    sites: readonly MenuOption[];
+    /** The text for an empty site menu: why there are no sites. */
+    sitesNote: string;
     onQueryChange: (query: ListQuery) => void;
     onAddDevice: () => void;
   }
 
-  const { query, tags, tagsNote, onQueryChange, onAddDevice }: Props = $props();
+  const { query, tags, tagsNote, sites, sitesNote, onQueryChange, onAddDevice }: Props = $props();
   const tagOptions = $derived(tags.map((tag) => ({ value: tag, label: tag })));
   let text = $state('');
   const send = debounced(() => {
@@ -63,6 +67,17 @@
     empty={tagsNote}
     onChoose={(value) => {
       onQueryChange({ ...query, tags: toggled(query.tags, value) });
+    }}
+  />
+  <Menu
+    label="Site"
+    icon="nf-md-lan_connect"
+    kind="radio"
+    options={sites}
+    chosen={[query.site ?? ALL_SITES]}
+    empty={sitesNote}
+    onChoose={(value) => {
+      onQueryChange({ ...query, site: value === ALL_SITES ? null : value });
     }}
   />
   <Menu

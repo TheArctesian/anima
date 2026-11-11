@@ -9,6 +9,7 @@
   import DeviceTable from '../card/DeviceTable.svelte';
   import type { ListQuery } from '../query';
   import Toolbar from '../toolbar/Toolbar.svelte';
+  import { Sites } from '../toolbar/sites.svelte';
   import { Tags } from '../toolbar/tags.svelte';
   import { isFiltered, withoutFilters } from '../toolbar/toolbar';
   import { Listing } from './listing.svelte';
@@ -42,6 +43,7 @@
   // svelte-ignore state_referenced_locally
   const listing = new Listing(hub, clock);
   const tags = new Tags(hub);
+  const sites = new Sites(hub);
   const list = $derived(listing.list);
   /** The session opens from the button, which is still shown; then the list shows VNC on (R-079). */
   const sharing = $derived<CardScreenSharing | undefined>(
@@ -63,13 +65,14 @@
   $effect(() => {
     listing.start();
     void tags.load();
+    void sites.load();
     return () => {
       listing.stop();
     };
   });
 </script>
 
-<Toolbar {query} tags={tags.names} tagsNote={tags.note} {onQueryChange} {onAddDevice} />
+<Toolbar {query} tags={tags.names} tagsNote={tags.note} sites={sites.options} sitesNote={sites.note} {onQueryChange} {onAddDevice} />
 
 <LiveNotice message={listing.liveError?.message ?? null} />
 

@@ -24,6 +24,11 @@ function show(query: ListQuery = DEFAULT_QUERY): void {
       query,
       tags: ['lab'],
       tagsNote: 'No tags yet',
+      sites: [
+        { value: '', label: 'All sites' },
+        { value: 's1', label: 'Home' },
+      ],
+      sitesNote: 'No sites yet',
       onQueryChange: (next: ListQuery) => changes.push(next),
       onAddDevice: () => added.push('add'),
     },
@@ -98,6 +103,18 @@ it('DEV-004: Sort is one choice among Name, Status and Uptime', () => {
   flushSync();
   const radios = [...(panel()?.querySelectorAll<HTMLInputElement>('input[type=radio]') ?? [])];
   expect(radios.map((radio) => radio.checked)).toEqual([false, true, false]);
+});
+
+it('VPN-002: choosing a site sets the site filter; All sites clears it', () => {
+  show();
+  control('Site').click();
+  flushSync();
+  const radios = [...(panel()?.querySelectorAll<HTMLInputElement>('input[type=radio]') ?? [])];
+  expect(radios.map((radio) => radio.checked)).toEqual([true, false]);
+  radios[1]?.dispatchEvent(new Event('change', { bubbles: true }));
+  expect(changes.at(-1)?.site).toBe('s1');
+  radios[0]?.dispatchEvent(new Event('change', { bubbles: true }));
+  expect(changes.at(-1)?.site).toBeNull();
 });
 
 it('D-4: the view toggle shows the current view with aria-pressed and writes the other', () => {

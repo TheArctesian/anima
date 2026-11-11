@@ -23,6 +23,14 @@ export const SORT_OPTIONS: readonly (MenuOption & { readonly value: DeviceSort }
   { value: 'UPTIME', label: 'Uptime' },
 ];
 
+/** The value of the "All sites" choice: no site filter (VPN-002). */
+export const ALL_SITES = '';
+
+/** The Site menu: "All sites" first, then each site by name (VPN-002). */
+export function siteOptions(sites: readonly { id: string; name: string }[]): readonly MenuOption[] {
+  return [{ value: ALL_SITES, label: 'All sites' }, ...sites.map((site) => ({ value: site.id, label: site.name }))];
+}
+
 /** `values` with `value` added, or removed when it is there already. */
 export function toggled<T>(values: readonly T[], value: T): T[] {
   return values.includes(value) ? values.filter((known) => known !== value) : [...values, value];
@@ -30,12 +38,12 @@ export function toggled<T>(values: readonly T[], value: T): T[] {
 
 /** Whether the query narrows the list (view and sort do not). */
 export function isFiltered(query: ListQuery): boolean {
-  return query.name !== '' || query.statuses.length > 0 || query.tags.length > 0;
+  return query.name !== '' || query.statuses.length > 0 || query.tags.length > 0 || query.site !== null;
 }
 
 /** The query with no filter; the view and the sort stay. */
 export function withoutFilters(query: ListQuery): ListQuery {
-  return { ...query, name: '', statuses: [], tags: [] };
+  return { ...query, name: '', statuses: [], tags: [], site: null };
 }
 
 /** A button label that counts the chosen values: "Status" or "Status (2)". */
