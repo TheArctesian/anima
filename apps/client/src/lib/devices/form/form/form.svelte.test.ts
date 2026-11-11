@@ -4,6 +4,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import type { HubResult } from '$lib/hub/hub';
 import { installAnimations } from '../../../forms/animations.fixture';
 import { credentialInput } from '../input';
+import { describedBy as describedByIds } from './errors';
 import { testResult } from '../result.fixture';
 import type { ConnectionTestResult } from '../connection-test';
 import { HOST_KEY, KEY, SAVED, button, choose, input, leave, save, settle, show, type } from './form.fixture';
@@ -329,4 +330,11 @@ it('D-7, WCAG 1.3.1: the "Set by the agent" hint describes the source select, an
 it('D-7: a device that does not use the agent is not offered Agent', () => {
   show(SAVED);
   expect([...(document.querySelector<HTMLSelectElement>('#device-metricsSource')?.options ?? [])].map((option) => option.value)).toEqual(['NONE', 'SSH']);
+});
+
+it('D-7: a control is described by its hint, then its error, and by nothing when it has neither', () => {
+  expect(describedByIds('ssh.port', true, true)).toBe('device-ssh-port-hint device-ssh-port-error');
+  expect(describedByIds('ssh.port', false, true)).toBe('device-ssh-port-error');
+  expect(describedByIds('ssh.port', true, false)).toBe('device-ssh-port-hint');
+  expect(describedByIds('ssh.port', false, false)).toBeUndefined();
 });
