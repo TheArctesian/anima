@@ -68,7 +68,7 @@ changes), so they need no new ruling.
 | BD-14 | A node is matched to a device by its IPv4 address or its `DNSName` (Headscale's unique name), never by `HostName`. `VpnNode.name` is the first label of `DNSName`; cleaned `HostName` only when `DNSName` is empty. | `HostName` is chosen by the peer. A peer that calls itself `nas` must not hide from VPN-011. |
 | BD-15 | The hub holds one `vpn::Broker` (a `Dependencies` field `vpn_broker: Option<vpn::Broker>`). It is `Clone` and holds an `Arc<tokio::sync::Mutex<()>>` for each call, so the reader and the mutations never call the broker at the same time. | The socket has `MaxConnections=1`; systemd closes a second connection at once. |
 | BD-16 | The reader calls the broker `nodes` verb on each read (60 s). Mutations return after the broker accepts; the client waits on `vpnChanged` for the result. | An approved route or a new node shows in the hub's own status only seconds later. |
-| BD-17 | A sixth broker verb `renew <node>` and the mutation `renewVpnKey(name)` are in B4 (operator ruling VP-10, 2026-11-10). | Key renewal is the most frequent manual step (vpn.md Section 7). |
+| BD-17 | A sixth broker verb `renew <node>` and the mutation `renewVpnKey(name)` are in B4 (operator ruling VP-10, 2026-11-10). `renew` refuses a node whose key expired more than 30 days ago (VP-12, 2026-11-11): `not-allowed` with the detail "the key expired more than 30 days ago; enrol the computer again"; exactly 30 days is allowed. | Key renewal is the most frequent manual step (vpn.md Section 7). |
 
 ## 2. Facts that limit the work (at `c6517bce`)
 
@@ -1889,8 +1889,10 @@ A security review of the broker found the points below; each fix has regression 
   @resources`. They have not run on the VPS: the README install step 4 checks them and removes
   them one line at a time if `docker compose exec` fails. Removing `/run/docker.sock` access is
   not done.
-- **L4 (`renew` revives any operator node, not rate limited) is unchanged**; it waits for an
-  operator ruling.
+- **L4 (`renew` revives any operator node) is resolved by VP-12 (2026-11-11).** `renew` refuses
+  a node whose key expired more than 30 days ago (`RENEW_GRACE_MS` in `verbs.ts`, checked by
+  `expiredTooLong(node, now)`); the refusal is `not-allowed` with a fixed detail, which the hub
+  shows as "The broker does not allow this: <detail>." `renew` is still not rate limited.
 - **Code layout.** `serve.ts` keeps the request; `settle.ts` holds the audit run (`settle`,
   `auditTailnet`, `Runner`, `StepError`, the log line); `register.ts` holds the `register` verb;
   `protocol.ts` holds `Refused` and the refusal details.
@@ -1932,6 +1934,15 @@ A security review of the broker found the points below; each fix has regression 
    (UI-002): the design tokens have no text-safe accent, so the link stays `--accent` (4.31:1 in dark on the card).
 
 ### Hub lane (B3, B4a, B5)
+
+- **A site on the tailnet's own range is not a router site (2026-11-11).** A site whose subnet
+  lies inside `100.64.0.0/10` or `fd7a:115c:a1e0::/48` is reached directly over the VPN, so
+  `picture::build` and `router_devices` leave it out (`picture::on_tailnet`; the two ranges are
+  named constants). A subnet that overlaps the range by containing it (`0.0.0.0/0`,
+  `100.0.0.0/8`) is left out too, because no router could serve it apart from the tailnet's own
+  addresses; a subnet entirely outside the range is unchanged. `createRouterKey` and
+  `approveSiteRoute` read the site through `router_site_of`, which answers `VALIDATION` on
+  `siteId` for such a site before any broker call.
 
 - **B3: the picture keeps the broker's answer.** `Picture` gets `broker: BrokerState` and a
   `pub(super) roster: Option<BrokerView>` (the node list and policy sites of the same read).

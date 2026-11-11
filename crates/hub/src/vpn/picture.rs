@@ -3,7 +3,7 @@
 
 use std::{
     collections::HashSet,
-    net::{IpAddr, Ipv4Addr},
+    net::{IpAddr, Ipv4Addr, Ipv6Addr},
 };
 
 use chrono::{DateTime, Duration, Utc};
@@ -26,6 +26,24 @@ const EXPIRING_DAYS: i64 = 30;
 /// Reads that keep a node's last known path after its traffic stops (BD-13).
 const KEPT_READS: u8 = 3;
 
+/// The tailnet's own IPv4 range (Headscale `100.64.0.0/10`).
+const TAILNET_V4: IpNet = IpNet::new_assert(IpAddr::V4(Ipv4Addr::new(100, 64, 0, 0)), 10);
+/// The tailnet's own IPv6 range (Headscale `fd7a:115c:a1e0::/48`).
+const TAILNET_V6: IpNet = IpNet::new_assert(
+    IpAddr::V6(Ipv6Addr::new(0xfd7a, 0x115c, 0xa1e0, 0, 0, 0, 0, 0)),
+    48,
+);
+
+/// Whether a site's `subnet` is reached directly over the VPN, so it has no subnet router.
+/// True for a subnet inside the tailnet range and for one that overlaps it (contains it, for
+/// example `0.0.0.0/0` or `100.0.0.0/8`): a router could not serve such a subnet separately
+/// from the tailnet's own addresses. A subnet entirely outside the range is a router site.
+pub(super) fn on_tailnet(subnet: IpNet) -> bool {
+    [TAILNET_V4, TAILNET_V6]
+        .iter()
+        .any(|range| range.contains(&subnet) || subnet.contains(range))
+}
+
 /// What one picture is built from. A site is its id and subnet, in site name order.
 pub(super) struct Inputs<'a> {
     pub status: &'a Status,
@@ -39,7 +57,8 @@ pub(super) struct Inputs<'a> {
     pub broker: Option<&'a BrokerView>,
 }
 
-/// The picture of `inputs`, fresh, read at `now`.
+/// The picture of `inputs`, fresh, read at `now`. A site on the tailnet range is left out
+/// (`on_tailnet`): it has no router.
 ///
 /// # Errors
 /// `Unreadable` when the hub's own node has no IPv4 address (it is not on the VPN).
@@ -52,6 +71,7 @@ pub(super) fn build(inputs: &Inputs<'_>) -> Result<Picture, Error> {
     let sites: Vec<SitePath> = inputs
         .sites
         .iter()
+        .filter(|&&(_, subnet)| !on_tailnet(subnet))
         .map(|&(site, subnet)| {
             let mut path = site_path(site, subnet, &nodes, inputs.ping_checked);
             path.waiting_router = inputs
@@ -85,6 +105,7 @@ pub(super) fn router_devices(
         .filter(|peer| {
             sites
                 .iter()
+                .filter(|&&(_, subnet)| !on_tailnet(subnet))
                 .any(|&(_, subnet)| serves(&peer.primary_routes, subnet))
         })
         .filter_map(|peer| device_of(peer, devices).map(|(id, _)| id))

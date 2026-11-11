@@ -6,7 +6,7 @@ use serde_json::json;
 
 use super::{
     change::broker_change,
-    mutations::{broker_of, entry, policy_site, site_of},
+    mutations::{broker_of, entry, policy_site, router_site_of},
 };
 use crate::{
     access::{Authenticated, operator_only},
@@ -26,7 +26,7 @@ impl RouteMutation {
     async fn approve_site_route(&self, ctx: &Context<'_>, site_id: ID) -> Result<bool> {
         operator_only(ctx, "approveSiteRoute")?;
         let broker = broker_of(ctx)?;
-        let site = site_of(ctx, &site_id).await?;
+        let site = router_site_of(ctx, &site_id).await?;
         let (router, node, name) = waiting_router(ctx, &site)?;
         let call = async move { broker.approve_route(node, &name).await };
         let entry = move |&(): &()| route_approved(&site, &router, node);
