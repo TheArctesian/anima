@@ -1569,7 +1569,17 @@ example the Pi-hole) drops answers with private addresses. See the end of
 in `compose.yaml`; an upgrade is a reviewed change to that line.
 
 1. On your Mac, read the release notes for config or CLI changes, update the `image:` line (tag
-   and digest) and run `bun test deploy/headscale`.
+   and digest) and run `bun test deploy/headscale`. Also run the contract harness, which starts
+   the new image in throwaway containers (it needs Docker, writes no file outside the repository
+   and touches no live system):
+
+   ```bash
+   # Runs on: operator's Mac, from the repository root
+   sh deploy/headscale/test/contract.sh        # expect: contract: ok
+   ```
+
+   Set `HEADSCALE_VERSION` in `deploy/headscale/src/version.ts` to the new version first; the
+   harness reads the image from `compose.yaml` and fails if a fixture shape changed.
 2. On the VPS, take a backup first (`sudo systemctl start headscale-backup.service`, then check
    the journal), and note its snapshot ID on the home PC: a database migration cannot be undone
    except by a restore.

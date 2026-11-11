@@ -303,3 +303,17 @@ describe('compose (VPS-002, VPS-003, D-9)', () => {
     expect(at(service, 'logging.options.max-file')).toMatch(/^\d+$/);
   });
 });
+
+test('VPN-014: contract-config.yaml differs from config.yaml only in the documented keys', async () => {
+  const contractText = await Bun.file(new URL('test/contract-config.yaml', root)).text();
+  const repository = structuredClone(config) as Tree;
+  const derp = repository.derp as Tree;
+  const changed: Tree = {
+    ...Object.fromEntries(Object.entries(repository).filter(([key]) => !/^(?:acme_|tls_)/.test(key))),
+    server_url: 'http://172.29.250.10:8080',
+    listen_addr: '0.0.0.0:8080',
+    derp: { ...derp, server: { enabled: false }, urls: ['https://controlplane.tailscale.com/derpmap/default'] },
+  };
+  expect(Bun.YAML.parse(contractText)).toEqual(changed);
+  expect(contractText.split('\n').filter((line) => !line.startsWith('#')).join('\n')).not.toContain('${');
+});
