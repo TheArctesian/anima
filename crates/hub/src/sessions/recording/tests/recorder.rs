@@ -2,28 +2,25 @@
 //! mode 0600, parts that read back with the key from the row, a full part at once and the
 //! open part 5 seconds after its first byte, and the end of the row.
 
-use std::{os::unix::fs::PermissionsExt as _, time::Duration};
+use std::{os::unix::fs::PermissionsExt as _, task::Poll, time::Duration};
 
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use super::{EXACT, Ended, PLENTY, World, length};
+use super::{EXACT, Ended, FRAMING, PLENTY, World, eventually, length};
 use crate::{
     ids::{RecordingId, SessionId},
     sessions::{
         Protocol,
         recording::{
             Error, Recorder, RecordingState,
-            format::{Format, HEADER_LEN, LENGTH_LEN, MAX_PART},
-            recorder::{FLUSH_AFTER, begin, create_file},
+            format::{Format, HEADER_LEN, MAX_PART},
+            recorder::{FLUSH_AFTER, begin, create_file, key_context},
             start, states,
         },
         tests::fixture::now,
     },
 };
-
-/// Bytes a sealed part adds to its plaintext: its length and its tag.
-const FRAMING: u64 = LENGTH_LEN as u64 + 16;
 
 /// Gives the writer task and its blocking writes real time to run until `done` holds.
 async fn until(done: impl Fn() -> bool) {
@@ -118,6 +115,49 @@ async fn g_4_no_file_is_made_when_the_row_cannot_be_written(pool: PgPool) {
     assert!(matches!(refused, Err(Error::Database(_))), "no session row");
     let files = std::fs::read_dir(world.root.path()).unwrap().count();
     assert_eq!(files, 0, "the row comes before the file");
+}
+
+#[test]
+fn k3_a_recording_key_is_sealed_for_its_recording() {
+    let id = RecordingId::from(Uuid::nil());
+    assert_eq!(
+        key_context(id),
+        "sessions.recordings:00000000-0000-0000-0000-000000000000"
+    );
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../tests/fixtures", scripts("devices"))
+)]
+async fn g_4_a_start_dropped_after_its_row_still_ends_the_row(pool: PgPool) {
+    let world = World::new(&pool, 1 << 30).await;
+    let session = world.origin.session;
+    let mut starting = Box::pin(begin(&world.serving, world.origin.clone(), PLENTY));
+    // Polls the start by hand and looks for the row between polls, so the start is dropped
+    // with its row written, before it returns.
+    let mut id = None;
+    eventually("the row is written", async || {
+        let polled = std::future::poll_fn(|cx| Poll::Ready(starting.as_mut().poll(cx))).await;
+        if let Poll::Ready(started) = polled {
+            // The start won the race; its recorder, dropped unfinished, must end the row too.
+            id = Some(started.unwrap().id());
+            return true;
+        }
+        id = sqlx::query_scalar("select id from sessions.recordings where session_id = $1")
+            .bind(session)
+            .fetch_optional(&pool)
+            .await
+            .unwrap();
+        id.is_some()
+    })
+    .await;
+    drop(starting);
+    let id = id.unwrap();
+    eventually("the row is ended", async || {
+        world.stored(id).await.ended_at.is_some()
+    })
+    .await;
 }
 
 #[sqlx::test(

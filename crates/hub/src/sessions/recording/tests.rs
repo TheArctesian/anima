@@ -1,6 +1,7 @@
 //! Recording tests: the pure queue, the recording root's checks, the row, and the recorder
 //! writing real files in a temporary folder (RA-040, D-13, D-14, K4 §11).
 
+mod idle;
 mod queue;
 mod recorder;
 mod space;
@@ -11,6 +12,7 @@ use std::{
     io,
     path::{Path, PathBuf},
     sync::Arc,
+    time::{Duration, Instant},
 };
 
 use sqlx::PgPool;
@@ -19,7 +21,7 @@ use uuid::Uuid;
 
 use super::{
     Origin, Recorder, Stored,
-    format::{Reader, RecordingKey, Step},
+    format::{LENGTH_LEN, Reader, RecordingKey, Step},
     recorder::begin,
     space::{FreeSpace, MIN_FREE},
 };
@@ -34,6 +36,22 @@ use crate::{
         tests::fixture::{add_operator, docker_host, now, operator, vault},
     },
 };
+
+/// Bytes a sealed part adds to its plaintext: its length and its tag.
+const FRAMING: u64 = LENGTH_LEN as u64 + 16;
+
+/// How long a test waits for the writer task: generous, as the machine running the gates is
+/// often loaded.
+const PATIENCE: Duration = Duration::from_secs(15);
+
+/// Waits in real time until `done` holds, for at most [`PATIENCE`]; panics with `what`.
+async fn eventually(what: &str, mut done: impl AsyncFnMut() -> bool) {
+    let deadline = Instant::now() + PATIENCE;
+    while !done().await {
+        assert!(Instant::now() < deadline, "never happened: {what}");
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+}
 
 /// A free-space reading far above 1 GiB.
 const PLENTY: FreeSpace = |_| Ok(u64::MAX);

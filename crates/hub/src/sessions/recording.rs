@@ -51,13 +51,16 @@ pub(in crate::sessions) enum Error {
     /// The start plus the recordings period is past the last time the hub can represent.
     #[error("the recording's expiry is out of range")]
     Expiry,
+    /// The hub shut down before the recording's row was written.
+    #[error("the hub is shutting down")]
+    ShuttingDown,
     /// A stored row holds a value the hub does not know.
     #[cfg_attr(
         not(test),
         expect(dead_code, reason = "playback (WP-48 T6) reads stored recordings")
     )]
     #[error("a stored recording is not valid")]
-    Stored,
+    StoredValue,
     #[error("event store error")]
     Events(#[source] crate::events::Error),
     #[error("session store error")]
@@ -75,7 +78,8 @@ impl Error {
             Self::Vault(_) => "vault",
             Self::Periods(_) => "periods",
             Self::Expiry => "expiry",
-            Self::Stored => "stored",
+            Self::StoredValue => "stored_value",
+            Self::ShuttingDown => "shutting_down",
             Self::Events(_) => "events",
             Self::Session(_) => "session",
             Self::Database(_) => "database",

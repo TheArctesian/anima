@@ -155,3 +155,23 @@ async fn r_016_the_runtime_role_writes_recordings_but_never_replaces_a_key(pool:
         "permission denied"
     );
 }
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../tests/fixtures", scripts("devices"))
+)]
+async fn k2_a_recorded_session_cannot_be_deleted(pool: PgPool) {
+    let world = World::new(&pool, 1).await;
+    let mut conn = pool.acquire().await.unwrap();
+    insert(&mut conn, world.origin.session).await;
+    let deleted = sqlx::query("delete from sessions.sessions where id = $1")
+        .bind(world.origin.session)
+        .execute(&pool)
+        .await;
+    let error = deleted.unwrap_err();
+    assert_eq!(
+        error.as_database_error().unwrap().code().as_deref(),
+        Some("23503"),
+        "on delete restrict"
+    );
+}

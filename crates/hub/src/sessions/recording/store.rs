@@ -148,19 +148,19 @@ impl TryFrom<RecordingRow> for Stored {
     fn try_from(row: RecordingRow) -> Result<Self, Error> {
         let stopped = match row.stopped_reason.as_deref() {
             None => None,
-            Some(text) => Some(StopReason::from_stored(text).ok_or(Error::Stored)?),
+            Some(text) => Some(StopReason::from_stored(text).ok_or(Error::StoredValue)?),
         };
         Ok(Self {
             id: row.id,
             session: row.session_id,
             device: row.device_id,
             device_name: row.device_name,
-            protocol: row.protocol.parse().map_err(|_| Error::Stored)?,
-            format: model::format_from_stored(&row.format).ok_or(Error::Stored)?,
-            key_sealed: Sealed::from_bytes(&row.key_sealed).map_err(|_| Error::Stored)?,
+            protocol: row.protocol.parse().map_err(|_| Error::StoredValue)?,
+            format: model::format_from_stored(&row.format).ok_or(Error::StoredValue)?,
+            key_sealed: Sealed::from_bytes(&row.key_sealed).map_err(|_| Error::StoredValue)?,
             started_at: row.started_at,
             ended_at: row.ended_at,
-            size_bytes: u64::try_from(row.size_bytes).map_err(|_| Error::Stored)?,
+            size_bytes: u64::try_from(row.size_bytes).map_err(|_| Error::StoredValue)?,
             complete: row.complete,
             stopped,
             expires_at: row.expires_at,

@@ -17,7 +17,6 @@ use crate::{
             Recorder, RecordingState, Stored,
             format::{MAX_PART, RecordingKey, Sealer},
             model::StopReason,
-            recorder::QUEUE_PARTS,
             states,
         },
         tests::fixture::{Capture, stored_text},
@@ -109,6 +108,71 @@ async fn k4_11_under_1_gib_free_stops_disk_full_with_the_last_part(pool: PgPool)
     migrations = "./migrations",
     fixtures(path = "../../../../tests/fixtures", scripts("devices"))
 )]
+async fn k4_11_under_1_gib_free_before_the_last_part_drops_its_bytes(pool: PgPool) {
+    let world = World::new(&pool, 1 << 30).await;
+    let mut changes = world.serving.live.changes();
+    let recorder = world.start(LOW).await;
+    let id = recorder.id();
+    recorder.push(b"3.nop;");
+    recorder.finish().await;
+
+    let (plaintext, ended) = world.read_back(id).await;
+    assert_eq!((plaintext.len(), ended), (0, Ended::Done));
+    let stored = world.stored(id).await;
+    assert_eq!(stored.stopped, Some(StopReason::DiskFull));
+    assert_eq!((stored.complete, stored.size_bytes), (true, 0));
+    stopped(&world, &mut changes).await;
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../tests/fixtures", scripts("devices"))
+)]
+async fn k4_11_a_failed_reading_before_the_last_part_stops_write_failed_without_it(pool: PgPool) {
+    let world = World::new(&pool, 1 << 30).await;
+    let mut changes = world.serving.live.changes();
+    let recorder = world.start(FAILING).await;
+    let id = recorder.id();
+    recorder.push(b"3.nop;");
+    recorder.finish().await;
+
+    let (plaintext, ended) = world.read_back(id).await;
+    assert_eq!((plaintext.len(), ended), (0, Ended::Incomplete));
+    let stored = world.stored(id).await;
+    assert_eq!(stored.stopped, Some(StopReason::WriteFailed));
+    assert_eq!((stored.complete, stored.size_bytes), (false, 0));
+    stopped(&world, &mut changes).await;
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../tests/fixtures", scripts("devices"))
+)]
+async fn g_5_a_stop_ends_the_row_only_with_its_warning_event(pool: PgPool) {
+    // The event log refuses every row, so the stop's transaction cannot commit.
+    for statement in [
+        "create function public.refuse() returns trigger language plpgsql as \
+         $$ begin raise exception 'refused'; end $$",
+        "create trigger refuse before insert on events.event_log \
+         for each row execute function public.refuse()",
+    ] {
+        sqlx::query(statement).execute(&pool).await.unwrap();
+    }
+    let world = World::new(&pool, 10).await;
+    let recorder = world.start(PLENTY).await;
+    let id = recorder.id();
+    recorder.push(b"0123456789ab");
+    recorder.finish().await;
+
+    let stored = world.stored(id).await;
+    assert_eq!(stored.ended_at, None, "the end rolled back with the event");
+    assert_eq!(stored.stopped, None);
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../tests/fixtures", scripts("devices"))
+)]
 async fn k4_11_a_write_error_stops_write_failed_without_a_last_part(pool: PgPool) {
     let world = World::new(&pool, 1 << 30).await;
     let mut changes = world.serving.live.changes();
@@ -141,8 +205,9 @@ async fn k4_11_a_full_queue_stops_write_failed_without_the_relay_waiting(pool: P
     let recorder = world.start(LOW).await;
     let id = recorder.id();
     // `push` is not async and this test does not yield between pushes, so the writer, on
-    // this same thread, takes no part until the 65th push has stopped the recording.
-    for _ in 0..=QUEUE_PARTS {
+    // this same thread, takes no part until the 65th push has stopped the recording. 64 is
+    // K4 §11's bound, written out so a changed constant fails here.
+    for _ in 0..=64 {
         recorder.push(&vec![2; MAX_PART]);
     }
     recorder.finish().await;
@@ -169,7 +234,11 @@ async fn g_4_a_file_that_cannot_be_created_leaves_the_row_stopped(pool: PgPool) 
     let capture = Capture::default();
     let writer = capture.clone();
     let subscriber = process_log::subscriber("trace", move || writer.clone()).unwrap();
+    // As in the Guacamole tunnel's test: a second registered dispatcher makes every callsite
+    // registration ask all of them, so another test thread cannot disable these callsites.
+    let _second = tracing::Dispatch::new(tracing::subscriber::NoSubscriber::default());
     let _default = tracing::subscriber::set_default(subscriber);
+    tracing::callsite::rebuild_interest_cache();
     let root = world.root.path();
     std::fs::set_permissions(root, std::fs::Permissions::from_mode(0o500)).unwrap();
     let recorder = world.start(PLENTY).await;

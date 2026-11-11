@@ -1,11 +1,16 @@
-//! The writer task (K4 §11): seals and writes each part, checks the free space first, writes
-//! the last part, then ends the row. On a stop it also writes a Warning event and publishes
+//! The writer task (K4 §11): seals and writes each part, checks the free space before each
+//! part (the last too, when it holds bytes), writes the last part, then ends the row. On a stop it also writes a Warning event and publishes
 //! `sessionChanged` (G-5). Logs only here, with the recording and session IDs at most
 //! (LOG-007).
 
 use std::{io::Write as _, sync::Arc};
 
-use super::{Origin, opening::Opened, queue::Job, spool::Spool};
+use super::{
+    Origin,
+    opening::Opened,
+    queue::{Job, Plain},
+    spool::Spool,
+};
 use crate::{
     events::{self, NewEvent, Severity, Source},
     sessions::{
@@ -38,20 +43,38 @@ impl Writer {
                     Err(reason) => self.stop(reason),
                 },
                 Job::Last { tail, stopped } => {
-                    let complete = self.write_last(&tail).await;
-                    if complete {
-                        written += tail.len() as u64;
-                    }
-                    let ending = Ending {
-                        at: self.serving.clock.now(),
-                        size_bytes: written,
-                        complete,
-                        stopped,
-                    };
+                    let ending = self.write_end(tail, stopped, written).await;
                     self.end(&ending).await;
                     return;
                 }
             }
+        }
+    }
+
+    /// Writes the last part, with `tail` when the disk has room for it as for any part, and
+    /// says how the recording ended after `written` bytes.
+    async fn write_end(
+        &mut self,
+        mut tail: Plain,
+        mut stopped: Option<StopReason>,
+        written: u64,
+    ) -> Ending {
+        if !tail.is_empty()
+            && self.opened.file.is_some()
+            && let Err(reason) = self.check_space().await
+        {
+            self.stop(reason);
+            // The first stop's reason stays, as in the queue.
+            stopped = stopped.or(Some(reason));
+            tail = Plain::default();
+        }
+        let complete = self.write_last(&tail).await;
+        let tail_written = if complete { tail.len() as u64 } else { 0 };
+        Ending {
+            at: self.serving.clock.now(),
+            size_bytes: written + tail_written,
+            complete,
+            stopped,
         }
     }
 
@@ -66,20 +89,26 @@ impl Writer {
 
     /// Checks the free space, then seals and writes one part and syncs it.
     async fn write_part(&mut self, part: &[u8]) -> Result<(), StopReason> {
-        let root = self.serving.recording.root.clone();
-        let free = self.free;
-        let space = tokio::task::spawn_blocking(move || root.as_deref().map(free)).await;
-        match space {
-            Ok(Some(Ok(bytes))) if bytes >= MIN_FREE => {}
-            Ok(Some(Ok(_))) => return Err(StopReason::DiskFull),
-            _ => return Err(StopReason::WriteFailed),
-        }
+        self.check_space().await?;
         let sink = self.opened.file.as_mut().ok_or(StopReason::WriteFailed)?;
         let framed = sink
             .sealer
             .seal(part)
             .map_err(|_| StopReason::WriteFailed)?;
         append(Arc::clone(&sink.file), framed).await
+    }
+
+    /// The free space before a part: under 1 GiB stops with `disk_full`, and a reading that
+    /// fails stops with `write_failed`.
+    async fn check_space(&self) -> Result<(), StopReason> {
+        let root = self.serving.recording.root.clone();
+        let free = self.free;
+        let space = tokio::task::spawn_blocking(move || root.as_deref().map(free)).await;
+        match space {
+            Ok(Some(Ok(bytes))) if bytes >= MIN_FREE => Ok(()),
+            Ok(Some(Ok(_))) => Err(StopReason::DiskFull),
+            _ => Err(StopReason::WriteFailed),
+        }
     }
 
     /// Seals and writes the last part, which wipes the key. Returns whether the file now has

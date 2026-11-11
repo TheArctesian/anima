@@ -14,7 +14,7 @@ use zeroize::Zeroizing;
 use crate::sessions::recording::{format::MAX_PART, model::StopReason};
 
 /// How many ready parts may wait for the writer (K4 §11).
-pub(in crate::sessions::recording) const QUEUE_PARTS: usize = 64;
+const QUEUE_PARTS: usize = 64;
 
 /// How long the open part waits after its first byte before it is written (K4 §11).
 pub(in crate::sessions::recording) const FLUSH_AFTER: Duration = Duration::from_secs(5);

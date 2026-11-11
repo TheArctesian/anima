@@ -9,7 +9,6 @@ use std::{
 };
 
 use chrono::{DateTime, Utc};
-use uuid::Uuid;
 use zeroize::Zeroizing;
 
 use super::Origin;
@@ -42,11 +41,14 @@ pub(super) struct Opened {
     pub(super) file: Option<Sink>,
 }
 
-/// Makes the key and nonce prefix, seals the key, inserts the row with its expiry, then
+/// Makes the key and nonce prefix, seals the key, inserts the row `id` with its expiry, then
 /// creates the file and writes its header.
-pub(super) async fn open(serving: &Serving, origin: &Origin) -> Result<Opened, Error> {
+pub(super) async fn open(
+    serving: &Serving,
+    origin: &Origin,
+    id: RecordingId,
+) -> Result<Opened, Error> {
     let root = serving.recording.root.clone().ok_or(Error::Unavailable)?;
-    let id = RecordingId::from(Uuid::now_v7());
     let started_at = serving.clock.now();
     let (key, key_sealed) = new_key(&serving.vault, id)?;
     let mut nonce_prefix = [0_u8; NONCE_PREFIX_LEN];

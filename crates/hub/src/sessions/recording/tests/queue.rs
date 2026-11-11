@@ -9,7 +9,7 @@ use tokio::time::Instant;
 use crate::sessions::recording::{
     format::MAX_PART,
     model::StopReason,
-    recorder::{FLUSH_AFTER, Job, Next, Pushed, QUEUE_PARTS, Queue},
+    recorder::{FLUSH_AFTER, Job, Next, Pushed, Queue},
 };
 
 const LARGE: u64 = u64::MAX;
@@ -89,7 +89,8 @@ fn k4_11_bytes_after_a_full_part_start_a_new_timer() {
 fn k4_11_a_65th_ready_part_stops_with_write_failed_and_drops_the_push() {
     let now = Instant::now();
     let mut queue = Queue::new(LARGE);
-    for _ in 0..QUEUE_PARTS {
+    // 64 is K4 §11's bound, written out so a changed constant fails here.
+    for _ in 0..64 {
         assert!(matches!(
             queue.push(&vec![7; MAX_PART], now),
             Pushed::Kept { .. }
@@ -101,7 +102,7 @@ fn k4_11_a_65th_ready_part_stops_with_write_failed_and_drops_the_push() {
         Pushed::Stopped(StopReason::WriteFailed)
     );
     assert_eq!(queue.push(b"later", now), Pushed::Dropped);
-    for _ in 0..QUEUE_PARTS {
+    for _ in 0..64 {
         assert_eq!(part(queue.next(now)), vec![7; MAX_PART]);
     }
     assert_eq!(

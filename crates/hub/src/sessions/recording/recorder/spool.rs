@@ -34,6 +34,8 @@ impl Spool {
         self.wake.notify_one();
     }
 
+    /// Deliberately keeps the first stop's reason: a write failure after `size_limit` or
+    /// `disk_full` leaves that reason, with `complete = false` when the last part is lost.
     pub(super) fn fail(&self, reason: StopReason) {
         self.queue().fail(reason);
     }
