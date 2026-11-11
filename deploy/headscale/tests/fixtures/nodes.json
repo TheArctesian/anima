@@ -1,0 +1,304 @@
+[
+  {
+    "id": 1,
+    "machine_key": "mkey:0000000000000000000000000000000000000000000000000000000000000001",
+    "node_key": "nodekey:0000000000000000000000000000000000000000000000000000000000000001",
+    "disco_key": "discokey:0000000000000000000000000000000000000000000000000000000000000001",
+    "ip_addresses": [
+      "100.64.0.1",
+      "fd7a:115c:a1e0::1"
+    ],
+    "name": "hub",
+    "user": {
+      "id": 2147455555,
+      "name": "tagged-devices",
+      "created_at": {
+        "seconds": -62135596800
+      },
+      "display_name": "Tagged Devices"
+    },
+    "last_seen": {
+      "seconds": 1794378406,
+      "nanos": 378720377
+    },
+    "pre_auth_key": {
+      "id": 1,
+      "key": "REDACTED-PREAUTH-KEY",
+      "used": true,
+      "expiration": {
+        "seconds": 1794382003,
+        "nanos": 462739418
+      },
+      "created_at": {
+        "seconds": 1794378403,
+        "nanos": 462974459
+      },
+      "acl_tags": [
+        "tag:hub"
+      ]
+    },
+    "created_at": {
+      "seconds": 1794378403,
+      "nanos": 711097293
+    },
+    "register_method": 1,
+    "given_name": "hub",
+    "online": true,
+    "tags": [
+      "tag:hub"
+    ]
+  },
+  {
+    "id": 2,
+    "machine_key": "mkey:0000000000000000000000000000000000000000000000000000000000000002",
+    "node_key": "nodekey:0000000000000000000000000000000000000000000000000000000000000002",
+    "disco_key": "discokey:0000000000000000000000000000000000000000000000000000000000000002",
+    "ip_addresses": [
+      "100.64.0.2",
+      "fd7a:115c:a1e0::2"
+    ],
+    "name": "router-home",
+    "user": {
+      "id": 2147455555,
+      "name": "tagged-devices",
+      "created_at": {
+        "seconds": -62135596800
+      },
+      "display_name": "Tagged Devices"
+    },
+    "last_seen": {
+      "seconds": 1794378409,
+      "nanos": 395684671
+    },
+    "pre_auth_key": {
+      "id": 2,
+      "key": "REDACTED-PREAUTH-KEY",
+      "used": true,
+      "expiration": {
+        "seconds": 1794382005,
+        "nanos": 708201877
+      },
+      "created_at": {
+        "seconds": 1794378405,
+        "nanos": 708399210
+      },
+      "acl_tags": [
+        "tag:router",
+        "tag:site-home"
+      ]
+    },
+    "created_at": {
+      "seconds": 1794378405,
+      "nanos": 966304252
+    },
+    "register_method": 1,
+    "given_name": "router-home",
+    "online": true,
+    "approved_routes": [
+      "10.10.0.0/24"
+    ],
+    "available_routes": [
+      "10.10.0.0/24"
+    ],
+    "subnet_routes": [
+      "10.10.0.0/24"
+    ],
+    "tags": [
+      "tag:router",
+      "tag:site-home"
+    ]
+  },
+  {
+    "id": 3,
+    "machine_key": "mkey:0000000000000000000000000000000000000000000000000000000000000003",
+    "node_key": "nodekey:0000000000000000000000000000000000000000000000000000000000000003",
+    "disco_key": "discokey:0000000000000000000000000000000000000000000000000000000000000003",
+    "ip_addresses": [
+      "100.64.0.3",
+      "fd7a:115c:a1e0::3"
+    ],
+    "name": "mac",
+    "user": {
+      "id": 1,
+      "name": "operator",
+      "created_at": {
+        "seconds": 1794378402,
+        "nanos": 364628251
+      }
+    },
+    "last_seen": {
+      "seconds": 1794378437,
+      "nanos": 128835586
+    },
+    "expiry": {
+      "seconds": 1809930408,
+      "nanos": 670131379
+    },
+    "pre_auth_key": {
+      "user": {
+        "id": 1,
+        "name": "operator",
+        "created_at": {
+          "seconds": 1794378402,
+          "nanos": 364628251
+        }
+      },
+      "id": 3,
+      "key": "REDACTED-PREAUTH-KEY",
+      "used": true,
+      "expiration": {
+        "seconds": 1794382008,
+        "nanos": 392597003
+      },
+      "created_at": {
+        "seconds": 1794378408,
+        "nanos": 393055295
+      }
+    },
+    "created_at": {
+      "seconds": 1794378408,
+      "nanos": 670382629
+    },
+    "register_method": 1,
+    "given_name": "mac",
+    "online": true
+  },
+  {
+    "id": 4,
+    "machine_key": "mkey:0000000000000000000000000000000000000000000000000000000000000004",
+    "node_key": "nodekey:0000000000000000000000000000000000000000000000000000000000000004",
+    "disco_key": "discokey:0000000000000000000000000000000000000000000000000000000000000004",
+    "ip_addresses": [
+      "100.64.0.4",
+      "fd7a:115c:a1e0::4"
+    ],
+    "name": "stranger",
+    "user": {
+      "id": 2,
+      "name": "intruder",
+      "created_at": {
+        "seconds": 1794378402,
+        "nanos": 938521792
+      }
+    },
+    "last_seen": {
+      "seconds": 1794378413,
+      "nanos": 922389173
+    },
+    "expiry": {
+      "seconds": 1809930411,
+      "nanos": 15553255
+    },
+    "pre_auth_key": {
+      "user": {
+        "id": 2,
+        "name": "intruder",
+        "created_at": {
+          "seconds": 1794378402,
+          "nanos": 938521792
+        }
+      },
+      "id": 4,
+      "key": "REDACTED-PREAUTH-KEY",
+      "used": true,
+      "expiration": {
+        "seconds": 1794382010,
+        "nanos": 750148755
+      },
+      "created_at": {
+        "seconds": 1794378410,
+        "nanos": 750560130
+      }
+    },
+    "created_at": {
+      "seconds": 1794378411,
+      "nanos": 15861505
+    },
+    "register_method": 1,
+    "given_name": "stranger",
+    "online": true
+  },
+  {
+    "id": 5,
+    "machine_key": "mkey:0000000000000000000000000000000000000000000000000000000000000005",
+    "node_key": "nodekey:0000000000000000000000000000000000000000000000000000000000000005",
+    "disco_key": "discokey:0000000000000000000000000000000000000000000000000000000000000005",
+    "ip_addresses": [
+      "100.64.0.5",
+      "fd7a:115c:a1e0::5"
+    ],
+    "name": "odd",
+    "user": {
+      "id": 2147455555,
+      "name": "tagged-devices",
+      "created_at": {
+        "seconds": -62135596800
+      },
+      "display_name": "Tagged Devices"
+    },
+    "last_seen": {
+      "seconds": 1794378416,
+      "nanos": 433445841
+    },
+    "pre_auth_key": {
+      "id": 5,
+      "key": "REDACTED-PREAUTH-KEY",
+      "used": true,
+      "expiration": {
+        "seconds": 1794382013,
+        "nanos": 274478381
+      },
+      "created_at": {
+        "seconds": 1794378413,
+        "nanos": 274731672
+      },
+      "acl_tags": [
+        "tag:unknown"
+      ]
+    },
+    "created_at": {
+      "seconds": 1794378413,
+      "nanos": 621011964
+    },
+    "register_method": 1,
+    "given_name": "odd",
+    "online": true,
+    "tags": [
+      "tag:unknown"
+    ]
+  },
+  {
+    "id": 6,
+    "machine_key": "mkey:0000000000000000000000000000000000000000000000000000000000000006",
+    "node_key": "nodekey:0000000000000000000000000000000000000000000000000000000000000006",
+    "disco_key": "discokey:0000000000000000000000000000000000000000000000000000000000000006",
+    "ip_addresses": [
+      "100.64.0.6",
+      "fd7a:115c:a1e0::6"
+    ],
+    "name": "mac2",
+    "user": {
+      "id": 1,
+      "name": "operator",
+      "created_at": {
+        "seconds": 1794378402,
+        "nanos": 364628251
+      }
+    },
+    "last_seen": {
+      "seconds": 1794378439,
+      "nanos": 655297879
+    },
+    "expiry": {
+      "seconds": 1809930425,
+      "nanos": 515663970
+    },
+    "created_at": {
+      "seconds": 1794378417,
+      "nanos": 246549258
+    },
+    "register_method": 2,
+    "given_name": "mac2",
+    "online": true
+  }
+]

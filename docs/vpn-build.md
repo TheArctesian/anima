@@ -117,6 +117,52 @@ invented names. The facts:
    `approved_routes`, `available_routes`, `subnet_routes`.
 9. Headscale accepts `preauthkeys create --tags tag:unknown`.
 
+Facts from A4 (`deploy/headscale/test/contract.sh`, run twice with Headscale 0.29.7 and
+`tailscale/tailscale:v1.104.4@sha256:ed6480b3…e276c`; fixtures in `crates/hub/src/vpn/tests/fixtures/`
+and `deploy/headscale/tests/fixtures/`). They close the A4 evidence in Section 10:
+
+10. **An active peer is real.** After `tailscale ping --c 3 <router IP>` (a disco ping; no TSMP
+    ping and no `nc` needed) the router peer has `Active: true` and `CurAddr: "172.29.250.4:48037"`
+    (the container address and an ephemeral port; `status-active.json`). `Relay` stays `"sfo"`
+    and `PeerRelay` stays `""`. After 60 s with no traffic the same peer has `Active: false` and
+    `CurAddr: ""` (`status-after-60s.json`): the path state is lost inside 60 s, so BD-13 is
+    needed. `DNSName` is `router-home.net.anima.ing.` and `LastSeen` is the zero time while online.
+    The hub has 3 peers (`router-home`, `mac`, `mac2`); `stranger` and `odd` are not peers (fact 6).
+11. **Auth ID.** The login URL is `http://<server>/register/<auth ID>`. The ID is
+    `hskey-authreq-` followed by 24 characters of base64url (`A-Za-z0-9`, `-`, `_`; both `-` and
+    `_` were seen). B1's pattern is `^hskey-authreq-[A-Za-z0-9_-]{24}$`. `auth register` refuses an
+    ID without the prefix (`auth ID has invalid prefix`). The ID is in the `AuthURL` field of
+    `tailscale status --json` while the node waits.
+12. **`preauthkeys create --tags … --expiration 1h -o json`** returns
+    `{"id": 1, "key": "hskey-auth-…", "expiration": {"seconds", "nanos"}, "created_at": {"seconds",
+    "nanos"}, "acl_tags": ["tag:hub"]}`. Numbers are JSON numbers, not strings. `used`,
+    `reusable`, `ephemeral` and `user` are left out when false or empty. A key for a user needs
+    `--user <numeric id>` (a name is refused); `users create <name> -o json` returns that `id`.
+    (`preauthkey.json`.)
+13. **`auth register --user operator --auth-id <id> -o json`** returns the node, not a wrapper:
+    `id`, `machine_key`, `node_key`, `disco_key`, `ip_addresses`, `name`, `user` (`id`, `name`,
+    `created_at`), `last_seen`, `expiry` (`seconds`, `nanos`), `created_at`, `register_method: 2`,
+    `given_name`. No `pre_auth_key`, no `online`, no `tags`. The renewal (`tailscale up
+    --force-reauth`, then `auth register` with the new ID) returns the same `id` and the same
+    addresses with a new `expiry` (`register.json`, `register-again.json`).
+    The node shows `register_method: 1` when it joined with a key.
+14. **`nodes list -o json`** has `id`, `pre_auth_key.id` and every `seconds` as JSON numbers.
+    A tagged node has `user = {id: 2147455555, name: "tagged-devices", display_name: "Tagged
+    Devices", created_at.seconds: -62135596800}` and `tags`; an untagged node has `expiry`. The
+    default expiry is 180 days after registration. `nodes list-routes -o json` returns only the
+    router, with `approved_routes`, `available_routes` and `subnet_routes`. (`nodes.json`,
+    `routes.json`.) `deploy/headscale/src/inventory.ts` parses these files (test
+    `contract-fixtures.test.ts`).
+15. **`headscale policy check` needs the nodes.** On an empty server it fails with `source
+    "operator@" resolved to no IP addresses` for each test row. The harness runs it after the
+    joins (the repository policy then passes).
+16. **A plain-HTTP control server must have a private IP.** With `--login-server
+    http://headscale:8080` the first login works, but `tailscale up --force-reauth` and
+    `tailscale logout` fail with `register request: Post "https://headscale:8080/machine/register":
+    … HTTP: TLS forced: no port 80 dialed`. The same happens with a documentation address
+    (`192.0.2.10`). It works with a private address (`172.29.250.10`). The harness therefore gives
+    Headscale that address on its own Docker network (Build notes).
+
 ## 4. Task order
 
 ```text
@@ -1614,18 +1660,40 @@ the start order does not change (A1-T0 Check), the tests need no paused clock an
 (A1-T4), and `checks` is a domain edge (T0). What is still open:
 
 1. Closed: the operator approved the `renew` verb (VP-10) and testing on the VPS (VP-11).
-2. **Evidence, A4:** a real active peer (`Active`, `CurAddr`), the 60 s decay that BD-13
-   assumes, the auth ID format, and the `preauthkeys create` and `auth register` reply shapes.
-   B1 and B2 read these shapes; if A4 shows other shapes, change B1/B2 before they start.
+2. Closed (A4): the active peer, the 60 s decay, the auth ID format and the reply shapes are
+   in Section 3, facts 10 to 14. B1 and B2 read these shapes.
 3. **Evidence, B2:** the run of the broker unit (on the VPS, VP-11) (`SocketUser=10001` with no passwd
    entry, Bun under the sandbox, `docker compose exec` in the sandbox).
 
 ## 11. Build notes
 
+Deviations that the builders found, with the evidence. Each keeps the intent of the task.
+
+1. **A5/A3a/A3b/A4: base.** The agent worktree started at an older commit than the task named.
+   Branch `vpn-tier-a-headscale` was created from `a126c02b` (the task's base) and the Linux-only
+   clippy fix `70e07229` was cherry-picked on it (coordinator instruction).
+2. **A4: `server_url` is `http://172.29.250.10:8080`, not `http://headscale:8080`.** Section 3,
+   fact 16: Tailscale 1.104 forces TLS on a re-login for a host name and for a non-private
+   address, so the renewal steps (A4 step 4) fail against plain HTTP. `contract.sh` creates a
+   Docker network `172.29.250.0/24` and gives the `headscale` service `172.29.250.10`.
+   `contract-config.yaml` and the drift test in `server.test.ts` use the same address. If that
+   subnet is taken on the machine, Docker refuses the network and the script fails at once.
+3. **A4: `policy check` runs after the joins, not in step 2.** Section 3, fact 15.
+4. **A4: the Tailscale image tag is `v1.104.4`.** `stable` is a moving tag; `v1.104.4` has the same
+   index digest on the day (`sha256:ed6480b3…`). The harness starts the containers with
+   `entrypoint: tailscaled --tun=userspace-networking --state=mem:` (the image's `containerboot`
+   would run its own `tailscale up`).
+5. **A4: redaction is a pure function in `src/redact.ts`**, with `bin/redact.ts` as the thin
+   command (the task named only the bin file), so that it has tests (`redact.test.ts`). Node N is
+   the position of the host name in `NODE_NAMES` (`hub`, `router-home`, `mac`, `stranger`, `odd`,
+   `mac2`).
+6. **A4: the drift test is in `server.test.ts`** as the task says; the file is 276 non-blank lines.
+7. **A3b: ids are read as numbers or digit strings.** Headscale writes JSON numbers (fact 14), but
+   a protobuf JSON writer uses strings for 64-bit values, so `parseNodes` accepts both.
+
 - **A2-T1.** The spec's `toolbar.test.ts` and `page.test.ts` fixtures build a `ListQuery` literal, so
   they also gain `site: null` (`toolbar.test.ts` Clear-filters case, `page.test.ts` `beforeEach`).
   `Sites` keeps the loaded sites in a private field and derives `options`, so "All sites" is never
   shown alone (`toolbar/sites.svelte.ts`).
-- **Gates on macOS.** `bun run gates` stops at clippy here: `apps/desktop/src-tauri/src/builder/reaper.rs`
-  (`descendants`, `marked`, and `gone_within` in `builder/tests/reaping.rs`) is dead code off Linux.
-  It is outside A2-T1. The client gates (fmt aside) were run one by one and pass.
+- **Gates on macOS.** `bun run gates` stopped at clippy: the Linux-only reaper code in
+  `apps/desktop/src-tauri/src/builder/` was dead code off Linux. Fixed in `70e07229`.

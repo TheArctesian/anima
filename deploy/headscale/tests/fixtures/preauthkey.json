@@ -1,0 +1,15 @@
+{
+  "id": 1,
+  "key": "REDACTED-PREAUTH-KEY",
+  "expiration": {
+    "seconds": 1794382003,
+    "nanos": 462739418
+  },
+  "created_at": {
+    "seconds": 1794378403,
+    "nanos": 462974459
+  },
+  "acl_tags": [
+    "tag:hub"
+  ]
+}

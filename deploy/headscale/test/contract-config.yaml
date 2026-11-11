@@ -1,0 +1,73 @@
+---
+# Headscale config for the contract harness (test/contract.sh; VPN-014). Not a gate, never
+# installed. It is ../config/config.yaml with only these changes: plain HTTP on the Docker
+# network (server_url, listen_addr), no embedded DERP and the public map instead (derp), no
+# Let's Encrypt (acme_*, tls_*), and no ${...} template values. tests/server.test.ts checks that
+# every other key equals the repository config, so the two cannot drift.
+# The server URL is a private IP literal on purpose: on a re-login (`up --force-reauth`)
+# Tailscale 1.104 forces TLS for a host name and for a public or documentation address, and fails
+# against plain HTTP. contract.sh gives the headscale service this address on a Docker network
+# of 172.29.250.0/24 (RFC 1918).
+server_url: http://172.29.250.10:8080
+listen_addr: 0.0.0.0:8080
+metrics_listen_addr: 127.0.0.1:9090
+grpc_listen_addr: 127.0.0.1:50443
+grpc_allow_insecure: false
+trusted_proxies: []
+noise:
+  private_key_path: /var/lib/headscale/noise_private.key
+prefixes:
+  v4: 100.64.0.0/10
+  v6: fd7a:115c:a1e0::/48
+  allocation: sequential
+derp:
+  server:
+    enabled: false
+  urls:
+    - https://controlplane.tailscale.com/derpmap/default
+  paths: []
+  auto_update_enabled: false
+disable_check_updates: true
+node:
+  expiry: 180d
+  ephemeral:
+    inactivity_timeout: 30m
+  routes:
+    ha:
+      probe_interval: 10s
+      probe_timeout: 5s
+database:
+  type: sqlite
+  debug: false
+  gorm:
+    prepare_stmt: true
+    parameterized_queries: true
+    skip_err_record_not_found: true
+    slow_threshold: 1000
+  sqlite:
+    path: /var/lib/headscale/db.sqlite
+    write_ahead_log: true
+    wal_autocheckpoint: 1000
+log:
+  level: info
+  format: json
+policy:
+  mode: file
+  path: /etc/headscale/policy.hujson
+dns:
+  magic_dns: true
+  base_domain: net.anima.ing
+  override_local_dns: false
+  nameservers:
+    global: []
+    split: {}
+  search_domains: []
+  extra_records: []
+unix_socket: /var/run/headscale/headscale.sock
+unix_socket_permission: "0770"
+logtail:
+  enabled: false
+taildrop:
+  enabled: false
+auto_update:
+  enabled: false
