@@ -27,11 +27,11 @@ use crate::{
 
 const DELETE: &str = "mutation($id: ID!) { deleteRecording(id: $id) }";
 
-async fn delete(world: &World, id: &str) -> async_graphql::Response {
+pub(super) async fn delete(world: &World, id: &str) -> async_graphql::Response {
     asked(world, DELETE, json!({ "id": id })).await
 }
 
-async fn row_exists(world: &World, id: RecordingId) -> bool {
+pub(super) async fn row_exists(world: &World, id: RecordingId) -> bool {
     store::get(&world.serving.db, id).await.unwrap().is_some()
 }
 

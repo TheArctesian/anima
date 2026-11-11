@@ -1,7 +1,7 @@
 //! Expiry in the catalogue (D-25, CR-23 e, RA-041): an ended recording past its `expires_at`
 //! is neither listed nor opened, though its row waits for the daily retention job and may
 //! still be deleted; a live recording stays listed and openable past it, as the job keeps it
-//! until its session ends.
+//! until it ends. A recording ends with its session even when its own end was never written.
 
 use chrono::{DateTime, TimeDelta, Utc};
 use serde_json::json;
@@ -116,4 +116,69 @@ async fn d_13_an_ended_expired_recording_can_still_be_deleted(pool: PgPool) {
     assert_eq!(found["deleteRecording"], expired.to_string());
     assert!(store::get(&pool, expired).await.unwrap().is_none());
     assert!(!world.path(expired).exists());
+}
+
+/// Ends the session of the recording `id` as the hub does, and leaves the recording's own end
+/// unwritten, as a failed end or a hub crash before `close_stale` would.
+async fn end_session(world: &World, id: RecordingId) {
+    sqlx::query(
+        "update sessions.sessions set ended_at = $2, end_reason = 'hub_shutdown' \
+         where id = (select session_id from sessions.recordings where id = $1)",
+    )
+    .bind(id)
+    .bind(now())
+    .execute(&world.serving.db)
+    .await
+    .unwrap();
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../tests/fixtures", scripts("devices"))
+)]
+async fn cr_23_e_an_unended_expired_recording_of_an_ended_session_is_neither_listed_nor_opened(
+    pool: PgPool,
+) {
+    let world = World::new(&pool, 1).await;
+    let (_, kept, live) = three(&world).await;
+    end_session(&world, live).await;
+    assert_eq!(listed(&world, LIST, json!({})).await, [kept.to_string()]);
+    let (code, _) = error_of(&asked(&world, OPEN, json!({ "id": live.to_string() })).await);
+    assert_eq!(code, "NOT_FOUND");
+    assert_eq!(audits(&pool).await, [], "a refused open has no entry");
+    assert_eq!(world.serving.live.playback().len(), 0, "and no ticket");
+    assert!(store::playable(&pool, live, now()).await.unwrap().is_none());
+    let stored = store::get(&pool, live).await.unwrap().unwrap();
+    assert_eq!(stored.ended_at, None, "the row waits for the retention job");
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../tests/fixtures", scripts("devices"))
+)]
+async fn cr_23_e_an_unended_expired_recording_of_a_live_session_stays_listed_and_playable(
+    pool: PgPool,
+) {
+    let world = World::new(&pool, 1).await;
+    let (expired, kept, live) = three(&world).await;
+    // Another session's end ends no other recording.
+    sqlx::query(
+        "update sessions.sessions set ended_at = $2, end_reason = 'operator' where id = $1",
+    )
+    .bind(world.origin.session)
+    .bind(now())
+    .execute(&pool)
+    .await
+    .unwrap();
+    let shown = [live.to_string(), kept.to_string()];
+    assert_eq!(listed(&world, LIST, json!({})).await, shown);
+    assert!(store::playable(&pool, live, now()).await.unwrap().is_some());
+    assert!(
+        store::playable(&pool, expired, now())
+            .await
+            .unwrap()
+            .is_none()
+    );
+    data(asked(&world, OPEN, json!({ "id": live.to_string() })).await);
+    assert_eq!(world.serving.live.playback().len(), 1);
 }

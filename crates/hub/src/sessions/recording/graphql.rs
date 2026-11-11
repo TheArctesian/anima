@@ -102,22 +102,21 @@ impl Mutation {
         .map_err(to_graphql)
     }
 
-    /// Deletes the key first, then the file (D-13). Login or browser token only (D-23, R-100).
+    /// Deletes the key first, then the file (D-13), then withdraws the recording's pending
+    /// playback tickets (G-7). Login or browser token only (D-23, R-100).
     #[graphql(guard = "Authenticated")]
     async fn delete_recording(&self, ctx: &Context<'_>, id: ID) -> Result<ID> {
         let recording = recording_id(&id)?;
-        let held = (
-            schema_dependency::<Recording>(ctx)?.root.as_deref(),
-            schema_dependency::<Live>(ctx)?.playback(),
-        );
+        let playback = schema_dependency::<Live>(ctx)?.playback();
         delete_recording(
             schema_dependency::<PgPool>(ctx)?,
-            held,
+            schema_dependency::<Recording>(ctx)?.root.as_deref(),
             Trail::from_context(ctx)?,
             recording,
         )
         .await
         .map_err(to_graphql)?;
+        playback.withdraw_recording(recording);
         Ok(ID(recording.to_string()))
     }
 }

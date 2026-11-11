@@ -143,6 +143,9 @@ async fn r_016_the_runtime_role_writes_recordings_but_never_replaces_a_key(pool:
     assert!(store::end(&mut conn, id, &ending(1, None)).await.unwrap());
     store::get(&mut conn, id).await.unwrap().unwrap();
     states(&mut conn, &[world.origin.session]).await.unwrap();
+    // The catalogue's reads: the share lock of an open, and the session each one looks up.
+    store::catalogued(&mut conn, id, now()).await.unwrap();
+    store::playable(&mut conn, id, now()).await.unwrap();
 
     let replaced = sqlx::query("update sessions.recordings set key_sealed = '\\x00' where id = $1")
         .bind(id)

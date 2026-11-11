@@ -1,6 +1,6 @@
 //! `deleteRecording` (K1, D-13, D-15, G-8): the row, which holds the only sealed key, goes
-//! first with its audit entry `recording.delete`; only after that commits are its pending
-//! playback tickets withdrawn and its file removed. A file left behind by a failed removal
+//! first with its audit entry `recording.delete`; only after that commits is its file removed,
+//! and the resolver withdraws its pending playback tickets. A file left behind by a failed removal
 //! cannot be read, and the retention job sweeps a `.anrec` file that has no row.
 
 use std::{
@@ -15,7 +15,6 @@ use super::{
     Error,
     model::{Catalogued, file_name},
     store,
-    tickets::Tickets,
 };
 use crate::{
     events::{AuditAction, AuditTarget, Severity, Source, Trail, TrailEntry},
@@ -27,22 +26,23 @@ const DELETED: &str = "A session recording was deleted. Its key is gone, so its 
                        read again.";
 
 /// Deletes the recording `id`: its row and the audit entry of `trail`'s operator, client and
-/// time in one transaction; then every pending playback ticket for it in `playback`, and its
-/// file in `root`. A file that is already gone is fine; a file that cannot be removed is
+/// time in one transaction; then its file in `root`. On `Ok` the row is gone, and the caller
+/// withdraws the recording's pending playback tickets before it answers. A file that is already gone is fine; a file that cannot be removed is
 /// logged by its kind of failure only, and the delete still succeeds, since the key is gone.
 ///
 /// A recording still being written can be deleted. Its writer keeps its open file and goes
 /// on writing to it, unlinked, until the session ends: nothing can read those parts back, as
 /// the key went with the row, and the space is freed when the writer closes the file. The
-/// writer's end of the row then updates no row. A ticket issued while the delete commits may
-/// outlive this withdrawal; playback reads the row again when it redeems one (G-7).
+/// writer's end of the row then updates no row. An open that read the row holds it until its
+/// ticket is committed, so the delete waits for it and the withdrawal after it finds that
+/// ticket (G-7).
 ///
 /// # Errors
 /// [`Error::NotFound`] for an unknown id, and then nothing changes; `Events`, `Database` or
 /// `StoredValue` when the transaction fails, and then the row and the file stay.
 pub(super) async fn delete_recording(
     db: &PgPool,
-    (root, playback): (Option<&Path>, &Tickets),
+    root: Option<&Path>,
     trail: Trail<'_>,
     id: RecordingId,
 ) -> Result<(), Error> {
@@ -55,7 +55,6 @@ pub(super) async fn delete_recording(
         .await
         .map_err(Error::Events)?;
     tx.commit().await?;
-    playback.withdraw_recording(id);
     if let Some(root) = root {
         remove_file(root.join(file_name(id)), id).await;
     }
