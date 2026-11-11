@@ -5,12 +5,9 @@ Read it first, then the rulings listed in section 5 and R-093 to R-111, CR-17 to
 
 ## 1. Where things are
 
-- **Integration branch:** `phase-3`, pushed. `main` was fast-forwarded to it as a save (operator,
-  2026-11-08) up to `26a5a9bd`. Since then `main` has its own commits (client redesign, the Phase 3
-  hub deployed at `22f426b6`, `c49a1698`), so `phase-3` no longer fast-forwards onto `main`. Merging
-  the two needs the operator's OK. Gates: `CARGO_TARGET_DIR=$PWD/target CARGO_INCREMENTAL=0 env -u DATABASE_URL
-  BASE_REF=04ab9b61 bun run gates` (R-101; 12 gates). Client-only changes run gates 4–12 (R-068).
-  PATH needs nvm Node 22 and `/usr/lib/postgresql/17/bin`.
+- **Integration branch:** `phase-3`, pushed. `main` was merged into it on 2026-11-10 with the operator's OK
+  (`efe75d8d`: client redesign, distribution, the hub image toolchain, the extensions plan), and `main` is
+  fast-forwarded to `phase-3` again as a save. Push only fast-forwards; ask before anything else on `main`.
 - **Last Rust merge gated 12/12:** `26a5a9bd` (WP-45 T6 and the dispatcher wiring in `main.rs`). After it came the WP-36
   deploy merges (`fbdd525f`, `e1e7ff2c`) and the R-109 to R-111 docs commits, through `9baf6aeb`.
 - **R-101:** every gate and review run uses its own `CARGO_TARGET_DIR` and `CARGO_INCREMENTAL=0`; delete
