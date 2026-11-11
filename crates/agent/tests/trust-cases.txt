@@ -47,6 +47,6 @@ owner is root                     | 40755 | 0    | 0    | 0 | 1000 | base | base
 root's, group write in user's group | 42775 | 0  | 1000 | 0 | 1000 | base | base | 1000 | refuse | refuse | -
 no account in passwd              | 40775 | 1000 | 1000 | 0 | 1000 | without-ada | base | - | refuse | refuse | -
 no group line for the user        | 40775 | 1000 | 1000 | 0 | 1000 | base | without-ada | - | refuse | refuse | -
-no /etc/passwd                    | 40775 | 1000 | 1000 | 0 | 1000 | none | base | - | refuse | refuse | -
+empty or unreadable /etc/passwd (agent: install stops on the read error; tested as empty) | 40775 | 1000 | 1000 | 0 | 1000 | none | base | - | refuse | refuse | -
 no /etc/group                     | 40775 | 1000 | 1000 | 0 | 1000 | base | none | - | refuse | refuse | -
 no /etc/group, no group write     | 40755 | 1000 | 1000 | 0 | 1000 | base | none | - | trust  | trust  | -
