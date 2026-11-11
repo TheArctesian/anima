@@ -124,31 +124,6 @@ describe("hub deny list, notify network and recordings", () => {
     expect(inside.reduce((sum, entry) => sum + entry.size, 0)).toBe(subnet.size - 1);
   });
 
-  test("NET-001 VP-13 the deny list holds the VPS public address as /32 and not the hub VPN address", () => {
-    const deny = (compose.services["hub"]?.environment?.["ANIMA_PROBE_DENY"] ?? "").split(",");
-    expect(deny).toContain("${ANIMA_VPS_PUBLIC_ADDRESS:?set to the VPS public IPv4}/32");
-    // VP-13: the VPS is a device at its VPN address; the host firewall limits the hub to 22/tcp and ping.
-    expect(deny.filter((entry) => entry.includes("ANIMA_HUB_ADDRESS"))).toEqual([]);
-    expect(denyEntries(compose.services["hub"] as Container).some((entry) => entry.contains(ipv4("100.64.0.1")))).toBe(false);
-  });
-
-  test("VP-13 the deny list holds exactly the hub's Docker subnets, the carved notify network and the public address", () => {
-    const deny = (compose.services["hub"]?.environment?.["ANIMA_PROBE_DENY"] ?? "").split(",");
-    expect(deny.slice(0, 4)).toEqual([
-      "${ANIMA_HUB_SUBNET:-172.30.0.0/24}",
-      "${ANIMA_DATABASE_SUBNET:-172.30.1.0/24}",
-      "${ANIMA_VPS_PUBLIC_ADDRESS:?set to the VPS public IPv4}/32",
-      "${ANIMA_LOCALAPI_SUBNET:-172.30.2.0/24}",
-    ]);
-    expect(deny.slice(4).every((entry) => entry.startsWith("172.30.3."))).toBe(true);
-  });
-
-  test("VP-13 the hub's default route is the gateway network, by gw_priority, at its fixed address", () => {
-    const networks = compose.services["hub"]?.networks as Record<string, { ipv4_address?: string; gw_priority?: number } | null>;
-    expect(networks["gateway"]).toEqual({ ipv4_address: "${ANIMA_HUB_IP:-172.30.0.10}", gw_priority: 1 });
-    for (const name of ["database", "localapi", "notify"]) expect(networks[name]?.gw_priority).toBeUndefined();
-  });
-
   test("K7 the hub gets the web, origin and recording variables with the values of plan Section 6", () => {
     const environment = compose.services["hub"]?.environment ?? {};
     expect(environment["ANIMA_PUBLIC_ORIGIN"]).toBe("${ANIMA_PUBLIC_ORIGIN:-https://hub.anima.ing}");
@@ -179,6 +154,33 @@ describe("hub deny list, notify network and recordings", () => {
     expect(Object.keys(hub.depends_on ?? {})).not.toContain("apprise");
   });
 
+});
+
+describe("hub deny list and default route for the VPS as a device (VP-13)", () => {
+  test("NET-001 VP-13 the deny list holds the VPS public address as /32 and not the hub VPN address", () => {
+    const deny = (compose.services["hub"]?.environment?.["ANIMA_PROBE_DENY"] ?? "").split(",");
+    expect(deny).toContain("${ANIMA_VPS_PUBLIC_ADDRESS:?set to the VPS public IPv4}/32");
+    // VP-13: the VPS is a device at its VPN address; the host firewall limits the hub to 22/tcp and ping.
+    expect(deny.filter((entry) => entry.includes("ANIMA_HUB_ADDRESS"))).toEqual([]);
+    expect(denyEntries(compose.services["hub"] as Container).some((entry) => entry.contains(ipv4("100.64.0.1")))).toBe(false);
+  });
+
+  test("VP-13 the deny list holds exactly the hub's Docker subnets, the carved notify network and the public address", () => {
+    const deny = (compose.services["hub"]?.environment?.["ANIMA_PROBE_DENY"] ?? "").split(",");
+    expect(deny.slice(0, 4)).toEqual([
+      "${ANIMA_HUB_SUBNET:-172.30.0.0/24}",
+      "${ANIMA_DATABASE_SUBNET:-172.30.1.0/24}",
+      "${ANIMA_VPS_PUBLIC_ADDRESS:?set to the VPS public IPv4}/32",
+      "${ANIMA_LOCALAPI_SUBNET:-172.30.2.0/24}",
+    ]);
+    expect(deny.slice(4).every((entry) => entry.startsWith("172.30.3."))).toBe(true);
+  });
+
+  test("VP-13 the hub's default route is the gateway network, by gw_priority, at its fixed address", () => {
+    const networks = compose.services["hub"]?.networks as Record<string, { ipv4_address?: string; gw_priority?: number } | null>;
+    expect(networks["gateway"]).toEqual({ ipv4_address: "${ANIMA_HUB_IP:-172.30.0.10}", gw_priority: 1 });
+    for (const name of ["database", "localapi", "notify"]) expect(networks[name]?.gw_priority).toBeUndefined();
+  });
 });
 
 describe("hub certificates and listen address", () => {
