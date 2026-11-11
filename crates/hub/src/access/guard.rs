@@ -229,7 +229,7 @@ fn refusal(identity: Option<&Identity>, document: &ExecutableDocument) -> Option
 /// supply-chain actions only a login or browser token may take: a builder token outlives the key
 /// that enrolled it (D-23, R-107). A VPN key, a registration or a renewal admits a computer to
 /// the network: login or browser token only (VP-7, VP-10).
-pub(super) const API_KEY_REFUSED_ROOTS: [&str; 31] = [
+pub(super) const API_KEY_REFUSED_ROOTS: [&str; 32] = [
     "createApiKey",
     "revokeApiKey",
     "apiKeys",
@@ -261,6 +261,7 @@ pub(super) const API_KEY_REFUSED_ROOTS: [&str; 31] = [
     "createRouterKey",
     "registerVpnNode",
     "renewVpnKey",
+    "approveSiteRoute",
 ];
 
 /// The root selections a token of `kind` may make, in every operation type. A new kind of

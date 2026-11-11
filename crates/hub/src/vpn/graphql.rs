@@ -3,6 +3,7 @@
 //! never copied for each field.
 
 mod mutations;
+mod routes;
 
 use std::sync::Arc;
 
@@ -25,6 +26,7 @@ use crate::{
 };
 
 pub use mutations::{Mutation, VpnKey, VpnRegistration};
+pub use routes::RouteMutation;
 
 #[derive(Default)]
 pub struct Query;

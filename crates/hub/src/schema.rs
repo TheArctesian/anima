@@ -56,6 +56,7 @@ pub struct Mutation(
     sessions::WakeMutation,
     trust::graphql::Mutation,
     vpn::graphql::Mutation,
+    vpn::graphql::RouteMutation,
     web_interfaces::graphql::Mutation,
 );
 

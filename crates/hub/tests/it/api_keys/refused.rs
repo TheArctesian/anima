@@ -12,7 +12,7 @@ use crate::hub::{Hub, PASSWORD, USERNAME, error};
 /// `revokeAgentToken` by name before they have resolvers, R-084, CR-8; pinning a device
 /// identity, moving or deleting a device and destroying recordings, R-100; VPN keys,
 /// registration and renewal, VP-7).
-const REFUSED: [&str; 31] = [
+const REFUSED: [&str; 32] = [
     "createApiKey",
     "revokeApiKey",
     "apiKeys",
@@ -44,6 +44,7 @@ const REFUSED: [&str; 31] = [
     "createRouterKey",
     "registerVpnNode",
     "renewVpnKey",
+    "approveSiteRoute",
 ];
 
 /// Documents that select `name` at the root: plainly, through an alias, an inline fragment, a

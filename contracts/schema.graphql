@@ -1761,6 +1761,8 @@ type Mutation {
   registerVpnNode(authId: String!): VpnRegistration!
   "Sets the key expiry of an untagged operator node to a staggered date 90 to 180 days from now (vpn.md Section 7). Login or browser token only (D-23)."
   renewVpnKey(name: String!): VpnRegistration!
+  "Approves the waiting route of the site's router. Login or browser token only (D-23)."
+  approveSiteRoute(siteId: ID!): Boolean!
 }
 
 type Subscription {

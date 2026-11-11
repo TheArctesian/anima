@@ -194,6 +194,12 @@ impl Broker {
             .await
     }
 
+    /// Approves the one subnet of the policy site `site` that router `node` offers (R-055).
+    pub(super) async fn approve_route(&self, node: u64, site: &str) -> Result<(), Error> {
+        let request = json!({ "verb": "approve-route", "node": node, "site": site });
+        self.call::<serde::de::IgnoredAny>(&request).await.map(drop)
+    }
+
     /// Sets a staggered key expiry on the untagged operator node `node` (BD-17, VP-10).
     pub(super) async fn renew(&self, node: u64) -> Result<Registered, Error> {
         self.call(&json!({ "verb": "renew", "node": node })).await

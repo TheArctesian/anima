@@ -1884,3 +1884,10 @@ its intent.
   broker did not answer; it may be busy checking its nodes. Try again in a minute."
 - **B4a: the mutations need the reader's broker list** (`roster`); with no LocalAPI proxy, or
   before the first `READY` read, `createRouterKey` and `renewVpnKey` answer `UNAVAILABLE`.
+- **B5: `approveSiteRoute` is its own `VpnRouteMutation` in `vpn/graphql/routes.rs`**, merged
+  in `schema.rs` beside `VpnMutation`, so `graphql/mutations.rs` stays under 300 lines. It finds
+  the site's `waitingRouter` in the latest picture, the broker id by the router's IPv4 in the
+  same read's broker list, and the policy site name by subnet. No waiting router is `VALIDATION`
+  on `siteId` with no broker call. The broker's `{node, site}` reply is read and dropped
+  (`IgnoredAny`). Audit: `accept`, `{site, router, route}`. D-23 is 32 names; the D-23 test
+  in `tests/it/vpn/mutations.rs` covers all five VPN mutations.

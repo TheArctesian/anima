@@ -98,6 +98,7 @@ async fn d_23_vpn_mutations_refuse_an_api_key(pool: PgPool) {
         (ROUTER_KEY, json!({ "s": home })),
         (REGISTER, json!({ "a": AUTH_ID })),
         (RENEW, json!({ "n": "mac" })),
+        (APPROVE, json!({ "s": home })),
     ] {
         let response = hub.post(Some(secret), query, variables).await;
         assert_eq!(code(&response), "FORBIDDEN", "{query}: {response}");
@@ -281,4 +282,60 @@ async fn vp_10_renew_sends_the_broker_id_of_the_named_operator_node(pool: PgPool
     assert_eq!(code(&tagged), "VALIDATION", "{tagged}");
     assert_eq!(asked(&fake), [json!({ "verb": "renew", "node": 2 })]);
     assert!(written(&pool).await.contains("vpn update"));
+}
+
+const APPROVE: &str = "mutation($s: ID!) { approveSiteRoute(siteId: $s) }";
+
+/// office1's id: the site whose router waits in `nodes_value`.
+async fn office1(hub: &Hub, token: &str) -> String {
+    let sites = data(hub, token, "{ sites { id name } }", json!({})).await;
+    let found = sites["sites"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|site| site["name"] == "office1");
+    found.unwrap()["id"].as_str().unwrap().to_owned()
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn vp_7_approve_route_writes_an_audit_entry(pool: PgPool) {
+    let fake = answering(|_| ok(&json!({ "node": 9, "site": "office1" })));
+    let (hub, token, _, reader) = hub_over(&pool, &fake).await;
+    let site = office1(&hub, &token).await;
+
+    let approved = data(&hub, &token, APPROVE, json!({ "s": site })).await;
+    reader.abort();
+
+    assert_eq!(approved["approveSiteRoute"], true);
+    assert_eq!(
+        asked(&fake),
+        [json!({ "verb": "approve-route", "node": 9, "site": "office1" })]
+    );
+    let stored = written(&pool).await;
+    assert!(
+        stored
+            .contains(r#"{"site": "office1", "route": "10.20.0.0/24", "router": "router-office"}"#),
+        "{stored}"
+    );
+    assert!(stored.contains("vpn accept"), "{stored}");
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn r_055_approve_route_refuses_a_router_of_another_site(pool: PgPool) {
+    let fake = answering(|_| refusal("not-allowed", "the node does not qualify for this verb"));
+    let (hub, token, home, reader) = hub_over(&pool, &fake).await;
+    let site = office1(&hub, &token).await;
+
+    let refused = hub.post(Some(&token), APPROVE, json!({ "s": site })).await;
+    let none_waits = hub.post(Some(&token), APPROVE, json!({ "s": home })).await;
+    reader.abort();
+
+    assert_eq!(code(&refused), "VALIDATION", "{refused}");
+    assert_eq!(code(&none_waits), "VALIDATION", "{none_waits}");
+    assert_eq!(
+        asked(&fake).len(),
+        1,
+        "home has no waiting router, so no broker call"
+    );
+    assert!(!written(&pool).await.contains("vpn accept"));
 }
