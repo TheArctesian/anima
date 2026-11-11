@@ -454,7 +454,7 @@ How it operates:
 
 VPS security:
 
-- **VPS-001.** SSH to the VPS must use keys only. Disable password login and root login.
+- **VPS-001.** SSH to the VPS must use keys only. Disable password login and root login. SSH reaches the VPS only through the VPN interface, and from the hub container (VP-13): the hub may open SSH to the VPS's VPN address, so the VPS can be a device in Anima.
 - **VPS-002.** The VPS firewall must permit only 443/tcp (Headscale and DERP), 3478/udp (STUN) and 41641/udp (WireGuard). All other ports are closed to the internet.
 - **VPS-003.** The Headscale administration must be available only on the VPN.
 - **VPS-004.** The VPS must install security updates automatically.
@@ -476,7 +476,7 @@ The operator owns the domain `anima.ing`. Cloudflare holds its DNS.
 - **DNS-002.** The hub must use a Let's Encrypt certificate for `hub.anima.ing`. Get it with the DNS-01 challenge through the Cloudflare API, because the hub has no public port. Renew it automatically. This satisfies SEC-001 with a certificate that the client trusts without a pinned exception.
 - **DNS-003.** The Cloudflare API token for DNS-01 must have only the permission "Zone DNS Edit" for `anima.ing`. Keep it in a Docker secret (SEC-004 rules apply). Do not log it.
 - **DNS-004.** The `hs.anima.ing` and `hub.anima.ing` records must not be proxied. Cloudflare cannot proxy WireGuard, STUN or a VPN address.
-- **DNS-005.** `hub.anima.ing` points to a private address. A connection from outside the VPN must fail. This keeps SEC-008: the public record shows the name and a VPN address only.
+- **DNS-005.** `hub.anima.ing` points to a private address. A connection from outside the VPN must fail. This keeps SEC-008: the public record shows the name and a VPN address only. The host firewall drops every packet for the VPS's own VPN addresses that does not arrive on the VPN interface or loopback, with one exception (VP-13): the hub container's fixed address on a Docker bridge may reach the VPS's VPN address on 22/tcp and ICMP echo (rate-limited), and no other port.
 - **DNS-006.** Headscale `dns.base_domain` must be `net.anima.ing`. It must not be `anima.ing`, because Headscale does not permit a base domain that contains the `server_url` host. Device names under `net.anima.ing` do not have public records.
 - **DNS-007.** `releases.anima.ing` must be the custom domain of the R2 bucket `anima-releases`. `updates.anima.ing` and its redirect rule are removed (changed by R-107).
 - **DNS-008.** The operator must confirm each change to the Cloudflare account or the `anima.ing` zone, as for the VPS (VPS-005).

@@ -41,6 +41,8 @@ Phase 3 changes these items:
 - **P3-003.** Every new outbound connection of the hub (webhook, ntfy, SMTP, Apprise, RDAP) goes through one
   path in the leaf `targets`: resolve the name, check every address against the target rule (R-032) and the
   deny list `ANIMA_PROBE_DENY` (R-030), connect only to a checked address, and never resolve the name again.
+  The deny list does not hold the hub's VPN address (VP-13, 2026-11-11); the host firewall limits the hub
+  to 22/tcp and ICMP echo there, so a notification to it fails at the firewall.
   A redirect is refused, or checked again as a new target where this plan permits it (D-17, D-29). WP-41
   moves the resolver from `checks/probe/resolve.rs` into `targets` for this.
 - **P3-004.** Every new secret is sealed with `credentials::Vault` and a fixed context (R-010): notification
@@ -206,7 +208,7 @@ WP-52 delivers the files and steps. The programme orchestrator asks before it ap
 | --- | --- | --- |
 | Hub image | A bun stage builds `apps/client` and copies `build/` to `/usr/share/anima/web`. The binary stage is unchanged (R-031). Built on the Mac for amd64, as in Phase 2. | D-2, Section 1.3 |
 | Compose, hub | New variables `ANIMA_PUBLIC_ORIGIN=https://hub.anima.ing`, `ANIMA_WEB_ROOT=/usr/share/anima/web`, `ANIMA_RECORDING_ROOT=/var/lib/anima/recordings`, `ANIMA_RECORDING_MAX_BYTES`. A named volume `recordings`, read-write at that path, owned by uid 10001, mode 0700. The root file system stays read-only. | K7, D-13 |
-| Compose, deny list | `ANIMA_PROBE_DENY` adds `${ANIMA_HUB_ADDRESS}/32` (the hub's own VPN address). Notifications and RDAP use the same list (P3-003). | R-030, P3-003 |
+| Compose, deny list | `ANIMA_PROBE_DENY` adds `${ANIMA_HUB_ADDRESS}/32` (the hub's own VPN address). Notifications and RDAP use the same list (P3-003). VP-13 (2026-11-11) removed that entry again: the VPS is a device, and the host firewall admits only the hub container, on 22/tcp and ICMP echo. | R-030, P3-003, VP-13 |
 | Compose, Apprise (D-19) | Optional service `apprise` (pinned `caronc/apprise` tag, stateless mode, no config volume, read-only, `cap_drop: ALL`) on a new network `notify` (172.30.3.0/24) that has a route out. The hub joins `notify`. No published port. | NOT-002, D-19 |
 | Egress | No firewall change: the hub's `gateway` network already has a route out, and the `forward` chain accepts it. WP-52 proves with a test from the hub container that ports 443, 465 and 587 reach the internet, because some providers block outbound mail ports. | NOT-002 |
 | CORS | No change. `CLIENT_ORIGINS` stays the two Tauri origins. The web client is same-origin, so it needs no entry. Adding the web origin would only widen the rule. | D-2 |

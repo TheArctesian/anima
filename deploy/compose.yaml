@@ -168,15 +168,18 @@ services:
       ANIMA_GUACD: guacd:4822
       ANIMA_GUACD_DRIVE_ROOT: /var/lib/guacd/drives
       ANIMA_PERMITTED_NETWORKS: ${ANIMA_PERMITTED_NETWORKS:-100.64.0.0/10}
-      # Checks and channels never reach the hub's own networks, the hub's VPN address or the VPS
-      # public address, so a device entry cannot reach PostgreSQL, guacd or the host. The notify
+      # Checks and channels never reach the hub's own networks or the VPS public address, so a
+      # device entry cannot reach PostgreSQL, guacd or the host's public side. The hub's VPN
+      # address (ANIMA_HUB_ADDRESS, 100.64.0.1) is not in the list (VP-13): the VPS is a device,
+      # and the host firewall lets only this container's gateway address reach it, on 22/tcp and
+      # ICMP echo (deploy/headscale/vps/nftables.conf, `hub_source`). The notify
       # network is denied except the Apprise address 172.30.3.10: the eight CIDRs below cover
       # 172.30.3.0/24 without it, so the hub can still send to its own Apprise (NET-001, E-1).
       # Apprise's onward traffic is outside this list. The allow list and the attachment reject
       # do not contain it: a service URL parameter such as `template` still makes Apprise fetch
       # any URL. Containment is the host firewall rule for 172.30.3.10, a required live step
       # before Apprise runs (README, Phase 3 operator changes).
-      ANIMA_PROBE_DENY: ${ANIMA_HUB_SUBNET:-172.30.0.0/24},${ANIMA_DATABASE_SUBNET:-172.30.1.0/24},${ANIMA_VPS_PUBLIC_ADDRESS:?set to the VPS public IPv4}/32,${ANIMA_LOCALAPI_SUBNET:-172.30.2.0/24},${ANIMA_HUB_ADDRESS:?set ANIMA_HUB_ADDRESS to the hub's VPN address}/32,172.30.3.0/29,172.30.3.8/31,172.30.3.11/32,172.30.3.12/30,172.30.3.16/28,172.30.3.32/27,172.30.3.64/26,172.30.3.128/25
+      ANIMA_PROBE_DENY: ${ANIMA_HUB_SUBNET:-172.30.0.0/24},${ANIMA_DATABASE_SUBNET:-172.30.1.0/24},${ANIMA_VPS_PUBLIC_ADDRESS:?set to the VPS public IPv4}/32,${ANIMA_LOCALAPI_SUBNET:-172.30.2.0/24},172.30.3.0/29,172.30.3.8/31,172.30.3.11/32,172.30.3.12/30,172.30.3.16/28,172.30.3.32/27,172.30.3.64/26,172.30.3.128/25
       # Tailscale status and ping checks go through the proxy; empty makes them Unknown (K7).
       ANIMA_TAILSCALE_LOCALAPI: ${ANIMA_TAILSCALE_LOCALAPI:-localapi:8080}
       # The VPN broker's socket (R-055, VP-7): keys, registration and route approval. With no
@@ -225,8 +228,15 @@ services:
       - "${ANIMA_HUB_ADDRESS:?set ANIMA_HUB_ADDRESS to the hub's VPN address}:443:8443"
     networks:
       database: {}
+      # The default route, so the source address of everything the hub sends to the host (VP-13).
+      # database and localapi are internal and have no gateway; of gateway and notify, Docker
+      # picks the highest gw_priority (Docker 28+, which harden.sh requires), then the network
+      # name. Today the name alone picks deploy_gateway; the priority keeps it so, whatever the
+      # project name or a later network, and the fixed address keeps the source 172.30.0.10 on
+      # every recreate. The host firewall's `hub_source` is this address: change both together.
       gateway:
         ipv4_address: ${ANIMA_HUB_IP:-172.30.0.10}
+        gw_priority: 1
       localapi: {}
       # Joined whether or not Apprise runs, so turning it on needs no hub restart (E-2). The fixed
       # address is covered by the deny list and is not the Apprise address.

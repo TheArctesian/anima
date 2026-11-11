@@ -493,6 +493,7 @@ B0 rulings ── B1 broker nodes ── B2 merge ── B4 keys + register ─�
 | VP-10 | A sixth broker verb `renew` | Yes (2026-11-10). `renewVpnKey` is built in B4. |
 | VP-11 | Tests on the VPS | Yes: the VPS is a development system, so the broker test install and runs may use it. Each live change is still announced in chat before it runs. |
 | VP-12 | `renew` after a long expiry | The broker's `renew` refuses a node whose key expired more than 30 days ago (exactly 30 days is still allowed): `not-allowed`, "the key expired more than 30 days ago; enrol the computer again" (2026-11-11). A key that has not expired, or never expires, still renews. |
+| VP-13 | The VPS as a device (2026-11-11) | Yes, through the narrowest exception. `ANIMA_PROBE_DENY` drops `${ANIMA_HUB_ADDRESS}/32` (100.64.0.1); the Docker networks and the VPS public address stay denied. The VPS firewall gets one exception before its DNS-005 drops: only the hub container's own source address (`hub_source`, 172.30.0.10 on `gateway`, the network of its default route, pinned by `gw_priority`) may reach `hub_vpn_address` (100.64.0.1), on 22/tcp and ICMP echo with the existing rate limit. Every other container, source and port (Headscale, 443, 9090, the broker, Apprise) stays blocked. VNC to the VPS is out of scope. Operator steps: `deploy/README.md`, "The VPS as a device". Amends VPS-001, DNS-005, R-030 and P3-003. |
 
 The live deployment of the broker on the VPS still needs the operator's confirmation in chat for
 each change (VPS-005), until the VP-4 change is in the spec.
