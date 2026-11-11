@@ -1783,3 +1783,8 @@ its intent.
    keeps the last picture on screen. `null` (no proxy) shows the SET-003 text with the value "Off".
 6. **A2-T2.** The sites and keys tests are in `sites/sites.svelte.test.ts` (reduced motion, MOT-040) and
    `keys/keys.svelte.test.ts` (VPN-010, VPN-011); the section behaviour is in `section.svelte.test.ts`.
+7. **A2-T3.** The page-level test (one `Vpn` read and one `VpnChanged` subscription; the card shows this device's
+   node) is `routes/devices/[id]/detail/vpn.test.ts`: the `[id]` folder is at its 12 files, and `page.test.ts` is at
+   its 300 lines. `page.test.ts` D-9 now leaves the page's own `Vpn` read out of the list of panel reads.
+8. **Base.** `crates/hub/src/vpn/tests/peers.rs` was not rustfmt-clean after the hub merge (`cargo fmt --check`
+   stopped the gates at step 1); `cargo fmt` fixed it in its own commit.
