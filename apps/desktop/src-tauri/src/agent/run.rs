@@ -1,11 +1,13 @@
 //! Runs the installed agent once (MET-019, D-10 d): an absolute program and fixed arguments, no
 //! shell, an environment that holds only the variables the agent needs, the code on standard
-//! input only, output thrown away, and a deadline after which the child is killed and reaped by
-//! its own handle, as it is when the app stops it on exit. It logs nothing (LOG-007).
+//! input only, output thrown away, and a deadline after which the child and every process it
+//! started are killed, and the child reaped, as they are when the app stops it on exit. It logs
+//! nothing (LOG-007).
 
 use std::{
     ffi::OsString,
     io::{ErrorKind, Write},
+    os::unix::process::CommandExt,
     path::Path,
     process::{Child, Command, Stdio},
     sync::atomic::{AtomicBool, Ordering},
@@ -15,6 +17,10 @@ use std::{
 
 /// The variables the agent gets from the app, when they are set: its home (where `enrol` stores
 /// the token and `install` writes the unit), and the user session bus `systemctl --user` needs.
+///
+/// `XDG_CONFIG_HOME` is cleared on purpose: the agent's home is then `$HOME/.config/anima-agent`,
+/// T6a's single place for it, which the unit's `ReadWritePaths=%E/anima-agent` names too; the
+/// agent's `install` refuses a token stored anywhere else.
 const PASSED_ON: [&str; 2] = ["XDG_RUNTIME_DIR", "DBUS_SESSION_BUS_ADDRESS"];
 
 const POLL: Duration = Duration::from_millis(20);
@@ -118,6 +124,8 @@ fn start(run: &Run<'_>) -> Result<Child, RunError> {
     let mut tries = 0;
     loop {
         let started = Command::new(run.program)
+            // Its own process group, led by the child, so a kill reaches what it started (BLD-027).
+            .process_group(0)
             .args(run.args)
             .env_clear()
             .envs(run.env.iter().map(|(name, value)| (name, value)))
@@ -154,9 +162,17 @@ fn hand_over(child: &mut Child, input: Option<&[u8]>) -> Result<(), RunError> {
     }
 }
 
-/// Kills the child through its own handle and waits for it, so no other process is touched.
+/// Kills the child's process group, which holds the child and every process it started, then
+/// reaps the child. The child is not reaped before the kill, so its pid still names its own group
+/// and no other process can hold that number; nothing outside the group is touched.
 fn reap(mut child: Child) {
-    // It may have exited already; either way the wait below reaps it.
+    if let Ok(group) = i32::try_from(child.id()) {
+        // A group that is gone is not an error: the wait below still reaps the child.
+        let _ = nix::sys::signal::killpg(
+            nix::unistd::Pid::from_raw(group),
+            nix::sys::signal::Signal::SIGKILL,
+        );
+    }
     let _ = child.kill();
     let _ = child.wait();
 }

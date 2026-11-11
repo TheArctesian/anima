@@ -51,6 +51,12 @@ fn accounts(passwd: &str) -> impl Iterator<Item = Account<'_>> {
 /// `/etc/group`; `None` when unreadable): the user's primary group, named as the user, listing
 /// no other member, and no other account's primary group. Any line that does not read means no
 /// private group, so group write is then refused (fails closed).
+///
+/// Only the files are seen, not other NSS sources (LDAP, sssd), so an account or a group
+/// member that lives elsewhere is unseen: this fails closed for an account missing from the
+/// files (no private group), and any line that does not read means no private group either.
+/// `/etc/gshadow` is not read either (only root may): its member list and a group password, with
+/// which anyone who knows it joins the group through `newgrp`, are unseen. T6a has the same limits.
 pub fn private_group(uid: u32, passwd: Option<&str>, group: Option<&str>) -> Option<u32> {
     let (passwd, group) = (passwd?, group?);
     if passwd

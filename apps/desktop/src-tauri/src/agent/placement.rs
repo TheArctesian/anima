@@ -114,7 +114,9 @@ fn check_chain(folder: &Path, by: User) -> Result<(), PlacementError> {
 }
 
 /// Whether `path` carries a POSIX access ACL (`system.posix_acl_access`); a file system without
-/// ACLs has none. One that cannot be read is not trusted.
+/// ACLs has none. One that cannot be read is not trusted. ACLs of other kinds are not seen: NFS version 4
+/// ACLs (`system.nfs4_acl`), CIFS ACLs (`system.cifs_acl`) and the native ACLs of ZFS can
+/// let another user write a folder whose mode does not show it. T6a has the same limit.
 #[cfg(target_os = "linux")]
 fn has_acl(path: &Path) -> Result<bool, PlacementError> {
     use rustix::io::Errno;
