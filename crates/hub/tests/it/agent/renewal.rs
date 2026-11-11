@@ -2,16 +2,92 @@
 //! until the renewed one is first used; a second renewal before then replaces the unused one;
 //! every token works for 365 days.
 
+use agent_core::wire::AgentToken;
 use axum::http::StatusCode;
 use chrono::{DateTime, TimeDelta, Utc};
 use serde_json::Value;
 use sqlx::PgPool;
 
-use super::harness::{Agents, PERMITTED, PVE_01, refusal};
+use super::{
+    batches::{cpu_batch, samples_of},
+    harness::{Agents, PERMITTED, PVE_01, pushing_now, refusal},
+};
 use crate::hub::start;
 
 fn refused() -> (StatusCode, String) {
     (StatusCode::UNAUTHORIZED, refusal("TOKEN_REFUSED"))
+}
+
+/// A well-formed agent token the hub never issued.
+fn never_issued(seed: u8) -> String {
+    AgentToken::from_random([seed; 32]).expose().to_owned()
+}
+
+/// pve-01's agent row, every column, and how many samples it has.
+async fn agent_rows(pool: &PgPool) -> (String, i64) {
+    let row = sqlx::query_scalar(
+        "SELECT row_to_json(a)::text FROM metrics.agents a WHERE device_id = $1::uuid",
+    )
+    .bind(PVE_01)
+    .fetch_one(pool)
+    .await
+    .unwrap();
+    (row, samples_of(pool, PVE_01).await)
+}
+
+/// T8 S3: the hash of the presented token must match; any other well-formed token is refused,
+/// on push and renewal alike, and changes nothing.
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn met_013_a_token_never_issued_is_refused_while_the_device_is_enrolled(pool: PgPool) {
+    let now = pushing_now(&pool).await;
+    let agents = Agents::at(&pool, now).await;
+    let token = agents.token_for(PVE_01).await;
+    let before = agent_rows(&pool).await;
+    let stranger = never_issued(0xa5);
+    assert_ne!(stranger, token);
+    let batch = cpu_batch(PVE_01, now, 12.5);
+    assert_eq!(agents.push(&stranger, &batch).await, refused());
+    assert_eq!(agents.renew(&stranger).await, refused());
+    assert_eq!(agent_rows(&pool).await, before);
+    assert_eq!(agents.push(&token, &batch).await.0, StatusCode::NO_CONTENT);
+}
+
+/// T8 S3: while a renewed token waits for its first use, only it and the current token work; a
+/// third well-formed token promotes nothing and is refused.
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn met_013_a_token_neither_current_nor_renewed_is_refused_while_a_renewal_waits(
+    pool: PgPool,
+) {
+    let now = pushing_now(&pool).await;
+    let agents = Agents::at(&pool, now).await;
+    let current = agents.token_for(PVE_01).await;
+    let renewed = agents.renewed(&current).await;
+    let before = agent_rows(&pool).await;
+    let stranger = never_issued(0x5a);
+    assert!(stranger != current && stranger != renewed);
+    let batch = cpu_batch(PVE_01, now, 12.5);
+    assert_eq!(agents.push(&stranger, &batch).await, refused());
+    assert_eq!(agents.renew(&stranger).await, refused());
+    assert_eq!(
+        agent_rows(&pool).await,
+        before,
+        "nothing promoted or stored"
+    );
+    assert_eq!(
+        agents.push(&renewed, &batch).await.0,
+        StatusCode::NO_CONTENT
+    );
+    assert_eq!(
+        agents.renew(&current).await,
+        refused(),
+        "promoted by its first use"
+    );
 }
 
 #[sqlx::test(
