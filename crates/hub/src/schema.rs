@@ -37,6 +37,7 @@ pub struct Query(
     notifications::graphql::Query,
     retention::graphql::Query,
     sessions::graphql::Query,
+    sessions::RecordingsQuery,
 );
 
 #[derive(MergedObject, Default)]
@@ -52,6 +53,7 @@ pub struct Mutation(
     retention::graphql::Mutation,
     sessions::graphql::Mutation,
     sessions::FilesMutation,
+    sessions::RecordingsMutation,
     sessions::WakeMutation,
     trust::graphql::Mutation,
     web_interfaces::graphql::Mutation,
@@ -161,7 +163,8 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
     .data(trust::graphql::host_key_loader(pool.clone()).delay(BATCH_WINDOW))
     .data(trust::graphql::server_certificate_loader(pool.clone()).delay(BATCH_WINDOW))
     .data(live.sightings().clone())
-    // sessions (R-032): `Session.recording` and the recording storage `startSession` checks
+    // sessions (R-032): `Session.recording`, and the recording storage `startSession` checks
+    // and `deleteRecording` removes files from
     .data(sessions::graphql::recording_loader(pool.clone()).delay(BATCH_WINDOW))
     .data(recording(&config))
     .data(live)
@@ -175,7 +178,8 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
 }
 
 /// The recording storage from the hub's configuration (K7 `ANIMA_RECORDING_ROOT`,
-/// `ANIMA_RECORDING_MAX_BYTES`): what `startSession` checks and the tunnels record to.
+/// `ANIMA_RECORDING_MAX_BYTES`): what `startSession` checks, the tunnels record to and
+/// `deleteRecording` removes files from.
 #[must_use]
 pub(crate) fn recording(config: &Config) -> sessions::Recording {
     sessions::Recording {

@@ -48,6 +48,7 @@ pub use live::{EndCause, Live, Redeemed, Refused, Tunnel};
 pub use model::{
     EndReason, FieldError, Protocol, Session, SessionChange, SessionEnd, UnknownValue,
 };
+pub use recording::{RecordingsMutation, RecordingsQuery};
 pub use serving::{Recording, Serving};
 pub use start::{DEFAULT_DPI, DisplayRequest, StartRequest, Waking, start};
 pub use terminal::terminal_router;

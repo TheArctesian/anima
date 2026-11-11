@@ -1278,12 +1278,12 @@ enum RecordingState {
   STOPPED
 }
 
-enum RecordingFormat @pending {
+enum RecordingFormat {
   GUACAMOLE
   ASCIICAST
 }
 
-type Recording @pending {
+type Recording {
   id: ID!
   sessionId: ID!
   deviceId: ID
@@ -1299,12 +1299,12 @@ type Recording @pending {
   expiresAt: DateTime!
 }
 
-type RecordingEdge @pending {
+type RecordingEdge {
   cursor: String!
   node: Recording!
 }
 
-type RecordingConnection @pending {
+type RecordingConnection {
   edges: [RecordingEdge!]!
   pageInfo: PageInfo!
 }
@@ -1523,7 +1523,7 @@ type Query {
   notificationSettings: NotificationSettings!
   deliveries(channelId: ID, first: Int = 50, after: String): DeliveryConnection!
   retention: [RetentionPeriod!]!
-  recordings(deviceId: ID, first: Int = 50, after: String): RecordingConnection! @pending
+  recordings(deviceId: ID, first: Int = 50, after: String): RecordingConnection!
 
   # Phase 3: builds (WP-36, R-107)
   "Newest first (BLD-080)."
@@ -1616,9 +1616,9 @@ type Mutation {
   setRetention(subject: RetentionSubject!, days: Int!): RetentionPeriod!
 
   "A ticket for the playback tunnel (K4 §12). Login or browser token only (D-23, R-100)."
-  openRecording(id: ID!): SessionTicket! @pending
+  openRecording(id: ID!): SessionTicket!
   "Deletes the key first, then the file (D-13). Login or browser token only (D-23, R-100)."
-  deleteRecording(id: ID!): ID! @pending
+  deleteRecording(id: ID!): ID!
 
   # Phase 3: builds (WP-36, R-107)
   "One queued job for each target; VALIDATION for a version that is not new (BLD-001, BLD-002). Login or browser token only (D-23, R-107)."

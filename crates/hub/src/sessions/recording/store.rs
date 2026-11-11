@@ -3,12 +3,12 @@
 use std::collections::HashMap;
 
 use chrono::{DateTime, Utc};
-use sqlx::{FromRow, PgExecutor};
+use sqlx::{FromRow, PgConnection, PgExecutor};
 
 use super::{
     Error,
     format::Format,
-    model::{self, RecordingState, StopReason, Stored},
+    model::{self, Catalogued, Position, RecordingState, StopReason, Stored},
 };
 use crate::{
     credentials::Sealed,
@@ -161,7 +161,12 @@ impl TryFrom<RecordingRow> for Stored {
     }
 }
 
-/// The recording with this id and its sealed key, for playback (K4 §12).
+/// The columns of a stored recording, with its sealed key.
+const STORED_COLUMNS: &str = "id, session_id, device_id, device_name, protocol, format, \
+                              key_sealed, started_at, ended_at, size_bytes, complete, \
+                              stopped_reason, expires_at";
+
+/// The recording with this id and its sealed key, whether or not the catalogue shows it.
 #[cfg_attr(
     not(test),
     expect(dead_code, reason = "playback (WP-48 T6) is the first caller")
@@ -170,13 +175,153 @@ pub(in crate::sessions) async fn get<'e>(
     db: impl PgExecutor<'e>,
     id: RecordingId,
 ) -> Result<Option<Stored>, Error> {
-    let row: Option<RecordingRow> = sqlx::query_as(
-        "select id, session_id, device_id, device_name, protocol, format, key_sealed, \
-                started_at, ended_at, size_bytes, complete, stopped_reason, expires_at \
-         from sessions.recordings where id = $1",
-    )
+    let row: Option<RecordingRow> = sqlx::query_as(&format!(
+        "select {STORED_COLUMNS} from sessions.recordings where id = $1"
+    ))
     .bind(id)
     .fetch_optional(db)
     .await?;
     row.map(Stored::try_from).transpose()
+}
+
+/// The recording with this id and its sealed key when the catalogue shows it at `now`: what
+/// playback reads again as it redeems a ticket, so a recording deleted, or ended and expired,
+/// since the ticket was issued is not played (K4 §12, G-7, D-25).
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "playback (WP-48 T6) reads the row again on redeem"
+    )
+)]
+pub(in crate::sessions) async fn playable<'e>(
+    db: impl PgExecutor<'e>,
+    id: RecordingId,
+    now: DateTime<Utc>,
+) -> Result<Option<Stored>, Error> {
+    let row: Option<RecordingRow> = sqlx::query_as(&format!(
+        "select {STORED_COLUMNS} from sessions.recordings where {shown} and id = $2",
+        shown = shown(),
+    ))
+    .bind(now)
+    .bind(id)
+    .fetch_optional(db)
+    .await?;
+    row.map(Stored::try_from).transpose()
+}
+
+/// The columns of a catalogued recording, without the sealed key.
+const CATALOGUED_COLUMNS: &str = "id, session_id, device_id, device_name, protocol, format, \
+                                  started_at, ended_at, size_bytes, complete, expires_at";
+
+#[derive(FromRow)]
+struct CataloguedRow {
+    id: RecordingId,
+    session_id: SessionId,
+    device_id: Option<DeviceId>,
+    device_name: String,
+    protocol: String,
+    format: String,
+    started_at: DateTime<Utc>,
+    ended_at: Option<DateTime<Utc>>,
+    size_bytes: i64,
+    complete: bool,
+    expires_at: DateTime<Utc>,
+}
+
+impl TryFrom<CataloguedRow> for Catalogued {
+    type Error = Error;
+
+    fn try_from(row: CataloguedRow) -> Result<Self, Error> {
+        Ok(Self {
+            id: row.id,
+            session: row.session_id,
+            device: row.device_id,
+            device_name: row.device_name,
+            protocol: row.protocol.parse().map_err(|_| Error::StoredValue)?,
+            format: model::format_from_stored(&row.format).ok_or(Error::StoredValue)?,
+            started_at: row.started_at,
+            ended_at: row.ended_at,
+            size_bytes: u64::try_from(row.size_bytes).map_err(|_| Error::StoredValue)?,
+            complete: row.complete,
+            expires_at: row.expires_at,
+        })
+    }
+}
+
+/// The SQL condition "this recording has ended", on a row of `sessions.recordings` not given
+/// an alias: its own end is written, or its session has ended. A row whose end failed to
+/// write, or that a hub crash left open, so ends with its session; at start the hub ends
+/// every session the crash left open (`close_stale`). Live means not ended.
+const ENDED: &str = "(ended_at is not null or exists (select 1 from sessions.sessions s \
+                     where s.id = recordings.session_id and s.ended_at is not null))";
+
+/// The SQL condition "the catalogue shows this recording at `$1`", the time of the request:
+/// every one not yet expired, and every live one. A live recording stays while it is
+/// written, even past its `expires_at`, as the daily retention job keeps its row and file
+/// until it ends (CR-23 e); once it has ended and expired it is gone from the catalogue and
+/// from playback, though its row waits for that job (D-25).
+fn shown() -> String {
+    format!("(not {ENDED} or expires_at > $1)")
+}
+
+/// Up to `limit` recordings shown at `now` after `after`, newest first, of `device` or of
+/// every device (K1 `recordings`, API-006).
+pub(super) async fn page<'e>(
+    db: impl PgExecutor<'e>,
+    (device, after): (Option<DeviceId>, Option<Position>),
+    limit: i64,
+    now: DateTime<Utc>,
+) -> Result<Vec<Catalogued>, Error> {
+    let rows: Vec<CataloguedRow> = sqlx::query_as(&format!(
+        "select {CATALOGUED_COLUMNS} from sessions.recordings \
+         where {shown} and ($2::uuid is null or device_id = $2) \
+           and ($3::timestamptz is null or (started_at, id) < ($3, $4::uuid)) \
+         order by started_at desc, id desc limit $5",
+        shown = shown(),
+    ))
+    .bind(now)
+    .bind(device)
+    .bind(after.map(|position| position.started_at))
+    .bind(after.map(|position| position.id))
+    .bind(limit)
+    .fetch_all(db)
+    .await?;
+    rows.into_iter().map(Catalogued::try_from).collect()
+}
+
+/// The recording with this id, without its key, when it is shown at `now`. The row is
+/// locked `for key share` until `tx` ends, so a delete waits for it: an open that read the
+/// row commits its ticket and `recording.view` before the delete can withdraw it (G-7). The
+/// lock does not block updates of the row (the writer's end, the expiry job).
+pub(super) async fn catalogued(
+    tx: &mut PgConnection,
+    id: RecordingId,
+    now: DateTime<Utc>,
+) -> Result<Option<Catalogued>, Error> {
+    let row: Option<CataloguedRow> = sqlx::query_as(&format!(
+        "select {CATALOGUED_COLUMNS} from sessions.recordings where {shown} and id = $2 \
+         for key share",
+        shown = shown(),
+    ))
+    .bind(now)
+    .bind(id)
+    .fetch_optional(tx)
+    .await?;
+    row.map(Catalogued::try_from).transpose()
+}
+
+/// Deletes the recording's row, and with it the only copy of its sealed key (D-13). Returns
+/// the row as it was, or `None` when there was none.
+pub(super) async fn delete<'e>(
+    db: impl PgExecutor<'e>,
+    id: RecordingId,
+) -> Result<Option<Catalogued>, Error> {
+    let row: Option<CataloguedRow> = sqlx::query_as(&format!(
+        "delete from sessions.recordings where id = $1 returning {CATALOGUED_COLUMNS}"
+    ))
+    .bind(id)
+    .fetch_optional(db)
+    .await?;
+    row.map(Catalogued::try_from).transpose()
 }
