@@ -1151,7 +1151,7 @@ plus the hub first: name, role, address, `keyText`, a tone dot (`--status-up`,
 `--status-warning`, `--status-down`) beside the word, and "Not in Anima" as text when
 `!inAnima`. `listRow` transitions. No buttons in Tier A.
 
-**`routes/settings/+page.svelte`**: after the Hub section, `<SettingsSection id="settings-vpn"
+**`routes/settings/+page.svelte`**: the last section (moved there by the interface review, MOT-007), `<SettingsSection id="settings-vpn"
 title="VPN" icon="nf-md-lan_connect" description="How the hub reaches each site, and when each
 VPN key expires."><VpnSection /></SettingsSection>`. `routes/settings/page.test.ts`: add
 `vi.mock('$lib/vpn/VpnSection.svelte', …)` beside the other section mocks (lines 27–33); the
@@ -1837,8 +1837,8 @@ its intent.
 3. **A2-T2.** `sortedNodes` ranks nodes not in Anima first, then those whose key is not NEVER or VALID
    (expiring, expired, tagged with expiry), then name.
 4. **A2-T2.** The loading placeholders are the real `SitePaths` and `NodeKeys` drawn with one placeholder row
-   each, transparent, `aria-hidden` and `inert`, so the heights are the real heights (MOT-007). The VPN section sits
-   after the Hub section, which is desktop only, so in a browser it follows Account.
+   each, transparent, `aria-hidden` and `inert`, so the heights are the real heights (MOT-007). The VPN section was
+   later moved to the end of Settings (item 9), so a late picture moves nothing below it.
 5. **A2-T2.** `VpnLive.error` shows the Retry notice only while there is no picture; a failed subscription later
    keeps the last picture on screen. `null` (no proxy) shows the SET-003 text with the value "Off".
 6. **A2-T2.** The sites and keys tests are in `sites/sites.svelte.test.ts` (reduced motion, MOT-040) and
