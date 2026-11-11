@@ -103,6 +103,8 @@ type Documents = {
     "\n  mutation CreateVpnInvite {\n    createVpnInvite {\n      key\n      expiresAt\n      steps\n    }\n  }\n": typeof types.CreateVpnInviteDocument,
     "\n  mutation CreateRouterKey($siteId: ID!) {\n    createRouterKey(siteId: $siteId) {\n      key\n      expiresAt\n      steps\n    }\n  }\n": typeof types.CreateRouterKeyDocument,
     "\n  mutation RegisterVpnNode($authId: String!) {\n    registerVpnNode(authId: $authId) {\n      name\n      address\n      keyExpiry\n    }\n  }\n": typeof types.RegisterVpnNodeDocument,
+    "\n  mutation RenewVpnKey($name: String!) {\n    renewVpnKey(name: $name) {\n      name\n      address\n      keyExpiry\n    }\n  }\n": typeof types.RenewVpnKeyDocument,
+    "\n  mutation ApproveSiteRoute($siteId: ID!) {\n    approveSiteRoute(siteId: $siteId)\n  }\n": typeof types.ApproveSiteRouteDocument,
     "\n  fragment WebInterfaceSuggestionFields on WebInterfaceSuggestion {\n    checkId\n    url\n    label\n  }\n": typeof types.WebInterfaceSuggestionFieldsFragmentDoc,
     "\n  fragment WebInterfaceFields on WebInterface {\n    id\n    deviceId\n    label\n    url\n    openIn\n    pinnedFingerprintSha256\n    pinnedAt\n  }\n": typeof types.WebInterfaceFieldsFragmentDoc,
     "\n  mutation CreateWebInterface($deviceId: ID!, $input: WebInterfaceInput!) {\n    createWebInterface(deviceId: $deviceId, input: $input) {\n      ...WebInterfaceFields\n    }\n  }\n": typeof types.CreateWebInterfaceDocument,
@@ -202,6 +204,8 @@ const documents: Documents = {
     "\n  mutation CreateVpnInvite {\n    createVpnInvite {\n      key\n      expiresAt\n      steps\n    }\n  }\n": types.CreateVpnInviteDocument,
     "\n  mutation CreateRouterKey($siteId: ID!) {\n    createRouterKey(siteId: $siteId) {\n      key\n      expiresAt\n      steps\n    }\n  }\n": types.CreateRouterKeyDocument,
     "\n  mutation RegisterVpnNode($authId: String!) {\n    registerVpnNode(authId: $authId) {\n      name\n      address\n      keyExpiry\n    }\n  }\n": types.RegisterVpnNodeDocument,
+    "\n  mutation RenewVpnKey($name: String!) {\n    renewVpnKey(name: $name) {\n      name\n      address\n      keyExpiry\n    }\n  }\n": types.RenewVpnKeyDocument,
+    "\n  mutation ApproveSiteRoute($siteId: ID!) {\n    approveSiteRoute(siteId: $siteId)\n  }\n": types.ApproveSiteRouteDocument,
     "\n  fragment WebInterfaceSuggestionFields on WebInterfaceSuggestion {\n    checkId\n    url\n    label\n  }\n": types.WebInterfaceSuggestionFieldsFragmentDoc,
     "\n  fragment WebInterfaceFields on WebInterface {\n    id\n    deviceId\n    label\n    url\n    openIn\n    pinnedFingerprintSha256\n    pinnedAt\n  }\n": types.WebInterfaceFieldsFragmentDoc,
     "\n  mutation CreateWebInterface($deviceId: ID!, $input: WebInterfaceInput!) {\n    createWebInterface(deviceId: $deviceId, input: $input) {\n      ...WebInterfaceFields\n    }\n  }\n": types.CreateWebInterfaceDocument,
@@ -582,6 +586,14 @@ export function graphql(source: "\n  mutation CreateRouterKey($siteId: ID!) {\n 
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "\n  mutation RegisterVpnNode($authId: String!) {\n    registerVpnNode(authId: $authId) {\n      name\n      address\n      keyExpiry\n    }\n  }\n"): (typeof documents)["\n  mutation RegisterVpnNode($authId: String!) {\n    registerVpnNode(authId: $authId) {\n      name\n      address\n      keyExpiry\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation RenewVpnKey($name: String!) {\n    renewVpnKey(name: $name) {\n      name\n      address\n      keyExpiry\n    }\n  }\n"): (typeof documents)["\n  mutation RenewVpnKey($name: String!) {\n    renewVpnKey(name: $name) {\n      name\n      address\n      keyExpiry\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation ApproveSiteRoute($siteId: ID!) {\n    approveSiteRoute(siteId: $siteId)\n  }\n"): (typeof documents)["\n  mutation ApproveSiteRoute($siteId: ID!) {\n    approveSiteRoute(siteId: $siteId)\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */

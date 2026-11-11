@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { brokerReason, keyText, keyTone, pathLabel, readAgo, sortedNodes, stateLabel } from './picture';
+import { brokerReason, keyText, keyTone, pathLabel, readAgo, renewable, sortedNodes, stateLabel } from './picture';
 import { node, NOW } from './vpn.fixture';
 
 const at = (days: number): string => new Date(NOW.getTime() + days * 86_400_000).toISOString();
@@ -55,4 +55,12 @@ it('VP-7: a ready broker has no reason; the others say why the actions are off',
     expect(brokerReason('NOT_SET')).toBe('Enrolment needs the broker (ANIMA_VPN_BROKER).');
     expect(brokerReason('NOT_INSTALLED')).toBe('The broker is not installed on the VPS (vpn.md Section 11).');
     expect(brokerReason('FAILED')).toContain('could not reach the broker');
+});
+
+it('BD-17: only an untagged operator computer with an expiring or expired key can be renewed', () => {
+  expect(renewable(node({ keyState: 'EXPIRING' }))).toBe(true);
+  expect(renewable(node({ keyState: 'EXPIRED' }))).toBe(true);
+  expect(renewable(node({ keyState: 'VALID' }))).toBe(false);
+  expect(renewable(node({ keyState: 'EXPIRED', tags: ['tag:agent'], role: 'AGENT' }))).toBe(false);
+  expect(renewable(node({ keyState: 'EXPIRED', role: 'ROUTER' }))).toBe(false);
 });

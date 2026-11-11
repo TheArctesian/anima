@@ -68,8 +68,8 @@
   </div>
 {:else if picture === undefined}
   <div class="waiting" aria-hidden="true" inert>
-    <SitePaths sites={[WAITING_SITE]} broker="READY" onEnrol={() => undefined} reasonId={REASON_ID} />
-    <NodeKeys hub={WAITING_NODE} nodes={[]} {now} broker="READY" onEnrol={() => undefined} reasonId={REASON_ID} />
+    <SitePaths sites={[WAITING_SITE]} broker="READY" onEnrol={() => undefined} approve={enrol.approve} reasonId={REASON_ID} />
+    <NodeKeys hub={WAITING_NODE} nodes={[]} {now} broker="READY" onEnrol={() => undefined} renew={enrol.renew} reasonId={REASON_ID} />
   </div>
 {:else if picture === null}
   <SettingRow label="VPN status">
@@ -82,8 +82,8 @@
     Off
   </SettingRow>
 {:else}
-  <SitePaths sites={picture.sites} broker={picture.broker} onEnrol={(siteId) => { enrolling = siteId; }} reasonId={REASON_ID} />
-  <NodeKeys hub={picture.hub} nodes={picture.nodes} {now} broker={picture.broker} onEnrol={() => { enrolling = null; }} reasonId={REASON_ID} />
+  <SitePaths sites={picture.sites} broker={picture.broker} onEnrol={(siteId) => { enrolling = siteId; }} approve={enrol.approve} reasonId={REASON_ID} />
+  <NodeKeys hub={picture.hub} nodes={picture.nodes} {now} broker={picture.broker} onEnrol={() => { enrolling = null; }} renew={enrol.renew} reasonId={REASON_ID} />
   {#if brokerReason(picture.broker) !== null}
     <p class="reason" id={REASON_ID}>{brokerReason(picture.broker)}</p>
   {/if}

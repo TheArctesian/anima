@@ -22,7 +22,7 @@ afterEach(async () => {
 
 function show(nodes: ReturnType<typeof node>[]): HTMLElement[] {
   const hub = node({ name: 'hub', address: '100.64.0.1', role: 'HUB', keyState: 'NEVER', keyExpiry: null, inAnima: false, device: null });
-  app = mount(NodeKeys, { target: document.body, props: { hub, nodes, now: NOW, broker: 'READY', onEnrol: () => undefined, reasonId: 'why' } });
+  app = mount(NodeKeys, { target: document.body, props: { hub, nodes, now: NOW, broker: 'READY', onEnrol: () => undefined, renew: () => Promise.reject(new Error('not called')), reasonId: 'why' } });
   flushSync();
   return [...document.querySelectorAll<HTMLElement>('ul[aria-label="VPN nodes"] > li')];
 }

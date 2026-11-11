@@ -1974,3 +1974,30 @@ A security review of the broker found the points below; each fix has regression 
   on `siteId` with no broker call. The broker's `{node, site}` reply is read and dropped
   (`IgnoredAny`). Audit: `accept`, `{site, router, route}`. D-23 is 32 names; the D-23 test
   in `tests/it/vpn/mutations.rs` covers all five VPN mutations.
+
+### Client lane (B4b, B5)
+
+- **B4b/B5: one `enrol/api.ts` holds all five mutations** (`createVpnInvite`, `createRouterKey`, `registerVpnNode`, `renewVpnKey`,
+  `approveSiteRoute`) as `enrolApi(hub)`, so the domain has two clients (`vpnApi` reads, `enrolApi` writes). `approve` answers
+  `{ ok: true, value: true }`; a `false` from the hub is an `INTERNAL` "The hub did not approve the route." (never an approval).
+- **B4b: the `Vpn` document now reads `broker`, `waitingRoutes` and `waitingRouter`**, so the picture carries what the buttons need.
+  `VpnSection` owns the open/closed state of `EnrolModal` (`null` = a computer, a site id = its router); `SitePaths` and `NodeKeys`
+  only call `onEnrol`.
+- **B4b: the pre-auth key has a one-hour life, so `Enrolment` counts down to the hub's `expiresAt` itself.** `clearTime` from the
+  agent countdown caps a code at 15 minutes (MET-012) and does not apply. `secondsLeft` and `clockText` are reused.
+- **B4b: `KeySecret` got an optional `label` prop** (default "API key") so the pre-auth key is not labelled as an API key. This is
+  the only edit outside `lib/vpn/`.
+- **B4b: the modal's scrim does not close it while a key shows** (`closeOnScrim={key === null}`); Escape and Close do, and drop the key
+  from state and DOM in the same task (`flushSync`, as `NewKeyDialog`).
+- **B4b: a router key is one-use**, so when the site's `waitingRouter` appears in the live picture the key leaves the page
+  (`keyUsed`) and the modal shows the Approve row.
+- **B4b: the enrolment buttons are `aria-disabled` with `aria-describedby` to one reason line under the node list** when the broker is
+  not `READY`. The line comes from `brokerReason`: the two spec texts for `NOT_SET` and `NOT_INSTALLED`, and one for `FAILED`
+  ("The hub could not reach the broker on its last call. Try again in a minute.").
+- **B5: Approve is `sites/ApproveRoute.svelte`**, used in the site row and in the modal. It confirms with `ConfirmModal` and then says
+  "Approved. This can take one minute." in a reserved line; the row then changes through `vpnChanged` (BD-16).
+- **B5: Renew is `keys/RenewKey.svelte`, with no confirmation**, on a node that `renewable` accepts: role `CLIENT`, no tags, key
+  `EXPIRING` or `EXPIRED`. The hub still checks "user operator" and answers `VALIDATION` for another node; the hub's message shows in the row.
+- **Not done:** the `MOT-040` reduced-motion test for the enrolment modal (the modal's own reduced-motion behaviour is tested in
+  `lib/forms/modal`; the content only uses the `fade` role). The 360 px layout was not measured in a browser: the new rows are
+  full-width flex-wrap lines inside the 28 rem site pattern, and the key steps wrap with `overflow-wrap: anywhere`.

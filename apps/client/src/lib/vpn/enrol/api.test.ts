@@ -32,3 +32,28 @@ it('VP-7: a hub refusal passes through as the typed error', async () => {
   const fake = fakeHub({ CreateVpnInvite: refusal });
   expect(await enrolApi(fake.hub).createInvite()).toEqual({ ok: false, error: refusal });
 });
+
+it('BD-17: renew sends the node name and returns the new expiry', async () => {
+  const node = { name: 'mac', address: '100.64.0.9', keyExpiry: '2027-03-01T00:00:00Z' };
+  const fake = fakeHub({ RenewVpnKey: { renewVpnKey: node } });
+  expect(await enrolApi(fake.hub).renew('mac')).toEqual({ ok: true, value: node });
+  expect(fake.requests).toEqual([{ operation: 'RenewVpnKey', variables: { name: 'mac' } }]);
+});
+
+it('R-055: approve sends the site id and is true when the hub accepts', async () => {
+  const fake = fakeHub({ ApproveSiteRoute: { approveSiteRoute: true } });
+  expect(await enrolApi(fake.hub).approve('site-home')).toEqual({ ok: true, value: true });
+  expect(fake.requests).toEqual([{ operation: 'ApproveSiteRoute', variables: { siteId: 'site-home' } }]);
+});
+
+it('R-055: a false answer is an error, not an approval', async () => {
+  const fake = fakeHub({ ApproveSiteRoute: { approveSiteRoute: false } });
+  const result = await enrolApi(fake.hub).approve('site-home');
+  expect(result.ok).toBe(false);
+});
+
+it('R-055: a not-allowed refusal passes through with its details', async () => {
+  const refusal: HubError = { code: 'VALIDATION', message: 'Another router serves this subnet.', fields: [{ field: 'siteId', message: 'Another router serves this subnet.' }] };
+  const fake = fakeHub({ ApproveSiteRoute: refusal });
+  expect(await enrolApi(fake.hub).approve('site-home')).toEqual({ ok: false, error: refusal });
+});

@@ -128,7 +128,7 @@ it('VPN-001: when the site has a waiting router the key leaves the page and the 
   flushSync();
   await settled();
   expect(documentHolds(KEY)).toBe(false);
-  expect(text(dialog())).toContain('The router lab-router is connected and offers 192.168.1.0/24. Its route waits for approval.');
+  expect(text(dialog())).toContain('lab-router offers 192.168.1.0/24 and waits for approval.');
 });
 
 it('vpn.md 6B: the register view warns about an ID from a message and sends the typed ID', async () => {

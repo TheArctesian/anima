@@ -2,6 +2,9 @@ import type { HubError } from '$lib/hub/hub';
 import { secondsLeft } from '$lib/metrics/agent/countdown';
 import type { EnrolApi, VpnKey, VpnRegistration } from './api';
 
+/** The hub calls the modal makes; it passes `enrolApi` of its hub. */
+export type EnrolCalls = Pick<EnrolApi, 'createInvite' | 'createRouterKey' | 'register'>;
+
 /** What the modal shows: the choice, a key with its steps, the auth ID field, or the registered computer. */
 export type EnrolView = 'choose' | 'key' | 'register' | 'registered';
 
@@ -49,7 +52,7 @@ export class Enrolment {
   private cancelCopied: () => void = () => undefined;
 
   constructor(
-    private readonly api: EnrolApi,
+    private readonly api: EnrolCalls,
     private readonly env: EnrolEnv,
   ) {}
 
@@ -63,7 +66,7 @@ export class Enrolment {
     return this.makeKey(() => this.api.createInvite());
   }
 
-  private async makeKey(call: () => ReturnType<EnrolApi['createInvite']>): Promise<void> {
+  private async makeKey(call: () => ReturnType<EnrolCalls['createInvite']>): Promise<void> {
     if (this.busy) return;
     this.clear();
     const epoch = this.epoch;

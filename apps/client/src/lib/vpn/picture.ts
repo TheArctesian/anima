@@ -70,6 +70,11 @@ export function keyTone(state: KeyState): 'up' | 'warning' | 'down' {
   }
 }
 
+/** An untagged operator computer whose key is expiring or expired: the broker can renew it (BD-17). */
+export function renewable(node: Pick<VpnNode, 'role' | 'tags' | 'keyState'>): boolean {
+  return node.role === 'CLIENT' && node.tags.length === 0 && (node.keyState === 'EXPIRING' || node.keyState === 'EXPIRED');
+}
+
 const needsAttention = (state: KeyState): boolean => state !== 'NEVER' && state !== 'VALID';
 
 /** Nodes not in Anima first, then those whose key needs attention, then by name. */

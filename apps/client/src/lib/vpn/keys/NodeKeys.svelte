@@ -1,8 +1,11 @@
 <script lang="ts">
   import FormButton from '$lib/forms/FormButton.svelte';
   import { listRow } from '$lib/motion/roles/transitions';
+  import type { HubResult } from '$lib/hub/hub';
   import type { BrokerState, VpnNode } from '../api';
-  import { brokerReason, keyText, keyTone, sortedNodes } from '../picture';
+  import type { VpnRegistration } from '../enrol/api';
+  import RenewKey from './RenewKey.svelte';
+  import { brokerReason, keyText, keyTone, renewable, sortedNodes } from '../picture';
 
   interface Props {
     /** The hub's own node, listed first. */
@@ -12,11 +15,13 @@
     broker: BrokerState;
     /** Opens the enrolment modal for a computer of the operator. */
     onEnrol: () => void;
+    /** Renews an operator key (BD-17). */
+    renew: (name: string) => Promise<HubResult<VpnRegistration>>;
     /** The id of the line that says why the broker actions are off. */
     reasonId: string;
   }
 
-  const { hub, nodes, now, broker, onEnrol, reasonId }: Props = $props();
+  const { hub, nodes, now, broker, onEnrol, renew, reasonId }: Props = $props();
   const reason = $derived(brokerReason(broker));
   const rows = $derived([hub, ...sortedNodes(nodes)]);
 </script>
@@ -31,6 +36,9 @@
       <span class="key {keyTone(node.keyState)}"><span class="dot" aria-hidden="true"></span>{keyText(node, now)}</span>
       {#if node !== hub && !node.inAnima}
         <span class="strange">Not in Anima</span>
+      {/if}
+      {#if renewable(node)}
+        <RenewKey {node} {renew} {now} {reason} {reasonId} />
       {/if}
     </li>
   {/each}

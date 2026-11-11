@@ -6,6 +6,7 @@
   import { clockText } from '$lib/metrics/agent/countdown';
   import { fade } from '$lib/motion/roles/transitions';
   import type { SitePath } from '../api';
+  import ApproveRoute from '../sites/ApproveRoute.svelte';
   import type { EnrolApi } from './api';
   import { Enrolment, type ClipboardSink } from './enrol.svelte';
 
@@ -117,7 +118,9 @@
             {enrolment.copied === null ? '' : enrolment.copied.ok ? 'Copied.' : 'The step could not be copied. Select it and copy it.'}
           </p>
         {:else if waiting !== null}
-          <p role="status">The router {waiting.name} is connected and offers {waiting.waitingRoutes.join(', ')}. Its route waits for approval.</p>
+          {#if site !== undefined}
+            <ApproveRoute site={site.site} router={waiting} approve={api.approve} reason={null} reasonId="" />
+          {/if}
         {/if}
       {:else if view === 'register'}
         <p id="{ids}-about">Type the ID from the new computer's own screen. Never use an ID from a message or a link.</p>

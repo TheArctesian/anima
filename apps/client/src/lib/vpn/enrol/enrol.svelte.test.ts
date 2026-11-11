@@ -1,18 +1,18 @@
 import { expect, it } from 'vitest';
 import type { HubResult } from '$lib/hub/hub';
-import type { EnrolApi, VpnKey } from './api';
-import { Enrolment, type EnrolEnv } from './enrol.svelte';
+import type { VpnKey } from './api';
+import { Enrolment, type EnrolCalls, type EnrolEnv } from './enrol.svelte';
 
 const KEY: VpnKey = { key: 'hskey-auth-abcdefghijkl-0123456789', expiresAt: '2026-11-10T13:00:00Z', steps: ['sudo tailscale up'] };
 
-function setup(change: Partial<EnrolApi> = {}, clock = { at: new Date('2026-11-10T12:00:00Z') }) {
+function setup(change: Partial<EnrolCalls> = {}, clock = { at: new Date('2026-11-10T12:00:00Z') }) {
   const copied: string[] = [];
   const env: EnrolEnv = {
     now: () => clock.at,
     clipboard: { writeText: (text) => { copied.push(text); return Promise.resolve(); } },
     later: () => () => undefined,
   };
-  const api: EnrolApi = {
+  const api: EnrolCalls = {
     createInvite: () => Promise.resolve({ ok: true, value: KEY }),
     createRouterKey: () => Promise.resolve({ ok: true, value: KEY }),
     register: () => Promise.resolve({ ok: true, value: { name: 'mac', address: '100.64.0.9', keyExpiry: null } }),
