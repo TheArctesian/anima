@@ -953,6 +953,30 @@ list` shows exactly the tags you expect.
    Do the same for the office 2 router with `10.30.0.0/24`. Approve only the one subnet that
    belongs to the router.
 
+   Then run the inventory check (VPN-013). It compares the nodes with the policy and with the
+   names you expect, and reports a foreign user, an unknown tag, a wrong expiry, an unapproved
+   route and a failed policy test. `nodes.json` holds pre-auth keys in clear text: do not keep,
+   mail or commit it, and delete both files on both machines when the check is done.
+
+   ```bash
+   # Runs on: VPS (SSH over the VPN)
+   hsctl nodes list -o json > nodes.json
+   hsctl nodes list-routes -o json > routes.json
+   ```
+
+   ```bash
+   # Runs on: operator's Mac, from the repository root
+   scp <ADMIN_USER>@<HUB_VPN_IPV4>:nodes.json <ADMIN_USER>@<HUB_VPN_IPV4>:routes.json .
+   printf '%s\n' hub home-router office2-router <MAC_NAMES> > expected.txt   # the node names you expect
+   bun deploy/headscale/bin/inventory.ts nodes.json routes.json expected.txt   # expect: inventory: ok
+   rm -f nodes.json routes.json expected.txt
+   ```
+
+   ```bash
+   # Runs on: VPS (SSH over the VPN)
+   rm -f nodes.json routes.json
+   ```
+
 5. Optional, for faster forwarding on Linux with kernel 6.2 or newer. It is not kept after a
    reboot:
 
@@ -1047,6 +1071,12 @@ On a Linux client: install Tailscale from the repository, then `sudo systemctl e
    expiry dates are about 30 days apart and one Mac with a valid key is always there to approve the
    other (step 7).
 
+6. Run the inventory check from step 5.4 (`hsctl nodes list -o json` and
+   `hsctl nodes list-routes -o json` into `nodes.json` and `routes.json`, `scp` them to the Mac,
+   `bun deploy/headscale/bin/inventory.ts nodes.json routes.json expected.txt`, delete both
+   files on both machines). Add the new Mac's name to `expected.txt` first. `nodes.json` holds
+   pre-auth keys in clear text: never keep, mail or commit it.
+
 ### C. Use the site routes and stay connected
 
 ```bash
@@ -1140,6 +1170,11 @@ Renew:
    renewal is the moment a taken-over client could ask for a tag (and with it a key that never
    expires), so check the tags every time.
 
+4. Run the inventory check from step 5.4 (`nodes.json`, `routes.json`, `scp`,
+   `bun deploy/headscale/bin/inventory.ts nodes.json routes.json expected.txt`) after each
+   renewal, and delete both files on both machines. `nodes.json` holds pre-auth keys in clear
+   text: never keep, mail or commit it.
+
 ## 8. Access rules (VPN-004)
 
 **Operator change 12 (confirm in chat first: VPS-005).** The policy is
@@ -1161,11 +1196,16 @@ tagged pre-auth key.
 
 **To change the rules:**
 
-1. Edit the policy and its `tests` block on your Mac, in the full form. Run the tests there. They are the
-   authoritative check:
+1. Edit the policy and its `tests` block on your Mac, in the full form. Run the reachability
+   table before and after the edit and read the diff: a new allowed row is a new path. Then run
+   the tests. They are the authoritative check:
 
    ```bash
    # Runs on: operator's Mac, from the repository root
+   bun deploy/headscale/bin/reach.ts > /tmp/before.md
+   # ... edit deploy/headscale/config/policy.hujson ...
+   bun deploy/headscale/bin/reach.ts > /tmp/after.md
+   diff /tmp/before.md /tmp/after.md
    bun test deploy/headscale
    ```
 
@@ -1456,7 +1496,9 @@ accepted; the design reduces it as follows.
 **Detection.** Review `hsctl nodes list`, `hsctl preauthkeys list` and `hsctl apikeys list`
 regularly against what you expect: the nodes `hub`, `home-router`, `office2-router` and two Macs, no
 unused pre-auth keys, no API keys. Any other node, any extra tag, any route you did not approve, or
-any expiry you did not set is a reason to act. Also look at the policy file on the
+any expiry you did not set is a reason to act. `bun deploy/headscale/bin/inventory.ts` does this
+comparison for the nodes, tags, expiry, routes and the policy tests (step 5.4). `nodes.json` holds
+pre-auth keys in clear text: delete it on both machines after the check. Also look at the policy file on the
 server and compare it with the repository. Automatic alerting for this is deferred work, tracked
 on [GitHub issue #1](https://github.com/TheArctesian/anima/issues/1) (R-007).
 
