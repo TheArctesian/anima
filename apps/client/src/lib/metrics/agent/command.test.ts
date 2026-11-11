@@ -106,6 +106,9 @@ describe('installCommand refuses hostile input (MET-019, LOG-007)', () => {
     'https://hub.test?x=1',
     'https://user@hub.test',
     'https://hub.test:99999x',
+    'https://hub.test:8443',
+    'https://hub.test:0443',
+    'https://hub.test:',
     'https://hub test',
     'https://hub.test\n',
     'https://$(id).test',
@@ -125,9 +128,15 @@ describe('installCommand refuses hostile input (MET-019, LOG-007)', () => {
     expect(installCommand(input({ origin, release: null, target: null }))).toEqual({ ok: false, refusal: 'origin' });
   });
 
+  it('MET-020: the origins the agent takes give a command: no port, or port 443 written out', () => {
+    for (const origin of ['https://hub.test', 'https://hub.test:443']) {
+      expect(made({ origin }).text).toContain(`--hub '${origin}' -`);
+    }
+  });
+
   it('MET-019: the code and the origin stand only inside single quotes', () => {
-    const { text } = made({ origin: 'https://hub.home.arpa:8443' });
-    expect(text).toContain("'https://hub.home.arpa:8443'");
+    const { text } = made({ origin: 'https://hub.home.arpa:443' });
+    expect(text).toContain("'https://hub.home.arpa:443'");
     const bare = outsideQuotes(text);
     expect(bare).not.toContain(CODE);
     expect(bare).not.toContain('hub.home.arpa');

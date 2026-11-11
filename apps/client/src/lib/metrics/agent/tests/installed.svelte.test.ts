@@ -54,6 +54,14 @@ describe('Install agent: an installed agent (MET-018, MET-013)', () => {
 describe('Install agent: revoke and install again (MET-013, MET-019, D-7)', () => {
   const status = (metricsStale: boolean) => ({ AgentStatus: { device: { id: 'd1', metricsSource: 'AGENT', metricsStale } } });
 
+  it('MET-013, R-105: the revoke dialog says the VPN access stays and the Headscale node must be deleted too', async () => {
+    await show(status(false), { source: 'AGENT' });
+    await click('Revoke agent');
+    const dialog = document.querySelector('[role="dialog"]')?.textContent ?? '';
+    expect(dialog).toContain('Revoking does not remove VPN access');
+    expect(dialog).toContain('also delete its node in Headscale');
+  });
+
   it('MET-013: a refused revoke keeps the dialog open and shows the hub message', async () => {
     await show({ ...status(false), RevokeAgentToken: { code: 'FORBIDDEN', message: 'Not allowed.' } }, { source: 'AGENT' });
     await click('Revoke agent');

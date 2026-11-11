@@ -207,7 +207,7 @@
   <ConfirmModal
     open={confirming}
     title="Revoke the agent on {deviceName}?"
-    body="The agent stops sending metrics on its next push. The device keeps the Agent source, shown as stale, until you change it."
+    body="The agent stops sending metrics on its next push. The device keeps the Agent source, shown as stale, until you change it. Revoking does not remove VPN access: for a device on the VPN only for the agent, also delete its node in Headscale."
     confirmLabel="Revoke agent"
     onConfirm={async () => {
       const done = await install.revoke();

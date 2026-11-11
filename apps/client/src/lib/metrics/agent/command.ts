@@ -21,8 +21,11 @@ export interface CommandInput {
 
 /** K8 Section 3: `anima_enrol_` and the unpadded base64url of 16 bytes, which is 22 characters. */
 const CODE = /^anima_enrol_[A-Za-z0-9_-]{22}$/;
-/** An https origin: a host (letters, digits, dots, hyphens) and an optional port; no path, query, user or quote. */
-const ORIGIN = /^https:\/\/[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?(?::\d{1,5})?$/;
+/**
+ * An https origin as the agent takes it (MET-020): a host (letters, digits, dots, hyphens) on port 443, written or not; no
+ * other port, path, query, user or quote. The agent refuses any other port, so a command with one could only fail.
+ */
+const ORIGIN = /^https:\/\/[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?(?::443)?$/;
 
 const DOWNLOAD_ROOT = 'https://releases.anima.ing/agent';
 const AGENT = '~/.local/bin/anima-agent';
