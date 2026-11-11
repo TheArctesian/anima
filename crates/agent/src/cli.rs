@@ -1,5 +1,5 @@
-//! The command line: `anima-agent enrol <code|-> [--hub <origin>]` and `anima-agent run`
-//! (MET-012, MET-019).
+//! The command line: `anima-agent enrol <code|-> [--hub <origin>]`, `anima-agent run` and
+//! `anima-agent install [--system]` (MET-012, MET-019).
 
 use std::io::{BufRead, Read as _};
 
@@ -7,12 +7,12 @@ use agent_core::wire::EnrolmentCode;
 use zeroize::Zeroizing;
 
 use crate::config::origin::{Origin, OriginError};
+use crate::units::plan::Target;
 
-pub const USAGE: &str =
-    "usage: anima-agent enrol <code | -> [--hub <https origin>]\n       anima-agent run";
+pub const USAGE: &str = "usage: anima-agent enrol <code | -> [--hub <https origin>]\n       anima-agent run\n       anima-agent install [--system]";
 
 /// Printed when the code is on the command line, where `ps` and the shell history show it.
-pub const ARGV_WARNING: &str = "warning: a code on the command line shows in process lists and shell history; use: printf '%s\\n' '<code>' | anima-agent enrol -";
+pub const ARGV_WARNING: &str = "warning: a code on the command line shows in process lists and shell history; next time run `anima-agent enrol -` and paste the code at the hidden prompt";
 
 /// What the operator asked for.
 pub enum Command {
@@ -20,6 +20,8 @@ pub enum Command {
     Enrol { code: CodeSource, hub: Origin },
     /// Sample and push until stopped (K8 Sections 4 to 7).
     Run,
+    /// Write the unit that starts `run` at login or boot, and start it (MET-019, D-10).
+    Install { target: Target },
 }
 
 /// Where the enrolment code comes from: the command line, or standard input for `-`.
@@ -47,8 +49,21 @@ pub fn parse(args: impl IntoIterator<Item = String>) -> Result<Command, CliError
     match args.next().as_deref() {
         Some("run") if args.next().is_none() => Ok(Command::Run),
         Some("enrol") => enrol(args),
+        Some("install") => install(args),
         _ => Err(CliError::Usage),
     }
+}
+
+fn install(mut args: impl Iterator<Item = String>) -> Result<Command, CliError> {
+    let target = match args.next().as_deref() {
+        None => Target::User,
+        Some("--system") => Target::System,
+        Some(_) => return Err(CliError::Usage),
+    };
+    if args.next().is_some() {
+        return Err(CliError::Usage);
+    }
+    Ok(Command::Install { target })
 }
 
 fn enrol(args: impl Iterator<Item = String>) -> Result<Command, CliError> {
@@ -126,6 +141,34 @@ mod tests {
         assert!(matches!(parse(args("run")), Ok(Command::Run)));
         assert!(matches!(parse(args("run now")), Err(CliError::Usage)));
         assert!(matches!(parse(args("")), Err(CliError::Usage)));
+    }
+
+    #[test]
+    fn met_019_the_enrol_hint_never_puts_the_code_on_a_command_line() {
+        assert!(!ARGV_WARNING.contains("<code>"), "{ARGV_WARNING}");
+        assert!(!ARGV_WARNING.contains("printf"), "{ARGV_WARNING}");
+        assert!(
+            ARGV_WARNING.contains("`anima-agent enrol -` and paste the code at the hidden prompt")
+        );
+    }
+
+    #[test]
+    fn met_019_install_is_for_the_user_unless_system_is_given() {
+        assert!(matches!(
+            parse(args("install")),
+            Ok(Command::Install {
+                target: Target::User
+            })
+        ));
+        assert!(matches!(
+            parse(args("install --system")),
+            Ok(Command::Install {
+                target: Target::System
+            })
+        ));
+        for line in ["install --user", "install --system now", "install system"] {
+            assert!(matches!(parse(args(line)), Err(CliError::Usage)), "{line}");
+        }
     }
 
     #[test]

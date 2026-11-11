@@ -1,5 +1,5 @@
-# Anima agent as a systemd user unit (MET-019). The installer replaces ExecStart's path with
-# the place it copied the binary to. The agent listens on no port (MET-020).
+# Anima agent as a systemd user unit (MET-019). `anima-agent install` replaces ExecStart's path with
+# the path of the binary `anima-agent install` runs from. The agent listens on no port (MET-020).
 [Unit]
 Description=Anima agent: pushes this computer's metrics to the hub
 After=network-online.target

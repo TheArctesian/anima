@@ -5,11 +5,15 @@ use std::process::ExitCode;
 
 use anima_agent::cli::{self, CliError, CodeSource, Command};
 use anima_agent::config::home::Home;
+use anima_agent::config::private_file;
 use anima_agent::hub::enrolment::Enrolment;
 use anima_agent::hub::{HubClient, TIMEOUT};
 use anima_agent::readers::Platform;
 use anima_agent::runtime;
 use anima_agent::token_store::TokenStore;
+use anima_agent::units::install::Host;
+use anima_agent::units::step::{STEP_DEADLINE, run_step};
+use anima_agent::units::{self, plan::Target};
 use zeroize::Zeroizing;
 
 #[tokio::main]
@@ -38,6 +42,7 @@ async fn main() -> ExitCode {
             Err(error) => failure(&error),
         },
         Command::Enrol { code, hub } => enrol(code, hub, &home).await,
+        Command::Install { target } => install(target, &home),
     }
 }
 
@@ -71,6 +76,31 @@ async fn enrol(
     match enrolment.spend(code).await {
         Ok(name) => {
             eprintln!("Enrolled {name}. Start the agent with `anima-agent run`.");
+            ExitCode::SUCCESS
+        }
+        Err(error) => failure(&error),
+    }
+}
+
+fn install(target: Target, home: &Home) -> ExitCode {
+    let program = match std::env::current_exe() {
+        Ok(program) => program,
+        Err(error) => return failure(&error),
+    };
+    let host = Host {
+        platform: Platform::current(),
+        uid: match private_file::running_user() {
+            Ok(uid) => uid,
+            Err(error) => return failure(&error),
+        },
+        program: &program,
+        home,
+        now: chrono::Utc::now(),
+    };
+    let env = |name: &str| std::env::var(name).ok();
+    match units::install::install(target, &host, env, |step| run_step(step, STEP_DEADLINE)) {
+        Ok(file) => {
+            eprintln!("Installed {} and started the agent.", file.display());
             ExitCode::SUCCESS
         }
         Err(error) => failure(&error),

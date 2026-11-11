@@ -1,5 +1,6 @@
-# Anima agent as a systemd system unit (MET-019). The installer makes the `anima-agent` user
-# and group, and replaces ExecStart's path with the place it copied the binary to. The agent
+# Anima agent as a systemd system unit (MET-019). The operator makes the `anima-agent` user
+# and group first (`anima-agent install --system` prints the `useradd` command); the installer
+# fills ExecStart in with the path of the binary it runs from. The agent
 # reads /proc and /sys, runs `df` and the GPU tools, writes only its state directory, and
 # listens on no port (MET-002, MET-020). PrivateDevices stays off: nvidia-smi needs /dev/nvidia*.
 [Unit]
