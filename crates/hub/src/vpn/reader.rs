@@ -29,6 +29,9 @@ use crate::{
 
 /// How often the hub reads its VPN status.
 const INTERVAL: Duration = Duration::from_secs(60);
+/// How long a read waits for the broker's node list before it publishes without it, as long
+/// as the `LocalAPI` read may take (BD-15).
+pub(super) const BROKER_WAIT: Duration = Duration::from_secs(10);
 
 /// What the reader works with besides the proxy address.
 #[derive(Clone)]
@@ -42,7 +45,7 @@ pub struct Reading {
 }
 
 /// The broker's answer of one read; None when the broker is not set.
-type Brokered = Option<Result<BrokerView, Error>>;
+pub(super) type Brokered = Option<Result<BrokerView, Error>>;
 
 /// Reads the hub's VPN status each 60 s and publishes the picture (VPN-008); None when the
 /// `LocalAPI` proxy is not set (the vpn query then answers null). The first read is at once.
@@ -89,8 +92,8 @@ fn read_again() {
 }
 
 /// Logs only a change of the broker's state, by the fault word only (LOG-007).
-fn log_broker_change(previous: Option<BrokerState>, brokered: &Brokered) {
-    if previous == Some(broker_state(brokered)) {
+fn log_broker_change(previous: Option<BrokerState>, state: BrokerState, brokered: &Brokered) {
+    if previous == Some(state) {
         return;
     }
     match brokered {
@@ -108,18 +111,34 @@ fn broker_again() {
     tracing::info!(job = "vpn_reader", "VPN broker read again");
 }
 
-/// `NotInstalled` when the socket is not there; any other failure is `Failed`.
-fn broker_state(brokered: &Brokered) -> BrokerState {
-    match brokered {
-        None => BrokerState::NotSet,
-        Some(Ok(_)) => BrokerState::Ready,
-        Some(Err(Error::NotInstalled)) => BrokerState::NotInstalled,
-        Some(Err(_)) => BrokerState::Failed,
+/// The broker state and node list of one read. A busy broker (a mutation holds the turn, or
+/// the read did not end within [`BROKER_WAIT`]) keeps the last picture's state and list, and
+/// is `Failed` when there is none. `NotInstalled` when the socket is not there; any other
+/// failure is `Failed`.
+pub(super) fn broker_answer<'a>(
+    brokered: &'a Brokered,
+    last: Option<&'a Picture>,
+) -> (BrokerState, Option<&'a BrokerView>) {
+    match (brokered, last) {
+        (None, _) => (BrokerState::NotSet, None),
+        (Some(Ok(view)), _) => (BrokerState::Ready, Some(view)),
+        (Some(Err(Error::BrokerBusy)), Some(last)) => (last.broker, last.roster.as_ref()),
+        (Some(Err(Error::NotInstalled)), _) => (BrokerState::NotInstalled, None),
+        (Some(Err(_)), _) => (BrokerState::Failed, None),
     }
 }
 
-async fn read_broker(broker: Option<&Broker>) -> Brokered {
-    Some(broker?.nodes().await)
+/// The broker's node list, read in a task of its own that holds the turn to its end. The read
+/// waits for it at most `wait`; after that this read's answer is `BrokerBusy`, and the
+/// task ends by itself within the call limit.
+pub(super) async fn read_broker(broker: Option<&Broker>, wait: Duration) -> Brokered {
+    let broker = broker?.clone();
+    let mut task = tokio::spawn(async move { broker.nodes_if_free().await });
+    match tokio::time::timeout(wait, &mut task).await {
+        Ok(Ok(answer)) => Some(answer),
+        Ok(Err(failed)) => std::panic::resume_unwind(failed.into_panic()),
+        Err(_) => Some(Err(Error::BrokerBusy)),
+    }
 }
 
 /// Reads the status and the broker, builds and publishes the picture, then writes its new
@@ -130,10 +149,12 @@ async fn read_and_publish(localapi: &str, reading: &Reading) -> Result<(), Error
     let now = reading.clock.now();
     let (status, brokered) = tokio::join!(
         localapi::status(localapi),
-        read_broker(reading.broker.as_ref())
+        read_broker(reading.broker.as_ref(), BROKER_WAIT)
     );
+    let previous = reading.feed.latest();
+    let answer = broker_answer(&brokered, previous.as_deref());
     let built = match status {
-        Ok(status) => build_picture(&status, &brokered, &reading.pool, now).await,
+        Ok(status) => build_picture(&status, answer, &reading.pool, now).await,
         Err(error) => Err(error),
     };
     let built = match built {
@@ -143,8 +164,11 @@ async fn read_and_publish(localapi: &str, reading: &Reading) -> Result<(), Error
             return Err(error);
         }
     };
-    let previous = reading.feed.latest();
-    log_broker_change(previous.as_ref().map(|latest| latest.broker), &brokered);
+    log_broker_change(
+        previous.as_ref().map(|latest| latest.broker),
+        answer.0,
+        &brokered,
+    );
     let picture = match previous {
         Some(previous) => picture::carry(&previous, built),
         None => built,
@@ -169,7 +193,7 @@ fn keep_stale(feed: &Feed) {
 /// checks of the routers.
 async fn build_picture(
     status: &Status,
-    brokered: &Brokered,
+    (broker_state, broker): (BrokerState, Option<&BrokerView>),
     pool: &PgPool,
     now: DateTime<Utc>,
 ) -> Result<Picture, Error> {
@@ -193,8 +217,8 @@ async fn build_picture(
         devices: &devices,
         ping_checked: &ping_checked,
         now,
-        broker_state: broker_state(brokered),
-        broker: brokered.as_ref().and_then(|answer| answer.as_ref().ok()),
+        broker_state,
+        broker,
     })
 }
 

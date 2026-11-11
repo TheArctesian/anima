@@ -2,6 +2,7 @@
 //! the VPN mutations (`mutations`). Each view borrows from the shared picture, so a picture is
 //! never copied for each field.
 
+mod change;
 mod mutations;
 mod routes;
 

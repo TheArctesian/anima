@@ -15,10 +15,8 @@ use chrono::{DateTime, Utc};
 
 use super::{ApiKey, Created, Error, Wanted, create, list, revoke};
 use crate::{
-    access::{Error as AccessError, Identity, Scope, guard, login},
-    api_errors::{
-        ErrorCode, FieldError, begin, coded, commit, internal, invalid, pool, schema_dependency,
-    },
+    access::{Error as AccessError, Scope, guard::operator_only, login},
+    api_errors::{ErrorCode, FieldError, begin, coded, commit, internal, invalid, pool},
     events::Trail,
     ids::ApiKeyId,
 };
@@ -151,17 +149,6 @@ pub(in crate::access) async fn revoke_api_key(ctx: &Context<'_>, id: ID) -> Resu
     revoke(&mut tx, trail, key).await.map_err(to_graphql)?;
     commit(tx).await?;
     Ok(id)
-}
-
-/// The request's identity when its token kind may select `root`; the backstop has refused an
-/// API key already, so this holds even for a schema built without it.
-fn operator_only<'a>(ctx: &Context<'a>, root: &str) -> Result<&'a Identity> {
-    let identity = schema_dependency::<Identity>(ctx)?;
-    if guard::kind_may_select(identity.kind(), root) {
-        Ok(identity)
-    } else {
-        Err(AccessError::KindRefused.into_graphql())
-    }
 }
 
 /// The GraphQL error with its `extensions.code` (K7). A taken name is a `CONFLICT` that names

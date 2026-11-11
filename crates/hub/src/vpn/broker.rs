@@ -17,9 +17,9 @@ use ipnet::IpNet;
 use serde::{Deserialize, Deserializer, de::DeserializeOwned};
 use serde_json::{Value, json};
 use tokio::{
-    io::{AsyncBufReadExt as _, AsyncReadExt as _, AsyncWriteExt as _, BufReader},
+    io::{AsyncReadExt as _, AsyncWriteExt as _},
     net::UnixStream,
-    sync::Mutex,
+    sync::{Mutex, MutexGuard},
 };
 use zeroize::Zeroizing;
 
@@ -27,8 +27,31 @@ use super::Error;
 
 /// The longest reply line the hub reads, without its newline (BD-10).
 pub(super) const MAX_REPLY_BYTES: usize = 64 * 1024;
-/// How long one call may take, from connect to the reply line (BD-10).
-const CALL_LIMIT: Duration = Duration::from_secs(30);
+/// How long the broker waits for its lock behind the node audit before it starts
+/// (`flock -w 8` in `deploy/headscale/broker/anima-broker@.unit`).
+pub(super) const BROKER_LOCK_WAIT: Duration = Duration::from_secs(8);
+/// How long the broker waits for the request line (`READ_MS` in `broker/main.ts`).
+pub(super) const BROKER_REQUEST_READ: Duration = Duration::from_secs(5);
+/// The broker's request deadline: no Headscale change starts that could end after it
+/// (`REQUEST_MS` in `broker/main.ts`, `broker/deadline.ts`).
+pub(super) const BROKER_REQUEST_DEADLINE: Duration = Duration::from_secs(45);
+/// systemd stops a broker request that runs longer (`RuntimeMaxSec=60` in the unit).
+pub(super) const BROKER_RUNTIME_MAX: Duration = Duration::from_secs(60);
+/// Time for the reply line to cross the socket after the broker wrote it.
+const REPLY_MARGIN: Duration = Duration::from_secs(5);
+/// How long one call may take once it has the turn, from connect to the reply line (BD-10):
+/// 65 s, longer than a broker request can live, so a change the broker made is never reported
+/// as "did not answer", and the turn is never let go while a broker request still runs.
+pub(super) const CALL_LIMIT: Duration =
+    Duration::from_secs(BROKER_RUNTIME_MAX.as_secs() + REPLY_MARGIN.as_secs());
+// The broker's own worst case (lock, request line, deadline) fits in its run time limit.
+const _: () = assert!(
+    BROKER_LOCK_WAIT.as_secs() + BROKER_REQUEST_READ.as_secs() + BROKER_REQUEST_DEADLINE.as_secs()
+        <= BROKER_RUNTIME_MAX.as_secs()
+);
+/// How long a call waits for the turn behind another call; then it gives up with
+/// `BrokerBusy`, having sent nothing (BD-15).
+pub(super) const TURN_WAIT: Duration = Duration::from_secs(20);
 
 /// The broker at one socket path. Clones share one turn, so no two calls of the hub reach the
 /// socket at the same time: systemd closes a second connection at once (BD-15).
@@ -172,9 +195,11 @@ impl Broker {
         }
     }
 
-    /// Every node and the policy sites (`nodes`).
-    pub(super) async fn nodes(&self) -> Result<BrokerView, Error> {
-        self.call(&json!({ "verb": "nodes" })).await
+    /// Every node and the policy sites (`nodes`); `BrokerBusy` at once when another call holds
+    /// the turn, so the reader never queues behind a mutation (BD-15).
+    pub(super) async fn nodes_if_free(&self) -> Result<BrokerView, Error> {
+        let turn = self.turn.try_lock().map_err(|_| Error::BrokerBusy)?;
+        self.call_holding(turn, &json!({ "verb": "nodes" })).await
     }
 
     /// A one-use, one-hour key for an untagged node of the user `operator` (VPN-003).
@@ -205,9 +230,21 @@ impl Broker {
         self.call(&json!({ "verb": "renew", "node": node })).await
     }
 
-    /// Sends `request` and reads its reply, holding the turn from connect to close.
+    /// Waits at most [`TURN_WAIT`] for the turn, then sends `request` and reads its reply.
     async fn call<T: DeserializeOwned>(&self, request: &Value) -> Result<T, Error> {
-        let _turn = self.turn.lock().await;
+        let turn = tokio::time::timeout(TURN_WAIT, self.turn.lock())
+            .await
+            .map_err(|_| Error::BrokerBusy)?;
+        self.call_holding(turn, request).await
+    }
+
+    /// Sends `request` and reads its reply within [`CALL_LIMIT`], holding `_turn` from connect
+    /// to close.
+    async fn call_holding<T: DeserializeOwned>(
+        &self,
+        _turn: MutexGuard<'_, ()>,
+        request: &Value,
+    ) -> Result<T, Error> {
         let line = tokio::time::timeout(CALL_LIMIT, self.exchange(request))
             .await
             .map_err(|_| Error::BrokerTimedOut)??;
@@ -234,18 +271,25 @@ impl Broker {
 }
 
 /// The first line of `stream`, at most [`MAX_REPLY_BYTES`]; EOF before any byte, or a longer
-/// line, is unreadable.
-async fn read_line(stream: UnixStream) -> Result<Zeroizing<Vec<u8>>, Error> {
-    let limit = u64::try_from(MAX_REPLY_BYTES + 1).unwrap_or(u64::MAX);
-    let mut reader = BufReader::new(stream).take(limit);
-    let mut line = Zeroizing::new(Vec::new());
-    reader
-        .read_until(b'\n', &mut line)
-        .await
-        .map_err(|_| Error::BrokerUnreadable)?;
-    if line.last() == Some(&b'\n') {
-        line.pop();
-    }
+/// line, is unreadable. The bytes go from the socket straight into one buffer of the full size,
+/// which never grows and is zeroed when it drops, so no copy of a key is left (LOG-007).
+async fn read_line(mut stream: UnixStream) -> Result<Zeroizing<Vec<u8>>, Error> {
+    let mut line = Zeroizing::new(vec![0_u8; MAX_REPLY_BYTES + 1]);
+    let mut filled = 0;
+    let end = loop {
+        let read = stream
+            .read(&mut line[filled..])
+            .await
+            .map_err(|_| Error::BrokerUnreadable)?;
+        let newline = line[filled..filled + read].iter().position(|&b| b == b'\n');
+        filled += read;
+        match newline {
+            Some(at) => break filled - read + at,
+            None if read == 0 || filled == line.len() => break filled,
+            None => {}
+        }
+    };
+    line.truncate(end);
     if line.is_empty() || line.len() > MAX_REPLY_BYTES {
         return Err(Error::BrokerUnreadable);
     }

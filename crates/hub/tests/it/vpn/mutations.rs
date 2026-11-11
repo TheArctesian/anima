@@ -281,7 +281,9 @@ async fn vp_10_renew_sends_the_broker_id_of_the_named_operator_node(pool: PgPool
     );
     assert_eq!(code(&tagged), "VALIDATION", "{tagged}");
     assert_eq!(asked(&fake), [json!({ "verb": "renew", "node": 2 })]);
-    assert!(written(&pool).await.contains("vpn update"));
+    let stored = written(&pool).await;
+    assert!(stored.contains("vpn update"), "{stored}");
+    assert!(stored.contains(r#""brokerNode": 2}"#), "{stored}");
 }
 
 const APPROVE: &str = "mutation($s: ID!) { approveSiteRoute(siteId: $s) }";
@@ -298,7 +300,7 @@ async fn office1(hub: &Hub, token: &str) -> String {
 }
 
 #[sqlx::test(migrations = "./migrations")]
-async fn vp_7_approve_route_writes_an_audit_entry(pool: PgPool) {
+async fn vp_7_approve_route_writes_an_audit_entry_with_the_broker_node(pool: PgPool) {
     let fake = answering(|_| ok(&json!({ "node": 9, "site": "office1" })));
     let (hub, token, _, reader) = hub_over(&pool, &fake).await;
     let site = office1(&hub, &token).await;
@@ -314,7 +316,7 @@ async fn vp_7_approve_route_writes_an_audit_entry(pool: PgPool) {
     let stored = written(&pool).await;
     assert!(
         stored
-            .contains(r#"{"site": "office1", "route": "10.20.0.0/24", "router": "router-office"}"#),
+            .contains(r#"{"site": "office1", "route": "10.20.0.0/24", "router": "router-office", "brokerNode": 9}"#),
         "{stored}"
     );
     assert!(stored.contains("vpn accept"), "{stored}");

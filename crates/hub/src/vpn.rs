@@ -45,8 +45,11 @@ pub enum Error {
     },
     #[error("the broker reply is empty, longer than 64 KiB or not the expected shape")]
     BrokerUnreadable,
-    #[error("the broker did not answer in 30 seconds")]
+    #[error("the broker did not answer in 65 seconds")]
     BrokerTimedOut,
+    /// Another call of the hub held the turn; this one sent nothing (BD-15).
+    #[error("another broker call holds the turn")]
+    BrokerBusy,
     #[error("the broker connection failed")]
     BrokerConnection,
     #[error(transparent)]
@@ -73,6 +76,7 @@ impl Error {
             Self::BrokerRefused { .. } => "broker_refused",
             Self::BrokerUnreadable => "broker_unreadable",
             Self::BrokerTimedOut => "broker_timed_out",
+            Self::BrokerBusy => "broker_busy",
             Self::BrokerConnection => "broker_connection",
             Self::Devices(_) => "devices",
             Self::Checks(_) => "checks",

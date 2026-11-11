@@ -11,6 +11,7 @@ use crate::vpn::{
     BrokerState, Error, KeyState, Picture, Refusal, Role, VpnPath,
     broker::{BrokerView, NewKey, parse_reply},
     picture::{Inputs, build},
+    reader::broker_answer,
 };
 
 const KEY: &str = "REDACTED-PREAUTH-KEY";
@@ -177,4 +178,21 @@ fn vp_7_a_router_without_the_site_tag_or_a_policy_site_does_not_wait_for_it() {
     let mut odd_name = view();
     odd_name.sites[1].0 = "office 1; rm -rf /".to_owned();
     assert!(merged(&odd_name).sites[1].waiting_router.is_none());
+}
+
+#[test]
+fn bd_15_a_busy_broker_read_keeps_the_last_state_and_node_list() {
+    let last = merged(&view());
+    let busy = Some(Err(Error::BrokerBusy));
+
+    let (state, roster) = broker_answer(&busy, Some(&last));
+    assert_eq!(state, BrokerState::Ready);
+    assert_eq!(roster, Some(&view()));
+
+    assert_eq!(broker_answer(&busy, None), (BrokerState::Failed, None));
+    let failed = Some(Err(Error::BrokerTimedOut));
+    assert_eq!(
+        broker_answer(&failed, Some(&last)),
+        (BrokerState::Failed, None)
+    );
 }
