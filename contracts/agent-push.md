@@ -68,8 +68,10 @@ Request:
 - The hub marks the code used in the transaction that looks it up, before it makes the token. A second use
   fails, even when the first use failed later or its response was lost (MET-012).
 - `deviceName` is the device's name: 1 to 64 characters (so at most 256 bytes) with no control
-  character. That is the hub's own rule for a device name (`agent_core::wire::DEVICE_NAME_CHARS`), so the
-  agent keeps every name the hub can send, and a name it would not keep never costs a code (MET-012).
+  character. The hub's rule for a device name has the same length (`agent_core::wire::DEVICE_NAME_CHARS`)
+  and refuses more characters, so the agent keeps every name the hub can send. A device whose stored name
+  breaks this rule (a row older than the rule) is not enrolled: the answer is `ENROLMENT_REFUSED`, its token
+  and metrics source stay as they were, and the code is used, as any code is once tried (MET-012).
 - A successful enrolment replaces any agent token the device had, sets the device's metrics source to `agent`
   (MET-011, which stops SSH collection), and writes one event (source `metrics`, severity info) naming the
   device.
