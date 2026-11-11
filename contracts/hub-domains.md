@@ -148,6 +148,7 @@ impl Trail {
 // Retention jobs take their period (D-25): keep_partitions(db, now, events_keep: chrono::Days).
 // CR-9: drop_expired_partitions(db, now, events_keep: chrono::Days) also takes the period (wiring only).
 // CR-9: AuditTarget::Setting(&'static str) names a hub setting by its dotted name (retention.events, checks.defaults).
+// (WP-48, CR-23) AuditAction adds View ("view"), for recording.view with AuditTarget::Recording.
 ```
 
 ### Allowed domain dependencies (the import-graph gate enforces this list; REPO-004)
