@@ -1,16 +1,23 @@
 <script lang="ts">
+  import FormButton from '$lib/forms/FormButton.svelte';
   import { listRow } from '$lib/motion/roles/transitions';
-  import type { VpnNode } from '../api';
-  import { keyText, keyTone, sortedNodes } from '../picture';
+  import type { BrokerState, VpnNode } from '../api';
+  import { brokerReason, keyText, keyTone, sortedNodes } from '../picture';
 
   interface Props {
     /** The hub's own node, listed first. */
     hub: VpnNode;
     nodes: readonly VpnNode[];
     now: Date;
+    broker: BrokerState;
+    /** Opens the enrolment modal for a computer of the operator. */
+    onEnrol: () => void;
+    /** The id of the line that says why the broker actions are off. */
+    reasonId: string;
   }
 
-  const { hub, nodes, now }: Props = $props();
+  const { hub, nodes, now, broker, onEnrol, reasonId }: Props = $props();
+  const reason = $derived(brokerReason(broker));
   const rows = $derived([hub, ...sortedNodes(nodes)]);
 </script>
 
@@ -28,6 +35,9 @@
     </li>
   {/each}
 </ul>
+<div class="add">
+  <FormButton tabindex={0} aria-disabled={reason !== null} aria-describedby={reason === null ? undefined : reasonId} onclick={() => { if (reason === null) onEnrol(); }}>Add a computer to the VPN</FormButton>
+</div>
 
 <style>
   .nodes {
@@ -44,6 +54,11 @@
     gap: var(--space-1) var(--space-4);
     align-items: center;
     min-block-size: var(--target-min-desktop);
+    padding: var(--space-3) var(--space-4);
+    border-block-start: var(--border-thin) solid var(--border);
+  }
+
+  .add {
     padding: var(--space-3) var(--space-4);
     border-block-start: var(--border-thin) solid var(--border);
   }

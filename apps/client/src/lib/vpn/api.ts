@@ -10,6 +10,7 @@ void graphql(`
     role
     tags
     routes
+    waitingRoutes
     online
     lastSeen
     keyExpiry
@@ -44,10 +45,14 @@ void graphql(`
       path
       relayRegion
       hasPingCheck
+      waitingRouter {
+        ...VpnNodeFields
+      }
     }
     nodes {
       ...VpnNodeFields
     }
+    broker
   }
 `);
 
@@ -70,6 +75,7 @@ const VpnChanged = graphql(`
 /** The VPN as the hub's own node sees it (VPN-005). */
 export type VpnPicture = NonNullable<VpnQuery['vpn']>;
 export type VpnNode = VpnPicture['nodes'][number];
+export type { BrokerState } from '$lib/hub/generated/graphql';
 export type SitePath = VpnPicture['sites'][number];
 
 /** The VPN picture and its live updates through a `Hub` (CQ-045). */

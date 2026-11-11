@@ -30,6 +30,9 @@ it('MOT-040: under reduced motion a site row fades in and does not scale or move
   app = mount(SitePaths, {
     target: document.body,
     props: {
+      broker: 'READY',
+      onEnrol: () => undefined,
+      reasonId: 'why',
       get sites() {
         return state.sites;
       },

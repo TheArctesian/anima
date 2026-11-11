@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { keyText, keyTone, pathLabel, readAgo, sortedNodes, stateLabel } from './picture';
+import { brokerReason, keyText, keyTone, pathLabel, readAgo, sortedNodes, stateLabel } from './picture';
 import { node, NOW } from './vpn.fixture';
 
 const at = (days: number): string => new Date(NOW.getTime() + days * 86_400_000).toISOString();
@@ -48,4 +48,11 @@ it('SET-003: the age of a read is in seconds, minutes, hours or days', () => {
   const ago = (seconds: number) => readAgo(new Date(NOW.getTime() - seconds * 1000).toISOString(), NOW);
   expect([ago(40), ago(600), ago(7200), ago(3 * 86_400)]).toEqual(['Read 40 s ago', 'Read 10 min ago', 'Read 2 h ago', 'Read 3 days ago']);
   expect(readAgo('not a date', NOW)).toBe('Read at an unknown time');
+});
+
+it('VP-7: a ready broker has no reason; the others say why the actions are off', () => {
+    expect(brokerReason('READY')).toBeNull();
+    expect(brokerReason('NOT_SET')).toBe('Enrolment needs the broker (ANIMA_VPN_BROKER).');
+    expect(brokerReason('NOT_INSTALLED')).toBe('The broker is not installed on the VPS (vpn.md Section 11).');
+    expect(brokerReason('FAILED')).toContain('could not reach the broker');
 });

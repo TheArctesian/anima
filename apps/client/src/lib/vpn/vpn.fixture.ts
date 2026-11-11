@@ -16,6 +16,7 @@ export function node(change: Partial<VpnNode> = {}): VpnNode {
     role: 'CLIENT',
     tags: [],
     routes: [],
+    waitingRoutes: [],
     online: true,
     lastSeen: '2026-11-10T11:59:00Z',
     keyExpiry: '2027-05-12T00:00:00Z',
@@ -62,9 +63,11 @@ export function picture(change: Partial<VpnPicture> = {}): VpnPicture {
         path: 'DIRECT',
         relayRegion: null,
         hasPingCheck: false,
+        waitingRouter: null,
       },
     ],
     nodes: [node(), ROUTER, STRANGER],
+    broker: 'READY',
     ...change,
   };
 }

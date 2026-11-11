@@ -4,23 +4,30 @@
   import Icon from '$lib/icons/Icon.svelte';
   import SettingRow from '$lib/settings/SettingRow.svelte';
   import { vpnApi, type SitePath, type VpnNode } from './api';
+  import { enrolApi } from './enrol/api';
+  import EnrolModal from './enrol/EnrolModal.svelte';
   import NodeKeys from './keys/NodeKeys.svelte';
   import { VpnLive } from './live.svelte';
-  import { readAgo } from './picture';
+  import { brokerReason, readAgo } from './picture';
   import SitePaths from './sites/SitePaths.svelte';
 
-  const live = new VpnLive(vpnApi(useHub()));
+  const hub = useHub();
+  const live = new VpnLive(vpnApi(hub));
+  const enrol = enrolApi(hub);
+  /** The enrolment modal: a site id for its router, `null` for a computer, `undefined` while closed. */
+  let enrolling = $state<string | null | undefined>(undefined);
+  const REASON_ID = 'vpn-broker-reason';
   let now = $state(new Date());
   let retrying = $state(false);
 
   // Placeholder rows share the real rows' markup, so the section keeps its height when the picture arrives (MOT-007).
   const WAITING_NODE: VpnNode = {
-    name: 'Loading', address: '0.0.0.0', os: '', role: 'OTHER', tags: [], routes: [], online: false, lastSeen: null,
+    name: 'Loading', address: '0.0.0.0', os: '', role: 'OTHER', tags: [], routes: [], waitingRoutes: [], online: false, lastSeen: null,
     keyExpiry: null, keyState: 'NEVER', path: 'UNKNOWN', relayRegion: null, inAnima: true, device: null,
   };
   const WAITING_SITE: SitePath = {
     site: { id: 'waiting', name: 'Loading', subnet: '0.0.0.0/0' },
-    router: null, state: 'NO_ROUTER', path: 'UNKNOWN', relayRegion: null, hasPingCheck: true,
+    router: null, state: 'NO_ROUTER', path: 'UNKNOWN', relayRegion: null, hasPingCheck: true, waitingRouter: null,
   };
 
   $effect(() => {
@@ -61,8 +68,8 @@
   </div>
 {:else if picture === undefined}
   <div class="waiting" aria-hidden="true" inert>
-    <SitePaths sites={[WAITING_SITE]} />
-    <NodeKeys hub={WAITING_NODE} nodes={[]} {now} />
+    <SitePaths sites={[WAITING_SITE]} broker="READY" onEnrol={() => undefined} reasonId={REASON_ID} />
+    <NodeKeys hub={WAITING_NODE} nodes={[]} {now} broker="READY" onEnrol={() => undefined} reasonId={REASON_ID} />
   </div>
 {:else if picture === null}
   <SettingRow label="VPN status">
@@ -75,8 +82,14 @@
     Off
   </SettingRow>
 {:else}
-  <SitePaths sites={picture.sites} />
-  <NodeKeys hub={picture.hub} nodes={picture.nodes} {now} />
+  <SitePaths sites={picture.sites} broker={picture.broker} onEnrol={(siteId) => { enrolling = siteId; }} reasonId={REASON_ID} />
+  <NodeKeys hub={picture.hub} nodes={picture.nodes} {now} broker={picture.broker} onEnrol={() => { enrolling = null; }} reasonId={REASON_ID} />
+  {#if brokerReason(picture.broker) !== null}
+    <p class="reason" id={REASON_ID}>{brokerReason(picture.broker)}</p>
+  {/if}
+  {#if enrolling !== undefined}
+    <EnrolModal api={enrol} sites={picture.sites} siteId={enrolling} onClose={() => { enrolling = undefined; }} />
+  {/if}
   {#if !picture.fresh}
     <p class="stale" role="status">Last read {readAgo(picture.readAt, now).replace(/^Read /, '')}</p>
   {/if}
@@ -114,7 +127,8 @@
     line-height: var(--leading-tight);
   }
 
-  .stale {
+  .stale,
+  .reason {
     margin: 0;
     padding: var(--space-3) var(--space-4);
     border-block-start: var(--border-thin) solid var(--border);

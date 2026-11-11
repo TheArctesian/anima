@@ -157,3 +157,38 @@ it('SET-003: leaving the section stops listening', async () => {
   app = undefined;
   expect(hub.listeners('VpnChanged')).toBe(0);
 });
+
+const button = (target: HTMLElement, label: string) => [...target.querySelectorAll('button')].find((each) => text(each) === label);
+const routerless = () => [{ ...home(), state: 'NO_ROUTER' as const, router: null }];
+
+it('VPN-001: a site with no router offers Add a router, and it opens the enrolment modal', async () => {
+  const target = await open({ Vpn: { vpn: picture({ sites: routerless() }) } });
+  button(target, 'Add a router')?.click();
+  flushSync();
+  expect(document.querySelector('[role="dialog"]')?.textContent).toContain('Make a router key for Home');
+});
+
+it('VPN-003: Add a computer to the VPN opens the enrolment modal', async () => {
+  const target = await open({ Vpn: { vpn: picture() } });
+  button(target, 'Add a computer to the VPN')?.click();
+  flushSync();
+  expect(document.querySelector('[role="dialog"]')?.textContent).toContain('Linux computer');
+});
+
+it('VP-7: a serving site offers no Add a router', async () => {
+  const target = await open({ Vpn: { vpn: picture() } });
+  expect(button(target, 'Add a router')).toBeUndefined();
+});
+
+it('VP-7: with no broker the enrolment buttons are disabled and a line says why', async () => {
+  const target = await open({ Vpn: { vpn: picture({ sites: routerless(), broker: 'NOT_SET' }) } });
+  const reason = target.querySelector('#vpn-broker-reason');
+  expect(text(reason)).toBe('Enrolment needs the broker (ANIMA_VPN_BROKER).');
+  for (const label of ['Add a router', 'Add a computer to the VPN']) {
+    expect(button(target, label)?.getAttribute('aria-disabled')).toBe('true');
+    expect(button(target, label)?.getAttribute('aria-describedby')).toBe('vpn-broker-reason');
+    button(target, label)?.click();
+  }
+  flushSync();
+  expect(document.querySelector('[role="dialog"]')).toBeNull();
+});
