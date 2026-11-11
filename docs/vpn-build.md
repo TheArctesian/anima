@@ -1619,3 +1619,13 @@ the start order does not change (A1-T0 Check), the tests need no paused clock an
    B1 and B2 read these shapes; if A4 shows other shapes, change B1/B2 before they start.
 3. **Evidence, B2:** the run of the broker unit (on the VPS, VP-11) (`SocketUser=10001` with no passwd
    entry, Bun under the sandbox, `docker compose exec` in the sandbox).
+
+## 11. Build notes
+
+- **A2-T1.** The spec's `toolbar.test.ts` and `page.test.ts` fixtures build a `ListQuery` literal, so
+  they also gain `site: null` (`toolbar.test.ts` Clear-filters case, `page.test.ts` `beforeEach`).
+  `Sites` keeps the loaded sites in a private field and derives `options`, so "All sites" is never
+  shown alone (`toolbar/sites.svelte.ts`).
+- **Gates on macOS.** `bun run gates` stops at clippy here: `apps/desktop/src-tauri/src/builder/reaper.rs`
+  (`descendants`, `marked`, and `gone_within` in `builder/tests/reaping.rs`) is dead code off Linux.
+  It is outside A2-T1. The client gates (fmt aside) were run one by one and pass.
