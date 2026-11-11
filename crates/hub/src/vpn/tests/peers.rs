@@ -157,7 +157,16 @@ fn vpn_008_any_bytes_give_a_status_or_unreadable() {
 fn vpn_009_the_hub_reads_the_real_tailscale_captures() {
     // The A4 contract harness wrote these from Headscale 0.29.7 and Tailscale (vpn-build.md Section 3).
     let router = |name: &str| node(&picture(&status(name)), "router-home").path;
-    assert_eq!(router("captured-status-idle.json"), crate::vpn::VpnPath::Unknown);
-    assert_eq!(router("captured-status-active.json"), crate::vpn::VpnPath::Direct);
-    assert_eq!(router("captured-status-after-60s.json"), crate::vpn::VpnPath::Unknown);
+    assert_eq!(
+        router("captured-status-idle.json"),
+        crate::vpn::VpnPath::Unknown
+    );
+    assert_eq!(
+        router("captured-status-active.json"),
+        crate::vpn::VpnPath::Direct
+    );
+    assert_eq!(
+        router("captured-status-after-60s.json"),
+        crate::vpn::VpnPath::Unknown
+    );
 }
