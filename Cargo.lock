@@ -140,6 +140,7 @@ dependencies = [
  "axum",
  "bytes",
  "chrono",
+ "getrandom 0.4.3",
  "keyring",
  "plist",
  "reqwest 0.12.28",

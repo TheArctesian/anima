@@ -41,6 +41,8 @@ pub struct Pusher {
     /// When a refused token is tried again; `Some` while pushing is stopped.
     stopped_until: Option<DateTime<Utc>>,
     renewal_tried: Option<DateTime<Utc>>,
+    /// Where the spread of each retry wait comes from: a number from 0 to 1.
+    spread: fn() -> f64,
 }
 
 impl Pusher {
@@ -57,7 +59,14 @@ impl Pusher {
             limit: BATCH_POINTS,
             stopped_until: None,
             renewal_tried: None,
+            spread: os_spread,
         }
+    }
+
+    /// The same pusher with its retry waits spread by `spread` instead of the OS random source.
+    #[must_use]
+    pub fn with_spread(self, spread: fn() -> f64) -> Self {
+        Self { spread, ..self }
     }
 
     /// Takes what sampling produced.
@@ -121,7 +130,9 @@ impl Pusher {
                     report::batch_dropped(code, count);
                     self.backlog.remove_through(receipt);
                     // A refused list would ride along again and sink every later batch until
-                    // the next discovery; the hub keeps the GPUs it has (K8 Section 4).
+                    // the next discovery; the hub keeps the GPUs it has (K8 Section 4). Any
+                    // MALFORMED clears it, so a correct list in a batch refused for its points
+                    // also waits for the next discovery.
                     if code == RefusalCode::Malformed {
                         self.gpus = None;
                     }
@@ -149,7 +160,7 @@ impl Pusher {
                 _ => report::hub_cannot_store(),
             }
         }
-        self.backoff.failed()
+        self.backoff.failed((self.spread)())
     }
 
     fn recovered(&mut self) {
@@ -214,6 +225,16 @@ impl Pusher {
             }
             Err(error) => report::renewal_not_stored(&error),
         }
+    }
+}
+
+/// A number from 0 to 1 from the OS random source; the middle, which keeps the step, when the
+/// source fails, since a retry wait need not be secret.
+fn os_spread() -> f64 {
+    let mut bytes = [0_u8; 4];
+    match getrandom::fill(&mut bytes) {
+        Ok(()) => f64::from(u32::from_le_bytes(bytes)) / f64::from(u32::MAX),
+        Err(_) => 0.5,
     }
 }
 

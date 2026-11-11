@@ -15,6 +15,9 @@ pub const BACKOFF_START: Duration = Duration::from_secs(10);
 
 pub const BACKOFF_MAX: Duration = Duration::from_secs(60);
 
+/// How far a wait after a failure may move from its step, either way: 20 % (K8 Section 7).
+pub const JITTER: f64 = 0.2;
+
 /// How long a refused token waits before the agent tries it again (K8 Section 6).
 pub const REFUSED_RETRY: Duration = Duration::from_mins(10);
 
@@ -69,13 +72,15 @@ pub struct Backoff {
 }
 
 impl Backoff {
-    /// Records a failure and returns how long to wait: 10 s, then 20 s, 40 s, 60 s, 60 s.
-    pub fn failed(&mut self) -> Duration {
-        let wait = self
+    /// Records a failure and returns how long to wait: the step, 10 s, then 20 s, 40 s, 60 s,
+    /// 60 s, moved by up to [`JITTER`] either way by `spread` (0 to 1, from a random source; 0.5
+    /// keeps the step), so agents that failed together do not all try again together.
+    pub fn failed(&mut self, spread: f64) -> Duration {
+        let step = self
             .last
             .map_or(BACKOFF_START, |last| (last * 2).min(BACKOFF_MAX));
-        self.last = Some(wait);
-        wait
+        self.last = Some(step);
+        step.mul_f64(2.0f64.mul_add(JITTER * spread.clamp(0.0, 1.0), 1.0 - JITTER))
     }
 
     /// Records a success: the next failure starts again at 10 s.
@@ -125,12 +130,28 @@ mod tests {
     #[test]
     fn k8_7_the_backoff_doubles_from_10_to_60_seconds_and_resets() {
         let mut backoff = Backoff::default();
-        let waits: Vec<u64> = (0..5).map(|_| backoff.failed().as_secs()).collect();
+        let waits: Vec<u64> = (0..5).map(|_| backoff.failed(0.5).as_secs()).collect();
         assert_eq!(waits, [10, 20, 40, 60, 60]);
         assert!(backoff.is_failing());
         backoff.recovered();
         assert!(!backoff.is_failing());
-        assert_eq!(backoff.failed().as_secs(), 10);
+        assert_eq!(backoff.failed(0.5).as_secs(), 10);
+    }
+
+    #[test]
+    fn k8_7_each_wait_is_spread_20_percent_either_way_around_its_step() {
+        let waits = |spread: f64| -> Vec<u64> {
+            let mut backoff = Backoff::default();
+            (0..5).map(|_| backoff.failed(spread).as_secs()).collect()
+        };
+        assert_eq!(waits(0.0), [8, 16, 32, 48, 48]);
+        assert_eq!(waits(1.0), [12, 24, 48, 72, 72]);
+        assert_eq!(
+            waits(-3.0),
+            waits(0.0),
+            "a spread past its range is held to it"
+        );
+        assert_eq!(waits(7.0), waits(1.0));
     }
 
     #[test]

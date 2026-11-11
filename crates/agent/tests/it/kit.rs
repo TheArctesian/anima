@@ -54,6 +54,12 @@ pub struct Rig {
 }
 
 pub fn rig(hub: &FakeHub, seed: u8, expires_in: TimeDelta) -> Rig {
+    // The middle of the spread keeps every retry wait on its step.
+    spread_rig(hub, seed, expires_in, || 0.5)
+}
+
+/// A rig whose retry waits are spread by `spread`.
+pub fn spread_rig(hub: &FakeHub, seed: u8, expires_in: TimeDelta, spread: fn() -> f64) -> Rig {
     let dir = tempfile::tempdir().expect("a folder");
     let home = Home::at(dir.path().join("agent"));
     let store = TokenStore::open(&home);
@@ -65,7 +71,7 @@ pub fn rig(hub: &FakeHub, seed: u8, expires_in: TimeDelta) -> Rig {
     store.save(&credential).expect("stored");
     let client = HubClient::new(hub.url.clone(), TIMEOUT).expect("a client");
     Rig {
-        pusher: Pusher::new(client, device(), credential, store),
+        pusher: Pusher::new(client, device(), credential, store).with_spread(spread),
         home,
         _dir: dir,
     }

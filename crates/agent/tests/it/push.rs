@@ -210,6 +210,20 @@ async fn k8_7_after_a_failure_the_wait_is_10_seconds_doubling_to_60_then_the_rhy
     );
 }
 
+/// T8a N1: the waits after failures move with the pusher's random source, 20 % either way.
+#[tokio::test]
+async fn k8_7_the_wait_after_a_failure_is_spread_by_the_random_source() {
+    let hub = FakeHub::start().await;
+    let mut rig = crate::kit::spread_rig(&hub, 1, year(), || 0.0);
+    hub.queue_push((0..5).map(|_| Reply::refuse(RefusalCode::Unavailable)));
+    feed(&mut rig, 1, 2);
+    let mut waits = Vec::new();
+    for round in 0..5 {
+        waits.push(seconds(rig.pusher.push_due(at(30 + round * 10)).await));
+    }
+    assert_eq!(waits, [8, 16, 32, 48, 48]);
+}
+
 #[tokio::test]
 async fn k8_7_a_network_error_keeps_the_points_and_backs_off() {
     // A port nothing listens on.
@@ -232,7 +246,8 @@ async fn k8_7_a_network_error_keeps_the_points_and_backs_off() {
     )
     .expect("client");
     let mut pusher =
-        anima_agent::push::Pusher::new(client, device(), credential, TokenStore::open(&home));
+        anima_agent::push::Pusher::new(client, device(), credential, TokenStore::open(&home))
+            .with_spread(|| 0.5);
     for point in points(1, 2) {
         pusher.accept(Event::Point(point));
     }

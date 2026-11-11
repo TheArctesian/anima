@@ -200,4 +200,6 @@ and tries again after its wait (Section 7).
   at once while points remain.
 - While the hub cannot be reached (a network error, a timeout of 10 seconds, a 5xx), it keeps up to 360
   points (1 hour), dropping the oldest first, and drops any point older than 59 minutes before it sends.
-- After a failure it waits 10 seconds, doubling to at most 60 seconds, then resumes the 10-second rhythm.
+- After a failure it waits 10 seconds, doubling to at most 60 seconds, then resumes the 10-second rhythm. Each
+  wait after a failure is moved at random by up to 20 % either way, so agents that failed together do not all
+  try again together.
