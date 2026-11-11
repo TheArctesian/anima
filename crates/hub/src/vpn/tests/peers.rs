@@ -132,7 +132,7 @@ fn vpn_008_a_reply_of_another_shape_is_unreadable() {
         "[]",
         "{\"Self\": null}",
         &fixture("status-idle.json").replace("\"Online\"", "\"Offline\""),
-        &fixture("status-idle.json").replace("\"100.64.0.2\"", "\"not an address\""),
+        &fixture("status-idle.json").replace("\"100.64.0.1\"", "\"not an address\""),
     ] {
         assert!(
             matches!(parse(body.as_bytes()), Err(Error::Unreadable)),
@@ -169,4 +169,35 @@ fn vpn_009_the_hub_reads_the_real_tailscale_captures() {
         router("captured-status-after-60s.json"),
         crate::vpn::VpnPath::Unknown
     );
+}
+
+#[test]
+fn vpn_008_an_unreadable_peer_is_skipped_and_the_rest_are_kept() {
+    let mut raw = json("status-idle.json");
+    let peers = raw["Peer"].as_object_mut().unwrap();
+    peers.insert(
+        "nodekey:odd".to_owned(),
+        serde_json::json!({ "Online": "yes" }),
+    );
+    peers.insert("nodekey:none".to_owned(), serde_json::json!(7));
+
+    let shown = picture(&reparse(&raw));
+
+    let names: Vec<&str> = shown.nodes.iter().map(|node| node.name.as_str()).collect();
+    assert_eq!(names, ["mac", "router-home"]);
+}
+
+#[test]
+fn vpn_008_an_unreadable_self_or_peer_list_is_still_unreadable() {
+    let mut own = json("status-idle.json");
+    own["Self"] = serde_json::json!({ "Online": 1 });
+    let mut list = json("status-idle.json");
+    list["Peer"] = serde_json::json!([1, 2]);
+
+    for raw in [own, list] {
+        assert!(matches!(
+            parse(raw.to_string().as_bytes()),
+            Err(Error::Unreadable)
+        ));
+    }
 }

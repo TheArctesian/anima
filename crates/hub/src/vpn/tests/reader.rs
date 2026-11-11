@@ -218,3 +218,55 @@ async fn vpn_008_the_loop_publishes_without_a_tick_wait(pool: PgPool) {
     assert!(published.await.is_ok());
     task.abort();
 }
+
+#[sqlx::test(migrations = "./migrations")]
+async fn vpn_008_a_second_failed_read_does_not_wake_a_subscriber(pool: PgPool) {
+    let calls = Arc::new(AtomicUsize::new(0));
+    let counted = calls.clone();
+    let body = fixture("status-idle.json");
+    let proxy = proxy::start(move || match counted.fetch_add(1, Ordering::SeqCst) {
+        0 => Reply::json(200, &body),
+        _ => Reply::json(500, "{}"),
+    })
+    .await;
+    let reading = reading(&pool, now());
+    let mut failed = false;
+    read_once(&proxy.address(), &reading, &mut failed).await;
+    read_once(&proxy.address(), &reading, &mut failed).await;
+    let mut receiver = reading.feed.subscribe();
+    receiver.mark_unchanged();
+
+    read_once(&proxy.address(), &reading, &mut failed).await;
+
+    assert!(failed);
+    assert!(!reading.feed.latest().unwrap().fresh);
+    assert!(!receiver.has_changed().unwrap());
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn vpn_010_a_failed_event_leaves_no_mark_so_the_next_read_writes_it(pool: PgPool) {
+    let proxy = answering("status-idle.json").await;
+    let mut failed = false;
+    sqlx::query("alter table events.event_log add constraint no_vpn check (source <> 'vpn')")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    read_once(&proxy.address(), &reading(&pool, now()), &mut failed).await;
+
+    assert!(failed);
+    let marks: i64 = sqlx::query_scalar("select count(*) from vpn.warnings")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(marks, 0);
+    sqlx::query("alter table events.event_log drop constraint no_vpn")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    read_once(&proxy.address(), &reading(&pool, now()), &mut failed).await;
+
+    assert!(!failed);
+    assert_eq!(events_like(&pool, "VPN node mac").await, 1);
+}

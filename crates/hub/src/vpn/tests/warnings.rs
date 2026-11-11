@@ -148,6 +148,30 @@ fn vpn_010_a_node_whose_key_the_marks_cannot_hold_gets_no_warning() {
 }
 
 #[test]
+fn vpn_010_a_node_key_over_the_mark_limit_gets_no_warning_and_80_characters_do() {
+    for (length, warned) in [(100, false), (81, false), (80, true)] {
+        let mut raw = json("status-idle.json");
+        let key = format!("nodekey:{}", "0".repeat(length - "nodekey:".len()));
+        peer_mut(&mut raw, "mac")["PublicKey"] = key.clone().into();
+
+        let warnings = due(&picture(&reparse(&raw)), now());
+
+        assert_eq!(warnings.iter().any(|w| w.key == key), warned, "{length}");
+    }
+}
+
+#[test]
+fn vpn_008_debug_output_leaves_the_node_key_out() {
+    let shown = picture(&status("status-idle.json"));
+    let warnings = due(&shown, now());
+
+    let text = format!("{shown:?} {warnings:?}");
+
+    assert_ne!(warnings, []);
+    assert!(!text.contains("nodekey"), "{text}");
+}
+
+#[test]
 fn vpn_010_a_warning_kind_has_its_stored_text() {
     let stored = [
         Kind::Expiry30,

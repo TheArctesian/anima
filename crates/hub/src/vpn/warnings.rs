@@ -42,7 +42,7 @@ impl Kind {
 }
 
 /// One warning event, with what its mark is keyed on.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub(super) struct Warning {
     pub key: String,
     pub kind: Kind,
@@ -50,6 +50,19 @@ pub(super) struct Warning {
     pub device: Option<(DeviceId, String)>,
     pub severity: Severity,
     pub message: String,
+}
+
+/// Everything but the node key, which stays out of logs and panic messages (LOG-007).
+impl std::fmt::Debug for Warning {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Warning")
+            .field("kind", &self.kind)
+            .field("key_expiry", &self.key_expiry)
+            .field("device", &self.device)
+            .field("severity", &self.severity)
+            .field("message", &self.message)
+            .finish_non_exhaustive()
+    }
 }
 
 /// The warnings this picture calls for; the store decides which ones are new. A node whose

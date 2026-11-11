@@ -314,6 +314,7 @@ export type Finding =
   | { readonly kind: 'unapproved-route'; readonly node: string; readonly route: string }
   | { readonly kind: 'unexpected-node'; readonly node: string }
   | { readonly kind: 'missing-node'; readonly node: string }
+  | { readonly kind: 'no-ipv4'; readonly node: string }
   | { readonly kind: 'policy-test-failed'; readonly test: string };
 
 export class InventoryError extends Error {}
@@ -1764,6 +1765,19 @@ its intent.
     A2-T2. The lint gate's `codegen.ts --check` confirms the generated files are current.
 18. **A1-T5.** K1 places the new `Query.vpn` under a `# Phase 3: VPN (VP-5)` comment at the end
     of `type Query`; the enums are written one value per line, as the rest of K1.
+19. **BD-14.** Headscale derives `DNSName` from the name a peer chose at registration, so a peer
+    that registers as `nas` matches a device whose host is `nas`. This is accepted: only the
+    operator admits nodes.
+20. **Review fixes.** A mutation-testing review of Tier A changed: (a) `VpnNode` and `Warning`
+    have a `Debug` that leaves out the node key (LOG-007); (b) `peers::parse` skips a peer that
+    does not read and keeps the rest, while an unreadable `Self` or a `Peer` that is not an object
+    is still `Unreadable`; (c) `picture::name` falls back to `HostName` when the first label of
+    `DNSName` is empty (a `DNSName` of `.`); (d) `inventory.tailnetNodes` skips a node with no
+    IPv4 address and `findings` reports it as `no-ipv4`, where it threw `InventoryError`. The
+    review also added tests for the `serves` exact match, the BD-14 match order, the BD-13 relay
+    region, role precedence, non-router site routes, the 80-character key limit, the 180-day
+    limit, the stale-read wake-up and the rollback of a failed warning write.
+
 ### Broker lane (B1, B2)
 
 - **B1: the auth ID pattern is `^hskey-authreq-[A-Za-z0-9_-]{24}$`** (Section 3, fact 11), not the

@@ -311,3 +311,62 @@ fn vpn_009_nodes_are_in_name_order_and_sites_in_site_order() {
         sites().iter().map(|site| site.0).collect::<Vec<_>>()
     );
 }
+
+/// The idle fixture with the router's routes and the mac's tags and routes replaced.
+fn home_served_by(router: &[&str], mac_tags: &[&str], mac_routes: &[&str]) -> Picture {
+    let mut raw = json("status-idle.json");
+    peer_mut(&mut raw, "router-home")["PrimaryRoutes"] = serde_json::json!(router);
+    let mac = peer_mut(&mut raw, "mac");
+    mac["Tags"] = serde_json::json!(mac_tags);
+    mac["PrimaryRoutes"] = serde_json::json!(mac_routes);
+    picture(&reparse(&raw))
+}
+
+#[test]
+fn vpn_009_a_router_with_a_wider_or_narrower_route_serves_no_site() {
+    let devices = [device(9, "router-home", "100.64.0.3")];
+    for route in ["10.10.0.0/16", "10.10.0.0/25"] {
+        let mut raw = json("status-idle.json");
+        peer_mut(&mut raw, "router-home")["PrimaryRoutes"] = serde_json::json!([route]);
+
+        let shown = picture_with(&reparse(&raw), &devices, &[]);
+
+        assert_eq!(shown.sites[0].state, RouteState::NoRouter, "{route}");
+        assert_eq!(shown.sites[0].router, None, "{route}");
+        assert!(!node(&shown, "router-home").in_anima, "{route}");
+    }
+}
+
+#[test]
+fn vpn_009_a_peer_that_is_not_a_router_serves_no_site() {
+    for tags in [&[][..], &["tag:agent"][..]] {
+        let shown = home_served_by(&[], tags, &["10.10.0.0/24"]);
+
+        assert_eq!(shown.sites[0].state, RouteState::NoRouter, "{tags:?}");
+        assert_eq!(shown.sites[0].router, None, "{tags:?}");
+    }
+}
+
+#[test]
+fn vpn_009_hub_outranks_router_when_a_node_has_both_tags() {
+    let mut raw = json("status-idle.json");
+    peer_mut(&mut raw, "mac")["Tags"] = serde_json::json!(["tag:router", "tag:hub"]);
+
+    assert_eq!(node(&picture(&reparse(&raw)), "mac").role, Role::Hub);
+}
+
+#[test]
+fn vpn_009_a_relayed_path_keeps_its_region_for_three_unknown_reads() {
+    let idle = || picture(&status("status-idle.json"));
+
+    let mut shown = picture(&status("status-relayed.json"));
+    assert_eq!(router_path(&shown), (VpnPath::Relayed, Some("sfo")));
+    for _ in 0..3 {
+        shown = carry(&shown, idle());
+        assert_eq!(router_path(&shown), (VpnPath::Relayed, Some("sfo")));
+    }
+    assert_eq!(
+        router_path(&carry(&shown, idle())),
+        (VpnPath::Unknown, None)
+    );
+}

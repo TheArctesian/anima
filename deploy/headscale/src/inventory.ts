@@ -39,6 +39,7 @@ export type Finding =
   | { readonly kind: 'unapproved-route'; readonly node: string; readonly route: string }
   | { readonly kind: 'unexpected-node'; readonly node: string }
   | { readonly kind: 'missing-node'; readonly node: string }
+  | { readonly kind: 'no-ipv4'; readonly node: string }
   | { readonly kind: 'policy-test-failed'; readonly test: string };
 
 export class InventoryError extends Error {
@@ -127,18 +128,22 @@ export function parseRoutes(json: unknown): readonly ListedRoutes[] {
   });
 }
 
-/** The nodes as the policy evaluator sees them. */
+const ipv4Of = (node: ListedNode): string | undefined => node.ips.find((address) => !address.includes(':'));
+
+/** The nodes as the policy evaluator sees them; a node with no IPv4 address is left out (`findings` reports it). */
 export function tailnetNodes(tailnet: Tailnet): readonly TailnetNode[] {
-  return tailnet.nodes.map((node) => {
-    const ip = node.ips.find((address) => !address.includes(':'));
-    if (ip === undefined) throw new InventoryError(`node ${node.name} has no IPv4 address`);
+  return tailnet.nodes.flatMap((node) => {
+    const ip = ipv4Of(node);
+    if (ip === undefined) return [];
     const routes = tailnet.routes.find((entry) => entry.id === node.id)?.approved ?? [];
-    return {
-      name: node.name,
-      identity: node.tags.length > 0 ? { tags: node.tags } : { user: node.user },
-      ip,
-      ...(routes.length > 0 ? { routes } : {}),
-    };
+    return [
+      {
+        name: node.name,
+        identity: node.tags.length > 0 ? { tags: node.tags } : { user: node.user },
+        ip,
+        ...(routes.length > 0 ? { routes } : {}),
+      },
+    ];
   });
 }
 
@@ -162,6 +167,7 @@ export function findings(policy: Policy, tailnet: Tailnet, expected: readonly st
   const perNode = tailnet.nodes.flatMap((node) => [
     ...nodeFindings(policy, node, tailnet.routes.find((entry) => entry.id === node.id), now),
     ...(known.has(node.name) ? [] : [{ kind: 'unexpected-node', node: node.name } as const]),
+    ...(ipv4Of(node) === undefined ? [{ kind: 'no-ipv4', node: node.name } as const] : []),
   ]);
   const missing = expected.filter((name) => !present.has(name)).map((node) => ({ kind: 'missing-node', node }) as const);
   const failed = runPolicyTests(policy, tailnetNodes(tailnet)).map((failure) => ({ kind: 'policy-test-failed', test: `${failure.src} ${failure.expected} ${failure.dst}: ${failure.reason}` }) as const);

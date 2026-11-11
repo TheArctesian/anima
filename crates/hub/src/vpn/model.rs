@@ -67,7 +67,7 @@ pub enum KeyState {
 }
 
 /// One node of the VPN. Every text came from the node and is cleaned (VPN-008).
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub struct VpnNode {
     /// The node's public key (`nodekey:…`): only for the warning marks, never shown.
     pub key: String,
@@ -90,6 +90,29 @@ pub struct VpnNode {
     pub relay_region: Option<String>,
     /// Reads since the path was last known (BD-13).
     pub unknown_reads: u8,
+}
+
+/// Everything but the key, which stays out of logs and panic messages (LOG-007).
+impl std::fmt::Debug for VpnNode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("VpnNode")
+            .field("name", &self.name)
+            .field("address", &self.address)
+            .field("os", &self.os)
+            .field("role", &self.role)
+            .field("tags", &self.tags)
+            .field("routes", &self.routes)
+            .field("online", &self.online)
+            .field("last_seen", &self.last_seen)
+            .field("key_expiry", &self.key_expiry)
+            .field("key_state", &self.key_state)
+            .field("device", &self.device)
+            .field("in_anima", &self.in_anima)
+            .field("path", &self.path)
+            .field("relay_region", &self.relay_region)
+            .field("unknown_reads", &self.unknown_reads)
+            .finish_non_exhaustive()
+    }
 }
 
 /// How the hub reaches one site (VPN-009).
