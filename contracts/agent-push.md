@@ -110,7 +110,9 @@ Request:
   most 10 000 (W), and a batch with a value past either is `MALFORMED` (MET-002, CR-17). The agent drops such a
   2-second sample before it makes a mean, so it never sends one.
 - `gpus`: optional. The agent sends it in its first batch after start and after each GPU discovery (at start
-  and every 24 hours, MET-006). Absent means "unchanged". `vendor` is `nvidia`, `amd`, `intel` or `apple`;
+  and every 24 hours, MET-006), and again with the next batch until one is accepted, except after `MALFORMED`:
+  then it waits for the next discovery, so a list the hub refuses cannot sink every later batch. Absent means
+  "unchanged". `vendor` is `nvidia`, `amd`, `intel` or `apple`;
   `name` is 1 to 128 bytes, no control character; `hasVram` is false for `intel` and `apple` (MET-007).
 
 The hub:

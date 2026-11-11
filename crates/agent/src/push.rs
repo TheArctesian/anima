@@ -120,6 +120,11 @@ impl Pusher {
                 Action::Drop(code) => {
                     report::batch_dropped(code, count);
                     self.backlog.remove_through(receipt);
+                    // A refused list would ride along again and sink every later batch until
+                    // the next discovery; the hub keeps the GPUs it has (K8 Section 4).
+                    if code == RefusalCode::Malformed {
+                        self.gpus = None;
+                    }
                     return Round::Sent;
                 }
                 Action::Shrink => {
