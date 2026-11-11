@@ -779,7 +779,8 @@ sudo --preserve-env=SSH_CONNECTION /opt/anima/headscale/vps/harden.sh confirm
 If the new session cannot connect, do nothing. The previous rules come back after 180 s. Then put
 the old file back (first command of Undo) and ask the operator.
 
-Check: `sudo grep -n 'hub_' /etc/nftables/anima.nft` shows the two defines and four rules. In
+Check: `sudo grep -n '^define hub_' /etc/nftables/anima.nft` shows the two defines, and
+`sudo grep -c 'ip saddr \$hub_source' /etc/nftables/anima.nft` prints `4`. In
 `sudo nft list table inet anima_filter`, chain `prerouting` starts with two rules for
 `ip saddr 172.30.0.10 ip daddr 100.64.0.1`. In chain `input`, the same two rules follow the
 Apprise drop. `sudo /opt/anima/headscale/vps/harden.sh check` ends with `ok: no violations`.
