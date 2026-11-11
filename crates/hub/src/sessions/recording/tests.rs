@@ -1,12 +1,17 @@
-//! Recording tests: the pure queue, the recording root's checks, the row, and the recorder
-//! writing real files in a temporary folder (RA-040, D-13, D-14, K4 §11).
+//! Recording tests: the pure queue, the recording root's checks, the row, the recorder
+//! writing real files in a temporary folder (RA-040, D-13, D-14, K4 §11), and the catalogue
+//! with its playback tickets and deletes (RA-041, D-13, G-7, G-8).
 
+mod catalogue;
+mod deleting;
 mod idle;
 mod queue;
 mod recorder;
 mod space;
 mod stops;
 mod store;
+mod tickets;
+mod viewing;
 
 use std::{
     io,

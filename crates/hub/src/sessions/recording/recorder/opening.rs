@@ -127,7 +127,7 @@ pub(in crate::sessions::recording) fn create_file(
         .write(true)
         .create_new(true)
         .mode(0o600)
-        .open(root.join(format!("{id}.anrec")))?;
+        .open(root.join(model::file_name(id)))?;
     file.write_all(header)?;
     file.sync_data()?;
     Ok(file)

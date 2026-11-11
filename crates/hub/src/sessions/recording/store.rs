@@ -8,7 +8,7 @@ use sqlx::{FromRow, PgExecutor};
 use super::{
     Error,
     format::Format,
-    model::{self, RecordingState, StopReason, Stored},
+    model::{self, Catalogued, Position, RecordingState, StopReason, Stored},
 };
 use crate::{
     credentials::Sealed,
@@ -179,4 +179,95 @@ pub(in crate::sessions) async fn get<'e>(
     .fetch_optional(db)
     .await?;
     row.map(Stored::try_from).transpose()
+}
+
+/// The columns of a catalogued recording, without the sealed key.
+const CATALOGUED_COLUMNS: &str = "id, session_id, device_id, device_name, protocol, format, \
+                                  started_at, ended_at, size_bytes, complete, expires_at";
+
+#[derive(FromRow)]
+struct CataloguedRow {
+    id: RecordingId,
+    session_id: SessionId,
+    device_id: Option<DeviceId>,
+    device_name: String,
+    protocol: String,
+    format: String,
+    started_at: DateTime<Utc>,
+    ended_at: Option<DateTime<Utc>>,
+    size_bytes: i64,
+    complete: bool,
+    expires_at: DateTime<Utc>,
+}
+
+impl TryFrom<CataloguedRow> for Catalogued {
+    type Error = Error;
+
+    fn try_from(row: CataloguedRow) -> Result<Self, Error> {
+        Ok(Self {
+            id: row.id,
+            session: row.session_id,
+            device: row.device_id,
+            device_name: row.device_name,
+            protocol: row.protocol.parse().map_err(|_| Error::StoredValue)?,
+            format: model::format_from_stored(&row.format).ok_or(Error::StoredValue)?,
+            started_at: row.started_at,
+            ended_at: row.ended_at,
+            size_bytes: u64::try_from(row.size_bytes).map_err(|_| Error::StoredValue)?,
+            complete: row.complete,
+            expires_at: row.expires_at,
+        })
+    }
+}
+
+/// Up to `limit` recordings after `after`, newest first, of `device` or of every device
+/// (K1 `recordings`, API-006).
+pub(super) async fn page<'e>(
+    db: impl PgExecutor<'e>,
+    device: Option<DeviceId>,
+    after: Option<Position>,
+    limit: i64,
+) -> Result<Vec<Catalogued>, Error> {
+    let rows: Vec<CataloguedRow> = sqlx::query_as(&format!(
+        "select {CATALOGUED_COLUMNS} from sessions.recordings \
+         where ($1::uuid is null or device_id = $1) \
+           and ($2::timestamptz is null or (started_at, id) < ($2, $3::uuid)) \
+         order by started_at desc, id desc limit $4"
+    ))
+    .bind(device)
+    .bind(after.map(|position| position.started_at))
+    .bind(after.map(|position| position.id))
+    .bind(limit)
+    .fetch_all(db)
+    .await?;
+    rows.into_iter().map(Catalogued::try_from).collect()
+}
+
+/// The recording with this id, without its key.
+pub(super) async fn catalogued<'e>(
+    db: impl PgExecutor<'e>,
+    id: RecordingId,
+) -> Result<Option<Catalogued>, Error> {
+    let row: Option<CataloguedRow> = sqlx::query_as(&format!(
+        "select {CATALOGUED_COLUMNS} from sessions.recordings where id = $1"
+    ))
+    .bind(id)
+    .fetch_optional(db)
+    .await?;
+    row.map(Catalogued::try_from).transpose()
+}
+
+/// Deletes the recording's row, and with it the only copy of its sealed key (D-13). Returns
+/// the row as it was, or `None` when there was none.
+pub(super) async fn delete<'e>(
+    db: impl PgExecutor<'e>,
+    id: RecordingId,
+) -> Result<Option<Catalogued>, Error> {
+    let row: Option<CataloguedRow> = sqlx::query_as(&format!(
+        "delete from sessions.recordings where id = $1 returning {CATALOGUED_COLUMNS}"
+    ))
+    .bind(id)
+    .fetch_optional(db)
+    .await?;
+    row.map(Catalogued::try_from).transpose()
 }

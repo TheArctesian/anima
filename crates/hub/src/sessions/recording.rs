@@ -3,10 +3,13 @@
 //!
 //! The file format is `format`, pure; SSH sessions are recorded as asciicast v2
 //! (`asciicast`, D-12). `recorder` writes a session's recording, `store` keeps its row, and
-//! `space` says whether the hub can record now. No log line holds recording content, a key or
-//! a recording's path (LOG-007).
+//! `space` says whether the hub can record now. The catalogue's GraphQL part (`graphql`)
+//! lists recordings, issues a playback ticket (`viewing`, held in `tickets`) and deletes one
+//! (`deleting`, D-13). No log line or error text holds recording content, a key or a
+//! recording's path (LOG-007).
 
 mod asciicast;
+mod deleting;
 #[cfg_attr(
     not(test),
     expect(
@@ -16,13 +19,18 @@ mod asciicast;
     )
 )]
 mod format;
+mod graphql;
 mod model;
 mod recorder;
 mod space;
 mod store;
 #[cfg(test)]
 mod tests;
+mod tickets;
+mod viewing;
 
+pub use self::graphql::{Mutation as RecordingsMutation, Query as RecordingsQuery};
+pub(in crate::sessions) use self::tickets::Tickets;
 #[expect(
     unused_imports,
     reason = "the tunnels (WP-48 T7, T8) and playback (T6) are the callers"
@@ -34,7 +42,7 @@ pub(in crate::sessions) use self::{
     store::{get, states},
 };
 
-use crate::{credentials, retention, sessions};
+use crate::{credentials, ids::RecordingId, retention, sessions};
 
 /// Why a recording could not start or end. The texts hold no path, key or content (LOG-007).
 #[derive(Debug, thiserror::Error)]
@@ -54,11 +62,13 @@ pub(in crate::sessions) enum Error {
     /// The hub shut down before the recording's row was written.
     #[error("the hub is shutting down")]
     ShuttingDown,
+    /// No recording has this id.
+    #[error("recording {0} not found")]
+    NotFound(RecordingId),
+    /// Too many playback tickets are pending.
+    #[error("no playback ticket can be issued now")]
+    Busy,
     /// A stored row holds a value the hub does not know.
-    #[cfg_attr(
-        not(test),
-        expect(dead_code, reason = "playback (WP-48 T6) reads stored recordings")
-    )]
     #[error("a stored recording is not valid")]
     StoredValue,
     #[error("event store error")]
@@ -78,6 +88,8 @@ impl Error {
             Self::Vault(_) => "vault",
             Self::Periods(_) => "periods",
             Self::Expiry => "expiry",
+            Self::NotFound(_) => "not_found",
+            Self::Busy => "busy",
             Self::StoredValue => "stored_value",
             Self::ShuttingDown => "shutting_down",
             Self::Events(_) => "events",

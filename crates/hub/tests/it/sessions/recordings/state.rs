@@ -13,7 +13,7 @@ use sqlx::PgPool;
 use tracing::{Event, Subscriber, subscriber::set_default};
 use tracing_subscriber::{Layer, layer::Context, layer::SubscriberExt as _, registry::Registry};
 
-use super::{
+use crate::sessions::{
     DOCKER_HOST, PVE_01, Row,
     harness::{TestSchema, data, schema_recording_to},
     insert_all, now, session_id,
@@ -58,7 +58,7 @@ async fn states(schema: &TestSchema) -> Vec<(String, String)> {
 
 #[sqlx::test(
     migrations = "./migrations",
-    fixtures(path = "../../fixtures", scripts("devices"))
+    fixtures(path = "../../../fixtures", scripts("devices"))
 )]
 async fn ra_040_a_session_shows_off_on_or_stopped_from_its_recording_row(pool: PgPool) {
     insert_all(
@@ -91,7 +91,7 @@ async fn ra_040_a_session_shows_off_on_or_stopped_from_its_recording_row(pool: P
 
 #[sqlx::test(
     migrations = "./migrations",
-    fixtures(path = "../../fixtures", scripts("devices"))
+    fixtures(path = "../../../fixtures", scripts("devices"))
 )]
 async fn ra_040_a_recording_that_stops_shows_stopped_in_the_next_request(pool: PgPool) {
     insert_all(&pool, &[Row::live(1, PVE_01, 0)]).await;
@@ -129,7 +129,7 @@ async fn statements(schema: &TestSchema, query: &str) -> usize {
 
 #[sqlx::test(
     migrations = "./migrations",
-    fixtures(path = "../../fixtures", scripts("devices"))
+    fixtures(path = "../../../fixtures", scripts("devices"))
 )]
 async fn api_005_session_recording_costs_one_statement_per_page(pool: PgPool) {
     let rows: Vec<Row> = (1..=6).map(|n| Row::live(n, PVE_01, 0)).collect();

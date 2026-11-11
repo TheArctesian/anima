@@ -1,5 +1,5 @@
-//! What the hub knows about a recording: why it stopped, its state as a session shows it, and
-//! its stored row.
+//! What the hub knows about a recording: why it stopped, its state as a session shows it, its
+//! stored row, its place in the catalogue and its file's name.
 
 use chrono::{DateTime, Utc};
 
@@ -81,10 +81,6 @@ pub(super) const fn format_text(format: Format) -> &'static str {
     }
 }
 
-#[cfg_attr(
-    not(test),
-    expect(dead_code, reason = "playback (WP-48 T6) reads stored recordings")
-)]
 pub(super) fn format_from_stored(text: &str) -> Option<Format> {
     match text {
         "guacamole" => Some(Format::Guacamole),
@@ -124,4 +120,48 @@ pub(in crate::sessions) struct Stored {
     pub(in crate::sessions) complete: bool,
     pub(in crate::sessions) stopped: Option<StopReason>,
     pub(in crate::sessions) expires_at: DateTime<Utc>,
+}
+
+/// A recording as the catalogue lists it (K1 `Recording`): its row without the sealed key, so
+/// a page never reads a key it does not need.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(in crate::sessions) struct Catalogued {
+    pub(in crate::sessions) id: RecordingId,
+    pub(in crate::sessions) session: SessionId,
+    /// `None` only for a row whose device id was not copied; kept after the device is deleted
+    /// (D-15).
+    pub(in crate::sessions) device: Option<DeviceId>,
+    pub(in crate::sessions) device_name: String,
+    pub(in crate::sessions) protocol: Protocol,
+    pub(in crate::sessions) format: Format,
+    pub(in crate::sessions) started_at: DateTime<Utc>,
+    pub(in crate::sessions) ended_at: Option<DateTime<Utc>>,
+    /// Plaintext bytes written in parts.
+    pub(in crate::sessions) size_bytes: u64,
+    /// The file has its last part.
+    pub(in crate::sessions) complete: bool,
+    pub(in crate::sessions) expires_at: DateTime<Utc>,
+}
+
+/// The recording a catalogue page starts after: newest first by `(started_at, id)`, which
+/// together are unique and fixed for a row.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(in crate::sessions) struct Position {
+    pub(in crate::sessions) started_at: DateTime<Utc>,
+    pub(in crate::sessions) id: RecordingId,
+}
+
+impl Position {
+    pub(in crate::sessions) const fn of(recording: &Catalogued) -> Self {
+        Self {
+            started_at: recording.started_at,
+            id: recording.id,
+        }
+    }
+}
+
+/// The name of a recording's file in the recording root (K4 §11): made only from its id, so
+/// no operator text reaches a path.
+pub(super) fn file_name(id: RecordingId) -> String {
+    format!("{id}.anrec")
 }
