@@ -54,8 +54,10 @@ pub(in crate::sessions) struct Recorder {
 /// leaves the row stopped with `write_failed` and returns a recorder that keeps nothing.
 ///
 /// # Errors
-/// [`Error`] when no row was written: recording is unavailable, the random source, the vault,
-/// the retention periods or the database failed.
+/// [`Error`] when recording is unavailable, the random source, the vault, the retention
+/// periods or the database failed, or when the runtime shut down while starting. A row
+/// written before that failure is ended, not left open; [`Error::ShuttingDown`] may follow a
+/// row written before the start was cancelled.
 #[cfg_attr(
     not(test),
     expect(

@@ -2,13 +2,15 @@
 //! mode 0600, parts that read back with the key from the row, a full part at once and the
 //! open part 5 seconds after its first byte, and the end of the row.
 
-use std::{os::unix::fs::PermissionsExt as _, task::Poll, time::Duration};
+use std::{os::unix::fs::PermissionsExt as _, sync::Arc, task::Poll, time::Duration};
 
+use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 use uuid::Uuid;
 
 use super::{EXACT, Ended, FRAMING, PLENTY, World, eventually, length};
 use crate::{
+    clock::Clock,
     ids::{RecordingId, SessionId},
     sessions::{
         Protocol,
@@ -21,18 +23,6 @@ use crate::{
         tests::fixture::now,
     },
 };
-
-/// Gives the writer task and its blocking writes real time to run until `done` holds.
-async fn until(done: impl Fn() -> bool) {
-    for _ in 0..2000 {
-        if done() {
-            return;
-        }
-        tokio::task::yield_now().await;
-        std::thread::sleep(Duration::from_millis(5));
-    }
-    panic!("the writer did not get there");
-}
 
 /// Lets the writer run a few turns, for an assertion that it wrote nothing.
 async fn settle() {
@@ -171,7 +161,7 @@ async fn k4_11_a_full_part_is_written_without_waiting(pool: PgPool) {
     tokio::time::pause();
     recorder.push(&vec![b'x'; MAX_PART + 5]);
     let one_part = HEADER_LEN as u64 + MAX_PART as u64 + FRAMING;
-    until(|| length(&path) == one_part).await;
+    eventually("one part on the disk", async || length(&path) == one_part).await;
     tokio::time::resume();
     finish_and_check(&world, recorder, MAX_PART + 5).await;
 }
@@ -191,7 +181,10 @@ async fn k4_11_the_open_part_is_written_5_seconds_after_its_first_byte(pool: PgP
     assert_eq!(length(&path), HEADER_LEN as u64, "not yet");
     // The timer wheel rounds a deadline up to its next millisecond.
     tokio::time::advance(Duration::from_millis(2)).await;
-    until(|| length(&path) == HEADER_LEN as u64 + 6 + FRAMING).await;
+    eventually("the open part on the disk", async || {
+        length(&path) == HEADER_LEN as u64 + 6 + FRAMING
+    })
+    .await;
     tokio::time::resume();
     finish_and_check(&world, recorder, 6).await;
 }
@@ -223,4 +216,32 @@ async fn finish_and_check(world: &World, recorder: Recorder, size: usize) {
     let (plaintext, ended) = world.read_back(id).await;
     assert_eq!((plaintext.len(), ended), (size, Ended::Done));
     assert_eq!(world.stored(id).await.size_bytes, size as u64);
+}
+
+/// A clock that panics, as a bug in the opening task would.
+struct PanickingClock;
+
+impl Clock for PanickingClock {
+    fn now(&self) -> DateTime<Utc> {
+        panic!("the clock broke")
+    }
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../tests/fixtures", scripts("devices"))
+)]
+async fn g_4_a_panic_in_the_opening_goes_on_in_begin(pool: PgPool) {
+    let mut world = World::new(&pool, 1 << 30).await;
+    world.serving.clock = Arc::new(PanickingClock);
+    let serving = world.serving.clone();
+    let origin = world.origin.clone();
+    let joined =
+        tokio::spawn(async move { begin(&serving, origin, PLENTY).await.map(|r| r.id()) }).await;
+    let error = joined.expect_err("begin panics, it does not return");
+    assert!(error.is_panic());
+    assert_eq!(
+        error.into_panic().downcast_ref::<&str>(),
+        Some(&"the clock broke")
+    );
 }

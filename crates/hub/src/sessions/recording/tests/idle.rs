@@ -11,8 +11,8 @@ use crate::sessions::recording::{
     model::StopReason,
 };
 
-/// Lets the writer task run until it waits for work: nothing is queued, so it waits with no
-/// deadline and only a wake-up moves it.
+/// Pauses so the writer task most likely waits for work by now. Best effort: it proves
+/// nothing, and a push before the writer waits is still seen, as `Notify` keeps a permit.
 async fn idle() {
     for _ in 0..10 {
         tokio::time::sleep(Duration::from_millis(5)).await;

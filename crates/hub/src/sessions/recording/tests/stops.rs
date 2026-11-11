@@ -257,3 +257,34 @@ async fn g_4_a_file_that_cannot_be_created_leaves_the_row_stopped(pool: PgPool) 
     assert!(!log.contains(root.to_str().unwrap()), "{log}");
     assert!(!log.contains(".anrec"), "{log}");
 }
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../tests/fixtures", scripts("devices"))
+)]
+async fn k4_11_the_first_stop_wins_before_the_last_part(pool: PgPool) {
+    let world = World::new(&pool, 10).await;
+    let recorder = world.start(LOW).await;
+    let id = recorder.id();
+    recorder.push(b"01234");
+    recorder.push(b"56789ab");
+    recorder.finish().await;
+    let stored = world.stored(id).await;
+    assert_eq!(stored.stopped, Some(StopReason::SizeLimit));
+    assert_eq!((stored.complete, stored.size_bytes), (true, 0));
+    let (plaintext, ended) = world.read_back(id).await;
+    assert_eq!((plaintext.len(), ended), (0, Ended::Done));
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../tests/fixtures", scripts("devices"))
+)]
+async fn k4_11_free_space_is_not_read_before_an_empty_last_part(pool: PgPool) {
+    let world = World::new(&pool, 1 << 30).await;
+    let recorder = world.start(LOW).await;
+    let id = recorder.id();
+    recorder.finish().await;
+    let stored = world.stored(id).await;
+    assert_eq!((stored.stopped, stored.complete), (None, true));
+}

@@ -1,7 +1,7 @@
 //! The writer task (K4 §11): seals and writes each part, checks the free space before each
-//! part (the last too, when it holds bytes), writes the last part, then ends the row. On a stop it also writes a Warning event and publishes
-//! `sessionChanged` (G-5). Logs only here, with the recording and session IDs at most
-//! (LOG-007).
+//! part (the last too, when it holds bytes), writes the last part, then ends the row. On a
+//! stop it also writes a Warning event and publishes `sessionChanged` (G-5). Logs only here,
+//! with the recording and session IDs at most (LOG-007).
 
 use std::{io::Write as _, sync::Arc};
 
