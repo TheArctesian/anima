@@ -1,6 +1,7 @@
 //! Anima desktop shell: the main window and OS services only (REPO-003).
 //! The UI is the static `apps/client` build; no business logic lives here.
 
+mod agent;
 mod builder;
 mod keystore;
 mod os_program;
@@ -35,6 +36,7 @@ fn main() {
         .manage(builder::Running::default())
         .manage(builder::Bundled::default())
         .manage(updater_key::UnlockedKey::default())
+        .manage(agent::Installing::default())
         .invoke_handler(tauri::generate_handler![
             keystore::access_token_read,
             keystore::access_token_write,
@@ -58,6 +60,8 @@ fn main() {
             process_log::process_log_folder_open,
             system_settings::sharing_settings_open,
             this_machine::this_machine_read,
+            agent::agent_bundled,
+            agent::agent_install,
             system_browser::system_browser_open,
             web_view::commands::web_view_pinning,
             web_view::commands::web_view_open,
@@ -71,11 +75,15 @@ fn main() {
         ])
         .build(tauri::generate_context!())
         .expect("the Tauri application failed to start")
-        .run(|app, event| {
-            // No build step outlives the app (BLD-026), and the opened key goes with it (D-19).
-            if let tauri::RunEvent::Exit = event {
-                app.state::<builder::Running>().cancel();
-                app.state::<updater_key::UnlockedKey>().lock();
-            }
-        });
+        .run(|app, event| on_run_event(app, &event));
+}
+
+/// No build step or agent run outlives the app (BLD-026, MET-019), and the opened key goes with
+/// it (D-19).
+fn on_run_event(app: &tauri::AppHandle, event: &tauri::RunEvent) {
+    if matches!(event, tauri::RunEvent::Exit) {
+        app.state::<builder::Running>().cancel();
+        app.state::<updater_key::UnlockedKey>().lock();
+        app.state::<agent::Installing>().stop();
+    }
 }

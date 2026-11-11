@@ -6,7 +6,9 @@
   import LiveNotice from '$lib/hub/notice/LiveNotice.svelte';
   import LogList from '$lib/events/panel/LogList.svelte';
   import type { CheckFormValues } from '$lib/checks/form/model/values';
+  import { thisComputerShell } from '$lib/desktop/agent/shell';
   import { screenSharingCalls } from '$lib/devices/screen-sharing/calls';
+  import { metricsApi } from '$lib/metrics/api';
   import { useHub } from '$lib/hub/context';
   import { press } from '$lib/motion/roles/press';
   import { useSessions } from '$lib/sessions/sessions.svelte';
@@ -35,6 +37,9 @@
   const sessions = useSessions();
   const screenSharing = { calls: screenSharingCalls(hub), onEnabled: (next: DeviceDetail) => { detail.setDevice(next); } };
   const now = () => new Date();
+  const agentCalls = metricsApi(hub);
+  const agentShell = thisComputerShell();
+  const agent = $derived({ calls: agentCalls, origin: hub.address.origin, reveal: page.url.hash === '#agent', shell: agentShell });
   // The layout mounts a new page for each path, so the ID never changes under this one.
   // svelte-ignore state_referenced_locally
   const detail = new Detail(hub, id, now);
@@ -74,6 +79,12 @@
   function go(next: TabPlace): void {
     // eslint-disable-next-line svelte/no-navigation-without-resolve -- the path comes from resolve(); only the query is added
     void goto(`${resolve('/devices')}/${encodeURIComponent(id)}${placeSearch(next)}`, { keepFocus: true, noScroll: true });
+  }
+
+  /** The Overview's way to the Agent panel on the Settings tab; the panel takes focus (MET-019). */
+  function agentPanel(): void {
+    // eslint-disable-next-line svelte/no-navigation-without-resolve -- the path comes from resolve(); only the query and hash are added
+    void goto(`${resolve('/devices')}/${encodeURIComponent(id)}${placeSearch({ tab: 'settings', section: null, range: 'HOUR' })}#agent`, { keepFocus: true, noScroll: true });
   }
 
   function settings(section: SettingsSection | null): void {
@@ -134,7 +145,7 @@
             {now}
             onRange={(range) => { go({ tab: 'overview', section: null, range }); }}
             onRetry={() => void metrics.load(place.range, device.metricsSource)}
-            onSettings={() => { settings('general'); }}
+            onSettings={agentPanel}
           />
         {/if}
       </TabPanel>
@@ -178,6 +189,8 @@
           {revision}
           section={place.section}
           calls={calls.settings}
+          {agent}
+          {now}
           onTest={calls.onTest}
           onCancel={() => { revision += 1; }}
           onDelete={calls.onDelete}

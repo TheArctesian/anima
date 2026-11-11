@@ -50,6 +50,11 @@ export function inputId(field: string): string {
   return `device-${field.replaceAll('.', '-')}`;
 }
 
+/** The DOM id of the hint under the input of a field path. */
+export function hintId(field: string): string {
+  return `${inputId(field)}-hint`;
+}
+
 /** The DOM id of the error text for a field path. */
 export function errorId(field: string): string {
   return `${inputId(field)}-error`;

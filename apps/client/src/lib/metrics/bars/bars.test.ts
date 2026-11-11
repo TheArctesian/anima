@@ -41,6 +41,7 @@ it('MET-007: a null value shows a dash, not 0, and is not degraded', () => {
 it('6.1: source NONE says "No metrics", SSH without readings says "Waiting for metrics"', () => {
   expect(barRow(null, 'NONE')).toEqual({ kind: 'empty', text: 'No metrics' });
   expect(barRow(readings(), 'NONE')).toEqual({ kind: 'empty', text: 'No metrics' });
+  expect(barRow(null, 'AGENT')).toEqual({ kind: 'empty', text: 'Waiting for metrics' });
   expect(barRow(null, 'SSH')).toEqual({ kind: 'empty', text: 'Waiting for metrics' });
 });
 

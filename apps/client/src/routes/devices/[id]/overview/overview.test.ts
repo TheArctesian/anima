@@ -67,7 +67,7 @@ const LOADED: Shown = {
 };
 const WAITING: Shown = { view: null, span: null, shownRange: null, chartShape: null, readings: null, error: null, liveError: null };
 
-function show(metrics: Shown, source: 'SSH' | 'NONE' = 'SSH', range: MetricRange = 'HOUR', ssh: Partial<ReturnType<typeof device>['ssh']> = {}) {
+function show(metrics: Shown, source: 'SSH' | 'NONE' | 'AGENT' = 'SSH', range: MetricRange = 'HOUR', ssh: Partial<ReturnType<typeof device>['ssh']> = {}) {
   const time = manualClock();
   const calls = { range: vi.fn<(range: MetricRange) => void>(), retry: vi.fn<() => void>(), settings: vi.fn<() => void>() };
   app = mount(OverviewPanel, {
@@ -163,11 +163,17 @@ it('MET-003: the range control marks the current choice and reports a change', (
 
 it('D-7: with no metrics source the panel says metrics are off, links to Settings and shows no chart', () => {
   const { calls } = show(WAITING, 'NONE');
-  expect(document.body.textContent).toContain('Metrics are off for this device.');
+  expect(document.body.textContent).toContain('Metrics are off. Install the agent or turn on SSH metrics in Settings.');
   expect(document.querySelector('[aria-label="Time range"]')).toBeNull();
   expect(document.querySelector('svg')).toBeNull();
   button('Open Settings')?.click();
   expect(calls.settings).toHaveBeenCalledOnce();
+});
+
+it('MET-011: an AGENT device has metrics: the range control shows and "Metrics are off" does not', () => {
+  show(LOADED, 'AGENT');
+  expect(document.querySelector('[aria-label="Time range"]')).not.toBeNull();
+  expect(document.body.textContent).not.toContain('Metrics are off');
 });
 
 it('D-3: a slow load shows the chart grid skeleton after threshold-loading, with no line', () => {

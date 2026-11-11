@@ -147,6 +147,19 @@ describe('settings tab (D-7, DEV-014)', () => {
 
 });
 
+describe('settings tab: the agent (MET-019, D-7)', () => {
+  it('MET-019: the Settings tab offers Install agent, and its code request names this device', async () => {
+    const enrolment = { enrolAgent: { code: 'anima_enrol_AbCdEfGhIjKlMnOpQrStUv', expiresAt: '2099-01-01T00:00:00Z' } };
+    const fake = await show(answers({ EnrolAgent: enrolment }), '?tab=settings');
+    button('Install agent').click();
+    await settle();
+    expect(fake.requests.filter((request) => request.operation === 'EnrolAgent')).toEqual([
+      { operation: 'EnrolAgent', variables: { deviceId: ID } },
+    ]);
+    expect(document.querySelector('pre')?.textContent).toContain('anima-agent enrol --hub');
+  });
+});
+
 describe('settings tab: credentials, cancel and sections (D-4, DEV-022, SEC-006)', () => {
   it('SEC-006: accepting the new host key makes SSH start sessions', async () => {
     const tested = { reachable: true, authenticated: true, hostKey: KEY, hostKeyChanged: false, message: null };

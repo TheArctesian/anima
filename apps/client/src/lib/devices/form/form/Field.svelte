@@ -1,9 +1,9 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
   import type { FieldError } from '$lib/hub/hub';
-  import { errorFor, errorId, inputId } from './errors';
+  import { errorFor, errorId, hintId, inputId } from './errors';
 
-  /** What the control must carry so the label and the error reach a screen reader. */
+  /** What the control must carry so the label, the hint and the error reach a screen reader. */
   export interface ControlAttributes {
     id: string;
     'aria-invalid': boolean;
@@ -24,7 +24,8 @@
   const attributes = $derived<ControlAttributes>({
     id: inputId(field),
     'aria-invalid': error !== undefined,
-    'aria-describedby': error === undefined ? undefined : errorId(field),
+    // The hint, then the error: both are read after the label.
+    'aria-describedby': [hint === undefined ? null : hintId(field), error === undefined ? null : errorId(field)].filter((id) => id !== null).join(' ') || undefined,
   });
 </script>
 
@@ -32,7 +33,7 @@
   <label for={inputId(field)}>{label}</label>
   {@render control(attributes)}
   {#if hint !== undefined}
-    <small>{hint}</small>
+    <small id={hintId(field)}>{hint}</small>
   {/if}
   <small id={errorId(field)} class="error">{error?.message ?? ''}</small>
 </div>
