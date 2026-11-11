@@ -1825,3 +1825,26 @@ its intent.
   (`quality:names`).
 - **B2: `tests/broker-process.test.ts`** covers `readLine`, the entry points and the files, besides the
   `broker-main.test.ts` rows (which call `serve` with `tests/broker-fake.ts`).
+
+
+### Client lane (A2-T2, A2-T3)
+
+1. **A2-T2.** `SitePaths` takes only `sites` (no `now`: nothing in a site row depends on time). `NodeKeys` takes
+   `hub`, `nodes` and `now`; the hub row is first and never marked "Not in Anima".
+2. **A2-T2.** `keyText` has an optional third parameter `locale`, so the date tests do not depend on the machine.
+   A key with a state other than NEVER and no expiry reads "Expiry not known"; a relayed path with no region
+   reads "Relayed".
+3. **A2-T2.** `sortedNodes` ranks nodes not in Anima first, then those whose key is not NEVER or VALID
+   (expiring, expired, tagged with expiry), then name.
+4. **A2-T2.** The loading placeholders are the real `SitePaths` and `NodeKeys` drawn with one placeholder row
+   each, transparent, `aria-hidden` and `inert`, so the heights are the real heights (MOT-007). The VPN section sits
+   after the Hub section, which is desktop only, so in a browser it follows Account.
+5. **A2-T2.** `VpnLive.error` shows the Retry notice only while there is no picture; a failed subscription later
+   keeps the last picture on screen. `null` (no proxy) shows the SET-003 text with the value "Off".
+6. **A2-T2.** The sites and keys tests are in `sites/sites.svelte.test.ts` (reduced motion, MOT-040) and
+   `keys/keys.svelte.test.ts` (VPN-010, VPN-011); the section behaviour is in `section.svelte.test.ts`.
+7. **A2-T3.** The page-level test (one `Vpn` read and one `VpnChanged` subscription; the card shows this device's
+   node) is `routes/devices/[id]/detail/vpn.test.ts`: the `[id]` folder is at its 12 files, and `page.test.ts` is at
+   its 300 lines. `page.test.ts` D-9 now leaves the page's own `Vpn` read out of the list of panel reads.
+8. **Base.** `crates/hub/src/vpn/tests/peers.rs` was not rustfmt-clean after the hub merge (`cargo fmt --check`
+   stopped the gates at step 1); `cargo fmt` fixed it in its own commit.

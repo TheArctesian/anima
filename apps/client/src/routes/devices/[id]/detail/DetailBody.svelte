@@ -14,6 +14,8 @@
   import { useSessions } from '$lib/sessions/sessions.svelte';
   import { openWebInterface } from '$lib/web-interfaces/open/open';
   import { webViewShell } from '$lib/web-interfaces/shell/client-shell';
+  import { vpnApi } from '$lib/vpn/api';
+  import { VpnLive } from '$lib/vpn/live.svelte';
   import type { SessionProtocol } from '$lib/sessions/tabs';
   import ChecksPanel from '../checks/ChecksPanel.svelte';
   import type { DeviceId } from '../device-id';
@@ -59,6 +61,17 @@
   const headerLoading = $derived(device === null && detail.error === null && !detail.missing);
   const checksLoading = $derived(detail.checks === null && detail.checksError === null);
   const metricsSource = $derived(device?.metricsSource ?? null);
+
+  // One VPN subscription for the page; the Overview card reads this device's node from it (VPN-005).
+  const vpnLive = new VpnLive(vpnApi(hub));
+  const vpn = $derived(vpnLive.picture?.nodes.find((node) => node.device?.id === device?.id) ?? null);
+
+  $effect(() => {
+    void vpnLive.load();
+    return () => {
+      vpnLive.stop();
+    };
+  });
 
   $effect(() => {
     detail.start();
@@ -142,6 +155,7 @@
             checks={detail.checks ?? []}
             {metrics}
             range={place.range}
+            {vpn}
             {now}
             onRange={(range) => { go({ tab: 'overview', section: null, range }); }}
             onRetry={() => void metrics.load(place.range, device.metricsSource)}

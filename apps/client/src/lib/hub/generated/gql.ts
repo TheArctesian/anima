@@ -96,6 +96,10 @@ type Documents = {
     "\n  query LiveSessions($first: Int) {\n    sessions(live: true, first: $first) {\n      edges {\n        node {\n          id\n          deviceId\n          deviceName\n          protocol\n          operatorName\n          startedAt\n          clientAddr\n        }\n      }\n    }\n  }\n": typeof types.LiveSessionsDocument,
     "\n  subscription LiveSessionChanged {\n    sessionChanged {\n      session {\n        id\n        deviceId\n        deviceName\n        protocol\n        operatorName\n        startedAt\n        clientAddr\n        endedAt\n        endReason\n      }\n    }\n  }\n": typeof types.LiveSessionChangedDocument,
     "\n  mutation WakeDevice($deviceId: ID!) {\n    wakeDevice(deviceId: $deviceId) {\n      sentAt\n      relayName\n    }\n  }\n": typeof types.WakeDeviceDocument,
+    "\n  fragment VpnNodeFields on VpnNode {\n    name\n    address\n    os\n    role\n    tags\n    routes\n    online\n    lastSeen\n    keyExpiry\n    keyState\n    path\n    relayRegion\n    inAnima\n    device {\n      id\n      name\n    }\n  }\n": typeof types.VpnNodeFieldsFragmentDoc,
+    "\n  fragment VpnPictureFields on VpnPicture {\n    readAt\n    fresh\n    hub {\n      ...VpnNodeFields\n    }\n    sites {\n      site {\n        id\n        name\n        subnet\n      }\n      router {\n        ...VpnNodeFields\n      }\n      state\n      path\n      relayRegion\n      hasPingCheck\n    }\n    nodes {\n      ...VpnNodeFields\n    }\n  }\n": typeof types.VpnPictureFieldsFragmentDoc,
+    "\n  query Vpn {\n    vpn {\n      ...VpnPictureFields\n    }\n  }\n": typeof types.VpnDocument,
+    "\n  subscription VpnChanged {\n    vpnChanged {\n      ...VpnPictureFields\n    }\n  }\n": typeof types.VpnChangedDocument,
     "\n  fragment WebInterfaceSuggestionFields on WebInterfaceSuggestion {\n    checkId\n    url\n    label\n  }\n": typeof types.WebInterfaceSuggestionFieldsFragmentDoc,
     "\n  fragment WebInterfaceFields on WebInterface {\n    id\n    deviceId\n    label\n    url\n    openIn\n    pinnedFingerprintSha256\n    pinnedAt\n  }\n": typeof types.WebInterfaceFieldsFragmentDoc,
     "\n  mutation CreateWebInterface($deviceId: ID!, $input: WebInterfaceInput!) {\n    createWebInterface(deviceId: $deviceId, input: $input) {\n      ...WebInterfaceFields\n    }\n  }\n": typeof types.CreateWebInterfaceDocument,
@@ -188,6 +192,10 @@ const documents: Documents = {
     "\n  query LiveSessions($first: Int) {\n    sessions(live: true, first: $first) {\n      edges {\n        node {\n          id\n          deviceId\n          deviceName\n          protocol\n          operatorName\n          startedAt\n          clientAddr\n        }\n      }\n    }\n  }\n": types.LiveSessionsDocument,
     "\n  subscription LiveSessionChanged {\n    sessionChanged {\n      session {\n        id\n        deviceId\n        deviceName\n        protocol\n        operatorName\n        startedAt\n        clientAddr\n        endedAt\n        endReason\n      }\n    }\n  }\n": types.LiveSessionChangedDocument,
     "\n  mutation WakeDevice($deviceId: ID!) {\n    wakeDevice(deviceId: $deviceId) {\n      sentAt\n      relayName\n    }\n  }\n": types.WakeDeviceDocument,
+    "\n  fragment VpnNodeFields on VpnNode {\n    name\n    address\n    os\n    role\n    tags\n    routes\n    online\n    lastSeen\n    keyExpiry\n    keyState\n    path\n    relayRegion\n    inAnima\n    device {\n      id\n      name\n    }\n  }\n": types.VpnNodeFieldsFragmentDoc,
+    "\n  fragment VpnPictureFields on VpnPicture {\n    readAt\n    fresh\n    hub {\n      ...VpnNodeFields\n    }\n    sites {\n      site {\n        id\n        name\n        subnet\n      }\n      router {\n        ...VpnNodeFields\n      }\n      state\n      path\n      relayRegion\n      hasPingCheck\n    }\n    nodes {\n      ...VpnNodeFields\n    }\n  }\n": types.VpnPictureFieldsFragmentDoc,
+    "\n  query Vpn {\n    vpn {\n      ...VpnPictureFields\n    }\n  }\n": types.VpnDocument,
+    "\n  subscription VpnChanged {\n    vpnChanged {\n      ...VpnPictureFields\n    }\n  }\n": types.VpnChangedDocument,
     "\n  fragment WebInterfaceSuggestionFields on WebInterfaceSuggestion {\n    checkId\n    url\n    label\n  }\n": types.WebInterfaceSuggestionFieldsFragmentDoc,
     "\n  fragment WebInterfaceFields on WebInterface {\n    id\n    deviceId\n    label\n    url\n    openIn\n    pinnedFingerprintSha256\n    pinnedAt\n  }\n": types.WebInterfaceFieldsFragmentDoc,
     "\n  mutation CreateWebInterface($deviceId: ID!, $input: WebInterfaceInput!) {\n    createWebInterface(deviceId: $deviceId, input: $input) {\n      ...WebInterfaceFields\n    }\n  }\n": types.CreateWebInterfaceDocument,
@@ -540,6 +548,22 @@ export function graphql(source: "\n  subscription LiveSessionChanged {\n    sess
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "\n  mutation WakeDevice($deviceId: ID!) {\n    wakeDevice(deviceId: $deviceId) {\n      sentAt\n      relayName\n    }\n  }\n"): (typeof documents)["\n  mutation WakeDevice($deviceId: ID!) {\n    wakeDevice(deviceId: $deviceId) {\n      sentAt\n      relayName\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  fragment VpnNodeFields on VpnNode {\n    name\n    address\n    os\n    role\n    tags\n    routes\n    online\n    lastSeen\n    keyExpiry\n    keyState\n    path\n    relayRegion\n    inAnima\n    device {\n      id\n      name\n    }\n  }\n"): (typeof documents)["\n  fragment VpnNodeFields on VpnNode {\n    name\n    address\n    os\n    role\n    tags\n    routes\n    online\n    lastSeen\n    keyExpiry\n    keyState\n    path\n    relayRegion\n    inAnima\n    device {\n      id\n      name\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  fragment VpnPictureFields on VpnPicture {\n    readAt\n    fresh\n    hub {\n      ...VpnNodeFields\n    }\n    sites {\n      site {\n        id\n        name\n        subnet\n      }\n      router {\n        ...VpnNodeFields\n      }\n      state\n      path\n      relayRegion\n      hasPingCheck\n    }\n    nodes {\n      ...VpnNodeFields\n    }\n  }\n"): (typeof documents)["\n  fragment VpnPictureFields on VpnPicture {\n    readAt\n    fresh\n    hub {\n      ...VpnNodeFields\n    }\n    sites {\n      site {\n        id\n        name\n        subnet\n      }\n      router {\n        ...VpnNodeFields\n      }\n      state\n      path\n      relayRegion\n      hasPingCheck\n    }\n    nodes {\n      ...VpnNodeFields\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  query Vpn {\n    vpn {\n      ...VpnPictureFields\n    }\n  }\n"): (typeof documents)["\n  query Vpn {\n    vpn {\n      ...VpnPictureFields\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  subscription VpnChanged {\n    vpnChanged {\n      ...VpnPictureFields\n    }\n  }\n"): (typeof documents)["\n  subscription VpnChanged {\n    vpnChanged {\n      ...VpnPictureFields\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
