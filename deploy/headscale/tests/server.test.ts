@@ -3,6 +3,7 @@
 import { describe, expect, test } from 'bun:test';
 import { parseGoDuration, seconds } from '../src/go-duration.ts';
 import { days, parsePrometheusDuration } from '../src/prometheus-duration.ts';
+import { HEADSCALE_VERSION } from '../src/version.ts';
 
 const root = new URL('../', import.meta.url);
 const template = await Bun.file(new URL('config/config.yaml', root)).text();
@@ -270,8 +271,9 @@ describe('compose (VPS-002, VPS-003, D-9)', () => {
     ]);
   });
 
-  test('image is Headscale 0.29.7 pinned by tag and digest', () => {
-    expect(at(service, 'image')).toMatch(/^docker\.io\/headscale\/headscale:0\.29\.7@sha256:[0-9a-f]{64}$/);
+  test('VPN-014: compose.yaml pins HEADSCALE_VERSION by tag and digest', () => {
+    const version = HEADSCALE_VERSION.replaceAll('.', '\\.');
+    expect(at(service, 'image')).toMatch(new RegExp(`^docker\\.io/headscale/headscale:${version}@sha256:[0-9a-f]{64}$`));
     expect(at(service, 'command')).toBe('serve');
     expect(at(service, 'restart')).toBe('always');
   });
