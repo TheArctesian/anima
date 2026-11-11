@@ -230,6 +230,9 @@ pub enum AuditTarget {
     Builder(BuilderId),
     /// An API key for scripts (D-23).
     ApiKey(ApiKeyId),
+    /// The VPN: a key, a registration or a route made through the broker (VP-7). It has no
+    /// id of its own; the change names the site or node.
+    Vpn,
 }
 
 impl AuditTarget {
@@ -252,6 +255,7 @@ impl AuditTarget {
             Self::BuildJob(_) => "build_job",
             Self::Builder(_) => "builder",
             Self::ApiKey(_) => "api_key",
+            Self::Vpn => "vpn",
         }
     }
 
@@ -273,6 +277,7 @@ impl AuditTarget {
             Self::BuildJob(id) => id.to_string(),
             Self::Builder(id) => id.to_string(),
             Self::ApiKey(id) => id.to_string(),
+            Self::Vpn => "vpn".to_owned(),
         }
     }
 }

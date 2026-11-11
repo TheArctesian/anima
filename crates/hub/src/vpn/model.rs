@@ -10,7 +10,20 @@ use async_graphql::Enum;
 use chrono::{DateTime, Utc};
 use ipnet::IpNet;
 
+use super::broker::BrokerView;
 use crate::ids::{DeviceId, SiteId};
+
+/// Whether the hub can reach the broker that makes keys and approves routes (VP-7).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Enum)]
+pub enum BrokerState {
+    /// `ANIMA_VPN_BROKER` is not set.
+    NotSet,
+    /// The socket is not there: the broker unit is not installed on the VPS.
+    NotInstalled,
+    Ready,
+    /// The last call failed or its reply was unreadable.
+    Failed,
+}
 
 /// What a node is for, from its tags (BD-5).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Enum)]
@@ -64,6 +77,8 @@ pub struct VpnNode {
     pub role: Role,
     pub tags: Vec<String>,
     pub routes: Vec<IpNet>,
+    /// The routes the node offers that Headscale has not approved, from the broker (BD-16).
+    pub waiting_routes: Vec<IpNet>,
     pub online: bool,
     pub last_seen: Option<DateTime<Utc>>,
     pub key_expiry: Option<DateTime<Utc>>,
@@ -85,6 +100,9 @@ pub struct SitePath {
     pub router: Option<usize>,
     pub state: RouteState,
     pub has_ping_check: bool,
+    /// A router of the site that offers the subnet and waits for approval, from the broker
+    /// (BD-16). It has no path, and an empty `key`: it gets no warning marks.
+    pub waiting_router: Option<VpnNode>,
 }
 
 /// The VPN as the hub's node saw it at `read_at` (VPN-005, VPN-008).
@@ -98,4 +116,8 @@ pub struct Picture {
     pub sites: Vec<SitePath>,
     /// Every peer of the hub, in name order, then address order.
     pub nodes: Vec<VpnNode>,
+    pub broker: BrokerState,
+    /// The broker's node list and policy sites of this read, when it answered: the mutations
+    /// map a site, a node name or a waiting router to the broker's names and ids by it.
+    pub(super) roster: Option<BrokerView>,
 }

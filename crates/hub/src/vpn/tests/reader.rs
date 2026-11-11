@@ -31,6 +31,7 @@ fn reading(pool: &PgPool, at: DateTime<Utc>) -> Reading {
         bus: Bus::new(16),
         clock: Arc::new(FixedClock(at)),
         feed: Feed::new(),
+        broker: None,
     }
 }
 

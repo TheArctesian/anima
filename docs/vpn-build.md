@@ -1908,3 +1908,69 @@ A security review of the broker found the points below; each fix has regression 
    (same breakpoint as `SettingRow`): name + state on line 1, then the subnet and the path each on a full line, because
    a wide state ("Router offline") left the subnet 66 px in a two-column second line (re-measure at 360 px). (VPN-002) The toolbar Site button reads "Site: Lab" for a chosen site. Open
    (UI-002): the design tokens have no text-safe accent, so the link stays `--accent` (4.31:1 in dark on the card).
+
+### Hub lane (B3, B4a, B5)
+
+- **B3: the picture keeps the broker's answer.** `Picture` gets `broker: BrokerState` and a
+  `pub(super) roster: Option<BrokerView>` (the node list and policy sites of the same read).
+  B4 and B5 map a site, a node name or a waiting router to the broker's site names and node ids
+  from it, as B4 and B5 say ("the latest picture"). With no LocalAPI proxy there is no picture,
+  so the mutations answer `UNAVAILABLE`.
+- **B3: the merge is its own pure file, `vpn/waiting.rs`** (waiting routes, the waiting router,
+  the policy site name of a subnet). `picture.rs` exposes `role`, `key_state` and `device_by`
+  (BD-14 matching by IPv4 or unique name, split out of `device_of`) to it. A waiting router is
+  a `VpnNode` with an empty `key` (the broker drops every key, so it gets no warning marks),
+  `os` empty and `path` `UNKNOWN`. A policy site name that is not `^[a-z0-9-]{1,32}$` is
+  treated as absent: B4 puts it into a command line the operator copies.
+- **B3: the error variants.** `vpn::Error` gets `NotInstalled`, `BrokerRefused { refusal, detail }`
+  (the spec's `Broker(Refusal)`; the broker's detail, cleaned and cut to 160 characters, is kept
+  for the `VALIDATION` message of `undone`), `BrokerUnreadable`, and also `BrokerTimedOut` (the
+  30 s limit) and `BrokerConnection` (any other socket error), so each name tells the truth.
+  `Refusal` is `pub`, as the field of a `pub` error. A reply parse error never keeps serde's
+  text: serde quotes the value it could not read, which can be a key.
+- **B3: the reply line is read into a `Zeroizing` buffer**, and `PreAuthKey` holds a
+  `Zeroizing<String>`; the envelope `{ok, value | refusal, detail}` denies unknown fields.
+- **B3: only `nodes` is in B3.** The other verbs come with the mutations that call them (B4:
+  `personal_key`, `router_key`, `register`, `renew`; B5: `approve_route`), so no client method
+  is dead code. `NewKey` and `PreAuthKey` are in B3 for the LOG-007 test, with
+  `#[cfg_attr(not(test), expect(dead_code, …))]` until B4.
+- **B3: `log_007_a_key_reply_debug_prints_no_key` is a unit test** (`src/vpn/tests/broker.rs`,
+  with the reply-shape tests and two property tests of the parser): `NewKey` is `pub(super)`.
+  The other five B3 tests are in `tests/it/vpn/broker.rs` through the reader and the `vpn`
+  query; `vp_7_two_calls_at_once_take_turns` fails (1 refused connection) without the turn.
+- **B3: the reader reads the status and the broker at once** (`tokio::join!`). A broker failure
+  sets the state only; the reader logs a change of the broker state by its fault word.
+- **B3: wiring.** `main.rs` names `vpn_broker` first in the `Dependencies` literal, because
+  `config` moves into the next field. `schema::build_schema` went to 61 lines with
+  `.data(vpn_broker)`; the devices loaders moved into `with_devices_loaders`. `config/tests.rs`
+  went over 300 lines; the two LocalAPI tests and the broker test moved to
+  `config/vpn_tests.rs`. `deploy/test/compose.test.ts` skips the broker bind in the SELinux
+  label rule, as it does for `localapi` (R-054).
+- **B4a: the steps are a pure file, `vpn/steps.rs`**; the login server `https://hs.anima.ing` is
+  a constant there. The router steps use the policy site name (`--hostname <name>-router`),
+  never the Anima site name, which can hold spaces.
+- **B4a: `VALIDATION` lists a field (K7).** A refusal about the input is
+  `invalid([{field, message}])` on the mutation's argument (`siteId`, `authId`, `name`).
+  `createVpnInvite` has no argument, so a `bad-request`, `unknown-site`, `not-allowed` or
+  `undone` there is the hub's own mistake and answers `INTERNAL`. `not-allowed` and `undone`
+  carry the broker's cleaned detail (a subnet another router already serves, an auth ID of a
+  tagged node, "the node had a tag"). An `UNAVAILABLE` answer logs the fault word only.
+- **B4a: the hub checks the auth ID** against `^hskey-authreq-[A-Za-z0-9_-]{24}$` before it
+  calls the broker, so a pasted command or an extra space never reaches it.
+- **B4a: `renewVpnKey(name)`** finds an untagged node of user `operator` with that name in the
+  latest broker list; another name is `VALIDATION` on `name` before any broker call. Its audit
+  action is `update`; `registerVpnNode` is `accept`, the keys are `create`. The audit `change`
+  is `{site, expiresAt}` for a key (`site` null for an invite) and `{node, address, keyExpiry}`
+  for a node.
+- **B4a: a closed connection with no reply** (the broker drops a request that waits more than
+  8 s behind its audit, lead's note on `8ff57c21`) is `BrokerUnreadable` → `UNAVAILABLE` "The
+  broker did not answer; it may be busy checking its nodes. Try again in a minute."
+- **B4a: the mutations need the reader's broker list** (`roster`); with no LocalAPI proxy, or
+  before the first `READY` read, `createRouterKey` and `renewVpnKey` answer `UNAVAILABLE`.
+- **B5: `approveSiteRoute` is its own `VpnRouteMutation` in `vpn/graphql/routes.rs`**, merged
+  in `schema.rs` beside `VpnMutation`, so `graphql/mutations.rs` stays under 300 lines. It finds
+  the site's `waitingRouter` in the latest picture, the broker id by the router's IPv4 in the
+  same read's broker list, and the policy site name by subnet. No waiting router is `VALIDATION`
+  on `siteId` with no broker call. The broker's `{node, site}` reply is read and dropped
+  (`IgnoredAny`). Audit: `accept`, `{site, router, route}`. D-23 is 32 names; the D-23 test
+  in `tests/it/vpn/mutations.rs` covers all five VPN mutations.

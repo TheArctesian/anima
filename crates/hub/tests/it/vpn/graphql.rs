@@ -15,7 +15,7 @@ use anima_hub::{
     events::{Bus, Operator, process_log},
     ids::OperatorId,
     schema::{Dependencies, build_schema},
-    vpn::{Feed, Picture, Reading, spawn_reader},
+    vpn::{Broker, Feed, Picture, Reading, spawn_reader},
 };
 use async_graphql::{Request, futures_util::StreamExt as _};
 use chrono::TimeDelta;
@@ -37,11 +37,12 @@ pub fn reading(pool: &PgPool, feed: &Feed) -> Reading {
         bus: Bus::new(16),
         clock: Arc::new(FixedClock(start())),
         feed: feed.clone(),
+        broker: None,
     }
 }
 
 /// Waits until the feed holds a picture that `accepts` accepts.
-async fn published(feed: &Feed, accepts: impl Fn(&Picture) -> bool) {
+pub async fn published(feed: &Feed, accepts: impl Fn(&Picture) -> bool) {
     let mut receiver = feed.subscribe();
     let waited = tokio::time::timeout(
         Duration::from_secs(5),
@@ -99,12 +100,13 @@ const PICTURE: &str = "{ vpn { readAt fresh hub { name role inAnima } \
     sites { site { name } router { name } state path relayRegion hasPingCheck } \
     nodes { name address os role tags routes online keyState path inAnima device { id name } } } }";
 
-/// A signed-in hub whose `vpn` reads `feed`.
-async fn hub_reading(pool: &PgPool, feed: &Feed) -> (Hub, String) {
+/// A signed-in hub whose `vpn` reads `feed` and whose VPN mutations call `broker`.
+pub async fn hub_reading(pool: &PgPool, feed: &Feed, broker: Option<Broker>) -> (Hub, String) {
     set_operator(pool).await;
     let clock: Arc<dyn Clock> = Arc::new(FixedClock(start()));
     let parts = Dependencies {
         vpn_feed: feed.clone(),
+        vpn_broker: broker,
         ..dependencies(pool, clock, Bus::new(16))
     };
     let hub = Hub::serving(pool, parts);
@@ -121,13 +123,13 @@ async fn read_status(pool: &PgPool, feed: &Feed) -> tokio::task::JoinHandle<()> 
 }
 
 /// Runs `query` and returns its data; panics on errors.
-async fn data(hub: &Hub, token: &str, query: &str, variables: Value) -> Value {
+pub async fn data(hub: &Hub, token: &str, query: &str, variables: Value) -> Value {
     let response = hub.post(Some(token), query, variables).await;
     assert!(response["errors"].is_null(), "{response}");
     response["data"].clone()
 }
 
-async fn create_site(hub: &Hub, token: &str, name: &str, subnet: &str) -> String {
+pub async fn create_site(hub: &Hub, token: &str, name: &str, subnet: &str) -> String {
     let query = "mutation($n: String!, $s: Cidr!) { createSite(name: $n, subnet: $s) { id } }";
     let made = data(hub, token, query, json!({ "n": name, "s": subnet })).await;
     made["createSite"]["id"].as_str().unwrap().to_owned()
@@ -151,7 +153,7 @@ async fn create_ping_check(hub: &Hub, token: &str, device: &str) {
 #[sqlx::test(migrations = "./migrations")]
 async fn vpn_005_vpn_is_null_without_a_proxy(pool: PgPool) {
     let feed = Feed::new();
-    let (hub, token) = hub_reading(&pool, &feed).await;
+    let (hub, token) = hub_reading(&pool, &feed, None).await;
 
     assert!(spawn_reader(None, reading(&pool, &feed)).is_none());
 
@@ -164,7 +166,7 @@ async fn vpn_005_vpn_is_null_without_a_proxy(pool: PgPool) {
 #[sqlx::test(migrations = "./migrations")]
 async fn vpn_009_vpn_returns_each_site_with_router_state_and_path(pool: PgPool) {
     let feed = Feed::new();
-    let (hub, token) = hub_reading(&pool, &feed).await;
+    let (hub, token) = hub_reading(&pool, &feed, None).await;
     let home = create_site(&hub, &token, "home", "10.10.0.0/24").await;
     create_site(&hub, &token, "office1", "10.20.0.0/24").await;
     let router = create_device(&hub, &token, &home, ("router-home", "100.64.0.3")).await;
@@ -201,7 +203,7 @@ async fn vpn_009_vpn_returns_each_site_with_router_state_and_path(pool: PgPool) 
 #[sqlx::test(migrations = "./migrations")]
 async fn vpn_011_a_peer_with_a_device_resolves_device(pool: PgPool) {
     let feed = Feed::new();
-    let (hub, token) = hub_reading(&pool, &feed).await;
+    let (hub, token) = hub_reading(&pool, &feed, None).await;
     let home = create_site(&hub, &token, "home", "10.10.0.0/24").await;
     let mac = create_device(&hub, &token, &home, ("operator-mac", "100.64.0.2")).await;
     let reader = read_status(&pool, &feed).await;
@@ -263,7 +265,7 @@ async fn vpn_005_vpn_changed_sends_the_next_picture(pool: PgPool) {
 #[sqlx::test(migrations = "./migrations")]
 async fn vpn_005_an_api_key_may_read_vpn(pool: PgPool) {
     let feed = Feed::new();
-    let (hub, token) = hub_reading(&pool, &feed).await;
+    let (hub, token) = hub_reading(&pool, &feed, None).await;
     let reader = read_status(&pool, &feed).await;
     let create = "mutation($input: ApiKeyInput!) { createApiKey(input: $input) { secret } }";
     let input =
