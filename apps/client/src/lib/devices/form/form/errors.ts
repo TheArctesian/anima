@@ -60,6 +60,12 @@ export function errorId(field: string): string {
   return `${inputId(field)}-error`;
 }
 
+/** The `aria-describedby` of a control: its hint, then its error, whichever exist; undefined when neither does. */
+export function describedBy(field: string, hasHint: boolean, hasError: boolean): string | undefined {
+  const ids = [...(hasHint ? [hintId(field)] : []), ...(hasError ? [errorId(field)] : [])];
+  return ids.length > 0 ? ids.join(' ') : undefined;
+}
+
 const CHANGED_KEY_WARNING = 'The host key changed. Do not trust this device until you check it.';
 
 /** DEV-013, SEC-007: the sentence for a test outcome. */
