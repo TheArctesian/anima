@@ -22,7 +22,7 @@ use crate::{
     maintenance, metrics, notifications, retention,
     sessions::{self, Live},
     targets::AddressPolicy,
-    trust, web_interfaces,
+    trust, vpn, web_interfaces,
 };
 
 // One line per domain in each root (K3).
@@ -91,6 +91,9 @@ pub struct Dependencies {
     /// The release bucket `buildUploadUrls` signs for; `None` when publishing is off (BLD-060,
     /// R-108). `main.rs` gives the publish upkeep the same value.
     pub bucket: Option<Arc<builds::Bucket>>,
+    /// The hub's one VPN `Feed`: the reader publishes on it and `vpn` and `vpnChanged` read
+    /// it, so the upkeep gives the reader this same value.
+    pub vpn_feed: vpn::Feed,
 }
 
 /// Put each dependency into the schema data, with the devices loaders (WP-06 H-2);
@@ -113,6 +116,7 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
         metrics_feed,
         build_updates,
         bucket,
+        vpn_feed,
     } = dependencies;
     harden(
         Schema::build(
@@ -169,6 +173,8 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
     // builds
     .data(build_updates)
     .data(bucket)
+    // vpn
+    .data(vpn_feed)
     .finish()
 }
 

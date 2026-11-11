@@ -3,6 +3,8 @@
 
 mod peers;
 mod picture;
+mod proxy;
+mod reader;
 mod store;
 mod warnings;
 

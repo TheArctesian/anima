@@ -12,6 +12,7 @@ use anima_hub::{
     retention::{self, Subject},
     schema::Dependencies,
     targets::AddressPolicy,
+    vpn,
 };
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;
@@ -65,7 +66,8 @@ pub fn spawn(dependencies: &Dependencies) -> Vec<tokio::task::JoinHandle<()>> {
 }
 
 /// Starts the loops that watch the devices and send: the check scheduler, the metrics
-/// collector and stale watch, and the notification dispatcher (R-072).
+/// collector and stale watch, the notification dispatcher, and, with a `LocalAPI` proxy, the
+/// VPN reader (R-072, VPN-008).
 fn loops(dependencies: &Dependencies) -> Vec<tokio::task::JoinHandle<()>> {
     let (pool, bus, clock) = (&dependencies.pool, &dependencies.bus, &dependencies.clock);
     let (probing, collecting, sending) = reaching(
@@ -73,7 +75,7 @@ fn loops(dependencies: &Dependencies) -> Vec<tokio::task::JoinHandle<()>> {
         &dependencies.policy,
         dependencies.config.tailscale_localapi.clone(),
     );
-    vec![
+    let mut loops = vec![
         checks::spawn_scheduler(pool.clone(), bus.clone(), clock.clone(), probing),
         metrics::spawn_collector(
             pool.clone(),
@@ -84,7 +86,18 @@ fn loops(dependencies: &Dependencies) -> Vec<tokio::task::JoinHandle<()>> {
         ),
         notifications::spawn_dispatcher(pool.clone(), bus.clone(), clock.clone(), sending),
         metrics::spawn_stale_watch(pool.clone(), bus.clone(), clock.clone()),
-    ]
+    ];
+    let reading = vpn::Reading {
+        pool: pool.clone(),
+        bus: bus.clone(),
+        clock: clock.clone(),
+        feed: dependencies.vpn_feed.clone(),
+    };
+    loops.extend(vpn::spawn_reader(
+        dependencies.config.tailscale_localapi.clone(),
+        reading,
+    ));
+    loops
 }
 
 /// What checks, metrics and notifications need to reach the outside: the vault and the one

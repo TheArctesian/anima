@@ -23,6 +23,7 @@ use anima_hub::{
     schema::Dependencies,
     serve_until, sessions,
     targets::AddressPolicy,
+    vpn,
 };
 use sqlx::PgPool;
 
@@ -162,6 +163,7 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
         metrics_feed: feed,
         build_updates: builds::Updates::new(),
         bucket,
+        vpn_feed: vpn::Feed::new(),
     };
     let background = upkeep::spawn(&dependencies);
     // Every route is behind the same permitted-networks check (K3, NET-002).

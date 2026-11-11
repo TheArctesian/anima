@@ -1,42 +1,19 @@
 //! The VPN as the hub's own node sees it (VPN-005, VPN-008 to VPN-011).
 
+mod feed;
+mod localapi;
 mod model;
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "the reader (A1-T4) is the first caller outside the tests"
-    )
-)]
 mod peers;
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "the reader (A1-T4) is the first caller outside the tests"
-    )
-)]
 mod picture;
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "the reader (A1-T4) is the first caller outside the tests"
-    )
-)]
+mod reader;
 mod store;
 #[cfg(test)]
 mod tests;
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "the reader (A1-T4) is the first caller outside the tests"
-    )
-)]
 mod warnings;
 
+pub use feed::Feed;
 pub use model::{KeyState, Picture, Role, RouteState, SitePath, VpnNode, VpnPath};
+pub use reader::{Reading, spawn_reader};
 
 /// Why a read of the VPN status failed. The text never holds the reply (LOG-007).
 #[derive(Debug, thiserror::Error)]

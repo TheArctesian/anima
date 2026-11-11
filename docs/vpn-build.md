@@ -1660,3 +1660,18 @@ its intent.
     read back uses the events store's source filter and checks the GraphQL name `VPN`, not the
     whole `events` query with a signed-in schema. `store.rs` is still unused outside the tests,
     so it gets the same `dead_code` expectation as note 5.
+11. **A1-T4.** `picture::carry` runs in `reader::read_and_publish` with the feed's latest
+    picture, not inside `build_picture`, so `build_picture` keeps the spec's three parameters.
+    The reader's work after the read is `read_and_publish`; `read_once` only logs the change
+    of state. Clippy `cognitive_complexity` counts each `tracing` macro high, so the two log
+    lines are in `read_failed` and `read_again`.
+12. **A1-T4.** A failed read publishes the not-fresh copy only when the latest picture is
+    still fresh: one wake-up for an outage, not one a minute with the same picture.
+13. **A1-T4.** The fake proxies have no `Hang` reply: no test uses it, and dead code fails
+    clippy. `Reply` is a status and a body. The integration proxy keeps `seen()`; the log test
+    checks that every request is the status GET.
+14. **A1-T4.** `vpn_008_no_log_line_holds_status_text` cannot reach `read_once` from
+    `tests/it`, and the reader's second tick is 60 s away. It starts one reader that reads the
+    good answer, then a second reader on the same feed whose read gets the 500 answer (which
+    also holds the status text), and waits until the picture is not fresh.
+15. **A1-T4.** `upkeep::loops` starts the reader (note 1), so its doc comment names it.
