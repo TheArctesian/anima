@@ -291,8 +291,9 @@ pub(super) async fn page<'e>(
 }
 
 /// The recording with this id, without its key, when it is shown at `now`. The row is
-/// locked for share until `tx` ends, so a delete waits for it: an open that read the row
-/// commits its ticket and `recording.view` before the delete can withdraw it (G-7).
+/// locked `for key share` until `tx` ends, so a delete waits for it: an open that read the
+/// row commits its ticket and `recording.view` before the delete can withdraw it (G-7). The
+/// lock does not block updates of the row (the writer's end, the expiry job).
 pub(super) async fn catalogued(
     tx: &mut PgConnection,
     id: RecordingId,
@@ -300,7 +301,7 @@ pub(super) async fn catalogued(
 ) -> Result<Option<Catalogued>, Error> {
     let row: Option<CataloguedRow> = sqlx::query_as(&format!(
         "select {CATALOGUED_COLUMNS} from sessions.recordings where {shown} and id = $2 \
-         for share",
+         for key share",
         shown = shown(),
     ))
     .bind(now)

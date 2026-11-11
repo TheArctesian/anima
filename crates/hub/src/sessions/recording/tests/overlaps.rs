@@ -1,9 +1,11 @@
 //! An open and a delete of one recording that overlap (G-7, K4 §12, D-13): the open holds the
 //! row from its read until its ticket and `recording.view` commit, so the delete waits for it
-//! and then withdraws that ticket. Locks, not timing, order the two.
+//! and then withdraws that ticket. Locks, not timing, order the two. The open's lock blocks
+//! only a delete: an update of the row (the writer's end, the expiry job) goes on.
 
 use std::cell::Cell;
 
+use chrono::TimeDelta;
 use serde_json::json;
 use sqlx::PgPool;
 
@@ -14,7 +16,14 @@ use super::{
     eventually,
     viewing::audits,
 };
-use crate::sessions::tests::fixture::{address, docker_host, now};
+use crate::{
+    events::{self, AuditAction, AuditTarget, NewAudit},
+    sessions::{
+        Actor,
+        recording::viewing::open_recording,
+        tests::fixture::{address, docker_host, now, operator},
+    },
+};
 
 /// The advisory lock the first audit write waits on, held by the test.
 const GATE: i64 = 4_802;
@@ -108,4 +117,52 @@ async fn g_7_a_delete_that_overlaps_an_open_waits_for_it_and_withdraws_its_ticke
         ["view", "delete"],
         "the view is written before the delete"
     );
+}
+
+/// A transaction that wrote an audit entry and then updates the row is not blocked by an open
+/// that waits to create its audit day partition: the open's `for key share` does not conflict
+/// with an update, so no deadlock forms (G-7).
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../tests/fixtures", scripts("devices"))
+)]
+async fn g_7_an_open_does_not_block_an_update_of_its_row(pool: PgPool) {
+    let world = World::new(&pool, 1).await;
+    let id = shelve(&world, docker_host(), 0).await;
+    let mut writer = pool.begin().await.unwrap();
+    let entry = NewAudit {
+        operator: operator(),
+        action: AuditAction::View,
+        target: AuditTarget::Recording(id),
+        client: address(CLIENT),
+        change: json!({}),
+    };
+    events::audit(&mut writer, now(), entry).await.unwrap();
+    let by = Actor {
+        operator: operator(),
+        client: address(CLIENT),
+        at: now() + TimeDelta::days(20),
+    };
+    let opening = open_recording(&pool, &world.serving.live, &by, id);
+    let updating = async {
+        eventually("the open waits to create its partition", async || {
+            sqlx::query_scalar::<_, bool>(
+                "select exists (select 1 from pg_stat_activity \
+                 where datname = current_database() and wait_event_type = 'Lock' \
+                 and starts_with(query, 'select events.ensure_day_partition'))",
+            )
+            .fetch_one(&pool)
+            .await
+            .unwrap()
+        })
+        .await;
+        sqlx::query("update sessions.recordings set expires_at = expires_at where id = $1")
+            .bind(id)
+            .execute(&mut *writer)
+            .await?;
+        writer.commit().await
+    };
+    let (opened, updated) = tokio::join!(opening, updating);
+    assert!(updated.is_ok(), "the update failed: {updated:?}");
+    assert!(opened.is_ok(), "the open failed: {:?}", opened.err());
 }

@@ -27,8 +27,9 @@ const DELETED: &str = "A session recording was deleted. Its key is gone, so its 
 
 /// Deletes the recording `id`: its row and the audit entry of `trail`'s operator, client and
 /// time in one transaction; then its file in `root`. On `Ok` the row is gone, and the caller
-/// withdraws the recording's pending playback tickets before it answers. A file that is already gone is fine; a file that cannot be removed is
-/// logged by its kind of failure only, and the delete still succeeds, since the key is gone.
+/// withdraws the recording's pending playback tickets before it answers. A file that is
+/// already gone is fine; a file that cannot be removed is logged by its kind of failure only,
+/// and the delete still succeeds, since the key is gone.
 ///
 /// A recording still being written can be deleted. Its writer keeps its open file and goes
 /// on writing to it, unlinked, until the session ends: nothing can read those parts back, as
