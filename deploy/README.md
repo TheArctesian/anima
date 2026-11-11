@@ -287,9 +287,10 @@ step (VPS-005): agents do not create the R2 token or change `deploy/.env` on the
 ## Deny list
 
 `ANIMA_PROBE_DENY` lists the addresses that checks and notification targets must never reach
-(NET-001, R-030). It holds the hub's own networks, the VPS public address and the hub's VPN
-address (`ANIMA_HUB_ADDRESS`, as `/32`). It also holds the `notify` network, except the one address
-of Apprise.
+(NET-001, R-030). It holds the hub's own networks and the VPS public address. It also holds the
+`notify` network, except the one address of Apprise. It does not hold the hub's VPN address
+(`ANIMA_HUB_ADDRESS`): the VPS is a device at that address (VP-13), and the host firewall lets only
+the hub container reach it, on 22/tcp and ping (see "The VPS as a device").
 
 The deny list cannot contain `172.30.3.0/24` as a whole: a notification target is checked against
 the same list, so the hub would refuse its own Apprise (E-1). Leaving the subnet out would let a
@@ -725,6 +726,144 @@ Undo: `sudo docker compose --profile apprise rm -sf apprise`.
 `CLIENT_ORIGINS` stays as it is. `operator@` already reaches `tag:hub` on tcp:443. Only a Prometheus
 scraper that is not an `operator@` machine needs a grant; see
 [../docs/setup/prometheus.md](../docs/setup/prometheus.md).
+
+## The VPS as a device (VP-13)
+
+The hub can check the VPS and open SSH to it, at the VPS's VPN address `100.64.0.1` (operator ruling
+VP-13, 2026-11-11). Two changes make this possible, and both are needed:
+
+- `ANIMA_PROBE_DENY` no longer holds `${ANIMA_HUB_ADDRESS}/32`. The Docker networks and the VPS public
+  address stay denied.
+- The host firewall has one exception to its DNS-005 drops: packets from the hub container's address
+  `172.30.0.10` on a Docker bridge may reach `100.64.0.1` on 22/tcp, and ICMP echo with the usual rate
+  limit. Every other container, every other source and every other port of `100.64.0.1` (443,
+  Headscale's 9090, the broker, Apprise) stays dropped. The values are the `hub_source` and
+  `hub_vpn_address` defines in `deploy/headscale/vps/nftables.conf`.
+
+The source address is fixed by `compose.yaml`. The hub's packets to the host leave by its default
+route. `database` and `localapi` are internal and have no gateway. Of `gateway` and `notify`, Docker
+chooses the highest `gw_priority` (Docker 28 or newer), then the network name. The name already
+chooses `gateway`, and `gw_priority: 1` keeps it so. The hub's fixed `gateway` address is
+`172.30.0.10`. If you change `ANIMA_HUB_IP` or `ANIMA_HUB_SUBNET`, change `hub_source` to match.
+A mismatch makes the VPS unreachable from the hub; it opens nothing. Only the hub reaches the VPS
+this way: the SSH terminal and the checks run in the hub (R-062). guacd is a separate container,
+so VNC or RDP to the VPS stays closed.
+
+Each step needs the operator's confirmation in chat (VPS-005).
+
+**1. Install the firewall.** This is the same procedure as Phase 3 step 7. `harden.sh firewall`
+applies the rules with a 180 s rollback. `harden.sh confirm`, run from a new SSH session over the
+VPN, keeps them and installs them for boot.
+
+```sh
+# Run on the Mac, in the repository root, at the commit that you deploy.
+scp deploy/headscale/vps/nftables.conf anima-admin@100.64.0.1:/tmp/nftables.conf
+```
+
+```sh
+# Run on the VPS, in an SSH session over the VPN (ssh anima-admin@100.64.0.1).
+sudo cp -p /opt/anima/headscale/vps/nftables.conf /root/nftables.conf.before-vp13
+sudo install -m 0644 -o root -g root /tmp/nftables.conf /opt/anima/headscale/vps/nftables.conf
+rm /tmp/nftables.conf
+sudo --preserve-env=SSH_CONNECTION /opt/anima/headscale/vps/harden.sh --dry-run firewall
+sudo --preserve-env=SSH_CONNECTION /opt/anima/headscale/vps/harden.sh firewall
+```
+
+Keep this session open. Within 180 s, open a **new** SSH session over the VPN and confirm:
+
+```sh
+# Run on the VPS, in a NEW SSH session over the VPN.
+sudo --preserve-env=SSH_CONNECTION /opt/anima/headscale/vps/harden.sh confirm
+```
+
+If the new session cannot connect, do nothing. The previous rules come back after 180 s. Then put
+the old file back (first command of Undo) and ask the operator.
+
+Check: `sudo grep -n 'hub_' /etc/nftables/anima.nft` shows the two defines and four rules. In
+`sudo nft list table inet anima_filter`, chain `prerouting` starts with two rules for
+`ip saddr 172.30.0.10 ip daddr 100.64.0.1`. In chain `input`, the same two rules follow the
+Apprise drop. `sudo /opt/anima/headscale/vps/harden.sh check` ends with `ok: no violations`.
+
+Undo:
+
+```sh
+# Run on the VPS, in an SSH session over the VPN.
+sudo install -m 0644 -o root -g root /root/nftables.conf.before-vp13 /opt/anima/headscale/vps/nftables.conf
+sudo --preserve-env=SSH_CONNECTION /opt/anima/headscale/vps/harden.sh firewall
+```
+
+Then run `confirm` from a new session, as above.
+
+**2. Redeploy the hub.** The new compose file changes the hub's environment and its `gateway`
+attachment, so `up -d` recreates the hub. Install the compose file as in Phase 3 step 4, keeping the
+current one:
+
+```sh
+# Run on the Mac, in the repository root.
+scp deploy/compose.yaml anima-admin@100.64.0.1:/tmp/
+```
+
+```sh
+# Run on the VPS, in /opt/anima/deploy.
+sudo cp -p compose.yaml compose.yaml.before-vp13
+sudo install -m 0644 -o root -g root /tmp/compose.yaml compose.yaml
+rm /tmp/compose.yaml
+sudo docker compose config --quiet
+sudo docker compose up -d hub
+```
+
+Check, from the hub's network namespace with the host's tools (the hub image has no shell):
+
+```sh
+# Run on the VPS, in /opt/anima/deploy.
+pid=$(sudo docker inspect -f '{{.State.Pid}}' "$(sudo docker compose ps -q hub)")
+sudo nsenter -t "$pid" -n ip -4 route get 100.64.0.1
+sudo nsenter -t "$pid" -n ping -c 1 -W 2 100.64.0.1
+sudo nsenter -t "$pid" -n timeout 5 bash -c 'exec 3<>/dev/tcp/100.64.0.1/22 && head -c 7 <&3'; echo " $?"
+sudo nsenter -t "$pid" -n curl -sk -o /dev/null --connect-timeout 5 https://100.64.0.1/; echo "$?"
+gpid=$(sudo docker inspect -f '{{.State.Pid}}' "$(sudo docker compose ps -q guacd)")
+sudo nsenter -t "$gpid" -n ping -c 1 -W 2 100.64.0.1; echo "$?"
+```
+
+The route line ends `src 172.30.0.10`. The ping gets one reply. The SSH line prints `SSH-2.0 0`.
+The `curl` line prints `28`: port 443 stays closed to the hub. The guacd ping prints `1` (no reply):
+no other container reaches the VPS. Also check `sudo docker compose ps hub` shows `Up (healthy)`.
+
+Undo: `sudo cp -p compose.yaml.before-vp13 compose.yaml` and `sudo docker compose up -d hub`.
+
+**3. Make an SSH user for the hub.** Do not give the hub `anima-admin`: it has sudo. Make a user
+with no extra groups and a key that only the hub holds. VPS-001 allows keys only, so the user has
+no password.
+
+```sh
+# Run on the Mac. Store the private key in Anima (step 4), then delete the local copy.
+ssh-keygen -t ed25519 -N '' -C anima-probe -f /tmp/anima-probe
+scp /tmp/anima-probe.pub anima-admin@100.64.0.1:/tmp/
+```
+
+```sh
+# Run on the VPS, in an SSH session over the VPN.
+sudo useradd -m -s /bin/bash anima-probe
+sudo install -d -m 0700 -o anima-probe -g anima-probe /home/anima-probe/.ssh
+sudo install -m 0600 -o anima-probe -g anima-probe /tmp/anima-probe.pub /home/anima-probe/.ssh/authorized_keys
+rm /tmp/anima-probe.pub
+sudo ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub
+```
+
+Keep the host key fingerprint from the last line for step 4.
+
+sshd admits only the admin user: `harden.sh ssh` writes `AllowUsers <admin>`, and `harden.sh check`
+reports any other `AllowUsers` value. So a login as `anima-probe` is refused until the programme rules
+how sshd admits it. Until then the ping and the 22/tcp check work, and the SSH terminal does not.
+
+Undo: `sudo userdel -r anima-probe`.
+
+**4. Add the VPS in the app.** Add a device with the address `100.64.0.1` and an SSH credential for
+user `anima-probe` with the private key from step 3. At the first connection, compare the host key
+fingerprint with the one from step 3 before you trust it. Then delete `/tmp/anima-probe` and
+`/tmp/anima-probe.pub` on the Mac. Add a ping check and a TCP check on port 22.
+
+Undo: remove the device in the app.
 
 ## Checks
 

@@ -28,10 +28,10 @@ describe("local allow file", () => {
     expect(publicPorts(hooked(rendered, "input")).sort()).toEqual(
       [...publicPorts(hooked(base, "input")), "80/tcp", "8443/tcp", "51820/udp"].sort(),
     );
-    expect(unexplainedAccepts(hooked(rendered, "input"))).toEqual([]);
+    expect(unexplainedAccepts(hooked(rendered, "input"))).toEqual(unexplainedAccepts(hooked(base, "input")));
     for (const hook of ["prerouting", "forward"]) expect(hooked(rendered, hook)).toEqual(hooked(base, hook));
     expect(rendered.commands).toEqual(base.commands);
-    expect(hooked(rendered, "input").rules.slice(0, 2)).toEqual(hooked(base, "input").rules.slice(0, 2));
+    expect(hooked(rendered, "input").rules.slice(0, 5)).toEqual(hooked(base, "input").rules.slice(0, 5));
   });
 
   test("without the file the rules are nftables.conf as reviewed", () => {

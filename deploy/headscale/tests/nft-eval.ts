@@ -2,11 +2,10 @@
  * A minimal packet evaluator for the rule forms in `vps/nftables.conf`: interface name
  * matches (with a trailing `*` wildcard), `fib daddr type local`, `ip saddr` and `ip daddr`
  * prefixes or prefix sets, `ip6` matches (never true: the packets are IPv4), `ct state`,
- * `tcp`/`udp dport`, `limit rate` (never exceeded), `$name` defines, and the `drop` and
- * `accept` verdicts. An `icmp`/`icmpv6 type` rule is skipped (never matches) for a tcp or udp
- * packet and throws for an ICMP packet, because ICMP types are not evaluated. Any other rule
- * form throws, and so does a rule that needs a packet field the test did not give, so
- * nothing is guessed.
+ * `tcp`/`udp dport`, `icmp type` (by name), `limit rate` (never exceeded), `$name` defines,
+ * and the `drop` and `accept` verdicts. An `icmpv6 type` rule never matches (the packets are
+ * IPv4). Any other rule form throws, and so does a rule that needs a packet field the test did
+ * not give, so nothing is guessed.
  */
 import type { Chain, parseNftables } from "../src/nftables.ts";
 
@@ -24,6 +23,8 @@ export interface Packet {
   /** Layer 4 protocol; required by port and ICMP rules. */
   protocol?: "tcp" | "udp" | "icmp";
   dport?: number;
+  /** ICMP type by its nft name, such as `echo-request`; required by `icmp type` rules. */
+  icmpType?: string;
 }
 
 export type Verdict = "accept" | "drop";
@@ -121,6 +122,10 @@ function protocolCondition(tokens: string[], at: number, packet: Packet, rule: s
   const { negated, values, next } = readOperand(tokens, at + 2);
   const actual = required(packet.protocol, "protocol", rule);
   if (actual !== protocol) return { matches: false, next };
+  if (actual === "icmp" && field === "type") {
+    const hit = values.includes(required(packet.icmpType, "icmpType", rule));
+    return { matches: hit !== negated, next };
+  }
   if (field !== "dport") throw new Error(`unsupported ${actual} match "${field ?? ""}" for this packet in rule: ${rule}`);
   const hit = values.map(Number).includes(required(packet.dport, "dport", rule));
   return { matches: hit !== negated, next };

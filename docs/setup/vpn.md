@@ -816,7 +816,8 @@ changes nothing.
    `sudo nft delete table inet anima_filter` (step 8 below).
 
    The rules also drop packets for this host's own VPN addresses that did not arrive on `lo` or
-   `tailscale0` (DNS-005), and a forward rule drops traffic into `tailscale0` unless it comes from
+   `tailscale0` (DNS-005), except the hub container's SSH (22/tcp) and ping to `100.64.0.1` from
+   its fixed address `172.30.0.10` (VP-13), and a forward rule drops traffic into `tailscale0` unless it comes from
    `lo`, `tailscale0`, `docker0` or a `br-*` bridge. Four more rules contain the optional Apprise
    container (`172.30.3.10`, NOT-002): it reaches no address of this host, no private, VPN, loopback,
    link-local, Docker or multicast range and nothing through `tailscale0`, only the internet and its
@@ -865,7 +866,9 @@ changes nothing.
 10. Note for the hub guide (WP-04): the firewall drops packets addressed to this host's own VPN
     address that did not arrive on `lo` or `tailscale0`. A container on a Docker bridge network
     therefore cannot connect to the host's own VPN address, but it can reach other VPN peers and
-    the site subnets. Treat this as a WP-04 note for the hub's network setup.
+    the site subnets. Treat this as a WP-04 note for the hub's network setup. The one exception
+    is the hub container (`172.30.0.10`), which may reach `100.64.0.1` on 22/tcp and ping, so the
+    VPS can be a device in Anima (VP-13, `deploy/README.md`, "The VPS as a device").
 
 11. **Operator change 9 (confirm in chat first: VPS-005).** In the Hostinger panel, remove the 22/tcp rule that you added in step 1
     of this guide, then sync the firewall and check `is_synced: true` (step 1). SSH now works
