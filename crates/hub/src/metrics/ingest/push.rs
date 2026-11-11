@@ -24,9 +24,10 @@ use axum::{
 use chrono::{DateTime, Utc};
 
 use super::{
+    admission::{Admitted, Stop, admit},
     credential,
     refusals::Route,
-    routes::{Admitted, AgentState, Stop, admit, busy, client_of, read_body, unmounted},
+    routes::{AgentState, busy, client_of, read_body, unmounted},
     turns::Turn,
 };
 use crate::{
@@ -73,7 +74,7 @@ async fn push(
     } = admit(state, &token, address, now).await?;
     let refused = |code| Stop::Refused(code, Some(device));
     let accepted = {
-        let body = read_body(headers, body, BODY_LIMIT)
+        let body = read_body(state, headers, body, BODY_LIMIT)
             .await
             .map_err(refused)?;
         let batch =

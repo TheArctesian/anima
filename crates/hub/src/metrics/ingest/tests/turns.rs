@@ -26,8 +26,8 @@ use crate::{
     ids::DeviceId,
     metrics::ingest::{
         renewal::renew,
-        routes::agent_router_within,
-        turns::{ADDRESS_REQUESTS, AGENT_REQUESTS, REQUEST_WAIT, Turns},
+        routes::{Deadlines, agent_router_within},
+        turns::{ADDRESS_REQUESTS, AGENT_REQUESTS, Turns},
     },
 };
 
@@ -96,13 +96,24 @@ fn spawn_push(
     tokio::spawn(async move { send(router, from, &token, body).await })
 }
 
-fn router_within(pool: &PgPool, now: DateTime<Utc>, answer_time: Duration) -> Router {
+/// Deadlines far past every bound these tests check, so an answer within [`at_once`] waited for
+/// no turn, row or body, however slow the machine.
+const PATIENT: Deadlines = Deadlines {
+    answer: Duration::from_mins(1),
+    body: Duration::from_secs(30),
+    request: Duration::from_secs(30),
+};
+
+/// A wait or deadline short enough to pass in a test, and far inside [`at_once`].
+const SHORT: Duration = Duration::from_millis(200);
+
+fn router_within(pool: &PgPool, now: DateTime<Utc>, deadlines: Deadlines) -> Router {
     let clock: Arc<dyn Clock> = Arc::new(FixedClock(now));
-    agent_router_within(pool.clone(), Bus::new(1024), clock, answer_time)
+    agent_router_within(pool.clone(), Bus::new(1024), clock, deadlines)
 }
 
 fn router(pool: &PgPool, now: DateTime<Utc>) -> Router {
-    router_within(pool, now, Duration::from_secs(10))
+    router_within(pool, now, PATIENT)
 }
 
 /// Holds the row `sql` selects for `id` in a transaction of its own until it is dropped.
@@ -160,14 +171,15 @@ async fn within(
         .expect("answered in time")
 }
 
-/// Answered at once: well inside `REQUEST_WAIT`, so without waiting for a turn or a row.
+/// Answered at once: well inside the [`PATIENT`] deadlines, so without waiting for a turn, a row
+/// or a body.
 async fn at_once(answer: impl Future<Output = (StatusCode, String)>) -> (StatusCode, String) {
-    within(Duration::from_millis(1500), answer).await
+    within(Duration::from_secs(5), answer).await
 }
 
 #[test]
 fn met_017_a_device_has_one_turn_and_an_address_two_until_they_end() {
-    let turns = Turns::new(AGENT_REQUESTS);
+    let turns = Turns::new(AGENT_REQUESTS, PATIENT.request);
     let first = turns.device(pve()).expect("a free turn");
     assert!(turns.device(pve()).is_none(), "taken by the first push");
     assert!(
@@ -192,20 +204,21 @@ fn met_017_a_device_has_one_turn_and_an_address_two_until_they_end() {
 
 #[tokio::test(start_paused = true)]
 async fn met_017_a_request_waits_in_order_for_a_turn_up_to_its_deadline() {
-    let turns = Turns::new(AGENT_REQUESTS);
+    let wait = Deadlines::HUB.request;
+    let turns = Turns::new(AGENT_REQUESTS, wait);
     let mut held = Vec::new();
     for _ in 0..AGENT_REQUESTS {
         held.push(turns.request().await.unwrap());
     }
     let started = Instant::now();
     assert!(turns.request().await.is_none());
-    assert_eq!(started.elapsed(), REQUEST_WAIT);
+    assert_eq!(started.elapsed(), wait);
 
     let waiting = tokio::spawn({
         let turns = turns.clone();
         async move { turns.request().await.is_some() }
     });
-    tokio::time::sleep(REQUEST_WAIT / 2).await;
+    tokio::time::sleep(wait / 2).await;
     held.pop();
     assert!(
         waiting.await.unwrap(),
@@ -254,8 +267,8 @@ async fn met_017_a_second_push_of_a_device_is_unavailable_at_once_and_others_are
 
 /// The reviewer's pool probe at its worst: ten pushes from ten nodes with a renewed token wait
 /// to promote it while a write holds the agent row. Only `AGENT_REQUESTS` take a connection;
-/// the rest wait for a turn without one, then are `UNAVAILABLE`, and a ten-connection pool
-/// keeps room throughout.
+/// the rest wait for a turn without one, then are `UNAVAILABLE` after their [`SHORT`] wait, and
+/// a ten-connection pool keeps room throughout.
 #[sqlx::test(
     migrations = "./migrations",
     fixtures(path = "../../../../tests/fixtures", scripts("devices"))
@@ -264,18 +277,22 @@ async fn met_017_agent_requests_never_hold_more_than_their_share_of_the_pool(poo
     let now = database_now(&pool).await;
     let presented = renewed_pve(&pool, now).await;
     let small = hub_pool(&pool).await;
-    let router = router(&small, now);
+    let deadlines = Deadlines {
+        request: SHORT,
+        ..PATIENT
+    };
+    let router = router_within(&small, now, deadlines);
     let holder = hold_row(&pool, AGENT_ROW, pve()).await;
 
     let pushes: Vec<_> = (0..10)
         .map(|n| spawn_push(&router, address(10 + n), &presented, batch(pve(), now)))
         .collect();
-    tokio::time::sleep(REQUEST_WAIT / 2).await;
+    tokio::time::sleep(SHORT / 2).await;
     assert!(
         small.acquire().await.is_ok(),
         "the agents took the whole pool"
     );
-    let answered = tokio::time::timeout(REQUEST_WAIT * 2, async {
+    let answered = tokio::time::timeout(Duration::from_secs(10), async {
         while pushes.iter().filter(|push| push.is_finished()).count() < 10 - AGENT_REQUESTS {
             tokio::time::sleep(Duration::from_millis(5)).await;
         }

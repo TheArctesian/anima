@@ -22,7 +22,9 @@ use sqlx::PgPool;
 use zeroize::Zeroizing;
 
 use super::{
-    Error, credential, enrolment, push, random,
+    Error,
+    admission::{Admitted, Stop, admit},
+    credential, enrolment, push, random,
     refusals::{self, Recorder, Refused, Route},
     renewal,
     turns::{AGENT_REQUESTS, Turn, Turns},
@@ -30,20 +32,33 @@ use super::{
 use crate::{
     clock::Clock,
     events::{Bus, ClientAddr},
-    ids::DeviceId,
     metrics::Feed,
 };
 
 /// The enrol and renew bodies are small JSON objects (K8 Section 1).
 const BODY_LIMIT: usize = 4 * 1024;
 
-/// The longest a body may take to arrive. A slower one is answered `UNAVAILABLE`, so a body
-/// that never ends holds no turn but its device's past this (K8 Section 1).
-const BODY_TIME: Duration = Duration::from_secs(5);
+/// How long an agent request may take, in its parts.
+#[derive(Clone, Copy)]
+pub(in crate::metrics) struct Deadlines {
+    /// The whole answer. Each request is a few small writes, so a slower one is a stuck
+    /// database, and the agent is told to try again (as `/push`, NET-002).
+    pub(in crate::metrics) answer: Duration,
+    /// The body's arrival. A slower body is answered `UNAVAILABLE`, so a body that never ends
+    /// holds no turn but its device's past this (K8 Section 1).
+    pub(in crate::metrics) body: Duration,
+    /// The wait for a database turn (`turns`, K8 Section 6).
+    pub(in crate::metrics) request: Duration,
+}
 
-/// The longest an answer may take. Each request is a few small writes, so a slower one is a
-/// stuck database, and the agent is told to try again (as `/push`, NET-002).
-const ANSWER_TIME: Duration = Duration::from_secs(10);
+impl Deadlines {
+    /// The hub's deadlines (K8 Sections 1 and 6).
+    pub(in crate::metrics) const HUB: Self = Self {
+        answer: Duration::from_secs(10),
+        body: Duration::from_secs(5),
+        request: Duration::from_secs(2),
+    };
+}
 
 #[derive(Clone)]
 pub(super) struct AgentState {
@@ -53,7 +68,7 @@ pub(super) struct AgentState {
     pub(super) clock: Arc<dyn Clock>,
     pub(super) turns: Turns,
     recorder: Recorder,
-    answer_time: Duration,
+    deadlines: Deadlines,
 }
 
 /// `POST /agent/v1/enrol`, `POST /agent/v1/push` and `POST /agent/v1/renew`, each answering
@@ -68,20 +83,20 @@ pub fn agent_router(db: PgPool, feed: Feed, bus: Bus, clock: Arc<dyn Clock>) -> 
         feed,
         bus,
         clock,
-        turns: Turns::new(AGENT_REQUESTS),
+        turns: Turns::new(AGENT_REQUESTS, Deadlines::HUB.request),
         recorder,
-        answer_time: ANSWER_TIME,
+        deadlines: Deadlines::HUB,
     })
 }
 
-/// The test seam of [`agent_router`]: the answer time is a parameter, so a test of the deadline
-/// need not wait ten seconds.
+/// The test seam of [`agent_router`]: the deadlines are a parameter, so a test of one need not
+/// wait for the hub's.
 #[cfg(test)]
 pub(in crate::metrics) fn agent_router_within(
     db: PgPool,
     bus: Bus,
     clock: Arc<dyn Clock>,
-    answer_time: Duration,
+    deadlines: Deadlines,
 ) -> Router {
     let recorder = Recorder::new(db.clone(), bus.clone());
     routes(AgentState {
@@ -89,9 +104,9 @@ pub(in crate::metrics) fn agent_router_within(
         feed: Feed::new(),
         bus,
         clock,
-        turns: Turns::new(AGENT_REQUESTS),
+        turns: Turns::new(AGENT_REQUESTS, deadlines.request),
         recorder,
-        answer_time,
+        deadlines,
     })
 }
 
@@ -104,17 +119,17 @@ fn routes(state: AgentState) -> Router {
 }
 
 async fn enrol(State(state): State<AgentState>, request: Request) -> Response {
-    let limit = state.answer_time;
+    let limit = state.deadlines.answer;
     within(limit, serve_enrol(state, request)).await
 }
 
 async fn push(State(state): State<AgentState>, request: Request) -> Response {
-    let limit = state.answer_time;
+    let limit = state.deadlines.answer;
     within(limit, push::serve_push(state, request)).await
 }
 
 async fn renew(State(state): State<AgentState>, request: Request) -> Response {
-    let limit = state.answer_time;
+    let limit = state.deadlines.answer;
     within(limit, serve_renew(state, request)).await
 }
 
@@ -147,7 +162,7 @@ async fn serve_enrol(state: AgentState, request: Request) -> Response {
         return busy();
     };
     let (parts, body) = request.into_parts();
-    let code = match read_body(&parts.headers, body, BODY_LIMIT).await {
+    let code = match read_body(&state, &parts.headers, body, BODY_LIMIT).await {
         Ok(body) => serde_json::from_slice::<EnrolRequest>(&body).ok(),
         Err(code) => return state.refuse(refused(code), now).await,
     };
@@ -216,7 +231,7 @@ async fn renewed(
         ..
     } = admit(state, &current, address, now).await?;
     let refused = |code| Stop::Refused(code, Some(device));
-    let body = read_body(headers, body, BODY_LIMIT)
+    let body = read_body(state, headers, body, BODY_LIMIT)
         .await
         .map_err(refused)?;
     if !is_renew_request(&body) {
@@ -227,66 +242,6 @@ async fn renewed(
     match renewal::renew(&state.db, &current, next, now).await {
         Ok(Some(renewed)) => Ok(renewed),
         Ok(None) => Err(refused(RefusalCode::TokenRefused)),
-        Err(error) => Err(Stop::Failed(error)),
-    }
-}
-
-/// Why an agent push or renewal stopped short of its answer.
-pub(super) enum Stop {
-    /// Refused by K8 Section 6, for the device of a valid token when there was one.
-    Refused(RefusalCode, Option<DeviceId>),
-    /// The hub cannot answer now (`UNAVAILABLE`).
-    Failed(Error),
-    /// Another request has the turn this one needs (`UNAVAILABLE`, nothing recorded).
-    Busy,
-}
-
-/// A device whose agent may go on: its token is usable and its metrics come from the agent.
-pub(super) struct Admitted {
-    pub(super) device: DeviceId,
-    pub(super) name: String,
-    /// The device's one turn (MET-017), held until the answer.
-    pub(super) turn: Turn<DeviceId>,
-}
-
-/// The device whose usable token `token` is at `now`, while it takes its metrics from the agent,
-/// with its turn. The lookups run under a request turn and under the client `address`'s turn;
-/// both end before this returns, so the body that follows arrives holding neither.
-pub(super) async fn admit(
-    state: &AgentState,
-    token: &AgentToken,
-    address: Turn<IpAddr>,
-    now: DateTime<Utc>,
-) -> Result<Admitted, Stop> {
-    let (device, name) = {
-        let _request = state.turns.request().await.ok_or(Stop::Busy)?;
-        let device = holder(state, token, now).await?;
-        (device, agent_name(state, device).await?)
-    };
-    drop(address);
-    let turn = state.turns.device(device).ok_or(Stop::Busy)?;
-    Ok(Admitted { device, name, turn })
-}
-
-/// The device whose usable token `token` is at `now`.
-async fn holder(
-    state: &AgentState,
-    token: &AgentToken,
-    now: DateTime<Utc>,
-) -> Result<DeviceId, Stop> {
-    match credential::authenticate(&state.db, token, now).await {
-        Ok(Some(device)) => Ok(device),
-        Ok(None) => Err(Stop::Refused(RefusalCode::TokenRefused, None)),
-        Err(error) => Err(Stop::Failed(error)),
-    }
-}
-
-/// The device's name while its metrics come from the agent; `TOKEN_REFUSED` once the operator
-/// switched the source away or deleted the device.
-async fn agent_name(state: &AgentState, device: DeviceId) -> Result<String, Stop> {
-    match credential::agent_name(&state.db, device).await {
-        Ok(Some(name)) => Ok(name),
-        Ok(None) => Err(Stop::Refused(RefusalCode::TokenRefused, Some(device))),
         Err(error) => Err(Stop::Failed(error)),
     }
 }
@@ -357,8 +312,9 @@ fn new_token() -> Result<AgentToken, Error> {
 
 /// The body, read up to `limit` bytes into a buffer wiped on drop; `TOO_LARGE` past it, or at
 /// once when the declared length is past it, and `UNAVAILABLE` when it has not arrived within
-/// [`BODY_TIME`] (K8 Section 1).
+/// the state's body deadline (K8 Section 1).
 pub(super) async fn read_body(
+    state: &AgentState,
     headers: &HeaderMap,
     body: Body,
     limit: usize,
@@ -370,7 +326,7 @@ pub(super) async fn read_body(
     if declared.is_some_and(|length| length > limit) {
         return Err(RefusalCode::TooLarge);
     }
-    let bytes = tokio::time::timeout(BODY_TIME, to_bytes(body, limit))
+    let bytes = tokio::time::timeout(state.deadlines.body, to_bytes(body, limit))
         .await
         .map_err(|_| RefusalCode::Unavailable)?
         .map_err(|_| RefusalCode::TooLarge)?;

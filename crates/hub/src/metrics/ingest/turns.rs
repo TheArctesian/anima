@@ -2,14 +2,19 @@
 //!
 //! - At most [`ADDRESS_REQUESTS`] requests per client address until the request's credential is
 //!   known, so one VPN node with junk bearers or codes cannot keep the hub busy for the others.
+//!   All requests from one address share its turns.
 //! - At most [`AGENT_REQUESTS`] agent requests using the database at once, well under the pool.
-//!   A request waits for its turn in order for up to [`REQUEST_WAIT`], and holds it only
-//!   around its database work, never while a body arrives.
+//!   A request waits for its turn in order, up to the wait it is given, and holds it only
+//!   around its database work, never while a body arrives. A valid token's store holds its turn
+//!   until it ends, at most until the answer's deadline.
 //! - One push or renewal per device, so one token cannot queue requests on its device's rows.
 //!
 //! A request that gets no turn is answered `UNAVAILABLE` before it waits for a connection or a
 //! row. Each turn ends when its guard drops, also when the answer's future is dropped at its
 //! deadline. The locks here are never held across an await.
+//!
+//! A refusal's event is written outside these turns, but at most once a minute per client
+//! address, or per device when its token was valid (`throttle`).
 
 use std::{
     collections::HashMap,
@@ -28,36 +33,34 @@ use crate::ids::DeviceId;
 /// find one.
 pub(super) const AGENT_REQUESTS: usize = 4;
 
-/// The most requests of one client address before their credentials are known. An agent sends
-/// one at a time; a site router that hides several agents behind its address still fits.
+/// The most requests of one client address before their credentials are known: the node's
+/// agent, which sends one at a time, and an enrolment beside it (MET-012).
 pub(super) const ADDRESS_REQUESTS: usize = 2;
-
-/// How long a request waits for one of the [`AGENT_REQUESTS`] turns.
-pub(super) const REQUEST_WAIT: Duration = Duration::from_secs(2);
 
 /// The agent requests in progress.
 #[derive(Clone)]
 pub(super) struct Turns {
     requests: Arc<Semaphore>,
+    wait: Duration,
     addresses: InFlight<IpAddr>,
     devices: InFlight<DeviceId>,
 }
 
 impl Turns {
-    /// Room for `requests` agent requests at once.
-    pub(super) fn new(requests: usize) -> Self {
+    /// Room for `requests` agent requests at once, each waiting up to `wait` for its turn.
+    pub(super) fn new(requests: usize, wait: Duration) -> Self {
         Self {
             requests: Arc::new(Semaphore::new(requests)),
+            wait,
             addresses: InFlight::new(ADDRESS_REQUESTS),
             devices: InFlight::new(1),
         }
     }
 
-    /// A turn to use the database, waited for in order; `None` when none came within
-    /// [`REQUEST_WAIT`].
+    /// A turn to use the database, waited for in order; `None` when none came within the wait.
     pub(super) async fn request(&self) -> Option<OwnedSemaphorePermit> {
         let waited = Arc::clone(&self.requests).acquire_owned();
-        tokio::time::timeout(REQUEST_WAIT, waited).await.ok()?.ok()
+        tokio::time::timeout(self.wait, waited).await.ok()?.ok()
     }
 
     /// One of the address's turns; `None` while [`ADDRESS_REQUESTS`] of its requests are in

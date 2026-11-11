@@ -11,24 +11,27 @@ use axum::{
 };
 use serde_json::json;
 use sqlx::PgPool;
-use tokio::time::Instant;
 
 use super::{
-    AGENT_ROW, address, at_once, batch, device, hold_row, hub_pool, post, renewed_pve, router,
-    router_within, send, spawn_push, unavailable, within,
+    AGENT_ROW, PATIENT, SHORT, address, at_once, batch, device, hold_row, hub_pool, post,
+    renewed_pve, router, router_within, send, spawn_push, unavailable, within,
 };
 use crate::metrics::ingest::{
-    tests::{database_now, enrolled, enrolled_pve, enrolment::waits_for_locks, pve},
-    turns::{ADDRESS_REQUESTS, AGENT_REQUESTS, REQUEST_WAIT},
+    routes::Deadlines,
+    tests::{database_now, enrolled, enrolment::waits_for_locks, pve},
+    turns::{ADDRESS_REQUESTS, AGENT_REQUESTS},
 };
 
-/// While two requests of one address wait for the database, its third is `UNAVAILABLE` at once
-/// and another address is served.
+/// T8a review probe P1, held still: while two requests of node 66 wait for the database, its
+/// next ones, junk bearer, junk code or a valid token, are `UNAVAILABLE` at once with no lookup,
+/// and node 7 is served.
 #[sqlx::test(
     migrations = "./migrations",
     fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
 )]
-async fn met_017_an_address_has_two_requests_in_flight_until_their_tokens_are_known(pool: PgPool) {
+async fn met_017_a_node_whose_two_turns_are_taken_is_refused_at_once_and_others_are_served(
+    pool: PgPool,
+) {
     let now = database_now(&pool).await;
     let presented = renewed_pve(&pool, now).await;
     let neighbour = enrolled(&pool, device(2), now, 2).await;
@@ -43,6 +46,16 @@ async fn met_017_an_address_has_two_requests_in_flight_until_their_tokens_are_kn
         "both wait for the agent row"
     );
 
+    let junk = AgentToken::from_random([100; 32]);
+    let bearer = Some(junk.expose().to_owned());
+    let pushing = ("/agent/v1/push", address(66));
+    let junk_push = post(router.clone(), pushing, bearer, Body::from("{}"));
+    assert_eq!(at_once(junk_push).await, unavailable());
+    let code = EnrolmentCode::from_random([7; 16]);
+    let body = Body::from(json!({ "code": code.expose() }).to_string());
+    let enrolling = ("/agent/v1/enrol", address(66));
+    let junk_enrol = post(router.clone(), enrolling, None, body);
+    assert_eq!(at_once(junk_enrol).await, unavailable());
     let third = send(
         router.clone(),
         address(66),
@@ -50,6 +63,7 @@ async fn met_017_an_address_has_two_requests_in_flight_until_their_tokens_are_kn
         batch(device(2), now),
     );
     assert_eq!(at_once(third).await, unavailable());
+
     let other = send(
         router.clone(),
         address(7),
@@ -89,82 +103,22 @@ async fn met_017_a_request_waits_for_a_turn_while_all_are_taken(pool: PgPool) {
     assert!(waits_for_locks(&pool, held.last().unwrap(), count).await);
 
     let queued = spawn_push(&router, address(7), &neighbour, batch(device(2), now));
-    tokio::time::sleep(REQUEST_WAIT / 4).await;
+    tokio::time::sleep(SHORT).await;
     assert!(!queued.is_finished(), "sent back while it could still wait");
     holder.rollback().await.unwrap();
-    let answer = within(REQUEST_WAIT, async { queued.await.unwrap() }).await;
+    let answer = within(Duration::from_secs(10), async { queued.await.unwrap() }).await;
     assert_eq!(answer.0, StatusCode::NO_CONTENT, "{answer:?}");
     for push in held {
         push.await.unwrap();
     }
 }
 
-/// T8a review probe P1 as a test: one node floods junk bearers and enrolment codes while an
-/// honest agent on another node pushes; every honest push is stored.
-#[sqlx::test(
-    migrations = "./migrations",
-    fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
-)]
-async fn met_017_a_flood_from_one_node_without_credentials_keeps_no_agent_out(pool: PgPool) {
-    let now = database_now(&pool).await;
-    let token = enrolled_pve(&pool, now, 1).await;
-    let router = router(&hub_pool(&pool).await, now);
-    let until = Instant::now() + Duration::from_secs(2);
-    let attackers: Vec<_> = (0..64_u8)
-        .map(|n| {
-            let router = router.clone();
-            tokio::spawn(async move {
-                while Instant::now() < until {
-                    let flooding = ("/agent/v1/push", address(66));
-                    let junk = AgentToken::from_random([n.wrapping_add(100); 32]);
-                    let bearer = Some(junk.expose().to_owned());
-                    post(router.clone(), flooding, bearer, Body::from("{}")).await;
-                    let code = EnrolmentCode::from_random([n; 16]);
-                    let body = json!({ "code": code.expose() }).to_string();
-                    let enrolling = ("/agent/v1/enrol", address(66));
-                    post(router.clone(), enrolling, None, Body::from(body)).await;
-                    // A refusal needs no I/O; across a network the next request arrives later.
-                    tokio::task::yield_now().await;
-                }
-            })
-        })
-        .collect();
-    let mut honest = Vec::new();
-    while Instant::now() < until {
-        honest.push(
-            send(router.clone(), address(7), &token, batch(pve(), now))
-                .await
-                .0,
-        );
-        tokio::time::sleep(Duration::from_millis(50)).await;
-    }
-    for attacker in attackers {
-        attacker.await.unwrap();
-    }
-    assert!(honest.len() >= 5, "{honest:?}");
-    assert!(
-        honest
-            .iter()
-            .all(|status| *status == StatusCode::NO_CONTENT),
-        "{honest:?}"
-    );
-}
-
-/// T8a review probe P2 as a test: four agents whose bodies never end hold only their own
-/// device's turn, so a fifth is served at once; each slow body is `UNAVAILABLE` after its body
-/// deadline, well before the answer deadline.
-#[sqlx::test(
-    migrations = "./migrations",
-    fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
-)]
-async fn met_017_bodies_that_never_end_hold_no_request_turn(pool: PgPool) {
-    let now = database_now(&pool).await;
-    let mut tokens = Vec::new();
-    for n in 1..=5_u8 {
-        tokens.push(enrolled(&pool, device(n), now, n).await);
-    }
-    let router = router_within(&hub_pool(&pool).await, now, Duration::from_secs(30));
-    let slow: Vec<_> = tokens[..4]
+/// Pushes from devices 1 to 4 at addresses 30 to 33 whose bodies never end.
+fn endless_pushes(
+    router: &axum::Router,
+    tokens: &[AgentToken],
+) -> Vec<tokio::task::JoinHandle<(StatusCode, String)>> {
+    tokens
         .iter()
         .enumerate()
         .map(|(n, token)| {
@@ -178,8 +132,24 @@ async fn met_017_bodies_that_never_end_hold_no_request_turn(pool: PgPool) {
                 Body::from_stream(never),
             ))
         })
-        .collect();
-    tokio::time::sleep(Duration::from_millis(300)).await;
+        .collect()
+}
+
+/// T8a review probe P2: four agents whose bodies never end hold only their own device's turn,
+/// so a fifth is served at once, long before their body deadline.
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
+)]
+async fn met_017_bodies_that_never_end_hold_no_request_turn(pool: PgPool) {
+    let now = database_now(&pool).await;
+    let mut tokens = Vec::new();
+    for n in 1..=5_u8 {
+        tokens.push(enrolled(&pool, device(n), now, n).await);
+    }
+    let router = router(&hub_pool(&pool).await, now);
+    let slow = endless_pushes(&router, &tokens[..4]);
+    tokio::time::sleep(SHORT).await;
     for _ in 0..3 {
         let honest = send(
             router.clone(),
@@ -190,7 +160,26 @@ async fn met_017_bodies_that_never_end_hold_no_request_turn(pool: PgPool) {
         assert_eq!(at_once(honest).await.0, StatusCode::NO_CONTENT);
     }
     for push in slow {
-        let answer = within(Duration::from_secs(8), async { push.await.unwrap() }).await;
+        assert!(!push.is_finished(), "answered before its body deadline");
+        push.abort();
+    }
+}
+
+/// A body that has not arrived by its deadline is `UNAVAILABLE`, well before the answer's.
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
+)]
+async fn met_017_a_body_that_never_ends_is_unavailable_at_its_deadline(pool: PgPool) {
+    let now = database_now(&pool).await;
+    let token = enrolled(&pool, device(1), now, 1).await;
+    let deadlines = Deadlines {
+        body: SHORT,
+        ..PATIENT
+    };
+    let router = router_within(&hub_pool(&pool).await, now, deadlines);
+    for push in endless_pushes(&router, &[token]) {
+        let answer = within(Duration::from_secs(10), async { push.await.unwrap() }).await;
         assert_eq!(answer, unavailable());
     }
 }

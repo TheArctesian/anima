@@ -11,7 +11,7 @@ mod stale;
 mod throttle;
 mod turns;
 
-use std::{sync::Arc, time::Duration};
+use std::sync::Arc;
 
 use agent_core::wire::{AgentToken, EnrolmentCode};
 use axum::{
@@ -25,7 +25,7 @@ use tower::ServiceExt as _;
 
 use super::{
     enrolment::{enrol, make_code, redeem},
-    routes::agent_router_within,
+    routes::{Deadlines, agent_router_within},
 };
 use crate::{
     clock::{Clock, FixedClock},
@@ -49,7 +49,7 @@ async fn database_now(pool: &PgPool) -> DateTime<Utc> {
 /// Pushes `batch` with `token` at `now` from a permitted address; the status.
 async fn push(pool: &PgPool, now: DateTime<Utc>, token: &AgentToken, batch: &Value) -> StatusCode {
     let clock: Arc<dyn Clock> = Arc::new(FixedClock(now));
-    let router = agent_router_within(pool.clone(), Bus::new(16), clock, Duration::from_secs(10));
+    let router = agent_router_within(pool.clone(), Bus::new(16), clock, Deadlines::HUB);
     let mut request = Request::post("/agent/v1/push")
         .header("content-type", "application/json")
         .header("authorization", format!("Bearer {}", token.expose()))

@@ -6,6 +6,7 @@
 //! that hands it out (LOG-007). The core takes the time and the new secret as parameters; the
 //! OS random source is read only by the two edges, the routes and the GraphQL mutations.
 
+mod admission;
 mod credential;
 mod enrolment;
 mod push;
