@@ -31,6 +31,8 @@ own folder, 700                   | 40700 | 1000 | 1000 | 0 | 1000 | base | base
 other-write                       | 40777 | 1000 | 1000 | 0 | 1000 | base | base | 1000 | refuse | refuse | -
 other-write, write bit only       | 40702 | 1000 | 1000 | 0 | 1000 | base | base | 1000 | refuse | refuse | -
 other-write, sticky (/tmp)        | 41777 | 0    | 0    | 0 | 1000 | base | base | 1000 | trust  | refuse | DIFF
+other-write, sticky, no group write | 41703 | 0  | 0    | 0 | 1000 | base | base | 1000 | trust  | refuse | DIFF
+other-write, sticky, user's own   | 41777 | 1000 | 1000 | 0 | 1000 | base | base | 1000 | trust  | refuse | DIFF
 other-write, sticky, another's    | 41777 | 1001 | 1001 | 0 | 1000 | base | base | 1000 | refuse | refuse | -
 write by group, private group        | 40775 | 1000 | 1000 | 0 | 1000 | base | base | 1000 | trust  | trust  | -
 write by group, shared group (adm)   | 40775 | 1000 | 4    | 0 | 1000 | base | base | 1000 | refuse | refuse | -
