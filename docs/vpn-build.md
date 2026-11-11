@@ -1630,3 +1630,24 @@ its intent.
    `upkeep::loops(dependencies)`, and `spawn` ends with `jobs.extend(loops(dependencies))`. The
    start order does not change. `upkeep.rs` is 169 code lines (the target was 160), because
    rustfmt writes each long `spawn_*` call on several lines; the file limit is 300.
+2. **A1-T2.** `devices::Site` has a `pub(super)` field (`crates/hub/src/devices/model.rs:164`,
+   `wake_relay`), so no code outside `devices` can build a `Site`, and the pure tests cannot
+   make one. `picture::Inputs.sites` and `picture::router_devices` take `&[(SiteId, IpNet)]`
+   (each site's id and subnet, in site name order) instead of `&[Site]`; the reader maps
+   `devices::sites()` to that. The picture reads nothing else of a site.
+3. **A1-T2.** `picture::build` returns `Result<Picture, Error>`: `Unreadable` when the hub's own
+   node has no IPv4 address (a node that is logged out has `TailscaleIPs: null`). A peer with no
+   IPv4 is skipped as the spec says; the hub cannot be skipped.
+4. **A1-T2.** `picture::carry` keeps no path for a node that is offline in the new read:
+   VPN-009 makes offline always `Unknown`, and BD-13 is about traffic that stopped.
+5. **A1-T2.** `pub mod vpn;` goes in `lib.rs` in A1-T2 (the spec puts it in A1-T4), or the
+   A1-T2 tests do not compile. Until the reader calls them, `peers`, `picture` and `warnings`
+   carry `#[cfg_attr(not(test), expect(dead_code, reason = …))]`; A1-T4 removes the three
+   attributes. `quality/hub-modules.json` gets the `vpn` rows of T0 in the same commit.
+6. **A1-T2.** Clippy `struct_field_names` refuses `Peer.peer_relay`; the field keeps the spec's
+   name with an `#[expect(…, reason = …)]`.
+7. **A1-T2.** `warnings::due` gives no warning for a node whose key is not `nodekey:…` of at
+   most 80 characters: `vpn.warnings.node_key` refuses it, and one refused insert would undo
+   the whole warning transaction for every node.
+8. **A1-T2.** `DeviceId` has no `Ord`, so `router_devices` sorts by the UUID before it removes
+   repeats.

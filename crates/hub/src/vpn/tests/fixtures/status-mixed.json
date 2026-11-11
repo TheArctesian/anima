@@ -1,0 +1,437 @@
+{
+ "Version": "1.104.4-t27047635f",
+ "TUN": false,
+ "BackendState": "Running",
+ "HaveNodeKey": true,
+ "AuthURL": "",
+ "TailscaleIPs": [
+  "100.64.0.1",
+  "fd7a:115c:a1e0::1"
+ ],
+ "Self": {
+  "ID": "1",
+  "NodeID": 1,
+  "PublicKey": "nodekey:0000000000000000000000000000000000000000000000000000000000000001",
+  "HostName": "hub",
+  "DNSName": "hub.net.anima.ing.",
+  "OS": "linux",
+  "UserID": 2147455555,
+  "TailscaleIPs": [
+   "100.64.0.1",
+   "fd7a:115c:a1e0::1"
+  ],
+  "AllowedIPs": [
+   "100.64.0.1/32",
+   "fd7a:115c:a1e0::1/128"
+  ],
+  "Addrs": [
+   "198.51.100.7:12103",
+   "192.0.2.5:48339"
+  ],
+  "CurAddr": "",
+  "Relay": "sfo",
+  "PeerRelay": "",
+  "RxBytes": 0,
+  "TxBytes": 0,
+  "Created": "2030-04-01T09:00:00Z",
+  "LastWrite": "0001-01-01T00:00:00Z",
+  "LastSeen": "0001-01-01T00:00:00Z",
+  "LastHandshake": "0001-01-01T00:00:00Z",
+  "Online": true,
+  "ExitNode": false,
+  "ExitNodeOption": false,
+  "Active": false,
+  "PeerAPIURL": [
+   "http://100.64.0.1:41000",
+   "http://[fd7a:115c:a1e0::1]:41000"
+  ],
+  "TaildropTarget": 0,
+  "NoFileSharingReason": "",
+  "Capabilities": [
+   "HTTPS://TAILSCALE.COM/s/DEPRECATED-NODE-CAPS#see-https://github.com/tailscale/tailscale/issues/11508",
+   "default-auto-update",
+   "https://tailscale.com/cap/file-sharing",
+   "https://tailscale.com/cap/is-admin",
+   "https://tailscale.com/cap/ssh",
+   "ssh-env-vars"
+  ],
+  "CapMap": {
+   "default-auto-update": [
+    false
+   ],
+   "https://tailscale.com/cap/file-sharing": [],
+   "https://tailscale.com/cap/is-admin": [],
+   "https://tailscale.com/cap/ssh": [],
+   "ssh-env-vars": []
+  },
+  "InNetworkMap": true,
+  "InMagicSock": false,
+  "InEngine": false,
+  "Tags": [
+   "tag:hub"
+  ]
+ },
+ "Health": [],
+ "MagicDNSSuffix": "net.anima.ing",
+ "CurrentTailnet": {
+  "Name": "headscale",
+  "StableID": "",
+  "MagicDNSSuffix": "net.anima.ing",
+  "MagicDNSEnabled": true
+ },
+ "CertDomains": null,
+ "ExtraRecords": null,
+ "Peer": {
+  "nodekey:0000000000000000000000000000000000000000000000000000000000000004": {
+   "ID": "4",
+   "NodeID": 4,
+   "PublicKey": "nodekey:0000000000000000000000000000000000000000000000000000000000000004",
+   "HostName": "router-office1",
+   "DNSName": "router-office1.net.anima.ing.",
+   "OS": "linux",
+   "UserID": 2147455555,
+   "TailscaleIPs": [
+    "100.64.0.4",
+    "fd7a:115c:a1e0::4"
+   ],
+   "AllowedIPs": [
+    "10.20.0.0/24",
+    "100.64.0.4/32",
+    "fd7a:115c:a1e0::4/128"
+   ],
+   "Addrs": null,
+   "CurAddr": "",
+   "Relay": "sfo",
+   "PeerRelay": "100.64.0.20:7777:vni:9",
+   "RxBytes": 0,
+   "TxBytes": 0,
+   "Created": "2030-04-01T09:00:00Z",
+   "LastWrite": "0001-01-01T00:00:00Z",
+   "LastSeen": "0001-01-01T00:00:00Z",
+   "LastHandshake": "0001-01-01T00:00:00Z",
+   "Online": true,
+   "ExitNode": false,
+   "ExitNodeOption": false,
+   "Active": true,
+   "PeerAPIURL": [
+    "http://100.64.0.4:41000",
+    "http://[fd7a:115c:a1e0::4]:41000"
+   ],
+   "TaildropTarget": 1,
+   "NoFileSharingReason": "",
+   "InNetworkMap": true,
+   "InMagicSock": true,
+   "InEngine": false,
+   "Tags": [
+    "tag:router",
+    "tag:site-office1"
+   ],
+   "PrimaryRoutes": [
+    "10.20.0.0/24"
+   ]
+  },
+  "nodekey:0000000000000000000000000000000000000000000000000000000000000005": {
+   "ID": "5",
+   "NodeID": 5,
+   "PublicKey": "nodekey:0000000000000000000000000000000000000000000000000000000000000005",
+   "HostName": "router-office2",
+   "DNSName": "router-office2.net.anima.ing.",
+   "OS": "linux",
+   "UserID": 2147455555,
+   "TailscaleIPs": [
+    "100.64.0.5",
+    "fd7a:115c:a1e0::5"
+   ],
+   "AllowedIPs": [
+    "100.64.0.5/32",
+    "fd7a:115c:a1e0::5/128"
+   ],
+   "Addrs": null,
+   "CurAddr": "",
+   "Relay": "sfo",
+   "PeerRelay": "",
+   "RxBytes": 0,
+   "TxBytes": 0,
+   "Created": "2030-04-01T09:00:00Z",
+   "LastWrite": "0001-01-01T00:00:00Z",
+   "LastSeen": "0001-01-01T00:00:00Z",
+   "LastHandshake": "0001-01-01T00:00:00Z",
+   "Online": true,
+   "ExitNode": false,
+   "ExitNodeOption": false,
+   "Active": false,
+   "PeerAPIURL": [
+    "http://100.64.0.5:41000",
+    "http://[fd7a:115c:a1e0::5]:41000"
+   ],
+   "TaildropTarget": 1,
+   "NoFileSharingReason": "",
+   "InNetworkMap": true,
+   "InMagicSock": true,
+   "InEngine": false,
+   "Tags": [
+    "tag:router",
+    "tag:site-office2"
+   ]
+  },
+  "nodekey:0000000000000000000000000000000000000000000000000000000000000006": {
+   "ID": "6",
+   "NodeID": 6,
+   "PublicKey": "nodekey:0000000000000000000000000000000000000000000000000000000000000006",
+   "HostName": "laptop",
+   "DNSName": "laptop.net.anima.ing.",
+   "OS": "linux",
+   "UserID": 1,
+   "TailscaleIPs": [
+    "100.64.0.6",
+    "fd7a:115c:a1e0::6"
+   ],
+   "AllowedIPs": [
+    "100.64.0.6/32",
+    "fd7a:115c:a1e0::6/128"
+   ],
+   "Addrs": null,
+   "CurAddr": "",
+   "Relay": "sfo",
+   "PeerRelay": "",
+   "RxBytes": 0,
+   "TxBytes": 0,
+   "Created": "2030-04-01T09:00:00Z",
+   "LastWrite": "0001-01-01T00:00:00Z",
+   "LastSeen": "0001-01-01T00:00:00Z",
+   "LastHandshake": "0001-01-01T00:00:00Z",
+   "Online": true,
+   "ExitNode": false,
+   "ExitNodeOption": false,
+   "Active": false,
+   "PeerAPIURL": [
+    "http://100.64.0.6:41000",
+    "http://[fd7a:115c:a1e0::6]:41000"
+   ],
+   "TaildropTarget": 1,
+   "NoFileSharingReason": "",
+   "InNetworkMap": true,
+   "InMagicSock": true,
+   "InEngine": false,
+   "KeyExpiry": "2030-05-25T12:00:00Z"
+  },
+  "nodekey:0000000000000000000000000000000000000000000000000000000000000007": {
+   "ID": "7",
+   "NodeID": 7,
+   "PublicKey": "nodekey:0000000000000000000000000000000000000000000000000000000000000007",
+   "HostName": "printer",
+   "DNSName": "printer.net.anima.ing.",
+   "OS": "linux",
+   "UserID": 2147455555,
+   "TailscaleIPs": [
+    "100.64.0.7",
+    "fd7a:115c:a1e0::7"
+   ],
+   "AllowedIPs": [
+    "100.64.0.7/32",
+    "fd7a:115c:a1e0::7/128"
+   ],
+   "Addrs": null,
+   "CurAddr": "",
+   "Relay": "sfo",
+   "PeerRelay": "",
+   "RxBytes": 0,
+   "TxBytes": 0,
+   "Created": "2030-04-01T09:00:00Z",
+   "LastWrite": "0001-01-01T00:00:00Z",
+   "LastSeen": "0001-01-01T00:00:00Z",
+   "LastHandshake": "0001-01-01T00:00:00Z",
+   "Online": true,
+   "ExitNode": false,
+   "ExitNodeOption": false,
+   "Active": false,
+   "PeerAPIURL": [
+    "http://100.64.0.7:41000",
+    "http://[fd7a:115c:a1e0::7]:41000"
+   ],
+   "TaildropTarget": 1,
+   "NoFileSharingReason": "",
+   "InNetworkMap": true,
+   "InMagicSock": true,
+   "InEngine": false,
+   "Tags": [
+    "tag:agent"
+   ],
+   "KeyExpiry": "2030-06-30T12:00:00Z"
+  },
+  "nodekey:0000000000000000000000000000000000000000000000000000000000000008": {
+   "ID": "8",
+   "NodeID": 8,
+   "PublicKey": "nodekey:0000000000000000000000000000000000000000000000000000000000000008",
+   "HostName": "guest",
+   "DNSName": "guest.net.anima.ing.",
+   "OS": "linux",
+   "UserID": 1,
+   "TailscaleIPs": [
+    "100.64.0.8",
+    "fd7a:115c:a1e0::8"
+   ],
+   "AllowedIPs": [
+    "100.64.0.8/32",
+    "fd7a:115c:a1e0::8/128"
+   ],
+   "Addrs": null,
+   "CurAddr": "",
+   "Relay": "sfo",
+   "PeerRelay": "",
+   "RxBytes": 0,
+   "TxBytes": 0,
+   "Created": "2030-04-01T09:00:00Z",
+   "LastWrite": "0001-01-01T00:00:00Z",
+   "LastSeen": "0001-01-01T00:00:00Z",
+   "LastHandshake": "0001-01-01T00:00:00Z",
+   "Online": true,
+   "ExitNode": false,
+   "ExitNodeOption": false,
+   "Active": false,
+   "PeerAPIURL": [
+    "http://100.64.0.8:41000",
+    "http://[fd7a:115c:a1e0::8]:41000"
+   ],
+   "TaildropTarget": 1,
+   "NoFileSharingReason": "",
+   "InNetworkMap": true,
+   "InMagicSock": true,
+   "InEngine": false,
+   "KeyExpiry": "2030-09-01T12:00:00Z"
+  },
+  "nodekey:0000000000000000000000000000000000000000000000000000000000000009": {
+   "ID": "9",
+   "NodeID": 9,
+   "PublicKey": "nodekey:0000000000000000000000000000000000000000000000000000000000000009",
+   "HostName": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\u0007‮yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy",
+   "DNSName": "",
+   "OS": "linux",
+   "UserID": 1,
+   "TailscaleIPs": [
+    "100.64.0.9",
+    "fd7a:115c:a1e0::9"
+   ],
+   "AllowedIPs": [
+    "100.64.0.9/32",
+    "fd7a:115c:a1e0::9/128"
+   ],
+   "Addrs": null,
+   "CurAddr": "",
+   "Relay": "sfo",
+   "PeerRelay": "",
+   "RxBytes": 0,
+   "TxBytes": 0,
+   "Created": "2030-04-01T09:00:00Z",
+   "LastWrite": "0001-01-01T00:00:00Z",
+   "LastSeen": "0001-01-01T00:00:00Z",
+   "LastHandshake": "0001-01-01T00:00:00Z",
+   "Online": true,
+   "ExitNode": false,
+   "ExitNodeOption": false,
+   "Active": false,
+   "PeerAPIURL": [
+    "http://100.64.0.9:41000",
+    "http://[fd7a:115c:a1e0::9]:41000"
+   ],
+   "TaildropTarget": 1,
+   "NoFileSharingReason": "",
+   "InNetworkMap": true,
+   "InMagicSock": true,
+   "InEngine": false,
+   "KeyExpiry": "2030-09-01T12:00:00Z"
+  },
+  "nodekey:000000000000000000000000000000000000000000000000000000000000000a": {
+   "ID": "10",
+   "NodeID": 10,
+   "PublicKey": "nodekey:000000000000000000000000000000000000000000000000000000000000000a",
+   "HostName": "nas",
+   "DNSName": "evil.net.anima.ing.",
+   "OS": "linux",
+   "UserID": 1,
+   "TailscaleIPs": [
+    "100.64.0.10",
+    "fd7a:115c:a1e0::a"
+   ],
+   "AllowedIPs": [
+    "100.64.0.10/32",
+    "fd7a:115c:a1e0::a/128"
+   ],
+   "Addrs": null,
+   "CurAddr": "",
+   "Relay": "sfo",
+   "PeerRelay": "",
+   "RxBytes": 0,
+   "TxBytes": 0,
+   "Created": "2030-04-01T09:00:00Z",
+   "LastWrite": "0001-01-01T00:00:00Z",
+   "LastSeen": "0001-01-01T00:00:00Z",
+   "LastHandshake": "0001-01-01T00:00:00Z",
+   "Online": true,
+   "ExitNode": false,
+   "ExitNodeOption": false,
+   "Active": false,
+   "PeerAPIURL": [
+    "http://100.64.0.10:41000",
+    "http://[fd7a:115c:a1e0::a]:41000"
+   ],
+   "TaildropTarget": 1,
+   "NoFileSharingReason": "",
+   "InNetworkMap": true,
+   "InMagicSock": true,
+   "InEngine": false,
+   "KeyExpiry": "2030-09-01T12:00:00Z"
+  },
+  "nodekey:000000000000000000000000000000000000000000000000000000000000000b": {
+   "ID": "11",
+   "NodeID": 11,
+   "PublicKey": "nodekey:000000000000000000000000000000000000000000000000000000000000000b",
+   "HostName": "no-address",
+   "DNSName": "no-address.net.anima.ing.",
+   "OS": "linux",
+   "UserID": 1,
+   "TailscaleIPs": null,
+   "AllowedIPs": [
+    "100.64.0.11/32",
+    "fd7a:115c:a1e0::b/128"
+   ],
+   "Addrs": null,
+   "CurAddr": "",
+   "Relay": "sfo",
+   "PeerRelay": "",
+   "RxBytes": 0,
+   "TxBytes": 0,
+   "Created": "2030-04-01T09:00:00Z",
+   "LastWrite": "0001-01-01T00:00:00Z",
+   "LastSeen": "0001-01-01T00:00:00Z",
+   "LastHandshake": "0001-01-01T00:00:00Z",
+   "Online": true,
+   "ExitNode": false,
+   "ExitNodeOption": false,
+   "Active": false,
+   "PeerAPIURL": [
+    "http://100.64.0.11:41000",
+    "http://[fd7a:115c:a1e0::b]:41000"
+   ],
+   "TaildropTarget": 1,
+   "NoFileSharingReason": "",
+   "InNetworkMap": true,
+   "InMagicSock": true,
+   "InEngine": false,
+   "KeyExpiry": "2030-09-01T12:00:00Z"
+  }
+ },
+ "User": {
+  "1": {
+   "ID": 1,
+   "LoginName": "operator",
+   "DisplayName": "operator"
+  },
+  "2147455555": {
+   "ID": 2147455555,
+   "LoginName": "tagged-devices",
+   "DisplayName": "Tagged Devices"
+  }
+ },
+ "ClientVersion": null
+}
