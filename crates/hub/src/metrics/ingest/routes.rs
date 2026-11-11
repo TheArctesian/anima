@@ -176,10 +176,15 @@ async fn serve_enrol(state: AgentState, request: Request) -> Response {
     // busy answer before the other. A refusal is written after the turns end (K8 Section 6).
     let enrolled = match code {
         Some(EnrolRequest { code }) => {
+            // Made before the code is redeemed, so a failed random source uses up no code.
+            let token = match new_token() {
+                Ok(token) => token,
+                Err(error) => return unavailable(&error),
+            };
             let Some(_request) = state.turns.request().await else {
                 return busy();
             };
-            redeem_and_enrol(&state, &code, now).await
+            redeem_and_enrol(&state, (&code, token), now).await
         }
         None => Ok(None),
     };
@@ -195,17 +200,17 @@ async fn serve_enrol(state: AgentState, request: Request) -> Response {
     }
 }
 
-/// The enrolment `code` gives at `now`; `None` when the code is not usable or its device
-/// cannot take it.
+/// The enrolment `code` gives at `now`, handing out `token`; `None` when the code is not usable
+/// or its device cannot take it.
 async fn redeem_and_enrol(
     state: &AgentState,
-    code: &EnrolmentCode,
+    (code, token): (&EnrolmentCode, AgentToken),
     now: DateTime<Utc>,
 ) -> Result<Option<Enrolled>, Error> {
     let Some(redeemed) = enrolment::redeem(&state.db, code, now).await? else {
         return Ok(None);
     };
-    enrolment::enrol(&state.db, &state.bus, (redeemed, new_token()?), now).await
+    enrolment::enrol(&state.db, &state.bus, (redeemed, token), now).await
 }
 
 /// Stores a renewed token for the holder of the bearer token (K8 Section 5). The bearer is

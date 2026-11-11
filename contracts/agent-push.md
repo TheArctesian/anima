@@ -184,20 +184,22 @@ The hub limits the agent requests in progress (MET-017), and answers `UNAVAILABL
 before it waits for the database. That answer is not written to the event log, and the agent keeps the batch
 and tries again after its wait (Section 7).
 
-- **Per client address:** at most 2 requests until their credential is known: an enrolment for its whole
-  answer, a push or renewal until its token has been looked up. All requests from one address share its 2
+- **Per client address:** at most 2 requests until their credential is known: an enrolment until its code
+  has been looked up and exchanged, a push or renewal until its token has been looked up. All requests from one address share its 2
   turns: the node's agent, which sends one request at a time, and an enrolment beside it. One VPN node with
   codes or bearers that are wrong cannot keep the hub busy for the others.
-- **Per device:** at most one push or renewal at once, from the token lookup to the answer, so requests with
-  one token never queue on the device's rows.
+- **Per device:** at most one push or renewal at once, from the token lookup until the batch or renewal is
+  stored or refused, so requests with one token never queue on the device's rows.
 - **On the database:** at most 4 agent requests at once, well under the hub's pool. A request waits for its
   turn in order, for at most 2 seconds, and holds it only while it looks up its credential and while it
   stores. It never holds it while its body arrives. A request whose token is valid holds its turn until its
   store ends, at most until its answer's deadline (10 seconds): so the holders of 4 valid tokens can keep the
   other agents waiting that long.
 - **Refusal events** are written after the request's turns end, at most once a minute per client address,
-  or per device when the token was valid (above). Once a minute, one more event says how many refusals were
-  left out ("Left out N more agent refusals ...").
+  or per device when the token was valid (above). When refusals of 64 client addresses have been written
+  within the last minute, the refusals of further addresses are counted rather than written. The next agent
+  refusal that comes a minute or more after the first of them is followed by one event giving that count
+  ("Left out N more agent refusals from other addresses in the last minute."). No timer writes it.
 
 ## 7. Agent buffer (MET-014)
 

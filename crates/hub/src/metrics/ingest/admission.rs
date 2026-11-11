@@ -24,7 +24,7 @@ pub(super) enum Stop {
 pub(super) struct Admitted {
     pub(super) device: DeviceId,
     pub(super) name: String,
-    /// The device's one turn (MET-017), held until the answer.
+    /// The device's one turn (MET-017), held until the batch or renewal is stored or refused.
     pub(super) turn: Turn<DeviceId>,
 }
 
