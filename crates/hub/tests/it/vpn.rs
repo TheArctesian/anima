@@ -7,3 +7,4 @@ mod graphql;
 mod key_refusal;
 mod mutations;
 mod proxy;
+mod tailnet_site;

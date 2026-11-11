@@ -21,7 +21,7 @@ use crate::{
 const KEY: &str = "REDACTED-PREAUTH-KEY";
 const AUTH_ID: &str = "hskey-authreq-AAAAAAAAAAAA-_BBBBBBBBBB";
 
-const ROUTER_KEY: &str =
+pub(super) const ROUTER_KEY: &str =
     "mutation($s: ID!) { createRouterKey(siteId: $s) { key expiresAt steps } }";
 const INVITE: &str = "mutation { createVpnInvite { key expiresAt steps } }";
 const REGISTER: &str =
@@ -29,7 +29,7 @@ const REGISTER: &str =
 const RENEW: &str = "mutation($n: String!) { renewVpnKey(name: $n) { name address keyExpiry } }";
 
 /// The broker's answer to one request line: `nodes` as `nodes_value`, the rest by `others`.
-fn answering(others: impl Fn(&Value) -> String + Send + Sync + 'static) -> FakeBroker {
+pub(super) fn answering(others: impl Fn(&Value) -> String + Send + Sync + 'static) -> FakeBroker {
     start(Duration::ZERO, move |line| {
         let request: Value = serde_json::from_str(line).unwrap();
         if request["verb"] == "nodes" {
@@ -40,13 +40,13 @@ fn answering(others: impl Fn(&Value) -> String + Send + Sync + 'static) -> FakeB
     })
 }
 
-fn new_key() -> String {
+pub(super) fn new_key() -> String {
     ok(&json!({ "key": KEY, "expiresAt": "2030-05-05T13:00:00.000Z", "keyId": 7 }))
 }
 
 /// A signed-in hub over `fake`, after one read, with the sites home and office1; returns the
 /// hub, its token and home's id.
-async fn hub_over(
+pub(super) async fn hub_over(
     pool: &PgPool,
     fake: &FakeBroker,
 ) -> (Hub, String, String, tokio::task::JoinHandle<()>) {
@@ -59,7 +59,7 @@ async fn hub_over(
 }
 
 /// The requests the fake saw, other than `nodes`.
-fn asked(fake: &FakeBroker) -> Vec<Value> {
+pub(super) fn asked(fake: &FakeBroker) -> Vec<Value> {
     fake.seen()
         .iter()
         .map(|line| serde_json::from_str::<Value>(line).unwrap())
@@ -67,7 +67,7 @@ fn asked(fake: &FakeBroker) -> Vec<Value> {
         .collect()
 }
 
-fn code(response: &Value) -> &Value {
+pub(super) fn code(response: &Value) -> &Value {
     &response["errors"][0]["extensions"]["code"]
 }
 
@@ -286,7 +286,7 @@ async fn vp_10_renew_sends_the_broker_id_of_the_named_operator_node(pool: PgPool
     assert!(stored.contains(r#""brokerNode": 2}"#), "{stored}");
 }
 
-const APPROVE: &str = "mutation($s: ID!) { approveSiteRoute(siteId: $s) }";
+pub(super) const APPROVE: &str = "mutation($s: ID!) { approveSiteRoute(siteId: $s) }";
 
 /// office1's id: the site whose router waits in `nodes_value`.
 async fn office1(hub: &Hub, token: &str) -> String {
@@ -340,28 +340,4 @@ async fn r_055_approve_route_refuses_a_router_of_another_site(pool: PgPool) {
         "home has no waiting router, so no broker call"
     );
     assert!(!written(&pool).await.contains("vpn accept"));
-}
-
-#[sqlx::test(migrations = "./migrations")]
-async fn vpn_009_a_site_on_the_tailnet_range_has_no_router_key_or_route_approval(pool: PgPool) {
-    let fake = answering(|_| new_key());
-    let (hub, token, _, reader) = hub_over(&pool, &fake).await;
-    let inside = create_site(&hub, &token, "vpn", "100.64.0.0/10").await;
-
-    let key = hub
-        .post(Some(&token), ROUTER_KEY, json!({ "s": inside }))
-        .await;
-    let approval = hub
-        .post(Some(&token), APPROVE, json!({ "s": inside }))
-        .await;
-    reader.abort();
-
-    for response in [&key, &approval] {
-        assert_eq!(code(response), "VALIDATION", "{response}");
-        assert_eq!(
-            response["errors"][0]["extensions"]["fields"][0]["field"], "siteId",
-            "{response}"
-        );
-    }
-    assert_eq!(asked(&fake), Vec::<Value>::new());
 }
