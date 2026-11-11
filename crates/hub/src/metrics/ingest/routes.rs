@@ -6,7 +6,7 @@
 //! a buffer wiped on drop, and never logged; a parse error is dropped unread, since its text
 //! may quote the body (LOG-007). Every refusal is `{"error":"<CODE>"}`.
 
-use std::{future::Future, sync::Arc, time::Duration};
+use std::{future::Future, net::IpAddr, sync::Arc, time::Duration};
 
 use agent_core::wire::{AgentToken, EnrolRequest, RefusalCode, RenewRequest, Renewed, TOKEN_BYTES};
 use axum::{
@@ -25,7 +25,7 @@ use super::{
     Error, credential, enrolment, push, random,
     refusals::{self, Recorder, Refused, Route},
     renewal,
-    turns::{AGENT_REQUESTS, Turns},
+    turns::{AGENT_REQUESTS, Turn, Turns},
 };
 use crate::{
     clock::Clock,
@@ -36,6 +36,10 @@ use crate::{
 
 /// The enrol and renew bodies are small JSON objects (K8 Section 1).
 const BODY_LIMIT: usize = 4 * 1024;
+
+/// The longest a body may take to arrive. A slower one is answered `UNAVAILABLE`, so a body
+/// that never ends holds no turn but its device's past this (K8 Section 1).
+const BODY_TIME: Duration = Duration::from_secs(5);
 
 /// The longest an answer may take. Each request is a few small writes, so a slower one is a
 /// stuck database, and the agent is told to try again (as `/push`, NET-002).
@@ -139,6 +143,9 @@ async fn serve_enrol(state: AgentState, request: Request) -> Response {
         client,
         device: None,
     };
+    let Some(_address) = state.turns.address(client.0) else {
+        return busy();
+    };
     let (parts, body) = request.into_parts();
     let code = match read_body(&parts.headers, body, BODY_LIMIT).await {
         Ok(body) => serde_json::from_slice::<EnrolRequest>(&body).ok(),
@@ -149,7 +156,7 @@ async fn serve_enrol(state: AgentState, request: Request) -> Response {
             .refuse(refused(RefusalCode::EnrolmentRefused), now)
             .await;
     };
-    let Some(_request) = state.turns.request() else {
+    let Some(_request) = state.turns.request().await else {
         return busy();
     };
     let redeemed = match enrolment::redeem(&state.db, &code, now).await {
@@ -184,8 +191,11 @@ async fn serve_renew(state: AgentState, request: Request) -> Response {
         return unmounted();
     };
     let now = state.clock.now();
+    let Some(address) = state.turns.address(client.0) else {
+        return busy();
+    };
     let (parts, body) = request.into_parts();
-    match renewed(&state, &parts.headers, body, now).await {
+    match renewed(&state, (&parts.headers, body), address, now).await {
         Ok(renewed) => refusals::json(StatusCode::OK, &renewed),
         Err(stop) => state.stopped(stop, (Route::Renew, client), now).await,
     }
@@ -193,18 +203,19 @@ async fn serve_renew(state: AgentState, request: Request) -> Response {
 
 async fn renewed(
     state: &AgentState,
-    headers: &HeaderMap,
-    body: Body,
+    (headers, body): (&HeaderMap, Body),
+    address: Turn<IpAddr>,
     now: DateTime<Utc>,
 ) -> Result<Renewed, Stop> {
     let current =
         credential::bearer(headers).ok_or(Stop::Refused(RefusalCode::TokenRefused, None))?;
-    let _request = state.turns.request().ok_or(Stop::Busy)?;
-    let device = holder(state, &current, now).await?;
-    let _turn = state.turns.device(device).ok_or(Stop::Busy)?;
-    let refused = |code| Stop::Refused(code, Some(device));
     // A device switched away from the agent renews nothing (CR-18), as it pushes nothing.
-    agent_name(state, device).await?;
+    let Admitted {
+        device,
+        turn: _turn,
+        ..
+    } = admit(state, &current, address, now).await?;
+    let refused = |code| Stop::Refused(code, Some(device));
     let body = read_body(headers, body, BODY_LIMIT)
         .await
         .map_err(refused)?;
@@ -212,6 +223,7 @@ async fn renewed(
         return Err(refused(RefusalCode::Malformed));
     }
     let next = new_token().map_err(Stop::Failed)?;
+    let _request = state.turns.request().await.ok_or(Stop::Busy)?;
     match renewal::renew(&state.db, &current, next, now).await {
         Ok(Some(renewed)) => Ok(renewed),
         Ok(None) => Err(refused(RefusalCode::TokenRefused)),
@@ -229,8 +241,35 @@ pub(super) enum Stop {
     Busy,
 }
 
+/// A device whose agent may go on: its token is usable and its metrics come from the agent.
+pub(super) struct Admitted {
+    pub(super) device: DeviceId,
+    pub(super) name: String,
+    /// The device's one turn (MET-017), held until the answer.
+    pub(super) turn: Turn<DeviceId>,
+}
+
+/// The device whose usable token `token` is at `now`, while it takes its metrics from the agent,
+/// with its turn. The lookups run under a request turn and under the client `address`'s turn;
+/// both end before this returns, so the body that follows arrives holding neither.
+pub(super) async fn admit(
+    state: &AgentState,
+    token: &AgentToken,
+    address: Turn<IpAddr>,
+    now: DateTime<Utc>,
+) -> Result<Admitted, Stop> {
+    let (device, name) = {
+        let _request = state.turns.request().await.ok_or(Stop::Busy)?;
+        let device = holder(state, token, now).await?;
+        (device, agent_name(state, device).await?)
+    };
+    drop(address);
+    let turn = state.turns.device(device).ok_or(Stop::Busy)?;
+    Ok(Admitted { device, name, turn })
+}
+
 /// The device whose usable token `token` is at `now`.
-pub(super) async fn holder(
+async fn holder(
     state: &AgentState,
     token: &AgentToken,
     now: DateTime<Utc>,
@@ -244,7 +283,7 @@ pub(super) async fn holder(
 
 /// The device's name while its metrics come from the agent; `TOKEN_REFUSED` once the operator
 /// switched the source away or deleted the device.
-pub(super) async fn agent_name(state: &AgentState, device: DeviceId) -> Result<String, Stop> {
+async fn agent_name(state: &AgentState, device: DeviceId) -> Result<String, Stop> {
     match credential::agent_name(&state.db, device).await {
         Ok(Some(name)) => Ok(name),
         Ok(None) => Err(Stop::Refused(RefusalCode::TokenRefused, Some(device))),
@@ -306,7 +345,7 @@ pub(super) fn unavailable(error: &Error) -> Response {
 
 /// Another request has the turn this one needs (`turns`). Not an error and not an event: the
 /// agent keeps its points and tries again (K8 Section 6).
-fn busy() -> Response {
+pub(super) fn busy() -> Response {
     refusals::answer(RefusalCode::Unavailable)
 }
 
@@ -317,7 +356,8 @@ fn new_token() -> Result<AgentToken, Error> {
 }
 
 /// The body, read up to `limit` bytes into a buffer wiped on drop; `TOO_LARGE` past it, or at
-/// once when the declared length is past it (K8 Section 1).
+/// once when the declared length is past it, and `UNAVAILABLE` when it has not arrived within
+/// [`BODY_TIME`] (K8 Section 1).
 pub(super) async fn read_body(
     headers: &HeaderMap,
     body: Body,
@@ -330,8 +370,9 @@ pub(super) async fn read_body(
     if declared.is_some_and(|length| length > limit) {
         return Err(RefusalCode::TooLarge);
     }
-    let bytes = to_bytes(body, limit)
+    let bytes = tokio::time::timeout(BODY_TIME, to_bytes(body, limit))
         .await
+        .map_err(|_| RefusalCode::Unavailable)?
         .map_err(|_| RefusalCode::TooLarge)?;
     Ok(Zeroizing::new(Vec::from(bytes)))
 }

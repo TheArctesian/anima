@@ -11,6 +11,8 @@
 mod batch;
 mod samples;
 
+use std::net::IpAddr;
+
 use agent_core::wire::{Batch, RefusalCode};
 use async_graphql::ID;
 use axum::{
@@ -24,7 +26,8 @@ use chrono::{DateTime, Utc};
 use super::{
     credential,
     refusals::Route,
-    routes::{AgentState, Stop, agent_name, client_of, holder, read_body, unmounted},
+    routes::{Admitted, AgentState, Stop, admit, busy, client_of, read_body, unmounted},
+    turns::Turn,
 };
 use crate::{
     ids::DeviceId,
@@ -43,8 +46,11 @@ pub(super) async fn serve_push(state: AgentState, request: Request) -> Response 
         return unmounted();
     };
     let now = state.clock.now();
+    let Some(address) = state.turns.address(client.0) else {
+        return busy();
+    };
     let (parts, body) = request.into_parts();
-    match push(&state, &parts.headers, body, now).await {
+    match push(&state, (&parts.headers, body), address, now).await {
         Ok(()) => StatusCode::NO_CONTENT.into_response(),
         Err(stop) => state.stopped(stop, (Route::Push, client), now).await,
     }
@@ -52,19 +58,20 @@ pub(super) async fn serve_push(state: AgentState, request: Request) -> Response 
 
 async fn push(
     state: &AgentState,
-    headers: &HeaderMap,
-    body: Body,
+    (headers, body): (&HeaderMap, Body),
+    address: Turn<IpAddr>,
     now: DateTime<Utc>,
 ) -> Result<(), Stop> {
     let token =
         credential::bearer(headers).ok_or(Stop::Refused(RefusalCode::TokenRefused, None))?;
-    let _request = state.turns.request().ok_or(Stop::Busy)?;
-    let device = holder(state, &token, now).await?;
     // One push per device at a time: a second one would wait for the device row holding a
-    // connection (MET-017).
-    let _turn = state.turns.device(device).ok_or(Stop::Busy)?;
+    // connection (MET-017). The body arrives under this turn only.
+    let Admitted {
+        device,
+        name,
+        turn: _turn,
+    } = admit(state, &token, address, now).await?;
     let refused = |code| Stop::Refused(code, Some(device));
-    let name = agent_name(state, device).await?;
     let accepted = {
         let body = read_body(headers, body, BODY_LIMIT)
             .await
@@ -84,6 +91,7 @@ async fn push(
         gpus: gpus.as_deref(),
     };
     drop(token);
+    let _request = state.turns.request().await.ok_or(Stop::Busy)?;
     match batch::write(&state.db, &state.bus, (pushed, &rows), now).await {
         Ok(Written::Kept(kept)) => {
             if kept > 0 {

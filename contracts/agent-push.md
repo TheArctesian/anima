@@ -24,7 +24,8 @@ This contract is the whole interface between `anima-agent` and the hub. The agen
 | `POST /agent/v1/push` | Agent token, `Authorization: Bearer` | 512 KiB (MET-017) | 204, empty |
 | `POST /agent/v1/renew` | Agent token, `Authorization: Bearer` | 4 KiB | 200, `Renewed` |
 
-The hub reads at most the limit and answers 413 without reading further.
+The hub reads at most the limit and answers 413 without reading further. A body that has not arrived within
+5 seconds is answered 503 `UNAVAILABLE` and written to the event log like a refusal (Section 6).
 
 ## 2. Secrets
 
@@ -176,12 +177,18 @@ the token (MET-017). A refusal with no valid token is written at most once a min
 flood cannot fill the event log. A refusal with a valid token, on any agent route, is written at most once a
 minute per device (CR-21). Only the event is held back: the refusal and its answer are the same.
 
-The hub answers at most 4 agent requests at once, and at most one push or renewal per device at once
-(MET-017). A request past either is `UNAVAILABLE` at once, before it waits for the database: an enrolment
-after its body is read, a push or renewal after its bearer is read, and a second push or renewal of a device
-after the token is looked up. This answer is not written to the event log. The agent keeps the batch and
-tries again after its wait (Section 7), so one device, or any number of requests with one token, cannot hold
-the connections the rest of the hub needs.
+The hub limits the agent requests in progress (MET-017), and answers `UNAVAILABLE` to a request past a limit
+before it waits for the database. That answer is not written to the event log, and the agent keeps the batch
+and tries again after its wait (Section 7).
+
+- **Per client address:** at most 2 requests until their credential is known: an enrolment for its whole
+  answer, a push or renewal until its token has been looked up. One VPN node with codes or bearers that are
+  wrong cannot keep the hub busy for the others.
+- **Per device:** at most one push or renewal at once, from the token lookup to the answer, so requests with
+  one token never queue on the device's rows.
+- **On the database:** at most 4 agent requests at once, well under the hub's pool. A request waits for its
+  turn in order, for at most 2 seconds, and holds it only while it looks up its credential and while it
+  stores. It never holds it while its body arrives.
 
 ## 7. Agent buffer (MET-014)
 
