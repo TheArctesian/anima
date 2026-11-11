@@ -3,7 +3,7 @@
 import { describe, expect, it } from 'bun:test';
 import { nodesReply } from '../broker/nodes.ts';
 import type { Request } from '../broker/protocol.ts';
-import { plan, policyView, type Moment, type Step } from '../broker/verbs.ts';
+import { plan, policyView, RENEW_GRACE_MS, RENEW_TOO_LATE, type Moment, type Step } from '../broker/verbs.ts';
 import { parsePolicy } from '../src/policy.ts';
 import { DAY_MS, NOW, inDays, listed, router, tailnetOfNodes, view } from './broker-fixture.ts';
 import { raw, SITES } from './policy-fixture.ts';
@@ -115,7 +115,8 @@ describe('plan for register and renew', () => {
   });
 
   it('VP-10: the expiry value is never empty', () => {
-    for (let offset = 0; offset < 400; offset += 7) {
+    // The node expires in 170 days; from day 200 on, renew is refused (VP-12).
+    for (let offset = 0; offset < 200; offset += 7) {
       const at = new Date(NOW.getTime() + offset * DAY_MS);
       const planned = steps({ verb: 'renew', node: 6 }, { now: at, operatorId: 1 });
       if (typeof planned === 'string') throw new Error(planned);
@@ -136,5 +137,30 @@ describe('plan for register and renew', () => {
         else expect([arg, step[index - 1]?.startsWith('-') ?? false]).toEqual([arg, false]);
       }
     }
+  });
+});
+
+describe('VP-12: renew refuses a key that expired more than 30 days ago', () => {
+  const renewAt = (expired: Date | null): ReturnType<typeof plan> =>
+    plan({ verb: 'renew', node: 6 }, view, nodesReply(tailnetOfNodes([listed(6, { expiry: expired })]), view).nodes, moment);
+
+  it('VP-12: exactly 30 days past expiry still renews', () => {
+    expect(renewAt(new Date(NOW.getTime() - RENEW_GRACE_MS))).not.toBeString();
+  });
+
+  it('VP-12: 30 days and one second past expiry is refused with the fixed detail', () => {
+    const expired = new Date(NOW.getTime() - RENEW_GRACE_MS - 1000);
+    expect(() => renewAt(expired)).toThrow(RENEW_TOO_LATE);
+    try {
+      renewAt(expired);
+    } catch (error) {
+      expect(error).toMatchObject({ refusal: 'not-allowed', message: 'the key expired more than 30 days ago; enrol the computer again' });
+    }
+  });
+
+  it('VP-12: an expiring, a recently expired and a never-expiring key still renew', () => {
+    expect(renewAt(inDays(5))).not.toBeString();
+    expect(renewAt(inDays(-3))).not.toBeString();
+    expect(renewAt(null)).not.toBeString();
   });
 });

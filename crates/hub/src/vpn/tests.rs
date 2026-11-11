@@ -9,6 +9,7 @@ mod picture;
 mod proxy;
 mod reader;
 mod store;
+mod tailnet_sites;
 mod turn_wait;
 mod warnings;
 

@@ -492,6 +492,7 @@ B0 rulings ── B1 broker nodes ── B2 merge ── B4 keys + register ─�
 | VP-9 | Step-up TOTP | No. The authenticator code at sign-in is enough. Task B3 is removed. The broker controls in Section 5.1 are the main control for Tier B. |
 | VP-10 | A sixth broker verb `renew` | Yes (2026-11-10). `renewVpnKey` is built in B4. |
 | VP-11 | Tests on the VPS | Yes: the VPS is a development system, so the broker test install and runs may use it. Each live change is still announced in chat before it runs. |
+| VP-12 | `renew` after a long expiry | The broker's `renew` refuses a node whose key expired more than 30 days ago (exactly 30 days is still allowed): `not-allowed`, "the key expired more than 30 days ago; enrol the computer again" (2026-11-11). A key that has not expired, or never expires, still renews. |
 
 The live deployment of the broker on the VPS still needs the operator's confirmation in chat for
 each change (VPS-005), until the VP-4 change is in the spec.

@@ -7,7 +7,7 @@
 import { prefixText, type Policy } from '../src/policy.ts';
 import { OPERATOR, type BrokerNode } from './nodes.ts';
 import { expiryValue, staggered } from './outcome.ts';
-import type { Refusal, Request } from './protocol.ts';
+import { Refused, type Refusal, type Request } from './protocol.ts';
 
 export interface PolicyView {
   /** Site name `x` → the subnet of the policy host `site-<x>`. */
@@ -28,6 +28,9 @@ export interface Moment {
 const JSON_OUTPUT = '--output=json';
 const SITE_HOST = /^site-([a-z0-9-]{1,32})$/;
 const ROUTER_TAG = 'tag:router';
+/** VP-12: `renew` refuses a node whose key expired longer ago than this. */
+export const RENEW_GRACE_MS = 30 * 24 * 60 * 60 * 1000;
+export const RENEW_TOO_LATE = 'the key expired more than 30 days ago; enrol the computer again';
 
 export const LIST_STEPS: readonly Step[] = [
   ['nodes', 'list', JSON_OUTPUT],
@@ -73,9 +76,16 @@ function approveRoute(request: { node: number; site: string }, policy: PolicyVie
   return [['nodes', 'approve-routes', `--identifier=${String(node.id)}`, `--routes=${subnet}`]];
 }
 
+/** VP-12: the key expired more than `RENEW_GRACE_MS` before `now`; exactly at the limit is allowed. */
+export function expiredTooLong(node: BrokerNode, now: Date): boolean {
+  return node.expiry !== null && now.getTime() - Date.parse(node.expiry) > RENEW_GRACE_MS;
+}
+
+/** Throws `Refused` (`not-allowed`, `RENEW_TOO_LATE`) for a key that expired too long ago. */
 function renew(nodeId: number, nodes: readonly BrokerNode[], now: Date): readonly Step[] | Refusal {
   const node = nodes.find((candidate) => candidate.id === nodeId);
   if (node === undefined || node.tags.length > 0 || node.user !== OPERATOR) return 'not-allowed';
+  if (expiredTooLong(node, now)) throw new Refused('not-allowed', RENEW_TOO_LATE);
   const others = nodes
     .filter((other) => other.id !== nodeId)
     .map((other) => ({ ...other, expiry: other.expiry === null ? null : new Date(other.expiry) }));

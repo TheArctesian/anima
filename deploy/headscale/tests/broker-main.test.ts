@@ -137,6 +137,16 @@ describe('serve: other verbs and the log', () => {
     expect((await ask(fake, files, { verb: 'renew', node: 1 })).reply).toMatchObject({ ok: false, refusal: 'not-allowed' });
   });
 
+  it('VP-12: renew of a key expired more than 30 days ago replies not-allowed with the fixed detail', async () => {
+    const { fake, files } = world();
+    const mac = fake.nodes.find((node) => node.name === 'mac');
+    if (mac === undefined) throw new Error('no mac');
+    mac.expiry = Math.floor(NOW.getTime() / 1000) - 30 * 86_400 - 1;
+    const served = await ask(fake, files, { verb: 'renew', node: 2 });
+    expect(served.reply).toEqual({ ok: false, refusal: 'not-allowed', detail: 'the key expired more than 30 days ago; enrol the computer again' });
+    expect(fake.ran('nodes', 'expire')).toEqual([]);
+  });
+
   it('VP-7: a bad request never reaches Headscale', async () => {
     const { fake, files } = world();
     const served = await serve('{"verb":"open-device"}', fake.runner, files, NOW);

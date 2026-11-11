@@ -19,9 +19,13 @@ use crate::{
     vpn::{
         Error, Feed, Refusal,
         broker::{Broker, BrokerView, NewKey, Registered},
+        picture::on_tailnet,
         steps, waiting,
     },
 };
+
+const ON_TAILNET: &str =
+    "This site is on the VPN's own address range. It is reached directly and has no router.";
 
 /// A one-hour key, the commands that use it and when it stops working (VPN-001, VPN-003).
 pub struct VpnKey {
@@ -89,7 +93,7 @@ impl Mutation {
     async fn create_router_key(&self, ctx: &Context<'_>, site_id: ID) -> Result<VpnKey> {
         operator_only(ctx, "createRouterKey")?;
         let broker = broker_of(ctx)?;
-        let site = site_of(ctx, &site_id).await?;
+        let site = router_site_of(ctx, &site_id).await?;
         let name = policy_site(&roster(ctx)?, &site)?;
         let steps = steps::router(&name, site.subnet);
         let call = async move { broker.router_key(&name).await };
@@ -181,6 +185,16 @@ pub(super) async fn site_of(ctx: &Context<'_>, id: &ID) -> Result<Site> {
         .await
         .map_err(internal)?
         .ok_or_else(|| coded("No such site.", ErrorCode::NotFound))
+}
+
+/// The site an id argument names, when it has a subnet router: `VALIDATION` on `siteId` for a
+/// site on the tailnet's own range, which is reached directly over the VPN.
+pub(super) async fn router_site_of(ctx: &Context<'_>, id: &ID) -> Result<Site> {
+    let site = site_of(ctx, id).await?;
+    if on_tailnet(site.subnet) {
+        return Err(invalid(&[FieldError::new("siteId", ON_TAILNET)]));
+    }
+    Ok(site)
 }
 
 /// The VPN policy's name for `site`, by its subnet.
