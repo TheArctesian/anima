@@ -20,6 +20,7 @@ use tokio::{
     io::{AsyncReadExt as _, AsyncWriteExt as _},
     net::UnixStream,
     sync::{Mutex, MutexGuard},
+    time::Instant,
 };
 use zeroize::Zeroizing;
 
@@ -52,6 +53,10 @@ const _: () = assert!(
 /// How long a call waits for the turn behind another call; then it gives up with
 /// `BrokerBusy`, having sent nothing (BD-15).
 pub(super) const TURN_WAIT: Duration = Duration::from_secs(20);
+/// How long a call, holding the turn, waits after the reply line for the broker to close the
+/// connection: systemd's `MaxConnections=1` closes the next connection at once while the
+/// broker request still runs (BD-15). Never past [`CALL_LIMIT`] from connect.
+pub(super) const CLOSE_WAIT: Duration = Duration::from_secs(2);
 
 /// The broker at one socket path. Clones share one turn, so no two calls of the hub reach the
 /// socket at the same time: systemd closes a second connection at once (BD-15).
@@ -245,14 +250,18 @@ impl Broker {
         _turn: MutexGuard<'_, ()>,
         request: &Value,
     ) -> Result<T, Error> {
-        let line = tokio::time::timeout(CALL_LIMIT, self.exchange(request))
+        let deadline = Instant::now() + CALL_LIMIT;
+        let (line, stream) = tokio::time::timeout_at(deadline, self.exchange(request))
             .await
             .map_err(|_| Error::BrokerTimedOut)??;
+        // The reply is in hand: a broker that does not close in time fails nothing.
+        let closed_by = deadline.min(Instant::now() + CLOSE_WAIT);
+        let _ = tokio::time::timeout_at(closed_by, closed(stream)).await;
         parse_reply(&line)
     }
 
-    /// One connection: the request line out, the reply line in.
-    async fn exchange(&self, request: &Value) -> Result<Zeroizing<Vec<u8>>, Error> {
+    /// One connection: the request line out, the reply line in, and the connection to wait on.
+    async fn exchange(&self, request: &Value) -> Result<(Zeroizing<Vec<u8>>, UnixStream), Error> {
         let mut stream =
             UnixStream::connect(&self.path)
                 .await
@@ -266,14 +275,22 @@ impl Broker {
             .write_all(&out)
             .await
             .map_err(|_| Error::BrokerConnection)?;
-        read_line(stream).await
+        let line = read_line(&mut stream).await?;
+        Ok((line, stream))
     }
+}
+
+/// Reads and drops whatever follows the reply line until the broker closes the connection
+/// (EOF) or it fails; the bytes go into a small buffer that is zeroed when it drops.
+async fn closed(mut stream: UnixStream) {
+    let mut rest = Zeroizing::new([0_u8; 512]);
+    while matches!(stream.read(&mut rest[..]).await, Ok(read) if read > 0) {}
 }
 
 /// The first line of `stream`, at most [`MAX_REPLY_BYTES`]; EOF before any byte, or a longer
 /// line, is unreadable. The bytes go from the socket straight into one buffer of the full size,
 /// which never grows and is zeroed when it drops, so no copy of a key is left (LOG-007).
-async fn read_line(mut stream: UnixStream) -> Result<Zeroizing<Vec<u8>>, Error> {
+async fn read_line(stream: &mut UnixStream) -> Result<Zeroizing<Vec<u8>>, Error> {
     let mut line = Zeroizing::new(vec![0_u8; MAX_REPLY_BYTES + 1]);
     let mut filled = 0;
     let end = loop {
