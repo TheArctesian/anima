@@ -10,7 +10,9 @@ use crate::{
     devices::graphql::StatusOf,
     events::Bus,
     ids::DeviceId,
-    sessions::{DEFAULT_DPI, DisplayRequest, FieldError, Protocol, StartRequest, Ticket, Waking},
+    sessions::{
+        DEFAULT_DPI, DisplayRequest, FieldError, Protocol, Recording, StartRequest, Ticket, Waking,
+    },
     status::Status,
     targets::AddressPolicy,
 };
@@ -33,8 +35,12 @@ pub(super) struct StartSessionInput {
 }
 
 impl StartSessionInput {
-    /// The request `start` checks; a null `dpi` means K1's default.
-    pub(super) fn into_request(self) -> Result<StartRequest, Vec<FieldError>> {
+    /// The request `start` checks, with the hub's `recording` storage; a null `dpi` means K1's
+    /// default.
+    pub(super) fn into_request(
+        self,
+        recording: Recording,
+    ) -> Result<StartRequest, Vec<FieldError>> {
         let device = self
             .device_id
             .parse::<DeviceId>()
@@ -50,6 +56,7 @@ impl StartSessionInput {
                 timezone: display.timezone,
             },
             wake: None,
+            recording,
         })
     }
 }
@@ -80,6 +87,11 @@ impl Ticket {
     /// waits up to 120 seconds instead of 8.
     async fn wake_sent(&self) -> bool {
         self.wake_sent
+    }
+
+    /// Whether the session is recorded (K4 §1 step 2, RA-040); the client shows the badge.
+    async fn recording(&self) -> bool {
+        self.recording
     }
 }
 

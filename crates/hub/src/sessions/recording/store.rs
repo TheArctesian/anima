@@ -88,13 +88,6 @@ pub(super) async fn end<'e>(
 
 /// The recording state of each of `sessions` (G-5): `Off` with no row, `Stopped` with a stop
 /// reason, otherwise `On`. Every asked session has an entry.
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "Session.recording (WP-48 T5a) is the first caller"
-    )
-)]
 pub(in crate::sessions) async fn states<'e>(
     db: impl PgExecutor<'e>,
     sessions: &[SessionId],

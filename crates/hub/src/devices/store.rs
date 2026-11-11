@@ -50,7 +50,7 @@ pub(super) mod remote;
 mod sites;
 
 pub(super) use distribution::set_distribution;
-pub(super) use holds::{lock_device, lock_metrics_source};
+pub(super) use holds::{lock_device, lock_metrics_source, share_record_sessions};
 pub(super) use remote::{
     devices_by_ids, lock_site, set_agent_source, set_wake_relay, share_device, wake_relay,
 };

@@ -35,3 +35,17 @@ pub(in crate::devices) async fn lock_metrics_source(
     text.parse()
         .map_err(|error| Error::Database(sqlx::Error::Decode(Box::new(error))))
 }
+
+/// Locks the device row `FOR SHARE` until the transaction ends, and reads whether it records
+/// its sessions.
+pub(in crate::devices) async fn share_record_sessions(
+    conn: &mut PgConnection,
+    id: DeviceId,
+) -> Result<bool, Error> {
+    let row: Option<bool> =
+        sqlx::query_scalar("SELECT record_sessions FROM devices.devices WHERE id = $1 FOR SHARE")
+            .bind(id)
+            .fetch_optional(conn)
+            .await?;
+    row.ok_or(Error::NotFound(Missing::Device(id)))
+}

@@ -163,7 +163,7 @@ impl Writer {
             .await
             .map_err(|error| Error::Session(Box::new(error)))?;
         if let Some(row) = row {
-            serving.live.publish_end(row);
+            serving.live.publish_change(row);
         }
         Ok(())
     }

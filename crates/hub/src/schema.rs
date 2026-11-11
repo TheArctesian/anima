@@ -125,7 +125,7 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
     .disable_suggestions()
     .extension(access::SignInRequired)
     // Shared dependencies (K3 wiring).
-    .data(config)
+    .data(config.clone())
     .data(clock.clone())
     .data(pool.clone())
     .data(bus)
@@ -161,7 +161,9 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
     .data(trust::graphql::host_key_loader(pool.clone()).delay(BATCH_WINDOW))
     .data(trust::graphql::server_certificate_loader(pool.clone()).delay(BATCH_WINDOW))
     .data(live.sightings().clone())
-    // sessions (R-032)
+    // sessions (R-032): `Session.recording` and the recording storage `startSession` checks
+    .data(sessions::graphql::recording_loader(pool.clone()).delay(BATCH_WINDOW))
+    .data(recording(&config))
     .data(live)
     .data(policy)
     // metrics
@@ -170,6 +172,16 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
     .data(build_updates)
     .data(bucket)
     .finish()
+}
+
+/// The recording storage from the hub's configuration (K7 `ANIMA_RECORDING_ROOT`,
+/// `ANIMA_RECORDING_MAX_BYTES`): what `startSession` checks and the tunnels record to.
+#[must_use]
+pub(crate) fn recording(config: &Config) -> sessions::Recording {
+    sessions::Recording {
+        root: config.recording_root.clone(),
+        max_bytes: config.recording_max_bytes,
+    }
 }
 
 /// API-007: release builds are production builds; debug builds keep introspection for tooling.

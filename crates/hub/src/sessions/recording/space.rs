@@ -35,10 +35,6 @@ pub(in crate::sessions) enum CannotRecord {
 ///
 /// # Errors
 /// [`CannotRecord`] names the first condition that fails.
-#[cfg_attr(
-    not(test),
-    expect(dead_code, reason = "startSession (WP-48 T5a) is the first caller")
-)]
 pub(in crate::sessions) fn can_record(recording: &Recording) -> Result<(), CannotRecord> {
     check(recording, free_space)
 }

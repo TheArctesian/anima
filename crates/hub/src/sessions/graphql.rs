@@ -9,18 +9,21 @@ mod change;
 mod connection;
 pub(super) mod connection_test;
 pub(super) mod error;
+mod recording;
 mod session;
 mod ticket;
 
 use std::sync::Arc;
 
 use async_graphql::{
-    Context, ID, Object, Result, Subscription as GraphQLSubscription, futures_util::stream::Stream,
+    Context, ID, Object, Result, Subscription as GraphQLSubscription, dataloader::DataLoader,
+    futures_util::stream::Stream,
 };
 use sqlx::PgPool;
 
 /// For the files part's resolver (WP-27 D-8): the same errors and schema data.
 pub(super) use self::error::to_graphql;
+pub use self::recording::{RecordingStateValue, RecordingStates};
 
 use self::{
     change::session_changes,
@@ -29,7 +32,7 @@ use self::{
     ticket::StartSessionInput,
 };
 use super::{
-    Actor, FieldError, Live, Session, SessionChange, Ticket,
+    Actor, FieldError, Live, Recording, Session, SessionChange, Ticket,
     connection_test::{ConnectionTest, TestRequest, test_connection},
     end::end_session,
     start, store,
@@ -42,6 +45,13 @@ use crate::{
     events::{ClientAddr, Operator},
     ids::SessionId,
 };
+
+/// The loader behind `Session.recording`: one query per batch of session ids, no cache, so a
+/// recording that stopped shows in the next request (API-005, R-014, G-5).
+#[must_use]
+pub fn recording_loader(pool: PgPool) -> DataLoader<RecordingStates> {
+    DataLoader::new(RecordingStates(pool), tokio::spawn)
+}
 
 /// Who acts, from where and when, as the schema data of a signed-in request gives it.
 fn actor(ctx: &Context<'_>) -> Result<Actor> {
@@ -100,7 +110,10 @@ impl Mutation {
     /// Starts a session and returns its single-use tunnel ticket (K4 §1, API-009).
     #[graphql(guard = "Authenticated")]
     async fn start_session(&self, ctx: &Context<'_>, input: StartSessionInput) -> Result<Ticket> {
-        let mut request = input.into_request().map_err(|fields| invalid(&fields))?;
+        let recording = schema_dependency::<Recording>(ctx)?.clone();
+        let mut request = input
+            .into_request(recording)
+            .map_err(|fields| invalid(&fields))?;
         request.wake = Some(ticket::waking(ctx, request.device).await?);
         start(
             schema_dependency::<PgPool>(ctx)?,

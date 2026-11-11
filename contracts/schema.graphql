@@ -1236,7 +1236,7 @@ type Session {
   endReason: SessionEndReason
   # RA-034: which computer holds it
   clientAddr: IpAddr!
-  recording: RecordingState! @pending
+  recording: RecordingState!
 }
 
 type SessionEdge {
@@ -1258,7 +1258,7 @@ type SessionTicket {
   "A Wake-on-LAN packet was sent; the opening waits longer (K4 §1)."
   wakeSent: Boolean!
   "The session is recorded; the client shows the badge (RA-040)."
-  recording: Boolean! @pending
+  recording: Boolean!
 }
 
 type WakeResult {
@@ -1272,7 +1272,7 @@ type SessionChange {
 
 # Phase 3 (WP-48). RA-040, RA-041.
 
-enum RecordingState @pending {
+enum RecordingState {
   OFF
   ON
   STOPPED

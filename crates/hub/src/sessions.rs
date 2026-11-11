@@ -105,6 +105,10 @@ pub enum Error {
     /// Too many tickets are pending, or the hub is shutting down.
     #[error("no session can start now")]
     Unavailable,
+    /// The device records its sessions and the hub cannot record now: no root, a root it
+    /// cannot write, or under 1 GiB free (K4 §1 step 2, D-14). The text names no path.
+    #[error("Recording is on for this device, but the hub cannot record now.")]
+    CannotRecord,
     /// The messages stay generic: the source errors may hold SQL text (API-010).
     #[error("device store error")]
     Devices(#[source] devices::Error),

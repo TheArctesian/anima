@@ -110,7 +110,7 @@ pub(in crate::sessions) async fn finish(records: &Records, redeemed: Redeemed, e
     match written {
         Ok(Some(ended)) => {
             log_ended(ticket.session, reason);
-            tunnel.live().publish_end(ended);
+            tunnel.live().publish_change(ended);
         }
         Ok(None) => log_ended_before(ticket.session, reason),
         Err(error) => log_unwritten(ticket.session, reason, &error),

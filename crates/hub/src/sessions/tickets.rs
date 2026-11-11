@@ -86,6 +86,8 @@ pub struct Ticket {
     pub tunnel_path: &'static str,
     /// `startSession` sent a Wake-on-LAN packet first (K4 Section 1 `wakeSent`).
     pub wake_sent: bool,
+    /// The session is recorded (K4 Section 1 step 2 `recording`); the client shows the badge.
+    pub recording: bool,
 }
 
 impl Ticket {
@@ -102,6 +104,7 @@ impl Ticket {
             expires_at,
             tunnel_path: protocol.tunnel_path(),
             wake_sent: false,
+            recording: false,
         }
     }
 
@@ -118,6 +121,7 @@ impl Ticket {
             expires_at,
             tunnel_path: FILES_PATH,
             wake_sent: false,
+            recording: false,
         }
     }
 
@@ -137,6 +141,7 @@ impl fmt::Debug for Ticket {
             .field("expires_at", &self.expires_at)
             .field("tunnel_path", &self.tunnel_path)
             .field("wake_sent", &self.wake_sent)
+            .field("recording", &self.recording)
             .finish()
     }
 }
@@ -157,6 +162,9 @@ pub struct PendingTicket {
     /// A Wake-on-LAN packet was sent first: the opening waits up to 120 seconds for the
     /// device and tries it again every 2 seconds while it does not answer.
     pub wake_sent: bool,
+    /// `startSession` found the device records its sessions and the hub able to record (K4
+    /// Section 1 step 2): the tunnel records this session (Section 11).
+    pub recording: bool,
 }
 
 impl PendingTicket {

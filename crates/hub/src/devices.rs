@@ -125,6 +125,17 @@ pub async fn lock_metrics_source(
     store::lock_metrics_source(conn, id).await
 }
 
+/// Whether the device records its sessions, read under a share lock on the device row that the
+/// caller's transaction holds until it ends, so no other transaction changes or deletes the
+/// device before then; other share locks do not wait. `sessions` reads it in the transaction
+/// that starts a session, before it writes the session row (RA-040, K4 §1 step 2).
+///
+/// # Errors
+/// `NotFound` when there is no such device.
+pub async fn hold_record_sessions(conn: &mut PgConnection, id: DeviceId) -> Result<bool, Error> {
+    store::share_record_sessions(conn, id).await
+}
+
 /// Sets the device's metrics source to `agent` in the caller's transaction, which stops SSH
 /// collection for it, and returns the device's name. Only agent enrolment calls it (MET-011,
 /// R-092 D-7).

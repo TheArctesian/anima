@@ -1,6 +1,7 @@
-//! The live feed of session starts and ends, for the `sessionChanged` subscription (RA-034,
-//! LOG-010). A change is published only once its row is committed, and carries the row as
-//! written: never session content, a token or the gateway's connection ID (RA-008, LOG-007).
+//! The live feed of session changes (starts, ends and recording stops), for the
+//! `sessionChanged` subscription (RA-034, LOG-010). A change is published only once its row is
+//! committed, and carries the row as committed or as read again after the commit: never
+//! session content, a token or the gateway's connection ID (RA-008, LOG-007).
 
 use tokio::sync::broadcast;
 
@@ -41,9 +42,12 @@ impl Live {
         self.changes.sender.subscribe()
     }
 
-    /// Publishes a committed end, with the row as it was written.
-    pub(in crate::sessions) fn publish_end(&self, ended: Session) {
-        self.changes.publish(ended);
+    /// Publishes a committed change to a session row other than its start, with the row as the
+    /// caller wrote it or read it again after its commit: an end, or a recording stop on a row
+    /// that is still live. Unlike [`Live::publish_start`], it publishes even while the hub is
+    /// shutting down.
+    pub(in crate::sessions) fn publish_change(&self, changed: Session) {
+        self.changes.publish(changed);
     }
 
     /// Publishes the start of a committed live row while its ticket is still held, so every
