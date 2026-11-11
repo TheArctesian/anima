@@ -24,27 +24,26 @@ Read it first, then the rulings listed in section 5 and R-093 to R-111, CR-17 to
 | Package | State |
 | --- | --- |
 | WP-40, WP-41, WP-42, WP-52 | Done. |
-| WP-44 web client | Complete; `/shared` is already a bare route on phase-3. Its branch has nothing beyond phase-3. |
+| WP-44 web client | Complete. The `/shared` bare route is gone: since WP-49 T9 (`0dd50644`), `/shared` needs sign-in like any other route (R-111). |
 | WP-46 checks | Done. Last merges: package fixes `a28410c4`, R-102 domain retries and hourly floor `53f0a031`, log `2821cc2d`. |
 | WP-50 settings | Done. Last merges: check-row `5fbebf60`, log `0cbc06d4`, R-102 client `e12da074`. |
 | WP-51 parsers | Done. T4 `a67ae69e`, vendor retry `4080416c`, log `8f44adc3`. |
 | WP-43 access | Done. T4 bearer `2446f367` (router assembly in lib.rs `all_routes`), T5 rotation `4ee029fe`, T6 throttle `15b8f9d0`, log `8d064256`. |
-| WP-45 notifications | T1–T6 merged; dispatcher wired in `main.rs` (`26a5a9bd`). |
-| WP-47 session sharing | T1a, T1b, T3, T3c (`693f2720`) merged. The share parts are to be removed (R-111). |
+| WP-45 notifications | Done. T6 `99258714`, with the dispatcher wired in `main.rs` (`26a5a9bd`); T7 checks edits `e34e9060`; log `ab598609`. Follow-up: narrow the `notifications.rs` public face (lines 31–37). |
+| WP-47 session sharing | Done. T2 session limit `6f8d8356`, waking-flake `09555c56`, T7 share removal `301d1b5e` (R-111), log `347cc2cc`. T4–T6 cancelled. Migrations 0121–0129 are unused. |
 | WP-48 recording | T1 playback proof `a4192d68`. |
-| WP-54 agent | T2, T3a token `839b827f`, T4 binary `ef93c13d`, T5 Apple GPU `61320129`, T7 VPN policy `176cb4b1` merged. |
+| WP-49 client sharing and recording | T5 asciicast `ad50bac3`, T6 playback tunnel `4d3eebab`, T8a badge `917281e9`, T9 `/shared` sign-in `0dd50644`. T1–T4 cancelled (R-111). |
+| WP-54 agent | T3b ingest `7ea84ecc`, T6a install `49119a71`, T2, T3a token `839b827f`, T4 binary `ef93c13d`, T5 Apple GPU `61320129`, T7 VPN policy `176cb4b1` merged. |
 
 ## 3. Work in progress (2026-11-10)
 
-Five package orchestrators are running (R-066 allows seven). Each package's log, on its `claude/wp-NN-*` branch, has the detail.
-
 | Package | State | Next |
 | --- | --- | --- |
-| WP-45 | T7 checks edits is in fix round 1. At merge, add `.data(checks::graphql::check_notifications_loader(pool.clone()).delay(BATCH_WINDOW))` to schema.rs unless the branch already has it. | Package close. |
-| WP-47 | T2 limit; the `ra_031` waking-flake branch. T4, T5 and T6 are cancelled (R-111). | One task removes the merged share code: `sessions/share/`, the K1 share types and roots, the `joinShare` path in `access/`, `ShareId`, the share event kinds. Then package close. |
-| WP-48 | T2 and T3 asciicast branch (`982ae270`) is gating. | T4, then T5–T8. T7 and T8 wait only for WP-47 T2 and tee the owner's stream only (R-111 amends CR-19 Q-3). |
-| WP-49 | T5 asciicast player. T1 share and T2 watch-join are cancelled (R-111). | Recording UI waits for WP-48 T5b and T6. |
-| WP-54 | T3b ingest round 3 (CR-20, CR-21); T6a install fix round 2. | T8: final security review of the whole package. |
+| WP-48 | The T2 and T3 asciicast branch, then T4. | T5–T8. T7 and T8 no longer wait on anything, and tee the owner's stream only (R-111 amends CR-19 Q-3). |
+| WP-49 | Idle. It waits for WP-48. | T7 (player pane, PLAYBACK tab, a lower maxBytes) waits for WP-48 T5b and T6. T8b (mounting the badge) waits for WP-48 T5a. |
+| WP-54 | T6c desktop sidecar, which contains T6b panel: fix round 1, one security must. T8 final security review. | T6d is a handoff note to WP-36 (release job). Then package close. |
+
+**Load flake that needs a fix:** `builds::publishing::fences::d_25_a_try_past_its_hold_writes_nothing` (WP-36) failed three merge gates on 2026-11-10 and passes alone.
 
 **Not started:** WP-53 (integration and acceptance) starts when the other packages are near done.
 
