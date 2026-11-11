@@ -2055,3 +2055,14 @@ A security review of the broker found the points below; each fix has regression 
 - **Not done:** the `MOT-040` reduced-motion test for the enrolment modal (the modal's own reduced-motion behaviour is tested in
   `lib/forms/modal`; the content only uses the `fade` role). The 360 px layout was not measured in a browser: the new rows are
   full-width flex-wrap lines inside the 28 rem site pattern, and the key steps wrap with `overflow-wrap: anywhere`.
+
+#### Tier B interface review fixes
+
+- **Steps are numbered:** the `li` stays a list item; the flex layout moved to a `.step` wrapper inside it.
+- **`KeySecret` shows the whole key at 360 px:** below the 28 rem container breakpoint the field uses `field-sizing: content`, with a five-line
+  minimum where the engine lacks it. Measured at 360 px: scrollHeight 75 = clientHeight 75 (the earlier 116/76 was another textarea on the page).
+- **Reserved notices (MOT-007):** `EnrolModal .notice`, `ApproveRoute .after` and `RenewKey .outcome` reserve two lines below 28 rem.
+- **Focus after `keyUsed`:** focus moves to the Approve route button (the dialog if there is none).
+- **`NodeKeys` at 28 rem:** the name has line 1; role and address share line 2 (as `SitePaths`).
+- **`ConfirmModal` keeps its label while busy** (`aria-busy` says it works), so the button and Cancel do not move. Measured: 162 to 159 px (press scale), not 103.
+- **Not fixed:** a live push growing a row, and the modal's height changing between steps.

@@ -63,6 +63,7 @@
 
 <style>
   .approve {
+    container-type: inline-size;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -83,5 +84,12 @@
     flex: 1 1 10rem;
     min-block-size: calc(var(--text-sm) * var(--leading-normal));
     color: var(--text-muted);
+  }
+
+  /* Two lines below the narrow breakpoint, where the text wraps (MOT-007). */
+  @container (max-inline-size: 28rem) {
+    .after {
+      min-block-size: calc(var(--text-sm) * var(--leading-normal) * 2);
+    }
   }
 </style>

@@ -50,6 +50,7 @@
 
 <style>
   .renew {
+    container-type: inline-size;
     display: flex;
     flex-wrap: wrap;
     grid-column: 1 / -1;
@@ -65,6 +66,13 @@
   .outcome {
     flex: 1 1 10rem;
     min-block-size: calc(var(--text-sm) * var(--leading-normal));
+  }
+
+  /* Two lines below the narrow breakpoint, where the result wraps (MOT-007). */
+  @container (max-inline-size: 28rem) {
+    .outcome {
+      min-block-size: calc(var(--text-sm) * var(--leading-normal) * 2);
+    }
   }
 
   .expired {
