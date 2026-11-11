@@ -56,4 +56,20 @@ describe('AgentInstall (MET-012)', () => {
     await Promise.all([first, second]);
     expect(install.status?.metricsStale).toBe(true);
   });
+
+  it('MET-018: a status read that was pending when the token was revoked does not undo the revoke', async () => {
+    let oldStatus: (result: HubResult<AgentStatusView | null>) => void = () => undefined;
+    const calls: AgentCalls = {
+      enrolAgent: NEVER,
+      agentStatus: () => new Promise((resolve) => { oldStatus = resolve; }),
+      revokeAgentToken: () => Promise.resolve({ ok: true, value: { metricsSource: 'AGENT', metricsStale: true } }),
+    };
+    const install = new AgentInstall(calls, 'd1', ENV);
+    const loading = install.loadStatus();
+    await install.revoke();
+    oldStatus({ ok: true, value: { metricsSource: 'AGENT', metricsStale: false } });
+    await loading;
+    expect(install.revoked).toBe(true);
+    expect(install.status?.metricsStale).toBe(true);
+  });
 });

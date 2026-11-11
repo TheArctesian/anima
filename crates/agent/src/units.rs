@@ -15,6 +15,8 @@ pub mod session;
 pub mod step;
 pub mod token_file;
 mod trust;
+#[cfg(test)]
+mod trust_cases;
 
 /// A systemd user unit: `~/.config/systemd/user/anima-agent.service`, run by the operator.
 pub const SYSTEMD_USER: &str = include_str!("../units/anima-agent.user.unit");

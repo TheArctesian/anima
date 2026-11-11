@@ -17,10 +17,6 @@ use std::{
 
 /// The variables the agent gets from the app, when they are set: its home (where `enrol` stores
 /// the token and `install` writes the unit), and the user session bus `systemctl --user` needs.
-///
-/// `XDG_CONFIG_HOME` is cleared on purpose: the agent's home is then `$HOME/.config/anima-agent`,
-/// T6a's single place for it, which the unit's `ReadWritePaths=%E/anima-agent` names too; the
-/// agent's `install` refuses a token stored anywhere else.
 const PASSED_ON: [&str; 2] = ["XDG_RUNTIME_DIR", "DBUS_SESSION_BUS_ADDRESS"];
 
 const POLL: Duration = Duration::from_millis(20);
@@ -69,6 +65,11 @@ pub const INSTALL_ARGS: [&str; 1] = ["install"];
 
 /// The agent's environment: `HOME` as given, then each of [`PASSED_ON`] that `lookup` finds and
 /// is not empty. Nothing else of the app's environment reaches the agent.
+///
+/// `XDG_CONFIG_HOME` is cleared on purpose (it is not in [`PASSED_ON`]): the agent's home is then
+/// `$HOME/.config/anima-agent`, T6a's single place for it, which the unit's
+/// `ReadWritePaths=%E/anima-agent` names too; the agent's `install` refuses a token stored
+/// anywhere else.
 pub fn agent_env(
     home: &Path,
     lookup: impl Fn(&str) -> Option<OsString>,
@@ -82,26 +83,26 @@ pub fn agent_env(
     env
 }
 
-/// Runs `run` and waits for it until its deadline or its stop.
+/// Runs `agent_run` and waits for it until its deadline or its stop.
 ///
 /// # Errors
 /// [`RunError`]: the program could not start, take its input, or exit successfully in time, or
 /// it was stopped. A child still running then is killed and reaped first.
-pub fn run(run: &Run<'_>) -> Result<(), RunError> {
-    if run.stop.load(Ordering::Acquire) {
+pub fn run(agent_run: &Run<'_>) -> Result<(), RunError> {
+    if agent_run.stop.load(Ordering::Acquire) {
         return Err(RunError::Stopped);
     }
-    let mut child = start(run)?;
-    if let Err(error) = hand_over(&mut child, run.input) {
+    let mut child = start(agent_run)?;
+    if let Err(error) = hand_over(&mut child, agent_run.input) {
         reap(child);
         return Err(error);
     }
-    let end = Instant::now() + run.deadline;
+    let end = Instant::now() + agent_run.deadline;
     loop {
         match child.try_wait() {
             Ok(Some(status)) if status.success() => return Ok(()),
             Ok(Some(_)) => return Err(RunError::Failed),
-            Ok(None) if run.stop.load(Ordering::Acquire) => {
+            Ok(None) if agent_run.stop.load(Ordering::Acquire) => {
                 reap(child);
                 return Err(RunError::Stopped);
             }
@@ -120,17 +121,17 @@ pub fn run(run: &Run<'_>) -> Result<(), RunError> {
 
 /// Starts the child. A binary that was just written can be "busy" for a moment while another
 /// thread of this process forks with the file still open; that start is tried again.
-fn start(run: &Run<'_>) -> Result<Child, RunError> {
+fn start(agent_run: &Run<'_>) -> Result<Child, RunError> {
     let mut tries = 0;
     loop {
-        let started = Command::new(run.program)
+        let started = Command::new(agent_run.program)
             // Its own process group, led by the child, so a kill reaches what it started (BLD-027).
             .process_group(0)
-            .args(run.args)
+            .args(agent_run.args)
             .env_clear()
-            .envs(run.env.iter().map(|(name, value)| (name, value)))
+            .envs(agent_run.env.iter().map(|(name, value)| (name, value)))
             .current_dir("/")
-            .stdin(if run.input.is_some() {
+            .stdin(if agent_run.input.is_some() {
                 Stdio::piped()
             } else {
                 Stdio::null()

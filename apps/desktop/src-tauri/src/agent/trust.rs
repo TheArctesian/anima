@@ -5,8 +5,12 @@
 //! `Target::User`, and `private_group`), copied because the shell cannot depend on the agent
 //! crate. THE TWO RULES MUST STAY THE SAME: the shell hands the code to the binary before the
 //! agent's own `install` check runs, so a looser rule here leaks the code to a swapped binary.
-//! The one difference is stricter: a sticky folder others can write (`/tmp`) is refused here,
-//! since the agent's units hide `/tmp` and its `install` would refuse after the code was spent.
+//! The shell is stricter in two ways, never looser: it refuses a sticky folder others can write
+//! (`/tmp`, 1777), since the agent's units hide `/tmp` and its `install` would refuse after the
+//! code was spent; and it refuses a sticky folder whose group may write when that group is not
+//! the user's private one (1775 in a shared group), where the agent's user rule lets any sticky
+//! folder through. Both are pinned, with every other case, in the table
+//! `crates/agent/tests/trust-cases.txt` that both test suites read (rows marked `DIFF`).
 
 /// A folder's mode, owner and group, as `stat` gives them, and whether it has a POSIX access
 /// ACL. With an ACL the group bits of the mode are the ACL's mask, which named users and groups
