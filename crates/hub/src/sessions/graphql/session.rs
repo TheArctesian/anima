@@ -1,9 +1,11 @@
 //! `Session` as the GraphQL type K1 describes. It does not expose the operator id.
 
-use async_graphql::{ID, Object};
+use async_graphql::{Context, ID, Object, Result, dataloader::DataLoader};
 use chrono::{DateTime, Utc};
 
+use super::recording::{RecordingStateValue, RecordingStates};
 use crate::{
+    api_errors::schema_dependency,
     scalars::IpAddr,
     sessions::{EndReason, Protocol, Session},
 };
@@ -46,5 +48,14 @@ impl Session {
     /// The address of the computer that started the session (RA-034).
     async fn client_addr(&self) -> IpAddr {
         IpAddr(self.client)
+    }
+
+    /// Whether the session was recorded and whether its recording stopped early (RA-040,
+    /// G-5): `OFF` with no recording, `STOPPED` with a stop reason, else `ON`.
+    async fn recording(&self, ctx: &Context<'_>) -> Result<RecordingStateValue> {
+        let state = schema_dependency::<DataLoader<RecordingStates>>(ctx)?
+            .load_one(self.id)
+            .await?;
+        Ok(state.unwrap_or(RecordingStateValue::Off))
     }
 }

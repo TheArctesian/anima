@@ -14,6 +14,7 @@ mod k1;
 mod leak;
 mod mount;
 mod privileges;
+mod recording_state;
 mod server_certificates;
 mod start;
 mod starting;

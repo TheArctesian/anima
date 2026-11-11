@@ -1,6 +1,7 @@
 //! Starting a session (K4 §1, K3 `start`): checks the device and the display, holds the
-//! device to its session limit (`limit`), wakes it when it is Down (`waking`), writes the row
-//! and its audit entry, and issues the single-use ticket.
+//! device to its session limit (`limit`), refuses a recorded device when the hub cannot record
+//! ([`recorded`]), wakes it when it is Down (`waking`), writes the row and its audit entry,
+//! and issues the single-use ticket.
 
 mod limit;
 mod waking;
@@ -18,6 +19,8 @@ use super::{
     find_device,
     live::Live,
     model::{EndReason, FieldError, Protocol, Session, SessionEnd},
+    recording::{CannotRecord, can_record},
+    serving::Recording,
     store::{self, NewSession},
     tickets::{LIFETIME, PendingTicket, TOKEN_BYTES, Ticket, TicketToken},
 };
@@ -33,7 +36,8 @@ use crate::{
 pub use waking::Waking;
 
 /// What the operator asks for: a device, a protocol and the view the client will show, and
-/// what waking the device needs (`startSession` gives it; `None` sends no packet).
+/// what waking the device needs (`startSession` gives it; `None` sends no packet), and where
+/// the hub records.
 #[derive(Clone, Debug)]
 pub struct StartRequest {
     pub device: DeviceId,
@@ -41,6 +45,9 @@ pub struct StartRequest {
     pub display: DisplayRequest,
     /// What a wake needs; `None` never wakes the device, whatever its status.
     pub wake: Option<Waking>,
+    /// The hub's recording storage, checked only when the device records its sessions
+    /// (K4 §1 step 2); a root of `None` refuses every start on such a device.
+    pub recording: Recording,
 }
 
 /// The client's view as it reports it (K1 `DisplayInput`); `start` checks the bounds.
@@ -176,6 +183,29 @@ async fn admit(
     Ok(display)
 }
 
+/// Whether a session on `device` is recorded: exactly when the device `records` its
+/// sessions, which is then allowed only when `can` says the hub can record now (K4 §1 step 2,
+/// D-14). A device that does not record is never checked. The process log gets the reason,
+/// which names no path (LOG-007).
+///
+/// # Errors
+/// `CannotRecord` when the device records and the hub cannot.
+pub(super) fn recorded(
+    device: DeviceId,
+    records: bool,
+    recording: &Recording,
+    can: fn(&Recording) -> Result<(), CannotRecord>,
+) -> Result<bool, Error> {
+    if !records {
+        return Ok(false);
+    }
+    can(recording).map_err(|reason| {
+        tracing::warn!(%device, %reason, "a session start is refused: the device records its sessions and the hub cannot record now");
+        Error::CannotRecord
+    })?;
+    Ok(true)
+}
+
 /// Random bytes from the operating system.
 fn random_token() -> Result<TicketToken, Error> {
     let mut bytes = [0; TOKEN_BYTES];
@@ -187,8 +217,10 @@ fn random_token() -> Result<TicketToken, Error> {
 /// K4 §4's bounds or a host that is an IP literal the target rule or the hub's deny list
 /// refuses (`Validation`), and the protocol turned off, an SSH session without an accepted
 /// host key, an RDP session without an accepted server certificate when it needs one, or a
-/// device with as many live sessions as its limit allows (`Conflict`, RA-036). A time zone
-/// that is not a zone name is dropped, so the tunnel uses UTC.
+/// device with as many live sessions as its limit allows (`Conflict`, RA-036), and a device
+/// that records its sessions when the hub cannot record now (`CannotRecord`, K4 §1 step 2);
+/// a recorded start's ticket and audit entry say so. A time zone that is not a zone name is
+/// dropped, so the tunnel uses UTC.
 /// When `req.wake` says the device is asleep, it has a MAC address and its site has a wake
 /// relay, a Wake-on-LAN packet goes first and the ticket holds `wake_sent` when it was sent;
 /// a wake that fails leaves `wake_sent` false and the start goes on. Then, in one
@@ -196,10 +228,10 @@ fn random_token() -> Result<TicketToken, Error> {
 /// two starts cannot both pass the limit, writes the live session row and the audit entry
 /// `session.start`, and holds a ticket that the protocol's tunnel redeems once within 30 s
 /// from `client`. Tickets that expired unredeemed are swept first. A start the ticket table
-/// would refuse is refused before any packet is sent, and so is one the limit refuses,
-/// unless another start passed the same early count and wins the device's lock. Once the row
-/// commits, its start is published on `live`'s feed of changes (RA-034); a refused or
-/// rolled-back start publishes nothing.
+/// or the recording check would refuse is refused before any packet is sent, and so is one
+/// the limit refuses, unless another start passed the same early count and wins the device's
+/// lock. Once the row commits, its start is published on `live`'s feed of changes (RA-034); a
+/// refused or rolled-back start publishes nothing.
 ///
 /// If the hub shut down while the commit was in flight, `shut_down` took the ticket but could
 /// not yet see the row; the start is then not published, the row ends here with
@@ -230,6 +262,12 @@ pub async fn start(
     }
     // Nor for a start the limit refuses; the count that holds is the locked one below.
     limit::check(&mut *db.acquire().await?, device.id).await?;
+    let recording = recorded(
+        device.id,
+        device.record_sessions,
+        &req.recording,
+        can_record,
+    )?;
     let wake_sent = match &req.wake {
         Some(wake) => waking::sent(db, &device, wake, clock.now()).await?,
         None => false,
@@ -247,6 +285,7 @@ pub async fn start(
         timezone: held_timezone(req.display.timezone),
         expires_at: now + LIFETIME,
         wake_sent,
+        recording,
     };
     let mut tx = db.begin().await?;
     limit::check_locked(&mut tx, device.id).await?;
@@ -268,6 +307,7 @@ pub async fn start(
     }
     let mut ticket = Ticket::new(pending.session, pending.protocol, token, pending.expires_at);
     ticket.wake_sent = pending.wake_sent;
+    ticket.recording = pending.recording;
     Ok(ticket)
 }
 
@@ -298,8 +338,8 @@ async fn end_shut_down(
     Ok(())
 }
 
-/// The live row, returned as written, and the audit entry `session.start`; the change never
-/// holds the token.
+/// The live row, returned as written, and the audit entry `session.start`, whose change holds
+/// `"recorded": true` for a recorded session (K4 §1 step 2); the change never holds the token.
 async fn write_start(
     conn: &mut PgConnection,
     device: &Device,
@@ -317,11 +357,14 @@ async fn write_start(
         started_at: now,
     };
     let started = store::insert(&mut *conn, &new).await?;
-    let change = json!({
+    let mut change = json!({
         "deviceId": device.id.to_string(),
         "deviceName": device.name,
         "protocol": protocol.as_str(),
     });
+    if pending.recording {
+        change["recorded"] = json!(true);
+    }
     let audit = NewAudit {
         operator: pending.operator.clone(),
         action: AuditAction::Start,

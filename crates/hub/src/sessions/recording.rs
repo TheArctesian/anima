@@ -25,7 +25,7 @@ mod tests;
 
 #[expect(
     unused_imports,
-    reason = "the tunnels (WP-48 T7, T8), startSession (T5a) and playback (T6) are the callers"
+    reason = "the tunnels (WP-48 T7, T8) and playback (T6) are the callers"
 )]
 pub(in crate::sessions) use self::{
     model::{RecordingState, StopReason, Stored},
