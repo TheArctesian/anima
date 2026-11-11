@@ -2,7 +2,7 @@
   import { page } from '$app/state';
   import { tick, untrack, type Snippet } from 'svelte';
   import '../styles/global.css';
-  import { guardStart, holdsAt, reloadClient, startAt } from '$lib/access/navigation';
+  import { guardStart, startAt } from '$lib/access/navigation';
   import { provideDesktopBuilder } from '$lib/builds/desktop.svelte';
   import { provideHub } from '$lib/hub/context';
   import { readAccessToken } from '$lib/desktop/token';
@@ -37,15 +37,9 @@
   });
   $effect(() => stopWatchingWidth);
 
-  // Decided once, from the page the browser loaded: a bare route (the share viewer) renders only its page, with no
-  // operator hub, socket, guard or shell (SEC-002, D-7, E-3); a navigation across that line loads the whole client.
+  // Decided once, from the page the browser loaded: the operator shell, or a fixed refusal on an origin that cannot be
+  // a hub (E-2). Every route but sign-in needs sign-in, so the shell's start guard runs on all of them (API-003, R-111).
   const start = startAt(page.url);
-  // The router can show a page across that line without asking first (a navigation started while another is in
-  // flight, a load redirect): such a page never renders, and the whole client starts afresh at its address.
-  const holds = $derived(holdsAt(start, page.url));
-  $effect(() => {
-    if (!holds) reloadClient();
-  });
   const shell = start.kind === 'shell' ? startShell(start.address) : null;
 
   /** The operator shell's parts: the hub and its start guard, the clock, updates, the builder and the session strip. */
@@ -126,7 +120,7 @@
         <div class="pages" class:covered={sessions.active !== null} inert={sessions.active !== null}>
           {#key page.url.pathname}
             <div class="page" transition:crossFade>
-              {#if holds}{@render children()}{/if}
+              {@render children()}
             </div>
           {/key}
         </div>
@@ -137,8 +131,6 @@
   </div>
 {:else if start.kind === 'refused'}
   <p class="refused" role="alert">{start.message}</p>
-{:else if holds}
-  {@render children()}
 {/if}
 
 <style>

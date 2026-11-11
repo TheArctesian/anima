@@ -5,8 +5,8 @@ import { FONT_WAIT_MS } from '$lib/typeface/first-paint';
 import { load } from './+layout';
 import Layout from './+layout.svelte';
 
-// A bare route (the share viewer) starts no hub, so the layout mounts with only the router stood in (SEC-002).
-vi.mock('$app/state', () => ({ page: { url: new URL('https://hub.example.org/shared#share-token') } }));
+// A page no hub served is refused and starts no hub, so the layout mounts with only the router stood in (E-2).
+vi.mock('$app/state', () => ({ page: { url: new URL('http://hub.example.org/devices') } }));
 vi.mock('$app/navigation', () => ({ goto: vi.fn(() => Promise.resolve()) }));
 vi.mock('$app/paths', () => ({ resolve: (path: string) => path, asset: (path: string) => path }));
 
