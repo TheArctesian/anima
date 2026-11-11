@@ -3,7 +3,11 @@
  * each step with the shapes the contract harness captured (nodes.json, routes.json,
  * preauthkey.json, register.json). Keys use the placeholder of vpn-build.md rule 0.6.
  */
-import type { Runner } from '../broker/serve.ts';
+import { copyFileSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import type { Runner } from '../broker/settle.ts';
+import type { BrokerFiles } from '../broker/state.ts';
 import type { Step } from '../broker/verbs.ts';
 
 export const KEY = 'REDACTED-PREAUTH-KEY';
@@ -31,6 +35,23 @@ const seconds = (date: Date): number => Math.floor(date.getTime() / 1000);
 
 function flag(step: Step, name: string): string | undefined {
   return step.find((arg) => arg.startsWith(`--${name}=`))?.slice(name.length + 3);
+}
+
+const folders: string[] = [];
+
+/** A temporary broker.conf, the repository policy and a state path; `removeBrokerFiles` cleans up. */
+export function brokerFiles(maxNodes = 10): BrokerFiles {
+  const folder = mkdtempSync(join(tmpdir(), 'anima-broker-'));
+  folders.push(folder);
+  const files = { config: join(folder, 'broker.conf'), policy: join(folder, 'policy.hujson'), state: join(folder, 'state.json') };
+  writeFileSync(files.config, `max_nodes=${String(maxNodes)}\n`);
+  copyFileSync(new URL('../config/policy.hujson', import.meta.url), files.policy);
+  return files;
+}
+
+/** Removes every folder `brokerFiles` made; call from `afterEach`. */
+export function removeBrokerFiles(): void {
+  for (const folder of folders.splice(0)) rmSync(folder, { recursive: true, force: true });
 }
 
 export class FakeHeadscale {

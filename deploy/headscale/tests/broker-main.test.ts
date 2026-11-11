@@ -1,27 +1,14 @@
 // One broker request end to end against a fake Headscale (R-055, VP-7, VP-10, LOG-007, BD-9).
 import { afterEach, describe, expect, it } from 'bun:test';
-import { copyFileSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { serve, type Served } from '../broker/serve.ts';
 import { readState, type BrokerFiles } from '../broker/state.ts';
-import { FakeHeadscale, KEY } from './broker-fake.ts';
+import { brokerFiles, FakeHeadscale, KEY, removeBrokerFiles } from './broker-fake.ts';
 
 const NOW = new Date('2026-11-10T00:00:00Z');
 const AUTH_ID = 'hskey-authreq-Ab3_-Zz9Ab3_-Zz9Ab3_-Zz9';
-const folders: string[] = [];
-afterEach(() => {
-  for (const folder of folders.splice(0)) rmSync(folder, { recursive: true, force: true });
-});
-
-function brokerFiles(maxNodes = 10): BrokerFiles {
-  const folder = mkdtempSync(join(tmpdir(), 'anima-broker-'));
-  folders.push(folder);
-  const files = { config: join(folder, 'broker.conf'), policy: join(folder, 'policy.hujson'), state: join(folder, 'state.json') };
-  writeFileSync(files.config, `max_nodes=${String(maxNodes)}\n`);
-  copyFileSync(new URL('../config/policy.hujson', import.meta.url), files.policy);
-  return files;
-}
+afterEach(removeBrokerFiles);
 
 const ask = (fake: FakeHeadscale, files: BrokerFiles, request: object): Promise<Served> => serve(JSON.stringify(request), fake.runner, files, fake.now);
 
@@ -61,8 +48,8 @@ describe('serve: register', () => {
 
   it('5.1: a pendingRegister left by a killed request is audited first', async () => {
     const { fake, files } = world();
-    const tagged = fake.add('sneaky', { tags: ['tag:hub'], expiry: null });
-    writeFileSync(files.state, JSON.stringify({ keys: [], registrations: [NOW.toISOString()], issued: [], pendingRegister: tagged.id }));
+    fake.add('sneaky', { tags: ['tag:hub'], expiry: null });
+    writeFileSync(files.state, JSON.stringify({ keys: [], registrations: [NOW.toISOString()], issued: [], pendingRegister: { before: [1, 2], node: null } }));
     const served = await ask(fake, files, { verb: 'nodes' });
     expect(fake.steps.findIndex((step) => step[1] === 'delete')).toBe(2);
     expect(served.log).toBe('anima-broker verb=nodes outcome=ok node=- fixes=1');
@@ -107,7 +94,7 @@ describe('serve: keys and limits', () => {
 
   it('5.1: the state survives between two processes', async () => {
     const { fake, files } = world();
-    const script = join(folders[0] ?? '', 'one-request.ts');
+    const script = join(dirname(files.state), 'one-request.ts');
     writeFileSync(script, [
       `import { serve } from ${JSON.stringify(new URL('../broker/serve.ts', import.meta.url).pathname)};`,
       `import { FakeHeadscale } from ${JSON.stringify(new URL('./broker-fake.ts', import.meta.url).pathname)};`,

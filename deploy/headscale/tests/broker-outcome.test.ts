@@ -17,7 +17,7 @@ describe('audit', () => {
 
   it('VPN-003: the registered node with a tag is deleted', () => {
     const tailnet = tailnetOfNodes([listed(6, { tags: ['tag:router'], expiry: null })]);
-    expect(audit(tailnet, [], 6, NOW).fixes).toEqual([{ kind: 'delete', node: 6, reason: 'the node had a tag' }]);
+    expect(audit(tailnet, [], { before: [], node: 6 }, NOW).fixes).toEqual([{ kind: 'delete', node: 6, reason: 'the node had a tag' }]);
   });
 
   it('a personal node with no expiry gets one 180 days out', () => {
@@ -28,8 +28,8 @@ describe('audit', () => {
   });
 
   it('a personal node 181 days out is set back; 180 days is left alone', () => {
-    expect(audit(tailnetOfNodes([listed(3, { expiry: inDays(181) })]), [], 3, NOW).fixes).toEqual([{ kind: 'set-expiry', node: 3, expiry: inDays(180) }]);
-    expect(audit(tailnetOfNodes([listed(3, { expiry: inDays(180) })]), [], 3, NOW).fixes).toEqual([]);
+    expect(audit(tailnetOfNodes([listed(3, { expiry: inDays(181) })]), [], { before: [3], node: 3 }, NOW).fixes).toEqual([{ kind: 'set-expiry', node: 3, expiry: inDays(180) }]);
+    expect(audit(tailnetOfNodes([listed(3, { expiry: inDays(180) })]), [], { before: [3], node: 3 }, NOW).fixes).toEqual([]);
   });
 
   it('a second Mac gets 150 days, a third 120 (stagger)', () => {
@@ -87,7 +87,28 @@ describe('audit of router keys', () => {
 
   it('one node gets one fix; a delete wins', () => {
     const tailnet = tailnetOfNodes([listed(3, { tags: ['tag:hub'], expiry: null, preAuthKeyId: 11 })]);
-    expect(audit(tailnet, [personal(11)], 3, NOW).fixes).toHaveLength(1);
+    expect(audit(tailnet, [personal(11)], { before: [], node: 3 }, NOW).fixes).toHaveLength(1);
+  });
+});
+
+describe('audit of a register request whose reply was never read (H1)', () => {
+  const tailnet = tailnetOfNodes([
+    listed(1, { tags: ['tag:hub'], user: 'tagged-devices', expiry: null }),
+    listed(2, { expiry: inDays(400) }),
+    listed(3, { tags: ['tag:hub'], user: 'tagged-devices', expiry: null }),
+    listed(4, { expiry: inDays(400) }),
+    router(5, 'home', 31),
+  ]);
+
+  it('H1: every node new since the step and with no pre-auth key gets the personal check', () => {
+    expect(audit(tailnet, [], { before: [1, 2], node: null }, NOW).fixes).toEqual([
+      { kind: 'delete', node: 3, reason: 'the node had a tag' },
+      { kind: 'set-expiry', node: 4, expiry: inDays(180) },
+    ]);
+  });
+
+  it('H1: once the reply named the node, only that node is checked', () => {
+    expect(audit(tailnet, [], { before: [1, 2], node: 4 }, NOW).fixes).toEqual([{ kind: 'set-expiry', node: 4, expiry: inDays(180) }]);
   });
 });
 

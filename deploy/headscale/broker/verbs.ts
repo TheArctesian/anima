@@ -49,9 +49,17 @@ export function policyView(policy: Policy): PolicyView {
   return { sites, tags: policy.scope.tags };
 }
 
-function routerKey(site: string, policy: PolicyView): readonly Step[] | Refusal {
+/** The id of a node other than `except` that has the subnet approved, or undefined (M2). */
+function approvedElsewhere(subnet: string, nodes: readonly BrokerNode[], except: number | null): number | undefined {
+  return nodes.find((node) => node.id !== except && node.approved.includes(subnet))?.id;
+}
+
+function routerKey(site: string, policy: PolicyView, nodes: readonly BrokerNode[]): readonly Step[] | Refusal {
   // BD-9: Headscale accepts a tag the policy does not know, so the broker checks it first.
-  if (!policy.sites.has(site) || !policy.tags.has(siteTag(site)) || !policy.tags.has(ROUTER_TAG)) return 'unknown-site';
+  const subnet = policy.sites.get(site);
+  if (subnet === undefined || !policy.tags.has(siteTag(site)) || !policy.tags.has(ROUTER_TAG)) return 'unknown-site';
+  // M2: a site has one router. The operator removes the old one first (README).
+  if (approvedElsewhere(subnet, nodes, null) !== undefined) return 'not-allowed';
   return [['preauthkeys', 'create', `--tags=${ROUTER_TAG},${siteTag(site)}`, '--expiration=1h', JSON_OUTPUT]];
 }
 
@@ -61,6 +69,7 @@ function approveRoute(request: { node: number; site: string }, policy: PolicyVie
   const node = nodes.find((candidate) => candidate.id === request.node);
   if (node === undefined || !node.tags.includes(ROUTER_TAG) || !node.tags.includes(siteTag(request.site))) return 'not-allowed';
   if (node.available.length !== 1 || node.available[0] !== subnet) return 'not-allowed';
+  if (approvedElsewhere(subnet, nodes, node.id) !== undefined) return 'not-allowed';
   return [['nodes', 'approve-routes', `--identifier=${String(node.id)}`, `--routes=${subnet}`]];
 }
 
@@ -82,7 +91,7 @@ export function plan(request: Request, policy: PolicyView, nodes: readonly Broke
       if (moment.operatorId === null) return 'headscale-failed';
       return [['preauthkeys', 'create', `--user=${String(moment.operatorId)}`, '--expiration=1h', JSON_OUTPUT]];
     case 'router-key':
-      return routerKey(request.site, policy);
+      return routerKey(request.site, policy, nodes);
     case 'approve-route':
       return approveRoute(request, policy, nodes);
     case 'register':

@@ -77,6 +77,16 @@ describe('plan', () => {
     expect(typeof planned === 'string' ? planned : 'ok').toBe(outcome);
   });
 
+
+  it('M2: a site has one approved router: approve-route and router-key refuse a second', () => {
+    const served = [{ ...routes[0], id: 2, approved: ['10.10.0.0/24'] }, { id: 5, approved: [], available: ['10.10.0.0/24'] }];
+    const withRouter = nodesReply(tailnetOfNodes([home, router(5, 'home')], served), view).nodes;
+    expect(plan({ verb: 'approve-route', node: 5, site: 'home' }, view, withRouter, moment)).toBe('not-allowed');
+    expect(plan({ verb: 'router-key', site: 'home' }, view, withRouter, moment)).toBe('not-allowed');
+    expect(plan({ verb: 'router-key', site: 'office1' }, view, withRouter, moment)).not.toBeString();
+    // Approving the same router again is not a second router.
+    expect(plan({ verb: 'approve-route', node: 2, site: 'home' }, view, withRouter, moment)).toEqual([['nodes', 'approve-routes', '--identifier=2', '--routes=10.10.0.0/24']]);
+  });
 });
 
 describe('plan for register and renew', () => {

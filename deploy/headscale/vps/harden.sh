@@ -38,6 +38,7 @@ CONSOLE=0
 RESTART_DOCKER=0
 LIVE_RESTORE_WAIT=${HARDEN_LIVE_RESTORE_WAIT:-10}
 ALLOW_CLOSING=
+BROKER_SHA256=
 STATE_DIR=/var/lib/anima
 HEADSCALE_DIR=/opt/anima/headscale
 SSHD_DROPIN=/etc/ssh/sshd_config.d/00-anima.conf
@@ -51,7 +52,7 @@ KEY_LINE_PATTERN='(^|[[:space:]])(ssh-|ecdsa-|sk-)[^[:space:]]+[[:space:]]+AAAA'
 usage() {
   cat <<EOF
 Usage: $SELF [--root DIR] [--dry-run] [--console] [--restart-docker]
-             [--allow-closing PORT/PROTO,...] <command>
+             [--allow-closing PORT/PROTO,...] [--sha256=HASH] <command>
 
 Commands (run as root):
   check     Print a read-only inventory (listeners and their units, containers, Docker
@@ -82,9 +83,10 @@ Commands (run as root):
   confirm   From a NEW SSH session over the VPN (same sudo form as firewall): cancel
             the rollback, install the rules for boot and mask firewalld.
   broker    Install the Anima broker (R-055): the binary copied first to
-            /usr/local/libexec/anima-broker.new (scp), /etc/anima/broker.conf if absent
-            (max_nodes = the node count + 5), the socket and service units from
-            ../broker/; enable the socket, then ask it for the node list.
+            /usr/local/libexec/anima-broker.new (scp) and checked against --sha256,
+            /etc/anima/broker.conf if absent (max_nodes = the node count + 5), the
+            socket, service and audit timer units from ../broker/; restart the socket
+            and the timer, then ask the broker for the node list.
 
 Options:
   --root DIR        Treat DIR as the file system root (tests). Default /.
@@ -94,6 +96,7 @@ Options:
   --allow-closing L firewall, confirm: close these open ports on purpose, for example
                     --allow-closing 9090/tcp,546/udp. Ports to keep open go in
                     /etc/anima/firewall-allow, one PORT/PROTO per line.
+  --sha256=HASH     broker: the SHA-256 of anima-broker.new, as broker-build.ts printed it.
 
 Exit codes: 0 done; 1 a step failed or check found violations; 2 refused because a
 precondition is not met (nothing changed); 64 usage error.
@@ -296,6 +299,7 @@ main() {
       --console) CONSOLE=1; shift ;;
       --restart-docker) RESTART_DOCKER=1; shift ;;
       --allow-closing) [ $# -ge 2 ] || usage_error; ALLOW_CLOSING=$2; shift 2 ;;
+      --sha256=*) BROKER_SHA256=${1#--sha256=}; shift ;;
       -h | --help) usage; exit 0 ;;
       -*) usage_error ;;
       *) break ;;

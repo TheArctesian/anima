@@ -1,10 +1,12 @@
 # One Anima broker request (R-055, VP-8). Install as /etc/systemd/system/anima-broker@.service
-# (harden.sh broker); anima-broker.socket starts one for each connection.
+# (harden.sh broker); anima-broker.socket starts one for each connection. flock serialises it
+# with the audit timer's run (anima-broker-audit.service, H2): only one reads and writes the
+# state. 8 s for the lock, 5 s for the request line and the 45 s request deadline fit in 60 s.
 [Unit]
 Description=Anima broker request
 
 [Service]
-ExecStart=/usr/local/libexec/anima-broker
+ExecStart=/usr/bin/flock -w 8 /var/lib/anima-broker/lock /usr/local/libexec/anima-broker
 StandardInput=socket
 StandardOutput=socket
 StandardError=journal
@@ -20,7 +22,7 @@ LimitCORE=0
 
 # Sandbox. /run/docker.sock is a file-system socket: PrivateNetwork, AF_UNIX only and an empty
 # capability set still let root connect to it. MemoryDenyWriteExecute is left out (Bun has a
-# JIT); SystemCallFilter waits for a run on the VPS (vpn-build.md B2).
+# JIT).
 NoNewPrivileges=yes
 CapabilityBoundingSet=
 AmbientCapabilities=
@@ -43,3 +45,9 @@ RestrictRealtime=yes
 RestrictSUIDSGID=yes
 LockPersonality=yes
 SystemCallArchitectures=native
+# M3: not yet run on the VPS. Check them at install (README.md, "Installing the broker") and
+# remove them one line at a time if `anima-broker check` fails.
+ProtectProc=invisible
+ProcSubset=pid
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
