@@ -75,6 +75,12 @@ impl Tickets {
         self.held().remove(&hash);
     }
 
+    /// Drops every ticket for `recording`: it was deleted, so none may open it.
+    pub(super) fn withdraw_recording(&self, recording: RecordingId) {
+        self.held()
+            .retain(|_, pending| pending.recording != recording);
+    }
+
     /// Redeems a presented token (K4 §1). The token is removed first, valid or not, so it
     /// works at most once; then it is refused when expired at `now` (the boundary
     /// `now == expires_at` included) or presented from another address than `client`.

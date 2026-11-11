@@ -1,9 +1,10 @@
 //! Recording tests: the pure queue, the recording root's checks, the row, the recorder
 //! writing real files in a temporary folder (RA-040, D-13, D-14, K4 §11), and the catalogue
-//! with its playback tickets and deletes (RA-041, D-13, G-7, G-8).
+//! with its playback tickets, deletes and expiry (RA-041, D-13, D-25, G-7, G-8).
 
 mod catalogue;
 mod deleting;
+mod expiry;
 mod idle;
 mod queue;
 mod recorder;

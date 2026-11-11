@@ -56,7 +56,8 @@ pub struct Query;
 /// Merged into the root `Query`; the name only keeps it apart from the other parts.
 #[Object(name = "RecordingsQuery")]
 impl Query {
-    /// Recordings newest first, of every device or of one (RA-041).
+    /// Recordings newest first, of every device or of one (RA-041). An ended recording past
+    /// its expiry is not listed (D-25).
     #[graphql(guard = "Authenticated")]
     #[expect(
         clippy::too_many_arguments,
@@ -72,7 +73,8 @@ impl Query {
         let args = recordings_args(device_id.as_ref(), first, after.as_deref())
             .map_err(|fields| invalid(&fields))?;
         let db = schema_dependency::<PgPool>(ctx)?;
-        let fetched = store::page(db, args.device, args.after, args.limit())
+        let now = schema_dependency::<Arc<dyn Clock>>(ctx)?.now();
+        let fetched = store::page(db, (args.device, args.after), args.limit(), now)
             .await
             .map_err(to_graphql)?;
         Ok(RecordingConnection::of(fetched, args.size))
@@ -104,9 +106,13 @@ impl Mutation {
     #[graphql(guard = "Authenticated")]
     async fn delete_recording(&self, ctx: &Context<'_>, id: ID) -> Result<ID> {
         let recording = recording_id(&id)?;
+        let held = (
+            schema_dependency::<Recording>(ctx)?.root.as_deref(),
+            schema_dependency::<Live>(ctx)?.playback(),
+        );
         delete_recording(
             schema_dependency::<PgPool>(ctx)?,
-            schema_dependency::<Recording>(ctx)?.root.as_deref(),
+            held,
             Trail::from_context(ctx)?,
             recording,
         )

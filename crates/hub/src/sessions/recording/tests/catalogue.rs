@@ -225,12 +225,45 @@ async fn api_006_bad_recordings_arguments_are_one_validation_error_listing_each(
     for field in ["deviceId", "first", "after"] {
         assert!(listed.contains(field), "{field}: {listed}");
     }
-    for first in [-1, 201] {
+    for first in [-1, 0, 201] {
         let response = asked(&world, PAGE, json!({ "first": first })).await;
         assert_eq!(error_of(&response).0, "VALIDATION", "{first}");
     }
     let (most, _, _) = page(&world, json!({ "first": 200 })).await;
     assert_eq!(most, Vec::<String>::new(), "200 per page is accepted");
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../tests/fixtures", scripts("devices"))
+)]
+async fn api_010_a_stored_value_the_hub_does_not_know_is_internal_with_no_detail(pool: PgPool) {
+    let world = World::new(&pool, 1).await;
+    let id = shelve(&world, docker_host(), 0).await;
+    sqlx::query("alter table sessions.recordings drop constraint recordings_format_check")
+        .execute(&pool)
+        .await
+        .unwrap();
+    let open = "mutation($id: ID!) { openRecording(id: $id) { token } }";
+    // One unknown value at a time; the other column holds a known one.
+    for (protocol, format) in [("telnet", "guacamole"), ("vnc", "flv")] {
+        sqlx::query("update sessions.recordings set protocol = $2, format = $3 where id = $1")
+            .bind(id)
+            .bind(protocol)
+            .bind(format)
+            .execute(&pool)
+            .await
+            .unwrap();
+        for (document, variables) in [
+            ("{ recordings { edges { node { id } } } }", json!({})),
+            (open, json!({ "id": id.to_string() })),
+        ] {
+            let (code, message) = error_of(&asked(&world, document, variables).await);
+            assert_eq!(code, "INTERNAL", "{protocol} {format} in {document}");
+            assert_eq!(message, crate::api_errors::INTERNAL_MESSAGE, "no detail");
+        }
+    }
+    assert_eq!(world.serving.live.playback().len(), 0, "no ticket");
 }
 
 #[test]

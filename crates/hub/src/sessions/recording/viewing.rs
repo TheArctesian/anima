@@ -16,13 +16,14 @@ use crate::{
 
 /// Issues a ticket that opens `/recording` once, from `by.client`, within 30 s of `by.at`, and
 /// writes `recording.view` in the same transaction: the ticket is held only when the entry is
-/// committed. A recording still being written may be opened; it plays up to its last written
-/// part (K4 §12).
+/// committed. A recording still being written may be opened, even past its expiry; it plays
+/// up to its last written part (K4 §12). An ended recording past its expiry cannot be opened
+/// (D-25, CR-23 e).
 ///
 /// # Errors
-/// [`Error::NotFound`] for an unknown id; [`Error::ShuttingDown`] or [`Error::Busy`] when no
-/// ticket can be issued now; `Random`, `Events`, `Database` or `StoredValue` when a
-/// dependency fails, and then no ticket is held.
+/// [`Error::NotFound`] for an unknown id or an ended, expired recording;
+/// [`Error::ShuttingDown`] or [`Error::Busy`] when no ticket can be issued now; `Random`,
+/// `Events`, `Database` or `StoredValue` when a dependency fails, and then no ticket is held.
 pub(super) async fn open_recording(
     db: &PgPool,
     live: &Live,
@@ -33,7 +34,7 @@ pub(super) async fn open_recording(
         return Err(Error::ShuttingDown);
     }
     let mut tx = db.begin().await?;
-    let recording = store::catalogued(&mut *tx, id)
+    let recording = store::catalogued(&mut *tx, id, by.at)
         .await?
         .ok_or(Error::NotFound(id))?;
     let token = random_token()?;

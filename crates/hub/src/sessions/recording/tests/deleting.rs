@@ -1,7 +1,7 @@
 //! `deleteRecording` (K1, D-13, D-15, G-8, LOG-005, API-003): the row and its key go first with
-//! the audit entry `recording.delete`, then the file; a file already gone is fine; a delete
-//! that does not commit leaves the file; an unknown id changes nothing; and every catalogue
-//! field needs a signed-in operator.
+//! the audit entry `recording.delete`, then its pending playback tickets and the file; a file
+//! already gone is fine; a delete that does not commit leaves the file; an unknown id changes
+//! nothing; and every catalogue field needs a signed-in operator.
 
 use std::path::Path;
 
@@ -21,7 +21,7 @@ use crate::{
     sessions::{
         Recording,
         recording::store,
-        tests::fixture::{docker_host, now, operator},
+        tests::fixture::{address, docker_host, now, operator},
     },
 };
 
@@ -32,10 +32,7 @@ async fn delete(world: &World, id: &str) -> async_graphql::Response {
 }
 
 async fn row_exists(world: &World, id: RecordingId) -> bool {
-    store::catalogued(&world.serving.db, id)
-        .await
-        .unwrap()
-        .is_some()
+    store::get(&world.serving.db, id).await.unwrap().is_some()
 }
 
 /// `(severity, source, device name, message)` of each event.
@@ -140,6 +137,62 @@ async fn g_8_a_delete_that_does_not_commit_leaves_the_row_and_the_file(pool: PgP
         FILE_BYTES,
         "the file stays"
     );
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../tests/fixtures", scripts("devices"))
+)]
+async fn log_005_an_entry_that_cannot_be_written_fails_the_delete_and_keeps_the_row_and_file(
+    pool: PgPool,
+) {
+    let world = World::new(&pool, 1).await;
+    let id = shelve(&world, docker_host(), 0).await;
+    // The audit insert itself fails, before the commit: `trail.write` returns the error.
+    sqlx::query(
+        "create or replace function public.refuse_audit() returns trigger \
+         language plpgsql as $$ begin raise exception 'refused audit'; end $$",
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+    sqlx::query(
+        "create trigger refuse_audit before insert on events.audit_log \
+         for each row execute function public.refuse_audit()",
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+    let (code, message) = error_of(&delete(&world, &id.to_string()).await);
+    assert_eq!(code, "INTERNAL");
+    assert_eq!(message, crate::api_errors::INTERNAL_MESSAGE, "no detail");
+    assert!(row_exists(&world, id).await, "rolled back");
+    assert_eq!(std::fs::read(world.path(id)).unwrap(), FILE_BYTES);
+    assert_eq!(events(&pool).await, []);
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../tests/fixtures", scripts("devices"))
+)]
+async fn g_7_a_delete_withdraws_every_pending_playback_ticket_of_that_recording(pool: PgPool) {
+    let world = World::new(&pool, 1).await;
+    let id = shelve(&world, docker_host(), 0).await;
+    let kept = shelve(&world, docker_host(), 1).await;
+    let open = "mutation($id: ID!) { openRecording(id: $id) { token } }";
+    let mut tokens = Vec::new();
+    for recording in [id, id, kept] {
+        let found = data(asked(&world, open, json!({ "id": recording.to_string() })).await);
+        tokens.push(found["openRecording"]["token"].as_str().unwrap().to_owned());
+    }
+    data(delete(&world, &id.to_string()).await);
+    let playback = world.serving.live.playback();
+    assert_eq!(playback.len(), 1, "only the other recording's ticket");
+    for token in &tokens[..2] {
+        assert!(playback.redeem(token, address(CLIENT), now()).is_err());
+    }
+    let redeemed = playback.redeem(&tokens[2], address(CLIENT), now()).unwrap();
+    assert_eq!(redeemed.recording, kept);
 }
 
 #[sqlx::test(

@@ -220,20 +220,28 @@ impl TryFrom<CataloguedRow> for Catalogued {
     }
 }
 
-/// Up to `limit` recordings after `after`, newest first, of `device` or of every device
-/// (K1 `recordings`, API-006).
+/// The recordings the catalogue shows at `$1`, the time of the request: every one not yet
+/// expired, and every live one. A live recording (no `ended_at`) stays while it is written,
+/// even past its `expires_at`, as the daily retention job keeps its row and file until the
+/// session ends (CR-23 e); once it has ended and expired it is gone from the catalogue and
+/// from playback, though its row waits for that job (D-25).
+const SHOWN: &str = "(ended_at is null or expires_at > $1)";
+
+/// Up to `limit` recordings shown at `now` after `after`, newest first, of `device` or of
+/// every device (K1 `recordings`, API-006).
 pub(super) async fn page<'e>(
     db: impl PgExecutor<'e>,
-    device: Option<DeviceId>,
-    after: Option<Position>,
+    (device, after): (Option<DeviceId>, Option<Position>),
     limit: i64,
+    now: DateTime<Utc>,
 ) -> Result<Vec<Catalogued>, Error> {
     let rows: Vec<CataloguedRow> = sqlx::query_as(&format!(
         "select {CATALOGUED_COLUMNS} from sessions.recordings \
-         where ($1::uuid is null or device_id = $1) \
-           and ($2::timestamptz is null or (started_at, id) < ($2, $3::uuid)) \
-         order by started_at desc, id desc limit $4"
+         where {SHOWN} and ($2::uuid is null or device_id = $2) \
+           and ($3::timestamptz is null or (started_at, id) < ($3, $4::uuid)) \
+         order by started_at desc, id desc limit $5"
     ))
+    .bind(now)
     .bind(device)
     .bind(after.map(|position| position.started_at))
     .bind(after.map(|position| position.id))
@@ -243,14 +251,16 @@ pub(super) async fn page<'e>(
     rows.into_iter().map(Catalogued::try_from).collect()
 }
 
-/// The recording with this id, without its key.
+/// The recording with this id, without its key, when it is shown at `now`.
 pub(super) async fn catalogued<'e>(
     db: impl PgExecutor<'e>,
     id: RecordingId,
+    now: DateTime<Utc>,
 ) -> Result<Option<Catalogued>, Error> {
     let row: Option<CataloguedRow> = sqlx::query_as(&format!(
-        "select {CATALOGUED_COLUMNS} from sessions.recordings where id = $1"
+        "select {CATALOGUED_COLUMNS} from sessions.recordings where {SHOWN} and id = $2"
     ))
+    .bind(now)
     .bind(id)
     .fetch_optional(db)
     .await?;
