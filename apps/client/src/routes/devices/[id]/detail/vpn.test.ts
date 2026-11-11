@@ -68,6 +68,15 @@ it('VPN-005: the page reads the VPN once and the Overview shows the card for thi
   expect(vpnCard()?.textContent).not.toContain('100.64.0.8');
 });
 
+it('MOT-007: the VPN card follows Metrics, so a late picture moves nothing above it', async () => {
+  await show(picture({ nodes: [node({ device: { id: ID, name: 'nas' } })] }));
+  const metrics = document.querySelector('#overview-metrics')?.closest('section');
+  const card = vpnCard();
+  expect(metrics).toBeTruthy();
+  expect(card).toBeTruthy();
+  expect(metrics?.compareDocumentPosition(card as Node) ?? 0).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+});
+
 it('VPN-005: a device with no node in the VPN picture, or no VPN status, shows no VPN card', async () => {
   await show(picture({ nodes: [node({ device: { id: OTHER_ID, name: 'other' } })] }));
   expect(vpnCard()).toBeUndefined();

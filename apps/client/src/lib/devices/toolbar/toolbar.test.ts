@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { DEFAULT_QUERY } from '../query';
-import { NAME_DEBOUNCE_MS, debounced, isFiltered, menuLabel, siteOptions, shiftInsideViewport, toggled, withoutFilters } from './toolbar';
+import { NAME_DEBOUNCE_MS, debounced, isFiltered, menuLabel, siteButtonLabel, siteOptions, shiftInsideViewport, toggled, withoutFilters } from './toolbar';
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -8,6 +8,13 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.useRealTimers();
+});
+
+it('VPN-002: the Site button names the chosen site and reads "Site" for all sites', () => {
+  const options = siteOptions([{ id: 's1', name: 'Home' }, { id: 's2', name: 'Lab' }]);
+  expect(siteButtonLabel(options, null)).toBe('Site');
+  expect(siteButtonLabel(options, 's2')).toBe('Site: Lab');
+  expect(siteButtonLabel([], 's2')).toBe('Site');
 });
 
 it('DEV-003: toggled adds a value, and removes it when it is there', () => {

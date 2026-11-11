@@ -30,8 +30,9 @@
 
 <OverviewFacts {device} {checks} />
 
+<MetricsSection source={device.metricsSource} {metrics} {range} {now} {clock} {onRange} {onRetry} {onSettings} />
+
+<!-- After Metrics: the picture comes from its own query and may arrive late, so nothing above it moves (MOT-007). -->
 {#if vpn}
   <DeviceVpn node={vpn} now={now()} />
 {/if}
-
-<MetricsSection source={device.metricsSource} {metrics} {range} {now} {clock} {onRange} {onRetry} {onSettings} />

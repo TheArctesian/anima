@@ -31,6 +31,12 @@ export function siteOptions(sites: readonly { id: string; name: string }[]): rea
   return [{ value: ALL_SITES, label: 'All sites' }, ...sites.map((site) => ({ value: site.id, label: site.name }))];
 }
 
+/** The Site button's text: "Site" for all sites, "Site: Lab" for one (VPN-002). */
+export function siteButtonLabel(options: readonly MenuOption[], site: string | null): string {
+  const chosen = site === null ? undefined : options.find((option) => option.value === site);
+  return chosen === undefined ? 'Site' : `Site: ${chosen.label}`;
+}
+
 /** `values` with `value` added, or removed when it is there already. */
 export function toggled<T>(values: readonly T[], value: T): T[] {
   return values.includes(value) ? values.filter((known) => known !== value) : [...values, value];
