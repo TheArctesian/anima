@@ -36,8 +36,11 @@ The hub reads at most the limit and answers 413 without reading further.
 - Bytes come from the OS random source. Only canonical unpadded base64url of exactly 16 or 32 bytes is accepted,
   so each value has one spelling and no lookup runs for junk.
 - The prefixes let a scanner find a leaked value. An API key (`anima_` + 43) never has the length of an agent
-  token, and the access guard refuses any bearer that starts with `anima_agent_` or `anima_enrol_` before a
-  lookup: an agent token never reaches GraphQL, a session or a read (MET-013).
+  token. The access guard refuses, before any lookup, a bearer spelled exactly as an agent token or an
+  enrolment code: the prefix, then exactly 43 or 22 base64url characters. Any other text that starts with
+  `anima_agent_` or `anima_enrol_` goes through the guard's usual length rule: it is read as an API key only
+  when it is `anima_` and 43 characters, and is refused otherwise. So an agent token never reaches GraphQL, a
+  session or a read (MET-013).
 - No log, event, metric, error message or response other than `Enrolled` and `Renewed` holds a code or a token
   (LOG-007, MET-013). The Rust types that hold them implement neither `Debug`, `Display` nor `Clone`, and wipe
   on drop.
