@@ -118,7 +118,7 @@ it('SET-003: a new picture from vpnChanged replaces the shown one, and the hub i
 
 it('SET-003: a picture that is not fresh shows when it was last read, as a status', async () => {
   const target = await open({ Vpn: { vpn: picture({ fresh: false }) } });
-  const line = target.querySelector('[role="status"]');
+  const line = target.querySelector('.stale[role="status"]');
   expect(text(line)).toMatch(/^Last read .+ ago$/);
 });
 
@@ -156,4 +156,105 @@ it('SET-003: leaving the section stops listening', async () => {
   await unmount(app as ReturnType<typeof mount>);
   app = undefined;
   expect(hub.listeners('VpnChanged')).toBe(0);
+});
+
+const button = (target: HTMLElement, label: string) => [...target.querySelectorAll('button')].find((each) => text(each) === label);
+const routerless = () => [{ ...home(), state: 'NO_ROUTER' as const, router: null }];
+
+it('VPN-001: a site with no router offers Add a router, and it opens the enrolment modal', async () => {
+  const target = await open({ Vpn: { vpn: picture({ sites: routerless() }) } });
+  button(target, 'Add a router')?.click();
+  flushSync();
+  expect(document.querySelector('[role="dialog"]')?.textContent).toContain('Make a router key for Home');
+});
+
+it('VPN-003: Add a computer to the VPN opens the enrolment modal', async () => {
+  const target = await open({ Vpn: { vpn: picture() } });
+  button(target, 'Add a computer to the VPN')?.click();
+  flushSync();
+  expect(document.querySelector('[role="dialog"]')?.textContent).toContain('Linux computer');
+});
+
+it('VP-7: a serving site offers no Add a router', async () => {
+  const target = await open({ Vpn: { vpn: picture() } });
+  expect(button(target, 'Add a router')).toBeUndefined();
+});
+
+it('VP-7: with no broker the enrolment buttons are disabled and a line says why', async () => {
+  const target = await open({ Vpn: { vpn: picture({ sites: routerless(), broker: 'NOT_SET' }) } });
+  const reason = target.querySelector('#vpn-broker-reason');
+  expect(text(reason)).toBe('Enrolment needs the broker (ANIMA_VPN_BROKER).');
+  for (const label of ['Add a router', 'Add a computer to the VPN']) {
+    expect(button(target, label)?.getAttribute('aria-disabled')).toBe('true');
+    expect(button(target, label)?.getAttribute('aria-describedby')).toBe('vpn-broker-reason');
+    button(target, label)?.click();
+  }
+  flushSync();
+  expect(document.querySelector('[role="dialog"]')).toBeNull();
+});
+
+const waiting = () => [{ ...home(), state: 'NO_ROUTER' as const, router: null, waitingRouter: { ...ROUTER, name: 'lab-router', waitingRoutes: ['192.168.1.0/24'] } }];
+const expiring = () => [node({ name: 'old-mac', address: '100.64.0.7', keyState: 'EXPIRING' as const, keyExpiry: '2026-11-19T12:00:00Z' })];
+const click = async (element: Element | undefined) => {
+  (element as HTMLElement | undefined)?.click();
+  flushSync();
+  await settled();
+};
+
+it('R-055: Approve route asks for confirmation naming the subnet and router, and sends nothing before Approve', async () => {
+  const target = await open({ Vpn: { vpn: picture({ sites: waiting() }) }, ApproveSiteRoute: { approveSiteRoute: true } });
+  expect(text(site(target, 'Home'))).toContain('lab-router offers 192.168.1.0/24 and waits for approval.');
+  await click(button(target, 'Approve route'));
+  const confirm = document.querySelector('[role="dialog"], [role="alertdialog"]');
+  expect(text(confirm)).toContain("Approve 192.168.1.0/24 for lab-router? The hub and the operator's computers can then reach every address in 192.168.1.0/24.");
+  expect(hub.requests.filter((each) => each.operation === 'ApproveSiteRoute')).toHaveLength(0);
+  await click([...document.querySelectorAll('[role="dialog"] button, [role="alertdialog"] button')].find((each) => text(each) === 'Approve route'));
+  expect(hub.requests.filter((each) => each.operation === 'ApproveSiteRoute')).toEqual([{ operation: 'ApproveSiteRoute', variables: { siteId: 'site-home' } }]);
+  expect(text(site(target, 'Home')?.querySelector('[role="status"]') ?? null)).toBe('Approved. This can take one minute.');
+});
+
+it('R-055: a hub refusal shows in the confirmation and nothing is approved', async () => {
+  const refusal: HubError = { code: 'UNAVAILABLE', message: 'The broker did not answer.' };
+  const target = await open({ Vpn: { vpn: picture({ sites: waiting() }) }, ApproveSiteRoute: refusal });
+  await click(button(target, 'Approve route'));
+  await click([...document.querySelectorAll('[role="dialog"] button, [role="alertdialog"] button')].find((each) => text(each) === 'Approve route'));
+  expect(text(document.querySelector('[role="dialog"] [role="alert"], [role="alertdialog"] [role="alert"]'))).toBe('The broker did not answer.');
+  expect(text(site(target, 'Home')?.querySelector('[role="status"]') ?? null)).toBe('');
+});
+
+it('VP-7: with no broker Approve route is disabled and opens nothing', async () => {
+  const target = await open({ Vpn: { vpn: picture({ sites: waiting(), broker: 'NOT_INSTALLED' }) } });
+  expect(button(target, 'Approve route')?.getAttribute('aria-disabled')).toBe('true');
+  await click(button(target, 'Approve route'));
+  expect(document.querySelector('[role="dialog"], [role="alertdialog"]')).toBeNull();
+});
+
+it('BD-17: an expiring operator key offers Renew key, which sends the name and shows the new expiry', async () => {
+  const target = await open({ Vpn: { vpn: picture({ nodes: expiring() }) }, RenewVpnKey: { renewVpnKey: { name: 'old-mac', address: '100.64.0.7', keyExpiry: '2027-03-01T12:00:00Z' } } });
+  const row = target.querySelector('ul[aria-label="VPN nodes"] > li[aria-label="old-mac"]');
+  expect(row?.querySelectorAll('button')).toHaveLength(1);
+  await click(button(target, 'Renew key'));
+  expect(hub.requests.filter((each) => each.operation === 'RenewVpnKey')).toEqual([{ operation: 'RenewVpnKey', variables: { name: 'old-mac' } }]);
+  expect(text(row?.querySelector('.outcome') ?? null)).toMatch(/^Renewed\. Expires on .+\.$/);
+});
+
+it('BD-17: a key that is valid, or a router or the hub, has no Renew key', async () => {
+  const target = await open({ Vpn: { vpn: picture({ nodes: [node(), ROUTER] }) } });
+  expect(button(target, 'Renew key')).toBeUndefined();
+});
+
+it('BD-17: an expired key says the computer is off the VPN, and a refusal shows the hub message', async () => {
+  const refusal: HubError = { code: 'VALIDATION', message: 'That node has a tag.', fields: [] };
+  const expired = [node({ name: 'old-mac', address: '100.64.0.7', keyState: 'EXPIRED' as const, keyExpiry: '2026-11-01T12:00:00Z' })];
+  const target = await open({ Vpn: { vpn: picture({ nodes: expired }) }, RenewVpnKey: refusal });
+  expect(text(target)).toContain('A computer whose key has expired is off the VPN, so renew it from another computer.');
+  await click(button(target, 'Renew key'));
+  expect(text(target.querySelector('.outcome[role="alert"]'))).toBe('That node has a tag.');
+});
+
+it('VP-7: with no broker Renew key is disabled and sends nothing', async () => {
+  const target = await open({ Vpn: { vpn: picture({ nodes: expiring(), broker: 'NOT_SET' }) } });
+  expect(button(target, 'Renew key')?.getAttribute('aria-disabled')).toBe('true');
+  await click(button(target, 'Renew key'));
+  expect(hub.requests.filter((each) => each.operation === 'RenewVpnKey')).toHaveLength(0);
 });

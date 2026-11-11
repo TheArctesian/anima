@@ -1,15 +1,26 @@
 <script lang="ts">
   import { resolve } from '$app/paths';
+  import FormButton from '$lib/forms/FormButton.svelte';
   import { listRow } from '$lib/motion/roles/transitions';
   import { press } from '$lib/motion/roles/press';
-  import type { SitePath } from '../api';
-  import { pathLabel, stateLabel } from '../picture';
+  import type { HubResult } from '$lib/hub/hub';
+  import type { BrokerState, SitePath } from '../api';
+  import ApproveRoute from './ApproveRoute.svelte';
+  import { brokerReason, pathLabel, stateLabel } from '../picture';
 
   interface Props {
     sites: readonly SitePath[];
+    broker: BrokerState;
+    /** Opens the enrolment modal for the router of this site. */
+    onEnrol: (siteId: string) => void;
+    /** Approves the waiting route of the site's router (R-055). */
+    approve: (siteId: string) => Promise<HubResult<unknown>>;
+    /** The id of the line that says why the broker actions are off. */
+    reasonId: string;
   }
 
-  const { sites }: Props = $props();
+  const { sites, broker, onEnrol, approve, reasonId }: Props = $props();
+  const reason = $derived(brokerReason(broker));
 
   const TONES = { SERVING: 'up', OFFLINE: 'down', NO_ROUTER: 'unknown' } as const;
 </script>
@@ -28,6 +39,15 @@
         {:else}
           <span class="hint">The router is not a device in Anima</span>
         {/if}
+      {/if}
+      {#if entry.waitingRouter !== null}
+        <div class="action">
+          <ApproveRoute site={entry.site} router={entry.waitingRouter} {approve} {reason} {reasonId} />
+        </div>
+      {:else if entry.state === 'NO_ROUTER'}
+        <span class="action">
+          <FormButton tabindex={0} aria-disabled={reason !== null} aria-describedby={reason === null ? undefined : reasonId} onclick={() => { if (reason === null) onEnrol(entry.site.id); }}>Add a router</FormButton>
+        </span>
       {/if}
     </li>
   {/each}
@@ -116,6 +136,11 @@
 
   .unknown {
     --tone: var(--status-unknown);
+  }
+
+  .action {
+    grid-column: 1 / -1;
+    justify-self: start;
   }
 
   .hint {

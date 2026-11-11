@@ -1,6 +1,6 @@
 // How the VPN picture reads: path and key words, key tone and the order of the nodes (VPN-009 to VPN-011, UI-003).
 import type { KeyState, SiteRouteState, VpnPath } from '$lib/hub/generated/graphql';
-import type { VpnNode } from './api';
+import type { BrokerState, VpnNode } from './api';
 
 const DAY_MS = 86_400_000;
 
@@ -70,6 +70,11 @@ export function keyTone(state: KeyState): 'up' | 'warning' | 'down' {
   }
 }
 
+/** An untagged operator computer whose key is expiring or expired: the broker can renew it (BD-17). */
+export function renewable(node: Pick<VpnNode, 'role' | 'tags' | 'keyState'>): boolean {
+  return node.role === 'CLIENT' && node.tags.length === 0 && (node.keyState === 'EXPIRING' || node.keyState === 'EXPIRED');
+}
+
 const needsAttention = (state: KeyState): boolean => state !== 'NEVER' && state !== 'VALID';
 
 /** Nodes not in Anima first, then those whose key needs attention, then by name. */
@@ -88,4 +93,18 @@ export function readAgo(readAt: string, now: Date): string {
   const hours = Math.round(minutes / 60);
   if (hours < 48) return `Read ${String(hours)} h ago`;
   return `Read ${plural(Math.round(hours / 24), 'day')} ago`;
+}
+
+/** Why the actions that need the broker are off; `null` when the broker is ready (VP-7). */
+export function brokerReason(state: BrokerState): string | null {
+  switch (state) {
+    case 'READY':
+      return null;
+    case 'NOT_SET':
+      return 'Enrolment needs the broker (ANIMA_VPN_BROKER).';
+    case 'NOT_INSTALLED':
+      return 'The broker is not installed on the VPS (vpn.md Section 11).';
+    case 'FAILED':
+      return 'The hub could not reach the broker on its last call. Try again in a minute.';
+  }
 }
