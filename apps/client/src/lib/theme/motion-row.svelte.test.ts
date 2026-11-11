@@ -16,9 +16,8 @@ function show(): HTMLElement {
 }
 
 function motionSelect(target: HTMLElement): HTMLSelectElement {
-  const found = [...target.querySelectorAll('label')].find((each) => each.querySelector('span')?.textContent === 'Reduce motion');
-  const control = found?.querySelector('select');
-  if (control == null) throw new Error('no Reduce motion');
+  const control = [...target.querySelectorAll('label')].find((each) => each.textContent === 'Reduce motion')?.control;
+  if (!(control instanceof HTMLSelectElement)) throw new Error('no Reduce motion');
   return control;
 }
 

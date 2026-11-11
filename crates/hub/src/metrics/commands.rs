@@ -2,10 +2,10 @@
 //! D-3). Pure.
 //!
 //! Every word is static text written here: no device field, tag or other operator text can
-//! reach a command line. Each command only reads (`cat` of `/proc` files, `df`, `sysctl -n`,
-//! `vm_stat`, `netstat`, `top` in logging mode, and the GPU queries of spec 6.6: `nvidia-smi`
-//! queries, `grep` of `amdgpu` sysfs files, `intel_gpu_top` for 2 seconds, `ioreg`); none
-//! writes, starts a service or takes input.
+//! reach a command line. Each command only reads (`cat` of `/proc` files and of `/etc/os-release`,
+//! `df`, `sysctl -n`, `vm_stat`, `netstat`, `top` in logging mode, and the GPU queries of spec
+//! 6.6: `nvidia-smi` queries, `grep` of `amdgpu` sysfs files, `intel_gpu_top` for 2 seconds,
+//! `ioreg`); none writes, starts a service or takes input.
 
 use std::time::Duration;
 
@@ -34,6 +34,8 @@ pub(super) enum Source {
     Loadavg,
     /// Linux `df -P -B1`: blocks of 1 byte.
     DiskBytes,
+    /// Linux `cat /etc/os-release`: the distribution, not a metric (DEV-016).
+    OsRelease,
     /// macOS `sysctl -n hw.memsize hw.pagesize vm.loadavg kern.boottime`.
     Sysctl,
     /// macOS `vm_stat`.
@@ -83,6 +85,10 @@ fn linux() -> Vec<Command> {
         quick(
             Source::DiskBytes,
             FixedCommand::new("df").arg("-P").arg("-B1"),
+        ),
+        quick(
+            Source::OsRelease,
+            FixedCommand::new("cat").arg("/etc/os-release"),
         ),
     ]
 }

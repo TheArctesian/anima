@@ -14,9 +14,8 @@ function show(): HTMLElement {
 }
 
 function select(target: HTMLElement, label: string): HTMLSelectElement {
-  const found = [...target.querySelectorAll('label')].find((each) => each.querySelector('span')?.textContent === label);
-  const control = found?.querySelector('select');
-  if (control == null) throw new Error(`no ${label}`);
+  const control = [...target.querySelectorAll('label')].find((each) => each.textContent === label)?.control;
+  if (!(control instanceof HTMLSelectElement)) throw new Error(`no ${label}`);
   return control;
 }
 

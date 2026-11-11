@@ -1,6 +1,7 @@
 <script lang="ts">
   import { tick, untrack, type Snippet } from 'svelte';
   import Icon from '$lib/icons/Icon.svelte';
+  import type { IconName } from '$lib/icons/icons';
   import { animate, type Animatable } from '$lib/motion/animate';
   import { tweenMotion } from '$lib/motion/options';
   import { motionPreference, type MotionPreference } from '$lib/motion/preference';
@@ -19,10 +20,12 @@
     preference?: MotionPreference;
     /** Wraps the button in a heading of this level, as the disclosure pattern allows. */
     level?: 2 | 3 | 4 | 5 | 6;
+    /** The section's own icon, before the label (a form section such as SSH). */
+    icon?: IconName;
     children: Snippet;
   }
 
-  let { label, open = $bindable(false), preference = motionPreference(), level, children }: Props = $props();
+  let { label, open = $bindable(false), preference = motionPreference(), level, icon, children }: Props = $props();
   const id = $props.id();
 
   let root: HTMLElement | undefined = $state();
@@ -150,8 +153,11 @@
     onclick={toggle}
     {@attach press(preference)}
   >
-    <Icon name={open ? 'nf-md-chevron_down' : 'nf-md-chevron_right'} size="sm" />
-    <span>{label}</span>
+    {#if icon !== undefined}
+      <span class="mark"><Icon name={icon} /></span>
+    {/if}
+    <span class="label">{label}</span>
+    <span class="chevron"><Icon name={open ? 'nf-md-chevron_down' : 'nf-md-chevron_right'} size="sm" /></span>
   </button>
 {/snippet}
 
@@ -183,19 +189,37 @@
     font: inherit;
   }
 
+  /* A full-width row: the section's icon and label at the start, the chevron at the end. */
   button {
     box-sizing: border-box;
     display: flex;
     align-items: center;
-    gap: var(--space-2);
-    min-block-size: var(--target-min-desktop);
+    gap: var(--space-3);
+    inline-size: 100%;
+    min-block-size: var(--space-10);
     padding: 0 var(--space-3);
     border: var(--border-thin) solid var(--border);
     border-radius: var(--radius-md);
-    background: var(--surface-raised);
+    background: var(--surface);
     color: var(--text);
     font: inherit;
+    font-weight: var(--weight-bold);
+    text-align: start;
     transition: background-color var(--duration-fast) var(--ease-enter);
+  }
+
+  .mark {
+    display: inline-flex;
+    color: var(--accent);
+  }
+
+  .label {
+    flex: 1;
+  }
+
+  .chevron {
+    display: inline-flex;
+    color: var(--text-muted);
   }
 
   button:hover {
@@ -216,7 +240,7 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-3);
-    padding-block-start: var(--space-3);
+    padding-block: var(--space-4) var(--space-2);
   }
 
   .region[hidden] {

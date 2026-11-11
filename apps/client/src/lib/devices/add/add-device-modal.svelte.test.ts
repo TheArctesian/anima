@@ -131,3 +131,26 @@ it('MOT-007: Cancel and Save are in a footer after the scrolling body, and Save 
   expect(save?.type).toBe('submit');
   expect(save?.form).toBe(dialog?.querySelector('form'));
 });
+
+it('UI-015: the Close button in the title row closes the dialog, and focus still starts on the first control of the form', () => {
+  const onClose = vi.fn();
+  app = mount(AddDeviceModal, {
+    target: document.body,
+    props: {
+      open: true,
+      sites: [{ id: 's1', name: 'Home', subnet: '10.10.0.0/24' }],
+      onCreate: () => Promise.reject(new Error('not used')),
+      onTest: () => Promise.reject(new Error('not used')),
+      onClose,
+      onCreated: () => undefined,
+    },
+  });
+  flushSync();
+
+  expect(document.activeElement?.getAttribute('aria-expanded')).not.toBeNull();
+  expect(document.activeElement?.textContent).toContain('General');
+  const close = document.querySelector<HTMLButtonElement>('[role="dialog"] button[aria-label="Close"]');
+  expect(close?.title).toBe('Close');
+  close?.click();
+  expect(onClose).toHaveBeenCalledOnce();
+});

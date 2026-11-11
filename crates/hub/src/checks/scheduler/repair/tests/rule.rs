@@ -66,6 +66,7 @@ fn device(ssh_enabled: bool, port: u16) -> Device {
         vnc: VncSettings::default(),
         mac_address: None,
         metrics_source: MetricsSource::default(),
+        distribution: None,
         session_limit: None,
         record_sessions: false,
         transfer: TransferPolicy::default(),

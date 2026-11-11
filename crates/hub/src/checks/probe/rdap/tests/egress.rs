@@ -2,7 +2,10 @@
 //! redirects, TLS verified, the body capped. Local servers stand in for the registries; the
 //! test policy allows loopback.
 
-use std::{net::SocketAddr, sync::Arc};
+use std::{
+    net::{IpAddr, Ipv6Addr, SocketAddr},
+    sync::Arc,
+};
 
 use ipnet::IpNet;
 
@@ -72,17 +75,20 @@ async fn p_6_a_redirect_to_http_is_refused() {
 
 #[tokio::test]
 async fn p3_003_a_redirect_to_a_denied_address_is_refused_with_no_connection() {
-    // The second hop names 127.0.0.2, which the deny list covers; the server there would
-    // answer, so a connection would show in its lines.
+    // The second hop names ::1, which the deny list covers while the first hop's 127.0.0.1 stays
+    // allowed; the server there would answer, so a connection would show in its lines. ::1, not
+    // a second 127/8 address, because macOS binds only 127.0.0.1 on loopback.
     let answer: Answer = Arc::new(|_, _| reply("200 OK", b"{}"));
-    let denied = serve_on([127, 0, 0, 2], answer).await;
+    let denied = serve_on(IpAddr::from(Ipv6Addr::LOCALHOST), answer).await;
     let target = denied.port;
-    let first = serve(move |_, _| redirect(&format!("https://127.0.0.2:{target}/"))).await;
-    let deny: Vec<IpNet> = vec!["127.0.0.2/32".parse().unwrap()];
+    let first = serve(move |_, _| redirect(&format!("https://[::1]:{target}/"))).await;
+    let deny: Vec<IpNet> = vec!["::1/128".parse().unwrap()];
     let egress =
         Egress::new(AddressPolicy::new(deny).allowing_loopback()).trusting(first.root.clone());
 
-    let fetched = egress.get(&first.url("/"), CAP).await;
+    // The first hop by its IPv4 address: `localhost` also resolves to the denied ::1.
+    let start = reqwest::Url::parse(&format!("https://127.0.0.1:{}/", first.port)).unwrap();
+    let fetched = egress.get(&start, CAP).await;
 
     assert_eq!(fetched, Err(FetchError::Target(TargetError::Refused)));
     assert_eq!(first.lines(), ["GET / HTTP/1.1"]);

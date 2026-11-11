@@ -135,6 +135,8 @@
     sessions.openSession({
       deviceId: device.id,
       deviceName: device.name,
+      os: device.os,
+      ...(device.distribution == null ? {} : { distribution: device.distribution }),
       protocol,
       origin: button.getBoundingClientRect(),
     });
@@ -181,14 +183,14 @@
     color: var(--text);
   }
 
-  /* A fixed block size from tokens, so the font swap cannot move the page (WP-11 H-7). */
+  /* The navigation bar already names the page, so the title is for screen readers only and the toolbar starts the page. */
   h1 {
-    box-sizing: border-box;
-    block-size: calc(var(--text-2xl) * var(--leading-tight));
-    margin: 0 0 var(--space-4);
+    position: absolute;
+    inline-size: var(--border-thin);
+    block-size: var(--border-thin);
+    margin: 0;
     overflow: hidden;
-    font-size: var(--text-2xl);
-    line-height: var(--leading-tight);
+    clip-path: inset(50%);
     white-space: nowrap;
   }
 </style>

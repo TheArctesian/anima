@@ -111,6 +111,31 @@ it.each([
   expect(document.querySelector(selector)?.getAttribute('href')).toBe('/devices/a%2Fb%3Fc%23d');
 });
 
+it.each([
+  ['grid', 'article'],
+  ['table', 'tbody tr'],
+] as const)('UI-015: each %s device shows its OS logo, named in words', async (view, selector) => {
+  await show([device('a', { os: 'MACOS' }), device('b', { os: 'WINDOWS' })], { ...DEFAULT_QUERY, view });
+  const names = [...document.querySelectorAll(selector)].map((row) => row.querySelector('[role="img"][aria-label]:not(.bar)')?.getAttribute('aria-label'));
+  expect(names).toEqual(['macOS', 'Windows']);
+});
+
+it.each([
+  ['grid', 'article'],
+  ['table', 'tbody tr'],
+] as const)('DEV-016: a %s Linux device shows its distribution logo once the hub has read it, else the Linux logo', async (view, selector) => {
+  await show(
+    [
+      device('a', { os: 'LINUX', distribution: 'pop' }),
+      device('b', { os: 'LINUX', distribution: null }),
+      device('c', { os: 'LINUX', distribution: 'someos' }),
+    ],
+    { ...DEFAULT_QUERY, view },
+  );
+  const names = [...document.querySelectorAll(selector)].map((row) => row.querySelector('[role="img"][aria-label]:not(.bar)')?.getAttribute('aria-label'));
+  expect(names).toEqual(['Pop!_OS', 'Linux', 'Linux']);
+});
+
 it('6.1 card: in the table SSH shows only when enabled with an accepted host key, and calls onConnect', async () => {
   await show([device('a', { ssh: KEYED }), device('b'), device('c', { ssh: { enabled: true, hostKey: null } })], {
     ...DEFAULT_QUERY,

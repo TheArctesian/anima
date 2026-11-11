@@ -6,8 +6,11 @@
   import { settingsErrors } from '$lib/checks/form/model/validate';
   import { defaultsText } from '$lib/checks/form/model/values';
   import FormButton from '$lib/forms/FormButton.svelte';
+  import { useActionFeedback } from '$lib/forms/feedback/feedback.svelte';
   import { useHub } from '$lib/hub/context';
+  import Icon from '$lib/icons/Icon.svelte';
   import type { FieldError } from '$lib/hub/hub';
+  import SettingRow from '$lib/settings/SettingRow.svelte';
 
   const api = checkDefaultsApi(useHub());
   const id = $props.id();
@@ -19,8 +22,10 @@
   let errors = $state<FieldError[]>([]);
   let saveFailed = $state(false);
   let busy = $state(false);
+  const saved = useActionFeedback();
   let retrying = $state(false);
   let form: HTMLFormElement | undefined = $state();
+  const notice = $derived(loadFailed ? 'Anima could not load the defaults.' : saveFailed ? 'Anima could not save the default check settings.' : '');
 
   /** Shows `defaults` as the hub holds them, in the fields and as the saved state. */
   function show(defaults: CheckDefaults): void {
@@ -63,7 +68,7 @@
     if (errors.length > 0) return;
     busy = true;
     try {
-      const result = await api.set(defaultsInput(draft));
+      const result = await saved.track(api.set(defaultsInput(draft)), (outcome) => outcome.ok);
       if (result.ok) show(result.value);
       else saveFailed = true;
     } finally {
@@ -77,12 +82,13 @@
   }
 </script>
 
-<!-- A group, not a form landmark; Enter still submits. -->
+<!-- A group, not a form landmark; Enter still submits. The Settings page says what the section is for (SET-001). -->
 <form bind:this={form} role="group" aria-label="Default check settings" novalidate onsubmit={submit}>
-  <p class="note">New checks start with these.</p>
   {#each SETTING_FIELDS as { key, label, bounds } (key)}
-    <div class="field">
-      <label for="{id}-{key}">{label}</label>
+    <SettingRow {label} for="{id}-{key}">
+      {#snippet hint()}
+        <p class="hint" id="{id}-{key}-hint">Allowed {bounds[0]} to {bounds[1]}.</p>
+      {/snippet}
       <input
         id="{id}-{key}"
         type="text"
@@ -98,124 +104,66 @@
           edited();
         }}
       />
-      <!-- The bounds and the message keep their lines whether or not they have text, so nothing below moves (MOT-007, MV-005). -->
-      <p class="hint" id="{id}-{key}-hint">Allowed {bounds[0]} to {bounds[1]}.</p>
-      <div class="problem" id="{id}-{key}-problem" role="alert">{messageFor(errors, key) ?? ''}</div>
-    </div>
+      {#snippet message()}
+        <!-- The message keeps its line whether or not it has text, so nothing below moves (MOT-007, MV-005). -->
+        <div class="problem" id="{id}-{key}-problem" role="alert">{messageFor(errors, key) ?? ''}</div>
+      {/snippet}
+    </SettingRow>
   {/each}
-  <!-- Two rows in every state: the message (two lines reserved) and the Try again button, which stays mounted and is hidden
-       unless the load failed, so the block keeps its height and focus stays put at every width (MOT-007, MV-005, UI-015). -->
-  <div class="note-block">
-    <p class="message" role="alert">{#if loadFailed}Anima could not load the defaults.{:else if saveFailed}Anima could not save the default check settings.{/if}</p>
-    <div class="retry" class:hidden={!loadFailed}>
-      <FormButton tabindex={0} data-retry aria-disabled={retrying} onclick={retry}>Try again</FormButton>
+  <!-- The footer holds the section's notice and Save on one line in every state. The notice's icon and Try again stay
+       mounted and are hidden unless needed, so the footer keeps its height and focus stays put (MOT-007, MV-005, UI-015). -->
+  <div class="footer">
+    <div class="note-block">
+      <span class="mark" class:hidden={notice === ''}><Icon name="nf-md-alert_circle_outline" size="sm" /></span>
+      <p class="message" role="alert">{notice}</p>
+      <div class="retry" class:hidden={!loadFailed}>
+        <FormButton tabindex={0} data-retry aria-disabled={retrying} onclick={retry}>Try again</FormButton>
+      </div>
     </div>
+    <FormButton tabindex={0} type="submit" tone="primary" aria-label="Save default check settings" aria-disabled={loaded === null || busy} feedback={saved.state}>Save</FormButton>
   </div>
-  <FormButton tabindex={0} type="submit" aria-label="Save default check settings" aria-disabled={loaded === null || busy}>Save</FormButton>
 </form>
 
 <style>
   form {
-    container-type: inline-size;
     display: flex;
     flex-direction: column;
-    gap: var(--space-3);
-    margin-block-start: var(--space-3);
   }
 
-  .field {
+  .footer {
     display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: end;
+    gap: var(--space-2) var(--space-4);
+    padding: var(--space-3) var(--space-4);
+    border-block-start: var(--border-thin) solid var(--border);
   }
 
-  /* The label's line is reserved from tokens, so a font load cannot move what is below it (MOT-007). */
-  label {
-    min-block-size: calc(var(--text-md) * var(--leading-tight));
-    font-size: var(--text-md);
-    line-height: var(--leading-tight);
+  .note-block {
+    display: flex;
+    flex: 1 1 0;
+    align-items: center;
+    gap: var(--space-2);
+    min-inline-size: 0;
   }
 
-  input {
-    box-sizing: border-box;
-    inline-size: calc(var(--space-8) * 2);
-    min-block-size: var(--target-min-desktop);
-    padding: 0 var(--space-2);
-    border: var(--border-thin) solid var(--border);
-    border-radius: var(--radius-md);
-    background: var(--surface);
-    color: var(--text);
-    font: inherit;
+  .mark {
+    display: inline-flex;
+    color: var(--status-down);
   }
 
-  input:focus-visible {
-    outline: var(--border-focus) solid var(--accent);
-    outline-offset: var(--border-focus);
-  }
-
-  input[aria-invalid='true'] {
-    border-color: var(--status-down);
-  }
-
-  p {
-    margin: 0;
-    font-size: var(--text-md);
-  }
-
-  .hint,
-  .problem {
+  /* The notice text stays --text (MAT-005); the icon beside it marks the error, never colour alone (UI-003). */
+  .message {
+    flex: 1 1 0;
+    min-inline-size: 0;
+    min-block-size: calc(var(--text-sm) * var(--leading-tight));
     margin: 0;
     font-size: var(--text-sm);
     line-height: var(--leading-tight);
   }
 
-  .hint {
-    min-block-size: calc(var(--text-sm) * var(--leading-tight));
-    color: var(--text-muted);
-  }
-
-  /* The message may wrap to a second line at a narrow width, so two lines are reserved there and one where a line fits. */
-  .problem {
-    min-block-size: calc(var(--text-sm) * var(--leading-tight) * 2);
-  }
-
-  @container (min-inline-size: 30rem) {
-    .problem {
-      min-block-size: calc(var(--text-sm) * var(--leading-tight));
-    }
-  }
-
-  .note {
-    color: var(--text-muted);
-  }
-
-  .note-block {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-  }
-
-  .message {
-    min-block-size: calc(var(--text-md) * var(--leading-tight) * 2);
-    line-height: var(--leading-tight);
-  }
-
-  .retry {
-    min-block-size: var(--target-min-desktop);
-  }
-
-  .retry.hidden {
+  .hidden {
     visibility: hidden;
-  }
-
-  form > :global(button) {
-    align-self: flex-start;
-  }
-
-  /* --status-down text is 3.05:1 on the page (MAT-005 needs 4.5:1): the text stays --text and a bar marks the error. */
-  .problem:not(:empty),
-  .message:not(:empty) {
-    padding-inline-start: var(--space-2);
-    border-inline-start: var(--border-focus) solid var(--status-down);
   }
 </style>

@@ -22,7 +22,7 @@ use crate::{
     checks::{Check, UptimeWindow},
     clock::Clock,
     devices::{
-        Error, MetricsSource, Missing, OperatingSystem, SitesById, TransferPolicy,
+        Distribution, Error, MetricsSource, Missing, OperatingSystem, SitesById, TransferPolicy,
         model::{Device, Site},
         warnings::{AccessWarning, access_warnings},
     },
@@ -72,6 +72,15 @@ impl Device {
 
     async fn os(&self) -> OperatingSystem {
         self.os
+    }
+
+    /// The Linux distribution's os-release ID, read over SSH; null until read or when not Linux (DEV-016).
+    async fn distribution(&self) -> Option<&str> {
+        if self.os == OperatingSystem::Linux {
+            self.distribution.as_ref().map(Distribution::as_str)
+        } else {
+            None
+        }
     }
 
     async fn tags(&self) -> &[String] {

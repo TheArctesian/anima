@@ -238,7 +238,7 @@ describe("hardening and images (SEC-001)", () => {
   test("SEC-001 the hub Dockerfile pins a dated Debian slim tag", () => {
     const dockerfile = readFileSync(join(ROOT, "deploy", "hub", "Dockerfile"), "utf8");
     expect(dockerfile).toMatch(/^FROM debian:bookworm-\d{8}-slim$/m);
-    expect(dockerfile).toMatch(/^FROM rust:\d+\.\d+-bookworm AS build$/m);
+    expect(dockerfile).toMatch(/^FROM rust:\d+\.\d+(\.\d+)?-bookworm AS build$/m);
   });
 
   test("GW-001 RA-011 the gateway adds only the font and its licence to guacd", () => {

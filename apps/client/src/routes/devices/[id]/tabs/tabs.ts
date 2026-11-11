@@ -1,14 +1,15 @@
+import type { IconName } from '$lib/icons/icons';
 import type { MetricRange } from '$lib/metrics/api';
 import { RANGES } from '$lib/metrics/ranges';
 
-/** The device detail tabs, in order (Section 6.7). */
+/** The device detail tabs, in order (Section 6.7), each with the icon shown before its label. */
 export const TABS = [
-  { name: 'overview', label: 'Overview' },
-  { name: 'checks', label: 'Checks' },
-  { name: 'sessions', label: 'Sessions' },
-  { name: 'logs', label: 'Logs' },
-  { name: 'settings', label: 'Settings' },
-] as const;
+  { name: 'overview', label: 'Overview', icon: 'nf-md-speedometer' },
+  { name: 'checks', label: 'Checks', icon: 'nf-md-clipboard_check_outline' },
+  { name: 'sessions', label: 'Sessions', icon: 'nf-md-history' },
+  { name: 'logs', label: 'Logs', icon: 'nf-md-text_box_outline' },
+  { name: 'settings', label: 'Settings', icon: 'nf-md-cog_outline' },
+] as const satisfies readonly { readonly name: string; readonly label: string; readonly icon: IconName }[];
 
 export type TabName = (typeof TABS)[number]['name'];
 

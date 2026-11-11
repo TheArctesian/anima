@@ -3,10 +3,12 @@
   import FormButton from '$lib/forms/FormButton.svelte';
   import ConfirmModal from '$lib/forms/modal/ConfirmModal.svelte';
   import { useHub } from '$lib/hub/context';
+  import Icon from '$lib/icons/Icon.svelte';
   import type { HubResult } from '$lib/hub/hub';
   import { skeletonDelay } from '$lib/motion/loading/delay.svelte';
   import type { LoadingClock } from '$lib/motion/loading/loading';
   import { crossFade } from '$lib/motion/roles/transitions';
+  import SettingRow from '$lib/settings/SettingRow.svelte';
   import { apiKeysApi, type ApiKey } from './api';
   import KeyRow from './KeyRow.svelte';
   import { focusAfterRevoke, PLACEHOLDER_KEY } from './listing';
@@ -91,7 +93,12 @@
 </script>
 
 <div class="keys" bind:this={root}>
-  <div><FormButton tabindex={0} data-create onclick={() => { creating = true; }}>Create API key</FormButton></div>
+  <SettingRow label="New key">
+    {#snippet hint()}
+      <p class="hint">Anima shows a new key once, when it is made.</p>
+    {/snippet}
+    <FormButton tabindex={0} data-create onclick={() => { creating = true; }}>Create API key</FormButton>
+  </SettingRow>
   <!--
     One grid cell. A hidden row keeps one key's space, the skeleton lies over it, and what the hub answers lands in the
     same place: one key, no key or a failure moves nothing below (MOT-007). More keys than one need more room.
@@ -102,8 +109,9 @@
     </ul>
     {#if loadFailed}
       <div class="failed">
+        <span class="mark"><Icon name="nf-md-alert_circle_outline" size="sm" /></span>
         <p role="alert">Anima could not load the API keys.</p>
-        <div><FormButton tabindex={0} aria-disabled={retrying} aria-busy={retrying} onclick={retry}>Try again</FormButton></div>
+        <FormButton tabindex={0} aria-disabled={retrying} aria-busy={retrying} onclick={retry}>Try again</FormButton>
       </div>
     {:else if keys !== null && keys.length === 0}
       <p class="quiet">No API keys. Programs that call the hub's GraphQL API need one.</p>
@@ -143,14 +151,14 @@
   .keys {
     display: flex;
     flex-direction: column;
-    gap: var(--space-3);
-    margin-block-start: var(--space-6);
   }
 
   .stack {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     align-items: start;
+    padding: var(--space-3) var(--space-4);
+    border-block-start: var(--border-thin) solid var(--border);
   }
 
   .stack > * {
@@ -161,13 +169,15 @@
     visibility: hidden;
   }
 
+  /* The skeleton covers what lies under it with the card's own colour. */
   .skeleton {
-    background: var(--bg);
+    background: var(--surface-raised);
   }
 
   p {
     margin: 0;
-    font-size: var(--text-md);
+    font-size: var(--text-sm);
+    line-height: var(--leading-tight);
   }
 
   .quiet {
@@ -176,15 +186,23 @@
 
   .failed {
     display: flex;
-    flex-direction: column;
-    align-items: start;
+    align-items: center;
     gap: var(--space-2);
   }
 
-  /* --status-down text is 3.05:1 on the page (MAT-005 needs 4.5:1): the text stays --text and a bar marks the error. */
-  [role='alert'] {
-    padding-inline-start: var(--space-2);
-    border-inline-start: var(--border-focus) solid var(--status-down);
+  .mark {
+    display: inline-flex;
+    color: var(--status-down);
+  }
+
+  /* The notice text stays --text (MAT-005); the icon beside it marks the error, never colour alone (UI-003). */
+  .failed p {
+    flex: 1 1 0;
+    min-inline-size: 0;
+  }
+
+  .failed :global(button) {
+    white-space: nowrap;
   }
 
   ul {

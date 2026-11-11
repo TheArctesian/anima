@@ -37,7 +37,7 @@ it('Loading: the header line shows no skeleton before threshold-loading, a skele
   flushSync();
   expect(skeleton()?.getAttribute('aria-hidden')).toBe('true');
   // The name, the status, the details and the buttons each have a place.
-  expect(skeleton()?.querySelectorAll('.name, .pill, .details-place, .actions-place')).toHaveLength(4);
+  expect(skeleton()?.querySelectorAll('.name, .pill, .actions-place, .meta-place')).toHaveLength(4);
   // The back link stays a real link: the skeleton holds only a hidden ghost of it for the width.
   expect(document.querySelectorAll('header a.back')).toHaveLength(1);
 });
@@ -77,30 +77,24 @@ it('Loading: a header that is not loading, such as a missing device, never shows
   expect(skeleton()).toBeNull();
 });
 
-/** jsdom applies no component styles, so the compact rules are read from the source: the area each element takes there. */
-function iconOnlyArea(selector: string): string | undefined {
-  const rule = new RegExp(String.raw`\n {4}${selector.replace('.', String.raw`\.`)} \{[^}]*?grid-area: ([^;]+);`);
-  return rule.exec(headerSource)?.[1];
-}
+const rows = (root: Element | null | undefined) => [...(root?.children ?? [])].map((row) => row.classList[0]).filter((name) => name !== 'skeleton' && name !== 'head');
 
-it('MOT-007, DEV-021: in the narrow header the skeleton has the rows of the loaded header, each placeholder over its row', () => {
-  const rows = { back: iconOnlyArea('.back'), status: iconOnlyArea('.status'), name: iconOnlyArea('h1') };
-  expect(rows).toEqual({ back: '1 / 1', status: '1 / 3', name: '2 / 1 / 3 / -1' });
-  // Back link, pill and name share the loaded line's cells; the details and buttons take the full width of rows 3 and 4.
-  expect([
-    iconOnlyArea('.skeleton > .ghost'),
-    iconOnlyArea('.skeleton > .pill'),
-    iconOnlyArea('.skeleton > .name'),
-    iconOnlyArea('.skeleton > .details-place'),
-    iconOnlyArea('.skeleton > .actions-place'),
-  ]).toEqual(['1 / 1', '1 / 3', '2 / 1 / 3 / -1', '3 / 1 / 4 / -1', '4 / 1 / 5 / -1']);
-  // One container query switches the line and its skeleton together, on the header's own width and not the window's.
-  expect(headerSource).toMatch(/@container \(max-inline-size: [\d.]+rem\) \{\s*\.line,\s*\.skeleton \{\s*display: grid;/);
-  expect(headerSource).toMatch(/\.fit \{\s*container-type: inline-size;/);
-  expect(headerSource).not.toContain('data-nav');
+it('MOT-007, DEV-021: the skeleton has the rows of the loaded header, so each placeholder lies over its row', () => {
+  const { time } = open({ loading: true, device: null });
+  time.advance(threshold.loading);
+  flushSync();
+  const header = document.querySelector('header');
+  expect(rows(skeleton())).toEqual(['back', 'title-row', 'meta']);
+  expect(rows(header)).toEqual(['back', 'title-row', 'meta']);
+  // The name, pill and buttons placeholders share the title row; the details placeholder the details row.
+  expect(skeleton()?.querySelectorAll('.title-row .name, .title-row .pill, .title-row .actions-place')).toHaveLength(3);
+  expect(skeleton()?.querySelector('.meta .meta-place')).not.toBeNull();
 });
 
-it('DEV-021, MOT-007: in the compact layout the buttons wrap and the real row and its placeholder share one block size', () => {
-  expect(headerSource).toMatch(/\.actions \{\s*align-content: start;\s*flex-wrap: wrap;/);
-  expect(headerSource).toMatch(/\.actions,\s*\.skeleton > \.actions-place \{\s*align-self: start;\s*block-size: var\(--actions-block-size\);/);
+/** jsdom applies no component styles, so the narrow-header rule is read from the source. */
+it('DEV-021, MOT-007: in the narrow header the title row reserves the button rows, loading or loaded, on the header\'s own width', () => {
+  expect(headerSource).toMatch(/\.fit \{\s*container-type: inline-size;/);
+  expect(headerSource).toMatch(/@container \(max-inline-size: [\d.]+rem\) \{\s*\.head \{\s*--title-block-size: calc\(var\(--target-min-touch\) \+ var\(--space-2\) \+ var\(--actions-block-size\)\);/);
+  expect(headerSource).toMatch(/\.actions-slot,\s*\.actions-place \{\s*block-size: var\(--actions-block-size\);/);
+  expect(headerSource).not.toContain('data-nav');
 });

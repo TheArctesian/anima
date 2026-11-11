@@ -62,6 +62,19 @@ function settle(places: Places): void {
 }
 
 /**
+ * Runs `change`, which moves the shell's layout at once, and glides what sits in the marked containers from where it was
+ * to where it is on `spring-default`; a change mid-flight starts from the place on screen (MOT-002, MOT-007).
+ */
+export function shiftShell(root: HTMLElement, change: () => void, preference: MotionPreference = motionPreference()): void {
+  const first = measure(shifting(root));
+  change();
+  const places = moved(first);
+  void flip(places, { spring: 'default', preference }).finished.then(() => {
+    settle(places);
+  });
+}
+
+/**
  * Sets `data-hub-banner` on `root` while the strip shows. The page's room for the strip changes at once; what sits in the
  * marked containers moves from where it was to where it is on `spring-default`, and a change mid-flight starts from the
  * place on screen (MOT-002, MOT-007). The first call sets the state with no motion, since nothing was on screen before.
@@ -76,12 +89,7 @@ export function watchHubBanner(root: HTMLElement, preference: MotionPreference =
         return;
       }
       if (root.hasAttribute(ATTRIBUTE) === shown) return;
-      const first = measure(shifting(root));
-      root.toggleAttribute(ATTRIBUTE, shown);
-      const places = moved(first);
-      void flip(places, { spring: 'default', preference }).finished.then(() => {
-        settle(places);
-      });
+      shiftShell(root, () => root.toggleAttribute(ATTRIBUTE, shown), preference);
     },
     stop(): void {
       root.removeAttribute(ATTRIBUTE);

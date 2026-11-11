@@ -49,9 +49,18 @@ export function tabTarget<T>(stops: readonly T[], active: unknown, backwards: bo
   return stops[(at + (backwards ? stops.length - 1 : 1)) % stops.length] ?? null;
 }
 
-/** The element a dialog focuses when it opens: one marked `data-autofocus`, else the first reachable one, else the dialog. */
+/**
+ * The element a dialog focuses when it opens: one marked `data-autofocus`, else the first reachable one
+ * that does not close the dialog (`data-dismiss`), else the Close button, else the dialog.
+ */
 export function initialFocusIn(dialog: HTMLElement): HTMLElement {
-  return dialog.querySelector<HTMLElement>('[data-autofocus]') ?? focusableIn(dialog).at(0) ?? dialog;
+  const stops = focusableIn(dialog);
+  return (
+    dialog.querySelector<HTMLElement>('[data-autofocus]') ??
+    stops.find((stop) => !stop.hasAttribute('data-dismiss')) ??
+    stops.at(0) ??
+    dialog
+  );
 }
 
 /**

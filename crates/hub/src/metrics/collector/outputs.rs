@@ -1,5 +1,6 @@
-//! What the outputs of one collection give: a [`Reading`] from the readers of each source, and
-//! its samples against the device's previous reading (MET-002, D-4). Pure.
+//! What the outputs of one collection give: a [`Reading`] from the readers of each source, the
+//! device's distribution, and its samples against the device's previous reading (MET-002,
+//! DEV-016, D-4). Pure.
 
 use std::time::Duration;
 
@@ -9,7 +10,9 @@ use agent_core::readings::{
 };
 use chrono::{DateTime, Utc};
 
+use super::os_release;
 use crate::{
+    devices::Distribution,
     metrics::{Memory, Reading, Sample, commands::Source, samples},
     ssh::CommandOutput,
 };
@@ -38,6 +41,8 @@ pub(super) struct Parts {
     sysctl: Option<Sysctl>,
     /// macOS memory in use, from `vm_stat`, waiting for the total from `sysctl`.
     used_bytes: Option<u64>,
+    /// The Linux distribution from `/etc/os-release`; not part of the reading (DEV-016).
+    distribution: Option<Distribution>,
 }
 
 impl Parts {
@@ -64,7 +69,13 @@ impl Parts {
                 let page_size = self.sysctl.and_then(|sysctl| sysctl.page_size);
                 self.used_bytes = macos::memory_used_bytes(bytes, page_size);
             }
+            Source::OsRelease => self.distribution = os_release::distribution(bytes),
         }
+    }
+
+    /// The distribution the device named, taken out so the reading can be built after.
+    pub(super) fn take_distribution(&mut self) -> Option<Distribution> {
+        self.distribution.take()
     }
 
     /// The reading of the collection taken at `at`, which dates the macOS boot time.
@@ -73,6 +84,7 @@ impl Parts {
             mut reading,
             sysctl,
             used_bytes,
+            distribution: _,
         } = self;
         let Some(sysctl) = sysctl else {
             return reading;

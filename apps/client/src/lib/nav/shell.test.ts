@@ -188,7 +188,8 @@ it('NET-004: no banner text while connected, but the status container is always 
 
 it('MOT-007: the banner sits before the divider, so the divider, label and Settings keep their places', () => {
   const nav = show('/devices', { connection: 'unreachable', lastContactAt: null });
-  const children = [...nav.children];
+  // The resize edge is laid over the bar's border, out of the flow, so it takes no place in the column.
+  const children = [...nav.children].filter((child) => child.getAttribute('role') !== 'separator');
   const notice = children.findIndex((child) => child.getAttribute('role') === 'status');
   expect(notice).toBeGreaterThan(0);
   expect(notice).toBeLessThan(children.findIndex((child) => child.tagName === 'HR'));

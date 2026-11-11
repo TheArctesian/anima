@@ -22,8 +22,8 @@ describe('desktopCapabilities (WP-42 D-4)', () => {
     expect(desktopCapabilities(MAC)).toEqual(DESKTOP_MAC);
   });
 
-  it('R-059, R-079: on Linux the desktop app has no Sharing settings to open; the rest is the same', () => {
-    expect(desktopCapabilities(LINUX)).toEqual({ ...DESKTOP_MAC, systemSettings: false });
+  it('R-059, R-079, NAV-007: on Linux the desktop app has no Sharing settings to open and keeps its own title bar', () => {
+    expect(desktopCapabilities(LINUX)).toEqual({ ...DESKTOP_MAC, systemSettings: false, overlayTitleBar: false });
   });
 
   it('RA-002: the shell has no pop-out window command, so pop-out is no on every desktop', () => {

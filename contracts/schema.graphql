@@ -220,6 +220,8 @@ type Device {
   ip: IpAddr
   kind: String!
   os: OperatingSystem!
+  "The Linux distribution's os-release ID, read over SSH; null until read or when not Linux (DEV-016)."
+  distribution: String
   tags: [String!]!
   "Manual maintenance flag (CHK-006). The effective status already includes windows."
   maintenance: Boolean!

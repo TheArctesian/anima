@@ -129,7 +129,7 @@ mod tests {
     async fn met_016_a_command_that_never_ends_can_give_its_output_so_far() {
         let streaming = FixedCommand {
             keep_cut_output: true,
-            ..command("tail", &["-f", "/proc/version"])
+            ..command("tail", &["-f", "/etc/passwd"])
         };
         let out = streaming.run().await.expect("the cut output is the answer");
         assert!(out.len() > 1);

@@ -83,7 +83,7 @@
   /** Opens a tab for the protocol of the header button that grows from it (RA-030, MOT-005). */
   function connect(protocol: SessionProtocol, button: HTMLElement): void {
     if (device === null) return;
-    sessions.openSession({ deviceId: device.id, deviceName: device.name, protocol, origin: button.getBoundingClientRect() });
+    sessions.openSession({ deviceId: device.id, deviceName: device.name, os: device.os, ...(device.distribution == null ? {} : { distribution: device.distribution }), protocol, origin: button.getBoundingClientRect() });
   }
 
   /** Opens the interface as its setting says: a web tab that grows from the button, or the system browser (WEB-003, WEB-011). */

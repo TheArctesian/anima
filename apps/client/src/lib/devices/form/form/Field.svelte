@@ -42,16 +42,19 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-1);
+    min-inline-size: 0;
   }
 
+  /* The label in the text colour, the hint below the control in the muted one, so they read apart. */
   label {
-    color: var(--text-muted);
+    color: var(--text);
     font-size: var(--text-sm);
   }
 
   small {
     color: var(--text-muted);
-    font-size: var(--text-xs);
+    font-size: var(--text-sm);
+    line-height: var(--leading-tight);
   }
 
   .error {
@@ -62,17 +65,22 @@
     display: none;
   }
 
-  .field :global(input:not([type='checkbox'])),
+  /* Every control the same height and type size, whatever its kind (an input with a list, a select). */
+  .field :global(input:not([type='checkbox'], [type='radio'])),
   .field :global(select),
   .field :global(textarea) {
     box-sizing: border-box;
-    min-block-size: var(--target-min-desktop);
-    padding: var(--space-2) var(--space-3);
+    inline-size: 100%;
+    min-block-size: var(--space-8);
+    margin: 0;
+    padding: 0 var(--space-3);
     background-color: var(--surface);
     border: var(--border-thin) solid var(--border);
     border-radius: var(--radius-md);
     color: var(--text);
     font: inherit;
+    font-size: var(--text-md);
+    line-height: var(--leading-tight);
   }
 
   .field :global(select) {
@@ -89,7 +97,9 @@
   }
 
   .field :global(textarea) {
+    padding-block: var(--space-2);
     font-family: var(--font-mono);
+    line-height: var(--leading-normal);
     resize: vertical;
   }
 </style>

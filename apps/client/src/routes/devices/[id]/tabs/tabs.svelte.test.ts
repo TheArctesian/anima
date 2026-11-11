@@ -95,7 +95,7 @@ function key(name: string): void {
 describe('Tabs (D-9, Section 6.7)', () => {
   it('6.7: five tabs; only the selected one is in the tab order', () => {
     tabs('checks');
-    expect(tabButtons().map((tab) => tab.textContent.trim())).toEqual(['Overview', 'Checks', 'Sessions', 'Logs', 'Settings']);
+    expect(tabButtons().map((tab) => tab.textContent.replace(/\p{Co}/gu, '').trim())).toEqual(['Overview', 'Checks', 'Sessions', 'Logs', 'Settings']);
     expect(tabButtons().map((tab) => tab.tabIndex)).toEqual([-1, 0, -1, -1, -1]);
     expect(tabButtons()[1]?.getAttribute('aria-selected')).toBe('true');
   });

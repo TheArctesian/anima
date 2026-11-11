@@ -11,8 +11,8 @@ use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 
 use super::{
-    bench::{DOCKER_HOST, LINUX_GPU_LINES, LINUX_LINES, accept, bench, bench_with, device},
-    gpus::amd_card,
+    super::bench::{DOCKER_HOST, LINUX_GPU_LINES, LINUX_LINES, accept, bench, bench_with, device},
+    amd_card,
 };
 use crate::{
     clock::Clock as _,
@@ -76,7 +76,7 @@ fn heard_since(heard: &[String], from: usize) -> Vec<&str> {
 
 #[sqlx::test(
     migrations = "./migrations",
-    fixtures(path = "../../../../tests/fixtures", scripts("devices"))
+    fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
 )]
 async fn met_006_the_first_collection_finds_and_stores_the_gpus_with_their_samples(pool: PgPool) {
     let mut bench = bench(&pool, true).await;
@@ -125,7 +125,7 @@ async fn met_006_the_first_collection_finds_and_stores_the_gpus_with_their_sampl
 
 #[sqlx::test(
     migrations = "./migrations",
-    fixtures(path = "../../../../tests/fixtures", scripts("devices"))
+    fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
 )]
 async fn met_006_later_rounds_read_only_known_vendors_and_a_restart_looks_again(pool: PgPool) {
     let mut bench = bench(&pool, true).await;
@@ -165,7 +165,7 @@ async fn met_006_later_rounds_read_only_known_vendors_and_a_restart_looks_again(
 
 #[sqlx::test(
     migrations = "./migrations",
-    fixtures(path = "../../../../tests/fixtures", scripts("devices"))
+    fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
 )]
 async fn met_006_a_hung_gpu_tool_ends_only_its_read_and_the_next_round_looks_again(pool: PgPool) {
     let mut bench = bench(&pool, true).await;
@@ -218,7 +218,7 @@ async fn met_006_a_hung_gpu_tool_ends_only_its_read_and_the_next_round_looks_aga
 
 #[sqlx::test(
     migrations = "./migrations",
-    fixtures(path = "../../../../tests/fixtures", scripts("devices"))
+    fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
 )]
 async fn d11_gpu_reads_stop_at_the_gpu_window_and_the_collection_is_stored(pool: PgPool) {
     let policy = AddressPolicy::default().allowing_loopback();
@@ -247,7 +247,7 @@ async fn d11_gpu_reads_stop_at_the_gpu_window_and_the_collection_is_stored(pool:
 
 #[sqlx::test(
     migrations = "./migrations",
-    fixtures(path = "../../../../tests/fixtures", scripts("devices"))
+    fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
 )]
 async fn met_009_after_a_failed_collection_the_next_looks_again_and_keeps_the_numbers(
     pool: PgPool,
@@ -300,7 +300,7 @@ async fn met_009_after_a_failed_collection_the_next_looks_again_and_keeps_the_nu
 
 #[sqlx::test(
     migrations = "./migrations",
-    fixtures(path = "../../../../tests/fixtures", scripts("devices"))
+    fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
 )]
 async fn p2_004_a_deny_listed_device_gets_no_gpu_discovery_and_no_samples(pool: PgPool) {
     let policy = AddressPolicy::new(vec!["127.0.0.0/8".parse().unwrap()]).allowing_loopback();

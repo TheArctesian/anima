@@ -1,8 +1,8 @@
 import { untrack } from 'svelte';
 import type { Attachment } from 'svelte/attachments';
-import type { Animatable, Playback } from '../animate';
+import { animate, type Animatable, type Playback } from '../animate';
+import { springMotion } from '../options';
 import { motionPreference, type MotionPreference } from '../preference';
-import { flip } from '../roles/flip';
 
 export interface SharedOptions {
   readonly preference?: MotionPreference;
@@ -35,10 +35,62 @@ function hide(element: Animatable): () => void {
   };
 }
 
+/** The look a copy needs outside its page: what the page's own rules gave the element. */
+const LOOK = [
+  'font',
+  'letter-spacing',
+  'color',
+  'background',
+  'border',
+  'border-radius',
+  'padding',
+  'display',
+  'align-items',
+  'justify-content',
+  'gap',
+  'white-space',
+  'overflow',
+  'text-overflow',
+] as const;
+
 /**
- * The card to detail role (5.7.3): the item moves from where the same `key` is on the
+ * A copy of `element` fixed at `place`, above both pages, so it flies at full strength while the pages cross-fade
+ * beneath it (5.7.3, card to detail). It carries the shared key, so a page that mounts mid-flight departs from it.
+ */
+function copyAt(element: HTMLElement, place: DOMRectReadOnly): HTMLElement {
+  const copy = element.cloneNode(true) as HTMLElement;
+  const style = getComputedStyle(element);
+  for (const property of LOOK) copy.style.setProperty(property, style.getPropertyValue(property));
+  copy.removeAttribute('id');
+  copy.setAttribute('aria-hidden', 'true');
+  copy.inert = true;
+  copy.dataset.flight = '';
+  Object.assign(copy.style, {
+    position: 'fixed',
+    left: `${String(place.left)}px`,
+    top: `${String(place.top)}px`,
+    width: `${String(place.width)}px`,
+    height: `${String(place.height)}px`,
+    margin: '0',
+    boxSizing: 'border-box',
+    pointerEvents: 'none',
+    zIndex: 'var(--layer-popover)',
+    opacity: '1',
+    translate: '',
+    scale: '',
+  });
+  document.body.append(copy);
+  return copy;
+}
+
+function ratio(before: number, after: number): number {
+  return after === 0 ? 1 : before / after;
+}
+
+/**
+ * The card to detail role (5.7.3): a copy of the item flies from where the same `key` is on the
  * outgoing page to its place on this one, with `spring-move`, by `translate` and `scale` only
- * (MOT-006). The outgoing element starts from where it is on screen, even mid-flight
+ * (MOT-006), above both pages at full opacity; the item itself shows when the copy lands. The outgoing element starts from where it is on screen, even mid-flight
  * (MOT-002). Under reduced motion nothing moves; the page cross-fade is the reduced form
  * (MOT-040, MOT-041). Detaching mid-flight stops the flight and clears the styles it wrote.
  *
@@ -55,17 +107,26 @@ export function sharedItem(key: string, options: SharedOptions = {}): Attachment
     return () => {
       delete element.dataset.shared;
       if (flight === undefined) return;
-      flight.playback.stop();
-      flight.show();
-      element.style.translate = '';
-      element.style.scale = '';
+      flight.land();
     };
   };
 }
 
 interface Flight {
   readonly playback: Playback;
-  readonly show: () => void;
+  /** Stops the copy, removes it and shows both ends; safe to call twice. */
+  readonly land: () => void;
+}
+
+/** Flies `copy` from `from` to its own place, centre to centre, by `translate` and `scale` on `spring-move`. */
+function fly(copy: Animatable, from: DOMRectReadOnly, to: DOMRectReadOnly, preference: MotionPreference): Playback {
+  const translate = {
+    x: from.left + from.width / 2 - (to.left + to.width / 2),
+    y: from.top + from.height / 2 - (to.top + to.height / 2),
+  };
+  const scale = { x: ratio(from.width, to.width), y: ratio(from.height, to.height) };
+  animate(copy, { translate, scale }, { type: 'instant' });
+  return animate(copy, { translate: { x: 0, y: 0 }, scale: 1 }, springMotion('move', preference.reduced));
 }
 
 function depart(element: HTMLElement, key: string, preference: MotionPreference): Flight | undefined {
@@ -73,8 +134,19 @@ function depart(element: HTMLElement, key: string, preference: MotionPreference)
   const outgoing = counterpart(element, key);
   if (outgoing === undefined) return undefined;
   const from = outgoing.getBoundingClientRect();
-  const show = hide(outgoing);
-  const playback = flip(new Map([[element, from]]), { spring: 'move', scale: true, preference });
-  playback.finished.then(show, show);
-  return { playback, show };
+  const to = element.getBoundingClientRect();
+  const showOutgoing = hide(outgoing);
+  const showArriving = hide(element);
+  // A copy that was itself in flight is the outgoing end; it goes once the new copy has taken its place.
+  if (outgoing.dataset.flight !== undefined) outgoing.remove();
+  const copy = copyAt(element, to);
+  const playback = fly(copy, from, to, preference);
+  const land = () => {
+    playback.stop();
+    copy.remove();
+    showOutgoing();
+    showArriving();
+  };
+  playback.finished.then(land, land);
+  return { playback, land };
 }

@@ -23,7 +23,7 @@ use crate::ids::{DeviceId, SiteId};
 
 pub use loaders::{DevicesById, DevicesBySite, SitesById};
 pub use mac::{MacAddress, MacAddressError};
-pub use model::{Device, OperatingSystem, Site, SshAuth, SshSettings};
+pub use model::{Device, Distribution, OperatingSystem, Site, SshAuth, SshSettings};
 pub use remote::{
     MetricsSource, RdpSecurity, RdpSettings, ResizeMethod, TransferPolicy, VncSettings,
 };
@@ -70,6 +70,19 @@ pub async fn get(db: &PgPool, id: DeviceId) -> Result<Device, Error> {
 /// `Database` when the query fails.
 pub async fn list(db: &PgPool) -> Result<Vec<Device>, Error> {
     store::all(db).await
+}
+
+/// Records the Linux distribution read from the device (DEV-016). The device keeps its
+/// `updated_at`: the operator did not change it. An equal value writes nothing.
+///
+/// # Errors
+/// `Database` when the write fails. A deleted device is not an error: nothing is written.
+pub async fn record_distribution(
+    db: &PgPool,
+    id: DeviceId,
+    distribution: &Distribution,
+) -> Result<(), Error> {
+    store::set_distribution(db, id, distribution).await
 }
 
 /// Whether the device is in maintenance.
