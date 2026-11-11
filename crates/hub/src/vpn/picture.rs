@@ -141,7 +141,7 @@ fn node(peer: &Peer, inputs: &Inputs<'_>) -> Option<VpnNode> {
 /// that is empty (BD-14).
 fn name(peer: &Peer) -> String {
     match peer.dns_name.split('.').next() {
-        Some(label) if !peer.dns_name.is_empty() => shown(label, 63),
+        Some(label) if !label.is_empty() => shown(label, 63),
         _ => shown(&peer.host_name, 63),
     }
 }

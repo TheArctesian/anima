@@ -1,6 +1,6 @@
 // The inventory check for OD-10 nodes, keys and routes (VPN-013).
 import { describe, expect, it } from 'bun:test';
-import { findings, InventoryError, parseNodes, type Finding } from '../src/inventory.ts';
+import { findings, InventoryError, parseNodes, tailnetNodes, type Finding } from '../src/inventory.ts';
 import { clean, cleanExpected, expected, NOW, rawNodes, tailnet } from './inventory-fixture.ts';
 import { policy } from './policy-fixture.ts';
 
@@ -35,6 +35,25 @@ describe('inventory findings', () => {
   it('VPN-013: a client with no expiry is reported, one at 170 days is not', () => {
     const long = findings(policy, tailnet, expected, NOW).filter((finding) => finding.kind === 'long-expiry');
     expect(long.map((finding) => finding.node)).toEqual(['mac2']);
+  });
+
+  it('VPN-013: a client at exactly 180 days is not reported, one at 181 days is, 180 days and an hour is not', () => {
+    const MS_PER_HOUR = 3_600_000;
+    const longExpiry = (afterMs: number): Finding[] => {
+      const nodes = clean.nodes.map((node) => (node.name === 'mac' ? { ...node, expiry: new Date(NOW.getTime() + afterMs) } : node));
+      return findings(policy, { ...clean, nodes }, cleanExpected, NOW).filter((finding) => finding.kind === 'long-expiry');
+    };
+    expect(longExpiry(180 * 24 * MS_PER_HOUR)).toEqual([]);
+    // The days are floored: 180 days and an hour counts as 180.
+    expect(longExpiry(180 * 24 * MS_PER_HOUR + MS_PER_HOUR)).toEqual([]);
+    expect(longExpiry(181 * 24 * MS_PER_HOUR)).toEqual([{ kind: 'long-expiry', node: 'mac', days: 181 }]);
+  });
+
+  it('VPN-013: a node with no IPv4 address is reported and left out of the policy test', () => {
+    const v6only = { ...(clean.nodes.find((node) => node.name === 'mac') as object), name: 'v6', ips: ['fd7a:115c:a1e0::9'] } as (typeof clean.nodes)[number];
+    const crowded = { ...clean, nodes: [...clean.nodes, v6only] };
+    expect(tailnetNodes(crowded).map((node) => node.name)).toEqual(['hub', 'mac', 'router-home']);
+    expect(findings(policy, crowded, [...cleanExpected, 'v6'], NOW)).toEqual([{ kind: 'no-ipv4', node: 'v6' }]);
   });
 
   it('VPN-013: a clean tailnet prints ok', () => {

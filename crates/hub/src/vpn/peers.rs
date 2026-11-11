@@ -19,7 +19,7 @@ pub(super) struct Status {
     #[serde(rename = "Self")]
     pub own: Peer,
     /// `null` when the node has no peers.
-    #[serde(default)]
+    #[serde(default, deserialize_with = "readable_peers")]
     pub peer: Option<HashMap<String, Peer>>,
 }
 
@@ -76,6 +76,21 @@ pub(super) fn shown(text: &str, max: usize) -> String {
     } else {
         cleaned
     }
+}
+
+/// The peers that read; one that does not is left out, its text unlogged (LOG-007), so one odd
+/// peer cannot hide the others. A `Peer` that is not an object is still an error.
+fn readable_peers<'de, D>(deserializer: D) -> Result<Option<HashMap<String, Peer>>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let raw = Option::<HashMap<String, serde_json::Value>>::deserialize(deserializer)?;
+    Ok(raw.map(|peers| {
+        peers
+            .into_iter()
+            .filter_map(|(key, value)| Some((key, serde_json::from_value(value).ok()?)))
+            .collect()
+    }))
 }
 
 /// JSON `null` or an absent list is an empty list.

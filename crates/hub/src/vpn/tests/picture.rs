@@ -311,3 +311,125 @@ fn vpn_009_nodes_are_in_name_order_and_sites_in_site_order() {
         sites().iter().map(|site| site.0).collect::<Vec<_>>()
     );
 }
+
+/// The idle fixture with the router's routes and the mac's tags and routes replaced.
+fn home_served_by(router: &[&str], mac_tags: &[&str], mac_routes: &[&str]) -> Picture {
+    let mut raw = json("status-idle.json");
+    peer_mut(&mut raw, "router-home")["PrimaryRoutes"] = serde_json::json!(router);
+    let mac = peer_mut(&mut raw, "mac");
+    mac["Tags"] = serde_json::json!(mac_tags);
+    mac["PrimaryRoutes"] = serde_json::json!(mac_routes);
+    picture(&reparse(&raw))
+}
+
+#[test]
+fn vpn_009_a_router_with_a_wider_or_narrower_route_serves_no_site() {
+    let devices = [device(9, "router-home", "100.64.0.3")];
+    for route in ["10.10.0.0/16", "10.10.0.0/25"] {
+        let mut raw = json("status-idle.json");
+        peer_mut(&mut raw, "router-home")["PrimaryRoutes"] = serde_json::json!([route]);
+
+        let shown = picture_with(&reparse(&raw), &devices, &[]);
+
+        assert_eq!(shown.sites[0].state, RouteState::NoRouter, "{route}");
+        assert_eq!(shown.sites[0].router, None, "{route}");
+        assert!(!node(&shown, "router-home").in_anima, "{route}");
+    }
+}
+
+#[test]
+fn vpn_009_a_peer_that_is_not_a_router_serves_no_site() {
+    for tags in [&[][..], &["tag:agent"][..]] {
+        let shown = home_served_by(&[], tags, &["10.10.0.0/24"]);
+
+        assert_eq!(shown.sites[0].state, RouteState::NoRouter, "{tags:?}");
+        assert_eq!(shown.sites[0].router, None, "{tags:?}");
+    }
+}
+
+#[test]
+fn vpn_009_hub_outranks_router_when_a_node_has_both_tags() {
+    let mut raw = json("status-idle.json");
+    peer_mut(&mut raw, "mac")["Tags"] = serde_json::json!(["tag:router", "tag:hub"]);
+
+    assert_eq!(node(&picture(&reparse(&raw)), "mac").role, Role::Hub);
+}
+
+#[test]
+fn vpn_009_a_relayed_path_keeps_its_region_for_three_unknown_reads() {
+    let idle = || picture(&status("status-idle.json"));
+
+    let mut shown = picture(&status("status-relayed.json"));
+    assert_eq!(router_path(&shown), (VpnPath::Relayed, Some("sfo")));
+    for _ in 0..3 {
+        shown = carry(&shown, idle());
+        assert_eq!(router_path(&shown), (VpnPath::Relayed, Some("sfo")));
+    }
+    assert_eq!(router_path(&carry(&shown, idle())), (VpnPath::Unknown, None));
+}
+
+/// The idle fixture's mac with `dns_name` and `host_name`, matched against `devices`.
+fn mac_matched(dns_name: &str, host_name: &str, devices: &[crate::devices::Device]) -> Picture {
+    let mut raw = json("status-idle.json");
+    let mac = peer_mut(&mut raw, "mac");
+    mac["DNSName"] = dns_name.into();
+    mac["HostName"] = host_name.into();
+    picture_with(&reparse(&raw), devices, &[])
+}
+
+fn matched_device(shown: &Picture) -> Option<crate::ids::DeviceId> {
+    shown
+        .nodes
+        .iter()
+        .find(|node| node.address.octets()[3] == 2)
+        .and_then(|node| node.device.as_ref().map(|device| device.0))
+}
+
+#[test]
+fn vpn_011_the_address_outranks_the_name_and_the_name_outranks_the_label() {
+    let devices = [
+        device(8, "by-label", "mac"),
+        device(9, "by-name", "mac.net.anima.ing"),
+        device(10, "by-address", "100.64.0.2"),
+    ];
+
+    let all = mac_matched("mac.net.anima.ing.", "mac", &devices);
+    let no_address = mac_matched("mac.net.anima.ing.", "mac", &devices[..2]);
+
+    assert_eq!(matched_device(&all), Some(device_id(10)));
+    assert_eq!(matched_device(&no_address), Some(device_id(9)));
+}
+
+#[test]
+fn vpn_011_a_peer_with_no_dns_name_matches_no_device_without_an_address() {
+    let devices = [device(9, "blank", ""), device(10, "dns", "mac.other")];
+
+    let shown = mac_matched("", "mac", &devices);
+
+    assert_eq!(matched_device(&shown), None);
+}
+
+#[test]
+fn vpn_011_a_device_host_in_another_domain_is_not_the_label() {
+    let devices = [device(9, "storage", "mac.other")];
+
+    let shown = mac_matched("mac.net.anima.ing.", "mac", &devices);
+
+    assert_eq!(matched_device(&shown), None);
+}
+
+#[test]
+fn vpn_008_a_dns_name_of_one_dot_falls_back_to_the_host_name() {
+    let shown = mac_matched(".", "laptop", &[]);
+
+    assert!(shown.nodes.iter().any(|node| node.name == "laptop"));
+}
+
+#[test]
+fn vpn_008_a_dns_label_is_cut_to_63_characters() {
+    let dns = format!("{}.net.anima.ing.", "a".repeat(70));
+
+    let shown = mac_matched(&dns, "mac", &[]);
+
+    assert!(shown.nodes.iter().any(|node| node.name == "a".repeat(63)));
+}
