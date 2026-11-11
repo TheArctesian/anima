@@ -17,7 +17,7 @@ use crate::{
     events::{ClientAddr, Operator},
     ids::{OperatorId, SessionId},
     sessions::{
-        DisplayRequest, Live, PendingTicket, Protocol, StartRequest,
+        DisplayRequest, Live, PendingTicket, Protocol, Recording, StartRequest,
         tickets::{TOKEN_BYTES, TicketToken},
     },
 };
@@ -116,6 +116,15 @@ pub(in crate::sessions) fn request() -> StartRequest {
             timezone: Some("Europe/Berlin".to_owned()),
         },
         wake: None,
+        recording: no_recording(),
+    }
+}
+
+/// Recording storage with no root: a device that records its sessions cannot start one.
+pub(in crate::sessions) const fn no_recording() -> Recording {
+    Recording {
+        root: None,
+        max_bytes: 1 << 30,
     }
 }
 

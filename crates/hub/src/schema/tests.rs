@@ -1,6 +1,9 @@
 use async_graphql::{EmptySubscription, Schema, value};
 
-use super::{Mutation, Query, harden, production_build};
+use std::{collections::BTreeMap, path::PathBuf};
+
+use super::{Mutation, Query, harden, production_build, recording};
+use crate::config::from_env;
 
 /// The real root types under `harden`, as `build_schema` applies it, without the access
 /// backstop: these tests are about the limits, not about sign-in (that is `access`'s and the
@@ -40,4 +43,17 @@ async fn api_007_debug_build_answers_introspection_and_api_004_refuses_depth_11(
 async fn api_007_release_build_answers_introspection_with_null() {
     let response = hardened().execute(INTROSPECTION).await;
     assert_eq!(response.data, value!({ "__schema": null }));
+}
+
+#[test]
+fn d_14_the_recording_storage_is_the_configured_root_and_cap() {
+    let mut config = from_env(&BTreeMap::new()).unwrap();
+    config.recording_root = Some(PathBuf::from("/var/lib/anima/recordings"));
+    config.recording_max_bytes = 1_048_576;
+    let storage = recording(&config);
+    assert_eq!(
+        storage.root,
+        Some(PathBuf::from("/var/lib/anima/recordings"))
+    );
+    assert_eq!(storage.max_bytes, 1_048_576);
 }

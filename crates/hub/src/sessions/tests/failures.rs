@@ -16,6 +16,7 @@ use crate::{
         Actor, DisplayRequest, Error, Live, Protocol, StartRequest, Ticket,
         end::{end_session, sweep},
         start,
+        tests::fixture::no_recording,
     },
 };
 
@@ -92,6 +93,7 @@ async fn start_on_pve_01(pool: &PgPool, live: &Live) -> Result<Ticket, Error> {
             timezone: None,
         },
         wake: None,
+        recording: no_recording(),
     };
     start(pool, &clock, live, &operator(), client(), request).await
 }

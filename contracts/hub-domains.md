@@ -239,6 +239,7 @@ pub async fn lock(conn: &mut PgConnection, id: DeviceId) -> Result<(), Error>;  
 pub async fn lock_metrics_source(conn: &mut PgConnection, id: DeviceId) -> Result<MetricsSource, Error>;       // FOR UPDATE; MET-011, MET-018
 pub async fn use_agent_metrics(conn: &mut PgConnection, id: DeviceId) -> Result<String, Error>;                // agent enrolment only; R-092 D-7
 pub async fn session_limit<'e>(db: impl PgExecutor<'e>, id: DeviceId) -> Result<Option<NonZeroU8>, Error>;   // RA-036
+pub async fn hold_record_sessions(conn: &mut PgConnection, id: DeviceId) -> Result<bool, Error>;           // FOR SHARE; the start reads the recording flag again under it, RA-040
 ```
 
 A new cross-domain function is listed here in the same commit as its code (CR-24).
