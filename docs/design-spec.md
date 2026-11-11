@@ -30,7 +30,7 @@ Anima is an application that manages the devices on a home network or a small pr
 
 - Remote access. The operator connects to a device with SSH or RDP.
 - Monitoring. Anima checks the uptime of each device. Anima also records the resource usage of each device.
-- Device management. A later version controls virtual machines and containers on a hypervisor, for example Proxmox VE.
+- Device management. Anima manages all of the operator's own compute resources from one place. A later version may also run virtual machines and containers (R-109).
 
 ### 1.2 Reference products
 
@@ -40,9 +40,8 @@ Anima uses the functions of these products as a reference:
 | --- | --- | --- |
 | Apache Guacamole (`guacamole-server`) | Apache 2.0 | Remote access with SSH, RDP and VNC through a gateway |
 | Uptime Kuma | MIT | Uptime checks, status history and notifications |
-| Proxmox VE | AGPL 3.0 | Management of virtual machines and containers |
 
-Anima uses `guacd` from Guacamole as a separate process. Anima does not copy source code from Uptime Kuma or Proxmox VE.
+Anima uses `guacd` from Guacamole as a separate process. Anima does not copy source code from Uptime Kuma.
 
 ### 1.3 Target platforms
 
@@ -195,7 +194,7 @@ The hub supplies one GraphQL API at the path `/graphql`.
 
 - **API-001.** The hub must write the API in Rust with `async-graphql` on axum.
 - **API-002.** Subscriptions must use the `graphql-transport-ws` protocol over WebSocket.
-- **API-003.** Every operation must require a valid access token, except `login`, `signInBrowser` and `joinShare`. A document that has no access token is permitted only when it is exactly one `login`, one `signInBrowser` or one `joinShare`. (D-4, R-081)
+- **API-003.** Every operation must require a valid access token, except `login` and `signInBrowser`. A document that has no access token is permitted only when it is exactly one `login` or one `signInBrowser`. (D-4, R-081, R-111)
 - **API-004.** The hub must set a maximum query depth of 10 and a maximum query complexity. The hub must refuse a query that is more than these limits.
 - **API-005.** The hub must use a data loader for related items, so that one query does not cause many database queries.
 - **API-006.** Lists must use cursor pagination.
@@ -211,7 +210,7 @@ Anima keeps three types of log.
 | Log type | Content | Location | Retention |
 | --- | --- | --- | --- |
 | Process log | Technical events of the hub process: start, stop, errors, warnings, slow queries, scheduler events | Standard output in JSON format. Docker collects it. | Docker log rotation: 10 files of 10 MB |
-| Event log | Events that the operator must see: device status changes, check failures, session start and end, Proxmox tasks, errors | PostgreSQL table `event_log` | 90 days |
+| Event log | Events that the operator must see: device status changes, check failures, session start and end, errors | PostgreSQL table `event_log` | 90 days |
 | Audit log | Each change that the operator makes: login, logout, add, change and delete of items, power actions | PostgreSQL table `audit_log` | 1 year |
 
 - **LOG-001.** The hub must use the Rust `tracing` crate for all process log entries.
@@ -373,7 +372,7 @@ releases.anima.ing/
 The hub can open a session to every device. Thus the hub is a high-value target. Obey all the requirements in this section.
 
 - **SEC-001.** The hub must use TLS for all client connections.
-- **SEC-002.** The hub must ask for authentication before it accepts an API request or a tunnel request. The share token is an exception, as is the push token (Section 6.4). The share token must be only in the URL fragment. The viewer must send it once, in `joinShare`. The viewer must not call any other operation. (D-7, R-081)
+- **SEC-002.** The hub must ask for authentication before it accepts an API request or a tunnel request. The push token is an exception (Section 6.4). (D-7, R-081, R-111)
 - **SEC-003.** The hub must encrypt credentials before it writes them to the database.
 - **SEC-004.** The hub must read the encryption key from a file or a Docker secret. Do not keep the key in the database.
 - **SEC-005.** The hub must not send a stored password or private key to the client.
@@ -553,6 +552,8 @@ The navigation bar is on the left side of the window on desktop and web. It is a
 - **NAV-003.** The navigation bar must show the connection status of the hub immediately above the Settings item: "Connected" or "Disconnected".
 - **NAV-004.** The Devices page must be the start page.
 - **NAV-005.** The operator must be able to go to each page with the keyboard.
+- **NAV-006.** The operator must be able to collapse the navigation bar to icons and expand it again. The app must keep the choice on the device.
+- **NAV-007.** On macOS the window must draw under the title bar. The window buttons must sit in the top row of the navigation bar, and that row and the strip above the page must move the window.
 
 ### 5.4 Design principles
 
@@ -710,7 +711,7 @@ Springs use the two Apple parameters: damping ratio and response. The token buil
 | Menu and popover | Sort, tags, Web menu, Keys menu | Scale 0.96 to 1 and fade, from the control, `spring-snappy` | Fade and scale to 0.98, `duration-fast` | Fade only |
 | Modal | Add device, confirmations, host key warning | Scrim fades in. Surface materializes: blur and scale 0.98 to 1, `spring-default` | Same path in reverse, `duration-fast` | Fade only |
 | Page change | Devices and Settings | Cross-fade `duration-base` | Same | Same |
-| Card to detail | Device card to device detail | The device name and status move from the card to the header (shared item), `spring-move` | The header moves back to the card | Cross-fade |
+| Card to detail | Device card to device detail | The device name and status move from the card to the header (shared item), `spring-move`. A copy flies in a fixed layer above both pages at full opacity; the header item shows when it lands | The header moves back to the card | Cross-fade |
 | Session tab open | SSH, RDP, VNC, Web buttons | The tab grows from the button that opened it, `spring-snappy` | The tab closes to its place in the tab strip | Fade |
 | Reorder | Sort, filter, live status order | Items move to new places by FLIP, `spring-move`. New items fade and scale from 0.98, `stagger-list` | Items fade, `duration-fast`, and keep their place until the fade ends | Instant order, fade |
 | Status change | Device card, table row, status pill | Pill cross-fade `duration-base`. Card edge highlight fades over `duration-highlight` | — | Cross-fade only |
@@ -718,6 +719,8 @@ Springs use the two Apple parameters: damping ratio and response. The token buil
 | New log row | Logs panel | Row comes in at the top, other rows move down (FLIP), highlight fades over `duration-highlight` | — | Instant, highlight remains |
 | Chart update | Metric charts | New point comes in from the right. The line moves left continuously | Range change: cross-fade | Instant |
 | Loading | Lists, charts, detail tabs | After `threshold-loading`: skeleton with the same geometry. Data replaces it with a cross-fade | — | Same, no shimmer |
+| Async action | Save, Copy and other buttons that wait for the hub or the system | After `threshold-loading` the label cross-fades to a pending word (no spinner). On success a check and a done word, held for `duration-highlight`, then the label. The labels share one cell, so the button keeps its width | Failure: the label returns at once and the reason shows beside it | Same |
+| Navigation bar collapse | Collapse toggle, resize edge | The bar's width changes at once (MOT-006); the page moves from its old edge to the new one by FLIP, `spring-default`. On expand the names fade in, `duration-base` | Same | Instant, names appear |
 | Toast | Results of actions | In from the bottom-right, `spring-default` | Out on the same path | Fade |
 | Connection steps | Session start | Each step mark changes when the step ends. No easing on progress | — | Same |
 | Theme change | Settings | Cross-fade of colours `duration-base` | — | Same |
@@ -727,7 +730,7 @@ Springs use the two Apple parameters: damping ratio and response. The token buil
 | Gesture | Platform | Behaviour |
 | --- | --- | --- |
 | Resize the logs panel | Desktop | The panel edge follows the pointer 1:1. On release, the panel goes to the snap point nearest the projected position: collapsed, 33 % or 66 %. |
-| Resize the navigation bar | Desktop | Follows the pointer 1:1, with rubber-band resistance below the icon-only width and above 280 px. |
+| Resize the navigation bar | Desktop | The edge follows the pointer 1:1 between the icon-only and full widths, with rubber-band resistance past either. On release the bar rests at the width nearest the projected position (collapsed or expanded, NAV-006) and the choice is kept as the toggle's is. The left and right arrow keys on the focused edge collapse and expand it. |
 | Reorder session tabs | Desktop | The tab follows the pointer from the grab point. Other tabs move away with `spring-move`. |
 | Drag a session tab out of the strip | Desktop | Pops the session out to a new window (RA-002). |
 | Dismiss a toast | Desktop and iOS | Swipe right. A fast flick dismisses it even when the distance is short. |
@@ -802,7 +805,7 @@ The operator uses a form to add or edit a device. The form has these fields:
 | SSH | On or off, port, credential | No | Off, port 22 |
 | RDP | On or off, port, credential, security mode | No | Off, port 3389 |
 | Checks | List of checks (Section 6.4) | No | One ICMP check |
-| Metrics source | None, SSH, Proxmox API | No | None |
+| Metrics source | None, SSH | No | None |
 
 - **DEV-010.** The form must validate the host before the operator saves the device.
 - **DEV-011.** The form must show a password field as hidden text.
@@ -810,6 +813,7 @@ The operator uses a form to add or edit a device. The form has these fields:
 - **DEV-013.** The operator must be able to test the connection before the operator saves the device.
 - **DEV-014.** The operator must confirm before Anima deletes a device.
 - **DEV-015.** When the operator deletes a device, the hub must delete its credentials, checks, heartbeats and metrics.
+- **DEV-016.** The operator does not enter the Linux distribution. With each SSH metrics collection of a Linux device, the hub must read the `ID` of `/etc/os-release` and store it when it is a short lower-case token (`[a-z0-9._-]`, 1 to 32 characters). A failed read must leave the stored value as it is and must not fail the collection. The client must show the logo of the distribution beside the device.
 
 ### 6.3 Remote access
 
@@ -830,7 +834,7 @@ Session procedure:
 - **RA-005.** An RDP session must support the clipboard in text format.
 - **RA-006.** The client must send special key combinations, for example Ctrl+Alt+Delete, from a menu.
 - **RA-007.** If the connection stops, the client must show the reason and a "Reconnect" button.
-- **RA-008.** The hub must record the start time, the end time and the device of each session. The hub must not record the session content, except when the operator sets RA-040 on. A share can keep the last 64 KiB of terminal output in memory, for late viewers. This buffer meets this requirement if the hub frees it when the share ends and never writes, logs or records it. (D-10, R-081)
+- **RA-008.** The hub must record the start time, the end time and the device of each session. The hub must not record the session content, except when the operator sets RA-040 on. (R-111)
 
 #### 6.3.1 SSH settings (Phase 1)
 
@@ -878,7 +882,7 @@ Since R-062 the hub opens the SSH connection and the client draws the terminal (
 | SFTP file transfer | 2 | **RA-032.** An SSH session must have a file panel for upload and download through SFTP. The operator must be able to set upload off and download off for each device. |
 | Clipboard control | 2 | **RA-033.** The operator must be able to set copy off and paste off for each device. |
 | Live sessions | 2 | **RA-034.** The client must show a list of live sessions. The operator must be able to stop a live session. |
-| Session sharing | 3 | **RA-035.** The operator must be able to make a share link for a live session. A share link must be read-only by default, must expire and must stop when the owner disconnects. |
+| Session sharing | Deferred | **RA-035.** Deferred (R-111). Anima is for the operator's own use of their own resources. No share links, no viewers without an operator account, and no sign-in exception for viewers. |
 | Concurrency limit | 3 | **RA-036.** The operator must be able to set a maximum number of sessions for each device. |
 | Session recording | 3 | **RA-040.** The operator must be able to set recording on for each device. It is off by default. The client must show a "Recording" badge during a recorded session. The hub must encrypt recordings at rest. |
 | Recording playback | 3 | **RA-041.** The client must play RDP and VNC recordings with `Guacamole.SessionRecording`, which uses the Guacamole format. SSH recordings must be asciicast v2. The client must play them with xterm.js. (D-12, R-081) |
@@ -980,7 +984,6 @@ Metrics sources, in order of preference (R-084):
 
 - **Anima agent (push).** A small headless program, `anima-agent`, runs on the device. It reads the values on the device and pushes them to the hub over the VPN. Use the agent on each macOS and Linux device that can run software.
 - **SSH (agentless).** This is the fallback for devices that cannot run software, for example routers and NAS appliances. The hub connects with SSH and reads system values. On Linux, the hub reads `/proc`. On macOS, the hub uses `vm_stat`, `sysctl` and `df`.
-- **Proxmox API.** The hub reads the node, virtual machine and container status from the Proxmox VE API.
 
 The agent and the SSH collector parse the same command output and files with the same code (MET-016).
 
@@ -1004,8 +1007,8 @@ The agent may read NVIDIA values through NVML in place of `nvidia-smi`. The valu
 - **MET-007.** If a device has no GPU with its own memory, the client must not show VRAM. Do not show "0 %" for a missing GPU.
 - **MET-008.** If a device has a GPU with its own memory, the device card must show a VRAM bar after the disk bar. If the device has more than one GPU, the bar must show the GPU with the highest VRAM usage.
 - **MET-009.** The device detail view must show a chart for GPU usage and VRAM usage for each GPU. The chart label must include the GPU index and name.
-- **MET-010.** A GPU can be passed through to a virtual machine. In this case, the hub must read the GPU metrics from the virtual machine, not from the Proxmox node.
-- **MET-011.** A device's metrics source must be one of `agent`, `ssh`, `proxmox` or `none`. When a device has a working agent, the hub must stop SSH metric collection for it. If the agent is removed or its token is revoked, the operator can switch the device back to `ssh`. (R-084)
+- **MET-010.** Withdrawn with the Proxmox VE integration (R-109). A GPU passed through to a virtual machine is read by the agent in that virtual machine.
+- **MET-011.** A device's metrics source must be one of `agent`, `ssh` or `none`. When a device has a working agent, the hub must stop SSH metric collection for it. If the agent is removed or its token is revoked, the operator can switch the device back to `ssh`. (R-084)
 - **MET-012.** Enrolment. The operator makes an enrolment code for one device on the Device page ("Install agent"). The code must be 128 random bits, expire after 15 minutes and work only once. A second use must fail, even when the first use failed later in the exchange. The hub must keep only its SHA-256. `anima-agent enrol <code>` swaps the code for the device's agent token. Only a signed-in operator can make a code. (R-084)
 - **MET-013.** Agent token. The format is `anima_agent_` and 43 base64url characters. The hub must keep only its SHA-256. A token is bound to one device. It allows only two calls: push readings for that device, and renew itself. It must not call the GraphQL API, open a session or read anything. It expires after 365 days. The agent renews it during the last 30 days with the current token; the old token stops working when the new one is first used. The operator can revoke it on the Device page; revocation takes effect on the next push. The agent keeps it in the macOS Keychain, or on Linux in a file with mode `0600` owned by the user that runs the agent. No log, event, metric or error message must contain a token or an enrolment code (LOG-007). (R-084)
 - **MET-014.** Sampling and push. The agent samples every 2 seconds. Each 10 seconds, it makes one point from the samples: the mean, and also the maximum for CPU and GPU usage. It pushes the new points every 10 seconds in one batch. While the hub cannot be reached, it keeps up to 1 hour of points in memory, oldest dropped first, and sends them when the hub comes back. (R-084)
@@ -1020,8 +1023,8 @@ The agent may read NVIDIA values through NVML in place of `nvidia-smi`. The valu
 
 The operator clicks a device card to open the device detail view.
 
-- **DEV-020.** The header of the device detail view must be one line. It must show, from left to right: a "Devices" back link, the device name, the status, the host, the IP address, the device type, the operating system and the tags. The SSH, RDP and Edit buttons must be at the right end of the line.
-- **DEV-021.** If the line is too long, the client must hide the end of the host and tag information with a fade. The name, the status and the buttons must always be visible. The full text must be available as a tooltip.
+- **DEV-020.** The header of the device detail view must have three rows. The first row must be a "Devices" back link. The second row must show an icon for the device type, the device name and the status, with the SSH, RDP, VNC, Web and Edit buttons at its right end; in a narrow window the buttons move to a row of their own. The third row must show the host, the IP address, the device type, the operating system and the tags, each as a chip with an icon.
+- **DEV-021.** The chips must wrap onto further lines and must never be cut off. The name and the status must always be visible; a name that is too long ends with an ellipsis and the full name is available as a tooltip.
 - **DEV-022.** The header must always show an SSH button and an RDP button. If a protocol is not set up on the device, its button must have a dashed border and a "+" icon. This button must open the Settings tab of the device. It must not start a session.
 
 The view has these tabs:
@@ -1048,7 +1051,7 @@ The view has these tabs:
 
 - **INT-001.** The hub must supply a Prometheus endpoint at `/metrics` with the status, response time, uptime ratio and certificate days of each check.
 - **INT-002.** Prometheus labels must not include values that change often.
-- **INT-003.** The operator must be able to make API keys for the GraphQL API. Each key must have a scope (read or write) and an expiry date. A key is `anima_` and 43 base64url characters. The hub must keep only the SHA-256 of a key. The expiry date is required and must be at most one year away. An API key must not manage API keys. It must not call `signInBrowser`, `startSession`, `openFiles`, `shareSession`, `joinShare`, `openRecording`, `enrolAgent` or `revokeAgentToken`. It must not set or clear a device credential, and it must not decide where one is sent: it must not call `acceptHostKey`, `acceptServerCertificate`, `acceptWebCertificate`, `updateDevice` or `deleteDevice`. It must not call `setRetention` or `deleteRecording`. (D-23, R-081, R-100)
+- **INT-003.** The operator must be able to make API keys for the GraphQL API. Each key must have a scope (read or write) and an expiry date. A key is `anima_` and 43 base64url characters. The hub must keep only the SHA-256 of a key. The expiry date is required and must be at most one year away. An API key must not manage API keys. It must not call `signInBrowser`, `startSession`, `openFiles`, `openRecording`, `enrolAgent` or `revokeAgentToken`. It must not set or clear a device credential, and it must not decide where one is sent: it must not call `acceptHostKey`, `acceptServerCertificate`, `acceptWebCertificate`, `updateDevice` or `deleteDevice`. It must not call `setRetention` or `deleteRecording`. (D-23, R-081, R-100)
 - **INT-004.** A later version can add public status pages, incidents and status badges.
 
 ## 7. Settings page
@@ -1064,76 +1067,9 @@ A later version adds these items to the Settings page:
 - Notification channels, for example email, ntfy, Discord or Telegram.
 - Default check settings.
 
-## 8. Device management (Proxmox VE)
+## 8. Device management (withdrawn)
 
-This function starts in Phase 4. It uses the Proxmox VE REST API (`/api2/json`) with an API token. Proxmox VE versions 8.4 and 9.x are in scope.
-
-### 8.1 Connection
-
-- **PVE-001.** The operator must be able to add a Proxmox VE node or cluster as a device.
-- **PVE-002.** If the node is part of a cluster, the hub must add the cluster one time. Do not add each node as a separate device, because each node gives access to the full cluster.
-- **PVE-003.** The hub must record the TLS certificate fingerprint at the first connection (`/nodes/{node}/certificates/info`). Do not turn off certificate verification.
-- **PVE-004.** If the fingerprint changes, the hub must stop the connection and show a warning, as in SEC-007.
-- **PVE-005.** The hub must read `/version` at each connection. The hub must use the correct privilege names and fields for that version.
-- **PVE-006.** The hub must show the token expiry date. The hub must write an event log entry 14 days before the token expires.
-
-### 8.2 API token privileges
-
-Create the token with privilege separation on. Give the role on the path `/` with propagation, or on one pool.
-
-| Role | Privileges |
-| --- | --- |
-| Anima read-only | `VM.Audit`, `Sys.Audit`, `Datastore.Audit`, `Pool.Audit`, `SDN.Audit`, and `VM.GuestAgent.Audit` (9.x) or `VM.Monitor` (8.x) |
-| Anima power control | The read-only privileges and `VM.PowerMgmt`. Add `VM.Console` only if consoles are on. |
-| Later phases | `VM.Snapshot`, `VM.Snapshot.Rollback`, `VM.Backup`, `Datastore.AllocateSpace`, `VM.Migrate`, only when the operator sets on the related function |
-
-- **PVE-010.** The hub must not ask for `Sys.PowerMgmt` or `Sys.Modify`.
-- **PVE-011.** The operator documentation must show the commands that make the two roles.
-
-### 8.3 Phase 4 functions
-
-| Function | API endpoints | Requirement |
-| --- | --- | --- |
-| Inventory | `/cluster/resources`, `/cluster/status` | **PVE-020.** The hub must read all nodes, virtual machines, containers and storage with one call. The hub must show virtual machines and containers as child devices of the cluster. |
-| Status | `/nodes/{node}/{type}/{id}/status/current` | **PVE-021.** The hub must show the state, uptime, lock and HA state of each guest. |
-| Metrics | `/cluster/metrics/export`, `/nodes/{node}/{type}/{id}/rrddata` | **PVE-022.** The hub must collect metrics with `/cluster/metrics/export`. Use `rrddata` only for history that the hub does not have. Do not poll each guest separately. |
-| Pressure metrics | `rrddata` (9.x only) | **PVE-023.** On 9.x, the hub must show CPU, memory and IO pressure (PSI). |
-| Guest agent | `.../qemu/{id}/agent/network-get-interfaces`, `get-fsinfo`, `get-osinfo`; `.../lxc/{id}/interfaces` | **PVE-024.** The hub must find the IP addresses of each guest. The SSH and RDP buttons must use these addresses. If the agent is not installed, the status is Unknown. It is not an error. |
-| Power control | `.../status/start`, `shutdown`, `stop`, `reboot` | **PVE-025.** The operator must be able to start, shut down, stop and restart a guest. The operator must confirm before a stop or a restart. |
-| Tasks | `/cluster/tasks`, `/nodes/{node}/tasks/{upid}/status`, `.../log` | **PVE-026.** Each write call gives a task ID (UPID). The hub must wait for the task result and write it to the event log. An HTTP 200 result only means that the task started. |
-| Tags | Guest `tags` field | **PVE-027.** The hub must show Proxmox tags as Anima tags. |
-| HA | `/cluster/ha/status/current`, `/cluster/ha/resources` | **PVE-028.** The client must show an HA badge on a guest that HA manages. Before a stop, the client must tell the operator that HA can start the guest again. |
-| Storage | `/nodes/{node}/storage` | **PVE-029.** The hub must show the usage of each storage. The usage limit for Degraded is 85 percent. |
-
-### 8.4 Consoles
-
-The gateway cannot open a Proxmox console. Proxmox sends VNC and terminal data over a WebSocket, and the VNC port is only available on the node. Thus consoles use a separate path.
-
-- **PVE-030.** The hub must relay the console WebSocket. The hub must call `vncproxy` or `termproxy` and then connect to `vncwebsocket` at once, because the ticket expires after about 10 seconds.
-- **PVE-031.** The client must use noVNC for a virtual machine console. The client must use xterm.js for a container console and a node shell.
-- **PVE-032.** Test if an API token can open a console. If it cannot, the hub must use a separate console user and renew its ticket every 90 minutes.
-- **PVE-033.** For a guest with an IP address, SSH (the hub's terminal tunnel, R-062) and RDP (through the gateway) are the preferred methods. The console is for a guest without network access.
-
-### 8.5 Later functions (Phase 6 or later)
-
-| Function | Endpoints | Priority |
-| --- | --- | --- |
-| Snapshots: make, list, roll back | `.../snapshot`, `.../snapshot/{name}/rollback` | Should |
-| Backups: last backup age, start a backup, guests without a backup | `/nodes/{node}/vzdump`, `/cluster/backup`, `/cluster/backup-info/not-backed-up` | Should |
-| Bulk start and stop by tag (9.x) | `/cluster/bulk-action/guest/...` | Should |
-| Proxmox sends events to the hub (webhook) | `/cluster/notifications/endpoints/webhook`, `/matchers` | Should |
-| Clone from a template, cloud-init with SSH keys | `.../clone`, `.../template`, `.../cloudinit` | Could |
-| Migration to a different node | `.../migrate` | Could |
-| Pending updates and disk SMART status | `/nodes/{node}/apt/update`, `/nodes/{node}/disks/smart` | Could |
-| SPICE: download a `.vv` file for `remote-viewer` | `.../spiceproxy` | Could |
-| Firewall, SDN and replication status | `/cluster/firewall`, `/cluster/sdn`, `/cluster/replication` | Could |
-
-### 8.6 Other hypervisors
-
-A later version can manage libvirt hosts and Docker hosts. Prepare for this now:
-
-- **PVE-040.** The hub must use one provider interface for inventory, power control, metrics, consoles and snapshots. Each provider must declare the functions that it supports.
-- **PVE-041.** The database must keep a provider task ID as opaque text (`external_task_id`). Do not use a Proxmox-only column type.
+The Proxmox VE integration (PVE-001 to PVE-041) is withdrawn (R-109). Anima manages the operator's own compute resources directly, with the agent (R-084), SSH and the remote access tunnels. It does not manage a hypervisor through the hypervisor's API. The IDs PVE-001 to PVE-041 are not used again. A later version may run virtual machines and containers itself; that function gets its own section when it is specified.
 
 ## 9. Delivery phases
 
@@ -1141,10 +1077,10 @@ A later version can manage libvirt hosts and Docker hosts. Prepare for this now:
 | --- | --- | --- |
 | 1 | Repository structure and quality gates (Sections 12 and 13). VPN setup: Headscale on the VPS, subnet routers, clients (Section 4.2). Design token build (Section 5.5), fonts and icons, motion helpers. Application shell, navigation bar, Nord theme, empty Settings page. Hub with authentication, GraphQL API, PostgreSQL and the three logs. Device list, add and edit device, tags. ICMP, TCP, TLS, HTTP(S), DNS, push and group checks. Maintenance windows. SSH sessions. | macOS, Linux |
 | 2 | RDP and VNC sessions. Web interfaces. Wake-on-LAN. SFTP. Live session list. SSH metrics. More check types. Device detail view with charts. | macOS, Linux |
-| 3 | Web client. Notifications. Prometheus endpoint and API keys. Session sharing and recording. Settings page items. Metrics push agent for macOS and Linux (`anima-agent`), with GPU usage on Apple silicon (R-084). | macOS, Linux, Web |
-| 4 | Proxmox VE integration (Sections 8.1 to 8.4). | macOS, Linux, Web |
-| 5 | iOS client. | All |
-| 6 | Proxmox later functions (Section 8.5). Other hypervisors. Site agents for Wake-on-LAN and local checks. Traffic data (Section 4.3). | All |
+| 3 | Web client. Notifications. Prometheus endpoint and API keys. Session recording. Settings page items. Metrics push agent for macOS and Linux (`anima-agent`), with GPU usage on Apple silicon (R-084). | macOS, Linux, Web |
+| 4 | Withdrawn (R-109). | — |
+| 5 | iOS client. The iOS device as a part-time member of the network (Section 10.1). | All |
+| 6 | Site agents for Wake-on-LAN and local checks. Traffic data (Section 4.3). | All |
 
 ### 9.1 Phase 1 acceptance criteria
 
@@ -1174,6 +1110,17 @@ These constraints apply to Phase 5. Record them now so that the earlier phases d
 - The RDP session needs a software keyboard with special keys, for example Ctrl, Alt, Esc and the function keys.
 - The interface must use the bottom navigation bar from Section 5.3.
 
+### 10.1 The iOS device as a member of the network (R-110)
+
+The iOS client is a full client for other devices. It is also a part-time member of the network: it contributes while the application is open. Nothing may depend on an iOS device being available.
+
+- **IOS-001.** The iOS application must report its own device to the hub as an agent while the application is in the foreground: battery level, charging state, thermal state, free storage and network type. The hub must show the device as Unknown, not Down, when the application is closed. iOS does not give system CPU or memory use.
+- **IOS-002.** The operator must be able to broadcast the screen of the iOS device to the operator's own signed-in Anima clients (ReplayKit broadcast extension), view-only. The operator starts each broadcast. No other person can watch it (R-111). Remote control of an iOS device is not possible.
+- **IOS-003.** The iOS application must keep an offline copy of the hub data in SQLite: devices, checks, recent metrics and the event log. The copy is updated while the application is open, and the client shows it with its age when the hub cannot be reached. The desktop clients may use the same copy.
+- **IOS-004.** The operator may make an iOS device a backup store. While the application is open and on Wi-Fi, the hub sends encrypted, incremental database backups and session recordings to it. The device stores only ciphertext; the key stays with the hub and the operator.
+
+What iOS does not allow, so no phase plans it: control of the device, SSH, VNC or RDP servers, background agents, native or downloaded programs, builds (Xcode needs a Mac), and serving a database to other devices.
+
 ## 11. Open decisions
 
 | Number | Decision | Recommendation |
@@ -1190,6 +1137,7 @@ These constraints apply to Phase 5. Record them now so that the earlier phases d
 | OD-11 | Gateway location | The gateway runs with the hub on the VPS. A session to a device at a site then goes VPS to site. If the latency is too high, a later version can run a gateway at each site (Guacamole supports a gateway for each connection). |
 | OD-12 | Build trigger | Phase 2: the operator starts each release (Section 3.10). A later version can let the hub poll `main` and queue a release for each new commit. |
 | OD-13 | Apple Developer ID | Until the operator has one, macOS builds are ad-hoc signed and do not update themselves (BLD-068). With one, the macOS builder signs and notarizes with keys from its key store. |
+| OD-14 | Compute workers (R-110) | The hub keeps a job queue for compute work. A job is a WebGPU (WGSL) compute shader with WebAssembly, so every client runs it: desktop, web and iOS (WebKit on iOS 26 has WebGPU). An iOS device works only in the foreground and on the charger, and stops when it gets hot. Built-in jobs can use Core ML, for example the transcription and text search of session recordings. Before a phase depends on it: one test job on an iPad and a Mac, compared. Background GPU work on iOS 26 (continued processing tasks) is not verified. |
 | OD-6 | Central log search | Not necessary now. A later version can send the process log to Loki or a similar system. |
 
 ## 12. Code quality (CUPID)
@@ -1308,14 +1256,13 @@ anima/
 │   │   │   ├── devices/       Device inventory, sites, tags
 │   │   │   ├── checks/        Check types, scheduler, heartbeats, watchdog
 │   │   │   ├── maintenance/   Maintenance windows (pure rules + store)
-│   │   │   ├── metrics/       Collection (agent ingest, SSH, GPU, Proxmox), aggregates, retention
-│   │   │   ├── sessions/      Session start, tunnel, history, sharing
+│   │   │   ├── metrics/       Collection (agent ingest, SSH, GPU), aggregates, retention
+│   │   │   ├── sessions/      Session start, tunnel, history
 │   │   │   ├── credentials/   Encryption and storage of credentials
 │   │   │   ├── web_interfaces/ Web interface records and suggestions
 │   │   │   ├── events/        Event log and audit log
 │   │   │   ├── builds/        Release queue, builders, leases, publishing (Section 3.10)
 │   │   │   ├── notifications/ Channels and rules (Phase 3)
-│   │   │   ├── proxmox/       Proxmox VE provider (Phase 4)
 │   │   │   └── traffic/       DNS and flow data (Phase 6)
 │   │   ├── migrations/        sqlx migrations
 │   │   └── tests/it/          Integration tests (CQ-042)
@@ -1382,12 +1329,6 @@ Each hub domain folder has the same shape. Add only the files that the domain ne
 | Uptime Kuma v1 to v2 migration lessons | https://github.com/louislam/uptime-kuma/wiki/Migration-From-v1-To-v2 |
 | Nerd Fonts (OpenDyslexic patched font, icon cheat sheet) | https://www.nerdfonts.com/ and https://github.com/ryanoasis/nerd-fonts/tree/master/patched-fonts/OpenDyslexic |
 | CUPID properties | https://cupid.dev/properties/ |
-| Proxmox VE API viewer | https://pve.proxmox.com/pve-docs/api-viewer/ |
-| Proxmox VE users, roles and tokens | https://pve.proxmox.com/pve-docs/chapter-pveum.html |
-| Proxmox VE roadmap (version changes) | https://pve.proxmox.com/wiki/Roadmap |
 
 Items that are not yet verified:
 
-- If a Proxmox API token can open a console (PVE-032).
-- The exact names of the Proxmox 9.x pressure metric fields (PVE-023).
-- The privileges in the built-in `PVEAuditor` role on Proxmox 9.x.

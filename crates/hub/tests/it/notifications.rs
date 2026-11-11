@@ -1,4 +1,5 @@
-//! Notification channels, settings and per-check choices through the API (NOT-002, NOT-003, NOT-004, SEC-005, CR-14).
+//! Notification channels, settings and per-check choices through the API, and what a heartbeat
+//! queues (NOT-001, NOT-002, NOT-003, NOT-004, SEC-005, CR-14, D-16, R-104).
 
 mod audit;
 mod channels;

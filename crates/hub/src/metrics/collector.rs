@@ -3,13 +3,15 @@
 //! feed (HUB-004, MET-001, MET-002, P2-003, D-2, D-9 to D-11).
 //!
 //! The decisions are pure: `plan` picks the devices, `outputs` turns command output into
-//! samples, `gpus` decides when to look for GPUs and makes their samples (MET-006), `failures`
-//! decides the events. `collection`, `fan_out`, `round` and the GPU reads hold the I/O.
+//! samples, `gpus` decides when to look for GPUs and makes their samples (MET-006),
+//! `os_release` reads a Linux device's distribution (DEV-016), `failures` decides the events.
+//! `collection`, `fan_out`, `round` and the GPU reads hold the I/O.
 
 mod collection;
 mod failures;
 mod fan_out;
 mod gpus;
+mod os_release;
 mod outputs;
 mod plan;
 mod round;

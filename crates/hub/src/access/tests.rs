@@ -114,6 +114,7 @@ impl Mutation {
         "browser signed in"
     }
 
+    /// The share join R-111 withdrew, with a resolver, so only the backstop can refuse it.
     async fn join_share(&self) -> &'static str {
         "joined"
     }
@@ -213,14 +214,32 @@ async fn api_003_backstop_lets_one_login_or_typename_through_without_an_identity
         browser.data,
         value!({ "signInBrowser": "browser signed in" })
     );
-    let share = backstopped().execute("mutation { joinShare }").await;
-    assert_eq!(share.data, value!({ "joinShare": "joined" }));
     let renamed = backstopped().execute("mutation { signIn: login }").await;
     assert_eq!(renamed.data, value!({ "signIn": "signed in" }));
     let typename = backstopped().execute("{ __typename a: __typename }").await;
     assert_eq!(
         typename.data,
         value!({ "__typename": "Query", "a": "Query" })
+    );
+}
+
+/// R-111 withdrew the share join's sign-in exception: signed out, `joinShare` is refused like
+/// any other field, even where a resolver for it exists.
+#[tokio::test]
+async fn api_003_r_111_signed_out_join_share_is_refused_like_any_other_field() {
+    for document in [
+        "mutation { joinShare }",
+        "mutation { joined: joinShare }",
+        "mutation Join { joinShare }",
+    ] {
+        assert_unauthenticated(&backstopped().execute(document).await);
+    }
+    let signed_in =
+        identity(now() + TimeDelta::days(1)).attach(Request::new("mutation { joinShare }"));
+    assert_eq!(
+        backstopped().execute(signed_in).await.data,
+        value!({ "joinShare": "joined" }),
+        "signed in, the field itself still runs: the refusal is the signed-out rule"
     );
 }
 

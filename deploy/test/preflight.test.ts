@@ -68,25 +68,25 @@ describe("preflight docker", () => {
   });
 });
 
+const names = ["postgres_password", "owner_password", "hub_password", "owner_database_url", "hub_database_url", "anima_key", "cloudflare_dns_token", "r2_access_key_id", "r2_secret_access_key"];
+const modeOf = (name: string) => (name === "cloudflare_dns_token" ? 0o400 : 0o440);
+
+function write(folder: string, name: string, content = "x", mode = modeOf(name)): void {
+  rmSync(join(folder, name), { force: true });
+  writeFileSync(join(folder, name), content);
+  chmodSync(join(folder, name), mode);
+}
+
+function withFolder(body: (folder: string) => void): void {
+  const folder = mkdtempSync(join(tmpdir(), "anima-preflight-"));
+  try {
+    body(folder);
+  } finally {
+    rmSync(folder, { recursive: true, force: true });
+  }
+}
+
 describe("preflight secrets", () => {
-  const names = ["postgres_password", "owner_password", "hub_password", "owner_database_url", "hub_database_url", "anima_key", "cloudflare_dns_token"];
-  const modeOf = (name: string) => (name === "cloudflare_dns_token" ? 0o400 : 0o440);
-
-  function write(folder: string, name: string, content = "x", mode = modeOf(name)): void {
-    rmSync(join(folder, name), { force: true });
-    writeFileSync(join(folder, name), content);
-    chmodSync(join(folder, name), mode);
-  }
-
-  function withFolder(body: (folder: string) => void): void {
-    const folder = mkdtempSync(join(tmpdir(), "anima-preflight-"));
-    try {
-      body(folder);
-    } finally {
-      rmSync(folder, { recursive: true, force: true });
-    }
-  }
-
   test("DB-002 accepts a folder with every secret file and names the one that is missing", () => {
     withFolder((folder) => {
       for (const name of names.slice(1)) write(folder, name);
@@ -136,5 +136,28 @@ describe("preflight all", () => {
     });
     expect(result.exitCode).not.toBe(0);
     expect(result.stderr.toString() + result.stdout.toString()).toContain("not a public address");
+  });
+});
+
+describe("preflight R2 token files (R-108)", () => {
+  test.each(["r2_access_key_id", "r2_secret_access_key"])("R-108 names a missing %s and points at the README, not make-secrets", (name) => {
+    withFolder((folder) => {
+      for (const other of names.filter((n) => n !== name)) write(folder, other);
+      const result = preflight("secrets", folder);
+      expect(result.ok).toBe(false);
+      expect(result.message).toContain(name);
+      expect(result.message).toContain("Release publishing");
+    });
+  });
+
+  test.each([0o600, 0o444, 0o400])("R-108 refuses the R2 token file with mode %o and prints no value", (mode) => {
+    withFolder((folder) => {
+      for (const name of names) write(folder, name);
+      write(folder, "r2_secret_access_key", "r2-value-1", mode);
+      const result = preflight("secrets", folder);
+      expect(result.ok).toBe(false);
+      expect(result.message).toContain("mode 0440");
+      expect(result.message).not.toContain("r2-value-1");
+    });
   });
 });

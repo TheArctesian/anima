@@ -54,20 +54,24 @@ async fn socket_answer(addr: SocketAddr, payload: Value) -> Message {
     migrations = "./migrations",
     fixtures(path = "../../fixtures", scripts("devices"))
 )]
-async fn met_013_an_agent_token_is_refused_on_the_websocket(pool: PgPool) {
+async fn met_013_an_agent_token_or_code_is_refused_on_the_websocket(pool: PgPool) {
     let agents = Agents::new(&pool).await;
     let token = agents.token_for(PVE_01).await;
+    let code = agents.code_for(PVE_01).await;
     let clock: Arc<dyn Clock> = agents.clock.clone();
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = listener.local_addr().unwrap();
     let service = app(&pool, clock).into_make_service_with_connect_info::<SocketAddr>();
     let served = tokio::spawn(async move { axum::serve(listener, service).await.unwrap() });
 
-    let refused = socket_answer(addr, json!({ "authorization": format!("Bearer {token}") })).await;
-    let Message::Close(Some(frame)) = refused else {
-        panic!("not closed: {refused:?}");
-    };
-    assert_eq!(u16::from(frame.code), 4403);
+    for bearer in [&token, &code] {
+        let payload = json!({ "authorization": format!("Bearer {bearer}") });
+        let refused = socket_answer(addr, payload).await;
+        let Message::Close(Some(frame)) = refused else {
+            panic!("not closed: {refused:?}");
+        };
+        assert_eq!(u16::from(frame.code), 4403);
+    }
     // The operator's token on the same socket route is accepted.
     let bearer = format!("Bearer {}", agents.operator);
     let accepted = socket_answer(addr, json!({ "authorization": bearer })).await;

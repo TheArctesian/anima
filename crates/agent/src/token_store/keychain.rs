@@ -18,6 +18,10 @@ impl Backend {
         Self
     }
 
+    #[expect(
+        clippy::unused_self,
+        reason = "same signature as the file backend on other systems"
+    )]
     pub fn read(&self) -> Result<Option<Zeroizing<Vec<u8>>>, TokenStoreError> {
         match entry()?.get_password() {
             Ok(text) => Ok(Some(Zeroizing::new(text.into_bytes()))),
@@ -28,6 +32,10 @@ impl Backend {
 
     /// Writes the record. A `fresh` write (enrolment) deletes the item first, so the new item
     /// gets a fresh access list rather than inheriting one a stale program was added to.
+    #[expect(
+        clippy::unused_self,
+        reason = "same signature as the file backend on other systems"
+    )]
     pub fn write(&self, bytes: &[u8], fresh: bool) -> Result<(), TokenStoreError> {
         if fresh {
             match entry()?.delete_credential() {

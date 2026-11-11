@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { runs } from '../motion/engine.fixture';
 import { spring } from '../motion/tokens';
-import { watchHubBanner } from './banner-shift';
+import { shiftShell, watchHubBanner } from './banner-shift';
 
 vi.mock('motion', async (importOriginal) => ({
   ...(await importOriginal<typeof import('motion')>()),
@@ -132,4 +132,20 @@ it('MOT-002: an element that does not change place gets no translate', () => {
   strip.show(false);
   strip.show(true);
   expect(el('still').style.translate).toBe('');
+});
+
+it('NAV-006: when the bar collapses the page glides left to its new edge on spring-default; the bar items stay put', () => {
+  document.body.innerHTML = `<nav data-shifts-with-banner><a id="item">Devices</a></nav><main data-shifts-with-banner><div id="tabs"></div></main>`;
+  const tabs = document.getElementById('tabs') as HTMLElement;
+  const item = document.getElementById('item') as HTMLElement;
+  const edge = () => (document.documentElement.dataset['nav'] === 'icons' ? 84 : 208);
+  tabs.getBoundingClientRect = () => new DOMRect(edge() + (Number.parseFloat(tabs.style.translate) || 0), 0, 100, 40);
+  item.getBoundingClientRect = () => new DOMRect(0, 0, 100, 40);
+  shiftShell(document.documentElement, () => {
+    document.documentElement.dataset['nav'] = 'icons';
+  }, { reduced: false });
+  expect(lifted(tabs)).toBe('124px 0px');
+  expect(item.style.translate).toBe('');
+  expect(runs.at(-1)?.options).toMatchObject({ stiffness: spring.default.stiffness, damping: spring.default.damping });
+  delete document.documentElement.dataset['nav'];
 });

@@ -36,6 +36,10 @@ impl Reply {
 
 /// A request the hub received.
 #[derive(Clone)]
+#[cfg_attr(
+    not(target_os = "linux"),
+    expect(dead_code, reason = "read only by the Linux-only tests")
+)]
 pub struct Seen {
     pub route: &'static str,
     pub bearer: Option<String>,
@@ -78,10 +82,18 @@ impl FakeHub {
         self.script.lock().expect("lock").push.extend(replies);
     }
 
+    #[cfg_attr(
+        not(target_os = "linux"),
+        expect(dead_code, reason = "read only by the Linux-only tests")
+    )]
     pub fn queue_renew(&self, reply: Reply) {
         self.script.lock().expect("lock").renew.push_back(reply);
     }
 
+    #[cfg_attr(
+        not(target_os = "linux"),
+        expect(dead_code, reason = "read only by the Linux-only tests")
+    )]
     pub fn queue_enrol(&self, reply: Reply) {
         self.script.lock().expect("lock").enrol.push_back(reply);
     }

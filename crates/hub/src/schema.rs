@@ -52,7 +52,6 @@ pub struct Mutation(
     retention::graphql::Mutation,
     sessions::graphql::Mutation,
     sessions::FilesMutation,
-    sessions::ShareMutation,
     sessions::WakeMutation,
     trust::graphql::Mutation,
     web_interfaces::graphql::Mutation,
@@ -149,11 +148,13 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
     // devices fields that join metrics (API-005)
     .data(devices::graphql::readings_loader(pool.clone(), clock.clone()).delay(BATCH_WINDOW))
     .data(devices::graphql::gpus_loader(pool.clone()).delay(BATCH_WINDOW))
+    .data(devices::graphql::stale_loader(pool.clone()).delay(BATCH_WINDOW))
     // checks
     .data(checks::graphql::check_status_loader(pool.clone(), clock.clone()).delay(BATCH_WINDOW))
     .data(checks::graphql::last_heartbeat_loader(pool.clone()).delay(BATCH_WINDOW))
     .data(checks::graphql::heartbeats_loader(pool.clone()).delay(BATCH_WINDOW))
     .data(checks::graphql::check_uptime_loader(pool.clone(), clock).delay(BATCH_WINDOW))
+    .data(checks::graphql::check_notifications_loader(pool.clone()).delay(BATCH_WINDOW))
     // notifications
     .data(notifications::graphql::last_delivery_loader(pool.clone()).delay(BATCH_WINDOW))
     // trust: the accepted keys and certificates, and what the connection tests of `live` saw

@@ -14,14 +14,16 @@ mod tests;
 mod text;
 mod warnings;
 
-use sqlx::{PgConnection, PgPool};
+use std::num::NonZeroU8;
+
+use sqlx::{PgConnection, PgExecutor, PgPool};
 
 use crate::api_errors::field_names;
 use crate::ids::{DeviceId, SiteId};
 
 pub use loaders::{DevicesById, DevicesBySite, SitesById};
 pub use mac::{MacAddress, MacAddressError};
-pub use model::{Device, OperatingSystem, Site, SshAuth, SshSettings};
+pub use model::{Device, Distribution, OperatingSystem, Site, SshAuth, SshSettings};
 pub use remote::{
     MetricsSource, RdpSecurity, RdpSettings, ResizeMethod, TransferPolicy, VncSettings,
 };
@@ -70,6 +72,19 @@ pub async fn list(db: &PgPool) -> Result<Vec<Device>, Error> {
     store::all(db).await
 }
 
+/// Records the Linux distribution read from the device (DEV-016). The device keeps its
+/// `updated_at`: the operator did not change it. An equal value writes nothing.
+///
+/// # Errors
+/// `Database` when the write fails. A deleted device is not an error: nothing is written.
+pub async fn record_distribution(
+    db: &PgPool,
+    id: DeviceId,
+    distribution: &Distribution,
+) -> Result<(), Error> {
+    store::set_distribution(db, id, distribution).await
+}
+
 /// Whether the device is in maintenance.
 ///
 /// # Errors
@@ -97,6 +112,19 @@ pub async fn lock(conn: &mut PgConnection, id: DeviceId) -> Result<(), Error> {
     store::lock_device(conn, id).await
 }
 
+/// Locks the device row as [`lock`] does and returns its metrics source as it is now, so the
+/// caller's transaction acts on a source no other transaction can change before it ends
+/// (MET-011, MET-018).
+///
+/// # Errors
+/// `NotFound` when there is no such device.
+pub async fn lock_metrics_source(
+    conn: &mut PgConnection,
+    id: DeviceId,
+) -> Result<MetricsSource, Error> {
+    store::lock_metrics_source(conn, id).await
+}
+
 /// Sets the device's metrics source to `agent` in the caller's transaction, which stops SSH
 /// collection for it, and returns the device's name. Only agent enrolment calls it (MET-011,
 /// R-092 D-7).
@@ -105,4 +133,16 @@ pub async fn lock(conn: &mut PgConnection, id: DeviceId) -> Result<(), Error> {
 /// `NotFound` when there is no such device.
 pub async fn use_agent_metrics(conn: &mut PgConnection, id: DeviceId) -> Result<String, Error> {
     store::set_agent_source(conn, id).await
+}
+
+/// The most live sessions the device allows, `None` for no limit (RA-036). Any executor, so
+/// `sessions` reads it inside the transaction that starts a session.
+///
+/// # Errors
+/// `NotFound` when there is no such device.
+pub async fn session_limit<'e>(
+    db: impl PgExecutor<'e>,
+    id: DeviceId,
+) -> Result<Option<NonZeroU8>, Error> {
+    store::remote::session_limit(db, id).await
 }

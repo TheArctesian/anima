@@ -29,7 +29,7 @@ fn command(source: Source, words: &[&'static str], seconds: u64) -> Command {
 }
 
 #[test]
-fn met_002_linux_runs_six_cat_and_df_commands_in_order() {
+fn met_002_linux_runs_the_cat_and_df_commands_then_reads_os_release_in_order() {
     assert_eq!(
         commands(OperatingSystem::Linux),
         [
@@ -39,8 +39,26 @@ fn met_002_linux_runs_six_cat_and_df_commands_in_order() {
             command(Source::Uptime, &["cat", "/proc/uptime"], 5),
             command(Source::Loadavg, &["cat", "/proc/loadavg"], 5),
             command(Source::DiskBytes, &["df", "-P", "-B1"], 5),
+            command(Source::OsRelease, &["cat", "/etc/os-release"], 5),
         ]
     );
+}
+
+#[test]
+fn dev_016_only_linux_reads_os_release() {
+    let reads = |os| {
+        commands(os)
+            .iter()
+            .any(|command| command.source == Source::OsRelease)
+    };
+    assert!(reads(OperatingSystem::Linux));
+    for os in [
+        OperatingSystem::Macos,
+        OperatingSystem::Windows,
+        OperatingSystem::Other,
+    ] {
+        assert!(!reads(os), "{os:?}");
+    }
 }
 
 #[test]

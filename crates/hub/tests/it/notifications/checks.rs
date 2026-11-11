@@ -1,5 +1,11 @@
-//! `setCheckNotifications`: the channels a check notifies and its resend setting (NOT-003,
-//! NOT-005, D-22, API-005), through the API.
+//! A check's notifications through the API. Here `setCheckNotifications`: the channels a check
+//! notifies and its resend setting (NOT-003, NOT-005, D-22, API-005). Beside it: the
+//! notifications a heartbeat queues, the faults that never lose its beat, and `createCheck` with
+//! `Check.notifications`.
+
+mod check_field;
+mod faults;
+mod heartbeats;
 
 use serde_json::{Value, json};
 use sqlx::PgPool;

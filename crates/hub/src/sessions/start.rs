@@ -1,7 +1,8 @@
-//! Starting a session (K4 §1, K3 `start`): checks the device and the display, wakes it when
-//! it is Down (`waking`), writes the row and its audit entry, and issues the single-use
-//! ticket.
+//! Starting a session (K4 §1, K3 `start`): checks the device and the display, holds the
+//! device to its session limit (`limit`), wakes it when it is Down (`waking`), writes the row
+//! and its audit entry, and issues the single-use ticket.
 
+mod limit;
 mod waking;
 
 use std::{net::IpAddr, sync::Arc};
@@ -185,16 +186,20 @@ fn random_token() -> Result<TicketToken, Error> {
 /// Starts a session (K3, K4 §1): refuses a missing device (`NotFound`), a display outside
 /// K4 §4's bounds or a host that is an IP literal the target rule or the hub's deny list
 /// refuses (`Validation`), and the protocol turned off, an SSH session without an accepted
-/// host key or an RDP session without an accepted server certificate when it needs one
-/// (`Conflict`). A time zone that is not a zone name is dropped, so the tunnel uses UTC.
+/// host key, an RDP session without an accepted server certificate when it needs one, or a
+/// device with as many live sessions as its limit allows (`Conflict`, RA-036). A time zone
+/// that is not a zone name is dropped, so the tunnel uses UTC.
 /// When `req.wake` says the device is asleep, it has a MAC address and its site has a wake
 /// relay, a Wake-on-LAN packet goes first and the ticket holds `wake_sent` when it was sent;
 /// a wake that fails leaves `wake_sent` false and the start goes on. Then, in one
-/// transaction, it writes the live session row and the audit entry `session.start`, and
-/// holds a ticket that the protocol's tunnel redeems once within 30 s from `client`. Tickets
-/// that expired unredeemed are swept first, and a start the ticket table would refuse is
-/// `Unavailable` before any packet is sent. Once the row commits, its start is published on
-/// `live`'s feed of changes (RA-034); a refused or rolled-back start publishes nothing.
+/// transaction, it counts the device's live sessions again under the device's start lock, so
+/// two starts cannot both pass the limit, writes the live session row and the audit entry
+/// `session.start`, and holds a ticket that the protocol's tunnel redeems once within 30 s
+/// from `client`. Tickets that expired unredeemed are swept first. A start the ticket table
+/// would refuse is refused before any packet is sent, and so is one the limit refuses,
+/// unless another start passed the same early count and wins the device's lock. Once the row
+/// commits, its start is published on `live`'s feed of changes (RA-034); a refused or
+/// rolled-back start publishes nothing.
 ///
 /// If the hub shut down while the commit was in flight, `shut_down` took the ticket but could
 /// not yet see the row; the start is then not published, the row ends here with
@@ -223,6 +228,8 @@ pub async fn start(
     if live.is_full() {
         return Err(Error::Unavailable);
     }
+    // Nor for a start the limit refuses; the count that holds is the locked one below.
+    limit::check(&mut *db.acquire().await?, device.id).await?;
     let wake_sent = match &req.wake {
         Some(wake) => waking::sent(db, &device, wake, clock.now()).await?,
         None => false,
@@ -242,6 +249,7 @@ pub async fn start(
         wake_sent,
     };
     let mut tx = db.begin().await?;
+    limit::check_locked(&mut tx, device.id).await?;
     let started = write_start(&mut tx, &device, &pending, now).await?;
     live.issue(token.hash(), pending.clone())
         .map_err(|_| Error::Unavailable)?;

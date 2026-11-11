@@ -207,7 +207,6 @@ fn metrics_source(source: MetricsSource) -> Result<MetricsSource, FieldError> {
     Ok(source)
 }
 
-/// `None` for empty text (no address); otherwise the parsed unicast address (D-6).
 const SESSION_LIMIT_MESSAGE: &str = "Enter a number from 1 to 100, or leave it empty for no limit.";
 
 /// A new device's limit: 1 to 100 (RA-036).
@@ -229,6 +228,7 @@ fn changed_session_limit(limit: i32) -> Result<Option<NonZeroU8>, FieldError> {
     }
 }
 
+/// `None` for empty text (no address); otherwise the parsed unicast address (D-6).
 fn mac_address(text: &str) -> Result<Option<MacAddress>, FieldError> {
     let text = text.trim();
     if text.is_empty() {

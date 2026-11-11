@@ -1,4 +1,4 @@
-import type { Protocol, Status } from '$lib/hub/generated/graphql';
+import type { OperatingSystem, Protocol, Status } from '$lib/hub/generated/graphql';
 
 /** The client's own name for one open tab; a tab outlives the sessions started in it (D-5). */
 export type TabId = string;
@@ -19,6 +19,10 @@ export interface ProtocolTab {
   readonly id: TabId;
   readonly deviceId: string;
   readonly deviceName: string;
+  /** The device's operating system, for its logo on the tab; absent when the opener did not know it. */
+  readonly os?: OperatingSystem;
+  /** The Linux distribution's os-release ID, for its logo on the tab (DEV-016); absent when not known. */
+  readonly distribution?: string;
   readonly protocol: SessionProtocol;
   readonly origin: Origin | null;
   readonly sessionId: string | null;
@@ -40,6 +44,10 @@ export interface WebPageTab {
   readonly id: TabId;
   readonly deviceId: string;
   readonly deviceName: string;
+  /** The device's operating system, for its logo on the tab; absent when the opener did not know it. */
+  readonly os?: OperatingSystem;
+  /** The Linux distribution's os-release ID, for its logo on the tab (DEV-016); absent when not known. */
+  readonly distribution?: string;
   readonly protocol: 'WEB';
   readonly origin: Origin | null;
   readonly sessionId: null;

@@ -75,18 +75,17 @@ pub(in crate::access) async fn finish_attempt(
 /// Times of the checked failures from `client` that can still throttle an attempt at `at`,
 /// those in `(at - LOOKBACK, at]`, oldest first, leaving out `except`: the caller's own
 /// attempt, already recorded as failed. Reads `client` in canonical form, as `start_attempt`
-/// stores it (D-11). Sign-in and `joinShare` both read through here, so they share one rule
-/// (D-8, CR-16).
+/// stores it (D-11).
 pub(in crate::access) async fn failures(
     db: impl PgExecutor<'_>,
     client: IpAddr,
     at: DateTime<Utc>,
-    except: Option<Uuid>,
+    except: Uuid,
 ) -> Result<Vec<DateTime<Utc>>, sqlx::Error> {
     sqlx::query_scalar(
         "select at from access.login_attempts \
          where client_addr = $1 and not ok and not refused and at > $2 and at <= $3 \
-         and ($4::uuid is null or id <> $4) order by at",
+         and id <> $4 order by at",
     )
     .bind(client.to_canonical())
     .bind(at - LOOKBACK)

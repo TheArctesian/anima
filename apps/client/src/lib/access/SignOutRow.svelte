@@ -2,8 +2,10 @@
   import { tick } from 'svelte';
   import { useHub } from '$lib/hub/context';
   import { clearAccessToken } from '$lib/desktop/token';
+  import Icon from '$lib/icons/Icon.svelte';
   import { press } from '$lib/motion/roles/press';
   import { capabilities } from '$lib/platform/platform';
+  import SettingRow from '$lib/settings/SettingRow.svelte';
   import { accessApi } from './api';
   import { signInNeeded } from './guard';
   import { goToSignIn, loadClientAt } from './navigation';
@@ -52,36 +54,31 @@
   }
 </script>
 
-<div class="row">
-  <!-- Always rendered with two lines reserved (the label, then the name on its own line), so the button does not move when the name arrives, however narrow the column is (MOT-007). -->
-  <p class="who" class:pending={username === null}>Signed in as <strong>{username ?? ''}</strong></p>
+<SettingRow>
+  {#snippet label()}
+    <!-- Always rendered, with its line reserved, so nothing moves when the name arrives (MOT-007); a long name is cut. -->
+    <p class="who" class:pending={username === null}>Signed in as <strong>{username ?? ''}</strong></p>
+  {/snippet}
   <!-- tabindex="0": WebKit skips plain buttons when Tab is pressed unless they are focusable, as for the nav links (NAV-005, WP-11 H-6). -->
-  <button type="button" tabindex="0" disabled={busy} onclick={leave} bind:this={button} {@attach press()}>Sign out</button>
-  <!-- Always rendered and empty when idle: lines are reserved, so a message moves nothing below the row (MOT-007), and a
-       live region that is already there is announced more reliably than one that appears filled. -->
-  <p role="alert">{problem ?? ''}</p>
-</div>
+  <button type="button" tabindex="0" disabled={busy} onclick={leave} bind:this={button} {@attach press()}>
+    <Icon name="nf-md-logout" size="sm" />Sign out
+  </button>
+  {#snippet message()}
+    <!-- Always rendered and empty when idle: a live region that is already there is announced more reliably than one
+         that appears filled, and its line is kept (MOT-007). -->
+    <p role="alert">{problem ?? ''}</p>
+  {/snippet}
+</SettingRow>
 
 <style>
-  .row {
-    display: flex;
-    flex-direction: column;
-    align-items: start;
-    gap: var(--space-2);
-    margin-block-start: var(--space-6);
-  }
-
-  p {
-    margin: 0;
-    font-size: var(--text-md);
-  }
-
-  /* Two lines are reserved; the name never wraps, it is cut with an ellipsis, so its arrival cannot change the height (MOT-007). */
+  /* One line, reserved; the name never wraps, it is cut with an ellipsis, so its arrival cannot change the height (MOT-007). */
   .who {
-    min-block-size: calc(var(--text-md) * var(--leading-tight) * 2);
-    max-inline-size: 100%;
+    margin: 0;
+    min-block-size: calc(var(--text-md) * var(--leading-tight));
     overflow: hidden;
+    font-size: var(--text-md);
     line-height: var(--leading-tight);
+    text-overflow: ellipsis;
     white-space: nowrap;
   }
 
@@ -89,13 +86,10 @@
     visibility: hidden;
   }
 
-  .who strong {
-    display: block;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
   button {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
     box-sizing: border-box;
     block-size: var(--space-8);
     padding: 0 var(--space-4);
@@ -104,13 +98,15 @@
     background: var(--surface);
     color: var(--text);
     font: inherit;
+    font-size: var(--text-md);
+    white-space: nowrap;
     transition:
       background-color var(--duration-fast) var(--ease-enter),
       opacity var(--duration-fast) var(--ease-enter);
   }
 
   button:hover:enabled {
-    background: var(--surface-raised);
+    background: var(--surface-hover);
   }
 
   /* While the hub answers, the button shows it is off (opacity only, so nothing moves). */
@@ -122,19 +118,5 @@
   button:focus-visible {
     outline: var(--border-focus) solid var(--accent);
     outline-offset: var(--border-focus);
-  }
-
-  /* --status-down text is 3.05:1 on the page (MAT-005 needs 4.5:1): the text stays --text and a bar marks the error.
-     Four lines are reserved: the longest message takes four in Chromium at a 390 px window (MOT-007, MV-005). The bar
-     shows only with a message. */
-  [role='alert'] {
-    min-block-size: calc(4 * var(--text-md) * var(--leading-tight));
-    padding-inline-start: var(--space-2);
-    border-inline-start: var(--border-focus) solid transparent;
-    line-height: var(--leading-tight);
-  }
-
-  [role='alert']:not(:empty) {
-    border-inline-start-color: var(--status-down);
   }
 </style>

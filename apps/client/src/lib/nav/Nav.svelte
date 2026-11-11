@@ -2,6 +2,8 @@
   import { asset, resolve } from '$app/paths';
   import { useHub } from '$lib/hub/context';
   import Icon from '$lib/icons/Icon.svelte';
+  import CollapseToggle from './collapse/CollapseToggle.svelte';
+  import ResizeEdge from './collapse/ResizeEdge.svelte';
   import LiveSessions from '$lib/sessions/live/LiveSessions.svelte';
   import { press } from '$lib/motion/roles/press';
   import { fade } from '$lib/motion/roles/transitions';
@@ -17,9 +19,17 @@
     onnavigate?: () => void;
     /** The bar shows icons only, so each item needs its words as a tooltip (UI-015). */
     iconOnly?: boolean;
+    /** The operator collapsed the bar to icons. */
+    collapsed?: boolean;
+    /** The operator may collapse or expand the bar; below the compact breakpoint it stays icons only. */
+    canCollapse?: boolean;
+    ontogglecollapse?: () => void;
+    /** Called when the operator drags the bar's edge or uses its arrow keys, with the state it should rest in (5.7.4). */
+    oncollapse?: (collapsed: boolean) => void;
   }
 
-  const { pathname, now, onnavigate, iconOnly = false }: Props = $props();
+  const { pathname, now, onnavigate, iconOnly = false, collapsed = false, canCollapse = false, ontogglecollapse, oncollapse }: Props =
+    $props();
   const hub = useHub();
   const connected = $derived(hub.status.current.connection === 'connected');
   const banner = $derived(unreachableBanner(hub.status.current, hub.address.origin, now));
@@ -48,7 +58,13 @@
   </a>
 {/snippet}
 
-<nav aria-label="Main" data-shifts-with-banner>
+<nav id="main-nav" aria-label="Main" data-shifts-with-banner>
+  <!-- The top row holds the window buttons on a Mac, and moves the window there (data-tauri-drag-region). -->
+  <div class="bar" data-tauri-drag-region>
+    {#if canCollapse && ontogglecollapse}
+      <CollapseToggle {collapsed} ontoggle={ontogglecollapse} />
+    {/if}
+  </div>
   <div class="brand">
     <img src={asset('/logo.png')} alt="" width="48" height="48" />
     <span class="words">Anima</span>
@@ -72,6 +88,9 @@
     <span class="dot" class:connected aria-hidden="true"></span><span class="words">{statusLabel(hub.status.current)}</span>
   </p>
   {@render destination(SETTINGS)}
+  {#if canCollapse && oncollapse}
+    <ResizeEdge {collapsed} onsettle={oncollapse} />
+  {/if}
 </nav>
 
 <style>
@@ -90,6 +109,26 @@
     backdrop-filter: blur(var(--material-chrome-blur)) saturate(var(--material-chrome-saturate));
     border-right: var(--border-thin) solid var(--border);
     z-index: var(--layer-nav);
+  }
+
+  .bar {
+    display: flex;
+    flex: none;
+    align-items: center;
+    block-size: var(--target-min-touch);
+  }
+
+  /* On a Mac the window buttons sit at the start of the row; the toggle follows them in both widths. */
+  :global(:root[data-titlebar='overlay']) nav {
+    padding-block-start: var(--space-1);
+  }
+
+  :global(:root[data-titlebar='overlay']) .bar {
+    padding-inline-start: var(--titlebar-buttons-inline-size);
+  }
+
+  :global(:root:not([data-titlebar='overlay'])[data-nav='icons']) .bar {
+    justify-content: center;
   }
 
   .item {

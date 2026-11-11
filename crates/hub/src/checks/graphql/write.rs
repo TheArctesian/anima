@@ -1,5 +1,6 @@
 //! The four check mutations. Each writes its change, one audit entry and one event in one
-//! transaction: if any step fails, nothing is stored (API-003, LOG-005, CHK-005).
+//! transaction: if any step fails, nothing is stored (API-003, LOG-005, CHK-005). A new check
+//! takes the default notification channels in the same transaction (NOT-003).
 
 use std::collections::HashMap;
 
@@ -19,6 +20,7 @@ use crate::{
     devices,
     events::Trail,
     ids::{CheckId, DeviceId},
+    notifications,
 };
 
 /// The device a new check goes on; a missing one is the operator's `deviceId` error.
@@ -114,6 +116,10 @@ pub(super) async fn create(ctx: &Context<'_>, input: CreateShape) -> Result<Chec
     let check = checks::create_check(&mut tx, vault, form.new)
         .await
         .map_err(to_graphql)?;
+    // A new check notifies the channels marked "on by default" (NOT-003).
+    notifications::adopt_defaults(&mut tx, check.id)
+        .await
+        .map_err(internal)?;
     if let Some(children) = &form.children {
         regroup(&mut tx, vault, check.id, (&[], children)).await?;
     }

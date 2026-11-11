@@ -148,6 +148,38 @@ declare namespace Guacamole {
   }
 
   /**
+   * A recorded session played on a client and display of its own (RA-041). 1.5.5 also takes a `Tunnel`; Anima
+   * passes a Blob of the whole received text. Parsing starts in the constructor: the Blob is read as text in 256 KiB
+   * blocks, a frame ends at each `sync`, and `onprogress` hears each frame. A frame is found again by the sum of its
+   * elements' UTF-16 lengths and sliced from the Blob by bytes, so the text must be ASCII. Times are milliseconds
+   * from the first frame. `seek` jumps to the frame at `position`, or to one next to it (a binary search, not
+   * always the one before it), and calls `callback` when it is done or `cancel` ends it; `play` and `pause` drop a
+   * seek in progress without calling it, and with no frame at all `seek` returns at once and never calls it. A
+   * parse error calls `onerror` with the parser's message and stops reading.
+   */
+  class SessionRecording {
+    constructor(source: Blob);
+    getDisplay(): Display;
+    isPlaying(): boolean;
+    getPosition(): number;
+    getDuration(): number;
+    play(): void;
+    pause(): void;
+    seek(position: number, callback?: () => void): void;
+    /** Ends a seek in progress where it is and calls its callback (which restarts play if it was playing). */
+    cancel(): void;
+    /** Stops reading the Blob; frames already read still play. */
+    abort(): void;
+    onload: (() => void) | null;
+    onerror: ((message: string) => void) | null;
+    onprogress: ((duration: number, parsedSize: number) => void) | null;
+    onplay: (() => void) | null;
+    onpause: (() => void) | null;
+    /** Hears each frame a seek or play replays: its position, and how far the seek is, in frames. */
+    onseek: ((position: number, current: number, total: number) => void) | null;
+  }
+
+  /**
    * Keyboard input from `element` (or `listenTo` targets). 1.5.0 has no way to remove its DOM listeners:
    * unbinding means setting `onkeydown` and `onkeyup` to null, which makes the listeners ignore every event.
    */

@@ -282,3 +282,31 @@ pub async fn allow_event_writes(pool: &PgPool) {
         .await
         .unwrap();
 }
+
+/// Selects a new channel for `check`.
+pub async fn notify_on(pool: &PgPool, check: CheckId) {
+    let channel = uuid::Uuid::now_v7();
+    sqlx::query("INSERT INTO notifications.channels (id, name, kind) VALUES ($1, $2, 'webhook')")
+        .bind(channel)
+        .bind(format!("Ops {channel}"))
+        .execute(pool)
+        .await
+        .unwrap();
+    sqlx::query("INSERT INTO notifications.check_channels (check_id, channel_id) VALUES ($1, $2)")
+        .bind(check)
+        .bind(channel)
+        .execute(pool)
+        .await
+        .unwrap();
+}
+
+/// The kinds queued for `check`, oldest first.
+pub async fn queued(pool: &PgPool, check: CheckId) -> Vec<String> {
+    sqlx::query_scalar(
+        "SELECT kind FROM notifications.outbox WHERE check_id = $1 ORDER BY created_at, id",
+    )
+    .bind(check)
+    .fetch_all(pool)
+    .await
+    .unwrap()
+}

@@ -12,6 +12,7 @@ export function device(id: string, over: Partial<CardDevice> = {}): CardDevice {
     host: `${id}.lan`,
     ip: null,
     os: 'OTHER',
+    distribution: null,
     tags: [],
     maintenance: false,
     status: 'UP',

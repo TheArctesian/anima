@@ -116,3 +116,42 @@ fn met_014_a_batch_the_agent_makes_is_one_the_hub_takes_back_unchanged() {
     let read: Batch = serde_json::from_value(body).unwrap();
     assert_eq!(read.check(device(), now()).unwrap().points, points);
 }
+
+/// What the hub takes of one GPU column of `kind` whose mean is `value`, or its refusal.
+fn taken_gpu_value(kind: &str, value: f64) -> Result<Option<f64>, RefusalCode> {
+    let mut batch = example();
+    batch.series = vec![crate::wire::BatchSeries {
+        kind: kind.to_owned(),
+        label: None,
+        gpu: Some(0),
+    }];
+    batch.points.truncate(1);
+    batch.points[0].mean = vec![Some(value)];
+    batch.points[0].max = None;
+    let accepted = batch.check(device(), now())?;
+    let point = accepted.points.first().unwrap();
+    Ok(point.values().values().next().map(|summary| summary.mean))
+}
+
+#[test]
+fn cr_17_a_pushed_gpu_temperature_or_power_past_its_ceiling_is_malformed() {
+    for (kind, ceiling) in [("gpu_temperature_c", 1000.0), ("gpu_power_w", 10_000.0)] {
+        assert_eq!(taken_gpu_value(kind, ceiling), Ok(Some(ceiling)), "{kind}");
+        let above = f64::from_bits(f64::to_bits(ceiling) + 1);
+        assert_eq!(
+            taken_gpu_value(kind, above),
+            Err(RefusalCode::Malformed),
+            "{kind}"
+        );
+        assert_eq!(
+            taken_gpu_value(kind, 1.7e308),
+            Err(RefusalCode::Malformed),
+            "{kind}"
+        );
+    }
+    assert_eq!(
+        taken_gpu_value("vram_bytes", 1.7e308),
+        Ok(Some(1.7e308)),
+        "VRAM bytes have no ceiling"
+    );
+}

@@ -17,7 +17,7 @@ RUN bun install --frozen-lockfile --filter @anima/client
 COPY apps/client ./apps/client
 RUN bun run --cwd apps/client build
 
-FROM rust:1.93-bookworm AS build
+FROM rust:1.99.1-bookworm AS build
 WORKDIR /src
 COPY Cargo.toml Cargo.lock ./
 COPY crates ./crates

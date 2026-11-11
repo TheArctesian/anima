@@ -1,13 +1,15 @@
 import type { DeviceDetail } from '$lib/devices/api';
 import { offersScreenSharing } from '$lib/devices/screen-sharing/setup';
+import { osIcon, osLabel } from '$lib/devices/os/os';
 import type { OperatingSystem } from '$lib/hub/generated/graphql';
+import type { IconName } from '$lib/icons/icons';
 import type { SessionProtocol } from '$lib/sessions/tabs';
 import type { SettingsSection } from '../tabs/tabs';
 
 /** What the header line reads from a device (DEV-020). */
 export type HeaderDevice = Pick<
   DeviceDetail,
-  'id' | 'name' | 'status' | 'host' | 'ip' | 'kind' | 'os' | 'tags' | 'accessWarnings' | 'webInterfaces'
+  'id' | 'name' | 'status' | 'host' | 'ip' | 'kind' | 'os' | 'distribution' | 'tags' | 'accessWarnings' | 'webInterfaces'
 > & {
   readonly ssh: Pick<DeviceDetail['ssh'], 'enabled' | 'hostKey'>;
   readonly rdp: Pick<DeviceDetail['rdp'], 'enabled'>;
@@ -41,9 +43,12 @@ export function protocolButton(
 }
 
 export interface HeaderLine {
+  /** The details row: each item is a chip with its icon, its full text and the same text as its tooltip (DEV-021). */
   readonly items: readonly HeaderText[];
-  /** The whole group as one text, for its tooltip (DEV-021). */
-  readonly title: string;
+  /** The kind's icon, on the kind chip (UI-003: the kind is also said in words there). */
+  readonly kindIcon: IconName;
+  /** The operating system's logo, before the name and on the OS chip (UI-003: the OS is said in words on the chip). */
+  readonly osIcon: IconName;
   readonly ssh: SshAction;
   /** RDP connects when on and opens Settings at RDP when off (DEV-022). */
   readonly rdp: 'connect' | 'set-up';
@@ -52,13 +57,6 @@ export interface HeaderLine {
   /** "Set up screen sharing" takes the VNC slot for a macOS or Linux device with VNC off (R-079). */
   readonly screenSharing: boolean;
 }
-
-const OS_LABELS: Record<OperatingSystem, string> = {
-  LINUX: 'Linux',
-  MACOS: 'macOS',
-  WINDOWS: 'Windows',
-  OTHER: 'Other OS',
-};
 
 function sshAction(ssh: HeaderDevice['ssh']): SshAction {
   if (!ssh.enabled) return 'set-up';
@@ -72,15 +70,54 @@ export function headerLine(device: HeaderDevice): HeaderLine {
     { part: 'host', text: device.host },
     ...(ip !== '' && ip !== device.host ? [{ part: 'ip' as const, text: ip }] : []),
     { part: 'kind', text: device.kind },
-    { part: 'os', text: OS_LABELS[device.os] },
+    { part: 'os', text: osLabel(device.os, device.distribution) },
     ...device.tags.map((tag) => ({ part: 'tag' as const, text: tag })),
   ];
   return {
     items,
-    title: items.map((item) => item.text).join(' · '),
+    kindIcon: kindIcon(device.kind, device.os),
+    osIcon: osIcon(device.os, device.distribution),
     ssh: sshAction(device.ssh),
     rdp: device.rdp.enabled ? 'connect' : 'set-up',
     vnc: device.vnc.enabled,
     screenSharing: offersScreenSharing(device),
   };
+}
+
+/** Words in a kind, first match wins: the operator types the kind freely, so it is matched by the words it holds. */
+const KIND_ICONS: readonly (readonly [RegExp, IconName])[] = [
+  [/laptop|notebook|macbook/, 'nf-md-laptop'],
+  [/phone|mobile|tablet|ipad/, 'nf-md-cellphone'],
+  [/\bnas\b|storage|file ?server/, 'nf-md-nas'],
+  [/router|switch|access ?point|firewall|gateway|\bap\b/, 'nf-md-router_wireless'],
+  [/monitor|display|screen|\btv\b|kiosk/, 'nf-md-monitor'],
+  [/workstation|desktop|\bpc\b|tower/, 'nf-md-desktop_tower'],
+  [/server|\bvm\b|virtual/, 'nf-md-server'],
+];
+
+/** The icon for a device's kind; a kind with no known word is a desktop for macOS and Windows and a server otherwise. */
+export function kindIcon(kind: string, os: OperatingSystem): IconName {
+  const words = kind.toLowerCase();
+  const found = KIND_ICONS.find(([pattern]) => pattern.test(words));
+  if (found !== undefined) return found[1];
+  return os === 'MACOS' || os === 'WINDOWS' ? 'nf-md-desktop_tower' : 'nf-md-server';
+}
+
+/** An IPv4 or IPv6 address, as opposed to a host name. */
+const ADDRESS = /^(\d{1,3}(\.\d{1,3}){3}|[\da-f:]*:[\da-f:.]*)$/i;
+
+/** The icon of one details chip: an address, a host name, the kind, the operating system's logo or a tag. */
+export function itemIcon(item: HeaderText, kind: IconName, os: IconName): IconName {
+  switch (item.part) {
+    case 'host':
+      return ADDRESS.test(item.text) ? 'nf-md-ip_network' : 'nf-md-dns';
+    case 'ip':
+      return 'nf-md-ip_network';
+    case 'kind':
+      return kind;
+    case 'os':
+      return os;
+    case 'tag':
+      return 'nf-md-tag';
+  }
 }

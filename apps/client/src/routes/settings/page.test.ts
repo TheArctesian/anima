@@ -78,29 +78,37 @@ it('SET-001: the nav link to Settings is /settings and the page renders the h1 "
   expect(target.querySelector('h1')?.textContent).toBe(SETTINGS.label);
 });
 
-/** Each section's heading, from the `aria-labelledby` that names it, so a section without its heading fails. */
+/** The page's sections, each named by its heading through `aria-labelledby`. */
+function sections(target: HTMLElement): HTMLElement[] {
+  return [...target.querySelectorAll<HTMLElement>('section[aria-labelledby]')];
+}
+
+/** Each section's name, from the heading its `aria-labelledby` points at, so a section without its heading fails. */
 function sectionHeadings(target: HTMLElement): string[] {
-  return [...target.querySelectorAll(':scope > section')].map((section) => {
-    const id = section.getAttribute('aria-labelledby') ?? '';
-    const heading = section.querySelector(`:scope > h2[id="${id}"]`);
-    return heading === section.firstElementChild ? (heading?.textContent ?? '') : '';
-  });
+  return sections(target).map((section) => section.querySelector(`h2[id="${section.getAttribute('aria-labelledby') ?? ''}"]`)?.textContent ?? '');
+}
+
+/** The text a person reads in an element: decorative icons (aria-hidden) are left out. */
+function readable(element: Element): string {
+  const copy = element.cloneNode(true) as Element;
+  for (const hidden of copy.querySelectorAll('[aria-hidden="true"]')) hidden.remove();
+  return copy.textContent.trim();
 }
 
 function sectionTexts(target: HTMLElement, heading: string): string[] {
-  const section = [...target.querySelectorAll(':scope > section')].find((each) => each.querySelector('h2')?.textContent === heading);
+  const section = sections(target).find((each) => each.querySelector('h2')?.textContent === heading);
   if (section === undefined) throw new Error(`no ${heading} section`);
-  return [...section.querySelectorAll('h2, p, button, span, option')].map((element) => element.textContent.trim());
+  return [...section.querySelectorAll('h2, p, label, button, option')].map(readable);
 }
 
 it('SET-001, UI-005, MOT-043: the page is the title, then Account, then Appearance with Theme, Reduce motion and the two fonts, then Notifications, then Default check settings, then Data retention, then API keys', async () => {
   const target = await open({ Me: ok({ me: { username: 'ann' } }) });
-  expect(target.firstElementChild?.tagName).toBe('H1');
+  expect(target.querySelector('h1')?.compareDocumentPosition(sections(target)[0] as Node)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   expect(sectionHeadings(target)).toEqual(['Account', 'Appearance', 'Notifications', 'Default check settings', 'Data retention', 'API keys']);
-  expect(sectionTexts(target, 'Account')).toEqual(['Account', 'Signed in as ann', 'Sign out', '']);
+  expect(sectionTexts(target, 'Account')).toEqual(['Account', 'Who is signed in to this hub.', 'Signed in as ann', 'Sign out', '']);
   const fonts = ['Fira Code', 'OpenDyslexic'];
   expect(sectionTexts(target, 'Appearance')).toEqual([
-    'Appearance', 'Theme', 'Dark', 'Light', 'System', 'Reduce motion', 'System', 'On', 'Off',
+    'Appearance', 'How Anima looks on this device.', 'Theme', 'Dark', 'Light', 'System', 'Reduce motion', 'System', 'On', 'Off',
     'Interface font', ...fonts, 'Monospace font', ...fonts,
   ]);
   expect(target.querySelectorAll('[role="switch"], img, input, textarea, a, [tabindex]:not(button)')).toHaveLength(0);
@@ -143,7 +151,7 @@ it('NET-004: an unreachable hub does not go to sign-in, shows a fixed message an
   const target = await open({ Me: failure('unreachable', 'secret hub text') });
   expect(mocks.goToSignIn).not.toHaveBeenCalled();
   expect(target.querySelector('[role="alert"]')?.textContent).toBe('Anima could not read who is signed in.');
-  expect(signOutButton(target).textContent).toBe('Sign out');
+  expect(readable(signOutButton(target))).toBe('Sign out');
 });
 
 it('LOG-007: nothing is written to the console while signing out', async () => {
@@ -172,22 +180,23 @@ it('SET-002: Sign out disables the button while the hub answers, so a second cli
   expect(mocks.goToSignIn).toHaveBeenCalledOnce();
 });
 
-it('MOT-007: the Sign out button has the same place before and after the name arrives', async () => {
+it('MOT-007: the name, the Sign out button and the alert line are laid out before the name arrives, and stay', async () => {
   let release: (result: ReturnType<typeof ok>) => void = () => undefined;
   const pending = new Promise<ReturnType<typeof ok>>((resolve) => {
     release = resolve;
   });
   const target = await open({ Me: pending });
-  const who = () => target.querySelector('section[aria-labelledby="settings-account"] p.who');
-  const row = () => [...(who()?.parentElement?.children ?? [])].map((element) => element.tagName);
-  const before = row();
-  expect(before).toEqual(['P', 'BUTTON', 'P']);
-  // The two lines are there before the name is: the label is laid out but hidden, and the name's line is empty.
+  const account = () => target.querySelector('section[aria-labelledby="settings-account"]');
+  const who = () => account()?.querySelector('p.who');
+  const before = [who(), signOutButton(target), account()?.querySelector('[role="alert"]')];
+  expect(before.every((element) => element !== null && element !== undefined)).toBe(true);
+  // The line is there before the name is: laid out but hidden, with an empty name.
   expect(who()?.classList.contains('pending')).toBe(true);
   expect(who()?.querySelector('strong')?.textContent).toBe('');
   release(ok({ me: { username: 'ann' } }));
   await settled();
-  expect(row()).toEqual(before);
+  const after = [who(), signOutButton(target), account()?.querySelector('[role="alert"]')];
+  expect(after.every((element, index) => element === before[index])).toBe(true);
   expect(who()?.classList.contains('pending')).toBe(false);
 });
 
@@ -214,7 +223,7 @@ it('CLI-002, F-10: desktop shows Hub after Account and before Appearance, with t
   const target = await open({ Me: ok({ me: { username: 'ann' } }) });
   const headings = sectionHeadings(target);
   expect(headings.slice(0, 3)).toEqual(['Account', 'Hub', 'Appearance']);
-  expect(sectionTexts(target, 'Hub')).toEqual(['Hub', `Hub address${hub.hub.address.origin}`, 'Test connection', 'Change hub', '']);
+  expect(sectionTexts(target, 'Hub')).toEqual(['Hub', 'The hub this app talks to.', `Hub address${hub.hub.address.origin}`, 'Test connection', 'Change hub', '']);
   expect(hubStatus(target)?.textContent).toBe('');
 });
 

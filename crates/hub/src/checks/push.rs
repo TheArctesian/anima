@@ -192,6 +192,7 @@ async fn store_beat(
         in_maintenance,
         at: now,
         domain: None,
+        device: &device,
     };
     let mut tx = db.begin().await?;
     let beat = store::record_attempt(&mut tx, check.id, &attempt).await?;

@@ -1,7 +1,8 @@
 //! One device's collection: a link opened for it, its fixed commands run, then its GPU reads,
-//! a new discovery and the samples stored and published, the link dropped (MET-001, MET-002,
-//! MET-006, P2-003, D-11). I/O edge; nothing here logs, and no failure holds a host, an
-//! address, command output or a secret (LOG-007).
+//! a new discovery and the samples stored and published, the Linux distribution recorded, the
+//! link dropped (MET-001, MET-002, MET-006, DEV-016, P2-003, D-11). I/O edge; it logs only a
+//! distribution it cannot store, and no failure or log line holds a host, an address, command
+//! output or a secret (LOG-007).
 
 use std::sync::Arc;
 
@@ -14,12 +15,14 @@ use super::{
     gpus::{self, Discovered, GpuRound, Plan},
     outputs::{self, Parts, Previous},
 };
+use sqlx::PgPool;
+
 use crate::{
-    devices::Device,
+    devices::{self, Device, Distribution},
     ids::DeviceId,
     metrics::{
         self, Gpu, MetricSample, MetricsAdded, Reading, Readings, Sample,
-        commands::{Command, commands},
+        commands::{Command, Source, commands},
         record_collection,
         store::{self, Discovery},
     },
@@ -86,7 +89,7 @@ async fn collect_at(
     at: DateTime<Utc>,
 ) -> Result<Kept, Failure> {
     let (previous, known) = kept.map_or((None, None), |kept| (Some(kept.previous), kept.gpus));
-    let (reading, gpus) = within_deadline(read(ctx, device, known, at)).await?;
+    let (reading, distribution, gpus) = within_deadline(read(ctx, device, known, at)).await?;
     if gpus.discovered_now
         && let Some(found) = &gpus.known
     {
@@ -98,6 +101,7 @@ async fn collect_at(
     if !samples.is_empty() {
         publish(ctx, device.id, at, &samples).await?;
     }
+    record_distribution(&ctx.db, device, distribution).await;
     Ok(Kept {
         previous: Previous { at, reading },
         gpus: gpus.known,
@@ -120,6 +124,24 @@ async fn store_discovery(
     Ok(())
 }
 
+/// Stores the distribution the device named when it differs from the one listed this round.
+/// No distribution read leaves the stored one. A failed write leaves it too and does not fail
+/// the collection; it is logged with the device id and the error's fixed text (DEV-016,
+/// LOG-007).
+async fn record_distribution(db: &PgPool, device: &Device, read: Option<Distribution>) {
+    let Some(read) = read.filter(|read| device.distribution.as_ref() != Some(read)) else {
+        return;
+    };
+    if let Err(error) = devices::record_distribution(db, device.id, &read).await {
+        tracing::warn!(
+            domain = "metrics",
+            device_id = %device.id,
+            %error,
+            "the device's distribution cannot be stored"
+        );
+    }
+}
+
 /// The result of `work`, a device's link and commands, or [`Failure::Deadline`] when it takes
 /// longer than [`DEADLINE`]; dropping it then drops its link (D-11).
 pub(super) async fn within_deadline<T>(
@@ -132,13 +154,15 @@ pub(super) async fn within_deadline<T>(
 /// Opens a link to `device`, runs its commands in order, each within its limit, reads each
 /// output into the reading and drops its bytes before the next command (D-11), then runs the
 /// GPU reads its plan asks for until the context's GPU window after the start, then drops the
-/// link. The first link error of the commands ends the collection; a GPU read never does.
+/// link. The first link error of the commands ends the collection, except on `/etc/os-release`:
+/// the distribution is not a metric, so its read failing leaves only it out (DEV-016). A GPU
+/// read never ends it.
 async fn read(
     ctx: &Context,
     device: &Device,
     known: Option<Discovered>,
     at: DateTime<Utc>,
-) -> Result<(Reading, GpuRound), LinkError> {
+) -> Result<(Reading, Option<Distribution>, GpuRound), LinkError> {
     let gpu_until = Instant::now() + ctx.gpu_window;
     let Context { db, collecting, .. } = ctx;
     let mut link = ssh::link(db, &collecting.vault, &collecting.policy, device, at).await?;
@@ -149,13 +173,17 @@ async fn read(
         limit,
     } in commands(device.os)
     {
-        let output = link.run(&fixed, limit).await?;
-        parts.add(source, &output);
+        match link.run(&fixed, limit).await {
+            Ok(output) => parts.add(source, &output),
+            Err(_) if source == Source::OsRelease => {}
+            Err(error) => return Err(error),
+        }
     }
+    let distribution = parts.take_distribution();
     let reading = parts.reading(at);
     let plan = Plan::new(device.os, known, &reading, at);
     let answers = gpus::ask(&mut link, plan.commands(), gpu_until).await;
-    Ok((reading, plan.finish(&answers)))
+    Ok((reading, distribution, plan.finish(&answers)))
 }
 
 /// Publishes what the collection added with the device's readings as stored, so the feed and

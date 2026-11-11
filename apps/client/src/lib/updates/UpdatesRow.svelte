@@ -1,5 +1,6 @@
 <script lang="ts">
   import { press } from '$lib/motion/roles/press';
+  import SettingRow from '$lib/settings/SettingRow.svelte';
   import { describeUpdate, canCheck } from './status';
   import { useUpdates } from './updates.svelte';
 
@@ -14,27 +15,23 @@
   const time = (at: Date): string => at.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 </script>
 
-<section aria-label="Updates">
-  <!-- Both lines are always rendered with their height reserved, so the button does not move when they fill (MOT-007). -->
-  <p class="version">
-    {#if updates.current !== null}Anima <strong>{updates.current}</strong>{/if}
-  </p>
-  <p class="state" aria-live="polite">{describeUpdate(snapshot, time, MAC.test(navigator.userAgent))}</p>
+<SettingRow>
+  {#snippet label()}
+    <!-- Both lines are always rendered with their height reserved, so nothing moves when they fill (MOT-007). -->
+    <p class="version">
+      {#if updates.current !== null}Anima <strong>{updates.current}</strong>{/if}
+    </p>
+  {/snippet}
+  {#snippet hint()}
+    <p class="hint state" aria-live="polite">{describeUpdate(snapshot, time, MAC.test(navigator.userAgent))}</p>
+  {/snippet}
   <button type="button" tabindex="0" disabled={!canCheck(snapshot)} onclick={() => void updates.checkNow()} {@attach press()}>
     Check for updates
   </button>
-</section>
+</SettingRow>
 
 <style>
-  section {
-    display: flex;
-    flex-direction: column;
-    align-items: start;
-    gap: var(--space-2);
-    margin-block-start: var(--space-6);
-  }
-
-  p {
+  .version {
     margin: 0;
     min-block-size: calc(var(--text-md) * var(--leading-tight));
     font-size: var(--text-md);
@@ -43,8 +40,7 @@
 
   /* Two lines are reserved, so a wrapped sentence does not move the rows below it (MOT-007). */
   .state {
-    min-block-size: calc(2 * var(--text-md) * var(--leading-tight));
-    color: var(--text-muted);
+    min-block-size: calc(2 * var(--text-sm) * var(--leading-tight));
   }
 
   button {
@@ -56,11 +52,13 @@
     background: var(--surface);
     color: var(--text);
     font: inherit;
+    font-size: var(--text-md);
+    white-space: nowrap;
     transition: background-color var(--duration-fast) var(--ease-enter);
   }
 
   button:hover:enabled {
-    background: var(--surface-raised);
+    background: var(--surface-hover);
   }
 
   button:disabled {

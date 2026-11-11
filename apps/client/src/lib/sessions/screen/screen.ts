@@ -12,13 +12,7 @@ import { guardEscapes, type EscapeHooks } from './remote/escapes';
 import { guardClipboard } from './operator/clipboard';
 import { safePaste } from './operator/paste';
 import { shortcutOf, type ShortcutAction } from './operator/shortcuts';
-import { MINIMUM_CONTRAST_RATIO, sizeInPx, terminalTheme, tokensOf } from './theme';
-
-/** Lines kept above the visible screen (RA-003). */
-const SCROLLBACK_LINES = 5000;
-/** The size used when the token cannot be read: spec Section 6.3.1 says 12. */
-const FALLBACK_FONT_PX = 12;
-const ROOT_FALLBACK_PX = 16;
+import { terminalFont, terminalOptions } from './options';
 
 /** What the screen tells the session view. */
 export interface ScreenHooks extends EscapeHooks {
@@ -128,21 +122,10 @@ function wireEvents(terminal: Terminal, hooks: ScreenHooks): void {
  * terminal is open and fitted.
  */
 export const openScreen: ScreenOpener = async (host, hooks) => {
-  const tokens = tokensOf(host);
-  const rootPx = parseFloat(getComputedStyle(document.documentElement).fontSize) || ROOT_FALLBACK_PX;
-  const fontSize = sizeInPx(tokens('--text-xs'), rootPx, FALLBACK_FONT_PX);
-  const fontFamily = tokens('--font-mono-opendyslexic');
-  await fontReady(fontFamily, fontSize);
-  const terminal = new Terminal({
-    scrollback: SCROLLBACK_LINES,
-    fontFamily,
-    fontSize,
-    theme: terminalTheme(tokens),
-    cursorBlink: false,
-    minimumContrastRatio: MINIMUM_CONTRAST_RATIO,
-    // Unicode 11 widths are set through the proposed `unicode` API.
-    allowProposedApi: true,
-  });
+  const font = terminalFont(host);
+  await fontReady(font.fontFamily, font.fontSize);
+  // Unicode 11 widths are set through the proposed `unicode` API.
+  const terminal = new Terminal({ ...terminalOptions(host, font), allowProposedApi: true });
   const fit = new FitAddon();
   const search = new SearchAddon();
   terminal.loadAddon(fit);

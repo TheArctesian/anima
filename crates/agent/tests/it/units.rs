@@ -110,3 +110,12 @@ fn met_019_the_launch_agent_parses_and_runs_the_binary_with_run() {
         "the agent listens on no port"
     );
 }
+
+#[cfg(target_os = "linux")]
+mod install;
+#[cfg(target_os = "linux")]
+mod paths;
+/// A temporary HOME and a recording stand-in for the commands, so no systemd or launchd is
+/// touched (D-10).
+#[cfg(target_os = "linux")]
+mod rig;

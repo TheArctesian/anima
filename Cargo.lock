@@ -144,6 +144,7 @@ dependencies = [
  "plist",
  "reqwest 0.12.28",
  "rpassword",
+ "rustix",
  "serde",
  "serde_json",
  "tempfile",

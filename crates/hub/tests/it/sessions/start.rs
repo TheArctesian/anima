@@ -1,8 +1,9 @@
 //! `startSession`: the row, the audit entry and the ticket, and each refusal (K4 §1, §6,
-//! RA-008, LOG-005, API-009); `hosts` covers the device's host, `protocols` RDP and VNC, and
-//! `waking` a Down device first.
+//! RA-008, LOG-005, API-009); `hosts` covers the device's host, `protocols` RDP and VNC,
+//! `waking` a Down device first, and `limit` the device's session limit (RA-036).
 
 mod hosts;
+mod limit;
 mod protocols;
 mod waking;
 

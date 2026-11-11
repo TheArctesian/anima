@@ -5,7 +5,7 @@ import { endTransitionsAtOnce } from '$lib/devices/transitions.fixture';
 import { warningLines } from '$lib/devices/actions/actions';
 import { device } from '../page.fixture.svelte';
 import Header from './Header.svelte';
-import { headerLine, protocolButton, type HeaderDevice } from './header';
+import { headerLine, kindIcon, protocolButton, type HeaderDevice } from './header';
 
 endTransitionsAtOnce();
 
@@ -29,6 +29,9 @@ function web(id: string, label: string) {
   return { id, deviceId: 'd', label, url: `https://${id}.lan`, openIn: 'ANIMA_TAB' as const, pinnedFingerprintSha256: null, pinnedAt: null };
 }
 
+/** Text as read, without the icon glyphs (private-use code points), which are hidden from assistive technology. */
+const words = (node: Element | null | undefined) => (node?.textContent ?? '').replace(/\p{Co}/gu, '').trim();
+
 function labelled(name: string): HTMLButtonElement {
   const found = [...document.querySelectorAll('button')].find(
     (button) => button.getAttribute('aria-label') === name || button.textContent.replace(/\p{Co}/gu, '').trim() === name,
@@ -38,7 +41,7 @@ function labelled(name: string): HTMLButtonElement {
 }
 
 describe('headerLine (DEV-020, D-8)', () => {
-  it('DEV-020: host, IP, kind, OS and each tag, in that order, with one tooltip for all', () => {
+  it('DEV-020: host, IP, kind, OS and each tag, in that order, the kind\'s icon and the OS logo', () => {
     const line = headerLine(device());
     expect(line.items).toEqual([
       { part: 'host', text: 'nas.home.arpa' },
@@ -48,7 +51,8 @@ describe('headerLine (DEV-020, D-8)', () => {
       { part: 'tag', text: 'lab' },
       { part: 'tag', text: 'storage' },
     ]);
-    expect(line.title).toBe('nas.home.arpa · 192.168.1.20 · server · Linux · lab · storage');
+    expect(line.kindIcon).toBe('nf-md-server');
+    expect(line.osIcon).toBe('nf-md-linux');
   });
 
   it.each([null, '', '192.168.1.20'])('D-8: the IP is left out when it is %j and the host is 192.168.1.20', (ip) => {
@@ -62,6 +66,23 @@ describe('headerLine (DEV-020, D-8)', () => {
     [{ enabled: false, hostKey: null }, 'set-up'],
   ] as const)('D-8: SSH %j does %s', (ssh, action) => {
     expect(headerLine(device({}, ssh)).ssh).toBe(action);
+  });
+});
+
+describe('kindIcon', () => {
+  it.each([
+    ['laptop', 'LINUX', 'nf-md-laptop'],
+    ['Workstation', 'LINUX', 'nf-md-desktop_tower'],
+    ['server', 'MACOS', 'nf-md-server'],
+    ['router', 'OTHER', 'nf-md-router_wireless'],
+    ['switch', 'OTHER', 'nf-md-router_wireless'],
+    ['NAS', 'LINUX', 'nf-md-nas'],
+    ['phone', 'OTHER', 'nf-md-cellphone'],
+    ['display', 'OTHER', 'nf-md-monitor'],
+    ['printer', 'LINUX', 'nf-md-server'],
+    ['printer', 'MACOS', 'nf-md-desktop_tower'],
+  ] as const)('the kind %j on %s shows %s', (kind, os, icon) => {
+    expect(kindIcon(kind, os)).toBe(icon);
   });
 });
 
@@ -85,57 +106,22 @@ describe('protocolButton (DEV-022)', () => {
 });
 
 describe('Header (DEV-020–022)', () => {
-  it('DEV-020: one line from the back link to the tags, with the SSH, RDP and Edit buttons last', () => {
+  it('DEV-020: the back link; the name, status and SSH, RDP and Edit buttons; then the host-to-tags details', () => {
     show(device());
-    const line = document.querySelector('header');
-    const order = [...(line?.querySelectorAll('a, h1, .status, .item, button') ?? [])].map((node) =>
-      node instanceof HTMLButtonElement ? `button:${node.textContent.replace(/\p{Co}/gu, '').trim()}` : node.textContent.trim(),
+    const header = document.querySelector('header');
+    const order = [...(header?.querySelectorAll('a, h1, .status, button, .chip') ?? [])].map((node) =>
+      node instanceof HTMLButtonElement ? `button:${words(node)}` : words(node),
     );
-    expect(order).toEqual(['Devices', 'nas', 'Up', 'nas.home.arpa', '192.168.1.20', 'server', 'Linux', 'lab', 'storage', 'button:SSH', 'button:RDP', 'button:Edit']);
+    expect(order).toEqual(['Devices', 'nas', 'Up', 'button:SSH', 'button:RDP', 'button:Edit', 'nas.home.arpa', '192.168.1.20', 'server', 'Linux', 'lab', 'storage']);
   });
 
-  it('DEV-021: every item has its full text as a tooltip, and the group has all of it', () => {
+  it('DEV-021: every detail is whole, with its full text as a tooltip, and the name has its tooltip', () => {
     show(device({ host: 'a-very-long-host-name.example.internal.home.arpa' }));
-    const items = [...document.querySelectorAll<HTMLElement>('.details .item')];
-    for (const item of items) expect(item.title).toBe(item.textContent);
-    expect(document.querySelector<HTMLElement>('.details')?.title).toBe(headerLine(device({ host: 'a-very-long-host-name.example.internal.home.arpa' })).title);
+    const chips = [...document.querySelectorAll<HTMLElement>('[aria-label="Details"] li')];
+    expect(chips.map((chip) => chip.title)).toEqual(chips.map((chip) => words(chip)));
+    expect(chips[0]?.title).toBe('a-very-long-host-name.example.internal.home.arpa');
     expect(document.querySelector('h1')?.title).toBe('nas');
   });
-
-});
-
-describe('Header overflow and buttons (DEV-021, DEV-022)', () => {
-  it('DEV-021: only the host-to-tags group fades, and only while it is cut', () => {
-    const observed: (() => void)[] = [];
-    vi.stubGlobal(
-      'ResizeObserver',
-      class {
-        constructor(callback: () => void) {
-          observed.push(callback);
-        }
-        observe() {
-          return undefined;
-        }
-        disconnect() {
-          return undefined;
-        }
-      },
-    );
-    let scroll = 100;
-    vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockImplementation(() => scroll);
-    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockImplementation(() => 100);
-    show(device());
-    const group = document.querySelector('.details');
-    expect(group?.hasAttribute('data-overflowing')).toBe(false);
-    scroll = 300;
-    for (const callback of observed) callback();
-    expect(group?.hasAttribute('data-overflowing')).toBe(true);
-    expect(document.querySelectorAll('[data-overflowing]')).toHaveLength(1);
-    // The name, the pill and the buttons are outside the group, so the fade never covers them.
-    for (const kept of document.querySelectorAll('h1, .status, .actions')) expect(group?.contains(kept)).toBe(false);
-    vi.restoreAllMocks();
-  });
-
 });
 
 describe('Header buttons (D-8, DEV-022)', () => {
@@ -216,6 +202,6 @@ describe('Header Web, Edit and badge (D-4, RA-020)', () => {
   it('D-13: while the device loads the line shows only the back link', () => {
     app = mount(Header, { target: document.body, props: { device: null, onConnect: () => undefined, onSettings: () => undefined } });
     flushSync();
-    expect(document.querySelector('header')?.textContent.trim()).toBe('Devices');
+    expect(words(document.querySelector('header'))).toBe('Devices');
   });
 });

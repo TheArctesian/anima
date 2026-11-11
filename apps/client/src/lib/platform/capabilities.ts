@@ -19,4 +19,6 @@ export interface Capabilities {
   readonly systemSettings: boolean;
   /** This computer can build releases: the shell runs the build steps and keeps the builder token (BLD-020, BLD-026). */
   readonly builds: boolean;
+  /** The window draws its content under the OS title bar, with the window buttons over the navigation bar (macOS). */
+  readonly overlayTitleBar: boolean;
 }

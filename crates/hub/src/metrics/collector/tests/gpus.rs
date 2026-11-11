@@ -22,6 +22,8 @@ use crate::{
     ssh::CommandOutput,
 };
 
+mod rounds;
+
 pub(super) fn at() -> DateTime<Utc> {
     "2026-11-07T09:00:00Z".parse().unwrap()
 }

@@ -1,7 +1,6 @@
 //! Signing in: the throttle, the password check, the token and their records (SEC-002,
-//! LOG-005, D-3, D-7, D-8). Signing out is in `sign_out`; failures outside sign-in in `outside`.
+//! LOG-005, D-3, D-7, D-8). Signing out is in `sign_out`.
 
-mod outside;
 mod sign_out;
 
 use chrono::{DateTime, TimeDelta, Utc};
@@ -17,7 +16,6 @@ use super::{
     tokens::{BROWSER_LIFETIME, LOGIN_LIFETIME, Scope, TOKEN_BYTES, Token, TokenKind},
     totp::{self, SecondFactor},
 };
-pub use outside::{record_failure, throttled};
 pub(super) use sign_out::logout;
 use sign_out::retire;
 
@@ -155,7 +153,7 @@ async fn unthrottled_account(
     username: &str,
 ) -> Result<Option<Account>, Error> {
     let mut conn = db.acquire().await?;
-    let failures = store::failures(&mut *conn, key.client, key.at, Some(key.id)).await?;
+    let failures = store::failures(&mut *conn, key.client, key.at, key.id).await?;
     if throttle::refused(&failures, key.at) {
         store::finish_attempt(&mut *conn, key.id, Outcome::Refused).await?;
         return Err(Error::WrongCredentials);

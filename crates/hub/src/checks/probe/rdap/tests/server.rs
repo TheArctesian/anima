@@ -4,7 +4,7 @@
 //! lines; nothing reaches the internet.
 
 use std::{
-    net::SocketAddr,
+    net::{IpAddr, SocketAddr},
     sync::{
         Arc, Mutex, PoisonError,
         atomic::{AtomicUsize, Ordering},
@@ -107,9 +107,12 @@ pub(in crate::checks) fn redirect(location: &str) -> Vec<u8> {
 
 fn acceptor() -> (Vec<u8>, TlsAcceptor) {
     let key = rcgen::KeyPair::generate().unwrap();
-    let params =
-        rcgen::CertificateParams::new(vec!["localhost".to_owned(), "pinned.invalid".to_owned()])
-            .unwrap();
+    let params = rcgen::CertificateParams::new(vec![
+        "localhost".to_owned(),
+        "127.0.0.1".to_owned(),
+        "pinned.invalid".to_owned(),
+    ])
+    .unwrap();
     let der = params.self_signed(&key).unwrap().der().to_vec();
     let key = PrivateKeyDer::from(PrivatePkcs8KeyDer::from(key.serialize_der()));
     let config = ServerConfig::builder_with_provider(Arc::new(ring::default_provider()))
@@ -122,7 +125,7 @@ fn acceptor() -> (Vec<u8>, TlsAcceptor) {
 }
 
 /// A server on `ip` that answers each request with `answer(path, port)`.
-pub(in crate::checks) async fn serve_on(ip: [u8; 4], answer: Answer) -> Server {
+pub(in crate::checks) async fn serve_on(ip: IpAddr, answer: Answer) -> Server {
     let listener = TcpListener::bind(SocketAddr::from((ip, 0))).await.unwrap();
     let address = listener.local_addr().unwrap();
     let (root, acceptor) = acceptor();
@@ -157,7 +160,7 @@ pub(in crate::checks) async fn serve_on(ip: [u8; 4], answer: Answer) -> Server {
 pub(in crate::checks) async fn serve(
     answer: impl Fn(&str, u16) -> Vec<u8> + Send + Sync + 'static,
 ) -> Server {
-    serve_on([127, 0, 0, 1], Arc::new(answer)).await
+    serve_on(IpAddr::from([127, 0, 0, 1]), Arc::new(answer)).await
 }
 
 /// Reads one request head, records its request line and writes the answer for its path.

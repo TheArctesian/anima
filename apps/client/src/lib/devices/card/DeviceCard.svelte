@@ -12,6 +12,7 @@
   import type { WakeApi } from '$lib/sessions/wake/api';
   import type { CardScreenSharing } from '$lib/devices/screen-sharing/setup';
   import type { WebInterface } from '$lib/web-interfaces/api';
+  import OsIcon from '$lib/devices/os/OsIcon.svelte';
   import { hostLine } from './card';
   import './geometry.css';
   import StatusEdge from './StatusEdge.svelte';
@@ -37,18 +38,21 @@
 <article class="card">
   <StatusEdge status={device.status} />
   <header>
-    <h2>
-      <a
-        href="{resolve('/devices')}/{encodeURIComponent(device.id)}"
-        title={device.name}
-        tabindex="0"
-        data-device-id={device.id}
-        {@attach press()}
-        {@attach sharedItem(`device-name:${device.id}`)}
-      >
-        {device.name}
-      </a>
-    </h2>
+    <span class="identity">
+      <OsIcon os={device.os} distribution={device.distribution} />
+      <h2>
+        <a
+          href="{resolve('/devices')}/{encodeURIComponent(device.id)}"
+          title={device.name}
+          tabindex="0"
+          data-device-id={device.id}
+          {@attach press()}
+          {@attach sharedItem(`device-name:${device.id}`)}
+        >
+          {device.name}
+        </a>
+      </h2>
+    </span>
     <span class="marks">
       <WarningBadge warnings={device.accessWarnings} />
       <StatusPill status={device.status} deviceId={device.id} />
@@ -89,6 +93,14 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: var(--space-2);
+  }
+
+  /* The OS logo before the name; only the name gives way, so the logo never moves the header (MOT-007). */
+  .identity {
+    min-inline-size: 0;
+    display: flex;
+    align-items: center;
     gap: var(--space-2);
   }
 

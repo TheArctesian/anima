@@ -4,7 +4,7 @@
 use sqlx::PgConnection;
 
 use crate::{
-    devices::{Error, Missing},
+    devices::{Error, MetricsSource, Missing},
     ids::DeviceId,
 };
 
@@ -19,4 +19,19 @@ pub(in crate::devices) async fn lock_device(
             .fetch_optional(conn)
             .await?;
     row.map(|_| ()).ok_or(Error::NotFound(Missing::Device(id)))
+}
+
+/// Locks the device row `FOR UPDATE` until the transaction ends, and reads its metrics source.
+pub(in crate::devices) async fn lock_metrics_source(
+    conn: &mut PgConnection,
+    id: DeviceId,
+) -> Result<MetricsSource, Error> {
+    let row: Option<String> =
+        sqlx::query_scalar("SELECT metrics_source FROM devices.devices WHERE id = $1 FOR UPDATE")
+            .bind(id)
+            .fetch_optional(conn)
+            .await?;
+    let text = row.ok_or(Error::NotFound(Missing::Device(id)))?;
+    text.parse()
+        .map_err(|error| Error::Database(sqlx::Error::Decode(Box::new(error))))
 }

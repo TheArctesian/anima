@@ -17,7 +17,6 @@ mod model;
 mod page;
 mod quiet;
 mod serving;
-mod share;
 mod start;
 mod store;
 mod terminal;
@@ -49,7 +48,6 @@ pub use model::{
     EndReason, FieldError, Protocol, Session, SessionChange, SessionEnd, UnknownValue,
 };
 pub use serving::Serving;
-pub use share::ShareMutation;
 pub use start::{DEFAULT_DPI, DisplayRequest, StartRequest, Waking, start};
 pub use terminal::terminal_router;
 pub use tickets::{PendingTicket, Presented, Ticket};
@@ -89,6 +87,9 @@ pub enum Conflict {
          its certificate."
     )]
     NoServerCertificate,
+    /// The device has as many live sessions as its limit allows (RA-036).
+    #[error("This device has reached its session limit.")]
+    SessionLimit,
 }
 
 /// Why a sessions operation failed. No variant holds a ticket token (LOG-007).
@@ -120,10 +121,17 @@ pub enum Error {
 
 /// The device, or `NotFound` for it.
 async fn find_device(db: &PgPool, id: DeviceId) -> Result<Device, Error> {
-    devices::get(db, id).await.map_err(|error| match error {
+    devices::get(db, id)
+        .await
+        .map_err(|error| device_error(id, error))
+}
+
+/// A devices error reading device `id`, with a missing device as `NotFound` for it.
+fn device_error(id: DeviceId, error: devices::Error) -> Error {
+    match error {
         devices::Error::NotFound(_) => Error::NotFound(Missing::Device(id)),
         other => Error::Devices(other),
-    })
+    }
 }
 
 /// Ends, with `HUB_SHUTDOWN` at `now`, every session a previous hub process left open, each

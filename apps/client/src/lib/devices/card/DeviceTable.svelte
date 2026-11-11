@@ -11,6 +11,7 @@
   import type { SessionProtocol } from '$lib/sessions/tabs';
   import type { CardScreenSharing } from '$lib/devices/screen-sharing/setup';
   import type { WebInterface } from '$lib/web-interfaces/api';
+  import OsIcon from '$lib/devices/os/OsIcon.svelte';
   import { hostLine } from './card';
   import { reorderMotion } from '$lib/motion/roles/reorder.svelte';
   import StatusEdge from './StatusEdge.svelte';
@@ -48,15 +49,18 @@
       {@const deviceBeats = beats.get(device.id)}
       <tr transition:listRow={{ index }} {@attach track(device.id)}>
         <th scope="row">
-          <a
-            href="{resolve('/devices')}/{encodeURIComponent(device.id)}"
-            title={device.name}
-            tabindex="0"
-            data-device-id={device.id}
-            {@attach press()}
-          >
-            {device.name}
-          </a>
+          <span class="name">
+            <OsIcon os={device.os} distribution={device.distribution} />
+            <a
+              href="{resolve('/devices')}/{encodeURIComponent(device.id)}"
+              title={device.name}
+              tabindex="0"
+              data-device-id={device.id}
+              {@attach press()}
+            >
+              {device.name}
+            </a>
+          </span>
         </th>
         <td class="status">
           <StatusEdge status={device.status} />
@@ -128,6 +132,12 @@
   }
 
   .marks {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .name {
     display: inline-flex;
     align-items: center;
     gap: var(--space-2);

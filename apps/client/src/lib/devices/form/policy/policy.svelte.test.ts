@@ -66,9 +66,9 @@ it('RA-036, RA-040: a saved device reads the limit and recording through their o
   expect(record()?.checked).toBe(true);
 });
 
-it('RA-036: the help text says viewers and file tunnels do not count; RA-040: recordings are encrypted and badged', async () => {
+it('RA-036: the help text says file tunnels do not count; RA-040: recordings are encrypted and badged', async () => {
   await editing([ok({ device: POLICY })]);
-  expect(document.body.textContent).toContain('Viewers and file tunnels do not count');
+  expect(document.body.textContent).toContain('File tunnels do not count');
   expect(document.body.textContent).toContain('encrypted at rest');
   expect(document.body.textContent).toContain('"Recording" badge');
 });

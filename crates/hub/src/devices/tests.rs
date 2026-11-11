@@ -11,6 +11,7 @@ macro_rules! store_test {
     )+};
 }
 
+mod distribution;
 mod graphql_error;
 mod holds;
 mod host;
@@ -20,8 +21,7 @@ mod page;
 mod remote;
 mod rules;
 mod session_controls;
-mod store_read;
-mod store_write;
+mod store;
 mod warnings;
 
 use super::model::*;

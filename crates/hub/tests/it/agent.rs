@@ -1,10 +1,15 @@
-//! The Anima agent's enrolment, tokens and renewal through the hub's routes (K8, MET-011 to
-//! MET-013, R-092).
+//! The Anima agent's enrolment, tokens, renewal and pushes through the hub's routes (K8,
+//! MET-011 to MET-018, R-092, R-098).
 
+mod batches;
 mod enrolment;
+mod gpus;
 mod harness;
+mod push;
 mod refusals;
 mod renewal;
 mod revocation;
 mod secrecy;
+mod series;
+mod stale;
 mod surfaces;

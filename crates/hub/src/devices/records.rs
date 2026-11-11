@@ -1,6 +1,6 @@
 //! Database records of the `devices` schema and how its constraints map to field errors.
 
-use std::net::IpAddr;
+use std::{net::IpAddr, num::NonZeroU8};
 
 use chrono::{DateTime, Utc};
 use ipnet::IpNet;
@@ -8,7 +8,7 @@ use ipnet::IpNet;
 use super::{
     Error, FieldError,
     mac::MacAddress,
-    model::{Device, OperatingSystem, Site, SshAuth, SshSettings},
+    model::{Device, Distribution, OperatingSystem, Site, SshAuth, SshSettings, UnknownValue},
     remote::{RdpSettings, RemoteAccess, TransferPolicy, VncSettings},
 };
 use crate::ids::{DeviceId, SiteId};
@@ -23,6 +23,7 @@ pub(super) struct DeviceRow {
     kind: String,
     os: String,
     maintenance: bool,
+    distribution: Option<String>,
     created_at: DateTime<Utc>,
     updated_at: DateTime<Utc>,
     enabled: bool,
@@ -66,6 +67,18 @@ fn decode<E: std::error::Error + Send + Sync + 'static>(error: E) -> sqlx::Error
     sqlx::Error::Decode(Box::new(error))
 }
 
+/// The stored `session_limit` column: null is no limit (RA-036).
+pub(super) fn session_limit(stored: Option<i32>) -> Result<Option<NonZeroU8>, sqlx::Error> {
+    stored
+        .map(|limit| {
+            u8::try_from(limit)
+                .map_err(decode)?
+                .try_into()
+                .map_err(decode)
+        })
+        .transpose()
+}
+
 impl TryFrom<RemoteRow> for RemoteAccess {
     type Error = sqlx::Error;
 
@@ -94,15 +107,7 @@ impl TryFrom<RemoteRow> for RemoteAccess {
                 .transpose()
                 .map_err(decode)?,
             metrics_source: row.metrics_source.parse().map_err(decode)?,
-            session_limit: row
-                .session_limit
-                .map(|limit| {
-                    u8::try_from(limit)
-                        .map_err(decode)?
-                        .try_into()
-                        .map_err(decode)
-                })
-                .transpose()?,
+            session_limit: session_limit(row.session_limit)?,
             record_sessions: row.record_sessions,
             transfer: TransferPolicy {
                 upload: row.transfer_upload,
@@ -142,10 +147,16 @@ impl TryFrom<DeviceRow> for Device {
             session_limit: remote.session_limit,
             record_sessions: remote.record_sessions,
             transfer: remote.transfer,
+            distribution: row.distribution.as_deref().map(distribution).transpose()?,
             created_at: row.created_at,
             updated_at: row.updated_at,
         })
     }
+}
+
+/// The stored distribution; the column's check keeps it valid, so anything else is a decode error.
+fn distribution(text: &str) -> Result<Distribution, sqlx::Error> {
+    Distribution::new(text).ok_or_else(|| decode(UnknownValue::new("distribution", text)))
 }
 
 pub(super) fn to_devices(rows: Vec<DeviceRow>) -> Result<Vec<Device>, Error> {

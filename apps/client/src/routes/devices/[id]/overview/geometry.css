@@ -14,43 +14,119 @@
   gap: var(--space-4);
 }
 
-/* The facts grid; the panel and its skeleton are one geometry (D-9, MOT-007). */
-.overview-facts {
+/* One Overview card: the facts cards and the Metrics card share it, loaded and as skeleton (D-9, MOT-007). */
+.overview-card {
+  box-sizing: border-box;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, calc(var(--space-16) * 3)), 1fr));
-  gap: var(--space-4);
-  margin: 0 0 var(--space-6);
-}
-
-.overview-facts dt {
-  color: var(--text-muted);
-  font-size: var(--text-sm);
-  line-height: var(--leading-normal);
-}
-
-.overview-facts dd {
-  margin: var(--space-1) 0 0;
-  color: var(--text);
-  line-height: var(--leading-normal);
-}
-
-.overview-facts .key {
-  overflow-wrap: anywhere;
-  font-family: var(--font-mono);
-  font-size: var(--text-sm);
-}
-
-/* The Metrics section's heading line and the one line of the "metrics are off" state; the section and its skeleton share both (MOT-007). */
-.metrics-title {
+  align-content: start;
+  gap: var(--space-3);
+  min-inline-size: 0;
   margin: 0;
+  padding: var(--space-4);
+  border: var(--border-thin) solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-raised);
+}
+
+/* A card's heading: an icon and the words, on one line of fixed block size, so a font swap moves nothing (MOT-007). */
+.overview-card-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-block-size: calc(var(--text-lg) * var(--leading-normal));
+  margin: 0;
+  color: var(--text);
   font-size: var(--text-lg);
   font-weight: var(--weight-bold);
   line-height: var(--leading-normal);
 }
 
-.metrics-off {
+.overview-card-title > .icon {
+  color: var(--text-muted);
+}
+
+/*
+ * The facts cards: one column on a narrow panel, two beside each other, then all four in one row with the host key the
+ * widest. The container is the panel's own width, so the switch follows what fits and not the window.
+ */
+.overview-facts-fit {
+  container-type: inline-size;
+  min-inline-size: 0;
+  margin: 0 0 var(--space-4);
+}
+
+.overview-facts {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+}
+
+@container (min-inline-size: 34rem) {
+  .overview-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container (min-inline-size: 64rem) {
+  .overview-facts {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(0, 2fr);
+  }
+}
+
+/* A stat figure: the big number over its small label; a row of them reserves its height when it holds only a sentence (MOT-007). */
+.overview-figures {
   display: flex;
-  align-items: center;
-  min-block-size: var(--target-min-desktop);
+  flex-wrap: wrap;
+  gap: var(--space-4) var(--space-6);
+  min-block-size: calc(var(--text-2xl) * var(--leading-tight) + var(--space-1) + var(--text-sm) * var(--leading-normal));
   margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.overview-figure {
+  display: flex;
+  flex-direction: column-reverse;
+  justify-content: start;
+  gap: var(--space-1);
+  margin: 0;
+}
+
+.overview-figure dt {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+}
+
+.overview-figure dd {
+  margin: 0;
+  color: var(--text);
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-bold);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--tracking-display);
+  line-height: var(--leading-tight);
+}
+
+/* The host key fingerprint: monospace, wrapped at any character, so the whole key shows on every width (D-10). */
+.overview-key {
+  margin: 0;
+  overflow-wrap: anywhere;
+  word-break: break-all;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+}
+
+/* The "metrics are off" state, centred in a block of fixed size; the section and its skeleton share it (MOT-007). */
+.metrics-off {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: var(--space-3);
+  min-block-size: calc(var(--space-16) * 2.5);
+  margin: 0;
+  color: var(--text-muted);
+  text-align: center;
 }

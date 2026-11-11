@@ -6,7 +6,7 @@
 use std::time::{Duration, Instant};
 
 use sqlx::PgPool;
-use tokio::{net::TcpListener, time::timeout};
+use tokio::{net::TcpListener, sync::oneshot, time::timeout};
 use tokio_tungstenite::tungstenite::http::StatusCode;
 
 use super::super::{
@@ -18,32 +18,35 @@ use crate::{
     sessions::{
         Live, Presented, Redeemed,
         tests::fixture::{
-            LOOPBACK, address, ended, ended_once, move_device, now, reissued_woken, waking_port,
+            LOOPBACK, address, answer_after, ended, ended_once, move_device, now, reissued_woken,
+            waking_port,
         },
     },
     targets::AddressPolicy,
 };
 
-/// The woken limit of these tests: far longer than any refusal takes.
+/// The woken limit of these tests: far longer than any refusal takes, so only a bug can end
+/// a woken opening of a device that answers.
 const WOKEN: Duration = Duration::from_secs(10);
 
-/// The usual opening limit, shortened; the waking device answers only well after it.
+/// The usual opening limit, shortened.
 const USUAL: Duration = Duration::from_millis(200);
-/// When the waking device starts to answer.
-const ANSWERS_AFTER: Duration = Duration::from_millis(800);
+/// How long after the opening began the waking device answers: three usual limits, and far
+/// inside [`WOKEN`].
+const ANSWERS_AFTER: Duration = Duration::from_millis(600);
 
-/// A bench whose opening limit is [`USUAL`], or 10 s after a wake, and whose device answers
-/// only after [`ANSWERS_AFTER`], forwarding to the fake SSH server.
-async fn waking(pool: &PgPool) -> Bench {
+/// A bench whose opening limit is [`USUAL`], or [`WOKEN`] after a wake, and whose device is
+/// asleep until the returned sender wakes it, forwarding to the fake SSH server.
+async fn waking(pool: &PgPool) -> (Bench, oneshot::Sender<()>) {
     let setup = Setup::terminal(|terminal| {
         terminal.timing.opening = USUAL;
         terminal.timing.woken_opening = WOKEN;
         terminal.timing.reconnect = Duration::from_millis(50);
     });
     let bench = bench(pool, setup).await;
-    let port = waking_port(ANSWERS_AFTER, Some(bench.ssh.port));
+    let (port, answer) = waking_port(Some(bench.ssh.port));
     move_device(pool, LOOPBACK, port).await;
-    bench
+    (bench, answer)
 }
 
 /// The bench's ticket, redeemed, marked as woken or not.
@@ -61,15 +64,18 @@ fn redeemed(bench: &Bench, wake_sent: bool) -> Redeemed {
     fixtures(path = "../../../../../../tests/fixtures", scripts("devices"))
 )]
 async fn ra_031_a_woken_opening_waits_past_the_usual_limit_until_the_device_answers(pool: PgPool) {
-    let bench = waking(&pool).await;
+    let (bench, answer) = waking(&pool).await;
     let redeemed = redeemed(&bench, true);
-    let begun = Instant::now();
-    let opened = opening::open(&bench.terminal, &redeemed.ticket).await;
+    let (began, was_begun) = oneshot::channel();
+    let opening = async {
+        began.send(()).unwrap();
+        opening::open(&bench.terminal, &redeemed.ticket).await
+    };
+    let (opened, ()) = tokio::join!(opening, answer_after(was_begun, ANSWERS_AFTER, answer));
     assert!(
         matches!(opened, Ok(Opening::SignedIn(_))),
-        "the device opens"
+        "the device opens although it answered after the usual limit"
     );
-    assert!(begun.elapsed() >= ANSWERS_AFTER, "it waited for the device");
 }
 
 #[sqlx::test(
@@ -77,12 +83,13 @@ async fn ra_031_a_woken_opening_waits_past_the_usual_limit_until_the_device_answ
     fixtures(path = "../../../../../../tests/fixtures", scripts("devices"))
 )]
 async fn ra_031_without_a_wake_the_opening_does_not_wait_for_the_device(pool: PgPool) {
-    let bench = waking(&pool).await;
+    let (bench, _asleep) = waking(&pool).await;
     let redeemed = redeemed(&bench, false);
-    let begun = Instant::now();
     let opened = opening::open(&bench.terminal, &redeemed.ticket).await;
-    assert!(matches!(opened, Err(NotOpened::Unreachable)));
-    assert!(begun.elapsed() < ANSWERS_AFTER);
+    assert!(
+        matches!(opened, Err(NotOpened::Unreachable)),
+        "refused at once, not waiting for a device that is asleep"
+    );
 }
 
 #[sqlx::test(
@@ -92,17 +99,26 @@ async fn ra_031_without_a_wake_the_opening_does_not_wait_for_the_device(pool: Pg
 async fn ra_031_a_woken_device_that_never_answers_ends_the_opening_at_the_woken_limit(
     pool: PgPool,
 ) {
+    const LIMIT: Duration = Duration::from_millis(600);
+    const NEVER: Duration = Duration::from_secs(30);
     let setup = Setup::terminal(|terminal| {
         terminal.timing.opening = USUAL;
-        terminal.timing.woken_opening = Duration::from_millis(400);
+        terminal.timing.woken_opening = LIMIT;
         terminal.timing.reconnect = Duration::from_millis(50);
     });
     let bench = bench(&pool, setup).await;
-    let port = waking_port(Duration::from_secs(3600), None);
+    let (port, _asleep) = waking_port(None);
     move_device(&pool, LOOPBACK, port).await;
     let redeemed = redeemed(&bench, true);
-    let opened = opening::open(&bench.terminal, &redeemed.ticket).await;
+    let begun = Instant::now();
+    let opened = timeout(NEVER, opening::open(&bench.terminal, &redeemed.ticket))
+        .await
+        .expect("the opening ends");
     assert!(matches!(opened, Err(NotOpened::Timeout)));
+    assert!(
+        begun.elapsed() >= LIMIT,
+        "it waited past the usual limit, to the woken one"
+    );
 }
 
 #[sqlx::test(

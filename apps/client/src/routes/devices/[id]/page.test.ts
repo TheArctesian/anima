@@ -124,12 +124,12 @@ describe('route edge (D-14)', () => {
 
 describe('6.7 tabs (D-9, D-10)', () => {
   it.each([
-    ['', 'device-panel-overview', 'Uptime, 24 hours'],
+    ['', 'device-panel-overview', '24 hours'],
     ['?tab=checks', 'device-panel-checks', 'ping'],
     ['?tab=sessions', 'device-panel-sessions', 'ada'],
     ['?tab=logs', 'device-panel-logs', 'Check failed'],
     ['?tab=settings', 'device-panel-settings', 'Delete device'],
-    ['?tab=unknown', 'device-panel-overview', 'Uptime, 24 hours'],
+    ['?tab=unknown', 'device-panel-overview', '24 hours'],
   ])('6.7: the URL %j shows its panel, so a reload keeps the tab', async (search, id, text) => {
     await show(
       answers({
@@ -184,7 +184,7 @@ describe('header buttons (D-8, DEV-022)', () => {
   it('D-8: SSH with an accepted host key opens a session that grows from the button', async () => {
     await show();
     button('SSH to nas').click();
-    expect(current.opened).toEqual([{ deviceId: ID, deviceName: 'nas', protocol: 'SSH', origin: expect.any(Object) as DOMRect }]);
+    expect(current.opened).toEqual([{ deviceId: ID, deviceName: 'nas', os: 'LINUX', protocol: 'SSH', origin: expect.any(Object) as DOMRect }]);
   });
 
   it('DEV-022: with SSH off, SSH opens Settings at SSH and starts no session', async () => {

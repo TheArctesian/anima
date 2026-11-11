@@ -1,6 +1,7 @@
 <script lang="ts">
   import { untrack } from 'svelte';
   import { nextFocus } from '$lib/sessions/strip/tablist';
+  import Icon from '$lib/icons/Icon.svelte';
   import { animate, type Animatable } from '$lib/motion/animate';
   import { springMotion, type InstantMotion, type SpringMotion } from '$lib/motion/options';
   import { motionPreference, type MotionPreference } from '$lib/motion/preference';
@@ -104,7 +105,7 @@
       onclick={() => {
         onSelect(tab.name);
       }}
-      {@attach press(preference)}>{tab.label}</button
+      {@attach press(preference)}><Icon name={tab.icon} size="sm" />{tab.label}</button
     >
   {/each}
   <span class="indicator" bind:this={indicator} aria-hidden="true"></span>
@@ -146,9 +147,13 @@
     );
   }
 
+  /* The icon is hidden from assistive technology; the label alone names the tab (UI-003: the word is always there). */
   button {
     flex: none;
     box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
     min-block-size: var(--target-min-desktop);
     padding: 0 var(--space-3);
     border: 0;

@@ -1,16 +1,15 @@
-# Programme handoff — 2026-11-09
+# Programme handoff — 2026-11-10
 
 The programme orchestrator stopped at the operator's usage limit. This file is the state at the stop.
-Read it first, then the rulings listed in section 5 and R-093 to R-106, CR-17 to CR-19 in `programme.md`.
+Read it first, then the rulings listed in section 5 and R-093 to R-111, CR-17 to CR-21 in `programme.md`.
 
 ## 1. Where things are
 
-- **Integration branch:** `phase-3`, pushed with `main` fast-forwarded to it as a save (operator,
-  2026-11-08). Gates: `CARGO_TARGET_DIR=$PWD/target CARGO_INCREMENTAL=0 env -u DATABASE_URL
-  BASE_REF=04ab9b61 bun run gates` (R-101; 12 gates). Client-only changes run gates 4–12 (R-068).
-  PATH needs nvm Node 22 and `/usr/lib/postgresql/17/bin`.
-- **Last fully gated commit:** `2821cc2d` (WP-46 package log, gates 4–12). The last Rust merge, `e12da074` (R-102
-  pair), passed all 12 gates after the flake procedure.
+- **Integration branch:** `phase-3`, pushed. `main` was merged into it on 2026-11-10 with the operator's OK
+  (`efe75d8d`: client redesign, distribution, the hub image toolchain, the extensions plan), and `main` is
+  fast-forwarded to `phase-3` again as a save. Push only fast-forwards; ask before anything else on `main`.
+- **Last Rust merge gated 12/12:** `26a5a9bd` (WP-45 T6 and the dispatcher wiring in `main.rs`). After it came the WP-36
+  deploy merges (`fbdd525f`, `e1e7ff2c`) and the R-109 to R-111 docs commits, through `9baf6aeb`.
 - **R-101:** every gate and review run uses its own `CARGO_TARGET_DIR` and `CARGO_INCREMENTAL=0`; delete
   the target folder when the task is accepted. A full disk shows up as sqlx test-database failures or a
   linker SIGBUS. About 116 GB free on 2026-11-09.
@@ -22,27 +21,26 @@ Read it first, then the rulings listed in section 5 and R-093 to R-106, CR-17 to
 | Package | State |
 | --- | --- |
 | WP-40, WP-41, WP-42, WP-52 | Done. |
-| WP-44 web client | Complete; `/shared` is already a bare route on phase-3. Its branch has nothing beyond phase-3. |
+| WP-44 web client | Complete. The `/shared` bare route is gone: since WP-49 T9 (`0dd50644`), `/shared` needs sign-in like any other route (R-111). |
 | WP-46 checks | Done. Last merges: package fixes `a28410c4`, R-102 domain retries and hourly floor `53f0a031`, log `2821cc2d`. |
 | WP-50 settings | Done. Last merges: check-row `5fbebf60`, log `0cbc06d4`, R-102 client `e12da074`. |
 | WP-51 parsers | Done. T4 `a67ae69e`, vendor retry `4080416c`, log `8f44adc3`. |
-| WP-43 access | T1–T3, T4 bearer `2446f367` (router assembly now in lib.rs `all_routes`), T5 rotation `4ee029fe` merged. |
-| WP-45 notifications | T1–T5 merged. |
-| WP-47 session sharing | T1a, T1b, T3 merged. |
-| WP-54 agent | T2, T3a token `839b827f`, T4 binary `ef93c13d`, T5 Apple GPU `61320129`, T7 VPN policy `176cb4b1` merged. |
+| WP-43 access | Done. T4 bearer `2446f367` (router assembly in lib.rs `all_routes`), T5 rotation `4ee029fe`, T6 throttle `15b8f9d0`, log `8d064256`. |
+| WP-45 notifications | Done. T6 `99258714`, with the dispatcher wired in `main.rs` (`26a5a9bd`); T7 checks edits `e34e9060`; log `ab598609`. Follow-up: narrow the `notifications.rs` public face (lines 31–37). |
+| WP-47 session sharing | Done. T2 session limit `6f8d8356`, waking-flake `09555c56`, T7 share removal `301d1b5e` (R-111), log `347cc2cc`. T4–T6 cancelled. Migrations 0121–0129 are unused. |
+| WP-48 recording | T1 playback proof `a4192d68`. |
+| WP-49 client sharing and recording | T5 asciicast `ad50bac3`, T6 playback tunnel `4d3eebab`, T8a badge `917281e9`, T9 `/shared` sign-in `0dd50644`. T1–T4 cancelled (R-111). |
+| WP-54 agent | T3b ingest `7ea84ecc`, T6a install `49119a71`, T2, T3a token `839b827f`, T4 binary `ef93c13d`, T5 Apple GPU `61320129`, T7 VPN policy `176cb4b1` merged. |
 
-## 3. Work in progress (2026-11-09)
-
-Six package orchestrators are running (R-066 allows seven). Each package log on its `claude/wp-NN-*` branch has the detail.
+## 3. Work in progress (2026-11-10)
 
 | Package | State | Next |
 | --- | --- | --- |
-| WP-43 | T6 throttle (CR-16 b), with the `log_007` needle fix. | Package close. |
-| WP-45 | T6 dispatcher passed review round 2, including R-103; delta check and gates are next. T7 checks edits (`271d51c5`) is in review, and WP-46 approved its off-list lines. | T6 merges as one merge commit. T7 rebases after it. |
-| WP-47 | T2 limit in security review. Asked to fix the three `ra_031` tests in `waking.rs` on their own branch (they fail merge gates under load). | T4, T5, T6. |
-| WP-48 | Recording: plan at `claude/wp-48-recording`. T1 playback proof, T2 format and T3 asciicast are building. | T5a, T7 and T8 wait for WP-47 T2, T5 and T6 (CR-19). |
-| WP-49 | Client sharing, players and watch: plan at `claude/wp-49-sharing`. T1 share, T2 watch-join and T5 asciicast are building (R-106). | Recording UI waits for WP-48 T5b and T6. |
-| WP-54 | T3b ingest (`e9246f96`, 12/12) is in review. T6a install is in fix round 1 (D-10 accepted). | T8: final security review of the whole package. |
+| WP-48 | The T2 and T3 asciicast branch, then T4. | T5–T8. T7 and T8 no longer wait on anything, and tee the owner's stream only (R-111 amends CR-19 Q-3). |
+| WP-49 | Idle. It waits for WP-48. | T7 (player pane, PLAYBACK tab, a lower maxBytes) waits for WP-48 T5b and T6. T8b (mounting the badge) waits for WP-48 T5a. |
+| WP-54 | T6c desktop sidecar, which contains T6b panel: fix round 1, one security must. T8 final security review. | T6d is a handoff note to WP-36 (release job). Then package close. |
+
+**Load flake that needs a fix:** `builds::publishing::fences::d_25_a_try_past_its_hold_writes_nothing` (WP-36) failed three merge gates on 2026-11-10 and passes alone.
 
 **Not started:** WP-53 (integration and acceptance) starts when the other packages are near done.
 

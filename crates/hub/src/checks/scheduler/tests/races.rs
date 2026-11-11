@@ -26,6 +26,7 @@ use crate::{
         scheduler::attempt,
     },
     credentials::Secret,
+    devices,
     events::{Bus, Signal},
     ids::CheckId,
     status::Status,
@@ -110,11 +111,14 @@ async fn last_message(pool: &PgPool, id: CheckId) -> Option<String> {
 /// Records one failed attempt at `at` in its own transaction; returns whether it was written.
 async fn failed_attempt(pool: PgPool, id: CheckId, at: DateTime<Utc>) -> bool {
     let result = ProbeResult::failed(&Failure::NoPush);
+    let owner = checks::get(&pool, id).await.unwrap().device;
+    let device = devices::get(&pool, owner).await.unwrap();
     let attempt = Attempt {
         result: &result,
         in_maintenance: false,
         at,
         domain: None,
+        device: &device,
     };
     let mut tx = pool.begin().await.unwrap();
     let beat = checks::record_attempt(&mut tx, id, &attempt).await.unwrap();

@@ -22,7 +22,7 @@ use axum::{
     extract::ConnectInfo,
     http::{Request, StatusCode, header},
 };
-use chrono::{DateTime, TimeDelta, Utc};
+use chrono::{DateTime, DurationRound as _, TimeDelta, Utc};
 use http_body_util::BodyExt as _;
 use ipnet::IpNet;
 use serde_json::{Value, json};
@@ -73,13 +73,19 @@ pub struct Agents {
 
 impl Agents {
     pub async fn new(pool: &PgPool) -> Self {
+        Self::at(pool, start()).await
+    }
+
+    /// The hub with its clock at `now`. A push stores samples, whose partitions the database
+    /// makes only near its own clock, so a push test starts at [`pushing_now`].
+    pub async fn at(pool: &PgPool, now: DateTime<Utc>) -> Self {
         set_operator(pool).await;
         let networks: Vec<IpNet> = vec![
             "100.64.0.0/10".parse().unwrap(),
             "127.0.0.0/8".parse().unwrap(),
         ];
         access::permit_networks(pool, &networks).await.unwrap();
-        let clock = Arc::new(SetClock(Mutex::new(start())));
+        let clock = Arc::new(SetClock(Mutex::new(now)));
         let mut agents = Self {
             router: app(pool, clock.clone()),
             clock,
@@ -201,6 +207,39 @@ impl Agents {
         let renewed: Value = serde_json::from_str(&text).unwrap();
         renewed["token"].as_str().unwrap().to_owned()
     }
+}
+
+impl Agents {
+    /// `POST /agent/v1/push` with `authorization` and `body`, from `from`.
+    pub async fn push_raw(
+        &self,
+        authorization: Option<&str>,
+        body: impl Into<Body>,
+        from: &str,
+    ) -> (StatusCode, String) {
+        let mut request =
+            Request::post("/agent/v1/push").header(header::CONTENT_TYPE, "application/json");
+        if let Some(value) = authorization {
+            request = request.header(header::AUTHORIZATION, value);
+        }
+        self.send(request.body(body.into()).unwrap(), from).await
+    }
+
+    /// `POST /agent/v1/push` of `batch` with `token` as the bearer, from `PERMITTED`.
+    pub async fn push(&self, token: &str, batch: &Value) -> (StatusCode, String) {
+        let bearer = format!("Bearer {token}");
+        self.push_raw(Some(&bearer), batch.to_string(), PERMITTED)
+            .await
+    }
+}
+
+/// The database's clock cut down to a multiple of 10 seconds, where a pushed point may end.
+pub async fn pushing_now(pool: &PgPool) -> DateTime<Utc> {
+    let now: DateTime<Utc> = sqlx::query_scalar("SELECT pg_catalog.now()")
+        .fetch_one(pool)
+        .await
+        .unwrap();
+    now.duration_trunc(TimeDelta::seconds(10)).unwrap()
 }
 
 /// A refusal body of K8 Section 6.

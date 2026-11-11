@@ -95,6 +95,12 @@ check_secrets() {
         [ "$(file_mode "$dir/$name")" = "$wanted" ] ||
             fail "secret file $dir/$name does not have mode 0$wanted; rerun bin/make-secrets, which resets owners and modes"
     done
+    # The R2 token files hold values from Cloudflare, so make-secrets cannot make them (R-108).
+    for name in r2_access_key_id r2_secret_access_key; do
+        [ -s "$dir/$name" ] || fail "missing or empty secret file $dir/$name; see README, Release publishing"
+        [ "$(file_mode "$dir/$name")" = 440 ] ||
+            fail "secret file $dir/$name does not have mode 0440; see README, Release publishing"
+    done
 }
 
 case ${1:-all} in
