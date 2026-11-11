@@ -12,7 +12,7 @@ describe("harden.sh dry run, usage and lint", () => {
     host.write("var/lib/anima/firewall-session", "100.64.0.2 50000 100.64.0.1 22\n");
     host.write("var/lib/anima/firewall-peers", "100.64.0.2 50000\n");
     const before = host.tree();
-    for (const command of ["ssh", "updates", "selinux", "docker", "firewall", "confirm", "check"]) {
+    for (const command of ["ssh", "updates", "selinux", "docker", "firewall", "confirm", "check", "broker"]) {
       const run = host.run(["--dry-run", "--restart-docker", command], { SSH_CONNECTION: VPN_SESSION });
       expect([command, mutatingCalls(run)]).toEqual([command, []]);
       expect([command, run.code]).toEqual([command, command === "check" ? 1 : 0]);
@@ -35,7 +35,7 @@ describe("harden.sh dry run, usage and lint", () => {
   });
 
   test("CQ-024: harden.sh and the files it sources are shellcheck-clean", () => {
-    const files = ["harden.sh", "sshd.sh", "selinux.sh", "open-ports.sh", "firewall.sh", "inventory.sh"].map((name) => join(VPS_DIR, name));
+    const files = ["harden.sh", "sshd.sh", "selinux.sh", "open-ports.sh", "firewall.sh", "inventory.sh", "broker.sh"].map((name) => join(VPS_DIR, name));
     const run = Bun.spawnSync(["shellcheck", "-x", ...files]);
     expect(run.stdout.toString()).toBe("");
     expect(run.exitCode).toBe(0);

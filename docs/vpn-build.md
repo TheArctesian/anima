@@ -1727,3 +1727,32 @@ Deviations that the builders found, with the evidence. Each keeps the intent of 
   `registered`), with `tests/broker-nodes.test.ts` against the harness fixtures, and
   `tests/broker-fixture.ts` for node builders. `src/policy.ts` gains `prefixText` (the site subnet
   as text).
+- **B2: the core is `broker/serve.ts`, the files are `broker/state.ts`.** `main.ts` keeps the entry
+  points, the `headscale` runner, the stdin reader and the `check` client; the split keeps each
+  unit to one purpose. `serve(line, runner, files, now)` has the B2 signature and returns the reply
+  and the log line; `main.ts` writes them.
+- **B2: the order inside a request.** A `bad-request` is answered before any Headscale step. Then
+  one audit covers the `pendingRegister` node and the issued keys (B2 steps 1 and 2 share one node
+  read). `plan` runs before `admit`, so a refused site or node is not counted against the limit;
+  the count is still written before the step. `personal-key` runs `users list` before `plan`.
+- **B2: `nodes` is answered from the list the audit read** (read again only after a fix), not by a
+  second run of the same two steps. `approve-route` replies `{ node, site }`; `renew` replies the
+  node `{ name, address, keyExpiry }` from a fresh list.
+- **B2: an unreadable `state.json` or `broker.conf` refuses every verb** with `headscale-failed`; a
+  missing `state.json` is the empty state. A state the broker cannot read is never taken as empty,
+  so the limits cannot be reset by corrupting it.
+- **B2: `harden.sh broker` runs `anima-broker.new count-nodes` always**, also when `broker.conf`
+  exists, as the architecture and Headscale check (a binary for another architecture fails to
+  start). It reads the units from `../broker/` (on the VPS `/opt/anima/headscale/broker/`), and
+  removes `anima-broker.new` after `install`. `harden.sh` gets `UNAME` (`HARDEN_UNAME`) for the
+  fake host; `tests/vps-host.ts` copies the two units beside its `vps/` copy.
+- **B2: binary check.** `bun deploy/headscale/bin/broker-build.ts` built
+  `bun-linux-x64-baseline-v1.3.14`, ELF x86-64, 93 661 312 bytes. In a local `almalinux:10`
+  container (amd64): EOF → no reply, exit 0; `bogus` → exit 64; a bad verb → `bad-request`;
+  `nodes` with no `broker.conf` → `headscale-failed`; `count-nodes` with no Docker → exit 1 with
+  `count-nodes failed (StepError)`. The VPS run (Section 10, point 3) is still open.
+- **B2: the service unit is `broker/anima-broker@.unit` in the repository**, installed as
+  `anima-broker@.service`, as `backup/headscale-backup.unit` is: `service` is a banned file name
+  (`quality:names`).
+- **B2: `tests/broker-process.test.ts`** covers `readLine`, the entry points and the files, besides the
+  `broker-main.test.ts` rows (which call `serve` with `tests/broker-fake.ts`).
