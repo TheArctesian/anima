@@ -131,6 +131,27 @@ it('VPN-001: when the site has a waiting router the key leaves the page and the 
   expect(text(dialog())).toContain('lab-router offers 192.168.1.0/24 and waits for approval.');
 });
 
+it('VPN-001: when the key leaves because the router connected, focus moves to the Approve route button', async () => {
+  const { state } = await open({ CreateRouterKey: { createRouterKey: MADE } }, 'site-home');
+  button('Make a router key for Home').click();
+  await settled();
+  expect(document.activeElement).toBe(keyField());
+  state.sites = sites(true);
+  flushSync();
+  await settled();
+  expect(document.activeElement).toBe(button('Approve route'));
+});
+
+it('VPN-003: each copy step is a list item holding its own layout, so the browser numbers it', async () => {
+  await open({ CreateVpnInvite: { createVpnInvite: MADE } }, null);
+  button('Linux computer').click();
+  await settled();
+  for (const step of document.querySelectorAll('ol[aria-label="Steps"] > li')) {
+    expect(step.querySelector(':scope > .step > code')).not.toBeNull();
+    expect(getComputedStyle(step).display).not.toBe('flex');
+  }
+});
+
 it('vpn.md 6B: the register view warns about an ID from a message and sends the typed ID', async () => {
   const { requests } = await open({ RegisterVpnNode: { registerVpnNode: { name: 'mac', address: '100.64.0.9', keyExpiry: null } } }, null);
   button('Mac or other computer').click();

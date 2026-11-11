@@ -37,8 +37,9 @@
   {/if}
   <div class="actions">
     <FormButton data-autofocus onclick={onCancel}>Cancel</FormButton>
+    <!-- The label stays while busy, so the button keeps its width and Cancel does not move (MOT-007); aria-busy says it works. -->
     <FormButton tone="danger" onclick={confirm} aria-disabled={busy || done} aria-busy={busy}>
-      {busy ? 'Working' : confirmLabel}
+      {confirmLabel}
     </FormButton>
   </div>
 </Modal>

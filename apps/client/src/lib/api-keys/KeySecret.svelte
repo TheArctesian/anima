@@ -75,6 +75,7 @@
 
 <style>
   .secret {
+    container-type: inline-size;
     display: flex;
     flex-direction: column;
     gap: var(--space-1);
@@ -106,6 +107,20 @@
     line-height: var(--leading-normal);
     word-break: break-all;
     resize: none;
+  }
+
+  /* A key is about 60 characters: at a narrow width it wraps to more lines than the two rows hold. */
+  @container (max-inline-size: 28rem) {
+    textarea {
+      field-sizing: content;
+    }
+
+    /* Without field-sizing the two rows would clip: hold room for five lines instead. */
+    @supports not (field-sizing: content) {
+      textarea {
+        min-block-size: calc(var(--text-sm) * var(--leading-normal) * 5 + var(--space-4) + var(--border-thin) * 2);
+      }
+    }
   }
 
   textarea:focus-visible {

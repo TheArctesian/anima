@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { flushSync, untrack } from 'svelte';
+  import { flushSync, tick, untrack } from 'svelte';
   import KeySecret from '$lib/api-keys/KeySecret.svelte';
   import FormButton from '$lib/forms/FormButton.svelte';
   import Modal from '$lib/forms/modal/Modal.svelte';
@@ -54,8 +54,20 @@
 
   // The key is one-use: when the site's router shows up, the key has been used and leaves the page (LOG-007).
   $effect(() => {
-    if (waiting !== null && enrolment.key !== null) enrolment.keyUsed();
+    if (waiting !== null && enrolment.key !== null) {
+      enrolment.keyUsed();
+      void focusApprove();
+    }
   });
+
+  let surface: HTMLDivElement | undefined = $state();
+
+  /** The key field had focus and is gone; focus goes to the Approve route button, or the dialog if there is none. */
+  async function focusApprove(): Promise<void> {
+    await tick();
+    const target = surface?.querySelector<HTMLElement>('.approve button') ?? surface?.closest<HTMLElement>('[role="dialog"], [role="alertdialog"]');
+    target?.focus();
+  }
 
   $effect(() => {
     if (key === null) return;
@@ -82,7 +94,7 @@
 
 <Modal open {title} describedBy="{ids}-about" closeOnScrim={key === null} onClose={close}>
   {#key view}
-    <div class="body" in:fade>
+    <div class="body" in:fade bind:this={surface}>
       {#if view === 'choose'}
         <p id="{ids}-about">
           {siteId === null
@@ -109,8 +121,10 @@
           <ol class="steps" aria-label="Steps">
             {#each key.steps as step (step)}
               <li>
-                <code>{step}</code>
-                <FormButton tabindex={0} onclick={() => void enrolment.copy(step)}>Copy</FormButton>
+                <div class="step">
+                  <code>{step}</code>
+                  <FormButton tabindex={0} onclick={() => void enrolment.copy(step)}>Copy</FormButton>
+                </div>
               </li>
             {/each}
           </ol>
@@ -147,6 +161,7 @@
 
 <style>
   .body {
+    container-type: inline-size;
     display: flex;
     flex-direction: column;
     gap: var(--space-3);
@@ -211,7 +226,8 @@
     padding-inline-start: var(--space-5);
   }
 
-  .steps li {
+  /* The li stays a list item, so its number shows; the flex layout is on the wrapper inside it. */
+  .step {
     display: flex;
     flex-wrap: wrap;
     align-items: flex-start;
@@ -236,5 +252,12 @@
   .notice {
     min-block-size: calc(var(--text-sm) * var(--leading-normal));
     font-size: var(--text-sm);
+  }
+
+  /* On a narrow dialog the longest notice wraps to a second line: reserve it (MOT-007). */
+  @container (max-inline-size: 28rem) {
+    .notice {
+      min-block-size: calc(var(--text-sm) * var(--leading-normal) * 2);
+    }
   }
 </style>

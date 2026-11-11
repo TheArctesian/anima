@@ -49,6 +49,7 @@
 
 <style>
   .nodes {
+    container-type: inline-size;
     display: flex;
     flex-direction: column;
     margin: 0;
@@ -64,6 +65,28 @@
     min-block-size: var(--target-min-desktop);
     padding: var(--space-3) var(--space-4);
     border-block-start: var(--border-thin) solid var(--border);
+  }
+
+  /* A narrow card gives the name a line of its own; the role and the address share the next one. */
+  @container (max-inline-size: 28rem) {
+    .row {
+      grid-template-columns: auto minmax(0, 1fr);
+    }
+
+    .name {
+      grid-column: 1 / -1;
+      grid-row: 1;
+    }
+
+    .role {
+      grid-column: 1;
+      grid-row: 2;
+    }
+
+    .address {
+      grid-column: 2;
+      grid-row: 2;
+    }
   }
 
   .add {
