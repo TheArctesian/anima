@@ -39,9 +39,10 @@ The hub reads at most the limit and answers 413 without reading further. A body 
 - The prefixes let a scanner find a leaked value. An API key (`anima_` + 43) never has the length of an agent
   token. The access guard refuses, before any lookup, a bearer spelled exactly as an agent token or an
   enrolment code: the prefix, then exactly 43 or 22 base64url characters. Any other text that starts with
-  `anima_agent_` or `anima_enrol_` goes through the guard's usual length rule: it is read as an API key only
-  when it is `anima_` and 43 characters, and is refused otherwise. So an agent token never reaches GraphQL, a
-  session or a read (MET-013).
+  `anima_agent_` or `anima_enrol_` is read as any other bearer: as an API key when it is `anima_` and 43
+  base64url characters, as a plain API token when it is 43 base64url characters in all, and is refused
+  otherwise. Either way it is looked up only among API tokens and keys, so an agent token never reaches
+  GraphQL, a session or a read (MET-013).
 - No log, event, metric, error message or response other than `Enrolled` and `Renewed` holds a code or a token
   (LOG-007, MET-013). The Rust types that hold them implement neither `Debug`, `Display` nor `Clone`, and wipe
   on drop.
@@ -184,13 +185,18 @@ before it waits for the database. That answer is not written to the event log, a
 and tries again after its wait (Section 7).
 
 - **Per client address:** at most 2 requests until their credential is known: an enrolment for its whole
-  answer, a push or renewal until its token has been looked up. One VPN node with codes or bearers that are
-  wrong cannot keep the hub busy for the others.
+  answer, a push or renewal until its token has been looked up. All requests from one address share its 2
+  turns: the node's agent, which sends one request at a time, and an enrolment beside it. One VPN node with
+  codes or bearers that are wrong cannot keep the hub busy for the others.
 - **Per device:** at most one push or renewal at once, from the token lookup to the answer, so requests with
   one token never queue on the device's rows.
 - **On the database:** at most 4 agent requests at once, well under the hub's pool. A request waits for its
   turn in order, for at most 2 seconds, and holds it only while it looks up its credential and while it
-  stores. It never holds it while its body arrives.
+  stores. It never holds it while its body arrives. A request whose token is valid holds its turn until its
+  store ends, at most until its answer's deadline (10 seconds): so the holders of 4 valid tokens can keep the
+  other agents waiting that long.
+- **Refusal events** are written outside these turns, at most once a minute per client address, or per
+  device when the token was valid (above).
 
 ## 7. Agent buffer (MET-014)
 
@@ -201,5 +207,5 @@ and tries again after its wait (Section 7).
 - While the hub cannot be reached (a network error, a timeout of 10 seconds, a 5xx), it keeps up to 360
   points (1 hour), dropping the oldest first, and drops any point older than 59 minutes before it sends.
 - After a failure it waits 10 seconds, doubling to at most 60 seconds, then resumes the 10-second rhythm. Each
-  wait after a failure is moved at random by up to 20 % either way, so agents that failed together do not all
-  try again together.
+  wait after a failure is moved at random by up to 20 % either way (so at most 72 seconds), so agents that
+  failed together do not all try again together.
