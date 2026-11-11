@@ -50,7 +50,9 @@ describe('inventory findings', () => {
   });
 
   it('VPN-013: a node with no IPv4 address is reported and left out of the policy test', () => {
-    const v6only = { ...(clean.nodes.find((node) => node.name === 'mac') as object), name: 'v6', ips: ['fd7a:115c:a1e0::9'] } as (typeof clean.nodes)[number];
+    const mac = clean.nodes.find((node) => node.name === 'mac');
+    if (mac === undefined) throw new Error('the clean tailnet has no mac');
+    const v6only = { ...mac, name: 'v6', ips: ['fd7a:115c:a1e0::9'] };
     const crowded = { ...clean, nodes: [...clean.nodes, v6only] };
     expect(tailnetNodes(crowded).map((node) => node.name)).toEqual(['hub', 'mac', 'router-home']);
     expect(findings(policy, crowded, [...cleanExpected, 'v6'], NOW)).toEqual([{ kind: 'no-ipv4', node: 'v6' }]);
