@@ -3,7 +3,7 @@
 # first copies the Linux binary to /usr/local/libexec/anima-broker.new with scp (README.md) and
 # passes the SHA-256 that broker-build.ts printed (--sha256=). The units come from ../broker/
 # beside this folder. Sourced by harden.sh; needs its say, refuse, fail, dry, run, path,
-# write_file and require_root, and SYSTEMCTL, UNAME, HERE and BROKER_SHA256.
+# write_file and require_root, and SYSTEMCTL, UNAME, GETENT, GROUPADD, USERADD, HERE and BROKER_SHA256.
 
 BROKER_NEW=/usr/local/libexec/anima-broker.new
 BROKER_BIN=/usr/local/libexec/anima-broker
@@ -18,6 +18,10 @@ BROKER_UNITS=(
   "anima-broker-audit.unit:anima-broker-audit.service"
   "anima-broker-audit.timer:anima-broker-audit.timer"
 )
+# The hub container runs as 10001:10001 (deploy/hub/Dockerfile). systemd sets a socket's owner only
+# to a user the host can resolve, so the host gets a system user and group of that id.
+BROKER_HUB_USER=anima-hub
+BROKER_HUB_ID=10001
 # max_nodes leaves room for this many new nodes above the count at install time.
 BROKER_SPARE_NODES=5
 
@@ -74,6 +78,24 @@ broker_install_binary() {
   mv -f "$tmp" "$bin"
 }
 
+# Make sure the host knows the hub's user and group as anima-hub, 10001; refuse a clash.
+broker_hub_user() {
+  local db entry
+  for db in group passwd; do
+    for entry in "$BROKER_HUB_ID" "$BROKER_HUB_USER"; do
+      local line
+      line=$($GETENT "$db" "$entry") || continue
+      IFS=: read -r -a fields <<<"$line"
+      [ "${fields[0]}" = "$BROKER_HUB_USER" ] && [ "${fields[2]}" = "$BROKER_HUB_ID" ] \
+        || refuse "$db $entry is ${fields[0]}:${fields[2]}; the broker socket needs $BROKER_HUB_USER:$BROKER_HUB_ID for the hub"
+    done
+  done
+  $GETENT group "$BROKER_HUB_ID" >/dev/null || run "$GROUPADD" --system --gid "$BROKER_HUB_ID" "$BROKER_HUB_USER"
+  $GETENT passwd "$BROKER_HUB_ID" >/dev/null \
+    || run "$USERADD" --system --uid "$BROKER_HUB_ID" --gid "$BROKER_HUB_ID" --no-create-home \
+      --home-dir /nonexistent --shell /sbin/nologin "$BROKER_HUB_USER"
+}
+
 cmd_broker() {
   local new units arch entry count=
   require_root
@@ -97,6 +119,7 @@ cmd_broker() {
   else
     count=$(broker_node_count "$new") || exit $?
   fi
+  broker_hub_user
   broker_config "$count"
   broker_stop
   broker_install_binary "$new"

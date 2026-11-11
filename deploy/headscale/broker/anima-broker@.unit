@@ -45,9 +45,9 @@ RestrictRealtime=yes
 RestrictSUIDSGID=yes
 LockPersonality=yes
 SystemCallArchitectures=native
-# M3: not yet run on the VPS. Check them at install (README.md, "Installing the broker") and
-# remove them one line at a time if `anima-broker check` fails.
+# M3. Run on the VPS on 2026-11-11: `~@resources` killed Bun (SIGSYS on sched_setscheduler), so
+# only @privileged is denied. If `anima-broker check` fails after an update, see README.md step 4.
 ProtectProc=invisible
 ProcSubset=pid
 SystemCallFilter=@system-service
-SystemCallFilter=~@privileged @resources
+SystemCallFilter=~@privileged

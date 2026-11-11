@@ -121,9 +121,12 @@ esac`,
   IP: `[ "$1" = -o ] || exit "\${FAKE_TAILSCALE:-0}"
 printf '%b\\n' "\${FAKE_ADDRS:-${ADDRS}}"`,
   ID: `echo "\${FAKE_GROUPS:-$2 wheel}"`,
+  GROUPADD: ``,
+  USERADD: ``,
   UNAME: `echo "\${FAKE_ARCH:-x86_64}"`,
   GETENT: `case "$2" in
   ghost) exit 2;;
+  10001 | anima-hub) [ -n "\${FAKE_HUB:-}" ] || exit 2; echo "\$FAKE_HUB";;
   root | toor) echo "$2:x:0:0::/root:/bin/sh";;
   relhome) echo "$2:x:$FAKE_UID:1000::home/$2:/bin/sh";;
   *) echo "$2:x:\${FAKE_OWNER:-$FAKE_UID}:1000::/home/$2:/bin/bash";;
@@ -264,7 +267,7 @@ export function fakeHost(): Host {
 export function mutatingCalls(run: Run): string[] {
   return run.calls.filter(
     (call) =>
-      /^(DNF|SYSTEMD_RUN|RESTORECON) /.test(call) ||
+      /^(DNF|SYSTEMD_RUN|RESTORECON|GROUPADD|USERADD) /.test(call) ||
       /^SEMANAGE fcontext -[am] /.test(call) ||
       /^NFT -f /.test(call) ||
       (/^SYSTEMCTL /.test(call) && !/^SYSTEMCTL (is-active|is-enabled|show|list-unit-files) /.test(call)),

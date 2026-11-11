@@ -129,21 +129,24 @@ than `operator`, is refused and the node is left as it was.
 
    It refuses when `anima-broker.new` is missing or does not match `--sha256`, the machine is not
    x86_64 or aarch64, or the binary cannot count the nodes (a dry run prints that step instead
-   of running it). It writes `/etc/anima/broker.conf` (`max_nodes` = the node count + 5) only if
+   of running it). It creates the system user and group `anima-hub` with id 10001, the hub container's
+   user, unless they exist (another name on 10001 is refused): systemd sets the socket's owner only
+   to a user the host knows. It writes `/etc/anima/broker.conf` (`max_nodes` = the node count + 5) only if
    the file is absent. On an update it stops `anima-broker.socket` and the audit timer first. It
    installs the binary through a temporary file in the same folder and a rename, writes the four
    units, runs `systemctl daemon-reload`, enables and restarts `anima-broker.socket` and
    `anima-broker-audit.timer`, and prints the broker's own answer, `broker: ok, <n> nodes`.
 
-4. Check the sandbox on the first install and after a systemd or Docker update. The units carry
-   `ProtectProc=invisible`, `ProcSubset=pid` and `SystemCallFilter=` lines (M3) that have not run
-   on the VPS yet. If step 3 ends with "the broker does not answer", or
-   `sudo systemctl start anima-broker-audit.service` fails, read
-   `journalctl -u 'anima-broker@*' -u anima-broker-audit.service`. Then remove one of those lines
-   from both units in `/opt/anima/headscale/broker/` (first `SystemCallFilter=~@privileged
-   @resources`, then `SystemCallFilter=@system-service`, then `ProcSubset=pid`, then
-   `ProtectProc=invisible`) and repeat step 3, until `docker compose exec` works in the sandbox.
-   Record which lines stay in vpn-build.md Section 3.
+4. Check the sandbox after a systemd, Docker or Bun update. The units carry `ProtectProc=invisible`,
+   `ProcSubset=pid`, `SystemCallFilter=@system-service` and `SystemCallFilter=~@privileged` (M3).
+   They ran on the VPS on 2026-11-11; `~@resources` was dropped then, because Bun calls
+   `sched_setscheduler` and the filter killed it (exit status 159, SIGSYS). If step 3 ends with
+   "the broker does not answer", or `sudo systemctl start anima-broker-audit.service` fails, read
+   `journalctl -u 'anima-broker@*' -u anima-broker-audit.service`. Exit status 159 is a blocked
+   system call: remove one filter line from both units in `/opt/anima/headscale/broker/` (first
+   `SystemCallFilter=~@privileged`, then `SystemCallFilter=@system-service`, then `ProcSubset=pid`,
+   then `ProtectProc=invisible`) and repeat step 3, until `docker compose exec` works in the
+   sandbox. Record which lines stay in vpn-build.md Section 11.
 
 5. To raise the node limit, edit `max_nodes=` in `/etc/anima/broker.conf`; the next request
    reads it. To update the broker, repeat steps 1 to 3. The log is

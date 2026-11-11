@@ -29,6 +29,8 @@ GETENT=${HARDEN_GETENT:-getent}
 JQ=${HARDEN_JQ:-jq}
 DOCKER=${HARDEN_DOCKER:-docker}
 UNAME=${HARDEN_UNAME:-uname}
+GROUPADD=${HARDEN_GROUPADD:-groupadd}
+USERADD=${HARDEN_USERADD:-useradd}
 
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 SELF=$HERE/$(basename "${BASH_SOURCE[0]}")

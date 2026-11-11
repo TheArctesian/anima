@@ -17,6 +17,9 @@ const TIMER_UNIT = `${UNIT_DIR}/anima-broker-audit.timer`;
 const LOCK = '/usr/bin/flock -w';
 const LOCK_FILE = '/var/lib/anima-broker/lock';
 
+// The read-only user and group lookups of the hub-user step.
+const notLookup = (call: string): boolean => !call.startsWith('GETENT ');
+
 const sha256 = (text: string): string => new Bun.CryptoHasher('sha256').update(text).digest('hex');
 
 // A stand-in for the compiled broker: `count-nodes` prints 4, `check` answers as the broker does.
@@ -105,20 +108,38 @@ describe('harden.sh broker: install', () => {
     expect(host.read(SERVICE_UNIT)).toContain('LimitCORE=0');
     expect(host.read(TIMER_UNIT)).toContain('OnUnitActiveSec=5min');
     expect(host.read(TIMER_UNIT)).toContain('OnBootSec=');
-    expect(run.calls).toEqual([
+    expect(run.calls.filter(notLookup)).toEqual([
       'UNAME -m',
+      'GROUPADD --system --gid 10001 anima-hub',
+      'USERADD --system --uid 10001 --gid 10001 --no-create-home --home-dir /nonexistent --shell /sbin/nologin anima-hub',
       'SYSTEMCTL daemon-reload',
       'SYSTEMCTL enable anima-broker.socket anima-broker-audit.timer',
       'SYSTEMCTL restart anima-broker.socket anima-broker-audit.timer',
     ]);
   });
 
+  test('R-055: the socket belongs to anima-hub, the hub container\'s 10001; an existing one is kept, a clash refused', () => {
+    const hub = 'anima-hub:x:10001:10001::/nonexistent:/sbin/nologin';
+    const host = fakeHost();
+    const kept = host.run([withBinary(host), 'broker'], { FAKE_HUB: hub });
+    expect(kept.code).toBe(0);
+    expect(kept.calls.filter((call) => /^(GROUPADD|USERADD) /.test(call))).toEqual([]);
+    expect(host.read(SOCKET_UNIT)).toContain('SocketUser=anima-hub\nSocketGroup=anima-hub\n');
+    const other = fakeHost();
+    const clash = other.run([withBinary(other), 'broker'], { FAKE_HUB: 'builder:x:10001:10001::/home/builder:/bin/sh' });
+    expect(clash.code).toBe(2);
+    expect(clash.out).toContain('the broker socket needs anima-hub:10001 for the hub');
+    expect(mutatingCalls(clash)).toEqual([]);
+    expect(other.exists(BIN)).toBe(false);
+    expect(other.exists('etc/anima/broker.conf')).toBe(false);
+  });
+
   test('L5: an upgrade stops the socket and the timer before it replaces the binary', () => {
     const host = fakeHost();
     expect(host.run([withBinary(host), 'broker']).code).toBe(0);
-    const run = host.run([withBinary(host), 'broker']);
+    const run = host.run([withBinary(host), 'broker'], { FAKE_HUB: 'anima-hub:x:10001:10001::/nonexistent:/sbin/nologin' });
     expect(run.code).toBe(0);
-    expect(run.calls.slice(0, 3)).toEqual(['UNAME -m', 'SYSTEMCTL stop anima-broker.socket', 'SYSTEMCTL stop anima-broker-audit.timer']);
+    expect(run.calls.filter(notLookup).slice(0, 3)).toEqual(['UNAME -m', 'SYSTEMCTL stop anima-broker.socket', 'SYSTEMCTL stop anima-broker-audit.timer']);
   });
 
 });
@@ -140,7 +161,7 @@ describe('harden.sh broker: units', () => {
       return lines.slice(lines.indexOf('NoNewPrivileges=yes')).filter((line) => line !== '' && !line.startsWith('#'));
     };
     expect(sandbox(AUDIT_UNIT)).toEqual(sandbox(SERVICE_UNIT));
-    for (const line of ['ProtectProc=invisible', 'ProcSubset=pid', 'SystemCallFilter=@system-service', 'SystemCallFilter=~@privileged @resources', 'CapabilityBoundingSet=', 'PrivateNetwork=yes']) {
+    for (const line of ['ProtectProc=invisible', 'ProcSubset=pid', 'SystemCallFilter=@system-service', 'SystemCallFilter=~@privileged', 'CapabilityBoundingSet=', 'PrivateNetwork=yes']) {
       expect(sandbox(SERVICE_UNIT)).toContain(line);
     }
     for (const line of ['User=root', 'StateDirectory=anima-broker', 'UMask=0077', 'LimitCORE=0']) expect(host.read(AUDIT_UNIT)).toContain(`${line}\n`);

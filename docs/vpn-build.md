@@ -1895,6 +1895,14 @@ A security review of the broker found the points below; each fix has regression 
   `auditTailnet`, `Runner`, `StepError`, the log line); `register.ts` holds the `register` verb;
   `protocol.ts` holds `Refused` and the refusal details.
 
+- **First VPS install (2026-11-11).** Two faults showed only on the VPS. (1) The socket failed with
+  `Failed to resolve user 10001`: systemd sets `SocketUser=` only to a user the host can resolve,
+  and the VPS had none for the hub container's 10001. `harden.sh broker` now creates the system user
+  and group `anima-hub` (10001) unless they exist, refuses another name on 10001, and the socket
+  names `anima-hub`. (2) The audit run died with exit status 159 (SIGSYS): `~@resources` denies
+  `sched_setscheduler`, which Bun calls at start (strace of the arm64 build in AlmaLinux 10; it
+  calls nothing in `@privileged`). Both units now deny `~@privileged` only.
+
 ### Client lane (A2-T2, A2-T3)
 
 1. **A2-T2.** `SitePaths` takes only `sites` (no `now`: nothing in a site row depends on time). `NodeKeys` takes
