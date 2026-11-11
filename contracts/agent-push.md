@@ -24,7 +24,8 @@ This contract is the whole interface between `anima-agent` and the hub. The agen
 | `POST /agent/v1/push` | Agent token, `Authorization: Bearer` | 512 KiB (MET-017) | 204, empty |
 | `POST /agent/v1/renew` | Agent token, `Authorization: Bearer` | 4 KiB | 200, `Renewed` |
 
-The hub reads at most the limit and answers 413 without reading further.
+The hub reads at most the limit and answers 413 without reading further. A body that has not arrived within
+5 seconds is answered 503 `UNAVAILABLE` and written to the event log like a refusal (Section 6).
 
 ## 2. Secrets
 
@@ -36,8 +37,12 @@ The hub reads at most the limit and answers 413 without reading further.
 - Bytes come from the OS random source. Only canonical unpadded base64url of exactly 16 or 32 bytes is accepted,
   so each value has one spelling and no lookup runs for junk.
 - The prefixes let a scanner find a leaked value. An API key (`anima_` + 43) never has the length of an agent
-  token, and the access guard refuses any bearer that starts with `anima_agent_` or `anima_enrol_` before a
-  lookup: an agent token never reaches GraphQL, a session or a read (MET-013).
+  token. The access guard refuses, before any lookup, a bearer spelled exactly as an agent token or an
+  enrolment code: the prefix, then exactly 43 or 22 base64url characters. Any other text that starts with
+  `anima_agent_` or `anima_enrol_` is read as any other bearer: as an API key when it is `anima_` and the
+  43-character spelling of 32 bytes, as a plain API token when it is that spelling in all, and is refused
+  otherwise. Either way it is looked up only among API tokens and keys, so an agent token never reaches
+  GraphQL, a session or a read (MET-013).
 - No log, event, metric, error message or response other than `Enrolled` and `Renewed` holds a code or a token
   (LOG-007, MET-013). The Rust types that hold them implement neither `Debug`, `Display` nor `Clone`, and wipe
   on drop.
@@ -63,6 +68,11 @@ Request:
 
 - The hub marks the code used in the transaction that looks it up, before it makes the token. A second use
   fails, even when the first use failed later or its response was lost (MET-012).
+- `deviceName` is the device's name: 1 to 64 characters (so at most 256 bytes) with no control
+  character. The hub's rule for a device name has the same length (`agent_core::wire::DEVICE_NAME_CHARS`)
+  and refuses more characters, so the agent keeps every name the hub can send. A device whose stored name
+  breaks this rule (a row older than the rule) is not enrolled: the answer is `ENROLMENT_REFUSED`, its token
+  and metrics source stay as they were, and the code is used, as any code is once tried (MET-012).
 - A successful enrolment replaces any agent token the device had, sets the device's metrics source to `agent`
   (MET-011, which stops SSH collection), and writes one event (source `metrics`, severity info) naming the
   device.
@@ -107,7 +117,9 @@ Request:
   most 10 000 (W), and a batch with a value past either is `MALFORMED` (MET-002, CR-17). The agent drops such a
   2-second sample before it makes a mean, so it never sends one.
 - `gpus`: optional. The agent sends it in its first batch after start and after each GPU discovery (at start
-  and every 24 hours, MET-006). Absent means "unchanged". `vendor` is `nvidia`, `amd`, `intel` or `apple`;
+  and every 24 hours, MET-006), and again with the next batch until one is accepted, except after `MALFORMED`:
+  then it waits for the next discovery, so a list the hub refuses cannot sink every later batch. Absent means
+  "unchanged". `vendor` is `nvidia`, `amd`, `intel` or `apple`;
   `name` is 1 to 128 bytes, no control character; `hasVram` is false for `intel` and `apple` (MET-007).
 
 The hub:
@@ -159,7 +171,7 @@ The body of every refusal is `{ "error": "<CODE>" }` and nothing else. It never 
 | 403 | `WRONG_DEVICE` | `device` is not the token's device | As `TOKEN_REFUSED` |
 | 413 | `TOO_LARGE` | The body exceeds its limit | Drops that batch; sends smaller batches |
 | 422 | `OUT_OF_RANGE` | A point's `at` is more than 1 hour before or more than 60 seconds after the hub's clock | Drops that batch |
-| 503 | `UNAVAILABLE` | The hub cannot store now | Keeps the points; tries again |
+| 503 | `UNAVAILABLE` | The hub cannot store now, or is busy (below) | Keeps the points; tries again |
 
 The hub runs the push checks in this order and stops at the first refusal: the bearer (before it reads the body), the size,
 the JSON, the device, the shape, the times. Every push refusal is written to the event log (source `metrics`,
@@ -167,6 +179,27 @@ severity warning) with its code, the client address and, when the token was vali
 the token (MET-017). A refusal with no valid token is written at most once a minute per client address, so a
 flood cannot fill the event log. A refusal with a valid token, on any agent route, is written at most once a
 minute per device (CR-21). Only the event is held back: the refusal and its answer are the same.
+
+The hub limits the agent requests in progress (MET-017), and answers `UNAVAILABLE` to a request past a limit
+before it waits for the database. That answer is not written to the event log, and the agent keeps the batch
+and tries again after its wait (Section 7).
+
+- **Per client address:** at most 2 requests until their credential is known: an enrolment until its code
+  has been looked up and exchanged, a push or renewal until its token has been looked up. All requests from one address share its 2
+  turns: the node's agent, which sends one request at a time, and an enrolment beside it. One VPN node with
+  codes or bearers that are wrong cannot keep the hub busy for the others.
+- **Per device:** at most one push or renewal at once, from the token lookup until the batch or renewal is
+  stored or refused, so requests with one token never queue on the device's rows.
+- **On the database:** at most 4 agent requests at once, well under the hub's pool. A request waits for its
+  turn in order, for at most 2 seconds, and holds it only while it looks up its credential and while it
+  stores. It never holds it while its body arrives. A request whose token is valid holds its turn until its
+  store ends, at most until its answer's deadline (10 seconds): so the holders of 4 valid tokens can keep the
+  other agents waiting that long.
+- **Refusal events** are written after the request's turns end, at most once a minute per client address,
+  or per device when the token was valid (above). When refusals of 64 client addresses have been written
+  within the last minute, the refusals of further addresses are counted rather than written. The next agent
+  refusal that comes a minute or more after the first of them is followed by one event giving that count
+  ("Left out N more agent refusals from other addresses in the last minute."). No timer writes it.
 
 ## 7. Agent buffer (MET-014)
 
@@ -176,4 +209,6 @@ minute per device (CR-21). Only the event is held back: the refusal and its answ
   at once while points remain.
 - While the hub cannot be reached (a network error, a timeout of 10 seconds, a 5xx), it keeps up to 360
   points (1 hour), dropping the oldest first, and drops any point older than 59 minutes before it sends.
-- After a failure it waits 10 seconds, doubling to at most 60 seconds, then resumes the 10-second rhythm.
+- After a failure it waits 10 seconds, doubling to at most 60 seconds, then resumes the 10-second rhythm. Each
+  wait after a failure is moved at random by up to 20 % either way (so at most 72 seconds), so agents that
+  failed together do not all try again together.

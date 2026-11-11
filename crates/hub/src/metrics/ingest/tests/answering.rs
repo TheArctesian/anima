@@ -19,14 +19,21 @@ use tower::ServiceExt as _;
 use crate::{
     clock::{Clock, FixedClock},
     events::{Bus, ClientAddr},
-    metrics::ingest::{make_code, routes::agent_router_within},
+    metrics::ingest::{
+        make_code,
+        routes::{Deadlines, agent_router_within},
+    },
 };
 
 use super::{database_now, enrolment::waits_for_locks, pve};
 
 fn router(pool: &PgPool, now: DateTime<Utc>, answer_time: Duration) -> Router {
     let clock: Arc<dyn Clock> = Arc::new(FixedClock(now));
-    agent_router_within(pool.clone(), Bus::new(16), clock, answer_time)
+    let deadlines = Deadlines {
+        answer: answer_time,
+        ..Deadlines::HUB
+    };
+    agent_router_within(pool.clone(), Bus::new(16), clock, deadlines)
 }
 
 /// Posts the code to `/agent/v1/enrol`, from a permitted address when `addressed`.

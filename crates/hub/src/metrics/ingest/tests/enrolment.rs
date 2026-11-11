@@ -1,7 +1,8 @@
 //! MET-012, MET-013, K8 Section 3: the device row orders an enrolment against a revoke and
 //! against a second code. A revoke that commits after the code was redeemed stops the enrolment;
 //! one that starts while the enrolment is storing its token waits, then deletes the token; a
-//! second code made while the first is being stored waits, then voids it.
+//! second code made while the first is being stored waits, then voids it. A stored name the agent
+//! would not keep enrols nothing.
 
 use std::time::Duration;
 
@@ -168,4 +169,39 @@ async fn met_012_a_second_code_made_while_the_first_is_stored_waits_then_voids_i
 
     assert!(redeem(&pool, &first_text, now).await.unwrap().is_none());
     assert!(redeem(&pool, &second_text, now).await.unwrap().is_some());
+}
+
+/// T8a N2: a stored name older than the device rule, which the agent would throw away, stores
+/// no token and leaves the metrics source as it was.
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../tests/fixtures", scripts("devices"))
+)]
+async fn met_012_a_stored_name_the_agent_would_not_keep_enrols_nothing(pool: PgPool) {
+    let now = database_now(&pool).await;
+    for (seed, name) in [(5, "x".repeat(65)), (6, "pve\u{1b}[2K-01".to_owned())] {
+        sqlx::query("UPDATE devices.devices SET name = $2 WHERE id = $1")
+            .bind(pve())
+            .bind(&name)
+            .execute(&pool)
+            .await
+            .unwrap();
+        let code = EnrolmentCode::from_random([seed; 16]);
+        let presented = EnrolmentCode::parse(code.expose()).unwrap();
+        let mut conn = pool.acquire().await.unwrap();
+        make_code(&mut conn, pve(), code, now).await.unwrap();
+        drop(conn);
+        let redeemed = redeem(&pool, &presented, now).await.unwrap().unwrap();
+        let token = AgentToken::from_random([seed; 32]);
+        let enrolled = enrol(&pool, &Bus::new(4), (redeemed, token), now).await;
+        assert!(enrolled.unwrap().is_none(), "{name:?}");
+        assert_eq!(agents(&pool).await, 0, "{name:?}");
+        let source: String =
+            sqlx::query_scalar("SELECT metrics_source FROM devices.devices WHERE id = $1")
+                .bind(pve())
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert_eq!(source, "none", "{name:?}");
+    }
 }

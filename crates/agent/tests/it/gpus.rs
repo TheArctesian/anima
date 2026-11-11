@@ -1,4 +1,5 @@
-//! The GPU list in a batch: sent once after a discovery, kept until a 204 (K8 Section 4, R-098).
+//! The GPU list in a batch: sent once after a discovery, kept until a 204 or a `MALFORMED`
+//! (K8 Section 4, R-098).
 
 use agent_core::wire::RefusalCode;
 use anima_agent::push::Event;
@@ -61,22 +62,48 @@ async fn k8_4_a_discovery_that_found_no_gpu_sends_an_empty_list_once() {
 }
 
 #[tokio::test]
-async fn k8_4_the_gpu_list_is_kept_when_the_hub_drops_the_batch() {
-    for code in [RefusalCode::Malformed, RefusalCode::OutOfRange] {
-        let hub = FakeHub::start().await;
-        let mut rig = rig(&hub, 1, year());
-        hub.queue_push([Reply::refuse(code)]);
-        rig.pusher.accept(Event::Gpus(gpu_list()));
-        feed(&mut rig, 1, 2);
-        rig.pusher.push_due(at(30)).await;
-        feed(&mut rig, 3, 1);
-        rig.pusher.push_due(at(40)).await;
-        assert_eq!(
-            gpus_of(&hub),
-            [Some(expected_gpus()), Some(expected_gpus())],
-            "{code:?}"
-        );
-    }
+async fn k8_4_the_gpu_list_is_kept_when_the_hub_drops_the_batch_for_its_times() {
+    let hub = FakeHub::start().await;
+    let mut rig = rig(&hub, 1, year());
+    hub.queue_push([Reply::refuse(RefusalCode::OutOfRange)]);
+    rig.pusher.accept(Event::Gpus(gpu_list()));
+    feed(&mut rig, 1, 2);
+    rig.pusher.push_due(at(30)).await;
+    feed(&mut rig, 3, 1);
+    rig.pusher.push_due(at(40)).await;
+    assert_eq!(
+        gpus_of(&hub),
+        [Some(expected_gpus()), Some(expected_gpus())]
+    );
+}
+
+/// T8 N1: a list the hub refuses (index 64 is past K8's 63) is not sent again, so it cannot
+/// sink every later batch until the next discovery, 24 hours on.
+#[tokio::test]
+async fn k8_4_a_refused_gpu_list_is_not_resent_with_every_batch() {
+    let hub = FakeHub::start().await;
+    let mut rig = rig(&hub, 1, year());
+    hub.queue_push([
+        Reply::refuse(RefusalCode::Malformed),
+        Reply::refuse(RefusalCode::Malformed),
+    ]);
+    rig.pusher
+        .accept(Event::Gpus(vec![agent_core::wire::BatchGpu {
+            index: 64,
+            name: "GPU".to_owned(),
+            vendor: agent_core::wire::GpuVendor::Nvidia,
+            has_vram: true,
+        }]));
+    feed(&mut rig, 1, 3);
+    rig.pusher.push_due(at(40)).await;
+    feed(&mut rig, 4, 2);
+    rig.pusher.push_due(at(60)).await;
+    let pushes = gpus_of(&hub);
+    assert_eq!(pushes.len(), 2);
+    assert_eq!(
+        pushes[1], None,
+        "the refused gpus list rode along again, so this batch was dropped too"
+    );
 }
 
 #[tokio::test]

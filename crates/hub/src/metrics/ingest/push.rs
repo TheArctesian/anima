@@ -11,7 +11,9 @@
 mod batch;
 mod samples;
 
-use agent_core::wire::{AgentToken, Batch, RefusalCode};
+use std::net::IpAddr;
+
+use agent_core::wire::{Batch, RefusalCode};
 use async_graphql::ID;
 use axum::{
     body::Body,
@@ -22,9 +24,11 @@ use axum::{
 use chrono::{DateTime, Utc};
 
 use super::{
-    Error, credential,
-    refusals::{Refused, Route},
-    routes::{AgentState, client_of, read_body, unavailable, unmounted},
+    admission::{Admitted, Stop, admit},
+    credential,
+    refusals::Route,
+    routes::{AgentState, busy, client_of, read_body, unmounted},
+    turns::Turn,
 };
 use crate::{
     ids::DeviceId,
@@ -36,14 +40,6 @@ use samples::Rows;
 /// The push body limit (K8 Section 1, MET-017).
 const BODY_LIMIT: usize = 512 * 1024;
 
-/// Why a push stopped short of `204`.
-enum Stop {
-    /// Refused by K8 Section 6, for the device of a valid token when there was one.
-    Refused(RefusalCode, Option<DeviceId>),
-    /// The hub cannot answer now (`UNAVAILABLE`).
-    Failed(Error),
-}
-
 /// Takes a batch from the agent of the bearer token: `204` once it is stored, or the first
 /// refusal of K8 Section 6, written to the event log without the token.
 pub(super) async fn serve_push(state: AgentState, request: Request) -> Response {
@@ -51,35 +47,34 @@ pub(super) async fn serve_push(state: AgentState, request: Request) -> Response 
         return unmounted();
     };
     let now = state.clock.now();
+    let Some(address) = state.turns.address(client.0) else {
+        return busy();
+    };
     let (parts, body) = request.into_parts();
-    match push(&state, &parts.headers, body, now).await {
+    match push(&state, (&parts.headers, body), address, now).await {
         Ok(()) => StatusCode::NO_CONTENT.into_response(),
-        Err(Stop::Refused(code, device)) => {
-            let refused = Refused {
-                route: Route::Push,
-                code,
-                client,
-                device,
-            };
-            state.refuse(refused, now).await
-        }
-        Err(Stop::Failed(error)) => unavailable(&error),
+        Err(stop) => state.stopped(stop, (Route::Push, client), now).await,
     }
 }
 
 async fn push(
     state: &AgentState,
-    headers: &HeaderMap,
-    body: Body,
+    (headers, body): (&HeaderMap, Body),
+    address: Turn<IpAddr>,
     now: DateTime<Utc>,
 ) -> Result<(), Stop> {
     let token =
         credential::bearer(headers).ok_or(Stop::Refused(RefusalCode::TokenRefused, None))?;
-    let device = holder(state, &token, now).await?;
+    // One push per device at a time: a second one would wait for the device row holding a
+    // connection (MET-017). The body arrives under this turn only.
+    let Admitted {
+        device,
+        name,
+        turn: _turn,
+    } = admit(state, &token, address, now).await?;
     let refused = |code| Stop::Refused(code, Some(device));
-    let name = agent_name(state, device).await?;
     let accepted = {
-        let body = read_body(headers, body, BODY_LIMIT)
+        let body = read_body(state, headers, body, BODY_LIMIT)
             .await
             .map_err(refused)?;
         let batch =
@@ -97,6 +92,7 @@ async fn push(
         gpus: gpus.as_deref(),
     };
     drop(token);
+    let _request = state.turns.request().await.ok_or(Stop::Busy)?;
     match batch::write(&state.db, &state.bus, (pushed, &rows), now).await {
         Ok(Written::Kept(kept)) => {
             if kept > 0 {
@@ -105,29 +101,6 @@ async fn push(
             Ok(())
         }
         Ok(Written::Refused(code)) => Err(refused(code)),
-        Err(error) => Err(Stop::Failed(error)),
-    }
-}
-
-/// The device whose usable token `token` is at `now`.
-async fn holder(
-    state: &AgentState,
-    token: &AgentToken,
-    now: DateTime<Utc>,
-) -> Result<DeviceId, Stop> {
-    match credential::authenticate(&state.db, token, now).await {
-        Ok(Some(device)) => Ok(device),
-        Ok(None) => Err(Stop::Refused(RefusalCode::TokenRefused, None)),
-        Err(error) => Err(Stop::Failed(error)),
-    }
-}
-
-/// The device's name while its metrics come from the agent; `TOKEN_REFUSED` once the operator
-/// switched the source away or deleted the device.
-async fn agent_name(state: &AgentState, device: DeviceId) -> Result<String, Stop> {
-    match credential::agent_name(&state.db, device).await {
-        Ok(Some(name)) => Ok(name),
-        Ok(None) => Err(Stop::Refused(RefusalCode::TokenRefused, Some(device))),
         Err(error) => Err(Stop::Failed(error)),
     }
 }

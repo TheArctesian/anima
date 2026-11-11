@@ -1,6 +1,6 @@
 //! `anima-agent enrol`: trade a code for a token and keep both (MET-012, MET-013, K8 Section 3).
 
-use agent_core::wire::{EnrolmentCode, RefusalCode};
+use agent_core::wire::{EnrolmentCode, RefusalCode, is_device_name};
 use chrono::{DateTime, Utc};
 
 use crate::config::Config;
@@ -40,13 +40,6 @@ pub struct Enrolment<'a> {
     pub now: DateTime<Utc>,
 }
 
-/// A device name the agent will keep and print: 1 to 128 bytes, no control character (the K8
-/// label rule), since the hub's text goes to the operator's terminal.
-#[must_use]
-pub fn is_device_name(name: &str) -> bool {
-    (1..=128).contains(&name.len()) && !name.chars().any(char::is_control)
-}
-
 impl Enrolment<'_> {
     /// Checks the folder, spends `code` at the hub, stores the token with its expiry, then the
     /// configuration. Returns the name of the device. A folder that is refused is found before
@@ -67,6 +60,7 @@ impl Enrolment<'_> {
             }
             Answer::Failed(cause) => return Err(EnrolError::Failed(cause)),
         };
+        // The hub's text goes to the operator's terminal; every name the hub holds passes.
         if !is_device_name(&enrolled.device_name) {
             return Err(EnrolError::Failed(Cause::Unreadable));
         }
