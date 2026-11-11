@@ -36,9 +36,13 @@ operator steps (VPS-005): with `headscale nodes tag -i <id> -t tag:agent` on an 
 or with a pre-auth key made with `--tags tag:agent` when the device registers.
 
 A tagged node stops being a personal node, and tagged nodes do not expire in Headscale.
-VPN-003 lists only the hub and routers as tagged nodes. Whether agent-only devices need a
-forced re-key schedule is pending a programme ruling. Until it is decided, the operator
-revokes an agent device by deleting the node (`headscale nodes delete`) or by removing the tag.
+VPN-003 lists agent-only devices with the hub and routers as nodes whose keys do not expire
+(R-105): an agent node reaches only the hub on TCP 443, and every route there needs the
+device's agent token (K8), so there is no re-key schedule.
+
+Revoking the agent token on the device's page stops its pushes, but not its VPN reach to the
+hub on 443. To cut an agent device off the tailnet, the operator deletes the node
+(`headscale nodes delete`) or removes the tag (VPS-005).
 
 A device that is also an operator machine (a laptop or the Mac) stays a personal node of
 `operator`, untagged: it keeps its operator reach, and its agent still only dials the hub on
