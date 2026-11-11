@@ -1702,8 +1702,6 @@ Deviations that the builders found, with the evidence. Each keeps the intent of 
 
 ### Hub lane (A1-T0 to A1-T5)
 
-## Build notes
-
 Deviations that the Tier A hub build made from this document, with the smallest fix that keeps
 its intent.
 
@@ -1766,3 +1764,64 @@ its intent.
     A2-T2. The lint gate's `codegen.ts --check` confirms the generated files are current.
 18. **A1-T5.** K1 places the new `Query.vpn` under a `# Phase 3: VPN (VP-5)` comment at the end
     of `type Query`; the enums are written one value per line, as the rest of K1.
+### Broker lane (B1, B2)
+
+- **B1: the auth ID pattern is `^hskey-authreq-[A-Za-z0-9_-]{24}$`** (Section 3, fact 11), not the
+  pattern in the B1 text. A value that starts with `-` can never match.
+- **B1: `personal-key` names the user by id.** `preauthkeys create --user` takes a numeric id (fact
+  12; a local Headscale 0.29.7 refuses `--user=operator` with `strconv.ParseUint`). The broker runs
+  `users list --output=json` first, takes the id of the user `operator`, and replies
+  `headscale-failed` when there is none. `plan` therefore takes a fourth parameter,
+  `Moment { now, operatorId }` (`now` is for `renew`).
+- **B1: `auth register --user` takes the name.** A local Headscale 0.29.7 answers `--user=1` with
+  `looking up user: user not found` and accepts `--user=operator` (the harness also uses the name,
+  `contract.sh:126`). The step stays `--user=operator`.
+- **B1: `--output=json`, not `-o json`.** The rule "each flag and its value are one argv element"
+  then holds for every step without an exception; Headscale accepts both forms (local check).
+  `--tags=tag:router,tag:site-<x>` in one element is one string-slice value (local check:
+  `acl_tags` lists both).
+- **B1: an empty list is `null`.** A local Headscale 0.29.7 prints `null` for `nodes list` and
+  `users list` with no entries (`nodes list-routes` prints `[]`). `broker/nodes.ts` `tailnetOf`
+  reads `null` as `[]`; `src/inventory.ts` `parseNodes` still refuses `null` (the inventory check
+  runs on a tailnet that has nodes).
+- **B1: Headscale errors with `--output=json` are `{"error": "…"}` with exit 1.** The runner fails on
+  the exit code; the reply readers also refuse a reply with no `id` or `key`.
+- **B1: the `renew` verb (BD-17, VP-10) is in B1.** `{ "verb": "renew", "node": <id> }`; `plan`
+  refuses an absent, tagged or non-`operator` node with `not-allowed`; not rate limited.
+- **B1: `approve-route` also requires `tag:router`** on the node, besides `tag:site-<site>` and the one
+  available route.
+- **B1: a passed `Issued` entry is dropped 2 hours after `at`**, like an entry with no node. A passed
+  entry is never checked again, so dropping it changes no outcome and keeps the state small.
+- **B1: reply readers live in `broker/nodes.ts`** (`newKeyOf`, `registeredIdOf`, `operatorIdOf`,
+  `registered`), with `tests/broker-nodes.test.ts` against the harness fixtures, and
+  `tests/broker-fixture.ts` for node builders. `src/policy.ts` gains `prefixText` (the site subnet
+  as text).
+- **B2: the core is `broker/serve.ts`, the files are `broker/state.ts`.** `main.ts` keeps the entry
+  points, the `headscale` runner, the stdin reader and the `check` client; the split keeps each
+  unit to one purpose. `serve(line, runner, files, now)` has the B2 signature and returns the reply
+  and the log line; `main.ts` writes them.
+- **B2: the order inside a request.** A `bad-request` is answered before any Headscale step. Then
+  one audit covers the `pendingRegister` node and the issued keys (B2 steps 1 and 2 share one node
+  read). `plan` runs before `admit`, so a refused site or node is not counted against the limit;
+  the count is still written before the step. `personal-key` runs `users list` before `plan`.
+- **B2: `nodes` is answered from the list the audit read** (read again only after a fix), not by a
+  second run of the same two steps. `approve-route` replies `{ node, site }`; `renew` replies the
+  node `{ name, address, keyExpiry }` from a fresh list.
+- **B2: an unreadable `state.json` or `broker.conf` refuses every verb** with `headscale-failed`; a
+  missing `state.json` is the empty state. A state the broker cannot read is never taken as empty,
+  so the limits cannot be reset by corrupting it.
+- **B2: `harden.sh broker` runs `anima-broker.new count-nodes` always**, also when `broker.conf`
+  exists, as the architecture and Headscale check (a binary for another architecture fails to
+  start). It reads the units from `../broker/` (on the VPS `/opt/anima/headscale/broker/`), and
+  removes `anima-broker.new` after `install`. `harden.sh` gets `UNAME` (`HARDEN_UNAME`) for the
+  fake host; `tests/vps-host.ts` copies the two units beside its `vps/` copy.
+- **B2: binary check.** `bun deploy/headscale/bin/broker-build.ts` built
+  `bun-linux-x64-baseline-v1.3.14`, ELF x86-64, 93 661 312 bytes. In a local `almalinux:10`
+  container (amd64): EOF → no reply, exit 0; `bogus` → exit 64; a bad verb → `bad-request`;
+  `nodes` with no `broker.conf` → `headscale-failed`; `count-nodes` with no Docker → exit 1 with
+  `count-nodes failed (StepError)`. The VPS run (Section 10, point 3) is still open.
+- **B2: the service unit is `broker/anima-broker@.unit` in the repository**, installed as
+  `anima-broker@.service`, as `backup/headscale-backup.unit` is: `service` is a banned file name
+  (`quality:names`).
+- **B2: `tests/broker-process.test.ts`** covers `readLine`, the entry points and the files, besides the
+  `broker-main.test.ts` rows (which call `serve` with `tests/broker-fake.ts`).

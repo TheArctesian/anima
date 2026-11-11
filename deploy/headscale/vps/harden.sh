@@ -28,6 +28,7 @@ ID=${HARDEN_ID:-id}
 GETENT=${HARDEN_GETENT:-getent}
 JQ=${HARDEN_JQ:-jq}
 DOCKER=${HARDEN_DOCKER:-docker}
+UNAME=${HARDEN_UNAME:-uname}
 
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 SELF=$HERE/$(basename "${BASH_SOURCE[0]}")
@@ -80,6 +81,10 @@ Commands (run as root):
             sudo --preserve-env=SSH_CONNECTION $SELF firewall
   confirm   From a NEW SSH session over the VPN (same sudo form as firewall): cancel
             the rollback, install the rules for boot and mask firewalld.
+  broker    Install the Anima broker (R-055): the binary copied first to
+            /usr/local/libexec/anima-broker.new (scp), /etc/anima/broker.conf if absent
+            (max_nodes = the node count + 5), the socket and service units from
+            ../broker/; enable the socket, then ask it for the node list.
 
 Options:
   --root DIR        Treat DIR as the file system root (tests). Default /.
@@ -280,6 +285,8 @@ cmd_check() {
 . "$HERE/firewall.sh"
 # shellcheck source=inventory.sh
 . "$HERE/inventory.sh"
+# shellcheck source=broker.sh
+. "$HERE/broker.sh"
 
 main() {
   while [ $# -gt 0 ]; do
@@ -300,7 +307,7 @@ main() {
     exit 64
   fi
   case $1 in
-    check | ssh | updates | selinux | docker | firewall | confirm) "cmd_$1" ;;
+    check | ssh | updates | selinux | docker | firewall | confirm | broker) "cmd_$1" ;;
     *) usage_error ;;
   esac
 }

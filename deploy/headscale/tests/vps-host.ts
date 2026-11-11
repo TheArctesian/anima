@@ -14,6 +14,7 @@ import { dirname, join } from "node:path";
 export const HARDEN_TIMEOUT_MS = 30_000;
 
 export const VPS_DIR = join(import.meta.dir, "..", "vps");
+const BROKER_UNITS = ["anima-broker.socket", "anima-broker@.unit"];
 export const VPN_SESSION = "100.64.0.2 51000 100.64.0.1 22";
 export const ALLOWED_SS = [
   'tcp LISTEN 0 4096 203.0.113.7:443 0.0.0.0:* users:(("headscale",pid=10,fd=3))',
@@ -120,6 +121,7 @@ esac`,
   IP: `[ "$1" = -o ] || exit "\${FAKE_TAILSCALE:-0}"
 printf '%b\\n' "\${FAKE_ADDRS:-${ADDRS}}"`,
   ID: `echo "\${FAKE_GROUPS:-$2 wheel}"`,
+  UNAME: `echo "\${FAKE_ARCH:-x86_64}"`,
   GETENT: `case "$2" in
   ghost) exit 2;;
   root | toor) echo "$2:x:0:0::/root:/bin/sh";;
@@ -220,6 +222,9 @@ export function fakeHost(): Host {
   const root = join(work, "root");
   const vps = join(work, "vps");
   cpSync(VPS_DIR, vps, { recursive: true });
+  // harden.sh broker reads the units from ../broker/, as on the VPS.
+  mkdirSync(join(work, "broker"));
+  for (const unit of BROKER_UNITS) cpSync(join(VPS_DIR, "..", "broker", unit), join(work, "broker", unit));
   installFakes(work);
   const host: Host = {
     root,

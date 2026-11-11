@@ -207,6 +207,12 @@ export function parsePrefix(text: string): Prefix {
   return { base, bits };
 }
 
+/** The prefix in CIDR form, as `parsePrefix` reads it (`10.10.0.0/24`). */
+export function prefixText(prefix: Prefix): string {
+  const octets = [24, 16, 8, 0].map((shift) => String(Math.floor(prefix.base / 2 ** shift) % 256));
+  return `${octets.join('.')}/${String(prefix.bits)}`;
+}
+
 export function parseIpv4(text: string): number {
   const octets = text.split('.');
   if (octets.length !== 4 || !octets.every((octet) => OCTET.test(octet) && Number(octet) <= 255)) {
