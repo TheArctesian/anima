@@ -1,6 +1,7 @@
 //! Tests of the vpn domain: the status parser, the picture, the warnings. Fixture expiries are
 //! written relative to the test clock, `2030-05-05T12:00:00Z`.
 
+mod matching;
 mod peers;
 mod picture;
 mod proxy;
