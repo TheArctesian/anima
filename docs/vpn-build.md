@@ -1619,3 +1619,14 @@ the start order does not change (A1-T0 Check), the tests need no paused clock an
    B1 and B2 read these shapes; if A4 shows other shapes, change B1/B2 before they start.
 3. **Evidence, B2:** the run of the broker unit (on the VPS, VP-11) (`SocketUser=10001` with no passwd
    entry, Bun under the sandbox, `docker compose exec` in the sandbox).
+
+## Build notes
+
+Deviations that the Tier A hub build made from this document, with the smallest fix that keeps
+its intent.
+
+1. **A1-T0.** Clippy `too_many_lines` (limit 60) refuses `upkeep::spawn` with the four loops
+   added at its end (68 lines). The loops and `reaching()` go in a private
+   `upkeep::loops(dependencies)`, and `spawn` ends with `jobs.extend(loops(dependencies))`. The
+   start order does not change. `upkeep.rs` is 169 code lines (the target was 160), because
+   rustfmt writes each long `spawn_*` call on several lines; the file limit is 300.
