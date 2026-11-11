@@ -62,6 +62,9 @@ lettre.workspace = true
 # The updater's own verifier, for the signature of each published updater file (BLD-064,
 # R-108); the desktop shell checks with the same crate.
 minisign-verify = "0.3"
+# Free space and write access of the recording folder through safe `statvfs` and `access`
+# (K4 §11, G-3); already in the lockfile through tempfile.
+rustix = { version = "1.1", default-features = false, features = ["fs", "std"] }
 
 [features]
 # `access::Identity::for_tests`, for integration tests of guarded domains (D-6). Turned on
