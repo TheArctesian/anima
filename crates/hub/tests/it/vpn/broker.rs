@@ -230,13 +230,46 @@ async fn vp_7_a_reply_over_64_kib_is_refused(pool: PgPool) {
 }
 
 #[sqlx::test(migrations = "./migrations")]
-async fn vp_7_two_calls_at_once_take_turns(pool: PgPool) {
+async fn vp_7_a_mutation_during_a_read_takes_its_turn(pool: PgPool) {
+    let fake = start(Duration::from_millis(300), |line| {
+        let request: Value = serde_json::from_str(line).unwrap();
+        Some(if request["verb"] == "nodes" {
+            ok(&nodes_value())
+        } else {
+            ok(&json!({ "key": "REDACTED", "expiresAt": "2030-05-05T13:00:00.000Z", "keyId": 7 }))
+        })
+    });
+    let feed = Feed::new();
+    let broker = fake.broker();
+    let (hub, token) = hub_reading(&pool, &feed, Some(broker.clone())).await;
+    let invite = "mutation { createVpnInvite { expiresAt } }";
+
+    // The reader holds the shared turn for 300 ms; without it the mutation's connection would
+    // be closed while the reader waits for its reply.
+    let (reader, made) = tokio::join!(read_with(&pool, &feed, broker), async {
+        while fake.seen().is_empty() {
+            tokio::time::sleep(Duration::from_millis(5)).await;
+        }
+        data(&hub, &token, invite, json!({})).await
+    });
+    reader.abort();
+
+    assert_eq!(
+        made["createVpnInvite"]["expiresAt"],
+        "2030-05-05T13:00:00+00:00"
+    );
+    assert_eq!(fake.refused(), 0);
+    assert_eq!(fake.seen().len(), 2);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn bd_15_a_read_while_another_call_holds_the_turn_does_not_connect(pool: PgPool) {
     let fake = start(Duration::from_millis(300), |_| Some(ok(&nodes_value())));
     let broker = fake.broker();
     let (first, second) = (Feed::new(), Feed::new());
 
-    // Two readers on clones of one broker read at once; without the turn the second
-    // connection would be closed while the first waits for its reply.
+    // Two readers on clones of one broker read at once: the second finds the turn taken,
+    // publishes without the broker's list and never connects.
     let (one, two) = tokio::join!(
         read_with(&pool, &first, broker.clone()),
         read_with(&pool, &second, broker)
@@ -245,11 +278,12 @@ async fn vp_7_two_calls_at_once_take_turns(pool: PgPool) {
     two.abort();
 
     assert_eq!(fake.refused(), 0);
-    assert_eq!(fake.seen().len(), 2);
-    for feed in [first, second] {
-        assert_eq!(
-            feed.latest().unwrap().broker,
-            anima_hub::vpn::BrokerState::Ready
-        );
-    }
+    assert_eq!(fake.seen().len(), 1);
+    let mut states = [first, second].map(|feed| format!("{:?}", feed.latest().unwrap().broker));
+    states.sort();
+    assert_eq!(
+        states,
+        ["Failed", "Ready"],
+        "a busy first read has no last state to keep"
+    );
 }

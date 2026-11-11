@@ -61,7 +61,7 @@ changes), so they need no new ruling.
 | BD-7 | The broker is TypeScript in `deploy/headscale/broker/`, compiled on the Mac with `bun build --compile` to one Linux binary. systemd runs one process for each connection (`Accept=yes`). | VP-8. The deploy tools are TypeScript; the broker reuses `policy.ts` and `hujson.ts`; the VPS has no Bun. |
 | BD-8 | The broker runs `docker compose -f /opt/anima/headscale/compose.yaml exec -T headscale headscale …`, as `hsctl` does. | The Headscale socket is on the container's tmpfs, not on the host. |
 | BD-9 | The broker strips `machine_key`, `disco_key` and `pre_auth_key` from every node it returns, and refuses a tag that is not in the policy (`policy.scope.tags`) before it calls Headscale. | Headscale 0.29.7 returns `pre_auth_key.key` in `nodes list -o json`, and accepts unknown tags on pre-auth keys (spike). |
-| BD-10 | The broker client in the hub is a tokio `UnixStream`: one JSON line out, one JSON line in, 64 KiB cap, 30 s limit. No HTTP. | One request for each connection; no extra crate. |
+| BD-10 | The broker client in the hub is a tokio `UnixStream`: one JSON line out, one JSON line in, 64 KiB cap, 65 s limit once the call has the turn (the broker can take up to 60 s: `flock -w 8`, 5 s for the request line and its 45 s request deadline inside `RuntimeMaxSec=60`, so a change it makes late still reaches the hub), and at most 20 s waiting for the turn. No HTTP. | One request for each connection; no extra crate. The limit was 30 s, shorter than the broker's worst case (Section 11, "Hub security fixes"). |
 | BD-11 | B6 (`open-device`, `close-device`) is not built. | VP-7: only with a change to R-079, which the operator has not made. |
 | BD-12 | Rulings go in vpn-plan.md Section 9 now. The programme row in `docs/programme/programme.md` gets the next free R number when the branch merges to `phase-3`. | The Linux session assigns R numbers; two sessions must not pick the same number. |
 | BD-13 | A node keeps its last known path (not `UNKNOWN`) for 3 reads after traffic stops: pure `picture::carry(previous: &Picture, next: Picture) -> Picture`. VPN-009 says so. | Tailscale sets `Active` only for about 45 s after traffic. A 60 s ping check and a 60 s read can be out of phase and read `UNKNOWN` each time. |
@@ -1939,7 +1939,7 @@ A security review of the broker found the points below; each fix has regression 
 - **B3: the error variants.** `vpn::Error` gets `NotInstalled`, `BrokerRefused { refusal, detail }`
   (the spec's `Broker(Refusal)`; the broker's detail, cleaned and cut to 160 characters, is kept
   for the `VALIDATION` message of `undone`), `BrokerUnreadable`, and also `BrokerTimedOut` (the
-  30 s limit) and `BrokerConnection` (any other socket error), so each name tells the truth.
+  call limit, now 65 s: see "Hub security fixes") and `BrokerConnection` (any other socket error), so each name tells the truth.
   `Refusal` is `pub`, as the field of a `pub` error. A reply parse error never keeps serde's
   text: serde quotes the value it could not read, which can be a key.
 - **B3: the reply line is read into a `Zeroizing` buffer**, and `PreAuthKey` holds a
@@ -1988,6 +1988,46 @@ A security review of the broker found the points below; each fix has regression 
   on `siteId` with no broker call. The broker's `{node, site}` reply is read and dropped
   (`IgnoredAny`). Audit: `accept`, `{site, router, route}`. D-23 is 32 names; the D-23 test
   in `tests/it/vpn/mutations.rs` covers all five VPN mutations.
+- **Hub security fixes (review of B3, B4a, B5).**
+  - *Call limit (BD-10).* `CALL_LIMIT` was 30 s, but the broker may take 8 s for its lock, 5 s
+    for the request line and 45 s to its request deadline (`anima-broker@.unit`,
+    `broker/main.ts`, `broker/deadline.ts`); a key made at 31 to 58 s was reported as "did not
+    answer", never shown and never audited, and still used a rate-limit slot. `broker.rs` now
+    names the broker's numbers (`BROKER_LOCK_WAIT`, `BROKER_REQUEST_READ`,
+    `BROKER_REQUEST_DEADLINE`, `BROKER_RUNTIME_MAX`) and sets `CALL_LIMIT` to `RuntimeMaxSec`
+    + 5 s = 65 s, so the hub gives up only after systemd has stopped the request; the turn is
+    then never let go while a broker request still runs. A const assertion keeps the broker's
+    worst case inside its run time; `bd_10_the_call_limit_outlasts_the_broker_s_worst_case_as_its_files_set_it`
+    reads the unit file and `main.ts` and fails when either number changes.
+  - *Turn wait (BD-15).* The turn was taken outside the time limit, so a hung broker held each
+    queued call for N x 30 s. A call now waits at most `TURN_WAIT` (20 s) for the turn and then
+    answers `BrokerBusy` (`UNAVAILABLE`, "The broker is busy with another request"), having sent
+    nothing. The turn wait is not inside `CALL_LIMIT`: a call that got the turn late would then
+    give up on a broker that is still making its change, the fault above. The reader reads
+    with `nodes_if_free` (`try_lock`: busy at once when a mutation holds the turn), in a task of
+    its own that keeps the turn to its end; the read waits for it at most `BROKER_WAIT` (10 s,
+    the `LocalAPI` limit) and then publishes the status picture without it. A busy read keeps
+    the last picture's broker state and node list (`FAILED` when there is none): the
+    `BrokerState` enum is in `contracts/schema.graphql`, and a `BUSY` value would be a
+    contract change.
+  - *Dropped requests (LOG-005).* Each VPN mutation runs the broker call and its audit entry
+    and event in one spawned task (`vpn/graphql/change.rs`, `broker_change`) and awaits its
+    handle, so a client that goes away mid-call still leaves the audit entry of the change the
+    broker made. The value, a pre-auth key for the two key mutations, comes back only through
+    the handle into the mutation's reply; if nobody waits, it is dropped and zeroed.
+  - *Zeroed reply.* The reply is read from the socket straight into one zeroed
+    `MAX_REPLY_BYTES + 1` buffer that never grows (no `BufReader`, no reallocation), with the
+    64 KiB cap and inside the call limit.
+  - *Resolver kind check (D-23).* `operator_only` moved from `access/keys/graphql.rs` to
+    `access::guard` and is public; each of the five VPN resolvers calls it first, so an API key
+    is refused even if the backstop changes (`tests/it/vpn/key_refusal.rs`, with
+    `Identity::api_key_for_tests` under `test-support`).
+  - *Audit of the broker id.* `approveSiteRoute` and `renewVpnKey` add `brokerNode`, the node
+    id the hub sent, to the audit `change`; never a key or an auth ID.
+  - *Open (not fixed here).* The hub lets go of the turn as soon as it has the reply line,
+    while the broker instance may not have exited yet; with `MaxConnections=1` systemd can
+    close the next call's connection at once (`NO_ANSWER`). Waiting for the broker's EOF
+    (bounded) before letting go of the turn would close that gap.
 
 ### Client lane (B4b, B5)
 

@@ -1,19 +1,19 @@
 //! The VPN mutations: keys, registration and renewal through the broker (R-055, VP-7, VP-10,
-//! D-23). Each calls the broker first, then writes one audit entry and one event in its own
-//! transaction; if that write fails the broker's change stays and the broker's log has it.
-//! Neither entry, no error and no log line holds a pre-auth key or an auth ID (LOG-007).
+//! D-23). Each checks the token kind again behind the backstop, calls the broker, then writes
+//! one audit entry and one event in its own transaction (`change`); if that write fails the
+//! broker's change stays and the broker's log has it. Neither entry, no error and no log line
+//! holds a pre-auth key or an auth ID (LOG-007).
 
 use async_graphql::{Context, Error as GraphQlError, ID, Object, Result, dataloader::DataLoader};
 use chrono::{DateTime, SecondsFormat, Utc};
 use serde_json::{Value, json};
 
+use super::change::broker_change;
 use crate::{
-    access::Authenticated,
-    api_errors::{
-        ErrorCode, FieldError, begin, coded, commit, internal, invalid, schema_dependency,
-    },
+    access::{Authenticated, operator_only},
+    api_errors::{ErrorCode, FieldError, coded, internal, invalid, schema_dependency},
     devices::{Site, SitesById},
-    events::{AuditAction, AuditTarget, Severity, Source, Trail, TrailEntry},
+    events::{AuditAction, AuditTarget, Severity, Source, TrailEntry},
     ids::SiteId,
     scalars::IpAddr,
     vpn::{
@@ -73,12 +73,10 @@ impl Mutation {
     /// token only (D-23).
     #[graphql(guard = "Authenticated")]
     async fn create_vpn_invite(&self, ctx: &Context<'_>) -> Result<VpnKey> {
-        let (broker, trail) = (broker_of(ctx)?, Trail::from_context(ctx)?);
-        let key = broker
-            .personal_key()
-            .await
-            .map_err(|error| broker_error(error, None))?;
-        write(ctx, trail, key_made(None, &key)).await?;
+        operator_only(ctx, "createVpnInvite")?;
+        let broker = broker_of(ctx)?;
+        let call = async move { broker.personal_key().await };
+        let key = broker_change(ctx, call, None, |key| key_made(None, key)).await?;
         Ok(VpnKey {
             key,
             steps: steps::computer(),
@@ -89,18 +87,15 @@ impl Mutation {
     /// only (D-23).
     #[graphql(guard = "Authenticated")]
     async fn create_router_key(&self, ctx: &Context<'_>, site_id: ID) -> Result<VpnKey> {
-        let (broker, trail) = (broker_of(ctx)?, Trail::from_context(ctx)?);
+        operator_only(ctx, "createRouterKey")?;
+        let broker = broker_of(ctx)?;
         let site = site_of(ctx, &site_id).await?;
         let name = policy_site(&roster(ctx)?, &site)?;
-        let key = broker
-            .router_key(&name)
-            .await
-            .map_err(|error| broker_error(error, Some("siteId")))?;
-        write(ctx, trail, key_made(Some(&site), &key)).await?;
-        Ok(VpnKey {
-            key,
-            steps: steps::router(&name, site.subnet),
-        })
+        let steps = steps::router(&name, site.subnet);
+        let call = async move { broker.router_key(&name).await };
+        let entry = move |key: &NewKey| key_made(Some(&site), key);
+        let key = broker_change(ctx, call, Some("siteId"), entry).await?;
+        Ok(VpnKey { key, steps })
     }
 
     /// Registers the computer that shows this auth ID on its own screen (vpn.md 6B). Login or
@@ -111,15 +106,14 @@ impl Mutation {
         ctx: &Context<'_>,
         auth_id: String,
     ) -> Result<VpnRegistration> {
-        let (broker, trail) = (broker_of(ctx)?, Trail::from_context(ctx)?);
+        operator_only(ctx, "registerVpnNode")?;
+        let broker = broker_of(ctx)?;
         if !is_auth_id(&auth_id) {
             return Err(invalid(&[FieldError::new("authId", AUTH_ID_FORM)]));
         }
-        let node = broker
-            .register(&auth_id)
-            .await
-            .map_err(|error| broker_error(error, Some("authId")))?;
-        write(ctx, trail, node_changed(AuditAction::Accept, &node)).await?;
+        let call = async move { broker.register(&auth_id).await };
+        let entry = |node: &Registered| node_changed(AuditAction::Accept, node, None);
+        let node = broker_change(ctx, call, Some("authId"), entry).await?;
         Ok(VpnRegistration(node))
     }
 
@@ -127,13 +121,12 @@ impl Mutation {
     /// now (vpn.md Section 7). Login or browser token only (D-23).
     #[graphql(guard = "Authenticated")]
     async fn renew_vpn_key(&self, ctx: &Context<'_>, name: String) -> Result<VpnRegistration> {
-        let (broker, trail) = (broker_of(ctx)?, Trail::from_context(ctx)?);
+        operator_only(ctx, "renewVpnKey")?;
+        let broker = broker_of(ctx)?;
         let id = operator_node(&roster(ctx)?, &name)?;
-        let node = broker
-            .renew(id)
-            .await
-            .map_err(|error| broker_error(error, Some("name")))?;
-        write(ctx, trail, node_changed(AuditAction::Update, &node)).await?;
+        let call = async move { broker.renew(id).await };
+        let entry = move |node: &Registered| node_changed(AuditAction::Update, node, Some(id));
+        let node = broker_change(ctx, call, Some("name"), entry).await?;
         Ok(VpnRegistration(node))
     }
 }
@@ -153,10 +146,10 @@ fn is_auth_id(text: &str) -> bool {
     })
 }
 
-/// The hub's broker; `UNAVAILABLE` when `ANIMA_VPN_BROKER` is not set.
-pub(super) fn broker_of<'a>(ctx: &Context<'a>) -> Result<&'a Broker> {
+/// The hub's broker, sharing its turn; `UNAVAILABLE` when `ANIMA_VPN_BROKER` is not set.
+pub(super) fn broker_of(ctx: &Context<'_>) -> Result<Broker> {
     schema_dependency::<Option<Broker>>(ctx)?
-        .as_ref()
+        .clone()
         .ok_or_else(|| {
             coded(
                 "Enrolment needs the broker (ANIMA_VPN_BROKER).",
@@ -217,13 +210,6 @@ fn operator_node(roster: &BrokerView, name: &str) -> Result<u64> {
         })
 }
 
-/// Writes `entry` in its own transaction.
-pub(super) async fn write(ctx: &Context<'_>, trail: Trail<'_>, entry: TrailEntry) -> Result<()> {
-    let mut tx = begin(ctx).await?;
-    trail.write(&mut tx, entry).await.map_err(internal)?;
-    commit(tx).await
-}
-
 /// The K7 error of a failed broker call. A refusal about the input is `VALIDATION` on `field`;
 /// with no input field it is the hub's own mistake, so `INTERNAL`.
 pub(super) fn broker_error(error: Error, field: Option<&'static str>) -> GraphQlError {
@@ -243,6 +229,7 @@ pub(super) fn broker_error(error: Error, field: Option<&'static str>) -> GraphQl
         Error::BrokerUnreadable | Error::BrokerTimedOut | Error::BrokerConnection => {
             return unavailable(&error, NO_ANSWER);
         }
+        Error::BrokerBusy => return unavailable(&error, BUSY),
         _ => return internal(error),
     };
     match field {
@@ -260,6 +247,8 @@ const NOT_INSTALLED: &str = "The broker is not installed on the VPS (vpn.md Sect
 /// behind its node audit.
 const NO_ANSWER: &str =
     "The broker did not answer; it may be busy checking its nodes. Try again in a minute.";
+/// The hub's own earlier call still had the broker; this one was never sent.
+const BUSY: &str = "The broker is busy with another request. Try again in a minute.";
 
 /// `UNAVAILABLE`, with the fault word in the process log (never a reply, LOG-007).
 fn unavailable(error: &Error, message: &str) -> GraphQlError {
@@ -281,8 +270,9 @@ fn key_made(site: Option<&Site>, key: &NewKey) -> TrailEntry {
     )
 }
 
-/// The audit entry and event of a registered or renewed node.
-fn node_changed(action: AuditAction, node: &Registered) -> TrailEntry {
+/// The audit entry and event of a registered or renewed node, with the broker id the hub sent
+/// for a renewal.
+fn node_changed(action: AuditAction, node: &Registered, sent: Option<u64>) -> TrailEntry {
     let name = crate::text::clean(&node.name, 63);
     let message = match action {
         AuditAction::Accept => format!("Registered {name} on the VPN."),
@@ -291,11 +281,12 @@ fn node_changed(action: AuditAction, node: &Registered) -> TrailEntry {
     let expiry = node
         .key_expiry
         .map(|at| at.to_rfc3339_opts(SecondsFormat::Secs, true));
-    entry(
-        action,
-        message,
-        json!({ "node": name, "address": node.address.to_string(), "keyExpiry": expiry }),
-    )
+    let mut change =
+        json!({ "node": name, "address": node.address.to_string(), "keyExpiry": expiry });
+    if let Some(id) = sent {
+        change["brokerNode"] = id.into();
+    }
+    entry(action, message, change)
 }
 
 pub(super) fn entry(action: AuditAction, message: String, change: Value) -> TrailEntry {

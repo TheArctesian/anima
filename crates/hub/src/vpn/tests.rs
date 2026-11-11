@@ -8,6 +8,7 @@ mod picture;
 mod proxy;
 mod reader;
 mod store;
+mod turn_wait;
 mod warnings;
 
 use std::{collections::HashSet, net::IpAddr};

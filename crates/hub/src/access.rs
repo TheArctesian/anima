@@ -37,7 +37,7 @@ pub use browser::SameOrigin;
 pub use builder_tokens::{IssuedToken, issue_builder_token, revoke_builder_token};
 pub use connection::{MESSAGE_LIMIT, SUBPROTOCOL, SocketAccess, accept_socket};
 pub use error::Error;
-pub use guard::{Authenticated, BUILDER_FIELDS, BuilderSignedIn, SignInRequired};
+pub use guard::{Authenticated, BUILDER_FIELDS, BuilderSignedIn, SignInRequired, operator_only};
 pub use identity::{Identity, client_addr, identify, identify_connection, operator_for_token};
 pub use layer::{Edge, permitted_networks_layer};
 pub use origin::PublicOrigin;
