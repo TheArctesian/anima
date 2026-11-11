@@ -25,6 +25,7 @@ pub mod status;
 pub mod targets;
 pub mod text;
 pub mod trust;
+pub mod vpn;
 pub mod web_client;
 pub mod web_interfaces;
 

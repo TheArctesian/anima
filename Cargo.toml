@@ -25,7 +25,7 @@ serde = { version = "1", features = ["derive"] }
 sqlx = { version = "0.8", default-features = false, features = ["derive", "postgres", "uuid", "runtime-tokio", "migrate", "macros", "chrono", "json", "ipnet"] }
 chrono = { version = "0.4", default-features = false, features = ["std", "clock", "serde"] }
 chrono-tz = "0.10"
-ipnet = "2"
+ipnet = { version = "2", features = ["serde"] }
 serde_json = "1"
 unicode-normalization = "0.1"
 chacha20poly1305 = { version = "0.11", features = ["zeroize"] }

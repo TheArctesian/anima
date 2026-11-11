@@ -1697,3 +1697,72 @@ Deviations that the builders found, with the evidence. Each keeps the intent of 
   shown alone (`toolbar/sites.svelte.ts`).
 - **Gates on macOS.** `bun run gates` stopped at clippy: the Linux-only reaper code in
   `apps/desktop/src-tauri/src/builder/` was dead code off Linux. Fixed in `70e07229`.
+
+- **Merge: hub fixtures.** The hub's tests use the hand-made `status-idle.json` and `status-active.json`. The real A4 captures are kept beside them as `captured-status-*.json`; `contract.sh` writes those names, and `vpn/tests/peers.rs` checks that the hub reads them (router `Direct` when active, `Unknown` after 60 s).
+
+### Hub lane (A1-T0 to A1-T5)
+
+## Build notes
+
+Deviations that the Tier A hub build made from this document, with the smallest fix that keeps
+its intent.
+
+1. **A1-T0.** Clippy `too_many_lines` (limit 60) refuses `upkeep::spawn` with the four loops
+   added at its end (68 lines). The loops and `reaching()` go in a private
+   `upkeep::loops(dependencies)`, and `spawn` ends with `jobs.extend(loops(dependencies))`. The
+   start order does not change. `upkeep.rs` is 169 code lines (the target was 160), because
+   rustfmt writes each long `spawn_*` call on several lines; the file limit is 300.
+2. **A1-T2.** `devices::Site` has a `pub(super)` field (`crates/hub/src/devices/model.rs:164`,
+   `wake_relay`), so no code outside `devices` can build a `Site`, and the pure tests cannot
+   make one. `picture::Inputs.sites` and `picture::router_devices` take `&[(SiteId, IpNet)]`
+   (each site's id and subnet, in site name order) instead of `&[Site]`; the reader maps
+   `devices::sites()` to that. The picture reads nothing else of a site.
+3. **A1-T2.** `picture::build` returns `Result<Picture, Error>`: `Unreadable` when the hub's own
+   node has no IPv4 address (a node that is logged out has `TailscaleIPs: null`). A peer with no
+   IPv4 is skipped as the spec says; the hub cannot be skipped.
+4. **A1-T2.** `picture::carry` keeps no path for a node that is offline in the new read:
+   VPN-009 makes offline always `Unknown`, and BD-13 is about traffic that stopped.
+5. **A1-T2.** `pub mod vpn;` goes in `lib.rs` in A1-T2 (the spec puts it in A1-T4), or the
+   A1-T2 tests do not compile. Until the reader calls them, `peers`, `picture` and `warnings`
+   carry `#[cfg_attr(not(test), expect(dead_code, reason = …))]`; A1-T4 removes the three
+   attributes. `quality/hub-modules.json` gets the `vpn` rows of T0 in the same commit.
+6. **A1-T2.** Clippy `struct_field_names` refuses `Peer.peer_relay`; the field keeps the spec's
+   name with an `#[expect(…, reason = …)]`.
+7. **A1-T2.** `warnings::due` gives no warning for a node whose key is not `nodekey:…` of at
+   most 80 characters: `vpn.warnings.node_key` refuses it, and one refused insert would undo
+   the whole warning transaction for every node.
+8. **A1-T2.** `DeviceId` has no `Ord`, so `router_devices` sorts by the UUID before it removes
+   repeats.
+9. **A1-T3.** `contracts/hub-domains.md:139` (K3's copy of `pub enum Source`) is not changed
+   here: T0 owns that file in this build, and its copy at `dd24bbc7` still ends at
+   `Notifications`. It needs `, Vpn   // Vpn (VPN-010, VPN-011)` from the T0 owner.
+10. **A1-T3.** The eighth-source test (as `notifications/tests/schema.rs:98`) and
+    `events_source_vpn_is_stored_and_read_back` are in the new
+    `crates/hub/src/events/tests/source.rs`, because `events/tests.rs` is at 274 code lines. The
+    read back uses the events store's source filter and checks the GraphQL name `VPN`, not the
+    whole `events` query with a signed-in schema. `store.rs` is still unused outside the tests,
+    so it gets the same `dead_code` expectation as note 5.
+11. **A1-T4.** `picture::carry` runs in `reader::read_and_publish` with the feed's latest
+    picture, not inside `build_picture`, so `build_picture` keeps the spec's three parameters.
+    The reader's work after the read is `read_and_publish`; `read_once` only logs the change
+    of state. Clippy `cognitive_complexity` counts each `tracing` macro high, so the two log
+    lines are in `read_failed` and `read_again`.
+12. **A1-T4.** A failed read publishes the not-fresh copy only when the latest picture is
+    still fresh: one wake-up for an outage, not one a minute with the same picture.
+13. **A1-T4.** The fake proxies have no `Hang` reply: no test uses it, and dead code fails
+    clippy. `Reply` is a status and a body. The integration proxy keeps `seen()`; the log test
+    checks that every request is the status GET.
+14. **A1-T4.** `vpn_008_no_log_line_holds_status_text` cannot reach `read_once` from
+    `tests/it`, and the reader's second tick is 60 s away. It starts one reader that reads the
+    good answer, then a second reader on the same feed whose read gets the 500 answer (which
+    also holds the status text), and waits until the picture is not fresh.
+15. **A1-T4.** `upkeep::loops` starts the reader (note 1), so its doc comment names it.
+16. **A1-T5.** `SitePathView`'s helper that returns the site's `SitePath` is `entry()`, not
+    `path()`: the `#[Object]` impl's `path` field resolver has the same name. The `vpn`,
+    `vpnChanged` and `routes` resolvers carry the neighbours' reasoned
+    `#[expect(clippy::unused_async, clippy::unused_async_trait_impl, …)]`.
+17. **A1-T5.** `bun run --cwd apps/client graphql` writes no change in this task: the client
+    generates types only for the documents it uses, and no client document reads `vpn` until
+    A2-T2. The lint gate's `codegen.ts --check` confirms the generated files are current.
+18. **A1-T5.** K1 places the new `Query.vpn` under a `# Phase 3: VPN (VP-5)` comment at the end
+    of `type Query`; the enums are written one value per line, as the rest of K1.

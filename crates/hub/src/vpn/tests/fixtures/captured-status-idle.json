@@ -1,0 +1,227 @@
+{
+  "Version": "1.104.4-t27047635f",
+  "TUN": false,
+  "BackendState": "Running",
+  "HaveNodeKey": true,
+  "AuthURL": "",
+  "TailscaleIPs": [
+    "100.64.0.1",
+    "fd7a:115c:a1e0::1"
+  ],
+  "Self": {
+    "ID": "1",
+    "NodeID": 1,
+    "PublicKey": "nodekey:0000000000000000000000000000000000000000000000000000000000000001",
+    "HostName": "hub",
+    "DNSName": "hub.net.anima.ing.",
+    "OS": "linux",
+    "UserID": 2147455555,
+    "TailscaleIPs": [
+      "100.64.0.1",
+      "fd7a:115c:a1e0::1"
+    ],
+    "AllowedIPs": [
+      "100.64.0.1/32",
+      "fd7a:115c:a1e0::1/128"
+    ],
+    "Tags": [
+      "tag:hub"
+    ],
+    "Addrs": [
+      "185.98.169.76:35278",
+      "172.29.250.2:53795"
+    ],
+    "CurAddr": "",
+    "Relay": "sfo",
+    "PeerRelay": "",
+    "RxBytes": 0,
+    "TxBytes": 0,
+    "Created": "2026-11-11T06:26:43.711097293Z",
+    "LastWrite": "0001-01-01T00:00:00Z",
+    "LastSeen": "0001-01-01T00:00:00Z",
+    "LastHandshake": "0001-01-01T00:00:00Z",
+    "Online": true,
+    "ExitNode": false,
+    "ExitNodeOption": false,
+    "Active": false,
+    "PeerAPIURL": [
+      "http://100.64.0.1:58436",
+      "http://[fd7a:115c:a1e0::1]:58436"
+    ],
+    "TaildropTarget": 0,
+    "NoFileSharingReason": "",
+    "Capabilities": [
+      "HTTPS://TAILSCALE.COM/s/DEPRECATED-NODE-CAPS#see-https://github.com/tailscale/tailscale/issues/11508",
+      "default-auto-update",
+      "https://tailscale.com/cap/is-admin",
+      "https://tailscale.com/cap/ssh",
+      "ssh-env-vars"
+    ],
+    "CapMap": {
+      "default-auto-update": [
+        false
+      ],
+      "https://tailscale.com/cap/is-admin": [],
+      "https://tailscale.com/cap/ssh": [],
+      "ssh-env-vars": []
+    },
+    "InNetworkMap": true,
+    "InMagicSock": false,
+    "InEngine": false
+  },
+  "Health": [],
+  "MagicDNSSuffix": "net.anima.ing",
+  "CurrentTailnet": {
+    "Name": "172.29.250.10",
+    "StableID": "",
+    "MagicDNSSuffix": "net.anima.ing",
+    "MagicDNSEnabled": true
+  },
+  "CertDomains": null,
+  "ExtraRecords": null,
+  "Peer": {
+    "nodekey:0000000000000000000000000000000000000000000000000000000000000006": {
+      "ID": "6",
+      "NodeID": 6,
+      "PublicKey": "nodekey:0000000000000000000000000000000000000000000000000000000000000006",
+      "HostName": "mac2",
+      "DNSName": "mac2.net.anima.ing.",
+      "OS": "linux",
+      "UserID": 1,
+      "TailscaleIPs": [
+        "100.64.0.6",
+        "fd7a:115c:a1e0::6"
+      ],
+      "AllowedIPs": [
+        "100.64.0.6/32",
+        "fd7a:115c:a1e0::6/128"
+      ],
+      "Addrs": null,
+      "CurAddr": "",
+      "Relay": "sfo",
+      "PeerRelay": "",
+      "RxBytes": 0,
+      "TxBytes": 0,
+      "Created": "2026-11-11T06:26:57.246549258Z",
+      "LastWrite": "0001-01-01T00:00:00Z",
+      "LastSeen": "0001-01-01T00:00:00Z",
+      "LastHandshake": "0001-01-01T00:00:00Z",
+      "Online": true,
+      "ExitNode": false,
+      "ExitNodeOption": false,
+      "Active": false,
+      "PeerAPIURL": [
+        "http://100.64.0.6:61927",
+        "http://[fd7a:115c:a1e0::6]:61927"
+      ],
+      "TaildropTarget": 4,
+      "NoFileSharingReason": "",
+      "InNetworkMap": true,
+      "InMagicSock": true,
+      "InEngine": false,
+      "KeyExpiry": "2027-05-10T06:27:06Z"
+    },
+    "nodekey:0000000000000000000000000000000000000000000000000000000000000002": {
+      "ID": "2",
+      "NodeID": 2,
+      "PublicKey": "nodekey:0000000000000000000000000000000000000000000000000000000000000002",
+      "HostName": "router-home",
+      "DNSName": "router-home.net.anima.ing.",
+      "OS": "linux",
+      "UserID": 2147455555,
+      "TailscaleIPs": [
+        "100.64.0.2",
+        "fd7a:115c:a1e0::2"
+      ],
+      "AllowedIPs": [
+        "10.10.0.0/24",
+        "100.64.0.2/32",
+        "fd7a:115c:a1e0::2/128"
+      ],
+      "Tags": [
+        "tag:router",
+        "tag:site-home"
+      ],
+      "PrimaryRoutes": [
+        "10.10.0.0/24"
+      ],
+      "Addrs": null,
+      "CurAddr": "",
+      "Relay": "sfo",
+      "PeerRelay": "",
+      "RxBytes": 0,
+      "TxBytes": 0,
+      "Created": "2026-11-11T06:26:45.966304252Z",
+      "LastWrite": "0001-01-01T00:00:00Z",
+      "LastSeen": "0001-01-01T00:00:00Z",
+      "LastHandshake": "0001-01-01T00:00:00Z",
+      "Online": true,
+      "ExitNode": false,
+      "ExitNodeOption": false,
+      "Active": false,
+      "PeerAPIURL": [
+        "http://100.64.0.2:46590",
+        "http://[fd7a:115c:a1e0::2]:46590"
+      ],
+      "TaildropTarget": 4,
+      "NoFileSharingReason": "",
+      "InNetworkMap": true,
+      "InMagicSock": true,
+      "InEngine": false
+    },
+    "nodekey:0000000000000000000000000000000000000000000000000000000000000003": {
+      "ID": "3",
+      "NodeID": 3,
+      "PublicKey": "nodekey:0000000000000000000000000000000000000000000000000000000000000003",
+      "HostName": "mac",
+      "DNSName": "mac.net.anima.ing.",
+      "OS": "linux",
+      "UserID": 1,
+      "TailscaleIPs": [
+        "100.64.0.3",
+        "fd7a:115c:a1e0::3"
+      ],
+      "AllowedIPs": [
+        "100.64.0.3/32",
+        "fd7a:115c:a1e0::3/128"
+      ],
+      "Addrs": null,
+      "CurAddr": "",
+      "Relay": "sfo",
+      "PeerRelay": "",
+      "RxBytes": 0,
+      "TxBytes": 0,
+      "Created": "2026-11-11T06:26:48.670382629Z",
+      "LastWrite": "0001-01-01T00:00:00Z",
+      "LastSeen": "0001-01-01T00:00:00Z",
+      "LastHandshake": "0001-01-01T00:00:00Z",
+      "Online": true,
+      "ExitNode": false,
+      "ExitNodeOption": false,
+      "Active": false,
+      "PeerAPIURL": [
+        "http://100.64.0.3:34152",
+        "http://[fd7a:115c:a1e0::3]:34152"
+      ],
+      "TaildropTarget": 4,
+      "NoFileSharingReason": "",
+      "InNetworkMap": true,
+      "InMagicSock": true,
+      "InEngine": false,
+      "KeyExpiry": "2027-05-10T06:26:49Z"
+    }
+  },
+  "User": {
+    "1": {
+      "ID": 1,
+      "LoginName": "operator",
+      "DisplayName": "operator"
+    },
+    "2147455555": {
+      "ID": 2147455555,
+      "LoginName": "tagged-devices",
+      "DisplayName": "Tagged Devices"
+    }
+  },
+  "ClientVersion": null
+}

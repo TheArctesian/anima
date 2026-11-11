@@ -20,7 +20,7 @@ use crate::hub::{Hub, PASSWORD, USERNAME, set_operator, start};
 
 /// Collects everything the process log writes.
 #[derive(Clone, Default)]
-struct Capture(Arc<Mutex<Vec<u8>>>);
+pub struct Capture(Arc<Mutex<Vec<u8>>>);
 
 impl io::Write for Capture {
     fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
@@ -37,7 +37,7 @@ impl io::Write for Capture {
 }
 
 impl Capture {
-    fn text(&self) -> String {
+    pub fn text(&self) -> String {
         String::from_utf8(self.0.lock().expect("capture lock").clone()).unwrap()
     }
 }

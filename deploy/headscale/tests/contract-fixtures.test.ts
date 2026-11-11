@@ -43,10 +43,10 @@ describe('captured fixtures', () => {
   });
 
   it('VPN-009: a router peer is Active with a CurAddr after a ping, and idle again after 60 s (BD-13)', async () => {
-    expect(routerIn(await hubFixture('status-idle.json'))).toMatchObject({ Active: false, CurAddr: '' });
-    const active = routerIn(await hubFixture('status-active.json'));
+    expect(routerIn(await hubFixture('captured-status-idle.json'))).toMatchObject({ Active: false, CurAddr: '' });
+    const active = routerIn(await hubFixture('captured-status-active.json'));
     expect(active?.Active).toBe(true);
     expect(active?.CurAddr).not.toBe('');
-    expect(routerIn(await hubFixture('status-after-60s.json'))).toMatchObject({ Active: false, CurAddr: '' });
+    expect(routerIn(await hubFixture('captured-status-after-60s.json'))).toMatchObject({ Active: false, CurAddr: '' });
   });
 });

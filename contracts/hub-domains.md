@@ -136,7 +136,7 @@ Wiring only (called from `main.rs`, never from another domain): `create_partitio
 (Phase 3, changed, Q2-07):
 
 ```rust
-pub enum Source { Check, Session, Device, Access, Hub, Metrics, Notifications }   // Notifications (Phase 3)
+pub enum Source { Check, Session, Device, Access, Hub, Metrics, Notifications, Vpn }   // Notifications (Phase 3), Vpn (VP-5)
 pub enum AuditTarget { ..., WebInterface(WebInterfaceId), ApiKey(ApiKeyId), Channel(ChannelId),
                        Recording(RecordingId) }
 /// One audit-then-event write for every domain (Q2-07). The entry carries its source and device.

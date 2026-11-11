@@ -192,7 +192,8 @@ for pair in "status-idle:hub" "status-active:hub" "status-after-60s:hub" "nodes:
     bun "$tool/bin/redact.ts" < "$work/raw/$file.json" > "$work/out/${pair##*:}/$file.json" || fail "redaction of $file failed"
 done
 mkdir -p "$hub_fixtures" "$deploy_fixtures"
-cp "$work/out/hub/"*.json "$hub_fixtures/"
+# The hub's own tests use hand-made fixtures; the real captures sit beside them (Build notes).
+for f in "$work/out/hub/"*.json; do cp "$f" "$hub_fixtures/captured-$(basename "$f")"; done
 cp "$work/out/deploy/"*.json "$deploy_fixtures/"
 grep -q REDACTED-PREAUTH-KEY "$deploy_fixtures/preauthkey.json" || fail "preauthkey.json has no placeholder"
 grep -q REDACTED-PREAUTH-KEY "$deploy_fixtures/nodes.json" || fail "nodes.json has no placeholder"
