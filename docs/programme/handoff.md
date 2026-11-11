@@ -28,17 +28,18 @@ Read it first, then the rulings listed in section 5 and R-093 to R-111, CR-17 to
 | WP-43 access | Done. T4 bearer `2446f367` (router assembly in lib.rs `all_routes`), T5 rotation `4ee029fe`, T6 throttle `15b8f9d0`, log `8d064256`. |
 | WP-45 notifications | Done. T6 `99258714`, with the dispatcher wired in `main.rs` (`26a5a9bd`); T7 checks edits `e34e9060`; log `ab598609`. Follow-up: narrow the `notifications.rs` public face (lines 31–37). |
 | WP-47 session sharing | Done. T2 session limit `6f8d8356`, waking-flake `09555c56`, T7 share removal `301d1b5e` (R-111), log `347cc2cc`. T4–T6 cancelled. Migrations 0121–0129 are unused. |
-| WP-48 recording | T1 playback proof `a4192d68`. |
+| WP-48 recording | T1 playback proof `a4192d68`, T2 format and T3 asciicast `e091bfa8`. |
 | WP-49 client sharing and recording | T5 asciicast `ad50bac3`, T6 playback tunnel `4d3eebab`, T8a badge `917281e9`, T9 `/shared` sign-in `0dd50644`. T1–T4 cancelled (R-111). |
-| WP-54 agent | T3b ingest `7ea84ecc`, T6a install `49119a71`, T2, T3a token `839b827f`, T4 binary `ef93c13d`, T5 Apple GPU `61320129`, T7 VPN policy `176cb4b1` merged. |
+| WP-54 agent | Done. T2, T3a, T3b `7ea84ecc`, T4, T5, T6a `49119a71`, T6b+T6c `b2775938`, T6e `c6517bce`, T7 `176cb4b1`, T8a hardening `792d4441` (CR-22), log `11e96064`. T6d is a handoff note to WP-36: build the agent for three targets with `release.json`, and ship it in the desktop release (`binaries/anima-agent-<triple>`, `--config tauri.release.conf.json`). |
 
 ## 3. Work in progress (2026-11-10)
 
 | Package | State | Next |
 | --- | --- | --- |
-| WP-48 | The T2 and T3 asciicast branch, then T4. | T5–T8. T7 and T8 no longer wait on anything, and tee the owner's stream only (R-111 amends CR-19 Q-3). |
-| WP-49 | Idle. It waits for WP-48. | T7 (player pane, PLAYBACK tab, a lower maxBytes) waits for WP-48 T5b and T6. T8b (mounting the badge) waits for WP-48 T5a. |
-| WP-54 | T6c desktop sidecar, which contains T6b panel: fix round 1, one security must. T8 final security review. | T6d is a handoff note to WP-36 (release job). Then package close. |
+| WP-48 | T4 recorder is accepted in review round 2 and is fixing two test shoulds. | T5–T8. T7 and T8 wait on nothing and tee the owner's stream only (R-111). |
+| WP-49 | Idle; waits for WP-48. | T7 (player pane, PLAYBACK tab, a lower maxBytes) after WP-48 T5b and T6; T8b (badge mount) after WP-48 T5a. |
+
+**Next package:** WP-53 (integration and acceptance, Wave 4, serial) starts when WP-48 and WP-49 close. Before it, the operator supplies the test machines and accounts in plan Section 6 and types each real secret into Settings (plan Section 8, checkpoint 4).
 
 **Load flake that needs a fix:** `builds::publishing::fences::d_25_a_try_past_its_hold_writes_nothing` (WP-36) failed three merge gates on 2026-11-10 and passes alone.
 
