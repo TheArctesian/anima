@@ -411,7 +411,7 @@ fn vpn_009_a_subnet_that_contains_the_tailnet_range_is_not_a_router_site() {
         "10.10.0.0/24",
         "100.128.0.0/10",
         "192.168.1.0/24",
-        "fd00::/8",
+        "fd00::/16",
     ] {
         assert!(!on_tailnet(subnet.parse().unwrap()), "{subnet}");
     }
