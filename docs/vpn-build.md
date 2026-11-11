@@ -1675,3 +1675,12 @@ its intent.
     good answer, then a second reader on the same feed whose read gets the 500 answer (which
     also holds the status text), and waits until the picture is not fresh.
 15. **A1-T4.** `upkeep::loops` starts the reader (note 1), so its doc comment names it.
+16. **A1-T5.** `SitePathView`'s helper that returns the site's `SitePath` is `entry()`, not
+    `path()`: the `#[Object]` impl's `path` field resolver has the same name. The `vpn`,
+    `vpnChanged` and `routes` resolvers carry the neighbours' reasoned
+    `#[expect(clippy::unused_async, clippy::unused_async_trait_impl, …)]`.
+17. **A1-T5.** `bun run --cwd apps/client graphql` writes no change in this task: the client
+    generates types only for the documents it uses, and no client document reads `vpn` until
+    A2-T2. The lint gate's `codegen.ts --check` confirms the generated files are current.
+18. **A1-T5.** K1 places the new `Query.vpn` under a `# Phase 3: VPN (VP-5)` comment at the end
+    of `type Query`; the enums are written one value per line, as the rest of K1.

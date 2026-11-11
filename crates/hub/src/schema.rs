@@ -37,6 +37,7 @@ pub struct Query(
     notifications::graphql::Query,
     retention::graphql::Query,
     sessions::graphql::Query,
+    vpn::graphql::Query,
 );
 
 #[derive(MergedObject, Default)]
@@ -64,6 +65,7 @@ pub struct Subscription(
     events::graphql::Subscription,
     metrics::graphql::Subscription,
     sessions::graphql::Subscription,
+    vpn::graphql::Subscription,
 );
 
 pub type HubSchema = Schema<Query, Mutation, Subscription>;

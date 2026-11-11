@@ -1,6 +1,7 @@
 //! The VPN as the hub's own node sees it (VPN-005, VPN-008 to VPN-011).
 
 mod feed;
+pub mod graphql;
 mod localapi;
 mod model;
 mod peers;

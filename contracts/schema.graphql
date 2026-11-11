@@ -116,6 +116,81 @@ type Site {
   wakeRelay: Device
 }
 
+"""The VPN as the hub's own VPN node sees it (VPN-005, VPN-008)."""
+type VpnPicture {
+  "When the hub last read its VPN status."
+  readAt: DateTime!
+  "False when the last read failed; the picture is then from readAt."
+  fresh: Boolean!
+  hub: VpnNode!
+  "One entry for each site, in site name order (VPN-009)."
+  sites: [SitePath!]!
+  "Every peer of the hub, in name order. A node that is not a peer of the hub is not here (VPN-011)."
+  nodes: [VpnNode!]!
+}
+
+"""How the hub reaches one site (VPN-009)."""
+type SitePath {
+  site: Site!
+  "The subnet router that serves the site subnet, or null."
+  router: VpnNode
+  state: SiteRouteState!
+  path: VpnPath!
+  "The DERP region, when the path is RELAYED."
+  relayRegion: String
+  "True when the router's device has a Tailscale ping check, which keeps the path known."
+  hasPingCheck: Boolean!
+}
+
+enum SiteRouteState {
+  SERVING
+  OFFLINE
+  NO_ROUTER
+}
+
+enum VpnPath {
+  DIRECT
+  PEER_RELAY
+  RELAYED
+  UNKNOWN
+}
+
+enum VpnRole {
+  HUB
+  ROUTER
+  AGENT
+  CLIENT
+  OTHER
+}
+
+enum KeyState {
+  NEVER
+  VALID
+  EXPIRING
+  EXPIRED
+  TAGGED_WITH_EXPIRY
+}
+
+"""One node of the VPN. Name and OS come from the node and are cleaned (VPN-008)."""
+type VpnNode {
+  name: String!
+  address: IpAddr!
+  os: String!
+  role: VpnRole!
+  tags: [String!]!
+  "The subnet routes Headscale lets this node serve."
+  routes: [Cidr!]!
+  online: Boolean!
+  lastSeen: DateTime
+  keyExpiry: DateTime
+  keyState: KeyState!
+  path: VpnPath!
+  relayRegion: String
+  "The Anima device on this node, or null."
+  device: Device
+  inAnima: Boolean!
+}
+
 enum SshAuth {
   PASSWORD
   PRIVATE_KEY
@@ -1534,6 +1609,10 @@ type Query {
   builders: [Builder!]!
   "Up to `first` (1 to 1000) stored lines after sequence `after`, oldest first (BLD-048)."
   buildJobLog(id: ID!, after: Int, first: Int = 500): [BuildLogLine!]!
+
+  # Phase 3: VPN (VP-5)
+  "The VPN picture; null when the hub has no LocalAPI proxy or has not read it yet (VPN-005)."
+  vpn: VpnPicture
 }
 
 type Mutation {
@@ -1650,6 +1729,8 @@ type Subscription {
   metricsAdded(deviceId: ID): MetricsAdded!
   "Every change to a build job, with the log lines it added (BLD-081)."
   buildJobUpdated(jobId: ID): BuildJobUpdate!
+  "Each new VPN picture, about once a minute."
+  vpnChanged: VpnPicture!
 }
 
 type DeviceStatusChange {
