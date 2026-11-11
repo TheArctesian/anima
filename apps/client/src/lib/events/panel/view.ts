@@ -25,6 +25,7 @@ export const SOURCE_CHOICES: readonly Choice<EventSource>[] = [
   { value: 'DEVICE', label: 'Device' },
   { value: 'ACCESS', label: 'Access' },
   { value: 'HUB', label: 'Hub' },
+  { value: 'VPN', label: 'VPN' },
 ];
 
 /** The text of a choice value; severity and source show as words, never as colour alone. */

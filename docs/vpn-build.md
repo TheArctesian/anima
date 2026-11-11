@@ -1766,3 +1766,20 @@ its intent.
     A2-T2. The lint gate's `codegen.ts --check` confirms the generated files are current.
 18. **A1-T5.** K1 places the new `Query.vpn` under a `# Phase 3: VPN (VP-5)` comment at the end
     of `type Query`; the enums are written one value per line, as the rest of K1.
+
+### Client lane (A2-T2, A2-T3)
+
+1. **A2-T2.** `SitePaths` takes only `sites` (no `now`: nothing in a site row depends on time). `NodeKeys` takes
+   `hub`, `nodes` and `now`; the hub row is first and never marked "Not in Anima".
+2. **A2-T2.** `keyText` has an optional third parameter `locale`, so the date tests do not depend on the machine.
+   A key with a state other than NEVER and no expiry reads "Expiry not known"; a relayed path with no region
+   reads "Relayed".
+3. **A2-T2.** `sortedNodes` ranks nodes not in Anima first, then those whose key is not NEVER or VALID
+   (expiring, expired, tagged with expiry), then name.
+4. **A2-T2.** The loading placeholders are the real `SitePaths` and `NodeKeys` drawn with one placeholder row
+   each, transparent, `aria-hidden` and `inert`, so the heights are the real heights (MOT-007). The VPN section sits
+   after the Hub section, which is desktop only, so in a browser it follows Account.
+5. **A2-T2.** `VpnLive.error` shows the Retry notice only while there is no picture; a failed subscription later
+   keeps the last picture on screen. `null` (no proxy) shows the SET-003 text with the value "Off".
+6. **A2-T2.** The sites and keys tests are in `sites/sites.svelte.test.ts` (reduced motion, MOT-040) and
+   `keys/keys.svelte.test.ts` (VPN-010, VPN-011); the section behaviour is in `section.svelte.test.ts`.

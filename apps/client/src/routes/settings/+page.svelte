@@ -11,6 +11,7 @@
   import ThemeRow from '$lib/theme/ThemeRow.svelte';
   import TypefaceRows from '$lib/typeface/TypefaceRows.svelte';
   import DesktopRows from '$lib/updates/DesktopRows.svelte';
+  import VpnSection from '$lib/vpn/VpnSection.svelte';
 
   // The desktop rows decide each row themselves; the page only leaves out the section when none can show (UPD-006, LOG-008,
   // BLD-020).
@@ -31,6 +32,10 @@
       <HubRows />
     </SettingsSection>
   {/if}
+
+  <SettingsSection id="settings-vpn" title="VPN" icon="nf-md-lan_connect" description="How the hub reaches each site, and when each VPN key expires.">
+    <VpnSection />
+  </SettingsSection>
 
   <SettingsSection id="settings-appearance" title="Appearance" icon="nf-md-palette" description="How Anima looks on this device.">
     <ThemeRow />
