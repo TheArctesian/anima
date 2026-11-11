@@ -92,6 +92,7 @@ fn loops(dependencies: &Dependencies) -> Vec<tokio::task::JoinHandle<()>> {
         bus: bus.clone(),
         clock: clock.clone(),
         feed: dependencies.vpn_feed.clone(),
+        broker: dependencies.vpn_broker.clone(),
     };
     loops.extend(vpn::spawn_reader(
         dependencies.config.tailscale_localapi.clone(),

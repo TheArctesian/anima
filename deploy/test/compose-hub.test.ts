@@ -64,6 +64,9 @@ function coveredCount(entries: Block[], subnet: Block): number {
 
 const compose = Bun.YAML.parse(readFileSync(join(ROOT, "deploy", "compose.yaml"), "utf8")) as Compose;
 
+/** The broker's folder, read-only, so a socket restart is seen (VP-7, BD-10). */
+const BROKER_FOLDER = { type: "bind", source: "/run/anima-broker", target: "/run/anima-broker", read_only: true };
+
 describe("hub configuration", () => {
   test("every ANIMA_* variable the hub receives is read by config.rs or listed in the conventions.md environment table", () => {
     const source = readFileSync(CONFIG_PATH, "utf8");
@@ -78,6 +81,12 @@ describe("hub configuration", () => {
         expect(known.has(key) ? key : `${name}.${key} is in neither config.rs nor conventions.md`).toBe(key);
       }
     }
+  });
+
+  test("VP-7 the hub reaches the broker socket inside the read-only broker folder", () => {
+    const hub = compose.services["hub"] as Container;
+    expect(hub.environment?.["ANIMA_VPN_BROKER"]).toBe("${ANIMA_VPN_BROKER:-/run/anima-broker/broker.sock}");
+    expect(hub.volumes).toContainEqual(BROKER_FOLDER);
   });
 
 });
@@ -138,10 +147,10 @@ describe("hub deny list, notify network and recordings", () => {
     expect(users).toEqual(["hub"]);
   });
 
-  test("SEC-001 the hub root file system stays read-only, and its mounts are exactly certs, recordings and /tmp", () => {
+  test("SEC-001 the hub root file system stays read-only, and its mounts are exactly certs, recordings, the broker folder and /tmp", () => {
     const hub = compose.services["hub"] as Container & { tmpfs?: string[] };
     expect(hub.read_only).toBe(true);
-    expect(hub.volumes).toEqual(["certs:/certs:ro", "recordings:/var/lib/anima/recordings"]);
+    expect(hub.volumes).toEqual(["certs:/certs:ro", "recordings:/var/lib/anima/recordings", BROKER_FOLDER]);
     expect(hub.tmpfs).toEqual(["/tmp"]);
   });
 

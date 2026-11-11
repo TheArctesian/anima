@@ -1,6 +1,7 @@
 //! Tests of the vpn domain: the status parser, the picture, the warnings. Fixture expiries are
 //! written relative to the test clock, `2030-05-05T12:00:00Z`.
 
+mod broker;
 mod peers;
 mod picture;
 mod proxy;
@@ -14,7 +15,7 @@ use chrono::{DateTime, TimeZone as _, Utc};
 use ipnet::IpNet;
 
 use super::{
-    model::Picture,
+    model::{BrokerState, Picture},
     peers::{Status, parse},
     picture::{Inputs, build},
 };
@@ -112,6 +113,8 @@ fn picture_with(status: &Status, devices: &[Device], ping_checked: &[DeviceId]) 
         devices,
         ping_checked: &ping_checked,
         now: now(),
+        broker_state: BrokerState::NotSet,
+        broker: None,
     })
     .unwrap()
 }

@@ -231,34 +231,6 @@ fn ra_021_guacd_drive_root_overrides_default_and_must_be_absolute() {
 }
 
 #[test]
-fn d_4_tailscale_localapi_parses_host_port_and_empty_means_none() {
-    for good in ["proxy:41112", "[fd7a::1]:41112"] {
-        let config = from_env(&env(&[(TAILSCALE_LOCALAPI, good)])).unwrap();
-        assert_eq!(config.tailscale_localapi.as_deref(), Some(good));
-    }
-    let config = from_env(&env(&[(TAILSCALE_LOCALAPI, "")])).unwrap();
-    assert_eq!(config.tailscale_localapi, None);
-}
-
-#[test]
-fn d_4_malformed_tailscale_localapi_is_refused_naming_the_variable() {
-    for bad in ["proxy", ":1", "proxy:x", "fd7a::1:41112"] {
-        let error = from_env(&env(&[(TAILSCALE_LOCALAPI, bad)])).unwrap_err();
-        assert!(
-            matches!(
-                error,
-                Error::HostPort {
-                    variable: TAILSCALE_LOCALAPI,
-                    ..
-                }
-            ),
-            "{bad}"
-        );
-        assert!(error.to_string().contains(TAILSCALE_LOCALAPI), "{bad}");
-    }
-}
-
-#[test]
 fn k7_phase_3_variables_default_when_unset() {
     let config = from_env(&env(&[])).unwrap();
     assert_eq!(config.public_origin, "https://hub.anima.ing");

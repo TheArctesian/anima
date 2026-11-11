@@ -11,8 +11,10 @@ use ipnet::IpNet;
 
 use super::{
     Error,
-    model::{KeyState, Picture, Role, RouteState, SitePath, VpnNode, VpnPath},
+    broker::BrokerView,
+    model::{BrokerState, KeyState, Picture, Role, RouteState, SitePath, VpnNode, VpnPath},
     peers::{Peer, Status, shown},
+    waiting,
 };
 use crate::{
     devices::Device,
@@ -32,6 +34,9 @@ pub(super) struct Inputs<'a> {
     /// The router devices with a Tailscale ping check that is not paused.
     pub ping_checked: &'a HashSet<DeviceId>,
     pub now: DateTime<Utc>,
+    /// The broker's answer of this read; `broker` is its node list when it is `Ready`.
+    pub broker_state: BrokerState,
+    pub broker: Option<&'a BrokerView>,
 }
 
 /// The picture of `inputs`, fresh, read at `now`.
@@ -47,7 +52,13 @@ pub(super) fn build(inputs: &Inputs<'_>) -> Result<Picture, Error> {
     let sites: Vec<SitePath> = inputs
         .sites
         .iter()
-        .map(|&(site, subnet)| site_path(site, subnet, &nodes, inputs.ping_checked))
+        .map(|&(site, subnet)| {
+            let mut path = site_path(site, subnet, &nodes, inputs.ping_checked);
+            path.waiting_router = inputs
+                .broker
+                .and_then(|view| waiting::router(view, subnet, inputs));
+            path
+        })
         .collect();
     for router in sites.iter().filter_map(|site| site.router) {
         nodes[router].in_anima = true;
@@ -58,6 +69,8 @@ pub(super) fn build(inputs: &Inputs<'_>) -> Result<Picture, Error> {
         hub,
         sites,
         nodes,
+        broker: inputs.broker_state,
+        roster: inputs.broker.cloned(),
     })
 }
 
@@ -124,6 +137,10 @@ fn node(peer: &Peer, inputs: &Inputs<'_>) -> Option<VpnNode> {
         role,
         tags: peer.tags.iter().map(|tag| shown(tag, 63)).collect(),
         routes: peer.primary_routes.iter().map(IpNet::trunc).collect(),
+        waiting_routes: inputs
+            .broker
+            .map(|view| waiting::routes(view, address))
+            .unwrap_or_default(),
         online: peer.online,
         last_seen: peer.last_seen,
         key_expiry: peer.key_expiry,
@@ -154,7 +171,7 @@ fn first_ipv4(peer: &Peer) -> Option<Ipv4Addr> {
 }
 
 /// BD-5: the first role whose tag the node has; no tags is a client.
-fn role(tags: &[String]) -> Role {
+pub(super) fn role(tags: &[String]) -> Role {
     let has = |wanted: &str| tags.iter().any(|tag| tag == wanted);
     if has("tag:hub") {
         Role::Hub
@@ -186,7 +203,11 @@ fn path(peer: &Peer) -> (VpnPath, Option<String>) {
 }
 
 /// VPN-010: a tagged key must not expire; an untagged one warns 30 days ahead.
-fn key_state(tags: &[String], expiry: Option<DateTime<Utc>>, now: DateTime<Utc>) -> KeyState {
+pub(super) fn key_state(
+    tags: &[String],
+    expiry: Option<DateTime<Utc>>,
+    now: DateTime<Utc>,
+) -> KeyState {
     match expiry {
         Some(_) if !tags.is_empty() => KeyState::TaggedWithExpiry,
         None => KeyState::Never,
@@ -200,8 +221,17 @@ fn key_state(tags: &[String], expiry: Option<DateTime<Utc>>, now: DateTime<Utc>)
 /// name, else whose dotless host is that name's first label. The host name the node chose is
 /// never used: a node cannot hide behind a device's name.
 fn device_of(peer: &Peer, devices: &[Device]) -> Option<(DeviceId, String)> {
-    let ip = first_ipv4(peer).map(IpAddr::V4);
-    let dns = unqualified(&peer.dns_name);
+    device_by(first_ipv4(peer), &peer.dns_name, devices)
+}
+
+/// The device of a node with the IPv4 `address` and the unique name `dns_name` (BD-14).
+pub(super) fn device_by(
+    address: Option<Ipv4Addr>,
+    dns_name: &str,
+    devices: &[Device],
+) -> Option<(DeviceId, String)> {
+    let ip = address.map(IpAddr::V4);
+    let dns = unqualified(dns_name);
     let label = dns.split('.').next().unwrap_or_default();
     let by_ip = || {
         devices
@@ -258,5 +288,6 @@ fn site_path(
         router,
         state,
         has_ping_check,
+        waiting_router: None,
     }
 }

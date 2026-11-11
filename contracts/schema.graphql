@@ -127,6 +127,19 @@ type VpnPicture {
   sites: [SitePath!]!
   "Every peer of the hub, in name order. A node that is not a peer of the hub is not here (VPN-011)."
   nodes: [VpnNode!]!
+  "Whether the hub can reach the broker that makes keys and approves routes (VP-7)."
+  broker: BrokerState!
+}
+
+"""Whether the hub can reach the VPN broker on the VPS (VP-7, BD-15)."""
+enum BrokerState {
+  "ANIMA_VPN_BROKER is not set."
+  NOT_SET
+  "The socket is not there: the broker is not installed on the VPS."
+  NOT_INSTALLED
+  READY
+  "The last call failed or its reply was unreadable."
+  FAILED
 }
 
 """How the hub reaches one site (VPN-009)."""
@@ -140,6 +153,8 @@ type SitePath {
   relayRegion: String
   "True when the router's device has a Tailscale ping check, which keeps the path known."
   hasPingCheck: Boolean!
+  "A router of the site that offers the site subnet and waits for its approval, from the broker; null when none waits or the broker is not READY (BD-16)."
+  waitingRouter: VpnNode
 }
 
 enum SiteRouteState {
@@ -180,6 +195,8 @@ type VpnNode {
   tags: [String!]!
   "The subnet routes Headscale lets this node serve."
   routes: [Cidr!]!
+  "The routes the node offers that wait for approval, from the broker (BD-16)."
+  waitingRoutes: [Cidr!]!
   online: Boolean!
   lastSeen: DateTime
   keyExpiry: DateTime

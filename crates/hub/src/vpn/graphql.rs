@@ -12,7 +12,7 @@ use chrono::{DateTime, Utc};
 
 use super::{
     Feed,
-    model::{KeyState, Picture, Role, RouteState, SitePath, VpnNode, VpnPath},
+    model::{BrokerState, KeyState, Picture, Role, RouteState, SitePath, VpnNode, VpnPath},
 };
 use crate::{
     access::Authenticated,
@@ -83,8 +83,13 @@ impl PictureView {
     async fn hub(&self) -> NodeView {
         NodeView {
             picture: self.0.clone(),
-            index: None,
+            which: Which::Hub,
         }
+    }
+
+    /// Whether the hub can reach the broker that makes keys and approves routes (VP-7).
+    async fn broker(&self) -> BrokerState {
+        self.0.broker
     }
 
     /// One entry for each site, in site name order (VPN-009). A site deleted since the read
@@ -116,7 +121,7 @@ impl PictureView {
         (0..self.0.nodes.len())
             .map(|index| NodeView {
                 picture: self.0.clone(),
-                index: Some(index),
+                which: Which::Peer(index),
             })
             .collect()
     }
@@ -149,7 +154,16 @@ impl SitePathView {
     async fn router(&self) -> Option<NodeView> {
         self.entry().router.map(|index| NodeView {
             picture: self.picture.clone(),
-            index: Some(index),
+            which: Which::Peer(index),
+        })
+    }
+
+    /// A router of the site that offers the site subnet and waits for its approval, from the
+    /// broker; null when none waits or the broker is not READY (BD-16).
+    async fn waiting_router(&self) -> Option<NodeView> {
+        self.entry().waiting_router.as_ref().map(|_| NodeView {
+            picture: self.picture.clone(),
+            which: Which::WaitingRouter(self.index),
         })
     }
 
@@ -174,16 +188,32 @@ impl SitePathView {
     }
 }
 
-/// One node of a picture: the hub when `index` is none.
+/// Which node of a picture a view shows.
+#[derive(Clone, Copy)]
+enum Which {
+    Hub,
+    /// The peer at this index of `nodes`.
+    Peer(usize),
+    /// The waiting router of the site at this index of `sites`.
+    WaitingRouter(usize),
+}
+
+/// One node of a picture.
 pub struct NodeView {
     picture: Arc<Picture>,
-    index: Option<usize>,
+    which: Which,
 }
 
 impl NodeView {
     fn node(&self) -> &VpnNode {
-        self.index
-            .map_or(&self.picture.hub, |index| &self.picture.nodes[index])
+        match self.which {
+            Which::Hub => &self.picture.hub,
+            Which::Peer(index) => &self.picture.nodes[index],
+            Which::WaitingRouter(site) => self.picture.sites[site]
+                .waiting_router
+                .as_ref()
+                .expect("a waiting router view is made only for a site that has one"),
+        }
     }
 }
 
@@ -218,6 +248,21 @@ impl NodeView {
     )]
     async fn routes(&self) -> Result<Vec<Cidr>> {
         let routes = self.node().routes.iter().map(|route| Cidr::new(*route));
+        routes.collect::<Result<_, _>>().map_err(internal)
+    }
+
+    /// The routes the node offers that wait for approval, from the broker (BD-16).
+    #[expect(
+        clippy::unused_async,
+        clippy::unused_async_trait_impl,
+        reason = "the Object macro requires async resolvers"
+    )]
+    async fn waiting_routes(&self) -> Result<Vec<Cidr>> {
+        let routes = self
+            .node()
+            .waiting_routes
+            .iter()
+            .map(|route| Cidr::new(*route));
         routes.collect::<Result<_, _>>().map_err(internal)
     }
 

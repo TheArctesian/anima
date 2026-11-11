@@ -1,5 +1,7 @@
-//! The VPN as the hub's own node sees it (VPN-005, VPN-008 to VPN-011).
+//! The VPN as the hub's own node sees it (VPN-005, VPN-008 to VPN-011), and the broker that
+//! makes keys and approves routes on the VPS (R-055, VP-7).
 
+mod broker;
 mod feed;
 pub mod graphql;
 mod localapi;
@@ -10,13 +12,16 @@ mod reader;
 mod store;
 #[cfg(test)]
 mod tests;
+mod waiting;
 mod warnings;
 
+pub use broker::{Broker, Refusal};
 pub use feed::Feed;
-pub use model::{KeyState, Picture, Role, RouteState, SitePath, VpnNode, VpnPath};
+pub use model::{BrokerState, KeyState, Picture, Role, RouteState, SitePath, VpnNode, VpnPath};
 pub use reader::{Reading, spawn_reader};
 
-/// Why a read of the VPN status failed. The text never holds the reply (LOG-007).
+/// Why a read of the VPN status or a broker call failed. The text never holds a reply
+/// (LOG-007).
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("the LocalAPI proxy did not answer")]
@@ -29,6 +34,20 @@ pub enum Error {
     TooLong,
     #[error("the status reply is not the expected shape")]
     Unreadable,
+    #[error("the broker socket is not there")]
+    NotInstalled,
+    #[error("the broker refused the request: {refusal}")]
+    BrokerRefused {
+        refusal: Refusal,
+        /// The broker's own sentence, cleaned; never a key.
+        detail: String,
+    },
+    #[error("the broker reply is empty, longer than 64 KiB or not the expected shape")]
+    BrokerUnreadable,
+    #[error("the broker did not answer in 30 seconds")]
+    BrokerTimedOut,
+    #[error("the broker connection failed")]
+    BrokerConnection,
     #[error(transparent)]
     Devices(#[from] crate::devices::Error),
     #[error(transparent)]
@@ -49,6 +68,11 @@ impl Error {
             Self::Refused => "refused",
             Self::TooLong => "too_long",
             Self::Unreadable => "unreadable",
+            Self::NotInstalled => "broker_not_installed",
+            Self::BrokerRefused { .. } => "broker_refused",
+            Self::BrokerUnreadable => "broker_unreadable",
+            Self::BrokerTimedOut => "broker_timed_out",
+            Self::BrokerConnection => "broker_connection",
             Self::Devices(_) => "devices",
             Self::Checks(_) => "checks",
             Self::Events(_) => "events",

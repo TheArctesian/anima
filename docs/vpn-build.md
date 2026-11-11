@@ -1825,3 +1825,41 @@ its intent.
   (`quality:names`).
 - **B2: `tests/broker-process.test.ts`** covers `readLine`, the entry points and the files, besides the
   `broker-main.test.ts` rows (which call `serve` with `tests/broker-fake.ts`).
+
+### Hub lane (B3, B4a, B5)
+
+- **B3: the picture keeps the broker's answer.** `Picture` gets `broker: BrokerState` and a
+  `pub(super) roster: Option<BrokerView>` (the node list and policy sites of the same read).
+  B4 and B5 map a site, a node name or a waiting router to the broker's site names and node ids
+  from it, as B4 and B5 say ("the latest picture"). With no LocalAPI proxy there is no picture,
+  so the mutations answer `UNAVAILABLE`.
+- **B3: the merge is its own pure file, `vpn/waiting.rs`** (waiting routes, the waiting router,
+  the policy site name of a subnet). `picture.rs` exposes `role`, `key_state` and `device_by`
+  (BD-14 matching by IPv4 or unique name, split out of `device_of`) to it. A waiting router is
+  a `VpnNode` with an empty `key` (the broker drops every key, so it gets no warning marks),
+  `os` empty and `path` `UNKNOWN`. A policy site name that is not `^[a-z0-9-]{1,32}$` is
+  treated as absent: B4 puts it into a command line the operator copies.
+- **B3: the error variants.** `vpn::Error` gets `NotInstalled`, `BrokerRefused { refusal, detail }`
+  (the spec's `Broker(Refusal)`; the broker's detail, cleaned and cut to 160 characters, is kept
+  for the `VALIDATION` message of `undone`), `BrokerUnreadable`, and also `BrokerTimedOut` (the
+  30 s limit) and `BrokerConnection` (any other socket error), so each name tells the truth.
+  `Refusal` is `pub`, as the field of a `pub` error. A reply parse error never keeps serde's
+  text: serde quotes the value it could not read, which can be a key.
+- **B3: the reply line is read into a `Zeroizing` buffer**, and `PreAuthKey` holds a
+  `Zeroizing<String>`; the envelope `{ok, value | refusal, detail}` denies unknown fields.
+- **B3: only `nodes` is in B3.** The other verbs come with the mutations that call them (B4:
+  `personal_key`, `router_key`, `register`, `renew`; B5: `approve_route`), so no client method
+  is dead code. `NewKey` and `PreAuthKey` are in B3 for the LOG-007 test, with
+  `#[cfg_attr(not(test), expect(dead_code, …))]` until B4.
+- **B3: `log_007_a_key_reply_debug_prints_no_key` is a unit test** (`src/vpn/tests/broker.rs`,
+  with the reply-shape tests and two property tests of the parser): `NewKey` is `pub(super)`.
+  The other five B3 tests are in `tests/it/vpn/broker.rs` through the reader and the `vpn`
+  query; `vp_7_two_calls_at_once_take_turns` fails (1 refused connection) without the turn.
+- **B3: the reader reads the status and the broker at once** (`tokio::join!`). A broker failure
+  sets the state only; the reader logs a change of the broker state by its fault word.
+- **B3: wiring.** `main.rs` names `vpn_broker` first in the `Dependencies` literal, because
+  `config` moves into the next field. `schema::build_schema` went to 61 lines with
+  `.data(vpn_broker)`; the devices loaders moved into `with_devices_loaders`. `config/tests.rs`
+  went over 300 lines; the two LocalAPI tests and the broker test moved to
+  `config/vpn_tests.rs`. `deploy/test/compose.test.ts` skips the broker bind in the SELinux
+  label rule, as it does for `localapi` (R-054).

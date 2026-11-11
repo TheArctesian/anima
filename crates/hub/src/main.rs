@@ -153,6 +153,7 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
     let bus = Bus::new(BUS_CAPACITY);
     let feed = metrics::Feed::new();
     let dependencies = Dependencies {
+        vpn_broker: config.vpn_broker.clone().map(vpn::Broker::new),
         config,
         clock: clock.clone(),
         pool: pool.clone(),
