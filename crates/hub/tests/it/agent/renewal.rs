@@ -100,14 +100,22 @@ async fn k8_renewal_checks_the_bearer_then_the_body(pool: PgPool) {
     migrations = "./migrations",
     fixtures(path = "../../fixtures", scripts("devices"))
 )]
-async fn met_013_two_first_uses_of_a_renewed_token_at_once_both_work(pool: PgPool) {
+async fn met_013_two_first_uses_of_a_renewed_token_at_once_are_neither_refused(pool: PgPool) {
     let agents = Agents::new(&pool).await;
     let first = agents.token_for(PVE_01).await;
     let renewed = agents.renewed(&first).await;
     let (one, other) = tokio::join!(agents.renew(&renewed), agents.renew(&renewed));
-    assert_eq!(
-        (one.0, other.0),
-        (StatusCode::OK, StatusCode::OK),
+    // Both find the token usable; the device's one turn (MET-017) may send the later one back
+    // as `UNAVAILABLE`, which the agent tries again, but never as `TOKEN_REFUSED`.
+    let unavailable = (StatusCode::SERVICE_UNAVAILABLE, refusal("UNAVAILABLE"));
+    for answer in [&one, &other] {
+        assert!(
+            answer.0 == StatusCode::OK || *answer == unavailable,
+            "{answer:?}"
+        );
+    }
+    assert!(
+        one.0 == StatusCode::OK || other.0 == StatusCode::OK,
         "{one:?} {other:?}"
     );
     assert_eq!(agents.renew(&first).await, refused());

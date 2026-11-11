@@ -111,11 +111,20 @@ async fn met_012_uses_of_one_code_at_once_enrol_once(pool: PgPool) {
         .iter()
         .filter(|(status, _)| *status == StatusCode::OK);
     assert_eq!(accepted.count(), 1, "{answers:?}");
+    // The rest are refused, or sent back while the hub answers as many agent requests as it
+    // takes at once (MET-017); those never reached the code.
     let refused = (StatusCode::UNAUTHORIZED, refusal("ENROLMENT_REFUSED"));
-    assert_eq!(
-        answers.iter().filter(|answer| **answer == refused).count(),
-        7
+    let unavailable = (StatusCode::SERVICE_UNAVAILABLE, refusal("UNAVAILABLE"));
+    let others = answers
+        .iter()
+        .filter(|(status, _)| *status != StatusCode::OK);
+    assert!(
+        others
+            .clone()
+            .all(|answer| *answer == refused || *answer == unavailable),
+        "{answers:?}"
     );
+    assert_eq!(others.count(), 7);
 }
 
 #[sqlx::test(

@@ -8,7 +8,7 @@
 
 use std::{future::Future, sync::Arc, time::Duration};
 
-use agent_core::wire::{AgentToken, EnrolRequest, RefusalCode, RenewRequest, TOKEN_BYTES};
+use agent_core::wire::{AgentToken, EnrolRequest, RefusalCode, RenewRequest, Renewed, TOKEN_BYTES};
 use axum::{
     Router,
     body::{Body, to_bytes},
@@ -17,6 +17,7 @@ use axum::{
     response::Response,
     routing::post,
 };
+use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 use zeroize::Zeroizing;
 
@@ -24,10 +25,12 @@ use super::{
     Error, credential, enrolment, push, random,
     refusals::{self, Recorder, Refused, Route},
     renewal,
+    turns::{AGENT_REQUESTS, Turns},
 };
 use crate::{
     clock::Clock,
     events::{Bus, ClientAddr},
+    ids::DeviceId,
     metrics::Feed,
 };
 
@@ -44,6 +47,7 @@ pub(super) struct AgentState {
     pub(super) feed: Feed,
     pub(super) bus: Bus,
     pub(super) clock: Arc<dyn Clock>,
+    pub(super) turns: Turns,
     recorder: Recorder,
     answer_time: Duration,
 }
@@ -60,6 +64,7 @@ pub fn agent_router(db: PgPool, feed: Feed, bus: Bus, clock: Arc<dyn Clock>) -> 
         feed,
         bus,
         clock,
+        turns: Turns::new(AGENT_REQUESTS),
         recorder,
         answer_time: ANSWER_TIME,
     })
@@ -80,6 +85,7 @@ pub(in crate::metrics) fn agent_router_within(
         feed: Feed::new(),
         bus,
         clock,
+        turns: Turns::new(AGENT_REQUESTS),
         recorder,
         answer_time,
     })
@@ -143,6 +149,9 @@ async fn serve_enrol(state: AgentState, request: Request) -> Response {
             .refuse(refused(RefusalCode::EnrolmentRefused), now)
             .await;
     };
+    let Some(_request) = state.turns.request() else {
+        return busy();
+    };
     let redeemed = match enrolment::redeem(&state.db, &code, now).await {
         Ok(Some(redeemed)) => redeemed,
         Ok(None) => {
@@ -175,69 +184,101 @@ async fn serve_renew(state: AgentState, request: Request) -> Response {
         return unmounted();
     };
     let now = state.clock.now();
-    let refused = |code, device| Refused {
-        route: Route::Renew,
-        code,
-        client,
-        device,
-    };
     let (parts, body) = request.into_parts();
-    let Some(current) = credential::bearer(&parts.headers) else {
-        return state
-            .refuse(refused(RefusalCode::TokenRefused, None), now)
-            .await;
-    };
-    let device = match credential::authenticate(&state.db, &current, now).await {
-        Ok(Some(device)) => device,
-        Ok(None) => {
-            return state
-                .refuse(refused(RefusalCode::TokenRefused, None), now)
-                .await;
-        }
-        Err(error) => return unavailable(&error),
-    };
+    match renewed(&state, &parts.headers, body, now).await {
+        Ok(renewed) => refusals::json(StatusCode::OK, &renewed),
+        Err(stop) => state.stopped(stop, (Route::Renew, client), now).await,
+    }
+}
+
+async fn renewed(
+    state: &AgentState,
+    headers: &HeaderMap,
+    body: Body,
+    now: DateTime<Utc>,
+) -> Result<Renewed, Stop> {
+    let current =
+        credential::bearer(headers).ok_or(Stop::Refused(RefusalCode::TokenRefused, None))?;
+    let _request = state.turns.request().ok_or(Stop::Busy)?;
+    let device = holder(state, &current, now).await?;
+    let _turn = state.turns.device(device).ok_or(Stop::Busy)?;
+    let refused = |code| Stop::Refused(code, Some(device));
     // A device switched away from the agent renews nothing (CR-18), as it pushes nothing.
+    agent_name(state, device).await?;
+    let body = read_body(headers, body, BODY_LIMIT)
+        .await
+        .map_err(refused)?;
+    if !is_renew_request(&body) {
+        return Err(refused(RefusalCode::Malformed));
+    }
+    let next = new_token().map_err(Stop::Failed)?;
+    match renewal::renew(&state.db, &current, next, now).await {
+        Ok(Some(renewed)) => Ok(renewed),
+        Ok(None) => Err(refused(RefusalCode::TokenRefused)),
+        Err(error) => Err(Stop::Failed(error)),
+    }
+}
+
+/// Why an agent push or renewal stopped short of its answer.
+pub(super) enum Stop {
+    /// Refused by K8 Section 6, for the device of a valid token when there was one.
+    Refused(RefusalCode, Option<DeviceId>),
+    /// The hub cannot answer now (`UNAVAILABLE`).
+    Failed(Error),
+    /// Another request has the turn this one needs (`UNAVAILABLE`, nothing recorded).
+    Busy,
+}
+
+/// The device whose usable token `token` is at `now`.
+pub(super) async fn holder(
+    state: &AgentState,
+    token: &AgentToken,
+    now: DateTime<Utc>,
+) -> Result<DeviceId, Stop> {
+    match credential::authenticate(&state.db, token, now).await {
+        Ok(Some(device)) => Ok(device),
+        Ok(None) => Err(Stop::Refused(RefusalCode::TokenRefused, None)),
+        Err(error) => Err(Stop::Failed(error)),
+    }
+}
+
+/// The device's name while its metrics come from the agent; `TOKEN_REFUSED` once the operator
+/// switched the source away or deleted the device.
+pub(super) async fn agent_name(state: &AgentState, device: DeviceId) -> Result<String, Stop> {
     match credential::agent_name(&state.db, device).await {
-        Ok(Some(_)) => {}
-        Ok(None) => {
-            return state
-                .refuse(refused(RefusalCode::TokenRefused, Some(device)), now)
-                .await;
-        }
-        Err(error) => return unavailable(&error),
-    }
-    let well_formed = match read_body(&parts.headers, body, BODY_LIMIT).await {
-        Ok(body) => is_renew_request(&body),
-        Err(code) => return state.refuse(refused(code, Some(device)), now).await,
-    };
-    if !well_formed {
-        return state
-            .refuse(refused(RefusalCode::Malformed, Some(device)), now)
-            .await;
-    }
-    let renewed = match new_token() {
-        Ok(next) => renewal::renew(&state.db, &current, next, now).await,
-        Err(error) => Err(error),
-    };
-    match renewed {
-        Ok(Some(renewed)) => refusals::json(StatusCode::OK, &renewed),
-        Ok(None) => {
-            state
-                .refuse(refused(RefusalCode::TokenRefused, Some(device)), now)
-                .await
-        }
-        Err(error) => unavailable(&error),
+        Ok(Some(name)) => Ok(name),
+        Ok(None) => Err(Stop::Refused(RefusalCode::TokenRefused, Some(device))),
+        Err(error) => Err(Stop::Failed(error)),
     }
 }
 
 impl AgentState {
+    /// The answer to a request that stopped short: a refusal is written to the event log
+    /// first, `UNAVAILABLE` is not.
+    pub(super) async fn stopped(
+        &self,
+        stop: Stop,
+        (route, client): (Route, ClientAddr),
+        now: DateTime<Utc>,
+    ) -> Response {
+        match stop {
+            Stop::Refused(code, device) => {
+                let refused = Refused {
+                    route,
+                    code,
+                    client,
+                    device,
+                };
+                self.refuse(refused, now).await
+            }
+            Stop::Failed(error) => unavailable(&error),
+            Stop::Busy => busy(),
+        }
+    }
+
     /// Answers the refusal after writing its event; a failed write is logged and the answer
     /// stays the refusal.
-    pub(super) async fn refuse(
-        &self,
-        refused: Refused,
-        now: chrono::DateTime<chrono::Utc>,
-    ) -> Response {
+    pub(super) async fn refuse(&self, refused: Refused, now: DateTime<Utc>) -> Response {
         if let Err(error) = self.recorder.record(&refused, now).await {
             tracing::error!(%error, "an agent refusal could not be written to the event log");
         }
@@ -260,6 +301,12 @@ pub(super) fn unmounted() -> Response {
 /// The hub cannot answer now; the error's text is fixed and holds no value (LOG-007).
 pub(super) fn unavailable(error: &Error) -> Response {
     tracing::error!(%error, "an agent request could not be answered");
+    refusals::answer(RefusalCode::Unavailable)
+}
+
+/// Another request has the turn this one needs (`turns`). Not an error and not an event: the
+/// agent keeps its points and tries again (K8 Section 6).
+fn busy() -> Response {
     refusals::answer(RefusalCode::Unavailable)
 }
 

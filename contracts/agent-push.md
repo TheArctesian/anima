@@ -162,7 +162,7 @@ The body of every refusal is `{ "error": "<CODE>" }` and nothing else. It never 
 | 403 | `WRONG_DEVICE` | `device` is not the token's device | As `TOKEN_REFUSED` |
 | 413 | `TOO_LARGE` | The body exceeds its limit | Drops that batch; sends smaller batches |
 | 422 | `OUT_OF_RANGE` | A point's `at` is more than 1 hour before or more than 60 seconds after the hub's clock | Drops that batch |
-| 503 | `UNAVAILABLE` | The hub cannot store now | Keeps the points; tries again |
+| 503 | `UNAVAILABLE` | The hub cannot store now, or is busy (below) | Keeps the points; tries again |
 
 The hub runs the push checks in this order and stops at the first refusal: the bearer (before it reads the body), the size,
 the JSON, the device, the shape, the times. Every push refusal is written to the event log (source `metrics`,
@@ -170,6 +170,13 @@ severity warning) with its code, the client address and, when the token was vali
 the token (MET-017). A refusal with no valid token is written at most once a minute per client address, so a
 flood cannot fill the event log. A refusal with a valid token, on any agent route, is written at most once a
 minute per device (CR-21). Only the event is held back: the refusal and its answer are the same.
+
+The hub answers at most 4 agent requests at once, and at most one push or renewal per device at once
+(MET-017). A request past either is `UNAVAILABLE` at once, before it waits for the database: an enrolment
+after its body is read, a push or renewal after its bearer is read, and a second push or renewal of a device
+after the token is looked up. This answer is not written to the event log. The agent keeps the batch and
+tries again after its wait (Section 7), so one device, or any number of requests with one token, cannot hold
+the connections the rest of the hub needs.
 
 ## 7. Agent buffer (MET-014)
 

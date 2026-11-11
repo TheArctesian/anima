@@ -1,6 +1,6 @@
 //! Tests of the agent ingest parts below the HTTP client: the throttle, the bearer header, the
 //! refusal answers, how the routes answer when they cannot finish, the token and code rows at
-//! their edges, and the stale mark at its edges.
+//! their edges, the stale mark at its edges, and the turns that keep agents off the pool.
 
 mod answering;
 mod credential;
@@ -9,6 +9,7 @@ mod refusals;
 mod renewal;
 mod stale;
 mod throttle;
+mod turns;
 
 use std::{sync::Arc, time::Duration};
 
@@ -61,10 +62,16 @@ async fn push(pool: &PgPool, now: DateTime<Utc>, token: &AgentToken, batch: &Val
 
 /// pve-01 enrolled at `now` with the token spelled by `seed`; the token as an agent presents it.
 async fn enrolled_pve(pool: &PgPool, now: DateTime<Utc>, seed: u8) -> AgentToken {
+    enrolled(pool, pve(), now, seed).await
+}
+
+/// `device` enrolled at `now` with the token spelled by `seed`; the token as an agent presents
+/// it.
+async fn enrolled(pool: &PgPool, device: DeviceId, now: DateTime<Utc>, seed: u8) -> AgentToken {
     let code = EnrolmentCode::from_random([seed; 16]);
     let presented = EnrolmentCode::parse(code.expose()).unwrap();
     let mut conn = pool.acquire().await.unwrap();
-    make_code(&mut conn, pve(), code, now).await.unwrap();
+    make_code(&mut conn, device, code, now).await.unwrap();
     drop(conn);
     let redeemed = redeem(pool, &presented, now).await.unwrap().unwrap();
     let token = AgentToken::from_random([seed; 32]);
