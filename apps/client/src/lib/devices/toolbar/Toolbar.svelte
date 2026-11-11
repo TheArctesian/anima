@@ -4,7 +4,7 @@
   import { press } from '$lib/motion/roles/press';
   import type { ListQuery } from '../query';
   import Menu from './Menu.svelte';
-  import { ALL_SITES, NAME_DEBOUNCE_MS, SORT_OPTIONS, STATUS_OPTIONS, debounced, toggled, type MenuOption } from './toolbar';
+  import { ALL_SITES, NAME_DEBOUNCE_MS, SORT_OPTIONS, STATUS_OPTIONS, debounced, siteButtonLabel, toggled, type MenuOption } from './toolbar';
 
   interface Props {
     query: ListQuery;
@@ -71,6 +71,7 @@
   />
   <Menu
     label="Site"
+    shown={siteButtonLabel(sites, query.site)}
     icon="nf-md-lan_connect"
     kind="radio"
     options={sites}

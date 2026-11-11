@@ -33,10 +33,6 @@
     </SettingsSection>
   {/if}
 
-  <SettingsSection id="settings-vpn" title="VPN" icon="nf-md-lan_connect" description="How the hub reaches each site, and when each VPN key expires.">
-    <VpnSection />
-  </SettingsSection>
-
   <SettingsSection id="settings-appearance" title="Appearance" icon="nf-md-palette" description="How Anima looks on this device.">
     <ThemeRow />
     <MotionRow />
@@ -63,6 +59,11 @@
 
   <SettingsSection id="settings-api-keys" title="API keys" icon="nf-md-key_variant" description="Keys for programs that call the hub's GraphQL API.">
     <ApiKeysSection />
+  </SettingsSection>
+
+  <!-- Last: the picture arrives after the page and has many rows, so nothing below it can move (MOT-007). -->
+  <SettingsSection id="settings-vpn" title="VPN" icon="nf-md-lan_connect" description="How the hub reaches each site, and when each VPN key expires.">
+    <VpnSection />
   </SettingsSection>
 </div>
 

@@ -7,6 +7,8 @@
 
   interface Props {
     label: string;
+    /** The button's text when it differs from `label`, such as "Site: Lab". */
+    shown?: string;
     icon: IconName;
     options: readonly MenuOption[];
     /** The chosen values. */
@@ -18,7 +20,7 @@
     onChoose: (value: string) => void;
   }
 
-  const { label, icon, options, chosen, kind, empty = '', onChoose }: Props = $props();
+  const { label, shown, icon, options, chosen, kind, empty = '', onChoose }: Props = $props();
   const id = $props.id();
   let open = $state(false);
   let root: HTMLElement | undefined;
@@ -69,7 +71,7 @@
     {@attach press()}
   >
     <Icon name={icon} size="sm" />
-    <span>{kind === 'checkbox' ? menuLabel(label, chosen.length) : label}</span>
+    <span>{kind === 'checkbox' ? menuLabel(label, chosen.length) : (shown ?? label)}</span>
     <Icon name="nf-md-chevron_down" size="sm" />
   </button>
   {#if open}

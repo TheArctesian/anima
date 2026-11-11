@@ -35,6 +35,7 @@
 
 <style>
   .sites {
+    container-type: inline-size;
     display: flex;
     flex-direction: column;
     margin: 0;
@@ -50,6 +51,33 @@
     min-block-size: var(--target-min-desktop);
     padding: var(--space-3) var(--space-4);
     border-block-start: var(--border-thin) solid var(--border);
+  }
+
+  /* A narrow card keeps the name and the state on the first line, the subnet and the path on the second. */
+  @container (max-inline-size: 28rem) {
+    .row {
+      grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    .name {
+      grid-column: 1;
+      grid-row: 1;
+    }
+
+    .state {
+      grid-column: 2;
+      grid-row: 1;
+    }
+
+    .subnet {
+      grid-column: 1;
+      grid-row: 2;
+    }
+
+    .path {
+      grid-column: 2;
+      grid-row: 2;
+    }
   }
 
   .name {
@@ -97,6 +125,10 @@
   }
 
   a.hint {
+    display: inline-flex;
+    align-items: center;
+    justify-self: start;
+    min-block-size: var(--target-min-desktop);
     color: var(--accent);
   }
 

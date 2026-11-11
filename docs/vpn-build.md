@@ -1848,3 +1848,8 @@ its intent.
    its 300 lines. `page.test.ts` D-9 now leaves the page's own `Vpn` read out of the list of panel reads.
 8. **Base.** `crates/hub/src/vpn/tests/peers.rs` was not rustfmt-clean after the hub merge (`cargo fmt --check`
    stopped the gates at step 1); `cargo fmt` fixed it in its own commit.
+9. **Interface review fixes.** (MOT-007) The VPN section is now the last section on Settings and the VPN card follows
+   Metrics on the Overview, so a late picture moves nothing above it. (UI-013) The "Add a ping check" link has a
+   `--target-min-desktop` target. Site rows collapse to name + state over subnet + path in a container under 28 rem
+   (same breakpoint as `SettingRow`). (VPN-002) The toolbar Site button reads "Site: Lab" for a chosen site. Open
+   (UI-002): the design tokens have no text-safe accent, so the link stays `--accent` (4.31:1 in dark on the card).
