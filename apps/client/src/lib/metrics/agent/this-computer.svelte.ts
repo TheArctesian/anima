@@ -36,7 +36,7 @@ export class ThisComputerInstall {
     if (this.shell === null) return;
     const epoch = this.epoch;
     const machine = await this.shell.thisMachine();
-    if (!isThisComputer(this.device, machine)) return;
+    if (epoch !== this.epoch || !isThisComputer(this.device, machine)) return;
     const bundled = await this.shell.bundled();
     if (epoch === this.epoch) this.offered = bundled;
   }
@@ -48,7 +48,7 @@ export class ThisComputerInstall {
     this.busy = true;
     this.error = null;
     this.installed = false;
-    const error = await this.installWithFreshCode(this.shell);
+    const error = await this.installWithFreshCode(this.shell, epoch);
     if (epoch !== this.epoch) return false;
     this.busy = false;
     this.error = error;
@@ -56,9 +56,13 @@ export class ThisComputerInstall {
     return this.installed;
   }
 
-  /** The only place the code is held: a local of this call, gone when it returns. `null` on success, else the message. */
-  private async installWithFreshCode(shell: ThisComputerShell): Promise<string | null> {
+  /**
+   * The only place the code is held: a local of this call, gone when it returns. `null` on success, else the message. A code
+   * that arrives after the panel closed never goes to the shell.
+   */
+  private async installWithFreshCode(shell: ThisComputerShell, epoch: number): Promise<string | null> {
     const made = await this.calls.enrolAgent(this.device.id);
+    if (epoch !== this.epoch) return null;
     if (!made.ok) return made.error.message;
     const done = await shell.install(made.value.code, this.origin);
     return done.ok ? null : done.message;

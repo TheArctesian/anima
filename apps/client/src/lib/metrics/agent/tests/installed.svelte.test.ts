@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { CODE, showPending, ENROLMENT, click, command, setUp, show, tearDown, text } from './panel.fixture';
+import { CODE, showPending, ENROLMENT, click, command, pass, setUp, show, tearDown, text } from './panel.fixture';
 
 vi.mock('motion', async (importOriginal) => ({
   ...(await importOriginal<typeof import('motion')>()),
@@ -75,3 +75,32 @@ describe('Install agent: revoke and install again (MET-013, MET-019, D-7)', () =
   });
 });
 
+describe('Install agent: revoked and used codes (MET-013, MET-012)', () => {
+  const status = (metricsStale: boolean) => ({ AgentStatus: { device: { id: 'd1', metricsSource: 'AGENT', metricsStale } } });
+  const REVOKED = { RevokeAgentToken: { revokeAgentToken: { id: 'd1', metricsSource: 'AGENT', metricsStale: true } } };
+
+  it('MET-013: after a new code the revoked sentence is gone, and Close reads the state again', async () => {
+    const { fake } = await show({ ...status(true), ...REVOKED, ...ENROLMENT }, { source: 'AGENT' });
+    await click('Revoke agent');
+    await click('Revoke agent', '[role="dialog"]');
+    expect(document.body.textContent).toContain('Agent revoked.');
+    await click('Install agent again');
+    await click('Close');
+    expect(document.body.textContent).not.toContain('Agent revoked.');
+    expect(fake.requests.filter((request) => request.operation === 'AgentStatus')).toHaveLength(2);
+  });
+
+  it('MET-012: when the code expires the state is read again', async () => {
+    const { fake } = await show({ ...status(false), ...ENROLMENT }, { source: 'AGENT' });
+    await click('Install agent again');
+    await pass(15 * 60);
+    expect(fake.requests.filter((request) => request.operation === 'AgentStatus')).toHaveLength(2);
+  });
+
+  it('MET-011: a device that was not an agent device shows the agent state once the hub says it enrolled', async () => {
+    await show({ ...ENROLMENT, ...status(false) });
+    await click('Install agent');
+    await click('Close');
+    expect(document.body.textContent).toContain('Metrics are current.');
+  });
+});

@@ -59,14 +59,15 @@ export interface Shown {
 
 export async function show(
   answers: Record<string, unknown>,
-  props: { source?: 'NONE' | 'AGENT'; release?: AgentRelease | null; copyFails?: boolean } & Place = {},
+  props: { source?: 'NONE' | 'AGENT'; release?: AgentRelease | null; copyFails?: boolean; enrolAgent?: AgentCalls['enrolAgent'] } & Place = {},
 ): Promise<Shown> {
   const fake = fakeHub(answers);
   const copied: string[] = [];
   const clipboard = {
     writeText: (text: string) => (props.copyFails === true ? Promise.reject(new Error('denied')) : (copied.push(text), Promise.resolve())),
   };
-  mountPanel(metricsApi(fake.hub), props.source ?? 'NONE', {
+  const calls = metricsApi(fake.hub);
+  mountPanel({ ...calls, enrolAgent: props.enrolAgent ?? calls.enrolAgent }, props.source ?? 'NONE', {
     release: props.release === undefined ? RELEASE : props.release,
     clipboard,
     host: props.host,

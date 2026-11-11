@@ -4,6 +4,7 @@ import { readThisMachine, type ThisMachine } from '../this-machine';
 
 /** Why the shell did not install the agent: its error codes (MET-019, D-10 d). Any other answer is `failed`. */
 export type AgentShellProblem =
+  | 'caller'
   | 'unavailable'
   | 'not-bundled'
   | 'busy'
@@ -18,13 +19,15 @@ export type AgentShellProblem =
   | 'failed';
 
 const MESSAGES: Record<AgentShellProblem, string> = {
+  caller: 'Only the main window can install the agent.',
   unavailable: 'The agent cannot be installed on this system from the app.',
   'not-bundled': 'This build of the app carries no agent. Use the install command instead.',
   busy: 'An install is already running.',
   code: 'The hub made a code in a form the agent does not accept.',
   origin: 'The hub address is not a plain https origin on port 443.',
   'no-home': 'The app could not find your home folder.',
-  untrusted: '~/.local/bin, or a folder above it, can be changed by other users. Fix its permissions and try again.',
+  untrusted:
+    '~/.local/bin, or a folder above it, can be changed by other users (through its group, an ACL or as others). Run `chmod g-w,o-w` on it, and `setfacl -b` for an ACL, then try again.',
   copy: 'The agent could not be copied to ~/.local/bin.',
   enrol: 'The agent could not enrol with the hub. Try again to make a new code.',
   install: 'The agent enrolled but did not start. Run `anima-agent install` in a terminal to see why.',

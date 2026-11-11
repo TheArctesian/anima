@@ -117,7 +117,7 @@ describe('Install agent: the code does not outlive its use (MET-012, LOG-007)', 
   });
 });
 
-describe('Install agent: review round 1 (MET-012, MET-013, MET-019)', () => {
+describe('Install agent: repeated presses, curl over https only, a far expiry and the computer note (MET-012, MET-013, MET-019)', () => {
   it('MET-012: a second click on Install agent while the first request is in flight sends no second EnrolAgent', async () => {
     const { fake } = await show(ENROLMENT);
     button('Install agent').click();

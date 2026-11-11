@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ENROLMENT, click, pass, setUp, show, tearDown } from './panel.fixture';
+import type { AgentCalls } from '../install.svelte';
+import { CODE, ENROLMENT, click, pass, settle, setUp, show, showPending, tearDown } from './panel.fixture';
 
 vi.mock('motion', async (importOriginal) => ({
   ...(await importOriginal<typeof import('motion')>()),
@@ -28,57 +29,61 @@ afterEach(tearDown);
 const status = (metricsStale: boolean) => ({ AgentStatus: { device: { id: 'd1', metricsSource: 'AGENT', metricsStale } } });
 const REVOKED = { RevokeAgentToken: { revokeAgentToken: { id: 'd1', metricsSource: 'AGENT', metricsStale: true } } };
 
+/** How many times what lies below moved while `step` ran. */
+async function flipsDuring(step: () => Promise<unknown>): Promise<number> {
+  const before = flips.count;
+  await step();
+  return flips.count - before;
+}
+
 describe('Install agent: what lies below moves with every height change (MOT-002, 5.7.3)', () => {
-  it('MOT-002: "Copied." appearing and going away each move what lies below', async () => {
+  it('MOT-002: "Copied." appearing and going away each move what lies below once', async () => {
     await show(ENROLMENT);
     await click('Install agent');
-    await click('Copy command');
-    const afterCopy = flips.count;
-    await pass(5);
-    expect(flips.count).toBeGreaterThan(afterCopy);
-    expect(afterCopy).toBeGreaterThan(1);
+    expect(await flipsDuring(() => click('Copy command'))).toBe(1);
+    expect(await flipsDuring(() => pass(5))).toBe(1);
   });
 
-  it('MOT-002: an error alert and the revoked sentence each move what lies below', async () => {
+  it('MOT-002: an error alert moves what lies below once', async () => {
     await show({ EnrolAgent: { code: 'FORBIDDEN', message: 'Not allowed.' } });
-    const before = flips.count;
-    await click('Install agent');
-    expect(flips.count).toBeGreaterThan(before);
-    document.body.replaceChildren();
+    expect(await flipsDuring(() => click('Install agent'))).toBe(1);
   });
 
-  it('MOT-002: the revoked sentence replacing "Metrics are current." moves what lies below', async () => {
+  it('MOT-002: the revoked sentence replacing "Metrics are current." moves what lies below once', async () => {
     await show({ ...status(false), ...REVOKED }, { source: 'AGENT' });
     await click('Revoke agent');
-    const before = flips.count;
-    await click('Revoke agent', '[role="dialog"]');
-    expect(flips.count).toBeGreaterThan(before);
-  });
-});
-
-describe('Install agent: revoked and used codes (MET-013, MET-012)', () => {
-  it('MET-013: after a new code the revoked sentence is gone, and Close reads the state again', async () => {
-    const { fake } = await show({ ...status(true), ...REVOKED, ...ENROLMENT }, { source: 'AGENT' });
-    await click('Revoke agent');
-    await click('Revoke agent', '[role="dialog"]');
-    expect(document.body.textContent).toContain('Agent revoked.');
-    await click('Install agent again');
-    await click('Close');
-    expect(document.body.textContent).not.toContain('Agent revoked.');
-    expect(fake.requests.filter((request) => request.operation === 'AgentStatus')).toHaveLength(2);
+    expect(await flipsDuring(() => click('Revoke agent', '[role="dialog"]'))).toBe(1);
   });
 
-  it('MET-012: when the code expires the state is read again', async () => {
-    const { fake } = await show({ ...status(false), ...ENROLMENT }, { source: 'AGENT' });
-    await click('Install agent again');
-    await pass(15 * 60);
-    expect(fake.requests.filter((request) => request.operation === 'AgentStatus')).toHaveLength(2);
-  });
-
-  it('MET-011: a device that was not an agent device shows the agent state once the hub says it enrolled', async () => {
-    await show({ ...ENROLMENT, ...status(false) });
+  it('MOT-002: "The code expired." going while the next code is made moves what lies below once', async () => {
+    const enrolAgent = vi
+      .fn<AgentCalls['enrolAgent']>()
+      .mockResolvedValueOnce({ ok: true, value: { code: CODE, expiresAt: '2026-11-09T10:15:00Z' } })
+      .mockReturnValueOnce(new Promise(() => undefined));
+    await show({ AgentStatus: { device: null } }, { enrolAgent });
     await click('Install agent');
-    await click('Close');
-    expect(document.body.textContent).toContain('Metrics are current.');
+    await pass(15 * 60);
+    expect(document.body.textContent).toContain('The code expired.');
+    expect(await flipsDuring(() => click('Install agent'))).toBe(1);
+    expect(document.body.textContent).not.toContain('The code expired.');
+  });
+
+  it('MOT-002: a failed agent state read moves what lies below once', async () => {
+    const answer = await showPending('agentStatus', 'AGENT');
+    expect(await flipsDuring(() => answer({ ok: false, error: { code: 'INTERNAL', message: 'down' } }))).toBe(1);
+    expect(document.body.textContent).toContain('The agent state could not be read.');
+  });
+
+  it('MOT-002: choosing another computer, which changes the command, moves what lies below once', async () => {
+    await show(ENROLMENT);
+    await click('Install agent');
+    const select = document.querySelector('select');
+    if (select === null) throw new Error('no computer choice');
+    const moved = await flipsDuring(async () => {
+      select.value = 'macos-aarch64';
+      select.dispatchEvent(new Event('change'));
+      await settle();
+    });
+    expect(moved).toBe(1);
   });
 });

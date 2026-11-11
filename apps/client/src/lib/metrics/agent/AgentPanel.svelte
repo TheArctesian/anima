@@ -75,7 +75,7 @@
   const copyShown = $derived(install.copied !== null && install.copied.text === commandText ? install.copied : null);
   /** Everything that changes the panel's height; each change moves what lies below by FLIP (MOT-002, 5.7.3 Disclosure, MOT-006). */
   const layout = $derived(
-    [view, copyShown?.count ?? 'no-copy', install.error?.message ?? '', install.expired, install.revoked, install.status?.metricsStale ?? 'unread', install.statusError !== null, result?.ok ?? 'no-command', here.offered, here.installed, here.error ?? ''].join('|'),
+    [view, copyShown?.count ?? 'no-copy', install.error?.message ?? '', install.expired, install.revoked, install.status?.metricsStale ?? 'unread', install.statusError !== null, result?.ok ?? 'no-command', target ?? 'no-target', here.offered, here.installed, here.error ?? ''].join('|'),
   );
 
   // What lies below the panel moves by FLIP when the panel changes its height.
