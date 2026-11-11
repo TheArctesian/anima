@@ -1697,3 +1697,33 @@ Deviations that the builders found, with the evidence. Each keeps the intent of 
   shown alone (`toolbar/sites.svelte.ts`).
 - **Gates on macOS.** `bun run gates` stopped at clippy: the Linux-only reaper code in
   `apps/desktop/src-tauri/src/builder/` was dead code off Linux. Fixed in `70e07229`.
+- **B1: the auth ID pattern is `^hskey-authreq-[A-Za-z0-9_-]{24}$`** (Section 3, fact 11), not the
+  pattern in the B1 text. A value that starts with `-` can never match.
+- **B1: `personal-key` names the user by id.** `preauthkeys create --user` takes a numeric id (fact
+  12; a local Headscale 0.29.7 refuses `--user=operator` with `strconv.ParseUint`). The broker runs
+  `users list --output=json` first, takes the id of the user `operator`, and replies
+  `headscale-failed` when there is none. `plan` therefore takes a fourth parameter,
+  `Moment { now, operatorId }` (`now` is for `renew`).
+- **B1: `auth register --user` takes the name.** A local Headscale 0.29.7 answers `--user=1` with
+  `looking up user: user not found` and accepts `--user=operator` (the harness also uses the name,
+  `contract.sh:126`). The step stays `--user=operator`.
+- **B1: `--output=json`, not `-o json`.** The rule "each flag and its value are one argv element"
+  then holds for every step without an exception; Headscale accepts both forms (local check).
+  `--tags=tag:router,tag:site-<x>` in one element is one string-slice value (local check:
+  `acl_tags` lists both).
+- **B1: an empty list is `null`.** A local Headscale 0.29.7 prints `null` for `nodes list` and
+  `users list` with no entries (`nodes list-routes` prints `[]`). `broker/nodes.ts` `tailnetOf`
+  reads `null` as `[]`; `src/inventory.ts` `parseNodes` still refuses `null` (the inventory check
+  runs on a tailnet that has nodes).
+- **B1: Headscale errors with `--output=json` are `{"error": "…"}` with exit 1.** The runner fails on
+  the exit code; the reply readers also refuse a reply with no `id` or `key`.
+- **B1: the `renew` verb (BD-17, VP-10) is in B1.** `{ "verb": "renew", "node": <id> }`; `plan`
+  refuses an absent, tagged or non-`operator` node with `not-allowed`; not rate limited.
+- **B1: `approve-route` also requires `tag:router`** on the node, besides `tag:site-<site>` and the one
+  available route.
+- **B1: a passed `Issued` entry is dropped 2 hours after `at`**, like an entry with no node. A passed
+  entry is never checked again, so dropping it changes no outcome and keeps the state small.
+- **B1: reply readers live in `broker/nodes.ts`** (`newKeyOf`, `registeredIdOf`, `operatorIdOf`,
+  `registered`), with `tests/broker-nodes.test.ts` against the harness fixtures, and
+  `tests/broker-fixture.ts` for node builders. `src/policy.ts` gains `prefixText` (the site subnet
+  as text).
