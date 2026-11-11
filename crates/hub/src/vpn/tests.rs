@@ -3,6 +3,7 @@
 
 mod peers;
 mod picture;
+mod store;
 mod warnings;
 
 use std::{collections::HashSet, net::IpAddr};

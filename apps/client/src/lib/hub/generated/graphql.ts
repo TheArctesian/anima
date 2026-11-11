@@ -264,7 +264,8 @@ export type EventSource =
   | 'HUB'
   | 'METRICS'
   | 'NOTIFICATION'
-  | 'SESSION';
+  | 'SESSION'
+  | 'VPN';
 
 export type GpuVendor =
   | 'AMD'

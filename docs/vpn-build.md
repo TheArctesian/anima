@@ -1651,3 +1651,12 @@ its intent.
    the whole warning transaction for every node.
 8. **A1-T2.** `DeviceId` has no `Ord`, so `router_devices` sorts by the UUID before it removes
    repeats.
+9. **A1-T3.** `contracts/hub-domains.md:139` (K3's copy of `pub enum Source`) is not changed
+   here: T0 owns that file in this build, and its copy at `dd24bbc7` still ends at
+   `Notifications`. It needs `, Vpn   // Vpn (VPN-010, VPN-011)` from the T0 owner.
+10. **A1-T3.** The eighth-source test (as `notifications/tests/schema.rs:98`) and
+    `events_source_vpn_is_stored_and_read_back` are in the new
+    `crates/hub/src/events/tests/source.rs`, because `events/tests.rs` is at 274 code lines. The
+    read back uses the events store's source filter and checks the GraphQL name `VPN`, not the
+    whole `events` query with a signed-in schema. `store.rs` is still unused outside the tests,
+    so it gets the same `dead_code` expectation as note 5.

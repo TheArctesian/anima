@@ -926,6 +926,7 @@ enum EventSource {
   HUB
   METRICS
   NOTIFICATION
+  VPN
 }
 
 type Event {

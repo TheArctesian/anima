@@ -17,6 +17,14 @@ mod peers;
     )
 )]
 mod picture;
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "the reader (A1-T4) is the first caller outside the tests"
+    )
+)]
+mod store;
 #[cfg(test)]
 mod tests;
 #[cfg_attr(

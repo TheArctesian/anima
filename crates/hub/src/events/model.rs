@@ -59,6 +59,8 @@ pub enum Source {
     // The notification dispatcher (NOT-004). K1 names it `NOTIFICATION`.
     #[graphql(name = "NOTIFICATION")]
     Notifications,
+    // The VPN reader's key and node warnings (VPN-010, VPN-011).
+    Vpn,
 }
 
 impl Source {
@@ -73,6 +75,7 @@ impl Source {
             Self::Hub => "hub",
             Self::Metrics => "metrics",
             Self::Notifications => "notification",
+            Self::Vpn => "vpn",
         }
     }
 
@@ -87,6 +90,7 @@ impl Source {
             Self::Hub,
             Self::Metrics,
             Self::Notifications,
+            Self::Vpn,
         ]
         .into_iter()
         .find(|source| source.as_str() == text)

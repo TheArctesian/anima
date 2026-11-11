@@ -20,6 +20,7 @@ mod redaction;
 mod retention;
 mod runtime_group;
 mod runtime_role;
+mod source;
 mod upkeep;
 
 const DEVICE: &str = "0192f5a0-7c3e-7a52-9d1b-3f4e5a6b7c8d";
@@ -82,7 +83,7 @@ const SEVERITIES: [(Severity, &str); 3] = [
     (Severity::Error, "error"),
 ];
 
-const SOURCES: [(Source, &str); 7] = [
+const SOURCES: [(Source, &str); 8] = [
     (Source::Check, "check"),
     (Source::Session, "session"),
     (Source::Device, "device"),
@@ -90,6 +91,7 @@ const SOURCES: [(Source, &str); 7] = [
     (Source::Hub, "hub"),
     (Source::Metrics, "metrics"),
     (Source::Notifications, "notification"),
+    (Source::Vpn, "vpn"),
 ];
 
 /// The value whose contract text is `text`; panics on text the contract does not list.
@@ -314,7 +316,7 @@ async fn log_004_severity_and_source_use_the_contract_graphql_names() {
     );
     assert!(
         sdl.contains(
-            "enum EventSource {\n\tCHECK\n\tSESSION\n\tDEVICE\n\tACCESS\n\tHUB\n\tMETRICS\n\tNOTIFICATION\n}"
+            "enum EventSource {\n\tCHECK\n\tSESSION\n\tDEVICE\n\tACCESS\n\tHUB\n\tMETRICS\n\tNOTIFICATION\n\tVPN\n}"
         ),
         "{sdl}"
     );
