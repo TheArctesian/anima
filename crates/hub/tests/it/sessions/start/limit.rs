@@ -1,17 +1,16 @@
 //! `startSession` and the device's session limit (RA-036, K4 §1 step 1): a device with as many
 //! live sessions as its limit refuses the next start with CONFLICT until one ends, two starts
-//! at the limit cannot both pass, files tickets and shares hold no session, and a device with
+//! at the limit cannot both pass, files tickets hold no session, and a device with
 //! no limit, or another device, is never refused. A refused start tries no wake, an expired
 //! unredeemed ticket frees its slot, and a limit lowered below the live count refuses.
 
-use std::{collections::BTreeMap, sync::Arc};
+use std::sync::Arc;
 
 use anima_hub::{
     clock::{Clock, FixedClock},
-    config,
     events::Bus,
     sessions::{
-        FilesMutation, Live, ShareMutation,
+        FilesMutation, Live,
         graphql::{Mutation as SessionsMutation, Query, Subscription},
     },
 };
@@ -150,27 +149,24 @@ async fn ra_036_a_limit_on_one_device_leaves_another_device_alone(pool: PgPool) 
     assert_limit_reached(&start(&schema, PVE_01).await);
 }
 
-/// The sessions mutations with `openFiles` and `shareSession`, merged as `schema.rs` merges
-/// them.
+/// The sessions mutations with `openFiles`, merged as `schema.rs` merges them.
 #[derive(MergedObject, Default)]
-struct Mutation(SessionsMutation, FilesMutation, ShareMutation);
+struct Mutation(SessionsMutation, FilesMutation);
 
-type SharingSchema = Schema<Query, Mutation, Subscription>;
+type FilesSchema = Schema<Query, Mutation, Subscription>;
 
-fn sharing_schema(pool: &PgPool, live: &Live) -> SharingSchema {
+fn files_schema(pool: &PgPool, live: &Live) -> FilesSchema {
     let clock: Arc<dyn Clock> = Arc::new(FixedClock(now()));
-    let config = config::from_env(&BTreeMap::new()).unwrap();
     Schema::build(Query, Mutation::default(), Subscription)
         .data(pool.clone())
         .data(clock)
         .data(live.clone())
         .data(Bus::new(16))
-        .data(Arc::new(config))
         .finish()
 }
 
 /// The data of `query` with `variables`, which must have no errors.
-async fn data(schema: &SharingSchema, query: &str, variables: Value) -> Value {
+async fn data(schema: &FilesSchema, query: &str, variables: Value) -> Value {
     let request: Request = signed_in_until(query, 24).variables(Variables::from_json(variables));
     let response = schema.execute(request).await;
     assert!(response.errors.is_empty(), "{:?}", response.errors);
@@ -179,27 +175,23 @@ async fn data(schema: &SharingSchema, query: &str, variables: Value) -> Value {
 
 const OPEN_FILES: &str = "mutation($id: ID!) { openFiles(sessionId: $id) { tunnelPath } }";
 
-const SHARE: &str = "mutation($id: ID!) { shareSession(sessionId: $id, input: {}) { url } }";
-
 #[sqlx::test(
     migrations = "./migrations",
     fixtures(path = "../../../fixtures", scripts("devices"))
 )]
-async fn ra_036_files_tickets_and_shares_hold_no_session_and_never_count(pool: PgPool) {
+async fn ra_036_files_tickets_hold_no_session_and_never_count(pool: PgPool) {
     ready(&pool, &[PVE_01]).await;
     set_limit(&pool, PVE_01, Some(2)).await;
     let live = Live::default();
     let schema = schema_at(&pool, now(), &live);
-    let sharing = sharing_schema(&pool, &live);
+    let files_schema = files_schema(&pool, &live);
     let owner = started(&schema, PVE_01).await;
     // The owner's terminal tunnel is open while it is held, as the tunnel task holds it.
     let _tunnel = redeem(&live, &owner, now()).expect("the ticket opens the tunnel");
     let id = json!({ "id": owner["sessionId"] });
     for _ in 0..3 {
-        let files = data(&sharing, OPEN_FILES, id.clone()).await;
+        let files = data(&files_schema, OPEN_FILES, id.clone()).await;
         assert_eq!(files["openFiles"]["tunnelPath"], "/files");
-        let share = data(&sharing, SHARE, id.clone()).await;
-        assert!(share["shareSession"]["url"].is_string());
     }
     assert_eq!(session_count(&pool).await, 1, "only the owner's row");
 

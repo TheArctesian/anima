@@ -19,7 +19,6 @@ function oneOf<T extends string>(allowed: readonly T[], value: string): T {
 export const CHANNEL_KINDS = ['WEBHOOK', 'NTFY', 'EMAIL', 'APPRISE'] as const;
 export const NOTIFICATION_KINDS = ['DOWN', 'UP', 'STILL_DOWN', 'CERTIFICATE_EXPIRY', 'DOMAIN_EXPIRY', 'TEST'] as const;
 export const TOKEN_SCOPES = ['READ', 'WRITE'] as const;
-export const SHARE_ACCESS = ['VIEW', 'CONTROL'] as const;
 export const RECORDING_FORMATS = ['GUACAMOLE', 'ASCIICAST'] as const;
 export const RETENTION_SUBJECTS = ['HEARTBEATS', 'METRICS', 'EVENTS', 'RECORDINGS', 'DELIVERIES'] as const;
 export const WEBHOOK_METHODS = ['POST', 'PUT'] as const;
@@ -90,16 +89,6 @@ export interface ApiKey {
   expiresAt: string;
   createdAt: string;
   lastUsedAt: string | null;
-}
-
-export interface SessionShare {
-  id: string;
-  sessionId: string;
-  access: (typeof SHARE_ACCESS)[number];
-  maxViewers: number;
-  viewers: number;
-  createdAt: string;
-  expiresAt: string;
 }
 
 export interface Recording {
@@ -192,8 +181,6 @@ export const deliveries: readonly Delivery[] = raw.deliveries.map((d) => ({
 }));
 
 export const apiKeys: readonly ApiKey[] = raw.apiKeys.map((k) => ({ ...k, scope: oneOf(TOKEN_SCOPES, k.scope) }));
-
-export const shares: readonly SessionShare[] = raw.shares.map((s) => ({ ...s, access: oneOf(SHARE_ACCESS, s.access) }));
 
 export const recordings: readonly Recording[] = raw.recordings.map((r) => ({
   ...r,

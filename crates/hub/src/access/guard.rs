@@ -103,16 +103,15 @@ fn current<'a>(
 /// Schema extension (API-003 backstop, ruling H-6(a)). Without a valid identity:
 /// - in `parse_query`, after the document is parsed and before validation, variable
 ///   coercion or any resolver, a document is allowed only when every operation selects just
-///   `__typename`, or is a mutation with exactly one root field, which is `login`,
-///   `signInBrowser` or `joinShare` (D-4, WP-43 A-7). Anything else (other fields, two of
-///   them, introspection, root fragments) gets one `UNAUTHENTICATED` error and nothing else;
+///   `__typename`, or is a mutation with exactly one root field, which is `login` or
+///   `signInBrowser` (D-4, WP-43 A-7, R-111). Anything else (other fields, two of them,
+///   introspection, root fragments) gets one `UNAUTHENTICATED` error and nothing else;
 /// - in `validation`, an allowed document that fails validation gets one `UNAUTHENTICATED`
 ///   error in place of all its validation errors. The root check does not look at fragment
 ///   definitions, variable types or directives, and their validation errors would name
 ///   schema types and fields, so a signed-out client cannot map the schema through them
 ///   (T3 security SHOULD 1). A sign-in whose argument cannot be coerced while resolving is
-///   still answered with the fixed `VALIDATION` text of the API boundary. `joinShare` has no
-///   resolver until WP-47, so today it always fails validation here;
+///   still answered with the fixed `VALIDATION` text of the API boundary;
 /// - in `request`, a response holding an error with neither a path nor a code (a syntax
 ///   error, an `operationName` the document lacks) becomes the same one `UNAUTHENTICATED`
 ///   (T8 round 2).
@@ -221,7 +220,7 @@ fn refusal(identity: Option<&Identity>, document: &ExecutableDocument) -> Option
 }
 
 /// The root fields an API key may never select, in any operation (D-23, WP-43 A-6): managing
-/// keys, signing a browser in or out, sessions, files, shares, recordings and device
+/// keys, signing a browser in or out, sessions, files, recordings and device
 /// credentials. `logout` would delete the key, which is managing it. `enrolAgent` and
 /// `revokeAgentToken` are refused by name before their resolvers exist (R-084, CR-8).
 /// A key may not pin a device identity, move or delete a device, or destroy recordings:
@@ -229,7 +228,7 @@ fn refusal(identity: Option<&Identity>, document: &ExecutableDocument) -> Option
 /// host (R-100). Enrolling or revoking a builder, and publishing or cancelling a release, are
 /// supply-chain actions only a login or browser token may take: a builder token outlives the key
 /// that enrolled it (D-23, R-107).
-pub(super) const API_KEY_REFUSED_ROOTS: [&str; 29] = [
+pub(super) const API_KEY_REFUSED_ROOTS: [&str; 27] = [
     "createApiKey",
     "revokeApiKey",
     "apiKeys",
@@ -237,8 +236,6 @@ pub(super) const API_KEY_REFUSED_ROOTS: [&str; 29] = [
     "logout",
     "startSession",
     "openFiles",
-    "shareSession",
-    "joinShare",
     "openRecording",
     "setSshCredential",
     "clearSshCredential",
@@ -277,8 +274,8 @@ pub(super) fn kind_may_select(kind: TokenKind, name: &str) -> bool {
     kind_roots(kind).admits(name)
 }
 
-/// The mutations a signed-out client may run, one per operation (API-003, D-4, A-7).
-const SIGNED_OUT_MUTATIONS: [&str; 3] = ["login", "signInBrowser", "joinShare"];
+/// The mutations a signed-out client may run, one per operation (API-003, D-4, A-7, R-111).
+const SIGNED_OUT_MUTATIONS: [&str; 2] = ["login", "signInBrowser"];
 
 /// Whether a document may run without an identity: each operation selects only
 /// `__typename`, or is a mutation whose one root selection is a field in

@@ -18,7 +18,7 @@ async function open(page: Page): Promise<void> {
 }
 
 test.describe('signed out', () => {
-  test('API-002: a signed-out request is UNAUTHENTICATED except one login, signInBrowser or joinShare', async ({ page, hub }) => {
+  test('API-002: a signed-out request is UNAUTHENTICATED except one login or signInBrowser', async ({ page, hub }) => {
     await open(page);
     const refused = await callGraphql(page, ME);
     expect(refused.errors?.[0]?.extensions?.code).toBe('UNAUTHENTICATED');

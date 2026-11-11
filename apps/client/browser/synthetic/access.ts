@@ -64,4 +64,4 @@ export function clearedCookie(): string {
 }
 
 /** The root fields a signed-out request may run, one at a time (K7 "HTTP surface"). */
-export const SIGNED_OUT_FIELDS: readonly string[] = ['login', 'signInBrowser', 'joinShare'];
+export const SIGNED_OUT_FIELDS: readonly string[] = ['login', 'signInBrowser'];

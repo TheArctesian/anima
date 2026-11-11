@@ -1,5 +1,5 @@
 //! The hub's public origin, `ANIMA_PUBLIC_ORIGIN`: the address clients use, which the cookie
-//! Origin check, share links and the web client's CSP name (D-3, K7).
+//! Origin check and the web client's CSP name (D-3, K7).
 
 /// The public origin as canonical text, `scheme://host[:port]`; the configuration checks the
 /// spelling before it builds one.

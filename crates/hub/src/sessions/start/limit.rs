@@ -1,6 +1,6 @@
 //! The device's session limit (RA-036, K4 §1 step 1): a start is refused while the device has
-//! as many live sessions as its limit allows. Only `start` writes session rows, so share
-//! viewers and files tunnels, which hold none, never count.
+//! as many live sessions as its limit allows. Only `start` writes session rows, so files
+//! tunnels, which hold none, never count.
 
 use sqlx::PgConnection;
 

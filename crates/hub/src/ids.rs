@@ -72,8 +72,6 @@ entity_id! {
     ChannelId,
     /// A notification delivery.
     DeliveryId,
-    /// A session share link.
-    ShareId,
     /// A session recording.
     RecordingId,
     /// An access token of the operator or of a builder.

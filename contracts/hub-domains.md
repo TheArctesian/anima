@@ -8,7 +8,7 @@ These are the only functions and types one hub domain may use from another. Ever
 
 | Module | Content |
 | --- | --- |
-| `crates/hub/src/ids.rs` | All entity ID newtypes (see `conventions.md`): `OperatorId`, `SiteId`, `DeviceId`, `CheckId`, `WindowId`, `SessionId`, `EventId`, and (Phase 2) `WebInterfaceId`, `MetricSeriesId`, and (Phase 3) `ApiKeyId`, `ChannelId`, `DeliveryId`, `ShareId`, `RecordingId`, and (Phase 3, WP-36, R-107) `TokenId`, `ReleaseId`, `BuildJobId`, `BuilderId` |
+| `crates/hub/src/ids.rs` | All entity ID newtypes (see `conventions.md`): `OperatorId`, `SiteId`, `DeviceId`, `CheckId`, `WindowId`, `SessionId`, `EventId`, and (Phase 2) `WebInterfaceId`, `MetricSeriesId`, and (Phase 3) `ApiKeyId`, `ChannelId`, `DeliveryId`, `RecordingId`, and (Phase 3, WP-36, R-107) `TokenId`, `ReleaseId`, `BuildJobId`, `BuilderId` |
 | `crates/hub/src/status.rs` | `pub enum Status { Up, Down, Degraded, Maintenance, Unknown }` with `fn worst(a, b)` (CHK-004) |
 | `crates/hub/src/clock.rs` | `pub trait Clock: Send + Sync { fn now(&self) -> DateTime<Utc>; }`, `SystemClock`, and `FixedClock` for tests. The only clock read in the hub (CQ-021). |
 | `crates/hub/src/config.rs` | `pub struct Config` from the environment (see `conventions.md`) |
@@ -47,7 +47,6 @@ Each domain exposes `pub mod graphql` with `#[derive(Default)] pub struct Query;
 pub fn web_client(root: &Path, origin: &PublicOrigin) -> axum::Router;   // headers as K7 "HTTP surface"
 // lib.rs mounts, each logged and behind the NET-002 layer:
 //   /metrics: checks::exposition_router(..) wrapped in access::bearer_layer(.., Scope::Read)
-//   /watch:   sessions::watch_router(&serving)
 //   /recording: sessions::playback_router(&serving)
 //   fallback: web_client(..) when ANIMA_WEB_ROOT is set
 // spawns.rs (P3-007): spawn_scheduler, spawn_collector, metrics::spawn_stale_watch, notifications::spawn_dispatcher.
@@ -82,15 +81,10 @@ pub enum TokenKind { Login, Browser, ApiKey, Builder }   // Builder: WP-36, R-10
 impl Identity { pub const fn kind(&self) -> TokenKind; }   // the guard refuses API keys on the D-23 list
 /// For routes outside GraphQL (/metrics): a bearer token of at least `scope`; 401 with no body otherwise.
 pub fn bearer_layer(db: Db, clock: Clock, scope: Scope) -> impl tower::Layer<axum::routing::Route> + Clone;
-/// The hub's public origin from ANIMA_PUBLIC_ORIGIN; the cookie and joinShare links use it.
+/// The hub's public origin from ANIMA_PUBLIC_ORIGIN; the cookie Origin check and the CSP use it.
 #[derive(Clone)] pub struct PublicOrigin(/* scheme, host, port */);
 // identify(..) also reads the __Host-anima cookie when Origin equals the public origin (D-3).
 // SocketAccess also takes the upgrade's headers, so a WebSocket can sign in by cookie (K7).
-/// Whether the login throttle refuses this address now (CR-16; joinShare, K4 §10).
-pub async fn throttled(db: &Db, client: ClientAddr, now: DateTime<Utc>) -> Result<bool, Error>;
-/// Records one failed signed-out attempt for this address, counted as a failed login. The stored
-/// username marker never matches or locks a real account (CR-16).
-pub async fn record_failure(db: &Db, client: ClientAddr, now: DateTime<Utc>) -> Result<(), Error>;
 ```
 
 (Phase 3, WP-36, R-107, D-1) Builder tokens are access tokens of kind `builder` (`TokenKind::Builder`)
@@ -144,7 +138,7 @@ Wiring only (called from `main.rs`, never from another domain): `create_partitio
 ```rust
 pub enum Source { Check, Session, Device, Access, Hub, Metrics, Notifications }   // Notifications (Phase 3)
 pub enum AuditTarget { ..., WebInterface(WebInterfaceId), ApiKey(ApiKeyId), Channel(ChannelId),
-                       Share(ShareId), Recording(RecordingId) }
+                       Recording(RecordingId) }
 /// One audit-then-event write for every domain (Q2-07). The entry carries its source and device.
 pub struct Trail { /* bus, operator, client address, the time read once */ }
 impl Trail {
@@ -398,7 +392,6 @@ Wake-on-LAN lives in `sessions` (RA-031 is a remote access rule), so a session s
 #[derive(Clone)] pub struct Recording { pub root: Option<PathBuf>, pub max_bytes: u64 }
 pub fn tunnel_router(s: &Serving) -> axum::Router;      // signature change only
 pub fn terminal_router(s: &Serving) -> axum::Router;    // signature change only
-pub fn watch_router(s: &Serving) -> axum::Router;       // GET /watch, K4 §10 (WP-47)
 pub fn playback_router(s: &Serving) -> axum::Router;    // GET /recording, K4 §12 (WP-48)
 // Wiring only: drop_expired_recordings(db, root, now, keep: chrono::Days) -> Result<u64, Error>.
 // Session start, files and wake keep their Phase 2 signatures; wake now uses ssh::link.

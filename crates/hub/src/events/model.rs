@@ -13,7 +13,7 @@ use uuid::Uuid;
 use crate::{
     ids::{
         ApiKeyId, BuildJobId, BuilderId, ChannelId, CheckId, DeviceId, EventId, OperatorId,
-        ReleaseId, SessionId, ShareId, SiteId, WindowId,
+        ReleaseId, SessionId, SiteId, WindowId,
     },
     status::Status,
 };
@@ -218,8 +218,6 @@ pub enum AuditTarget {
     Setting(&'static str),
     /// A notification channel.
     Channel(ChannelId),
-    /// A share of a session (RA-035).
-    Share(ShareId),
     /// A release and its build jobs (BLD-082).
     Release(ReleaseId),
     /// One build job of a release (BLD-082).
@@ -246,7 +244,6 @@ impl AuditTarget {
             Self::File(_) => "file",
             Self::Setting(_) => "setting",
             Self::Channel(_) => "channel",
-            Self::Share(_) => "share",
             Self::Release(_) => "release",
             Self::BuildJob(_) => "build_job",
             Self::Builder(_) => "builder",
@@ -268,7 +265,6 @@ impl AuditTarget {
             Self::Session(id) => id.to_string(),
             Self::Setting(name) => name.to_owned(),
             Self::Channel(id) => id.to_string(),
-            Self::Share(id) => id.to_string(),
             Self::Release(id) => id.to_string(),
             Self::BuildJob(id) => id.to_string(),
             Self::Builder(id) => id.to_string(),

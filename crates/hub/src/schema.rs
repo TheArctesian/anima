@@ -52,7 +52,6 @@ pub struct Mutation(
     retention::graphql::Mutation,
     sessions::graphql::Mutation,
     sessions::FilesMutation,
-    sessions::ShareMutation,
     sessions::WakeMutation,
     trust::graphql::Mutation,
     web_interfaces::graphql::Mutation,

@@ -40,7 +40,7 @@
           aria-describedby="device-policy-sessionLimit-hint device-policy-message"
           bind:value={policy.values.sessionLimit}
         />
-        <small id="device-policy-sessionLimit-hint">The most live sessions at once, from 1 to 100. Viewers and file tunnels do not count.</small>
+        <small id="device-policy-sessionLimit-hint">The most live sessions at once, from 1 to 100. File tunnels do not count.</small>
       </div>
       <div class="field">
         <label class="check">
