@@ -23,6 +23,17 @@ fn never_issued(seed: u8) -> String {
     AgentToken::from_random([seed; 32]).expose().to_owned()
 }
 
+/// `token` is refused at the bearer, before the body is read, on push and renewal. The write
+/// checks the hash again under the row lock, so a lookup that let `token` through would show
+/// only here: its malformed bodies would be answered `MALFORMED`.
+async fn refused_at_the_bearer(agents: &Agents, token: &str) {
+    let bearer = format!("Bearer {token}");
+    let pushed = agents.push_raw(Some(&bearer), "{}", PERMITTED).await;
+    assert_eq!(pushed, refused());
+    let renewal = agents.renew_raw(Some(&bearer), "[]", PERMITTED).await;
+    assert_eq!(renewal, refused());
+}
+
 /// pve-01's agent row, every column, and how many samples it has.
 async fn agent_rows(pool: &PgPool) -> (String, i64) {
     let row = sqlx::query_scalar(
@@ -51,6 +62,7 @@ async fn met_013_a_token_never_issued_is_refused_while_the_device_is_enrolled(po
     let batch = cpu_batch(PVE_01, now, 12.5);
     assert_eq!(agents.push(&stranger, &batch).await, refused());
     assert_eq!(agents.renew(&stranger).await, refused());
+    refused_at_the_bearer(&agents, &stranger).await;
     assert_eq!(agent_rows(&pool).await, before);
     assert_eq!(agents.push(&token, &batch).await.0, StatusCode::NO_CONTENT);
 }
@@ -74,6 +86,7 @@ async fn met_013_a_token_neither_current_nor_renewed_is_refused_while_a_renewal_
     let batch = cpu_batch(PVE_01, now, 12.5);
     assert_eq!(agents.push(&stranger, &batch).await, refused());
     assert_eq!(agents.renew(&stranger).await, refused());
+    refused_at_the_bearer(&agents, &stranger).await;
     assert_eq!(
         agent_rows(&pool).await,
         before,
