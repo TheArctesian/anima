@@ -56,6 +56,9 @@ impl Session {
         let state = schema_dependency::<DataLoader<RecordingStates>>(ctx)?
             .load_one(self.id)
             .await?;
+        // `RecordingStates` answers every key, `OFF` for a session with no recording row, so
+        // a missing answer cannot happen; should it ever, `OFF` is the state a session with
+        // no recording row has.
         Ok(state.unwrap_or(RecordingStateValue::Off))
     }
 }

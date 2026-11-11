@@ -14,7 +14,7 @@ use sqlx::{PgConnection, PgPool};
 use uuid::Uuid;
 
 use super::{
-    Conflict, Error,
+    Conflict, Error, device_error,
     end::{Actor, end_row, sweep},
     find_device,
     live::Live,
@@ -26,7 +26,7 @@ use super::{
 };
 use crate::{
     clock::Clock,
-    devices::{Device, RdpSecurity, RdpSettings},
+    devices::{self, Device, RdpSecurity, RdpSettings},
     events::{self, AuditAction, AuditTarget, ClientAddr, NewAudit, Operator},
     ids::{DeviceId, SessionId},
     targets::AddressPolicy,
@@ -206,6 +206,31 @@ pub(super) fn recorded(
     Ok(true)
 }
 
+/// Whether the start is recorded, read again under a share lock on the device row that
+/// `conn`'s transaction holds until it ends, so no change to the device commits between this
+/// read and the session row (K4 §1 step 2). `early` is [`recorded`]'s answer for `device` as
+/// read before the wake. A flag changed since then is followed, so a session is recorded
+/// exactly when the device records its sessions as the row commits: turned on, the hub must
+/// be able to record or the start is refused; turned off, the session is not recorded.
+///
+/// # Errors
+/// `CannotRecord` when recording was turned on and the hub cannot record; `NotFound` when the
+/// device is gone; `Devices` when the read fails.
+async fn recorded_locked(
+    conn: &mut PgConnection,
+    device: &Device,
+    recording: &Recording,
+    early: bool,
+) -> Result<bool, Error> {
+    let records = devices::hold_record_sessions(conn, device.id)
+        .await
+        .map_err(|error| device_error(device.id, error))?;
+    if records == device.record_sessions {
+        return Ok(early);
+    }
+    recorded(device.id, records, recording, can_record)
+}
+
 /// Random bytes from the operating system.
 fn random_token() -> Result<TicketToken, Error> {
     let mut bytes = [0; TOKEN_BYTES];
@@ -230,7 +255,9 @@ fn random_token() -> Result<TicketToken, Error> {
 /// from `client`. Tickets that expired unredeemed are swept first. A start the ticket table
 /// or the recording check would refuse is refused before any packet is sent, and so is one
 /// the limit refuses, unless another start passed the same early count and wins the device's
-/// lock. Once the row commits, its start is published on `live`'s feed of changes (RA-034); a
+/// lock. Under that lock the transaction reads the device's recording flag again and holds the
+/// device row until it commits, so recording turned on during the wake is checked then (and
+/// may refuse a start whose packet went), and recording turned off then is followed. Once the row commits, its start is published on `live`'s feed of changes (RA-034); a
 /// refused or rolled-back start publishes nothing.
 ///
 /// If the hub shut down while the commit was in flight, `shut_down` took the ticket but could
@@ -275,7 +302,7 @@ pub async fn start(
     // Read after the wake, so the ticket still has its whole lifetime.
     let now = clock.now();
     let token = random_token()?;
-    let pending = PendingTicket {
+    let mut pending = PendingTicket {
         operator: op.clone(),
         session: SessionId::from(Uuid::now_v7()),
         client,
@@ -289,6 +316,8 @@ pub async fn start(
     };
     let mut tx = db.begin().await?;
     limit::check_locked(&mut tx, device.id).await?;
+    pending.recording =
+        recorded_locked(&mut tx, &device, &req.recording, pending.recording).await?;
     let started = write_start(&mut tx, &device, &pending, now).await?;
     live.issue(token.hash(), pending.clone())
         .map_err(|_| Error::Unavailable)?;
@@ -333,7 +362,7 @@ async fn end_shut_down(
     let ended = end_row(&mut tx, pending.session, end, &by).await?;
     tx.commit().await?;
     if let Some(row) = ended {
-        live.publish_end(row);
+        live.publish_change(row);
     }
     Ok(())
 }
