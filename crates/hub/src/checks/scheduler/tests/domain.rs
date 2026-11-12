@@ -323,3 +323,41 @@ tick_test! {
         assert_eq!(queued(&pool, id).await, ["certificate_expiry", "domain_expiry"]);
     }
 }
+
+tick_test! {
+    async fn not_006_a_domain_check_beat_queues_one_notice_for_each_threshold_it_crosses(pool: PgPool) {
+        let now = database_now(&pool).await;
+        // 20 days and 12 hours left now, then 13 a week on (the delivery partitions reach 7 days
+        // ahead, so the beats cannot go further).
+        let ends = now + TimeDelta::days(20) + TimeDelta::hours(12);
+        let server = registry(expiring_at(ends)).await;
+        let id = add_domain_check(&pool).await;
+        notify_on(&pool, id).await;
+        due_at(&pool, id, now).await;
+        let mut scheduler = domain_scheduler(&pool, &server);
+
+        tick_at(&mut scheduler, now).await;
+        assert_eq!(queued(&pool, id).await, ["domain_expiry"], "20 days crossed 21");
+
+        tick_at(&mut scheduler, now + HOUR).await;
+        assert_eq!(server.requests_for(QUERY), 2, "the second beat asked the registry again");
+        assert_eq!(queued(&pool, id).await, ["domain_expiry"], "none again at the same threshold");
+
+        tick_at(&mut scheduler, now + TimeDelta::days(7)).await;
+        assert_eq!(queued(&pool, id).await, ["domain_expiry"; 2], "13 days crossed 14");
+    }
+
+    async fn not_006_a_domain_first_seen_at_six_days_queues_one_notice(pool: PgPool) {
+        let now = database_now(&pool).await;
+        let server = registry(expiring_at(now + TimeDelta::days(6) + TimeDelta::hours(12))).await;
+        let id = add_domain_check(&pool).await;
+        notify_on(&pool, id).await;
+        due_at(&pool, id, now).await;
+        let mut scheduler = domain_scheduler(&pool, &server);
+
+        tick_at(&mut scheduler, now).await;
+
+        // 6 days is under 21, 14 and 7: one notice.
+        assert_eq!(queued(&pool, id).await, ["domain_expiry"]);
+    }
+}
