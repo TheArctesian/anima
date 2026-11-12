@@ -5,6 +5,7 @@
   import { press } from '$lib/motion/roles/press';
   import { coverWhile } from '$lib/overlay/overlay.svelte';
   import { fade, modal } from '$lib/motion/roles/transitions';
+  import { edgeFade } from '$lib/scroll/edges';
   import { offerFooter } from './footer';
   import { initialFocusIn, trapTab } from './focus';
   import { takeOpener, watchClicks } from './opener';
@@ -30,6 +31,10 @@
     returnTo?: () => HTMLElement | undefined;
     /** The surface's width in steps of `--space-16` (a `content` surface is 8 wide). */
     width?: number;
+    /** A size preset: `sm` for a confirmation, `md` for a form, `lg` for a wide task. It sets the width. */
+    preset?: 'sm' | 'md' | 'lg';
+    /** The actions below the body, secondary first and primary last; wins over a form's own footer. */
+    footer?: Snippet;
     /** Lowers the surface by `--space-16` from the top edge, for a warning that sits over the page's own controls. */
     lowered?: boolean;
     /** An icon before the title, for a dialog that is a task (Add device); a warning's icon wins over it. */
@@ -39,7 +44,9 @@
     children: Snippet;
   }
 
-  const { open, title, onClose, size = 'content', warning = false, describedBy, closeOnScrim = true, returnTo, width = 8, lowered = false, icon, dismissible = false, children }: Props = $props();
+  const { open, title, onClose, size = 'content', warning = false, describedBy, closeOnScrim = true, returnTo, width = 8, preset, footer, lowered = false, icon, dismissible = false, children }: Props = $props();
+  const PRESET_WIDTH = { sm: 6, md: 8, lg: 12 } as const;
+  const span = $derived(preset === undefined ? width : PRESET_WIDTH[preset]);
   const titleId = $props.id();
   coverWhile(() => open);
 
@@ -165,7 +172,7 @@
         tabindex="-1"
         transition:modal|global
         bind:this={surface}
-        style:--modal-width={width}
+        style:--modal-width={span}
         onkeydown={(event) => {
           keydown(event, event.currentTarget);
         }}
@@ -181,10 +188,12 @@
             <Icon name="nf-md-close" />
           </button>
         {/if}
-        <div class="body">
+        <div class="body" {@attach edgeFade}>
           {@render children()}
         </div>
-        {#if shown}
+        {#if footer}
+          <div class="footer actions">{@render footer()}</div>
+        {:else if shown}
           <div class="footer">{@render shown.actions()}</div>
         {/if}
       </div>
@@ -233,10 +242,16 @@
     max-block-size: 100%;
     padding: var(--space-5);
     background: var(--surface-overlay);
-    border: var(--border-thin) solid var(--border-strong);
     border-radius: var(--radius-lg);
     box-shadow: var(--elevation-3);
     color: var(--text);
+  }
+
+  /* Materials are solid and bordered with prefers-contrast: more (MAT-006). */
+  @media (prefers-contrast: more) {
+    .surface {
+      border: var(--border-thin) solid var(--border-strong);
+    }
   }
 
   .warning {
@@ -265,9 +280,29 @@
     overflow-anchor: none;
   }
 
+  /* A short fade where the body scrolls, not a line (MAT-003, MAT-004). */
+  .body:global([data-more-below]) {
+    mask-image: linear-gradient(to bottom, var(--text) calc(100% - var(--space-6)), transparent);
+  }
+
+  .body:global([data-more-above]) {
+    mask-image: linear-gradient(to top, var(--text) calc(100% - var(--space-6)), transparent);
+  }
+
+  .body:global([data-more-above][data-more-below]) {
+    mask-image: linear-gradient(to bottom, transparent, var(--text) var(--space-6), var(--text) calc(100% - var(--space-6)), transparent);
+  }
+
   /* Below the body and outside it, so the actions never scroll, never move and never cover a field. */
   .footer {
     flex: none;
+  }
+
+  /* The secondary action first, the primary last at the end of the row. */
+  .actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-2);
   }
 
   /* A scrollbar that comes and goes as sections open does not change the width of the fields. */

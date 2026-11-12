@@ -14,8 +14,8 @@
   import OsIcon from '$lib/devices/os/OsIcon.svelte';
   import { hostLine } from './card';
   import { reorderMotion } from '$lib/motion/roles/reorder.svelte';
-  import StatusEdge from './StatusEdge.svelte';
-  import StatusPill from './StatusPill.svelte';
+  import StatusEdge from '../status/StatusEdge.svelte';
+  import StatusBadge from '../status/StatusBadge.svelte';
 
   interface Props {
     devices: readonly CardDevice[];
@@ -65,7 +65,7 @@
         <td class="status">
           <StatusEdge status={device.status} />
           <span class="marks">
-            <StatusPill status={device.status} deviceId={device.id} />
+            <StatusBadge status={device.status} deviceId={device.id} />
             <WarningBadge warnings={device.accessWarnings} />
           </span>
         </td>

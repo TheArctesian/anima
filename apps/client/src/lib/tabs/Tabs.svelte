@@ -6,15 +6,22 @@
   import { springMotion, type InstantMotion, type SpringMotion } from '$lib/motion/options';
   import { motionPreference, type MotionPreference } from '$lib/motion/preference';
   import { press } from '$lib/motion/roles/press';
-  import { TABS, hiddenEdges, scrolledToShow, tabIds, type TabName } from './tabs';
+  import { hiddenEdges } from '$lib/scroll/edges';
+  import { scrolledToShow, tabIds, type TabSpec } from './tabs';
 
   interface Props {
-    selected: TabName;
-    onSelect: (name: TabName) => void;
+    items: readonly TabSpec[];
+    /** The `id` of the selected item. */
+    selected: string;
+    onSelect: (id: string) => void;
+    /** Names the strip for assistive technology, for example "Device". */
+    label: string;
+    /** Prefixes the tab and panel ids: the panel of item `x` is `<idPrefix>-panel-x`. */
+    idPrefix: string;
     preference?: MotionPreference;
   }
 
-  const { selected, onSelect, preference = motionPreference() }: Props = $props();
+  const { items, selected, onSelect, label, idPrefix, preference = motionPreference() }: Props = $props();
   let list = $state<HTMLElement>();
   let indicator = $state<Animatable>();
   let placed = false;
@@ -25,7 +32,7 @@
 
   /** The indicator spans the selected tab: `translate` and `scale` from its left edge only (MOT-006). */
   function place(motion: SpringMotion | InstantMotion): void {
-    const tab = tabAt(TABS.findIndex((entry) => entry.name === selected));
+    const tab = tabAt(items.findIndex((entry) => entry.id === selected));
     if (indicator === undefined || tab === undefined) return;
     const base = indicator instanceof HTMLElement && indicator.offsetWidth > 0 ? indicator.offsetWidth : 1;
     animate(indicator, { translate: { x: tab.offsetLeft, y: 0 }, scale: { x: tab.offsetWidth / base, y: 1 } }, motion);
@@ -81,7 +88,7 @@
   }
 </script>
 
-<div class="tabs" role="tablist" aria-label="Device" tabindex="-1" bind:this={list}
+<div class="tabs" role="tablist" aria-label={label} tabindex="-1" bind:this={list}
   onkeydown={keydown}
   onscroll={markEdges}
   onfocusin={(event) => {
@@ -94,18 +101,20 @@
     );
   }}
 >
-  {#each TABS as tab (tab.name)}
+  {#each items as tab (tab.id)}
     <button
       type="button"
       role="tab"
-      id={tabIds(tab.name).tab}
-      aria-controls={tabIds(tab.name).panel}
-      aria-selected={tab.name === selected}
-      tabindex={tab.name === selected ? 0 : -1}
+      id={tabIds(idPrefix, tab.id).tab}
+      aria-controls={tabIds(idPrefix, tab.id).panel}
+      aria-selected={tab.id === selected}
+      tabindex={tab.id === selected ? 0 : -1}
       onclick={() => {
-        onSelect(tab.name);
+        onSelect(tab.id);
       }}
-      {@attach press(preference)}><Icon name={tab.icon} size="sm" />{tab.label}</button
+      {@attach press(preference)}
+      >{#if tab.icon !== undefined}<Icon name={tab.icon} size="sm" />{/if}<span class="word" data-word={tab.label}>{tab.label}</span
+      >{#if tab.count !== undefined}<span class="count">{tab.count}</span>{/if}</button
     >
   {/each}
   <span class="indicator" bind:this={indicator} aria-hidden="true"></span>
@@ -123,7 +132,7 @@
     margin-block-end: var(--space-4);
     padding-block-end: var(--border-thin);
     /* The rule is drawn inside the strip, so the clipped strip keeps the underline where the border was. */
-    box-shadow: inset 0 calc(var(--border-thin) * -1) 0 var(--border-strong);
+    box-shadow: inset 0 calc(var(--border-thin) * -1) 0 var(--border-subtle);
     scroll-padding-inline: var(--space-8);
     scrollbar-width: none;
   }
@@ -147,7 +156,7 @@
     );
   }
 
-  /* The icon is hidden from assistive technology; the label alone names the tab (UI-003: the word is always there). */
+  /* The word is always there (UI-003); a tab is text, not a button. */
   button {
     flex: none;
     box-sizing: border-box;
@@ -163,9 +172,35 @@
     transition: color var(--duration-fast) var(--ease-enter);
   }
 
-  button:hover,
+  button:hover {
+    color: var(--text);
+  }
+
+  /* The selected tab is bold; the bold word is laid out invisibly under the plain one, so a tab never changes width. */
   button[aria-selected='true'] {
     color: var(--text);
+    font-weight: var(--weight-bold);
+  }
+
+  .word {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .word::after {
+    content: attr(data-word);
+    block-size: 0;
+    overflow: hidden;
+    visibility: hidden;
+    font-weight: var(--weight-bold);
+  }
+
+  .count {
+    color: var(--text-secondary);
+    font-size: var(--text-sm);
+    font-variant-numeric: tabular-nums;
+    font-weight: var(--weight-regular);
   }
 
   button:focus-visible {

@@ -26,8 +26,8 @@
   import SessionsPanel from '../sessions/SessionsPanel.svelte';
   import SettingsPanel from '../settings/SettingsPanel.svelte';
   import TabPanel from '../tabs/TabPanel.svelte';
-  import Tabs from '../tabs/Tabs.svelte';
-  import { placeSearch, readPlace, type SettingsSection, type TabPlace } from '../tabs/tabs';
+  import Tabs from '$lib/tabs/Tabs.svelte';
+  import { TAB_ITEMS, isTab, placeSearch, readPlace, type SettingsSection, type TabPlace } from '../tabs/tabs';
   import { detailCalls } from './calls';
   import DeviceMissing from './DeviceMissing.svelte';
 
@@ -144,7 +144,7 @@
     </div>
   {:else if device !== null}
     <LiveNotice message={detail.liveError?.message ?? null} gap="end" />
-    <Tabs selected={place.tab} onSelect={(tab) => { go({ tab, section: null, range: 'HOUR' }); }} />
+    <Tabs items={TAB_ITEMS} selected={place.tab} label="Device" idPrefix="device" onSelect={(tab) => { if (isTab(tab)) go({ tab, section: null, range: 'HOUR' }); }} />
     {#if place.tab === 'overview'}
       <TabPanel name="overview" loading={checksLoading} skeleton={overviewSkeleton}>
         {#if detail.checksError !== null}
