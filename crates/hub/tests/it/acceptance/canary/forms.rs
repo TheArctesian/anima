@@ -1,7 +1,9 @@
 //! The forms a secret can take in a log line, and the search for them (LOG-007): the text as
 //! typed, JSON-escaped, percent-encoded, hex, base64 at each byte alignment, and any 12
 //! characters of its random part, so a log that keeps part of a secret is caught too. A code of
-//! digits is searched as a number, with no digit on either side, in a message or a field.
+//! digits is searched as a number, with no digit on either side, in a message or a field. That
+//! search has a small chance of a false hit on a hub number that equals the code, and a failure
+//! of that kind cannot be reproduced, because the code changes with each run.
 
 use std::fmt::{self, Write as _};
 
@@ -16,12 +18,12 @@ use super::Secret;
 /// The shortest run of a secret's random part that counts as the secret.
 const WINDOW: usize = 12;
 
-/// The fields the subscriber and sqlx fill with their own digits, which no secret reaches: a
-/// code of digits is not searched in them, so a microsecond or an id is no false hit.
-const OWN_DIGITS: [&str; 4] = ["timestamp", "request_id", "elapsed", "elapsed_secs"];
+/// The fields of a sqlx event that sqlx fills with its own digits: elapsed times.
+const SQLX_ELAPSED: [&str; 2] = ["elapsed", "elapsed_secs"];
 
-/// A secret found in a log line: its kind, the forms found, and the line's target and message
-/// with the secret's forms cut out, so the report itself holds no secret.
+/// A secret found in a log line: its kind, the forms found, the line number and the line's
+/// target. The report holds no text of the line: a message can hold another secret, or a form
+/// of this one the search does not cover.
 pub struct Leak {
     kind: &'static str,
     forms: Vec<&'static str>,
@@ -123,7 +125,7 @@ pub fn leaks(secret: &Secret, log: &str) -> Vec<Leak> {
                 kind: secret.kind,
                 forms: names,
                 line: number + 1,
-                target: where_in(line, &forms),
+                target: target_of(line),
             });
         }
     }
@@ -142,27 +144,30 @@ fn holds(line: &str, needle: &str, digits: bool) -> bool {
     })
 }
 
-/// The event of `line` without the fields in [`OWN_DIGITS`], at any depth.
+/// The event of `line` without the digits the subscriber and sqlx write of their own, which no
+/// secret reaches: the top-level `timestamp`, `span.request_id`, and a sqlx event's elapsed
+/// times. A field of the same name anywhere else is kept and searched.
 fn without_own_digits(line: &str) -> String {
-    fn strip(value: &mut Value) {
-        if let Value::Object(fields) = value {
-            for name in OWN_DIGITS {
-                fields.remove(name);
-            }
-            fields.values_mut().for_each(strip);
+    let mut event: Value = serde_json::from_str(line).unwrap_or_default();
+    let from_sqlx = event["target"]
+        .as_str()
+        .is_some_and(|t| t.starts_with("sqlx"));
+    if let Some(fields) = event.as_object_mut() {
+        fields.remove("timestamp");
+    }
+    if let Some(span) = event["span"].as_object_mut() {
+        span.remove("request_id");
+    }
+    if from_sqlx && let Some(fields) = event["fields"].as_object_mut() {
+        for name in SQLX_ELAPSED {
+            fields.remove(name);
         }
     }
-    let mut event: Value = serde_json::from_str(line).unwrap_or_default();
-    strip(&mut event);
     event.to_string()
 }
 
-/// The target and message of a log line, with every form of the secret cut out.
-fn where_in(line: &str, forms: &[(&'static str, String)]) -> String {
+/// The target of a log line: a module path, never a value.
+fn target_of(line: &str) -> String {
     let event: Value = serde_json::from_str(line).unwrap_or_default();
-    let mut text = format!("{} {}", event["target"], event["fields"]["message"]);
-    for (_, needle) in forms {
-        text = text.replace(needle.as_str(), "<secret>");
-    }
-    text
+    event["target"].as_str().unwrap_or("[no target]").to_owned()
 }
