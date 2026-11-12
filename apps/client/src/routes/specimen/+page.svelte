@@ -1,6 +1,6 @@
 <script lang="ts">
-  import ContainersSection from './ContainersSection.svelte';
-  import ControlsSection from './ControlsSection.svelte';
+  import ContainersSection from './containers/ContainersSection.svelte';
+  import ControlsSection from './controls/ControlsSection.svelte';
 </script>
 
 <svelte:head><title>Specimen – Anima</title></svelte:head>
