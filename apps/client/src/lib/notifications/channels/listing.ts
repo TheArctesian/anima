@@ -1,28 +1,6 @@
-// The channel list as values: the row the skeleton is drawn from, a delivery put on its channel, and where focus
+// The channel list as values: a delivery put on its channel, and where focus
 // goes after a delete (NOT-002, NOT-004, NAV-005).
 import type { Delivery, NotificationChannel } from '../api';
-
-/**
- * A channel of typical length that never reaches the screen as text: the loading skeleton and the space the list
- * keeps are drawn from it, so they have a real row's geometry at every width (MOT-007).
- */
-export const PLACEHOLDER_CHANNEL: NotificationChannel = {
-  id: 'placeholder',
-  name: 'placeholder-channel',
-  kind: 'WEBHOOK',
-  onByDefault: false,
-  settings: { __typename: 'WebhookSettings', origin: 'https://hooks.example.net', method: 'POST', headerNames: [] },
-  template: null,
-  lastDelivery: {
-    id: 'placeholder',
-    channelId: 'placeholder',
-    kind: 'TEST',
-    at: '2099-12-31T00:00:00Z',
-    ok: false,
-    reason: 'TIMED_OUT',
-    code: null,
-  },
-};
 
 /** The list with `delivery` as the last delivery of its channel. */
 export function withDelivery(channels: readonly NotificationChannel[], id: string, delivery: Delivery): NotificationChannel[] {

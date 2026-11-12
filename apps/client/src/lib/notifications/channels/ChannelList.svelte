@@ -6,11 +6,12 @@
   import { skeletonDelay } from '$lib/motion/loading/delay.svelte';
   import type { LoadingClock } from '$lib/motion/loading/loading';
   import { crossFade } from '$lib/motion/roles/transitions';
+  import SettingRow from '$lib/settings/SettingRow.svelte';
   import type { Delivery, NotificationChannel, NotificationsApi, NotificationTemplateInput } from '../api';
   import ChannelEditor from '../editor/ChannelEditor.svelte';
   import { failureText } from '../failure';
   import ChannelRow from './ChannelRow.svelte';
-  import { focusAfterDelete, PLACEHOLDER_CHANNEL, withDelivery, withSaved } from './listing';
+  import { focusAfterDelete, withDelivery, withSaved } from './listing';
 
   interface Props {
     api: NotificationsApi;
@@ -33,9 +34,6 @@
   /** True while the hub deletes: the dialog stays until it answers, so the outcome is never lost unseen. */
   let removing = $state(false);
   let root: HTMLElement | undefined = $state();
-  let scroller: HTMLElement | undefined = $state();
-  /** The rows whose space the list keeps; more channels scroll inside it. */
-  const KEPT_ROWS = ['first', 'second'];
   const loading = $derived(channels === null && !loadFailed);
   // The clock is fixed for the life of the list.
   // svelte-ignore state_referenced_locally
@@ -74,15 +72,9 @@
     return result;
   }
 
-  /** A new channel goes at the end of the list, scrolled into view inside it (the scroller is its rows' offset parent). */
-  async function saved(channel: NotificationChannel): Promise<void> {
-    if (channels === null) return;
-    const added = !channels.some((known) => known.id === channel.id);
-    channels = withSaved(channels, channel);
-    if (!added) return;
-    await tick();
-    const row = scroller?.querySelector<HTMLElement>(`[data-delete="${CSS.escape(channel.id)}"]`)?.closest('li');
-    if (scroller !== undefined && row instanceof HTMLElement) scroller.scrollTop = row.offsetTop + row.offsetHeight - scroller.clientHeight;
+  /** A new channel goes at the end of the list. */
+  function saved(channel: NotificationChannel): void {
+    if (channels !== null) channels = withSaved(channels, channel);
   }
 
   /** Focus for the operator after a delete: the row that took its place, the row before, or Add channel (NAV-005). */
@@ -113,47 +105,44 @@
 </script>
 
 <div class="channels" bind:this={root}>
-  <div>
+  <SettingRow>
+    {#snippet label()}
+      <h3>Channels</h3>
+    {/snippet}
     <FormButton tabindex={0} data-add onclick={() => { editing = { channel: null }; }}>Add channel</FormButton>
-  </div>
+  </SettingRow>
   <!--
-    One grid cell of a fixed height: hidden rows keep the space of two channels, the skeleton lies over them, and what
-    the hub answers lands in the same place and scrolls inside it. However many channels arrive, are added or are
-    deleted, nothing below the list moves (MOT-007).
+    One line is kept for what is not a list: loading, no channels, or a failed load. The skeleton is that one line, so
+    the usual answers (a few channels, none, a failure) move little below; a list of channels grows the card, as the
+    rows of any section do (MOT-007). The earlier two-row reservation was for a list that scrolled inside it; the rows
+    now sit in the card's own flow, so that reason no longer holds.
   -->
   <div class="stack" aria-busy={loading}>
-    <ul class="sizer" aria-hidden="true" inert>
-      {#each KEPT_ROWS as key (key)}
-        <ChannelRow channel={PLACEHOLDER_CHANNEL} onSendTest={() => new Promise(() => undefined)} onEdit={() => undefined} onDelete={() => undefined} placeholder />
-      {/each}
-    </ul>
-    <div class="scroller" bind:this={scroller}>
-      {#if loadFailed}
-        <div class="failed">
+    {#if loadFailed}
+      <SettingRow>
+        {#snippet label()}
           <p role="alert">Anima could not load the notification channels.</p>
-          <div><FormButton tabindex={0} aria-disabled={retrying} aria-busy={retrying} onclick={retry}>Try again</FormButton></div>
-        </div>
-      {:else if channels !== null && channels.length === 0}
-        <p class="quiet">No channels. Add one to hear when a check goes down or comes back up.</p>
-      {:else if channels !== null}
-        <ul class="list">
-          {#each channels as channel (channel.id)}
-            <ChannelRow
-              {channel}
-              onSendTest={() => sendTest(channel.id)}
-              onEdit={() => { editing = { channel }; }}
-              onDelete={() => { deleting = channel; }}
-            />
-          {/each}
-        </ul>
-      {/if}
-    </div>
-    {#if skeleton.visible}
-      <ul class="skeleton" aria-hidden="true" inert transition:crossFade>
-        {#each KEPT_ROWS as key (key)}
-          <ChannelRow channel={PLACEHOLDER_CHANNEL} onSendTest={() => new Promise(() => undefined)} onEdit={() => undefined} onDelete={() => undefined} placeholder />
+        {/snippet}
+        <FormButton tabindex={0} aria-disabled={retrying} aria-busy={retrying} onclick={retry}>Try again</FormButton>
+      </SettingRow>
+    {:else if channels !== null && channels.length === 0}
+      <p class="quiet">No channels. Add one to hear when a check goes down or comes back up.</p>
+    {:else if channels !== null}
+      <ul class="list">
+        {#each channels as channel (channel.id)}
+          <ChannelRow
+            {channel}
+            onSendTest={() => sendTest(channel.id)}
+            onEdit={() => { editing = { channel }; }}
+            onDelete={() => { deleting = channel; }}
+          />
         {/each}
       </ul>
+    {:else}
+      <p class="quiet" aria-hidden="true"></p>
+    {/if}
+    {#if skeleton.visible}
+      <div class="skeleton" aria-hidden="true" inert transition:crossFade><span></span></div>
     {/if}
   </div>
 </div>
@@ -164,9 +153,7 @@
     channel={editing.channel}
     {defaultTemplate}
     {placeholders}
-    onSaved={(channel) => {
-      void saved(channel);
-    }}
+    onSaved={saved}
     onClose={() => { editing = null; }}
   />
 {/if}
@@ -188,7 +175,13 @@
   .channels {
     display: flex;
     flex-direction: column;
-    gap: var(--space-3);
+  }
+
+  h3 {
+    margin: 0;
+    font-size: var(--text-md);
+    font-weight: var(--weight-bold);
+    line-height: var(--leading-tight);
   }
 
   .stack {
@@ -201,49 +194,47 @@
     grid-area: 1 / 1;
   }
 
-  .sizer {
-    visibility: hidden;
-  }
-
-  /* Adds nothing to the cell's height (the sizer sets it) and fills it, scrolling what does not fit. */
-  .scroller {
-    position: relative;
-    align-self: stretch;
-    contain: size;
-    overflow-y: auto;
-    scrollbar-gutter: stable;
-  }
-
+  /* The one line a row of the card keeps when there is no list (MOT-007). */
+  .quiet,
   .skeleton {
-    background: var(--surface-base);
-  }
-
-  p {
-    margin: 0;
-    font-size: var(--text-md);
+    box-sizing: border-box;
+    min-block-size: calc(var(--text-sm) * var(--leading-tight) + 2 * var(--space-3) + var(--border-thin));
+    padding: var(--space-3) var(--space-4);
+    border-block-start: var(--border-thin) solid var(--border-strong);
   }
 
   .quiet {
+    margin: 0;
     color: var(--text-secondary);
+    font-size: var(--text-sm);
+    line-height: var(--leading-tight);
   }
 
-  .failed {
-    display: flex;
-    flex-direction: column;
-    align-items: start;
-    gap: var(--space-2);
+  /* The skeleton covers what lies under it with the card's own colour, and draws the line as a block. */
+  .skeleton {
+    background: var(--surface-overlay);
+  }
+
+  .skeleton span {
+    display: block;
+    inline-size: 60%;
+    block-size: calc(var(--text-sm) * var(--leading-tight));
+    border-radius: var(--radius-sm);
+    background: var(--surface-raised);
   }
 
   /* --status-down text is 3.05:1 on the page (MAT-005 needs 4.5:1): the text stays --text and a bar marks the error. */
   [role='alert'] {
+    margin: 0;
     padding-inline-start: var(--space-2);
     border-inline-start: var(--border-focus) solid var(--status-down);
+    font-size: var(--text-sm);
+    line-height: var(--leading-tight);
   }
 
   ul {
     display: flex;
     flex-direction: column;
-    gap: var(--space-2);
     margin: 0;
     padding: 0;
     list-style: none;
