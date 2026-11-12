@@ -1,6 +1,7 @@
-//! A hub with a release bucket on the fake R2, a builder that uploads through the hub's
-//! presigned URLs, and the files, sums and feed of one job signed with a throwaway updater key.
-//! No token or key here is real; the token files are in a temporary folder (SEC-004).
+//! A hub with a release bucket on the fake R2 and a throwaway updater key, a builder that
+//! uploads through the hub's presigned URLs, and the files, sums and unsigned feed of one job
+//! (R-116). No token or key here is real; the token and key files are in a temporary folder
+//! (SEC-004).
 
 use std::{io::Cursor, sync::Arc};
 
@@ -12,7 +13,7 @@ use anima_hub::{
 };
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use chrono::{DateTime, TimeDelta, Utc};
-use minisign::KeyPair;
+use minisign::{KeyPair, SignatureBox};
 use serde_json::{Value, json};
 use sha2::{Digest as _, Sha256};
 use sqlx::PgPool;
@@ -65,6 +66,9 @@ impl File {
     }
 }
 
+/// The password of the throwaway updater key.
+pub const KEY_PASSWORD: &str = "a throwaway key password";
+
 /// The hub, the fake bucket and the updater key pair of one test.
 pub struct Publishing {
     pub pool: PgPool,
@@ -79,31 +83,47 @@ pub struct Publishing {
     _tokens: tempfile::TempDir,
 }
 
-/// Where the hub reads the throwaway R2 token.
-fn token_files() -> tempfile::TempDir {
+/// Where the hub reads the throwaway R2 token and the throwaway updater key, sealed with
+/// [`KEY_PASSWORD`] as `tauri signer generate` writes it; and the key pair.
+pub fn secret_files() -> (tempfile::TempDir, KeyPair) {
     let folder = tempfile::tempdir().unwrap();
     std::fs::write(folder.path().join("id"), format!("{KEY_ID}\n")).unwrap();
     std::fs::write(folder.path().join("secret"), SECRET).unwrap();
-    folder
+    let pair = KeyPair::generate_encrypted_keypair(Some(KEY_PASSWORD.to_owned())).unwrap();
+    let key_file = STANDARD.encode(pair.sk.to_box(None).unwrap().into_string());
+    std::fs::write(folder.path().join("updater_key"), key_file).unwrap();
+    std::fs::write(folder.path().join("updater_key_password"), KEY_PASSWORD).unwrap();
+    (folder, pair)
+}
+
+/// The release settings of the fake at `fake`, the secrets in `folder` and `public` as
+/// `ANIMA_UPDATER_PUBLIC_KEY`.
+pub fn releases(fake: &FakeR2, folder: &std::path::Path, public: Option<String>) -> Releases {
+    Releases {
+        endpoint: fake.endpoint(),
+        bucket: BUCKET.to_owned(),
+        public_base: fake.public_base(),
+        access_key_id_file: folder.join("id"),
+        secret_access_key_file: folder.join("secret"),
+        updater_public_key: public,
+        updater_key_file: folder.join("updater_key"),
+        updater_key_password_file: folder.join("updater_key_password"),
+    }
+}
+
+/// `plugins.updater.pubkey` of `pair`.
+pub fn public_key(pair: &KeyPair) -> String {
+    STANDARD.encode(pair.pk.to_box().unwrap().into_string())
 }
 
 impl Publishing {
-    /// With the updater key set when `updater_key`.
-    pub async fn start(pool: &PgPool, updater_key: bool) -> Self {
+    /// A hub whose bucket opened the throwaway updater key from its files.
+    pub async fn start(pool: &PgPool) -> Self {
         let fake = FakeR2::start().await;
         fake.with(|store| store.now = Some(start()));
-        let tokens = token_files();
-        let pair = KeyPair::generate_unencrypted_keypair().unwrap();
-        let key = STANDARD.encode(pair.pk.to_box().unwrap().into_string());
-        let releases = Releases {
-            endpoint: fake.endpoint(),
-            bucket: BUCKET.to_owned(),
-            public_base: fake.public_base(),
-            access_key_id_file: tokens.path().join("id"),
-            secret_access_key_file: tokens.path().join("secret"),
-            updater_public_key: updater_key.then_some(key),
-        };
-        let bucket = Arc::new(Bucket::open(&releases).unwrap());
+        let (tokens, pair) = secret_files();
+        let releases = releases(&fake, tokens.path(), Some(public_key(&pair)));
+        let bucket = Arc::new(builds::open_bucket(&releases).unwrap().unwrap());
         let operator = operator(pool).await;
         let clock = Arc::new(TestClock::at(start()));
         let mut parts = dependencies(pool, clock.clone(), Bus::new(16));
@@ -136,9 +156,20 @@ impl Publishing {
         }
     }
 
-    /// The feed `signature` text of `bytes`, signed for `version` with the hub's updater key.
-    pub fn sign(&self, bytes: &[u8], version: &str) -> String {
-        sign_with(&self.pair, bytes, version)
+    /// Checks, with the reference minisign, that the hub signed `app` for `version`: the `.sig`
+    /// beside it and the signature of each entry of the Linux feed are the same text, over
+    /// exactly `app`'s bytes, with `version` in the trusted comment (BLD-046, R-116).
+    pub fn assert_signed(&self, version: &str, app: &File) {
+        let object = format!("linux-x86_64/{version}/{}.sig", app.name);
+        let sig = self.fake.object(&object).expect("the .sig is written");
+        let sig = String::from_utf8(sig.bytes).unwrap();
+        let feed: Value =
+            serde_json::from_slice(&self.fake.object(LINUX_FEED).unwrap().bytes).unwrap();
+        assert_eq!(feed["platforms"]["linux-x86_64"]["signature"], sig.as_str());
+        assert_eq!(
+            verified_version(&self.pair, &sig, &app.bytes),
+            Ok(version.to_owned())
+        );
     }
 
     pub fn public(&self, path: &str) -> String {
@@ -267,18 +298,20 @@ pub async fn until_waiting(publishing: &Publishing) {
         .unwrap();
 }
 
-/// The feed `signature` text of `bytes`, signed by `pair` for `version`.
-pub fn sign_with(pair: &KeyPair, bytes: &[u8], version: &str) -> String {
-    let comment = format!("timestamp:1888000000\tfile:Anima\tversion:{version}");
-    let signature = minisign::sign(
-        Some(&pair.pk),
-        &pair.sk,
-        Cursor::new(bytes),
-        Some(&comment),
-        None,
-    )
-    .unwrap();
-    STANDARD.encode(signature.into_string())
+/// The version in the trusted comment of the `.sig` text `sig`, once the reference minisign
+/// accepts it over `bytes` with `pair`'s public key; why not, otherwise.
+pub fn verified_version(pair: &KeyPair, sig: &str, bytes: &[u8]) -> Result<String, String> {
+    let text = STANDARD.decode(sig.trim()).map_err(|e| e.to_string())?;
+    let text = String::from_utf8(text).map_err(|e| e.to_string())?;
+    let parsed = SignatureBox::from_string(&text).map_err(|e| e.to_string())?;
+    minisign::verify(&pair.pk, &parsed, Cursor::new(bytes), true, false, false)
+        .map_err(|e| e.to_string())?;
+    let comment = parsed.trusted_comment().map_err(|e| e.to_string())?;
+    comment
+        .split('\t')
+        .find_map(|field| field.strip_prefix("version:"))
+        .map(str::to_owned)
+        .ok_or_else(|| "no version".to_owned())
 }
 
 /// The files of a Linux job of `version`: the `AppImage` and `SHA256SUMS`.
@@ -291,14 +324,14 @@ pub fn linux_files(version: &str) -> Vec<File> {
     vec![app, File::new("SHA256SUMS", sums)]
 }
 
-/// The feed of a Linux job of `version` naming `app` with `signature`.
-pub fn linux_feed(publishing: &Publishing, version: &str, app: &File, signature: &str) -> Value {
+/// The unsigned feed a builder proposes for a Linux job of `version` naming `app` (R-116).
+pub fn linux_feed(publishing: &Publishing, version: &str, app: &File) -> Value {
     let url = publishing.public(&format!("linux-x86_64/{version}/{}", app.name));
     json!({
         "version": version,
         "notes": format!("Anima {version}"),
         "pub_date": "2030-05-05T12:00:00Z",
-        "platforms": { "linux-x86_64": { "signature": signature, "url": url } },
+        "platforms": { "linux-x86_64": { "url": url } },
     })
 }
 
@@ -307,8 +340,7 @@ pub async fn uploaded_linux(publishing: &Publishing, version: &str) -> (Held, Ve
     publishing.release(version, "LINUX_X86_64").await;
     let held = publishing.uploading("pop-os", LINUX).await;
     let files = linux_files(version);
-    let signature = publishing.sign(&files[0].bytes, version);
-    let feed = linux_feed(publishing, version, &files[0], &signature);
+    let feed = linux_feed(publishing, version, &files[0]);
     data(publishing.upload(&held, &files, &feed).await);
     (held, files)
 }

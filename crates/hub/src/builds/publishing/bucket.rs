@@ -1,8 +1,8 @@
 //! The release bucket (BLD-060 to BLD-062, D-24, D-28): where its objects are, the presigned
 //! upload URL of one object for a builder, and the signed requests of the hub's own reads and
 //! writes. The R2 API token is read from its two files once, at start, and held only as
-//! `Zeroizing`; the type has no `Debug`, and no error or log names a token, a signature or a
-//! presigned URL (LOG-007).
+//! `Zeroizing`, beside the opened updater key (R-116); the type has no `Debug`, and no error or
+//! log names a token, a key, a signature or a presigned URL (LOG-007).
 
 use std::path::Path;
 
@@ -10,8 +10,8 @@ use chrono::{DateTime, TimeDelta, Utc};
 use zeroize::Zeroizing;
 
 use super::{
-    signature::UpdaterKey,
     sigv4::{self, Key, Request},
+    updater_key::UpdaterKey,
 };
 use crate::{builds::model::UploadedFile, config::Releases};
 
@@ -38,8 +38,6 @@ pub enum BucketError {
     AccessKeyId(std::io::ErrorKind),
     #[error("the R2 secret access key file cannot be read ({0})")]
     SecretAccessKey(std::io::ErrorKind),
-    #[error("ANIMA_UPDATER_PUBLIC_KEY is not a minisign public key")]
-    UpdaterKey,
 }
 
 /// One presigned upload: the URL, the headers the `PUT` must send as given, and its end. No
@@ -65,8 +63,8 @@ pub(super) struct Signed {
     pub(super) headers: Vec<(String, String)>,
 }
 
-/// The R2 bucket releases go to, with the key to sign for it and the updater key its files must
-/// verify with. No `Debug`.
+/// The R2 bucket releases go to, with the key to sign for it and the updater key the hub signs
+/// its updater files with (R-116). No `Debug`.
 pub struct Bucket {
     /// `scheme://host[:port]`.
     endpoint: String,
@@ -74,7 +72,7 @@ pub struct Bucket {
     public_base: String,
     access_key_id: Zeroizing<String>,
     secret: Zeroizing<String>,
-    updater_key: Option<UpdaterKey>,
+    updater_key: UpdaterKey,
 }
 
 /// The trimmed text of a token file of at most 1 KiB. The buffer holds the most the file may
@@ -93,21 +91,17 @@ fn token(path: &Path) -> std::io::Result<Zeroizing<String>> {
 }
 
 impl Bucket {
-    /// Reads the token files named in `releases` and checks the updater key (I/O at the edge).
+    /// Reads the token files named in `releases` and keeps the opened `updater_key` (I/O at the
+    /// edge).
     ///
     /// # Errors
     ///
-    /// A token file that cannot be read or is empty, or an updater key that is not one.
-    pub fn open(releases: &Releases) -> Result<Self, BucketError> {
+    /// A token file that cannot be read or is empty.
+    pub fn open(releases: &Releases, updater_key: UpdaterKey) -> Result<Self, BucketError> {
         let access_key_id =
             token(&releases.access_key_id_file).map_err(|e| BucketError::AccessKeyId(e.kind()))?;
         let secret = token(&releases.secret_access_key_file)
             .map_err(|e| BucketError::SecretAccessKey(e.kind()))?;
-        let updater_key = releases
-            .updater_public_key
-            .as_deref()
-            .map(|text| UpdaterKey::parse(text).ok_or(BucketError::UpdaterKey))
-            .transpose()?;
         Ok(Self {
             endpoint: releases.endpoint.clone(),
             name: releases.bucket.clone(),
@@ -122,8 +116,8 @@ impl Bucket {
         &self.public_base
     }
 
-    pub(super) const fn updater_key(&self) -> Option<&UpdaterKey> {
-        self.updater_key.as_ref()
+    pub(super) const fn updater_key(&self) -> &UpdaterKey {
+        &self.updater_key
     }
 
     /// The URL people read `object` at.

@@ -12,7 +12,7 @@ use crate::{
 /// The review's case: a page or a file of another target gets no URL, and nothing is granted.
 #[sqlx::test(migrations = "./migrations")]
 async fn bld_061_only_the_release_files_of_the_target_are_granted(pool: PgPool) {
-    let publishing = Publishing::start(&pool, true).await;
+    let publishing = Publishing::start(&pool).await;
     publishing.release("0.1.12", "LINUX_X86_64").await;
     let held = publishing.uploading("pop-os", LINUX).await;
     let files = linux_files("0.1.12");
@@ -61,7 +61,7 @@ async fn bld_061_only_the_release_files_of_the_target_are_granted(pool: PgPool) 
 
 #[sqlx::test(migrations = "./migrations")]
 async fn bld_070_a_job_that_fails_leaves_none_of_its_files_in_the_bucket(pool: PgPool) {
-    let publishing = Publishing::start(&pool, true).await;
+    let publishing = Publishing::start(&pool).await;
     let (held, files) = uploaded_linux(&publishing, "0.1.12").await;
     let keys: Vec<String> = files
         .iter()
@@ -72,6 +72,9 @@ async fn bld_070_a_job_that_fails_leaves_none_of_its_files_in_the_bucket(pool: P
         .with(|store| store.tamper = Some(keys[0].clone()));
     assert_eq!(publishing.sweep(ready()).await, 1);
     assert_eq!(publishing.job(&held).await.0, "failed");
+    // The hub's `.sig` is deleted too, written or not; a delete of no object is a no-op (R-116).
+    let mut keys = keys;
+    keys.push(format!("linux-x86_64/0.1.12/{}.sig", files[0].name));
     assert_eq!(publishing.fake.with(|store| store.deletes.clone()), keys);
     for key in &keys {
         assert!(publishing.fake.object(key).is_none(), "{key}");
@@ -81,7 +84,7 @@ async fn bld_070_a_job_that_fails_leaves_none_of_its_files_in_the_bucket(pool: P
 /// A macOS job is granted only its archive, its DMG and `SHA256SUMS`.
 #[sqlx::test(migrations = "./migrations")]
 async fn bld_063_a_macos_job_is_granted_only_its_release_files(pool: PgPool) {
-    let publishing = Publishing::start(&pool, true).await;
+    let publishing = Publishing::start(&pool).await;
     publishing.release("0.1.12", "DARWIN_UNIVERSAL").await;
     let held = publishing.uploading("mac-mini", MACOS).await;
     for name in [
@@ -106,7 +109,7 @@ async fn bld_063_a_macos_job_is_granted_only_its_release_files(pool: PgPool) {
 /// The content types as stored: the bucket keeps what the URL signed.
 #[sqlx::test(migrations = "./migrations")]
 async fn bld_061_the_bucket_keeps_the_signed_content_type(pool: PgPool) {
-    let publishing = Publishing::start(&pool, true).await;
+    let publishing = Publishing::start(&pool).await;
     let (_, files) = uploaded_linux(&publishing, "0.1.12").await;
     let key = format!("linux-x86_64/0.1.12/{}", files[0].name);
     let stored = publishing.fake.object(&key).unwrap().content_type;
@@ -116,7 +119,7 @@ async fn bld_061_the_bucket_keeps_the_signed_content_type(pool: PgPool) {
 /// R-108: a builder that does not hold the job's lease gets no upload URL for it.
 #[sqlx::test(migrations = "./migrations")]
 async fn r_108_only_the_lease_holder_gets_upload_urls(pool: PgPool) {
-    let publishing = Publishing::start(&pool, true).await;
+    let publishing = Publishing::start(&pool).await;
     publishing.release("0.1.12", "LINUX_X86_64").await;
     let held = publishing.uploading("pop-os", LINUX).await;
     let other = enrol(&publishing.hub, &publishing.operator, "fedora").await;

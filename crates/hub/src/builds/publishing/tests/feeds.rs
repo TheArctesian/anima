@@ -1,4 +1,5 @@
-//! The feed check (BLD-065, BLD-067 to BLD-069, UPD-009).
+//! The feed check and the signed feed the hub writes (BLD-065, BLD-067 to BLD-069, UPD-009,
+//! R-116).
 
 use serde_json::{Value, json};
 
@@ -32,7 +33,7 @@ fn expected<'a>(target: Target, files: &'a [UploadedFile], floor: Option<&str>) 
 }
 
 fn entry(url: &str) -> Value {
-    json!({ "signature": SIGNATURE, "url": url })
+    json!({ "url": url })
 }
 
 fn linux_feed(platforms: &Value) -> String {
@@ -55,11 +56,56 @@ fn check_linux(feed: &str, floor: Option<&str>) -> Result<CheckedFeed, String> {
 }
 
 #[test]
-fn bld_065_a_feed_of_the_job_names_its_updater_file_and_signature() {
+fn bld_065_a_feed_of_the_job_names_its_updater_file() {
     let feed = linux_feed(&json!({ "linux-x86_64": entry(&appimage_url()) }));
     let checked = check_linux(&feed, None).unwrap();
     assert_eq!(checked.updater, APPIMAGE);
-    assert_eq!(checked.signature, SIGNATURE);
+}
+
+#[test]
+fn r_116_a_proposed_feed_that_carries_a_signature_is_refused() {
+    let signed = json!({ "linux-x86_64": { "signature": SIGNATURE, "url": appimage_url() } });
+    let refused = check_linux(&linux_feed(&signed), None).unwrap_err();
+    assert!(
+        refused.contains("the hub signs the updater file"),
+        "{refused}"
+    );
+    assert!(!refused.contains(SIGNATURE));
+}
+
+#[test]
+fn r_116_the_hub_writes_the_feed_with_its_signature_in_each_entry() {
+    let mac_files = vec![file("Anima.app.tar.gz", b"app"), file("SHA256SUMS", b"s")];
+    let url = format!("{BASE}/darwin-universal/0.1.12/Anima.app.tar.gz");
+    let mac = linux_feed(&json!({ "darwin-aarch64": entry(&url), "darwin-x86_64": entry(&url) }));
+    feed::check(&mac, &expected(Target::DarwinUniversal, &mac_files, None)).unwrap();
+    let written: Value = serde_json::from_str(&feed::signed(&mac, SIGNATURE).unwrap()).unwrap();
+    for key in ["darwin-aarch64", "darwin-x86_64"] {
+        assert_eq!(
+            written["platforms"][key],
+            json!({ "signature": SIGNATURE, "url": url })
+        );
+    }
+    assert_eq!(written["version"], "0.1.12");
+    // The same feed and signature give the same text, so a later try can confirm it (D-25).
+    assert_eq!(feed::signed(&mac, SIGNATURE), feed::signed(&mac, SIGNATURE));
+    assert!(feed::signed("[]", SIGNATURE).is_err());
+}
+
+#[test]
+fn r_116_the_updater_file_and_its_signature_object_are_named_from_the_files() {
+    let files = linux_files();
+    assert_eq!(
+        feed::updater_name(Target::LinuxX86_64, &files),
+        Some(APPIMAGE)
+    );
+    assert_eq!(feed::updater_name(Target::DarwinUniversal, &files), None);
+    let two = vec![
+        file(APPIMAGE, b"a"),
+        file("Anima_0.1.13_amd64.AppImage", b"b"),
+    ];
+    assert_eq!(feed::updater_name(Target::LinuxX86_64, &two), None);
+    assert_eq!(feed::signature_name(APPIMAGE), format!("{APPIMAGE}.sig"));
 }
 
 #[test]
@@ -121,7 +167,7 @@ fn bld_065_another_version_an_extra_field_or_a_bad_entry_is_refused() {
     extra["url"] = json!("https://evil.example");
     assert!(check_linux(&extra.to_string(), None).is_err());
     let with_extra_entry_field = json!({
-        "linux-x86_64": { "signature": SIGNATURE, "url": appimage_url(), "with_elevated_task": true }
+        "linux-x86_64": { "url": appimage_url(), "with_elevated_task": true }
     });
     assert!(check_linux(&linux_feed(&with_extra_entry_field), None).is_err());
     let empty_signature = json!({ "linux-x86_64": { "signature": " ", "url": appimage_url() } });

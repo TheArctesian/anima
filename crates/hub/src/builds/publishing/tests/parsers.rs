@@ -11,7 +11,7 @@ use crate::builds::{
     publishing::{
         feed::{Expected, check},
         files::{Received, check_sums},
-        signature::{UpdaterKey, signature_of},
+        updater_key::UpdaterKey,
     },
 };
 
@@ -74,9 +74,12 @@ proptest! {
     }
 
     #[test]
-    fn bld_064_any_key_or_signature_text_is_parsed_without_a_panic(text in ".{0,256}") {
-        let _ = UpdaterKey::parse(&text);
-        let _ = signature_of(&text);
+    fn r_116_any_key_password_or_public_key_text_is_read_without_a_panic(
+        key in prop::collection::vec(any::<u8>(), 0..256),
+        password in prop::collection::vec(any::<u8>(), 0..64),
+        public in ".{0,256}",
+    ) {
+        prop_assert!(UpdaterKey::from_parts(&key, &password, &public).is_err());
     }
 
     #[test]

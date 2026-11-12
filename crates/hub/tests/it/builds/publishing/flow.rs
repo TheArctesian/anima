@@ -1,5 +1,6 @@
 //! A job whose files are in ends `published` or `failed`, in the order BLD-064 to BLD-066 set,
-//! and a publisher that stops is taken over (BLD-063 to BLD-070, D-25, R-108).
+//! signed by the hub (R-116), and a publisher that stops is taken over (BLD-063 to BLD-070, D-25,
+//! R-108).
 
 use std::time::Duration;
 
@@ -12,7 +13,7 @@ use super::{
     fake_r2::{Object, hex},
     setup::{
         File, Held, LINUX_FEED, LINUX_STABLE, MACOS, Publishing, ready, until_waiting,
-        uploaded_linux,
+        uploaded_linux, verified_version,
     },
 };
 use crate::{builds::harness::data, hub::error};
@@ -35,8 +36,8 @@ fn parts(object: Option<Object>) -> Option<(String, Option<String>)> {
 }
 
 #[sqlx::test(migrations = "./migrations")]
-async fn bld_066_a_linux_job_publishes_the_stable_name_then_latest_json_last(pool: PgPool) {
-    let publishing = Publishing::start(&pool, true).await;
+async fn bld_066_a_linux_job_publishes_its_sig_the_stable_name_then_latest_json_last(pool: PgPool) {
+    let publishing = Publishing::start(&pool).await;
     let (held, files) = uploaded_linux(&publishing, "0.1.12").await;
     assert_eq!(publishing.sweep(ready()).await, 1);
     assert_eq!(publishing.job(&held).await, ("published".to_owned(), None));
@@ -54,8 +55,17 @@ async fn bld_066_a_linux_job_publishes_the_stable_name_then_latest_json_last(poo
         fake.object(LINUX_FEED).unwrap().cache_control.as_deref(),
         Some("no-cache")
     );
+    let sig = format!("linux-x86_64/0.1.12/{}.sig", files[0].name);
     let writes = fake.with(|store| store.writes.clone());
-    assert_eq!(writes[writes.len() - 2..], [LINUX_STABLE, LINUX_FEED]);
+    assert_eq!(
+        writes[writes.len() - 3..],
+        [sig.as_str(), LINUX_STABLE, LINUX_FEED]
+    );
+    publishing.assert_signed("0.1.12", &files[0]);
+    assert_eq!(
+        fake.object(&sig).unwrap().cache_control.as_deref(),
+        Some("public, max-age=3600")
+    );
     assert_eq!(
         written(&publishing, &held).await,
         Some(vec!["linux-x86_64".to_owned()])
@@ -72,6 +82,7 @@ async fn bld_066_a_linux_job_publishes_the_stable_name_then_latest_json_last(poo
 
 /// The files of a macOS job: the updater archive, the DMG and the sums.
 fn mac_files(publishing: &Publishing) -> (Vec<File>, Value) {
+    // The builder proposes no signature; the hub signs (R-116).
     let archive = File::new("Anima.app.tar.gz", "app archive ".repeat(300));
     let dmg = File::new("Anima_0.1.12_universal.dmg", "disk image ".repeat(300));
     let sums = format!(
@@ -82,7 +93,6 @@ fn mac_files(publishing: &Publishing) -> (Vec<File>, Value) {
         dmg.name
     );
     let entry = json!({
-        "signature": publishing.sign(&archive.bytes, "0.1.12"),
         "url": publishing.public("darwin-universal/0.1.12/Anima.app.tar.gz"),
     });
     let feed = json!({
@@ -96,7 +106,7 @@ fn mac_files(publishing: &Publishing) -> (Vec<File>, Value) {
 /// name, and no feed.
 #[sqlx::test(migrations = "./migrations")]
 async fn bld_068_a_macos_job_publishes_without_a_feed(pool: PgPool) {
-    let publishing = Publishing::start(&pool, true).await;
+    let publishing = Publishing::start(&pool).await;
     publishing.release("0.1.12", "DARWIN_UNIVERSAL").await;
     let held = publishing.uploading("mac-mini", MACOS).await;
     let (files, feed) = mac_files(&publishing);
@@ -115,13 +125,21 @@ async fn bld_068_a_macos_job_publishes_without_a_feed(pool: PgPool) {
     });
     assert_eq!(feeds, 0);
     assert_eq!(written(&publishing, &held).await, Some(Vec::new()));
+    let sig = fake
+        .object("darwin-universal/0.1.12/Anima.app.tar.gz.sig")
+        .unwrap();
+    let sig = String::from_utf8(sig.bytes).unwrap();
+    assert_eq!(
+        verified_version(&publishing.pair, &sig, &files[0].bytes),
+        Ok("0.1.12".to_owned())
+    );
 }
 
 /// D-25: a hub that stops after the stable copy, before it sends `latest.json`, leaves the job
 /// held; once the hold ends, the next sweep runs every step again and publishes.
 #[sqlx::test(migrations = "./migrations")]
 async fn d_25_a_publisher_stopped_between_copy_and_feed_is_taken_over(pool: PgPool) {
-    let publishing = std::sync::Arc::new(Publishing::start(&pool, true).await);
+    let publishing = std::sync::Arc::new(Publishing::start(&pool).await);
     let (held, _) = uploaded_linux(&publishing, "0.1.12").await;
     publishing
         .fake
@@ -152,7 +170,7 @@ async fn d_25_a_publisher_stopped_between_copy_and_feed_is_taken_over(pool: PgPo
 /// nothing; only the job's latest try ends it.
 #[sqlx::test(migrations = "./migrations")]
 async fn d_25_a_try_that_was_taken_over_does_not_end_the_job(pool: PgPool) {
-    let publishing = std::sync::Arc::new(Publishing::start(&pool, true).await);
+    let publishing = std::sync::Arc::new(Publishing::start(&pool).await);
     let (held, _) = uploaded_linux(&publishing, "0.1.12").await;
     let sums = "linux-x86_64/0.1.12/SHA256SUMS".to_owned();
     publishing.fake.with(|store| store.hang_read = Some(sums));
@@ -185,7 +203,7 @@ async fn d_25_a_try_that_was_taken_over_does_not_end_the_job(pool: PgPool) {
 /// `latest.json` already there stays as it was.
 #[sqlx::test(migrations = "./migrations")]
 async fn bld_070_an_unreachable_bucket_fails_the_job_after_3_tries(pool: PgPool) {
-    let publishing = Publishing::start(&pool, true).await;
+    let publishing = Publishing::start(&pool).await;
     let (held, _) = uploaded_linux(&publishing, "0.1.12").await;
     let old = Object::new(&b"{\"version\":\"0.1.11\"}"[..]);
     publishing.fake.with(|store| {
@@ -205,25 +223,11 @@ async fn bld_070_an_unreachable_bucket_fails_the_job_after_3_tries(pool: PgPool)
     assert_eq!(publishing.fake.object(LINUX_FEED).unwrap().bytes, old.bytes);
 }
 
-/// R-108: with no updater public key the hub cannot check a signature, so it publishes
-/// nothing and the job fails with a fixed reason.
-#[sqlx::test(migrations = "./migrations")]
-async fn r_108_without_an_updater_key_publishing_fails_closed(pool: PgPool) {
-    let publishing = Publishing::start(&pool, false).await;
-    let (held, _) = uploaded_linux(&publishing, "0.1.12").await;
-    assert_eq!(publishing.sweep(ready()).await, 1);
-    let (state, reason) = publishing.job(&held).await;
-    assert_eq!(state, "failed");
-    assert!(reason.unwrap().contains("ANIMA_UPDATER_PUBLIC_KEY"));
-    assert!(publishing.fake.object(LINUX_STABLE).is_none());
-    assert!(publishing.fake.object(LINUX_FEED).is_none());
-}
-
 /// D-25: once the files are in, the builder's lease is over; it can neither report nor get new
 /// upload URLs while the hub publishes.
 #[sqlx::test(migrations = "./migrations")]
 async fn d_25_the_builder_is_refused_once_the_hub_publishes(pool: PgPool) {
-    let publishing = Publishing::start(&pool, true).await;
+    let publishing = Publishing::start(&pool).await;
     let (held, files) = uploaded_linux(&publishing, "0.1.12").await;
     let report = "mutation($id: ID!) { reportBuildJob(id: $id, state: FAILED, logLines: [], \
                   failureReason: \"x\") { id } }";

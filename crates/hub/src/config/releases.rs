@@ -1,7 +1,8 @@
 //! Where releases are published (R-107, R-108; BLD-060 to BLD-066): the R2 S3 endpoint, the
-//! bucket, its public address, the files that hold the R2 API token and the updater public key.
-//! Publishing is off when the endpoint is unset or empty. Only paths are read here; the token
-//! files are opened by `builds` at start (SEC-004, BLD-062).
+//! bucket, its public address, the files that hold the R2 API token, the files that hold the
+//! updater key and its password (R-116), and the updater public key. Publishing is off when the
+//! endpoint is unset or empty. Only paths are read here; the token and key files are opened by
+//! `builds` at start (SEC-004, BLD-062).
 
 use std::{collections::BTreeMap, path::PathBuf};
 
@@ -13,6 +14,8 @@ const PUBLIC_BASE: &str = "ANIMA_RELEASES_PUBLIC_BASE";
 const ACCESS_KEY_ID_FILE: &str = "ANIMA_RELEASES_ACCESS_KEY_ID_FILE";
 const SECRET_ACCESS_KEY_FILE: &str = "ANIMA_RELEASES_SECRET_ACCESS_KEY_FILE";
 const UPDATER_PUBLIC_KEY: &str = "ANIMA_UPDATER_PUBLIC_KEY";
+const UPDATER_KEY_FILE: &str = "ANIMA_UPDATER_KEY_FILE";
+const UPDATER_KEY_PASSWORD_FILE: &str = "ANIMA_UPDATER_KEY_PASSWORD_FILE";
 
 /// The release bucket's settings. No secret: the token is in the files named here.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -25,9 +28,14 @@ pub struct Releases {
     pub public_base: String,
     pub access_key_id_file: PathBuf,
     pub secret_access_key_file: PathBuf,
-    /// `plugins.updater.pubkey` of `tauri.conf.json`; the two must be the same. `None` when
-    /// unset or empty: every publish then fails with a fixed reason (R-108).
+    /// `plugins.updater.pubkey` of `tauri.conf.json`; the two must be the same, and the key in
+    /// `updater_key_file` must open to it. `None` when unset or empty: publishing is then off
+    /// (R-108, R-116).
     pub updater_public_key: Option<String>,
+    /// The minisign secret key file `tauri signer generate` writes, sealed with scrypt (R-116).
+    pub updater_key_file: PathBuf,
+    /// The file that holds the updater key's password; empty for a key with none (R-116).
+    pub updater_key_password_file: PathBuf,
 }
 
 /// An R2 bucket name: 3 to 63 lower-case letters, digits and `-`, a letter or digit at each end.
@@ -71,5 +79,12 @@ pub(super) fn from_env(env: &BTreeMap<String, String>) -> Result<Option<Releases
             .get(UPDATER_PUBLIC_KEY)
             .filter(|text| !text.trim().is_empty())
             .cloned(),
+        updater_key_file: value(env, UPDATER_KEY_FILE, "/run/secrets/updater_key")?.into(),
+        updater_key_password_file: value(
+            env,
+            UPDATER_KEY_PASSWORD_FILE,
+            "/run/secrets/updater_key_password",
+        )?
+        .into(),
     }))
 }

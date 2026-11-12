@@ -1,6 +1,7 @@
-//! Publishing (BLD-060 to BLD-070, D-24 to D-28): the presigned upload URLs a builder gets for
-//! its job, and the publisher that takes each job whose files are in, checks them and writes
-//! the stable name and `latest.json`.
+//! Publishing (BLD-060 to BLD-070, D-24 to D-28, R-116): the presigned upload URLs a builder
+//! gets for its job, and the publisher that takes each job whose files are in, checks them, signs
+//! the updater file with the hub's updater key and writes the `.sig`, the stable name and
+//! `latest.json`.
 //!
 //! The publisher runs in the upkeep sweep (D-25), never inside a request. It takes a job in a
 //! short transaction and holds it, so no row lock lives across the network calls; it checks the
@@ -21,6 +22,7 @@ mod sigv4;
 mod tests;
 mod transfer;
 mod tries;
+mod updater_key;
 
 use std::time::Duration;
 
@@ -30,11 +32,12 @@ use sqlx::PgPool;
 
 pub use bucket::{Bucket, BucketError, UploadUrl};
 use run::{Outcome, Reach};
+pub use updater_key::{UpdaterKey, UpdaterKeyError};
 
 use super::{
     BuildQueue, Builder, Error, FieldError, JobUpdate, UploadedFile, jobs, queue, store, upload,
 };
-use crate::{clock::Clock, ids::BuildJobId};
+use crate::{clock::Clock, config::Releases, ids::BuildJobId};
 
 /// How often the upkeep runs the publisher (D-25).
 pub const PUBLISH_SWEEP: Duration = Duration::from_secs(10);
@@ -50,7 +53,24 @@ const _: () = assert!(RUN_LIMIT.as_secs() + 180 <= tries::HOLD.num_seconds().uns
 const MAX_PER_SWEEP: usize = 4;
 
 /// The reason of a job handed to a hub whose publishing is off (D-25).
-const PUBLISHING_OFF: &str = "Publishing is off on this hub (no release bucket).";
+const PUBLISHING_OFF: &str = "Publishing is off on this hub: no release bucket, or no usable updater key (the hub log says which).";
+
+/// The release bucket of `releases` with the updater key opened from its files (R-116); `None`,
+/// publishing off, when the updater key cannot be used. The warning names the check that failed,
+/// never a value (LOG-007), and the hub still starts, as with no release bucket.
+///
+/// # Errors
+///
+/// A token file of the bucket that cannot be read or is empty.
+pub fn open_bucket(releases: &Releases) -> Result<Option<Bucket>, BucketError> {
+    match UpdaterKey::open(releases) {
+        Ok(key) => Bucket::open(releases, key).map(Some),
+        Err(error) => {
+            tracing::warn!(domain = "builds", %error, "publishing is off: the updater key cannot be used");
+            Ok(None)
+        }
+    }
+}
 
 /// A builder's request for the upload URLs of the files of a job it holds (BLD-060).
 pub struct Grant<'a> {

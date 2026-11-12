@@ -1,6 +1,7 @@
-//! The check of a proposed feed (BLD-065, BLD-067 to BLD-069, UPD-009) and the feed folders the
-//! hub writes it to. Pure: the feed, the files and the published floor come in as parameters.
-//! A refusal names no builder text but checked file names and versions.
+//! The check of a proposed feed (BLD-065, BLD-067 to BLD-069, UPD-009), the feed the hub writes
+//! once it signed the updater file (R-116), and the feed folders it writes it to. Pure: the feed,
+//! the files, the signature and the published floor come in as parameters. A refusal names no
+//! builder text but checked file names and versions.
 
 use serde_json::{Map, Value};
 
@@ -12,8 +13,6 @@ use crate::builds::{
 /// The file the job lists its digests in (UPD-010).
 pub(super) const SUMS: &str = "SHA256SUMS";
 
-/// The longest `signature` text the hub takes; a `.sig` file is a few hundred bytes.
-const MAX_SIGNATURE_BYTES: usize = 4096;
 /// The longest `notes` text the hub takes.
 const MAX_NOTES_BYTES: usize = 1024;
 
@@ -22,8 +21,6 @@ const MAX_NOTES_BYTES: usize = 1024;
 pub(super) struct CheckedFeed {
     /// The updater file every platform entry names.
     pub(super) updater: String,
-    /// The `signature` text of that file.
-    pub(super) signature: String,
 }
 
 /// The platform keys a feed of `target` lists: a universal macOS bundle serves both Mac
@@ -50,6 +47,23 @@ const fn updater_suffix(target: Target) -> &'static str {
         Target::LinuxX86_64 => ".AppImage",
         Target::DarwinUniversal => ".app.tar.gz",
     }
+}
+
+/// The name of the one updater file among `files` of a `target` job, or `None` when there is
+/// none or more than one.
+pub(super) fn updater_name(target: Target, files: &[UploadedFile]) -> Option<&str> {
+    let mut updaters = files
+        .iter()
+        .filter(|file| file.name.ends_with(updater_suffix(target)));
+    match (updaters.next(), updaters.next()) {
+        (Some(file), None) => Some(&file.name),
+        _ => None,
+    }
+}
+
+/// The name of the signature object of the updater file `updater`, beside it (R-116).
+pub(super) fn signature_name(updater: &str) -> String {
+    format!("{updater}.sig")
 }
 
 /// What the feed of one job must agree with.
@@ -97,20 +111,18 @@ fn check_top(top: &Map<String, Value>, expected: &Expected<'_>) -> Result<(), St
     Ok(())
 }
 
-/// One platform entry: exactly a signature and the URL of a reported file of this job.
+/// One platform entry: exactly the URL of a reported file of this job. A signature is refused:
+/// the hub signs the file it checked (R-116).
 fn check_entry(entry: &Value, expected: &Expected<'_>) -> Result<CheckedFeed, String> {
     let refused = || {
         format!(
-            "Each feed entry needs a signature and a URL under {}/{}/{}/.",
+            "Each feed entry needs only a URL under {}/{}/{}/; the hub signs the updater file.",
             expected.public_base, expected.target, expected.version
         )
     };
     let entry = entry
         .as_object()
-        .filter(|e| e.len() == 2)
-        .ok_or_else(refused)?;
-    let signature = text(entry, "signature")
-        .filter(|s| !s.trim().is_empty() && s.len() <= MAX_SIGNATURE_BYTES)
+        .filter(|e| e.len() == 1)
         .ok_or_else(refused)?;
     let folder = format!(
         "{}/{}/{}/",
@@ -130,14 +142,13 @@ fn check_entry(entry: &Value, expected: &Expected<'_>) -> Result<CheckedFeed, St
     }
     Ok(CheckedFeed {
         updater: name.to_owned(),
-        signature: signature.to_owned(),
     })
 }
 
 /// Checks `feed` against the job (BLD-065, BLD-069): its version, exactly the platform keys of
 /// the target, each entry naming the same updater file of this job under
-/// `<public base>/<target>/<version>/` with the same signature, and a version not below the
-/// published one. Returns the updater file and its signature, or why the feed is refused.
+/// `<public base>/<target>/<version>/` and no signature, and a version not below the published
+/// one. Returns the updater file, or why the feed is refused.
 pub(super) fn check(feed: &str, expected: &Expected<'_>) -> Result<CheckedFeed, String> {
     let Ok(Value::Object(top)) = serde_json::from_str::<Value>(feed) else {
         return Err("The feed is not a JSON object.".into());
@@ -158,9 +169,30 @@ pub(super) fn check(feed: &str, expected: &Expected<'_>) -> Result<CheckedFeed, 
     for entry in platforms.into_iter().flat_map(Map::values) {
         let this = check_entry(entry, expected)?;
         if checked.as_ref().is_some_and(|first| *first != this) {
-            return Err("The feed's entries must name the same file and signature.".into());
+            return Err("The feed's entries must name the same file.".into());
         }
         checked = Some(this);
     }
     checked.ok_or_else(|| "The feed lists no platform.".into())
+}
+
+/// `feed` with `signature`, the hub's `.sig` text of its updater file, in each platform entry:
+/// the feed the hub writes (R-116, UPD-009). The same feed and signature always give the same
+/// text, so a later try can confirm a feed an earlier one wrote (D-25).
+///
+/// # Errors
+///
+/// When `feed` has no `platforms` object; a feed [`check`] passed always has one.
+pub(super) fn signed(feed: &str, signature: &str) -> Result<String, String> {
+    let refused = || "The feed is not a JSON object with platforms.".to_owned();
+    let mut top: Value = serde_json::from_str(feed).map_err(|_| refused())?;
+    let platforms = top
+        .get_mut("platforms")
+        .and_then(Value::as_object_mut)
+        .ok_or_else(refused)?;
+    for entry in platforms.values_mut() {
+        let entry = entry.as_object_mut().ok_or_else(refused)?;
+        entry.insert("signature".to_owned(), Value::String(signature.to_owned()));
+    }
+    Ok(top.to_string())
 }

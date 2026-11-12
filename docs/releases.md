@@ -2,14 +2,17 @@
 
 Spec: Sections 3.9 (UPD-001 to UPD-012) and 3.10 (Builds), DNS-007.
 
-A release starts only from the Builds view (BLD-001, UPD-007). The operator's builders build and sign
-each target, upload the files to the R2 bucket `anima-releases`, and the hub checks them and writes
-`https://releases.anima.ing/<target>-<arch>/latest.json` (BLD-064 to BLD-067). Installed apps read
+A release starts only from the Builds view (BLD-001, UPD-007). The operator's builders build each
+target and upload the unsigned files to the R2 bucket `anima-releases`. The hub checks them, signs
+the updater file with the updater key it holds, writes `<file>.sig` beside it and then
+`https://releases.anima.ing/<target>-<arch>/latest.json` (BLD-064 to BLD-067, R-116). Installed apps read
 that feed. The hub side, its R2 credentials and the bucket setup are in
 [deploy/README.md](../deploy/README.md).
 
 There is no GitHub release workflow: `.github/workflows/release.yml` was removed by R-114. No
-signing key is stored on GitHub.
+signing key is stored on GitHub or on a builder; it is a Docker secret of the hub (R-116). A
+compromised hub can therefore sign updates that installed apps trust; the operator accepted this
+in R-116.
 
 ## Once, by the operator
 
@@ -19,20 +22,24 @@ Agents never do these steps (UPD-012). Never paste a key or password into chat, 
    `tauri` is an old unrelated package):
 
    ```sh
-   bun run --cwd apps/desktop tauri signer generate -w ~/.tauri/anima-updater.key
-   chmod 600 ~/.tauri/anima-updater.key
+   bun run --cwd apps/desktop tauri signer generate -w ~/.config/anima/updater.key
+   chmod 600 ~/.config/anima/updater.key
    ```
 
    Back up the key and its password offline. If they are lost, every installed app must be
    installed again by hand.
-2. Put the text of `~/.tauri/anima-updater.key.pub` in `apps/desktop/src-tauri/tauri.conf.json` as
+2. Put the text of `~/.config/anima/updater.key.pub` in `apps/desktop/src-tauri/tauri.conf.json` as
    `plugins.updater.pubkey`, and commit it. The public key is not a secret.
-3. On each builder, open Settings, Updates, and choose "Import updater key" (UPD-012). The app
-   keeps the key sealed; before a build, "Unlock updater key" asks for its password. The key is
-   never in GitHub or in a file the agents read.
+3. Put the key on the VPS: copy `~/.config/anima/updater.key` there yourself and install it, with
+   its password, as the hub's Docker secrets `updater_key` and `updater_key_password`
+   ("Release publishing" in [deploy/README.md](../deploy/README.md), UPD-012). Then delete the copy
+   in your home folder on the VPS. The key is never in GitHub, on a builder or in a file the agents
+   read.
 
-A plain local `tauri build` without the key still builds the app, but it makes no signed updater
-files. Updater files come only from the Builds flow.
+A builder holds no updater key and signs nothing. A plain local `tauri build` makes no signed
+updater files; they come only from the hub in the Builds flow. If the hub cannot open the key, or
+it is not the key of `ANIMA_UPDATER_PUBLIC_KEY`, the hub starts with publishing off and its log
+says why.
 
 ## How an installed app updates
 

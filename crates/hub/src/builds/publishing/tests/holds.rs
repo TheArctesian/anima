@@ -75,14 +75,19 @@ async fn publishing_job(pool: &PgPool, attempts: i32) {
 fn bucket(tokens: &tempfile::TempDir) -> Bucket {
     std::fs::write(tokens.path().join("id"), "AKIDTEST\n").unwrap();
     std::fs::write(tokens.path().join("secret"), "test-secret").unwrap();
-    Bucket::open(&Releases {
-        endpoint: "http://127.0.0.1:9".to_owned(),
-        bucket: "anima-releases".to_owned(),
-        public_base: "http://127.0.0.1:9".to_owned(),
-        access_key_id_file: tokens.path().join("id"),
-        secret_access_key_file: tokens.path().join("secret"),
-        updater_public_key: None,
-    })
+    Bucket::open(
+        &Releases {
+            endpoint: "http://127.0.0.1:9".to_owned(),
+            bucket: "anima-releases".to_owned(),
+            public_base: "http://127.0.0.1:9".to_owned(),
+            access_key_id_file: tokens.path().join("id"),
+            secret_access_key_file: tokens.path().join("secret"),
+            updater_public_key: None,
+            updater_key_file: tokens.path().join("updater_key"),
+            updater_key_password_file: tokens.path().join("updater_key_password"),
+        },
+        super::updater_key(),
+    )
     .unwrap()
 }
 

@@ -33,7 +33,7 @@ async fn fails(publishing: &Publishing, held: &Held, why: &str) {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn d_28_a_job_is_taken_only_after_its_upload_urls_expired(pool: PgPool) {
-    let publishing = Publishing::start(&pool, true).await;
+    let publishing = Publishing::start(&pool).await;
     let (held, _) = uploaded_linux(&publishing, "0.1.12").await;
     let expired = start() + TimeDelta::minutes(15);
     assert_eq!(publishing.sweep(expired).await, 0);
@@ -48,12 +48,11 @@ async fn d_28_a_job_is_taken_only_after_its_upload_urls_expired(pool: PgPool) {
 /// the URLs write after the publish.
 #[sqlx::test(migrations = "./migrations")]
 async fn d_28_no_upload_url_writes_once_the_hub_checks_the_files(pool: PgPool) {
-    let publishing = Arc::new(Publishing::start(&pool, true).await);
+    let publishing = Arc::new(Publishing::start(&pool).await);
     publishing.release("0.1.12", "LINUX_X86_64").await;
     let held = publishing.uploading("pop-os", LINUX).await;
     let files = linux_files("0.1.12");
-    let signature = publishing.sign(&files[0].bytes, "0.1.12");
-    let feed = linux_feed(&publishing, "0.1.12", &files[0], &signature);
+    let feed = linux_feed(&publishing, "0.1.12", &files[0]);
     let granted = data(publishing.grant(&held, &files).await);
     let urls = granted["buildUploadUrls"].as_array().unwrap().clone();
     for (upload, file) in urls.iter().zip(&files) {
@@ -84,12 +83,11 @@ async fn d_28_no_upload_url_writes_once_the_hub_checks_the_files(pool: PgPool) {
 /// Bytes written again while the URL still worked are the bytes the hub checks.
 #[sqlx::test(migrations = "./migrations")]
 async fn d_28_bytes_written_again_before_the_urls_expire_fail_the_job(pool: PgPool) {
-    let publishing = Publishing::start(&pool, true).await;
+    let publishing = Publishing::start(&pool).await;
     publishing.release("0.1.12", "LINUX_X86_64").await;
     let held = publishing.uploading("pop-os", LINUX).await;
     let files = linux_files("0.1.12");
-    let signature = publishing.sign(&files[0].bytes, "0.1.12");
-    let feed = linux_feed(&publishing, "0.1.12", &files[0], &signature);
+    let feed = linux_feed(&publishing, "0.1.12", &files[0]);
     let granted = data(publishing.grant(&held, &files).await);
     let urls = granted["buildUploadUrls"].as_array().unwrap().clone();
     for (upload, file) in urls.iter().zip(&files) {
@@ -105,7 +103,7 @@ async fn d_28_bytes_written_again_before_the_urls_expire_fail_the_job(pool: PgPo
 /// `CopyObject` names the `ETag` the hub read; an object changed after its check is not copied.
 #[sqlx::test(migrations = "./migrations")]
 async fn d_28_a_file_changed_after_its_check_is_not_copied(pool: PgPool) {
-    let publishing = Arc::new(Publishing::start(&pool, true).await);
+    let publishing = Arc::new(Publishing::start(&pool).await);
     let (held, _) = uploaded_linux(&publishing, "0.1.12").await;
     publishing
         .fake
@@ -132,7 +130,7 @@ async fn d_28_a_file_changed_after_its_check_is_not_copied(pool: PgPool) {
 /// bucket's own.
 #[sqlx::test(migrations = "./migrations")]
 async fn d_28_a_warm_cache_does_not_hide_the_bytes_in_the_bucket(pool: PgPool) {
-    let publishing = Publishing::start(&pool, true).await;
+    let publishing = Publishing::start(&pool).await;
     let (held, files) = uploaded_linux(&publishing, "0.1.12").await;
     publishing.fake.with(|store| {
         store.stale = Some((APP.to_owned(), files[0].bytes.clone()));
@@ -144,7 +142,7 @@ async fn d_28_a_warm_cache_does_not_hide_the_bytes_in_the_bucket(pool: PgPool) {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn bld_064_a_file_people_cannot_read_fails_the_job(pool: PgPool) {
-    let publishing = Publishing::start(&pool, true).await;
+    let publishing = Publishing::start(&pool).await;
     let (held, _) = uploaded_linux(&publishing, "0.1.12").await;
     let sums = "linux-x86_64/0.1.12/SHA256SUMS".to_owned();
     publishing
@@ -157,7 +155,7 @@ async fn bld_064_a_file_people_cannot_read_fails_the_job(pool: PgPool) {
 /// write landed, so the job is published.
 #[sqlx::test(migrations = "./migrations")]
 async fn d_25_a_feed_write_whose_answer_was_lost_is_read_back(pool: PgPool) {
-    let publishing = Publishing::start(&pool, true).await;
+    let publishing = Publishing::start(&pool).await;
     let (held, _) = uploaded_linux(&publishing, "0.1.12").await;
     publishing
         .fake
@@ -170,7 +168,7 @@ async fn d_25_a_feed_write_whose_answer_was_lost_is_read_back(pool: PgPool) {
 /// The hub copies by `ETag` only, so a file the bucket gives none for fails the job.
 #[sqlx::test(migrations = "./migrations")]
 async fn d_28_a_file_without_an_etag_fails_the_job(pool: PgPool) {
-    let publishing = Publishing::start(&pool, true).await;
+    let publishing = Publishing::start(&pool).await;
     let (held, _) = uploaded_linux(&publishing, "0.1.12").await;
     publishing
         .fake
@@ -182,14 +180,13 @@ async fn d_28_a_file_without_an_etag_fails_the_job(pool: PgPool) {
 /// stays.
 #[sqlx::test(migrations = "./migrations")]
 async fn d_28_the_latest_upload_url_expiry_is_kept(pool: PgPool) {
-    let publishing = Publishing::start(&pool, true).await;
+    let publishing = Publishing::start(&pool).await;
     publishing.release("0.1.12", "LINUX_X86_64").await;
     let held = publishing.uploading("pop-os", LINUX).await;
     let files = linux_files("0.1.12");
     data(publishing.grant(&held, &files).await);
     publishing.at(start() - TimeDelta::minutes(5));
-    let signature = publishing.sign(&files[0].bytes, "0.1.12");
-    let feed = linux_feed(&publishing, "0.1.12", &files[0], &signature);
+    let feed = linux_feed(&publishing, "0.1.12", &files[0]);
     data(publishing.upload(&held, &files, &feed).await);
     let early = start() + TimeDelta::minutes(12);
     assert_eq!(publishing.sweep(early).await, 0);

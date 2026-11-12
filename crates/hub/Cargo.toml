@@ -59,9 +59,9 @@ tower-http.workspace = true
 hyper-util.workspace = true
 http-body-util.workspace = true
 lettre.workspace = true
-# The updater's own verifier, for the signature of each published updater file (BLD-064,
-# R-108); the desktop shell checks with the same crate.
-minisign-verify = "0.3"
+# The updater key the hub signs each published updater file with, and the check of that
+# signature by the updater's own verifier (R-116, BLD-045, BLD-046, BLD-064).
+updater-signature = { path = "../updater-signature" }
 
 [features]
 # `access::Identity::for_tests`, for integration tests of guarded domains (D-6). Turned on
@@ -77,8 +77,8 @@ tower.workspace = true
 static_assertions.workspace = true
 tempfile.workspace = true
 proptest = "1.12"
-# The reference minisign implementation signs the test updater files (BLD-064), so the hub's
-# check is proved against it and not only against itself.
+# The reference minisign implementation makes the test updater keys and checks the hub's
+# signatures (BLD-045, BLD-064), so the hub is proved against it and not only against itself.
 minisign = "0.10"
 rcgen.workspace = true
 tokio = { workspace = true, features = ["test-util"] }

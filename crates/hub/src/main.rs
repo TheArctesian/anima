@@ -302,11 +302,13 @@ fn vault(config: &Config) -> Result<Vault, StartError> {
     })
 }
 
-/// The release bucket when `ANIMA_RELEASES_ENDPOINT` is set, its token read from its files now
-/// (BLD-060, R-108); whether the hub publishes is logged, never a value (LOG-007).
+/// The release bucket when `ANIMA_RELEASES_ENDPOINT` is set, its token and the updater key read
+/// from their files now (BLD-060, R-108, R-116). An updater key that cannot be used turns
+/// publishing off and the hub still starts; the log names the check that failed, never a value
+/// (LOG-007).
 fn release_bucket(config: &Config) -> Result<Option<Arc<builds::Bucket>>, StartError> {
-    let open = config.releases.as_ref().map(builds::Bucket::open);
-    let bucket = open.transpose()?;
+    let opened = config.releases.as_ref().map(builds::open_bucket);
+    let bucket = opened.transpose()?.flatten();
     tracing::info!(publishing = bucket.is_some(), "release bucket");
     Ok(bucket.map(Arc::new))
 }

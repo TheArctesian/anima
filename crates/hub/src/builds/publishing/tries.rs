@@ -7,6 +7,7 @@ use chrono::{DateTime, TimeDelta, Utc};
 use sqlx::{PgConnection, PgPool, Postgres, Transaction};
 
 use super::{
+    feed,
     run::{Outcome, Reach, Tried, Work},
     transfer,
 };
@@ -65,6 +66,7 @@ pub(super) async fn take(
     let feed = store::feed_of(&mut *tx, job.id).await?.unwrap_or_default();
     let published = store::published_versions(&mut *tx, job.target).await?;
     tx.commit().await?;
+    let signed_at = job.times.uploading.unwrap_or(job.created_at).timestamp();
     let work = Work {
         target: job.target,
         version: job.version,
@@ -72,6 +74,7 @@ pub(super) async fn take(
         feed,
         floor: published.iter().filter_map(|v| v.parse().ok()).max(),
         feed_sent,
+        signed_at: u64::try_from(signed_at).unwrap_or(0),
     };
     Ok(Some((
         Tried {
@@ -206,10 +209,14 @@ async fn remove_objects(db: &PgPool, reach: Reach<'_>, job: &BuildJob) -> Result
     if store::is_published(db, job.target, &version).await? {
         return Ok(());
     }
-    for file in store::files_of(db, job.id).await? {
-        let object = format!("{}/{version}/{}", job.target, file.name);
+    let files = store::files_of(db, job.id).await?;
+    // The hub's own `.sig` of the updater file goes too (R-116).
+    let signature = feed::updater_name(job.target, &files).map(feed::signature_name);
+    let names = files.iter().map(|file| file.name.clone()).chain(signature);
+    for name in names {
+        let object = format!("{}/{version}/{name}", job.target);
         let delete = reach.bucket.delete(&object, reach.clock.now());
-        if transfer::send(reach.http, delete, Vec::new(), &file.name)
+        if transfer::send(reach.http, delete, Vec::new(), &name)
             .await
             .is_err()
         {

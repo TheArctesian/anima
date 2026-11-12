@@ -24,7 +24,7 @@ use crate::hub::error;
 /// `latest.json` people read stays as it was (BLD-070).
 #[sqlx::test(migrations = "./migrations")]
 async fn d_25_a_taken_over_try_does_not_write_the_feed_of_a_failed_job(pool: PgPool) {
-    let publishing = Arc::new(Publishing::start(&pool, true).await);
+    let publishing = Arc::new(Publishing::start(&pool).await);
     let (held, files) = uploaded_linux(&publishing, "0.1.12").await;
     let old = Object::new(&b"{\"version\":\"0.1.11\"}"[..]);
     publishing.fake.with(|store| {
@@ -53,7 +53,7 @@ async fn d_25_a_taken_over_try_does_not_write_the_feed_of_a_failed_job(pool: PgP
 /// which the bucket checks against its own clock.
 #[sqlx::test(migrations = "./migrations")]
 async fn d_25_each_signed_request_reads_the_clock_again(pool: PgPool) {
-    let publishing = Arc::new(Publishing::start(&pool, true).await);
+    let publishing = Arc::new(Publishing::start(&pool).await);
     let (held, _) = uploaded_linux(&publishing, "0.1.12").await;
     publishing
         .fake
@@ -74,7 +74,7 @@ async fn d_25_each_signed_request_reads_the_clock_again(pool: PgPool) {
 /// Here the same sweep takes the job again, and that second try publishes it.
 #[sqlx::test(migrations = "./migrations")]
 async fn d_25_a_try_past_its_hold_writes_nothing(pool: PgPool) {
-    let publishing = Arc::new(Publishing::start(&pool, true).await);
+    let publishing = Arc::new(Publishing::start(&pool).await);
     let (held, _) = uploaded_linux(&publishing, "0.1.12").await;
     let sums = "linux-x86_64/0.1.12/SHA256SUMS".to_owned();
     publishing.fake.with(|store| store.hang_read = Some(sums));
@@ -104,7 +104,7 @@ async fn d_25_a_try_past_its_hold_writes_nothing(pool: PgPool) {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn d_25_a_job_whose_tries_are_spent_fails(pool: PgPool) {
-    let publishing = Publishing::start(&pool, true).await;
+    let publishing = Publishing::start(&pool).await;
     let (held, _) = uploaded_linux(&publishing, "0.1.12").await;
     sqlx::query("UPDATE builds.jobs SET publish_attempts = 3 WHERE id = $1::uuid")
         .bind(&held.job)
@@ -126,7 +126,7 @@ async fn d_25_a_job_whose_tries_are_spent_fails(pool: PgPool) {
 /// holds the job ends it.
 #[sqlx::test(migrations = "./migrations")]
 async fn d_25_a_taken_over_try_that_refuses_does_not_fail_the_job(pool: PgPool) {
-    let publishing = Arc::new(Publishing::start(&pool, true).await);
+    let publishing = Arc::new(Publishing::start(&pool).await);
     let (held, _) = uploaded_linux(&publishing, "0.1.12").await;
     let sums = "linux-x86_64/0.1.12/SHA256SUMS".to_owned();
     publishing
@@ -155,7 +155,7 @@ async fn d_25_a_taken_over_try_that_refuses_does_not_fail_the_job(pool: PgPool) 
 /// of waiting for a publisher that never comes.
 #[sqlx::test(migrations = "./migrations")]
 async fn d_25_a_hub_with_publishing_off_fails_the_jobs_it_was_given(pool: PgPool) {
-    let publishing = Publishing::start(&pool, true).await;
+    let publishing = Publishing::start(&pool).await;
     let (held, _) = uploaded_linux(&publishing, "0.1.12").await;
     let (bus, updates) = (Bus::new(16), Updates::new());
     let queue = publishing.queue(&bus, &updates);
@@ -164,7 +164,9 @@ async fn d_25_a_hub_with_publishing_off_fails_the_jobs_it_was_given(pool: PgPool
     assert_eq!(state, "failed");
     assert_eq!(
         reason.as_deref(),
-        Some("Publishing is off on this hub (no release bucket).")
+        Some(
+            "Publishing is off on this hub: no release bucket, or no usable updater key (the hub log says which)."
+        )
     );
     assert_eq!(builds::publishing_off(queue, ready()).await.unwrap(), 0);
 }
@@ -172,7 +174,7 @@ async fn d_25_a_hub_with_publishing_off_fails_the_jobs_it_was_given(pool: PgPool
 /// D-25: the operator cannot cancel a job the hub publishes; only a queued job is cancelled.
 #[sqlx::test(migrations = "./migrations")]
 async fn d_25_a_job_the_hub_publishes_cannot_be_cancelled(pool: PgPool) {
-    let publishing = Publishing::start(&pool, true).await;
+    let publishing = Publishing::start(&pool).await;
     let (held, _) = uploaded_linux(&publishing, "0.1.12").await;
     let cancel = "mutation($id: ID!) { cancelBuildJob(id: $id) { state } }";
     let response = publishing
@@ -199,7 +201,7 @@ async fn broken(pool: &PgPool, sql: &str, job: &str) -> Option<String> {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn d_25_the_database_keeps_the_publishing_rules(pool: PgPool) {
-    let publishing = Publishing::start(&pool, true).await;
+    let publishing = Publishing::start(&pool).await;
     let (held, _) = uploaded_linux(&publishing, "0.1.12").await;
     publishing.release("0.1.13", "LINUX_X86_64").await;
     let queued: String =

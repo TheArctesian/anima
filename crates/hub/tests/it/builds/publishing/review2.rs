@@ -46,7 +46,7 @@ async fn warnings(publishing: &Publishing) -> Vec<String> {
 /// are both lost. The job fails as unknown, and the files the feed names stay.
 #[sqlx::test(migrations = "./migrations")]
 async fn d_25_a_job_that_fails_after_its_feed_was_sent_keeps_its_files(pool: PgPool) {
-    let publishing = Publishing::start(&pool, true).await;
+    let publishing = Publishing::start(&pool).await;
     let (held, _) = uploaded_linux(&publishing, "0.1.12").await;
     set_attempts(&publishing, &held.job, 2).await;
     publishing.fake.with(|store| {
@@ -73,7 +73,7 @@ async fn d_25_a_job_that_fails_after_its_feed_was_sent_keeps_its_files(pool: PgP
 /// feed that landed and publishes without writing it again.
 #[sqlx::test(migrations = "./migrations")]
 async fn d_25_a_later_try_publishes_a_sent_feed_that_landed(pool: PgPool) {
-    let publishing = Publishing::start(&pool, true).await;
+    let publishing = Publishing::start(&pool).await;
     let (held, _) = uploaded_linux(&publishing, "0.1.12").await;
     publishing.fake.with(|store| {
         store.lose = Some(LINUX_FEED.to_owned());
@@ -96,7 +96,7 @@ async fn d_25_a_later_try_publishes_a_sent_feed_that_landed(pool: PgPool) {
 /// try finds another feed, so the job fails, and the files stay for the write that lands after.
 #[sqlx::test(migrations = "./migrations")]
 async fn d_25_a_feed_in_flight_past_a_takeover_names_files_that_stay(pool: PgPool) {
-    let publishing = Arc::new(Publishing::start(&pool, true).await);
+    let publishing = Arc::new(Publishing::start(&pool).await);
     let (held, _) = uploaded_linux(&publishing, "0.1.12").await;
     let old = Object::new(&b"{\"version\":\"0.1.11\"}"[..]);
     publishing.fake.with(|store| {
@@ -128,7 +128,7 @@ async fn d_25_a_feed_in_flight_past_a_takeover_names_files_that_stay(pool: PgPoo
 /// reads, it copies nothing.
 #[sqlx::test(migrations = "./migrations")]
 async fn d_25_a_try_writes_only_while_its_hold_outlasts_the_write(pool: PgPool) {
-    let publishing = Arc::new(Publishing::start(&pool, true).await);
+    let publishing = Arc::new(Publishing::start(&pool).await);
     let (held, _) = uploaded_linux(&publishing, "0.1.12").await;
     let sums = "linux-x86_64/0.1.12/SHA256SUMS".to_owned();
     publishing.fake.with(|store| store.hang_read = Some(sums));
@@ -169,7 +169,7 @@ async fn sweep_apart(publishing: &Publishing, hub: DateTime<Utc>, r2: DateTime<U
 /// `ETag`s again after the feed and warns.
 #[sqlx::test(migrations = "./migrations")]
 async fn d_28_a_file_changed_after_its_check_is_reported(pool: PgPool) {
-    let publishing = Arc::new(Publishing::start(&pool, true).await);
+    let publishing = Arc::new(Publishing::start(&pool).await);
     publishing.release("0.1.12", "LINUX_X86_64").await;
     let held = publishing.uploading("pop-os", LINUX).await;
     let files = linux_files("0.1.12");
@@ -179,8 +179,7 @@ async fn d_28_a_file_changed_after_its_check_is_reported(pool: PgPool) {
     for (upload, file) in urls.iter().zip(&files) {
         assert_eq!(publishing.put(upload, &file.bytes).await, 200);
     }
-    let signature = publishing.sign(&files[0].bytes, "0.1.12");
-    let feed = linux_feed(&publishing, "0.1.12", &files[0], &signature);
+    let feed = linux_feed(&publishing, "0.1.12", &files[0]);
     data(publishing.report(&held, &files, &feed).await);
     publishing
         .fake
@@ -212,7 +211,7 @@ async fn d_28_a_file_changed_after_its_check_is_reported(pool: PgPool) {
 /// A publish whose files did not change after the check warns of nothing.
 #[sqlx::test(migrations = "./migrations")]
 async fn d_28_an_unchanged_publish_warns_of_nothing(pool: PgPool) {
-    let publishing = Publishing::start(&pool, true).await;
+    let publishing = Publishing::start(&pool).await;
     let (held, _) = uploaded_linux(&publishing, "0.1.12").await;
     assert_eq!(publishing.sweep(ready()).await, 1);
     assert_eq!(publishing.job(&held).await.0, "published");

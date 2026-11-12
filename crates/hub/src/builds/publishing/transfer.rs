@@ -6,7 +6,6 @@
 
 use std::time::Duration;
 
-use minisign_verify::StreamVerifier;
 use reqwest::{Client, Method, RequestBuilder, Response, StatusCode};
 
 use super::{bucket::Signed, files::Received};
@@ -34,12 +33,11 @@ pub(super) enum Stop {
     TakenOver,
 }
 
-/// One file as the bucket holds it, checked: the bytes kept for `SHA256SUMS`, the object's
-/// `ETag`, and the verifier fed with every byte.
-pub(super) struct Checked<'a> {
+/// One file as the bucket holds it, checked: the bytes kept for `SHA256SUMS` and the object's
+/// `ETag`.
+pub(super) struct Checked {
     pub(super) kept: Vec<u8>,
     pub(super) etag: String,
-    pub(super) verifier: Option<StreamVerifier<'a>>,
 }
 
 /// Whether `status` means the far end is busy or down rather than refusing.
@@ -59,13 +57,14 @@ fn request(http: &Client, signed: &Signed, body: Vec<u8>) -> RequestBuilder {
 
 /// Reads `file` from the bucket by the signed `GET` `signed` and checks it as it streams
 /// (BLD-064, D-28): 200, never more than the reported size, then the reported size and SHA-256,
-/// and an `ETag` to copy it by. A `verifier` is fed the same bytes.
-pub(super) async fn read<'a>(
+/// and an `ETag` to copy it by. `tap` is fed the same bytes, each chunk once it is counted, so
+/// it never sees a byte past the reported size.
+pub(super) async fn read(
     http: &Client,
     signed: Signed,
     file: &UploadedFile,
-    mut verifier: Option<StreamVerifier<'a>>,
-) -> Result<Checked<'a>, Stop> {
+    tap: &mut (dyn FnMut(&[u8]) + Send),
+) -> Result<Checked, Stop> {
     let mut response = request(http, &signed, Vec::new())
         .send()
         .await
@@ -94,16 +93,48 @@ pub(super) async fn read<'a>(
         .map_err(|_| Stop::Unavailable("bucket read"))?
     {
         received.push(&chunk).map_err(Stop::Refused)?;
-        if let Some(verifier) = &mut verifier {
-            verifier.update(&chunk);
-        }
+        tap(&chunk);
     }
     let kept = received.finish().map_err(Stop::Refused)?;
-    Ok(Checked {
-        kept,
-        etag,
-        verifier,
-    })
+    Ok(Checked { kept, etag })
+}
+
+/// Reads the small object `what` by the signed `GET` `signed`: 200 and at most `max` bytes,
+/// refused at the first byte past them (R-116).
+pub(super) async fn read_small(
+    http: &Client,
+    signed: Signed,
+    what: &str,
+    max: usize,
+) -> Result<Vec<u8>, Stop> {
+    let mut response = request(http, &signed, Vec::new())
+        .send()
+        .await
+        .map_err(|_| Stop::Unavailable("bucket read"))?;
+    let status = response.status();
+    if busy(status) {
+        return Err(Stop::Unavailable("bucket read"));
+    }
+    if status != StatusCode::OK {
+        return Err(Stop::Refused(format!(
+            "{what} answered {} in the release bucket, not 200.",
+            status.as_u16()
+        )));
+    }
+    let mut bytes = Vec::new();
+    while let Some(chunk) = response
+        .chunk()
+        .await
+        .map_err(|_| Stop::Unavailable("bucket read"))?
+    {
+        if bytes.len() + chunk.len() > max {
+            return Err(Stop::Refused(format!(
+                "{what} is longer than {max} bytes in the release bucket."
+            )));
+        }
+        bytes.extend_from_slice(&chunk);
+    }
+    Ok(bytes)
 }
 
 /// The `ETag` of `response`, when it is short visible ASCII.

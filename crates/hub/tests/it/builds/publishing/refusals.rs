@@ -10,7 +10,7 @@ use super::{
     fake_r2::{KEY_ID, SECRET},
     setup::{
         File, Held, LINUX, LINUX_FEED, LINUX_STABLE, Publishing, linux_feed, linux_files, ready,
-        sign_with, uploaded_linux,
+        uploaded_linux,
     },
 };
 use crate::{
@@ -32,7 +32,7 @@ async fn refused(publishing: &Publishing, held: &Held) -> String {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn bld_064_a_file_read_back_with_another_digest_fails_the_job(pool: PgPool) {
-    let publishing = Publishing::start(&pool, true).await;
+    let publishing = Publishing::start(&pool).await;
     let (held, files) = uploaded_linux(&publishing, "0.1.12").await;
     let tampered = format!("linux-x86_64/0.1.12/{}", files[0].name);
     publishing.fake.with(|store| store.tamper = Some(tampered));
@@ -42,7 +42,7 @@ async fn bld_064_a_file_read_back_with_another_digest_fails_the_job(pool: PgPool
 
 #[sqlx::test(migrations = "./migrations")]
 async fn bld_064_a_file_read_back_longer_than_reported_fails_the_job(pool: PgPool) {
-    let publishing = Publishing::start(&pool, true).await;
+    let publishing = Publishing::start(&pool).await;
     let (held, _) = uploaded_linux(&publishing, "0.1.12").await;
     let sums = "linux-x86_64/0.1.12/SHA256SUMS".to_owned();
     publishing.fake.with(|store| store.longer = Some(sums));
@@ -66,48 +66,34 @@ async fn with_feed(publishing: &Publishing, files: &[File], feed: &Value) -> Hel
     held
 }
 
+/// R-116: a builder proposes a feed without a signature; one that carries a signature, even a
+/// good-looking one, is refused, and the hub signs nothing for it.
 #[sqlx::test(migrations = "./migrations")]
-async fn bld_064_a_signature_of_other_bytes_or_another_version_fails_the_job(pool: PgPool) {
-    let publishing = Publishing::start(&pool, true).await;
-    for (signed, version) in [(&b"other bytes"[..], "0.1.12"), (b"", "0.1.13")] {
-        restart(&pool).await;
-        let files = linux_files("0.1.12");
-        let bytes = if signed.is_empty() {
-            &files[0].bytes[..]
-        } else {
-            signed
-        };
-        let signature = publishing.sign(bytes, version);
-        let feed = linux_feed(&publishing, "0.1.12", &files[0], &signature);
-        let held = with_feed(&publishing, &files, &feed).await;
-        let reason = refused(&publishing, &held).await;
-        assert!(reason.contains("does not verify"), "{version}: {reason}");
-    }
-}
-
-#[sqlx::test(migrations = "./migrations")]
-async fn bld_064_a_signature_by_another_key_fails_the_job(pool: PgPool) {
-    let publishing = Publishing::start(&pool, true).await;
+async fn r_116_a_proposed_feed_with_a_signature_fails_the_job(pool: PgPool) {
+    let publishing = Publishing::start(&pool).await;
     let files = linux_files("0.1.12");
-    let other = minisign::KeyPair::generate_unencrypted_keypair().unwrap();
-    let signature = sign_with(&other, &files[0].bytes, "0.1.12");
-    let feed = linux_feed(&publishing, "0.1.12", &files[0], &signature);
+    let mut feed = linux_feed(&publishing, "0.1.12", &files[0]);
+    feed["platforms"]["linux-x86_64"]["signature"] = json!("dW50cnVzdGVkIGNvbW1lbnQ6IHg=");
     let held = with_feed(&publishing, &files, &feed).await;
     let reason = refused(&publishing, &held).await;
-    assert!(reason.contains("does not verify"), "{reason}");
+    assert!(
+        reason.contains("the hub signs the updater file"),
+        "{reason}"
+    );
+    let sig = format!("linux-x86_64/0.1.12/{}.sig", files[0].name);
+    assert!(publishing.fake.object(&sig).is_none());
 }
 
 /// UPD-010: `SHA256SUMS` must list each other file with the digest the builder reported.
 #[sqlx::test(migrations = "./migrations")]
 async fn upd_010_sums_that_do_not_list_the_files_fail_the_job(pool: PgPool) {
-    let publishing = Publishing::start(&pool, true).await;
+    let publishing = Publishing::start(&pool).await;
     let mut files = linux_files("0.1.12");
     files[1] = File::new(
         "SHA256SUMS",
         format!("{}  {}\n", "0".repeat(64), files[0].name),
     );
-    let signature = publishing.sign(&files[0].bytes, "0.1.12");
-    let feed = linux_feed(&publishing, "0.1.12", &files[0], &signature);
+    let feed = linux_feed(&publishing, "0.1.12", &files[0]);
     let held = with_feed(&publishing, &files, &feed).await;
     let reason = refused(&publishing, &held).await;
     assert!(reason.contains("does not list each file"), "{reason}");
@@ -116,10 +102,9 @@ async fn upd_010_sums_that_do_not_list_the_files_fail_the_job(pool: PgPool) {
 /// BLD-065: a feed with a key of another platform, or a URL on another host, is refused.
 #[sqlx::test(migrations = "./migrations")]
 async fn bld_065_a_feed_with_a_foreign_key_or_host_fails_the_job(pool: PgPool) {
-    let publishing = Publishing::start(&pool, true).await;
+    let publishing = Publishing::start(&pool).await;
     let files = linux_files("0.1.12");
-    let signature = publishing.sign(&files[0].bytes, "0.1.12");
-    let good = linux_feed(&publishing, "0.1.12", &files[0], &signature);
+    let good = linux_feed(&publishing, "0.1.12", &files[0]);
     let entry = good["platforms"]["linux-x86_64"].clone();
     let mut foreign_key = good.clone();
     foreign_key["platforms"]["darwin-aarch64"] = entry.clone();
@@ -130,7 +115,7 @@ async fn bld_065_a_feed_with_a_foreign_key_or_host_fails_the_job(pool: PgPool) {
     ));
     for (feed, why) in [
         (foreign_key, "must list exactly"),
-        (foreign_host, "needs a signature"),
+        (foreign_host, "needs only a URL"),
     ] {
         restart(&pool).await;
         let held = with_feed(&publishing, &files, &feed).await;
@@ -143,15 +128,14 @@ async fn bld_065_a_feed_with_a_foreign_key_or_host_fails_the_job(pool: PgPool) {
 /// published `latest.json` stays.
 #[sqlx::test(migrations = "./migrations")]
 async fn bld_069_a_feed_below_the_published_version_fails_the_job(pool: PgPool) {
-    let publishing = Publishing::start(&pool, true).await;
+    let publishing = Publishing::start(&pool).await;
     publishing.release("0.1.11", "LINUX_X86_64").await;
     publishing.release("0.1.12", "LINUX_X86_64").await;
     let older = publishing.uploading("pop-os", LINUX).await;
     let newer = publishing.uploading("fedora", LINUX).await;
     let upload = |version: &'static str| {
         let files = linux_files(version);
-        let signature = publishing.sign(&files[0].bytes, version);
-        let feed = linux_feed(&publishing, version, &files[0], &signature);
+        let feed = linux_feed(&publishing, version, &files[0]);
         (files, feed)
     };
     let (files, feed) = upload("0.1.12");
@@ -171,13 +155,12 @@ async fn bld_069_a_feed_below_the_published_version_fails_the_job(pool: PgPool) 
 /// D-26: the report must name exactly the files the URLs were given for.
 #[sqlx::test(migrations = "./migrations")]
 async fn d_26_a_report_of_files_other_than_the_grant_is_refused(pool: PgPool) {
-    let publishing = Publishing::start(&pool, true).await;
+    let publishing = Publishing::start(&pool).await;
     publishing.release("0.1.12", "LINUX_X86_64").await;
     let held = publishing.uploading("pop-os", LINUX).await;
     let files = linux_files("0.1.12");
     data(publishing.grant(&held, &files).await);
-    let signature = publishing.sign(&files[0].bytes, "0.1.12");
-    let feed = linux_feed(&publishing, "0.1.12", &files[0], &signature);
+    let feed = linux_feed(&publishing, "0.1.12", &files[0]);
     let mut changed = files.clone();
     changed[1].bytes.push(b'\n');
     for reported in [&files[..1], &changed[..]] {
@@ -202,7 +185,7 @@ fn retargeted(upload: &Value, files: &[File], object: &str) -> Value {
 /// stable name.
 #[sqlx::test(migrations = "./migrations")]
 async fn bld_061_a_presigned_url_writes_only_its_object_and_length(pool: PgPool) {
-    let publishing = Publishing::start(&pool, true).await;
+    let publishing = Publishing::start(&pool).await;
     publishing.release("0.1.12", "LINUX_X86_64").await;
     let held = publishing.uploading("pop-os", LINUX).await;
     let files = linux_files("0.1.12");
