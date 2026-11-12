@@ -16,6 +16,7 @@ use crate::push::{Event, Pusher};
 use crate::readers::{self, Platform, gpu};
 use crate::report;
 use crate::sampling::Sampler;
+use crate::sampling::drives::DriveWatch;
 use crate::sampling::gpu::Discovery;
 use crate::token_store::{TokenStore, TokenStoreError};
 
@@ -87,6 +88,7 @@ fn prepare(home: &Home) -> Result<(Pusher, Uuid), RunError> {
 async fn sample(platform: Platform, events: mpsc::Sender<Event>) {
     let mac = platform == Platform::Macos;
     let mut sampler = Sampler::new();
+    let mut drives = DriveWatch::new();
     let mut watch = Watch::start(discover(mac, &events).await, Instant::now());
     let mut ticks = interval(SAMPLE_EVERY);
     ticks.set_missed_tick_behavior(MissedTickBehavior::Skip);
@@ -98,6 +100,11 @@ async fn sample(platform: Platform, events: mpsc::Sender<Event>) {
         let found = &watch.found;
         let now = Utc::now();
         let reading = readers::reading(platform, now).await;
+        if let Some(changed) = drives.changed(reading.drives.as_deref())
+            && events.send(Event::Drives(changed)).await.is_err()
+        {
+            return;
+        }
         let gpus = found
             .placement
             .place_all(gpu::read(found.sources, mac).await);

@@ -1,6 +1,6 @@
 //! Readers of the Linux `/proc` files (MET-002).
 
-use super::{Cpu, Interface, Load, Memory, label, lines, load, number};
+use super::{Cpu, DriveCounters, Interface, Load, Memory, label, lines, load, number};
 
 /// The aggregate `cpu` line of `/proc/stat`: `total` is user, nice, system, idle, iowait, irq,
 /// softirq and steal (guest time is already in user); `idle` is idle plus iowait. Fields an
@@ -97,4 +97,23 @@ pub fn uptime_seconds(output: &[u8]) -> Option<f64> {
 #[must_use]
 pub fn load_average(output: &[u8]) -> Option<Load> {
     load(lines(output).next()?.split_whitespace())
+}
+
+/// `/proc/diskstats`: the read and written sectors and the busy milliseconds of each block
+/// device (MET-023). A line with fewer than the 13 columns of kernel 2.6, a counter that does
+/// not read or an unusable name is skipped.
+#[must_use]
+pub fn drive_counters(output: &[u8]) -> Vec<DriveCounters> {
+    lines(output)
+        .filter_map(|line| {
+            let columns: Vec<&str> = line.split_whitespace().take(13).collect();
+            let counter = |at: usize| columns.get(at)?.parse::<u64>().ok();
+            Some(DriveCounters {
+                name: label(columns.get(2)?)?.to_owned(),
+                read_sectors: counter(5)?,
+                written_sectors: counter(9)?,
+                busy_ms: counter(12)?,
+            })
+        })
+        .collect()
 }

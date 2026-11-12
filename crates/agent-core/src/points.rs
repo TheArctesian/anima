@@ -5,6 +5,7 @@
 //! each 10 seconds of samples, and the [`Backlog`] keeps the points until the hub accepts them.
 //! Nothing here reads the clock, sleeps or does I/O (CQ-021).
 
+mod activity;
 mod backlog;
 mod key;
 mod kind;
@@ -21,6 +22,7 @@ pub(crate) use key::is_label;
 pub use key::{MAX_GPU_INDEX, MAX_SERIES, SeriesKey};
 pub use kind::Kind;
 pub use labels::MAX_LABELS;
+pub(crate) use labels::is_operator_mount;
 pub use point::{Point, Summary};
 pub use rates::samples;
 pub use sample::{Sample, ceiling};

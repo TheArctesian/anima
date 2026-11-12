@@ -9,7 +9,7 @@ pub mod renewal;
 use std::time::Duration;
 
 use agent_core::points::{BATCH_POINTS, Backlog, Point};
-use agent_core::wire::{Batch, BatchGpu, RefusalCode, Renewed};
+use agent_core::wire::{Batch, BatchDrive, BatchGpu, RefusalCode, Renewed};
 use chrono::{DateTime, TimeDelta, Utc};
 use uuid::Uuid;
 
@@ -25,6 +25,8 @@ pub enum Event {
     Point(Point),
     /// The GPUs found at start or at a discovery; sent in the next batch (K8 Section 4).
     Gpus(Vec<BatchGpu>),
+    /// The drives read at start or after a change; sent in the next batch (MET-022).
+    Drives(Vec<BatchDrive>),
 }
 
 /// Everything the pusher keeps between pushes.
@@ -35,6 +37,7 @@ pub struct Pusher {
     store: TokenStore,
     backlog: Backlog,
     gpus: Option<Vec<BatchGpu>>,
+    drives: Option<Vec<BatchDrive>>,
     backoff: Backoff,
     /// The largest batch to try; smaller after `TOO_LARGE`.
     limit: usize,
@@ -55,6 +58,7 @@ impl Pusher {
             store,
             backlog: Backlog::new(),
             gpus: None,
+            drives: None,
             backoff: Backoff::default(),
             limit: BATCH_POINTS,
             stopped_until: None,
@@ -74,6 +78,7 @@ impl Pusher {
         match event {
             Event::Point(point) => self.backlog.push(point),
             Event::Gpus(gpus) => self.gpus = Some(gpus),
+            Event::Drives(drives) => self.drives = Some(drives),
         }
     }
 
@@ -116,12 +121,14 @@ impl Pusher {
             let Some(receipt) = outgoing.receipt() else {
                 return Round::Sent;
             };
-            let batch = Batch::new(self.device, outgoing.points(), self.gpus.clone());
+            let announced = (self.gpus.clone(), self.drives.clone());
+            let batch = Batch::new(self.device, outgoing.points(), announced);
             let answer = self.hub.push(&self.credential.token, &batch).await;
             match pacing::action(&answer) {
                 Action::Remove => {
                     self.backlog.remove_through(receipt);
                     self.gpus = None;
+                    self.drives = None;
                     self.limit = pacing::grown(count);
                     self.recovered();
                     return Round::Sent;
@@ -135,6 +142,7 @@ impl Pusher {
                     // also waits for the next discovery.
                     if code == RefusalCode::Malformed {
                         self.gpus = None;
+                        self.drives = None;
                     }
                     return Round::Sent;
                 }

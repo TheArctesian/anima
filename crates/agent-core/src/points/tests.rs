@@ -6,6 +6,7 @@ use chrono::{DateTime, Utc};
 use super::{Kind, Sample};
 use crate::readings::{Cpu, Disk, Interface, Load, Memory, Reading};
 
+mod activity;
 mod backlog;
 mod key;
 mod labels;

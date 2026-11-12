@@ -5,7 +5,7 @@ use std::time::Duration;
 use super::*;
 use crate::{
     points::samples,
-    readings::{captures::*, df, linux, macos},
+    readings::{captures::*, df, drives, linux, macos},
 };
 
 pub const THIRTY: Duration = Duration::from_secs(30);
@@ -18,6 +18,8 @@ pub fn linux_reading() -> Reading {
         uptime_seconds: linux::uptime_seconds(PROC_UPTIME),
         disks: df::disks(DF_LINUX, 1),
         interfaces: linux::interfaces(PROC_NET_DEV),
+        drives: drives::drives(LSBLK_POP_OS),
+        drive_counters: linux::drive_counters(PROC_DISKSTATS),
     }
 }
 
@@ -185,6 +187,7 @@ fn met_002_a_macos_reading_gives_its_busy_share_on_the_first_collection() {
         uptime_seconds: sysctl.uptime_seconds(now),
         disks: df::disks(DF_MACOS, 1024),
         interfaces: macos::interfaces(NETSTAT),
+        ..Reading::default()
     };
     let out = samples(None, &reading, THIRTY);
     assert_close(value(&out, Kind::CpuPercent, "").unwrap(), 15.78);
@@ -233,6 +236,8 @@ fn met_002_a_wholly_unreadable_device_gives_no_samples() {
         uptime_seconds: linux::uptime_seconds(b"x"),
         disks: df::disks(b"\x00\x01", 1),
         interfaces: linux::interfaces(b"nothing here"),
+        drives: drives::drives(b"{"),
+        drive_counters: linux::drive_counters(b"8 0 sda x\n"),
     };
     assert_eq!(reading, Reading::default());
     assert_eq!(samples(Some(&reading), &reading, THIRTY).len(), 0);

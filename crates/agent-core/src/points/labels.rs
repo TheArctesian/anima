@@ -3,7 +3,8 @@
 
 use crate::readings::{Disk, Interface};
 
-/// The most disk series, and the most network series, one device has.
+/// The most disk series, the most network series and the most drives one device has, and
+/// the most mounts one drive lists.
 pub const MAX_LABELS: usize = 32;
 
 const PSEUDO_FILESYSTEMS: [&str; 6] = ["tmpfs", "devtmpfs", "overlay", "squashfs", "devfs", "map"];
@@ -32,10 +33,17 @@ fn under(mount: &str, root: &str) -> bool {
 fn wanted_disk(disk: &Disk) -> bool {
     !PSEUDO_FILESYSTEMS.contains(&disk.filesystem.as_str())
         && !disk.filesystem.starts_with(LOOP_DEVICE)
-        && !PSEUDO_MOUNTS.iter().any(|root| under(&disk.mount, root))
-        && !IMAGE_MOUNTS.iter().any(|root| under(&disk.mount, root))
-        && !disk.mount.starts_with(APPIMAGE_MOUNT)
-        && (disk.mount == DATA_VOLUME || !under(&disk.mount, "/System/Volumes"))
+        && is_operator_mount(&disk.mount)
+}
+
+/// Whether a mount point holds the operator's files: not a pseudo file system's place, a
+/// system image or a running `AppImage`, and on macOS only the data volume of the system's
+/// volumes. A drive lists only these mounts (MET-022).
+pub(crate) fn is_operator_mount(mount: &str) -> bool {
+    !PSEUDO_MOUNTS.iter().any(|root| under(mount, root))
+        && !IMAGE_MOUNTS.iter().any(|root| under(mount, root))
+        && !mount.starts_with(APPIMAGE_MOUNT)
+        && (mount == DATA_VOLUME || !under(mount, "/System/Volumes"))
 }
 
 fn wanted_interface(interface: &Interface) -> bool {

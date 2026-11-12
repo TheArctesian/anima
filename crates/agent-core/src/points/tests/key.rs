@@ -3,11 +3,14 @@
 use super::*;
 use crate::points::SeriesKey;
 
-const LABELLED: [Kind; 4] = [
+const LABELLED: [Kind; 7] = [
     Kind::DiskPercent,
     Kind::DiskBytes,
     Kind::NetworkInBps,
     Kind::NetworkOutBps,
+    Kind::DiskReadBps,
+    Kind::DiskWriteBps,
+    Kind::DiskBusyPercent,
 ];
 const PER_GPU: [Kind; 6] = [
     Kind::GpuPercent,

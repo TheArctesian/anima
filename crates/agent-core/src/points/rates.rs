@@ -4,13 +4,15 @@ use std::time::Duration;
 
 use super::{
     Kind, Sample,
+    activity::drive_activity,
     labels::{kept_disks, kept_interfaces},
 };
 use crate::readings::{Cpu, Interface, Reading};
 
 /// The samples of `current`. `previous` is the reading before it and `elapsed` the time between
 /// the two. With no `previous`, a counter that went back (a reboot, an interface reset) or no
-/// time passed, the Linux CPU share and the network rates are left out (D-4). The macOS CPU share
+/// time passed, the Linux CPU share, the network rates and the drive activity are left out (D-4,
+/// MET-023). The macOS CPU share
 /// needs no earlier reading, so it is always given. Disks and interfaces follow
 /// [`MAX_LABELS`](super::MAX_LABELS) and the exclusions of D-5.
 #[must_use]
@@ -51,6 +53,7 @@ pub fn samples(previous: Option<&Reading>, current: &Reading, elapsed: Duration)
     }
     if let Some(previous) = previous {
         out.extend(network(previous, current, elapsed));
+        out.extend(drive_activity(previous, current, elapsed));
     }
     out
 }

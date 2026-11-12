@@ -9,10 +9,10 @@ use std::collections::BTreeSet;
 use chrono::{DateTime, TimeDelta, Utc};
 use uuid::Uuid;
 
-use super::{Batch, BatchGpu, BatchPoint, BatchSeries, GpuVendor, RefusalCode};
+use super::{Batch, BatchDrive, BatchGpu, BatchPoint, BatchSeries, GpuVendor, RefusalCode};
 use crate::points::{
-    Kind, MAX_GPU_INDEX, MAX_POINTS, MAX_SERIES, Point, SeriesKey, Summary, ceiling, is_label,
-    is_window_end,
+    Kind, MAX_GPU_INDEX, MAX_LABELS, MAX_POINTS, MAX_SERIES, Point, SeriesKey, Summary, ceiling,
+    is_label, is_window_end,
 };
 
 /// The oldest a point may be on the hub's clock (MET-017).
@@ -22,11 +22,12 @@ const OLDEST: TimeDelta = TimeDelta::hours(1);
 const AHEAD: TimeDelta = TimeDelta::seconds(60);
 
 /// What the hub takes from a batch: the points of the series whose kind it knows, each with
-/// its non-null values only, and the GPUs when the batch has them (K8 Section 4).
+/// its non-null values only, and the GPUs and drives when the batch has them (K8 Section 4).
 #[derive(Clone, Debug, PartialEq)]
 pub struct Accepted {
     pub points: Vec<Point>,
     pub gpus: Option<Vec<BatchGpu>>,
+    pub drives: Option<Vec<BatchDrive>>,
 }
 
 impl Batch {
@@ -43,7 +44,9 @@ impl Batch {
             return Err(RefusalCode::WrongDevice);
         }
         let keys = series_keys(&self.series).ok_or(RefusalCode::Malformed)?;
-        let shaped = points_fit(&self.points, &keys) && gpus_fit(self.gpus.as_deref());
+        let shaped = points_fit(&self.points, &keys)
+            && gpus_fit(self.gpus.as_deref())
+            && drives_fit(self.drives.as_deref());
         if !shaped {
             return Err(RefusalCode::Malformed);
         }
@@ -58,6 +61,7 @@ impl Batch {
         Ok(Accepted {
             points,
             gpus: self.gpus,
+            drives: self.drives,
         })
     }
 }
@@ -139,6 +143,25 @@ fn gpus_fit(gpus: Option<&[BatchGpu]>) -> bool {
         && gpus.iter().all(|gpu| {
             let shares_memory = matches!(gpu.vendor, GpuVendor::Intel | GpuVendor::Apple);
             gpu.index <= MAX_GPU_INDEX && is_label(&gpu.name) && !(shares_memory && gpu.has_vram)
+        })
+}
+
+/// At most [`MAX_LABELS`] drives with unique names, each a label (K8 Section 4), a size of at
+/// most `i64::MAX` and at most [`MAX_LABELS`] mounts, each a label that starts with `/`
+/// (MET-022).
+fn drives_fit(drives: Option<&[BatchDrive]>) -> bool {
+    let drives = drives.unwrap_or_default();
+    let names: BTreeSet<&str> = drives.iter().map(|drive| drive.name.as_str()).collect();
+    names.len() == drives.len()
+        && drives.len() <= MAX_LABELS
+        && drives.iter().all(|drive| {
+            is_label(&drive.name)
+                && i64::try_from(drive.size_bytes).is_ok()
+                && drive.mounts.len() <= MAX_LABELS
+                && drive
+                    .mounts
+                    .iter()
+                    .all(|mount| mount.starts_with('/') && is_label(mount))
         })
 }
 

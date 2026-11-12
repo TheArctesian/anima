@@ -44,3 +44,17 @@ async fn met_006_amd_cards_are_numbered_by_their_drm_card_number() {
         .collect();
     assert_eq!(seen, [(2, Some(37.0)), (7, Some(12.0))]);
 }
+
+#[tokio::test]
+async fn met_022_a_linux_reading_lists_drives_and_their_counters() {
+    let read = reading(Platform::Linux, Utc::now()).await;
+    let Some(drives) = read.drives else {
+        // A container without lsblk or /sys/block reads no drives; that is not a failure.
+        return;
+    };
+    for drive in &drives {
+        assert!(drive.size_bytes > 0);
+        assert!(drive.mounts.iter().all(|mount| mount.starts_with('/')));
+    }
+    assert!(!read.drive_counters.is_empty(), "/proc/diskstats listed nothing");
+}
