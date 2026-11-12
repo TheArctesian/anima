@@ -89,3 +89,22 @@ it('NAV-009: focus starts in User name', () => {
   const target = open({});
   expect(document.activeElement).toBe(target.querySelector('#username'));
 });
+
+it('UI-030: when the hub did not answer and the notice already says so, the attempt adds no second message', async () => {
+  const target = open({ Login: failure('unreachable', 'The hub did not answer. Check the VPN client.') }, { connection: 'unreachable', lastContactAt: null });
+  type(target, 'username', 'ann');
+  type(target, 'password', 'pw');
+  await submit(target, 0);
+  await pasteInto(target, 0, '123456');
+  expect(target.querySelector('.card [role="status"]')).not.toBeNull();
+  expect(target.querySelector('.card [role="alert"]')).toBeNull();
+});
+
+it('UI-030: when the hub did not answer but no notice shows yet, the attempt says so itself', async () => {
+  const target = open({ Login: failure('unreachable', 'The hub did not answer. Check the VPN client.') }, { connection: 'connected', lastContactAt: new Date() });
+  type(target, 'username', 'ann');
+  type(target, 'password', 'pw');
+  await submit(target, 0);
+  await pasteInto(target, 0, '123456');
+  expect(target.querySelector('.card [role="alert"]')?.textContent).toBe('The hub did not answer. Check the VPN client.');
+});
