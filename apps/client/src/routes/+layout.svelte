@@ -2,7 +2,7 @@
   import { page } from '$app/state';
   import { tick, untrack, type Snippet } from 'svelte';
   import '../styles/global.css';
-  import { guardStart, startAt } from '$lib/access/navigation';
+  import { guardStart, showsSignedOutPage, startAt } from '$lib/access/navigation';
   import { provideDesktopBuilder } from '$lib/builds/desktop.svelte';
   import { provideHub } from '$lib/hub/context';
   import { readAccessToken } from '$lib/desktop/token';
@@ -135,7 +135,13 @@
   }
 </script>
 
-{#if shell !== null}
+{#if shell !== null && showsSignedOutPage(page.url)}
+  <!-- Before sign-in the window shows the page alone: no bar, no sessions, no hub status (NAV-009). -->
+  <div class="bare">
+    <div class="drag" data-tauri-drag-region></div>
+    <main>{@render children()}</main>
+  </div>
+{:else if shell !== null}
   {@const { api, clock, sessions, navigate } = shell}
   <div class="shell">
     <Nav
@@ -185,6 +191,13 @@
     color: var(--text);
   }
 
+  .bare {
+    min-height: 100vh;
+    background: var(--surface-base);
+    color: var(--text);
+    font-family: var(--font-ui);
+  }
+
   .shell {
     display: grid;
     /* The page column may shrink below its content's width, so a narrow window never scrolls sideways (UI-009). */
@@ -218,6 +231,11 @@
     inset-inline: var(--nav-inline-size) 0;
     block-size: var(--space-6);
     z-index: var(--layer-nav);
+  }
+
+  /* With no bar the strip spans the window; the window buttons are drawn over it. */
+  :global(:root[data-titlebar='overlay']) .bare .drag {
+    inset-inline-start: 0;
   }
 
   /* Below the compact breakpoint the unreachable strip takes the top of the window; the page starts below it. */

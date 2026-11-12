@@ -5,7 +5,7 @@ import type { Hub } from '$lib/hub/hub';
 import { capabilities } from '$lib/platform/platform';
 import { accessApi } from './api';
 import { startGuard } from './guard';
-import { routePath, SIGN_IN_PATH } from './routes';
+import { isSignedOut, routePath, SIGN_IN_PATH } from './routes';
 import { clientStart, type ClientStart } from './start';
 
 // The browser side of access: the router, the page reload, the platform and the page origin. Logic stays in
@@ -46,6 +46,11 @@ export function loadClientAt(path: '/devices' | typeof SIGN_IN_PATH): void {
 /** The path the router matches for `url`. `resolve('/')` is the base path and a slash (SvelteKit's `base` is deprecated). */
 function routeOf(url: URL): string {
   return routePath(url.pathname, resolve('/').slice(0, -1));
+}
+
+/** Whether `url` is a page that needs no sign-in, so the window shows that page alone (NAV-009). */
+export function showsSignedOutPage(url: URL): boolean {
+  return isSignedOut(routeOf(url));
 }
 
 /** How the client starts on the page the browser loaded, at the router's `url` (E-2); the root layout calls this once. */

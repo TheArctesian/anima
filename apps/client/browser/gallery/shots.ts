@@ -31,7 +31,13 @@ export const MODES: readonly Mode[] = [
 /** The settings the app reads from `localStorage` before its first render: theme (`$lib/theme`) and typeface (`$lib/typeface`). */
 export function storedSettings(chosen: Mode): Record<string, string> {
   const typeface = chosen.dyslexic ? 'opendyslexic' : 'fira-code';
-  return { 'anima.theme': chosen.theme, 'anima.typeface.ui': typeface, 'anima.typeface.mono': typeface };
+  const palette = process.env['GALLERY_PALETTE'];
+  return {
+    'anima.theme': chosen.theme,
+    'anima.typeface.ui': typeface,
+    'anima.typeface.mono': typeface,
+    ...(palette === undefined ? {} : { 'anima.palette': palette }),
+  };
 }
 
 /** One state of the app to photograph. The runner numbers the screens in list order and shoots each in every mode. */
