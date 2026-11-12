@@ -1,9 +1,9 @@
 <script lang="ts">
-  import ContainersDialogs from './containers-dialogs.svelte';
-  import ContainersPage from './containers-page.svelte';
-  import ContainersResults from './containers-results.svelte';
-  import ContainersStatus from './containers-status.svelte';
-  import ContainersTables from './containers-tables.svelte';
+  import ContainersDialogs from './ContainersDialogs.svelte';
+  import ContainersPage from './ContainersPage.svelte';
+  import ContainersResults from './ContainersResults.svelte';
+  import ContainersStatus from './ContainersStatus.svelte';
+  import ContainersTables from './ContainersTables.svelte';
 </script>
 
 <!-- Phase 3 Containers lane: every container primitive in every state, on the sunken page colour the cards sit on. -->

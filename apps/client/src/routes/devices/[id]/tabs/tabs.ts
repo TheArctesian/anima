@@ -1,7 +1,7 @@
 import type { IconName } from '$lib/icons/icons';
 import type { MetricRange } from '$lib/metrics/api';
 import { RANGES } from '$lib/metrics/ranges';
-import { tabIds as sharedIds, type TabItem } from '$lib/tabs/tabs';
+import { tabIds as sharedIds, type TabSpec } from '$lib/tabs/tabs';
 
 /** The device detail tabs, in order (Section 6.7), each with the icon shown before its label. */
 export const TABS = [
@@ -70,4 +70,4 @@ export function tabIds(name: TabName): { tab: string; panel: string } {
 }
 
 /** The tabs as the strip draws them. */
-export const TAB_ITEMS: readonly TabItem[] = TABS.map(({ name, label, icon }) => ({ id: name, label, icon }));
+export const TAB_ITEMS: readonly TabSpec[] = TABS.map(({ name, label, icon }) => ({ id: name, label, icon }));

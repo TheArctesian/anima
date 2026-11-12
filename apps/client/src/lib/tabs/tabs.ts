@@ -1,7 +1,7 @@
 import type { IconName } from '$lib/icons/icons';
 
 /** One underlined tab: the word is always shown (UI-003); the count and the icon are optional. */
-export interface TabItem {
+export interface TabSpec {
   readonly id: string;
   readonly label: string;
   readonly count?: number;

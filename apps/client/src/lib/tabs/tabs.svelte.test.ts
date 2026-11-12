@@ -5,7 +5,7 @@ import { endTransitionsAtOnce } from '$lib/devices/transitions.fixture';
 import { runs } from '$lib/motion/engine.fixture';
 import { spring } from '$lib/motion/tokens';
 import Tabs from './Tabs.svelte';
-import { scrolledToShow, tabIds, type TabItem } from './tabs';
+import { scrolledToShow, tabIds, type TabSpec } from './tabs';
 
 vi.mock('motion', async (importOriginal) => ({
   ...(await importOriginal<typeof import('motion')>()),
@@ -26,7 +26,7 @@ afterEach(async () => {
   document.body.replaceChildren();
 });
 
-const ITEMS: readonly TabItem[] = [
+const ITEMS: readonly TabSpec[] = [
   { id: 'overview', label: 'Overview' },
   { id: 'checks', label: 'Checks', count: 3 },
   { id: 'sessions', label: 'Sessions', count: 0 },

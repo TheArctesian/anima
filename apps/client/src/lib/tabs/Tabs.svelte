@@ -7,10 +7,10 @@
   import { motionPreference, type MotionPreference } from '$lib/motion/preference';
   import { press } from '$lib/motion/roles/press';
   import { hiddenEdges } from '$lib/scroll/edges';
-  import { scrolledToShow, tabIds, type TabItem } from './tabs';
+  import { scrolledToShow, tabIds, type TabSpec } from './tabs';
 
   interface Props {
-    items: readonly TabItem[];
+    items: readonly TabSpec[];
     /** The `id` of the selected item. */
     selected: string;
     onSelect: (id: string) => void;

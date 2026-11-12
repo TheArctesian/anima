@@ -6,9 +6,9 @@
   import Section from '$lib/page/Section.svelte';
   import type { Pair } from '$lib/page/pair';
   import Tabs from '$lib/tabs/Tabs.svelte';
-  import type { TabItem } from '$lib/tabs/tabs';
+  import type { TabSpec } from '$lib/tabs/tabs';
 
-  const TABS: readonly TabItem[] = [
+  const TABS: readonly TabSpec[] = [
     { id: 'overview', label: 'Overview' },
     { id: 'checks', label: 'Checks', count: 6 },
     { id: 'sessions', label: 'Sessions', count: 0 },
