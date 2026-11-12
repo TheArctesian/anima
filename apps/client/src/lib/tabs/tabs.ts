@@ -13,11 +13,6 @@ export function tabIds(prefix: string, id: string): { tab: string; panel: string
   return { tab: `${prefix}-tab-${id}`, panel: `${prefix}-panel-${id}` };
 }
 
-/** Which ends of a scrolling strip have tabs past them: `start` when scrolled away from the beginning, `end` when more lies ahead. */
-export function hiddenEdges(scrollStart: number, clientSize: number, scrollSize: number): { start: boolean; end: boolean } {
-  return { start: scrollStart > 0, end: scrollStart + clientSize < scrollSize - 1 };
-}
-
 /** An interval along the strip: where it starts and how long it is. */
 interface Span {
   readonly start: number;

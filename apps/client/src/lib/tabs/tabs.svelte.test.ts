@@ -5,7 +5,7 @@ import { endTransitionsAtOnce } from '$lib/devices/transitions.fixture';
 import { runs } from '$lib/motion/engine.fixture';
 import { spring } from '$lib/motion/tokens';
 import Tabs from './Tabs.svelte';
-import { hiddenEdges, scrolledToShow, tabIds, type TabItem } from './tabs';
+import { scrolledToShow, tabIds, type TabItem } from './tabs';
 
 vi.mock('motion', async (importOriginal) => ({
   ...(await importOriginal<typeof import('motion')>()),
@@ -109,13 +109,6 @@ describe('Tabs (UI redesign, DEV-020)', () => {
     flushSync();
     expect(runs).toEqual([]);
   });
-});
-
-it('NAV-005: a strip shows a fade at each end that has tabs past it', () => {
-  expect(hiddenEdges(0, 200, 400)).toEqual({ start: false, end: true });
-  expect(hiddenEdges(100, 200, 400)).toEqual({ start: true, end: true });
-  expect(hiddenEdges(200, 200, 400)).toEqual({ start: true, end: false });
-  expect(hiddenEdges(0, 400, 400)).toEqual({ start: false, end: false });
 });
 
 it('NAV-005: a focused tab past either edge of the strip is scrolled into view clear of the fade, and one inside it is left alone', () => {

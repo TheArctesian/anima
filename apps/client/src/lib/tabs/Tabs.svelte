@@ -6,7 +6,8 @@
   import { springMotion, type InstantMotion, type SpringMotion } from '$lib/motion/options';
   import { motionPreference, type MotionPreference } from '$lib/motion/preference';
   import { press } from '$lib/motion/roles/press';
-  import { hiddenEdges, scrolledToShow, tabIds, type TabItem } from './tabs';
+  import { hiddenEdges } from '$lib/scroll/edges';
+  import { scrolledToShow, tabIds, type TabItem } from './tabs';
 
   interface Props {
     items: readonly TabItem[];

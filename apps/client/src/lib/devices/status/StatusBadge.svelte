@@ -23,7 +23,7 @@
 <!-- A new status cross-fades over the old one in the same place (5.7.3, Status change); the same in reduced motion. -->
 <span class="slot" data-device-id={deviceId} {@attach sharedItem(`device-status:${deviceId}`)}>
   {#key status}
-    <span class="badge {status.toLowerCase()}" class:quiet transition:crossFade>
+    <span class="pill {status.toLowerCase()}" class:quiet transition:crossFade>
       <span class="dot" aria-hidden="true"></span>{word}
     </span>
   {/key}
@@ -43,7 +43,7 @@
     margin-inline-start: var(--space-1);
   }
 
-  .badge {
+  .pill {
     grid-area: 1 / 1;
     justify-self: end;
     display: inline-flex;
