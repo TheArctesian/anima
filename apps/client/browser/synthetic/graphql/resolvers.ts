@@ -1,6 +1,7 @@
 import { GraphQLError } from 'graphql';
 import { BEARER_TOKEN, COOKIE_MAX_AGE_SECONDS, HUB_ORIGIN, OPERATOR, type Caller } from '../access';
 import type { Row } from '../fixtures';
+import { vpnFields } from '../vpn';
 import { allDevices, channelView, connection, checkView, deviceOf, eventRows, sessionRows, type HubState } from '../model';
 
 /** What one GraphQL call brings to its resolvers, and what they hand back for the answer's headers. */
@@ -109,5 +110,6 @@ export function rootValue(state: HubState): Record<string, unknown> {
     },
     startSession: (args: { input: { deviceId: string; protocol: string } }) => startSession(state, args),
     endSession: (args: { id: string }) => endSession(state, args),
+    ...vpnFields(state.now),
   };
 }
