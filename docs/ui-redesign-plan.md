@@ -276,7 +276,7 @@ spacing, O10 tooltips, O11 box sizes). The plan's earlier tables use "O6" for un
 | 61–62 VPN rows | 5 C | SET-003 | |
 | O1 Monotonous inputs | 3 Controls | roles | |
 | O2 Screen space | 4 Shell, 5 all | philosophy 8 | |
-| O3 Logo too big | 4 Shell | 5.3 table | |
+| O3 Logo too big (operator again 2026-11-12: "still a little big" in the preview — Phase 4 makes it 24 px, from about 48) | 4 Shell | 5.3 table | |
 | O4 Collapse button | 4 Shell | NAV-006 | |
 | O5 "Connected" | 4 Shell | NAV-003 | |
 | O6 Unformatted text | 3 key-value list, 5 all | philosophy 7 | |
