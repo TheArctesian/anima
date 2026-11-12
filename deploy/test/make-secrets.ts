@@ -2,6 +2,7 @@
 import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { finish } from "./finished-process.ts";
 
 export const SCRIPT = join(import.meta.dir, "..", "bin", "make-secrets");
 
@@ -62,14 +63,12 @@ function environment(folder: string, options: RunOptions): Record<string, string
   };
 }
 
-export function makeSecrets(folder: string, options: RunOptions = {}): RunResult {
-  const result = Bun.spawnSync(["/bin/sh", SCRIPT, ...(options.args ?? [])], {
+export async function makeSecrets(folder: string, options: RunOptions = {}): Promise<RunResult> {
+  const { exitCode, stdout, stderr } = await finish(["/bin/sh", SCRIPT, ...(options.args ?? [])], {
     env: environment(folder, options),
-    stdin: options.stdin === undefined ? "ignore" : Buffer.from(options.stdin),
+    stdin: options.stdin,
   });
-  const stdout = result.stdout.toString();
-  const stderr = result.stderr.toString();
-  return { exitCode: result.exitCode ?? 1, output: stdout + stderr, stdout, stderr };
+  return { exitCode, output: stdout + stderr, stdout, stderr };
 }
 
 /** Starts the script with a stdin pipe that stays open, so a test can signal it while it reads. */

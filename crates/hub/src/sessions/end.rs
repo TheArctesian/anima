@@ -112,7 +112,7 @@ async fn end_tickets(
     match ended {
         Ok(rows) => {
             for row in rows {
-                live.publish_end(row);
+                live.publish_change(row);
             }
             Ok(())
         }
@@ -210,7 +210,7 @@ async fn end_by_operator(
     let ended = end_row(&mut tx, session, end, by).await?;
     tx.commit().await?;
     if let Some(row) = ended {
-        live.publish_end(row);
+        live.publish_change(row);
     }
     Ok(())
 }

@@ -1,5 +1,5 @@
-//! The session limit and the recording flag of a device through GraphQL: create, update, read
-//! back and the refused values (RA-036, RA-040).
+//! The session limit of a device through GraphQL: create, update, read back and the refused
+//! values (RA-036). Sessions are not recorded, so a device has no recording flag (R-113).
 
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -17,8 +17,8 @@ macro_rules! fixture_test {
     )+};
 }
 
-const SHOWN: &str = "{ id sessionLimit recordSessions }";
-const UPDATE: &str = "mutation($id: ID!, $input: UpdateDeviceInput!) { updateDevice(id: $id, input: $input) { sessionLimit recordSessions } }";
+const SHOWN: &str = "{ id sessionLimit }";
+const UPDATE: &str = "mutation($id: ID!, $input: UpdateDeviceInput!) { updateDevice(id: $id, input: $input) { sessionLimit } }";
 
 async fn create(pool: &PgPool, extra: Value) -> Value {
     let mut input = json!({ "siteId": HOME, "name": "win-01", "host": "10.10.0.60" });
@@ -44,7 +44,7 @@ async fn update(pool: &PgPool, input: Value) -> Value {
 }
 
 async fn read(pool: &PgPool, id: &str) -> Value {
-    let query = "query($id: ID!) { device(id: $id) { sessionLimit recordSessions } }";
+    let query = "query($id: ID!) { device(id: $id) { sessionLimit } }";
     let response = with_variables(&schema_for(pool), query, json!({ "id": id })).await;
     response.data.into_json().unwrap()["device"].take()
 }
@@ -58,18 +58,18 @@ async fn refused(pool: &PgPool, mutation: &str, vars: Value) -> Vec<String> {
 }
 
 fixture_test! {
-    async fn ra_036_a_device_created_without_a_limit_has_none_and_does_not_record(pool: PgPool) {
+    async fn ra_036_a_device_created_without_a_limit_has_none(pool: PgPool) {
         let mut created = create(&pool, json!({})).await;
         let id = created.as_object_mut().unwrap().remove("id").unwrap();
-        let expected = json!({ "sessionLimit": null, "recordSessions": false });
+        let expected = json!({ "sessionLimit": null });
         assert_eq!(created, expected);
         assert_eq!(read(&pool, id.as_str().unwrap()).await, expected);
     }
 
-    async fn ra_036_a_device_created_with_a_limit_and_the_flag_reads_them_back(pool: PgPool) {
-        let mut created = create(&pool, json!({ "sessionLimit": 100, "recordSessions": true })).await;
+    async fn ra_036_a_device_created_with_a_limit_reads_it_back(pool: PgPool) {
+        let mut created = create(&pool, json!({ "sessionLimit": 100 })).await;
         let id = created.as_object_mut().unwrap().remove("id").unwrap();
-        let expected = json!({ "sessionLimit": 100, "recordSessions": true });
+        let expected = json!({ "sessionLimit": 100 });
         assert_eq!(created, expected);
         assert_eq!(read(&pool, id.as_str().unwrap()).await, expected);
     }
@@ -110,11 +110,14 @@ fixture_test! {
         assert_eq!(read(&pool, PVE_01).await["sessionLimit"], 7);
     }
 
-    async fn ra_040_the_recording_flag_is_set_and_kept_by_update(pool: PgPool) {
-        assert_eq!(read(&pool, PVE_01).await["recordSessions"], false);
-        assert_eq!(update(&pool, json!({ "recordSessions": true })).await["recordSessions"], true);
-        assert_eq!(update(&pool, json!({ "recordSessions": null })).await["recordSessions"], true);
-        assert_eq!(update(&pool, json!({ "sessionLimit": 2 })).await["recordSessions"], true);
-        assert_eq!(update(&pool, json!({ "recordSessions": false })).await["recordSessions"], false);
+    async fn ra_008_a_device_neither_shows_nor_takes_a_recording_flag(pool: PgPool) {
+        let schema = schema_for(&pool);
+        let shown = "query($id: ID!) { device(id: $id) { recordSessions } }";
+        let response = with_variables(&schema, shown, json!({ "id": PVE_01 })).await;
+        assert!(!response.errors.is_empty(), "Device.recordSessions is gone (R-113)");
+        let vars = json!({ "id": PVE_01, "input": { "recordSessions": true } });
+        let taken = "mutation($id: ID!, $input: UpdateDeviceInput!) { updateDevice(id: $id, input: $input) { id } }";
+        let response = with_variables(&schema, taken, vars).await;
+        assert!(!response.errors.is_empty(), "UpdateDeviceInput.recordSessions is gone (R-113)");
     }
 }

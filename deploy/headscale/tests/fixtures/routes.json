@@ -1,0 +1,62 @@
+[
+  {
+    "id": 2,
+    "machine_key": "mkey:0000000000000000000000000000000000000000000000000000000000000002",
+    "node_key": "nodekey:0000000000000000000000000000000000000000000000000000000000000002",
+    "disco_key": "discokey:0000000000000000000000000000000000000000000000000000000000000002",
+    "ip_addresses": [
+      "100.64.0.2",
+      "fd7a:115c:a1e0::2"
+    ],
+    "name": "router-home",
+    "user": {
+      "id": 2147455555,
+      "name": "tagged-devices",
+      "created_at": {
+        "seconds": -62135596800
+      },
+      "display_name": "Tagged Devices"
+    },
+    "last_seen": {
+      "seconds": 1794378409,
+      "nanos": 395684671
+    },
+    "pre_auth_key": {
+      "id": 2,
+      "key": "REDACTED-PREAUTH-KEY",
+      "used": true,
+      "expiration": {
+        "seconds": 1794382005,
+        "nanos": 708201877
+      },
+      "created_at": {
+        "seconds": 1794378405,
+        "nanos": 708399210
+      },
+      "acl_tags": [
+        "tag:router",
+        "tag:site-home"
+      ]
+    },
+    "created_at": {
+      "seconds": 1794378405,
+      "nanos": 966304252
+    },
+    "register_method": 1,
+    "given_name": "router-home",
+    "online": true,
+    "approved_routes": [
+      "10.10.0.0/24"
+    ],
+    "available_routes": [
+      "10.10.0.0/24"
+    ],
+    "subnet_routes": [
+      "10.10.0.0/24"
+    ],
+    "tags": [
+      "tag:router",
+      "tag:site-home"
+    ]
+  }
+]

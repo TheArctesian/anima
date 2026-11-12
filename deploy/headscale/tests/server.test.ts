@@ -3,6 +3,7 @@
 import { describe, expect, test } from 'bun:test';
 import { parseGoDuration, seconds } from '../src/go-duration.ts';
 import { days, parsePrometheusDuration } from '../src/prometheus-duration.ts';
+import { HEADSCALE_VERSION } from '../src/version.ts';
 
 const root = new URL('../', import.meta.url);
 const template = await Bun.file(new URL('config/config.yaml', root)).text();
@@ -270,8 +271,9 @@ describe('compose (VPS-002, VPS-003, D-9)', () => {
     ]);
   });
 
-  test('image is Headscale 0.29.7 pinned by tag and digest', () => {
-    expect(at(service, 'image')).toMatch(/^docker\.io\/headscale\/headscale:0\.29\.7@sha256:[0-9a-f]{64}$/);
+  test('VPN-014: compose.yaml pins HEADSCALE_VERSION by tag and digest', () => {
+    const version = HEADSCALE_VERSION.replaceAll('.', '\\.');
+    expect(at(service, 'image')).toMatch(new RegExp(`^docker\\.io/headscale/headscale:${version}@sha256:[0-9a-f]{64}$`));
     expect(at(service, 'command')).toBe('serve');
     expect(at(service, 'restart')).toBe('always');
   });
@@ -300,4 +302,18 @@ describe('compose (VPS-002, VPS-003, D-9)', () => {
     expect(at(service, 'logging.options.max-size')).toMatch(/^\d+[km]$/);
     expect(at(service, 'logging.options.max-file')).toMatch(/^\d+$/);
   });
+});
+
+test('VPN-014: contract-config.yaml differs from config.yaml only in the documented keys', async () => {
+  const contractText = await Bun.file(new URL('test/contract-config.yaml', root)).text();
+  const repository = structuredClone(config) as Tree;
+  const derp = repository.derp as Tree;
+  const changed: Tree = {
+    ...Object.fromEntries(Object.entries(repository).filter(([key]) => !/^(?:acme_|tls_)/.test(key))),
+    server_url: 'http://172.29.250.10:8080',
+    listen_addr: '0.0.0.0:8080',
+    derp: { ...derp, server: { enabled: false }, urls: ['https://controlplane.tailscale.com/derpmap/default'] },
+  };
+  expect(Bun.YAML.parse(contractText)).toEqual(changed);
+  expect(contractText.split('\n').filter((line) => !line.startsWith('#')).join('\n')).not.toContain('${');
 });

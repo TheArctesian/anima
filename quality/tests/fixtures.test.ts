@@ -119,10 +119,6 @@ const phase3ReferencePaths = [
   "checkNotifications.*.channelIds",
   "devices.*.siteId",
   "sessions.*.deviceId",
-  "recordings.*.sessionId",
-  "recordings.*.deviceId",
-  "streams.guacamole.recordingId",
-  "streams.asciicast.recordingId",
   "checks.*.deviceId",
 ].map((p) => p.split("."));
 
@@ -137,11 +133,6 @@ const phase3EnumPaths: Record<string, string> = {
   "devices.*.gpus.*.vendor": "GpuVendor",
   "sessions.*.protocol": "Protocol",
   "sessions.*.endReason": "SessionEndReason",
-  "sessions.*.recording": "RecordingState",
-  "recordings.*.protocol": "Protocol",
-  "recordings.*.format": "RecordingFormat",
-  "streams.guacamole.format": "RecordingFormat",
-  "streams.asciicast.format": "RecordingFormat",
   "checks.*.type": "CheckType",
   "retention.*.subject": "RetentionSubject",
 };
@@ -241,13 +232,12 @@ describe("K6 phase3 fixtures: timestamps and coverage", () => {
     expect(missing).toEqual([]);
   });
 
-  test("the fixtures cover each channel kind, each delivery outcome and the stopped recording", () => {
+  test("the fixtures cover each channel kind, each delivery outcome and each GPU vendor", () => {
     const covers = (path: string, wanted: string[]): string[] =>
       wanted.filter((w) => !valuesAt(phase3, path.split(".")).includes(w));
     expect(covers("channels.*.kind", ["WEBHOOK", "NTFY", "EMAIL", "APPRISE"])).toEqual([]);
     expect(valuesAt(phase3, ["deliveries", "*", "ok"]).includes(false)).toBe(true);
     expect(valuesAt(phase3, ["deliveries", "*", "ok"]).includes(true)).toBe(true);
     expect(covers("devices.*.gpus.*.vendor", ["AMD", "APPLE"])).toEqual([]);
-    expect(covers("recordings.*.stoppedReason", ["size_limit"])).toEqual([]);
   });
 });

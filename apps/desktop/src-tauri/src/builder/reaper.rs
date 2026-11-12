@@ -18,6 +18,10 @@
 pub const MARKER: &str = "ANIMA_BUILD_STEP";
 
 /// One process as `/proc/<pid>/stat` describes it.
+#[cfg_attr(
+    not(target_os = "linux"),
+    expect(dead_code, reason = "only the Linux subreaper reads the process table")
+)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Process {
     pub pid: i32,
@@ -29,6 +33,10 @@ pub struct Process {
 
 /// Reads `/proc/<pid>/stat`. The command name is in parentheses and may hold anything, spaces
 /// and parentheses included, so the fields are read after the last `)`.
+#[cfg_attr(
+    not(target_os = "linux"),
+    expect(dead_code, reason = "only the Linux subreaper reads the process table")
+)]
 pub fn process_of(pid: i32, stat: &str) -> Option<Process> {
     let (_, fields) = stat.rsplit_once(')')?;
     let mut fields = fields.split_whitespace();
@@ -46,6 +54,10 @@ pub fn process_of(pid: i32, stat: &str) -> Option<Process> {
 }
 
 /// Every process below `root` in `all`, children before grandchildren.
+#[cfg_attr(
+    not(target_os = "linux"),
+    expect(dead_code, reason = "only the Linux subreaper reads the process table")
+)]
 pub fn descendants(root: i32, all: &[Process]) -> Vec<Process> {
     let mut found: Vec<Process> = Vec::new();
     let mut parents = vec![root];
@@ -61,6 +73,10 @@ pub fn descendants(root: i32, all: &[Process]) -> Vec<Process> {
 }
 
 /// Whether the `NUL`-separated environment `environ` holds exactly `MARKER=<value>`.
+#[cfg_attr(
+    not(target_os = "linux"),
+    expect(dead_code, reason = "only the Linux subreaper reads the process table")
+)]
 pub fn marked(environ: &[u8], value: &str) -> bool {
     let wanted = format!("{MARKER}={value}");
     environ

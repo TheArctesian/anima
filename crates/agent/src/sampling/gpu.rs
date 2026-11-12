@@ -141,7 +141,8 @@ pub fn values(gpus: &[GpuReading]) -> Vec<(SeriesKey, f64)> {
     out
 }
 
-/// The `gpus` member of a batch for placed readings.
+/// The `gpus` member of a batch for placed readings: those with an index K8 allows (0 to
+/// [`MAX_GPU_INDEX`]), as their samples are.
 #[must_use]
 pub fn announce(gpus: &[GpuReading]) -> Vec<BatchGpu> {
     gpus.iter()
@@ -153,7 +154,9 @@ pub fn announce(gpus: &[GpuReading]) -> Vec<BatchGpu> {
                 GpuVendor::Apple => (WireVendor::Apple, false),
             };
             Some(BatchGpu {
-                index: u8::try_from(gpu.index).ok()?,
+                index: u8::try_from(gpu.index)
+                    .ok()
+                    .filter(|index| *index <= MAX_GPU_INDEX)?,
                 name: gpu.name.clone(),
                 vendor,
                 has_vram,
@@ -250,6 +253,17 @@ mod tests {
             .find(|(key, _)| key.kind() == Kind::VramPercent)
             .map(|(_, value)| *value);
         assert_eq!(share, Some(25.0));
+    }
+
+    #[test]
+    fn met_006_a_gpu_past_index_63_is_not_announced() {
+        let found = [
+            gpu(GpuVendor::Nvidia, 63),
+            gpu(GpuVendor::Nvidia, 64),
+            gpu(GpuVendor::Nvidia, 300),
+        ];
+        let indexes: Vec<u8> = announce(&found).iter().map(|gpu| gpu.index).collect();
+        assert_eq!(indexes, [MAX_GPU_INDEX]);
     }
 
     #[test]

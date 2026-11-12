@@ -5,6 +5,7 @@ import { chmodSync, existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync 
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { binaryDirs, findTools } from "../../quality/src/gates/postgres.ts";
+import { finish, type FinishedProcess } from "./finished-process.ts";
 import { psql, scalar, serverDirectory } from "./postgres.ts";
 import { ROOT, installRoles, migrate } from "./roles-setup.ts";
 
@@ -17,11 +18,7 @@ export const RESTORE_CHECK = join(ROOT, "deploy", "backup", "restore-check.sh");
 // A database of this suite's own, so roles.test.ts keeps `anima` untouched.
 export const DATABASE = "anima_backup_test";
 
-export interface ScriptResult {
-  exitCode: number;
-  stdout: string;
-  stderr: string;
-}
+export type ScriptResult = FinishedProcess;
 
 export const state = { backupDir: "" };
 
@@ -42,14 +39,14 @@ function serverEnvironment(): Record<string, string> {
 }
 
 /** Runs a script in local mode. `shimDirectory` goes first on PATH. */
-export function run(
+export async function run(
   script: string,
   args: string[],
   env: Record<string, string | undefined> = {},
   shimDirectory?: string,
-): ScriptResult {
+): Promise<ScriptResult> {
   const path = [shimDirectory, toolDirectory(), process.env["PATH"]].filter(Boolean).join(":");
-  const result = Bun.spawnSync(["bash", script, ...args], {
+  return finish(["bash", script, ...args], {
     env: {
       ...process.env,
       PATH: path,
@@ -59,9 +56,7 @@ export function run(
       ...serverEnvironment(),
       ...env,
     },
-    stdin: "ignore",
   });
-  return { exitCode: result.exitCode ?? 1, stdout: result.stdout.toString(), stderr: result.stderr.toString() };
 }
 
 /** Files in the backup folder whose names end with `suffix`. */
@@ -70,31 +65,30 @@ export function backupFiles(suffix: string): string[] {
 }
 
 /** Runs backup.sh, expects success and returns the dump path. */
-export function backUp(env: Record<string, string> = {}, shimDirectory?: string): string {
-  const result = run(BACKUP, [], env, shimDirectory);
+export async function backUp(env: Record<string, string> = {}, shimDirectory?: string): Promise<string> {
+  const result = await run(BACKUP, [], env, shimDirectory);
   if (result.exitCode !== 0) throw new Error(`backup.sh failed: ${result.stderr}`);
   return result.stdout.trim();
 }
 
-export function owner(sql: string, database = DATABASE): void {
-  const result = psql(["-c", sql], { user: "anima_owner", database });
+export async function owner(sql: string, database = DATABASE): Promise<void> {
+  const result = await psql(["-c", sql], { user: "anima_owner", database });
   if (result.exitCode !== 0) throw new Error(result.stderr);
 }
 
-export function count(table: string): string {
+export async function count(table: string): Promise<string> {
   return scalar(`select count(*) from ${table}`, { user: "anima_owner", database: DATABASE });
 }
 
 /** Names of databases that start with `prefix`. */
-export function databasesLike(prefix: string): string[] {
-  return scalar(`select coalesce(string_agg(datname, ',' order by datname), '') from pg_database where datname like '${prefix}%'`)
-    .split(",")
-    .filter(Boolean);
+export async function databasesLike(prefix: string): Promise<string[]> {
+  const names = await scalar(`select coalesce(string_agg(datname, ',' order by datname), '') from pg_database where datname like '${prefix}%'`);
+  return names.split(",").filter(Boolean);
 }
 
 // Same statements as roles.sql, for a database of this suite's own.
-export function createDatabase(name = DATABASE): void {
-  const result = psql([
+export async function createDatabase(name = DATABASE): Promise<void> {
+  const result = await psql([
     "-c", `drop database if exists ${name} with (force)`,
     "-c", `create database ${name} owner anima_owner`,
     "-c", `revoke connect, temporary on database ${name} from public`,
@@ -104,24 +98,24 @@ export function createDatabase(name = DATABASE): void {
 }
 
 /** A fresh backup folder, and the sample database with rows in several tables. */
-export function resetSample(): void {
+export async function resetSample(): Promise<void> {
   rmSync(state.backupDir, { recursive: true, force: true });
   state.backupDir = mkdtempSync(join(tmpdir(), "anima-backups-"));
-  installRoles();
-  for (const name of databasesLike(DATABASE)) psql(["-c", `drop database if exists "${name}" with (force)`]);
-  createDatabase();
-  migrate(DATABASE);
-  owner(`insert into devices.sites values ('00000000-0000-0000-0000-000000000001', 'home', '10.0.0.0/24')`);
-  owner(`insert into devices.devices (id, site_id, name, host, kind, os, created_at, updated_at) values
+  await installRoles();
+  for (const name of await databasesLike(DATABASE)) await psql(["-c", `drop database if exists "${name}" with (force)`]);
+  await createDatabase();
+  await migrate(DATABASE);
+  await owner(`insert into devices.sites values ('00000000-0000-0000-0000-000000000001', 'home', '10.0.0.0/24')`);
+  await owner(`insert into devices.devices (id, site_id, name, host, kind, os, created_at, updated_at) values
     ('00000000-0000-0000-0000-0000000000a1', '00000000-0000-0000-0000-000000000001', 'nas', 'nas.lan', 'server', 'linux', now(), now()),
     ('00000000-0000-0000-0000-0000000000a2', '00000000-0000-0000-0000-000000000001', 'mac', 'mac.lan', 'laptop', 'macos', now(), now())`);
-  owner(`insert into devices.device_tags values ('00000000-0000-0000-0000-0000000000a1', 'storage')`);
-  appendLogs();
+  await owner(`insert into devices.device_tags values ('00000000-0000-0000-0000-0000000000a1', 'storage')`);
+  await appendLogs();
 }
 
 /** The hub appends to the logs through the runtime group's rights. */
-export function appendLogs(): void {
-  const appended = psql(
+export async function appendLogs(): Promise<void> {
+  const appended = await psql(
     [
       "-c",
       `set role anima_runtime;
@@ -137,23 +131,23 @@ export function appendLogs(): void {
 }
 
 /** Removes the folder and every database the suite made. */
-export function tearDownSample(): void {
+export async function tearDownSample(): Promise<void> {
   rmSync(state.backupDir, { recursive: true, force: true });
-  for (const name of databasesLike(DATABASE)) psql(["-c", `drop database if exists "${name}" with (force)`]);
-  psql(["-c", "drop database if exists anima_restore_check with (force)"]);
+  for (const name of await databasesLike(DATABASE)) await psql(["-c", `drop database if exists "${name}" with (force)`]);
+  await psql(["-c", "drop database if exists anima_restore_check with (force)"]);
 }
 
 /**
  * A dump that lists fine but fails halfway to restore: it grants a table to a role that the
  * cluster no longer has, so the failure comes after the tables are made.
  */
-export function backUpWithMissingRole(): string {
-  psql(["-c", "drop role if exists anima_gone"]);
-  psql(["-c", "create role anima_gone"]);
-  owner("grant select on devices.sites to anima_gone");
-  const path = backUp();
-  owner("revoke select on devices.sites from anima_gone");
-  const dropped = psql(["-c", "drop role anima_gone"]);
+export async function backUpWithMissingRole(): Promise<string> {
+  await psql(["-c", "drop role if exists anima_gone"]);
+  await psql(["-c", "create role anima_gone"]);
+  await owner("grant select on devices.sites to anima_gone");
+  const path = await backUp();
+  await owner("revoke select on devices.sites from anima_gone");
+  const dropped = await psql(["-c", "drop role anima_gone"]);
   if (dropped.exitCode !== 0) throw new Error(dropped.stderr);
   return path;
 }

@@ -579,7 +579,7 @@ changes nothing.
    then run `ssh` again), and while any `Include` is written in a form it cannot follow
    literally (`Include=`, quotes, a path with spaces: rewrite it as `Include /path/pattern`); it checks the result
    with `sshd -t`, `sshd -T` and `sshd -T -C` for root and the admin user from a public and a VPN
-   address, and puts the old file back if any check fails; then it reloads `sshd.service`. **Keep your current session open.** Open a second session and log in
+   address and for the hub's user `anima-probe` from the hub container (VP-13), and puts the old file back if any check fails; then it reloads `sshd.service`. **Keep your current session open.** Open a second session and log in
    before you close the first.
 
    Before you run it, prove your way back in: log in at the Hostinger browser console as
@@ -816,7 +816,8 @@ changes nothing.
    `sudo nft delete table inet anima_filter` (step 8 below).
 
    The rules also drop packets for this host's own VPN addresses that did not arrive on `lo` or
-   `tailscale0` (DNS-005), and a forward rule drops traffic into `tailscale0` unless it comes from
+   `tailscale0` (DNS-005), except the hub container's SSH (22/tcp) and ping to `100.64.0.1` from
+   its fixed address `172.30.0.10` (VP-13), and a forward rule drops traffic into `tailscale0` unless it comes from
    `lo`, `tailscale0`, `docker0` or a `br-*` bridge. Four more rules contain the optional Apprise
    container (`172.30.3.10`, NOT-002): it reaches no address of this host, no private, VPN, loopback,
    link-local, Docker or multicast range and nothing through `tailscale0`, only the internet and its
@@ -865,7 +866,9 @@ changes nothing.
 10. Note for the hub guide (WP-04): the firewall drops packets addressed to this host's own VPN
     address that did not arrive on `lo` or `tailscale0`. A container on a Docker bridge network
     therefore cannot connect to the host's own VPN address, but it can reach other VPN peers and
-    the site subnets. Treat this as a WP-04 note for the hub's network setup.
+    the site subnets. Treat this as a WP-04 note for the hub's network setup. The one exception
+    is the hub container (`172.30.0.10`), which may reach `100.64.0.1` on 22/tcp and ping, so the
+    VPS can be a device in Anima (VP-13, `deploy/README.md`, "The VPS as a device").
 
 11. **Operator change 9 (confirm in chat first: VPS-005).** In the Hostinger panel, remove the 22/tcp rule that you added in step 1
     of this guide, then sync the firewall and check `is_synced: true` (step 1). SSH now works
@@ -952,6 +955,30 @@ list` shows exactly the tags you expect.
 
    Do the same for the office 2 router with `10.30.0.0/24`. Approve only the one subnet that
    belongs to the router.
+
+   Then run the inventory check (VPN-013). It compares the nodes with the policy and with the
+   names you expect, and reports a foreign user, an unknown tag, a wrong expiry, an unapproved
+   route and a failed policy test. `nodes.json` holds pre-auth keys in clear text: do not keep,
+   mail or commit it, and delete both files on both machines when the check is done.
+
+   ```bash
+   # Runs on: VPS (SSH over the VPN)
+   hsctl nodes list -o json > nodes.json
+   hsctl nodes list-routes -o json > routes.json
+   ```
+
+   ```bash
+   # Runs on: operator's Mac, from the repository root
+   scp <ADMIN_USER>@<HUB_VPN_IPV4>:nodes.json <ADMIN_USER>@<HUB_VPN_IPV4>:routes.json .
+   printf '%s\n' hub home-router office2-router <MAC_NAMES> > expected.txt   # the node names you expect
+   bun deploy/headscale/bin/inventory.ts nodes.json routes.json expected.txt   # expect: inventory: ok
+   rm -f nodes.json routes.json expected.txt
+   ```
+
+   ```bash
+   # Runs on: VPS (SSH over the VPN)
+   rm -f nodes.json routes.json
+   ```
 
 5. Optional, for faster forwarding on Linux with kernel 6.2 or newer. It is not kept after a
    reboot:
@@ -1047,6 +1074,12 @@ On a Linux client: install Tailscale from the repository, then `sudo systemctl e
    expiry dates are about 30 days apart and one Mac with a valid key is always there to approve the
    other (step 7).
 
+6. Run the inventory check from step 5.4 (`hsctl nodes list -o json` and
+   `hsctl nodes list-routes -o json` into `nodes.json` and `routes.json`, `scp` them to the Mac,
+   `bun deploy/headscale/bin/inventory.ts nodes.json routes.json expected.txt`, delete both
+   files on both machines). Add the new Mac's name to `expected.txt` first. `nodes.json` holds
+   pre-auth keys in clear text: never keep, mail or commit it.
+
 ### C. Use the site routes and stay connected
 
 ```bash
@@ -1140,6 +1173,11 @@ Renew:
    renewal is the moment a taken-over client could ask for a tag (and with it a key that never
    expires), so check the tags every time.
 
+4. Run the inventory check from step 5.4 (`nodes.json`, `routes.json`, `scp`,
+   `bun deploy/headscale/bin/inventory.ts nodes.json routes.json expected.txt`) after each
+   renewal, and delete both files on both machines. `nodes.json` holds pre-auth keys in clear
+   text: never keep, mail or commit it.
+
 ## 8. Access rules (VPN-004)
 
 **Operator change 12 (confirm in chat first: VPS-005).** The policy is
@@ -1161,11 +1199,16 @@ tagged pre-auth key.
 
 **To change the rules:**
 
-1. Edit the policy and its `tests` block on your Mac, in the full form. Run the tests there. They are the
-   authoritative check:
+1. Edit the policy and its `tests` block on your Mac, in the full form. Run the reachability
+   table before and after the edit and read the diff: a new allowed row is a new path. Then run
+   the tests. They are the authoritative check:
 
    ```bash
    # Runs on: operator's Mac, from the repository root
+   bun deploy/headscale/bin/reach.ts > /tmp/before.md
+   # ... edit deploy/headscale/config/policy.hujson ...
+   bun deploy/headscale/bin/reach.ts > /tmp/after.md
+   diff /tmp/before.md /tmp/after.md
    bun test deploy/headscale
    ```
 
@@ -1456,9 +1499,13 @@ accepted; the design reduces it as follows.
 **Detection.** Review `hsctl nodes list`, `hsctl preauthkeys list` and `hsctl apikeys list`
 regularly against what you expect: the nodes `hub`, `home-router`, `office2-router` and two Macs, no
 unused pre-auth keys, no API keys. Any other node, any extra tag, any route you did not approve, or
-any expiry you did not set is a reason to act. Also look at the policy file on the
+any expiry you did not set is a reason to act. `bun deploy/headscale/bin/inventory.ts` does this
+comparison for the nodes, tags, expiry, routes and the policy tests (step 5.4). `nodes.json` holds
+pre-auth keys in clear text: delete it on both machines after the check. Also look at the policy file on the
 server and compare it with the repository. Automatic alerting for this is deferred work, tracked
 on [GitHub issue #1](https://github.com/TheArctesian/anima/issues/1) (R-007).
+
+**The broker (Tier B).** The VPN build adds a small program, the broker, on the VPS. It is the only path from the hub to Headscale: the hub has no Headscale API key and no access to the Headscale socket. The broker runs one request for each connection on a unix socket. It has six verbs: `nodes`, `personal-key`, `router-key`, `approve-route`, `register` and `renew`. It refuses a tag that is not in the policy, strips every key from what it returns, limits the number of keys for each day and the number of nodes, and writes one log line for each request. It does not change the policy. The broker mount works only while SELinux is disabled (R-054); turning SELinux on needs a policy module first.
 
 **Residual risk.** If an attacker gets root on the VPS (by SSH, by the Hostinger console, or by a
 takeover of the Hostinger account), they can add a node and widen the policy, and reach every site,
@@ -1527,7 +1574,17 @@ example the Pi-hole) drops answers with private addresses. See the end of
 in `compose.yaml`; an upgrade is a reviewed change to that line.
 
 1. On your Mac, read the release notes for config or CLI changes, update the `image:` line (tag
-   and digest) and run `bun test deploy/headscale`.
+   and digest) and run `bun test deploy/headscale`. Also run the contract harness, which starts
+   the new image in throwaway containers (it needs Docker, writes no file outside the repository
+   and touches no live system):
+
+   ```bash
+   # Runs on: operator's Mac, from the repository root
+   sh deploy/headscale/test/contract.sh        # expect: contract: ok
+   ```
+
+   Set `HEADSCALE_VERSION` in `deploy/headscale/src/version.ts` to the new version first; the
+   harness reads the image from `compose.yaml` and fails if a fixture shape changed.
 2. On the VPS, take a backup first (`sudo systemctl start headscale-backup.service`, then check
    the journal), and note its snapshot ID on the home PC: a database migration cannot be undone
    except by a restore.

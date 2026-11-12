@@ -28,6 +28,10 @@ ID=${HARDEN_ID:-id}
 GETENT=${HARDEN_GETENT:-getent}
 JQ=${HARDEN_JQ:-jq}
 DOCKER=${HARDEN_DOCKER:-docker}
+UNAME=${HARDEN_UNAME:-uname}
+GROUPADD=${HARDEN_GROUPADD:-groupadd}
+USERADD=${HARDEN_USERADD:-useradd}
+RUNUSER=${HARDEN_RUNUSER:-runuser}
 
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 SELF=$HERE/$(basename "${BASH_SOURCE[0]}")
@@ -37,6 +41,8 @@ CONSOLE=0
 RESTART_DOCKER=0
 LIVE_RESTORE_WAIT=${HARDEN_LIVE_RESTORE_WAIT:-10}
 ALLOW_CLOSING=
+BROKER_SHA256=
+PROBE_KEY=
 STATE_DIR=/var/lib/anima
 HEADSCALE_DIR=/opt/anima/headscale
 SSHD_DROPIN=/etc/ssh/sshd_config.d/00-anima.conf
@@ -50,20 +56,26 @@ KEY_LINE_PATTERN='(^|[[:space:]])(ssh-|ecdsa-|sk-)[^[:space:]]+[[:space:]]+AAAA'
 usage() {
   cat <<EOF
 Usage: $SELF [--root DIR] [--dry-run] [--console] [--restart-docker]
-             [--allow-closing PORT/PROTO,...] <command>
+             [--allow-closing PORT/PROTO,...] [--sha256=HASH] [--key=FILE] <command>
 
 Commands (run as root):
   check     Print a read-only inventory (listeners and their units, containers, Docker
             networks, extra enabled units, firewalld, nftables tables), then report OS,
-            admin user, effective sshd values, updates, SELinux and firewall state.
+            admin user, the hub's SSH user anima-probe, effective sshd values, updates,
+            SELinux and firewall state.
             Changes nothing.
-  ssh       Install the sshd drop-in (keys only, no root, AllowUsers \$ANIMA_ADMIN_USER),
+  ssh       Install the sshd drop-in (keys only, no root, AllowUsers \$ANIMA_ADMIN_USER from
+            the VPN only and anima-probe from the hub container only, VP-13),
             verify it with sshd -t, sshd -T and sshd -T -C for root and the admin user,
             then reload sshd. Refuses while sshd_config or a file it includes has an
             active Match line. ANIMA_ADMIN_USER must be a non-root member of group
             $ADMIN_GROUP with a key in ~/.ssh/authorized_keys (VPS_PUBLIC_IPV4, if set,
             is the public address the -C checks use):
             sudo --preserve-env=ANIMA_ADMIN_USER,VPS_PUBLIC_IPV4 $SELF ssh
+  probe     Make anima-probe, the hub's SSH user (VP-13): uid and gid 10002, which the
+            firewall confines, its own group only, no password, home /home/anima-probe. Then
+            install the hub's public key (--key=FILE, one line as ssh-keygen wrote it) as its
+            only key, with restrict,pty,from="172.30.0.10". Run it again to change the key.
   updates   Install dnf-automatic: all updates daily at 03:45 UTC, reboot at 04:30 when
             needed.
   selinux   Label Headscale's config/ and lib/ container_file_t (semanage, restorecon).
@@ -80,6 +92,11 @@ Commands (run as root):
             sudo --preserve-env=SSH_CONNECTION $SELF firewall
   confirm   From a NEW SSH session over the VPN (same sudo form as firewall): cancel
             the rollback, install the rules for boot and mask firewalld.
+  broker    Install the Anima broker (R-055): the binary copied first to
+            /usr/local/libexec/anima-broker.new (scp) and checked against --sha256,
+            /etc/anima/broker.conf if absent (max_nodes = the node count + 5), the
+            socket, service and audit timer units from ../broker/; restart the socket
+            and the timer, then ask the broker for the node list.
 
 Options:
   --root DIR        Treat DIR as the file system root (tests). Default /.
@@ -89,6 +106,8 @@ Options:
   --allow-closing L firewall, confirm: close these open ports on purpose, for example
                     --allow-closing 9090/tcp,546/udp. Ports to keep open go in
                     /etc/anima/firewall-allow, one PORT/PROTO per line.
+  --sha256=HASH     broker: the SHA-256 of anima-broker.new, as broker-build.ts printed it.
+  --key=FILE        probe: the hub's public key file, for example /tmp/anima-probe.pub.
 
 Exit codes: 0 done; 1 a step failed or check found violations; 2 refused because a
 precondition is not met (nothing changed); 64 usage error.
@@ -263,7 +282,7 @@ cmd_check() {
   if [ -n "$line" ] && [ "$($GETENFORCE 2>/dev/null)" = Disabled ]; then
     say "note: SELinux stays disabled, a recorded deviation: $line"
   fi
-  problems=$(docker_version_problem; admin_problem; match_problems; sshd_mismatches "${ANIMA_ADMIN_USER:-}"; update_problems
+  problems=$(docker_version_problem; admin_problem; probe_problem; match_problems; sshd_mismatches "${ANIMA_ADMIN_USER:-}"; update_problems
     selinux_problems; firewall_problems; listener_violations)
   if [ -z "$problems" ]; then say "ok: no violations"; return 0; fi
   while IFS= read -r line; do say "VIOLATION: $line"; done <<<"$problems"
@@ -272,6 +291,8 @@ cmd_check() {
 
 # shellcheck source=sshd.sh
 . "$HERE/sshd.sh"
+# shellcheck source=probe.sh
+. "$HERE/probe.sh"
 # shellcheck source=selinux.sh
 . "$HERE/selinux.sh"
 # shellcheck source=open-ports.sh
@@ -280,6 +301,8 @@ cmd_check() {
 . "$HERE/firewall.sh"
 # shellcheck source=inventory.sh
 . "$HERE/inventory.sh"
+# shellcheck source=broker.sh
+. "$HERE/broker.sh"
 
 main() {
   while [ $# -gt 0 ]; do
@@ -289,6 +312,8 @@ main() {
       --console) CONSOLE=1; shift ;;
       --restart-docker) RESTART_DOCKER=1; shift ;;
       --allow-closing) [ $# -ge 2 ] || usage_error; ALLOW_CLOSING=$2; shift 2 ;;
+      --sha256=*) BROKER_SHA256=${1#--sha256=}; shift ;;
+      --key=*) PROBE_KEY=${1#--key=}; shift ;;
       -h | --help) usage; exit 0 ;;
       -*) usage_error ;;
       *) break ;;
@@ -300,7 +325,7 @@ main() {
     exit 64
   fi
   case $1 in
-    check | ssh | updates | selinux | docker | firewall | confirm) "cmd_$1" ;;
+    check | ssh | probe | updates | selinux | docker | firewall | confirm | broker) "cmd_$1" ;;
     *) usage_error ;;
   esac
 }

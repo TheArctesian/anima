@@ -231,40 +231,10 @@ fn ra_021_guacd_drive_root_overrides_default_and_must_be_absolute() {
 }
 
 #[test]
-fn d_4_tailscale_localapi_parses_host_port_and_empty_means_none() {
-    for good in ["proxy:41112", "[fd7a::1]:41112"] {
-        let config = from_env(&env(&[(TAILSCALE_LOCALAPI, good)])).unwrap();
-        assert_eq!(config.tailscale_localapi.as_deref(), Some(good));
-    }
-    let config = from_env(&env(&[(TAILSCALE_LOCALAPI, "")])).unwrap();
-    assert_eq!(config.tailscale_localapi, None);
-}
-
-#[test]
-fn d_4_malformed_tailscale_localapi_is_refused_naming_the_variable() {
-    for bad in ["proxy", ":1", "proxy:x", "fd7a::1:41112"] {
-        let error = from_env(&env(&[(TAILSCALE_LOCALAPI, bad)])).unwrap_err();
-        assert!(
-            matches!(
-                error,
-                Error::HostPort {
-                    variable: TAILSCALE_LOCALAPI,
-                    ..
-                }
-            ),
-            "{bad}"
-        );
-        assert!(error.to_string().contains(TAILSCALE_LOCALAPI), "{bad}");
-    }
-}
-
-#[test]
 fn k7_phase_3_variables_default_when_unset() {
     let config = from_env(&env(&[])).unwrap();
     assert_eq!(config.public_origin, "https://hub.anima.ing");
     assert_eq!(config.web_root, None);
-    assert_eq!(config.recording_root, None);
-    assert_eq!(config.recording_max_bytes, 2_147_483_648);
 }
 
 #[test]
@@ -272,37 +242,14 @@ fn k7_phase_3_variables_take_explicit_values() {
     let config = from_env(&env(&[
         (PUBLIC_ORIGIN, "https://anima.example.org:8443"),
         (WEB_ROOT, "/usr/share/anima/web"),
-        (RECORDING_ROOT, "/var/lib/anima/recordings"),
-        (RECORDING_MAX_BYTES, "1048576"),
     ]))
     .unwrap();
     assert_eq!(config.public_origin, "https://anima.example.org:8443");
     assert_eq!(config.web_root, Some(PathBuf::from("/usr/share/anima/web")));
-    assert_eq!(
-        config.recording_root,
-        Some(PathBuf::from("/var/lib/anima/recordings"))
-    );
-    assert_eq!(config.recording_max_bytes, 1_048_576);
 }
 
 #[test]
-fn d_2_empty_web_root_and_empty_recording_root_are_none() {
-    let config = from_env(&env(&[(WEB_ROOT, ""), (RECORDING_ROOT, "")])).unwrap();
+fn d_2_an_empty_web_root_is_none() {
+    let config = from_env(&env(&[(WEB_ROOT, "")])).unwrap();
     assert_eq!(config.web_root, None);
-    assert_eq!(config.recording_root, None);
-}
-
-#[test]
-fn k7_recording_max_bytes_must_be_a_positive_integer_naming_the_variable() {
-    for bad in ["0", "-5", "+5", "lots", "1.5", "99999999999999999999999"] {
-        let error = from_env(&env(&[(RECORDING_MAX_BYTES, bad)])).unwrap_err();
-        assert!(
-            matches!(error, Error::NotPositive { variable, .. } if variable == RECORDING_MAX_BYTES),
-            "{bad:?}"
-        );
-    }
-    let error = from_env(&env(&[(RECORDING_MAX_BYTES, "")])).unwrap_err();
-    assert!(matches!(error, Error::Empty { variable } if variable == RECORDING_MAX_BYTES));
-    let minimum = from_env(&env(&[(RECORDING_MAX_BYTES, "1")])).unwrap();
-    assert_eq!(minimum.recording_max_bytes, 1);
 }

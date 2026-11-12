@@ -50,9 +50,20 @@ export function inputId(field: string): string {
   return `device-${field.replaceAll('.', '-')}`;
 }
 
+/** The DOM id of the hint under the input of a field path. */
+export function hintId(field: string): string {
+  return `${inputId(field)}-hint`;
+}
+
 /** The DOM id of the error text for a field path. */
 export function errorId(field: string): string {
   return `${inputId(field)}-error`;
+}
+
+/** The `aria-describedby` of a control: its hint, then its error, whichever exist; undefined when neither does. */
+export function describedBy(field: string, hasHint: boolean, hasError: boolean): string | undefined {
+  const ids = [...(hasHint ? [hintId(field)] : []), ...(hasError ? [errorId(field)] : [])];
+  return ids.length > 0 ? ids.join(' ') : undefined;
 }
 
 const CHANGED_KEY_WARNING = 'The host key changed. Do not trust this device until you check it.';

@@ -14,15 +14,16 @@ use std::{
 use anima_hub::{
     DRAIN_LIMIT, Shutdown,
     access::{self, listen},
-    all_routes, builds, checks,
+    all_routes, builds,
     clock::{Clock as _, SystemClock},
     config::{self, Config},
     credentials::Vault,
     events::{self, Bus, process_log},
-    metrics, notifications,
+    metrics,
     schema::Dependencies,
     serve_until, sessions,
     targets::AddressPolicy,
+    vpn,
 };
 use sqlx::PgPool;
 
@@ -150,10 +151,9 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
         .denying(policy.clone());
     tracing::info!(listen = %listening.local_addr()?, "hub started");
     let bus = Bus::new(BUS_CAPACITY);
-    let (probing, collecting, sending) =
-        reaching(&vault, &policy, config.tailscale_localapi.clone());
     let feed = metrics::Feed::new();
     let dependencies = Dependencies {
+        vpn_broker: config.vpn_broker.clone().map(vpn::Broker::new),
         config,
         clock: clock.clone(),
         pool: pool.clone(),
@@ -161,17 +161,12 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
         vault,
         live: live.clone(),
         policy,
-        metrics_feed: feed.clone(),
+        metrics_feed: feed,
         build_updates: builds::Updates::new(),
         bucket,
+        vpn_feed: vpn::Feed::new(),
     };
-    let mut background = upkeep::spawn(&dependencies);
-    let scheduler = checks::spawn_scheduler(pool.clone(), bus.clone(), clock.clone(), probing);
-    let collector =
-        metrics::spawn_collector(pool.clone(), feed, bus.clone(), clock.clone(), collecting);
-    let dispatcher =
-        notifications::spawn_dispatcher(pool.clone(), bus.clone(), clock.clone(), sending);
-    let stale_watch = metrics::spawn_stale_watch(pool.clone(), bus.clone(), clock.clone());
+    let background = upkeep::spawn(&dependencies);
     // Every route is behind the same permitted-networks check (K3, NET-002).
     let edge = access::Edge::new(pool.clone(), bus, clock.clone());
     let app = all_routes(dependencies, edge.clone());
@@ -188,31 +183,8 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
         first_stop_signal(),
     )
     .await;
-    background.extend([scheduler, collector, dispatcher, stale_watch]);
     background.iter().for_each(tokio::task::JoinHandle::abort);
     Ok(())
-}
-
-/// What checks, metrics and notifications need to reach the outside: the vault and the one
-/// address policy (P2-004, D-16).
-fn reaching(
-    vault: &Vault,
-    policy: &AddressPolicy,
-    localapi: Option<String>,
-) -> (checks::Probing, metrics::Collecting, notifications::Sending) {
-    let (vault, policy) = (vault.clone(), policy.clone());
-    (
-        checks::Probing {
-            vault: vault.clone(),
-            policy: policy.clone(),
-            localapi,
-        },
-        metrics::Collecting {
-            vault: vault.clone(),
-            policy: policy.clone(),
-        },
-        notifications::Sending { vault, policy },
-    )
 }
 
 /// Stores `ANIMA_PERMITTED_NETWORKS` (D-10). A hub fault is logged by its fault word and

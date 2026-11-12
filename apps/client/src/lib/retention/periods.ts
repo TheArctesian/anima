@@ -5,7 +5,6 @@ export const SUBJECTS: readonly { readonly subject: RetentionSubject; readonly l
   { subject: 'HEARTBEATS', label: 'Check results' },
   { subject: 'METRICS', label: 'Metrics' },
   { subject: 'EVENTS', label: 'Events' },
-  { subject: 'RECORDINGS', label: 'Session recordings' },
   { subject: 'DELIVERIES', label: 'Notification deliveries' },
 ];
 

@@ -1,13 +1,13 @@
 // The K6 Phase 3 fixtures (`contracts/fixtures/phase3.json`) as typed slices. This is test and story
 // support: no route imports it, because the JSON lives outside the client root and Vite's fs.allow has not
 // been shown to accept it in a build. When the Phase 3 client packages land, split the slices into their
-// domain folders (notifications, api-keys, sessions/recording, retention).
+// domain folders (notifications, api-keys, retention).
 //
 // The K1 types of Phase 3 are @pending, so codegen does not emit them yet. The shapes below follow K1 and are
 // built field by field, so a field renamed in the JSON fails `bun run check`. `phase3.test.ts` checks every
 // list below against its K1 enum and every slice's keys against the K1 fields of its type. Enum values are
 // narrowed at load time with `oneOf`.
-import type { CheckType, Protocol } from '$lib/hub/generated/graphql';
+import type { CheckType } from '$lib/hub/generated/graphql';
 import raw from '../../../../../contracts/fixtures/phase3.json';
 
 function oneOf<T extends string>(allowed: readonly T[], value: string): T {
@@ -19,8 +19,7 @@ function oneOf<T extends string>(allowed: readonly T[], value: string): T {
 export const CHANNEL_KINDS = ['WEBHOOK', 'NTFY', 'EMAIL', 'APPRISE'] as const;
 export const NOTIFICATION_KINDS = ['DOWN', 'UP', 'STILL_DOWN', 'CERTIFICATE_EXPIRY', 'DOMAIN_EXPIRY', 'TEST'] as const;
 export const TOKEN_SCOPES = ['READ', 'WRITE'] as const;
-export const RECORDING_FORMATS = ['GUACAMOLE', 'ASCIICAST'] as const;
-export const RETENTION_SUBJECTS = ['HEARTBEATS', 'METRICS', 'EVENTS', 'RECORDINGS', 'DELIVERIES'] as const;
+export const RETENTION_SUBJECTS = ['HEARTBEATS', 'METRICS', 'EVENTS', 'DELIVERIES'] as const;
 export const WEBHOOK_METHODS = ['POST', 'PUT'] as const;
 export const SMTP_SECURITY = ['TLS', 'STARTTLS'] as const;
 export const APPRISE_MODES = ['STATELESS_URLS', 'CONFIG_KEY'] as const;
@@ -37,8 +36,6 @@ export const DELIVERY_REASONS = [
   'SMTP_REFUSED',
   'NOT_UNDERSTOOD',
 ] as const;
-const STOP_REASONS = ['size_limit', 'disk_full', 'write_failed'] as const;
-const PROTOCOLS = ['SSH', 'RDP', 'VNC'] as const satisfies readonly Protocol[];
 
 export interface NotificationTemplate {
   title: string;
@@ -91,22 +88,6 @@ export interface ApiKey {
   lastUsedAt: string | null;
 }
 
-export interface Recording {
-  id: string;
-  sessionId: string;
-  deviceId: string | null;
-  deviceName: string;
-  protocol: Protocol;
-  format: (typeof RECORDING_FORMATS)[number];
-  startedAt: string;
-  endedAt: string | null;
-  sizeBytes: number;
-  complete: boolean;
-  expiresAt: string;
-  /** The K2 column `sessions.recordings.stopped_reason`; not a K1 field. */
-  stoppedReason: (typeof STOP_REASONS)[number] | null;
-}
-
 export interface RetentionPeriod {
   subject: (typeof RETENTION_SUBJECTS)[number];
   days: number;
@@ -126,13 +107,6 @@ export interface NotificationSettings {
   certificateDays: number[];
   template: NotificationTemplate;
   placeholders: string[];
-}
-
-/** A plaintext recording for a player test: Guacamole instructions or an asciicast v2 file. */
-export interface RecordingStream {
-  recordingId: string;
-  format: (typeof RECORDING_FORMATS)[number];
-  text: string;
 }
 
 export interface DomainExpiryCheck {
@@ -182,13 +156,6 @@ export const deliveries: readonly Delivery[] = raw.deliveries.map((d) => ({
 
 export const apiKeys: readonly ApiKey[] = raw.apiKeys.map((k) => ({ ...k, scope: oneOf(TOKEN_SCOPES, k.scope) }));
 
-export const recordings: readonly Recording[] = raw.recordings.map((r) => ({
-  ...r,
-  protocol: oneOf(PROTOCOLS, r.protocol),
-  format: oneOf(RECORDING_FORMATS, r.format),
-  stoppedReason: r.stoppedReason === null ? null : oneOf(STOP_REASONS, r.stoppedReason),
-}));
-
 export const retention: readonly RetentionPeriod[] = raw.retention.map((p) => ({
   ...p,
   subject: oneOf(RETENTION_SUBJECTS, p.subject),
@@ -208,14 +175,4 @@ export const domainExpiryCheck: DomainExpiryCheck = {
   type: oneOf(['DOMAIN_EXPIRY'] as const satisfies readonly CheckType[], rawDomainCheck.type),
   domainDaysLeft: rawDomainCheck.domainDaysLeft,
   config: { domainExpiry: { ...rawDomainCheck.config.domainExpiry } },
-};
-
-export const guacamoleStream: RecordingStream = {
-  ...raw.streams.guacamole,
-  format: oneOf(RECORDING_FORMATS, raw.streams.guacamole.format),
-};
-
-export const asciicastStream: RecordingStream = {
-  ...raw.streams.asciicast,
-  format: oneOf(RECORDING_FORMATS, raw.streams.asciicast.format),
 };

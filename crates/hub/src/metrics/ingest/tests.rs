@@ -1,6 +1,6 @@
 //! Tests of the agent ingest parts below the HTTP client: the throttle, the bearer header, the
 //! refusal answers, how the routes answer when they cannot finish, the token and code rows at
-//! their edges, and the stale mark at its edges.
+//! their edges, the stale mark at its edges, and the turns that keep agents off the pool.
 
 mod answering;
 mod credential;
@@ -9,8 +9,9 @@ mod refusals;
 mod renewal;
 mod stale;
 mod throttle;
+mod turns;
 
-use std::{sync::Arc, time::Duration};
+use std::sync::Arc;
 
 use agent_core::wire::{AgentToken, EnrolmentCode};
 use axum::{
@@ -24,7 +25,7 @@ use tower::ServiceExt as _;
 
 use super::{
     enrolment::{enrol, make_code, redeem},
-    routes::agent_router_within,
+    routes::{Deadlines, agent_router_within},
 };
 use crate::{
     clock::{Clock, FixedClock},
@@ -48,7 +49,7 @@ async fn database_now(pool: &PgPool) -> DateTime<Utc> {
 /// Pushes `batch` with `token` at `now` from a permitted address; the status.
 async fn push(pool: &PgPool, now: DateTime<Utc>, token: &AgentToken, batch: &Value) -> StatusCode {
     let clock: Arc<dyn Clock> = Arc::new(FixedClock(now));
-    let router = agent_router_within(pool.clone(), Bus::new(16), clock, Duration::from_secs(10));
+    let router = agent_router_within(pool.clone(), Bus::new(16), clock, Deadlines::HUB);
     let mut request = Request::post("/agent/v1/push")
         .header("content-type", "application/json")
         .header("authorization", format!("Bearer {}", token.expose()))
@@ -61,10 +62,16 @@ async fn push(pool: &PgPool, now: DateTime<Utc>, token: &AgentToken, batch: &Val
 
 /// pve-01 enrolled at `now` with the token spelled by `seed`; the token as an agent presents it.
 async fn enrolled_pve(pool: &PgPool, now: DateTime<Utc>, seed: u8) -> AgentToken {
+    enrolled(pool, pve(), now, seed).await
+}
+
+/// `device` enrolled at `now` with the token spelled by `seed`; the token as an agent presents
+/// it.
+async fn enrolled(pool: &PgPool, device: DeviceId, now: DateTime<Utc>, seed: u8) -> AgentToken {
     let code = EnrolmentCode::from_random([seed; 16]);
     let presented = EnrolmentCode::parse(code.expose()).unwrap();
     let mut conn = pool.acquire().await.unwrap();
-    make_code(&mut conn, pve(), code, now).await.unwrap();
+    make_code(&mut conn, device, code, now).await.unwrap();
     drop(conn);
     let redeemed = redeem(pool, &presented, now).await.unwrap().unwrap();
     let token = AgentToken::from_random([seed; 32]);

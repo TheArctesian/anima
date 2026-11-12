@@ -19,11 +19,12 @@ function forwarded(packet: Packet): { prerouting: Verdict; forward: Verdict } {
 // network from a public address.
 const sourceOn = (iifname: string): string => (iifname === "eth0" ? "203.0.113.9" : "172.30.0.20");
 const toMac = (iifname: string): Packet =>
-  ({ iifname, oifname: "tailscale0", saddr: sourceOn(iifname), daddr: "100.64.0.2", daddrIsLocal: false, ctState: "new" });
+  ({ iifname, oifname: "tailscale0", saddr: sourceOn(iifname), daddr: "100.64.0.2", daddrIsLocal: false, ctState: "new", protocol: "tcp", dport: 5900 });
 const toSiteDevice = (iifname: string): Packet =>
-  ({ iifname, oifname: "tailscale0", saddr: sourceOn(iifname), daddr: "10.10.0.5", daddrIsLocal: false, ctState: "new" });
+  ({ iifname, oifname: "tailscale0", saddr: sourceOn(iifname), daddr: "10.10.0.5", daddrIsLocal: false, ctState: "new", protocol: "tcp", dport: 3389 });
 
-// The forward chain has no port rule, so a packet carries no port: VNC 5900 and RDP 3389 pass as any port does.
+// The forward chain has no port rule: VNC 5900 and RDP 3389 pass as any port does. The packets carry
+// one because prerouting's VP-13 rules match on the port.
 describe("VPS forwarding for the gateway (R-050, VPS-002)", () => {
   for (const bridge of ["br-1a2b3c4d5e6f", "docker0"]) {
     test(`R-050 a packet from ${bridge} out of tailscale0 to the Mac is dropped by neither chain`, () => {
@@ -41,9 +42,9 @@ describe("VPS forwarding for the gateway (R-050, VPS-002)", () => {
     }
   });
 
-  test("R-050 a packet from a bridge to the host's own VPN address is still dropped in prerouting (WP-04 limitation)", () => {
+  test("R-050 a packet from a bridge to the host's own VPN address is still dropped in prerouting (WP-04 limitation, VP-13)", () => {
     for (const iifname of ["br-1a2b3c4d5e6f", "docker0"]) {
-      const packet: Packet = { iifname, saddr: "172.30.0.20", daddr: "100.64.0.1", daddrIsLocal: true };
+      const packet: Packet = { iifname, saddr: "172.30.0.20", daddr: "100.64.0.1", daddrIsLocal: true, protocol: "tcp", dport: 22 };
       expect(forwarded(packet).prerouting).toBe("drop");
     }
   });

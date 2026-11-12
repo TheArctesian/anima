@@ -15,7 +15,7 @@ function known(value: number | null): value is number {
 export const formatPercent: UnitFormatter = (value) => (known(value) ? `${String(Math.round(value))} %` : UNKNOWN);
 
 /** IEC bytes with one decimal above 1 KiB: "512 B", "1.5 GiB". */
-const formatBytes: UnitFormatter = (value) => {
+export const formatBytes: UnitFormatter = (value) => {
   if (!known(value)) return UNKNOWN;
   let scaled = Math.abs(value);
   let step = 0;

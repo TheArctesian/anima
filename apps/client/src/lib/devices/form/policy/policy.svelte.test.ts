@@ -19,7 +19,7 @@ vi.mock('motion', async (importOriginal) => ({
 beforeEach(installAnimations);
 afterEach(leave);
 
-const POLICY = { sessionLimit: 5, recordSessions: false };
+const POLICY = { sessionLimit: 5 };
 const ok = <T,>(value: T): HubResult<T> => ({ ok: true, value });
 const down: HubResult<never> = { ok: false, error: { code: 'UNAVAILABLE', message: 'secret hub text' } };
 
@@ -47,8 +47,6 @@ function open(): void {
 }
 
 const limit = () => input('policy-sessionLimit');
-const record = () =>
-  [...document.querySelectorAll('label')].find((label) => label.textContent.includes('Record sessions'))?.querySelector('input') ?? null;
 const message = () => document.getElementById('device-policy-message')?.textContent ?? '';
 
 async function editing(loads: HubResult<unknown>[], saves: HubResult<unknown>[] = []) {
@@ -59,33 +57,31 @@ async function editing(loads: HubResult<unknown>[], saves: HubResult<unknown>[] 
   return { sent, calls };
 }
 
-it('RA-036, RA-040: a saved device reads the limit and recording through their own document', async () => {
-  const { sent } = await editing([ok({ device: { ...POLICY, recordSessions: true } })]);
+it('RA-036: a saved device reads the limit through its own document', async () => {
+  const { sent } = await editing([ok({ device: POLICY })]);
   expect(sent).toEqual([{ operation: 'DevicePolicy', variables: { id: 'd1' } }]);
   expect(limit().value).toBe('5');
-  expect(record()?.checked).toBe(true);
 });
 
-it('RA-036: the help text says file tunnels do not count; RA-040: recordings are encrypted and badged', async () => {
+it('RA-036: the help text says file tunnels do not count; R-113: no recording setting is offered', async () => {
   await editing([ok({ device: POLICY })]);
   expect(document.body.textContent).toContain('File tunnels do not count');
-  expect(document.body.textContent).toContain('encrypted at rest');
-  expect(document.body.textContent).toContain('"Recording" badge');
+  const section = document.querySelector('[data-section="sessions"]');
+  expect(section?.textContent).not.toMatch(/record/i);
+  expect(section?.querySelector('input[type="checkbox"]')).toBeNull();
 });
 
-it('RA-036, RA-040: the policy saves through its own mutation, and the device update stays out of it', async () => {
-  const { sent, calls } = await editing([ok({ device: POLICY })], [ok({ updateDevice: { sessionLimit: 7, recordSessions: true } })]);
+it('RA-036: the policy saves through its own mutation, and the device update stays out of it', async () => {
+  const { sent, calls } = await editing([ok({ device: POLICY })], [ok({ updateDevice: { sessionLimit: 7 } })]);
   type('policy-sessionLimit', '7');
-  record()?.click();
-  flushSync();
   await save();
-  expect(sent[1]).toEqual({ operation: 'SetDevicePolicy', variables: { id: 'd1', input: { sessionLimit: 7, recordSessions: true } } });
+  expect(sent[1]).toEqual({ operation: 'SetDevicePolicy', variables: { id: 'd1', input: { sessionLimit: 7 } } });
   expect(calls.onSave).toHaveBeenCalledTimes(1);
   expect(calls.onSave.mock.calls[0]?.[0]).not.toHaveProperty('policy');
 });
 
 it('RA-036: emptying a stored limit sends 0', async () => {
-  const { sent } = await editing([ok({ device: POLICY })], [ok({ updateDevice: { sessionLimit: null, recordSessions: false } })]);
+  const { sent } = await editing([ok({ device: POLICY })], [ok({ updateDevice: { sessionLimit: null } })]);
   type('policy-sessionLimit', '');
   await save();
   expect(sent[1]?.variables).toEqual({ id: 'd1', input: { sessionLimit: 0 } });
@@ -121,17 +117,15 @@ it('RA-036: 0 on create is refused', async () => {
   expect(calls.onSave).not.toHaveBeenCalled();
 });
 
-it('RA-040: recording is off by default for a new device, and a ticked one goes to create', async () => {
+it('RA-036: a new device takes a typed limit to create', async () => {
   const calls = show(null, { sites: [{ id: 's1', name: 'Home', subnet: '10.0.0.0/24' }] });
   open();
-  expect(record()?.checked).toBe(false);
   expect(limit().disabled).toBe(false);
   type('name', 'new');
   type('host', 'new.home.arpa');
-  record()?.click();
   type('policy-sessionLimit', '4');
   await save();
-  expect(calls.onSave.mock.calls[0]?.[0].policy).toEqual({ sessionLimit: '4', recordSessions: true });
+  expect(calls.onSave.mock.calls[0]?.[0].policy).toEqual({ sessionLimit: '4' });
 });
 
 it('RA-036: a failed policy load keeps the rest of the form usable, sends no policy, and offers Try again', async () => {
@@ -139,7 +133,6 @@ it('RA-036: a failed policy load keeps the rest of the form usable, sends no pol
   expect(message()).toBe(LOAD_SENTENCE);
   expect(message()).not.toContain('secret');
   expect(limit().disabled).toBe(true);
-  expect(record()?.disabled).toBe(true);
   type('name', 'nas2');
   await save();
   expect(calls.onSave).toHaveBeenCalledTimes(1);
@@ -172,7 +165,7 @@ const notice = () => document.querySelector('p[role="status"]')?.textContent ?? 
 const REFUSED: HubResult<never> = { ok: false, error: { code: 'UNAVAILABLE', message: 'secret hub text' } };
 
 it('RA-036, MOT-007: the policy saved but the device did not: a status outside the closed disclosure says so, and a second Save sends no second policy', async () => {
-  const sent = hubWith([ok({ device: POLICY })], [ok({ updateDevice: { sessionLimit: 9, recordSessions: false } })]);
+  const sent = hubWith([ok({ device: POLICY })], [ok({ updateDevice: { sessionLimit: 9 } })]);
   const calls = show(SAVED);
   await settle();
   open();

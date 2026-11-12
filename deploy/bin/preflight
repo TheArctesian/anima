@@ -1,10 +1,14 @@
 #!/bin/sh
 # Checks the host before `docker compose up` (NET-003, DB-002). With no argument it checks
-# all four things from the environment and exits 1 on the first failure:
+# all five things from the environment and exits 1 on the first failure:
 #   address  ANIMA_HUB_ADDRESS is an IPv4 address in 100.64.0.0/10 (the VPN range).
 #   public   ANIMA_VPS_PUBLIC_ADDRESS is a public IPv4 address (not VPN, private or reserved).
 #   docker   the Docker Engine is version 28 or later (earlier engines let a routed LAN
 #            neighbour reach unpublished container ports).
+#   networks every ANIMA_*_SUBNET and ANIMA_HUB_IP_RANGE is inside 172.30.0.0/16, the range the VPS
+#            firewall keeps off the VPN and the hub refuses as a site subnet; ANIMA_HUB_IP and
+#            ANIMA_GUACD_IP differ and are outside ANIMA_HUB_IP_RANGE, so Docker gives neither to
+#            another container (VP-13). Reads the environment, defaults as in compose.yaml.
 #   secrets  every secret file of compose.yaml exists and is not empty in the secrets folder
 #            (ANIMA_SECRETS_DIR, default deploy/secrets), and has the mode make-secrets sets:
 #            0440, or 0400 for cloudflare_dns_token.
@@ -72,6 +76,67 @@ check_public_address() {
     [ -z "$private" ] || fail "ANIMA_VPS_PUBLIC_ADDRESS '$ip' is not a public address (VPN, private, loopback or reserved range)"
 }
 
+# ipv4_number NAME ADDRESS: ADDRESS (dotted IPv4, no leading zeros) as a number; fails naming NAME.
+ipv4_number() {
+    name=$1
+    ip=$2
+    case $ip in
+    *[!0-9.]* | '' | .* | *. | *..*) fail "$name '$ip' is not an IPv4 address" ;;
+    esac
+    oldifs=$IFS
+    IFS=.
+    # shellcheck disable=SC2086 # word splitting on dots is the point
+    set -- $ip
+    IFS=$oldifs
+    [ "$#" -eq 4 ] || fail "$name '$ip' is not an IPv4 address"
+    for part in "$@"; do
+        case $part in
+        0?*) fail "$name '$ip' has a leading zero in '$part'" ;;
+        esac
+        [ "${#part}" -le 3 ] && [ "$part" -le 255 ] || fail "$name '$ip' is not an IPv4 address"
+    done
+    echo $((($1 << 24) + ($2 << 16) + ($3 << 8) + $4))
+}
+
+# anima_range NAME CIDR: CIDR is an IPv4 network inside 172.30.0.0/16; prints its first address
+# and its size.
+anima_range() {
+    case $2 in
+    */*) ;;
+    *) fail "$1 '$2' is not a network (address/bits)" ;;
+    esac
+    bits=${2#*/}
+    case $bits in
+    '' | *[!0-9]*) fail "$1 '$2' is not a network (address/bits)" ;;
+    esac
+    first=$(ipv4_number "$1" "${2%/*}")
+    if [ "$bits" -lt 16 ] || [ "$bits" -gt 32 ] || [ $((first >> 16)) -ne $(((172 << 8) + 30)) ]; then
+        fail "$1 '$2' is not inside 172.30.0.0/16, the range the VPS firewall keeps off the VPN (VP-13)"
+    fi
+    echo "$first $((1 << (32 - bits)))"
+}
+
+check_networks() {
+    for setting in "ANIMA_HUB_SUBNET=${ANIMA_HUB_SUBNET:-172.30.0.0/24}" \
+        "ANIMA_DATABASE_SUBNET=${ANIMA_DATABASE_SUBNET:-172.30.1.0/24}" \
+        "ANIMA_LOCALAPI_SUBNET=${ANIMA_LOCALAPI_SUBNET:-172.30.2.0/24}" \
+        "ANIMA_ACME_SUBNET=${ANIMA_ACME_SUBNET:-172.30.4.0/24}"; do
+        anima_range "${setting%%=*}" "${setting#*=}" >/dev/null
+    done
+    range=${ANIMA_HUB_IP_RANGE:-172.30.0.128/25}
+    bounds=$(anima_range ANIMA_HUB_IP_RANGE "$range")
+    hub=$(ipv4_number ANIMA_HUB_IP "${ANIMA_HUB_IP:-172.30.0.10}")
+    guacd=$(ipv4_number ANIMA_GUACD_IP "${ANIMA_GUACD_IP:-172.30.0.20}")
+    [ "$hub" -ne "$guacd" ] || fail "ANIMA_GUACD_IP is ANIMA_HUB_IP; guacd needs its own address, the VPS trusts the hub's (VP-13)"
+    for fixed in "ANIMA_HUB_IP $hub" "ANIMA_GUACD_IP $guacd"; do
+        # shellcheck disable=SC2086 # "first size" and "name number" are split on purpose
+        set -- $bounds ${fixed#* }
+        if [ "$3" -ge "$1" ] && [ "$3" -lt $(($1 + $2)) ]; then
+            fail "${fixed%% *} is inside ANIMA_HUB_IP_RANGE '$range'; Docker could give it to another container (VP-13)"
+        fi
+    done
+}
+
 check_docker() {
     major=${1%%.*}
     case $major in
@@ -107,10 +172,12 @@ case ${1:-all} in
 address) check_address "${2:-}" ;;
 public) check_public_address "${2:-}" ;;
 docker) check_docker "${2:-}" ;;
+networks) check_networks ;;
 secrets) check_secrets "${2:-}" ;;
 all)
     check_address "${ANIMA_HUB_ADDRESS:-}"
     check_public_address "${ANIMA_VPS_PUBLIC_ADDRESS:-}"
+    check_networks
     check_docker "$(docker version --format '{{.Server.Version}}')"
     check_secrets "${ANIMA_SECRETS_DIR:-$here/../secrets}"
     echo "preflight: ok"

@@ -1,7 +1,7 @@
 import type { ChartPoint, ChartSeries, SeriesColour } from '$lib/charts/plot';
 import type { ValueAxis } from '$lib/charts/scales';
 import type { DeviceGpu, MetricKind, MetricSeries } from './api';
-import { DEGRADED_ABOVE, formatBytesPerSecond, formatLoad, formatPercent } from './units';
+import { DEGRADED_ABOVE, formatBytes, formatBytesPerSecond, formatLoad, formatPercent } from './units';
 
 /** K5: `chart-series-1` to `-6`. */
 const SERIES_COLOURS = 6;
@@ -92,13 +92,17 @@ function gpuCharts(all: readonly MetricSeries[], gpus: readonly DeviceGpu[]): Ch
       const usage = percentChart(`gpu:${String(gpu.index)}:usage`, `${title} usage`, 'Usage', ofGpu('GPU_PERCENT'));
       // MET-007: no VRAM chart for a GPU without its own memory, even if a series for it arrives.
       const vram = gpu.hasVram ? percentChart(`gpu:${String(gpu.index)}:vram`, `${title} VRAM`, 'VRAM', ofGpu('VRAM_PERCENT')) : [];
-      return [...usage, ...vram];
+      // D-30: a unified-memory GPU (Apple) shows the memory it uses as bytes; a GPU with its own memory has VRAM, so nothing is "shared".
+      const shared = gpu.hasVram
+        ? []
+        : openChart(`gpu:${String(gpu.index)}:memory`, `${title} memory in use (shared)`, formatBytes, lines([['Memory in use', ofGpu('GPU_MEMORY_BYTES')]]));
+      return [...usage, ...vram, ...shared];
     });
 }
 
 /**
  * The charts the Overview draws, in a fixed order: CPU, memory, each disk mount (by mount point), each network
- * interface (in then out), load (1, 5, 15), then per GPU by index its usage and its VRAM (MET-007, MET-009).
+ * interface (in then out), load (1, 5, 15), then per GPU by index its usage, its VRAM and the shared memory of a unified-memory GPU (MET-007, MET-009, D-30).
  * Uptime is a fact, not a chart. A chart is listed only when at least one of its series exists, so a device
  * that reports no load, or a GPU with no samples yet, shows no empty frame; a series that exists with no
  * points still gets its chart (the Overview shows its empty state).

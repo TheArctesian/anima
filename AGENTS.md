@@ -88,9 +88,11 @@ BASE_REF=my-branch bun run gates   # baseline gate compares against this ref (de
 ```
 
 The gates run in this order and stop at the first failure: `cargo fmt --check`,
-`cargo clippy --all-targets -- -D warnings`, `cargo test` (with a throwaway PostgreSQL 17, R-009), `bun install --frozen-lockfile`,
+`cargo clippy --all-targets -- -D warnings`, `cargo nextest run --workspace` (with a throwaway PostgreSQL 17, R-009),
+`cargo test --workspace --doc`, `cargo test --workspace --test pinning`, `bun install --frozen-lockfile`,
 `bun run lint`, `bun run check`, `bun run test`, `bun run --cwd apps/client build`,
 `bun run quality:limits`, `bun run quality:names`, `bun run quality:imports`,
 `bun run quality:baseline -- --base $BASE_REF`. See [quality/README.md](quality/README.md).
+cargo-nextest must be on `PATH` (`cargo install cargo-nextest --locked`; put `~/.cargo/bin` on `PATH`).
 Leave `DATABASE_URL` unset so each run gets its own PostgreSQL server: sqlx names test databases
 by test path, so two worktrees that share one server destroy each other's databases (R-019).

@@ -6,13 +6,15 @@ export interface ListQuery {
   readonly name: string;
   readonly statuses: readonly Status[];
   readonly tags: readonly string[];
+  /** A site ID, or null for every site (VPN-002). */
+  readonly site: string | null;
   readonly sort: DeviceSort;
 }
 
 /** The first page holds the K1 maximum, so 200 devices render from one answer (DEV-001, API-006). */
 export const PAGE_SIZE = 200;
 
-export const DEFAULT_QUERY: ListQuery = { view: 'grid', name: '', statuses: [], tags: [], sort: 'NAME' };
+export const DEFAULT_QUERY: ListQuery = { view: 'grid', name: '', statuses: [], tags: [], site: null, sort: 'NAME' };
 
 const STATUSES: readonly Status[] = ['UP', 'DOWN', 'DEGRADED', 'MAINTENANCE', 'UNKNOWN'];
 const SORTS: readonly DeviceSort[] = ['NAME', 'STATUS', 'UPTIME'];
@@ -29,17 +31,19 @@ export function parseListQuery(params: URLSearchParams): ListQuery {
     name: params.get('q') ?? DEFAULT_QUERY.name,
     statuses: known(params.getAll('status'), STATUSES),
     tags: [...new Set(params.getAll('tag').filter((tag) => tag !== ''))],
+    site: params.get('site') || null,
     sort: known([params.get('sort') ?? ''], SORTS)[0] ?? DEFAULT_QUERY.sort,
   };
 }
 
-/** The search parameters for `query`: defaults are left out and the order is fixed (view, q, status, tag, sort). */
+/** The search parameters for `query`: defaults are left out and the order is fixed (view, q, status, tag, site, sort). */
 export function writeListQuery(query: ListQuery): URLSearchParams {
   const params = new URLSearchParams();
   if (query.view !== DEFAULT_QUERY.view) params.set('view', query.view);
   if (query.name !== '') params.set('q', query.name);
   for (const status of query.statuses) params.append('status', status);
   for (const tag of query.tags) params.append('tag', tag);
+  if (query.site !== null) params.set('site', query.site);
   if (query.sort !== DEFAULT_QUERY.sort) params.set('sort', query.sort);
   return params;
 }
@@ -50,6 +54,7 @@ function filterOf(query: ListQuery): DeviceFilter | null {
     ...(query.name === '' ? {} : { name: query.name }),
     ...(query.statuses.length === 0 ? {} : { status: [...query.statuses] }),
     ...(query.tags.length === 0 ? {} : { tags: [...query.tags] }),
+    ...(query.site === null ? {} : { siteId: query.site }),
   };
   return Object.keys(filter).length === 0 ? null : filter;
 }

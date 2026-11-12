@@ -6,6 +6,9 @@ type MetricPoint = MetricSeries['points'][number];
 export const NVIDIA: DeviceGpu = { index: 0, name: 'NVIDIA GeForce RTX 3060', vendor: 'NVIDIA', hasVram: true };
 export const INTEGRATED: DeviceGpu = { index: 1, name: 'Intel UHD Graphics', vendor: 'INTEL', hasVram: false };
 
+/** An Apple silicon GPU: its memory is the Mac's own, so it has no VRAM (MET-007, D-30). */
+export const APPLE: DeviceGpu = { index: 0, name: 'Apple M2 Pro', vendor: 'APPLE', hasVram: false };
+
 export function point(at: string, value: number): MetricPoint {
   return { at, value, min: value - 3, max: value + 3 };
 }

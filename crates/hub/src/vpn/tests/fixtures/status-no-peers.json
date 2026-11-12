@@ -1,0 +1,98 @@
+{
+ "Version": "1.104.4-t27047635f",
+ "TUN": false,
+ "BackendState": "Running",
+ "HaveNodeKey": true,
+ "AuthURL": "",
+ "TailscaleIPs": [
+  "100.64.0.1",
+  "fd7a:115c:a1e0::1"
+ ],
+ "Self": {
+  "ID": "1",
+  "NodeID": 1,
+  "PublicKey": "nodekey:0000000000000000000000000000000000000000000000000000000000000001",
+  "HostName": "hub",
+  "DNSName": "hub.net.anima.ing.",
+  "OS": "linux",
+  "UserID": 2147455555,
+  "TailscaleIPs": [
+   "100.64.0.1",
+   "fd7a:115c:a1e0::1"
+  ],
+  "AllowedIPs": [
+   "100.64.0.1/32",
+   "fd7a:115c:a1e0::1/128"
+  ],
+  "Addrs": [
+   "198.51.100.7:12103",
+   "192.0.2.5:48339"
+  ],
+  "CurAddr": "",
+  "Relay": "sfo",
+  "PeerRelay": "",
+  "RxBytes": 0,
+  "TxBytes": 0,
+  "Created": "2030-04-01T09:00:00Z",
+  "LastWrite": "0001-01-01T00:00:00Z",
+  "LastSeen": "0001-01-01T00:00:00Z",
+  "LastHandshake": "0001-01-01T00:00:00Z",
+  "Online": true,
+  "ExitNode": false,
+  "ExitNodeOption": false,
+  "Active": false,
+  "PeerAPIURL": [
+   "http://100.64.0.1:41000",
+   "http://[fd7a:115c:a1e0::1]:41000"
+  ],
+  "TaildropTarget": 0,
+  "NoFileSharingReason": "",
+  "Capabilities": [
+   "HTTPS://TAILSCALE.COM/s/DEPRECATED-NODE-CAPS#see-https://github.com/tailscale/tailscale/issues/11508",
+   "default-auto-update",
+   "https://tailscale.com/cap/file-sharing",
+   "https://tailscale.com/cap/is-admin",
+   "https://tailscale.com/cap/ssh",
+   "ssh-env-vars"
+  ],
+  "CapMap": {
+   "default-auto-update": [
+    false
+   ],
+   "https://tailscale.com/cap/file-sharing": [],
+   "https://tailscale.com/cap/is-admin": [],
+   "https://tailscale.com/cap/ssh": [],
+   "ssh-env-vars": []
+  },
+  "InNetworkMap": true,
+  "InMagicSock": false,
+  "InEngine": false,
+  "Tags": [
+   "tag:hub"
+  ]
+ },
+ "Health": [],
+ "MagicDNSSuffix": "net.anima.ing",
+ "CurrentTailnet": {
+  "Name": "headscale",
+  "StableID": "",
+  "MagicDNSSuffix": "net.anima.ing",
+  "MagicDNSEnabled": true
+ },
+ "CertDomains": null,
+ "ExtraRecords": null,
+ "Peer": null,
+ "User": {
+  "1": {
+   "ID": 1,
+   "LoginName": "operator",
+   "DisplayName": "operator"
+  },
+  "2147455555": {
+   "ID": 2147455555,
+   "LoginName": "tagged-devices",
+   "DisplayName": "Tagged Devices"
+  }
+ },
+ "ClientVersion": null
+}

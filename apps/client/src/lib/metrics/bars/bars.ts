@@ -1,5 +1,6 @@
 import type { MetricsSource } from '$lib/hub/generated/graphql';
 import { DEGRADED_ABOVE } from '../units';
+import { hasMetrics } from '../source/has-metrics';
 
 /** The readings the bars draw. Structural, so a hub `CardReadings` fragment fits without this folder knowing devices. */
 export interface BarReadings {
@@ -53,7 +54,7 @@ function barsOf(readings: BarReadings): readonly Bar[] {
 
 /** What the metric bars show for a device's readings and metrics source (6.1, MET-007). */
 export function barRow(readings: BarReadings | null, source: MetricsSource | null | undefined): BarRow {
-  if (source !== 'SSH') return { kind: 'empty', text: 'No metrics' };
+  if (!hasMetrics(source)) return { kind: 'empty', text: 'No metrics' };
   if (readings === null) return { kind: 'empty', text: 'Waiting for metrics' };
   return { kind: 'bars', bars: barsOf(readings) };
 }

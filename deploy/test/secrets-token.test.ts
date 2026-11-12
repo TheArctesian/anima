@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { makeSecrets, newSecretsPath, read, removeScratchFolders, scratchFolder, shimFolder, startMakeSecrets } from "./make-secrets.ts";
 
@@ -12,26 +12,26 @@ function tokenFile(folder: string): string {
 }
 
 describe("make-secrets Cloudflare token from stdin (DNS-003)", () => {
-  test("DNS-003: it stores the first line with mode 0400 and prints nothing of it", () => {
+  test("DNS-003: it stores the first line with mode 0400 and prints nothing of it", async () => {
     const folder = newSecretsPath();
-    const result = makeSecrets(folder, { args: TOKEN_ARGS, stdin: "cf-secret-token\nextra\n" });
+    const result = await makeSecrets(folder, { args: TOKEN_ARGS, stdin: "cf-secret-token\nextra\n" });
     expect(result.exitCode).toBe(0);
     expect(read(folder, "cloudflare_dns_token")).toBe("cf-secret-token");
     expect(result.output).not.toContain("cf-secret-token");
-    expect(Bun.spawnSync(["ls", "-l", tokenFile(folder)]).stdout.toString()).toMatch(/^-r--------/);
+    expect(statSync(tokenFile(folder)).mode & 0o777).toBe(0o400);
   });
 
-  test("DNS-003: one trailing carriage return is removed", () => {
+  test("DNS-003: one trailing carriage return is removed", async () => {
     const folder = newSecretsPath();
-    makeSecrets(folder, { args: TOKEN_ARGS, stdin: "abc_-9\r\n" });
+    await makeSecrets(folder, { args: TOKEN_ARGS, stdin: "abc_-9\r\n" });
     expect(read(folder, "cloudflare_dns_token")).toBe("abc_-9");
   });
 
   test.each([["empty", "\n"], ["with a space", "ab cd\n"], ["with a colon", "tok:en\n"], ["with two returns", "abc\r\r\n"]])(
     "DNS-003: a token that is %s gives exit 1, no file and no echo of the value",
-    (_name, line) => {
+    async (_name, line) => {
       const folder = newSecretsPath();
-      const result = makeSecrets(folder, { args: TOKEN_ARGS, stdin: line });
+      const result = await makeSecrets(folder, { args: TOKEN_ARGS, stdin: line });
       expect(result.exitCode).toBe(1);
       expect(existsSync(tokenFile(folder))).toBe(false);
       if (line.trim() !== "") expect(result.output).not.toContain(line.trim());
@@ -45,10 +45,10 @@ describe("make-secrets token prompt (DNS-003)", () => {
     return { shims: shimFolder({ stty: `echo "$*" >>"${log}"` }), log };
   }
 
-  test("DNS-003: the prompt turns echo off before it reads and on afterwards", () => {
+  test("DNS-003: the prompt turns echo off before it reads and on afterwards", async () => {
     const folder = newSecretsPath();
     const { shims, log } = sttyShim();
-    const result = makeSecrets(folder, { shimDirectories: [shims], assumeTerminal: true, stdin: "prompted-token\n" });
+    const result = await makeSecrets(folder, { shimDirectories: [shims], assumeTerminal: true, stdin: "prompted-token\n" });
     expect(result.exitCode).toBe(0);
     expect(read(folder, "cloudflare_dns_token")).toBe("prompted-token");
     expect(result.output).not.toContain("prompted-token");
@@ -56,10 +56,10 @@ describe("make-secrets token prompt (DNS-003)", () => {
     expect(calls.slice(0, 2)).toEqual(["-echo", "echo"]);
   });
 
-  test("DNS-003: with --cloudflare-token-stdin on a terminal it still reads with echo off", () => {
+  test("DNS-003: with --cloudflare-token-stdin on a terminal it still reads with echo off", async () => {
     const folder = newSecretsPath();
     const { shims, log } = sttyShim();
-    makeSecrets(folder, { shimDirectories: [shims], assumeTerminal: true, args: TOKEN_ARGS, stdin: "tok\n" });
+    await makeSecrets(folder, { shimDirectories: [shims], assumeTerminal: true, args: TOKEN_ARGS, stdin: "tok\n" });
     expect(readFileSync(log, "utf8").split("\n")[0]).toBe("-echo");
   });
 

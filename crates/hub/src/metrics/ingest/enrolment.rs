@@ -1,7 +1,7 @@
 //! An agent's enrolment: the operator makes a one-use code, the agent swaps it for a token, and
 //! the operator may revoke that token (K8 Section 3, MET-011, MET-012, MET-013).
 
-use agent_core::wire::{AgentToken, CodeHash, Enrolled, EnrolmentCode};
+use agent_core::wire::{AgentToken, CodeHash, Enrolled, EnrolmentCode, is_device_name};
 use async_graphql::Object;
 use chrono::{DateTime, Utc};
 use sqlx::{PgConnection, PgPool};
@@ -85,7 +85,7 @@ pub(super) async fn redeem(
 /// Makes `token` the device's only token for 365 days from `now`, sets the device's metrics
 /// source to `agent` and writes one event naming the device, together (MET-011, MET-013);
 /// `None`, storing nothing, when the operator revoked the device's agent after the code was
-/// redeemed (K8 Section 3).
+/// redeemed, or when the device's stored name is not one the agent keeps (K8 Section 3).
 ///
 /// # Errors
 /// `NoDevice` when the device was deleted after its code was redeemed; `Database` or `Events`
@@ -102,7 +102,9 @@ pub(super) async fn enrol(
     // The device row first, the order a device delete and a revoke take the rows in; a revoke
     // that committed before this lock deleted the code.
     let name = devices::use_agent_metrics(&mut tx, device).await?;
-    if !store::code_kept(&mut tx, code, device).await? {
+    // A name the agent would not keep (a row older than the device rule) changes nothing: the
+    // transaction rolls back with the source and token as they were (K8 Section 3).
+    if !is_device_name(&name) || !store::code_kept(&mut tx, code, device).await? {
         return Ok(None);
     }
     store::replace_token(&mut tx, device, token.hash(), expires_at).await?;

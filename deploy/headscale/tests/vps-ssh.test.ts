@@ -49,7 +49,7 @@ describe("harden.sh ssh", () => {
   test("VPS-001: installs the drop-in with AllowUsers, validates it and reloads sshd", () => {
     const run = host.run(["ssh"]);
     expect(run.code).toBe(0);
-    expect(host.read(DROP_IN)).toContain("\nAllowUsers admin\n");
+    expect(host.read(DROP_IN)).toContain("\nAllowUsers admin@100.64.0.0/10 anima-probe@172.30.0.10\n");
     expect(run.calls).toEqual(expect.arrayContaining(["SSHD -t", "SSHD -T", "SYSTEMCTL reload sshd.service"]));
     expect(run.out).not.toContain("AAAA");
   });
@@ -166,7 +166,7 @@ describe("harden.sh ssh and check (Include forms)", () => {
     expect(run.out).not.toContain("VIOLATION: sshd -T: ");
     expect(run.out).toContain(`VIOLATION: ${PUBLIC_ROOT}: expected "permitrootlogin no"`);
     expect(run.out).toContain(`VIOLATION: ${PUBLIC_ROOT}: expected "passwordauthentication no"`);
-    expect(run.out).toContain(`VIOLATION: ${PUBLIC_ROOT}: expected "allowusers admin"`);
+    expect(run.out).toContain(`VIOLATION: ${PUBLIC_ROOT}: expected "allowusers admin@100.64.0.0/10"`);
   });
 });
 

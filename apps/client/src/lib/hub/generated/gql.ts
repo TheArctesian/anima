@@ -61,12 +61,15 @@ type Documents = {
     "\n  mutation ClearSshCredential($deviceId: ID!) {\n    clearSshCredential(deviceId: $deviceId) {\n      credentialStored\n    }\n  }\n": typeof types.ClearSshCredentialDocument,
     "\n  mutation ClearRdpCredential($deviceId: ID!) {\n    clearRdpCredential(deviceId: $deviceId) {\n      credentialStored\n    }\n  }\n": typeof types.ClearRdpCredentialDocument,
     "\n  mutation ClearVncCredential($deviceId: ID!) {\n    clearVncCredential(deviceId: $deviceId) {\n      credentialStored\n    }\n  }\n": typeof types.ClearVncCredentialDocument,
-    "\n  query DevicePolicy($id: ID!) {\n    device(id: $id) {\n      sessionLimit\n      recordSessions\n    }\n  }\n": typeof types.DevicePolicyDocument,
-    "\n  mutation SetDevicePolicy($id: ID!, $input: UpdateDeviceInput!) {\n    updateDevice(id: $id, input: $input) {\n      sessionLimit\n      recordSessions\n    }\n  }\n": typeof types.SetDevicePolicyDocument,
+    "\n  query DevicePolicy($id: ID!) {\n    device(id: $id) {\n      sessionLimit\n    }\n  }\n": typeof types.DevicePolicyDocument,
+    "\n  mutation SetDevicePolicy($id: ID!, $input: UpdateDeviceInput!) {\n    updateDevice(id: $id, input: $input) {\n      sessionLimit\n    }\n  }\n": typeof types.SetDevicePolicyDocument,
     "\n  query Events($filter: EventFilter, $first: Int, $after: String) {\n    events(filter: $filter, first: $first, after: $after) {\n      pageInfo {\n        hasNextPage\n        endCursor\n      }\n      edges {\n        node {\n          id\n          at\n          severity\n          source\n          deviceId\n          deviceName\n          message\n        }\n      }\n    }\n  }\n": typeof types.EventsDocument,
     "\n  subscription EventAdded($minSeverity: Severity) {\n    eventAdded(minSeverity: $minSeverity) {\n      id\n      at\n      severity\n      source\n      deviceId\n      deviceName\n      message\n    }\n  }\n": typeof types.EventAddedDocument,
     "\n  query DeviceMetrics($id: ID!, $range: MetricRange!) {\n    device(id: $id) {\n      id\n      metricsSource\n      gpus {\n        index\n        name\n        vendor\n        hasVram\n      }\n      readings {\n        at\n        cpuPercent\n        memoryPercent\n        diskPercent\n        vramPercent\n        vramGpu {\n          index\n          name\n          vendor\n          hasVram\n        }\n      }\n      metrics(range: $range) {\n        kind\n        label\n        gpuIndex\n        points {\n          at\n          value\n          min\n          max\n        }\n      }\n    }\n  }\n": typeof types.DeviceMetricsDocument,
     "\n  subscription MetricsAdded($deviceId: ID!) {\n    metricsAdded(deviceId: $deviceId) {\n      deviceId\n      at\n      samples {\n        kind\n        label\n        value\n      }\n      readings {\n        at\n        cpuPercent\n        memoryPercent\n        diskPercent\n        vramPercent\n        vramGpu {\n          index\n          name\n          vendor\n          hasVram\n        }\n      }\n    }\n  }\n": typeof types.MetricsAddedDocument,
+    "\n  query AgentStatus($id: ID!) {\n    device(id: $id) {\n      id\n      metricsSource\n      metricsStale\n    }\n  }\n": typeof types.AgentStatusDocument,
+    "\n  mutation EnrolAgent($deviceId: ID!) {\n    enrolAgent(deviceId: $deviceId) {\n      code\n      expiresAt\n    }\n  }\n": typeof types.EnrolAgentDocument,
+    "\n  mutation RevokeAgentToken($deviceId: ID!) {\n    revokeAgentToken(deviceId: $deviceId) {\n      id\n      metricsSource\n      metricsStale\n    }\n  }\n": typeof types.RevokeAgentTokenDocument,
     "\n  fragment DeliveryFields on Delivery {\n    id\n    channelId\n    kind\n    at\n    ok\n    reason\n    code\n  }\n": typeof types.DeliveryFieldsFragmentDoc,
     "\n  fragment NotificationChannelFields on NotificationChannel {\n    id\n    name\n    kind\n    onByDefault\n    settings {\n      __typename\n      ... on WebhookSettings {\n        origin\n        method\n        headerNames\n      }\n      ... on NtfySettings {\n        server\n        priority\n        tokenStored\n      }\n      ... on EmailSettings {\n        host\n        port\n        security\n        username\n        from\n        to\n        passwordStored\n      }\n      ... on AppriseSettings {\n        server\n        mode\n        tags\n      }\n    }\n    template {\n      title\n      body\n    }\n    lastDelivery {\n      ...DeliveryFields\n    }\n  }\n": typeof types.NotificationChannelFieldsFragmentDoc,
     "\n  fragment NotificationSettingsFields on NotificationSettings {\n    certificateDays\n    template {\n      title\n      body\n    }\n    placeholders\n  }\n": typeof types.NotificationSettingsFieldsFragmentDoc,
@@ -93,6 +96,15 @@ type Documents = {
     "\n  query LiveSessions($first: Int) {\n    sessions(live: true, first: $first) {\n      edges {\n        node {\n          id\n          deviceId\n          deviceName\n          protocol\n          operatorName\n          startedAt\n          clientAddr\n        }\n      }\n    }\n  }\n": typeof types.LiveSessionsDocument,
     "\n  subscription LiveSessionChanged {\n    sessionChanged {\n      session {\n        id\n        deviceId\n        deviceName\n        protocol\n        operatorName\n        startedAt\n        clientAddr\n        endedAt\n        endReason\n      }\n    }\n  }\n": typeof types.LiveSessionChangedDocument,
     "\n  mutation WakeDevice($deviceId: ID!) {\n    wakeDevice(deviceId: $deviceId) {\n      sentAt\n      relayName\n    }\n  }\n": typeof types.WakeDeviceDocument,
+    "\n  fragment VpnNodeFields on VpnNode {\n    name\n    address\n    os\n    role\n    tags\n    routes\n    waitingRoutes\n    online\n    lastSeen\n    keyExpiry\n    keyState\n    path\n    relayRegion\n    inAnima\n    device {\n      id\n      name\n    }\n  }\n": typeof types.VpnNodeFieldsFragmentDoc,
+    "\n  fragment VpnPictureFields on VpnPicture {\n    readAt\n    fresh\n    hub {\n      ...VpnNodeFields\n    }\n    sites {\n      site {\n        id\n        name\n        subnet\n      }\n      router {\n        ...VpnNodeFields\n      }\n      state\n      path\n      relayRegion\n      hasPingCheck\n      waitingRouter {\n        ...VpnNodeFields\n      }\n    }\n    nodes {\n      ...VpnNodeFields\n    }\n    broker\n  }\n": typeof types.VpnPictureFieldsFragmentDoc,
+    "\n  query Vpn {\n    vpn {\n      ...VpnPictureFields\n    }\n  }\n": typeof types.VpnDocument,
+    "\n  subscription VpnChanged {\n    vpnChanged {\n      ...VpnPictureFields\n    }\n  }\n": typeof types.VpnChangedDocument,
+    "\n  mutation CreateVpnInvite {\n    createVpnInvite {\n      key\n      expiresAt\n      steps\n    }\n  }\n": typeof types.CreateVpnInviteDocument,
+    "\n  mutation CreateRouterKey($siteId: ID!) {\n    createRouterKey(siteId: $siteId) {\n      key\n      expiresAt\n      steps\n    }\n  }\n": typeof types.CreateRouterKeyDocument,
+    "\n  mutation RegisterVpnNode($authId: String!) {\n    registerVpnNode(authId: $authId) {\n      name\n      address\n      keyExpiry\n    }\n  }\n": typeof types.RegisterVpnNodeDocument,
+    "\n  mutation RenewVpnKey($name: String!) {\n    renewVpnKey(name: $name) {\n      name\n      address\n      keyExpiry\n    }\n  }\n": typeof types.RenewVpnKeyDocument,
+    "\n  mutation ApproveSiteRoute($siteId: ID!) {\n    approveSiteRoute(siteId: $siteId)\n  }\n": typeof types.ApproveSiteRouteDocument,
     "\n  fragment WebInterfaceSuggestionFields on WebInterfaceSuggestion {\n    checkId\n    url\n    label\n  }\n": typeof types.WebInterfaceSuggestionFieldsFragmentDoc,
     "\n  fragment WebInterfaceFields on WebInterface {\n    id\n    deviceId\n    label\n    url\n    openIn\n    pinnedFingerprintSha256\n    pinnedAt\n  }\n": typeof types.WebInterfaceFieldsFragmentDoc,
     "\n  mutation CreateWebInterface($deviceId: ID!, $input: WebInterfaceInput!) {\n    createWebInterface(deviceId: $deviceId, input: $input) {\n      ...WebInterfaceFields\n    }\n  }\n": typeof types.CreateWebInterfaceDocument,
@@ -150,12 +162,15 @@ const documents: Documents = {
     "\n  mutation ClearSshCredential($deviceId: ID!) {\n    clearSshCredential(deviceId: $deviceId) {\n      credentialStored\n    }\n  }\n": types.ClearSshCredentialDocument,
     "\n  mutation ClearRdpCredential($deviceId: ID!) {\n    clearRdpCredential(deviceId: $deviceId) {\n      credentialStored\n    }\n  }\n": types.ClearRdpCredentialDocument,
     "\n  mutation ClearVncCredential($deviceId: ID!) {\n    clearVncCredential(deviceId: $deviceId) {\n      credentialStored\n    }\n  }\n": types.ClearVncCredentialDocument,
-    "\n  query DevicePolicy($id: ID!) {\n    device(id: $id) {\n      sessionLimit\n      recordSessions\n    }\n  }\n": types.DevicePolicyDocument,
-    "\n  mutation SetDevicePolicy($id: ID!, $input: UpdateDeviceInput!) {\n    updateDevice(id: $id, input: $input) {\n      sessionLimit\n      recordSessions\n    }\n  }\n": types.SetDevicePolicyDocument,
+    "\n  query DevicePolicy($id: ID!) {\n    device(id: $id) {\n      sessionLimit\n    }\n  }\n": types.DevicePolicyDocument,
+    "\n  mutation SetDevicePolicy($id: ID!, $input: UpdateDeviceInput!) {\n    updateDevice(id: $id, input: $input) {\n      sessionLimit\n    }\n  }\n": types.SetDevicePolicyDocument,
     "\n  query Events($filter: EventFilter, $first: Int, $after: String) {\n    events(filter: $filter, first: $first, after: $after) {\n      pageInfo {\n        hasNextPage\n        endCursor\n      }\n      edges {\n        node {\n          id\n          at\n          severity\n          source\n          deviceId\n          deviceName\n          message\n        }\n      }\n    }\n  }\n": types.EventsDocument,
     "\n  subscription EventAdded($minSeverity: Severity) {\n    eventAdded(minSeverity: $minSeverity) {\n      id\n      at\n      severity\n      source\n      deviceId\n      deviceName\n      message\n    }\n  }\n": types.EventAddedDocument,
     "\n  query DeviceMetrics($id: ID!, $range: MetricRange!) {\n    device(id: $id) {\n      id\n      metricsSource\n      gpus {\n        index\n        name\n        vendor\n        hasVram\n      }\n      readings {\n        at\n        cpuPercent\n        memoryPercent\n        diskPercent\n        vramPercent\n        vramGpu {\n          index\n          name\n          vendor\n          hasVram\n        }\n      }\n      metrics(range: $range) {\n        kind\n        label\n        gpuIndex\n        points {\n          at\n          value\n          min\n          max\n        }\n      }\n    }\n  }\n": types.DeviceMetricsDocument,
     "\n  subscription MetricsAdded($deviceId: ID!) {\n    metricsAdded(deviceId: $deviceId) {\n      deviceId\n      at\n      samples {\n        kind\n        label\n        value\n      }\n      readings {\n        at\n        cpuPercent\n        memoryPercent\n        diskPercent\n        vramPercent\n        vramGpu {\n          index\n          name\n          vendor\n          hasVram\n        }\n      }\n    }\n  }\n": types.MetricsAddedDocument,
+    "\n  query AgentStatus($id: ID!) {\n    device(id: $id) {\n      id\n      metricsSource\n      metricsStale\n    }\n  }\n": types.AgentStatusDocument,
+    "\n  mutation EnrolAgent($deviceId: ID!) {\n    enrolAgent(deviceId: $deviceId) {\n      code\n      expiresAt\n    }\n  }\n": types.EnrolAgentDocument,
+    "\n  mutation RevokeAgentToken($deviceId: ID!) {\n    revokeAgentToken(deviceId: $deviceId) {\n      id\n      metricsSource\n      metricsStale\n    }\n  }\n": types.RevokeAgentTokenDocument,
     "\n  fragment DeliveryFields on Delivery {\n    id\n    channelId\n    kind\n    at\n    ok\n    reason\n    code\n  }\n": types.DeliveryFieldsFragmentDoc,
     "\n  fragment NotificationChannelFields on NotificationChannel {\n    id\n    name\n    kind\n    onByDefault\n    settings {\n      __typename\n      ... on WebhookSettings {\n        origin\n        method\n        headerNames\n      }\n      ... on NtfySettings {\n        server\n        priority\n        tokenStored\n      }\n      ... on EmailSettings {\n        host\n        port\n        security\n        username\n        from\n        to\n        passwordStored\n      }\n      ... on AppriseSettings {\n        server\n        mode\n        tags\n      }\n    }\n    template {\n      title\n      body\n    }\n    lastDelivery {\n      ...DeliveryFields\n    }\n  }\n": types.NotificationChannelFieldsFragmentDoc,
     "\n  fragment NotificationSettingsFields on NotificationSettings {\n    certificateDays\n    template {\n      title\n      body\n    }\n    placeholders\n  }\n": types.NotificationSettingsFieldsFragmentDoc,
@@ -182,6 +197,15 @@ const documents: Documents = {
     "\n  query LiveSessions($first: Int) {\n    sessions(live: true, first: $first) {\n      edges {\n        node {\n          id\n          deviceId\n          deviceName\n          protocol\n          operatorName\n          startedAt\n          clientAddr\n        }\n      }\n    }\n  }\n": types.LiveSessionsDocument,
     "\n  subscription LiveSessionChanged {\n    sessionChanged {\n      session {\n        id\n        deviceId\n        deviceName\n        protocol\n        operatorName\n        startedAt\n        clientAddr\n        endedAt\n        endReason\n      }\n    }\n  }\n": types.LiveSessionChangedDocument,
     "\n  mutation WakeDevice($deviceId: ID!) {\n    wakeDevice(deviceId: $deviceId) {\n      sentAt\n      relayName\n    }\n  }\n": types.WakeDeviceDocument,
+    "\n  fragment VpnNodeFields on VpnNode {\n    name\n    address\n    os\n    role\n    tags\n    routes\n    waitingRoutes\n    online\n    lastSeen\n    keyExpiry\n    keyState\n    path\n    relayRegion\n    inAnima\n    device {\n      id\n      name\n    }\n  }\n": types.VpnNodeFieldsFragmentDoc,
+    "\n  fragment VpnPictureFields on VpnPicture {\n    readAt\n    fresh\n    hub {\n      ...VpnNodeFields\n    }\n    sites {\n      site {\n        id\n        name\n        subnet\n      }\n      router {\n        ...VpnNodeFields\n      }\n      state\n      path\n      relayRegion\n      hasPingCheck\n      waitingRouter {\n        ...VpnNodeFields\n      }\n    }\n    nodes {\n      ...VpnNodeFields\n    }\n    broker\n  }\n": types.VpnPictureFieldsFragmentDoc,
+    "\n  query Vpn {\n    vpn {\n      ...VpnPictureFields\n    }\n  }\n": types.VpnDocument,
+    "\n  subscription VpnChanged {\n    vpnChanged {\n      ...VpnPictureFields\n    }\n  }\n": types.VpnChangedDocument,
+    "\n  mutation CreateVpnInvite {\n    createVpnInvite {\n      key\n      expiresAt\n      steps\n    }\n  }\n": types.CreateVpnInviteDocument,
+    "\n  mutation CreateRouterKey($siteId: ID!) {\n    createRouterKey(siteId: $siteId) {\n      key\n      expiresAt\n      steps\n    }\n  }\n": types.CreateRouterKeyDocument,
+    "\n  mutation RegisterVpnNode($authId: String!) {\n    registerVpnNode(authId: $authId) {\n      name\n      address\n      keyExpiry\n    }\n  }\n": types.RegisterVpnNodeDocument,
+    "\n  mutation RenewVpnKey($name: String!) {\n    renewVpnKey(name: $name) {\n      name\n      address\n      keyExpiry\n    }\n  }\n": types.RenewVpnKeyDocument,
+    "\n  mutation ApproveSiteRoute($siteId: ID!) {\n    approveSiteRoute(siteId: $siteId)\n  }\n": types.ApproveSiteRouteDocument,
     "\n  fragment WebInterfaceSuggestionFields on WebInterfaceSuggestion {\n    checkId\n    url\n    label\n  }\n": types.WebInterfaceSuggestionFieldsFragmentDoc,
     "\n  fragment WebInterfaceFields on WebInterface {\n    id\n    deviceId\n    label\n    url\n    openIn\n    pinnedFingerprintSha256\n    pinnedAt\n  }\n": types.WebInterfaceFieldsFragmentDoc,
     "\n  mutation CreateWebInterface($deviceId: ID!, $input: WebInterfaceInput!) {\n    createWebInterface(deviceId: $deviceId, input: $input) {\n      ...WebInterfaceFields\n    }\n  }\n": types.CreateWebInterfaceDocument,
@@ -397,11 +421,11 @@ export function graphql(source: "\n  mutation ClearVncCredential($deviceId: ID!)
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function graphql(source: "\n  query DevicePolicy($id: ID!) {\n    device(id: $id) {\n      sessionLimit\n      recordSessions\n    }\n  }\n"): (typeof documents)["\n  query DevicePolicy($id: ID!) {\n    device(id: $id) {\n      sessionLimit\n      recordSessions\n    }\n  }\n"];
+export function graphql(source: "\n  query DevicePolicy($id: ID!) {\n    device(id: $id) {\n      sessionLimit\n    }\n  }\n"): (typeof documents)["\n  query DevicePolicy($id: ID!) {\n    device(id: $id) {\n      sessionLimit\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function graphql(source: "\n  mutation SetDevicePolicy($id: ID!, $input: UpdateDeviceInput!) {\n    updateDevice(id: $id, input: $input) {\n      sessionLimit\n      recordSessions\n    }\n  }\n"): (typeof documents)["\n  mutation SetDevicePolicy($id: ID!, $input: UpdateDeviceInput!) {\n    updateDevice(id: $id, input: $input) {\n      sessionLimit\n      recordSessions\n    }\n  }\n"];
+export function graphql(source: "\n  mutation SetDevicePolicy($id: ID!, $input: UpdateDeviceInput!) {\n    updateDevice(id: $id, input: $input) {\n      sessionLimit\n    }\n  }\n"): (typeof documents)["\n  mutation SetDevicePolicy($id: ID!, $input: UpdateDeviceInput!) {\n    updateDevice(id: $id, input: $input) {\n      sessionLimit\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
@@ -418,6 +442,18 @@ export function graphql(source: "\n  query DeviceMetrics($id: ID!, $range: Metri
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "\n  subscription MetricsAdded($deviceId: ID!) {\n    metricsAdded(deviceId: $deviceId) {\n      deviceId\n      at\n      samples {\n        kind\n        label\n        value\n      }\n      readings {\n        at\n        cpuPercent\n        memoryPercent\n        diskPercent\n        vramPercent\n        vramGpu {\n          index\n          name\n          vendor\n          hasVram\n        }\n      }\n    }\n  }\n"): (typeof documents)["\n  subscription MetricsAdded($deviceId: ID!) {\n    metricsAdded(deviceId: $deviceId) {\n      deviceId\n      at\n      samples {\n        kind\n        label\n        value\n      }\n      readings {\n        at\n        cpuPercent\n        memoryPercent\n        diskPercent\n        vramPercent\n        vramGpu {\n          index\n          name\n          vendor\n          hasVram\n        }\n      }\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  query AgentStatus($id: ID!) {\n    device(id: $id) {\n      id\n      metricsSource\n      metricsStale\n    }\n  }\n"): (typeof documents)["\n  query AgentStatus($id: ID!) {\n    device(id: $id) {\n      id\n      metricsSource\n      metricsStale\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation EnrolAgent($deviceId: ID!) {\n    enrolAgent(deviceId: $deviceId) {\n      code\n      expiresAt\n    }\n  }\n"): (typeof documents)["\n  mutation EnrolAgent($deviceId: ID!) {\n    enrolAgent(deviceId: $deviceId) {\n      code\n      expiresAt\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation RevokeAgentToken($deviceId: ID!) {\n    revokeAgentToken(deviceId: $deviceId) {\n      id\n      metricsSource\n      metricsStale\n    }\n  }\n"): (typeof documents)["\n  mutation RevokeAgentToken($deviceId: ID!) {\n    revokeAgentToken(deviceId: $deviceId) {\n      id\n      metricsSource\n      metricsStale\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
@@ -522,6 +558,42 @@ export function graphql(source: "\n  subscription LiveSessionChanged {\n    sess
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "\n  mutation WakeDevice($deviceId: ID!) {\n    wakeDevice(deviceId: $deviceId) {\n      sentAt\n      relayName\n    }\n  }\n"): (typeof documents)["\n  mutation WakeDevice($deviceId: ID!) {\n    wakeDevice(deviceId: $deviceId) {\n      sentAt\n      relayName\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  fragment VpnNodeFields on VpnNode {\n    name\n    address\n    os\n    role\n    tags\n    routes\n    waitingRoutes\n    online\n    lastSeen\n    keyExpiry\n    keyState\n    path\n    relayRegion\n    inAnima\n    device {\n      id\n      name\n    }\n  }\n"): (typeof documents)["\n  fragment VpnNodeFields on VpnNode {\n    name\n    address\n    os\n    role\n    tags\n    routes\n    waitingRoutes\n    online\n    lastSeen\n    keyExpiry\n    keyState\n    path\n    relayRegion\n    inAnima\n    device {\n      id\n      name\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  fragment VpnPictureFields on VpnPicture {\n    readAt\n    fresh\n    hub {\n      ...VpnNodeFields\n    }\n    sites {\n      site {\n        id\n        name\n        subnet\n      }\n      router {\n        ...VpnNodeFields\n      }\n      state\n      path\n      relayRegion\n      hasPingCheck\n      waitingRouter {\n        ...VpnNodeFields\n      }\n    }\n    nodes {\n      ...VpnNodeFields\n    }\n    broker\n  }\n"): (typeof documents)["\n  fragment VpnPictureFields on VpnPicture {\n    readAt\n    fresh\n    hub {\n      ...VpnNodeFields\n    }\n    sites {\n      site {\n        id\n        name\n        subnet\n      }\n      router {\n        ...VpnNodeFields\n      }\n      state\n      path\n      relayRegion\n      hasPingCheck\n      waitingRouter {\n        ...VpnNodeFields\n      }\n    }\n    nodes {\n      ...VpnNodeFields\n    }\n    broker\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  query Vpn {\n    vpn {\n      ...VpnPictureFields\n    }\n  }\n"): (typeof documents)["\n  query Vpn {\n    vpn {\n      ...VpnPictureFields\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  subscription VpnChanged {\n    vpnChanged {\n      ...VpnPictureFields\n    }\n  }\n"): (typeof documents)["\n  subscription VpnChanged {\n    vpnChanged {\n      ...VpnPictureFields\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation CreateVpnInvite {\n    createVpnInvite {\n      key\n      expiresAt\n      steps\n    }\n  }\n"): (typeof documents)["\n  mutation CreateVpnInvite {\n    createVpnInvite {\n      key\n      expiresAt\n      steps\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation CreateRouterKey($siteId: ID!) {\n    createRouterKey(siteId: $siteId) {\n      key\n      expiresAt\n      steps\n    }\n  }\n"): (typeof documents)["\n  mutation CreateRouterKey($siteId: ID!) {\n    createRouterKey(siteId: $siteId) {\n      key\n      expiresAt\n      steps\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation RegisterVpnNode($authId: String!) {\n    registerVpnNode(authId: $authId) {\n      name\n      address\n      keyExpiry\n    }\n  }\n"): (typeof documents)["\n  mutation RegisterVpnNode($authId: String!) {\n    registerVpnNode(authId: $authId) {\n      name\n      address\n      keyExpiry\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation RenewVpnKey($name: String!) {\n    renewVpnKey(name: $name) {\n      name\n      address\n      keyExpiry\n    }\n  }\n"): (typeof documents)["\n  mutation RenewVpnKey($name: String!) {\n    renewVpnKey(name: $name) {\n      name\n      address\n      keyExpiry\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation ApproveSiteRoute($siteId: ID!) {\n    approveSiteRoute(siteId: $siteId)\n  }\n"): (typeof documents)["\n  mutation ApproveSiteRoute($siteId: ID!) {\n    approveSiteRoute(siteId: $siteId)\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */

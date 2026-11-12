@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-agent-bundled"
+description = "Enables the agent_bundled command without any pre-configured scope."
+commands.allow = ["agent_bundled"]
+
+[[permission]]
+identifier = "deny-agent-bundled"
+description = "Denies the agent_bundled command without any pre-configured scope."
+commands.deny = ["agent_bundled"]

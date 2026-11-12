@@ -13,11 +13,20 @@ strict_modes_problem() {
   fi
 }
 
-# Print why ANIMA_ADMIN_USER cannot be the only SSH login, or nothing when it can.
+# VP-13: the hub's unprivileged user, allowed only from the hub container's address. The
+# address is `hub_source` in nftables.conf and ANIMA_HUB_IP in deploy/compose.yaml; the drop-in
+# (sshd-anima.conf) holds the same entry. No other user and no other host part is accepted.
+PROBE_USER=anima-probe
+PROBE_ALLOW=$PROBE_USER@172.30.0.10
+# The admin's host part: the tailnet range, so the admin logs in only over the VPN (VP-13 F5).
+ADMIN_HOSTS=100.64.0.0/10
+
+# Print why ANIMA_ADMIN_USER cannot be the admin SSH login, or nothing when it can.
 admin_problem() {
   local user=${ANIMA_ADMIN_USER:-} entry uid home keys problem
   [ -n "$user" ] || { say "set ANIMA_ADMIN_USER to the admin account"; return; }
   [[ $user =~ $USER_NAME_PATTERN ]] || { say "ANIMA_ADMIN_USER is not a valid user name"; return; }
+  [ "$user" != "$PROBE_USER" ] || { say "$PROBE_USER is the hub's user (VP-13); use another admin account"; return; }
   entry=$($GETENT passwd "$user") || { say "user $user does not exist"; return; }
   IFS=: read -r _ _ uid _ _ home _ <<<"$entry"
   if [ "$user" = root ] || [ "$uid" = 0 ]; then say "$user is root; use a non-root $ADMIN_GROUP user"; return; fi
@@ -112,7 +121,7 @@ match_problems() {
 # Print each value in the output of sshd -T (with the -C arguments given, if any) that
 # differs from the drop-in for admin user $1.
 sshd_effective_mismatches() {
-  local effective line label="sshd -T${2:+ -C $2}"
+  local effective line label="sshd -T${2:+ -C $2}" admin_allow="$1@$ADMIN_HOSTS"
   effective=$($SSHD -T ${2:+-C "$2"}) || { say "$label failed"; return; }
   while IFS= read -r line; do
     grep -qixF "$line" <<<"$effective" || say "$label: expected \"$line\""
@@ -126,16 +135,22 @@ authenticationmethods publickey
 x11forwarding no
 maxauthtries 3
 logingracetime 30
-allowusers $1
+allowusers $admin_allow
+allowusers $PROBE_ALLOW
 EOF
-  # AllowUsers adds up across drop-ins: any other user is a second way in.
-  awk -v want="allowusers $1" -v label="$label" 'tolower($1) == "allowusers" && tolower($0) != want {
+  # AllowUsers adds up across drop-ins: any other user, or the admin or the probe user from
+  # another host, is a second way in.
+  awk -v admin="allowusers $admin_allow" -v probe="allowusers $PROBE_ALLOW" -v label="$label" \
+    'tolower($1) == "allowusers" && tolower($0) != admin && tolower($0) != probe {
     print label ": unexpected \"" $0 "\" (AllowUsers adds up across drop-ins)" }' <<<"$effective"
 }
 
 # Print each effective sshd value that differs from the drop-in: first the global values,
-# then, once they are right, the values for root and the admin user from a public address
-# and for the admin user from the VPN, which a Match block could change.
+# then, once they are right, the values for root and the admin user from a public address,
+# for the admin user from the VPN and for the probe user from the hub, which a Match block
+# could change. sshd -T -C prints the AllowUsers entries but does not apply them: the admin's
+# login from the public address is refused by its host part (ADMIN_HOSTS), and is still checked
+# here for the values a Match block could weaken.
 sshd_mismatches() {
   local user=$1 public=${VPS_PUBLIC_IPV4:-198.51.100.7} global connection
   global=$(sshd_effective_mismatches "$user")
@@ -143,7 +158,7 @@ sshd_mismatches() {
   [[ $user =~ $USER_NAME_PATTERN ]] || return 0
   [[ $public =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ ]] || { say "VPS_PUBLIC_IPV4 is not an IPv4 address"; return; }
   for connection in "user=root,host=x,addr=$public" "user=$user,host=x,addr=$public" \
-    "user=$user,host=x,addr=100.64.0.2"; do
+    "user=$user,host=x,addr=100.64.0.2" "user=$PROBE_USER,host=x,addr=${PROBE_ALLOW#*@}"; do
     sshd_effective_mismatches "$user" "$connection"
   done
 }
@@ -161,7 +176,7 @@ cmd_ssh() {
   problem=$(match_problems)
   [ -z "$problem" ] || refuse "$problem"
   if dry; then
-    say "[dry-run] write $(path "$dropin") with AllowUsers $user, then $SSHD -t, $SSHD -T, reload sshd"
+    say "[dry-run] write $(path "$dropin") with AllowUsers $user@$ADMIN_HOSTS $PROBE_ALLOW, then $SSHD -t, $SSHD -T, reload sshd"
     return
   fi
   rm -f "$(path "$previous")"
@@ -180,5 +195,5 @@ cmd_ssh() {
     restore_dropin "$dropin" "$previous"
     fail "systemctl reload sshd failed; drop-in restored"
   fi
-  say "SSH hardened. Keep this session open and test a new login as $user first."
+  say "SSH hardened. Keep this session open and test a new login as $user over the VPN first."
 }

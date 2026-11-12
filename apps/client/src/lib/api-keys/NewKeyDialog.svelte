@@ -24,6 +24,9 @@
   let created = $state<ApiKey | null>(null);
   /** The whole key, from the hub's answer until the dialog closes; held nowhere else (INT-003, LOG-007). */
   let secret = $state<string | null>(null);
+  let views: HTMLElement | undefined = $state();
+  /** The form's height in px, kept for the secret view that replaces it, so the surface never changes height in one frame (MOT-007). */
+  let reserved = $state<number | null>(null);
 
   /** When the dialog opened: the presets' preview and the date field's bounds count from here; the sent date counts from Create. */
   const opened = untrack(() => now());
@@ -52,6 +55,7 @@
     onCreated(result.value.key);
     // No guard for an answer that comes late: a dialog that is gone, or fading out with its page, renders nothing new;
     // one whose page returns before its fade ends is the same dialog, still the operator's.
+    reserved = views?.getBoundingClientRect().height ?? null;
     created = result.value.key;
     secret = result.value.secret;
   }
@@ -69,6 +73,7 @@
 </script>
 
 <Modal open title={created === null ? 'Create an API key' : `Copy the key ${created.name}`} describedBy="{ids}-about" closeOnScrim={created === null} width={7} onClose={close}>
+  <div class="views" bind:this={views} style:min-block-size={reserved === null ? null : `${String(reserved)}px`}>
   {#if created === null}
     <p id="{ids}-about">Programs use an API key to call the hub's GraphQL API. A key cannot make or revoke keys.</p>
     <form onsubmit={submit} novalidate>
@@ -117,16 +122,28 @@
     {#if secret !== null}
       <KeySecret {secret} />
     {/if}
-    <div class="actions">
+    <div class="actions done">
       <FormButton tabindex={0} tone="primary" onclick={close}>Done</FormButton>
     </div>
   {/if}
+  </div>
 </Modal>
 
 <style>
   p {
     margin: 0;
     line-height: var(--leading-normal);
+  }
+
+  .views {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  /* The buttons stay where the form's buttons were, at the foot of the reserved height. */
+  .done {
+    margin-block-start: auto;
   }
 
   .fields,

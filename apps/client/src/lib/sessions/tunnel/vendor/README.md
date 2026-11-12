@@ -34,3 +34,4 @@ echo 'export default Guacamole;' >> guacamole.js
 - Only `$lib/sessions/tunnel/` imports this folder (ESLint `no-restricted-imports` and `no-restricted-syntax`).
 - `guacamole.d.ts` is hand-written and covers only what the client calls; keep it true to 1.5.5.
 - The quality checks skip `guacamole.js` (`quality/generated.txt`); ESLint ignores it.
+- `guacamole.js` is vendored whole, so it still holds `Guacamole.SessionRecording`; the client never calls it, because session recording is deferred (R-113, RA-041).

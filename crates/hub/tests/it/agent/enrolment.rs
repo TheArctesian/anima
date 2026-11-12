@@ -2,6 +2,7 @@
 //! minutes, and makes earlier unused codes of its device useless; enrolling replaces the
 //! device's token and sets its metrics source to `agent` (MET-011).
 
+use agent_core::wire::{DEVICE_NAME_CHARS, is_device_name};
 use axum::{
     body::Body,
     http::{Request, StatusCode, header},
@@ -110,11 +111,20 @@ async fn met_012_uses_of_one_code_at_once_enrol_once(pool: PgPool) {
         .iter()
         .filter(|(status, _)| *status == StatusCode::OK);
     assert_eq!(accepted.count(), 1, "{answers:?}");
+    // The rest are refused, or sent back while the hub answers as many agent requests as it
+    // takes at once (MET-017); those never reached the code.
     let refused = (StatusCode::UNAUTHORIZED, refusal("ENROLMENT_REFUSED"));
-    assert_eq!(
-        answers.iter().filter(|answer| **answer == refused).count(),
-        7
+    let unavailable = (StatusCode::SERVICE_UNAVAILABLE, refusal("UNAVAILABLE"));
+    let others = answers
+        .iter()
+        .filter(|(status, _)| *status != StatusCode::OK);
+    assert!(
+        others
+            .clone()
+            .all(|answer| *answer == refused || *answer == unavailable),
+        "{answers:?}"
     );
+    assert_eq!(others.count(), 7);
 }
 
 #[sqlx::test(
@@ -228,4 +238,37 @@ async fn met_012_only_a_signed_in_operator_makes_a_code_for_a_device_that_exists
     );
     let malformed = agents.operate(query, json!({ "id": "pve-01" })).await;
     assert_eq!(error(&malformed).1, "VALIDATION");
+}
+
+/// T8 S1: the longest name the device rule takes (`DEVICE_NAME_CHARS` characters, 192 bytes
+/// here) reaches the agent as a name it keeps, so no code is spent on an answer the agent must
+/// throw away.
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn met_012_every_device_name_the_hub_takes_is_one_the_agent_keeps(pool: PgPool) {
+    let agents = Agents::new(&pool).await;
+    let rename = "mutation($id: ID!, $input: UpdateDeviceInput!) { \
+                  updateDevice(id: $id, input: $input) { name } }";
+    let longest = "漢".repeat(DEVICE_NAME_CHARS);
+    let longer = json!({ "id": PVE_01, "input": { "name": format!("{longest}漢") } });
+    let refused = agents.operate(rename, longer).await;
+    assert!(refused["data"].is_null(), "{refused}");
+    let renamed = agents
+        .operate(
+            rename,
+            json!({ "id": PVE_01, "input": { "name": longest } }),
+        )
+        .await;
+    assert_eq!(
+        renamed["data"]["updateDevice"]["name"], longest,
+        "{renamed}"
+    );
+
+    let code = agents.code_for(PVE_01).await;
+    let enrolled = agents.enrolled(&code).await;
+    let name = enrolled["deviceName"].as_str().unwrap();
+    assert_eq!(name, longest);
+    assert!(is_device_name(name), "{} bytes", name.len());
 }

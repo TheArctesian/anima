@@ -79,6 +79,16 @@ describe('mergeLive GPU series (MET-009, R-099)', () => {
     expect(next.map((each) => [each.label, each.gpuIndex, each.points.length])).toEqual([['GPU 0 RTX 4090', 0, 2]]);
   });
 
+  it('D-30: a live GPU_MEMORY_BYTES sample labelled "0" joins the shared memory series of GPU 0, and no other series', () => {
+    const memory = series('GPU_MEMORY_BYTES', 'GPU 0 Apple M2 Pro', [point('2026-11-05T09:00:00Z', 100)], 0);
+    const usage = series('GPU_PERCENT', 'GPU 0 Apple M2 Pro', [point('2026-11-05T09:00:00Z', 10)], 0);
+    const next = mergeLive([memory, usage], added('2026-11-05T09:05:00Z', [{ kind: 'GPU_MEMORY_BYTES', label: '0', value: 4096 }]));
+    expect(next.map((each) => [each.kind, each.gpuIndex, each.points.length])).toEqual([
+      ['GPU_MEMORY_BYTES', 0, 2],
+      ['GPU_PERCENT', 0, 1],
+    ]);
+  });
+
   it('starts a series labelled GPU <index> for a live GPU sample with no chart series yet', () => {
     const next = mergeLive([], added('2026-11-05T09:05:00Z', [{ kind: 'VRAM_PERCENT', label: '2', value: 50 }]));
     expect(next.map((each) => [each.kind, each.label, each.gpuIndex])).toEqual([['VRAM_PERCENT', 'GPU 2', 2]]);

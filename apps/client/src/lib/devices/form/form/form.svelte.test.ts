@@ -4,6 +4,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import type { HubResult } from '$lib/hub/hub';
 import { installAnimations } from '../../../forms/animations.fixture';
 import { credentialInput } from '../input';
+import { describedBy as describedByIds } from './errors';
 import { testResult } from '../result.fixture';
 import type { ConnectionTestResult } from '../connection-test';
 import { HOST_KEY, KEY, SAVED, button, choose, input, leave, save, settle, show, type } from './form.fixture';
@@ -18,6 +19,12 @@ beforeEach(() => {
 });
 
 afterEach(leave);
+
+/** The texts a control is described by, in order (`aria-describedby` names one or more ids). */
+function describedBy(control: Element): string[] {
+  const ids = control.getAttribute('aria-describedby')?.split(' ') ?? [];
+  return ids.map((id) => document.getElementById(id)?.textContent ?? `missing #${id}`);
+}
 
 
 it('DEV-011: the password and the passphrase are hidden text that the browser does not remember', () => {
@@ -54,8 +61,7 @@ it('DEV-010: an invalid host is not saved; the host input is flagged, described 
 
   expect(onSave).not.toHaveBeenCalled();
   expect(input('host').getAttribute('aria-invalid')).toBe('true');
-  const describedBy = input('host').getAttribute('aria-describedby') ?? '';
-  expect(document.getElementById(describedBy)?.textContent).toContain('valid host');
+  expect(describedBy(input('host')).join(' ')).toContain('valid host');
   expect(document.activeElement).toBe(input('host'));
 });
 
@@ -298,4 +304,37 @@ it('an error that belongs to no field is brought into view', async () => {
 
   expect(alert.textContent).toContain('Try again.');
   expect(scrolled).toHaveBeenCalledOnce();
+});
+
+it('D-7: an AGENT device shows the source as set by the agent, and offers only None and SSH to pick', () => {
+  show({ ...SAVED, metricsSource: 'AGENT' });
+  const select = document.querySelector<HTMLSelectElement>('#device-metricsSource');
+  const options = [...(select?.options ?? [])].map((option) => ({ value: option.value, text: option.text, disabled: option.disabled }));
+  expect(select?.value).toBe('AGENT');
+  expect(options).toEqual([
+    { value: 'AGENT', text: 'Agent', disabled: true },
+    { value: 'NONE', text: 'None', disabled: false },
+    { value: 'SSH', text: 'SSH', disabled: false },
+  ]);
+});
+
+it('D-7, WCAG 1.3.1: the "Set by the agent" hint describes the source select, and a field without a hint or error has no description', () => {
+  show({ ...SAVED, metricsSource: 'AGENT' });
+  const select = document.querySelector('#device-metricsSource');
+  if (select === null) throw new Error('no source select');
+  expect(describedBy(select)).toEqual(['Set by the agent. Revoke it, or pick None or SSH, to change.']);
+  expect(describedBy(input('host'))).toEqual(['A host name or an IP address.']);
+  expect(input('name').hasAttribute('aria-describedby')).toBe(false);
+});
+
+it('D-7: a device that does not use the agent is not offered Agent', () => {
+  show(SAVED);
+  expect([...(document.querySelector<HTMLSelectElement>('#device-metricsSource')?.options ?? [])].map((option) => option.value)).toEqual(['NONE', 'SSH']);
+});
+
+it('D-7: a control is described by its hint, then its error, and by nothing when it has neither', () => {
+  expect(describedByIds('ssh.port', true, true)).toBe('device-ssh-port-hint device-ssh-port-error');
+  expect(describedByIds('ssh.port', false, true)).toBe('device-ssh-port-error');
+  expect(describedByIds('ssh.port', true, false)).toBe('device-ssh-port-hint');
+  expect(describedByIds('ssh.port', false, false)).toBeUndefined();
 });

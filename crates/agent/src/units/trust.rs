@@ -100,6 +100,11 @@ fn group_write_safe(stat: Stat, by: Installer) -> bool {
 /// write only when it is the user's folder in the user's private group. For the system unit,
 /// which runs the binary as another account: owned by root and writable by no one else, sticky
 /// or not.
+///
+/// The desktop shell keeps a stricter copy of the user rule (`apps/desktop/src-tauri/src/agent/
+/// trust.rs`) that differs in two ways: it refuses a sticky folder others can write (1777), and
+/// a sticky folder whose group may write outside the user's private group (1775). The shell may
+/// be stricter, never looser; `tests/trust-cases.txt` pins both differences and every other case.
 pub(super) fn folder_trusted(stat: Stat, by: Installer) -> bool {
     match by.target {
         Target::User => {
@@ -237,27 +242,6 @@ mod tests {
         assert!(
             folder_trusted(masked, ADA),
             "a mask without write lets no one else write"
-        );
-    }
-
-    #[test]
-    fn met_019_group_write_is_trusted_only_in_the_user_s_private_group() {
-        assert!(
-            folder_trusted(stat(0o040_775, 1000, 1000), ADA),
-            "~/.local/bin, umask 002"
-        );
-        assert!(
-            !folder_trusted(stat(0o040_775, 1000, 4), ADA),
-            "group adm may write the user's folder"
-        );
-        let no_private = Installer {
-            private_group: None,
-            ..ADA
-        };
-        assert!(!folder_trusted(stat(0o040_775, 1000, 1000), no_private));
-        assert!(
-            !folder_trusted(stat(0o042_775, 0, 1000), ADA),
-            "root's, not the user's"
         );
     }
 

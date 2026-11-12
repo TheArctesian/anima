@@ -22,7 +22,7 @@ use crate::{
     maintenance, metrics, notifications, retention,
     sessions::{self, Live},
     targets::AddressPolicy,
-    trust, web_interfaces,
+    trust, vpn, web_interfaces,
 };
 
 // One line per domain in each root (K3).
@@ -37,6 +37,7 @@ pub struct Query(
     notifications::graphql::Query,
     retention::graphql::Query,
     sessions::graphql::Query,
+    vpn::graphql::Query,
 );
 
 #[derive(MergedObject, Default)]
@@ -54,6 +55,8 @@ pub struct Mutation(
     sessions::FilesMutation,
     sessions::WakeMutation,
     trust::graphql::Mutation,
+    vpn::graphql::Mutation,
+    vpn::graphql::RouteMutation,
     web_interfaces::graphql::Mutation,
 );
 
@@ -64,6 +67,7 @@ pub struct Subscription(
     events::graphql::Subscription,
     metrics::graphql::Subscription,
     sessions::graphql::Subscription,
+    vpn::graphql::Subscription,
 );
 
 pub type HubSchema = Schema<Query, Mutation, Subscription>;
@@ -91,6 +95,12 @@ pub struct Dependencies {
     /// The release bucket `buildUploadUrls` signs for; `None` when publishing is off (BLD-060,
     /// R-108). `main.rs` gives the publish upkeep the same value.
     pub bucket: Option<Arc<builds::Bucket>>,
+    /// The hub's one VPN `Feed`: the reader publishes on it and `vpn` and `vpnChanged` read
+    /// it, so the upkeep gives the reader this same value.
+    pub vpn_feed: vpn::Feed,
+    /// The hub's one VPN broker; the reader and the VPN mutations share its turn (BD-15).
+    /// `None` when `ANIMA_VPN_BROKER` is unset.
+    pub vpn_broker: Option<vpn::Broker>,
 }
 
 /// Put each dependency into the schema data, with the devices loaders (WP-06 H-2);
@@ -113,8 +123,10 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
         metrics_feed,
         build_updates,
         bucket,
+        vpn_feed,
+        vpn_broker,
     } = dependencies;
-    harden(
+    let builder = harden(
         Schema::build(
             Query::default(),
             Mutation::default(),
@@ -129,47 +141,58 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
     .data(clock.clone())
     .data(pool.clone())
     .data(bus)
-    .data(vault)
+    .data(vault);
     // One block per domain: its loaders (R-014) and its state.
-    // devices
-    .data(devices::graphql::site_loader(pool.clone()).delay(BATCH_WINDOW))
-    .data(devices::graphql::devices_by_site_loader(pool.clone()).delay(BATCH_WINDOW))
-    .data(devices::graphql::credential_loader(pool.clone()).delay(BATCH_WINDOW))
-    .data(devices::graphql::rdp_credential_loader(pool.clone()).delay(BATCH_WINDOW))
-    .data(devices::graphql::vnc_credential_loader(pool.clone()).delay(BATCH_WINDOW))
-    .data(devices::graphql::device_loader(pool.clone()).delay(BATCH_WINDOW))
-    .data(devices::graphql::web_interfaces_loader(pool.clone()).delay(BATCH_WINDOW))
-    .data(devices::graphql::web_interface_suggestions_loader(pool.clone()).delay(BATCH_WINDOW))
-    // devices fields that join checks (API-005)
-    .data(devices::graphql::status_loader(pool.clone(), clock.clone()).delay(BATCH_WINDOW))
-    .data(devices::graphql::uptime_loader(pool.clone(), clock.clone()).delay(BATCH_WINDOW))
-    .data(devices::graphql::checks_loader(pool.clone()).delay(BATCH_WINDOW))
-    .data(devices::graphql::resolved_ip_loader(pool.clone()).delay(BATCH_WINDOW))
-    // devices fields that join metrics (API-005)
-    .data(devices::graphql::readings_loader(pool.clone(), clock.clone()).delay(BATCH_WINDOW))
-    .data(devices::graphql::gpus_loader(pool.clone()).delay(BATCH_WINDOW))
-    .data(devices::graphql::stale_loader(pool.clone()).delay(BATCH_WINDOW))
-    // checks
-    .data(checks::graphql::check_status_loader(pool.clone(), clock.clone()).delay(BATCH_WINDOW))
-    .data(checks::graphql::last_heartbeat_loader(pool.clone()).delay(BATCH_WINDOW))
-    .data(checks::graphql::heartbeats_loader(pool.clone()).delay(BATCH_WINDOW))
-    .data(checks::graphql::check_uptime_loader(pool.clone(), clock).delay(BATCH_WINDOW))
-    .data(checks::graphql::check_notifications_loader(pool.clone()).delay(BATCH_WINDOW))
-    // notifications
-    .data(notifications::graphql::last_delivery_loader(pool.clone()).delay(BATCH_WINDOW))
-    // trust: the accepted keys and certificates, and what the connection tests of `live` saw
-    .data(trust::graphql::host_key_loader(pool.clone()).delay(BATCH_WINDOW))
-    .data(trust::graphql::server_certificate_loader(pool.clone()).delay(BATCH_WINDOW))
-    .data(live.sightings().clone())
-    // sessions (R-032)
-    .data(live)
-    .data(policy)
-    // metrics
-    .data(metrics_feed)
-    // builds
-    .data(build_updates)
-    .data(bucket)
-    .finish()
+    with_devices_loaders(builder, &pool, &clock)
+        // checks
+        .data(checks::graphql::check_status_loader(pool.clone(), clock.clone()).delay(BATCH_WINDOW))
+        .data(checks::graphql::last_heartbeat_loader(pool.clone()).delay(BATCH_WINDOW))
+        .data(checks::graphql::heartbeats_loader(pool.clone()).delay(BATCH_WINDOW))
+        .data(checks::graphql::check_uptime_loader(pool.clone(), clock).delay(BATCH_WINDOW))
+        .data(checks::graphql::check_notifications_loader(pool.clone()).delay(BATCH_WINDOW))
+        // notifications
+        .data(notifications::graphql::last_delivery_loader(pool.clone()).delay(BATCH_WINDOW))
+        // trust: the accepted keys and certificates, and what the connection tests of `live` saw
+        .data(trust::graphql::host_key_loader(pool.clone()).delay(BATCH_WINDOW))
+        .data(trust::graphql::server_certificate_loader(pool.clone()).delay(BATCH_WINDOW))
+        .data(live.sightings().clone())
+        // sessions (R-032)
+        .data(live)
+        .data(policy)
+        // metrics
+        .data(metrics_feed)
+        // builds
+        .data(build_updates)
+        .data(bucket)
+        // vpn
+        .data(vpn_feed)
+        .data(vpn_broker)
+        .finish()
+}
+
+type Builder = SchemaBuilder<Query, Mutation, Subscription>;
+
+/// The devices loaders (R-014), with the devices fields that join checks and metrics
+/// (API-005).
+fn with_devices_loaders(builder: Builder, pool: &PgPool, clock: &Arc<dyn Clock>) -> Builder {
+    builder
+        .data(devices::graphql::site_loader(pool.clone()).delay(BATCH_WINDOW))
+        .data(devices::graphql::devices_by_site_loader(pool.clone()).delay(BATCH_WINDOW))
+        .data(devices::graphql::credential_loader(pool.clone()).delay(BATCH_WINDOW))
+        .data(devices::graphql::rdp_credential_loader(pool.clone()).delay(BATCH_WINDOW))
+        .data(devices::graphql::vnc_credential_loader(pool.clone()).delay(BATCH_WINDOW))
+        .data(devices::graphql::device_loader(pool.clone()).delay(BATCH_WINDOW))
+        .data(devices::graphql::web_interfaces_loader(pool.clone()).delay(BATCH_WINDOW))
+        .data(devices::graphql::web_interface_suggestions_loader(pool.clone()).delay(BATCH_WINDOW))
+        // devices fields that join checks (API-005)
+        .data(devices::graphql::status_loader(pool.clone(), clock.clone()).delay(BATCH_WINDOW))
+        .data(devices::graphql::uptime_loader(pool.clone(), clock.clone()).delay(BATCH_WINDOW))
+        .data(devices::graphql::checks_loader(pool.clone()).delay(BATCH_WINDOW))
+        .data(devices::graphql::resolved_ip_loader(pool.clone()).delay(BATCH_WINDOW))
+        // devices fields that join metrics (API-005)
+        .data(devices::graphql::readings_loader(pool.clone(), clock.clone()).delay(BATCH_WINDOW))
+        .data(devices::graphql::gpus_loader(pool.clone()).delay(BATCH_WINDOW))
+        .data(devices::graphql::stale_loader(pool.clone()).delay(BATCH_WINDOW))
 }
 
 /// API-007: release builds are production builds; debug builds keep introspection for tooling.

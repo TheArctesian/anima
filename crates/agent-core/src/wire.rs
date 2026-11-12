@@ -15,7 +15,9 @@ mod tests;
 mod times;
 
 pub use batch::{Batch, BatchGpu, BatchPoint, BatchSeries, GpuVendor};
-pub use bodies::{EnrolRequest, Enrolled, RenewRequest, Renewed};
+pub use bodies::{
+    DEVICE_NAME_CHARS, EnrolRequest, Enrolled, RenewRequest, Renewed, is_device_name,
+};
 pub use check::Accepted;
 pub use refusal::{Refusal, RefusalCode};
 pub use secrets::{AgentToken, CODE_BYTES, CodeHash, EnrolmentCode, TOKEN_BYTES, TokenHash};

@@ -21,6 +21,9 @@ uses it. The procedures are in the guide, not here. Public DNS records are in
 | `vps/nftables.conf` | Applied live, then `/etc/nftables/anima.nft`, included from `/etc/sysconfig/nftables.conf` (by `harden.sh firewall`, `confirm`) | 4 |
 | (operator's file) | `/etc/anima/firewall-allow`: extra public ports to keep open, one `PORT/PROTO` per line; read by `harden.sh firewall` | 4 |
 | `backup/` | Units, scripts and secret files as listed in [`backup/README.md`](backup/README.md) | 9 |
+| `vps/broker.sh` | Sourced by `harden.sh`: `broker`, the broker install (see "Installing the broker" below) | 11 |
+| `broker/anima-broker.socket`, `broker/anima-broker@.unit`, `broker/anima-broker-audit.unit`, `broker/anima-broker-audit.timer` | `/etc/systemd/system/anima-broker.socket`, `anima-broker@.service`, `anima-broker-audit.service` and `anima-broker-audit.timer` (by `harden.sh broker`, from `/opt/anima/headscale/broker/`) | 11 |
+| `broker/*.ts`, `bin/broker-build.ts` | Not installed. Compiled on the Mac to one Linux binary, `/usr/local/libexec/anima-broker` | 11 |
 | `src/`, `tests/`, `package.json`, `tsconfig.json` | Not installed. Local checks: `bun test deploy/headscale` | 8 |
 
 ## Agent devices (MET-020, R-084)
@@ -36,9 +39,13 @@ operator steps (VPS-005): with `headscale nodes tag -i <id> -t tag:agent` on an 
 or with a pre-auth key made with `--tags tag:agent` when the device registers.
 
 A tagged node stops being a personal node, and tagged nodes do not expire in Headscale.
-VPN-003 lists only the hub and routers as tagged nodes. Whether agent-only devices need a
-forced re-key schedule is pending a programme ruling. Until it is decided, the operator
-revokes an agent device by deleting the node (`headscale nodes delete`) or by removing the tag.
+VPN-003 lists agent-only devices with the hub and routers as nodes whose keys do not expire
+(R-105): an agent node reaches only the hub on TCP 443, and every route there needs the
+device's agent token (K8), so there is no re-key schedule.
+
+Revoking the agent token on the device's page stops its pushes, but not its VPN reach to the
+hub on 443. To cut an agent device off the tailnet, the operator deletes the node
+(`headscale nodes delete`) or removes the tag (VPS-005).
 
 A device that is also an operator machine (a laptop or the Mac) stays a personal node of
 `operator`, untagged: it keeps its operator reach, and its agent still only dials the hub on
@@ -64,3 +71,83 @@ When the operator removes a client device, delete its `device-*` host entry and 
 otherwise reach an agent. `tests/policy-rules.test.ts` checks that no host `/32` equals the address of
 a tagged node in its test inventory, but the test cannot see the live tailnet, so keep the
 entries current.
+
+## Installing the broker (R-055, VP-8)
+
+The broker is the only path from the hub to Headscale (vpn-build.md Section 7, B1 and B2). It
+listens on `/run/anima-broker/broker.sock`; systemd starts one `anima-broker` process for each
+connection, one at a time. It accepts six verbs (`nodes`, `personal-key`, `router-key`,
+`approve-route`, `register`, `renew`), at most 3 keys and 3 registrations in 24 hours, and no new
+node at `max_nodes` (`/etc/anima/broker.conf`; a key not yet used counts as a node for its one
+hour). It checks the nodes it made at each request and every 5 minutes from
+`anima-broker-audit.timer`, also when the hub is silent; the request and the audit take the lock
+`/var/lib/anima-broker/lock` in turn. Installing it is a VPS change (VPS-005).
+
+It logs one line per request or audit to journald, and never the pre-auth key, the auth ID or a
+node name. The auth ID of `register` is still visible on the VPS: it is an argument of the
+`docker compose exec` command the broker runs, so it shows in that process's command line in
+`/proc` and in Docker's event log (`docker events`). Only a Headscale admin can use an auth ID,
+and only while the computer that showed it is waiting. To hide command lines from other local users,
+mount `/proc` with `hidepid=2` (an operator step on the VPS, VPS-005; not done by `harden.sh`):
+add `proc /proc proc defaults,hidepid=2 0 0` to `/etc/fstab`, then `mount -o remount /proc`.
+
+A site has one router. `router-key` and `approve-route` refuse a second router (`not-allowed`)
+while another node has the site subnet approved. To replace a router, the operator frees the
+site first: remove the old router with `hsctl nodes delete --identifier <id>` (VPS-005), then ask
+for the new router key. A `register` whose auth ID belongs to a tagged node, or to a user other
+than `operator`, is refused and the node is left as it was.
+
+1. On the Mac, build the binary (the first build downloads the Bun runtime for Linux). It prints
+   the binary's SHA-256; keep it for step 3:
+
+   ```sh
+   bun deploy/headscale/bin/broker-build.ts          # x86_64; add arm64 for an aarch64 VPS
+   ```
+
+2. Copy it and the four units to the VPS, through a new folder in the admin's home (not `/tmp`,
+   which other users can write). The units go in `/opt/anima/headscale/broker/`, beside `vps/`:
+
+   ```sh
+   stage=$(ssh <admin>@<vps> 'mktemp -d "$HOME/anima-broker.XXXXXX"')
+   scp deploy/headscale/broker/dist/anima-broker deploy/headscale/broker/anima-broker.socket \
+     'deploy/headscale/broker/anima-broker@.unit' deploy/headscale/broker/anima-broker-audit.unit \
+     deploy/headscale/broker/anima-broker-audit.timer "<admin>@<vps>:$stage/"
+   ssh <admin>@<vps>
+   stage=<the folder mktemp printed>
+   sudo install -m 0700 "$stage/anima-broker" /usr/local/libexec/anima-broker.new
+   sudo install -D -m 0644 -t /opt/anima/headscale/broker "$stage/anima-broker.socket" "$stage/anima-broker@.unit" \
+     "$stage/anima-broker-audit.unit" "$stage/anima-broker-audit.timer"
+   rm -r "$stage"
+   ```
+
+3. Install it with one command and the SHA-256 from step 1; try it with `--dry-run` first:
+
+   ```sh
+   sudo /opt/anima/headscale/vps/harden.sh --dry-run --sha256=<hash> broker
+   sudo /opt/anima/headscale/vps/harden.sh --sha256=<hash> broker
+   ```
+
+   It refuses when `anima-broker.new` is missing or does not match `--sha256`, the machine is not
+   x86_64 or aarch64, or the binary cannot count the nodes (a dry run prints that step instead
+   of running it). It creates the system user and group `anima-hub` with id 10001, the hub container's
+   user, unless they exist (another name on 10001 is refused): systemd sets the socket's owner only
+   to a user the host knows. It writes `/etc/anima/broker.conf` (`max_nodes` = the node count + 5) only if
+   the file is absent. On an update it stops `anima-broker.socket` and the audit timer first. It
+   installs the binary through a temporary file in the same folder and a rename, writes the four
+   units, runs `systemctl daemon-reload`, enables and restarts `anima-broker.socket` and
+   `anima-broker-audit.timer`, and prints the broker's own answer, `broker: ok, <n> nodes`.
+
+4. Check the sandbox after a systemd, Docker or Bun update. The units carry `ProtectProc=invisible`,
+   `ProcSubset=pid`, `SystemCallFilter=@system-service` and `SystemCallFilter=~@privileged` (M3).
+   They ran on the VPS on 2026-11-11; `~@resources` was dropped then, because Bun calls
+   `sched_setscheduler` and the filter killed it (exit status 159, SIGSYS). If step 3 ends with
+   "the broker does not answer", or `sudo systemctl start anima-broker-audit.service` fails, read
+   `journalctl -u 'anima-broker@*' -u anima-broker-audit.service`. Exit status 159 is a blocked
+   system call: remove one filter line from both units in `/opt/anima/headscale/broker/` (first
+   `SystemCallFilter=~@privileged`, then `SystemCallFilter=@system-service`, then `ProcSubset=pid`,
+   then `ProtectProc=invisible`) and repeat step 3, until `docker compose exec` works in the
+   sandbox. Record which lines stay in vpn-build.md Section 11.
+
+5. To raise the node limit, edit `max_nodes=` in `/etc/anima/broker.conf`; the next request
+   reads it. To update the broker, repeat steps 1 to 3. The log is
+   `journalctl -u 'anima-broker@*' -u anima-broker-audit.service`.

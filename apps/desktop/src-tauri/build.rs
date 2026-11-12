@@ -24,6 +24,8 @@ const APP_COMMANDS: &[&str] = &[
     "process_log_folder_open",
     "sharing_settings_open",
     "this_machine_read",
+    "agent_bundled",
+    "agent_install",
     "system_browser_open",
     "web_view_pinning",
     "web_view_open",

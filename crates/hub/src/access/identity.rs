@@ -59,6 +59,20 @@ impl Identity {
         Self::new(operator, grant)
     }
 
+    /// A write API key identity for `operator`, for other domains' tests of a resolver's own
+    /// token kind check (D-23). Only with the `test-support` feature, as [`Self::for_tests`].
+    #[cfg(feature = "test-support")]
+    #[must_use]
+    pub const fn api_key_for_tests(operator: Operator, expires_at: DateTime<Utc>) -> Self {
+        let grant = Grant {
+            token: Uuid::nil(),
+            kind: TokenKind::ApiKey,
+            scope: Scope::Write,
+            expires_at,
+        };
+        Self::new(operator, grant)
+    }
+
     /// The operator the token stands for; `None` for a builder token, which stands for no
     /// operator, not even the one who enrolled it (BLD-022, R-107).
     #[must_use]

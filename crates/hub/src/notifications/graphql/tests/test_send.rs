@@ -13,10 +13,12 @@ use crate::{
     ids::{ChannelId, OperatorId},
     notifications::{
         Delivery, DeliveryReason, NotificationKind,
+        channels::{Secrets, Settings},
         dispatch::{
             Sender,
             tests::{
-                NO_CONTENT, assert_no_secret, channel, recorded, start, target, vault, webhook,
+                DISCORD, NO_CONTENT, apprise, assert_no_secret, channel, email, ntfy, recorded,
+                start, target, vault, webhook,
             },
         },
         egress::{
@@ -26,6 +28,10 @@ use crate::{
         graphql::test_send::{Asker, send_test},
     },
 };
+
+/// The limit the spec sets on a test send (NOT-004). Written out, not read from `TIME_LIMIT`:
+/// the silent-target tests prove a send ends near it, and the test below pins the value.
+const SPEC_LIMIT: Duration = Duration::from_secs(8);
 
 /// How late past the time limit a send may end on a loaded machine.
 const SLACK: Duration = Duration::from_secs(3);
@@ -151,11 +157,50 @@ async fn not_004_a_test_to_a_silent_target_ends_within_the_time_limit(pool: PgPo
     let delivery = send(&pool, egress, hooks).await.unwrap();
 
     assert!(
-        started.elapsed() < TIME_LIMIT + SLACK,
+        started.elapsed() < SPEC_LIMIT + SLACK,
         "{:?}",
         started.elapsed()
     );
     assert_eq!(delivery.reason, Some(DeliveryReason::TimedOut));
+}
+
+/// A test send to a channel of `spec` whose server accepts and never answers ends as a timed-out
+/// delivery within the time limit.
+async fn assert_silent_target_times_out(pool: &PgPool, spec: fn(&Server) -> (Settings, Secrets)) {
+    start(pool).await;
+    let (server, egress) = target(|_| Behaviour::Silent).await;
+    let silent = channel(pool, "silent", spec(&server)).await;
+    let started = Instant::now();
+
+    let delivery = send(pool, egress, silent).await.unwrap();
+
+    assert!(
+        started.elapsed() < SPEC_LIMIT + SLACK,
+        "{:?}",
+        started.elapsed()
+    );
+    assert_eq!(delivery.reason, Some(DeliveryReason::TimedOut));
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn not_004_a_test_to_a_silent_ntfy_server_ends_within_the_time_limit(pool: PgPool) {
+    assert_silent_target_times_out(&pool, ntfy).await;
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn not_004_a_test_to_a_silent_mail_server_ends_within_the_time_limit(pool: PgPool) {
+    assert_silent_target_times_out(&pool, email).await;
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn not_004_a_test_to_a_silent_apprise_server_ends_within_the_time_limit(pool: PgPool) {
+    // DISCORD is a stateless URL the hub permits, so the send reaches the server.
+    assert_silent_target_times_out(&pool, |server| apprise(server, &[DISCORD])).await;
+}
+
+#[test]
+fn not_004_the_send_time_limit_is_8_seconds() {
+    assert_eq!(TIME_LIMIT, SPEC_LIMIT);
 }
 
 #[sqlx::test(migrations = "./migrations")]

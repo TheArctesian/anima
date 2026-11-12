@@ -64,6 +64,9 @@ function coveredCount(entries: Block[], subnet: Block): number {
 
 const compose = Bun.YAML.parse(readFileSync(join(ROOT, "deploy", "compose.yaml"), "utf8")) as Compose;
 
+/** The broker's folder, read-only, so a socket restart is seen (VP-7, BD-10). */
+const BROKER_FOLDER = { type: "bind", source: "/run/anima-broker", target: "/run/anima-broker", read_only: true };
+
 describe("hub configuration", () => {
   test("every ANIMA_* variable the hub receives is read by config.rs or listed in the conventions.md environment table", () => {
     const source = readFileSync(CONFIG_PATH, "utf8");
@@ -80,9 +83,15 @@ describe("hub configuration", () => {
     }
   });
 
+  test("VP-7 the hub reaches the broker socket inside the read-only broker folder", () => {
+    const hub = compose.services["hub"] as Container;
+    expect(hub.environment?.["ANIMA_VPN_BROKER"]).toBe("${ANIMA_VPN_BROKER:-/run/anima-broker/broker.sock}");
+    expect(hub.volumes).toContainEqual(BROKER_FOLDER);
+  });
+
 });
 
-describe("hub deny list, notify network and recordings", () => {
+describe("hub deny list, notify network and mounts", () => {
   test("NET-001 ANIMA_PROBE_DENY covers every network the hub joins, notify minus exactly the Apprise address", () => {
     const hub = compose.services["hub"] as Container;
     const apprise = compose.services["apprise"] as Container;
@@ -115,33 +124,23 @@ describe("hub deny list, notify network and recordings", () => {
     expect(inside.reduce((sum, entry) => sum + entry.size, 0)).toBe(subnet.size - 1);
   });
 
-  test("NET-001 the deny list holds the VPS public address and the hub VPN address as /32", () => {
+  test("NET-001 the deny list holds the VPS public address as /32, and not the hub VPN address, which is a device (VP-13)", () => {
     const deny = (compose.services["hub"]?.environment?.["ANIMA_PROBE_DENY"] ?? "").split(",");
     expect(deny).toContain("${ANIMA_VPS_PUBLIC_ADDRESS:?set to the VPS public IPv4}/32");
-    expect(deny).toContain("${ANIMA_HUB_ADDRESS:?set ANIMA_HUB_ADDRESS to the hub's VPN address}/32");
+    expect(deny.filter((entry) => entry.includes("ANIMA_HUB_ADDRESS"))).toEqual([]);
   });
 
-  test("K7 the hub gets the web, origin and recording variables with the values of plan Section 6", () => {
+  test("K7 the hub gets the web and origin variables with the values of plan Section 6, and no recording variable (R-113)", () => {
     const environment = compose.services["hub"]?.environment ?? {};
     expect(environment["ANIMA_PUBLIC_ORIGIN"]).toBe("${ANIMA_PUBLIC_ORIGIN:-https://hub.anima.ing}");
     expect(environment["ANIMA_WEB_ROOT"]).toBe("/usr/share/anima/web");
-    expect(environment["ANIMA_RECORDING_ROOT"]).toBe("/var/lib/anima/recordings");
-    expect(environment["ANIMA_RECORDING_MAX_BYTES"]).toBe("${ANIMA_RECORDING_MAX_BYTES:-2147483648}");
+    expect(Object.keys(environment).filter((name) => name.startsWith("ANIMA_RECORDING_"))).toEqual([]);
   });
 
-  test("D-19 only the hub mounts the recordings volume, read-write, at ANIMA_RECORDING_ROOT", () => {
-    const hub = compose.services["hub"] as Container;
-    const root = hub.environment?.["ANIMA_RECORDING_ROOT"];
-    expect(hub.volumes).toContain(`recordings:${root}`);
-    expect(compose.volumes).toHaveProperty("recordings");
-    const users = Object.entries(compose.services).filter(([, service]) => JSON.stringify(service.volumes ?? []).includes("recordings")).map(([name]) => name);
-    expect(users).toEqual(["hub"]);
-  });
-
-  test("SEC-001 the hub root file system stays read-only, and its mounts are exactly certs, recordings and /tmp", () => {
+  test("SEC-001 the hub root file system stays read-only, and its mounts are exactly certs, the broker folder and /tmp", () => {
     const hub = compose.services["hub"] as Container & { tmpfs?: string[] };
     expect(hub.read_only).toBe(true);
-    expect(hub.volumes).toEqual(["certs:/certs:ro", "recordings:/var/lib/anima/recordings"]);
+    expect(hub.volumes).toEqual(["certs:/certs:ro", BROKER_FOLDER]);
     expect(hub.tmpfs).toEqual(["/tmp"]);
   });
 
@@ -151,6 +150,36 @@ describe("hub deny list, notify network and recordings", () => {
     expect(Object.keys(hub.depends_on ?? {})).not.toContain("apprise");
   });
 
+});
+
+describe("hub deny list and default route for the VPS as a device (VP-13)", () => {
+  test("NET-001 VP-13 the deny list holds the VPS public address as /32 and not the hub VPN address", () => {
+    const deny = (compose.services["hub"]?.environment?.["ANIMA_PROBE_DENY"] ?? "").split(",");
+    expect(deny).toContain("${ANIMA_VPS_PUBLIC_ADDRESS:?set to the VPS public IPv4}/32");
+    // VP-13: the VPS is a device at its VPN address; the host firewall limits the hub to 22/tcp and ping.
+    expect(deny.filter((entry) => entry.includes("ANIMA_HUB_ADDRESS"))).toEqual([]);
+    expect(denyEntries(compose.services["hub"] as Container).some((entry) => entry.contains(ipv4("100.64.0.1")))).toBe(false);
+  });
+
+  test("VP-13 the deny list holds exactly the Docker subnets, the carved notify network and the public address", () => {
+    const deny = (compose.services["hub"]?.environment?.["ANIMA_PROBE_DENY"] ?? "").split(",");
+    expect(deny.slice(0, 6)).toEqual([
+      "${ANIMA_HUB_SUBNET:-172.30.0.0/24}",
+      "${ANIMA_DATABASE_SUBNET:-172.30.1.0/24}",
+      "${ANIMA_VPS_PUBLIC_ADDRESS:?set to the VPS public IPv4}/32",
+      "${ANIMA_LOCALAPI_SUBNET:-172.30.2.0/24}",
+      // VP-13 I1: lego's network and docker0, whose gateway 172.17.0.1 is the host.
+      "${ANIMA_ACME_SUBNET:-172.30.4.0/24}",
+      "172.17.0.0/16",
+    ]);
+    expect(deny.slice(6).every((entry) => entry.startsWith("172.30.3."))).toBe(true);
+  });
+
+  test("VP-13 the hub's default route is the gateway network, by gw_priority, at its fixed address", () => {
+    const networks = compose.services["hub"]?.networks as Record<string, { ipv4_address?: string; gw_priority?: number } | null>;
+    expect(networks["gateway"]).toEqual({ ipv4_address: "${ANIMA_HUB_IP:-172.30.0.10}", gw_priority: 1 });
+    for (const name of ["database", "localapi", "notify"]) expect(networks[name]?.gw_priority).toBeUndefined();
+  });
 });
 
 describe("hub certificates and listen address", () => {
@@ -241,7 +270,7 @@ const hubDockerfile = readFileSync(join(ROOT, "deploy", "hub", "Dockerfile"), "u
 };
 const finalStage = hubDockerfile.split("\n").slice(hubDockerfile.split("\n").map((line) => line.startsWith("FROM ")).lastIndexOf(true));
 
-describe("hub image web stage and recordings folder", () => {
+describe("hub image web stage", () => {
 
   test("D-2 the web stage builds the client and the final stage copies only its output to /usr/share/anima/web", () => {
     const web = stage("web");
@@ -256,18 +285,6 @@ describe("hub image web stage and recordings folder", () => {
     expect(stage("web").filter((line) => line.includes("bun install"))).toEqual([
       "RUN bun install --frozen-lockfile --filter @anima/client",
     ]);
-  });
-
-  test("D-13 E-3 the final stage seeds the recordings folder for 10001:10001 with mode 0700 and changes nothing else", () => {
-    const commands = finalStage.join("\n").replace(/\\\n/g, " ").split("\n");
-    const run = commands.find((line) => line.startsWith("RUN mkdir")) ?? "";
-    expect(run.split(/\s*&&\s*/)).toEqual([
-      "RUN mkdir -p /var/lib/anima/recordings",
-      "chown 10001:10001 /var/lib/anima/recordings",
-      "chmod 0700 /var/lib/anima/recordings",
-    ]);
-    expect(commands.filter((line) => /\b(chmod|chown)\b/.test(line))).toEqual([run]);
-    expect(commands.indexOf(run)).toBeLessThan(commands.indexOf("USER 10001:10001"));
   });
 });
 

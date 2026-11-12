@@ -8,7 +8,7 @@ These are the only functions and types one hub domain may use from another. Ever
 
 | Module | Content |
 | --- | --- |
-| `crates/hub/src/ids.rs` | All entity ID newtypes (see `conventions.md`): `OperatorId`, `SiteId`, `DeviceId`, `CheckId`, `WindowId`, `SessionId`, `EventId`, and (Phase 2) `WebInterfaceId`, `MetricSeriesId`, and (Phase 3) `ApiKeyId`, `ChannelId`, `DeliveryId`, `RecordingId`, and (Phase 3, WP-36, R-107) `TokenId`, `ReleaseId`, `BuildJobId`, `BuilderId` |
+| `crates/hub/src/ids.rs` | All entity ID newtypes (see `conventions.md`): `OperatorId`, `SiteId`, `DeviceId`, `CheckId`, `WindowId`, `SessionId`, `EventId`, and (Phase 2) `WebInterfaceId`, `MetricSeriesId`, and (Phase 3) `ApiKeyId`, `ChannelId`, `DeliveryId`, and (Phase 3, WP-36, R-107) `TokenId`, `ReleaseId`, `BuildJobId`, `BuilderId` |
 | `crates/hub/src/status.rs` | `pub enum Status { Up, Down, Degraded, Maintenance, Unknown }` with `fn worst(a, b)` (CHK-004) |
 | `crates/hub/src/clock.rs` | `pub trait Clock: Send + Sync { fn now(&self) -> DateTime<Utc>; }`, `SystemClock`, and `FixedClock` for tests. The only clock read in the hub (CQ-021). |
 | `crates/hub/src/config.rs` | `pub struct Config` from the environment (see `conventions.md`) |
@@ -47,7 +47,6 @@ Each domain exposes `pub mod graphql` with `#[derive(Default)] pub struct Query;
 pub fn web_client(root: &Path, origin: &PublicOrigin) -> axum::Router;   // headers as K7 "HTTP surface"
 // lib.rs mounts, each logged and behind the NET-002 layer:
 //   /metrics: checks::exposition_router(..) wrapped in access::bearer_layer(.., Scope::Read)
-//   /recording: sessions::playback_router(&serving)
 //   fallback: web_client(..) when ANIMA_WEB_ROOT is set
 // spawns.rs (P3-007): spawn_scheduler, spawn_collector, metrics::spawn_stale_watch, notifications::spawn_dispatcher.
 // upkeep.rs: reads retention::periods daily and passes each period to its domain's job (D-25).
@@ -136,9 +135,8 @@ Wiring only (called from `main.rs`, never from another domain): `create_partitio
 (Phase 3, changed, Q2-07):
 
 ```rust
-pub enum Source { Check, Session, Device, Access, Hub, Metrics, Notifications }   // Notifications (Phase 3)
-pub enum AuditTarget { ..., WebInterface(WebInterfaceId), ApiKey(ApiKeyId), Channel(ChannelId),
-                       Recording(RecordingId) }
+pub enum Source { Check, Session, Device, Access, Hub, Metrics, Notifications, Vpn }   // Notifications (Phase 3), Vpn (VP-5)
+pub enum AuditTarget { ..., WebInterface(WebInterfaceId), ApiKey(ApiKeyId), Channel(ChannelId), Vpn }   // Vpn: kind() and id() are "vpn" (VP-7)
 /// One audit-then-event write for every domain (Q2-07). The entry carries its source and device.
 pub struct Trail { /* bus, operator, client address, the time read once */ }
 impl Trail {
@@ -172,6 +170,7 @@ impl Trail {
 | `notifications` (Phase 3, new) | `events`, `credentials` (`Vault`, `Secret`, `Sealed` only) |
 | `retention` (Phase 3, new) | — |
 | `builds` (Phase 3, WP-36, new) | `access` (builder tokens, `Identity`, the guards), `events` |
+| `vpn` (Phase 3, VP-5, new) | `devices`, `events`, `checks` (`for_devices` only) |
 
 (Phase 3) No cycle: `notifications` imports neither `checks` nor `sessions`. `ssh` and `trust` import neither `sessions` nor `checks`.
 
@@ -184,6 +183,7 @@ GraphQL composition edges (R-011). Only the file `<domain>/graphql.rs` may also 
 | `devices` (Phase 2, adds) | `metrics`, `web_interfaces` | `Device.readings`, `Device.metrics`, `Device.gpus`, `Device.webInterfaces`, `Device.webInterfaceSuggestions`; Phase 3: `Device.metricsStale` (MET-018, CR-18) |
 | `metrics`, `web_interfaces` (Phase 2) | `access` (R-022) | the `Authenticated` guard on their root fields |
 | `builds` (Phase 3, WP-36) | `access` | the `Authenticated` and `BuilderSignedIn` guards |
+| `vpn` (Phase 3, VP-5) | `access` | the `Authenticated` guard |
 | `checks`, `maintenance`, `events` | `access` (R-022) | the `Authenticated` guard on their root fields (API-003) |
 | `devices` (Phase 3) | `trust` (replaces `sessions` for these fields) | `SshSettings.hostKey`, `RdpSettings.serverCertificate` |
 | `checks` (Phase 3) | `notifications` | `Check.notifications` |
@@ -226,8 +226,21 @@ pub async fn wake_relay(db: &Db, site: SiteId) -> Result<Option<Device>, Error>;
 (Phase 3, WP-47):
 
 ```rust
-pub struct Device { ..., pub session_limit: Option<std::num::NonZeroU8>, pub record_sessions: bool }
+pub struct Device { ..., pub session_limit: Option<std::num::NonZeroU8> }
 ```
+
+(Phase 3, CR-24) the functions other domains already call, listed here so K3 is complete again:
+
+```rust
+pub struct Distribution { /* the Linux distribution read from the device, DEV-016 */ }
+pub async fn record_distribution(db: &Db, id: DeviceId, distribution: &Distribution) -> Result<(), Error>;   // metrics collector
+pub async fn lock(conn: &mut PgConnection, id: DeviceId) -> Result<(), Error>;                                  // FOR UPDATE; metrics enrolment
+pub async fn lock_metrics_source(conn: &mut PgConnection, id: DeviceId) -> Result<MetricsSource, Error>;       // FOR UPDATE; MET-011, MET-018
+pub async fn use_agent_metrics(conn: &mut PgConnection, id: DeviceId) -> Result<String, Error>;                // agent enrolment only; R-092 D-7
+pub async fn session_limit<'e>(db: impl PgExecutor<'e>, id: DeviceId) -> Result<Option<NonZeroU8>, Error>;   // RA-036
+```
+
+A new cross-domain function is listed here in the same commit as its code (CR-24).
 
 ## credentials (WP-07)
 
@@ -261,7 +274,6 @@ Context values (R-010). Each caller uses exactly this byte string, so a value se
 | SSH secret (inside `credentials`) | `credentials.secrets:<device_id>:<kind>` |
 | TOTP secret (WP-05) | `access.operators.totp:<operator_id>` |
 | (Phase 3) Notification channel secrets (WP-45) | `notifications.channels:<channel_id>` |
-| (Phase 3) Recording key (WP-48) | `sessions.recordings:<recording_id>` |
 
 The GraphQL mutations `setSshCredential` and `clearSshCredential` belong to `devices` (they return `SshSettings`). They call `store_ssh` / `clear_ssh` in the same transaction as the audit entry (`events::audit`), and the audit `change` never contains the secret.
 
@@ -385,15 +397,11 @@ Wake-on-LAN lives in `sessions` (RA-031 is a remote access rule), so a session s
 
 ```rust
 /// Everything the tunnels need, built once at start in `lib.rs::tunnels()`, which main.rs calls (replaces the long
-/// tunnel_router argument lists; CR-12). `recording` is added by WP-48 (D-3).
+/// tunnel_router argument lists; CR-12).
 #[derive(Clone)] pub struct Serving { pub db: Db, pub vault: credentials::Vault, pub bus: events::Bus,
-    pub clock: Clock, pub live: Live, pub guacd: String, pub drive_root: String, pub recording: Recording }
-/// Recording storage (K4 §11); `root: None` makes recording unavailable.
-#[derive(Clone)] pub struct Recording { pub root: Option<PathBuf>, pub max_bytes: u64 }
+    pub clock: Clock, pub live: Live, pub guacd: String, pub drive_root: String }
 pub fn tunnel_router(s: &Serving) -> axum::Router;      // signature change only
 pub fn terminal_router(s: &Serving) -> axum::Router;    // signature change only
-pub fn playback_router(s: &Serving) -> axum::Router;    // GET /recording, K4 §12 (WP-48)
-// Wiring only: drop_expired_recordings(db, root, now, keep: chrono::Days) -> Result<u64, Error>.
 // Session start, files and wake keep their Phase 2 signatures; wake now uses ssh::link.
 ```
 
@@ -450,7 +458,7 @@ pub fn spawn_dispatcher(db: Db, bus: events::Bus, clock: Clock, sending: Sending
 ## retention (Phase 3, WP-46)
 
 ```rust
-pub enum Subject { Heartbeats, Metrics, Events, Recordings, Deliveries }
+pub enum Subject { Heartbeats, Metrics, Events, Deliveries }
 pub struct Periods { /* days per subject */ }
 impl Periods { pub fn keep(&self, s: Subject) -> chrono::Days; }
 pub async fn periods(db: &Db) -> Result<Periods, Error>;   // wiring (upkeep.rs) only

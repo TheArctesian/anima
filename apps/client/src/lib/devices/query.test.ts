@@ -12,10 +12,11 @@ describe('list query in the URL (D-4)', () => {
       name: 'nas',
       statuses: ['UP', 'DOWN'],
       tags: ['lab', 'home'],
+      site: 's1',
       sort: 'UPTIME',
     };
     const written = writeListQuery(query).toString();
-    expect(written).toBe('view=table&q=nas&status=UP&status=DOWN&tag=lab&tag=home&sort=UPTIME');
+    expect(written).toBe('view=table&q=nas&status=UP&status=DOWN&tag=lab&tag=home&site=s1&sort=UPTIME');
     expect(parseListQuery(new URLSearchParams(written))).toEqual(query);
   });
 
@@ -29,6 +30,11 @@ describe('list query in the URL (D-4)', () => {
   });
 });
 
+it('VPN-002: an empty site parameter is no site filter', () => {
+  expect(parseListQuery(new URLSearchParams('site=')).site).toBeNull();
+  expect(writeListQuery({ ...DEFAULT_QUERY, site: null }).has('site')).toBe(false);
+});
+
 describe('list variables (DEV-001, DEV-003, DEV-004)', () => {
   it('DEV-001 asks for 200 devices and omits an empty filter', () => {
     expect(listVariables(DEFAULT_QUERY)).toStrictEqual({ sort: 'NAME', first: 200 });
@@ -40,6 +46,10 @@ describe('list variables (DEV-001, DEV-003, DEV-004)', () => {
       status: ['DOWN'],
       tags: ['lab'],
     });
+  });
+
+  it('VPN-002 sends the site as siteId', () => {
+    expect(listVariables({ ...DEFAULT_QUERY, site: 's1' }).filter).toEqual({ siteId: 's1' });
   });
 
   it('DEV-004 passes the sort through and continues from a cursor', () => {

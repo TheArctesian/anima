@@ -17,7 +17,7 @@ use async_graphql::{
 };
 
 use super::{Error, Identity, Scope, TokenKind};
-use crate::clock::Clock;
+use crate::{api_errors::schema_dependency, clock::Clock};
 
 /// The root mutations a builder token may call, and only it (BLD-022, D-1). `access` keeps the
 /// list because the backstop below refuses every other root field to a builder; a `builds` test
@@ -220,15 +220,15 @@ fn refusal(identity: Option<&Identity>, document: &ExecutableDocument) -> Option
 }
 
 /// The root fields an API key may never select, in any operation (D-23, WP-43 A-6): managing
-/// keys, signing a browser in or out, sessions, files, recordings and device
-/// credentials. `logout` would delete the key, which is managing it. `enrolAgent` and
-/// `revokeAgentToken` are refused by name before their resolvers exist (R-084, CR-8).
-/// A key may not pin a device identity, move or delete a device, or destroy recordings:
-/// moving a device and accepting the new host key would send its stored password to another
-/// host (R-100). Enrolling or revoking a builder, and publishing or cancelling a release, are
-/// supply-chain actions only a login or browser token may take: a builder token outlives the key
-/// that enrolled it (D-23, R-107).
-pub(super) const API_KEY_REFUSED_ROOTS: [&str; 27] = [
+/// keys, signing a browser in or out, sessions, files and device credentials. `logout` would
+/// delete the key, which is managing it. `enrolAgent` and `revokeAgentToken` are refused by
+/// name before their resolvers exist (R-084, CR-8). A key may not pin a device identity, or
+/// move or delete a device: moving a device and accepting the new host key would send its
+/// stored password to another host (R-100). Enrolling or revoking a builder, and publishing or
+/// cancelling a release, are supply-chain actions only a login or browser token may take: a
+/// builder token outlives the key that enrolled it (D-23, R-107). A VPN key, a registration or a
+/// renewal admits a computer to the network: login or browser token only (VP-7, VP-10).
+pub(super) const API_KEY_REFUSED_ROOTS: [&str; 30] = [
     "createApiKey",
     "revokeApiKey",
     "apiKeys",
@@ -236,7 +236,6 @@ pub(super) const API_KEY_REFUSED_ROOTS: [&str; 27] = [
     "logout",
     "startSession",
     "openFiles",
-    "openRecording",
     "setSshCredential",
     "clearSshCredential",
     "setRdpCredential",
@@ -251,11 +250,15 @@ pub(super) const API_KEY_REFUSED_ROOTS: [&str; 27] = [
     "updateDevice",
     "deleteDevice",
     "setRetention",
-    "deleteRecording",
     "enrolBuilder",
     "revokeBuilder",
     "createRelease",
     "cancelBuildJob",
+    "createVpnInvite",
+    "createRouterKey",
+    "registerVpnNode",
+    "renewVpnKey",
+    "approveSiteRoute",
 ];
 
 /// The root selections a token of `kind` may make, in every operation type. A new kind of
@@ -272,6 +275,22 @@ const fn kind_roots(kind: TokenKind) -> Roots<'static> {
 /// a resolver that checks it again behind the backstop.
 pub(super) fn kind_may_select(kind: TokenKind, name: &str) -> bool {
     kind_roots(kind).admits(name)
+}
+
+/// The request's identity when its token kind may select the root field `root`; `FORBIDDEN`
+/// otherwise. The backstop has refused an API key already, so this holds even for a schema
+/// built without it (D-23, WP-43 A-6).
+///
+/// # Errors
+///
+/// `FORBIDDEN` for a token kind that may not select `root`; `INTERNAL` with no identity.
+pub fn operator_only<'a>(ctx: &Context<'a>, root: &str) -> async_graphql::Result<&'a Identity> {
+    let identity = schema_dependency::<Identity>(ctx)?;
+    if kind_may_select(identity.kind(), root) {
+        Ok(identity)
+    } else {
+        Err(Error::KindRefused.into_graphql())
+    }
 }
 
 /// The mutations a signed-out client may run, one per operation (API-003, D-4, A-7, R-111).

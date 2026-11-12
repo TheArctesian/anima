@@ -31,6 +31,8 @@ vi.mock('$lib/notifications/NotificationsSection.svelte', () => ({ default: () =
 vi.mock('$lib/checks/defaults/DefaultsSection.svelte', () => ({ default: () => undefined }));
 // The Data retention section loads its own data and has its own tests in `$lib/retention/` (WP-50 F-3, F-10).
 vi.mock('$lib/retention/RetentionSection.svelte', () => ({ default: () => undefined }));
+// The VPN section loads its own data and has its own tests in `$lib/vpn/` (SET-003).
+vi.mock('$lib/vpn/VpnSection.svelte', () => ({ default: () => undefined }));
 
 let app: ReturnType<typeof mount> | undefined;
 let hub: ReturnType<typeof fakeHub>;
@@ -101,10 +103,10 @@ function sectionTexts(target: HTMLElement, heading: string): string[] {
   return [...section.querySelectorAll('h2, p, label, button, option')].map(readable);
 }
 
-it('SET-001, UI-005, MOT-043: the page is the title, then Account, then Appearance with Theme, Reduce motion and the two fonts, then Notifications, then Default check settings, then Data retention, then API keys', async () => {
+it('SET-001, UI-005, MOT-043: the page is the title, then Account, then Appearance with Theme, Reduce motion and the two fonts, then Notifications, then Default check settings, then Data retention, then API keys, then VPN', async () => {
   const target = await open({ Me: ok({ me: { username: 'ann' } }) });
   expect(target.querySelector('h1')?.compareDocumentPosition(sections(target)[0] as Node)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
-  expect(sectionHeadings(target)).toEqual(['Account', 'Appearance', 'Notifications', 'Default check settings', 'Data retention', 'API keys']);
+  expect(sectionHeadings(target)).toEqual(['Account', 'Appearance', 'Notifications', 'Default check settings', 'Data retention', 'API keys', 'VPN']);
   expect(sectionTexts(target, 'Account')).toEqual(['Account', 'Who is signed in to this hub.', 'Signed in as ann', 'Sign out', '']);
   const fonts = ['Fira Code', 'OpenDyslexic'];
   expect(sectionTexts(target, 'Appearance')).toEqual([
@@ -117,7 +119,7 @@ it('SET-001, UI-005, MOT-043: the page is the title, then Account, then Appearan
 it('SET-001, UPD-006, BLD-020: the desktop app adds the Updates section before API keys, holding the update, log folder and Builds rows', async () => {
   mocks.platform = DESKTOP_MAC;
   const target = await open({ Me: ok({ me: { username: 'ann' } }) });
-  expect(sectionHeadings(target)).toEqual(['Account', 'Hub', 'Appearance', 'Notifications', 'Default check settings', 'Data retention', 'Updates', 'API keys']);
+  expect(sectionHeadings(target)).toEqual(['Account', 'Hub', 'Appearance', 'Notifications', 'Default check settings', 'Data retention', 'Updates', 'API keys', 'VPN']);
   const updates = target.querySelector('section[aria-labelledby="settings-updates"]');
   expect(updates?.querySelectorAll('[data-stub]')).toHaveLength(3);
   expect(target.querySelectorAll('[data-stub]')).toHaveLength(3);
@@ -222,7 +224,7 @@ it('CLI-002, F-10: desktop shows Hub after Account and before Appearance, with t
   mocks.platform = DESKTOP_MAC;
   const target = await open({ Me: ok({ me: { username: 'ann' } }) });
   const headings = sectionHeadings(target);
-  expect(headings.slice(0, 3)).toEqual(['Account', 'Hub', 'Appearance']);
+  expect(headings.slice(0, 4)).toEqual(['Account', 'Hub', 'Appearance', 'Notifications']);
   expect(sectionTexts(target, 'Hub')).toEqual(['Hub', 'The hub this app talks to.', `Hub address${hub.hub.address.origin}`, 'Test connection', 'Change hub', '']);
   expect(hubStatus(target)?.textContent).toBe('');
 });

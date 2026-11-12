@@ -56,7 +56,6 @@ pub(super) struct RemoteRow {
     mac_address: Option<String>,
     metrics_source: String,
     session_limit: Option<i32>,
-    record_sessions: bool,
     transfer_upload: bool,
     transfer_download: bool,
     transfer_copy: bool,
@@ -108,7 +107,6 @@ impl TryFrom<RemoteRow> for RemoteAccess {
                 .map_err(decode)?,
             metrics_source: row.metrics_source.parse().map_err(decode)?,
             session_limit: session_limit(row.session_limit)?,
-            record_sessions: row.record_sessions,
             transfer: TransferPolicy {
                 upload: row.transfer_upload,
                 download: row.transfer_download,
@@ -145,7 +143,6 @@ impl TryFrom<DeviceRow> for Device {
             mac_address: remote.mac_address,
             metrics_source: remote.metrics_source,
             session_limit: remote.session_limit,
-            record_sessions: remote.record_sessions,
             transfer: remote.transfer,
             distribution: row.distribution.as_deref().map(distribution).transpose()?,
             created_at: row.created_at,
