@@ -11,7 +11,7 @@
   import { createClock } from '$lib/nav/clock.svelte';
   import { DATA_AGE_REFRESH_MS } from '$lib/nav/nav';
   import { capabilities } from '$lib/platform/platform';
-  import CodeStep from './CodeStep.svelte';
+  import CodeStep from './code/CodeStep.svelte';
   import { afterEdit, checkLogin, firstInvalid, type FieldMessages, type LoginField } from './form';
   import HubLine from './HubLine.svelte';
   import Notice from './Notice.svelte';
