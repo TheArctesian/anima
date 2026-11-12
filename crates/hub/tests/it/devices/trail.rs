@@ -89,24 +89,22 @@ fixture_test! {
             "vnc": { "enabled": false, "port": 5900, "username": null },
             "macAddress": null, "metricsSource": "none",
             "transfer": { "upload": true, "download": true, "copy": true, "paste": true },
-            "sessionLimit": null, "recordSessions": false,
+            "sessionLimit": null,
         }));
     }
 
-    async fn ra_036_the_audit_change_holds_the_limit_and_the_recording_flag(pool: PgPool) {
+    async fn ra_036_the_audit_change_holds_the_limit(pool: PgPool) {
         let mut vars = pve_02();
         vars["input"]["sessionLimit"] = json!(3);
-        vars["input"]["recordSessions"] = json!(true);
         let (_, audit) = traced(&pool, CREATE, vars).await;
         assert_eq!(audit["change"]["sessionLimit"], 3);
-        assert_eq!(audit["change"]["recordSessions"], true);
     }
 
     async fn ra_036_an_update_records_a_cleared_limit_as_null_and_a_kept_one_not_at_all(pool: PgPool) {
         let query = "mutation($id: ID!, $input: UpdateDeviceInput!) { updateDevice(id: $id, input: $input) { id } }";
-        let vars = json!({ "id": PVE_01, "input": { "sessionLimit": 0, "recordSessions": true } });
+        let vars = json!({ "id": PVE_01, "input": { "sessionLimit": 0 } });
         let (_, audit) = traced(&pool, query, vars).await;
-        assert_eq!(audit["change"], json!({ "sessionLimit": null, "recordSessions": true }));
+        assert_eq!(audit["change"], json!({ "sessionLimit": null }));
     }
 
     async fn log_005_update_records_only_the_fields_that_were_sent(pool: PgPool) {

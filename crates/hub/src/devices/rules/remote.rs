@@ -55,7 +55,6 @@ pub(in crate::devices) fn new_remote(form: &RemoteForm) -> Result<RemoteAccess, 
                 metrics_source,
                 transfer: form.transfer.unwrap_or_default(),
                 session_limit,
-                record_sessions: form.record_sessions.unwrap_or_default(),
             },
         );
     problems.finish(checked)
@@ -99,7 +98,6 @@ pub(in crate::devices) fn remote_change(
         metrics_source,
         transfer: form.transfer,
         session_limit,
-        record_sessions: form.record_sessions,
     }))
 }
 

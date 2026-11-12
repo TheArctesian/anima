@@ -51,7 +51,7 @@ impl Periods {
         Days::new(u64::from(self.days(subject)))
     }
 
-    const fn days(&self, subject: Subject) -> u16 {
+    const fn days(self, subject: Subject) -> u16 {
         self.0[subject as usize]
     }
 

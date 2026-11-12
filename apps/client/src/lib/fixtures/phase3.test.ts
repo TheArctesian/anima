@@ -5,20 +5,16 @@ import {
   CHANNEL_KINDS,
   DELIVERY_REASONS,
   NOTIFICATION_KINDS,
-  RECORDING_FORMATS,
   RETENTION_SUBJECTS,
   SMTP_SECURITY,
   TOKEN_SCOPES,
   WEBHOOK_METHODS,
   apiKeys,
-  asciicastStream,
   channels,
   checkDefaults,
   deliveries,
   domainExpiryCheck,
-  guacamoleStream,
   notificationSettings,
-  recordings,
   retention,
 } from './phase3';
 
@@ -41,28 +37,6 @@ describe('K6 phase3 client fixtures', () => {
     expect(apiKeys.map((k) => k.scope).sort()).toEqual(['READ', 'WRITE']);
     expect(apiKeys.filter((k) => Date.parse(k.expiresAt) < Date.parse('2026-11-07T00:00:00Z'))).toHaveLength(1);
     expect(apiKeys.every((k) => k.prefix.length === 12 && !('secret' in k))).toBe(true);
-  });
-
-  it('RA-041: recordings are complete, incomplete and stopped by the size limit', () => {
-    expect(recordings.map((r) => r.complete)).toEqual([true, false, true]);
-    expect(recordings.map((r) => r.stoppedReason)).toEqual([null, null, 'size_limit']);
-  });
-
-  it('RA-041: the Guacamole stream draws a rectangle in valid instructions', () => {
-    const instructions = guacamoleStream.text.split(';').filter((i) => i !== '');
-    expect(instructions.map((i) => i.slice(i.indexOf('.') + 1).split(',')[0])).toContain('rect');
-    for (const instruction of instructions) {
-      for (const element of instruction.split(',')) {
-        const dot = element.indexOf('.');
-        expect(element.length - dot - 1).toBe(Number(element.slice(0, dot)));
-      }
-    }
-  });
-
-  it('RA-041: the asciicast stream starts with a v2 header and prints hello', () => {
-    const lines = asciicastStream.text.trimEnd().split('\n');
-    expect(JSON.parse(lines[0] ?? '')).toMatchObject({ version: 2 });
-    expect(lines.slice(1).some((l) => l.includes('hello\\r\\n'))).toBe(true);
   });
 
   it('D-25, D-26, D-22: retention, check defaults and certificate days are the defaults', () => {
@@ -95,7 +69,6 @@ describe('K6 phase3 client fixtures: ties to K1', () => {
       [CHANNEL_KINDS, 'ChannelKind'],
       [NOTIFICATION_KINDS, 'NotificationKind'],
       [TOKEN_SCOPES, 'TokenScope'],
-      [RECORDING_FORMATS, 'RecordingFormat'],
       [RETENTION_SUBJECTS, 'RetentionSubject'],
       [WEBHOOK_METHODS, 'WebhookMethod'],
       [SMTP_SECURITY, 'SmtpSecurity'],
@@ -110,7 +83,6 @@ describe('K6 phase3 client fixtures: ties to K1', () => {
       [channels[0], 'NotificationChannel', []],
       [deliveries[0], 'Delivery', []],
       [apiKeys[0], 'ApiKey', []],
-      [recordings[0], 'Recording', ['stoppedReason']],
       [retention[0], 'RetentionPeriod', []],
       [checkDefaults, 'CheckDefaults', []],
       [notificationSettings, 'NotificationSettings', []],

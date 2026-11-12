@@ -50,8 +50,7 @@
       "credentials",
       "events",
       "ssh",
-      "trust",
-      "retention"
+      "trust"
     ],
     "ssh": [
       "devices",

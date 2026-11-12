@@ -1,7 +1,7 @@
 //! A schema with the sessions part and trust's accept mutations, which the connection test
 //! leads to, and requests from a signed-in operator.
 
-use std::{io::Write as _, path::PathBuf, sync::Arc};
+use std::{io::Write as _, sync::Arc};
 
 use anima_hub::{
     access::Identity,
@@ -11,8 +11,8 @@ use anima_hub::{
     events::{Bus, ClientAddr, Operator},
     ids::OperatorId,
     sessions::{
-        Live, Recording,
-        graphql::{Mutation as SessionsMutation, Query, Subscription, recording_loader},
+        Live,
+        graphql::{Mutation as SessionsMutation, Query, Subscription},
     },
     targets::AddressPolicy,
     trust::graphql::Mutation as TrustMutation,
@@ -41,27 +41,11 @@ pub fn schema_for(pool: &PgPool) -> TestSchema {
 
 /// The schema with a clock fixed at `at`, sharing `live` and what its connection tests saw, and
 /// what `startSession` needs to wake a device as `schema.rs` gives it: the status loader, an
-/// address policy and a bus. The hub has no recording root.
+/// address policy and a bus.
 pub fn schema_at(pool: &PgPool, at: DateTime<Utc>, live: &Live) -> TestSchema {
-    schema_recording_to(pool, at, live, None)
-}
-
-/// [`schema_at`] with `root` as the hub's recording root (K7 `ANIMA_RECORDING_ROOT`), and the
-/// loader behind `Session.recording`.
-pub fn schema_recording_to(
-    pool: &PgPool,
-    at: DateTime<Utc>,
-    live: &Live,
-    root: Option<PathBuf>,
-) -> TestSchema {
     let clock: Arc<dyn Clock> = Arc::new(FixedClock(at));
     Schema::build(Query, Mutation::default(), Subscription)
         .data(pool.clone())
-        .data(recording_loader(pool.clone()))
-        .data(Recording {
-            root,
-            max_bytes: 1 << 30,
-        })
         .data(status_loader(pool.clone(), clock.clone()))
         .data(clock)
         .data(live.sightings().clone())

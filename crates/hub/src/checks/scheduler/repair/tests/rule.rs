@@ -68,7 +68,6 @@ fn device(ssh_enabled: bool, port: u16) -> Device {
         metrics_source: MetricsSource::default(),
         distribution: None,
         session_limit: None,
-        record_sessions: false,
         transfer: TransferPolicy::default(),
         created_at: at,
         updated_at: at,

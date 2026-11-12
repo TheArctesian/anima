@@ -1,6 +1,7 @@
 //! Migrations 0600 and 0610: columns, session checks and what a device delete does (K2,
 //! RA-008, SEC-006); the server certificate table is `server_certificates`. Migration 0920
-//! moved `host_keys` and `server_certificates` to schema `trust` (D-31).
+//! moved `host_keys` and `server_certificates` to schema `trust` (D-31). Migrations 0121, 0662
+//! and 0901 removed what recording left (R-113).
 
 mod server_certificates;
 
@@ -175,4 +176,36 @@ async fn ra_008_session_history_survives_device_delete_and_host_key_does_not(poo
         .await
         .unwrap();
     assert_eq!(keys, [DOCKER_HOST]);
+}
+
+/// R-113 (RA-008, RA-040 deferred): after every migration the hub has no table for session
+/// content, no recording flag on a device and no recordings retention period.
+#[sqlx::test(migrations = "./migrations")]
+async fn ra_008_no_recording_table_flag_or_period_is_left_after_migrate(pool: PgPool) {
+    let table: Option<String> =
+        sqlx::query_scalar("select to_regclass('sessions.recordings')::text")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(table, None, "sessions.recordings");
+    let flag = columns(&pool, "devices", "devices")
+        .await
+        .into_iter()
+        .filter(|(name, _, _)| name == "record_sessions")
+        .count();
+    assert_eq!(flag, 0, "devices.record_sessions");
+    let period: i64 =
+        sqlx::query_scalar("select count(*) from retention.periods where subject = 'recordings'")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(period, 0, "retention.periods recordings");
+    let refused =
+        sqlx::query("insert into retention.periods (subject, days) values ('recordings', 30)")
+            .execute(&pool)
+            .await;
+    assert!(
+        refused.is_err(),
+        "the subject check no longer takes recordings"
+    );
 }

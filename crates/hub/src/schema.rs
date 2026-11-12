@@ -37,7 +37,6 @@ pub struct Query(
     notifications::graphql::Query,
     retention::graphql::Query,
     sessions::graphql::Query,
-    sessions::RecordingsQuery,
     vpn::graphql::Query,
 );
 
@@ -54,7 +53,6 @@ pub struct Mutation(
     retention::graphql::Mutation,
     sessions::graphql::Mutation,
     sessions::FilesMutation,
-    sessions::RecordingsMutation,
     sessions::WakeMutation,
     trust::graphql::Mutation,
     vpn::graphql::Mutation,
@@ -139,7 +137,7 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
     .disable_suggestions()
     .extension(access::SignInRequired)
     // Shared dependencies (K3 wiring).
-    .data(config.clone())
+    .data(config)
     .data(clock.clone())
     .data(pool.clone())
     .data(bus)
@@ -158,10 +156,7 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
         .data(trust::graphql::host_key_loader(pool.clone()).delay(BATCH_WINDOW))
         .data(trust::graphql::server_certificate_loader(pool.clone()).delay(BATCH_WINDOW))
         .data(live.sightings().clone())
-        // sessions (R-032): `Session.recording`, and the recording storage `startSession` checks
-        // and `deleteRecording` removes files from
-        .data(sessions::graphql::recording_loader(pool.clone()).delay(BATCH_WINDOW))
-        .data(recording(&config))
+        // sessions (R-032)
         .data(live)
         .data(policy)
         // metrics
@@ -198,17 +193,6 @@ fn with_devices_loaders(builder: Builder, pool: &PgPool, clock: &Arc<dyn Clock>)
         .data(devices::graphql::readings_loader(pool.clone(), clock.clone()).delay(BATCH_WINDOW))
         .data(devices::graphql::gpus_loader(pool.clone()).delay(BATCH_WINDOW))
         .data(devices::graphql::stale_loader(pool.clone()).delay(BATCH_WINDOW))
-}
-
-/// The recording storage from the hub's configuration (K7 `ANIMA_RECORDING_ROOT`,
-/// `ANIMA_RECORDING_MAX_BYTES`): what `startSession` checks, the tunnels record to and
-/// `deleteRecording` removes files from.
-#[must_use]
-pub(crate) fn recording(config: &Config) -> sessions::Recording {
-    sessions::Recording {
-        root: config.recording_root.clone(),
-        max_bytes: config.recording_max_bytes,
-    }
 }
 
 /// API-007: release builds are production builds; debug builds keep introspection for tooling.

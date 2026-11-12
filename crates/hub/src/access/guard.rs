@@ -220,16 +220,15 @@ fn refusal(identity: Option<&Identity>, document: &ExecutableDocument) -> Option
 }
 
 /// The root fields an API key may never select, in any operation (D-23, WP-43 A-6): managing
-/// keys, signing a browser in or out, sessions, files, recordings and device
-/// credentials. `logout` would delete the key, which is managing it. `enrolAgent` and
-/// `revokeAgentToken` are refused by name before their resolvers exist (R-084, CR-8).
-/// A key may not pin a device identity, move or delete a device, or destroy recordings:
-/// moving a device and accepting the new host key would send its stored password to another
-/// host (R-100). Enrolling or revoking a builder, and publishing or cancelling a release, are
-/// supply-chain actions only a login or browser token may take: a builder token outlives the key
-/// that enrolled it (D-23, R-107). A VPN key, a registration or a renewal admits a computer to
-/// the network: login or browser token only (VP-7, VP-10).
-pub(super) const API_KEY_REFUSED_ROOTS: [&str; 32] = [
+/// keys, signing a browser in or out, sessions, files and device credentials. `logout` would
+/// delete the key, which is managing it. `enrolAgent` and `revokeAgentToken` are refused by
+/// name before their resolvers exist (R-084, CR-8). A key may not pin a device identity, or
+/// move or delete a device: moving a device and accepting the new host key would send its
+/// stored password to another host (R-100). Enrolling or revoking a builder, and publishing or
+/// cancelling a release, are supply-chain actions only a login or browser token may take: a
+/// builder token outlives the key that enrolled it (D-23, R-107). A VPN key, a registration or a
+/// renewal admits a computer to the network: login or browser token only (VP-7, VP-10).
+pub(super) const API_KEY_REFUSED_ROOTS: [&str; 30] = [
     "createApiKey",
     "revokeApiKey",
     "apiKeys",
@@ -237,7 +236,6 @@ pub(super) const API_KEY_REFUSED_ROOTS: [&str; 32] = [
     "logout",
     "startSession",
     "openFiles",
-    "openRecording",
     "setSshCredential",
     "clearSshCredential",
     "setRdpCredential",
@@ -252,7 +250,6 @@ pub(super) const API_KEY_REFUSED_ROOTS: [&str; 32] = [
     "updateDevice",
     "deleteDevice",
     "setRetention",
-    "deleteRecording",
     "enrolBuilder",
     "revokeBuilder",
     "createRelease",

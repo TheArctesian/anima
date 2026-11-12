@@ -21,6 +21,6 @@ it('HUB-005: a value that is not a whole number is refused', () => {
   }
 });
 
-it('D-25: the five subjects are listed in page order whatever order the hub answers in', () => {
+it('D-25: the four subjects are listed in page order whatever order the hub answers in', () => {
   expect(inPageOrder([...FIXTURE_PERIODS].reverse()).map((period) => period.subject)).toEqual(SUBJECTS.map((each) => each.subject));
 });

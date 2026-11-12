@@ -91,7 +91,7 @@ describe("hub configuration", () => {
 
 });
 
-describe("hub deny list, notify network and recordings", () => {
+describe("hub deny list, notify network and mounts", () => {
   test("NET-001 ANIMA_PROBE_DENY covers every network the hub joins, notify minus exactly the Apprise address", () => {
     const hub = compose.services["hub"] as Container;
     const apprise = compose.services["apprise"] as Container;
@@ -124,27 +124,23 @@ describe("hub deny list, notify network and recordings", () => {
     expect(inside.reduce((sum, entry) => sum + entry.size, 0)).toBe(subnet.size - 1);
   });
 
-  test("K7 the hub gets the web, origin and recording variables with the values of plan Section 6", () => {
+  test("NET-001 the deny list holds the VPS public address and the hub VPN address as /32", () => {
+    const deny = (compose.services["hub"]?.environment?.["ANIMA_PROBE_DENY"] ?? "").split(",");
+    expect(deny).toContain("${ANIMA_VPS_PUBLIC_ADDRESS:?set to the VPS public IPv4}/32");
+    expect(deny).toContain("${ANIMA_HUB_ADDRESS:?set ANIMA_HUB_ADDRESS to the hub's VPN address}/32");
+  });
+
+  test("K7 the hub gets the web and origin variables with the values of plan Section 6, and no recording variable (R-113)", () => {
     const environment = compose.services["hub"]?.environment ?? {};
     expect(environment["ANIMA_PUBLIC_ORIGIN"]).toBe("${ANIMA_PUBLIC_ORIGIN:-https://hub.anima.ing}");
     expect(environment["ANIMA_WEB_ROOT"]).toBe("/usr/share/anima/web");
-    expect(environment["ANIMA_RECORDING_ROOT"]).toBe("/var/lib/anima/recordings");
-    expect(environment["ANIMA_RECORDING_MAX_BYTES"]).toBe("${ANIMA_RECORDING_MAX_BYTES:-2147483648}");
+    expect(Object.keys(environment).filter((name) => name.startsWith("ANIMA_RECORDING_"))).toEqual([]);
   });
 
-  test("D-19 only the hub mounts the recordings volume, read-write, at ANIMA_RECORDING_ROOT", () => {
-    const hub = compose.services["hub"] as Container;
-    const root = hub.environment?.["ANIMA_RECORDING_ROOT"];
-    expect(hub.volumes).toContain(`recordings:${root}`);
-    expect(compose.volumes).toHaveProperty("recordings");
-    const users = Object.entries(compose.services).filter(([, service]) => JSON.stringify(service.volumes ?? []).includes("recordings")).map(([name]) => name);
-    expect(users).toEqual(["hub"]);
-  });
-
-  test("SEC-001 the hub root file system stays read-only, and its mounts are exactly certs, recordings, the broker folder and /tmp", () => {
+  test("SEC-001 the hub root file system stays read-only, and its mounts are exactly certs, the broker folder and /tmp", () => {
     const hub = compose.services["hub"] as Container & { tmpfs?: string[] };
     expect(hub.read_only).toBe(true);
-    expect(hub.volumes).toEqual(["certs:/certs:ro", "recordings:/var/lib/anima/recordings", BROKER_FOLDER]);
+    expect(hub.volumes).toEqual(["certs:/certs:ro", BROKER_FOLDER]);
     expect(hub.tmpfs).toEqual(["/tmp"]);
   });
 
@@ -274,7 +270,7 @@ const hubDockerfile = readFileSync(join(ROOT, "deploy", "hub", "Dockerfile"), "u
 };
 const finalStage = hubDockerfile.split("\n").slice(hubDockerfile.split("\n").map((line) => line.startsWith("FROM ")).lastIndexOf(true));
 
-describe("hub image web stage and recordings folder", () => {
+describe("hub image web stage", () => {
 
   test("D-2 the web stage builds the client and the final stage copies only its output to /usr/share/anima/web", () => {
     const web = stage("web");
@@ -289,18 +285,6 @@ describe("hub image web stage and recordings folder", () => {
     expect(stage("web").filter((line) => line.includes("bun install"))).toEqual([
       "RUN bun install --frozen-lockfile --filter @anima/client",
     ]);
-  });
-
-  test("D-13 E-3 the final stage seeds the recordings folder for 10001:10001 with mode 0700 and changes nothing else", () => {
-    const commands = finalStage.join("\n").replace(/\\\n/g, " ").split("\n");
-    const run = commands.find((line) => line.startsWith("RUN mkdir")) ?? "";
-    expect(run.split(/\s*&&\s*/)).toEqual([
-      "RUN mkdir -p /var/lib/anima/recordings",
-      "chown 10001:10001 /var/lib/anima/recordings",
-      "chmod 0700 /var/lib/anima/recordings",
-    ]);
-    expect(commands.filter((line) => /\b(chmod|chown)\b/.test(line))).toEqual([run]);
-    expect(commands.indexOf(run)).toBeLessThan(commands.indexOf("USER 10001:10001"));
   });
 });
 

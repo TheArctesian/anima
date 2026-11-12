@@ -219,7 +219,6 @@ pub fn tunnels(dependencies: &schema::Dependencies) -> Router {
         live: live.clone(),
         guacd: config.guacd.clone(),
         drive_root: config.guacd_drive_root.to_string_lossy().into_owned(),
-        recording: schema::recording(config),
     };
     let terminal = sessions::terminal_router(&serving);
     let tunnel = sessions::tunnel_router(&serving);

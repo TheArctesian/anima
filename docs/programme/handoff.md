@@ -28,7 +28,7 @@ Read it first, then the rulings listed in section 5 and R-093 to R-111, CR-17 to
 | WP-43 access | Done. T4 bearer `2446f367` (router assembly in lib.rs `all_routes`), T5 rotation `4ee029fe`, T6 throttle `15b8f9d0`, log `8d064256`. |
 | WP-45 notifications | Done. T6 `99258714`, with the dispatcher wired in `main.rs` (`26a5a9bd`); T7 checks edits `e34e9060`; log `ab598609`. Follow-up: narrow the `notifications.rs` public face (lines 31–37). |
 | WP-47 session sharing | Done. T2 session limit `6f8d8356`, waking-flake `09555c56`, T7 share removal `301d1b5e` (R-111), log `347cc2cc`. T4–T6 cancelled. Migrations 0121–0129 are unused. |
-| WP-48 recording | Closing under R-113 (recording deferred). Merged: T1 playback proof `a4192d68`, T2 format and T3 asciicast `e091bfa8`, T4 recorder `711260b3`, T5a start `ab7f2d83`, T5b catalogue `3a1305f5`. T6–T9 cancelled; T10 removes the merged recording code. |
+| WP-48 recording | Closed under R-113 (recording deferred). T1 to T5b merged, then removed by T10 `75f8b6cd` (migrations 0121, 0662, 0901); T6–T9 cancelled, branches kept; log `358f94ef`. The empty `deploy_recordings` volume on the VPS waits for the operator's OK (VPS-005). |
 | WP-49 client sharing and recording | Closed. T5 asciicast `ad50bac3`, T6 playback tunnel `4d3eebab`, T8a badge `917281e9`, T9 `/shared` sign-in `0dd50644`. T1–T4 cancelled (R-111); T7 and T8b cancelled (R-113). WP-48 T10 removes the recording parts of T5, T6 and T8a. |
 | WP-54 agent | Done. T2, T3a, T3b `7ea84ecc`, T4, T5, T6a `49119a71`, T6b+T6c `b2775938`, T6e `c6517bce`, T7 `176cb4b1`, T8a hardening `792d4441` (CR-22), log `11e96064`. T6d is a handoff note to WP-36: build the agent for three targets with `release.json`, and ship it in the desktop release (`binaries/anima-agent-<triple>`, `--config tauri.release.conf.json`). |
 
@@ -38,9 +38,8 @@ R-112 (speed without dropping quality) and R-113 (recording deferred and removed
 
 | Package | State | Next |
 | --- | --- | --- |
-| WP-48 | T10 recording removal (1 slot). | Merge T10, then the package log. |
 | WP-55 | Gate speed: nextest, a template database, sccache (1 slot). | Its gates are compared with the current gates on the same commit before it merges; record the R-101 amendment. |
-| WP-53 | Preparation: the acceptance document, scripts and fixtures (1 slot). | Acceptance, after WP-48 T10 and the operator's steps. |
+| WP-53 | T1 matrix `2c5af1e7`, T2 repo check `e2ab858b`, T3 log scan `d113760d` merged; T4 probe next, then T5 to T7 (1 slot; the freed WP-48 slot is unused until WP-55 or WP-53 needs it). | Acceptance, after the operator's steps. |
 
 **Operator's critical path for WP-53, in order:** live checks O-4 to O-9; the spec 5.7.3 wording; the Headscale agent policy (R-105, confirmed in chat); R2 setup and the agent binary upload; the test machines and accounts in plan Section 6, with each real secret typed into Settings by the operator.
 

@@ -13,16 +13,14 @@ pub enum Subject {
     Heartbeats,
     Metrics,
     Events,
-    Recordings,
     Deliveries,
 }
 
 impl Subject {
-    pub const ALL: [Self; 5] = [
+    pub const ALL: [Self; 4] = [
         Self::Heartbeats,
         Self::Metrics,
         Self::Events,
-        Self::Recordings,
         Self::Deliveries,
     ];
 
@@ -33,7 +31,6 @@ impl Subject {
             Self::Heartbeats => "heartbeats",
             Self::Metrics => "metrics",
             Self::Events => "events",
-            Self::Recordings => "recordings",
             Self::Deliveries => "deliveries",
         }
     }
