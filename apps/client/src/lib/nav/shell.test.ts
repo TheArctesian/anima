@@ -69,16 +69,13 @@ let app: ReturnType<typeof mount> | undefined;
 function mountAt(pathname: string, status: HubStatus = CONNECTED): void {
   route.pathname = pathname;
   fake.status = status;
-  const children = createRawSnippet(() => ({ render: () => '<p id="page">page</p>' }));
-  app = mount(Layout, { target: document.body, props: { children } });
+  app = mount(Layout, { target: document.body, props: { children: createRawSnippet(() => ({ render: () => '<p id="page">page</p>' })) } });
   flushSync();
 }
 
 function show(pathname = '/devices', status: HubStatus = CONNECTED): HTMLElement {
   mountAt(pathname, status);
-  const nav = document.querySelector('nav');
-  if (nav === null) throw new Error('no nav');
-  return nav;
+  return document.querySelector('nav') ?? expect.fail('no nav');
 }
 
 beforeEach(() => {

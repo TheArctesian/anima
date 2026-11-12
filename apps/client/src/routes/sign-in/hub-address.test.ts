@@ -8,7 +8,7 @@ import { input, problemOf, submit, type } from './page.fixture';
 
 const mocks = vi.hoisted(() => ({
   hub: undefined as unknown,
-  created: [] as { address: { origin: string } }[],
+  created: [] as { origin: string }[],
   writeAccessToken: vi.fn(),
   goToDevices: vi.fn(),
   reloadClient: vi.fn(),
