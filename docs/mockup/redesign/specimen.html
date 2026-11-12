@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en" data-palette="graphite" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Token specimen</title>
+<!-- Phase 2 specimen: reads the REAL generated tokens and bundled fonts from the client. Nothing here defines a colour or size. -->
+<link rel="stylesheet" href="../../../apps/client/src/styles/fonts.css">
+<link rel="stylesheet" href="../../../apps/client/src/styles/tokens.css">
+<style>
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--surface-base); color:var(--text); font:var(--weight-regular) var(--text-md)/var(--leading-normal) var(--font-ui); }
+  .bar { position:sticky; top:0; z-index:9; display:flex; gap:var(--space-4); align-items:center; flex-wrap:wrap; padding:var(--space-2) var(--space-6); background:var(--surface-sunken); }
+  .bar b { margin-right:var(--space-1); }
+  .bar button { font:inherit; color:var(--text); background:var(--surface-raised); border:0; border-radius:var(--radius-md); height:var(--control-sm); padding:0 var(--space-3); cursor:pointer; }
+  .bar button[aria-pressed="true"] { background:var(--accent); color:var(--on-accent); font-weight:var(--weight-bold); }
+  main { padding:var(--space-6); display:grid; gap:var(--space-6); max-width:var(--content-page); }
+  h1 { font-size:var(--text-2xl); line-height:var(--leading-tight); margin:0; }
+  h2 { font-size:var(--text-lg); margin:0 0 var(--space-3); }
+  .sub { color:var(--text-secondary); margin:var(--space-1) 0 0; }
+  .tiers { display:flex; padding:var(--space-4); gap:var(--space-4); background:var(--surface-sunken); border-radius:var(--radius-lg); flex-wrap:wrap; }
+  .tier { flex:1 1 12rem; padding:var(--space-4); border-radius:var(--radius-lg); min-height:7rem; }
+  .tier code { font-family:var(--font-mono); font-size:var(--text-sm); }
+  .t-sunken { background:var(--surface-sunken); box-shadow:inset 0 0 0 1px var(--border-subtle); }
+  .t-base { background:var(--surface-base); } .t-raised { background:var(--surface-raised); } .t-overlay { background:var(--surface-overlay); box-shadow:var(--elevation-2); }
+  .card { background:var(--surface-raised); border-radius:var(--radius-lg); padding:var(--space-5); }
+  .row { display:flex; flex-wrap:wrap; gap:var(--space-3); align-items:center; }
+  .muted { color:var(--text-secondary); } .faint { color:var(--text-tertiary); }
+  .btn { font:inherit; font-weight:var(--weight-bold); height:var(--control-md); padding:0 var(--space-4); border:0; border-radius:var(--radius-md); cursor:pointer; }
+  .primary { background:var(--accent); color:var(--on-accent); } .primary:hover { background:var(--accent-hover); } .primary:active { background:var(--accent-pressed); }
+  .secondary { background:var(--surface-overlay); color:var(--text); }
+  .ghost { background:none; color:var(--text-secondary); font-weight:var(--weight-regular); }
+  .danger { background:var(--danger); color:var(--on-danger); }
+  .sm { height:var(--control-sm); } .lg { height:var(--control-lg); }
+  .input { font:inherit; height:var(--control-md); padding:0 var(--space-3); border-radius:var(--radius-md); background:var(--surface-sunken); border:1px solid var(--border-strong); color:var(--text); }
+  .input::placeholder { color:var(--text-tertiary); }
+  .input:focus { outline:var(--border-focus) solid var(--focus-ring); outline-offset:1px; }
+  .badge { display:inline-flex; align-items:center; gap:var(--space-2); padding:0 var(--space-2); height:1.5rem; border-radius:var(--radius-pill); font-size:var(--text-sm); font-weight:var(--weight-bold); }
+  .badge i { width:.5rem; height:.5rem; border-radius:50%; }
+  .up { background:var(--status-up-tint); color:var(--status-up-text); } .up i { background:var(--status-up); }
+  .down { background:var(--status-down-tint); color:var(--status-down-text); } .down i { background:var(--status-down); }
+  .degraded { background:var(--status-degraded-tint); color:var(--status-degraded-text); } .degraded i { background:var(--status-degraded); }
+  .warning { background:var(--status-warning-tint); color:var(--status-warning-text); } .warning i { background:var(--status-warning); }
+  .maint { background:var(--status-maintenance-tint); color:var(--status-maintenance-text); } .maint i { background:var(--status-maintenance); }
+  .unknown { background:var(--status-unknown-tint); color:var(--status-unknown-text); } .unknown i { background:var(--status-unknown); }
+  .scale > div { display:grid; grid-template-columns:7rem 1fr; align-items:baseline; gap:var(--space-4); padding:var(--space-1) 0; }
+  .scale span:first-child { color:var(--text-tertiary); font-size:var(--text-sm); font-family:var(--font-mono); }
+  .mono { font-family:var(--font-mono); font-variant-ligatures:none; }
+  .num { font-variant-numeric:tabular-nums; }
+  .space { display:flex; align-items:end; gap:var(--space-3); }
+  .space div { background:var(--accent-tint); border-radius:2px; }
+  .grid2 { display:grid; grid-template-columns:repeat(auto-fit,minmax(22rem,1fr)); gap:var(--space-6); }
+</style>
+</head>
+<body>
+<div class="bar" role="toolbar" aria-label="Specimen controls">
+  <span><b>Palette</b> <button data-k="palette" data-v="graphite" aria-pressed="true">Graphite</button> <button data-k="palette" data-v="nord" aria-pressed="false">Nord</button></span>
+  <span><b>Appearance</b> <button data-k="theme" data-v="dark" aria-pressed="true">Dark</button> <button data-k="theme" data-v="light" aria-pressed="false">Light</button></span>
+  <span class="muted">Real tokens: apps/client/src/styles/tokens.css and fonts.css</span>
+</div>
+<main>
+  <div><h1>Token specimen</h1><p class="sub">Every value on this page comes from the generated tokens and the bundled fonts.</p></div>
+
+  <section><h2>Surface tiers</h2>
+    <div class="tiers">
+      <div class="tier t-sunken"><b>surface-sunken</b><br><span class="muted">Page behind cards</span><br><code>--surface-sunken</code></div>
+      <div class="tier t-base"><b>surface-base</b><br><span class="muted">Window, navigation</span><br><code>--surface-base</code></div>
+      <div class="tier t-raised"><b>surface-raised</b><br><span class="muted">Cards, tables, forms</span><br><code>--surface-raised</code></div>
+      <div class="tier t-overlay"><b>surface-overlay</b><br><span class="muted">Dialogs, popovers</span><br><code>--surface-overlay</code></div>
+    </div>
+  </section>
+
+  <div class="grid2">
+    <section class="card"><h2>Text</h2>
+      <p style="margin:0">Primary text reads first.</p>
+      <p class="muted" style="margin:var(--space-1) 0 0">Secondary text explains it.</p>
+      <p class="faint" style="margin:var(--space-1) 0 0">Tertiary: placeholders and disabled.</p>
+      <p style="margin:var(--space-3) 0 0">Machine text: <span class="mono">100.64.0.2 · ssh-ed25519 · SHA256:Vq1pWk3+u3n8 · -&gt; != ===</span></p>
+      <p style="margin:var(--space-1) 0 0" class="num">Tabular: 99.9% · 100% · 41% · 12:04:09</p>
+    </section>
+    <section class="card"><h2>Status</h2>
+      <div class="row">
+        <span class="badge up"><i></i>Up</span><span class="badge down"><i></i>Down</span><span class="badge warning"><i></i>Warning</span>
+        <span class="badge degraded"><i></i>Degraded</span><span class="badge maint"><i></i>Maintenance</span><span class="badge unknown"><i></i>Unknown</span>
+      </div>
+    </section>
+  </div>
+
+  <div class="grid2">
+    <section class="card"><h2>Buttons and control heights</h2>
+      <div class="row"><button class="btn primary">Add device</button><button class="btn secondary">Test connection</button><button class="btn ghost">Cancel</button><button class="btn danger">Delete device</button></div>
+      <div class="row" style="margin-top:var(--space-3)"><button class="btn primary sm">28 · sm</button><button class="btn primary">32 · md</button><button class="btn primary lg">40 · lg</button></div>
+    </section>
+    <section class="card"><h2>Inputs</h2>
+      <div class="row"><input class="input" placeholder="for example, admin" aria-label="Example input"><input class="input mono" value="hub.anima.ing" aria-label="Example machine input" style="width:10rem"><button class="btn secondary">Choose…</button></div>
+    </section>
+  </div>
+
+  <section class="card scale"><h2>Type scale (IBM Plex Sans, 400 and 700 only)</h2>
+    <div><span>text-2xl</span><span style="font-size:var(--text-2xl);font-weight:var(--weight-bold)">Devices</span></div>
+    <div><span>text-xl</span><span style="font-size:var(--text-xl);font-weight:var(--weight-bold)">Stephen's MacBook Pro</span></div>
+    <div><span>text-lg</span><span style="font-size:var(--text-lg);font-weight:var(--weight-bold)">Data retention</span></div>
+    <div><span>text-md</span><span>Body text. How long the hub keeps history before deleting it.</span></div>
+    <div><span>text-sm</span><span style="font-size:var(--text-sm)">Labels and dense tables: Heartbeats, Metrics, Event log</span></div>
+    <div><span>text-xs</span><span style="font-size:var(--text-xs)">Badges and chart axes</span></div>
+  </section>
+
+  <section class="card"><h2>Spacing</h2>
+    <div class="space">
+      <div style="width:var(--space-1);height:var(--space-1)"></div><div style="width:var(--space-2);height:var(--space-2)"></div><div style="width:var(--space-3);height:var(--space-3)"></div>
+      <div style="width:var(--space-4);height:var(--space-4)"></div><div style="width:var(--space-6);height:var(--space-6)"></div><div style="width:var(--space-8);height:var(--space-8)"></div>
+    </div>
+    <p class="faint" style="margin:var(--space-2) 0 0;font-size:var(--text-sm)">space-1, 2, 3 inside a component; space-4, 6 between components.</p>
+  </section>
+</main>
+<script>
+  document.querySelectorAll('.bar button').forEach((b) => b.addEventListener('click', () => {
+    document.documentElement.dataset[b.dataset.k] = b.dataset.v;
+    document.querySelectorAll(`[data-k="${b.dataset.k}"]`).forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+  }));
+</script>
+</body>
+</html>
