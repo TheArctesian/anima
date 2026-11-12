@@ -310,4 +310,6 @@ Each criterion part that no existing test and no script proved when this list wa
 - T9b, `hub/src/builds/publishing/tests/holds.rs`: depends on the default current-thread test runtime (add a note or an assert).
 - T9, `hub/src/builds/publishing/tries.rs`: no test for the Retry arm of `record`.
 - Handoff to main: a hub test that pins async-graphql validation (ValidationMode Strict, unknown argument names refused), raised by the T4 security review; it touches the schema wiring (a programme file).
-- Deploy suite hang: the root cause is Bun 1.3.11 `spawnSync` busy-waiting on a zombie child; T8 works around it. `log_005` is fixed by T10 (T10, in review).
+- Deploy suite hang: the root cause is Bun 1.3.11 `spawnSync` busy-waiting on a zombie child; T8 works around it. `log_005` is fixed by T10 (`df93cfeb`, test only: `hub/tests/it/vpn/cancelled_audit.rs` drops the request once the fake broker has it, then polls the audit row within 20 s).
+- New flake seen during T10 under pinned cores: `devices::fields::batching` `api_005_*` statement counts (12 for 13 devices; 109 for 163).
+- T10, `hub/tests/it/vpn/broker.rs`: `until_received` has no bound of its own (callers bound it in a select); its doc comment could say so.
