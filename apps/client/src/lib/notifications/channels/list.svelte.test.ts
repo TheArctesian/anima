@@ -212,13 +212,12 @@ it('NOT-002: while the hub deletes, Cancel and Escape are refused; its answer th
   expect(dialog()).toBeNull();
 });
 
-it('MOT-007: after threshold-loading a skeleton row shows over the kept space, hidden from assistive technology', async () => {
+it('MOT-007: after threshold-loading a one-line skeleton shows over the kept line, hidden from assistive technology', async () => {
   const time = manualClock();
   const { answer, release } = pending();
   const target = await open(loaded({ NotificationChannels: answer }), time.clock);
   const stack = target.querySelector('.stack');
   expect(stack?.getAttribute('aria-busy')).toBe('true');
-  expect(target.querySelector('.sizer')?.getAttribute('aria-hidden')).toBe('true');
   time.advance(threshold.loading);
   flushSync();
   const skeleton = target.querySelector('.skeleton');
