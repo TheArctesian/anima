@@ -181,8 +181,6 @@ services:
       ANIMA_TAILSCALE_LOCALAPI: ${ANIMA_TAILSCALE_LOCALAPI:-localapi:8080}
       ANIMA_PUBLIC_ORIGIN: ${ANIMA_PUBLIC_ORIGIN:-https://hub.anima.ing}
       ANIMA_WEB_ROOT: /usr/share/anima/web
-      ANIMA_RECORDING_ROOT: /var/lib/anima/recordings
-      ANIMA_RECORDING_MAX_BYTES: ${ANIMA_RECORDING_MAX_BYTES:-2147483648}
       ANIMA_LOG: ${ANIMA_LOG:-info}
       # Release publishing (WP-36, R-108): off while the endpoint is empty. The R2 token is two
       # secret files the operator makes (README, Release publishing); the updater key is public.
@@ -196,9 +194,6 @@ services:
       - r2_secret_access_key
     volumes:
       - certs:/certs:ro
-      # Read-write. The image creates this folder for 10001:10001 with mode 0700 and the new
-      # volume copies both (E-3); the root file system stays read-only.
-      - recordings:/var/lib/anima/recordings
     tmpfs: ["/tmp"]
     # `anima-hub health` asks GET /health over TLS on the listen address, pinned to tls.pem.
     # After a renewal it fails until the hub's hourly reload; unhealthy restarts nothing.
@@ -304,7 +299,6 @@ volumes:
   certs: {}
   lego_state: {}
   gateway_drives: {}
-  recordings: {}
 
 secrets:
   postgres_password:

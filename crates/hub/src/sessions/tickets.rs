@@ -35,9 +35,6 @@ pub(super) const RECONNECT: Duration = Duration::from_secs(2);
 /// The files tunnel's path (K4 Section 1 `tunnelPath`, Section 9).
 pub(super) const FILES_PATH: &str = "/files";
 
-/// The playback tunnel's path (K4 Section 1 `tunnelPath`, Section 12).
-pub(super) const RECORDING_PATH: &str = "/recording";
-
 /// A token as the client holds it. Wiped on drop. Implements no `Debug`, `Display`, `Clone`
 /// or `Serialize`, so it cannot reach a log or an error (LOG-007).
 pub(super) struct TicketToken(Zeroizing<String>);
@@ -77,20 +74,18 @@ pub(super) fn hash_of(presented: &str) -> Option<TicketHash> {
     Some(TicketHash(Sha256::digest(&*bytes).into()))
 }
 
-/// What `startSession`, `openFiles` or `openRecording` gives the client once: the session, its protocol, the
+/// What `startSession` or `openFiles` gives the client once: the session, its protocol, the
 /// token and the tunnel's path the token opens.
 pub struct Ticket {
     pub session: SessionId,
     pub protocol: Protocol,
     token: TicketToken,
     pub expires_at: DateTime<Utc>,
-    /// Where the client opens the tunnel: the protocol's, [`FILES_PATH`] for a files ticket
-    /// or [`RECORDING_PATH`] for a playback ticket (K4 Section 1 `tunnelPath`).
+    /// Where the client opens the tunnel: the protocol's, or [`FILES_PATH`] for a files
+    /// ticket (K4 Section 1 `tunnelPath`).
     pub tunnel_path: &'static str,
     /// `startSession` sent a Wake-on-LAN packet first (K4 Section 1 `wakeSent`).
     pub wake_sent: bool,
-    /// The session is recorded (K4 Section 1 step 2 `recording`); the client shows the badge.
-    pub recording: bool,
 }
 
 impl Ticket {
@@ -107,7 +102,6 @@ impl Ticket {
             expires_at,
             tunnel_path: protocol.tunnel_path(),
             wake_sent: false,
-            recording: false,
         }
     }
 
@@ -124,26 +118,6 @@ impl Ticket {
             expires_at,
             tunnel_path: FILES_PATH,
             wake_sent: false,
-            recording: false,
-        }
-    }
-
-    /// A ticket for the playback tunnel of a recording of `session`, which used `protocol`
-    /// (K4 Section 12).
-    pub(super) const fn playback(
-        session: SessionId,
-        protocol: Protocol,
-        token: TicketToken,
-        expires_at: DateTime<Utc>,
-    ) -> Self {
-        Self {
-            session,
-            protocol,
-            token,
-            expires_at,
-            tunnel_path: RECORDING_PATH,
-            wake_sent: false,
-            recording: false,
         }
     }
 
@@ -163,7 +137,6 @@ impl fmt::Debug for Ticket {
             .field("expires_at", &self.expires_at)
             .field("tunnel_path", &self.tunnel_path)
             .field("wake_sent", &self.wake_sent)
-            .field("recording", &self.recording)
             .finish()
     }
 }
@@ -184,9 +157,6 @@ pub struct PendingTicket {
     /// A Wake-on-LAN packet was sent first: the opening waits up to 120 seconds for the
     /// device and tries it again every 2 seconds while it does not answer.
     pub wake_sent: bool,
-    /// `startSession` found the device records its sessions and the hub able to record (K4
-    /// Section 1 step 2): the tunnel records this session (Section 11).
-    pub recording: bool,
 }
 
 impl PendingTicket {

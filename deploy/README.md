@@ -77,19 +77,16 @@ Each service writes its log as JSON files, 10 MB each, 10 files.
    | `ANIMA_PERMITTED_NETWORKS` | no | `100.64.0.0/10` | Client networks that may use the hub (NET-001): the VPN range and the site subnets, comma-separated. |
    | `ANIMA_LOG` | no | `info` | Hub log filter. |
    | `ANIMA_PUBLIC_ORIGIN` | no | `https://hub.anima.ing` | The origin clients use. The hub checks the browser cookie's `Origin` against it, and the web client's security headers use it. |
-   | `ANIMA_RECORDING_MAX_BYTES` | no | `2147483648` | The most plaintext bytes one recording may hold (2 GiB). |
    | `APPRISE_ALLOW_SERVICES` | no | `discord,tgram,slack` | The services Apprise may send to. See "Apprise". |
    | `ANIMA_ACME_SERVER` | no | Let's Encrypt production | Use the staging URL to test. |
    | `ANIMA_RELEASES_ENDPOINT` | no | empty (publishing off) | The R2 S3 API origin, `https://<account>.r2.cloudflarestorage.com`. See "Release publishing". |
    | `ANIMA_UPDATER_PUBLIC_KEY` | no | empty (every publish fails) | The updater's public key, the same text as `plugins.updater.pubkey` in `tauri.conf.json`. |
 
-   The compose file sets two more hub variables as fixed values: `ANIMA_WEB_ROOT`
-   (`/usr/share/anima/web`, the web client; empty turns it off) and `ANIMA_RECORDING_ROOT`
-   (`/var/lib/anima/recordings`; empty turns recording off). The four variables
-   `ANIMA_PUBLIC_ORIGIN`, `ANIMA_WEB_ROOT`, `ANIMA_RECORDING_ROOT` and
-   `ANIMA_RECORDING_MAX_BYTES` are defined in K7 of
-   [phase-3-contracts.md](../docs/programme/phase-3-contracts.md). Until the web client and
-   recording code (WP-43, WP-48) is in the image, they do nothing.
+   The compose file sets one more hub variable as a fixed value: `ANIMA_WEB_ROOT`
+   (`/usr/share/anima/web`, the web client; empty turns it off). `ANIMA_PUBLIC_ORIGIN` and
+   `ANIMA_WEB_ROOT` are defined in K7 of
+   [phase-3-contracts.md](../docs/programme/phase-3-contracts.md). Until the web client
+   (WP-43) is in the image, they do nothing.
 
 3. Check the host:
 
@@ -203,23 +200,11 @@ The gateway image holds the font family `OpenDyslexicM Nerd Font Mono`. Set guac
 The hub serves the web client at its own origin. See [../docs/setup/web-client.md](../docs/setup/web-client.md).
 To read metrics with Prometheus, see [../docs/setup/prometheus.md](../docs/setup/prometheus.md).
 
-## Recordings volume
+## No recordings volume
 
-Session recordings (D-14) go to the named volume `recordings`, mounted read-write in the hub only,
-at `/var/lib/anima/recordings`.
-
-- The hub image makes that folder with owner `10001:10001` and mode `0700`. A new volume copies
-  both. The root file system of the hub stays read-only.
-- Retention deletes a recording after 30 days by default (1 to 365, set in Settings).
-- One recording holds at most `ANIMA_RECORDING_MAX_BYTES` plaintext bytes (2 GiB by default).
-- Below 1 GiB of free space, a recording stops. The session goes on.
-- The volume is not in the backups (D-15). See [backup/README.md](backup/README.md).
-- Check the free disk space on the host before the first recording:
-
-  ```sh
-  # Run on the VPS.
-  df -h /var/lib/docker
-  ```
+The hub records no session content (R-113, RA-008), so it has no recordings volume. A deploy from
+before R-113 created an empty `deploy_recordings` volume that nothing mounts now. With the
+operator's confirmation (VPS-005), remove it on the VPS with `sudo docker volume rm deploy_recordings`.
 
 ## Apprise (optional)
 
@@ -381,19 +366,17 @@ repository does them. Log each one in `docs/programme/operator-changes.md`.
 
 Each feature works once its package is in the image. Browser sign-in needs WP-43 and WP-44. The
 Apprise channel and the test notification need WP-45 and WP-50. The retention settings need WP-46 (hub)
-and WP-50 (client). Recordings need WP-47 (the device flag), WP-48 (recording), WP-49 (playback) and
-WP-50 (the toggle). Prometheus needs API keys (WP-43, WP-50) and `/metrics` (WP-46). Before that, the new
+and WP-50 (client). Prometheus needs API keys (WP-43, WP-50) and `/metrics` (WP-46). Before that, the new
 variables are harmless: the hub ignores them.
 
-**1. Check the free disk space (D-14).**
+**1. Check the free disk space.**
 
 ```sh
 # Run on the VPS.
 df -h /var/lib/docker
 ```
 
-Check: the free space is well above 1 GiB (a recording stops below 1 GiB) and above the recordings you
-expect to keep (30 days by default).
+Check: the free space is well above the size of the new image and the database dump of step 2.
 Undo: nothing changes.
 
 **2. Keep the current image and compose file.**
@@ -492,8 +475,7 @@ sudo docker network inspect $(sudo docker network ls -q) -f '{{.Name}} {{range .
 ```
 
 No line may show `172.30.3.0/24`. If one does, stop and ask the operator. Then run
-`docker compose up -d hub`. It runs `migrate` first, and creates the `recordings` volume and the
-`notify` network.
+`docker compose up -d hub`. It runs `migrate` first, and creates the `notify` network.
 
 ```sh
 # Run on the VPS, in /opt/anima/deploy.
@@ -512,13 +494,6 @@ The answer is `200`.
 
 ```sh
 # Run on the VPS, in /opt/anima/deploy.
-sudo docker compose exec -T hub stat -c '%u %a' /var/lib/anima/recordings
-```
-
-The answer is `10001 700`.
-
-```sh
-# Run on the VPS, in /opt/anima/deploy.
 sudo docker inspect -f '{{range $name, $net := .NetworkSettings.Networks}}{{$name}} {{$net.IPAddress}}{{"\n"}}{{end}}' "$(sudo docker compose ps -q hub)"
 ```
 
@@ -528,11 +503,10 @@ The hub is on four networks: `deploy_database`, `deploy_gateway` (`172.30.0.10`)
 
 ```sh
 # Run on the VPS, in /opt/anima/deploy.
-sudo docker compose exec -T hub printenv ANIMA_PUBLIC_ORIGIN ANIMA_WEB_ROOT ANIMA_RECORDING_ROOT ANIMA_RECORDING_MAX_BYTES
+sudo docker compose exec -T hub printenv ANIMA_PUBLIC_ORIGIN ANIMA_WEB_ROOT
 ```
 
-The four lines are `https://hub.anima.ing`, `/usr/share/anima/web`, `/var/lib/anima/recordings` and
-`2147483648`.
+The two lines are `https://hub.anima.ing` and `/usr/share/anima/web`.
 
 Undo: restore the database from the dump of step 2, then start the old hub. Everything the hub wrote
 after the backup of step 2 is lost (devices, checks, audit entries, sessions). The order follows
@@ -568,9 +542,6 @@ design on a database that holds migrations it does not know (sqlx `VersionMissin
 not work on the new schema: K2 in [phase-3-contracts.md](../docs/programme/phase-3-contracts.md) moves
 `sessions.host_keys` and `sessions.server_certificates` to the new schema `trust` (migration 0920),
 and the old hub reads them in `sessions`.
-
-The `recordings` volume stays. `sudo docker volume rm deploy_recordings` removes it and **destroys all
-recordings**. Run it only if the operator wants a full revert.
 
 **6. Run the egress check.**
 

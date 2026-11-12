@@ -67,15 +67,13 @@ async fn ra_008_end_session_ends_the_started_session(pool: PgPool) {
 
     let ended = data(
         &schema,
-        "mutation($id: ID!) { endSession(id: $id) { id endReason endedAt recording } }",
+        "mutation($id: ID!) { endSession(id: $id) { id endReason endedAt } }",
         json!({ "id": session }),
     )
     .await;
 
     assert_eq!(ended["endSession"]["id"], session);
     assert_eq!(ended["endSession"]["endReason"], "OPERATOR");
-    // Resolves only when the schema carries the `Session.recording` loader (RA-040, G-5).
-    assert_eq!(ended["endSession"]["recording"], "OFF");
     assert_eq!(
         session_end(&pool, session).await,
         (true, Some("operator".to_owned()))
