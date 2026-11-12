@@ -90,16 +90,13 @@ test.describe('signed out, one attempt at a time', () => {
       await route.fallback();
     });
     await openSignIn(page);
-    const button = page.getByRole('button', { name: 'Sign in', exact: true });
-    const enabledOpacity = await button.evaluate((element) => getComputedStyle(element).opacity);
     await signInWith(page, OPERATOR.password);
-    await expect(button).toBeDisabled();
-    await expect.poll(() => button.evaluate((element) => getComputedStyle(element).opacity)).not.toBe(enabledOpacity);
+    await expect(page.getByLabel('Digit 1 of 6')).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'Back', exact: true })).toBeDisabled();
     await page.locator('main form').evaluate((form: HTMLFormElement) => {
       form.requestSubmit();
       form.requestSubmit();
     });
-    await page.getByLabel('User name', { exact: true }).press('Enter');
     release();
     await page.waitForURL(`${HUB_ORIGIN}/devices`);
     expect(hub.recording.where({ operation: 'SignInBrowser' })).toHaveLength(1);
@@ -147,7 +144,7 @@ test.describe('signed out, refusals', () => {
   test('API-003: a signed-out visit to /devices goes to /sign-in', async ({ page, hub }) => {
     await page.goto(`${HUB_ORIGIN}/devices`);
     await page.waitForURL(`${HUB_ORIGIN}/sign-in`);
-    await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Continue', exact: true })).toBeVisible();
     expect(hub.recording.where({ operation: 'Me' })[0]?.signedIn).toBe(false);
   });
 });
@@ -166,7 +163,7 @@ test.describe('signed in', () => {
     await markPage(page);
     await page.getByRole('button', { name: 'Sign out', exact: true }).click();
     await page.waitForURL(`${HUB_ORIGIN}/sign-in`);
-    await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Continue', exact: true })).toBeVisible();
 
     expect(await isOldPage(page)).toBe(false);
     expect(hub.recording.where({ operation: 'Logout' }).map(({ hadCookie, signedIn }) => ({ hadCookie, signedIn }))).toEqual([

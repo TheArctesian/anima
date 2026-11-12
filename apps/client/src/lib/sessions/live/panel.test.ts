@@ -21,10 +21,10 @@ function rules(): Map<string, Map<string, string>> {
 
 it('MAT-008, UI-002: the panel over a live display is the opaque raised surface with no blur', () => {
   const panel = rules().get('.panel');
-  expect(panel?.get('background')).toBe('var(--surface-raised)');
+  expect(panel?.get('background')).toBe('var(--surface-overlay)');
   expect(panel?.get('color')).toBe('var(--text)');
   expect(panel?.get('box-shadow')).toBe('var(--elevation-2)');
-  expect(panel?.get('border')).toContain('var(--border)');
+  expect(panel?.get('border')).toContain('var(--border-strong)');
   expect([...(panel?.keys() ?? [])].filter((property) => property.includes('backdrop'))).toEqual([]);
   expect(readFileSync(new URL(FILE, import.meta.url), 'utf8')).not.toContain('material-overlay');
 });

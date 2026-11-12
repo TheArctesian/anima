@@ -70,7 +70,7 @@
     align-items: center;
     min-block-size: var(--target-min-desktop);
     padding: var(--space-3) var(--space-4);
-    border-block-start: var(--border-thin) solid var(--border);
+    border-block-start: var(--border-thin) solid var(--border-strong);
   }
 
   /* A narrow card keeps the name and the state on the first line; the subnet and the path each take a full line, so a wide state cannot squeeze them. */
@@ -107,7 +107,7 @@
 
   .subnet,
   .path {
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font-size: var(--text-sm);
   }
 
@@ -145,7 +145,7 @@
 
   .hint {
     grid-column: 1 / -1;
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font-size: var(--text-sm);
   }
 

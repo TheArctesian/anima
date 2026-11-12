@@ -42,9 +42,9 @@
 
   .address {
     padding: var(--space-2) var(--space-3);
-    border: var(--border-thin) solid var(--border);
+    border: var(--border-thin) solid var(--border-strong);
     border-radius: var(--radius-md);
-    background: var(--bg);
+    background: var(--surface-base);
     font-family: var(--font-mono);
     font-size: var(--text-sm);
     overflow-wrap: anywhere;
@@ -61,9 +61,9 @@
   button {
     min-block-size: var(--target-min-desktop);
     padding: 0 var(--space-4);
-    border: var(--border-thin) solid var(--border);
+    border: var(--border-thin) solid var(--border-strong);
     border-radius: var(--radius-md);
-    background: var(--surface);
+    background: var(--surface-raised);
     color: var(--text);
     font: inherit;
   }

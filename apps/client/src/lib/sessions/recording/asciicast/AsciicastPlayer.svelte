@@ -86,7 +86,7 @@
     flex: 1;
     min-block-size: 0;
     overflow: auto;
-    background: var(--bg);
+    background: var(--surface-base);
   }
 
   .refused {

@@ -82,7 +82,7 @@
 
   legend {
     padding: 0;
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font-size: var(--text-sm);
   }
 
@@ -111,7 +111,7 @@
     align-items: end;
     gap: var(--space-2);
     padding-block-end: var(--space-2);
-    border-block-end: var(--border-thin) solid var(--border);
+    border-block-end: var(--border-thin) solid var(--border-strong);
   }
 
   .problem {

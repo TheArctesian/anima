@@ -110,7 +110,7 @@
     gap: var(--space-2);
     min-block-size: var(--space-8);
     padding: var(--space-3) var(--space-4);
-    border-block-start: var(--border-thin) solid var(--border);
+    border-block-start: var(--border-thin) solid var(--border-strong);
   }
 
   .mark {
@@ -131,8 +131,8 @@
   .reason {
     margin: 0;
     padding: var(--space-3) var(--space-4);
-    border-block-start: var(--border-thin) solid var(--border);
-    color: var(--text-muted);
+    border-block-start: var(--border-thin) solid var(--border-strong);
+    color: var(--text-secondary);
     font-size: var(--text-sm);
   }
 </style>

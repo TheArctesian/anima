@@ -33,9 +33,9 @@
     box-sizing: border-box;
     min-block-size: var(--target-min-desktop);
     padding: 0 var(--space-4);
-    border: var(--border-thin) solid var(--border);
+    border: var(--border-thin) solid var(--border-strong);
     border-radius: var(--radius-md);
-    background: var(--surface-raised);
+    background: var(--surface-overlay);
     color: var(--text);
     font: inherit;
     transition: background-color var(--duration-fast) var(--ease-enter);
@@ -47,22 +47,22 @@
 
   button:disabled,
   button[aria-disabled='true'] {
-    color: var(--text-muted);
+    color: var(--text-secondary);
   }
 
-  /* UI-004: accent with a --bg label, accent-deep while pressed, as WakeButton. */
+  /* UI-004: accent with a --surface-base label, accent-deep while pressed, as WakeButton. */
   .primary {
     border-color: var(--accent);
     background: var(--accent);
-    color: var(--bg);
+    color: var(--surface-base);
   }
 
   .primary:active:not(:disabled, [aria-disabled='true']) {
-    background: var(--accent-deep);
+    background: var(--accent-pressed);
   }
 
   .primary:is(:disabled, [aria-disabled='true']) {
-    color: var(--bg);
+    color: var(--surface-base);
     opacity: var(--opacity-disabled);
   }
 

@@ -49,8 +49,8 @@
     justify-self: start;
     padding: 0 var(--space-2);
     border-radius: var(--radius-pill);
-    background: var(--surface);
-    color: var(--text-muted);
+    background: var(--surface-raised);
+    color: var(--text-secondary);
     font-family: var(--font-mono);
     font-size: var(--text-xs);
     line-height: var(--leading-normal);
@@ -71,7 +71,7 @@
 
   .outcome,
   .none {
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font-size: var(--text-sm);
     line-height: var(--leading-normal);
   }

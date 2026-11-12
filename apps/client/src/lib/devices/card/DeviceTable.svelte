@@ -14,8 +14,8 @@
   import OsIcon from '$lib/devices/os/OsIcon.svelte';
   import { hostLine } from './card';
   import { reorderMotion } from '$lib/motion/roles/reorder.svelte';
-  import StatusEdge from './StatusEdge.svelte';
-  import StatusPill from './StatusPill.svelte';
+  import StatusEdge from '../status/StatusEdge.svelte';
+  import StatusBadge from '../status/StatusBadge.svelte';
 
   interface Props {
     devices: readonly CardDevice[];
@@ -65,7 +65,7 @@
         <td class="status">
           <StatusEdge status={device.status} />
           <span class="marks">
-            <StatusPill status={device.status} deviceId={device.id} />
+            <StatusBadge status={device.status} deviceId={device.id} />
             <WarningBadge warnings={device.accessWarnings} />
           </span>
         </td>
@@ -108,14 +108,14 @@
     box-sizing: border-box;
     block-size: var(--device-row-block-size);
     padding: 0 var(--space-3);
-    border-bottom: var(--border-thin) solid var(--border);
+    border-bottom: var(--border-thin) solid var(--border-strong);
     text-align: start;
     font-weight: var(--weight-regular);
     white-space: nowrap;
   }
 
   thead th {
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font-size: var(--text-sm);
   }
 
@@ -124,7 +124,7 @@
   }
 
   tbody tr:hover {
-    background: var(--surface-raised);
+    background: var(--surface-overlay);
   }
 
   .status {
@@ -145,7 +145,7 @@
 
   .ip {
     margin-inline-start: var(--space-2);
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font-family: var(--font-mono);
   }
 
@@ -158,7 +158,7 @@
   }
 
   a:active {
-    color: var(--text-muted);
+    color: var(--text-secondary);
   }
 
   a:hover {

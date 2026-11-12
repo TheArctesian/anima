@@ -3,7 +3,7 @@
   import WarningBadge from '$lib/devices/actions/WarningBadge.svelte';
   import type { ScreenSharingCalls } from '$lib/devices/screen-sharing/setup';
   import type { DeviceDetail } from '$lib/devices/api';
-  import StatusPill from '$lib/devices/card/StatusPill.svelte';
+  import StatusBadge from '$lib/devices/status/StatusBadge.svelte';
   import OsIcon from '$lib/devices/os/OsIcon.svelte';
   import { skeletonDelay } from '$lib/motion/loading/delay.svelte';
   import type { LoadingClock } from '$lib/motion/loading/loading';
@@ -57,7 +57,7 @@
         <h1 title={device.name} {@attach sharedItem(`device-name:${device.id}`)}>{device.name}</h1>
         <!-- A live region, so a status change is heard as well as seen (D-11). -->
         <span class="status" aria-live="polite">
-          <StatusPill status={device.status} deviceId={device.id} />
+          <StatusBadge status={device.status} deviceId={device.id} />
           <WarningBadge warnings={device.accessWarnings} />
         </span>
       </div>
@@ -122,7 +122,7 @@
     align-items: center;
     gap: var(--space-1);
     min-block-size: var(--target-min-desktop);
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font-size: var(--text-sm);
     text-decoration: none;
     transition: color var(--duration-fast) var(--ease-enter);
@@ -158,7 +158,7 @@
 
   .system {
     flex: none;
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font-size: var(--text-2xl);
     line-height: var(--leading-tight);
   }
@@ -204,7 +204,7 @@
   .meta-place {
     flex: none;
     border-radius: var(--radius-md);
-    background: var(--surface);
+    background: var(--surface-raised);
   }
 
   .name {

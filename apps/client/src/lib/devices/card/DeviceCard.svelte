@@ -15,8 +15,8 @@
   import OsIcon from '$lib/devices/os/OsIcon.svelte';
   import { hostLine } from './card';
   import './geometry.css';
-  import StatusEdge from './StatusEdge.svelte';
-  import StatusPill from './StatusPill.svelte';
+  import StatusEdge from '../status/StatusEdge.svelte';
+  import StatusBadge from '../status/StatusBadge.svelte';
 
   interface Props {
     device: CardDevice;
@@ -55,7 +55,7 @@
     </span>
     <span class="marks">
       <WarningBadge warnings={device.accessWarnings} />
-      <StatusPill status={device.status} deviceId={device.id} />
+      <StatusBadge status={device.status} deviceId={device.id} />
     </span>
   </header>
   <p class="host">
@@ -81,9 +81,9 @@
     gap: var(--space-2);
     block-size: var(--device-card-block-size);
     padding: var(--space-4);
-    border: var(--border-thin) solid var(--border);
+    border: var(--border-thin) solid var(--border-strong);
     border-radius: var(--radius-lg);
-    background: var(--surface);
+    background: var(--surface-raised);
     color: var(--text);
     overflow: hidden;
   }
@@ -137,7 +137,7 @@
 
   a:active {
     transition-duration: var(--duration-press);
-    color: var(--text-muted);
+    color: var(--text-secondary);
   }
 
   .host,
@@ -146,7 +146,7 @@
     display: flex;
     gap: var(--space-2);
     margin: 0;
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font-size: var(--text-sm);
     line-height: var(--leading-tight);
     overflow: hidden;

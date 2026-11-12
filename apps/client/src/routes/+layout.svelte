@@ -2,7 +2,7 @@
   import { page } from '$app/state';
   import { tick, untrack, type Snippet } from 'svelte';
   import '../styles/global.css';
-  import { guardStart, startAt } from '$lib/access/navigation';
+  import { guardStart, showsSignedOutPage, startAt } from '$lib/access/navigation';
   import { provideDesktopBuilder } from '$lib/builds/desktop.svelte';
   import { provideHub } from '$lib/hub/context';
   import { readAccessToken } from '$lib/desktop/token';
@@ -23,6 +23,7 @@
   import SessionPanes from '$lib/sessions/strip/SessionPanes.svelte';
   import SessionTabs from '$lib/sessions/strip/SessionTabs.svelte';
   import { sessionStart } from '$lib/sessions/view/start';
+  import { applyPalette, storedPalette } from '$lib/palette/palette';
   import { applyMotion, storedMotion } from '$lib/theme/motion-choice';
   import { applyTheme, storedTheme } from '$lib/theme/theme';
   import { applyTypefaces, storedTypefaces } from '$lib/typeface/typeface';
@@ -34,6 +35,7 @@
   // The operator's fonts apply before the first render, so the text does not change family after it shows (UI-020).
   applyTypefaces(document.documentElement, storedTypefaces(localStorage));
   applyTheme(document.documentElement, storedTheme(localStorage));
+  applyPalette(document.documentElement, storedPalette(localStorage));
   applyMotion(document.documentElement, storedMotion(localStorage));
   // On a Mac the window draws under its title bar; the bar keeps room for the window buttons.
   if (capabilities().overlayTitleBar) document.documentElement.dataset['titlebar'] = 'overlay';
@@ -133,7 +135,13 @@
   }
 </script>
 
-{#if shell !== null}
+{#if shell !== null && showsSignedOutPage(page.url)}
+  <!-- Before sign-in the window shows the page alone: no bar, no sessions, no hub status (NAV-009). -->
+  <div class="bare">
+    <div class="drag" data-tauri-drag-region></div>
+    <main>{@render children()}</main>
+  </div>
+{:else if shell !== null}
   {@const { api, clock, sessions, navigate } = shell}
   <div class="shell">
     <Nav
@@ -179,8 +187,15 @@
     margin: 0;
     padding: var(--space-6);
     min-height: 100vh;
-    background: var(--bg);
+    background: var(--surface-base);
     color: var(--text);
+  }
+
+  .bare {
+    min-height: 100vh;
+    background: var(--surface-base);
+    color: var(--text);
+    font-family: var(--font-ui);
   }
 
   .shell {
@@ -189,7 +204,7 @@
     grid-template-columns: auto minmax(0, 1fr);
     align-items: start;
     min-height: 100vh;
-    background: var(--bg);
+    background: var(--surface-base);
     color: var(--text);
     font-family: var(--font-ui);
   }
@@ -216,6 +231,11 @@
     inset-inline: var(--nav-inline-size) 0;
     block-size: var(--space-6);
     z-index: var(--layer-nav);
+  }
+
+  /* With no bar the strip spans the window; the window buttons are drawn over it. */
+  :global(:root[data-titlebar='overlay']) .bare .drag {
+    inset-inline-start: 0;
   }
 
   /* Below the compact breakpoint the unreachable strip takes the top of the window; the page starts below it. */

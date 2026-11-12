@@ -41,7 +41,7 @@
     flex-direction: column;
     gap: var(--space-1);
     padding: var(--space-3) var(--space-4);
-    border-block-start: var(--border-thin) solid var(--border);
+    border-block-start: var(--border-thin) solid var(--border-strong);
   }
 
   .line {
@@ -69,9 +69,9 @@
   .control :global(:is(select, input)) {
     box-sizing: border-box;
     block-size: var(--space-8);
-    border: var(--border-thin) solid var(--border);
+    border: var(--border-thin) solid var(--border-strong);
     border-radius: var(--radius-md);
-    background-color: var(--surface);
+    background-color: var(--surface-raised);
     color: var(--text);
     font: inherit;
     font-size: var(--text-md);
@@ -106,7 +106,7 @@
   .text > :global(.hint) {
     margin: 0;
     min-block-size: calc(var(--text-sm) * var(--leading-tight));
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font-size: var(--text-sm);
     line-height: var(--leading-tight);
   }

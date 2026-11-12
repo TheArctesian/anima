@@ -3,7 +3,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { ALL_FIRST_PAINT_FACES, FONT_WAIT_MS, firstPaintFaces, waitForFirstPaintFonts } from './first-paint';
 import type { TypefaceChoice } from './typeface';
 
-const FIRA: TypefaceChoice = { ui: 'fira-code', mono: 'fira-code' };
+const FIRA: TypefaceChoice = { ui: 'ibm-plex-sans', mono: 'fira-code' };
 
 beforeEach(() => {
   vi.useFakeTimers();

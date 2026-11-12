@@ -23,9 +23,9 @@
   min-inline-size: 0;
   margin: 0;
   padding: var(--space-4);
-  border: var(--border-thin) solid var(--border);
+  border: var(--border-thin) solid var(--border-strong);
   border-radius: var(--radius-lg);
-  background: var(--surface-raised);
+  background: var(--surface-overlay);
 }
 
 /* A card's heading: an icon and the words, on one line of fixed block size, so a font swap moves nothing (MOT-007). */
@@ -42,7 +42,7 @@
 }
 
 .overview-card-title > .icon {
-  color: var(--text-muted);
+  color: var(--text-secondary);
 }
 
 /*
@@ -93,7 +93,7 @@
 }
 
 .overview-figure dt {
-  color: var(--text-muted);
+  color: var(--text-secondary);
   font-size: var(--text-sm);
   line-height: var(--leading-normal);
 }
@@ -127,6 +127,6 @@
   gap: var(--space-3);
   min-block-size: calc(var(--space-16) * 2.5);
   margin: 0;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   text-align: center;
 }

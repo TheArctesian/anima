@@ -5,7 +5,7 @@ import { buildOutputs, OUTPUT_PATHS } from '../src/outputs.ts';
 import { renderRust } from '../src/rust.ts';
 
 function token(name: string, value: string, source: string, group = 'color.nord'): Token {
-  return { name, path: `${group}.${name}`, group, type: 'color', value, source, description: '', reduced: undefined, light: undefined };
+  return { name, path: `${group}.${name}`, group, type: 'color', value, source, description: '', reduced: undefined, light: undefined, palette: undefined };
 }
 
 const root = resolve(import.meta.dir, '..', '..');

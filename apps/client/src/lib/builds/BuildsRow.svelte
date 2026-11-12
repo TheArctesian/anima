@@ -197,7 +197,7 @@
   }
 
   .muted {
-    color: var(--text-muted);
+    color: var(--text-secondary);
   }
 
   .toggle {
@@ -251,9 +251,9 @@
     max-inline-size: 100%;
     block-size: var(--space-8);
     padding: 0 var(--space-4);
-    border: var(--border-thin) solid var(--border);
+    border: var(--border-thin) solid var(--border-strong);
     border-radius: var(--radius-md);
-    background: var(--surface);
+    background: var(--surface-raised);
     color: var(--text);
     font: inherit;
     font-size: var(--text-lg);
@@ -264,11 +264,11 @@
   }
 
   button:hover:not([aria-disabled='true']) {
-    background: var(--surface-raised);
+    background: var(--surface-overlay);
   }
 
   button[aria-disabled='true'] {
-    color: var(--text-muted);
+    color: var(--text-secondary);
     cursor: default;
   }
 

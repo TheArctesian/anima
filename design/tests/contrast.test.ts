@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import {
   contrastRatio,
   deriveToContrast,
+  largestMixToContrast,
   MalformedColourError,
   mixColour,
   UnreachableContrastError,
@@ -55,5 +56,30 @@ describe('derived light primitives (UI-005, D-27, R-086)', () => {
   });
   test('D-27: an unreachable minimum is a typed error', () => {
     expect(() => deriveToContrast(AURORA[13], NORD_0, NORD_6, 30)).toThrow(UnreachableContrastError);
+  });
+});
+
+describe('largest derived mix (UI-002: a tint stays apart from its base)', () => {
+  const GREY = '#5A5F68';
+  const WHITE = '#FFFFFF';
+
+  test('UI-002: the largest mix keeps the minimum, and one whole percent more falls below it', () => {
+    const derived = largestMixToContrast(GREY, WHITE, WHITE, 4.5);
+    expect(contrastRatio(derived.colour, WHITE)).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(mixColour(GREY, WHITE, (derived.mixPercent + 1) / 100), WHITE)).toBeLessThan(4.5);
+  });
+
+  test('UI-002: the largest mix is the lightest passing step, so it is not the colour itself', () => {
+    const derived = largestMixToContrast(GREY, WHITE, WHITE, 4.5);
+    expect(derived.mixPercent).toBeGreaterThan(0);
+    expect(derived.colour).not.toBe(GREY);
+  });
+
+  test('D-27: a colour that fails at 0 % has no passing mix, a typed error', () => {
+    expect(() => largestMixToContrast('#FFFFFF', WHITE, WHITE, 4.5)).toThrow(UnreachableContrastError);
+  });
+
+  test('D-27: where every step passes the largest mix is 100 %', () => {
+    expect(largestMixToContrast('#000000', '#FFFFFF', '#000000', 0).mixPercent).toBe(100);
   });
 });

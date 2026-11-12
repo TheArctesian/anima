@@ -1,0 +1,600 @@
+<!doctype html>
+<html lang="en" data-dir="a" data-mode="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Anima redesign directions</title>
+<!-- Mockup only: fonts come from Google Fonts here. The app bundles its fonts (UI-017). -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;700&family=Fira+Code:wght@400;600&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;700&display=swap" rel="stylesheet">
+<style>
+/* ---------- Palettes mapped onto semantic roles ---------- */
+:root, [data-dir="a"][data-mode="dark"], [data-dir="c"][data-mode="dark"] {
+  --surface-sunken:#272C36; --surface-base:#2E3440; --surface-raised:#3B4252; --surface-overlay:#434C5E;
+  --surface-hover:#434C5E; --border-subtle:#434C5E; --border-strong:#5A657B;
+  --text:#ECEFF4; --text-secondary:#C2C9D6; --text-tertiary:#8F99AD;
+  --accent:#88C0D0; --accent-hover:#9DCDDA; --on-accent:#2E3440; --accent-tint:rgb(136 192 208 / 16%);
+  --up:#A3BE8C; --down:#D57780; --degraded:#EBCB8B; --warning:#D08770; --maint:#B48EAD; --unknown:#8F99AD;
+  --danger:#D57780; --on-danger:#2E3440; --scrim:rgb(20 23 29 / 55%);
+  --shadow:0 12px 40px rgb(15 17 22 / 55%);
+  --font-ui:"Atkinson Hyperlegible Next", system-ui, sans-serif; --font-mono:"Fira Code", ui-monospace, monospace;
+}
+[data-dir="a"][data-mode="light"], [data-dir="c"][data-mode="light"] {
+  --surface-sunken:#E5E9F0; --surface-base:#ECEFF4; --surface-raised:#F8F9FB; --surface-overlay:#FFFFFF;
+  --surface-hover:#E5E9F0; --border-subtle:#DDE2EA; --border-strong:#B7C0CE;
+  --text:#2E3440; --text-secondary:#4C566A; --text-tertiary:#6B7489;
+  --accent:#4A6C96; --accent-hover:#3F5D82; --on-accent:#FFFFFF; --accent-tint:rgb(94 129 172 / 14%);
+  --up:#5B7F4A; --down:#B23B47; --degraded:#8A6A1A; --warning:#B04F2E; --maint:#8A5F86; --unknown:#6B7489;
+  --danger:#B23B47; --on-danger:#FFFFFF; --scrim:rgb(46 52 64 / 35%);
+  --shadow:0 12px 40px rgb(46 52 64 / 22%);
+}
+[data-dir="b"] {
+  --font-ui:"IBM Plex Sans", system-ui, sans-serif; --font-mono:"IBM Plex Mono", ui-monospace, monospace;
+}
+[data-dir="b"][data-mode="dark"] {
+  --surface-sunken:#16181B; --surface-base:#1B1D21; --surface-raised:#23262B; --surface-overlay:#2C3036;
+  --surface-hover:#2C3036; --border-subtle:#2C3036; --border-strong:#41464E;
+  --text:#E6E7E9; --text-secondary:#A4A8B0; --text-tertiary:#7E838C;
+  --accent:#88C0D0; --accent-hover:#9DCDDA; --on-accent:#16181B; --accent-tint:rgb(136 192 208 / 13%);
+  --up:#A3BE8C; --down:#D57780; --degraded:#EBCB8B; --warning:#D08770; --maint:#B48EAD; --unknown:#7E838C;
+  --danger:#D57780; --on-danger:#16181B; --scrim:rgb(0 0 0 / 55%); --shadow:0 12px 40px rgb(0 0 0 / 55%);
+}
+[data-dir="b"][data-mode="light"] {
+  --surface-sunken:#EEEFF1; --surface-base:#F6F7F8; --surface-raised:#FFFFFF; --surface-overlay:#FFFFFF;
+  --surface-hover:#EEEFF1; --border-subtle:#E3E5E8; --border-strong:#C3C7CD;
+  --text:#1D2024; --text-secondary:#5A5F68; --text-tertiary:#737881;
+  --accent:#2E6E80; --accent-hover:#255C6B; --on-accent:#FFFFFF; --accent-tint:rgb(46 110 128 / 11%);
+  --up:#5B7F4A; --down:#B23B47; --degraded:#8A6A1A; --warning:#B04F2E; --maint:#8A5F86; --unknown:#737881;
+  --danger:#B23B47; --on-danger:#FFFFFF; --scrim:rgb(29 32 36 / 35%); --shadow:0 12px 40px rgb(29 32 36 / 20%);
+}
+/* ---------- Size and density ---------- */
+:root { --control:2rem; --gap:1.5rem; --card-min:18rem; --pad:1rem; --text-md:.875rem; --text-sm:.8125rem; --text-xs:.75rem;
+  --text-lg:1rem; --text-xl:1.25rem; --text-2xl:1.5rem; --radius-sm:4px; --radius-md:6px; --radius-lg:10px; }
+[data-dir="c"] { --control:1.75rem; --gap:1rem; --card-min:15rem; --pad:.75rem; }
+
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { background:var(--surface-base); color:var(--text); font:400 var(--text-md)/1.5 var(--font-ui); -webkit-font-smoothing:antialiased; }
+.mono { font-family:var(--font-mono); font-variant-ligatures:none; font-size:.95em; }
+.num { font-variant-numeric:tabular-nums; }
+button { font:inherit; color:inherit; }
+:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+
+/* ---------- Switcher (not part of the design) ---------- */
+.switcher { position:sticky; top:0; z-index:50; display:flex; flex-wrap:wrap; gap:.5rem 1.5rem; align-items:center;
+  padding:.5rem 1rem; background:#111; color:#eee; font:13px/1.4 system-ui, sans-serif; }
+.switcher b { font-weight:600; margin-right:.25rem; }
+.switcher .grp { display:flex; gap:.25rem; align-items:center; }
+.switcher button { background:#2a2a2a; border:1px solid #444; color:#eee; border-radius:4px; padding:.2rem .6rem; cursor:pointer; }
+.switcher button[aria-pressed="true"] { background:#eee; color:#111; }
+.switcher .note { color:#aaa; margin-left:auto; }
+
+/* ---------- Shell ---------- */
+.app { display:grid; grid-template-columns:13.5rem 1fr; min-height:calc(100vh - 2.5rem); }
+.nav { background:var(--surface-base); display:flex; flex-direction:column; padding:.625rem .5rem; gap:.125rem; }
+.nav-head { display:flex; align-items:center; gap:.5rem; height:2.5rem; padding:0 .5rem 0 4.5rem; margin-bottom:.75rem; }
+.lights { position:absolute; display:flex; gap:.5rem; margin-left:-4rem; }
+.lights i { width:12px; height:12px; border-radius:50%; background:var(--border-strong); display:block; }
+.logo { width:22px; height:22px; border-radius:6px; background:linear-gradient(135deg,var(--accent),var(--maint)); flex:none; }
+.brand { font-weight:700; letter-spacing:-.01em; }
+.collapse { margin-left:auto; width:24px; height:24px; border:0; background:none; color:var(--text-tertiary); border-radius:var(--radius-sm); cursor:pointer; }
+.collapse:hover { background:var(--surface-hover); color:var(--text); }
+.nav a { display:flex; align-items:center; gap:.625rem; height:2.25rem; padding:0 .75rem; border-radius:var(--radius-md); color:var(--text-secondary);
+  text-decoration:none; white-space:nowrap; position:relative; }
+.nav a:hover { background:var(--surface-hover); color:var(--text); }
+.nav a[aria-current="page"] { background:var(--accent-tint); color:var(--text); font-weight:700; }
+.nav a[aria-current="page"]::before { content:""; position:absolute; left:-.5rem; top:.5rem; bottom:.5rem; width:3px; border-radius:2px; background:var(--accent); }
+.nav a[aria-current="page"] .ico { color:var(--accent); }
+.nav .count { margin-left:auto; font-size:var(--text-xs); color:var(--text-tertiary); }
+.nav .spacer { flex:1; }
+.nav hr { border:0; border-top:1px solid var(--border-subtle); margin:.375rem .5rem; width:auto; }
+.hub { display:flex; align-items:center; gap:.5rem; height:2rem; padding:0 .75rem; color:var(--text-tertiary); font-size:var(--text-sm); border-radius:var(--radius-md); cursor:pointer; background:none; border:0; text-align:left; }
+.hub:hover { background:var(--surface-hover); }
+.hub .dot { width:8px; height:8px; border-radius:50%; background:var(--up); box-shadow:0 0 0 3px color-mix(in srgb,var(--up) 22%,transparent); }
+.ico { width:18px; height:18px; flex:none; display:inline-block; }
+.ico svg, svg.ico { width:100%; height:100%; stroke:currentColor; fill:none; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
+.main { background:var(--surface-sunken); border-top-left-radius:var(--radius-lg); min-width:0; padding:1.25rem 1.75rem 3rem; }
+[data-dir="c"] .main { padding:1rem 1.25rem 2rem; }
+.view { display:none; } .view.on { display:block; }
+
+/* ---------- Page header ---------- */
+.ph { display:flex; align-items:center; gap:1rem; margin-bottom:1rem; min-height:2.5rem; }
+.ph h1 { font-size:var(--text-2xl); line-height:1.2; letter-spacing:-.01em; margin:0; font-weight:700; }
+.ph .sub { color:var(--text-secondary); font-size:var(--text-sm); }
+.ph .end { margin-left:auto; display:flex; gap:.5rem; align-items:center; }
+
+/* ---------- Buttons and controls ---------- */
+.btn { display:inline-flex; align-items:center; justify-content:center; gap:.375rem; height:var(--control); padding:0 .875rem; border-radius:var(--radius-md);
+  border:0; cursor:pointer; font-weight:700; font-size:var(--text-md); white-space:nowrap; }
+.btn .ico { width:16px; height:16px; }
+.btn.primary { background:var(--accent); color:var(--on-accent); }
+.btn.primary:hover { background:var(--accent-hover); }
+.btn.secondary { background:color-mix(in srgb,var(--text) 9%,transparent); color:var(--text); }
+.btn.secondary:hover { background:color-mix(in srgb,var(--text) 14%,transparent); }
+.btn.ghost { background:none; color:var(--text-secondary); font-weight:400; padding:0 .5rem; }
+.btn.ghost:hover { background:var(--surface-hover); color:var(--text); }
+.btn.danger { background:none; color:var(--danger); box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--danger) 55%,transparent); }
+.btn.danger.fill { background:var(--danger); color:var(--on-danger); box-shadow:none; }
+.btn.sm { height:1.75rem; padding:0 .625rem; font-size:var(--text-sm); }
+.btn.icon { width:var(--control); padding:0; }
+.input { height:var(--control); padding:0 .75rem; border-radius:var(--radius-md); background:var(--surface-sunken); border:1px solid var(--border-subtle);
+  color:var(--text); font:inherit; min-width:0; }
+.input::placeholder { color:var(--text-tertiary); font-style:italic; }
+.input:hover { border-color:var(--border-strong); }
+.input:focus { outline:2px solid var(--accent); outline-offset:-1px; border-color:transparent; }
+.search { position:relative; flex:1 1 16rem; max-width:22rem; display:flex; }
+.search .input { width:100%; padding-left:2rem; }
+.search .ico { position:absolute; left:.6rem; top:50%; translate:0 -50%; width:15px; height:15px; color:var(--text-tertiary); }
+.seg { display:inline-flex; height:var(--control); padding:2px; border-radius:var(--radius-md); background:color-mix(in srgb,var(--text) 7%,transparent); }
+.seg button { border:0; background:none; padding:0 .7rem; border-radius:calc(var(--radius-md) - 2px); color:var(--text-secondary); cursor:pointer; display:inline-flex; align-items:center; gap:.375rem; font-size:var(--text-sm); }
+.seg button[aria-pressed="true"] { background:var(--surface-raised); color:var(--text); font-weight:700; box-shadow:0 1px 2px rgb(0 0 0 / 18%); }
+.seg .n { color:var(--text-tertiary); font-weight:400; }
+.select { appearance:none; padding-right:2rem; background-image:linear-gradient(45deg,transparent 50%,var(--text-tertiary) 50%),linear-gradient(135deg,var(--text-tertiary) 50%,transparent 50%);
+  background-position:calc(100% - 15px) 50%, calc(100% - 10px) 50%; background-size:5px 5px; background-repeat:no-repeat; }
+
+/* ---------- Toolbar ---------- */
+.toolbar { display:flex; flex-wrap:wrap; gap:.5rem; align-items:center; margin-bottom:var(--gap); }
+.toolbar .end { margin-left:auto; display:flex; gap:.5rem; }
+
+/* ---------- Status ---------- */
+.status { display:inline-flex; align-items:center; gap:.375rem; font-size:var(--text-sm); font-weight:700; white-space:nowrap; }
+.status .d { width:8px; height:8px; border-radius:50%; background:currentColor; flex:none; }
+.status.up { color:var(--text-secondary); font-weight:400; } .status.up .d { background:var(--up); }
+.status.badge { padding:.125rem .5rem; border-radius:999px; }
+.status.down { color:var(--down); background:color-mix(in srgb,var(--down) 16%,transparent); }
+.status.warning { color:var(--warning); background:color-mix(in srgb,var(--warning) 16%,transparent); }
+.status.degraded { color:var(--degraded); background:color-mix(in srgb,var(--degraded) 16%,transparent); }
+.status.maint { color:var(--maint); background:color-mix(in srgb,var(--maint) 16%,transparent); }
+.status.unknown { color:var(--text-tertiary); font-weight:400; } .status.unknown .d { background:none; box-shadow:inset 0 0 0 1.5px var(--unknown); }
+.help { width:16px; height:16px; border-radius:50%; border:0; display:inline-grid; place-items:center; font:700 10px/1 var(--font-ui);
+  background:color-mix(in srgb,var(--text) 11%,transparent); color:var(--text-secondary); cursor:help; vertical-align:middle; padding:0; }
+.help:hover, .help:focus-visible { background:var(--accent); color:var(--on-accent); }
+
+/* ---------- Device cards ---------- */
+.grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(var(--card-min),1fr)); gap:.75rem; align-items:start; }
+.card { background:var(--surface-raised); border-radius:var(--radius-lg); padding:var(--pad); display:flex; flex-direction:column; gap:.75rem; position:relative; }
+.card:hover { background:color-mix(in srgb,var(--surface-raised) 88%,var(--text)); }
+.card.problem { box-shadow:inset 3px 0 0 var(--down); }
+.card.warn { box-shadow:inset 3px 0 0 var(--warning); }
+.card-top { display:flex; gap:.625rem; align-items:flex-start; }
+.card-top .os { width:28px; height:28px; border-radius:var(--radius-md); background:var(--surface-sunken); display:grid; place-items:center; color:var(--text-secondary); flex:none; }
+.card-top .os .ico { width:16px; height:16px; }
+.name { font-weight:700; font-size:var(--text-lg); line-height:1.25; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.host { color:var(--text-secondary); font-size:var(--text-sm); }
+.card-top .who { min-width:0; flex:1; }
+.card-top .status { margin-top:.125rem; }
+.metrics { display:grid; grid-template-columns:auto 1fr auto; gap:.3rem .625rem; align-items:center; font-size:var(--text-sm); }
+.metrics .k { color:var(--text-secondary); }
+.metrics .v { text-align:right; font-variant-numeric:tabular-nums; }
+.bar { height:6px; border-radius:3px; background:color-mix(in srgb,var(--text) 10%,transparent); overflow:hidden; }
+.bar i { display:block; height:100%; border-radius:3px; background:var(--accent); }
+.bar i.hot { background:var(--degraded); }
+.beats { display:flex; align-items:center; gap:.5rem; font-size:var(--text-xs); color:var(--text-tertiary); }
+.strip { display:flex; gap:2px; flex:1; height:14px; }
+.strip i { flex:1; border-radius:1.5px; background:var(--up); opacity:.75; }
+.strip i.x { background:var(--down); opacity:1; } .strip i.s { background:var(--degraded); opacity:1; } .strip i.n { background:var(--border-strong); }
+.card-foot { display:flex; align-items:center; gap:.5rem; margin-top:auto; }
+.card-foot .up24 { margin-right:auto; font-size:var(--text-sm); color:var(--text-secondary); }
+.card-foot .up24 b { color:var(--text); font-variant-numeric:tabular-nums; }
+.reason { font-size:var(--text-sm); color:var(--text-secondary); margin-top:-.25rem; }
+
+/* ---------- Table (direction C shows it) ---------- */
+.table { width:100%; border-collapse:separate; border-spacing:0; background:var(--surface-raised); border-radius:var(--radius-lg); overflow:hidden; font-size:var(--text-sm); }
+.table th { text-align:left; font-weight:700; color:var(--text-secondary); padding:.5rem .75rem; position:sticky; top:0; background:var(--surface-raised); border-bottom:1px solid var(--border-subtle); white-space:nowrap; }
+.table td { padding:.375rem .75rem; border-bottom:1px solid var(--border-subtle); vertical-align:middle; }
+.table tr:last-child td { border-bottom:0; }
+.table tr:hover td { background:var(--surface-hover); }
+.table .r { text-align:right; font-variant-numeric:tabular-nums; }
+.table .mini { width:5rem; }
+.table .strip { height:12px; width:7rem; }
+
+/* ---------- Device page ---------- */
+.back { display:inline-flex; align-items:center; gap:.25rem; color:var(--text-secondary); text-decoration:none; font-size:var(--text-sm); height:1.75rem; padding:0 .375rem 0 .125rem; border-radius:var(--radius-sm); margin-left:-.125rem; }
+.back:hover { color:var(--text); background:var(--surface-hover); }
+.back .ico { width:15px; height:15px; }
+.dh { display:flex; align-items:center; gap:.75rem; margin:.5rem 0 .375rem; flex-wrap:wrap; }
+.dh .os { width:36px; height:36px; border-radius:var(--radius-md); background:var(--surface-raised); display:grid; place-items:center; color:var(--text-secondary); }
+.dh h1 { margin:0; font-size:var(--text-2xl); letter-spacing:-.01em; line-height:1.2; }
+.dh .end { margin-left:auto; display:flex; gap:.5rem; }
+.meta { display:flex; flex-wrap:wrap; gap:.25rem 1.25rem; align-items:center; color:var(--text-secondary); font-size:var(--text-sm); margin-left:calc(36px + .75rem); }
+.meta .copy { display:inline-flex; align-items:center; gap:.25rem; }
+.chip { display:inline-flex; align-items:center; height:1.375rem; padding:0 .5rem; border-radius:999px; background:color-mix(in srgb,var(--text) 8%,transparent); color:var(--text-secondary); font-size:var(--text-xs); }
+.tabs { display:flex; gap:1.25rem; margin:1.25rem 0 1.25rem; border-bottom:1px solid var(--border-subtle); }
+.tabs a { padding:.5rem 0 .625rem; color:var(--text-secondary); text-decoration:none; position:relative; font-weight:400; }
+.tabs a:hover { color:var(--text); }
+.tabs a[aria-current="page"] { color:var(--text); font-weight:700; }
+.tabs a[aria-current="page"]::after { content:""; position:absolute; left:0; right:0; bottom:-1px; height:2px; border-radius:2px; background:var(--accent); }
+.tabs .n { color:var(--text-tertiary); font-weight:400; margin-left:.25rem; font-size:var(--text-sm); }
+
+.cols { display:grid; grid-template-columns:minmax(0,44rem) minmax(14rem,1fr); gap:1.5rem; align-items:start; }
+.section { background:var(--surface-raised); border-radius:var(--radius-lg); padding:1.25rem; }
+.section + .section { margin-top:1rem; }
+.section h2 { margin:0 0 .25rem; font-size:var(--text-lg); font-weight:700; letter-spacing:-.005em; }
+.section .lede { margin:0 0 1rem; color:var(--text-secondary); font-size:var(--text-sm); }
+.section-head { display:flex; align-items:baseline; gap:.75rem; }
+.section-head .end { margin-left:auto; }
+.field { display:grid; grid-template-columns:9rem minmax(0,1fr); gap:.375rem 1rem; align-items:center; padding:.5rem 0; }
+.field + .field { border-top:1px solid var(--border-subtle); }
+.field label { font-weight:700; font-size:var(--text-sm); display:flex; align-items:center; gap:.375rem; }
+.field .row { display:flex; gap:.5rem; align-items:center; }
+.field .hint { grid-column:2; font-size:var(--text-sm); color:var(--text-secondary); margin-top:-.125rem; }
+.field .err { grid-column:2; font-size:var(--text-sm); color:var(--down); display:flex; gap:.375rem; align-items:center; font-weight:700; }
+.input.bad { border-color:var(--down); }
+.switch { width:34px; height:20px; border-radius:999px; background:var(--accent); position:relative; flex:none; border:0; cursor:pointer; }
+.switch::after { content:""; position:absolute; width:16px; height:16px; border-radius:50%; background:var(--on-accent); top:2px; right:2px; }
+.switch.off { background:color-mix(in srgb,var(--text) 22%,transparent); } .switch.off::after { right:auto; left:2px; background:var(--surface-raised); }
+.form-foot { display:flex; gap:.5rem; justify-content:flex-end; align-items:center; margin-top:1rem; padding-top:1rem; border-top:1px solid var(--border-subtle); }
+.form-foot .state { margin-right:auto; color:var(--text-secondary); font-size:var(--text-sm); }
+.kv { display:grid; grid-template-columns:auto 1fr; gap:.5rem 1rem; font-size:var(--text-sm); margin:0; }
+.kv dt { color:var(--text-secondary); }
+.kv dd { margin:0; text-align:right; }
+.side h3 { margin:0 0 .75rem; font-size:var(--text-md); }
+.uptime { display:grid; grid-template-columns:repeat(3,1fr); gap:.5rem; margin-bottom:1rem; }
+.uptime div { background:var(--surface-sunken); border-radius:var(--radius-md); padding:.5rem .625rem; }
+.uptime b { display:block; font-size:var(--text-xl); font-variant-numeric:tabular-nums; letter-spacing:-.01em; }
+.uptime span { font-size:var(--text-xs); color:var(--text-secondary); }
+.danger-zone { margin-top:1rem; background:none; box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--danger) 35%,transparent); }
+.danger-zone .row { display:flex; align-items:center; gap:1rem; }
+.danger-zone p { margin:0; color:var(--text-secondary); font-size:var(--text-sm); flex:1; }
+
+/* ---------- Settings ---------- */
+.settings { display:grid; grid-template-columns:11rem minmax(0,44rem); gap:2rem; align-items:start; }
+.toc { position:sticky; top:3.5rem; display:flex; flex-direction:column; gap:.125rem; }
+.toc a { color:var(--text-secondary); text-decoration:none; height:2rem; display:flex; align-items:center; padding:0 .625rem; border-radius:var(--radius-md); font-size:var(--text-sm); }
+.toc a:hover { background:var(--surface-hover); color:var(--text); }
+.toc a[aria-current="true"] { background:var(--accent-tint); color:var(--text); font-weight:700; }
+.rows { margin:0; padding:0; list-style:none; }
+.rows li { display:flex; align-items:center; gap:.75rem; padding:.625rem 0; }
+.rows li + li { border-top:1px solid var(--border-subtle); }
+.rows .what { flex:1; min-width:0; }
+.rows .what b { display:block; font-weight:700; }
+.rows .what span { color:var(--text-secondary); font-size:var(--text-sm); }
+.rows .val { color:var(--text-secondary); font-size:var(--text-sm); }
+.notice { display:flex; gap:.625rem; align-items:flex-start; padding:.625rem .75rem; border-radius:var(--radius-md); font-size:var(--text-sm); margin-bottom:1rem; }
+.notice.bad { background:color-mix(in srgb,var(--down) 13%,transparent); }
+.notice.bad .ico { color:var(--down); width:16px; height:16px; margin-top:.1rem; }
+.notice.ok { background:color-mix(in srgb,var(--up) 14%,transparent); }
+.notice.ok .ico { color:var(--up); width:16px; height:16px; margin-top:.1rem; }
+.notice b { display:block; }
+.disclosure { margin-top:.75rem; color:var(--text-secondary); font-size:var(--text-sm); display:flex; align-items:center; gap:.375rem; cursor:pointer; background:none; border:0; padding:.25rem 0; }
+
+/* ---------- HelpTip demo ---------- */
+.tipwrap { position:relative; display:inline-flex; }
+.tip { position:absolute; z-index:5; top:calc(100% + 8px); left:50%; translate:-50% 0; width:17rem; background:var(--surface-overlay); color:var(--text);
+  border-radius:var(--radius-md); padding:.625rem .75rem; box-shadow:var(--shadow); font-size:var(--text-sm); font-weight:400; line-height:1.45; text-align:left; white-space:normal; }
+.tip { display:none; }
+.tipwrap:hover .tip, .tipwrap:focus-within .tip { display:block; }
+.tip ul { margin:.25rem 0 0; padding-left:1rem; }
+.tip .mono { font-size:var(--text-xs); word-break:break-all; color:var(--text-secondary); }
+
+/* ---------- Wireframes ---------- */
+.wf-wrap { display:grid; grid-template-columns:repeat(auto-fill,minmax(26rem,1fr)); gap:1.5rem; }
+.wf { background:var(--surface-raised); border-radius:var(--radius-lg); padding:1rem; }
+.wf h3 { margin:0 0 .25rem; font-size:var(--text-md); }
+.wf p { margin:0 0 .75rem; color:var(--text-secondary); font-size:var(--text-sm); }
+.wf pre { margin:0; font:12px/1.35 var(--font-mono); font-variant-ligatures:none; color:var(--text-secondary); background:var(--surface-sunken); border-radius:var(--radius-md); padding:.75rem; overflow:auto; }
+
+@media (max-width: 900px) {
+  .app { grid-template-columns:3.5rem 1fr; } .nav .lbl, .brand, .nav .count, .hub .lbl, .collapse { display:none; }
+  .nav-head { padding:0 .5rem; } .lights { display:none; }
+  .cols, .settings { grid-template-columns:1fr; } .toc { display:none; }
+  .meta { margin-left:0; }
+}
+@media (prefers-reduced-motion: no-preference) { .btn, .nav a, .card, .seg button { transition:background-color 120ms ease, color 120ms ease; } }
+</style>
+</head>
+<body>
+
+<div class="switcher" role="toolbar" aria-label="Mockup controls">
+  <div class="grp"><b>Direction</b>
+    <button data-set="dir" data-v="a" aria-pressed="true">A · Nord, layered</button>
+    <button data-set="dir" data-v="b" aria-pressed="false">B · Graphite + Nord accent</button>
+    <button data-set="dir" data-v="c" aria-pressed="false">C · Nord, dense</button></div>
+  <div class="grp"><b>Appearance</b>
+    <button data-set="mode" data-v="dark" aria-pressed="true">Dark</button>
+    <button data-set="mode" data-v="light" aria-pressed="false">Light</button></div>
+  <div class="grp"><b>Screen</b>
+    <button data-set="view" data-v="devices" aria-pressed="true">Devices</button>
+    <button data-set="view" data-v="device" aria-pressed="false">Device page</button>
+    <button data-set="view" data-v="settings" aria-pressed="false">Settings</button>
+    <button data-set="view" data-v="wire" aria-pressed="false">Wireframes</button></div>
+  <span class="note">Hover or focus an “i” to open its HelpTip · docs/ui-redesign-direction.md</span>
+</div>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-server" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="7" rx="2"/><rect x="3" y="13" width="18" height="7" rx="2"/><path d="M7 7.5h.01M7 16.5h.01"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M10 8.5v5l4-2.5z"/><path d="M8 21h8"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></symbol>
+  <symbol id="i-logs" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></symbol>
+  <symbol id="i-side" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-term" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m7 9 3 3-3 3M12 15h5"/></symbol>
+  <symbol id="i-screen" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/></symbol>
+  <symbol id="i-rows" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><path d="M5 12h.01M12 12h.01M19 12h.01" stroke-width="3"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></symbol>
+  <symbol id="i-apple" viewBox="0 0 24 24"><path d="M16 3c-1.5.2-3 1.3-3.3 3 1.6.1 3-1 3.3-3zM12.5 7c-1 0-2-.7-3-.7C7.3 6.3 5 8 5 11.6 5 15.4 7.6 20 9.6 20c1 0 1.6-.6 2.9-.6s1.8.6 2.9.6c1.6 0 3.2-2.7 3.6-4.2-1.7-.7-2.6-2.3-2.6-4 0-1.6.9-2.9 2.2-3.6C17.6 6.7 16.3 6.3 15.5 6.3c-1.1 0-2 .7-3 .7z"/></symbol>
+  <symbol id="i-linux" viewBox="0 0 24 24"><path d="M12 3c-2 0-3 1.7-3 4 0 1.8-.5 3-1.6 4.6C6.2 13.3 5 15 5 17c0 2 1.6 4 7 4s7-2 7-4c0-2-1.2-3.7-2.4-5.4C15.5 10 15 8.8 15 7c0-2.3-1-4-3-4z"/><path d="M10.5 8h.01M13.5 8h.01"/></symbol>
+  <symbol id="i-box" viewBox="0 0 24 24"><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9z"/><path d="m4 7.5 8 4.5 8-4.5M12 12v9"/></symbol>
+</svg>
+
+<div class="app">
+  <nav class="nav" aria-label="Main">
+    <div class="nav-head">
+      <span class="lights" aria-hidden="true"><i></i><i></i><i></i></span>
+      <span class="logo" aria-hidden="true"></span><span class="brand">Anima</span>
+      <button class="collapse" aria-label="Collapse sidebar" title="Collapse sidebar"><span class="ico"><svg><use href="#i-side"/></svg></span></button>
+    </div>
+    <a href="#" aria-current="page" data-go="devices"><span class="ico"><svg><use href="#i-server"/></svg></span><span class="lbl">Devices</span><span class="count num">9</span></a>
+    <a href="#"><span class="ico"><svg><use href="#i-play"/></svg></span><span class="lbl">Live sessions</span><span class="count num">1</span></a>
+    <a href="#"><span class="ico"><svg><use href="#i-logs"/></svg></span><span class="lbl">Logs</span></a>
+    <div class="spacer"></div>
+    <span class="tipwrap" id="hubtip">
+      <button class="hub" aria-label="Hub connected: hub.anima.ing"><span class="dot" aria-hidden="true"></span><span class="lbl mono">hub.anima.ing</span></button>
+    </span>
+    <hr>
+    <a href="#" data-go="settings"><span class="ico"><svg><use href="#i-gear"/></svg></span><span class="lbl">Settings</span></a>
+  </nav>
+
+  <main class="main">
+    <!-- ================= Devices ================= -->
+    <section class="view on" id="v-devices" aria-label="Devices">
+      <div class="ph"><h1>Devices</h1><span class="sub num">9 devices · 1 needs attention</span></div>
+      <div class="toolbar">
+        <label class="search"><span class="ico"><svg><use href="#i-search"/></svg></span><input class="input" placeholder="Search name, host or tag" aria-label="Search devices"></label>
+        <div class="seg" role="group" aria-label="Status">
+          <button aria-pressed="true">All <span class="n num">9</span></button>
+          <button aria-pressed="false">Problems <span class="n num">2</span></button>
+          <button aria-pressed="false">Up <span class="n num">6</span></button>
+          <button aria-pressed="false">Maintenance <span class="n num">1</span></button>
+        </div>
+        <select class="input select" aria-label="Tag"><option>All tags</option><option>lab</option></select>
+        <div class="end">
+          <div class="seg" role="group" aria-label="View">
+            <button aria-pressed="true" class="vgrid" aria-label="Grid"><span class="ico" style="width:15px;height:15px"><svg><use href="#i-grid"/></svg></span></button>
+            <button aria-pressed="false" class="vtable" aria-label="Table"><span class="ico" style="width:15px;height:15px"><svg><use href="#i-rows"/></svg></span></button>
+          </div>
+          <button class="btn primary"><span class="ico"><svg><use href="#i-plus"/></svg></span>Add device</button>
+        </div>
+      </div>
+      <div class="grid" id="cards"></div>
+      <table class="table" id="table" hidden>
+        <thead><tr><th>Name</th><th>Status</th><th>Host</th><th class="r">Uptime 24 h</th><th>CPU</th><th>Memory</th><th>Last 50 checks</th><th></th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </section>
+
+    <!-- ================= Device page ================= -->
+    <section class="view" id="v-device" aria-label="Device">
+      <a class="back" href="#"><span class="ico"><svg><use href="#i-chev"/></svg></span>Devices</a>
+      <div class="dh">
+        <span class="os"><span class="ico"><svg><use href="#i-apple"/></svg></span></span>
+        <h1>Stephen's MacBook Pro</h1>
+        <span class="tipwrap"><span class="status badge warning"><span class="d"></span>Warning</span>
+          <button class="help" aria-label="Why: Warning" style="margin-left:.375rem">i</button>
+          <div class="tip" role="tooltip"><b>Warning</b><ul><li>Host key changed on 11 Nov at 09:14</li></ul><div style="margin-top:.375rem;color:var(--text-secondary)">Checks: all 3 up</div></div>
+        </span>
+        <div class="end">
+          <button class="btn primary"><span class="ico"><svg><use href="#i-term"/></svg></span>SSH</button>
+          <button class="btn secondary"><span class="ico"><svg><use href="#i-screen"/></svg></span>VNC</button>
+          <button class="btn secondary icon" aria-label="More actions" title="More actions: Edit, Set up RDP, Maintenance"><span class="ico"><svg><use href="#i-more"/></svg></span></button>
+        </div>
+      </div>
+      <div class="meta">
+        <span class="copy"><span class="mono">stephens-mbp.lan</span></span>
+        <span class="copy"><span class="mono">100.64.0.2</span><button class="btn ghost icon sm" aria-label="Copy address" style="width:1.5rem;height:1.5rem"><span class="ico" style="width:13px;height:13px"><svg><use href="#i-copy"/></svg></span></button></span>
+        <span>Laptop · macOS 16</span>
+        <span class="chip">home</span><span class="chip">work</span>
+      </div>
+      <nav class="tabs" aria-label="Device sections">
+        <a href="#">Overview</a><a href="#">Checks<span class="n num">3</span></a><a href="#">Sessions</a><a href="#">Logs</a><a href="#" aria-current="page">Settings</a>
+      </nav>
+      <div class="cols">
+        <div>
+          <div class="section">
+            <div class="section-head"><h2>SSH</h2><div class="end"><button class="switch" aria-label="SSH on"></button></div></div>
+            <p class="lede">Used for the terminal, files and metrics.</p>
+            <div class="field"><label for="f-port">Port</label><div class="row"><input id="f-port" class="input num" value="22" style="width:6rem"></div></div>
+            <div class="field"><label for="f-user">User name</label><div class="row"><input id="f-user" class="input" placeholder="for example, admin" style="flex:1"></div></div>
+            <div class="field"><label>Sign in with <span class="tipwrap"><button class="help" aria-label="About sign-in">i</button></span></label>
+              <div class="row"><div class="seg" role="group" aria-label="Sign in with"><button aria-pressed="false">Password</button><button aria-pressed="true">Private key</button></div></div></div>
+            <div class="field"><label for="f-key">Private key</label><div class="row"><input id="f-key" class="input bad" value="~/.ssh/id_ed25519.pub" style="flex:1"><button class="btn secondary">Choose…</button></div>
+              <div class="err"><span class="ico" style="width:14px;height:14px"><svg><use href="#i-alert"/></svg></span>This is a public key. Choose the file without “.pub”.</div></div>
+            <div class="field"><label>Host key <span class="tipwrap" id="fptip"><button class="help" aria-label="Show fingerprint">i</button>
+              <div class="tip" role="tooltip">SHA-256 fingerprint<div class="mono">SHA256:Vq1pWk3+u3n8b0L0hC9yQ2W0sQ1m3m0rFhJ8eGgkQ0o</div></div></span></label>
+              <div class="row"><span class="status warning badge"><span class="d"></span>Changed</span><button class="btn ghost sm">Review</button></div></div>
+            <div class="form-foot"><span class="state">2 unsaved changes</span><button class="btn ghost">Discard</button><button class="btn primary">Save changes</button></div>
+          </div>
+          <div class="section danger-zone">
+            <div class="row"><p><b style="color:var(--text)">Delete this device</b><br>Removes its checks, history, metrics and saved credentials.</p><button class="btn danger">Delete device…</button></div>
+          </div>
+        </div>
+        <aside class="section side">
+          <h3>Uptime</h3>
+          <div class="uptime"><div><b>100%</b><span>24 hours</span></div><div><b>99.8%</b><span>7 days</span></div><div><b>99.9%</b><span>30 days</span></div></div>
+          <dl class="kv"><dt>Checks</dt><dd>3 up</dd><dt>Last seen</dt><dd>12 s ago</dd><dt>Metrics</dt><dd>Agent, every 30 s</dd><dt>Added</dt><dd>2 Nov 2026</dd></dl>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ================= Settings ================= -->
+    <section class="view" id="v-settings" aria-label="Settings">
+      <div class="ph"><h1>Settings</h1></div>
+      <div class="settings">
+        <nav class="toc" aria-label="Settings sections">
+          <a href="#">Account</a><a href="#">Appearance</a><a href="#">Hub</a><a href="#">Notifications</a><a href="#">Checks</a>
+          <a href="#" aria-current="true">Data retention</a><a href="#">Updates</a><a href="#">API keys</a><a href="#">VPN</a>
+        </nav>
+        <div>
+          <div class="section">
+            <div class="section-head"><h2>Data retention</h2></div>
+            <p class="lede">How long the hub keeps history before deleting it.</p>
+            <div class="field"><label for="r1">Heartbeats <span class="tipwrap"><button class="help" aria-label="Allowed range">i</button></span></label><div class="row"><input id="r1" class="input num" value="30" style="width:5.5rem"><span class="host">days</span></div></div>
+            <div class="field"><label for="r2">Metrics</label><div class="row"><input id="r2" class="input num" value="90" style="width:5.5rem"><span class="host">days</span></div></div>
+            <div class="field"><label for="r3">Event log</label><div class="row"><input id="r3" class="input num" value="400" style="width:5.5rem"><span class="host">days</span></div><div class="hint">1 to 400 days.</div></div>
+            <div class="field"><label for="r4">Session recordings</label><div class="row"><input id="r4" class="input num" value="14" style="width:5.5rem"><span class="host">days</span></div></div>
+            <div class="form-foot"><span class="state">Saved 2 minutes ago</span><button class="btn primary" disabled style="opacity:.45;cursor:default">Save changes</button></div>
+          </div>
+          <div class="section">
+            <div class="section-head"><h2>Updates</h2><div class="end"><button class="btn secondary">Check for updates</button></div></div>
+            <div class="notice bad" role="status"><span class="ico"><svg><use href="#i-alert"/></svg></span><div><b>The last update failed</b>The download was interrupted. Anima will try again tonight, or check now.</div></div>
+            <dl class="kv"><dt>Version</dt><dd class="num">0.9.4</dd><dt>Channel</dt><dd>Stable</dd><dt>Last checked</dt><dd>Today, 08:02</dd></dl>
+            <button class="disclosure"><span class="ico" style="width:14px;height:14px;rotate:180deg"><svg><use href="#i-chev"/></svg></span>Details for developers</button>
+          </div>
+          <div class="section">
+            <div class="section-head"><h2>VPN</h2><div class="end"><button class="btn secondary"><span class="ico"><svg><use href="#i-plus"/></svg></span>Add a computer</button></div></div>
+            <ul class="rows">
+              <li><span class="ico" style="color:var(--text-secondary)"><svg><use href="#i-server"/></svg></span><div class="what"><b>anima-vps</b><span>Hub · <span class="mono">100.64.0.1</span></span></div><span class="val">Never expires</span></li>
+              <li><span class="ico" style="color:var(--text-secondary)"><svg><use href="#i-apple"/></svg></span><div class="what"><b>stephens-macbook-pro</b><span>Computer · <span class="mono">100.64.0.2</span></span></div><span class="status badge warning"><span class="d"></span>Expires in 3 days</span><button class="btn ghost sm">Renew</button></li>
+              <li><span class="ico" style="color:var(--text-secondary)"><svg><use href="#i-linux"/></svg></span><div class="what"><b>pop-os</b><span>Computer · <span class="mono">100.64.0.3</span></span></div><span class="val">Expires 9 Feb 2027</span></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= Wireframes ================= -->
+    <section class="view" id="v-wire" aria-label="Wireframes">
+      <div class="ph"><h1>Wireframes</h1><span class="sub">Low fidelity · layout only · 1280 px</span></div>
+      <div class="wf-wrap">
+        <div class="wf"><h3>Shell</h3><p>Logo row holds the collapse control. Nav items open pages. Hub status is an icon with a HelpTip. Content sits on a sunken surface with one corner radius.</p>
+<pre>┌──────────────┬─────────────────────────────────────────┐
+│ ●●● ◆ Anima ▯│                                         │
+│              │  Page title            secondary  [Pri] │
+│ ▣ Devices  9 │  ─────────────────────────────────────  │
+│ ▶ Live     1 │                                         │
+│ ≡ Logs       │            page content                 │
+│              │        (fluid, max 90 rem)              │
+│              │                                         │
+│              │                                         │
+│ ● hub.anima  │                                         │
+│ ───────────  │╭─ Logs ── 30% / 60% ──────────────────╮ │
+│ ⚙ Settings   ││ (panel, no scrim)                    │ │
+└──────────────┴┴──────────────────────────────────────┴─┘</pre></div>
+        <div class="wf"><h3>Devices</h3><p>One toolbar row; primary at the trailing end. Cards fill the width (min 18 rem). Problem cards carry a coloured leading edge and their reason.</p>
+<pre>Devices  9 devices · 1 needs attention
+[⌕ Search……] [All|Problems|Up|Maint] [Tags▾]  [▦|≡] [+ Add device]
+
+┌────────────┐┌────────────┐┌────────────┐┌────────────┐
+│◧ Name   ●Up││◧ Name ▌Down││◧ Name   ●Up││◧ Name   ●Up│
+│  host.lan  ││  reason    ││  host      ││  host      │
+│CPU ▬▬▬─ 41%││CPU ───── — ││CPU ▬──── 9%││ …          │
+│MEM ▬▬▬▬ 72%││            ││            ││            │
+│Last 50 ▮▮▮▮││Last 50 ▮▮▯▯││            ││            │
+│99.9%  [SSH]││0.0% [SSH]  ││ …          ││ …          │
+└────────────┘└────────────┘└────────────┘└────────────┘</pre></div>
+        <div class="wf"><h3>Device page</h3><p>Back link, title row with Connect buttons and an overflow menu, meta row, underlined tabs. Forms capped at 44 rem; a summary column on wide windows.</p>
+<pre>‹ Devices
+◧ Stephen's MacBook Pro  [Warning ⓘ]     [SSH] [VNC] [⋯]
+  host.lan  100.64.0.2 ⧉  Laptop · macOS   (home)(work)
+Overview  Checks 3  Sessions  Logs  Settings
+━━━━━━━━
+┌ Section ───────────────────────┐  ┌ Uptime ────────┐
+│ Label ⓘ      [field        ]   │  │ 100  99.8 99.9 │
+│ Label        [seg|seg]         │  │ Checks   3 up  │
+│ Label        [field   ] [btn]  │  │ Last seen 12 s │
+│              ⚠ error text      │  └────────────────┘
+│ 2 unsaved   [Discard] [Save]   │
+└────────────────────────────────┘
+┌ Delete this device …  [Delete…]┐</pre></div>
+        <div class="wf"><h3>Settings</h3><p>Section list beside the content on wide windows; each section saves itself; results show in a Notice inside the section.</p>
+<pre>Settings
+┌──────────┐ ┌ Data retention ──────────────────┐
+│ Account  │ │ Heartbeats ⓘ   [ 30] days        │
+│ Appear.  │ │ Metrics        [ 90] days        │
+│ Hub      │ │ Event log      [400] days        │
+│ Notific. │ │                1 to 400 days.    │
+│ Checks   │ │ Saved 2 min ago        [Save]    │
+│▌Retention│ └──────────────────────────────────┘
+│ Updates  │ ┌ Updates ───────── [Check now] ───┐
+│ API keys │ │ ⚠ The last update failed …       │
+│ VPN      │ │ Version 0.9.4 · Stable           │
+└──────────┘ │ ▸ Details for developers         │
+             └──────────────────────────────────┘</pre></div>
+        <div class="wf"><h3>Sign in and errors</h3><p>Before sign-in only the form shows (NAV-009). An error replaces the content it failed to load, names the cause and the next step (UI-030).</p>
+<pre>┌────────────────────────────────────────────────────────┐
+│                         ◆                              │
+│                   Sign in to Anima                     │
+│              hub.anima.ing ⓘ                           │
+│           User name  [                    ]            │
+│           Password   [                    ]            │
+│           Code       [      ]                          │
+│                      [      Sign in      ]             │
+└────────────────────────────────────────────────────────┘
+ Devices
+ ┌──────────────────────────────────────────┐
+ │  ⚠  The hub could not read its database. │
+ │     The device list could not be loaded. │
+ │     [Try again]  Details ⓘ               │
+ └──────────────────────────────────────────┘</pre></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+const devices = [
+  { n:"Stephen's MacBook Pro", h:"stephens-mbp.lan", os:"apple", s:"warning", why:"Host key changed", cpu:41, mem:72, up:"100%", p:["SSH","VNC"], beats:"" },
+  { n:"pop-os", h:"pop-os.lan", os:"linux", s:"up", cpu:12, mem:38, disk:64, up:"99.9%", p:["SSH"], beats:"" },
+  { n:"anima-vps", h:"100.64.0.1", os:"linux", s:"up", cpu:7, mem:55, disk:31, up:"100%", p:["SSH"], beats:"" },
+  { n:"nas-01", h:"192.168.1.20", os:"box", s:"down", why:"ICMP failed 3 times · 4 min", cpu:null, up:"92.1%", p:["SSH","Web"], beats:"xxxx" },
+  { n:"render-node-gpu", h:"10.0.4.12", os:"linux", s:"degraded", why:"Memory over 90%", cpu:66, mem:93, vram:81, up:"99.2%", p:["SSH"], beats:"ss" },
+  { n:"office-printer", h:"192.168.1.40", os:"box", s:"up", cpu:null, up:"100%", p:["Web"], beats:"" },
+  { n:"backup-mini", h:"backup.lan", os:"apple", s:"maint", why:"Until 22:00", cpu:3, mem:21, up:"100%", p:["SSH","VNC"], beats:"" },
+  { n:"pi-garage", h:"192.168.1.71", os:"linux", s:"unknown", why:"Checks paused", cpu:null, up:"—", p:["SSH"], beats:"nnnnnnnnnn" },
+  { n:"windows-test-vm-with-a-long-name", h:"10.0.4.30", os:"box", s:"up", cpu:22, mem:47, up:"99.7%", p:["RDP"], beats:"" },
+];
+const label = { up:"Up", down:"Down", warning:"Warning", degraded:"Degraded", maint:"Maintenance", unknown:"Unknown" };
+const icon = { apple:"i-apple", linux:"i-linux", box:"i-box" };
+const status = d => d.s === "up" || d.s === "unknown"
+  ? `<span class="status ${d.s}"><span class="d"></span>${label[d.s]}</span>`
+  : `<span class="status badge ${d.s}"><span class="d"></span>${label[d.s]}</span>`;
+const strip = d => { const t = d.beats.padStart(50, "o").split("").map(c => `<i class="${c === "o" ? "" : c}"></i>`); return `<span class="strip" aria-hidden="true">${t.join("")}</span>`; };
+const bar = (k, v) => v == null ? "" : `<span class="k">${k}</span><span class="bar"><i class="${v >= 90 ? "hot" : ""}" style="width:${v}%"></i></span><span class="v">${v}%</span>`;
+const card = d => `
+<article class="card ${d.s === "down" ? "problem" : d.s === "warning" ? "warn" : ""}">
+  <div class="card-top"><span class="os"><span class="ico"><svg><use href="#${icon[d.os]}"/></svg></span></span>
+    <div class="who"><div class="name" title="${d.n}">${d.n}</div><div class="host mono">${d.h}</div></div>${status(d)}</div>
+  ${d.why && d.s !== "up" ? `<div class="reason">${d.why}</div>` : ""}
+  ${d.cpu != null ? `<div class="metrics">${bar("CPU", d.cpu)}${bar("Memory", d.mem)}${bar("Disk", d.disk)}${bar("VRAM", d.vram)}</div>` : ""}
+  <div class="beats"><span>Last 50 checks</span>${strip(d)}</div>
+  <div class="card-foot"><span class="up24"><b>${d.up}</b> 24 h</span>${d.p.map((p, i) => `<button class="btn ${i === 0 ? "secondary" : "ghost"} sm">${p}</button>`).join("")}</div>
+</article>`;
+const row = d => `<tr><td><b>${d.n}</b></td><td>${status(d)}</td><td class="mono">${d.h}</td><td class="r">${d.up}</td>
+  <td class="mini">${d.cpu == null ? "—" : `<span class="bar"><i style="width:${d.cpu}%"></i></span>`}</td>
+  <td class="mini">${d.mem == null ? "—" : `<span class="bar"><i class="${d.mem >= 90 ? "hot" : ""}" style="width:${d.mem}%"></i></span>`}</td>
+  <td>${strip(d)}</td><td class="r">${d.p.map(p => `<button class="btn ghost sm">${p}</button>`).join("")}</td></tr>`;
+document.getElementById("cards").innerHTML = devices.map(card).join("");
+document.getElementById("rows").innerHTML = devices.map(row).join("");
+
+const root = document.documentElement;
+const views = { devices:"v-devices", device:"v-device", settings:"v-settings", wire:"v-wire" };
+function setView(v) {
+  for (const [k, id] of Object.entries(views)) document.getElementById(id).classList.toggle("on", k === v);
+  document.querySelectorAll('[data-set="view"]').forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === v)));
+}
+function setTable(on) {
+  document.getElementById("cards").hidden = on; document.getElementById("table").hidden = !on;
+  document.querySelector(".vgrid").setAttribute("aria-pressed", String(!on)); document.querySelector(".vtable").setAttribute("aria-pressed", String(on));
+}
+document.querySelectorAll(".switcher button").forEach(b => b.addEventListener("click", () => {
+  const { set, v } = b.dataset;
+  if (set === "view") return setView(v);
+  root.dataset[set] = v;
+  document.querySelectorAll(`[data-set="${set}"]`).forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+  if (set === "dir") setTable(v === "c");
+}));
+document.querySelector(".vgrid").onclick = () => setTable(false);
+document.querySelector(".vtable").onclick = () => setTable(true);
+const params = new URLSearchParams(location.search);
+if (params.get("view")) setView(params.get("view"));
+for (const k of ["dir", "mode"]) if (params.get(k)) document.querySelector(`[data-set="${k}"][data-v="${params.get(k)}"]`)?.click();
+</script>
+</body>
+</html>

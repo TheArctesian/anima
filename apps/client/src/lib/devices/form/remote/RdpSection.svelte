@@ -139,12 +139,12 @@
     grid-template-columns: max-content 1fr;
     gap: var(--space-1) var(--space-3);
     margin: 0;
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font-size: var(--text-sm);
   }
 
   dt {
-    color: var(--text-muted);
+    color: var(--text-secondary);
   }
 
   dd {

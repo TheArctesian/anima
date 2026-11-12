@@ -4,6 +4,7 @@
   import SignOutRow from '$lib/access/SignOutRow.svelte';
   import HubRows from '$lib/hub-address/HubRows.svelte';
   import NotificationsSection from '$lib/notifications/NotificationsSection.svelte';
+  import PaletteRow from '$lib/palette/PaletteRow.svelte';
   import { capabilities } from '$lib/platform/platform';
   import MotionRow from '$lib/theme/MotionRow.svelte';
   import RetentionSection from '$lib/retention/RetentionSection.svelte';
@@ -35,6 +36,7 @@
 
   <SettingsSection id="settings-appearance" title="Appearance" icon="nf-md-palette" description="How Anima looks on this device.">
     <ThemeRow />
+    <PaletteRow />
     <MotionRow />
     <TypefaceRows />
   </SettingsSection>

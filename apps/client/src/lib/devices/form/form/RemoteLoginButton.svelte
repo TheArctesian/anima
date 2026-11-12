@@ -54,7 +54,7 @@
 
   p {
     margin: 0;
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font-size: var(--text-sm);
   }
 
@@ -70,8 +70,8 @@
     box-sizing: border-box;
     min-block-size: var(--target-min-desktop);
     padding: 0 var(--space-4);
-    background: var(--surface-raised);
-    border: var(--border-thin) solid var(--border);
+    background: var(--surface-overlay);
+    border: var(--border-thin) solid var(--border-strong);
     border-radius: var(--radius-md);
     color: var(--text);
     font: inherit;

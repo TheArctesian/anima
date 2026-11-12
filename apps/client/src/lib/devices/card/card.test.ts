@@ -5,8 +5,8 @@ import { runs } from '../../motion/engine.fixture';
 import { duration } from '../../motion/tokens';
 import { hostLine, statusLabel } from './card';
 import { shown } from './status.fixture.svelte';
-import StatusEdge from './StatusEdge.svelte';
-import StatusPill from './StatusPill.svelte';
+import StatusEdge from '../status/StatusEdge.svelte';
+import StatusBadge from '../status/StatusBadge.svelte';
 import { endTransitionsAtOnce } from '../transitions.fixture';
 
 vi.mock('motion', async (importOriginal) => ({
@@ -45,8 +45,8 @@ it('D-7: an IP shows next to a host name, not next to an IP host, and not when u
   expect(hostLine({ host: 'nas.lan', ip: null }).ip).toBeNull();
 });
 
-it('Status change: the pill shows the new status text and carries data-device-id', async () => {
-  app = mount(StatusPill, {
+it('Status change: the badge shows the new status text and carries data-device-id', async () => {
+  app = mount(StatusBadge, {
     target: document.body,
     props: {
       get status() {

@@ -1,0 +1,235 @@
+{
+  "color": {
+    "$type": "color",
+    "graphite": {
+      "dark-sunken": {
+        "$value": "#16181B",
+        "$description": "Graphite dark surface-sunken. Source token only (TOK-010)."
+      },
+      "dark-base": {
+        "$value": "#1B1D21",
+        "$description": "Graphite dark surface-base. Source token only (TOK-010)."
+      },
+      "dark-raised": {
+        "$value": "#23262B",
+        "$description": "Graphite dark surface-raised. Source token only (TOK-010)."
+      },
+      "dark-overlay": {
+        "$value": "#2C3036",
+        "$description": "Graphite dark surface-overlay, and the dark hover fill. Source token only (TOK-010)."
+      },
+      "dark-border-subtle": {
+        "$value": "#2C3036",
+        "$description": "Graphite dark border-subtle. Source token only (TOK-010)."
+      },
+      "dark-border-strong": {
+        "$value": "#41464E",
+        "$description": "Graphite dark border-strong, before the 2:1 check. Source token only (TOK-010)."
+      },
+      "dark-text": {
+        "$value": "#E6E7E9",
+        "$description": "Graphite dark text. Source token only (TOK-010)."
+      },
+      "dark-text-secondary": {
+        "$value": "#A4A8B0",
+        "$description": "Graphite dark text-secondary. Source token only (TOK-010)."
+      },
+      "dark-text-tertiary": {
+        "$value": "#7E838C",
+        "$description": "Graphite dark text-tertiary. Source token only (TOK-010)."
+      },
+      "light-sunken": {
+        "$value": "#EEEFF1",
+        "$description": "Graphite light surface-sunken. Source token only (TOK-010)."
+      },
+      "light-base": {
+        "$value": "#F6F7F8",
+        "$description": "Graphite light surface-base. Source token only (TOK-010)."
+      },
+      "light-raised": {
+        "$value": "#FFFFFF",
+        "$description": "Graphite light surface-raised. Source token only (TOK-010)."
+      },
+      "light-overlay": {
+        "$value": "#FFFFFF",
+        "$description": "Graphite light surface-overlay. Source token only (TOK-010)."
+      },
+      "light-border-subtle": {
+        "$value": "#E3E5E8",
+        "$description": "Graphite light border-subtle. Source token only (TOK-010)."
+      },
+      "light-border-strong": {
+        "$value": "#C3C7CD",
+        "$description": "Graphite light border-strong, before the 2:1 check. Source token only (TOK-010)."
+      },
+      "light-text": {
+        "$value": "#1D2024",
+        "$description": "Graphite light text, the darkest Graphite neutral (ink). Source token only (TOK-010)."
+      },
+      "light-text-secondary": {
+        "$value": "#5A5F68",
+        "$description": "Graphite light text-secondary. Source token only (TOK-010)."
+      },
+      "light-text-tertiary": {
+        "$value": "#737881",
+        "$description": "Graphite light text-tertiary, before the 4.5:1 check. Source token only (TOK-010)."
+      },
+      "dark-text-lightest": {
+        "$value": "#E6E7E9",
+        "$description": "Graphite lightest neutral, the target for lifts toward text (dark). Source token only (TOK-010)."
+      },
+      "white": {
+        "$value": "#FFFFFF",
+        "$description": "Pure white: on-accent and on-danger text in the light appearance. Source token only (TOK-010)."
+      },
+      "black": {
+        "$value": "#000000",
+        "$description": "Pure black: the dark shadow and the dark scrim. Source token only (TOK-010)."
+      },
+      "frost-7": {
+        "$value": "#8FBCBB",
+        "$description": "Frost nord7 value, copied into the Graphite palette (chart series 4). Source token only (TOK-010)."
+      },
+      "frost-8": {
+        "$value": "#88C0D0",
+        "$description": "Frost nord8 value (#88C0D0), the Graphite dark accent. Source token only (TOK-010)."
+      },
+      "frost-9": {
+        "$value": "#81A1C1",
+        "$description": "Frost nord9 value, copied into the Graphite palette (chart series 2). Source token only (TOK-010)."
+      },
+      "frost-10": {
+        "$value": "#5E81AC",
+        "$description": "Frost nord10 value, the Graphite dark accent-pressed and chart series 3. Source token only (TOK-010)."
+      },
+      "dark-border-strong-derived": {
+        "$value": "#6C7076",
+        "$description": "graphite-dark-border-strong-derived: #41464E mixed 26 % toward #E6E7E9, the least mix that reaches 3:1 on each of #23262B and #16181B (border-strong, dark, on surface-raised and surface-sunken, WCAG 1.4.11). Source token only (TOK-010)."
+      },
+      "light-border-strong-derived": {
+        "$value": "#86898E",
+        "$description": "graphite-light-border-strong-derived: #C3C7CD mixed 37 % toward #1D2024, the least mix that reaches 3:1 on each of #EEEFF1 and #FFFFFF (border-strong, light, on surface-sunken and surface-raised, WCAG 1.4.11). Source token only (TOK-010)."
+      },
+      "light-text-tertiary-derived": {
+        "$value": "#71757D",
+        "$description": "Graphite light text-secondary (#5A5F68) mixed 14 % toward surface-raised (white): the largest mix that keeps 4.5:1 on surface-raised, so text-tertiary stays visibly lighter than text-secondary (5.1.2, UI-002). Source token only (TOK-010)."
+      },
+      "accent-deep": {
+        "$value": "#2E6E80",
+        "$description": "nord8's hue darkened keeping its chroma; 4.99:1 on Graphite light sunken (chosen by the lead, 2026-11-12). Source token only (TOK-010)."
+      },
+      "aurora-11-lifted": {
+        "$value": "#BF616A",
+        "$description": "graphite-aurora-11-lifted: #BF616A mixed 0 % toward #E6E7E9, the least mix that reaches 3:1 on #23262B (status shape, dark, on surface-raised (UI-005)). Source token only (TOK-010)."
+      },
+      "aurora-11-deep": {
+        "$value": "#BF616A",
+        "$description": "graphite-aurora-11-deep: #BF616A mixed 0 % toward #1D2024, the least mix that reaches 3:1 on #EEEFF1 (status shape, light, on surface-sunken (UI-005)). Source token only (TOK-010)."
+      },
+      "aurora-12-lifted": {
+        "$value": "#D08770",
+        "$description": "graphite-aurora-12-lifted: #D08770 mixed 0 % toward #E6E7E9, the least mix that reaches 3:1 on #23262B (status shape, dark, on surface-raised (UI-005)). Source token only (TOK-010)."
+      },
+      "aurora-12-deep": {
+        "$value": "#B97A66",
+        "$description": "graphite-aurora-12-deep: #D08770 mixed 13 % toward #1D2024, the least mix that reaches 3:1 on #EEEFF1 (status shape, light, on surface-sunken (UI-005)). Source token only (TOK-010)."
+      },
+      "aurora-13-lifted": {
+        "$value": "#EBCB8B",
+        "$description": "graphite-aurora-13-lifted: #EBCB8B mixed 0 % toward #E6E7E9, the least mix that reaches 3:1 on #23262B (status shape, dark, on surface-raised (UI-005)). Source token only (TOK-010)."
+      },
+      "aurora-13-deep": {
+        "$value": "#998762",
+        "$description": "graphite-aurora-13-deep: #EBCB8B mixed 40 % toward #1D2024, the least mix that reaches 3:1 on #EEEFF1 (status shape, light, on surface-sunken (UI-005)). Source token only (TOK-010)."
+      },
+      "aurora-14-lifted": {
+        "$value": "#A3BE8C",
+        "$description": "graphite-aurora-14-lifted: #A3BE8C mixed 0 % toward #E6E7E9, the least mix that reaches 3:1 on #23262B (status shape, dark, on surface-raised (UI-005)). Source token only (TOK-010)."
+      },
+      "aurora-14-deep": {
+        "$value": "#7C906E",
+        "$description": "graphite-aurora-14-deep: #A3BE8C mixed 29 % toward #1D2024, the least mix that reaches 3:1 on #EEEFF1 (status shape, light, on surface-sunken (UI-005)). Source token only (TOK-010)."
+      },
+      "aurora-15-lifted": {
+        "$value": "#B48EAD",
+        "$description": "graphite-aurora-15-lifted: #B48EAD mixed 0 % toward #E6E7E9, the least mix that reaches 3:1 on #23262B (status shape, dark, on surface-raised (UI-005)). Source token only (TOK-010)."
+      },
+      "aurora-15-deep": {
+        "$value": "#A0809B",
+        "$description": "graphite-aurora-15-deep: #B48EAD mixed 13 % toward #1D2024, the least mix that reaches 3:1 on #EEEFF1 (status shape, light, on surface-sunken (UI-005)). Source token only (TOK-010)."
+      },
+      "aurora-11-danger": {
+        "$value": "#C0656E",
+        "$description": "graphite-aurora-11-danger (dark danger): #BF616A mixed 3 % toward #E6E7E9, the least mix that reaches 4.5:1 on #16181B (danger, dark: status-down lifted toward the lightest neutral until on-danger reaches 4.5:1 (UI-004)). Source token only (TOK-010)."
+      },
+      "aurora-11-text": {
+        "$value": "#CA888F",
+        "$description": "graphite-aurora-11-text: #BF616A mixed 29 % toward #E6E7E9, the least mix that reaches 4.5:1 on #3C2F35 (status text, dark, on its 16 % tint (UI-005)). Source token only (TOK-010)."
+      },
+      "aurora-11-deep-text": {
+        "$value": "#9F545C",
+        "$description": "graphite-aurora-11-deep-text: #BF616A mixed 20 % toward #1D2024, the least mix that reaches 4.5:1 on #F6E9EA (status text, light, on its 14 % tint (UI-005)). Source token only (TOK-010)."
+      },
+      "aurora-12-text": {
+        "$value": "#D2917C",
+        "$description": "graphite-aurora-12-text: #D08770 mixed 10 % toward #E6E7E9, the least mix that reaches 4.5:1 on #3F3636 (status text, dark, on its 16 % tint (UI-005)). Source token only (TOK-010)."
+      },
+      "aurora-12-deep-text": {
+        "$value": "#8D6154",
+        "$description": "graphite-aurora-12-deep-text: #B97A66 mixed 28 % toward #1D2024, the least mix that reaches 4.5:1 on #F5ECEA (status text, light, on its 14 % tint (UI-005)). Source token only (TOK-010)."
+      },
+      "aurora-13-text": {
+        "$value": "#EBCB8B",
+        "$description": "graphite-aurora-13-text: #EBCB8B mixed 0 % toward #E6E7E9, the least mix that reaches 4.5:1 on #43403A (status text, dark, on its 16 % tint (UI-005)). Source token only (TOK-010)."
+      },
+      "aurora-13-deep-text": {
+        "$value": "#786B51",
+        "$description": "graphite-aurora-13-deep-text: #998762 mixed 27 % toward #1D2024, the least mix that reaches 4.5:1 on #F1EEE9 (status text, light, on its 14 % tint (UI-005)). Source token only (TOK-010)."
+      },
+      "aurora-14-text": {
+        "$value": "#A3BE8C",
+        "$description": "graphite-aurora-14-text: #A3BE8C mixed 0 % toward #E6E7E9, the least mix that reaches 4.5:1 on #373E3B (status text, dark, on its 16 % tint (UI-005)). Source token only (TOK-010)."
+      },
+      "aurora-14-deep-text": {
+        "$value": "#617159",
+        "$description": "graphite-aurora-14-deep-text: #7C906E mixed 28 % toward #1D2024, the least mix that reaches 4.5:1 on #EDEFEB (status text, light, on its 14 % tint (UI-005)). Source token only (TOK-010)."
+      },
+      "aurora-15-text": {
+        "$value": "#B997B3",
+        "$description": "graphite-aurora-15-text: #B48EAD mixed 10 % toward #E6E7E9, the least mix that reaches 4.5:1 on #3A3740 (status text, dark, on its 16 % tint (UI-005)). Source token only (TOK-010)."
+      },
+      "aurora-15-deep-text": {
+        "$value": "#7B657A",
+        "$description": "graphite-aurora-15-deep-text: #A0809B mixed 28 % toward #1D2024, the least mix that reaches 4.5:1 on #F2EDF1 (status text, light, on its 14 % tint (UI-005)). Source token only (TOK-010)."
+      },
+      "dark-tertiary-text": {
+        "$value": "#999DA4",
+        "$description": "graphite-dark-tertiary-text: #7E838C mixed 26 % toward #E6E7E9, the least mix that reaches 4.5:1 on #32353B (status-unknown text, dark, on its 16 % tint (UI-005)). Source token only (TOK-010)."
+      },
+      "light-tertiary-text": {
+        "$value": "#676B72",
+        "$description": "graphite-light-tertiary-text: #71757D mixed 12 % toward #1D2024, the least mix that reaches 4.5:1 on #EBECED (status-unknown text, light, on its 14 % tint (UI-005)). Source token only (TOK-010)."
+      },
+      "aurora-11": {
+        "$value": "#BF616A",
+        "$description": "Aurora nord11 value, copied into the Graphite palette. Source token only (TOK-010)."
+      },
+      "aurora-12": {
+        "$value": "#D08770",
+        "$description": "Aurora nord12 value, copied into the Graphite palette. Source token only (TOK-010)."
+      },
+      "aurora-13": {
+        "$value": "#EBCB8B",
+        "$description": "Aurora nord13 value, copied into the Graphite palette. Source token only (TOK-010)."
+      },
+      "aurora-14": {
+        "$value": "#A3BE8C",
+        "$description": "Aurora nord14 value, copied into the Graphite palette. Source token only (TOK-010)."
+      },
+      "aurora-15": {
+        "$value": "#B48EAD",
+        "$description": "Aurora nord15 value, copied into the Graphite palette. Source token only (TOK-010)."
+      }
+    }
+  }
+}

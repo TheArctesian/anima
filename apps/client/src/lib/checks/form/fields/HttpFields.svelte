@@ -86,14 +86,14 @@
     gap: var(--space-2);
     margin: 0;
     padding: var(--space-3);
-    border: var(--border-thin) solid var(--border);
+    border: var(--border-thin) solid var(--border-strong);
     border-radius: var(--radius-md);
   }
 
   legend {
     padding: 0 var(--space-1);
     font-size: var(--text-sm);
-    color: var(--text-muted);
+    color: var(--text-secondary);
   }
 
   .row {

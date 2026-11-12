@@ -124,7 +124,7 @@
     flex: 1 1 0;
     min-inline-size: 0;
     overflow: hidden;
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font-size: var(--text-xs);
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -137,7 +137,7 @@
   }
 
   .protocol {
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font-size: var(--text-xs);
   }
 
@@ -150,7 +150,7 @@
     flex: none;
     inline-size: calc(var(--space-6) + var(--space-3));
     padding: 0 var(--space-1);
-    border: var(--border-thin) solid var(--border);
+    border: var(--border-thin) solid var(--border-strong);
     border-radius: var(--radius-sm);
     font-family: var(--font-mono);
     line-height: var(--leading-normal);
@@ -173,7 +173,7 @@
   }
 
   button:hover {
-    background: var(--surface-raised);
+    background: var(--surface-overlay);
   }
 
   button:active {

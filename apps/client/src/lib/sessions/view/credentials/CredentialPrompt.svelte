@@ -165,9 +165,9 @@
   input:not([type='checkbox']) {
     min-block-size: var(--target-min-desktop);
     padding: 0 var(--space-3);
-    border: var(--border-thin) solid var(--border);
+    border: var(--border-thin) solid var(--border-strong);
     border-radius: var(--radius-md);
-    background: var(--surface-raised);
+    background: var(--surface-overlay);
     color: var(--text);
     font: inherit;
     font-size: var(--text-md);
@@ -189,9 +189,9 @@
   button {
     min-block-size: var(--target-min-desktop);
     padding: 0 var(--space-4);
-    border: var(--border-thin) solid var(--border);
+    border: var(--border-thin) solid var(--border-strong);
     border-radius: var(--radius-md);
-    background: var(--surface-raised);
+    background: var(--surface-overlay);
     color: var(--text);
     font: inherit;
     transition: background-color var(--duration-fast) var(--ease-enter);
@@ -206,6 +206,6 @@
   .primary {
     border-color: var(--accent);
     background: var(--accent);
-    color: var(--bg);
+    color: var(--surface-base);
   }
 </style>

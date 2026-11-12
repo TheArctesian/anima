@@ -106,8 +106,8 @@
     flex-direction: column;
     gap: var(--space-3);
     padding: var(--space-3);
-    background: var(--surface);
-    border: var(--border-thin) solid var(--border);
+    background: var(--surface-raised);
+    border: var(--border-thin) solid var(--border-strong);
     border-radius: var(--radius-md);
   }
 
@@ -118,7 +118,7 @@
   }
 
   label {
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font-size: var(--text-sm);
   }
 
@@ -127,8 +127,8 @@
     box-sizing: border-box;
     min-block-size: var(--target-min-desktop);
     padding: var(--space-2) var(--space-3);
-    background-color: var(--surface);
-    border: var(--border-thin) solid var(--border);
+    background-color: var(--surface-raised);
+    border: var(--border-thin) solid var(--border-strong);
     border-radius: var(--radius-md);
     color: var(--text);
     font: inherit;

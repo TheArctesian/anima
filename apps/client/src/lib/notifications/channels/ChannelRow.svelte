@@ -73,9 +73,9 @@
     flex-direction: column;
     gap: var(--space-2);
     padding: var(--space-3);
-    border: var(--border-thin) solid var(--border);
+    border: var(--border-thin) solid var(--border-strong);
     border-radius: var(--radius-md);
-    background: var(--surface);
+    background: var(--surface-raised);
   }
 
   .head {
@@ -91,7 +91,7 @@
   }
 
   .kind {
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font-size: var(--text-sm);
   }
 
@@ -107,7 +107,7 @@
   }
 
   dt {
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font-size: var(--text-xs);
   }
 
@@ -125,7 +125,7 @@
   /* The reason's line is kept when a delivery has none, so a test that fails moves nothing (MOT-007). */
   .reason {
     min-block-size: calc(var(--text-sm) * var(--leading-normal));
-    color: var(--text-muted);
+    color: var(--text-secondary);
   }
 
   /* A failure is the word and a bar beside it, never colour alone (UI-003). */
@@ -173,7 +173,7 @@
   .placeholder .actions :global(button) {
     border-color: transparent;
     border-radius: var(--radius-sm);
-    background: var(--surface-raised);
+    background: var(--surface-overlay);
     color: transparent;
   }
 </style>

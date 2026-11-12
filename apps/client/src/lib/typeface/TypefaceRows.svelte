@@ -1,12 +1,12 @@
 <script lang="ts">
   import SettingRow from '$lib/settings/SettingRow.svelte';
-  import { applyTypefaces, storedTypefaces, storeTypeface, TEXT_ROLES, TYPEFACES, type TextRole, type Typeface, type TypefaceChoice } from './typeface';
+  import { applyTypefaces, storedTypefaces, storeTypeface, TEXT_ROLES, type TextRole, type Typeface, type TypefaceChoice } from './typeface';
 
   const id = $props.id();
   let choice = $state<TypefaceChoice>(storedTypefaces(localStorage));
   let problem = $state<string | null>(null);
 
-  function choose(role: TextRole, typeface: Typeface): void {
+  function choose<R extends TextRole>(role: R, typeface: Typeface<R>): void {
     choice = { ...choice, [role]: typeface };
     applyTypefaces(document.documentElement, choice);
     try {
@@ -20,8 +20,8 @@
 
 {#each TEXT_ROLES as role, index (role.id)}
   <SettingRow label={role.label} for="{id}-{role.id}">
-    <select id="{id}-{role.id}" value={choice[role.id]} onchange={(event) => { choose(role.id, event.currentTarget.value as Typeface); }}>
-      {#each TYPEFACES as typeface (typeface.id)}
+    <select id="{id}-{role.id}" value={choice[role.id]} onchange={(event) => { choose(role.id, event.currentTarget.value as Typeface<typeof role.id>); }}>
+      {#each role.choices as typeface (typeface.id)}
         <option value={typeface.id}>{typeface.label}</option>
       {/each}
     </select>

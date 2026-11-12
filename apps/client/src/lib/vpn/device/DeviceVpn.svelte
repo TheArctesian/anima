@@ -55,7 +55,7 @@
   }
 
   .facts dt {
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font-size: var(--text-sm);
   }
 

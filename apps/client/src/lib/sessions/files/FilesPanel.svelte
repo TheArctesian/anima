@@ -169,8 +169,8 @@
     inline-size: calc(var(--space-16) * 6);
     max-inline-size: 50%;
     min-block-size: 0;
-    border-inline-start: var(--border-thin) solid var(--border);
-    background: var(--surface);
+    border-inline-start: var(--border-thin) solid var(--border-strong);
+    background: var(--surface-raised);
     color: var(--text);
     font-size: var(--text-sm);
     line-height: var(--leading-normal);
@@ -193,7 +193,7 @@
   }
 
   .bar {
-    border-bottom: var(--border-thin) solid var(--border);
+    border-bottom: var(--border-thin) solid var(--border-strong);
   }
 
   .where {
@@ -238,14 +238,14 @@
 
   .places {
     overflow: hidden;
-    background: var(--surface);
+    background: var(--surface-raised);
   }
 
   /* A placeholder cell is an empty box; the row's height comes from the grid, so nothing here moves the rows (MOT-007). */
   .hole {
     min-inline-size: var(--space-8);
     block-size: var(--space-3);
-    background: var(--surface-raised);
+    background: var(--surface-overlay);
   }
 
   .name-hole {
@@ -279,11 +279,11 @@
   }
 
   .open[aria-disabled="true"] {
-    color: var(--text-muted);
+    color: var(--text-secondary);
   }
 
   .meta {
-    color: var(--text-muted);
+    color: var(--text-secondary);
     white-space: nowrap;
   }
 
@@ -295,15 +295,15 @@
     min-inline-size: var(--target-min-desktop);
     min-block-size: var(--target-min-desktop);
     padding: 0 var(--space-2);
-    border: var(--border-thin) solid var(--border);
+    border: var(--border-thin) solid var(--border-strong);
     border-radius: var(--radius-md);
-    background: var(--surface-raised);
+    background: var(--surface-overlay);
     color: var(--text);
     font: inherit;
   }
 
   .control[aria-disabled="true"] {
-    color: var(--text-muted);
+    color: var(--text-secondary);
   }
 
   .control:focus-visible,
@@ -322,7 +322,7 @@
     overflow: hidden;
     block-size: var(--space-2);
     border-radius: var(--radius-sm);
-    background: var(--surface-raised);
+    background: var(--surface-overlay);
   }
 
   .track.quiet {
@@ -343,7 +343,7 @@
     margin: 0;
     padding: var(--space-1) var(--space-3);
     overflow: hidden;
-    color: var(--text-muted);
+    color: var(--text-secondary);
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
     line-clamp: 2;

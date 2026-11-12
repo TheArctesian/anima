@@ -60,7 +60,7 @@
   }
 
   .code {
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font-size: var(--text-sm);
   }
 
@@ -77,13 +77,13 @@
     border: var(--border-thin) solid var(--accent);
     border-radius: var(--radius-md);
     background: var(--accent);
-    color: var(--bg);
+    color: var(--surface-base);
     font: inherit;
     transition: background-color var(--duration-press) var(--ease-enter);
   }
 
   button:active {
-    background: var(--accent-deep);
+    background: var(--accent-pressed);
   }
 
   button:focus-visible {

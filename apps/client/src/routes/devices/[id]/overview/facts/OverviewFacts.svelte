@@ -79,7 +79,7 @@
   }
 
   .facts dt {
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font-size: var(--text-sm);
   }
 
@@ -93,6 +93,6 @@
 
   .none {
     align-items: center;
-    color: var(--text-muted);
+    color: var(--text-secondary);
   }
 </style>

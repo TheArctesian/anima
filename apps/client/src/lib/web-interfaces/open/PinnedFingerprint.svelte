@@ -24,7 +24,7 @@
     /* The menu panel does not wrap its text; the pin does. */
     white-space: normal;
     max-inline-size: calc(var(--space-16) * 4);
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font-size: var(--text-sm);
   }
 

@@ -219,7 +219,7 @@
   }
 
   .control:hover {
-    background: var(--surface-raised);
+    background: var(--surface-overlay);
   }
 
   .control:active {
@@ -269,11 +269,11 @@
     max-block-size: calc(var(--space-16) * 6);
     padding: var(--space-2);
     overflow-y: auto;
-    border: var(--border-thin) solid var(--border);
+    border: var(--border-thin) solid var(--border-strong);
     border-radius: var(--radius-md);
-    /* Opaque always: the panel can sit over a live remote display (MAT-008). --border turns to text-muted under prefers-contrast: more (MAT-006). */
-    background: var(--surface-raised);
-    /* The panel is moved to the body, which sets no colour: --text on --surface-raised is 7.49:1 (UI-002). */
+    /* Opaque always: the panel can sit over a live remote display (MAT-008). --border-strong turns to text-muted under prefers-contrast: more (MAT-006). */
+    background: var(--surface-overlay);
+    /* The panel is moved to the body, which sets no colour: --text on --surface-overlay is 7.49:1 (UI-002). */
     color: var(--text);
     box-shadow: var(--elevation-2);
     font-size: var(--text-sm);
@@ -318,15 +318,15 @@
     /* Fits "Stopping" as well as "Stop", so busy resizes nothing (MOT-007). */
     min-inline-size: calc(var(--space-16) * 1.5);
     padding: 0 var(--space-3);
-    border: var(--border-thin) solid var(--border);
+    border: var(--border-thin) solid var(--border-strong);
     border-radius: var(--radius-md);
-    background: var(--surface);
+    background: var(--surface-raised);
     color: var(--text);
     font: inherit;
   }
 
   .stop:hover:not([aria-disabled='true']) {
-    background: var(--surface-raised);
+    background: var(--surface-overlay);
   }
 
   .note {

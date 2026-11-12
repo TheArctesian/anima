@@ -34,9 +34,9 @@
     justify-content: center;
     min-inline-size: var(--target-min-desktop);
     min-block-size: var(--target-min-desktop);
-    border: var(--border-thin) solid var(--border);
+    border: var(--border-thin) solid var(--border-strong);
     border-radius: var(--radius-md);
-    background: var(--surface-raised);
+    background: var(--surface-overlay);
     color: var(--text);
   }
 
