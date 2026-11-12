@@ -78,3 +78,40 @@ async fn k3_in_maintenance_is_true_only_for_jellyfin(pool: PgPool) {
         Err(Error::NotFound(_))
     ));
 }
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn dev_025_a_detected_os_is_written_only_over_other(pool: PgPool) {
+    let chosen = id(super::PVE_01);
+    let written = devices::record_detected_os(&pool, chosen, OperatingSystem::Macos)
+        .await
+        .unwrap();
+    assert!(!written, "the operator's Linux stays");
+    let kept = devices::get(&pool, chosen).await.unwrap();
+    assert_eq!(kept.os, OperatingSystem::Linux);
+
+    let detected = id(super::DOCKER_HOST);
+    sqlx::query("update devices.devices set os = 'other' where id = $1")
+        .bind(detected)
+        .execute(&pool)
+        .await
+        .unwrap();
+    let before = devices::get(&pool, detected).await.unwrap();
+    let written = devices::record_detected_os(&pool, detected, OperatingSystem::Macos)
+        .await
+        .unwrap();
+    assert!(written);
+    let after = devices::get(&pool, detected).await.unwrap();
+    assert_eq!(after.os, OperatingSystem::Macos);
+    assert_eq!(
+        after.updated_at, before.updated_at,
+        "not the operator's edit"
+    );
+
+    let again = devices::record_detected_os(&pool, detected, OperatingSystem::Linux)
+        .await
+        .unwrap();
+    assert!(!again, "a detected system is not detected over");
+}

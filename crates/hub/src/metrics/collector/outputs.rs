@@ -27,7 +27,7 @@ pub(super) struct Previous {
 /// The output's bytes when they can be read: complete and exit status 0. Output cut at the
 /// link's cap, a non-zero status or no status means the command did not finish its work, so
 /// its source is left out and the others still count.
-fn usable(output: &CommandOutput) -> Option<&[u8]> {
+pub(super) fn usable(output: &CommandOutput) -> Option<&[u8]> {
     let finished = !output.cut && output.exit_status == Some(0);
     finished.then_some(output.stdout.as_slice())
 }

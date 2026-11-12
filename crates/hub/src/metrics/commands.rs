@@ -3,9 +3,10 @@
 //!
 //! Every word is static text written here: no device field, tag or other operator text can
 //! reach a command line. Each command only reads (`cat` of `/proc` files and of `/etc/os-release`,
-//! `df`, `sysctl -n`, `vm_stat`, `netstat`, `top` in logging mode, and the GPU queries of spec
-//! 6.6: `nvidia-smi` queries, `grep` of `amdgpu` sysfs files, `intel_gpu_top` for 2 seconds,
-//! `ioreg`); none writes, starts a service or takes input.
+//! `df`, `sysctl -n`, `vm_stat`, `netstat`, `top` in logging mode, `uname -s` for a device whose
+//! operating system is detected (DEV-025), and the GPU queries of spec 6.6: `nvidia-smi`
+//! queries, `grep` of `amdgpu` sysfs files, `intel_gpu_top` for 2 seconds, `ioreg`); none
+//! writes, starts a service or takes input.
 
 use std::time::Duration;
 
@@ -64,6 +65,12 @@ pub(super) fn commands(os: OperatingSystem) -> Vec<Command> {
         OperatingSystem::Macos => macos(),
         OperatingSystem::Windows | OperatingSystem::Other => Vec::new(),
     }
+}
+
+/// The command that names a device's kernel, `uname -s`, and its time limit: run on a device
+/// whose operating system is Other to detect it (DEV-025).
+pub(super) fn kernel_name() -> (FixedCommand, Duration) {
+    (FixedCommand::new("uname").arg("-s"), QUICK)
 }
 
 fn linux() -> Vec<Command> {

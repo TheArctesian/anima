@@ -93,6 +93,20 @@ pub async fn record_distribution(
     store::set_distribution(db, id, distribution).await
 }
 
+/// Records the operating system detected on the device over SSH while the stored one is Other
+/// (DEV-025); returns whether it was written. An operating system the operator chose is never
+/// changed, and the device keeps its `updated_at`: the operator did not change it.
+///
+/// # Errors
+/// `Database` when the write fails. A deleted device is not an error: nothing is written.
+pub async fn record_detected_os(
+    db: &PgPool,
+    id: DeviceId,
+    os: OperatingSystem,
+) -> Result<bool, Error> {
+    store::set_detected_os(db, id, os).await
+}
+
 /// Whether the device is in maintenance.
 ///
 /// # Errors

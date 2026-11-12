@@ -44,11 +44,13 @@ macro_rules! device_filter {
     };
 }
 
+mod detected_os;
 mod distribution;
 mod holds;
 pub(super) mod remote;
 mod sites;
 
+pub(super) use detected_os::set_detected_os;
 pub(super) use distribution::set_distribution;
 pub(super) use holds::{lock_device, lock_metrics_source};
 pub(super) use remote::{

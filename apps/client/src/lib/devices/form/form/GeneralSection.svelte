@@ -29,6 +29,8 @@
   ];
   /** D-7: only enrolment sets AGENT, so it is shown as the saved state and never offered as a choice. */
   const agentSet = $derived(values.metricsSource === 'AGENT');
+  /** DEV-025: the hub reads the operating system of a device at Other whose metrics come over SSH. */
+  const detectsOs = $derived(values.os === 'OTHER' && values.metricsSource === 'SSH');
   const KINDS = ['server', 'router', 'switch', 'workstation', 'laptop', 'printer'] as const;
 </script>
 
@@ -80,7 +82,7 @@
         </datalist>
       {/snippet}
     </Field>
-    <Field label="Operating system" field="os" {errors}>
+    <Field label="Operating system" field="os" {errors} hint={detectsOs ? 'Detected over SSH at the next collection.' : undefined}>
       {#snippet control(attributes)}
         <!-- A select cannot show a logo, so the chosen system's logo sits beside it; the select names it (UI-003). -->
         <span class="system">

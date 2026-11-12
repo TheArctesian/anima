@@ -234,6 +234,7 @@ pub struct Device { ..., pub session_limit: Option<std::num::NonZeroU8> }
 ```rust
 pub struct Distribution { /* the Linux distribution read from the device, DEV-016 */ }
 pub async fn record_distribution(db: &Db, id: DeviceId, distribution: &Distribution) -> Result<(), Error>;   // metrics collector
+pub async fn record_detected_os(db: &Db, id: DeviceId, os: OperatingSystem) -> Result<bool, Error>;   // metrics collector; DEV-025, writes only while os = 'other'
 pub async fn lock(conn: &mut PgConnection, id: DeviceId) -> Result<(), Error>;                                  // FOR UPDATE; metrics enrolment
 pub async fn lock_metrics_source(conn: &mut PgConnection, id: DeviceId) -> Result<MetricsSource, Error>;       // FOR UPDATE; MET-011, MET-018
 pub async fn use_agent_metrics(conn: &mut PgConnection, id: DeviceId) -> Result<String, Error>;                // agent enrolment only; R-092 D-7
