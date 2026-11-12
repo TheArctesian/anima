@@ -1,4 +1,4 @@
-# Programme handoff — 2026-11-11
+# Programme handoff — 2026-11-12
 
 The programme orchestrator stopped at the operator's usage limit. This file is the state at the stop.
 Read it first, then the rulings listed in section 5 and R-093 to R-111, CR-17 to CR-21 in `programme.md`.
@@ -8,8 +8,9 @@ Read it first, then the rulings listed in section 5 and R-093 to R-111, CR-17 to
 - **Integration branch:** `phase-3`, pushed. `main` was merged into it on 2026-11-10 with the operator's OK
   (`efe75d8d`: client redesign, distribution, the hub image toolchain, the extensions plan), and `main` is
   fast-forwarded to `phase-3` again as a save. Push only fast-forwards; ask before anything else on `main`.
-- **Last Rust merge gated 12/12:** `26a5a9bd` (WP-45 T6 and the dispatcher wiring in `main.rs`). After it came the WP-36
-  deploy merges (`fbdd525f`, `e1e7ff2c`) and the R-109 to R-111 docs commits, through `9baf6aeb`.
+- **Last Rust merge, all gates:** `25b3c64c` (WP-55 gate speed). Since WP-55 the gates are 14: gate 3 is
+  `cargo nextest run --workspace`, then `cargo test --workspace --doc` and `--test pinning` (AGENTS.md "Gates").
+  cargo-nextest must be on `PATH` (`~/.cargo/bin`).
 - **R-101:** every gate and review run uses its own `CARGO_TARGET_DIR` and `CARGO_INCREMENTAL=0`; delete
   the target folder when the task is accepted. A full disk shows up as sqlx test-database failures or a
   linker SIGBUS. About 116 GB free on 2026-11-09.
@@ -30,20 +31,23 @@ Read it first, then the rulings listed in section 5 and R-093 to R-111, CR-17 to
 | WP-47 session sharing | Done. T2 session limit `6f8d8356`, waking-flake `09555c56`, T7 share removal `301d1b5e` (R-111), log `347cc2cc`. T4–T6 cancelled. Migrations 0121–0129 are unused. |
 | WP-48 recording | Closed under R-113 (recording deferred). T1 to T5b merged, then removed by T10 `75f8b6cd` (migrations 0121, 0662, 0901); T6–T9 cancelled, branches kept; log `358f94ef`. The empty `deploy_recordings` volume on the VPS waits for the operator's OK (VPS-005). |
 | WP-49 client sharing and recording | Closed. T5 asciicast `ad50bac3`, T6 playback tunnel `4d3eebab`, T8a badge `917281e9`, T9 `/shared` sign-in `0dd50644`. T1–T4 cancelled (R-111); T7 and T8b cancelled (R-113). WP-48 T10 removes the recording parts of T5, T6 and T8a. |
+| WP-55 gate speed | Done. Merged `25b3c64c`: nextest gate 3, `[profile.dev.build-override] debug = 0`. Warm gate run 635 → 572 s at equal load, same test set (3785 run). sccache and the template database were measured and dropped (R-112 rule 4), so the R-101 amendment lapsed. |
+| WP-53 acceptance preparation | Done up to acceptance. T1 to T10, T7a to T7d and T9b merged, last `31fed855`; package log in `packages/WP-53.md`, matrix in `phase-3-acceptance.md`. The acceptance run waits on the operator's steps (section 4). |
 | WP-54 agent | Done. T2, T3a, T3b `7ea84ecc`, T4, T5, T6a `49119a71`, T6b+T6c `b2775938`, T6e `c6517bce`, T7 `176cb4b1`, T8a hardening `792d4441` (CR-22), log `11e96064`. T6d is a handoff note to WP-36: build the agent for three targets with `release.json`, and ship it in the desktop release (`binaries/anima-agent-<triple>`, `--config tauri.release.conf.json`). |
 
-## 3. Work in progress (2026-11-11)
+## 3. Work in progress (2026-11-12)
 
-R-112 (speed without dropping quality) and R-113 (recording deferred and removed) apply. At most 3 builders and reviewers work at once.
+No package is running. R-112 and R-113 still apply (at most 3 builders and reviewers at once).
 
-| Package | State | Next |
-| --- | --- | --- |
-| WP-55 | Gate speed: nextest, a template database, sccache (1 slot). | Its gates are compared with the current gates on the same commit before it merges; record the R-101 amendment. |
-| WP-53 | T1 matrix `2c5af1e7`, T2 repo check `e2ab858b`, T3 log scan `d113760d` merged; T4 probe next, then T5 to T7 (1 slot; the freed WP-48 slot is unused until WP-55 or WP-53 needs it). | Acceptance, after the operator's steps. |
+| Next | Notes |
+| --- | --- |
+| WP-53 acceptance run | After the operator's steps below. Re-run the motion audit then: its file reads "NOT MET as worded" until it does. |
+| ValidationMode pin test | A hub test that pins async-graphql validation (ValidationMode Strict, unknown argument names refused), raised by the WP-53 T4 security review. It touches the schema wiring, a programme file. |
+| WP-36 readiness check | `tools.rs` should check for cargo-nextest (the gates need it); psql is not needed. |
 
 **Operator's critical path for WP-53, in order:** live checks O-4 to O-9; the spec 5.7.3 wording; the Headscale agent policy (R-105, confirmed in chat); R2 setup and the agent binary upload; the test machines and accounts in plan Section 6, with each real secret typed into Settings by the operator.
 
-**Load flake that needs a fix:** `builds::publishing::fences::d_25_a_try_past_its_hold_writes_nothing` (WP-36) failed three merge gates on 2026-11-10 and passes alone.
+**Fixed load flakes:** d_25 (WP-53 T9: `tries::finish` always ends its transaction; T9b pins it), `log_005` (T10 waits for the broker), the deploy-suite `spawnSync` hang (T8). Still open, on issue #1: `api_005` batching, `met_017`, sessions tunnel `PoolTimedOut`, desktop `log_008`, `web_004`.
 
 **Load flakes seen in merge gates this stretch, all passing alone:**
 - the three `ra_031` tests, with WP-47;
