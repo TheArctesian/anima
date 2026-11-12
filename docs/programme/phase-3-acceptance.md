@@ -212,10 +212,16 @@ Rules for the whole list:
 
 - Hardware: a shell on the VPS (or the hub log copied to a VPN machine), after every step above.
 - Do:
-  1. Run `docker compose logs hub | bun deploy/acceptance/log-scan.ts`. To add known values (for example the test channel names), pass the needles file path the script describes; the file stays on the machine.
-  2. Read the result. The script prints only a line number and a kind for each hit.
-- Look for: exit code 0 and "0 hits".
-- Record: the date, the number of lines scanned, the hit count. If there is a hit, record the line numbers and kinds and open a security finding; do not paste the log. Criterion 22.
+  1. Count the log: `docker compose logs --no-color hub | wc -l`.
+  2. Note the span of the log: `docker compose logs --no-color --timestamps hub | sed -n '1p;$p' | awk '{print $1, $2, $3}'`. Each line starts with the service, a `|` and the timestamp (`hub-1  | 2026-11-11T09:00:00.000000000Z ...`), and awk prints only those three fields, so no log text shows. Check that the first output line has this layout (service, `|`, timestamp) before you record it. If it does not, stop and record the layout you see, without the log text.
+  3. Run the scan with pipefail, so a failed `docker compose` is not read as a clean empty log: `bash -o pipefail -c 'docker compose logs --no-color hub | bun deploy/acceptance/log-scan.ts'`. To add known values (for example the test channel names and URLs), add `--needles <file>`; the file stays on the machine.
+  4. Read the result. The script prints only a line number and a kind for each hit, then `scanned <n> lines, <m> hits`. An empty log exits 2.
+- Look for:
+  - Exit code 0.
+  - "0 hits".
+  - A scanned line count that is equal to or more than the count from step 1. The hub keeps logging, so a few more lines is correct.
+  - A first timestamp from before step P-1. This shows that the log covers every step.
+- Record: the date, the log span (first and last timestamps), the number of lines scanned against the count from step 1, the hit count. If there is a hit, record the line numbers and kinds and open a security finding; do not paste the log. Criterion 22.
 
 ## Gaps
 
