@@ -46,6 +46,8 @@ export interface Screen {
   readonly open: (page: Page) => Promise<void>;
   /** Shoots this element instead of the whole page, for a section or a dialog taller than the window. */
   readonly target?: (page: Page) => Locator;
+  /** The hub holds an answer on purpose, so the page never goes network-quiet: shoot without waiting for it. */
+  readonly loading?: true;
   /** Shoots the window, not the whole scrolling page, for overlays and scrolled positions. */
   readonly windowOnly?: true;
 }

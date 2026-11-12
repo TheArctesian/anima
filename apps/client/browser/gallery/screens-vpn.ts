@@ -81,6 +81,7 @@ export const VPN_SCREENS: readonly Screen[] = [
   },
   {
     name: 'vpn-loading',
+    loading: true,
     open: async (page) => {
       await holdOperations(page, ['Vpn']);
       await page.goto('https://hub.anima.ing/settings');

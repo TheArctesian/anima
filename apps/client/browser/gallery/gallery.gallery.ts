@@ -21,9 +21,9 @@ async function prepare(context: BrowserContext, chosen: Mode, screen: Screen): P
   if (screen.signedOut !== true) await hub.signIn();
 }
 
-/** Fonts loaded, requests quiet and animations off, so two runs of one screen give the same picture. */
-async function settle(page: Page): Promise<void> {
-  await page.waitForLoadState('networkidle');
+/** Fonts loaded, requests quiet (unless the screen holds one) and animations off, so two runs of one screen give the same picture. */
+async function settle(page: Page, screen: Screen): Promise<void> {
+  if (screen.loading !== true) await page.waitForLoadState('networkidle');
   await page.evaluate(() => document.fonts.ready);
   await page.waitForTimeout(SETTLE_MS);
 }
@@ -41,7 +41,7 @@ for (const chosen of MODES) {
       test(file, async ({ page, context }) => {
         await prepare(context, chosen, screen);
         await screen.open(page);
-        await settle(page);
+        await settle(page, screen);
         await shoot(page, screen, `${SHOTS_FOLDER}${chosen.folder}/${file}`);
       });
     }

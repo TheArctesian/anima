@@ -85,6 +85,7 @@ export const STATE_SCREENS: readonly Screen[] = [
   },
   {
     name: 'devices-loading',
+    loading: true,
     open: async (page) => {
       await holdOperations(page, ['Devices', 'Events']);
       await page.goto(`${HUB_ORIGIN}/devices`);
@@ -94,6 +95,7 @@ export const STATE_SCREENS: readonly Screen[] = [
   },
   {
     name: 'device-loading',
+    loading: true,
     open: async (page) => {
       await holdOperations(page, ['Device']);
       await page.goto(`${HUB_ORIGIN}/devices/${DEVICE_IDS.gpuBox}`);
@@ -102,6 +104,7 @@ export const STATE_SCREENS: readonly Screen[] = [
   },
   {
     name: 'settings-loading',
+    loading: true,
     open: async (page) => {
       await holdOperations(page, ['ApiKeys', 'NotificationChannels', 'NotificationSettings']);
       await page.goto(`${HUB_ORIGIN}/settings`);
