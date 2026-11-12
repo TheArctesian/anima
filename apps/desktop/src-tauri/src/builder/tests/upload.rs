@@ -10,15 +10,14 @@ use tokio::{
 };
 
 use super::COMMIT;
-use crate::{
-    builder::{
-        artifact,
-        bundled::Bundle,
-        error::BuilderError,
-        job::{Commit, Target, Version},
-        upload::{ReleaseFile, Upload, UploadHeader, bound_updater, checked, send, sendable, sums},
+use crate::builder::{
+    artifact,
+    bundled::Bundle,
+    error::BuilderError,
+    job::{Commit, Target, Version},
+    upload::{
+        ReleaseFile, Upload, UploadHeader, bound_updater, checked, send, sendable, sha256_of, sums,
     },
-    updater_key::prehash,
 };
 
 fn upload(url: &str, headers: &[(&str, &str)]) -> Upload {
@@ -152,7 +151,7 @@ fn bundle_of(clone: &Path, bytes: &[u8]) -> Bundle {
         target: Target::LinuxX86_64,
         version,
         path,
-        digest: prehash(bytes).unwrap(),
+        sha256: sha256_of(bytes).unwrap(),
     }
 }
 

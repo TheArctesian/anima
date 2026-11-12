@@ -20,8 +20,6 @@ const MISSED_REPORTS_MAX = 8;
 export type BuilderStatus =
   | { readonly kind: 'starting' }
   | { readonly kind: 'missing'; readonly tools: readonly BuilderTool[] }
-  /** Every tool is there and the updater key is stored, but it is not unlocked in this app session (D-19). */
-  | { readonly kind: 'locked' }
   | { readonly kind: 'unsupported' }
   | { readonly kind: 'tools-unknown' }
   | { readonly kind: 'waiting' }
@@ -30,7 +28,7 @@ export type BuilderStatus =
   | { readonly kind: 'refused' }
   | { readonly kind: 'stopped' };
 
-export type StepName = 'checkout' | 'gates' | 'bundle' | 'sign' | 'verify' | 'upload';
+export type StepName = 'checkout' | 'gates' | 'bundle' | 'upload';
 
 interface Step {
   readonly name: StepName;
@@ -42,13 +40,11 @@ interface Step {
 /** The upload, the last step: it runs once the job is reported `UPLOADING` (BLD-060 to BLD-063). */
 const UPLOAD = { name: 'upload', label: 'The upload' } as const;
 
-/** The steps of one job, in order (BLD-040 to BLD-046). */
+/** The steps of one job, in order (BLD-040 to BLD-044). The builder signs nothing: the hub does (R-116). */
 const STEPS: readonly Step[] = [
   { name: 'checkout', label: 'The checkout', run: (shell, job) => shell.checkout(job.commit) },
   { name: 'gates', label: 'The gates', run: (shell, job) => shell.runGates(job.commit) },
   { name: 'bundle', label: 'The bundle', run: (shell, job) => shell.bundle(job) },
-  { name: 'sign', label: 'Signing', run: (shell, job) => shell.sign(job) },
-  { name: 'verify', label: 'The signature check', run: (shell, job) => shell.verify(job) },
 ];
 
 /** What the loop needs; every part is injected, time included, so tests run without a shell, a hub or a clock (CQ-021). */
@@ -147,7 +143,7 @@ async function upload(job: ClaimedJob, reporter: JobReporter, ports: LoopPorts, 
   if (outcome.kind === 'failed') await finish(reporter, failureReason(UPLOAD.label, outcome.code), ports);
 }
 
-/** The tool check, or `null` after it has said why the builder cannot claim (BLD-028); a locked key claims nothing. */
+/** The tool check, or `null` after it has said why the builder cannot claim (BLD-028). */
 async function readyTools(ports: LoopPorts): Promise<ToolCheck | null> {
   let tools: ToolCheck;
   try {
@@ -157,8 +153,7 @@ async function readyTools(ports: LoopPorts): Promise<ToolCheck | null> {
     return null;
   }
   if (tools.missing.length === 0) return tools;
-  const locked = tools.missing.every((tool) => tool === 'updater-key-locked');
-  ports.onStatus(locked ? { kind: 'locked' } : { kind: 'missing', tools: tools.missing });
+  ports.onStatus({ kind: 'missing', tools: tools.missing });
   return null;
 }
 

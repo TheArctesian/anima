@@ -1,6 +1,8 @@
 //! The OS work of a builder computer (BLD-026, BLD-027): fixed build steps in the builder's own
-//! clone, the tool check, signing the updater file and uploading the job's files. The builder loop is the client's
-//! (`$lib/builds/`); it names a step and the job's commit, version and target, never a program.
+//! clone, the tool check and uploading the job's files. The builder holds no updater key and
+//! signs nothing: the hub signs the updater file it checked (R-116). The builder loop is the
+//! client's (`$lib/builds/`); it names a step and the job's commit, version and target, never a
+//! program.
 //!
 //! Each step's output goes to the main web view as `builder-line` events, which the client
 //! cleans and forwards to the hub (BLD-048, BLD-049). Nothing here logs a line (LOG-007).
@@ -21,21 +23,12 @@ pub mod upload;
 #[cfg(test)]
 mod tests;
 
-use std::{
-    fs::File,
-    io::{Seek, SeekFrom},
-    path::PathBuf,
-    sync::Arc,
-    time::{SystemTime, UNIX_EPOCH},
-};
+use std::{path::PathBuf, sync::Arc};
 
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager, Runtime, State, Webview};
 
-use crate::{
-    updater_key::{self, Signed, UnlockedKey, prehash},
-    web_view::MAIN,
-};
+use crate::web_view::MAIN;
 use bundled::Bundle;
 pub use bundled::Bundled;
 pub use child::Running;
@@ -44,7 +37,6 @@ pub use error::BuilderError;
 use job::{Commit, Target, Version};
 use plan::Repository;
 use steps::Workshop;
-use tools::KeyReadiness;
 pub use tools::Tool;
 
 /// The event that carries one output line of a step to the main web view.
@@ -75,16 +67,6 @@ pub struct ToolCheck {
     pub os: &'static str,
     pub arch: &'static str,
     pub missing: Vec<Tool>,
-    /// Whether a build process is kept from reading this process's memory, where the unlocked
-    /// updater key is (D-19). The builder still runs when it is not; the row warns.
-    pub memory_guarded: bool,
-}
-
-/// A signed updater file: its name and the `.sig` text (public).
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-pub struct SignedFile {
-    pub file: String,
-    pub signature: String,
 }
 
 /// Refuses every caller but the main web view; the capability already does, this is the second
@@ -120,7 +102,7 @@ fn clone_folder<R: Runtime>(app: &AppHandle<R>) -> Result<PathBuf, BuilderError>
     Ok(data.join(CLONE_FOLDER))
 }
 
-/// Takes the step slot for a step with no output of its own (signing, verifying).
+/// Takes the step slot for a step with no output of its own (listing and uploading files).
 fn quiet(running: &Running) -> Result<child::Claim<'_>, BuilderError> {
     running.claim(Arc::new(|_| {}))
 }
@@ -133,22 +115,16 @@ fn target_here(target: &str) -> Result<Target, BuilderError> {
         .ok_or(BuilderError::Platform)
 }
 
-/// Where the updater key stands; a key store that cannot be read counts as no key.
-fn key_readiness(unlocked: &UnlockedKey) -> KeyReadiness {
-    if !updater_key::is_present().unwrap_or(false) {
-        KeyReadiness::Missing
-    } else if unlocked.is_unlocked() {
-        KeyReadiness::Unlocked
-    } else {
-        KeyReadiness::Locked
-    }
-}
-
-/// Yama's `ptrace_scope` and whether this process is dumpable, read at the edge (D-19). macOS
-/// writes no core dump of the app and lets no other process of the user read its memory.
-fn memory_guarded() -> bool {
-    let scope = std::fs::read_to_string("/proc/sys/kernel/yama/ptrace_scope").ok();
-    cfg!(target_os = "macos") || tools::memory_guarded(scope.as_deref(), updater_key::dumpable())
+/// The key line of the updater public key in this app's `plugins.updater.pubkey`, if it has one.
+fn app_public_key<R: Runtime>(app: &AppHandle<R>) -> Option<String> {
+    let encoded = app
+        .config()
+        .plugins
+        .0
+        .get("updater")?
+        .get("pubkey")?
+        .as_str()?;
+    tools::key_line(encoded)
 }
 
 /// This computer's platform and the tools it lacks (BLD-028).
@@ -163,26 +139,19 @@ pub async fn builder_tools_check<R: Runtime>(
         Target::LinuxX86_64 => ("LINUX", "X86_64"),
         Target::DarwinUniversal => ("MACOS", "AARCH64"),
     };
-    let app_key = tools::app_public_key(crate::updater_key::app_public_key(&app).as_deref());
+    let app_key = tools::app_public_key(app_public_key(&app).as_deref());
     let mut missing = tauri::async_runtime::spawn_blocking(move || {
         let env = Environment::from_parent(std::env::vars_os());
-        let key = key_readiness(&app.state::<UnlockedKey>());
-        tools::missing(target, &env, key, std::path::Path::exists)
+        tools::missing(target, &env, std::path::Path::exists)
     })
     .await
     .map_err(|_| BuilderError::Failed)?;
     missing.extend(app_key);
-    let memory_guarded = memory_guarded();
-    Ok(ToolCheck {
-        os,
-        arch,
-        missing,
-        memory_guarded,
-    })
+    Ok(ToolCheck { os, arch, missing })
 }
 
 /// Fetches and checks out `commit` with a clean tree; refuses a commit not on `main`. The last
-/// bundle is forgotten first, so nothing built before can be signed after.
+/// bundle is forgotten first, so nothing built before can be uploaded after.
 #[tauri::command]
 pub async fn builder_checkout<R: Runtime>(
     webview: Webview<R>,
@@ -221,7 +190,7 @@ pub struct BundleJob {
 }
 
 /// Compiles and bundles the job's target at its version from its commit, records the updater
-/// file and the hash of its bytes (D-13), and returns its name.
+/// file and the SHA-256 of its bytes (D-13, D-22), and returns its name.
 #[tauri::command]
 pub async fn builder_bundle<R: Runtime>(
     webview: Webview<R>,
@@ -240,13 +209,13 @@ pub async fn builder_bundle<R: Runtime>(
     let clone = clone_folder(&app)?;
     let recorder = app.clone();
     tauri::async_runtime::spawn_blocking(move || {
-        let digest = prehash(artifact::open_own(&clone, &path)?)?;
+        let sha256 = upload::sha256_of(artifact::open_own(&clone, &path)?)?;
         recorder.state::<Bundled>().record(Bundle {
             commit,
             target,
             version,
             path,
-            digest,
+            sha256,
         });
         Ok::<_, BuilderError>(())
     })
@@ -262,19 +231,6 @@ fn file_name(path: &std::path::Path) -> Result<String, BuilderError> {
         .ok_or(BuilderError::Bundle)
 }
 
-/// Opens the recorded bundle's file and checks its bytes are still the ones bundled (D-13).
-/// Returns the open file, at its start, and the hash. Blocking.
-fn reopened(clone: &std::path::Path, bundle: &Bundle) -> Result<(File, [u8; 64]), BuilderError> {
-    let mut file = artifact::open_own(clone, &bundle.path)?;
-    let digest = prehash(&file)?;
-    if digest != bundle.digest {
-        return Err(BuilderError::Bundle);
-    }
-    file.seek(SeekFrom::Start(0))
-        .map_err(|_| BuilderError::Bundle)?;
-    Ok((file, digest))
-}
-
 /// The bundle this job's `target` and `version` name, when it is the last one made.
 fn recorded<R: Runtime>(
     app: &AppHandle<R>,
@@ -286,66 +242,6 @@ fn recorded<R: Runtime>(
     app.state::<Bundled>()
         .of(target, &version)
         .ok_or(BuilderError::Bundle)
-}
-
-/// Signs the last bundle's updater file in this process with the unlocked key, from the one
-/// descriptor whose hash matched the bundle's (D-13), checks the signature against the stored
-/// public key with the version (BLD-045, BLD-046) and writes `<file>.sig` beside it.
-#[tauri::command]
-pub async fn builder_sign<R: Runtime>(
-    webview: Webview<R>,
-    running: State<'_, Running>,
-    target: String,
-    version: String,
-) -> Result<SignedFile, BuilderError> {
-    from_main(&webview)?;
-    let app = webview.app_handle().clone();
-    let bundle = recorded(&app, &target, &version)?;
-    let _claim = quiet(&running)?;
-    let clone = clone_folder(&app)?;
-    let timestamp = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map_or(0, |since| since.as_secs());
-    let keys = app.clone();
-    tauri::async_runtime::spawn_blocking(move || {
-        let file = file_name(&bundle.path)?;
-        let (mut opened, digest) = reopened(&clone, &bundle)?;
-        let signed = Signed {
-            timestamp,
-            file_name: &file,
-            version: bundle.version.as_str(),
-        };
-        let signature = keys.state::<UnlockedKey>().sign(&digest, &signed)?;
-        updater_key::verify_file(&mut opened, &signature, bundle.version.as_str())?;
-        artifact::write_signature(&bundle.path, &signature)?;
-        Ok(SignedFile { file, signature })
-    })
-    .await
-    .map_err(|_| BuilderError::Failed)?
-}
-
-/// Checks the written `<file>.sig` over the last bundle's file for its version with the stored
-/// public key (BLD-046), as the upload step will before it sends anything.
-#[tauri::command]
-pub async fn builder_signature_verify<R: Runtime>(
-    webview: Webview<R>,
-    running: State<'_, Running>,
-    target: String,
-    version: String,
-) -> Result<(), BuilderError> {
-    from_main(&webview)?;
-    let app = webview.app_handle().clone();
-    let bundle = recorded(&app, &target, &version)?;
-    let _claim = quiet(&running)?;
-    let clone = clone_folder(&app)?;
-    tauri::async_runtime::spawn_blocking(move || {
-        let (opened, _) = reopened(&clone, &bundle)?;
-        let signature = artifact::read_signature(&bundle.path)?;
-        updater_key::verify_file(opened, &signature, bundle.version.as_str())
-            .map_err(BuilderError::from)
-    })
-    .await
-    .map_err(|_| BuilderError::Failed)?
 }
 
 /// Stops the running step and every process it started.

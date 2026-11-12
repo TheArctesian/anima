@@ -1,6 +1,6 @@
 //! The environment every build step runs in (BLD-044). Build scripts, `build.rs`, proc-macros
 //! and npm packages run in these steps, so the step gets an allow-list of the app's variables and
-//! nothing else: no updater key, no builder or hub token, no URL with a secret, no
+//! nothing else: no signing key, no builder or hub token, no URL with a secret, no
 //! `DATABASE_URL` (BLD-042). Pure: the app's environment is a parameter.
 
 use std::{

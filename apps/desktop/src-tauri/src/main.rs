@@ -9,24 +9,12 @@ mod process_log;
 mod system_browser;
 mod system_settings;
 mod this_machine;
-mod updater_key;
 mod web_view;
 
 use tauri::Manager;
 
 fn main() {
-    // The dialog plugin is used from Rust only (the updater key file); no capability names it.
-    let app = tauri::Builder::default()
-        .plugin(process_log::plugin())
-        .plugin(tauri_plugin_dialog::init())
-        .setup(|_| {
-            // Before any key is opened: no core dump of this process may hold it (D-19).
-            #[cfg(target_os = "linux")]
-            if let Err(error) = updater_key::keep_out_of_core_dumps() {
-                tauri_plugin_log::log::warn!("this process is still dumpable: {error}");
-            }
-            Ok(())
-        });
+    let app = tauri::Builder::default().plugin(process_log::plugin());
     // Release desktop builds only: `tauri dev` never checks for or loads an update (UPD-001).
     #[cfg(all(desktop, not(debug_assertions)))]
     let app = app
@@ -35,7 +23,6 @@ fn main() {
     app.manage(web_view::Tabs::default())
         .manage(builder::Running::default())
         .manage(builder::Bundled::default())
-        .manage(updater_key::UnlockedKey::default())
         .manage(agent::Installing::default())
         .invoke_handler(tauri::generate_handler![
             keystore::access_token_read,
@@ -44,16 +31,10 @@ fn main() {
             keystore::builder_token_read,
             keystore::builder_token_write,
             keystore::builder_token_clear,
-            updater_key::updater_key_read,
-            updater_key::updater_key_import,
-            updater_key::updater_key_unlock,
-            updater_key::updater_key_lock,
             builder::builder_tools_check,
             builder::builder_checkout,
             builder::builder_gates_run,
             builder::builder_bundle,
-            builder::builder_sign,
-            builder::builder_signature_verify,
             builder::builder_cancel,
             builder::upload::builder_release_files,
             builder::upload::builder_upload,
@@ -78,12 +59,10 @@ fn main() {
         .run(|app, event| on_run_event(app, &event));
 }
 
-/// No build step or agent run outlives the app (BLD-026, MET-019), and the opened key goes with
-/// it (D-19).
+/// No build step or agent run outlives the app (BLD-026, MET-019).
 fn on_run_event(app: &tauri::AppHandle, event: &tauri::RunEvent) {
     if matches!(event, tauri::RunEvent::Exit) {
         app.state::<builder::Running>().cancel();
-        app.state::<updater_key::UnlockedKey>().lock();
         app.state::<agent::Installing>().stop();
     }
 }

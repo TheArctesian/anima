@@ -1,4 +1,4 @@
-//! The builder token and the updater key entries (BLD-023, BLD-025, BLD-045).
+//! The builder token entries (BLD-023, BLD-025).
 
 use tauri::async_runtime::block_on;
 
@@ -6,9 +6,7 @@ use super::{SECRET, use_memory_store};
 use crate::keystore::{
     KeystoreError, access_token_write, builder_clear as builder_token_clear,
     builder_read as builder_token_read, builder_write as builder_token_write, from_main,
-    read_signing_key, read_signing_public_key,
-    token::{BUILDER_SERVICE, SERVICE, TokenKind, read_token, write_token},
-    write_signing_key,
+    token::{BUILDER_SERVICE, TokenKind, read_token, write_token},
 };
 
 #[test]
@@ -72,30 +70,6 @@ fn bld_023_builder_token_commands_refuse_an_origin_that_is_not_canonical() {
         block_on(builder_token_read(origin)),
         Err(KeystoreError::BadOrigin)
     );
-}
-
-#[test]
-fn bld_045_the_updater_key_round_trips_and_an_empty_key_is_refused() {
-    let store = use_memory_store();
-    assert_eq!(
-        write_signing_key("", "RWQpublic"),
-        Err(KeystoreError::EmptyToken)
-    );
-    assert_eq!(
-        write_signing_key("sealed", ""),
-        Err(KeystoreError::EmptyToken)
-    );
-    assert_eq!(read_signing_public_key(), Ok(None));
-    write_signing_key("sealed-key-text", "RWQpublic").unwrap();
-    assert_eq!(
-        read_signing_key().unwrap().as_deref().map(String::as_str),
-        Some("sealed-key-text")
-    );
-    // C-2: the public line is its own entry, read without the sealed key.
-    assert_eq!(read_signing_public_key(), Ok(Some("RWQpublic".to_owned())));
-    let entries = store.lock().unwrap();
-    assert!(entries.contains_key(&(SERVICE.to_owned(), "updater-key".to_owned())));
-    assert!(entries.contains_key(&(SERVICE.to_owned(), "updater-key-public".to_owned())));
 }
 
 #[test]

@@ -58,12 +58,12 @@ describe('JobReporter (BLD-005, BLD-048)', () => {
 describe('failureReason (BLD-010)', () => {
   it('BLD-010, LOG-007: is fixed text for each code and never process output', () => {
     expect(failureReason('The gates', 'step-failed')).toBe('The gates failed. The job log says why.');
-    expect(failureReason('Signing', 'key-missing')).toBe('No updater key is stored on this computer.');
+    expect(failureReason('The bundle', 'bundle')).toBe('The bundle is not where the build puts it.');
     expect(failureReason('The bundle', 'not-desktop')).toBe('The bundle could not run on this computer.');
   });
 
   it('BLD-010: every reason fits the hub limit of 200 characters', () => {
-    const codes = ['busy', 'commit', 'version', 'target', 'platform', 'not-on-main', 'dirty', 'tool-missing', 'step-failed', 'cancelled', 'bundle', 'key-missing', 'signed-version', 'signing', 'failed', 'not-desktop'] as const;
-    for (const code of codes) expect(failureReason('The signature check', code).length).toBeLessThanOrEqual(200);
+    const codes = ['busy', 'commit', 'version', 'target', 'platform', 'not-on-main', 'dirty', 'tool-missing', 'step-failed', 'cancelled', 'bundle', 'upload', 'failed', 'not-desktop'] as const;
+    for (const code of codes) expect(failureReason('The bundle', code).length).toBeLessThanOrEqual(200);
   });
 });

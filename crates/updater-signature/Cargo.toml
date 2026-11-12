@@ -1,0 +1,29 @@
+[package]
+name = "updater-signature"
+description = "The tauri-updater signature: open a minisign secret key file, sign, verify (BLD-045, BLD-046, D-11)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+# In-house minisign (WP-36 D-11): ed25519, BLAKE2b and scrypt, no `minisign` crate in the build.
+# The check uses the verifier tauri-plugin-updater itself uses.
+[dependencies]
+base64.workspace = true
+blake2 = "0.11"
+ed25519-dalek = { version = "3", default-features = false, features = ["fast", "zeroize"] }
+minisign-verify = "0.3"
+scrypt = { version = "0.12", default-features = false }
+subtle.workspace = true
+thiserror.workspace = true
+zeroize.workspace = true
+
+[dev-dependencies]
+# The reference minisign implementation (the one tauri-cli signs with) makes the test key files
+# and checks the signatures, so the format is proved against it and not only against itself.
+minisign = "0.10"
+proptest = "1.12"
+static_assertions.workspace = true

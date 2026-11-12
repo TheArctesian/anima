@@ -1,5 +1,6 @@
-//! The tools a builder needs before it claims a job (BLD-028): git, bun, Rust, PostgreSQL 17
-//! (R-009), the Tauri system packages, the updater key and the app's own updater public key.
+//! The tools a builder needs before it claims a job (BLD-028): git, bun, Rust with
+//! cargo-nextest (the gates run the Rust tests with it, R-112), PostgreSQL 17 (R-009), the Tauri
+//! system packages and the app's own updater public key. No updater key: the hub signs (R-116).
 //! Pure: whether a path exists is a parameter, and nothing is run.
 
 use std::path::{Path, PathBuf};
@@ -16,11 +17,10 @@ pub enum Tool {
     Git,
     Bun,
     Rust,
+    /// `cargo-nextest`, which gate 3 runs the Rust tests with (R-112).
+    CargoNextest,
     Postgres,
     TauriPackages,
-    UpdaterKey,
-    /// The key is stored but not unlocked in this app session (D-19).
-    UpdaterKeyLocked,
     /// This app was built without the updater public key (`plugins.updater.pubkey` is the
     /// placeholder), so what it builds could never update (R-108).
     UpdaterPublicKey,
@@ -29,6 +29,16 @@ pub enum Tool {
 /// The length of a minisign public key: `Ed`, the 8-byte key ID and the 32-byte key.
 const PUBLIC_KEY_BYTES: usize = 42;
 
+/// The last line of the public key file whose base64 is `encoded` (`plugins.updater.pubkey`),
+/// if it is text.
+pub fn key_line(encoded: &str) -> Option<String> {
+    let text = String::from_utf8(STANDARD.decode(encoded).ok()?).ok()?;
+    text.lines()
+        .map(str::trim)
+        .rfind(|line| !line.is_empty())
+        .map(str::to_owned)
+}
+
 /// [`Tool::UpdaterPublicKey`] unless `line`, the key line of the app's updater public key, is a
 /// minisign public key (R-108). The placeholder has no key line.
 pub fn app_public_key(line: Option<&str>) -> Option<Tool> {
@@ -36,35 +46,6 @@ pub fn app_public_key(line: Option<&str>) -> Option<Tool> {
         .and_then(|line| STANDARD.decode(line).ok())
         .is_some_and(|bytes| bytes.len() == PUBLIC_KEY_BYTES && bytes.starts_with(b"Ed"));
     (!key).then_some(Tool::UpdaterPublicKey)
-}
-
-/// Where the updater key stands for signing (BLD-028, D-19).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum KeyReadiness {
-    Missing,
-    Locked,
-    Unlocked,
-}
-
-impl KeyReadiness {
-    fn missing_tool(self) -> Option<Tool> {
-        match self {
-            Self::Missing => Some(Tool::UpdaterKey),
-            Self::Locked => Some(Tool::UpdaterKeyLocked),
-            Self::Unlocked => None,
-        }
-    }
-}
-
-/// Whether a build process is kept from reading this process's memory, where the unlocked key is
-/// (D-19): this process must not be dumpable (`PR_GET_DUMPABLE` is 0, so no core dump of it is
-/// written for a step to read) and Yama's `ptrace_scope` (the text of
-/// `/proc/sys/kernel/yama/ptrace_scope`, `None` when the file is missing) must be 1 or above.
-pub fn memory_guarded(ptrace_scope: Option<&str>, dumpable: bool) -> bool {
-    !dumpable
-        && ptrace_scope
-            .and_then(|text| text.trim().parse::<u8>().ok())
-            .is_some_and(|scope| scope >= 1)
 }
 
 /// The PostgreSQL major version the gates start (DB-001, R-009).
@@ -118,14 +99,9 @@ fn tauri_packages(target: Target, env: &Environment, exists: &impl Fn(&Path) -> 
     }
 }
 
-/// The tools missing for `target`, in the order the Settings row lists them; `key` is where the
-/// updater key stands.
-pub fn missing(
-    target: Target,
-    env: &Environment,
-    key: KeyReadiness,
-    exists: impl Fn(&Path) -> bool,
-) -> Vec<Tool> {
+/// The tools missing for `target`, in the order the Settings row lists them. `psql` is not one:
+/// the gates start their own PostgreSQL with `initdb` and `pg_ctl` and never run it.
+pub fn missing(target: Target, env: &Environment, exists: impl Fn(&Path) -> bool) -> Vec<Tool> {
     let has = |program: &str| env.find(program, &exists).is_some();
     let postgres = postgres_dirs(env.dirs())
         .iter()
@@ -134,11 +110,11 @@ pub fn missing(
         (Tool::Git, has("git")),
         (Tool::Bun, has("bun")),
         (Tool::Rust, has("cargo") && has("rustc")),
+        (Tool::CargoNextest, has("cargo-nextest")),
         (Tool::Postgres, postgres),
         (Tool::TauriPackages, tauri_packages(target, env, &exists)),
     ]
     .into_iter()
     .filter_map(|(tool, present)| (!present).then_some(tool))
-    .chain(key.missing_tool())
     .collect()
 }

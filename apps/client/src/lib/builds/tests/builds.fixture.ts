@@ -24,13 +24,12 @@ export function refused(code: HubError['code']): HubResult<never> {
   return { ok: false, error: { code, message: 'hub text' } as HubError };
 }
 
-export type StepCall = 'checkout' | 'gates' | 'bundle' | 'sign' | 'verify' | 'release-files' | 'upload';
+export type StepCall = 'checkout' | 'gates' | 'bundle' | 'release-files' | 'upload';
 
-/** The updater file of `JOB` and its signature, as the fake shell signs it. */
+/** The updater file of `JOB`, unsigned: the hub signs it (R-116). */
 export const UPDATER: ReleaseFile = { name: 'Anima_0.1.12_amd64.AppImage', sha256: 'b'.repeat(64), size: 5 };
 /** The `SHA256SUMS` the shell writes for the job's files. */
 export const SUMS_FILE: ReleaseFile = { name: 'SHA256SUMS', sha256: 'd'.repeat(64), size: 94 };
-export const SIGNATURE = 'c2lnbmF0dXJl';
 
 /** What one step does when it runs: print lines, wait, then end or fail. */
 export interface StepScript {
@@ -43,7 +42,7 @@ export interface StepScript {
 export class FakeShell implements BuilderShell {
   calls: StepCall[] = [];
   cancels = 0;
-  tools: ToolCheck = { os: 'LINUX', arch: 'X86_64', missing: [], memoryGuarded: true };
+  tools: ToolCheck = { os: 'LINUX', arch: 'X86_64', missing: [] };
   toolsFail: BuilderShellCode | null = null;
   scripts: Partial<Record<StepCall, StepScript>> = {};
   #listeners = new Set<(line: string) => void>();
@@ -79,12 +78,7 @@ export class FakeShell implements BuilderShell {
     await this.#run('bundle');
     return 'Anima_0.1.12_amd64.AppImage';
   };
-  sign = async () => {
-    await this.#run('sign');
-    return { file: 'Anima_0.1.12_amd64.AppImage', signature: 'c2lnbmF0dXJl' };
-  };
-  verify = () => this.#run('verify');
-  release: ReleaseFiles = { files: [UPDATER, SUMS_FILE], updater: { file: UPDATER.name, signature: SIGNATURE } };
+  release: ReleaseFiles = { files: [UPDATER, SUMS_FILE], updater: UPDATER.name };
   /** The name of each file whose upload started. */
   uploads: string[] = [];
   releaseFiles = async () => {

@@ -1,8 +1,6 @@
 use serde::{Serialize, Serializer, ser::SerializeStruct};
 
-use crate::updater_key::UpdaterKeyError;
-
-/// Why a build step did not finish. Carries no process output, path or key: the step's lines went
+/// Why a build step did not finish. Carries no process output, path or secret: the step's lines went
 /// to the web view as events, and only the variant crosses here (LOG-007).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
 pub enum BuilderError {
@@ -28,8 +26,6 @@ pub enum BuilderError {
     Cancelled,
     #[error("the bundle is not where the build puts it")]
     Bundle,
-    #[error("the updater file could not be signed")]
-    Signing(UpdaterKeyError),
     #[error("only the main window may run build steps")]
     Caller,
     #[error("the file could not be uploaded")]
@@ -53,20 +49,10 @@ impl BuilderError {
             Self::StepFailed => "step-failed",
             Self::Cancelled => "cancelled",
             Self::Bundle => "bundle",
-            Self::Signing(UpdaterKeyError::Missing) => "key-missing",
-            Self::Signing(UpdaterKeyError::SignedVersion) => "signed-version",
-            Self::Signing(UpdaterKeyError::Locked) => "key-locked",
-            Self::Signing(_) => "signing",
             Self::Caller => "caller",
             Self::Upload => "upload",
             Self::Failed => "failed",
         }
-    }
-}
-
-impl From<UpdaterKeyError> for BuilderError {
-    fn from(error: UpdaterKeyError) -> Self {
-        Self::Signing(error)
     }
 }
 

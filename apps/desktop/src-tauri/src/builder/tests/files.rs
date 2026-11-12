@@ -1,23 +1,19 @@
-//! The bundle paths: only the build's own regular files are signed, and the `.sig` file is never
-//! written through a link the build left.
+//! The bundle paths: only the build's own regular files are uploaded, and only while their bytes
+//! are the ones the bundle step recorded (D-13, D-22).
 
 use std::{
     fs,
-    io::Read,
     os::unix::fs::symlink,
     path::{Path, PathBuf},
 };
 
 use super::COMMIT;
-use crate::{
-    builder::{
-        artifact,
-        bundled::{Bundle, Bundled},
-        error::BuilderError,
-        job::{Commit, Target, Version},
-        reopened,
-    },
-    updater_key::prehash,
+use crate::builder::{
+    artifact,
+    bundled::{Bundle, Bundled},
+    error::BuilderError,
+    job::{Commit, Target, Version},
+    upload::{bound_updater, sha256_of},
 };
 
 #[test]
@@ -37,7 +33,7 @@ fn bld_043_the_updater_file_is_where_tauri_bundles_it() {
 }
 
 #[test]
-fn bld_045_only_a_regular_file_inside_the_clone_is_the_builds_own() {
+fn bld_043_only_a_regular_file_inside_the_clone_is_the_builds_own() {
     let root = tempfile::tempdir().unwrap();
     let clone = root.path().join("clone");
     fs::create_dir_all(clone.join("bundle")).unwrap();
@@ -66,25 +62,6 @@ fn bld_045_only_a_regular_file_inside_the_clone_is_the_builds_own() {
 }
 
 #[test]
-fn bld_045_a_sig_file_left_as_a_link_is_replaced_and_its_target_kept() {
-    let root = tempfile::tempdir().unwrap();
-    let updater = root.path().join("Anima.AppImage");
-    let target = root.path().join("bashrc");
-    fs::write(&target, b"keep me").unwrap();
-    symlink(&target, root.path().join("Anima.AppImage.sig")).unwrap();
-
-    artifact::write_signature(&updater, "c2lnbmF0dXJl").unwrap();
-    assert_eq!(fs::read(&target).unwrap(), b"keep me");
-    assert_eq!(artifact::read_signature(&updater).unwrap(), "c2lnbmF0dXJl");
-
-    fs::write(root.path().join("Anima.AppImage.sig"), vec![b'a'; 5000]).unwrap();
-    assert_eq!(
-        artifact::read_signature(&updater),
-        Err(BuilderError::Bundle)
-    );
-}
-
-#[test]
 fn bld_047_lipo_must_name_both_architectures() {
     let lines = |text: &str| vec![text.to_owned()];
     assert!(artifact::universal(&lines("x86_64 arm64")));
@@ -101,22 +78,22 @@ fn bundled_clone() -> (tempfile::TempDir, PathBuf, Bundle) {
     fs::create_dir_all(clone.join("bundle")).unwrap();
     let path = clone.join("bundle/Anima_0.1.12_amd64.AppImage");
     fs::write(&path, b"image").unwrap();
-    let digest = prehash(artifact::open_own(&clone, &path).unwrap()).unwrap();
+    let sha256 = sha256_of(artifact::open_own(&clone, &path).unwrap()).unwrap();
     let bundle = Bundle {
         commit: Commit::parse(COMMIT).unwrap(),
         target: Target::LinuxX86_64,
         version: Version::parse("0.1.12").unwrap(),
         path,
-        digest,
+        sha256,
     };
     (root, clone, bundle)
 }
 
 #[test]
-fn s_3_a_hard_link_to_a_file_outside_the_clone_is_not_signed() {
+fn s_3_a_hard_link_to_a_file_outside_the_clone_is_not_uploaded() {
     let (root, clone, bundle) = bundled_clone();
     let outside = root.path().join("id_ed25519");
-    fs::write(&outside, b"a file the build must not get signed").unwrap();
+    fs::write(&outside, b"a file the build must not get uploaded").unwrap();
     let linked = clone.join("bundle/linked.AppImage");
     fs::hard_link(&outside, &linked).unwrap();
     assert_eq!(
@@ -125,22 +102,21 @@ fn s_3_a_hard_link_to_a_file_outside_the_clone_is_not_signed() {
     );
     // The bundled file itself, hard-linked after the bundle step, is refused too.
     fs::hard_link(&bundle.path, root.path().join("copy")).unwrap();
-    assert_eq!(reopened(&clone, &bundle).err(), Some(BuilderError::Bundle));
+    assert_eq!(
+        bound_updater(&clone, &bundle).err(),
+        Some(BuilderError::Bundle)
+    );
 }
 
 #[test]
-fn s_3_only_the_bytes_the_bundle_step_hashed_are_signed() {
+fn s_3_only_the_bytes_the_bundle_step_hashed_are_uploaded() {
     let (_root, clone, bundle) = bundled_clone();
-    let (mut file, digest) = reopened(&clone, &bundle).unwrap();
-    assert_eq!(digest, bundle.digest);
-    let mut bytes = Vec::new();
-    file.read_to_end(&mut bytes).unwrap();
-    assert_eq!(
-        bytes, b"image",
-        "the descriptor is handed back at its start"
-    );
+    assert_eq!(bound_updater(&clone, &bundle).unwrap(), b"image");
     fs::write(&bundle.path, b"swapped").unwrap();
-    assert_eq!(reopened(&clone, &bundle).err(), Some(BuilderError::Bundle));
+    assert_eq!(
+        bound_updater(&clone, &bundle).err(),
+        Some(BuilderError::Bundle)
+    );
 }
 
 #[test]

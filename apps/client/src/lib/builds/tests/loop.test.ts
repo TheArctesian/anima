@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { vi } from 'vitest';
 import { builderPass, buildJob, POLL_MS, startBuilderLoop, type BuilderStatus, type LoopPorts } from '../loop';
-import { BUILDER_TOKEN, FakeBuildsApi, FakeShell, JOB, refused, SIGNATURE, sleep, SUMS_FILE, UPDATER } from './builds.fixture';
+import { BUILDER_TOKEN, FakeBuildsApi, FakeShell, JOB, refused, sleep, SUMS_FILE, UPDATER } from './builds.fixture';
 
 /** The steps of a job that is built and uploaded: the updater file, then `SHA256SUMS`. */
-const ALL_STEPS = ['checkout', 'gates', 'bundle', 'sign', 'verify', 'release-files', 'upload', 'upload'];
+const ALL_STEPS = ['checkout', 'gates', 'bundle', 'release-files', 'upload', 'upload'];
 
 /** The hub's limit between two reports of a running job (BLD-005). */
 const REPORT_LIMIT_MS = 15_000;
@@ -36,10 +36,10 @@ async function settle<T>(work: Promise<T>): Promise<T> {
 
 describe('a pass of the builder loop', () => {
   it('BLD-028: a builder with a missing tool names it and does not claim', async () => {
-    shell.missing(['postgres', 'updater-key']);
+    shell.missing(['postgres', 'cargo-nextest']);
     await expect(settle(builderPass(ports))).resolves.toBe(POLL_MS);
     expect(api.claims).toBe(0);
-    expect(statuses).toEqual([{ kind: 'missing', tools: ['postgres', 'updater-key'] }]);
+    expect(statuses).toEqual([{ kind: 'missing', tools: ['postgres', 'cargo-nextest'] }]);
   });
 
   it('R-108: an app built without its updater public key names it and does not claim', async () => {
@@ -47,19 +47,6 @@ describe('a pass of the builder loop', () => {
     await expect(settle(builderPass(ports))).resolves.toBe(POLL_MS);
     expect(api.claims).toBe(0);
     expect(statuses).toEqual([{ kind: 'missing', tools: ['updater-public-key'] }]);
-  });
-
-  it('BLD-028, D-19: a locked updater key is its own state, and the builder claims nothing until it is unlocked', async () => {
-    shell.missing(['updater-key-locked']);
-    await expect(settle(builderPass(ports))).resolves.toBe(POLL_MS);
-    expect(api.claims).toBe(0);
-    shell.missing(['git', 'updater-key-locked']);
-    await settle(builderPass(ports));
-    expect(api.claims).toBe(0);
-    expect(statuses).toEqual([{ kind: 'locked' }, { kind: 'missing', tools: ['git', 'updater-key-locked'] }]);
-    shell.missing([]);
-    await settle(builderPass(ports));
-    expect(api.claims).toBe(1);
   });
 
   it('BLD-028: a computer that cannot build, or whose tool check fails, does not claim', async () => {
@@ -97,8 +84,6 @@ describe('building one job', () => {
       'checkout',
       'gates',
       'bundle',
-      'sign',
-      'verify',
       'upload',
     ]);
   });
@@ -133,16 +118,16 @@ describe('uploading a built job', () => {
     expect(api.uploaded.map((uploaded) => uploaded.files)).toEqual([[UPDATER, dmg, SUMS_FILE]]);
   });
 
-  it('BLD-063, BLD-067: the proposed feed names the updater file under the release folder, dated by the injected clock', async () => {
+  it('BLD-063, BLD-067, R-116: the proposed feed names the unsigned updater file under the release folder, dated by the injected clock', async () => {
     await settle(buildJob(JOB, { ...ports, now: () => new Date('2026-11-09T12:00:00.000Z') }));
     const feed: unknown = JSON.parse(api.uploaded[0]?.feed ?? 'null');
-    const entry = { signature: SIGNATURE, url: `https://releases.anima.ing/linux-x86_64/0.1.12/${UPDATER.name}` };
+    const entry = { url: `https://releases.anima.ing/linux-x86_64/0.1.12/${UPDATER.name}` };
     expect(feed).toEqual({ version: '0.1.12', notes: 'Anima 0.1.12', pub_date: '2026-11-09T12:00:00Z', platforms: { 'linux-x86_64': entry } });
   });
 
   it('BLD-067: a macOS job proposes both Mac platform keys under its own folder', async () => {
     const mac = { ...JOB, target: 'DARWIN_UNIVERSAL' as const };
-    shell.release = { files: [{ ...UPDATER, name: 'Anima.app.tar.gz' }], updater: { file: 'Anima.app.tar.gz', signature: SIGNATURE } };
+    shell.release = { files: [{ ...UPDATER, name: 'Anima.app.tar.gz' }], updater: 'Anima.app.tar.gz' };
     await settle(buildJob(mac, ports));
     const feed = JSON.parse(api.uploaded[0]?.feed ?? 'null') as { platforms: Record<string, { url: string }> };
     expect(Object.keys(feed.platforms)).toEqual(['darwin-aarch64', 'darwin-x86_64']);

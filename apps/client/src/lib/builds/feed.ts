@@ -1,12 +1,10 @@
-// The release feed (UPD-009, UPD-010, BLD-063, DNS-007): what latest.json lists, which stable names the release
-// carries and what SHA256SUMS says. Pure: the date and the file digests are parameters, so the builder and the
-// release script share it without a crypto module.
+// The release feed the builder proposes (UPD-009, UPD-010, BLD-063, DNS-007): what latest.json lists, which stable
+// names the release carries and what SHA256SUMS says. No signature: the hub signs the updater file it checked and fills
+// each entry's `signature` (R-116). Pure: the date and the file digests are parameters.
 
 export interface UpdateFile {
   /** File name of the updater bundle in the release. */
   readonly file: string;
-  /** Text of the `.sig` file made by the Tauri updater key. */
-  readonly signature: string;
 }
 
 /** The updater files of the platforms whose build passed. */
@@ -19,7 +17,7 @@ export interface Feed {
   version: string;
   notes: string;
   pub_date: string;
-  platforms: Record<string, { signature: string; url: string }>;
+  platforms: Record<string, { url: string }>;
 }
 
 export class NoPlatformsError extends Error {
@@ -42,7 +40,7 @@ const STABLE_NAMES: readonly (readonly [suffix: string, name: string])[] = [
 ];
 
 function usable(update: UpdateFile | undefined): update is UpdateFile {
-  return update !== undefined && update.file !== '' && update.signature.trim() !== '';
+  return update !== undefined && update.file !== '';
 }
 
 export function buildFeed(input: { version: string; baseUrl: string; date: Date; built: BuiltPlatforms }): Feed {
@@ -50,10 +48,7 @@ export function buildFeed(input: { version: string; baseUrl: string; date: Date;
   for (const platform of ['macos', 'linux'] as const) {
     const update = input.built[platform];
     if (!usable(update)) continue;
-    const entry = {
-      signature: update.signature.trim(),
-      url: `${input.baseUrl}/${encodeURIComponent(update.file)}`,
-    };
+    const entry = { url: `${input.baseUrl}/${encodeURIComponent(update.file)}` };
     for (const key of FEED_KEYS[platform]) platforms[key] = entry;
   }
   if (Object.keys(platforms).length === 0) throw new NoPlatformsError();

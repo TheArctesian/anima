@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { parseHubAddress, type HubAddress } from '$lib/hub/hub';
 import { builderIdKey, builderIdStore } from '../desktop.svelte';
-import { builderText, keyText, memoryText, missingTools, statusText, thisPlatformText } from '../row';
+import { builderText, statusText, thisPlatformText, TOOL_NAMES } from '../row';
 import { JOB } from './builds.fixture';
 
 function address(host: string): HubAddress {
@@ -41,7 +41,6 @@ describe('the Builds row texts (BLD-020)', () => {
     expect(statusText({ kind: 'building', job: JOB, step: 'gates' })).toBe('Building 0.1.12: running the gates.');
     expect(statusText({ kind: 'waiting' })).toBe('Waiting for a release to build.');
     expect(statusText({ kind: 'missing', tools: ['git'] })).toBe('A tool is missing, so this computer claims no build.');
-    expect(statusText({ kind: 'locked' })).toBe('The updater key is locked, so this computer claims no build.');
   });
 
   it('I-4: says what turning building on or off is doing while it runs', () => {
@@ -51,35 +50,14 @@ describe('the Builds row texts (BLD-020)', () => {
     expect(builderText(false, false, { kind: 'waiting' })).toBe('Off.');
   });
 
-  it('BLD-028, D-19: a locked key is not listed as missing', () => {
-    expect(missingTools(['git', 'updater-key-locked', 'updater-key'])).toEqual(['git', 'updater-key']);
-  });
-
-  it('D-19: warns when other programs may read the app memory, and only then', () => {
-    const check = { os: 'LINUX', arch: 'X86_64', missing: [] } as const;
-    expect(memoryText(null)).toBe('');
-    expect(memoryText({ ...check, memoryGuarded: true })).toBe('');
-    expect(memoryText({ ...check, memoryGuarded: false })).toContain('kernel.yama.ptrace_scope');
-    expect(memoryText({ ...check, memoryGuarded: false })).toContain('crash dump');
-  });
-
-  it('BLD-020, BLD-045, D-19: says whether the key is stored, matches this app and is unlocked', () => {
-    expect(keyText(null)).toBe('');
-    expect(keyText({ present: false, unlocked: false, publicKey: null, matchesApp: null })).toBe('No updater key is stored on this computer.');
-    expect(keyText({ present: true, unlocked: true, publicKey: 'RWQ', matchesApp: false })).toBe(
-      'The stored updater key does not match the public key of this app.',
-    );
-    expect(keyText({ present: true, unlocked: false, publicKey: 'RWQ', matchesApp: true })).toBe(
-      'The updater key is stored and locked. Unlock it to build releases.',
-    );
-    expect(keyText({ present: true, unlocked: true, publicKey: 'RWQ', matchesApp: true })).toBe(
-      'The updater key is unlocked until the app quits or building is turned off.',
-    );
+  it('BLD-028, R-116: names cargo-nextest among the tools, and no updater key', () => {
+    expect(TOOL_NAMES['cargo-nextest']).toBe('cargo-nextest');
+    expect(Object.keys(TOOL_NAMES).some((tool) => tool.startsWith('updater-key'))).toBe(false);
   });
 
   it('BLD-020: names the platform once the shell has answered', () => {
     expect(thisPlatformText(null, false)).toBe('');
     expect(thisPlatformText(null, true)).toBe('This computer could not say which platform it is.');
-    expect(thisPlatformText({ os: 'MACOS', arch: 'AARCH64', missing: [], memoryGuarded: true }, false)).toBe('macOS, Apple silicon (arm64)');
+    expect(thisPlatformText({ os: 'MACOS', arch: 'AARCH64', missing: [] }, false)).toBe('macOS, Apple silicon (arm64)');
   });
 });

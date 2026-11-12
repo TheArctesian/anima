@@ -27,8 +27,6 @@ export interface ThisBuilderPorts {
   readonly ids: BuilderIdStore;
   /** The operator's access token, removed from every log line like the builder token (BLD-049). */
   readonly operatorToken: () => Promise<string | null>;
-  /** Drops the unlocked updater key from the shell's memory; the builder is stopping (D-19). */
-  readonly lockKey: () => Promise<void>;
   /** The name the hub records for this computer (BLD-021). */
   readonly computerName: () => Promise<string>;
   readonly sleep: (ms: number) => Promise<void>;
@@ -189,12 +187,11 @@ export class ThisBuilder {
     if (this.#ports.ids.read() === id) await this.#forgetHere();
   }
 
-  /** Stops the loop, for example when the app closes, and locks the updater key (D-19); the token stays. */
+  /** Stops the loop, for example when the app closes; the token stays. */
   async stop(): Promise<void> {
     const stop = this.#stop;
     this.#stop = null;
     if (stop !== null) await stop();
-    await this.#ports.lockKey().catch(() => undefined);
   }
 }
 

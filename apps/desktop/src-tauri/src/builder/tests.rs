@@ -20,7 +20,7 @@ use super::{
     environment::Environment,
     error::BuilderError,
     job::{Commit, Target, Version},
-    tools::{self, KeyReadiness, Tool},
+    tools::{self, Tool},
 };
 
 const COMMIT: &str = "0123456789abcdef0123456789abcdef01234567";
@@ -168,16 +168,16 @@ fn bld_044_relative_path_entries_are_dropped_and_tool_folders_are_added() {
 #[test]
 fn bld_028_each_missing_tool_is_named() {
     let env = Environment::from_parent(os(&[("PATH", "/usr/bin"), ("HOME", "/home/op")]));
-    let everything = tools::missing(Target::LinuxX86_64, &env, KeyReadiness::Missing, |_| false);
+    let everything = tools::missing(Target::LinuxX86_64, &env, |_| false);
     assert_eq!(
         everything,
         [
             Tool::Git,
             Tool::Bun,
             Tool::Rust,
+            Tool::CargoNextest,
             Tool::Postgres,
             Tool::TauriPackages,
-            Tool::UpdaterKey
         ]
     );
     let present = |path: &Path| {
@@ -186,6 +186,7 @@ fn bld_028_each_missing_tool_is_named() {
             "/usr/bin/git",
             "/home/op/.bun/bin/bun",
             "/home/op/.cargo/bin/cargo",
+            "/home/op/.cargo/bin/cargo-nextest",
             "/usr/bin/rustc",
         ]
         .contains(&text)
@@ -194,52 +195,27 @@ fn bld_028_each_missing_tool_is_named() {
             || text == "/usr/bin/cc"
             || text.starts_with("/usr/lib/x86_64-linux-gnu/pkgconfig/")
     };
-    assert_eq!(
-        tools::missing(Target::LinuxX86_64, &env, KeyReadiness::Unlocked, present),
-        []
-    );
+    assert_eq!(tools::missing(Target::LinuxX86_64, &env, present), []);
     let no_rustc = |path: &Path| present(path) && path != Path::new("/usr/bin/rustc");
     assert_eq!(
-        tools::missing(Target::LinuxX86_64, &env, KeyReadiness::Unlocked, no_rustc),
+        tools::missing(Target::LinuxX86_64, &env, no_rustc),
         [Tool::Rust]
     );
     let pg16 = |path: &Path| present(path) && !path.starts_with("/usr/lib/postgresql/17");
     assert_eq!(
-        tools::missing(Target::LinuxX86_64, &env, KeyReadiness::Unlocked, pg16),
+        tools::missing(Target::LinuxX86_64, &env, pg16),
         [Tool::Postgres]
     );
-    let json = serde_json::to_string(&[Tool::TauriPackages, Tool::UpdaterKey]).unwrap();
-    assert_eq!(json, r#"["tauri-packages","updater-key"]"#);
-}
-
-#[test]
-fn bld_028_a_locked_key_is_its_own_missing_tool_and_an_unlocked_one_is_none() {
-    let env = Environment::from_parent(os(&[("PATH", "/usr/bin")]));
-    let all = |_: &Path| true;
+    let no_nextest = |path: &Path| present(path) && !path.ends_with("cargo-nextest");
     assert_eq!(
-        tools::missing(Target::LinuxX86_64, &env, KeyReadiness::Locked, all),
-        [Tool::UpdaterKeyLocked]
+        tools::missing(Target::LinuxX86_64, &env, no_nextest),
+        [Tool::CargoNextest]
     );
-    assert_eq!(
-        tools::missing(Target::LinuxX86_64, &env, KeyReadiness::Missing, all),
-        [Tool::UpdaterKey]
-    );
-    assert_eq!(
-        tools::missing(Target::LinuxX86_64, &env, KeyReadiness::Unlocked, all),
-        []
-    );
-    let json = serde_json::to_string(&[Tool::UpdaterKeyLocked]).unwrap();
-    assert_eq!(json, r#"["updater-key-locked"]"#);
-}
-
-#[test]
-fn d_19_memory_is_guarded_only_when_not_dumpable_and_yama_ptrace_scope_is_one_or_more() {
-    assert!(tools::memory_guarded(Some("1\n"), false));
-    assert!(tools::memory_guarded(Some("3"), false));
-    assert!(!tools::memory_guarded(Some("1\n"), true));
-    assert!(!tools::memory_guarded(Some("0\n"), false));
-    assert!(!tools::memory_guarded(None, false));
-    assert!(!tools::memory_guarded(Some("garbage"), false));
+    // The gates never run `psql`, so the check does not ask for it.
+    let no_psql = |path: &Path| present(path) && !path.ends_with("psql");
+    assert_eq!(tools::missing(Target::LinuxX86_64, &env, no_psql), []);
+    let json = serde_json::to_string(&[Tool::TauriPackages, Tool::CargoNextest]).unwrap();
+    assert_eq!(json, r#"["tauri-packages","cargo-nextest"]"#);
 }
 
 #[test]
@@ -252,8 +228,6 @@ fn log_007_builder_errors_serialise_as_a_code_and_fixed_text() {
             "message": "the commit is not on main of the Anima repository"
         })
     );
-    let missing = BuilderError::from(crate::updater_key::UpdaterKeyError::Missing);
-    assert_eq!(missing.code(), "key-missing");
 }
 
 /// N-4, R-108: an app built with the placeholder `plugins.updater.pubkey` names the updater
@@ -261,7 +235,7 @@ fn log_007_builder_errors_serialise_as_a_code_and_fixed_text() {
 #[test]
 fn r_108_an_app_without_its_updater_public_key_claims_no_job() {
     use base64::{Engine as _, engine::general_purpose::STANDARD};
-    let placeholder = crate::updater_key::key_line("REPLACE_WITH_OPERATOR_PUBLIC_KEY");
+    let placeholder = tools::key_line("REPLACE_WITH_OPERATOR_PUBLIC_KEY");
     assert_eq!(
         tools::app_public_key(placeholder.as_deref()),
         Some(Tool::UpdaterPublicKey)
@@ -269,7 +243,7 @@ fn r_108_an_app_without_its_updater_public_key_claims_no_job() {
     let config: serde_json::Value =
         serde_json::from_str(include_str!("../../tauri.conf.json")).unwrap();
     let pubkey = config["plugins"]["updater"]["pubkey"].as_str().unwrap();
-    let line = crate::updater_key::key_line(pubkey);
+    let line = tools::key_line(pubkey);
     assert_eq!(
         tools::app_public_key(line.as_deref()),
         None,

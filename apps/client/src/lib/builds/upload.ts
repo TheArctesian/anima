@@ -55,7 +55,7 @@ export async function uploadRelease(job: ClaimedJob, ports: UploadPorts, stoppin
     version: job.version,
     baseUrl: `${RELEASES_BASE}/${FOLDERS[job.target]}/${job.version}`,
     date: ports.now(),
-    built: { [PLATFORMS[job.target]]: release.updater },
+    built: { [PLATFORMS[job.target]]: { file: release.updater } },
   });
   accepted(await ports.api.reportUploaded(job.id, files, JSON.stringify(feed)));
 }

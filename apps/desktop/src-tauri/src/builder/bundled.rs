@@ -1,7 +1,7 @@
-//! The updater file the last bundle step made (D-13): its job, its path and the hash of its
-//! bytes. Signing and checking take the file from here, so they sign only what this bundle step
-//! wrote, and only while its bytes are unchanged. The next checkout forgets it. The lock is held
-//! only for short synchronous sections.
+//! The updater file the last bundle step made (D-13, D-22): its job, its path and the SHA-256 of
+//! its bytes. The upload takes the file from here, so it sends only what this bundle step wrote,
+//! and only while its bytes are unchanged. The next checkout forgets it. The lock is held only
+//! for short synchronous sections.
 
 use std::{
     path::PathBuf,
@@ -17,8 +17,8 @@ pub struct Bundle {
     pub target: Target,
     pub version: Version,
     pub path: PathBuf,
-    /// BLAKE2b-512 of the file, the hash minisign signs.
-    pub digest: [u8; 64],
+    /// SHA-256 of the file as the bundle step left it.
+    pub sha256: [u8; 32],
 }
 
 /// The last bundle, until the next checkout.

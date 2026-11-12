@@ -229,7 +229,7 @@ fn tauri(clone: &Path, args: &[&str], config: &serde_json::Value) -> Command {
 }
 
 /// Compile with `--no-bundle`, then bundle, with the version in `--config` and no updater
-/// artifact: the shell signs the updater file itself (BLD-043, BLD-045).
+/// artifact: the builder signs nothing, and the hub signs the updater file (BLD-043, R-116).
 pub fn bundle(clone: &Path, target: Target, version: &Version) -> Vec<Command> {
     let compile_config = serde_json::json!({ "version": version.as_str() });
     let bundle_config = serde_json::json!({

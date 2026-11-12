@@ -1,16 +1,14 @@
-//! The hub tokens, one of each kind per hub origin, and the updater key, in the OS key store
-//! (CLI-003, BLD-023, BLD-045, LOG-007). Device credentials never appear here (CLI-004): the hub
-//! keeps them.
+//! The hub tokens, one of each kind per hub origin, in the OS key store (CLI-003, BLD-023,
+//! LOG-007). Device credentials never appear here (CLI-004): the hub keeps them, and the updater
+//! key never does: the hub holds it (R-116).
 
 mod error;
-mod signing_key;
 mod token;
 
 #[cfg(test)]
 pub(crate) mod tests;
 
 pub use error::KeystoreError;
-pub use signing_key::{read_signing_key, read_signing_public_key, write_signing_key};
 use tauri::{Runtime, Webview};
 use token::TokenKind;
 

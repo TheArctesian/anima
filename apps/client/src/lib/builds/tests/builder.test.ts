@@ -28,7 +28,6 @@ let shell: FakeShell;
 let builderApi: FakeBuildsApi;
 let operator: { enrol: Mock<BuildsApi['enrol']>; revoke: Mock<BuildsApi['revoke']> };
 let builder: ThisBuilder;
-let locks: number;
 
 beforeEach(() => {
   vi.useFakeTimers({ now: 0 });
@@ -39,11 +38,9 @@ beforeEach(() => {
     enrol: vi.fn<BuildsApi['enrol']>((): Promise<HubResult<Enrolment>> => Promise.resolve(ok({ builderId: 'b-1', token: BUILDER_TOKEN }))),
     revoke: vi.fn<BuildsApi['revoke']>((): Promise<HubResult<string>> => Promise.resolve(ok('b-1'))),
   };
-  locks = 0;
   const ports: ThisBuilderPorts = {
     operator,
     operatorToken: () => Promise.resolve(OPERATOR_TOKEN),
-    lockKey: () => Promise.resolve(void (locks += 1)),
     builder: builderApi,
     shell,
     tokens: stores.tokens,
@@ -159,16 +156,7 @@ describe('turning building off (BLD-025)', () => {
   });
 });
 
-describe('the updater key and the operator token (D-19, BLD-049)', () => {
-  it('D-19: stopping the builder, and turning it off, lock the updater key', async () => {
-    await builder.enable();
-    await builder.stop();
-    expect(locks).toBe(1);
-    await builder.resume();
-    await builder.disable();
-    expect(locks).toBeGreaterThanOrEqual(2);
-  });
-
+describe('the operator token (BLD-049)', () => {
   it('BLD-049, C-1: a log line loses the operator token as well as the builder token', async () => {
     builderApi.jobs = [JOB];
     shell.scripts.checkout = { lines: [`op ${OPERATOR_TOKEN} builder ${BUILDER_TOKEN}`] };

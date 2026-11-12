@@ -2,12 +2,13 @@
 //! and SHA-256, the `SHA256SUMS` the shell writes for them, and the `PUT` of one of them to a
 //! presigned URL the hub gave for that very object.
 //!
-//! The updater file is read into memory once, and its `BLAKE2b` hash must be the bundle record's
-//! (D-22), so the bytes uploaded are the bytes signed. The web view chooses no byte it sends. A
+//! The updater file is read into memory once, and its SHA-256 must be the bundle record's (D-22),
+//! so the bytes uploaded are the bytes the bundle step wrote; the hub signs the bytes it reads
+//! back (R-116). The web view chooses no byte it sends. A
 //! presigned URL is a credential: it never reaches a line, an error or a log (LOG-007, BLD-049);
 //! only the error code crosses back.
 
-use std::{fmt::Write as _, io::Read as _, path::Path, time::Duration};
+use std::{fmt::Write as _, io::Read, path::Path, time::Duration};
 
 use reqwest::{Url, header};
 use serde::{Deserialize, Serialize};
@@ -15,10 +16,9 @@ use sha2::{Digest as _, Sha256};
 use tauri::{Manager as _, Runtime, State, Webview};
 
 use super::{
-    SignedFile, artifact, bundled::Bundle, clone_folder, error::BuilderError, file_name, from_main,
-    quiet, recorded,
+    artifact, bundled::Bundle, clone_folder, error::BuilderError, file_name, from_main, quiet,
+    recorded,
 };
-use crate::updater_key::prehash;
 
 /// The file that lists the digests of the others (UPD-010); the shell writes it.
 const SUMS: &str = "SHA256SUMS";
@@ -38,11 +38,12 @@ pub struct ReleaseFile {
     pub size: u64,
 }
 
-/// The files the builder uploads, `SHA256SUMS` last, and the signed updater file.
+/// The files the builder uploads, `SHA256SUMS` last, and the name of the updater file the feed
+/// names. No signature: the hub signs (R-116).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct ReleaseFiles {
     pub files: Vec<ReleaseFile>,
-    pub updater: SignedFile,
+    pub updater: String,
 }
 
 /// One header the presigned `PUT` must send.
@@ -148,12 +149,23 @@ fn read_own(clone: &Path, path: &Path) -> Result<Vec<u8>, BuilderError> {
         .ok_or(BuilderError::Bundle)
 }
 
-/// The updater file's bytes, when their `BLAKE2b` hash is still the bundle record's (D-22).
-/// Blocking.
+/// The SHA-256 of what `file` reads. Blocking.
+pub fn sha256_of(mut file: impl Read) -> Result<[u8; 32], BuilderError> {
+    let mut hash = Sha256::new();
+    let mut buffer = vec![0; 64 * 1024];
+    loop {
+        match file.read(&mut buffer).map_err(|_| BuilderError::Bundle)? {
+            0 => return Ok(hash.finalize().into()),
+            read => hash.update(&buffer[..read]),
+        }
+    }
+}
+
+/// The updater file's bytes, when their SHA-256 is still the bundle record's (D-22). Blocking.
 pub fn bound_updater(clone: &Path, bundle: &Bundle) -> Result<Vec<u8>, BuilderError> {
     let bytes = read_own(clone, &bundle.path)?;
-    let digest = prehash(bytes.as_slice()).map_err(|_| BuilderError::Bundle)?;
-    (digest == bundle.digest)
+    let sha256: [u8; 32] = Sha256::digest(&bytes).into();
+    (sha256 == bundle.sha256)
         .then_some(bytes)
         .ok_or(BuilderError::Bundle)
 }
@@ -200,7 +212,7 @@ fn file_bytes(clone: &Path, bundle: &Bundle, name: &str) -> Result<Vec<u8>, Buil
 }
 
 /// The last bundle's files with their size and SHA-256, `SHA256SUMS` last, and the updater
-/// file's signature (BLD-063, UPD-010). The signature was checked by the verify step.
+/// file's name (BLD-063, UPD-010).
 #[tauri::command]
 pub async fn builder_release_files<R: Runtime>(
     webview: Webview<R>,
@@ -214,15 +226,10 @@ pub async fn builder_release_files<R: Runtime>(
     let _claim = quiet(&running)?;
     let clone = clone_folder(&app)?;
     tauri::async_runtime::spawn_blocking(move || {
-        let name = file_name(&bundle.path)?;
-        let signature = artifact::read_signature(&bundle.path)?;
+        let updater = file_name(&bundle.path)?;
         let mut files = bundle_files(&clone, &bundle)?;
         let sums = sums(&files);
         files.push(described(SUMS.to_owned(), sums.as_bytes()));
-        let updater = SignedFile {
-            file: name,
-            signature,
-        };
         Ok(ReleaseFiles { files, updater })
     })
     .await

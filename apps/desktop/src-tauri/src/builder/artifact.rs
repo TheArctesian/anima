@@ -1,10 +1,9 @@
 //! Where a build leaves its files, and the checks that a file there is the build's own (BLD-043,
 //! BLD-047). The build wrote the folder, so a path is used only when it is a regular file inside
-//! the clone: a link to `~/.ssh` or elsewhere is refused before it is signed.
+//! the clone: a link to `~/.ssh` or elsewhere is refused before it is uploaded.
 
 use std::{
     fs::{self, File},
-    io::{Read, Write},
     os::unix::fs::{MetadataExt, OpenOptionsExt},
     path::{Path, PathBuf},
 };
@@ -65,8 +64,8 @@ pub fn own_file(clone: &Path, path: &Path) -> Result<PathBuf, BuilderError> {
 }
 
 /// Opens the build's own file at `path` for reading, once (D-13): never through a link, and only
-/// when it has one name, so a hard link to a file outside the clone is refused. Hash and sign
-/// from this one descriptor, so the bytes signed are the bytes checked.
+/// when it has one name, so a hard link to a file outside the clone is refused. Hash and read
+/// from this one descriptor, so the bytes recorded are the bytes checked.
 pub fn open_own(clone: &Path, path: &Path) -> Result<File, BuilderError> {
     let real = own_file(clone, path)?;
     let file = fs::OpenOptions::new()
@@ -100,45 +99,4 @@ pub fn universal(archs: &[String]) -> bool {
         .flat_map(|line| line.split_whitespace())
         .collect();
     words.contains(&"x86_64") && words.contains(&"arm64")
-}
-
-/// A `.sig` file is a few hundred bytes.
-const SIGNATURE_MAX_BYTES: u64 = 4096;
-
-fn signature_path(updater: &Path) -> PathBuf {
-    let mut path = updater.as_os_str().to_owned();
-    path.push(".sig");
-    PathBuf::from(path)
-}
-
-/// Writes `<updater>.sig` as a new file. Whatever the build left at that path, a link included,
-/// is removed first and never followed.
-pub fn write_signature(updater: &Path, text: &str) -> Result<(), BuilderError> {
-    let path = signature_path(updater);
-    match fs::remove_file(&path) {
-        Ok(()) => {}
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
-        Err(_) => return Err(BuilderError::Bundle),
-    }
-    let mut file = fs::OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(&path)
-        .map_err(|_| BuilderError::Bundle)?;
-    file.write_all(text.as_bytes())
-        .map_err(|_| BuilderError::Bundle)
-}
-
-/// Reads `<updater>.sig` when it is a regular file of at most `SIGNATURE_MAX_BYTES`.
-pub fn read_signature(updater: &Path) -> Result<String, BuilderError> {
-    let path = signature_path(updater);
-    let kind = fs::symlink_metadata(&path).map_err(|_| BuilderError::Bundle)?;
-    if !kind.is_file() || kind.len() > SIGNATURE_MAX_BYTES {
-        return Err(BuilderError::Bundle);
-    }
-    let mut text = String::new();
-    fs::File::open(&path)
-        .and_then(|file| file.take(SIGNATURE_MAX_BYTES).read_to_string(&mut text))
-        .map_err(|_| BuilderError::Bundle)?;
-    Ok(text)
 }

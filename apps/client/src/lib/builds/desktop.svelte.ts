@@ -1,5 +1,4 @@
 import { desktopBuilderShell } from '$lib/desktop/builder/shell';
-import { lockUpdaterKey } from '$lib/desktop/builder/updater-key';
 import { readThisMachine } from '$lib/desktop/this-machine';
 import { clearBuilderToken, readAccessToken, readBuilderToken, writeBuilderToken } from '$lib/desktop/token';
 import { createRequestHub, type Hub, type HubAddress } from '$lib/hub/hub';
@@ -59,7 +58,6 @@ export function provideDesktopBuilder(hub: Hub): void {
     },
     ids: builderIdStore(localStorage, address),
     operatorToken: () => readAccessToken(address),
-    lockKey: lockUpdaterKey,
     computerName,
     sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
     // eslint-disable-next-line svelte/prefer-svelte-reactivity -- a value for the feed's date, never held or rendered
