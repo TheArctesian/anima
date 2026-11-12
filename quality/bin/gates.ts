@@ -1,11 +1,11 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { compileCache } from "../src/gates/compile-cache.ts";
-import { formatGateEvent, gateList, missingRequirement, runGates } from "../src/gates/gates.ts";
+import { formatGateEvent, gateList, missingRequirement, runGates, steadyHostUnits } from "../src/gates/gates.ts";
 import { REPO_ROOT } from "../src/repository.ts";
 
 const baseRef = process.env["BASE_REF"] || "phase-2";
-const cache = compileCache(process.env, existsSync, join(REPO_ROOT, "quality", "bin", "compile-cache.ts"));
+const cache = compileCache(steadyHostUnits(process.env), existsSync, join(REPO_ROOT, "quality", "bin", "compile-cache.ts"));
 console.log(cache.line);
 
 const outcome = runGates(

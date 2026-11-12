@@ -92,6 +92,21 @@ export function runGates(
   return { exitCode: 0 };
 }
 
+/** Cargo's variable for the debuginfo of build scripts, proc macros and their dependencies (host units). */
+export const HOST_DEBUG_VARIABLE = "CARGO_PROFILE_DEV_BUILD_OVERRIDE_DEBUG";
+
+/**
+ * The gate run's environment with the host units' debuginfo set explicitly (R-112).
+ * Left unset, cargo gives a host unit `debug = 0` unless the same crate is also a normal dependency in the
+ * targets of that one command, and then shares the normal unit. So `cargo test --doc` and `--test pinning`
+ * select fewer targets than gate 3, get other host units, and rebuild sqlx, async-graphql, russh, tauri and the
+ * workspace crates on top of them. An explicit value makes every gate's host units the same. A value the caller
+ * set is kept.
+ */
+export function steadyHostUnits(env: Record<string, string | undefined>): Record<string, string | undefined> {
+  return env[HOST_DEBUG_VARIABLE] === undefined ? { ...env, [HOST_DEBUG_VARIABLE]: "0" } : env;
+}
+
 /**
  * Why `gate` cannot run: the first required executable missing from every `PATH` folder.
  * A missing tool fails its gate, never skips it (CQ-024).

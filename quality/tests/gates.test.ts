@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { gateList, missingRequirement, runGates, type Gate, type GateEvent } from "../src/gates/gates.ts";
+import { gateList, missingRequirement, runGates, steadyHostUnits, type Gate, type GateEvent } from "../src/gates/gates.ts";
 
 const NAMES = [
   "fmt", "clippy", "rust-test", "doctest", "pinning", "install", "lint", "check", "test", "build", "limits", "names", "imports", "baseline",
@@ -86,5 +86,16 @@ describe("missingRequirement", () => {
 
   test("needs nothing for a gate without requirements", () => {
     expect(missingRequirement({ name: "fmt", argv: ["cargo", "fmt"] }, "", () => false)).toBeUndefined();
+  });
+});
+
+describe("steadyHostUnits", () => {
+  test("R-112 sets the host units' debuginfo so gates 4 and 5 reuse gate 3's build", () => {
+    expect(steadyHostUnits({ PATH: "/bin" })).toEqual({ PATH: "/bin", CARGO_PROFILE_DEV_BUILD_OVERRIDE_DEBUG: "0" });
+  });
+
+  test("keeps a value the caller set", () => {
+    const env = { CARGO_PROFILE_DEV_BUILD_OVERRIDE_DEBUG: "line-tables-only" };
+    expect(steadyHostUnits(env)).toEqual(env);
   });
 });

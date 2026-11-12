@@ -41,6 +41,9 @@ nextest does not run doctests, so gate 4 runs them; the workspace has none today
 `anima-desktop`'s `pinning` target is not libtest (`harness = false`, R-069) and nextest cannot list it, so
 `.config/nextest.toml` leaves it out and gate 5 runs it with cargo (it proves the macOS trust hook; elsewhere it prints `skipped`).
 Gates 4 and 5 pass `--workspace` so cargo reuses gate 3's build instead of resolving features for one package.
+`bun run gates` also sets `CARGO_PROFILE_DEV_BUILD_OVERRIDE_DEBUG=0` unless you set it: left unset, cargo gives a build
+script's or proc macro's dependency the normal debuginfo only when the same crate is a normal dependency of that command's
+targets, so gates 4 and 5 (fewer targets) would rebuild sqlx, async-graphql, tauri and the workspace crates (about 70 s cold).
 Gate 3 fails with the install command when `cargo-nextest` is not on `PATH`.
 
 ### Throwaway PostgreSQL (R-009, R-019)
