@@ -1,5 +1,6 @@
-//! An agent enrolment code made, used and used again, the agent token it gives, a renewal, and
-//! a push whose body quotes the token (MET-012, MET-013, K8, LOG-007).
+//! An agent enrolment code made, used and used again, the agent token it gives, a renewal,
+//! a push whose body quotes the token, and a push with the renewed token (MET-012, MET-013, K8,
+//! LOG-007).
 
 use axum::http::StatusCode;
 use serde_json::{Value, json};
@@ -40,7 +41,22 @@ pub async fn enrol(hub: &WholeHub, token: &str, secrets: &mut Secrets) {
         )
         .await;
     assert_eq!(renewed.status, StatusCode::OK);
-    secrets.keep("agent-next-token", &token_of(&renewed.json()));
+    let next = token_of(&renewed.json());
+    secrets.keep("agent-next-token", &next);
+    // The renewed token, sent once on a push with an empty body.
+    let bearer = format!("Bearer {next}");
+    let pushed = hub
+        .post(
+            "/agent/v1/push",
+            &[("authorization", &bearer)],
+            "{}".to_owned(),
+        )
+        .await;
+    assert_eq!(
+        pushed.status,
+        StatusCode::BAD_REQUEST,
+        "the next token is accepted"
+    );
 }
 
 fn token_of(answer: &Value) -> String {

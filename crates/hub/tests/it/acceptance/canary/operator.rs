@@ -56,7 +56,7 @@ pub async fn sign_in(
         &secret.iter().copied().fold(String::new(), hex),
     );
     let typed = totp::code(&secret, now);
-    secrets.keep("totp-code", &format!("\"{typed}\""));
+    secrets.keep_code("totp-code", &typed);
     let signed_in = hub
         .graphql(&[], LOGIN, input(&password, Some(&typed)))
         .await;

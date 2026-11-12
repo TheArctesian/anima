@@ -1,6 +1,10 @@
-//! Notification channels of each kind with their secrets, each sent a test to a receiver on
-//! 127.0.0.1, which the hub's address policy refuses, so each send takes its error path; an
-//! update and a refused input with secrets too (NOT-002, NOT-004, P3-003, K7, LOG-007).
+//! Notification channels of each kind with their secrets: create, update, a refused input, and a
+//! "Send test" to a receiver on 127.0.0.1 that the hub's address policy refuses, so each send
+//! stops before egress (NOT-002, NOT-004, P3-003, K7, LOG-007). No send here gets past the
+//! policy; the egress path, a send that succeeds or fails at its target, is covered by
+//! `src/notifications/dispatch/tests/secrets.rs`
+//! (`log_007_no_secret_is_logged_by_a_send_that_succeeds`,
+//! `log_007_no_secret_is_logged_recorded_or_delivered_by_a_failing_send`).
 
 use std::sync::{
     Arc,

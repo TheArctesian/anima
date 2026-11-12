@@ -1,13 +1,25 @@
 //! Criterion 22 in one log (G-13, G-14): the whole hub, in process, takes every merged Phase 3
-//! secret, on its success and its error paths, and its process log at TRACE for every target
-//! holds none of them in any form (LOG-007, SEC-009, P3-004).
+//! secret, through each path that reaches it in process, and its process log at TRACE for
+//! every target and every thread holds none of them in any form (LOG-007).
 //!
 //! A secret the operator types is a canary planted for this run, `canary-<kind>-<32 hex>`; a
-//! secret the hub makes (a token, a code, a key) is read from its answer. The log is this
-//! thread's: the test runs on one thread, so the hub's spawned tasks write here too. The
-//! password hash runs on a blocking thread and is not seen; it logs nothing.
+//! secret the hub makes (a token, a code, a key) is read from its answer.
+//!
+//! Not here, with the test that covers each:
+//! - a notification send that passes the address policy, success or failure: the policy
+//!   refuses loopback and no other network is used, so the egress path is covered by
+//!   `src/notifications/dispatch/tests/secrets.rs` (`log_007_no_secret_is_logged_by_a_send_that_succeeds`,
+//!   `log_007_no_secret_is_logged_recorded_or_delivered_by_a_failing_send`);
+//! - session content and tunnel (ticket) tokens: they need an SSH server or guacd and an
+//!   accepted host key, so they are covered by `tests/it/sessions/leak.rs`
+//!   (`log_007_the_ticket_token_is_never_stored_logged_or_in_an_error`), the terminal and tunnel
+//!   wire refusals (`log_007_the_token_and_password_never_reach_the_log`,
+//!   `log_007_gw_014_the_token_password_and_connection_id_never_reach_the_log`) and
+//!   `src/sessions/files/tests/transfers.rs` for file paths and content;
+//! - recording, which R-113 removed.
 
 mod agents;
+mod capture;
 mod channels;
 mod credentials;
 mod edge;
@@ -16,23 +28,26 @@ mod keys;
 mod operator;
 mod vpn;
 
-use anima_hub::events::process_log;
 use chrono::{DateTime, DurationRound as _, TimeDelta, Utc};
 use sqlx::PgPool;
 
 use self::{edge::WholeHub, forms::Leak};
-use crate::logs::Capture;
 
 /// The secrets of one run, each with its kind and the part that only it holds.
 #[derive(Default)]
 pub struct Secrets(Vec<Secret>);
 
-/// One secret: its kind, its whole text, and the random part that only this secret holds.
+/// One secret: its kind, its whole text, the random part that only this secret holds, and
+/// whether it is a code of digits.
 pub struct Secret {
     kind: &'static str,
     text: String,
     random: String,
+    digits: bool,
 }
+
+/// The fixed starts of the secrets the hub makes, which are not random.
+const PREFIXES: [&str; 3] = ["anima_agent_", "anima_enrol_", "anima_"];
 
 impl Secrets {
     /// Plants a new canary of `kind` and returns it.
@@ -56,6 +71,7 @@ impl Secrets {
             kind,
             text: text.clone(),
             random,
+            digits: false,
         });
         text
     }
@@ -63,10 +79,23 @@ impl Secrets {
     /// Keeps `text`, a secret the hub made, as one of `kind`.
     pub fn keep(&mut self, kind: &'static str, text: &str) {
         assert!(!text.is_empty(), "no {kind}");
+        let random = PREFIXES.iter().find_map(|prefix| text.strip_prefix(prefix));
         self.0.push(Secret {
             kind,
             text: text.to_owned(),
-            random: text.to_owned(),
+            random: random.unwrap_or(text).to_owned(),
+            digits: false,
+        });
+    }
+
+    /// Keeps `code`, a code of digits, as one of `kind`: it is searched as a number.
+    pub fn keep_code(&mut self, kind: &'static str, code: &str) {
+        assert!(code.bytes().all(|b| b.is_ascii_digit()), "a code of digits");
+        self.0.push(Secret {
+            kind,
+            text: code.to_owned(),
+            random: String::new(),
+            digits: true,
         });
     }
 
@@ -129,15 +158,8 @@ const EXPECTED: [&str; 35] = [
     migrations = "./migrations",
     fixtures(path = "../../fixtures", scripts("devices"))
 )]
-async fn log_007_sec_009_p3_004_no_phase_3_secret_reaches_the_process_log(pool: PgPool) {
-    let capture = Capture::default();
-    let writer = capture.clone();
-    let subscriber = process_log::subscriber("trace", move || writer.clone()).unwrap();
-    // As in agent::secrecy: a second dispatcher keeps another test thread from caching this
-    // test's callsites as disabled.
-    let _second = tracing::Dispatch::new(tracing::subscriber::NoSubscriber::default());
-    let guard = tracing::subscriber::set_default(subscriber);
-    tracing::callsite::rebuild_interest_cache();
+async fn log_007_no_phase_3_secret_reaches_the_process_log(pool: PgPool) {
+    let watch = capture::everywhere();
 
     let now = database_now(&pool).await;
     let mut secrets = Secrets::default();
@@ -152,15 +174,21 @@ async fn log_007_sec_009_p3_004_no_phase_3_secret_reaches_the_process_log(pool: 
     vpn::change(&hub, &token, (&pool, &feed, &broker), now).await;
     // A line after the requests proves the log reached the buffer: an empty capture is no pass.
     tracing::error!("capture control line");
-    drop(guard);
+    let blocking = tokio::task::spawn_blocking(|| tracing::error!("blocking pool control line"));
+    blocking.await.unwrap();
+    let log = watch.capture.text();
+    drop(watch);
 
     let mut kinds = secrets.kinds();
     kinds.sort_unstable();
     let mut expected = EXPECTED.to_vec();
     expected.sort_unstable();
     assert_eq!(kinds, expected, "every secret was driven through the hub");
-    let log = capture.text();
     assert!(log.contains("capture control line"), "the log was captured");
+    assert!(
+        log.contains("blocking pool control line"),
+        "and the blocking pool's"
+    );
     assert!(log.contains(r#""level":"TRACE""#), "the log is at TRACE");
     for route in ["/graphql", "/metrics", "/agent/v1/enrol", "/agent/v1/renew"] {
         assert!(
