@@ -5,13 +5,15 @@ import { parseNftables } from "../src/nftables.ts";
 import { HARDEN_TIMEOUT_MS, VPS_DIR, fakeHost, removeHosts, type Host } from "./vps-host.ts";
 
 // VP-13, VPS-001: sshd admits the hub's unprivileged user anima-probe, by key, only from the hub
-// container's address 172.30.0.10, beside the admin user. harden.sh ssh and check accept exactly
-// that entry and report any other user or host part.
+// container's address 172.30.0.10, beside the admin user, who may log in only over the VPN
+// (100.64.0.0/10). harden.sh ssh and check accept exactly those entries and report any other user
+// or host part.
 setDefaultTimeout(HARDEN_TIMEOUT_MS);
 afterEach(removeHosts);
 
 const DROP_IN = "etc/ssh/sshd_config.d/00-anima.conf";
 const PROBE = "anima-probe@172.30.0.10";
+const ADMIN = "admin@100.64.0.0/10";
 const readVps = (name: string): string => readFileSync(join(VPS_DIR, name), "utf8");
 let host: Host;
 
@@ -20,9 +22,9 @@ beforeEach(() => {
 });
 
 describe("the anima-probe entry (VP-13)", () => {
-  test("VP-13 the drop-in allows the admin and anima-probe from the hub address, with keys only", () => {
+  test("VP-13 the drop-in allows the admin from the VPN and anima-probe from the hub address, with keys only", () => {
     const lines = readVps("sshd-anima.conf").split("\n").filter((line) => !line.startsWith("#"));
-    expect(lines.filter((line) => line.startsWith("AllowUsers"))).toEqual([`AllowUsers \${ANIMA_ADMIN_USER} ${PROBE}`]);
+    expect(lines.filter((line) => line.startsWith("AllowUsers"))).toEqual([`AllowUsers \${ANIMA_ADMIN_USER}@100.64.0.0/10 ${PROBE}`]);
     expect(lines).toContain("PasswordAuthentication no");
     expect(lines).toContain("AuthenticationMethods publickey");
   });
@@ -39,7 +41,7 @@ describe("the anima-probe entry (VP-13)", () => {
 
   test("VP-13 ssh installs the drop-in and check finds no AllowUsers problem", () => {
     expect(host.run(["ssh"]).code).toBe(0);
-    expect(host.read(DROP_IN)).toContain(`\nAllowUsers admin ${PROBE}\n`);
+    expect(host.read(DROP_IN)).toContain(`\nAllowUsers ${ADMIN} ${PROBE}\n`);
     const run = host.run(["check"]);
     expect(run.out).not.toContain("allowusers");
     expect(run.calls).toContain("SSHD -T -C user=anima-probe,host=x,addr=172.30.0.10");
@@ -77,6 +79,23 @@ describe("other AllowUsers entries stay refused (VP-13, VPS-001)", () => {
     const run = host.run(["check"]);
     expect(run.code).toBe(1);
     expect(run.out).toContain(`VIOLATION: sshd -T: expected "allowusers ${PROBE}"`);
+  });
+
+  test("VP-13 F5 check reports an admin entry that is not limited to the VPN", () => {
+    host.harden();
+    host.write(DROP_IN, host.read(DROP_IN).replace(ADMIN, "admin"));
+    const run = host.run(["check"]);
+    expect(run.code).toBe(1);
+    expect(run.out).toContain(`VIOLATION: sshd -T: expected "allowusers ${ADMIN}"`);
+    expect(run.out).toContain('VIOLATION: sshd -T: unexpected "allowusers admin"');
+  });
+
+  test("VP-13 F5 ssh refuses and restores when another drop-in lets the admin in from anywhere", () => {
+    host.write("etc/ssh/sshd_config.d/50-cloud-init.conf", "AllowUsers admin\n");
+    const run = host.run(["ssh"]);
+    expect(run.code).toBe(1);
+    expect(run.out).toContain('unexpected "allowusers admin"');
+    expect(host.exists(DROP_IN)).toBe(false);
   });
 
   test("VP-13 check reports a probe entry with a wider host part", () => {

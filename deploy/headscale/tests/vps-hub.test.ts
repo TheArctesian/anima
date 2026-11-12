@@ -18,6 +18,15 @@ const VPN_ADDRESS = "100.64.0.1";
 const PUBLIC_ADDRESS = "203.0.113.7";
 const GATEWAY_BRIDGE = "br-5c0a77d1e2f3";
 const NOTIFY_BRIDGE = "br-3f9a0c1d2e4b";
+const DATABASE_BRIDGE = "br-0db0db0db0db";
+
+/** The interface of this host's route back to a source: the bridge whose subnet holds it. */
+function routeTo(saddr: string): string {
+  if (saddr.startsWith("172.30.0.")) return GATEWAY_BRIDGE;
+  if (saddr.startsWith("172.30.3.")) return NOTIFY_BRIDGE;
+  if (saddr.startsWith("172.17.")) return "docker0";
+  return "eth0";
+}
 
 /** A packet for this host: raw prerouting, then input if prerouting let it through. */
 function delivered(packet: Packet): Verdict {
@@ -28,7 +37,7 @@ function delivered(packet: Packet): Verdict {
 type Flow = Pick<Packet, "protocol"> & Partial<Packet>;
 
 const fromBridge = (saddr: string, flow: Flow): Packet =>
-  ({ iifname: GATEWAY_BRIDGE, saddr, daddr: VPN_ADDRESS, daddrIsLocal: true, ctState: "new", ...flow });
+  ({ iifname: GATEWAY_BRIDGE, saddr, saddrRoute: routeTo(saddr), daddr: VPN_ADDRESS, daddrIsLocal: true, ctState: "new", ...flow });
 
 const SSH: Flow = { protocol: "tcp", dport: 22 };
 const ECHO: Flow = { protocol: "icmp", icmpType: "echo-request" };
@@ -57,6 +66,9 @@ describe("no other source reaches this host's VPN address (VP-13, DNS-005)", () 
     ["a container on docker0", fromBridge("172.17.0.2", { iifname: "docker0" })],
     ["the hub's address forged on the public interface", fromBridge(HUB, { iifname: "eth0" })],
     ["the hub's address on an interface that is not a Docker bridge", fromBridge(HUB, { iifname: "veth1a2b3c" })],
+    ["the hub's address forged on another Docker bridge", fromBridge(HUB, { iifname: DATABASE_BRIDGE })],
+    ["the hub's address forged on docker0", fromBridge(HUB, { iifname: "docker0" })],
+    ["the hub's address from a tailnet node", fromBridge(HUB, { iifname: "tailscale0" })],
   ];
 
   for (const [name, packet] of others) {
@@ -94,6 +106,46 @@ describe("the hub reaches nothing else on this host (VP-13, DNS-005, VPS-002)", 
     expect(delivered(fromBridge(HUB, { ...SSH, daddr: PUBLIC_ADDRESS }))).toBe("drop");
     expect(delivered(fromBridge(HUB, { ...SSH, daddr: "172.30.0.1" }))).toBe("drop");
   });
+
+  test.each([
+    ["tcp", 443],
+    ["udp", 41641],
+    ["udp", 3478],
+    ["tcp", 22],
+  ] as const)("VP-13 the hub may not reach docker0's gateway or the public address on %s/%d", (protocol, dport) => {
+    for (const daddr of ["172.17.0.1", "172.30.0.1", PUBLIC_ADDRESS]) {
+      expect(delivered(fromBridge(HUB, { protocol, dport, daddr }))).toBe("drop");
+    }
+  });
+
+  test("VP-13 replies to a connection this host opened to the hub still pass", () => {
+    expect(delivered(fromBridge(HUB, { protocol: "tcp", dport: 51000, daddr: "172.30.0.1", ctState: "established" }))).toBe("accept");
+  });
+});
+
+describe("the exception admits only well-formed hub packets (VP-13 security review)", () => {
+  test("VP-13 F4 an invalid-state packet from the hub to 22 or as echo is dropped like every other invalid packet", () => {
+    expect(delivered(fromBridge(HUB, { ...SSH, ctState: "invalid" }))).toBe("drop");
+    expect(delivered(fromBridge(HUB, { ...ECHO, ctState: "invalid" }))).toBe("drop");
+  });
+
+  test("VP-13 F2 the hub's address is accepted only on the bridge its route goes back to", () => {
+    // The real hub, but the route to 172.30.0.10 left the gateway bridge (a tailnet route over it):
+    // the exception closes rather than trust the source.
+    expect(delivered(fromBridge(HUB, { ...SSH, saddrRoute: "tailscale0" }))).toBe("drop");
+    expect(delivered(fromBridge(HUB, { ...SSH, iifname: DATABASE_BRIDGE }))).toBe("drop");
+    expect(delivered(fromBridge(HUB, { ...ECHO, iifname: DATABASE_BRIDGE }))).toBe("drop");
+  });
+
+  test("VP-13 F3 no tailnet node may send from an Anima container range, to this host or through it", () => {
+    for (const saddr of [HUB, GUACD, "172.30.1.5", "172.30.255.254"]) {
+      const packet = fromBridge(saddr, { ...SSH, iifname: "tailscale0", saddrRoute: "tailscale0" });
+      expect(evaluateChain(chain("prerouting"), packet)).toBe("drop");
+      expect(evaluateChain(chain("prerouting"), { ...packet, daddr: "172.30.0.10", daddrIsLocal: false })).toBe("drop");
+    }
+    const site = fromBridge("10.10.0.5", { ...SSH, iifname: "tailscale0", saddrRoute: "tailscale0" });
+    expect(delivered(site)).toBe("accept");
+  });
 });
 
 describe("the hub addresses in the firewall and in compose.yaml (VP-13)", () => {
@@ -116,6 +168,22 @@ describe("the hub addresses in the firewall and in compose.yaml (VP-13)", () => 
 
   test("VP-13 hub_vpn_address is one address in the VPN range", () => {
     expect(ruleset.commands).toContain(`define hub_vpn_address = ${VPN_ADDRESS}`);
+  });
+});
+
+describe("packet evaluator reverse path and short circuit", () => {
+  const packet: Packet = { iifname: "br-x", saddr: HUB, daddr: VPN_ADDRESS, daddrIsLocal: true, protocol: "tcp", dport: 22 };
+  const one = (rule: string): Chain => ({ table: "inet x", name: "c", rules: [rule], policy: "accept" });
+
+  test("VP-13 fib saddr . iif oif exists holds only when the route back to the source is the input interface", () => {
+    expect(evaluateChain(one("fib saddr . iif oif exists drop"), { ...packet, saddrRoute: "br-x" })).toBe("drop");
+    expect(evaluateChain(one("fib saddr . iif oif exists drop"), { ...packet, saddrRoute: "br-y" })).toBe("accept");
+    expect(() => evaluateChain(one("fib saddr . iif oif exists drop"), packet)).toThrow("no saddrRoute");
+  });
+
+  test("VP-13 a rule stops at the first match that fails, as in nft, but still refuses an unknown form", () => {
+    expect(evaluateChain(one('iifname "eth0" fib saddr . iif oif exists drop'), packet)).toBe("accept");
+    expect(() => evaluateChain(one('iifname "eth0" rt mtu 1 drop'), packet)).toThrow("unsupported match");
   });
 });
 

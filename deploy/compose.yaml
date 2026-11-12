@@ -172,8 +172,9 @@ services:
       ANIMA_GUACD: guacd:4822
       ANIMA_GUACD_DRIVE_ROOT: /var/lib/guacd/drives
       ANIMA_PERMITTED_NETWORKS: ${ANIMA_PERMITTED_NETWORKS:-100.64.0.0/10}
-      # Checks and channels never reach the hub's own networks or the VPS public address, so a
-      # device entry cannot reach PostgreSQL, guacd or the host's public side. The hub's VPN
+      # Checks and channels never reach the hub's own networks, docker0 (172.17.0.0/16, whose
+      # gateway is the host) or the VPS public address, so a device entry cannot reach PostgreSQL,
+      # guacd, lego or the host's public side. The hub's VPN
       # address (ANIMA_HUB_ADDRESS, 100.64.0.1) is not in the list (VP-13): the VPS is a device,
       # and the host firewall lets only this container's gateway address reach it, on 22/tcp and
       # ICMP echo (deploy/headscale/vps/nftables.conf, `hub_source`). The notify
@@ -183,7 +184,7 @@ services:
       # do not contain it: a service URL parameter such as `template` still makes Apprise fetch
       # any URL. Containment is the host firewall rule for 172.30.3.10, a required live step
       # before Apprise runs (README, Phase 3 operator changes).
-      ANIMA_PROBE_DENY: ${ANIMA_HUB_SUBNET:-172.30.0.0/24},${ANIMA_DATABASE_SUBNET:-172.30.1.0/24},${ANIMA_VPS_PUBLIC_ADDRESS:?set to the VPS public IPv4}/32,${ANIMA_LOCALAPI_SUBNET:-172.30.2.0/24},172.30.3.0/29,172.30.3.8/31,172.30.3.11/32,172.30.3.12/30,172.30.3.16/28,172.30.3.32/27,172.30.3.64/26,172.30.3.128/25
+      ANIMA_PROBE_DENY: ${ANIMA_HUB_SUBNET:-172.30.0.0/24},${ANIMA_DATABASE_SUBNET:-172.30.1.0/24},${ANIMA_VPS_PUBLIC_ADDRESS:?set to the VPS public IPv4}/32,${ANIMA_LOCALAPI_SUBNET:-172.30.2.0/24},${ANIMA_ACME_SUBNET:-172.30.4.0/24},172.17.0.0/16,172.30.3.0/29,172.30.3.8/31,172.30.3.11/32,172.30.3.12/30,172.30.3.16/28,172.30.3.32/27,172.30.3.64/26,172.30.3.128/25
       # Tailscale status and ping checks go through the proxy; empty makes them Unknown (K7).
       ANIMA_TAILSCALE_LOCALAPI: ${ANIMA_TAILSCALE_LOCALAPI:-localapi:8080}
       # The VPN broker's socket (R-055, VP-7): keys, registration and route approval. With no
@@ -303,11 +304,17 @@ networks:
     ipam:
       config:
         - subnet: ${ANIMA_DATABASE_SUBNET:-172.30.1.0/24}
-  # guacd and the hub reach devices from here (GW-002, GW-003).
+  # guacd and the hub reach devices from here (GW-002, GW-003). Docker gives a container without a
+  # fixed address one from ip_range only, so none can ever take the hub's or guacd's fixed address
+  # below it (VP-13): the VPS firewall and sshd trust the hub's. The gateway is fixed because with
+  # ip_range Docker would otherwise take the range's first address. Every Anima subnet stays inside
+  # 172.30.0.0/16, the range the VPS firewall drops from the VPN (bin/preflight checks it).
   gateway:
     ipam:
       config:
         - subnet: ${ANIMA_HUB_SUBNET:-172.30.0.0/24}
+          ip_range: ${ANIMA_HUB_IP_RANGE:-172.30.0.128/25}
+          gateway: ${ANIMA_HUB_GATEWAY:-172.30.0.1}
   # The hub and the LocalAPI proxy only; no route out.
   localapi:
     internal: true
@@ -321,7 +328,11 @@ networks:
     ipam:
       config:
         - subnet: 172.30.3.0/24
-  acme: {}
+  # lego only, with a route out (DNS-003). A fixed subnet, so the hub's deny list can hold it.
+  acme:
+    ipam:
+      config:
+        - subnet: ${ANIMA_ACME_SUBNET:-172.30.4.0/24}
 
 volumes:
   postgres_data: {}

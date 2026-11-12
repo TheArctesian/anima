@@ -34,6 +34,10 @@ const TAILNET_V6: IpNet = IpNet::new_assert(
     48,
 );
 
+/// The hub's own container networks on its host (`deploy/compose.yaml`; the deploy preflight
+/// keeps every `ANIMA_*_SUBNET` inside it). The host firewall drops this range from the VPN.
+const HUB_NETWORKS: IpNet = IpNet::new_assert(IpAddr::V4(Ipv4Addr::new(172, 30, 0, 0)), 16);
+
 /// Whether a site's `subnet` is reached directly over the VPN, so it has no subnet router.
 /// True for a subnet inside the tailnet range and for one that overlaps it (contains it, for
 /// example `0.0.0.0/0` or `100.0.0.0/8`): a router could not serve such a subnet separately
@@ -41,7 +45,25 @@ const TAILNET_V6: IpNet = IpNet::new_assert(
 pub(super) fn on_tailnet(subnet: IpNet) -> bool {
     [TAILNET_V4, TAILNET_V6]
         .iter()
-        .any(|range| range.contains(&subnet) || subnet.contains(range))
+        .any(|range| overlaps(*range, subnet))
+}
+
+/// Whether a site's `subnet` overlaps the hub's own container networks (VP-13). A router that
+/// served it could send from the hub's addresses, which the hub's host trusts, so such a site
+/// gets no router: the host drops that range from the VPN in any case.
+pub(super) fn on_hub_networks(subnet: IpNet) -> bool {
+    overlaps(HUB_NETWORKS, subnet)
+}
+
+/// Two prefixes overlap when one contains the other.
+fn overlaps(range: IpNet, subnet: IpNet) -> bool {
+    range.contains(&subnet) || subnet.contains(&range)
+}
+
+/// Whether a site can have a subnet router: it is neither on the tailnet range nor over the
+/// hub's own networks.
+fn is_router_site(subnet: IpNet) -> bool {
+    !on_tailnet(subnet) && !on_hub_networks(subnet)
 }
 
 /// What one picture is built from. A site is its id and subnet, in site name order.
@@ -57,8 +79,8 @@ pub(super) struct Inputs<'a> {
     pub broker: Option<&'a BrokerView>,
 }
 
-/// The picture of `inputs`, fresh, read at `now`. A site on the tailnet range is left out
-/// (`on_tailnet`): it has no router.
+/// The picture of `inputs`, fresh, read at `now`. A site on the tailnet range (`on_tailnet`) or
+/// over the hub's own networks (`on_hub_networks`) is left out: it has no router.
 ///
 /// # Errors
 /// `Unreadable` when the hub's own node has no IPv4 address (it is not on the VPN).
@@ -71,7 +93,7 @@ pub(super) fn build(inputs: &Inputs<'_>) -> Result<Picture, Error> {
     let sites: Vec<SitePath> = inputs
         .sites
         .iter()
-        .filter(|&&(_, subnet)| !on_tailnet(subnet))
+        .filter(|&&(_, subnet)| is_router_site(subnet))
         .map(|&(site, subnet)| {
             let mut path = site_path(site, subnet, &nodes, inputs.ping_checked);
             path.waiting_router = inputs
@@ -105,7 +127,7 @@ pub(super) fn router_devices(
         .filter(|peer| {
             sites
                 .iter()
-                .filter(|&&(_, subnet)| !on_tailnet(subnet))
+                .filter(|&&(_, subnet)| is_router_site(subnet))
                 .any(|&(_, subnet)| serves(&peer.primary_routes, subnet))
         })
         .filter_map(|peer| device_of(peer, devices).map(|(id, _)| id))

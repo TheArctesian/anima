@@ -1,11 +1,13 @@
 /**
  * A minimal packet evaluator for the rule forms in `vps/nftables.conf`: interface name
- * matches (with a trailing `*` wildcard), `fib daddr type local`, `ip saddr` and `ip daddr`
- * prefixes or prefix sets, `ip6` matches (never true: the packets are IPv4), `ct state`,
- * `tcp`/`udp dport`, `icmp type` (by name), `limit rate` (never exceeded), `$name` defines,
- * and the `drop` and `accept` verdicts. An `icmpv6 type` rule never matches (the packets are
- * IPv4). Any other rule form throws, and so does a rule that needs a packet field the test did
- * not give, so nothing is guessed.
+ * matches (with a trailing `*` wildcard), `fib daddr type local`, the reverse-path test
+ * `fib saddr . iif oif exists`, `meta skuid`, `ip saddr` and `ip daddr` prefixes or prefix
+ * sets, `ip6` matches (never true: the packets are IPv4), `ct state`, `tcp`/`udp dport`,
+ * `icmp type` (by name), `limit rate` (never exceeded), `$name` defines, and the `drop` and
+ * `accept` verdicts. An `icmpv6 type` rule never matches (the packets are IPv4). Any other rule
+ * form throws, and so does a rule that needs a packet field the test did not give, so nothing
+ * is guessed. As in nft, a rule stops at its first match that fails: the rest of the rule is
+ * still read (an unsupported form throws) but needs no packet field.
  */
 import type { Chain, parseNftables } from "../src/nftables.ts";
 
@@ -18,6 +20,13 @@ export interface Packet {
   daddr: string;
   /** Whether `fib daddr type local` is true: the destination is one of this host's addresses. */
   daddrIsLocal: boolean;
+  /**
+   * The interface of this host's route back to `saddr`; `fib saddr . iif oif exists` holds when it
+   * is `iifname`. Required by that rule.
+   */
+  saddrRoute?: string;
+  /** The uid of the local socket that sent the packet (output only); required by `meta skuid`. */
+  skuid?: number;
   /** Connection tracking state; required by `ct state` rules. */
   ctState?: "new" | "established" | "related" | "invalid";
   /** Layer 4 protocol; required by port and ICMP rules. */
@@ -138,11 +147,21 @@ function limitCondition(tokens: string[], at: number, rule: string): Condition {
   return { matches: true, next };
 }
 
+const REVERSE_PATH = "fib saddr . iif oif exists";
+
 function condition(tokens: string[], at: number, packet: Packet, rule: string): Condition {
   const word = tokens[at] ?? "";
   if (word === "iifname" || word === "oifname" || word === "iif") return interfaceCondition(tokens, at, packet);
   if (word === "fib" && tokens.slice(at, at + 4).join(" ") === "fib daddr type local") {
     return { matches: packet.daddrIsLocal, next: at + 4 };
+  }
+  if (word === "fib" && tokens.slice(at, at + 6).join(" ") === REVERSE_PATH) {
+    return { matches: required(packet.saddrRoute, "saddrRoute", rule) === packet.iifname, next: at + 6 };
+  }
+  if (word === "meta" && tokens[at + 1] === "skuid") {
+    const { negated, values, next } = readOperand(tokens, at + 2);
+    const hit = values.map(Number).includes(required(packet.skuid, "skuid", rule));
+    return { matches: hit !== negated, next };
   }
   if (word === "ip" || word === "ip6") return addressCondition(tokens, at, packet, rule);
   if (word === "ct") return ctCondition(tokens, at, packet, rule);
@@ -151,6 +170,15 @@ function condition(tokens: string[], at: number, packet: Packet, rule: string): 
   throw new Error(`unsupported match "${word}" in rule: ${rule}`);
 }
 
+/**
+ * A packet with every field a match can need, to read past the conditions after the first that
+ * fails without evaluating them.
+ */
+const ANY_PACKET: Packet = {
+  iifname: "", oifname: "", saddr: "0.0.0.0", daddr: "0.0.0.0", daddrIsLocal: false, saddrRoute: "",
+  skuid: -1, ctState: "new", protocol: "tcp", dport: 0, icmpType: "",
+};
+
 /** Whether the packet meets every condition of the rule, and the verdict (the last token). */
 function ruleMatches(rule: string, packet: Packet): { matches: boolean; verdict: Verdict } {
   const tokens = rule.match(TOKEN) ?? [];
@@ -158,7 +186,7 @@ function ruleMatches(rule: string, packet: Packet): { matches: boolean; verdict:
   if (verdict !== "drop" && verdict !== "accept") throw new Error(`unsupported verdict in rule: ${rule}`);
   let matches = true;
   for (let at = 0; at < tokens.length; ) {
-    const result = condition(tokens, at, packet, rule);
+    const result = condition(tokens, at, matches ? packet : ANY_PACKET, rule);
     matches &&= result.matches;
     at = result.next;
   }

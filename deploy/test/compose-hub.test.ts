@@ -165,15 +165,18 @@ describe("hub deny list and default route for the VPS as a device (VP-13)", () =
     expect(denyEntries(compose.services["hub"] as Container).some((entry) => entry.contains(ipv4("100.64.0.1")))).toBe(false);
   });
 
-  test("VP-13 the deny list holds exactly the hub's Docker subnets, the carved notify network and the public address", () => {
+  test("VP-13 the deny list holds exactly the Docker subnets, the carved notify network and the public address", () => {
     const deny = (compose.services["hub"]?.environment?.["ANIMA_PROBE_DENY"] ?? "").split(",");
-    expect(deny.slice(0, 4)).toEqual([
+    expect(deny.slice(0, 6)).toEqual([
       "${ANIMA_HUB_SUBNET:-172.30.0.0/24}",
       "${ANIMA_DATABASE_SUBNET:-172.30.1.0/24}",
       "${ANIMA_VPS_PUBLIC_ADDRESS:?set to the VPS public IPv4}/32",
       "${ANIMA_LOCALAPI_SUBNET:-172.30.2.0/24}",
+      // VP-13 I1: lego's network and docker0, whose gateway 172.17.0.1 is the host.
+      "${ANIMA_ACME_SUBNET:-172.30.4.0/24}",
+      "172.17.0.0/16",
     ]);
-    expect(deny.slice(4).every((entry) => entry.startsWith("172.30.3."))).toBe(true);
+    expect(deny.slice(6).every((entry) => entry.startsWith("172.30.3."))).toBe(true);
   });
 
   test("VP-13 the hub's default route is the gateway network, by gw_priority, at its fixed address", () => {

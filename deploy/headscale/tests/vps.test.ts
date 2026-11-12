@@ -11,11 +11,14 @@ const ruleset = parseNftables(readVps("nftables.conf"));
 const hooked = (hook: string): Chain => ruleset.chains.find((chain) => chain.hook === hook) as Chain;
 const input = hooked("input");
 
-// VP-13: the hub container's SSH and ping to this host's VPN address, the one exception to DNS-005.
+// VP-13: the hub container's SSH and ping to this host's VPN address, the one exception to DNS-005,
+// each only when the route back to the hub is the bridge the packet came in on.
 const HUB = 'iifname "br-*" ip saddr $hub_source ip daddr $hub_vpn_address';
-const HUB_SSH = `${HUB} tcp dport 22 accept`;
-const HUB_ECHO_PREROUTING = `${HUB} icmp type echo-request accept`;
-const HUB_ECHO_INPUT = `${HUB} icmp type echo-request limit rate 5/second burst 10 packets accept`;
+const REVERSE_PATH = "fib saddr . iif oif exists";
+const HUB_SSH = `${HUB} tcp dport 22 ${REVERSE_PATH} accept`;
+const HUB_ECHO_PREROUTING = `${HUB} icmp type echo-request ${REVERSE_PATH} accept`;
+const HUB_ECHO_INPUT = `${HUB} icmp type echo-request ${REVERSE_PATH} limit rate 5/second burst 10 packets accept`;
+const HUB_OTHERWISE = 'iifname "br-*" ip saddr $hub_source drop';
 
 describe("nftables.conf", () => {
   test("VPS-002: the input chain drops by default", () => {
@@ -37,14 +40,14 @@ describe("nftables.conf", () => {
   test("VPS-002 VP-13: 22/tcp is accepted only on tailscale0 and, for the hub container, on a Docker bridge", () => {
     expect(interfacePorts(input, "tailscale0")).toEqual(["22/tcp"]);
     expect(interfacePorts(input, "br-*")).toEqual(["22/tcp"]);
-    expect(input.rules.filter((rule) => rule.startsWith('iifname "br-*"'))).toEqual([HUB_SSH, HUB_ECHO_INPUT]);
+    expect(input.rules.filter((rule) => rule.startsWith('iifname "br-*"'))).toEqual([HUB_SSH, HUB_ECHO_INPUT, HUB_OTHERWISE]);
     expect(publicPorts(input)).not.toContain("22/tcp");
   });
 
   test("VPS-002: replaces only its own table and never flushes the ruleset", () => {
     expect(ruleset.commands.slice(0, 2)).toEqual(["table inet anima_filter", "delete table inet anima_filter"]);
-    // NOT-002, VP-13: the only other top-level lines are the Apprise and hub defines
-    // (vps-apprise.test.ts, vps-hub.test.ts).
+    // NOT-002, VP-13: the only other top-level lines are the Apprise, hub and anima-probe defines
+    // (vps-apprise.test.ts, vps-hub.test.ts, vps-probe-egress.test.ts).
     expect(ruleset.commands.slice(2).filter((command) => !/^define \w+ = /.test(command))).toEqual([]);
     expect(readVps("nftables.conf")).not.toMatch(/^\s*flush\s+ruleset/m);
   });
@@ -72,6 +75,7 @@ describe("nftables.conf keeps the VPN addresses on tailscale0 (DNS-005)", () => 
     expect(prerouting.table).toBe("inet anima_filter");
     expect(prerouting.priority).toBeLessThanOrEqual(DSTNAT_PRIORITY);
     expect(prerouting.rules).toEqual([
+      'iifname "tailscale0" ip saddr $hub_networks drop',
       HUB_SSH,
       HUB_ECHO_PREROUTING,
       ...LOCAL_VPN_DROPS,
@@ -97,8 +101,9 @@ describe("nftables.conf keeps the VPN addresses on tailscale0 (DNS-005)", () => 
   });
 
   test("VPS-002/DNS-005: the input chain drops VPN destinations off tailscale0 before any accept but the hub's (VP-13)", () => {
-    expect(input.rules.slice(0, 3)).toEqual(["ip saddr $apprise drop", HUB_SSH, HUB_ECHO_INPUT]);
-    const firstAccept = input.rules.findIndex((rule, index) => index > 2 && rule.endsWith("accept"));
+    // VP-13 F4: invalid packets are dropped before the hub's exception can accept one.
+    expect(input.rules.slice(0, 4)).toEqual(["ip saddr $apprise drop", "ct state invalid drop", HUB_SSH, HUB_ECHO_INPUT]);
+    const firstAccept = input.rules.findIndex((rule, index) => index > 3 && rule.endsWith("accept"));
     for (const rule of [`${OFF_VPN} ip daddr 100.64.0.0/10 drop`, `${OFF_VPN} ip6 daddr fd7a:115c:a1e0::/48 drop`]) {
       expect(input.rules.indexOf(rule)).toBeGreaterThanOrEqual(0);
       expect(input.rules.indexOf(rule)).toBeLessThan(firstAccept);

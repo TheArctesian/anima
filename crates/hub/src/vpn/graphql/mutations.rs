@@ -19,13 +19,15 @@ use crate::{
     vpn::{
         Error, Feed, Refusal,
         broker::{Broker, BrokerView, NewKey, Registered},
-        picture::on_tailnet,
+        picture::{on_hub_networks, on_tailnet},
         steps, waiting,
     },
 };
 
 const ON_TAILNET: &str =
     "This site is on the VPN's own address range. It is reached directly and has no router.";
+const ON_HUB_NETWORKS: &str = "This site's subnet overlaps the hub's own networks \
+     (172.30.0.0/16). It cannot have a router; give the site another subnet.";
 
 /// A one-hour key, the commands that use it and when it stops working (VPN-001, VPN-003).
 pub struct VpnKey {
@@ -188,11 +190,15 @@ pub(super) async fn site_of(ctx: &Context<'_>, id: &ID) -> Result<Site> {
 }
 
 /// The site an id argument names, when it has a subnet router: `VALIDATION` on `siteId` for a
-/// site on the tailnet's own range, which is reached directly over the VPN.
+/// site on the tailnet's own range, which is reached directly over the VPN, and for one over the
+/// hub's own networks, whose router could pose as the hub's containers (VP-13).
 pub(super) async fn router_site_of(ctx: &Context<'_>, id: &ID) -> Result<Site> {
     let site = site_of(ctx, id).await?;
     if on_tailnet(site.subnet) {
         return Err(invalid(&[FieldError::new("siteId", ON_TAILNET)]));
+    }
+    if on_hub_networks(site.subnet) {
+        return Err(invalid(&[FieldError::new("siteId", ON_HUB_NETWORKS)]));
     }
     Ok(site)
 }

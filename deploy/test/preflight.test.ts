@@ -128,6 +128,51 @@ describe("preflight secrets", () => {
   });
 });
 
+function networks(env: Record<string, string>): { ok: boolean; message: string } {
+  const result = Bun.spawnSync(["sh", SCRIPT, "networks"], { stdin: "ignore", env: { PATH: process.env["PATH"] ?? "", ...env } });
+  return { ok: result.exitCode === 0, message: result.stderr.toString() };
+}
+
+describe("preflight networks (VP-13)", () => {
+  test("VP-13 accepts the compose defaults and other subnets inside 172.30.0.0/16", () => {
+    expect(networks({})).toEqual({ ok: true, message: "" });
+    expect(networks({ ANIMA_DATABASE_SUBNET: "172.30.9.0/24", ANIMA_ACME_SUBNET: "172.30.200.0/28" }).ok).toBe(true);
+  });
+
+  test.each([
+    ["ANIMA_HUB_SUBNET", "10.0.0.0/24"],
+    ["ANIMA_DATABASE_SUBNET", "172.31.1.0/24"],
+    ["ANIMA_LOCALAPI_SUBNET", "172.16.0.0/12"],
+    ["ANIMA_ACME_SUBNET", "172.17.0.0/16"],
+    ["ANIMA_HUB_IP_RANGE", "192.168.0.0/25"],
+  ])("VP-13 refuses %s %s outside 172.30.0.0/16, which the VPS firewall keeps off the VPN", (name, value) => {
+    const result = networks({ [name]: value });
+    expect(result.ok).toBe(false);
+    expect(result.message).toContain(`${name} '${value}' is not inside 172.30.0.0/16`);
+  });
+
+  test.each([["172.30.1.0"], ["172.30.1.0/x"], ["172.30.01.0/24"]])("VP-13 refuses the subnet %p as not a network", (value) => {
+    expect(networks({ ANIMA_ACME_SUBNET: value }).ok).toBe(false);
+  });
+
+  test("VP-13 refuses guacd on the hub's address", () => {
+    const result = networks({ ANIMA_GUACD_IP: "172.30.0.10" });
+    expect(result.ok).toBe(false);
+    expect(result.message).toContain("ANIMA_GUACD_IP is ANIMA_HUB_IP");
+  });
+
+  test.each([
+    [{ ANIMA_HUB_IP: "172.30.0.130" }, "ANIMA_HUB_IP"],
+    [{ ANIMA_GUACD_IP: "172.30.0.255" }, "ANIMA_GUACD_IP"],
+    [{ ANIMA_HUB_IP_RANGE: "172.30.0.0/24" }, "ANIMA_HUB_IP"],
+    [{ ANIMA_HUB_IP_RANGE: "172.30.0.16/28" }, "ANIMA_GUACD_IP"],
+  ])("VP-13 refuses a fixed address inside the dynamic range: %p", (env, name) => {
+    const result = networks(env);
+    expect(result.ok).toBe(false);
+    expect(result.message).toContain(`${name} is inside ANIMA_HUB_IP_RANGE`);
+  });
+});
+
 describe("preflight all", () => {
   test("NET-003 refuses a private VPS public address before it looks at Docker", () => {
     const result = Bun.spawnSync(["sh", SCRIPT, "all"], {

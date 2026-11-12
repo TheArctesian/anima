@@ -79,7 +79,9 @@ const FAKES: Record<string, string> = {
       case "$3" in *rollback) exit "\${FAKE_NFT_CHECK_ROLLBACK:-0}";; */etc/sysconfig/nftables.conf) exit "\${FAKE_NFT_CHECK_BOOT:-0}";; *) exit "\${FAKE_NFT_CHECK:-0}";; esac;;
   -f) exit "\${FAKE_NFT_APPLY:-0}";;
   list) [ "$2" = ruleset ] && cat "$FAKE_RULESET" && exit 0
-        [ "$2" = tables ] && echo "table ip nat" && exit 0; exit "\${FAKE_NFT_TABLE:-0}";;
+        [ "$2" = tables ] && echo "table ip nat" && exit 0
+        [ "\${FAKE_NFT_TABLE:-0}" = 0 ] || exit "$FAKE_NFT_TABLE"
+        [ "$2" != table ] || cat "$FAKE_DIR/table";;
 esac`,
   SYSTEMCTL: `unit=$(printf '%s\\n' "$@" | tail -n 1)
 case "$1" in
@@ -120,12 +122,16 @@ esac`,
   PS: `echo "\${FAKE_UNIT:-sshd.service}"`,
   IP: `[ "$1" = -o ] || exit "\${FAKE_TAILSCALE:-0}"
 printf '%b\\n' "\${FAKE_ADDRS:-${ADDRS}}"`,
-  ID: `echo "\${FAKE_GROUPS:-$2 wheel}"`,
+  ID: `case "$2" in anima-probe) echo "\${FAKE_PROBE_GROUPS:-anima-probe}";; *) echo "\${FAKE_GROUPS:-$2 wheel}";; esac`,
   GROUPADD: ``,
   USERADD: ``,
+  // runuser -u USER -- COMMAND...: runs the command as the test's own user.
+  RUNUSER: `shift 3; exec "$@"`,
   UNAME: `echo "\${FAKE_ARCH:-x86_64}"`,
-  GETENT: `case "$2" in
+  GETENT: `if [ "$1" = shadow ]; then [ "\${FAKE_PROBE_SHADOW:-}" != unreadable ] || exit 2; echo "\${FAKE_PROBE_SHADOW:-$2:!!:20400:0:99999:7:::}"; exit 0; fi
+case "$2" in
   ghost) exit 2;;
+  10002 | anima-probe) [ -n "\${FAKE_PROBE:-}" ] || exit 2; echo "$FAKE_PROBE";;
   10001 | anima-hub) [ -n "\${FAKE_HUB:-}" ] || exit 2; echo "$FAKE_HUB";;
   root | toor) echo "$2:x:0:0::/root:/bin/sh";;
   relhome) echo "$2:x:$FAKE_UID:1000::home/$2:/bin/sh";;
@@ -169,6 +175,8 @@ export interface Host {
   exists(path: string): boolean;
   tree(): string[];
   setListeners(lines: string[]): void;
+  /** Replace what `nft list table inet anima_filter` prints (default: the real listing of nftables.conf). */
+  setTable(text: string): void;
   /** The rules `firewall` last passed to `nft -c` (with the local accepts in place). */
   checkedRules(): string;
   /** Install what `ssh`, `updates`, `selinux` and `confirm` install, so `check` sees a hardened host. */
@@ -184,6 +192,7 @@ function installFakes(work: string): void {
     chmodSync(file, 0o755);
   }
   writeFileSync(join(work, "ruleset"), RULESET);
+  writeFileSync(join(work, "table"), readFileSync(join(import.meta.dir, "fixtures", "anima-filter-listing.txt"), "utf8"));
   for (const [name, text] of Object.entries(POLICIES)) writeFileSync(join(work, `policy-${name}`), text);
   for (const [name, text] of Object.entries(NFT_UNIT)) writeFileSync(join(work, `nft-unit-${name}`), text);
 }
@@ -242,6 +251,7 @@ export function fakeHost(): Host {
     exists: (path) => existsSync(join(root, path)),
     tree: () => readdirSync(root, { recursive: true, encoding: "utf8" }).sort(),
     setListeners: (lines) => { writeFileSync(join(work, "ss"), `${lines.join("\n")}\n`); },
+    setTable: (text) => { writeFileSync(join(work, "table"), text); },
     checkedRules: () => readFileSync(join(work, "checked.nft"), "utf8"),
     harden() {
       const dropIn = readFileSync(join(vps, "sshd-anima.conf"), "utf8").replace("${ANIMA_ADMIN_USER}", "admin");
@@ -267,7 +277,7 @@ export function fakeHost(): Host {
 export function mutatingCalls(run: Run): string[] {
   return run.calls.filter(
     (call) =>
-      /^(DNF|SYSTEMD_RUN|RESTORECON|GROUPADD|USERADD) /.test(call) ||
+      /^(DNF|SYSTEMD_RUN|RESTORECON|GROUPADD|USERADD|RUNUSER) /.test(call) ||
       /^SEMANAGE fcontext -[am] /.test(call) ||
       /^NFT -f /.test(call) ||
       (/^SYSTEMCTL /.test(call) && !/^SYSTEMCTL (is-active|is-enabled|show|list-unit-files) /.test(call)),

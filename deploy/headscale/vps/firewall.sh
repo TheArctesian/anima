@@ -27,8 +27,13 @@ ROLLBACK_CONTEXT=system_u:system_r:unconfined_service_t:s0
 
 # Print each problem with the live and boot firewall state.
 firewall_problems() {
+  local listing
   $IP link show tailscale0 >/dev/null 2>&1 || say "tailscale0 is missing"
-  $NFT list table inet anima_filter >/dev/null 2>&1 || say "table inet anima_filter is not loaded"
+  if listing=$($NFT list table inet anima_filter 2>/dev/null); then
+    hub_rule_problems "$listing"
+  else
+    say "table inet anima_filter is not loaded"
+  fi
   $SYSTEMCTL is-enabled --quiet nftables.service || say "nftables.service is not enabled"
   if grep -qxF "$NFT_INCLUDE" "$(path "$NFT_SYSCONFIG")" 2>/dev/null; then
     $NFT -c -f "$(path "$NFT_SYSCONFIG")" >/dev/null 2>&1 || say "nft -c rejects $NFT_SYSCONFIG; nftables.service would fail at boot"
@@ -41,6 +46,31 @@ firewall_problems() {
   nft_unit_problems
   [ "$($SYSTEMCTL is-enabled firewalld.service 2>/dev/null)" = masked ] || say "firewalld is not masked"
   (local_accepts >/dev/null) 2>/dev/null || say "$LOCAL_ALLOW has a line that is not one PORT/PROTO"
+}
+
+# The value of `define NAME = VALUE` in the nftables.conf beside this script.
+nft_define() {
+  sed -n "s/^define $1 = \(.*\)\$/\1/p" "$HERE/nftables.conf"
+}
+
+# VP-13: print what the live table (`nft list table inet anima_filter`, in $1) lacks of the
+# hub's rules: the two exceptions in prerouting and in input, each with its reverse-path test,
+# the drop of the Anima container range from tailscale0, and the output chain that confines
+# anima-probe. An older table without them leaves the hub's address open to forgery.
+hub_rule_problems() {
+  local listing=$1 source vpn networks uid count
+  source=$(nft_define hub_source)
+  vpn=$(nft_define hub_vpn_address)
+  networks=$(nft_define hub_networks)
+  uid=$(nft_define probe_uid)
+  count=$(grep -F "ip saddr $source ip daddr $vpn " <<<"$listing" | grep -cF "fib saddr . iif oif exists") || true
+  [ "$count" = 4 ] || say "table inet anima_filter lacks the hub's four VP-13 rules with the reverse-path test; apply nftables.conf (harden.sh firewall)"
+  grep -qF "iifname \"tailscale0\" ip saddr $networks drop" <<<"$listing" \
+    || say "table inet anima_filter does not drop $networks from tailscale0; apply nftables.conf (harden.sh firewall)"
+  count=$(grep -cF "meta skuid $uid " <<<"$listing") || true
+  if ! grep -qE '^[[:space:]]*chain output \{' <<<"$listing" || [ "$count" != 3 ]; then
+    say "table inet anima_filter has no output chain confining anima-probe (uid $uid); apply nftables.conf (harden.sh firewall)"
+  fi
 }
 
 # Print nftables.service's settings as systemd has loaded them, one "Exec...=ARGV" line per
