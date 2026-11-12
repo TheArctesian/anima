@@ -112,9 +112,14 @@ describe("secrets (DB-002, SEC-004, DNS-003)", () => {
   }
 
   test("R-116 the hub reads the updater key and its password from their Docker secrets", () => {
+    // Unset, so the hub reads its defaults /run/secrets/updater_key and
+    // /run/secrets/updater_key_password, the targets of these two secrets (config/releases.rs).
     const environment = compose.services["hub"]?.environment;
-    expect(environment?.["ANIMA_UPDATER_KEY_FILE"]).toBe("/run/secrets/updater_key");
-    expect(environment?.["ANIMA_UPDATER_KEY_PASSWORD_FILE"]).toBe("/run/secrets/updater_key_password");
+    expect(environment?.["ANIMA_UPDATER_KEY_FILE"]).toBeUndefined();
+    expect(environment?.["ANIMA_UPDATER_KEY_PASSWORD_FILE"]).toBeUndefined();
+    const source = readFileSync(join(ROOT, "crates", "hub", "src", "config", "releases.rs"), "utf8");
+    expect(source).toContain('"/run/secrets/updater_key"');
+    expect(source).toContain('"/run/secrets/updater_key_password"');
     expect(compose.secrets["updater_key"]).toEqual({ file: "./secrets/updater_key" });
     expect(compose.secrets["updater_key_password"]).toEqual({ file: "./secrets/updater_key_password" });
   });

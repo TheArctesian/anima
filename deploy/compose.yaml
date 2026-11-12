@@ -195,11 +195,10 @@ services:
       ANIMA_LOG: ${ANIMA_LOG:-info}
       # Release publishing (WP-36, R-108, R-116): off while the endpoint is empty. The R2 token
       # and the updater key with its password are secret files the operator makes (README,
-      # Release publishing); the hub signs with the key. The public key is a plain value.
+      # Release publishing); the hub reads them at their default /run/secrets paths and signs
+      # with the key. The public key is a plain value.
       ANIMA_RELEASES_ENDPOINT: ${ANIMA_RELEASES_ENDPOINT:-}
       ANIMA_UPDATER_PUBLIC_KEY: ${ANIMA_UPDATER_PUBLIC_KEY:-}
-      ANIMA_UPDATER_KEY_FILE: /run/secrets/updater_key
-      ANIMA_UPDATER_KEY_PASSWORD_FILE: /run/secrets/updater_key_password
     secrets:
       - source: hub_database_url
         target: database_url
