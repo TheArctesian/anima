@@ -72,6 +72,14 @@ pub async fn list(db: &PgPool) -> Result<Vec<Device>, Error> {
     store::all(db).await
 }
 
+/// Every site, in name order (VPN-009).
+///
+/// # Errors
+/// `Database` when the query fails.
+pub async fn sites(db: &PgPool) -> Result<Vec<Site>, Error> {
+    store::list_sites(db).await
+}
+
 /// Records the Linux distribution read from the device (DEV-016). The device keeps its
 /// `updated_at`: the operator did not change it. An equal value writes nothing.
 ///

@@ -196,6 +196,8 @@ describe("host integration (AlmaLinux host firewall)", () => {
         if (volume.type !== "bind") continue;
         // The tailscale socket directory is a host path outside the repository; see compose-localapi.test.ts.
         if (name === "localapi") continue;
+        // So is the broker socket directory the hub mounts; see compose-hub.test.ts (R-054).
+        if (name === "hub" && volume.source === "/run/anima-broker") continue;
         binds += 1;
         expect(volume.bind?.selinux).toBe("z");
       }

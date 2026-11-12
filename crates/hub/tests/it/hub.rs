@@ -137,6 +137,8 @@ pub fn dependencies(pool: &PgPool, clock: Arc<dyn Clock>, bus: Bus) -> Dependenc
         metrics_feed: Feed::new(),
         build_updates: anima_hub::builds::Updates::new(),
         bucket: None,
+        vpn_feed: anima_hub::vpn::Feed::new(),
+        vpn_broker: None,
     }
 }
 

@@ -116,6 +116,114 @@ type Site {
   wakeRelay: Device
 }
 
+"""The VPN as the hub's own VPN node sees it (VPN-005, VPN-008)."""
+type VpnPicture {
+  "When the hub last read its VPN status."
+  readAt: DateTime!
+  "False when the last read failed; the picture is then from readAt."
+  fresh: Boolean!
+  hub: VpnNode!
+  "One entry for each site, in site name order (VPN-009)."
+  sites: [SitePath!]!
+  "Every peer of the hub, in name order. A node that is not a peer of the hub is not here (VPN-011)."
+  nodes: [VpnNode!]!
+  "Whether the hub can reach the broker that makes keys and approves routes (VP-7)."
+  broker: BrokerState!
+}
+
+"""A one-use, one-hour pre-auth key, shown once (VPN-001, VPN-003, LOG-007)."""
+type VpnKey {
+  "The pre-auth key: shown once, never stored by the hub."
+  key: String!
+  expiresAt: DateTime!
+  "The commands for the new computer, in order; none holds the key."
+  steps: [String!]!
+}
+
+"""A node the broker registered or renewed (vpn.md 6B and Section 7)."""
+type VpnRegistration {
+  name: String!
+  address: IpAddr!
+  keyExpiry: DateTime
+}
+
+"""Whether the hub can reach the VPN broker on the VPS (VP-7, BD-15)."""
+enum BrokerState {
+  "ANIMA_VPN_BROKER is not set."
+  NOT_SET
+  "The socket is not there: the broker is not installed on the VPS."
+  NOT_INSTALLED
+  READY
+  "The last call failed or its reply was unreadable."
+  FAILED
+}
+
+"""How the hub reaches one site (VPN-009)."""
+type SitePath {
+  site: Site!
+  "The subnet router that serves the site subnet, or null."
+  router: VpnNode
+  state: SiteRouteState!
+  path: VpnPath!
+  "The DERP region, when the path is RELAYED."
+  relayRegion: String
+  "True when the router's device has a Tailscale ping check, which keeps the path known."
+  hasPingCheck: Boolean!
+  "A router of the site that offers the site subnet and waits for its approval, from the broker; null when none waits or the broker is not READY (BD-16)."
+  waitingRouter: VpnNode
+}
+
+enum SiteRouteState {
+  SERVING
+  OFFLINE
+  NO_ROUTER
+}
+
+enum VpnPath {
+  DIRECT
+  PEER_RELAY
+  RELAYED
+  UNKNOWN
+}
+
+enum VpnRole {
+  HUB
+  ROUTER
+  AGENT
+  CLIENT
+  OTHER
+}
+
+enum KeyState {
+  NEVER
+  VALID
+  EXPIRING
+  EXPIRED
+  TAGGED_WITH_EXPIRY
+}
+
+"""One node of the VPN. Name and OS come from the node and are cleaned (VPN-008)."""
+type VpnNode {
+  name: String!
+  address: IpAddr!
+  os: String!
+  role: VpnRole!
+  tags: [String!]!
+  "The subnet routes Headscale lets this node serve."
+  routes: [Cidr!]!
+  "The routes the node offers that wait for approval, from the broker (BD-16)."
+  waitingRoutes: [Cidr!]!
+  online: Boolean!
+  lastSeen: DateTime
+  keyExpiry: DateTime
+  keyState: KeyState!
+  path: VpnPath!
+  relayRegion: String
+  "The Anima device on this node, or null."
+  device: Device
+  inAnima: Boolean!
+}
+
 enum SshAuth {
   PASSWORD
   PRIVATE_KEY
@@ -926,6 +1034,7 @@ enum EventSource {
   HUB
   METRICS
   NOTIFICATION
+  VPN
 }
 
 type Event {
@@ -1533,6 +1642,10 @@ type Query {
   builders: [Builder!]!
   "Up to `first` (1 to 1000) stored lines after sequence `after`, oldest first (BLD-048)."
   buildJobLog(id: ID!, after: Int, first: Int = 500): [BuildLogLine!]!
+
+  # Phase 3: VPN (VP-5)
+  "The VPN picture; null when the hub has no LocalAPI proxy or has not read it yet (VPN-005)."
+  vpn: VpnPicture
 }
 
 type Mutation {
@@ -1638,6 +1751,18 @@ type Mutation {
   buildUploadUrls(id: ID!, files: [BuildFileInput!]!): [BuildUploadUrl!]!
   "Builder token only. Ends the lease; the hub then verifies and publishes in the background, ending PUBLISHED or FAILED (BLD-063 to BLD-070)."
   reportBuildUploaded(id: ID!, files: [BuildFileInput!]!, feed: String!): BuildJob!
+
+  # Phase 3: VPN (VP-7, VP-10)
+  "A one-use, one-hour key for a Linux computer of the operator (VPN-003). Login or browser token only (D-23)."
+  createVpnInvite: VpnKey!
+  "A one-use, one-hour key for the subnet router of a site (VPN-001). Login or browser token only (D-23)."
+  createRouterKey(siteId: ID!): VpnKey!
+  "Registers the computer that shows this auth ID on its own screen (vpn.md 6B). Login or browser token only (D-23)."
+  registerVpnNode(authId: String!): VpnRegistration!
+  "Sets the key expiry of an untagged operator node to a staggered date 90 to 180 days from now (vpn.md Section 7). Login or browser token only (D-23)."
+  renewVpnKey(name: String!): VpnRegistration!
+  "Approves the waiting route of the site's router. Login or browser token only (D-23)."
+  approveSiteRoute(siteId: ID!): Boolean!
 }
 
 type Subscription {
@@ -1649,6 +1774,8 @@ type Subscription {
   metricsAdded(deviceId: ID): MetricsAdded!
   "Every change to a build job, with the log lines it added (BLD-081)."
   buildJobUpdated(jobId: ID): BuildJobUpdate!
+  "Each new VPN picture, about once a minute."
+  vpnChanged: VpnPicture!
 }
 
 type DeviceStatusChange {

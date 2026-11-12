@@ -55,7 +55,7 @@ async function show(devices = [device('a')], answers: Record<string, unknown> = 
 beforeEach(() => {
   current.goto = [];
   current.opened = [];
-  url.query = { view: 'grid', name: '', statuses: [], tags: [], sort: 'NAME' };
+  url.query = { view: 'grid', name: '', statuses: [], tags: [], site: null, sort: 'NAME' };
 });
 
 afterEach(async () => {
@@ -248,4 +248,18 @@ it('WP-14 H-1: SSH opens a session tab for the device, growing from the button',
     { deviceId: 'a', deviceName: 'Device a', os: 'OTHER', protocol: 'SSH', origin: ssh?.getBoundingClientRect() },
   ]);
   expect(current.goto).toEqual([]);
+});
+
+it('VPN-002: the device list asks the hub with siteId', async () => {
+  url.query = { ...url.query, site: 's1' };
+  const fake = await show();
+  const asked = fake.requests.filter((request) => request.operation === 'Devices');
+  expect(asked.at(-1)?.variables).toMatchObject({ filter: { siteId: 's1' } });
+});
+
+it('VPN-002: Clear filters clears the site', async () => {
+  url.query = { ...url.query, site: 's1' };
+  await show([]);
+  button('Clear filters').click();
+  expect(current.goto.at(-1)?.[0]).toBe('/devices');
 });

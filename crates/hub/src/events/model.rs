@@ -59,6 +59,8 @@ pub enum Source {
     // The notification dispatcher (NOT-004). K1 names it `NOTIFICATION`.
     #[graphql(name = "NOTIFICATION")]
     Notifications,
+    // The VPN reader's key and node warnings (VPN-010, VPN-011).
+    Vpn,
 }
 
 impl Source {
@@ -73,6 +75,7 @@ impl Source {
             Self::Hub => "hub",
             Self::Metrics => "metrics",
             Self::Notifications => "notification",
+            Self::Vpn => "vpn",
         }
     }
 
@@ -87,6 +90,7 @@ impl Source {
             Self::Hub,
             Self::Metrics,
             Self::Notifications,
+            Self::Vpn,
         ]
         .into_iter()
         .find(|source| source.as_str() == text)
@@ -231,6 +235,9 @@ pub enum AuditTarget {
     ApiKey(ApiKeyId),
     /// A session recording (RA-040, RA-041).
     Recording(RecordingId),
+    /// The VPN: a key, a registration or a route made through the broker (VP-7). It has no
+    /// id of its own; the change names the site or node.
+    Vpn,
 }
 
 impl AuditTarget {
@@ -254,6 +261,7 @@ impl AuditTarget {
             Self::Builder(_) => "builder",
             Self::ApiKey(_) => "api_key",
             Self::Recording(_) => "recording",
+            Self::Vpn => "vpn",
         }
     }
 
@@ -276,6 +284,7 @@ impl AuditTarget {
             Self::Builder(id) => id.to_string(),
             Self::ApiKey(id) => id.to_string(),
             Self::Recording(id) => id.to_string(),
+            Self::Vpn => "vpn".to_owned(),
         }
     }
 }

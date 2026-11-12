@@ -1,15 +1,18 @@
-//! The hub's scheduled jobs, started once by `main.rs`: each only calls its domains (D-4,
-//! DB-004, DB-005, D-25; WP-36 D-2).
+//! Starts the hub's background work: periodic jobs and the check, metrics and notification
+//! loops (R-072). Each only calls its domains (D-4, DB-004, DB-005, D-25; WP-36 D-2).
 
 use std::{sync::Arc, time::Duration};
 
 use anima_hub::{
     access, builds, checks,
     clock::Clock,
+    credentials::Vault,
     events::{self, Bus},
     metrics, notifications,
     retention::{self, Subject},
     schema::Dependencies,
+    targets::AddressPolicy,
+    vpn,
 };
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;
@@ -58,7 +61,66 @@ pub fn spawn(dependencies: &Dependencies) -> Vec<tokio::task::JoinHandle<()>> {
         dependencies.bucket.clone(),
     )));
     jobs.push(tokio::spawn(build_leases(builds)));
+    jobs.extend(loops(dependencies));
     jobs
+}
+
+/// Starts the loops that watch the devices and send: the check scheduler, the metrics
+/// collector and stale watch, the notification dispatcher, and, with a `LocalAPI` proxy, the
+/// VPN reader (R-072, VPN-008).
+fn loops(dependencies: &Dependencies) -> Vec<tokio::task::JoinHandle<()>> {
+    let (pool, bus, clock) = (&dependencies.pool, &dependencies.bus, &dependencies.clock);
+    let (probing, collecting, sending) = reaching(
+        &dependencies.vault,
+        &dependencies.policy,
+        dependencies.config.tailscale_localapi.clone(),
+    );
+    let mut loops = vec![
+        checks::spawn_scheduler(pool.clone(), bus.clone(), clock.clone(), probing),
+        metrics::spawn_collector(
+            pool.clone(),
+            dependencies.metrics_feed.clone(),
+            bus.clone(),
+            clock.clone(),
+            collecting,
+        ),
+        notifications::spawn_dispatcher(pool.clone(), bus.clone(), clock.clone(), sending),
+        metrics::spawn_stale_watch(pool.clone(), bus.clone(), clock.clone()),
+    ];
+    let reading = vpn::Reading {
+        pool: pool.clone(),
+        bus: bus.clone(),
+        clock: clock.clone(),
+        feed: dependencies.vpn_feed.clone(),
+        broker: dependencies.vpn_broker.clone(),
+    };
+    loops.extend(vpn::spawn_reader(
+        dependencies.config.tailscale_localapi.clone(),
+        reading,
+    ));
+    loops
+}
+
+/// What checks, metrics and notifications need to reach the outside: the vault and the one
+/// address policy (P2-004, D-16).
+fn reaching(
+    vault: &Vault,
+    policy: &AddressPolicy,
+    localapi: Option<String>,
+) -> (checks::Probing, metrics::Collecting, notifications::Sending) {
+    let (vault, policy) = (vault.clone(), policy.clone());
+    (
+        checks::Probing {
+            vault: vault.clone(),
+            policy: policy.clone(),
+            localapi,
+        },
+        metrics::Collecting {
+            vault: vault.clone(),
+            policy: policy.clone(),
+        },
+        notifications::Sending { vault, policy },
+    )
 }
 
 /// What the build jobs of the upkeep share.

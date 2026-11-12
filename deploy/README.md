@@ -26,7 +26,9 @@ The `notify` network holds the hub (fixed address `172.30.3.2`) and Apprise (fix
 whether or not Apprise runs, so you can turn Apprise on later without a hub restart.
 
 The `database` network has no route out. The hub joins `gateway` at a fixed address
-(`ANIMA_HUB_IP`, default `172.30.0.10`) and listens on port 8443 there.
+(`ANIMA_HUB_IP`, default `172.30.0.10`) and listens on port 8443 there. guacd joins it at a fixed
+address too (`ANIMA_GUACD_IP`, default `172.30.0.20`), so it can never take the hub's address,
+which the VPS firewall and sshd admit (VP-13).
 
 All containers have a read-only root file system, no Linux capability and
 `no-new-privileges`. Two exceptions: `postgres` runs as user 999 (no capability needed), and
@@ -73,7 +75,11 @@ Each service writes its log as JSON files, 10 MB each, 10 files.
    | `ANIMA_HUB_SUBNET` | no | `172.30.0.0/24` | Subnet of the `gateway` network. |
    | `ANIMA_DATABASE_SUBNET` | no | `172.30.1.0/24` | Subnet of the `database` network. |
    | `ANIMA_VPS_PUBLIC_ADDRESS` | yes | none | The VPS public IPv4 address (31.220.53.226 on this VPS). With both subnets it forms `ANIMA_PROBE_DENY`, so checks never probe the hub's own networks. |
-   | `ANIMA_HUB_IP` | no | `172.30.0.10` | Hub address inside `ANIMA_HUB_SUBNET`. |
+   | `ANIMA_HUB_IP` | no | `172.30.0.10` | Hub address inside `ANIMA_HUB_SUBNET`. The VPS firewall (`hub_source`) and sshd (`anima-probe@172.30.0.10`) use the same address (VP-13); change all three together. |
+   | `ANIMA_GUACD_IP` | no | `172.30.0.20` | guacd address inside `ANIMA_HUB_SUBNET`; not `ANIMA_HUB_IP`. |
+   | `ANIMA_HUB_IP_RANGE` | no | `172.30.0.128/25` | The part of `ANIMA_HUB_SUBNET` Docker hands out to containers without a fixed address. `ANIMA_HUB_IP` and `ANIMA_GUACD_IP` stay outside it (VP-13, `bin/preflight networks`). |
+   | `ANIMA_HUB_GATEWAY` | no | `172.30.0.1` | The bridge address of the `gateway` network, inside `ANIMA_HUB_SUBNET`. |
+   | `ANIMA_ACME_SUBNET` | no | `172.30.4.0/24` | Subnet of lego's `acme` network; in `ANIMA_PROBE_DENY`. Every `ANIMA_*_SUBNET` stays inside `172.30.0.0/16`, the range the VPS firewall drops from the VPN (VP-13). |
    | `ANIMA_PERMITTED_NETWORKS` | no | `100.64.0.0/10` | Client networks that may use the hub (NET-001): the VPN range and the site subnets, comma-separated. |
    | `ANIMA_LOG` | no | `info` | Hub log filter. |
    | `ANIMA_PUBLIC_ORIGIN` | no | `https://hub.anima.ing` | The origin clients use. The hub checks the browser cookie's `Origin` against it, and the web client's security headers use it. |
@@ -99,7 +105,8 @@ Each service writes its log as JSON files, 10 MB each, 10 files.
    ```
 
    It refuses an address outside 100.64.0.0/10 (so never `0.0.0.0`), a Docker Engine older
-   than 28, and a missing secret file.
+   than 28, a network subnet outside 172.30.0.0/16 or a fixed hub or guacd address that Docker
+   could hand out (VP-13), and a missing secret file.
 
 4. Start:
 
@@ -287,9 +294,11 @@ step (VPS-005): agents do not create the R2 token or change `deploy/.env` on the
 ## Deny list
 
 `ANIMA_PROBE_DENY` lists the addresses that checks and notification targets must never reach
-(NET-001, R-030). It holds the hub's own networks, the VPS public address and the hub's VPN
-address (`ANIMA_HUB_ADDRESS`, as `/32`). It also holds the `notify` network, except the one address
-of Apprise.
+(NET-001, R-030). It holds the hub's own networks, lego's `acme` network, docker0
+(`172.17.0.0/16`, whose gateway is the host) and the VPS public address. It also holds the
+`notify` network, except the one address of Apprise. It does not hold the hub's VPN address
+(`ANIMA_HUB_ADDRESS`): the VPS is a device at that address (VP-13), and the host firewall lets only
+the hub container reach it, on 22/tcp and ping (see "The VPS as a device").
 
 The deny list cannot contain `172.30.3.0/24` as a whole: a notification target is checked against
 the same list, so the hub would refuse its own Apprise (E-1). Leaving the subnet out would let a
@@ -725,6 +734,243 @@ Undo: `sudo docker compose --profile apprise rm -sf apprise`.
 `CLIENT_ORIGINS` stays as it is. `operator@` already reaches `tag:hub` on tcp:443. Only a Prometheus
 scraper that is not an `operator@` machine needs a grant; see
 [../docs/setup/prometheus.md](../docs/setup/prometheus.md).
+
+## The VPS as a device (VP-13)
+
+The hub can check the VPS and open SSH to it, at the VPS's VPN address `100.64.0.1` (operator ruling
+VP-13, 2026-11-11). Two changes make this possible, and both are needed:
+
+- `ANIMA_PROBE_DENY` no longer holds `${ANIMA_HUB_ADDRESS}/32`. The Docker networks (with docker0,
+  `172.17.0.0/16`, and lego's `acme` network), and the VPS public address stay denied.
+- The host firewall has one exception to its DNS-005 drops: packets from the hub container's address
+  `172.30.0.10` on a Docker bridge may reach `100.64.0.1` on 22/tcp, and ICMP echo with the usual rate
+  limit. Every other container, every other source and every other port of `100.64.0.1` (443,
+  Headscale's 9090, the broker, Apprise) stays dropped, and the hub opens no other connection to the
+  host (not to docker0's `172.17.0.1`, a bridge gateway or the public address). The values are the
+  `hub_source` and `hub_vpn_address` defines in `deploy/headscale/vps/nftables.conf`.
+
+The source address is fixed by `compose.yaml`. The hub's packets to the host leave by its default
+route. `database` and `localapi` are internal and have no gateway. Of `gateway` and `notify`, Docker
+chooses the highest `gw_priority` (Docker 28 or newer), then the network name. The name already
+chooses `gateway`, and `gw_priority: 1` keeps it so. The hub's fixed `gateway` address is
+`172.30.0.10`. If you change `ANIMA_HUB_IP` or `ANIMA_HUB_SUBNET`, change `hub_source` to match.
+A mismatch makes the VPS unreachable from the hub; it opens nothing. Only the hub reaches the VPS
+this way: the SSH terminal and the checks run in the hub (R-062). guacd is a separate container,
+so VNC or RDP to the VPS stays closed.
+
+Nothing else can pose as the hub:
+
+- guacd has its own fixed address (`ANIMA_GUACD_IP`, default `172.30.0.20`), and Docker gives any
+  other container on `gateway` an address from `ANIMA_HUB_IP_RANGE` (`172.30.0.128/25`) only.
+  `bin/preflight networks` refuses a hub or guacd address inside that range, and guacd on the hub's.
+- The exception holds only when the host's route back to `172.30.0.10` is the bridge the packet came
+  in on (`fib saddr . iif oif exists`), so a container on another bridge cannot forge the address.
+- The host drops every packet from `tailscale0` whose source is in `172.30.0.0/16` (`hub_networks`),
+  the range that holds every Anima network (`bin/preflight networks` keeps each `ANIMA_*_SUBNET`
+  in it). The hub also refuses a router key or a route approval for a site whose subnet overlaps
+  that range, and leaves such a site out of the VPN picture, as it does for the tailnet range.
+- Invalid packets are dropped before the exception.
+
+sshd admits the hub's user `anima-probe` only from that address, and the admin only over the VPN:
+the drop-in that `harden.sh ssh` installs says
+`AllowUsers <admin>@100.64.0.0/10 anima-probe@172.30.0.10`, and `harden.sh check` reports any other
+`AllowUsers` entry, including `anima-probe` from another host or the admin from anywhere. The
+admin logs in only over the VPN; the Hostinger browser console is the fallback. Password login stays
+off for every user (VPS-001). The address in the drop-in, `hub_source` and `ANIMA_HUB_IP` must be
+the same; change all three together.
+
+`anima-probe` is a shell on the VPS, so it is confined. `harden.sh probe` makes it with uid and gid
+`10002`, its own group only, no password and no sudo, and gives it one key, the hub's, with
+`restrict,pty,from="172.30.0.10"`: no forwarding of any kind, and only from the hub. The firewall's
+`output` chain drops everything uid 10002 sends to the host's own addresses (loopback, the VPN, the
+public and the bridge-gateway addresses), to Docker's `172.16.0.0/12` and out of `tailscale0`; it may
+still reach the internet. `harden.sh check` reports an `anima-probe` with another uid, another group,
+a sudoers entry, a usable password or a key without those options. Optional, not done by
+`harden.sh`: `sysctl user.max_user_namespaces=0` takes unprivileged user namespaces, a common route
+to kernel bugs, away from every user; check first that nothing on the VPS needs them (rootless
+containers do).
+
+Each step needs the operator's confirmation in chat (VPS-005). If you applied an earlier version of
+this section, use another suffix than `.before-vp13` for the copies below, so the first ones stay.
+
+**1. Install the scripts and the firewall.** Copy every changed file of `deploy/headscale/vps/`
+first; `harden.sh check` reads the rules it expects from `nftables.conf` beside it. Then apply the
+firewall as in Phase 3 step 7: `harden.sh firewall` applies the rules with a 180 s rollback.
+`harden.sh confirm`, run from a new SSH session over the VPN, keeps them and installs them for boot.
+
+```sh
+# Run on the Mac, in the repository root, at the commit that you deploy.
+cd deploy/headscale/vps
+scp nftables.conf harden.sh firewall.sh sshd.sh probe.sh sshd-anima.conf anima-admin@100.64.0.1:/tmp/
+```
+
+```sh
+# Run on the VPS, in an SSH session over the VPN (ssh anima-admin@100.64.0.1).
+cd /opt/anima/headscale/vps
+for f in nftables.conf harden.sh firewall.sh sshd.sh sshd-anima.conf; do sudo cp -p "$f" "/root/$f.before-vp13"; done
+sudo install -m 0755 -o root -g root /tmp/harden.sh harden.sh
+sudo install -m 0644 -o root -g root /tmp/nftables.conf /tmp/firewall.sh /tmp/sshd.sh /tmp/probe.sh /tmp/sshd-anima.conf .
+rm /tmp/nftables.conf /tmp/harden.sh /tmp/firewall.sh /tmp/sshd.sh /tmp/probe.sh /tmp/sshd-anima.conf
+sudo --preserve-env=SSH_CONNECTION ./harden.sh --dry-run firewall
+sudo --preserve-env=SSH_CONNECTION ./harden.sh firewall
+```
+
+Keep this session open. Within 180 s, open a **new** SSH session over the VPN and confirm:
+
+```sh
+# Run on the VPS, in a NEW SSH session over the VPN.
+sudo --preserve-env=SSH_CONNECTION /opt/anima/headscale/vps/harden.sh confirm
+```
+
+If the new session cannot connect, do nothing. The previous rules come back after 180 s. Then put
+the old files back (Undo) and ask the operator.
+
+Check: `sudo grep -n '^define \(hub\|probe\)_' /etc/nftables/anima.nft` shows four defines, and
+`sudo grep -c 'ip saddr \$hub_source' /etc/nftables/anima.nft` prints `5`. In
+`sudo nft list table inet anima_filter`, chain `prerouting` starts with
+`iifname "tailscale0" ip saddr 172.30.0.0/16 drop`, then two rules for
+`ip saddr 172.30.0.10 ip daddr 100.64.0.1` that end in `fib saddr . iif oif exists accept`. In chain
+`input`, `ct state invalid drop` follows the Apprise drop, then the same two rules. Chain `output`
+holds three `meta skuid 10002` drops. `sudo /opt/anima/headscale/vps/harden.sh check` prints no
+`VIOLATION` line about `table inet anima_filter`; it reports the sshd values until step 3.
+
+Undo:
+
+```sh
+# Run on the VPS, in an SSH session over the VPN.
+cd /opt/anima/headscale/vps
+for f in nftables.conf harden.sh firewall.sh sshd.sh sshd-anima.conf; do sudo cp -p "/root/$f.before-vp13" "$f"; done
+sudo rm probe.sh
+sudo --preserve-env=SSH_CONNECTION ./harden.sh firewall
+```
+
+Then run `confirm` from a new session, as above.
+
+**2. Redeploy the hub, guacd and lego.** The new compose file changes the hub's environment, the
+`gateway` attachments of the hub and guacd, and the `gateway` network (`ip_range`, `gateway`) and the
+`acme` network (a fixed subnet). `docker compose up -d` sees that both networks changed, removes and
+recreates them, and recreates every container on them: the hub, guacd and certs (lego). The hub's
+checks pause for that time, and any open RDP, VNC or SSH session ends. Checked with Docker Compose
+5.7 on a throwaway project. If your Compose stops instead with an error that a network "needs to be
+recreated" or "has incompatible configuration", run `sudo docker compose down` and then
+`sudo docker compose up -d`; `down` keeps the volumes. Install the compose file and the preflight as
+in Phase 3 step 4, keeping the current ones:
+
+```sh
+# Run on the Mac, in the repository root.
+scp deploy/compose.yaml deploy/bin/preflight anima-admin@100.64.0.1:/tmp/
+```
+
+```sh
+# Run on the VPS, in /opt/anima/deploy.
+sudo cp -p compose.yaml compose.yaml.before-vp13
+sudo cp -p bin/preflight /root/preflight.before-vp13
+sudo install -m 0644 -o root -g root /tmp/compose.yaml compose.yaml
+sudo install -m 0755 -o root -g root /tmp/preflight bin/preflight
+rm /tmp/compose.yaml /tmp/preflight
+set -a; . ./.env; set +a
+sh bin/preflight networks
+sudo docker compose config --quiet
+sudo docker compose up -d
+```
+
+`preflight networks` reads the subnets and addresses from `.env`, as in "Check the host", and prints
+nothing when they are right.
+
+Check, from the hub's network namespace with the host's tools (the hub image has no shell):
+
+```sh
+# Run on the VPS, in /opt/anima/deploy.
+pid=$(sudo docker inspect -f '{{.State.Pid}}' "$(sudo docker compose ps -q hub)")
+sudo nsenter -t "$pid" -n ip -4 route get 100.64.0.1
+sudo nsenter -t "$pid" -n ping -c 1 -W 2 100.64.0.1
+sudo nsenter -t "$pid" -n timeout 5 bash -c 'exec 3<>/dev/tcp/100.64.0.1/22 && head -c 7 <&3'; echo " $?"
+sudo nsenter -t "$pid" -n curl -sk -o /dev/null --connect-timeout 5 https://100.64.0.1/; echo "$?"
+sudo nsenter -t "$pid" -n curl -sk -o /dev/null --connect-timeout 5 https://172.17.0.1/; echo "$?"
+gpid=$(sudo docker inspect -f '{{.State.Pid}}' "$(sudo docker compose ps -q guacd)")
+sudo nsenter -t "$gpid" -n ping -c 1 -W 2 100.64.0.1; echo "$?"
+sudo docker network inspect deploy_gateway deploy_acme -f '{{.Name}} {{json .IPAM.Config}}'
+```
+
+The route line shows `via 172.30.0.1` and `src 172.30.0.10`. The ping gets one reply. The SSH line prints `SSH-2.0 0`. Both `curl` lines print `28`: the hub reaches
+no other port of the host. The guacd ping prints `1` (no reply): no other container reaches the VPS.
+The last command shows `deploy_gateway` with `"IPRange":"172.30.0.128/25","Gateway":"172.30.0.1"`
+and `deploy_acme` with `"Subnet":"172.30.4.0/24"`. Also check that
+`sudo docker compose ps hub guacd certs` shows all three `Up`, the hub and certs `(healthy)`, and that
+`sudo docker inspect -f '{{.NetworkSettings.Networks.deploy_gateway.IPAddress}}' "$(sudo docker compose ps -q guacd)"`
+prints `172.30.0.20`.
+
+Undo: `sudo cp -p compose.yaml.before-vp13 compose.yaml`, `sudo cp -p /root/preflight.before-vp13 bin/preflight`
+and `sudo docker compose up -d` (which recreates the two networks again).
+
+**3. Make the hub's SSH user and let sshd admit it.** Do not give the hub `anima-admin`: it has
+sudo. Make a key that only the hub holds; `harden.sh probe` makes the user and installs the key.
+
+```sh
+# Run on the Mac. Store the private key in Anima (step 4), then delete the local copy.
+ssh-keygen -t ed25519 -N '' -C anima-probe -f /tmp/anima-probe
+scp /tmp/anima-probe.pub anima-admin@100.64.0.1:/tmp/
+```
+
+```sh
+# Run on the VPS, in an SSH session over the VPN.
+cd /opt/anima/headscale/vps
+sudo ./harden.sh --dry-run --key=/tmp/anima-probe.pub probe
+sudo ./harden.sh --key=/tmp/anima-probe.pub probe
+rm /tmp/anima-probe.pub
+sudo ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub
+```
+
+`probe` refuses a uid or gid 10002 that another account holds, and an `anima-probe` with another uid,
+group or home; it never prints the key. If `anima-probe` was made by hand before (an earlier version
+of this section, with another uid), remove it first: `sudo userdel -r anima-probe`. Keep the host key
+fingerprint from the last line for step 4. To change the key later, run `probe` again with the new one.
+
+Then install the new sshd drop-in. `harden.sh ssh` writes it, checks it with `sshd -t`, `sshd -T`
+and `sshd -T -C` (also for `anima-probe` from `172.30.0.10`), puts the old drop-in back if any
+check fails, and reloads sshd. It keeps the old drop-in as `/var/lib/anima/00-anima.conf.previous`.
+The new drop-in admits the admin only from the VPN range: run it from an SSH session over the VPN.
+
+```sh
+# Run on the VPS, in an SSH session over the VPN.
+cd /opt/anima/headscale/vps
+export ANIMA_ADMIN_USER=anima-admin
+sudo --preserve-env=ANIMA_ADMIN_USER ./harden.sh --dry-run ssh
+sudo --preserve-env=ANIMA_ADMIN_USER ./harden.sh ssh
+```
+
+**Keep this session open.** In a new session, check that `ssh anima-admin@100.64.0.1` still logs
+in. Then check:
+
+```sh
+# Run on the VPS.
+sudo sshd -T | grep -i '^allowusers'
+id anima-probe
+sudo cat /home/anima-probe/.ssh/authorized_keys | cut -c1-40
+ANIMA_ADMIN_USER=anima-admin sudo --preserve-env=ANIMA_ADMIN_USER /opt/anima/headscale/vps/harden.sh check
+```
+
+`sshd -T` prints two lines, `allowusers anima-admin@100.64.0.0/10` and
+`allowusers anima-probe@172.30.0.10`. `id` prints `uid=10002(anima-probe) gid=10002(anima-probe)
+groups=10002(anima-probe)`. The key line starts `restrict,pty,from="172.30.0.10" ssh-ed25519`.
+`check` ends with `ok: no violations`. A login as `anima-probe` from the Mac is refused: it may come
+only from the hub.
+
+Undo, in the session you kept open:
+
+```sh
+# Run on the VPS.
+sudo install -m 0600 -o root -g root /var/lib/anima/00-anima.conf.previous /etc/ssh/sshd_config.d/00-anima.conf
+sudo sshd -t && sudo systemctl reload sshd.service
+sudo userdel -r anima-probe
+```
+
+**4. Add the VPS in the app.** Add a device with the address `100.64.0.1` and an SSH credential for
+user `anima-probe` with the private key from step 3. At the first connection, compare the host key
+fingerprint with the one from step 3 before you trust it. Then delete `/tmp/anima-probe` and
+`/tmp/anima-probe.pub` on the Mac. Add a ping check and a TCP check on port 22.
+
+Undo: remove the device in the app.
 
 ## Checks
 

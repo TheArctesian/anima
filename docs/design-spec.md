@@ -438,14 +438,27 @@ How it operates:
 - **VPN-005.** The hub must show for each site if the path is direct or relayed. A relayed path uses the bandwidth of the VPS.
 - **VPN-006.** Wake-on-LAN does not cross sites. A later site agent must send the Wake-on-LAN packet inside the site of the device (RA-031).
 - **VPN-007.** The operator can use a different VPN at the same time. A full-tunnel VPN (for example a company VPN) can block the Anima VPN. The setup guide must tell the operator about this.
+- **VPN-008.** The hub must read the status of its own VPN node through the LocalAPI proxy each 60 seconds. The hub must not log or store the raw status (LOG-007). Before the hub uses `DNSName`, `HostName` or `OS`, it must limit the length (63, 63 and 32 characters) and permit only printable characters.
+- **VPN-009.** For each site, the hub must show the subnet router that serves the site subnet, if it is online, and the path. A router serves a site when its `PrimaryRoutes` holds the site subnet exactly. The path is:
+  - direct, when the router is active and `CurAddr` is set;
+  - peer relay, when `PeerRelay` is set;
+  - relayed through DERP, with the region, when the router is active and `CurAddr` is empty;
+  - not known, when there is no recent traffic.
+
+  A node keeps its last known path (it is not "not known") for 3 reads after traffic stops. A Tailscale ping check (CHK-009) on the router keeps traffic flowing, so the path stays known. When a site has no such check, the client must suggest one. This makes VPN-005 exact.
+- **VPN-010.** For each VPN node that the hub sees, the hub must show the key expiry. A node with a tag must show "never". If a tagged node has an expiry, the hub must write a warning event. For a client key, the hub must write one event at 30, 14, 7 and 1 days before expiry. The hub must write each of these events once, also after a restart.
+- **VPN-011.** A peer of the hub that is not the hub, not a site router and not a device in Anima is "not in Anima". The hub must match a node to a device by its VPN address or its `DNSName`, never by `HostName`, because the peer chooses its `HostName`. A node with a tag has the role that its first matching tag gives: `tag:hub`, `tag:router`, `tag:agent`. A router with no approved route for a site is a router that is "not in Anima". The hub must show each node that is not in Anima and write one event for it. This covers only nodes that the policy makes peers of the hub. The inventory check (VPN-013) finds the other nodes.
+- **VPN-012.** The policy tests must check the full reachability table, not only pairs. For each pair of identity classes (client, hub, router of site X, device at site X, a device `/32`) and each protocol, the table must agree with the four rules of VPN-004.
+- **VPN-013.** A script must compare a live node list with the expected inventory, and run the policy tests against the live nodes. It must report: a node of a user other than `operator`, a tag that is not in `tagOwners`, a tagged node with an expiry, a client key that expires after more than 180 days, a router with an advertised route that is not approved, and a node that is not in the expected list. The operator runs it after each enrolment, renewal and upgrade (`docs/setup/vpn.md`).
+- **VPN-014.** At each Headscale upgrade, a harness must start the pinned Headscale image with the repository configuration and policy, and check: `headscale policy check` accepts the policy, and the node and route output of the pinned version parses with the inventory script.
 
 VPS security:
 
-- **VPS-001.** SSH to the VPS must use keys only. Disable password login and root login.
+- **VPS-001.** SSH to the VPS must use keys only. Disable password login and root login. SSH reaches the VPS only through the VPN interface, and from the hub container (VP-13): the hub may open SSH to the VPS's VPN address, so the VPS can be a device in Anima. sshd admits the admin user and one unprivileged user, `anima-probe`, which may log in only from the hub container's fixed address.
 - **VPS-002.** The VPS firewall must permit only 443/tcp (Headscale and DERP), 3478/udp (STUN) and 41641/udp (WireGuard). All other ports are closed to the internet.
 - **VPS-003.** The Headscale administration must be available only on the VPN.
 - **VPS-004.** The VPS must install security updates automatically.
-- **VPS-005.** The operator must confirm each change to the VPS or the Hostinger account. Automation must not change the VPS without this confirmation.
+- **VPS-005.** The operator must confirm each change to the VPS or the Hostinger account. Automation must not change the VPS without this confirmation. A change that the operator starts in the app through a broker verb needs no confirmation in chat; the broker log replaces the `operator-changes.md` row for it (VP-4). A policy change still needs confirmation in chat.
 - **VPS-006.** Back up the Headscale database and the Anima database each day to a site that is not the VPS.
 
 #### 4.2.1 Domain names
@@ -463,7 +476,7 @@ The operator owns the domain `anima.ing`. Cloudflare holds its DNS.
 - **DNS-002.** The hub must use a Let's Encrypt certificate for `hub.anima.ing`. Get it with the DNS-01 challenge through the Cloudflare API, because the hub has no public port. Renew it automatically. This satisfies SEC-001 with a certificate that the client trusts without a pinned exception.
 - **DNS-003.** The Cloudflare API token for DNS-01 must have only the permission "Zone DNS Edit" for `anima.ing`. Keep it in a Docker secret (SEC-004 rules apply). Do not log it.
 - **DNS-004.** The `hs.anima.ing` and `hub.anima.ing` records must not be proxied. Cloudflare cannot proxy WireGuard, STUN or a VPN address.
-- **DNS-005.** `hub.anima.ing` points to a private address. A connection from outside the VPN must fail. This keeps SEC-008: the public record shows the name and a VPN address only.
+- **DNS-005.** `hub.anima.ing` points to a private address. A connection from outside the VPN must fail. This keeps SEC-008: the public record shows the name and a VPN address only. The host firewall drops every packet for the VPS's own VPN addresses that does not arrive on the VPN interface or loopback, with one exception (VP-13): the hub container's fixed address on a Docker bridge may reach the VPS's VPN address on 22/tcp and ICMP echo (rate-limited), and no other port.
 - **DNS-006.** Headscale `dns.base_domain` must be `net.anima.ing`. It must not be `anima.ing`, because Headscale does not permit a base domain that contains the `server_url` host. Device names under `net.anima.ing` do not have public records.
 - **DNS-007.** `releases.anima.ing` must be the custom domain of the R2 bucket `anima-releases`. `updates.anima.ing` and its redirect rule are removed (changed by R-107).
 - **DNS-008.** The operator must confirm each change to the Cloudflare account or the `anima.ing` zone, as for the VPS (VPS-005).
@@ -1058,6 +1071,7 @@ The view has these tabs:
 
 - **SET-001.** The Settings page must be available from the navigation bar.
 - **SET-002.** In Phase 1, the Settings page must show only the page title "Settings", a "Signed in as <name>" row with "Sign out" (R-048), the "Interface font" and "Monospace font" choices (UI-020), and, in the desktop app, the "Updates" row (UPD-006).
+- **SET-003.** The Settings page must show a "VPN" section: the path of each site, the nodes that are not in Anima, and the key expiry of each node. When the hub has no VPN picture, the section must say: "VPN status is not available. The hub has no LocalAPI proxy (ANIMA_TAILSCALE_LOCALAPI), or it has not answered since the hub started."
 
 A later version adds these items to the Settings page:
 

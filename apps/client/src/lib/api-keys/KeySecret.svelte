@@ -5,9 +5,11 @@
   interface Props {
     /** The whole key. Shown here and nowhere else: never in a title, a live region, a URL, storage or the console (INT-003, LOG-007). */
     secret: string;
+    /** What the key is called above the field; an API key by default. */
+    label?: string;
   }
 
-  const { secret }: Props = $props();
+  const { secret, label = 'API key' }: Props = $props();
   const fieldId = $props.id();
   let copy = $state<'idle' | 'copied' | 'failed'>('idle');
   let field: HTMLTextAreaElement | undefined = $state();
@@ -47,7 +49,7 @@
 </script>
 
 <div class="secret">
-  <label for={fieldId}>API key</label>
+  <label for={fieldId}>{label}</label>
   <div class="row">
     <!-- A text area, so the whole key wraps into view on a narrow screen; it breaks between any two characters. -->
     <textarea
@@ -73,6 +75,7 @@
 
 <style>
   .secret {
+    container-type: inline-size;
     display: flex;
     flex-direction: column;
     gap: var(--space-1);
@@ -104,6 +107,20 @@
     line-height: var(--leading-normal);
     word-break: break-all;
     resize: none;
+  }
+
+  /* A key is about 60 characters: at a narrow width it wraps to more lines than the two rows hold. */
+  @container (max-inline-size: 28rem) {
+    textarea {
+      field-sizing: content;
+    }
+
+    /* Without field-sizing the two rows would clip: hold room for five lines instead. */
+    @supports not (field-sizing: content) {
+      textarea {
+        min-block-size: calc(var(--text-sm) * var(--leading-normal) * 5 + var(--space-4) + var(--border-thin) * 2);
+      }
+    }
   }
 
   textarea:focus-visible {

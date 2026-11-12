@@ -1,0 +1,18 @@
+# The Anima broker socket (R-055, VP-8). Install as /etc/systemd/system/anima-broker.socket
+# (harden.sh broker). Only the hub container's user (10001, the host's
+# anima-hub, which harden.sh broker creates) may connect; systemd starts one
+# anima-broker@.service for each connection and refuses a second while one runs.
+[Unit]
+Description=Anima broker socket (R-055, VP-8)
+
+[Socket]
+ListenStream=/run/anima-broker/broker.sock
+SocketUser=anima-hub
+SocketGroup=anima-hub
+SocketMode=0600
+DirectoryMode=0755
+Accept=yes
+MaxConnections=1
+
+[Install]
+WantedBy=sockets.target

@@ -78,6 +78,11 @@
     "builds": [
       "access",
       "events"
+    ],
+    "vpn": [
+      "devices",
+      "events",
+      "checks"
     ]
   },
   "graphql": {
@@ -115,6 +120,9 @@
       "access"
     ],
     "builds": [
+      "access"
+    ],
+    "vpn": [
       "access"
     ]
   }

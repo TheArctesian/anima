@@ -136,9 +136,9 @@ Wiring only (called from `main.rs`, never from another domain): `create_partitio
 (Phase 3, changed, Q2-07):
 
 ```rust
-pub enum Source { Check, Session, Device, Access, Hub, Metrics, Notifications }   // Notifications (Phase 3)
+pub enum Source { Check, Session, Device, Access, Hub, Metrics, Notifications, Vpn }   // Notifications (Phase 3), Vpn (VP-5)
 pub enum AuditTarget { ..., WebInterface(WebInterfaceId), ApiKey(ApiKeyId), Channel(ChannelId),
-                       Recording(RecordingId) }
+                       Recording(RecordingId), Vpn }   // Vpn: kind() and id() are "vpn" (VP-7)
 /// One audit-then-event write for every domain (Q2-07). The entry carries its source and device.
 pub struct Trail { /* bus, operator, client address, the time read once */ }
 impl Trail {
@@ -174,6 +174,7 @@ impl Trail {
 | `notifications` (Phase 3, new) | `events`, `credentials` (`Vault`, `Secret`, `Sealed` only) |
 | `retention` (Phase 3, new) | — |
 | `builds` (Phase 3, WP-36, new) | `access` (builder tokens, `Identity`, the guards), `events` |
+| `vpn` (Phase 3, VP-5, new) | `devices`, `events`, `checks` (`for_devices` only) |
 
 (Phase 3) No cycle: `notifications` imports neither `checks` nor `sessions`. `ssh` and `trust` import neither `sessions` nor `checks`.
 
@@ -186,6 +187,7 @@ GraphQL composition edges (R-011). Only the file `<domain>/graphql.rs` may also 
 | `devices` (Phase 2, adds) | `metrics`, `web_interfaces` | `Device.readings`, `Device.metrics`, `Device.gpus`, `Device.webInterfaces`, `Device.webInterfaceSuggestions`; Phase 3: `Device.metricsStale` (MET-018, CR-18) |
 | `metrics`, `web_interfaces` (Phase 2) | `access` (R-022) | the `Authenticated` guard on their root fields |
 | `builds` (Phase 3, WP-36) | `access` | the `Authenticated` and `BuilderSignedIn` guards |
+| `vpn` (Phase 3, VP-5) | `access` | the `Authenticated` guard |
 | `checks`, `maintenance`, `events` | `access` (R-022) | the `Authenticated` guard on their root fields (API-003) |
 | `devices` (Phase 3) | `trust` (replaces `sessions` for these fields) | `SshSettings.hostKey`, `RdpSettings.serverCertificate` |
 | `checks` (Phase 3) | `notifications` | `Check.notifications` |

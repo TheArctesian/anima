@@ -157,7 +157,7 @@ describe('6.7 tabs (D-9, D-10)', () => {
 
   it('D-9: a panel loads its data the first time it shows, and only then', async () => {
     const fake = await show(answers({ DeviceSessions: { sessions: { pageInfo: { hasNextPage: false }, edges: [] } } }));
-    expect(fake.requests.map((request) => request.operation)).toEqual(['Device', 'DeviceChecks']);
+    expect(fake.requests.map((request) => request.operation).filter((operation) => operation !== 'Vpn')).toEqual(['Device', 'DeviceChecks']);
     route.search = '?tab=sessions';
     await settle();
     route.search = '';

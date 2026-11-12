@@ -16,6 +16,7 @@ const KEY_FILE: &str = "ANIMA_KEY_FILE";
 const GUACD: &str = "ANIMA_GUACD";
 const GUACD_DRIVE_ROOT: &str = "ANIMA_GUACD_DRIVE_ROOT";
 const TAILSCALE_LOCALAPI: &str = "ANIMA_TAILSCALE_LOCALAPI";
+const VPN_BROKER: &str = "ANIMA_VPN_BROKER";
 const PERMITTED_NETWORKS: &str = "ANIMA_PERMITTED_NETWORKS";
 const PROBE_DENY: &str = "ANIMA_PROBE_DENY";
 const LOG: &str = "ANIMA_LOG";
@@ -39,6 +40,9 @@ pub struct Config {
     /// `host:port` of the Tailscale `LocalAPI` proxy (D-4). `None` when unset or empty: Tailscale
     /// ping checks then report Unknown.
     pub tailscale_localapi: Option<String>,
+    /// The VPN broker's Unix socket on the VPS (R-055, VP-7). `None` when unset or empty:
+    /// enrolment is then off and the VPN picture says `NOT_SET`.
+    pub vpn_broker: Option<PathBuf>,
     pub permitted_networks: Vec<ipnet::IpNet>,
     /// Networks checks must never probe: the hub's own Docker networks and public address
     /// (R-030). Empty when unset; `main.rs` warns at start.
@@ -172,6 +176,17 @@ fn host_port(variable: &'static str, text: &str) -> Result<String, Error> {
     Ok(text.to_owned())
 }
 
+/// An absolute Unix socket path from `name`; unset or empty is `None`.
+fn optional_socket(
+    env: &BTreeMap<String, String>,
+    name: &'static str,
+) -> Result<Option<PathBuf>, Error> {
+    match env.get(name).map(String::as_str) {
+        None | Some("") => Ok(None),
+        Some(text) => absolute_path(name, text).map(Some),
+    }
+}
+
 /// A path in another filesystem (the guacd container), which only an absolute path names.
 fn absolute_path(variable: &'static str, text: &str) -> Result<PathBuf, Error> {
     let path = PathBuf::from(text);
@@ -277,6 +292,7 @@ pub fn from_env(env: &BTreeMap<String, String>) -> Result<Config, Error> {
             None | Some("") => None,
             Some(text) => Some(host_port(TAILSCALE_LOCALAPI, text)?),
         },
+        vpn_broker: optional_socket(env, VPN_BROKER)?,
         permitted_networks: networks(
             PERMITTED_NETWORKS,
             value(env, PERMITTED_NETWORKS, "100.64.0.0/10")?,
@@ -306,3 +322,5 @@ pub fn from_env(env: &BTreeMap<String, String>) -> Result<Config, Error> {
 mod roots_tests;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod vpn_tests;

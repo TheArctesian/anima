@@ -1,5 +1,9 @@
 import { afterEach, beforeEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { HARDEN_TIMEOUT_MS, ALLOWED_SS, fakeHost, removeHosts, mutatingCalls, type Host } from "./vps-host.ts";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { parseNftables } from "../src/nftables.ts";
+import { resolvedChain } from "./nft-eval.ts";
+import { HARDEN_TIMEOUT_MS, ALLOWED_SS, VPS_DIR, fakeHost, removeHosts, mutatingCalls, type Host } from "./vps-host.ts";
 
 setDefaultTimeout(HARDEN_TIMEOUT_MS);
 afterEach(removeHosts);
@@ -99,6 +103,39 @@ describe("harden.sh check (boot firewall)", () => {
   test("VPS-002: check reports a local allow file with a line that is not one port", () => {
     host.write("etc/anima/firewall-allow", "80/tcp accept\n");
     expect(host.run(["check"]).out).toContain("VIOLATION: /etc/anima/firewall-allow has a line that is not one PORT/PROTO");
+  });
+});
+
+describe("harden.sh check (the hub's rules in the live table, VP-13)", () => {
+  const listing = (): string => readFileSync(join(import.meta.dir, "fixtures", "anima-filter-listing.txt"), "utf8");
+
+  test("VP-13 the fixture is nft's listing of nftables.conf: it holds each VP-13 rule of the file", () => {
+    const ruleset = parseNftables(readFileSync(join(VPS_DIR, "nftables.conf"), "utf8"));
+    for (const name of ["prerouting", "input", "output"]) {
+      const rules = resolvedChain(ruleset, "inet anima_filter", name).rules
+        .filter((rule) => /172\.30\.0\.10|172\.30\.0\.0\/16|skuid/.test(rule));
+      expect(rules.length).toBeGreaterThan(0);
+      for (const rule of rules) expect(listing()).toContain(`\t\t${rule}\n`);
+    }
+  });
+
+  test("VP-13 I2 check accepts the reverse-path test as nft 1.1 prints it (`check exists`)", () => {
+    host.setTable(listing().replaceAll("fib saddr . iif oif exists", "fib saddr . iif check exists"));
+    expect(host.run(["check"]).out).not.toContain("lacks the hub's four VP-13 rules");
+  });
+
+  test.each([
+    ["the reverse-path test", (text: string) => text.replace(/ fib saddr \. iif oif exists accept/, " accept"),
+      "table inet anima_filter lacks the hub's four VP-13 rules with the reverse-path test"],
+    ["the tailscale0 drop", (text: string) => text.replace(/\t\tiifname "tailscale0" ip saddr 172\.30\.0\.0\/16 drop\n/, ""),
+      "table inet anima_filter does not drop 172.30.0.0/16 from tailscale0"],
+    ["the output chain", (text: string) => text.replace(/\n\tchain output \{[\s\S]*?\n\t\}\n/, "\n"),
+      "table inet anima_filter has no output chain confining anima-probe (uid 10002)"],
+  ])("VP-13 I2 check reports a live table without %s", (_, edit, message) => {
+    host.setTable(edit(listing()));
+    const run = host.run(["check"]);
+    expect(run.code).toBe(1);
+    expect(run.out).toContain(`VIOLATION: ${message}`);
   });
 });
 

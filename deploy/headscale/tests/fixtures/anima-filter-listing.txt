@@ -1,0 +1,50 @@
+table inet anima_filter {
+	chain prerouting {
+		type filter hook prerouting priority raw; policy accept;
+		iifname "tailscale0" ip saddr 172.30.0.0/16 drop
+		iifname "br-*" ip saddr 172.30.0.10 ip daddr 100.64.0.1 tcp dport 22 fib saddr . iif oif exists accept
+		iifname "br-*" ip saddr 172.30.0.10 ip daddr 100.64.0.1 icmp type echo-request fib saddr . iif oif exists accept
+		iifname != { "lo", "tailscale0" } fib daddr type local ip daddr 100.64.0.0/10 drop
+		iifname != { "lo", "tailscale0" } fib daddr type local ip6 daddr fd7a:115c:a1e0::/48 drop
+		iifname != "lo" ip daddr 127.0.0.0/8 drop
+		iifname != { "br-*", "docker0", "lo", "tailscale0" } ip daddr 172.16.0.0/12 drop
+	}
+
+	chain forward {
+		type filter hook forward priority filter; policy accept;
+		oifname "tailscale0" iifname != { "br-*", "docker0", "lo", "tailscale0" } drop
+		ip saddr 172.30.3.10 ip daddr 172.30.3.0/24 ct state established,related accept
+		ip saddr 172.30.3.10 oifname "tailscale0" drop
+		ip saddr 172.30.3.10 ip daddr { 0.0.0.0/8, 10.0.0.0/8, 100.64.0.0/10, 127.0.0.0/8, 169.254.0.0/16, 172.16.0.0/12, 192.168.0.0/16, 224.0.0.0/3 } drop
+	}
+
+	chain input {
+		type filter hook input priority filter; policy drop;
+		ip saddr 172.30.3.10 drop
+		ct state invalid drop
+		iifname "br-*" ip saddr 172.30.0.10 ip daddr 100.64.0.1 tcp dport 22 fib saddr . iif oif exists accept
+		iifname "br-*" ip saddr 172.30.0.10 ip daddr 100.64.0.1 icmp type echo-request fib saddr . iif oif exists limit rate 5/second burst 10 packets accept
+		iifname != { "lo", "tailscale0" } ip daddr 100.64.0.0/10 drop
+		iifname != { "lo", "tailscale0" } ip6 daddr fd7a:115c:a1e0::/48 drop
+		ct state established,related accept
+		iifname "br-*" ip saddr 172.30.0.10 drop
+		iif "lo" accept
+		icmp type echo-request limit rate 5/second burst 10 packets accept
+		icmp type { destination-unreachable, time-exceeded, parameter-problem } accept
+		icmpv6 type { destination-unreachable, packet-too-big, time-exceeded, parameter-problem } accept
+		icmpv6 type { nd-router-advert, nd-neighbor-solicit, nd-neighbor-advert } ip6 hoplimit 255 accept
+		icmpv6 type mld-listener-query ip6 saddr fe80::/10 accept
+		icmpv6 type echo-request limit rate 5/second burst 10 packets accept
+		tcp dport 443 accept
+		udp dport 3478 accept
+		udp dport 41641 accept
+		iifname "tailscale0" tcp dport 22 accept
+	}
+
+	chain output {
+		type filter hook output priority filter; policy accept;
+		meta skuid 10002 ip daddr { 127.0.0.0/8, 172.16.0.0/12 } drop
+		meta skuid 10002 fib daddr type local drop
+		meta skuid 10002 oifname "tailscale0" drop
+	}
+}
