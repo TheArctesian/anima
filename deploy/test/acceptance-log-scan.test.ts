@@ -6,6 +6,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { leakKinds, lineViews, needsLog, parseNeedles, plainLine, type LeakKind } from "../acceptance/log-scan.ts";
+import { finish } from "./finished-process.ts";
 
 const SCRIPT = join(import.meta.dir, "..", "acceptance", "log-scan.ts");
 const ESC = String.fromCharCode(0x1b);
@@ -225,9 +226,9 @@ function writeFixtures() {
   mkdirSync(join(dir, "folder"));
 }
 
-function run(args: string[], stdin?: string) {
-  const result = Bun.spawnSync(["bun", SCRIPT, ...args], { stdin: stdin === undefined ? "ignore" : Buffer.from(stdin) });
-  return { code: result.exitCode, out: result.stdout.toString(), err: result.stderr.toString() };
+async function run(args: string[], stdin?: string) {
+  const result = await finish(["bun", SCRIPT, ...args], { stdin });
+  return { code: result.exitCode, out: result.stdout, err: result.stderr };
 }
 
 function expectNoSecret(output: { out: string; err: string }) {
@@ -244,12 +245,12 @@ afterAll(() => {
 });
 
 describe("spawned scan", () => {
-  test("a clean log exits 0 with the line count", () => {
-    expect(run([join(dir, "clean.log")])).toEqual({ code: 0, out: "scanned 3 lines, 0 hits\n", err: "" });
+  test("a clean log exits 0 with the line count", async () => {
+    expect(await run([join(dir, "clean.log")])).toEqual({ code: 0, out: "scanned 3 lines, 0 hits\n", err: "" });
   });
 
-  test("a leaking file exits 1 and prints only line numbers and kinds", () => {
-    const result = run(["--needles", join(dir, "needles"), join(dir, "leaking.log")]);
+  test("a leaking file exits 1 and prints only line numbers and kinds", async () => {
+    const result = await run(["--needles", join(dir, "needles"), join(dir, "leaking.log")]);
     expect(result.code).toBe(1);
     expect(result.out).toBe(
       [
@@ -268,15 +269,15 @@ describe("spawned scan", () => {
     expectNoSecret(result);
   });
 
-  test("stdin is scanned line by line, also with a value split across read chunks", () => {
+  test("stdin is scanned line by line, also with a value split across read chunks", async () => {
     const padding = "x".repeat(70_000);
-    const result = run(["-"], `${padding} ${apiKey}\nclean\n${padding}${"y".repeat(65_536)} ${bearer}`);
+    const result = await run(["-"], `${padding} ${apiKey}\nclean\n${padding}${"y".repeat(65_536)} ${bearer}`);
     expect(result).toEqual({ code: 1, out: "line 1: api-key\nline 3: bearer-value\nscanned 3 lines, 2 hits\n", err: "" });
   });
 
-  test("a large log streams through", () => {
+  test("a large log streams through", async () => {
     const big = `${"hub-1 | {\"level\":\"INFO\",\"route\":\"/graphql\"}\n".repeat(100_000)}${apiKey}\n`;
-    expect(run([], big)).toEqual({ code: 1, out: "line 100001: api-key\nscanned 100001 lines, 1 hits\n", err: "" });
+    expect(await run([], big)).toEqual({ code: 1, out: "line 100001: api-key\nscanned 100001 lines, 1 hits\n", err: "" });
     // About 2 s on an idle machine; the default 5 s is too tight when run alone under load.
   }, 30_000);
 
@@ -290,15 +291,15 @@ describe("spawned scan refusals", () => {
     expect(needsLog("hub.log", true)).toBe(false);
   });
 
-  test("an unreadable log, needles file or bad usage exits 2 without echoing input", () => {
-    const missing = run([join(dir, "missing.log")]);
-    const folder = run([join(dir, "folder")]);
-    const noNeedles = run(["--needles", join(dir, "no-needles"), join(dir, "clean.log")]);
-    const emptyNeedles = run(["--needles", join(dir, "empty-needles"), join(dir, "clean.log")]);
-    const unknown = run([`--${apiKey}`, join(dir, "clean.log")]);
-    const twoLogs = run([join(dir, "clean.log"), apiKey]);
-    const emptyLog = run(["-"], "");
-    const emptyFile = run(["/dev/null"]);
+  test("an unreadable log, needles file or bad usage exits 2 without echoing input", async () => {
+    const missing = await run([join(dir, "missing.log")]);
+    const folder = await run([join(dir, "folder")]);
+    const noNeedles = await run(["--needles", join(dir, "no-needles"), join(dir, "clean.log")]);
+    const emptyNeedles = await run(["--needles", join(dir, "empty-needles"), join(dir, "clean.log")]);
+    const unknown = await run([`--${apiKey}`, join(dir, "clean.log")]);
+    const twoLogs = await run([join(dir, "clean.log"), apiKey]);
+    const emptyLog = await run(["-"], "");
+    const emptyFile = await run(["/dev/null"]);
     expect(emptyLog.err).toBe("log-scan: the log is empty\n");
     for (const result of [missing, folder, noNeedles, emptyNeedles, unknown, twoLogs, emptyLog, emptyFile]) {
       expect(result.code).toBe(2);
@@ -309,11 +310,11 @@ describe("spawned scan refusals", () => {
     }
   });
 
-  test("a reader that closes the output early ends the scan with exit 2 and fixed text", () => {
+  test("a reader that closes the output early ends the scan with exit 2 and fixed text", async () => {
     writeFileSync(join(dir, "many.log"), "password=hunter2x\n".repeat(40_000));
     const pipeline = 'bun "$0" "$1" | head -n 1 >/dev/null; echo "status ${PIPESTATUS[0]}"';
-    const result = Bun.spawnSync(["bash", "-c", pipeline, SCRIPT, join(dir, "many.log")], { stdin: "ignore" });
-    expect(result.stdout.toString()).toBe("status 2\n");
-    expect(result.stderr.toString()).toBe("log-scan: the output closed (EPIPE)\n");
+    const result = await finish(["bash", "-c", pipeline, SCRIPT, join(dir, "many.log")]);
+    expect(result.stdout).toBe("status 2\n");
+    expect(result.stderr).toBe("log-scan: the output closed (EPIPE)\n");
   });
 });
