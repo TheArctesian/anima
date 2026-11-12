@@ -48,6 +48,7 @@ fn disk(filesystem: &str, mount: &str, total_bytes: u64, used_bytes: u64) -> Dis
         mount: mount.to_owned(),
         total_bytes,
         used_bytes,
+        available_bytes: total_bytes.saturating_sub(used_bytes),
     }
 }
 
