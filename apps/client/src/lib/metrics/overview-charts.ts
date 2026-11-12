@@ -92,8 +92,10 @@ function gpuCharts(all: readonly MetricSeries[], gpus: readonly DeviceGpu[]): Ch
       const usage = percentChart(`gpu:${String(gpu.index)}:usage`, `${title} usage`, 'Usage', ofGpu('GPU_PERCENT'));
       // MET-007: no VRAM chart for a GPU without its own memory, even if a series for it arrives.
       const vram = gpu.hasVram ? percentChart(`gpu:${String(gpu.index)}:vram`, `${title} VRAM`, 'VRAM', ofGpu('VRAM_PERCENT')) : [];
-      // D-30: a unified-memory GPU (Apple) shows the memory it uses as bytes, in the one chart its own memory would have been.
-      const shared = openChart(`gpu:${String(gpu.index)}:memory`, `${title} memory in use (shared)`, formatBytes, lines([['Memory in use', ofGpu('GPU_MEMORY_BYTES')]]));
+      // D-30: a unified-memory GPU (Apple) shows the memory it uses as bytes; a GPU with its own memory has VRAM, so nothing is "shared".
+      const shared = gpu.hasVram
+        ? []
+        : openChart(`gpu:${String(gpu.index)}:memory`, `${title} memory in use (shared)`, formatBytes, lines([['Memory in use', ofGpu('GPU_MEMORY_BYTES')]]));
       return [...usage, ...vram, ...shared];
     });
 }

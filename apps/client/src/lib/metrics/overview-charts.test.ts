@@ -115,4 +115,10 @@ describe('chartsOf shared GPU memory', () => {
     expect(charts[1]?.axis).toBe('open');
     expect(charts[1]?.format(2 ** 30)).toBe('1.0 GiB');
   });
+
+  it('D-30, MET-007: a GPU with its own memory gets no shared memory chart, even when that series arrives', () => {
+    const at = '2026-11-05T09:04:00Z';
+    const charts = chartsOf([series('GPU_PERCENT', 'GPU 0', [point(at, 10)], 0), series('GPU_MEMORY_BYTES', 'GPU 0', [point(at, 2 ** 30)], 0)], [NVIDIA]);
+    expect(keys(charts)).toEqual(['gpu:0:usage']);
+  });
 });
