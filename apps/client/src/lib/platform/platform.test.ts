@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { desktopCapabilities } from '$lib/desktop/capabilities';
 import { DESKTOP_MAC } from './answers.fixture';
 import { browserCapabilities } from './browser';
+import { isMac } from './mac';
 import { capabilities } from './platform';
 
 const shell = vi.hoisted(() => ({ isTauri: vi.fn(() => true) }));
@@ -34,6 +35,18 @@ describe('desktopCapabilities (WP-42 D-4)', () => {
   it('CLI-001: outside the desktop shell there are no desktop answers', () => {
     shell.isTauri.mockReturnValue(false);
     expect(desktopCapabilities(MAC)).toBeNull();
+  });
+});
+
+describe('isMac (BLD-068, R-059)', () => {
+  it('BLD-068: a Mac user agent is a Mac; Linux, Windows, an iPhone, an iPad and an empty one are not', () => {
+    expect(isMac(MAC)).toBe(true);
+    expect(isMac('Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/605.1.15 (KHTML, like Gecko)')).toBe(true);
+    expect(isMac(LINUX)).toBe(false);
+    expect(isMac('Mozilla/5.0 (Windows NT 10.0; Win64; x64)')).toBe(false);
+    expect(isMac('Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15')).toBe(false);
+    expect(isMac('Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X) AppleWebKit/605.1.15')).toBe(false);
+    expect(isMac('')).toBe(false);
   });
 });
 

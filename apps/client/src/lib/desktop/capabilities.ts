@@ -1,7 +1,6 @@
 import { isTauri } from '@tauri-apps/api/core';
 import type { Capabilities } from '$lib/platform/capabilities';
-
-const MAC = /Macintosh|Mac OS X/;
+import { isMac } from '$lib/platform/mac';
 
 /**
  * What the desktop shell can do, or `null` outside it (WP-42 D-4). The shell has the key store, web view tabs, the
@@ -18,8 +17,8 @@ export function desktopCapabilities(userAgent: string = navigator.userAgent): Ca
     updates: true,
     processLog: true,
     thisMachine: true,
-    systemSettings: MAC.test(userAgent),
+    systemSettings: isMac(userAgent),
     builds: true,
-    overlayTitleBar: MAC.test(userAgent),
+    overlayTitleBar: isMac(userAgent),
   };
 }
