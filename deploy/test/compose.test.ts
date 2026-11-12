@@ -99,7 +99,7 @@ describe("secrets (DB-002, SEC-004, DNS-003)", () => {
     postgres: ["hub_password", "owner_password", "postgres_password"],
     migrate: ["owner_database_url"],
     certs: ["cloudflare_dns_token"],
-    hub: ["anima_key", "hub_database_url", "r2_access_key_id", "r2_secret_access_key"],
+    hub: ["anima_key", "hub_database_url", "r2_access_key_id", "r2_secret_access_key", "updater_key", "updater_key_password"],
     guacd: [],
     localapi: [],
     apprise: [],
@@ -110,6 +110,14 @@ describe("secrets (DB-002, SEC-004, DNS-003)", () => {
       expect(secretsOf(compose.services[name] as Container)).toEqual(secrets);
     });
   }
+
+  test("R-116 the hub reads the updater key and its password from their Docker secrets", () => {
+    const environment = compose.services["hub"]?.environment;
+    expect(environment?.["ANIMA_UPDATER_KEY_FILE"]).toBe("/run/secrets/updater_key");
+    expect(environment?.["ANIMA_UPDATER_KEY_PASSWORD_FILE"]).toBe("/run/secrets/updater_key_password");
+    expect(compose.secrets["updater_key"]).toEqual({ file: "./secrets/updater_key" });
+    expect(compose.secrets["updater_key_password"]).toEqual({ file: "./secrets/updater_key_password" });
+  });
 
   test("DB-002 the hub reads hub_database_url as /run/secrets/database_url", () => {
     const entry = compose.services["hub"]?.secrets?.find((secret) => typeof secret !== "string" && secret.source === "hub_database_url");

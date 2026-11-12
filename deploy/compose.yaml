@@ -193,16 +193,21 @@ services:
       ANIMA_PUBLIC_ORIGIN: ${ANIMA_PUBLIC_ORIGIN:-https://hub.anima.ing}
       ANIMA_WEB_ROOT: /usr/share/anima/web
       ANIMA_LOG: ${ANIMA_LOG:-info}
-      # Release publishing (WP-36, R-108): off while the endpoint is empty. The R2 token is two
-      # secret files the operator makes (README, Release publishing); the updater key is public.
+      # Release publishing (WP-36, R-108, R-116): off while the endpoint is empty. The R2 token
+      # and the updater key with its password are secret files the operator makes (README,
+      # Release publishing); the hub signs with the key. The public key is a plain value.
       ANIMA_RELEASES_ENDPOINT: ${ANIMA_RELEASES_ENDPOINT:-}
       ANIMA_UPDATER_PUBLIC_KEY: ${ANIMA_UPDATER_PUBLIC_KEY:-}
+      ANIMA_UPDATER_KEY_FILE: /run/secrets/updater_key
+      ANIMA_UPDATER_KEY_PASSWORD_FILE: /run/secrets/updater_key_password
     secrets:
       - source: hub_database_url
         target: database_url
       - anima_key
       - r2_access_key_id
       - r2_secret_access_key
+      - updater_key
+      - updater_key_password
     volumes:
       - certs:/certs:ro
       # The broker's folder, not the socket file, so a socket restart is seen (BD-10). Only the
@@ -354,3 +359,7 @@ secrets:
     file: ./secrets/r2_access_key_id
   r2_secret_access_key:
     file: ./secrets/r2_secret_access_key
+  updater_key:
+    file: ./secrets/updater_key
+  updater_key_password:
+    file: ./secrets/updater_key_password

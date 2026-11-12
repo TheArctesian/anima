@@ -69,7 +69,7 @@ describe("preflight docker", () => {
   });
 });
 
-const names = ["postgres_password", "owner_password", "hub_password", "owner_database_url", "hub_database_url", "anima_key", "cloudflare_dns_token", "r2_access_key_id", "r2_secret_access_key"];
+const names = ["postgres_password", "owner_password", "hub_password", "owner_database_url", "hub_database_url", "anima_key", "cloudflare_dns_token", "r2_access_key_id", "r2_secret_access_key", "updater_key", "updater_key_password"];
 const modeOf = (name: string) => (name === "cloudflare_dns_token" ? 0o400 : 0o440);
 
 function write(folder: string, name: string, content = "x", mode = modeOf(name)): void {
@@ -203,6 +203,48 @@ describe("preflight R2 token files (R-108)", () => {
       expect(result.ok).toBe(false);
       expect(result.message).toContain("mode 0440");
       expect(result.message).not.toContain("r2-value-1");
+    });
+  });
+});
+
+describe("preflight updater key files (R-116)", () => {
+  test.each(["updater_key", "updater_key_password"])("R-116 names a missing %s and points at the README", async (name) => {
+    await withFolder(async (folder) => {
+      for (const other of names.filter((n) => n !== name)) write(folder, other);
+      const result = await preflight("secrets", folder);
+      expect(result.ok).toBe(false);
+      expect(result.message).toContain(name);
+      expect(result.message).toContain("Release publishing");
+    });
+  });
+
+  test("R-116 refuses an empty updater_key but accepts an empty password, for a key with none", async () => {
+    await withFolder(async (folder) => {
+      for (const name of names) write(folder, name);
+      write(folder, "updater_key_password", "");
+      expect(await preflight("secrets", folder)).toEqual({ ok: true, message: "" });
+      write(folder, "updater_key", "");
+      const result = await preflight("secrets", folder);
+      expect(result.ok).toBe(false);
+      expect(result.message).toContain("missing or empty secret file");
+      expect(result.message).toContain("updater_key");
+    });
+  });
+
+  test.each([
+    ["updater_key", 0o600],
+    ["updater_key", 0o444],
+    ["updater_key_password", 0o600],
+    ["updater_key_password", 0o400],
+  ])("R-116 refuses %s with mode %o and prints no value", async (name, mode) => {
+    await withFolder(async (folder) => {
+      for (const other of names) write(folder, other);
+      write(folder, name, "updater-value-1", mode);
+      const result = await preflight("secrets", folder);
+      expect(result.ok).toBe(false);
+      expect(result.message).toContain(name);
+      expect(result.message).toContain("mode 0440");
+      expect(result.message).not.toContain("updater-value-1");
     });
   });
 });

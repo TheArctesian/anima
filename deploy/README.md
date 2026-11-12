@@ -86,7 +86,7 @@ Each service writes its log as JSON files, 10 MB each, 10 files.
    | `APPRISE_ALLOW_SERVICES` | no | `discord,tgram,slack` | The services Apprise may send to. See "Apprise". |
    | `ANIMA_ACME_SERVER` | no | Let's Encrypt production | Use the staging URL to test. |
    | `ANIMA_RELEASES_ENDPOINT` | no | empty (publishing off) | The R2 S3 API origin, `https://<account>.r2.cloudflarestorage.com`. See "Release publishing". |
-   | `ANIMA_UPDATER_PUBLIC_KEY` | no | empty (every publish fails) | The updater's public key, the same text as `plugins.updater.pubkey` in `tauri.conf.json`. |
+   | `ANIMA_UPDATER_PUBLIC_KEY` | no | empty (publishing off) | The updater's public key, the same text as `plugins.updater.pubkey` in `tauri.conf.json`. The hub's updater key must match it. |
 
    The compose file sets one more hub variable as a fixed value: `ANIMA_WEB_ROOT`
    (`/usr/share/anima/web`, the web client; empty turns it off). `ANIMA_PUBLIC_ORIGIN` and
@@ -244,7 +244,7 @@ with Docker at every boot; the rules must already be in the boot copy of the fir
 - **Outside the hub's deny list.** Apprise's own onward traffic is not covered by `ANIMA_PROBE_DENY`.
   The allow list and the attachment reject do not contain it. The host firewall rule (step 7) does.
 
-## Release publishing (WP-36, R-108)
+## Release publishing (WP-36, R-108, R-116)
 
 The hub publishes the desktop releases its builders upload to the R2 bucket `anima-releases`
 (spec Section 3.10, BLD-060 to BLD-070). It is off until `ANIMA_RELEASES_ENDPOINT` is set; while
@@ -260,10 +260,34 @@ step (VPS-005): agents do not create the R2 token or change `deploy/.env` on the
 - **`ANIMA_RELEASES_ENDPOINT`** is the bucket's S3 API origin,
   `https://<account>.r2.cloudflarestorage.com`. `ANIMA_RELEASES_BUCKET` (default `anima-releases`)
   and `ANIMA_RELEASES_PUBLIC_BASE` (default `https://releases.anima.ing`) rarely change.
+- **Two more secret files** hold the updater signing key and its password: the hub signs each
+  release (R-116, BLD-045). A hub that holds this key can sign updates every installed app
+  trusts, so keep the VPS and the backup of the key as safe as the key itself. Agents never do
+  these steps and never read these files (UPD-012). On your computer, copy the key file that
+  `tauri signer generate` wrote to the VPS yourself, for example
+  `scp ~/.config/anima/updater.key <you>@<vps>:updater.key`. Then, on the VPS, in the deploy folder
+  (group 10001 is the hub's, `anima-hub` on the VPS, as for the R2 files):
+
+  ```sh
+  sudo install -m 0440 -o root -g 10001 ~/updater.key secrets/updater_key
+  shred -u ~/updater.key
+  # Type the key's password; it is not echoed. Press Enter alone for a key with no password.
+  read -rs password && (umask 077 && printf '%s' "$password" > ~/updater_key_password)
+  unset password
+  sudo install -m 0440 -o root -g 10001 ~/updater_key_password secrets/updater_key_password
+  shred -u ~/updater_key_password
+  ```
+
+  `compose.yaml` gives both to the hub as Docker secrets (`ANIMA_UPDATER_KEY_FILE`,
+  `ANIMA_UPDATER_KEY_PASSWORD_FILE`) and `bin/preflight` checks them: `updater_key` must not be
+  empty, and `updater_key_password` must exist but may be empty. The hub opens the key once at
+  start and never logs it, its password or its seed.
 - **`ANIMA_UPDATER_PUBLIC_KEY` must be the same text as `plugins.updater.pubkey` in
-  `apps/desktop/src-tauri/tauri.conf.json`.** The hub checks every updater file's signature with
-  it before it writes a feed. If the two differ, every publish fails; if the variable is empty,
-  every publish fails with a reason that names it. The key is public, so it is a plain variable.
+  `apps/desktop/src-tauri/tauri.conf.json`,** and the key in `secrets/updater_key` must be its
+  private half. If the variable is empty, the key does not open with its password, or it is
+  another key, the hub starts with publishing off and logs one warning that says which; it never
+  prints the key. The public key is not secret, so it is a plain variable. The hub checks every
+  signature it makes with it before it writes a feed.
 - The hub reads every file back from the bucket with the R2 token, and checks that the public base
   answers 200 for it, before it writes `latest.json`, so the `releases.anima.ing` custom domain must
   serve the bucket first. It starts that check about 17 minutes after the upload: a builder's upload
