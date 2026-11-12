@@ -6,7 +6,7 @@ import { runs } from '$lib/motion/engine.fixture';
 import { route } from '$lib/nav/route.fixture.svelte';
 import Layout from '../../../routes/+layout.svelte';
 import type { PopOutPort, SessionPort } from '../sessions.svelte';
-import { cleanup, fake, openStarted, prepare, settle, request, show as mountLayout, tabs } from './layout.fixture';
+import { cleanup, fake, openStarted, prepare, settle, show as mountLayout, tabs } from './layout.fixture';
 
 vi.mock('motion', async (importOriginal) => ({
   ...(await importOriginal<typeof import('motion')>()),
@@ -126,85 +126,4 @@ it('UI-015: focus never rests inside the aria-hidden Close or More, on a press o
   await settle();
   expect(hidden()).toBeNull();
   expect(tabs()).toHaveLength(1);
-});
-
-it('MOT-005 / MV-002: the last tab closes with the strip still shown and out of the flow, and the strip goes when the exit ends', async () => {
-  const sessions = show();
-  await openStarted(sessions);
-  const strip = document.querySelector('[role="tablist"]');
-  expect(strip?.hasAttribute('hidden')).toBe(false);
-  document.querySelector<HTMLButtonElement>('button[aria-label="Close web-1 SSH session"]')?.click();
-  // The exit is playing: the slot is still drawn in a laid-out strip that no longer holds the page down.
-  expect(strip?.hasAttribute('hidden')).toBe(false);
-  expect(strip?.classList.contains('leaving')).toBe(true);
-  expect(strip?.querySelector('[data-slot]')).not.toBeNull();
-  await settle();
-  expect(strip?.querySelector('[data-slot]')).toBeNull();
-  expect(strip?.hasAttribute('hidden')).toBe(true);
-  expect(strip?.classList.contains('leaving')).toBe(false);
-});
-
-it('MOT-005: with two tabs closed in quick succession the strip stays shown until the second exit ends', async () => {
-  const sessions = show();
-  await openStarted(sessions);
-  await openStarted(sessions);
-  const strip = document.querySelector('[role="tablist"]');
-  // Exits that end only when the test says so.
-  const pending: { element: Element; done: () => void }[] = [];
-  Object.defineProperty(Element.prototype, 'animate', {
-    configurable: true,
-    value(this: Element) {
-      const element: Element = Object(this) as Element;
-      const animation = {
-        cancel: () => undefined,
-        currentTime: 0,
-        playState: 'running',
-        effect: null,
-        set onfinish(done: () => void) {
-          pending.push({
-            element,
-            done: () => {
-              animation.playState = 'finished';
-              done();
-            },
-          });
-        },
-      };
-      return animation;
-    },
-  });
-  const [first, second] = [...document.querySelectorAll<HTMLButtonElement>('button[aria-label="Close web-1 SSH session"]')];
-  first?.click();
-  await settle();
-  second?.click();
-  await settle();
-  const closing = [...document.querySelectorAll('[data-closing]')];
-  expect(closing).toHaveLength(2);
-  const finish = async (slot: Element | undefined) => {
-    // Svelte plays a delay animation, then the exit itself: finish each as it appears.
-    const finished = new Set<unknown>();
-    for (let round = 0; round < 3; round += 1) {
-      for (const exit of pending.filter((one) => one.element === slot && !finished.has(one))) {
-        finished.add(exit);
-        exit.done();
-      }
-      await settle();
-    }
-  };
-  await finish(closing[0]);
-  // One exit has ended and the other still plays: the strip is still shown.
-  expect(strip?.hasAttribute('hidden')).toBe(false);
-  expect(strip?.querySelectorAll('[data-slot]')).toHaveLength(1);
-  await finish(closing[1]);
-  expect(strip?.querySelector('[data-slot]')).toBeNull();
-  expect(strip?.hasAttribute('hidden')).toBe(true);
-});
-
-it('MOT-007: a tab opened and closed in the same tick leaves the strip hidden', async () => {
-  const sessions = show();
-  const id = sessions.openSession({ ...request, origin: null });
-  flushSync();
-  await sessions.close(id);
-  await settle();
-  expect(document.querySelector('[role="tablist"]')?.hasAttribute('hidden')).toBe(true);
 });

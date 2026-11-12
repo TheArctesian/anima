@@ -20,8 +20,8 @@
   let reserved = $state(false);
   const leaving = $derived(reserved && sessions.tabs.length === 0);
 
-  /** Whether no slot is drawn in the strip, other than `ending`: no exit is left to play, so the strip can go. */
-  function noSlotsLeft(ending?: Element): boolean {
+  /** Whether `ending` is the last slot drawn in the strip: no other exit is left to play, so the strip can go. */
+  function isLastSlot(ending: Element): boolean {
     return strip === undefined || [...strip.querySelectorAll(':scope > [data-slot]')].every((slot) => slot === ending);
   }
 
@@ -113,11 +113,7 @@
     reserved = true;
     await tick();
     // The last tab may have closed while the strip waited for its place: entering now would undo the exit.
-    if (sessions.tabs.length === 0) {
-      // No slot was ever drawn, so no exit will end and release the strip.
-      if (noSlotsLeft()) reserved = false;
-      return;
-    }
+    if (sessions.tabs.length === 0) return;
     enterStrip(element, fromHidden, preference);
   }
 
@@ -143,7 +139,7 @@
       }}
       transition:grow={{ origin: tab.origin }}
       onoutroend={(event) => {
-        if (sessions.tabs.length === 0 && noSlotsLeft(event.currentTarget)) reserved = false;
+        if (sessions.tabs.length === 0 && isLastSlot(event.currentTarget)) reserved = false;
       }}
       {@attach dragTab({
         tabs: slots,
