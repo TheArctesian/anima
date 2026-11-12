@@ -33,9 +33,5 @@ RUN apt-get update \
     && useradd --uid 10001 --gid 10001 --no-create-home --shell /usr/sbin/nologin anima
 COPY --from=build /src/target/release/anima-hub /usr/local/bin/anima-hub
 COPY --from=web /src/apps/client/build /usr/share/anima/web
-# A new named volume copies this owner and mode (E-3, SEC-005).
-RUN mkdir -p /var/lib/anima/recordings \
-    && chown 10001:10001 /var/lib/anima/recordings \
-    && chmod 0700 /var/lib/anima/recordings
 USER 10001:10001
 ENTRYPOINT ["anima-hub"]

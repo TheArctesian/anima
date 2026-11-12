@@ -8,7 +8,7 @@ use super::{
     bounds::{Bounds, bounds, checked},
 };
 
-fn rows(days: [i32; 5]) -> Vec<(String, i32)> {
+fn rows(days: [i32; 4]) -> Vec<(String, i32)> {
     Subject::ALL
         .into_iter()
         .zip(days)
@@ -22,7 +22,6 @@ fn hub_005_each_subject_has_the_range_and_default_of_d_25() {
         (Subject::Heartbeats, (1, 400, 30)),
         (Subject::Metrics, (1, 400, 30)),
         (Subject::Events, (30, 365, 90)),
-        (Subject::Recordings, (1, 365, 30)),
         (Subject::Deliveries, (7, 365, 30)),
     ];
     for (subject, (min, max, default)) in expected {
@@ -51,17 +50,17 @@ fn hub_005_a_refused_period_names_the_days_field_and_not_the_value() {
 
 #[test]
 fn hub_005_periods_turn_the_stored_days_into_a_keep_period_for_each_subject() {
-    let periods = Periods::from_rows(&rows([5, 6, 40, 8, 9])).unwrap();
+    let periods = Periods::from_rows(&rows([5, 6, 40, 9])).unwrap();
     let keep: Vec<_> = Subject::ALL.into_iter().map(|s| periods.keep(s)).collect();
-    let days = [5, 6, 40, 8, 9].map(Days::new);
+    let days = [5, 6, 40, 9].map(Days::new);
     assert_eq!(keep, days);
 }
 
 #[test]
 fn hub_005_a_missing_or_out_of_bounds_stored_period_is_unreadable_not_a_default() {
-    let mut missing = rows([30, 30, 90, 30, 30]);
+    let mut missing = rows([30, 30, 90, 30]);
     missing.pop();
-    let outside = rows([30, 30, 10, 30, 30]);
+    let outside = rows([30, 30, 10, 30]);
     for stored in [missing, outside] {
         assert!(matches!(
             Periods::from_rows(&stored),

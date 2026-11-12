@@ -16,8 +16,8 @@ use crate::access::{
 const KIND_REFUSED: &str = "This token cannot do that. Sign in to the hub to do it.";
 
 /// The D-23 list as the spec and A-6 state it, with the CR-8 agent fields, the R-100
-/// device identity, device and recording fields, and the R-107 builder and release fields.
-const D_23: [&str; 27] = [
+/// device identity and device fields, and the R-107 builder and release fields.
+const D_23: [&str; 25] = [
     "createApiKey",
     "revokeApiKey",
     "apiKeys",
@@ -25,7 +25,6 @@ const D_23: [&str; 27] = [
     "logout",
     "startSession",
     "openFiles",
-    "openRecording",
     "setSshCredential",
     "clearSshCredential",
     "setRdpCredential",
@@ -40,7 +39,6 @@ const D_23: [&str; 27] = [
     "updateDevice",
     "deleteDevice",
     "setRetention",
-    "deleteRecording",
     "enrolBuilder",
     "revokeBuilder",
     "createRelease",

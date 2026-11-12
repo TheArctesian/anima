@@ -83,7 +83,6 @@ pub(super) fn device_added(device: &Device, new: &NewDevice, default_check: bool
         "metricsSource": new.remote.metrics_source.as_str(),
         "transfer": transfer_json(new.remote.transfer),
         "sessionLimit": new.remote.session_limit.map(NonZeroU8::get),
-        "recordSessions": new.remote.record_sessions,
     });
     if default_check {
         change["defaultCheck"] = json!(true);
@@ -140,10 +139,6 @@ pub(super) fn device_updated(device: &Device, change: &DeviceChange) -> TrailEnt
             .remote
             .session_limit
             .map(|limit| json!(limit.map(NonZeroU8::get))),
-    );
-    put(
-        "recordSessions",
-        change.remote.record_sessions.map(|v| json!(v)),
     );
     TrailEntry {
         source: Source::Device,

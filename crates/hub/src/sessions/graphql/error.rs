@@ -16,7 +16,6 @@ pub(in crate::sessions) fn to_graphql(error: Error) -> GraphQlError {
         Error::Validation(fields) => invalid(&fields),
         Error::Conflict(conflict) => coded(conflict.to_string(), ErrorCode::Conflict),
         Error::Unavailable => coded(UNAVAILABLE_MESSAGE.to_owned(), ErrorCode::Unavailable),
-        Error::CannotRecord => coded(error.to_string(), ErrorCode::Unavailable),
         Error::Devices(_)
         | Error::Events(_)
         | Error::Credentials(_)

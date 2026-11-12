@@ -20,7 +20,6 @@ async fn db_011_the_schema_holds_the_defaults_of_d_25(pool: PgPool) {
         ("events", 90),
         ("heartbeats", 30),
         ("metrics", 30),
-        ("recordings", 30),
     ];
     assert_eq!(
         stored(&pool).await,
@@ -32,7 +31,7 @@ async fn db_011_the_schema_holds_the_defaults_of_d_25(pool: PgPool) {
 async fn hub_005_periods_return_the_defaults_after_a_fresh_migration(pool: PgPool) {
     let periods = retention::periods(&pool).await.unwrap();
     let keep: Vec<Days> = Subject::ALL.into_iter().map(|s| periods.keep(s)).collect();
-    assert_eq!(keep, [30, 30, 90, 30, 30].map(Days::new));
+    assert_eq!(keep, [30, 30, 90, 30].map(Days::new));
 }
 
 #[sqlx::test(migrations = "./migrations")]
@@ -41,7 +40,6 @@ async fn hub_005_periods_return_the_stored_values(pool: PgPool) {
         ("heartbeats", 7),
         ("metrics", 400),
         ("events", 31),
-        ("recordings", 1),
         ("deliveries", 365),
     ] {
         sqlx::query("UPDATE retention.periods SET days = $1 WHERE subject = $2")
@@ -55,7 +53,7 @@ async fn hub_005_periods_return_the_stored_values(pool: PgPool) {
     let periods = retention::periods(&pool).await.unwrap();
 
     let keep: Vec<Days> = Subject::ALL.into_iter().map(|s| periods.keep(s)).collect();
-    assert_eq!(keep, [7, 400, 31, 1, 365].map(Days::new));
+    assert_eq!(keep, [7, 400, 31, 365].map(Days::new));
 }
 
 #[sqlx::test(migrations = "./migrations")]
@@ -93,7 +91,6 @@ async fn hub_005_the_query_lists_every_subject_in_enum_order_with_its_range(pool
         ("HEARTBEATS", [30, 1, 400, 30]),
         ("METRICS", [30, 1, 400, 30]),
         ("EVENTS", [90, 30, 365, 90]),
-        ("RECORDINGS", [30, 1, 365, 30]),
         ("DELIVERIES", [30, 7, 365, 30]),
     ];
     assert_eq!(summary, expected.map(|(s, d)| (s.to_owned(), d)));

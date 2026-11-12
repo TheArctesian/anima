@@ -44,7 +44,7 @@ export interface DeviceFormValues extends RemoteValues {
   };
   /** Never filled from the hub (DEV-011). */
   readonly remoteSecrets: RemoteSecrets;
-  /** The session limit and recording setting a new device is created with (RA-036, RA-040); an edit saves them apart (F-3). */
+  /** The session limit a new device is created with (RA-036); an edit saves it apart (F-3). */
   readonly policy?: PolicyValues;
 }
 

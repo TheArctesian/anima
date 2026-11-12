@@ -29,7 +29,6 @@ use super::{
     end::Actor,
     files,
     model::EndReason,
-    recording,
     tickets::{PendingTicket, Presented, TicketHash, hash_of},
 };
 use crate::{ids::SessionId, targets::AddressPolicy, trust::Sightings};
@@ -96,8 +95,6 @@ pub struct Live {
     policy: Arc<AddressPolicy>,
     /// The files tunnel's own tickets, so a session ticket never opens `/files`.
     files: files::Tickets,
-    /// The playback tunnel's own tickets, so no other ticket opens `/recording` (G-7).
-    playback: recording::Tickets,
     changes: Changes,
 }
 
@@ -144,7 +141,6 @@ impl Live {
             tunnel_end_wait: wait,
             policy: Arc::default(),
             files: files::Tickets::default(),
-            playback: recording::Tickets::default(),
             changes: Changes::default(),
         }
     }
@@ -194,11 +190,6 @@ impl Live {
     /// The files tunnel's tickets.
     pub(super) const fn files(&self) -> &files::Tickets {
         &self.files
-    }
-
-    /// The playback tunnel's tickets.
-    pub(super) const fn playback(&self) -> &recording::Tickets {
-        &self.playback
     }
 
     /// Whether the session's tunnel is open now.

@@ -1,22 +1,9 @@
-//! The pure checks `start` runs before it writes anything: display bounds (K4 §4, GW-012) and
-//! whether the session is recorded (K4 §1 step 2). The IP literals the gateway must not reach
-//! are the address policy's (`targets::tests`).
+//! The pure checks `start` runs before it writes anything: display bounds (K4 §4, GW-012).
+//! The IP literals the gateway must not reach are the address policy's (`targets::tests`).
 
-use std::io::ErrorKind;
-
-use async_graphql::Value;
 use proptest::prelude::*;
 
-use crate::{
-    events::process_log::tests::capture::capture_log,
-    ids::DeviceId,
-    sessions::{
-        Error, Recording,
-        graphql::error::to_graphql,
-        recording::CannotRecord,
-        start::{DisplayRequest, checked_display, held_timezone, recorded},
-    },
-};
+use crate::sessions::start::{DisplayRequest, checked_display, held_timezone};
 
 fn request(width_px: i64, height_px: i64, dpi: i64) -> DisplayRequest {
     DisplayRequest {
@@ -91,74 +78,4 @@ fn r_032_e_6_a_ticket_holds_only_a_zone_name_of_at_most_64_bytes_else_none() {
     ] {
         assert_eq!(held(&dropped), None, "{dropped:?}");
     }
-}
-
-/// How `recorded` asks whether the hub can record.
-type Can = fn(&Recording) -> Result<(), CannotRecord>;
-
-/// A recording root whose name a leak would show.
-const ROOT: &str = "/srv/anima/recordings-root-7f3a";
-
-const CANNOT_RECORD: &str = "Recording is on for this device, but the hub cannot record now.";
-
-fn storage() -> Recording {
-    Recording {
-        root: Some(ROOT.into()),
-        max_bytes: 1 << 30,
-    }
-}
-
-fn device() -> DeviceId {
-    "0190a000-0000-7000-8002-000000000001".parse().unwrap()
-}
-
-#[test]
-fn ra_040_a_device_that_does_not_record_is_never_checked() {
-    let never: Can = |_| panic!("a device that does not record was checked");
-    assert!(matches!(
-        recorded(device(), false, &storage(), never),
-        Ok(false)
-    ));
-}
-
-#[test]
-fn ra_040_a_device_that_records_is_recorded_when_the_hub_can_record() {
-    let can: Can = |recording| {
-        assert_eq!(recording.root.as_deref(), Some(ROOT.as_ref()));
-        Ok(())
-    };
-    assert!(matches!(
-        recorded(device(), true, &storage(), can),
-        Ok(true)
-    ));
-}
-
-#[test]
-fn d_14_each_reason_the_hub_cannot_record_refuses_unavailable_with_k4_text_and_no_path() {
-    let (capture, _guard) = capture_log("trace");
-    let reasons: [Can; 5] = [
-        |_| Err(CannotRecord::Unset),
-        |_| Err(CannotRecord::Unreadable(ErrorKind::PermissionDenied)),
-        |_| Err(CannotRecord::NotFolder),
-        |_| Err(CannotRecord::NotWritable),
-        |_| Err(CannotRecord::LowSpace),
-    ];
-    for can in reasons {
-        let error = recorded(device(), true, &storage(), can).unwrap_err();
-        assert!(matches!(error, Error::CannotRecord), "{error:?}");
-        let graphql = to_graphql(error);
-        assert_eq!(graphql.message, CANNOT_RECORD);
-        let code = graphql
-            .extensions
-            .as_ref()
-            .and_then(|values| values.get("code"));
-        assert_eq!(code, Some(&Value::from("UNAVAILABLE")));
-    }
-    let log = capture.text();
-    assert!(log.contains("the hub cannot record now"), "{log}");
-    assert!(
-        log.contains("less than 1 GiB free"),
-        "the reason is logged: {log}"
-    );
-    assert!(!log.contains("recordings-root-7f3a"), "LOG-007: {log}");
 }

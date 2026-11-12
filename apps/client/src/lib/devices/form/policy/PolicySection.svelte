@@ -42,15 +42,6 @@
         />
         <small id="device-policy-sessionLimit-hint">The most live sessions at once, from 1 to 100. File tunnels do not count.</small>
       </div>
-      <div class="field">
-        <label class="check">
-          <input type="checkbox" disabled={unavailable} aria-describedby="device-policy-record-hint" bind:checked={policy.values.recordSessions} />
-          Record sessions
-        </label>
-        <small id="device-policy-record-hint">
-          Recordings are encrypted at rest. A "Recording" badge shows during a recorded session.
-        </small>
-      </div>
       <!-- The message line is always as tall as the Try again button, so loading, loaded and failed look alike. -->
       <div class="message">
         <small id="device-policy-message" role="status">{policy.message}</small>
@@ -74,20 +65,12 @@
     font-size: var(--text-sm);
   }
 
-  .check {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    min-block-size: var(--target-min-desktop);
-    color: var(--text);
-  }
-
   small {
     color: var(--text-muted);
     font-size: var(--text-xs);
   }
 
-  input:not([type='checkbox']) {
+  input {
     box-sizing: border-box;
     min-block-size: var(--target-min-desktop);
     padding: var(--space-2) var(--space-3);

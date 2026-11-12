@@ -13,7 +13,7 @@ use uuid::Uuid;
 use crate::{
     ids::{
         ApiKeyId, BuildJobId, BuilderId, ChannelId, CheckId, DeviceId, EventId, OperatorId,
-        RecordingId, ReleaseId, SessionId, SiteId, WindowId,
+        ReleaseId, SessionId, SiteId, WindowId,
     },
     status::Status,
 };
@@ -171,8 +171,6 @@ pub enum AuditAction {
     Cancel,
     /// A test notification sent through a channel (NOT-004).
     Send,
-    /// A session recording opened for playback (K4 §12, RA-041).
-    View,
 }
 
 impl AuditAction {
@@ -197,7 +195,6 @@ impl AuditAction {
             Self::Wake => "wake",
             Self::Cancel => "cancel",
             Self::Send => "send",
-            Self::View => "view",
         }
     }
 }
@@ -229,8 +226,6 @@ pub enum AuditTarget {
     Builder(BuilderId),
     /// An API key for scripts (D-23).
     ApiKey(ApiKeyId),
-    /// A session recording (RA-040, RA-041).
-    Recording(RecordingId),
 }
 
 impl AuditTarget {
@@ -253,7 +248,6 @@ impl AuditTarget {
             Self::BuildJob(_) => "build_job",
             Self::Builder(_) => "builder",
             Self::ApiKey(_) => "api_key",
-            Self::Recording(_) => "recording",
         }
     }
 
@@ -275,7 +269,6 @@ impl AuditTarget {
             Self::BuildJob(id) => id.to_string(),
             Self::Builder(id) => id.to_string(),
             Self::ApiKey(id) => id.to_string(),
-            Self::Recording(id) => id.to_string(),
         }
     }
 }

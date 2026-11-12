@@ -1,5 +1,6 @@
 //! The range of days the operator may set for each subject, and its default (D-25, DB-011).
-//! `migrations/0900_retention_periods.sql` states the same numbers in its check constraint.
+//! `migrations/0901_retention_recordings_removed.sql` states the same numbers in its check
+//! constraint (it restates those of 0900 without `recordings`, R-113).
 
 use super::model::Subject;
 use crate::api_errors::FieldError;
@@ -16,7 +17,6 @@ pub(super) const fn bounds(subject: Subject) -> Bounds {
     let (min, max, default) = match subject {
         Subject::Heartbeats | Subject::Metrics => (1, 400, 30),
         Subject::Events => (30, 365, 90),
-        Subject::Recordings => (1, 365, 30),
         Subject::Deliveries => (7, 365, 30),
     };
     Bounds { min, max, default }

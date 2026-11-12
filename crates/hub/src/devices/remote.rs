@@ -194,7 +194,6 @@ pub(super) struct RemoteForm {
     pub(super) transfer: Option<TransferPolicy>,
     /// On a create `null` is no limit; on an update `null` keeps the limit and `0` clears it.
     pub(super) session_limit: Option<i32>,
-    pub(super) record_sessions: Option<bool>,
 }
 
 /// The validated remote access part of a device to create.
@@ -207,7 +206,6 @@ pub(super) struct RemoteAccess {
     pub(super) transfer: TransferPolicy,
     /// `None` is no limit on simultaneous sessions (RA-036).
     pub(super) session_limit: Option<NonZeroU8>,
-    pub(super) record_sessions: bool,
 }
 
 /// The validated remote access part of a device update: `None` leaves the field as it is, and
@@ -228,5 +226,4 @@ pub(super) struct RemoteChange {
         reason = "absent keeps the limit, null clears it, a value sets it"
     )]
     pub(super) session_limit: Option<Option<NonZeroU8>>,
-    pub(super) record_sessions: Option<bool>,
 }

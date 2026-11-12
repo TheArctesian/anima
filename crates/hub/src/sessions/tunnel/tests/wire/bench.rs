@@ -20,7 +20,7 @@ use crate::{
     ids::SessionId,
     sessions::{
         DisplayRequest, Live, Presented, Protocol, StartRequest, start,
-        tests::fixture::{DOCKER_HOST, add_operator, no_recording, own_pool, vault},
+        tests::fixture::{DOCKER_HOST, add_operator, own_pool, vault},
     },
 };
 use fake_rdp::{Answer, FakeRdp, fake_rdp};
@@ -198,7 +198,6 @@ pub(super) fn request(protocol: Protocol) -> StartRequest {
             timezone: Some("Europe/Berlin".to_owned()),
         },
         wake: None,
-        recording: no_recording(),
     }
 }
 

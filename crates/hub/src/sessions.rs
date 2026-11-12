@@ -16,7 +16,6 @@ mod live;
 mod model;
 mod page;
 mod quiet;
-mod recording;
 mod serving;
 mod start;
 mod store;
@@ -48,8 +47,7 @@ pub use live::{EndCause, Live, Redeemed, Refused, Tunnel};
 pub use model::{
     EndReason, FieldError, Protocol, Session, SessionChange, SessionEnd, UnknownValue,
 };
-pub use recording::{RecordingsMutation, RecordingsQuery};
-pub use serving::{Recording, Serving};
+pub use serving::Serving;
 pub use start::{DEFAULT_DPI, DisplayRequest, StartRequest, Waking, start};
 pub use terminal::terminal_router;
 pub use tickets::{PendingTicket, Presented, Ticket};
@@ -106,10 +104,6 @@ pub enum Error {
     /// Too many tickets are pending, or the hub is shutting down.
     #[error("no session can start now")]
     Unavailable,
-    /// The device records its sessions and the hub cannot record now: no root, a root it
-    /// cannot write, or under 1 GiB free (K4 §1 step 2, D-14). The text names no path.
-    #[error("Recording is on for this device, but the hub cannot record now.")]
-    CannotRecord,
     /// The messages stay generic: the source errors may hold SQL text (API-010).
     #[error("device store error")]
     Devices(#[source] devices::Error),
