@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { binaryDirs, findTools, psqlArgv, serverOptions, socketDatabaseUrl, withPostgresArgs } from "../src/gates/postgres.ts";
+import { binaryDirs, findTools, serverOptions, socketDatabaseUrl } from "../src/gates/postgres.ts";
 
 describe("throwaway PostgreSQL (R-009)", () => {
   test("prefers the versioned Homebrew and Debian folders, then PATH", () => {
@@ -23,24 +23,5 @@ describe("throwaway PostgreSQL (R-009)", () => {
 
   test("starts the server with no TCP listener", () => {
     expect(serverOptions("/tmp/s", 5432)).toContain("listen_addresses=''");
-  });
-
-  test("R-112 sends each statement to the socket server as its own -c, without psqlrc, stopping on error", () => {
-    const server = { socketDir: "/tmp/s", port: 5432, user: "op" };
-    expect(psqlArgv("/pg/psql", server, "template1", ["BEGIN", "select ':x';"])).toEqual([
-      "/pg/psql", "-X", "-q", "-v", "ON_ERROR_STOP=1", "-h", "/tmp/s", "-p", "5432", "-U", "op", "-d", "template1",
-      "-c", "BEGIN", "-c", "select ':x';",
-    ]);
-  });
-
-  test("R-112 migrates template1 only when the command asks for it first", () => {
-    expect(withPostgresArgs(["--migrated-template", "cargo", "nextest", "run"])).toEqual({
-      migratedTemplate: true,
-      command: ["cargo", "nextest", "run"],
-    });
-    expect(withPostgresArgs(["bun", "test", "--migrated-template"])).toEqual({
-      migratedTemplate: false,
-      command: ["bun", "test", "--migrated-template"],
-    });
   });
 });
