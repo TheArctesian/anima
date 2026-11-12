@@ -21,6 +21,7 @@
     box-sizing: border-box;
     block-size: var(--control-md);
     min-inline-size: 0;
+    max-inline-size: 100%;
     padding: 0 var(--space-3);
     background: var(--surface-sunken);
     border: var(--border-thin) solid var(--border-strong);

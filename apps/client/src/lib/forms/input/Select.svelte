@@ -23,6 +23,7 @@
   .select {
     position: relative;
     display: inline-block;
+    max-inline-size: 100%;
     block-size: var(--control-md);
   }
 

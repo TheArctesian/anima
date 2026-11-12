@@ -177,9 +177,10 @@
     background: var(--accent-pressed);
   }
 
-  /* The fill is already as light as a hover fill, so hover shows the strong border; pressed shows the accent tint. */
+  /* The fill matches a hover fill (and the card, in light), so the edge shows the button, hover strengthens it and pressed shows the accent tint. */
   .secondary {
     background: var(--surface-overlay);
+    border-color: var(--border-subtle);
   }
 
   .secondary:hover:not(:disabled, [aria-disabled='true']) {

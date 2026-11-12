@@ -1,9 +1,9 @@
 <script lang="ts">
-  import ControlsButtons from './controls-buttons.svelte';
-  import ControlsFields from './controls-fields.svelte';
-  import ControlsHelptips from './controls-helptips.svelte';
-  import ControlsInputs from './controls-inputs.svelte';
-  import ControlsSegmented from './controls-segmented.svelte';
+  import ControlsButtons from './ControlsButtons.svelte';
+  import ControlsFields from './ControlsFields.svelte';
+  import ControlsHelptips from './ControlsHelptips.svelte';
+  import ControlsInputs from './ControlsInputs.svelte';
+  import ControlsSegmented from './ControlsSegmented.svelte';
 </script>
 
 <!-- Phase 3 Controls lane: every control primitive in every state. -->
