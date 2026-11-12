@@ -42,7 +42,7 @@ R-112 (speed without dropping quality) and R-113 (recording deferred and removed
 | WP-55 | Gate speed: nextest, a template database, sccache (1 slot). | Its gates are compared with the current gates on the same commit before it merges; record the R-101 amendment. |
 | WP-53 | Preparation: the acceptance document, scripts and fixtures (1 slot). | Acceptance, after WP-48 T10 and the operator's steps. |
 
-**Operator's critical path for WP-53, in order:** live checks O-4 to O-9; the spec 5.7.3 wording; the Headscale agent policy (R-105, confirmed in chat); `TAURI_SIGNING_PRIVATE_KEY`; R2 setup and the agent binary upload; the test machines and accounts in plan Section 6, with each real secret typed into Settings by the operator.
+**Operator's critical path for WP-53, in order:** live checks O-4 to O-9; the spec 5.7.3 wording; the Headscale agent policy (R-105, confirmed in chat); R2 setup and the agent binary upload; the test machines and accounts in plan Section 6, with each real secret typed into Settings by the operator.
 
 **Load flake that needs a fix:** `builds::publishing::fences::d_25_a_try_past_its_hold_writes_nothing` (WP-36) failed three merge gates on 2026-11-10 and passes alone.
 
@@ -76,8 +76,8 @@ The issue #1 items not yet posted are listed in the orchestrator's scratchpad, `
   only, container removed afterwards). The shared `~/.cache/cargo-target` was deleted with the
   operator's OK (R-101).
 - **Spec 5.7.3 wording:** still open.
-- **Signing key:** `TAURI_SIGNING_PRIVATE_KEY` for the updater signature. The desktop build exits
-  1 without it.
+- **Updater key:** make the key pair and import it on each builder (Settings, Updates, "Import
+  updater key"); see `docs/releases.md`. There is no GitHub release workflow or GitHub secret (R-114).
 - **R2 setup:** releases go to Cloudflare R2 (`releases.anima.ing`). No CI does this
   (`anima-no-ci-gates`).
 - **Phase 3 VPS changes:** each needs an OK in chat and a row in `operator-changes.md` (VPS-005).

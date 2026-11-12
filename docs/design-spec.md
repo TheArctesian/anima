@@ -252,7 +252,7 @@ desktop app ── at start and every 4 hours ── GET latest.json ── vers
 - **UPD-004.** When an update is installed, the client must show a banner with the text "Anima <version> is installed" and a "Restart to update" button. The banner must have `role="status"`.
 - **UPD-005.** After one update is installed, the app must stop checking until it restarts.
 - **UPD-006.** The Settings page must show an "Updates" row with the current version, the update state and a "Check for updates" button. A failed check must not show an error dialog; the next check runs at the usual time.
-- **UPD-007.** A release must start only from the Builds view (BLD-001). The workflow `release.yml` runs only by hand, as a fallback until WP-36 is accepted; then it is deleted (changed by R-107).
+- **UPD-007.** A release must start only from the Builds view (BLD-001). There is no GitHub release workflow (changed by R-107; `release.yml` removed by R-114).
 - **UPD-008.** The hub must write `latest.json` only after it has verified all files of the job (BLD-064 to BLD-066) (changed by R-107).
 - **UPD-009.** Each `latest.json` must list only the platform keys of its own target. A target that did not build keeps its older feed (changed by R-107).
 - **UPD-010.** Each release must have versioned updater files, stable-named files for people (`Anima.dmg`, `Anima-x86_64.AppImage`) and a `SHA256SUMS` file.
