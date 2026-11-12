@@ -29,6 +29,9 @@ pub struct Disk {
     pub mount: String,
     pub total_bytes: u64,
     pub used_bytes: u64,
+    /// What a user may still write. On APFS every volume of a container reports the whole
+    /// container as its total, so used plus available, not the total, is the volume's size.
+    pub available_bytes: u64,
 }
 
 /// Byte counters of one network interface since it came up.

@@ -25,6 +25,18 @@ fn met_002_d5_pseudo_file_systems_and_mounts_are_left_out() {
         disk("x", "/System/Volumes/VM", 100, 50),
         disk("x", "/System/Volumes/Data/home", 100, 50),
         disk("x", "/System/Volumes/Data", 100, 50),
+        disk(
+            "x",
+            "/Library/Developer/CoreSimulator/Volumes/iOS_23F77",
+            100,
+            98,
+        ),
+        disk(
+            "x",
+            "/private/var/run/com.apple.security.cryptexd/mnt/runtime",
+            100,
+            98,
+        ),
         disk("x", "/devices", 100, 25),
         disk("x", "/runner", 100, 75),
     ];

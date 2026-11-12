@@ -40,7 +40,12 @@ pub fn samples(previous: Option<&Reading>, current: &Reading, elapsed: Duration)
             continue;
         }
         let used = disk.used_bytes.min(disk.total_bytes);
-        let share = float(used) / float(disk.total_bytes) * 100.0;
+        // `df`'s Capacity: used over used plus available, which is what macOS and Linux show.
+        let size = used.saturating_add(disk.available_bytes);
+        if size == 0 {
+            continue;
+        }
+        let share = float(used) / float(size) * 100.0;
         out.extend(Sample::new(Kind::DiskPercent, &disk.mount, share));
         out.extend(Sample::new(Kind::DiskBytes, &disk.mount, float(used)));
     }

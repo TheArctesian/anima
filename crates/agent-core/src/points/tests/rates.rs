@@ -195,10 +195,14 @@ fn met_002_a_macos_reading_gives_its_busy_share_on_the_first_collection() {
     );
     assert_close(value(&out, Kind::UptimeSeconds, "").unwrap(), 3600.0);
     assert_close(value(&out, Kind::Load15, "").unwrap(), 1.67);
-    assert_close(value(&out, Kind::DiskPercent, "/").unwrap(), 25.0);
+    // df's Capacity column: used over used plus available (30% and 56% in the capture).
+    assert_close(
+        value(&out, Kind::DiskPercent, "/").unwrap(),
+        125.0 / 425.0 * 100.0,
+    );
     assert_close(
         value(&out, Kind::DiskPercent, "/System/Volumes/Data").unwrap(),
-        50.0,
+        250.0 / 450.0 * 100.0,
     );
     assert_eq!(count(&out, Kind::DiskPercent), 2);
 }
@@ -232,4 +236,41 @@ fn met_002_a_wholly_unreadable_device_gives_no_samples() {
     };
     assert_eq!(reading, Reading::default());
     assert_eq!(samples(Some(&reading), &reading, THIRTY).len(), 0);
+}
+
+#[test]
+fn met_002_an_apfs_volume_shows_used_over_used_plus_available_as_df_and_macos_do() {
+    // Every volume of an APFS container reports the whole container as its total.
+    let disks = vec![Disk {
+        available_bytes: 30,
+        ..disk("/dev/disk3s5", "/System/Volumes/Data", 100, 70)
+    }];
+    let out = samples(
+        None,
+        &Reading {
+            disks,
+            ..Reading::default()
+        },
+        THIRTY,
+    );
+    assert_close(
+        value(&out, Kind::DiskPercent, "/System/Volumes/Data").unwrap(),
+        70.0,
+    );
+    let disks = vec![Disk {
+        available_bytes: 20,
+        ..disk("/dev/disk3s5", "/System/Volumes/Data", 200, 80)
+    }];
+    let out = samples(
+        None,
+        &Reading {
+            disks,
+            ..Reading::default()
+        },
+        THIRTY,
+    );
+    assert_close(
+        value(&out, Kind::DiskPercent, "/System/Volumes/Data").unwrap(),
+        80.0,
+    );
 }

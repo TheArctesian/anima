@@ -10,7 +10,7 @@ use super::{Disk, label, lines};
 pub fn disks(output: &[u8], block_bytes: u64) -> Vec<Disk> {
     lines(output)
         .filter_map(|line| {
-            let ([filesystem, total, used, _available, capacity], mount) = columns(line)?;
+            let ([filesystem, total, used, available, capacity], mount) = columns(line)?;
             if !capacity.ends_with('%') {
                 return None;
             }
@@ -19,6 +19,7 @@ pub fn disks(output: &[u8], block_bytes: u64) -> Vec<Disk> {
                 mount: label(mount)?.to_owned(),
                 total_bytes: total.parse::<u64>().ok()?.checked_mul(block_bytes)?,
                 used_bytes: used.parse::<u64>().ok()?.checked_mul(block_bytes)?,
+                available_bytes: available.parse::<u64>().ok()?.checked_mul(block_bytes)?,
             })
         })
         .collect()
