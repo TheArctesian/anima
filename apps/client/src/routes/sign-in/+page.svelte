@@ -7,12 +7,12 @@
   import { readAccessToken, writeAccessToken } from '$lib/desktop/token';
   import { useHub } from '$lib/hub/context';
   import { createHub, parseHubAddress, type Hub, type HubAddress } from '$lib/hub/hub';
-  import Icon from '$lib/icons/Icon.svelte';
   import { press } from '$lib/motion/roles/press';
   import { createClock } from '$lib/nav/clock.svelte';
   import { DATA_AGE_REFRESH_MS } from '$lib/nav/nav';
   import { capabilities } from '$lib/platform/platform';
-  import { afterEdit, firstInvalid, type FieldMessages, type LoginField } from './form';
+  import CodeStep from './CodeStep.svelte';
+  import { afterEdit, checkLogin, firstInvalid, type FieldMessages, type LoginField } from './form';
   import HubLine from './HubLine.svelte';
   import Notice from './Notice.svelte';
   import { hubHost, hubUnreachable } from './reachability';
@@ -26,12 +26,12 @@
 
   let username = $state('');
   let password = $state('');
-  let totpCode = $state('');
+  // Step 1 asks for the user name and password and sends nothing; step 2 asks for the code and sends all three (NAV-009).
+  let step = $state<'credentials' | 'code'>('credentials');
   let fields = $state<FieldMessages>({});
   let message = $state<string | null>(null);
   let busy = $state(false);
-  let inputs: Partial<Record<LoginField, HTMLInputElement>> = $state({});
-  let submitButton: HTMLButtonElement | undefined = $state();
+  let inputs: Partial<Record<'username' | 'password', HTMLInputElement>> = $state({});
 
   let editingAddress = $state(false);
   let addressText = $state(hub.address.origin);
@@ -43,32 +43,58 @@
     inputs.username?.focus();
   });
 
-  /** The hub to sign in to: the current one, or one for the address typed into the open hub field. `null` when that address is refused. */
-  function chooseTarget(): { target: Hub; moved: HubAddress | undefined } | null {
-    if (!editingAddress) return { target: hub, moved: undefined };
+  /** The address typed into the open hub field: `undefined` when the field is closed or unchanged, `null` (with the problem shown) when it is refused. */
+  function typedAddress(): HubAddress | undefined | null {
+    if (!editingAddress) return undefined;
     const parsed = parseHubAddress(addressText);
     if (!parsed.ok) {
       addressProblem = parsed.error.message;
+      document.getElementById('hub-address')?.focus();
       return null;
     }
-    if (parsed.value.origin === hub.address.origin) return { target: hub, moved: undefined };
-    return { target: createHub({ address: parsed.value, token: readAccessToken }), moved: parsed.value };
+    return parsed.value.origin === hub.address.origin ? undefined : parsed.value;
   }
 
-  async function submit(event: SubmitEvent): Promise<void> {
-    event.preventDefault();
-    // One attempt at a time: a second browser sign-in would leave a token on the hub that no cookie holds.
-    if (busy) return;
-    const chosen = chooseTarget();
-    if (chosen === null) {
-      document.getElementById('hub-address')?.focus();
+  /** The hub to sign in to: the current one, or one for the address typed into the open hub field. */
+  function chooseTarget(moved: HubAddress | undefined): { target: Hub; moved: HubAddress | undefined } {
+    if (moved === undefined) return { target: hub, moved };
+    return { target: createHub({ address: moved, token: readAccessToken }), moved };
+  }
+
+  /** Step 1's Continue: check the two fields here and move on; nothing is sent. */
+  function continueToCode(): void {
+    message = null;
+    // A bad hub address is told now, while the form is still open to fix it (CLI-002).
+    if (typedAddress() === null) return;
+    fields = checkLogin({ username, password, totpCode: '' });
+    const first = firstInvalid(fields);
+    if (first === undefined) {
+      step = 'code';
       return;
     }
-    const { target, moved } = chosen;
+    inputs[first === 'username' ? 'username' : 'password']?.focus();
+  }
+
+  async function backToCredentials(): Promise<void> {
+    step = 'credentials';
+    await tick();
+    inputs.password?.focus();
+  }
+
+  function formSubmitted(event: SubmitEvent): void {
+    event.preventDefault();
+    if (step === 'credentials') continueToCode();
+  }
+
+  async function submit(totpCode: string): Promise<void> {
+    // One attempt at a time: a second browser sign-in would leave a token on the hub that no cookie holds.
+    if (busy) return;
+    const typed = typedAddress();
+    if (typed === null) return;
+    const { target, moved } = chooseTarget(typed);
     const form = { username, password, totpCode };
     // The secrets leave the page state as soon as they are read; only the user name stays (LOG-007).
     password = '';
-    totpCode = '';
     busy = true;
     const outcome = await signIn({ api: accessApi(target), address: target.address, desktop, writeToken: writeAccessToken }, form);
     if (target !== hub) closeCandidate(target);
@@ -84,16 +110,12 @@
       goToDevices();
       return;
     }
+    // Every refusal ends on step 1 with the user name kept and the password and code gone (NAV-009, SEC-002).
     message = outcome.message;
     fields = outcome.fields;
-    const first = firstInvalid(fields);
-    if (first !== undefined) {
-      inputs[first]?.focus();
-      return;
-    }
-    // The disabled button lost focus; give it back once it is enabled again, so the keyboard user stays on the form.
+    step = 'credentials';
     await tick();
-    submitButton?.focus();
+    inputs[firstInvalid(fields) === 'username' ? 'username' : 'password']?.focus();
   }
 
   function closeCandidate(candidate: Hub): void {
@@ -124,7 +146,7 @@
     <h1>Sign in to Anima</h1>
   </header>
 
-  <form class="card" onsubmit={submit} novalidate>
+  <form class="card" onsubmit={formSubmitted} novalidate>
     {#if unreachable !== null}
       <div role="status">
         <Notice icon="nf-md-lan_disconnect">
@@ -135,23 +157,25 @@
       </div>
     {/if}
 
-    <div class="group">
-      <TextField id="username" name="username" label="User name" autocomplete="username" bind:value={username} bind:input={inputs.username}
-        error={fields.username} oninput={(event) => { edited('username', event); }} />
-      <TextField id="password" name="password" label="Password" type="password" autocomplete="current-password" bind:value={password}
-        bind:input={inputs.password} error={fields.password} oninput={(event) => { edited('password', event); }} />
-      <TextField id="totp" name="totpCode" label="Code from your authenticator" autocomplete="one-time-code" code bind:value={totpCode}
-        bind:input={inputs.totpCode} error={fields.totpCode} oninput={(event) => { edited('totpCode', event); }} />
-    </div>
+    {#if step === 'credentials'}
+      <div class="group">
+        <TextField id="username" name="username" label="User name" autocomplete="username" bind:value={username} bind:input={inputs.username}
+          error={fields.username} oninput={(event) => { edited('username', event); }} />
+        <TextField id="password" name="password" label="Password" type="password" autocomplete="current-password" bind:value={password}
+          bind:input={inputs.password} error={fields.password} oninput={(event) => { edited('password', event); }} />
+      </div>
+    {:else}
+      <CodeStep {busy} oncomplete={(code) => void submit(code)} onback={() => void backToCredentials()} onskip={() => void submit('')} />
+    {/if}
 
     {#if message !== null}
       <Notice icon="nf-md-alert_circle_outline"><p role="alert">{message}</p></Notice>
     {/if}
 
-    <!-- tabindex="0": WebKit skips plain buttons when Tab is pressed unless they are focusable, as for the nav links (NAV-005, WP-11 H-6). -->
-    <button type="submit" tabindex="0" disabled={busy} bind:this={submitButton} {@attach press()}>
-      {#if busy}<Icon name="nf-md-refresh" />{/if}Sign in
-    </button>
+    {#if step === 'credentials'}
+      <!-- tabindex="0": WebKit skips plain buttons when Tab is pressed unless they are focusable, as for the nav links (NAV-005, WP-11 H-6). -->
+      <button type="submit" tabindex="0" {@attach press()}>Continue</button>
+    {/if}
   </form>
 
   {#if desktop}

@@ -4,7 +4,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { failure, fakeHub } from '$lib/access/access.fixture';
 import type { Hub, HubStatus } from '$lib/hub/hub';
 import Page from './+page.svelte';
-import { input, problemOf, submit, type } from './page.fixture';
+import { input, pasteInto, problemOf, submit, type } from './page.fixture';
 
 const mocks = vi.hoisted(() => ({ hub: undefined as unknown }));
 
@@ -54,11 +54,12 @@ it('NAV-009: a hub that answers shows no status text at all', () => {
   expect(target.textContent).not.toContain("Can't reach");
 });
 
-it('UI-030: the form-level message is a notice inside the card, above the Sign in button', async () => {
+it('UI-030: the form-level message is a notice inside the card, above the Continue button', async () => {
   const target = open({ Login: failure('UNAUTHENTICATED') });
   type(target, 'username', 'ann');
   type(target, 'password', 'pw');
   await submit(target, 0);
+  await pasteInto(target, 0, '123456');
   const alert = target.querySelector('.card [role="alert"]');
   expect(alert?.textContent).toBe('The user name, password or code is wrong.');
   const button = target.querySelector('.card button[type="submit"]');
@@ -78,10 +79,10 @@ it('UI-030: a field error is named by aria-describedby and marks the field aria-
   expect(target.querySelector('#username-problem')?.hasAttribute('hidden')).toBe(true);
 });
 
-it('NAV-005: tab order follows the page: user name, password, code, Sign in, Change', () => {
+it('NAV-005: tab order follows the page: user name, password, Continue, Change', () => {
   const target = open({});
   const order = [...target.querySelectorAll<HTMLElement>('input, button')].map((element) => element.id || element.textContent.trim());
-  expect(order).toEqual(['username', 'password', 'totp', 'Sign in', 'Change']);
+  expect(order).toEqual(['username', 'password', 'Continue', 'Change']);
 });
 
 it('NAV-009: focus starts in User name', () => {

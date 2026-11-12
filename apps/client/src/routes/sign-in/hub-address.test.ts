@@ -4,7 +4,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { fakeHub, ok } from '$lib/access/access.fixture';
 import type { Hub } from '$lib/hub/hub';
 import Page from './+page.svelte';
-import { input, problemOf, submit, type } from './page.fixture';
+import { input, pasteInto, problemOf, submit, type } from './page.fixture';
 
 const mocks = vi.hoisted(() => ({
   hub: undefined as unknown,
@@ -147,6 +147,7 @@ it('NAV-009: signing in with a changed address signs in to that hub, stores the 
   type(target, 'username', 'ann');
   type(target, 'password', 'pw');
   await submit(target, 0);
+  await pasteInto(target, 0, '123456');
   expect(mocks.created.map((address) => address.origin)).toEqual(['https://hub2.example.org']);
   expect(hub.sent).toEqual([]);
   expect(mocks.writeAccessToken).toHaveBeenCalledWith(mocks.created[0], 'tok-moved');
@@ -160,6 +161,7 @@ it('NAV-009: signing in with the address left as it was uses the current hub and
   type(target, 'username', 'ann');
   type(target, 'password', 'pw');
   await submit(target, 0);
+  await pasteInto(target, 0, '123456');
   expect(mocks.created).toEqual([]);
   expect(hub.sent.map((sent) => sent.operation)).toEqual(['Login']);
   expect(mocks.goToDevices).toHaveBeenCalledOnce();
