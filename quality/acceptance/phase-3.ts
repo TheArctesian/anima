@@ -26,15 +26,20 @@ export class AcceptanceInputError extends Error {
 }
 
 const PENDING_USE = /@pending(?![A-Za-z0-9_])/;
-const PENDING_DECLARATION = /^\s*directive\s+@pending(?![A-Za-z0-9_])/;
+const PENDING_DECLARATION = /directive\s+@pending(?![A-Za-z0-9_])/;
 
-/** Every `@pending` in K1 text except its declaration and comments. */
+/** `text` with string contents and `#` comments replaced by spaces; newlines stay, so line numbers hold. */
+function blankStringsAndComments(text: string): string {
+  const blank = (span: string): string => span.replace(/[^\n]/g, " ");
+  return text.replace(/"""[\s\S]*?(?:"""|$)|"(?:\\.|[^"\\\n])*"?|#[^\n]*/g, blank);
+}
+
+/** Every `@pending` in K1 text except its declaration, comments and string contents. */
 export function pendingUses(schema: string): Finding[] {
+  const code = blankStringsAndComments(schema).replace(PENDING_DECLARATION, (span) => " ".repeat(span.length));
   const findings: Finding[] = [];
-  schema.split("\n").forEach((rawLine, index) => {
-    if (PENDING_DECLARATION.test(rawLine)) return;
-    const code = rawLine.split("#")[0] ?? "";
-    if (PENDING_USE.test(code)) {
+  code.split("\n").forEach((line, index) => {
+    if (PENDING_USE.test(line)) {
       findings.push({ path: SCHEMA_PATH, line: index + 1, message: "@pending is used; remove it (P3-002)" });
     }
   });
