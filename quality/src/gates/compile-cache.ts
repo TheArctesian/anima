@@ -15,7 +15,9 @@ export interface CompileCache {
 /**
  * Sets `RUSTC_WRAPPER` to `wrapper` (`bin/compile-cache.ts`) and names the first `sccache` on `PATH` for it, unless
  * `RUSTC_WRAPPER` is already set (an empty value is cargo's way to say "no wrapper", so it is kept too).
- * Without sccache the gates compile with plain rustc: the cache only saves time, so it never fails a gate.
+ * Without sccache the gates compile with plain rustc, so a missing cache never fails a gate. An installed sccache
+ * whose server cannot start fails the compile, and so the gate, loudly (stop the server with `sccache --stop-server`
+ * or set `RUSTC_WRAPPER=` to run without it).
  */
 export function compileCache(
   env: Record<string, string | undefined>,

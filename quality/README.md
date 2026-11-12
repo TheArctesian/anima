@@ -65,7 +65,8 @@ tests (`deploy/package.json`) install the roles themselves.
 
 When `sccache` is on `PATH` and `RUSTC_WRAPPER` is not set, `bun run gates` sets `RUSTC_WRAPPER` to `bin/compile-cache.ts`
 for every gate (only cargo reads it). Without sccache the gates compile with plain rustc and print `compile cache: off`;
-the cache only saves time. A `RUSTC_WRAPPER` you set, even empty, is kept.
+the cache only saves time. A `RUSTC_WRAPPER` you set, even empty, is kept. If sccache is installed but its server
+cannot start, the compile fails and so does the gate; run `sccache --stop-server`, or set `RUSTC_WRAPPER=` to run without it.
 
 Keep `CARGO_TARGET_DIR=<checkout>/target` and `CARGO_INCREMENTAL=0` (R-101). sccache keys each rustc call on the compiler,
 the arguments, the contents of every source file and dependency it reads, the `CARGO_*` variables and the working folder,
