@@ -1,0 +1,10 @@
+# cargo-nextest settings for gate 3 (WP-55, R-112). Same tests as `cargo test`, one process each.
+
+[profile.default]
+# `anima-desktop::pinning` is not libtest (`harness = false`: Tauri's event loop must own the main
+# thread), so nextest cannot list it. Gate 5 runs it with `cargo test --workspace --test pinning`.
+default-filter = "not binary_id(anima-desktop::pinning)"
+# No retries: a test that passes only on a second try is a failure (a retry would hide a flake).
+retries = 0
+# Stop starting tests after the first failure, as `cargo test` stops after the first failing binary.
+fail-fast = true
