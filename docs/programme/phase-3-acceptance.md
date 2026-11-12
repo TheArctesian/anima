@@ -42,7 +42,7 @@ Planned WP-53 scripts (not yet merged; they are named here so the matrix is comp
 | 10 | A template changes the title and body. Only the fixed placeholders are accepted. Values are escaped per channel: JSON for webhooks, no line break in an email subject or a header. | NOT-007, D-21 | Hub `src/notifications/template/tests.rs` `not_007_every_placeholder_is_replaced_by_its_value`, `d_21_an_unknown_placeholder_is_refused_and_named`; `src/notifications/encode/tests.rs` `not_007_a_webhook_value_with_quotes_and_braces_stays_one_json_string`, `not_007_an_email_subject_built_with_hostile_values_stays_on_one_line`, `not_007_ntfy_title_never_holds_a_control_character`; `src/notifications/dispatch/tests/kinds.rs` `not_007_a_channel_template_words_its_notification`. Client `lib/notifications/template/template.test.ts` "D-21: a placeholder outside the list is refused and named". | Test run result | open |
 | 11 | Every notification connection passes the target rule and the deny list for each resolved address, follows no redirect, verifies TLS. A deny-listed channel fails with a fixed message. Secrets are sealed, never returned, never logged. | P3-003, SEC-003, SEC-005, LOG-007, D-17 | Hub `src/notifications/egress/tests/http.rs` `p3_003_a_refused_address_gets_no_connection`, `p3_003_a_redirect_is_a_failure_and_is_not_followed`, `d_17_an_untrusted_certificate_fails_before_the_request`; `src/notifications/egress/tests/smtp.rs` `p3_003_a_refused_mail_server_gets_no_connection`; `tests/it/notifications/log.rs` `p3_003_a_test_to_a_refused_address_is_logged_unsent_and_audited`; `src/notifications/tests/sealing.rs` `sec_003_channel_secrets_round_trip_and_are_not_stored_in_clear`; `tests/it/notifications/channels.rs` `sec_005_a_webhook_reads_back_with_its_origin_and_header_names_only`; `src/notifications/dispatch/tests/secrets.rs` `log_007_no_secret_is_logged_recorded_or_delivered_by_a_failing_send`. Client `lib/notifications/channels/delivery.test.ts` "CR-14.5, NOT-004: every K1 reason has its own fixed sentence". | Test run result | open |
 | 12 | `GET /metrics` gives Prometheus text with status, response time, uptime ratio and certificate days for each check. Labels hold no value that changes often. It refuses a request with no token. | INT-001, INT-002, D-24 | Hub `src/checks/exposition/tests/render.rs` `int_001_renders_every_family_with_help_type_and_values`, `int_001_status_values_follow_k7_and_paused_is_unknown`; `tests/it/checks/exposition/series.rs` `int_001_response_time_is_the_last_heartbeat_and_absent_without_one`, `chk_011_uptime_ratio_has_the_three_windows_from_the_aggregates`, `int_001_certificate_days_only_for_checks_with_a_certificate`; `tests/it/checks/exposition/labels.rs` `int_002_labels_are_the_k7_names_and_hold_no_status_time_or_address`, `int_002_labels_do_not_change_when_status_and_values_change`; `tests/it/bearer/metrics.rs` `d_24_int_001_metrics_without_a_token_answers_401_and_starts_no_build`, `int_001_a_read_key_a_write_key_and_a_login_token_scrape_prometheus_text`. Live hub text and labels: planned T4 `deploy/acceptance/probe.ts` with `--key-file`. Optional real scrape: step P-14. | T4 output; for the optional scrape, the Prometheus target state "up" and one query result | open |
-| 13 | An API key has a scope and an expiry. The secret shows once and the hub keeps only its SHA-256. A read key cannot run a mutation. No key can manage keys, sign in a browser, start a session or open files. Revoke stops the key at once. Each step has an audit entry. | INT-003, LOG-005, D-23 | Hub `tests/it/api_keys/create.rs` `int_003_d_23_the_secret_is_anima_and_43_base64url_characters_shown_once`, `int_003_p3_004_only_the_sha_256_of_the_secret_is_stored`, `d_23_the_expiry_is_in_the_future_and_at_most_one_year_away`; `tests/it/api_keys/refused.rs` `d_23_a_read_key_cannot_run_any_mutation`, `d_23_every_refused_root_is_forbidden_for_an_api_key_in_every_spelling`, `d_23_refused_fields_with_valid_arguments_change_nothing`; `tests/it/api_keys/revoke.rs` `d_23_revoke_deletes_the_key_and_it_stops_at_once`, `log_005_create_and_revoke_each_leave_an_audit_entry_and_an_event`. The root list in `refused.rs` still names recording roots until WP-48 T10 removes them; re-check the list after T10. Live hub: planned T4 `deploy/acceptance/probe.ts` with `--key-file` (a read key gets FORBIDDEN for one mutation and each refused root, with invalid arguments). | Test run result; T4 output | open |
+| 13 | An API key has a scope and an expiry. The secret shows once and the hub keeps only its SHA-256. A read key cannot run a mutation. No key can manage keys, sign in a browser, start a session or open files. Revoke stops the key at once. Each step has an audit entry. | INT-003, LOG-005, D-23 | Hub `tests/it/api_keys/create.rs` `int_003_d_23_the_secret_is_anima_and_43_base64url_characters_shown_once`, `int_003_p3_004_only_the_sha_256_of_the_secret_is_stored`, `d_23_the_expiry_is_in_the_future_and_at_most_one_year_away`; `tests/it/api_keys/refused.rs` `d_23_a_read_key_cannot_run_any_mutation`, `d_23_every_refused_root_is_forbidden_for_an_api_key_in_every_spelling`, `d_23_refused_fields_with_valid_arguments_change_nothing`; `tests/it/api_keys/revoke.rs` `d_23_revoke_deletes_the_key_and_it_stops_at_once`, `log_005_create_and_revoke_each_leave_an_audit_entry_and_an_event`. Live hub: planned T4 `deploy/acceptance/probe.ts` with `--key-file` (a read key gets FORBIDDEN for one mutation and each refused root, with invalid arguments). | Test run result; T4 output | open |
 | 14 | Share link for a live SSH and VNC session. | RA-035, D-7 to D-10 | Not checked. Sharing is deferred (R-111). | none | withdrawn (R-111) |
 | 15 | With a session limit of N, session N+1 is refused with CONFLICT. File tunnels do not count. | RA-036 | Hub `tests/it/sessions/start/limit.rs` `ra_036_a_device_at_its_limit_refuses_the_next_start_until_one_ends`, `ra_036_two_parallel_starts_at_a_limit_of_one_give_exactly_one_ticket`, `ra_036_files_tickets_hold_no_session_and_never_count`, `ra_036_a_limit_lowered_below_the_live_count_refuses_the_next_start`. The word "viewers" in the plan criterion has no meaning after R-111. | Test run result | open |
 | 16 | Recording off by default, "Recording" badge, no plaintext. | RA-040, RA-008, D-11, D-13 | Not checked. Recording is deferred (R-113). | none | withdrawn (R-113) |
@@ -70,7 +70,7 @@ Rules for the whole list:
 - Hardware: any machine on the VPN with a shell on the VPS (or the compose file open).
 - Do:
   1. Confirm the running hub image is the one that holds the web client (the compose service points at the image built with the bun stage).
-  2. Confirm the compose variables `ANIMA_WEB_ROOT=/usr/share/anima/web` and `ANIMA_PUBLIC_ORIGIN=https://hub.anima.ing` are set. Confirm there is no `recordings` volume (this holds only after WP-48 T10 and the deploy follow-up; before then a leftover volume is expected). `CLIENT_ORIGINS` is a hub constant (`crates/hub/src/lib.rs`), not a compose variable: confirm the deployed hub is built from the tip that holds the two Tauri origins, or let the T4 CORS check show it.
+  2. Confirm the compose variables `ANIMA_WEB_ROOT=/usr/share/anima/web` and `ANIMA_PUBLIC_ORIGIN=https://hub.anima.ing` are set. Confirm there is no `recordings` volume. `CLIENT_ORIGINS` is a hub constant (`crates/hub/src/lib.rs`), not a compose variable: confirm the deployed hub is built from the tip that holds the two Tauri origins, or let the T4 CORS check show it.
   3. Confirm `ANIMA_PROBE_DENY` includes the hub's own VPN address.
 - Look for: the three values as written above, and the hub container running with the root file system read-only.
 - Record: the image tag or digest, and the date. Any VPS change needs the operator's confirmation in chat first (VPS-005).
@@ -79,9 +79,25 @@ Rules for the whole list:
 
 - Hardware: a VPN machine with `bun`.
 - Do:
-  1. Run `bun deploy/acceptance/probe.ts https://hub.anima.ing`.
-  2. Read each line. A failing line names the check and the expected value.
-- Look for: K7 headers and cache rules on `/` and one hashed asset; foreign-origin `POST /graphql` with a fake `__Host-anima` cookie refused; cross-origin WebSocket upgrade refused; CORS for the two Tauri origins only; `/metrics` with no token is 401.
+  1. From the repository root, run `bun deploy/acceptance/probe.ts https://hub.anima.ing`.
+  2. TLS is always verified, even when `NODE_TLS_REJECT_UNAUTHORIZED=0` is set. For a local hub with its own certificate, add `--ca <pem file>`.
+  3. Plain `http://` is accepted only for a loopback host.
+  4. Unset `HTTP_PROXY`, `HTTPS_PROXY` and `ALL_PROXY` (either case) first. The probe refuses to run with any of them set (exit 2), so no request goes through a proxy.
+  5. Read each line: `ok <check>` or `FAIL <check>: <reason>`, then `<n> checks, <m> failed`. A reason is fixed text: a status code, a header name or a K7 error code. The probe never prints a header value, a cookie or a body.
+  6. Read the exit code. 0 means every check passed. 1 means a check failed. 2 means bad usage, a proxy variable, no answer from the hub, or a run longer than 120 s.
+- Look for 11 `ok` lines:
+  - `health`.
+  - `index-csp`: the K7 CSP on `/`.
+  - `index-headers`: the other K7 headers on `/`.
+  - `index-cache`: `no-cache` on `/`.
+  - `asset-cache`: `immutable` on one hashed file under `/_app/immutable/`.
+  - `asset-headers`: the K7 headers on that file.
+  - `graphql-foreign-cookie`: a `POST /graphql` from `https://evil.example` with a synthetic `__Host-anima` cookie is signed out. The answer is UNAUTHENTICATED, 401 or 403. It grants no CORS permission. It sets no cookie.
+  - `socket-foreign-cookie`: the same socket opens, then the hub closes it with 4403 at `connection_init`. A socket that never opens is a FAIL.
+  - `cors-client-origins`: both `CLIENT_ORIGINS` are allowed.
+  - `cors-foreign-origin`: `https://evil.example` is not allowed.
+  - `metrics-without-token`: 401.
+- A synthetic cookie cannot sign anyone in. So `graphql-foreign-cookie` and `socket-foreign-cookie` show the signed-out answer only. P-3 and P-4 cover a real cookie.
 - Record: the full output (it holds no secret), the date, criterion 4 evidence.
 
 ### P-3. Browsers and sign-in on macOS
@@ -197,8 +213,22 @@ Rules for the whole list:
 - Do:
   1. Create a READ API key in Settings. Save the secret to a file with mode 600 on the Prometheus machine.
   2. Point `authorization.credentials_file` at that file and add the target `https://hub.anima.ing/metrics`.
-  3. Run the T4 probe with the key: `bun deploy/acceptance/probe.ts https://hub.anima.ing --key-file <path>`.
-- Look for: the target is `up`; the T4 output shows the K7 families and only the D-24 labels; a READ key gets FORBIDDEN for one mutation and each refused root.
+  3. Unset `HTTP_PROXY`, `HTTPS_PROXY` and `ALL_PROXY` (either case). The probe refuses to run with any of them set (exit 2), so the key never goes to a proxy.
+  4. Run the T4 probe with the key: `bun deploy/acceptance/probe.ts https://hub.anima.ing --key-file <path>`.
+  5. The file holds only the key (`anima_` and 43 characters). The probe refuses any other content and any file larger than 4 KiB. It warns when the file is readable by group or others. It never prints the key.
+  6. Every document the probe sends with the key is invalid: an argument no field has, or a check ID no hub holds. So nothing changes even if a refusal failed.
+- Look for:
+  - The target is `up`.
+  - The P-2 lines, all `ok`.
+  - `metrics-with-key`: 200 with the Prometheus text content type.
+  - `metrics-text`: the strict Prometheus reader accepts the text.
+  - `metrics-families`: the seven K7 families, all gauges, no other.
+  - `metrics-labels`: only the D-24 label names. `window` is only `1d`, `7d` or `30d`.
+  - `metrics-label-values`: IDs are UUIDs. No value looks like a time, a date, a duration, a number, an address or a status. This value check is a heuristic. The exact D-24 label names in `metrics-labels` are the hard rule. A flagged value that is a stable name the operator typed (for example `host:port`) is a false fail; compare it by eye.
+  - `key-accepted`: the hub knows the key.
+  - `read-key-mutation`: FORBIDDEN for an ordinary mutation.
+  - One `refused-root-<root>` per root of D-23 and R-100 (30 roots, with the five VPN roots the VPN work added): FORBIDDEN by the key-kind rule, not only as a read.
+  - With a WRITE key, `read-key-mutation` fails and says so. Use a READ key for criterion 13.
 - Record: the target state, one query result, the T4 output. Criteria 12 and 13. Revoke the key after the run and note the revoke.
 
 ### P-15. Optional: API key checks in Settings
@@ -232,7 +262,7 @@ Each criterion part that no existing test and no planned script proves. This lis
 - **G-3 (criterion 9, domain expiry notices).** No test drives a domain expiry check beat to a queued expiry notice at 21, 14 and 7 days. The scheduler tests prove none under maintenance and none for a renamed domain; the decision tests are pure. Proposal: one scheduler test beside `hub/src/checks/scheduler/tests/domain.rs` that beats a domain check to 20 days left and asserts one queued row with the domain kind.
 - **G-4 (criterion 4, the literal `CLIENT_ORIGINS` list).** No test pins the list: `hub/tests/it/graphql.rs` iterates the constant. Proposal: one test that asserts the list equals `tauri://localhost` and `http://tauri.localhost`; T4 checks it on the live hub.
 - **G-5 (criterion 13, audit per key use).** No spec text asks for an audit entry on each key use. Proposal: read "each step" as create and revoke (covered by `log_005_create_and_revoke_each_leave_an_audit_entry_and_an_event`) and say so in the criterion at acceptance.
-- **G-6 (criterion 13, root list after R-113).** After WP-48 T10, `openRecording` and `deleteRecording` leave `REFUSED` in `hub/tests/it/api_keys/refused.rs` and `API_KEY_REFUSED_ROOTS` in `hub/src/access/guard.rs`. Re-run the `d_23_*` tests after T10. `startSession`, `openFiles` and `signInBrowser` are already in both lists.
+- **G-6 (criterion 13, root list after R-113).** Done by WP-48 T10 (`75f8b6cd`). `openRecording` and `deleteRecording` are gone from `REFUSED` in `hub/tests/it/api_keys/refused.rs` and from `API_KEY_REFUSED_ROOTS` in `hub/src/access/guard.rs`. The VPN work then added `createVpnInvite`, `createRouterKey`, `registerVpnNode`, `renewVpnKey` and `approveSiteRoute` to both (VP-7, VP-10). Each list now holds 30 roots. `startSession`, `openFiles` and `signInBrowser` are in both. The T4 probe sends the same 30 roots.
 - **G-7 (criteria 1 and 4, real browsers).** No test proves `HttpOnly`, no script-readable token and the cross-origin refusal in a real browser. Proposal: operator steps P-3 and P-4; optionally a Playwright run in WebKit and Chromium against a local hub with synthetic config.
 - **G-8 (criterion 5, real endpoints and a real Apprise service).** The tests use synthetic receivers. Proposal: operator steps P-7 to P-11.
 - **G-9 (criterion 12, Prometheus text on the live hub).** The in-process tests do not prove the deployed text. Proposal: T4 with `--key-file`, and the optional step P-14.
