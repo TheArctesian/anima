@@ -68,7 +68,8 @@
     gap: var(--space-1);
     block-size: var(--control-md);
     padding: var(--space-1);
-    background: color-mix(in srgb, var(--text) 7%, transparent);
+    background: var(--surface-sunken);
+    box-shadow: inset 0 0 0 var(--border-thin) var(--border-subtle);
     border-radius: var(--radius-md);
   }
 

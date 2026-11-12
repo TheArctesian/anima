@@ -42,6 +42,10 @@
     dismissed = false;
   }
 
+  function onpointerleave(): void {
+    hovered = false;
+  }
+
   function onfocusin(event: FocusEvent): void {
     if (!(event.target instanceof Element) || !event.target.matches(':focus-visible')) return;
     focused = true;
@@ -69,6 +73,20 @@
     focused = false;
   }
 
+  /** The tip reacts to the pointer and to focus anywhere inside it, so the listeners sit on its root, not on a control. */
+  function watch(element: HTMLElement): () => void {
+    element.addEventListener('pointerenter', onpointerenter);
+    element.addEventListener('pointerleave', onpointerleave);
+    element.addEventListener('focusin', onfocusin);
+    element.addEventListener('focusout', onfocusout);
+    return () => {
+      element.removeEventListener('pointerenter', onpointerenter);
+      element.removeEventListener('pointerleave', onpointerleave);
+      element.removeEventListener('focusin', onfocusin);
+      element.removeEventListener('focusout', onfocusout);
+    };
+  }
+
   /** Keeps the panel under the button, inside the window, through scroll and resize. */
   function place(panel: HTMLElement): () => void {
     const reposition = () => {
@@ -91,16 +109,7 @@
 
 <svelte:document {onkeydown} {onpointerdown} />
 
-<span
-  class="helptip"
-  bind:this={root}
-  {onpointerenter}
-  onpointerleave={() => {
-    hovered = false;
-  }}
-  {onfocusin}
-  {onfocusout}
->
+<span class="helptip" bind:this={root} {@attach watch}>
   <!-- tabindex="0": WebKit skips plain buttons when Tab is pressed unless they are focusable (NAV-005). -->
   <button type="button" tabindex="0" bind:this={button} aria-label="About {label}" aria-expanded={open} aria-controls="{id}-tip" onclick={toggle}>
     <Icon name="nf-md-information_outline" size="sm" />

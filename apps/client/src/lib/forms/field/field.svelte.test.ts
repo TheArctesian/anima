@@ -20,7 +20,7 @@ afterEach(() => {
 });
 
 /** A field around a real Input, the way a caller builds one. */
-function field(props: { constraint?: string; error?: string; help?: boolean; layout?: 'stacked' | 'inline' }) {
+function field({ help: withHelp = false, ...props }: { constraint?: string; error?: string; help?: boolean; layout?: 'stacked' | 'inline' }) {
   installAnimations();
   const children = createRawSnippet<[{ id: string; 'aria-describedby': string | undefined; 'aria-invalid': true | undefined }]>((link) => ({
     render: () => `<span data-slot></span>`,
@@ -30,7 +30,7 @@ function field(props: { constraint?: string; error?: string; help?: boolean; lay
     },
   }));
   const help = createRawSnippet(() => ({ render: () => '<span>Seconds</span>' }));
-  app = mount(Field, { target: document.body, props: { label: 'Host', children, ...(props.help ? { help } : {}), ...props } });
+  app = mount(Field, { target: document.body, props: { label: 'Host', children, ...(withHelp ? { help } : {}), ...props } });
   flushSync();
   const input = document.querySelector('input');
   if (!input) throw new Error('no input');

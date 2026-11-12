@@ -44,7 +44,9 @@
 
   const isOn = (value: unknown) => value === true || value === 'true';
   const blocked = $derived(busy || isOn(ariaDisabled));
-  const working = $derived(busy || feedback === 'pending' || isOn(ariaBusy));
+  /** What the button announces: its own state when it has one, else what the caller set (a caller's "false" stays). */
+  const announcedBusy = $derived(busy || feedback === 'pending' ? true : ariaBusy);
+  const announcedDisabled = $derived(busy ? true : ariaDisabled);
 
   /** A blocked button keeps focus, so it is not `disabled`; it just ignores the click and does not submit. */
   function click(event: MouseEvent & { currentTarget: HTMLButtonElement }): void {
@@ -58,14 +60,13 @@
   {type}
   title={label}
   aria-label={label}
-  aria-busy={working || undefined}
-  aria-disabled={blocked || undefined}
+  aria-busy={announcedBusy}
+  aria-disabled={announcedDisabled}
   onclick={click}
   {...rest}
   {@attach press()}
 >
-  {#if icon !== undefined}<Icon name={icon} size="sm" />{/if}
-  {#if feedback === undefined}
+  {#if icon !== undefined}<Icon name={icon} size="sm" />{/if}{#if feedback === undefined}
     {@render children?.()}
   {:else}
     <!-- All three labels share one cell, so the button keeps its width; each fades in place (MOT-007, MOT-008). -->
@@ -176,17 +177,18 @@
     background: var(--accent-pressed);
   }
 
+  /* The fill is already as light as a hover fill, so hover shows the strong border; pressed shows the accent tint. */
   .secondary {
     background: var(--surface-overlay);
   }
 
   .secondary:hover:not(:disabled, [aria-disabled='true']) {
-    background: color-mix(in srgb, var(--text) 8%, var(--surface-overlay));
+    border-color: var(--border-strong);
   }
 
   .secondary:active:not(:disabled, [aria-disabled='true']) {
     transition-duration: var(--duration-press);
-    background: color-mix(in srgb, var(--text) 14%, var(--surface-overlay));
+    background: var(--surface-selected);
   }
 
   .ghost {
@@ -201,7 +203,7 @@
 
   .ghost:active:not(:disabled, [aria-disabled='true']) {
     transition-duration: var(--duration-press);
-    background: color-mix(in srgb, var(--text) 14%, var(--surface-hover));
+    background: var(--surface-selected);
     color: var(--text);
   }
 
@@ -210,13 +212,8 @@
     color: var(--status-down-text);
   }
 
-  .danger:hover:not(:disabled, [aria-disabled='true']) {
+  .danger:is(:hover, :active):not(:disabled, [aria-disabled='true']) {
     background: var(--status-down-tint);
-  }
-
-  .danger:active:not(:disabled, [aria-disabled='true']) {
-    transition-duration: var(--duration-press);
-    background: color-mix(in srgb, var(--danger) 28%, transparent);
   }
 
   .danger.fill {
@@ -225,10 +222,12 @@
   }
 
   .danger.fill:hover:not(:disabled, [aria-disabled='true']) {
-    background: color-mix(in srgb, var(--text) 10%, var(--danger));
+    background: var(--danger);
+    filter: brightness(1.1);
   }
 
   .danger.fill:active:not(:disabled, [aria-disabled='true']) {
-    background: color-mix(in srgb, var(--text) 18%, var(--danger));
+    background: var(--danger);
+    filter: brightness(0.9);
   }
 </style>
