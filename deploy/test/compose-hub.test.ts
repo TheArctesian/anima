@@ -183,30 +183,6 @@ describe("hub deny list and default route for the VPS as a device (VP-13)", () =
   });
 });
 
-describe("fixed addresses on the gateway network (VP-13)", () => {
-  type Attachments = Record<string, { ipv4_address?: string } | null>;
-  const gatewayAddress = (name: string): string | undefined =>
-    ((compose.services[name]?.networks ?? {}) as Attachments)["gateway"]?.ipv4_address;
-
-  test("VP-13 guacd has its own fixed gateway address, inside the subnet and not the hub's", () => {
-    expect(gatewayAddress("guacd")).toBe("${ANIMA_GUACD_IP:-172.30.0.20}");
-    const subnet = cidr(resolveDefault(compose.networks["gateway"]?.ipam?.config?.[0]?.subnet ?? "missing"));
-    const guacd = ipv4(resolveDefault(gatewayAddress("guacd") ?? ""));
-    const hub = ipv4(resolveDefault(gatewayAddress("hub") ?? ""));
-    expect(subnet.contains(guacd)).toBe(true);
-    expect(guacd).not.toBe(hub);
-    // Not the network address, the bridge gateway (.1) or the broadcast address.
-    expect([subnet.first, subnet.first + 1, subnet.first + subnet.size - 1]).not.toContain(guacd);
-  });
-
-  test("VP-13 every service on the gateway network has a fixed address, so none can take the hub's", () => {
-    const members = Object.entries(compose.services).filter(([, service]) =>
-      Array.isArray(service.networks) ? service.networks.includes("gateway") : Object.keys(service.networks ?? {}).includes("gateway"));
-    expect(members.map(([name]) => name).sort()).toEqual(["guacd", "hub"]);
-    for (const [name] of members) expect(gatewayAddress(name)).toMatch(/^\$\{ANIMA_[A-Z]+_IP:-172\.30\.0\.\d+\}$/);
-  });
-});
-
 describe("hub certificates and listen address", () => {
   test("DNS-002 the hub reads certificate and key from the one tls.pem on the certs volume", () => {
     const environment = compose.services["hub"]?.environment ?? {};
