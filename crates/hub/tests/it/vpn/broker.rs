@@ -18,6 +18,7 @@ use sqlx::PgPool;
 use tokio::{
     io::{AsyncBufReadExt as _, AsyncWriteExt as _, BufReader},
     net::{UnixListener, UnixStream},
+    sync::watch,
 };
 
 use super::{
@@ -29,6 +30,8 @@ use super::{
 pub struct FakeBroker {
     folder: tempfile::TempDir,
     seen: Arc<Mutex<Vec<String>>>,
+    /// The request lines read, each as soon as it arrives, before the delay.
+    received: Arc<watch::Sender<Vec<String>>>,
     refused: Arc<AtomicUsize>,
 }
 
@@ -44,6 +47,16 @@ impl FakeBroker {
     /// The request lines seen so far.
     pub fn seen(&self) -> Vec<String> {
         self.seen.lock().unwrap().clone()
+    }
+
+    /// Waits until a request line that `wanted` accepts has arrived, while the broker may still
+    /// be working on it.
+    pub async fn until_received(&self, wanted: impl Fn(&str) -> bool) {
+        let mut received = self.received.subscribe();
+        received
+            .wait_for(|lines| lines.iter().any(|line| wanted(line)))
+            .await
+            .unwrap();
     }
 
     /// Connections closed at once because another one was open.
@@ -71,10 +84,12 @@ pub fn start(
     let fake = FakeBroker {
         folder: tempfile::tempdir().unwrap(),
         seen: Arc::default(),
+        received: Arc::new(watch::Sender::new(Vec::new())),
         refused: Arc::default(),
     };
     let listener = UnixListener::bind(fake.path()).unwrap();
     let (seen, refused) = (fake.seen.clone(), fake.refused.clone());
+    let received = fake.received.clone();
     let answer = Arc::new(answer);
     let busy = Arc::new(AtomicBool::new(false));
     tokio::spawn(async move {
@@ -84,8 +99,11 @@ pub fn start(
                 continue;
             }
             let (answer, seen, busy) = (answer.clone(), seen.clone(), busy.clone());
+            let received = received.clone();
             tokio::spawn(async move {
-                serve_one(stream, delay, |line| {
+                let arrived =
+                    |line: &str| received.send_modify(|lines| lines.push(line.to_owned()));
+                serve_one(stream, delay, arrived, |line| {
                     seen.lock().unwrap().push(line.to_owned());
                     answer(line)
                 })
@@ -97,12 +115,19 @@ pub fn start(
     fake
 }
 
-async fn serve_one(stream: UnixStream, delay: Duration, answer: impl Fn(&str) -> Option<String>) {
+/// Reads one request line, tells `arrived`, then answers it after `delay`.
+async fn serve_one(
+    stream: UnixStream,
+    delay: Duration,
+    arrived: impl FnOnce(&str),
+    answer: impl Fn(&str) -> Option<String>,
+) {
     let mut stream = BufReader::new(stream);
     let mut line = String::new();
     if stream.read_line(&mut line).await.is_err() {
         return;
     }
+    arrived(line.trim_end());
     tokio::time::sleep(delay).await;
     if let Some(reply) = answer(line.trim_end()) {
         let _ = stream

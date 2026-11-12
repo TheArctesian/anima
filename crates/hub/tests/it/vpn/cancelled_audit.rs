@@ -3,9 +3,10 @@
 
 use std::time::Duration;
 
-use anima_hub::vpn::Feed;
+use anima_hub::{events::Signal, vpn::Feed};
 use serde_json::{Value, json};
 use sqlx::PgPool;
+use tokio::sync::broadcast::{Receiver, error::RecvError};
 
 use super::{
     broker::{nodes_value, ok, read_with, start},
@@ -14,6 +15,37 @@ use super::{
 
 const INVITE: &str = "mutation { createVpnInvite { key expiresAt steps } }";
 const KEY: &str = "REDACTED-DROPPED-KEY";
+const MADE: &str = "Made a one-hour";
+
+/// How long the hub may take to write what the broker made; only a broken hub reaches it.
+const BOUND: Duration = Duration::from_secs(20);
+
+/// Waits until the bus carries the event of the key the broker made.
+async fn until_made(signals: &mut Receiver<Signal>) {
+    loop {
+        match signals.recv().await {
+            Ok(Signal::Event(event)) if event.message.starts_with(MADE) => return,
+            Ok(_) | Err(RecvError::Lagged(_)) => {}
+            Err(RecvError::Closed) => panic!("the bus closed"),
+        }
+    }
+}
+
+/// The audit entries of new VPN keys, once there is one; the hub commits them after the event.
+async fn audited(pool: &PgPool) -> Vec<String> {
+    loop {
+        let audited: Vec<String> = sqlx::query_scalar(
+            "select change::text from events.audit_log \
+             where target_type = 'vpn' and action = 'create'",
+        )
+        .fetch_all(pool)
+        .await
+        .unwrap();
+        if !audited.is_empty() {
+            return audited;
+        }
+    }
+}
 
 #[sqlx::test(migrations = "./migrations")]
 async fn log_005_a_dropped_request_still_audits_the_key_the_broker_made(pool: PgPool) {
@@ -31,14 +63,21 @@ async fn log_005_a_dropped_request_still_audits_the_key_the_broker_made(pool: Pg
     let reader = read_with(&pool, &feed, fake.broker()).await;
     reader.abort();
 
-    // The browser tab closes 300 ms in: the request future is dropped.
-    let gone = tokio::time::timeout(
-        Duration::from_millis(300),
-        hub.post(Some(&token), INVITE, json!({})),
-    )
-    .await;
-    assert!(gone.is_err());
-    tokio::time::sleep(Duration::from_secs(2)).await;
+    let mut signals = hub.bus.subscribe();
+
+    // The browser tab closes once the broker has the request and works on it: the request
+    // future is dropped.
+    tokio::select! {
+        biased;
+        () = fake.until_received(|line| line.contains("personal-key")) => {}
+        response = hub.post(Some(&token), INVITE, json!({})) => {
+            panic!("the hub answered before the broker had the request: {response}");
+        }
+    }
+    let event = tokio::time::timeout(BOUND, until_made(&mut signals)).await;
+    assert!(event.is_ok(), "no event for the key the broker made");
+    let audited = tokio::time::timeout(BOUND, audited(&pool)).await;
+    let audited = audited.expect("no audit entry for the key the broker made");
 
     let made = fake
         .seen()
@@ -46,12 +85,6 @@ async fn log_005_a_dropped_request_still_audits_the_key_the_broker_made(pool: Pg
         .filter(|line| line.contains("personal-key"))
         .count();
     assert_eq!(made, 1, "the broker got the request and made the key");
-    let audited: Vec<String> = sqlx::query_scalar(
-        "select change::text from events.audit_log where target_type = 'vpn' and action = 'create'",
-    )
-    .fetch_all(&pool)
-    .await
-    .unwrap();
     assert_eq!(
         audited.len(),
         1,
