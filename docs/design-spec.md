@@ -887,6 +887,7 @@ The operator uses a form to add or edit a device. The form has these fields:
 - **DEV-014.** The operator must confirm before Anima deletes a device.
 - **DEV-015.** When the operator deletes a device, the hub must delete its credentials, checks, heartbeats and metrics.
 - **DEV-016.** The operator does not enter the Linux distribution. With each SSH metrics collection of a Linux device, the hub must read the `ID` of `/etc/os-release` and store it when it is a short lower-case token (`[a-z0-9._-]`, 1 to 32 characters). A failed read must leave the stored value as it is and must not fail the collection. The client must show the logo of the distribution beside the device.
+- **DEV-025.** The operator need not choose the operating system of a device whose metrics come over SSH. When such a device's operating system is Other, each metrics round must first run `uname -s` over the device's SSH credential. An answer of `Linux` stores Linux and `Darwin` stores macOS, and the device is collected from the next round. Only an exact `Linux` or `Darwin` with the white space around it removed counts: the answer is the device's text. Any other answer, or a failed read, must leave the stored value as it is, must not fail the round and must not raise a device event. The hub never changes an operating system that the operator chose (Linux, macOS, Windows).
 
 ### 6.3 Remote access
 
@@ -1075,7 +1076,7 @@ The agent may read NVIDIA values through NVML in place of `nvidia-smi`. The valu
 - **MET-002.** The SSH collector and the agent must only read values on the device. Neither must change the device. The agent may write only its own configuration, token and buffer files. (R-084)
 - **MET-003.** The device detail view must show a chart for each metric for 1 hour, 24 hours and 7 days.
 - **MET-004.** The device card must show a metric in `--status-degraded` colour when the value is more than 85 percent.
-- **MET-005.** Metrics for Windows devices are out of scope for Phase 2. A later version can add an agent or WinRM.
+- **MET-005.** Metrics for Windows devices are out of scope for Phase 2. A later version can add an agent or WinRM. A device left at Other is first detected (DEV-025).
 - **MET-006.** The hub must find the GPUs of a device at the first metric collection. The hub must find them again each 24 hours and after a device restart.
 - **MET-007.** If a device has no GPU with its own memory, the client must not show VRAM. Do not show "0 %" for a missing GPU.
 - **MET-008.** If a device has a GPU with its own memory, the device card must show a VRAM bar after the disk bar. If the device has more than one GPU, the bar must show the GPU with the highest VRAM usage.
