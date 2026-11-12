@@ -1,45 +1,27 @@
 // Scans a hub log for the never-log shapes of K7 (criterion 22, LOG-007, SEC-009). Run it on the live log
-// or a file, from the repository root:
-//   docker compose logs --no-color hub | bun deploy/acceptance/log-scan.ts [--needles <file>]
+// or a file, from the repository root, with pipefail so a failed `docker compose` is not an empty clean log:
+//   bash -o pipefail -c 'docker compose logs --no-color hub | bun deploy/acceptance/log-scan.ts [--needles <file>]'
 //   bun deploy/acceptance/log-scan.ts [--needles <file>] <log file>
 // It prints `line <n>: <kind>` for each kind found on a line, then `scanned <n> lines, <m> hits`. It never
-// prints the matched text, the line or a needle, and no error message holds input (A-3). The needles file holds
-// one exact value per line (surrounding white space and blank lines are ignored); a line that contains one is a
-// `needle` hit. The file stays on the machine; give it for values only the operator knows (channel URLs, ntfy
-// topics on a server whose host does not say `ntfy`, generic webhook URLs, SMTP passwords).
-// Exit codes: 0 no hit, 1 one or more hits, 2 bad usage or an unreadable log or needles file.
-//
-// Not flagged, on purpose (false positives would bury real hits):
-// - A bare 43-character base64url run (a 32-byte bearer: push token, plain API token) needs an upper-case
-//   letter, a lower-case letter and a digit. Snake-case names, hex digests (SHA-256 hex is 64 characters and
-//   has no upper case) and words are skipped; a random value lacks a digit about once in 1,500 draws.
-// - A run that sits inside a longer base64url or standard base64 run (`+` beside it), or that follows
-//   `SHA256:`/`sha256-`, is a fingerprint or digest, not a bearer. UUIDs are 36 characters and never match.
-// - `__Host-anima=;` (and a quoted empty value) is the cookie cleared by logout.
-// - `password=`, `secret: ""`, and the placeholders null, true, false, `***` and `[REDACTED]` hold no value.
-// - A Discord webhook URL without its token segment, a Slack hooks URL without a path, `apprise://` with
-//   nothing after it, an ntfy server origin without a topic, and URLs with a user but no password.
+// prints the matched text, the line or a needle, and no error message holds input (A-3).
+// The hub log is tracing JSON whose `?` fields are Rust Debug strings escaped again, so each line is read in
+// several views: as written; with JSON and Debug escapes undone, once per pass up to four passes; and that
+// last view percent-decoded. A kind found in any view counts once.
+// The needles file holds one exact value per line (surrounding white space and blank lines are ignored); a line
+// that contains one in any view (so also JSON- or Debug-escaped up to four times, or percent-encoded), or for a URL
+// in its normal form with a lower-case host, is a `needle` hit. Other spellings (non-ASCII percent-encoding, a
+// different case in the path) are not found. The file stays on the machine; give it for values only the operator
+// knows (channel URLs, ntfy topics on a server whose host does not say `ntfy`, generic webhook URLs, SMTP
+// passwords).
+// Exit codes: 0 no hit, 1 one or more hits, 2 bad usage, an empty or unreadable log or needles file, or closed
+// output. What each shape skips on purpose is listed in leak-shapes.ts.
 import { createReadStream } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { parseArgs } from "node:util";
+import { SHAPE_KINDS, shapeKinds, type ShapeKind } from "./leak-shapes.ts";
 
-/** The stable name of a leak shape; the operator records it with the line number. */
-export type LeakKind =
-  | "api-key"
-  | "agent-token"
-  | "enrolment-code"
-  | "browser-cookie"
-  | "authorization-header"
-  | "bearer-value"
-  | "webhook-url"
-  | "apprise-url"
-  | "ntfy-topic-url"
-  | "ntfy-token"
-  | "smtp-auth"
-  | "secret-field"
-  | "pem-private-key"
-  | "url-credentials"
-  | "needle";
+/** The stable name of a finding: a shape kind, or `needle` for an operator value. */
+export type LeakKind = ShapeKind | "needle";
 
 /** One finding: a 1-based line number and the kind of value found there. */
 export interface Leak {
@@ -47,94 +29,93 @@ export interface Leak {
   kind: LeakKind;
 }
 
-interface Shape {
-  kind: LeakKind;
-  pattern: RegExp;
-  /** Keeps a match only when it really holds a value; absent means every match counts. */
-  holdsValue?: (match: RegExpExecArray, line: string) => boolean;
-}
-
-const B64URL = String.raw`A-Za-z0-9_\-`;
 const ESC = String.fromCharCode(0x1b);
 const BEL = String.fromCharCode(0x07);
 // CSI sequences (colours, cursor) and OSC sequences (titles, links) that `docker compose logs` may add.
 const TERMINAL_CODES = new RegExp(`${ESC}\\[[0-9;?]*[ -/]*[@-~]|${ESC}\\][^${BEL}${ESC}]*(?:${BEL}|${ESC}\\\\)`, "g");
-const PLACEHOLDER = /^(?:null|none|true|false|\*+|\[redacted\]|<redacted>|redacted)$/i;
-const APPRISE_SCHEMES =
-  "apprises?|discord|slack|tgram|mailtos?|ntfys?|pover|pushover|gotifys?|matrixs?|msteams|pbul|jsons?|xmls?|" +
-  "forms?|signals?|rockets?|mmosts?|zulip|join|ifttt|twilio";
-
-function isBearerValue(match: RegExpExecArray, line: string): boolean {
-  const value = match[0];
-  const before = line.slice(Math.max(0, match.index - 7), match.index);
-  return /[A-Z]/.test(value) && /[a-z]/.test(value) && /\d/.test(value) && !/sha256[:-]$/i.test(before);
-}
-
-function isRealValue(match: RegExpExecArray): boolean {
-  const value = match[1] ?? "";
-  return value !== "" && !PLACEHOLDER.test(value);
-}
-
-const SHAPES: readonly Shape[] = [
-  { kind: "agent-token", pattern: new RegExp(`anima_agent_[${B64URL}]{43}(?![${B64URL}])`, "g") },
-  { kind: "enrolment-code", pattern: new RegExp(`anima_enrol_[${B64URL}]{22}(?![${B64URL}])`, "g") },
-  { kind: "api-key", pattern: new RegExp(`anima_[${B64URL}]{43}(?![${B64URL}])`, "g") },
-  { kind: "browser-cookie", pattern: /__Host-anima=[^;\s"',]/g },
-  {
-    kind: "authorization-header",
-    pattern: /authorization\\?["']?\s*[:=]\s*\\?["']?(?:bearer|basic)\s+[A-Za-z0-9._~+/=-]{8,}/gi,
-  },
-  {
-    kind: "bearer-value",
-    pattern: new RegExp(`(?<![${B64URL}+])[${B64URL}]{43}(?![${B64URL}+])`, "g"),
-    holdsValue: isBearerValue,
-  },
-  {
-    kind: "webhook-url",
-    pattern:
-      /discord(?:app)?\.com\/api\/webhooks\/\d+\/[A-Za-z0-9_-]|hooks\.slack\.com\/(?:services|workflows|triggers)\/[A-Za-z0-9]|webhook\.office\.com\/webhookb2\/[A-Za-z0-9]/gi,
-  },
-  {
-    kind: "apprise-url",
-    pattern: new RegExp(`(?<![A-Za-z0-9+.-])(?:${APPRISE_SCHEMES})://[^\\s"'<>]`, "gi"),
-  },
-  { kind: "ntfy-topic-url", pattern: /https?:\/\/[A-Za-z0-9.-]{0,253}ntfy[A-Za-z0-9.-]{0,253}(?::\d+)?\/[A-Za-z0-9_-]/gi },
-  { kind: "ntfy-token", pattern: /(?<![A-Za-z0-9_])tk_[A-Za-z0-9]{29}(?![A-Za-z0-9_])/g },
-  {
-    kind: "smtp-auth",
-    pattern: /\bAUTH\s+(?:PLAIN|LOGIN|XOAUTH2|OAUTHBEARER|CRAM-MD5)\s+(?=\S*[a-z+/=])[A-Za-z0-9+/]{4,}={0,2}(?![\w+/=-])/g,
-  },
-  {
-    kind: "secret-field",
-    pattern: /(?<![A-Za-z])(?:password|passwd|passphrase|secret)\\?["']?\s*[:=][ \t]*\\?["']?([^\s"',;&}\\]*)/gi,
-    holdsValue: isRealValue,
-  },
-  { kind: "pem-private-key", pattern: /-----BEGIN (?:[A-Z0-9]+ )*PRIVATE KEY(?: BLOCK)?-----/g },
-  { kind: "url-credentials", pattern: /(?<![A-Za-z0-9+.-])[A-Za-z][A-Za-z0-9+.-]{0,31}:\/\/[^\s/?#@:"'<>]+:[^\s/?#@"'<>]+@/g },
-];
+// JSON escapes and Rust Debug escapes (`\u{1f600}`, `\'`, `\0`).
+const ESCAPE = /\\(?:u([0-9A-Fa-f]{4})|u\{([0-9A-Fa-f]{1,6})\}|(["\\/'bfnrt0]))/g;
+const ESCAPED: Readonly<Record<string, string>> = {
+  '"': '"', "\\": "\\", "/": "/", "'": "'", b: "\b", f: "\f", n: "\n", r: "\r", t: "\t", 0: "\0",
+};
+const KIND_ORDER: readonly LeakKind[] = [...SHAPE_KINDS, "needle"];
+const PERCENT = /%([0-9A-Fa-f]{2})/g;
+const MAX_PASSES = 4;
 
 /** The line as the scanner reads it: no trailing carriage return, no terminal colour or control sequences. */
 export function plainLine(raw: string): string {
   return raw.replace(/\r$/, "").replace(TERMINAL_CODES, "");
 }
 
-function hasShape(shape: Shape, line: string): boolean {
-  for (const match of line.matchAll(shape.pattern)) {
-    if (shape.holdsValue === undefined || shape.holdsValue(match as RegExpExecArray, line)) {
-      return true;
+function unescapeOnce(text: string): string {
+  return text.replace(ESCAPE, (escape, unit?: string, point?: string, single?: string) => {
+    const code = Number.parseInt(unit ?? point ?? "", 16);
+    if (single !== undefined) {
+      return ESCAPED[single] ?? escape;
     }
-  }
-  return false;
+    return code <= 0x10ffff ? String.fromCodePoint(code) : escape;
+  });
 }
 
-/** Every leak kind on one raw log line, each once, in a fixed order; needles are matched literally. */
-export function leakKinds(raw: string, needles: readonly string[]): LeakKind[] {
-  const line = plainLine(raw);
-  const kinds = SHAPES.filter((shape) => hasShape(shape, line)).map((shape) => shape.kind);
-  if (needles.some((needle) => line.includes(needle))) {
-    kinds.push("needle");
+/** ASCII percent escapes only, so decoding never fails on a stray `%` or a broken UTF-8 sequence. */
+function percentDecodeOnce(text: string): string {
+  return text.replace(PERCENT, (escape, hex: string) => {
+    const code = Number.parseInt(hex, 16);
+    return code < 0x80 ? String.fromCharCode(code) : escape;
+  });
+}
+
+function settle(text: string, needed: string, pass: (text: string) => string, views: string[]): string {
+  let current = text;
+  for (let round = 0; round < MAX_PASSES && current.includes(needed); round += 1) {
+    const next = pass(current);
+    if (next === current) {
+      break;
+    }
+    views.push(next);
+    current = next;
   }
-  return kinds;
+  return current;
+}
+
+/** The views of one plain line: as written, each unescape pass, then the last of those percent-decoded. */
+export function lineViews(line: string): string[] {
+  const views = [line];
+  const unescaped = settle(line, "\\", unescapeOnce, views);
+  settle(unescaped, "%", percentDecodeOnce, views);
+  return views;
+}
+
+const needleCache = new WeakMap<readonly string[], string[]>();
+
+function urlForm(value: string): string | undefined {
+  try {
+    return new URL(value).href;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Each needle as written and, for a URL, its normal form (lower-case host); escaped spellings meet the views. */
+function needleForms(needles: readonly string[]): string[] {
+  let forms = needleCache.get(needles);
+  if (forms === undefined) {
+    const urls = needles.map(urlForm).filter((href) => href !== undefined);
+    forms = [...new Set([...needles, ...urls, ...urls.map((href) => href.replace(/\/$/, ""))])];
+    needleCache.set(needles, forms);
+  }
+  return forms;
+}
+
+/** Every leak kind on one raw log line, in any of its views, each once and in a fixed order. */
+export function leakKinds(raw: string, needles: readonly string[]): LeakKind[] {
+  const views = lineViews(plainLine(raw));
+  const found = new Set<LeakKind>(views.flatMap(shapeKinds));
+  const forms = needleForms(needles);
+  if (views.some((view) => forms.some((form) => view.includes(form)))) {
+    found.add("needle");
+  }
+  return KIND_ORDER.filter((kind) => found.has(kind));
 }
 
 /** Every leak in a log, numbered from line 1. */
@@ -222,6 +203,11 @@ function errorCode(error: unknown): string {
   return typeof code === "string" && /^[A-Z0-9_]+$/.test(code) ? code : "read error";
 }
 
+/** Writes one line of output; a reader that goes away surfaces as a stdout error event (see stopOnClosedOutput). */
+function report(text: string): void {
+  process.stdout.write(`${text}\n`);
+}
+
 async function scanStream(stream: AsyncIterable<string | Uint8Array>, needles: readonly string[]): Promise<number> {
   let number = 0;
   let hits = 0;
@@ -230,13 +216,16 @@ async function scanStream(stream: AsyncIterable<string | Uint8Array>, needles: r
       number += 1;
       for (const kind of leakKinds(raw, needles)) {
         hits += 1;
-        process.stdout.write(`line ${String(number)}: ${kind}\n`);
+        report(`line ${String(number)}: ${kind}`);
       }
     }
   } catch (error) {
     throw new ScanError(`the log cannot be read after line ${String(number)} (${errorCode(error)})`);
   }
-  process.stdout.write(`scanned ${String(number)} lines, ${String(hits)} hits\n`);
+  if (number === 0) {
+    throw new ScanError("the log is empty");
+  }
+  report(`scanned ${String(number)} lines, ${String(hits)} hits`);
   return hits;
 }
 
@@ -258,6 +247,15 @@ async function main(args: string[]): Promise<number> {
   }
 }
 
+/** A reader that closes the pipe early may surface as an asynchronous stream error; it ends the run the same way. */
+function stopOnClosedOutput(): void {
+  process.stdout.on("error", (error) => {
+    process.stderr.write(`log-scan: the output closed (${errorCode(error)})\n`);
+    process.exit(2);
+  });
+}
+
 if (import.meta.main) {
+  stopOnClosedOutput();
   process.exitCode = await main(process.argv.slice(2));
 }
