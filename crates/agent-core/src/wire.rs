@@ -14,7 +14,7 @@ mod secrets;
 mod tests;
 mod times;
 
-pub use batch::{Batch, BatchGpu, BatchPoint, BatchSeries, GpuVendor};
+pub use batch::{Batch, BatchDrive, BatchGpu, BatchPoint, BatchSeries, DriveKind, GpuVendor};
 pub use bodies::{
     DEVICE_NAME_CHARS, EnrolRequest, Enrolled, RenewRequest, Renewed, is_device_name,
 };

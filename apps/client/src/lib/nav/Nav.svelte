@@ -66,7 +66,7 @@
     {/if}
   </div>
   <div class="brand">
-    <img src={asset('/logo.png')} alt="" width="48" height="48" />
+    <img src={asset('/logo.png')} alt="" width="24" height="24" />
     <span class="words">Anima</span>
   </div>
   {@render destination(DEVICES)}
@@ -107,7 +107,7 @@
     padding: var(--space-3);
     background: var(--material-chrome-bg);
     backdrop-filter: blur(var(--material-chrome-blur)) saturate(var(--material-chrome-saturate));
-    border-right: var(--border-thin) solid var(--border);
+    border-right: var(--border-thin) solid var(--border-strong);
     z-index: var(--layer-nav);
   }
 
@@ -157,12 +157,12 @@
   }
 
   .brand img {
-    inline-size: var(--space-12);
-    block-size: var(--space-12);
+    inline-size: var(--space-6);
+    block-size: var(--space-6);
   }
 
   .item:not([aria-current='page']):hover {
-    background: var(--surface-raised);
+    background: var(--surface-overlay);
   }
 
   .item:not([aria-current='page']):active {
@@ -244,11 +244,6 @@
     justify-content: center;
   }
 
-  :global(:root[data-nav='icons']) .brand img {
-    inline-size: var(--target-min-touch);
-    block-size: var(--target-min-touch);
-  }
-
   :global(:root[data-nav='icons']) .status {
     display: flex;
     justify-content: center;
@@ -282,9 +277,9 @@
     block-size: var(--nav-banner-block-size);
     padding: var(--space-2) var(--space-3);
     overflow: hidden;
-    border-block-end: var(--border-thin) solid var(--border);
+    border-block-end: var(--border-thin) solid var(--border-strong);
     border-radius: 0;
-    background: var(--surface-raised);
+    background: var(--surface-overlay);
     box-shadow: var(--elevation-2);
     white-space: nowrap;
   }
@@ -317,7 +312,7 @@
     inline-size: 100%;
     margin: auto 0 var(--space-2);
     border: 0;
-    border-top: var(--border-thin) solid var(--border);
+    border-top: var(--border-thin) solid var(--border-strong);
   }
 
   /* One line with a height set from tokens, so the font swap cannot move the divider (MOT-007). */

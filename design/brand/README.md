@@ -11,11 +11,16 @@ The client uses `apps/client/static/logo.png`, `favicon.png` and
 `apple-touch-icon.png`. The desktop bundle uses `apps/desktop/src-tauri/icons/`.
 The former `apps/desktop/icon-source.svg` was a placeholder and is retired.
 
+`app-icon.png` is the desktop app icon: the logo on the macOS 824 px rounded square
+inside a transparent 1024 px canvas, so the Dock shows it at the same size as other
+apps. `app-icon.swift` draws it from `logo.png`.
+
 To regenerate desktop icons from the approved source, run from the repository root:
 
 ```sh
+swift design/brand/app-icon.swift design/brand/logo.png design/brand/app-icon.png
 bun install --frozen-lockfile
-bun run --cwd apps/desktop tauri icon ../../design/brand/logo.png --output src-tauri/icons
+bun run --cwd apps/desktop tauri icon ../../design/brand/app-icon.png --output src-tauri/icons
 ```
 
 Keep the six existing desktop icon files; the generator also emits mobile and

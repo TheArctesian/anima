@@ -115,7 +115,7 @@ Anima has three components: the client, the hub and the gateway.
 
 | Item | Decision |
 | --- | --- |
-| Fonts and icons | Fira Code by default; OpenDyslexic Nerd Font as a Settings choice; Nerd Font icons. See Section 5.2. |
+| Fonts and icons | IBM Plex Sans for interface text and Fira Code for machine text by default; OpenDyslexic Nerd Font as a Settings choice; Nerd Font icons. See Section 5.2. |
 | Framework | Tauri 2 |
 | Native layer | Rust |
 | User interface | TypeScript in the Tauri web view. See Section 11 for the framework decision. |
@@ -223,6 +223,7 @@ Anima keeps three types of log.
 - **LOG-008.** The desktop client must write its own process log to the operating system log folder. The operator must be able to open this folder from the Settings page.
 - **LOG-009.** The client must show the event log in a Logs panel on the Devices page. It must also show it in the Logs tab of the device detail view. The operator must be able to filter it by time, severity, device and source.
 - **LOG-010.** The client must receive new event log entries through a GraphQL subscription.
+- **LOG-011.** The Logs panel must follow new entries while the operator is at the end of the list. When the operator scrolls away from the end, new entries must not move the list. A "N new" button then shows the count and goes to the end. A Live and Paused switch stops and starts the follow. The `/` key moves the focus to the search field, except in a text field or a session tab. (R-115)
 
 ### 3.9 Desktop releases and updates
 
@@ -499,57 +500,94 @@ The VPN encrypts traffic between machines, and most traffic does not go through 
 
 ### 5.1 Colour scheme
 
-Anima uses the Nord colour scheme. The default theme is dark.
+Colour is themeable (UR-2, 2026-11-11). Colours are kept at two levels: **palettes** (raw colours, one
+file per scheme) and **semantic roles** (what a colour means in the interface). A role maps to a
+value of the active palette for each appearance, dark and light. Two palettes ship: **Graphite**
+(the default: neutral greys with nord8 as its one accent and the Nord aurora colours for status) and
+**Nord** (operator decision, 2026-11-12). The default appearance is dark.
 
-| Token | Nord name | Value | Use |
+#### 5.1.1 Palettes
+
+**Graphite** has its own neutral greys for surfaces, borders and text (values in `design/tokens/palettes/`), takes nord8 as its accent in dark and a deep nord8 in light, and takes its status colours from the Nord aurora values below, lifted or deepened by the UI-005 rule.
+
+**Nord:**
+
+| Primitive | Value | Primitive | Value |
 | --- | --- | --- | --- |
-| `--bg` | nord0 | `#2E3440` | Main background |
-| `--surface` | nord1 | `#3B4252` | Navigation bar, cards, panels |
-| `--surface-raised` | nord2 | `#434C5E` | Hover state, selected row, input fields |
-| `--border` | nord3 | `#4C566A` | Borders and dividers |
-| `--text` | nord6 | `#ECEFF4` | Primary text |
-| `--text-muted` | nord4 | `#D8DEE9` | Secondary text and labels |
-| `--accent` | nord8 | `#88C0D0` | Primary buttons, links, active navigation item, focus ring |
-| `--accent-alt` | nord9 | `#81A1C1` | Secondary buttons and icons |
-| `--accent-deep` | nord10 | `#5E81AC` | Pressed state of a primary button |
-| `--info` | nord7 | `#8FBCBB` | Information messages |
-| `--status-up` | nord14 | `#A3BE8C` | Device or check is up |
-| `--status-down` | nord11 | `#BF616A` | Device or check is down. Error messages. |
-| `--status-degraded` | nord13 | `#EBCB8B` | Slow response or high resource usage |
-| `--status-warning` | nord12 | `#D08770` | Warnings. Host key changed. |
-| `--status-maintenance` | nord15 | `#B48EAD` | Device is in maintenance |
-| `--status-unknown` | nord3 | `#4C566A` | No data, or the check is paused |
+| nord0 | `#2E3440` | nord8 | `#88C0D0` |
+| nord1 | `#3B4252` | nord9 | `#81A1C1` |
+| nord2 | `#434C5E` | nord10 | `#5E81AC` |
+| nord3 | `#4C566A` | nord11 | `#BF616A` |
+| nord4 | `#D8DEE9` | nord12 | `#D08770` |
+| nord5 | `#E5E9F0` | nord13 | `#EBCB8B` |
+| nord6 | `#ECEFF4` | nord14 | `#A3BE8C` |
+| nord7 | `#8FBCBB` | nord15 | `#B48EAD` |
 
-- **UI-001.** All colours in the user interface must come from the tokens in this table. The one addition is the five derived light-mode primitives (`nord-11-deep` to `nord-15-deep`), kept in `design/tokens/`. (D-27, R-081)
-- **UI-002.** Do not use nord3 for text on nord0 or nord1. The contrast is too low. Use nord4 for secondary text.
+The palette also holds derived values: a surface tier below nord0 for dark, a raised tier above
+nord6 for light, the lifted status colours for dark, the deep status colours for light
+(`nord-11-deep` to `nord-15-deep`, WP-50) and a deep nord10 as the light accent. Each derived value
+records the colour it comes from and the rule that made it.
+
+#### 5.1.2 Semantic roles
+
+| Role | Use |
+| --- | --- |
+| `surface-sunken` | Page background behind cards in a grid, the logs panel body, inputs on a raised card |
+| `surface-base` | Window background, navigation bar |
+| `surface-raised` | Cards, tables, form sections, menus |
+| `surface-overlay` | Dialogs, popovers, HelpTips |
+| `surface-hover`, `surface-selected` | Row and item states |
+| `border-subtle` | Where two equal surfaces meet; table row separators |
+| `border-strong` | Inputs and other control edges, at least 3:1 on `surface-raised` and `surface-sunken` (WCAG 1.4.11); every border under `prefers-contrast: more` |
+| `text`, `text-secondary`, `text-tertiary` | Primary text; secondary text; placeholder and disabled text (never the only carrier of information) |
+| `accent`, `accent-hover`, `accent-pressed`, `on-accent`, `accent-tint` | The one accent: active place, focus, the primary action |
+| `status-up`, `status-down`, `status-degraded`, `status-warning`, `status-maintenance`, `status-unknown` | Status shapes: dots, edges, bars |
+| `status-*-text`, `status-*-tint` | Status badge text and badge fill |
+| `danger`, `on-danger` | Destructive buttons; `on-danger` reaches 4.5:1 on `danger` in every palette and appearance |
+| `scrim`, `focus-ring` | Modal dim; the 2 px focus outline |
+| `chart-*` | Chart grid, axis, threshold and series colours |
+
+- **UI-001.** All colours in the user interface must come from semantic roles. A role maps to a value of the active palette, for each appearance. Component code must never name a palette value. (UR-2)
+- **UI-002.** Secondary text must reach 4.5:1 on every surface tier it is used on, in every palette and appearance. (The old Nord rule, "do not use nord3 for text on nord0 or nord1", is a case of this rule and is checked by its test.)
 - **UI-003.** A status must not use colour as the only indicator. Show a text label or an icon with the colour.
-- **UI-004.** Text on an `--accent` background must use nord0.
-- **UI-005.** The client must have a light theme with the Nord Snow Storm colours (nord4 to nord6). Some Nord aurora colours (for example nord13) are less than 3:1 on nord6. WP-50 measures them. So the light theme must use five derived primitives for the status colours, one from each of nord11 to nord15. Make each one by mixing its Nord aurora colour toward nord0 until it is 3:1 on nord4, the darkest light surface, so it is at least 3:1 on nord4, nord5 and nord6. Use them in light mode only. In light mode the background is nord5, surfaces are nord6, raised surfaces are nord4, and the accent is nord3. The default theme is dark. The operator must be able to choose Dark, Light or System. The client must save the choice on the device. (D-27, R-081, R-086)
+- **UI-004.** Text on an accent fill must use the `on-accent` role, which must reach 4.5:1 on `accent`.
+- **UI-005.** Every palette must fill every role, in dark and in light. A status colour used as text must reach 4.5:1 on the surface it sits on; used as a shape (dot, edge, bar), 3:1. Where a palette's raw colour misses, the palette derives a value by mixing toward its darkest base (light appearance) or its lightest base (dark appearance) until it passes, as WP-50 did for nord11 to nord15. The light accent of Nord is a derived deep nord10, not nord3; the light accent of Graphite is a derived deep nord8. The operator must be able to choose Dark, Light or System. The client must save the choice on the device. (D-27, R-081, R-086, UR-2)
+- **UI-023.** Palettes are registered in one theme registry (`design/tokens/palettes/`). Each entry has a name, a licence line and values for both appearances. Graphite is the default; Nord is the second palette. Adding a palette must need no component change (TOK-011).
+- **UI-032.** The Appearance section has a "Colours" choice of the registered palettes (Graphite or Nord). It is saved on the device, applies at once and before the first render after a restart, and no component reads it: it selects the role values only.
+- **UI-024.** A design test must fail if a registered palette leaves a role empty for an appearance, or misses a contrast rule of UI-002, UI-004 or UI-005.
 
 ### 5.2 Typography and spacing
 
-Anima uses Fira Code for text by default and Nerd Fonts for icons. The operator can change the interface text and the monospace text to OpenDyslexic in Settings, each on its own (UI-020; operator decision, 2026-11-05). The Nerd Fonts project supplies OpenDyslexic with the icons already added (patched), so icons always come from the OpenDyslexic Propo file, whichever text font is chosen.
+Anima uses a proportional sans, IBM Plex Sans, for interface text and Fira Code for machine text, with Nerd Fonts for icons (UR-3, 2026-11-11; Fira Code as the interface font was temporary). The operator can change the interface text and the monospace text to OpenDyslexic in Settings, each on its own (UI-020). The Nerd Fonts project supplies OpenDyslexic with the icons already added (patched), so icons always come from the OpenDyslexic Propo file, whichever text font is chosen.
 
 | Use | Font family | File | Licence |
 | --- | --- | --- | --- |
-| Interface text, IP addresses, host names, code (default) | Fira Code | `woff2/FiraCode-{Regular,Bold}.woff2` from the `tonsky/FiraCode` 6.2 release | SIL OFL 1.1 |
+| Interface text (default) | IBM Plex Sans | Regular and Bold from the `IBM/plex` release, shipped unchanged because the licence reserves the name "Plex"; the release and hashes are pinned in `fonts.lock.json` | SIL OFL 1.1 |
+| Machine text: IP addresses, host names, ports, keys, fingerprints, commands, log messages, code (default) | Fira Code | `woff2/FiraCode-{Regular,Bold}.woff2` from the `tonsky/FiraCode` 6.2 release | SIL OFL 1.1 |
 | Interface text (choice) and icons | OpenDyslexic Nerd Font Propo | `ryanoasis/nerd-fonts`, `patched-fonts/OpenDyslexic/Regular/OpenDyslexicNerdFontPropo-{Regular,Bold,Italic,BoldItalic}.otf` | SIL OFL 1.1 |
 | Terminal; IP addresses, host names, code (choice) | OpenDyslexicM Nerd Font Mono | `ryanoasis/nerd-fonts`, `patched-fonts/OpenDyslexic/Mono-Regular/OpenDyslexicMNerdFontMono-Regular.otf` | SIL OFL 1.1 |
 | Icon fallback | Symbols Nerd Font | `patched-fonts/NerdFontsSymbolsOnly/SymbolsNerdFont-Regular.ttf` | MIT |
 
-- **UI-010.** Use Fira Code for all interface text by default. OpenDyslexic Nerd Font Propo is the alternative (UI-020).
-- **UI-011.** Use Fira Code for IP addresses, host names and code by default; OpenDyslexicM Nerd Font Mono is the alternative (UI-020). The SSH terminal uses OpenDyslexicM Nerd Font Mono (RA-011). Use the "Mono" variant in the terminal, because its icons are one cell wide.
+- **UI-010.** Use IBM Plex Sans for all interface text by default. OpenDyslexic Nerd Font Propo is the alternative (UI-020).
+- **UI-011.** Use the monospace font only for machine text: IP addresses, host names, ports, keys, fingerprints, commands, log messages and code. Fira Code is the default; OpenDyslexicM Nerd Font Mono is the alternative (UI-020). Turn ligatures off for machine text (`font-variant-ligatures: none`). The SSH terminal uses OpenDyslexicM Nerd Font Mono (RA-011). Use the "Mono" variant in the terminal, because its icons are one cell wide.
 - **UI-014.** Use Nerd Font glyphs for all icons. Do not use image files or a second icon library. Use the Propo variant for icons in the interface, because its icons have their natural width.
 - **UI-015.** Each icon must have `aria-hidden="true"`. A button that has only an icon must have a text label for screen readers and a tooltip.
 - **UI-016.** Refer to each icon by its Nerd Font class name in the code, for example `nf-md-server`. Keep a table of the class names and code points in one source file. Do not write raw code points in components.
 - **UI-017.** The client must include the font files in the application package. Do not load fonts from the internet at run time.
 - **UI-022.** The Bold and Italic files of OpenDyslexic Nerd Font Propo are not in the Nerd Fonts v3.4.0 release. They are on the main branch. Pin the font files to commit `f034eeafc0ccf79afa8dd952feb86b18e5d0469e` until a release includes them.
 - **UI-018.** Each font licence file must be in the application package and in the "About" information.
-- **UI-019.** OpenDyslexic is wider and taller than most system fonts, and Fira Code is monospaced and wide. Use `text-md` (0.875 rem) for body text, `text-sm` (0.8125 rem) for dense tables and `leading-normal` (1.5). Test each layout at these sizes in both typefaces. See Section 5.5.
-- **UI-021.** Apple recommends the system font first. Anima uses Fira Code by default and offers OpenDyslexic for readability. This is a deliberate exception. The system font stays the fallback in every font token.
-- **UI-020.** The Settings page has two choices, "Interface font" and "Monospace font". Each is Fira Code (the default) or OpenDyslexic, and each is saved on the device. The choice changes the `font-ui` and `font-mono` tokens, so no component reads it. A choice applies at once and before the first render after a restart. Icons do not change. More typefaces or text roles can be added to the same choice later.
+- **UI-019.** Use `text-md` (0.875 rem) for body text, `text-sm` (0.8125 rem) for dense tables and for labels (never smaller), `text-xs` (0.75 rem) only for badges and chart axes, and `leading-normal` (1.5). A section title must be visibly larger and bolder than body text. Hierarchy must hold with weights 400 and 700 only, so that OpenDyslexic keeps it. OpenDyslexic is wider and taller than most fonts: test each layout in both interface typefaces. See Section 5.5.
+- **UI-021.** Apple recommends the system font first. Anima bundles IBM Plex Sans and offers OpenDyslexic for readability. This is a deliberate exception. The system font stays the fallback in every font token.
+- **UI-020.** The Settings page has two choices, "Interface font" and "Monospace font". "Interface font" is IBM Plex Sans (the default) or OpenDyslexic; "Monospace font" is Fira Code (the default) or OpenDyslexic. Each is saved on the device. A saved interface-font choice of "Fira Code" from an earlier version becomes the new default. The choice changes the `font-ui` and `font-mono` tokens, so no component reads it. A choice applies at once and before the first render after a restart. Icons do not change. More typefaces or text roles can be added to the same choice later.
 - **UI-012.** Use a 4-pixel spacing grid. Use the `space-*` tokens (Section 5.5.3).
-- **UI-013.** Interactive controls must have a minimum target size of 24 by 24 pixels on desktop and 44 by 44 points on iOS.
+- **UI-013.** Interactive controls must have a minimum target size of 24 by 24 pixels on desktop and 44 by 44 points on iOS. Control heights come from the `control-*` tokens: `control-md` 32 px (the default), `control-sm` 28 px (dense rows and table actions only), `control-lg` 40 px (sign-in, empty-state actions). Text fields, selects, buttons and segmented controls in one row share one height.
+- **UI-025.** Numbers that are compared in columns or that update (uptime, metrics, counts, times in tables) must use tabular figures (`font-variant-numeric: tabular-nums`).
+- **UI-026.** Icons appear only in four places: navigation items; status, beside the word and never in place of it; the leading slot of a primary or secondary button that opens something (Connect, Add device); and icon-only buttons in dense rows (UI-015). Section headers, form labels and chips have no icon, except the device-type and operating-system icons in the device header. Icons are `icon-sm` (16 px) beside body text and `icon-md` (18 px) in navigation, in the text colour of their context; only status icons take a status colour.
+- **UI-027.** Truncation and spacing. A name may be cut only with an ellipsis and a full-text tooltip; badges and buttons must never shrink a name below 12 characters. Machine text never truncates in the middle of a value: it wraps, or is shortened with a copy button and the full value in a HelpTip. Inside a component, spacing uses only `space-1`, `space-2` and `space-3`; between components, `space-4` and `space-6`. Related things are closer than unrelated things. A box is sized by its content: no card has a fixed height, and an empty card shows an empty state sized to its message.
+- **UI-028.** HelpTip. Defaults, explanations, allowed ranges and fingerprints go in a HelpTip (an "i" control). It opens on click or focus, stays while the pointer is over it, and closes with Escape (WCAG 1.4.13). It must never be placed over a live remote display (MAT-008). A constraint the operator needs to fill a field correctly stays visible. An error is never in a HelpTip.
+- **UI-029.** Button tones are primary (accent fill), secondary (neutral fill), ghost (text only) and danger. A view has at most one primary button. A destructive action never sits inside the form it affects; it goes into a separate group at the end of the page.
+- **UI-030.** Every page and panel that loads data must have an empty, a loading and an error state. An error state names what failed in plain words, gives the next step (for example "Try again" or "Open Hub settings") and puts the technical cause in a HelpTip. It replaces the content that failed to load and nothing else.
+- **UI-031.** A percentage has no space before "%". Uptime shows one decimal ("99.9%"), and "100%" when every check in the period was up. Metric values show whole percents.
 
 ### 5.3 Navigation bar
 
@@ -558,15 +596,22 @@ The navigation bar is on the left side of the window on desktop and web. It is a
 | Position | Item | Icon | Page |
 | --- | --- | --- | --- |
 | Top | Devices | Server | Devices page (Section 6) |
+| Top | Live sessions | Monitor with play | Live sessions page (NAV-008) |
 | Bottom | Settings | Gear | Settings page (Section 7) |
 
-- **NAV-001.** The navigation bar must show the page items at the top. Settings must be the last item, at the bottom of the navigation bar, below a divider.
-- **NAV-002.** The navigation bar must show the active item with the `--accent` colour.
-- **NAV-003.** The navigation bar must show the connection status of the hub immediately above the Settings item: "Connected" or "Disconnected".
+The logo block at the top of the navigation bar is 24 px high (UR-6).
+
+- **NAV-001.** The navigation bar must show the page items at the top: Devices, Live sessions. Settings must be the last item, at the bottom of the navigation bar, below a divider. Every item must open a page. Each label must fit on one line in both interface typefaces.
+- **NAV-002.** The navigation bar must show the active item with an `accent-tint` fill, the accent colour on its icon and a 3 px accent bar on its leading edge.
+- **NAV-003.** The navigation bar must show the connection status of the hub immediately above the Settings item as a status icon, with an accessible name (for example "Hub connected: hub.anima.ing") and a HelpTip with the hub name, the state and the time of the last answer. When the hub is disconnected the page also shows a banner.
 - **NAV-004.** The Devices page must be the start page.
 - **NAV-005.** The operator must be able to go to each page with the keyboard.
-- **NAV-006.** The operator must be able to collapse the navigation bar to icons and expand it again. The app must keep the choice on the device.
+- **NAV-006.** The operator must be able to collapse the navigation bar to icons and expand it again with a control at the trailing end of the logo row. The app must keep the choice on the device.
 - **NAV-007.** On macOS the window must draw under the title bar. The window buttons must sit in the top row of the navigation bar, and that row and the strip above the page must move the window.
+- **NAV-008.** The Live sessions page must list every live session with its device, protocol, start time and duration, with "Show" and "End session" for each (RA-034). With no live session it shows an empty state that points to the Devices page.
+- **NAV-009.** Before sign-in the window must show only the sign-in page: no navigation items and no hub status. The sign-in form is centred, with the logo above it and a primary "Sign in" button. In the desktop app the hub address is one line under the form (the hub's host name with a "Change" ghost button); "Change" opens the address field in place, and the address is saved when the operator signs in or presses Enter in it, so the page has one primary button. Sign-in has two steps (operator decision, 2026-11-12). Step 1 asks for the user name and password and sends nothing. Step 2 asks for the authenticator code in six single-digit boxes, centred: typing moves to the next box, Backspace to the previous one, a pasted six-digit code fills all six, and the sixth digit submits; it has a "Back" link to step 1 and a "Sign in without a code" link for an account with no second factor (OD-2). The hub then checks all three together and keeps its single answer for every failure (SEC-002): a refusal returns to step 1 with the message, keeping the user name.
+- **NAV-010.** Every page must have a visible title (`h1`) and must set the window and document title to "<page> – Anima".
+- **NAV-011.** The operator must be able to open a command palette with ⌘K on macOS, and with Ctrl+K on Linux and the web. It finds devices by name, host and IP address, the pages, and the Settings sections. For a found device it offers "Connect" with each protocol that is set up, "Wake" and "Open". The palette works with the keyboard only and is an ARIA combobox with a list box. In a session tab, the shortcut goes to the remote device, not to the palette. (R-115)
 
 ### 5.4 Design principles
 
@@ -615,24 +660,26 @@ A design token is a named design value, for example a colour, a space or a sprin
 | Component | A value for one component | `--btn-primary-bg` | `var(--accent)` |
 
 - **TOK-010.** Component code must use semantic tokens or component tokens. Component code must not use primitive tokens.
-- **TOK-011.** A theme (dark, light, high contrast) changes only semantic tokens. The light theme (UI-005) and a high-contrast theme must not need changes to components.
+- **TOK-011.** A theme is a palette and an appearance (dark, light, high contrast). Changing either changes only semantic role values. The light theme (UI-005), a high-contrast theme and a new palette must not need changes to components.
 
 #### 5.5.3 Token groups
 
 | Group | Tokens | Values |
 | --- | --- | --- |
-| Colour, primitive | `nord-0` to `nord-15` | Section 5.1 |
-| Colour, semantic | `bg`, `surface`, `surface-raised`, `border`, `text`, `text-muted`, `accent`, `accent-alt`, `accent-deep`, `info`, `status-*` | Section 5.1 |
-| Colour, tint | `accent-tint`, `status-*-tint` | The colour at 12 % on `surface` |
+| Colour, palette | `nord-0` to `nord-15` and the derived Nord values; one group per registered palette (UI-023) | Section 5.1.1 |
+| Colour, semantic | The roles of Section 5.1.2 | Section 5.1.2 |
+| Colour, tint | `accent-tint`, `status-*-tint` | The colour at 12 to 16 % on its surface, set per palette so that `status-*-text` keeps 4.5:1 on it |
 | Font family | `font-ui`, `font-mono`, `font-ui-opendyslexic`, `font-mono-opendyslexic`, `font-icon` | Section 5.2 |
 | Font size | `text-xs`, `text-sm`, `text-md`, `text-lg`, `text-xl`, `text-2xl` | 0.75, 0.8125, 0.875, 1, 1.25, 1.5 rem |
 | Line height | `leading-tight`, `leading-normal`, `leading-relaxed` | 1.2, 1.5, 1.7 |
 | Tracking | `tracking-display`, `tracking-body`, `tracking-small` | −0.01 em, 0, +0.01 em |
-| Weight | `weight-regular`, `weight-bold` | 400, 700 (OpenDyslexic has only these two weights; Fira Code ships these two) |
+| Weight | `weight-regular`, `weight-bold` | 400, 700 (OpenDyslexic has only these two weights; the bundled sans and Fira Code ship these two) |
 | Space | `space-0` to `space-16` | 0, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3, 4 rem (4-pixel grid) |
 | Radius | `radius-sm`, `radius-md`, `radius-lg`, `radius-pill` | 4, 6, 10, 999 px |
 | Border width | `border-thin`, `border-focus` | 1, 2 px |
-| Icon size | `icon-sm`, `icon-md`, `icon-lg` | 1, 1.125, 1.25 em |
+| Icon size | `icon-sm`, `icon-md`, `icon-lg` | 16, 18, 20 px, as rem |
+| Control height | `control-sm`, `control-md`, `control-lg` | 28, 32, 40 px, as rem |
+| Content width | `content-form`, `content-page` | 44 rem, 90 rem |
 | Target size | `target-min-desktop`, `target-min-touch` | 24 px, 44 pt |
 | Elevation | `elevation-0` to `elevation-3` | Section 5.6 |
 | Material | `material-chrome`, `material-panel`, `material-overlay` | Section 5.6 |
@@ -649,19 +696,20 @@ The navigation bar, the session toolbar and the logs panel header are floating l
 
 | Token | Use | Value | Reduced transparency |
 | --- | --- | --- | --- |
-| `material-chrome` | Navigation bar, session toolbar | `surface` at 82 % opacity, blur 20 px, saturation 140 % | `surface`, no blur |
-| `material-panel` | Logs panel, side panels | `surface` at 90 % opacity, blur 12 px | `surface`, no blur |
-| `material-overlay` | Menus, popovers, toasts | `surface-raised` at 92 % opacity, blur 24 px | `surface-raised`, no blur |
-| `elevation-1` | Cards | 1 px border, no shadow | Same |
-| `elevation-2` | Popovers, menus | Shadow 0 4 px 16 px, `nord-0` at 40 % | Same |
-| `elevation-3` | Modal dialogs, sheets | Shadow 0 12 px 40 px, `nord-0` at 55 % | Same |
+| `material-chrome` | Navigation bar, session toolbar | `surface-base` at 82 % opacity, blur 20 px, saturation 140 % | `surface-base`, no blur |
+| `material-panel` | Side panels | `surface-raised` at 90 % opacity, blur 12 px | `surface-raised`, no blur |
+| `material-overlay` | Menus, popovers, toasts | `surface-overlay` at 92 % opacity, blur 24 px | `surface-overlay`, no blur |
+| `elevation-1` | Cards | Surface contrast only (`surface-raised` on `surface-sunken`): no border, no shadow | A `border-strong` outline under `prefers-contrast: more` |
+| `elevation-2` | Popovers, menus | Shadow 0 4 px 16 px, the palette's shadow colour at 40 % | Same |
+| `elevation-3` | Modal dialogs, sheets | Shadow 0 12 px 40 px, the palette's shadow colour at 55 % | Same |
 
 - **MAT-001.** A larger surface must have a stronger blur and a deeper shadow than a small surface.
 - **MAT-002.** Do not put a translucent surface on a different translucent surface.
-- **MAT-003.** A modal task (for example the "Add device" form or a confirmation) must dim the content behind it with a scrim. A panel that does not stop the work (for example the logs panel) must not use a scrim.
+- **MAT-003.** A modal task (for example the "Add device" form or a confirmation) must dim the content behind it with a scrim at 50 % (dark) or 35 % (light). A modal is centred, uses `surface-overlay` and `elevation-3`, and shows a fade at an edge where its content scrolls. A panel that does not stop the work (for example the logs panel) must not use a scrim.
+- **MAT-009.** The logs panel is opaque `surface-raised` with an `elevation-2` shadow on its top edge; nothing shows through it. While it is open, the page gets bottom padding equal to the panel's height, so every card can be scrolled above it.
 - **MAT-004.** Where content moves below floating chrome, use a short fade mask at the edge. Do not use a hard 1-pixel line.
-- **MAT-005.** Text on a translucent material must use `text`, not `text-muted`.
-- **MAT-006.** The client must obey `prefers-reduced-transparency` and `prefers-contrast: more`. With `prefers-contrast: more`, materials are solid and borders use `text-muted`.
+- **MAT-005.** Text on a translucent material must use `text`, not `text-secondary`.
+- **MAT-006.** The client must obey `prefers-reduced-transparency` and `prefers-contrast: more`. With `prefers-contrast: more`, materials are solid and borders use `border-strong`.
 - **MAT-007.** WebKitGTK on Linux can be slow with `backdrop-filter`. Measure the frame time of the Devices page on the reference Linux computer. If it is more than 16.7 ms, the Linux build must use the "reduced transparency" values.
 - **MAT-008.** Never animate the content of a remote display (SSH terminal, RDP, VNC or Web view). Do not put a material or a blur over a live remote display.
 
@@ -742,7 +790,7 @@ Springs use the two Apple parameters: damping ratio and response. The token buil
 
 | Gesture | Platform | Behaviour |
 | --- | --- | --- |
-| Resize the logs panel | Desktop | The panel edge follows the pointer 1:1. On release, the panel goes to the snap point nearest the projected position: collapsed, 33 % or 66 %. |
+| Resize the logs panel | Desktop | The panel edge follows the pointer 1:1. On release, the panel goes to the snap point nearest the projected position: collapsed, 30 % or 60 %. The first open goes to 30 %; later opens go to the last open stop. |
 | Resize the navigation bar | Desktop | The edge follows the pointer 1:1 between the icon-only and full widths, with rubber-band resistance past either. On release the bar rests at the width nearest the projected position (collapsed or expanded, NAV-006) and the choice is kept as the toggle's is. The left and right arrow keys on the focused edge collapse and expand it. |
 | Reorder session tabs | Desktop | The tab follows the pointer from the grab point. Other tabs move away with `spring-move`. |
 | Drag a session tab out of the strip | Desktop | Pops the session out to a new window (RA-002). |
@@ -792,18 +840,34 @@ The Devices page shows all devices in a grid of cards. The operator can change t
 Each device card shows:
 
 - The device name.
-- The host name or the IP address.
-- The status: Up, Down, Degraded, Maintenance or Unknown.
-- The uptime percentage for the last 24 hours.
-- A bar for the last 50 heartbeats.
-- CPU usage, memory usage and disk usage, if metrics are available.
-- The buttons "SSH" and "RDP", if the device has these protocols.
+- The host name or the IP address, in the monospace font.
+- The combined status (DEV-006) and, when it is not Up, its first reason.
+- The uptime percentage for the last 24 hours (UI-031).
+- A bar for the last 50 heartbeats, labelled "Last 50 checks", with a HelpTip.
+- CPU, memory, disk and VRAM usage as 6 px bars with their values, if metrics are available.
+- A Connect button for each protocol the device has set up, and "Wake" when the device can be woken.
 
 - **DEV-001.** The page must show the device list in less than 1 second for 200 devices.
 - **DEV-002.** The page must update the status of each device without a full reload.
 - **DEV-003.** The operator must be able to filter the list by status, by tag and by name.
 - **DEV-004.** The operator must be able to sort the list by name, by status and by uptime.
 - **DEV-005.** If there are no devices, the page must show an empty state with the button "Add device".
+- **DEV-006.** A device must show one combined status. The status is chosen by this precedence; the first match wins. Every reason that applied must be available in the status HelpTip, in the same order. The precedence is one pure function in the client, and the status badge only displays its result.
+
+  | Order | Status | When |
+  | --- | --- | --- |
+  | 1 | Maintenance | The device is inside a maintenance window. |
+  | 2 | Down | Any enabled check is Down. |
+  | 3 | Warning | A security warning is open (host key or certificate changed), or a certificate or domain expires inside the shortest NOT-006 threshold. |
+  | 4 | Degraded | Any check is Degraded, or a metric is over its threshold. |
+  | 5 | Up | At least one enabled check is Up and nothing above applies. |
+  | 6 | Unknown | No enabled check has a result, or every check is paused. |
+
+- **DEV-007.** The grid must fill the width with cards of at least 18 rem. The table must fit its columns at 1280 px without a horizontal scroll bar; the heartbeat column shrinks before any text column.
+- **DEV-008.** The toolbar must be one row on a wide window: search, the status filter, the tag filter, the view switch, and "Add device" as the primary button at the trailing end.
+- **DEV-009.** Cards in one grid row keep their own height; a card without metrics is shorter, not padded. Every connect action, "Wake" included, uses the same button tone.
+- **DEV-026.** Needs attention. When a problem is open, the Devices page must show a "Needs attention" list above the devices. Each problem shows its severity, the device, a one-line cause and the time it started. Each problem has one action button that opens the place to fix it. The problems are: a check Down or Degraded, a security warning (DEV-006 order 3), metrics stale (MET-018), a disk forecast inside 14 days (MET-021), a restart loop (CHK-014), and an agent token in its last 7 days. The operator can dismiss a problem. The hub keeps the start time that the operator dismissed, so the problem shows again when it starts again. The list is one pure function in the client, and with no open problem it is not shown. Severity is never shown by colour alone (UI-003). (R-115)
+- **DEV-027.** The status filter must show the number of devices in each status, for example "Down 1". Selecting a count filters the list to that status. The counts use tabular figures (UI-025) and stay inside the one toolbar row (DEV-008). (R-115)
 
 ### 6.2 Add or edit a device
 
@@ -827,6 +891,7 @@ The operator uses a form to add or edit a device. The form has these fields:
 - **DEV-014.** The operator must confirm before Anima deletes a device.
 - **DEV-015.** When the operator deletes a device, the hub must delete its credentials, checks, heartbeats and metrics.
 - **DEV-016.** The operator does not enter the Linux distribution. With each SSH metrics collection of a Linux device, the hub must read the `ID` of `/etc/os-release` and store it when it is a short lower-case token (`[a-z0-9._-]`, 1 to 32 characters). A failed read must leave the stored value as it is and must not fail the collection. The client must show the logo of the distribution beside the device.
+- **DEV-025.** The operator need not choose the operating system of a device whose metrics come over SSH. When such a device's operating system is Other, each metrics round must first run `uname -s` over the device's SSH credential. An answer of `Linux` stores Linux and `Darwin` stores macOS, and the device is collected from the next round. Only an exact `Linux` or `Darwin` with the white space around it removed counts: the answer is the device's text. Any other answer, or a failed read, must leave the stored value as it is, must not fail the round and must not raise a device event. The hub never changes an operating system that the operator chose (Linux, macOS, Windows).
 
 ### 6.3 Remote access
 
@@ -897,6 +962,8 @@ Since R-062 the hub opens the SSH connection and the client draws the terminal (
 | Live sessions | 2 | **RA-034.** The client must show a list of live sessions. The operator must be able to stop a live session. |
 | Session sharing | Deferred | **RA-035.** Deferred (R-111). Anima is for the operator's own use of their own resources. No share links, no viewers without an operator account, and no sign-in exception for viewers. |
 | Concurrency limit | 3 | **RA-036.** The operator must be able to set a maximum number of sessions for each device. |
+| Idle limit | 3 | **RA-037.** An SSH session with no operator input for the idle limit must end. Only keystrokes and paste count as input. The default limit is 60 minutes. The operator can change the limit for each device or set it off. One minute before the end, the session tab must show a notice with a "Stay connected" button. The end reason is "Idle" (RA-007). (R-115) |
+| Safe upload | 3 | **RA-038.** An SFTP upload must write to a temporary name in the target folder. The hub renames it to the target name when all bytes arrive. If the upload fails or stops, the hub must remove the temporary file. An upload must never leave a partial file at the target name. When the device's SFTP server reports free space, the hub must refuse an upload larger than the free space before it sends a byte. (R-115) |
 | Session recording | Deferred | **RA-040.** Deferred (R-113). Anima is for the operator's own use of their own resources, and a recording would store the most sensitive content, such as passwords and tokens shown in a terminal. The hub records no session content (RA-008). |
 | Recording playback | Deferred | **RA-041.** Deferred with RA-040 (R-113). |
 | Touch input | 5 | **RA-050.** The iOS client must have the on-screen keyboard, text input mode, touchpad mouse mode and pinch zoom. |
@@ -959,6 +1026,7 @@ Each check has these common settings:
 - **CHK-011.** The hub must calculate uptime from aggregate tables (DB-008). Do not read all raw heartbeats to calculate uptime.
 - **CHK-012.** The hub must not start a shell command with text that the operator supplied.
 - **CHK-013.** An ICMP check that has never been Up must repair its method (R-064): when it is Down, has used its retries and the operator has not edited it, the hub must try a TCP connect to the device's connection ports (SSH first). If one answers, the hub must change the check to TCP on that port and write an event and an audit entry. The hub must never change a check that was ever Up or that the operator edited.
+- **CHK-014.** Restart loops. A systemd service check and a Docker container check have the setting "Detect restart loops". It is on for a new check and off for a check made before it existed (CHK-009). When it is on, the check also reads the restart count of the unit or the container. Three restarts or more in 15 minutes make the check Degraded with the reason "Restart loop". The check leaves this state after 30 minutes with no restart. (R-115)
 
 ### 6.5 Maintenance windows
 
@@ -985,7 +1053,9 @@ The hub collects these metrics from each device that has a metrics source:
 | --- | --- |
 | CPU usage | Percent |
 | Memory usage | Percent and bytes |
-| Disk usage for each mounted file system | Percent and bytes |
+| Disk usage for each mounted file system, shown by drive (MET-026) | Percent and bytes |
+| Drives of the device, Linux: name, kind (NVMe, SSD, HDD), size and mounts (MET-027) | Inventory |
+| Activity of each drive, Linux: read, write and busy (MET-028) | Bytes per second and percent |
 | Network traffic, in and out | Bytes per second |
 | System uptime | Seconds |
 | Load average (Linux and macOS) | Number |
@@ -1015,7 +1085,7 @@ The agent may read NVIDIA values through NVML in place of `nvidia-smi`. The valu
 - **MET-002.** The SSH collector and the agent must only read values on the device. Neither must change the device. The agent may write only its own configuration, token and buffer files. (R-084)
 - **MET-003.** The device detail view must show a chart for each metric for 1 hour, 24 hours and 7 days.
 - **MET-004.** The device card must show a metric in `--status-degraded` colour when the value is more than 85 percent.
-- **MET-005.** Metrics for Windows devices are out of scope for Phase 2. A later version can add an agent or WinRM.
+- **MET-005.** Metrics for Windows devices are out of scope for Phase 2. A later version can add an agent or WinRM. A device left at Other is first detected (DEV-025).
 - **MET-006.** The hub must find the GPUs of a device at the first metric collection. The hub must find them again each 24 hours and after a device restart.
 - **MET-007.** If a device has no GPU with its own memory, the client must not show VRAM. Do not show "0 %" for a missing GPU.
 - **MET-008.** If a device has a GPU with its own memory, the device card must show a VRAM bar after the disk bar. If the device has more than one GPU, the bar must show the GPU with the highest VRAM usage.
@@ -1024,21 +1094,34 @@ The agent may read NVIDIA values through NVML in place of `nvidia-smi`. The valu
 - **MET-011.** A device's metrics source must be one of `agent`, `ssh` or `none`. When a device has a working agent, the hub must stop SSH metric collection for it. If the agent is removed or its token is revoked, the operator can switch the device back to `ssh`. (R-084)
 - **MET-012.** Enrolment. The operator makes an enrolment code for one device on the Device page ("Install agent"). The code must be 128 random bits, expire after 15 minutes and work only once. A second use must fail, even when the first use failed later in the exchange. The hub must keep only its SHA-256. `anima-agent enrol <code>` swaps the code for the device's agent token. Only a signed-in operator can make a code. (R-084)
 - **MET-013.** Agent token. The format is `anima_agent_` and 43 base64url characters. The hub must keep only its SHA-256. A token is bound to one device. It allows only two calls: push readings for that device, and renew itself. It must not call the GraphQL API, open a session or read anything. It expires after 365 days. The agent renews it during the last 30 days with the current token; the old token stops working when the new one is first used. The operator can revoke it on the Device page; revocation takes effect on the next push. The agent keeps it in the macOS Keychain, or on Linux in a file with mode `0600` owned by the user that runs the agent. No log, event, metric or error message must contain a token or an enrolment code (LOG-007). (R-084)
-- **MET-014.** Sampling and push. The agent samples every 2 seconds. Each 10 seconds, it makes one point from the samples: the mean, and also the maximum for CPU and GPU usage. It pushes the new points every 10 seconds in one batch. While the hub cannot be reached, it keeps up to 1 hour of points in memory, oldest dropped first, and sends them when the hub comes back. (R-084)
+- **MET-014.** Sampling and push. The agent samples every 2 seconds. Each 10 seconds, it makes one point from the samples: the mean, and also the maximum for CPU and GPU usage. It pushes the new points every 10 seconds in one batch. While the hub cannot be reached, it keeps the points as MET-022 says and sends them when the hub comes back. (R-084, R-115)
 - **MET-015.** The hub must store agent points at 10-second resolution. The aggregates and retention (D-25) apply to every source. (R-084)
-- **MET-016.** The parsers for `/proc`, `vm_stat`, `sysctl`, `df`, `nvidia-smi`, `amdgpu` sysfs, `intel_gpu_top -J` and `ioreg` must be pure functions in `agent-core`. The hub's SSH collector and the agent must both call them. (R-084)
-- **MET-017.** The hub must refuse a batch, and write the refusal to the event log without the token, if the token is unknown, expired or revoked; if the batch names a device other than the token's device; if a point is more than 1 hour old or more than 60 seconds in the future; or if the batch is larger than 512 KiB. The ingest endpoint must follow NET-002 and NET-003. (R-084)
+- **MET-016.** The parsers for `/proc`, `vm_stat`, `sysctl`, `df`, `lsblk`, `nvidia-smi`, `amdgpu` sysfs, `intel_gpu_top -J` and `ioreg` must be pure functions in `agent-core`. The hub's SSH collector and the agent must both call them. (R-084)
+- **MET-017.** The hub must refuse a batch, and write the refusal to the event log without the token, if the token is unknown, expired or revoked; if the batch names a device other than the token's device; if a point is more than 24 hours old (MET-022) or more than 60 seconds in the future; or if the batch is larger than 512 KiB. The ingest endpoint must follow NET-002 and NET-003. (R-084)
 - **MET-018.** If the hub gets no batch from an agent for 3 push intervals (30 seconds), the hub must mark the device "metrics stale". The device card and the detail view must show the last values in the muted colour with the label "Stale". The hub must write one event when a device becomes stale and one when it recovers. A stale agent is not a Down check. (R-084)
 - **MET-019.** The Device page must show "Install agent" with the install command and a fresh enrolment code. The desktop app can install the agent on the computer it runs on: the Tauri shell copies the binary and writes the LaunchAgent or systemd unit, and the client's `lib/metrics/` holds the logic. On Linux, the agent runs as a systemd user or system unit. On macOS, it runs as a LaunchAgent. (R-084)
 - **MET-020.** The agent must connect only to the hub, with HTTPS to `hub.anima.ing` on tcp 443 at the hub's VPN address. The agent must not listen on any port in Phase 3. The VPN policy must allow agent devices to reach only that port of the hub (VPS-005 for each live change). (R-084)
+- **MET-021.** Disk forecast. The hub must forecast when each disk of a device will be full. It fits a straight line to the disk's used bytes over the last 24 hours. It makes no forecast with less than 1 hour of data, or when the use did not grow. When the forecast is inside 30 days, the device detail view must show it beside the disk value, for example "Full in about 9 days". The forecast is one pure function in the hub. (R-115)
+- **MET-022.** Agent buffer. The agent must keep unsent points in its buffer file (MET-002), so a restart of the agent keeps them. The buffer holds up to 24 hours of points, and the oldest are dropped first. Before it sends points older than 1 hour, the agent must reduce them to one point for each 60 seconds. The hub must store such a point once, at its own time, in the 10-second table and the aggregates (MET-015). (R-115)
+- **MET-023.** `anima-agent doctor` must check the configuration, the token file, the hub address, a TLS connection to the hub on tcp 443, and the readers that the device has. It must print one line for each check, with "ok" or the problem and the next step. It must exit with code 1 when a check fails. It must not print the token (LOG-007) and must not change anything (MET-002). (R-115)
+- **MET-024.** After the Device page shows the install command (MET-019), it must wait for the first batch from that device. It shows "Waiting for the first readings…", and then "Connected" with the number of disks and GPUs found. It must use the metrics subscription and must not poll. If the enrolment code expires first, it shows "Make a new code". (R-115)
+- **MET-025.** A metric chart must join a gap of up to 2 missing points. A longer gap, and a stale period (MET-018), must show as a break in the line. The chart must label its highest value with its time, for example "Peak 92 % at 14:05". A device with fewer than 2 points must show "Collecting data" in place of the chart. (R-115)
+- **MET-026.** Storage is shown drive by drive, never as one combined total: a full root disk must not hide behind an empty large drive, and a slow drive is a different resource from a fast one. (Operator ruling in chat, 2026-11-12)
+- **MET-027.** Drives (Linux). With each collection, the SSH collector and the agent must read `lsblk -J -b -o NAME,TYPE,SIZE,ROTA,TRAN,MOUNTPOINTS`, and the same with `MOUNTPOINT` when the device's util-linux (older than 2.37) refuses `MOUNTPOINTS`. A drive is a top-level device of type `disk` with a size above zero; `loop`, `ram` and `zram` devices are not drives. The kind is NVMe for transport `nvme`, else SSD when not rotational (ROTA 0), HDD when rotational (ROTA 1), and Disk otherwise; the operator never enters it. A mount belongs to the drive under it through partitions, encryption (`crypt`) and LVM, so `/` on an LVM volume in a LUKS container on `nvme1n1p3` belongs to `nvme1n1`. Swap and the mounts the disk series leave out (pseudo file systems, system images, `/recovery`, running AppImages; D-5) are not listed. At most 32 drives and 32 mounts per drive are kept; names and mount points follow the series label rule (K8 Section 4). The hub keeps each device's drives (`metrics.drives`) and replaces them when they change; an output that cannot be read leaves them as they are. (Operator ruling in chat, 2026-11-12)
+- **MET-028.** Drive activity (Linux). The SSH collector and the agent must read `/proc/diskstats` with each collection and store, for each drive of MET-027, the read and the write bytes per second (sectors of 512 bytes) and the busy percent (the time the drive spent on I/O over the time between the two readings). Like the network rates, there is no value without an earlier reading, for a drive new since it, or for a counter that went back. The device detail view charts the read and write rates of each drive (MET-003). (Operator ruling in chat, 2026-11-12)
+- **MET-029.** The Overview tab must show a Storage section after Metrics. On top, one summary line as text, not a bar: the number of drives, their total size and how many are not mounted ("4 drives · 31.0 TiB · 1 not mounted"). Then one row per drive: its name, its mount points in the monospace font, its kind as text (NVMe, SSD, HDD, Disk; never colour alone), its size, a used bar for each mount with the value as text ("7.3 TiB · 41 %"), and its read, write and busy values. A drive with no mount shows its size and "Not mounted" in the muted colour, with no bar. A mount that belongs to no drive the hub knows (a network file system, or any mount on macOS) is a row of its own. Loading, empty and failed states follow the Metrics section. (Operator ruling in chat, 2026-11-12)
+- **MET-030.** The device card's disk bar shows the fullest mount (MET-004) and is labelled with that mount ("Disk /", "Disk /mnt/archive"). When the device has more drives than the one that holds that mount, the bar shows "+N drives", unmounted drives counted. (Operator ruling in chat, 2026-11-12)
+- **MET-031.** macOS has no `lsblk`: the hub knows no drives of a macOS device, so its Storage section lists its mounts (the data volume) as MET-029's rows of their own, with no kind and no activity, and its card shows no "+N drives". Windows devices have no metrics (MET-005). (Operator ruling in chat, 2026-11-12)
 
 ### 6.7 Device detail view
 
 The operator clicks a device card to open the device detail view.
 
-- **DEV-020.** The header of the device detail view must have three rows. The first row must be a "Devices" back link. The second row must show an icon for the device type, the device name and the status, with the SSH, RDP, VNC, Web and Edit buttons at its right end; in a narrow window the buttons move to a row of their own. The third row must show the host, the IP address, the device type, the operating system and the tags, each as a chip with an icon.
-- **DEV-021.** The chips must wrap onto further lines and must never be cut off. The name and the status must always be visible; a name that is too long ends with an ellipsis and the full name is available as a tooltip.
-- **DEV-022.** The header must always show an SSH button and an RDP button. If a protocol is not set up on the device, its button must have a dashed border and a "+" icon. This button must open the Settings tab of the device. It must not start a session.
+- **DEV-020.** The header of the device detail view must have three rows. The first row must be a "Devices" back link (a chevron and the word, in the ghost style). The second row must show an icon for the device type, the device name and the combined status (DEV-006), with a Connect button for each protocol that is set up (SSH, RDP, VNC, Web; the most used one is primary) and an overflow menu (Edit, set up a protocol, maintenance) at its right end; in a narrow window the buttons move to a row of their own. The third row must show the host and the IP address in the monospace font with a copy button, the device type and operating system as plain text, and the tags as chips. The tabs below the header are underlined tabs, not buttons.
+- **DEV-021.** The chips must wrap onto further lines and must never be cut off. The name and the status must always be visible; a name that is too long ends with an ellipsis and the full name is available as a tooltip that never covers a button.
+- **DEV-022.** A protocol that is not set up on the device has no header button. "Set up SSH", "Set up RDP" and "Set up VNC" are items of the overflow menu; each opens the Settings tab of the device at that section and never starts a session.
+- **DEV-023.** While its data loads, the device detail view must show a loading skeleton for the header and the first tab. If the load fails, it must show an error state with "Try again" (UI-030).
+- **DEV-024.** The SSH host key fingerprint is not shown in the Overview. A "Host key" row shows its state ("Trusted", "Changed") and the fingerprint is in its HelpTip.
 
 The view has these tabs:
 
@@ -1059,6 +1142,7 @@ The view has these tabs:
 - **NOT-005.** The operator must be able to set a resend interval: send the notification again after each N Down heartbeats.
 - **NOT-006.** The hub must send a notification when a TLS certificate expires in less than the set number of days. The default values are 21, 14 and 7 days. The same rule applies to domain expiry checks, with the same thresholds. The hub must send one notification for each threshold for each certificate or domain. A renewed certificate starts again. (D-22, R-081)
 - **NOT-007.** The operator must be able to change the message text with a template.
+- **NOT-008.** The hub must send a notification when a disk forecast (MET-021) first falls inside 7 days, and again inside 3 days. It sends one notification for each threshold for each disk. A forecast that goes past 14 days starts again. (R-115)
 
 ### 6.9 Integrations (Phase 3)
 
@@ -1070,16 +1154,15 @@ The view has these tabs:
 ## 7. Settings page
 
 - **SET-001.** The Settings page must be available from the navigation bar.
-- **SET-002.** In Phase 1, the Settings page must show only the page title "Settings", a "Signed in as <name>" row with "Sign out" (R-048), the "Interface font" and "Monospace font" choices (UI-020), and, in the desktop app, the "Updates" row (UPD-006).
-- **SET-003.** The Settings page must show a "VPN" section: the path of each site, the nodes that are not in Anima, and the key expiry of each node. When the hub has no VPN picture, the section must say: "VPN status is not available. The hub has no LocalAPI proxy (ANIMA_TAILSCALE_LOCALAPI), or it has not answered since the hub started."
+- **SET-002.** Withdrawn (2026-11-11, UI redesign; it described the Phase 1 page). Replaced by SET-004.
+- **SET-003.** The Settings page must show a "VPN" section with two lists under their own headings. "Sites": each site's name, its route in the monospace font and its router state in words (for example "Router: none set up", "Router waiting for approval" with an "Approve route" button on the row). "Computers": each node's name, its role and its address, with the key expiry as a status ("Expires in 3 days" as a warning, "Never expires" as plain text), and the nodes that are not in Anima marked as such. When the hub has no VPN picture, the section must say: "VPN status is not available. The hub cannot reach the VPN service." with the technical cause (no LocalAPI proxy, `ANIMA_TAILSCALE_LOCALAPI`, or no answer since the hub started) in a HelpTip.
+- **SET-004.** The Settings page must show a section list beside the content on windows of `bp-wide` and above, and a section jump menu below that width. The sections are Account, Appearance, Hub, Notifications, Checks, Data retention, Updates, API keys and VPN; each has an anchor. The content column is at most `content-form` wide.
+- **SET-005.** A section whose fields belong together has one "Save changes" button at its end, enabled only when something changed. A single toggle or choice saves at once and shows "Saved" inline. Every result (saved, failed, test passed) shows in a Notice inside its section.
+- **SET-006.** The Updates section shows the version, the update state and "Check for updates". Packaging and signing details (Tauri packages, updater key, build host) are in a "Details for developers" Disclosure, closed by default.
 
 A later version adds these items to the Settings page:
 
-- Hub address and hub connection test (desktop client only).
-- Theme: Dark, Light or System.
-- Data retention period.
-- Notification channels, for example email, ntfy, Discord or Telegram.
-- Default check settings.
+- Further palettes through the theme registry (UI-023).
 
 ## 8. Device management (withdrawn)
 

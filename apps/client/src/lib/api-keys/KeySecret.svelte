@@ -82,7 +82,7 @@
   }
 
   label {
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font-size: var(--text-sm);
   }
 
@@ -98,8 +98,8 @@
     min-inline-size: 0;
     min-block-size: var(--target-min-desktop);
     padding: var(--space-2) var(--space-3);
-    background-color: var(--surface);
-    border: var(--border-thin) solid var(--border);
+    background-color: var(--surface-raised);
+    border: var(--border-thin) solid var(--border-strong);
     border-radius: var(--radius-md);
     color: var(--text);
     font-family: var(--font-mono);

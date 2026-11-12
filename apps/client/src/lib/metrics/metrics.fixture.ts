@@ -56,6 +56,6 @@ export function added(at: string, samples: NewMetrics['samples']): NewMetrics {
     deviceId: '0190a000-0000-7000-8012-000000000004',
     at,
     samples,
-    readings: { at, cpuPercent: null, memoryPercent: null, diskPercent: null, vramPercent: null, vramGpu: null },
+    readings: { at, cpuPercent: null, memoryPercent: null, diskPercent: null, diskMount: null, otherDrives: 0, vramPercent: null, vramGpu: null },
   };
 }

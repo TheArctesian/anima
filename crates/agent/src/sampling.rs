@@ -1,6 +1,7 @@
 //! From each 2-second reading to a point every 10 seconds (MET-014): pure, the time is a
 //! parameter. [`gpu`] gives the GPU readings their series and their place among the GPUs.
 
+pub mod drives;
 pub mod gpu;
 
 use std::time::Duration;

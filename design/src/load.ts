@@ -1,14 +1,29 @@
-import { readdirSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import StyleDictionary, { type TransformedToken } from 'style-dictionary';
-import { bezierOf, isSemanticColour, springOf, tokenName, TokenSourceError, type ModeValue, type Token } from './model.ts';
+import { bezierOf, isSemanticColour, paletteOfPath, springOf, tokenName, TokenSourceError, type ModeValue, type Palette, type Token } from './model.ts';
 
-/** Source files in a fixed order, so every output is deterministic. */
-export function tokenSources(tokensDir: string): string[] {
-  return readdirSync(tokensDir)
+/** The `*.tokens.json` files in one folder, sorted, so every output is deterministic. */
+function sourcesIn(folder: string): string[] {
+  if (!existsSync(folder)) return [];
+  return readdirSync(folder)
     .filter((file) => file.endsWith('.tokens.json'))
     .sort()
-    .map((file) => join(tokensDir, file));
+    .map((file) => join(folder, file));
+}
+
+/** Source files in a fixed order: the shared files, then one file per palette in `palettes/` (UI-023). */
+export function tokenSources(tokensDir: string): string[] {
+  return [...sourcesIn(tokensDir), ...sourcesIn(join(tokensDir, 'palettes'))];
+}
+
+/** The registered palettes from `palettes/registry.json`; exactly one is the default (UI-023). */
+export function loadPalettes(tokensDir: string): Palette[] {
+  const path = join(tokensDir, 'palettes', 'registry.json');
+  const { palettes } = JSON.parse(readFileSync(path, 'utf8')) as { palettes: Palette[] };
+  const defaults = palettes.filter((palette) => palette.default).length;
+  if (defaults !== 1) throw new Error(`${path}: exactly one palette must be the default, found ${String(defaults)}`);
+  return palettes;
 }
 
 /** A mode value under `$extensions.anima` (`reduced`, `light`), or undefined. */
@@ -44,6 +59,7 @@ export async function loadTokens(tokensDir: string): Promise<Token[]> {
     description: String(token.$description ?? ''),
     reduced: animaExtension(token.$extensions, 'reduced'),
     light: lightOf(token),
+    palette: paletteOfPath(token.path),
   }));
   for (const token of tokens) validated(token);
   return tokens;

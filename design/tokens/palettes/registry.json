@@ -1,0 +1,18 @@
+{
+  "palettes": [
+    {
+      "id": "graphite",
+      "name": "Graphite",
+      "licence": "Anima Graphite, part of Anima",
+      "default": true,
+      "file": "graphite.tokens.json"
+    },
+    {
+      "id": "nord",
+      "name": "Nord",
+      "licence": "Nord by Arctic Ice Studio, MIT",
+      "default": false,
+      "file": "nord.tokens.json"
+    }
+  ]
+}

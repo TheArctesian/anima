@@ -32,7 +32,9 @@
         aria-valuetext={bar.percent === null ? undefined : bar.degraded ? `${bar.text}, degraded` : bar.text}
         title={bar.tooltip}
       >
-        <span class="label">{bar.label}{#if bar.degraded}<span class="warn" aria-hidden="true"> ▲</span>{/if}</span>
+        <span class="label"
+          >{bar.label}{#if bar.note !== null}<span class="note">{` ${bar.note}`}</span>{/if}{#if bar.degraded}<span class="warn" aria-hidden="true"> ▲</span>{/if}</span
+        >
         <!-- A new value cross-fades over the old one; it never counts (MET-008, MOT-008). -->
         <span class="slot">
           {#key bar.text}
@@ -65,7 +67,7 @@
 
   p {
     margin: 0;
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font-size: var(--text-sm);
     line-height: var(--leading-tight);
   }
@@ -82,7 +84,7 @@
   }
 
   .label {
-    color: var(--text-muted);
+    color: var(--text-secondary);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -105,7 +107,7 @@
   .track {
     grid-column: 1 / -1;
     border-radius: var(--radius-sm);
-    background: var(--surface-raised);
+    background: var(--surface-overlay);
     overflow: hidden;
   }
 
@@ -130,6 +132,11 @@
 
   .warn {
     color: var(--status-degraded);
+  }
+
+  /* "+3 drives": the other drives of the device, quieter than the label (MET-030). */
+  .note {
+    color: var(--text-tertiary);
   }
 
   .degraded .fill {

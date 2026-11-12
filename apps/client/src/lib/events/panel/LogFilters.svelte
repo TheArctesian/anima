@@ -80,7 +80,7 @@
     display: inline-flex;
     align-items: center;
     gap: var(--space-2);
-    color: var(--text-muted);
+    color: var(--text-secondary);
   }
 
   /* A long device name must not widen the page: the select shrinks and clips the name. */
@@ -91,9 +91,9 @@
     box-sizing: border-box;
     min-block-size: var(--target-min-desktop);
     padding: 0 var(--select-chevron-room) 0 var(--space-2);
-    border: var(--border-thin) solid var(--border);
+    border: var(--border-thin) solid var(--border-strong);
     border-radius: var(--radius-md);
-    background-color: var(--surface);
+    background-color: var(--surface-raised);
     color: var(--text);
     font: inherit;
   }

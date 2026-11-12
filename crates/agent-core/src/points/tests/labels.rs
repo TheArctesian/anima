@@ -25,6 +25,18 @@ fn met_002_d5_pseudo_file_systems_and_mounts_are_left_out() {
         disk("x", "/System/Volumes/VM", 100, 50),
         disk("x", "/System/Volumes/Data/home", 100, 50),
         disk("x", "/System/Volumes/Data", 100, 50),
+        disk(
+            "x",
+            "/Library/Developer/CoreSimulator/Volumes/iOS_23F77",
+            100,
+            98,
+        ),
+        disk(
+            "x",
+            "/private/var/run/com.apple.security.cryptexd/mnt/runtime",
+            100,
+            98,
+        ),
         disk("x", "/devices", 100, 25),
         disk("x", "/runner", 100, 75),
     ];
@@ -43,6 +55,39 @@ fn met_002_d5_pseudo_file_systems_and_mounts_are_left_out() {
         .collect();
     mounts.sort_unstable();
     assert_eq!(mounts, ["/System/Volumes/Data", "/devices", "/runner"]);
+}
+
+#[test]
+fn met_002_d5_running_appimages_and_the_pop_os_recovery_partition_are_left_out() {
+    // From a Pop!_OS machine: AppImages mount their read-only image at 100%, and /recovery
+    // holds a copy of the installer; both outranked the root disk on the card.
+    let disks = vec![
+        disk("/dev/mapper/data-root", "/", 1000, 810),
+        disk(
+            "Anima_0.1.0_amd64.AppImage",
+            "/tmp/.mount_Anima_aOlDda",
+            100,
+            100,
+        ),
+        disk("/dev/nvme1n1p2", "/recovery", 100, 84),
+        disk("x", "/recoverydata", 100, 40),
+        disk("x", "/tmp/build", 100, 30),
+    ];
+    let out = samples(
+        None,
+        &Reading {
+            disks,
+            ..Reading::default()
+        },
+        THIRTY,
+    );
+    let mut mounts: Vec<&str> = out
+        .iter()
+        .filter(|sample| sample.kind == Kind::DiskPercent)
+        .map(|sample| sample.label.as_str())
+        .collect();
+    mounts.sort_unstable();
+    assert_eq!(mounts, ["/", "/recoverydata", "/tmp/build"]);
 }
 
 #[test]

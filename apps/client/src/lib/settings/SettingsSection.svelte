@@ -63,7 +63,7 @@
     grid-column: 2;
     margin: 0;
     min-block-size: calc(var(--text-sm) * var(--leading-tight));
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font-size: var(--text-sm);
     line-height: var(--leading-tight);
   }
@@ -72,9 +72,9 @@
   .card {
     container-type: inline-size;
     overflow: clip;
-    border: var(--border-thin) solid var(--border);
+    border: var(--border-thin) solid var(--border-strong);
     border-radius: var(--radius-lg);
-    background: var(--surface-raised);
+    background: var(--surface-overlay);
   }
 
   .rows {

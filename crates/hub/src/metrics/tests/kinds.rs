@@ -29,6 +29,9 @@ fn k1_metric_kind_names_match_the_contract() {
             "GPU_TEMPERATURE_C",
             "GPU_POWER_W",
             "GPU_MEMORY_BYTES",
+            "DISK_READ_BPS",
+            "DISK_WRITE_BPS",
+            "DISK_BUSY_PERCENT",
         ]
     );
 }

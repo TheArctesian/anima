@@ -4,13 +4,15 @@ use std::time::Duration;
 
 use super::{
     Kind, Sample,
+    activity::drive_activity,
     labels::{kept_disks, kept_interfaces},
 };
 use crate::readings::{Cpu, Interface, Reading};
 
 /// The samples of `current`. `previous` is the reading before it and `elapsed` the time between
 /// the two. With no `previous`, a counter that went back (a reboot, an interface reset) or no
-/// time passed, the Linux CPU share and the network rates are left out (D-4). The macOS CPU share
+/// time passed, the Linux CPU share, the network rates and the drive activity are left out (D-4,
+/// MET-028). The macOS CPU share
 /// needs no earlier reading, so it is always given. Disks and interfaces follow
 /// [`MAX_LABELS`](super::MAX_LABELS) and the exclusions of D-5.
 #[must_use]
@@ -40,12 +42,18 @@ pub fn samples(previous: Option<&Reading>, current: &Reading, elapsed: Duration)
             continue;
         }
         let used = disk.used_bytes.min(disk.total_bytes);
-        let share = float(used) / float(disk.total_bytes) * 100.0;
+        // `df`'s Capacity: used over used plus available, which is what macOS and Linux show.
+        let size = used.saturating_add(disk.available_bytes);
+        if size == 0 {
+            continue;
+        }
+        let share = float(used) / float(size) * 100.0;
         out.extend(Sample::new(Kind::DiskPercent, &disk.mount, share));
         out.extend(Sample::new(Kind::DiskBytes, &disk.mount, float(used)));
     }
     if let Some(previous) = previous {
         out.extend(network(previous, current, elapsed));
+        out.extend(drive_activity(previous, current, elapsed));
     }
     out
 }

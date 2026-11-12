@@ -1,6 +1,6 @@
-//! One collection round: the devices due, at most [`AT_ONCE`] collections at a time, then each
-//! device's reading kept for its next rates and a failure change reported (MET-001, D-4,
-//! D-10, D-11).
+//! One collection round: the operating system of each device at Other detected first, then the
+//! devices due, at most [`AT_ONCE`] at a time, then each device's reading kept for its next
+//! rates and a failure change reported (MET-001, DEV-025, D-4, D-10, D-11).
 //!
 //! One task owns this state, so no lock guards it. Collections run as tasks (`fan_out`); dropping
 //! the round, as aborting the collector does, aborts them and drops their links.
@@ -15,6 +15,7 @@ use tokio::task::JoinError;
 use super::{
     AT_ONCE, Context,
     collection::{self, Failure, Finished, Kept},
+    detection,
     failures::{self, Change},
     fan_out::FanOut,
     plan,
@@ -39,12 +40,15 @@ impl Collector {
         }
     }
 
-    /// Collects every due device once. A device list that cannot be read skips the round.
+    /// Detects the operating system of every device awaiting it, then collects every due device
+    /// once; a device detected now is collected from the next round (DEV-025). A device list
+    /// that cannot be read skips the round.
     pub(super) async fn round(&mut self) {
         let listed = devices::list(&self.ctx.db).await;
         let Ok(listed) = listed.inspect_err(unlisted) else {
             return;
         };
+        self.detect(plan::awaiting_os(&listed)).await;
         let due = plan::due(listed);
         self.keep_only(&due);
         let jobs = due
@@ -57,6 +61,21 @@ impl Collector {
         let mut collections = FanOut::new(jobs, AT_ONCE);
         while let Some(joined) = collections.next().await {
             self.finish(joined).await;
+        }
+    }
+
+    /// Detects the operating system of each of `awaiting`, at most [`AT_ONCE`] at a time. A
+    /// detection's outcome never reaches the failures or the events (DEV-025).
+    async fn detect(&self, awaiting: Vec<devices::Device>) {
+        let jobs = awaiting
+            .into_iter()
+            .map(|device| detection::detect(Arc::clone(&self.ctx), device))
+            .collect();
+        let mut detections = FanOut::new(jobs, AT_ONCE);
+        while let Some(joined) = detections.next().await {
+            if let Err(error) = joined {
+                stopped(&error);
+            }
         }
     }
 
@@ -92,9 +111,7 @@ impl Collector {
         } = match joined {
             Ok(finished) => finished,
             Err(error) => {
-                // The panic message could hold device text, so only its kind is logged (LOG-007).
-                let panicked = error.is_panic();
-                tracing::warn!(domain = "metrics", panicked, "a collection stopped early");
+                stopped(&error);
                 return;
             }
         };
@@ -151,6 +168,13 @@ impl Collector {
             }
         }
     }
+}
+
+/// Logs a collection or detection that stopped early. The panic message could hold device
+/// text, so only its kind is logged (LOG-007).
+fn stopped(error: &JoinError) {
+    let panicked = error.is_panic();
+    tracing::warn!(domain = "metrics", panicked, "a collection stopped early");
 }
 
 fn unlisted(error: &devices::Error) {

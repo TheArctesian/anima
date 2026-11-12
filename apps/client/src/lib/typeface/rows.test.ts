@@ -35,12 +35,16 @@ afterEach(async () => {
   vi.restoreAllMocks();
 });
 
-it('UI-020: each text role has its own labelled choice of Fira Code or OpenDyslexic, Fira Code first', () => {
+it('UI-020: each text role has its own labelled choice, its default first', () => {
   const target = show();
-  for (const label of ['Interface font', 'Monospace font']) {
+  const expected = [
+    ['Interface font', ['IBM Plex Sans', 'OpenDyslexic'], 'ibm-plex-sans'],
+    ['Monospace font', ['Fira Code', 'OpenDyslexic'], 'fira-code'],
+  ] as const;
+  for (const [label, options, value] of expected) {
     const control = select(target, label);
-    expect([...control.options].map((option) => option.textContent)).toEqual(['Fira Code', 'OpenDyslexic']);
-    expect(control.value).toBe('fira-code');
+    expect([...control.options].map((option) => option.textContent)).toEqual(options);
+    expect(control.value).toBe(value);
   }
 });
 

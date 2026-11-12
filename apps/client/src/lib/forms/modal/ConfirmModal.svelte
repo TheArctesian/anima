@@ -30,18 +30,18 @@
   }
 </script>
 
-<Modal {open} {title} onClose={onCancel}>
+<Modal {open} {title} onClose={onCancel} preset="sm">
   <p>{body}</p>
   {#if failure !== null}
     <p class="failure" role="alert">{failure.message}</p>
   {/if}
-  <div class="actions">
+  {#snippet footer()}
     <FormButton data-autofocus onclick={onCancel}>Cancel</FormButton>
     <!-- The label stays while busy, so the button keeps its width and Cancel does not move (MOT-007); aria-busy says it works. -->
     <FormButton tone="danger" onclick={confirm} aria-disabled={busy || done} aria-busy={busy}>
       {confirmLabel}
     </FormButton>
-  </div>
+  {/snippet}
 </Modal>
 
 <style>
@@ -52,11 +52,5 @@
 
   .failure {
     color: var(--status-down);
-  }
-
-  .actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: var(--space-2);
   }
 </style>

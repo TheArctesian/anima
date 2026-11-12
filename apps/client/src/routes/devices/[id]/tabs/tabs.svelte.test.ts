@@ -4,11 +4,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { manualClock } from '$lib/motion/loading/clock.fixture';
 import { endTransitionsAtOnce } from '$lib/devices/transitions.fixture';
 import { runs } from '$lib/motion/engine.fixture';
-import { spring, threshold } from '$lib/motion/tokens';
+import { threshold } from '$lib/motion/tokens';
 import TabPanel from './TabPanel.svelte';
-import Tabs from './Tabs.svelte';
-import { hiddenEdges, scrolledToShow } from './tabs';
-import { placeSearch, readPlace, type TabName } from './tabs';
+import { TAB_ITEMS, placeSearch, readPlace } from './tabs';
 
 vi.mock('motion', async (importOriginal) => ({
   ...(await importOriginal<typeof import('motion')>()),
@@ -64,73 +62,6 @@ describe('readPlace and placeSearch (D-9)', () => {
     expect(placeSearch({ tab: 'overview', section: null, range: 'DAY' })).toBe('?range=day');
     expect(placeSearch({ tab: 'overview', section: null, range: 'WEEK' })).toBe('?range=week');
     expect(placeSearch({ tab: 'checks', section: null, range: 'WEEK' })).toBe('?tab=checks');
-  });
-});
-
-function tabs(selected: TabName, reduced = false) {
-  const state = $state({ selected });
-  const onSelect = vi.fn<(name: TabName) => void>();
-  app = mount(Tabs, {
-    target: document.body,
-    props: {
-      get selected() {
-        return state.selected;
-      },
-      onSelect,
-      preference: { reduced },
-    },
-  });
-  flushSync();
-  return { state, onSelect };
-}
-
-function tabButtons(): HTMLButtonElement[] {
-  return [...document.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
-}
-
-function key(name: string): void {
-  document.activeElement?.dispatchEvent(new KeyboardEvent('keydown', { key: name, bubbles: true }));
-}
-
-describe('Tabs (D-9, Section 6.7)', () => {
-  it('6.7: five tabs; only the selected one is in the tab order', () => {
-    tabs('checks');
-    expect(tabButtons().map((tab) => tab.textContent.replace(/\p{Co}/gu, '').trim())).toEqual(['Overview', 'Checks', 'Sessions', 'Logs', 'Settings']);
-    expect(tabButtons().map((tab) => tab.tabIndex)).toEqual([-1, 0, -1, -1, -1]);
-    expect(tabButtons()[1]?.getAttribute('aria-selected')).toBe('true');
-  });
-
-  it('6.7: the arrow keys move focus between tabs and wrap; Home and End go to the ends', () => {
-    const { onSelect } = tabs('overview');
-    tabButtons()[0]?.focus();
-    key('ArrowRight');
-    expect(document.activeElement).toBe(tabButtons()[1]);
-    key('ArrowLeft');
-    key('ArrowLeft');
-    expect(document.activeElement).toBe(tabButtons()[4]);
-    key('Home');
-    expect(document.activeElement).toBe(tabButtons()[0]);
-    key('End');
-    expect(document.activeElement).toBe(tabButtons()[4]);
-    expect(onSelect).not.toHaveBeenCalled();
-    tabButtons()[4]?.click();
-    expect(onSelect).toHaveBeenCalledWith('settings');
-  });
-
-  it('Tab selection: the indicator is placed at once, then moves on spring-snappy', () => {
-    const { state } = tabs('overview');
-    expect(runs).toEqual([]);
-    state.selected = 'logs';
-    flushSync();
-    expect(runs.length).toBeGreaterThan(0);
-    expect(runs[0]?.options).toMatchObject({ stiffness: spring.snappy.stiffness, damping: spring.snappy.damping });
-  });
-
-  it('MOT-040: under reduced motion the indicator moves at once', () => {
-    const { state } = tabs('overview', true);
-    state.selected = 'logs';
-    flushSync();
-    expect(runs).toEqual([]);
   });
 });
 
@@ -217,6 +148,10 @@ it('D-9: a given skeleton replaces the list rows while loading', () => {
 });
 const loaded = () => document.querySelector('.loaded');
 
+it('6.7: the device page has five tabs in order', () => {
+  expect(TAB_ITEMS.map((tab) => tab.label)).toEqual(['Overview', 'Checks', 'Sessions', 'Logs', 'Settings']);
+});
+
 describe('TabPanel (D-9, Loading role)', () => {
   it('Loading: a quick answer shows no skeleton at all', async () => {
     const { time, state } = loadingPanel();
@@ -246,18 +181,4 @@ describe('TabPanel (D-9, Loading role)', () => {
     await tick();
     expect(loaded()).not.toBeNull();
   });
-});
-
-it('NAV-005: a strip shows a fade at each end that has tabs past it', () => {
-  expect(hiddenEdges(0, 200, 400)).toEqual({ start: false, end: true });
-  expect(hiddenEdges(100, 200, 400)).toEqual({ start: true, end: true });
-  expect(hiddenEdges(200, 200, 400)).toEqual({ start: true, end: false });
-  expect(hiddenEdges(0, 400, 400)).toEqual({ start: false, end: false });
-});
-
-it('NAV-005: a focused tab past either edge of the strip is scrolled into view clear of the fade, and one inside it is left alone', () => {
-  expect(scrolledToShow({ start: 0, size: 200 }, { start: 300, size: 80 }, 32)).toBe(212);
-  expect(scrolledToShow({ start: 150, size: 200 }, { start: 100, size: 80 }, 32)).toBe(68);
-  expect(scrolledToShow({ start: 150, size: 200 }, { start: 10, size: 80 }, 32)).toBe(0);
-  expect(scrolledToShow({ start: 50, size: 300 }, { start: 100, size: 80 }, 32)).toBe(50);
 });

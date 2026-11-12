@@ -5,6 +5,7 @@
   import { clearAccessToken } from '$lib/desktop/token';
   import { useHub } from '$lib/hub/context';
   import { press } from '$lib/motion/roles/press';
+  import SettingRow from '$lib/settings/SettingRow.svelte';
   import { CHECKING, connectionSentence } from './hub-check';
 
   // Desktop only; the page decides (CLI-002, D-5). The address is the one the probe contacts and sign-in starts from; it is not a secret.
@@ -34,73 +35,68 @@
   }
 </script>
 
-<div class="row">
-  <!-- Two fixed lines: the label, then the address on its own line, cut with an ellipsis so a long host never wraps (MOT-007). -->
-  <p class="address">Hub address<strong>{hub.address.origin}</strong></p>
-  <div class="buttons">
-    <!-- aria-disabled, not disabled: a busy button keeps focus and its width (MOT-007). -->
-    <button type="button" tabindex="0" aria-disabled={busy} aria-busy={busy} onclick={test} {@attach press()}>Test connection</button>
-    <button type="button" tabindex="0" aria-disabled={busy} aria-busy={busy} onclick={change} {@attach press()}>Change hub</button>
-  </div>
-  <!-- Always mounted with its line reserved, so a result moves nothing (MOT-007). -->
-  <p role="status" class="status">{status}</p>
-</div>
+<SettingRow>
+  {#snippet label()}
+    <!-- Two fixed lines: the name, then the address in mono, cut with an ellipsis so a long host never wraps (MOT-007). -->
+    <p class="address">Hub address<strong>{hub.address.origin}</strong></p>
+  {/snippet}
+  <!-- aria-disabled, not disabled: a busy button keeps focus and its width (MOT-007). -->
+  <button type="button" tabindex="0" aria-disabled={busy} aria-busy={busy} onclick={test} {@attach press()}>Test connection</button>
+  <button type="button" tabindex="0" aria-disabled={busy} aria-busy={busy} onclick={change} {@attach press()}>Change hub</button>
+  {#snippet message()}
+    <!-- Always mounted with one line reserved, as in SignOutRow, so a result moves nothing (MOT-007). -->
+    <p role="status" class="status">{status}</p>
+  {/snippet}
+</SettingRow>
 
 <style>
-  .row {
-    display: flex;
-    flex-direction: column;
-    align-items: start;
-    gap: var(--space-2);
-    margin-block-start: var(--space-6);
-  }
-
   p {
     margin: 0;
-    font-size: var(--text-md);
     line-height: var(--leading-tight);
   }
 
   .address {
-    min-block-size: calc(var(--text-md) * var(--leading-tight) * 2);
-    max-inline-size: 100%;
-    overflow: hidden;
-    white-space: nowrap;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    min-inline-size: 0;
+    font-size: var(--text-md);
   }
 
   .address strong {
-    display: block;
+    min-block-size: calc(var(--text-sm) * var(--leading-tight));
     overflow: hidden;
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    font-weight: normal;
     text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
-  .buttons {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2);
-  }
-
-  /* Four lines, as in SignOutRow: the longest sign-out message takes four at 390 px (MOT-007). */
   .status {
-    min-block-size: calc(4 * var(--text-md) * var(--leading-tight));
+    min-block-size: calc(var(--text-sm) * var(--leading-tight));
+    font-size: var(--text-sm);
   }
 
   button {
     box-sizing: border-box;
     block-size: var(--space-8);
     padding: 0 var(--space-4);
-    border: var(--border-thin) solid var(--border);
+    border: var(--border-thin) solid var(--border-strong);
     border-radius: var(--radius-md);
-    background: var(--surface);
+    background: var(--surface-raised);
     color: var(--text);
     font: inherit;
+    font-size: var(--text-md);
+    white-space: nowrap;
     transition:
       background-color var(--duration-fast) var(--ease-enter),
       opacity var(--duration-fast) var(--ease-enter);
   }
 
   button:hover:not([aria-disabled='true']) {
-    background: var(--surface-raised);
+    background: var(--surface-hover);
   }
 
   button[aria-disabled='true'] {

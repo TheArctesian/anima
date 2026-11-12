@@ -13,7 +13,10 @@ mod samples;
 
 use std::net::IpAddr;
 
-use agent_core::wire::{Batch, RefusalCode};
+use agent_core::{
+    readings::Drive,
+    wire::{Batch, RefusalCode},
+};
 use async_graphql::ID;
 use axum::{
     body::Body,
@@ -85,11 +88,15 @@ async fn push(
     let gpus: Option<Vec<Gpu>> = accepted
         .gpus
         .map(|gpus| gpus.into_iter().map(Gpu::from).collect());
+    let drives: Option<Vec<Drive>> = accepted
+        .drives
+        .map(|drives| drives.into_iter().map(Drive::from).collect());
     let pushed = Push {
         device,
         name: &name,
         token: token.hash(),
         gpus: gpus.as_deref(),
+        drives: drives.as_deref(),
     };
     drop(token);
     let _request = state.turns.request().await.ok_or(Stop::Busy)?;
@@ -112,14 +119,7 @@ async fn publish(state: &AgentState, device: DeviceId, rows: &Rows) {
         return;
     };
     let readings = match metrics::readings(&state.db, &[device], at).await {
-        Ok(mut found) => found.remove(&device).unwrap_or(Readings {
-            at,
-            cpu_percent: None,
-            memory_percent: None,
-            disk_percent: None,
-            vram_percent: None,
-            vram_gpu: None,
-        }),
+        Ok(mut found) => found.remove(&device).unwrap_or_else(|| Readings::empty(at)),
         Err(error) => {
             tracing::error!(
                 fault = error.fault(),

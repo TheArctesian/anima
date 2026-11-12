@@ -22,11 +22,17 @@ pub enum Kind {
     GpuPowerW,
     /// Memory in use by a unified-memory GPU (Apple). Never a VRAM value (MET-007, R-092 D-6).
     GpuMemoryBytes,
+    /// Bytes read from one drive per second (MET-028).
+    DiskReadBps,
+    /// Bytes written to one drive per second (MET-028).
+    DiskWriteBps,
+    /// The share of time one drive had I/O in flight (MET-028).
+    DiskBusyPercent,
 }
 
 impl Kind {
     /// Every kind, in the order of the list above.
-    pub const ALL: [Self; 17] = [
+    pub const ALL: [Self; 20] = [
         Self::CpuPercent,
         Self::MemoryPercent,
         Self::MemoryBytes,
@@ -44,6 +50,9 @@ impl Kind {
         Self::GpuTemperatureC,
         Self::GpuPowerW,
         Self::GpuMemoryBytes,
+        Self::DiskReadBps,
+        Self::DiskWriteBps,
+        Self::DiskBusyPercent,
     ];
 
     /// The text kept in the `series.kind` column and sent in a batch's `kind`.
@@ -67,6 +76,9 @@ impl Kind {
             Self::GpuTemperatureC => "gpu_temperature_c",
             Self::GpuPowerW => "gpu_power_w",
             Self::GpuMemoryBytes => "gpu_memory_bytes",
+            Self::DiskReadBps => "disk_read_bps",
+            Self::DiskWriteBps => "disk_write_bps",
+            Self::DiskBusyPercent => "disk_busy_percent",
         }
     }
 
@@ -86,16 +98,23 @@ impl Kind {
                 | Self::DiskPercent
                 | Self::GpuPercent
                 | Self::VramPercent
+                | Self::DiskBusyPercent
         )
     }
 
-    /// Whether a series of this kind has a label: the mount point of a disk kind or the
-    /// interface name of a network kind (K8 Section 4).
+    /// Whether a series of this kind has a label: the mount point of a disk kind, the
+    /// interface name of a network kind or the drive name of a drive kind (K8 Section 4).
     #[must_use]
     pub const fn is_labelled(self) -> bool {
         matches!(
             self,
-            Self::DiskPercent | Self::DiskBytes | Self::NetworkInBps | Self::NetworkOutBps
+            Self::DiskPercent
+                | Self::DiskBytes
+                | Self::NetworkInBps
+                | Self::NetworkOutBps
+                | Self::DiskReadBps
+                | Self::DiskWriteBps
+                | Self::DiskBusyPercent
         )
     }
 

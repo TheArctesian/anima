@@ -39,39 +39,22 @@
   }
 </script>
 
-<div class="parts">
-  <div class="part">
-    <h3>Channels</h3>
-    <ChannelList
-      {api}
-      defaultTemplate={settings?.template ?? { title: '', body: '' }}
-      placeholders={settings?.placeholders ?? D21_PLACEHOLDERS}
-      {clock}
-    />
-  </div>
-  <div class="part">
-    <h3>Expiry and default template</h3>
-    <SettingsForm {settings} loadFailed={settingsFailed} onRetry={loadSettings} {save} />
-  </div>
-</div>
+<ChannelList
+  {api}
+  defaultTemplate={settings?.template ?? { title: '', body: '' }}
+  placeholders={settings?.placeholders ?? D21_PLACEHOLDERS}
+  {clock}
+/>
+<!-- A heading row, inset and ruled like the setting rows around it (SET-001). -->
+<h3>Expiry and default template</h3>
+<SettingsForm {settings} loadFailed={settingsFailed} onRetry={loadSettings} {save} />
 
 <style>
-  .parts {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-8);
-    margin-block-start: var(--space-6);
-  }
-
-  .part {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
-  }
-
   /* The heading's line is reserved from tokens, so a font load cannot move what is below it (MOT-007). */
   h3 {
     margin: 0;
+    padding: var(--space-3) var(--space-4);
+    border-block-start: var(--border-thin) solid var(--border-strong);
     min-block-size: calc(var(--text-md) * var(--leading-tight));
     font-size: var(--text-md);
     font-weight: var(--weight-bold);

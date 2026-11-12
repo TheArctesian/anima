@@ -33,6 +33,7 @@ function showApple(): void {
       metricsSource: 'AGENT' as const,
       gpus: [APPLE],
       series: [...CPU_ONLY, series('GPU_PERCENT', 'GPU 0', [point(AT, 35)], 0), series('GPU_MEMORY_BYTES', 'GPU 0', [point(AT, THREE_GIB)], 0)],
+      drives: [],
       readings: null,
     },
     span: { start: NOW.getTime() - 3_600_000, end: NOW.getTime() },

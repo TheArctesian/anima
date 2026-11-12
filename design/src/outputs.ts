@@ -1,6 +1,6 @@
 import { join } from 'node:path';
 import { renderCss } from './css.ts';
-import { loadTokens } from './load.ts';
+import { loadPalettes, loadTokens } from './load.ts';
 import { isTerminal } from './model.ts';
 import { renderReference } from './reference.ts';
 import { renderRust } from './rust.ts';
@@ -18,10 +18,12 @@ export const OUTPUT_PATHS = {
 
 /** Build every output in memory from the token source (TOK-002). */
 export async function buildOutputs(repositoryRoot: string): Promise<Outputs> {
-  const all = await loadTokens(join(repositoryRoot, 'design', 'tokens'));
+  const tokensDir = join(repositoryRoot, 'design', 'tokens');
+  const all = await loadTokens(tokensDir);
   const interfaceTokens = all.filter((token) => !isTerminal(token));
+  const palettes = loadPalettes(tokensDir);
   return {
-    [OUTPUT_PATHS.css]: renderCss(interfaceTokens),
+    [OUTPUT_PATHS.css]: renderCss(interfaceTokens, palettes),
     [OUTPUT_PATHS.typescript]: renderTypescript(interfaceTokens),
     [OUTPUT_PATHS.rust]: renderRust(all),
     [OUTPUT_PATHS.reference]: renderReference(interfaceTokens),

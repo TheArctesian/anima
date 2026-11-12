@@ -18,12 +18,31 @@ const DeviceMetrics = graphql(`
         cpuPercent
         memoryPercent
         diskPercent
+        diskMount
+        otherDrives
         vramPercent
         vramGpu {
           index
           name
           vendor
           hasVram
+        }
+      }
+      storage {
+        drives {
+          name
+          kind
+          sizeBytes
+          mounted
+          mounts {
+            path
+            usedBytes
+            sizeBytes
+            percent
+          }
+          readBps
+          writeBps
+          busyPercent
         }
       }
       metrics(range: $range) {
@@ -56,6 +75,8 @@ const MetricsAdded = graphql(`
         cpuPercent
         memoryPercent
         diskPercent
+        diskMount
+        otherDrives
         vramPercent
         vramGpu {
           index
@@ -103,6 +124,8 @@ type DeviceNode = NonNullable<DeviceMetricsQuery['device']>;
 export type MetricSeries = DeviceNode['metrics'][number];
 export type MetricKind = MetricSeries['kind'];
 export type DeviceGpu = DeviceNode['gpus'][number];
+/** One Storage row: a drive, or a mount on no drive the hub knows (MET-029, MET-031). */
+export type StorageDrive = DeviceNode['storage']['drives'][number];
 /** One batch of new samples the hub pushes for a device (D-5). */
 export type NewMetrics = MetricsAddedSubscription['metricsAdded'];
 /** What the Overview needs from one metrics request. */
@@ -110,6 +133,8 @@ export interface DeviceMetricsView {
   readonly metricsSource: DeviceNode['metricsSource'];
   readonly gpus: readonly DeviceGpu[];
   readonly series: readonly MetricSeries[];
+  /** The device's storage drive by drive, as the hub ordered it (MET-026). */
+  readonly drives: readonly StorageDrive[];
   /** The latest readings the hub holds, for the bars before the first live batch; `null` when it has none. */
   readonly readings: DeviceNode['readings'] | null;
 }
@@ -134,7 +159,8 @@ export function metricsApi(hub: Hub) {
       if (!result.ok) return result;
       const { device } = result.value;
       if (!device) return { ok: true, value: null };
-      return { ok: true, value: { metricsSource: device.metricsSource, gpus: device.gpus, series: device.metrics, readings: device.readings ?? null } };
+      const view = { metricsSource: device.metricsSource, gpus: device.gpus, series: device.metrics, drives: device.storage.drives };
+      return { ok: true, value: { ...view, readings: device.readings ?? null } };
     },
     /** The device's agent source and stale flag; `null` when the hub has no such device. */
     agentStatus: async (deviceId: string): Promise<HubResult<AgentStatusView | null>> => {

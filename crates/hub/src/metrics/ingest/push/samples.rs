@@ -1,7 +1,7 @@
 //! The series and samples an accepted batch stores (MET-015, K8 Section 4, R-099). Pure.
 //!
 //! Each value becomes a [`Sample`] by the SSH collector's rule for its kind, label and GPU: a
-//! disk or network series keeps its label, a GPU series is labelled with its GPU index as
+//! disk, network or drive series keeps its label, a GPU series is labelled with its GPU index as
 //! decimal text (the batch cannot choose that label: the check refused it), and every other
 //! kind has the empty label.
 

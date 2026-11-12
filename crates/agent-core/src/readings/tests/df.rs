@@ -37,9 +37,13 @@ fn met_002_df_in_bytes_gives_every_listed_file_system_with_its_mount_point() {
 #[test]
 fn met_002_df_in_kibibyte_blocks_counts_bytes_in_1024s() {
     let disks = df::disks(DF_MACOS, 1024);
+    // APFS: the container is the total of every volume, so available is less than total minus used.
     assert_eq!(
         disks[0],
-        disk("/dev/disk3s1s1", "/", 512_000_000_000, 128_000_000_000)
+        Disk {
+            available_bytes: 307_200_000_000,
+            ..disk("/dev/disk3s1s1", "/", 512_000_000_000, 128_000_000_000)
+        }
     );
     // The "map auto_home" line has a space in its file system name and is skipped.
     assert_eq!(disks.len(), 4);

@@ -76,14 +76,14 @@ it('DEV-014: the dialog is labelled, modal, and Cancel has the focus', () => {
   expect(document.activeElement).toBe(button('Cancel'));
 });
 
-it('MOT-007: a confirmation is sized to its content, with its text and buttons in the body below the title', () => {
+it('MOT-007, MAT-003: a confirmation is sized to its content, with its text in the body and its buttons in the footer below it', () => {
   opener();
   confirmation(() => Promise.resolve(OK), () => undefined);
 
   const dialog = document.querySelector('[role="dialog"]');
   expect(dialog?.classList.contains('form')).toBe(false);
   expect(dialog?.querySelector(':scope > .body')?.textContent).toContain('Its credentials, checks and history go too.');
-  expect(dialog?.querySelector(':scope > .body')?.contains(button('Cancel'))).toBe(true);
+  expect(dialog?.querySelector(':scope > .footer')?.contains(button('Cancel'))).toBe(true);
 });
 
 it('DEV-014: Cancel and Escape do not call delete', () => {

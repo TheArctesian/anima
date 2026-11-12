@@ -14,7 +14,7 @@ fn token() -> agent_core::wire::AgentToken {
 }
 
 fn batch() -> Batch {
-    Batch::new(uuid::Uuid::from_u128(1), [], None)
+    Batch::new(uuid::Uuid::from_u128(1), [], (None, None))
 }
 
 #[tokio::test]

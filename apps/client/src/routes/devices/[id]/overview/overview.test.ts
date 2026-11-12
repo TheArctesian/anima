@@ -5,6 +5,7 @@ import { endTransitionsAtOnce } from '$lib/devices/transitions.fixture';
 import type { HubError } from '$lib/hub/hub';
 import type { MetricRange } from '$lib/metrics/api';
 import { INTEGRATED, NVIDIA, TWO_GPUS, added, point, series } from '$lib/metrics/metrics.fixture';
+import { POP_OS } from '$lib/metrics/storage/storage.fixture';
 import { manualClock } from '$lib/motion/loading/clock.fixture';
 import { threshold } from '$lib/motion/tokens';
 import { device } from '../page.fixture.svelte';
@@ -57,7 +58,7 @@ type Shown = Pick<DeviceMetrics, 'view' | 'span' | 'shownRange' | 'chartShape' |
 const NOW = new Date('2026-11-05T09:05:00Z');
 const SPAN = { start: NOW.getTime() - 3_600_000, end: NOW.getTime() };
 const LOADED: Shown = {
-  view: { metricsSource: 'SSH', gpus: [NVIDIA, INTEGRATED], series: TWO_GPUS, readings: null },
+  view: { metricsSource: 'SSH', gpus: [NVIDIA, INTEGRATED], series: TWO_GPUS, drives: [], readings: null },
   span: SPAN,
   shownRange: 'HOUR',
   chartShape: null,
@@ -176,6 +177,16 @@ it('MET-011: an AGENT device has metrics: the range control shows and "Metrics a
   expect(document.body.textContent).not.toContain('Metrics are off');
 });
 
+it('MET-029: the Storage section follows Metrics with a row per drive; it is absent when metrics are off', () => {
+  show({ ...LOADED, view: { ...LOADED.view, drives: POP_OS } as Shown['view'] });
+  const headings = [...document.querySelectorAll('section h2')].map((one) => words(one));
+  expect(headings.slice(headings.indexOf('Metrics'))).toEqual(['Metrics', 'Storage']);
+  expect(words(card('Storage'))).toContain('Not mounted');
+  if (app) void unmount(app);
+  show(WAITING, 'NONE');
+  expect(card('Storage')).toBeUndefined();
+});
+
 it('D-3: a slow load shows the chart grid skeleton after threshold-loading, with no line', () => {
   const { time } = show(WAITING);
   expect(document.querySelector('.chart-grid')).toBeNull();
@@ -203,7 +214,7 @@ it('D-7: an error shows the hub message and Retry in the chart area', () => {
 });
 
 it('MET-007: data with no series says it is waiting for metrics', () => {
-  show({ ...LOADED, view: { metricsSource: 'SSH', gpus: [], series: [], readings: null } });
+  show({ ...LOADED, view: { metricsSource: 'SSH', gpus: [], series: [], drives: [], readings: null } });
   expect(document.body.textContent).toContain('Waiting for metrics');
   expect(document.querySelector('h3')).toBeNull();
 });
@@ -247,7 +258,7 @@ it('MET-003: while a switch is pending the old chart keeps its own range in the 
   const at = (minute: number) => point(`2026-11-05T09:0${String(minute)}:00Z`, 20);
   // Minutes 0, 1, 4, 5: a three-minute hole that breaks an HOUR line but not a DAY one.
   const cpu = series('CPU_PERCENT', 'cpu', [at(0), at(1), at(4), at(5)]);
-  show({ ...LOADED, view: { metricsSource: 'SSH', gpus: [], series: [cpu], readings: null }, shownRange: 'HOUR' }, 'SSH', 'DAY');
+  show({ ...LOADED, view: { metricsSource: 'SSH', gpus: [], series: [cpu], drives: [], readings: null }, shownRange: 'HOUR' }, 'SSH', 'DAY');
   expect(document.querySelector('svg[role="img"]')?.getAttribute('aria-label')).toContain('CPU, last hour');
   expect(document.querySelectorAll('.lines polyline')).toHaveLength(2);
   expect(document.querySelector('[aria-pressed="true"]')?.textContent.trim()).toBe('24 hours');

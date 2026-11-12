@@ -50,7 +50,7 @@
 
   label {
     font-size: var(--text-sm);
-    color: var(--text-muted);
+    color: var(--text-secondary);
   }
 
   input,
@@ -58,9 +58,9 @@
     box-sizing: border-box;
     min-block-size: var(--target-min-desktop);
     padding: var(--space-2) var(--space-3);
-    border: var(--border-thin) solid var(--border);
+    border: var(--border-thin) solid var(--border-strong);
     border-radius: var(--radius-md);
-    background: var(--surface);
+    background: var(--surface-raised);
     color: var(--text);
     font: inherit;
   }
@@ -77,7 +77,7 @@
 
   small {
     font-size: var(--text-xs);
-    color: var(--text-muted);
+    color: var(--text-secondary);
   }
 
   .error {

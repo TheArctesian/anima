@@ -12,11 +12,9 @@
     onSendTest: () => Promise<HubResult<Delivery>>;
     onEdit: () => void;
     onDelete: () => void;
-    /** Drawn as a skeleton: the row's geometry with no readable text (5.7.3, Loading). */
-    placeholder?: boolean;
   }
 
-  const { channel, onSendTest, onEdit, onDelete, placeholder = false }: Props = $props();
+  const { channel, onSendTest, onEdit, onDelete }: Props = $props();
   const last = $derived(channel.lastDelivery);
   let testing = $state(false);
   /** What the last Send test came to: the delivery's fixed sentence, or a fixed sentence for a refused call. */
@@ -32,7 +30,7 @@
   }
 </script>
 
-<li aria-label={placeholder ? undefined : channel.name} class:placeholder>
+<li aria-label={channel.name}>
   <div class="head">
     <strong>{channel.name}</strong>
     <span class="kind">{kindLabel(channel.kind)}</span>
@@ -72,10 +70,8 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-2);
-    padding: var(--space-3);
-    border: var(--border-thin) solid var(--border);
-    border-radius: var(--radius-md);
-    background: var(--surface);
+    padding: var(--space-3) var(--space-4);
+    border-block-start: var(--border-thin) solid var(--border-strong);
   }
 
   .head {
@@ -91,7 +87,7 @@
   }
 
   .kind {
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font-size: var(--text-sm);
   }
 
@@ -107,7 +103,7 @@
   }
 
   dt {
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font-size: var(--text-xs);
   }
 
@@ -125,7 +121,7 @@
   /* The reason's line is kept when a delivery has none, so a test that fails moves nothing (MOT-007). */
   .reason {
     min-block-size: calc(var(--text-sm) * var(--leading-normal));
-    color: var(--text-muted);
+    color: var(--text-secondary);
   }
 
   /* A failure is the word and a bar beside it, never colour alone (UI-003). */
@@ -165,15 +161,7 @@
   .actions {
     display: flex;
     flex-wrap: wrap;
+    justify-content: end;
     gap: var(--space-2);
-  }
-
-  /* A skeleton row: blocks where the text would be, no shimmer, so reduced motion needs no change (5.7.3, Loading). */
-  .placeholder :is(strong, .kind, dt, dd:not(:empty)),
-  .placeholder .actions :global(button) {
-    border-color: transparent;
-    border-radius: var(--radius-sm);
-    background: var(--surface-raised);
-    color: transparent;
   }
 </style>

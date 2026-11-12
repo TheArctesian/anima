@@ -11,6 +11,7 @@ mod gpu_series;
 mod kinds;
 mod privileges;
 mod retention;
+mod storage;
 
 /// Asserts two floats are the same number, apart from rounding of the last digits.
 fn assert_close(actual: f64, expected: f64) {

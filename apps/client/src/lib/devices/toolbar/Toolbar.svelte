@@ -127,10 +127,10 @@
     gap: var(--space-2);
     block-size: calc(var(--target-min-desktop) + var(--space-2));
     padding: 0 var(--space-3);
-    border: var(--border-thin) solid var(--border);
+    border: var(--border-thin) solid var(--border-strong);
     border-radius: var(--radius-md);
-    background: var(--surface);
-    color: var(--text-muted);
+    background: var(--surface-raised);
+    color: var(--text-secondary);
   }
 
   .label {
@@ -143,7 +143,7 @@
   }
 
   input::placeholder {
-    color: var(--text-muted);
+    color: var(--text-secondary);
   }
 
   input {
@@ -164,7 +164,7 @@
 
   .views {
     display: inline-flex;
-    border: var(--border-thin) solid var(--border);
+    border: var(--border-thin) solid var(--border-strong);
     border-radius: var(--radius-md);
     overflow: hidden;
   }
@@ -177,14 +177,14 @@
     block-size: calc(var(--target-min-desktop) + var(--space-2));
     padding: 0 var(--space-3);
     border: 0;
-    background: var(--surface);
+    background: var(--surface-raised);
     color: var(--text);
     font: inherit;
     transition: background-color var(--duration-fast) var(--ease-enter);
   }
 
   button:hover {
-    background: var(--surface-raised);
+    background: var(--surface-overlay);
   }
 
   button:active {

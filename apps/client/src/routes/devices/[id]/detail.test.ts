@@ -180,7 +180,7 @@ describe('Detail tabs (D-9)', () => {
 
 describe('Detail metrics (D-5)', () => {
   const withMetrics = () =>
-    fakeHub(answers({ Device: { device: device({ metricsSource: 'SSH' }) }, DeviceMetrics: { device: { id: ID, metricsSource: 'SSH', gpus: [], metrics: [], readings: null } } }));
+    fakeHub(answers({ Device: { device: device({ metricsSource: 'SSH' }) }, DeviceMetrics: { device: { id: ID, metricsSource: 'SSH', gpus: [], metrics: [], storage: { drives: [] }, readings: null } } }));
 
   it('D-5: the metrics load when the range changes and not when it stays the same', async () => {
     const fake = withMetrics();

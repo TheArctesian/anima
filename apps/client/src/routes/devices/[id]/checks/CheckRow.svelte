@@ -71,11 +71,11 @@
     align-items: center;
     gap: var(--space-2);
     min-block-size: var(--target-min-touch);
-    border-block-end: var(--border-thin) solid var(--border);
+    border-block-end: var(--border-thin) solid var(--border-strong);
   }
 
   .paused {
-    color: var(--text-muted);
+    color: var(--text-secondary);
   }
 
   .reading {
@@ -92,7 +92,7 @@
 
   .type,
   .expiry {
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font-size: var(--text-sm);
   }
 
@@ -176,9 +176,9 @@
     gap: var(--space-1);
     min-block-size: var(--target-min-desktop);
     padding: 0 var(--space-2);
-    border: var(--border-thin) solid var(--border);
+    border: var(--border-thin) solid var(--border-strong);
     border-radius: var(--radius-md);
-    background: var(--surface-raised);
+    background: var(--surface-overlay);
     color: var(--text);
     font: inherit;
     transition: background-color var(--duration-fast) var(--ease-enter);

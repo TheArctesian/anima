@@ -1,28 +1,28 @@
-import type { Typeface, TypefaceChoice } from './typeface';
+import type { TextRole, Typeface, TypefaceChoice } from './typeface';
 
 /** Icons are Nerd Font glyphs drawn from this face (UI-014, `font-icon`); an icon's width changes when it arrives. */
 const ICON_FACE = '400 1em "OpenDyslexic Nerd Font Propo"';
 
-/** The faces the first paint uses for each typeface and role, as CSS font shorthands `FontFaceSet.load` takes. */
-const FACES: Readonly<Record<Typeface, { ui: readonly string[]; mono: readonly string[] }>> = {
-  'fira-code': {
-    ui: ['400 1em "Fira Code"', '700 1em "Fira Code"'],
-    mono: ['400 1em "Fira Code"'],
+/** The faces the first paint uses for each typeface of each role, as CSS font shorthands `FontFaceSet.load` takes. */
+const FACES: { readonly [R in TextRole]: Readonly<Record<Typeface<R>, readonly string[]>> } = {
+  ui: {
+    'ibm-plex-sans': ['400 1em "IBM Plex Sans"', '700 1em "IBM Plex Sans"'],
+    opendyslexic: ['400 1em "OpenDyslexic Nerd Font Propo"', '700 1em "OpenDyslexic Nerd Font Propo"'],
   },
-  opendyslexic: {
-    ui: ['400 1em "OpenDyslexic Nerd Font Propo"', '700 1em "OpenDyslexic Nerd Font Propo"'],
-    mono: ['400 1em "OpenDyslexicM Nerd Font Mono"'],
+  mono: {
+    'fira-code': ['400 1em "Fira Code"'],
+    opendyslexic: ['400 1em "OpenDyslexicM Nerd Font Mono"'],
   },
 };
 
 /** Every face any choice can use at first paint, for the check that each one is declared in `fonts.css`. */
 export const ALL_FIRST_PAINT_FACES: readonly string[] = [
-  ...new Set([ICON_FACE, ...Object.values(FACES).flatMap((faces) => [...faces.ui, ...faces.mono])]),
+  ...new Set([ICON_FACE, ...Object.values(FACES.ui).flat(), ...Object.values(FACES.mono).flat()]),
 ];
 
 /** The faces the first paint of `choice` uses: a font that arrives after the first render moves the text (MOT-007). */
 export function firstPaintFaces(choice: TypefaceChoice): readonly string[] {
-  return [...new Set([ICON_FACE, ...FACES[choice.ui].ui, ...FACES[choice.mono].mono])];
+  return [...new Set([ICON_FACE, ...FACES.ui[choice.ui], ...FACES.mono[choice.mono]])];
 }
 
 /** The most a first render waits for its fonts: about the block period browsers use with `font-display: block` (R-042). */

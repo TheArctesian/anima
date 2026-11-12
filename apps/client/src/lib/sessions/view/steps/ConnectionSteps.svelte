@@ -72,7 +72,7 @@
     grid-template-columns: var(--icon-md) 1fr;
     column-gap: var(--space-1);
     align-items: center;
-    color: var(--text-muted);
+    color: var(--text-secondary);
   }
 
   .step > :global(.icon) {
@@ -125,7 +125,7 @@
 
   .mark {
     grid-column: 2;
-    color: var(--text-muted);
+    color: var(--text-secondary);
   }
 
   .step[data-mark='active'],

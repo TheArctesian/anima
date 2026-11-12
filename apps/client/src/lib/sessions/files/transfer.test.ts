@@ -171,7 +171,7 @@ describe('MAT-008, MOT-009: the panel is solid and its bar is not eased', () => 
     for (const forbidden of ['backdrop-filter', 'filter:', 'opacity', 'position: absolute', 'position: fixed', 'transparent', 'color-mix']) {
       expect(style, forbidden).not.toContain(forbidden);
     }
-    expect(style).toContain('background: var(--surface)');
+    expect(style).toContain('background: var(--surface-raised)');
   });
 
   it('MOT-009: nothing in the panel stylesheet transitions or animates', () => {

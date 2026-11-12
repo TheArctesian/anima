@@ -939,7 +939,8 @@ sudo userdel -r anima-probe
 **4. Add the VPS in the app.** Add a device with the address `100.64.0.1` and an SSH credential for
 user `anima-probe` with the private key from step 3. At the first connection, compare the host key
 fingerprint with the one from step 3 before you trust it. Then delete `/tmp/anima-probe` and
-`/tmp/anima-probe.pub` on the Mac. Add a ping check and a TCP check on port 22.
+`/tmp/anima-probe.pub` on the Mac. Set **Operating system** to Linux and **Metrics source** to SSH, so the hub collects the VPS's CPU,
+memory and disk over the same key (MET-002); it collects only from Linux and macOS devices. Add a ping check and a TCP check on port 22.
 
 Undo: remove the device in the app.
 

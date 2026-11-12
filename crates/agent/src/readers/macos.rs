@@ -65,6 +65,9 @@ pub async fn reading(now: DateTime<Utc>) -> Reading {
         interfaces: netstat
             .map(|bytes| macos::interfaces(&bytes))
             .unwrap_or_default(),
+        // No `lsblk` on macOS: its mounts stand alone (MET-031).
+        drives: None,
+        drive_counters: Vec::new(),
     }
 }
 

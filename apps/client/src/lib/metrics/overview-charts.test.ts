@@ -85,6 +85,29 @@ describe('chartsOf series', () => {
     ]);
   });
 
+  it('MET-028: draws one Read and Write chart per drive, by drive name, after the mounts and before the network', () => {
+    const at = '2026-11-05T09:04:00Z';
+    const charts = chartsOf(
+      [
+        series('NETWORK_IN_BPS', 'eth0', [point(at, 10)]),
+        series('DISK_WRITE_BPS', 'sda', [point(at, 4)]),
+        series('DISK_READ_BPS', 'nvme0n1', [point(at, 1)]),
+        series('DISK_WRITE_BPS', 'nvme0n1', [point(at, 2)]),
+        series('DISK_BUSY_PERCENT', 'nvme0n1', [point(at, 50)]),
+        series('DISK_PERCENT', '/', [point(at, 81)]),
+      ],
+      [],
+    );
+    expect(keys(charts)).toEqual(['disk:/', 'drive:nvme0n1', 'drive:sda', 'network:eth0']);
+    expect(charts[1]?.title).toBe('Drive nvme0n1');
+    expect(charts[1]?.series.map((line) => [line.label, line.points[0]?.value])).toEqual([
+      ['Read', 1],
+      ['Write', 2],
+    ]);
+    expect(charts[2]?.series.map((line) => line.label)).toEqual(['Write']);
+    expect(charts[1]?.format(2048)).toBe('2.0 KiB/s');
+  });
+
   it('MET-003: points are in milliseconds and sorted oldest first', () => {
     const late = point('2026-11-05T09:04:00Z', 2);
     const early = point('2026-11-05T09:00:00Z', 1);

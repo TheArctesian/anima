@@ -60,12 +60,8 @@ fn collection(device: &str, cpu: f64) -> MetricsAdded {
             value: cpu,
         }],
         readings: Readings {
-            at: now(),
             cpu_percent: Some(cpu),
-            memory_percent: None,
-            disk_percent: None,
-            vram_percent: None,
-            vram_gpu: None,
+            ..Readings::empty(now())
         },
     }
 }

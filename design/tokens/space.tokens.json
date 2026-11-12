@@ -80,16 +80,42 @@
     "icon": {
       "$type": "dimension",
       "sm": {
-        "$value": "1em",
-        "$description": "Small icon"
+        "$value": "1rem",
+        "$description": "Small icon: 16 px (5.5.3, UI-026)"
       },
       "md": {
-        "$value": "1.125em",
-        "$description": "Default icon"
+        "$value": "1.125rem",
+        "$description": "Default icon: 18 px (5.5.3, UI-026)"
       },
       "lg": {
-        "$value": "1.25em",
-        "$description": "Large icon"
+        "$value": "1.25rem",
+        "$description": "Large icon: 20 px (5.5.3)"
+      }
+    },
+    "control": {
+      "$type": "dimension",
+      "sm": {
+        "$value": "1.75rem",
+        "$description": "Dense rows and table actions only: 28 px (UI-013)"
+      },
+      "md": {
+        "$value": "2rem",
+        "$description": "Default control height: 32 px (UI-013)"
+      },
+      "lg": {
+        "$value": "2.5rem",
+        "$description": "Sign-in and empty-state actions: 40 px (UI-013)"
+      }
+    },
+    "content": {
+      "$type": "dimension",
+      "form": {
+        "$value": "44rem",
+        "$description": "Form content width (5.5.3)"
+      },
+      "page": {
+        "$value": "90rem",
+        "$description": "Page content width (5.5.3)"
       }
     },
     "target": {

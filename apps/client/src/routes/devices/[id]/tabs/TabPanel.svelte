@@ -72,7 +72,7 @@
   .placeholder li {
     box-sizing: border-box;
     block-size: var(--target-min-touch);
-    border-block-end: var(--border-thin) solid var(--border);
-    background: var(--surface);
+    border-block-end: var(--border-thin) solid var(--border-strong);
+    background: var(--surface-raised);
   }
 </style>

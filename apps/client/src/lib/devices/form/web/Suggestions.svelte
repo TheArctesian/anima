@@ -54,7 +54,7 @@
 
   h4 {
     margin: 0;
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font-size: var(--text-sm);
     font-weight: normal;
   }
@@ -81,7 +81,7 @@
   }
 
   .url {
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font-family: var(--font-mono);
     font-size: var(--text-sm);
   }

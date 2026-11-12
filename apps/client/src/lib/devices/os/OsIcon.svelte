@@ -29,6 +29,6 @@
     flex: none;
     display: inline-flex;
     align-items: center;
-    color: var(--text-muted);
+    color: var(--text-secondary);
   }
 </style>

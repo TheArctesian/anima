@@ -1,7 +1,7 @@
 import type { BrowserContext, Route, WebSocketRoute } from '@playwright/test';
 import { COOKIE_MAX_AGE_SECONDS, HUB_HOST, HUB_ORIGIN, SESSION_COOKIE } from './access';
 import { noteClosing, untilClosed } from './closed';
-import { loadFixtures } from './fixtures';
+import { loadFixtures, type Fixtures } from './fixtures';
 import { answerGraphql } from './graphql/graphql-answers';
 import { loadSchema } from './graphql/graphql-schema';
 import { newLive } from './graphql/live';
@@ -25,6 +25,8 @@ export interface SyntheticHub {
 interface Options {
   /** The clock for tickets and cookie expiry; a spec may fix it. */
   readonly now?: () => Date;
+  /** Reshapes the contract fixtures before the hub serves them; the gallery empties lists with it. */
+  readonly fixtures?: (loaded: Fixtures) => Fixtures;
 }
 
 const METHOD_NOT_ALLOWED = 405;
@@ -72,7 +74,7 @@ async function serveSocket(socket: WebSocketRoute, serve: Record<string, SocketS
  */
 export async function installSyntheticHub(context: BrowserContext, options: Options = {}): Promise<SyntheticHub> {
   const now = options.now ?? (() => new Date());
-  const state = newHubState(loadFixtures(), now);
+  const state = newHubState((options.fixtures ?? ((loaded) => loaded))(loadFixtures()), now);
   const recording = newRecording();
   const live = newLive();
   const schema = loadSchema();

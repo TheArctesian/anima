@@ -67,9 +67,9 @@
     flex-direction: column;
     gap: var(--space-3);
     padding: var(--space-4);
-    border: var(--border-thin) solid var(--border);
+    border: var(--border-thin) solid var(--border-strong);
     border-radius: var(--radius-lg);
-    background: var(--surface);
+    background: var(--surface-raised);
   }
 
   header {
@@ -96,7 +96,7 @@
     grid-template-columns: calc(var(--space-16) * 2) calc(var(--space-16) * 1.5) calc(var(--space-16) * 1.5) minmax(0, 1fr);
     gap: var(--space-2);
     padding-block: var(--space-1);
-    border-block-end: var(--border-thin) solid var(--border);
+    border-block-end: var(--border-thin) solid var(--border-strong);
     font-size: var(--text-sm);
   }
 
@@ -106,7 +106,7 @@
 
   .message {
     overflow-wrap: anywhere;
-    color: var(--text-muted);
+    color: var(--text-secondary);
   }
 
   .notice p {
@@ -118,9 +118,9 @@
     box-sizing: border-box;
     min-block-size: var(--target-min-desktop);
     padding: 0 var(--space-3);
-    border: var(--border-thin) solid var(--border);
+    border: var(--border-thin) solid var(--border-strong);
     border-radius: var(--radius-md);
-    background: var(--surface-raised);
+    background: var(--surface-overlay);
     color: var(--text);
     font: inherit;
   }

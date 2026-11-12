@@ -6,6 +6,7 @@ use chrono::{DateTime, Utc};
 use super::{Kind, Sample};
 use crate::readings::{Cpu, Disk, Interface, Load, Memory, Reading};
 
+mod activity;
 mod backlog;
 mod key;
 mod labels;
@@ -48,6 +49,7 @@ fn disk(filesystem: &str, mount: &str, total_bytes: u64, used_bytes: u64) -> Dis
         mount: mount.to_owned(),
         total_bytes,
         used_bytes,
+        available_bytes: total_bytes.saturating_sub(used_bytes),
     }
 }
 

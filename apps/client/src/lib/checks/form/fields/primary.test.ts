@@ -19,13 +19,13 @@ function rules(): Map<string, Map<string, string>> {
   return found;
 }
 
-it('UI-004, CR-10: a primary button is accent with a --bg label (6.24:1 dark, 6.06:1 light)', () => {
+it('UI-004, CR-10: a primary button is accent with a --surface-base label (6.24:1 dark, 6.06:1 light)', () => {
   const primary = rules().get('.primary');
   expect(primary?.get('background')).toBe('var(--accent)');
-  expect(primary?.get('color')).toBe('var(--bg)');
+  expect(primary?.get('color')).toBe('var(--surface-base)');
 });
 
-it('UI-004, CR-10: the quiet hover fill skips a primary button, so its --bg label never sits on surface-hover (1.69:1)', () => {
+it('UI-004, CR-10: the quiet hover fill skips a primary button, so its --surface-base label never sits on surface-hover (1.69:1)', () => {
   const states = [...rules().keys()].filter((selector) => /^button:(hover|active)/.test(selector));
   expect(states).toHaveLength(1);
   for (const selector of states) expect(selector).toMatch(/:not\([^)]*\.primary\)/);
@@ -33,5 +33,5 @@ it('UI-004, CR-10: the quiet hover fill skips a primary button, so its --bg labe
 
 it('UI-004, CR-10: a pressed primary button is accent-deep', () => {
   const pressed = [...rules()].find(([selector]) => selector.startsWith('.primary:active'));
-  expect(pressed?.[1].get('background')).toBe('var(--accent-deep)');
+  expect(pressed?.[1].get('background')).toBe('var(--accent-pressed)');
 });

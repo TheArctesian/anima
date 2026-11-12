@@ -38,10 +38,16 @@ pub enum MetricKind {
     GpuPowerW,
     /// Memory in use by a unified-memory GPU (Apple), never a VRAM value (MET-007, R-092 D-6).
     GpuMemoryBytes,
+    /// Bytes read from one drive per second (MET-028).
+    DiskReadBps,
+    /// Bytes written to one drive per second (MET-028).
+    DiskWriteBps,
+    /// The share of time one drive had I/O in flight (MET-028).
+    DiskBusyPercent,
 }
 
 impl MetricKind {
-    const ALL: [Self; 17] = [
+    const ALL: [Self; 20] = [
         Self::CpuPercent,
         Self::MemoryPercent,
         Self::MemoryBytes,
@@ -59,6 +65,9 @@ impl MetricKind {
         Self::GpuTemperatureC,
         Self::GpuPowerW,
         Self::GpuMemoryBytes,
+        Self::DiskReadBps,
+        Self::DiskWriteBps,
+        Self::DiskBusyPercent,
     ];
 
     /// The text kept in the `series.kind` column.
@@ -103,6 +112,9 @@ impl From<MetricKind> for Kind {
             MetricKind::GpuTemperatureC => Self::GpuTemperatureC,
             MetricKind::GpuPowerW => Self::GpuPowerW,
             MetricKind::GpuMemoryBytes => Self::GpuMemoryBytes,
+            MetricKind::DiskReadBps => Self::DiskReadBps,
+            MetricKind::DiskWriteBps => Self::DiskWriteBps,
+            MetricKind::DiskBusyPercent => Self::DiskBusyPercent,
         }
     }
 }
@@ -204,8 +216,30 @@ pub struct Readings {
     pub cpu_percent: Option<f64>,
     pub memory_percent: Option<f64>,
     pub disk_percent: Option<f64>,
+    /// The mount point of the fullest mount, the one `disk_percent` is of (MET-030).
+    pub disk_mount: Option<String>,
+    /// The device's drives other than the one that holds `disk_mount`, unmounted ones counted
+    /// (MET-030); 0 for a device whose drives the hub does not know (macOS, MET-031).
+    pub other_drives: i32,
     pub vram_percent: Option<f64>,
     pub vram_gpu: Option<Gpu>,
+}
+
+impl Readings {
+    /// Readings taken at `at` with no value yet.
+    #[must_use]
+    pub const fn empty(at: DateTime<Utc>) -> Self {
+        Self {
+            at,
+            cpu_percent: None,
+            memory_percent: None,
+            disk_percent: None,
+            disk_mount: None,
+            other_drives: 0,
+            vram_percent: None,
+            vram_gpu: None,
+        }
+    }
 }
 
 /// One value of a collection, as the API shows it.

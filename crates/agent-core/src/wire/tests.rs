@@ -6,6 +6,7 @@ use uuid::Uuid;
 use super::{Accepted, Batch, RefusalCode};
 
 mod bodies;
+mod drives;
 mod range;
 mod secrets;
 mod series;

@@ -1,11 +1,14 @@
-//! One accepted batch written in one transaction: the agent's mark, the GPU set, the series,
+//! One accepted batch written in one transaction: the agent's mark, the GPU set, the drives, the series,
 //! the samples and their aggregates, and the event of an agent that is fresh again (K8 Section
 //! 4; MET-006, MET-015, MET-018; R-098 a, b, e).
 //!
 //! The device row is taken first, the order a device delete and a revoke take the rows in, so
 //! none of them deadlock, and two batches of one device are written one after the other.
 
-use agent_core::wire::{RefusalCode, TokenHash};
+use agent_core::{
+    readings::Drive,
+    wire::{RefusalCode, TokenHash},
+};
 use chrono::{DateTime, TimeDelta, Utc};
 use sqlx::PgPool;
 
@@ -26,12 +29,12 @@ const NEW_SERIES_SPAN: TimeDelta = TimeDelta::hours(1);
 
 /// The most series one device may create in any hour, a batch's new ones included (R-098 e,
 /// CR-20). Counted by the hub's creation time, so the times of a batch's points cannot reset it.
-/// One agent has at most 519 series (at most 256 in one batch): one per plain kind, `MAX_LABELS`
-/// per disk and network kind, one per GPU kind for each of the 64 GPU indexes K8 allows; the rest
-/// is room for disks and interfaces that come and go within the hour.
+/// One agent has at most 615 series (at most 256 in one batch): one per plain kind, `MAX_LABELS`
+/// per disk, network and drive kind, one per GPU kind for each of the 64 GPU indexes K8 allows;
+/// the rest is room for disks, interfaces and drives that come and go within the hour.
 pub(super) const MAX_NEW_SERIES: i64 = 1024;
 
-/// The batch's device and credential, and its GPUs when it listed them.
+/// The batch's device and credential, and its GPUs and drives when it listed them.
 pub(super) struct Push<'a> {
     pub(super) device: DeviceId,
     /// The device's name, for the event of an agent that is fresh again.
@@ -40,6 +43,8 @@ pub(super) struct Push<'a> {
     pub(super) token: TokenHash,
     /// `None`: the GPU set is unchanged; `Some(&[])`: the device has no GPUs now (R-098 b).
     pub(super) gpus: Option<&'a [Gpu]>,
+    /// `None`: the drives are unchanged; `Some(&[])`: the device has no drives now (MET-027).
+    pub(super) drives: Option<&'a [Drive]>,
 }
 
 /// What became of a batch that reached the store.
@@ -88,6 +93,9 @@ pub(super) async fn write(
             gpus,
         };
         metrics_store::write_gpus(&mut tx, push.device, discovery).await?;
+    }
+    if let Some(drives) = push.drives {
+        metrics_store::write_drives(&mut tx, push.device, drives, now).await?;
     }
     metrics_store::add_series(&mut tx, push.device, &rows.series, now).await?;
     let kept = metrics_store::add_points(&mut tx, push.device, &rows.values).await?;

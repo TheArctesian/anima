@@ -38,7 +38,7 @@ it('6.1: an SSH device without readings yet says it is waiting', () => {
 it('MET-004 MET-008: a GPU device shows four meters with their values, VRAM last', () => {
   bars('SSH', readings({ cpuPercent: 90, vramPercent: 40.4, vramGpu: GPU }));
   const meters = [...document.querySelectorAll('[role="meter"]')];
-  expect(meters.map((meter) => meter.getAttribute('aria-label'))).toEqual(['CPU', 'Memory', 'Disk', 'VRAM']);
+  expect(meters.map((meter) => meter.getAttribute('aria-label'))).toEqual(['CPU', 'Memory', 'Disk /', 'VRAM']);
   expect(meters.map((meter) => meter.getAttribute('aria-valuenow'))).toEqual(['90', '20', '30', '40.4']);
   expect(meters.every((m) => m.getAttribute('aria-valuemin') === '0' && m.getAttribute('aria-valuemax') === '100')).toBe(true);
   expect(meters[0]?.textContent).toContain('90 %');
@@ -58,4 +58,12 @@ it('MOT-040: the row takes the reduced-motion form when the operator asks for it
   bars('SSH', readings());
   expect(document.querySelector('.row')?.classList.contains('reduced')).toBe(true);
   preference.reduced = false;
+});
+
+it('MET-030: the disk bar shows its mount and "+N drives" as text', () => {
+  bars('AGENT', readings({ diskPercent: 81, diskMount: '/', otherDrives: 3 }));
+  const disk = document.querySelector('[aria-label="Disk /"]');
+  expect(disk?.textContent).toContain('Disk / +3 drives');
+  expect(disk?.textContent).toContain('81 %');
+  expect(disk?.getAttribute('title')).toBe('Disk /, 3 drives more on this device');
 });

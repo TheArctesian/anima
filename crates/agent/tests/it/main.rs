@@ -3,6 +3,8 @@
 //! origin parser's own tests. The tests that keep a token use the Linux token file.
 
 #[cfg(target_os = "linux")]
+mod drives;
+#[cfg(target_os = "linux")]
 mod enrol;
 mod fake_hub;
 #[cfg(target_os = "linux")]

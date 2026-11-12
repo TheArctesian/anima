@@ -101,7 +101,7 @@ fn met_014_a_batch_the_agent_makes_is_one_the_hub_takes_back_unchanged() {
             ]),
         ),
     ];
-    let batch = Batch::new(device(), &points, None);
+    let batch = Batch::new(device(), &points, (None, None));
     let body = serde_json::to_value(&batch).unwrap();
     assert_eq!(
         body["series"][0],

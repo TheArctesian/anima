@@ -24,6 +24,6 @@
     margin: 0;
     min-block-size: calc(var(--text-sm) * 1.5);
     font-size: var(--text-sm);
-    color: var(--text-muted);
+    color: var(--text-secondary);
   }
 </style>

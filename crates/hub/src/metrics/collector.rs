@@ -4,10 +4,12 @@
 //!
 //! The decisions are pure: `plan` picks the devices, `outputs` turns command output into
 //! samples, `gpus` decides when to look for GPUs and makes their samples (MET-006),
-//! `os_release` reads a Linux device's distribution (DEV-016), `failures` decides the events.
-//! `collection`, `fan_out`, `round` and the GPU reads hold the I/O.
+//! `os_release` reads a Linux device's distribution (DEV-016), `uname` names a device's operating
+//! system (DEV-025), `failures` decides the events. `collection`, `detection`, `fan_out`, `round`
+//! and the GPU reads hold the I/O.
 
 mod collection;
+mod detection;
 mod failures;
 mod fan_out;
 mod gpus;
@@ -17,6 +19,7 @@ mod plan;
 mod round;
 #[cfg(test)]
 mod tests;
+mod uname;
 
 use std::{sync::Arc, time::Duration};
 

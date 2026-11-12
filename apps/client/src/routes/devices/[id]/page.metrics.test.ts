@@ -51,7 +51,7 @@ async function settle(): Promise<void> {
 const ssh = (extra: Record<string, unknown> = {}) =>
   answers({
     Device: { device: device({ metricsSource: 'SSH' }) },
-    DeviceMetrics: { device: { id: ID, metricsSource: 'SSH', gpus: [], metrics: CPU_ONLY, readings: null } },
+    DeviceMetrics: { device: { id: ID, metricsSource: 'SSH', gpus: [], metrics: CPU_ONLY, storage: { drives: [] }, readings: null } },
     ...extra,
   });
 

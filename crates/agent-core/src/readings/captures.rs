@@ -140,3 +140,71 @@ pub const IOREG_ACCELERATOR: &[u8] = b"+-o AGXAcceleratorG14X  <class AGXAcceler
     \"PerformanceStatistics\" = {\"Device Utilization %\"=3,\"In use system memory\"=1000}\n\
   }\n\
 \n";
+
+/// Constructed from the operator's `lsblk` on pop-os (2026-11-12) in the form of util-linux 2.39
+/// `lsblk -J -b -o NAME,TYPE,SIZE,ROTA,TRAN,MOUNTPOINTS`: a 22 TB and an 8 TB disk with one
+/// unmounted partition each, compressed swap, an unmounted `NVMe` drive, and the system `NVMe` drive
+/// with `/` on LVM in a LUKS container and swap in another (MET-027).
+pub const LSBLK_POP_OS: &[u8] = br#"{
+   "blockdevices": [
+      {"name":"sda", "type":"disk", "size":24000277250048, "rota":true, "tran":"sata", "mountpoints":[null],
+         "children": [
+            {"name":"sda1", "type":"part", "size":24000275152896, "rota":true, "tran":null, "mountpoints":[null]}
+         ]
+      },
+      {"name":"sdb", "type":"disk", "size":8001563222016, "rota":true, "tran":"sata", "mountpoints":[null],
+         "children": [
+            {"name":"sdb1", "type":"part", "size":8001561124864, "rota":true, "tran":null, "mountpoints":[null]}
+         ]
+      },
+      {"name":"zram0", "type":"disk", "size":8589934592, "rota":false, "tran":null, "mountpoints":["[SWAP]"]},
+      {"name":"nvme0n1", "type":"disk", "size":1000204886016, "rota":false, "tran":"nvme", "mountpoints":[null],
+         "children": [
+            {"name":"nvme0n1p1", "type":"part", "size":536870912, "rota":false, "tran":"nvme", "mountpoints":[null]},
+            {"name":"nvme0n1p2", "type":"part", "size":999666221056, "rota":false, "tran":"nvme", "mountpoints":[null]}
+         ]
+      },
+      {"name":"nvme1n1", "type":"disk", "size":1000204886016, "rota":false, "tran":"nvme", "mountpoints":[null],
+         "children": [
+            {"name":"nvme1n1p1", "type":"part", "size":1073741824, "rota":false, "tran":"nvme", "mountpoints":["/boot/efi"]},
+            {"name":"nvme1n1p2", "type":"part", "size":4294967296, "rota":false, "tran":"nvme", "mountpoints":["/recovery"]},
+            {"name":"nvme1n1p3", "type":"part", "size":990540488704, "rota":false, "tran":"nvme", "mountpoints":[null],
+               "children": [
+                  {"name":"cryptdata", "type":"crypt", "size":990523711488, "rota":false, "tran":null, "mountpoints":[null],
+                     "children": [
+                        {"name":"data-root", "type":"lvm", "size":990519517184, "rota":false, "tran":null, "mountpoints":["/"]}
+                     ]
+                  }
+               ]
+            },
+            {"name":"nvme1n1p4", "type":"part", "size":4294967296, "rota":false, "tran":"nvme", "mountpoints":[null],
+               "children": [
+                  {"name":"cryptswap", "type":"crypt", "size":4294967296, "rota":false, "tran":null, "mountpoints":["[SWAP]"]}
+               ]
+            }
+         ]
+      }
+   ]
+}"#;
+
+/// Constructed from the documented format of util-linux before 2.33, `-o ...,MOUNTPOINT`:
+/// every value a string, one mount point per device.
+pub const LSBLK_OLD: &[u8] = br#"{
+   "blockdevices": [
+      {"name": "sda", "type": "disk", "size": "500107862016", "rota": "1", "tran": "sata", "mountpoint": null,
+         "children": [
+            {"name": "sda1", "type": "part", "size": "500106813440", "rota": "1", "tran": null, "mountpoint": "/"}
+         ]
+      },
+      {"name": "sr0", "type": "rom", "size": "1073741312", "rota": "1", "tran": "sata", "mountpoint": null},
+      {"name": "vda", "type": "disk", "size": "21474836480", "rota": "", "tran": null, "mountpoint": "/srv"}
+   ]
+}"#;
+
+/// Constructed from the documented format of `/proc/diskstats` (kernel 5.5 and later, 20
+/// columns): two drives, a partition, a device-mapper volume and a loop device.
+pub const PROC_DISKSTATS: &[u8] = b"   7       0 loop0 52 0 2180 11 0 0 0 0 0 40 11 0 0 0 0 0 0\n\
+ 259       0 nvme1n1 120000 3000 9000000 40000 80000 9000 6000000 70000 0 50000 110000 0 0 0 0 900 300\n\
+ 259       1 nvme1n1p1 300 0 20000 100 2 0 16 1 0 120 101 0 0 0 0 0 0\n\
+   8       0 sda 4000 10 800000 30000 100 5 20000 4000 0 21000 34000 0 0 0 0 0 0\n\
+ 253       0 dm-0 110000 0 8800000 39000 89000 0 6000000 90000 0 52000 129000 0 0 0 0 0 0\n";

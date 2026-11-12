@@ -2,11 +2,10 @@
   import { flushSync, tick } from 'svelte';
   import FormButton from '$lib/forms/FormButton.svelte';
   import type { HubResult } from '$lib/hub/hub';
-  import Field from '../Field.svelte';
+  import SettingRow from '$lib/settings/SettingRow.svelte';
   import type { NotificationSettings, NotificationSettingsInput } from '../api';
   import { failureText } from '../failure';
   import { D21_PLACEHOLDERS, templateFine, templateProblems, type TemplateProblems } from '../template/template';
-  import TemplateFields from '../template/TemplateFields.svelte';
   import { checkThresholds, thresholdsText, DEFAULT_DAYS } from './days';
 
   interface Props {
@@ -76,30 +75,76 @@
 
 <form bind:this={form} class="settings" novalidate onsubmit={submit} aria-busy={waiting}>
   <fieldset disabled={waiting || busy}>
-    <Field
-      label="Certificate expiry days"
-      hint="A notice when a certificate or domain has fewer days left: up to 5 values from 1 to 365, largest first. Default {thresholdsText(DEFAULT_DAYS)}."
-      problem={daysProblem}
-    >
-      {#snippet control(attributes)}
-        <input {...attributes} type="text" bind:value={days} autocomplete="off" spellcheck="false" />
+    <SettingRow label="Certificate expiry days" for="{id}-days">
+      {#snippet hint()}
+        <p class="hint" id="{id}-days-hint">
+          A notice when a certificate or domain has fewer days left: up to 5 values from 1 to 365, largest first. Default {thresholdsText(DEFAULT_DAYS)}.
+        </p>
       {/snippet}
-    </Field>
-    <fieldset class="template">
-      <legend>Default template</legend>
-      <TemplateFields bind:template {problems} {placeholders} />
-    </fieldset>
+      <input
+        id="{id}-days"
+        class="wide"
+        type="text"
+        bind:value={days}
+        autocomplete="off"
+        spellcheck="false"
+        aria-invalid={daysProblem !== ''}
+        aria-describedby="{id}-days-hint {id}-days-problem"
+      />
+      {#snippet message()}
+        <p id="{id}-days-problem" role="alert">{daysProblem}</p>
+      {/snippet}
+    </SettingRow>
+    <h4>Default template</h4>
+    <SettingRow label="Title" for="{id}-title">
+      {#snippet hint()}
+        <p class="hint" id="{id}-title-hint">Placeholders: {placeholders.join(' ')}</p>
+      {/snippet}
+      <input
+        id="{id}-title"
+        class="wide"
+        type="text"
+        bind:value={template.title}
+        autocomplete="off"
+        aria-invalid={problems.title !== ''}
+        aria-describedby="{id}-title-hint {id}-title-problem"
+      />
+      {#snippet message()}
+        <p id="{id}-title-problem" role="alert">{problems.title}</p>
+      {/snippet}
+    </SettingRow>
+    <SettingRow label="Body" for="{id}-body">
+      <textarea
+        id="{id}-body"
+        class="wide"
+        bind:value={template.body}
+        rows="3"
+        autocomplete="off"
+        aria-invalid={problems.body !== ''}
+        aria-describedby="{id}-body-problem"
+      ></textarea>
+      {#snippet message()}
+        <p id="{id}-body-problem" role="alert">{problems.body}</p>
+      {/snippet}
+    </SettingRow>
   </fieldset>
-  <!-- One block holds the outcome or, when the load failed, its message and retry, so the form keeps its height (MOT-007). -->
-  <div class="note">
+  <!-- One row holds the outcome or, when the load failed, its message and retry, so the form keeps its height (MOT-007). -->
+  <SettingRow>
+    {#snippet label()}
+      <div class="note">
+        {#if loadFailed}
+          <p id="{id}-failed" role="alert">Anima could not load the notification settings.</p>
+        {:else}
+          <p class="outcome" role="status">{outcome}</p>
+        {/if}
+      </div>
+    {/snippet}
     {#if loadFailed}
-      <p id="{id}-failed" role="alert">Anima could not load the notification settings.</p>
       <FormButton tabindex={0} aria-disabled={retrying} aria-busy={retrying} onclick={retry}>Try again</FormButton>
     {:else}
-      <p class="outcome" role="status">{outcome}</p>
       <FormButton tabindex={0} type="submit" tone="primary" aria-disabled={waiting || busy} aria-busy={busy}>Save</FormButton>
     {/if}
-  </div>
+  </SettingRow>
 </form>
 
 <style>
@@ -107,60 +152,64 @@
   fieldset {
     display: flex;
     flex-direction: column;
-    gap: var(--space-3);
     min-inline-size: 0;
     margin: 0;
     padding: 0;
     border: 0;
   }
 
-  .template {
-    gap: var(--space-2);
-  }
-
-  legend {
-    padding: 0;
-    margin-block-end: var(--space-2);
+  /* The sub-heading is a row of its own, inset like the rows (SET-001). */
+  h4 {
+    margin: 0;
+    padding: var(--space-3) var(--space-4);
+    border-block-start: var(--border-thin) solid var(--border-strong);
     font-size: var(--text-md);
     font-weight: var(--weight-bold);
+    line-height: var(--leading-tight);
   }
 
-  .note {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-2);
-    /* The outcome, and the failure message that wraps to two lines beside its button, fill the same block (MOT-007). */
-    min-block-size: max(var(--target-min-desktop), calc(var(--text-sm) * var(--leading-normal) * 2));
+  /* Text controls are wider than a number's: they hold a sentence, and shrink with a narrow card. */
+  .settings .wide {
+    box-sizing: border-box;
+    inline-size: calc(var(--space-8) * 8);
+    max-inline-size: 100%;
+    text-align: start;
   }
 
-  /* Narrow: the message (or the outcome) and the button are two lines of their own in both states, so a retry moves nothing (MOT-007). */
-  @media (max-width: 767.98px) {
-    .note {
-      flex-direction: column;
-      align-items: stretch;
-      justify-content: start;
-      min-block-size: calc(var(--text-sm) * var(--leading-normal) * 2 + var(--space-2) + var(--target-min-desktop));
-    }
-
-    .note :global(button) {
-      align-self: flex-end;
-    }
+  .settings textarea.wide {
+    padding: var(--space-2);
+    border: var(--border-thin) solid var(--border-strong);
+    border-radius: var(--radius-md);
+    background-color: var(--surface-raised);
+    color: var(--text);
+    font: inherit;
+    font-size: var(--text-md);
+    resize: vertical;
   }
 
+  .settings textarea.wide:focus-visible {
+    outline: var(--border-focus) solid var(--accent);
+    outline-offset: var(--border-focus);
+  }
+
+  .settings textarea.wide[aria-invalid='true'] {
+    border-color: var(--status-down);
+  }
+
+  .settings textarea.wide:disabled {
+    color: var(--text-secondary);
+  }
+
+  /* Two lines are kept for the outcome and for the failure message, so a retry moves nothing (MOT-007). */
   .note p {
     margin: 0;
+    min-block-size: calc(var(--text-sm) * var(--leading-tight) * 2);
     font-size: var(--text-sm);
-    line-height: var(--leading-normal);
-  }
-
-  .note :global(button) {
-    flex: none;
-    white-space: nowrap;
+    line-height: var(--leading-tight);
   }
 
   /* --status-down text is 3.05:1 on the page (MAT-005 needs 4.5:1): the text stays --text and a bar marks the error. */
-  [role='alert'] {
+  .note [role='alert'] {
     padding-inline-start: var(--space-2);
     border-inline-start: var(--border-focus) solid var(--status-down);
   }

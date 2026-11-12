@@ -10,6 +10,7 @@
     "lint": "eslint . && stylelint \"src/**/*.{css,svelte}\" && bun codegen.ts --check",
     "check": "svelte-kit sync && svelte-check --fail-on-warnings && tsc -p browser",
     "test": "vitest run",
+    "gallery": "playwright test --config browser/gallery/gallery.config.ts",
     "test:browsers": "playwright test --config browser/playwright.config.ts"
   },
   "devDependencies": {

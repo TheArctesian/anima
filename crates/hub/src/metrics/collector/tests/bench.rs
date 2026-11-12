@@ -27,7 +27,8 @@ use crate::{
     targets::AddressPolicy,
 };
 use agent_core::readings::captures::{
-    DF_LINUX, PROC_LOADAVG, PROC_MEMINFO, PROC_NET_DEV, PROC_STAT, PROC_UPTIME,
+    DF_LINUX, LSBLK_POP_OS, PROC_DISKSTATS, PROC_LOADAVG, PROC_MEMINFO, PROC_NET_DEV, PROC_STAT,
+    PROC_UPTIME,
 };
 
 pub(super) const DOCKER_HOST: &str = "0190a000-0000-7000-8002-000000000002";
@@ -36,16 +37,24 @@ pub(super) const PVE_01: &str = "0190a000-0000-7000-8002-000000000001";
 pub(super) const WIN_DESKTOP: &str = "0190a000-0000-7000-8002-00000000000d";
 pub(super) const OPERATOR: &str = "0190a000-0000-7000-8000-000000000001";
 
-/// The command lines of a Linux collection, in order (D-3).
-pub(super) const LINUX_LINES: [&str; 7] = [
+/// The command lines of a Linux collection whose `lsblk` knows `MOUNTPOINTS`, in order (D-3).
+pub(super) const LINUX_LINES: [&str; 9] = [
     "cat /proc/stat",
     "cat /proc/meminfo",
     "cat /proc/net/dev",
     "cat /proc/uptime",
     "cat /proc/loadavg",
     "df -P -B1",
+    "cat /proc/diskstats",
+    LSBLK_LINE,
     "cat /etc/os-release",
 ];
+
+/// The `lsblk` line of util-linux 2.37 and later (MET-027).
+pub(super) const LSBLK_LINE: &str = "lsblk -J -b -o NAME,TYPE,SIZE,ROTA,TRAN,MOUNTPOINTS";
+
+/// The `lsblk` line run when the one above fails (MET-027).
+pub(super) const LSBLK_OLD_LINE: &str = "lsblk -J -b -o NAME,TYPE,SIZE,ROTA,TRAN,MOUNTPOINT";
 
 /// The os-release of a Pop!_OS device (DEV-016).
 pub(super) const OS_RELEASE: &[u8] =
@@ -120,6 +129,8 @@ pub(super) async fn bench_with(
         PROC_UPTIME,
         PROC_LOADAVG,
         DF_LINUX,
+        PROC_DISKSTATS,
+        LSBLK_POP_OS,
         OS_RELEASE,
     ]) {
         server.answer(line, stdout);

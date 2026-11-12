@@ -3,7 +3,8 @@
 
 use crate::readings::{Disk, Interface};
 
-/// The most disk series, and the most network series, one device has.
+/// The most disk series, the most network series and the most drives one device has, and
+/// the most mounts one drive lists.
 pub const MAX_LABELS: usize = 32;
 
 const PSEUDO_FILESYSTEMS: [&str; 6] = ["tmpfs", "devtmpfs", "overlay", "squashfs", "devfs", "map"];
@@ -11,6 +12,16 @@ const PSEUDO_MOUNTS: [&str; 5] = ["/dev", "/run", "/sys", "/proc", "/snap"];
 /// Loop devices: Linux snap packages and other mounted images, not disks of their own.
 const LOOP_DEVICE: &str = "/dev/loop";
 const DATA_VOLUME: &str = "/System/Volumes/Data";
+/// Mounts of images the system writes, always nearly full and not disks the operator fills:
+/// macOS iOS Simulator runtimes and system cryptexes, and the `Pop!_OS` recovery partition, which
+/// holds a copy of the installer.
+const IMAGE_MOUNTS: [&str; 3] = [
+    "/Library/Developer/CoreSimulator",
+    "/private/var/run",
+    "/recovery",
+];
+/// The start of the mount point of a running `AppImage`: its read-only image, always 100% full.
+const APPIMAGE_MOUNT: &str = "/tmp/.mount_";
 
 fn under(mount: &str, root: &str) -> bool {
     mount
@@ -22,8 +33,17 @@ fn under(mount: &str, root: &str) -> bool {
 fn wanted_disk(disk: &Disk) -> bool {
     !PSEUDO_FILESYSTEMS.contains(&disk.filesystem.as_str())
         && !disk.filesystem.starts_with(LOOP_DEVICE)
-        && !PSEUDO_MOUNTS.iter().any(|root| under(&disk.mount, root))
-        && (disk.mount == DATA_VOLUME || !under(&disk.mount, "/System/Volumes"))
+        && is_operator_mount(&disk.mount)
+}
+
+/// Whether a mount point holds the operator's files: not a pseudo file system's place, a
+/// system image or a running `AppImage`, and on macOS only the data volume of the system's
+/// volumes. A drive lists only these mounts (MET-027).
+pub(crate) fn is_operator_mount(mount: &str) -> bool {
+    !PSEUDO_MOUNTS.iter().any(|root| under(mount, root))
+        && !IMAGE_MOUNTS.iter().any(|root| under(mount, root))
+        && !mount.starts_with(APPIMAGE_MOUNT)
+        && (mount == DATA_VOLUME || !under(mount, "/System/Volumes"))
 }
 
 fn wanted_interface(interface: &Interface) -> bool {

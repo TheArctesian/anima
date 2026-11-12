@@ -5,7 +5,8 @@
 //! read them here (MET-016):
 //!
 //! - Linux: `cat /proc/stat`, `cat /proc/meminfo`, `cat /proc/net/dev`, `cat /proc/uptime`,
-//!   `cat /proc/loadavg`, `df -P -B1` (block size 1, see [`df::disks`]).
+//!   `cat /proc/loadavg`, `cat /proc/diskstats`, `df -P -B1` (block size 1, see [`df::disks`]),
+//!   and [`drives::LSBLK_ARGS`] (or [`drives::LSBLK_OLD_ARGS`]) for the drives.
 //! - macOS: `sysctl -n hw.memsize hw.pagesize vm.loadavg kern.boottime`, `vm_stat`,
 //!   `df -P -k` (block size 1024), `netstat -ib -n`, `top -l 2 -n 0 -s 1`.
 //! - GPU: `nvidia-smi --query-gpu=... --format=csv,noheader,nounits`, the `amdgpu` sysfs files
@@ -18,6 +19,7 @@
 #[cfg(any(test, feature = "test-support"))]
 pub mod captures;
 pub mod df;
+pub mod drives;
 pub mod gpu;
 pub mod linux;
 pub mod macos;
@@ -25,10 +27,11 @@ mod reading;
 #[cfg(test)]
 mod tests;
 
+pub use drives::{Drive, DriveKind};
 pub use gpu::{GpuReading, GpuVendor, Vram};
-pub use reading::{Cpu, Disk, Interface, Load, Memory, Reading};
+pub use reading::{Cpu, Disk, DriveCounters, Interface, Load, Memory, Reading};
 
-/// The longest label (mount point or interface name) kept, in bytes.
+/// The longest label (mount point, interface or drive name) kept, in bytes.
 const LABEL_LIMIT: usize = 128;
 
 /// The complete lines of `output`, each `None` when it is not UTF-8 (so positions hold).

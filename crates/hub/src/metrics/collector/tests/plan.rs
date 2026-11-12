@@ -1,5 +1,5 @@
-//! What a round plans: the devices it collects (D-2, MET-005) and the GPU reads each
-//! collection runs (MET-006).
+//! What a round plans: the devices it collects (D-2, MET-005), the devices whose operating
+//! system it detects first (DEV-025) and the GPU reads each collection runs (MET-006).
 
 use std::collections::BTreeSet;
 
@@ -16,7 +16,7 @@ use crate::{
         GpuVendor, Reading,
         collector::{
             gpus::{Answer, Discovered, GpuRound, Plan, discovery::EVERY},
-            plan::{due, is_collected},
+            plan::{awaiting_os, due, is_collected},
         },
     },
 };
@@ -64,6 +64,35 @@ async fn d2_due_keeps_the_collected_devices_in_list_order(pool: PgPool) {
     let chosen: Vec<_> = due(listed).iter().map(|device| device.id).collect();
     assert_eq!(chosen, expected);
     assert_eq!(chosen.len(), 12, "13 fixture devices, one on Windows");
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../tests/fixtures", scripts("devices"))
+)]
+async fn dev_025_only_ssh_metrics_devices_at_other_await_their_operating_system(pool: PgPool) {
+    let template = devices::list(&pool).await.unwrap().remove(0);
+    let mut listed = Vec::new();
+    for os in [
+        OperatingSystem::Linux,
+        OperatingSystem::Macos,
+        OperatingSystem::Windows,
+        OperatingSystem::Other,
+    ] {
+        for source in [MetricsSource::Ssh, MetricsSource::None] {
+            let mut device = template.clone();
+            device.os = os;
+            device.metrics_source = source;
+            listed.push(device);
+        }
+    }
+    let awaiting = awaiting_os(&listed);
+    assert_eq!(awaiting.len(), 1);
+    assert_eq!(
+        (awaiting[0].os, awaiting[0].metrics_source),
+        (OperatingSystem::Other, MetricsSource::Ssh)
+    );
+    assert!(!is_collected(&awaiting[0]), "collected only once detected");
 }
 
 #[test]

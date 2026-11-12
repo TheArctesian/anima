@@ -2,16 +2,16 @@
   import { animate } from '$lib/motion/animate';
   import { tweenMotion } from '$lib/motion/options';
   import { motionPreference } from '$lib/motion/preference';
-  import type { DeviceStatus } from './card';
+  import type { CombinedStatus } from './precedence';
 
   interface Props {
-    status: DeviceStatus;
+    status: CombinedStatus;
   }
 
   const { status }: Props = $props();
   const preference = motionPreference();
   let edge: HTMLElement | undefined;
-  let seen: DeviceStatus | undefined;
+  let seen: CombinedStatus | undefined;
 
   /** A new status lights the edge in the new status colour, then it fades over `duration-highlight` (5.7.3); the same in reduced motion. */
   $effect(() => {
@@ -42,6 +42,10 @@
 
   .down {
     --tone: var(--status-down);
+  }
+
+  .warning {
+    --tone: var(--status-warning);
   }
 
   .degraded {

@@ -77,6 +77,6 @@
 
   .expired {
     flex: 1 1 100%;
-    color: var(--text-muted);
+    color: var(--text-secondary);
   }
 </style>

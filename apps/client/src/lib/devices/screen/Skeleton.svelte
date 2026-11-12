@@ -51,9 +51,9 @@
   .grid .place {
     box-sizing: border-box;
     block-size: var(--device-card-block-size);
-    border: var(--border-thin) solid var(--border);
+    border: var(--border-thin) solid var(--border-strong);
     border-radius: var(--radius-lg);
-    background: var(--surface);
+    background: var(--surface-raised);
   }
 
   /* The data table has a caption out of the flow; rows sit half a border lower in a table that has one. */
@@ -71,10 +71,10 @@
     box-sizing: border-box;
     block-size: var(--device-row-block-size);
     padding: 0;
-    border-bottom: var(--border-thin) solid var(--border);
+    border-bottom: var(--border-thin) solid var(--border-strong);
   }
 
   .table td {
-    background: var(--surface);
+    background: var(--surface-raised);
   }
 </style>

@@ -338,3 +338,23 @@ it('D-7: a control is described by its hint, then its error, and by nothing when
   expect(describedByIds('ssh.port', true, false)).toBe('device-ssh-port-hint');
   expect(describedByIds('ssh.port', false, false)).toBeUndefined();
 });
+
+it('DEV-025: an operating system left at Other on an SSH metrics device says the hub detects it, and only then', () => {
+  show({ ...SAVED, os: 'OTHER', metricsSource: 'SSH' });
+  const os = document.querySelector<HTMLSelectElement>('#device-os');
+  const source = document.querySelector<HTMLSelectElement>('#device-metricsSource');
+  if (os === null || source === null) throw new Error('no system or source select');
+  expect(describedBy(os)).toEqual(['Detected over SSH at the next collection.']);
+
+  source.value = 'NONE';
+  source.dispatchEvent(new Event('change'));
+  flushSync();
+  expect(os.hasAttribute('aria-describedby')).toBe(false);
+
+  source.value = 'SSH';
+  source.dispatchEvent(new Event('change'));
+  os.value = 'LINUX';
+  os.dispatchEvent(new Event('change'));
+  flushSync();
+  expect(os.hasAttribute('aria-describedby')).toBe(false);
+});

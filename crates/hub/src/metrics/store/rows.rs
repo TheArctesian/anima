@@ -1,5 +1,6 @@
 //! Stored rows and their mapping to the output types.
 
+use agent_core::readings::{Drive, DriveKind};
 use chrono::{DateTime, Utc};
 
 use crate::{
@@ -58,6 +59,7 @@ pub(super) fn chart_of(rows: Vec<ChartRow>) -> Result<Vec<MetricSeries>, Error> 
 pub(super) struct LatestRow {
     device_id: DeviceId,
     kind: String,
+    label: String,
     at: DateTime<Utc>,
     value: f64,
     gpu_index: Option<i32>,
@@ -87,6 +89,7 @@ impl TryFrom<LatestRow> for Latest {
         Ok(Self {
             device: row.device_id,
             kind: MetricKind::parse(&row.kind).ok_or(Error::Unreadable)?,
+            label: row.label,
             at: row.at,
             value: row.value,
             gpu,
@@ -112,6 +115,28 @@ impl TryFrom<GpuRow> for Gpu {
             name: row.name,
             vendor: GpuVendor::parse(&row.vendor).ok_or(Error::Unreadable)?,
             has_vram: row.has_vram,
+        })
+    }
+}
+
+#[derive(sqlx::FromRow)]
+pub(super) struct DriveRow {
+    pub(super) device_id: DeviceId,
+    name: String,
+    kind: String,
+    size_bytes: i64,
+    mounts: Vec<String>,
+}
+
+impl TryFrom<DriveRow> for Drive {
+    type Error = Error;
+
+    fn try_from(row: DriveRow) -> Result<Self, Error> {
+        Ok(Self {
+            name: row.name,
+            kind: DriveKind::parse(&row.kind).ok_or(Error::Unreadable)?,
+            size_bytes: u64::try_from(row.size_bytes).map_err(|_| Error::Unreadable)?,
+            mounts: row.mounts,
         })
     }
 }
