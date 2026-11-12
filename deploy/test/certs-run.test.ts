@@ -3,6 +3,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { finish } from "./finished-process.ts";
 
 const DEPLOY = join(import.meta.dir, "..");
 const folders: string[] = [];
@@ -45,7 +46,7 @@ interface Outcome {
   folder: string;
 }
 
-function runScript(options: { chain?: string; env?: Record<string, string> } = {}): Outcome {
+async function runScript(options: { chain?: string; env?: Record<string, string> } = {}): Promise<Outcome> {
   const folder = mkdtempSync(join(tmpdir(), "anima-run-"));
   folders.push(folder);
   const bin = join(folder, "bin");
@@ -62,7 +63,7 @@ function runScript(options: { chain?: string; env?: Record<string, string> } = {
     writeFileSync(join(state, "certificates", "hub.anima.ing.crt"), options.chain);
     writeFileSync(join(state, "certificates", "hub.anima.ing.key"), "OLDKEY\n");
   }
-  const result = Bun.spawnSync(["sh", join(DEPLOY, "certs", "run.sh")], {
+  const result = await finish(["sh", join(DEPLOY, "certs", "run.sh")], {
     env: {
       PATH: `${bin}:${process.env["PATH"] ?? ""}`,
       FAKE_LOG: log,
@@ -75,12 +76,11 @@ function runScript(options: { chain?: string; env?: Record<string, string> } = {
       ANIMA_CERTS_STAMP: join(folder, "stamp"),
       ...options.env,
     },
-    stdin: "ignore",
   });
   const lines = (name: string) => (existsSync(join(log, name)) ? readFileSync(join(log, name), "utf8").trim().split("\n") : []);
   const tlsPath = join(folder, "hub", "tls.pem");
   return {
-    exitCode: result.exitCode ?? 1,
+    exitCode: result.exitCode,
     lego: lines("lego.log"),
     sleeps: lines("sleep.log"),
     tls: existsSync(tlsPath) ? readFileSync(tlsPath, "utf8") : null,
@@ -89,8 +89,8 @@ function runScript(options: { chain?: string; env?: Record<string, string> } = {
 }
 
 describe("run.sh", () => {
-  test("DNS-002 orders the first certificate when lego state holds none, with the e-mail and accept-tos", () => {
-    const outcome = runScript();
+  test("DNS-002 orders the first certificate when lego state holds none, with the e-mail and accept-tos", async () => {
+    const outcome = await runScript();
     const first = outcome.lego[0] ?? "";
     expect(first).toContain("--email ops@example.invalid");
     expect(first).toContain("--accept-tos");
@@ -100,33 +100,33 @@ describe("run.sh", () => {
     expect(outcome.tls).toBe("FIRSTKEY\nFIRSTCHAIN\n");
   });
 
-  test("DNS-002 an empty certificate file counts as none and is ordered again", () => {
-    const outcome = runScript({ chain: "" });
+  test("DNS-002 an empty certificate file counts as none and is ordered again", async () => {
+    const outcome = await runScript({ chain: "" });
     expect(outcome.lego[0]).toContain(" run ");
   });
 
-  test("DNS-002 an existing certificate is installed without a new order", () => {
-    const outcome = runScript({ chain: "OLDCHAIN\n" });
+  test("DNS-002 an existing certificate is installed without a new order", async () => {
+    const outcome = await runScript({ chain: "OLDCHAIN\n" });
     expect(outcome.lego.some((line) => line.includes(" run "))).toBe(false);
     expect(outcome.tls).toBe("OLDKEY\nOLDCHAIN\n");
   });
 
-  test("DNS-002 a start with an existing certificate checks renewal, with the hook, before the first sleep", () => {
-    const outcome = runScript({ chain: "OLDCHAIN\n", env: { FAKE_LEGO_RENEW_CONTENT: "NEWCHAIN", FAKE_SLEEP_LIMIT: "0" } });
+  test("DNS-002 a start with an existing certificate checks renewal, with the hook, before the first sleep", async () => {
+    const outcome = await runScript({ chain: "OLDCHAIN\n", env: { FAKE_LEGO_RENEW_CONTENT: "NEWCHAIN", FAKE_SLEEP_LIMIT: "0" } });
     expect(outcome.lego.filter((line) => line.includes(" renew "))).toHaveLength(1);
     expect(outcome.lego[0]).toMatch(/ renew .*--renew-hook .*install\.sh$/);
     expect(outcome.sleeps).toEqual(["43200"]);
     expect(outcome.tls).toBe("OLDKEY\nNEWCHAIN\n");
   });
 
-  test("DNS-002 waits 3600 seconds after a failed first order, then exits non-zero", () => {
-    const outcome = runScript({ env: { FAKE_LEGO_RUN_EXIT: "1" } });
+  test("DNS-002 waits 3600 seconds after a failed first order, then exits non-zero", async () => {
+    const outcome = await runScript({ env: { FAKE_LEGO_RUN_EXIT: "1" } });
     expect(outcome.exitCode).not.toBe(0);
     expect(outcome.sleeps).toEqual(["3600"]);
   });
 
-  test("DNS-002 checks renewal every 43200 seconds with --days 30 and the hook", () => {
-    const outcome = runScript({ chain: "OLDCHAIN\n" });
+  test("DNS-002 checks renewal every 43200 seconds with --days 30 and the hook", async () => {
+    const outcome = await runScript({ chain: "OLDCHAIN\n" });
     expect(outcome.sleeps[0]).toBe("43200");
     const renew = outcome.lego.find((line) => line.includes(" renew ")) ?? "";
     expect(renew).toContain("--days 30");
@@ -134,15 +134,15 @@ describe("run.sh", () => {
     expect(renew).toMatch(/--renew-hook .*install\.sh$/);
   });
 
-  test("DNS-002 installs a renewed certificate even when lego's hook failed, and when lego itself failed", () => {
+  test("DNS-002 installs a renewed certificate even when lego's hook failed, and when lego itself failed", async () => {
     for (const exit of ["0", "1"]) {
-      const outcome = runScript({ chain: "OLDCHAIN\n", env: { FAKE_LEGO_RENEW_CONTENT: "NEWCHAIN", FAKE_LEGO_RENEW_EXIT: exit } });
+      const outcome = await runScript({ chain: "OLDCHAIN\n", env: { FAKE_LEGO_RENEW_CONTENT: "NEWCHAIN", FAKE_LEGO_RENEW_EXIT: exit } });
       expect(outcome.tls).toBe("OLDKEY\nNEWCHAIN\n");
     }
   });
 
-  test("DNS-002 settings from the environment replace the defaults", () => {
-    const outcome = runScript({ chain: "OLDCHAIN\n", env: { ANIMA_RENEW_EVERY_SECONDS: "7" } });
+  test("DNS-002 settings from the environment replace the defaults", async () => {
+    const outcome = await runScript({ chain: "OLDCHAIN\n", env: { ANIMA_RENEW_EVERY_SECONDS: "7" } });
     expect(outcome.sleeps[0]).toBe("7");
   });
 });

@@ -7,6 +7,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import * as refusals from "../acceptance/refusals.ts";
 import { startFakeHub, type FakeHub, type Fault } from "./acceptance-probe-hub.ts";
+import { finish } from "./finished-process.ts";
 
 const SCRIPT = join(import.meta.dir, "..", "acceptance", "probe.ts");
 
@@ -127,11 +128,10 @@ describe("spawned probe against a hub that answers wrong", () => {
 });
 
 /** A loopback https server with a self-signed certificate; it counts requests and keys it receives. */
-function untrustedHub() {
+async function untrustedHub() {
   const pem = join(dir, "tls.pem");
-  const made = Bun.spawnSync(["openssl", "req", "-x509", "-newkey", "ec", "-pkeyopt", "ec_paramgen_curve:P-256", "-nodes",
-    "-days", "1", "-subj", "/CN=127.0.0.1", "-addext", "subjectAltName=IP:127.0.0.1", "-keyout", join(dir, "tls.key"), "-out", pem],
-  { stdin: "ignore", stdout: "ignore", stderr: "ignore" });
+  const made = await finish(["openssl", "req", "-x509", "-newkey", "ec", "-pkeyopt", "ec_paramgen_curve:P-256", "-nodes",
+    "-days", "1", "-subj", "/CN=127.0.0.1", "-addext", "subjectAltName=IP:127.0.0.1", "-keyout", join(dir, "tls.key"), "-out", pem]);
   expect(made.exitCode).toBe(0);
   const seen = { requests: 0, keys: 0 };
   const server = Bun.serve({
@@ -149,7 +149,7 @@ function untrustedHub() {
 
 describe("S-M1 S-S2: TLS and proxies never take the key elsewhere", () => {
   test("NODE_TLS_REJECT_UNAUTHORIZED=0 does not let an untrusted certificate through", async () => {
-    const untrusted = untrustedHub();
+    const untrusted = await untrustedHub();
     const refused = await probe([untrusted.origin, "--key-file", keyFile("key", KEY)], { NODE_TLS_REJECT_UNAUTHORIZED: "0" });
     expect(refused).toEqual({ code: 2, out: "", err: "probe: the hub cannot be reached (network, TLS or timeout)\n" });
     expect(untrusted.seen).toEqual({ requests: 0, keys: 0 });
