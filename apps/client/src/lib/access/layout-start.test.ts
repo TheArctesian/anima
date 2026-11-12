@@ -130,6 +130,24 @@ describe('the root layout on an operator route in a browser', () => {
   });
 });
 
+describe('the root layout before sign-in', () => {
+  it('NAV-009: the sign-in page shows alone: no bar, no live sessions, no hub status, no Settings, and a drag strip', async () => {
+    const target = open('https://hub.example.org/sign-in');
+    await settled();
+    expect(target.querySelector('[data-page]')).not.toBeNull();
+    expect(target.querySelector('nav, #main-nav, .shell')).toBeNull();
+    expect(target.textContent).not.toMatch(/Devices|Live sessions|Settings|Connected/);
+    expect(target.querySelector('.drag[data-tauri-drag-region]')).not.toBeNull();
+  });
+
+  it('NAV-009: the bar comes back once the router moves to an operator page', async () => {
+    const target = open('https://hub.example.org/sign-in');
+    routerShows('https://hub.example.org/devices');
+    await settled();
+    expect(target.querySelector('nav#main-nav')).not.toBeNull();
+  });
+});
+
 describe('the root layout on a page no hub served', () => {
   it('SEC-001: a plain http page from another host shows the fixed refusal and sends nothing', async () => {
     const target = open('http://hub.example.org/sign-in');

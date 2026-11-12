@@ -66,12 +66,16 @@ const NOW = new Date('2026-11-04T10:00:00Z');
 const CONNECTED: HubStatus = { connection: 'connected', lastContactAt: null };
 let app: ReturnType<typeof mount> | undefined;
 
-function show(pathname = '/devices', status: HubStatus = CONNECTED): HTMLElement {
+function mountAt(pathname: string, status: HubStatus = CONNECTED): void {
   route.pathname = pathname;
   fake.status = status;
   const children = createRawSnippet(() => ({ render: () => '<p id="page">page</p>' }));
   app = mount(Layout, { target: document.body, props: { children } });
   flushSync();
+}
+
+function show(pathname = '/devices', status: HubStatus = CONNECTED): HTMLElement {
+  mountAt(pathname, status);
   const nav = document.querySelector('nav');
   if (nav === null) throw new Error('no nav');
   return nav;
@@ -292,7 +296,7 @@ it('API-003, H-5: in the desktop app with no stored token the layout goes to /si
 it('H-5: on /sign-in the layout does not go anywhere', async () => {
   keyStore.available.mockReturnValue(true);
   keyStore.read.mockResolvedValue(null);
-  show('/sign-in');
+  mountAt('/sign-in');
   await vi.advanceTimersByTimeAsync(0);
   expect(router.goto).not.toHaveBeenCalled();
 });

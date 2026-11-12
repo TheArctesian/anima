@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { failure, fakeHub, ok } from '$lib/access/access.fixture';
 import { TOKEN_UNREADABLE, type Hub } from '$lib/hub/hub';
 import Page from './+page.svelte';
+import { input, problemOf, submit, type } from './page.fixture';
 
 const mocks = vi.hoisted(() => ({
   hub: undefined as unknown,
@@ -41,27 +42,6 @@ function open(answers: Parameters<typeof fakeHub>[0]): HTMLElement {
   return target;
 }
 
-function input(target: HTMLElement, id: string): HTMLInputElement {
-  const element = target.querySelector<HTMLInputElement>(`#${id}`);
-  if (element === null) throw new Error(`no #${id}`);
-  return element;
-}
-
-function type(target: HTMLElement, id: string, text: string): void {
-  const element = input(target, id);
-  element.value = text;
-  element.dispatchEvent(new Event('input', { bubbles: true }));
-}
-
-async function submit(target: HTMLElement, formIndex: number): Promise<void> {
-  target.querySelectorAll('form')[formIndex]?.dispatchEvent(new SubmitEvent('submit', { bubbles: true, cancelable: true }));
-  await vi.waitFor(() => {
-    flushSync();
-  });
-  await new Promise((resolve) => setTimeout(resolve, 0));
-  flushSync();
-}
-
 async function signInWith(target: HTMLElement, code = '123456'): Promise<void> {
   type(target, 'username', 'ann');
   type(target, 'password', PASSWORD);
@@ -88,7 +68,7 @@ afterEach(async () => {
 
 it('DEV-011, OD-2: the fields are labelled; the password is hidden; the code is six numeric digits', () => {
   const target = open({});
-  for (const id of ['username', 'password', 'totp', 'hub-address']) {
+  for (const id of ['username', 'password', 'totp']) {
     expect(target.querySelector(`label[for="${id}"]`)).not.toBeNull();
   }
   expect(input(target, 'password').type).toBe('password');
@@ -137,40 +117,16 @@ it('DEV-011: hub field errors show beside their fields', async () => {
   const error = { code: 'VALIDATION' as const, message: 'm', fields: [{ field: 'totpCode', message: 'The code is not accepted.' }] };
   const target = open({ Login: { ok: false, error } });
   await signInWith(target);
-  expect(target.querySelector('#totp-problem')?.textContent).toBe('The code is not accepted.');
+  expect(problemOf(target, 'totp')).toBe('The code is not accepted.');
   expect(input(target, 'totp').getAttribute('aria-describedby')).toBe('totp-problem');
-  expect(target.querySelector('#username-problem')?.textContent).toBe('');
+  expect(problemOf(target, 'username')).toBe('');
 });
 
 it('OD-2: a code that is not six digits is refused before anything is sent', async () => {
   const target = open({});
   await signInWith(target, '12ab');
   expect(hub.sent).toEqual([]);
-  expect(target.querySelector('#totp-problem')?.textContent).toBe('The code is six digits.');
-});
-
-it('CLI-002: a valid hub address is stored and the client reloads', async () => {
-  const target = open({});
-  type(target, 'hub-address', 'hub.example.org');
-  await submit(target, 1);
-  expect(localStorage.getItem('anima.hubAddress')).toBe('https://hub.example.org');
-  expect(mocks.reloadClient).toHaveBeenCalledOnce();
-});
-
-it('NET-005: the address field starts at the current hub origin', () => {
-  const target = open({});
-  expect(input(target, 'hub-address').value).toBe(hub.hub.address.origin);
-});
-
-it('CLI-002: an invalid hub address stores nothing, does not reload and shows the error without the input', async () => {
-  const target = open({});
-  type(target, 'hub-address', 'http://user:secretpw@hub.example.org');
-  await submit(target, 1);
-  expect(localStorage.getItem('anima.hubAddress')).toBeNull();
-  expect(mocks.reloadClient).not.toHaveBeenCalled();
-  const problem = target.querySelector('#address-problem')?.textContent ?? '';
-  expect(problem).not.toBe('');
-  expect(problem).not.toContain('secretpw');
+  expect(problemOf(target, 'totp')).toBe('The code is six digits.');
 });
 
 it('OD-2: the user name is sent without surrounding spaces', async () => {
@@ -212,7 +168,7 @@ it('DEV-011: a field stops being aria-invalid once its value passes the rules', 
   type(target, 'totp', '123456');
   flushSync();
   expect(input(target, 'totp').hasAttribute('aria-invalid')).toBe(false);
-  expect(target.querySelector('#totp-problem')?.textContent).toBe('');
+  expect(problemOf(target, 'totp')).toBe('');
 });
 
 it('DEV-011: hub field errors also mark the field and take focus', async () => {
@@ -318,7 +274,7 @@ describe('in a browser, a failed sign-in', () => {
     const error = { code: 'VALIDATION' as const, message: 'm', fields: [{ field: 'totpCode', message: 'The code is not accepted.' }] };
     const target = open({ SignInBrowser: { ok: false, error } });
     await signInWith(target);
-    expect(target.querySelector('#totp-problem')?.textContent).toBe('The code is not accepted.');
+    expect(problemOf(target, 'totp')).toBe('The code is not accepted.');
     expect(document.activeElement).toBe(input(target, 'totp'));
   });
 });

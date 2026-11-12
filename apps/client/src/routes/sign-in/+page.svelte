@@ -1,17 +1,27 @@
 <script lang="ts">
-  import { tick } from 'svelte';
+  import { onMount, tick } from 'svelte';
+  import { asset } from '$app/paths';
   import { accessApi } from '$lib/access/api';
   import { goToDevices, loadClientAt, reloadClient } from '$lib/access/navigation';
-  import { writeAccessToken } from '$lib/desktop/token';
+  import { storeHubAddress } from '$lib/desktop/address';
+  import { readAccessToken, writeAccessToken } from '$lib/desktop/token';
   import { useHub } from '$lib/hub/context';
+  import { createHub, parseHubAddress, type Hub, type HubAddress } from '$lib/hub/hub';
+  import Icon from '$lib/icons/Icon.svelte';
   import { press } from '$lib/motion/roles/press';
+  import { createClock } from '$lib/nav/clock.svelte';
+  import { DATA_AGE_REFRESH_MS } from '$lib/nav/nav';
   import { capabilities } from '$lib/platform/platform';
   import { afterEdit, firstInvalid, type FieldMessages, type LoginField } from './form';
+  import HubLine from './HubLine.svelte';
+  import Notice from './Notice.svelte';
+  import { hubHost, hubUnreachable } from './reachability';
   import { saveHubAddress, signIn } from './sign-in';
+  import TextField from './TextField.svelte';
 
   const hub = useHub();
-  const api = accessApi(hub);
-  // Read once: the platform never changes in a page, so the address form below never comes or goes (CLI-002).
+  const clock = createClock(DATA_AGE_REFRESH_MS);
+  // Read once: the platform never changes in a page, so the hub line below never comes or goes (CLI-002).
   const desktop = capabilities().keyStore;
 
   let username = $state('');
@@ -20,24 +30,52 @@
   let fields = $state<FieldMessages>({});
   let message = $state<string | null>(null);
   let busy = $state(false);
-  const inputs: Partial<Record<LoginField, HTMLInputElement>> = {};
+  let inputs: Partial<Record<LoginField, HTMLInputElement>> = $state({});
   let submitButton: HTMLButtonElement | undefined = $state();
 
+  let editingAddress = $state(false);
   let addressText = $state(hub.address.origin);
-  let addressProblem = $state<string | null>(null);
+  let addressProblem = $state<string | undefined>();
+
+  const unreachable = $derived(hubUnreachable(hub.status.current, hub.address.origin, clock.current));
+
+  onMount(() => {
+    inputs.username?.focus();
+  });
+
+  /** The hub to sign in to: the current one, or one for the address typed into the open hub field. `null` when that address is refused. */
+  function chooseTarget(): { target: Hub; moved: HubAddress | undefined } | null {
+    if (!editingAddress) return { target: hub, moved: undefined };
+    const parsed = parseHubAddress(addressText);
+    if (!parsed.ok) {
+      addressProblem = parsed.error.message;
+      return null;
+    }
+    if (parsed.value.origin === hub.address.origin) return { target: hub, moved: undefined };
+    return { target: createHub({ address: parsed.value, token: readAccessToken }), moved: parsed.value };
+  }
 
   async function submit(event: SubmitEvent): Promise<void> {
     event.preventDefault();
     // One attempt at a time: a second browser sign-in would leave a token on the hub that no cookie holds.
     if (busy) return;
+    const chosen = chooseTarget();
+    if (chosen === null) {
+      document.getElementById('hub-address')?.focus();
+      return;
+    }
+    const { target, moved } = chosen;
     const form = { username, password, totpCode };
     // The secrets leave the page state as soon as they are read; only the user name stays (LOG-007).
     password = '';
     totpCode = '';
     busy = true;
-    const outcome = await signIn({ api, address: hub.address, desktop, writeToken: writeAccessToken }, form);
-    if (outcome.signedIn && !desktop) {
-      // A new page, so the socket opens with the cookie the hub just set (E-4); the button stays off while it loads.
+    const outcome = await signIn({ api: accessApi(target), address: target.address, desktop, writeToken: writeAccessToken }, form);
+    if (target !== hub) closeCandidate(target);
+    if (outcome.signedIn && (!desktop || moved !== undefined)) {
+      // A new page, so the socket opens with the cookie the hub just set (E-4), or with the address just chosen (CLI-002);
+      // the button stays off while it loads.
+      if (moved !== undefined) storeHubAddress(localStorage, moved.origin);
       loadClientAt('/devices');
       return;
     }
@@ -58,113 +96,144 @@
     submitButton?.focus();
   }
 
+  function closeCandidate(candidate: Hub): void {
+    candidate.close().catch((reason: unknown) => {
+      // Fixed text and the error name only: the message is decided by the transport (LOG-007).
+      console.warn('Hub connection attempt failed while closing:', reason instanceof Error ? reason.name : 'unknown');
+    });
+  }
+
   function edited(field: LoginField, event: Event & { currentTarget: HTMLInputElement }): void {
     fields = afterEdit(fields, field, event.currentTarget.value);
   }
 
-  function saveAddress(event: SubmitEvent): void {
-    event.preventDefault();
-    addressProblem = saveHubAddress(localStorage, addressText, reloadClient);
+  function saveAddress(): void {
+    addressProblem = saveHubAddress(localStorage, addressText, reloadClient) ?? undefined;
+  }
+
+  function cancelAddress(): void {
+    editingAddress = false;
+    addressText = hub.address.origin;
+    addressProblem = undefined;
   }
 </script>
 
-<h1>Sign in</h1>
+<div class="screen">
+  <header>
+    <img src={asset('/logo.png')} alt="" width="32" height="32" />
+    <h1>Sign in to Anima</h1>
+  </header>
 
-<form onsubmit={submit} novalidate>
-  <label for="username">User name</label>
-  <input id="username" name="username" autocomplete="username" bind:value={username} aria-describedby="username-problem"
-    aria-invalid={fields.username === undefined ? undefined : 'true'}
-    bind:this={inputs.username}
-    oninput={(event) => {
-      edited('username', event);
-    }} />
-  <p id="username-problem" class="problem">{fields.username ?? ''}</p>
+  <form class="card" onsubmit={submit} novalidate>
+    {#if unreachable !== null}
+      <div role="status">
+        <Notice icon="nf-md-lan_disconnect">
+          <p><strong>{unreachable.title}</strong></p>
+          <p>{unreachable.advice}</p>
+          <p class="detail"><code>{unreachable.origin}</code> · {unreachable.age}</p>
+        </Notice>
+      </div>
+    {/if}
 
-  <label for="password">Password</label>
-  <input id="password" name="password" type="password" autocomplete="current-password" bind:value={password} aria-describedby="password-problem"
-    aria-invalid={fields.password === undefined ? undefined : 'true'}
-    bind:this={inputs.password}
-    oninput={(event) => {
-      edited('password', event);
-    }} />
-  <p id="password-problem" class="problem">{fields.password ?? ''}</p>
+    <div class="group">
+      <TextField id="username" name="username" label="User name" autocomplete="username" bind:value={username} bind:input={inputs.username}
+        error={fields.username} oninput={(event) => { edited('username', event); }} />
+      <TextField id="password" name="password" label="Password" type="password" autocomplete="current-password" bind:value={password}
+        bind:input={inputs.password} error={fields.password} oninput={(event) => { edited('password', event); }} />
+      <TextField id="totp" name="totpCode" label="Code from your authenticator" autocomplete="one-time-code" code bind:value={totpCode}
+        bind:input={inputs.totpCode} error={fields.totpCode} oninput={(event) => { edited('totpCode', event); }} />
+    </div>
 
-  <label for="totp">Code from your authenticator</label>
-  <input
-    id="totp"
-    name="totpCode"
-    inputmode="numeric"
-    autocomplete="one-time-code"
-    maxlength="6"
-    bind:value={totpCode}
-    aria-describedby="totp-problem"
-    aria-invalid={fields.totpCode === undefined ? undefined : 'true'}
-    bind:this={inputs.totpCode}
-    oninput={(event) => {
-      edited('totpCode', event);
-    }}
-  />
-  <p id="totp-problem" class="problem">{fields.totpCode ?? ''}</p>
+    {#if message !== null}
+      <Notice icon="nf-md-alert_circle_outline"><p role="alert">{message}</p></Notice>
+    {/if}
 
-  <!-- tabindex="0": WebKit skips plain buttons when Tab is pressed unless they are focusable, as for the nav links (NAV-005, WP-11 H-6). -->
-  <button type="submit" tabindex="0" disabled={busy} bind:this={submitButton} {@attach press()}>Sign in</button>
-  <p role="alert" class="problem form-problem">{message ?? ''}</p>
-</form>
-
-<!-- Desktop only: a browser talks only to the hub that served the page (CLI-002, E-2). -->
-{#if desktop}
-  <form onsubmit={saveAddress} novalidate>
-    <label for="hub-address">Hub address</label>
-    <input id="hub-address" name="hubAddress" autocomplete="off" bind:value={addressText} aria-describedby="address-problem" />
-    <p id="address-problem" class="problem">{addressProblem ?? ''}</p>
-    <button type="submit" tabindex="0" {@attach press()}>Save address</button>
+    <!-- tabindex="0": WebKit skips plain buttons when Tab is pressed unless they are focusable, as for the nav links (NAV-005, WP-11 H-6). -->
+    <button type="submit" tabindex="0" disabled={busy} bind:this={submitButton} {@attach press()}>
+      {#if busy}<Icon name="nf-md-refresh" />{/if}Sign in
+    </button>
   </form>
-{/if}
+
+  {#if desktop}
+    <HubLine host={hubHost(hub.address.origin)} bind:editing={editingAddress} bind:text={addressText} problem={addressProblem}
+      onsave={saveAddress} oncancel={cancelAddress} />
+  {/if}
+</div>
 
 <style>
-  h1 {
-    margin: 0 0 var(--space-4);
-    font-size: var(--text-2xl);
-    line-height: var(--leading-tight);
-    min-block-size: calc(var(--text-2xl) * var(--leading-tight));
-  }
-
-  /* The line height is reserved from tokens, so the font swap cannot move the fields below (MOT-007). */
-  label {
-    font-size: var(--text-md);
-    line-height: var(--leading-tight);
-    min-block-size: calc(var(--text-md) * var(--leading-tight));
-  }
-
-  form {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: var(--space-2);
-    max-inline-size: 24rem;
-    margin-block-end: var(--space-8);
-  }
-
-  /* A fixed control height from a space token, so the font swap does not grow the controls and move the forms (MOT-007). */
-  input,
-  button {
+  .screen {
     box-sizing: border-box;
-    block-size: var(--space-8);
-    padding: 0 var(--space-3);
-    border: var(--border-thin) solid var(--border-strong);
-    border-radius: var(--radius-md);
+    display: grid;
+    align-content: center;
+    justify-items: center;
+    gap: var(--space-6);
+    min-block-size: 100vh;
+    padding: var(--space-6);
+  }
+
+  .screen > :global(:not(header)) {
+    inline-size: min(100%, 23rem);
+  }
+
+  header {
+    display: grid;
+    justify-items: center;
+    gap: var(--space-3);
+  }
+
+  h1 {
+    margin: 0;
+    font-size: var(--text-xl);
+    line-height: var(--leading-tight);
+  }
+
+  .card {
+    box-sizing: border-box;
+    display: grid;
+    gap: var(--space-4);
+    padding: var(--space-6);
+    border-radius: var(--radius-lg);
     background: var(--surface-raised);
-    color: var(--text);
-    font: inherit;
+  }
+
+  .group {
+    display: grid;
+    gap: var(--space-3);
+  }
+
+  .detail {
+    color: var(--text-secondary);
+    font-size: var(--text-sm);
+  }
+
+  .detail code {
+    font-family: var(--font-mono);
   }
 
   button {
-    transition:
-      background-color var(--duration-fast) var(--ease-enter),
-      opacity var(--duration-fast) var(--ease-enter);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    box-sizing: border-box;
+    inline-size: 100%;
+    block-size: var(--control-lg);
+    border: 0;
+    border-radius: var(--radius-md);
+    background: var(--accent);
+    color: var(--on-accent);
+    font: inherit;
+    font-weight: var(--weight-bold);
+    cursor: pointer;
+    transition: background-color var(--duration-fast) var(--ease-enter);
   }
 
   button:hover:enabled {
-    background: var(--surface-overlay);
+    background: var(--accent-hover);
+  }
+
+  button:active:enabled {
+    background: var(--accent-pressed);
   }
 
   /* While the hub answers, the button shows it is off (opacity only, so nothing moves). */
@@ -173,28 +242,8 @@
     cursor: default;
   }
 
-  input:focus-visible,
   button:focus-visible {
-    outline: var(--border-focus) solid var(--accent);
+    outline: var(--border-focus) solid var(--focus-ring);
     outline-offset: var(--border-focus);
-  }
-
-  .problem {
-    margin: 0;
-    min-block-size: calc(var(--text-sm) * var(--leading-tight));
-    padding-inline-start: var(--space-2);
-    border-inline-start: var(--border-focus) solid transparent;
-    font-size: var(--text-sm);
-    line-height: var(--leading-tight);
-  }
-
-  /* --status-down text on the page is 3.05:1 (MAT-005 needs 4.5:1 for small text): the text stays --text, a bar marks the error. */
-  .problem:not(:empty) {
-    border-inline-start-color: var(--status-down);
-  }
-
-  /* Two lines, so a message that wraps does not push the hub address form down (MOT-007). */
-  .form-problem {
-    min-block-size: calc(2 * var(--text-sm) * var(--leading-tight));
   }
 </style>
