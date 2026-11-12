@@ -103,15 +103,15 @@ function sectionTexts(target: HTMLElement, heading: string): string[] {
   return [...section.querySelectorAll('h2, p, label, button, option')].map(readable);
 }
 
-it('SET-001, UI-005, MOT-043: the page is the title, then Account, then Appearance with Theme, Reduce motion and the two fonts, then Notifications, then Default check settings, then Data retention, then API keys, then VPN', async () => {
+it('SET-001, UI-005, MOT-043: the page is the title, then Account, then Appearance with Theme, Colours, Reduce motion and the two fonts, then Notifications, then Default check settings, then Data retention, then API keys, then VPN', async () => {
   const target = await open({ Me: ok({ me: { username: 'ann' } }) });
   expect(target.querySelector('h1')?.compareDocumentPosition(sections(target)[0] as Node)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   expect(sectionHeadings(target)).toEqual(['Account', 'Appearance', 'Notifications', 'Default check settings', 'Data retention', 'API keys', 'VPN']);
   expect(sectionTexts(target, 'Account')).toEqual(['Account', 'Who is signed in to this hub.', 'Signed in as ann', 'Sign out', '']);
-  const fonts = ['Fira Code', 'OpenDyslexic'];
+  const fonts = ['OpenDyslexic'];
   expect(sectionTexts(target, 'Appearance')).toEqual([
-    'Appearance', 'How Anima looks on this device.', 'Theme', 'Dark', 'Light', 'System', 'Reduce motion', 'System', 'On', 'Off',
-    'Interface font', ...fonts, 'Monospace font', ...fonts,
+    'Appearance', 'How Anima looks on this device.', 'Theme', 'Dark', 'Light', 'System', 'Colours', 'Graphite', 'Nord', 'Reduce motion', 'System', 'On', 'Off',
+    'Interface font', 'IBM Plex Sans', ...fonts, 'Monospace font', 'Fira Code', ...fonts,
   ]);
   expect(target.querySelectorAll('[role="switch"], img, input, textarea, a, [tabindex]:not(button)')).toHaveLength(0);
 });

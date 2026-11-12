@@ -2,12 +2,13 @@ import { createHash } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_TYPEFACE, TEXT_ROLES, TYPEFACES } from '$lib/typeface/typeface';
+import { TEXT_ROLES } from '$lib/typeface/typeface';
 
 const stylesDir = fileURLToPath(new URL('./', import.meta.url));
 const fontsDir = `${stylesDir}fonts/`;
 const pinnedCommit = 'f034eeafc0ccf79afa8dd952feb86b18e5d0469e';
 const firaCodeRelease = '6.2';
+const plexSansRelease = '@ibm/plex-sans@1.1.0';
 
 interface LockEntry {
   file: string;
@@ -20,6 +21,7 @@ interface LockEntry {
 interface FontLock {
   commit: string;
   firaCodeRelease: string;
+  plexSansRelease: string;
   files: LockEntry[];
 }
 
@@ -68,6 +70,7 @@ const propo = 'OpenDyslexic Nerd Font Propo';
 const mono = 'OpenDyslexicM Nerd Font Mono';
 const symbols = 'Symbols Nerd Font';
 const fira = 'Fira Code';
+const plex = 'IBM Plex Sans';
 const expectedFaces: FontFace[] = [
   { family: propo, weight: 400, style: 'normal', display: 'block', file: 'OpenDyslexicNerdFontPropo-Regular.otf', format: 'opentype' },
   { family: propo, weight: 700, style: 'normal', display: 'block', file: 'OpenDyslexicNerdFontPropo-Bold.otf', format: 'opentype' },
@@ -75,12 +78,14 @@ const expectedFaces: FontFace[] = [
   { family: propo, weight: 700, style: 'italic', display: 'block', file: 'OpenDyslexicNerdFontPropo-BoldItalic.otf', format: 'opentype' },
   { family: mono, weight: 400, style: 'normal', display: 'block', file: 'OpenDyslexicMNerdFontMono-Regular.otf', format: 'opentype' },
   { family: symbols, weight: 400, style: 'normal', display: 'block', file: 'SymbolsNerdFont-Regular.ttf', format: 'truetype' },
+  { family: plex, weight: 400, style: 'normal', display: 'block', file: 'IBMPlexSans-Regular.woff2', format: 'woff2' },
+  { family: plex, weight: 700, style: 'normal', display: 'block', file: 'IBMPlexSans-Bold.woff2', format: 'woff2' },
   { family: fira, weight: 400, style: 'normal', display: 'block', file: 'FiraCode-Regular.woff2', format: 'woff2' },
   { family: fira, weight: 700, style: 'normal', display: 'block', file: 'FiraCode-Bold.woff2', format: 'woff2' },
 ];
 
 describe('@font-face declarations (UI-010, UI-011, UI-014, UI-020)', () => {
-  it('declares exactly the eight faces the design uses, each with its file', () => {
+  it('declares exactly the ten faces the design uses, each with its file', () => {
     expect([...parseFontFaces(fontsCss)].sort(byFace)).toEqual([...expectedFaces].sort(byFace));
   });
 
@@ -92,10 +97,16 @@ describe('@font-face declarations (UI-010, UI-011, UI-014, UI-020)', () => {
 });
 
 describe('bundled font files (UI-022)', () => {
-  it('pins every lock entry to the nerd-fonts commit or the Fira Code release', () => {
+  it('pins every lock entry to the nerd-fonts commit, the Fira Code release or the IBM Plex Sans release', () => {
     expect(lock.commit).toBe(pinnedCommit);
     expect(lock.firaCodeRelease).toBe(firaCodeRelease);
-    const pins = [`/ryanoasis/nerd-fonts/${pinnedCommit}/`, `/tonsky/FiraCode/releases/download/${firaCodeRelease}/`, `/tonsky/FiraCode/${firaCodeRelease}/`];
+    expect(lock.plexSansRelease).toBe(plexSansRelease);
+    const pins = [
+      `/ryanoasis/nerd-fonts/${pinnedCommit}/`,
+      `/tonsky/FiraCode/releases/download/${firaCodeRelease}/`,
+      `/tonsky/FiraCode/${firaCodeRelease}/`,
+      '/IBM/plex/releases/download/%40ibm/plex-sans%401.1.0/',
+    ];
     for (const entry of lock.files) {
       expect(entry.url.startsWith('https://'), entry.file).toBe(true);
       expect(pins.some((pin) => entry.url.includes(pin)), entry.file).toBe(true);
@@ -151,9 +162,9 @@ describe('fonts load from the application package (UI-017)', () => {
     }
   });
 
-  it('UI-020: global.css points each role’s token at every typeface but the default', () => {
-    for (const typeface of TYPEFACES.filter((each) => each.id !== DEFAULT_TYPEFACE)) {
-      for (const role of TEXT_ROLES) {
+  it('UI-020: global.css points each role’s token at every choice but that role’s default', () => {
+    for (const role of TEXT_ROLES) {
+      for (const typeface of role.choices.filter((each) => each.id !== role.default)) {
         const rule = new RegExp(`:root\\[data-font-${role.id}="${typeface.id}"\\]\\s*\\{\\s*--font-${role.id}: var\\(--font-${role.id}-${typeface.id}\\);\\s*\\}`);
         expect(stripComments(globalCss), `${role.id} ${typeface.id}`).toMatch(rule);
       }
@@ -167,7 +178,7 @@ describe('fonts load from the application package (UI-017)', () => {
 });
 
 describe('font licences (UI-018)', () => {
-  for (const licence of ['LICENSE-OpenDyslexic.txt', 'LICENSE-SymbolsNerdFont.txt', 'LICENSE-NerdFonts.txt', 'LICENSE-FiraCode.txt']) {
+  for (const licence of ['LICENSE-IBMPlex.txt', 'LICENSE-OpenDyslexic.txt', 'LICENSE-SymbolsNerdFont.txt', 'LICENSE-NerdFonts.txt', 'LICENSE-FiraCode.txt']) {
     it(`ships ${licence} as a non-empty file`, () => {
       const path = `${fontsDir}${licence}`;
       expect(existsSync(path)).toBe(true);
@@ -187,5 +198,34 @@ describe('font licences (UI-018)', () => {
         expect(statSync(`${fontsDir}${licence?.file}`).size, licence?.file).toBeGreaterThan(0);
       }
     }
+  });
+});
+
+describe('IBM Plex Sans licence (UI-018)', () => {
+  it('is the SIL Open Font License 1.1 with Reserved Font Name "Plex", so the upstream files ship unchanged', () => {
+    const text = readFileSync(`${fontsDir}LICENSE-IBMPlex.txt`, 'utf8');
+    expect(text.split(/\r?\n/)[0]).toBe('Copyright © 2017 IBM Corp. with Reserved Font Name "Plex"');
+    expect(text).toContain('SIL Open Font License, Version 1.1');
+    const lockedFace = lock.files.find((entry) => entry.file === 'IBMPlexSans-Regular.woff2');
+    expect(lockedFace?.url).toContain('/IBM/plex/releases/download/');
+  });
+});
+
+describe('text rules in fonts.css (UI-011, UI-025)', () => {
+  const rules = stripComments(fontsCss);
+
+  it('UI-025: table cells, times, outputs, meters and numeric marks use tabular figures', () => {
+    const rule = /([^{}]+)\{\s*font-variant-numeric:\s*tabular-nums;\s*\}/.exec(rules)?.[1] ?? '';
+    for (const selector of ['table', 'time', 'output', 'meter', '[data-numeric]', '.numeric']) {
+      expect(rule, selector).toContain(selector);
+    }
+  });
+
+  it('UI-011: ligatures are off from the root down, so every use of the monospace font has none', () => {
+    expect(rules).toMatch(/:root\s*\{\s*font-variant-ligatures:\s*none;\s*\}/);
+  });
+
+  it('UI-010, UI-011: no weight but 400 and 700 is declared', () => {
+    for (const face of parseFontFaces(fontsCss)) expect([400, 700], face.file).toContain(face.weight);
   });
 });

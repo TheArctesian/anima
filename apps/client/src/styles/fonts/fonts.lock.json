@@ -1,6 +1,7 @@
 {
   "commit": "f034eeafc0ccf79afa8dd952feb86b18e5d0469e",
   "firaCodeRelease": "6.2",
+  "plexSansRelease": "@ibm/plex-sans@1.1.0",
   "files": [
     {
       "file": "OpenDyslexicNerdFontPropo-Regular.otf",
@@ -59,6 +60,20 @@
       "licence": "LICENSE-FiraCode.txt"
     },
     {
+      "file": "IBMPlexSans-Regular.woff2",
+      "url": "https://github.com/IBM/plex/releases/download/%40ibm/plex-sans%401.1.0/ibm-plex-sans.zip#ibm-plex-sans/fonts/complete/woff2/IBMPlexSans-Regular.woff2",
+      "sha256": "ba711a3085ff9f27440b6b9c4550cfc47c97bf36591d5da958b975bb3add8c1a",
+      "bytes": 63020,
+      "licence": "LICENSE-IBMPlex.txt"
+    },
+    {
+      "file": "IBMPlexSans-Bold.woff2",
+      "url": "https://github.com/IBM/plex/releases/download/%40ibm/plex-sans%401.1.0/ibm-plex-sans.zip#ibm-plex-sans/fonts/complete/woff2/IBMPlexSans-Bold.woff2",
+      "sha256": "fa7130d854a660b39a7fc9e6e0f2dc23dba5f1346e2adea3e1fe37b6d884133d",
+      "bytes": 63012,
+      "licence": "LICENSE-IBMPlex.txt"
+    },
+    {
       "file": "LICENSE-OpenDyslexic.txt",
       "url": "https://raw.githubusercontent.com/ryanoasis/nerd-fonts/f034eeafc0ccf79afa8dd952feb86b18e5d0469e/patched-fonts/OpenDyslexic/Regular/LICENSE.txt",
       "sha256": "c9838b435817b7319ec53239c9785f47ddce643e6c6b2f2dc160cb4aa00df043",
@@ -81,6 +96,12 @@
       "url": "https://raw.githubusercontent.com/tonsky/FiraCode/6.2/LICENSE",
       "sha256": "1d41e10031ab125302780a05ec4c91d218e47db0c7e37cf315cce5e608cdc25c",
       "bytes": 4389
+    },
+    {
+      "file": "LICENSE-IBMPlex.txt",
+      "url": "https://github.com/IBM/plex/releases/download/%40ibm/plex-sans%401.1.0/ibm-plex-sans.zip#ibm-plex-sans/LICENSE.txt",
+      "sha256": "7e6b2818edbd8f6a01ae80641cc8f16a51080d08fb4e532be3a0b6f74adb07da",
+      "bytes": 4456
     }
   ]
 }
