@@ -497,3 +497,36 @@ B0 rulings ── B1 broker nodes ── B2 merge ── B4 keys + register ─�
 
 The live deployment of the broker on the VPS still needs the operator's confirmation in chat for
 each change (VPS-005), until the VP-4 change is in the spec.
+
+## 10. Handoff (2026-11-11)
+
+The build session moved to a fresh session to keep turns short. State at this point:
+
+- **Branch.** `claude/nostalgic-hawking-79449a` (on top of origin/phase-3) holds Tier A, Tier B,
+  VP-12, the tailnet-site fix and VP-13. Gates passed 12/12 at 129cfa87. Not pushed, not merged
+  into phase-3: both need the operator's word.
+- **Live on the dev VPS.** Broker at 8dce3f80 (audit ok); hub image `anima-hub:5a8039de` with the
+  VPN work, calling the broker (`docs/programme/operator-changes.md`, 22:58Z and 23:11Z rows).
+  The desktop app was rebuilt and opened on the Mac.
+- **Built, not yet on the VPS.** VP-12 (new broker binary), the tailnet-site fix (new hub image),
+  VP-13 (firewall, sshd, compose), and the VP-13 security review fixes (F1–F6, I1–I3; build note
+  in `docs/vpn-build.md`). A builder was finishing those fixes and the full gates on this branch
+  at handoff (commits e0c6015d, 05ef3d7b and any after them); check `git log` and rerun the gates
+  before deploying.
+- **Next, in order.**
+  1. Confirm the review fixes pass the full gates (`env -u DATABASE_URL BASE_REF=origin/phase-3 bun run gates`).
+  2. Redeploy to the VPS as one batch the operator confirms once, then runs with their sudo
+     password: broker (`bun deploy/headscale/bin/broker-build.ts`, then `harden.sh --sha256=… broker`),
+     firewall (`--dry-run firewall`, `firewall`, `confirm` within 180 s), sshd and the
+     `anima-probe` account (README "The VPS as a device (VP-13)" step 3), then the hub (fresh
+     backup, new image from HEAD, new compose; the `gateway` and `acme` networks are recreated).
+     Verify per the README and log each change in `docs/programme/operator-changes.md`.
+  3. Rebuild and reopen the desktop app; the operator adds the VPS device at 100.64.0.1 with
+     ping and TCP 22 checks.
+- **Open, no action yet.** A dark-mode token for small accent text (m2); moving the broker off
+  docker.sock (issue #1); the operator may delete `~anima-admin/anima-broker.XNT2lY` on the VPS and
+  the local `r2.env`; R2 publishing (`ANIMA_RELEASES_ENDPOINT`, `ANIMA_UPDATER_PUBLIC_KEY`) is a
+  later operator step.
+- **Standing rules.** Every live VPS, Headscale or cloud change is announced in chat and confirmed
+  by the operator (VPS-005, VP-11); the operator types sudo; never read `admin_pw.env`, `.env*`
+  or key files except the R2 values the operator gave for the hub deploy.
