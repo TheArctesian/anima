@@ -20,6 +20,11 @@
   let reserved = $state(false);
   const leaving = $derived(reserved && sessions.tabs.length === 0);
 
+  /** Whether no slot is drawn in the strip, other than `ending`: no exit is left to play, so the strip can go. */
+  function noSlotsLeft(ending?: Element): boolean {
+    return strip === undefined || [...strip.querySelectorAll(':scope > [data-slot]')].every((slot) => slot === ending);
+  }
+
   /** The tabs in the strip now, without one that is closing. */
   function slots(): HTMLElement[] {
     return strip === undefined ? [] : [...strip.querySelectorAll<HTMLElement>(':scope > [data-slot]:not([data-closing])')];
@@ -110,7 +115,7 @@
     // The last tab may have closed while the strip waited for its place: entering now would undo the exit.
     if (sessions.tabs.length === 0) {
       // No slot was ever drawn, so no exit will end and release the strip.
-      if (strip?.querySelector(':scope > [data-slot]') === null) reserved = false;
+      if (noSlotsLeft()) reserved = false;
       return;
     }
     enterStrip(element, fromHidden, preference);
@@ -137,8 +142,8 @@
         key(event, tab);
       }}
       transition:grow={{ origin: tab.origin }}
-      onoutroend={() => {
-        if (sessions.tabs.length === 0) reserved = false;
+      onoutroend={(event) => {
+        if (sessions.tabs.length === 0 && noSlotsLeft(event.currentTarget)) reserved = false;
       }}
       {@attach dragTab({
         tabs: slots,
@@ -175,7 +180,8 @@
   .strip {
     position: relative;
     box-sizing: border-box;
-    min-block-size: calc(var(--target-min-desktop) + var(--space-2));
+    --strip-size: calc(var(--target-min-desktop) + var(--space-2));
+    min-block-size: var(--strip-size);
     display: flex;
     gap: var(--space-1);
     padding-block-end: var(--space-2);
@@ -184,7 +190,7 @@
 
   /* The last tab's exit plays over the page, which is already at its place: the strip's height is taken back from the flow, and it ignores the pointer. */
   .strip.leaving {
-    margin-block-end: calc(-1 * (var(--target-min-desktop) + var(--space-2)));
+    margin-block-end: calc(-1 * var(--strip-size));
     pointer-events: none;
   }
 
