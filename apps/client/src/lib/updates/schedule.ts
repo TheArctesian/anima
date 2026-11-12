@@ -5,9 +5,24 @@ export const CHECK_INTERVAL_MS = 4 * 60 * 60 * 1000;
 
 export const CHECK_FAILED_LINE = 'Update check failed.';
 export const INSTALL_FAILED_LINE = 'Update install failed.';
+export const NO_FEED_LINE = 'Update feed has no release for this computer.';
+export const SIGNATURE_REFUSED_LINE = 'Update signature refused.';
 
 /** The only lines the schedule may write: fixed text, since the process log is a file on disk (LOG-007). */
-export type UpdateLine = typeof CHECK_FAILED_LINE | typeof INSTALL_FAILED_LINE;
+export type UpdateLine =
+  | typeof CHECK_FAILED_LINE
+  | typeof INSTALL_FAILED_LINE
+  | typeof NO_FEED_LINE
+  | typeof SIGNATURE_REFUSED_LINE;
+
+/** Why the last attempt failed (UPD-002, BLD-068); `other` covers the network and the disk. */
+export type FailureReason = 'no-feed' | 'signature' | 'other';
+
+/** The reason a failed port call carries, `other` for any error that carries none. */
+function reasonOf(error: unknown): FailureReason {
+  const reason = typeof error === 'object' && error !== null && 'reason' in error ? error.reason : undefined;
+  return reason === 'no-feed' || reason === 'signature' ? reason : 'other';
+}
 
 /** Where the schedule records a failure; any other text fails to compile. */
 export interface UpdateLog {
@@ -20,7 +35,7 @@ export type UpdateState =
   | { readonly kind: 'checking' }
   | { readonly kind: 'downloading'; readonly version: string }
   | { readonly kind: 'installed'; readonly version: string }
-  | { readonly kind: 'failed' };
+  | { readonly kind: 'failed'; readonly reason: FailureReason };
 
 /** The state, and when the next scheduled check runs (`null` before the schedule starts and once an update is installed). */
 export interface UpdateSnapshot {
@@ -73,9 +88,10 @@ export function createUpdateSchedule({ port, log, repeat, now, onChange }: Sched
     onChange({ state, nextCheckAt });
   }
 
-  function fail(line: UpdateLine): void {
-    log.warn(line);
-    set({ kind: 'failed' });
+  function fail(error: unknown, fallback: UpdateLine): void {
+    const reason = reasonOf(error);
+    log.warn(reason === 'no-feed' ? NO_FEED_LINE : reason === 'signature' ? SIGNATURE_REFUSED_LINE : fallback);
+    set({ kind: 'failed', reason });
   }
 
   async function checkNow(): Promise<void> {
@@ -84,8 +100,8 @@ export function createUpdateSchedule({ port, log, repeat, now, onChange }: Sched
     let found;
     try {
       found = await port.check();
-    } catch {
-      fail(CHECK_FAILED_LINE);
+    } catch (error) {
+      fail(error, CHECK_FAILED_LINE);
       return;
     }
     if (found === null) {
@@ -95,8 +111,8 @@ export function createUpdateSchedule({ port, log, repeat, now, onChange }: Sched
     set({ kind: 'downloading', version: found.version });
     try {
       await found.install();
-    } catch {
-      fail(INSTALL_FAILED_LINE);
+    } catch (error) {
+      fail(error, INSTALL_FAILED_LINE);
       return;
     }
     cancelTimer();

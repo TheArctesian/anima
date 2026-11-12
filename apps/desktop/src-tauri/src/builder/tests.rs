@@ -257,7 +257,7 @@ fn log_007_builder_errors_serialise_as_a_code_and_fixed_text() {
 }
 
 /// N-4, R-108: an app built with the placeholder `plugins.updater.pubkey` names the updater
-/// public key as missing, so it claims no job; a real key line is not missing.
+/// public key as missing, so it claims no job; the shipped key is a real key line, not missing.
 #[test]
 fn r_108_an_app_without_its_updater_public_key_claims_no_job() {
     use base64::{Engine as _, engine::general_purpose::STANDARD};
@@ -270,12 +270,11 @@ fn r_108_an_app_without_its_updater_public_key_claims_no_job() {
         serde_json::from_str(include_str!("../../tauri.conf.json")).unwrap();
     let pubkey = config["plugins"]["updater"]["pubkey"].as_str().unwrap();
     let line = crate::updater_key::key_line(pubkey);
-    if pubkey == "REPLACE_WITH_OPERATOR_PUBLIC_KEY" {
-        assert_eq!(
-            tools::app_public_key(line.as_deref()),
-            Some(Tool::UpdaterPublicKey)
-        );
-    }
+    assert_eq!(
+        tools::app_public_key(line.as_deref()),
+        None,
+        "the shipped plugins.updater.pubkey must be a real key"
+    );
     assert_eq!(tools::app_public_key(None), Some(Tool::UpdaterPublicKey));
     let mut key = b"Ed".to_vec();
     key.extend([7_u8; 40]);
