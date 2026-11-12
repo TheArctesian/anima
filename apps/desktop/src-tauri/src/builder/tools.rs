@@ -1,6 +1,9 @@
 //! The tools a builder needs before it claims a job (BLD-028): git, bun, Rust, PostgreSQL 17
-//! (R-009), the Tauri system packages, the updater key and the app's own updater public key.
+//! (R-009), the Tauri system packages, the updater key, the app's own updater public key and, on
+//! macOS, the Developer ID signing identity.
 //! Pure: whether a path exists is a parameter, and nothing is run.
+
+pub mod readings;
 
 use std::path::{Path, PathBuf};
 
@@ -24,6 +27,9 @@ pub enum Tool {
     /// This app was built without the updater public key (`plugins.updater.pubkey` is the
     /// placeholder), so what it builds could never update (R-108).
     UpdaterPublicKey,
+    /// The login keychain has no valid identity named `bundle.macOS.signingIdentity`, so this
+    /// Mac cannot sign a release (BLD-083).
+    SigningIdentity,
 }
 
 /// The length of a minisign public key: `Ed`, the 8-byte key ID and the 32-byte key.
@@ -36,6 +42,17 @@ pub fn app_public_key(line: Option<&str>) -> Option<Tool> {
         .and_then(|line| STANDARD.decode(line).ok())
         .is_some_and(|bytes| bytes.len() == PUBLIC_KEY_BYTES && bytes.starts_with(b"Ed"));
     (!key).then_some(Tool::UpdaterPublicKey)
+}
+
+/// [`Tool::SigningIdentity`] unless `keychain`, the lines `security find-identity -v -p
+/// codesigning` printed, lists `identity`, the one this app's `bundle.macOS.signingIdentity`
+/// names (BLD-083). `-v` lists valid identities only, each name in double quotes.
+pub fn signing_identity(identity: Option<&str>, keychain: &[String]) -> Option<Tool> {
+    let found = identity
+        .filter(|name| !name.is_empty())
+        .map(|name| format!("\"{name}\""))
+        .is_some_and(|quoted| keychain.iter().any(|line| line.contains(&quoted)));
+    (!found).then_some(Tool::SigningIdentity)
 }
 
 /// Where the updater key stands for signing (BLD-028, D-19).

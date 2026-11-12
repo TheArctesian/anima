@@ -44,7 +44,6 @@ pub use error::BuilderError;
 use job::{Commit, Target, Version};
 use plan::Repository;
 use steps::Workshop;
-use tools::KeyReadiness;
 pub use tools::Tool;
 
 /// The event that carries one output line of a step to the main web view.
@@ -133,25 +132,7 @@ fn target_here(target: &str) -> Result<Target, BuilderError> {
         .ok_or(BuilderError::Platform)
 }
 
-/// Where the updater key stands; a key store that cannot be read counts as no key.
-fn key_readiness(unlocked: &UnlockedKey) -> KeyReadiness {
-    if !updater_key::is_present().unwrap_or(false) {
-        KeyReadiness::Missing
-    } else if unlocked.is_unlocked() {
-        KeyReadiness::Unlocked
-    } else {
-        KeyReadiness::Locked
-    }
-}
-
-/// Yama's `ptrace_scope` and whether this process is dumpable, read at the edge (D-19). macOS
-/// writes no core dump of the app and lets no other process of the user read its memory.
-fn memory_guarded() -> bool {
-    let scope = std::fs::read_to_string("/proc/sys/kernel/yama/ptrace_scope").ok();
-    cfg!(target_os = "macos") || tools::memory_guarded(scope.as_deref(), updater_key::dumpable())
-}
-
-/// This computer's platform and the tools it lacks (BLD-028).
+/// This computer's platform and the tools it lacks (BLD-028, BLD-083).
 #[tauri::command]
 pub async fn builder_tools_check<R: Runtime>(
     webview: Webview<R>,
@@ -164,15 +145,23 @@ pub async fn builder_tools_check<R: Runtime>(
         Target::DarwinUniversal => ("MACOS", "AARCH64"),
     };
     let app_key = tools::app_public_key(crate::updater_key::app_public_key(&app).as_deref());
+    let identity = app.config().bundle.macos.signing_identity.clone();
     let mut missing = tauri::async_runtime::spawn_blocking(move || {
         let env = Environment::from_parent(std::env::vars_os());
-        let key = key_readiness(&app.state::<UnlockedKey>());
-        tools::missing(target, &env, key, std::path::Path::exists)
+        let key = tools::readings::key_readiness(&app.state::<UnlockedKey>());
+        let mut missing = tools::missing(target, &env, key, std::path::Path::exists);
+        if target == Target::DarwinUniversal {
+            missing.extend(tools::signing_identity(
+                identity.as_deref(),
+                &tools::readings::keychain_identities(),
+            ));
+        }
+        missing
     })
     .await
     .map_err(|_| BuilderError::Failed)?;
     missing.extend(app_key);
-    let memory_guarded = memory_guarded();
+    let memory_guarded = tools::readings::memory_guarded();
     Ok(ToolCheck {
         os,
         arch,

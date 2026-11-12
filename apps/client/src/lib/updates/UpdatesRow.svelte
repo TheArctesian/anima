@@ -4,7 +4,6 @@
   import { describeUpdate, canCheck } from './status';
   import { useUpdates } from './updates.svelte';
 
-  const MAC = /Macintosh|Mac OS X/;
   const updates = useUpdates();
   const snapshot = $derived(updates.snapshot);
 
@@ -23,7 +22,7 @@
     </p>
   {/snippet}
   {#snippet hint()}
-    <p class="hint state" aria-live="polite">{describeUpdate(snapshot, time, MAC.test(navigator.userAgent))}</p>
+    <p class="hint state" aria-live="polite">{describeUpdate(snapshot, time)}</p>
   {/snippet}
   <button type="button" tabindex="0" disabled={!canCheck(snapshot)} onclick={() => void updates.checkNow()} {@attach press()}>
     Check for updates

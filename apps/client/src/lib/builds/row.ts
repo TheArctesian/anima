@@ -15,6 +15,7 @@ export const TOOL_NAMES: Readonly<Record<MissingTool, string>> = {
   'tauri-packages': 'the Tauri system packages',
   'updater-key': 'the updater key',
   'updater-public-key': "this app's updater public key (an app built with the placeholder cannot build releases)",
+  'signing-identity': 'the Developer ID certificate in the login keychain',
 };
 
 /** The tools of `tools` that are not there, for the "Missing:" list. */

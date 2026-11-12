@@ -26,17 +26,13 @@ use crate::{
     ids::BuildJobId,
 };
 
-/// Whether macOS builds have Developer ID signing and notarization. Until OD-13 they do not, so
-/// no macOS feed is written (BLD-068, R-108).
-const DEVELOPER_ID: bool = false;
-
 /// The reason of every publish while the hub has no updater public key (R-108).
 pub(super) const NO_UPDATER_KEY: &str =
     "The hub has no updater public key (ANIMA_UPDATER_PUBLIC_KEY), so it publishes nothing.";
 
 /// What one publish ended with.
 pub(super) enum Outcome {
-    /// Published, with the feed folders written (none for macOS, BLD-068) and the checked files
+    /// Published, with the feed folders written (one per platform key, BLD-067, BLD-068) and the checked files
     /// the bucket held other bytes for afterwards (D-28).
     Published(&'static [&'static str], Vec<String>),
     Refused(String),
@@ -177,7 +173,7 @@ async fn steps(
         .bucket
         .copy((&from, etag_of(&etags, &source)), stable, reach.clock.now());
     transfer::send(reach.http, copy, Vec::new(), stable).await?;
-    let folders = feed::feed_folders(work.target, DEVELOPER_ID);
+    let folders = feed::platform_keys(work.target);
     for folder in folders {
         tried.holds(db, reach.clock).await?;
         store::mark_feed_sent(db, tried.job, reach.clock.now())
@@ -192,7 +188,7 @@ async fn steps(
 /// Confirms the feed an earlier try sent (D-25): every feed folder must hold this job's feed. A
 /// folder that holds another refuses the job, whose files are kept.
 async fn confirm(reach: Reach<'_>, work: &Work) -> Result<&'static [&'static str], Stop> {
-    let folders = feed::feed_folders(work.target, DEVELOPER_ID);
+    let folders = feed::platform_keys(work.target);
     for folder in folders {
         let object = format!("{folder}/latest.json");
         match feed_in(reach, &object, &work.feed).await {

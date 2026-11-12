@@ -181,7 +181,7 @@ async fn record(
             let next = queue::published(job, now);
             store::save(&mut tx, &next).await?;
             store::set_written(&mut tx, job.id, folders).await?;
-            let event = published_event(job, folders);
+            let event = published_event(job);
             events::record(&mut tx, bus, now, event).await?;
             record_changed(&mut tx, bus, now, (job, &changed)).await?;
             next
@@ -223,21 +223,13 @@ async fn remove_objects(db: &PgPool, reach: Reach<'_>, job: &BuildJob) -> Result
     Ok(())
 }
 
-/// The event of `job` published with `folders` written (BLD-068, BLD-082).
-fn published_event(job: &BuildJob, folders: &[&str]) -> NewEvent {
-    let feed = if folders.is_empty() {
-        " without a feed (BLD-068)"
-    } else {
-        ""
-    };
+/// The event of `job` published (BLD-082).
+fn published_event(job: &BuildJob) -> NewEvent {
     NewEvent {
         severity: Severity::Info,
         source: Source::Hub,
         device: None,
-        message: format!(
-            "Anima {} for {} is published{feed}.",
-            job.version, job.target
-        ),
+        message: format!("Anima {} for {} is published.", job.version, job.target),
     }
 }
 

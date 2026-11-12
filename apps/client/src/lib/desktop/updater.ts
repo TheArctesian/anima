@@ -27,7 +27,7 @@ const MESSAGES: Record<UpdaterStep, string> = {
 
 /**
  * Why an update failed, in the three cases the operator can act on: the feed has no release for this target (a 404, an
- * absent feed, or no entry for the platform: macOS has none until BLD-068 is lifted), the signature was refused (UPD-002),
+ * absent feed, or no entry for the platform), the signature was refused (UPD-002),
  * or anything else (the network, the disk).
  */
 export type UpdateFailure = 'no-feed' | 'signature' | 'other';

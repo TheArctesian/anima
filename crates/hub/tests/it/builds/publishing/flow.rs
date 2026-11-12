@@ -92,10 +92,10 @@ fn mac_files(publishing: &Publishing) -> (Vec<File>, Value) {
     (vec![archive, dmg, File::new("SHA256SUMS", sums)], feed)
 }
 
-/// BLD-068 until OD-13 (R-108): a macOS job publishes its versioned files and the DMG's stable
-/// name, and no feed.
+/// BLD-068 (R-116): a macOS job publishes its versioned files, the DMG's stable name, and its
+/// feed in both Mac folders.
 #[sqlx::test(migrations = "./migrations")]
-async fn bld_068_a_macos_job_publishes_without_a_feed(pool: PgPool) {
+async fn bld_068_a_macos_job_publishes_its_feed_for_both_mac_architectures(pool: PgPool) {
     let publishing = Publishing::start(&pool, true).await;
     publishing.release("0.1.12", "DARWIN_UNIVERSAL").await;
     let held = publishing.uploading("mac-mini", MACOS).await;
@@ -106,15 +106,21 @@ async fn bld_068_a_macos_job_publishes_without_a_feed(pool: PgPool) {
     let fake = &publishing.fake;
     let dmg = parts(fake.object("Anima.dmg"));
     assert_eq!(dmg, Some(object(&files[1].bytes, "no-cache")));
-    let feeds = fake.with(|store| {
-        store
-            .objects
-            .keys()
-            .filter(|key| key.ends_with("latest.json"))
-            .count()
-    });
-    assert_eq!(feeds, 0);
-    assert_eq!(written(&publishing, &held).await, Some(Vec::new()));
+    for folder in ["darwin-aarch64", "darwin-x86_64"] {
+        let stored = fake.object(&format!("{folder}/latest.json")).unwrap();
+        assert_eq!(
+            serde_json::from_slice::<Value>(&stored.bytes).unwrap(),
+            feed
+        );
+        assert_eq!(stored.cache_control.as_deref(), Some("no-cache"));
+    }
+    assert_eq!(
+        written(&publishing, &held).await,
+        Some(vec![
+            "darwin-aarch64".to_owned(),
+            "darwin-x86_64".to_owned()
+        ])
+    );
 }
 
 /// D-25: a hub that stops after the stable copy, before it sends `latest.json`, leaves the job

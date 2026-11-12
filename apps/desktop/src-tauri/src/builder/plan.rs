@@ -77,6 +77,7 @@ pub enum Program {
     Tar,
     Codesign,
     Lipo,
+    Xcrun,
 }
 
 impl Program {
@@ -87,6 +88,7 @@ impl Program {
             Self::Tar => "tar",
             Self::Codesign => "codesign",
             Self::Lipo => "lipo",
+            Self::Xcrun => "xcrun",
         }
     }
 }
@@ -229,7 +231,8 @@ fn tauri(clone: &Path, args: &[&str], config: &serde_json::Value) -> Command {
 }
 
 /// Compile with `--no-bundle`, then bundle, with the version in `--config` and no updater
-/// artifact: the shell signs the updater file itself (BLD-043, BLD-045).
+/// artifact: the shell signs the updater file itself (BLD-043, BLD-045). On macOS Tauri signs
+/// the app with the identity `bundle.macOS.signingIdentity` names (BLD-083).
 pub fn bundle(clone: &Path, target: Target, version: &Version) -> Vec<Command> {
     let compile_config = serde_json::json!({ "version": version.as_str() });
     let bundle_config = serde_json::json!({
@@ -251,13 +254,11 @@ pub fn bundle(clone: &Path, target: Target, version: &Version) -> Vec<Command> {
         }
         Target::DarwinUniversal => {
             let universal = ["--target", "universal-apple-darwin"];
-            let mut bundle = tauri(
+            let bundle = tauri(
                 clone,
                 &["bundle", universal[0], universal[1], "--bundles", "app,dmg"],
                 &bundle_config,
             );
-            // Ad-hoc signing until there is an Apple Developer ID (OD-13).
-            bundle.env.push(("APPLE_SIGNING_IDENTITY", "-".into()));
             let compile = ["build", "--no-bundle", universal[0], universal[1]];
             vec![tauri(clone, &compile, &compile_config), bundle]
         }
@@ -277,6 +278,35 @@ pub fn bundle_checks(app: &Path, binary: &Path) -> [Command; 2] {
     let mut lipo = command(Program::Lipo, folder, &["-archs"]);
     lipo.args.push(binary.as_os_str().to_owned());
     [codesign, lipo]
+}
+
+/// The `notarytool` keychain profile that holds the Apple credentials; they never reach a step's
+/// environment (BLD-084, R-116).
+pub const NOTARY_PROFILE: &str = "anima-notary";
+
+/// Sends the DMG to Apple's notary service and waits for its answer (BLD-084). `notarytool`
+/// exits 0 for a rejected submission too, so the output's `status:` line decides (BLD-085).
+pub fn notarize(dmg: &Path) -> Command {
+    let folder = dmg.parent().unwrap_or(dmg);
+    let mut notarize = command(Program::Xcrun, folder, &["notarytool", "submit"]);
+    notarize.args.push(dmg.as_os_str().to_owned());
+    notarize.args.extend(
+        ["--keychain-profile", NOTARY_PROFILE, "--wait"]
+            .iter()
+            .map(OsString::from),
+    );
+    notarize
+}
+
+/// Staples the notarization ticket to `bundle`, a DMG or an app, then checks it is there
+/// (BLD-084, UPD-011).
+pub fn staple(bundle: &Path) -> [Command; 2] {
+    let folder = bundle.parent().unwrap_or(bundle);
+    [["stapler", "staple"], ["stapler", "validate"]].map(|args| {
+        let mut stapler = command(Program::Xcrun, folder, &args);
+        stapler.args.push(bundle.as_os_str().to_owned());
+        stapler
+    })
 }
 
 /// The macOS updater file: the app folder as `<app>.tar.gz`, with no `AppleDouble` files.

@@ -94,6 +94,18 @@ fn bld_047_lipo_must_name_both_architectures() {
     assert!(!artifact::universal(&[]));
 }
 
+#[test]
+fn bld_085_only_apples_final_accepted_status_counts_as_notarized() {
+    let lines = |text: &str| text.lines().map(str::to_owned).collect::<Vec<_>>();
+    let accepted = "Waiting for processing to complete.\nCurrent status: Accepted....\nProcessing complete\n  id: 0b1c\n  status: Accepted";
+    assert!(artifact::notarized(&lines(accepted)));
+    let invalid =
+        "Current status: Accepted....\nProcessing complete\n  id: 0b1c\n  status: Invalid";
+    assert!(!artifact::notarized(&lines(invalid)));
+    assert!(!artifact::notarized(&lines("  status: In Progress")));
+    assert!(!artifact::notarized(&[]));
+}
+
 /// A clone with one bundled file, recorded as the bundle step records it.
 fn bundled_clone() -> (tempfile::TempDir, PathBuf, Bundle) {
     let root = tempfile::tempdir().unwrap();

@@ -19,10 +19,9 @@ describe('describeUpdate', () => {
     expect(describeUpdate(snap({ kind: 'failed', reason: 'other' }), time)).toBe('The last update attempt failed.');
   });
 
-  it('UPD-006: a missing feed for the target says so, and on a Mac says why (BLD-068)', () => {
+  it('UPD-006, BLD-068: a missing feed for the target says so, the same on a Mac as on Linux', () => {
     const failed = snap({ kind: 'failed', reason: 'no-feed' });
     expect(describeUpdate(failed, time)).toBe('No update is published for this computer yet.');
-    expect(describeUpdate(failed, time, true)).toBe('Updates for the Mac are not published yet. Install a new version from its disk image.');
   });
 
   it('UPD-002: a refused signature says the update was refused and the version kept', () => {
