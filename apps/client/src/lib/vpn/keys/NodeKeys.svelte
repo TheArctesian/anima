@@ -64,7 +64,7 @@
     align-items: center;
     min-block-size: var(--target-min-desktop);
     padding: var(--space-3) var(--space-4);
-    border-block-start: var(--border-thin) solid var(--border);
+    border-block-start: var(--border-thin) solid var(--border-strong);
   }
 
   /* A narrow card gives the name a line of its own; the role and the address share the next one. */
@@ -91,7 +91,7 @@
 
   .add {
     padding: var(--space-3) var(--space-4);
-    border-block-start: var(--border-thin) solid var(--border);
+    border-block-start: var(--border-thin) solid var(--border-strong);
   }
 
   .name {
@@ -101,7 +101,7 @@
 
   .role,
   .address {
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font-size: var(--text-sm);
   }
 
@@ -135,7 +135,7 @@
 
   .strange {
     grid-column: 1 / -1;
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font-size: var(--text-sm);
   }
 </style>

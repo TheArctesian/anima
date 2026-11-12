@@ -122,7 +122,7 @@
     align-items: center;
     gap: var(--space-1);
     min-block-size: var(--target-min-desktop);
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font-size: var(--text-sm);
     text-decoration: none;
     transition: color var(--duration-fast) var(--ease-enter);
@@ -158,7 +158,7 @@
 
   .system {
     flex: none;
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font-size: var(--text-2xl);
     line-height: var(--leading-tight);
   }
@@ -204,7 +204,7 @@
   .meta-place {
     flex: none;
     border-radius: var(--radius-md);
-    background: var(--surface);
+    background: var(--surface-raised);
   }
 
   .name {

@@ -77,13 +77,13 @@
 
   .waits {
     flex: 1 1 100%;
-    color: var(--text-muted);
+    color: var(--text-secondary);
   }
 
   .after {
     flex: 1 1 10rem;
     min-block-size: calc(var(--text-sm) * var(--leading-normal));
-    color: var(--text-muted);
+    color: var(--text-secondary);
   }
 
   /* Two lines below the narrow breakpoint, where the text wraps (MOT-007). */

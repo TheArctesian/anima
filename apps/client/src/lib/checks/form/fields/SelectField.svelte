@@ -37,7 +37,7 @@
 
   label {
     font-size: var(--text-sm);
-    color: var(--text-muted);
+    color: var(--text-secondary);
   }
 
   /* A set width, not the longest option's, so a long option never widens the modal past a 390 px screen (MOT-007). */
@@ -47,9 +47,9 @@
     min-inline-size: 0;
     min-block-size: var(--target-min-desktop);
     padding: var(--space-2) var(--select-chevron-room) var(--space-2) var(--space-3);
-    border: var(--border-thin) solid var(--border);
+    border: var(--border-thin) solid var(--border-strong);
     border-radius: var(--radius-md);
-    background-color: var(--surface);
+    background-color: var(--surface-raised);
     color: var(--text);
     font: inherit;
   }

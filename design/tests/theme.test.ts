@@ -4,10 +4,14 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { renderCss } from '../src/css.ts';
 import { loadTokens } from '../src/load.ts';
-import { TokenSourceError, type ModeValue, type Token } from '../src/model.ts';
+import { TokenSourceError, type ModeValue, type Palette, type Token } from '../src/model.ts';
+
+/** No palette: the synthetic tokens are shared, so only the shared blocks are under test. */
+const NO_PALETTES: Palette[] = [];
+const PREFERENCE = ':root, :root[data-theme], :root[data-palette], :root[data-palette][data-theme]';
 
 function colour(name: string, source: string, value: string, light?: ModeValue): Token {
-  return { name, path: `color.${name}`, group: 'color', type: 'color', value, source, description: '', reduced: undefined, light };
+  return { name, path: `color.${name}`, group: 'color', type: 'color', value, source, description: '', reduced: undefined, light, palette: undefined };
 }
 
 const PRIMITIVES: Token[] = [
@@ -20,17 +24,18 @@ const MATERIAL: Token = {
   group: 'material',
   type: 'material',
   value: { base: '#2E3440', opacityPercent: 90, blur: '12px', saturatePercent: 100 },
-  source: { base: '{color.bg}', opacityPercent: 90, blur: '12px', saturatePercent: 100 },
+  source: { base: '{color.surface-base}', opacityPercent: 90, blur: '12px', saturatePercent: 100 },
   description: '',
   reduced: undefined,
   light: undefined,
+  palette: undefined,
 };
 
-/** A synthetic token set: `bg` and `border` change in the light theme, `text` does not. */
+/** A synthetic token set: `surface-base` and `border-strong` change in the light theme, `text` does not. */
 const THEMED: Token[] = [
   ...PRIMITIVES,
-  colour('bg', '{color.nord.0}', '#2E3440', { source: '{color.nord.5}', value: '#E5E9F0' }),
-  colour('border', '{color.nord.5}', '#E5E9F0', { source: '{color.nord.0}', value: '#2E3440' }),
+  colour('surface-base', '{color.nord.0}', '#2E3440', { source: '{color.nord.5}', value: '#E5E9F0' }),
+  colour('border-strong', '{color.nord.5}', '#E5E9F0', { source: '{color.nord.0}', value: '#2E3440' }),
   colour('text', '{color.nord.5}', '#E5E9F0'),
   MATERIAL,
 ];
@@ -46,32 +51,32 @@ function body(css: string, opening: string): string[] {
 
 describe('light theme blocks (UI-005, K5)', () => {
   test('UI-005: light values give the light selector and the System-on-a-light-OS selector the same declarations', () => {
-    const css = renderCss(THEMED);
+    const css = renderCss(THEMED, NO_PALETTES);
     const light = body(css, ':root[data-theme="light"]');
-    expect(light).toEqual(['--bg: var(--nord-5);', '--border: var(--nord-0);']);
+    expect(light).toEqual(['--surface-base: var(--nord-5);', '--border-strong: var(--nord-0);']);
     expect(css).toContain('@media (prefers-color-scheme: light) {\n  :root[data-theme="system"] {');
     expect(body(css, '  :root[data-theme="system"]')).toEqual(light);
   });
 
-  test('UI-005: without a light value there is no theme block and the preference blocks keep their plain :root', () => {
-    const css = renderCss(DARK_ONLY);
-    expect(css).not.toContain('data-theme');
+  test('UI-005: without a light value there is no theme block and the preference blocks keep their plain selectors', () => {
+    const css = renderCss(DARK_ONLY, NO_PALETTES);
+    expect(css).not.toContain(':root[data-theme="light"]');
     expect(css).not.toContain('prefers-color-scheme');
-    expect(css).toContain('@media (prefers-contrast: more) {\n  :root {');
+    expect(css).toContain(`@media (prefers-contrast: more) {\n  ${PREFERENCE} {`);
   });
 
   test('MAT-006: increased contrast and reduced transparency come after the light blocks and match their specificity', () => {
-    const css = renderCss(THEMED);
+    const css = renderCss(THEMED, NO_PALETTES);
     const system = css.indexOf(':root[data-theme="system"]');
     for (const query of ['prefers-reduced-transparency: reduce', 'prefers-contrast: more']) {
-      const at = css.indexOf(`@media (${query}) {\n  :root, :root[data-theme] {`);
+      const at = css.indexOf(`@media (${query}) {\n  ${PREFERENCE} {`);
       expect(at).toBeGreaterThan(system);
     }
-    expect(body(css, '  :root, :root[data-theme]')).toContain('--material-panel-bg: var(--bg);');
+    expect(body(css, `  ${PREFERENCE}`)).toContain('--material-panel-bg: var(--surface-base);');
   });
 
   test('UI-005: the dark :root block is the same with and without light values', () => {
-    expect(body(renderCss(THEMED), ':root')).toEqual(body(renderCss(DARK_ONLY), ':root'));
+    expect(body(renderCss(THEMED, NO_PALETTES), ':root')).toEqual(body(renderCss(DARK_ONLY, NO_PALETTES), ':root'));
   });
 });
 
@@ -93,8 +98,8 @@ const NORD = { $type: 'color', nord: { '0': { $value: '#2E3440' }, '5': { $value
 
 describe('light values in the token source (TOK-011)', () => {
   test('UI-005: a light alias is loaded as written, so the light block names the primitive', async () => {
-    const tokens = await loadSource({ color: { ...NORD, bg: { $value: '{color.nord.0}', $extensions: light('{color.nord.5}') } } });
-    expect(body(renderCss(tokens as Token[]), ':root[data-theme="light"]')).toEqual(['--bg: var(--nord-5);']);
+    const tokens = await loadSource({ color: { ...NORD, 'surface-base': { $value: '{color.nord.0}', $extensions: light('{color.nord.5}') } } });
+    expect(body(renderCss(tokens as Token[], NO_PALETTES), ':root[data-theme="light"]')).toEqual(['--surface-base: var(--nord-5);']);
   });
 
   test('TOK-011: a light value on a non-colour token is a TokenSourceError naming the token', async () => {
@@ -115,7 +120,7 @@ describe('light values in the token source (TOK-011)', () => {
     const mix = { color: '{color.nord.0}', percent: 12, over: '{color.nord.5}' };
     const tokens = await loadSource({ color: { ...NORD, 'surface-hover': { $value: '{color.nord.0}', $extensions: light(mix) } } });
     const expected = ['--surface-hover: color-mix(in srgb, var(--nord-0) 12%, var(--nord-5));'];
-    const css = renderCss(tokens as Token[]);
+    const css = renderCss(tokens as Token[], NO_PALETTES);
     expect(body(css, ':root[data-theme="light"]')).toEqual(expected);
     expect(body(css, '  :root[data-theme="system"]')).toEqual(expected);
     expect(body(css, ':root')).toContain('--surface-hover: var(--nord-0);');

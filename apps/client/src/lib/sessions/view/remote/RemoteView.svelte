@@ -308,7 +308,7 @@
     block-size: 100%;
     min-block-size: 0;
     min-inline-size: 0;
-    background: var(--bg);
+    background: var(--surface-base);
     color: var(--text);
   }
 
@@ -360,6 +360,6 @@
     gap: var(--space-4);
     overflow: auto;
     padding: var(--space-6);
-    background: var(--bg);
+    background: var(--surface-base);
   }
 </style>

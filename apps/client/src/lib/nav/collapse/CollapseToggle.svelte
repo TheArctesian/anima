@@ -36,7 +36,7 @@
     border: 0;
     border-radius: var(--radius-md);
     background: transparent;
-    color: var(--text-muted);
+    color: var(--text-secondary);
     cursor: pointer;
     transition:
       background-color var(--duration-fast) var(--ease-enter),
@@ -44,7 +44,7 @@
   }
 
   button:hover {
-    background: var(--surface-raised);
+    background: var(--surface-overlay);
     color: var(--text);
   }
 

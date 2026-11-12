@@ -240,7 +240,7 @@
     block-size: 100%;
     min-block-size: 0;
     min-inline-size: 0;
-    background: var(--bg);
+    background: var(--surface-base);
     color: var(--text);
   }
 
@@ -263,8 +263,8 @@
     gap: var(--space-3);
     min-inline-size: 0;
     padding: var(--space-2) var(--space-3);
-    border-bottom: var(--border-thin) solid var(--border);
-    background: var(--surface);
+    border-bottom: var(--border-thin) solid var(--border-strong);
+    background: var(--surface-raised);
   }
 
   /* Lies over the whole toolbar row, bounded by `inset: 0` (the toolbar itself is not clipped, so the Keys menu can reach out of it): the find bar, or a one-line message with a way to dismiss it. */
@@ -276,7 +276,7 @@
     gap: var(--space-2);
     min-inline-size: 0;
     padding: var(--space-2) var(--space-3);
-    background: var(--surface);
+    background: var(--surface-raised);
   }
 
   /* The bar never sets the pane's width: the name and the policy give way first, and the controls keep their size (UI-009). */
@@ -295,7 +295,7 @@
 
   .policy {
     flex: 1;
-    color: var(--text-muted);
+    color: var(--text-secondary);
   }
 
   .find {
@@ -305,15 +305,15 @@
     gap: var(--space-2);
     min-block-size: var(--target-min-desktop);
     padding: 0 var(--space-3);
-    border: var(--border-thin) solid var(--border);
+    border: var(--border-thin) solid var(--border-strong);
     border-radius: var(--radius-md);
-    background: var(--surface-raised);
+    background: var(--surface-overlay);
     color: var(--text);
     font: inherit;
   }
 
   .find:disabled {
-    color: var(--text-muted);
+    color: var(--text-secondary);
   }
 
   .find:focus-visible {
@@ -362,6 +362,6 @@
     gap: var(--space-4);
     overflow: auto;
     padding: var(--space-6);
-    background: var(--bg);
+    background: var(--surface-base);
   }
 </style>

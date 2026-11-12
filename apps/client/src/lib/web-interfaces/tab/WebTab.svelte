@@ -316,7 +316,7 @@
     flex-direction: column;
     block-size: 100%;
     min-block-size: 0;
-    background: var(--bg);
+    background: var(--surface-base);
   }
 
   .notice {

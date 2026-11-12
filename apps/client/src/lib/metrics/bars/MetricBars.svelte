@@ -65,7 +65,7 @@
 
   p {
     margin: 0;
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font-size: var(--text-sm);
     line-height: var(--leading-tight);
   }
@@ -82,7 +82,7 @@
   }
 
   .label {
-    color: var(--text-muted);
+    color: var(--text-secondary);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -105,7 +105,7 @@
   .track {
     grid-column: 1 / -1;
     border-radius: var(--radius-sm);
-    background: var(--surface-raised);
+    background: var(--surface-overlay);
     overflow: hidden;
   }
 

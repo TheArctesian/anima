@@ -84,7 +84,7 @@
     /* The note and the notice beside Try again fill the same block, the height of a button (MOT-007). */
     min-block-size: var(--space-8);
     padding: var(--space-3) var(--space-4);
-    border-block-start: var(--border-thin) solid var(--border);
+    border-block-start: var(--border-thin) solid var(--border-strong);
   }
 
   .note :global(button) {
@@ -106,6 +106,6 @@
   }
 
   p:not([role]) {
-    color: var(--text-muted);
+    color: var(--text-secondary);
   }
 </style>

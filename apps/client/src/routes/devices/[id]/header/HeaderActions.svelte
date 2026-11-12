@@ -86,12 +86,12 @@
   .solid {
     border-color: var(--accent);
     background: var(--accent);
-    color: var(--bg);
+    color: var(--surface-base);
   }
 
   .solid:hover,
   .solid:active {
-    background: var(--accent-deep);
+    background: var(--accent-pressed);
   }
 
   /* Not set up: a dashed border and a "+" (DEV-022). */

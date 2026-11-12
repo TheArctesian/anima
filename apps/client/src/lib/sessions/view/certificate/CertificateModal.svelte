@@ -204,7 +204,7 @@
 
   .pending {
     font-family: var(--font-ui);
-    color: var(--text-muted);
+    color: var(--text-secondary);
   }
 
   .fingerprint {
@@ -231,16 +231,16 @@
   button {
     min-block-size: var(--target-min-desktop);
     padding: 0 var(--space-4);
-    border: var(--border-thin) solid var(--border);
+    border: var(--border-thin) solid var(--border-strong);
     border-radius: var(--radius-md);
-    background: var(--surface-raised);
+    background: var(--surface-overlay);
     color: var(--text);
     font: inherit;
     transition: background-color var(--duration-fast) var(--ease-enter);
   }
 
   button:disabled {
-    color: var(--text-muted);
+    color: var(--text-secondary);
   }
 
   button:focus-visible {

@@ -54,7 +54,7 @@ const bad: Record<string, string> = {
   'a calc() of literals in a layer custom property': 'a { --z: calc(1 + 2); }',
   'a primitive nord token in a colour': 'a { color: var(--nord-3); }',
   'a primitive nord token in a custom property': 'a { --surface-local: var(--nord-0); }',
-  'a primitive nord token with a fallback': 'a { background-color: var(--nord-10, var(--bg)); }',
+  'a primitive nord token with a fallback': 'a { background-color: var(--nord-10, var(--surface-base)); }',
   'an upper-case 0.2S duration in transition': 'a { transition: opacity 0.2S var(--ease); }',
   'an upper-case EASE keyword in transition': 'a { transition: opacity var(--d) EASE; }',
   'a literal opacity': 'a { opacity: 0.5; }',
@@ -174,7 +174,7 @@ describe('Stylelint token gate: vendored fonts and primitive tokens', () => {
   });
 
   it('TOK-010 accepts primitive nord tokens inside tokens.css only', async () => {
-    const css = ':root { --bg: var(--nord-0); }';
+    const css = ':root { --surface-base: var(--nord-0); }';
     expect(await warnings(css, 'apps/client/src/styles/tokens.css')).toEqual([]);
     expect(await warnings(css)).toContain('declaration-property-value-disallowed-list');
   });

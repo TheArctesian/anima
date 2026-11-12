@@ -150,9 +150,9 @@
     box-sizing: border-box;
     block-size: var(--space-8);
     padding: 0 var(--space-3);
-    border: var(--border-thin) solid var(--border);
+    border: var(--border-thin) solid var(--border-strong);
     border-radius: var(--radius-md);
-    background: var(--surface);
+    background: var(--surface-raised);
     color: var(--text);
     font: inherit;
   }
@@ -164,7 +164,7 @@
   }
 
   button:hover:enabled {
-    background: var(--surface-raised);
+    background: var(--surface-overlay);
   }
 
   /* While the hub answers, the button shows it is off (opacity only, so nothing moves). */

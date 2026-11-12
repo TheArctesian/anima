@@ -115,12 +115,12 @@
   }
 
   button:hover:not([aria-disabled='true']) {
-    background: var(--surface-raised);
+    background: var(--surface-overlay);
   }
 
   /* No disabled colour token exists; muted text is the nearest (Section 5.3). */
   button[aria-disabled='true'] {
-    color: var(--text-muted);
+    color: var(--text-secondary);
   }
 
   button:focus-visible {
@@ -138,9 +138,9 @@
     display: flex;
     flex-direction: column;
     padding: var(--space-1);
-    border: var(--border-thin) solid var(--border);
+    border: var(--border-thin) solid var(--border-strong);
     border-radius: var(--radius-md);
-    background: var(--surface-raised);
+    background: var(--surface-overlay);
     box-shadow: var(--elevation-2);
     font-family: var(--font-ui);
   }

@@ -107,7 +107,7 @@
     padding: var(--space-3);
     background: var(--material-chrome-bg);
     backdrop-filter: blur(var(--material-chrome-blur)) saturate(var(--material-chrome-saturate));
-    border-right: var(--border-thin) solid var(--border);
+    border-right: var(--border-thin) solid var(--border-strong);
     z-index: var(--layer-nav);
   }
 
@@ -162,7 +162,7 @@
   }
 
   .item:not([aria-current='page']):hover {
-    background: var(--surface-raised);
+    background: var(--surface-overlay);
   }
 
   .item:not([aria-current='page']):active {
@@ -282,9 +282,9 @@
     block-size: var(--nav-banner-block-size);
     padding: var(--space-2) var(--space-3);
     overflow: hidden;
-    border-block-end: var(--border-thin) solid var(--border);
+    border-block-end: var(--border-thin) solid var(--border-strong);
     border-radius: 0;
-    background: var(--surface-raised);
+    background: var(--surface-overlay);
     box-shadow: var(--elevation-2);
     white-space: nowrap;
   }
@@ -317,7 +317,7 @@
     inline-size: 100%;
     margin: auto 0 var(--space-2);
     border: 0;
-    border-top: var(--border-thin) solid var(--border);
+    border-top: var(--border-thin) solid var(--border-strong);
   }
 
   /* One line with a height set from tokens, so the font swap cannot move the divider (MOT-007). */

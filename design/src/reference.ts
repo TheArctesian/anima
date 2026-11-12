@@ -16,7 +16,7 @@ function valueCell(token: Token): string {
   const lines = declarations(token).map(([property, value]) => `\`${property}: ${shown(value)}\``);
   if (token.type === 'breakpoint') return `\`${JSON.stringify(token.value)}\` (TypeScript only)`;
   if (token.type === 'gesture') return `\`${String(token.value)}\` (TypeScript only)`;
-  const resolved = token.type === 'color' && aliasName(token.source) ? ` = \`${String(token.value)}\`` : '';
+  const resolved = typeof token.value === 'string' && aliasName(token.source) ? ` = \`${token.value}\`` : '';
   return `${lines.join('<br>')}${resolved}${lightLine(token)}`;
 }
 
@@ -49,8 +49,9 @@ function typescriptMap(tokens: readonly Token[]): string {
 }
 
 const NOTES = [
-  '- Component code uses semantic tokens only; `nord-*` are primitives for the source and for themes (TOK-010).',
-  '- `elevation-1` is a 1 px border and no shadow (5.6), so its value is `none`; the component draws the border.',
+  '- Component code uses semantic tokens only; `nord-*`, `graphite-*` and the other palette primitives are sources for the roles (TOK-010).',
+  '- Two palettes are registered (UI-023): Graphite is the default, on `:root`; Nord is selected by `data-palette="nord"` on `<html>`. Each palette has its own `color.role.<palette>` group, with its dark value and its light value.',
+  '- `elevation-1` is surface contrast, no border and no shadow (5.6), so its value is `none`: a card is `surface-raised` on `surface-sunken`.',
   '- `target-min-touch` is 44 pt on iOS and 44 CSS px on the web.',
   '- Spring tokens are `<settle time> linear(<curve>)` fragments for CSS transitions; scripts read stiffness and damping from `tokens.ts` through `$lib/motion/` (MOT-001).',
   '- `threshold-*` never change under reduced motion (MOT-021).',

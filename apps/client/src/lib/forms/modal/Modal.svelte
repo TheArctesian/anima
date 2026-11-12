@@ -232,8 +232,8 @@
     inline-size: min(100%, calc(var(--space-16) * var(--modal-width)));
     max-block-size: 100%;
     padding: var(--space-5);
-    background: var(--surface-raised);
-    border: var(--border-thin) solid var(--border);
+    background: var(--surface-overlay);
+    border: var(--border-thin) solid var(--border-strong);
     border-radius: var(--radius-lg);
     box-shadow: var(--elevation-3);
     color: var(--text);
@@ -333,7 +333,7 @@
     background: none;
     border: 0;
     border-radius: var(--radius-md);
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font: inherit;
     transition: background-color var(--duration-fast) var(--ease-enter);
   }

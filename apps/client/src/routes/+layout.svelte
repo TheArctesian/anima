@@ -181,7 +181,7 @@
     margin: 0;
     padding: var(--space-6);
     min-height: 100vh;
-    background: var(--bg);
+    background: var(--surface-base);
     color: var(--text);
   }
 
@@ -191,7 +191,7 @@
     grid-template-columns: auto minmax(0, 1fr);
     align-items: start;
     min-height: 100vh;
-    background: var(--bg);
+    background: var(--surface-base);
     color: var(--text);
     font-family: var(--font-ui);
   }

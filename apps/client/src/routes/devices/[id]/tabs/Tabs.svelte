@@ -123,7 +123,7 @@
     margin-block-end: var(--space-4);
     padding-block-end: var(--border-thin);
     /* The rule is drawn inside the strip, so the clipped strip keeps the underline where the border was. */
-    box-shadow: inset 0 calc(var(--border-thin) * -1) 0 var(--border);
+    box-shadow: inset 0 calc(var(--border-thin) * -1) 0 var(--border-strong);
     scroll-padding-inline: var(--space-8);
     scrollbar-width: none;
   }
@@ -158,7 +158,7 @@
     padding: 0 var(--space-3);
     border: 0;
     background: none;
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font: inherit;
     transition: color var(--duration-fast) var(--ease-enter);
   }

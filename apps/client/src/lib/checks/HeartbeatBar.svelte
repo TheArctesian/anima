@@ -74,7 +74,7 @@
   }
 
   .empty {
-    background: var(--surface-raised);
+    background: var(--surface-overlay);
   }
 
   .up {

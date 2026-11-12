@@ -89,7 +89,7 @@
     flex-direction: column;
     gap: var(--space-3);
     padding-block-start: var(--space-4);
-    border-block-start: var(--border-thin) solid var(--border);
+    border-block-start: var(--border-thin) solid var(--border-strong);
   }
 
   h3 {
@@ -108,6 +108,6 @@
 
   .empty {
     margin: 0;
-    color: var(--text-muted);
+    color: var(--text-secondary);
   }
 </style>

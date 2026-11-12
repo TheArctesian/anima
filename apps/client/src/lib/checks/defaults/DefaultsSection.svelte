@@ -137,7 +137,7 @@
     justify-content: end;
     gap: var(--space-2) var(--space-4);
     padding: var(--space-3) var(--space-4);
-    border-block-start: var(--border-thin) solid var(--border);
+    border-block-start: var(--border-thin) solid var(--border-strong);
   }
 
   .note-block {

@@ -79,3 +79,20 @@ export function deriveToContrast(
   }
   throw new UnreachableContrastError(colour, target, minimum);
 }
+
+/**
+ * The greatest whole-percent mix of `colour` toward `target` that still reaches `minimum` on `background`: the lightest
+ * (or deepest) step that keeps the text legible. Used where a tint must stay visibly apart from its base (UI-002).
+ */
+export function largestMixToContrast(
+  colour: HexColour,
+  target: HexColour,
+  background: HexColour,
+  minimum: number,
+): DerivedColour {
+  for (let mixPercent = 100; mixPercent >= 0; mixPercent -= 1) {
+    const mixed = mixColour(colour, target, mixPercent / 100);
+    if (contrastRatio(mixed, background) >= minimum) return { colour: mixed, mixPercent };
+  }
+  throw new UnreachableContrastError(colour, target, minimum);
+}

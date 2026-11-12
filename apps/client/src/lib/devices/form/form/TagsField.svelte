@@ -66,7 +66,7 @@
   }
 
   small {
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font-size: var(--text-sm);
     line-height: var(--leading-tight);
   }
@@ -79,8 +79,8 @@
     box-sizing: border-box;
     min-block-size: var(--space-8);
     padding: 0 var(--space-1) 0 var(--space-2);
-    background: var(--surface);
-    border: var(--border-thin) solid var(--border);
+    background: var(--surface-raised);
+    border: var(--border-thin) solid var(--border-strong);
     border-radius: var(--radius-md);
   }
 
@@ -125,7 +125,7 @@
     padding: 0;
     background: none;
     border: 0;
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font: inherit;
   }
 

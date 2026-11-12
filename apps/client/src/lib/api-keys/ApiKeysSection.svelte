@@ -158,7 +158,7 @@
     grid-template-columns: minmax(0, 1fr);
     align-items: start;
     padding: var(--space-3) var(--space-4);
-    border-block-start: var(--border-thin) solid var(--border);
+    border-block-start: var(--border-thin) solid var(--border-strong);
   }
 
   .stack > * {
@@ -171,7 +171,7 @@
 
   /* The skeleton covers what lies under it with the card's own colour. */
   .skeleton {
-    background: var(--surface-raised);
+    background: var(--surface-overlay);
   }
 
   p {
@@ -181,7 +181,7 @@
   }
 
   .quiet {
-    color: var(--text-muted);
+    color: var(--text-secondary);
   }
 
   .failed {

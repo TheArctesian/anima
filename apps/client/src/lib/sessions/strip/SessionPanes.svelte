@@ -75,7 +75,7 @@
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     min-inline-size: 0;
-    background: var(--bg);
+    background: var(--surface-base);
   }
 
   .panes[hidden],

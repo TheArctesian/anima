@@ -107,12 +107,12 @@
 
   .group {
     padding-block-start: var(--space-3);
-    border-block-start: var(--border-thin) solid var(--border);
+    border-block-start: var(--border-thin) solid var(--border-strong);
   }
 
   legend {
     padding: 0;
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font-size: var(--text-sm);
   }
 
@@ -143,7 +143,7 @@
 
   small {
     margin-block-start: calc(-1 * var(--space-2));
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font-size: var(--text-xs);
   }
 

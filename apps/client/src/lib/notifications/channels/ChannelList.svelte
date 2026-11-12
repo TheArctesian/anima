@@ -215,7 +215,7 @@
   }
 
   .skeleton {
-    background: var(--bg);
+    background: var(--surface-base);
   }
 
   p {
@@ -224,7 +224,7 @@
   }
 
   .quiet {
-    color: var(--text-muted);
+    color: var(--text-secondary);
   }
 
   .failed {

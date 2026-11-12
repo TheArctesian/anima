@@ -96,14 +96,14 @@
   }
 
   .places {
-    background: var(--bg);
+    background: var(--surface-base);
   }
 
   /* A placeholder row has a one-line row's height; static, so reduced motion needs no change (5.7.3, Loading). */
   .line {
     inline-size: calc(var(--space-16) * 4);
     max-inline-size: 100%;
-    background: var(--surface);
+    background: var(--surface-raised);
     color: transparent;
   }
 
@@ -119,7 +119,7 @@
     align-items: baseline;
     gap: var(--space-1) var(--space-3);
     padding: var(--space-1) var(--space-3);
-    border-block-end: var(--border-thin) solid var(--border);
+    border-block-end: var(--border-thin) solid var(--border-strong);
     font-size: var(--text-sm);
   }
 
@@ -150,7 +150,7 @@
   .info,
   .source,
   .device {
-    color: var(--text-muted);
+    color: var(--text-secondary);
   }
 
   time {
@@ -181,7 +181,7 @@
 
   .none {
     padding: var(--space-4);
-    color: var(--text-muted);
+    color: var(--text-secondary);
   }
 
   .notice,
@@ -206,9 +206,9 @@
     box-sizing: border-box;
     min-block-size: var(--target-min-desktop);
     padding: 0 var(--space-3);
-    border: var(--border-thin) solid var(--border);
+    border: var(--border-thin) solid var(--border-strong);
     border-radius: var(--radius-md);
-    background: var(--surface-raised);
+    background: var(--surface-overlay);
     color: var(--text);
     font: inherit;
     transition: background-color var(--duration-fast) var(--ease-enter);
