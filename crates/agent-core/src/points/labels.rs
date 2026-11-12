@@ -11,9 +11,16 @@ const PSEUDO_MOUNTS: [&str; 5] = ["/dev", "/run", "/sys", "/proc", "/snap"];
 /// Loop devices: Linux snap packages and other mounted images, not disks of their own.
 const LOOP_DEVICE: &str = "/dev/loop";
 const DATA_VOLUME: &str = "/System/Volumes/Data";
-/// macOS mounts of read-only images: iOS Simulator runtimes and system cryptexes. They are
-/// always nearly full and are not disks the operator fills.
-const IMAGE_MOUNTS: [&str; 2] = ["/Library/Developer/CoreSimulator", "/private/var/run"];
+/// Mounts of images the system writes, always nearly full and not disks the operator fills:
+/// macOS iOS Simulator runtimes and system cryptexes, and the `Pop!_OS` recovery partition, which
+/// holds a copy of the installer.
+const IMAGE_MOUNTS: [&str; 3] = [
+    "/Library/Developer/CoreSimulator",
+    "/private/var/run",
+    "/recovery",
+];
+/// The start of the mount point of a running `AppImage`: its read-only image, always 100% full.
+const APPIMAGE_MOUNT: &str = "/tmp/.mount_";
 
 fn under(mount: &str, root: &str) -> bool {
     mount
@@ -27,6 +34,7 @@ fn wanted_disk(disk: &Disk) -> bool {
         && !disk.filesystem.starts_with(LOOP_DEVICE)
         && !PSEUDO_MOUNTS.iter().any(|root| under(&disk.mount, root))
         && !IMAGE_MOUNTS.iter().any(|root| under(&disk.mount, root))
+        && !disk.mount.starts_with(APPIMAGE_MOUNT)
         && (disk.mount == DATA_VOLUME || !under(&disk.mount, "/System/Volumes"))
 }
 
