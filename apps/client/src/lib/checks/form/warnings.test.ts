@@ -15,9 +15,10 @@ function edit(change: (values: CheckFormValues) => void): string[] {
 }
 
 describe('secret warnings', () => {
-  it('CHK-009: an edit that sends no config warns of nothing', () => {
+  it('CHK-009: changing only the name warns of nothing', () => {
     const initial = checkValues(HTTP_SAVED, 'ICMP');
-    expect(secretWarnings(initial, checkValues(HTTP_SAVED, 'ICMP'))).toEqual([]);
+    const edited = { ...initial, name: 'renamed' };
+    expect(secretWarnings(initial, edited)).toEqual([]);
   });
 
   it('CHK-009: a check that is not HTTP warns of nothing', () => {

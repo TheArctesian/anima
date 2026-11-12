@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { readThisMachine, thisMachineFrom, type ThisMachine } from '$lib/desktop/this-machine';
+import { readThisMachine, type ThisMachine } from '$lib/desktop/this-machine';
 import { validateDevice } from '../form/validate';
 import { defaultRemoteValues } from '../form/remote/values';
 import { thisMachineValues } from '../form/values';
@@ -44,8 +44,8 @@ function memoryStorage(refuse = false): Storage {
 }
 
 describe('readThisMachine', () => {
-  it('R-060: asks the shell with no arguments and returns what it read', async () => {
-    shell.invoke.mockResolvedValue({ ...MAC });
+  it('R-060: asks the shell with no arguments and keeps only the machine fields', async () => {
+    shell.invoke.mockResolvedValue({ ...MAC, extra: 'dropped' });
     expect(await readThisMachine()).toEqual(MAC);
     expect(shell.invoke).toHaveBeenCalledWith('this_machine_read');
   });
@@ -62,29 +62,22 @@ describe('readThisMachine', () => {
     shell.invoke.mockResolvedValue({ ...MAC, vpnAddress: null, sshListening: false });
     expect(await readThisMachine()).toBeNull();
   });
-});
 
-describe('thisMachineFrom', () => {
-  it('R-060: keeps only the five known fields', () => {
-    expect(thisMachineFrom({ ...MAC, extra: 'dropped' })).toEqual(MAC);
-  });
-
-  it('R-060: refuses an answer of the wrong shape', () => {
-    for (const answer of [
-      null,
-      'Studio',
-      { ...MAC, os: 'WINDOWS' },
-      { ...MAC, name: 7 },
-      { ...MAC, user: undefined },
-      { ...MAC, sshListening: 'yes' },
-      { ...MAC, vpnAddress: '100.64.0' },
-      { ...MAC, vpnAddress: '100.64.0.256' },
-      { ...MAC, vpnAddress: '100.128.0.1' },
-      { ...MAC, vpnAddress: '192.168.1.20' },
-      { ...MAC, vpnAddress: '100.64.0.7; rm -rf /' },
-    ]) {
-      expect(thisMachineFrom(answer)).toBeNull();
-    }
+  it.each([
+    ['null', null],
+    ['a string', 'Studio'],
+    ['an unsupported OS', { ...MAC, os: 'WINDOWS' }],
+    ['a non-string name', { ...MAC, name: 7 }],
+    ['a missing user', { ...MAC, user: undefined }],
+    ['a non-boolean SSH flag', { ...MAC, sshListening: 'yes' }],
+    ['an incomplete IPv4 address', { ...MAC, vpnAddress: '100.64.0' }],
+    ['an out-of-range IPv4 octet', { ...MAC, vpnAddress: '100.64.0.256' }],
+    ['an address just outside the VPN range', { ...MAC, vpnAddress: '100.128.0.1' }],
+    ['a private LAN address', { ...MAC, vpnAddress: '192.168.1.20' }],
+    ['an IPv4 address with trailing text', { ...MAC, vpnAddress: '100.64.0.7; rm -rf /' }],
+  ])('R-060: refuses a shell answer with %s', async (_shape, answer) => {
+    shell.invoke.mockResolvedValue(answer);
+    expect(await readThisMachine()).toBeNull();
   });
 });
 

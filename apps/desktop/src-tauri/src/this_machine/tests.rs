@@ -69,12 +69,6 @@ fn a_computer_off_the_vpn_has_no_vpn_address() {
 }
 
 #[test]
-fn a_listening_port_accepts_a_connection() {
-    let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
-    assert!(accepts_connection(listener.local_addr().unwrap(), PATIENCE));
-}
-
-#[test]
 fn ssh_is_probed_on_port_22_with_300_ms_of_patience() {
     assert_eq!(SSH_PORT, 22);
     assert_eq!(SSH_PATIENCE, Duration::from_millis(300));

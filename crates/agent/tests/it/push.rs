@@ -6,6 +6,7 @@ use agent_core::wire::RefusalCode;
 use anima_agent::config::origin::Origin;
 use anima_agent::push::Event;
 use anima_agent::token_store::{Credential, TokenStore};
+use tokio::net::TcpSocket;
 
 use crate::fake_hub::{FakeHub, Reply};
 use crate::kit::{at, device, origin, points, pushed_times, rig, token, year};
@@ -226,13 +227,10 @@ async fn k8_7_the_wait_after_a_failure_is_spread_by_the_random_source() {
 
 #[tokio::test]
 async fn k8_7_a_network_error_keeps_the_points_and_backs_off() {
-    // A port nothing listens on.
-    let dead = {
-        let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("a port");
-        let address = listener.local_addr().expect("addr");
-        drop(listener);
-        address
-    };
+    // Reserve the port while the hub is down. Connections are refused until it listens.
+    let socket = TcpSocket::new_v4().expect("a socket");
+    socket.bind(([127, 0, 0, 1], 0).into()).expect("a port");
+    let address = socket.local_addr().expect("addr");
     let dir = tempfile::tempdir().expect("a folder");
     let home = anima_agent::config::home::Home::at(dir.path().join("agent"));
     let credential = Credential {
@@ -241,7 +239,7 @@ async fn k8_7_a_network_error_keeps_the_points_and_backs_off() {
         hub: origin(),
     };
     let client = anima_agent::hub::HubClient::new(
-        format!("http://{dead}").parse().expect("url"),
+        format!("http://{address}").parse().expect("url"),
         anima_agent::hub::TIMEOUT,
     )
     .expect("client");
@@ -253,6 +251,12 @@ async fn k8_7_a_network_error_keeps_the_points_and_backs_off() {
     }
     assert_eq!(seconds(pusher.push_due(at(30)).await), 10);
     assert_eq!(seconds(pusher.push_due(at(40)).await), 20);
+
+    let hub = FakeHub::serve(socket.listen(128).expect("the hub listens"));
+    assert_eq!(seconds(pusher.push_due(at(60)).await), 10);
+    let pushes = hub.seen("push");
+    assert_eq!(pushes.len(), 1);
+    assert_eq!(pushed_times(&pushes[0].body), [10, 20]);
 }
 
 #[tokio::test]

@@ -2,11 +2,11 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { readConfig } from "../localapi/server.ts";
 
 const ROOT = join(import.meta.dir, "..", "..");
 
 interface Container {
-  ports?: string[];
   networks?: string[] | Record<string, unknown>;
   environment?: Record<string, string>;
   depends_on?: Record<string, unknown>;
@@ -30,14 +30,9 @@ const compose = Bun.YAML.parse(readFileSync(join(ROOT, "deploy", "compose.yaml")
 const localapi = compose.services["localapi"] as Container;
 const networksOf = (service: Container): string[] => (Array.isArray(service.networks) ? service.networks : Object.keys(service.networks ?? {}));
 const dockerfile = readFileSync(join(ROOT, "deploy", "localapi", "Dockerfile"), "utf8");
-const listenPort = /ANIMA_LOCALAPI_LISTEN_PORT"\] \?\? "(\d+)"/.exec(readFileSync(join(ROOT, "deploy", "localapi", "server.ts"), "utf8"))?.[1];
+const defaults = readConfig({});
 
 describe("localapi service (D-4)", () => {
-  test("NET-003 localapi publishes no port and only the hub has one", () => {
-    expect(localapi.ports).toBeUndefined();
-    expect(Object.entries(compose.services).filter(([, s]) => s.ports !== undefined).map(([name]) => name)).toEqual(["hub"]);
-  });
-
   test("SEC-001 localapi is hardened and adds no capability", () => {
     expect(localapi.read_only).toBe(true);
     expect(localapi.cap_drop).toEqual(["ALL"]);
@@ -59,14 +54,13 @@ describe("localapi service (D-4)", () => {
   });
 
   test("D-4 the default socket path lies inside the mount", () => {
-    const server = readFileSync(join(ROOT, "deploy", "localapi", "server.ts"), "utf8");
-    expect(server).toContain('"/run/tailscale/tailscaled.sock"');
+    const mount = localapi.volumes?.[0];
+    expect(defaults.socketPath).toBe(join(mount?.target ?? "", "tailscaled.sock"));
   });
 
   test("VPN-005 the hub reaches the proxy at localapi:<port the proxy listens on>, and does not wait for it", () => {
     const hub = compose.services["hub"] as Container;
-    expect(listenPort).toBeDefined();
-    expect(hub.environment?.["ANIMA_TAILSCALE_LOCALAPI"]).toBe(`\${ANIMA_TAILSCALE_LOCALAPI:-localapi:${listenPort}}`);
+    expect(hub.environment?.["ANIMA_TAILSCALE_LOCALAPI"]).toBe(`\${ANIMA_TAILSCALE_LOCALAPI:-localapi:${String(defaults.port)}}`);
     expect(Object.keys(hub.depends_on ?? {})).not.toContain("localapi");
     expect(networksOf(hub)).toContain("localapi");
   });

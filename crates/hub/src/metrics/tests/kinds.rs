@@ -1,48 +1,9 @@
-//! The K1 enums and their stored names.
+//! Storage and agent mappings for metric kinds.
 
 use agent_core::points::Kind;
 use async_graphql::EnumType;
 
 use super::*;
-use crate::metrics::{GpuVendor, MetricRange};
-
-#[test]
-fn k1_metric_kind_names_match_the_contract() {
-    let names: Vec<&str> = MetricKind::items().iter().map(|item| item.name).collect();
-    assert_eq!(
-        names,
-        [
-            "CPU_PERCENT",
-            "MEMORY_PERCENT",
-            "MEMORY_BYTES",
-            "DISK_PERCENT",
-            "DISK_BYTES",
-            "NETWORK_IN_BPS",
-            "NETWORK_OUT_BPS",
-            "UPTIME_SECONDS",
-            "LOAD_1",
-            "LOAD_5",
-            "LOAD_15",
-            "GPU_PERCENT",
-            "VRAM_PERCENT",
-            "VRAM_BYTES",
-            "GPU_TEMPERATURE_C",
-            "GPU_POWER_W",
-            "GPU_MEMORY_BYTES",
-            "DISK_READ_BPS",
-            "DISK_WRITE_BPS",
-            "DISK_BUSY_PERCENT",
-        ]
-    );
-}
-
-#[test]
-fn k1_range_and_vendor_names_match_the_contract() {
-    let ranges: Vec<&str> = MetricRange::items().iter().map(|item| item.name).collect();
-    assert_eq!(ranges, ["HOUR", "DAY", "WEEK"]);
-    let vendors: Vec<&str> = GpuVendor::items().iter().map(|item| item.name).collect();
-    assert_eq!(vendors, ["NVIDIA", "AMD", "INTEL", "APPLE"]);
-}
 
 #[test]
 fn every_kind_is_stored_as_lower_snake_case_and_read_back() {

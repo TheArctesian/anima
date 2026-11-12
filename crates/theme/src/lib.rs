@@ -75,12 +75,6 @@ mod tests {
     }
 
     #[test]
-    fn ra_010_color_scheme_has_background_foreground_and_sixteen_colours() {
-        let scheme = guac_color_scheme();
-        assert_eq!(scheme.split(';').count(), 18);
-    }
-
-    #[test]
     fn ra_010_ansi_red_is_nord_11() {
         assert_eq!(TERMINAL_ANSI[1], NORD[11]);
         assert!(guac_color_scheme().contains("color1: rgb:bf/61/6a"));

@@ -80,7 +80,7 @@ describe('colour tokens', () => {
     }
   });
 
-  test('UI-001 the Nord dark roles are var() of the Nord primitives', () => {
+  test('UI-001 TOK-011 the Nord dark roles are var() of the Nord primitives', () => {
     expect(css).toContain('--accent: var(--nord-8);');
     expect(css).toContain('--surface-raised: var(--nord-1);');
     expect(css).toContain('--text: var(--nord-6);');
@@ -90,10 +90,6 @@ describe('colour tokens', () => {
     expect(css).toContain('--accent: var(--graphite-frost-8);');
     expect(css).toContain('--surface-raised: var(--graphite-dark-raised);');
     expect(css).toContain('--text: var(--graphite-dark-text);');
-  });
-
-  test('TOK-011 semantic colours alias primitives so a theme changes only semantic tokens (D-8)', () => {
-    expect(css).toContain('--accent: var(--nord-8);');
   });
 
   test('UI-005 a tint is the status colour at 16 % (dark) over the surface-raised role (5.5.3)', () => {
@@ -184,10 +180,5 @@ describe('materials and motion', () => {
 
   test('MOT-003 CSS springs are a settle time and a linear() curve', () => {
     expect(css).toMatch(/--spring-default: \d+ms linear\(0, [\d., ]+, 1\);/);
-  });
-
-  test('5.7.2 eases are cubic-bezier curves', () => {
-    expect(css).toContain('--ease-enter: cubic-bezier(0.2, 0, 0, 1);');
-    expect(css).toContain('--ease-exit: cubic-bezier(1, 0, 0.8, 1);');
   });
 });

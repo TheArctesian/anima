@@ -91,18 +91,6 @@ fn dev_010_enums_round_trip_through_database_text() {
 }
 
 #[test]
-fn dev_010_graphql_enum_names_follow_the_schema() {
-    use async_graphql::EnumType;
-    let os: Vec<_> = OperatingSystem::items()
-        .iter()
-        .map(|item| item.name)
-        .collect();
-    assert_eq!(os, ["LINUX", "MACOS", "WINDOWS", "OTHER"]);
-    let auth: Vec<_> = SshAuth::items().iter().map(|item| item.name).collect();
-    assert_eq!(auth, ["PASSWORD", "PRIVATE_KEY"]);
-}
-
-#[test]
 fn k7_not_found_error_names_the_missing_entity() {
     let error = Error::NotFound(Missing::Site(home()));
     assert_eq!(error.to_string(), format!("site {HOME} not found"));

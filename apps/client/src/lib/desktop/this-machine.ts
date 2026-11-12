@@ -32,7 +32,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
  * The shell's answer as a `ThisMachine`, or `null` when it is not one or has no VPN address. The answer crosses
  * a process boundary, so every field is checked.
  */
-export function thisMachineFrom(answer: unknown): ThisMachine | null {
+function thisMachineFrom(answer: unknown): ThisMachine | null {
   if (!isRecord(answer)) return null;
   const { name, user, os, vpnAddress, sshListening } = answer;
   if (typeof name !== 'string' || typeof user !== 'string' || typeof sshListening !== 'boolean') return null;
