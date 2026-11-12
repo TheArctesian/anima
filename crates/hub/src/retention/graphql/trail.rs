@@ -32,7 +32,6 @@ const fn setting_name(subject: Subject) -> &'static str {
         Subject::Heartbeats => "retention.heartbeats",
         Subject::Metrics => "retention.metrics",
         Subject::Events => "retention.events",
-        Subject::Recordings => "retention.recordings",
         Subject::Deliveries => "retention.deliveries",
     }
 }

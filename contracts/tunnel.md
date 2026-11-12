@@ -20,24 +20,15 @@ Sections 1, 5 and 6 apply to both tunnels.
 | Lifetime | 30 seconds from issue (`expiresAt` in the ticket) |
 | Use | Single use. The hub removes the token when a tunnel request presents it, valid or not |
 | Binding | Operator ID, session ID, client address. A request from another client address is refused. A ticket is valid only on the path its `tunnelPath` names |
-| `tunnelPath` | `/terminal` for SSH (Section 8). `/tunnel` for RDP and VNC (Phase 2). `/files` for a files ticket (Phase 2, Section 9). (Phase 3) `/recording` for a playback ticket from `openRecording` (Section 12) |
+| `tunnelPath` | `/terminal` for SSH (Section 8). `/tunnel` for RDP and VNC (Phase 2). `/files` for a files ticket (Phase 2, Section 9) |
 
 `startSession` does these steps before it returns the ticket: checks that the device exists and SSH is enabled; checks that a host key is accepted (Section 6); inserts a `sessions.sessions` row with `started_at`; writes an audit entry `session.start`.
 
 (Phase 2) `startSession` checks, per protocol, that the protocol is on. RDP also needs an accepted server certificate unless `security` is `RDP` or `ignoreCertificate` is on (CONFLICT, as for SSH host keys). When the device is Down and has a MAC address and its site has a wake relay, `startSession` sends the packet first and sets `wakeSent`. The opening limit is then 120 seconds instead of 8.
 
-(Phase 3) `tunnelPath` adds `/recording` (a playback ticket from `openRecording`). It keeps every Section 1
-property: 32 bytes, SHA-256 in memory, 30 seconds, single use, bound to the client address and the path.
-
-`startSession` adds, in this order:
-
-1. When `devices.session_limit` is set and the device has that many live sessions, it refuses with CONFLICT
-   ("This device has reached its session limit."). It counts under a transaction advisory lock on the device,
-   so two starts cannot both pass. File tunnels do not count (RA-036).
-2. When `devices.record_sessions` is on, recording must be possible (a root that is set and writable, with
-   1 GiB free). If it is not, the hub refuses with UNAVAILABLE ("Recording is on for this device, but the hub
-   cannot record now."), D-14. The ticket then has `recording: true`, and the `session.start` audit change
-   holds `"recorded": true`.
+(Phase 3) `startSession` adds: when `devices.session_limit` is set and the device has that many live sessions,
+it refuses with CONFLICT ("This device has reached its session limit."). It counts under a transaction advisory
+lock on the device, so two starts cannot both pass. File tunnels do not count (RA-036).
 
 ## 2. Tunnel request (Guacamole, RDP and VNC)
 
@@ -104,7 +95,7 @@ Phase 1 SSH argument values:
 | `enable-sftp`, `recording-path`, `typescript-path` | Empty (Phase 1) |
 
 (Phase 3) guacd's own recording stays off: `recording-path`, `recording-name`, `create-recording-path`,
-`typescript-path` and `recording-include-keys` are always empty (D-11).
+`typescript-path` and `recording-include-keys` are always empty (GW-013, RA-008).
 
 ## 4. Relay (Guacamole, RDP and VNC)
 
@@ -128,9 +119,6 @@ From the client, the hub:
 
 The hub sends a `nop` to the client when the gateway has sent nothing for 5 seconds. If the client sends nothing for 15 seconds (no ping, no input), the hub ends the session with `TIMEOUT`.
 
-(Phase 3) The relay passes each gateway instruction it sends to the owner to the session's recorder
-(Section 11) when recording is on. Client instructions are never recorded.
-
 ## 5. End of session
 
 The Guacamole tunnel's causes; Section 8.6 gives the terminal tunnel's causes for the same reasons and codes.
@@ -147,9 +135,7 @@ The Guacamole tunnel's causes; Section 8.6 gives the terminal tunnel's causes fo
 | Idle timeout | 4002 | `TIMEOUT` |
 | Hub shutdown | 1001 | `HUB_SHUTDOWN` |
 
-On every end the hub: closes both sockets; sets `ended_at` and `end_reason` on the session row; publishes an `events::Signal::Event` (`Source::Session`, severity Info; Error for `HOST_KEY_MISMATCH` and `SERVER_CERTIFICATE_MISMATCH`; Warning for `AUTH_FAILED`, `GATEWAY_ERROR` and `PROTOCOL_ERROR`; R-032, R-034); writes the audit entry `session.end`. The hub never records session content (RA-008), unless recording is on for the device (RA-040, Section 11, Phase 3).
-
-(Phase 3) The recorder finishes before the session row is written.
+On every end the hub: closes both sockets; sets `ended_at` and `end_reason` on the session row; publishes an `events::Signal::Event` (`Source::Session`, severity Info; Error for `HOST_KEY_MISMATCH` and `SERVER_CERTIFICATE_MISMATCH`; Warning for `AUTH_FAILED`, `GATEWAY_ERROR` and `PROTOCOL_ERROR`; R-032, R-034); writes the audit entry `session.end`. The hub never records session content (RA-008).
 
 ## 6. Host keys (SEC-006, SEC-007)
 
@@ -170,10 +156,6 @@ On every end the hub: closes both sockets; sets `ended_at` and `end_reason` on t
 (Phase 3) Add:
 
 - `startSession` beyond the limit gives CONFLICT, and two parallel starts at the limit give one ticket.
-- A recorded fake-guacd session gives a file that has no plaintext byte run of the relayed instructions, and
-  that decrypts to exactly the relayed stream. A swapped, truncated or reordered part fails. A file with a
-  deleted row cannot be opened.
-- Playback of a recording with no last part ends `complete: false` after the verified parts.
 
 ## 8. Terminal tunnel (SSH, R-062)
 
@@ -285,10 +267,6 @@ The remote host controls the bytes the client draws, so the client sets each of 
 - (Phase 2) With `copy` off the client copies nothing from the terminal; with `paste` off it sends no paste. The hub cannot enforce these for bytes (D-6).
 - Copy and paste go through the operator's own actions only (RA-003): selection and the copy shortcut, the paste event or the Keys menu. Paste uses bracketed paste when the shell asks for it.
 
-### 8.8 Recording (Phase 3)
-
-When recording is on, each output frame and each `resize` go to the recorder.
-
 ## 9. Files tunnel (Phase 2, SFTP, RA-032)
 
 - Request `GET /files?token=<token>`, subprotocol `anima-files`, refusals as Section 8.1. The ticket comes from `openFiles(sessionId)`: the session must be a live SSH session of the same operator and client address. The files tunnel ends when that session ends.
@@ -303,39 +281,12 @@ When recording is on, each output frame and each `resize` go to the recorder.
 Session sharing is deferred (RA-035, R-111): no share links, no `joinShare`, no `/watch` route and no viewers.
 The section number is kept so that Sections 11 and 12 keep theirs.
 
-## 11. Recording (Phase 3, RA-040)
+## 11. Recording (deferred, R-113)
 
-- What: Guacamole format, every gateway instruction relayed to the owner after `ready`, as relayed (after the
-  BMP guard and the `error` text rewrite), not the internal UUID instruction. asciicast v2 for SSH: the header
-  `{"version":2,"width":C,"height":R,"timestamp":<unix seconds>}`, then `[t,"o",text]` for output and
-  `[t,"r","CxR"]` for resize. Output bytes go through a streaming UTF-8 decoder (bad bytes become U+FFFD). No
-  input event is written.
-- File: `<ANIMA_RECORDING_ROOT>/<recording_id>.anrec`, created with `create_new`, mode 0600. Header: the magic
-  bytes `ANREC1\0`, one format byte, the 16-byte recording ID, a 19-byte STREAM nonce prefix. Body: parts of at
-  most 64 KiB of plaintext, each written as a 4-byte big-endian length and the XChaCha20-Poly1305 STREAM
-  (BE32) ciphertext. The last part carries the STREAM "last" flag. The associated data of every part is the
-  header bytes.
-- Key: 32 random bytes per recording, sealed with the vault (context `sessions.recordings:<recording_id>`) in
-  `sessions.recordings.key_sealed`, and wiped from memory after the last part. The row is written before the
-  first part.
-- Writes: a part is written when it is full, or 5 seconds after its first byte. The relay never waits on the
-  disk: the recorder has a bounded queue (64 parts). When the queue is full, recording stops with
-  `write_failed`.
-- Stop: at `ANIMA_RECORDING_MAX_BYTES` (`size_limit`), below 1 GiB free (`disk_full`) or after a write error
-  (`write_failed`). The recorder writes the last part, sets `stopped_reason`, and the session's
-  `recording` becomes `STOPPED`. The hub publishes `sessionChanged` and writes a Warning event. The session
-  goes on.
-- End: the recorder writes the last part, sets `ended_at`, `size_bytes` and `complete = true`. A recording with
-  no last part (hub crash) stays `complete = false`.
-- Never in a log: recording content, the key, and the file path in the process log.
+Session recording is deferred (RA-040, R-113): the hub records no session content (RA-008), and no tunnel
+writes a recording.
 
-## 12. Playback tunnel (Phase 3, RA-041)
+## 12. Playback tunnel (deferred, R-113)
 
-- `openRecording(id)` returns a ticket for `/recording` (the `sessionId` is the recording's session) and writes
-  the audit entry `recording.view`.
-- Request `GET /recording?token=<ticket>`, subprotocol `anima-recording`, refusals as §8.1.
-- Hub to client: `{"type":"recording","format":"GUACAMOLE"|"ASCIICAST","sizeBytes":N,"complete":B}`, then the
-  plaintext in binary frames of at most 64 KiB, then `{"type":"done"}`. A part that fails to decrypt ends with
-  `{"type":"failed","reason":"DAMAGED"}`, after the parts that verified. A missing file ends with
-  `{"reason":"MISSING"}`. Client to hub: `ping`, `cancel`.
-- Backpressure and silence as §8.4 and §8.5. At most 2 playbacks at once for each hub.
+Playback is deferred with recording (RA-041, R-113): no `openRecording`, no `/recording` route and no playback
+ticket.

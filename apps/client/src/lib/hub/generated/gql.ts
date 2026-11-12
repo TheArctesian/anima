@@ -61,8 +61,8 @@ type Documents = {
     "\n  mutation ClearSshCredential($deviceId: ID!) {\n    clearSshCredential(deviceId: $deviceId) {\n      credentialStored\n    }\n  }\n": typeof types.ClearSshCredentialDocument,
     "\n  mutation ClearRdpCredential($deviceId: ID!) {\n    clearRdpCredential(deviceId: $deviceId) {\n      credentialStored\n    }\n  }\n": typeof types.ClearRdpCredentialDocument,
     "\n  mutation ClearVncCredential($deviceId: ID!) {\n    clearVncCredential(deviceId: $deviceId) {\n      credentialStored\n    }\n  }\n": typeof types.ClearVncCredentialDocument,
-    "\n  query DevicePolicy($id: ID!) {\n    device(id: $id) {\n      sessionLimit\n      recordSessions\n    }\n  }\n": typeof types.DevicePolicyDocument,
-    "\n  mutation SetDevicePolicy($id: ID!, $input: UpdateDeviceInput!) {\n    updateDevice(id: $id, input: $input) {\n      sessionLimit\n      recordSessions\n    }\n  }\n": typeof types.SetDevicePolicyDocument,
+    "\n  query DevicePolicy($id: ID!) {\n    device(id: $id) {\n      sessionLimit\n    }\n  }\n": typeof types.DevicePolicyDocument,
+    "\n  mutation SetDevicePolicy($id: ID!, $input: UpdateDeviceInput!) {\n    updateDevice(id: $id, input: $input) {\n      sessionLimit\n    }\n  }\n": typeof types.SetDevicePolicyDocument,
     "\n  query Events($filter: EventFilter, $first: Int, $after: String) {\n    events(filter: $filter, first: $first, after: $after) {\n      pageInfo {\n        hasNextPage\n        endCursor\n      }\n      edges {\n        node {\n          id\n          at\n          severity\n          source\n          deviceId\n          deviceName\n          message\n        }\n      }\n    }\n  }\n": typeof types.EventsDocument,
     "\n  subscription EventAdded($minSeverity: Severity) {\n    eventAdded(minSeverity: $minSeverity) {\n      id\n      at\n      severity\n      source\n      deviceId\n      deviceName\n      message\n    }\n  }\n": typeof types.EventAddedDocument,
     "\n  query DeviceMetrics($id: ID!, $range: MetricRange!) {\n    device(id: $id) {\n      id\n      metricsSource\n      gpus {\n        index\n        name\n        vendor\n        hasVram\n      }\n      readings {\n        at\n        cpuPercent\n        memoryPercent\n        diskPercent\n        vramPercent\n        vramGpu {\n          index\n          name\n          vendor\n          hasVram\n        }\n      }\n      metrics(range: $range) {\n        kind\n        label\n        gpuIndex\n        points {\n          at\n          value\n          min\n          max\n        }\n      }\n    }\n  }\n": typeof types.DeviceMetricsDocument,
@@ -153,8 +153,8 @@ const documents: Documents = {
     "\n  mutation ClearSshCredential($deviceId: ID!) {\n    clearSshCredential(deviceId: $deviceId) {\n      credentialStored\n    }\n  }\n": types.ClearSshCredentialDocument,
     "\n  mutation ClearRdpCredential($deviceId: ID!) {\n    clearRdpCredential(deviceId: $deviceId) {\n      credentialStored\n    }\n  }\n": types.ClearRdpCredentialDocument,
     "\n  mutation ClearVncCredential($deviceId: ID!) {\n    clearVncCredential(deviceId: $deviceId) {\n      credentialStored\n    }\n  }\n": types.ClearVncCredentialDocument,
-    "\n  query DevicePolicy($id: ID!) {\n    device(id: $id) {\n      sessionLimit\n      recordSessions\n    }\n  }\n": types.DevicePolicyDocument,
-    "\n  mutation SetDevicePolicy($id: ID!, $input: UpdateDeviceInput!) {\n    updateDevice(id: $id, input: $input) {\n      sessionLimit\n      recordSessions\n    }\n  }\n": types.SetDevicePolicyDocument,
+    "\n  query DevicePolicy($id: ID!) {\n    device(id: $id) {\n      sessionLimit\n    }\n  }\n": types.DevicePolicyDocument,
+    "\n  mutation SetDevicePolicy($id: ID!, $input: UpdateDeviceInput!) {\n    updateDevice(id: $id, input: $input) {\n      sessionLimit\n    }\n  }\n": types.SetDevicePolicyDocument,
     "\n  query Events($filter: EventFilter, $first: Int, $after: String) {\n    events(filter: $filter, first: $first, after: $after) {\n      pageInfo {\n        hasNextPage\n        endCursor\n      }\n      edges {\n        node {\n          id\n          at\n          severity\n          source\n          deviceId\n          deviceName\n          message\n        }\n      }\n    }\n  }\n": types.EventsDocument,
     "\n  subscription EventAdded($minSeverity: Severity) {\n    eventAdded(minSeverity: $minSeverity) {\n      id\n      at\n      severity\n      source\n      deviceId\n      deviceName\n      message\n    }\n  }\n": types.EventAddedDocument,
     "\n  query DeviceMetrics($id: ID!, $range: MetricRange!) {\n    device(id: $id) {\n      id\n      metricsSource\n      gpus {\n        index\n        name\n        vendor\n        hasVram\n      }\n      readings {\n        at\n        cpuPercent\n        memoryPercent\n        diskPercent\n        vramPercent\n        vramGpu {\n          index\n          name\n          vendor\n          hasVram\n        }\n      }\n      metrics(range: $range) {\n        kind\n        label\n        gpuIndex\n        points {\n          at\n          value\n          min\n          max\n        }\n      }\n    }\n  }\n": types.DeviceMetricsDocument,
@@ -403,11 +403,11 @@ export function graphql(source: "\n  mutation ClearVncCredential($deviceId: ID!)
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function graphql(source: "\n  query DevicePolicy($id: ID!) {\n    device(id: $id) {\n      sessionLimit\n      recordSessions\n    }\n  }\n"): (typeof documents)["\n  query DevicePolicy($id: ID!) {\n    device(id: $id) {\n      sessionLimit\n      recordSessions\n    }\n  }\n"];
+export function graphql(source: "\n  query DevicePolicy($id: ID!) {\n    device(id: $id) {\n      sessionLimit\n    }\n  }\n"): (typeof documents)["\n  query DevicePolicy($id: ID!) {\n    device(id: $id) {\n      sessionLimit\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function graphql(source: "\n  mutation SetDevicePolicy($id: ID!, $input: UpdateDeviceInput!) {\n    updateDevice(id: $id, input: $input) {\n      sessionLimit\n      recordSessions\n    }\n  }\n"): (typeof documents)["\n  mutation SetDevicePolicy($id: ID!, $input: UpdateDeviceInput!) {\n    updateDevice(id: $id, input: $input) {\n      sessionLimit\n      recordSessions\n    }\n  }\n"];
+export function graphql(source: "\n  mutation SetDevicePolicy($id: ID!, $input: UpdateDeviceInput!) {\n    updateDevice(id: $id, input: $input) {\n      sessionLimit\n    }\n  }\n"): (typeof documents)["\n  mutation SetDevicePolicy($id: ID!, $input: UpdateDeviceInput!) {\n    updateDevice(id: $id, input: $input) {\n      sessionLimit\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
