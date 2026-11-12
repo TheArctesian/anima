@@ -1,6 +1,7 @@
 import type { IconName } from '$lib/icons/icons';
 import type { MetricRange } from '$lib/metrics/api';
 import { RANGES } from '$lib/metrics/ranges';
+import { tabIds as sharedIds, type TabItem } from '$lib/tabs/tabs';
 
 /** The device detail tabs, in order (Section 6.7), each with the icon shown before its label. */
 export const TABS = [
@@ -26,7 +27,8 @@ export interface TabPlace {
 
 const SECTIONS: readonly SettingsSection[] = ['general', 'ssh', 'rdp', 'test'];
 
-function isTab(text: string | null): text is TabName {
+/** Whether a tab id from the strip is one of the device tabs. */
+export function isTab(text: string | null): text is TabName {
   return TABS.some((tab) => tab.name === text);
 }
 
@@ -64,23 +66,8 @@ export function placeSearch(place: TabPlace): string {
 
 /** The id of a tab's button and of its panel, for `aria-controls` and `aria-labelledby`. */
 export function tabIds(name: TabName): { tab: string; panel: string } {
-  return { tab: `device-tab-${name}`, panel: `device-panel-${name}` };
+  return sharedIds('device', name);
 }
 
-/** Which ends of a scrolling strip have tabs past them: `start` when scrolled away from the beginning, `end` when more lies ahead. */
-export function hiddenEdges(scrollStart: number, clientSize: number, scrollSize: number): { start: boolean; end: boolean } {
-  return { start: scrollStart > 0, end: scrollStart + clientSize < scrollSize - 1 };
-}
-
-/** An interval along the strip: where it starts and how long it is. */
-interface Span {
-  readonly start: number;
-  readonly size: number;
-}
-
-/** The scroll position that shows `tab` inside the visible `view`, `margin` clear of the edge fades, moving as little as it can. */
-export function scrolledToShow(view: Span, tab: Span, margin: number): number {
-  if (tab.start - margin < view.start) return Math.max(0, tab.start - margin);
-  const tabEnd = tab.start + tab.size + margin;
-  return tabEnd > view.start + view.size ? tabEnd - view.size : view.start;
-}
+/** The tabs as the strip draws them. */
+export const TAB_ITEMS: readonly TabItem[] = TABS.map(({ name, label, icon }) => ({ id: name, label, icon }));

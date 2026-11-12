@@ -3,7 +3,7 @@
   import WarningBadge from '$lib/devices/actions/WarningBadge.svelte';
   import type { ScreenSharingCalls } from '$lib/devices/screen-sharing/setup';
   import type { DeviceDetail } from '$lib/devices/api';
-  import StatusPill from '$lib/devices/card/StatusPill.svelte';
+  import StatusBadge from '$lib/devices/status/StatusBadge.svelte';
   import OsIcon from '$lib/devices/os/OsIcon.svelte';
   import { skeletonDelay } from '$lib/motion/loading/delay.svelte';
   import type { LoadingClock } from '$lib/motion/loading/loading';
@@ -57,7 +57,7 @@
         <h1 title={device.name} {@attach sharedItem(`device-name:${device.id}`)}>{device.name}</h1>
         <!-- A live region, so a status change is heard as well as seen (D-11). -->
         <span class="status" aria-live="polite">
-          <StatusPill status={device.status} deviceId={device.id} />
+          <StatusBadge status={device.status} deviceId={device.id} />
           <WarningBadge warnings={device.accessWarnings} />
         </span>
       </div>
