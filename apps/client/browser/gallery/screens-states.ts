@@ -1,4 +1,5 @@
 import { expect } from '@playwright/test';
+import { continueWith, signInWith } from '../sign-in-steps';
 import { HUB_ORIGIN } from '../synthetic/access';
 import type { Fixtures } from '../synthetic/fixtures';
 import type { Screen } from './shots';
@@ -19,7 +20,16 @@ export const SIGN_IN_SCREENS: readonly Screen[] = [
     signedOut: true,
     open: async (page) => {
       await page.goto(`${HUB_ORIGIN}/sign-in`);
-      await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeEnabled();
+      await expect(page.getByRole('button', { name: 'Continue', exact: true })).toBeEnabled();
+    },
+  },
+  {
+    name: 'sign-in-code',
+    signedOut: true,
+    open: async (page) => {
+      await page.goto(`${HUB_ORIGIN}/sign-in`);
+      await continueWith(page, 'wrong');
+      await expect(page.getByLabel('Digit 1 of 6')).toBeFocused();
     },
   },
   {
@@ -27,10 +37,7 @@ export const SIGN_IN_SCREENS: readonly Screen[] = [
     signedOut: true,
     open: async (page) => {
       await page.goto(`${HUB_ORIGIN}/sign-in`);
-      await page.getByLabel('User name', { exact: true }).fill('ann');
-      await page.getByLabel('Password', { exact: true }).fill('wrong');
-      await page.getByLabel('Code from your authenticator', { exact: true }).fill('000000');
-      await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+      await signInWith(page, 'wrong', '000000');
       await expect(page.getByRole('alert')).toBeVisible();
     },
   },

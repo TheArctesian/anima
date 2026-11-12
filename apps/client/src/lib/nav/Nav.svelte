@@ -66,7 +66,7 @@
     {/if}
   </div>
   <div class="brand">
-    <img src={asset('/logo.png')} alt="" width="48" height="48" />
+    <img src={asset('/logo.png')} alt="" width="24" height="24" />
     <span class="words">Anima</span>
   </div>
   {@render destination(DEVICES)}
@@ -157,8 +157,8 @@
   }
 
   .brand img {
-    inline-size: var(--space-12);
-    block-size: var(--space-12);
+    inline-size: var(--space-6);
+    block-size: var(--space-6);
   }
 
   .item:not([aria-current='page']):hover {
@@ -242,11 +242,6 @@
 
   :global(:root[data-nav='icons']) .brand {
     justify-content: center;
-  }
-
-  :global(:root[data-nav='icons']) .brand img {
-    inline-size: var(--target-min-touch);
-    block-size: var(--target-min-touch);
   }
 
   :global(:root[data-nav='icons']) .status {

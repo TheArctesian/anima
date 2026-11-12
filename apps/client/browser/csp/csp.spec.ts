@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from '../test-hub';
-import { HUB_ORIGIN, OPERATOR } from '../synthetic/access';
+import { signInWith } from '../sign-in-steps';
+import { HUB_ORIGIN } from '../synthetic/access';
 import { k7Policy } from './k7-policy';
 import { expectNoViolations, servePolicy, violationsSoFar, type PolicyReports } from './violations';
 
@@ -42,10 +43,7 @@ test.describe('signed out, under K7 with a report channel', () => {
 
   test('SEC-001: the sign-in page boots and sends a sign-in under K7 with no violation', async ({ page, hub, watch }) => {
     await page.goto(`${HUB_ORIGIN}/sign-in`);
-    await page.getByLabel('User name').fill(OPERATOR.username);
-    await page.getByLabel('Password').fill('not-the-password');
-    await page.getByLabel('Code from your authenticator').fill(OPERATOR.code);
-    await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+    await signInWith(page, 'not-the-password');
     await expect.poll(() => hub.recording.where({ channel: 'graphql' }).length).toBeGreaterThan(0);
     await expectNoViolations(page, watch, policy);
   });
