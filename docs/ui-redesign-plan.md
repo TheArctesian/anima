@@ -261,7 +261,7 @@ spacing, O10 tooltips, O11 box sizes). The plan's earlier tables use "O6" for un
 | 46 No page titles | 4 Shell | NAV-010 | |
 | 47 Nav and page one colour | 2 roles, 4 Shell | roles | |
 | 48 Empty wide columns | 4 Shell, 5 C | SET-004 | |
-| 49 Nav before sign-in | 5 F | NAV-009 | |
+| 49 Nav before sign-in; 63 sign-in redesign (hub address in place) | 5 F | NAV-009 | |
 | 50 One-line errors | 3 Empty/Loading/Error, all lanes | UI-030 | |
 | 51 Logs panel not a layer | 4 Shell | `material-panel` | |
 | 52 Card heights | 5 A | DEV-009 | |

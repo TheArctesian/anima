@@ -185,3 +185,11 @@ finding.
     a waiting router. [picture 49; finding 43]
 62. **Sites and nodes are one undivided list**: no heading separates "Sites" from "Computers", and
     roles ("hub", "client", "router") are bare lower-case words beside the address. [picture 49; finding 44]
+
+### Sign-in (operator, 2026-11-12, desktop app)
+
+63. **The sign-in page needs a redesign.** The form sits top-left beside the full navigation bar
+    (Devices, Live sessions 0, "Connected", Settings); "Sign in" is an outlined button like every
+    other; and the desktop hub address is a second form with its own full-width "Save address"
+    button, so the page has two equal actions and no product identity. [operator's screenshot;
+    findings 49, 5]

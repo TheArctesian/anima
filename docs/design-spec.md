@@ -537,12 +537,12 @@ records the colour it comes from and the rule that made it.
 | `surface-overlay` | Dialogs, popovers, HelpTips |
 | `surface-hover`, `surface-selected` | Row and item states |
 | `border-subtle` | Where two equal surfaces meet; table row separators |
-| `border-strong` | Inputs; every border under `prefers-contrast: more` |
+| `border-strong` | Inputs and other control edges, at least 3:1 on `surface-raised` and `surface-sunken` (WCAG 1.4.11); every border under `prefers-contrast: more` |
 | `text`, `text-secondary`, `text-tertiary` | Primary text; secondary text; placeholder and disabled text (never the only carrier of information) |
 | `accent`, `accent-hover`, `accent-pressed`, `on-accent`, `accent-tint` | The one accent: active place, focus, the primary action |
 | `status-up`, `status-down`, `status-degraded`, `status-warning`, `status-maintenance`, `status-unknown` | Status shapes: dots, edges, bars |
 | `status-*-text`, `status-*-tint` | Status badge text and badge fill |
-| `danger`, `on-danger` | Destructive buttons (by default the same value as `status-down`) |
+| `danger`, `on-danger` | Destructive buttons; `on-danger` reaches 4.5:1 on `danger` in every palette and appearance |
 | `scrim`, `focus-ring` | Modal dim; the 2 px focus outline |
 | `chart-*` | Chart grid, axis, threshold and series colours |
 
@@ -608,7 +608,7 @@ The logo block at the top of the navigation bar is 24 px high (UR-6).
 - **NAV-006.** The operator must be able to collapse the navigation bar to icons and expand it again with a control at the trailing end of the logo row. The app must keep the choice on the device.
 - **NAV-007.** On macOS the window must draw under the title bar. The window buttons must sit in the top row of the navigation bar, and that row and the strip above the page must move the window.
 - **NAV-008.** The Live sessions page must list every live session with its device, protocol, start time and duration, with "Show" and "End session" for each (RA-034). With no live session it shows an empty state that points to the Devices page.
-- **NAV-009.** Before sign-in the window must show only the sign-in page: no navigation items and no hub status. The sign-in form is centred, with the logo above it and a primary "Sign in" button.
+- **NAV-009.** Before sign-in the window must show only the sign-in page: no navigation items and no hub status. The sign-in form is centred, with the logo above it and a primary "Sign in" button. In the desktop app the hub address is one line under the form (the hub's host name with a "Change" ghost button); "Change" opens the address field in place, and the address is saved when the operator signs in or presses Enter in it, so the page has one primary button. User name, password and the authenticator code are one group; the code field takes digits only and is sized for six.
 - **NAV-010.** Every page must have a visible title (`h1`) and must set the window and document title to "<page> – Anima".
 
 ### 5.4 Design principles
