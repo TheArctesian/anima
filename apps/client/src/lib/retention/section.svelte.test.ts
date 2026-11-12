@@ -63,7 +63,7 @@ const LIST = { Retention: ok({ retention: FIXTURE_PERIODS }) };
 it('HUB-005, D-25: each subject has a row showing its days, bounds and default from the hub', async () => {
   const target = await open(LIST);
   const labels = [...target.querySelectorAll('form')].map((form) => form.getAttribute('aria-label'));
-  expect(labels).toEqual(['Check results', 'Metrics', 'Events', 'Session recordings', 'Notification deliveries']);
+  expect(labels).toEqual(['Check results', 'Metrics', 'Events', 'Notification deliveries']);
   const events = row(target, 'Events');
   const field = events.querySelector('input');
   expect(field?.value).toBe('90');
@@ -187,12 +187,12 @@ it('HUB-005: after a save resolves the row can save again', async () => {
 it('HUB-005, D-25: saving another subject sends that subject and leaves the other rows as they were', async () => {
   const returned = { ...FIXTURE_PERIODS[3], days: 60 };
   const target = await open({ ...LIST, SetRetention: ok({ setRetention: returned }) });
-  type(input(target, 'Session recordings'), '60');
-  await save(target, 'Session recordings');
-  expect(sentSets().map((request) => request.variables)).toEqual([{ subject: 'RECORDINGS', days: 60 }]);
-  expect(input(target, 'Session recordings').value).toBe('60');
-  const others = ['Check results', 'Metrics', 'Events', 'Notification deliveries'];
-  expect(others.map((label) => input(target, label).value)).toEqual(['30', '30', '90', '30']);
+  type(input(target, 'Notification deliveries'), '60');
+  await save(target, 'Notification deliveries');
+  expect(sentSets().map((request) => request.variables)).toEqual([{ subject: 'DELIVERIES', days: 60 }]);
+  expect(input(target, 'Notification deliveries').value).toBe('60');
+  const others = ['Check results', 'Metrics', 'Events'];
+  expect(others.map((label) => input(target, label).value)).toEqual(['30', '30', '90']);
 });
 
 it('HUB-005: a valid save after a refusal clears the refusal', async () => {

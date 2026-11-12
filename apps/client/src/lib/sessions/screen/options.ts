@@ -14,7 +14,7 @@ export function terminalFont(host: HTMLElement): { readonly fontFamily: string; 
   return { fontFamily: tokens('--font-mono-opendyslexic'), fontSize: sizeInPx(tokens('--text-xs'), rootPx, FALLBACK_FONT_PX) };
 }
 
-/** The xterm.js options the live and the playback terminal share: Nord theme, font tokens, scroll-back, contrast. */
+/** The xterm.js options the session terminal opens with: Nord theme, font tokens, scroll-back, contrast. */
 export function terminalOptions(host: HTMLElement, font = terminalFont(host)): ITerminalOptions {
   return {
     scrollback: SCROLLBACK_LINES,

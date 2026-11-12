@@ -9,7 +9,7 @@ export const SAVE_SENTENCE = 'Sessions were not saved.';
 type PolicyPhase = 'ready' | 'loading' | 'failed' | 'absent';
 
 /**
- * The session limit and recording setting of one device in the form (RA-036, RA-040). A new device starts from the
+ * The session limit of one device in the form (RA-036). A new device starts from the
  * defaults; a saved one reads its own values through `calls.load` and saves through `calls.save` (F-3).
  */
 export class PolicyDraft {
