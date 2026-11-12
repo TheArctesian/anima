@@ -124,10 +124,10 @@ describe("hub deny list, notify network and mounts", () => {
     expect(inside.reduce((sum, entry) => sum + entry.size, 0)).toBe(subnet.size - 1);
   });
 
-  test("NET-001 the deny list holds the VPS public address and the hub VPN address as /32", () => {
+  test("NET-001 the deny list holds the VPS public address as /32, and not the hub VPN address, which is a device (VP-13)", () => {
     const deny = (compose.services["hub"]?.environment?.["ANIMA_PROBE_DENY"] ?? "").split(",");
     expect(deny).toContain("${ANIMA_VPS_PUBLIC_ADDRESS:?set to the VPS public IPv4}/32");
-    expect(deny).toContain("${ANIMA_HUB_ADDRESS:?set ANIMA_HUB_ADDRESS to the hub's VPN address}/32");
+    expect(deny.filter((entry) => entry.includes("ANIMA_HUB_ADDRESS"))).toEqual([]);
   });
 
   test("K7 the hub gets the web and origin variables with the values of plan Section 6, and no recording variable (R-113)", () => {
