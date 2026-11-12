@@ -230,3 +230,15 @@ it('INT-003: a click beside the dialog does not close the shown key, so it canno
   await settled();
   expect(keyField().value).toBe(FAKE_SECRET);
 });
+
+it('MOT-007 / MV-002: the secret view keeps the form\'s height, so the surface does not drop in one frame', async () => {
+  await openDialog({ CreateApiKey: CREATED });
+  typeInto(nameField(), 'backup-job');
+  const views = document.querySelector<HTMLElement>('[role="dialog"] .views');
+  // jsdom has no layout: the form is given the height a browser measured (566 px surface, the form 450 px).
+  vi.spyOn(views as HTMLElement, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 400, 450));
+  expect(views?.style.minBlockSize).toBe('');
+  await create();
+  expect(document.querySelector('[role="dialog"] form')).toBeNull();
+  expect(views?.style.minBlockSize).toBe('450px');
+});

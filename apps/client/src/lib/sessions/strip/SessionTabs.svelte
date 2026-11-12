@@ -13,8 +13,12 @@
   const sessions = useSessions();
   const preference = motionPreference();
   let strip: HTMLElement | undefined = $state();
-  /** The strip has its space while a tab is open; it goes on the frame the last tab leaves (MOT-007, R-075). */
+  /**
+   * The strip is laid out while a tab is open and until the last tab's exit has played, so the exit is seen (MOT-005);
+   * only then does it go. Its space goes when the last tab starts to leave (`leaving`), so the page never moves (MOT-007, R-075).
+   */
   let reserved = $state(false);
+  const leaving = $derived(reserved && sessions.tabs.length === 0);
 
   /** The tabs in the strip now, without one that is closing. */
   function slots(): HTMLElement[] {
@@ -104,7 +108,11 @@
     reserved = true;
     await tick();
     // The last tab may have closed while the strip waited for its place: entering now would undo the exit.
-    if (sessions.tabs.length === 0) return;
+    if (sessions.tabs.length === 0) {
+      // No slot was ever drawn, so no exit will end and release the strip.
+      if (strip?.querySelector(':scope > [data-slot]') === null) reserved = false;
+      return;
+    }
     enterStrip(element, fromHidden, preference);
   }
 
@@ -114,12 +122,11 @@
     untrack(() => {
       if (element === undefined) return;
       if (open) void appear(element);
-      else reserved = false;
     });
   });
 </script>
 
-<div class="strip" role="tablist" aria-label="Sessions" hidden={!reserved && sessions.tabs.length === 0} bind:this={strip}>
+<div class="strip" role="tablist" aria-label="Sessions" hidden={!reserved && sessions.tabs.length === 0} class:leaving bind:this={strip}>
   {#each sessions.tabs as tab, index (tab.id)}
     {@const selected = sessions.active?.id === tab.id}
     <div
@@ -130,6 +137,9 @@
         key(event, tab);
       }}
       transition:grow={{ origin: tab.origin }}
+      onoutroend={() => {
+        if (sessions.tabs.length === 0) reserved = false;
+      }}
       {@attach dragTab({
         tabs: slots,
         bounds: () => strip?.getBoundingClientRect() ?? { left: 0, top: 0, right: 0, bottom: 0 },
@@ -170,6 +180,12 @@
     gap: var(--space-1);
     padding-block-end: var(--space-2);
     overflow-x: auto;
+  }
+
+  /* The last tab's exit plays over the page, which is already at its place: the strip's height is taken back from the flow, and it ignores the pointer. */
+  .strip.leaving {
+    margin-block-end: calc(-1 * (var(--target-min-desktop) + var(--space-2)));
+    pointer-events: none;
   }
 
   .strip[hidden] {

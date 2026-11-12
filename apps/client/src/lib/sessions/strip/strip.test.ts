@@ -67,6 +67,22 @@ it('no tabs: the strip is hidden and the pages show', () => {
   expect(visiblePanels()).toEqual([]);
 });
 
+it('MOT-005 / MV-002: the last tab closes with the strip still shown and out of the flow, and the strip goes when the exit ends', async () => {
+  const sessions = show();
+  await openStarted(sessions);
+  const strip = document.querySelector('[role="tablist"]');
+  expect(strip?.hasAttribute('hidden')).toBe(false);
+  document.querySelector<HTMLButtonElement>('button[aria-label="Close web-1 SSH session"]')?.click();
+  // The exit is playing: the slot is still drawn in a laid-out strip that no longer holds the page down.
+  expect(strip?.hasAttribute('hidden')).toBe(false);
+  expect(strip?.classList.contains('leaving')).toBe(true);
+  expect(strip?.querySelector('[data-slot]')).not.toBeNull();
+  await settle();
+  expect(strip?.querySelector('[data-slot]')).toBeNull();
+  expect(strip?.hasAttribute('hidden')).toBe(true);
+  expect(strip?.classList.contains('leaving')).toBe(false);
+});
+
 it('RA-001: two opens of one device give two tabs with name and protocol; the newest is selected', async () => {
   const sessions = show();
   await openStarted(sessions);
