@@ -26,7 +26,9 @@ The `notify` network holds the hub (fixed address `172.30.3.2`) and Apprise (fix
 whether or not Apprise runs, so you can turn Apprise on later without a hub restart.
 
 The `database` network has no route out. The hub joins `gateway` at a fixed address
-(`ANIMA_HUB_IP`, default `172.30.0.10`) and listens on port 8443 there.
+(`ANIMA_HUB_IP`, default `172.30.0.10`) and listens on port 8443 there. guacd joins it at a fixed
+address too (`ANIMA_GUACD_IP`, default `172.30.0.20`), so it can never take the hub's address,
+which the VPS firewall and sshd admit (VP-13).
 
 All containers have a read-only root file system, no Linux capability and
 `no-new-privileges`. Two exceptions: `postgres` runs as user 999 (no capability needed), and
@@ -73,7 +75,8 @@ Each service writes its log as JSON files, 10 MB each, 10 files.
    | `ANIMA_HUB_SUBNET` | no | `172.30.0.0/24` | Subnet of the `gateway` network. |
    | `ANIMA_DATABASE_SUBNET` | no | `172.30.1.0/24` | Subnet of the `database` network. |
    | `ANIMA_VPS_PUBLIC_ADDRESS` | yes | none | The VPS public IPv4 address (31.220.53.226 on this VPS). With both subnets it forms `ANIMA_PROBE_DENY`, so checks never probe the hub's own networks. |
-   | `ANIMA_HUB_IP` | no | `172.30.0.10` | Hub address inside `ANIMA_HUB_SUBNET`. |
+   | `ANIMA_HUB_IP` | no | `172.30.0.10` | Hub address inside `ANIMA_HUB_SUBNET`. The VPS firewall (`hub_source`) and sshd (`anima-probe@172.30.0.10`) use the same address (VP-13); change all three together. |
+   | `ANIMA_GUACD_IP` | no | `172.30.0.20` | guacd address inside `ANIMA_HUB_SUBNET`; not `ANIMA_HUB_IP`. |
    | `ANIMA_PERMITTED_NETWORKS` | no | `100.64.0.0/10` | Client networks that may use the hub (NET-001): the VPN range and the site subnets, comma-separated. |
    | `ANIMA_LOG` | no | `info` | Hub log filter. |
    | `ANIMA_PUBLIC_ORIGIN` | no | `https://hub.anima.ing` | The origin clients use. The hub checks the browser cookie's `Origin` against it, and the web client's security headers use it. |
@@ -747,7 +750,14 @@ chooses `gateway`, and `gw_priority: 1` keeps it so. The hub's fixed `gateway` a
 `172.30.0.10`. If you change `ANIMA_HUB_IP` or `ANIMA_HUB_SUBNET`, change `hub_source` to match.
 A mismatch makes the VPS unreachable from the hub; it opens nothing. Only the hub reaches the VPS
 this way: the SSH terminal and the checks run in the hub (R-062). guacd is a separate container,
-so VNC or RDP to the VPS stays closed.
+so VNC or RDP to the VPS stays closed. guacd has its own fixed address (`ANIMA_GUACD_IP`, default
+`172.30.0.20`), so Docker can never give it `172.30.0.10`.
+
+sshd admits the hub's user `anima-probe` only from that address: the drop-in that `harden.sh ssh`
+installs says `AllowUsers <admin> anima-probe@172.30.0.10`, and `harden.sh check` reports any other
+`AllowUsers` entry, including `anima-probe` from another host. Password login stays off for every
+user (VPS-001). The address in the drop-in, `hub_source` and `ANIMA_HUB_IP` must be the same;
+change all three together.
 
 Each step needs the operator's confirmation in chat (VPS-005).
 
@@ -795,9 +805,10 @@ sudo --preserve-env=SSH_CONNECTION /opt/anima/headscale/vps/harden.sh firewall
 
 Then run `confirm` from a new session, as above.
 
-**2. Redeploy the hub.** The new compose file changes the hub's environment and its `gateway`
-attachment, so `up -d` recreates the hub. Install the compose file as in Phase 3 step 4, keeping the
-current one:
+**2. Redeploy the hub and guacd.** The new compose file changes the hub's environment and the
+`gateway` attachments of the hub and guacd, so `up -d` recreates both. The network stays as it is.
+Recreating guacd ends any open RDP or VNC session. Install the compose file as in Phase 3 step 4,
+keeping the current one:
 
 ```sh
 # Run on the Mac, in the repository root.
@@ -810,7 +821,7 @@ sudo cp -p compose.yaml compose.yaml.before-vp13
 sudo install -m 0644 -o root -g root /tmp/compose.yaml compose.yaml
 rm /tmp/compose.yaml
 sudo docker compose config --quiet
-sudo docker compose up -d hub
+sudo docker compose up -d guacd hub
 ```
 
 Check, from the hub's network namespace with the host's tools (the hub image has no shell):
@@ -828,13 +839,16 @@ sudo nsenter -t "$gpid" -n ping -c 1 -W 2 100.64.0.1; echo "$?"
 
 The route line ends `src 172.30.0.10`. The ping gets one reply. The SSH line prints `SSH-2.0 0`.
 The `curl` line prints `28`: port 443 stays closed to the hub. The guacd ping prints `1` (no reply):
-no other container reaches the VPS. Also check `sudo docker compose ps hub` shows `Up (healthy)`.
+no other container reaches the VPS. Also check that `sudo docker compose ps hub guacd` shows both
+`Up`, the hub `(healthy)`, and that
+`sudo docker inspect -f '{{.NetworkSettings.Networks.deploy_gateway.IPAddress}}' "$(sudo docker compose ps -q guacd)"`
+prints `172.30.0.20`.
 
-Undo: `sudo cp -p compose.yaml.before-vp13 compose.yaml` and `sudo docker compose up -d hub`.
+Undo: `sudo cp -p compose.yaml.before-vp13 compose.yaml` and `sudo docker compose up -d guacd hub`.
 
-**3. Make an SSH user for the hub.** Do not give the hub `anima-admin`: it has sudo. Make a user
-with no extra groups and a key that only the hub holds. VPS-001 allows keys only, so the user has
-no password.
+**3. Make an SSH user for the hub and let sshd admit it.** Do not give the hub `anima-admin`: it
+has sudo. Make a user with no extra groups and a key that only the hub holds. VPS-001 allows keys
+only, so the user has no password.
 
 ```sh
 # Run on the Mac. Store the private key in Anima (step 4), then delete the local copy.
@@ -853,11 +867,51 @@ sudo ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub
 
 Keep the host key fingerprint from the last line for step 4.
 
-sshd admits only the admin user: `harden.sh ssh` writes `AllowUsers <admin>`, and `harden.sh check`
-reports any other `AllowUsers` value. So a login as `anima-probe` is refused until the programme rules
-how sshd admits it. Until then the ping and the 22/tcp check work, and the SSH terminal does not.
+Then install the new sshd drop-in. `harden.sh ssh` writes it, checks it with `sshd -t`, `sshd -T`
+and `sshd -T -C` (now also for `anima-probe` from `172.30.0.10`), puts the old drop-in back if any
+check fails, and reloads sshd. It keeps the old drop-in as `/var/lib/anima/00-anima.conf.previous`.
+Copy the three changed files first:
 
-Undo: `sudo userdel -r anima-probe`.
+```sh
+# Run on the Mac, in the repository root, at the commit that you deploy.
+scp deploy/headscale/vps/harden.sh deploy/headscale/vps/sshd.sh deploy/headscale/vps/sshd-anima.conf anima-admin@100.64.0.1:/tmp/
+```
+
+```sh
+# Run on the VPS, in an SSH session over the VPN.
+cd /opt/anima/headscale/vps
+for f in harden.sh sshd.sh sshd-anima.conf; do sudo cp -p "$f" "/root/$f.before-vp13"; done
+sudo install -m 0755 -o root -g root /tmp/harden.sh harden.sh
+sudo install -m 0644 -o root -g root /tmp/sshd.sh /tmp/sshd-anima.conf .
+rm /tmp/harden.sh /tmp/sshd.sh /tmp/sshd-anima.conf
+export ANIMA_ADMIN_USER=anima-admin
+sudo --preserve-env=ANIMA_ADMIN_USER ./harden.sh --dry-run ssh
+sudo --preserve-env=ANIMA_ADMIN_USER ./harden.sh ssh
+```
+
+**Keep this session open.** In a new session, check that `ssh anima-admin@100.64.0.1` still logs
+in. Then check:
+
+```sh
+# Run on the VPS.
+sudo sshd -T | grep -i '^allowusers'
+ANIMA_ADMIN_USER=anima-admin sudo --preserve-env=ANIMA_ADMIN_USER /opt/anima/headscale/vps/harden.sh check
+```
+
+`sshd -T` prints two lines, `allowusers anima-admin` and `allowusers anima-probe@172.30.0.10`.
+`check` ends with `ok: no violations`. A login as `anima-probe` from the Mac is refused: it may come
+only from the hub.
+
+Undo, in the session you kept open:
+
+```sh
+# Run on the VPS.
+sudo install -m 0600 -o root -g root /var/lib/anima/00-anima.conf.previous /etc/ssh/sshd_config.d/00-anima.conf
+sudo sshd -t && sudo systemctl reload sshd.service
+cd /opt/anima/headscale/vps
+for f in harden.sh sshd.sh sshd-anima.conf; do sudo cp -p "/root/$f.before-vp13" "$f"; done
+sudo userdel -r anima-probe
+```
 
 **4. Add the VPS in the app.** Add a device with the address `100.64.0.1` and an SSH credential for
 user `anima-probe` with the private key from step 3. At the first connection, compare the host key

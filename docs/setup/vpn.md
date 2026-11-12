@@ -579,7 +579,7 @@ changes nothing.
    then run `ssh` again), and while any `Include` is written in a form it cannot follow
    literally (`Include=`, quotes, a path with spaces: rewrite it as `Include /path/pattern`); it checks the result
    with `sshd -t`, `sshd -T` and `sshd -T -C` for root and the admin user from a public and a VPN
-   address, and puts the old file back if any check fails; then it reloads `sshd.service`. **Keep your current session open.** Open a second session and log in
+   address and for the hub's user `anima-probe` from the hub container (VP-13), and puts the old file back if any check fails; then it reloads `sshd.service`. **Keep your current session open.** Open a second session and log in
    before you close the first.
 
    Before you run it, prove your way back in: log in at the Hostinger browser console as

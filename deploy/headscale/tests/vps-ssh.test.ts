@@ -49,7 +49,7 @@ describe("harden.sh ssh", () => {
   test("VPS-001: installs the drop-in with AllowUsers, validates it and reloads sshd", () => {
     const run = host.run(["ssh"]);
     expect(run.code).toBe(0);
-    expect(host.read(DROP_IN)).toContain("\nAllowUsers admin\n");
+    expect(host.read(DROP_IN)).toContain("\nAllowUsers admin anima-probe@172.30.0.10\n");
     expect(run.calls).toEqual(expect.arrayContaining(["SSHD -t", "SSHD -T", "SYSTEMCTL reload sshd.service"]));
     expect(run.out).not.toContain("AAAA");
   });
