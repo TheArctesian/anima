@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { chartsOf } from './overview-charts';
-import { CPU_ONLY, INTEGRATED, NVIDIA, point, TWO_GPUS, series } from './metrics.fixture';
+import { APPLE, CPU_ONLY, INTEGRATED, NVIDIA, point, TWO_GPUS, series } from './metrics.fixture';
 
 const keys = (charts: ReturnType<typeof chartsOf>) => charts.map((chart) => chart.key);
 
@@ -103,5 +103,30 @@ describe('chartsOf series', () => {
     const colours = (key: string) => charts.find((chart) => chart.key === key)?.series.map((line) => line.colour);
     expect(colours('network:eth0')).toEqual([1, 2]);
     expect(colours('load')).toEqual([1, 2, 3]);
+  });
+});
+
+describe('chartsOf shared GPU memory', () => {
+  it('D-30: a GPU with shared memory gets a bytes chart for it, and no VRAM chart', () => {
+    const at = '2026-11-05T09:04:00Z';
+    const charts = chartsOf([series('GPU_PERCENT', 'GPU 0', [point(at, 10)], 0), series('GPU_MEMORY_BYTES', 'GPU 0', [point(at, 2 ** 30)], 0)], [APPLE]);
+    expect(keys(charts)).toEqual(['gpu:0:usage', 'gpu:0:memory']);
+    expect(charts[1]?.title).toBe('GPU 0 Apple M2 Pro memory in use (shared)');
+    expect(charts[1]?.axis).toBe('open');
+    expect(charts[1]?.format(2 ** 30)).toBe('1.0 GiB');
+  });
+
+  it('D-30, MET-007: a GPU with its own memory gets no shared memory chart, even when that series arrives', () => {
+    const at = '2026-11-05T09:04:00Z';
+    const charts = chartsOf([series('GPU_PERCENT', 'GPU 0', [point(at, 10)], 0), series('GPU_MEMORY_BYTES', 'GPU 0', [point(at, 2 ** 30)], 0)], [NVIDIA]);
+    expect(keys(charts)).toEqual(['gpu:0:usage']);
+  });
+
+  it('D-30: two GPUs without their own memory each get a chart from their own shared memory series', () => {
+    const at = '2026-11-05T09:04:00Z';
+    const second = { ...APPLE, index: 1, name: 'Apple M2 Ultra' };
+    const charts = chartsOf([series('GPU_MEMORY_BYTES', 'GPU 1', [point(at, 2048)], 1), series('GPU_MEMORY_BYTES', 'GPU 0', [point(at, 1024)], 0)], [APPLE, second]);
+    expect(keys(charts)).toEqual(['gpu:0:memory', 'gpu:1:memory']);
+    expect(charts.map((chart) => chart.series[0]?.points[0]?.value)).toEqual([1024, 2048]);
   });
 });
