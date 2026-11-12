@@ -8,8 +8,9 @@ each target, upload the files to the R2 bucket `anima-releases`, and the hub che
 that feed. The hub side, its R2 credentials and the bucket setup are in
 [deploy/README.md](../deploy/README.md).
 
-There is no GitHub release workflow: `.github/workflows/release.yml` was removed by R-114. No
-signing key is stored on GitHub.
+There is no GitHub release workflow: `.github/workflows/release.yml` was removed by R-114. The
+operator keeps a `release` environment with Apple and updater secrets on GitHub (R-116), but nothing
+in the repository reads them.
 
 ## Once, by the operator
 
@@ -27,7 +28,15 @@ Agents never do these steps (UPD-012). Never paste a key or password into chat, 
    installed again by hand.
 2. Put the text of `~/.tauri/anima-updater.key.pub` in `apps/desktop/src-tauri/tauri.conf.json` as
    `plugins.updater.pubkey`, and commit it. The public key is not a secret.
-3. On each builder, open Settings, Updates, and choose "Import updater key" (UPD-012). The app
+3. On each macOS builder, install the Developer ID Application certificate that
+   `bundle.macOS.signingIdentity` names into the login keychain (BLD-083), and store the
+   notarization credentials once in the keychain profile `anima-notary` (BLD-084). Make an
+   app-specific password at account.apple.com; the command asks for it:
+
+   ```sh
+   xcrun notarytool store-credentials anima-notary --apple-id <your Apple account> --team-id 7GDLG48PV6
+   ```
+4. On each builder, open Settings, Updates, and choose "Import updater key" (UPD-012). The app
    keeps the key sealed; before a build, "Unlock updater key" asks for its password. The key is
    never in GitHub or in a file the agents read.
 
