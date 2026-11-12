@@ -72,8 +72,6 @@ entity_id! {
     ChannelId,
     /// A notification delivery.
     DeliveryId,
-    /// A session recording.
-    RecordingId,
     /// An access token of the operator or of a builder.
     TokenId,
     /// A release: one version and commit, built for one or more targets.

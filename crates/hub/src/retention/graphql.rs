@@ -51,7 +51,7 @@ impl Period {
         }
     }
 
-    fn all(periods: &Periods) -> Vec<Self> {
+    fn all(periods: Periods) -> Vec<Self> {
         Subject::ALL
             .into_iter()
             .map(|subject| Self::new(subject, periods.days(subject)))
@@ -68,7 +68,7 @@ impl Query {
     #[graphql(guard = "Authenticated")]
     async fn retention(&self, ctx: &Context<'_>) -> Result<Vec<Period>> {
         let stored = periods(pool(ctx)?).await.map_err(to_graphql)?;
-        Ok(Period::all(&stored))
+        Ok(Period::all(stored))
     }
 }
 

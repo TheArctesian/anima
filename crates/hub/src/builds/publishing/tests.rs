@@ -1,9 +1,10 @@
 //! Tests of the pure publishing rules: `SigV4` against the AWS examples, the feed check, the file
 //! set, the updater signature and property tests of the parsers (BLD-060 to BLD-069, D-24,
-//! R-108).
+//! R-108); and the row lock a try that leaves its job gives up (D-25).
 
 mod feeds;
 mod files;
+mod holds;
 mod parsers;
 mod signatures;
 mod sigv4;

@@ -41,9 +41,11 @@ impl Live {
         self.changes.sender.subscribe()
     }
 
-    /// Publishes a committed end, with the row as it was written.
-    pub(in crate::sessions) fn publish_end(&self, ended: Session) {
-        self.changes.publish(ended);
+    /// Publishes a committed change to a session row other than its start, with the row as it
+    /// was written: an end. Unlike [`Live::publish_start`], it publishes even while the hub is
+    /// shutting down.
+    pub(in crate::sessions) fn publish_change(&self, changed: Session) {
+        self.changes.publish(changed);
     }
 
     /// Publishes the start of a committed live row while its ticket is still held, so every

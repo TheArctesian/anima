@@ -1,7 +1,16 @@
-/** One local gate: a name and the argv that runs it from the repository root. */
+import { join } from "node:path";
+
+/** An executable a gate needs on `PATH`, and how to install it. */
+export interface Requirement {
+  executable: string;
+  install: string;
+}
+
+/** One local gate: a name, the argv that runs it from the repository root, and what it needs on `PATH`. */
 export interface Gate {
   name: string;
   argv: string[];
+  requires?: Requirement[];
 }
 
 /** What happened while running gates, in order. `code` is the exit code (1 when killed by a signal). */
@@ -16,17 +25,29 @@ export interface GateOutcome {
   stoppedAt?: Gate;
 }
 
-/** Runs one argv to completion and returns its exit code. Throws when it cannot start. */
-export type RunProcess = (argv: string[]) => number;
+/** Runs one gate to completion and returns its exit code. Throws when it cannot start. */
+export type RunProcess = (gate: Gate) => number;
 export type ReportGateEvent = (event: GateEvent) => void;
 
-/** The twelve gates in the order they run (CQ-010, CQ-011). */
+const NEXTEST: Requirement = { executable: "cargo-nextest", install: "cargo install cargo-nextest --locked" };
+
+/**
+ * The fourteen gates in the order they run (CQ-010, CQ-011). Gates 3 to 5 together run every test
+ * `cargo test` runs (R-112): nextest the libtest tests, then the doctests, then the one non-libtest target.
+ */
 export function gateList(baseRef: string): Gate[] {
   return [
     { name: "fmt", argv: ["cargo", "fmt", "--check"] },
     { name: "clippy", argv: ["cargo", "clippy", "--all-targets", "--", "-D", "warnings"] },
     // Rust tests run against a throwaway PostgreSQL unless DATABASE_URL is set (R-009).
-    { name: "cargo-test", argv: ["bun", "quality/bin/with-postgres.ts", "cargo", "test"] },
+    {
+      name: "rust-test",
+      argv: ["bun", "quality/bin/with-postgres.ts", "cargo", "nextest", "run", "--workspace"],
+      requires: [NEXTEST],
+    },
+    { name: "doctest", argv: ["cargo", "test", "--workspace", "--doc"] },
+    // `harness = false`, so not listable by nextest (.config/nextest.toml); `--workspace` keeps gate 3's build.
+    { name: "pinning", argv: ["cargo", "test", "--workspace", "--test", "pinning"] },
     { name: "install", argv: ["bun", "install", "--frozen-lockfile"] },
     { name: "lint", argv: ["bun", "run", "lint"] },
     { name: "check", argv: ["bun", "run", "check"] },
@@ -53,7 +74,7 @@ export function runGates(
     const began = now();
     let code: number;
     try {
-      code = run(gate.argv);
+      code = run(gate);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       report({ kind: "fail", position, total, gate, code: 1, message });
@@ -69,6 +90,17 @@ export function runGates(
   }
   report({ kind: "done", passed: total, total });
   return { exitCode: 0 };
+}
+
+/**
+ * Why `gate` cannot run: the first required executable missing from every `PATH` folder.
+ * A missing tool fails its gate, never skips it (CQ-024).
+ */
+export function missingRequirement(gate: Gate, pathEnv: string, exists: (path: string) => boolean): string | undefined {
+  const dirs = pathEnv.split(":").filter((dir) => dir !== "");
+  const missing = (gate.requires ?? []).find((need) => !dirs.some((dir) => exists(join(dir, need.executable))));
+  if (missing === undefined) return undefined;
+  return `${missing.executable} is not on PATH; install it with \`${missing.install}\` and put its folder (~/.cargo/bin) on PATH`;
 }
 
 export function formatGateEvent(event: GateEvent): string {

@@ -1,4 +1,4 @@
-//! The session limit and the recording flag: the rules and the store (RA-036, RA-040).
+//! The session limit: the rules and the store (RA-036).
 
 use std::num::NonZeroU8;
 
@@ -35,10 +35,7 @@ fn nz(value: u8) -> Option<NonZeroU8> {
 #[test]
 fn ra_036_a_new_device_has_no_limit_unless_one_is_given() {
     let none = validate_new_device(&limit(None)).unwrap();
-    assert_eq!(
-        (none.remote.session_limit, none.remote.record_sessions),
-        (None, false)
-    );
+    assert_eq!(none.remote.session_limit, None);
     let set = validate_new_device(&limit(Some(4))).unwrap();
     assert_eq!(set.remote.session_limit, nz(4));
 }
@@ -84,42 +81,14 @@ fn ra_036_an_update_keeps_on_null_clears_on_zero_and_sets_1_to_100() {
     }
 }
 
-#[test]
-fn ra_040_the_flag_defaults_to_false_and_an_update_without_it_keeps_it() {
-    assert!(
-        !validate_new_device(&limit(None))
-            .unwrap()
-            .remote
-            .record_sessions
-    );
-    let form = RemoteForm {
-        record_sessions: Some(true),
-        ..RemoteForm::default()
-    };
-    let created = validate_new_device(&NewDeviceInput {
-        remote: form,
-        ..limit(None)
-    })
-    .unwrap();
-    assert!(created.remote.record_sessions);
-    assert_eq!(
-        validate_change(&change(None))
-            .unwrap()
-            .remote
-            .record_sessions,
-        None
-    );
-}
-
 store_test! {
-    async fn ra_036_the_limit_and_flag_are_stored_and_read_back(pool: PgPool) {
+    async fn ra_036_the_limit_is_stored_and_read_back(pool: PgPool) {
         let mut conn = pool.acquire().await.unwrap();
         let mut device = record("limited");
         device.remote.session_limit = nz(3);
-        device.remote.record_sessions = true;
         let id = device_id("0190a000-0000-7000-8002-0000000000f2");
         let created = store::create_device(&mut conn, id, instant(NOW), &device).await.unwrap();
-        assert_eq!((created.session_limit, created.record_sessions), (nz(3), true));
+        assert_eq!(created.session_limit, nz(3));
         assert_eq!(store::get(&pool, id).await.unwrap(), created);
     }
 
@@ -161,18 +130,6 @@ store_test! {
             Err(Error::NotFound(Missing::Device(gone))) => assert_eq!(gone, missing),
             other => panic!("{other:?}"),
         }
-    }
-
-    async fn ra_040_an_update_sets_and_keeps_the_flag_in_the_row(pool: PgPool) {
-        let mut conn = pool.acquire().await.unwrap();
-        let id = device_id(PVE_01);
-        let set = DeviceChange {
-            remote: RemoteChange { record_sessions: Some(true), ..RemoteChange::default() },
-            ..DeviceChange::default()
-        };
-        assert!(store::update_device(&mut conn, id, instant(NOW), &set).await.unwrap().record_sessions);
-        let keep = DeviceChange { maintenance: Some(true), ..DeviceChange::default() };
-        assert!(store::update_device(&mut conn, id, instant(NOW), &keep).await.unwrap().record_sessions);
     }
 
     async fn ra_036_the_database_refuses_a_limit_of_0_or_101(pool: PgPool) {

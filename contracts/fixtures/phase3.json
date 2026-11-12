@@ -1,5 +1,5 @@
 {
-  "_comment": "K6 synthetic fixtures for Phase 3. Not real hosts, mailboxes or credentials: hosts are example.net or 10.x, and no secret field has a value (SEC-005): a webhook gives only its origin, ntfy only tokenStored, email only passwordStored, an Apprise channel only its server, mode and tags; API keys carry only the 12-character prefix that K1 exposes (no hash, no secret). IDs are fixed UUID v7-shaped strings, 0190a000-0000-7000-80NN-0000000000MM, and never collide with phase1.json (NN 00 to 04) or phase2.json (NN 11 to 16). NN segments: 17 notification channels, 18 deliveries, 19 API keys, 20 recordings, 22 checks (21 was shares, withdrawn by R-111), and new here 23 devices, 24 sessions. A reference may point at an id in this file, phase2.json or phase1.json: the Phase 1 HTTPS check is 0190a000-0000-7000-8003-00000000001a (pve-01 Web UI), the Phase 2 site is 11-01 and the Phase 2 Mac mini is 12-03. Compact shapes: `checkNotifications` is one entry per check with channelIds (CheckNotifications.channels as ids); `recordings[].stoppedReason` is the K2 column sessions.recordings.stopped_reason, not a K1 field; `streams` holds two plaintext recordings for player tests, one for each recording format: Guacamole instructions (LEN.value elements, a 200 by 120 rectangle on a 640 by 480 layer) and an asciicast v2 file of `echo hello`; `retention` rows hold the D-25 defaults with days at the default; `checkDefaults` are the schema defaults of K1 (intervalSeconds 60, retries 3, retryIntervalSeconds 20, degradedThresholdMs 1000). No session here has a ticket.",
+  "_comment": "K6 synthetic fixtures for Phase 3. Not real hosts, mailboxes or credentials: hosts are example.net or 10.x, and no secret field has a value (SEC-005): a webhook gives only its origin, ntfy only tokenStored, email only passwordStored, an Apprise channel only its server, mode and tags; API keys carry only the 12-character prefix that K1 exposes (no hash, no secret). IDs are fixed UUID v7-shaped strings, 0190a000-0000-7000-80NN-0000000000MM, and never collide with phase1.json (NN 00 to 04) or phase2.json (NN 11 to 16). NN segments: 17 notification channels, 18 deliveries, 19 API keys, 22 checks (20 was recordings, withdrawn by R-113; 21 was shares, withdrawn by R-111), and new here 23 devices, 24 sessions. A reference may point at an id in this file, phase2.json or phase1.json: the Phase 1 HTTPS check is 0190a000-0000-7000-8003-00000000001a (pve-01 Web UI), the Phase 2 site is 11-01 and the Phase 2 Mac mini is 12-03. Compact shapes: `checkNotifications` is one entry per check with channelIds (CheckNotifications.channels as ids); `retention` rows hold the D-25 defaults with days at the default; `checkDefaults` are the schema defaults of K1 (intervalSeconds 60, retries 3, retryIntervalSeconds 20, degradedThresholdMs 1000). No session here has a ticket.",
   "channels": [
     {
       "id": "0190a000-0000-7000-8017-000000000001",
@@ -251,7 +251,6 @@
       "host": "10.40.0.21",
       "os": "LINUX",
       "sessionLimit": 2,
-      "recordSessions": true,
       "ssh": {
         "enabled": true,
         "port": 22,
@@ -273,7 +272,6 @@
       "host": "10.40.0.22",
       "os": "LINUX",
       "sessionLimit": null,
-      "recordSessions": false,
       "gpus": [
         {
           "index": 0,
@@ -290,7 +288,6 @@
       "host": "10.40.0.23",
       "os": "MACOS",
       "sessionLimit": null,
-      "recordSessions": false,
       "gpus": [
         {
           "index": 0,
@@ -311,8 +308,7 @@
       "startedAt": "2026-11-07T09:00:00Z",
       "endedAt": null,
       "endReason": null,
-      "clientAddr": "10.40.0.99",
-      "recording": "OFF"
+      "clientAddr": "10.40.0.99"
     },
     {
       "id": "0190a000-0000-7000-8024-000000000002",
@@ -323,8 +319,7 @@
       "startedAt": "2026-11-07T09:10:00Z",
       "endedAt": null,
       "endReason": null,
-      "clientAddr": "10.40.0.99",
-      "recording": "ON"
+      "clientAddr": "10.40.0.99"
     },
     {
       "id": "0190a000-0000-7000-8024-000000000003",
@@ -335,8 +330,7 @@
       "startedAt": "2026-11-06T14:00:00Z",
       "endedAt": "2026-11-06T14:20:00Z",
       "endReason": "OPERATOR",
-      "clientAddr": "10.40.0.99",
-      "recording": "ON"
+      "clientAddr": "10.40.0.99"
     },
     {
       "id": "0190a000-0000-7000-8024-000000000004",
@@ -347,66 +341,9 @@
       "startedAt": "2026-11-05T10:00:00Z",
       "endedAt": "2026-11-05T12:00:00Z",
       "endReason": "REMOTE_CLOSED",
-      "clientAddr": "10.40.0.99",
-      "recording": "STOPPED"
+      "clientAddr": "10.40.0.99"
     }
   ],
-  "recordings": [
-    {
-      "id": "0190a000-0000-7000-8020-000000000001",
-      "sessionId": "0190a000-0000-7000-8024-000000000003",
-      "deviceId": "0190a000-0000-7000-8023-000000000001",
-      "deviceName": "build-box",
-      "protocol": "VNC",
-      "format": "GUACAMOLE",
-      "startedAt": "2026-11-06T14:00:00Z",
-      "endedAt": "2026-11-06T14:20:00Z",
-      "sizeBytes": 110,
-      "complete": true,
-      "expiresAt": "2026-12-06T14:20:00Z",
-      "stoppedReason": null
-    },
-    {
-      "id": "0190a000-0000-7000-8020-000000000002",
-      "sessionId": "0190a000-0000-7000-8024-000000000002",
-      "deviceId": "0190a000-0000-7000-8023-000000000001",
-      "deviceName": "build-box",
-      "protocol": "SSH",
-      "format": "ASCIICAST",
-      "startedAt": "2026-11-07T09:10:00Z",
-      "endedAt": null,
-      "sizeBytes": 172,
-      "complete": false,
-      "expiresAt": "2026-12-07T09:10:00Z",
-      "stoppedReason": null
-    },
-    {
-      "id": "0190a000-0000-7000-8020-000000000003",
-      "sessionId": "0190a000-0000-7000-8024-000000000004",
-      "deviceId": "0190a000-0000-7000-8023-000000000001",
-      "deviceName": "build-box",
-      "protocol": "SSH",
-      "format": "ASCIICAST",
-      "startedAt": "2026-11-05T10:00:00Z",
-      "endedAt": "2026-11-05T12:00:00Z",
-      "sizeBytes": 2147483648,
-      "complete": true,
-      "expiresAt": "2026-12-05T12:00:00Z",
-      "stoppedReason": "size_limit"
-    }
-  ],
-  "streams": {
-    "guacamole": {
-      "recordingId": "0190a000-0000-7000-8020-000000000001",
-      "format": "GUACAMOLE",
-      "text": "4.size,1.0,3.640,3.480;4.rect,1.0,3.100,2.80,3.200,3.120;5.cfill,2.14,1.0,2.76,2.86,3.106,3.255;4.sync,4.1000;"
-    },
-    "asciicast": {
-      "recordingId": "0190a000-0000-7000-8020-000000000002",
-      "format": "ASCIICAST",
-      "text": "{\"version\":2,\"width\":80,\"height\":24,\"timestamp\":1793000000,\"env\":{\"TERM\":\"xterm-256color\"}}\n[0.2,\"o\",\"$ \"]\n[0.9,\"o\",\"echo hello\\r\\n\"]\n[0.91,\"o\",\"hello\\r\\n\"]\n[1.0,\"o\",\"$ \"]\n"
-    }
-  },
   "checks": [
     {
       "id": "0190a000-0000-7000-8022-000000000001",
@@ -448,13 +385,6 @@
       "minDays": 30,
       "maxDays": 365,
       "defaultDays": 90
-    },
-    {
-      "subject": "RECORDINGS",
-      "days": 30,
-      "minDays": 1,
-      "maxDays": 365,
-      "defaultDays": 30
     },
     {
       "subject": "DELIVERIES",

@@ -4,7 +4,7 @@
 //! ended.
 
 use chrono::{DateTime, TimeDelta, Utc};
-use sqlx::{PgConnection, PgPool};
+use sqlx::{PgConnection, PgPool, Postgres, Transaction};
 
 use super::{
     run::{Outcome, Reach, Tried, Work},
@@ -135,35 +135,17 @@ pub(super) async fn finish(
     let current = store::publish_attempt(&mut *tx, tried.job).await?;
     // The attempt alone does not say the job is still the publisher's: a job failed while
     // publishing was off keeps its last attempt.
-    if job.state != JobState::Uploading || current != Some(tried.attempt) {
-        return Ok(());
-    }
+    let held = job.state == JobState::Uploading && current == Some(tried.attempt);
     let feed_sent = store::feed_sent(&mut *tx, tried.job).await?;
-    let now = reach.clock.now();
-    let next = match end_of(outcome, tried.attempt, feed_sent) {
-        End::Leave => return Ok(()),
-        End::Retry => {
-            store::hold(&mut tx, tried.job, None, now + RETRY).await?;
-            tx.commit().await?;
-            return Ok(());
-        }
-        End::Publish(folders, changed) => {
-            let next = queue::published(&job, now);
-            store::save(&mut tx, &next).await?;
-            store::set_written(&mut tx, job.id, folders).await?;
-            let event = published_event(&job, folders);
-            events::record(&mut tx, build_queue.bus, now, event).await?;
-            record_changed(&mut tx, build_queue.bus, now, (&job, &changed)).await?;
-            next
-        }
-        End::Fail(reason) => {
-            let next = queue::publish_failed(&job, &reason, now);
-            store::save(&mut tx, &next).await?;
-            jobs::record_failure(&mut tx, build_queue.bus, &next).await?;
-            next
-        }
+    let end = if held {
+        end_of(outcome, tried.attempt, feed_sent)
+    } else {
+        End::Leave
     };
-    tx.commit().await?;
+    let now = reach.clock.now();
+    let Some(next) = record(tx, build_queue.bus, (&job, end), now).await? else {
+        return Ok(());
+    };
     build_queue.updates.publish(JobUpdate {
         job: next.clone(),
         lines: Vec::new(),
@@ -173,6 +155,46 @@ pub(super) async fn finish(
         remove_objects(build_queue.db, reach, &next).await?;
     }
     Ok(())
+}
+
+/// Writes `end` for the locked `job` at `now` and ends `tx`; the job as it ended, or `None` when
+/// it did not end. `tx` is always committed or rolled back here: a dropped transaction rolls back
+/// later, from a task, so its row lock could outlive the try and the sweep's next take would skip
+/// the job (D-25).
+async fn record(
+    mut tx: Transaction<'_, Postgres>,
+    bus: &Bus,
+    (job, end): (&BuildJob, End),
+    now: DateTime<Utc>,
+) -> Result<Option<BuildJob>, Error> {
+    let next = match end {
+        End::Leave => {
+            tx.rollback().await?;
+            return Ok(None);
+        }
+        End::Retry => {
+            store::hold(&mut tx, job.id, None, now + RETRY).await?;
+            tx.commit().await?;
+            return Ok(None);
+        }
+        End::Publish(folders, changed) => {
+            let next = queue::published(job, now);
+            store::save(&mut tx, &next).await?;
+            store::set_written(&mut tx, job.id, folders).await?;
+            let event = published_event(job, folders);
+            events::record(&mut tx, bus, now, event).await?;
+            record_changed(&mut tx, bus, now, (job, &changed)).await?;
+            next
+        }
+        End::Fail(reason) => {
+            let next = queue::publish_failed(job, &reason, now);
+            store::save(&mut tx, &next).await?;
+            jobs::record_failure(&mut tx, bus, &next).await?;
+            next
+        }
+    };
+    tx.commit().await?;
+    Ok(Some(next))
 }
 
 /// Deletes the objects `job`'s upload URLs were given for, so a failed build is never in the

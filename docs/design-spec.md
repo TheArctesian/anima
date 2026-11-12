@@ -150,7 +150,7 @@ Anima has three components: the client, the hub and the gateway.
 - **GW-003.** The gateway has no authentication. A process that can connect to port 4822 can open a connection to any host. Thus GW-002 is a security requirement.
 - **GW-004.** If the gateway runs on a different host in a later version, the hub must connect to it with TLS.
 
-The gateway does only the protocol work: RDP and VNC connections (SSH goes through the hub's terminal tunnel, R-062), the display, recordings, file streams and joins to a shared session. The Guacamole Java web application does all other work. Anima does not use the Java web application. Thus the hub must do this work:
+The gateway does only the protocol work: RDP and VNC connections (SSH goes through the hub's terminal tunnel, R-062), the display and file streams. The Guacamole Java web application does all other work. Anima does not use the Java web application. Thus the hub must do this work:
 
 - **GW-010. Handshake.** The hub must send `select`, read `args` and agree the protocol version. Then the hub must send `size`, `audio`, `video`, `image`, `timezone` and `name`. The hub must send `connect` last, with a value for each argument. Then the hub must read `ready`.
 - **GW-011. Tunnel.** The hub must relay the WebSocket subprotocol `guacamole` to the gateway. The hub must answer the internal tunnel instructions and `ping`. The hub must close the tunnel when it gets an instruction that is not valid.
@@ -252,7 +252,7 @@ desktop app ── at start and every 4 hours ── GET latest.json ── vers
 - **UPD-004.** When an update is installed, the client must show a banner with the text "Anima <version> is installed" and a "Restart to update" button. The banner must have `role="status"`.
 - **UPD-005.** After one update is installed, the app must stop checking until it restarts.
 - **UPD-006.** The Settings page must show an "Updates" row with the current version, the update state and a "Check for updates" button. A failed check must not show an error dialog; the next check runs at the usual time.
-- **UPD-007.** A release must start only from the Builds view (BLD-001). The workflow `release.yml` runs only by hand, as a fallback until WP-36 is accepted; then it is deleted (changed by R-107).
+- **UPD-007.** A release must start only from the Builds view (BLD-001). There is no GitHub release workflow (changed by R-107; `release.yml` removed by R-114).
 - **UPD-008.** The hub must write `latest.json` only after it has verified all files of the job (BLD-064 to BLD-066) (changed by R-107).
 - **UPD-009.** Each `latest.json` must list only the platform keys of its own target. A target that did not build keeps its older feed (changed by R-107).
 - **UPD-010.** Each release must have versioned updater files, stable-named files for people (`Anima.dmg`, `Anima-x86_64.AppImage`) and a `SHA256SUMS` file.
@@ -907,7 +907,7 @@ Session procedure:
 - **RA-005.** An RDP session must support the clipboard in text format.
 - **RA-006.** The client must send special key combinations, for example Ctrl+Alt+Delete, from a menu.
 - **RA-007.** If the connection stops, the client must show the reason and a "Reconnect" button.
-- **RA-008.** The hub must record the start time, the end time and the device of each session. The hub must not record the session content, except when the operator sets RA-040 on. (R-111)
+- **RA-008.** The hub must record the start time, the end time and the device of each session. The hub must not record the session content. (R-111, R-113)
 
 #### 6.3.1 SSH settings (Phase 1)
 
@@ -957,8 +957,8 @@ Since R-062 the hub opens the SSH connection and the client draws the terminal (
 | Live sessions | 2 | **RA-034.** The client must show a list of live sessions. The operator must be able to stop a live session. |
 | Session sharing | Deferred | **RA-035.** Deferred (R-111). Anima is for the operator's own use of their own resources. No share links, no viewers without an operator account, and no sign-in exception for viewers. |
 | Concurrency limit | 3 | **RA-036.** The operator must be able to set a maximum number of sessions for each device. |
-| Session recording | 3 | **RA-040.** The operator must be able to set recording on for each device. It is off by default. The client must show a "Recording" badge during a recorded session. The hub must encrypt recordings at rest. |
-| Recording playback | 3 | **RA-041.** The client must play RDP and VNC recordings with `Guacamole.SessionRecording`, which uses the Guacamole format. SSH recordings must be asciicast v2. The client must play them with xterm.js. (D-12, R-081) |
+| Session recording | Deferred | **RA-040.** Deferred (R-113). Anima is for the operator's own use of their own resources, and a recording would store the most sensitive content, such as passwords and tokens shown in a terminal. The hub records no session content (RA-008). |
+| Recording playback | Deferred | **RA-041.** Deferred with RA-040 (R-113). |
 | Touch input | 5 | **RA-050.** The iOS client must have the on-screen keyboard, text input mode, touchpad mouse mode and pinch zoom. |
 
 #### 6.3.4 Web interfaces
@@ -1126,7 +1126,7 @@ The view has these tabs:
 
 - **INT-001.** The hub must supply a Prometheus endpoint at `/metrics` with the status, response time, uptime ratio and certificate days of each check.
 - **INT-002.** Prometheus labels must not include values that change often.
-- **INT-003.** The operator must be able to make API keys for the GraphQL API. Each key must have a scope (read or write) and an expiry date. A key is `anima_` and 43 base64url characters. The hub must keep only the SHA-256 of a key. The expiry date is required and must be at most one year away. An API key must not manage API keys. It must not call `signInBrowser`, `startSession`, `openFiles`, `openRecording`, `enrolAgent` or `revokeAgentToken`. It must not set or clear a device credential, and it must not decide where one is sent: it must not call `acceptHostKey`, `acceptServerCertificate`, `acceptWebCertificate`, `updateDevice` or `deleteDevice`. It must not call `setRetention` or `deleteRecording`. (D-23, R-081, R-100)
+- **INT-003.** The operator must be able to make API keys for the GraphQL API. Each key must have a scope (read or write) and an expiry date. A key is `anima_` and 43 base64url characters. The hub must keep only the SHA-256 of a key. The expiry date is required and must be at most one year away. An API key must not manage API keys. It must not call `signInBrowser`, `startSession`, `openFiles`, `enrolAgent` or `revokeAgentToken`. It must not set or clear a device credential, and it must not decide where one is sent: it must not call `acceptHostKey`, `acceptServerCertificate`, `acceptWebCertificate`, `updateDevice` or `deleteDevice`. It must not call `setRetention`. (D-23, R-081, R-100, R-113)
 - **INT-004.** A later version can add public status pages, incidents and status badges.
 
 ## 7. Settings page
@@ -1152,7 +1152,7 @@ The Proxmox VE integration (PVE-001 to PVE-041) is withdrawn (R-109). Anima mana
 | --- | --- | --- |
 | 1 | Repository structure and quality gates (Sections 12 and 13). VPN setup: Headscale on the VPS, subnet routers, clients (Section 4.2). Design token build (Section 5.5), fonts and icons, motion helpers. Application shell, navigation bar, Nord theme, empty Settings page. Hub with authentication, GraphQL API, PostgreSQL and the three logs. Device list, add and edit device, tags. ICMP, TCP, TLS, HTTP(S), DNS, push and group checks. Maintenance windows. SSH sessions. | macOS, Linux |
 | 2 | RDP and VNC sessions. Web interfaces. Wake-on-LAN. SFTP. Live session list. SSH metrics. More check types. Device detail view with charts. | macOS, Linux |
-| 3 | Web client. Notifications. Prometheus endpoint and API keys. Session recording. Settings page items. Metrics push agent for macOS and Linux (`anima-agent`), with GPU usage on Apple silicon (R-084). | macOS, Linux, Web |
+| 3 | Web client. Notifications. Prometheus endpoint and API keys. Settings page items. Metrics push agent for macOS and Linux (`anima-agent`), with GPU usage on Apple silicon (R-084). | macOS, Linux, Web |
 | 4 | Withdrawn (R-109). | — |
 | 5 | iOS client. The iOS device as a part-time member of the network (Section 10.1). | All |
 | 6 | Site agents for Wake-on-LAN and local checks. Traffic data (Section 4.3). | All |
@@ -1192,7 +1192,7 @@ The iOS client is a full client for other devices. It is also a part-time member
 - **IOS-001.** The iOS application must report its own device to the hub as an agent while the application is in the foreground: battery level, charging state, thermal state, free storage and network type. The hub must show the device as Unknown, not Down, when the application is closed. iOS does not give system CPU or memory use.
 - **IOS-002.** The operator must be able to broadcast the screen of the iOS device to the operator's own signed-in Anima clients (ReplayKit broadcast extension), view-only. The operator starts each broadcast. No other person can watch it (R-111). Remote control of an iOS device is not possible.
 - **IOS-003.** The iOS application must keep an offline copy of the hub data in SQLite: devices, checks, recent metrics and the event log. The copy is updated while the application is open, and the client shows it with its age when the hub cannot be reached. The desktop clients may use the same copy.
-- **IOS-004.** The operator may make an iOS device a backup store. While the application is open and on Wi-Fi, the hub sends encrypted, incremental database backups and session recordings to it. The device stores only ciphertext; the key stays with the hub and the operator.
+- **IOS-004.** The operator may make an iOS device a backup store. While the application is open and on Wi-Fi, the hub sends encrypted, incremental database backups to it (R-113). The device stores only ciphertext; the key stays with the hub and the operator.
 
 What iOS does not allow, so no phase plans it: control of the device, SSH, VNC or RDP servers, background agents, native or downloaded programs, builds (Xcode needs a Mac), and serving a database to other devices.
 
@@ -1212,7 +1212,7 @@ What iOS does not allow, so no phase plans it: control of the device, SSH, VNC o
 | OD-11 | Gateway location | The gateway runs with the hub on the VPS. A session to a device at a site then goes VPS to site. If the latency is too high, a later version can run a gateway at each site (Guacamole supports a gateway for each connection). |
 | OD-12 | Build trigger | Phase 2: the operator starts each release (Section 3.10). A later version can let the hub poll `main` and queue a release for each new commit. |
 | OD-13 | Apple Developer ID | Until the operator has one, macOS builds are ad-hoc signed and do not update themselves (BLD-068). With one, the macOS builder signs and notarizes with keys from its key store. |
-| OD-14 | Compute workers (R-110) | The hub keeps a job queue for compute work. A job is a WebGPU (WGSL) compute shader with WebAssembly, so every client runs it: desktop, web and iOS (WebKit on iOS 26 has WebGPU). An iOS device works only in the foreground and on the charger, and stops when it gets hot. Built-in jobs can use Core ML, for example the transcription and text search of session recordings. Before a phase depends on it: one test job on an iPad and a Mac, compared. Background GPU work on iOS 26 (continued processing tasks) is not verified. |
+| OD-14 | Compute workers (R-110) | The hub keeps a job queue for compute work. A job is a WebGPU (WGSL) compute shader with WebAssembly, so every client runs it: desktop, web and iOS (WebKit on iOS 26 has WebGPU). An iOS device works only in the foreground and on the charger, and stops when it gets hot. Built-in jobs can use Core ML. Before a phase depends on it: one test job on an iPad and a Mac, compared. Background GPU work on iOS 26 (continued processing tasks) is not verified. |
 | OD-6 | Central log search | Not necessary now. A later version can send the process log to Loki or a similar system. |
 
 ## 12. Code quality (CUPID)

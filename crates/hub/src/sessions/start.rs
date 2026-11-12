@@ -293,7 +293,7 @@ async fn end_shut_down(
     let ended = end_row(&mut tx, pending.session, end, &by).await?;
     tx.commit().await?;
     if let Some(row) = ended {
-        live.publish_end(row);
+        live.publish_change(row);
     }
     Ok(())
 }

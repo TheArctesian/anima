@@ -46,7 +46,7 @@
   }
 </script>
 
-<!-- A group, not a form landmark: five named forms would be five landmarks; Enter still submits. -->
+<!-- A group, not a form landmark: four named forms would be four landmarks; Enter still submits. -->
 <form role="group" novalidate onsubmit={submit} aria-label={label}>
   <SettingRow {label} for="{id}-days">
     {#snippet hint()}

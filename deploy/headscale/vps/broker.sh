@@ -86,8 +86,9 @@ broker_hub_user() {
       local line
       line=$($GETENT "$db" "$entry") || continue
       IFS=: read -r -a fields <<<"$line"
-      [ "${fields[0]}" = "$BROKER_HUB_USER" ] && [ "${fields[2]}" = "$BROKER_HUB_ID" ] \
-        || refuse "$db $entry is ${fields[0]}:${fields[2]}; the broker socket needs $BROKER_HUB_USER:$BROKER_HUB_ID for the hub"
+      if [ "${fields[0]}" != "$BROKER_HUB_USER" ] || [ "${fields[2]}" != "$BROKER_HUB_ID" ]; then
+        refuse "$db $entry is ${fields[0]}:${fields[2]}; the broker socket needs $BROKER_HUB_USER:$BROKER_HUB_ID for the hub"
+      fi
     done
   done
   $GETENT group "$BROKER_HUB_ID" >/dev/null || run "$GROUPADD" --system --gid "$BROKER_HUB_ID" "$BROKER_HUB_USER"

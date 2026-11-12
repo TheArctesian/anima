@@ -3,6 +3,7 @@ import { chmodSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ROOT } from "./roles-setup.ts";
+import { finish } from "./finished-process.ts";
 
 const OFFSITE = join(ROOT, "deploy", "backup", "offsite.sh");
 const PASSWORD = "very-secret-restic-password";
@@ -25,8 +26,8 @@ function setUp(): void {
   }
 }
 
-function offsite(args: string[], env: Record<string, string> = {}) {
-  const result = Bun.spawnSync(["bash", OFFSITE, ...args], {
+async function offsite(args: string[], env: Record<string, string> = {}) {
+  const result = await finish(["bash", OFFSITE, ...args], {
     env: {
       ...process.env,
       RESTIC: join(folder, "restic"),
@@ -35,16 +36,15 @@ function offsite(args: string[], env: Record<string, string> = {}) {
       ANIMA_RESTIC_PASSWORD_FILE: join(folder, "pw"),
       ...env,
     },
-    stdin: "ignore",
   });
-  return { exitCode: result.exitCode ?? 1, out: result.stdout.toString() + result.stderr.toString() };
+  return { exitCode: result.exitCode, out: result.stdout + result.stderr };
 }
 
 beforeEach(setUp);
 
 describe("offsite.sh (VPS-006)", () => {
-  test("VPS-006: sends the newest dump and its manifest with the secret files named, not read", () => {
-    const result = offsite([]);
+  test("VPS-006: sends the newest dump and its manifest with the secret files named, not read", async () => {
+    const result = await offsite([]);
     expect(result.exitCode).toBe(0);
     const line = readFileSync(calls, "utf8").trim();
     expect(line).toContain(`--repository-file ${folder}/repo --password-file ${folder}/pw backup`);
@@ -58,41 +58,40 @@ describe("offsite.sh (VPS-006)", () => {
 
   test.each(["anima-x.dump", "anima-.dump", "anima-1.dump", "anima-9999.restored.dump"])(
     "VPS-006: the newest dump is never picked from the odd name %s",
-    (name) => {
+    async (name) => {
       writeFileSync(join(folder, name), "x");
       writeFileSync(join(folder, `${name}.counts`), "x");
-      expect(offsite([]).exitCode).toBe(0);
+      expect((await offsite([])).exitCode).toBe(0);
       const line = readFileSync(calls, "utf8");
       expect(line).toContain("anima-20260102T000000Z.dump ");
       expect(line).not.toContain(name);
     },
   );
 
-  test("VPS-006: a failing restic fails the run and prints no secret", () => {
-    const result = offsite([], { FAKE_RESTIC_FAIL: "repository unreachable" });
+  test("VPS-006: a failing restic fails the run and prints no secret", async () => {
+    const result = await offsite([], { FAKE_RESTIC_FAIL: "repository unreachable" });
     expect(result.exitCode).not.toBe(0);
     expect(result.out).toContain("no snapshot is guaranteed");
     expect(result.out).not.toContain(PASSWORD);
   });
 
-  test.each([["ANIMA_RESTIC_PASSWORD_FILE"], ["ANIMA_RESTIC_REPOSITORY_FILE"]])("VPS-006: a missing %s fails before restic runs", (name) => {
-    expect(offsite([], { [name]: join(folder, "missing") }).exitCode).not.toBe(0);
+  test.each([["ANIMA_RESTIC_PASSWORD_FILE"], ["ANIMA_RESTIC_REPOSITORY_FILE"]])("VPS-006: a missing %s fails before restic runs", async (name) => {
+    expect((await offsite([], { [name]: join(folder, "missing") })).exitCode).not.toBe(0);
     expect(() => readFileSync(calls)).toThrow();
   });
 
-  test("VPS-006: a dump without its manifest is refused", () => {
-    expect(offsite([join(folder, "anima-20260101T000000Z.dump")]).exitCode).toBe(0);
+  test("VPS-006: a dump without its manifest is refused", async () => {
+    expect((await offsite([join(folder, "anima-20260101T000000Z.dump")])).exitCode).toBe(0);
     writeFileSync(join(folder, "lonely.dump"), "x");
-    const result = offsite([join(folder, "lonely.dump")]);
+    const result = await offsite([join(folder, "lonely.dump")]);
     expect(result.exitCode).not.toBe(0);
     expect(result.out).toContain("manifest");
   });
 });
 
-describe("recordings stay out of the backup (D-15)", () => {
-  test.each(["backup.sh", "offsite.sh"])("D-15: %s never names the recordings volume, folder or Docker volume paths", (name) => {
+describe("the backup holds the database only (IOS-004)", () => {
+  test.each(["backup.sh", "offsite.sh"])("IOS-004: %s never names a Docker volume or its path", (name) => {
     const script = readFileSync(join(ROOT, "deploy", "backup", name), "utf8");
-    expect(script).not.toMatch(/recording/i);
     expect(script).not.toMatch(/docker\s+volume|\/var\/lib\/docker\/volumes/);
   });
 });

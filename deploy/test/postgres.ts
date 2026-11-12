@@ -3,12 +3,9 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { binaryDirs, findTools } from "../../quality/src/gates/postgres.ts";
+import { finish, type FinishedProcess } from "./finished-process.ts";
 
-export interface PsqlResult {
-  exitCode: number;
-  stdout: string;
-  stderr: string;
-}
+export type PsqlResult = FinishedProcess;
 
 interface Connection {
   socketDir: string;
@@ -44,9 +41,9 @@ export interface PsqlOptions {
 }
 
 /** Runs psql with `args` and never throws on a non-zero exit. */
-export function psql(args: string[], options: PsqlOptions = {}): PsqlResult {
+export async function psql(args: string[], options: PsqlOptions = {}): Promise<PsqlResult> {
   const { socketDir, port, user } = connection();
-  const result = Bun.spawnSync([psqlBinary(), "-X", "-v", "ON_ERROR_STOP=1", ...args], {
+  return finish([psqlBinary(), "-X", "-v", "ON_ERROR_STOP=1", ...args], {
     env: {
       ...process.env,
       ...options.env,
@@ -56,12 +53,11 @@ export function psql(args: string[], options: PsqlOptions = {}): PsqlResult {
       PGDATABASE: options.database ?? "postgres",
     },
   });
-  return { exitCode: result.exitCode ?? 1, stdout: result.stdout.toString(), stderr: result.stderr.toString() };
 }
 
 /** Runs one query and returns its single value as text; throws if psql fails. */
-export function scalar(sql: string, options: PsqlOptions = {}): string {
-  const result = psql(["-Atq", "-c", sql], options);
+export async function scalar(sql: string, options: PsqlOptions = {}): Promise<string> {
+  const result = await psql(["-Atq", "-c", sql], options);
   if (result.exitCode !== 0) throw new Error(`psql failed: ${result.stderr}`);
   return result.stdout.trim();
 }

@@ -24,8 +24,6 @@ const TLS_CERT_FILE: &str = "ANIMA_TLS_CERT_FILE";
 const TLS_KEY_FILE: &str = "ANIMA_TLS_KEY_FILE";
 const PUBLIC_ORIGIN: &str = "ANIMA_PUBLIC_ORIGIN";
 const WEB_ROOT: &str = "ANIMA_WEB_ROOT";
-const RECORDING_ROOT: &str = "ANIMA_RECORDING_ROOT";
-const RECORDING_MAX_BYTES: &str = "ANIMA_RECORDING_MAX_BYTES";
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Config {
@@ -55,10 +53,6 @@ pub struct Config {
     pub public_origin: String,
     /// Folder with the web client's static build. `None` turns the web client off (D-2).
     pub web_root: Option<PathBuf>,
-    /// Folder for recording files. `None`: recording is unavailable.
-    pub recording_root: Option<PathBuf>,
-    /// Plaintext byte limit of one recording; always positive.
-    pub recording_max_bytes: u64,
     /// Where releases are published; `None` turns publishing off (R-108).
     pub releases: Option<Releases>,
 }
@@ -104,11 +98,6 @@ pub enum Error {
     FilesystemRoot { variable: &'static str },
     #[error("{variable} has a `..` part, which could climb out of the folder")]
     ParentDirectory { variable: &'static str },
-    #[error("{variable}={value:?} is not a positive integer")]
-    NotPositive {
-        variable: &'static str,
-        value: String,
-    },
     #[error("{variable}={value:?} is not an R2 bucket name")]
     Bucket {
         variable: &'static str,
@@ -217,17 +206,6 @@ fn networks(variable: &'static str, text: &str) -> Result<Vec<ipnet::IpNet>, Err
         .collect()
 }
 
-/// A positive `u64`: zero, negative and non-numeric text are refused.
-fn positive_u64(variable: &'static str, text: &str) -> Result<u64, Error> {
-    match text.parse::<u64>() {
-        Ok(number) if number > 0 && !text.starts_with('+') => Ok(number),
-        _ => Err(Error::NotPositive {
-            variable,
-            value: text.to_owned(),
-        }),
-    }
-}
-
 /// Collect process variables into a map. A non-unicode `ANIMA_*` name or value is an error;
 /// other non-unicode variables are skipped.
 ///
@@ -309,11 +287,6 @@ pub fn from_env(env: &BTreeMap<String, String>) -> Result<Config, Error> {
             value(env, PUBLIC_ORIGIN, "https://hub.anima.ing")?,
         )?,
         web_root: optional_root(env, WEB_ROOT)?,
-        recording_root: optional_root(env, RECORDING_ROOT)?,
-        recording_max_bytes: positive_u64(
-            RECORDING_MAX_BYTES,
-            value(env, RECORDING_MAX_BYTES, "2147483648")?,
-        )?,
         releases: releases::from_env(env)?,
     })
 }

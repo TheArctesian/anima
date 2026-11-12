@@ -347,8 +347,6 @@ type Device {
   accessWarnings: [AccessWarning!]!
   "Most live sessions at once (RA-036); null: no limit. File tunnels do not count."
   sessionLimit: Int
-  "RA-040; default false."
-  recordSessions: Boolean!
   # web_interfaces
   webInterfaces: [WebInterface!]!
   # web_interfaces (WEB-002)
@@ -451,7 +449,6 @@ input CreateDeviceInput {
   "When true (the default), the hub adds one ICMP check (spec 6.2)."
   addDefaultCheck: Boolean = true
   sessionLimit: Int
-  recordSessions: Boolean = false
 }
 
 input UpdateDeviceInput {
@@ -471,7 +468,6 @@ input UpdateDeviceInput {
   transfer: TransferPolicyInput
   "1..100; 0 clears the limit."
   sessionLimit: Int
-  recordSessions: Boolean
 }
 
 input SshCredentialInput @oneOf {
@@ -1300,7 +1296,6 @@ enum RetentionSubject {
   HEARTBEATS
   METRICS
   EVENTS
-  RECORDINGS
   DELIVERIES
 }
 
@@ -1345,7 +1340,6 @@ type Session {
   endReason: SessionEndReason
   # RA-034: which computer holds it
   clientAddr: IpAddr!
-  recording: RecordingState! @pending
 }
 
 type SessionEdge {
@@ -1366,8 +1360,6 @@ type SessionTicket {
   expiresAt: DateTime!
   "A Wake-on-LAN packet was sent; the opening waits longer (K4 §1)."
   wakeSent: Boolean!
-  "The session is recorded; the client shows the badge (RA-040)."
-  recording: Boolean! @pending
 }
 
 type WakeResult {
@@ -1377,45 +1369,6 @@ type WakeResult {
 
 type SessionChange {
   session: Session!
-}
-
-# Phase 3 (WP-48). RA-040, RA-041.
-
-enum RecordingState @pending {
-  OFF
-  ON
-  STOPPED
-}
-
-enum RecordingFormat @pending {
-  GUACAMOLE
-  ASCIICAST
-}
-
-type Recording @pending {
-  id: ID!
-  sessionId: ID!
-  deviceId: ID
-  deviceName: String!
-  protocol: Protocol!
-  format: RecordingFormat!
-  startedAt: DateTime!
-  endedAt: DateTime
-  "Bytes of plaintext; Float above 2^31."
-  sizeBytes: Float!
-  "False when the hub stopped before the last part (K4 §11)."
-  complete: Boolean!
-  expiresAt: DateTime!
-}
-
-type RecordingEdge @pending {
-  cursor: String!
-  node: Recording!
-}
-
-type RecordingConnection @pending {
-  edges: [RecordingEdge!]!
-  pageInfo: PageInfo!
 }
 
 # ---------------------------------------------------------------- web interfaces (WP-30)
@@ -1632,7 +1585,6 @@ type Query {
   notificationSettings: NotificationSettings!
   deliveries(channelId: ID, first: Int = 50, after: String): DeliveryConnection!
   retention: [RetentionPeriod!]!
-  recordings(deviceId: ID, first: Int = 50, after: String): RecordingConnection! @pending
 
   # Phase 3: builds (WP-36, R-107)
   "Newest first (BLD-080)."
@@ -1727,11 +1679,6 @@ type Mutation {
 
   "Login or browser token only (D-23, R-100)."
   setRetention(subject: RetentionSubject!, days: Int!): RetentionPeriod!
-
-  "A ticket for the playback tunnel (K4 §12). Login or browser token only (D-23, R-100)."
-  openRecording(id: ID!): SessionTicket! @pending
-  "Deletes the key first, then the file (D-13). Login or browser token only (D-23, R-100)."
-  deleteRecording(id: ID!): ID! @pending
 
   # Phase 3: builds (WP-36, R-107)
   "One queued job for each target; VALIDATION for a version that is not new (BLD-001, BLD-002). Login or browser token only (D-23, R-107)."

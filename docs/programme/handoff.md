@@ -1,4 +1,4 @@
-# Programme handoff — 2026-11-10
+# Programme handoff — 2026-11-12
 
 The programme orchestrator stopped at the operator's usage limit. This file is the state at the stop.
 Read it first, then the rulings listed in section 5 and R-093 to R-111, CR-17 to CR-21 in `programme.md`.
@@ -8,8 +8,9 @@ Read it first, then the rulings listed in section 5 and R-093 to R-111, CR-17 to
 - **Integration branch:** `phase-3`, pushed. `main` was merged into it on 2026-11-10 with the operator's OK
   (`efe75d8d`: client redesign, distribution, the hub image toolchain, the extensions plan), and `main` is
   fast-forwarded to `phase-3` again as a save. Push only fast-forwards; ask before anything else on `main`.
-- **Last Rust merge gated 12/12:** `26a5a9bd` (WP-45 T6 and the dispatcher wiring in `main.rs`). After it came the WP-36
-  deploy merges (`fbdd525f`, `e1e7ff2c`) and the R-109 to R-111 docs commits, through `9baf6aeb`.
+- **Last Rust merge, all gates:** `25b3c64c` (WP-55 gate speed). Since WP-55 the gates are 14: gate 3 is
+  `cargo nextest run --workspace`, then `cargo test --workspace --doc` and `--test pinning` (AGENTS.md "Gates").
+  cargo-nextest must be on `PATH` (`~/.cargo/bin`).
 - **R-101:** every gate and review run uses its own `CARGO_TARGET_DIR` and `CARGO_INCREMENTAL=0`; delete
   the target folder when the task is accepted. A full disk shows up as sqlx test-database failures or a
   linker SIGBUS. About 116 GB free on 2026-11-09.
@@ -28,22 +29,25 @@ Read it first, then the rulings listed in section 5 and R-093 to R-111, CR-17 to
 | WP-43 access | Done. T4 bearer `2446f367` (router assembly in lib.rs `all_routes`), T5 rotation `4ee029fe`, T6 throttle `15b8f9d0`, log `8d064256`. |
 | WP-45 notifications | Done. T6 `99258714`, with the dispatcher wired in `main.rs` (`26a5a9bd`); T7 checks edits `e34e9060`; log `ab598609`. Follow-up: narrow the `notifications.rs` public face (lines 31–37). |
 | WP-47 session sharing | Done. T2 session limit `6f8d8356`, waking-flake `09555c56`, T7 share removal `301d1b5e` (R-111), log `347cc2cc`. T4–T6 cancelled. Migrations 0121–0129 are unused. |
-| WP-48 recording | T1 playback proof `a4192d68`, T2 format and T3 asciicast `e091bfa8`. |
-| WP-49 client sharing and recording | T5 asciicast `ad50bac3`, T6 playback tunnel `4d3eebab`, T8a badge `917281e9`, T9 `/shared` sign-in `0dd50644`. T1–T4 cancelled (R-111). |
+| WP-48 recording | Closed under R-113 (recording deferred). T1 to T5b merged, then removed by T10 `75f8b6cd` (migrations 0121, 0662, 0901); T6–T9 cancelled, branches kept; log `358f94ef`. The empty `deploy_recordings` volume on the VPS waits for the operator's OK (VPS-005). |
+| WP-49 client sharing and recording | Closed. T5 asciicast `ad50bac3`, T6 playback tunnel `4d3eebab`, T8a badge `917281e9`, T9 `/shared` sign-in `0dd50644`. T1–T4 cancelled (R-111); T7 and T8b cancelled (R-113). WP-48 T10 removes the recording parts of T5, T6 and T8a. |
+| WP-55 gate speed | Done. Merged `25b3c64c`: nextest gate 3, `[profile.dev.build-override] debug = 0`. Warm gate run 635 → 572 s at equal load, same test set (3785 run). sccache and the template database were measured and dropped (R-112 rule 4), so the R-101 amendment lapsed. |
+| WP-53 acceptance preparation | Done up to acceptance. T1 to T10, T7a to T7d and T9b merged, last `31fed855`; package log in `packages/WP-53.md`, matrix in `phase-3-acceptance.md`. The acceptance run waits on the operator's steps (section 4). |
 | WP-54 agent | Done. T2, T3a, T3b `7ea84ecc`, T4, T5, T6a `49119a71`, T6b+T6c `b2775938`, T6e `c6517bce`, T7 `176cb4b1`, T8a hardening `792d4441` (CR-22), log `11e96064`. T6d is a handoff note to WP-36: build the agent for three targets with `release.json`, and ship it in the desktop release (`binaries/anima-agent-<triple>`, `--config tauri.release.conf.json`). |
 
-## 3. Work in progress (2026-11-10)
+## 3. Work in progress (2026-11-12)
 
-| Package | State | Next |
-| --- | --- | --- |
-| WP-48 | T4 recorder is accepted in review round 2 and is fixing two test shoulds. | T5–T8. T7 and T8 wait on nothing and tee the owner's stream only (R-111). |
-| WP-49 | Idle; waits for WP-48. | T7 (player pane, PLAYBACK tab, a lower maxBytes) after WP-48 T5b and T6; T8b (badge mount) after WP-48 T5a. |
+No package is running. R-112 and R-113 still apply (at most 3 builders and reviewers at once).
 
-**Next package:** WP-53 (integration and acceptance, Wave 4, serial) starts when WP-48 and WP-49 close. Before it, the operator supplies the test machines and accounts in plan Section 6 and types each real secret into Settings (plan Section 8, checkpoint 4).
+| Next | Notes |
+| --- | --- |
+| WP-53 acceptance run | After the operator's steps below. Re-run the motion audit then: its file reads "NOT MET as worded" until it does. |
+| ValidationMode pin test | A hub test that pins async-graphql validation (ValidationMode Strict, unknown argument names refused), raised by the WP-53 T4 security review. It touches the schema wiring, a programme file. |
+| WP-36 readiness check | `tools.rs` should check for cargo-nextest (the gates need it); psql is not needed. |
 
-**Load flake that needs a fix:** `builds::publishing::fences::d_25_a_try_past_its_hold_writes_nothing` (WP-36) failed three merge gates on 2026-11-10 and passes alone.
+**Operator's critical path for WP-53, in order:** live checks O-4 to O-9; the spec 5.7.3 wording; the Headscale agent policy (R-105, confirmed in chat); R2 setup and the agent binary upload; the test machines and accounts in plan Section 6, with each real secret typed into Settings by the operator.
 
-**Not started:** WP-53 (integration and acceptance) starts when the other packages are near done.
+**Fixed load flakes:** d_25 (WP-53 T9: `tries::finish` always ends its transaction; T9b pins it), `log_005` (T10 waits for the broker), the deploy-suite `spawnSync` hang (T8). Still open, on issue #1: `api_005` batching, `met_017`, sessions tunnel `PoolTimedOut`, desktop `log_008`, `web_004`.
 
 **Load flakes seen in merge gates this stretch, all passing alone:**
 - the three `ra_031` tests, with WP-47;
@@ -75,8 +79,8 @@ The issue #1 items not yet posted are listed in the orchestrator's scratchpad, `
   only, container removed afterwards). The shared `~/.cache/cargo-target` was deleted with the
   operator's OK (R-101).
 - **Spec 5.7.3 wording:** still open.
-- **Signing key:** `TAURI_SIGNING_PRIVATE_KEY` for the updater signature. The desktop build exits
-  1 without it.
+- **Updater key:** make the key pair and import it on each builder (Settings, Updates, "Import
+  updater key"); see `docs/releases.md`. There is no GitHub release workflow or GitHub secret (R-114).
 - **R2 setup:** releases go to Cloudflare R2 (`releases.anima.ing`). No CI does this
   (`anima-no-ci-gates`).
 - **Phase 3 VPS changes:** each needs an OK in chat and a row in `operator-changes.md` (VPS-005).

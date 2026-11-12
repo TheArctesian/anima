@@ -10,9 +10,8 @@ use crate::hub::{Hub, PASSWORD, USERNAME, error};
 
 /// Every root field an API key may never select (D-23, A-6; `enrolAgent` and
 /// `revokeAgentToken` by name before they have resolvers, R-084, CR-8; pinning a device
-/// identity, moving or deleting a device and destroying recordings, R-100; VPN keys,
-/// registration and renewal, VP-7).
-const REFUSED: [&str; 32] = [
+/// identity, moving or deleting a device, R-100; VPN keys, registration and renewal, VP-7).
+const REFUSED: [&str; 30] = [
     "createApiKey",
     "revokeApiKey",
     "apiKeys",
@@ -20,7 +19,6 @@ const REFUSED: [&str; 32] = [
     "logout",
     "startSession",
     "openFiles",
-    "openRecording",
     "setSshCredential",
     "clearSshCredential",
     "setRdpCredential",
@@ -35,7 +33,6 @@ const REFUSED: [&str; 32] = [
     "updateDevice",
     "deleteDevice",
     "setRetention",
-    "deleteRecording",
     "enrolBuilder",
     "revokeBuilder",
     "createRelease",

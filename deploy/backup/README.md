@@ -146,14 +146,6 @@ stops a run after two hours. It is sandboxed: the file system is read-only excep
 
 - **`anima_key`.** This key opens the stored credentials. Without it, restored
   credentials cannot be read. Keep a copy offline: `deploy/secrets/anima_key`.
-- **Recordings (D-15).** The `recordings` volume (`deploy_recordings`) is in neither the
-  daily dump nor the off-site copy. It can grow large: retention keeps 30 days, and one
-  recording can be up to `ANIMA_RECORDING_MAX_BYTES` (2 GiB by default). The dump already
-  holds the sealed recording keys. A copy of the files and the dump together would weaken
-  that split, so `backup.sh` and `offsite.sh` never name the volume.
-  If the volume is lost, only the recordings are lost. After a restore, a row whose file is
-  gone is a recording that cannot play. Retention deletes that row when its time ends, or
-  the operator deletes it in the client.
 - **The Cloudflare token.** Create a new one if you lose it.
 - **The certificate.** The certificate container issues it again.
 - **The database passwords.** On a new host, run `deploy/bin/make-secrets` and set the role passwords to match.

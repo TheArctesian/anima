@@ -205,11 +205,6 @@ impl Device {
         self.session_limit.map(|limit| i32::from(limit.get()))
     }
 
-    /// Whether new sessions are recorded (RA-040).
-    async fn record_sessions(&self) -> bool {
-        self.record_sessions
-    }
-
     async fn transfer(&self) -> TransferPolicy {
         self.transfer
     }

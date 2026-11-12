@@ -16,9 +16,9 @@ use crate::access::{
 const KIND_REFUSED: &str = "This token cannot do that. Sign in to the hub to do it.";
 
 /// The D-23 list as the spec and A-6 state it, with the CR-8 agent fields, the R-100
-/// device identity, device and recording fields, the R-107 builder and release fields, and the
-/// VP-7 VPN key, registration and renewal fields.
-const D_23: [&str; 32] = [
+/// device identity and device fields, the R-107 builder and release fields, and the VP-7 VPN
+/// key, registration and renewal fields.
+const D_23: [&str; 30] = [
     "createApiKey",
     "revokeApiKey",
     "apiKeys",
@@ -26,7 +26,6 @@ const D_23: [&str; 32] = [
     "logout",
     "startSession",
     "openFiles",
-    "openRecording",
     "setSshCredential",
     "clearSshCredential",
     "setRdpCredential",
@@ -41,7 +40,6 @@ const D_23: [&str; 32] = [
     "updateDevice",
     "deleteDevice",
     "setRetention",
-    "deleteRecording",
     "enrolBuilder",
     "revokeBuilder",
     "createRelease",

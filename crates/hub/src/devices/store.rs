@@ -25,7 +25,7 @@ macro_rules! select_device {
                     r.resize_method AS rdp_resize_method, r.audio_out AS rdp_audio_out, \
                     r.microphone AS rdp_microphone, r.shared_drive AS rdp_shared_drive, \
                     v.enabled AS vnc_enabled, v.port AS vnc_port, v.username AS vnc_username, \
-                    d.mac_address::text AS mac_address, d.metrics_source, d.session_limit, d.record_sessions, \
+                    d.mac_address::text AS mac_address, d.metrics_source, d.session_limit, \
                     d.transfer_upload, d.transfer_download, d.transfer_copy, d.transfer_paste \
              FROM devices.devices d JOIN devices.ssh_settings s ON s.device_id = d.id \
                   JOIN devices.rdp_settings r ON r.device_id = d.id \

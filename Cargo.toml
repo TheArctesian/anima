@@ -108,3 +108,7 @@ opt-level = 3
 
 [profile.dev.package.salsa20]
 opt-level = 3
+
+# R-112: host units (build scripts, proc macros) get one debuginfo for every command, so gates 4 and 5 reuse gate 3's build.
+[profile.dev.build-override]
+debug = 0
