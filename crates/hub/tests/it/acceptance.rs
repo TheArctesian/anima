@@ -1,6 +1,8 @@
 //! Deleting a device removes everything that belongs to it and keeps
 //! what the operator must still be able to read (DEV-015, RA-008, LOG-005, R-004).
 
+mod canary;
+
 use anima_hub::{
     checks::{self, Beat, CheckState, Recorded},
     ids::CheckId,
