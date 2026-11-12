@@ -1,19 +1,21 @@
 <script lang="ts">
+  import { resolve } from '$app/paths';
+  import type { Pathname } from '$app/types';
   import Icon from '$lib/icons/Icon.svelte';
   import { press } from '$lib/motion/roles/press';
 
   interface Props {
-    /** Where the link goes. */
-    href: string;
+    /** The place it goes to, a path of the app such as "/devices". */
+    to: Pathname;
     /** The place it returns to, for example "Devices". */
     label: string;
   }
 
-  const { href, label }: Props = $props();
+  const { to, label }: Props = $props();
 </script>
 
 <!-- A ghost link: a chevron and the word, with a target of at least 24 px (UI-013, finding O8). -->
-<a {href} {@attach press()}><Icon name="nf-md-chevron_left" size="sm" />{label}</a>
+<a href={resolve(to)} {@attach press()}><Icon name="nf-md-chevron_left" size="sm" />{label}</a>
 
 <style>
   a {

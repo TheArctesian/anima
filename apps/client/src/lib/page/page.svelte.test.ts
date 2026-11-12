@@ -29,7 +29,7 @@ it('NAV-010: the page header draws the h1 and sets the document title to "<page>
 });
 
 it('DEV-020: the back link is a link with a chevron and the word', () => {
-  app = mount(BackLink, { target: document.body, props: { href: '/devices', label: 'Devices' } });
+  app = mount(BackLink, { target: document.body, props: { to: '/devices', label: 'Devices' } });
   const link = document.querySelector('a');
   expect(link?.getAttribute('href')).toBe('/devices');
   expect(link?.textContent.replace(/\p{Co}/gu, '').trim()).toBe('Devices');
