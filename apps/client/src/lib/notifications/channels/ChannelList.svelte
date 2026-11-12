@@ -111,12 +111,7 @@
     {/snippet}
     <FormButton tabindex={0} data-add onclick={() => { editing = { channel: null }; }}>Add channel</FormButton>
   </SettingRow>
-  <!--
-    One line is kept for what is not a list: loading, no channels, or a failed load. The skeleton is that one line, so
-    the usual answers (a few channels, none, a failure) move little below; a list of channels grows the card, as the
-    rows of any section do (MOT-007). The earlier two-row reservation was for a list that scrolled inside it; the rows
-    now sit in the card's own flow, so that reason no longer holds.
-  -->
+  <!-- The channel count is unknown until the hub answers. Extra rows scroll inside the space kept during loading (MOT-007). -->
   <div class="stack" aria-busy={loading}>
     {#if loadFailed}
       <SettingRow>
@@ -187,11 +182,19 @@
   .stack {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+    block-size: calc(var(--space-16) * 3);
     align-items: start;
   }
 
   .stack > * {
     grid-area: 1 / 1;
+  }
+
+  .list {
+    align-self: stretch;
+    overflow-y: auto;
+    scrollbar-gutter: stable;
   }
 
   /* The one line a row of the card keeps when there is no list (MOT-007). */
