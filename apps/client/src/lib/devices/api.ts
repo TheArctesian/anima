@@ -193,6 +193,8 @@ void graphql(`
     cpuPercent
     memoryPercent
     diskPercent
+    diskMount
+    otherDrives
     vramPercent
     vramGpu {
       index

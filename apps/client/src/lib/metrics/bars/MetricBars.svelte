@@ -32,7 +32,9 @@
         aria-valuetext={bar.percent === null ? undefined : bar.degraded ? `${bar.text}, degraded` : bar.text}
         title={bar.tooltip}
       >
-        <span class="label">{bar.label}{#if bar.degraded}<span class="warn" aria-hidden="true"> ▲</span>{/if}</span>
+        <span class="label"
+          >{bar.label}{#if bar.note !== null}<span class="note">{` ${bar.note}`}</span>{/if}{#if bar.degraded}<span class="warn" aria-hidden="true"> ▲</span>{/if}</span
+        >
         <!-- A new value cross-fades over the old one; it never counts (MET-008, MOT-008). -->
         <span class="slot">
           {#key bar.text}
@@ -130,6 +132,11 @@
 
   .warn {
     color: var(--status-degraded);
+  }
+
+  /* "+3 drives": the other drives of the device, quieter than the label (MET-025). */
+  .note {
+    color: var(--text-tertiary);
   }
 
   .degraded .fill {

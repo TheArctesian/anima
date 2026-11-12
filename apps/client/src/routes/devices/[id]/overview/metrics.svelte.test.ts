@@ -3,11 +3,12 @@ import { fakeHub } from '$lib/devices/hub.fixture';
 import type { Hub, HubResult } from '$lib/hub/hub';
 import { CPU_ONLY, added, point, series } from '$lib/metrics/metrics.fixture';
 import { forgetChartShapes } from '$lib/metrics/shapes';
+import { POP_OS } from '$lib/metrics/storage/storage.fixture';
 import { DeviceMetrics } from './metrics.svelte';
 
 const ID = '0190a000-0000-7000-8012-000000000004';
 const LOADED = new Date('2026-11-05T09:05:00Z');
-const answer = (metrics = CPU_ONLY) => ({ device: { id: ID, metricsSource: 'SSH', gpus: [], metrics } });
+const answer = (metrics = CPU_ONLY) => ({ device: { id: ID, metricsSource: 'SSH', gpus: [], metrics, storage: { drives: [] } } });
 
 function metricsOf(fake: ReturnType<typeof fakeHub>, now = LOADED) {
   return new DeviceMetrics(fake.hub, ID, () => now);
@@ -158,13 +159,28 @@ describe('DeviceMetrics clock and readings (D-5)', () => {
   });
 
   it('MET-004: the readings come from the hub at load and a live batch replaces them', async () => {
-    const readings = { at: '2026-11-05T09:04:00Z', cpuPercent: 12, memoryPercent: 45, diskPercent: 61, vramPercent: null, vramGpu: null };
+    const readings = { at: '2026-11-05T09:04:00Z', cpuPercent: 12, memoryPercent: 45, diskPercent: 61, diskMount: '/', otherDrives: 0, vramPercent: null, vramGpu: null };
     const fake = fakeHub({ DeviceMetrics: { device: { ...answer().device, readings } } });
     const metrics = metricsOf(fake);
     await metrics.load('HOUR', 'SSH');
     expect(metrics.readings?.cpuPercent).toBe(12);
     fake.push('MetricsAdded', { metricsAdded: added('2026-11-05T09:06:00Z', []) });
     expect(metrics.readings?.cpuPercent).toBeNull();
+  });
+
+  it('MET-023, MET-024: a live batch updates the Storage rows: a mount by path and a drive by name', async () => {
+    const fake = fakeHub({ DeviceMetrics: { device: { ...answer().device, storage: { drives: POP_OS } } } });
+    const metrics = metricsOf(fake);
+    await metrics.load('HOUR', 'SSH');
+    expect(metrics.view?.drives).toEqual(POP_OS);
+    const samples = [
+      { kind: 'DISK_PERCENT' as const, label: '/', value: 82 },
+      { kind: 'DISK_READ_BPS' as const, label: 'nvme0n1', value: 5 },
+    ];
+    fake.push('MetricsAdded', { metricsAdded: added('2026-11-05T09:06:00Z', samples) });
+    expect(metrics.view?.drives[0]?.mounts[0]?.percent).toBe(82);
+    expect(metrics.view?.drives[0]?.readBps).toBe(5);
+    expect(metrics.view?.drives.slice(1)).toEqual(POP_OS.slice(1));
   });
 
   it('D-7: an error clears the old view', async () => {

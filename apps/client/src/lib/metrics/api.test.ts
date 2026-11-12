@@ -9,11 +9,11 @@ const DENIED: HubError = { code: 'UNAUTHENTICATED', message: 'Sign in again.' };
 describe('metricsApi', () => {
   it('series asks DeviceMetrics with the id and range and returns the device view', async () => {
     const fake = fakeHub({
-      DeviceMetrics: { device: { id: 'd1', metricsSource: 'SSH', gpus: [NVIDIA, INTEGRATED], metrics: CPU_ONLY, readings: null } },
+      DeviceMetrics: { device: { id: 'd1', metricsSource: 'SSH', gpus: [NVIDIA, INTEGRATED], metrics: CPU_ONLY, storage: { drives: [] }, readings: null } },
     });
     const result = await metricsApi(fake.hub).series('d1', 'DAY');
     expect(fake.requests).toEqual([{ operation: 'DeviceMetrics', variables: { id: 'd1', range: 'DAY' } }]);
-    expect(result).toEqual({ ok: true, value: { metricsSource: 'SSH', gpus: [NVIDIA, INTEGRATED], series: CPU_ONLY, readings: null } });
+    expect(result).toEqual({ ok: true, value: { metricsSource: 'SSH', gpus: [NVIDIA, INTEGRATED], series: CPU_ONLY, drives: [], readings: null } });
   });
 
   it('series returns null for an unknown device', async () => {

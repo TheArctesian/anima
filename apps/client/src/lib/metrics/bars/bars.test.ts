@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 import type { CardReadingsFragment } from '$lib/hub/generated/graphql';
 import { GPU, readings } from './bars.fixture';
-import { percentText, barRow, type Bar, type BarReadings } from './bars';
+import { percentText, barRow, otherDrivesText, type Bar, type BarReadings } from './bars';
 
 function bars(over: Partial<CardReadingsFragment> = {}): readonly Bar[] {
   const row = barRow(readings(over), 'SSH');
@@ -49,4 +49,20 @@ it('MET-007: a hub CardReadings fragment is assignable to BarReadings', () => {
   const fragment: CardReadingsFragment = readings({ vramPercent: 40, vramGpu: GPU });
   const input: BarReadings = fragment;
   expect(barRow(input, 'SSH').kind).toBe('bars');
+});
+
+it('MET-025: the disk bar is labelled with its mount and counts the other drives', () => {
+  const disk = bars({ diskMount: '/', otherDrives: 3 })[2];
+  expect(disk?.label).toBe('Disk /');
+  expect(disk?.note).toBe('+3 drives');
+  expect(disk?.tooltip).toBe('Disk /, 3 drives more on this device');
+  expect(bars({ diskMount: '/mnt/archive', otherDrives: 0 })[2]).toMatchObject({ label: 'Disk /mnt/archive', note: null });
+  expect(bars({ diskMount: null, otherDrives: 0 })[2]?.label).toBe('Disk');
+});
+
+it('MET-025: one other drive is singular, and none or a broken count is no note', () => {
+  expect(otherDrivesText(1)).toBe('+1 drive');
+  expect(otherDrivesText(0)).toBeNull();
+  expect(otherDrivesText(-2)).toBeNull();
+  expect(otherDrivesText(1.5)).toBeNull();
 });

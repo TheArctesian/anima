@@ -8,6 +8,7 @@ import { chartShapeOf, rememberChartShape } from '$lib/metrics/shapes';
 import { mergeLive } from '$lib/metrics/live';
 import { rangeWindow } from '$lib/metrics/ranges';
 import { hasMetrics } from '$lib/metrics/source/has-metrics';
+import { mergeStorage } from '$lib/metrics/storage/storage';
 
 /**
  * The metrics the Overview shows for one device and the hub calls behind them (D-5, D-6): the series of the chosen
@@ -111,6 +112,8 @@ export class DeviceMetrics {
     const at = Date.parse(added.at);
     if (this.#stopped || Number.isNaN(at)) return;
     this.readings = added.readings;
+    // The Storage rows show the newest values whatever range the charts draw (MET-024).
+    if (this.view !== null) this.view = { ...this.view, drives: mergeStorage(this.view.drives, added) };
     // A DAY or WEEK view is an aggregate; a live point joins only the 1-hour one (D-5).
     if (this.#shown !== 'HOUR' || this.view === null || this.span === null) return;
     // mergeLive drops a stale point per series, so the client clock decides nothing here: only the window end moves, and only forward.

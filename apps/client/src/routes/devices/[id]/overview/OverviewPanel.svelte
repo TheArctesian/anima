@@ -4,6 +4,7 @@
   import type { MetricRange } from '$lib/metrics/api';
   import type { LoadingClock } from '$lib/motion/loading/loading';
   import type { VpnNode } from '$lib/vpn/api';
+  import StorageSection from '$lib/metrics/storage/StorageSection.svelte';
   import DeviceVpn from '$lib/vpn/device/DeviceVpn.svelte';
   import './geometry.css';
   import OverviewFacts from './facts/OverviewFacts.svelte';
@@ -31,6 +32,8 @@
 <OverviewFacts {device} {checks} />
 
 <MetricsSection source={device.metricsSource} {metrics} {range} {now} {clock} {onRange} {onRetry} {onSettings} />
+
+<StorageSection source={device.metricsSource} drives={metrics.view?.drives ?? null} error={metrics.error} />
 
 <!-- After Metrics: the picture comes from its own query and may arrive late, so nothing above it moves (MOT-007). -->
 {#if vpn}

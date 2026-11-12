@@ -60,17 +60,17 @@ function diskCharts(all: readonly MetricSeries[]): Chart[] {
   return byLabel(all, 'DISK_PERCENT').flatMap((mount) => percentChart(`disk:${mount.label}`, `Disk ${mount.label}`, mount.label, mount));
 }
 
-/** One In and Out chart per interface, ordered by interface name. */
-function networkCharts(all: readonly MetricSeries[]): Chart[] {
-  const incoming = byLabel(all, 'NETWORK_IN_BPS');
-  const outgoing = byLabel(all, 'NETWORK_OUT_BPS');
-  const interfaces = [...new Set([...incoming, ...outgoing].map((series) => series.label))].sort((a, b) => a.localeCompare(b));
-  return interfaces.flatMap((name) => {
+/** One chart of two rates per label, ordered by label: a network interface's in and out, a drive's read and write. */
+function pairCharts(all: readonly MetricSeries[], title: 'Drive' | 'Network', kinds: readonly [MetricKind, MetricKind], names: readonly [string, string]): Chart[] {
+  const one = byLabel(all, kinds[0]);
+  const other = byLabel(all, kinds[1]);
+  const labels = [...new Set([...one, ...other].map((series) => series.label))].sort((a, b) => a.localeCompare(b));
+  return labels.flatMap((label) => {
     const drawn = lines([
-      ['In', incoming.find((series) => series.label === name)],
-      ['Out', outgoing.find((series) => series.label === name)],
+      [names[0], one.find((series) => series.label === label)],
+      [names[1], other.find((series) => series.label === label)],
     ]);
-    return openChart(`network:${name}`, `Network ${name}`, formatBytesPerSecond, drawn);
+    return openChart(`${title.toLowerCase()}:${label}`, `${title} ${label}`, formatBytesPerSecond, drawn);
   });
 }
 
@@ -101,8 +101,8 @@ function gpuCharts(all: readonly MetricSeries[], gpus: readonly DeviceGpu[]): Ch
 }
 
 /**
- * The charts the Overview draws, in a fixed order: CPU, memory, each disk mount (by mount point), each network
- * interface (in then out), load (1, 5, 15), then per GPU by index its usage, its VRAM and the shared memory of a unified-memory GPU (MET-007, MET-009, D-30).
+ * The charts the Overview draws, in a fixed order: CPU, memory, each disk mount (by mount point), each drive's
+ * read and write (by drive name, MET-023), each network interface (in then out), load (1, 5, 15), then per GPU by index its usage, its VRAM and the shared memory of a unified-memory GPU (MET-007, MET-009, D-30).
  * Uptime is a fact, not a chart. A chart is listed only when at least one of its series exists, so a device
  * that reports no load, or a GPU with no samples yet, shows no empty frame; a series that exists with no
  * points still gets its chart (the Overview shows its empty state).
@@ -112,7 +112,8 @@ export function chartsOf(series: readonly MetricSeries[], gpus: readonly DeviceG
     ...percentChart('cpu', 'CPU', 'CPU', first(series, 'CPU_PERCENT')),
     ...percentChart('memory', 'Memory', 'Memory', first(series, 'MEMORY_PERCENT')),
     ...diskCharts(series),
-    ...networkCharts(series),
+    ...pairCharts(series, 'Drive', ['DISK_READ_BPS', 'DISK_WRITE_BPS'], ['Read', 'Write']),
+    ...pairCharts(series, 'Network', ['NETWORK_IN_BPS', 'NETWORK_OUT_BPS'], ['In', 'Out']),
     ...loadChart(series),
     ...gpuCharts(series, gpus),
   ];
