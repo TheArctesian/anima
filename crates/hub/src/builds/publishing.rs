@@ -28,14 +28,15 @@ use std::time::Duration;
 
 use chrono::{DateTime, Utc};
 use reqwest::Client;
-use sqlx::PgPool;
+use sqlx::{PgConnection, PgPool};
 
 pub use bucket::{Bucket, BucketError, UploadUrl};
 use run::{Outcome, Reach};
 pub use updater_key::{UpdaterKey, UpdaterKeyError};
 
 use super::{
-    BuildQueue, Builder, Error, FieldError, JobUpdate, UploadedFile, jobs, queue, store, upload,
+    BuildJob, BuildQueue, Builder, Error, FieldError, JobUpdate, UploadedFile, jobs, queue, store,
+    upload,
 };
 use crate::{clock::Clock, config::Releases, ids::BuildJobId};
 
@@ -96,7 +97,25 @@ pub async fn upload_urls(
 ) -> Result<Vec<UploadUrl>, Error> {
     let files = upload::files(grant.files).map_err(|e| Error::Validation(vec![e]))?;
     let mut tx = db.begin().await?;
-    let next = jobs::extend_uploading(&mut tx, grant.builder, grant.job, now).await?;
+    let outcome = granted(&mut tx, &grant, &files, now).await;
+    let (next, kinds) = jobs::ended(tx, outcome).await?;
+    let folder = format!("{}/{}", next.target, next.version);
+    Ok(files
+        .iter()
+        .zip(kinds)
+        .map(|(file, kind)| bucket.upload_url(&folder, (file, kind), now))
+        .collect())
+}
+
+/// [`upload_urls`] in the caller's transaction, with `files` already read: the job with its
+/// lease extended, and the content type of each file.
+async fn granted(
+    conn: &mut PgConnection,
+    grant: &Grant<'_>,
+    files: &[UploadedFile],
+    now: DateTime<Utc>,
+) -> Result<(BuildJob, Vec<&'static str>), Error> {
+    let next = jobs::extend_uploading(conn, grant.builder, grant.job, now).await?;
     let kinds = files
         .iter()
         .map(|file| files::content_type(next.target, next.version, &file.name))
@@ -105,16 +124,10 @@ pub async fn upload_urls(
             let message = format!("A {} job uploads only its release files.", next.target);
             Error::Validation(vec![FieldError::new("files", message)])
         })?;
-    store::replace_files(&mut tx, next.id, &files).await?;
-    store::save(&mut tx, &next).await?;
-    store::extend_upload_expiry(&mut tx, next.id, now + bucket::UPLOAD_URL_LIFE).await?;
-    tx.commit().await?;
-    let folder = format!("{}/{}", next.target, next.version);
-    Ok(files
-        .iter()
-        .zip(kinds)
-        .map(|(file, kind)| bucket.upload_url(&folder, (file, kind), now))
-        .collect())
+    store::replace_files(conn, next.id, files).await?;
+    store::save(conn, &next).await?;
+    store::extend_upload_expiry(conn, next.id, now + bucket::UPLOAD_URL_LIFE).await?;
+    Ok((next, kinds))
 }
 
 /// Publishes the jobs whose files are in, whose upload URLs expired and whose hold ended, at

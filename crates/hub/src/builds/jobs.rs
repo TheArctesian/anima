@@ -1,9 +1,10 @@
 //! What builders do to jobs, and the end of their leases: claim, report, report the upload
-//! (BLD-004 to BLD-010, BLD-048, BLD-063, D-2 to D-5, D-25). Each runs in its own transaction and
-//! sends the changed jobs to the live view after it commits.
+//! (BLD-004 to BLD-010, BLD-048, BLD-063, D-2 to D-5, D-25). Each runs in its own transaction,
+//! which it always commits or rolls back, and sends the changed jobs to the live view after it
+//! commits.
 
 use chrono::{DateTime, Utc};
-use sqlx::{PgConnection, PgPool};
+use sqlx::{PgConnection, PgPool, Postgres, Transaction};
 
 use super::{
     Error, JobUpdate, Updates, builders, log_lines,
@@ -61,6 +62,26 @@ impl From<Refusal> for Error {
     }
 }
 
+/// Commits `tx` when `outcome` is a value and rolls it back when it is an error, so no row lock
+/// outlives the call: a dropped transaction rolls back only later, from a task, and until then
+/// a claim or the publisher's take (`SKIP LOCKED`) passes its rows by. A rollback that fails is
+/// returned in place of `outcome`'s error.
+pub(super) async fn ended<T>(
+    tx: Transaction<'_, Postgres>,
+    outcome: Result<T, Error>,
+) -> Result<T, Error> {
+    match outcome {
+        Ok(value) => {
+            tx.commit().await?;
+            Ok(value)
+        }
+        Err(error) => {
+            tx.rollback().await?;
+            Err(error)
+        }
+    }
+}
+
 /// Writes the event of a job that failed (BLD-082). Its reason is redacted by `record`.
 pub(super) async fn record_failure(
     conn: &mut PgConnection,
@@ -111,8 +132,8 @@ pub async fn expire_leases(
     now: DateTime<Utc>,
 ) -> Result<usize, Error> {
     let mut tx = build_queue.db.begin().await?;
-    let changed = expire_in(&mut tx, build_queue.bus, now).await?;
-    tx.commit().await?;
+    let outcome = expire_in(&mut tx, build_queue.bus, now).await;
+    let changed = ended(tx, outcome).await?;
     let count = changed.len();
     build_queue.announce(changed);
     Ok(count)
@@ -132,31 +153,38 @@ pub async fn claim(
     now: DateTime<Utc>,
 ) -> Result<Option<BuildJob>, Error> {
     let mut tx = build_queue.db.begin().await?;
-    // First: a second claim of the same builder waits here until this one commits, so it sees
-    // the lease this one takes (BLD-029).
-    if !store::lock_builder(&mut tx, builder.id).await? {
-        return Err(Error::Forbidden(builders::NOT_ENROLLED));
-    }
-    let mut changed = expire_in(&mut tx, build_queue.bus, now).await?;
-    let claimed = if store::holds_lease(&mut *tx, builder.id, now).await? {
-        None
-    } else {
-        let targets = queue::buildable(builder.platform);
-        match store::oldest_queued(&mut tx, &targets).await? {
-            Some(job) => {
-                let claimed = queue::claim(&job, builder, now);
-                store::save(&mut tx, &claimed).await?;
-                // A key block an earlier attempt left open must not hide this attempt's log.
-                store::set_open_key_block(&mut tx, claimed.id, None).await?;
-                Some(claimed)
-            }
-            None => None,
-        }
-    };
-    tx.commit().await?;
+    let outcome = claim_in(&mut tx, build_queue.bus, builder, now).await;
+    let (mut changed, claimed) = ended(tx, outcome).await?;
     changed.extend(claimed.clone());
     build_queue.announce(changed);
     Ok(claimed)
+}
+
+/// [`claim`] in the caller's transaction: the jobs whose leases ended, and the claimed job.
+async fn claim_in(
+    conn: &mut PgConnection,
+    bus: &Bus,
+    builder: &Builder,
+    now: DateTime<Utc>,
+) -> Result<(Vec<BuildJob>, Option<BuildJob>), Error> {
+    // First: a second claim of the same builder waits here until this one commits, so it sees
+    // the lease this one takes (BLD-029).
+    if !store::lock_builder(conn, builder.id).await? {
+        return Err(Error::Forbidden(builders::NOT_ENROLLED));
+    }
+    let changed = expire_in(conn, bus, now).await?;
+    if store::holds_lease(&mut *conn, builder.id, now).await? {
+        return Ok((changed, None));
+    }
+    let targets = queue::buildable(builder.platform);
+    let Some(job) = store::oldest_queued(conn, &targets).await? else {
+        return Ok((changed, None));
+    };
+    let claimed = queue::claim(&job, builder, now);
+    store::save(conn, &claimed).await?;
+    // A key block an earlier attempt left open must not hide this attempt's log.
+    store::set_open_key_block(conn, claimed.id, None).await?;
+    Ok((changed, Some(claimed)))
 }
 
 /// Adds the lines to the job's log after its last line, then trims the log to 2 MB (BLD-048).
@@ -196,30 +224,41 @@ pub async fn report(
     now: DateTime<Utc>,
 ) -> Result<BuildJob, Error> {
     let mut tx = build_queue.db.begin().await?;
-    let job = store::job_locked(&mut tx, report.job)
-        .await?
-        .ok_or(Error::NotFound(Missing::Job(report.job)))?;
-    if store::is_publishing(&mut *tx, job.id).await? {
-        return Err(Error::Conflict(PUBLISHING.to_owned()));
-    }
-    let mut next = queue::report(&job, builder.id, &report, now)?;
-    let was_open = store::open_key_block(&mut tx, job.id).await?;
-    let (lines, open) =
-        log_lines::clean_all(&report.lines, was_open).map_err(|e| Error::Validation(vec![e]))?;
-    if open != was_open {
-        store::set_open_key_block(&mut tx, job.id, open).await?;
-    }
-    let stored = append(&mut tx, &mut next, lines).await?;
-    store::save(&mut tx, &next).await?;
-    if next.state == JobState::Failed {
-        record_failure(&mut tx, build_queue.bus, &next).await?;
-    }
-    tx.commit().await?;
+    let outcome = report_in(&mut tx, build_queue.bus, (builder, &report), now).await;
+    let (next, stored) = ended(tx, outcome).await?;
     build_queue.updates.publish(JobUpdate {
         job: next.clone(),
         lines: stored,
     });
     Ok(next)
+}
+
+/// [`report`] in the caller's transaction: the job as reported, and its new log lines.
+async fn report_in(
+    conn: &mut PgConnection,
+    bus: &Bus,
+    (builder, report): (&Builder, &Report),
+    now: DateTime<Utc>,
+) -> Result<(BuildJob, Vec<LogLine>), Error> {
+    let job = store::job_locked(conn, report.job)
+        .await?
+        .ok_or(Error::NotFound(Missing::Job(report.job)))?;
+    if store::is_publishing(&mut *conn, job.id).await? {
+        return Err(Error::Conflict(PUBLISHING.to_owned()));
+    }
+    let mut next = queue::report(&job, builder.id, report, now)?;
+    let was_open = store::open_key_block(conn, job.id).await?;
+    let (lines, open) =
+        log_lines::clean_all(&report.lines, was_open).map_err(|e| Error::Validation(vec![e]))?;
+    if open != was_open {
+        store::set_open_key_block(conn, job.id, open).await?;
+    }
+    let stored = append(conn, &mut next, lines).await?;
+    store::save(conn, &next).await?;
+    if next.state == JobState::Failed {
+        record_failure(conn, bus, &next).await?;
+    }
+    Ok((next, stored))
 }
 
 /// The refusal of a builder call on a job whose files are in: the hub owns it now (D-25).
@@ -277,20 +316,32 @@ pub async fn report_uploaded(
     let files = upload::files(&uploaded.files).map_err(|e| Error::Validation(vec![e]))?;
     let feed = upload::feed(&uploaded.feed).map_err(|e| Error::Validation(vec![e]))?;
     let mut tx = build_queue.db.begin().await?;
-    let mut next = extend_uploading(&mut tx, builder, uploaded.job, now).await?;
-    let granted = store::files_of(&mut *tx, next.id).await?;
-    if !same_files(files, &granted) {
-        let message = "Report the files the upload URLs were given for.";
-        return Err(Error::Validation(vec![FieldError::new("files", message)]));
-    }
-    store::set_feed(&mut tx, next.id, &feed, now).await?;
-    store::save(&mut tx, &next).await?;
-    store::hand_to_publisher(&mut tx, next.id, now).await?;
-    next.lease_ends_at = None;
-    tx.commit().await?;
+    let outcome = hand_over(&mut tx, builder, (uploaded.job, files, &feed), now).await;
+    let next = ended(tx, outcome).await?;
     build_queue.updates.publish(JobUpdate {
         job: next.clone(),
         lines: Vec::new(),
     });
+    Ok(next)
+}
+
+/// [`report_uploaded`] in the caller's transaction, with the files and feed already read: the
+/// job as handed to the publisher.
+async fn hand_over(
+    conn: &mut PgConnection,
+    builder: &Builder,
+    (id, files, feed): (BuildJobId, Vec<UploadedFile>, &str),
+    now: DateTime<Utc>,
+) -> Result<BuildJob, Error> {
+    let mut next = extend_uploading(conn, builder, id, now).await?;
+    let granted = store::files_of(&mut *conn, next.id).await?;
+    if !same_files(files, &granted) {
+        let message = "Report the files the upload URLs were given for.";
+        return Err(Error::Validation(vec![FieldError::new("files", message)]));
+    }
+    store::set_feed(conn, next.id, feed, now).await?;
+    store::save(conn, &next).await?;
+    store::hand_to_publisher(conn, next.id, now).await?;
+    next.lease_ends_at = None;
     Ok(next)
 }

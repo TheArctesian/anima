@@ -1,5 +1,6 @@
 //! A try that no longer holds its job leaves the job's row unlocked when `finish` returns, so
-//! the same sweep's next take (`FOR UPDATE SKIP LOCKED`) can take it again (D-25).
+//! the same sweep's next take (`FOR UPDATE SKIP LOCKED`) can take it again (D-25); so does a
+//! refused request for upload URLs (D-43).
 //!
 //! The lock is checked from another thread with its own runtime and connection while this
 //! test's thread is blocked. A transaction that was dropped instead of ended rolls back only
@@ -8,16 +9,23 @@
 
 use chrono::{DateTime, TimeDelta, Utc};
 use reqwest::Client;
-use sqlx::{Connection as _, PgConnection, PgPool, postgres::PgConnectOptions};
+use sqlx::PgPool;
 use uuid::Uuid;
 
 use super::super::{
-    Bucket,
+    Bucket, Grant,
     run::{Outcome, Reach, Tried},
-    tries,
+    tries, upload_urls,
 };
 use crate::{
-    builds::{BuildQueue, Updates},
+    builds::{
+        BuildQueue, Error, Updates,
+        model::UploadedFile,
+        tests::{
+            BUILDER, builder,
+            holds::{queued_job, row_locked},
+        },
+    },
     clock::FixedClock,
     config::Releases,
     events::Bus,
@@ -116,47 +124,36 @@ async fn finish(pool: &PgPool, outcome: Outcome) {
         .unwrap();
 }
 
-/// Whether a transaction still locks the job's row, asked from another thread while this one
-/// is blocked, so no task of this test runs meanwhile.
-fn row_locked(options: PgConnectOptions) -> bool {
-    std::thread::spawn(move || {
-        let runtime = tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()
-            .unwrap();
-        runtime.block_on(async {
-            let mut conn = PgConnection::connect_with(&options).await.unwrap();
-            let asked =
-                sqlx::query("select 1 from builds.jobs where id = $1::uuid for update nowait")
-                    .bind(JOB)
-                    .execute(&mut conn)
-                    .await;
-            match asked {
-                Ok(_) => false,
-                Err(error) => {
-                    let code = error
-                        .as_database_error()
-                        .and_then(sqlx::error::DatabaseError::code);
-                    assert_eq!(code.as_deref(), Some("55P03"), "{error}");
-                    true
-                }
-            }
-        })
-    })
-    .join()
-    .unwrap()
-}
-
 #[sqlx::test(migrations = "./migrations")]
 async fn d_25_a_taken_over_try_leaves_the_job_unlocked(pool: PgPool) {
     publishing_job(&pool, 1).await;
     finish(&pool, Outcome::TakenOver).await;
-    assert!(!row_locked((*pool.connect_options()).clone()));
+    assert!(!row_locked((*pool.connect_options()).clone(), JOB));
 }
 
 #[sqlx::test(migrations = "./migrations")]
 async fn d_25_a_try_a_later_one_replaced_leaves_the_job_unlocked(pool: PgPool) {
     publishing_job(&pool, 2).await;
     finish(&pool, Outcome::Unavailable("bucket read")).await;
-    assert!(!row_locked((*pool.connect_options()).clone()));
+    assert!(!row_locked((*pool.connect_options()).clone(), JOB));
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn d_43_a_refused_request_for_upload_urls_leaves_the_job_unlocked(pool: PgPool) {
+    queued_job(&pool, JOB).await;
+    let tokens = tempfile::tempdir().unwrap();
+    let bucket = bucket(&tokens);
+    let files = [UploadedFile {
+        name: "SHA256SUMS".to_owned(),
+        sha256: "0".repeat(64),
+        size: 1,
+    }];
+    let grant = Grant {
+        builder: &builder(BUILDER),
+        job: JOB.parse().unwrap(),
+        files: &files,
+    };
+    let refused = upload_urls(&pool, &bucket, grant, now()).await;
+    assert!(matches!(refused, Err(Error::Forbidden(_))));
+    assert!(!row_locked((*pool.connect_options()).clone(), JOB));
 }

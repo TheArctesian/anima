@@ -12,7 +12,7 @@ use crate::ids::{BuildJobId, BuilderId, ReleaseId};
 
 const JOB: &str = "0190a000-0000-7000-8009-000000000001";
 const RELEASE: &str = "0190a000-0000-7000-8009-000000000002";
-const BUILDER: &str = "0190a000-0000-7000-8009-000000000003";
+pub(in crate::builds) const BUILDER: &str = "0190a000-0000-7000-8009-000000000003";
 const OTHER_BUILDER: &str = "0190a000-0000-7000-8009-000000000004";
 
 fn start() -> DateTime<Utc> {
@@ -28,7 +28,7 @@ const LINUX: Platform = Platform {
     arch: Arch::X86_64,
 };
 
-fn builder(id: &str) -> Builder {
+pub(in crate::builds) fn builder(id: &str) -> Builder {
     Builder {
         id: id.parse::<BuilderId>().unwrap(),
         name: "pop-os".to_owned(),
@@ -68,6 +68,7 @@ fn queued_job() -> BuildJob {
 }
 
 mod fields;
+pub(in crate::builds) mod holds;
 mod key_blocks;
 mod lines;
 mod queue;
