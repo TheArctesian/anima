@@ -122,3 +122,66 @@ Agrees with the findings above, and adds:
 45. "Add a computer to the VPN" dialog: two plain choice buttons and Close, at the top of the
     window rather than centred; the explanation text is dense; no visual distinction between the
     two paths.
+
+## Addendum: dark theme and wide windows (Phase 0 gallery, 2026-11-11)
+
+Taken from the Phase 0 gallery (`apps/client/browser/gallery/`, WebKit, synthetic hub) at 1280 and
+1600 px, dark first, then light. The bracket at the end of each finding lists gallery picture
+numbers (`browser/gallery/README.md`); "(26)" or "(O11)" inside the text names a related earlier
+finding.
+
+### Whole app
+
+46. **No page titles.** Devices, Live sessions and the device page have no heading; the page
+    starts with the toolbar, and every document title is "untitled page" (screen readers announce
+    nothing useful). [pictures 3, 28]
+47. **The navigation bar and the page are one colour in dark.** Only a hairline separates them;
+    with finding 2 the window reads as a single flat sheet. [pictures 3]
+48. **Wide windows leave whole columns empty.** At 1600 px Settings is a narrow column at the left
+    with about 55 % of the window blank, and the sign-in form sits in the top-left corner of an
+    empty page. [pictures 42, 1]
+49. **Navigation is shown before sign-in.** The sign-in page shows Devices, Live sessions (with a
+    count of 0) and "Connected"; none of them can be used yet, and the form has no product
+    identity or primary button. [pictures 1]
+50. **Error states are one line of text.** A hub error is a sentence and "Retry" at the top-left of
+    an empty page, with no icon, no cause in plain words and no next step; meanwhile the logs panel
+    below still shows rows. [pictures 88–90]
+
+### Devices
+
+51. **The logs panel is not a layer.** It has no shadow, edge or blur in dark, and in light it is
+    translucent enough that cards show through it as ghost text; the cards under it cannot be
+    scrolled into view. [pictures 3, 17]
+52. **Cards stretch to the tallest card in their row.** A card with "No metrics" is as tall as a card
+    with three metric bars, so most cards are half empty space (O11). [pictures 3]
+53. **Two Wake buttons styles.** "Wake" is a filled grey button beside outlined SSH/VNC/Web buttons,
+    so it reads as disabled while being the only action that works for a sleeping device. [pictures 3]
+54. **Uptime with two decimals and a spaced percent sign** ("100.00 %") on every card and row;
+    the decimals carry no information for most devices and widen every column. [pictures 3, 5, 28]
+55. **The table's Status column is wider than Name** and its badges float in it; at 1600 px a
+    third of the row is empty between Uptime and Heartbeats. [pictures 5]
+
+### Device page
+
+56. **Metric labels sit far from their values.** At 1600 px "CPU" is at the left of the card and
+    "19 %" about 400 px to the right; the CPU chart fills only a third of its card. [pictures 28]
+57. **"+ RDP" and "+ Set up screen sharing" are full-width text buttons** in the header,
+    longer than the working SSH button, and pull the eye away from it. [picture 28; finding 29]
+
+### Dialogs
+
+58. **The scrim is too light to separate the dialog** in dark: the cards behind the Add device
+    dialog stay readable, and the dialog surface is the same colour as a card (finding 26). Fields inside
+    the dialog are barely darker than the dialog. [pictures 20]
+59. **Dialog content is cut at the bottom edge** with no fade or shadow showing that it scrolls (the
+    "VNC" section header is sliced in half above Cancel/Save). [pictures 20]
+60. **"Add a computer to the VPN" opens at the top of the window**, not centred, with its two
+    paths as plain buttons and "Close" alone at the bottom right. [picture 60; finding 45]
+
+### VPN
+
+61. **The "Approve route" message wraps one word per line** ("router-annex / offers /
+    10.50.0.0/24 / and waits / for / approval."), and the row still says "No router" while it lists
+    a waiting router. [picture 49; finding 43]
+62. **Sites and nodes are one undivided list**: no heading separates "Sites" from "Computers", and
+    roles ("hub", "client", "router") are bare lower-case words beside the address. [picture 49; finding 44]

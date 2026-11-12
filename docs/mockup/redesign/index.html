@@ -152,7 +152,7 @@ button { font:inherit; color:inherit; }
 .help:hover, .help:focus-visible { background:var(--accent); color:var(--on-accent); }
 
 /* ---------- Device cards ---------- */
-.grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(var(--card-min),1fr)); gap:.75rem; }
+.grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(var(--card-min),1fr)); gap:.75rem; align-items:start; }
 .card { background:var(--surface-raised); border-radius:var(--radius-lg); padding:var(--pad); display:flex; flex-direction:column; gap:.75rem; position:relative; }
 .card:hover { background:color-mix(in srgb,var(--surface-raised) 88%,var(--text)); }
 .card.problem { box-shadow:inset 3px 0 0 var(--down); }
@@ -517,6 +517,22 @@ Overview  Checks 3  Sessions  Logs  Settings
 │ VPN      │ │ Version 0.9.4 · Stable           │
 └──────────┘ │ ▸ Details for developers         │
              └──────────────────────────────────┘</pre></div>
+        <div class="wf"><h3>Sign in and errors</h3><p>Before sign-in only the form shows (NAV-009). An error replaces the content it failed to load, names the cause and the next step (UI-030).</p>
+<pre>┌────────────────────────────────────────────────────────┐
+│                         ◆                              │
+│                   Sign in to Anima                     │
+│              hub.anima.ing ⓘ                           │
+│           User name  [                    ]            │
+│           Password   [                    ]            │
+│           Code       [      ]                          │
+│                      [      Sign in      ]             │
+└────────────────────────────────────────────────────────┘
+ Devices
+ ┌──────────────────────────────────────────┐
+ │  ⚠  The hub could not read its database. │
+ │     The device list could not be loaded. │
+ │     [Try again]  Details ⓘ               │
+ └──────────────────────────────────────────┘</pre></div>
       </div>
     </section>
   </main>

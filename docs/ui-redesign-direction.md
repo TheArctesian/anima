@@ -4,7 +4,7 @@ Phase 1 of `docs/ui-redesign-plan.md`. Three parts: the philosophy every later p
 spec delta (UR-1) and the directions shown in `docs/mockup/redesign/index.html`. Nothing here is
 in `design-spec.md` until the operator approves it.
 
-Finding numbers refer to `docs/ui-critique-2026-11-11.md` (1–45, operator points O1–O11 in the
+Finding numbers refer to `docs/ui-critique-2026-11-11.md` (1–62, where 46–62 come from the Phase 0 gallery; operator points O1–O11 in the
 order of the "Operator's feedback" list: O1 inputs, O2 space, O3 logo, O4 collapse button,
 O5 "Connected", O6 unformatted text, O7 typography, O8 back link, O9 overflow and spacing,
 O10 tooltips, O11 box sizes).
@@ -145,6 +145,8 @@ Removed (TOK-004, add–migrate–remove): `bg`, `surface`, `surface-raised`, `b
 | UI-026 | A | The icon policy of Section 1 of this document. |
 | UI-027 | A | The truncation and spacing rule of Section 1 of this document. |
 | UI-028 | A | **HelpTip.** Defaults, explanations, allowed ranges and fingerprints go in a HelpTip; it opens on click or focus, stays while hovered, closes with Escape (WCAG 1.4.13), and is never placed over a live remote display (MAT-008). A constraint needed to fill a field stays visible; errors are never in a tip. |
+| UI-030 | A | **Empty, loading and error states.** Every page and panel that loads data has all three. An error state names what failed in plain words, gives the next step ("Try again", "Open Hub settings") and shows the technical cause in a HelpTip; it replaces the content it failed to load and nothing else (50). |
+| UI-031 | A | **Numbers.** Percentages have no space before "%"; uptime shows one decimal ("99.9%"), and "100%" when every check in the period was up; metric values show whole percents (54). |
 | UI-029 | A | **Button tones.** Primary (accent fill), secondary (neutral fill), ghost (text) and danger. A view has at most one primary button. A destructive action never sits inside the form it affects; it goes to a separate "Danger zone" group at the end. |
 | 5.5.3 table | C | Adds groups: palette, surface tiers, control height, `icon-sm/md/lg` = 16, 18, 20 px (were em), `content-max` (44 rem forms, 90 rem pages). Font family group: `font-ui`, `font-mono`, the OpenDyslexic pair, `font-icon`. |
 | TOK-011 | C | A theme is a palette and an appearance. Changing either changes only role values; no component changes. |
@@ -157,6 +159,8 @@ Removed (TOK-004, add–migrate–remove): `bg`, `surface`, `surface-raised`, `b
 | NAV-002 | C | The active item has an `accent-tint` fill, accent text and icon, and a 3 px accent bar on its leading edge (10). |
 | NAV-003 | C | The hub connection is a **status icon** above Settings (a dot plus the hub glyph), with an accessible name ("Hub connected: hub.anima.ing") and a HelpTip with the hub name, state and the time of the last answer. "Disconnected" also shows a banner over the page (O5, 11). |
 | NAV-006 | C | The collapse control sits in the navigation bar's header row, at the trailing end of the logo row, not beside the window buttons (O4). |
+| NAV-009 | A | Before sign-in, the window shows only the sign-in page: no navigation bar items and no hub status. The sign-in form is centred, with the logo above it and a primary "Sign in" button (49, 48). |
+| NAV-010 | A | Every page has a visible title (`h1`) and sets the window and document title to "<page> – Anima" (46). |
 | NAV-008 | A | The **Live sessions** page lists every live session (device, protocol, started, duration) with "Show" and "End session" (RA-034). With none it shows an empty state that points to the Devices page. |
 | 5.3 table | C | Adds row "Top · Live sessions · Monitor-play · Live sessions page". The logo block is 24 px high (O3, UR-6). |
 
@@ -173,6 +177,7 @@ Removed (TOK-004, add–migrate–remove): `bg`, `surface`, `surface-raised`, `b
 | 6.1 card list | C | A card shows: name, host (mono), the combined status, uptime 24 h, metric bars (6 px, labelled with value) when available, the heartbeat strip **with a label and a HelpTip** ("Last 50 checks"), and Connect buttons for the configured protocols. (14–18) |
 | DEV-006 | A | **Combined status.** A device shows one status chosen by the precedence of Section 2 of this document; every reason is available in the status HelpTip. |
 | DEV-007 | A | The grid fills the width with cards of a minimum of 18 rem; the table fits its columns to 1280 px without a horizontal scrollbar, and the heartbeat column shrinks before any text column (20). |
+| DEV-009 | A | Cards in a grid row keep their own height (`align-items: start`); a card without metrics is shorter, not padded (52). Every connect action, Wake included, uses the same button tone; Wake is secondary (53). |
 | DEV-008 | A | The toolbar is one row on wide windows: search, status filter (segmented), tag filter, view switch, and "Add device" (primary) at the trailing end (19). |
 
 ### 6.7 Device detail
@@ -193,14 +198,15 @@ Removed (TOK-004, add–migrate–remove): `bg`, `surface`, `surface-raised`, `b
 | SET-004 | A | Settings has a **section list** beside the content on windows of `bp-wide` and above, and a section jump menu below it. Sections: Account, Appearance, Hub, Notifications, Checks, Data retention, Updates, API keys, VPN. Each section has an anchor (35, 36). |
 | SET-005 | A | **One save model.** A section whose fields belong together has one "Save changes" button at its end, enabled only when something changed; a single toggle or choice saves at once and shows "Saved" inline. Every result (saved, failed, test passed) shows in a Notice inside the section (37, 41, 42). |
 | SET-006 | A | The Updates section shows the version, the update state and "Check for updates". Packaging and signing details (Tauri packages, updater key, build host) are in a "Details for developers" Disclosure, closed by default (40). |
-| SET-003 | C | VPN section: sites as rows of name, route (mono) and router state in words ("Router: none set up"); nodes as rows of name, role and address with expiry as a status ("Expires in 3 days" warning, "Never expires" plain). The "not available" message becomes: "VPN status is not available. The hub cannot reach the VPN service." with the technical cause in a HelpTip (43, 44). |
+| SET-003 | C | VPN section: sites as rows of name, route (mono) and router state in words ("Router: none set up"); nodes as rows of name, role and address with expiry as a status ("Expires in 3 days" warning, "Never expires" plain). The "not available" message becomes: "VPN status is not available. The hub cannot reach the VPN service." with the technical cause in a HelpTip (43, 44, 61, 62). Sites and computers are two lists under their own headings; a site with a waiting router says "Router waiting for approval" and the approve action is a button on the row, not a wrapped sentence. |
 
 ### 5.6 Materials
 
 | ID | | New text |
 |---|---|---|
+| `material-panel` row | C | The logs panel is opaque `surface-raised` with an `elevation-2` shadow on its top edge (no translucency over cards), and the page gets bottom padding equal to the open panel's height so every card can be scrolled above it (51). |
 | `elevation-1` row | C | Cards: surface contrast (`surface-raised` on `surface-sunken`), **no border**, no shadow; a `border-strong` outline under `prefers-contrast: more`. |
-| MAT-003 | C | Adds: a modal is centred, with `elevation-3` and the scrim at 50 % (dark) / 35 % (light) so it reads as above the page (26, 45). |
+| MAT-003 | C | Adds: a modal is centred, with `elevation-3` and the scrim at 50 % (dark) / 35 % (light) so it reads as above the page; the dialog surface is `surface-overlay`, one tier above cards; a dialog that scrolls shows a fade at the cut edge (26, 45, 58, 59, 60). |
 
 ## 4. The directions
 
