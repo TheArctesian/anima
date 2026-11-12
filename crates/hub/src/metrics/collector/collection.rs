@@ -1,5 +1,5 @@
 //! One device's collection: a link opened for it, its fixed commands run, then its GPU reads,
-//! a new discovery and the samples stored and published, the Linux distribution recorded, the
+//! a new discovery, a changed drive list (MET-022) and the samples stored and published, the Linux distribution recorded, the
 //! link dropped (MET-001, MET-002, MET-006, DEV-016, P2-003, D-11). I/O edge; it logs only a
 //! distribution it cannot store, and no failure or log line holds a host, an address, command
 //! output or a secret (LOG-007).
@@ -22,7 +22,7 @@ use crate::{
     ids::DeviceId,
     metrics::{
         self, Gpu, MetricSample, MetricsAdded, Reading, Readings, Sample,
-        commands::{Command, Source, commands},
+        commands::{Command, commands},
         record_collection,
         store::{self, Discovery},
     },
@@ -95,6 +95,9 @@ async fn collect_at(
     {
         store_discovery(ctx, device.id, found).await?;
     }
+    if let Some(drives) = outputs::new_drives(previous.as_ref(), &reading) {
+        store::replace_drives(&ctx.db, device.id, drives, at).await?;
+    }
     let mut samples = outputs::collected(previous.as_ref(), &reading, at);
     samples.extend(gpus.samples);
     record_collection(&ctx.db, device.id, at, &samples).await?;
@@ -154,9 +157,9 @@ pub(super) async fn within_deadline<T>(
 /// Opens a link to `device`, runs its commands in order, each within its limit, reads each
 /// output into the reading and drops its bytes before the next command (D-11), then runs the
 /// GPU reads its plan asks for until the context's GPU window after the start, then drops the
-/// link. The first link error of the commands ends the collection, except on `/etc/os-release`:
-/// the distribution is not a metric, so its read failing leaves only it out (DEV-016). A GPU
-/// read never ends it.
+/// link. The first link error of the commands ends the collection, except on an optional one
+/// (`/etc/os-release`, the drives and their counters): its read failing leaves only it out
+/// (DEV-016, MET-022). A GPU read never ends it.
 async fn read(
     ctx: &Context,
     device: &Device,
@@ -173,9 +176,12 @@ async fn read(
         limit,
     } in commands(device.os)
     {
+        if !parts.needs(source) {
+            continue;
+        }
         match link.run(&fixed, limit).await {
             Ok(output) => parts.add(source, &output),
-            Err(_) if source == Source::OsRelease => {}
+            Err(_) if source.is_optional() => {}
             Err(error) => return Err(error),
         }
     }
@@ -198,14 +204,7 @@ async fn publish(
     let readings = metrics::readings(&ctx.db, &[device], at)
         .await?
         .remove(&device)
-        .unwrap_or(Readings {
-            at,
-            cpu_percent: None,
-            memory_percent: None,
-            disk_percent: None,
-            vram_percent: None,
-            vram_gpu: None,
-        });
+        .unwrap_or_else(|| Readings::empty(at));
     ctx.feed.publish(MetricsAdded {
         device_id: ID(device.to_string()),
         at,

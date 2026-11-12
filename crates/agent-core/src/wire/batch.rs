@@ -98,6 +98,22 @@ impl From<&Drive> for BatchDrive {
     }
 }
 
+impl From<BatchDrive> for Drive {
+    fn from(drive: BatchDrive) -> Self {
+        Self {
+            name: drive.name,
+            kind: match drive.kind {
+                DriveKind::Nvme => readings::DriveKind::Nvme,
+                DriveKind::Ssd => readings::DriveKind::Ssd,
+                DriveKind::Hdd => readings::DriveKind::Hdd,
+                DriveKind::Disk => readings::DriveKind::Disk,
+            },
+            size_bytes: drive.size_bytes,
+            mounts: drive.mounts,
+        }
+    }
+}
+
 /// Who made a GPU, as a batch spells it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]

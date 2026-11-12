@@ -180,7 +180,7 @@ GraphQL composition edges (R-011). Only the file `<domain>/graphql.rs` may also 
 | --- | --- | --- |
 | `devices` | `access` (R-022), `checks`, `sessions` (replaced in Phase 3 by `trust`, see the Phase 3 row below) | the `Authenticated` guard; `Device.status`, `Device.checks`, `Device.uptime`, `DeviceFilter.status`, `DeviceSort.STATUS`/`UPTIME`, `createDevice(addDefaultCheck)`, `SshSettings.hostKey` |
 
-| `devices` (Phase 2, adds) | `metrics`, `web_interfaces` | `Device.readings`, `Device.metrics`, `Device.gpus`, `Device.webInterfaces`, `Device.webInterfaceSuggestions`; Phase 3: `Device.metricsStale` (MET-018, CR-18) |
+| `devices` (Phase 2, adds) | `metrics`, `web_interfaces` | `Device.readings`, `Device.metrics`, `Device.gpus`, `Device.webInterfaces`, `Device.webInterfaceSuggestions`; Phase 3: `Device.metricsStale` (MET-018, CR-18), `Device.storage` (MET-024) |
 | `metrics`, `web_interfaces` (Phase 2) | `access` (R-022) | the `Authenticated` guard on their root fields |
 | `builds` (Phase 3, WP-36) | `access` | the `Authenticated` and `BuilderSignedIn` guards |
 | `vpn` (Phase 3, VP-5) | `access` | the `Authenticated` guard |
@@ -415,6 +415,9 @@ pub fn spawn_collector(db: Db, feed: Feed, bus: events::Bus, clock: Clock, colle
 pub async fn readings(db: &Db, devices: &[DeviceId], now: DateTime<Utc>) -> Result<HashMap<DeviceId, Readings>, Error>;
 pub async fn series(db: &Db, device: DeviceId, range: MetricRange, now: DateTime<Utc>) -> Result<Vec<MetricSeries>, Error>;
 pub async fn gpus(db: &Db, devices: &[DeviceId]) -> Result<HashMap<DeviceId, Vec<Gpu>>, Error>;
+/// (Phase 3, operator ruling 2026-11-12) One device's storage drive by drive: its drives with the
+/// latest use of their mounts and their activity, then mounts on no known drive (MET-021, MET-024).
+pub async fn storage(db: &Db, device: DeviceId, now: DateTime<Utc>) -> Result<Storage, Error>;
 // Wiring only: create_partitions_ahead, drop_expired_partitions (as events and checks).
 
 // (Phase 3, WP-54; K8, R-092)

@@ -38,5 +38,9 @@ async fn met_022_the_drive_list_goes_in_the_next_batch_and_not_in_the_one_after(
         "name": "nvme1n1", "kind": "nvme", "sizeBytes": 1_000_204_886_016_u64,
         "mounts": ["/", "/boot/efi"]
     }]);
-    assert_eq!(drives_of(&hub), [Some(expected), None], "cleared after the 204");
+    assert_eq!(
+        drives_of(&hub),
+        [Some(expected), None],
+        "cleared after the 204"
+    );
 }

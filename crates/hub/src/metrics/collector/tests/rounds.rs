@@ -77,7 +77,7 @@ async fn met_001_a_round_runs_the_exact_commands_over_one_link_stores_and_publis
     );
     assert_eq!(
         bench.server.heard().len(),
-        17,
+        21,
         "no GPU found, so no GPU read the second time"
     );
     let second = bench.feed.try_recv().unwrap();

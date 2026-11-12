@@ -22,7 +22,12 @@ fn met_022_pop_os_lists_four_drives_with_root_through_crypt_and_lvm_on_its_nvme_
             drive("nvme0n1", DriveKind::Nvme, 1_000_204_886_016, &[]),
             // `/` sits on data-root (LVM) in cryptdata (LUKS) on nvme1n1p3; `/recovery` is a
             // system image (D-5) and the swap is not a path.
-            drive("nvme1n1", DriveKind::Nvme, 1_000_204_886_016, &["/", "/boot/efi"]),
+            drive(
+                "nvme1n1",
+                DriveKind::Nvme,
+                1_000_204_886_016,
+                &["/", "/boot/efi"]
+            ),
             drive("sda", DriveKind::Hdd, 24_000_277_250_048, &[]),
             drive("sdb", DriveKind::Hdd, 8_001_563_222_016, &[]),
         ]
@@ -116,11 +121,18 @@ fn met_002_a_deep_tree_is_walked_eight_levels_and_counts_are_capped() {
     for level in 0..12 {
         node = format!(r#"{{"name":"n{level}","type":"part","size":1,"children":[{node}]}}"#);
     }
-    let text = format!(r#"{{"blockdevices":[{{"name":"sda","type":"disk","size":1,"children":[{node}]}}]}}"#);
-    assert_eq!(drives(text.as_bytes()).unwrap()[0].mounts, Vec::<String>::new());
+    let text = format!(
+        r#"{{"blockdevices":[{{"name":"sda","type":"disk","size":1,"children":[{node}]}}]}}"#
+    );
+    assert_eq!(
+        drives(text.as_bytes()).unwrap()[0].mounts,
+        Vec::<String>::new()
+    );
 
     let many: Vec<String> = (0..40)
-        .map(|i| format!(r#"{{"name":"d{i:02}","type":"disk","size":1,"mountpoints":["/m{i:02}"]}}"#))
+        .map(|i| {
+            format!(r#"{{"name":"d{i:02}","type":"disk","size":1,"mountpoints":["/m{i:02}"]}}"#)
+        })
         .collect();
     let mounts: Vec<String> = (0..40).map(|i| format!("\"/m{i:02}\"")).collect();
     let text = format!(

@@ -7,7 +7,8 @@
 //! not trusted, so no reader panics and none fails on a bad line. [`spawn_collector`] runs the
 //! commands every 30 seconds and publishes each collection on the [`Feed`]. A device may push
 //! its metrics from the Anima agent instead ([`agent_router`], K8); [`spawn_stale_watch`] marks
-//! an agent that stopped pushing (MET-018).
+//! an agent that stopped pushing (MET-018). [`storage`] shows a device's storage drive by drive
+//! (MET-021).
 
 mod collector;
 mod commands;
@@ -19,6 +20,7 @@ mod latest;
 mod model;
 mod range;
 mod retention;
+mod storage;
 mod store;
 #[cfg(test)]
 mod tests;
@@ -40,6 +42,7 @@ pub use model::{
     Readings,
 };
 pub use retention::{Retention, Trimmed};
+pub use storage::{DriveKind, Mount, Storage, StorageDrive};
 
 use crate::ids::DeviceId;
 
@@ -82,17 +85,35 @@ pub async fn record_collection(
 }
 
 /// The current readings of each of `devices` that has a sample taken in the last 2 minutes
-/// before `now` (MET-004, D-8). A device without one has no entry.
+/// before `now`, with the mount of the fullest disk and the count of the device's other drives
+/// (MET-004, MET-025, D-8). A device without one has no entry.
 ///
 /// # Errors
-/// `Database` when the query fails; `Unreadable` for a stored kind this version does not know.
+/// `Database` when a query fails; `Unreadable` for a stored kind this version does not know.
 pub async fn readings(
     db: &PgPool,
     devices: &[DeviceId],
     now: DateTime<Utc>,
 ) -> Result<HashMap<DeviceId, Readings>, Error> {
-    let latest = store::latest(db, devices, now, READING_WINDOW).await?;
-    Ok(latest::readings(latest))
+    let latest = store::latest(db, (devices, &latest::READ_KINDS), now, READING_WINDOW).await?;
+    let mut readings = latest::readings(latest);
+    let held: Vec<DeviceId> = readings.keys().copied().collect();
+    latest::count_other_drives(&mut readings, &store::drives(db, &held).await?);
+    Ok(readings)
+}
+
+/// The storage of `device` drive by drive, with the samples of the last 2 minutes before `now`
+/// (MET-021, MET-024, D-8). A device whose drives the hub does not know lists its mounts.
+///
+/// # Errors
+/// `Database` when a query fails; `Unreadable` for a stored kind or drive kind this version
+/// does not know.
+pub async fn storage(db: &PgPool, device: DeviceId, now: DateTime<Utc>) -> Result<Storage, Error> {
+    let devices = [device];
+    let latest =
+        store::latest(db, (&devices, &storage::STORAGE_KINDS), now, READING_WINDOW).await?;
+    let drives = store::drives(db, &devices).await?.remove(&device);
+    Ok(storage::storage(&drives.unwrap_or_default(), &latest))
 }
 
 /// The series of `device` over `range` ending at `now`, with their points oldest first (MET-003,

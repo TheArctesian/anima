@@ -1,12 +1,13 @@
 //! Tests of the collector: the command table (`commands`), the pure core (`outputs`, `plan`,
 //! `failures`, `gpus`, `discovery`, `os_release`), the bounded fan-out and the deadline on paused
 //! time (`fan_out`), the feed, rounds against a test SSH device on loopback (`rounds`,
-//! `gpus::rounds`), and operating system detection (`detection`).
+//! `gpus::rounds`, `drives::rounds`), and operating system detection (`detection`).
 
 mod bench;
 mod commands;
 mod detection;
 mod discovery;
+mod drives;
 mod failures;
 mod fan_out;
 mod feed;

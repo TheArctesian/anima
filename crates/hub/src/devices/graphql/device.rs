@@ -26,7 +26,7 @@ use crate::{
         model::{Device, Site},
         warnings::{AccessWarning, access_warnings},
     },
-    metrics::{self, Gpu, MetricRange, MetricSeries, Readings},
+    metrics::{self, Gpu, MetricRange, MetricSeries, Readings, Storage},
     scalars::IpAddr,
     status::Status,
     web_interfaces::{Suggestion, WebInterface},
@@ -149,6 +149,16 @@ impl Device {
     async fn metrics(&self, ctx: &Context<'_>, range: MetricRange) -> Result<Vec<MetricSeries>> {
         let now = schema_dependency::<Arc<dyn Clock>>(ctx)?.now();
         metrics::series(schema_dependency::<PgPool>(ctx)?, self.id, range, now)
+            .await
+            .map_err(internal)
+    }
+
+    /// The device's storage drive by drive, with the latest use of each mount and the activity
+    /// of each drive (MET-021, MET-024). It reads one device by design: the detail view, so it
+    /// needs no loader.
+    async fn storage(&self, ctx: &Context<'_>) -> Result<Storage> {
+        let now = schema_dependency::<Arc<dyn Clock>>(ctx)?.now();
+        metrics::storage(schema_dependency::<PgPool>(ctx)?, self.id, now)
             .await
             .map_err(internal)
     }

@@ -47,6 +47,10 @@ mod tests {
         mounted[2].mounts.push("/mnt/archive".to_owned());
         let again = watch.changed(Some(&mounted)).expect("a mount changed");
         assert_eq!(again[2].mounts, ["/mnt/archive"]);
-        assert_eq!(watch.changed(Some(&[])), Some(Vec::new()), "every drive gone");
+        assert_eq!(
+            watch.changed(Some(&[])),
+            Some(Vec::new()),
+            "every drive gone"
+        );
     }
 }

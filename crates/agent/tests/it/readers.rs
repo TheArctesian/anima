@@ -56,5 +56,8 @@ async fn met_022_a_linux_reading_lists_drives_and_their_counters() {
         assert!(drive.size_bytes > 0);
         assert!(drive.mounts.iter().all(|mount| mount.starts_with('/')));
     }
-    assert!(!read.drive_counters.is_empty(), "/proc/diskstats listed nothing");
+    assert!(
+        !read.drive_counters.is_empty(),
+        "/proc/diskstats listed nothing"
+    );
 }

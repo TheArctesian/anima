@@ -6,10 +6,7 @@ use sqlx::PgPool;
 use super::rows::LatestRow;
 use crate::{
     ids::DeviceId,
-    metrics::{
-        Error, MetricKind,
-        latest::{Latest, READ_KINDS},
-    },
+    metrics::{Error, MetricKind, latest::Latest},
 };
 
 /// One lateral index scan per series: `(series_id, at)` is the primary key of every partition,
@@ -17,7 +14,7 @@ use crate::{
 /// primary key of `metrics.gpus`); a VRAM series whose GPU is gone or has no VRAM is left out
 /// (MET-007).
 const LATEST_SQL: &str = "\
-    SELECT s.device_id, s.kind, l.at, l.value, \
+    SELECT s.device_id, s.kind, s.label, l.at, l.value, \
            g.index AS gpu_index, g.name AS gpu_name, g.vendor AS gpu_vendor, \
            g.has_vram AS gpu_has_vram \
     FROM metrics.series s \
@@ -29,15 +26,15 @@ const LATEST_SQL: &str = "\
     WHERE s.device_id = ANY($1) AND s.kind = ANY($2) \
         AND (s.kind <> $5 OR g.has_vram)"; // not a reading, so it cannot set `Readings.at`
 
-/// The newest sample of each card series of `devices` taken in `[now - within, now]`, in one
-/// query.
+/// The newest sample of each series of `kinds` of `devices` taken in `[now - within, now]`, in
+/// one query.
 pub(in crate::metrics) async fn latest(
     db: &PgPool,
-    devices: &[DeviceId],
+    (devices, kinds): (&[DeviceId], &[MetricKind]),
     now: DateTime<Utc>,
     within: TimeDelta,
 ) -> Result<Vec<Latest>, Error> {
-    let kinds: Vec<&str> = READ_KINDS.iter().map(|kind| kind.as_str()).collect();
+    let kinds: Vec<&str> = kinds.iter().map(|kind| kind.as_str()).collect();
     let rows: Vec<LatestRow> = sqlx::query_as(LATEST_SQL)
         .bind(devices)
         .bind(kinds)

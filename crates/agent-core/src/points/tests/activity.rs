@@ -73,7 +73,13 @@ fn met_023_no_activity_without_an_earlier_reading_after_a_wrap_or_for_a_new_driv
     let out = samples(Some(&before), &now, THIRTY);
     assert_eq!(count(&out, Kind::DiskReadBps), 0);
     assert_eq!(count(&out, Kind::DiskBusyPercent), 0);
-    assert_eq!(count(&samples(Some(&now), &now, Duration::ZERO), Kind::DiskWriteBps), 0);
+    assert_eq!(
+        count(
+            &samples(Some(&now), &now, Duration::ZERO),
+            Kind::DiskWriteBps
+        ),
+        0
+    );
 }
 
 #[test]

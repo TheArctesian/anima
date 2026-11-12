@@ -3,12 +3,14 @@
 //!
 //! Every word is static text written here: no device field, tag or other operator text can
 //! reach a command line. Each command only reads (`cat` of `/proc` files and of `/etc/os-release`,
-//! `df`, `sysctl -n`, `vm_stat`, `netstat`, `top` in logging mode, `uname -s` for a device whose
+//! `df`, `lsblk` (MET-022), `sysctl -n`, `vm_stat`, `netstat`, `top` in logging mode, `uname -s` for a device whose
 //! operating system is detected (DEV-025), and the GPU queries of spec 6.6: `nvidia-smi`
 //! queries, `grep` of `amdgpu` sysfs files, `intel_gpu_top` for 2 seconds, `ioreg`); none
 //! writes, starts a service or takes input.
 
 use std::time::Duration;
+
+use agent_core::readings::drives::{LSBLK_ARGS, LSBLK_OLD_ARGS};
 
 use crate::{devices::OperatingSystem, metrics::GpuVendor, ssh::FixedCommand};
 
@@ -35,6 +37,14 @@ pub(super) enum Source {
     Loadavg,
     /// Linux `df -P -B1`: blocks of 1 byte.
     DiskBytes,
+    /// Linux `cat /proc/diskstats`: the I/O counters of each block device (MET-023).
+    Diskstats,
+    /// Linux `lsblk -J -b -o ...,MOUNTPOINTS`: the drives (MET-022).
+    Drives,
+    /// The same with `MOUNTPOINT`, run only when util-linux before 2.37 refused [`Drives`].
+    ///
+    /// [`Drives`]: Source::Drives
+    DrivesOld,
     /// Linux `cat /etc/os-release`: the distribution, not a metric (DEV-016).
     OsRelease,
     /// macOS `sysctl -n hw.memsize hw.pagesize vm.loadavg kern.boottime`.
@@ -47,6 +57,18 @@ pub(super) enum Source {
     Netstat,
     /// macOS `top -l 2 -n 0 -s 1`.
     Top,
+}
+
+impl Source {
+    /// Whether the collection goes on when this command cannot run: the distribution is not a
+    /// metric (DEV-016), and a device without `lsblk` or `/proc/diskstats` still has the rest
+    /// (MET-022, MET-023).
+    pub(super) fn is_optional(self) -> bool {
+        matches!(
+            self,
+            Self::OsRelease | Self::Diskstats | Self::Drives | Self::DrivesOld
+        )
+    }
 }
 
 /// One command of a collection with the output it gives and its time limit.
@@ -94,6 +116,12 @@ fn linux() -> Vec<Command> {
             FixedCommand::new("df").arg("-P").arg("-B1"),
         ),
         quick(
+            Source::Diskstats,
+            FixedCommand::new("cat").arg("/proc/diskstats"),
+        ),
+        quick(Source::Drives, lsblk(LSBLK_ARGS)),
+        quick(Source::DrivesOld, lsblk(LSBLK_OLD_ARGS)),
+        quick(
             Source::OsRelease,
             FixedCommand::new("cat").arg("/etc/os-release"),
         ),
@@ -131,6 +159,11 @@ fn macos() -> Vec<Command> {
             limit: TOP,
         },
     ]
+}
+
+fn lsblk(args: [&'static str; 4]) -> FixedCommand {
+    args.into_iter()
+        .fold(FixedCommand::new("lsblk"), FixedCommand::arg)
 }
 
 fn quick(source: Source, fixed: FixedCommand) -> Command {

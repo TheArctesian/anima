@@ -29,7 +29,8 @@ fn command(source: Source, words: &[&'static str], seconds: u64) -> Command {
 }
 
 #[test]
-fn met_002_linux_runs_the_cat_and_df_commands_then_reads_os_release_in_order() {
+fn met_002_linux_runs_the_cat_df_and_lsblk_commands_then_reads_os_release_in_order() {
+    let lsblk = |columns| ["lsblk", "-J", "-b", "-o", columns];
     assert_eq!(
         commands(OperatingSystem::Linux),
         [
@@ -39,7 +40,37 @@ fn met_002_linux_runs_the_cat_and_df_commands_then_reads_os_release_in_order() {
             command(Source::Uptime, &["cat", "/proc/uptime"], 5),
             command(Source::Loadavg, &["cat", "/proc/loadavg"], 5),
             command(Source::DiskBytes, &["df", "-P", "-B1"], 5),
+            command(Source::Diskstats, &["cat", "/proc/diskstats"], 5),
+            command(
+                Source::Drives,
+                &lsblk("NAME,TYPE,SIZE,ROTA,TRAN,MOUNTPOINTS"),
+                5
+            ),
+            command(
+                Source::DrivesOld,
+                &lsblk("NAME,TYPE,SIZE,ROTA,TRAN,MOUNTPOINT"),
+                5
+            ),
             command(Source::OsRelease, &["cat", "/etc/os-release"], 5),
+        ]
+    );
+}
+
+#[test]
+fn met_022_only_the_distribution_and_the_drive_reads_may_fail_without_ending_a_collection() {
+    let optional: Vec<Source> = commands(OperatingSystem::Linux)
+        .into_iter()
+        .chain(commands(OperatingSystem::Macos))
+        .map(|command| command.source)
+        .filter(|source| source.is_optional())
+        .collect();
+    assert_eq!(
+        optional,
+        [
+            Source::Diskstats,
+            Source::Drives,
+            Source::DrivesOld,
+            Source::OsRelease
         ]
     );
 }

@@ -5,7 +5,7 @@
 use std::time::Duration;
 
 use agent_core::readings::{
-    df, linux,
+    Drive, df, drives, linux,
     macos::{self, Sysctl},
 };
 use chrono::{DateTime, Utc};
@@ -64,6 +64,8 @@ impl Parts {
             Source::Loadavg => reading.load = linux::load_average(bytes),
             Source::DiskBytes => reading.disks = df::disks(bytes, 1),
             Source::DiskKilobytes => reading.disks = df::disks(bytes, 1024),
+            Source::Diskstats => reading.drive_counters = linux::drive_counters(bytes),
+            Source::Drives | Source::DrivesOld => reading.drives = drives::drives(bytes),
             Source::Sysctl => self.sysctl = Some(macos::sysctl(bytes)),
             Source::VmStat => {
                 let page_size = self.sysctl.and_then(|sysctl| sysctl.page_size);
@@ -71,6 +73,12 @@ impl Parts {
             }
             Source::OsRelease => self.distribution = os_release::distribution(bytes),
         }
+    }
+
+    /// Whether `source`'s command is still to run: the older `lsblk` form only when the newer
+    /// one gave no drives (MET-022).
+    pub(super) fn needs(&self, source: Source) -> bool {
+        source != Source::DrivesOld || self.reading.drives.is_none()
     }
 
     /// The distribution the device named, taken out so the reading can be built after.
@@ -114,4 +122,16 @@ pub(super) fn collected(
         .and_then(|previous| (at - previous.at).to_std().ok())
         .unwrap_or(Duration::ZERO);
     samples(previous.map(|previous| &previous.reading), reading, elapsed)
+}
+
+/// The drives of `reading` when they are to be stored: read this time, and not the list the
+/// previous collection read (the first collection after a start always stores its list). An
+/// unread list stores nothing, so the stored one stays (MET-022).
+pub(super) fn new_drives<'a>(
+    previous: Option<&Previous>,
+    reading: &'a Reading,
+) -> Option<&'a [Drive]> {
+    let read = reading.drives.as_deref()?;
+    let before = previous.and_then(|previous| previous.reading.drives.as_deref());
+    (before != Some(read)).then_some(read)
 }

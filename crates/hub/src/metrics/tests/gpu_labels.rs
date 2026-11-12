@@ -26,6 +26,7 @@ fn vram_of(samples: &[(Gpu, f64)]) -> (Option<f64>, Option<i32>) {
         .map(|(gpu, value)| latest::Latest {
             device: device(PVE_01),
             kind: MetricKind::VramPercent,
+            label: gpu.index.to_string(),
             at,
             value: *value,
             gpu: Some(gpu.clone()),

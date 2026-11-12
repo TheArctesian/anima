@@ -22,7 +22,10 @@ fn with_drives(drives: Vec<BatchDrive>) -> impl FnOnce(&mut Batch) {
 
 #[test]
 fn met_022_a_batch_without_drives_is_taken_and_leaves_them_unchanged() {
-    assert!(!BATCH.contains("drives"), "the K8 example is an older agent's");
+    assert!(
+        !BATCH.contains("drives"),
+        "the K8 example is an older agent's"
+    );
     let accepted = checked(|_| {}).unwrap();
     assert_eq!(accepted.drives, None);
 }
@@ -32,7 +35,10 @@ fn met_022_the_drives_of_a_batch_reach_the_hub_as_sent() {
     let sent = vec![drive("nvme1n1", &["/", "/boot/efi"]), drive("sda", &[])];
     let accepted = checked(with_drives(sent.clone())).unwrap();
     assert_eq!(accepted.drives, Some(sent));
-    assert_eq!(checked(with_drives(Vec::new())).unwrap().drives, Some(Vec::new()));
+    assert_eq!(
+        checked(with_drives(Vec::new())).unwrap().drives,
+        Some(Vec::new())
+    );
 }
 
 #[test]
@@ -62,8 +68,14 @@ fn met_022_drives_that_break_the_label_or_count_rules_are_malformed() {
         with_drives(vec![drive("sda", &[]), drive("sda", &[])]),
     );
     assert_malformed("an empty name", with_drives(vec![drive("", &[])]));
-    assert_malformed("a control character", with_drives(vec![drive("sd\u{7}", &[])]));
-    assert_malformed("a relative mount", with_drives(vec![drive("sda", &["mnt"])]));
+    assert_malformed(
+        "a control character",
+        with_drives(vec![drive("sd\u{7}", &[])]),
+    );
+    assert_malformed(
+        "a relative mount",
+        with_drives(vec![drive("sda", &["mnt"])]),
+    );
     let long = format!("/{}", "x".repeat(128));
     assert_malformed("a long mount", with_drives(vec![drive("sda", &[&long])]));
     let mounts: Vec<String> = (0..33).map(|i| format!("/m{i}")).collect();

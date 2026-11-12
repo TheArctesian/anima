@@ -14,12 +14,8 @@ fn added(seconds: i64) -> MetricsAdded {
         at,
         samples: Vec::new(),
         readings: Readings {
-            at,
             cpu_percent: Some(12.5),
-            memory_percent: None,
-            disk_percent: None,
-            vram_percent: None,
-            vram_gpu: None,
+            ..Readings::empty(at)
         },
     }
 }
