@@ -2087,3 +2087,66 @@ A security review of the broker found the points below; each fix has regression 
 - **`NodeKeys` at 28 rem:** the name has line 1; role and address share line 2 (as `SitePaths`).
 - **`ConfirmModal` keeps its label while busy** (`aria-busy` says it works), so the button and Cancel do not move. Measured: 162 to 159 px (press scale), not 103.
 - **Not fixed:** a live push growing a row, and the modal's height changing between steps.
+
+### VP-13 security review (2026-11-11)
+
+A security review of the VP-13 change (the VPS as a device) found the points below; the review's
+proof cases are behaviour tests in `deploy/headscale/tests/` (`vps-hub`, `vps-ssh-probe`), next to
+new ones in `vps-probe`, `vps-probe-egress`, `vps-check`, `deploy/test/compose-gateway` and
+`preflight`. The rules were also run in network namespaces on the Docker Desktop VM (nftables 1.0.6):
+the hub's SSH passes, the hub's address forged on another bridge, the public interface or
+`tailscale0` is dropped, and uid 10002 reaches neither loopback, the VPN address nor a container
+while uid 0 and 1000 do. Operator steps: `deploy/README.md`, "The VPS as a device".
+
+- **F1 (Medium): `anima-probe` was an unconfined shell.** `harden.sh probe --key=FILE` (`vps/probe.sh`)
+  makes it with uid and gid 10002 (`anima-hub` is 10001), its own group, shell `/bin/bash`, home
+  `/home/anima-probe`, no password, and writes `~/.ssh/authorized_keys` (0700/0600) as the user itself
+  (`runuser`), so a link in its home cannot make root write elsewhere. The key file must be one
+  `ssh-keygen` .pub line without options; it gets `restrict,pty,from="172.30.0.10"`. A clash on
+  10002, or an `anima-probe` with another uid, group or home, is refused. `nftables.conf` gains an
+  `output` chain (policy accept): `meta skuid 10002` is dropped to `127.0.0.0/8` and
+  `172.16.0.0/12`, to any local address (`fib daddr type local`, which adds `::1`, the VPN, public
+  and bridge-gateway addresses) and out of `tailscale0`. The uid is the numeric `probe_uid` define,
+  so the file loads before the user exists. sshd's replies come from the socket it accepted as
+  root and are not affected. `user.max_user_namespaces` is left alone; the README names it as an
+  optional operator step.
+- **F2 (Low): a forged 172.30.0.10 from any bridge matched the exception.** Both exception rules,
+  in `prerouting` and `input`, add `fib saddr . iif oif exists`. The packet evaluator
+  (`tests/nft-eval.ts`) models it with `saddrRoute`, the interface of the route back to the source,
+  and now stops a rule at its first failing match, as nft does.
+- **F3 (Low): a tailnet packet from 172.30.0.10 reached sshd as the hub.** `prerouting` drops
+  `iifname "tailscale0" ip saddr $hub_networks` (`172.30.0.0/16`). `bin/preflight networks` keeps
+  every `ANIMA_*_SUBNET` (and `ANIMA_HUB_IP_RANGE`) inside it. The hub leaves a site over that range
+  out of the picture and refuses its router key and route approval (`VALIDATION` on `siteId`), as for
+  the tailnet range (`vpn::picture::on_hub_networks`, `HUB_NETWORKS`).
+- **F4 (Low): the 22/tcp exception came before `ct state invalid drop`.** `input` now drops invalid
+  packets right after the Apprise drop, before the exceptions; the 100.64 defence-in-depth drops
+  keep their place before the established accept. `prerouting` is unchanged (raw priority runs
+  before conntrack).
+- **F5 (Low): the admin could log in from any address sshd saw.** The drop-in says
+  `AllowUsers ${ANIMA_ADMIN_USER}@100.64.0.0/10 anima-probe@172.30.0.10`; `sshd.sh` compares that
+  entry (`ADMIN_HOSTS`) and reports a bare admin entry. The `sshd -T -C` connection checks stay:
+  `-T -C` prints AllowUsers without applying it, so the public-address check still looks for values
+  a Match block could weaken. The console is the fallback.
+- **F6 (Low): `check` did not look at `anima-probe`.** `probe_problem` reports, when the user exists,
+  a uid other than 10002, any group but its own, a sudoers line naming it (by name, `%group` or
+  `#10002`, outside comments, in `/etc/sudoers` and `/etc/sudoers.d/*`), a usable password (the
+  `getent shadow` field neither `!`-prefixed nor `*`; an unreadable entry is reported too) and any
+  `authorized_keys` line whose options are not exactly `restrict`, `from="172.30.0.10"` and
+  optionally `pty`. No key or hash is printed. Not covered: a sudoers rule for `ALL` users.
+- **I1: the deny list missed docker0 and `acme`.** `ANIMA_PROBE_DENY` adds `172.17.0.0/16` and
+  `${ANIMA_ACME_SUBNET:-172.30.4.0/24}`; `acme` gets that fixed subnet. The proof case of the review
+  (the hub reaching the host through `172.17.0.1`) is a firewall case, so `input` also drops any
+  other new connection from `hub_source` after the established accept: the hub reaches the host
+  only on 22/tcp and echo, while replies to the host's own connections to the hub pass.
+- **I2: `check` did not see an old live table.** `firewall_problems` reads
+  `nft list table inet anima_filter` and reports a table without the four exception rules with the
+  reverse-path test, without the `tailscale0` drop of `hub_networks`, or without the `output` chain
+  and its three uid rules. The values come from the defines of the `nftables.conf` beside the
+  script. `tests/fixtures/anima-filter-listing.txt` is nft 1.0.6's real listing of the file; a test
+  checks it holds every VP-13 rule of the file.
+- **I3: a dynamic container could take 172.30.0.10.** The `gateway` network gets
+  `ip_range: ${ANIMA_HUB_IP_RANGE:-172.30.0.128/25}` and `gateway: ${ANIMA_HUB_GATEWAY:-172.30.0.1}`
+  (with `ip_range` alone Docker 29 makes the range's first address the gateway). `bin/preflight
+  networks` refuses `ANIMA_GUACD_IP` equal to `ANIMA_HUB_IP` and either inside the range. Docker
+  Compose 5.7 recreates a network whose `ipam` changed, and the containers on it, on `up -d`.
