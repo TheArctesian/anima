@@ -81,7 +81,7 @@ const SPEC_VALUES: Record<string, string> = {
   'elevation-0': 'none', 'elevation-1': 'none',
   'elevation-2': '0 4px 16px color-mix(in srgb, var(--shadow) 40%, transparent)',
   'elevation-3': '0 12px 40px color-mix(in srgb, var(--shadow) 55%, transparent)',
-  'material-chrome-bg': 'color-mix(in srgb, var(--surface-raised) 82%, transparent)',
+  'material-chrome-bg': 'color-mix(in srgb, var(--surface-base) 82%, transparent)',
   'material-chrome-blur': '20px', 'material-chrome-saturate': '140%',
   'material-panel-bg': 'color-mix(in srgb, var(--surface-raised) 90%, transparent)',
   'material-panel-blur': '12px', 'material-panel-saturate': '100%',

@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
-import { contrastRatio, deriveToContrast, type HexColour } from '../src/contrast.ts';
+import { contrastRatio, deriveToContrast, mixColour, type HexColour } from '../src/contrast.ts';
+import type { Palette } from '../src/model.ts';
 import { APPEARANCES, hexOf, palettes, ratioOf, ROLE_NAMES, roleToken, STATUS_SHAPES, SURFACES, tokens, type Appearance } from './support.ts';
 
 const SERIES = [1, 2, 3, 4, 5, 6].map((n) => `chart-series-${String(n)}`);
@@ -54,6 +55,14 @@ describe('UI-002, UI-004, UI-005: contrast rules per palette and appearance', ()
   for (const palette of palettes) {
     for (const appearance of APPEARANCES) {
       describe(`${palette.id} ${appearance}`, () => {
+        textRules(palette, appearance);
+        statusRules(palette, appearance);
+      });
+    }
+  }
+});
+
+function textRules(palette: Palette, appearance: Appearance): void {
         for (const surface of SURFACES) {
           test(`UI-002: text and text-secondary are at least 4.5:1 on ${surface}`, () => {
             expect(ratioOf(palette.id, 'text', surface, appearance)).toBeGreaterThanOrEqual(4.5);
@@ -69,16 +78,16 @@ describe('UI-002, UI-004, UI-005: contrast rules per palette and appearance', ()
           }
         });
 
+}
+
+function statusRules(palette: Palette, appearance: Appearance): void {
         test('UI-004: on-accent is at least 4.5:1 on accent', () => {
           expect(ratioOf(palette.id, 'on-accent', 'accent', appearance)).toBeGreaterThanOrEqual(4.5);
         });
 
-        // 5.1.2 sets the 4.5:1 rule for on-danger in the light appearance only; the dark value is nord0 as the table gives.
-        if (appearance === 'light') {
-          test('5.1.2: on-danger is at least 4.5:1 on danger in both directions (light)', () => {
-            expect(ratioOf(palette.id, 'on-danger', 'danger', 'light')).toBeGreaterThanOrEqual(4.5);
-          });
-        }
+        test('UI-004: on-danger is at least 4.5:1 on danger, in both appearances (fix round 1)', () => {
+          expect(ratioOf(palette.id, 'on-danger', 'danger', appearance)).toBeGreaterThanOrEqual(4.5);
+        });
 
         test('5.1.2: the accent is at least 3:1 on surface-raised and surface-sunken (focus ring)', () => {
           expect(ratioOf(palette.id, 'accent', 'surface-raised', appearance)).toBeGreaterThanOrEqual(3);
@@ -100,8 +109,29 @@ describe('UI-002, UI-004, UI-005: contrast rules per palette and appearance', ()
           });
         }
 
-        test('5.1.2: border-strong is at least 2:1 on surface-raised, so an input has a visible edge', () => {
-          expect(ratioOf(palette.id, 'border-strong', 'surface-raised', appearance)).toBeGreaterThanOrEqual(2);
+        test('WCAG 1.4.11: border-strong is at least 3:1 on surface-raised and surface-sunken, so an input is identified', () => {
+          expect(ratioOf(palette.id, 'border-strong', 'surface-raised', appearance)).toBeGreaterThanOrEqual(3);
+          expect(ratioOf(palette.id, 'border-strong', 'surface-sunken', appearance)).toBeGreaterThanOrEqual(3);
+        });
+
+        test('UI-002: text-tertiary differs from text-secondary, and is the lightest light tint that keeps 4.5:1 on surface-raised', () => {
+          if (appearance !== 'light') return;
+          const tertiary = hexOf(palette.id, 'text-tertiary', 'light');
+          expect(tertiary).not.toBe(hexOf(palette.id, 'text-secondary', 'light'));
+          expect(ratioOf(palette.id, 'text-tertiary', 'surface-raised', 'light')).toBeGreaterThanOrEqual(4.5);
+          const secondary = hexOf(palette.id, 'text-secondary', 'light');
+          const raised = hexOf(palette.id, 'surface-raised', 'light');
+          const steps = Array.from({ length: 101 }, (_, step) => mixColour(secondary, raised, step / 100));
+          const at = steps.indexOf(tertiary);
+          expect(at).toBeGreaterThan(0);
+          expect(contrastRatio(steps[at + 1] ?? raised, raised)).toBeLessThan(4.5);
+        });
+
+        test('UI-005: the light accent is at least 4.5:1 on every light surface tier', () => {
+          if (appearance !== 'light') return;
+          for (const surface of SURFACES) {
+            expect(ratioOf(palette.id, 'accent', surface, 'light')).toBeGreaterThanOrEqual(4.5);
+          }
         });
 
         // The chart series rule (K5, MET-004) is checked on the light surfaces, as before.
@@ -113,10 +143,7 @@ describe('UI-002, UI-004, UI-005: contrast rules per palette and appearance', ()
             });
           }
         }
-      });
-    }
-  }
-});
+}
 
 describe('derived values record their rule (UI-005, D-27)', () => {
   test('UI-005: nord-10-deep is nord-10 mixed toward nord-0 until 4.5:1 on nord-5 (the light accent)', () => {
@@ -150,9 +177,16 @@ describe('the Graphite values (operator brief, 2026-11-12)', () => {
     });
   }
 
-  test('UI-005: Graphite border-strong is derived to 2:1 on surface-raised, as the operator value is 1.70:1', () => {
-    expect(ratioOf('graphite', 'border-strong', 'surface-raised', 'light')).toBeGreaterThanOrEqual(2);
+  test('WCAG 1.4.11: Graphite border-strong is derived to 3:1, as the operator values (#C3C7CD, #41464E) are below it', () => {
+    expect(ratioOf('graphite', 'border-strong', 'surface-raised', 'light')).toBeGreaterThanOrEqual(3);
+    expect(ratioOf('graphite', 'border-strong', 'surface-sunken', 'light')).toBeGreaterThanOrEqual(3);
+    expect(ratioOf('graphite', 'border-strong', 'surface-raised', 'dark')).toBeGreaterThanOrEqual(3);
     expect(hexOf('graphite', 'border-strong', 'light')).not.toBe('#C3C7CD');
+    expect(hexOf('graphite', 'border-strong', 'dark')).not.toBe('#41464E');
+  });
+
+  test('UI-005: the Graphite light accent is the chosen accent-deep, #2E6E80, not a linear mix', () => {
+    expect(hexOf('graphite', 'accent', 'light')).toBe('#2E6E80');
   });
 
   test('UI-005: Graphite light text-tertiary is derived to 4.5:1 on surface-raised, as the operator value is 4.44:1', () => {

@@ -98,13 +98,17 @@
         "$value": "#FFFFFF",
         "$description": "Pure white: the light overlay surface, on-accent and on-danger text (5.1.2). Source token only (TOK-010)."
       },
+      "3-tertiary-light": {
+        "$value": "#6B7384",
+        "$description": "nord-3 (text-secondary, light) mixed 18 % toward nord-6 raised (#F7F9FB): the largest mix that keeps 4.5:1 on surface-raised, so text-tertiary stays visibly lighter than text-secondary (5.1.2, UI-002). Source token only (TOK-010)."
+      },
       "3-strong": {
-        "$value": "#677082",
-        "$description": "nord-3-strong (dark border-strong): #4C566A mixed 19 % toward #D8DEE9, the least mix that reaches 2:1 on #3B4252 (border-strong, dark, on surface-raised (5.1.2, UI-005)). Source token only (TOK-010)."
+        "$value": "#858E9E",
+        "$description": "nord-3-strong (dark border-strong): #4C566A mixed 41 % toward #D8DEE9, the least mix that reaches 3:1 on each of #3B4252 and #272C36 (border-strong, dark, on surface-raised and surface-sunken, WCAG 1.4.11). Source token only (TOK-010)."
       },
       "4-strong": {
-        "$value": "#ABB2C0",
-        "$description": "nord-4-strong (light border-strong): #D8DEE9 mixed 32 % toward #4C566A, the least mix that reaches 2:1 on #F7F9FB (border-strong, light, on surface-raised (5.1.2, UI-005)). Source token only (TOK-010)."
+        "$value": "#7D8696",
+        "$description": "nord-4-strong (light border-strong): #D8DEE9 mixed 65 % toward #4C566A, the least mix that reaches 3:1 on each of #E5E9F0 and #F7F9FB (border-strong, light, on surface-sunken and surface-raised, WCAG 1.4.11). Source token only (TOK-010)."
       },
       "3-tertiary": {
         "$value": "#9199A8",
@@ -179,8 +183,12 @@
         "$description": "nord-3-tertiary-text (dark unknown text): #9199A8 mixed 48 % toward #ECEFF4, the least mix that reaches 4.5:1 on #495060 (status-unknown text, dark, on its 16 % tint (UI-005)). Source token only (TOK-010)."
       },
       "3-deep-text": {
-        "$value": "#4C566A",
-        "$description": "nord-3-deep-text (light unknown text): #4C566A mixed 0 % toward #2E3440, the least mix that reaches 4.5:1 on #DFE2E7 (status-unknown text, light, on its 14 % tint (UI-005)). Source token only (TOK-010)."
+        "$value": "#5F6777",
+        "$description": "nord-3-deep-text (light unknown text): #6B7384 mixed 19 % toward #2E3440, the least mix that reaches 4.5:1 on #E3E6EA (status-unknown text, light, on its 14 % tint (UI-005)). Source token only (TOK-010)."
+      },
+      "11-danger": {
+        "$value": "#CC8B93",
+        "$description": "nord-11-danger (dark danger): #C6767F mixed 17 % toward #ECEFF4, the least mix that reaches 4.5:1 on #2E3440 (danger, dark: status-down lifted toward nord6 until on-danger (nord0) reaches 4.5:1 (UI-004)). Source token only (TOK-010)."
       }
     }
   }

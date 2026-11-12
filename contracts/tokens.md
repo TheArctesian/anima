@@ -23,7 +23,7 @@ Components use semantic or component names. Primitive names (`nord-*`) appear on
 | Group | Names |
 | --- | --- |
 | Colour, primitive | `nord-0` … `nord-15` |
-| Colour, semantic | `bg`, `surface`, `surface-raised`, `border`, `text`, `text-muted`, `accent`, `accent-alt`, `accent-deep`, `info`, `status-up`, `status-down`, `status-degraded`, `status-warning`, `status-maintenance`, `status-unknown`, `scrim` (R-049), `surface-hover` (CR-10: the fill under `text` for a hovered row or control) |
+| Colour, semantic (Phase 2: one set per palette, UI-023) | `surface-sunken`, `surface-base`, `surface-raised`, `surface-overlay`, `surface-hover`, `surface-selected`, `border-subtle`, `border-strong`, `text`, `text-secondary`, `text-tertiary`, `accent`, `accent-hover`, `accent-pressed`, `on-accent`, `danger`, `on-danger`, `status-up`, `status-down`, `status-degraded`, `status-warning`, `status-maintenance`, `status-unknown`, `status-up-text`, `status-down-text`, `status-degraded-text`, `status-warning-text`, `status-maintenance-text`, `status-unknown-text`, `scrim`, `focus-ring`, `shadow`. Notes: `surface-hover` is the fill under `text` for a hovered row or control (CR-10); `scrim` is R-049; `shadow` is the elevation colour (5.6) |
 | Colour, chart (Phase 2) | `chart-grid`, `chart-axis`, `chart-threshold` (the 85 % line, MET-004), `chart-series-1` … `chart-series-6` (Nord frost then aurora, so up to six GPUs or mounts differ; K5) |
 | Colour, tint | `accent-tint`, `status-up-tint`, `status-down-tint`, `status-degraded-tint`, `status-warning-tint`, `status-maintenance-tint`, `status-unknown-tint` |
 | Font family | `font-ui`, `font-mono`, `font-icon`, `font-ui-opendyslexic`, `font-mono-opendyslexic` (added by operator decision, 2026-11-05: the Settings font choice, UI-020) |
@@ -35,6 +35,8 @@ Components use semantic or component names. Primitive names (`nord-*`) appear on
 | Radius | `radius-sm`, `radius-md`, `radius-lg`, `radius-pill` |
 | Border width | `border-thin`, `border-focus` |
 | Icon size | `icon-sm`, `icon-md`, `icon-lg` |
+| Control height (Phase 2, UI-013) | `control-sm`, `control-md`, `control-lg` |
+| Content width (Phase 2, 5.5.3) | `content-form`, `content-page` |
 | Target size | `target-min-desktop`, `target-min-touch` |
 | Elevation | `elevation-0`, `elevation-1`, `elevation-2`, `elevation-3` |
 | Material | `material-chrome`, `material-panel`, `material-overlay` (each expands to `-bg`, `-blur`, `-saturate` custom properties) |
@@ -61,9 +63,8 @@ Space numbers follow the 4-pixel grid index (`space-4` = 1 rem = 16 px), as in s
   `nord-0` until it reaches 3:1 against `nord-4`, the darkest light surface, so it holds 3:1 on `nord-4`,
   `nord-5` and `nord-6`. Only the light mode's `status-*` and `chart-*` values use them. Components never
   name them.
-- Light surfaces (R-086): `bg` is `nord-5`, `surface` is `nord-6`, `surface-raised` is `nord-4`. The light
-  `accent` is `nord-3`; no derived accent primitive is added.
-- `surface-hover` (CR-10): dark is `nord-3`, today's hover look. Light is a grey that gives `text` at least 4.5:1 and differs visibly from `surface` and `surface-raised`. A component never uses `border` as a fill.
+- Light roles (Phase 2, supersede the Phase 3 light values above; spec 5.1.2 and 5.5.3): the Nord light `surface-sunken` is `nord-5`, `surface-base` is `nord-6`, `surface-raised` is `nord-6` mixed toward white, `surface-overlay` is white. Graphite is the default palette; its light roles are in `design/tokens/palettes/graphite.tokens.json`. Derived values record their rule in the palette source.
+- `surface-hover` (CR-10): dark is a surface tier one step above `surface-raised` (nord-2 in Nord); light is a grey that gives `text` at least 4.5:1. A component never uses `border-strong` or `border-subtle` as a fill.
 - Reduce motion in Settings (D-28, MOT-043, R-085): `tokens.css` gains `:root[data-motion="reduce"] { … }`, holding the
   reduced values of the motion tokens, and `@media (prefers-reduced-motion: reduce) { :root[data-motion="full"] { … } }`,
   putting their full values back. No attribute (System) leaves the media query to decide. No token name is added, and

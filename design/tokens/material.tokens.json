@@ -4,12 +4,12 @@
       "$type": "material",
       "chrome": {
         "$value": {
-          "base": "{color.role.graphite.surface-raised}",
+          "base": "{color.role.graphite.surface-base}",
           "opacityPercent": 82,
           "blur": "20px",
           "saturatePercent": 140
         },
-        "$description": "Navigation bar, session toolbar. Reduced transparency: surface-raised, no blur (renamed from surface, TOK-004)"
+        "$description": "Navigation bar, session toolbar (5.6). Reduced transparency: surface-base, no blur"
       },
       "panel": {
         "$value": {

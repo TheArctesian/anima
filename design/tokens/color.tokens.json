@@ -80,7 +80,7 @@
         "border-strong": {
           "$type": "color",
           "$value": "{color.nord.3-strong}",
-          "$description": "Inputs; every border under prefers-contrast: more (5.1.2). Derived to 2:1 on surface-raised.",
+          "$description": "Inputs and every border under prefers-contrast: more (5.1.2). Derived to 3:1 on surface-raised and surface-sunken, so an input is identified (WCAG 1.4.11).",
           "$extensions": {
             "anima": {
               "light": "{color.nord.4-strong}"
@@ -114,10 +114,10 @@
         "text-tertiary": {
           "$type": "color",
           "$value": "{color.nord.3-tertiary}",
-          "$description": "Placeholder and disabled text. Dark: nord3 mixed toward nord4 to 3:1 on surface-overlay. Light: nord3, the least mix that reaches 4.5:1 on surface-raised.",
+          "$description": "Placeholder and disabled text, visibly lighter than text-secondary. Dark: nord3 mixed toward nord4 to 3:1 on surface-overlay. Light: text-secondary mixed toward surface-raised by the largest share that keeps 4.5:1 on it.",
           "$extensions": {
             "anima": {
-              "light": "{color.nord.3}"
+              "light": "{color.nord.3-tertiary-light}"
             }
           }
         },
@@ -421,8 +421,8 @@
         },
         "danger": {
           "$type": "color",
-          "$value": "{color.role.nord.status-down}",
-          "$description": "Destructive buttons: status-down (dark), status-down-text (light) (5.1.2).",
+          "$value": "{color.nord.11-danger}",
+          "$description": "Destructive buttons. Dark: status-down lifted until on-danger reaches 4.5:1 (UI-004). Light: status-down-text (5.1.2).",
           "$extensions": {
             "anima": {
               "light": "{color.role.nord.status-down-text}"
@@ -642,7 +642,7 @@
         "border-strong": {
           "$type": "color",
           "$value": "{color.graphite.dark-border-strong-derived}",
-          "$description": "Inputs; every border under prefers-contrast: more. Derived to 2:1 on surface-raised (5.1.2).",
+          "$description": "Inputs and every border under prefers-contrast: more. Derived to 3:1 on surface-raised and surface-sunken, so an input is identified (WCAG 1.4.11).",
           "$extensions": {
             "anima": {
               "light": "{color.graphite.light-border-strong-derived}"
@@ -672,7 +672,7 @@
         "text-tertiary": {
           "$type": "color",
           "$value": "{color.graphite.dark-text-tertiary}",
-          "$description": "Placeholder and disabled text. Light derived to 4.5:1 on surface-raised; dark 3:1 on surface-overlay (5.1.2).",
+          "$description": "Placeholder and disabled text, visibly lighter than text-secondary. Dark: 3:1 on surface-overlay. Light: text-secondary mixed toward surface-raised by the largest share that keeps 4.5:1 on it.",
           "$extensions": {
             "anima": {
               "light": "{color.graphite.light-text-tertiary-derived}"
@@ -682,10 +682,10 @@
         "accent": {
           "$type": "color",
           "$value": "{color.graphite.frost-8}",
-          "$description": "The one accent. Light: nord8 value mixed toward Graphite ink to 4.5:1 on surface-sunken (UI-005).",
+          "$description": "The one accent. Light: accent-deep, a chosen primitive (nord8 hue, darker, same chroma), 4.5:1 or more on every light surface (UI-005).",
           "$extensions": {
             "anima": {
-              "light": "{color.graphite.accent-light}"
+              "light": "{color.graphite.accent-deep}"
             }
           }
         },
@@ -979,8 +979,8 @@
         },
         "danger": {
           "$type": "color",
-          "$value": "{color.role.graphite.status-down}",
-          "$description": "Destructive buttons: status-down (dark), status-down-text (light) (5.1.2).",
+          "$value": "{color.graphite.aurora-11-danger}",
+          "$description": "Destructive buttons. Dark: status-down lifted until on-danger reaches 4.5:1 (UI-004). Light: status-down-text (5.1.2).",
           "$extensions": {
             "anima": {
               "light": "{color.role.graphite.status-down-text}"
@@ -1124,69 +1124,6 @@
               "light": "{color.graphite.aurora-11-deep}"
             }
           }
-        }
-      }
-    },
-    "bg": {
-      "$value": "{color.nord.0}",
-      "$description": "Legacy name for surface-base (TOK-004). No call site uses it; removed with the K5 contract update.",
-      "$extensions": {
-        "anima": {
-          "light": "{color.nord.5}"
-        }
-      }
-    },
-    "surface": {
-      "$value": "{color.nord.1}",
-      "$description": "Legacy name for surface-raised (TOK-004). No call site uses it; removed with the K5 contract update.",
-      "$extensions": {
-        "anima": {
-          "light": "{color.nord.6}"
-        }
-      }
-    },
-    "text-muted": {
-      "$value": "{color.nord.4}",
-      "$description": "Legacy name for text-secondary (TOK-004). No call site uses it; removed with the K5 contract update.",
-      "$extensions": {
-        "anima": {
-          "light": "{color.nord.3}"
-        }
-      }
-    },
-    "border": {
-      "$value": "{color.nord.3}",
-      "$description": "Legacy name for border-strong (TOK-004). No call site uses it; removed with the K5 contract update.",
-      "$extensions": {
-        "anima": {
-          "light": "{color.nord.10}"
-        }
-      }
-    },
-    "accent-deep": {
-      "$value": "{color.nord.10}",
-      "$description": "Legacy name for accent-pressed (TOK-004). No call site uses it; removed with the K5 contract update.",
-      "$extensions": {
-        "anima": {
-          "light": "{color.nord.0}"
-        }
-      }
-    },
-    "accent-alt": {
-      "$value": "{color.nord.9}",
-      "$description": "Legacy name for accent (TOK-004). No call site uses it; removed with the K5 contract update.",
-      "$extensions": {
-        "anima": {
-          "light": "{color.nord.10}"
-        }
-      }
-    },
-    "info": {
-      "$value": "{color.nord.7}",
-      "$description": "Legacy name for accent (TOK-004). No call site uses it; removed with the K5 contract update.",
-      "$extensions": {
-        "anima": {
-          "light": "{color.nord.10}"
         }
       }
     }

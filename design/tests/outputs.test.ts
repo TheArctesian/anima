@@ -37,7 +37,7 @@ function declared(name: string): boolean {
 describe('K5 names', () => {
   test('TOK-001 the K5 table parser finds the names at both ends of its ranges', () => {
     const names = k5Names();
-    for (const name of ['nord-0', 'nord-15', 'bg', 'spring-momentum', 'threshold-loading-min', 'bp-wide', 'projection-deceleration', 'rubberband-constant']) {
+    for (const name of ['nord-0', 'nord-15', 'surface-base', 'spring-momentum', 'threshold-loading-min', 'bp-wide', 'projection-deceleration', 'rubberband-constant']) {
       expect(names).toContain(name);
     }
   });
@@ -74,6 +74,12 @@ describe('K5 names', () => {
 });
 
 describe('colour tokens', () => {
+  test('TOK-004 the legacy names are removed: no custom property of an old meaning is left in tokens.css', () => {
+    for (const legacy of ['bg', 'surface', 'text-muted', 'border', 'accent-deep', 'accent-alt', 'info']) {
+      expect(css).not.toMatch(new RegExp(`--${legacy}:`));
+    }
+  });
+
   test('UI-001 the Nord dark roles are var() of the Nord primitives', () => {
     expect(css).toContain('--accent: var(--nord-8);');
     expect(css).toContain('--surface-raised: var(--nord-1);');
@@ -138,12 +144,12 @@ describe('sizes and type', () => {
 describe('materials and motion', () => {
   const reducedMotion = (): string => /@media \(prefers-reduced-motion: reduce\) \{[^@]*\n\}/.exec(css)?.[0] ?? '';
 
-  test('MAT-006 chrome is 82 % surface-raised with 20 px blur and 140 % saturation; solid under reduced transparency', () => {
-    expect(css).toContain('--material-chrome-bg: color-mix(in srgb, var(--surface-raised) 82%, transparent);');
+  test('MAT-006 chrome is 82 % surface-base with 20 px blur and 140 % saturation (5.6); solid under reduced transparency', () => {
+    expect(css).toContain('--material-chrome-bg: color-mix(in srgb, var(--surface-base) 82%, transparent);');
     expect(css).toContain('--material-chrome-blur: 20px;');
     expect(css).toContain('--material-chrome-saturate: 140%;');
     const transparency = css.slice(css.indexOf('@media (prefers-reduced-transparency: reduce)'));
-    expect(transparency).toContain('--material-chrome-bg: var(--surface-raised);');
+    expect(transparency).toContain('--material-chrome-bg: var(--surface-base);');
     expect(transparency).toContain('--material-chrome-blur: 0px;');
   });
 

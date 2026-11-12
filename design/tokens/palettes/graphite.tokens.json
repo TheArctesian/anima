@@ -103,20 +103,20 @@
         "$description": "Frost nord10 value, the Graphite dark accent-pressed and chart series 3. Source token only (TOK-010)."
       },
       "dark-border-strong-derived": {
-        "$value": "#52565E",
-        "$description": "graphite-dark-border-strong-derived: #41464E mixed 10 % toward #E6E7E9, the least mix that reaches 2:1 on #23262B (border-strong, dark, on surface-raised (5.1.2, UI-005)). Source token only (TOK-010)."
+        "$value": "#6C7076",
+        "$description": "graphite-dark-border-strong-derived: #41464E mixed 26 % toward #E6E7E9, the least mix that reaches 3:1 on each of #23262B and #16181B (border-strong, dark, on surface-raised and surface-sunken, WCAG 1.4.11). Source token only (TOK-010)."
       },
       "light-border-strong-derived": {
-        "$value": "#B2B6BC",
-        "$description": "graphite-light-border-strong-derived: #C3C7CD mixed 10 % toward #1D2024, the least mix that reaches 2:1 on #FFFFFF (border-strong, light, on surface-raised (5.1.2, UI-005)). Source token only (TOK-010)."
+        "$value": "#86898E",
+        "$description": "graphite-light-border-strong-derived: #C3C7CD mixed 37 % toward #1D2024, the least mix that reaches 3:1 on each of #EEEFF1 and #FFFFFF (border-strong, light, on surface-sunken and surface-raised, WCAG 1.4.11). Source token only (TOK-010)."
       },
       "light-text-tertiary-derived": {
-        "$value": "#727780",
-        "$description": "graphite-light-text-tertiary-derived: #737881 mixed 1 % toward #1D2024, the least mix that reaches 4.5:1 on #FFFFFF (text-tertiary, light, on surface-raised (5.1.2, UI-005)). Source token only (TOK-010)."
+        "$value": "#71757D",
+        "$description": "Graphite light text-secondary (#5A5F68) mixed 14 % toward surface-raised (white): the largest mix that keeps 4.5:1 on surface-raised, so text-tertiary stays visibly lighter than text-secondary (5.1.2, UI-002). Source token only (TOK-010)."
       },
-      "accent-light": {
-        "$value": "#53707A",
-        "$description": "graphite-accent-light: #88C0D0 mixed 50 % toward #1D2024, the least mix that reaches 4.5:1 on #EEEFF1 (accent, light, on surface-sunken (UI-005)). Source token only (TOK-010)."
+      "accent-deep": {
+        "$value": "#2E6E80",
+        "$description": "nord8's hue darkened keeping its chroma; 4.99:1 on Graphite light sunken (chosen by the lead, 2026-11-12). Source token only (TOK-010)."
       },
       "aurora-11-lifted": {
         "$value": "#BF616A",
@@ -157,6 +157,10 @@
       "aurora-15-deep": {
         "$value": "#A0809B",
         "$description": "graphite-aurora-15-deep: #B48EAD mixed 13 % toward #1D2024, the least mix that reaches 3:1 on #EEEFF1 (status shape, light, on surface-sunken (UI-005)). Source token only (TOK-010)."
+      },
+      "aurora-11-danger": {
+        "$value": "#C0656E",
+        "$description": "graphite-aurora-11-danger (dark danger): #BF616A mixed 3 % toward #E6E7E9, the least mix that reaches 4.5:1 on #16181B (danger, dark: status-down lifted toward the lightest neutral until on-danger reaches 4.5:1 (UI-004)). Source token only (TOK-010)."
       },
       "aurora-11-text": {
         "$value": "#CA888F",
@@ -203,8 +207,8 @@
         "$description": "graphite-dark-tertiary-text: #7E838C mixed 26 % toward #E6E7E9, the least mix that reaches 4.5:1 on #32353B (status-unknown text, dark, on its 16 % tint (UI-005)). Source token only (TOK-010)."
       },
       "light-tertiary-text": {
-        "$value": "#666B73",
-        "$description": "graphite-light-tertiary-text: #727780 mixed 14 % toward #1D2024, the least mix that reaches 4.5:1 on #EBECED (status-unknown text, light, on its 14 % tint (UI-005)). Source token only (TOK-010)."
+        "$value": "#676B72",
+        "$description": "graphite-light-tertiary-text: #71757D mixed 12 % toward #1D2024, the least mix that reaches 4.5:1 on #EBECED (status-unknown text, light, on its 14 % tint (UI-005)). Source token only (TOK-010)."
       },
       "aurora-11": {
         "$value": "#BF616A",

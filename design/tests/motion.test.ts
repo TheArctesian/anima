@@ -94,15 +94,12 @@ describe('golden: the output without data-motion is unchanged (R-085, MOT-040)',
     // Every line the choice adds names data-motion or sits inside one of its two blocks.
     expect(added.split('\n').filter((line) => line.includes('data-motion'))).toHaveLength(2);
     expect(rest).not.toContain('data-motion');
-    // What is left is :root and the shared light blocks, then the two palettes (Graphite on :root, Nord by attribute),
+    // What is left is :root, then the two palettes (Graphite on :root, Nord by attribute),
     // then the reduced-motion media block and the two preference media blocks, in order (UI-023, MAT-006).
     const openings = rest.split('\n').filter((line) => line.endsWith('{'));
     const preference = ':root, :root[data-theme], :root[data-palette], :root[data-palette][data-theme] {';
     expect(openings).toEqual([
       ':root {',
-      ':root[data-theme="light"] {',
-      '@media (prefers-color-scheme: light) {',
-      '  :root[data-theme="system"] {',
       ':root, :root[data-palette="graphite"] {',
       ':root[data-theme="light"] {',
       '@media (prefers-color-scheme: light) {',
