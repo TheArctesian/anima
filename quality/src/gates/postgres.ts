@@ -31,3 +31,20 @@ export function socketDatabaseUrl(socketDir: string, port: number, user: string)
 export function serverOptions(socketDir: string, port: number): string {
   return `-c listen_addresses='' -c unix_socket_directories='${socketDir}' -c port=${port} -c fsync=off -c max_connections=200`;
 }
+
+/** A server that listens only on a Unix socket in `socketDir`. */
+export interface SocketServer {
+  socketDir: string;
+  port: number;
+  user: string;
+}
+
+/**
+ * `psql` argv that sends each statement to `database` as one simple query, stopping at the first error.
+ * `-c` text goes to the server as given: psql neither expands `:variables` nor reads meta-commands in it,
+ * unless the text starts with a backslash. `-X` skips `~/.psqlrc`.
+ */
+export function psqlArgv(psql: string, server: SocketServer, database: string, statements: string[]): string[] {
+  const connection = ["-h", server.socketDir, "-p", String(server.port), "-U", server.user, "-d", database];
+  return [psql, "-X", "-q", "-v", "ON_ERROR_STOP=1", ...connection, ...statements.flatMap((statement) => ["-c", statement])];
+}
