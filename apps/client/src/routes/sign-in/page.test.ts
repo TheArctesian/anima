@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { failure, fakeHub, ok } from '$lib/access/access.fixture';
 import { TOKEN_UNREADABLE, type Hub } from '$lib/hub/hub';
 import Page from './+page.svelte';
-import { boxes, continueWith, input, pasteInto, press, problemOf, settle, submit, type, typeCode } from './page.fixture';
+import { boxes, continueWith, input, pasteInto, press, problemOf, settle, type, typeCode } from './page.fixture';
 
 const mocks = vi.hoisted(() => ({
   hub: undefined as unknown,
