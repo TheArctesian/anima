@@ -1,4 +1,4 @@
-//! MET-021 to MET-026: the Storage rows from the drives and the latest samples, the card's
+//! MET-026 to MET-031: the Storage rows from the drives and the latest samples, the card's
 //! mount and drive count, and the drives store replaced per device.
 
 use std::collections::HashMap;
@@ -33,7 +33,7 @@ fn latest_of(values: &[(MetricKind, &str, f64)]) -> Vec<latest::Latest> {
 }
 
 #[test]
-fn met_024_mounted_drives_come_first_then_lone_mounts_then_unmounted_drives() {
+fn met_029_mounted_drives_come_first_then_lone_mounts_then_unmounted_drives() {
     let latest = latest_of(&[
         (MetricKind::DiskPercent, "/", 81.0),
         (MetricKind::DiskBytes, "/", 810.0),
@@ -77,7 +77,7 @@ fn met_024_mounted_drives_come_first_then_lone_mounts_then_unmounted_drives() {
 }
 
 #[test]
-fn met_026_a_device_without_known_drives_lists_its_mounts_with_no_kind_or_activity() {
+fn met_031_a_device_without_known_drives_lists_its_mounts_with_no_kind_or_activity() {
     let latest = latest_of(&[
         (MetricKind::DiskPercent, "/System/Volumes/Data", 50.0),
         (MetricKind::DiskBytes, "/System/Volumes/Data", 250.0),
@@ -113,7 +113,7 @@ fn card(values: &[(MetricKind, &str, f64)], drives: Vec<Drive>) -> Readings {
 }
 
 #[test]
-fn met_025_the_card_names_the_fullest_mount_and_counts_the_other_drives() {
+fn met_030_the_card_names_the_fullest_mount_and_counts_the_other_drives() {
     let values = [
         (MetricKind::DiskPercent, "/", 81.0),
         (MetricKind::DiskPercent, "/boot/efi", 6.0),
@@ -169,7 +169,7 @@ async fn now(pool: &PgPool) -> DateTime<Utc> {
     migrations = "./migrations",
     fixtures(path = "../../../tests/fixtures", scripts("devices"))
 )]
-async fn met_022_a_device_s_drives_are_replaced_together_and_another_s_are_left(pool: PgPool) {
+async fn met_027_a_device_s_drives_are_replaced_together_and_another_s_are_left(pool: PgPool) {
     let at = now(&pool).await;
     let (pve, docker) = (device(PVE_01), device(DOCKER_HOST));
     store::replace_drives(&pool, pve, &pop_os(), at)
@@ -197,7 +197,7 @@ async fn met_022_a_device_s_drives_are_replaced_together_and_another_s_are_left(
     migrations = "./migrations",
     fixtures(path = "../../../tests/fixtures", scripts("devices"))
 )]
-async fn met_024_the_storage_face_reads_the_drives_and_the_recent_samples(pool: PgPool) {
+async fn met_029_the_storage_face_reads_the_drives_and_the_recent_samples(pool: PgPool) {
     let at = now(&pool).await;
     let pve = device(PVE_01);
     store::replace_drives(&pool, pve, &pop_os(), at)

@@ -144,7 +144,7 @@ pub const IOREG_ACCELERATOR: &[u8] = b"+-o AGXAcceleratorG14X  <class AGXAcceler
 /// Constructed from the operator's `lsblk` on pop-os (2026-11-12) in the form of util-linux 2.39
 /// `lsblk -J -b -o NAME,TYPE,SIZE,ROTA,TRAN,MOUNTPOINTS`: a 22 TB and an 8 TB disk with one
 /// unmounted partition each, compressed swap, an unmounted `NVMe` drive, and the system `NVMe` drive
-/// with `/` on LVM in a LUKS container and swap in another (MET-022).
+/// with `/` on LVM in a LUKS container and swap in another (MET-027).
 pub const LSBLK_POP_OS: &[u8] = br#"{
    "blockdevices": [
       {"name":"sda", "type":"disk", "size":24000277250048, "rota":true, "tran":"sata", "mountpoints":[null],

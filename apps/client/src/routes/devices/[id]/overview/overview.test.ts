@@ -177,7 +177,7 @@ it('MET-011: an AGENT device has metrics: the range control shows and "Metrics a
   expect(document.body.textContent).not.toContain('Metrics are off');
 });
 
-it('MET-024: the Storage section follows Metrics with a row per drive; it is absent when metrics are off', () => {
+it('MET-029: the Storage section follows Metrics with a row per drive; it is absent when metrics are off', () => {
   show({ ...LOADED, view: { ...LOADED.view, drives: POP_OS } as Shown['view'] });
   const headings = [...document.querySelectorAll('section h2')].map((one) => words(one));
   expect(headings.slice(headings.indexOf('Metrics'))).toEqual(['Metrics', 'Storage']);

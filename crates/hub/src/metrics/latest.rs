@@ -32,7 +32,7 @@ pub(super) const READ_KINDS: [MetricKind; 4] = [
 /// One `Readings` per device that has a latest sample. Its time is the newest of them, and its
 /// disk is the fullest mount, named by its mount point (a tie keeps the first mount bytewise).
 /// VRAM is that of the GPU with VRAM whose usage is the highest; without one it stays empty,
-/// never 0 (MET-007, MET-008, MET-025). The other drives are counted by [`count_other_drives`].
+/// never 0 (MET-007, MET-008, MET-030). The other drives are counted by [`count_other_drives`].
 pub(super) fn readings(latest: Vec<Latest>) -> HashMap<DeviceId, Readings> {
     let mut by_device: HashMap<DeviceId, Readings> = HashMap::new();
     for Latest {
@@ -85,7 +85,7 @@ pub(super) fn readings(latest: Vec<Latest>) -> HashMap<DeviceId, Readings> {
 }
 
 /// Sets each device's `other_drives`: its `drives` other than the one that holds the fullest
-/// mount, unmounted ones counted, so the card can say "+N drives" (MET-025). A device whose
+/// mount, unmounted ones counted, so the card can say "+N drives" (MET-030). A device whose
 /// fullest mount is on no known drive counts all its drives.
 pub(super) fn count_other_drives(
     readings: &mut HashMap<DeviceId, Readings>,

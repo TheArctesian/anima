@@ -1,4 +1,4 @@
-//! The `lsblk` and `/proc/diskstats` readers (MET-022, MET-023), on the pop-os tree, old
+//! The `lsblk` and `/proc/diskstats` readers (MET-027, MET-028), on the pop-os tree, old
 //! util-linux output and hostile text.
 
 use super::captures::*;
@@ -14,7 +14,7 @@ fn drive(name: &str, kind: DriveKind, size_bytes: u64, mounts: &[&str]) -> Drive
 }
 
 #[test]
-fn met_022_pop_os_lists_four_drives_with_root_through_crypt_and_lvm_on_its_nvme_drive() {
+fn met_027_pop_os_lists_four_drives_with_root_through_crypt_and_lvm_on_its_nvme_drive() {
     let found = drives(LSBLK_POP_OS).expect("a document");
     assert_eq!(
         found,
@@ -35,7 +35,7 @@ fn met_022_pop_os_lists_four_drives_with_root_through_crypt_and_lvm_on_its_nvme_
 }
 
 #[test]
-fn met_022_zram_loop_ram_and_rom_devices_are_not_drives() {
+fn met_027_zram_loop_ram_and_rom_devices_are_not_drives() {
     let text = br#"{"blockdevices":[
         {"name":"zram0","type":"disk","size":1024,"rota":false},
         {"name":"loop3","type":"loop","size":1024,"rota":false},
@@ -46,7 +46,7 @@ fn met_022_zram_loop_ram_and_rom_devices_are_not_drives() {
 }
 
 #[test]
-fn met_022_old_util_linux_strings_and_one_mountpoint_are_read() {
+fn met_027_old_util_linux_strings_and_one_mountpoint_are_read() {
     assert_eq!(
         drives(LSBLK_OLD).expect("a document"),
         [
@@ -58,7 +58,7 @@ fn met_022_old_util_linux_strings_and_one_mountpoint_are_read() {
 }
 
 #[test]
-fn met_022_the_kind_follows_transport_then_rotation() {
+fn met_027_the_kind_follows_transport_then_rotation() {
     let text = br#"{"blockdevices":[
         {"name":"a","type":"disk","size":1,"rota":true,"tran":"nvme"},
         {"name":"b","type":"disk","size":1,"rota":0,"tran":"usb"},
@@ -155,7 +155,7 @@ fn met_002_a_repeated_drive_name_is_kept_once() {
 }
 
 #[test]
-fn met_023_diskstats_gives_sectors_and_busy_time_of_each_device() {
+fn met_028_diskstats_gives_sectors_and_busy_time_of_each_device() {
     let found = linux::drive_counters(PROC_DISKSTATS);
     let names: Vec<&str> = found.iter().map(|one| one.name.as_str()).collect();
     assert_eq!(names, ["loop0", "nvme1n1", "nvme1n1p1", "sda", "dm-0"]);
@@ -193,7 +193,7 @@ mod properties {
     use super::*;
     use crate::points::MAX_LABELS;
 
-    /// What every drive list must be, whatever the device printed (MET-002, MET-022).
+    /// What every drive list must be, whatever the device printed (MET-002, MET-027).
     fn assert_kept(found: &[Drive]) {
         assert!(found.len() <= MAX_LABELS);
         assert!(found.windows(2).all(|pair| pair[0].name < pair[1].name));

@@ -38,11 +38,11 @@ pub enum MetricKind {
     GpuPowerW,
     /// Memory in use by a unified-memory GPU (Apple), never a VRAM value (MET-007, R-092 D-6).
     GpuMemoryBytes,
-    /// Bytes read from one drive per second (MET-023).
+    /// Bytes read from one drive per second (MET-028).
     DiskReadBps,
-    /// Bytes written to one drive per second (MET-023).
+    /// Bytes written to one drive per second (MET-028).
     DiskWriteBps,
-    /// The share of time one drive had I/O in flight (MET-023).
+    /// The share of time one drive had I/O in flight (MET-028).
     DiskBusyPercent,
 }
 
@@ -216,10 +216,10 @@ pub struct Readings {
     pub cpu_percent: Option<f64>,
     pub memory_percent: Option<f64>,
     pub disk_percent: Option<f64>,
-    /// The mount point of the fullest mount, the one `disk_percent` is of (MET-025).
+    /// The mount point of the fullest mount, the one `disk_percent` is of (MET-030).
     pub disk_mount: Option<String>,
     /// The device's drives other than the one that holds `disk_mount`, unmounted ones counted
-    /// (MET-025); 0 for a device whose drives the hub does not know (macOS, MET-026).
+    /// (MET-030); 0 for a device whose drives the hub does not know (macOS, MET-031).
     pub other_drives: i32,
     pub vram_percent: Option<f64>,
     pub vram_gpu: Option<Gpu>,

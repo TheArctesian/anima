@@ -46,7 +46,7 @@ async fn met_006_amd_cards_are_numbered_by_their_drm_card_number() {
 }
 
 #[tokio::test]
-async fn met_022_a_linux_reading_lists_drives_and_their_counters() {
+async fn met_027_a_linux_reading_lists_drives_and_their_counters() {
     let read = reading(Platform::Linux, Utc::now()).await;
     let Some(drives) = read.drives else {
         // A container without lsblk or /sys/block reads no drives; that is not a failure.

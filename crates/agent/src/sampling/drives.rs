@@ -1,5 +1,5 @@
 //! The drives a batch announces: the whole list after start and each time it changes, so an
-//! unchanged list is not sent with every batch (MET-022, K8 Section 4).
+//! unchanged list is not sent with every batch (MET-027, K8 Section 4).
 
 use agent_core::readings::Drive;
 use agent_core::wire::BatchDrive;
@@ -35,7 +35,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn met_022_the_drives_are_announced_first_then_only_when_they_change() {
+    fn met_027_the_drives_are_announced_first_then_only_when_they_change() {
         let mut watch = DriveWatch::new();
         let pop_os = drives(LSBLK_POP_OS).expect("a document");
         let first = watch.changed(Some(&pop_os)).expect("announced at start");

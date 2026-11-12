@@ -102,7 +102,7 @@ function gpuCharts(all: readonly MetricSeries[], gpus: readonly DeviceGpu[]): Ch
 
 /**
  * The charts the Overview draws, in a fixed order: CPU, memory, each disk mount (by mount point), each drive's
- * read and write (by drive name, MET-023), each network interface (in then out), load (1, 5, 15), then per GPU by index its usage, its VRAM and the shared memory of a unified-memory GPU (MET-007, MET-009, D-30).
+ * read and write (by drive name, MET-028), each network interface (in then out), load (1, 5, 15), then per GPU by index its usage, its VRAM and the shared memory of a unified-memory GPU (MET-007, MET-009, D-30).
  * Uptime is a fact, not a chart. A chart is listed only when at least one of its series exists, so a device
  * that reports no load, or a GPU with no samples yet, shows no empty frame; a series that exists with no
  * points still gets its chart (the Overview shows its empty state).

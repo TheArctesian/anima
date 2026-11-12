@@ -124,7 +124,7 @@ type DeviceNode = NonNullable<DeviceMetricsQuery['device']>;
 export type MetricSeries = DeviceNode['metrics'][number];
 export type MetricKind = MetricSeries['kind'];
 export type DeviceGpu = DeviceNode['gpus'][number];
-/** One Storage row: a drive, or a mount on no drive the hub knows (MET-024, MET-026). */
+/** One Storage row: a drive, or a mount on no drive the hub knows (MET-029, MET-031). */
 export type StorageDrive = DeviceNode['storage']['drives'][number];
 /** One batch of new samples the hub pushes for a device (D-5). */
 export type NewMetrics = MetricsAddedSubscription['metricsAdded'];
@@ -133,7 +133,7 @@ export interface DeviceMetricsView {
   readonly metricsSource: DeviceNode['metricsSource'];
   readonly gpus: readonly DeviceGpu[];
   readonly series: readonly MetricSeries[];
-  /** The device's storage drive by drive, as the hub ordered it (MET-021). */
+  /** The device's storage drive by drive, as the hub ordered it (MET-026). */
   readonly drives: readonly StorageDrive[];
   /** The latest readings the hub holds, for the bars before the first live batch; `null` when it has none. */
   readonly readings: DeviceNode['readings'] | null;

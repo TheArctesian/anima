@@ -85,7 +85,7 @@ describe('chartsOf series', () => {
     ]);
   });
 
-  it('MET-023: draws one Read and Write chart per drive, by drive name, after the mounts and before the network', () => {
+  it('MET-028: draws one Read and Write chart per drive, by drive name, after the mounts and before the network', () => {
     const at = '2026-11-05T09:04:00Z';
     const charts = chartsOf(
       [

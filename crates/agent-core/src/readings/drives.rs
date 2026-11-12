@@ -1,5 +1,5 @@
 //! Reader of `lsblk -J -b`: the drives of a Linux device, their kind and the mounts on each
-//! (MET-002, MET-022).
+//! (MET-002, MET-027).
 //!
 //! The output is the device's text: a document that does not parse gives `None`, and each
 //! name and mount point must pass the series label rule. The tree is walked at most
@@ -23,7 +23,7 @@ const DEPTH: usize = 8;
 /// Kernel devices that are not drives: loop images, RAM disks and compressed swap in memory.
 const NOT_DRIVES: [&str; 3] = ["loop", "ram", "zram"];
 
-/// What a drive is made of, read from its transport and rotation, never entered (MET-022).
+/// What a drive is made of, read from its transport and rotation, never entered (MET-027).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum DriveKind {
     Nvme,
@@ -64,7 +64,7 @@ impl DriveKind {
     }
 }
 
-/// One drive of a device and the operator's mounts on it (MET-022).
+/// One drive of a device and the operator's mounts on it (MET-027).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Drive {
     pub name: String,

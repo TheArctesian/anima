@@ -1,6 +1,6 @@
 //! A device's storage drive by drive: each drive the hub knows with the latest use of the mounts
-//! on it and its latest activity, then each mount that belongs to no known drive (MET-021,
-//! MET-024, MET-026). Pure: the drives and the latest samples come in as parameters.
+//! on it and its latest activity, then each mount that belongs to no known drive (MET-026,
+//! MET-029, MET-031). Pure: the drives and the latest samples come in as parameters.
 #![expect(
     clippy::unused_async_trait_impl,
     reason = "the async-graphql Enum derive generates async trait impls"
@@ -22,7 +22,7 @@ pub(super) const STORAGE_KINDS: [MetricKind; 5] = [
     MetricKind::DiskBusyPercent,
 ];
 
-/// What a drive is made of, detected, never entered (MET-022).
+/// What a drive is made of, detected, never entered (MET-027).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Enum)]
 pub enum DriveKind {
     Nvme,
@@ -67,7 +67,7 @@ pub struct StorageDrive {
     pub busy_percent: Option<f64>,
 }
 
-/// A device's storage, drive by drive (MET-021).
+/// A device's storage, drive by drive (MET-026).
 #[derive(Clone, Debug, PartialEq, SimpleObject)]
 pub struct Storage {
     /// Mounted drives by name, then mounts on no known drive by path, then unmounted drives by

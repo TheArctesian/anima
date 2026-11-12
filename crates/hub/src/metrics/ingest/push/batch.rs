@@ -43,7 +43,7 @@ pub(super) struct Push<'a> {
     pub(super) token: TokenHash,
     /// `None`: the GPU set is unchanged; `Some(&[])`: the device has no GPUs now (R-098 b).
     pub(super) gpus: Option<&'a [Gpu]>,
-    /// `None`: the drives are unchanged; `Some(&[])`: the device has no drives now (MET-022).
+    /// `None`: the drives are unchanged; `Some(&[])`: the device has no drives now (MET-027).
     pub(super) drives: Option<&'a [Drive]>,
 }
 

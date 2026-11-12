@@ -1,5 +1,5 @@
-//! Rounds against the test SSH device with the pop-os `lsblk` and `/proc/diskstats` (MET-022,
-//! MET-023, MET-024).
+//! Rounds against the test SSH device with the pop-os `lsblk` and `/proc/diskstats` (MET-027,
+//! MET-028, MET-029).
 
 use agent_core::readings::captures::{LSBLK_OLD, PROC_DISKSTATS};
 use chrono::{DateTime, Utc};
@@ -35,7 +35,7 @@ fn value(added: &MetricsAdded, kind: MetricKind, label: &str) -> Option<f64> {
     migrations = "./migrations",
     fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
 )]
-async fn met_022_the_first_round_stores_the_drives_and_an_unchanged_list_is_not_written_again(
+async fn met_027_the_first_round_stores_the_drives_and_an_unchanged_list_is_not_written_again(
     pool: PgPool,
 ) {
     let mut bench = bench(&pool, true).await;
@@ -78,7 +78,7 @@ const LSBLK_POP_OS_TEXT: &[u8] = agent_core::readings::captures::LSBLK_POP_OS;
     migrations = "./migrations",
     fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
 )]
-async fn met_022_a_failed_lsblk_keeps_the_stored_drives_and_fails_nothing(pool: PgPool) {
+async fn met_027_a_failed_lsblk_keeps_the_stored_drives_and_fails_nothing(pool: PgPool) {
     let mut bench = bench(&pool, true).await;
     bench.collector.round().await;
     let first = stored(&pool).await;
@@ -104,7 +104,7 @@ async fn met_022_a_failed_lsblk_keeps_the_stored_drives_and_fails_nothing(pool: 
     migrations = "./migrations",
     fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
 )]
-async fn met_022_old_util_linux_is_read_with_the_mountpoint_column(pool: PgPool) {
+async fn met_027_old_util_linux_is_read_with_the_mountpoint_column(pool: PgPool) {
     let mut bench = bench(&pool, true).await;
     bench.server.answers.lock().unwrap().remove(LSBLK_LINE);
     bench.server.answer(LSBLK_OLD_LINE, LSBLK_OLD);
@@ -131,7 +131,7 @@ async fn met_022_old_util_linux_is_read_with_the_mountpoint_column(pool: PgPool)
     migrations = "./migrations",
     fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
 )]
-async fn met_023_the_second_round_gives_each_drive_its_activity_and_storage_shows_it(pool: PgPool) {
+async fn met_028_the_second_round_gives_each_drive_its_activity_and_storage_shows_it(pool: PgPool) {
     let mut bench = bench(&pool, true).await;
     bench.collector.round().await;
     // 30 seconds on: nvme1n1 read 30 000 more sectors, wrote 60 000 more, and was busy 3 s.

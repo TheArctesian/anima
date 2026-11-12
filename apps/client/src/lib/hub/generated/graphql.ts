@@ -249,7 +249,7 @@ export type DomainExpiryConfigInput = {
   warnDays?: number | null | undefined;
 };
 
-/** What a drive is made of, detected from its transport and rotation (MET-022). */
+/** What a drive is made of, detected from its transport and rotation (MET-027). */
 export type DriveKind =
   | 'DISK'
   | 'HDD'
@@ -355,13 +355,13 @@ export type LoginInput = {
 
 export type MetricKind =
   | 'CPU_PERCENT'
-  /** The share of time one drive had I/O in flight; the label is the drive name (MET-023). */
+  /** The share of time one drive had I/O in flight; the label is the drive name (MET-028). */
   | 'DISK_BUSY_PERCENT'
   | 'DISK_BYTES'
   | 'DISK_PERCENT'
-  /** Bytes read from one drive per second; the label is the drive name (MET-023). */
+  /** Bytes read from one drive per second; the label is the drive name (MET-028). */
   | 'DISK_READ_BPS'
-  /** Bytes written to one drive per second; the label is the drive name (MET-023). */
+  /** Bytes written to one drive per second; the label is the drive name (MET-028). */
   | 'DISK_WRITE_BPS'
   /** Memory in use by a unified-memory GPU (Apple), shown as a number, never a VRAM bar (MET-007, R-092 D-6). */
   | 'GPU_MEMORY_BYTES'

@@ -1,5 +1,5 @@
 //! The activity of each drive between two readings: read and write rates and the busy share
-//! (MET-023). Pure.
+//! (MET-028). Pure.
 
 use std::time::Duration;
 

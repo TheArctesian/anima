@@ -50,10 +50,10 @@ pub(super) const LINUX_LINES: [&str; 9] = [
     "cat /etc/os-release",
 ];
 
-/// The `lsblk` line of util-linux 2.37 and later (MET-022).
+/// The `lsblk` line of util-linux 2.37 and later (MET-027).
 pub(super) const LSBLK_LINE: &str = "lsblk -J -b -o NAME,TYPE,SIZE,ROTA,TRAN,MOUNTPOINTS";
 
-/// The `lsblk` line run when the one above fails (MET-022).
+/// The `lsblk` line run when the one above fails (MET-027).
 pub(super) const LSBLK_OLD_LINE: &str = "lsblk -J -b -o NAME,TYPE,SIZE,ROTA,TRAN,MOUNTPOINT";
 
 /// The os-release of a Pop!_OS device (DEV-016).

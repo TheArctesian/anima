@@ -154,7 +154,7 @@ impl Device {
     }
 
     /// The device's storage drive by drive, with the latest use of each mount and the activity
-    /// of each drive (MET-021, MET-024). It reads one device by design: the detail view, so it
+    /// of each drive (MET-026, MET-029). It reads one device by design: the detail view, so it
     /// needs no loader.
     async fn storage(&self, ctx: &Context<'_>) -> Result<Storage> {
         let now = schema_dependency::<Arc<dyn Clock>>(ctx)?.now();

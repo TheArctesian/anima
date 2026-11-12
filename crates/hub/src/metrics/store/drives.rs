@@ -1,5 +1,5 @@
 //! The drives of each device: replaced together when a collection or a batch brings a new
-//! list (MET-022).
+//! list (MET-027).
 
 use std::collections::HashMap;
 
@@ -64,7 +64,7 @@ pub(in crate::metrics) async fn write_drives(
         .execute(&mut *conn)
         .await?;
     for drive in drives {
-        // The readers and the batch check keep a size within i64 (MET-022, K8 Section 4).
+        // The readers and the batch check keep a size within i64 (MET-027, K8 Section 4).
         let size = i64::try_from(drive.size_bytes).unwrap_or(i64::MAX);
         sqlx::query(ADD_DRIVE_SQL)
             .bind(device)

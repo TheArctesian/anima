@@ -22,11 +22,11 @@ pub enum Kind {
     GpuPowerW,
     /// Memory in use by a unified-memory GPU (Apple). Never a VRAM value (MET-007, R-092 D-6).
     GpuMemoryBytes,
-    /// Bytes read from one drive per second (MET-023).
+    /// Bytes read from one drive per second (MET-028).
     DiskReadBps,
-    /// Bytes written to one drive per second (MET-023).
+    /// Bytes written to one drive per second (MET-028).
     DiskWriteBps,
-    /// The share of time one drive had I/O in flight (MET-023).
+    /// The share of time one drive had I/O in flight (MET-028).
     DiskBusyPercent,
 }
 

@@ -7,7 +7,7 @@ export interface BarReadings {
   readonly cpuPercent: number | null;
   readonly memoryPercent: number | null;
   readonly diskPercent: number | null;
-  /** The mount of the fullest disk, the one `diskPercent` is of (MET-025). */
+  /** The mount of the fullest disk, the one `diskPercent` is of (MET-030). */
   readonly diskMount: string | null;
   /** The device's drives other than the one holding `diskMount`, unmounted ones counted. */
   readonly otherDrives: number;
@@ -25,7 +25,7 @@ export interface Bar {
   readonly degraded: boolean;
   /** Names the GPU for the VRAM bar, and the mount and the other drives for the disk bar. */
   readonly tooltip: string;
-  /** A small note after the label: "+3 drives" on the disk bar (MET-025); `null` for none. */
+  /** A small note after the label: "+3 drives" on the disk bar (MET-030); `null` for none. */
   readonly note: string | null;
 }
 
@@ -44,13 +44,13 @@ function bar(key: Bar['key'], label: string, percent: number | null, tooltip = l
   return { key, label, percent, text: percentText(percent), degraded: percent !== null && percent > DEGRADED_ABOVE, tooltip, note: null };
 }
 
-/** "+1 drive", "+3 drives"; `null` when the device has no other drive (MET-025). */
+/** "+1 drive", "+3 drives"; `null` when the device has no other drive (MET-030). */
 export function otherDrivesText(count: number): string | null {
   if (!Number.isInteger(count) || count < 1) return null;
   return `+${String(count)} ${count === 1 ? 'drive' : 'drives'}`;
 }
 
-/** The disk bar: labelled with its mount, "+N drives" when the device has more (MET-025). */
+/** The disk bar: labelled with its mount, "+N drives" when the device has more (MET-030). */
 function diskBar(readings: BarReadings): Bar {
   const label = readings.diskMount === null ? 'Disk' : `Disk ${readings.diskMount}`;
   const note = otherDrivesText(readings.otherDrives);

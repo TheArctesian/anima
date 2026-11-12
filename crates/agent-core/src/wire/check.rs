@@ -148,7 +148,7 @@ fn gpus_fit(gpus: Option<&[BatchGpu]>) -> bool {
 
 /// At most [`MAX_LABELS`] drives with unique names, each a label (K8 Section 4), a size of at
 /// most `i64::MAX` and at most [`MAX_LABELS`] mounts, each a label that starts with `/`
-/// (MET-022).
+/// (MET-027).
 fn drives_fit(drives: Option<&[BatchDrive]>) -> bool {
     let drives = drives.unwrap_or_default();
     let names: BTreeSet<&str> = drives.iter().map(|drive| drive.name.as_str()).collect();

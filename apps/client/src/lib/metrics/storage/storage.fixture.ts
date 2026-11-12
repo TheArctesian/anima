@@ -2,7 +2,7 @@ import type { StorageDrive } from '../api';
 
 type Mount = StorageDrive['mounts'][number];
 
-/** Synthetic drives after the operator's pop-os tree (MET-024): no real device's values. */
+/** Synthetic drives after the operator's pop-os tree (MET-029): no real device's values. */
 export function drive(name: string | null, over: Partial<StorageDrive> = {}): StorageDrive {
   return { name, kind: 'SSD', sizeBytes: 1_000_000_000_000, mounted: true, mounts: [], readBps: null, writeBps: null, busyPercent: null, ...over };
 }

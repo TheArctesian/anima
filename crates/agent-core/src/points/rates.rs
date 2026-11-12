@@ -12,7 +12,7 @@ use crate::readings::{Cpu, Interface, Reading};
 /// The samples of `current`. `previous` is the reading before it and `elapsed` the time between
 /// the two. With no `previous`, a counter that went back (a reboot, an interface reset) or no
 /// time passed, the Linux CPU share, the network rates and the drive activity are left out (D-4,
-/// MET-023). The macOS CPU share
+/// MET-028). The macOS CPU share
 /// needs no earlier reading, so it is always given. Disks and interfaces follow
 /// [`MAX_LABELS`](super::MAX_LABELS) and the exclusions of D-5.
 #[must_use]

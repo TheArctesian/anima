@@ -2,7 +2,7 @@ import type { DriveKind } from '$lib/hub/generated/graphql';
 import type { NewMetrics, StorageDrive } from '../api';
 import { DEGRADED_ABOVE, formatBytes, formatBytesPerSecond, formatPercent } from '../units';
 
-/** One mount of a Storage row: its path, its share used for the bar and the value as text (MET-024). */
+/** One mount of a Storage row: its path, its share used for the bar and the value as text (MET-029). */
 export interface MountView {
   readonly path: string;
   /** 0 to 100; `null` without a recent sample, which draws no bar. */
@@ -14,12 +14,12 @@ export interface MountView {
   readonly degraded: boolean;
 }
 
-/** One row of the Storage section: a drive, or a mount on no drive the hub knows (MET-024, MET-026). */
+/** One row of the Storage section: a drive, or a mount on no drive the hub knows (MET-029, MET-031). */
 export interface StorageRow {
   readonly key: string;
   /** The drive's name, or the mount point of a lone mount: both machine text, set in the monospace font. */
   readonly title: string;
-  /** NVMe, SSD, HDD or Disk as a word, never a colour alone; `null` when the hub cannot tell (MET-022). */
+  /** NVMe, SSD, HDD or Disk as a word, never a colour alone; `null` when the hub cannot tell (MET-027). */
   readonly kind: string | null;
   /** The drive's size; `null` when it is not known. */
   readonly size: string | null;
@@ -27,7 +27,7 @@ export interface StorageRow {
   /** The mounts under the title; a lone mount's path is its title, so its bar stands alone. */
   readonly mounts: readonly MountView[];
   readonly showPaths: boolean;
-  /** "Read 1.0 MiB/s · Write 512.0 KiB/s · Busy 13 %"; `null` with no activity value (MET-023). */
+  /** "Read 1.0 MiB/s · Write 512.0 KiB/s · Busy 13 %"; `null` with no activity value (MET-028). */
   readonly activity: string | null;
 }
 
@@ -65,7 +65,7 @@ function activityText(drive: StorageDrive): string | null {
   return parts.length === 0 ? null : parts.join(' · ');
 }
 
-/** The rows in the hub's order: mounted drives, lone mounts, then drives that are not mounted (MET-024). */
+/** The rows in the hub's order: mounted drives, lone mounts, then drives that are not mounted (MET-029). */
 export function storageRows(drives: readonly StorageDrive[]): readonly StorageRow[] {
   return drives.map((drive) => {
     const lone = drive.name === null;
@@ -98,7 +98,7 @@ function withSample(drive: StorageDrive, sample: NewMetrics['samples'][number]):
   return drive;
 }
 
-/** The drives with a live batch's newest values (MET-023); the drive list itself changes only with a reload. The input is not changed. */
+/** The drives with a live batch's newest values (MET-028); the drive list itself changes only with a reload. The input is not changed. */
 export function mergeStorage(drives: readonly StorageDrive[], added: NewMetrics): readonly StorageDrive[] {
   return drives.map((drive) => added.samples.reduce(withSample, drive));
 }

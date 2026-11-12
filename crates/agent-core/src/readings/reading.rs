@@ -44,7 +44,7 @@ pub struct Interface {
     pub sent_bytes: u64,
 }
 
-/// I/O counters of one block device since boot, as `/proc/diskstats` lists it (MET-023).
+/// I/O counters of one block device since boot, as `/proc/diskstats` lists it (MET-028).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DriveCounters {
     pub name: String,
@@ -64,7 +64,7 @@ pub struct Reading {
     pub uptime_seconds: Option<f64>,
     pub disks: Vec<Disk>,
     pub interfaces: Vec<Interface>,
-    /// The drives `lsblk` listed (MET-022); `None` when it gave nothing readable (macOS, a
+    /// The drives `lsblk` listed (MET-027); `None` when it gave nothing readable (macOS, a
     /// device without `lsblk`, a failed read), which is not the same as a device with none.
     pub drives: Option<Vec<Drive>>,
     pub drive_counters: Vec<DriveCounters>,

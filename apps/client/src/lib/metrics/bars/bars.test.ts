@@ -51,7 +51,7 @@ it('MET-007: a hub CardReadings fragment is assignable to BarReadings', () => {
   expect(barRow(input, 'SSH').kind).toBe('bars');
 });
 
-it('MET-025: the disk bar is labelled with its mount and counts the other drives', () => {
+it('MET-030: the disk bar is labelled with its mount and counts the other drives', () => {
   const disk = bars({ diskMount: '/', otherDrives: 3 })[2];
   expect(disk?.label).toBe('Disk /');
   expect(disk?.note).toBe('+3 drives');
@@ -60,7 +60,7 @@ it('MET-025: the disk bar is labelled with its mount and counts the other drives
   expect(bars({ diskMount: null, otherDrives: 0 })[2]?.label).toBe('Disk');
 });
 
-it('MET-025: one other drive is singular, and none or a broken count is no note', () => {
+it('MET-030: one other drive is singular, and none or a broken count is no note', () => {
   expect(otherDrivesText(1)).toBe('+1 drive');
   expect(otherDrivesText(0)).toBeNull();
   expect(otherDrivesText(-2)).toBeNull();

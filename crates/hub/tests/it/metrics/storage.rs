@@ -1,4 +1,4 @@
-//! MET-021 to MET-026 through the hub's routes: a pushed batch's `drives` replaces the device's
+//! MET-026 to MET-031 through the hub's routes: a pushed batch's `drives` replaces the device's
 //! drives and its absence (an older agent) leaves them; `Device.storage` shows them drive by
 //! drive with their latest use and activity; the card's readings name the fullest mount and
 //! count the other drives.
@@ -65,7 +65,7 @@ async fn drive_names(pool: &PgPool) -> Vec<String> {
     migrations = "./migrations",
     fixtures(path = "../../fixtures", scripts("devices"))
 )]
-async fn met_022_pushed_drives_replace_the_stored_ones_and_a_batch_without_them_keeps_them(
+async fn met_027_pushed_drives_replace_the_stored_ones_and_a_batch_without_them_keeps_them(
     pool: PgPool,
 ) {
     let now = pushing_now(&pool).await;
@@ -107,7 +107,7 @@ async fn met_022_pushed_drives_replace_the_stored_ones_and_a_batch_without_them_
     migrations = "./migrations",
     fixtures(path = "../../fixtures", scripts("devices"))
 )]
-async fn met_022_a_drive_list_that_breaks_k8_is_malformed_and_stores_nothing(pool: PgPool) {
+async fn met_027_a_drive_list_that_breaks_k8_is_malformed_and_stores_nothing(pool: PgPool) {
     let now = pushing_now(&pool).await;
     let agents = Agents::at(&pool, now).await;
     let token = agents.token_for(PVE_01).await;
@@ -126,7 +126,7 @@ async fn met_022_a_drive_list_that_breaks_k8_is_malformed_and_stores_nothing(poo
     migrations = "./migrations",
     fixtures(path = "../../fixtures", scripts("devices"))
 )]
-async fn met_024_storage_lists_each_drive_with_its_mounts_and_activity_and_the_card_its_mount(
+async fn met_029_storage_lists_each_drive_with_its_mounts_and_activity_and_the_card_its_mount(
     pool: PgPool,
 ) {
     let now = pushing_now(&pool).await;

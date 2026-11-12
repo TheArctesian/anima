@@ -3,7 +3,7 @@
 //!
 //! Every word is static text written here: no device field, tag or other operator text can
 //! reach a command line. Each command only reads (`cat` of `/proc` files and of `/etc/os-release`,
-//! `df`, `lsblk` (MET-022), `sysctl -n`, `vm_stat`, `netstat`, `top` in logging mode, `uname -s` for a device whose
+//! `df`, `lsblk` (MET-027), `sysctl -n`, `vm_stat`, `netstat`, `top` in logging mode, `uname -s` for a device whose
 //! operating system is detected (DEV-025), and the GPU queries of spec 6.6: `nvidia-smi`
 //! queries, `grep` of `amdgpu` sysfs files, `intel_gpu_top` for 2 seconds, `ioreg`); none
 //! writes, starts a service or takes input.
@@ -37,9 +37,9 @@ pub(super) enum Source {
     Loadavg,
     /// Linux `df -P -B1`: blocks of 1 byte.
     DiskBytes,
-    /// Linux `cat /proc/diskstats`: the I/O counters of each block device (MET-023).
+    /// Linux `cat /proc/diskstats`: the I/O counters of each block device (MET-028).
     Diskstats,
-    /// Linux `lsblk -J -b -o ...,MOUNTPOINTS`: the drives (MET-022).
+    /// Linux `lsblk -J -b -o ...,MOUNTPOINTS`: the drives (MET-027).
     Drives,
     /// The same with `MOUNTPOINT`, run only when util-linux before 2.37 refused [`Drives`].
     ///
@@ -62,7 +62,7 @@ pub(super) enum Source {
 impl Source {
     /// Whether the collection goes on when this command cannot run: the distribution is not a
     /// metric (DEV-016), and a device without `lsblk` or `/proc/diskstats` still has the rest
-    /// (MET-022, MET-023).
+    /// (MET-027, MET-028).
     pub(super) fn is_optional(self) -> bool {
         matches!(
             self,

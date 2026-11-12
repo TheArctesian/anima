@@ -112,7 +112,7 @@ export class DeviceMetrics {
     const at = Date.parse(added.at);
     if (this.#stopped || Number.isNaN(at)) return;
     this.readings = added.readings;
-    // The Storage rows show the newest values whatever range the charts draw (MET-024).
+    // The Storage rows show the newest values whatever range the charts draw (MET-029).
     if (this.view !== null) this.view = { ...this.view, drives: mergeStorage(this.view.drives, added) };
     // A DAY or WEEK view is an aggregate; a live point joins only the 1-hour one (D-5).
     if (this.#shown !== 'HOUR' || this.view === null || this.span === null) return;

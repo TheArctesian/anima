@@ -1,5 +1,5 @@
 //! The drive list in a batch: sent once after it changed, kept until a 204 or a `MALFORMED`
-//! (MET-022, K8 Section 4).
+//! (MET-027, K8 Section 4).
 
 use agent_core::wire::{BatchDrive, DriveKind};
 use anima_agent::push::Event;
@@ -21,7 +21,7 @@ fn drives_of(hub: &FakeHub) -> Vec<Option<serde_json::Value>> {
 }
 
 #[tokio::test]
-async fn met_022_the_drive_list_goes_in_the_next_batch_and_not_in_the_one_after() {
+async fn met_027_the_drive_list_goes_in_the_next_batch_and_not_in_the_one_after() {
     let hub = FakeHub::start().await;
     let mut rig = rig(&hub, 1, year());
     rig.pusher.accept(Event::Drives(vec![BatchDrive {

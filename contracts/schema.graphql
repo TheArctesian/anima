@@ -357,7 +357,7 @@ type Device {
   metrics(range: MetricRange!): [MetricSeries!]!
   # metrics
   gpus: [Gpu!]!
-  # metrics (MET-021, MET-024)
+  # metrics (MET-026, MET-029)
   storage: Storage!
   checks: [Check!]!
   "Uptime ratio 0..1 from aggregate tables (CHK-011)."
@@ -746,11 +746,11 @@ enum MetricKind {
   GPU_POWER_W
   "Memory in use by a unified-memory GPU (Apple), shown as a number, never a VRAM bar (MET-007, R-092 D-6)."
   GPU_MEMORY_BYTES
-  "Bytes read from one drive per second; the label is the drive name (MET-023)."
+  "Bytes read from one drive per second; the label is the drive name (MET-028)."
   DISK_READ_BPS
-  "Bytes written to one drive per second; the label is the drive name (MET-023)."
+  "Bytes written to one drive per second; the label is the drive name (MET-028)."
   DISK_WRITE_BPS
-  "The share of time one drive had I/O in flight; the label is the drive name (MET-023)."
+  "The share of time one drive had I/O in flight; the label is the drive name (MET-028)."
   DISK_BUSY_PERCENT
 }
 
@@ -797,15 +797,15 @@ type Readings {
   cpuPercent: Float
   memoryPercent: Float
   diskPercent: Float
-  "The mount point of the fullest mount, the one diskPercent is of (MET-025)."
+  "The mount point of the fullest mount, the one diskPercent is of (MET-030)."
   diskMount: String
-  "The device's drives other than the one that holds diskMount, unmounted ones counted; 0 when the hub knows no drives (MET-025, MET-026)."
+  "The device's drives other than the one that holds diskMount, unmounted ones counted; 0 when the hub knows no drives (MET-030, MET-031)."
   otherDrives: Int!
   vramPercent: Float
   vramGpu: Gpu
 }
 
-"What a drive is made of, detected from its transport and rotation (MET-022)."
+"What a drive is made of, detected from its transport and rotation (MET-027)."
 enum DriveKind {
   NVME
   SSD
@@ -813,7 +813,7 @@ enum DriveKind {
   DISK
 }
 
-"A mounted file system and its latest use; a value is null without a sample in the last 2 minutes (MET-024). Bytes are Float."
+"A mounted file system and its latest use; a value is null without a sample in the last 2 minutes (MET-029). Bytes are Float."
 type Mount {
   path: String!
   usedBytes: Float
@@ -822,7 +822,7 @@ type Mount {
   percent: Float
 }
 
-"One Storage row: a drive, or a mount on no drive the hub knows (a network file system, every mount on macOS), which has no name, kind or activity (MET-024, MET-026)."
+"One Storage row: a drive, or a mount on no drive the hub knows (a network file system, every mount on macOS), which has no name, kind or activity (MET-029, MET-031)."
 type Drive {
   "The kernel name, for example nvme1n1."
   name: String
@@ -836,7 +836,7 @@ type Drive {
   busyPercent: Float
 }
 
-"A device's storage, drive by drive, never one total (MET-021)."
+"A device's storage, drive by drive, never one total (MET-026)."
 type Storage {
   "Mounted drives by name, then mounts on no known drive by path, then unmounted drives by name."
   drives: [Drive!]!

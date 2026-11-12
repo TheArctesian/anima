@@ -1,4 +1,4 @@
--- The drives of a device and the activity series of each (K2 0710-0729; MET-022, MET-023,
+-- The drives of a device and the activity series of each (K2 0710-0729; MET-027, MET-028,
 -- K8 Section 4; operator ruling 2026-11-12).
 --
 -- `drives` holds one row per drive the device's `lsblk` listed: its kernel name, its kind (from

@@ -8,7 +8,7 @@
 //! commands every 30 seconds and publishes each collection on the [`Feed`]. A device may push
 //! its metrics from the Anima agent instead ([`agent_router`], K8); [`spawn_stale_watch`] marks
 //! an agent that stopped pushing (MET-018). [`storage`] shows a device's storage drive by drive
-//! (MET-021).
+//! (MET-026).
 
 mod collector;
 mod commands;
@@ -86,7 +86,7 @@ pub async fn record_collection(
 
 /// The current readings of each of `devices` that has a sample taken in the last 2 minutes
 /// before `now`, with the mount of the fullest disk and the count of the device's other drives
-/// (MET-004, MET-025, D-8). A device without one has no entry.
+/// (MET-004, MET-030, D-8). A device without one has no entry.
 ///
 /// # Errors
 /// `Database` when a query fails; `Unreadable` for a stored kind this version does not know.
@@ -103,7 +103,7 @@ pub async fn readings(
 }
 
 /// The storage of `device` drive by drive, with the samples of the last 2 minutes before `now`
-/// (MET-021, MET-024, D-8). A device whose drives the hub does not know lists its mounts.
+/// (MET-026, MET-029, D-8). A device whose drives the hub does not know lists its mounts.
 ///
 /// # Errors
 /// `Database` when a query fails; `Unreadable` for a stored kind or drive kind this version

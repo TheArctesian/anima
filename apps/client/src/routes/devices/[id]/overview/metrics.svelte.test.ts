@@ -168,7 +168,7 @@ describe('DeviceMetrics clock and readings (D-5)', () => {
     expect(metrics.readings?.cpuPercent).toBeNull();
   });
 
-  it('MET-023, MET-024: a live batch updates the Storage rows: a mount by path and a drive by name', async () => {
+  it('MET-028, MET-029: a live batch updates the Storage rows: a mount by path and a drive by name', async () => {
     const fake = fakeHub({ DeviceMetrics: { device: { ...answer().device, storage: { drives: POP_OS } } } });
     const metrics = metricsOf(fake);
     await metrics.load('HOUR', 'SSH');

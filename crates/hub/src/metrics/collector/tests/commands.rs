@@ -57,7 +57,7 @@ fn met_002_linux_runs_the_cat_df_and_lsblk_commands_then_reads_os_release_in_ord
 }
 
 #[test]
-fn met_022_only_the_distribution_and_the_drive_reads_may_fail_without_ending_a_collection() {
+fn met_027_only_the_distribution_and_the_drive_reads_may_fail_without_ending_a_collection() {
     let optional: Vec<Source> = commands(OperatingSystem::Linux)
         .into_iter()
         .chain(commands(OperatingSystem::Macos))

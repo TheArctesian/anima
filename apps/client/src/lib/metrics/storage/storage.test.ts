@@ -5,18 +5,18 @@ import { mergeStorage, storageRows, summaryText } from './storage';
 import { drive, mount, POP_OS } from './storage.fixture';
 
 describe('summaryText', () => {
-  it('MET-024: counts the drives, adds their sizes and the drives not mounted', () => {
+  it('MET-029: counts the drives, adds their sizes and the drives not mounted', () => {
     expect(summaryText(POP_OS)).toBe(`4 drives · ${formatBytes(31_000_000_000_000)} · 1 not mounted`);
   });
 
-  it('MET-024: one drive is singular; a known size and nothing unmounted say only what is known', () => {
+  it('MET-029: one drive is singular; a known size and nothing unmounted say only what is known', () => {
     expect(summaryText([drive('sda', { sizeBytes: 1024 })])).toBe('1 drive · 1.0 KiB');
     expect(summaryText([drive(null, { sizeBytes: null, kind: null })])).toBe('1 drive');
   });
 });
 
 describe('storageRows', () => {
-  it('MET-024: a drive row has its name, its kind as a word, its size, its mounts and its activity', () => {
+  it('MET-029: a drive row has its name, its kind as a word, its size, its mounts and its activity', () => {
     const [system] = storageRows(POP_OS);
     expect(system?.title).toBe('nvme0n1');
     expect(system?.kind).toBe('NVMe');
@@ -28,7 +28,7 @@ describe('storageRows', () => {
     expect(system?.showPaths).toBe(true);
   });
 
-  it('MET-022: every kind reads as a word', () => {
+  it('MET-027: every kind reads as a word', () => {
     const kinds = storageRows([drive('a', { kind: 'NVME' }), drive('b', { kind: 'SSD' }), drive('c', { kind: 'HDD' }), drive('d', { kind: 'DISK' })]);
     expect(kinds.map((row) => row.kind)).toEqual(['NVMe', 'SSD', 'HDD', 'Disk']);
   });
@@ -41,21 +41,21 @@ describe('storageRows', () => {
     expect(odd?.mounts.map((one) => one.percent)).toEqual([100, 0]);
   });
 
-  it('MET-024: a drive not mounted has no mounts; a mount without a sample has no bar and says so', () => {
+  it('MET-029: a drive not mounted has no mounts; a mount without a sample has no bar and says so', () => {
     const rows = storageRows([...POP_OS, drive('sdd', { mounts: [mount('/new', null)] })]);
     expect(rows[3]?.mounted).toBe(false);
     expect(rows[3]?.mounts).toEqual([]);
     expect(rows[4]?.mounts[0]).toMatchObject({ percent: null, text: '—', spoken: '/new, no reading', degraded: false });
   });
 
-  it('MET-026: a lone mount is titled by its path, with no kind, no activity and no second path', () => {
+  it('MET-031: a lone mount is titled by its path, with no kind, no activity and no second path', () => {
     const [lone] = storageRows([drive(null, { kind: null, sizeBytes: null, mounts: [mount('/System/Volumes/Data', 40)] })]);
     expect(lone).toMatchObject({ title: '/System/Volumes/Data', kind: null, size: null, activity: null, showPaths: false, key: 'mount:/System/Volumes/Data' });
   });
 });
 
 describe('mergeStorage', () => {
-  it('MET-023: a live batch updates a mount by path and a drive activity by name, and nothing else', () => {
+  it('MET-028: a live batch updates a mount by path and a drive activity by name, and nothing else', () => {
     const batch = added('2026-11-12T09:00:00Z', [
       { kind: 'DISK_PERCENT', label: '/mnt/media', value: 42 },
       { kind: 'DISK_BYTES', label: '/mnt/media', value: 3e12 },

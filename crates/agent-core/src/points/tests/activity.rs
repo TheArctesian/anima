@@ -1,4 +1,4 @@
-//! Drive activity between two readings (MET-023): rates of the drives `lsblk` listed only, no
+//! Drive activity between two readings (MET-028): rates of the drives `lsblk` listed only, no
 //! rate without both readings or after a counter went back.
 
 use std::time::Duration;
@@ -30,7 +30,7 @@ fn pop_os(drive_counters: Vec<DriveCounters>) -> Reading {
 }
 
 #[test]
-fn met_023_read_write_and_busy_come_from_the_counter_deltas_over_the_elapsed_time() {
+fn met_028_read_write_and_busy_come_from_the_counter_deltas_over_the_elapsed_time() {
     let before = pop_os(vec![counters("nvme1n1", 1000, 2000, 500)]);
     // 30 seconds later: 60 000 sectors read, 120 000 written, 15 seconds busy.
     let now = pop_os(vec![counters("nvme1n1", 61_000, 122_000, 15_500)]);
@@ -47,7 +47,7 @@ fn met_023_read_write_and_busy_come_from_the_counter_deltas_over_the_elapsed_tim
 }
 
 #[test]
-fn met_023_only_drives_lsblk_listed_get_activity_partitions_and_volumes_do_not() {
+fn met_028_only_drives_lsblk_listed_get_activity_partitions_and_volumes_do_not() {
     let before = pop_os(linux::drive_counters(PROC_DISKSTATS));
     let now = pop_os(linux::drive_counters(PROC_DISKSTATS));
     let out = samples(Some(&before), &now, Duration::from_secs(30));
@@ -62,7 +62,7 @@ fn met_023_only_drives_lsblk_listed_get_activity_partitions_and_volumes_do_not()
 }
 
 #[test]
-fn met_023_no_activity_without_an_earlier_reading_after_a_wrap_or_for_a_new_drive() {
+fn met_028_no_activity_without_an_earlier_reading_after_a_wrap_or_for_a_new_drive() {
     let now = pop_os(vec![
         counters("nvme1n1", 100, 100, 100),
         counters("sda", 100, 100, 100),
@@ -83,7 +83,7 @@ fn met_023_no_activity_without_an_earlier_reading_after_a_wrap_or_for_a_new_driv
 }
 
 #[test]
-fn met_023_without_a_drive_list_there_is_no_activity() {
+fn met_028_without_a_drive_list_there_is_no_activity() {
     let mut before = pop_os(vec![counters("sda", 0, 0, 0)]);
     let mut now = pop_os(vec![counters("sda", 10, 10, 10)]);
     before.drives = None;
@@ -95,7 +95,7 @@ const THIRTY: Duration = Duration::from_secs(30);
 
 proptest! {
     #[test]
-    fn met_023_any_counters_give_finite_rates_and_a_busy_share_of_at_most_100(
+    fn met_028_any_counters_give_finite_rates_and_a_busy_share_of_at_most_100(
         was in any::<(u64, u64, u64)>(),
         now in any::<(u64, u64, u64)>(),
         millis in 0_u64..100_000,

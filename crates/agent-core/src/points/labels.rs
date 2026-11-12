@@ -38,7 +38,7 @@ fn wanted_disk(disk: &Disk) -> bool {
 
 /// Whether a mount point holds the operator's files: not a pseudo file system's place, a
 /// system image or a running `AppImage`, and on macOS only the data volume of the system's
-/// volumes. A drive lists only these mounts (MET-022).
+/// volumes. A drive lists only these mounts (MET-027).
 pub(crate) fn is_operator_mount(mount: &str) -> bool {
     !PSEUDO_MOUNTS.iter().any(|root| under(mount, root))
         && !IMAGE_MOUNTS.iter().any(|root| under(mount, root))

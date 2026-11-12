@@ -76,7 +76,7 @@ impl Parts {
     }
 
     /// Whether `source`'s command is still to run: the older `lsblk` form only when the newer
-    /// one gave no drives (MET-022).
+    /// one gave no drives (MET-027).
     pub(super) fn needs(&self, source: Source) -> bool {
         source != Source::DrivesOld || self.reading.drives.is_none()
     }
@@ -126,7 +126,7 @@ pub(super) fn collected(
 
 /// The drives of `reading` when they are to be stored: read this time, and not the list the
 /// previous collection read (the first collection after a start always stores its list). An
-/// unread list stores nothing, so the stored one stays (MET-022).
+/// unread list stores nothing, so the stored one stays (MET-027).
 pub(super) fn new_drives<'a>(
     previous: Option<&Previous>,
     reading: &'a Reading,

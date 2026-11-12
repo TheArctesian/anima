@@ -1,4 +1,4 @@
-//! The drives of a batch (K8 Section 4, MET-022): optional, so an older agent's batch is taken
+//! The drives of a batch (K8 Section 4, MET-027): optional, so an older agent's batch is taken
 //! as it was, and each drive held to the label and count rules.
 
 use super::*;
@@ -21,7 +21,7 @@ fn with_drives(drives: Vec<BatchDrive>) -> impl FnOnce(&mut Batch) {
 }
 
 #[test]
-fn met_022_a_batch_without_drives_is_taken_and_leaves_them_unchanged() {
+fn met_027_a_batch_without_drives_is_taken_and_leaves_them_unchanged() {
     assert!(
         !BATCH.contains("drives"),
         "the K8 example is an older agent's"
@@ -31,7 +31,7 @@ fn met_022_a_batch_without_drives_is_taken_and_leaves_them_unchanged() {
 }
 
 #[test]
-fn met_022_the_drives_of_a_batch_reach_the_hub_as_sent() {
+fn met_027_the_drives_of_a_batch_reach_the_hub_as_sent() {
     let sent = vec![drive("nvme1n1", &["/", "/boot/efi"]), drive("sda", &[])];
     let accepted = checked(with_drives(sent.clone())).unwrap();
     assert_eq!(accepted.drives, Some(sent));
@@ -42,7 +42,7 @@ fn met_022_the_drives_of_a_batch_reach_the_hub_as_sent() {
 }
 
 #[test]
-fn met_022_drives_travel_as_camel_case_json_and_an_unknown_kind_reads_as_disk() {
+fn met_027_drives_travel_as_camel_case_json_and_an_unknown_kind_reads_as_disk() {
     let pop_os: Vec<BatchDrive> = drives(LSBLK_POP_OS)
         .unwrap()
         .iter()
@@ -60,7 +60,7 @@ fn met_022_drives_travel_as_camel_case_json_and_an_unknown_kind_reads_as_disk() 
 }
 
 #[test]
-fn met_022_drives_that_break_the_label_or_count_rules_are_malformed() {
+fn met_027_drives_that_break_the_label_or_count_rules_are_malformed() {
     let many = (0..33).map(|i| drive(&format!("d{i}"), &[])).collect();
     assert_malformed("33 drives", with_drives(many));
     assert_malformed(

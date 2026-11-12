@@ -25,7 +25,7 @@ pub enum Event {
     Point(Point),
     /// The GPUs found at start or at a discovery; sent in the next batch (K8 Section 4).
     Gpus(Vec<BatchGpu>),
-    /// The drives read at start or after a change; sent in the next batch (MET-022).
+    /// The drives read at start or after a change; sent in the next batch (MET-027).
     Drives(Vec<BatchDrive>),
 }
 

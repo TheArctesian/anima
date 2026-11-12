@@ -60,7 +60,7 @@ it('MOT-040: the row takes the reduced-motion form when the operator asks for it
   preference.reduced = false;
 });
 
-it('MET-025: the disk bar shows its mount and "+N drives" as text', () => {
+it('MET-030: the disk bar shows its mount and "+N drives" as text', () => {
   bars('AGENT', readings({ diskPercent: 81, diskMount: '/', otherDrives: 3 }));
   const disk = document.querySelector('[aria-label="Disk /"]');
   expect(disk?.textContent).toContain('Disk / +3 drives');

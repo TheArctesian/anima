@@ -1,5 +1,5 @@
 //! One device's collection: a link opened for it, its fixed commands run, then its GPU reads,
-//! a new discovery, a changed drive list (MET-022) and the samples stored and published, the Linux distribution recorded, the
+//! a new discovery, a changed drive list (MET-027) and the samples stored and published, the Linux distribution recorded, the
 //! link dropped (MET-001, MET-002, MET-006, DEV-016, P2-003, D-11). I/O edge; it logs only a
 //! distribution it cannot store, and no failure or log line holds a host, an address, command
 //! output or a secret (LOG-007).
@@ -159,7 +159,7 @@ pub(super) async fn within_deadline<T>(
 /// GPU reads its plan asks for until the context's GPU window after the start, then drops the
 /// link. The first link error of the commands ends the collection, except on an optional one
 /// (`/etc/os-release`, the drives and their counters): its read failing leaves only it out
-/// (DEV-016, MET-022). A GPU read never ends it.
+/// (DEV-016, MET-027). A GPU read never ends it.
 async fn read(
     ctx: &Context,
     device: &Device,

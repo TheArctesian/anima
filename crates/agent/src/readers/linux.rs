@@ -1,4 +1,4 @@
-//! The Linux collection: six `/proc` files, `df -P -B1` and `lsblk -J -b` (MET-002, MET-022).
+//! The Linux collection: six `/proc` files, `df -P -B1` and `lsblk -J -b` (MET-002, MET-027).
 
 use std::time::Duration;
 
@@ -27,7 +27,7 @@ const LSBLK: FixedCommand = FixedCommand {
     keep_cut_output: false,
 };
 
-/// For util-linux before 2.37, which refuses `MOUNTPOINTS` (MET-022).
+/// For util-linux before 2.37, which refuses `MOUNTPOINTS` (MET-027).
 const LSBLK_OLD: FixedCommand = FixedCommand {
     program: "lsblk",
     args: &LSBLK_OLD_ARGS,

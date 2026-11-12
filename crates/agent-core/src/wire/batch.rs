@@ -21,7 +21,7 @@ pub struct Batch {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub gpus: Option<Vec<BatchGpu>>,
     /// The device's drives, sent after start and when they change; absent means unchanged
-    /// (MET-022). An agent older than drives never sends it.
+    /// (MET-027). An agent older than drives never sends it.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub drives: Option<Vec<BatchDrive>>,
 }
@@ -59,7 +59,7 @@ pub struct BatchGpu {
     pub has_vram: bool,
 }
 
-/// A drive of the device and the operator's mounts on it (MET-022).
+/// A drive of the device and the operator's mounts on it (MET-027).
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BatchDrive {

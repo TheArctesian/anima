@@ -134,7 +134,7 @@
     color: var(--status-degraded);
   }
 
-  /* "+3 drives": the other drives of the device, quieter than the label (MET-025). */
+  /* "+3 drives": the other drives of the device, quieter than the label (MET-030). */
   .note {
     color: var(--text-tertiary);
   }

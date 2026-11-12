@@ -100,7 +100,7 @@ pub fn load_average(output: &[u8]) -> Option<Load> {
 }
 
 /// `/proc/diskstats`: the read and written sectors and the busy milliseconds of each block
-/// device (MET-023). A line with fewer than the 13 columns of kernel 2.6, a counter that does
+/// device (MET-028). A line with fewer than the 13 columns of kernel 2.6, a counter that does
 /// not read or an unusable name is skipped.
 #[must_use]
 pub fn drive_counters(output: &[u8]) -> Vec<DriveCounters> {

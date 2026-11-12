@@ -2,7 +2,7 @@
 
 Status: **frozen for Phase 3** (CR-15, R-092; change only through a programme ruling, CON-001). Written by
 WP-54 T2. Spec: MET-011 to MET-020, LOG-007, NET-002, NET-003, P3-004. Rust types: `agent_core::wire`.
-The drive kinds and `drives` (MET-022, MET-023) were added by the operator's ruling of 2026-11-12 (PKG-001, CR-24).
+The drive kinds and `drives` (MET-027, MET-028) were added by the operator's ruling of 2026-11-12 (PKG-001, CR-24).
 
 This contract is the whole interface between `anima-agent` and the hub. The agent makes no other request.
 
@@ -108,7 +108,7 @@ Request:
   `load_1`, `load_5`, `load_15`, `gpu_percent`, `vram_percent`, `vram_bytes`, `gpu_temperature_c`,
   `gpu_power_w`, `gpu_memory_bytes`, `disk_read_bps`, `disk_write_bps`, `disk_busy_percent`). `gpu_memory_bytes` is the memory in use by a unified-memory GPU (Apple);
   it is never a VRAM value (MET-007, R-092 D-6). `disk_read_bps`, `disk_write_bps` and `disk_busy_percent` are
-  one drive's activity (MET-023; `disk_busy_percent` is a percent kind). `label` is present exactly for the disk kinds (the mount point), the network kinds (the
+  one drive's activity (MET-028; `disk_busy_percent` is a percent kind). `label` is present exactly for the disk kinds (the mount point), the network kinds (the
   interface name) and the drive kinds (the drive name, as in `drives`): 1 to 128 bytes, no control character. `gpu` (0 to 63) is present exactly for the GPU kinds.
   The hub ignores a series whose kind it does not know, and the values in its column, so a newer agent can
   talk to an older hub.
@@ -124,13 +124,13 @@ Request:
   then it waits for the next discovery, so a list the hub refuses cannot sink every later batch. Absent means
   "unchanged". `vendor` is `nvidia`, `amd`, `intel` or `apple`;
   `name` is 1 to 128 bytes, no control character; `hasVram` is false for `intel` and `apple` (MET-007).
-- `drives`: optional (MET-022). The agent sends the whole list in its first batch after start and again
+- `drives`: optional (MET-027). The agent sends the whole list in its first batch after start and again
   whenever the list it reads changes, and with each next batch until one is accepted, except after `MALFORMED`:
   then it waits for the next change. Absent means "unchanged", so an agent older than drives keeps working.
   At most 32 drives with unique names; `name` is 1 to 128 bytes, no control character; `kind` is `nvme`, `ssd`,
   `hdd` or `disk`, and the hub reads a kind it does not know as `disk`; `sizeBytes` is at most 2^63 − 1;
   `mounts` holds at most 32 mount points, each 1 to 128 bytes starting with `/`, no control character, and is
-  empty for a drive that is not mounted. macOS sends no `drives` (MET-026).
+  empty for a drive that is not mounted. macOS sends no `drives` (MET-031).
 
 The hub:
 
@@ -147,7 +147,7 @@ The hub:
   (R-098 b);
 - with `drives` present, replaces the device's drives with it in the same transaction; `[]` means the device
   has no drives now, and an absent `drives` leaves them as they are. A drive that leaves the list keeps its
-  series and their history (MET-022);
+  series and their history (MET-027);
 - records the time of the last accepted batch for MET-018 (R-098 a). Any accepted batch resets it, even one
   whose series the hub all ignores; a refused batch does not. 30 seconds after the last accepted batch the
   device's metrics are stale: the hub writes one event (source `metrics`, severity warning) and serves

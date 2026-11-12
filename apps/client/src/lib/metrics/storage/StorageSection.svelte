@@ -18,7 +18,7 @@
   const summary = $derived(drives === null || drives.length === 0 ? null : summaryText(drives));
 </script>
 
-<!-- After Metrics, a device's drives one row each (MET-024); hidden when metrics are off, as Metrics says why. -->
+<!-- After Metrics, a device's drives one row each (MET-029); hidden when metrics are off, as Metrics says why. -->
 {#if hasMetrics(source)}
   <section class="overview-card storage" aria-labelledby="overview-storage">
     <h2 id="overview-storage" class="overview-card-title"><Icon name="nf-md-harddisk" />Storage</h2>
@@ -109,7 +109,7 @@
     min-inline-size: 0;
   }
 
-  /* Not mounted: greyed and said in words, never colour alone (MET-024). */
+  /* Not mounted: greyed and said in words, never colour alone (MET-029). */
   .unmounted .name,
   .unmounted .kind,
   .unmounted .size {
