@@ -18,17 +18,23 @@ export interface SignIn {
 
 export type SignInOutcome =
   | { readonly signedIn: true }
-  | { readonly signedIn: false; readonly message: string; readonly fields: FieldMessages };
+  | {
+      readonly signedIn: false;
+      readonly message: string;
+      readonly fields: FieldMessages;
+      /** True when the hub did not answer, which the page's reachability notice may already say (UI-030). */
+      readonly unreachable: boolean;
+    };
 
 const NOT_KEPT_MESSAGE = 'Signed in, but the access token could not be kept in the key store.';
 
-function refused(message: string, fields: FieldMessages = {}): SignInOutcome {
-  return { signedIn: false, message, fields };
+function refused(message: string, fields: FieldMessages = {}, unreachable = false): SignInOutcome {
+  return { signedIn: false, message, fields, unreachable };
 }
 
 function failed(error: HubError, desktop: boolean): SignInOutcome {
   const fields = error.code === 'VALIDATION' ? fieldMessages(error.fields) : {};
-  return refused(failureMessage(error, desktop), fields);
+  return refused(failureMessage(error, desktop), fields, error.code === 'unreachable');
 }
 
 /**

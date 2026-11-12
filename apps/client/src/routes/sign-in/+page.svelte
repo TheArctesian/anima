@@ -30,6 +30,7 @@
   let step = $state<'credentials' | 'code'>('credentials');
   let fields = $state<FieldMessages>({});
   let message = $state<string | null>(null);
+  let messageUnreachable = $state(false);
   let busy = $state(false);
   let inputs: Partial<Record<'username' | 'password', HTMLInputElement>> = $state({});
 
@@ -38,6 +39,8 @@
   let addressProblem = $state<string | undefined>();
 
   const unreachable = $derived(hubUnreachable(hub.status.current, hub.address.origin, clock.current));
+  // When the hub did not answer and the notice above already says so, the attempt's own sentence would repeat it.
+  const shownMessage = $derived(messageUnreachable && unreachable !== null ? null : message);
 
   onMount(() => {
     inputs.username?.focus();
@@ -112,6 +115,7 @@
     }
     // Every refusal ends on step 1 with the user name kept and the password and code gone (NAV-009, SEC-002).
     message = outcome.message;
+    messageUnreachable = outcome.unreachable;
     fields = outcome.fields;
     step = 'credentials';
     await tick();
@@ -168,8 +172,8 @@
       <CodeStep {busy} oncomplete={(code) => void submit(code)} onback={() => void backToCredentials()} onskip={() => void submit('')} />
     {/if}
 
-    {#if message !== null}
-      <Notice icon="nf-md-alert_circle_outline"><p role="alert">{message}</p></Notice>
+    {#if shownMessage !== null}
+      <Notice icon="nf-md-alert_circle_outline"><p role="alert">{shownMessage}</p></Notice>
     {/if}
 
     {#if step === 'credentials'}
