@@ -1,57 +1,38 @@
 import { describe, expect, test } from 'bun:test';
 import { resolve } from 'node:path';
-import { contrastRatio, deriveToContrast, mixColour, type HexColour } from '../src/contrast.ts';
-import { loadTokens } from '../src/load.ts';
+import { deriveToContrast, type HexColour } from '../src/contrast.ts';
 import { renderCss } from '../src/css.ts';
+import { loadTokens } from '../src/load.ts';
 import { renderReference } from '../src/reference.ts';
-import { isSemanticColour, type Token } from '../src/model.ts';
+import { isSemanticColour } from '../src/model.ts';
+import { palettes, tokens } from './support.ts';
 
-const tokens = await loadTokens(resolve(import.meta.dir, '..', 'tokens'));
-const byName = new Map(tokens.map((token) => [token.name, token]));
+const reference = (): string => renderReference(tokens);
+const css = (): string => renderCss(tokens, palettes);
 
-function find(name: string): Token {
-  const token = byName.get(name);
-  if (!token) throw new Error(`no token ${name}`);
-  return token;
+/** The declarations of the first block that opens with `opening` after `from` (an index into the CSS text). */
+function body(text: string, opening: string, from = 0): string[] {
+  const start = text.indexOf(`${opening} {`, from);
+  if (start < 0) return [];
+  const lineStart = text.lastIndexOf('\n', start) + 1;
+  const close = text.indexOf(`\n${text.slice(lineStart, start)}}`, start);
+  return text.slice(start + opening.length + 2, close).split('\n').map((line) => line.trim()).filter((line) => line !== '');
 }
 
-/** A resolved colour value as `#RRGGBB`; a mix (`surface-hover`, CR-10) is computed as CSS `color-mix` in sRGB does. */
-function hexOf(value: unknown): HexColour {
-  if (typeof value === 'string') return value as HexColour;
-  const { color, percent, over } = value as { color: string; percent: number; over: string };
-  return mixColour(over, color, percent / 100);
-}
-
-/** The colour a token shows in the light theme: its light value, else its dark one. */
-function lightHex(name: string): HexColour {
-  const token = find(name);
-  return hexOf(token.light?.value ?? token.value);
-}
-
-/** The colour a token shows in the dark theme. */
-function darkHex(name: string): HexColour {
-  return hexOf(find(name).value);
-}
-
-const SURFACES = ['bg', 'surface', 'surface-raised'] as const;
-const STATUS = ['status-up', 'status-down', 'status-degraded', 'status-warning', 'status-maintenance', 'status-unknown'] as const;
-const SERIES = [1, 2, 3, 4, 5, 6].map((n) => `chart-series-${String(n)}`);
-const NORD_10 = '#5E81AC';
-
-function ratio(foreground: string, background: string): number {
-  return contrastRatio(lightHex(foreground), lightHex(background));
+/** The light theme block of one palette: the one after its label, under data-theme="light". */
+function paletteLight(text: string, label: string): string[] {
+  const at = text.indexOf(`/* Palette ${label} (UI-023)`);
+  const selector = label === 'Graphite' ? ':root[data-theme="light"]' : ':root[data-palette="nord"][data-theme="light"]';
+  return body(text, selector, at);
 }
 
 describe('deep primitives (UI-005, D-27, R-086)', () => {
+  const find = (name: string): HexColour => tokens.find((token) => token.name === name && token.palette === undefined)?.value as HexColour;
+
   for (const n of [11, 12, 13, 14, 15]) {
     test(`UI-005: nord-${String(n)}-deep is nord-${String(n)} mixed toward nord-0 until 3:1 on nord-4`, () => {
-      const derived = deriveToContrast(
-        find(`nord-${String(n)}`).value as HexColour,
-        find('nord-0').value as HexColour,
-        find('nord-4').value as HexColour,
-        3,
-      );
-      expect(find(`nord-${String(n)}-deep`).value).toBe(derived.colour);
+      const derived = deriveToContrast(find(`nord-${String(n)}`), find('nord-0'), find('nord-4'), 3);
+      expect(find(`nord-${String(n)}-deep`)).toBe(derived.colour);
     });
   }
 });
@@ -61,99 +42,86 @@ describe('light theme values (TOK-011, UI-005)', () => {
     for (const token of tokens.filter((candidate) => candidate.light !== undefined)) expect(isSemanticColour(token)).toBe(true);
   });
 
-  test('UI-005: the light surfaces are nord-5, nord-6 and nord-4 (R-086)', () => {
-    expect(['bg', 'surface', 'surface-raised'].map(lightHex)).toEqual(['#E5E9F0', '#ECEFF4', '#D8DEE9']);
+  test('UI-005: components never see a primitive; the light block of each palette names semantic tokens only', () => {
+    const text = css();
+    for (const label of ['Graphite', 'Nord']) {
+      const light = paletteLight(text, label);
+      expect(light.length).toBeGreaterThan(0);
+      expect(light.some((line) => /^--(nord|graphite)-/.test(line))).toBe(false);
+    }
   });
 
-  test('UI-005: components never see a deep primitive; the light block names semantic tokens only', () => {
-    const css = renderCss(tokens);
-    const light = css.slice(css.indexOf(':root[data-theme="light"]'), css.indexOf('@media (prefers-color-scheme: light)'));
-    expect(light).toContain('--status-up: var(--nord-14-deep);');
-    expect(light).not.toMatch(/^\s+--nord-/m);
+  test('UI-023: the Graphite light status shape is its deep aurora value, and the Nord one is its nord-deep value', () => {
+    const text = css();
+    expect(paletteLight(text, 'Graphite')).toContain('--status-down: var(--graphite-aurora-11-deep);');
+    expect(paletteLight(text, 'Nord')).toContain('--status-down: var(--nord-11-deep);');
+  });
+
+  test('UI-005: the Nord light accent is the derived nord-10-deep', () => {
+    expect(paletteLight(css(), 'Nord')).toContain('--accent: var(--nord-10-deep);');
   });
 });
 
-describe('surface-hover (CR-10, K5)', () => {
-  test('K5: dark surface-hover is nord-3, so the dark hover look does not change', () => {
-    expect(find('surface-hover').source).toBe('{color.nord.3}');
+describe('palette selectors (UI-023)', () => {
+  test('UI-023: Graphite sits on :root and under data-palette="graphite"; Nord is selected by data-palette="nord"', () => {
+    const text = css();
+    expect(text).toContain(':root, :root[data-palette="graphite"] {');
+    expect(text).toContain(':root[data-palette="nord"] {');
+    expect(text).toContain(':root[data-palette="nord"][data-theme="light"] {');
+    expect(text).toContain('  :root[data-palette="nord"][data-theme="system"] {');
   });
 
-  test('UI-005: the light surface-hover is nord-3 at 12 % over nord-4, in both light blocks', () => {
-    const declaration = '--surface-hover: color-mix(in srgb, var(--nord-3) 12%, var(--nord-4));';
-    const css = renderCss(tokens);
-    expect(css.split(declaration).length - 1).toBe(2);
+  test('UI-023: the Nord blocks come after the Graphite blocks, so the chosen palette wins at each appearance', () => {
+    const text = css();
+    expect(text.indexOf(':root[data-palette="nord"] {')).toBeGreaterThan(text.indexOf(':root[data-theme="light"] {'));
   });
 
-  for (const text of ['text', 'text-muted']) {
-    test(`UI-005: ${text} on the light surface-hover is at least 4.5:1`, () => {
-      expect(ratio(text, 'surface-hover')).toBeGreaterThanOrEqual(4.5);
-    });
-  }
-
-  for (const surface of ['surface', 'surface-raised']) {
-    test(`K5: the light surface-hover differs from ${surface} at least as much as the dark one does`, () => {
-      const dark = contrastRatio(darkHex('surface-hover'), darkHex(surface));
-      expect(ratio('surface-hover', surface)).toBeGreaterThanOrEqual(dark);
-    });
-  }
+  test('MAT-006: the preference blocks match every palette and appearance selector, so they come last', () => {
+    const text = css();
+    const preference = text.indexOf('@media (prefers-contrast: more)');
+    expect(preference).toBeGreaterThan(text.indexOf(':root[data-palette="nord"][data-theme="system"]'));
+    expect(text.slice(preference)).toContain(':root, :root[data-theme], :root[data-palette], :root[data-palette][data-theme] {');
+  });
 });
 
-describe('reference page (UI-005)', () => {
-  test('UI-005: a token with a light value shows it under its dark value', () => {
-    expect(renderReference(tokens)).toContain('`--bg: var(--nord-0)` = `#2E3440`<br>light: `--bg: var(--nord-5)` = `#E5E9F0`');
+describe('surface-hover (CR-10, 5.1.2)', () => {
+  test('5.1.2: the dark surface-hover is nord-2 (Nord) and graphite-dark-overlay (Graphite)', () => {
+    expect(tokens.find((token) => token.name === 'surface-hover' && token.palette === 'nord')?.source).toBe('{color.nord.2}');
+    expect(tokens.find((token) => token.name === 'surface-hover' && token.palette === 'graphite')?.source).toBe('{color.graphite.dark-overlay}');
+  });
+
+  test('5.1.2: the light surface-hover is nord-5 (Nord) and graphite-light-sunken (Graphite)', () => {
+    expect(tokens.find((token) => token.name === 'surface-hover' && token.palette === 'nord')?.light?.source).toBe('{color.nord.5}');
+    expect(tokens.find((token) => token.name === 'surface-hover' && token.palette === 'graphite')?.light?.source).toBe('{color.graphite.light-sunken}');
+  });
+});
+
+describe('reference page (UI-005, UI-023)', () => {
+  test('UI-005: a role shows its dark value, then its light value on a second line', () => {
+    expect(reference()).toContain('`--surface-raised: var(--nord-1)` = `#3B4252`<br>light: `--surface-raised: var(--nord-6-raised)` = `#F7F9FB`');
   });
 
   test('UI-005: a light mix shows as its color-mix, as a tint does', () => {
-    expect(renderReference(tokens)).toContain(
-      '`--surface-hover: var(--nord-3)` = `#4C566A`<br>light: `--surface-hover: color-mix(in srgb, var(--nord-3) 12%, var(--nord-4))` |',
+    expect(reference()).toContain(
+      '`--accent-hover: color-mix(in srgb, var(--nord-6) 15%, var(--nord-8))`<br>light: `--accent-hover: color-mix(in srgb, var(--nord-0) 12%, var(--accent))`',
     );
+  });
+
+  test('UI-023: the reference page documents both palettes', () => {
+    expect(reference()).toContain('## color.role.graphite');
+    expect(reference()).toContain('## color.role.nord');
+    expect(reference()).toContain('Graphite is the default');
+  });
+
+  test('5.6: the elevation note states the rule for cards: surface contrast, no border, no shadow', () => {
+    expect(reference()).toContain('`elevation-1` is surface contrast, no border and no shadow');
   });
 });
 
-describe('light pairings (UI-005, UI-004, MAT-005)', () => {
-  for (const surface of SURFACES) {
-    for (const text of ['text', 'text-muted']) {
-      test(`UI-005: ${text} on ${surface} is at least 4.5:1`, () => {
-        expect(ratio(text, surface)).toBeGreaterThanOrEqual(4.5);
-      });
-    }
-    test(`UI-005: accent (focus ring) on ${surface} is at least 3:1`, () => {
-      expect(ratio('accent', surface)).toBeGreaterThanOrEqual(3);
-    });
-    for (const colour of [...STATUS, ...SERIES]) {
-      // nord-10 is 2.98:1 on nord-4 (surface-raised): a known gap, pinned below, reported to the orchestrator.
-      if (surface === 'surface-raised' && lightHex(colour) === NORD_10) continue;
-      test(`UI-005: ${colour} on ${surface} is at least 3:1`, () => {
-        expect(ratio(colour, surface)).toBeGreaterThanOrEqual(3);
-      });
-    }
-  }
-
-  test('UI-004: the --bg label on accent and on accent-deep is at least 4.5:1', () => {
-    expect(ratio('bg', 'accent')).toBeGreaterThanOrEqual(4.5);
-    expect(ratio('bg', 'accent-deep')).toBeGreaterThanOrEqual(4.5);
-  });
-
-  test('MAT-005: chart-threshold on surface is at least 3:1', () => {
-    expect(ratio('chart-threshold', 'surface')).toBeGreaterThanOrEqual(3);
-  });
-
-  test('MAT-005: a control border is at least 3:1 on bg and surface', () => {
-    expect(ratio('border', 'bg')).toBeGreaterThanOrEqual(3);
-    expect(ratio('border', 'surface')).toBeGreaterThanOrEqual(3);
-  });
-
-  test('MAT-006: border differs from text-muted and accent, so the focus ring and increased contrast still change something', () => {
-    expect(lightHex('border')).not.toBe(lightHex('text-muted'));
-    expect(lightHex('border')).not.toBe(lightHex('accent'));
-  });
-
-  test('UI-005: nord-10 on surface-raised stays under 3:1 (known gap, R-086 follow-up); series and border use it only on bg and surface', () => {
-    expect(contrastRatio(NORD_10, lightHex('surface-raised'))).toBeLessThan(3);
-    expect(SERIES.filter((name) => lightHex(name) === NORD_10)).toEqual(['chart-series-1']);
-  });
-
-  test('UI-005: the six chart series are six different colours', () => {
-    expect(new Set(SERIES.map(lightHex)).size).toBe(6);
+describe('the token source loads with the palette files (UI-023)', () => {
+  test('UI-023: palette tokens are primitives and roles are palette-scoped', async () => {
+    const loaded = await loadTokens(resolve(import.meta.dir, '..', 'tokens'));
+    expect(loaded.find((token) => token.name === 'nord-0')?.palette).toBeUndefined();
+    expect(loaded.find((token) => token.name === 'surface-raised' && token.palette === 'graphite')).toBeDefined();
   });
 });

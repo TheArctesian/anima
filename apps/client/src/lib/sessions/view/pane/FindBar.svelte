@@ -75,9 +75,9 @@
     max-inline-size: calc(var(--space-16) * 4);
     min-block-size: var(--target-min-desktop);
     padding: 0 var(--space-2);
-    border: var(--border-thin) solid var(--border);
+    border: var(--border-thin) solid var(--border-strong);
     border-radius: var(--radius-md);
-    background: var(--bg);
+    background: var(--surface-base);
     color: var(--text);
     font: inherit;
     font-family: var(--font-mono);
@@ -91,9 +91,9 @@
     min-inline-size: var(--target-min-desktop);
     min-block-size: var(--target-min-desktop);
     padding: 0 var(--space-2);
-    border: var(--border-thin) solid var(--border);
+    border: var(--border-thin) solid var(--border-strong);
     border-radius: var(--radius-md);
-    background: var(--surface-raised);
+    background: var(--surface-overlay);
     color: var(--text);
     font: inherit;
   }
@@ -115,7 +115,7 @@
     min-inline-size: 0;
     overflow: hidden;
     text-overflow: ellipsis;
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font-size: var(--text-sm);
     white-space: nowrap;
   }

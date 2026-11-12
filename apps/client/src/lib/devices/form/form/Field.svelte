@@ -53,7 +53,7 @@
   }
 
   small {
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font-size: var(--text-sm);
     line-height: var(--leading-tight);
   }
@@ -75,8 +75,8 @@
     min-block-size: var(--space-8);
     margin: 0;
     padding: 0 var(--space-3);
-    background-color: var(--surface);
-    border: var(--border-thin) solid var(--border);
+    background-color: var(--surface-raised);
+    border: var(--border-thin) solid var(--border-strong);
     border-radius: var(--radius-md);
     color: var(--text);
     font: inherit;

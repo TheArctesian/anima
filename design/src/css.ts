@@ -1,10 +1,12 @@
-import { GENERATED_NOTICE, aliasName, aliasOrValue, bezierOf, fieldsOf, numberOf, springOf, trimmedDecimal, tokensOfType, type Token } from './model.ts';
+import { GENERATED_NOTICE, aliasName, aliasOrValue, bezierOf, fieldsOf, numberOf, springOf, trimmedDecimal, tokensOfType, type Palette, type Token } from './model.ts';
 import { sampleCurve, settleMs } from './spring.ts';
 
 type Declaration = readonly [property: string, value: string];
 
 const SOLID_BLUR = '0px';
 const SOLID_SATURATE = '100%';
+/** Every preference block matches each palette and appearance selector, so it comes last at their specificity (MAT-006). */
+const PREFERENCE_SELECTOR = ':root, :root[data-theme], :root[data-palette], :root[data-palette][data-theme]';
 
 function fontFamily(names: unknown): string {
   return (names as readonly string[]).map((name) => (/\s/.test(name) ? `"${name}"` : name)).join(', ');
@@ -18,6 +20,13 @@ function tint(token: Token): string {
   const parts = fieldsOf(token.value);
   const source = fieldsOf(token.source);
   return colourMix(aliasOrValue(source['color'], parts['color']), numberOf(parts['percent']), aliasOrValue(source['over'], parts['over']));
+}
+
+/** A colour that names another token is `var(--name)`, so a role follows the theme that is active (TOK-011). */
+function colourValue(token: Token): string {
+  const alias = aliasName(token.source);
+  if (alias) return `var(--${alias})`;
+  return typeof token.value === 'string' ? token.value : tint(token);
 }
 
 function springFragment(token: Token): string {
@@ -46,10 +55,8 @@ function elevation(token: Token): string {
 function valueOf(token: Token): string {
   switch (token.type) {
     case 'color':
-      // A light colour may be a mix (CR-10); the loader has checked its shape.
-      return typeof token.value === 'string' ? aliasOrValue(token.source, token.value) : tint(token);
     case 'tint':
-      return tint(token);
+      return colourValue(token);
     case 'fontFamily':
       return fontFamily(token.value);
     case 'cubicBezier':
@@ -89,7 +96,7 @@ function solidMaterials(tokens: readonly Token[]): Declaration[] {
   return tokensOfType(tokens, 'material').flatMap((token): Declaration[] => {
     const base = aliasName(fieldsOf(token.source)['base']);
     return [
-      [`--${token.name}-bg`, `var(--${base ?? 'surface'})`],
+      [`--${token.name}-bg`, `var(--${base ?? 'surface-raised'})`],
       [`--${token.name}-blur`, SOLID_BLUR],
       [`--${token.name}-saturate`, SOLID_SATURATE],
     ];
@@ -108,13 +115,37 @@ function lightTheme(tokens: readonly Token[]): Declaration[] {
  * The light theme (UI-005, K5): one set of declarations for the operator's Light and for System on a light OS.
  * Empty when no token has a light value, so the dark-only output stays as it was.
  */
-function lightBlocks(lines: readonly Declaration[]): string[] {
+function lightBlocks(lines: readonly Declaration[], selector = ':root[data-theme="light"]', system = ':root[data-theme="system"]'): string[] {
   if (lines.length === 0) return [];
-  return [
-    '/* Light theme (UI-005): semantic colours only (TOK-011); System follows the OS without a script. */',
-    block(':root[data-theme="light"]', lines),
-    media('prefers-color-scheme: light', lines, ':root[data-theme="system"]'),
-  ];
+  return [block(selector, lines), media('prefers-color-scheme: light', lines, system)];
+}
+
+/**
+ * The palette roles (UI-023, TOK-011). The default palette sits on `:root` (dark) and `:root[data-theme="light"]`, and
+ * the other palettes add `data-palette` selectors after it, with one more attribute for their light appearance, so the
+ * cascade picks the palette the operator chose at each appearance without any component naming a palette.
+ */
+function paletteBlocks(roles: readonly Token[], palettes: readonly Palette[]): string[] {
+  const ordered = [...palettes].sort((first, second) => Number(second.default) - Number(first.default));
+  return ordered.flatMap((palette): string[] => {
+    const mine = roles.filter((token) => token.palette === palette.id);
+    const dark = mine.flatMap(declarations);
+    const light = lightTheme(mine);
+    const label = `/* Palette ${palette.name} (UI-023): semantic roles for each appearance. */`;
+    if (palette.default) {
+      return [
+        label,
+        block(`:root, :root[data-palette="${palette.id}"]`, dark),
+        ...lightBlocks(light),
+      ];
+    }
+    const attribute = `:root[data-palette="${palette.id}"]`;
+    return [
+      label,
+      block(attribute, dark),
+      ...lightBlocks(light, `${attribute}[data-theme="light"]`, `${attribute}[data-theme="system"]`),
+    ];
+  });
 }
 
 /**
@@ -138,25 +169,28 @@ function motionChoiceBlocks(tokens: readonly Token[], reduced: readonly Declarat
   ];
 }
 
-/** tokens.css: custom properties on :root, the light theme and the user-preference overrides (TOK-001, MAT-006, MOT-040). */
-export function renderCss(tokens: readonly Token[]): string {
-  const root = tokens.flatMap(declarations);
+/**
+ * tokens.css: custom properties on :root, the palette roles, the light theme and the user-preference overrides
+ * (TOK-001, MAT-006, MOT-040, UI-023).
+ */
+export function renderCss(tokens: readonly Token[], palettes: readonly Palette[]): string {
+  const roles = tokens.filter((token) => token.palette !== undefined);
+  const shared = tokens.filter((token) => token.palette === undefined);
+  const root = shared.flatMap(declarations);
   const solid = solidMaterials(tokens);
-  const light = lightTheme(tokens);
-  // `:root[data-theme]` matches the light selectors' specificity, so these later blocks win over either theme (MAT-006).
-  const preference = light.length === 0 ? ':root' : ':root, :root[data-theme]';
   const reduced = reducedMotion(tokens);
   return [
     `/* ${GENERATED_NOTICE} */`,
     block(':root', root),
-    ...lightBlocks(light),
+    ...lightBlocks(lightTheme(shared)),
+    ...paletteBlocks(roles, palettes),
     '/* Motion changes (D-5): press and stagger are instant, springs jump; thresholds never change (MOT-021). */',
     media('prefers-reduced-motion: reduce', reduced),
     ...motionChoiceBlocks(tokens, reduced),
     '/* Reduced transparency (5.6): solid materials, no blur (D-6). */',
-    media('prefers-reduced-transparency: reduce', solid, preference),
-    '/* Increased contrast (MAT-006): solid materials and text-muted borders. */',
-    media('prefers-contrast: more', [...solid, ['--border', 'var(--text-muted)']], preference),
+    media('prefers-reduced-transparency: reduce', solid, PREFERENCE_SELECTOR),
+    '/* Increased contrast (MAT-006): solid materials; every border uses border-strong (UI-023, 5.1.2). */',
+    media('prefers-contrast: more', [...solid, ['--border-strong', 'var(--text-secondary)'], ['--border-subtle', 'var(--border-strong)']], PREFERENCE_SELECTOR),
     '',
   ].join('\n');
 }

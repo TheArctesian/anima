@@ -148,7 +148,7 @@
     margin-block-end: var(--space-1);
     padding: var(--space-2);
     overflow-y: auto;
-    border: var(--border-thin) solid var(--border);
+    border: var(--border-thin) solid var(--border-strong);
     border-radius: var(--radius-md);
     background: var(--material-overlay-bg);
     backdrop-filter: blur(var(--material-overlay-blur)) saturate(var(--material-overlay-saturate));
@@ -182,7 +182,7 @@
   }
 
   .choice:hover {
-    background: var(--surface-raised);
+    background: var(--surface-overlay);
   }
 
   .choice:focus-visible {
@@ -191,7 +191,7 @@
   }
 
   .url {
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font-family: var(--font-mono);
     font-size: var(--text-sm);
   }

@@ -44,7 +44,7 @@
     align-items: center;
     gap: var(--space-3);
     padding: var(--space-2) var(--space-3);
-    background: var(--surface-raised);
+    background: var(--surface-overlay);
     color: var(--text);
   }
 
@@ -57,13 +57,13 @@
     border: var(--border-thin) solid var(--accent);
     border-radius: var(--radius-md);
     background: var(--accent);
-    color: var(--bg);
+    color: var(--surface-base);
     font: inherit;
     transition: background-color var(--duration-press) var(--ease-enter);
   }
 
   button:active {
-    background: var(--accent-deep);
+    background: var(--accent-pressed);
   }
 
   button:focus-visible,

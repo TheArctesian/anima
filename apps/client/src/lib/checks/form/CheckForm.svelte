@@ -270,7 +270,7 @@
 
   .type {
     margin: 0;
-    color: var(--text-muted);
+    color: var(--text-secondary);
   }
 
   .alert {

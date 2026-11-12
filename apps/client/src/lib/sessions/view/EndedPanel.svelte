@@ -60,19 +60,19 @@
     border: var(--border-thin) solid var(--accent);
     border-radius: var(--radius-md);
     background: var(--accent);
-    color: var(--bg);
+    color: var(--surface-base);
     font: inherit;
     transition: background-color var(--duration-press) var(--ease-enter);
   }
 
   button:active {
-    background: var(--accent-deep);
+    background: var(--accent-pressed);
   }
 
   button:disabled {
-    border-color: var(--border);
-    background: var(--surface-raised);
-    color: var(--text-muted);
+    border-color: var(--border-strong);
+    background: var(--surface-overlay);
+    color: var(--text-secondary);
   }
 
   button:focus-visible {

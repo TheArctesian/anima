@@ -46,8 +46,8 @@
     gap: var(--space-3);
     min-inline-size: 0;
     padding: var(--space-2) var(--space-3);
-    border-bottom: var(--border-thin) solid var(--border);
-    background: var(--surface);
+    border-bottom: var(--border-thin) solid var(--border-strong);
+    background: var(--surface-raised);
   }
 
   .cover {
@@ -58,7 +58,7 @@
     gap: var(--space-2);
     min-inline-size: 0;
     padding: var(--space-2) var(--space-3);
-    background: var(--surface);
+    background: var(--surface-raised);
   }
 
   /* The bar never sets the pane's width: the name and the policy give way first (UI-009). */
@@ -77,6 +77,6 @@
 
   .policy {
     flex: 1;
-    color: var(--text-muted);
+    color: var(--text-secondary);
   }
 </style>

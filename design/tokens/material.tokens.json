@@ -4,30 +4,30 @@
       "$type": "material",
       "chrome": {
         "$value": {
-          "base": "{color.surface}",
+          "base": "{color.role.graphite.surface-raised}",
           "opacityPercent": 82,
           "blur": "20px",
           "saturatePercent": 140
         },
-        "$description": "Navigation bar, session toolbar. Reduced transparency: surface, no blur"
+        "$description": "Navigation bar, session toolbar. Reduced transparency: surface-raised, no blur (renamed from surface, TOK-004)"
       },
       "panel": {
         "$value": {
-          "base": "{color.surface}",
+          "base": "{color.role.graphite.surface-raised}",
           "opacityPercent": 90,
           "blur": "12px",
           "saturatePercent": 100
         },
-        "$description": "Logs panel, side panels. Reduced transparency: surface, no blur"
+        "$description": "Logs panel, side panels. Reduced transparency: surface-raised, no blur"
       },
       "overlay": {
         "$value": {
-          "base": "{color.surface-raised}",
+          "base": "{color.role.graphite.surface-overlay}",
           "opacityPercent": 92,
           "blur": "24px",
           "saturatePercent": 100
         },
-        "$description": "Menus, popovers, toasts. Reduced transparency: surface-raised, no blur"
+        "$description": "Menus, popovers, toasts. Reduced transparency: surface-overlay, no blur"
       }
     },
     "elevation": {
@@ -38,25 +38,25 @@
       },
       "1": {
         "$value": "none",
-        "$description": "Cards: a 1 px border and no shadow (5.6); the component draws the border"
+        "$description": "Cards: surface contrast only (surface-raised on surface-sunken), no border and no shadow (5.6)"
       },
       "2": {
         "$value": {
           "offsetY": "4px",
           "blur": "16px",
-          "color": "{color.nord.0}",
+          "color": "{color.role.graphite.shadow}",
           "alphaPercent": 40
         },
-        "$description": "Popovers, menus"
+        "$description": "Popovers, menus. The palette's shadow colour (shadow role)"
       },
       "3": {
         "$value": {
           "offsetY": "12px",
           "blur": "40px",
-          "color": "{color.nord.0}",
+          "color": "{color.role.graphite.shadow}",
           "alphaPercent": 55
         },
-        "$description": "Modal dialogs, sheets"
+        "$description": "Modal dialogs, sheets. The palette's shadow colour (shadow role)"
       }
     }
   }

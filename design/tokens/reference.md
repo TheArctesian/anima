@@ -4,12 +4,192 @@
 
 Generated from `design/tokens/*.tokens.json` (TOK-001). Names follow contract K5.
 
-- Component code uses semantic tokens only; `nord-*` are primitives for the source and for themes (TOK-010).
-- `elevation-1` is a 1 px border and no shadow (5.6), so its value is `none`; the component draws the border.
+- Component code uses semantic tokens only; `nord-*`, `graphite-*` and the other palette primitives are sources for the roles (TOK-010).
+- Two palettes are registered (UI-023): Graphite is the default, on `:root`; Nord is selected by `data-palette="nord"` on `<html>`. Each palette has its own `color.role.<palette>` group, with its dark value and its light value.
+- `elevation-1` is surface contrast, no border and no shadow (5.6), so its value is `none`: a card is `surface-raised` on `surface-sunken`.
 - `target-min-touch` is 44 pt on iOS and 44 CSS px on the web.
 - Spring tokens are `<settle time> linear(<curve>)` fragments for CSS transitions; scripts read stiffness and damping from `tokens.ts` through `$lib/motion/` (MOT-001).
 - `threshold-*` never change under reduced motion (MOT-021).
 - Reduce motion in Settings sets `data-motion` on `<html>`: `reduce` takes the reduced values whatever the OS says, `full` keeps the full values; no attribute follows the OS (MOT-043).
+
+## color.role.nord
+
+| Token | CSS value | Use |
+| --- | --- | --- |
+| `surface-sunken` | `--surface-sunken: var(--nord-0-sunken)` = `#272C36`<br>light: `--surface-sunken: var(--nord-5)` = `#E5E9F0` | Page background behind cards; inputs on a raised card (5.1.2). |
+| `surface-base` | `--surface-base: var(--nord-0)` = `#2E3440`<br>light: `--surface-base: var(--nord-6)` = `#ECEFF4` | Window background, navigation bar (5.1.2). |
+| `surface-raised` | `--surface-raised: var(--nord-1)` = `#3B4252`<br>light: `--surface-raised: var(--nord-6-raised)` = `#F7F9FB` | Cards, tables, form sections, menus (5.1.2). |
+| `surface-overlay` | `--surface-overlay: var(--nord-2)` = `#434C5E`<br>light: `--surface-overlay: var(--nord-white)` = `#FFFFFF` | Dialogs, popovers, HelpTips (5.1.2). |
+| `surface-hover` | `--surface-hover: var(--nord-2)` = `#434C5E`<br>light: `--surface-hover: var(--nord-5)` = `#E5E9F0` | Fill under text for a hovered row or control (CR-10, 5.1.2). |
+| `surface-selected` | `--surface-selected: var(--accent-tint)`<br>light: `--surface-selected: var(--accent-tint)` | Selected row and item: the accent tint (5.1.2). |
+| `border-subtle` | `--border-subtle: var(--nord-2)` = `#434C5E`<br>light: `--border-subtle: color-mix(in srgb, var(--nord-4) 30%, var(--nord-5))` | Where two equal surfaces meet; table row separators (5.1.2). |
+| `border-strong` | `--border-strong: var(--nord-3-strong)` = `#677082`<br>light: `--border-strong: var(--nord-4-strong)` = `#ABB2C0` | Inputs; every border under prefers-contrast: more (5.1.2). Derived to 2:1 on surface-raised. |
+| `text` | `--text: var(--nord-6)` = `#ECEFF4`<br>light: `--text: var(--nord-0)` = `#2E3440` | Primary text (5.1.2). |
+| `text-secondary` | `--text-secondary: color-mix(in srgb, var(--nord-3) 25%, var(--nord-4))`<br>light: `--text-secondary: var(--nord-3)` = `#4C566A` | Secondary text. Dark: nord4 mixed 25 % toward nord3; reaches 4.5:1 on every surface tier (UI-002). |
+| `text-tertiary` | `--text-tertiary: var(--nord-3-tertiary)` = `#9199A8`<br>light: `--text-tertiary: var(--nord-3)` = `#4C566A` | Placeholder and disabled text. Dark: nord3 mixed toward nord4 to 3:1 on surface-overlay. Light: nord3, the least mix that reaches 4.5:1 on surface-raised. |
+| `accent` | `--accent: var(--nord-8)` = `#88C0D0`<br>light: `--accent: var(--nord-10-deep)` = `#506B8D` | The one accent (5.1.2). Light: nord10 deepened to 4.5:1 on surface-sunken (UI-005). |
+| `accent-hover` | `--accent-hover: color-mix(in srgb, var(--nord-6) 15%, var(--nord-8))`<br>light: `--accent-hover: color-mix(in srgb, var(--nord-0) 12%, var(--accent))` | Dark: nord8 mixed 15 % toward nord6. Light: accent mixed 12 % toward nord0. |
+| `accent-pressed` | `--accent-pressed: var(--nord-10)` = `#5E81AC`<br>light: `--accent-pressed: color-mix(in srgb, var(--nord-0) 25%, var(--accent))` | Pressed primary button. Dark: nord10. Light: accent mixed 25 % toward nord0. |
+| `on-accent` | `--on-accent: var(--nord-0)` = `#2E3440`<br>light: `--on-accent: var(--nord-white)` = `#FFFFFF` | Text on an accent fill; reaches 4.5:1 on accent (UI-004). |
+| `accent-tint` | `--accent-tint: color-mix(in srgb, var(--accent) 16%, var(--surface-raised))`<br>light: `--accent-tint: color-mix(in srgb, var(--accent) 14%, var(--surface-raised))` | Accent at 16 % (dark) or 14 % (light) over surface-raised (5.5.3). |
+| `status-up` | `--status-up: var(--nord-14)` = `#A3BE8C`<br>light: `--status-up: var(--nord-14-deep)` = `#71836B` | Device or check is up (5.1.2). Dark: lifted to 3:1 on surface-raised where needed; light: the deep value (3:1). |
+| `status-down` | `--status-down: var(--nord-11-lifted)` = `#C6767F`<br>light: `--status-down: var(--nord-11-deep)` = `#BF616A` | Device or check is down; error messages (5.1.2). Dark: lifted to 3:1 on surface-raised where needed; light: the deep value (3:1). |
+| `status-degraded` | `--status-degraded: var(--nord-13)` = `#EBCB8B`<br>light: `--status-degraded: var(--nord-13-deep)` = `#897C64` | Slow response or high resource usage (5.1.2). Dark: lifted to 3:1 on surface-raised where needed; light: the deep value (3:1). |
+| `status-warning` | `--status-warning: var(--nord-12)` = `#D08770`<br>light: `--status-warning: var(--nord-12-deep)` = `#A67164` | Warnings; host key changed (5.1.2). Dark: lifted to 3:1 on surface-raised where needed; light: the deep value (3:1). |
+| `status-maintenance` | `--status-maintenance: var(--nord-15)` = `#B48EAD`<br>light: `--status-maintenance: var(--nord-15-deep)` = `#907690` | Device is in maintenance (5.1.2). Dark: lifted to 3:1 on surface-raised where needed; light: the deep value (3:1). |
+| `status-unknown` | `--status-unknown: var(--text-tertiary)` = `#9199A8`<br>light: `--status-unknown: var(--text-tertiary)` = `#9199A8` | No data, or the check is paused. Same value as text-tertiary (5.1.2). |
+| `status-up-tint` | `--status-up-tint: color-mix(in srgb, var(--status-up) 16%, var(--surface-raised))`<br>light: `--status-up-tint: color-mix(in srgb, var(--status-up) 14%, var(--surface-raised))` | Status colour at 16 % (dark) or 14 % (light) over surface-raised (5.5.3). |
+| `status-up-text` | `--status-up-text: var(--nord-14-text)` = `#BBCEAE`<br>light: `--status-up-text: var(--nord-14-deep-text)` = `#5D6B5E` | Status badge text: dark toward nord6, light toward nord0, to 4.5:1 on its own tint (UI-005). |
+| `status-down-tint` | `--status-down-tint: color-mix(in srgb, var(--status-down) 16%, var(--surface-raised))`<br>light: `--status-down-tint: color-mix(in srgb, var(--status-down) 14%, var(--surface-raised))` | Status colour at 16 % (dark) or 14 % (light) over surface-raised (5.5.3). |
+| `status-down-text` | `--status-down-text: var(--nord-11-text)` = `#D9B4BB`<br>light: `--status-down-text: var(--nord-11-deep-text)` = `#96545E` | Status badge text: dark toward nord6, light toward nord0, to 4.5:1 on its own tint (UI-005). |
+| `status-degraded-tint` | `--status-degraded-tint: color-mix(in srgb, var(--status-degraded) 16%, var(--surface-raised))`<br>light: `--status-degraded-tint: color-mix(in srgb, var(--status-degraded) 14%, var(--surface-raised))` | Status colour at 16 % (dark) or 14 % (light) over surface-raised (5.5.3). |
+| `status-degraded-text` | `--status-degraded-text: var(--nord-13-text)` = `#EBCB8B`<br>light: `--status-degraded-text: var(--nord-13-deep-text)` = `#6F675A` | Status badge text: dark toward nord6, light toward nord0, to 4.5:1 on its own tint (UI-005). |
+| `status-warning-tint` | `--status-warning-tint: color-mix(in srgb, var(--status-warning) 16%, var(--surface-raised))`<br>light: `--status-warning-tint: color-mix(in srgb, var(--status-warning) 14%, var(--surface-raised))` | Status colour at 16 % (dark) or 14 % (light) over surface-raised (5.5.3). |
+| `status-warning-text` | `--status-warning-text: var(--nord-12-text)` = `#DDB9AF`<br>light: `--status-warning-text: var(--nord-12-deep-text)` = `#835F5A` | Status badge text: dark toward nord6, light toward nord0, to 4.5:1 on its own tint (UI-005). |
+| `status-maintenance-tint` | `--status-maintenance-tint: color-mix(in srgb, var(--status-maintenance) 16%, var(--surface-raised))`<br>light: `--status-maintenance-tint: color-mix(in srgb, var(--status-maintenance) 14%, var(--surface-raised))` | Status colour at 16 % (dark) or 14 % (light) over surface-raised (5.5.3). |
+| `status-maintenance-text` | `--status-maintenance-text: var(--nord-15-text)` = `#CEBCCE`<br>light: `--status-maintenance-text: var(--nord-15-deep-text)` = `#736278` | Status badge text: dark toward nord6, light toward nord0, to 4.5:1 on its own tint (UI-005). |
+| `status-unknown-tint` | `--status-unknown-tint: color-mix(in srgb, var(--status-unknown) 16%, var(--surface-raised))`<br>light: `--status-unknown-tint: color-mix(in srgb, var(--status-unknown) 14%, var(--surface-raised))` | Status colour at 16 % (dark) or 14 % (light) over surface-raised (5.5.3). |
+| `status-unknown-text` | `--status-unknown-text: var(--nord-3-tertiary-text)` = `#BDC2CC`<br>light: `--status-unknown-text: var(--nord-3-deep-text)` = `#4C566A` | Unknown badge text, to 4.5:1 on its own tint (UI-005). |
+| `danger` | `--danger: var(--status-down)` = `#C6767F`<br>light: `--danger: var(--status-down-text)` = `#D9B4BB` | Destructive buttons: status-down (dark), status-down-text (light) (5.1.2). |
+| `on-danger` | `--on-danger: var(--nord-0)` = `#2E3440`<br>light: `--on-danger: var(--nord-white)` = `#FFFFFF` | Text on a danger fill: nord0 (dark), white (light) (5.1.2, UI-004). |
+| `scrim` | `--scrim: color-mix(in srgb, var(--nord-0) 50%, transparent)`<br>light: `--scrim: color-mix(in srgb, var(--nord-0) 35%, transparent)` | Modal dim: nord0 at 50 % (dark) or 35 % (light) (MAT-003). |
+| `focus-ring` | `--focus-ring: var(--accent)` = `#88C0D0`<br>light: `--focus-ring: var(--accent)` = `#88C0D0` | The 2 px focus outline (5.1.2). |
+| `shadow` | `--shadow: var(--nord-0)` = `#2E3440`<br>light: `--shadow: var(--nord-0)` = `#2E3440` | Shadow colour of elevation-2 and elevation-3 (5.6). |
+| `chart-grid` | `--chart-grid: var(--nord-3)` = `#4C566A`<br>light: `--chart-grid: var(--nord-4)` = `#D8DEE9` | Chart grid lines (K5, MET-004). |
+| `chart-axis` | `--chart-axis: var(--nord-4)` = `#D8DEE9`<br>light: `--chart-axis: var(--nord-3)` = `#4C566A` | Chart axis labels (K5, MET-004). |
+| `chart-threshold` | `--chart-threshold: var(--nord-13)` = `#EBCB8B`<br>light: `--chart-threshold: var(--nord-13-deep)` = `#897C64` | Chart 85 % threshold line (K5, MET-004). |
+| `chart-series-1` | `--chart-series-1: var(--nord-8)` = `#88C0D0`<br>light: `--chart-series-1: var(--nord-10)` = `#5E81AC` | Chart series 1 (K5, MET-004). |
+| `chart-series-2` | `--chart-series-2: var(--nord-9)` = `#81A1C1`<br>light: `--chart-series-2: var(--nord-3)` = `#4C566A` | Chart series 2 (K5, MET-004). |
+| `chart-series-3` | `--chart-series-3: var(--nord-10)` = `#5E81AC`<br>light: `--chart-series-3: var(--nord-14-deep)` = `#71836B` | Chart series 3 (K5, MET-004). |
+| `chart-series-4` | `--chart-series-4: var(--nord-7)` = `#8FBCBB`<br>light: `--chart-series-4: var(--nord-15-deep)` = `#907690` | Chart series 4 (K5, MET-004). |
+| `chart-series-5` | `--chart-series-5: var(--nord-15)` = `#B48EAD`<br>light: `--chart-series-5: var(--nord-12-deep)` = `#A67164` | Chart series 5 (K5, MET-004). |
+| `chart-series-6` | `--chart-series-6: var(--nord-12)` = `#D08770`<br>light: `--chart-series-6: var(--nord-11-deep)` = `#BF616A` | Chart series 6 (K5, MET-004). |
+
+## color.role.graphite
+
+| Token | CSS value | Use |
+| --- | --- | --- |
+| `surface-sunken` | `--surface-sunken: var(--graphite-dark-sunken)` = `#16181B`<br>light: `--surface-sunken: var(--graphite-light-sunken)` = `#EEEFF1` | Page background behind cards (5.1.2). |
+| `surface-base` | `--surface-base: var(--graphite-dark-base)` = `#1B1D21`<br>light: `--surface-base: var(--graphite-light-base)` = `#F6F7F8` | Window background, navigation bar (5.1.2). |
+| `surface-raised` | `--surface-raised: var(--graphite-dark-raised)` = `#23262B`<br>light: `--surface-raised: var(--graphite-light-raised)` = `#FFFFFF` | Cards, tables, form sections, menus (5.1.2). |
+| `surface-overlay` | `--surface-overlay: var(--graphite-dark-overlay)` = `#2C3036`<br>light: `--surface-overlay: var(--graphite-light-overlay)` = `#FFFFFF` | Dialogs, popovers, HelpTips (5.1.2). |
+| `surface-hover` | `--surface-hover: var(--graphite-dark-overlay)` = `#2C3036`<br>light: `--surface-hover: var(--graphite-light-sunken)` = `#EEEFF1` | Fill under text for a hovered row or control (CR-10, 5.1.2). |
+| `surface-selected` | `--surface-selected: var(--accent-tint)`<br>light: `--surface-selected: var(--accent-tint)` | Selected row and item: the accent tint (5.1.2). |
+| `border-subtle` | `--border-subtle: var(--graphite-dark-border-subtle)` = `#2C3036`<br>light: `--border-subtle: var(--graphite-light-border-subtle)` = `#E3E5E8` | Where two equal surfaces meet; table row separators (5.1.2). |
+| `border-strong` | `--border-strong: var(--graphite-dark-border-strong-derived)` = `#52565E`<br>light: `--border-strong: var(--graphite-light-border-strong-derived)` = `#B2B6BC` | Inputs; every border under prefers-contrast: more. Derived to 2:1 on surface-raised (5.1.2). |
+| `text` | `--text: var(--graphite-dark-text)` = `#E6E7E9`<br>light: `--text: var(--graphite-light-text)` = `#1D2024` | Primary text (5.1.2). |
+| `text-secondary` | `--text-secondary: var(--graphite-dark-text-secondary)` = `#A4A8B0`<br>light: `--text-secondary: var(--graphite-light-text-secondary)` = `#5A5F68` | Secondary text; 4.5:1 on every surface tier (UI-002). |
+| `text-tertiary` | `--text-tertiary: var(--graphite-dark-text-tertiary)` = `#7E838C`<br>light: `--text-tertiary: var(--graphite-light-text-tertiary-derived)` = `#727780` | Placeholder and disabled text. Light derived to 4.5:1 on surface-raised; dark 3:1 on surface-overlay (5.1.2). |
+| `accent` | `--accent: var(--graphite-frost-8)` = `#88C0D0`<br>light: `--accent: var(--graphite-accent-light)` = `#53707A` | The one accent. Light: nord8 value mixed toward Graphite ink to 4.5:1 on surface-sunken (UI-005). |
+| `accent-hover` | `--accent-hover: color-mix(in srgb, var(--graphite-dark-text-lightest) 15%, var(--graphite-frost-…`<br>light: `--accent-hover: color-mix(in srgb, var(--graphite-light-text) 12%, var(--accent))` | Dark: accent mixed 15 % toward the lightest neutral. Light: accent mixed 12 % toward ink. |
+| `accent-pressed` | `--accent-pressed: var(--graphite-frost-10)` = `#5E81AC`<br>light: `--accent-pressed: color-mix(in srgb, var(--graphite-light-text) 25%, var(--accent))` | Pressed primary button. Dark: frost-10. Light: accent mixed 25 % toward ink. |
+| `on-accent` | `--on-accent: var(--graphite-dark-sunken)` = `#16181B`<br>light: `--on-accent: var(--graphite-white)` = `#FFFFFF` | Text on an accent fill; 4.5:1 on accent (UI-004). |
+| `accent-tint` | `--accent-tint: color-mix(in srgb, var(--accent) 16%, var(--surface-raised))`<br>light: `--accent-tint: color-mix(in srgb, var(--accent) 14%, var(--surface-raised))` | Accent at 16 % (dark) or 14 % (light) over surface-raised (5.5.3). |
+| `status-up` | `--status-up: var(--graphite-aurora-14-lifted)` = `#A3BE8C`<br>light: `--status-up: var(--graphite-aurora-14-deep)` = `#7C906E` | Device or check is up (5.1.2). Dark: Nord aurora lifted to 3:1 on surface-raised; light: deepened to 3:1 on surface-sunken. |
+| `status-down` | `--status-down: var(--graphite-aurora-11-lifted)` = `#BF616A`<br>light: `--status-down: var(--graphite-aurora-11-deep)` = `#BF616A` | Device or check is down; error messages (5.1.2). Dark: Nord aurora lifted to 3:1 on surface-raised; light: deepened to 3:1 on surface-sunken. |
+| `status-degraded` | `--status-degraded: var(--graphite-aurora-13-lifted)` = `#EBCB8B`<br>light: `--status-degraded: var(--graphite-aurora-13-deep)` = `#998762` | Slow response or high resource usage (5.1.2). Dark: Nord aurora lifted to 3:1 on surface-raised; light: deepened to 3:1 on surface-sunken. |
+| `status-warning` | `--status-warning: var(--graphite-aurora-12-lifted)` = `#D08770`<br>light: `--status-warning: var(--graphite-aurora-12-deep)` = `#B97A66` | Warnings; host key changed (5.1.2). Dark: Nord aurora lifted to 3:1 on surface-raised; light: deepened to 3:1 on surface-sunken. |
+| `status-maintenance` | `--status-maintenance: var(--graphite-aurora-15-lifted)` = `#B48EAD`<br>light: `--status-maintenance: var(--graphite-aurora-15-deep)` = `#A0809B` | Device is in maintenance (5.1.2). Dark: Nord aurora lifted to 3:1 on surface-raised; light: deepened to 3:1 on surface-sunken. |
+| `status-unknown` | `--status-unknown: var(--text-tertiary)` = `#7E838C`<br>light: `--status-unknown: var(--text-tertiary)` = `#7E838C` | No data, or the check is paused. Same value as text-tertiary (5.1.2). |
+| `status-up-tint` | `--status-up-tint: color-mix(in srgb, var(--status-up) 16%, var(--surface-raised))`<br>light: `--status-up-tint: color-mix(in srgb, var(--status-up) 14%, var(--surface-raised))` | Status colour at 16 % (dark) or 14 % (light) over surface-raised (5.5.3). |
+| `status-up-text` | `--status-up-text: var(--graphite-aurora-14-text)` = `#A3BE8C`<br>light: `--status-up-text: var(--graphite-aurora-14-deep-text)` = `#617159` | Status badge text: dark toward the lightest neutral, light toward ink, to 4.5:1 on its own tint (UI-005). |
+| `status-down-tint` | `--status-down-tint: color-mix(in srgb, var(--status-down) 16%, var(--surface-raised))`<br>light: `--status-down-tint: color-mix(in srgb, var(--status-down) 14%, var(--surface-raised))` | Status colour at 16 % (dark) or 14 % (light) over surface-raised (5.5.3). |
+| `status-down-text` | `--status-down-text: var(--graphite-aurora-11-text)` = `#CA888F`<br>light: `--status-down-text: var(--graphite-aurora-11-deep-text)` = `#9F545C` | Status badge text: dark toward the lightest neutral, light toward ink, to 4.5:1 on its own tint (UI-005). |
+| `status-degraded-tint` | `--status-degraded-tint: color-mix(in srgb, var(--status-degraded) 16%, var(--surface-raised))`<br>light: `--status-degraded-tint: color-mix(in srgb, var(--status-degraded) 14%, var(--surface-raised))` | Status colour at 16 % (dark) or 14 % (light) over surface-raised (5.5.3). |
+| `status-degraded-text` | `--status-degraded-text: var(--graphite-aurora-13-text)` = `#EBCB8B`<br>light: `--status-degraded-text: var(--graphite-aurora-13-deep-text)` = `#786B51` | Status badge text: dark toward the lightest neutral, light toward ink, to 4.5:1 on its own tint (UI-005). |
+| `status-warning-tint` | `--status-warning-tint: color-mix(in srgb, var(--status-warning) 16%, var(--surface-raised))`<br>light: `--status-warning-tint: color-mix(in srgb, var(--status-warning) 14%, var(--surface-raised))` | Status colour at 16 % (dark) or 14 % (light) over surface-raised (5.5.3). |
+| `status-warning-text` | `--status-warning-text: var(--graphite-aurora-12-text)` = `#D2917C`<br>light: `--status-warning-text: var(--graphite-aurora-12-deep-text)` = `#8D6154` | Status badge text: dark toward the lightest neutral, light toward ink, to 4.5:1 on its own tint (UI-005). |
+| `status-maintenance-tint` | `--status-maintenance-tint: color-mix(in srgb, var(--status-maintenance) 16%, var(--surface-raised))`<br>light: `--status-maintenance-tint: color-mix(in srgb, var(--status-maintenance) 14%, var(--surface-raised))` | Status colour at 16 % (dark) or 14 % (light) over surface-raised (5.5.3). |
+| `status-maintenance-text` | `--status-maintenance-text: var(--graphite-aurora-15-text)` = `#B997B3`<br>light: `--status-maintenance-text: var(--graphite-aurora-15-deep-text)` = `#7B657A` | Status badge text: dark toward the lightest neutral, light toward ink, to 4.5:1 on its own tint (UI-005). |
+| `status-unknown-tint` | `--status-unknown-tint: color-mix(in srgb, var(--status-unknown) 16%, var(--surface-raised))`<br>light: `--status-unknown-tint: color-mix(in srgb, var(--status-unknown) 14%, var(--surface-raised))` | Status colour at 16 % (dark) or 14 % (light) over surface-raised (5.5.3). |
+| `status-unknown-text` | `--status-unknown-text: var(--graphite-dark-tertiary-text)` = `#999DA4`<br>light: `--status-unknown-text: var(--graphite-light-tertiary-text)` = `#666B73` | Unknown badge text, to 4.5:1 on its own tint (UI-005). |
+| `danger` | `--danger: var(--status-down)` = `#BF616A`<br>light: `--danger: var(--status-down-text)` = `#CA888F` | Destructive buttons: status-down (dark), status-down-text (light) (5.1.2). |
+| `on-danger` | `--on-danger: var(--graphite-dark-sunken)` = `#16181B`<br>light: `--on-danger: var(--graphite-white)` = `#FFFFFF` | Text on a danger fill (5.1.2, UI-004). |
+| `scrim` | `--scrim: color-mix(in srgb, var(--graphite-black) 55%, transparent)`<br>light: `--scrim: color-mix(in srgb, var(--graphite-light-text) 35%, transparent)` | Modal dim: black at 55 % (dark), ink at 35 % (light) (MAT-003). |
+| `focus-ring` | `--focus-ring: var(--accent)` = `#88C0D0`<br>light: `--focus-ring: var(--accent)` = `#88C0D0` | The 2 px focus outline (5.1.2). |
+| `shadow` | `--shadow: var(--graphite-black)` = `#000000`<br>light: `--shadow: var(--graphite-light-text)` = `#1D2024` | Shadow colour of elevation-2 and elevation-3: black (dark), ink (light) (5.6). |
+| `chart-grid` | `--chart-grid: var(--graphite-dark-border-strong)` = `#41464E`<br>light: `--chart-grid: var(--graphite-light-border-strong)` = `#C3C7CD` | Chart grid lines (K5, MET-004). |
+| `chart-axis` | `--chart-axis: var(--graphite-dark-text-secondary)` = `#A4A8B0`<br>light: `--chart-axis: var(--graphite-light-text-secondary)` = `#5A5F68` | Chart axis labels (K5, MET-004). |
+| `chart-threshold` | `--chart-threshold: var(--status-degraded)` = `#EBCB8B`<br>light: `--chart-threshold: var(--status-degraded)` = `#EBCB8B` | Chart 85 % threshold line (K5, MET-004). |
+| `chart-series-1` | `--chart-series-1: var(--graphite-frost-8)` = `#88C0D0`<br>light: `--chart-series-1: var(--graphite-frost-10)` = `#5E81AC` | Chart series 1 (K5, MET-004). |
+| `chart-series-2` | `--chart-series-2: var(--graphite-frost-9)` = `#81A1C1`<br>light: `--chart-series-2: var(--graphite-light-text-secondary)` = `#5A5F68` | Chart series 2 (K5, MET-004). |
+| `chart-series-3` | `--chart-series-3: var(--graphite-frost-10)` = `#5E81AC`<br>light: `--chart-series-3: var(--graphite-aurora-14-deep)` = `#7C906E` | Chart series 3 (K5, MET-004). |
+| `chart-series-4` | `--chart-series-4: var(--graphite-frost-7)` = `#8FBCBB`<br>light: `--chart-series-4: var(--graphite-aurora-15-deep)` = `#A0809B` | Chart series 4 (K5, MET-004). |
+| `chart-series-5` | `--chart-series-5: var(--graphite-aurora-15)` = `#B48EAD`<br>light: `--chart-series-5: var(--graphite-aurora-12-deep)` = `#B97A66` | Chart series 5 (K5, MET-004). |
+| `chart-series-6` | `--chart-series-6: var(--graphite-aurora-12)` = `#D08770`<br>light: `--chart-series-6: var(--graphite-aurora-11-deep)` = `#BF616A` | Chart series 6 (K5, MET-004). |
+
+## color
+
+| Token | CSS value | Use |
+| --- | --- | --- |
+| `bg` | `--bg: var(--nord-0)` = `#2E3440`<br>light: `--bg: var(--nord-5)` = `#E5E9F0` | Legacy name for surface-base (TOK-004). No call site uses it; removed with the K5 contract update. |
+| `surface` | `--surface: var(--nord-1)` = `#3B4252`<br>light: `--surface: var(--nord-6)` = `#ECEFF4` | Legacy name for surface-raised (TOK-004). No call site uses it; removed with the K5 contract update. |
+| `text-muted` | `--text-muted: var(--nord-4)` = `#D8DEE9`<br>light: `--text-muted: var(--nord-3)` = `#4C566A` | Legacy name for text-secondary (TOK-004). No call site uses it; removed with the K5 contract update. |
+| `border` | `--border: var(--nord-3)` = `#4C566A`<br>light: `--border: var(--nord-10)` = `#5E81AC` | Legacy name for border-strong (TOK-004). No call site uses it; removed with the K5 contract update. |
+| `accent-deep` | `--accent-deep: var(--nord-10)` = `#5E81AC`<br>light: `--accent-deep: var(--nord-0)` = `#2E3440` | Legacy name for accent-pressed (TOK-004). No call site uses it; removed with the K5 contract update. |
+| `accent-alt` | `--accent-alt: var(--nord-9)` = `#81A1C1`<br>light: `--accent-alt: var(--nord-10)` = `#5E81AC` | Legacy name for accent (TOK-004). No call site uses it; removed with the K5 contract update. |
+| `info` | `--info: var(--nord-7)` = `#8FBCBB`<br>light: `--info: var(--nord-10)` = `#5E81AC` | Legacy name for accent (TOK-004). No call site uses it; removed with the K5 contract update. |
+
+## color.graphite
+
+| Token | CSS value | Use |
+| --- | --- | --- |
+| `graphite-dark-sunken` | `--graphite-dark-sunken: #16181B` | Graphite dark surface-sunken. Source token only (TOK-010). |
+| `graphite-dark-base` | `--graphite-dark-base: #1B1D21` | Graphite dark surface-base. Source token only (TOK-010). |
+| `graphite-dark-raised` | `--graphite-dark-raised: #23262B` | Graphite dark surface-raised. Source token only (TOK-010). |
+| `graphite-dark-overlay` | `--graphite-dark-overlay: #2C3036` | Graphite dark surface-overlay, and the dark hover fill. Source token only (TOK-010). |
+| `graphite-dark-border-subtle` | `--graphite-dark-border-subtle: #2C3036` | Graphite dark border-subtle. Source token only (TOK-010). |
+| `graphite-dark-border-strong` | `--graphite-dark-border-strong: #41464E` | Graphite dark border-strong, before the 2:1 check. Source token only (TOK-010). |
+| `graphite-dark-text` | `--graphite-dark-text: #E6E7E9` | Graphite dark text. Source token only (TOK-010). |
+| `graphite-dark-text-secondary` | `--graphite-dark-text-secondary: #A4A8B0` | Graphite dark text-secondary. Source token only (TOK-010). |
+| `graphite-dark-text-tertiary` | `--graphite-dark-text-tertiary: #7E838C` | Graphite dark text-tertiary. Source token only (TOK-010). |
+| `graphite-light-sunken` | `--graphite-light-sunken: #EEEFF1` | Graphite light surface-sunken. Source token only (TOK-010). |
+| `graphite-light-base` | `--graphite-light-base: #F6F7F8` | Graphite light surface-base. Source token only (TOK-010). |
+| `graphite-light-raised` | `--graphite-light-raised: #FFFFFF` | Graphite light surface-raised. Source token only (TOK-010). |
+| `graphite-light-overlay` | `--graphite-light-overlay: #FFFFFF` | Graphite light surface-overlay. Source token only (TOK-010). |
+| `graphite-light-border-subtle` | `--graphite-light-border-subtle: #E3E5E8` | Graphite light border-subtle. Source token only (TOK-010). |
+| `graphite-light-border-strong` | `--graphite-light-border-strong: #C3C7CD` | Graphite light border-strong, before the 2:1 check. Source token only (TOK-010). |
+| `graphite-light-text` | `--graphite-light-text: #1D2024` | Graphite light text, the darkest Graphite neutral (ink). Source token only (TOK-010). |
+| `graphite-light-text-secondary` | `--graphite-light-text-secondary: #5A5F68` | Graphite light text-secondary. Source token only (TOK-010). |
+| `graphite-light-text-tertiary` | `--graphite-light-text-tertiary: #737881` | Graphite light text-tertiary, before the 4.5:1 check. Source token only (TOK-010). |
+| `graphite-dark-text-lightest` | `--graphite-dark-text-lightest: #E6E7E9` | Graphite lightest neutral, the target for lifts toward text (dark). Source token only (TOK-010). |
+| `graphite-white` | `--graphite-white: #FFFFFF` | Pure white: on-accent and on-danger text in the light appearance. Source token only (TOK-010). |
+| `graphite-black` | `--graphite-black: #000000` | Pure black: the dark shadow and the dark scrim. Source token only (TOK-010). |
+| `graphite-frost-7` | `--graphite-frost-7: #8FBCBB` | Frost nord7 value, copied into the Graphite palette (chart series 4). Source token only (TOK-010). |
+| `graphite-frost-8` | `--graphite-frost-8: #88C0D0` | Frost nord8 value (#88C0D0), the Graphite dark accent. Source token only (TOK-010). |
+| `graphite-frost-9` | `--graphite-frost-9: #81A1C1` | Frost nord9 value, copied into the Graphite palette (chart series 2). Source token only (TOK-010). |
+| `graphite-frost-10` | `--graphite-frost-10: #5E81AC` | Frost nord10 value, the Graphite dark accent-pressed and chart series 3. Source token only (TOK-010). |
+| `graphite-dark-border-strong-derived` | `--graphite-dark-border-strong-derived: #52565E` | graphite-dark-border-strong-derived: #41464E mixed 10 % toward #E6E7E9, the least mix that reaches 2:1 on #23262B (border-strong, dark, on surface-raised (5.1.2, UI-005)). Source token only (TOK-010). |
+| `graphite-light-border-strong-derived` | `--graphite-light-border-strong-derived: #B2B6BC` | graphite-light-border-strong-derived: #C3C7CD mixed 10 % toward #1D2024, the least mix that reaches 2:1 on #FFFFFF (border-strong, light, on surface-raised (5.1.2, UI-005)). Source token only (TOK-010). |
+| `graphite-light-text-tertiary-derived` | `--graphite-light-text-tertiary-derived: #727780` | graphite-light-text-tertiary-derived: #737881 mixed 1 % toward #1D2024, the least mix that reaches 4.5:1 on #FFFFFF (text-tertiary, light, on surface-raised (5.1.2, UI-005)). Source token only (TOK-010). |
+| `graphite-accent-light` | `--graphite-accent-light: #53707A` | graphite-accent-light: #88C0D0 mixed 50 % toward #1D2024, the least mix that reaches 4.5:1 on #EEEFF1 (accent, light, on surface-sunken (UI-005)). Source token only (TOK-010). |
+| `graphite-aurora-11-lifted` | `--graphite-aurora-11-lifted: #BF616A` | graphite-aurora-11-lifted: #BF616A mixed 0 % toward #E6E7E9, the least mix that reaches 3:1 on #23262B (status shape, dark, on surface-raised (UI-005)). Source token only (TOK-010). |
+| `graphite-aurora-11-deep` | `--graphite-aurora-11-deep: #BF616A` | graphite-aurora-11-deep: #BF616A mixed 0 % toward #1D2024, the least mix that reaches 3:1 on #EEEFF1 (status shape, light, on surface-sunken (UI-005)). Source token only (TOK-010). |
+| `graphite-aurora-12-lifted` | `--graphite-aurora-12-lifted: #D08770` | graphite-aurora-12-lifted: #D08770 mixed 0 % toward #E6E7E9, the least mix that reaches 3:1 on #23262B (status shape, dark, on surface-raised (UI-005)). Source token only (TOK-010). |
+| `graphite-aurora-12-deep` | `--graphite-aurora-12-deep: #B97A66` | graphite-aurora-12-deep: #D08770 mixed 13 % toward #1D2024, the least mix that reaches 3:1 on #EEEFF1 (status shape, light, on surface-sunken (UI-005)). Source token only (TOK-010). |
+| `graphite-aurora-13-lifted` | `--graphite-aurora-13-lifted: #EBCB8B` | graphite-aurora-13-lifted: #EBCB8B mixed 0 % toward #E6E7E9, the least mix that reaches 3:1 on #23262B (status shape, dark, on surface-raised (UI-005)). Source token only (TOK-010). |
+| `graphite-aurora-13-deep` | `--graphite-aurora-13-deep: #998762` | graphite-aurora-13-deep: #EBCB8B mixed 40 % toward #1D2024, the least mix that reaches 3:1 on #EEEFF1 (status shape, light, on surface-sunken (UI-005)). Source token only (TOK-010). |
+| `graphite-aurora-14-lifted` | `--graphite-aurora-14-lifted: #A3BE8C` | graphite-aurora-14-lifted: #A3BE8C mixed 0 % toward #E6E7E9, the least mix that reaches 3:1 on #23262B (status shape, dark, on surface-raised (UI-005)). Source token only (TOK-010). |
+| `graphite-aurora-14-deep` | `--graphite-aurora-14-deep: #7C906E` | graphite-aurora-14-deep: #A3BE8C mixed 29 % toward #1D2024, the least mix that reaches 3:1 on #EEEFF1 (status shape, light, on surface-sunken (UI-005)). Source token only (TOK-010). |
+| `graphite-aurora-15-lifted` | `--graphite-aurora-15-lifted: #B48EAD` | graphite-aurora-15-lifted: #B48EAD mixed 0 % toward #E6E7E9, the least mix that reaches 3:1 on #23262B (status shape, dark, on surface-raised (UI-005)). Source token only (TOK-010). |
+| `graphite-aurora-15-deep` | `--graphite-aurora-15-deep: #A0809B` | graphite-aurora-15-deep: #B48EAD mixed 13 % toward #1D2024, the least mix that reaches 3:1 on #EEEFF1 (status shape, light, on surface-sunken (UI-005)). Source token only (TOK-010). |
+| `graphite-aurora-11-text` | `--graphite-aurora-11-text: #CA888F` | graphite-aurora-11-text: #BF616A mixed 29 % toward #E6E7E9, the least mix that reaches 4.5:1 on #3C2F35 (status text, dark, on its 16 % tint (UI-005)). Source token only (TOK-010). |
+| `graphite-aurora-11-deep-text` | `--graphite-aurora-11-deep-text: #9F545C` | graphite-aurora-11-deep-text: #BF616A mixed 20 % toward #1D2024, the least mix that reaches 4.5:1 on #F6E9EA (status text, light, on its 14 % tint (UI-005)). Source token only (TOK-010). |
+| `graphite-aurora-12-text` | `--graphite-aurora-12-text: #D2917C` | graphite-aurora-12-text: #D08770 mixed 10 % toward #E6E7E9, the least mix that reaches 4.5:1 on #3F3636 (status text, dark, on its 16 % tint (UI-005)). Source token only (TOK-010). |
+| `graphite-aurora-12-deep-text` | `--graphite-aurora-12-deep-text: #8D6154` | graphite-aurora-12-deep-text: #B97A66 mixed 28 % toward #1D2024, the least mix that reaches 4.5:1 on #F5ECEA (status text, light, on its 14 % tint (UI-005)). Source token only (TOK-010). |
+| `graphite-aurora-13-text` | `--graphite-aurora-13-text: #EBCB8B` | graphite-aurora-13-text: #EBCB8B mixed 0 % toward #E6E7E9, the least mix that reaches 4.5:1 on #43403A (status text, dark, on its 16 % tint (UI-005)). Source token only (TOK-010). |
+| `graphite-aurora-13-deep-text` | `--graphite-aurora-13-deep-text: #786B51` | graphite-aurora-13-deep-text: #998762 mixed 27 % toward #1D2024, the least mix that reaches 4.5:1 on #F1EEE9 (status text, light, on its 14 % tint (UI-005)). Source token only (TOK-010). |
+| `graphite-aurora-14-text` | `--graphite-aurora-14-text: #A3BE8C` | graphite-aurora-14-text: #A3BE8C mixed 0 % toward #E6E7E9, the least mix that reaches 4.5:1 on #373E3B (status text, dark, on its 16 % tint (UI-005)). Source token only (TOK-010). |
+| `graphite-aurora-14-deep-text` | `--graphite-aurora-14-deep-text: #617159` | graphite-aurora-14-deep-text: #7C906E mixed 28 % toward #1D2024, the least mix that reaches 4.5:1 on #EDEFEB (status text, light, on its 14 % tint (UI-005)). Source token only (TOK-010). |
+| `graphite-aurora-15-text` | `--graphite-aurora-15-text: #B997B3` | graphite-aurora-15-text: #B48EAD mixed 10 % toward #E6E7E9, the least mix that reaches 4.5:1 on #3A3740 (status text, dark, on its 16 % tint (UI-005)). Source token only (TOK-010). |
+| `graphite-aurora-15-deep-text` | `--graphite-aurora-15-deep-text: #7B657A` | graphite-aurora-15-deep-text: #A0809B mixed 28 % toward #1D2024, the least mix that reaches 4.5:1 on #F2EDF1 (status text, light, on its 14 % tint (UI-005)). Source token only (TOK-010). |
+| `graphite-dark-tertiary-text` | `--graphite-dark-tertiary-text: #999DA4` | graphite-dark-tertiary-text: #7E838C mixed 26 % toward #E6E7E9, the least mix that reaches 4.5:1 on #32353B (status-unknown text, dark, on its 16 % tint (UI-005)). Source token only (TOK-010). |
+| `graphite-light-tertiary-text` | `--graphite-light-tertiary-text: #666B73` | graphite-light-tertiary-text: #727780 mixed 14 % toward #1D2024, the least mix that reaches 4.5:1 on #EBECED (status-unknown text, light, on its 14 % tint (UI-005)). Source token only (TOK-010). |
+| `graphite-aurora-11` | `--graphite-aurora-11: #BF616A` | Aurora nord11 value, copied into the Graphite palette. Source token only (TOK-010). |
+| `graphite-aurora-12` | `--graphite-aurora-12: #D08770` | Aurora nord12 value, copied into the Graphite palette. Source token only (TOK-010). |
+| `graphite-aurora-13` | `--graphite-aurora-13: #EBCB8B` | Aurora nord13 value, copied into the Graphite palette. Source token only (TOK-010). |
+| `graphite-aurora-14` | `--graphite-aurora-14: #A3BE8C` | Aurora nord14 value, copied into the Graphite palette. Source token only (TOK-010). |
+| `graphite-aurora-15` | `--graphite-aurora-15: #B48EAD` | Aurora nord15 value, copied into the Graphite palette. Source token only (TOK-010). |
 
 ## color.nord
 
@@ -31,50 +211,35 @@ Generated from `design/tokens/*.tokens.json` (TOK-001). Names follow contract K5
 | `nord-13` | `--nord-13: #EBCB8B` | Nord primitive nord13. Source token only (TOK-010). |
 | `nord-14` | `--nord-14: #A3BE8C` | Nord primitive nord14. Source token only (TOK-010). |
 | `nord-15` | `--nord-15: #B48EAD` | Nord primitive nord15. Source token only (TOK-010). |
-| `nord-11-deep` | `--nord-11-deep: #BF616A` | Nord primitive nord11 mixed 0 % toward nord-0 until it reaches 3:1 on nord-4, so it holds 3:1 on every light surface (R-086, D-27). Source token only (TOK-010): only the light status and chart values use it. |
-| `nord-12-deep` | `--nord-12-deep: #A67164` | Nord primitive nord12 mixed 26 % toward nord-0 until it reaches 3:1 on nord-4, so it holds 3:1 on every light surface (R-086, D-27). Source token only (TOK-010): only the light status and chart values use it. |
-| `nord-13-deep` | `--nord-13-deep: #897C64` | Nord primitive nord13 mixed 52 % toward nord-0 until it reaches 3:1 on nord-4, so it holds 3:1 on every light surface (R-086, D-27). Source token only (TOK-010): only the light status and chart values use it. |
-| `nord-14-deep` | `--nord-14-deep: #71836B` | Nord primitive nord14 mixed 43 % toward nord-0 until it reaches 3:1 on nord-4, so it holds 3:1 on every light surface (R-086, D-27). Source token only (TOK-010): only the light status and chart values use it. |
-| `nord-15-deep` | `--nord-15-deep: #907690` | Nord primitive nord15 mixed 27 % toward nord-0 until it reaches 3:1 on nord-4, so it holds 3:1 on every light surface (R-086, D-27). Source token only (TOK-010): only the light status and chart values use it. |
-
-## color
-
-| Token | CSS value | Use |
-| --- | --- | --- |
-| `bg` | `--bg: var(--nord-0)` = `#2E3440`<br>light: `--bg: var(--nord-5)` = `#E5E9F0` | Main background |
-| `surface` | `--surface: var(--nord-1)` = `#3B4252`<br>light: `--surface: var(--nord-6)` = `#ECEFF4` | Navigation bar, cards, panels |
-| `surface-raised` | `--surface-raised: var(--nord-2)` = `#434C5E`<br>light: `--surface-raised: var(--nord-4)` = `#D8DEE9` | Hover state, selected row, input fields |
-| `surface-hover` | `--surface-hover: var(--nord-3)` = `#4C566A`<br>light: `--surface-hover: color-mix(in srgb, var(--nord-3) 12%, var(--nord-4))` | Fill under text for a hovered row or control (CR-10). A component never uses border as a fill |
-| `border` | `--border: var(--nord-3)` = `#4C566A`<br>light: `--border: var(--nord-10)` = `#5E81AC` | Borders and dividers |
-| `text` | `--text: var(--nord-6)` = `#ECEFF4`<br>light: `--text: var(--nord-0)` = `#2E3440` | Primary text |
-| `text-muted` | `--text-muted: var(--nord-4)` = `#D8DEE9`<br>light: `--text-muted: var(--nord-3)` = `#4C566A` | Secondary text and labels |
-| `accent` | `--accent: var(--nord-8)` = `#88C0D0`<br>light: `--accent: var(--nord-3)` = `#4C566A` | Primary buttons, links, active navigation item, focus ring. Text on it uses bg (UI-004) |
-| `accent-alt` | `--accent-alt: var(--nord-9)` = `#81A1C1`<br>light: `--accent-alt: var(--nord-10)` = `#5E81AC` | Secondary buttons and icons |
-| `accent-deep` | `--accent-deep: var(--nord-10)` = `#5E81AC`<br>light: `--accent-deep: var(--nord-0)` = `#2E3440` | Pressed state of a primary button |
-| `info` | `--info: var(--nord-7)` = `#8FBCBB`<br>light: `--info: var(--nord-10)` = `#5E81AC` | Information messages |
-| `status-up` | `--status-up: var(--nord-14)` = `#A3BE8C`<br>light: `--status-up: var(--nord-14-deep)` = `#71836B` | Device or check is up |
-| `status-down` | `--status-down: var(--nord-11)` = `#BF616A`<br>light: `--status-down: var(--nord-11-deep)` = `#BF616A` | Device or check is down. Error messages |
-| `status-degraded` | `--status-degraded: var(--nord-13)` = `#EBCB8B`<br>light: `--status-degraded: var(--nord-13-deep)` = `#897C64` | Slow response or high resource usage |
-| `status-warning` | `--status-warning: var(--nord-12)` = `#D08770`<br>light: `--status-warning: var(--nord-12-deep)` = `#A67164` | Warnings. Host key changed |
-| `status-maintenance` | `--status-maintenance: var(--nord-15)` = `#B48EAD`<br>light: `--status-maintenance: var(--nord-15-deep)` = `#907690` | Device is in maintenance |
-| `status-unknown` | `--status-unknown: var(--nord-3)` = `#4C566A`<br>light: `--status-unknown: var(--nord-3)` = `#4C566A` | No data, or the check is paused |
-| `chart-grid` | `--chart-grid: var(--nord-3)` = `#4C566A`<br>light: `--chart-grid: var(--nord-4)` = `#D8DEE9` | Chart grid lines (K5, MET-004). Same colour as border in the dark theme; the light theme uses nord-4, so a grid never matches series 1 (R-086) |
-| `chart-axis` | `--chart-axis: var(--nord-4)` = `#D8DEE9`<br>light: `--chart-axis: var(--nord-3)` = `#4C566A` | Chart axis labels (K5, MET-004). Same colour as text-muted |
-| `chart-threshold` | `--chart-threshold: var(--nord-13)` = `#EBCB8B`<br>light: `--chart-threshold: var(--nord-13-deep)` = `#897C64` | Chart 85 % threshold line (K5, MET-004). Same colour as status-degraded |
-| `chart-series-1` | `--chart-series-1: var(--nord-8)` = `#88C0D0`<br>light: `--chart-series-1: var(--nord-10)` = `#5E81AC` | Chart series 1 (K5, MET-004). Nord frost, then aurora; series 5 and 6 share the maintenance and warning hues, so a chart must not tell them apart by hue alone |
-| `chart-series-2` | `--chart-series-2: var(--nord-9)` = `#81A1C1`<br>light: `--chart-series-2: var(--nord-3)` = `#4C566A` | Chart series 2 (K5, MET-004). Nord frost, then aurora; series 5 and 6 share the maintenance and warning hues, so a chart must not tell them apart by hue alone |
-| `chart-series-3` | `--chart-series-3: var(--nord-10)` = `#5E81AC`<br>light: `--chart-series-3: var(--nord-14-deep)` = `#71836B` | Chart series 3 (K5, MET-004). Nord frost, then aurora; series 5 and 6 share the maintenance and warning hues, so a chart must not tell them apart by hue alone |
-| `chart-series-4` | `--chart-series-4: var(--nord-7)` = `#8FBCBB`<br>light: `--chart-series-4: var(--nord-15-deep)` = `#907690` | Chart series 4 (K5, MET-004). Nord frost, then aurora; series 5 and 6 share the maintenance and warning hues, so a chart must not tell them apart by hue alone |
-| `chart-series-5` | `--chart-series-5: var(--nord-15)` = `#B48EAD`<br>light: `--chart-series-5: var(--nord-12-deep)` = `#A67164` | Chart series 5 (K5, MET-004). Nord frost, then aurora; series 5 and 6 share the maintenance and warning hues, so a chart must not tell them apart by hue alone |
-| `chart-series-6` | `--chart-series-6: var(--nord-12)` = `#D08770`<br>light: `--chart-series-6: var(--nord-11-deep)` = `#BF616A` | Chart series 6 (K5, MET-004). Nord frost, then aurora; series 5 and 6 share the maintenance and warning hues, so a chart must not tell them apart by hue alone |
-| `accent-tint` | `--accent-tint: color-mix(in srgb, var(--accent) 12%, var(--surface))` | accent at 12 % on surface (5.5.3) |
-| `status-up-tint` | `--status-up-tint: color-mix(in srgb, var(--status-up) 12%, var(--surface))` | status-up at 12 % on surface (5.5.3) |
-| `status-down-tint` | `--status-down-tint: color-mix(in srgb, var(--status-down) 12%, var(--surface))` | status-down at 12 % on surface (5.5.3) |
-| `status-degraded-tint` | `--status-degraded-tint: color-mix(in srgb, var(--status-degraded) 12%, var(--surface))` | status-degraded at 12 % on surface (5.5.3) |
-| `status-warning-tint` | `--status-warning-tint: color-mix(in srgb, var(--status-warning) 12%, var(--surface))` | status-warning at 12 % on surface (5.5.3) |
-| `status-maintenance-tint` | `--status-maintenance-tint: color-mix(in srgb, var(--status-maintenance) 12%, var(--surface))` | status-maintenance at 12 % on surface (5.5.3) |
-| `status-unknown-tint` | `--status-unknown-tint: color-mix(in srgb, var(--status-unknown) 12%, var(--surface))` | status-unknown at 12 % on surface (5.5.3) |
-| `scrim` | `--scrim: color-mix(in srgb, var(--nord-0) 55%, transparent)` | nord-0 at 55 % behind a modal task (MAT-003, R-049); unchanged under prefers-contrast: more, because a scrim is not a material |
+| `nord-11-deep` | `--nord-11-deep: #BF616A` | Nord primitive nord11 mixed toward nord-0 until it reaches 3:1 on nord-4, so it holds 3:1 on every light surface (R-086, D-27). Source token only (TOK-010): only the light status and chart values use it. |
+| `nord-12-deep` | `--nord-12-deep: #A67164` | Nord primitive nord12 mixed toward nord-0 until it reaches 3:1 on nord-4, so it holds 3:1 on every light surface (R-086, D-27). Source token only (TOK-010): only the light status and chart values use it. |
+| `nord-13-deep` | `--nord-13-deep: #897C64` | Nord primitive nord13 mixed toward nord-0 until it reaches 3:1 on nord-4, so it holds 3:1 on every light surface (R-086, D-27). Source token only (TOK-010): only the light status and chart values use it. |
+| `nord-14-deep` | `--nord-14-deep: #71836B` | Nord primitive nord14 mixed toward nord-0 until it reaches 3:1 on nord-4, so it holds 3:1 on every light surface (R-086, D-27). Source token only (TOK-010): only the light status and chart values use it. |
+| `nord-15-deep` | `--nord-15-deep: #907690` | Nord primitive nord15 mixed toward nord-0 until it reaches 3:1 on nord-4, so it holds 3:1 on every light surface (R-086, D-27). Source token only (TOK-010): only the light status and chart values use it. |
+| `nord-0-sunken` | `--nord-0-sunken: #272C36` | nord0 mixed 15 % toward black (#000000): the surface tier below nord0 for the dark appearance (5.1.1, UI-005). Source token only (TOK-010). |
+| `nord-6-raised` | `--nord-6-raised: #F7F9FB` | nord6 mixed 60 % toward white (#FFFFFF): the surface tier above nord6 for the light appearance (5.1.1, UI-005). Source token only (TOK-010). |
+| `nord-white` | `--nord-white: #FFFFFF` | Pure white: the light overlay surface, on-accent and on-danger text (5.1.2). Source token only (TOK-010). |
+| `nord-3-strong` | `--nord-3-strong: #677082` | nord-3-strong (dark border-strong): #4C566A mixed 19 % toward #D8DEE9, the least mix that reaches 2:1 on #3B4252 (border-strong, dark, on surface-raised (5.1.2, UI-005)). Source token only (TOK-010). |
+| `nord-4-strong` | `--nord-4-strong: #ABB2C0` | nord-4-strong (light border-strong): #D8DEE9 mixed 32 % toward #4C566A, the least mix that reaches 2:1 on #F7F9FB (border-strong, light, on surface-raised (5.1.2, UI-005)). Source token only (TOK-010). |
+| `nord-3-tertiary` | `--nord-3-tertiary: #9199A8` | nord-3-tertiary (dark text-tertiary): #4C566A mixed 49 % toward #D8DEE9, the least mix that reaches 3:1 on #434C5E (text-tertiary, dark, on surface-overlay (5.1.2, UI-005)). Source token only (TOK-010). |
+| `nord-10-deep` | `--nord-10-deep: #506B8D` | nord-10-deep (light accent): #5E81AC mixed 29 % toward #2E3440, the least mix that reaches 4.5:1 on #E5E9F0 (accent, light, on surface-sunken (5.1.1, UI-005)). Source token only (TOK-010). |
+| `nord-11-lifted` | `--nord-11-lifted: #C6767F` | nord-11-lifted: #BF616A mixed 15 % toward #ECEFF4, the least mix that reaches 3:1 on #3B4252 (status shape, dark, on surface-raised (UI-005)). Source token only (TOK-010). |
+| `nord-12-lifted` | `--nord-12-lifted: #D08770` | nord-12-lifted: #D08770 mixed 0 % toward #ECEFF4, the least mix that reaches 3:1 on #3B4252 (status shape, dark, on surface-raised (UI-005)). Source token only (TOK-010). |
+| `nord-13-lifted` | `--nord-13-lifted: #EBCB8B` | nord-13-lifted: #EBCB8B mixed 0 % toward #ECEFF4, the least mix that reaches 3:1 on #3B4252 (status shape, dark, on surface-raised (UI-005)). Source token only (TOK-010). |
+| `nord-14-lifted` | `--nord-14-lifted: #A3BE8C` | nord-14-lifted: #A3BE8C mixed 0 % toward #ECEFF4, the least mix that reaches 3:1 on #3B4252 (status shape, dark, on surface-raised (UI-005)). Source token only (TOK-010). |
+| `nord-15-lifted` | `--nord-15-lifted: #B48EAD` | nord-15-lifted: #B48EAD mixed 0 % toward #ECEFF4, the least mix that reaches 3:1 on #3B4252 (status shape, dark, on surface-raised (UI-005)). Source token only (TOK-010). |
+| `nord-11-text` | `--nord-11-text: #D9B4BB` | nord-11-text (dark status text): #C6767F mixed 51 % toward #ECEFF4, the least mix that reaches 4.5:1 on #514A59 (status text, dark, on its 16 % tint (UI-005)). Source token only (TOK-010). |
+| `nord-11-deep-text` | `--nord-11-deep-text: #96545E` | nord-11-deep-text (light status text): #BF616A mixed 28 % toward #2E3440, the least mix that reaches 4.5:1 on #EFE4E7 (status text, light, on its 14 % tint (UI-005)). Source token only (TOK-010). |
+| `nord-12-text` | `--nord-12-text: #DDB9AF` | nord-12-text (dark status text): #D08770 mixed 48 % toward #ECEFF4, the least mix that reaches 4.5:1 on #534D57 (status text, dark, on its 16 % tint (UI-005)). Source token only (TOK-010). |
+| `nord-12-deep-text` | `--nord-12-deep-text: #835F5A` | nord-12-deep-text (light status text): #A67164 mixed 29 % toward #2E3440, the least mix that reaches 4.5:1 on #ECE6E6 (status text, light, on its 14 % tint (UI-005)). Source token only (TOK-010). |
+| `nord-13-text` | `--nord-13-text: #EBCB8B` | nord-13-text (dark status text): #EBCB8B mixed 0 % toward #ECEFF4, the least mix that reaches 4.5:1 on #57585B (status text, dark, on its 16 % tint (UI-005)). Source token only (TOK-010). |
+| `nord-13-deep-text` | `--nord-13-deep-text: #6F675A` | nord-13-deep-text (light status text): #897C64 mixed 29 % toward #2E3440, the least mix that reaches 4.5:1 on #E8E8E6 (status text, light, on its 14 % tint (UI-005)). Source token only (TOK-010). |
+| `nord-14-text` | `--nord-14-text: #BBCEAE` | nord-14-text (dark status text): #A3BE8C mixed 33 % toward #ECEFF4, the least mix that reaches 4.5:1 on #4C565B (status text, dark, on its 16 % tint (UI-005)). Source token only (TOK-010). |
+| `nord-14-deep-text` | `--nord-14-deep-text: #5D6B5E` | nord-14-deep-text (light status text): #71836B mixed 30 % toward #2E3440, the least mix that reaches 4.5:1 on #E4E8E7 (status text, light, on its 14 % tint (UI-005)). Source token only (TOK-010). |
+| `nord-15-text` | `--nord-15-text: #CEBCCE` | nord-15-text (dark status text): #B48EAD mixed 47 % toward #ECEFF4, the least mix that reaches 4.5:1 on #4E4E61 (status text, dark, on its 16 % tint (UI-005)). Source token only (TOK-010). |
+| `nord-15-deep-text` | `--nord-15-deep-text: #736278` | nord-15-deep-text (light status text): #907690 mixed 30 % toward #2E3440, the least mix that reaches 4.5:1 on #E9E7EC (status text, light, on its 14 % tint (UI-005)). Source token only (TOK-010). |
+| `nord-3-tertiary-text` | `--nord-3-tertiary-text: #BDC2CC` | nord-3-tertiary-text (dark unknown text): #9199A8 mixed 48 % toward #ECEFF4, the least mix that reaches 4.5:1 on #495060 (status-unknown text, dark, on its 16 % tint (UI-005)). Source token only (TOK-010). |
+| `nord-3-deep-text` | `--nord-3-deep-text: #4C566A` | nord-3-deep-text (light unknown text): #4C566A mixed 0 % toward #2E3440, the least mix that reaches 4.5:1 on #DFE2E7 (status-unknown text, light, on its 14 % tint (UI-005)). Source token only (TOK-010). |
 
 ## depth.layer
 
@@ -91,18 +256,18 @@ Generated from `design/tokens/*.tokens.json` (TOK-001). Names follow contract K5
 
 | Token | CSS value | Use |
 | --- | --- | --- |
-| `material-chrome` | `--material-chrome-bg: color-mix(in srgb, var(--surface) 82%, transparent)`<br>`--material-chrome-blur: 20px`<br>`--material-chrome-saturate: 140%` | Navigation bar, session toolbar. Reduced transparency: surface, no blur |
-| `material-panel` | `--material-panel-bg: color-mix(in srgb, var(--surface) 90%, transparent)`<br>`--material-panel-blur: 12px`<br>`--material-panel-saturate: 100%` | Logs panel, side panels. Reduced transparency: surface, no blur |
-| `material-overlay` | `--material-overlay-bg: color-mix(in srgb, var(--surface-raised) 92%, transparent)`<br>`--material-overlay-blur: 24px`<br>`--material-overlay-saturate: 100%` | Menus, popovers, toasts. Reduced transparency: surface-raised, no blur |
+| `material-chrome` | `--material-chrome-bg: color-mix(in srgb, var(--surface-raised) 82%, transparent)`<br>`--material-chrome-blur: 20px`<br>`--material-chrome-saturate: 140%` | Navigation bar, session toolbar. Reduced transparency: surface-raised, no blur (renamed from surface, TOK-004) |
+| `material-panel` | `--material-panel-bg: color-mix(in srgb, var(--surface-raised) 90%, transparent)`<br>`--material-panel-blur: 12px`<br>`--material-panel-saturate: 100%` | Logs panel, side panels. Reduced transparency: surface-raised, no blur |
+| `material-overlay` | `--material-overlay-bg: color-mix(in srgb, var(--surface-overlay) 92%, transparent)`<br>`--material-overlay-blur: 24px`<br>`--material-overlay-saturate: 100%` | Menus, popovers, toasts. Reduced transparency: surface-overlay, no blur |
 
 ## depth.elevation
 
 | Token | CSS value | Use |
 | --- | --- | --- |
 | `elevation-0` | `--elevation-0: none` | Flat |
-| `elevation-1` | `--elevation-1: none` | Cards: a 1 px border and no shadow (5.6); the component draws the border |
-| `elevation-2` | `--elevation-2: 0 4px 16px color-mix(in srgb, var(--nord-0) 40%, transparent)` | Popovers, menus |
-| `elevation-3` | `--elevation-3: 0 12px 40px color-mix(in srgb, var(--nord-0) 55%, transparent)` | Modal dialogs, sheets |
+| `elevation-1` | `--elevation-1: none` | Cards: surface contrast only (surface-raised on surface-sunken), no border and no shadow (5.6) |
+| `elevation-2` | `--elevation-2: 0 4px 16px color-mix(in srgb, var(--shadow) 40%, transparent)` | Popovers, menus. The palette's shadow colour (shadow role) |
+| `elevation-3` | `--elevation-3: 0 12px 40px color-mix(in srgb, var(--shadow) 55%, transparent)` | Modal dialogs, sheets. The palette's shadow colour (shadow role) |
 
 ## motion.spring
 
@@ -202,9 +367,24 @@ Generated from `design/tokens/*.tokens.json` (TOK-001). Names follow contract K5
 
 | Token | CSS value | Use |
 | --- | --- | --- |
-| `icon-sm` | `--icon-sm: 1em` | Small icon |
-| `icon-md` | `--icon-md: 1.125em` | Default icon |
-| `icon-lg` | `--icon-lg: 1.25em` | Large icon |
+| `icon-sm` | `--icon-sm: 1rem` | Small icon: 16 px (5.5.3, UI-026) |
+| `icon-md` | `--icon-md: 1.125rem` | Default icon: 18 px (5.5.3, UI-026) |
+| `icon-lg` | `--icon-lg: 1.25rem` | Large icon: 20 px (5.5.3) |
+
+## size.control
+
+| Token | CSS value | Use |
+| --- | --- | --- |
+| `control-sm` | `--control-sm: 1.75rem` | Dense rows and table actions only: 28 px (UI-013) |
+| `control-md` | `--control-md: 2rem` | Default control height: 32 px (UI-013) |
+| `control-lg` | `--control-lg: 2.5rem` | Sign-in and empty-state actions: 40 px (UI-013) |
+
+## size.content
+
+| Token | CSS value | Use |
+| --- | --- | --- |
+| `content-form` | `--content-form: 44rem` | Form content width (5.5.3) |
+| `content-page` | `--content-page: 90rem` | Page content width (5.5.3) |
 
 ## size.target
 
@@ -251,7 +431,7 @@ Generated from `design/tokens/*.tokens.json` (TOK-001). Names follow contract K5
 
 | Token | CSS value | Use |
 | --- | --- | --- |
-| `font-ui` | `--font-ui: "Fira Code", system-ui, -apple-system, sans-serif` | Interface text, the default typeface (UI-010); the system font is the fallback (UI-021) |
+| `font-ui` | `--font-ui: "IBM Plex Sans", system-ui, -apple-system, sans-serif` | Interface text, the default typeface (UI-010, operator change 2026-11-12); the system font is the fallback (UI-021) |
 | `font-mono` | `--font-mono: "Fira Code", ui-monospace, monospace` | IP addresses, host names, code, the default typeface (UI-011) |
 | `font-ui-opendyslexic` | `--font-ui-opendyslexic: "OpenDyslexic Nerd Font Propo", system-ui, -apple-system, sans-serif` | Interface text when the operator chooses OpenDyslexic (UI-020) |
 | `font-mono-opendyslexic` | `--font-mono-opendyslexic: "OpenDyslexicM Nerd Font Mono", ui-monospace, monospace` | IP addresses, host names, code when the operator chooses OpenDyslexic (UI-020) |

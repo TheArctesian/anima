@@ -39,19 +39,19 @@
 
   caption {
     padding-block-end: var(--space-2);
-    color: var(--text-muted);
+    color: var(--text-secondary);
     text-align: start;
   }
 
   th,
   td {
     padding: var(--space-2);
-    border-block-end: var(--border-thin) solid var(--border);
+    border-block-end: var(--border-thin) solid var(--border-strong);
     text-align: start;
   }
 
   th {
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font-weight: var(--weight-regular);
   }
 
@@ -60,7 +60,7 @@
   }
 
   .none {
-    color: var(--text-muted);
+    color: var(--text-secondary);
   }
 
   button {
@@ -68,9 +68,9 @@
     min-block-size: var(--target-min-desktop);
     margin-block-start: var(--space-3);
     padding: 0 var(--space-3);
-    border: var(--border-thin) solid var(--border);
+    border: var(--border-thin) solid var(--border-strong);
     border-radius: var(--radius-md);
-    background: var(--surface-raised);
+    background: var(--surface-overlay);
     color: var(--text);
     font: inherit;
   }

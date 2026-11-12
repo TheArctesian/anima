@@ -108,16 +108,16 @@
     gap: var(--space-2);
     block-size: calc(var(--target-min-desktop) + var(--space-2));
     padding: 0 var(--space-3);
-    border: var(--border-thin) solid var(--border);
+    border: var(--border-thin) solid var(--border-strong);
     border-radius: var(--radius-md);
-    background: var(--surface);
+    background: var(--surface-raised);
     color: var(--text);
     font: inherit;
     transition: background-color var(--duration-fast) var(--ease-enter);
   }
 
   .control:hover {
-    background: var(--surface-raised);
+    background: var(--surface-overlay);
   }
 
   .control:active {
@@ -149,7 +149,7 @@
     margin-block-start: var(--space-1);
     padding: var(--space-2);
     overflow-y: auto;
-    border: var(--border-thin) solid var(--border);
+    border: var(--border-thin) solid var(--border-strong);
     border-radius: var(--radius-md);
     background: var(--material-overlay-bg);
     backdrop-filter: blur(var(--material-overlay-blur)) saturate(var(--material-overlay-saturate));
@@ -167,7 +167,7 @@
   }
 
   .option:hover {
-    background: var(--surface-raised);
+    background: var(--surface-overlay);
   }
 
   .none {

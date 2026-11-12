@@ -180,7 +180,7 @@
   .empty {
     flex-direction: column;
     padding: var(--space-12);
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font-size: var(--text-lg);
   }
 
@@ -192,9 +192,9 @@
     box-sizing: border-box;
     min-block-size: var(--target-min-desktop);
     padding: 0 var(--space-3);
-    border: var(--border-thin) solid var(--border);
+    border: var(--border-thin) solid var(--border-strong);
     border-radius: var(--radius-md);
-    background: var(--surface-raised);
+    background: var(--surface-overlay);
     color: var(--text);
     font: inherit;
     transition: background-color var(--duration-fast) var(--ease-enter);

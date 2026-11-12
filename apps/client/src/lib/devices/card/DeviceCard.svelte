@@ -81,9 +81,9 @@
     gap: var(--space-2);
     block-size: var(--device-card-block-size);
     padding: var(--space-4);
-    border: var(--border-thin) solid var(--border);
+    border: var(--border-thin) solid var(--border-strong);
     border-radius: var(--radius-lg);
-    background: var(--surface);
+    background: var(--surface-raised);
     color: var(--text);
     overflow: hidden;
   }
@@ -137,7 +137,7 @@
 
   a:active {
     transition-duration: var(--duration-press);
-    color: var(--text-muted);
+    color: var(--text-secondary);
   }
 
   .host,
@@ -146,7 +146,7 @@
     display: flex;
     gap: var(--space-2);
     margin: 0;
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font-size: var(--text-sm);
     line-height: var(--leading-tight);
     overflow: hidden;

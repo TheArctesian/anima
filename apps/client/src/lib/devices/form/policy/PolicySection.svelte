@@ -70,7 +70,7 @@
   }
 
   label {
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font-size: var(--text-sm);
   }
 
@@ -83,7 +83,7 @@
   }
 
   small {
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font-size: var(--text-xs);
   }
 
@@ -91,15 +91,15 @@
     box-sizing: border-box;
     min-block-size: var(--target-min-desktop);
     padding: var(--space-2) var(--space-3);
-    background-color: var(--surface);
-    border: var(--border-thin) solid var(--border);
+    background-color: var(--surface-raised);
+    border: var(--border-thin) solid var(--border-strong);
     border-radius: var(--radius-md);
     color: var(--text);
     font: inherit;
   }
 
   input:disabled {
-    color: var(--text-muted);
+    color: var(--text-secondary);
   }
 
   input[aria-invalid='true'] {

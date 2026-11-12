@@ -90,7 +90,7 @@
 
   legend {
     padding: 0;
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font-size: var(--text-sm);
   }
 
@@ -98,7 +98,7 @@
     box-sizing: border-box;
     block-size: calc(var(--target-min-desktop) * 3 + var(--border-thin) * 2);
     overflow-y: auto;
-    border: var(--border-thin) solid var(--border);
+    border: var(--border-thin) solid var(--border-strong);
     border-radius: var(--radius-md);
   }
 
@@ -123,14 +123,14 @@
   .skeleton span {
     flex: 1;
     block-size: var(--space-2);
-    background: var(--surface-raised);
+    background: var(--surface-overlay);
     border-radius: var(--radius-md);
   }
 
   .none {
     margin: 0;
     padding: var(--space-2) var(--space-3);
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font-size: var(--text-sm);
   }
 
@@ -141,7 +141,7 @@
   }
 
   .field label {
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font-size: var(--text-sm);
   }
 
@@ -149,15 +149,15 @@
     box-sizing: border-box;
     min-block-size: var(--target-min-desktop);
     padding: var(--space-2) var(--space-3);
-    background-color: var(--surface);
-    border: var(--border-thin) solid var(--border);
+    background-color: var(--surface-raised);
+    border: var(--border-thin) solid var(--border-strong);
     border-radius: var(--radius-md);
     color: var(--text);
     font: inherit;
   }
 
   input:disabled {
-    color: var(--text-muted);
+    color: var(--text-secondary);
   }
 
   input[aria-invalid='true'] {
@@ -170,7 +170,7 @@
   }
 
   small {
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font-size: var(--text-xs);
   }
 

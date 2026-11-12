@@ -90,7 +90,7 @@
 
   .note {
     margin: 0;
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font-size: var(--text-sm);
     line-height: var(--leading-normal);
   }
@@ -101,7 +101,7 @@
     align-items: flex-start;
     gap: var(--space-2);
     padding-block-start: var(--space-4);
-    border-block-start: var(--border-thin) solid var(--border);
+    border-block-start: var(--border-thin) solid var(--border-strong);
   }
 
   h3 {
@@ -111,6 +111,6 @@
 
   .danger p {
     margin: 0;
-    color: var(--text-muted);
+    color: var(--text-secondary);
   }
 </style>

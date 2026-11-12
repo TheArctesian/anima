@@ -1,95 +1,1135 @@
 {
   "color": {
     "$type": "color",
-    "nord": {
-      "0": {
-        "$value": "#2E3440",
-        "$description": "Nord primitive nord0. Source token only (TOK-010)."
+    "role": {
+      "nord": {
+        "surface-sunken": {
+          "$type": "color",
+          "$value": "{color.nord.0-sunken}",
+          "$description": "Page background behind cards; inputs on a raised card (5.1.2).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.nord.5}"
+            }
+          }
+        },
+        "surface-base": {
+          "$type": "color",
+          "$value": "{color.nord.0}",
+          "$description": "Window background, navigation bar (5.1.2).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.nord.6}"
+            }
+          }
+        },
+        "surface-raised": {
+          "$type": "color",
+          "$value": "{color.nord.1}",
+          "$description": "Cards, tables, form sections, menus (5.1.2).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.nord.6-raised}"
+            }
+          }
+        },
+        "surface-overlay": {
+          "$type": "color",
+          "$value": "{color.nord.2}",
+          "$description": "Dialogs, popovers, HelpTips (5.1.2).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.nord.white}"
+            }
+          }
+        },
+        "surface-hover": {
+          "$type": "color",
+          "$value": "{color.nord.2}",
+          "$description": "Fill under text for a hovered row or control (CR-10, 5.1.2).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.nord.5}"
+            }
+          }
+        },
+        "surface-selected": {
+          "$type": "color",
+          "$value": "{color.role.nord.accent-tint}",
+          "$description": "Selected row and item: the accent tint (5.1.2).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.role.nord.accent-tint}"
+            }
+          }
+        },
+        "border-subtle": {
+          "$type": "color",
+          "$value": "{color.nord.2}",
+          "$description": "Where two equal surfaces meet; table row separators (5.1.2).",
+          "$extensions": {
+            "anima": {
+              "light": {
+                "color": "{color.nord.4}",
+                "percent": 30,
+                "over": "{color.nord.5}"
+              }
+            }
+          }
+        },
+        "border-strong": {
+          "$type": "color",
+          "$value": "{color.nord.3-strong}",
+          "$description": "Inputs; every border under prefers-contrast: more (5.1.2). Derived to 2:1 on surface-raised.",
+          "$extensions": {
+            "anima": {
+              "light": "{color.nord.4-strong}"
+            }
+          }
+        },
+        "text": {
+          "$type": "color",
+          "$value": "{color.nord.6}",
+          "$description": "Primary text (5.1.2).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.nord.0}"
+            }
+          }
+        },
+        "text-secondary": {
+          "$type": "color",
+          "$value": {
+            "color": "{color.nord.3}",
+            "percent": 25,
+            "over": "{color.nord.4}"
+          },
+          "$description": "Secondary text. Dark: nord4 mixed 25 % toward nord3; reaches 4.5:1 on every surface tier (UI-002).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.nord.3}"
+            }
+          }
+        },
+        "text-tertiary": {
+          "$type": "color",
+          "$value": "{color.nord.3-tertiary}",
+          "$description": "Placeholder and disabled text. Dark: nord3 mixed toward nord4 to 3:1 on surface-overlay. Light: nord3, the least mix that reaches 4.5:1 on surface-raised.",
+          "$extensions": {
+            "anima": {
+              "light": "{color.nord.3}"
+            }
+          }
+        },
+        "accent": {
+          "$type": "color",
+          "$value": "{color.nord.8}",
+          "$description": "The one accent (5.1.2). Light: nord10 deepened to 4.5:1 on surface-sunken (UI-005).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.nord.10-deep}"
+            }
+          }
+        },
+        "accent-hover": {
+          "$type": "color",
+          "$value": {
+            "color": "{color.nord.6}",
+            "percent": 15,
+            "over": "{color.nord.8}"
+          },
+          "$description": "Dark: nord8 mixed 15 % toward nord6. Light: accent mixed 12 % toward nord0.",
+          "$extensions": {
+            "anima": {
+              "light": {
+                "color": "{color.nord.0}",
+                "percent": 12,
+                "over": "{color.role.nord.accent}"
+              }
+            }
+          }
+        },
+        "accent-pressed": {
+          "$type": "color",
+          "$value": "{color.nord.10}",
+          "$description": "Pressed primary button. Dark: nord10. Light: accent mixed 25 % toward nord0.",
+          "$extensions": {
+            "anima": {
+              "light": {
+                "color": "{color.nord.0}",
+                "percent": 25,
+                "over": "{color.role.nord.accent}"
+              }
+            }
+          }
+        },
+        "on-accent": {
+          "$type": "color",
+          "$value": "{color.nord.0}",
+          "$description": "Text on an accent fill; reaches 4.5:1 on accent (UI-004).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.nord.white}"
+            }
+          }
+        },
+        "accent-tint": {
+          "$type": "color",
+          "$value": {
+            "color": "{color.role.nord.accent}",
+            "percent": 16,
+            "over": "{color.role.nord.surface-raised}"
+          },
+          "$description": "Accent at 16 % (dark) or 14 % (light) over surface-raised (5.5.3).",
+          "$extensions": {
+            "anima": {
+              "light": {
+                "color": "{color.role.nord.accent}",
+                "percent": 14,
+                "over": "{color.role.nord.surface-raised}"
+              }
+            }
+          }
+        },
+        "status-up": {
+          "$type": "color",
+          "$value": "{color.nord.14}",
+          "$description": "Device or check is up (5.1.2). Dark: lifted to 3:1 on surface-raised where needed; light: the deep value (3:1).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.nord.14-deep}"
+            }
+          }
+        },
+        "status-down": {
+          "$type": "color",
+          "$value": "{color.nord.11-lifted}",
+          "$description": "Device or check is down; error messages (5.1.2). Dark: lifted to 3:1 on surface-raised where needed; light: the deep value (3:1).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.nord.11-deep}"
+            }
+          }
+        },
+        "status-degraded": {
+          "$type": "color",
+          "$value": "{color.nord.13}",
+          "$description": "Slow response or high resource usage (5.1.2). Dark: lifted to 3:1 on surface-raised where needed; light: the deep value (3:1).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.nord.13-deep}"
+            }
+          }
+        },
+        "status-warning": {
+          "$type": "color",
+          "$value": "{color.nord.12}",
+          "$description": "Warnings; host key changed (5.1.2). Dark: lifted to 3:1 on surface-raised where needed; light: the deep value (3:1).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.nord.12-deep}"
+            }
+          }
+        },
+        "status-maintenance": {
+          "$type": "color",
+          "$value": "{color.nord.15}",
+          "$description": "Device is in maintenance (5.1.2). Dark: lifted to 3:1 on surface-raised where needed; light: the deep value (3:1).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.nord.15-deep}"
+            }
+          }
+        },
+        "status-unknown": {
+          "$type": "color",
+          "$value": "{color.role.nord.text-tertiary}",
+          "$description": "No data, or the check is paused. Same value as text-tertiary (5.1.2).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.role.nord.text-tertiary}"
+            }
+          }
+        },
+        "status-up-tint": {
+          "$type": "color",
+          "$value": {
+            "color": "{color.role.nord.status-up}",
+            "percent": 16,
+            "over": "{color.role.nord.surface-raised}"
+          },
+          "$description": "Status colour at 16 % (dark) or 14 % (light) over surface-raised (5.5.3).",
+          "$extensions": {
+            "anima": {
+              "light": {
+                "color": "{color.role.nord.status-up}",
+                "percent": 14,
+                "over": "{color.role.nord.surface-raised}"
+              }
+            }
+          }
+        },
+        "status-up-text": {
+          "$type": "color",
+          "$value": "{color.nord.14-text}",
+          "$description": "Status badge text: dark toward nord6, light toward nord0, to 4.5:1 on its own tint (UI-005).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.nord.14-deep-text}"
+            }
+          }
+        },
+        "status-down-tint": {
+          "$type": "color",
+          "$value": {
+            "color": "{color.role.nord.status-down}",
+            "percent": 16,
+            "over": "{color.role.nord.surface-raised}"
+          },
+          "$description": "Status colour at 16 % (dark) or 14 % (light) over surface-raised (5.5.3).",
+          "$extensions": {
+            "anima": {
+              "light": {
+                "color": "{color.role.nord.status-down}",
+                "percent": 14,
+                "over": "{color.role.nord.surface-raised}"
+              }
+            }
+          }
+        },
+        "status-down-text": {
+          "$type": "color",
+          "$value": "{color.nord.11-text}",
+          "$description": "Status badge text: dark toward nord6, light toward nord0, to 4.5:1 on its own tint (UI-005).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.nord.11-deep-text}"
+            }
+          }
+        },
+        "status-degraded-tint": {
+          "$type": "color",
+          "$value": {
+            "color": "{color.role.nord.status-degraded}",
+            "percent": 16,
+            "over": "{color.role.nord.surface-raised}"
+          },
+          "$description": "Status colour at 16 % (dark) or 14 % (light) over surface-raised (5.5.3).",
+          "$extensions": {
+            "anima": {
+              "light": {
+                "color": "{color.role.nord.status-degraded}",
+                "percent": 14,
+                "over": "{color.role.nord.surface-raised}"
+              }
+            }
+          }
+        },
+        "status-degraded-text": {
+          "$type": "color",
+          "$value": "{color.nord.13-text}",
+          "$description": "Status badge text: dark toward nord6, light toward nord0, to 4.5:1 on its own tint (UI-005).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.nord.13-deep-text}"
+            }
+          }
+        },
+        "status-warning-tint": {
+          "$type": "color",
+          "$value": {
+            "color": "{color.role.nord.status-warning}",
+            "percent": 16,
+            "over": "{color.role.nord.surface-raised}"
+          },
+          "$description": "Status colour at 16 % (dark) or 14 % (light) over surface-raised (5.5.3).",
+          "$extensions": {
+            "anima": {
+              "light": {
+                "color": "{color.role.nord.status-warning}",
+                "percent": 14,
+                "over": "{color.role.nord.surface-raised}"
+              }
+            }
+          }
+        },
+        "status-warning-text": {
+          "$type": "color",
+          "$value": "{color.nord.12-text}",
+          "$description": "Status badge text: dark toward nord6, light toward nord0, to 4.5:1 on its own tint (UI-005).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.nord.12-deep-text}"
+            }
+          }
+        },
+        "status-maintenance-tint": {
+          "$type": "color",
+          "$value": {
+            "color": "{color.role.nord.status-maintenance}",
+            "percent": 16,
+            "over": "{color.role.nord.surface-raised}"
+          },
+          "$description": "Status colour at 16 % (dark) or 14 % (light) over surface-raised (5.5.3).",
+          "$extensions": {
+            "anima": {
+              "light": {
+                "color": "{color.role.nord.status-maintenance}",
+                "percent": 14,
+                "over": "{color.role.nord.surface-raised}"
+              }
+            }
+          }
+        },
+        "status-maintenance-text": {
+          "$type": "color",
+          "$value": "{color.nord.15-text}",
+          "$description": "Status badge text: dark toward nord6, light toward nord0, to 4.5:1 on its own tint (UI-005).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.nord.15-deep-text}"
+            }
+          }
+        },
+        "status-unknown-tint": {
+          "$type": "color",
+          "$value": {
+            "color": "{color.role.nord.status-unknown}",
+            "percent": 16,
+            "over": "{color.role.nord.surface-raised}"
+          },
+          "$description": "Status colour at 16 % (dark) or 14 % (light) over surface-raised (5.5.3).",
+          "$extensions": {
+            "anima": {
+              "light": {
+                "color": "{color.role.nord.status-unknown}",
+                "percent": 14,
+                "over": "{color.role.nord.surface-raised}"
+              }
+            }
+          }
+        },
+        "status-unknown-text": {
+          "$type": "color",
+          "$value": "{color.nord.3-tertiary-text}",
+          "$description": "Unknown badge text, to 4.5:1 on its own tint (UI-005).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.nord.3-deep-text}"
+            }
+          }
+        },
+        "danger": {
+          "$type": "color",
+          "$value": "{color.role.nord.status-down}",
+          "$description": "Destructive buttons: status-down (dark), status-down-text (light) (5.1.2).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.role.nord.status-down-text}"
+            }
+          }
+        },
+        "on-danger": {
+          "$type": "color",
+          "$value": "{color.nord.0}",
+          "$description": "Text on a danger fill: nord0 (dark), white (light) (5.1.2, UI-004).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.nord.white}"
+            }
+          }
+        },
+        "scrim": {
+          "$type": "color",
+          "$value": {
+            "color": "{color.nord.0}",
+            "percent": 50,
+            "over": "transparent"
+          },
+          "$description": "Modal dim: nord0 at 50 % (dark) or 35 % (light) (MAT-003).",
+          "$extensions": {
+            "anima": {
+              "light": {
+                "color": "{color.nord.0}",
+                "percent": 35,
+                "over": "transparent"
+              }
+            }
+          }
+        },
+        "focus-ring": {
+          "$type": "color",
+          "$value": "{color.role.nord.accent}",
+          "$description": "The 2 px focus outline (5.1.2).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.role.nord.accent}"
+            }
+          }
+        },
+        "shadow": {
+          "$type": "color",
+          "$value": "{color.nord.0}",
+          "$description": "Shadow colour of elevation-2 and elevation-3 (5.6).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.nord.0}"
+            }
+          }
+        },
+        "chart-grid": {
+          "$type": "color",
+          "$value": "{color.nord.3}",
+          "$description": "Chart grid lines (K5, MET-004).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.nord.4}"
+            }
+          }
+        },
+        "chart-axis": {
+          "$type": "color",
+          "$value": "{color.nord.4}",
+          "$description": "Chart axis labels (K5, MET-004).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.nord.3}"
+            }
+          }
+        },
+        "chart-threshold": {
+          "$type": "color",
+          "$value": "{color.nord.13}",
+          "$description": "Chart 85 % threshold line (K5, MET-004).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.nord.13-deep}"
+            }
+          }
+        },
+        "chart-series-1": {
+          "$type": "color",
+          "$value": "{color.nord.8}",
+          "$description": "Chart series 1 (K5, MET-004).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.nord.10}"
+            }
+          }
+        },
+        "chart-series-2": {
+          "$type": "color",
+          "$value": "{color.nord.9}",
+          "$description": "Chart series 2 (K5, MET-004).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.nord.3}"
+            }
+          }
+        },
+        "chart-series-3": {
+          "$type": "color",
+          "$value": "{color.nord.10}",
+          "$description": "Chart series 3 (K5, MET-004).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.nord.14-deep}"
+            }
+          }
+        },
+        "chart-series-4": {
+          "$type": "color",
+          "$value": "{color.nord.7}",
+          "$description": "Chart series 4 (K5, MET-004).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.nord.15-deep}"
+            }
+          }
+        },
+        "chart-series-5": {
+          "$type": "color",
+          "$value": "{color.nord.15}",
+          "$description": "Chart series 5 (K5, MET-004).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.nord.12-deep}"
+            }
+          }
+        },
+        "chart-series-6": {
+          "$type": "color",
+          "$value": "{color.nord.12}",
+          "$description": "Chart series 6 (K5, MET-004).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.nord.11-deep}"
+            }
+          }
+        }
       },
-      "1": {
-        "$value": "#3B4252",
-        "$description": "Nord primitive nord1. Source token only (TOK-010)."
-      },
-      "2": {
-        "$value": "#434C5E",
-        "$description": "Nord primitive nord2. Source token only (TOK-010)."
-      },
-      "3": {
-        "$value": "#4C566A",
-        "$description": "Nord primitive nord3. Source token only (TOK-010)."
-      },
-      "4": {
-        "$value": "#D8DEE9",
-        "$description": "Nord primitive nord4. Source token only (TOK-010)."
-      },
-      "5": {
-        "$value": "#E5E9F0",
-        "$description": "Nord primitive nord5. Source token only (TOK-010)."
-      },
-      "6": {
-        "$value": "#ECEFF4",
-        "$description": "Nord primitive nord6. Source token only (TOK-010)."
-      },
-      "7": {
-        "$value": "#8FBCBB",
-        "$description": "Nord primitive nord7. Source token only (TOK-010)."
-      },
-      "8": {
-        "$value": "#88C0D0",
-        "$description": "Nord primitive nord8. Source token only (TOK-010)."
-      },
-      "9": {
-        "$value": "#81A1C1",
-        "$description": "Nord primitive nord9. Source token only (TOK-010)."
-      },
-      "10": {
-        "$value": "#5E81AC",
-        "$description": "Nord primitive nord10. Source token only (TOK-010)."
-      },
-      "11": {
-        "$value": "#BF616A",
-        "$description": "Nord primitive nord11. Source token only (TOK-010)."
-      },
-      "12": {
-        "$value": "#D08770",
-        "$description": "Nord primitive nord12. Source token only (TOK-010)."
-      },
-      "13": {
-        "$value": "#EBCB8B",
-        "$description": "Nord primitive nord13. Source token only (TOK-010)."
-      },
-      "14": {
-        "$value": "#A3BE8C",
-        "$description": "Nord primitive nord14. Source token only (TOK-010)."
-      },
-      "15": {
-        "$value": "#B48EAD",
-        "$description": "Nord primitive nord15. Source token only (TOK-010)."
-      },
-      "11-deep": {
-        "$value": "#BF616A",
-        "$description": "Nord primitive nord11 mixed 0 % toward nord-0 until it reaches 3:1 on nord-4, so it holds 3:1 on every light surface (R-086, D-27). Source token only (TOK-010): only the light status and chart values use it."
-      },
-      "12-deep": {
-        "$value": "#A67164",
-        "$description": "Nord primitive nord12 mixed 26 % toward nord-0 until it reaches 3:1 on nord-4, so it holds 3:1 on every light surface (R-086, D-27). Source token only (TOK-010): only the light status and chart values use it."
-      },
-      "13-deep": {
-        "$value": "#897C64",
-        "$description": "Nord primitive nord13 mixed 52 % toward nord-0 until it reaches 3:1 on nord-4, so it holds 3:1 on every light surface (R-086, D-27). Source token only (TOK-010): only the light status and chart values use it."
-      },
-      "14-deep": {
-        "$value": "#71836B",
-        "$description": "Nord primitive nord14 mixed 43 % toward nord-0 until it reaches 3:1 on nord-4, so it holds 3:1 on every light surface (R-086, D-27). Source token only (TOK-010): only the light status and chart values use it."
-      },
-      "15-deep": {
-        "$value": "#907690",
-        "$description": "Nord primitive nord15 mixed 27 % toward nord-0 until it reaches 3:1 on nord-4, so it holds 3:1 on every light surface (R-086, D-27). Source token only (TOK-010): only the light status and chart values use it."
+      "graphite": {
+        "surface-sunken": {
+          "$type": "color",
+          "$value": "{color.graphite.dark-sunken}",
+          "$description": "Page background behind cards (5.1.2).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.graphite.light-sunken}"
+            }
+          }
+        },
+        "surface-base": {
+          "$type": "color",
+          "$value": "{color.graphite.dark-base}",
+          "$description": "Window background, navigation bar (5.1.2).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.graphite.light-base}"
+            }
+          }
+        },
+        "surface-raised": {
+          "$type": "color",
+          "$value": "{color.graphite.dark-raised}",
+          "$description": "Cards, tables, form sections, menus (5.1.2).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.graphite.light-raised}"
+            }
+          }
+        },
+        "surface-overlay": {
+          "$type": "color",
+          "$value": "{color.graphite.dark-overlay}",
+          "$description": "Dialogs, popovers, HelpTips (5.1.2).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.graphite.light-overlay}"
+            }
+          }
+        },
+        "surface-hover": {
+          "$type": "color",
+          "$value": "{color.graphite.dark-overlay}",
+          "$description": "Fill under text for a hovered row or control (CR-10, 5.1.2).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.graphite.light-sunken}"
+            }
+          }
+        },
+        "surface-selected": {
+          "$type": "color",
+          "$value": "{color.role.graphite.accent-tint}",
+          "$description": "Selected row and item: the accent tint (5.1.2).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.role.graphite.accent-tint}"
+            }
+          }
+        },
+        "border-subtle": {
+          "$type": "color",
+          "$value": "{color.graphite.dark-border-subtle}",
+          "$description": "Where two equal surfaces meet; table row separators (5.1.2).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.graphite.light-border-subtle}"
+            }
+          }
+        },
+        "border-strong": {
+          "$type": "color",
+          "$value": "{color.graphite.dark-border-strong-derived}",
+          "$description": "Inputs; every border under prefers-contrast: more. Derived to 2:1 on surface-raised (5.1.2).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.graphite.light-border-strong-derived}"
+            }
+          }
+        },
+        "text": {
+          "$type": "color",
+          "$value": "{color.graphite.dark-text}",
+          "$description": "Primary text (5.1.2).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.graphite.light-text}"
+            }
+          }
+        },
+        "text-secondary": {
+          "$type": "color",
+          "$value": "{color.graphite.dark-text-secondary}",
+          "$description": "Secondary text; 4.5:1 on every surface tier (UI-002).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.graphite.light-text-secondary}"
+            }
+          }
+        },
+        "text-tertiary": {
+          "$type": "color",
+          "$value": "{color.graphite.dark-text-tertiary}",
+          "$description": "Placeholder and disabled text. Light derived to 4.5:1 on surface-raised; dark 3:1 on surface-overlay (5.1.2).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.graphite.light-text-tertiary-derived}"
+            }
+          }
+        },
+        "accent": {
+          "$type": "color",
+          "$value": "{color.graphite.frost-8}",
+          "$description": "The one accent. Light: nord8 value mixed toward Graphite ink to 4.5:1 on surface-sunken (UI-005).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.graphite.accent-light}"
+            }
+          }
+        },
+        "accent-hover": {
+          "$type": "color",
+          "$value": {
+            "color": "{color.graphite.dark-text-lightest}",
+            "percent": 15,
+            "over": "{color.graphite.frost-8}"
+          },
+          "$description": "Dark: accent mixed 15 % toward the lightest neutral. Light: accent mixed 12 % toward ink.",
+          "$extensions": {
+            "anima": {
+              "light": {
+                "color": "{color.graphite.light-text}",
+                "percent": 12,
+                "over": "{color.role.graphite.accent}"
+              }
+            }
+          }
+        },
+        "accent-pressed": {
+          "$type": "color",
+          "$value": "{color.graphite.frost-10}",
+          "$description": "Pressed primary button. Dark: frost-10. Light: accent mixed 25 % toward ink.",
+          "$extensions": {
+            "anima": {
+              "light": {
+                "color": "{color.graphite.light-text}",
+                "percent": 25,
+                "over": "{color.role.graphite.accent}"
+              }
+            }
+          }
+        },
+        "on-accent": {
+          "$type": "color",
+          "$value": "{color.graphite.dark-sunken}",
+          "$description": "Text on an accent fill; 4.5:1 on accent (UI-004).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.graphite.white}"
+            }
+          }
+        },
+        "accent-tint": {
+          "$type": "color",
+          "$value": {
+            "color": "{color.role.graphite.accent}",
+            "percent": 16,
+            "over": "{color.role.graphite.surface-raised}"
+          },
+          "$description": "Accent at 16 % (dark) or 14 % (light) over surface-raised (5.5.3).",
+          "$extensions": {
+            "anima": {
+              "light": {
+                "color": "{color.role.graphite.accent}",
+                "percent": 14,
+                "over": "{color.role.graphite.surface-raised}"
+              }
+            }
+          }
+        },
+        "status-up": {
+          "$type": "color",
+          "$value": "{color.graphite.aurora-14-lifted}",
+          "$description": "Device or check is up (5.1.2). Dark: Nord aurora lifted to 3:1 on surface-raised; light: deepened to 3:1 on surface-sunken.",
+          "$extensions": {
+            "anima": {
+              "light": "{color.graphite.aurora-14-deep}"
+            }
+          }
+        },
+        "status-down": {
+          "$type": "color",
+          "$value": "{color.graphite.aurora-11-lifted}",
+          "$description": "Device or check is down; error messages (5.1.2). Dark: Nord aurora lifted to 3:1 on surface-raised; light: deepened to 3:1 on surface-sunken.",
+          "$extensions": {
+            "anima": {
+              "light": "{color.graphite.aurora-11-deep}"
+            }
+          }
+        },
+        "status-degraded": {
+          "$type": "color",
+          "$value": "{color.graphite.aurora-13-lifted}",
+          "$description": "Slow response or high resource usage (5.1.2). Dark: Nord aurora lifted to 3:1 on surface-raised; light: deepened to 3:1 on surface-sunken.",
+          "$extensions": {
+            "anima": {
+              "light": "{color.graphite.aurora-13-deep}"
+            }
+          }
+        },
+        "status-warning": {
+          "$type": "color",
+          "$value": "{color.graphite.aurora-12-lifted}",
+          "$description": "Warnings; host key changed (5.1.2). Dark: Nord aurora lifted to 3:1 on surface-raised; light: deepened to 3:1 on surface-sunken.",
+          "$extensions": {
+            "anima": {
+              "light": "{color.graphite.aurora-12-deep}"
+            }
+          }
+        },
+        "status-maintenance": {
+          "$type": "color",
+          "$value": "{color.graphite.aurora-15-lifted}",
+          "$description": "Device is in maintenance (5.1.2). Dark: Nord aurora lifted to 3:1 on surface-raised; light: deepened to 3:1 on surface-sunken.",
+          "$extensions": {
+            "anima": {
+              "light": "{color.graphite.aurora-15-deep}"
+            }
+          }
+        },
+        "status-unknown": {
+          "$type": "color",
+          "$value": "{color.role.graphite.text-tertiary}",
+          "$description": "No data, or the check is paused. Same value as text-tertiary (5.1.2).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.role.graphite.text-tertiary}"
+            }
+          }
+        },
+        "status-up-tint": {
+          "$type": "color",
+          "$value": {
+            "color": "{color.role.graphite.status-up}",
+            "percent": 16,
+            "over": "{color.role.graphite.surface-raised}"
+          },
+          "$description": "Status colour at 16 % (dark) or 14 % (light) over surface-raised (5.5.3).",
+          "$extensions": {
+            "anima": {
+              "light": {
+                "color": "{color.role.graphite.status-up}",
+                "percent": 14,
+                "over": "{color.role.graphite.surface-raised}"
+              }
+            }
+          }
+        },
+        "status-up-text": {
+          "$type": "color",
+          "$value": "{color.graphite.aurora-14-text}",
+          "$description": "Status badge text: dark toward the lightest neutral, light toward ink, to 4.5:1 on its own tint (UI-005).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.graphite.aurora-14-deep-text}"
+            }
+          }
+        },
+        "status-down-tint": {
+          "$type": "color",
+          "$value": {
+            "color": "{color.role.graphite.status-down}",
+            "percent": 16,
+            "over": "{color.role.graphite.surface-raised}"
+          },
+          "$description": "Status colour at 16 % (dark) or 14 % (light) over surface-raised (5.5.3).",
+          "$extensions": {
+            "anima": {
+              "light": {
+                "color": "{color.role.graphite.status-down}",
+                "percent": 14,
+                "over": "{color.role.graphite.surface-raised}"
+              }
+            }
+          }
+        },
+        "status-down-text": {
+          "$type": "color",
+          "$value": "{color.graphite.aurora-11-text}",
+          "$description": "Status badge text: dark toward the lightest neutral, light toward ink, to 4.5:1 on its own tint (UI-005).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.graphite.aurora-11-deep-text}"
+            }
+          }
+        },
+        "status-degraded-tint": {
+          "$type": "color",
+          "$value": {
+            "color": "{color.role.graphite.status-degraded}",
+            "percent": 16,
+            "over": "{color.role.graphite.surface-raised}"
+          },
+          "$description": "Status colour at 16 % (dark) or 14 % (light) over surface-raised (5.5.3).",
+          "$extensions": {
+            "anima": {
+              "light": {
+                "color": "{color.role.graphite.status-degraded}",
+                "percent": 14,
+                "over": "{color.role.graphite.surface-raised}"
+              }
+            }
+          }
+        },
+        "status-degraded-text": {
+          "$type": "color",
+          "$value": "{color.graphite.aurora-13-text}",
+          "$description": "Status badge text: dark toward the lightest neutral, light toward ink, to 4.5:1 on its own tint (UI-005).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.graphite.aurora-13-deep-text}"
+            }
+          }
+        },
+        "status-warning-tint": {
+          "$type": "color",
+          "$value": {
+            "color": "{color.role.graphite.status-warning}",
+            "percent": 16,
+            "over": "{color.role.graphite.surface-raised}"
+          },
+          "$description": "Status colour at 16 % (dark) or 14 % (light) over surface-raised (5.5.3).",
+          "$extensions": {
+            "anima": {
+              "light": {
+                "color": "{color.role.graphite.status-warning}",
+                "percent": 14,
+                "over": "{color.role.graphite.surface-raised}"
+              }
+            }
+          }
+        },
+        "status-warning-text": {
+          "$type": "color",
+          "$value": "{color.graphite.aurora-12-text}",
+          "$description": "Status badge text: dark toward the lightest neutral, light toward ink, to 4.5:1 on its own tint (UI-005).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.graphite.aurora-12-deep-text}"
+            }
+          }
+        },
+        "status-maintenance-tint": {
+          "$type": "color",
+          "$value": {
+            "color": "{color.role.graphite.status-maintenance}",
+            "percent": 16,
+            "over": "{color.role.graphite.surface-raised}"
+          },
+          "$description": "Status colour at 16 % (dark) or 14 % (light) over surface-raised (5.5.3).",
+          "$extensions": {
+            "anima": {
+              "light": {
+                "color": "{color.role.graphite.status-maintenance}",
+                "percent": 14,
+                "over": "{color.role.graphite.surface-raised}"
+              }
+            }
+          }
+        },
+        "status-maintenance-text": {
+          "$type": "color",
+          "$value": "{color.graphite.aurora-15-text}",
+          "$description": "Status badge text: dark toward the lightest neutral, light toward ink, to 4.5:1 on its own tint (UI-005).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.graphite.aurora-15-deep-text}"
+            }
+          }
+        },
+        "status-unknown-tint": {
+          "$type": "color",
+          "$value": {
+            "color": "{color.role.graphite.status-unknown}",
+            "percent": 16,
+            "over": "{color.role.graphite.surface-raised}"
+          },
+          "$description": "Status colour at 16 % (dark) or 14 % (light) over surface-raised (5.5.3).",
+          "$extensions": {
+            "anima": {
+              "light": {
+                "color": "{color.role.graphite.status-unknown}",
+                "percent": 14,
+                "over": "{color.role.graphite.surface-raised}"
+              }
+            }
+          }
+        },
+        "status-unknown-text": {
+          "$type": "color",
+          "$value": "{color.graphite.dark-tertiary-text}",
+          "$description": "Unknown badge text, to 4.5:1 on its own tint (UI-005).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.graphite.light-tertiary-text}"
+            }
+          }
+        },
+        "danger": {
+          "$type": "color",
+          "$value": "{color.role.graphite.status-down}",
+          "$description": "Destructive buttons: status-down (dark), status-down-text (light) (5.1.2).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.role.graphite.status-down-text}"
+            }
+          }
+        },
+        "on-danger": {
+          "$type": "color",
+          "$value": "{color.graphite.dark-sunken}",
+          "$description": "Text on a danger fill (5.1.2, UI-004).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.graphite.white}"
+            }
+          }
+        },
+        "scrim": {
+          "$type": "color",
+          "$value": {
+            "color": "{color.graphite.black}",
+            "percent": 55,
+            "over": "transparent"
+          },
+          "$description": "Modal dim: black at 55 % (dark), ink at 35 % (light) (MAT-003).",
+          "$extensions": {
+            "anima": {
+              "light": {
+                "color": "{color.graphite.light-text}",
+                "percent": 35,
+                "over": "transparent"
+              }
+            }
+          }
+        },
+        "focus-ring": {
+          "$type": "color",
+          "$value": "{color.role.graphite.accent}",
+          "$description": "The 2 px focus outline (5.1.2).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.role.graphite.accent}"
+            }
+          }
+        },
+        "shadow": {
+          "$type": "color",
+          "$value": "{color.graphite.black}",
+          "$description": "Shadow colour of elevation-2 and elevation-3: black (dark), ink (light) (5.6).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.graphite.light-text}"
+            }
+          }
+        },
+        "chart-grid": {
+          "$type": "color",
+          "$value": "{color.graphite.dark-border-strong}",
+          "$description": "Chart grid lines (K5, MET-004).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.graphite.light-border-strong}"
+            }
+          }
+        },
+        "chart-axis": {
+          "$type": "color",
+          "$value": "{color.graphite.dark-text-secondary}",
+          "$description": "Chart axis labels (K5, MET-004).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.graphite.light-text-secondary}"
+            }
+          }
+        },
+        "chart-threshold": {
+          "$type": "color",
+          "$value": "{color.role.graphite.status-degraded}",
+          "$description": "Chart 85 % threshold line (K5, MET-004).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.role.graphite.status-degraded}"
+            }
+          }
+        },
+        "chart-series-1": {
+          "$type": "color",
+          "$value": "{color.graphite.frost-8}",
+          "$description": "Chart series 1 (K5, MET-004).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.graphite.frost-10}"
+            }
+          }
+        },
+        "chart-series-2": {
+          "$type": "color",
+          "$value": "{color.graphite.frost-9}",
+          "$description": "Chart series 2 (K5, MET-004).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.graphite.light-text-secondary}"
+            }
+          }
+        },
+        "chart-series-3": {
+          "$type": "color",
+          "$value": "{color.graphite.frost-10}",
+          "$description": "Chart series 3 (K5, MET-004).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.graphite.aurora-14-deep}"
+            }
+          }
+        },
+        "chart-series-4": {
+          "$type": "color",
+          "$value": "{color.graphite.frost-7}",
+          "$description": "Chart series 4 (K5, MET-004).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.graphite.aurora-15-deep}"
+            }
+          }
+        },
+        "chart-series-5": {
+          "$type": "color",
+          "$value": "{color.graphite.aurora-15}",
+          "$description": "Chart series 5 (K5, MET-004).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.graphite.aurora-12-deep}"
+            }
+          }
+        },
+        "chart-series-6": {
+          "$type": "color",
+          "$value": "{color.graphite.aurora-12}",
+          "$description": "Chart series 6 (K5, MET-004).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.graphite.aurora-11-deep}"
+            }
+          }
+        }
       }
     },
     "bg": {
       "$value": "{color.nord.0}",
-      "$description": "Main background",
+      "$description": "Legacy name for surface-base (TOK-004). No call site uses it; removed with the K5 contract update.",
       "$extensions": {
         "anima": {
           "light": "{color.nord.5}"
@@ -98,74 +1138,25 @@
     },
     "surface": {
       "$value": "{color.nord.1}",
-      "$description": "Navigation bar, cards, panels",
+      "$description": "Legacy name for surface-raised (TOK-004). No call site uses it; removed with the K5 contract update.",
       "$extensions": {
         "anima": {
           "light": "{color.nord.6}"
         }
       }
     },
-    "surface-raised": {
-      "$value": "{color.nord.2}",
-      "$description": "Hover state, selected row, input fields",
+    "text-muted": {
+      "$value": "{color.nord.4}",
+      "$description": "Legacy name for text-secondary (TOK-004). No call site uses it; removed with the K5 contract update.",
       "$extensions": {
         "anima": {
-          "light": "{color.nord.4}"
-        }
-      }
-    },
-    "surface-hover": {
-      "$value": "{color.nord.3}",
-      "$description": "Fill under text for a hovered row or control (CR-10). A component never uses border as a fill",
-      "$extensions": {
-        "anima": {
-          "light": {
-            "color": "{color.nord.3}",
-            "percent": 12,
-            "over": "{color.nord.4}"
-          }
+          "light": "{color.nord.3}"
         }
       }
     },
     "border": {
       "$value": "{color.nord.3}",
-      "$description": "Borders and dividers",
-      "$extensions": {
-        "anima": {
-          "light": "{color.nord.10}"
-        }
-      }
-    },
-    "text": {
-      "$value": "{color.nord.6}",
-      "$description": "Primary text",
-      "$extensions": {
-        "anima": {
-          "light": "{color.nord.0}"
-        }
-      }
-    },
-    "text-muted": {
-      "$value": "{color.nord.4}",
-      "$description": "Secondary text and labels",
-      "$extensions": {
-        "anima": {
-          "light": "{color.nord.3}"
-        }
-      }
-    },
-    "accent": {
-      "$value": "{color.nord.8}",
-      "$description": "Primary buttons, links, active navigation item, focus ring. Text on it uses bg (UI-004)",
-      "$extensions": {
-        "anima": {
-          "light": "{color.nord.3}"
-        }
-      }
-    },
-    "accent-alt": {
-      "$value": "{color.nord.9}",
-      "$description": "Secondary buttons and icons",
+      "$description": "Legacy name for border-strong (TOK-004). No call site uses it; removed with the K5 contract update.",
       "$extensions": {
         "anima": {
           "light": "{color.nord.10}"
@@ -174,228 +1165,30 @@
     },
     "accent-deep": {
       "$value": "{color.nord.10}",
-      "$description": "Pressed state of a primary button",
+      "$description": "Legacy name for accent-pressed (TOK-004). No call site uses it; removed with the K5 contract update.",
       "$extensions": {
         "anima": {
           "light": "{color.nord.0}"
         }
       }
     },
+    "accent-alt": {
+      "$value": "{color.nord.9}",
+      "$description": "Legacy name for accent (TOK-004). No call site uses it; removed with the K5 contract update.",
+      "$extensions": {
+        "anima": {
+          "light": "{color.nord.10}"
+        }
+      }
+    },
     "info": {
       "$value": "{color.nord.7}",
-      "$description": "Information messages",
+      "$description": "Legacy name for accent (TOK-004). No call site uses it; removed with the K5 contract update.",
       "$extensions": {
         "anima": {
           "light": "{color.nord.10}"
         }
       }
-    },
-    "status-up": {
-      "$value": "{color.nord.14}",
-      "$description": "Device or check is up",
-      "$extensions": {
-        "anima": {
-          "light": "{color.nord.14-deep}"
-        }
-      }
-    },
-    "status-down": {
-      "$value": "{color.nord.11}",
-      "$description": "Device or check is down. Error messages",
-      "$extensions": {
-        "anima": {
-          "light": "{color.nord.11-deep}"
-        }
-      }
-    },
-    "status-degraded": {
-      "$value": "{color.nord.13}",
-      "$description": "Slow response or high resource usage",
-      "$extensions": {
-        "anima": {
-          "light": "{color.nord.13-deep}"
-        }
-      }
-    },
-    "status-warning": {
-      "$value": "{color.nord.12}",
-      "$description": "Warnings. Host key changed",
-      "$extensions": {
-        "anima": {
-          "light": "{color.nord.12-deep}"
-        }
-      }
-    },
-    "status-maintenance": {
-      "$value": "{color.nord.15}",
-      "$description": "Device is in maintenance",
-      "$extensions": {
-        "anima": {
-          "light": "{color.nord.15-deep}"
-        }
-      }
-    },
-    "status-unknown": {
-      "$value": "{color.nord.3}",
-      "$description": "No data, or the check is paused",
-      "$extensions": {
-        "anima": {
-          "light": "{color.nord.3}"
-        }
-      }
-    },
-    "chart-grid": {
-      "$value": "{color.nord.3}",
-      "$description": "Chart grid lines (K5, MET-004). Same colour as border in the dark theme; the light theme uses nord-4, so a grid never matches series 1 (R-086)",
-      "$extensions": {
-        "anima": {
-          "light": "{color.nord.4}"
-        }
-      }
-    },
-    "chart-axis": {
-      "$value": "{color.nord.4}",
-      "$description": "Chart axis labels (K5, MET-004). Same colour as text-muted",
-      "$extensions": {
-        "anima": {
-          "light": "{color.nord.3}"
-        }
-      }
-    },
-    "chart-threshold": {
-      "$value": "{color.nord.13}",
-      "$description": "Chart 85 % threshold line (K5, MET-004). Same colour as status-degraded",
-      "$extensions": {
-        "anima": {
-          "light": "{color.nord.13-deep}"
-        }
-      }
-    },
-    "chart-series-1": {
-      "$value": "{color.nord.8}",
-      "$description": "Chart series 1 (K5, MET-004). Nord frost, then aurora; series 5 and 6 share the maintenance and warning hues, so a chart must not tell them apart by hue alone",
-      "$extensions": {
-        "anima": {
-          "light": "{color.nord.10}"
-        }
-      }
-    },
-    "chart-series-2": {
-      "$value": "{color.nord.9}",
-      "$description": "Chart series 2 (K5, MET-004). Nord frost, then aurora; series 5 and 6 share the maintenance and warning hues, so a chart must not tell them apart by hue alone",
-      "$extensions": {
-        "anima": {
-          "light": "{color.nord.3}"
-        }
-      }
-    },
-    "chart-series-3": {
-      "$value": "{color.nord.10}",
-      "$description": "Chart series 3 (K5, MET-004). Nord frost, then aurora; series 5 and 6 share the maintenance and warning hues, so a chart must not tell them apart by hue alone",
-      "$extensions": {
-        "anima": {
-          "light": "{color.nord.14-deep}"
-        }
-      }
-    },
-    "chart-series-4": {
-      "$value": "{color.nord.7}",
-      "$description": "Chart series 4 (K5, MET-004). Nord frost, then aurora; series 5 and 6 share the maintenance and warning hues, so a chart must not tell them apart by hue alone",
-      "$extensions": {
-        "anima": {
-          "light": "{color.nord.15-deep}"
-        }
-      }
-    },
-    "chart-series-5": {
-      "$value": "{color.nord.15}",
-      "$description": "Chart series 5 (K5, MET-004). Nord frost, then aurora; series 5 and 6 share the maintenance and warning hues, so a chart must not tell them apart by hue alone",
-      "$extensions": {
-        "anima": {
-          "light": "{color.nord.12-deep}"
-        }
-      }
-    },
-    "chart-series-6": {
-      "$value": "{color.nord.12}",
-      "$description": "Chart series 6 (K5, MET-004). Nord frost, then aurora; series 5 and 6 share the maintenance and warning hues, so a chart must not tell them apart by hue alone",
-      "$extensions": {
-        "anima": {
-          "light": "{color.nord.11-deep}"
-        }
-      }
-    },
-    "accent-tint": {
-      "$type": "tint",
-      "$value": {
-        "color": "{color.accent}",
-        "percent": 12,
-        "over": "{color.surface}"
-      },
-      "$description": "accent at 12 % on surface (5.5.3)"
-    },
-    "status-up-tint": {
-      "$type": "tint",
-      "$value": {
-        "color": "{color.status-up}",
-        "percent": 12,
-        "over": "{color.surface}"
-      },
-      "$description": "status-up at 12 % on surface (5.5.3)"
-    },
-    "status-down-tint": {
-      "$type": "tint",
-      "$value": {
-        "color": "{color.status-down}",
-        "percent": 12,
-        "over": "{color.surface}"
-      },
-      "$description": "status-down at 12 % on surface (5.5.3)"
-    },
-    "status-degraded-tint": {
-      "$type": "tint",
-      "$value": {
-        "color": "{color.status-degraded}",
-        "percent": 12,
-        "over": "{color.surface}"
-      },
-      "$description": "status-degraded at 12 % on surface (5.5.3)"
-    },
-    "status-warning-tint": {
-      "$type": "tint",
-      "$value": {
-        "color": "{color.status-warning}",
-        "percent": 12,
-        "over": "{color.surface}"
-      },
-      "$description": "status-warning at 12 % on surface (5.5.3)"
-    },
-    "status-maintenance-tint": {
-      "$type": "tint",
-      "$value": {
-        "color": "{color.status-maintenance}",
-        "percent": 12,
-        "over": "{color.surface}"
-      },
-      "$description": "status-maintenance at 12 % on surface (5.5.3)"
-    },
-    "status-unknown-tint": {
-      "$type": "tint",
-      "$value": {
-        "color": "{color.status-unknown}",
-        "percent": 12,
-        "over": "{color.surface}"
-      },
-      "$description": "status-unknown at 12 % on surface (5.5.3)"
-    },
-    "scrim": {
-      "$type": "tint",
-      "$value": {
-        "color": "{color.nord.0}",
-        "percent": 55,
-        "over": "transparent"
-      },
-      "$description": "nord-0 at 55 % behind a modal task (MAT-003, R-049); unchanged under prefers-contrast: more, because a scrim is not a material"
     }
   }
 }

@@ -198,9 +198,9 @@
     inline-size: 100%;
     min-block-size: var(--space-10);
     padding: 0 var(--space-3);
-    border: var(--border-thin) solid var(--border);
+    border: var(--border-thin) solid var(--border-strong);
     border-radius: var(--radius-md);
-    background: var(--surface);
+    background: var(--surface-raised);
     color: var(--text);
     font: inherit;
     font-weight: var(--weight-bold);
@@ -219,7 +219,7 @@
 
   .chevron {
     display: inline-flex;
-    color: var(--text-muted);
+    color: var(--text-secondary);
   }
 
   button:hover {

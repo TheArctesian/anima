@@ -88,8 +88,8 @@
 
   .wake-slot :global(.status:has(> span:not(:empty))) {
     padding: var(--space-1) var(--space-2);
-    border: var(--border-thin) solid var(--border);
+    border: var(--border-thin) solid var(--border-strong);
     border-radius: var(--radius-md);
-    background: var(--surface-raised);
+    background: var(--surface-overlay);
   }
 </style>

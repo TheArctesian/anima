@@ -36,8 +36,8 @@
     box-sizing: border-box;
     min-block-size: var(--target-min-desktop);
     padding: 0 var(--space-4);
-    background: var(--surface-raised);
-    border: var(--border-thin) solid var(--border);
+    background: var(--surface-overlay);
+    border: var(--border-thin) solid var(--border-strong);
     border-radius: var(--radius-md);
     color: var(--text);
     font: inherit;
@@ -64,7 +64,7 @@
 
   /* No spinner: the word says the hub is working (5.7.3, Feedback). */
   .waiting {
-    color: var(--text-muted);
+    color: var(--text-secondary);
   }
 
   .done :global(.icon) {
@@ -92,23 +92,23 @@
 
   button:disabled,
   button[aria-disabled='true'] {
-    color: var(--text-muted);
+    color: var(--text-secondary);
   }
 
-  /* UI-004: accent with a --bg label, accent-deep while pressed, as WakeButton. */
+  /* UI-004: accent with a --surface-base label, accent-deep while pressed, as WakeButton. */
   .primary {
     background: var(--accent);
     border-color: var(--accent);
-    color: var(--bg);
+    color: var(--surface-base);
   }
 
   .primary:active:not(:disabled, [aria-disabled='true']) {
     transition-duration: var(--duration-press);
-    background: var(--accent-deep);
+    background: var(--accent-pressed);
   }
 
   .primary:is(:disabled, [aria-disabled='true']) {
-    color: var(--bg);
+    color: var(--surface-base);
     opacity: var(--opacity-disabled);
   }
 

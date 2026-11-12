@@ -30,10 +30,10 @@
     max-inline-size: 100%;
     min-block-size: var(--chip-block-size);
     padding: 0 var(--space-2);
-    border: var(--border-thin) solid var(--border);
+    border: var(--border-thin) solid var(--border-strong);
     border-radius: var(--radius-pill);
-    background: var(--surface);
-    color: var(--text-muted);
+    background: var(--surface-raised);
+    color: var(--text-secondary);
     font-size: var(--text-sm);
     line-height: var(--leading-tight);
   }

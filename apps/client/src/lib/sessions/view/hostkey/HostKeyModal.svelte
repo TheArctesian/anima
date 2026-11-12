@@ -151,16 +151,16 @@
   button {
     min-block-size: var(--target-min-desktop);
     padding: 0 var(--space-4);
-    border: var(--border-thin) solid var(--border);
+    border: var(--border-thin) solid var(--border-strong);
     border-radius: var(--radius-md);
-    background: var(--surface-raised);
+    background: var(--surface-overlay);
     color: var(--text);
     font: inherit;
     transition: background-color var(--duration-fast) var(--ease-enter);
   }
 
   button:disabled {
-    color: var(--text-muted);
+    color: var(--text-secondary);
   }
 
   button:focus-visible {
@@ -169,8 +169,8 @@
   }
 
   /*
-   * Text on a --status-warning fill reaches only 4.39:1 with --bg (UI-002), so the warning is the border on the
-   * tint: --text on --status-warning-tint is 7.5:1, and the border against --surface is 3.5:1.
+   * Text on a --status-warning fill reaches only 4.39:1 with --surface-base (UI-002), so the warning is the border on the
+   * tint: --text on --status-warning-tint is 7.5:1, and the border against --surface-raised is 3.5:1.
    */
   .warning {
     border-color: var(--status-warning);
@@ -181,6 +181,6 @@
   .primary {
     border-color: var(--accent);
     background: var(--accent);
-    color: var(--bg);
+    color: var(--surface-base);
   }
 </style>

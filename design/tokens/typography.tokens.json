@@ -4,12 +4,12 @@
       "$type": "fontFamily",
       "ui": {
         "$value": [
-          "Fira Code",
+          "IBM Plex Sans",
           "system-ui",
           "-apple-system",
           "sans-serif"
         ],
-        "$description": "Interface text, the default typeface (UI-010); the system font is the fallback (UI-021)"
+        "$description": "Interface text, the default typeface (UI-010, operator change 2026-11-12); the system font is the fallback (UI-021)"
       },
       "mono": {
         "$value": [

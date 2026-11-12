@@ -1,0 +1,187 @@
+{
+  "color": {
+    "$type": "color",
+    "nord": {
+      "0": {
+        "$value": "#2E3440",
+        "$description": "Nord primitive nord0. Source token only (TOK-010)."
+      },
+      "1": {
+        "$value": "#3B4252",
+        "$description": "Nord primitive nord1. Source token only (TOK-010)."
+      },
+      "2": {
+        "$value": "#434C5E",
+        "$description": "Nord primitive nord2. Source token only (TOK-010)."
+      },
+      "3": {
+        "$value": "#4C566A",
+        "$description": "Nord primitive nord3. Source token only (TOK-010)."
+      },
+      "4": {
+        "$value": "#D8DEE9",
+        "$description": "Nord primitive nord4. Source token only (TOK-010)."
+      },
+      "5": {
+        "$value": "#E5E9F0",
+        "$description": "Nord primitive nord5. Source token only (TOK-010)."
+      },
+      "6": {
+        "$value": "#ECEFF4",
+        "$description": "Nord primitive nord6. Source token only (TOK-010)."
+      },
+      "7": {
+        "$value": "#8FBCBB",
+        "$description": "Nord primitive nord7. Source token only (TOK-010)."
+      },
+      "8": {
+        "$value": "#88C0D0",
+        "$description": "Nord primitive nord8. Source token only (TOK-010)."
+      },
+      "9": {
+        "$value": "#81A1C1",
+        "$description": "Nord primitive nord9. Source token only (TOK-010)."
+      },
+      "10": {
+        "$value": "#5E81AC",
+        "$description": "Nord primitive nord10. Source token only (TOK-010)."
+      },
+      "11": {
+        "$value": "#BF616A",
+        "$description": "Nord primitive nord11. Source token only (TOK-010)."
+      },
+      "12": {
+        "$value": "#D08770",
+        "$description": "Nord primitive nord12. Source token only (TOK-010)."
+      },
+      "13": {
+        "$value": "#EBCB8B",
+        "$description": "Nord primitive nord13. Source token only (TOK-010)."
+      },
+      "14": {
+        "$value": "#A3BE8C",
+        "$description": "Nord primitive nord14. Source token only (TOK-010)."
+      },
+      "15": {
+        "$value": "#B48EAD",
+        "$description": "Nord primitive nord15. Source token only (TOK-010)."
+      },
+      "11-deep": {
+        "$value": "#BF616A",
+        "$description": "Nord primitive nord11 mixed toward nord-0 until it reaches 3:1 on nord-4, so it holds 3:1 on every light surface (R-086, D-27). Source token only (TOK-010): only the light status and chart values use it."
+      },
+      "12-deep": {
+        "$value": "#A67164",
+        "$description": "Nord primitive nord12 mixed toward nord-0 until it reaches 3:1 on nord-4, so it holds 3:1 on every light surface (R-086, D-27). Source token only (TOK-010): only the light status and chart values use it."
+      },
+      "13-deep": {
+        "$value": "#897C64",
+        "$description": "Nord primitive nord13 mixed toward nord-0 until it reaches 3:1 on nord-4, so it holds 3:1 on every light surface (R-086, D-27). Source token only (TOK-010): only the light status and chart values use it."
+      },
+      "14-deep": {
+        "$value": "#71836B",
+        "$description": "Nord primitive nord14 mixed toward nord-0 until it reaches 3:1 on nord-4, so it holds 3:1 on every light surface (R-086, D-27). Source token only (TOK-010): only the light status and chart values use it."
+      },
+      "15-deep": {
+        "$value": "#907690",
+        "$description": "Nord primitive nord15 mixed toward nord-0 until it reaches 3:1 on nord-4, so it holds 3:1 on every light surface (R-086, D-27). Source token only (TOK-010): only the light status and chart values use it."
+      },
+      "0-sunken": {
+        "$value": "#272C36",
+        "$description": "nord0 mixed 15 % toward black (#000000): the surface tier below nord0 for the dark appearance (5.1.1, UI-005). Source token only (TOK-010)."
+      },
+      "6-raised": {
+        "$value": "#F7F9FB",
+        "$description": "nord6 mixed 60 % toward white (#FFFFFF): the surface tier above nord6 for the light appearance (5.1.1, UI-005). Source token only (TOK-010)."
+      },
+      "white": {
+        "$value": "#FFFFFF",
+        "$description": "Pure white: the light overlay surface, on-accent and on-danger text (5.1.2). Source token only (TOK-010)."
+      },
+      "3-strong": {
+        "$value": "#677082",
+        "$description": "nord-3-strong (dark border-strong): #4C566A mixed 19 % toward #D8DEE9, the least mix that reaches 2:1 on #3B4252 (border-strong, dark, on surface-raised (5.1.2, UI-005)). Source token only (TOK-010)."
+      },
+      "4-strong": {
+        "$value": "#ABB2C0",
+        "$description": "nord-4-strong (light border-strong): #D8DEE9 mixed 32 % toward #4C566A, the least mix that reaches 2:1 on #F7F9FB (border-strong, light, on surface-raised (5.1.2, UI-005)). Source token only (TOK-010)."
+      },
+      "3-tertiary": {
+        "$value": "#9199A8",
+        "$description": "nord-3-tertiary (dark text-tertiary): #4C566A mixed 49 % toward #D8DEE9, the least mix that reaches 3:1 on #434C5E (text-tertiary, dark, on surface-overlay (5.1.2, UI-005)). Source token only (TOK-010)."
+      },
+      "10-deep": {
+        "$value": "#506B8D",
+        "$description": "nord-10-deep (light accent): #5E81AC mixed 29 % toward #2E3440, the least mix that reaches 4.5:1 on #E5E9F0 (accent, light, on surface-sunken (5.1.1, UI-005)). Source token only (TOK-010)."
+      },
+      "11-lifted": {
+        "$value": "#C6767F",
+        "$description": "nord-11-lifted: #BF616A mixed 15 % toward #ECEFF4, the least mix that reaches 3:1 on #3B4252 (status shape, dark, on surface-raised (UI-005)). Source token only (TOK-010)."
+      },
+      "12-lifted": {
+        "$value": "#D08770",
+        "$description": "nord-12-lifted: #D08770 mixed 0 % toward #ECEFF4, the least mix that reaches 3:1 on #3B4252 (status shape, dark, on surface-raised (UI-005)). Source token only (TOK-010)."
+      },
+      "13-lifted": {
+        "$value": "#EBCB8B",
+        "$description": "nord-13-lifted: #EBCB8B mixed 0 % toward #ECEFF4, the least mix that reaches 3:1 on #3B4252 (status shape, dark, on surface-raised (UI-005)). Source token only (TOK-010)."
+      },
+      "14-lifted": {
+        "$value": "#A3BE8C",
+        "$description": "nord-14-lifted: #A3BE8C mixed 0 % toward #ECEFF4, the least mix that reaches 3:1 on #3B4252 (status shape, dark, on surface-raised (UI-005)). Source token only (TOK-010)."
+      },
+      "15-lifted": {
+        "$value": "#B48EAD",
+        "$description": "nord-15-lifted: #B48EAD mixed 0 % toward #ECEFF4, the least mix that reaches 3:1 on #3B4252 (status shape, dark, on surface-raised (UI-005)). Source token only (TOK-010)."
+      },
+      "11-text": {
+        "$value": "#D9B4BB",
+        "$description": "nord-11-text (dark status text): #C6767F mixed 51 % toward #ECEFF4, the least mix that reaches 4.5:1 on #514A59 (status text, dark, on its 16 % tint (UI-005)). Source token only (TOK-010)."
+      },
+      "11-deep-text": {
+        "$value": "#96545E",
+        "$description": "nord-11-deep-text (light status text): #BF616A mixed 28 % toward #2E3440, the least mix that reaches 4.5:1 on #EFE4E7 (status text, light, on its 14 % tint (UI-005)). Source token only (TOK-010)."
+      },
+      "12-text": {
+        "$value": "#DDB9AF",
+        "$description": "nord-12-text (dark status text): #D08770 mixed 48 % toward #ECEFF4, the least mix that reaches 4.5:1 on #534D57 (status text, dark, on its 16 % tint (UI-005)). Source token only (TOK-010)."
+      },
+      "12-deep-text": {
+        "$value": "#835F5A",
+        "$description": "nord-12-deep-text (light status text): #A67164 mixed 29 % toward #2E3440, the least mix that reaches 4.5:1 on #ECE6E6 (status text, light, on its 14 % tint (UI-005)). Source token only (TOK-010)."
+      },
+      "13-text": {
+        "$value": "#EBCB8B",
+        "$description": "nord-13-text (dark status text): #EBCB8B mixed 0 % toward #ECEFF4, the least mix that reaches 4.5:1 on #57585B (status text, dark, on its 16 % tint (UI-005)). Source token only (TOK-010)."
+      },
+      "13-deep-text": {
+        "$value": "#6F675A",
+        "$description": "nord-13-deep-text (light status text): #897C64 mixed 29 % toward #2E3440, the least mix that reaches 4.5:1 on #E8E8E6 (status text, light, on its 14 % tint (UI-005)). Source token only (TOK-010)."
+      },
+      "14-text": {
+        "$value": "#BBCEAE",
+        "$description": "nord-14-text (dark status text): #A3BE8C mixed 33 % toward #ECEFF4, the least mix that reaches 4.5:1 on #4C565B (status text, dark, on its 16 % tint (UI-005)). Source token only (TOK-010)."
+      },
+      "14-deep-text": {
+        "$value": "#5D6B5E",
+        "$description": "nord-14-deep-text (light status text): #71836B mixed 30 % toward #2E3440, the least mix that reaches 4.5:1 on #E4E8E7 (status text, light, on its 14 % tint (UI-005)). Source token only (TOK-010)."
+      },
+      "15-text": {
+        "$value": "#CEBCCE",
+        "$description": "nord-15-text (dark status text): #B48EAD mixed 47 % toward #ECEFF4, the least mix that reaches 4.5:1 on #4E4E61 (status text, dark, on its 16 % tint (UI-005)). Source token only (TOK-010)."
+      },
+      "15-deep-text": {
+        "$value": "#736278",
+        "$description": "nord-15-deep-text (light status text): #907690 mixed 30 % toward #2E3440, the least mix that reaches 4.5:1 on #E9E7EC (status text, light, on its 14 % tint (UI-005)). Source token only (TOK-010)."
+      },
+      "3-tertiary-text": {
+        "$value": "#BDC2CC",
+        "$description": "nord-3-tertiary-text (dark unknown text): #9199A8 mixed 48 % toward #ECEFF4, the least mix that reaches 4.5:1 on #495060 (status-unknown text, dark, on its 16 % tint (UI-005)). Source token only (TOK-010)."
+      },
+      "3-deep-text": {
+        "$value": "#4C566A",
+        "$description": "nord-3-deep-text (light unknown text): #4C566A mixed 0 % toward #2E3440, the least mix that reaches 4.5:1 on #DFE2E7 (status-unknown text, light, on its 14 % tint (UI-005)). Source token only (TOK-010)."
+      }
+    }
+  }
+}

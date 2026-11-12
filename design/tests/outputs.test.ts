@@ -74,33 +74,36 @@ describe('K5 names', () => {
 });
 
 describe('colour tokens', () => {
-  const SEMANTIC: Record<string, string> = {
-    bg: '#2E3440', surface: '#3B4252', 'surface-raised': '#434C5E', border: '#4C566A',
-    text: '#ECEFF4', 'text-muted': '#D8DEE9', accent: '#88C0D0', 'accent-alt': '#81A1C1',
-    'accent-deep': '#5E81AC', info: '#8FBCBB', 'status-up': '#A3BE8C', 'status-down': '#BF616A',
-    'status-degraded': '#EBCB8B', 'status-warning': '#D08770', 'status-maintenance': '#B48EAD',
-    'status-unknown': '#4C566A',
-  };
+  test('UI-001 the Nord dark roles are var() of the Nord primitives', () => {
+    expect(css).toContain('--accent: var(--nord-8);');
+    expect(css).toContain('--surface-raised: var(--nord-1);');
+    expect(css).toContain('--text: var(--nord-6);');
+  });
 
-  test('UI-001 each semantic colour is a var() of the Nord primitive with its 5.1 hex value', () => {
-    for (const [name, hex] of Object.entries(SEMANTIC)) {
-      const alias = new RegExp(`  --${name}: var\\(--(nord-\\d+)\\);`).exec(css)?.[1];
-      expect(alias).toBeDefined();
-      expect(css).toContain(`  --${alias ?? ''}: ${hex};`);
-    }
+  test('UI-023 the Graphite dark roles are var() of the Graphite primitives, on :root', () => {
+    expect(css).toContain('--accent: var(--graphite-frost-8);');
+    expect(css).toContain('--surface-raised: var(--graphite-dark-raised);');
+    expect(css).toContain('--text: var(--graphite-dark-text);');
   });
 
   test('TOK-011 semantic colours alias primitives so a theme changes only semantic tokens (D-8)', () => {
     expect(css).toContain('--accent: var(--nord-8);');
   });
 
-  test('UI-005 a tint is the colour at 12 % over the current surface (D-7)', () => {
-    expect(css).toContain('--status-up-tint: color-mix(in srgb, var(--status-up) 12%, var(--surface));');
+  test('UI-005 a tint is the status colour at 16 % (dark) over the surface-raised role (5.5.3)', () => {
+    expect(css).toContain('--status-up-tint: color-mix(in srgb, var(--status-up) 16%, var(--surface-raised));');
   });
 
-  test('MAT-003 the scrim is nord-0 at 55 % over what is behind it, and contrast mode leaves it alone (R-049)', () => {
-    expect(css).toContain('  --scrim: color-mix(in srgb, var(--nord-0) 55%, transparent);');
-    expect(css.match(/--scrim:/g)).toHaveLength(1);
+  test('MAT-003 the scrim is the palette colour at its share, and contrast mode leaves it alone (R-049)', () => {
+    expect(css).toContain('  --scrim: color-mix(in srgb, var(--graphite-black) 55%, transparent);');
+    expect(css).toContain('  --scrim: color-mix(in srgb, var(--nord-0) 50%, transparent);');
+    expect(css.slice(css.indexOf('@media (prefers-contrast: more)'))).not.toContain('--scrim');
+  });
+
+  test('UI-023 the shadow role is the palette shadow colour, and elevation names it', () => {
+    expect(css).toContain('  --shadow: var(--graphite-black);');
+    expect(css).toContain('  --shadow: var(--nord-0);');
+    expect(css).toContain('  --elevation-2: 0 4px 16px color-mix(in srgb, var(--shadow) 40%, transparent);');
   });
 });
 
@@ -117,8 +120,8 @@ describe('sizes and type', () => {
     expect(css).toContain('--tracking-small: 0.01em;');
   });
 
-  test('UI-010 the default fonts are Fira Code with a system fallback', () => {
-    expect(css).toMatch(/--font-ui: "Fira Code", .*sans-serif;/);
+  test('UI-010 the default interface font is IBM Plex Sans with a system fallback (operator change, 2026-11-12)', () => {
+    expect(css).toMatch(/--font-ui: "IBM Plex Sans", .*sans-serif;/);
     expect(css).toContain('--font-mono: "Fira Code", ui-monospace, monospace;');
   });
 
@@ -135,17 +138,19 @@ describe('sizes and type', () => {
 describe('materials and motion', () => {
   const reducedMotion = (): string => /@media \(prefers-reduced-motion: reduce\) \{[^@]*\n\}/.exec(css)?.[0] ?? '';
 
-  test('MAT-006 chrome is 82 % surface with 20 px blur and 140 % saturation; solid under reduced transparency', () => {
-    expect(css).toContain('--material-chrome-bg: color-mix(in srgb, var(--surface) 82%, transparent);');
+  test('MAT-006 chrome is 82 % surface-raised with 20 px blur and 140 % saturation; solid under reduced transparency', () => {
+    expect(css).toContain('--material-chrome-bg: color-mix(in srgb, var(--surface-raised) 82%, transparent);');
     expect(css).toContain('--material-chrome-blur: 20px;');
     expect(css).toContain('--material-chrome-saturate: 140%;');
     const transparency = css.slice(css.indexOf('@media (prefers-reduced-transparency: reduce)'));
-    expect(transparency).toContain('--material-chrome-bg: var(--surface);');
+    expect(transparency).toContain('--material-chrome-bg: var(--surface-raised);');
     expect(transparency).toContain('--material-chrome-blur: 0px;');
   });
 
-  test('MAT-006 increased contrast uses text-muted borders', () => {
-    expect(css.slice(css.indexOf('@media (prefers-contrast: more)'))).toContain('--border: var(--text-muted);');
+  test('MAT-006 increased contrast makes every border border-strong, and border-subtle follows it (5.1.2)', () => {
+    const contrast = css.slice(css.indexOf('@media (prefers-contrast: more)'));
+    expect(contrast).toContain('--border-strong: var(--text-secondary);');
+    expect(contrast).toContain('--border-subtle: var(--border-strong);');
   });
 
   test('MOT-021 the reduced-motion block changes no threshold', () => {

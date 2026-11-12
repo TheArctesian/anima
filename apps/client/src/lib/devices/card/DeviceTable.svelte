@@ -108,14 +108,14 @@
     box-sizing: border-box;
     block-size: var(--device-row-block-size);
     padding: 0 var(--space-3);
-    border-bottom: var(--border-thin) solid var(--border);
+    border-bottom: var(--border-thin) solid var(--border-strong);
     text-align: start;
     font-weight: var(--weight-regular);
     white-space: nowrap;
   }
 
   thead th {
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font-size: var(--text-sm);
   }
 
@@ -124,7 +124,7 @@
   }
 
   tbody tr:hover {
-    background: var(--surface-raised);
+    background: var(--surface-overlay);
   }
 
   .status {
@@ -145,7 +145,7 @@
 
   .ip {
     margin-inline-start: var(--space-2);
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font-family: var(--font-mono);
   }
 
@@ -158,7 +158,7 @@
   }
 
   a:active {
-    color: var(--text-muted);
+    color: var(--text-secondary);
   }
 
   a:hover {

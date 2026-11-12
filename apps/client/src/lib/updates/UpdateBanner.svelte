@@ -50,9 +50,9 @@
     align-items: center;
     gap: var(--space-3);
     padding: var(--space-3) var(--space-4);
-    border: var(--border-thin) solid var(--border);
+    border: var(--border-thin) solid var(--border-strong);
     border-radius: var(--radius-md);
-    background: var(--surface-raised);
+    background: var(--surface-overlay);
     box-shadow: var(--elevation-2);
     color: var(--text);
     font-family: var(--font-ui);
@@ -68,16 +68,16 @@
     box-sizing: border-box;
     block-size: var(--space-8);
     padding: 0 var(--space-4);
-    border: var(--border-thin) solid var(--border);
+    border: var(--border-thin) solid var(--border-strong);
     border-radius: var(--radius-md);
-    background: var(--surface);
+    background: var(--surface-raised);
     color: var(--text);
     font: inherit;
     transition: background-color var(--duration-fast) var(--ease-enter);
   }
 
   button:hover {
-    background: var(--surface-raised);
+    background: var(--surface-overlay);
   }
 
   button:focus-visible {
