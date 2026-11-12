@@ -121,4 +121,12 @@ describe('chartsOf shared GPU memory', () => {
     const charts = chartsOf([series('GPU_PERCENT', 'GPU 0', [point(at, 10)], 0), series('GPU_MEMORY_BYTES', 'GPU 0', [point(at, 2 ** 30)], 0)], [NVIDIA]);
     expect(keys(charts)).toEqual(['gpu:0:usage']);
   });
+
+  it('D-30: two GPUs without their own memory each get a chart from their own shared memory series', () => {
+    const at = '2026-11-05T09:04:00Z';
+    const second = { ...APPLE, index: 1, name: 'Apple M2 Ultra' };
+    const charts = chartsOf([series('GPU_MEMORY_BYTES', 'GPU 1', [point(at, 2048)], 1), series('GPU_MEMORY_BYTES', 'GPU 0', [point(at, 1024)], 0)], [APPLE, second]);
+    expect(keys(charts)).toEqual(['gpu:0:memory', 'gpu:1:memory']);
+    expect(charts.map((chart) => chart.series[0]?.points[0]?.value)).toEqual([1024, 2048]);
+  });
 });
