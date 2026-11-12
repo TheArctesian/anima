@@ -115,7 +115,7 @@ Anima has three components: the client, the hub and the gateway.
 
 | Item | Decision |
 | --- | --- |
-| Fonts and icons | Atkinson Hyperlegible Next for interface text and Fira Code for machine text by default; OpenDyslexic Nerd Font as a Settings choice; Nerd Font icons. See Section 5.2. |
+| Fonts and icons | IBM Plex Sans for interface text and Fira Code for machine text by default; OpenDyslexic Nerd Font as a Settings choice; Nerd Font icons. See Section 5.2. |
 | Framework | Tauri 2 |
 | Native layer | Rust |
 | User interface | TypeScript in the Tauri web view. See Section 11 for the framework decision. |
@@ -501,10 +501,15 @@ The VPN encrypts traffic between machines, and most traffic does not go through 
 
 Colour is themeable (UR-2, 2026-11-11). Colours are kept at two levels: **palettes** (raw colours, one
 file per scheme) and **semantic roles** (what a colour means in the interface). A role maps to a
-value of the active palette for each appearance, dark and light. Nord is the default palette and, in
-this version, the only shipped one. The default appearance is dark.
+value of the active palette for each appearance, dark and light. Two palettes ship: **Graphite**
+(the default: neutral greys with nord8 as its one accent and the Nord aurora colours for status) and
+**Nord** (operator decision, 2026-11-12). The default appearance is dark.
 
-#### 5.1.1 The Nord palette
+#### 5.1.1 Palettes
+
+**Graphite** has its own neutral greys for surfaces, borders and text (values in `design/tokens/palettes/`), takes nord8 as its accent in dark and a deep nord8 in light, and takes its status colours from the Nord aurora values below, lifted or deepened by the UI-005 rule.
+
+**Nord:**
 
 | Primitive | Value | Primitive | Value |
 | --- | --- | --- | --- |
@@ -545,23 +550,24 @@ records the colour it comes from and the rule that made it.
 - **UI-002.** Secondary text must reach 4.5:1 on every surface tier it is used on, in every palette and appearance. (The old Nord rule, "do not use nord3 for text on nord0 or nord1", is a case of this rule and is checked by its test.)
 - **UI-003.** A status must not use colour as the only indicator. Show a text label or an icon with the colour.
 - **UI-004.** Text on an accent fill must use the `on-accent` role, which must reach 4.5:1 on `accent`.
-- **UI-005.** Every palette must fill every role, in dark and in light. A status colour used as text must reach 4.5:1 on the surface it sits on; used as a shape (dot, edge, bar), 3:1. Where a palette's raw colour misses, the palette derives a value by mixing toward its darkest base (light appearance) or its lightest base (dark appearance) until it passes, as WP-50 did for nord11 to nord15. The light accent of Nord is a derived deep nord10, not nord3. The operator must be able to choose Dark, Light or System. The client must save the choice on the device. (D-27, R-081, R-086, UR-2)
-- **UI-023.** Palettes are registered in one theme registry (`design/tokens/palettes/`). Each entry has a name, a licence line and values for both appearances. Nord is the default. Adding a palette must need no component change (TOK-011).
+- **UI-005.** Every palette must fill every role, in dark and in light. A status colour used as text must reach 4.5:1 on the surface it sits on; used as a shape (dot, edge, bar), 3:1. Where a palette's raw colour misses, the palette derives a value by mixing toward its darkest base (light appearance) or its lightest base (dark appearance) until it passes, as WP-50 did for nord11 to nord15. The light accent of Nord is a derived deep nord10, not nord3; the light accent of Graphite is a derived deep nord8. The operator must be able to choose Dark, Light or System. The client must save the choice on the device. (D-27, R-081, R-086, UR-2)
+- **UI-023.** Palettes are registered in one theme registry (`design/tokens/palettes/`). Each entry has a name, a licence line and values for both appearances. Graphite is the default; Nord is the second palette. Adding a palette must need no component change (TOK-011).
+- **UI-032.** The Appearance section has a "Colours" choice of the registered palettes (Graphite or Nord). It is saved on the device, applies at once and before the first render after a restart, and no component reads it: it selects the role values only.
 - **UI-024.** A design test must fail if a registered palette leaves a role empty for an appearance, or misses a contrast rule of UI-002, UI-004 or UI-005.
 
 ### 5.2 Typography and spacing
 
-Anima uses a proportional sans, Atkinson Hyperlegible Next, for interface text and Fira Code for machine text, with Nerd Fonts for icons (UR-3, 2026-11-11; Fira Code as the interface font was temporary). The operator can change the interface text and the monospace text to OpenDyslexic in Settings, each on its own (UI-020). The Nerd Fonts project supplies OpenDyslexic with the icons already added (patched), so icons always come from the OpenDyslexic Propo file, whichever text font is chosen.
+Anima uses a proportional sans, IBM Plex Sans, for interface text and Fira Code for machine text, with Nerd Fonts for icons (UR-3, 2026-11-11; Fira Code as the interface font was temporary). The operator can change the interface text and the monospace text to OpenDyslexic in Settings, each on its own (UI-020). The Nerd Fonts project supplies OpenDyslexic with the icons already added (patched), so icons always come from the OpenDyslexic Propo file, whichever text font is chosen.
 
 | Use | Font family | File | Licence |
 | --- | --- | --- | --- |
-| Interface text (default) | Atkinson Hyperlegible Next | Regular and Bold, from the Braille Institute release; the exact files and version are pinned in Phase 2 of the UI redesign after the licence and reserved-font-name check | SIL OFL 1.1 |
+| Interface text (default) | IBM Plex Sans | Regular and Bold from the `IBM/plex` release, shipped unchanged because the licence reserves the name "Plex"; the release and hashes are pinned in `fonts.lock.json` | SIL OFL 1.1 |
 | Machine text: IP addresses, host names, ports, keys, fingerprints, commands, log messages, code (default) | Fira Code | `woff2/FiraCode-{Regular,Bold}.woff2` from the `tonsky/FiraCode` 6.2 release | SIL OFL 1.1 |
 | Interface text (choice) and icons | OpenDyslexic Nerd Font Propo | `ryanoasis/nerd-fonts`, `patched-fonts/OpenDyslexic/Regular/OpenDyslexicNerdFontPropo-{Regular,Bold,Italic,BoldItalic}.otf` | SIL OFL 1.1 |
 | Terminal; IP addresses, host names, code (choice) | OpenDyslexicM Nerd Font Mono | `ryanoasis/nerd-fonts`, `patched-fonts/OpenDyslexic/Mono-Regular/OpenDyslexicMNerdFontMono-Regular.otf` | SIL OFL 1.1 |
 | Icon fallback | Symbols Nerd Font | `patched-fonts/NerdFontsSymbolsOnly/SymbolsNerdFont-Regular.ttf` | MIT |
 
-- **UI-010.** Use Atkinson Hyperlegible Next for all interface text by default. OpenDyslexic Nerd Font Propo is the alternative (UI-020).
+- **UI-010.** Use IBM Plex Sans for all interface text by default. OpenDyslexic Nerd Font Propo is the alternative (UI-020).
 - **UI-011.** Use the monospace font only for machine text: IP addresses, host names, ports, keys, fingerprints, commands, log messages and code. Fira Code is the default; OpenDyslexicM Nerd Font Mono is the alternative (UI-020). Turn ligatures off for machine text (`font-variant-ligatures: none`). The SSH terminal uses OpenDyslexicM Nerd Font Mono (RA-011). Use the "Mono" variant in the terminal, because its icons are one cell wide.
 - **UI-014.** Use Nerd Font glyphs for all icons. Do not use image files or a second icon library. Use the Propo variant for icons in the interface, because its icons have their natural width.
 - **UI-015.** Each icon must have `aria-hidden="true"`. A button that has only an icon must have a text label for screen readers and a tooltip.
@@ -570,8 +576,8 @@ Anima uses a proportional sans, Atkinson Hyperlegible Next, for interface text a
 - **UI-022.** The Bold and Italic files of OpenDyslexic Nerd Font Propo are not in the Nerd Fonts v3.4.0 release. They are on the main branch. Pin the font files to commit `f034eeafc0ccf79afa8dd952feb86b18e5d0469e` until a release includes them.
 - **UI-018.** Each font licence file must be in the application package and in the "About" information.
 - **UI-019.** Use `text-md` (0.875 rem) for body text, `text-sm` (0.8125 rem) for dense tables and for labels (never smaller), `text-xs` (0.75 rem) only for badges and chart axes, and `leading-normal` (1.5). A section title must be visibly larger and bolder than body text. Hierarchy must hold with weights 400 and 700 only, so that OpenDyslexic keeps it. OpenDyslexic is wider and taller than most fonts: test each layout in both interface typefaces. See Section 5.5.
-- **UI-021.** Apple recommends the system font first. Anima bundles Atkinson Hyperlegible Next, drawn for legibility at small sizes, and offers OpenDyslexic for readability. This is a deliberate exception. The system font stays the fallback in every font token.
-- **UI-020.** The Settings page has two choices, "Interface font" and "Monospace font". "Interface font" is Atkinson Hyperlegible Next (the default) or OpenDyslexic; "Monospace font" is Fira Code (the default) or OpenDyslexic. Each is saved on the device. A saved interface-font choice of "Fira Code" from an earlier version becomes the new default. The choice changes the `font-ui` and `font-mono` tokens, so no component reads it. A choice applies at once and before the first render after a restart. Icons do not change. More typefaces or text roles can be added to the same choice later.
+- **UI-021.** Apple recommends the system font first. Anima bundles IBM Plex Sans and offers OpenDyslexic for readability. This is a deliberate exception. The system font stays the fallback in every font token.
+- **UI-020.** The Settings page has two choices, "Interface font" and "Monospace font". "Interface font" is IBM Plex Sans (the default) or OpenDyslexic; "Monospace font" is Fira Code (the default) or OpenDyslexic. Each is saved on the device. A saved interface-font choice of "Fira Code" from an earlier version becomes the new default. The choice changes the `font-ui` and `font-mono` tokens, so no component reads it. A choice applies at once and before the first render after a restart. Icons do not change. More typefaces or text roles can be added to the same choice later.
 - **UI-012.** Use a 4-pixel spacing grid. Use the `space-*` tokens (Section 5.5.3).
 - **UI-013.** Interactive controls must have a minimum target size of 24 by 24 pixels on desktop and 44 by 44 points on iOS. Control heights come from the `control-*` tokens: `control-md` 32 px (the default), `control-sm` 28 px (dense rows and table actions only), `control-lg` 40 px (sign-in, empty-state actions). Text fields, selects, buttons and segmented controls in one row share one height.
 - **UI-025.** Numbers that are compared in columns or that update (uptime, metrics, counts, times in tables) must use tabular figures (`font-variant-numeric: tabular-nums`).
@@ -1134,7 +1140,7 @@ The view has these tabs:
 
 A later version adds these items to the Settings page:
 
-- Further palettes (themes) through the theme registry (UI-023).
+- Further palettes through the theme registry (UI-023).
 
 ## 8. Device management (withdrawn)
 
