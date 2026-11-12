@@ -23,6 +23,7 @@
   import SessionPanes from '$lib/sessions/strip/SessionPanes.svelte';
   import SessionTabs from '$lib/sessions/strip/SessionTabs.svelte';
   import { sessionStart } from '$lib/sessions/view/start';
+  import { applyPalette, storedPalette } from '$lib/palette/palette';
   import { applyMotion, storedMotion } from '$lib/theme/motion-choice';
   import { applyTheme, storedTheme } from '$lib/theme/theme';
   import { applyTypefaces, storedTypefaces } from '$lib/typeface/typeface';
@@ -34,6 +35,7 @@
   // The operator's fonts apply before the first render, so the text does not change family after it shows (UI-020).
   applyTypefaces(document.documentElement, storedTypefaces(localStorage));
   applyTheme(document.documentElement, storedTheme(localStorage));
+  applyPalette(document.documentElement, storedPalette(localStorage));
   applyMotion(document.documentElement, storedMotion(localStorage));
   // On a Mac the window draws under its title bar; the bar keeps room for the window buttons.
   if (capabilities().overlayTitleBar) document.documentElement.dataset['titlebar'] = 'overlay';

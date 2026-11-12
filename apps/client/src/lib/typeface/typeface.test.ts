@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { applyTypefaces, DEFAULT_TYPEFACE, storedTypefaces, storeTypeface } from './typeface';
+import { applyTypefaces, storedTypefaces, storeTypeface } from './typeface';
 
 function memoryStorage(entries: Record<string, string> = {}): Storage {
   const values = new Map(Object.entries(entries));
@@ -30,22 +30,38 @@ const refusing: Storage = {
 };
 
 describe('storedTypefaces (UI-020)', () => {
-  it('is Fira Code for every role when nothing is stored', () => {
-    expect(DEFAULT_TYPEFACE).toBe('fira-code');
-    expect(storedTypefaces(memoryStorage())).toEqual({ ui: 'fira-code', mono: 'fira-code' });
+  const defaults = { ui: 'ibm-plex-sans', mono: 'fira-code' };
+
+  it('is IBM Plex Sans for the interface and Fira Code for monospace when nothing is stored', () => {
+    expect(storedTypefaces(memoryStorage())).toEqual(defaults);
   });
 
   it('gives back each role’s stored choice on its own', () => {
     const storage = memoryStorage();
     storeTypeface(storage, 'mono', 'opendyslexic');
-    expect(storedTypefaces(storage)).toEqual({ ui: 'fira-code', mono: 'opendyslexic' });
+    expect(storedTypefaces(storage)).toEqual({ ui: 'ibm-plex-sans', mono: 'opendyslexic' });
     storeTypeface(storage, 'ui', 'opendyslexic');
     expect(storedTypefaces(storage)).toEqual({ ui: 'opendyslexic', mono: 'opendyslexic' });
   });
 
   it('falls back to the default for unknown text and for a storage that refuses to be read', () => {
-    expect(storedTypefaces(memoryStorage({ 'anima.typeface.ui': 'comic-sans' }))).toEqual({ ui: 'fira-code', mono: 'fira-code' });
-    expect(storedTypefaces(refusing)).toEqual({ ui: 'fira-code', mono: 'fira-code' });
+    expect(storedTypefaces(memoryStorage({ 'anima.typeface.ui': 'comic-sans' }))).toEqual(defaults);
+    expect(storedTypefaces(refusing)).toEqual(defaults);
+  });
+
+  it('migrates a stored interface choice of fira-code, or atkinson-hyperlegible-next, to the new default', () => {
+    expect(storedTypefaces(memoryStorage({ 'anima.typeface.ui': 'fira-code' })).ui).toBe('ibm-plex-sans');
+    expect(storedTypefaces(memoryStorage({ 'anima.typeface.ui': 'atkinson-hyperlegible-next' })).ui).toBe('ibm-plex-sans');
+  });
+
+  it('keeps a stored opendyslexic for the interface and fira-code or opendyslexic for monospace', () => {
+    const stored = storedTypefaces(memoryStorage({ 'anima.typeface.ui': 'opendyslexic', 'anima.typeface.mono': 'fira-code' }));
+    expect(stored).toEqual({ ui: 'opendyslexic', mono: 'fira-code' });
+    expect(storedTypefaces(memoryStorage({ 'anima.typeface.mono': 'opendyslexic' })).mono).toBe('opendyslexic');
+  });
+
+  it('does not offer ibm-plex-sans as a monospace font', () => {
+    expect(storedTypefaces(memoryStorage({ 'anima.typeface.mono': 'ibm-plex-sans' })).mono).toBe('fira-code');
   });
 });
 

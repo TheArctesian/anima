@@ -54,20 +54,22 @@ it('MOT-007: the first render stops waiting for fonts after the cap', async () =
   expect(await settled(result)).toBe(true);
 });
 
-it('F-6, F-7, UI-005, D-28: the stored theme and motion choice are on <html> from the start', () => {
+it('F-6, F-7, UI-005, D-28: the stored theme, motion and palette (UI-032) choice are on <html> from the start', () => {
   vi.useRealTimers();
   localStorage.setItem('anima.theme', 'light');
   localStorage.setItem('anima.motion', 'reduce');
+  localStorage.setItem('anima.palette', 'nord');
   const target = document.createElement('div');
   document.body.append(target);
   const app = mount(Layout, { target, props: { children: createRawSnippet(() => ({ render: () => '<p>the page</p>' })) } });
   flushSync();
   const root = document.documentElement;
-  const started = { theme: root.dataset['theme'], motion: root.dataset['motion'] };
+  const started = { theme: root.dataset['theme'], motion: root.dataset['motion'], palette: root.dataset['palette'] };
   void unmount(app);
   target.remove();
   localStorage.clear();
   delete root.dataset['theme'];
   delete root.dataset['motion'];
-  expect(started).toEqual({ theme: 'light', motion: 'reduce' });
+  delete root.dataset['palette'];
+  expect(started).toEqual({ theme: 'light', motion: 'reduce', palette: 'nord' });
 });
