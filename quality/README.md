@@ -64,22 +64,6 @@ With `DATABASE_URL` set, `with-postgres` starts nothing and leaves that server's
 cluster stays as `initdb` made it: the migrations also create the cluster-wide role `anima_runtime`, and the deploy
 tests (`deploy/package.json`) install the roles themselves.
 
-### Compile cache (R-112, R-101)
-
-When `sccache` is on `PATH` and `RUSTC_WRAPPER` is not set, `bun run gates` sets `RUSTC_WRAPPER` to `bin/compile-cache.ts`
-for every gate (only cargo reads it). Without sccache the gates compile with plain rustc and print `compile cache: off`;
-the cache only saves time. A `RUSTC_WRAPPER` you set, even empty, is kept. If sccache is installed but its server
-cannot start, the compile fails and so does the gate; run `sccache --stop-server`, or set `RUSTC_WRAPPER=` to run without it.
-
-Keep `CARGO_TARGET_DIR=<checkout>/target` and `CARGO_INCREMENTAL=0` (R-101). sccache keys each rustc call on the compiler,
-the arguments, the contents of every source file and dependency it reads, the `CARGO_*` variables and the working folder,
-and writes its output into the asking checkout's own target folder. `CARGO_TARGET_DIR` is a `CARGO_*` variable that names
-the checkout, so `bin/compile-cache.ts` removes it from rustc's environment only (rustc never reads it) and checkouts can
-share dependency crates. A workspace crate's key still holds its checkout's path (`CARGO_MANIFEST_DIR`, the working folder),
-so checkouts never share their own crates. sccache caches only library crates: never a test binary, a build script,
-a proc macro or a failed compile. Clippy's runs on workspace crates are not cached at all, so a cached result cannot hide a
-new warning. The wrapper is TypeScript, not `sh`: dash drops variables whose names hold a hyphen (`CARGO_BIN_EXE_anima-hub`).
-
 Files come from `git ls-files --cached --others --exclude-standard`, minus the globs in `generated.txt` (CQ-012).
 
 ## baseline.json (CQ-011)
@@ -114,7 +98,6 @@ Every machine needs PostgreSQL 17 (`initdb`, `pg_ctl` and `psql` in one folder) 
 
 ```sh
 cargo install cargo-nextest --locked
-cargo install sccache --locked   # optional: the compile cache
 ```
 
-`~/.cargo/bin` (or `$CARGO_HOME/bin`) must be on `PATH`: the gates look for `cargo-nextest` and `sccache` there.
+`~/.cargo/bin` (or `$CARGO_HOME/bin`) must be on `PATH`: the gates look for `cargo-nextest` there.
