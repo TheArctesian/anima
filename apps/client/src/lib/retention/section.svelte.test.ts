@@ -133,7 +133,7 @@ it('HUB-005: a failed load shows a fixed message and Try again loads the periods
   expect(target.querySelector('.note [role="alert"]')).toBeNull();
 });
 
-it('MOT-007, MV-005: while loading the five rows are already laid out with their controls waiting, and the same rows stay when the hub answers', async () => {
+it('MOT-007, MV-005: while loading the four rows are already laid out with their controls waiting, and the same rows stay when the hub answers', async () => {
   let release: (result: ReturnType<typeof ok>) => void = () => undefined;
   const pending = new Promise<ReturnType<typeof ok>>((resolve) => {
     release = resolve;
@@ -141,9 +141,9 @@ it('MOT-007, MV-005: while loading the five rows are already laid out with their
   const target = await open({ Retention: pending }, false);
   const shape = () => [...target.querySelectorAll('form')].map((form) => [...form.children].map((child) => child.tagName + '.' + child.className).join(' '));
   const before = shape();
-  expect(before).toHaveLength(5);
-  expect(target.querySelectorAll('input:disabled')).toHaveLength(5);
-  expect(target.querySelectorAll('.hint.waiting')).toHaveLength(5);
+  expect(before).toHaveLength(4);
+  expect(target.querySelectorAll('input:disabled')).toHaveLength(4);
+  expect(target.querySelectorAll('.hint.waiting')).toHaveLength(4);
   release(ok({ retention: FIXTURE_PERIODS }));
   await settled();
   expect(shape().map((each) => each.replace(' waiting', ''))).toEqual(before.map((each) => each.replace(' waiting', '')));
@@ -212,7 +212,7 @@ it('HUB-005: editing the field clears the refusal; the loading hint is not read 
   await save(target, 'Events');
   type(input(target, 'Events'), '11');
   expect(problemOf(target, 'Events')).toBe('');
-  expect(target.querySelectorAll('form')).toHaveLength(5);
+  expect(target.querySelectorAll('form')).toHaveLength(4);
   expect(row(target, 'Events').getAttribute('role')).toBe('group');
 });
 
@@ -233,12 +233,12 @@ it('MOT-007, MV-005: the loading and loaded hints have the same two-line structu
   });
   const target = await open({ Retention: pending }, false);
   const lines = () => [...target.querySelectorAll('form')].map((form) => form.querySelectorAll('.hint > span').length);
-  expect(lines()).toEqual([2, 2, 2, 2, 2]);
-  expect(target.querySelectorAll('.problem')).toHaveLength(5);
+  expect(lines()).toEqual([2, 2, 2, 2]);
+  expect(target.querySelectorAll('.problem')).toHaveLength(4);
   release(ok({ retention: FIXTURE_PERIODS }));
   await settled();
-  expect(lines()).toEqual([2, 2, 2, 2, 2]);
-  expect(target.querySelectorAll('.problem')).toHaveLength(5);
+  expect(lines()).toEqual([2, 2, 2, 2]);
+  expect(target.querySelectorAll('.problem')).toHaveLength(4);
   expect(row(target, 'Events').querySelectorAll('.hint > span')[0]?.textContent).toBe('Keeps 90 days.');
   expect(row(target, 'Events').querySelectorAll('.hint > span')[1]?.textContent).toBe('30 to 365 days, default 90');
 });
