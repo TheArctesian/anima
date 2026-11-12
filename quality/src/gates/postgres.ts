@@ -48,3 +48,12 @@ export function psqlArgv(psql: string, server: SocketServer, database: string, s
   const connection = ["-h", server.socketDir, "-p", String(server.port), "-U", server.user, "-d", database];
   return [psql, "-X", "-q", "-v", "ON_ERROR_STOP=1", ...connection, ...statements.flatMap((statement) => ["-c", statement])];
 }
+
+/** Asks `with-postgres` to migrate `template1` with the hub's migrations before the command runs. */
+export const MIGRATED_TEMPLATE = "--migrated-template";
+
+/** `with-postgres` arguments: an optional leading `--migrated-template`, then the command. */
+export function withPostgresArgs(args: string[]): { migratedTemplate: boolean; command: string[] } {
+  const migratedTemplate = args[0] === MIGRATED_TEMPLATE;
+  return { migratedTemplate, command: migratedTemplate ? args.slice(1) : args };
+}

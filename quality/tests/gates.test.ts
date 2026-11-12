@@ -24,7 +24,9 @@ describe("gateList", () => {
 
   test("R-009 R-112 runs the Rust tests with nextest against a throwaway PostgreSQL", () => {
     const rustTest = gateList("phase-1").find((gate) => gate.name === "rust-test");
-    expect(rustTest?.argv).toEqual(["bun", "quality/bin/with-postgres.ts", "cargo", "nextest", "run", "--workspace"]);
+    expect(rustTest?.argv).toEqual([
+      "bun", "quality/bin/with-postgres.ts", "--migrated-template", "cargo", "nextest", "run", "--workspace",
+    ]);
   });
 
   test("R-112 still runs the doctests and the non-libtest target that nextest does not", () => {

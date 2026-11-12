@@ -16,7 +16,7 @@ It runs fourteen gates as separate processes, in this order, and stops at the fi
 
 1. `cargo fmt --check`
 2. `cargo clippy --all-targets -- -D warnings`
-3. `cargo nextest run --workspace` (through `bin/with-postgres.ts`)
+3. `cargo nextest run --workspace` (through `bin/with-postgres.ts --migrated-template`)
 4. `cargo test --workspace --doc`
 5. `cargo test --workspace --test pinning`
 6. `bun install --frozen-lockfile`
@@ -45,9 +45,10 @@ Gate 3 fails with the install command when `cargo-nextest` is not on `PATH`.
 
 ### Throwaway PostgreSQL (R-009, R-019)
 
-Gate 3 runs through `bin/with-postgres.ts`. It starts a throwaway PostgreSQL 17 on a Unix socket in a temporary folder, sets `DATABASE_URL`, runs the tests and deletes the folder. Set `DATABASE_URL` yourself only for a server that no other worktree uses at the same time (R-019). If PostgreSQL 17 (`initdb`, `pg_ctl`, `psql`) is not installed, the gate fails; database tests never skip.
+Gate 3 runs through `bin/with-postgres.ts`, and so do the deploy tests in gate 9. It starts a throwaway PostgreSQL 17 on a Unix socket in a temporary folder, sets `DATABASE_URL`, runs the tests and deletes the folder. Set `DATABASE_URL` yourself only for a server that no other worktree uses at the same time (R-019). If PostgreSQL 17 (`initdb`, `pg_ctl`, `psql`) is not installed, the gate fails; database tests never skip.
 
-Before the tests start, `with-postgres` migrates `template1` with `crates/hub/migrations`, exactly as sqlx 0.8.6 would:
+With `--migrated-template` before the command (gate 3 passes it), `with-postgres` first migrates `template1` with
+`crates/hub/migrations`, exactly as sqlx 0.8.6 would:
 sqlx creates each `#[sqlx::test]` database with a bare `create database`, a copy of `template1`, and then skips every
 migration already recorded in `_sqlx_migrations` with the same checksum. So each test database starts migrated instead of
 running all migrations itself. `src/gates/migrations.ts` reads the folder by sqlx's rules (file `<version>_<description>.sql`,
@@ -56,7 +57,9 @@ description with `_` as spaces, checksum SHA-384 of the file bytes) and refuses 
 (no psql variables or meta-commands) with sqlx's session settings, inside one transaction with its `_sqlx_migrations` row.
 A file that differs from what the tests were compiled with fails every database test with a checksum mismatch; it cannot pass silently.
 psql exits after each migration, so no session holds `template1` when the tests run.
-With `DATABASE_URL` set, `with-postgres` starts nothing and leaves that server's `template1` alone.
+With `DATABASE_URL` set, `with-postgres` starts nothing and leaves that server's `template1` alone. Without the flag the
+cluster stays as `initdb` made it: the migrations also create the cluster-wide role `anima_runtime`, and the deploy
+tests (`deploy/package.json`) install the roles themselves.
 
 ### Compile cache (R-112, R-101)
 

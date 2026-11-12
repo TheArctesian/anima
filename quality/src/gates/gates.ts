@@ -42,7 +42,7 @@ export function gateList(baseRef: string): Gate[] {
     // Rust tests run against a throwaway PostgreSQL unless DATABASE_URL is set (R-009).
     {
       name: "rust-test",
-      argv: ["bun", "quality/bin/with-postgres.ts", "cargo", "nextest", "run", "--workspace"],
+      argv: ["bun", "quality/bin/with-postgres.ts", "--migrated-template", "cargo", "nextest", "run", "--workspace"],
       requires: [NEXTEST],
     },
     { name: "doctest", argv: ["cargo", "test", "--workspace", "--doc"] },

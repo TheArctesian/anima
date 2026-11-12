@@ -1,8 +1,9 @@
 // Runs a command with DATABASE_URL pointing at a throwaway PostgreSQL server (ruling R-009).
 // If DATABASE_URL is already set, the command uses that server and nothing is started.
 // A missing PostgreSQL installation fails the gate; database tests are never skipped (CQ-024).
-// Before the command runs, the hub's migrations are applied to `template1` as sqlx applies them, so each
-// `#[sqlx::test]` database (a bare `create database`, a copy of `template1`) starts migrated (WP-55, R-112).
+// With `--migrated-template` first, the hub's migrations are applied to `template1` as sqlx applies them before the
+// command runs, so each `#[sqlx::test]` database (a bare `create database`, a copy of `template1`) starts migrated
+// (WP-55, R-112). Without it the cluster stays as initdb made it (the deploy tests install the roles themselves).
 import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
 import { tmpdir, userInfo } from "node:os";
 import { join } from "node:path";
@@ -12,6 +13,7 @@ import {
   binaryDirs,
   findTools,
   psqlArgv,
+  withPostgresArgs,
   serverOptions,
   socketDatabaseUrl,
   type SocketServer,
@@ -21,9 +23,9 @@ import { REPO_ROOT } from "../src/repository.ts";
 const PORT = 5432;
 /** The folder every `#[sqlx::test(migrations = "./migrations")]` in the hub names. */
 const HUB_MIGRATIONS = join(REPO_ROOT, "crates", "hub", "migrations");
-const command = process.argv.slice(2);
+const { migratedTemplate, command } = withPostgresArgs(process.argv.slice(2));
 if (command.length === 0) {
-  console.error("with-postgres: give the command to run, for example `cargo test`");
+  console.error("with-postgres: give the command to run, for example `--migrated-template cargo nextest run`");
   process.exit(2);
 }
 
@@ -91,7 +93,7 @@ function runWithServer(tools: string): number {
   );
   if (start.exitCode !== 0) throw new Error(`pg_ctl start failed with exit ${start.exitCode}; see ${join(root, "server.log")}`);
   try {
-    migrateTemplate(tools, { socketDir: root, port: PORT, user });
+    if (migratedTemplate) migrateTemplate(tools, { socketDir: root, port: PORT, user });
     return run(command, { ...process.env, DATABASE_URL: socketDatabaseUrl(root, PORT, user) });
   } finally {
     Bun.spawnSync([join(tools, "pg_ctl"), "-D", dataDir, "-m", "immediate", "-w", "stop"], quiet);
