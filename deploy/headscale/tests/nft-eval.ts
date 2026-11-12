@@ -147,22 +147,31 @@ function limitCondition(tokens: string[], at: number, rule: string): Condition {
   return { matches: true, next };
 }
 
+const LOCAL_DESTINATION = "fib daddr type local";
 const REVERSE_PATH = "fib saddr . iif oif exists";
+
+/** `fib daddr type local`, or the reverse-path test `fib saddr . iif oif exists`. */
+function fibCondition(tokens: string[], at: number, packet: Packet, rule: string): Condition {
+  if (tokens.slice(at, at + 4).join(" ") === LOCAL_DESTINATION) return { matches: packet.daddrIsLocal, next: at + 4 };
+  if (tokens.slice(at, at + 6).join(" ") === REVERSE_PATH) {
+    return { matches: required(packet.saddrRoute, "saddrRoute", rule) === packet.iifname, next: at + 6 };
+  }
+  throw new Error(`unsupported match "fib ${tokens[at + 1] ?? ""}" in rule: ${rule}`);
+}
+
+/** `meta skuid N`, `{ N, M }` or `!= N`: the uid of the sending socket. */
+function metaCondition(tokens: string[], at: number, packet: Packet, rule: string): Condition {
+  if (tokens[at + 1] !== "skuid") throw new Error(`unsupported match "meta ${tokens[at + 1] ?? ""}" in rule: ${rule}`);
+  const { negated, values, next } = readOperand(tokens, at + 2);
+  const hit = values.map(Number).includes(required(packet.skuid, "skuid", rule));
+  return { matches: hit !== negated, next };
+}
 
 function condition(tokens: string[], at: number, packet: Packet, rule: string): Condition {
   const word = tokens[at] ?? "";
   if (word === "iifname" || word === "oifname" || word === "iif") return interfaceCondition(tokens, at, packet);
-  if (word === "fib" && tokens.slice(at, at + 4).join(" ") === "fib daddr type local") {
-    return { matches: packet.daddrIsLocal, next: at + 4 };
-  }
-  if (word === "fib" && tokens.slice(at, at + 6).join(" ") === REVERSE_PATH) {
-    return { matches: required(packet.saddrRoute, "saddrRoute", rule) === packet.iifname, next: at + 6 };
-  }
-  if (word === "meta" && tokens[at + 1] === "skuid") {
-    const { negated, values, next } = readOperand(tokens, at + 2);
-    const hit = values.map(Number).includes(required(packet.skuid, "skuid", rule));
-    return { matches: hit !== negated, next };
-  }
+  if (word === "fib") return fibCondition(tokens, at, packet, rule);
+  if (word === "meta") return metaCondition(tokens, at, packet, rule);
   if (word === "ip" || word === "ip6") return addressCondition(tokens, at, packet, rule);
   if (word === "ct") return ctCondition(tokens, at, packet, rule);
   if (["tcp", "udp", "icmp", "icmpv6"].includes(word)) return protocolCondition(tokens, at, packet, rule);

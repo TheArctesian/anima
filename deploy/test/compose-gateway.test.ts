@@ -54,7 +54,11 @@ function block(cidr: string): { first: number; size: number } {
   return { first: ipv4(base), size: 2 ** (32 - Number(bits)) };
 }
 
-type Ipam = { subnet: string; ip_range?: string; gateway?: string };
+interface Ipam {
+  subnet: string;
+  ip_range?: string;
+  gateway?: string;
+}
 const config = (network: string): Ipam | undefined => compose.networks[network]?.ipam?.config?.[0];
 
 describe("dynamic addresses and Anima's network range (VP-13 security review)", () => {
