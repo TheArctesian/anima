@@ -285,3 +285,4 @@ spacing, O10 tooltips, O11 box sizes). The plan's earlier tables use "O6" for un
 | O9 Overflow and spacing | 1 rule, every review | UI-027 | |
 | O10 Tooltips | 3 HelpTip, 5 all | UI-028 | |
 | O11 Box sizes | 3 Section/Card, 5 all | UI-027, DEV-009 | |
+| UI-018 gap: no About view lists the font licences (found by the Phase 2 font lane; the `LICENSE-*.txt` files are in `src/styles/fonts/` but nothing shows them) | 5 C (an "About" section in Settings) | UI-018 | |
