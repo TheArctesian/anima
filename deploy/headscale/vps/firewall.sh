@@ -63,7 +63,8 @@ hub_rule_problems() {
   vpn=$(nft_define hub_vpn_address)
   networks=$(nft_define hub_networks)
   uid=$(nft_define probe_uid)
-  count=$(grep -F "ip saddr $source ip daddr $vpn " <<<"$listing" | grep -cF "fib saddr . iif oif exists") || true
+  # nft 1.0 prints the reverse-path test as `oif exists`, nft 1.1 (EL10) as `check exists`.
+  count=$(grep -F "ip saddr $source ip daddr $vpn " <<<"$listing" | grep -cE 'fib saddr \. iif (oif|check) exists') || true
   [ "$count" = 4 ] || say "table inet anima_filter lacks the hub's four VP-13 rules with the reverse-path test; apply nftables.conf (harden.sh firewall)"
   grep -qF "iifname \"tailscale0\" ip saddr $networks drop" <<<"$listing" \
     || say "table inet anima_filter does not drop $networks from tailscale0; apply nftables.conf (harden.sh firewall)"

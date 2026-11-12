@@ -119,6 +119,11 @@ describe("harden.sh check (the hub's rules in the live table, VP-13)", () => {
     }
   });
 
+  test("VP-13 I2 check accepts the reverse-path test as nft 1.1 prints it (`check exists`)", () => {
+    host.setTable(listing().replaceAll("fib saddr . iif oif exists", "fib saddr . iif check exists"));
+    expect(host.run(["check"]).out).not.toContain("lacks the hub's four VP-13 rules");
+  });
+
   test.each([
     ["the reverse-path test", (text: string) => text.replace(/ fib saddr \. iif oif exists accept/, " accept"),
       "table inet anima_filter lacks the hub's four VP-13 rules with the reverse-path test"],
