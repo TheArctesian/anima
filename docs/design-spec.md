@@ -115,7 +115,7 @@ Anima has three components: the client, the hub and the gateway.
 
 | Item | Decision |
 | --- | --- |
-| Fonts and icons | Fira Code by default; OpenDyslexic Nerd Font as a Settings choice; Nerd Font icons. See Section 5.2. |
+| Fonts and icons | Atkinson Hyperlegible Next for interface text and Fira Code for machine text by default; OpenDyslexic Nerd Font as a Settings choice; Nerd Font icons. See Section 5.2. |
 | Framework | Tauri 2 |
 | Native layer | Rust |
 | User interface | TypeScript in the Tauri web view. See Section 11 for the framework decision. |
@@ -499,57 +499,88 @@ The VPN encrypts traffic between machines, and most traffic does not go through 
 
 ### 5.1 Colour scheme
 
-Anima uses the Nord colour scheme. The default theme is dark.
+Colour is themeable (UR-2, 2026-11-11). Colours are kept at two levels: **palettes** (raw colours, one
+file per scheme) and **semantic roles** (what a colour means in the interface). A role maps to a
+value of the active palette for each appearance, dark and light. Nord is the default palette and, in
+this version, the only shipped one. The default appearance is dark.
 
-| Token | Nord name | Value | Use |
+#### 5.1.1 The Nord palette
+
+| Primitive | Value | Primitive | Value |
 | --- | --- | --- | --- |
-| `--bg` | nord0 | `#2E3440` | Main background |
-| `--surface` | nord1 | `#3B4252` | Navigation bar, cards, panels |
-| `--surface-raised` | nord2 | `#434C5E` | Hover state, selected row, input fields |
-| `--border` | nord3 | `#4C566A` | Borders and dividers |
-| `--text` | nord6 | `#ECEFF4` | Primary text |
-| `--text-muted` | nord4 | `#D8DEE9` | Secondary text and labels |
-| `--accent` | nord8 | `#88C0D0` | Primary buttons, links, active navigation item, focus ring |
-| `--accent-alt` | nord9 | `#81A1C1` | Secondary buttons and icons |
-| `--accent-deep` | nord10 | `#5E81AC` | Pressed state of a primary button |
-| `--info` | nord7 | `#8FBCBB` | Information messages |
-| `--status-up` | nord14 | `#A3BE8C` | Device or check is up |
-| `--status-down` | nord11 | `#BF616A` | Device or check is down. Error messages. |
-| `--status-degraded` | nord13 | `#EBCB8B` | Slow response or high resource usage |
-| `--status-warning` | nord12 | `#D08770` | Warnings. Host key changed. |
-| `--status-maintenance` | nord15 | `#B48EAD` | Device is in maintenance |
-| `--status-unknown` | nord3 | `#4C566A` | No data, or the check is paused |
+| nord0 | `#2E3440` | nord8 | `#88C0D0` |
+| nord1 | `#3B4252` | nord9 | `#81A1C1` |
+| nord2 | `#434C5E` | nord10 | `#5E81AC` |
+| nord3 | `#4C566A` | nord11 | `#BF616A` |
+| nord4 | `#D8DEE9` | nord12 | `#D08770` |
+| nord5 | `#E5E9F0` | nord13 | `#EBCB8B` |
+| nord6 | `#ECEFF4` | nord14 | `#A3BE8C` |
+| nord7 | `#8FBCBB` | nord15 | `#B48EAD` |
 
-- **UI-001.** All colours in the user interface must come from the tokens in this table. The one addition is the five derived light-mode primitives (`nord-11-deep` to `nord-15-deep`), kept in `design/tokens/`. (D-27, R-081)
-- **UI-002.** Do not use nord3 for text on nord0 or nord1. The contrast is too low. Use nord4 for secondary text.
+The palette also holds derived values: a surface tier below nord0 for dark, a raised tier above
+nord6 for light, the lifted status colours for dark, the deep status colours for light
+(`nord-11-deep` to `nord-15-deep`, WP-50) and a deep nord10 as the light accent. Each derived value
+records the colour it comes from and the rule that made it.
+
+#### 5.1.2 Semantic roles
+
+| Role | Use |
+| --- | --- |
+| `surface-sunken` | Page background behind cards in a grid, the logs panel body, inputs on a raised card |
+| `surface-base` | Window background, navigation bar |
+| `surface-raised` | Cards, tables, form sections, menus |
+| `surface-overlay` | Dialogs, popovers, HelpTips |
+| `surface-hover`, `surface-selected` | Row and item states |
+| `border-subtle` | Where two equal surfaces meet; table row separators |
+| `border-strong` | Inputs; every border under `prefers-contrast: more` |
+| `text`, `text-secondary`, `text-tertiary` | Primary text; secondary text; placeholder and disabled text (never the only carrier of information) |
+| `accent`, `accent-hover`, `accent-pressed`, `on-accent`, `accent-tint` | The one accent: active place, focus, the primary action |
+| `status-up`, `status-down`, `status-degraded`, `status-warning`, `status-maintenance`, `status-unknown` | Status shapes: dots, edges, bars |
+| `status-*-text`, `status-*-tint` | Status badge text and badge fill |
+| `danger`, `on-danger` | Destructive buttons (by default the same value as `status-down`) |
+| `scrim`, `focus-ring` | Modal dim; the 2 px focus outline |
+| `chart-*` | Chart grid, axis, threshold and series colours |
+
+- **UI-001.** All colours in the user interface must come from semantic roles. A role maps to a value of the active palette, for each appearance. Component code must never name a palette value. (UR-2)
+- **UI-002.** Secondary text must reach 4.5:1 on every surface tier it is used on, in every palette and appearance. (The old Nord rule, "do not use nord3 for text on nord0 or nord1", is a case of this rule and is checked by its test.)
 - **UI-003.** A status must not use colour as the only indicator. Show a text label or an icon with the colour.
-- **UI-004.** Text on an `--accent` background must use nord0.
-- **UI-005.** The client must have a light theme with the Nord Snow Storm colours (nord4 to nord6). Some Nord aurora colours (for example nord13) are less than 3:1 on nord6. WP-50 measures them. So the light theme must use five derived primitives for the status colours, one from each of nord11 to nord15. Make each one by mixing its Nord aurora colour toward nord0 until it is 3:1 on nord4, the darkest light surface, so it is at least 3:1 on nord4, nord5 and nord6. Use them in light mode only. In light mode the background is nord5, surfaces are nord6, raised surfaces are nord4, and the accent is nord3. The default theme is dark. The operator must be able to choose Dark, Light or System. The client must save the choice on the device. (D-27, R-081, R-086)
+- **UI-004.** Text on an accent fill must use the `on-accent` role, which must reach 4.5:1 on `accent`.
+- **UI-005.** Every palette must fill every role, in dark and in light. A status colour used as text must reach 4.5:1 on the surface it sits on; used as a shape (dot, edge, bar), 3:1. Where a palette's raw colour misses, the palette derives a value by mixing toward its darkest base (light appearance) or its lightest base (dark appearance) until it passes, as WP-50 did for nord11 to nord15. The light accent of Nord is a derived deep nord10, not nord3. The operator must be able to choose Dark, Light or System. The client must save the choice on the device. (D-27, R-081, R-086, UR-2)
+- **UI-023.** Palettes are registered in one theme registry (`design/tokens/palettes/`). Each entry has a name, a licence line and values for both appearances. Nord is the default. Adding a palette must need no component change (TOK-011).
+- **UI-024.** A design test must fail if a registered palette leaves a role empty for an appearance, or misses a contrast rule of UI-002, UI-004 or UI-005.
 
 ### 5.2 Typography and spacing
 
-Anima uses Fira Code for text by default and Nerd Fonts for icons. The operator can change the interface text and the monospace text to OpenDyslexic in Settings, each on its own (UI-020; operator decision, 2026-11-05). The Nerd Fonts project supplies OpenDyslexic with the icons already added (patched), so icons always come from the OpenDyslexic Propo file, whichever text font is chosen.
+Anima uses a proportional sans, Atkinson Hyperlegible Next, for interface text and Fira Code for machine text, with Nerd Fonts for icons (UR-3, 2026-11-11; Fira Code as the interface font was temporary). The operator can change the interface text and the monospace text to OpenDyslexic in Settings, each on its own (UI-020). The Nerd Fonts project supplies OpenDyslexic with the icons already added (patched), so icons always come from the OpenDyslexic Propo file, whichever text font is chosen.
 
 | Use | Font family | File | Licence |
 | --- | --- | --- | --- |
-| Interface text, IP addresses, host names, code (default) | Fira Code | `woff2/FiraCode-{Regular,Bold}.woff2` from the `tonsky/FiraCode` 6.2 release | SIL OFL 1.1 |
+| Interface text (default) | Atkinson Hyperlegible Next | Regular and Bold, from the Braille Institute release; the exact files and version are pinned in Phase 2 of the UI redesign after the licence and reserved-font-name check | SIL OFL 1.1 |
+| Machine text: IP addresses, host names, ports, keys, fingerprints, commands, log messages, code (default) | Fira Code | `woff2/FiraCode-{Regular,Bold}.woff2` from the `tonsky/FiraCode` 6.2 release | SIL OFL 1.1 |
 | Interface text (choice) and icons | OpenDyslexic Nerd Font Propo | `ryanoasis/nerd-fonts`, `patched-fonts/OpenDyslexic/Regular/OpenDyslexicNerdFontPropo-{Regular,Bold,Italic,BoldItalic}.otf` | SIL OFL 1.1 |
 | Terminal; IP addresses, host names, code (choice) | OpenDyslexicM Nerd Font Mono | `ryanoasis/nerd-fonts`, `patched-fonts/OpenDyslexic/Mono-Regular/OpenDyslexicMNerdFontMono-Regular.otf` | SIL OFL 1.1 |
 | Icon fallback | Symbols Nerd Font | `patched-fonts/NerdFontsSymbolsOnly/SymbolsNerdFont-Regular.ttf` | MIT |
 
-- **UI-010.** Use Fira Code for all interface text by default. OpenDyslexic Nerd Font Propo is the alternative (UI-020).
-- **UI-011.** Use Fira Code for IP addresses, host names and code by default; OpenDyslexicM Nerd Font Mono is the alternative (UI-020). The SSH terminal uses OpenDyslexicM Nerd Font Mono (RA-011). Use the "Mono" variant in the terminal, because its icons are one cell wide.
+- **UI-010.** Use Atkinson Hyperlegible Next for all interface text by default. OpenDyslexic Nerd Font Propo is the alternative (UI-020).
+- **UI-011.** Use the monospace font only for machine text: IP addresses, host names, ports, keys, fingerprints, commands, log messages and code. Fira Code is the default; OpenDyslexicM Nerd Font Mono is the alternative (UI-020). Turn ligatures off for machine text (`font-variant-ligatures: none`). The SSH terminal uses OpenDyslexicM Nerd Font Mono (RA-011). Use the "Mono" variant in the terminal, because its icons are one cell wide.
 - **UI-014.** Use Nerd Font glyphs for all icons. Do not use image files or a second icon library. Use the Propo variant for icons in the interface, because its icons have their natural width.
 - **UI-015.** Each icon must have `aria-hidden="true"`. A button that has only an icon must have a text label for screen readers and a tooltip.
 - **UI-016.** Refer to each icon by its Nerd Font class name in the code, for example `nf-md-server`. Keep a table of the class names and code points in one source file. Do not write raw code points in components.
 - **UI-017.** The client must include the font files in the application package. Do not load fonts from the internet at run time.
 - **UI-022.** The Bold and Italic files of OpenDyslexic Nerd Font Propo are not in the Nerd Fonts v3.4.0 release. They are on the main branch. Pin the font files to commit `f034eeafc0ccf79afa8dd952feb86b18e5d0469e` until a release includes them.
 - **UI-018.** Each font licence file must be in the application package and in the "About" information.
-- **UI-019.** OpenDyslexic is wider and taller than most system fonts, and Fira Code is monospaced and wide. Use `text-md` (0.875 rem) for body text, `text-sm` (0.8125 rem) for dense tables and `leading-normal` (1.5). Test each layout at these sizes in both typefaces. See Section 5.5.
-- **UI-021.** Apple recommends the system font first. Anima uses Fira Code by default and offers OpenDyslexic for readability. This is a deliberate exception. The system font stays the fallback in every font token.
-- **UI-020.** The Settings page has two choices, "Interface font" and "Monospace font". Each is Fira Code (the default) or OpenDyslexic, and each is saved on the device. The choice changes the `font-ui` and `font-mono` tokens, so no component reads it. A choice applies at once and before the first render after a restart. Icons do not change. More typefaces or text roles can be added to the same choice later.
+- **UI-019.** Use `text-md` (0.875 rem) for body text, `text-sm` (0.8125 rem) for dense tables and for labels (never smaller), `text-xs` (0.75 rem) only for badges and chart axes, and `leading-normal` (1.5). A section title must be visibly larger and bolder than body text. Hierarchy must hold with weights 400 and 700 only, so that OpenDyslexic keeps it. OpenDyslexic is wider and taller than most fonts: test each layout in both interface typefaces. See Section 5.5.
+- **UI-021.** Apple recommends the system font first. Anima bundles Atkinson Hyperlegible Next, drawn for legibility at small sizes, and offers OpenDyslexic for readability. This is a deliberate exception. The system font stays the fallback in every font token.
+- **UI-020.** The Settings page has two choices, "Interface font" and "Monospace font". "Interface font" is Atkinson Hyperlegible Next (the default) or OpenDyslexic; "Monospace font" is Fira Code (the default) or OpenDyslexic. Each is saved on the device. A saved interface-font choice of "Fira Code" from an earlier version becomes the new default. The choice changes the `font-ui` and `font-mono` tokens, so no component reads it. A choice applies at once and before the first render after a restart. Icons do not change. More typefaces or text roles can be added to the same choice later.
 - **UI-012.** Use a 4-pixel spacing grid. Use the `space-*` tokens (Section 5.5.3).
-- **UI-013.** Interactive controls must have a minimum target size of 24 by 24 pixels on desktop and 44 by 44 points on iOS.
+- **UI-013.** Interactive controls must have a minimum target size of 24 by 24 pixels on desktop and 44 by 44 points on iOS. Control heights come from the `control-*` tokens: `control-md` 32 px (the default), `control-sm` 28 px (dense rows and table actions only), `control-lg` 40 px (sign-in, empty-state actions). Text fields, selects, buttons and segmented controls in one row share one height.
+- **UI-025.** Numbers that are compared in columns or that update (uptime, metrics, counts, times in tables) must use tabular figures (`font-variant-numeric: tabular-nums`).
+- **UI-026.** Icons appear only in four places: navigation items; status, beside the word and never in place of it; the leading slot of a primary or secondary button that opens something (Connect, Add device); and icon-only buttons in dense rows (UI-015). Section headers, form labels and chips have no icon, except the device-type and operating-system icons in the device header. Icons are `icon-sm` (16 px) beside body text and `icon-md` (18 px) in navigation, in the text colour of their context; only status icons take a status colour.
+- **UI-027.** Truncation and spacing. A name may be cut only with an ellipsis and a full-text tooltip; badges and buttons must never shrink a name below 12 characters. Machine text never truncates in the middle of a value: it wraps, or is shortened with a copy button and the full value in a HelpTip. Inside a component, spacing uses only `space-1`, `space-2` and `space-3`; between components, `space-4` and `space-6`. Related things are closer than unrelated things. A box is sized by its content: no card has a fixed height, and an empty card shows an empty state sized to its message.
+- **UI-028.** HelpTip. Defaults, explanations, allowed ranges and fingerprints go in a HelpTip (an "i" control). It opens on click or focus, stays while the pointer is over it, and closes with Escape (WCAG 1.4.13). It must never be placed over a live remote display (MAT-008). A constraint the operator needs to fill a field correctly stays visible. An error is never in a HelpTip.
+- **UI-029.** Button tones are primary (accent fill), secondary (neutral fill), ghost (text only) and danger. A view has at most one primary button. A destructive action never sits inside the form it affects; it goes into a separate group at the end of the page.
+- **UI-030.** Every page and panel that loads data must have an empty, a loading and an error state. An error state names what failed in plain words, gives the next step (for example "Try again" or "Open Hub settings") and puts the technical cause in a HelpTip. It replaces the content that failed to load and nothing else.
+- **UI-031.** A percentage has no space before "%". Uptime shows one decimal ("99.9%"), and "100%" when every check in the period was up. Metric values show whole percents.
 
 ### 5.3 Navigation bar
 
@@ -558,15 +589,21 @@ The navigation bar is on the left side of the window on desktop and web. It is a
 | Position | Item | Icon | Page |
 | --- | --- | --- | --- |
 | Top | Devices | Server | Devices page (Section 6) |
+| Top | Live sessions | Monitor with play | Live sessions page (NAV-008) |
 | Bottom | Settings | Gear | Settings page (Section 7) |
 
-- **NAV-001.** The navigation bar must show the page items at the top. Settings must be the last item, at the bottom of the navigation bar, below a divider.
-- **NAV-002.** The navigation bar must show the active item with the `--accent` colour.
-- **NAV-003.** The navigation bar must show the connection status of the hub immediately above the Settings item: "Connected" or "Disconnected".
+The logo block at the top of the navigation bar is 24 px high (UR-6).
+
+- **NAV-001.** The navigation bar must show the page items at the top: Devices, Live sessions. Settings must be the last item, at the bottom of the navigation bar, below a divider. Every item must open a page. Each label must fit on one line in both interface typefaces.
+- **NAV-002.** The navigation bar must show the active item with an `accent-tint` fill, the accent colour on its icon and a 3 px accent bar on its leading edge.
+- **NAV-003.** The navigation bar must show the connection status of the hub immediately above the Settings item as a status icon, with an accessible name (for example "Hub connected: hub.anima.ing") and a HelpTip with the hub name, the state and the time of the last answer. When the hub is disconnected the page also shows a banner.
 - **NAV-004.** The Devices page must be the start page.
 - **NAV-005.** The operator must be able to go to each page with the keyboard.
-- **NAV-006.** The operator must be able to collapse the navigation bar to icons and expand it again. The app must keep the choice on the device.
+- **NAV-006.** The operator must be able to collapse the navigation bar to icons and expand it again with a control at the trailing end of the logo row. The app must keep the choice on the device.
 - **NAV-007.** On macOS the window must draw under the title bar. The window buttons must sit in the top row of the navigation bar, and that row and the strip above the page must move the window.
+- **NAV-008.** The Live sessions page must list every live session with its device, protocol, start time and duration, with "Show" and "End session" for each (RA-034). With no live session it shows an empty state that points to the Devices page.
+- **NAV-009.** Before sign-in the window must show only the sign-in page: no navigation items and no hub status. The sign-in form is centred, with the logo above it and a primary "Sign in" button.
+- **NAV-010.** Every page must have a visible title (`h1`) and must set the window and document title to "<page> – Anima".
 
 ### 5.4 Design principles
 
@@ -615,24 +652,26 @@ A design token is a named design value, for example a colour, a space or a sprin
 | Component | A value for one component | `--btn-primary-bg` | `var(--accent)` |
 
 - **TOK-010.** Component code must use semantic tokens or component tokens. Component code must not use primitive tokens.
-- **TOK-011.** A theme (dark, light, high contrast) changes only semantic tokens. The light theme (UI-005) and a high-contrast theme must not need changes to components.
+- **TOK-011.** A theme is a palette and an appearance (dark, light, high contrast). Changing either changes only semantic role values. The light theme (UI-005), a high-contrast theme and a new palette must not need changes to components.
 
 #### 5.5.3 Token groups
 
 | Group | Tokens | Values |
 | --- | --- | --- |
-| Colour, primitive | `nord-0` to `nord-15` | Section 5.1 |
-| Colour, semantic | `bg`, `surface`, `surface-raised`, `border`, `text`, `text-muted`, `accent`, `accent-alt`, `accent-deep`, `info`, `status-*` | Section 5.1 |
-| Colour, tint | `accent-tint`, `status-*-tint` | The colour at 12 % on `surface` |
+| Colour, palette | `nord-0` to `nord-15` and the derived Nord values; one group per registered palette (UI-023) | Section 5.1.1 |
+| Colour, semantic | The roles of Section 5.1.2 | Section 5.1.2 |
+| Colour, tint | `accent-tint`, `status-*-tint` | The colour at 12 to 16 % on its surface, set per palette so that `status-*-text` keeps 4.5:1 on it |
 | Font family | `font-ui`, `font-mono`, `font-ui-opendyslexic`, `font-mono-opendyslexic`, `font-icon` | Section 5.2 |
 | Font size | `text-xs`, `text-sm`, `text-md`, `text-lg`, `text-xl`, `text-2xl` | 0.75, 0.8125, 0.875, 1, 1.25, 1.5 rem |
 | Line height | `leading-tight`, `leading-normal`, `leading-relaxed` | 1.2, 1.5, 1.7 |
 | Tracking | `tracking-display`, `tracking-body`, `tracking-small` | −0.01 em, 0, +0.01 em |
-| Weight | `weight-regular`, `weight-bold` | 400, 700 (OpenDyslexic has only these two weights; Fira Code ships these two) |
+| Weight | `weight-regular`, `weight-bold` | 400, 700 (OpenDyslexic has only these two weights; the bundled sans and Fira Code ship these two) |
 | Space | `space-0` to `space-16` | 0, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3, 4 rem (4-pixel grid) |
 | Radius | `radius-sm`, `radius-md`, `radius-lg`, `radius-pill` | 4, 6, 10, 999 px |
 | Border width | `border-thin`, `border-focus` | 1, 2 px |
-| Icon size | `icon-sm`, `icon-md`, `icon-lg` | 1, 1.125, 1.25 em |
+| Icon size | `icon-sm`, `icon-md`, `icon-lg` | 16, 18, 20 px, as rem |
+| Control height | `control-sm`, `control-md`, `control-lg` | 28, 32, 40 px, as rem |
+| Content width | `content-form`, `content-page` | 44 rem, 90 rem |
 | Target size | `target-min-desktop`, `target-min-touch` | 24 px, 44 pt |
 | Elevation | `elevation-0` to `elevation-3` | Section 5.6 |
 | Material | `material-chrome`, `material-panel`, `material-overlay` | Section 5.6 |
@@ -649,19 +688,20 @@ The navigation bar, the session toolbar and the logs panel header are floating l
 
 | Token | Use | Value | Reduced transparency |
 | --- | --- | --- | --- |
-| `material-chrome` | Navigation bar, session toolbar | `surface` at 82 % opacity, blur 20 px, saturation 140 % | `surface`, no blur |
-| `material-panel` | Logs panel, side panels | `surface` at 90 % opacity, blur 12 px | `surface`, no blur |
-| `material-overlay` | Menus, popovers, toasts | `surface-raised` at 92 % opacity, blur 24 px | `surface-raised`, no blur |
-| `elevation-1` | Cards | 1 px border, no shadow | Same |
-| `elevation-2` | Popovers, menus | Shadow 0 4 px 16 px, `nord-0` at 40 % | Same |
-| `elevation-3` | Modal dialogs, sheets | Shadow 0 12 px 40 px, `nord-0` at 55 % | Same |
+| `material-chrome` | Navigation bar, session toolbar | `surface-base` at 82 % opacity, blur 20 px, saturation 140 % | `surface-base`, no blur |
+| `material-panel` | Side panels | `surface-raised` at 90 % opacity, blur 12 px | `surface-raised`, no blur |
+| `material-overlay` | Menus, popovers, toasts | `surface-overlay` at 92 % opacity, blur 24 px | `surface-overlay`, no blur |
+| `elevation-1` | Cards | Surface contrast only (`surface-raised` on `surface-sunken`): no border, no shadow | A `border-strong` outline under `prefers-contrast: more` |
+| `elevation-2` | Popovers, menus | Shadow 0 4 px 16 px, the palette's shadow colour at 40 % | Same |
+| `elevation-3` | Modal dialogs, sheets | Shadow 0 12 px 40 px, the palette's shadow colour at 55 % | Same |
 
 - **MAT-001.** A larger surface must have a stronger blur and a deeper shadow than a small surface.
 - **MAT-002.** Do not put a translucent surface on a different translucent surface.
-- **MAT-003.** A modal task (for example the "Add device" form or a confirmation) must dim the content behind it with a scrim. A panel that does not stop the work (for example the logs panel) must not use a scrim.
+- **MAT-003.** A modal task (for example the "Add device" form or a confirmation) must dim the content behind it with a scrim at 50 % (dark) or 35 % (light). A modal is centred, uses `surface-overlay` and `elevation-3`, and shows a fade at an edge where its content scrolls. A panel that does not stop the work (for example the logs panel) must not use a scrim.
+- **MAT-009.** The logs panel is opaque `surface-raised` with an `elevation-2` shadow on its top edge; nothing shows through it. While it is open, the page gets bottom padding equal to the panel's height, so every card can be scrolled above it.
 - **MAT-004.** Where content moves below floating chrome, use a short fade mask at the edge. Do not use a hard 1-pixel line.
-- **MAT-005.** Text on a translucent material must use `text`, not `text-muted`.
-- **MAT-006.** The client must obey `prefers-reduced-transparency` and `prefers-contrast: more`. With `prefers-contrast: more`, materials are solid and borders use `text-muted`.
+- **MAT-005.** Text on a translucent material must use `text`, not `text-secondary`.
+- **MAT-006.** The client must obey `prefers-reduced-transparency` and `prefers-contrast: more`. With `prefers-contrast: more`, materials are solid and borders use `border-strong`.
 - **MAT-007.** WebKitGTK on Linux can be slow with `backdrop-filter`. Measure the frame time of the Devices page on the reference Linux computer. If it is more than 16.7 ms, the Linux build must use the "reduced transparency" values.
 - **MAT-008.** Never animate the content of a remote display (SSH terminal, RDP, VNC or Web view). Do not put a material or a blur over a live remote display.
 
@@ -742,7 +782,7 @@ Springs use the two Apple parameters: damping ratio and response. The token buil
 
 | Gesture | Platform | Behaviour |
 | --- | --- | --- |
-| Resize the logs panel | Desktop | The panel edge follows the pointer 1:1. On release, the panel goes to the snap point nearest the projected position: collapsed, 33 % or 66 %. |
+| Resize the logs panel | Desktop | The panel edge follows the pointer 1:1. On release, the panel goes to the snap point nearest the projected position: collapsed, 30 % or 60 %. The first open goes to 30 %; later opens go to the last open stop. |
 | Resize the navigation bar | Desktop | The edge follows the pointer 1:1 between the icon-only and full widths, with rubber-band resistance past either. On release the bar rests at the width nearest the projected position (collapsed or expanded, NAV-006) and the choice is kept as the toggle's is. The left and right arrow keys on the focused edge collapse and expand it. |
 | Reorder session tabs | Desktop | The tab follows the pointer from the grab point. Other tabs move away with `spring-move`. |
 | Drag a session tab out of the strip | Desktop | Pops the session out to a new window (RA-002). |
@@ -792,18 +832,32 @@ The Devices page shows all devices in a grid of cards. The operator can change t
 Each device card shows:
 
 - The device name.
-- The host name or the IP address.
-- The status: Up, Down, Degraded, Maintenance or Unknown.
-- The uptime percentage for the last 24 hours.
-- A bar for the last 50 heartbeats.
-- CPU usage, memory usage and disk usage, if metrics are available.
-- The buttons "SSH" and "RDP", if the device has these protocols.
+- The host name or the IP address, in the monospace font.
+- The combined status (DEV-006) and, when it is not Up, its first reason.
+- The uptime percentage for the last 24 hours (UI-031).
+- A bar for the last 50 heartbeats, labelled "Last 50 checks", with a HelpTip.
+- CPU, memory, disk and VRAM usage as 6 px bars with their values, if metrics are available.
+- A Connect button for each protocol the device has set up, and "Wake" when the device can be woken.
 
 - **DEV-001.** The page must show the device list in less than 1 second for 200 devices.
 - **DEV-002.** The page must update the status of each device without a full reload.
 - **DEV-003.** The operator must be able to filter the list by status, by tag and by name.
 - **DEV-004.** The operator must be able to sort the list by name, by status and by uptime.
 - **DEV-005.** If there are no devices, the page must show an empty state with the button "Add device".
+- **DEV-006.** A device must show one combined status. The status is chosen by this precedence; the first match wins. Every reason that applied must be available in the status HelpTip, in the same order. The precedence is one pure function in the client, and the status badge only displays its result.
+
+  | Order | Status | When |
+  | --- | --- | --- |
+  | 1 | Maintenance | The device is inside a maintenance window. |
+  | 2 | Down | Any enabled check is Down. |
+  | 3 | Warning | A security warning is open (host key or certificate changed), or a certificate or domain expires inside the shortest NOT-006 threshold. |
+  | 4 | Degraded | Any check is Degraded, or a metric is over its threshold. |
+  | 5 | Up | At least one enabled check is Up and nothing above applies. |
+  | 6 | Unknown | No enabled check has a result, or every check is paused. |
+
+- **DEV-007.** The grid must fill the width with cards of at least 18 rem. The table must fit its columns at 1280 px without a horizontal scroll bar; the heartbeat column shrinks before any text column.
+- **DEV-008.** The toolbar must be one row on a wide window: search, the status filter, the tag filter, the view switch, and "Add device" as the primary button at the trailing end.
+- **DEV-009.** Cards in one grid row keep their own height; a card without metrics is shorter, not padded. Every connect action, "Wake" included, uses the same button tone.
 
 ### 6.2 Add or edit a device
 
@@ -1036,9 +1090,11 @@ The agent may read NVIDIA values through NVML in place of `nvidia-smi`. The valu
 
 The operator clicks a device card to open the device detail view.
 
-- **DEV-020.** The header of the device detail view must have three rows. The first row must be a "Devices" back link. The second row must show an icon for the device type, the device name and the status, with the SSH, RDP, VNC, Web and Edit buttons at its right end; in a narrow window the buttons move to a row of their own. The third row must show the host, the IP address, the device type, the operating system and the tags, each as a chip with an icon.
-- **DEV-021.** The chips must wrap onto further lines and must never be cut off. The name and the status must always be visible; a name that is too long ends with an ellipsis and the full name is available as a tooltip.
-- **DEV-022.** The header must always show an SSH button and an RDP button. If a protocol is not set up on the device, its button must have a dashed border and a "+" icon. This button must open the Settings tab of the device. It must not start a session.
+- **DEV-020.** The header of the device detail view must have three rows. The first row must be a "Devices" back link (a chevron and the word, in the ghost style). The second row must show an icon for the device type, the device name and the combined status (DEV-006), with a Connect button for each protocol that is set up (SSH, RDP, VNC, Web; the most used one is primary) and an overflow menu (Edit, set up a protocol, maintenance) at its right end; in a narrow window the buttons move to a row of their own. The third row must show the host and the IP address in the monospace font with a copy button, the device type and operating system as plain text, and the tags as chips. The tabs below the header are underlined tabs, not buttons.
+- **DEV-021.** The chips must wrap onto further lines and must never be cut off. The name and the status must always be visible; a name that is too long ends with an ellipsis and the full name is available as a tooltip that never covers a button.
+- **DEV-022.** A protocol that is not set up on the device has no header button. "Set up SSH", "Set up RDP" and "Set up VNC" are items of the overflow menu; each opens the Settings tab of the device at that section and never starts a session.
+- **DEV-023.** While its data loads, the device detail view must show a loading skeleton for the header and the first tab. If the load fails, it must show an error state with "Try again" (UI-030).
+- **DEV-024.** The SSH host key fingerprint is not shown in the Overview. A "Host key" row shows its state ("Trusted", "Changed") and the fingerprint is in its HelpTip.
 
 The view has these tabs:
 
@@ -1070,16 +1126,15 @@ The view has these tabs:
 ## 7. Settings page
 
 - **SET-001.** The Settings page must be available from the navigation bar.
-- **SET-002.** In Phase 1, the Settings page must show only the page title "Settings", a "Signed in as <name>" row with "Sign out" (R-048), the "Interface font" and "Monospace font" choices (UI-020), and, in the desktop app, the "Updates" row (UPD-006).
-- **SET-003.** The Settings page must show a "VPN" section: the path of each site, the nodes that are not in Anima, and the key expiry of each node. When the hub has no VPN picture, the section must say: "VPN status is not available. The hub has no LocalAPI proxy (ANIMA_TAILSCALE_LOCALAPI), or it has not answered since the hub started."
+- **SET-002.** Withdrawn (2026-11-11, UI redesign; it described the Phase 1 page). Replaced by SET-004.
+- **SET-003.** The Settings page must show a "VPN" section with two lists under their own headings. "Sites": each site's name, its route in the monospace font and its router state in words (for example "Router: none set up", "Router waiting for approval" with an "Approve route" button on the row). "Computers": each node's name, its role and its address, with the key expiry as a status ("Expires in 3 days" as a warning, "Never expires" as plain text), and the nodes that are not in Anima marked as such. When the hub has no VPN picture, the section must say: "VPN status is not available. The hub cannot reach the VPN service." with the technical cause (no LocalAPI proxy, `ANIMA_TAILSCALE_LOCALAPI`, or no answer since the hub started) in a HelpTip.
+- **SET-004.** The Settings page must show a section list beside the content on windows of `bp-wide` and above, and a section jump menu below that width. The sections are Account, Appearance, Hub, Notifications, Checks, Data retention, Updates, API keys and VPN; each has an anchor. The content column is at most `content-form` wide.
+- **SET-005.** A section whose fields belong together has one "Save changes" button at its end, enabled only when something changed. A single toggle or choice saves at once and shows "Saved" inline. Every result (saved, failed, test passed) shows in a Notice inside its section.
+- **SET-006.** The Updates section shows the version, the update state and "Check for updates". Packaging and signing details (Tauri packages, updater key, build host) are in a "Details for developers" Disclosure, closed by default.
 
 A later version adds these items to the Settings page:
 
-- Hub address and hub connection test (desktop client only).
-- Theme: Dark, Light or System.
-- Data retention period.
-- Notification channels, for example email, ntfy, Discord or Telegram.
-- Default check settings.
+- Further palettes (themes) through the theme registry (UI-023).
 
 ## 8. Device management (withdrawn)
 
