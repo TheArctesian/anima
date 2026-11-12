@@ -130,7 +130,11 @@ services:
       retries: 3
       start_period: 10s
       start_interval: 2s
-    networks: [gateway]
+    # A fixed address, so guacd can never be given the hub's 172.30.0.10 by Docker's dynamic
+    # allocation: the host firewall and sshd admit that address to the VPS (VP-13).
+    networks:
+      gateway:
+        ipv4_address: ${ANIMA_GUACD_IP:-172.30.0.20}
     restart: unless-stopped
 
   # Two Tailscale LocalAPI calls for the hub (D-4, VPN-005): status and a disco ping. It is the

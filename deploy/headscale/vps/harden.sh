@@ -61,7 +61,8 @@ Commands (run as root):
             networks, extra enabled units, firewalld, nftables tables), then report OS,
             admin user, effective sshd values, updates, SELinux and firewall state.
             Changes nothing.
-  ssh       Install the sshd drop-in (keys only, no root, AllowUsers \$ANIMA_ADMIN_USER),
+  ssh       Install the sshd drop-in (keys only, no root, AllowUsers \$ANIMA_ADMIN_USER and
+            anima-probe from the hub container only, VP-13),
             verify it with sshd -t, sshd -T and sshd -T -C for root and the admin user,
             then reload sshd. Refuses while sshd_config or a file it includes has an
             active Match line. ANIMA_ADMIN_USER must be a non-root member of group

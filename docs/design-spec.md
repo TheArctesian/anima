@@ -454,7 +454,7 @@ How it operates:
 
 VPS security:
 
-- **VPS-001.** SSH to the VPS must use keys only. Disable password login and root login. SSH reaches the VPS only through the VPN interface, and from the hub container (VP-13): the hub may open SSH to the VPS's VPN address, so the VPS can be a device in Anima.
+- **VPS-001.** SSH to the VPS must use keys only. Disable password login and root login. SSH reaches the VPS only through the VPN interface, and from the hub container (VP-13): the hub may open SSH to the VPS's VPN address, so the VPS can be a device in Anima. sshd admits the admin user and one unprivileged user, `anima-probe`, which may log in only from the hub container's fixed address.
 - **VPS-002.** The VPS firewall must permit only 443/tcp (Headscale and DERP), 3478/udp (STUN) and 41641/udp (WireGuard). All other ports are closed to the internet.
 - **VPS-003.** The Headscale administration must be available only on the VPN.
 - **VPS-004.** The VPS must install security updates automatically.
