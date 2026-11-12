@@ -23,12 +23,6 @@ import { SHAPE_KINDS, shapeKinds, type ShapeKind } from "./leak-shapes.ts";
 /** The stable name of a finding: a shape kind, or `needle` for an operator value. */
 export type LeakKind = ShapeKind | "needle";
 
-/** One finding: a 1-based line number and the kind of value found there. */
-export interface Leak {
-  line: number;
-  kind: LeakKind;
-}
-
 const ESC = String.fromCharCode(0x1b);
 const BEL = String.fromCharCode(0x07);
 // CSI sequences (colours, cursor) and OSC sequences (titles, links) that `docker compose logs` may add.
@@ -116,19 +110,6 @@ export function leakKinds(raw: string, needles: readonly string[]): LeakKind[] {
     found.add("needle");
   }
   return KIND_ORDER.filter((kind) => found.has(kind));
-}
-
-/** Every leak in a log, numbered from line 1. */
-export function findLeaks(lines: Iterable<string>, needles: readonly string[]): Leak[] {
-  const leaks: Leak[] = [];
-  let number = 0;
-  for (const raw of lines) {
-    number += 1;
-    for (const kind of leakKinds(raw, needles)) {
-      leaks.push({ line: number, kind });
-    }
-  }
-  return leaks;
 }
 
 /** The values of a needles file: one per line, trimmed, blank lines dropped. */
@@ -229,12 +210,17 @@ async function scanStream(stream: AsyncIterable<string | Uint8Array>, needles: r
   return hits;
 }
 
+/** True when no log can arrive: no file was given and stdin is a terminal, so reading it would wait for typing. */
+export function needsLog(logPath: string | undefined, stdinIsTTY: boolean | undefined): boolean {
+  return logPath === undefined && stdinIsTTY === true;
+}
+
 /** Runs the scan for these arguments and returns the exit code; output goes to stdout, problems to stderr. */
 async function main(args: string[]): Promise<number> {
   try {
     const request = parseRequest(args);
     const needles = await readNeedles(request.needlesPath);
-    if (request.logPath === undefined && process.stdin.isTTY) {
+    if (needsLog(request.logPath, process.stdin.isTTY)) {
       throw new ScanError("no log on stdin: pipe the log in or give a file");
     }
     const stream = request.logPath === undefined ? process.stdin : createReadStream(request.logPath);

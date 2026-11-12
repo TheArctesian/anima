@@ -5,7 +5,7 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { findLeaks, leakKinds, lineViews, parseNeedles, plainLine, type LeakKind } from "../acceptance/log-scan.ts";
+import { leakKinds, lineViews, needsLog, parseNeedles, plainLine, type LeakKind } from "../acceptance/log-scan.ts";
 
 const SCRIPT = join(import.meta.dir, "..", "acceptance", "log-scan.ts");
 const ESC = String.fromCharCode(0x1b);
@@ -172,13 +172,6 @@ describe("terminal codes and line ends", () => {
     expect(leakKinds(link, [])).toEqual(["secret-field"]);
   });
 
-  test("leaks are numbered from line 1", () => {
-    const lines = ["clean", `x ${apiKey}`, "clean", "password=x"];
-    expect(findLeaks(lines, [])).toEqual([
-      { line: 2, kind: "api-key" },
-      { line: 4, kind: "secret-field" },
-    ]);
-  });
 });
 
 describe("property: an embedded API key is found whatever surrounds it", () => {
@@ -284,11 +277,19 @@ describe("spawned scan", () => {
   test("a large log streams through", () => {
     const big = `${"hub-1 | {\"level\":\"INFO\",\"route\":\"/graphql\"}\n".repeat(100_000)}${apiKey}\n`;
     expect(run([], big)).toEqual({ code: 1, out: "line 100001: api-key\nscanned 100001 lines, 1 hits\n", err: "" });
-  });
+    // About 2 s on an idle machine; the default 5 s is too tight when run alone under load.
+  }, 30_000);
 
 });
 
 describe("spawned scan refusals", () => {
+  test("only a terminal on stdin with no file means there is no log", () => {
+    expect(needsLog(undefined, true)).toBe(true);
+    expect(needsLog(undefined, false)).toBe(false);
+    expect(needsLog(undefined, undefined)).toBe(false);
+    expect(needsLog("hub.log", true)).toBe(false);
+  });
+
   test("an unreadable log, needles file or bad usage exits 2 without echoing input", () => {
     const missing = run([join(dir, "missing.log")]);
     const folder = run([join(dir, "folder")]);

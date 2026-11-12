@@ -15,6 +15,13 @@
 // - A Discord webhook URL without its token segment, a Slack hooks URL without a path, `apprise://` with
 //   nothing after it, an ntfy server origin without a topic, and a URL whose only user info is a short name
 //   (`ssh://okita@host`). A user of 20 or more characters with upper case, lower case and a digit is a token.
+//
+// Known limits (give the value as a needle when it matters):
+// - A lower-case compound field name (`clientsecret=x`, `smtppassword=x`) has no word start or hump, so it is
+//   read as a name.
+// - A form-encoded body writes a space as `+`; the percent view does not turn `+` into a space, so a shape
+//   that needs a space (`Authorization: Bearer x`) is missed there.
+// - A value wrapped in base64 (a needle or a secret inside a base64 blob) is not decoded.
 
 /** The stable name of a leak shape; the operator records it with the line number. */
 export type ShapeKind =
@@ -50,6 +57,12 @@ const APPRISE_SCHEMES =
   "ifttt|twilio";
 // User info characters: anything up to the end of the authority.
 const USER = String.raw`[^\s/?#@:"'<>]`;
+// Hosts whose webhook URL carries its credential in the path.
+const DISCORD_WEBHOOK = String.raw`discord(?:app)?\.com/api/(?:v\d+/)?webhooks/\d+/[A-Za-z0-9_-]`;
+const SLACK_WEBHOOK = String.raw`hooks\.slack\.com/(?:services|workflows|triggers)/[A-Za-z0-9]`;
+const TEAMS_WEBHOOK = String.raw`webhook\.office\.com/webhookb2/[A-Za-z0-9]`;
+// SMTP SASL mechanisms whose argument is a credential.
+const SMTP_MECHANISMS = "PLAIN|LOGIN|XOAUTH2|OAUTHBEARER|CRAM-MD5";
 
 function isRandom(value: string): boolean {
   return /[A-Z]/.test(value) && /[a-z]/.test(value) && /\d/.test(value);
@@ -66,13 +79,14 @@ function isRealValue(value: string | undefined): boolean {
 
 function isSecretField(match: RegExpExecArray, line: string): boolean {
   const before = line.charAt(match.index - 1);
-  const atWordStart = !/[A-Za-z]/.test(before) || (/^[A-Z]/.test(match[1] ?? "") && /[a-z0-9]/.test(before));
-  return atWordStart && isRealValue(match[2]);
+  const name = match.groups?.name ?? "";
+  const atWordStart = !/[A-Za-z]/.test(before) || (/^[A-Z]/.test(name) && /[a-z0-9]/.test(before));
+  return atWordStart && isRealValue(match.groups?.value);
 }
 
 function isUrlCredential(match: RegExpExecArray): boolean {
-  const tokenUser = match[3];
-  return match[2] !== undefined || (tokenUser !== undefined && isRandom(tokenUser));
+  const tokenUser = match.groups?.tokenUser;
+  return match.groups?.password !== undefined || (tokenUser !== undefined && isRandom(tokenUser));
 }
 
 const SHAPES: readonly Shape[] = [
@@ -91,8 +105,7 @@ const SHAPES: readonly Shape[] = [
   },
   {
     kind: "webhook-url",
-    pattern:
-      /discord(?:app)?\.com\/api\/(?:v\d+\/)?webhooks\/\d+\/[A-Za-z0-9_-]|hooks\.slack\.com\/(?:services|workflows|triggers)\/[A-Za-z0-9]|webhook\.office\.com\/webhookb2\/[A-Za-z0-9]/gi,
+    pattern: new RegExp(`${DISCORD_WEBHOOK}|${SLACK_WEBHOOK}|${TEAMS_WEBHOOK}`, "gi"),
   },
   {
     kind: "apprise-url",
@@ -102,18 +115,23 @@ const SHAPES: readonly Shape[] = [
   { kind: "ntfy-token", pattern: /(?<![A-Za-z0-9_])tk_[A-Za-z0-9]{29}(?![A-Za-z0-9_])/g },
   {
     kind: "smtp-auth",
-    pattern: /\bAUTH\s+(?:PLAIN|LOGIN|XOAUTH2|OAUTHBEARER|CRAM-MD5)\s+(?=\S*[a-z+/=])[A-Za-z0-9+/]{4,}={0,2}(?![\w+/=-])/g,
+    // The lookahead wants a lower-case letter, `+`, `/` or `=`: base64 has them, a server's list of mechanisms
+    // (`250-AUTH PLAIN LOGIN OAUTHBEARER`) is all capitals.
+    pattern: new RegExp(
+      String.raw`\bAUTH\s+(?:${SMTP_MECHANISMS})\s+(?=\S*[a-z+/=])[A-Za-z0-9+/]{4,}={0,2}(?![\w+/=-])`,
+      "g",
+    ),
   },
   {
     kind: "secret-field",
-    pattern: /(password|passwd|passphrase|secret)\\?["']?\s*[:=][ \t]*\\?["']?([^\s"',;&}\\]*)/gi,
+    pattern: /(?<name>password|passwd|passphrase|secret)\\?["']?\s*[:=][ \t]*\\?["']?(?<value>[^\s"',;&}\\]*)/gi,
     holdsValue: isSecretField,
   },
   { kind: "pem-private-key", pattern: /-----BEGIN (?:[A-Z0-9]+ )*PRIVATE KEY(?: BLOCK)?-----/g },
   {
     kind: "url-credentials",
     pattern: new RegExp(
-      `(?<![A-Za-z0-9+.-])[A-Za-z][A-Za-z0-9+.-]{0,31}://(?:(${USER}*):([^\\s/?#@"'<>]+)|(${USER}{20,}))@`,
+      `(?<![A-Za-z0-9+.-])[A-Za-z][A-Za-z0-9+.-]{0,31}://(?:${USER}*:(?<password>[^\\s/?#@"'<>]+)|(?<tokenUser>${USER}{20,}))@`,
       "g",
     ),
     holdsValue: isUrlCredential,
