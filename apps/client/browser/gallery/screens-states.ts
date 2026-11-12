@@ -153,4 +153,13 @@ export const STATE_SCREENS: readonly Screen[] = [
       await page.waitForTimeout(1500);
     },
   },
+  {
+    name: 'sign-in-hub-unreachable',
+    signedOut: true,
+    open: async (page) => {
+      await page.routeWebSocket((url) => url.pathname === '/graphql', (socket) => void socket.close({ code: 1006, reason: 'Gone' }));
+      await page.goto(`${HUB_ORIGIN}/sign-in`);
+      await expect(page.getByText("Can't reach")).toBeVisible();
+    },
+  },
 ];

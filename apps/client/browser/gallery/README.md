@@ -15,7 +15,7 @@ If the engine is missing: `bunx playwright install webkit` inside `apps/client`.
 
 Pictures go to `apps/client/gallery-shots/<theme>-<width>[-dyslexic]/<NN>-<screen>.png` (git-ignored). Passes: dark and light at
 800, 1280 and 1600 wide (900 high), and one OpenDyslexic pass (UI-019) at 1280 dark. The theme and typeface are the stored
-settings (`anima.theme`, `anima.typeface.*`) plus the matching `prefers-color-scheme`. Motion is reduced. Pages that scroll are
+settings (`anima.theme`, `anima.typeface.*`, and `anima.palette` when `GALLERY_PALETTE=nord` is set) plus the matching `prefers-color-scheme`. Motion is reduced. Pages that scroll are
 shot full length; overlays, popovers and the logs panel (fixed to the window) are shot as the window; Settings sections and tall
 dialogs are shot as the element.
 
@@ -48,6 +48,7 @@ the same deny-all proxy as the browser tests; nothing reaches a network.
 | 80-84 | Empty: no devices, no checks, no channels, no API keys, no log events |
 | 85-87 | Loading: devices, device, settings (the hub holds the answer) |
 | 88-92 | Errors: hub error on devices, device and settings; hub unreachable; socket offline |
+| 93 | Sign-in with the hub unreachable |
 
 ## Not covered
 
