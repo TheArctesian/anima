@@ -24,6 +24,10 @@ fn main() {
         .manage(builder::Running::default())
         .manage(builder::Bundled::default())
         .manage(agent::Installing::default())
+        .setup(|_| {
+            tauri::async_runtime::spawn(keystore::forget_retired_updater_key());
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             keystore::access_token_read,
             keystore::access_token_write,

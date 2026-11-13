@@ -36,6 +36,18 @@ Agents never do these steps (UPD-012). Never paste a key or password into chat, 
    in your home folder on the VPS. The key is never in GitHub, on a builder or in a file the agents
    read.
 
+4. On each computer that was a builder before R-116, the old sealed key may still be in the key
+   store. The app deletes it at start; to delete it by hand:
+
+   ```sh
+   # Linux (Secret Service)
+   secret-tool clear service ing.anima.desktop account updater-key
+   secret-tool clear service ing.anima.desktop account updater-key-public
+   # macOS (Keychain)
+   security delete-generic-password -s ing.anima.desktop -a updater-key
+   security delete-generic-password -s ing.anima.desktop -a updater-key-public
+   ```
+
 A builder holds no updater key and signs nothing. A plain local `tauri build` makes no signed
 updater files; they come only from the hub in the Builds flow. If the hub cannot open the key, or
 it is not the key of `ANIMA_UPDATER_PUBLIC_KEY`, the hub starts with publishing off and its log

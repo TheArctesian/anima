@@ -11,6 +11,7 @@ use std::{
 use tauri::async_runtime::block_on;
 
 mod builder;
+mod retired;
 
 use keyring::{
     Error as BackendError,

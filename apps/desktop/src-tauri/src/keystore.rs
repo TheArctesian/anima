@@ -3,6 +3,7 @@
 //! key never does: the hub holds it (R-116).
 
 mod error;
+mod retired;
 mod token;
 
 #[cfg(test)]
@@ -10,6 +11,7 @@ pub(crate) mod tests;
 
 pub use error::KeystoreError;
 use tauri::{Runtime, Webview};
+use tauri_plugin_log::log;
 use token::TokenKind;
 
 use crate::web_view::MAIN;
@@ -86,4 +88,15 @@ pub async fn builder_token_clear<R: Runtime>(
 
 async fn builder_clear(origin: String) -> Result<(), KeystoreError> {
     blocking(move || token::clear_token(TokenKind::Builder, &origin)).await
+}
+
+/// Deletes the updater key entries an earlier version imported (R-116, D-41), off the main
+/// thread. Logs only the error code, never an entry (LOG-007).
+pub async fn forget_retired_updater_key() {
+    if let Err(error) = blocking(retired::forget_updater_key).await {
+        log::warn!(
+            "the retired updater key entries were not deleted: {}",
+            error.code()
+        );
+    }
 }
