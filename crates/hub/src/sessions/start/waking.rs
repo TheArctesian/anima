@@ -12,7 +12,7 @@ use sqlx::PgPool;
 use crate::{
     credentials::Vault,
     devices::{self, Device},
-    events::Bus,
+    events::{ActorKind, Bus},
     sessions::{Error, wake},
     targets::AddressPolicy,
 };
@@ -30,14 +30,15 @@ pub struct Waking {
     pub bus: Bus,
 }
 
-/// Whether a packet for `device` was sent at `now`. None is tried unless the device is asleep,
-/// has a MAC address and its site has a wake relay.
+/// Whether a packet for `device` was sent at `now`, for the start a request of kind `by` asked
+/// for; the wake's event records `by` (LOG-013). None is tried unless the device is asleep, has
+/// a MAC address and its site has a wake relay.
 ///
 /// # Errors
 /// `Devices` when the site's wake relay cannot be read. A failed wake is not an error.
 pub(super) async fn sent(
     db: &PgPool,
-    device: &Device,
+    (device, by): (&Device, ActorKind),
     waking: &Waking,
     now: DateTime<Utc>,
 ) -> Result<bool, Error> {
@@ -50,15 +51,8 @@ pub(super) async fn sent(
     if relay.is_none() {
         return Ok(false);
     }
-    let woken = wake(
-        db,
-        &waking.vault,
-        &waking.policy,
-        &waking.bus,
-        device.id,
-        now,
-    )
-    .await;
+    let stores = (db, &waking.vault, &waking.policy, &waking.bus);
+    let woken = wake(stores, device.id, by, now).await;
     match woken {
         Ok(_) => Ok(true),
         Err(error) => {

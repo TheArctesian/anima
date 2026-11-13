@@ -413,7 +413,7 @@ impl FixedCommand { pub const fn new(program: &'static str) -> Self; pub fn mac(
 pub struct SshLink { /* russh handle */ }
 pub async fn link(db: &Db, vault: &credentials::Vault, policy: &AddressPolicy, device: &Device, now: DateTime<Utc>) -> Result<SshLink, LinkError>;
 impl SshLink { pub async fn run(&mut self, c: &FixedCommand, limit: Duration) -> Result<CommandOutput, LinkError>; }
-pub async fn wake(db: &Db, vault: &credentials::Vault, policy: &AddressPolicy, bus: &events::Bus, device: DeviceId, now: DateTime<Utc>) -> Result<WakeSent, Error>;
+pub async fn wake(db: &Db, vault: &credentials::Vault, policy: &AddressPolicy, bus: &events::Bus, device: DeviceId, now: DateTime<Utc>) -> Result<WakeSent, Error>;   // replaced below (operator, 2026-11-13)
 pub fn files_router(db: Db, vault: credentials::Vault, bus: events::Bus, clock: Clock, live: Live) -> axum::Router;   // GET /files, tunnel.md Section 9
 ```
 
@@ -437,6 +437,20 @@ pub fn tunnel_router(s: &Serving) -> axum::Router;      // signature change only
 pub fn terminal_router(s: &Serving) -> axum::Router;    // signature change only
 // Session start, files and wake keep their Phase 2 signatures; wake now uses ssh::link.
 ```
+
+(Changed, operator, 2026-11-13; ruling number to be assigned; LOG-013.) `wake` takes the actor kind of
+whoever asked for the wake, and its event records it: the kind of the request for `wakeDevice` and for the
+wake before a `startSession`, `ActorKind::Hub` for a wake the hub decides by itself. The stores are one
+argument. `wakeDevice` writes the audit entry `device.wake` for each attempt on a known device, sent or not;
+a failed attempt's change is `{ "sent": false, "reason": <the fixed sentence> }`. This line replaces the
+WP-27 signature:
+
+```rust
+pub async fn wake((db, vault, policy, bus): (&Db, &credentials::Vault, &AddressPolicy, &events::Bus), device: DeviceId, by: ActorKind, now: DateTime<Utc>) -> Result<WakeSent, Error>;
+```
+
+The files tunnel's refusal events (the device's host key changed, SEC-007; the SSH credential was entered
+for another host, SEC-011) record the kind of the request that opened the tunnel, not Hub (LOG-013).
 
 ## metrics (Phase 2, WP-28)
 

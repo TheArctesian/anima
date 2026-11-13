@@ -4,11 +4,13 @@
 //! `startSession`'s decision.
 //!
 //! Who writes what (LOG-005): [`wake`] writes the event, one per attempt on a known device:
-//! Info when the relay sent the packet, Error with a fixed sentence when it did not. The
+//! Info when the relay sent the packet, Error with a fixed sentence when it did not. The event
+//! records the actor kind the caller gives: the kind of the request that asked for the wake
+//! (`wakeDevice`, `startSession`), or Hub for a wake the hub decides by itself (LOG-013). The
 //! `wakeDevice` mutation, which knows the operator and the client address, writes the audit
-//! entry `device.wake` once the packet is sent, as `acceptHostKey` writes its own. No event,
-//! audit entry or error holds a host, an address, the MAC address or the relay's output
-//! (LOG-007).
+//! entry `device.wake` for each attempt on a known device, sent or not, as `acceptHostKey`
+//! writes its own: the attempt is what the audit log records. No event, audit entry or error
+//! holds a host, an address, the MAC address or the relay's output (LOG-007).
 
 pub(super) mod graphql;
 mod refusal;
@@ -71,21 +73,15 @@ pub enum Error {
 /// address, the site a relay that is not the device itself, and the relay a link that opens
 /// (SSH on, an accepted host key, a stored credential). The relay runs `wakeonlan
 /// <mac>` within 10 seconds; exit status 0 counts as sent. Writes one event for a known
-/// device, as the module describes. A failed event write is logged and does not change the
-/// result: the packet was sent, or not, either way.
+/// device, by `by`, as the module describes. A failed event write is logged and does not
+/// change the result: the packet was sent, or not, either way.
 ///
 /// # Errors
 /// `NotFound` for an unknown device; the [`Error`] for the first step that fails.
-#[expect(
-    clippy::too_many_arguments,
-    reason = "the hub contract (K3) fixes the signature of wake"
-)]
 pub async fn wake(
-    db: &PgPool,
-    vault: &credentials::Vault,
-    policy: &AddressPolicy,
-    bus: &Bus,
+    (db, vault, policy, bus): (&PgPool, &credentials::Vault, &AddressPolicy, &Bus),
     device: DeviceId,
+    by: ActorKind,
     now: DateTime<Utc>,
 ) -> Result<WakeSent, Error> {
     let device = devices::get(db, device)
@@ -111,14 +107,15 @@ pub async fn wake(
         })
     }
     .await;
-    if let Err(error) = record(db, bus, event(&device, &sent), now).await {
+    if let Err(error) = record(db, bus, event(&device, &sent, by), now).await {
         tracing::error!(device = %device.id, %error, "the event of a Wake-on-LAN could not be written");
     }
     sent
 }
 
-/// The event for `device`'s wake: Info naming the relay, or Error with the fixed sentence.
-fn event(device: &Device, sent: &Result<WakeSent, Error>) -> NewEvent {
+/// The event for `device`'s wake by `actor`: Info naming the relay, or Error with the fixed
+/// sentence.
+fn event(device: &Device, sent: &Result<WakeSent, Error>, actor: ActorKind) -> NewEvent {
     let (severity, message) = match sent {
         Ok(sent) => (
             Severity::Info,
@@ -134,9 +131,7 @@ fn event(device: &Device, sent: &Result<WakeSent, Error>) -> NewEvent {
         source: Source::Session,
         device: Some((device.id, device.name.clone())),
         message,
-        // K3 fixes `wake` without its caller, so the event is Hub; the `device.wake` audit
-        // entry records the request's kind (LOG-013).
-        actor: ActorKind::Hub,
+        actor,
     }
 }
 
@@ -147,8 +142,10 @@ async fn record(db: &PgPool, bus: &Bus, event: NewEvent, now: DateTime<Utc>) -> 
     Ok(())
 }
 
-/// Writes the audit entry `device.wake` for a packet `by` had `sent` to `device`, stamped
-/// `by.at`. The change names the relay; never the MAC address or a host.
+/// Writes the audit entry `device.wake` for the wake `by` asked for on `device`, stamped
+/// `by.at`, whether the packet was `sent` or not. The change of a sent packet names the relay;
+/// that of a failed one has `sent: false` and the fixed sentence of the failure. Never the MAC
+/// address or a host (LOG-007).
 ///
 /// # Errors
 /// `Events` or `Database` when the entry cannot be written.
@@ -156,17 +153,21 @@ pub(in crate::sessions) async fn audit(
     db: &PgPool,
     by: &Actor,
     device: DeviceId,
-    sent: &WakeSent,
+    sent: &Result<WakeSent, Error>,
 ) -> Result<(), Error> {
+    let change = match sent {
+        Ok(sent) => json!({
+            "relayId": sent.relay.to_string(),
+            "relayName": sent.relay_name,
+        }),
+        Err(error) => json!({ "sent": false, "reason": refusal::sentence(error) }),
+    };
     let entry = NewAudit {
         operator: by.operator.clone(),
         action: AuditAction::Wake,
         target: AuditTarget::Device(device),
         client: by.client,
-        change: json!({
-            "relayId": sent.relay.to_string(),
-            "relayName": sent.relay_name,
-        }),
+        change,
     };
     let mut tx = db.begin().await?;
     events::audit(&mut tx, by.at, entry).await?;

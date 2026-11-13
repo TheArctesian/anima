@@ -27,7 +27,8 @@ pub struct Mutation;
 #[Object(name = "WakeMutation")]
 impl Mutation {
     /// Sends a Wake-on-LAN packet for the device from its site's wake relay, and writes the
-    /// audit entry `device.wake` when the relay sent it (RA-031, LOG-005).
+    /// audit entry `device.wake` for the attempt on a known device, sent or not (RA-031,
+    /// LOG-005, LOG-013).
     #[graphql(guard = "Authenticated")]
     async fn wake_device(&self, ctx: &Context<'_>, device_id: ID) -> Result<WakeSent> {
         let device = device_id
@@ -39,23 +40,23 @@ impl Mutation {
             at: schema_dependency::<Arc<dyn Clock>>(ctx)?.now(),
         };
         let db = schema_dependency::<PgPool>(ctx)?;
-        let sent = wake(
+        let stores = (
             db,
             schema_dependency::<Vault>(ctx)?,
             schema_dependency::<AddressPolicy>(ctx)?,
             schema_dependency::<Bus>(ctx)?,
-            device,
-            by.at,
-        )
-        .await
-        .map_err(to_graphql)?;
-        // A sent packet whose audit entry failed is logged here and stays `INTERNAL`: the
-        // mutation never reports success for an action it could not audit (LOG-005).
+        );
+        let sent = wake(stores, device, by.operator.actor.kind(), by.at).await;
+        if matches!(sent, Err(Error::NotFound(_))) {
+            return sent.map_err(to_graphql);
+        }
+        // An attempt whose audit entry failed is logged here and stays `INTERNAL`: the
+        // mutation never reports an action it could not audit (LOG-005).
         if let Err(error) = audit(db, &by, device, &sent).await {
-            tracing::error!(%device, %error, "the audit entry of a sent Wake-on-LAN could not be written");
+            tracing::error!(%device, %error, "the audit entry of a Wake-on-LAN could not be written");
             return Err(to_graphql(error));
         }
-        Ok(sent)
+        sent.map_err(to_graphql)
     }
 }
 

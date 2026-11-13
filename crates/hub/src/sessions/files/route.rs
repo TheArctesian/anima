@@ -209,7 +209,7 @@ async fn linked(files: &Files, device: &Device, actor: ActorKind) -> Result<SshL
     };
     let written = match error {
         LinkError::HostKeyChanged => {
-            trail::host_key_changed(&files.db, &files.bus, now, device).await
+            trail::host_key_changed((&files.db, &files.bus), now, device, actor).await
         }
         LinkError::CredentialForOtherHost => {
             trail::credential_moved((&files.db, &files.bus), now, device, actor).await

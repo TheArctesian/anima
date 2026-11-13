@@ -114,23 +114,23 @@ pub(super) const HOST_KEY_CHANGED: &str = "The device presented an SSH host key 
                                            check the new key before accepting it.";
 
 /// Writes the Error event of a files tunnel to `device` refused at `now` because the device
-/// presented another host key than the accepted one.
+/// presented another host key than the accepted one. The request that opened the tunnel
+/// caused the attempt, so the event records `actor`, its kind (LOG-013).
 ///
 /// # Errors
 /// `Database` or `Events` when the event cannot be written.
 pub(super) async fn host_key_changed(
-    db: &PgPool,
-    bus: &Bus,
+    (db, bus): (&PgPool, &Bus),
     now: DateTime<Utc>,
     device: &Device,
+    actor: ActorKind,
 ) -> Result<(), Error> {
     let event = NewEvent {
         severity: Severity::Error,
         source: Source::Session,
         device: Some((device.id, device.name.clone())),
         message: HOST_KEY_CHANGED.to_owned(),
-        // The hub refuses the device's key by itself (SEC-007), so the event is Hub (LOG-013).
-        actor: ActorKind::Hub,
+        actor,
     };
     record(db, bus, now, event).await
 }

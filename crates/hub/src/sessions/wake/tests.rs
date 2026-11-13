@@ -13,7 +13,7 @@ use sqlx::PgPool;
 
 use super::{Error, WakeSent, wake};
 use crate::{
-    events::Bus,
+    events::{ActorKind, Bus},
     ids::DeviceId,
     sessions::tests::fixture::{DOCKER_HOST, LOOPBACK, PASSWORD, now, stored_text},
     ssh::tests::{Answer, Bench, Heard, Server, bench, reaching},
@@ -73,15 +73,8 @@ async fn set_relay(pool: &PgPool, relay: Option<&str>) {
 
 /// Wakes `device` under the loopback policy at [`now`].
 async fn woken(bench: &Bench, device: DeviceId) -> Result<WakeSent, Error> {
-    wake(
-        &bench.db,
-        &bench.vault,
-        &reaching(),
-        &Bus::new(16),
-        device,
-        now(),
-    )
-    .await
+    let stores = (&bench.db, &bench.vault, &reaching(), &Bus::new(16));
+    wake(stores, device, ActorKind::User, now()).await
 }
 
 /// Wakes `pve-01`, which must fail; the error's message and debug form are quiet.

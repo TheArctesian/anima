@@ -9,7 +9,7 @@ use super::{
     relay, set_mac, set_relay, wake, woken,
 };
 use crate::{
-    events::Bus,
+    events::{ActorKind, Bus},
     ids::DeviceId,
     sessions::{
         WakeError,
@@ -139,16 +139,10 @@ async fn sec_006_a_relay_without_an_accepted_key_is_refused_before_connecting(po
 async fn p2_004_a_relay_on_a_denied_address_is_refused_before_connecting(pool: PgPool) {
     let bench = relay(&pool, exiting(0)).await;
     let denied = AddressPolicy::new(vec!["127.0.0.0/8".parse().unwrap()]).allowing_loopback();
-    let error = wake(
-        &bench.db,
-        &bench.vault,
-        &denied,
-        &Bus::new(16),
-        pve(),
-        now(),
-    )
-    .await
-    .unwrap_err();
+    let stores = (&bench.db, &bench.vault, &denied, &Bus::new(16));
+    let error = wake(stores, pve(), ActorKind::User, now())
+        .await
+        .unwrap_err();
     assert!(matches!(error, WakeError::Link(LinkError::RefusedTarget)));
     assert_quiet(&format!("{error:?}"), &bench.server);
     assert_eq!(bench.server.connections(), 0);

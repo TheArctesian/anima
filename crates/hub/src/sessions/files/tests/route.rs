@@ -9,6 +9,7 @@ use super::{
     server::{Heard, serve},
     socket::{open, open_with},
 };
+use crate::events::{Actor, ActorKind, Operator, TokenKind};
 use crate::sessions::{
     files::{tickets::FilesTicket, trail::HOST_KEY_CHANGED},
     start,
@@ -163,16 +164,7 @@ async fn ra_032_a_files_ticket_presented_after_shutdown_is_refused(pool: PgPool)
 )]
 async fn sec_007_another_host_key_is_503_with_an_error_event(pool: PgPool) {
     let bench = bench(&pool).await;
-    let other = serve(12).await.key;
-    sqlx::query(
-        "update trust.host_keys set algorithm = $1, fingerprint_sha256 = $2, public_key = $3",
-    )
-    .bind(other.algorithm())
-    .bind(other.fingerprint().as_str().to_owned())
-    .bind(other.to_base64())
-    .execute(&pool)
-    .await
-    .unwrap();
+    accept_another_key(&pool).await;
     let token = bench.token().await;
     let refused = open_with(&bench.url(&token), true).await;
     assert_eq!(refused.err(), Some(StatusCode::SERVICE_UNAVAILABLE));
@@ -183,4 +175,56 @@ async fn sec_007_another_host_key_is_503_with_an_error_event(pool: PgPool) {
         (severity.as_str(), device.as_deref(), message.as_str()),
         ("error", Some("docker-host"), HOST_KEY_CHANGED)
     );
+}
+
+/// Makes the accepted host key another server's, so the device's own key is refused.
+async fn accept_another_key(pool: &PgPool) {
+    let other = serve(12).await.key;
+    sqlx::query(
+        "update trust.host_keys set algorithm = $1, fingerprint_sha256 = $2, public_key = $3",
+    )
+    .bind(other.algorithm())
+    .bind(other.fingerprint().as_str().to_owned())
+    .bind(other.to_base64())
+    .execute(pool)
+    .await
+    .unwrap();
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../tests/fixtures", scripts("devices"))
+)]
+async fn log_013_a_refused_files_tunnel_records_the_kind_of_its_request(pool: PgPool) {
+    let bench = bench(&pool).await;
+    accept_another_key(&pool).await;
+    let token = TicketToken::from_random([43; 32]);
+    let agent = Operator {
+        actor: Actor::request(
+            ActorKind::Agent,
+            TokenKind::ApiKey,
+            Some("agent".to_owned()),
+        ),
+        ..operator()
+    };
+    let ticket = FilesTicket {
+        operator: agent,
+        client: address(LOOPBACK),
+        session: bench.session,
+        device: docker_host(),
+        expires_at: now() + LIFETIME,
+    };
+    bench
+        .live
+        .files()
+        .issue(token.hash(), ticket, now())
+        .unwrap();
+    let refused = open_with(&bench.url(token.expose()), true).await;
+    assert_eq!(refused.err(), Some(StatusCode::SERVICE_UNAVAILABLE));
+    let kinds: Vec<Option<String>> =
+        sqlx::query_scalar("select actor_kind from events.event_log where severity = 'error'")
+            .fetch_all(&pool)
+            .await
+            .unwrap();
+    assert_eq!(kinds, [Some("agent".to_owned())]);
 }

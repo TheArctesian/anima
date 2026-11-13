@@ -233,7 +233,10 @@ pub async fn start(
     // Nor for a start the limit refuses; the count that holds is the locked one below.
     limit::check(&mut *db.acquire().await?, device.id).await?;
     let wake_sent = match &req.wake {
-        Some(wake) => waking::sent(db, &device, wake, clock.now()).await?,
+        Some(wake) => {
+            let asked = (&device, op.actor.kind());
+            waking::sent(db, asked, wake, clock.now()).await?
+        }
         None => false,
     };
     // Read after the wake, so the ticket still has its whole lifetime.

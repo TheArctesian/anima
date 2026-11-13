@@ -1,5 +1,6 @@
-//! `wakeDevice` (K1, K7, LOG-005, API-003): the result, the audit entry `device.wake` for a
-//! sent packet only, and each error code with its fixed message.
+//! `wakeDevice` (K1, K7, LOG-005, LOG-013, API-003): the result, the audit entry `device.wake`
+//! for each attempt on a known device, sent or not, the actor kind of the request on the entry
+//! and the event, and each error code with its fixed message.
 
 use std::sync::Arc;
 
@@ -82,6 +83,26 @@ async fn audits(pool: &PgPool) -> Vec<(String, String, String, String, String, J
     .unwrap()
 }
 
+/// The `device.wake` entry of a failed attempt on PVE with the error's `message`.
+fn failed_entry(message: &str) -> (String, String, String, String, String, Json) {
+    (
+        "operator".to_owned(),
+        "wake".to_owned(),
+        "device".to_owned(),
+        PVE.to_owned(),
+        CLIENT.to_owned(),
+        json!({ "sent": false, "reason": message }),
+    )
+}
+
+/// The `actor_kind` of every row of `events.<table>`.
+async fn kinds(pool: &PgPool, table: &str) -> Vec<Option<String>> {
+    sqlx::query_scalar(&format!("select actor_kind from events.{table}"))
+        .fetch_all(pool)
+        .await
+        .unwrap()
+}
+
 #[sqlx::test(
     migrations = "./migrations",
     fixtures(path = "../../../../tests/fixtures", scripts("devices"))
@@ -111,7 +132,7 @@ async fn ra_031_wake_device_returns_the_relay_and_writes_device_wake(pool: PgPoo
     migrations = "./migrations",
     fixtures(path = "../../../../tests/fixtures", scripts("devices"))
 )]
-async fn k7_a_refusal_the_operator_can_fix_is_conflict_with_no_audit_entry(pool: PgPool) {
+async fn k7_a_refusal_the_operator_can_fix_is_conflict_and_audited(pool: PgPool) {
     let bench = relay(&pool, exiting(0)).await;
     set_mac(&pool, PVE, None).await;
     let (code, message) = error_of(&bench, &asked(&bench, PVE).await);
@@ -121,18 +142,37 @@ async fn k7_a_refusal_the_operator_can_fix_is_conflict_with_no_audit_entry(pool:
         "No Wake-on-LAN packet was sent: the device has no MAC address. Add it in the device's \
          remote access settings."
     );
-    assert_eq!(audits(&pool).await, []);
+    assert_eq!(audits(&pool).await, [failed_entry(&message)]);
 }
 
 #[sqlx::test(
     migrations = "./migrations",
     fixtures(path = "../../../../tests/fixtures", scripts("devices"))
 )]
-async fn k7_a_failed_wakeonlan_is_unavailable_with_no_audit_entry(pool: PgPool) {
+async fn k7_a_failed_wakeonlan_is_unavailable_and_audited(pool: PgPool) {
     let bench = relay(&pool, exiting(2)).await;
-    let (code, _) = error_of(&bench, &asked(&bench, PVE).await);
+    let (code, message) = error_of(&bench, &asked(&bench, PVE).await);
     assert_eq!(code, "UNAVAILABLE");
-    assert_eq!(audits(&pool).await, []);
+    assert_eq!(audits(&pool).await, [failed_entry(&message)]);
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../tests/fixtures", scripts("devices"))
+)]
+async fn log_013_an_agent_s_wake_is_agent_on_the_entry_and_the_event_sent_or_not(pool: PgPool) {
+    let bench = relay(&pool, exiting(2)).await;
+    let identity = Identity::agent_key_for_tests(operator(), now() + TimeDelta::days(1));
+    let request = identity.attach(mutation(PVE)).data(address(CLIENT));
+    let (code, _) = error_of(&bench, &schema(&bench).execute(request).await);
+    assert_eq!(code, "UNAVAILABLE");
+    for table in ["audit_log", "event_log"] {
+        assert_eq!(
+            kinds(&pool, table).await,
+            [Some("agent".to_owned())],
+            "{table}"
+        );
+    }
 }
 
 #[sqlx::test(
