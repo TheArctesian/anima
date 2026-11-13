@@ -48,7 +48,7 @@
   });
 </script>
 
-<Modal open title="The host key of {device.name} has changed" warning describedBy="host-key-why" closeOnScrim={false} width={9} lowered onClose={onclose}>
+<Modal open solid title="The host key of {device.name} has changed" warning describedBy="host-key-why" closeOnScrim={false} width={9} lowered onClose={onclose}>
   <div class="content" bind:this={content}>
     <div id="host-key-why" class="why">
       <p>

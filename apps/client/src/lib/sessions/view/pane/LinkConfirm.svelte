@@ -19,7 +19,7 @@
   });
 </script>
 
-<Modal open={address !== undefined} title="Open this link?" onClose={oncancel}>
+<Modal open={address !== undefined} title="Open this link?" solid onClose={oncancel}>
   <p>The device asked to open this address in your browser. Open it only if you expect it.</p>
   <p class="host" data-host>{host}</p>
   <p class="address" data-address>{shown}</p>

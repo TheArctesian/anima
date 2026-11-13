@@ -61,7 +61,7 @@
   </a>
 {/snippet}
 
-<nav id="main-nav" aria-label="Main" data-shifts-with-banner>
+<nav id="main-nav" class="material-chrome" aria-label="Main" data-shifts-with-banner>
   <!-- The top row holds the window buttons on a Mac, and moves the window there (data-tauri-drag-region). -->
   <div class="bar" data-tauri-drag-region>
     {#if canCollapse && ontogglecollapse}
@@ -111,8 +111,6 @@
     flex-direction: column;
     gap: var(--space-1);
     padding: var(--space-3);
-    background: var(--material-chrome-bg);
-    backdrop-filter: blur(var(--material-chrome-blur)) saturate(var(--material-chrome-saturate));
     border-right: var(--border-thin) solid var(--border-strong);
     z-index: var(--layer-nav);
   }
@@ -262,6 +260,7 @@
 
   /* No blur: a backdrop filter would make the bar the containing block of the fixed strip below. */
   :global(:root[data-nav='icons']) nav {
+    -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }
 

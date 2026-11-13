@@ -75,6 +75,7 @@
 
 <Modal
   open
+  solid
   title="The certificate of {device.name} has changed"
   warning
   describedBy="certificate-why"

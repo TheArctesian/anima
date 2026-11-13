@@ -1,5 +1,6 @@
 <script lang="ts">
   import ContainersDialogs from './ContainersDialogs.svelte';
+  import ContainersMaterials from './ContainersMaterials.svelte';
   import ContainersPage from './ContainersPage.svelte';
   import ContainersResults from './ContainersResults.svelte';
   import ContainersStatus from './ContainersStatus.svelte';
@@ -13,6 +14,7 @@
   <ContainersStatus />
   <ContainersTables />
   <ContainersResults />
+  <ContainersMaterials />
   <ContainersDialogs />
 </section>
 

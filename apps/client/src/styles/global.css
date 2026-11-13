@@ -1,6 +1,7 @@
 /* The one stylesheet the client shell imports (WP-11, D-9). */
 @import "./tokens.css";
 @import "./fonts.css";
+@import "./materials.css";
 
 /* The UI typeface for everything, including modals portalled to `body` outside the shell (UI-020). */
 body {

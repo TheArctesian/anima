@@ -116,7 +116,7 @@
   </button>
   {#if open}
     <div class="anchor" transition:popover={{ from: button }} {@attach place}>
-      <div class="panel" id="{id}-tip" role="status">{@render children()}</div>
+      <div class="panel material-overlay" id="{id}-tip" role="status">{@render children()}</div>
     </div>
   {/if}
 </span>
@@ -165,9 +165,7 @@
     inline-size: max-content;
     max-inline-size: 18rem;
     padding: var(--space-3);
-    background: var(--surface-overlay);
     border-radius: var(--radius-md);
-    box-shadow: var(--elevation-2);
     color: var(--text);
     font-size: var(--text-sm);
     font-weight: var(--weight-regular);

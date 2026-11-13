@@ -1,0 +1,61 @@
+/*
+ * The three materials (5.6): the one place that turns the `material-*` tokens into glass. A component puts a class on its
+ * surface and keeps only its own layout; it never repeats the blur (MAT-010).
+ *
+ *   material-chrome   the navigation bar
+ *   material-panel    a side panel that does not stop the work (the logs panel is opaque instead, MAT-009)
+ *   material-overlay  a menu, a popover, a tip and the glass layer of a modal
+ *
+ * Each material is its translucent colour, a blur with a saturation boost, a top-to-bottom sheen and a 1 px inner edge
+ * highlight. The edge is an inset shadow and the sheen a gradient, so neither moves the layout. Reduced transparency and
+ * increased contrast (MAT-006) and `data-transparency="reduce"` (MAT-007) change only the tokens: the blur is 0, the edge
+ * and the sheen are transparent, the colour is solid. No component depends on the blur being present.
+ *
+ * `--material-lift` is the shadow under the surface (`elevation-2` unless a component sets another). A surface that holds
+ * a `position: fixed` child must not carry the blur itself, because a backdrop filter makes it the containing block of that
+ * child: a modal puts the class on a layer behind its content instead (`forms/modal/Modal.svelte`).
+ */
+.material-chrome,
+.material-panel,
+.material-overlay {
+  background-image: linear-gradient(to bottom, var(--material-sheen), transparent);
+  box-shadow:
+    var(--material-lift, 0 0 0 transparent),
+    inset 0 0 0 var(--border-thin) var(--material-edge);
+}
+
+.material-chrome {
+  background-color: var(--material-chrome-bg);
+  -webkit-backdrop-filter: blur(var(--material-chrome-blur)) saturate(var(--material-chrome-saturate));
+  backdrop-filter: blur(var(--material-chrome-blur)) saturate(var(--material-chrome-saturate));
+}
+
+.material-panel {
+  --material-lift: var(--elevation-2);
+  background-color: var(--material-panel-bg);
+  -webkit-backdrop-filter: blur(var(--material-panel-blur)) saturate(var(--material-panel-saturate));
+  backdrop-filter: blur(var(--material-panel-blur)) saturate(var(--material-panel-saturate));
+}
+
+.material-overlay {
+  --material-lift: var(--elevation-2);
+  background-color: var(--material-overlay-bg);
+  -webkit-backdrop-filter: blur(var(--material-overlay-blur)) saturate(var(--material-overlay-saturate));
+  backdrop-filter: blur(var(--material-overlay-blur)) saturate(var(--material-overlay-saturate));
+}
+
+/*
+ * Solid, with no blur, edge or sheen:
+ * - MAT-002: an overlay inside a material, or inside the content of a modal (`frosted-host`, whose `glass-layer` is the
+ *   material), would have only that glass behind it.
+ * - MAT-008: an overlay that can lie over a live remote display sets `data-solid`.
+ */
+.material-overlay[data-solid],
+:is(.material-chrome, .material-panel, .material-overlay) .material-overlay,
+.frosted-host > :not(.glass-layer) .material-overlay {
+  background-color: var(--surface-overlay);
+  background-image: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: var(--material-lift, 0 0 0 transparent);
+}

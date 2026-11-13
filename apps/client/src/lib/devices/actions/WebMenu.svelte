@@ -107,7 +107,7 @@
     <Icon name="nf-md-web" size="sm" />Web
   </button>
   {#if open}
-    <div class="panel" id="{id}-panel" role="group" aria-label="Web interfaces of {deviceName}" bind:this={panel} transition:popover={{ from: button }} {@attach place}>
+    <div class="panel material-overlay" id="{id}-panel" role="group" aria-label="Web interfaces of {deviceName}" bind:this={panel} transition:popover={{ from: button }} {@attach place}>
       {#each interfaces as webInterface (webInterface.id)}
         <div class="row">
           <button
@@ -150,9 +150,6 @@
     overflow-y: auto;
     border: var(--border-thin) solid var(--border-strong);
     border-radius: var(--radius-md);
-    background: var(--material-overlay-bg);
-    backdrop-filter: blur(var(--material-overlay-blur)) saturate(var(--material-overlay-saturate));
-    box-shadow: var(--elevation-2);
   }
 
   /* The pin sits under its choice but outside the button, so it is not part of the button's name. */
