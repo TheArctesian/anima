@@ -135,6 +135,9 @@ read key; change commands with a write key).
 | `release` | `list`, `next-version`, `create` L, `cancel` L, `log` (`--follow`) |
 | `builder` | `list`, `enrol` L, `revoke` L |
 | `vpn` | `status` (`--watch`), `invite` L, `router-key` L, `register` L, `renew` L, `approve-route` L |
+| `extension` | `list`, `on <key>` L, `off <key>` L (`on` prints "also sets X on" and asks unless `--yes`; `off` shows the hub's CONFLICT when another extension needs it) |
+| `source` | `kinds`, `list` (`--source github`), `get <id\|label>` (runs with counts), `connect github` L (`--label`, `--app-id`, `--installation-id`, `--from-file <path\|->`: the key comes from a 0600 file or standard input, never an argument, CMD-025), `sync`, `pause`, `resume`, `remove` L (`--keep-records` or `--delete-records`, one is required; it confirms, CMD-024), `watch [<id\|label>]` |
+| `project` | `list` (`--left-out`, `--limit`, `--after`, `--all`), `get <slug>`, `leave-out <owner/name\|id>`, `restore <owner/name\|id>`, `resource confirm <slug> <kind>` |
 | `key` | `list` L, `create` L (`--for user\|agent`, required, LOG-015), `revoke` L |
 | `api` | Send a GraphQL document from a file or standard input |
 | `mcp` | Start the MCP server (Section 7) |
@@ -302,6 +305,11 @@ Read tools are `allow` and change tools are `off` by default (MCP-002). L: needs
 | `releases` | `anima_releases_list`, `anima_build_log` | `anima_release_create` L, `anima_build_cancel` L |
 | `vpn` | `anima_vpn_status` | `anima_vpn_approve_route` L |
 | `retention` | `anima_retention_list` | `anima_retention_set` L |
+| `extensions` | `anima_extensions_list` | `anima_extension_set` L |
+| `sources` | `anima_sources_overview` (declarations, accounts and their last runs; covers `Query.sources` and `Query.sourceAccounts`) | `anima_source_account_sync`, `anima_source_account_set_paused`, `anima_source_account_remove` L (`confirm` must equal the account label, MCP-007) |
+| `projects` | `anima_projects_search`, `anima_project_get` | `anima_repository_set_left_out` (one tool, `leftOut: bool`), `anima_project_resource_confirm` |
+
+Fields with no MCP tool, with the reason (MCP-004): `Mutation.connectGithubApp` takes a secret (`GithubAppInput.privateKey`); `Subscription.sourceAccountChanged` is a subscription, and no subscription has a tool. Text from GitHub (names, descriptions, paths) goes through `mcp/untrusted.rs` as named, length-limited fields (MCP-008).
 
 ## 8. The rule for new functions
 

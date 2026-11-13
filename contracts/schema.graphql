@@ -1643,6 +1643,179 @@ type BuildUploadHeader {
   value: String!
 }
 
+# ---------------------------------------------------------------- extensions (E0-8, K-E7)
+# Operator, 2026-11-13; ruling number to be assigned. Pending until the hub serves it.
+
+enum DataClass @pending { A B C }
+
+enum NavigationGroup @pending { INFRASTRUCTURE LIFE BELONGINGS VAULT WORK BOTTOM }
+
+type NavigationEntry @pending {
+  group: NavigationGroup!
+  label: String!
+  "A client route, for example /projects."
+  route: String!
+}
+
+type Extension @pending {
+  "Stable identifier, for example projects."
+  key: String!
+  name: String!
+  dataClass: DataClass!
+  "False: listed, not built. setExtension refuses it with CONFLICT."
+  built: Boolean!
+  "True: part of the engine, always on, no switch (Integrations, ENG-002)."
+  fixed: Boolean!
+  on: Boolean!
+  "Keys this one cannot work without. Setting it on sets them on too (EXT-011)."
+  needs: [String!]!
+  worksWith: [String!]!
+  "Keys that are on and need this one. Not empty: setting it off is refused (EXT-012)."
+  neededBy: [String!]!
+  "Show it only while `on`."
+  navigation: NavigationEntry
+  "Null: never changed."
+  changedAt: DateTime
+}
+
+# ---------------------------------------------------------------- sources (E0-2, K-E1)
+
+enum AcquisitionMethod @pending { TOKEN_PULL }
+enum SourceHealth @pending { OK STARTING STALLED NEVER_SYNCED PAUSED NEEDS_RECONNECT }
+enum PauseReason @pending { OPERATOR EXTENSION_OFF }
+enum SyncTrigger @pending { CONNECT SCHEDULE MANUAL }
+enum SyncOutcome @pending { OK FAILED STOPPED }
+
+type Source @pending {
+  "Stable identifier, for example github."
+  key: String!
+  name: String!
+  acquisition: AcquisitionMethod!
+  scopes: [String!]!
+  "Null: the source asks for read-only scopes. Otherwise why it does not (SRC-010)."
+  writeReason: String
+  gives: [String!]!
+  pollIntervalSeconds: Int!
+  "Keys of the extensions that use it."
+  consumers: [String!]!
+  accounts: [SourceAccount!]!
+}
+
+type SyncProblem @pending {
+  code: String!
+  subject: String!
+  message: String!
+}
+
+type SyncRun @pending {
+  id: ID!
+  trigger: SyncTrigger!
+  startedAt: DateTime!
+  endedAt: DateTime
+  "Null while it runs."
+  outcome: SyncOutcome
+  inserted: Int!
+  changed: Int!
+  unchanged: Int!
+  removed: Int!
+  problems: [SyncProblem!]!
+  "Fixed words. Never a token, a key or a provider reply (LOG-007)."
+  error: String
+}
+
+type SourceAccount @pending {
+  id: ID!
+  sourceKey: String!
+  label: String!
+  "For GitHub: <App ID>/<installation ID>."
+  instanceKey: String!
+  "Never the value (KEY-002)."
+  credentialStored: Boolean!
+  health: SourceHealth!
+  "Set when health is PAUSED."
+  pausedBy: PauseReason
+  "The last successful sync."
+  lastSyncAt: DateTime
+  lastError: String
+  failureCount: Int!
+  "Null while paused."
+  nextSyncAt: DateTime
+  syncing: Boolean!
+  "Newest first, 1 to 20 (ITG-003)."
+  runs(first: Int = 20): [SyncRun!]!
+  createdAt: DateTime!
+}
+
+input GithubAppInput @pending {
+  label: String!
+  "Digits only."
+  appId: String!
+  "Digits only."
+  installationId: String!
+  "SECRET. The App's private key as PEM text. Never returned, logged or put in the audit log (PRJ-018)."
+  privateKey: String!
+}
+
+# ---------------------------------------------------------------- projects (XP-02, first slice)
+
+enum ResourceKind @pending { CLOUDFLARE VERCEL SERVER DESKTOP_APPLICATION }
+enum ResourceState @pending { FOUND_IN_REPOSITORY CONFIRMED }
+enum RepositorySign @pending { WRANGLER_CONFIG VERCEL_JSON VERCEL_DEPLOYMENT DOCKERFILE COMPOSE_FILE TAURI_CONF }
+
+type ProjectRepository @pending {
+  id: ID!
+  "owner/name (PRJ-016)."
+  fullName: String!
+  url: String!
+  defaultBranch: String
+  private: Boolean!
+  archived: Boolean!
+  fork: Boolean!
+  description: String
+  pushedAt: DateTime
+  leftOut: Boolean!
+  "True: the connection no longer lists it. The record is kept."
+  gone: Boolean!
+}
+
+type ResourceEvidence @pending {
+  sign: RepositorySign!
+  "Null for a deployment record."
+  path: String
+}
+
+type ProjectResource @pending {
+  id: ID!
+  kind: ResourceKind!
+  "FOUND_IN_REPOSITORY until the operator confirms it (PRO-004)."
+  state: ResourceState!
+  evidence: [ResourceEvidence!]!
+  foundAt: DateTime!
+  confirmedAt: DateTime
+}
+
+type Project @pending {
+  id: ID!
+  slug: String!
+  name: String!
+  "The full name of its first repository; other extensions keep this text (PRJ-016, LNK-004)."
+  subjectKey: String!
+  repositories: [ProjectRepository!]!
+  resources: [ProjectResource!]!
+  "When the hub last read its repositories."
+  syncedAt: DateTime
+}
+
+type ProjectEdge @pending {
+  cursor: String!
+  node: Project!
+}
+
+type ProjectConnection @pending {
+  edges: [ProjectEdge!]!
+  pageInfo: PageInfo!
+}
+
 # ---------------------------------------------------------------- root types
 
 type Query {
@@ -1684,6 +1857,16 @@ type Query {
   # Phase 3: VPN (VP-5)
   "The VPN picture; null when the hub has no LocalAPI proxy or has not read it yet (VPN-005)."
   vpn: VpnPicture
+
+  # Engine and Projects (operator, 2026-11-13; ruling number to be assigned; K-E7, K-E1, XP-02)
+  "All 15, in the order of the plan."
+  extensions: [Extension!]! @pending
+  sources: [Source!]! @pending
+  sourceAccounts(sourceKey: String): [SourceAccount!]! @pending
+  "By name. leftOut true: only projects whose repositories are all left out. CONFLICT while Projects is off."
+  projects(leftOut: Boolean = false, first: Int = 50, after: String): ProjectConnection! @pending
+  "CONFLICT while Projects is off."
+  project(slug: String!): Project @pending
 }
 
 type Mutation {
@@ -1796,6 +1979,22 @@ type Mutation {
   renewVpnKey(name: String!): VpnRegistration!
   "Approves the waiting route of the site's router. Login or browser token only (D-23)."
   approveSiteRoute(siteId: ID!): Boolean!
+
+  # Engine and Projects (operator, 2026-11-13; ruling number to be assigned; K-E7, K-E1, XP-02)
+  "On also sets on each extension it needs (EXT-011). Off is refused with CONFLICT while an extension that is on needs it; extensions.neededBy names it (EXT-012). Off keeps every record (EXT-003). Returns each extension whose switch changed, the named one first; empty when nothing changed. Login or browser token only."
+  setExtension(key: String!, on: Boolean!): [Extension!]! @pending
+  "Checks the key with GitHub before it stores it; UNAVAILABLE when GitHub cannot be reached, VALIDATION when GitHub refuses the key. The same App ID and installation ID again replaces the stored key and keeps the account and its records. Login or browser token only."
+  connectGithubApp(input: GithubAppInput!): SourceAccount! @pending
+  "Starts a sync now and returns at once. CONFLICT while the account is paused or no extension that uses it is on. A sync that already runs is not started twice."
+  syncSourceAccount(id: ID!): SourceAccount! @pending
+  setSourceAccountPaused(id: ID!, paused: Boolean!): SourceAccount! @pending
+  "Deletes the account and its stored key. deleteRecords false keeps what it imported (ITG-004). Returns the ID. Login or browser token only."
+  removeSourceAccount(id: ID!, deleteRecords: Boolean!): ID! @pending
+  "The hub does not import or read the repository again until it is restored (PRO-002)."
+  leaveOutRepository(id: ID!): Project! @pending
+  restoreRepository(id: ID!): Project! @pending
+  "CONFLICT when it is already confirmed."
+  confirmProjectResource(id: ID!): ProjectResource! @pending
 }
 
 type Subscription {
@@ -1809,6 +2008,8 @@ type Subscription {
   buildJobUpdated(jobId: ID): BuildJobUpdate!
   "Each new VPN picture, about once a minute."
   vpnChanged: VpnPicture!
+  "Each change of an account: a sync that starts or ends, a pause, a new key. (operator, 2026-11-13; ruling number to be assigned; K-E1)"
+  sourceAccountChanged(id: ID): SourceAccount! @pending
 }
 
 type DeviceStatusChange {

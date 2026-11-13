@@ -202,6 +202,9 @@ policy, builder and agent tokens per LOG-019) uses `Operator::hub()` and `ActorK
 | `retention` (Phase 3, new) | — |
 | `builds` (Phase 3, WP-36, new) | `access` (builder tokens, `Identity`, the guards), `events` |
 | `vpn` (Phase 3, VP-5, new) | `devices`, `events`, `checks` (`for_devices` only) |
+| `extensions` (engine, new; operator, 2026-11-13; ruling number to be assigned; K-E7) | `events` |
+| `sources` (engine, new; same ruling; K-E1) | `extensions` (`Key`, `on_keys` only), `credentials` (`Vault`, `Secret`, `Error`, `store_source_secret`, `load_source_secret`, `clear_source_secret` only), `events` |
+| `projects` (work, new; same ruling; XP-02) | `extensions` (`PROJECTS`, `require_on` only), `sources` (`Intake`, `Page`, `Taken`, `Counts`, `request_sync` only), `events` |
 
 (Phase 3) No cycle: `notifications` imports neither `checks` nor `sessions`. `ssh` and `trust` import neither `sessions` nor `checks`.
 
@@ -219,6 +222,7 @@ GraphQL composition edges (R-011). Only the file `<domain>/graphql.rs` may also 
 | `devices` (Phase 3) | `trust` (replaces `sessions` for these fields) | `SshSettings.hostKey`, `RdpSettings.serverCertificate` |
 | `checks` (Phase 3) | `notifications` | `Check.notifications` |
 | `notifications`, `retention`, `trust` (Phase 3) | `access` (R-022) | the `Authenticated` guard |
+| `extensions`, `sources`, `projects` (operator, 2026-11-13; ruling number to be assigned) | `access` | the `Authenticated` guard and the login-only guard on `setExtension`, `connectGithubApp`, `removeSourceAccount` |
 
 `sessions` already depends on `access`. Through these edges a `graphql.rs` uses only `access::Authenticated`; `Operator` and `ClientAddr` come from `events` (R-019).
 
@@ -317,6 +321,7 @@ Context values (R-010). Each caller uses exactly this byte string, so a value se
 | (SEC-011) SSH secret, RDP or VNC password with its host: plaintext is the host length (2 bytes, big-endian), the host text, the secret (inside `credentials`) | `credentials.secrets.host:<device_id>:<kind>` |
 | TOTP secret (WP-05) | `access.operators.totp:<operator_id>` |
 | (Phase 3) Notification channel secrets (WP-45) | `notifications.channels:<channel_id>` |
+| (operator, 2026-11-13; ruling number to be assigned; K-E1) Source secret, such as a GitHub App key | `credentials.source_secrets:<account_id>` |
 
 The GraphQL mutations `setSshCredential` and `clearSshCredential` belong to `devices` (they return `SshSettings`). They call `store_ssh` / `clear_ssh` in the same transaction as the audit entry (`events::audit`), and the audit `change` never contains the secret.
 
@@ -331,6 +336,16 @@ pub async fn load_password(db: &Db, vault: &Vault, device: DeviceId, kind: Passw
 pub async fn with_password(db: &Db, devices: &[DeviceId], kind: PasswordKind) -> Result<HashSet<DeviceId>, Error>;
 pub async fn clear_password(conn: &mut PgConnection, device: DeviceId, kind: PasswordKind) -> Result<bool, Error>;
 ```
+
+(operator, 2026-11-13; ruling number to be assigned; K-E1, PRJ-018.) Source secrets, in the new file `credentials/source.rs`. The row is in `credentials.source_secrets` (K2 migration 0221). `SourceAccountId` and `SourceSecretId` are leaf IDs:
+
+```rust
+pub async fn store_source_secret(conn: &mut PgConnection, vault: &Vault, account: SourceAccountId, s: Secret) -> Result<SourceSecretId, Error>;
+pub async fn load_source_secret(db: &Db, vault: &Vault, (id, account): (SourceSecretId, SourceAccountId)) -> Result<Secret, Error>;
+pub async fn clear_source_secret(conn: &mut PgConnection, id: SourceSecretId) -> Result<bool, Error>;
+```
+
+A secret opens only with its own account ID (context in the table above). `load_source_secret` has one caller: the token minter in `engine/sources`. For a GitHub App key the plaintext is built by `sources` (K-E1 Section 6); `credentials` treats it as opaque bytes.
 
 ## checks (WP-09)
 
@@ -569,6 +584,33 @@ pub async fn publishing_off(queue: BuildQueue<'_>, now: DateTime<Utc>) -> Result
 ```
 
 No other domain imports `builds`.
+
+## engine: extensions and sources (operator, 2026-11-13; ruling number to be assigned; K-E7, K-E1)
+
+Folders `crates/hub/src/engine/extensions/` and `crates/hub/src/engine/sources/` (group `engine/`, added by the task that adds its first code; the group face holds no code). Details are in `contracts/extensions/registry.md` and `contracts/extensions/sources.md`; migrations in `contracts/extensions/ownership.md`.
+
+```rust
+// engine::extensions
+pub struct Key(/* &'static str */);
+pub const PROJECTS: Key;
+pub fn registry() -> &'static [Entry];
+pub async fn on_keys(db: &Db) -> Result<HashSet<Key>, Error>;
+pub async fn require_on(db: &Db, key: Key) -> Result<(), Error>;      // Error::Off maps to CONFLICT
+
+// engine::sources
+pub trait Intake { /* K-E1 Section 3 */ }
+pub struct Registry { /* declarations and intakes, built once in wiring */ }
+#[derive(Clone)] pub struct Feed { /* broadcast of account changes, as vpn::Feed */ }
+pub struct Scheduling { pub pool: Db, pub bus: events::Bus, pub clock: Clock, pub vault: credentials::Vault,
+                        pub registry: Registry, pub transport: Transport, pub feed: Feed }
+pub fn spawn_scheduler(s: Scheduling) -> JoinHandle<()>;
+/// Sets `next_sync_at` of the account to now, in the caller's transaction (used by `projects`).
+pub async fn request_sync(conn: &mut PgConnection, account: SourceAccountId) -> Result<(), Error>;
+```
+
+## projects (work, XP-02 first slice; operator, 2026-11-13; ruling number to be assigned)
+
+Folder `crates/hub/src/work/projects/` (group `work/`). Face `projects.rs` exposes `pub fn intake() -> Arc<dyn sources::Intake>` and `pub mod graphql`. No domain imports `projects`; `main.rs` and `schema.rs` wire its intake into the sources registry. Every root field calls `extensions::require_on(db, PROJECTS)` first.
 
 ## guac-protocol crate (WP-08)
 

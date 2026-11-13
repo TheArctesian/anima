@@ -32,6 +32,7 @@ Status: **frozen for Phase 3** (change only through a programme ruling, CON-001)
   | `UNAVAILABLE` | A dependency (database, gateway, device) is unreachable |
   | `INTERNAL` | Anything else; the message is generic, details go to the process log only (API-010) |
 
+- (operator, 2026-11-13; ruling number to be assigned; K-E7, EXT-012) A `CONFLICT` from `setExtension` may carry `extensions.neededBy: [String!]`: the keys of the extensions that are on and need the one the operator tried to set off. Other errors do not carry it.
 - (Phase 3) No new codes. A token-kind refusal and a READ refusal are FORBIDDEN. A refused notification target is a delivery with `ok: false` and the fixed message "The target address is not permitted.", never an error that names the address.
 - Messages are plain sentences for the operator. They never contain SQL, file paths, secrets or stack traces.
 
