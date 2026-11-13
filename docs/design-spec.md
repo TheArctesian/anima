@@ -321,7 +321,7 @@ queued ──► claimed ──► building ──► uploading ──► publis
 - **BLD-024.** The hub must refuse a builder request from an address other than the VPN address recorded at enrolment.
 - **BLD-025.** Turning the toggle off must revoke the builder token on the hub and delete it from the key store. The Settings page must list all builders and let the operator revoke each one.
 - **BLD-026.** The builder runs inside the desktop app while the app runs. The client holds the builder loop (`$lib/builds/`). The Tauri shell holds only the OS work: child processes, the key store and file upload (REPO-003; changed by R-116).
-- **BLD-027.** The shell must expose fixed build steps, not a general command runner. The web view can ask for "check out commit C", "run the gates", "bundle target T at version V", "sign file F", "upload file F to URL U". It cannot name a program.
+- **BLD-027.** The shell must expose fixed build steps, not a general command runner. The web view can ask for "check out commit C", "run the gates", "bundle target T at version V", "upload file F to URL U". It cannot name a program. The builder signs nothing; the hub signs the updater file (changed by R-116).
 - **BLD-028.** Before the builder claims a job, it must check its tools: git, bun, Rust, PostgreSQL 17 (R-009) and the Tauri system packages (changed by R-116). The Settings row must name each missing tool. A builder with a missing tool must not claim.
 - **BLD-029.** A builder runs one job at a time. It connects out to the hub over the VPN. It needs no open port and no GitHub runner.
 
