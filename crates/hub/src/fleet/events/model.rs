@@ -77,8 +77,6 @@ impl Source {
             Self::Metrics => "metrics",
             Self::Notifications => "notification",
             Self::Vpn => "vpn",
-            Self::SourceAccount(_) => "source_account",
-            Self::Project(_) => "project",
         }
     }
 
