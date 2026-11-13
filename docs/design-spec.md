@@ -269,9 +269,14 @@ Reason for the direction of trust: a wrong "User" hides the work of an AI agent,
 
 A Hub entry keeps the operator who started the thing that the hub acted on, if there is one. For example, when the hub ends a session at a timeout or at shutdown, the entry names the operator who started the session, with the kind Hub. If there is no such operator, the entry names the operator "Anima" with the nil operator ID (OD-15). The hub refuses an unknown header value without an error, so the value cannot be used to probe the hub. The declaration only raises the actor kind, so the hub accepts it from each client; the browser cannot send it, because CORS does not allow the header.
 
-Limit: the program makes the declaration. A program that runs with the operator's login token and sends no declaration is recorded as User. The reliable method to mark the work of an AI agent is an API key made for an agent.
+Limits (accepted risks, operator, 2026-11-13):
 
-These requirements change the frozen contracts K1, K2 and K7 (CON-001). The operator decided the change on 2026-11-13 (Section 11, OD-15); each addition in the contracts is marked "(operator, 2026-11-13, LOG-012 to LOG-020; ruling number to be assigned)". The build also changed K3 (`contracts/hub-domains.md`: `Operator.actor`, `NewEvent.actor`, the `Actor` type) and the K6 fixture keys (`madeFor`). The table lists the additions:
+- The program makes the declaration. A program that runs with the operator's login token and sends no declaration is recorded as User. The reliable method to mark the work of an AI agent is an API key made for an agent.
+- Each API key that was made before LOG-015 is `USER`. Thus an AI agent that uses an old key is recorded as User. This continues until the operator makes a new key for the agent, made for `AGENT`, and revokes the old key.
+- A database trigger refuses each change of `made_for`. The trigger does not stop the hub's own database role: that role can delete a key row and insert it again with another value. Thus the trigger is defence in depth only. The hub code is the control.
+- The hub refuses a request from outside the permitted networks before it knows who sent the request. It records this refusal as a Hub event, although an outside request caused it.
+
+These requirements change the frozen contracts K1, K2 and K7 (CON-001). The operator decided the change on 2026-11-13 (Section 11, OD-15); each addition in the contracts is marked "(operator, 2026-11-13, LOG-012 to LOG-020; ruling number to be assigned)". The build also changed K3 (`contracts/hub-domains.md`: `Operator.actor`, `NewEvent.actor`, the `Actor` type) and the K6 fixture keys (`madeFor`). The review fixes changed K3 again: `wake` takes the actor kind of the caller, and `wakeDevice` audits a failed wake too (operator, 2026-11-13; ruling number to be assigned). The table lists the additions:
 
 | Contract | File | Addition |
 | --- | --- | --- |

@@ -198,8 +198,10 @@ export type SessionPage = DeviceSessionsQuery['sessions'];
 /** The session calls through a `Hub` (CQ-045). Failures stay the hub's typed K7 errors. */
 export interface SessionsApi {
   /**
-   * Start a `protocol` session on `deviceId`; `CONFLICT` while no host key (SSH, K4 §6) or, for RDP, no server
-   * certificate is accepted (K4 §1).
+   * Start a `protocol` session on `deviceId`. `CONFLICT` while no host key (SSH, K4 §6) or, for RDP, no server
+   * certificate is accepted (K4 §1); when the device has reached its session limit (RA-036); and when the device's
+   * address changed after its stored credential for `protocol` was entered, until the operator enters it again
+   * (SEC-011).
    */
   startSession(deviceId: string, protocol: Protocol, display: SessionDisplay): Promise<HubResult<SessionTicket>>;
   /** End the session, or return an ended one unchanged with its recorded `endReason` (D-4). */
