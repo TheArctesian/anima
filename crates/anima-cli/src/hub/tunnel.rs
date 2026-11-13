@@ -169,12 +169,6 @@ pub struct Socket {
     inner: WebSocketStream<Box<dyn Wire>>,
 }
 
-impl fmt::Debug for Socket {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        formatter.write_str("Socket")
-    }
-}
-
 impl Hub {
     /// Opens the tunnel `ticket` is for, within `wait` (the hub opens SSH before it answers).
     ///
@@ -237,10 +231,8 @@ fn tls_config() -> Result<Arc<rustls::ClientConfig>, String> {
 /// The WebSocket upgrade with the ticket in the query and the tunnel's subprotocol.
 async fn upgrade(url: &Url, ticket: &Ticket, wire: Box<dyn Wire>) -> Result<Socket, TunnelError> {
     let scheme = if url.scheme() == "https" { "wss" } else { "ws" };
-    let authority = match url.port() {
-        Some(port) => format!("{}:{port}", url.host_str().unwrap_or_default()),
-        None => url.host_str().unwrap_or_default().to_owned(),
-    };
+    // The origin has no user name (CMD-013), so the authority is the host and any port.
+    let authority = url.authority();
     let path = ticket.tunnel.path();
     let address = Zeroizing::new(format!(
         "{scheme}://{authority}{path}?token={}",

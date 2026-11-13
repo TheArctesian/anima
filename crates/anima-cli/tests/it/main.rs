@@ -7,3 +7,4 @@ mod basics;
 mod coverage;
 mod devices;
 mod kit;
+mod sessions;

@@ -1,6 +1,7 @@
 //! Runs the `anima` program with a clean environment and its own configuration folder.
 
 pub mod fake_hub;
+pub mod tunnel_hub;
 
 use std::path::PathBuf;
 use std::process::Stdio;
