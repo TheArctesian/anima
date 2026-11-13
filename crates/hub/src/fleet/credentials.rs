@@ -21,10 +21,16 @@
 //!
 //! Writers of every kind take one advisory lock per device, so the lock order documented on
 //! each writer holds for all of them.
+//!
+//! A source account's credential (an App key, a token) lives in `credentials.source_secrets`,
+//! one sealed row per account, bound to the account id so a row moved or copied to another
+//! account does not open (SRC-008, PRJ-018). Only the source token minter reads it back
+//! ([`load_source_secret`]).
 
 mod host;
 mod password;
 mod secret;
+mod source;
 mod ssh;
 mod store;
 mod vault;
@@ -36,7 +42,7 @@ use std::collections::HashSet;
 
 use sqlx::{Connection as _, PgConnection, PgPool};
 
-use crate::ids::DeviceId;
+use crate::ids::{DeviceId, SourceAccountId, SourceSecretId};
 
 use self::ssh::SshKind;
 
@@ -76,6 +82,9 @@ pub enum Error {
     /// opened secret was dropped (SEC-011). Names neither host (LOG-007).
     #[error("the credential was entered for another host of the device")]
     EnteredForOtherHost,
+    /// No source secret has the given id (SRC-008).
+    #[error("the source secret does not exist")]
+    UnknownSourceSecret,
 }
 
 /// Replaces every SSH secret of the device with `secret`, sealed per part and bound to `host`,
@@ -273,4 +282,52 @@ pub async fn clear_password(
     let removed = store::delete_kinds(&mut tx, device, &[kind.as_sql()]).await?;
     tx.commit().await?;
     Ok(removed > 0)
+}
+
+/// Stores `secret` as the credential of the source `account`, sealed and bound to the account
+/// id, in the caller's connection; returns its id. Storing again for the account replaces the
+/// value and keeps the id (SRC-008, PRJ-018).
+///
+/// # Errors
+///
+/// [`Error::Random`] when the OS random source fails, [`Error::Database`] otherwise.
+pub async fn store_source_secret(
+    conn: &mut PgConnection,
+    vault: &Vault,
+    account: SourceAccountId,
+    secret: Secret,
+) -> Result<SourceSecretId, Error> {
+    let sealed = source::seal(vault, account, &secret)?;
+    drop(secret);
+    store::upsert_source(conn, account, &sealed).await
+}
+
+/// Opens the source secret `id` for `account`, the source account the caller acts for.
+///
+/// # Errors
+///
+/// [`Error::UnknownSourceSecret`] when no source secret has this id; [`Error::Decrypt`] when it
+/// was sealed for another account or changed, [`Error::WrongKey`] when another key sealed it,
+/// [`Error::Malformed`] for a row not in the sealed layout, and [`Error::Database`].
+pub async fn load_source_secret(
+    db: &PgPool,
+    vault: &Vault,
+    (id, account): (SourceSecretId, SourceAccountId),
+) -> Result<Secret, Error> {
+    let row = store::fetch_source(db, id)
+        .await?
+        .ok_or(Error::UnknownSourceSecret)?;
+    source::open(vault, row, account)
+}
+
+/// Deletes the source secret `id` in the caller's connection. Returns true if it was removed.
+///
+/// # Errors
+///
+/// [`Error::Database`] when the store cannot be written.
+pub async fn clear_source_secret(
+    conn: &mut PgConnection,
+    id: SourceSecretId,
+) -> Result<bool, Error> {
+    store::delete_source(conn, id).await
 }
