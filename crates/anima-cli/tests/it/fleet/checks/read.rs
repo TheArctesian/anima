@@ -242,7 +242,7 @@ async fn cmd_026_the_next_page_hint_keeps_the_device_of_a_check_given_by_name() 
     assert_eq!(run.code, 0, "{run:?}");
     assert!(
         run.stderr.contains(&format!(
-            "anima check heartbeats 'HTTP check' --device {DEVICE} --after h1.2"
+            "anima check heartbeats 'HTTP check' --device {DEVICE} --limit 1 --after h1.2"
         )),
         "{}",
         run.stderr

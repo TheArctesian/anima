@@ -104,20 +104,28 @@ pub const fn page_size(limit: i64, all: bool, largest: i64) -> i64 {
     if all { largest } else { limit }
 }
 
-/// A command as the operator would type it, for a hint that repeats the filters in use.
+/// A command as the operator would type it, for a hint that repeats the filters in use and
+/// the page size, so the next page is as long as this one (CMD-026).
 #[derive(Clone, Debug)]
-pub struct CommandLine(Vec<String>);
+pub struct CommandLine {
+    words: Vec<String>,
+    limit: i64,
+}
 
 impl CommandLine {
+    /// `command` with pages of `limit` rows (`--limit`).
     #[must_use]
-    pub fn new(command: &str) -> Self {
-        Self(vec![command.to_owned()])
+    pub fn new(command: &str, limit: i64) -> Self {
+        Self {
+            words: vec![command.to_owned()],
+            limit,
+        }
     }
 
     /// Adds `word` as it is typed, quoted when it needs it.
     #[must_use]
     pub fn word(mut self, word: &str) -> Self {
-        self.0.push(shell_word(word));
+        self.words.push(shell_word(word));
         self
     }
 
@@ -131,7 +139,7 @@ impl CommandLine {
     #[must_use]
     pub fn flags<'a>(mut self, name: &str, values: impl IntoIterator<Item = &'a str>) -> Self {
         for value in values {
-            self.0.push(format!("{name} {}", shell_word(value)));
+            self.words.push(format!("{name} {}", shell_word(value)));
         }
         self
     }
@@ -155,7 +163,7 @@ impl CommandLine {
     #[must_use]
     pub fn switch(mut self, name: &str, on: bool) -> Self {
         if on {
-            self.0.push(name.to_owned());
+            self.words.push(name.to_owned());
         }
         self
     }
@@ -163,7 +171,7 @@ impl CommandLine {
 
 impl Display for CommandLine {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        formatter.write_str(&self.0.join(" "))
+        write!(formatter, "{} --limit {}", self.words.join(" "), self.limit)
     }
 }
 
@@ -283,8 +291,8 @@ mod tests {
     }
 
     #[test]
-    fn cmd_026_a_next_page_command_keeps_each_filter_quoted() {
-        let command = CommandLine::new("anima x list")
+    fn cmd_026_a_next_page_command_keeps_each_filter_quoted_and_the_page_size() {
+        let command = CommandLine::new("anima x list", 25)
             .flag("--name", Some("web server"))
             .flag("--site", None)
             .flags("--tag", ["a", "b"])
@@ -292,7 +300,7 @@ mod tests {
             .switch("--other", false);
         assert_eq!(
             command.to_string(),
-            "anima x list --name 'web server' --tag a --tag b --live"
+            "anima x list --name 'web server' --tag a --tag b --live --limit 25"
         );
     }
 }

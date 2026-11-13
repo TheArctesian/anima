@@ -57,7 +57,7 @@ enum SourceArg {
 impl ListArgs {
     /// `anima event list` with the filters in use, for the next-page hint.
     fn next_page_command(&self) -> CommandLine {
-        CommandLine::new("anima event list")
+        CommandLine::new("anima event list", self.limit)
             .choices("--severity", &self.severity)
             .choices("--source", &self.source)
             .flag("--device", self.device.as_deref())

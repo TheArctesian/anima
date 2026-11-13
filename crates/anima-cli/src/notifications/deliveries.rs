@@ -31,8 +31,8 @@ impl DeliveriesArgs {
     /// # Errors
     /// [`Failure::NotFound`] for an unknown channel; the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
-        let command =
-            CommandLine::new("anima notify deliveries").flag("--channel", self.channel.as_deref());
+        let command = CommandLine::new("anima notify deliveries", self.limit)
+            .flag("--channel", self.channel.as_deref());
         let hub = invocation.hub()?;
         let channel_id = match &self.channel {
             Some(channel) => Some(resolve(&hub, channel).await?),

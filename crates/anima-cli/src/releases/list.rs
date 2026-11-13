@@ -43,7 +43,7 @@ impl ListArgs {
             invocation,
             &releases,
             "releases shown",
-            &CommandLine::new("anima release list"),
+            &CommandLine::new("anima release list", self.limit),
         );
         Ok(())
     }

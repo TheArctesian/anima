@@ -298,7 +298,7 @@ async fn cmd_026_c3_the_event_hint_keeps_severity_source_and_since() {
         .await;
     assert!(
         run.stderr.contains(
-            "anima event list --severity error --source check --since 2026-11-01T00:00:00Z --after c-1"
+            "anima event list --severity error --source check --since 2026-11-01T00:00:00Z --limit 100 --after c-1"
         ),
         "{}",
         run.stderr

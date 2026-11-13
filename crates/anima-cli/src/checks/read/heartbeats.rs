@@ -55,7 +55,7 @@ impl HeartbeatsArgs {
         })
         .await?;
         invocation.output.data(&beats, table)?;
-        let command = CommandLine::new("anima check heartbeats")
+        let command = CommandLine::new("anima check heartbeats", self.limit)
             .word(self.check.label())
             .flag("--device", self.check.device());
         note_next(invocation, &beats, "heartbeats", &command);
