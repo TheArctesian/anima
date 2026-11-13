@@ -130,8 +130,12 @@ describe("spawned probe against a hub that answers wrong", () => {
 /** A loopback https server with a self-signed certificate; it counts requests and keys it receives. */
 async function untrustedHub() {
   const pem = join(dir, "tls.pem");
-  const made = await finish(["openssl", "req", "-x509", "-newkey", "ec", "-pkeyopt", "ec_paramgen_curve:P-256", "-nodes",
-    "-days", "1", "-subj", "/CN=127.0.0.1", "-addext", "subjectAltName=IP:127.0.0.1", "-keyout", join(dir, "tls.key"), "-out", pem]);
+  // ecparam writes a named-curve key under both OpenSSL and macOS LibreSSL; `req -newkey ec` under
+  // LibreSSL writes explicit curve parameters, which Bun's BoringSSL refuses.
+  const keyed = await finish(["openssl", "ecparam", "-name", "prime256v1", "-genkey", "-noout", "-out", join(dir, "tls.key")]);
+  expect(keyed.exitCode).toBe(0);
+  const made = await finish(["openssl", "req", "-x509", "-new", "-key", join(dir, "tls.key"), "-nodes",
+    "-days", "1", "-subj", "/CN=127.0.0.1", "-addext", "subjectAltName=IP:127.0.0.1", "-out", pem]);
   expect(made.exitCode).toBe(0);
   const seen = { requests: 0, keys: 0 };
   const server = Bun.serve({
