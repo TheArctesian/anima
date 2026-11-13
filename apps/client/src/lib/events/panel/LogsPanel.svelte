@@ -140,8 +140,7 @@
     display: flex;
     flex-direction: column;
     border-block-start: var(--border-thin) solid var(--border-strong);
-    background: var(--material-panel-bg);
-    backdrop-filter: blur(var(--material-panel-blur)) saturate(var(--material-panel-saturate));
+    background: var(--surface-raised);
     box-shadow: var(--elevation-2);
   }
 

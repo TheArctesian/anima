@@ -3,10 +3,10 @@
 | Item | Value |
 | --- | --- |
 | Document | Work plan: purpose, categories and priority order |
-| Version | 0.7 (draft) |
+| Version | 1.0 |
 | Date | 2026-11-13 |
 | Language | ASD-STE100 Simplified Technical English (STE) |
-| Status | For review. The operator has not approved the principles or the priority order. |
+| Status | Approved. The operator approved the principles and the priority order on 2026-11-13. The proposals stay drafts until each has a ruling (Section 5). OD-W12 is not decided. |
 | Related | [design-spec.md](design-spec.md), [extensions-plan.md](extensions-plan.md), [compute-plan.md](compute-plan.md), [vpn-plan.md](vpn-plan.md), [programme/handoff.md](programme/handoff.md), [programme/proposals/](programme/proposals/) |
 
 This document obeys the writing rules in Section 0 of the design specification.
