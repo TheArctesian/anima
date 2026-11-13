@@ -25,9 +25,9 @@ impl RevokeArgs {
             .prompter
             .confirm(&format!("Revoke API key {}?", self.key))?;
         let answer = hub.run::<KeyRevoke>(key_revoke::Variables { id }).await?;
-        invocation.output.data(&answer, |answer| {
+        invocation.output.data(&answer.revoke_api_key, |id| {
             let mut table = Table::record();
-            table.pair("Revoked", answer.revoke_api_key.as_str());
+            table.pair("Revoked", id.as_str());
             table
         })
     }

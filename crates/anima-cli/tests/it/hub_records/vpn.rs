@@ -296,3 +296,21 @@ async fn cmd_020_s5_the_steps_note_keeps_one_step_to_a_line() {
         run.stderr
     );
 }
+
+#[tokio::test]
+async fn cmd_020_c7_approve_route_prints_the_bare_boolean_with_json() {
+    let hub = FakeHub::start().await;
+    hub.answer("VpnApproveRoute", data(json!({ "approveSiteRoute": true })));
+    let run = signed_in()
+        .run(&[
+            "vpn",
+            "approve-route",
+            "--site",
+            SITE,
+            "--json",
+            "--hub",
+            &hub.origin,
+        ])
+        .await;
+    assert_eq!(run.json(), json!(true));
+}

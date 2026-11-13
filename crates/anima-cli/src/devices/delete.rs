@@ -29,9 +29,9 @@ impl DeleteArgs {
         let answer = hub
             .run::<DeviceDelete>(device_delete::Variables { id })
             .await?;
-        invocation.output.data(&answer, |answer| {
+        invocation.output.data(&answer.delete_device, |id| {
             let mut table = Table::record();
-            table.pair("Deleted", answer.delete_device.as_str());
+            table.pair("Deleted", id.as_str());
             table
         })
     }

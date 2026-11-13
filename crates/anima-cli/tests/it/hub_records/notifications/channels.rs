@@ -110,7 +110,7 @@ async fn cmd_025_channel_create_reads_a_file_and_a_broken_document_never_quotes_
         ])
         .await;
     assert_eq!(run.code, 0, "{run:?}");
-    assert_eq!(run.json()["createNotificationChannel"]["name"], "ops-hook");
+    assert_eq!(run.json()["name"], "ops-hook");
 
     let broken = format!(r#"{{"name": 7, "settings": {{"email": {{"password": "{SMTP_PASSWORD}" "#);
     let run = anima

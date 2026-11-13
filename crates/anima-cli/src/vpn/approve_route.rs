@@ -26,18 +26,13 @@ impl ApproveRouteArgs {
                 site_id: site_id.clone(),
             })
             .await?;
-        invocation.output.data(&answer, |answer| {
-            let mut table = Table::record();
-            table.pair("Site", site_id.as_str());
-            table.pair(
-                "Route approved",
-                if answer.approve_site_route {
-                    "yes"
-                } else {
-                    "no"
-                },
-            );
-            table
-        })
+        invocation
+            .output
+            .data(&answer.approve_site_route, |approved| {
+                let mut table = Table::record();
+                table.pair("Site", site_id.as_str());
+                table.pair("Route approved", if *approved { "yes" } else { "no" });
+                table
+            })
     }
 }

@@ -26,9 +26,9 @@ impl DeleteArgs {
         let answer = hub
             .run::<CheckDelete>(check_delete::Variables { id })
             .await?;
-        invocation.output.data(&answer, |deleted| {
+        invocation.output.data(&answer.delete_check, |id| {
             let mut table = Table::record();
-            table.pair("Deleted", deleted.delete_check.as_str());
+            table.pair("Deleted", id.as_str());
             table
         })
     }

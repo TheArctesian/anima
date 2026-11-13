@@ -57,12 +57,10 @@ impl SuggestionCommand {
                     check_id: args.check,
                 };
                 let answer = hub.run::<WebSuggestionDismiss>(variables).await?;
-                invocation.output.data(&answer, |answer| {
+                let dismissed = &answer.dismiss_web_interface_suggestion;
+                invocation.output.data(dismissed, |id| {
                     let mut table = Table::record();
-                    table.pair(
-                        "Dismissed",
-                        answer.dismiss_web_interface_suggestion.as_str(),
-                    );
+                    table.pair("Dismissed", id.as_str());
                     table
                 })
             }

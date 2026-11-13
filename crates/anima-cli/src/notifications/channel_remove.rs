@@ -27,10 +27,12 @@ impl DeleteArgs {
         let answer = hub
             .run::<ChannelDelete>(channel_delete::Variables { id })
             .await?;
-        invocation.output.data(&answer, |answer| {
-            let mut table = Table::record();
-            table.pair("Deleted", answer.delete_notification_channel.as_str());
-            table
-        })
+        invocation
+            .output
+            .data(&answer.delete_notification_channel, |id| {
+                let mut table = Table::record();
+                table.pair("Deleted", id.as_str());
+                table
+            })
     }
 }

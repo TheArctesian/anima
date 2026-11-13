@@ -41,15 +41,16 @@ impl CreateArgs {
         let answer = hub
             .run::<ChannelCreate>(channel_create::Variables { input })
             .await?;
-        invocation.output.data(&answer, |answer| {
-            let channel = &answer.create_notification_channel;
-            saved(
-                &channel.name,
-                &channel.kind,
-                &channel.id,
-                &channel.updated_at,
-            )
-        })
+        invocation
+            .output
+            .data(&answer.create_notification_channel, |channel| {
+                saved(
+                    &channel.name,
+                    &channel.kind,
+                    &channel.id,
+                    &channel.updated_at,
+                )
+            })
     }
 }
 
@@ -66,15 +67,16 @@ impl UpdateArgs {
         let answer = hub
             .run::<ChannelUpdate>(channel_update::Variables { id, input })
             .await?;
-        invocation.output.data(&answer, |answer| {
-            let channel = &answer.update_notification_channel;
-            saved(
-                &channel.name,
-                &channel.kind,
-                &channel.id,
-                &channel.updated_at,
-            )
-        })
+        invocation
+            .output
+            .data(&answer.update_notification_channel, |channel| {
+                saved(
+                    &channel.name,
+                    &channel.kind,
+                    &channel.id,
+                    &channel.updated_at,
+                )
+            })
     }
 }
 

@@ -287,3 +287,26 @@ async fn cmd_020_device_metrics_and_uptime_read_a_range_and_a_window() {
     assert!(run.stdout.contains("99.91 %"), "{}", run.stdout);
     assert_eq!(sent(&hub, "DeviceUptime")["window"], "WEEK");
 }
+
+#[tokio::test]
+async fn cmd_020_c7_a_delete_prints_the_bare_id_with_json() {
+    let hub = FakeHub::start().await;
+    hub.answer("DeviceDelete", data(json!({ "deleteDevice": DEVICE })));
+    let run = signed_in()
+        .run(&[
+            "device",
+            "delete",
+            DEVICE,
+            "--yes",
+            "--json",
+            "--hub",
+            &hub.origin,
+        ])
+        .await;
+    assert_eq!(run.code, 0, "{run:?}");
+    assert_eq!(
+        run.json(),
+        json!(DEVICE),
+        "the root field's value, not an envelope"
+    );
+}

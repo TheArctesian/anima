@@ -205,3 +205,14 @@ async fn cmd_024_key_revoke_confirms_and_finds_a_key_by_its_name() {
         .await;
     assert_eq!(missing.code, 3, "{missing:?}");
 }
+
+#[tokio::test]
+async fn cmd_020_c7_a_revoke_prints_the_bare_id_with_json() {
+    let hub = FakeHub::start().await;
+    let id = "0190a000-0000-7000-8020-000000000001";
+    hub.answer("KeyRevoke", data(json!({ "revokeApiKey": id })));
+    let run = signed_in()
+        .run(&["key", "revoke", id, "--yes", "--json", "--hub", &hub.origin])
+        .await;
+    assert_eq!(run.json(), json!(id));
+}

@@ -26,10 +26,12 @@ impl DeleteArgs {
         let answer = hub
             .run::<MaintenanceDelete>(maintenance_delete::Variables { id: window.id })
             .await?;
-        invocation.output.data(&answer, |deleted| {
-            let mut table = Table::record();
-            table.pair("Deleted", deleted.delete_maintenance_window.as_str());
-            table
-        })
+        invocation
+            .output
+            .data(&answer.delete_maintenance_window, |id| {
+                let mut table = Table::record();
+                table.pair("Deleted", id.as_str());
+                table
+            })
     }
 }

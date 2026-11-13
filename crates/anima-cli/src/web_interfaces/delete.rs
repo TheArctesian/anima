@@ -23,9 +23,9 @@ impl DeleteArgs {
         let answer = hub
             .run::<WebDelete>(web_delete::Variables { id: self.id })
             .await?;
-        invocation.output.data(&answer, |answer| {
+        invocation.output.data(&answer.delete_web_interface, |id| {
             let mut table = Table::record();
-            table.pair("Deleted", answer.delete_web_interface.as_str());
+            table.pair("Deleted", id.as_str());
             table
         })
     }

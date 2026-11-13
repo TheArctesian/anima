@@ -27,7 +27,7 @@ impl RevokeArgs {
         let answer = hub
             .run::<BuilderRevoke>(builder_revoke::Variables { id })
             .await?;
-        invocation.output.data(&answer, table)
+        invocation.output.data(&answer.revoke_builder, table)
     }
 }
 
@@ -47,8 +47,8 @@ async fn resolve(hub: &Hub, builder: &str) -> Result<String, Failure> {
         })
 }
 
-fn table(answer: &builder_revoke::ResponseData) -> Table {
+fn table(id: &String) -> Table {
     let mut table = Table::record();
-    table.pair("Revoked", answer.revoke_builder.as_str());
+    table.pair("Revoked", id.as_str());
     table
 }
