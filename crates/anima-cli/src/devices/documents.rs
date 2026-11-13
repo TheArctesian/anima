@@ -39,7 +39,8 @@ pub struct SiteNames;
     schema_path = "../../contracts/schema.graphql",
     query_path = "src/devices/create.graphql",
     response_derives = "Debug, Serialize",
-    variables_derives = "Debug, Deserialize"
+    variables_derives = "Debug, Deserialize",
+    skip_serializing_none
 )]
 pub struct DeviceCreate;
 
@@ -48,7 +49,8 @@ pub struct DeviceCreate;
     schema_path = "../../contracts/schema.graphql",
     query_path = "src/devices/update.graphql",
     response_derives = "Debug, Serialize",
-    variables_derives = "Debug, Deserialize"
+    variables_derives = "Debug, Deserialize",
+    skip_serializing_none
 )]
 pub struct DeviceUpdate;
 

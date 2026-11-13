@@ -19,7 +19,8 @@ pub struct WebList;
     schema_path = "../../contracts/schema.graphql",
     query_path = "src/web_interfaces/create.graphql",
     response_derives = "Debug, Serialize",
-    variables_derives = "Debug, Deserialize"
+    variables_derives = "Debug, Deserialize",
+    skip_serializing_none
 )]
 pub struct WebCreate;
 
@@ -28,7 +29,8 @@ pub struct WebCreate;
     schema_path = "../../contracts/schema.graphql",
     query_path = "src/web_interfaces/update.graphql",
     response_derives = "Debug, Serialize",
-    variables_derives = "Debug, Deserialize"
+    variables_derives = "Debug, Deserialize",
+    skip_serializing_none
 )]
 pub struct WebUpdate;
 

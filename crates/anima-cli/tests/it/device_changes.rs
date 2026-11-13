@@ -80,22 +80,22 @@ async fn cmd_020_device_create_sends_the_flags_as_the_k1_input_and_prints_the_de
         run.stdout
     );
     assert!(run.stdout.contains(DEVICE), "{}", run.stdout);
+}
 
+#[tokio::test]
+async fn cmd_020_device_create_json_keeps_the_k1_field_names() {
+    let hub = FakeHub::start().await;
+    hub.answer(
+        "DeviceCreate",
+        data(json!({ "createDevice": saved("nas") })),
+    );
+    let args = ["device", "create", "nas", "--site", SITE, "--host", "h"];
     let run = signed_in()
-        .run(&[
-            "device",
-            "create",
-            "nas",
-            "--site",
-            SITE,
-            "--host",
-            "10.0.0.9",
-            "--json",
-            "--hub",
-            &hub.origin,
-        ])
+        .run(&[&args[..], &["--json", "--hub", &hub.origin]].concat())
         .await;
+    assert_eq!(run.code, 0, "{run:?}");
     assert_eq!(run.json()["id"], DEVICE);
+    assert_eq!(run.json()["site"]["name"], "home");
 }
 
 #[tokio::test]

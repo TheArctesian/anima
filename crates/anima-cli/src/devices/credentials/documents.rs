@@ -76,10 +76,10 @@ mod tests {
 
     #[test]
     fn cmd_014_the_variables_that_hold_a_secret_cannot_be_printed_with_debug() {
-        assert!(!Shows::<<SshCredentialSet as GraphQLQuery>::Variables>::DEBUG);
-        assert!(!Shows::<<RdpCredentialSet as GraphQLQuery>::Variables>::DEBUG);
-        assert!(!Shows::<<VncCredentialSet as GraphQLQuery>::Variables>::DEBUG);
-        assert!(!Shows::<super::ssh_credential_set::SshCredentialInput>::DEBUG);
-        assert!(Shows::<<SshCredentialClear as GraphQLQuery>::Variables>::DEBUG);
+        const { assert!(!Shows::<<SshCredentialSet as GraphQLQuery>::Variables>::DEBUG) };
+        const { assert!(!Shows::<<RdpCredentialSet as GraphQLQuery>::Variables>::DEBUG) };
+        const { assert!(!Shows::<<VncCredentialSet as GraphQLQuery>::Variables>::DEBUG) };
+        const { assert!(!Shows::<super::ssh_credential_set::SshCredentialInput>::DEBUG) };
+        const { assert!(Shows::<<SshCredentialClear as GraphQLQuery>::Variables>::DEBUG) };
     }
 }

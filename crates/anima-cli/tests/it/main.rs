@@ -8,6 +8,7 @@ mod basics;
 mod coverage;
 mod device_changes;
 mod device_secrets;
+mod device_trust;
 mod devices;
 mod kit;
 mod sites;
