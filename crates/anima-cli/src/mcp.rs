@@ -8,6 +8,7 @@ pub mod arguments;
 pub mod catalogue;
 pub mod definition;
 pub mod outcome;
+pub mod permission_change;
 pub mod permission_commands;
 pub mod permissions;
 pub mod selection;

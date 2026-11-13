@@ -34,7 +34,7 @@ impl Environment {
     /// Reads this process's environment and streams.
     #[must_use]
     pub fn from_process() -> Self {
-        let value = |name: &str| std::env::var_os(name).filter(|value| !value.is_empty());
+        let value = variable;
         Self {
             hub: value("ANIMA_HUB").and_then(|value| value.into_string().ok()),
             token: value("ANIMA_TOKEN")
@@ -49,6 +49,17 @@ impl Environment {
             },
         }
     }
+}
+
+fn variable(name: &str) -> Option<OsString> {
+    std::env::var_os(name).filter(|value| !value.is_empty())
+}
+
+/// The configuration folder of this process, read from no variable but `XDG_CONFIG_HOME` and
+/// `HOME`: for a caller that needs the file and never the token (the desktop Settings panel).
+#[must_use]
+pub fn process_config_dir() -> Option<PathBuf> {
+    config_dir(variable("XDG_CONFIG_HOME"), variable("HOME"))
 }
 
 /// `$XDG_CONFIG_HOME/anima` when that is an absolute path (the XDG rule), else
