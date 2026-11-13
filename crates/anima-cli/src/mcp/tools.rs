@@ -8,13 +8,14 @@ pub mod maintenance;
 pub mod notifications;
 pub mod releases;
 pub mod retention;
+pub mod sessions;
 pub mod vpn;
 pub mod web;
 
 use rmcp::model::JsonObject;
 use serde_json::Value;
 
-use super::catalogue::{Grant, ToolSet};
+use super::catalogue::{Kind, ToolSet};
 use super::definition::Definition;
 use super::outcome::ToolError;
 use crate::hub::Hub;
@@ -26,6 +27,7 @@ pub enum Tool {
     Checks(checks::CheckTool),
     Maintenance(maintenance::MaintenanceTool),
     Events(events::EventTool),
+    Sessions(sessions::SessionTool),
     Notifications(notifications::NotificationTool),
     Web(web::WebTool),
     Releases(releases::ReleaseTool),
@@ -42,6 +44,7 @@ impl Tool {
         tools.extend(checks::CheckTool::ALL.map(Self::Checks));
         tools.extend(maintenance::MaintenanceTool::ALL.map(Self::Maintenance));
         tools.extend(events::EventTool::ALL.map(Self::Events));
+        tools.extend(sessions::SessionTool::ALL.map(Self::Sessions));
         tools.extend(notifications::NotificationTool::ALL.map(Self::Notifications));
         tools.extend(web::WebTool::ALL.map(Self::Web));
         tools.extend(releases::ReleaseTool::ALL.map(Self::Releases));
@@ -57,6 +60,7 @@ impl Tool {
             Self::Checks(_) => ToolSet::Checks,
             Self::Maintenance(_) => ToolSet::Maintenance,
             Self::Events(_) => ToolSet::Events,
+            Self::Sessions(_) => ToolSet::Sessions,
             Self::Notifications(_) => ToolSet::Notifications,
             Self::Web(_) => ToolSet::Web,
             Self::Releases(_) => ToolSet::Releases,
@@ -72,6 +76,7 @@ impl Tool {
             Self::Checks(tool) => tool.definition(),
             Self::Maintenance(tool) => tool.definition(),
             Self::Events(tool) => tool.definition(),
+            Self::Sessions(tool) => tool.definition(),
             Self::Notifications(tool) => tool.definition(),
             Self::Web(tool) => tool.definition(),
             Self::Releases(tool) => tool.definition(),
@@ -90,6 +95,7 @@ impl Tool {
             Self::Checks(tool) => tool.call(hub, arguments).await,
             Self::Maintenance(tool) => tool.call(hub, arguments).await,
             Self::Events(tool) => tool.call(hub, arguments).await,
+            Self::Sessions(tool) => tool.call(hub, arguments).await,
             Self::Notifications(tool) => tool.call(hub, arguments).await,
             Self::Web(tool) => tool.call(hub, arguments).await,
             Self::Releases(tool) => tool.call(hub, arguments).await,
@@ -99,13 +105,37 @@ impl Tool {
     }
 }
 
-/// The tools `grant` offers, with their definitions (MCP-002, MCP-003).
+/// One tool of the catalogue with its definition.
+#[derive(Clone, Debug)]
+pub struct Entry {
+    pub tool: Tool,
+    pub set: ToolSet,
+    /// `anima_<noun>_<verb>`, as in the definition.
+    pub name: &'static str,
+    pub definition: Definition,
+}
+
+impl Entry {
+    #[must_use]
+    pub const fn kind(&self) -> Kind {
+        self.definition.access.kind()
+    }
+}
+
+/// Every tool with its definition, set by set.
 #[must_use]
-pub fn offered(grant: &Grant) -> Vec<(Tool, Definition)> {
+pub fn catalogue() -> Vec<Entry> {
     Tool::all()
         .into_iter()
-        .map(|tool| (tool, tool.definition()))
-        .filter(|(tool, definition)| grant.offers(tool.set(), definition.access))
+        .map(|tool| {
+            let definition = tool.definition();
+            Entry {
+                tool,
+                set: tool.set(),
+                name: definition.name,
+                definition,
+            }
+        })
         .collect()
 }
 
@@ -114,8 +144,6 @@ mod tests {
     use std::collections::HashSet;
 
     use super::*;
-    use crate::hub::TokenKind;
-    use crate::mcp::catalogue::Access;
 
     #[test]
     fn mcp_011_every_name_is_anima_noun_verb_and_unique() {
@@ -128,26 +156,6 @@ mod tests {
             );
             assert!(seen.insert(name), "{name} twice");
         }
-    }
-
-    #[test]
-    fn mcp_003_an_api_key_with_write_gets_no_login_tool() {
-        let grant = Grant {
-            token: TokenKind::ApiKey,
-            toolsets: Vec::new(),
-            write: ToolSet::ALL.to_vec(),
-        };
-        let offered = offered(&grant);
-        assert!(
-            offered
-                .iter()
-                .all(|(_, definition)| definition.access != Access::Login)
-        );
-        assert!(
-            offered
-                .iter()
-                .any(|(_, definition)| definition.access == Access::Write)
-        );
     }
 
     #[test]

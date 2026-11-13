@@ -17,6 +17,8 @@ pub const API_KEY: &str = "anima_mcpTestKeyAbcdefghijklmnopqrstuvwxyz0123456";
 /// The operator's computer: a home folder for the configuration file.
 pub struct Desk {
     home: TempDir,
+    /// What the MCP client declares at `initialize`.
+    capabilities: Value,
 }
 
 pub struct Session {
@@ -26,6 +28,11 @@ pub struct Session {
     /// Every line read from standard output.
     pub printed: Vec<String>,
     next_id: u64,
+    /// The result sent back for each `elicitation/create` request; `None` answers with a
+    /// JSON-RPC error.
+    pub approval: Option<Value>,
+    /// The `params` of each `elicitation/create` request the server sent.
+    pub asked: Vec<Value>,
 }
 
 /// A hub that accepts the token at start (`me`).
@@ -45,6 +52,15 @@ impl Desk {
     pub fn new() -> Self {
         Self {
             home: tempfile::tempdir().expect("a home folder"),
+            capabilities: json!({}),
+        }
+    }
+
+    /// A desk whose MCP client can ask the person (form elicitation, MCP-013).
+    pub fn asking() -> Self {
+        Self {
+            capabilities: json!({ "elicitation": { "form": {} } }),
+            ..Self::new()
         }
     }
 
@@ -93,11 +109,13 @@ impl Desk {
             stdout,
             printed: Vec::new(),
             next_id: 1,
+            approval: None,
+            asked: Vec::new(),
         };
         let initialised = session
             .request(
                 "initialize",
-                json!({ "protocolVersion": "2025-06-18", "capabilities": {},
+                json!({ "protocolVersion": "2025-06-18", "capabilities": self.capabilities,
                         "clientInfo": { "name": "it", "version": "1" } }),
             )
             .await;
@@ -130,10 +148,23 @@ impl Session {
                 .expect("a line before the end");
             self.printed.push(line.clone());
             let answer: Value = serde_json::from_str(&line).expect("each line is JSON");
-            if answer["id"] == json!(id) {
+            if answer["method"] == "elicitation/create" {
+                self.answer_elicitation(&answer).await;
+            } else if answer["id"] == json!(id) {
                 return answer.get("result").cloned().unwrap_or(answer);
             }
         }
+    }
+
+    /// Answers the server's `elicitation/create` request with [`Session::approval`].
+    async fn answer_elicitation(&mut self, request: &Value) {
+        self.asked.push(request["params"].clone());
+        let reply = match &self.approval {
+            Some(result) => json!({ "jsonrpc": "2.0", "id": request["id"], "result": result }),
+            None => json!({ "jsonrpc": "2.0", "id": request["id"],
+                            "error": { "code": -32603, "message": "no person here" } }),
+        };
+        self.send(&reply).await;
     }
 
     /// The names of the tools offered.

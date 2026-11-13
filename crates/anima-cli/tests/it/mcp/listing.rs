@@ -30,7 +30,7 @@ async fn mcp_002_the_default_lists_only_read_tools_and_warns_that_device_text_is
         "{instructions}"
     );
     assert!(
-        instructions.contains("May change things: none."),
+        instructions.contains("Change tools allowed: none."),
         "{instructions}"
     );
     let listed = session.request("tools/list", json!({})).await;
