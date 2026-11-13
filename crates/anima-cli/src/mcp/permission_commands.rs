@@ -5,6 +5,7 @@ use super::catalogue::{Kind, ToolSet};
 use super::permission_change::{Change, Shown, save, saved_in, shown};
 use super::permissions::{Permissions, State};
 use super::tools::catalogue;
+use super::widening::by_a_person;
 use crate::failure::Failure;
 use crate::invocation::Invocation;
 use crate::output::Table;
@@ -85,7 +86,8 @@ impl PermissionsCommand {
     /// Shows, saves or resets this hub's permissions.
     ///
     /// # Errors
-    /// [`Failure::Usage`] for an unknown name or an unconfirmed `--allow-all`; [`Failure`] for
+    /// [`Failure::Usage`] for an unknown name, an unconfirmed `--allow-all` or a widening
+    /// without a terminal on standard input (MCP-014); [`Failure`] for
     /// an unreadable or unwritable configuration.
     pub fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         match self {
@@ -93,8 +95,15 @@ impl PermissionsCommand {
             Self::Set(args) => args.save(invocation),
             Self::Reset => {
                 let origin = invocation.origin()?;
-                let mut permissions = saved(invocation)?;
+                let before = saved(invocation)?;
+                let mut permissions = before.clone();
                 Change::Reset.apply(&mut permissions, &catalogue())?;
+                by_a_person(
+                    invocation.stdin_terminal(),
+                    &before,
+                    &permissions,
+                    &catalogue(),
+                )?;
                 save(
                     invocation.config()?,
                     invocation.config_dir()?,
@@ -140,11 +149,18 @@ fn table(shown: &Shown) -> Table {
 impl SetArgs {
     fn save(self, invocation: &Invocation) -> Result<(), Failure> {
         let origin = invocation.origin()?;
-        let mut permissions = saved(invocation)?;
+        let before = saved(invocation)?;
+        let mut permissions = before.clone();
         let changes = self.changes();
         for change in &changes {
             change.apply(&mut permissions, &catalogue())?;
         }
+        by_a_person(
+            invocation.stdin_terminal(),
+            &before,
+            &permissions,
+            &catalogue(),
+        )?;
         if changes.iter().any(Change::allows_changes) {
             let question = "Allow change tools: the agent may then change the hub without asking?";
             invocation.prompter.confirm(question)?;

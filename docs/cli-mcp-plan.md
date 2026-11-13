@@ -186,12 +186,17 @@ Not in the command line, with the reason:
   is read once as explicit choices and is not written again.
 - **MCP-013.** When the agent calls a tool in state `ask`, the server asks the person at the
   MCP client to approve that one call. It sends an MCP elicitation request in form mode with
-  one yes-or-no field (`approve`). The message names the tool and shows the arguments, cleaned
-  and capped; a key that the tool does not take is shown by name only. The call runs only after
-  a clear yes. If the client did not declare elicitation, or the person declines or cancels, or
-  there is no answer in 120 seconds, or the request fails, the call is refused with `isError`
-  and a sentence that names `anima mcp permissions set --allow <tool>`. The hub is not asked.
-  A delete in state `ask` still needs its `confirm` (MCP-007).
+  one yes-or-no field (`approve`). The message names the tool, says how many argument values
+  there are and shows each of them on its own line: nested keys as dotted paths, the identifying
+  arguments (`device`, `check`, `site`, `id`, `name`, `confirm`) first, each value cleaned and cut
+  at 120 characters with its full length. A key that the tool does not take is shown by name
+  only. More than 40 values, or a message over 4,000 characters, is refused before the person is
+  asked, with a sentence to send a smaller change. The call runs only after a clear yes. If the
+  client did not declare elicitation, or the person declines or cancels, or there is no answer
+  in 120 seconds, or the request fails, the call is refused with `isError`. Every refusal of a
+  tool that is off, unknown or not approved tells the agent to ask the operator and not to change
+  Anima's settings itself; it holds no command line. The server instructions say the same. The
+  hub is not asked. A delete in state `ask` still needs its `confirm` (MCP-007).
 - **MCP-014.** `anima mcp permissions show` prints one row for each tool: tool set, tool, kind
   (`read` or `change`), needs sign-in (`yes` or `no`) and state. `--json` gives
   `{ hub, summary, tools: [{ toolset, tool, kind, needsSignIn, state, description }] }`; the
@@ -200,7 +205,10 @@ Not in the command line, with the reason:
   narrowed by `--toolset <set>` and `--kind read|change`; and `--read-only` (every change tool
   `off`). Bulk forms apply first, then `--allow`, `--ask`, `--off`. An unknown name exits 2 and
   lists the valid names. `--allow-all` that covers change tools needs `--yes` or a yes at the
-  terminal. `permissions reset` deletes the saved states of the hub.
+  terminal. `permissions reset` deletes the saved states of the hub. A `set` or `reset` that
+  widens access (a tool or a kind's default moves toward `allow`) needs a terminal on standard
+  input; without one it exits 2, whatever `--yes` says, and names the terminal and the desktop
+  app's Settings. A change toward `off` works anywhere.
 - **MCP-015.** The flags of `anima mcp` apply to one run and only narrow: `--toolsets a,b` turns
   off every tool outside those sets; `--read-only` turns off every change tool. The one
   exception is `--allow-write [sets]`: it allows the change tools (of every set, or of the sets
@@ -296,9 +304,43 @@ Read tools are `allow` and change tools are `off` by default (MCP-002). L: needs
    R2 release feed) is not planned.
 5. **MCP protocol version.** The current revision is 2026-07-28. The Rust SDK (`rmcp`) can speak
    it and the earlier revisions. Which revision each coding agent uses was not verified.
-6. **SET-004 lists the sections.** The Settings page now has an "MCP" section (MCP-018..023), and
-   `docs/design-spec.md` SET-004 does not name it. The operator must approve adding "MCP" to the
-   list; this plan does not edit the design spec.
+6. **SNMP secrets after a host change.** The hub keeps a check's SNMP community and v3 passwords
+   when the device's host changes. An agent with `anima_device_update` can set the host to an
+   address it chooses, and the next SNMP check sends the community there. The hub must ask for
+   the SNMP secrets again when the host changes, as it does for an HTTP check URL. This needs a
+   hub change and an issue.
+7. **`ask` trusts the MCP client.** The server cannot see who answers the approval request.
+   Whatever answers it (the person, the client's own rule, or a client that the agent controls)
+   decides.
+8. **Who writes the start.** The flags of `anima mcp` (`--allow-write`, `--toolsets`) and the
+   configuration location (`XDG_CONFIG_HOME`, `--context`) come from whoever writes the MCP
+   client's configuration. That includes a project `.mcp.json` in a repository.
+9. **The audit log cannot tell who acted.** It cannot tell an agent from the operator, or an API
+   key from a login token (see point 2).
+10. **Accepted risk: the operator's own account.** `anima mcp permissions set` and `reset` widen
+    access only with a terminal on standard input (MCP-014). A program that runs commands as the
+    operator can still edit the configuration file by hand, start the server with
+    `--allow-write`, or run the command inside a pseudo-terminal. The check stops an agent from
+    widening its access by accident or because a refusal told it how; it does not stop an agent
+    that sets out to do it. The hub token stays the real limit (MCP-003).
+11. **SET-004 lists the sections.** The Settings page now has an "MCP" section (MCP-018..023), and
+    `docs/design-spec.md` SET-004 does not name it. The operator must approve adding "MCP" to the
+    list; this plan does not edit the design spec.
+
+### What a compromised agent can do
+
+An agent can be steered by text it reads. What it can do then depends on the token and the
+tools that are on:
+
+1. **Read API key.** Read the whole fleet, events, the audit log, sessions with client
+   addresses, VPN nodes and build logs.
+2. **Write API key, every change tool allowed.** Pause every check and empty its notification
+   channels, start maintenance windows, delete checks, maintenance windows and web interfaces,
+   end every live session, point web interfaces at other addresses, point HTTP checks at
+   internal URLs, send wake packets and test notifications.
+3. **Login token, everything allowed.** All of the above, and also delete every device with its
+   stored credentials, approve a VPN route, cancel builds, set every retention period to the
+   minimum and start a release.
 
 ## 10. Work
 

@@ -57,7 +57,8 @@ impl CheckTool {
                 Effect::Sets,
                 "Changes a check; only the fields given change. A new config replaces the \
                  whole config and follows the rules of anima_check_create; it is refused for an \
-                 HTTP check with authentication or headers. Returns the check.",
+                 HTTP check with authentication or headers and for every SNMP check, whose \
+                 secrets it would drop. Returns the check.",
             )
             .returns(&CHECK),
             Self::SetPaused => Definition::new::<change::PausedInput>(

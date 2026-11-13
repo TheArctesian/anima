@@ -94,6 +94,28 @@ async fn mcp_007_check_delete_runs_only_with_the_exact_name_as_confirm() {
 }
 
 #[tokio::test]
+async fn mcp_007_f5_a_device_delete_by_id_with_an_empty_confirm_never_reaches_the_hub() {
+    let hub = hub().await;
+    hub.answer("DeviceUptime", data(json!({ "device": null })));
+    hub.answer("DeviceDelete", data(json!({ "deleteDevice": DEVICE })));
+    let desk = Desk::new();
+    let mut session = writing(&hub, &desk).await;
+    let answer = session
+        .call(
+            "anima_device_delete",
+            json!({ "device": DEVICE, "confirm": "" }),
+        )
+        .await;
+    assert_eq!(answer["isError"], true, "{answer}");
+    session.finish().await;
+    assert!(
+        hub.seen()
+            .iter()
+            .all(|seen| seen.operation != "DeviceDelete")
+    );
+}
+
+#[tokio::test]
 async fn mcp_009_maintenance_create_sends_the_k1_window_input() {
     let hub = hub().await;
     hub.answer(

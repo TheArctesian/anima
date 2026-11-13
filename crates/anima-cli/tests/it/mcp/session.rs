@@ -64,6 +64,17 @@ impl Desk {
         }
     }
 
+    /// Writes `saved` as the MCP permissions of `origin` in the configuration file, as the
+    /// operator could by hand. The tests use it for permissions that widen access:
+    /// `anima mcp permissions set` makes those only at a terminal (MCP-014), and the tests run
+    /// it without one. Process-level tests keep the command for showing, narrowing and refusal.
+    pub fn save_permissions(&self, origin: &str, saved: &Value) {
+        let dir = self.home.path().join("config").join("anima");
+        std::fs::create_dir_all(&dir).expect("the configuration folder");
+        let config = json!({ "contexts": {}, "mcp": { origin: saved } });
+        std::fs::write(dir.join("config.json"), config.to_string()).expect("written");
+    }
+
     fn command(&self, token: &str, args: &[&str]) -> Command {
         let mut command = Command::new(env!("CARGO_BIN_EXE_anima"));
         command
