@@ -1,0 +1,36 @@
+# `anima_notifications_overview` (MCP-004): channel names and kinds, the certificate warning
+# days and the latest deliveries. No address, setting, template or failure reason is selected:
+# an address or a reason can hold a secret (a webhook URL with its token).
+query NotificationsOverview($first: Int, $after: String) {
+  notificationChannels {
+    id
+    name
+    kind
+    onByDefault
+    lastDelivery {
+      at
+      ok
+      code
+    }
+  }
+  notificationSettings {
+    certificateDays
+  }
+  deliveries(first: $first, after: $after) {
+    edges {
+      node {
+        id
+        channelId
+        channelName
+        kind
+        at
+        ok
+        code
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+  }
+}

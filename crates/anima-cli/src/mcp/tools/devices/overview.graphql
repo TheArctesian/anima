@@ -1,0 +1,40 @@
+# `anima_fleet_overview` (MCP): device counts by status, the devices that need attention, and
+# the sites. No document of the command line selects this in one request.
+query FleetOverview {
+  all: devices(first: 1) {
+    totalCount
+  }
+  up: devices(filter: { status: [UP] }, first: 1) {
+    totalCount
+  }
+  down: devices(filter: { status: [DOWN] }, first: 1) {
+    totalCount
+  }
+  degraded: devices(filter: { status: [DEGRADED] }, first: 1) {
+    totalCount
+  }
+  maintenance: devices(filter: { status: [MAINTENANCE] }, first: 1) {
+    totalCount
+  }
+  unknown: devices(filter: { status: [UNKNOWN] }, first: 1) {
+    totalCount
+  }
+  attention: devices(filter: { status: [DOWN, DEGRADED] }, sort: STATUS, first: 50) {
+    edges {
+      node {
+        id
+        name
+        status
+        site {
+          id
+          name
+        }
+      }
+    }
+    totalCount
+  }
+  sites {
+    id
+    name
+  }
+}

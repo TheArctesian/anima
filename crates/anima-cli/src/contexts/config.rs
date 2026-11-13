@@ -21,6 +21,21 @@ pub struct Config {
     pub current: Option<String>,
     #[serde(default)]
     pub contexts: BTreeMap<String, Context>,
+    /// The saved `anima mcp` permissions of each hub, by hub origin (MCP-002).
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub mcp: BTreeMap<String, McpPermissions>,
+}
+
+/// Which MCP tool sets `anima mcp` offers for one hub, and which of them may change things,
+/// by set name (`anima mcp permissions set`). Names only; no secret.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct McpPermissions {
+    /// The sets offered; empty offers every set.
+    #[serde(default)]
+    pub toolsets: Vec<String>,
+    /// The sets whose change tools are offered; empty is read-only.
+    #[serde(default)]
+    pub write: Vec<String>,
 }
 
 /// One named hub.
