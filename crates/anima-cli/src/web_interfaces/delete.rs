@@ -19,10 +19,7 @@ impl DeleteArgs {
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let hub = invocation.hub()?;
         let question = format!("Delete the web interface {}?", self.id);
-        if !invocation.prompter.confirm(&question)? {
-            invocation.output.note("Nothing was deleted.");
-            return Ok(());
-        }
+        invocation.prompter.confirm(&question)?;
         let answer = hub
             .run::<WebDelete>(web_delete::Variables { id: self.id })
             .await?;

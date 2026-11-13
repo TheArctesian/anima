@@ -19,13 +19,9 @@ impl CancelArgs {
     /// [`Failure`] for a hub refusal: an unknown job, or one that already ended.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let hub = invocation.hub()?;
-        if !invocation
+        invocation
             .prompter
-            .confirm(&format!("Cancel build job {}?", self.job))?
-        {
-            invocation.output.note("Nothing cancelled.");
-            return Ok(());
-        }
+            .confirm(&format!("Cancel build job {}?", self.job))?;
         let answer = hub
             .run::<ReleaseCancel>(release_cancel::Variables { id: self.job })
             .await?;

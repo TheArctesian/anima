@@ -2,10 +2,10 @@
 
 use super::documents::{DeviceGet, device_get, device_list};
 use super::list::{Query, fetch};
-use crate::failure::Failure;
+use crate::failure::{Failure, Hint};
 use crate::hub::Hub;
 use crate::invocation::Invocation;
-use crate::output::text::enum_name;
+use crate::output::text::{enum_name, shell_word};
 use crate::output::{Cell, Table};
 use crate::paging::MAX_PAGE;
 
@@ -29,7 +29,7 @@ impl GetArgs {
             .await?;
         let device = answer.device.ok_or_else(|| Failure::NotFound {
             message: format!("No device has the ID {id}."),
-            hint: Some("anima device list".to_owned()),
+            hint: Some(Hint::run("anima device list")),
         })?;
         invocation.output.data(&device, table)
     }
@@ -65,7 +65,10 @@ pub async fn resolve(hub: &Hub, device: &str) -> Result<String, Failure> {
     match matches.len() {
         0 => Err(Failure::NotFound {
             message: format!("No device is named {device}."),
-            hint: Some(format!("anima device list --name {device}")),
+            hint: Some(Hint::run(format!(
+                "anima device list --name {}",
+                shell_word(device)
+            ))),
         }),
         1 => Ok(matches.remove(0).id),
         count => {
@@ -78,7 +81,10 @@ pub async fn resolve(hub: &Hub, device: &str) -> Result<String, Failure> {
                     "{count} devices are named {device}: {}. Give the ID.",
                     listed.join(", ")
                 ),
-                hint: Some(format!("anima device get {}", matches[0].id)),
+                hint: Some(Hint::run(format!(
+                    "anima device get {}",
+                    shell_word(&matches[0].id)
+                ))),
             })
         }
     }

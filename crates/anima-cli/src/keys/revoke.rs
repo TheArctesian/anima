@@ -1,7 +1,7 @@
 //! `anima key revoke <id-or-name>`: the key stops working at once.
 
 use super::documents::{KeyList, KeyRevoke, key_list, key_revoke};
-use crate::failure::Failure;
+use crate::failure::{Failure, Hint};
 use crate::hub::Hub;
 use crate::invocation::Invocation;
 use crate::output::Table;
@@ -21,13 +21,9 @@ impl RevokeArgs {
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let hub = invocation.hub()?;
         let id = resolve(&hub, &self.key).await?;
-        if !invocation
+        invocation
             .prompter
-            .confirm(&format!("Revoke API key {}?", self.key))?
-        {
-            invocation.output.note("Nothing was revoked.");
-            return Ok(());
-        }
+            .confirm(&format!("Revoke API key {}?", self.key))?;
         let answer = hub.run::<KeyRevoke>(key_revoke::Variables { id }).await?;
         invocation.output.data(&answer, |answer| {
             let mut table = Table::record();
@@ -48,6 +44,6 @@ async fn resolve(hub: &Hub, key: &str) -> Result<String, Failure> {
         .map(|found| found.id)
         .ok_or_else(|| Failure::NotFound {
             message: format!("There is no API key named {key}."),
-            hint: Some("anima key list".to_owned()),
+            hint: Some(Hint::run("anima key list")),
         })
 }

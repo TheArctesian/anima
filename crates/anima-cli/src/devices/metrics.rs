@@ -4,7 +4,7 @@
 use super::documents::{DeviceMetrics, device_metrics};
 use super::get::resolve;
 use super::watch;
-use crate::failure::Failure;
+use crate::failure::{Failure, Hint};
 use crate::invocation::Invocation;
 use crate::output::text::enum_name;
 use crate::output::{Cell, Table};
@@ -49,7 +49,7 @@ impl MetricsArgs {
             .device
             .ok_or_else(|| Failure::NotFound {
                 message: format!("No device has the ID {id}."),
-                hint: Some("anima device list".to_owned()),
+                hint: Some(Hint::run("anima device list")),
             })?;
         invocation.output.data(&device, table)
     }

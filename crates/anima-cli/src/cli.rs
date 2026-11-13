@@ -8,7 +8,7 @@ use std::process::ExitCode;
 use clap::Parser;
 
 use crate::environment::Environment;
-use crate::failure::{Failure, exit};
+use crate::failure::{Failure, Hint, exit};
 use crate::invocation::{Globals, Invocation};
 use crate::output::Output;
 
@@ -83,7 +83,7 @@ fn usage(error: &clap::Error, json: bool, environment: &Environment) -> ExitCode
     let first = rendered.lines().next().unwrap_or_default();
     let failure = Failure::Usage {
         message: first.trim_start_matches("error: ").to_owned(),
-        hint: Some("anima --help".to_owned()),
+        hint: Some(Hint::run("anima --help")),
     };
     Output::new(true, environment.terminals.stdout, true).failure(&failure);
     ExitCode::from(exit::USAGE)

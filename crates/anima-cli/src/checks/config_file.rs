@@ -9,7 +9,7 @@ use std::path::Path;
 use serde::de::DeserializeOwned;
 use zeroize::Zeroizing;
 
-use crate::failure::Failure;
+use crate::failure::{Failure, Hint};
 
 /// The largest configuration file read.
 const MAX_INPUT: u64 = 1024 * 1024;
@@ -54,14 +54,14 @@ pub fn read<T: DeserializeOwned>(path: &Path) -> Result<T, Failure> {
             "A value in {} does not fit the check's settings; see CheckConfigInput in K1.",
             path.display()
         ),
-        hint: Some("anima check create --help".to_owned()),
+        hint: Some(Hint::run("anima check create --help")),
     })
 }
 
 fn check_shape(value: &serde_json::Value, path: &Path) -> Result<(), Failure> {
     let usage = |message: String| Failure::Usage {
         message,
-        hint: Some("anima check create --help".to_owned()),
+        hint: Some(Hint::run("anima check create --help")),
     };
     let Some(object) = value.as_object() else {
         return Err(usage(format!(

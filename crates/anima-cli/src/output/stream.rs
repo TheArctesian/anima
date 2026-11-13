@@ -6,6 +6,7 @@ use std::io::{self, Write as _};
 use serde::Serialize;
 
 use crate::failure::Failure;
+use crate::output::text::clean;
 
 /// Whether the reader is still there after a line.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -15,14 +16,15 @@ pub enum Reader {
     Gone,
 }
 
-/// Writes `line` and a line break to standard output.
+/// Writes `line` and a line break to standard output. The line is cleaned here, whatever the
+/// command made it from: a hub or a device chose some of its words (S3).
 ///
 /// # Errors
 /// [`Failure::Write`] when standard output fails, other than a closed pipe.
 pub fn line(line: &str) -> Result<Reader, Failure> {
     let mut stdout = io::stdout().lock();
     match stdout
-        .write_all(line.as_bytes())
+        .write_all(clean(line).as_bytes())
         .and_then(|()| stdout.write_all(b"\n"))
         .and_then(|()| stdout.flush())
     {

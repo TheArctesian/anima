@@ -1,7 +1,7 @@
 //! `anima maintenance list`, and the lookup of a window by ID or exact name.
 
 use super::documents::{MaintenanceList, maintenance_list};
-use crate::failure::Failure;
+use crate::failure::{Failure, Hint};
 use crate::hub::Hub;
 use crate::invocation::Invocation;
 use crate::output::text::enum_name;
@@ -44,12 +44,12 @@ pub async fn find(hub: &Hub, window: &str) -> Result<Window, Failure> {
     match matches.len() {
         0 => Err(Failure::NotFound {
             message: format!("No maintenance window has the ID or name {window}."),
-            hint: Some("anima maintenance list".to_owned()),
+            hint: Some(Hint::run("anima maintenance list")),
         }),
         1 => Ok(matches.remove(0)),
         count => Err(Failure::Usage {
             message: format!("{count} maintenance windows are named {window}. Give the ID."),
-            hint: Some("anima maintenance list".to_owned()),
+            hint: Some(Hint::run("anima maintenance list")),
         }),
     }
 }

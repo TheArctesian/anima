@@ -9,7 +9,7 @@ use crate::hub::scalars::DateTime;
 use crate::hub::subscription::Subscription;
 use crate::invocation::Invocation;
 use crate::output::stream::{self, Reader};
-use crate::output::text::{clean, enum_name};
+use crate::output::text::enum_name;
 
 #[derive(GraphQLQuery)]
 #[graphql(
@@ -54,10 +54,10 @@ impl WatchArgs {
 }
 
 fn line(change: &device_status_changed::DeviceStatusChangedDeviceStatusChanged) -> String {
-    clean(&format!(
+    format!(
         "{}  {}  {}",
         change.at,
         change.device_id,
         enum_name(&change.status)
-    ))
+    )
 }

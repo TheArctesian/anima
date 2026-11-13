@@ -5,7 +5,7 @@
 use serde::de::DeserializeOwned;
 use serde_json::{Map, Value, json};
 
-use crate::failure::Failure;
+use crate::failure::{Failure, Hint};
 
 #[derive(Clone, Copy, Debug, clap::ValueEnum)]
 enum KindArg {
@@ -171,7 +171,7 @@ impl WindowFields {
 fn target(text: &str) -> Result<Value, Failure> {
     let usage = || Failure::Usage {
         message: format!("{text} is not a target: use device:ID, check:ID or tag:NAME."),
-        hint: Some("anima maintenance create --help".to_owned()),
+        hint: Some(Hint::run("anima maintenance create --help")),
     };
     let (kind, name) = text.split_once(':').ok_or_else(usage)?;
     let kind = match kind {
@@ -195,7 +195,7 @@ pub fn into_input<T: DeserializeOwned>(input: Value) -> Result<T, Failure> {
         if input.get(needed).is_none_or(Value::is_null) {
             return Err(Failure::Usage {
                 message: format!("--{needed} is needed."),
-                hint: Some("anima maintenance create --help".to_owned()),
+                hint: Some(Hint::run("anima maintenance create --help")),
             });
         }
     }
@@ -205,7 +205,7 @@ pub fn into_input<T: DeserializeOwned>(input: Value) -> Result<T, Failure> {
     }
     serde_json::from_value(input).map_err(|error| Failure::Usage {
         message: format!("A maintenance flag has a value the hub cannot read: {error}."),
-        hint: Some("anima maintenance create --help".to_owned()),
+        hint: Some(Hint::run("anima maintenance create --help")),
     })
 }
 

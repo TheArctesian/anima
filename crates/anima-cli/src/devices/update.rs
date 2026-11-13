@@ -8,7 +8,7 @@ use super::get::resolve;
 use super::list::site_id;
 use super::saved::Saved;
 use super::settings::{Current, SettingsFlags, typed};
-use crate::failure::Failure;
+use crate::failure::{Failure, Hint};
 use crate::invocation::Invocation;
 use crate::output::text::enum_name;
 
@@ -50,7 +50,7 @@ impl UpdateArgs {
                 .await?;
             let device = answer.device.ok_or_else(|| Failure::NotFound {
                 message: format!("No device has the ID {id}."),
-                hint: Some("anima device list".to_owned()),
+                hint: Some(Hint::run("anima device list")),
             })?;
             Current::of(&device)
         } else {
@@ -74,7 +74,7 @@ impl UpdateArgs {
         if input.is_empty() {
             return Err(Failure::Usage {
                 message: "Nothing to change: give at least one flag.".to_owned(),
-                hint: Some("anima device update --help".to_owned()),
+                hint: Some(Hint::run("anima device update --help")),
             });
         }
         let variables = device_update::Variables {

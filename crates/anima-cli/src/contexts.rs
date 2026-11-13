@@ -5,7 +5,7 @@ pub mod select;
 
 use serde::Serialize;
 
-use crate::failure::Failure;
+use crate::failure::{Failure, Hint};
 use crate::hub::Origin;
 use crate::invocation::Invocation;
 use crate::output::{Cell, Table, Tone};
@@ -60,13 +60,9 @@ impl ContextCommand {
             }
             Self::Remove { name } => {
                 known(&config, &name)?;
-                if !invocation
+                invocation
                     .prompter
-                    .confirm(&format!("Remove the context {name}?"))?
-                {
-                    invocation.output.note("Nothing was removed.");
-                    return Ok(());
-                }
+                    .confirm(&format!("Remove the context {name}?"))?;
                 config.contexts.remove(&name);
                 if config.current.as_deref() == Some(name.as_str()) {
                     config.current = None;
@@ -142,7 +138,7 @@ fn known(config: &Config, name: &str) -> Result<(), Failure> {
     }
     Err(Failure::NotFound {
         message: format!("There is no context named {name}."),
-        hint: Some("anima context list".to_owned()),
+        hint: Some(Hint::run("anima context list")),
     })
 }
 

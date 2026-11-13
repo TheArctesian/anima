@@ -2,7 +2,7 @@
 
 use super::documents::{DeviceUptime, device_uptime};
 use super::get::resolve;
-use crate::failure::Failure;
+use crate::failure::{Failure, Hint};
 use crate::invocation::Invocation;
 use crate::output::Table;
 
@@ -41,7 +41,7 @@ impl UptimeArgs {
             .device
             .ok_or_else(|| Failure::NotFound {
                 message: format!("No device has the ID {id}."),
-                hint: Some("anima device list".to_owned()),
+                hint: Some(Hint::run("anima device list")),
             })?;
         invocation.output.data(&device, |device| {
             let mut table = Table::record();

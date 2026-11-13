@@ -24,10 +24,7 @@ impl RevokeArgs {
         let hub = invocation.hub()?;
         let device_id = resolve(&hub, &self.device).await?;
         let question = format!("Revoke the agent token of {}?", self.device);
-        if !invocation.prompter.confirm(&question)? {
-            invocation.output.note("Nothing was revoked.");
-            return Ok(());
-        }
+        invocation.prompter.confirm(&question)?;
         let device = hub
             .run::<AgentRevoke>(agent_revoke::Variables { device_id })
             .await?

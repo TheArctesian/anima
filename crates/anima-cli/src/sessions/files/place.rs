@@ -8,7 +8,7 @@
 
 use std::path::{Path, PathBuf};
 
-use crate::failure::Failure;
+use crate::failure::{Failure, Hint};
 
 /// A path on a device, as `<device>:<path>` gave it.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -30,7 +30,7 @@ impl Remote {
             }),
             _ => Err(Failure::Usage {
                 message: format!("{spec} is not <device>:<path>."),
-                hint: Some("anima files ls web-1:/var/log".to_owned()),
+                hint: Some(Hint::run("anima files ls web-1:/var/log")),
             }),
         }
     }
@@ -68,10 +68,10 @@ pub fn download_target(
                     "{} does not end in a file name that is safe here; name the local file.",
                     remote.path
                 ),
-                hint: Some(format!(
+                hint: Some(Hint::run(format!(
                     "anima files get {}:{} ./file",
                     remote.device, remote.path
-                )),
+                ))),
             })
     };
     match local {

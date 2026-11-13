@@ -2,7 +2,7 @@
 //! interface's ID, so the devices are read in pages until one holds it.
 
 use super::documents::{WebCurrent, web_current};
-use crate::failure::Failure;
+use crate::failure::{Failure, Hint};
 use crate::hub::Hub;
 use crate::output::text::enum_name;
 
@@ -44,7 +44,7 @@ pub async fn find(hub: &Hub, id: &str) -> Result<Current, Failure> {
         if !devices.page_info.has_next_page {
             return Err(Failure::NotFound {
                 message: format!("No web interface has the ID {id}."),
-                hint: Some("anima web list <device>".to_owned()),
+                hint: Some(Hint::run("anima web list <device>")),
             });
         }
         after = devices.page_info.end_cursor;

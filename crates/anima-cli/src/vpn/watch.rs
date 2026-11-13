@@ -7,7 +7,7 @@ use crate::hub::scalars::DateTime;
 use crate::hub::subscription::Subscription;
 use crate::invocation::Invocation;
 use crate::output::stream::{self, Reader};
-use crate::output::text::{clean, enum_name};
+use crate::output::text::enum_name;
 
 #[derive(GraphQLQuery)]
 #[graphql(
@@ -52,7 +52,7 @@ fn line(picture: &vpn_changed::VpnChangedVpnChanged) -> String {
             )
         })
         .collect();
-    clean(&format!(
+    format!(
         "{}  {}  broker {}  nodes {online}/{} online  sites: {}",
         picture.read_at,
         if picture.fresh { "fresh" } else { "stale" },
@@ -63,5 +63,5 @@ fn line(picture: &vpn_changed::VpnChangedVpnChanged) -> String {
         } else {
             sites.join(", ")
         }
-    ))
+    )
 }

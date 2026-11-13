@@ -1,7 +1,7 @@
 //! `anima device list`: filters, order and pages (CMD-026).
 
 use super::documents::{DeviceList, SiteNames, device_list, site_names};
-use crate::failure::Failure;
+use crate::failure::{Failure, Hint};
 use crate::hub::Hub;
 use crate::invocation::Invocation;
 use crate::output::text::enum_name;
@@ -157,7 +157,7 @@ pub async fn site_id(hub: &Hub, site: &str) -> Result<String, Failure> {
         .map(|found| found.id)
         .ok_or_else(|| Failure::NotFound {
             message: format!("There is no site named {site}."),
-            hint: Some("anima site list".to_owned()),
+            hint: Some(Hint::run("anima site list")),
         })
 }
 

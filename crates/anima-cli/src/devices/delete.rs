@@ -25,10 +25,7 @@ impl DeleteArgs {
             "Delete the device {}? Its credentials, checks, heartbeats and metrics go too.",
             self.device
         );
-        if !invocation.prompter.confirm(&question)? {
-            invocation.output.note("Nothing was deleted.");
-            return Ok(());
-        }
+        invocation.prompter.confirm(&question)?;
         let answer = hub
             .run::<DeviceDelete>(device_delete::Variables { id })
             .await?;

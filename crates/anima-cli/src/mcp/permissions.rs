@@ -6,7 +6,7 @@ use serde::Serialize;
 
 use super::catalogue::{ToolSet, names};
 use crate::contexts::config::McpPermissions;
-use crate::failure::Failure;
+use crate::failure::{Failure, Hint};
 
 /// The operator's permissions, by set.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize)]
@@ -114,7 +114,7 @@ fn parse_names(names: &[String]) -> Result<Vec<ToolSet>, Failure> {
                      Valid sets: {}.",
                     names_of_all()
                 ),
-                hint: Some("anima mcp permissions set --help".to_owned()),
+                hint: Some(Hint::run("anima mcp permissions set --help")),
             })
         })
         .collect()

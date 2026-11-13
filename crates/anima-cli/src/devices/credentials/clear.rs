@@ -23,9 +23,7 @@ impl ClearArgs {
     /// [`Failure::NotFound`] for an unknown device; [`Failure::Usage`] when it cannot ask; the
     /// hub's refusal.
     pub async fn ssh(self, invocation: &Invocation) -> Result<(), Failure> {
-        let Some((hub, device_id)) = self.confirmed(invocation, "SSH").await? else {
-            return Ok(());
-        };
+        let (hub, device_id) = self.confirmed(invocation, "SSH").await?;
         let variables = ssh_credential_clear::Variables { device_id };
         let answer = hub.run::<SshCredentialClear>(variables).await?;
         invocation.output.data(&answer.clear_ssh_credential, |ssh| {
@@ -38,9 +36,7 @@ impl ClearArgs {
     /// # Errors
     /// As [`ClearArgs::ssh`].
     pub async fn rdp(self, invocation: &Invocation) -> Result<(), Failure> {
-        let Some((hub, device_id)) = self.confirmed(invocation, "RDP").await? else {
-            return Ok(());
-        };
+        let (hub, device_id) = self.confirmed(invocation, "RDP").await?;
         let variables = rdp_credential_clear::Variables { device_id };
         let answer = hub.run::<RdpCredentialClear>(variables).await?;
         invocation.output.data(&answer.clear_rdp_credential, |rdp| {
@@ -53,9 +49,7 @@ impl ClearArgs {
     /// # Errors
     /// As [`ClearArgs::ssh`].
     pub async fn vnc(self, invocation: &Invocation) -> Result<(), Failure> {
-        let Some((hub, device_id)) = self.confirmed(invocation, "VNC").await? else {
-            return Ok(());
-        };
+        let (hub, device_id) = self.confirmed(invocation, "VNC").await?;
         let variables = vnc_credential_clear::Variables { device_id };
         let answer = hub.run::<VncCredentialClear>(variables).await?;
         invocation.output.data(&answer.clear_vnc_credential, |vnc| {
@@ -63,20 +57,16 @@ impl ClearArgs {
         })
     }
 
-    /// The hub and the device's ID when the operator agrees, or `None` after saying nothing
-    /// was cleared.
+    /// The hub and the device's ID once the operator has agreed.
     async fn confirmed(
         &self,
         invocation: &Invocation,
         protocol: &str,
-    ) -> Result<Option<(Hub, String)>, Failure> {
+    ) -> Result<(Hub, String), Failure> {
         let hub = invocation.hub()?;
         let device_id = resolve(&hub, &self.device).await?;
         let question = format!("Clear the stored {protocol} credential of {}?", self.device);
-        if !invocation.prompter.confirm(&question)? {
-            invocation.output.note("Nothing was cleared.");
-            return Ok(None);
-        }
-        Ok(Some((hub, device_id)))
+        invocation.prompter.confirm(&question)?;
+        Ok((hub, device_id))
     }
 }

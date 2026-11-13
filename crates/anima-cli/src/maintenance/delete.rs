@@ -22,12 +22,7 @@ impl DeleteArgs {
         let hub = invocation.hub()?;
         let window = find(&hub, &self.window).await?;
         let question = format!("Delete maintenance window {}?", window.name);
-        if !invocation.prompter.confirm(&question)? {
-            return Err(Failure::Usage {
-                message: "Not deleted: the deletion was not confirmed.".to_owned(),
-                hint: Some("Add --yes to confirm.".to_owned()),
-            });
-        }
+        invocation.prompter.confirm(&question)?;
         let answer = hub
             .run::<MaintenanceDelete>(maintenance_delete::Variables { id: window.id })
             .await?;

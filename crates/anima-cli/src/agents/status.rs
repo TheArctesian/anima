@@ -2,7 +2,7 @@
 
 use super::documents::{AgentStatus, agent_status};
 use crate::devices::get::resolve;
-use crate::failure::Failure;
+use crate::failure::{Failure, Hint};
 use crate::invocation::Invocation;
 use crate::output::text::enum_name;
 use crate::output::{Cell, Table, Tone};
@@ -27,7 +27,7 @@ impl StatusArgs {
             .device
             .ok_or_else(|| Failure::NotFound {
                 message: format!("No device has the ID {id}."),
-                hint: Some("anima device list".to_owned()),
+                hint: Some(Hint::run("anima device list")),
             })?;
         invocation.output.data(&device, table)
     }

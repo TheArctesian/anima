@@ -3,7 +3,7 @@
 use super::documents::{WebList, web_list};
 use super::shown::Shown;
 use crate::devices::get::resolve;
-use crate::failure::Failure;
+use crate::failure::{Failure, Hint};
 use crate::invocation::Invocation;
 use crate::output::Table;
 use crate::output::text::enum_name;
@@ -29,7 +29,7 @@ impl ListArgs {
             .device
             .ok_or_else(|| Failure::NotFound {
                 message: format!("No device has the ID {id}."),
-                hint: Some("anima device list".to_owned()),
+                hint: Some(Hint::run("anima device list")),
             })?;
         invocation.output.data(&device, table)?;
         for suggestion in &device.web_interface_suggestions {

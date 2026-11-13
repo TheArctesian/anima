@@ -6,7 +6,7 @@ use crate::failure::Failure;
 use crate::hub::subscription::Subscription;
 use crate::invocation::Invocation;
 use crate::output::stream::{self, Reader};
-use crate::output::text::{clean, enum_name};
+use crate::output::text::enum_name;
 
 type State = build_job_updated::BuildJobState;
 
@@ -42,7 +42,7 @@ fn print(
         return stream::json_line(update);
     }
     for line in &update.log_lines {
-        if stream::line(&clean(&line.text))? == Reader::Gone {
+        if stream::line(&line.text)? == Reader::Gone {
             return Ok(Reader::Gone);
         }
     }
@@ -60,6 +60,6 @@ fn ending(job: &build_job_updated::BuildJobUpdatedBuildJobUpdatedJob) -> Option<
     let reason = job
         .failure_reason
         .as_deref()
-        .map_or_default(|reason| format!(": {}", clean(reason)));
+        .map_or_default(|reason| format!(": {reason}"));
     Some(format!("The job is {}{reason}.", enum_name(&job.state)))
 }

@@ -7,7 +7,7 @@ use super::documents::{CheckUpdate, CheckUpdateUngrouped, check_update, check_up
 use crate::checks::config_file;
 use crate::checks::resolve::{CheckRef, find};
 use crate::checks::summary::{state, written};
-use crate::failure::Failure;
+use crate::failure::{Failure, Hint};
 use crate::invocation::Invocation;
 use crate::output::text::enum_name;
 
@@ -62,7 +62,7 @@ impl UpdateArgs {
         if unchanged {
             return Err(Failure::Usage {
                 message: "Nothing to change: give at least one setting to update.".to_owned(),
-                hint: Some("anima check update --help".to_owned()),
+                hint: Some(Hint::run("anima check update --help")),
             });
         }
         if self.no_parent {

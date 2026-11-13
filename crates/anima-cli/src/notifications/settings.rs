@@ -2,7 +2,7 @@
 //! warns, and the message template (NOT-006, NOT-007).
 
 use super::documents::{SettingsGet, SettingsSet, settings_get, settings_set};
-use crate::failure::Failure;
+use crate::failure::{Failure, Hint};
 use crate::hub::Hub;
 use crate::invocation::Invocation;
 use crate::output::Table;
@@ -61,7 +61,7 @@ impl SetArgs {
                 message:
                     "Nothing to change: pass --certificate-days, --template-title or --template-body."
                         .to_owned(),
-                hint: Some("anima notify settings set --help".to_owned()),
+                hint: Some(Hint::run("anima notify settings set --help")),
             });
         }
         let now = current(hub).await?.notification_settings;

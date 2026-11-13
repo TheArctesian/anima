@@ -7,6 +7,7 @@ use std::io::{self, BufRead as _, Read as _, Write as _};
 use zeroize::Zeroizing;
 
 use crate::failure::Failure;
+use crate::output::text::clean;
 
 /// The longest answer read from the terminal.
 const MAX_ANSWER: usize = 1024;
@@ -40,7 +41,7 @@ impl Prompter {
         if !self.interactive {
             return Err(Failure::missing(what, flag));
         }
-        eprint!("{what}: ");
+        eprint!("{}", prompt_text(what));
         io::stderr()
             .flush()
             .map_err(|error| terminal_failure(&error))?;
@@ -61,24 +62,41 @@ impl Prompter {
         if !self.interactive {
             return Err(Failure::missing(what, flag));
         }
-        rpassword::prompt_password(format!("{what}: "))
+        rpassword::prompt_password(prompt_text(what))
             .map(Zeroizing::new)
             .map_err(|error| terminal_failure(&error))
     }
 
-    /// Whether the operator agrees to `question`: `--yes`, or `y` at the terminal (CMD-024).
+    /// Lets the command go on when the operator agrees to `question`: `--yes`, or `y` at the
+    /// terminal (CMD-024). The one way every confirmation ends.
     ///
     /// # Errors
-    /// [`Failure::Usage`] naming `--yes` when it cannot ask.
-    pub fn confirm(self, question: &str) -> Result<bool, Failure> {
+    /// [`Failure::Usage`] naming `--yes` when it cannot ask; [`Failure::Declined`] when the
+    /// answer is not yes.
+    pub fn confirm(self, question: &str) -> Result<(), Failure> {
         if self.yes {
-            return Ok(true);
+            return Ok(());
         }
         if !self.interactive {
             return Err(Failure::missing("A confirmation", "--yes"));
         }
         let answer = self.ask(&format!("{question} [y/N]"), "--yes")?;
-        Ok(matches!(answer.to_ascii_lowercase().as_str(), "y" | "yes"))
+        decision(&answer)
+    }
+}
+
+/// What a prompt shows for `what`. Callers build `what` from names the hub gave, so it is
+/// cleaned here and no caller can forget (S1).
+fn prompt_text(what: &str) -> String {
+    format!("{}: ", clean(what))
+}
+
+/// Yes is `y` or `yes` in any case, nothing else; anything else declines (CMD-024).
+fn decision(answer: &str) -> Result<(), Failure> {
+    if matches!(answer.to_ascii_lowercase().as_str(), "y" | "yes") {
+        Ok(())
+    } else {
+        Err(Failure::Declined)
     }
 }
 
@@ -86,5 +104,33 @@ fn terminal_failure(error: &io::Error) -> Failure {
     Failure::Input {
         what: "the terminal".to_owned(),
         reason: error.to_string(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn cmd_024_only_y_or_yes_in_any_case_confirms() {
+        for yes in ["y", "Y", "yes", "YES", "Yes"] {
+            assert!(decision(yes).is_ok(), "{yes}");
+        }
+        for no in ["", "n", "no", "yep", "ok", "yes please", "1"] {
+            assert!(matches!(decision(no), Err(Failure::Declined)), "{no}");
+        }
+    }
+
+    #[test]
+    fn cmd_024_s1_a_question_with_escape_bytes_is_shown_clean() {
+        let shown = prompt_text("Delete maintenance window \u{1b}[2Jgood\u{202E}?");
+        assert_eq!(shown, "Delete maintenance window  [2Jgood?: ");
+    }
+
+    #[test]
+    fn cmd_024_yes_confirms_and_no_terminal_without_yes_is_a_usage_failure() {
+        assert!(Prompter::new(false, false, true).confirm("Delete?").is_ok());
+        let refused = Prompter::new(false, false, false).confirm("Delete?");
+        assert!(matches!(refused, Err(Failure::Usage { .. })));
     }
 }

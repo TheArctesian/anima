@@ -22,12 +22,7 @@ impl DeleteArgs {
         let hub = invocation.hub()?;
         let id = self.check.resolve(&hub).await?;
         let question = format!("Delete check {} and its heartbeats?", self.check.label());
-        if !invocation.prompter.confirm(&question)? {
-            return Err(Failure::Usage {
-                message: "Not deleted: the deletion was not confirmed.".to_owned(),
-                hint: Some("Add --yes to confirm.".to_owned()),
-            });
-        }
+        invocation.prompter.confirm(&question)?;
         let answer = hub
             .run::<CheckDelete>(check_delete::Variables { id })
             .await?;

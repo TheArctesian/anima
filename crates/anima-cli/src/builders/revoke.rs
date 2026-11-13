@@ -1,7 +1,7 @@
 //! `anima builder revoke <id-or-name>`: deletes a builder and revokes its token (BLD-025).
 
 use super::documents::{BuilderList, BuilderRevoke, builder_list, builder_revoke};
-use crate::failure::Failure;
+use crate::failure::{Failure, Hint};
 use crate::hub::Hub;
 use crate::invocation::Invocation;
 use crate::output::Table;
@@ -20,13 +20,10 @@ impl RevokeArgs {
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let hub = invocation.hub()?;
         let id = resolve(&hub, &self.builder).await?;
-        if !invocation.prompter.confirm(&format!(
+        invocation.prompter.confirm(&format!(
             "Revoke builder {}? Its token stops working.",
             self.builder
-        ))? {
-            invocation.output.note("Nothing revoked.");
-            return Ok(());
-        }
+        ))?;
         let answer = hub
             .run::<BuilderRevoke>(builder_revoke::Variables { id })
             .await?;
@@ -46,7 +43,7 @@ async fn resolve(hub: &Hub, builder: &str) -> Result<String, Failure> {
         .map(|found| found.id)
         .ok_or_else(|| Failure::NotFound {
             message: format!("No builder has the ID or name {builder}."),
-            hint: Some("anima builder list".to_owned()),
+            hint: Some(Hint::run("anima builder list")),
         })
 }
 

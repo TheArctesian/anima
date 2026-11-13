@@ -11,7 +11,7 @@ pub mod session;
 
 use exchange::FilesError;
 
-use crate::failure::Failure;
+use crate::failure::{Failure, Hint};
 use crate::hub::{Code, HubError};
 use crate::invocation::Invocation;
 
@@ -52,11 +52,15 @@ pub fn describe(error: &FilesError, path: &str) -> Failure {
     match error {
         FilesError::Refused(codec::Refusal::DownloadOff) => Failure::Forbidden {
             message: "The device's transfer policy does not allow downloads.".to_owned(),
-            hint: Some("anima device update <device> --transfer-download true".to_owned()),
+            hint: Some(Hint::run(
+                "anima device update <device> --transfer-download true",
+            )),
         },
         FilesError::Refused(codec::Refusal::UploadOff) => Failure::Forbidden {
             message: "The device's transfer policy does not allow uploads.".to_owned(),
-            hint: Some("anima device update <device> --transfer-upload true".to_owned()),
+            hint: Some(Hint::run(
+                "anima device update <device> --transfer-upload true",
+            )),
         },
         FilesError::Refused(codec::Refusal::Denied) => Failure::Forbidden {
             message: format!("The device refused access to {path}."),

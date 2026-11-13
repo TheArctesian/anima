@@ -5,31 +5,55 @@ use crate::auth::token_store::StoreError;
 use crate::contexts::config::ConfigError;
 use crate::hub::{Code, FieldError, HubError};
 
+/// What to do next, as CMD-022 shows it: a command to run, or a sentence. A sentence is never
+/// printed as if it were a command.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Hint {
+    /// A command the operator can paste.
+    Run(String),
+    /// Advice in words.
+    Say(String),
+}
+
+impl Hint {
+    #[must_use]
+    pub fn run(command: impl Into<String>) -> Self {
+        Self::Run(command.into())
+    }
+
+    #[must_use]
+    pub fn say(sentence: impl Into<String>) -> Self {
+        Self::Say(sentence.into())
+    }
+
+    /// The hint's words, as `--json` carries them.
+    #[must_use]
+    pub fn text(&self) -> &str {
+        match self {
+            Self::Run(text) | Self::Say(text) => text,
+        }
+    }
+}
+
 #[derive(Debug, thiserror::Error)]
 pub enum Failure {
     #[error(transparent)]
     Hub(#[from] HubError),
     /// Wrong usage: a missing value under `--no-input`, two inputs that exclude each other.
     #[error("{message}")]
-    Usage {
-        message: String,
-        hint: Option<String>,
-    },
+    Usage { message: String, hint: Option<Hint> },
     /// Something the operator named is not there: a context, a device name.
     #[error("{message}")]
-    NotFound {
-        message: String,
-        hint: Option<String>,
-    },
+    NotFound { message: String, hint: Option<Hint> },
     /// The hub or the device refused for a reason that has its own next step, not the token.
     #[error("{message}")]
-    Forbidden {
-        message: String,
-        hint: Option<String>,
-    },
+    Forbidden { message: String, hint: Option<Hint> },
     /// A notification the hub sent for a test did not arrive.
     #[error("{message}")]
     NotDelivered { message: String },
+    /// The operator was asked to confirm and said no: nothing was changed.
+    #[error("Nothing was changed: you did not confirm.")]
+    Declined,
     /// Something with this name is already there.
     #[error("{message}")]
     Conflict { message: String },
@@ -81,6 +105,7 @@ impl Failure {
         match self {
             Self::Hub(error) => error.code().as_str(),
             Self::Usage { .. } => "USAGE",
+            Self::Declined => "DECLINED",
             Self::Forbidden { .. } => Code::Forbidden.as_str(),
             Self::NotFound { .. } => Code::NotFound.as_str(),
             Self::Conflict { .. } => Code::Conflict.as_str(),
@@ -112,7 +137,8 @@ impl Failure {
             Self::NotFound { .. } => exit::NOT_FOUND,
             Self::Conflict { .. } => exit::CONFLICT,
             Self::SignedOut { .. } => exit::SIGN_IN,
-            Self::Config(_)
+            Self::Declined
+            | Self::Config(_)
             | Self::Store(_)
             | Self::Input { .. }
             | Self::Write { .. }
@@ -123,22 +149,22 @@ impl Failure {
 
     /// The next command to try (CMD-022).
     #[must_use]
-    pub fn hint(&self) -> Option<String> {
+    pub fn hint(&self) -> Option<Hint> {
         match self {
             Self::Usage { hint, .. }
             | Self::NotFound { hint, .. }
             | Self::Forbidden { hint, .. } => hint.clone(),
-            Self::SignedOut { .. } => Some(SIGN_IN.to_owned()),
+            Self::SignedOut { .. } => Some(Hint::run(SIGN_IN)),
             Self::Hub(error) => match error.code() {
-                Code::Unauthenticated => Some(SIGN_IN.to_owned()),
-                Code::Forbidden => Some(
-                    "anima auth status (an API key cannot do everything; anima auth login)"
-                        .to_owned(),
-                ),
-                Code::Unavailable => Some("anima auth status".to_owned()),
+                Code::Unauthenticated => Some(Hint::run(SIGN_IN)),
+                Code::Forbidden => Some(Hint::say(
+                    "An API key cannot do everything: check it with `anima auth status` or sign in with `anima auth login`.",
+                )),
+                Code::Unavailable => Some(Hint::run("anima auth status")),
                 _ => None,
             },
             Self::Conflict { .. }
+            | Self::Declined
             | Self::NotDelivered { .. }
             | Self::Config(_)
             | Self::Store(_)

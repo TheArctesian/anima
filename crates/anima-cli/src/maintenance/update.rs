@@ -4,7 +4,7 @@
 use super::documents::{MaintenanceUpdate, maintenance_update};
 use super::fields::{INPUT, WindowFields, into_input};
 use super::list::find;
-use crate::failure::Failure;
+use crate::failure::{Failure, Hint};
 use crate::invocation::Invocation;
 use crate::output::Table;
 use crate::output::text::enum_name;
@@ -27,7 +27,7 @@ impl UpdateArgs {
         if self.fields.is_empty() {
             return Err(Failure::Usage {
                 message: "Nothing to change: give at least one field to update.".to_owned(),
-                hint: Some("anima maintenance update --help".to_owned()),
+                hint: Some(Hint::run("anima maintenance update --help")),
             });
         }
         let hub = invocation.hub()?;

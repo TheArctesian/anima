@@ -8,7 +8,7 @@ use crate::failure::Failure;
 use crate::hub::subscription::Subscription;
 use crate::invocation::Invocation;
 use crate::output::stream::{self, Reader};
-use crate::output::text::{clean, enum_name};
+use crate::output::text::enum_name;
 
 #[derive(Debug, clap::Args)]
 pub struct WatchArgs {
@@ -42,14 +42,14 @@ impl WatchArgs {
 
 /// An event as one line: time, severity, source, device and message.
 fn line(event: &event_added::EventAddedEventAdded) -> String {
-    clean(&format!(
+    format!(
         "{}  {:<7}  {:<12}  {}  {}",
         event.at,
         enum_name(&event.severity),
         enum_name(&event.source),
         event.device_name.as_deref().unwrap_or("-"),
         event.message
-    ))
+    )
 }
 
 impl SeverityArg {

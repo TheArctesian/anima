@@ -2,7 +2,7 @@
 //! `--context`, `ANIMA_HUB`, the current context, then the default hub.
 
 use super::config::Config;
-use crate::failure::Failure;
+use crate::failure::{Failure, Hint};
 use crate::hub::Origin;
 
 /// What the operator gave to choose a hub.
@@ -47,7 +47,7 @@ fn parse(source: &str, text: &str) -> Result<Origin, Failure> {
 fn named(config: &Config, name: &str) -> Result<Origin, Failure> {
     config.hub_of(name)?.ok_or_else(|| Failure::NotFound {
         message: format!("There is no context named {name}."),
-        hint: Some("anima context list".to_owned()),
+        hint: Some(Hint::run("anima context list")),
     })
 }
 

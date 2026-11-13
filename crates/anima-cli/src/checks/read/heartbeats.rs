@@ -3,7 +3,7 @@
 use super::documents::{CheckHeartbeats, check_heartbeats};
 use crate::checks::resolve::CheckRef;
 use crate::connection_page;
-use crate::failure::Failure;
+use crate::failure::{Failure, Hint};
 use crate::invocation::Invocation;
 use crate::output::text::enum_name;
 use crate::output::{Cell, Table};
@@ -49,7 +49,7 @@ impl HeartbeatsArgs {
                 .check
                 .ok_or_else(|| Failure::NotFound {
                     message: format!("No check has the ID {id}."),
-                    hint: Some("anima check list --device <id-or-name>".to_owned()),
+                    hint: Some(Hint::run("anima check list --device <id-or-name>")),
                 })?;
             Ok(check.heartbeats)
         })

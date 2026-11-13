@@ -10,7 +10,7 @@ use crate::hub::scalars::DateTime;
 use crate::hub::subscription::Subscription;
 use crate::invocation::Invocation;
 use crate::output::stream::{self, Reader};
-use crate::output::text::{clean, enum_name};
+use crate::output::text::enum_name;
 
 #[derive(GraphQLQuery)]
 #[graphql(
@@ -69,11 +69,11 @@ fn line(added: &heartbeat_added::HeartbeatAddedHeartbeatAdded) -> String {
     let response = beat
         .response_time_ms
         .map_or_else(|| "-".to_owned(), |ms| format!("{ms} ms"));
-    clean(&format!(
+    format!(
         "{}  {}  {}  {response}  {}",
         beat.at,
         added.check_id,
         enum_name(&beat.status),
         beat.message.as_deref().unwrap_or("")
-    ))
+    )
 }

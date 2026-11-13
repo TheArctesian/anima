@@ -362,3 +362,26 @@ async fn cmd_026_c3_the_next_page_hint_keeps_the_filters() {
         run.stderr
     );
 }
+
+#[tokio::test]
+async fn cmd_022_s2_an_id_from_the_hub_never_reaches_the_terminal_raw() {
+    let hub = FakeHub::start().await;
+    let devices = fixture_devices();
+    let mut twin = devices[0].clone();
+    twin["id"] = json!("evil\u{1b}]0;pwned\u{7}\u{202E}id");
+    hub.answer(
+        "DeviceList",
+        page(&[twin.clone(), devices[0].clone()], None, 2),
+    );
+    let name = devices[0]["name"].as_str().expect("name");
+    let run = signed_in()
+        .run(&["device", "get", name, "--hub", &hub.origin])
+        .await;
+    assert_eq!(run.code, 2, "{run:?}");
+    assert!(run.stderr.contains("hint:"), "{}", run.stderr);
+    assert!(
+        !run.stderr.contains(['\u{1b}', '\u{7}', '\u{202E}']),
+        "{:?}",
+        run.stderr
+    );
+}

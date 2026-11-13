@@ -2,7 +2,7 @@
 
 use super::documents::{VpnApproveRoute, vpn_approve_route};
 use crate::devices::documents::{SiteNames, site_names};
-use crate::failure::Failure;
+use crate::failure::{Failure, Hint};
 use crate::hub::Hub;
 use crate::invocation::Invocation;
 use crate::output::Table;
@@ -58,6 +58,6 @@ pub async fn resolve_site(hub: &Hub, site: &str) -> Result<String, Failure> {
         .map(|found| found.id)
         .ok_or_else(|| Failure::NotFound {
             message: format!("There is no site named {site}."),
-            hint: Some("anima site list".to_owned()),
+            hint: Some(Hint::run("anima site list")),
         })
 }

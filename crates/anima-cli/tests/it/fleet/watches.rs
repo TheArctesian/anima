@@ -115,3 +115,19 @@ async fn cmd_020_session_watch_prints_each_start_and_end() {
     );
     assert!(lines[1].contains("ended (OPERATOR)"), "{}", lines[1]);
 }
+
+#[tokio::test]
+async fn cmd_020_s3_a_hostile_time_in_a_metrics_reading_never_reaches_the_terminal_raw() {
+    let readings = vec![json!({ "metricsAdded": {
+        "deviceId": DEVICE, "at": "2026\u{1b}]0;pwned\u{7}\u{202E}-11-13",
+        "readings": { "cpuPercent": 1.0, "memoryPercent": null, "diskPercent": null },
+    }})];
+    let (run, _) = watch(&["device", "metrics", DEVICE, "--watch"], readings).await;
+    assert_eq!(run.code, 0, "{run:?}");
+    assert!(
+        !run.stdout.contains(['\u{1b}', '\u{7}', '\u{202E}']),
+        "{:?}",
+        run.stdout
+    );
+    assert!(run.stdout.contains("cpu 1.0%"), "{}", run.stdout);
+}

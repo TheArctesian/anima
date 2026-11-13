@@ -4,7 +4,7 @@ use super::documents::{
     CheckDefaultsGet, CheckDefaultsSet, check_defaults_get, check_defaults_set,
 };
 use super::get::table;
-use crate::failure::Failure;
+use crate::failure::{Failure, Hint};
 use crate::invocation::Invocation;
 
 #[derive(Debug, clap::Args)]
@@ -37,7 +37,7 @@ impl SetArgs {
         {
             return Err(Failure::Usage {
                 message: "Nothing to change: give at least one value to set.".to_owned(),
-                hint: Some("anima check defaults set --help".to_owned()),
+                hint: Some(Hint::run("anima check defaults set --help")),
             });
         }
         let hub = invocation.hub()?;

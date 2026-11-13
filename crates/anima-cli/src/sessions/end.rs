@@ -1,7 +1,7 @@
 //! `anima session end <id>`: ends a live session; an ended one comes back unchanged (K1).
 
 use super::documents::{SessionEnd, session_end};
-use crate::failure::Failure;
+use crate::failure::{Failure, Hint};
 use crate::invocation::Invocation;
 use crate::output::Table;
 use crate::output::text::enum_name;
@@ -21,7 +21,7 @@ impl EndArgs {
         if uuid::Uuid::parse_str(&self.id).is_err() {
             return Err(Failure::Usage {
                 message: format!("{} is not a session ID.", self.id),
-                hint: Some("anima session list --live".to_owned()),
+                hint: Some(Hint::run("anima session list --live")),
             });
         }
         let hub = invocation.hub()?;

@@ -4,8 +4,9 @@
 use graphql_client::GraphQLQuery;
 
 use crate::devices::get::resolve as resolve_device;
-use crate::failure::Failure;
+use crate::failure::{Failure, Hint};
 use crate::hub::Hub;
+use crate::output::text::shell_word;
 
 #[derive(GraphQLQuery)]
 #[graphql(
@@ -61,7 +62,7 @@ pub async fn find(hub: &Hub, check: &str, device: Option<&str>) -> Result<String
             message: format!(
                 "{check} is not a check ID. Name its device too: --device <id-or-name>."
             ),
-            hint: Some("anima check list --device <id-or-name>".to_owned()),
+            hint: Some(Hint::run("anima check list --device <id-or-name>")),
         });
     };
     let device_id = resolve_device(hub, device).await?;
@@ -74,7 +75,7 @@ pub async fn find(hub: &Hub, check: &str, device: Option<&str>) -> Result<String
         .device
         .ok_or_else(|| Failure::NotFound {
             message: format!("No device has the ID {device_id}."),
-            hint: Some("anima device list".to_owned()),
+            hint: Some(Hint::run("anima device list")),
         })?
         .checks;
     checks
@@ -83,6 +84,9 @@ pub async fn find(hub: &Hub, check: &str, device: Option<&str>) -> Result<String
         .map(|found| found.id)
         .ok_or_else(|| Failure::NotFound {
             message: format!("{device} has no check named {check}."),
-            hint: Some(format!("anima check list --device {device}")),
+            hint: Some(Hint::run(format!(
+                "anima check list --device {}",
+                shell_word(device)
+            ))),
         })
 }

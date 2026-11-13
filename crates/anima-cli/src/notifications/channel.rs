@@ -5,7 +5,7 @@ use super::channel_remove::DeleteArgs;
 use super::channel_test::TestArgs;
 use super::channel_write::{CreateArgs, UpdateArgs};
 use super::documents::{ChannelList, channel_list};
-use crate::failure::Failure;
+use crate::failure::{Failure, Hint};
 use crate::hub::Hub;
 use crate::invocation::Invocation;
 
@@ -68,6 +68,6 @@ pub async fn resolve(hub: &Hub, channel: &str) -> Result<String, Failure> {
         .map(|found| found.id)
         .ok_or_else(|| Failure::NotFound {
             message: format!("There is no notification channel named {channel}."),
-            hint: Some("anima notify channel list".to_owned()),
+            hint: Some(Hint::run("anima notify channel list")),
         })
 }

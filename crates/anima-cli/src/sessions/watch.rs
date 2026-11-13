@@ -6,7 +6,7 @@ use crate::failure::Failure;
 use crate::hub::subscription::Subscription;
 use crate::invocation::Invocation;
 use crate::output::stream::{self, Reader};
-use crate::output::text::{clean, enum_name};
+use crate::output::text::enum_name;
 
 #[derive(Debug, clap::Args)]
 pub struct WatchArgs;
@@ -39,11 +39,11 @@ fn line(change: &session_changed::SessionChangedSessionChanged) -> String {
         (Some(_), None) => "ended".to_owned(),
     };
     let at = session.ended_at.as_ref().unwrap_or(&session.started_at);
-    clean(&format!(
+    format!(
         "{at}  {}  {}  {}  {what}  {}",
         session.device_name,
         enum_name(&session.protocol),
         session.operator_name,
         session.client_addr
-    ))
+    )
 }

@@ -5,7 +5,7 @@ use super::current;
 use super::documents::{WebUpdate, web_update};
 use super::fields::WebChanges;
 use super::shown::Shown;
-use crate::failure::Failure;
+use crate::failure::{Failure, Hint};
 use crate::invocation::Invocation;
 use crate::output::text::enum_name;
 
@@ -26,7 +26,7 @@ impl UpdateArgs {
         if self.changes.is_empty() {
             return Err(Failure::Usage {
                 message: "Nothing to change: give at least one flag.".to_owned(),
-                hint: Some("anima web update --help".to_owned()),
+                hint: Some(Hint::run("anima web update --help")),
             });
         }
         let hub = invocation.hub()?;

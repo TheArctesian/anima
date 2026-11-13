@@ -21,13 +21,9 @@ impl DeleteArgs {
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let hub = invocation.hub()?;
         let id = resolve(&hub, &self.channel).await?;
-        if !invocation
+        invocation
             .prompter
-            .confirm(&format!("Delete notification channel {}?", self.channel))?
-        {
-            invocation.output.note("Nothing was deleted.");
-            return Ok(());
-        }
+            .confirm(&format!("Delete notification channel {}?", self.channel))?;
         let answer = hub
             .run::<ChannelDelete>(channel_delete::Variables { id })
             .await?;

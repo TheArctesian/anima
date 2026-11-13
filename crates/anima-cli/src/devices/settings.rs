@@ -12,7 +12,7 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 use serde_json::{Map, Value, json};
 
-use crate::failure::Failure;
+use crate::failure::{Failure, Hint};
 
 #[derive(Clone, Copy, Debug, ValueEnum, Serialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -272,7 +272,7 @@ impl SettingsFlags {
 pub fn typed<T: DeserializeOwned>(input: Map<String, Value>) -> Result<T, Failure> {
     serde_json::from_value(Value::Object(input)).map_err(|error| Failure::Usage {
         message: format!("The device settings are not complete: {error}."),
-        hint: Some("anima device create --help".to_owned()),
+        hint: Some(Hint::run("anima device create --help")),
     })
 }
 

@@ -4,7 +4,7 @@
 use super::documents::{CheckGet, check_get};
 use crate::checks::resolve::CheckRef;
 use crate::checks::settings::{label, settings};
-use crate::failure::Failure;
+use crate::failure::{Failure, Hint};
 use crate::invocation::Invocation;
 use crate::output::text::enum_name;
 use crate::output::{Cell, Table};
@@ -28,7 +28,7 @@ impl GetArgs {
             .await?;
         let check = answer.check.ok_or_else(|| Failure::NotFound {
             message: format!("No check has the ID {id}."),
-            hint: Some("anima check list --device <id-or-name>".to_owned()),
+            hint: Some(Hint::run("anima check list --device <id-or-name>")),
         })?;
         invocation.output.data(&check, table)
     }
