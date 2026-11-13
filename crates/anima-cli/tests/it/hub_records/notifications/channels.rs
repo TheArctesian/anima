@@ -127,7 +127,7 @@ async fn cmd_025_channel_create_reads_a_file_and_a_broken_document_never_quotes_
             &broken,
         )
         .await;
-    assert_eq!(run.code, 1, "{run:?}");
+    assert_eq!(run.code, 2, "bad JSON is a usage failure: {run:?}");
     assert!(run.stderr.contains("line 1"), "{}", run.stderr);
     run.assert_never_shows(SMTP_PASSWORD);
     assert_eq!(hub.seen().len(), 1, "the broken document was not sent");

@@ -2,17 +2,13 @@
 //! for the kind, such as `{"tcp": {"port": 22}}`. A file is the only way in because an SNMP
 //! community, a password or a bearer token must never be an argument (CMD-025).
 
-use std::fs::File;
-use std::io::{self, Read as _};
 use std::path::Path;
 
 use serde::de::DeserializeOwned;
-use zeroize::Zeroizing;
 
 use crate::failure::{Failure, Hint};
-
-/// The largest configuration file read.
-const MAX_INPUT: u64 = 1024 * 1024;
+use crate::input::{self, MAX_DOCUMENT};
+use crate::prompt::Prompter;
 
 /// The kinds of `CheckConfigInput`, by their K1 field names.
 const KINDS: [&str; 12] = [
@@ -36,18 +32,13 @@ const KINDS: [&str; 12] = [
 /// # Errors
 /// [`Failure::Input`] for an unreadable file; [`Failure::Usage`] when the JSON is not one
 /// kind's settings. The message names the position, never the content.
-pub fn read<T: DeserializeOwned>(path: &Path) -> Result<T, Failure> {
-    let bytes = read_bytes(path)?;
-    let value: serde_json::Value =
-        serde_json::from_slice(&bytes).map_err(|error| Failure::Usage {
-            message: format!(
-                "{} is not JSON (line {}, column {}).",
-                path.display(),
-                error.line(),
-                error.column()
-            ),
-            hint: None,
-        })?;
+pub fn read<T: DeserializeOwned>(prompter: Prompter, path: &Path) -> Result<T, Failure> {
+    let bytes = input::read(prompter, path, "the check configuration", MAX_DOCUMENT)?;
+    let value: serde_json::Value = input::json(
+        &bytes,
+        "the check configuration",
+        "anima check create --help",
+    )?;
     check_shape(&value, path)?;
     serde_json::from_value(value).map_err(|_| Failure::Usage {
         message: format!(
@@ -85,25 +76,4 @@ fn check_shape(value: &serde_json::Value, path: &Path) -> Result<(), Failure> {
         )));
     }
     Ok(())
-}
-
-fn read_bytes(path: &Path) -> Result<Zeroizing<Vec<u8>>, Failure> {
-    let failed = |reason: String| Failure::Input {
-        what: path.display().to_string(),
-        reason,
-    };
-    let mut bytes = Zeroizing::new(Vec::new());
-    let result = if path.as_os_str() == "-" {
-        io::stdin()
-            .lock()
-            .take(MAX_INPUT + 1)
-            .read_to_end(&mut bytes)
-    } else {
-        File::open(path).and_then(|file| file.take(MAX_INPUT + 1).read_to_end(&mut bytes))
-    };
-    result.map_err(|error| failed(error.to_string()))?;
-    if bytes.len() as u64 > MAX_INPUT {
-        return Err(failed(format!("it is larger than {MAX_INPUT} bytes")));
-    }
-    Ok(bytes)
 }

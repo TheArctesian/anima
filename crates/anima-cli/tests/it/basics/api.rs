@@ -63,3 +63,29 @@ async fn cmd_003_api_takes_variables_from_a_file_and_an_error_sets_the_exit_code
         .await;
     assert_eq!(run.code, 2, "only one input can be standard input: {run:?}");
 }
+
+#[tokio::test]
+async fn cmd_022_c8_bad_variables_json_is_exit_2_like_every_other_bad_document() {
+    let hub = FakeHub::start().await;
+    let folder = tempfile::tempdir().expect("a folder");
+    let anima = Anima::new().with("ANIMA_TOKEN", "a-login-token");
+    for (text, why) in [(r#"{"id": "#, "broken"), ("[1, 2]", "not an object")] {
+        let variables = folder.path().join("variables.json");
+        std::fs::write(&variables, text).expect("write");
+        let run = anima
+            .run_with_input(
+                &[
+                    "api",
+                    "-",
+                    "--variables",
+                    variables.to_str().expect("path"),
+                    "--hub",
+                    &hub.origin,
+                ],
+                "query Tags { tags }",
+            )
+            .await;
+        assert_eq!(run.code, 2, "{why}: {run:?}");
+    }
+    assert!(hub.seen().is_empty(), "nothing was sent");
+}

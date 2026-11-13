@@ -51,7 +51,7 @@ impl CreateArgs {
     /// [`Failure::Usage`] for a bad configuration file or an unknown name; the hub's refusal
     /// (VALIDATION for settings the hub rejects).
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
-        let config = config_file::read(&self.from_file)?;
+        let config = config_file::read(invocation.prompter, &self.from_file)?;
         let hub = invocation.hub()?;
         let device_id = resolve_device(&hub, &self.device).await?;
         let parent_id = match &self.parent {

@@ -14,7 +14,8 @@ const MAX_ANSWER: usize = 1024;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Prompter {
-    interactive: bool,
+    stdin_terminal: bool,
+    no_input: bool,
     yes: bool,
 }
 
@@ -22,15 +23,37 @@ impl Prompter {
     #[must_use]
     pub const fn new(stdin_terminal: bool, no_input: bool, yes: bool) -> Self {
         Self {
-            interactive: stdin_terminal && !no_input,
+            stdin_terminal,
+            no_input,
             yes,
         }
+    }
+
+    /// Gets ready to read `what` from standard input: at a terminal the command would wait
+    /// without a word, so it says so on standard error, or under `--no-input` refuses.
+    ///
+    /// # Errors
+    /// [`Failure::Usage`] when standard input is a terminal and `--no-input` is set.
+    pub fn reading_stdin(self, what: &str) -> Result<(), Failure> {
+        if !self.stdin_terminal {
+            return Ok(());
+        }
+        if self.no_input {
+            return Err(Failure::Usage {
+                message: format!(
+                    "{what} comes from standard input, which is a terminal and --no-input is set: pipe it in or give a file."
+                ),
+                hint: None,
+            });
+        }
+        eprintln!("Reading {what} from standard input; end it with Ctrl-D.");
+        Ok(())
     }
 
     /// Whether a question can be asked.
     #[must_use]
     pub const fn interactive(self) -> bool {
-        self.interactive
+        self.stdin_terminal && !self.no_input
     }
 
     /// Asks for `what` with echo; fails naming `flag` when it cannot ask.
@@ -38,7 +61,7 @@ impl Prompter {
     /// # Errors
     /// [`Failure::Usage`] when it cannot ask; [`Failure::Input`] when the terminal fails.
     pub fn ask(self, what: &str, flag: &str) -> Result<String, Failure> {
-        if !self.interactive {
+        if !self.interactive() {
             return Err(Failure::missing(what, flag));
         }
         eprint!("{}", prompt_text(what));
@@ -59,7 +82,7 @@ impl Prompter {
     /// # Errors
     /// As [`Prompter::ask`].
     pub fn ask_secret(self, what: &str, flag: &str) -> Result<Zeroizing<String>, Failure> {
-        if !self.interactive {
+        if !self.interactive() {
             return Err(Failure::missing(what, flag));
         }
         rpassword::prompt_password(prompt_text(what))
@@ -77,7 +100,7 @@ impl Prompter {
         if self.yes {
             return Ok(());
         }
-        if !self.interactive {
+        if !self.interactive() {
             return Err(Failure::missing("A confirmation", "--yes"));
         }
         let answer = self.ask(&format!("{question} [y/N]"), "--yes")?;
@@ -125,6 +148,14 @@ mod tests {
     fn cmd_024_s1_a_question_with_escape_bytes_is_shown_clean() {
         let shown = prompt_text("Delete maintenance window \u{1b}[2Jgood\u{202E}?");
         assert_eq!(shown, "Delete maintenance window  [2Jgood?: ");
+    }
+
+    #[test]
+    fn cmd_025_standard_input_at_a_terminal_is_announced_or_refused_under_no_input() {
+        assert!(Prompter::new(false, true, false).reading_stdin("x").is_ok());
+        assert!(Prompter::new(true, false, false).reading_stdin("x").is_ok());
+        let refused = Prompter::new(true, true, false).reading_stdin("The document");
+        assert!(matches!(refused, Err(Failure::Usage { .. })));
     }
 
     #[test]

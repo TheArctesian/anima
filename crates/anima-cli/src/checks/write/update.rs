@@ -71,7 +71,7 @@ impl UpdateArgs {
         let config = self
             .from_file
             .as_deref()
-            .map(config_file::read)
+            .map(|path| config_file::read(invocation.prompter, path))
             .transpose()?;
         let hub = invocation.hub()?;
         let id = self.check.resolve(&hub).await?;
@@ -103,7 +103,7 @@ impl UpdateArgs {
         let config = self
             .from_file
             .as_deref()
-            .map(config_file::read)
+            .map(|path| config_file::read(invocation.prompter, path))
             .transpose()?;
         let hub = invocation.hub()?;
         let id = self.check.resolve(&hub).await?;

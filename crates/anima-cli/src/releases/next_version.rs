@@ -18,12 +18,16 @@ impl NextVersionArgs {
         let answer = hub
             .run::<ReleaseNextVersion>(release_next_version::Variables)
             .await?;
-        invocation.output.data(&answer.next_release_version, table)
+        invocation
+            .output
+            .data(&answer.next_release_version, |version| {
+                table(version.as_deref())
+            })
     }
 }
 
-fn table(version: &Option<String>) -> Table {
+fn table(version: Option<&str>) -> Table {
     let mut table = Table::record();
-    table.pair("Next version", version.as_deref().unwrap_or("-"));
+    table.pair("Next version", version.unwrap_or("-"));
     table
 }

@@ -13,6 +13,7 @@ pub mod environment;
 pub mod events;
 pub mod failure;
 pub mod hub;
+pub mod input;
 pub mod invocation;
 pub mod keys;
 pub mod maintenance;

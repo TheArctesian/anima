@@ -2,13 +2,14 @@
 //! terminal (CMD-010), or an API key from standard input (CMD-011). The token is checked with
 //! the hub before it is stored.
 
-use std::io::{self, Read as _};
+use std::path::Path;
 
 use zeroize::{Zeroize as _, Zeroizing};
 
 use super::documents::{Login, Me, login, me};
 use crate::failure::Failure;
 use crate::hub::{Hub, HubError, Origin, Token};
+use crate::input;
 use crate::prompt::Prompter;
 
 /// The longest API key read from standard input.
@@ -32,7 +33,7 @@ pub async fn with_token(
     let text = if stdin_terminal {
         prompter.ask_secret("API key", "the key on standard input")?
     } else {
-        read_stdin()?
+        read_stdin(prompter)?
     };
     let token = Token::new(text).ok_or_else(|| Failure::Input {
         what: "the token".to_owned(),
@@ -97,22 +98,12 @@ pub async fn with_password(
     })
 }
 
-fn read_stdin() -> Result<Zeroizing<String>, Failure> {
-    let mut bytes = Zeroizing::new(Vec::with_capacity(MAX_KEY + 1));
-    io::stdin()
-        .lock()
-        .take(MAX_KEY as u64 + 1)
-        .read_to_end(&mut bytes)
-        .map_err(|error| Failure::Input {
-            what: "standard input".to_owned(),
-            reason: error.to_string(),
-        })?;
-    let text = std::str::from_utf8(&bytes)
-        .ok()
-        .filter(|_| bytes.len() <= MAX_KEY);
-    text.map(|text| Zeroizing::new(text.to_owned()))
-        .ok_or_else(|| Failure::Input {
+fn read_stdin(prompter: Prompter) -> Result<Zeroizing<String>, Failure> {
+    let bytes = input::read(prompter, Path::new("-"), "the token", MAX_KEY)?;
+    std::str::from_utf8(&bytes)
+        .map(|text| Zeroizing::new(text.to_owned()))
+        .map_err(|_| Failure::Input {
             what: "the token".to_owned(),
-            reason: "standard input is not one short line of text".to_owned(),
+            reason: "standard input is not text".to_owned(),
         })
 }

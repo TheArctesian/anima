@@ -62,7 +62,7 @@ impl SshArgs {
             let password = password(prompter, "The SSH password", from_file)?;
             return Ok(Input::Password(password.as_str().to_owned()));
         }
-        let key = from_file_only("The SSH private key", from_file)?;
+        let key = from_file_only(prompter, "The SSH private key", from_file)?;
         let passphrase = if self.ask_passphrase {
             Some(prompter.ask_secret("Key passphrase", "--passphrase-file")?)
         } else if let Some(path) = &self.passphrase_file {

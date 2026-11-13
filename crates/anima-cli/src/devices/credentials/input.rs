@@ -1,7 +1,6 @@
 //! Where a credential comes from and how it is sent (CMD-025): a prompt with echo off, standard
 //! input (`-`) or a private file, never an argument; and the request's copy is wiped after.
 
-use std::io::{self, Read as _};
 use std::path::Path;
 
 use graphql_client::GraphQLQuery;
@@ -9,6 +8,7 @@ use zeroize::Zeroizing;
 
 use crate::failure::Failure;
 use crate::hub::{Hub, HubError};
+use crate::input;
 use crate::prompt::Prompter;
 
 /// The path that means standard input.
@@ -29,7 +29,7 @@ pub fn password(
     from_file: Option<&Path>,
 ) -> Result<Zeroizing<String>, Failure> {
     let mut text = match from_file {
-        Some(path) => read(path, what)?,
+        Some(path) => read(prompter, path, what)?,
         None => prompter.ask_secret(what, "--from-file")?,
     };
     let kept = text.trim_end_matches(['\n', '\r']).len();
@@ -42,9 +42,13 @@ pub fn password(
 /// # Errors
 /// As [`password`]; [`Failure::Usage`] when `from_file` is missing, as a prompt cannot take
 /// several lines.
-pub fn from_file_only(what: &str, from_file: Option<&Path>) -> Result<Zeroizing<String>, Failure> {
+pub fn from_file_only(
+    prompter: Prompter,
+    what: &str,
+    from_file: Option<&Path>,
+) -> Result<Zeroizing<String>, Failure> {
     let path = from_file.ok_or_else(|| Failure::missing(what, "--from-file"))?;
-    nonempty(read(path, what)?, what)
+    nonempty(read(prompter, path, what)?, what)
 }
 
 /// Sends `variables` of document `Q` and wipes the secrets in them with `wipe` whether or not
@@ -71,9 +75,9 @@ fn nonempty(text: Zeroizing<String>, what: &str) -> Result<Zeroizing<String>, Fa
 }
 
 /// The text of a private file, or of standard input for `-`. The reason never holds the text.
-fn read(path: &Path, what: &str) -> Result<Zeroizing<String>, Failure> {
+fn read(prompter: Prompter, path: &Path, what: &str) -> Result<Zeroizing<String>, Failure> {
     let bytes = if path.as_os_str() == STDIN {
-        read_stdin().map_err(|error| unreadable(what, &error.to_string()))?
+        input::read(prompter, path, what, LIMIT)?
     } else {
         crate::private_file::read(path)
             .map_err(|error| unreadable(what, &format!("{}: {error}", path.display())))?
@@ -84,15 +88,6 @@ fn read(path: &Path, what: &str) -> Result<Zeroizing<String>, Failure> {
     }
     let text = std::str::from_utf8(&bytes).map_err(|_| unreadable(what, "it is not text"))?;
     Ok(Zeroizing::new(text.to_owned()))
-}
-
-fn read_stdin() -> io::Result<Zeroizing<Vec<u8>>> {
-    let mut bytes = Zeroizing::new(Vec::with_capacity(4096));
-    io::stdin()
-        .lock()
-        .take(LIMIT as u64 + 1)
-        .read_to_end(&mut bytes)?;
-    Ok(bytes)
 }
 
 fn unreadable(what: &str, reason: &str) -> Failure {
