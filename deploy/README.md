@@ -273,8 +273,8 @@ step (VPS-005): agents do not create the R2 token or change `deploy/.env` on the
   sudo install -d -m 0750 -o root -g 10001 secrets/updater
   sudo install -m 0440 -o root -g 10001 ~/updater.key secrets/updater/updater_key
   shred -u ~/updater.key
-  # Type the key's password; it is not echoed. Press Enter alone only for a key made with no
-  # password: an encrypted key with an empty password leaves publishing off.
+  # Type the key's password; it is not echoed. Press Enter alone for a key made with no
+  # password. A wrong password leaves publishing off.
   IFS= read -rs password && (umask 077 && printf '%s' "$password" > ~/updater_key_password)
   unset password
   sudo install -m 0440 -o root -g 10001 ~/updater_key_password secrets/updater/updater_key_password

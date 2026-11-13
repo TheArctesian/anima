@@ -103,12 +103,27 @@ async fn r_116_a_wrong_password_or_another_public_key_turns_publishing_off_and_l
     }
 }
 
-/// D-44, CR-26: a missing key or password file, or an empty password for an encrypted key,
-/// turns publishing off with a fixed reason; the bucket is not opened, and the hub goes on.
+/// D-44, CR-26: a key made with no password, which `tauri signer generate` still seals with
+/// scrypt, opens with an empty password file. A missing key or password file, or an empty
+/// password for a key made with one, turns publishing off with a fixed reason; the bucket is not
+/// opened, and the hub goes on.
 #[tokio::test]
-async fn d_44_cr_26_a_missing_file_or_an_empty_password_for_an_encrypted_key_turns_publishing_off()
-{
+async fn d_44_cr_26_an_empty_password_opens_only_a_key_made_without_one() {
     let fake = FakeR2::start().await;
+    let (bare_folder, _) = secret_files();
+    let bare = minisign::KeyPair::generate_encrypted_keypair(Some(String::new())).unwrap();
+    let sealed = bare.sk.to_box(None).unwrap().into_string();
+    // `EdScB2`: scrypt-sealed, with the empty password.
+    assert!(sealed.contains("\nRWRTY0Iy"), "the key is not sealed");
+    std::fs::write(
+        bare_folder.path().join("updater_key"),
+        STANDARD.encode(sealed),
+    )
+    .unwrap();
+    std::fs::write(bare_folder.path().join("updater_key_password"), "").unwrap();
+    let bare_settings = releases(&fake, bare_folder.path(), Some(public_key(&bare)));
+    assert!(opened_with_log(&bare_settings).0);
+
     let (folder, pair) = secret_files();
     let settings = releases(&fake, folder.path(), Some(public_key(&pair)));
 
