@@ -254,9 +254,9 @@ async fn k8_7_a_network_error_keeps_the_points_and_backs_off() {
 
     let hub = FakeHub::serve(socket.listen(128).expect("the hub listens"));
     assert_eq!(seconds(pusher.push_due(at(60)).await), 10);
-    let pushes = hub.seen("push");
-    assert_eq!(pushes.len(), 1);
-    assert_eq!(pushed_times(&pushes[0].body), [10, 20]);
+    let received = hub.seen("push");
+    assert_eq!(received.len(), 1);
+    assert_eq!(pushed_times(&received[0].body), [10, 20]);
 }
 
 #[tokio::test]
