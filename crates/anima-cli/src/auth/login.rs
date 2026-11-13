@@ -53,27 +53,23 @@ pub async fn with_token(
 /// password, D-8), so the code is always asked for and may be left empty.
 ///
 /// # Errors
-/// [`Failure::Usage`] naming `--with-token` when no terminal can be asked; the hub's refusal.
+/// [`Failure::Usage`] naming `--with-token` when no terminal can be asked;
+/// [`Failure::Cancelled`] for Ctrl-C at a question; the hub's refusal.
 pub async fn with_password(
     origin: Origin,
     prompter: Prompter,
     username: Option<String>,
 ) -> Result<SignedIn, Failure> {
-    if !prompter.interactive() {
-        return Err(Failure::missing(
-            "A password, read only at a terminal,",
-            "--with-token",
-        ));
-    }
+    // Echo is off before the first question and stays off between the answers, so a password
+    // or code typed ahead of its question is never echoed (CMD-010).
+    let mut terminal = prompter.hide("A password, read only at a terminal,", "--with-token")?;
     let username = match username {
         Some(name) => name,
-        None => prompter.ask("User name", "--username")?,
+        None => terminal.ask("User name")?,
     };
-    let password = prompter.ask_secret("Password", "--with-token")?;
-    let code = prompter.ask(
-        "Authenticator code (Enter if you have none)",
-        "--with-token",
-    )?;
+    let password = terminal.ask_secret("Password")?;
+    let code = terminal.ask("Authenticator code (Enter if you have none)")?;
+    drop(terminal);
     if !(code.is_empty() || code.len() == 6 && code.bytes().all(|byte| byte.is_ascii_digit())) {
         return Err(Failure::Usage {
             message: "The authenticator code is six digits.".to_owned(),

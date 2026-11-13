@@ -134,6 +134,19 @@ impl RealHub {
         }
     }
 
+    /// Gives the operator `password` instead of [`PASSWORD`].
+    pub async fn set_password(&self, password: &str) {
+        let now = SystemClock.now();
+        access::set_operator(
+            &self.pool,
+            USERNAME,
+            Password::new(password.to_owned()),
+            now,
+        )
+        .await
+        .expect("the new password");
+    }
+
     /// Turns on TOTP for the operator; returns the seed the authenticator app would hold.
     pub async fn enrol_totp(&self) -> Vec<u8> {
         let vault = Vault::from_key_file(self.vault_key.path()).expect("the vault");

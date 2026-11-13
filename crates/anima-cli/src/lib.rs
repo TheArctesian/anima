@@ -24,6 +24,7 @@ pub mod output;
 pub mod paging;
 pub mod private_file;
 pub mod prompt;
+pub mod raw_mode;
 pub mod releases;
 pub mod retention;
 pub mod sessions;

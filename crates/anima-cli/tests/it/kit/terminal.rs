@@ -16,17 +16,20 @@ use crate::kit::Anima;
 /// How long a question or the end of the command may take to appear.
 const DEADLINE: Duration = Duration::from_secs(30);
 
-/// `script`'s own arguments that run `anima args` at a new terminal and give back its exit
-/// code: the BSD form on macOS, the util-linux form elsewhere.
-fn script_arguments(args: &[&str]) -> Vec<String> {
-    let anima = env!("CARGO_BIN_EXE_anima");
+/// A shell script that prints the terminal's modes (`stty -a`, on one line) before and after it
+/// runs its arguments, and exits with the command's code.
+const SHOWING_MODES: &str = r#"modes() { printf '%s %s\n' "$1" "$(stty -a | tr '\n\t' '  ')"; }; modes modes-before; "$@"; code=$?; modes modes-after; exit $code"#;
+
+/// `script`'s own arguments that run `command` at a new terminal and give back its exit code:
+/// the BSD form on macOS, the util-linux form elsewhere.
+fn script_arguments(command: &[&str]) -> Vec<String> {
     if cfg!(target_os = "macos") {
-        let mut all = vec!["-q".to_owned(), "/dev/null".to_owned(), anima.to_owned()];
-        all.extend(args.iter().map(|&arg| arg.to_owned()));
+        let mut all = vec!["-q".to_owned(), "/dev/null".to_owned()];
+        all.extend(command.iter().map(|&arg| (*arg).to_owned()));
         return all;
     }
-    let quoted: Vec<String> = std::iter::once(anima)
-        .chain(args.iter().copied())
+    let quoted: Vec<String> = command
+        .iter()
         .map(|arg| format!("'{}'", arg.replace('\'', r"'\''")))
         .collect();
     vec![
@@ -52,14 +55,34 @@ pub struct Terminal {
 
 impl Terminal {
     pub fn start(anima: &Anima, args: &[&str]) -> Self {
-        let mut command = anima.command("/usr/bin/script");
-        command
-            .args(script_arguments(args))
+        let mut command = vec![env!("CARGO_BIN_EXE_anima")];
+        command.extend(args);
+        Self::running(anima, &command)
+    }
+
+    /// As [`Terminal::start`], with the terminal's modes shown before and after `anima` runs;
+    /// read them back with [`assert_modes_restored`].
+    pub fn start_showing_modes(anima: &Anima, args: &[&str]) -> Self {
+        let mut command = vec![
+            "/bin/sh",
+            "-c",
+            SHOWING_MODES,
+            "sh",
+            env!("CARGO_BIN_EXE_anima"),
+        ];
+        command.extend(args);
+        Self::running(anima, &command)
+    }
+
+    fn running(anima: &Anima, command: &[&str]) -> Self {
+        let mut script = anima.command("/usr/bin/script");
+        script
+            .args(script_arguments(command))
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::null())
             .kill_on_drop(true);
-        let mut child = command.spawn().expect("script starts");
+        let mut child = script.spawn().expect("script starts");
         let keys = child.stdin.take().expect("a stdin pipe");
         let mut output = child.stdout.take().expect("a stdout pipe");
         let (screen, changed) = (Arc::new(Mutex::new(String::new())), Arc::new(Notify::new()));
@@ -109,7 +132,30 @@ impl Terminal {
 
     /// Types `line` and Return.
     pub async fn type_line(&mut self, line: &str) {
-        let keys = format!("{line}\r");
+        self.press(&format!("{line}\r")).await;
+    }
+
+    /// Sends `signal` (such as `INT`) to `anima` as another program would, not from a key. For
+    /// a [`Terminal::start_showing_modes`] run, where `anima` is the child of the shell that
+    /// `script` runs.
+    pub async fn signal(&self, signal: &str) {
+        let script = self.child.id().expect("script is running").to_string();
+        let shell = tokio::process::Command::new("pgrep")
+            .args(["-P", &script])
+            .output()
+            .await
+            .expect("pgrep runs");
+        let shell = String::from_utf8(shell.stdout).expect("a process ID");
+        let sent = tokio::process::Command::new("pkill")
+            .args([&format!("-{signal}"), "-P", shell.trim()])
+            .status()
+            .await
+            .expect("pkill runs");
+        assert!(sent.success(), "no anima under the shell {shell:?}");
+    }
+
+    /// Types `keys` as they are, without Return: control keys such as Ctrl-C (`\x03`).
+    pub async fn press(&mut self, keys: &str) {
         self.keys
             .write_all(keys.as_bytes())
             .await
@@ -131,5 +177,29 @@ impl Terminal {
             .expect("the reader ended");
         let screen = self.screen.lock().expect("the screen").clone();
         (status.code().expect("an exit code"), screen)
+    }
+}
+
+/// Asserts that the terminal of a [`Terminal::start_showing_modes`] run had the same modes after
+/// `anima` as before it, with echo, line editing and the signal keys on. `pendin` is left out:
+/// the kernel sets it itself when line editing comes back on, until the next read.
+pub fn assert_modes_restored(screen: &str) {
+    let modes = |label: &str| -> Vec<String> {
+        screen
+            .lines()
+            .find_map(|line| line.trim_end_matches('\r').strip_prefix(label))
+            .unwrap_or_else(|| panic!("no {label:?}; the screen: {screen:?}"))
+            .split_whitespace()
+            .filter(|flag| !flag.ends_with("pendin"))
+            .map(str::to_owned)
+            .collect()
+    };
+    let after = modes("modes-after ");
+    assert_eq!(modes("modes-before "), after, "{screen:?}");
+    for flag in ["echo", "icanon", "isig"] {
+        assert!(
+            after.iter().any(|shown| shown == flag),
+            "{flag} is off: {screen:?}"
+        );
     }
 }

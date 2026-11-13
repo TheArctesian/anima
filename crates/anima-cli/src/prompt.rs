@@ -1,11 +1,16 @@
 //! Questions at the terminal (CMD-023). A question is asked only when standard input is a
 //! terminal and `--no-input` is not set; otherwise the command fails and names the flag that
-//! gives the answer.
+//! gives the answer. Secrets are read with echo off from before their question is shown
+//! ([`Hidden`], CMD-010).
+
+mod hidden;
+mod line;
 
 use std::io::{self, BufRead as _, Read as _, Write as _};
 
 use zeroize::Zeroizing;
 
+pub use self::hidden::Hidden;
 use crate::failure::Failure;
 use crate::output::text::clean;
 
@@ -78,16 +83,26 @@ impl Prompter {
     }
 
     /// Asks for a secret with echo off (CMD-010, CMD-025); fails naming `flag` when it cannot.
+    /// For a secret that follows another question, ask both through one [`Prompter::hide`].
     ///
     /// # Errors
-    /// As [`Prompter::ask`].
+    /// [`Failure::Usage`] when it cannot ask; [`Failure::Cancelled`] for Ctrl-C;
+    /// [`Failure::Input`] for an answer over the limit, the end of input, or a terminal that
+    /// fails.
     pub fn ask_secret(self, what: &str, flag: &str) -> Result<Zeroizing<String>, Failure> {
+        self.hide(what, flag)?.ask_secret(what)
+    }
+
+    /// Turns the terminal's echo off for questions asked one after another, so that nothing
+    /// typed ahead between them is echoed (CMD-010); fails naming `flag` when it cannot ask.
+    ///
+    /// # Errors
+    /// [`Failure::Usage`] when it cannot ask; [`Failure::Input`] when the terminal fails.
+    pub fn hide(self, what: &str, flag: &str) -> Result<Hidden, Failure> {
         if !self.interactive() {
             return Err(Failure::missing(what, flag));
         }
-        rpassword::prompt_password(prompt_text(what))
-            .map(Zeroizing::new)
-            .map_err(|error| terminal_failure(&error))
+        Hidden::start().map_err(|error| terminal_failure(&error))
     }
 
     /// Lets the command go on when the operator agrees to `question`: `--yes`, or `y` at the

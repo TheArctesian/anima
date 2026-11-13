@@ -12,13 +12,13 @@ pub mod link;
 
 use std::io;
 
-use console::RawMode;
 use link::Streams;
 
 use crate::devices::get::resolve;
 use crate::failure::Failure;
 use crate::hub::HubError;
 use crate::invocation::Invocation;
+use crate::raw_mode::RawMode;
 use crate::sessions::start::{end, start_ssh};
 
 #[derive(Debug, clap::Args)]

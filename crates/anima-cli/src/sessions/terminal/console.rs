@@ -1,10 +1,10 @@
-//! The operator's terminal (K4 Section 8): raw mode that is always undone, the window size,
-//! standard input as a bounded stream, and the signals that end a session. The OS edge of
-//! `anima ssh`; `crossterm` does the `unsafe` work, so this crate keeps `unsafe_code` forbidden.
+//! The operator's terminal (K4 Section 8): the window size, standard input as a bounded
+//! stream, and the signals that end a session. The OS edge of `anima ssh`, with raw mode in
+//! [`crate::raw_mode`]; `crossterm` does the `unsafe` work, so this crate keeps `unsafe_code`
+//! forbidden.
 
 use std::io::{self, Read as _};
 use std::pin::Pin;
-use std::sync::Once;
 
 use crossterm::terminal;
 use tokio::signal::unix::{SignalKind, signal};
@@ -18,36 +18,6 @@ const PIXELS: std::ops::RangeInclusive<i64> = 1..=8192;
 const CELL_PIXELS: (i64, i64) = (8, 16);
 /// Input chunks waiting for the hub, at most.
 const QUEUED_INPUT: usize = 16;
-
-/// Raw mode while it lives: no line editing, no echo, keys go to the device as they are.
-/// Dropping it restores the terminal, on every return, error and unwinding panic.
-pub struct RawMode(());
-
-static PANIC_RESTORES: Once = Once::new();
-
-impl RawMode {
-    /// Enters raw mode, and makes a panic restore the terminal before it prints.
-    ///
-    /// # Errors
-    /// The OS error when the terminal cannot change mode.
-    pub fn enter() -> io::Result<Self> {
-        PANIC_RESTORES.call_once(|| {
-            let previous = std::panic::take_hook();
-            std::panic::set_hook(Box::new(move |panic| {
-                let _restored = terminal::disable_raw_mode();
-                previous(panic);
-            }));
-        });
-        terminal::enable_raw_mode()?;
-        Ok(Self(()))
-    }
-}
-
-impl Drop for RawMode {
-    fn drop(&mut self) {
-        let _restored = terminal::disable_raw_mode();
-    }
-}
 
 /// The window size in cells, or 80 by 24 when there is no terminal to ask.
 #[must_use]

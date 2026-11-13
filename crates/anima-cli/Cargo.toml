@@ -22,7 +22,8 @@ bytes.workspace = true
 chrono.workspace = true
 clap.workspace = true
 clap_complete.workspace = true
-# `anima ssh`: raw mode and the window size, restored on every exit (K4 Section 8).
+# `anima ssh` and the hidden prompts (CMD-010): raw mode and the window size, restored on
+# every exit (K4 Section 8).
 crossterm.workspace = true
 # The stream and sink halves of the subscription and tunnel WebSockets (CMD-003).
 futures-util = { version = "0.3", default-features = false, features = ["sink"] }
@@ -31,8 +32,6 @@ graphql_client.workspace = true
 keyring.workspace = true
 # Plain `rustls-tls` with the web PKI roots; no redirect, no proxy, no cookie (CMD-003).
 reqwest.workspace = true
-# The password at the terminal, with echo off (CMD-010).
-rpassword.workspace = true
 # The sockets' TLS (`hub/wire.rs`): ring, no OpenSSL, the web PKI roots.
 rustls.workspace = true
 # `anima mcp`: the MCP protocol on standard input and output (MCP-001); `elicitation` asks the

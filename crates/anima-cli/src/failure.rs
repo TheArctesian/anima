@@ -54,6 +54,9 @@ pub enum Failure {
     /// The operator was asked to confirm and said no: nothing was changed.
     #[error("Nothing was changed: you did not confirm.")]
     Declined,
+    /// The operator pressed Ctrl-C at a question: nothing was changed.
+    #[error("Nothing was changed: the question was cancelled.")]
+    Cancelled,
     /// Something with this name is already there.
     #[error("{message}")]
     Conflict { message: String },
@@ -105,7 +108,7 @@ impl Failure {
         match self {
             Self::Hub(error) => error.code().as_str(),
             Self::Usage { .. } => "USAGE",
-            Self::Declined => "DECLINED",
+            Self::Declined | Self::Cancelled => "DECLINED",
             Self::Forbidden { .. } => Code::Forbidden.as_str(),
             Self::NotFound { .. } => Code::NotFound.as_str(),
             Self::Conflict { .. } => Code::Conflict.as_str(),
@@ -138,6 +141,7 @@ impl Failure {
             Self::Conflict { .. } => exit::CONFLICT,
             Self::SignedOut { .. } => exit::SIGN_IN,
             Self::Declined
+            | Self::Cancelled
             | Self::Config(_)
             | Self::Store(_)
             | Self::Input { .. }
@@ -165,6 +169,7 @@ impl Failure {
             },
             Self::Conflict { .. }
             | Self::Declined
+            | Self::Cancelled
             | Self::NotDelivered { .. }
             | Self::Config(_)
             | Self::Store(_)
