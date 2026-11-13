@@ -6,9 +6,10 @@
   import ResizeEdge from './collapse/ResizeEdge.svelte';
   import LiveSessions from '$lib/sessions/live/LiveSessions.svelte';
   import { press } from '$lib/motion/roles/press';
+  import { capabilities } from '$lib/platform/platform';
   import { fade } from '$lib/motion/roles/transitions';
   import { watchHubBanner } from './banner-shift';
-  import { DEVICES, SETTINGS, isActive, statusLabel, unreachableBanner, type NavDestination } from './nav';
+  import { BUILDS, DEVICES, SETTINGS, isActive, statusLabel, unreachableBanner, type NavDestination } from './nav';
 
   interface Props {
     /** The current route, for the active item. */
@@ -31,6 +32,8 @@
   const { pathname, now, onnavigate, iconOnly = false, collapsed = false, canCollapse = false, ontogglecollapse, oncollapse }: Props =
     $props();
   const hub = useHub();
+  // The Builds item is a desktop app item: a browser has no builder (BLD-080).
+  const { builds } = capabilities();
   const connected = $derived(hub.status.current.connection === 'connected');
   const banner = $derived(unreachableBanner(hub.status.current, hub.address.origin, now));
 
@@ -71,6 +74,9 @@
   </div>
   {@render destination(DEVICES)}
   <LiveSessions {hub} {iconOnly} />
+  {#if builds}
+    {@render destination(BUILDS)}
+  {/if}
   <!-- Always rendered, so a screen reader announces the text when it appears (NET-004). -->
   <div class="notice" role="status" data-holds-banner>
     {#if banner !== null}
