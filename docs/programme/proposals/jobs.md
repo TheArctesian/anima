@@ -22,7 +22,8 @@ artifact/result contracts". This proposal must use the same contracts, not a sec
 These rules apply to jobs, to AI agent runs ([agent-runs.md](agent-runs.md)) and to hosted
 applications ([hosted-applications.md](hosted-applications.md)).
 
-- **USE-001.** Models run on the machine directly. Jobs run in containers.
+- **USE-001.** Models run on the machine directly. Jobs run in containers. The one exception is
+  a native job on a Mac (JOB-004).
 - **USE-002.** A job must use the model service for inference. Thus a job on a Linux machine can
   use a model on a Mac.
 - **USE-003.** The coordinator decides where work runs. The placement must be a pure function, as
@@ -45,15 +46,20 @@ applications ([hosted-applications.md](hosted-applications.md)).
 
 ## Jobs
 
-A job is one container image that runs to its end on one machine.
+A job runs to its end on one machine. It is a container image, or it is a native job on a Mac
+(OD-W12).
 
-- **JOB-001.** A job is a container image.
+- **JOB-001.** A job is a container image, unless it is a native job (JOB-004).
 - **JOB-002.** The operator can make the image from a folder of source code with Railpack.
   Nixpacks is in maintenance, so do not use it. Test Railpack on one project of the operator
   before this requirement is final (OD-W6).
 - **JOB-003.** The operator can make the image from a Nix recipe (a flake).
-- **JOB-004.** A later version can run a Nix recipe on a Mac without a container. Use this for a
-  job that needs the Mac hardware directly.
+- **JOB-004.** A native job runs on a Mac without a container. Use it only for work that needs
+  macOS directly, for example a macOS or iOS build. It comes with the first job type, not in a
+  later version, and it is not only a Nix recipe: Nix does not supply Xcode or the macOS SDK.
+  PRO-022 to PRO-024 of [projects-and-builds.md](projects-and-builds.md) give its limits: a
+  build user, a new checkout that the machine deletes, and a setting on the Mac. (OD-W12,
+  operator, 2026-11-13)
 - **JOB-005.** One machine builds an image. The other machines pull it.
 - **JOB-006.** Queued jobs come first. A function that answers a request in milliseconds comes
   later (JOB-009).
@@ -66,16 +72,8 @@ A job is one container image that runs to its end on one machine.
 - **JOB-010.** The CLI tool of a rented service can run as a job (OD-W1). The hub must not hold
   the write token: a client releases it for that one run (SCR-001, SCR-006).
 
-Fine-tuning (compute plan C7, #40) becomes the first job type. Its "done when" text in #40 stays.
-
-## A conflict to decide (2026-11-13)
-
-[projects-and-builds.md](projects-and-builds.md) proposes that a build is the first job type
-(PRO-009), before fine-tuning. A macOS or iOS build cannot run in a container. Thus JOB-001 and
-USE-001 cannot be true for each job, and JOB-004 (a native job on a Mac) cannot be "a later
-version" and cannot be only a Nix recipe: Nix does not supply Xcode or the macOS SDK. This file
-is not changed until the operator decides OD-W12. A native job has no container around it, so it
-needs its own limits before it is built.
+The build of a project is the first job type (PRO-009, OD-W12). Fine-tuning (compute plan C7,
+#40) is the second. Its "done when" text in #40 stays.
 
 ## Decision (OD-W10, operator, 2026-11-12)
 
@@ -106,7 +104,8 @@ from the operator:
 
 - The agent accepts only the work types in a fixed list (USE-006). There is no "run this
   command" type.
-- Jobs run in containers (USE-001), with no access to the agent token or the home folder.
+- Jobs run in containers (USE-001), with no access to the agent token or the home folder. A
+  native job on a Mac has the same two limits through its build user (PRO-022).
 - A machine that is set off at the machine cannot be set on from the hub (USE-004).
 - Each item of work is in the audit log (LOG-005), and the machine keeps its own log of the work
   that it took.
