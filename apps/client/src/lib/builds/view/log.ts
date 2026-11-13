@@ -21,3 +21,11 @@ export function shownLines(lines: readonly LogLineView[]): string[] {
   const cleaner = new LineCleaner(() => []);
   return lines.map((line) => cleaner.clean(line.text));
 }
+
+/** A failing test, a compiler error or a panic: the lines an operator looks for in a failed job's log. */
+const FAILURE_LINE = /\(fail\)|^\s*error(?:\[\w+\])?:|\bFAIL\b|\bpanicked at\b|\bERR!/;
+
+/** Whether a shown line reports a failure, so the log can mark it. */
+export function isFailureLine(text: string): boolean {
+  return FAILURE_LINE.test(text);
+}

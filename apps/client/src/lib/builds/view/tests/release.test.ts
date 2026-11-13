@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Builder } from '../../api';
 import type { JobChange, JobView, ReleaseView } from '../api';
-import { canCancel, newestFirst, shortCommit, timeInState, waitingText, withChange } from '../release';
+import { attemptsByVersion, canCancel, newestFirst, shortCommit, stateAge, timeInState, waitingText, withChange } from '../release';
 
 const NOW = new Date('2026-11-12T12:00:00Z');
 
@@ -83,5 +83,24 @@ describe('Builds view logic', () => {
     const next = withChange([first, second], change);
     expect(next[0]?.jobs.map((item) => item.state)).toEqual(['BUILDING', 'QUEUED']);
     expect(next[1]).toBe(second);
+  });
+
+});
+
+describe('release attempts and job ages', () => {
+  it('BLD-080: releases of one version are grouped under the newest, in the place of the newest', () => {
+    const withVersion = (id: string, version: string) => ({ ...release(id, '2026-11-01T00:00:00Z'), version });
+    const groups = attemptsByVersion([withVersion('4', '0.2.0'), withVersion('3', '0.1.1'), withVersion('2', '0.1.0'), withVersion('1', '0.1.1')]);
+    expect(groups.map((group) => [group.latest.id, group.earlier.map((earlier) => earlier.id)])).toEqual([
+      ['4', []],
+      ['3', ['1']],
+      ['2', []],
+    ]);
+  });
+
+  it('BLD-080: a running job says how long it has run, an ended one how long ago it ended', () => {
+    expect(stateAge(job({ state: 'BUILDING', stateChangedAt: '2026-11-12T11:54:00Z' }), NOW)).toBe('for 6 minutes');
+    expect(stateAge(job({ state: 'FAILED', stateChangedAt: '2026-11-12T11:42:00Z' }), NOW)).toBe('18 minutes ago');
+    expect(stateAge(job({ state: 'PUBLISHED', stateChangedAt: '2026-11-12T11:59:30Z' }), NOW)).toBe('just now');
   });
 });

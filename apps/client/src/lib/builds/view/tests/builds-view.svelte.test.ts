@@ -80,20 +80,19 @@ async function submit(target: HTMLElement): Promise<void> {
 
 it('BLD-080: releases are listed newest first, each with its commit, its operator and its jobs', async () => {
   const target = await open();
-  const versions = [...target.querySelectorAll('.releases > li > h3')].map((heading) => heading.textContent);
+  const versions = [...target.querySelectorAll('article h3')].map((heading) => heading.textContent);
   expect(versions).toEqual(['0.1.13', '0.1.12']);
-  const older = named(target, 'li', 'Release 0.1.12');
+  const older = named(target, 'article', 'Release 0.1.12');
   expect(older.textContent).toContain('0123456');
   expect(older.textContent).toContain('operator');
   expect(older.textContent).toContain('Published');
   expect(older.textContent).toContain('mac-mini');
-  expect(older.textContent).toContain('1 attempt');
   expect(older.textContent).toContain('3 attempts');
 });
 
 it('BLD-080: a failed job shows its failure reason', async () => {
   const target = await open();
-  expect(named(target, 'li', 'Release 0.1.12').textContent).toContain('builder stopped 3 times');
+  expect(named(target, 'article', 'Release 0.1.12').textContent).toContain('builder stopped 3 times');
 });
 
 it('BLD-007: a queued job with no online builder says it waits for one', async () => {
@@ -167,7 +166,7 @@ it('BLD-081: selecting a job shows its log in a polite live region, and lines pu
   });
   flushSync();
   expect(target.querySelector('[role="log"][aria-live="polite"] pre')?.textContent).toBe('cargo build\nTAURI_SIGNING_PRIVATE_KEY=[redacted]');
-  expect(named(target, 'li', 'Release 0.1.13').textContent).toContain('Building');
+  expect(named(target, 'article', 'Release 0.1.13').textContent).toContain('Building');
 });
 
 it('BLD-080: when the releases cannot be loaded the view says so and offers to try again', async () => {

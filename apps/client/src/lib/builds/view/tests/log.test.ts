@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { lastSequence, mergeLines, shownLines } from '../log';
+import { isFailureLine, lastSequence, mergeLines, shownLines } from '../log';
 
 const line = (sequence: number, text = `line ${String(sequence)}`) => ({ sequence, text });
 
@@ -30,5 +30,15 @@ describe('job log', () => {
       line(4, 'after'),
     ]);
     expect(shown).toEqual(['[redacted]', '[redacted]', '[redacted]', 'after']);
+  });
+
+  it.each([
+    ['@anima/client test: (fail) BLD-080 > releases [12ms]', true],
+    ['error[E0308]: mismatched types', true],
+    ["thread 'main' panicked at src/main.rs:3:5", true],
+    ['@anima/deploy test: (pass) restore.sh failures leave the live database alone', false],
+    ['cargo build --release', false],
+  ])('BLD-081: %s is marked as a failure line: %s', (text, failure) => {
+    expect(isFailureLine(text)).toBe(failure);
   });
 });
