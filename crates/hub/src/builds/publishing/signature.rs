@@ -100,18 +100,24 @@ pub(super) async fn write(
     transfer::send(reach.http, put, text.as_bytes().to_vec(), &name).await
 }
 
-/// The `.sig` text an earlier try wrote for `updater`, for the confirm of a sent feed (D-25).
-/// Refused when it is missing, too long or not a signature by the hub's key.
+/// The `.sig` text an earlier try wrote for `updater`, for the confirm of a sent feed (D-25,
+/// D-39). Refused when it is missing, too long, not a minisign signature, or names another key
+/// ID than `ANIMA_UPDATER_PUBLIC_KEY`'s; the signature over the file's bytes was checked when it
+/// was written, on the second read (D-36).
 pub(super) async fn written(reach: Reach<'_>, work: &Work, updater: &str) -> Result<String, Stop> {
     let name = feed::signature_name(updater);
     let get = reach.bucket.get(&object(work, &name), reach.clock.now());
     let bytes = transfer::read_small(reach.http, get, &name, MAX_SIGNATURE_BYTES).await?;
     let text =
         String::from_utf8(bytes).map_err(|_| unsigned(updater, &work.version.to_string()))?;
-    reach
+    let check = reach
         .bucket
         .updater_key()
         .check(&text)
+        .map_err(|_| unsigned(updater, &work.version.to_string()))?;
+    // `check` only parses; starting the stream checks the key ID and the algorithm.
+    check
+        .stream()
         .map_err(|_| unsigned(updater, &work.version.to_string()))?;
     Ok(text)
 }

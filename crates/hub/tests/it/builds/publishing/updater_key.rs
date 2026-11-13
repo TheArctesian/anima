@@ -4,17 +4,22 @@
 //! `.sig` write whose answer was lost, and that a stop then left cut short, is put again whole.
 
 use std::{
-    io,
+    io::{self, Cursor},
     sync::{Arc, Mutex},
 };
 
 use anima_hub::{builds, events::process_log::subscriber};
+use base64::{Engine as _, engine::general_purpose::STANDARD};
 use chrono::TimeDelta;
+use serde_json::Value;
 use sqlx::PgPool;
 
 use super::{
     fake_r2::FakeR2,
-    setup::{KEY_PASSWORD, Publishing, public_key, ready, releases, secret_files, uploaded_linux},
+    setup::{
+        KEY_PASSWORD, LINUX_FEED, Publishing, public_key, ready, releases, secret_files,
+        uploaded_linux,
+    },
 };
 
 #[derive(Clone, Default)]
@@ -160,4 +165,38 @@ async fn d_25_r_116_a_retry_after_a_partial_sig_write_puts_the_same_sig_whole(po
     assert_eq!(publishing.job(&held).await, ("published".to_owned(), None));
     assert_eq!(publishing.fake.object(&sig).unwrap().bytes, first);
     publishing.assert_signed("0.1.12", &files[0]);
+}
+
+/// D-39, C-1: a sent feed is confirmed only with a `.sig` by the hub's key. A `.sig` and a
+/// `latest.json` that agree but are signed by another key, as a bucket writer could leave them,
+/// fail the job instead of publishing it.
+#[sqlx::test(migrations = "./migrations")]
+async fn d_39_a_sent_feed_signed_by_another_key_is_not_confirmed(pool: PgPool) {
+    let publishing = Publishing::start(&pool).await;
+    let (held, files) = uploaded_linux(&publishing, "0.1.12").await;
+    publishing.fake.with(|store| {
+        store.lose = Some(LINUX_FEED.to_owned());
+        store.tamper = Some(LINUX_FEED.to_owned());
+    });
+    assert_eq!(publishing.sweep(ready()).await, 1);
+    assert_eq!(publishing.job(&held).await.0, "uploading");
+    let other = minisign::KeyPair::generate_unencrypted_keypair().unwrap();
+    let comment = "timestamp:1888000000\tfile:Anima\tversion:0.1.12";
+    let bytes = Cursor::new(&files[0].bytes);
+    let signed = minisign::sign(Some(&other.pk), &other.sk, bytes, Some(comment), None).unwrap();
+    let foreign = STANDARD.encode(signed.into_string());
+    let sig = format!("linux-x86_64/0.1.12/{}.sig", files[0].name);
+    publishing.fake.with(|store| {
+        store.lose = None;
+        store.tamper = None;
+        let feed = store.objects.get_mut(LINUX_FEED).unwrap();
+        let mut json: Value = serde_json::from_slice(&feed.bytes).unwrap();
+        json["platforms"]["linux-x86_64"]["signature"] = Value::String(foreign.clone());
+        feed.bytes = json.to_string().into_bytes();
+        store.objects.get_mut(&sig).unwrap().bytes = foreign.clone().into_bytes();
+    });
+    assert_eq!(publishing.sweep(ready() + TimeDelta::minutes(2)).await, 1);
+    let (state, reason) = publishing.job(&held).await;
+    assert_eq!(state, "failed");
+    assert!(reason.unwrap().contains("does not verify"));
 }
