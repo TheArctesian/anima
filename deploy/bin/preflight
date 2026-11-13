@@ -11,7 +11,8 @@
 #            another container (VP-13). Reads the environment, defaults as in compose.yaml.
 #   secrets  every secret file of compose.yaml exists and is not empty in the secrets folder
 #            (ANIMA_SECRETS_DIR, default deploy/secrets), and has the mode make-secrets sets:
-#            0440, or 0400 for cloudflare_dns_token. updater_key_password may be empty.
+#            0440, or 0400 for cloudflare_dns_token. The updater key pair in its folder
+#            (updater/) may be absent: then the hub starts with publishing off, and this warns.
 # One argument pair checks one thing from the value given: `preflight address 100.64.0.1`.
 set -eu
 
@@ -160,20 +161,33 @@ check_secrets() {
         [ "$(file_mode "$dir/$name")" = "$wanted" ] ||
             fail "secret file $dir/$name does not have mode 0$wanted; rerun bin/make-secrets, which resets owners and modes"
     done
-    # The R2 token files hold values from Cloudflare and the updater key is the operator's own
-    # file, so make-secrets cannot make them (R-108, R-116).
-    for name in r2_access_key_id r2_secret_access_key updater_key; do
+    # The R2 token files hold values from Cloudflare, so make-secrets cannot make them (R-108).
+    # They are compose secrets: compose refuses to start the hub while one is absent.
+    for name in r2_access_key_id r2_secret_access_key; do
         [ -s "$dir/$name" ] || fail "missing or empty secret file $dir/$name; see README, Release publishing"
         [ "$(file_mode "$dir/$name")" = 440 ] ||
             fail "secret file $dir/$name does not have mode 0440; see README, Release publishing"
     done
-    # The updater key's password is empty for a key made with no password, so this file only has
-    # to exist: -e, not -s (R-116).
-    for name in updater_key_password; do
-        [ -e "$dir/$name" ] || fail "missing secret file $dir/$name; see README, Release publishing"
-        [ "$(file_mode "$dir/$name")" = 440 ] ||
-            fail "secret file $dir/$name does not have mode 0440; see README, Release publishing"
-    done
+    check_updater_key "$dir/updater"
+}
+
+# check_updater_key FOLDER: the updater key pair the hub signs with (R-116, D-44). An absent
+# file only warns: compose mounts the folder, so the hub starts and turns publishing off. A file
+# that is there must have mode 0440, and the key must not be empty. The password may be empty,
+# for a key made with no password, so it is checked with -e, not -s.
+check_updater_key() {
+    if [ ! -e "$1/updater_key" ] || [ ! -e "$1/updater_key_password" ]; then
+        echo "preflight: warning: no updater key pair in $1; the hub starts with publishing off (README, Release publishing)" >&2
+    fi
+    if [ -e "$1/updater_key" ]; then
+        [ -s "$1/updater_key" ] || fail "secret file $1/updater_key is empty; see README, Release publishing"
+        [ "$(file_mode "$1/updater_key")" = 440 ] ||
+            fail "secret file $1/updater_key does not have mode 0440; see README, Release publishing"
+    fi
+    if [ -e "$1/updater_key_password" ]; then
+        [ "$(file_mode "$1/updater_key_password")" = 440 ] ||
+            fail "secret file $1/updater_key_password does not have mode 0440; see README, Release publishing"
+    fi
 }
 
 case ${1:-all} in

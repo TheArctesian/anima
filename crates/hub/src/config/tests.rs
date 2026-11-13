@@ -255,7 +255,7 @@ fn d_2_an_empty_web_root_is_none() {
 }
 
 #[test]
-fn r_116_the_updater_key_files_default_to_their_docker_secrets_and_may_be_moved() {
+fn r_116_d_44_the_updater_key_files_default_to_the_updater_secret_folder_and_may_be_moved() {
     let endpoint = (
         "ANIMA_RELEASES_ENDPOINT",
         "https://account.r2.cloudflarestorage.com",
@@ -263,11 +263,11 @@ fn r_116_the_updater_key_files_default_to_their_docker_secrets_and_may_be_moved(
     let releases = from_env(&env(&[endpoint])).unwrap().releases.unwrap();
     assert_eq!(
         releases.updater_key_file,
-        PathBuf::from("/run/secrets/updater_key")
+        PathBuf::from("/run/secrets/updater/updater_key")
     );
     assert_eq!(
         releases.updater_key_password_file,
-        PathBuf::from("/run/secrets/updater_key_password")
+        PathBuf::from("/run/secrets/updater/updater_key_password")
     );
     assert_eq!(releases.updater_public_key, None);
     let moved = from_env(&env(&[

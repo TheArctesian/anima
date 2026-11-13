@@ -260,34 +260,41 @@ step (VPS-005): agents do not create the R2 token or change `deploy/.env` on the
 - **`ANIMA_RELEASES_ENDPOINT`** is the bucket's S3 API origin,
   `https://<account>.r2.cloudflarestorage.com`. `ANIMA_RELEASES_BUCKET` (default `anima-releases`)
   and `ANIMA_RELEASES_PUBLIC_BASE` (default `https://releases.anima.ing`) rarely change.
-- **Two more secret files** hold the updater signing key and its password: the hub signs each
-  release (R-116, BLD-045). A hub that holds this key can sign updates every installed app
-  trusts, so keep the VPS and the backup of the key as safe as the key itself. Agents never do
-  these steps and never read these files (UPD-012). On your computer, copy the key file that
-  `tauri signer generate` wrote to the VPS yourself, for example
+- **The updater key pair** is two more secret files, in their own folder `secrets/updater/`: the
+  hub signs each release with the key (R-116, BLD-045). A hub that holds this key can sign updates
+  every installed app trusts, so keep the VPS and the backup of the key as safe as the key itself.
+  Agents never do these steps and never read these files (UPD-012, VPS-005). On your computer,
+  copy the key file that `tauri signer generate` wrote to the VPS yourself, for example
   `scp ~/.config/anima/updater.key <you>@<vps>:updater.key`. Then, on the VPS, in the deploy folder
   (group 10001 is the hub's, `anima-hub` on the VPS, as for the R2 files):
 
   ```sh
-  sudo install -m 0440 -o root -g 10001 ~/updater.key secrets/updater_key
+  sudo install -d -m 0750 -o root -g 10001 secrets/updater
+  sudo install -m 0440 -o root -g 10001 ~/updater.key secrets/updater/updater_key
   shred -u ~/updater.key
-  # Type the key's password; it is not echoed. Press Enter alone for a key with no password.
+  # Type the key's password; it is not echoed. Press Enter alone only for a key made with no
+  # password: an encrypted key with an empty password leaves publishing off.
   read -rs password && (umask 077 && printf '%s' "$password" > ~/updater_key_password)
   unset password
-  sudo install -m 0440 -o root -g 10001 ~/updater_key_password secrets/updater_key_password
+  sudo install -m 0440 -o root -g 10001 ~/updater_key_password secrets/updater/updater_key_password
   shred -u ~/updater_key_password
   ```
 
-  `compose.yaml` gives both to the hub as Docker secrets (`ANIMA_UPDATER_KEY_FILE`,
-  `ANIMA_UPDATER_KEY_PASSWORD_FILE`) and `bin/preflight` checks them: `updater_key` must not be
-  empty, and `updater_key_password` must exist but may be empty. The hub opens the key once at
-  start and never logs it, its password or its seed.
+  `compose.yaml` mounts the folder read-only at `/run/secrets/updater` (`ANIMA_UPDATER_KEY_FILE`,
+  `ANIMA_UPDATER_KEY_PASSWORD_FILE`). It is a folder, not two compose secrets, because compose
+  refuses to create a container whose secret file is absent; with the folder, a hub without the
+  key still starts, with publishing off (D-44). `bin/preflight` warns, and passes, when either file
+  is absent; a file that is there must have mode `0440`, and `updater_key` must not be empty. The
+  hub opens the key once at start and never logs it, its password or its seed. Install the pair
+  before you deploy a hub that signs (WP-36 T6): until then that hub has publishing off. Unlike
+  the updater pair, the R2 token files are compose secrets: while one is absent, compose does not
+  start the hub at all, and `bin/preflight` fails.
 - **`ANIMA_UPDATER_PUBLIC_KEY` must be the same text as `plugins.updater.pubkey` in
-  `apps/desktop/src-tauri/tauri.conf.json`,** and the key in `secrets/updater_key` must be its
-  private half. If the variable is empty, the key does not open with its password, or it is
-  another key, the hub starts with publishing off and logs one warning that says which; it never
-  prints the key. The public key is not secret, so it is a plain variable. The hub checks every
-  signature it makes with it before it writes a feed.
+  `apps/desktop/src-tauri/tauri.conf.json`,** and the key in `secrets/updater/updater_key` must be
+  its private half. If the variable is empty, a file is absent or unreadable, the key does not
+  open with its password, or it is another key, the hub starts with publishing off and logs one
+  warning that says which; it never prints the key. The public key is not secret, so it is a plain
+  variable. The hub checks every signature it makes with it before it writes a feed.
 - The hub reads every file back from the bucket with the R2 token, and checks that the public base
   answers 200 for it, before it writes `latest.json`, so the `releases.anima.ing` custom domain must
   serve the bucket first. It starts that check about 17 minutes after the upload: a builder's upload

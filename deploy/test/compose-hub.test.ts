@@ -66,6 +66,7 @@ const compose = Bun.YAML.parse(readFileSync(join(ROOT, "deploy", "compose.yaml")
 
 /** The broker's folder, read-only, so a socket restart is seen (VP-7, BD-10). */
 const BROKER_FOLDER = { type: "bind", source: "/run/anima-broker", target: "/run/anima-broker", read_only: true };
+const UPDATER_FOLDER = { type: "bind", source: "./secrets/updater", target: "/run/secrets/updater", read_only: true, bind: { selinux: "z" } };
 
 describe("hub configuration", () => {
   test("every ANIMA_* variable the hub receives is read by config.rs or listed in the conventions.md environment table", () => {
@@ -81,6 +82,14 @@ describe("hub configuration", () => {
         expect(known.has(key) ? key : `${name}.${key} is in neither config.rs nor conventions.md`).toBe(key);
       }
     }
+  });
+
+  test("D-44 the hub reads the updater key pair from a read-only folder, so an absent file does not stop it", () => {
+    const environment = compose.services["hub"]?.environment ?? {};
+    expect(environment["ANIMA_UPDATER_KEY_FILE"]).toBe(`${UPDATER_FOLDER.target}/updater_key`);
+    expect(environment["ANIMA_UPDATER_KEY_PASSWORD_FILE"]).toBe(`${UPDATER_FOLDER.target}/updater_key_password`);
+    const source = readFileSync(join(ROOT, "crates", "hub", "src", "config", "releases.rs"), "utf8");
+    for (const name of ["updater_key", "updater_key_password"]) expect(source).toContain(`"${UPDATER_FOLDER.target}/${name}"`);
   });
 
   test("VP-7 the hub reaches the broker socket inside the read-only broker folder", () => {
@@ -137,10 +146,10 @@ describe("hub deny list, notify network and mounts", () => {
     expect(Object.keys(environment).filter((name) => name.startsWith("ANIMA_RECORDING_"))).toEqual([]);
   });
 
-  test("SEC-001 the hub root file system stays read-only, and its mounts are exactly certs, the broker folder and /tmp", () => {
+  test("SEC-001 the hub root file system stays read-only, and its mounts are exactly certs, the updater and broker folders and /tmp", () => {
     const hub = compose.services["hub"] as Container & { tmpfs?: string[] };
     expect(hub.read_only).toBe(true);
-    expect(hub.volumes).toEqual(["certs:/certs:ro", BROKER_FOLDER]);
+    expect(hub.volumes).toEqual(["certs:/certs:ro", UPDATER_FOLDER, BROKER_FOLDER]);
     expect(hub.tmpfs).toEqual(["/tmp"]);
   });
 

@@ -99,7 +99,7 @@ describe("secrets (DB-002, SEC-004, DNS-003)", () => {
     postgres: ["hub_password", "owner_password", "postgres_password"],
     migrate: ["owner_database_url"],
     certs: ["cloudflare_dns_token"],
-    hub: ["anima_key", "hub_database_url", "r2_access_key_id", "r2_secret_access_key", "updater_key", "updater_key_password"],
+    hub: ["anima_key", "hub_database_url", "r2_access_key_id", "r2_secret_access_key"],
     guacd: [],
     localapi: [],
     apprise: [],
@@ -110,14 +110,6 @@ describe("secrets (DB-002, SEC-004, DNS-003)", () => {
       expect(secretsOf(compose.services[name] as Container)).toEqual(secrets);
     });
   }
-
-  // Unset in compose, so the hub reads its defaults, the targets of the two secrets.
-  test("R-116 the hub reads the updater key and its password at their default secret paths", () => {
-    const environment = compose.services["hub"]?.environment ?? {};
-    expect(Object.keys(environment).filter((key) => key.startsWith("ANIMA_UPDATER_KEY"))).toEqual([]);
-    const source = readFileSync(join(ROOT, "crates", "hub", "src", "config", "releases.rs"), "utf8");
-    for (const name of ["updater_key", "updater_key_password"]) expect(source).toContain(`"/run/secrets/${name}"`);
-  });
 
   test("DB-002 the hub reads hub_database_url as /run/secrets/database_url", () => {
     const entry = compose.services["hub"]?.secrets?.find((secret) => typeof secret !== "string" && secret.source === "hub_database_url");
@@ -202,7 +194,7 @@ describe("host integration (AlmaLinux host firewall)", () => {
         expect(volume.bind?.selinux).toBe("z");
       }
     }
-    expect(binds).toBe(3);
+    expect(binds).toBe(4);
   });
 
   test("NET-003 no network sets a bridge name (the forward chain relies on the default br-* names)", () => {

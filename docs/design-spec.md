@@ -243,7 +243,7 @@ desktop app ── at start and every 4 hours ── GET latest.json ── vers
 | Feed URL | `https://releases.anima.ing/{{target}}-{{arch}}/latest.json`, one feed for each target (BLD-067) |
 | Version | Chosen by the operator in the release form (BLD-001, BLD-002). Do not commit version changes. |
 | Platforms | macOS universal (`.app.tar.gz` for the updater, `Anima.dmg` for people), Linux x86_64 (`.AppImage`) |
-| Updater signature | Tauri updater key pair. The public key is in `tauri.conf.json`. The private key is a Docker secret of the hub, which signs each release (BLD-045, R-116). |
+| Updater signature | Tauri updater key pair. The public key is in `tauri.conf.json`. The private key is a secret file of the hub, which signs each release (BLD-045, R-116). |
 | macOS signature | Ad-hoc (`APPLE_SIGNING_IDENTITY=-`) until the operator has an Apple Developer ID (OD-13). Until then macOS has no feed (BLD-068). |
 | Rollback | `allowDowngrades: true`. To roll back, the operator writes an older `latest.json` to the target by hand (BLD-069). |
 
@@ -258,7 +258,7 @@ desktop app ── at start and every 4 hours ── GET latest.json ── vers
 - **UPD-009.** Each `latest.json` must list only the platform keys of its own target. A target that did not build keeps its older feed (changed by R-107).
 - **UPD-010.** Each release must have versioned updater files, stable-named files for people (`Anima.dmg`, `Anima-x86_64.AppImage`) and a `SHA256SUMS` file.
 - **UPD-011.** The macOS builder must verify the bundle with `codesign --verify --deep --strict` and must verify that `lipo -archs` gives `x86_64` and `arm64`.
-- **UPD-012.** Only the operator makes the updater key pair and installs the private key and its password as the hub's Docker secrets `updater_key` and `updater_key_password`. Agents must not read the private key file. The operator must keep a backup of the private key: if it is lost, each installed app must be installed again by hand (changed by R-107 and R-116).
+- **UPD-012.** Only the operator makes the updater key pair and installs the private key and its password as the hub's secret files `updater_key` and `updater_key_password`. Agents must not read the private key file. The operator must keep a backup of the private key: if it is lost, each installed app must be installed again by hand (changed by R-107 and R-116).
 
 ### 3.10 Builds
 
@@ -332,7 +332,7 @@ queued ──► claimed ──► building ──► uploading ──► publis
 - **BLD-042.** The builder must run `bun run gates` with `DATABASE_URL` unset and `BASE_REF` set to the job commit. A gate failure makes the job `failed`.
 - **BLD-043.** The builder must compile with `tauri build --no-bundle` and the version in `--config`. Then it must bundle: `--bundles appimage` on Linux, `--bundles app,dmg` with `--target universal-apple-darwin` on macOS.
 - **BLD-044.** The build steps must run with no secret in their environment: no builder token, no hub token, no upload URL. Build scripts, `build.rs`, proc-macros and npm packages run in these steps. The builder holds no updater key (R-116).
-- **BLD-045.** The hub must sign the updater file. It opens the key from the Docker secrets `updater_key` and `updater_key_password` (`ANIMA_UPDATER_KEY_FILE`, `ANIMA_UPDATER_KEY_PASSWORD_FILE`; SEC-004) once at start and holds it in memory that is cleared on drop. The key, its password and its seed must never go to a log, an error, `Debug` output, the database or the bucket (LOG-007). If the key does not open, or its public key is not `ANIMA_UPDATER_PUBLIC_KEY`, publishing is off with a fixed reason and the hub still starts. The builder signs nothing (changed by R-116).
+- **BLD-045.** The hub must sign the updater file. It opens the key from the secret files `updater_key` and `updater_key_password` (`ANIMA_UPDATER_KEY_FILE`, `ANIMA_UPDATER_KEY_PASSWORD_FILE`; SEC-004) once at start and holds it in memory that is cleared on drop. The key, its password and its seed must never go to a log, an error, `Debug` output, the database or the bucket (LOG-007). If a file is absent or unreadable, the key does not open, or its public key is not `ANIMA_UPDATER_PUBLIC_KEY`, publishing is off with a fixed reason and the hub still starts. The password may be empty only for an unencrypted key (CR-26). The builder signs nothing (changed by R-116).
 - **BLD-046.** The signature must have the format that `tauri-plugin-updater` verifies, with the version in the trusted comment (`requireSignedVersion`, UPD-002). The hub signs exactly the bytes it verified (BLD-064), then checks the signature with `ANIMA_UPDATER_PUBLIC_KEY` over a second signed `GET` pinned to the same `ETag`, before it writes anything public (changed by R-116).
 - **BLD-047.** On macOS the builder must verify the bundle as UPD-011 states.
 - **BLD-048.** The builder must send the log of each step to the hub in parts, with each report. The hub must keep at most the last 2 MB of each job log.

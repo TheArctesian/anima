@@ -1,6 +1,6 @@
 // deploy/bin/preflight, checked on plain inputs (NET-003, DB-002). Nothing here needs Docker.
 import { describe, expect, test } from "bun:test";
-import { chmodSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { finish } from "./finished-process.ts";
@@ -69,7 +69,7 @@ describe("preflight docker", () => {
   });
 });
 
-const names = ["postgres_password", "owner_password", "hub_password", "owner_database_url", "hub_database_url", "anima_key", "cloudflare_dns_token", "r2_access_key_id", "r2_secret_access_key", "updater_key", "updater_key_password"];
+const names = ["postgres_password", "owner_password", "hub_password", "owner_database_url", "hub_database_url", "anima_key", "cloudflare_dns_token", "r2_access_key_id", "r2_secret_access_key"];
 const modeOf = (name: string) => (name === "cloudflare_dns_token" ? 0o400 : 0o440);
 
 function write(folder: string, name: string, content = "x", mode = modeOf(name)): void {
@@ -207,38 +207,45 @@ describe("preflight R2 token files (R-108)", () => {
   });
 });
 
-describe("preflight updater key files (R-116)", () => {
-  test.each(["updater_key", "updater_key_password"])("R-116 names a missing %s and points at the README", async (name) => {
+describe("preflight updater key pair (R-116, D-44)", () => {
+  const pair = ["updater/updater_key", "updater/updater_key_password"];
+  function withPair(folder: string): void {
+    mkdirSync(join(folder, "updater"), { recursive: true });
+    for (const name of [...names, ...pair]) write(folder, name);
+  }
+
+  test.each([[pair], [pair.slice(0, 1)], [pair.slice(1)]])("D-44 warns but passes when %p is absent, for the hub starts with publishing off", async (absent) => {
     await withFolder(async (folder) => {
-      for (const other of names.filter((n) => n !== name)) write(folder, other);
+      withPair(folder);
+      for (const name of absent) rmSync(join(folder, name));
       const result = await preflight("secrets", folder);
-      expect(result.ok).toBe(false);
-      expect(result.message).toContain(name);
-      expect(result.message).toContain("Release publishing");
+      expect(result.ok).toBe(true);
+      expect(result.message).toContain("warning: no updater key pair");
+      expect(result.message).toContain("publishing off");
     });
   });
 
-  test("R-116 refuses an empty updater_key but accepts an empty password, for a key with none", async () => {
+  test("D-44 is silent with the pair, accepts an empty password for a key with none and refuses an empty key", async () => {
     await withFolder(async (folder) => {
-      for (const name of names) write(folder, name);
-      write(folder, "updater_key_password", "");
+      withPair(folder);
       expect(await preflight("secrets", folder)).toEqual({ ok: true, message: "" });
-      write(folder, "updater_key", "");
+      write(folder, "updater/updater_key_password", "");
+      expect(await preflight("secrets", folder)).toEqual({ ok: true, message: "" });
+      write(folder, "updater/updater_key", "");
       const result = await preflight("secrets", folder);
       expect(result.ok).toBe(false);
-      expect(result.message).toContain("missing or empty secret file");
-      expect(result.message).toContain("updater_key");
+      expect(result.message).toContain("updater_key is empty");
     });
   });
 
   test.each([
-    ["updater_key", 0o600],
-    ["updater_key", 0o444],
-    ["updater_key_password", 0o600],
-    ["updater_key_password", 0o400],
-  ])("R-116 refuses %s with mode %o and prints no value", async (name, mode) => {
+    ["updater/updater_key", 0o600],
+    ["updater/updater_key", 0o444],
+    ["updater/updater_key_password", 0o600],
+    ["updater/updater_key_password", 0o400],
+  ])("D-44 refuses %s with mode %o and prints no value", async (name, mode) => {
     await withFolder(async (folder) => {
-      for (const other of names) write(folder, other);
+      withPair(folder);
       write(folder, name, "updater-value-1", mode);
       const result = await preflight("secrets", folder);
       expect(result.ok).toBe(false);

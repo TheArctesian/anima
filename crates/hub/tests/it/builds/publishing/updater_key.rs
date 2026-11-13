@@ -98,6 +98,47 @@ async fn r_116_a_wrong_password_or_another_public_key_turns_publishing_off_and_l
     }
 }
 
+/// D-44, CR-26: a missing key or password file, or an empty password for an encrypted key,
+/// turns publishing off with a fixed reason; the bucket is not opened, and the hub goes on.
+#[tokio::test]
+async fn d_44_cr_26_a_missing_file_or_an_empty_password_for_an_encrypted_key_turns_publishing_off()
+{
+    let fake = FakeR2::start().await;
+    let (folder, pair) = secret_files();
+    let settings = releases(&fake, folder.path(), Some(public_key(&pair)));
+
+    std::fs::write(&settings.updater_key_password_file, "").unwrap();
+    let (opened, empty) = opened_with_log(&settings);
+    assert!(!opened);
+    assert!(
+        empty.contains("the key file is encrypted and needs its password"),
+        "{empty}"
+    );
+
+    std::fs::remove_file(&settings.updater_key_password_file).unwrap();
+    let (opened, no_password) = opened_with_log(&settings);
+    assert!(!opened);
+    assert!(
+        no_password.contains("the updater key password file cannot be read"),
+        "{no_password}"
+    );
+
+    std::fs::write(&settings.updater_key_password_file, KEY_PASSWORD).unwrap();
+    std::fs::remove_file(&settings.updater_key_file).unwrap();
+    let (opened, no_key) = opened_with_log(&settings);
+    assert!(!opened);
+    assert!(
+        no_key.contains("the updater key file cannot be read"),
+        "{no_key}"
+    );
+    for log in [empty, no_password, no_key] {
+        assert!(
+            !log.contains(KEY_PASSWORD),
+            "the log holds the password: {log}"
+        );
+    }
+}
+
 /// D-25: the `.sig` write lands but its answer is lost, so the try waits; before the next try
 /// the object is cut short, as a stop mid-write would leave it. The next try signs the same
 /// bytes again, puts the `.sig` whole and publishes a feed whose signature is that `.sig`.

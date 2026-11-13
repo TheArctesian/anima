@@ -100,7 +100,9 @@ Environment variables, read once in `main.rs` into a typed `Config` that is pass
 | `ANIMA_RELEASES_PUBLIC_BASE` (R-108) | The origin published files are read from; the feed URLs must start with it (BLD-064, BLD-065) | `https://releases.anima.ing` |
 | `ANIMA_RELEASES_ACCESS_KEY_ID_FILE` (R-108) | File containing the R2 access key ID (SEC-004) | `/run/secrets/r2_access_key_id` |
 | `ANIMA_RELEASES_SECRET_ACCESS_KEY_FILE` (R-108) | File containing the R2 secret access key (SEC-004) | `/run/secrets/r2_secret_access_key` |
-| `ANIMA_UPDATER_PUBLIC_KEY` (R-108) | The minisign public key of the updater, the same text as `plugins.updater.pubkey` in `tauri.conf.json`; not secret. Empty: every publish fails with a fixed reason | empty |
+| `ANIMA_UPDATER_PUBLIC_KEY` (R-108, R-116, CR-26) | The minisign public key of the updater, the same text as `plugins.updater.pubkey` in `tauri.conf.json`; not secret. The hub signs releases with the private key of `ANIMA_UPDATER_KEY_FILE`, which must be this key's. Empty, or another key: publishing is off with a fixed reason and the hub still starts | empty |
+| `ANIMA_UPDATER_KEY_FILE` (R-116, CR-26) | File containing the updater's minisign secret key as `tauri signer generate` writes it, scrypt-sealed (SEC-004). Read once at start. Missing, unreadable, larger than 4 KiB or not a key: publishing is off with a fixed reason and the hub still starts. Never logged (LOG-007) | `/run/secrets/updater/updater_key` |
+| `ANIMA_UPDATER_KEY_PASSWORD_FILE` (R-116, CR-26) | File containing the password of `ANIMA_UPDATER_KEY_FILE`; one trailing line break is ignored (SEC-004). It may be empty only for an unencrypted key: empty with an encrypted key, wrong, missing or unreadable turns publishing off with a fixed reason and the hub still starts. Never logged (LOG-007) | `/run/secrets/updater/updater_key_password` |
 
 ## Prometheus series (Phase 3, INT-001, INT-002)
 

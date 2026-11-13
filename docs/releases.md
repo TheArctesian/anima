@@ -10,7 +10,7 @@ that feed. The hub side, its R2 credentials and the bucket setup are in
 [deploy/README.md](../deploy/README.md).
 
 There is no GitHub release workflow: `.github/workflows/release.yml` was removed by R-114. No
-signing key is stored on GitHub or on a builder; it is a Docker secret of the hub (R-116). A
+signing key is stored on GitHub or on a builder; it is a secret file of the hub (R-116). A
 compromised hub can therefore sign updates that installed apps trust; the operator accepted this
 in R-116.
 
@@ -31,7 +31,7 @@ Agents never do these steps (UPD-012). Never paste a key or password into chat, 
 2. Put the text of `~/.config/anima/updater.key.pub` in `apps/desktop/src-tauri/tauri.conf.json` as
    `plugins.updater.pubkey`, and commit it. The public key is not a secret.
 3. Put the key on the VPS: copy `~/.config/anima/updater.key` there yourself and install it, with
-   its password, as the hub's Docker secrets `updater_key` and `updater_key_password`
+   its password, as the hub's secret files `secrets/updater/updater_key` and `secrets/updater/updater_key_password`
    ("Release publishing" in [deploy/README.md](../deploy/README.md), UPD-012). Then delete the copy
    in your home folder on the VPS. The key is never in GitHub, on a builder or in a file the agents
    read.

@@ -79,11 +79,11 @@ pub(super) fn from_env(env: &BTreeMap<String, String>) -> Result<Option<Releases
             .get(UPDATER_PUBLIC_KEY)
             .filter(|text| !text.trim().is_empty())
             .cloned(),
-        updater_key_file: value(env, UPDATER_KEY_FILE, "/run/secrets/updater_key")?.into(),
+        updater_key_file: value(env, UPDATER_KEY_FILE, "/run/secrets/updater/updater_key")?.into(),
         updater_key_password_file: value(
             env,
             UPDATER_KEY_PASSWORD_FILE,
-            "/run/secrets/updater_key_password",
+            "/run/secrets/updater/updater_key_password",
         )?
         .into(),
     }))
