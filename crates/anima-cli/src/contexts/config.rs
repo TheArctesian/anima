@@ -26,15 +26,27 @@ pub struct Config {
     pub mcp: BTreeMap<String, McpPermissions>,
 }
 
-/// Which MCP tool sets `anima mcp` offers for one hub, and which of them may change things,
-/// by set name (`anima mcp permissions set`). Names only; no secret.
+/// The state (`allow`, `ask` or `off`) of each `anima mcp` tool for one hub: the operator's
+/// explicit choices by tool name, and a default for each kind (`anima mcp permissions set`,
+/// MCP-002, MCP-012). A tool with no entry takes its kind's default; a kind with no default
+/// takes the built-in one (read `allow`, change `off`). Names and states only; no secret.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct McpPermissions {
-    /// The sets offered; empty offers every set.
-    #[serde(default)]
+    /// The default of the read tools.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub read: Option<String>,
+    /// The default of the change tools.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub change: Option<String>,
+    /// Explicit choices, by tool name.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub tools: BTreeMap<String, String>,
+    /// The form before MCP-012: the sets offered (empty: all). Read once and turned into
+    /// explicit choices; never written.
+    #[serde(default, skip_serializing)]
     pub toolsets: Vec<String>,
-    /// The sets whose change tools are offered; empty is read-only.
-    #[serde(default)]
+    /// The form before MCP-012: the sets whose change tools were offered. As `toolsets`.
+    #[serde(default, skip_serializing)]
     pub write: Vec<String>,
 }
 

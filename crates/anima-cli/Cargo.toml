@@ -35,8 +35,9 @@ reqwest.workspace = true
 rpassword.workspace = true
 # The sockets' TLS (`hub/wire.rs`): ring, no OpenSSL, the web PKI roots.
 rustls.workspace = true
-# `anima mcp`: the MCP protocol on standard input and output (MCP-001).
-rmcp.workspace = true
+# `anima mcp`: the MCP protocol on standard input and output (MCP-001); `elicitation` asks the
+# person to approve a call of a tool in state `ask` (MCP-013).
+rmcp = { workspace = true, features = ["elicitation"] }
 # The MCP tools' input schemas (MCP-009).
 schemars.workspace = true
 serde.workspace = true

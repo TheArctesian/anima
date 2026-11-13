@@ -1,16 +1,16 @@
-//! Which tools the server offers: the token's kind, the offered sets and the sets that may
-//! change things decide (MCP-002, MCP-003). Pure: the server and the tests ask the same
-//! question.
+//! The words of the tool catalogue: the tool sets, what a tool needs from the token, and its
+//! kind (MCP-002, MCP-003).
 
-use crate::hub::TokenKind;
+use serde::Serialize;
 
 /// A group of tools for one operator noun (`--toolsets`, MCP-002).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, clap::ValueEnum)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, clap::ValueEnum)]
 pub enum ToolSet {
     Devices,
     Checks,
     Maintenance,
     Events,
+    Sessions,
     Notifications,
     Web,
     Releases,
@@ -18,67 +18,59 @@ pub enum ToolSet {
     Retention,
 }
 
-/// What a tool needs from the token and the permissions.
+/// What a tool needs from the token.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Access {
-    /// Reads only; always offered.
+    /// Reads only.
     Read,
-    /// Changes something; offered when its set may change things. A read-scope key gets
-    /// FORBIDDEN from the hub.
+    /// Changes something; a read-scope key gets FORBIDDEN from the hub.
     Write,
-    /// Changes something an API key may never do (INT-003, "L" in the plan's table); offered
-    /// only for a login token, when its set may change things.
+    /// Changes something an API key may never do (INT-003, "L" in the plan's table); listed
+    /// only for a login token (MCP-003).
     Login,
 }
 
-/// What the operator permitted, with the kind of token the server holds.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Grant {
-    pub token: TokenKind,
-    /// The sets to offer; empty offers every set.
-    pub toolsets: Vec<ToolSet>,
-    /// The sets whose change tools are offered; empty is read-only.
-    pub write: Vec<ToolSet>,
+/// Whether a tool reads or changes things; each kind has its own default state (MCP-002).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, clap::ValueEnum)]
+#[serde(rename_all = "lowercase")]
+pub enum Kind {
+    Read,
+    Change,
 }
 
-impl Grant {
-    /// Whether a tool of `set` that needs `access` is offered.
+impl Access {
     #[must_use]
-    pub fn offers(&self, set: ToolSet, access: Access) -> bool {
-        let in_sets = self.toolsets.is_empty() || self.toolsets.contains(&set);
-        let permitted = match access {
-            Access::Read => true,
-            Access::Write => self.write.contains(&set),
-            Access::Login => self.write.contains(&set) && self.token == TokenKind::Login,
-        };
-        in_sets && permitted
+    pub const fn kind(self) -> Kind {
+        match self {
+            Self::Read => Kind::Read,
+            Self::Write | Self::Login => Kind::Change,
+        }
     }
 
-    /// The offered sets, in the catalogue's order.
+    /// Whether only a login token may call the tool (INT-003).
     #[must_use]
-    pub fn sets(&self) -> Vec<ToolSet> {
-        ToolSet::ALL
-            .into_iter()
-            .filter(|set| self.toolsets.is_empty() || self.toolsets.contains(set))
-            .collect()
+    pub const fn needs_sign_in(self) -> bool {
+        matches!(self, Self::Login)
     }
+}
 
-    /// The offered sets that may change things.
+impl Kind {
     #[must_use]
-    pub fn writable(&self) -> Vec<ToolSet> {
-        self.sets()
-            .into_iter()
-            .filter(|set| self.write.contains(set))
-            .collect()
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Read => "read",
+            Self::Change => "change",
+        }
     }
 }
 
 impl ToolSet {
-    pub const ALL: [Self; 9] = [
+    pub const ALL: [Self; 10] = [
         Self::Devices,
         Self::Checks,
         Self::Maintenance,
         Self::Events,
+        Self::Sessions,
         Self::Notifications,
         Self::Web,
         Self::Releases,
@@ -94,6 +86,7 @@ impl ToolSet {
             Self::Checks => "checks",
             Self::Maintenance => "maintenance",
             Self::Events => "events",
+            Self::Sessions => "sessions",
             Self::Notifications => "notifications",
             Self::Web => "web",
             Self::Releases => "releases",
@@ -109,70 +102,44 @@ impl ToolSet {
     }
 }
 
+/// `names` joined with commas; `none` when empty.
+#[must_use]
+pub fn joined<S: AsRef<str>>(names: &[S]) -> String {
+    if names.is_empty() {
+        return "none".to_owned();
+    }
+    names
+        .iter()
+        .map(AsRef::as_ref)
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
 /// `sets` by name, joined with commas; `none` when empty.
 #[must_use]
 pub fn names(sets: &[ToolSet]) -> String {
-    if sets.is_empty() {
-        return "none".to_owned();
-    }
-    sets.iter()
-        .map(|set| set.name())
-        .collect::<Vec<_>>()
-        .join(", ")
+    joined(&sets.iter().map(|set| set.name()).collect::<Vec<_>>())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    fn grant(token: TokenKind, toolsets: &[ToolSet], write: &[ToolSet]) -> Grant {
-        Grant {
-            token,
-            toolsets: toolsets.to_vec(),
-            write: write.to_vec(),
+    #[test]
+    fn mcp_012_login_tools_are_change_tools_that_need_sign_in() {
+        assert_eq!(Access::Read.kind(), Kind::Read);
+        assert_eq!(Access::Write.kind(), Kind::Change);
+        assert_eq!(Access::Login.kind(), Kind::Change);
+        assert!(Access::Login.needs_sign_in());
+        assert!(!Access::Write.needs_sign_in());
+    }
+
+    #[test]
+    fn mcp_002_sets_have_names_both_ways() {
+        for set in ToolSet::ALL {
+            assert_eq!(ToolSet::named(set.name()), Some(set));
         }
-    }
-
-    #[test]
-    fn mcp_002_with_no_write_set_only_read_tools_are_offered() {
-        for token in [TokenKind::Login, TokenKind::ApiKey] {
-            let read_only = grant(token, &[], &[]);
-            assert!(read_only.offers(ToolSet::Devices, Access::Read));
-            assert!(!read_only.offers(ToolSet::Devices, Access::Write));
-            assert!(!read_only.offers(ToolSet::Devices, Access::Login));
-            assert_eq!(read_only.writable(), Vec::<ToolSet>::new());
-        }
-    }
-
-    #[test]
-    fn mcp_003_an_api_key_never_gets_login_tools_even_where_writing_is_permitted() {
-        let key = grant(TokenKind::ApiKey, &[], &ToolSet::ALL);
-        assert!(key.offers(ToolSet::Checks, Access::Write));
-        assert!(!key.offers(ToolSet::Retention, Access::Login));
-        let login = grant(TokenKind::Login, &[], &ToolSet::ALL);
-        assert!(login.offers(ToolSet::Retention, Access::Login));
-    }
-
-    #[test]
-    fn mcp_002_write_is_permitted_per_set() {
-        let checks = grant(TokenKind::Login, &[], &[ToolSet::Checks]);
-        assert!(checks.offers(ToolSet::Checks, Access::Write));
-        assert!(!checks.offers(ToolSet::Devices, Access::Write));
-        assert!(!checks.offers(ToolSet::Devices, Access::Login));
-        assert!(checks.offers(ToolSet::Devices, Access::Read));
-        assert_eq!(checks.writable(), vec![ToolSet::Checks]);
-    }
-
-    #[test]
-    fn mcp_002_toolsets_limit_the_sets_and_write_outside_them_counts_for_nothing() {
-        let devices = grant(TokenKind::Login, &[ToolSet::Devices], &ToolSet::ALL);
-        assert!(devices.offers(ToolSet::Devices, Access::Login));
-        assert!(!devices.offers(ToolSet::Checks, Access::Read));
-        assert!(!devices.offers(ToolSet::Checks, Access::Write));
-        assert_eq!(devices.sets(), vec![ToolSet::Devices]);
-        assert_eq!(devices.writable(), vec![ToolSet::Devices]);
-        assert_eq!(grant(TokenKind::Login, &[], &[]).sets().len(), 9);
-        assert_eq!(names(&devices.writable()), "devices");
-        assert_eq!(ToolSet::named("vpn"), Some(ToolSet::Vpn));
+        assert_eq!(names(&[ToolSet::Devices, ToolSet::Vpn]), "devices, vpn");
+        assert_eq!(names(&[]), "none");
     }
 }
