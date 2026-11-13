@@ -12,7 +12,7 @@ fn signed_in() -> Anima {
     Anima::new().with("ANIMA_TOKEN", "login-token-for-watch-tests")
 }
 
-fn update(state: &str, reason: Value, lines: &[(i64, &str)]) -> Value {
+fn update(state: &str, reason: Option<&str>, lines: &[(i64, &str)]) -> Value {
     let log_lines: Vec<Value> = lines
         .iter()
         .map(|(sequence, text)| json!({ "sequence": sequence, "text": text }))
@@ -31,8 +31,8 @@ async fn bld_081_release_log_follow_prints_new_lines_and_stops_at_an_end_state()
             Value::Null,
             &[(1, "cargo build"), (2, "Sess\u{1b}[2Jion")],
         ),
-        update("FAILED", json!("exit 101"), &[(3, "error: linking")]),
-        update("BUILDING", Value::Null, &[(4, "never printed")]),
+        update("FAILED", Some("exit 101"), &[(3, "error: linking")]),
+        update("BUILDING", None, &[(4, "never printed")]),
     ];
     let hub = SubscriptionHub::start(Script::Next(updates)).await;
     let run = signed_in()
@@ -51,7 +51,7 @@ async fn bld_081_release_log_follow_prints_new_lines_and_stops_at_an_end_state()
 
 #[tokio::test]
 async fn bld_081_release_log_follow_json_is_one_update_per_line() {
-    let updates = vec![update("PUBLISHED", Value::Null, &[(1, "done")])];
+    let updates = vec![update("PUBLISHED", None, &[(1, "done")])];
     let hub = SubscriptionHub::start(Script::Next(updates)).await;
     let run = signed_in()
         .run(&[
