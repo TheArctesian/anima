@@ -64,10 +64,7 @@ pub fn json<T: DeserializeOwned>(bytes: &[u8], what: &str, help: &str) -> Result
             _ => "is not valid JSON",
         };
         let mut words = what.chars();
-        let first: String = words
-            .next()
-            .map(|c| c.to_uppercase().collect())
-            .unwrap_or_default();
+        let first: String = words.next().map_or_default(|c| c.to_uppercase().collect());
         Failure::Usage {
             message: format!(
                 "{first}{} {problem} (line {}, column {}).",

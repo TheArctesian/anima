@@ -102,13 +102,12 @@ fn usage_failure(rendered: &str) -> Failure {
     let command: Vec<&str> = rendered
         .lines()
         .find_map(|line| line.strip_prefix("Usage: "))
-        .map(|usage| {
+        .map_or_default(|usage| {
             usage
                 .split_whitespace()
                 .take_while(|word| !word.starts_with(['-', '<', '[']))
                 .collect()
-        })
-        .unwrap_or_default();
+        });
     let command = if command.is_empty() {
         "anima".to_owned()
     } else {
