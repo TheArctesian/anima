@@ -1,5 +1,7 @@
 //! `anima vpn status`: the VPN as the hub's own node sees it (VPN-005, VPN-008).
 
+use std::fmt::Write as _;
+
 use super::documents::{VpnStatus, vpn_status};
 use crate::failure::Failure;
 use crate::invocation::Invocation;
@@ -18,11 +20,13 @@ impl StatusArgs {
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let hub = invocation.hub()?;
         let answer = hub.run::<VpnStatus>(vpn_status::Variables).await?;
-        invocation.output.data(&answer.vpn, table)
+        invocation
+            .output
+            .data(&answer.vpn, |picture| table(picture.as_ref()))
     }
 }
 
-fn table(picture: &Option<vpn_status::VpnStatusVpn>) -> Table {
+fn table(picture: Option<&vpn_status::VpnStatusVpn>) -> Table {
     let mut table = Table::record();
     let Some(picture) = picture else {
         table.pair(
@@ -46,7 +50,7 @@ fn table(picture: &Option<vpn_status::VpnStatusVpn>) -> Table {
             enum_name(&entry.path)
         );
         if let Some(waiting) = &entry.waiting_router {
-            text.push_str(&format!(", route of {} waits for approval", waiting.name));
+            let _ = write!(text, ", route of {} waits for approval", waiting.name);
         }
         table.pair(&format!("Site {}", entry.site.name), text);
     }
@@ -67,10 +71,7 @@ fn node(node: &vpn_status::VpnNodeRow) -> String {
         enum_name(&node.key_state)
     );
     if !node.waiting_routes.is_empty() {
-        text.push_str(&format!(
-            ", waiting routes {}",
-            node.waiting_routes.join(" ")
-        ));
+        let _ = write!(text, ", waiting routes {}", node.waiting_routes.join(" "));
     }
     if !node.in_anima {
         text.push_str(", not in Anima");

@@ -7,7 +7,9 @@ use crate::invocation::Invocation;
 use crate::output::Table;
 use crate::output::text::enum_name;
 
+/// `--version` is the release's version here, so `anima release create` has no version flag.
 #[derive(Debug, clap::Args)]
+#[command(disable_version_flag = true)]
 pub struct CreateArgs {
     /// The version to publish, such as 0.4.0.
     #[arg(long)]

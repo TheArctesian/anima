@@ -36,7 +36,12 @@ impl LogArgs {
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let hub = invocation.hub()?;
         let first = if self.all { MAX_PAGE } else { self.limit };
-        let lines = fetch(&hub, &self.job, self.after, first, self.all).await?;
+        let request = Request {
+            job: &self.job,
+            first,
+            all: self.all,
+        };
+        let lines = fetch(&hub, &request, self.after).await?;
         if invocation.output.json() {
             invocation
                 .output
@@ -44,39 +49,39 @@ impl LogArgs {
         } else {
             print_lines(&lines)?;
         }
-        if let Some(last) = lines.last().filter(|_| !self.all) {
-            if i64::try_from(lines.len()).is_ok_and(|count| count == first) {
-                invocation.output.note(&format!(
-                    "Maybe more. Next: anima release log {} --after {} (or --all)",
-                    self.job, last.sequence
-                ));
-            }
+        let full = i64::try_from(lines.len()).is_ok_and(|count| count == first);
+        if let Some(last) = lines.last().filter(|_| full && !self.all) {
+            invocation.output.note(&format!(
+                "Maybe more. Next: anima release log {} --after {} (or --all)",
+                self.job, last.sequence
+            ));
         }
         Ok(())
     }
 }
 
-/// One page after `after`, or with `all` pages until one is short.
-async fn fetch(
-    hub: &Hub,
-    job: &str,
-    after: Option<i64>,
+/// What to ask for: the job, the page size, and whether to follow every page.
+struct Request<'a> {
+    job: &'a str,
     first: i64,
     all: bool,
-) -> Result<Lines, Failure> {
+}
+
+/// One page after `after`, or with `all` pages until one is short.
+async fn fetch(hub: &Hub, request: &Request<'_>, after: Option<i64>) -> Result<Lines, Failure> {
     let mut lines: Lines = Vec::new();
     let mut after = after;
     loop {
         let variables = build_job_log::Variables {
-            id: job.to_owned(),
+            id: request.job.to_owned(),
             after,
-            first: Some(first),
+            first: Some(request.first),
         };
         let page = hub.run::<BuildJobLog>(variables).await?.build_job_log;
-        let full = i64::try_from(page.len()).is_ok_and(|count| count == first);
+        let full = i64::try_from(page.len()).is_ok_and(|count| count == request.first);
         after = page.last().map(|line| line.sequence).or(after);
         lines.extend(page);
-        if !(all && full) {
+        if !(request.all && full) {
             return Ok(lines);
         }
     }

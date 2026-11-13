@@ -3,6 +3,7 @@
 //! or with `--to-file` in a `0600` file and nowhere else. It never goes on a command line, into
 //! a log or into a note (CMD-014, LOG-007).
 
+use std::fmt::Write as _;
 use std::io::Write as _;
 use std::path::{Path, PathBuf};
 
@@ -102,38 +103,34 @@ pub fn show_once(
     secret: &Secret<'_>,
     mut public: Value,
 ) -> Result<(), Failure> {
-    match secret.to_file {
-        Some(path) => {
-            write_file(path, secret)?;
-            invocation.output.note(&format!(
-                "The {} is in {} (mode 0600). It is shown one time and works once.",
-                secret.label,
-                path.display()
-            ));
-            if invocation.output.json() {
-                public["writtenTo"] = json!(path.display().to_string());
-                invocation.output.raw(&public)?;
-            }
-            Ok(())
+    if let Some(path) = secret.to_file {
+        write_file(path, secret)?;
+        invocation.output.note(&format!(
+            "The {} is in {} (mode 0600). It is shown one time and works once.",
+            secret.label,
+            path.display()
+        ));
+        if invocation.output.json() {
+            public["writtenTo"] = json!(path.display().to_string());
+            invocation.output.raw(&public)?;
         }
-        None => {
-            invocation.output.note(&format!(
-                "The {} below is shown one time and works once. Keep it out of command lines and logs.",
-                secret.label
-            ));
-            if invocation.output.json() {
-                public[secret.field] = json!(secret.value);
-                return invocation.output.raw(&public);
-            }
-            write_line(secret.value)
-        }
+        return Ok(());
     }
+    invocation.output.note(&format!(
+        "The {} below is shown one time and works once. Keep it out of command lines and logs.",
+        secret.label
+    ));
+    if invocation.output.json() {
+        public[secret.field] = json!(secret.value);
+        return invocation.output.raw(&public);
+    }
+    write_line(secret.value)
 }
 
 fn steps(steps: &[String]) -> String {
     let mut text = String::from("Steps for the new computer, in order:");
     for (number, step) in steps.iter().enumerate() {
-        text.push_str(&format!("\n  {}. {step}", number + 1));
+        let _ = write!(text, "\n  {}. {step}", number + 1);
     }
     text
 }
