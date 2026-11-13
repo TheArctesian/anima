@@ -5,7 +5,7 @@ use crate::checks::resolve::CheckRef;
 use crate::failure::Failure;
 use crate::hub::Hub;
 use crate::invocation::Invocation;
-use crate::output::text::enum_name;
+use crate::output::text::{enum_name, shell_word};
 use crate::output::{Cell, Table};
 
 /// The hub's largest heartbeat page; `--all` asks for pages of this size.
@@ -45,10 +45,15 @@ impl HeartbeatsArgs {
         invocation.output.data(&beats, table)?;
         if beats.page_info.has_next_page {
             let cursor = beats.page_info.end_cursor.as_deref().unwrap_or_default();
+            let device = self
+                .check
+                .device()
+                .map(|device| format!(" --device {}", shell_word(device)))
+                .unwrap_or_default();
             invocation.output.note(&format!(
-                "{} heartbeats. Next page: anima check heartbeats {} --after {cursor} (or --all)",
+                "{} heartbeats. Next page: anima check heartbeats {}{device} --after {cursor} (or --all)",
                 beats.edges.len(),
-                self.check.label()
+                shell_word(self.check.label())
             ));
         }
         Ok(())

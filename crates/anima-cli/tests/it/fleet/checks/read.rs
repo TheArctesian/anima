@@ -214,3 +214,37 @@ async fn cmd_026_heartbeats_page_with_limit_and_after_and_follow_with_all() {
     assert_eq!(run.json()["edges"].as_array().expect("edges").len(), 2);
     assert_eq!(all.seen()[1].variables["after"], "h1.2");
 }
+
+#[tokio::test]
+async fn cmd_026_the_next_page_hint_keeps_the_device_of_a_check_given_by_name() {
+    let hub = FakeHub::start().await;
+    hub.answer(
+        "CheckNames",
+        data(json!({ "device": { "checks": [{ "id": CHECK, "name": "HTTP check" }] }})),
+    );
+    hub.answer(
+        "CheckHeartbeats",
+        beats("h1.2", true, "2026-11-12T10:00:00+00:00"),
+    );
+    let run = signed_in()
+        .run(&[
+            "check",
+            "heartbeats",
+            "HTTP check",
+            "--device",
+            DEVICE,
+            "--limit",
+            "1",
+            "--hub",
+            &hub.origin,
+        ])
+        .await;
+    assert_eq!(run.code, 0, "{run:?}");
+    assert!(
+        run.stderr.contains(&format!(
+            "anima check heartbeats 'HTTP check' --device {DEVICE} --after h1.2"
+        )),
+        "{}",
+        run.stderr
+    );
+}
