@@ -12,7 +12,8 @@ use it. The decisions in this plan need a ruling number in `programme.md`.
 ## 1. Purpose
 
 The hub has one API (GraphQL, contract K1). The graphical client is one user of it. This plan adds
-two more users of the same API, with no change to the hub:
+two more users of the same API, with one change to the hub: the actor kind of each audit log entry
+(design specification Section 3.8.1, LOG-012 to LOG-020):
 
 1. `anima`, a command line program for the operator and for scripts.
 2. `anima mcp`, an MCP server in the same program, for coding agents.
@@ -122,7 +123,7 @@ read key; change commands with a write key).
 | `check` | `list`, `get`, `create`, `update`, `delete`, `pause`, `resume`, `heartbeats`, `defaults get\|set`, `notifications set`, `watch` |
 | `maintenance` | `list`, `create`, `update`, `delete`, `start`, `stop` |
 | `event` | `list`, `watch` |
-| `audit` | `list` |
+| `audit` | `list` (`--actor user\|agent\|hub`, LOG-020) |
 | `session` | `list`, `end`, `watch` |
 | `ssh <device>` L | A terminal on the device through the hub (K4 Section 8). The credential stays on the hub. |
 | `files` L | `ls`, `get`, `put` (K4 Section 9) |
@@ -134,7 +135,7 @@ read key; change commands with a write key).
 | `release` | `list`, `next-version`, `create` L, `cancel` L, `log` (`--follow`) |
 | `builder` | `list`, `enrol` L, `revoke` L |
 | `vpn` | `status` (`--watch`), `invite` L, `router-key` L, `register` L, `renew` L, `approve-route` L |
-| `key` | `list` L, `create` L, `revoke` L |
+| `key` | `list` L, `create` L (`--for user\|agent`, required, LOG-015), `revoke` L |
 | `api` | Send a GraphQL document from a file or standard input |
 | `mcp` | Start the MCP server (Section 7) |
 | `completion` | Shell completion |
@@ -313,13 +314,12 @@ Read tools are `allow` and change tools are `off` by default (MCP-002). L: needs
    as an MCP tool would let a coding agent run a command on each device, with the stored
    credential. This plan does not build it (MCP-006). It needs an operator decision and a security
    review.
-2. **Who did it.** Decided (operator, 2026-11-13), not built: each audit log entry gets an actor
+2. **Who did it.** Decided (operator, 2026-11-13) and built: each audit log entry has an actor
    kind, User, Agent or Hub (design specification Section 3.8.1, LOG-012 to LOG-020). `anima mcp`
-   must send the agent declaration with each request (LOG-016). `anima key create` must take the
-   "made for" attribute (LOG-015). `anima audit list` gets a column and `--actor`, and
-   `anima_audit_list` gets the field (LOG-020). The contract change needs a programme ruling
-   (design specification OD-15). Today the audit log records the operator name and the client
-   address only.
+   sends the agent declaration with each request (LOG-016). `anima key create` takes the
+   "made for" attribute with `--for` (LOG-015). `anima audit list` has the Actor, Token and Key
+   columns and `--actor`, and `anima_audit_list` has the fields and an `actor` filter (LOG-020).
+   The contract change still needs a programme ruling number (design specification OD-15).
 3. **Login token for the MCP server.** The "L" tools work only when the operator starts
    `anima mcp` with a login token. That gives the agent more than INT-003 permits an API key.
    They are `off` until the operator sets them to `allow` or `ask` (MCP-002); the operator can
@@ -342,7 +342,7 @@ Read tools are `allow` and change tools are `off` by default (MCP-002). L: needs
 8. **Who writes the start.** The flags of `anima mcp` (`--allow-write`, `--toolsets`) and the
    configuration location (`XDG_CONFIG_HOME`, `--context`) come from whoever writes the MCP
    client's configuration. That includes a project `.mcp.json` in a repository.
-9. **The audit log cannot tell who acted.** Decided (operator, 2026-11-13), not built: the actor
+9. **The audit log cannot tell who acted.** Decided (operator, 2026-11-13) and built: the actor
    kind tells an agent from the operator (LOG-012, LOG-014), and the token kind with the key name
    tells an API key from a login token (LOG-018). See point 2. One limit stays: a program that
    holds the operator's login token and sends no declaration is recorded as User.
