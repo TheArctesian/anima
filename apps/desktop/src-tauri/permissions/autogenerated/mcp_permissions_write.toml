@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-mcp-permissions-write"
+description = "Enables the mcp_permissions_write command without any pre-configured scope."
+commands.allow = ["mcp_permissions_write"]
+
+[[permission]]
+identifier = "deny-mcp-permissions-write"
+description = "Denies the mcp_permissions_write command without any pre-configured scope."
+commands.deny = ["mcp_permissions_write"]
