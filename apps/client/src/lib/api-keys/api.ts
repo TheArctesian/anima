@@ -10,6 +10,7 @@ const API_KEYS = graphql(`
       id
       name
       scope
+      madeFor
       prefix
       expiresAt
       createdAt
@@ -25,6 +26,7 @@ const CREATE_API_KEY = graphql(`
         id
         name
         scope
+        madeFor
         prefix
         expiresAt
         createdAt

@@ -35,16 +35,23 @@ export const SCOPES: readonly { readonly id: ApiKeyInput['scope']; readonly labe
   { id: 'WRITE', label: 'Write', hint: 'Queries and changes.' },
 ];
 
+/** Who will use the key (LOG-015). The hub records each change made with an AI agent's key as Agent; it cannot change later. */
+export const MADE_FOR: readonly { readonly id: ApiKeyInput['madeFor']; readonly label: string }[] = [
+  { id: 'USER', label: 'A script I run' },
+  { id: 'AGENT', label: 'An AI agent' },
+];
+
 /** What the operator typed and chose. `date` is an `<input type="date">` value (`YYYY-MM-DD`), `''` when empty. */
 export interface NewKeyForm {
   name: string;
   scope: ApiKeyInput['scope'];
+  madeFor: ApiKeyInput['madeFor'];
   expiry: ExpiryChoice;
   date: string;
 }
 
 export function emptyForm(): NewKeyForm {
-  return { name: '', scope: 'READ', expiry: '90d', date: '' };
+  return { name: '', scope: 'READ', madeFor: 'USER', expiry: '90d', date: '' };
 }
 
 export const NAME_MISSING = 'Enter a name.';
@@ -109,7 +116,7 @@ export function checkNewKey(form: NewKeyForm, now: Date): NewKeyCheck {
   const expiresAt = expiryOf(form, now);
   const problems = [nameProblem(name), expiryProblem(expiresAt, now)].filter((problem) => problem !== null);
   if (problems.length > 0 || expiresAt === null) return { ok: false, problems };
-  return { ok: true, input: { name, scope: form.scope, expiresAt: expiresAt.toISOString() } };
+  return { ok: true, input: { name, scope: form.scope, madeFor: form.madeFor, expiresAt: expiresAt.toISOString() } };
 }
 
 /**

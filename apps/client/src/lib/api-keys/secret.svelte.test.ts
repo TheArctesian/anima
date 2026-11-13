@@ -116,7 +116,7 @@ it('INT-003: Create sends CreateApiKey with the name, the scope and the default 
   await create();
   expect(hub.sent.at(-1)).toEqual({
     operation: 'CreateApiKey',
-    variables: { input: { name: 'backup-job', scope: 'WRITE', expiresAt: '2027-02-05T12:00:00.000Z' } },
+    variables: { input: { name: 'backup-job', scope: 'WRITE', madeFor: 'USER', expiresAt: '2027-02-05T12:00:00.000Z' } },
   });
 });
 

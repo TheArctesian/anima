@@ -20,6 +20,7 @@ export const MADE_KEY: ApiKey = {
   id: '0190a000-0000-7000-8019-0000000000aa',
   name: 'backup-job',
   scope: 'WRITE',
+  madeFor: 'USER',
   prefix: 'anima_AAAAAA',
   expiresAt: '2027-02-05T12:00:00Z',
   createdAt: '2026-11-07T12:00:00Z',

@@ -106,7 +106,7 @@ it('MOT-007: after threshold-loading a skeleton key row shows, hidden from assis
   flushSync();
   const skeleton = target.querySelector('.skeleton');
   expect([skeleton?.getAttribute('aria-hidden'), skeleton?.hasAttribute('inert'), skeleton?.parentElement]).toEqual(['true', true, stack]);
-  expect(skeleton?.querySelectorAll(':scope > li.placeholder > dl > div')).toHaveLength(4);
+  expect(skeleton?.querySelectorAll(':scope > li.placeholder > dl > div')).toHaveLength(5);
   release(ok({ apiKeys: FIXTURE_KEYS }));
   await settled();
   time.advance(threshold.loadingMin);
@@ -123,7 +123,7 @@ it('MOT-007: a hidden key row keeps one key\'s space in the cell where the list,
     const target = await open({ ApiKeys: answer });
     const sizer = target.querySelector('.stack > .sizer');
     expect([sizer?.getAttribute('aria-hidden'), sizer?.hasAttribute('inert')]).toEqual(['true', true]);
-    expect(sizer?.querySelectorAll(':scope > li.placeholder > dl > div')).toHaveLength(4);
+    expect(sizer?.querySelectorAll(':scope > li.placeholder > dl > div')).toHaveLength(5);
     expect(target.querySelector(`.stack > ${landed[index] ?? ''}`)).not.toBeNull();
     if (app !== undefined) await unmount(app);
     app = undefined;
