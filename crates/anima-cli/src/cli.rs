@@ -10,7 +10,7 @@ use crate::environment::Environment;
 use crate::failure::{Failure, exit};
 use crate::invocation::{Globals, Invocation};
 use crate::output::Output;
-use crate::{api, auth, builders, contexts, devices, releases, vpn};
+use crate::{api, auth, builders, checks, contexts, devices, maintenance, releases, vpn};
 
 /// The command line for an Anima hub.
 #[derive(Debug, Parser)]
@@ -54,6 +54,16 @@ enum Command {
         #[command(subcommand)]
         command: vpn::VpnCommand,
     },
+    /// Checks (list, get, create, update, delete, pause, resume, heartbeats, defaults, notifications).
+    Check {
+        #[command(subcommand)]
+        command: checks::CheckCommand,
+    },
+    /// Maintenance windows (list, create, update, delete, start, stop).
+    Maintenance {
+        #[command(subcommand)]
+        command: maintenance::MaintenanceCommand,
+    },
     /// Send a GraphQL document and print the hub's answer.
     Api(api::ApiArgs),
     /// Print shell completion.
@@ -69,6 +79,8 @@ impl Command {
             Self::Release { command } => command.run(invocation).await,
             Self::Builder { command } => command.run(invocation).await,
             Self::Vpn { command } => command.run(invocation).await,
+            Self::Check { command } => command.run(invocation).await,
+            Self::Maintenance { command } => command.run(invocation).await,
             Self::Api(args) => args.run(invocation).await,
             Self::Completion { shell } => {
                 let mut command = Cli::command();

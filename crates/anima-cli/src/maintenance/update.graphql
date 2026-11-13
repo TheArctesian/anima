@@ -1,0 +1,9 @@
+# `anima maintenance update`: the input replaces the whole window.
+mutation MaintenanceUpdate($id: ID!, $input: MaintenanceWindowInput!) {
+  updateMaintenanceWindow(id: $id, input: $input) {
+    id
+    name
+    kind
+    activeNow
+  }
+}

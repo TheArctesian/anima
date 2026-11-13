@@ -1,0 +1,9 @@
+# `anima maintenance create`.
+mutation MaintenanceCreate($input: MaintenanceWindowInput!) {
+  createMaintenanceWindow(input: $input) {
+    id
+    name
+    kind
+    activeNow
+  }
+}

@@ -1,0 +1,4 @@
+# `anima maintenance delete`: the answer is the deleted ID.
+mutation MaintenanceDelete($id: ID!) {
+  deleteMaintenanceWindow(id: $id)
+}

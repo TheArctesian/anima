@@ -4,6 +4,7 @@
 pub mod api;
 pub mod auth;
 pub mod builders;
+pub mod checks;
 pub mod cli;
 pub mod contexts;
 pub mod devices;
@@ -11,6 +12,7 @@ pub mod environment;
 pub mod failure;
 pub mod hub;
 pub mod invocation;
+pub mod maintenance;
 pub mod output;
 pub mod private_file;
 pub mod prompt;

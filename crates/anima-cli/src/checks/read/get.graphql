@@ -1,0 +1,115 @@
+# `anima check get`. HTTP header values and SNMP credentials are never selected; the push
+# path (it holds the token) is selected here only.
+query CheckGet($id: ID!) {
+  check(id: $id) {
+    id
+    name
+    type
+    status
+    paused
+    invert
+    intervalSeconds
+    retries
+    retryIntervalSeconds
+    degradedThresholdMs
+    certificateDaysLeft
+    domainDaysLeft
+    device {
+      id
+      name
+    }
+    parent {
+      id
+      name
+    }
+    config {
+      __typename
+      ... on IcmpConfig {
+        timeoutMs
+        ipVersion
+      }
+      ... on TcpConfig {
+        port
+        timeoutMs
+      }
+      ... on TlsConfig {
+        port
+        serverName
+        timeoutMs
+      }
+      ... on HttpConfig {
+        url
+        method
+        headers {
+          name
+        }
+        maxRedirects
+        acceptedStatus {
+          from
+          to
+        }
+        keyword
+        jsonQuery
+        jsonExpected
+        authKind
+        verifyTls
+        timeoutMs
+      }
+      ... on DnsConfig {
+        name
+        recordType
+        resolver
+        expected
+      }
+      ... on PushConfig {
+        pushPath
+      }
+      ... on GroupConfig {
+        children {
+          id
+          name
+        }
+      }
+      ... on DockerConfig {
+        container
+        timeoutMs
+      }
+      ... on SnmpConfig {
+        port
+        version
+        oid
+        expected
+        username
+        timeoutMs
+      }
+      ... on TailscalePingConfig {
+        target
+        timeoutMs
+      }
+      ... on SystemdConfig {
+        unit
+        timeoutMs
+      }
+      ... on DomainExpiryConfig {
+        domain
+        warnDays
+        timeoutMs
+      }
+    }
+    notifications {
+      resendEveryBeats
+      channels {
+        id
+        name
+        kind
+      }
+    }
+    lastHeartbeat {
+      at
+      status
+      responseTimeMs
+      message
+    }
+    uptime(window: DAY)
+  }
+}

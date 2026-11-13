@@ -1,0 +1,23 @@
+# `anima maintenance list`, and the lookup by name or ID that the other commands use.
+query MaintenanceList {
+  maintenanceWindows {
+    id
+    name
+    kind
+    timezone
+    activeManual
+    startsAt
+    endsAt
+    firstStartAt
+    everyDays
+    weekdays
+    daysOfMonth
+    startTime
+    durationMinutes
+    targets {
+      type
+      target
+    }
+    activeNow
+  }
+}

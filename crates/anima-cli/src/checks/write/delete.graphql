@@ -1,0 +1,4 @@
+# `anima check delete`: the answer is the deleted ID.
+mutation CheckDelete($id: ID!) {
+  deleteCheck(id: $id)
+}

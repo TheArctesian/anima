@@ -1,0 +1,11 @@
+# `anima check notifications set` (K1 setCheckNotifications).
+mutation CheckNotificationsSet($checkId: ID!, $input: CheckNotificationsInput!) {
+  setCheckNotifications(checkId: $checkId, input: $input) {
+    resendEveryBeats
+    channels {
+      id
+      name
+      kind
+    }
+  }
+}
