@@ -3,12 +3,14 @@ import type { IconName } from '$lib/icons/icons';
 
 /** One destination of the navigation bar. */
 export interface NavDestination {
-  readonly href: '/devices' | '/builds' | '/settings';
+  readonly href: '/devices' | '/projects' | '/builds' | '/settings';
   readonly label: string;
   readonly icon: IconName;
 }
 
 export const DEVICES: NavDestination = { href: '/devices', label: 'Devices', icon: 'nf-md-server' };
+/** Shown only while the Projects extension is on (EXT-002). */
+export const PROJECTS: NavDestination = { href: '/projects', label: 'Projects', icon: 'nf-md-folder' };
 export const BUILDS: NavDestination = { href: '/builds', label: 'Builds', icon: 'nf-md-wrench' };
 export const SETTINGS: NavDestination = { href: '/settings', label: 'Settings', icon: 'nf-md-cog' };
 

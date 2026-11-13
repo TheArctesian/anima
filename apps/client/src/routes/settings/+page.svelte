@@ -1,5 +1,6 @@
 <script lang="ts">
   import ApiKeysSection from '$lib/api-keys/ApiKeysSection.svelte';
+  import ExtensionsSection from '$lib/extensions/ExtensionsSection.svelte';
   import DefaultsSection from '$lib/checks/defaults/DefaultsSection.svelte';
   import SignOutRow from '$lib/access/SignOutRow.svelte';
   import HubRows from '$lib/hub-address/HubRows.svelte';
@@ -62,6 +63,10 @@
 
   <SettingsSection id="settings-api-keys" title="API keys" icon="nf-md-key_variant" description="Keys for programs that call the hub's GraphQL API.">
     <ApiKeysSection />
+  </SettingsSection>
+
+  <SettingsSection id="settings-extensions" title="Extensions" icon="nf-md-folder" description="What Anima does besides devices. Each starts off; a change is saved at once.">
+    <ExtensionsSection />
   </SettingsSection>
 
   <!-- Desktop only: the MCP permissions are a file on this computer, which a browser cannot reach (MCP-023). -->
