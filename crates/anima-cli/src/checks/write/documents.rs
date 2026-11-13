@@ -29,6 +29,16 @@ pub struct CheckUpdate;
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "../../contracts/schema.graphql",
+    query_path = "src/checks/write/update_ungrouped.graphql",
+    response_derives = "Debug, Serialize",
+    variables_derives = "Deserialize",
+    skip_serializing_none
+)]
+pub struct CheckUpdateUngrouped;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "../../contracts/schema.graphql",
     query_path = "src/checks/write/delete.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug"

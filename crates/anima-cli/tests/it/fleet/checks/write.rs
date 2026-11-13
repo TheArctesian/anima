@@ -128,6 +128,46 @@ async fn check_update_sends_only_the_settings_named() {
 }
 
 #[tokio::test]
+async fn check_update_no_parent_sends_an_explicit_null_parent_with_the_other_settings() {
+    let hub = FakeHub::start().await;
+    hub.answer("CheckUpdateUngrouped", written("updateCheck", false));
+    let run = signed_in()
+        .run(&[
+            "check",
+            "update",
+            CHECK,
+            "--no-parent",
+            "--retries",
+            "5",
+            "--hub",
+            &hub.origin,
+        ])
+        .await;
+    assert_eq!(run.code, 0, "{run:?}");
+    let sent = variables(&hub, "CheckUpdateUngrouped");
+    assert_eq!(sent, json!({ "id": CHECK, "retries": 5 }));
+    let document = include_str!("../../../../src/checks/write/update_ungrouped.graphql");
+    assert!(
+        document.contains("parentId: null"),
+        "the document clears the parent"
+    );
+
+    let run = signed_in()
+        .run(&[
+            "check",
+            "update",
+            CHECK,
+            "--no-parent",
+            "--parent",
+            "x",
+            "--hub",
+            &hub.origin,
+        ])
+        .await;
+    assert_eq!(run.code, 2, "--no-parent and --parent conflict: {run:?}");
+}
+
+#[tokio::test]
 async fn cmd_024_check_delete_needs_a_confirmation() {
     let hub = FakeHub::start().await;
     hub.answer("CheckDelete", data(json!({ "deleteCheck": CHECK })));

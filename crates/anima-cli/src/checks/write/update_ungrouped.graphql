@@ -1,0 +1,32 @@
+# `anima check update --no-parent`: the same change, with an explicit null parentId (K1
+# UpdateCheckInput.parentId is "set or clear"). A variable the operator did not give is left out.
+mutation CheckUpdateUngrouped(
+  $id: ID!
+  $name: String
+  $config: CheckConfigInput
+  $intervalSeconds: Int
+  $retries: Int
+  $retryIntervalSeconds: Int
+  $degradedThresholdMs: Int
+  $invert: Boolean
+) {
+  updateCheck(
+    id: $id
+    input: {
+      parentId: null
+      name: $name
+      config: $config
+      intervalSeconds: $intervalSeconds
+      retries: $retries
+      retryIntervalSeconds: $retryIntervalSeconds
+      degradedThresholdMs: $degradedThresholdMs
+      invert: $invert
+    }
+  ) {
+    id
+    name
+    type
+    status
+    paused
+  }
+}

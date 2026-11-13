@@ -3,7 +3,7 @@
 
 use std::path::PathBuf;
 
-use super::documents::{CheckUpdate, check_update};
+use super::documents::{CheckUpdate, CheckUpdateUngrouped, check_update, check_update_ungrouped};
 use crate::checks::config_file;
 use crate::checks::resolve::{CheckRef, find};
 use crate::checks::summary::{state, written};
@@ -24,6 +24,9 @@ pub struct UpdateArgs {
     /// Move the check into this group check, by ID or exact name.
     #[arg(long)]
     parent: Option<String>,
+    /// Take the check out of its group.
+    #[arg(long, conflicts_with = "parent")]
+    no_parent: bool,
     /// Seconds between runs.
     #[arg(long)]
     interval_seconds: Option<i64>,
@@ -47,14 +50,10 @@ impl UpdateArgs {
     /// # Errors
     /// [`Failure::Usage`] when nothing is to change or the file is wrong; the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
-        let config = self
-            .from_file
-            .as_deref()
-            .map(config_file::read)
-            .transpose()?;
-        let unchanged = config.is_none()
+        let unchanged = self.from_file.is_none()
             && self.name.is_none()
             && self.parent.is_none()
+            && !self.no_parent
             && self.interval_seconds.is_none()
             && self.retries.is_none()
             && self.retry_interval_seconds.is_none()
@@ -66,6 +65,14 @@ impl UpdateArgs {
                 hint: Some("anima check update --help".to_owned()),
             });
         }
+        if self.no_parent {
+            return self.run_ungrouped(invocation).await;
+        }
+        let config = self
+            .from_file
+            .as_deref()
+            .map(config_file::read)
+            .transpose()?;
         let hub = invocation.hub()?;
         let id = self.check.resolve(&hub).await?;
         let parent_id = match &self.parent {
@@ -85,6 +92,32 @@ impl UpdateArgs {
         let answer = hub
             .run::<CheckUpdate>(check_update::Variables { id, input })
             .await?;
+        invocation.output.data(&answer.update_check, |check| {
+            let status = state(&enum_name(&check.status), check.paused);
+            written(&check.name, &check.id, &enum_name(&check.type_), &status)
+        })
+    }
+
+    /// The change with an explicit null parent, which the generated input cannot send.
+    async fn run_ungrouped(self, invocation: &Invocation) -> Result<(), Failure> {
+        let config = self
+            .from_file
+            .as_deref()
+            .map(config_file::read)
+            .transpose()?;
+        let hub = invocation.hub()?;
+        let id = self.check.resolve(&hub).await?;
+        let variables = check_update_ungrouped::Variables {
+            id,
+            name: self.name,
+            config,
+            interval_seconds: self.interval_seconds,
+            retries: self.retries,
+            retry_interval_seconds: self.retry_interval_seconds,
+            degraded_threshold_ms: self.degraded_threshold_ms,
+            invert: self.invert,
+        };
+        let answer = hub.run::<CheckUpdateUngrouped>(variables).await?;
         invocation.output.data(&answer.update_check, |check| {
             let status = state(&enum_name(&check.status), check.paused);
             written(&check.name, &check.id, &enum_name(&check.type_), &status)
