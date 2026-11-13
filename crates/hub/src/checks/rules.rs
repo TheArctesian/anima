@@ -178,7 +178,8 @@ pub(super) fn snmp_needs_stored(input: &SnmpInput) -> bool {
 }
 
 /// Fills each secret left out from the stored secrets, only when they were given for the
-/// same version and user name (SEC-005); otherwise the field error asks for it.
+/// same version and user name (SEC-005); otherwise the field error asks for it. `stored` holds
+/// only secrets that opened for the device's current host (SEC-010).
 fn keep_snmp(
     config: &SnmpConfig,
     given: SnmpCredentials,
@@ -190,7 +191,9 @@ fn keep_snmp(
     let missing = |field: &'static str, what: &str| {
         FieldError::new(
             field,
-            format!("Enter the {what}: it is kept only for the same version and user name."),
+            format!(
+                "Enter the {what}: it is kept only for the same device host, version and user name."
+            ),
         )
     };
     match (config.version, kept) {

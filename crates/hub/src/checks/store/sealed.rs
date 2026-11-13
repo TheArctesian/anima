@@ -11,8 +11,12 @@
 //!   uses to keep secrets, so a writer who points the URL elsewhere, renames a secret header,
 //!   changes the authentication or turns TLS checks off gets `SecretsUnbound`. The secrets are
 //!   [`HttpSecrets::encode`].
-//! - SNMP, context `checks.checks.snmp:<id>`. The binding is the version and the user name.
-//!   The secrets are one kind byte (1 community, 2 v3 user), then each secret as a 2-byte
+//! - SNMP, context `checks.checks.snmp:<id>`. The binding is the version, the user name and
+//!   the device host the secrets were entered for (SEC-010). The host is the configured host
+//!   text, compared without letter case, never a resolved address: a name whose address
+//!   changes keeps its secrets, a new host text does not. A binding sealed before the host was
+//!   part of it has none; the host migration 0324 recorded in `snmp_legacy_host` stands in for
+//!   it. The secrets are one kind byte (1 community, 2 v3 user), then each secret as a 2-byte
 //!   big-endian length and its bytes.
 
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
@@ -84,19 +88,45 @@ impl HttpBinding {
     }
 }
 
-/// What SNMP secrets were given for.
+/// What SNMP secrets were given for. `host` is `None` only in a binding sealed before
+/// SEC-010.
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct SnmpBinding {
     version: SnmpVersion,
     username: Option<String>,
+    #[serde(default)]
+    host: Option<String>,
 }
 
 impl SnmpBinding {
-    fn of(config: &SnmpConfig) -> Self {
+    fn of(config: &SnmpConfig, host: &str) -> Self {
         Self {
             version: config.version,
             username: config.username.clone(),
+            host: Some(host.to_owned()),
+        }
+    }
+
+    /// Whether the secrets may go to `host` for `config`: the same version and user name, and
+    /// the host they were entered for (`legacy_host` when the binding names none).
+    ///
+    /// # Errors
+    /// `SecretsUnbound` for another version or user name, or no host at all;
+    /// `SecretsForOtherHost` for another host.
+    fn permits(
+        &self,
+        config: &SnmpConfig,
+        host: &str,
+        legacy_host: Option<&str>,
+    ) -> Result<(), Error> {
+        if self.version != config.version || self.username != config.username {
+            return Err(Error::SecretsUnbound);
+        }
+        match self.host.as_deref().or(legacy_host) {
+            Some(bound) if bound.eq_ignore_ascii_case(host) => Ok(()),
+            Some(_) => Err(Error::SecretsForOtherHost),
+            None => Err(Error::SecretsUnbound),
         }
     }
 }
@@ -192,36 +222,37 @@ pub(in crate::checks) fn open_http(
     HttpSecrets::decode(&secrets).map_err(|_| malformed())
 }
 
-/// Seals the SNMP secrets of `config` for the check.
+/// Seals the SNMP secrets of `config` for the check and the device host they were entered
+/// for (SEC-010).
 ///
 /// # Errors
 /// `Credentials` (`Random`) when the OS random source fails.
 pub(in crate::checks) fn seal_snmp(
     vault: &Vault,
     check: CheckId,
-    config: &SnmpConfig,
+    (config, host): (&SnmpConfig, &str),
     secrets: &SnmpSecrets,
 ) -> Result<Vec<u8>, Error> {
-    let binding = SnmpBinding::of(config);
+    let binding = SnmpBinding::of(config, host);
     seal_framed(vault, &context(SNMP, check), &binding, &encode(secrets))
 }
 
-/// Opens the check's SNMP secrets, if they were sealed for the version and user name
-/// `config` names.
+/// Opens the check's SNMP secrets for a probe of `host`, if they were sealed for the version
+/// and user name `config` names and for that host. `legacy_host` is the stored
+/// `snmp_legacy_host`, used only when the binding names no host.
 ///
 /// # Errors
 /// `Credentials` when the value does not open or is malformed; `SecretsUnbound` when the
-/// configuration names another version or user name than they were given for.
+/// configuration names another version or user name than they were given for;
+/// `SecretsForOtherHost` when they were entered for another host (SEC-010).
 pub(in crate::checks) fn open_snmp(
     vault: &Vault,
     check: CheckId,
-    config: &SnmpConfig,
-    bytes: &[u8],
+    (config, host): (&SnmpConfig, &str),
+    (bytes, legacy_host): (&[u8], Option<&str>),
 ) -> Result<SnmpSecrets, Error> {
     let (binding, secrets) = open_framed::<SnmpBinding>(vault, &context(SNMP, check), bytes)?;
-    if binding != SnmpBinding::of(config) {
-        return Err(Error::SecretsUnbound);
-    }
+    binding.permits(config, host, legacy_host)?;
     let secrets = decode(secrets.expose())?;
     if secrets.version() == config.version {
         Ok(secrets)

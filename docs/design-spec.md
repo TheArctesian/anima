@@ -487,6 +487,7 @@ The hub can open a session to every device. Thus the hub is a high-value target.
 - **SEC-007.** If the host key changes, the hub must stop the connection and show a warning to the operator.
 - **SEC-008.** The hub must not be available on the public internet. See Section 4.1.
 - **SEC-009.** The client must not write a credential or a token to a log file.
+- **SEC-010.** The hub must bind the SNMP secrets of a check (the v2c community and the v3 passwords) to the device host for which the operator entered them. The hub stores this host inside the encrypted value. The host is the host text of the device, not an address that the name resolves to, and letter case does not count: a name whose address changes keeps its secrets. Before the hub sends an SNMP request, it must compare the bound host with the host that it sends to. If they are different, the hub must not send a request. It must remove the secrets, record a Down heartbeat with a message that tells the operator to enter the secrets again, and write one Warning event. An update of the check keeps a secret that the operator leaves out only for the same host, version and user name; otherwise it asks for the secret. Secrets that the hub stored before this rule are bound to the host that their device had when migration 0324 ran. This is the SNMP form of the rule for HTTP check secrets, which the hub keeps only for the same URL origin. (security review, 2026-11-13)
 
 ### 4.1 Network model
 

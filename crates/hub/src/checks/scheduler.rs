@@ -5,6 +5,7 @@
 
 mod attempt;
 mod log;
+mod moved_host;
 mod notices;
 mod repair;
 mod schedule;

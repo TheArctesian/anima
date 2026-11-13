@@ -331,11 +331,16 @@ Read tools are `allow` and change tools are `off` by default (MCP-002). L: needs
    OD-17, OD-18).
 5. **MCP protocol version.** The current revision is 2026-07-28. The Rust SDK (`rmcp`) can speak
    it and the earlier revisions. Which revision each coding agent uses was not verified.
-6. **SNMP secrets after a host change.** The hub keeps a check's SNMP community and v3 passwords
-   when the device's host changes. An agent with `anima_device_update` can set the host to an
-   address it chooses, and the next SNMP check sends the community there. The hub must ask for
-   the SNMP secrets again when the host changes, as it does for an HTTP check URL. This needs a
-   hub change and an issue.
+6. **SNMP secrets after a host change.** Fixed (design specification SEC-010, security review
+   2026-11-13). Before the fix, the hub kept a check's SNMP community and v3 passwords when the
+   device's host changed, so an agent with `anima_device_update` could set the host to an
+   address it chose, and the next SNMP check sent the community there. Now the hub binds the
+   SNMP secrets to the device host for which they were entered, inside the encrypted value. At
+   each probe it compares that host with the host it sends to. If they are different, it sends
+   nothing, removes the secrets, records a Down heartbeat and writes a Warning event that tells
+   the operator to enter the secrets again. The check is made at the point of use, so it
+   protects against every way a host can change. Secrets stored before the fix are bound to the
+   host that their device had when migration 0324 ran.
 7. **`ask` trusts the MCP client.** The server cannot see who answers the approval request.
    Whatever answers it (the person, the client's own rule, or a client that the agent controls)
    decides.

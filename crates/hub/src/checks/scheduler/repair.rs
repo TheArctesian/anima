@@ -14,10 +14,13 @@ use std::net::{IpAddr, Ipv4Addr};
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
-use super::attempt::{Context, warn};
+use super::{
+    attempt::{Context, warn},
+    log::Fault,
+};
 use crate::{
     checks::{
-        self, Due,
+        Due,
         probe::{ProbeEnv, ProbeTarget, probe},
         store::repairs::{self, Seen},
     },
@@ -28,21 +31,6 @@ use crate::{
 };
 
 use rule::Port;
-
-/// Why a repair was not written; neither message holds SQL or a secret (LOG-007).
-#[derive(Debug, thiserror::Error)]
-enum Fault {
-    #[error(transparent)]
-    Checks(#[from] checks::Error),
-    #[error(transparent)]
-    Events(#[from] events::Error),
-}
-
-impl From<sqlx::Error> for Fault {
-    fn from(error: sqlx::Error) -> Self {
-        Self::Checks(error.into())
-    }
-}
 
 /// Repairs the check if it is a candidate after a Down beat at `now`. A failed read or write
 /// is logged and leaves the check untried, so a later Down beat tries again.

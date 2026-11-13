@@ -16,7 +16,7 @@ use tokio::{
 
 use super::support::{
     DOCKER_HOST, Listener, add, add_check, beats, context, database_now, device, due_at, new_check,
-    on_loopback, rng, scheduler, stored, tcp, vault,
+    on_loopback, rng, scheduler, sealer, stored, tcp, vault,
 };
 use crate::{
     checks::{
@@ -159,7 +159,7 @@ tick_test! {
             ..CheckChange::default()
         };
         let mut conn = pool.acquire().await.unwrap();
-        checks::update_check(&mut conn, &vault(), id, change).await.unwrap();
+        checks::update_check(&mut conn, sealer(&vault()), id, change).await.unwrap();
         scheduler.finish_running(now).await;
 
         assert_eq!(beats(&pool, id).await, ["down"]);
@@ -249,7 +249,7 @@ tick_test! {
             ..CheckChange::default()
         };
         let mut conn = pool.acquire().await.unwrap();
-        checks::update_check(&mut conn, &vault(), id, change).await.unwrap();
+        checks::update_check(&mut conn, sealer(&vault()), id, change).await.unwrap();
         let finished = attempt::run(&context(&pool), due, now).await;
 
         // The attempt probes the configuration stored with the secrets, so the old origin

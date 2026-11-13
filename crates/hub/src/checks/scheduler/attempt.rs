@@ -8,7 +8,7 @@ use chrono::{DateTime, TimeDelta, Utc};
 use sqlx::PgPool;
 
 use super::{
-    repair,
+    moved_host, repair,
     schedule::{self, Timing},
 };
 use crate::{
@@ -206,7 +206,7 @@ async fn observe(
         None => Some(ProbeResult::failed(&Failure::BadConfig)),
         Some(CheckConfig::Push) => Some(schedule::missed_push()),
         Some(CheckConfig::Http(_)) => observe_http(ctx, due, &target, &env).await,
-        Some(CheckConfig::Snmp(_)) => observe_snmp(ctx, due, &target, &env).await,
+        Some(CheckConfig::Snmp(_)) => observe_snmp(ctx, (due, device), &target, &env).await,
         Some(config @ (CheckConfig::Docker { .. } | CheckConfig::Systemd { .. })) => {
             let reach = Reach {
                 db: &ctx.db,
@@ -265,16 +265,19 @@ fn unopened(due: &Due, error: &Error) -> Option<ProbeResult> {
 }
 
 /// Probes the SNMP configuration stored now, read with its secrets, like [`observe_http`]:
-/// the secrets go only to the version and user name they were given for (SEC-005). The
-/// request ids and salt are drawn here; if the OS random source fails, nothing is recorded
-/// and the failure is logged, as for a failed read.
+/// the secrets go only to the version and user name they were given for (SEC-005), and only to
+/// the device host they were entered for, which is the host this attempt probes (SEC-010).
+/// Secrets entered for another host are removed and an event says so; nothing is sent. The
+/// request ids and salt are drawn here; if the OS random source fails, nothing is recorded and
+/// the failure is logged, as for a failed read.
 async fn observe_snmp(
     ctx: &Context,
-    due: &Due,
+    (due, device): (&Due, &Device),
     target: &ProbeTarget,
     env: &ProbeEnv,
 ) -> Option<ProbeResult> {
-    match checks::load_snmp_secrets(&ctx.db, &ctx.probing.vault, due.id).await {
+    let host = target.host.as_str();
+    match checks::load_snmp_secrets(&ctx.db, &ctx.probing.vault, due.id, host).await {
         Ok(Some(checks::SnmpSetup {
             config,
             secrets: Some(secrets),
@@ -286,6 +289,10 @@ async fn observe_snmp(
         }
         Ok(Some(_)) => Some(ProbeResult::failed(&Failure::SecretMissing)),
         Ok(None) => Some(ProbeResult::failed(&Failure::BadConfig)),
+        Err(Error::SecretsForOtherHost) => {
+            moved_host::forget_secrets(ctx, (due, device), host, env.now).await;
+            Some(ProbeResult::failed(&Failure::SecretsForOtherHost))
+        }
         Err(error) => unopened(due, &error),
     }
 }

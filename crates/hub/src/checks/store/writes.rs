@@ -14,7 +14,7 @@ use crate::{
         Error,
         config::{CheckConfig, HttpSecrets},
         evaluation::CheckSettings,
-        model::{Check, CheckChange, HttpSetup, Missing, PushToken, SnmpSetup},
+        model::{Check, CheckChange, HttpSetup, Missing, PushToken},
         rules::{StoredHttp, StoredSnmp},
     },
     credentials::Vault,
@@ -70,11 +70,16 @@ pub(in crate::checks) async fn insert(
     Ok(check)
 }
 
+/// The type, configuration, sealed secrets and legacy SNMP host of a check row.
+type CurrentRow = (String, Value, Option<Vec<u8>>, Option<String>);
+
 /// The stored type, configuration and sealed secrets of a check, locked for the change.
 pub(in crate::checks) struct Current {
     pub(in crate::checks) kind: String,
     config: Value,
     sealed: Option<Vec<u8>>,
+    /// The host migration 0324 bound older SNMP secrets to (SEC-010).
+    legacy_host: Option<String>,
 }
 
 impl Current {
@@ -94,19 +99,21 @@ impl Current {
         Ok(Some((config, secrets)))
     }
 
-    /// The stored SNMP configuration with its secrets opened, for the empty-secret rule.
-    /// `None` when the check is not an SNMP check or holds no secrets.
+    /// The stored SNMP configuration with its secrets opened for the device `host`, for the
+    /// empty-secret rule. `None` when the check is not an SNMP check or holds no secrets.
     pub(in crate::checks) fn snmp(
         self,
         vault: &Vault,
         check: CheckId,
+        host: &str,
     ) -> Result<Option<StoredSnmp>, Error> {
         let Some(CheckConfig::Snmp(config)) = config_of(&self.kind, self.config) else {
             return Ok(None);
         };
+        let legacy_host = self.legacy_host.as_deref();
         self.sealed
             .map(|bytes| {
-                let secrets = open_snmp(vault, check, &config, &bytes)?;
+                let secrets = open_snmp(vault, check, (&config, host), (&bytes, legacy_host))?;
                 Ok((config, secrets))
             })
             .transpose()
@@ -117,17 +124,19 @@ pub(in crate::checks) async fn lock(
     conn: &mut PgConnection,
     id: CheckId,
 ) -> Result<Current, Error> {
-    let row: Option<(String, Value, Option<Vec<u8>>)> = sqlx::query_as(
-        "SELECT type, config, secrets_sealed FROM checks.checks WHERE id = $1 FOR UPDATE",
+    let row: Option<CurrentRow> = sqlx::query_as(
+        "SELECT type, config, secrets_sealed, snmp_legacy_host FROM checks.checks \
+         WHERE id = $1 FOR UPDATE",
     )
     .bind(id)
     .fetch_optional(conn)
     .await?;
-    let (kind, config, sealed) = row.ok_or(Error::NotFound(Missing::Check(id)))?;
+    let (kind, config, sealed, legacy_host) = row.ok_or(Error::NotFound(Missing::Check(id)))?;
     Ok(Current {
         kind,
         config,
         sealed,
+        legacy_host,
     })
 }
 
@@ -161,6 +170,7 @@ pub(in crate::checks) async fn update(
                                       OR $5::jsonb ->> 'domain' = config ->> 'domain' \
                                     THEN domain_not_after END, \
             secrets_sealed = CASE WHEN $5::jsonb IS NULL THEN secrets_sealed ELSE $6 END, \
+            snmp_legacy_host = CASE WHEN $5::jsonb IS NULL THEN snmp_legacy_host END, \
             push_token = COALESCE($7, push_token), \
             interval_seconds = COALESCE($8, interval_seconds), \
             retries = COALESCE($9, retries), \
@@ -254,31 +264,6 @@ pub(in crate::checks) async fn load_http_secrets<'e>(
         .map(|bytes| open_http(vault, id, &config, &bytes))
         .transpose()?;
     Ok(Some(HttpSetup { config, secrets }))
-}
-
-/// The stored SNMP setup of the check, read like [`load_http_secrets`]: the secrets open only
-/// for the version and user name the stored configuration names (SEC-005). `None` when the
-/// check is not an SNMP check and holds no secrets.
-pub(in crate::checks) async fn load_snmp_secrets<'e>(
-    db: impl PgExecutor<'e>,
-    vault: &Vault,
-    id: CheckId,
-) -> Result<Option<SnmpSetup>, Error> {
-    let row: Option<(String, Value, Option<Vec<u8>>)> =
-        sqlx::query_as("SELECT type, config, secrets_sealed FROM checks.checks WHERE id = $1")
-            .bind(id)
-            .fetch_optional(db)
-            .await?;
-    let (kind, config, sealed) = row.ok_or(Error::NotFound(Missing::Check(id)))?;
-    let config = match config_of(&kind, config) {
-        Some(CheckConfig::Snmp(config)) => config,
-        _ if sealed.is_none() => return Ok(None),
-        _ => return Err(Error::Unreadable(id)),
-    };
-    let secrets = sealed
-        .map(|bytes| open_snmp(vault, id, &config, &bytes))
-        .transpose()?;
-    Ok(Some(SnmpSetup { config, secrets }))
 }
 
 /// Moves the check's due time from `expected` to `at`; returns whether it moved. A check

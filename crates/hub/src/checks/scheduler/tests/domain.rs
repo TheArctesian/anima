@@ -11,7 +11,7 @@ use sqlx::PgPool;
 
 use super::support::{
     DOCKER_HOST, add_check, beats, context, database_now, device, due_at, new_check, notify_on,
-    queued, rng, stored, vault,
+    queued, rng, sealer, stored, vault,
 };
 use crate::{
     checks::{
@@ -177,7 +177,7 @@ tick_test! {
             ..CheckChange::default()
         };
         let mut conn = pool.acquire().await.unwrap();
-        checks::update_check(&mut conn, &vault(), id, change).await.unwrap();
+        checks::update_check(&mut conn, sealer(&vault()), id, change).await.unwrap();
         let mut ctx = context(&pool);
         ctx.rdap = rdap(&server);
 
@@ -311,7 +311,7 @@ tick_test! {
             ..CheckChange::default()
         };
         let mut conn = pool.acquire().await.unwrap();
-        checks::update_check(&mut conn, &vault(), id, change).await.unwrap();
+        checks::update_check(&mut conn, sealer(&vault()), id, change).await.unwrap();
         let at = database_now(&pool).await;
 
         let ends = at + TimeDelta::days(3);

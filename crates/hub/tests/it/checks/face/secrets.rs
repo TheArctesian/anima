@@ -11,7 +11,7 @@ use anima_hub::{
 };
 use sqlx::PgPool;
 
-use super::{PVE_01, create, new_check, vault, vault_with};
+use super::{PVE_01, create, new_check, sealer, vault, vault_with};
 
 macro_rules! devices_test {
     ($(async fn $name:ident($pool:ident: PgPool) $body:block)+) => {$(
@@ -78,7 +78,7 @@ async fn update(pool: &PgPool, id: CheckId, definition: Definition) -> Result<()
         definition: Some(definition),
         ..CheckChange::default()
     };
-    checks::update_check(&mut conn, &vault(), id, change)
+    checks::update_check(&mut conn, sealer(&vault()), id, change)
         .await
         .map(|_| ())
 }
@@ -165,7 +165,7 @@ devices_test! {
         let id = web_check(&pool, "Web UI").await;
         let mut conn = pool.acquire().await.unwrap();
         let change = CheckChange { name: Some("Renamed".to_owned()), ..CheckChange::default() };
-        checks::update_check(&mut conn, &vault(), id, change).await.unwrap();
+        checks::update_check(&mut conn, sealer(&vault()), id, change).await.unwrap();
         assert_eq!(secrets(&pool, id).await.password.as_ref().map(text), Some(PASSWORD));
     }
 
@@ -190,7 +190,7 @@ devices_test! {
         assert!(matches!(&error, Error::Validation(e) if e[0].field == "config"), "{error:?}");
         let mut conn = pool.acquire().await.unwrap();
         let fresh = new_check(PVE_01, "Fresh", http("https://x.lan/", "", basic(PASSWORD)));
-        let error = checks::create_check(&mut conn, &vault(), fresh).await.unwrap_err();
+        let error = checks::create_check(&mut conn, sealer(&vault()), fresh).await.unwrap_err();
         assert!(matches!(&error, Error::Validation(e) if e[0].field == "headers"), "{error:?}");
         assert_eq!(secrets(&pool, id).await.password.as_ref().map(text), Some(PASSWORD));
     }

@@ -105,7 +105,7 @@ fixture_test! {
         blank["snmp"].as_object_mut().unwrap().remove("privacyPassword");
         let updated = with_variables(&schema, UPDATE, json!({ "id": id, "input": { "config": blank } })).await;
         assert!(updated.errors.is_empty(), "{:?}", updated.errors);
-        let setup = checks::load_snmp_secrets(&pool, &vault(), id.parse().unwrap())
+        let setup = checks::load_snmp_secrets(&pool, &vault(), id.parse().unwrap(), "pve-01.home.lan")
             .await
             .unwrap()
             .unwrap();

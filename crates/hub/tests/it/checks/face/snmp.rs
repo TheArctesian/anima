@@ -1,6 +1,7 @@
 //! SNMP check secrets against the database: sealed apart from `config`, bound to their check,
-//! version and user name, opened only for the probe, and kept on update only for the same
-//! version and user name (SEC-003, SEC-005, LOG-007, D-5).
+//! version, user name and device host, opened only for the probe of that host, and kept on
+//! update only for the same version, user name and host (SEC-003, SEC-005, SEC-010, LOG-007,
+//! D-5).
 
 use anima_hub::{
     checks::{
@@ -12,7 +13,7 @@ use anima_hub::{
 };
 use sqlx::PgPool;
 
-use super::{PVE_01, create, new_check, vault, vault_with};
+use super::{PVE_01, PVE_01_HOST, create, new_check, sealer, vault, vault_with};
 
 macro_rules! devices_test {
     ($(async fn $name:ident($pool:ident: PgPool) $body:block)+) => {$(
@@ -69,7 +70,7 @@ fn text(secret: &Secret) -> String {
 }
 
 async fn opened(pool: &PgPool, id: CheckId) -> Result<SnmpSecrets, Error> {
-    let setup = checks::load_snmp_secrets(pool, &vault(), id)
+    let setup = checks::load_snmp_secrets(pool, &vault(), id, PVE_01_HOST)
         .await?
         .unwrap();
     Ok(setup.secrets.unwrap())
@@ -88,7 +89,7 @@ async fn update(pool: &PgPool, id: CheckId, definition: Definition) -> Result<()
         definition: Some(definition),
         ..CheckChange::default()
     };
-    checks::update_check(&mut conn, &vault(), id, change)
+    checks::update_check(&mut conn, sealer(&vault()), id, change)
         .await
         .map(|_| ())
 }
@@ -146,7 +147,7 @@ devices_test! {
         .await
         .unwrap();
         assert!(matches!(opened(&pool, other).await, Err(Error::Credentials(_))));
-        let wrong_key = checks::load_snmp_secrets(&pool, &vault_with(8), id).await;
+        let wrong_key = checks::load_snmp_secrets(&pool, &vault_with(8), id, PVE_01_HOST).await;
         assert!(matches!(wrong_key, Err(Error::Credentials(_))));
     }
 
@@ -160,11 +161,11 @@ devices_test! {
                 .bind(id).fetch_one(&pool).await.unwrap();
             let sql = format!("UPDATE checks.checks SET config = {edit} WHERE id = $1");
             sqlx::query(&sql).bind(id).execute(&pool).await.unwrap();
-            let loaded = checks::load_snmp_secrets(&pool, &vault(), id).await;
+            let loaded = checks::load_snmp_secrets(&pool, &vault(), id, PVE_01_HOST).await;
             assert!(matches!(loaded, Err(Error::SecretsUnbound)), "{edit}");
             sqlx::query("UPDATE checks.checks SET config = $2 WHERE id = $1")
                 .bind(id).bind(kept).execute(&pool).await.unwrap();
-            assert!(checks::load_snmp_secrets(&pool, &vault(), id).await.is_ok());
+            assert!(checks::load_snmp_secrets(&pool, &vault(), id, PVE_01_HOST).await.is_ok());
         }
     }
 
@@ -205,9 +206,9 @@ devices_test! {
 
     async fn d_5_another_type_has_no_snmp_setup(pool: PgPool) {
         let ping = create(&pool, new_check(PVE_01, "Ping", super::icmp())).await;
-        assert!(checks::load_snmp_secrets(&pool, &vault(), ping).await.unwrap().is_none());
+        assert!(checks::load_snmp_secrets(&pool, &vault(), ping, PVE_01_HOST).await.unwrap().is_none());
         let missing = CheckId::from(uuid::Uuid::now_v7());
-        let loaded = checks::load_snmp_secrets(&pool, &vault(), missing).await;
+        let loaded = checks::load_snmp_secrets(&pool, &vault(), missing, PVE_01_HOST).await;
         assert!(matches!(loaded, Err(Error::NotFound(_))));
     }
 }

@@ -7,7 +7,7 @@ mod heartbeat_cost;
 mod probe;
 mod push;
 mod sealing;
-mod snmp;
+pub(in crate::checks) mod snmp;
 mod standing;
 mod stored_config;
 mod tailscale;

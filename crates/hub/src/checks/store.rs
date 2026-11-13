@@ -26,6 +26,7 @@ pub(super) mod repairs;
 mod retention;
 mod rows;
 mod sealed;
+mod snmp;
 mod uptime;
 mod writes;
 
@@ -54,10 +55,11 @@ use rows::{CheckRow, StandingRow, to_checks};
 #[cfg(test)]
 pub(in crate::checks) use sealed::{open_http, open_snmp};
 pub(super) use sealed::{seal_http, seal_snmp};
+pub(super) use snmp::{forget_snmp_secrets, load_snmp_secrets};
 pub(super) use uptime::{check_tallies, tallies};
 pub(super) use writes::{
-    Change, Current, Insert, delete, insert, load_http_secrets, load_snmp_secrets, lock,
-    set_next_due, set_paused, update,
+    Change, Current, Insert, delete, insert, load_http_secrets, lock, set_next_due, set_paused,
+    update,
 };
 
 pub(super) async fn fetch<'e>(db: impl PgExecutor<'e>, id: CheckId) -> Result<Check, Error> {

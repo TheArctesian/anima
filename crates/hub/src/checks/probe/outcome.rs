@@ -177,6 +177,13 @@ pub enum Failure {
     /// user name (SNMP), than the stored configuration names, so they are not sent (SEC-005).
     #[error("the check secrets do not match its configuration")]
     SecretsUnbound,
+    /// The SNMP secrets were entered for another device host, so nothing was sent (SEC-010).
+    /// The text names no host (LOG-007).
+    #[error(
+        "the device host changed after the SNMP secrets were entered, so they are not sent: \
+         enter the community or the v3 passwords again"
+    )]
+    SecretsForOtherHost,
     /// A PUSH check got no push within its interval (CHK-002).
     #[error("no push received")]
     NoPush,
