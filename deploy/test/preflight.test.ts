@@ -183,6 +183,25 @@ describe("preflight networks (VP-13)", () => {
   });
 });
 
+describe("preflight host (C-8)", () => {
+  test("C-8 host checks the .env settings as the operator, with no Docker and no secrets folder", async () => {
+    await withFolder(async (bin) => {
+      writeFileSync(join(bin, "docker"), "#!/bin/sh\necho docker was asked >&2\nexit 1\n");
+      chmodSync(join(bin, "docker"), 0o755);
+      const path = `${bin}:${process.env["PATH"] ?? ""}`;
+      const env = { PATH: path, ANIMA_HUB_ADDRESS: "100.64.0.5", ANIMA_VPS_PUBLIC_ADDRESS: "31.220.53.226" };
+      const ok = await finish(["sh", SCRIPT, "host"], { env });
+      expect(ok.stderr).toBe("");
+      expect(ok.stdout).toBe("preflight: host ok\n");
+      const refused = await finish(["sh", SCRIPT, "host"], { env: { ...env, ANIMA_HUB_ADDRESS: "10.0.0.1" } });
+      expect(refused.exitCode).toBe(1);
+      expect(refused.stderr).toContain("not in 100.64.0.0/10");
+      const asked = await finish(["sh", SCRIPT, "docker"], { env });
+      expect(asked.stderr).toContain("docker was asked");
+    });
+  });
+});
+
 describe("preflight all", () => {
   test("NET-003 refuses a private VPS public address before it looks at Docker", async () => {
     const result = await finish(["sh", SCRIPT, "all"], {

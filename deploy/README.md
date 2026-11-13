@@ -97,13 +97,18 @@ Each service writes its log as JSON files, 10 MB each, 10 files.
 3. Check the host:
 
    ```sh
-   sudo sh -c 'set -a; . ./.env; set +a; sh bin/preflight'
+   set -a; . ./.env; set +a
+   sh bin/preflight host
+   sudo sh bin/preflight docker
+   sudo sh bin/preflight secrets
    ```
 
    It refuses an address outside 100.64.0.0/10 (so never `0.0.0.0`), a Docker Engine older
    than 28, a network subnet outside 172.30.0.0/16 or a fixed hub or guacd address that Docker
-   could hand out (VP-13), and a missing secret file. Run it as root, as above: only root and the
-   hub's group can search `secrets/updater/`, and without sudo preflight refuses to guess.
+   could hand out (VP-13), and a missing secret file. `host` reads `.env` and runs as you. The
+   `docker` and `secrets` checks read nothing from `.env` and run as root, so root never reads
+   your `.env`: only root and the hub's group can search `secrets/updater/`, and without sudo
+   preflight refuses to guess.
 
 4. Start:
 
@@ -288,9 +293,8 @@ step (VPS-005): agents do not create the R2 token or change `deploy/.env` on the
   `compose.yaml` mounts the folder read-only at `/run/secrets/updater` (`ANIMA_UPDATER_KEY_FILE`,
   `ANIMA_UPDATER_KEY_PASSWORD_FILE`). It is a folder, not two compose secrets, because compose
   refuses to create a container whose secret file is absent; with the folder, a hub without the
-  key still starts, with publishing off (D-44). Run preflight as root,
-  `sudo sh -c 'set -a; . ./.env; set +a; sh bin/preflight'`: it cannot search the folder
-  otherwise, and says so. It warns, and passes, when either file is absent, and for any other
+  key still starts, with publishing off (D-44). Check the files as root, with no `.env`:
+  `sudo sh bin/preflight secrets`; it cannot search the folder otherwise, and says so. It warns, and passes, when either file is absent, and for any other
   name in the folder (a backup, a `.pub` file, an editor's swap file: the hub can read it). A folder that holds a
   file must be `root:10001` mode `0750`; a file that is there must be mode `0440` in group 10001,
   and `updater_key` must not be empty. The hub opens the key once at start and never logs it, its

@@ -1,10 +1,12 @@
 #!/bin/sh
 # Checks the host before `docker compose up` (NET-003, DB-002). With no argument it checks
-# all five things from the environment and exits 1 on the first failure:
+# all five things and exits 1 on the first failure. `host` checks the three that read .env
+# (address, public, networks), as the operator; `docker` and `secrets` read nothing from
+# .env and run as root, so root never sources the operator's .env (C-8):
 #   address  ANIMA_HUB_ADDRESS is an IPv4 address in 100.64.0.0/10 (the VPN range).
 #   public   ANIMA_VPS_PUBLIC_ADDRESS is a public IPv4 address (not VPN, private or reserved).
 #   docker   the Docker Engine is version 28 or later (earlier engines let a routed LAN
-#            neighbour reach unpublished container ports).
+#            neighbour reach unpublished container ports). With no version, asks the engine.
 #   networks every ANIMA_*_SUBNET and ANIMA_HUB_IP_RANGE is inside 172.30.0.0/16, the range the VPS
 #            firewall keeps off the VPN and the hub refuses as a site subnet; ANIMA_HUB_IP and
 #            ANIMA_GUACD_IP differ and are outside ANIMA_HUB_IP_RANGE, so Docker gives neither to
@@ -241,9 +243,15 @@ check_updater_file() {
 case ${1:-all} in
 address) check_address "${2:-}" ;;
 public) check_public_address "${2:-}" ;;
-docker) check_docker "${2:-}" ;;
+docker) check_docker "${2-$(docker version --format '{{.Server.Version}}')}" ;;
 networks) check_networks ;;
 secrets) check_secrets "${2:-$here/../secrets}" "${3:-0}" "${4:-10001}" ;;
+host)
+    check_address "${ANIMA_HUB_ADDRESS:-}"
+    check_public_address "${ANIMA_VPS_PUBLIC_ADDRESS:-}"
+    check_networks
+    echo "preflight: host ok"
+    ;;
 all)
     check_address "${ANIMA_HUB_ADDRESS:-}"
     check_public_address "${ANIMA_VPS_PUBLIC_ADDRESS:-}"
