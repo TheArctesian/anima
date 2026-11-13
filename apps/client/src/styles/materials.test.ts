@@ -44,9 +44,10 @@ describe('MAT-010: the one place that makes glass', () => {
     expect(code).not.toMatch(/#[0-9a-f]{3,8}\b|\d+(\.\d+)?(px|ms|s|%)|rgba?\(|hsla?\(/i);
   });
 
-  it('MAT-010: only the logs panel (MAT-009 says it is opaque; reported to the operator) still repeats a blur in its own component', () => {
+  it('MAT-010: no component repeats a blur of its own, and the logs panel is opaque (MAT-009)', () => {
     const repeating = [...svelteFiles(`${src}lib/`), ...svelteFiles(`${src}routes/`)].filter((path) => /backdrop-filter:\s*blur|material-\w+-blur/.test(read(path)));
-    expect(repeating.map((path) => path.slice(src.length))).toEqual(['lib/events/panel/LogsPanel.svelte']);
+    expect(repeating.map((path) => path.slice(src.length))).toEqual([]);
+    expect(read(`${src}lib/events/panel/LogsPanel.svelte`)).toContain('background: var(--surface-raised);');
   });
 
   it('MAT-010: the navigation bar, the menus, the tip and the modal glass layer take the shared class', () => {
