@@ -1,0 +1,9 @@
+query RetentionList {
+  retention {
+    subject
+    days
+    minDays
+    maxDays
+    defaultDays
+  }
+}

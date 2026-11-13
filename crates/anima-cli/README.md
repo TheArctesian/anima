@@ -46,6 +46,17 @@ For your own checks use `Failure::NotFound { message, hint }` or `Failure::Usage
 under `--no-input` (CMD-023). A delete calls `confirm` (`--yes`, CMD-024). A secret comes from
 a prompt, standard input or `--from-file`, never an argument (CMD-025).
 
+## Watch
+
+A `watch` command is a subscription document and a loop (`events/watch.rs` is the example):
+`src/<noun>/watch.graphql` (`subscription DeviceStatusChanged(..)`), its `GraphQLQuery` struct, then
+`Subscription::open::<DeviceStatusChanged>(&hub, variables).await?` (`hub/subscription.rs`) and
+`while let Some(answer) = stream.next().await { let value = answer?.device_status_changed; .. }`.
+The socket speaks `graphql-transport-ws`, sends the token in `connection_init` (never in the URL),
+answers pings, and maps close code 4403 to `UNAUTHENTICATED`. Print each answer with
+`output::stream::line` (one line for a person, `serde_json::to_string` with `--json`) and stop when
+it returns `Reader::Gone`. Test it with `SubscriptionHub::start(Script::Next(..))`.
+
 ## Test
 
 Integration tests run the real program: `tests/it/<noun>.rs` (a folder when it grows), one

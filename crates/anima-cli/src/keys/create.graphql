@@ -1,0 +1,15 @@
+# The secret is shown once, by `key create`, and nowhere else (INT-003).
+mutation KeyCreate($input: ApiKeyInput!) {
+  createApiKey(input: $input) {
+    key {
+      id
+      name
+      scope
+      prefix
+      expiresAt
+      createdAt
+      lastUsedAt
+    }
+    secret
+  }
+}

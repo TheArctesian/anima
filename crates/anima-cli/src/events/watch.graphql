@@ -1,0 +1,11 @@
+subscription EventAdded($minSeverity: Severity) {
+  eventAdded(minSeverity: $minSeverity) {
+    id
+    at
+    severity
+    source
+    deviceId
+    deviceName
+    message
+  }
+}

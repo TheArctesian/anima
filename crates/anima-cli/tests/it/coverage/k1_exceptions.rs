@@ -60,37 +60,12 @@ pub const EXCEPTIONS: &[(&str, &str)] = &[
     ("Mutation.enrolAgent", "agent enrol"),                         // T2
     ("Mutation.revokeAgentToken", "agent revoke"),                  // T2
     // T4: event, audit, notify, retention, key, and the watch commands.
-    ("Query.events", "event list"),                        // T4
-    ("Query.audit", "audit list"),                         // T4
-    ("Query.apiKeys", "key list"),                         // T4
-    ("Query.notificationChannels", "notify channel list"), // T4
-    ("Query.notificationSettings", "notify settings get"), // T4
-    ("Query.deliveries", "notify deliveries"),             // T4
-    ("Query.retention", "retention list"),                 // T4
-    ("Mutation.createApiKey", "key create"),               // T4
-    ("Mutation.revokeApiKey", "key revoke"),               // T4
-    (
-        "Mutation.createNotificationChannel",
-        "notify channel create",
-    ), // T4
-    (
-        "Mutation.updateNotificationChannel",
-        "notify channel update",
-    ), // T4
-    (
-        "Mutation.deleteNotificationChannel",
-        "notify channel delete",
-    ), // T4
-    ("Mutation.sendTestNotification", "notify channel test"), // T4
-    ("Mutation.setNotificationSettings", "notify settings set"), // T4
-    ("Mutation.setRetention", "retention set"),            // T4
-    ("Subscription.deviceStatusChanged", "device watch"),  // T4
-    ("Subscription.heartbeatAdded", "check watch"),        // T4
-    ("Subscription.eventAdded", "event watch"),            // T4
-    ("Subscription.sessionChanged", "session watch"),      // T4
+    ("Subscription.deviceStatusChanged", "device watch"), // T4
+    ("Subscription.heartbeatAdded", "check watch"),       // T4
+    ("Subscription.sessionChanged", "session watch"),     // T4
     ("Subscription.metricsAdded", "device metrics --watch"), // T4
     ("Subscription.buildJobUpdated", "release log --follow"), // T4
-    ("Subscription.vpnChanged", "vpn status --watch"),     // T4
+    ("Subscription.vpnChanged", "vpn status --watch"),    // T4
     // T6: session, ssh, files.
     ("Query.sessions", "session list"),              // T6
     ("Mutation.startSession", "ssh <device>"),       // T6

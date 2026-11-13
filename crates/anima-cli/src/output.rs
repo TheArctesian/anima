@@ -1,6 +1,7 @@
 //! Where a command's results go (CMD-020, CMD-022): data on standard output as a table or, with
 //! `--json`, as JSON with the K1 field names; messages and errors on standard error.
 
+pub mod stream;
 pub mod table;
 pub mod text;
 

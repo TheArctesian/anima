@@ -1,0 +1,10 @@
+query SettingsGet {
+  notificationSettings {
+    certificateDays
+    template {
+      title
+      body
+    }
+    placeholders
+  }
+}

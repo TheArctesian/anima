@@ -1,0 +1,21 @@
+query AuditList($first: Int, $after: String) {
+  audit(first: $first, after: $after) {
+    edges {
+      cursor
+      node {
+        id
+        at
+        operatorName
+        action
+        targetType
+        targetId
+        clientAddr
+        change
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+  }
+}
