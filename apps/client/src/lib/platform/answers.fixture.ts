@@ -14,6 +14,7 @@ export const DESKTOP_MAC: Capabilities = {
   thisMachine: true,
   systemSettings: true,
   builds: true,
+  mcpPermissions: true,
   overlayTitleBar: true,
 };
 

@@ -1,12 +1,10 @@
 //! `anima mcp permissions show|set|reset`: each tool's saved state for one hub, by hub origin,
 //! in the configuration file (MCP-012, MCP-014). The Settings panel reads `show --json`.
 
-use serde::Serialize;
-
 use super::catalogue::{Kind, ToolSet};
-use super::permissions::{Permissions, Scope, State, resolve};
-use super::selection::{Flags, Row, select, statement};
-use super::tools::{Entry, catalogue};
+use super::permission_change::{Change, Shown, save, saved_in, shown};
+use super::permissions::{Permissions, State};
+use super::tools::catalogue;
 use crate::failure::Failure;
 use crate::invocation::Invocation;
 use crate::output::Table;
@@ -83,26 +81,6 @@ impl Bulk {
     }
 }
 
-/// One row of `permissions show --json`.
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct ShownTool {
-    toolset: &'static str,
-    tool: &'static str,
-    kind: Kind,
-    needs_sign_in: bool,
-    state: State,
-    description: &'static str,
-}
-
-/// `permissions show --json`.
-#[derive(Debug, Serialize)]
-struct Shown {
-    hub: String,
-    summary: String,
-    tools: Vec<ShownTool>,
-}
-
 impl PermissionsCommand {
     /// Shows, saves or resets this hub's permissions.
     ///
@@ -114,10 +92,16 @@ impl PermissionsCommand {
             Self::Show => show(invocation, &saved(invocation)?),
             Self::Set(args) => args.save(invocation),
             Self::Reset => {
-                let mut config = invocation.config()?;
-                config.mcp.remove(&invocation.origin()?.as_text());
-                config.save(invocation.config_dir()?)?;
-                show(invocation, &Permissions::default())
+                let origin = invocation.origin()?;
+                let mut permissions = saved(invocation)?;
+                Change::Reset.apply(&mut permissions, &catalogue())?;
+                save(
+                    invocation.config()?,
+                    invocation.config_dir()?,
+                    &origin,
+                    &permissions,
+                )?;
+                show(invocation, &permissions)
             }
         }
     }
@@ -128,36 +112,14 @@ impl PermissionsCommand {
 /// # Errors
 /// [`Failure`] for an unreadable configuration or a saved name that does not exist.
 pub fn saved(invocation: &Invocation) -> Result<Permissions, Failure> {
-    let origin = invocation.origin()?.as_text();
-    match invocation.config()?.mcp.get(&origin) {
-        Some(saved) => Permissions::from_saved(saved, &catalogue()),
-        None => Ok(Permissions::default()),
-    }
+    saved_in(&invocation.config()?, &invocation.origin()?)
 }
 
 fn show(invocation: &Invocation, permissions: &Permissions) -> Result<(), Failure> {
-    let rows = select(catalogue(), None, permissions, &Flags::default());
-    let summary = statement(&rows);
-    let shown = Shown {
-        hub: invocation.origin()?.as_text(),
-        tools: rows.iter().map(shown).collect(),
-        summary: summary.clone(),
-    };
+    let shown = shown(&invocation.origin()?, permissions);
     invocation.output.data(&shown, table)?;
-    invocation.output.note(&summary);
+    invocation.output.note(&shown.summary);
     Ok(())
-}
-
-fn shown(row: &Row) -> ShownTool {
-    let definition = &row.entry.definition;
-    ShownTool {
-        toolset: row.entry.set.name(),
-        tool: row.entry.name,
-        kind: row.entry.kind(),
-        needs_sign_in: definition.access.needs_sign_in(),
-        state: row.state,
-        description: definition.description,
-    }
 }
 
 fn table(shown: &Shown) -> Table {
@@ -177,44 +139,52 @@ fn table(shown: &Shown) -> Table {
 
 impl SetArgs {
     fn save(self, invocation: &Invocation) -> Result<(), Failure> {
-        let origin = invocation.origin()?.as_text();
-        let mut config = invocation.config()?;
+        let origin = invocation.origin()?;
         let mut permissions = saved(invocation)?;
-        self.apply(&mut permissions, &catalogue())?;
-        if self.bulk.allow_all && self.kind != Some(Kind::Read) {
+        let changes = self.changes();
+        for change in &changes {
+            change.apply(&mut permissions, &catalogue())?;
+        }
+        if changes.iter().any(Change::allows_changes) {
             let question = "Allow change tools: the agent may then change the hub without asking?";
             invocation.prompter.confirm(question)?;
         }
-        config.mcp.insert(origin, permissions.to_saved());
-        config.save(invocation.config_dir()?)?;
+        save(
+            invocation.config()?,
+            invocation.config_dir()?,
+            &origin,
+            &permissions,
+        )?;
         show(invocation, &permissions)
     }
 
-    /// The new states laid over `permissions`, in order: bulk, allow, ask, off.
-    fn apply(&self, permissions: &mut Permissions, catalogue: &[Entry]) -> Result<(), Failure> {
-        let scope = Scope {
-            set: self.toolset,
-            kind: self.kind,
-        };
+    /// The new states as changes, in order: bulk, allow, ask, off.
+    fn changes(&self) -> Vec<Change> {
+        let mut changes = Vec::new();
         if self.read_only {
-            let change = Scope {
-                set: None,
+            changes.push(Change::Bulk {
+                toolset: None,
                 kind: Some(Kind::Change),
-            };
-            permissions.choose_all(State::Off, change, catalogue);
+                state: State::Off,
+            });
         }
         if let Some(state) = self.bulk.state() {
-            permissions.choose_all(state, scope, catalogue);
+            changes.push(Change::Bulk {
+                toolset: self.toolset,
+                kind: self.kind,
+                state,
+            });
         }
         for (names, state) in [
             (&self.allow, State::Allow),
             (&self.ask, State::Ask),
             (&self.off, State::Off),
         ] {
-            for tool in resolve(names, catalogue)? {
-                permissions.choose(tool, state);
-            }
+            changes.push(Change::Choose {
+                names: names.clone(),
+                state,
+            });
         }
-        Ok(())
+        changes
     }
 }

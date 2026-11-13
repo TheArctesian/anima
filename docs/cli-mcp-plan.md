@@ -213,6 +213,47 @@ Not in the command line, with the reason:
 - **MCP-017.** Each tool has at least one integration test that calls it over JSON-RPC against
   the scripted hub (`tests/it/mcp/`).
 
+### Settings panel
+
+The desktop application has an "MCP" section on the Settings page. It sets the same states as
+`anima mcp permissions` (CMD-030: the command line comes first; this is the graphical client).
+
+- **MCP-018.** The section reads and saves the states through two shell commands that call the
+  library of `anima-cli`: the same functions and the same configuration file as
+  `permissions show`, `set` and `reset` (MCP-014), with the same atomic replace of the file. The
+  shell does not start the `anima` program, does not parse its output, and does not read a token.
+  The hub address is checked with the command line's own origin parser. An error that the
+  shell returns is a code with fixed text; it holds no path and no file content (LOG-007).
+  At the top the section says in plain words what the MCP server is, that the states apply to
+  coding agents on this computer for this hub, that the hub token still limits everything, and
+  that `anima mcp` starts it.
+- **MCP-019.** The section shows one group for each tool set, in the order of Section 7, closed
+  by default. The group's name carries the number of tools in each state, in words ("3 allow,
+  1 ask, 2 off"). A group opens to one row for each tool: its name in plain words, the tool ID
+  in a secondary style, a "Read" or "Change" mark, a "Needs sign-in" mark with a hint where
+  `needsSignIn` is true (the tool works only when `anima mcp` runs with the operator's own
+  sign-in, never an API key; MCP-003), its description on request, and a choice of Allow, Ask
+  or Off.
+- **MCP-020.** Bulk actions are "Allow all", "Ask for all", "Turn off all changes" (every change
+  tool `off`: read-only) and "Reset" (MCP-014: `permissions reset`) for all tools. Each group has
+  "Allow all", "Ask for all" and "Turn off changes" for its own set. "Allow all" asks for a
+  confirmation first, because it turns on change tools without a question for each call, as
+  `--allow-all` does (MCP-014). Every other action is saved at once. A group has no "Reset":
+  it would forget the states of every set.
+- **MCP-021.** The choice for one tool is a radio group named after the tool. A change shows at
+  once and is saved after the changes before it, one at a time. If the shell refuses it, the
+  control goes back to its earlier state and the section says: "Not saved", the reason in
+  fixed words, and that the control went back. While the file is read the section shows a
+  loading state; if it cannot be read, an error without a path and a "Try again" button.
+- **MCP-022.** Every control can be reached with the keyboard and shows a focus ring. The state
+  of a tool is a word, never a colour alone. After a change the section shows one quiet line
+  ("Saved. Devices: every tool set to ask (7 tools).") in a polite live region, also for a bulk
+  action; a failure is in an alert region. There is one message for a bulk action, not one for
+  each tool.
+- **MCP-023.** The section is shown in the desktop application only. The states are a file on
+  this computer, which a browser cannot read, and the hub does not hold them: they belong to the
+  computer that runs `anima mcp`, not to the account.
+
 ### Tools
 
 Read tools are `allow` and change tools are `off` by default (MCP-002). L: needs a login token.
@@ -255,6 +296,9 @@ Read tools are `allow` and change tools are `off` by default (MCP-002). L: needs
    R2 release feed) is not planned.
 5. **MCP protocol version.** The current revision is 2026-07-28. The Rust SDK (`rmcp`) can speak
    it and the earlier revisions. Which revision each coding agent uses was not verified.
+6. **SET-004 lists the sections.** The Settings page now has an "MCP" section (MCP-018..023), and
+   `docs/design-spec.md` SET-004 does not name it. The operator must approve adding "MCP" to the
+   list; this plan does not edit the design spec.
 
 ## 10. Work
 
@@ -269,7 +313,7 @@ Read tools are `allow` and change tools are `off` by default (MCP-002). L: needs
 | T7 | `anima mcp`: server, tool sets, read tools, change tools | Opus | security |
 | T8 | Review (CUPID, tests), security review, gates | Sonnet, Opus | |
 | T9 | Per-tool states `allow`, `ask`, `off`; `permissions show\|set\|reset`; `ask` by elicitation; the `sessions` tool set (MCP-012..017) | Opus | security |
-| T10 | The MCP permissions panel in the desktop Settings page, on `permissions show --json` | | |
+| T10 | The MCP permissions panel in the desktop Settings page, on the library behind `permissions show\|set\|reset` (MCP-018..023) | Sonnet | security (file write) |
 
 Done when: `bun run gates` passes; each row of Section 6 works against a test hub; the coverage
 test of CMD-031 passes; an MCP client lists the tools and reads the device list.

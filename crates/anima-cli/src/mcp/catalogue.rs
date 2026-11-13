@@ -1,10 +1,11 @@
 //! The words of the tool catalogue: the tool sets, what a tool needs from the token, and its
 //! kind (MCP-002, MCP-003).
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 /// A group of tools for one operator noun (`--toolsets`, MCP-002).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, clap::ValueEnum)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Deserialize, clap::ValueEnum)]
+#[serde(rename_all = "lowercase")]
 pub enum ToolSet {
     Devices,
     Checks,
@@ -31,7 +32,7 @@ pub enum Access {
 }
 
 /// Whether a tool reads or changes things; each kind has its own default state (MCP-002).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, clap::ValueEnum)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, clap::ValueEnum)]
 #[serde(rename_all = "lowercase")]
 pub enum Kind {
     Read,

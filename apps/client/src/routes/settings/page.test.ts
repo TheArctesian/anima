@@ -31,6 +31,8 @@ vi.mock('$lib/notifications/NotificationsSection.svelte', () => ({ default: () =
 vi.mock('$lib/checks/defaults/DefaultsSection.svelte', () => ({ default: () => undefined }));
 // The Data retention section loads its own data and has its own tests in `$lib/retention/` (WP-50 F-3, F-10).
 vi.mock('$lib/retention/RetentionSection.svelte', () => ({ default: () => undefined }));
+// The MCP section reads the shell and has its own tests in `$lib/mcp/` (MCP-018, MCP-023).
+vi.mock('$lib/mcp/McpSection.svelte', () => ({ default: () => undefined }));
 // The VPN section loads its own data and has its own tests in `$lib/vpn/` (SET-003).
 vi.mock('$lib/vpn/VpnSection.svelte', () => ({ default: () => undefined }));
 
@@ -119,10 +121,22 @@ it('SET-001, UI-005, MOT-043: the page is the title, then Account, then Appearan
 it('SET-001, UPD-006, BLD-020: the desktop app adds the Updates section before API keys, holding the update, log folder and Builds rows', async () => {
   mocks.platform = DESKTOP_MAC;
   const target = await open({ Me: ok({ me: { username: 'ann' } }) });
-  expect(sectionHeadings(target)).toEqual(['Account', 'Hub', 'Appearance', 'Notifications', 'Default check settings', 'Data retention', 'Updates', 'API keys', 'VPN']);
+  expect(sectionHeadings(target)).toEqual(['Account', 'Hub', 'Appearance', 'Notifications', 'Default check settings', 'Data retention', 'Updates', 'API keys', 'MCP', 'VPN']);
   const updates = target.querySelector('section[aria-labelledby="settings-updates"]');
   expect(updates?.querySelectorAll('[data-stub]')).toHaveLength(3);
   expect(target.querySelectorAll('[data-stub]')).toHaveLength(3);
+});
+
+it('MCP-023: the web client shows no MCP section, because the permissions are a file on this computer', async () => {
+  const target = await open({ Me: ok({ me: { username: 'ann' } }) });
+  expect(target.querySelector('section[aria-labelledby="settings-mcp"]')).toBeNull();
+});
+
+it('MCP-018: the desktop app shows the MCP section before VPN', async () => {
+  mocks.platform = DESKTOP_MAC;
+  const target = await open({ Me: ok({ me: { username: 'ann' } }) });
+  const headings = sectionHeadings(target);
+  expect(headings.indexOf('MCP')).toBe(headings.indexOf('VPN') - 1);
 });
 
 it('CLI-003: Sign out calls logout, clears the token with hub.address, then goes to sign-in', async () => {

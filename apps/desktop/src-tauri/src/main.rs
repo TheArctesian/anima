@@ -4,6 +4,7 @@
 mod agent;
 mod builder;
 mod keystore;
+mod mcp_permissions;
 mod os_program;
 mod process_log;
 mod system_browser;
@@ -42,6 +43,8 @@ fn main() {
             builder::builder_cancel,
             builder::upload::builder_release_files,
             builder::upload::builder_upload,
+            mcp_permissions::mcp_permissions_read,
+            mcp_permissions::mcp_permissions_write,
             process_log::process_log_folder_open,
             system_settings::sharing_settings_open,
             this_machine::this_machine_read,

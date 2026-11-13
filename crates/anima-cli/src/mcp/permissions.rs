@@ -5,7 +5,7 @@
 
 use std::collections::BTreeMap;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use super::catalogue::{Kind, ToolSet, joined, names};
 use super::tools::Entry;
@@ -13,7 +13,7 @@ use crate::contexts::config::McpPermissions;
 use crate::failure::{Failure, Hint};
 
 /// What the server does with one tool.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum State {
     /// Listed; the agent may call it.

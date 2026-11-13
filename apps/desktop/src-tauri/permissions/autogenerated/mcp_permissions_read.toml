@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-mcp-permissions-read"
+description = "Enables the mcp_permissions_read command without any pre-configured scope."
+commands.allow = ["mcp_permissions_read"]
+
+[[permission]]
+identifier = "deny-mcp-permissions-read"
+description = "Denies the mcp_permissions_read command without any pre-configured scope."
+commands.deny = ["mcp_permissions_read"]

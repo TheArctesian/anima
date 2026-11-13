@@ -15,6 +15,8 @@ const APP_COMMANDS: &[&str] = &[
     "builder_cancel",
     "builder_release_files",
     "builder_upload",
+    "mcp_permissions_read",
+    "mcp_permissions_write",
     "process_log_folder_open",
     "sharing_settings_open",
     "this_machine_read",

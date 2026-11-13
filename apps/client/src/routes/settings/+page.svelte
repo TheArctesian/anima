@@ -3,6 +3,7 @@
   import DefaultsSection from '$lib/checks/defaults/DefaultsSection.svelte';
   import SignOutRow from '$lib/access/SignOutRow.svelte';
   import HubRows from '$lib/hub-address/HubRows.svelte';
+  import McpSection from '$lib/mcp/McpSection.svelte';
   import NotificationsSection from '$lib/notifications/NotificationsSection.svelte';
   import PaletteRow from '$lib/palette/PaletteRow.svelte';
   import { capabilities } from '$lib/platform/platform';
@@ -17,7 +18,7 @@
   // The desktop rows decide each row themselves; the page only leaves out the section when none can show (UPD-006, LOG-008,
   // BLD-020).
   // The Hub section is desktop only: a browser talks only to the hub that served it (CLI-002, D-5).
-  const { updates, processLog, builds, keyStore } = capabilities();
+  const { updates, processLog, builds, keyStore, mcpPermissions } = capabilities();
 </script>
 
 <div class="page">
@@ -62,6 +63,13 @@
   <SettingsSection id="settings-api-keys" title="API keys" icon="nf-md-key_variant" description="Keys for programs that call the hub's GraphQL API.">
     <ApiKeysSection />
   </SettingsSection>
+
+  <!-- Desktop only: the MCP permissions are a file on this computer, which a browser cannot reach (MCP-023). -->
+  {#if mcpPermissions}
+    <SettingsSection id="settings-mcp" title="MCP" icon="nf-md-shield_key" description="What coding agents may do through the anima mcp server on this computer.">
+      <McpSection />
+    </SettingsSection>
+  {/if}
 
   <!-- Last: the picture arrives after the page and has many rows, so nothing below it can move (MOT-007). -->
   <SettingsSection id="settings-vpn" title="VPN" icon="nf-md-lan_connect" description="How the hub reaches each site, and when each VPN key expires.">
