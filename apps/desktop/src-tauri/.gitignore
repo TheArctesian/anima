@@ -1,6 +1,13 @@
-# The agent sidecar of a release build (MET-019, D-10 d). The release build must:
+# The external binaries of a release build; never committed. Without the config that names them no
+# build needs this folder, so the gates pass on a clean checkout.
+#
+# `anima` (INS-002): the builder's bundle step (src/builder/sidecar.rs) builds it from the job's
+# commit with ANIMA_VERSION, puts `binaries/anima-<target-triple>` here (and, on macOS,
+# `anima-universal-apple-darwin` made with lipo), and passes `bundle.externalBin: ["binaries/anima"]`
+# in `--config` to `tauri build` and `tauri bundle`.
+#
+# The agent sidecar (MET-019, D-10 d). The release build must:
 #   1. build `anima-agent` for the app's target triple from the same commit;
-#   2. place it at `binaries/anima-agent-<target-triple>` (this folder; never committed);
+#   2. place it at `binaries/anima-agent-<target-triple>` (this folder);
 #   3. pass `--config tauri.release.conf.json` to `tauri build`, which names it in `bundle.externalBin`.
-# Without that config no build needs the folder, so the gates pass on a clean checkout.
 /binaries/

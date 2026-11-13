@@ -7,7 +7,10 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use super::job::{Commit, Target, Version};
+use super::{
+    job::{Commit, Target, Version},
+    sidecar::EXTERNAL_BIN,
+};
 
 /// The only repository a builder builds (BLD-040).
 pub const REPOSITORY: &str = "https://github.com/TheArctesian/anima.git";
@@ -78,6 +81,7 @@ pub enum Program {
     Codesign,
     Lipo,
     Xcrun,
+    Cargo,
 }
 
 impl Program {
@@ -89,6 +93,7 @@ impl Program {
             Self::Codesign => "codesign",
             Self::Lipo => "lipo",
             Self::Xcrun => "xcrun",
+            Self::Cargo => "cargo",
         }
     }
 }
@@ -103,7 +108,7 @@ pub struct Command {
     pub env: Vec<(&'static str, String)>,
 }
 
-fn command(program: Program, cwd: &Path, args: &[&str]) -> Command {
+pub fn command(program: Program, cwd: &Path, args: &[&str]) -> Command {
     Command {
         program,
         args: args.iter().map(OsString::from).collect(),
@@ -233,11 +238,15 @@ fn tauri(clone: &Path, args: &[&str], config: &serde_json::Value) -> Command {
 /// Compile with `--no-bundle`, then bundle, with the version in `--config` and no updater
 /// artifact: the builder signs nothing, and the hub signs the updater file (BLD-043, R-117). On
 /// macOS Tauri signs the app with the identity `bundle.macOS.signingIdentity` names (BLD-083).
+/// Both carry the `anima` program the sidecar step put in place (INS-002).
 pub fn bundle(clone: &Path, target: Target, version: &Version) -> Vec<Command> {
-    let compile_config = serde_json::json!({ "version": version.as_str() });
+    let compile_config = serde_json::json!({
+        "version": version.as_str(),
+        "bundle": { "externalBin": [EXTERNAL_BIN] }
+    });
     let bundle_config = serde_json::json!({
         "version": version.as_str(),
-        "bundle": { "createUpdaterArtifacts": false }
+        "bundle": { "createUpdaterArtifacts": false, "externalBin": [EXTERNAL_BIN] }
     });
     match target {
         Target::LinuxX86_64 => {

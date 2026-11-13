@@ -16,6 +16,7 @@ mod job;
 mod lines;
 mod plan;
 mod reaper;
+mod sidecar;
 mod steps;
 mod tools;
 pub mod upload;
@@ -141,10 +142,23 @@ pub async fn builder_tools_check<R: Runtime>(
     };
     let app_key = tools::app_public_key(app_public_key(&app).as_deref());
     let identity = tools::readings::signing_identity();
+    // Rustup reads a folder override where the steps run: the clone, once there is one.
+    let folder = clone_folder(&app)
+        .ok()
+        .filter(|clone| clone.is_dir())
+        .unwrap_or_else(|| PathBuf::from("/"));
     let mut missing = tauri::async_runtime::spawn_blocking(move || {
         let env = Environment::from_parent(std::env::vars_os());
         let mut missing = tools::missing(target, &env, std::path::Path::exists);
         if target == Target::DarwinUniversal {
+            if !missing.contains(&Tool::Rust) {
+                let sysroot = tools::readings::rust_sysroot(&env, &folder);
+                missing.extend(tools::rust_targets(
+                    target,
+                    sysroot.as_deref(),
+                    std::path::Path::is_dir,
+                ));
+            }
             missing.extend(tools::signing_identity(
                 identity.as_deref(),
                 &tools::readings::keychain_identities(),

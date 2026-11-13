@@ -3,6 +3,19 @@
 The `anima` command line (docs/cli-mcp-plan.md). `hub/` is the only network code (CMD-003);
 `devices/` is the worked example of a noun. Copy it.
 
+## Install
+
+Install the desktop application (`Anima.dmg` or `Anima-x86_64.AppImage`); it carries `anima` at
+the same version (INS-001 to INS-003). In the application, open Settings > Updates > Command line
+tool and select **Install**, then **Confirm**. Then, for a coding agent:
+
+```sh
+claude mcp add anima -- anima mcp
+```
+
+A release build sets `ANIMA_VERSION`; `build.rs` makes it the version `anima --version` prints
+(OD-17). Without it, the crate version is printed.
+
 ## Add a noun (for example `checks/`)
 
 1. `src/checks.rs`: `pub mod documents; pub mod list; ...` and `pub enum CheckCommand`

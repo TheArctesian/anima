@@ -9,6 +9,7 @@ const platform = vi.hoisted(() => ({ answers: undefined as Capabilities | undefi
 vi.mock('$lib/platform/platform', () => ({ capabilities: () => platform.answers }));
 vi.mock('$lib/access/SignOutRow.svelte', async () => ({ default: (await vi.importActual<{ default: unknown }>('./RowStub.svelte')).default }));
 vi.mock('$lib/updates/UpdatesRow.svelte', async () => ({ default: (await vi.importActual<{ default: unknown }>('./RowStub.svelte')).default }));
+vi.mock('$lib/updates/CommandLineRow.svelte', async () => ({ default: (await vi.importActual<{ default: unknown }>('./RowStub.svelte')).default }));
 vi.mock('$lib/process-log/LogFolderRow.svelte', async () => ({ default: (await vi.importActual<{ default: unknown }>('./LogRowStub.svelte')).default }));
 vi.mock('$lib/builds/BuildsRow.svelte', async () => ({ default: (await vi.importActual<{ default: unknown }>('./RowStub.svelte')).default }));
 // Settings sections that load their own data (WP-50 F-3) find a hub that answers nothing, so they show their own error.
@@ -32,11 +33,19 @@ it('UPD-006, BLD-020: the browser shows no Updates, log folder or Builds row', (
   expect(document.querySelectorAll('[data-stub]')).toHaveLength(1);
 });
 
-it('UPD-006, LOG-008, BLD-020: the desktop app shows the Updates, log folder and Builds rows after Sign out', () => {
+it('UPD-006, INS-006, LOG-008, BLD-020: the desktop app shows the Updates, command line, log folder and Builds rows after Sign out', () => {
   platform.answers = DESKTOP_MAC;
   app = mount(Page, { target: document.body });
   flushSync();
-  expect(document.querySelectorAll('[data-stub]')).toHaveLength(4);
+  expect(document.querySelectorAll('[data-stub]')).toHaveLength(5);
+});
+
+it('INS-006: a client that puts its command line on the PATH shows that row under the Updates heading', () => {
+  platform.answers = { ...BROWSER, commandLine: true };
+  app = mount(Page, { target: document.body });
+  flushSync();
+  expect(document.querySelectorAll('[data-stub]')).toHaveLength(2);
+  expect(document.querySelector('#settings-updates')).not.toBeNull();
 });
 
 it('UPD-006: a client that updates itself but keeps no process log shows the Updates row alone', () => {

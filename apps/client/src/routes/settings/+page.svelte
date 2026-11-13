@@ -18,7 +18,7 @@
   // The desktop rows decide each row themselves; the page only leaves out the section when none can show (UPD-006, LOG-008,
   // BLD-020).
   // The Hub section is desktop only: a browser talks only to the hub that served it (CLI-002, D-5).
-  const { updates, processLog, builds, keyStore, mcpPermissions } = capabilities();
+  const { updates, commandLine, processLog, builds, keyStore, mcpPermissions } = capabilities();
 </script>
 
 <div class="page">
@@ -54,8 +54,8 @@
     <RetentionSection />
   </SettingsSection>
 
-  {#if updates || processLog || builds}
-    <SettingsSection id="settings-updates" title="Updates" icon="nf-md-update" description="This app's version, its log and its release builds.">
+  {#if updates || commandLine || processLog || builds}
+    <SettingsSection id="settings-updates" title="Updates" icon="nf-md-update" description="This app's version, its command line tool, its log and its release builds.">
       <DesktopRows />
     </SettingsSection>
   {/if}

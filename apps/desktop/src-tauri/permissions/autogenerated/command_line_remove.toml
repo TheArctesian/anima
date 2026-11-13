@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-command-line-remove"
+description = "Enables the command_line_remove command without any pre-configured scope."
+commands.allow = ["command_line_remove"]
+
+[[permission]]
+identifier = "deny-command-line-remove"
+description = "Denies the command_line_remove command without any pre-configured scope."
+commands.deny = ["command_line_remove"]

@@ -21,6 +21,8 @@ export interface Capabilities {
   readonly builds: boolean;
   /** The shell reads and saves the `anima mcp` permissions in the command line's configuration file (MCP-018, MCP-023). */
   readonly mcpPermissions: boolean;
+  /** The shell puts the `anima` program the app carries on the `PATH` with a link or launcher (INS-004 to INS-006). */
+  readonly commandLine: boolean;
   /** The window draws its content under the OS title bar, with the window buttons over the navigation bar (macOS). */
   readonly overlayTitleBar: boolean;
 }
