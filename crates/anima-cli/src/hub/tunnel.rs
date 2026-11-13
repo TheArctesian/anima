@@ -8,15 +8,11 @@
 //! bounded, and the caller parses every text message against K4's closed set.
 
 use std::fmt;
-use std::sync::Arc;
 use std::time::Duration;
 
 use futures_util::{SinkExt as _, StreamExt as _};
 use reqwest::Url;
 use reqwest::header::HeaderValue;
-use rustls::pki_types::ServerName;
-use tokio::io::{AsyncRead, AsyncWrite};
-use tokio::net::TcpStream;
 use tokio::time::timeout;
 use tokio_tungstenite::WebSocketStream;
 use tokio_tungstenite::tungstenite::client::IntoClientRequest as _;
@@ -26,6 +22,7 @@ use tokio_tungstenite::tungstenite::protocol::{CloseFrame, WebSocketConfig};
 use tokio_tungstenite::tungstenite::{Error as WsError, Message};
 use zeroize::Zeroizing;
 
+use super::wire::{self, Wire};
 use super::{Code, Hub, HubError};
 
 /// One send may wait this long; then the tunnel counts as stalled (K4 Section 8.5).
@@ -160,10 +157,6 @@ impl From<TunnelError> for HubError {
     }
 }
 
-/// A byte stream the socket runs over: TCP, or TLS over TCP.
-trait Wire: AsyncRead + AsyncWrite + Unpin + Send {}
-impl<T: AsyncRead + AsyncWrite + Unpin + Send> Wire for T {}
-
 /// An open tunnel. Dropping it drops the connection; [`Socket::close`] closes it cleanly.
 pub struct Socket {
     inner: WebSocketStream<Box<dyn Wire>>,
@@ -181,7 +174,7 @@ impl Hub {
             reason,
         };
         let opening = async {
-            let wire = connect(&url).await.map_err(unreachable)?;
+            let wire = wire::connect(&url).await.map_err(unreachable)?;
             upgrade(&url, &ticket, wire).await
         };
         match timeout(wait, opening).await {
@@ -192,40 +185,6 @@ impl Hub {
             ))),
         }
     }
-}
-
-/// TCP to the origin's host, with TLS for `https`. Plain only for loopback (CMD-013).
-async fn connect(url: &Url) -> Result<Box<dyn Wire>, String> {
-    let port = url.port_or_known_default().ok_or("no port")?;
-    let host = url.host_str().ok_or("no host")?;
-    let address = host.trim_start_matches('[').trim_end_matches(']');
-    let tcp = TcpStream::connect((address, port))
-        .await
-        .map_err(|error| error.to_string())?;
-    if url.scheme() != "https" {
-        return Ok(Box::new(tcp));
-    }
-    let name = ServerName::try_from(address.to_owned()).map_err(|_| "not a host name")?;
-    let tls = tokio_rustls::TlsConnector::from(tls_config()?)
-        .connect(name, tcp)
-        .await
-        .map_err(|error| error.to_string())?;
-    Ok(Box::new(tls))
-}
-
-/// rustls with ring and the web PKI roots, HTTP/1.1 only (the upgrade needs it).
-fn tls_config() -> Result<Arc<rustls::ClientConfig>, String> {
-    let roots = rustls::RootCertStore {
-        roots: webpki_roots::TLS_SERVER_ROOTS.to_vec(),
-    };
-    let provider = Arc::new(rustls::crypto::ring::default_provider());
-    let mut config = rustls::ClientConfig::builder_with_provider(provider)
-        .with_safe_default_protocol_versions()
-        .map_err(|_| "TLS could not be set up")?
-        .with_root_certificates(roots)
-        .with_no_client_auth();
-    config.alpn_protocols = vec![b"http/1.1".to_vec()];
-    Ok(Arc::new(config))
 }
 
 /// The WebSocket upgrade with the ticket in the query and the tunnel's subprotocol.

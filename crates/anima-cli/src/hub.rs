@@ -11,6 +11,7 @@ pub mod scalars;
 pub mod subscription;
 pub mod token;
 pub mod tunnel;
+mod wire;
 
 use std::time::Duration;
 

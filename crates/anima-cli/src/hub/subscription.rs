@@ -20,16 +20,16 @@ use futures_util::{SinkExt as _, StreamExt as _};
 use graphql_client::GraphQLQuery;
 use serde::de::DeserializeOwned;
 use serde_json::{Value, json};
-use tokio::net::TcpStream;
 use tokio_tungstenite::tungstenite::client::IntoClientRequest as _;
 use tokio_tungstenite::tungstenite::http::HeaderValue;
 use tokio_tungstenite::tungstenite::protocol::CloseFrame;
 use tokio_tungstenite::tungstenite::{Error as SocketError, Message, Utf8Bytes};
-use tokio_tungstenite::{MaybeTlsStream, WebSocketStream, connect_async};
+use tokio_tungstenite::{WebSocketStream, client_async};
 use zeroize::Zeroizing;
 
 use super::answer;
 use super::error::{Code, HubError};
+use super::wire::{self, Wire};
 use super::{Hub, Origin, TIMEOUT, Token};
 
 /// The subprotocol name the hub speaks.
@@ -45,7 +45,7 @@ const UPGRADED: u16 = 101;
 /// The identifier of the one operation a socket runs.
 const OPERATION_ID: &str = "1";
 
-type Socket = WebSocketStream<MaybeTlsStream<TcpStream>>;
+type Socket = WebSocketStream<Box<dyn Wire>>;
 
 /// An open subscription whose answers are `D`, the typed `data` of its document.
 pub struct Subscription<D> {
@@ -140,7 +140,10 @@ async fn connect(origin: &Origin, text: &str) -> Result<Socket, HubError> {
     request
         .headers_mut()
         .insert("Sec-WebSocket-Protocol", HeaderValue::from_static(PROTOCOL));
-    match connect_async(request).await {
+    let wire = wire::connect(&origin.graphql())
+        .await
+        .map_err(|reason| unreachable(text, &reason))?;
+    match client_async(request, wire).await {
         Ok((socket, _)) => Ok(socket),
         Err(SocketError::Http(response)) => Err(upgrade_refused(response.status().as_u16())),
         Err(error) => Err(unreachable(text, &error.to_string())),
