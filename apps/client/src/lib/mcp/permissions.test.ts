@@ -17,7 +17,7 @@ describe('grouping and counts', () => {
     expect(groupTools([extra, ...FIXTURE_TOOLS]).map((group) => group.toolset)).toEqual(['devices', 'checks', 'vpn', 'printers']);
   });
 
-  it('MCP-021: a tool id becomes plain words', () => {
+  it('MCP-019: a tool id becomes plain words', () => {
     expect(toolLabel('anima_check_update')).toBe('Check update');
     expect(toolLabel('anima_vpn_approve_route')).toBe('Vpn approve route');
   });
