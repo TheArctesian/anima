@@ -65,8 +65,7 @@ pub fn web_client(root: &Path, origin: &PublicOrigin) -> Router {
     };
     let hashes = index
         .as_deref()
-        .map(|page| scripts::inline_script_hashes(&String::from_utf8_lossy(page)))
-        .unwrap_or_default();
+        .map_or_default(|page| scripts::inline_script_hashes(&String::from_utf8_lossy(page)));
     let site = Site {
         files: ServeDir::new(root).append_index_html_on_directories(false),
         index,

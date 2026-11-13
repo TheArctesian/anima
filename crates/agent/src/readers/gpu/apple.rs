@@ -31,7 +31,7 @@ pub async fn read() -> Vec<GpuReading> {
 /// whose entry has no memory figure is kept, with no `shared_memory_bytes` (MET-007: absent,
 /// never zero, never VRAM).
 fn readings(answer: Result<Vec<u8>, CommandError>) -> Vec<GpuReading> {
-    answer.map(|bytes| apple::gpus(&bytes)).unwrap_or_default()
+    answer.map_or_default(|bytes| apple::gpus(&bytes))
 }
 
 #[cfg(test)]

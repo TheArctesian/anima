@@ -58,7 +58,7 @@ impl Values {
             Placeholder::Previous => &self.previous,
             Placeholder::Message => &self.message,
             Placeholder::At => &self.at,
-            Placeholder::Days => return self.days.map(|days| days.to_string()).unwrap_or_default(),
+            Placeholder::Days => return self.days.map_or_default(|days| days.to_string()),
         };
         text.clone().unwrap_or_default()
     }

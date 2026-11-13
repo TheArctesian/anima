@@ -57,13 +57,9 @@ pub async fn reading() -> Reading {
         load: loadavg.and_then(|bytes| linux::load_average(&bytes)),
         uptime_seconds: uptime.and_then(|bytes| linux::uptime_seconds(&bytes)),
         disks,
-        interfaces: net
-            .map(|bytes| linux::interfaces(&bytes))
-            .unwrap_or_default(),
+        interfaces: net.map_or_default(|bytes| linux::interfaces(&bytes)),
         drives: drive_list().await,
-        drive_counters: diskstats
-            .map(|bytes| linux::drive_counters(&bytes))
-            .unwrap_or_default(),
+        drive_counters: diskstats.map_or_default(|bytes| linux::drive_counters(&bytes)),
     }
 }
 

@@ -50,7 +50,7 @@ async fn code_for(identity: Identity, document: &str) -> String {
         panic!("{document}: expected one error, got {:?}", response.errors);
     };
     let code = error.extensions.as_ref().and_then(|e| e.get("code"));
-    code.map(ToString::to_string).unwrap_or_default()
+    code.map_or_default(ToString::to_string)
 }
 
 #[tokio::test]

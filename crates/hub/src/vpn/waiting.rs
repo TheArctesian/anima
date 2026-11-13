@@ -20,8 +20,7 @@ pub(super) fn routes(view: &BrokerView, address: Ipv4Addr) -> Vec<IpNet> {
     view.nodes
         .iter()
         .find(|node| ipv4_of(node) == Some(address))
-        .map(unapproved)
-        .unwrap_or_default()
+        .map_or_default(unapproved)
 }
 
 /// The VPN policy's name for the site with `subnet`, when the broker would accept it: the

@@ -88,8 +88,7 @@ impl Plan {
         };
         let samples = known
             .as_ref()
-            .map(|known| samples::samples(known, answers))
-            .unwrap_or_default();
+            .map_or_default(|known| samples::samples(known, answers));
         GpuRound {
             known,
             discovered_now,

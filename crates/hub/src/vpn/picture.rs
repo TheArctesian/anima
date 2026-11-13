@@ -182,8 +182,7 @@ fn node(peer: &Peer, inputs: &Inputs<'_>) -> Option<VpnNode> {
         routes: peer.primary_routes.iter().map(IpNet::trunc).collect(),
         waiting_routes: inputs
             .broker
-            .map(|view| waiting::routes(view, address))
-            .unwrap_or_default(),
+            .map_or_default(|view| waiting::routes(view, address)),
         online: peer.online,
         last_seen: peer.last_seen,
         key_expiry: peer.key_expiry,

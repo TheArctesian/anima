@@ -85,8 +85,7 @@ pub async fn read(sources: Sources, macos: bool) -> Vec<GpuReading> {
         found.extend(
             output(&NVIDIA_SMI)
                 .await
-                .map(|bytes| nvidia::gpus(&bytes))
-                .unwrap_or_default(),
+                .map_or_default(|bytes| nvidia::gpus(&bytes)),
         );
     }
     if sources.amd {

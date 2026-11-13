@@ -48,7 +48,7 @@ fn url_as(role: &str, database: &str) -> String {
         .split_once('?')
         .map_or((host, None), |(b, q)| (b, Some(q)));
     let server = base.split_once('/').map_or(base, |(server, _)| server);
-    let query = query.map(|q| format!("?{q}")).unwrap_or_default();
+    let query = query.map_or_default(|q| format!("?{q}"));
     format!("{scheme}://{role}@{server}/{database}{query}")
 }
 

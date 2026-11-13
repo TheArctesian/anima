@@ -231,7 +231,7 @@ fn contract_roots() -> Vec<(String, String)> {
         if let (true, TypeKind::Object(object)) = (root, &declared.node.kind) {
             roots.extend(object.fields.iter().map(|field| {
                 let doc = field.node.description.as_ref();
-                let doc = doc.map(|doc| doc.node.clone()).unwrap_or_default();
+                let doc = doc.map_or_default(|doc| doc.node.clone());
                 (field.node.name.node.to_string(), doc)
             }));
         }

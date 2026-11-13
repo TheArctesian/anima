@@ -44,9 +44,7 @@ pub async fn reading(now: DateTime<Utc>) -> Reading {
         output(&NETSTAT),
         output(&TOP),
     );
-    let sysctl = sysctl
-        .map(|bytes| macos::sysctl(&bytes))
-        .unwrap_or_default();
+    let sysctl = sysctl.map_or_default(|bytes| macos::sysctl(&bytes));
     let used = vm_stat.and_then(|bytes| macos::memory_used_bytes(&bytes, sysctl.page_size));
     Reading {
         cpu: top.and_then(|bytes| macos::cpu(&bytes)),
@@ -59,12 +57,8 @@ pub async fn reading(now: DateTime<Utc>) -> Reading {
             }),
         load: sysctl.load,
         uptime_seconds: sysctl.uptime_seconds(now),
-        disks: df_out
-            .map(|bytes| df::disks(&bytes, 1024))
-            .unwrap_or_default(),
-        interfaces: netstat
-            .map(|bytes| macos::interfaces(&bytes))
-            .unwrap_or_default(),
+        disks: df_out.map_or_default(|bytes| df::disks(&bytes, 1024)),
+        interfaces: netstat.map_or_default(|bytes| macos::interfaces(&bytes)),
         // No `lsblk` on macOS: its mounts stand alone (MET-031).
         drives: None,
         drive_counters: Vec::new(),
