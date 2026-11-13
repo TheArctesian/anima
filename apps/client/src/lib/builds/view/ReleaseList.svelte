@@ -1,8 +1,10 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import type { Builder } from '../api';
+  import Disclosure from '$lib/forms/disclosure/Disclosure.svelte';
   import type { JobView, ReleaseView } from './api';
-  import JobRow from './JobRow.svelte';
-  import { shortCommit } from './release';
+  import ReleaseCard from './card/ReleaseCard.svelte';
+  import { attemptsByVersion, isEnded } from './release';
 
   interface Props {
     /** Already newest first. */
@@ -15,78 +17,54 @@
     oncancel: (job: JobView) => void;
   }
 
-  const { releases, builders, now, selectedId, cancelError, onselect, oncancel }: Props = $props();
+  const { releases, ...shared }: Props = $props();
+  const groups = $derived(attemptsByVersion(releases));
 
-  /** The date and time a release was started, in the operator's locale. */
-  function started(iso: string): string {
-    const at = new Date(iso);
-    return Number.isNaN(at.getTime()) ? '—' : at.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+  function earlierLabel(count: number, version: string): string {
+    return count === 1 ? `1 earlier attempt at ${version}` : `${String(count)} earlier attempts at ${version}`;
   }
+
+  /** Earlier attempts start folded away when they have all ended; one still running starts in view. The operator's choice then stays. */
+  const settled = (earlier: readonly ReleaseView[]) => earlier.every((release) => release.jobs.every(isEnded));
 </script>
 
 <ul class="releases">
-  {#each releases as release (release.id)}
-    <li aria-label="Release {release.version}">
-      <h3>{release.version}</h3>
-      <p class="meta">
-        <code>{shortCommit(release.commit)}</code> by {release.createdBy},
-        <time datetime={release.createdAt}>{started(release.createdAt)}</time>
-      </p>
-      <ul class="jobs">
-        {#each release.jobs as job (job.id)}
-          <JobRow
-            {job}
-            version={release.version}
-            {builders}
-            {now}
-            selected={job.id === selectedId}
-            problem={cancelError?.jobId === job.id ? cancelError.message : undefined}
-            onselect={() => {
-              onselect(job);
-            }}
-            oncancel={() => {
-              oncancel(job);
-            }}
-          />
-        {/each}
-      </ul>
+  {#each groups as group, index (group.latest.id)}
+    <li>
+      <ReleaseCard release={group.latest} prominent={index === 0} {...shared} />
+      {#if group.earlier.length > 0}
+        <div class="earlier">
+          <Disclosure label={earlierLabel(group.earlier.length, group.latest.version)} open={untrack(() => !settled(group.earlier))}>
+            {#each group.earlier as release, place (release.id)}
+              <ReleaseCard {release} attempt={group.earlier.length - place} {...shared} />
+            {/each}
+          </Disclosure>
+        </div>
+      {/if}
     </li>
   {/each}
 </ul>
 
 <style>
-  .releases,
-  .jobs {
+  .releases {
     display: flex;
     flex-direction: column;
+    gap: var(--space-4);
     margin: 0;
     padding: 0;
     list-style: none;
   }
 
-  .releases {
-    gap: var(--space-4);
-  }
-
   .releases > li {
-    padding: var(--space-3);
-    border: var(--border-thin) solid var(--border-strong);
-    border-radius: var(--radius-md);
-    background: var(--surface-raised);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
   }
 
-  h3 {
-    margin: 0;
-    font-size: var(--text-lg);
-  }
-
-  .meta {
-    margin: 0 0 var(--space-2);
+  /* Earlier attempts sit under the release that replaced them, quieter than it. */
+  .earlier {
+    margin-inline-start: var(--space-4);
     color: var(--text-secondary);
     font-size: var(--text-sm);
-  }
-
-  code {
-    font-family: var(--font-mono);
   }
 </style>

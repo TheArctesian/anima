@@ -82,3 +82,33 @@ export function withChange(releases: readonly ReleaseView[], change: JobChange):
       : release,
   );
 }
+
+/** The releases of one version: the newest, and the earlier ones it replaced (BLD-080). */
+export interface VersionAttempts {
+  readonly latest: ReleaseView;
+  /** Newest first. */
+  readonly earlier: readonly ReleaseView[];
+}
+
+/** `releases` (newest first) grouped by version, each group in the place of its newest release. */
+export function attemptsByVersion(releases: readonly ReleaseView[]): VersionAttempts[] {
+  const groups = new Map<string, { latest: ReleaseView; earlier: ReleaseView[] }>();
+  for (const release of releases) {
+    const group = groups.get(release.version);
+    if (group === undefined) groups.set(release.version, { latest: release, earlier: [] });
+    else group.earlier.push(release);
+  }
+  return [...groups.values()];
+}
+
+/** Whether a job has stopped changing: published, failed or cancelled. */
+export function isEnded(job: Pick<JobView, 'state'>): boolean {
+  return job.state === 'PUBLISHED' || job.state === 'FAILED' || job.state === 'CANCELLED';
+}
+
+/** How long ago a job reached its state, worded for the state: "for 6 minutes" while it runs, "18 minutes ago" once it ended. */
+export function stateAge(job: Pick<JobView, 'state' | 'stateChangedAt'>, now: Date): string {
+  const span = timeInState(job, now);
+  if (!isEnded(job)) return `for ${span}`;
+  return span === 'under a minute' ? 'just now' : `${span} ago`;
+}
