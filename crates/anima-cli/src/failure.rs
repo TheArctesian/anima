@@ -21,6 +21,15 @@ pub enum Failure {
         message: String,
         hint: Option<String>,
     },
+    /// The hub or the device refused for a reason that has its own next step, not the token.
+    #[error("{message}")]
+    Forbidden {
+        message: String,
+        hint: Option<String>,
+    },
+    /// A notification the hub sent for a test did not arrive.
+    #[error("{message}")]
+    NotDelivered { message: String },
     /// Something with this name is already there.
     #[error("{message}")]
     Conflict { message: String },
@@ -69,10 +78,15 @@ impl Failure {
         match self {
             Self::Hub(error) => error.code().as_str(),
             Self::Usage { .. } => "USAGE",
+            Self::Forbidden { .. } => Code::Forbidden.as_str(),
             Self::NotFound { .. } => Code::NotFound.as_str(),
             Self::Conflict { .. } => Code::Conflict.as_str(),
             Self::SignedOut { .. } => Code::Unauthenticated.as_str(),
-            Self::Config(_) | Self::Store(_) | Self::Input { .. } | Self::Write { .. } => "FAILED",
+            Self::Config(_)
+            | Self::Store(_)
+            | Self::Input { .. }
+            | Self::Write { .. }
+            | Self::NotDelivered { .. } => "FAILED",
         }
     }
 
@@ -90,12 +104,15 @@ impl Failure {
                 Code::Internal => exit::FAILURE,
             },
             Self::Usage { .. } => exit::USAGE,
+            Self::Forbidden { .. } => exit::NOT_PERMITTED,
             Self::NotFound { .. } => exit::NOT_FOUND,
             Self::Conflict { .. } => exit::CONFLICT,
             Self::SignedOut { .. } => exit::SIGN_IN,
-            Self::Config(_) | Self::Store(_) | Self::Input { .. } | Self::Write { .. } => {
-                exit::FAILURE
-            }
+            Self::Config(_)
+            | Self::Store(_)
+            | Self::Input { .. }
+            | Self::Write { .. }
+            | Self::NotDelivered { .. } => exit::FAILURE,
         }
     }
 
@@ -103,7 +120,9 @@ impl Failure {
     #[must_use]
     pub fn hint(&self) -> Option<String> {
         match self {
-            Self::Usage { hint, .. } | Self::NotFound { hint, .. } => hint.clone(),
+            Self::Usage { hint, .. }
+            | Self::NotFound { hint, .. }
+            | Self::Forbidden { hint, .. } => hint.clone(),
             Self::SignedOut { .. } => Some(SIGN_IN.to_owned()),
             Self::Hub(error) => match error.code() {
                 Code::Unauthenticated => Some(SIGN_IN.to_owned()),
@@ -115,6 +134,7 @@ impl Failure {
                 _ => None,
             },
             Self::Conflict { .. }
+            | Self::NotDelivered { .. }
             | Self::Config(_)
             | Self::Store(_)
             | Self::Input { .. }

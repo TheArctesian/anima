@@ -118,6 +118,11 @@ async fn ra_032_a_policy_refusal_is_exit_5_and_the_session_still_ends() {
         .await;
     assert_eq!(run.code, 5, "{run:?}");
     assert!(run.stderr.contains("does not allow downloads"), "{run:?}");
+    assert!(
+        run.stderr.contains("--transfer-download true") && !run.stderr.contains("auth login"),
+        "the hint names the policy, not the token: {}",
+        run.stderr
+    );
     assert!(!folder.path().join("out").exists());
     assert_eq!(
         hub.operations().last().map(String::as_str),

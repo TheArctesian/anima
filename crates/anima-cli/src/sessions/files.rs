@@ -50,18 +50,18 @@ pub fn describe(error: &FilesError, path: &str) -> Failure {
         })
     };
     match error {
-        FilesError::Refused(codec::Refusal::DownloadOff) => refused(
-            Code::Forbidden,
-            "The device's transfer policy does not allow downloads.".to_owned(),
-        ),
-        FilesError::Refused(codec::Refusal::UploadOff) => refused(
-            Code::Forbidden,
-            "The device's transfer policy does not allow uploads.".to_owned(),
-        ),
-        FilesError::Refused(codec::Refusal::Denied) => refused(
-            Code::Forbidden,
-            format!("The device refused access to {path}."),
-        ),
+        FilesError::Refused(codec::Refusal::DownloadOff) => Failure::Forbidden {
+            message: "The device's transfer policy does not allow downloads.".to_owned(),
+            hint: Some("anima device update <device> --transfer-download true".to_owned()),
+        },
+        FilesError::Refused(codec::Refusal::UploadOff) => Failure::Forbidden {
+            message: "The device's transfer policy does not allow uploads.".to_owned(),
+            hint: Some("anima device update <device> --transfer-upload true".to_owned()),
+        },
+        FilesError::Refused(codec::Refusal::Denied) => Failure::Forbidden {
+            message: format!("The device refused access to {path}."),
+            hint: None,
+        },
         FilesError::Refused(codec::Refusal::NotFound) => Failure::NotFound {
             message: format!("There is no such file or folder on the device: {path}."),
             hint: None,
