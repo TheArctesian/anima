@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "bun bin/build.ts",
-    "build:preview": "ANIMA_SITE_RELEASE_SOURCE=fixtures/releases ANIMA_SITE_OUTPUT=dist-preview bun bin/build.ts",
+    "build:preview": "ANIMA_SITE_PREVIEW=1 ANIMA_SITE_RELEASE_SOURCE=fixtures/releases ANIMA_SITE_OUTPUT=dist-preview bun bin/build.ts",
     "preview": "ANIMA_SITE_OUTPUT=dist-preview bun bin/preview.ts",
     "lint": "eslint . && stylelint \"src/**/*.css\"",
     "check": "tsc --noEmit",

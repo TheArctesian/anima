@@ -4,12 +4,16 @@ import type { Artefact } from "./release.ts";
 import { afterInstall, escapeHtml, footer, hero, install, needs, planned, PURPOSE, today, verify, whatItIs } from "./sections.ts";
 
 /**
- * The policy that makes SITE-008 true in the page itself: every kind of content comes from this origin, there is no
- * script, no form and no frame, and a style comes only from a file. `frame-ancestors` is not allowed in a `meta`
+ * The policy that makes SITE-008 true in the page itself: every kind of content comes from this origin, the only
+ * script is the one of Vercel Web Analytics, served from this origin (OD-21), there is no form and no frame, and a style comes
+ * only from a file. `frame-ancestors` is not allowed in a `meta`
  * element; the host sets it (see apps/site/README.md).
  */
 export const CONTENT_SECURITY_POLICY =
-  "default-src 'self'; script-src 'none'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'";
+  "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'";
+
+/** The one script of the page: Vercel Web Analytics, which Vercel serves from the site's own origin when it is enabled (SITE-008, OD-21). */
+export const ANALYTICS_SCRIPT = '<script defer src="/_vercel/insights/script.js"></script>';
 
 const TITLE = "Anima: a self-hosted place for your computers, services and data";
 const DESCRIPTION = `${PURPOSE} Anima is free software that you run yourself. Download it for macOS or Linux.`;
@@ -36,6 +40,7 @@ function head(): string {
     <link rel="stylesheet" href="tokens.css">
     <link rel="stylesheet" href="fonts.css">
     <link rel="stylesheet" href="site.css">
+    ${ANALYTICS_SCRIPT}
   </head>`;
 }
 

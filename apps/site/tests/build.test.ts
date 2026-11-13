@@ -25,7 +25,7 @@ afterEach(async () => {
 });
 
 function build() {
-  return buildSite(readSettings({ ANIMA_SITE_RELEASE_SOURCE: source }), root, output);
+  return buildSite(readSettings({ ANIMA_SITE_RELEASE_SOURCE: source, ANIMA_SITE_PREVIEW: "1" }), root, output);
 }
 
 describe("SITE-003 and OD-19: the build step fails safe", () => {

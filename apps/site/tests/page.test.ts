@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { buildSite } from "../src/build.ts";
-import { CONTENT_SECURITY_POLICY } from "../src/page.ts";
+import { ANALYTICS_SCRIPT, CONTENT_SECURITY_POLICY } from "../src/page.ts";
 import { readSettings, RELEASE_BASE, REPOSITORY } from "../src/settings.ts";
 import { type Appearance, contrastOf } from "./token-colours.ts";
 
@@ -20,7 +20,7 @@ async function filesUnder(folder: string): Promise<string[]> {
 
 beforeAll(async () => {
   output = await mkdtemp(join(tmpdir(), "anima-site-"));
-  const settings = readSettings({ ANIMA_SITE_RELEASE_SOURCE: join(root, "apps/site/fixtures/releases") });
+  const settings = readSettings({ ANIMA_SITE_RELEASE_SOURCE: join(root, "apps/site/fixtures/releases"), ANIMA_SITE_PREVIEW: "1" });
   await buildSite(settings, root, output);
   html = await readFile(join(output, "index.html"), "utf8");
   const textFiles = (await filesUnder(output)).filter((file) => /\.(html|css)$/.test(file));
@@ -42,15 +42,22 @@ describe("SITE-003, SITE-006, SITE-007, SITE-008: what the built site refers to"
     expect(allText).not.toMatch(/hub\.anima\.ing|hs\.anima\.ing|graphql|\/api\b|headscale/i);
   });
 
-  test("SITE-007 and SITE-008 the page has no script, form, frame, inline style or event handler", () => {
-    expect(html).not.toMatch(/<script|<form|<iframe|<object|<embed|<input|<button/i);
+  test("SITE-007 and SITE-008 the only script is the same-origin analytics script, with no inline code", () => {
+    const scripts = [...html.matchAll(/<script\b[^>]*>[\s\S]*?<\/script>/gi)].map((match) => match[0]);
+    expect(scripts).toEqual([ANALYTICS_SCRIPT]);
+    expect(ANALYTICS_SCRIPT).toMatch(/^<script defer src="\/_vercel\/insights\/script\.js"><\/script>$/);
+  });
+
+  test("SITE-007 and SITE-008 the page has no form, frame, inline style or event handler", () => {
+    expect(html).not.toMatch(/<form|<iframe|<object|<embed|<input|<button/i);
     expect(html).not.toMatch(/\sstyle=|<style|\son[a-z]+=/i);
-    expect(html).not.toMatch(/\.js["']/);
   });
 
   test("SITE-008 the page carries the content security policy and the stylesheets are local", () => {
     expect(html).toContain(`<meta http-equiv="Content-Security-Policy" content="${CONTENT_SECURITY_POLICY}">`);
     expect(CONTENT_SECURITY_POLICY).toContain("default-src 'self'");
+    expect(CONTENT_SECURITY_POLICY).toContain("script-src 'self'");
+    expect(CONTENT_SECURITY_POLICY).toContain("connect-src 'self'");
     expect(CONTENT_SECURITY_POLICY).not.toMatch(/unsafe|https?:|\*/);
     const links = [...html.matchAll(/<link [^>]*href="([^"]+)"/g)].map((match) => match[1] ?? "");
     expect(links.length).toBeGreaterThan(3);

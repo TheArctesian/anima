@@ -9,7 +9,7 @@ export const REPOSITORY = "https://github.com/TheArctesian/anima";
 export interface Settings {
   /** Where the page's download links point: an `https` origin with no path. */
   readonly releaseBase: string;
-  /** Where the build reads `<folder>/latest.json` and `<folder>/<version>/SHA256SUMS`: a URL or a local folder. */
+  /** Where the build reads `<folder>/latest.json` and `<folder>/<version>/SHA256SUMS`: a URL, or a local folder in a preview. */
   readonly releaseSource: string;
   /** The repository link, or `undefined` for none. */
   readonly repository: string | undefined;
@@ -37,15 +37,25 @@ function httpsOrigin(text: string, name: string, allowPath: boolean): string {
   return `${url.origin}${path}`;
 }
 
-/** The settings from `ANIMA_SITE_RELEASE_BASE`, `ANIMA_SITE_RELEASE_SOURCE` and `ANIMA_SITE_REPOSITORY`. */
+/**
+ * The settings from `ANIMA_SITE_RELEASE_SOURCE` (required), `ANIMA_SITE_RELEASE_BASE`, `ANIMA_SITE_REPOSITORY` and
+ * `ANIMA_SITE_PREVIEW`. A local folder is a source only when `ANIMA_SITE_PREVIEW=1`, and never on Vercel (`VERCEL`),
+ * so fixture data cannot be published.
+ */
 export function readSettings(env: Readonly<Record<string, string | undefined>>): Settings {
   const releaseBase = httpsOrigin(env["ANIMA_SITE_RELEASE_BASE"] ?? RELEASE_BASE, "ANIMA_SITE_RELEASE_BASE", false);
-  const source = env["ANIMA_SITE_RELEASE_SOURCE"] ?? releaseBase;
-  const releaseSource = /^https?:\/\//i.test(source) ? source.replace(/\/$/, "") : source;
+  const source = env["ANIMA_SITE_RELEASE_SOURCE"];
+  if (source === undefined || source === "") {
+    throw new SettingsError(`ANIMA_SITE_RELEASE_SOURCE is not set. Set it to the release host, for example ${RELEASE_BASE}.`);
+  }
+  const isUrl = /^https?:\/\//i.test(source);
+  if (!isUrl && (env["ANIMA_SITE_PREVIEW"] !== "1" || env["VERCEL"] !== undefined)) {
+    throw new SettingsError("ANIMA_SITE_RELEASE_SOURCE is a local folder. That is allowed only in a local preview (ANIMA_SITE_PREVIEW=1), never on Vercel.");
+  }
   const repository = env["ANIMA_SITE_REPOSITORY"] ?? REPOSITORY;
   return {
     releaseBase,
-    releaseSource,
+    releaseSource: isUrl ? source.replace(/\/$/, "") : source,
     repository: repository === "" ? undefined : httpsOrigin(repository, "ANIMA_SITE_REPOSITORY", true),
   };
 }

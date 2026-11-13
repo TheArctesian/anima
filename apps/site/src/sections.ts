@@ -152,7 +152,7 @@ export function footer(repository: string | undefined): string {
   return `<footer class="page-footer">
       <div class="page">
         <p>Anima is free software under the GNU Affero General Public License, version 3 or later (AGPL-3.0-or-later).</p>${source}
-        <p>This site sets no cookies, has no analytics and loads nothing from another site.</p>
+        <p>This site counts page views with Vercel Web Analytics, which sets no cookies. It has no other tracker and loads nothing from another site.</p>
       </div>
     </footer>`;
 }

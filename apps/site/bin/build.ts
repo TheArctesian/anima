@@ -18,7 +18,7 @@ try {
 } catch (error) {
   if (error instanceof ReleaseFeedError || error instanceof ReleaseSourceError || error instanceof SettingsError) {
     console.error(`The site was not built. ${error.message}`);
-    console.error("Nothing was written. Fix the release source, or set ANIMA_SITE_RELEASE_SOURCE (see apps/site/README.md).");
+    console.error("Nothing was written. Fix the release source, or set ANIMA_SITE_RELEASE_SOURCE (required; see apps/site/README.md).");
     process.exit(1);
   }
   throw error;
