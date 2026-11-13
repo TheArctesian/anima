@@ -153,20 +153,20 @@ it('BLD-008: only a queued job has Cancel, and it calls cancelBuildJob for that 
   expect(hub.sent.find((request) => request.operation === 'CancelBuildJob')?.variables).toEqual({ id: 'job-c' });
 });
 
-it('BLD-081: selecting a job shows its log, and lines pushed by the subscription join it, cleaned again', async () => {
+it('BLD-081: selecting a job shows its log in a polite live region, and lines pushed by the subscription join it, cleaned again', async () => {
   const target = await open({
     BuildJobLog: ok({ buildJobLog: [{ sequence: 1, text: 'cargo build' }] }),
   });
   named<HTMLButtonElement>(target, 'button', 'Show log of linux-x86_64 job of 0.1.13').click();
   await settled();
-  expect(target.querySelector('pre')?.textContent).toBe('cargo build');
+  expect(target.querySelector('[role="log"][aria-live="polite"] pre')?.textContent).toBe('cargo build');
   expect(hub.sent.find((request) => request.operation === 'BuildJobLog')?.variables).toMatchObject({ id: 'job-c', after: null });
   hub.push({
     job: job({ id: 'job-c', releaseId: 'rel-2', state: 'BUILDING' }),
     logLines: [{ sequence: 2, text: 'TAURI_SIGNING_PRIVATE_KEY=hunter2hunter2' }, { sequence: 1, text: 'cargo build' }],
   });
   flushSync();
-  expect(target.querySelector('pre')?.textContent).toBe('cargo build\nTAURI_SIGNING_PRIVATE_KEY=[redacted]');
+  expect(target.querySelector('[role="log"][aria-live="polite"] pre')?.textContent).toBe('cargo build\nTAURI_SIGNING_PRIVATE_KEY=[redacted]');
   expect(named(target, 'li', 'Release 0.1.13').textContent).toContain('Building');
 });
 

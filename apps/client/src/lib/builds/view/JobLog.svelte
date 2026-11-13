@@ -17,12 +17,17 @@
   <h3>Log: {targetLabel(job.target)} ({stateLabel(job.state)})</h3>
   {#if failed}
     <p role="alert">Anima could not load this log.</p>
-  {:else if text.length === 0}
-    <p class="quiet">No log lines yet.</p>
   {:else}
-    <!-- A scrolling log must be reachable by keyboard to be read (WCAG 2.1.1). -->
-    <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-    <pre tabindex="0"aria-label="Build log">{text.join('\n')}</pre>
+    <!-- Always present, so a screen reader announces each new line politely (BLD-081). -->
+    <div role="log" aria-live="polite" aria-label="Build log">
+      {#if text.length === 0}
+        <p class="quiet">No log lines yet.</p>
+      {:else}
+        <!-- A scrolling log must be reachable by keyboard to be read (WCAG 2.1.1). -->
+        <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+        <pre tabindex="0">{text.join('\n')}</pre>
+      {/if}
+    </div>
   {/if}
 </section>
 
