@@ -1,5 +1,5 @@
 import { applyChange, type McpChange, type McpPermissions, type McpTool } from './permissions';
-import { McpShellError, type McpShell, type McpShellProblem } from '$lib/desktop/mcp-shell';
+import { McpShellError, type McpShell, type McpShellProblem } from '$lib/desktop/mcp/shell';
 
 // Test support: a few tools in the shell's shape, and a shell that keeps their states in memory.
 

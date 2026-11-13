@@ -7,7 +7,7 @@
   import LoadingState from '$lib/states/LoadingState.svelte';
   import BulkActions from './BulkActions.svelte';
   import { groupTools, needsConfirmation, type McpChange } from './permissions';
-  import { desktopMcpShell, type McpShell } from '$lib/desktop/mcp-shell';
+  import { desktopMcpShell, type McpShell } from '$lib/desktop/mcp/shell';
   import { McpPermissionsStore } from './store.svelte';
   import ToolSetGroup from './ToolSetGroup.svelte';
 

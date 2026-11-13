@@ -1,5 +1,5 @@
 import { applyChange, describeChange, type McpChange, type McpTool } from './permissions';
-import { McpShellError, type McpShell } from '$lib/desktop/mcp-shell';
+import { McpShellError, type McpShell } from '$lib/desktop/mcp/shell';
 
 export type McpStatus = 'loading' | 'ready' | 'failed';
 

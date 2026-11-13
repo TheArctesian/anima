@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { desktopMcpShell, McpShellError, permissionsFrom } from './mcp-shell';
+import { desktopMcpShell, McpShellError, permissionsFrom } from './shell';
 import { FIXTURE_TOOLS, HUB } from '$lib/mcp/mcp.fixture';
 
 const shell = vi.hoisted(() => ({ invoke: vi.fn() }));
