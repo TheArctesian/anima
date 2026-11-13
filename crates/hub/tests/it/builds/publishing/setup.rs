@@ -6,10 +6,12 @@
 use std::{io::Cursor, sync::Arc};
 
 use anima_hub::{
-    builds::{self, Bucket, BuildQueue, Updates},
     clock::Clock,
     config::Releases,
-    events::Bus,
+    fleet::{
+        builds::{self, Bucket, BuildQueue, Updates},
+        events::Bus,
+    },
 };
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use chrono::{DateTime, TimeDelta, Utc};

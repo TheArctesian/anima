@@ -12,7 +12,7 @@ use std::{
     time::Duration,
 };
 
-use anima_hub::vpn::{Broker, Feed, Reading, spawn_reader};
+use anima_hub::fleet::vpn::{Broker, Feed, Reading, spawn_reader};
 use serde_json::{Value, json};
 use sqlx::PgPool;
 use tokio::{

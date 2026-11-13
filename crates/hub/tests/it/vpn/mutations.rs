@@ -4,7 +4,7 @@
 
 use std::time::Duration;
 
-use anima_hub::{events::process_log, vpn::Feed};
+use anima_hub::fleet::{events::process_log, vpn::Feed};
 use chrono::TimeDelta;
 use serde_json::{Value, json};
 use sqlx::PgPool;

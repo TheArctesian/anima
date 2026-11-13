@@ -4,10 +4,12 @@
 use std::sync::{Arc, atomic::Ordering};
 
 use anima_hub::{
-    checks::graphql::{check_status_loader, check_uptime_loader, last_heartbeat_loader},
     clock::{Clock, FixedClock},
-    devices::graphql::{
-        Mutation, Query, checks_loader, resolved_ip_loader, status_loader, uptime_loader,
+    fleet::{
+        checks::graphql::{check_status_loader, check_uptime_loader, last_heartbeat_loader},
+        devices::graphql::{
+            Mutation, Query, checks_loader, resolved_ip_loader, status_loader, uptime_loader,
+        },
     },
 };
 use async_graphql::{EmptySubscription, Schema};

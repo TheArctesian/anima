@@ -118,7 +118,7 @@ invented names. The facts:
 9. Headscale accepts `preauthkeys create --tags tag:unknown`.
 
 Facts from A4 (`deploy/headscale/test/contract.sh`, run twice with Headscale 0.29.7 and
-`tailscale/tailscale:v1.104.4@sha256:ed6480b3…e276c`; fixtures in `crates/hub/src/vpn/tests/fixtures/`
+`tailscale/tailscale:v1.104.4@sha256:ed6480b3…e276c`; fixtures in `crates/hub/src/fleet/vpn/tests/fixtures/`
 and `deploy/headscale/tests/fixtures/`). They close the A4 evidence in Section 10:
 
 10. **An active peer is real.** After `tailscale ping --c 3 <router IP>` (a disco ping; no TSMP
@@ -425,7 +425,7 @@ Steps:
    node N gets `nodekey:`/`mkey:`/`discokey:` + N as 64 hex digits, in `PublicKey`, in the
    `Peer` map keys and in `node_key`/`machine_key`/`disco_key`; `pre_auth_key.key` and the key
    in `preauthkey.json` become `REDACTED-PREAUTH-KEY`. Write the files to
-   `crates/hub/src/vpn/tests/fixtures/` and `deploy/headscale/tests/fixtures/`.
+   `crates/hub/src/fleet/vpn/tests/fixtures/` and `deploy/headscale/tests/fixtures/`.
 8. Run `bin/inventory.ts` on the captured files; expect exactly `foreign-user stranger`,
    `unknown-tag odd`.
 9. Print `contract: ok`.
@@ -474,7 +474,7 @@ spawns these loops through `main`.
 ### A1-T1. Fixtures
 
 Copy the A4 fixtures (or, before A4, the redacted spike fixtures with the rule 0.6 keys) to
-`crates/hub/src/vpn/tests/fixtures/`: `status-idle.json`, `status-no-peers.json`
+`crates/hub/src/fleet/vpn/tests/fixtures/`: `status-idle.json`, `status-no-peers.json`
 (`"Peer": null`). Invented names; addresses in `100.64.0.0/10` and `10.10.0.0/24`; `DNSName`
 values with the production suffix (`router-home.net.anima.ing.`).
 
@@ -495,7 +495,7 @@ No commit of its own; it goes with A1-T2.
 
 Domain face and folder. Code-line budgets in brackets.
 
-**`crates/hub/src/vpn.rs`** (face, about 40):
+**`crates/hub/src/fleet/vpn.rs`** (face, about 40):
 
 ```rust
 //! The VPN as the hub's own node sees it (VPN-005, VPN-008 to VPN-011).
@@ -653,7 +653,7 @@ Rules (VPN-010, VPN-011):
   no Anima site`; else `VPN node {name} ({address}) is not in Anima`. `key_expiry` none.
 - Includes `picture.hub` for the expiry rules.
 
-**Tests** in `crates/hub/src/vpn/tests.rs` (face) and `vpn/tests/{peers.rs, picture.rs,
+**Tests** in `crates/hub/src/fleet/vpn/tests.rs` (face) and `vpn/tests/{peers.rs, picture.rs,
 warnings.rs}` (A1-T3 adds `store.rs`, A1-T4 adds `reader.rs` and `proxy.rs`: 6 files);
 fixtures in `vpn/tests/fixtures/`. These are crate tests, so they reach `pub(super)` items;
 `tests/it` cannot. The test clock is
@@ -732,7 +732,7 @@ create table vpn.warnings (
 Check the 0001 default privileges cover INSERT and SELECT on tables in a new schema (0960's
 comment says so). If not, add the grant lines that 0960 uses.
 
-**`crates/hub/src/events/model.rs`**: add `Vpn` to `Source` (after `Notifications`), `as_str` →
+**`crates/hub/src/fleet/events/model.rs`**: add `Vpn` to `Source` (after `Notifications`), `as_str` →
 `"vpn"`, add it to the `from_stored` array. GraphQL name is `VPN` by default. No `match` on
 `Source` exists outside `model.rs`. Change by hand: `events/tests.rs:85` `SOURCES: [(Source,
 &str); 7]` → 8 with `(Source::Vpn, "vpn")`; a test like `notifications/tests/schema.rs:98` for
@@ -751,15 +751,15 @@ pub(super) async fn mark(conn: &mut PgConnection, warning: &Warning, at: DateTim
 ```
 
 **Tests** (`#[sqlx::test(migrations = "./migrations")]`, in the crate at
-`crates/hub/src/vpn/tests/store.rs`, calling `store::mark` directly; precedent:
-`crates/hub/src/metrics/ingest/tests/*.rs`):
+`crates/hub/src/fleet/vpn/tests/store.rs`, calling `store::mark` directly; precedent:
+`crates/hub/src/fleet/metrics/ingest/tests/*.rs`):
 
 - `vpn_010_a_warning_is_marked_once` — `mark` twice → true, false.
 - `vpn_010_a_renewed_key_is_marked_again` — same key and kind, new expiry → true.
 - `vpn_011_not_in_anima_with_no_expiry_is_marked_once` — `key_expiry` none twice → true, false
   (BD-4).
 - `events_source_vpn_is_stored_and_read_back` — `events::record` with `Source::Vpn`, then the
-  events query returns `VPN` (in `crates/hub/src/events/tests`, beside the other source tests).
+  events query returns `VPN` (in `crates/hub/src/fleet/events/tests`, beside the other source tests).
 
 A1-T3 needs `vpn/warnings.rs` (`Warning`) from A1-T2; `store.rs` takes `&Warning`.
 
@@ -837,7 +837,7 @@ pub(super) async fn write_warnings(pool: &PgPool, bus: &Bus, warnings: &[Warning
 - Loop: `tokio::time::interval(INTERVAL)` with `MissedTickBehavior::Delay`; the first tick is at
   once.
 
-**`crates/hub/src/devices.rs`**: add
+**`crates/hub/src/fleet/devices.rs`**: add
 
 ```rust
 /// Every site, in name order (VPN-009).
@@ -868,7 +868,7 @@ The four `..dependencies(..)` users need no change.
 **Tests.** No `tokio::time::pause` anywhere: a paused clock with real sockets and a sqlx pool
 fires the reqwest and pool timeouts early. No test-only seam either.
 
-Crate tests, `crates/hub/src/vpn/tests/` (`#[sqlx::test(migrations = "./migrations")]`):
+Crate tests, `crates/hub/src/fleet/vpn/tests/` (`#[sqlx::test(migrations = "./migrations")]`):
 
 - `proxy.rs`: a fake LocalAPI proxy, the same shape as `checks/tests/tailscale/proxy.rs`
   (`start(answer) -> Proxy`, `Reply::json`, `Hang`, `seen()`), reduced to GET. About 50 lines.
@@ -1471,7 +1471,7 @@ disabled (R-054)." Mount the folder, not the socket file, so a socket restart is
 unit is not installed, Docker makes an empty root-owned folder; the hub then reports
 `NOT_INSTALLED`. `deploy/test/compose-hub.test.ts:144`: the SEC-001 test lists three mounts.
 
-**`crates/hub/src/vpn/broker.rs`** (about 100; BD-10, BD-15):
+**`crates/hub/src/fleet/vpn/broker.rs`** (about 100; BD-10, BD-15):
 
 ```rust
 #[derive(Clone)]
@@ -1711,7 +1711,7 @@ its intent.
    `upkeep::loops(dependencies)`, and `spawn` ends with `jobs.extend(loops(dependencies))`. The
    start order does not change. `upkeep.rs` is 169 code lines (the target was 160), because
    rustfmt writes each long `spawn_*` call on several lines; the file limit is 300.
-2. **A1-T2.** `devices::Site` has a `pub(super)` field (`crates/hub/src/devices/model.rs:164`,
+2. **A1-T2.** `devices::Site` has a `pub(super)` field (`crates/hub/src/fleet/devices/model.rs:164`,
    `wake_relay`), so no code outside `devices` can build a `Site`, and the pure tests cannot
    make one. `picture::Inputs.sites` and `picture::router_devices` take `&[(SiteId, IpNet)]`
    (each site's id and subnet, in site name order) instead of `&[Site]`; the reader maps
@@ -1737,7 +1737,7 @@ its intent.
    `Notifications`. It needs `, Vpn   // Vpn (VPN-010, VPN-011)` from the T0 owner.
 10. **A1-T3.** The eighth-source test (as `notifications/tests/schema.rs:98`) and
     `events_source_vpn_is_stored_and_read_back` are in the new
-    `crates/hub/src/events/tests/source.rs`, because `events/tests.rs` is at 274 code lines. The
+    `crates/hub/src/fleet/events/tests/source.rs`, because `events/tests.rs` is at 274 code lines. The
     read back uses the events store's source filter and checks the GraphQL name `VPN`, not the
     whole `events` query with a signed-in schema. `store.rs` is still unused outside the tests,
     so it gets the same `dead_code` expectation as note 5.
@@ -1924,7 +1924,7 @@ A security review of the broker found the points below; each fix has regression 
 7. **A2-T3.** The page-level test (one `Vpn` read and one `VpnChanged` subscription; the card shows this device's
    node) is `routes/devices/[id]/detail/vpn.test.ts`: the `[id]` folder is at its 12 files, and `page.test.ts` is at
    its 300 lines. `page.test.ts` D-9 now leaves the page's own `Vpn` read out of the list of panel reads.
-8. **Base.** `crates/hub/src/vpn/tests/peers.rs` was not rustfmt-clean after the hub merge (`cargo fmt --check`
+8. **Base.** `crates/hub/src/fleet/vpn/tests/peers.rs` was not rustfmt-clean after the hub merge (`cargo fmt --check`
    stopped the gates at step 1); `cargo fmt` fixed it in its own commit.
 9. **Interface review fixes.** (MOT-007) The VPN section is now the last section on Settings and the VPN card follows
    Metrics on the Overview, so a late picture moves nothing above it. (UI-013) The "Add a ping check" link has a

@@ -3,7 +3,7 @@
 
 use std::time::Duration;
 
-use anima_hub::sessions::{EndReason, Live, SessionChange};
+use anima_hub::fleet::sessions::{EndReason, Live, SessionChange};
 use async_graphql::{
     Request, Response, Variables,
     futures_util::{FutureExt as _, Stream, StreamExt as _},
@@ -90,7 +90,7 @@ async fn ra_034_a_refused_start_publishes_nothing(pool: PgPool) {
     let invalid = schema.execute(start_request(PVE_01, &too_wide)).await;
     assert_eq!(error_json(&invalid)["extensions"]["code"], "VALIDATION");
     // The hub is shutting down: UNAVAILABLE, and the row rolls back.
-    anima_hub::sessions::shut_down(&pool, &live, now())
+    anima_hub::fleet::sessions::shut_down(&pool, &live, now())
         .await
         .unwrap();
     let unavailable = schema.execute(start_request(PVE_01, &display())).await;
@@ -114,7 +114,7 @@ async fn ra_034_shutdown_publishes_each_pending_session_s_hub_shutdown_end(pool:
     let second = started(&schema, DOCKER_HOST).await;
     let mut changes = live.changes();
 
-    anima_hub::sessions::shut_down(&pool, &live, now() + TimeDelta::seconds(5))
+    anima_hub::fleet::sessions::shut_down(&pool, &live, now() + TimeDelta::seconds(5))
         .await
         .unwrap();
 

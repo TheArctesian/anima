@@ -133,7 +133,7 @@ Also read `docs/programme/phase-3-plan.md`, `phase-3-contracts.md` and the packa
 
 - D-23 / R-100: INT-003 already requires refusing `shareSession` for API keys. WP-43 T3 (`f4eee5ed`)
   includes it in the deny list and its test. A merge preview with WP-47 T3 found conflicts in
-  `contracts/schema.graphql` and `crates/hub/src/events/model.rs`. Keep the login/browser-only wording
+  `contracts/schema.graphql` and `crates/hub/src/fleet/events/model.rs`. Keep the login/browser-only wording
   alongside WP-47's removal of `@pending`, plus both audit target variants.
 - WP-47 Q-5: K4 §4's general relay rule already forwards the owner's gateway instructions, which
   includes `msg`. The recorded notice carries a guacd user ID (`@` and a UUID) and the viewer name.

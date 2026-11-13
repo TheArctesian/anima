@@ -4,7 +4,7 @@
 use std::net::IpAddr;
 
 use anima_hub::{
-    checks::{self, Error, Missing, Recorded},
+    fleet::checks::{self, Error, Missing, Recorded},
     ids::CheckId,
     status::Status,
 };

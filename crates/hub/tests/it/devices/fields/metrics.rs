@@ -4,8 +4,10 @@ use std::sync::{Arc, atomic::Ordering};
 
 use anima_hub::{
     clock::{Clock, FixedClock},
-    devices::graphql::{Mutation, Query, gpus_loader, readings_loader},
-    metrics::{MetricKind, Sample, record_collection},
+    fleet::{
+        devices::graphql::{Mutation, Query, gpus_loader, readings_loader},
+        metrics::{MetricKind, Sample, record_collection},
+    },
 };
 use async_graphql::{EmptySubscription, Schema};
 use chrono::{DateTime, TimeDelta, Utc};

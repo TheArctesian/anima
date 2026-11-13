@@ -1,8 +1,8 @@
 //! `active_for` and `active_targets`: which devices and checks the active windows cover (MW-003).
 
 use anima_hub::{
+    fleet::maintenance::{active_for, active_targets},
     ids::{CheckId, DeviceId},
-    maintenance::{active_for, active_targets},
 };
 use serde_json::json;
 use sqlx::PgPool;

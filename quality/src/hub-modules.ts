@@ -2,6 +2,11 @@ import { isRecord } from "./record.ts";
 
 /** The hub's top-level modules and which domains each domain may import (the hub-domains contract, REPO-004). */
 export interface HubModules {
+  /**
+   * Parent nouns that only group domains, such as `fleet` (REPO-E-001, OD-E5). A module inside a
+   * group counts as a top-level module: `fleet/devices/store.rs` is in the domain `devices`.
+   */
+  groups: string[];
   /** May be imported by everyone; import no domain. */
   leaves: string[];
   /** May import anything (`main`, `lib`, `schema`). */
@@ -53,7 +58,20 @@ export function parseHubModules(text: string): HubModules {
   for (const name of Object.keys(graphql)) {
     if (!Object.hasOwn(domains, name)) throw new HubModulesShapeError(`graphql.${name} is not a domain`);
   }
-  return { leaves: stringList(parsed["leaves"], "leaves"), wiring: stringList(parsed["wiring"], "wiring"), domains, graphql };
+  const groups = parsed["groups"] === undefined ? [] : stringList(parsed["groups"], "groups");
+  const leaves = stringList(parsed["leaves"], "leaves");
+  const wiring = stringList(parsed["wiring"], "wiring");
+  for (const name of groups) {
+    if (Object.hasOwn(domains, name) || leaves.includes(name) || wiring.includes(name)) {
+      throw new HubModulesShapeError(`group ${name} is also a module`);
+    }
+  }
+  return { groups, leaves, wiring, domains, graphql };
+}
+
+/** A module path without its group: `[fleet, devices, store]` is `[devices, store]`; a group's own face is `[]`. */
+export function ungrouped(modules: HubModules, path: string[]): string[] {
+  return modules.groups.includes(path[0] ?? "") ? path.slice(1) : path;
 }
 
 export function isListed(modules: HubModules, name: string): boolean {

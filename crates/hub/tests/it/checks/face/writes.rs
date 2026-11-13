@@ -2,7 +2,7 @@
 //! refused constraint named as the field to fix (CHK-005, DB-011).
 
 use anima_hub::{
-    checks::{
+    fleet::checks::{
         self, Check, CheckChange, CheckSettings, Definition, Error, Missing, NewCheck, PushToken,
         config::{CheckConfig, IpVersion},
     },

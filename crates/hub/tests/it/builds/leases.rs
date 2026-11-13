@@ -6,7 +6,7 @@ use std::{
     time::Duration,
 };
 
-use anima_hub::{
+use anima_hub::fleet::{
     builds::{self, BuildQueue, Updates},
     events::Bus,
 };

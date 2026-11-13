@@ -4,7 +4,7 @@
 
 use std::sync::atomic::Ordering;
 
-use anima_hub::{checks::graphql::check_notifications_loader, ids::CheckId};
+use anima_hub::{fleet::checks::graphql::check_notifications_loader, ids::CheckId};
 use serde_json::{Value, json};
 use sqlx::PgPool;
 

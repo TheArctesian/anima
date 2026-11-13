@@ -11,7 +11,7 @@ use chrono::TimeDelta;
 use serde_json::{Value, json};
 use sqlx::PgPool;
 
-use anima_hub::{access, events::ActorKind};
+use anima_hub::fleet::{access, events::ActorKind};
 
 use crate::hub::{Hub, set_operator, start};
 

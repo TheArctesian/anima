@@ -2,7 +2,7 @@
 //! accepted server certificate unless its security is `RDP` or the certificate is ignored;
 //! neither needs an SSH host key. A refusal writes nothing.
 
-use anima_hub::sessions::Live;
+use anima_hub::fleet::sessions::Live;
 use serde_json::Value;
 use sqlx::PgPool;
 

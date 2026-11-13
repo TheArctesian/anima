@@ -9,9 +9,11 @@ use std::{
 };
 
 use anima_hub::{
-    access::{self, PublicOrigin},
     clock::{Clock, SystemClock},
-    events::{Bus, process_log},
+    fleet::{
+        access::{self, PublicOrigin},
+        events::{Bus, process_log},
+    },
     router,
     schema::build_schema,
     web_fallback,

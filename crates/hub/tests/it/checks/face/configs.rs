@@ -2,7 +2,7 @@
 //! back the same (CHK-009).
 
 use anima_hub::{
-    checks::{self, config::CheckConfig},
+    fleet::checks::{self, config::CheckConfig},
     ids::{CheckId, DeviceId},
 };
 use serde_json::{Map, Value};

@@ -8,9 +8,11 @@ use std::{
 };
 
 use anima_hub::{
-    access,
     clock::Clock,
-    events::{Bus, EventSummary, Severity, Signal, Source},
+    fleet::{
+        access,
+        events::{Bus, EventSummary, Severity, Signal, Source},
+    },
     ids::EventId,
     router,
     schema::build_schema,
@@ -186,7 +188,7 @@ pub fn publish(bus: &Bus, severity: Severity, message: &str) {
         source: Source::Hub,
         device: None,
         message: message.to_owned(),
-        actor: Some(anima_hub::events::ActorKind::Hub),
+        actor: Some(anima_hub::fleet::events::ActorKind::Hub),
     }));
 }
 

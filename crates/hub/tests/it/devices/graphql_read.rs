@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use anima_hub::clock::{Clock, FixedClock};
-use anima_hub::devices::{
+use anima_hub::fleet::devices::{
     self,
     graphql::{Mutation, Query},
 };

@@ -1,6 +1,6 @@
 //! The token kinds in `access.api_tokens` (K2 0010-0029) and how long each is kept (A-5).
 
-use anima_hub::access;
+use anima_hub::fleet::access;
 use chrono::{DateTime, TimeDelta, Utc};
 use sqlx::PgPool;
 

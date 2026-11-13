@@ -4,11 +4,13 @@
 use std::sync::Arc;
 
 use anima_hub::{
-    access::Identity,
     clock::{Clock, FixedClock},
-    events::Operator,
+    fleet::{
+        access::Identity,
+        events::Operator,
+        vpn::graphql::{Mutation, RouteMutation},
+    },
     ids::OperatorId,
-    vpn::graphql::{Mutation, RouteMutation},
 };
 use async_graphql::{EmptySubscription, MergedObject, Object, Request, Schema};
 use chrono::TimeDelta;
@@ -58,7 +60,7 @@ async fn d_23_the_vpn_resolvers_refuse_an_api_key_without_the_backstop() {
     let operator = || Operator {
         id: OperatorId::from(uuid::Uuid::from_u128(1)),
         name: "operator".to_owned(),
-        actor: anima_hub::events::Actor::for_tests(),
+        actor: anima_hub::fleet::events::Actor::for_tests(),
     };
     let until = start() + TimeDelta::days(1);
     for document in DOCUMENTS {

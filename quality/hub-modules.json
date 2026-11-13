@@ -1,4 +1,7 @@
 {
+  "groups": [
+    "fleet"
+  ],
   "leaves": [
     "ids",
     "status",

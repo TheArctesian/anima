@@ -6,7 +6,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use anima_hub::{events::process_log, sessions::Live};
+use anima_hub::fleet::{events::process_log, sessions::Live};
 use chrono::TimeDelta;
 use sqlx::PgPool;
 

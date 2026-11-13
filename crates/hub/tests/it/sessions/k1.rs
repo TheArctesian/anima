@@ -3,7 +3,7 @@
 //! (`crate::trust::k1`).
 
 use crate::contract::{Schema, k1, schema};
-use anima_hub::sessions::{
+use anima_hub::fleet::sessions::{
     EndReason, Protocol,
     graphql::{Mutation, Query, Subscription},
 };

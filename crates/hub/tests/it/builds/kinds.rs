@@ -2,7 +2,7 @@
 //! only as a plain bearer, stands for no operator on the tunnels, and the database keeps the kind
 //! and the scope together (BLD-022).
 
-use anima_hub::access;
+use anima_hub::fleet::access;
 use sqlx::PgPool;
 
 use super::harness::{claim, create_job, data, enrol, operator};

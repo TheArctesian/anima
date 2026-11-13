@@ -4,7 +4,7 @@
 use std::collections::HashMap;
 
 use anima_hub::{
-    checks::{self, Error, Missing},
+    fleet::checks::{self, Error, Missing},
     ids::DeviceId,
     status::Status::{self, Degraded, Down, Maintenance, Unknown, Up},
 };

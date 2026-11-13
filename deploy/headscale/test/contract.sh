@@ -16,7 +16,7 @@ umask 077
 here=$(cd "$(dirname "$0")" && pwd)
 repo=$(cd "$here/../../.." && pwd)
 tool="$repo/deploy/headscale"
-hub_fixtures="$repo/crates/hub/src/vpn/tests/fixtures"
+hub_fixtures="$repo/crates/hub/src/fleet/vpn/tests/fixtures"
 deploy_fixtures="$tool/tests/fixtures"
 work=$(mktemp -d)
 project="anima-contract-$$"

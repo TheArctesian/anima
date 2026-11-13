@@ -3,7 +3,7 @@
 use std::collections::HashSet;
 
 use anima_hub::{
-    credentials::{PasswordKind, with_password, with_ssh},
+    fleet::credentials::{PasswordKind, with_password, with_ssh},
     ids::DeviceId,
 };
 use sqlx::PgPool;

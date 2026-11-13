@@ -13,7 +13,9 @@ mod transactions;
 use std::io::Write as _;
 
 use anima_hub::{
-    credentials::{Error, PasswordKind, Secret, SshSecret, Vault, store_password, store_ssh},
+    fleet::credentials::{
+        Error, PasswordKind, Secret, SshSecret, Vault, store_password, store_ssh,
+    },
     ids::DeviceId,
 };
 use base64::{Engine as _, engine::general_purpose::STANDARD};

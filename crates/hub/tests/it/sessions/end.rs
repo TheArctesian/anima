@@ -3,10 +3,10 @@
 
 mod shutdown;
 
-use anima_hub::sessions::Presented;
+use anima_hub::fleet::sessions::Presented;
 use std::time::Duration;
 
-use anima_hub::{
+use anima_hub::fleet::{
     events::ClientAddr,
     sessions::{Actor, EndCause, EndReason, Live},
 };

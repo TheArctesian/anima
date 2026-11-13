@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 
-use anima_hub::{checks, ids::DeviceId, status::Status};
+use anima_hub::{fleet::checks, ids::DeviceId, status::Status};
 use chrono::TimeDelta;
 use serde_json::{Value, json};
 use sqlx::PgPool;

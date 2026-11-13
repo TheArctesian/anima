@@ -29,7 +29,7 @@ use axum::{
 use tower::ServiceExt as _;
 use tower_http::services::ServeDir;
 
-use crate::access::PublicOrigin;
+use crate::fleet::access::PublicOrigin;
 use path::Wanted;
 
 /// The page every client-side route loads; its inline scripts give the CSP hashes.

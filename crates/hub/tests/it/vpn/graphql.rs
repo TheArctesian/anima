@@ -10,12 +10,14 @@ use std::{
 };
 
 use anima_hub::{
-    access::Identity,
     clock::{Clock, FixedClock},
-    events::{Bus, Operator, process_log},
+    fleet::{
+        access::Identity,
+        events::{Bus, Operator, process_log},
+        vpn::{Broker, Feed, Picture, Reading, spawn_reader},
+    },
     ids::OperatorId,
     schema::{Dependencies, build_schema},
-    vpn::{Broker, Feed, Picture, Reading, spawn_reader},
 };
 use async_graphql::{Request, futures_util::StreamExt as _};
 use chrono::TimeDelta;
@@ -29,7 +31,7 @@ use crate::{
 };
 
 /// The hub's status as the fake proxy answers it: three nodes, `hub`, `mac`, `router-home`.
-pub const STATUS: &str = include_str!("../../../src/vpn/tests/fixtures/status-active.json");
+pub const STATUS: &str = include_str!("../../../src/fleet/vpn/tests/fixtures/status-active.json");
 
 pub fn reading(pool: &PgPool, feed: &Feed) -> Reading {
     Reading {
@@ -237,7 +239,7 @@ async fn vpn_005_vpn_changed_sends_the_next_picture(pool: PgPool) {
             .parse::<OperatorId>()
             .unwrap(),
         name: "operator".to_owned(),
-        actor: anima_hub::events::Actor::for_tests(),
+        actor: anima_hub::fleet::events::Actor::for_tests(),
     };
     let request = Identity::for_tests(operator, start() + TimeDelta::days(3650)).attach(
         Request::new("subscription { vpnChanged { fresh nodes { name path } } }"),

@@ -5,7 +5,10 @@
 
 use std::time::Duration;
 
-use anima_hub::{clock::Clock, events::Bus, metrics::spawn_stale_watch};
+use anima_hub::{
+    clock::Clock,
+    fleet::{events::Bus, metrics::spawn_stale_watch},
+};
 use axum::http::StatusCode;
 use chrono::TimeDelta;
 use serde_json::{Value, json};

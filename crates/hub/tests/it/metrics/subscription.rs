@@ -5,11 +5,13 @@ use std::{sync::Arc, time::Duration};
 
 use crate::hub::dependencies;
 use anima_hub::{
-    access::Identity,
     clock::FixedClock,
-    events::Operator,
+    fleet::{
+        access::Identity,
+        events::Operator,
+        metrics::{Feed, MetricKind, MetricSample, MetricsAdded, Readings, graphql::Subscription},
+    },
     ids::OperatorId,
-    metrics::{Feed, MetricKind, MetricSample, MetricsAdded, Readings, graphql::Subscription},
 };
 use async_graphql::{
     EmptyMutation, Request, Response, Schema, SimpleObject,
@@ -46,7 +48,7 @@ fn signed_in(query: &str) -> Request {
     let operator = Operator {
         id: OPERATOR_ID.parse::<OperatorId>().unwrap(),
         name: "operator".to_owned(),
-        actor: anima_hub::events::Actor::for_tests(),
+        actor: anima_hub::fleet::events::Actor::for_tests(),
     };
     Identity::for_tests(operator, now() + TimeDelta::days(3650)).attach(Request::new(query))
 }
@@ -194,7 +196,7 @@ async fn p2_002_the_hub_schema_serves_a_collection_published_on_its_feed() {
     let wired = dependencies(
         &pool,
         Arc::new(FixedClock(now())),
-        anima_hub::events::Bus::new(1),
+        anima_hub::fleet::events::Bus::new(1),
     );
     let feed = wired.metrics_feed.clone();
     let schema = anima_hub::schema::build_schema(wired);

@@ -1,6 +1,6 @@
 //! A fake `LocalAPI` proxy for GET requests: records each request head, answers as told.
 //!
-//! A copy of `crates/hub/src/vpn/tests/proxy.rs`: `tests/it` is another crate and cannot import
+//! A copy of `crates/hub/src/fleet/vpn/tests/proxy.rs`: `tests/it` is another crate and cannot import
 //! the hub's `#[cfg(test)]` code.
 
 use std::sync::{Arc, Mutex};

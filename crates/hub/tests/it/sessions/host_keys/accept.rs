@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use anima_hub::{
     clock::{Clock, FixedClock},
-    events::Bus,
+    fleet::events::Bus,
     schema::{Dependencies, build_schema},
 };
 use chrono::{DateTime, TimeDelta, Utc};

@@ -2,11 +2,15 @@
 //! probe, and kept on update when left empty (SEC-003, SEC-005, LOG-007).
 
 use anima_hub::{
-    checks::{
-        self, CheckChange, Definition, Error,
-        config::{CheckConfig, HttpCredentials, HttpInput, HttpMethod, HttpSecrets, StatusRange},
+    fleet::{
+        checks::{
+            self, CheckChange, Definition, Error,
+            config::{
+                CheckConfig, HttpCredentials, HttpInput, HttpMethod, HttpSecrets, StatusRange,
+            },
+        },
+        credentials::{Sealed, Secret, Vault},
     },
-    credentials::{Sealed, Secret, Vault},
     ids::CheckId,
 };
 use sqlx::PgPool;

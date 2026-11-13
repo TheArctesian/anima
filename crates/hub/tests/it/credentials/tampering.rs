@@ -1,6 +1,6 @@
 //! Rows changed in the database do not open as another secret (SEC-003).
 
-use anima_hub::credentials::{Error, PasswordKind, load_password, load_ssh};
+use anima_hub::fleet::credentials::{Error, PasswordKind, load_password, load_ssh};
 use sqlx::PgPool;
 
 use super::{

@@ -12,9 +12,11 @@ use std::{
 };
 
 use anima_hub::{
-    access::{self, ClientAddr},
     clock::Clock,
-    events::{Bus, Signal},
+    fleet::{
+        access::{self, ClientAddr},
+        events::{Bus, Signal},
+    },
     router,
     schema::build_schema,
 };

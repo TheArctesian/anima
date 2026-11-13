@@ -2,7 +2,7 @@
 //! the hub's own way and reported by the accepted-certificate rule, nothing follows the TLS
 //! handshake or the VNC banner, and the target rule refuses before any connection (R-032).
 
-use anima_hub::sessions::Live;
+use anima_hub::fleet::sessions::Live;
 use chrono::{DateTime, Utc};
 use serde_json::{Value, json};
 use sqlx::PgPool;

@@ -64,8 +64,11 @@ Entries only shrink. Never add one by hand.
 
 ## hub-modules.json (REPO-004, hub-domains contract)
 
+`groups` names the parent-noun folders that only group modules (`fleet`, REPO-E-001, OD-E5): a module inside a group
+counts as a top-level module, so `crates/hub/src/fleet/devices/store.rs` is in the domain `devices`, and
+`crate::fleet::devices::store` is that domain's store. A group may not share a name with a module.
 `leaves` may be imported by all and import no domain. `wiring` (`main`, `lib`, `schema`) may import anything.
-`domains` maps each domain to the domains it may import. Any other top-level module under `crates/hub/src` is `unlisted-module`.
+`domains` maps each domain to the domains it may import. Any other top-level module under `crates/hub/src` or inside a group is `unlisted-module`.
 Signals: `forbidden-edge`, `leaf-imports-domain`, `unlisted-module`, `foreign-store` (even on an allowed edge),
 `import-cycle`, `allow-list-cycle`. Changing the list is a contract change.
 

@@ -4,7 +4,7 @@
 use std::error::Error as _;
 
 use anima_hub::{
-    credentials::{
+    fleet::credentials::{
         Error, PasswordKind, SshSecret, has_ssh, load_password, load_ssh, store_password, store_ssh,
     },
     ids::DeviceId,

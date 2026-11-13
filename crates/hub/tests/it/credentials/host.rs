@@ -1,7 +1,7 @@
 //! Credentials bound to the device host they were entered for (SEC-011), through the public
 //! functions and migration 0220.
 
-use anima_hub::credentials::{
+use anima_hub::fleet::credentials::{
     Error, PasswordKind, Secret, SshSecret, load_password, load_ssh, store_password,
 };
 use sqlx::PgPool;

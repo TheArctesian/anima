@@ -20,11 +20,13 @@ mod writes;
 use std::io::Write as _;
 
 use anima_hub::{
-    checks::{
-        self, Beat, CheckSettings, CheckState, Definition, NewCheck, Recorded, Sealer,
-        config::{CheckConfig, IpVersion},
+    fleet::{
+        checks::{
+            self, Beat, CheckSettings, CheckState, Definition, NewCheck, Recorded, Sealer,
+            config::{CheckConfig, IpVersion},
+        },
+        credentials::Vault,
     },
-    credentials::Vault,
     ids::{CheckId, DeviceId},
     status::Status,
 };

@@ -18,7 +18,7 @@ use tempfile::TempDir;
 use tower::ServiceExt as _;
 
 use super::web_client;
-use crate::access::PublicOrigin;
+use crate::fleet::access::PublicOrigin;
 
 /// Two inline scripts (one with attributes) and one loaded by `src`.
 const INDEX_HTML: &str = "<!doctype html><html><head>\

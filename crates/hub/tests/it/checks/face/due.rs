@@ -1,7 +1,7 @@
 //! `due_checks`: what the scheduler probes next (CHK-001, CHK-005).
 
 use anima_hub::{
-    checks::{self, Definition, PushToken, config::CheckConfig},
+    fleet::checks::{self, Definition, PushToken, config::CheckConfig},
     ids::CheckId,
 };
 use chrono::{DateTime, TimeDelta, Utc};

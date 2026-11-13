@@ -5,7 +5,7 @@
 
 use std::sync::Arc;
 
-use anima_hub::{
+use anima_hub::fleet::{
     builds::{self, Updates},
     events::Bus,
 };

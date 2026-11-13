@@ -11,8 +11,10 @@ use std::{
 
 use anima_hub::{
     clock::{Clock, FixedClock},
-    devices::graphql::{Mutation, Query},
-    events::{Bus, process_log::subscriber},
+    fleet::{
+        devices::graphql::{Mutation, Query},
+        events::{Bus, process_log::subscriber},
+    },
     schema::harden,
 };
 use async_graphql::{EmptySubscription, Request, Schema, Variables};

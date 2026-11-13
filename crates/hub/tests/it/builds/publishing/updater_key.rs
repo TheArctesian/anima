@@ -8,7 +8,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use anima_hub::{builds, events::process_log::subscriber};
+use anima_hub::fleet::{builds, events::process_log::subscriber};
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use chrono::TimeDelta;
 use serde_json::Value;

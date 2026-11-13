@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use anima_hub::{
     clock::{Clock, SystemClock},
-    events::Bus,
+    fleet::events::Bus,
     router,
     schema::{HubSchema, build_schema},
 };

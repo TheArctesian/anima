@@ -24,9 +24,13 @@ use tokio::{
 
 use anima_hub::{
     clock::{Clock, FixedClock},
-    devices::graphql::{Mutation, Query, credential_loader, devices_by_site_loader, site_loader},
-    events::Bus,
-    trust::graphql::host_key_loader,
+    fleet::{
+        devices::graphql::{
+            Mutation, Query, credential_loader, devices_by_site_loader, site_loader,
+        },
+        events::Bus,
+        trust::graphql::host_key_loader,
+    },
 };
 use async_graphql::{EmptySubscription, Schema};
 use serde_json::{Value, json};

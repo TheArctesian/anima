@@ -14,7 +14,7 @@ export function toNumber(text: string): number {
 /**
  * The hub's limits, mirrored so that the form refuses what the hub would. Each comes from:
  * the `checks_*_check` constraints in `crates/hub/migrations/0300_checks_schema.sql` (name,
- * interval, retries, retry interval, degraded threshold); `crates/hub/src/checks/config/rules.rs`
+ * interval, retries, retry interval, degraded threshold); `crates/hub/src/fleet/checks/config/rules.rs`
  * (URL, header, body, keyword and JSON query lengths, header count); `config/http.rs` (status
  * ranges, basic user name); `config.rs` (DNS `expected`); `checks/graphql/form.rs` (group children).
  */

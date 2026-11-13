@@ -1,7 +1,7 @@
 //! The notifications part and K1 agree where they share a declaration with another part
 //! (CON-002; the exact schema comparison is `contract`).
 
-use anima_hub::{checks, notifications};
+use anima_hub::fleet::{checks, notifications};
 use async_graphql::{EmptySubscription, Schema};
 
 use crate::contract::{k1, schema};

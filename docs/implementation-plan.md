@@ -125,12 +125,12 @@ Each package owns its paths. A package must not change a path that a different p
 | WP-02 | Design tokens and fonts | `design/tokens/`, `apps/client/src/styles/`, `crates/theme/`, token build | WP-01 | Haiku, Sonnet | Sonnet (interface) | TOK-*, UI-010–022 |
 | WP-03 | VPN and network | `deploy/headscale/`, `deploy/dns/`, VPN setup guide | WP-01 | Sonnet | Opus (security) | VPN-*, VPS-*, NET-005, DNS-001–006, DNS-008 |
 | WP-04 | Deployment. Stage A: hub deployment (Wave 1). Stage B: desktop releases and self-update (Wave 3, R-006) | A: `deploy/compose.yaml`, `deploy/gateway/`, backup scripts. B: `.github/workflows/release.yml`, `deploy/release/`, `apps/client/src/lib/updates/`, `apps/desktop/src-tauri/capabilities/desktop.json`, `docs/releases.md` | A: WP-01. B: WP-15, WP-16 | Haiku, Sonnet | Sonnet, Opus (security, stage B) | GW-001–004, DB-001–007, RA-011, UPD-001–012, DNS-002 (hub certificate, stage A), DNS-007 (stage B) |
-| WP-05 | Hub access and logs | `crates/hub/src/access/`, `crates/hub/src/events/`, tracing setup | WP-01, K1–K3 | Opus, Sonnet | Opus (security), Sonnet | SEC-*, NET-001–004, LOG-*, API-003, API-007 |
-| WP-06 | Hub devices | `crates/hub/src/devices/` | WP-01, K1–K3 | Sonnet | Sonnet | DEV-010–015, VPN-002 |
-| WP-07 | Hub credentials | `crates/hub/src/credentials/` | WP-01, K3 | Opus | Opus (security) | SEC-003–005, CLI-004 |
+| WP-05 | Hub access and logs | `crates/hub/src/fleet/access/`, `crates/hub/src/fleet/events/`, tracing setup | WP-01, K1–K3 | Opus, Sonnet | Opus (security), Sonnet | SEC-*, NET-001–004, LOG-*, API-003, API-007 |
+| WP-06 | Hub devices | `crates/hub/src/fleet/devices/` | WP-01, K1–K3 | Sonnet | Sonnet | DEV-010–015, VPN-002 |
+| WP-07 | Hub credentials | `crates/hub/src/fleet/credentials/` | WP-01, K3 | Opus | Opus (security) | SEC-003–005, CLI-004 |
 | WP-08 | Guacamole protocol library | `crates/guac-protocol/` | WP-01 | Opus | Opus | GW-010–011 |
-| WP-09 | Hub checks and maintenance | `crates/hub/src/checks/`, `crates/hub/src/maintenance/` | WP-05, WP-06 | Opus (scheduler), Sonnet (check types) | Sonnet | CHK-*, MW-*, DB-008–011 |
-| WP-10 | Hub sessions (SSH) | `crates/hub/src/sessions/` | WP-05, WP-06, WP-07, WP-08 | Opus | Opus (security), Sonnet | HUB-002, GW-012–015, RA-001–011, SEC-006–007 |
+| WP-09 | Hub checks and maintenance | `crates/hub/src/fleet/checks/`, `crates/hub/src/fleet/maintenance/` | WP-05, WP-06 | Opus (scheduler), Sonnet (check types) | Sonnet | CHK-*, MW-*, DB-008–011 |
+| WP-10 | Hub sessions (SSH) | `crates/hub/src/fleet/sessions/` | WP-05, WP-06, WP-07, WP-08 | Opus | Opus (security), Sonnet | HUB-002, GW-012–015, RA-001–011, SEC-006–007 |
 | WP-11 | Client shell | `apps/client/src/routes/+layout*`, `apps/client/src/lib/hub/`, `lib/icons/`, `lib/motion/` | WP-02, K1 | Opus (motion, subscriptions), Haiku (icon table) | Sonnet (interface) | NAV-*, MOT-001–021, MOT-040–042, NET-004 |
 | WP-12 | Client Devices page | `apps/client/src/routes/devices/+page*`, `lib/devices/`, `lib/checks/`, `lib/events/` | WP-11 | Sonnet | Sonnet (interface) | DEV-001–005, LOG-009–010, MOT roles |
 | WP-13 | Client device detail and form | `apps/client/src/routes/devices/[id]/`, `lib/forms/` | WP-11 | Sonnet | Sonnet (interface) | DEV-010–022, Section 6.7 |

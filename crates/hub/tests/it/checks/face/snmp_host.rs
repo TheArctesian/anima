@@ -4,11 +4,13 @@
 //! their device had then.
 
 use anima_hub::{
-    checks::{
-        self, CheckChange, Definition, Error, Sealer,
-        config::{SnmpConfig, SnmpCredentials, SnmpInput, SnmpSecrets, SnmpVersion},
+    fleet::{
+        checks::{
+            self, CheckChange, Definition, Error, Sealer,
+            config::{SnmpConfig, SnmpCredentials, SnmpInput, SnmpSecrets, SnmpVersion},
+        },
+        credentials::Secret,
     },
-    credentials::Secret,
     ids::CheckId,
 };
 use sqlx::PgPool;

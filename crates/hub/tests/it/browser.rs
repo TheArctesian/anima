@@ -13,9 +13,8 @@ mod table;
 use std::{net::SocketAddr, sync::Arc};
 
 use anima_hub::{
-    access::PublicOrigin,
     clock::{Clock, FixedClock},
-    events::Bus,
+    fleet::{access::PublicOrigin, events::Bus},
     router_at,
     schema::build_schema,
 };

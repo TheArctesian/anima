@@ -3,7 +3,7 @@
 use std::time::Duration;
 
 use anima_hub::{
-    events::{Bus, HeartbeatSummary, Signal},
+    fleet::events::{Bus, HeartbeatSummary, Signal},
     ids::{CheckId, DeviceId},
     status::Status,
 };

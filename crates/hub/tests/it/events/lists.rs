@@ -1,7 +1,7 @@
 //! `Query.events`: newest first, cursor pages, filters (LOG-004, API-006).
 
 use anima_hub::{
-    events::{self, NewEvent, Severity, Source},
+    fleet::events::{self, NewEvent, Severity, Source},
     ids::DeviceId,
 };
 use chrono::{DateTime, TimeDelta, Utc};
@@ -34,7 +34,7 @@ async fn record(
         source,
         device,
         message: message.to_owned(),
-        actor: anima_hub::events::ActorKind::Hub,
+        actor: anima_hub::fleet::events::ActorKind::Hub,
     };
     events::record(&mut conn, &hub.bus, at, event)
         .await

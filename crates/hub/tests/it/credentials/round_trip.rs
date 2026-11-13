@@ -1,6 +1,6 @@
 //! What a store writes and what a load gives back (SEC-003).
 
-use anima_hub::credentials::{
+use anima_hub::fleet::credentials::{
     PasswordKind, SshSecret, clear_ssh, has_ssh, load_password, load_ssh,
 };
 use sqlx::PgPool;

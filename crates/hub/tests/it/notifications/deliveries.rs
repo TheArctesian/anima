@@ -8,7 +8,7 @@ use std::{
 
 use anima_hub::{
     clock::{Clock, FixedClock},
-    notifications::graphql::{Mutation, Query, last_delivery_loader},
+    fleet::notifications::graphql::{Mutation, Query, last_delivery_loader},
 };
 use async_graphql::{EmptySubscription, Schema};
 use chrono::{DateTime, TimeDelta, Utc};

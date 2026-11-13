@@ -94,7 +94,7 @@ The plan has two tiers:
 These facts set the design. Items 1 to 3 and 6 to 11 were read on `phase-3`. Items 4 and 5 are
 from the Tailscale source (`ipnstate.go`); their behaviour must be checked in A1-T1.
 
-1. The hub calls the LocalAPI proxy only from `crates/hub/src/checks/probe/tailscale.rs`
+1. The hub calls the LocalAPI proxy only from `crates/hub/src/fleet/checks/probe/tailscale.rs`
    (`tailscale_ping`, CHK-009). It reads only `Err` and `LatencySeconds`. Nothing reads
    `status`. Nothing implements VPN-005.
 2. The proxy already allows `GET /localapi/v0/status?peers=true` (`deploy/localapi/allow.ts`).
@@ -119,7 +119,7 @@ from the Tailscale source (`ipnstate.go`); their behaviour must be checked in A1
    - The status has no Tailscale version and no advertised routes that are not approved.
 5. A disco ping returns the first reply. The first reply often comes through DERP, also when a
    direct path will follow. One ping is not a measure of the path.
-6. `Site { id, name, subnet }` is in `crates/hub/src/devices/model.rs`. A device has `ip` only
+6. `Site { id, name, subnet }` is in `crates/hub/src/fleet/devices/model.rs`. A device has `ip` only
    when its host is an IP literal (around line 151). A device with a DNS-name host has no `ip`.
 7. `upkeep.rs` starts the periodic jobs. `events::run_daily` runs each job at start and then
    each day, so a job that writes an event writes it again after each restart.
@@ -220,7 +220,7 @@ create table vpn.warnings (
 | `crates/hub/src/schema.rs` | `VpnQuery`, `VpnSubscription` in the tuples; a `Dependencies` field for the feed; `.data(feed)`. Hand-off lines (R-082). |
 | `quality/hub-modules.json` | `"vpn": ["devices", "events", "checks"]`; `vpn` graphql: `["access"]` (`checks` is a domain import for `hasPingCheck` and `vpn::Error`); `upkeep` may import `vpn`. |
 | `contracts/schema.graphql` (K1) | New types with `@pending` first; the `EventSource` value `VPN`. |
-| `crates/hub/src/events/model.rs` + migration | The `vpn` event `Source`. The migration drops and adds the CHECK with the full list, as `0701_events_source_metrics.sql`, and is numbered `1000`, after 0852 (BD-1). |
+| `crates/hub/src/fleet/events/model.rs` + migration | The `vpn` event `Source`. The migration drops and adds the CHECK with the full list, as `0701_events_source_metrics.sql`, and is numbered `1000`, after 0852 (BD-1). |
 | `tests/it/hub.rs`, `tests/it/wiring.rs` | Build the new `Dependencies` field. |
 | `crates/hub/tests/it/main.rs` | `mod vpn;`, as `tests/it/vpn.rs` with a `tests/it/vpn/` folder, because `tests/it` is at 12 (vpn-build.md Section 2). |
 | Notifications (WP-45, WP-47) | Add the `vpn` source to the notification rules when they land. |
@@ -416,8 +416,8 @@ The broker returns a pre-auth key once and never logs it. The hub redaction alre
 
 | Part | Location | Notes |
 | --- | --- | --- |
-| Broker client | `crates/hub/src/vpn/broker.rs` | I/O edge; a config value `ANIMA_VPN_BROKER` (unix socket path). |
-| Mutations | `crates/hub/src/vpn/graphql.rs` | `createVpnInvite`, `createRouterKey(siteId)`, `approveSiteRoute(siteId)`, `registerVpnNode(authId)`. Signed-in operator (sign-in already asks for the authenticator code, VP-9); each is on the D-23 API-key deny list; each writes an audit entry through `events/trail.rs` (LOG-005) with a new `AuditTarget::VpnNode`. These are second controls; the broker controls in Section 5.1 are the first. |
+| Broker client | `crates/hub/src/fleet/vpn/broker.rs` | I/O edge; a config value `ANIMA_VPN_BROKER` (unix socket path). |
+| Mutations | `crates/hub/src/fleet/vpn/graphql.rs` | `createVpnInvite`, `createRouterKey(siteId)`, `approveSiteRoute(siteId)`, `registerVpnNode(authId)`. Signed-in operator (sign-in already asks for the authenticator code, VP-9); each is on the D-23 API-key deny list; each writes an audit entry through `events/trail.rs` (LOG-005) with a new `AuditTarget::VpnNode`. These are second controls; the broker controls in Section 5.1 are the first. |
 | Picture | `vpn/picture.rs` | Merge the broker `nodes` result: an advertised route that is not approved shows as "waiting for approval". |
 | Enrolment | `apps/client/src/lib/vpn/enrol/` | A modal on `$lib/forms/modal/Modal.svelte`. For a Linux router it shows the key once, with the vpn.md Section 5 steps: put the key in a file that only root can read, then `tailscale up --login-server https://hs.anima.ing --auth-key=file:/run/anima-preauth --advertise-routes=<subnet> …`, then delete the file. The key is never in a command line. Then the modal waits on `vpnChanged` for the node and asks "Approve route <subnet>?". |
 | Client computers | same modal | A Mac uses the interactive login (vpn.md Section 6B): the operator types the auth ID from the new machine's screen into the app, and the hub calls `registerVpnNode`. Then Add device opens with the address filled in (add-this-machine). |

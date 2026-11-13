@@ -1,7 +1,7 @@
 //! Every operator change to builds leaves one audit entry and never the token, and so does each
 //! builder that goes with its token (BLD-080, BLD-025, LOG-004, LOG-007).
 
-use anima_hub::{access, builds};
+use anima_hub::fleet::{access, builds};
 use serde_json::{Value, json};
 use sqlx::PgPool;
 

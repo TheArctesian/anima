@@ -4,8 +4,10 @@
 use std::fmt::Write as _;
 
 use anima_hub::{
-    credentials::{Secret, SshSecret, load_ssh, store_ssh},
-    events::Signal,
+    fleet::{
+        credentials::{Secret, SshSecret, load_ssh, store_ssh},
+        events::Signal,
+    },
     ids::DeviceId,
 };
 use serde_json::{Value, json};

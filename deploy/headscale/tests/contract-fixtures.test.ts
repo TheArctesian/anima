@@ -5,7 +5,7 @@ import { parseNodes, parseRoutes } from '../src/inventory.ts';
 import { PREAUTH_PLACEHOLDER } from '../src/redact.ts';
 
 const deployFixture = (name: string): Promise<unknown> => Bun.file(new URL(`fixtures/${name}`, import.meta.url)).json();
-const hubFixture = (name: string): Promise<unknown> => Bun.file(new URL(`../../../crates/hub/src/vpn/tests/fixtures/${name}`, import.meta.url)).json();
+const hubFixture = (name: string): Promise<unknown> => Bun.file(new URL(`../../../crates/hub/src/fleet/vpn/tests/fixtures/${name}`, import.meta.url)).json();
 
 interface Peer {
   readonly HostName: string;

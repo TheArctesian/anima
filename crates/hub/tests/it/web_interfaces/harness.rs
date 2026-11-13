@@ -3,11 +3,13 @@
 use std::sync::Arc;
 
 use anima_hub::{
-    access::Identity,
     clock::FixedClock,
-    events::{Bus, ClientAddr, Operator},
+    fleet::{
+        access::Identity,
+        events::{Bus, ClientAddr, Operator},
+        web_interfaces::graphql::Mutation,
+    },
     ids::OperatorId,
-    web_interfaces::graphql::Mutation,
 };
 use async_graphql::{EmptySubscription, Request, Response, Schema, SimpleObject, Variables};
 use chrono::{DateTime, TimeDelta, Utc};
@@ -61,7 +63,7 @@ pub fn signed_in(query: &str, variables: Value) -> Request {
     let operator = Operator {
         id: OPERATOR_ID.parse::<OperatorId>().unwrap(),
         name: "operator".to_owned(),
-        actor: anima_hub::events::Actor::for_tests(),
+        actor: anima_hub::fleet::events::Actor::for_tests(),
     };
     Identity::for_tests(operator, now() + TimeDelta::days(3650))
         .attach(Request::new(query).variables(Variables::from_json(variables)))

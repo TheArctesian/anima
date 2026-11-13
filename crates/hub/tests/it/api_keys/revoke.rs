@@ -9,7 +9,7 @@ use std::{
 
 use anima_hub::{
     clock::{Clock, FixedClock},
-    events::process_log,
+    fleet::events::process_log,
 };
 use serde_json::{Value, json};
 use sqlx::PgPool;

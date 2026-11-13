@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 
 use anima_hub::{
-    checks::{self, Definition, UptimeWindow, config::CheckConfig},
+    fleet::checks::{self, Definition, UptimeWindow, config::CheckConfig},
     ids::{CheckId, DeviceId},
 };
 use chrono::{DateTime, TimeDelta, Utc};

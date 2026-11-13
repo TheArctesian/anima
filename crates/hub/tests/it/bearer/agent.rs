@@ -2,7 +2,7 @@
 //! tunnel and `/metrics`, while an API key whose text begins `agent_` or `enrol_` still works
 //! (MET-012, MET-013, K8).
 
-use anima_hub::access;
+use anima_hub::fleet::access;
 use axum::{
     body::Body,
     http::{Request, StatusCode},

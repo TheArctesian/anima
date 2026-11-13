@@ -5,9 +5,11 @@ use std::sync::Arc;
 
 use anima_hub::{
     clock::{Clock, FixedClock},
-    events::Bus,
-    notifications::graphql::{Mutation, Query, last_delivery_loader},
-    targets::AddressPolicy,
+    fleet::{
+        events::Bus,
+        notifications::graphql::{Mutation, Query, last_delivery_loader},
+        targets::AddressPolicy,
+    },
 };
 use async_graphql::{EmptySubscription, Request, Schema, Variables};
 use chrono::{DateTime, DurationRound, TimeDelta, Utc};

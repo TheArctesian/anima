@@ -1,7 +1,7 @@
 //! The K7 series and their values: status, up, response time, uptime windows, certificate
 //! days and device status, each as the API shows them (INT-001, CHK-004, CHK-006, CHK-011).
 
-use anima_hub::{checks, ids::DeviceId, status::Status};
+use anima_hub::{fleet::checks, ids::DeviceId, status::Status};
 use axum::{
     body::Body,
     http::{Method, Request, StatusCode},

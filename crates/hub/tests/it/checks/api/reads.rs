@@ -1,6 +1,6 @@
 //! `Query.check` and the fields of `Check` (CHK-004, CHK-006, CHK-007, CHK-011, API-006).
 
-use anima_hub::{checks, status::Status};
+use anima_hub::{fleet::checks, status::Status};
 use chrono::TimeDelta;
 use serde_json::{Value, json};
 use sqlx::PgPool;

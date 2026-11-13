@@ -13,18 +13,20 @@ use std::{
 };
 
 use anima_hub::{
-    DRAIN_LIMIT, Shutdown,
-    access::{self, listen},
-    all_routes, builds,
+    DRAIN_LIMIT, Shutdown, all_routes,
     clock::{Clock as _, SystemClock},
     config::{self, Config},
-    credentials::Vault,
-    events::{self, Bus, process_log},
-    metrics,
+    fleet::{
+        access::{self, listen},
+        builds,
+        credentials::Vault,
+        events::{self, Bus, process_log},
+        metrics, sessions,
+        targets::AddressPolicy,
+        vpn,
+    },
     schema::Dependencies,
-    serve_until, sessions,
-    targets::AddressPolicy,
-    vpn,
+    serve_until,
 };
 use sqlx::PgPool;
 
@@ -47,7 +49,7 @@ enum StartError {
     #[error("cannot load the credential key from {path}: {source}")]
     Key {
         path: String,
-        source: anima_hub::credentials::Error,
+        source: anima_hub::fleet::credentials::Error,
     },
     #[error("{0}")]
     RuntimeRole(#[from] events::RoleError),

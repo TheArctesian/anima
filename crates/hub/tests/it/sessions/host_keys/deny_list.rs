@@ -5,7 +5,7 @@
 
 use std::time::Duration;
 
-use anima_hub::{sessions::Live, targets::AddressPolicy};
+use anima_hub::fleet::{sessions::Live, targets::AddressPolicy};
 use serde_json::{Value, json};
 use sqlx::PgPool;
 use tokio::{net::TcpListener, time::timeout};

@@ -1,7 +1,7 @@
 //! The `__Host-anima` cookie on `POST /graphql`: honoured only from the public origin, without
 //! an `Authorization` header, and only for a browser token; cleared by `logout` (A-3, A-4, A-8).
 
-use anima_hub::access;
+use anima_hub::fleet::access;
 use axum::http::header;
 use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use chrono::TimeDelta;

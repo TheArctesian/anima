@@ -9,11 +9,13 @@ use std::{
 
 use anima_hub::{
     Shutdown,
-    access::{self, Edge, Password, listen},
+    fleet::{
+        access::{self, Edge, Password, listen},
+        sessions::{self, Live},
+    },
     router,
     schema::build_schema,
     serve_until,
-    sessions::{self, Live},
 };
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -141,7 +143,11 @@ async fn serve(pool: &PgPool, live: Live, drain_limit: Duration) -> Served {
     let any_port: SocketAddr = "127.0.0.1:0".parse().unwrap();
     let listening = listen::listen(any_port, None, clock()).await.unwrap();
     let addr = listening.local_addr().unwrap();
-    let edge = Edge::new(pool.clone(), anima_hub::events::Bus::new(16), clock());
+    let edge = Edge::new(
+        pool.clone(),
+        anima_hub::fleet::events::Bus::new(16),
+        clock(),
+    );
     let (stop, signal) = oneshot::channel::<()>();
     let app = router(schema, pool.clone(), clock());
     let shutdown = Shutdown {

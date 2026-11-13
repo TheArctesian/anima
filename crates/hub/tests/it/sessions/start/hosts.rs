@@ -2,7 +2,7 @@
 //! deny list refuses is a `VALIDATION` error on `host`, reported with display problems; a
 //! routable literal or a name starts.
 
-use anima_hub::{sessions::Live, targets::AddressPolicy};
+use anima_hub::fleet::{sessions::Live, targets::AddressPolicy};
 use serde_json::json;
 use sqlx::PgPool;
 

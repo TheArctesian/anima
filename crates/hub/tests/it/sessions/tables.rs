@@ -11,7 +11,7 @@ use super::{
     DOCKER_HOST, ED25519_KEY, PVE_01, Row, add_operator, constraint_of, delete_device, insert,
     insert_all, put_host_key, session_id,
 };
-use anima_hub::sessions::EndReason;
+use anima_hub::fleet::sessions::EndReason;
 
 pub(super) async fn columns(
     pool: &PgPool,

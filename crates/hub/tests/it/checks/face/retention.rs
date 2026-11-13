@@ -2,7 +2,7 @@
 //! heartbeat partitions (DEV-015, DB-004, DB-005, DB-009, HUB-005).
 
 use anima_hub::{
-    checks::{self, Error},
+    fleet::checks::{self, Error},
     status::Status,
 };
 use chrono::{DateTime, Days, Months, TimeDelta, Utc};

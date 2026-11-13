@@ -6,9 +6,11 @@ use std::sync::{Arc, atomic::Ordering};
 
 use anima_hub::{
     clock::{Clock, FixedClock},
-    credentials::PasswordKind,
-    devices::graphql::{Mutation, Query, rdp_credential_loader, vnc_credential_loader},
-    trust::graphql::server_certificate_loader,
+    fleet::{
+        credentials::PasswordKind,
+        devices::graphql::{Mutation, Query, rdp_credential_loader, vnc_credential_loader},
+        trust::graphql::server_certificate_loader,
+    },
 };
 use async_graphql::{EmptySubscription, Schema};
 use chrono::{DateTime, Utc};

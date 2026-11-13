@@ -1,0 +1,331 @@
+//! `CheckConfig` and the config types of K1, as the API returns them. No secret is part of
+//! any of them: a secret header's value is null, the sign-in is only its kind, and an SNMP
+//! check shows no community or password (LOG-007, SEC-003, SEC-005).
+
+use async_graphql::{Context, Object, Result, SimpleObject, Union};
+
+use super::{
+    enums::{IpFamily, RecordType, RequestMethod, SignInKind, SnmpVersion},
+    error::to_graphql,
+};
+use crate::{
+    api_errors::{internal, schema_dependency},
+    fleet::checks::{
+        self, Check,
+        config::{CheckConfig, HttpConfig, HttpHeader, SnmpConfig, StatusRange, is_secret_header},
+    },
+    ids::{CheckId, DeviceId},
+    scalars::IpAddr,
+};
+
+#[derive(SimpleObject)]
+#[graphql(name = "IcmpConfig")]
+pub(super) struct IcmpView {
+    timeout_ms: i32,
+    ip_version: IpFamily,
+}
+
+#[derive(SimpleObject)]
+#[graphql(name = "TcpConfig")]
+pub(super) struct TcpView {
+    port: i32,
+    timeout_ms: i32,
+}
+
+#[derive(SimpleObject)]
+#[graphql(name = "TlsConfig")]
+pub(super) struct TlsView {
+    port: i32,
+    server_name: Option<String>,
+    timeout_ms: i32,
+}
+
+#[derive(SimpleObject)]
+#[graphql(name = "HttpHeader")]
+pub(super) struct HeaderView {
+    name: String,
+    /// Null for Authorization, Proxy-Authorization and Cookie.
+    value: Option<String>,
+}
+
+#[derive(SimpleObject)]
+#[graphql(name = "StatusRange")]
+pub(super) struct RangeView {
+    from: i32,
+    to: i32,
+}
+
+#[derive(SimpleObject)]
+#[graphql(name = "HttpConfig")]
+pub(super) struct HttpView {
+    url: String,
+    method: RequestMethod,
+    headers: Vec<HeaderView>,
+    body: Option<String>,
+    max_redirects: i32,
+    accepted_status: Vec<RangeView>,
+    keyword: Option<String>,
+    json_query: Option<String>,
+    json_expected: Option<String>,
+    auth_kind: SignInKind,
+    verify_tls: bool,
+    timeout_ms: i32,
+}
+
+#[derive(SimpleObject)]
+#[graphql(name = "DnsConfig")]
+pub(super) struct DnsView {
+    name: String,
+    record_type: RecordType,
+    resolver: Option<IpAddr>,
+    expected: Option<String>,
+}
+
+#[derive(SimpleObject)]
+#[graphql(name = "DockerConfig")]
+pub(super) struct DockerView {
+    container: String,
+    timeout_ms: i32,
+}
+
+#[derive(SimpleObject)]
+#[graphql(name = "SystemdConfig")]
+pub(super) struct SystemdView {
+    unit: String,
+    timeout_ms: i32,
+}
+
+#[derive(SimpleObject)]
+#[graphql(name = "TailscalePingConfig")]
+pub(super) struct TailscalePingView {
+    target: Option<String>,
+    timeout_ms: i32,
+}
+
+#[derive(SimpleObject)]
+#[graphql(name = "SnmpConfig")]
+pub(super) struct SnmpView {
+    port: i32,
+    version: SnmpVersion,
+    oid: String,
+    expected: Option<String>,
+    username: Option<String>,
+    timeout_ms: i32,
+}
+
+/// Degraded below `warn_days`, Down after expiry, Unknown when RDAP gives no expiry date
+/// (D-29).
+#[derive(SimpleObject)]
+#[graphql(name = "DomainExpiryConfig")]
+pub(super) struct DomainExpiryView {
+    domain: String,
+    warn_days: i32,
+    timeout_ms: i32,
+}
+
+/// A PUSH check without a token: the database forbids it, so it is a fault, never an empty path.
+#[derive(Debug, thiserror::Error)]
+#[error("push check {0} has no token")]
+struct MissingToken(CheckId);
+
+pub(super) struct PushView {
+    check: CheckId,
+    path: Option<String>,
+}
+
+#[Object(name = "PushConfig")]
+impl PushView {
+    /// Path on the hub that the device calls. The token is part of the path.
+    #[expect(
+        clippy::unused_async,
+        clippy::unused_async_trait_impl,
+        reason = "the Object macro requires async resolvers"
+    )]
+    async fn push_path(&self) -> Result<&str> {
+        self.path
+            .as_deref()
+            .ok_or_else(|| internal(MissingToken(self.check)))
+    }
+}
+
+pub(super) struct GroupView {
+    group: CheckId,
+    device: DeviceId,
+}
+
+#[Object(name = "GroupConfig")]
+impl GroupView {
+    async fn children(&self, ctx: &Context<'_>) -> Result<Vec<Check>> {
+        let pool = schema_dependency::<sqlx::PgPool>(ctx)?;
+        let siblings = checks::for_device(pool, self.device)
+            .await
+            .map_err(to_graphql)?;
+        Ok(siblings
+            .into_iter()
+            .filter(|check| check.parent == Some(self.group))
+            .collect())
+    }
+}
+
+#[derive(Union)]
+#[graphql(name = "CheckConfig")]
+pub(super) enum ConfigView {
+    Icmp(IcmpView),
+    Tcp(TcpView),
+    Tls(TlsView),
+    Http(HttpView),
+    Dns(DnsView),
+    Push(PushView),
+    Group(GroupView),
+    Docker(DockerView),
+    Snmp(SnmpView),
+    Systemd(SystemdView),
+    TailscalePing(TailscalePingView),
+    DomainExpiry(DomainExpiryView),
+}
+
+fn wide(value: impl Into<u32>) -> i32 {
+    i32::try_from(value.into()).unwrap_or(i32::MAX)
+}
+
+/// The stored value of a secret header is already null; filtering by name again is defence in
+/// depth, so a stored value that slipped in (an older version, a hand-edited row) never leaves.
+fn header(header: &HttpHeader) -> HeaderView {
+    HeaderView {
+        name: header.name.clone(),
+        value: header
+            .value
+            .clone()
+            .filter(|_| !is_secret_header(&header.name)),
+    }
+}
+
+fn range(range: StatusRange) -> RangeView {
+    RangeView {
+        from: wide(range.from),
+        to: wide(range.to),
+    }
+}
+
+fn http(config: &HttpConfig) -> HttpView {
+    HttpView {
+        url: config.url.clone(),
+        method: config.method.into(),
+        headers: config.headers.iter().map(header).collect(),
+        body: config.body.clone(),
+        max_redirects: wide(config.max_redirects),
+        accepted_status: config.accepted_status.iter().copied().map(range).collect(),
+        keyword: config.keyword.clone(),
+        json_query: config.json_query.clone(),
+        json_expected: config.json_expected.clone(),
+        auth_kind: SignInKind::from(&config.auth),
+        verify_tls: config.verify_tls,
+        timeout_ms: wide(config.timeout_ms),
+    }
+}
+
+fn tls(port: u16, server_name: Option<&str>, timeout_ms: u32) -> TlsView {
+    TlsView {
+        port: wide(port),
+        server_name: server_name.map(str::to_owned),
+        timeout_ms: wide(timeout_ms),
+    }
+}
+
+fn domain_expiry(domain: &str, warn_days: u32, timeout_ms: u32) -> DomainExpiryView {
+    DomainExpiryView {
+        domain: domain.to_owned(),
+        warn_days: wide(warn_days),
+        timeout_ms: wide(timeout_ms),
+    }
+}
+
+/// A PUSH check shows its path, which holds its token.
+fn push(check: &Check) -> PushView {
+    PushView {
+        check: check.id,
+        path: check
+            .push_token
+            .as_ref()
+            .map(|token| format!("/push/{}", token.expose())),
+    }
+}
+
+fn tailscale_ping(target: Option<&str>, timeout_ms: u32) -> TailscalePingView {
+    TailscalePingView {
+        target: target.map(str::to_owned),
+        timeout_ms: wide(timeout_ms),
+    }
+}
+
+fn snmp(config: &SnmpConfig) -> SnmpView {
+    SnmpView {
+        port: wide(config.port),
+        version: config.version.into(),
+        oid: config.oid.clone(),
+        expected: config.expected.clone(),
+        username: config.username.clone(),
+        timeout_ms: wide(config.timeout_ms),
+    }
+}
+
+impl ConfigView {
+    /// The configuration of the check; a PUSH check shows its path.
+    pub(super) fn of(check: &Check) -> Self {
+        match &check.config {
+            CheckConfig::Icmp {
+                timeout_ms,
+                ip_version,
+            } => Self::Icmp(IcmpView {
+                timeout_ms: wide(*timeout_ms),
+                ip_version: (*ip_version).into(),
+            }),
+            CheckConfig::Tcp { port, timeout_ms } => Self::Tcp(TcpView {
+                port: wide(*port),
+                timeout_ms: wide(*timeout_ms),
+            }),
+            CheckConfig::Tls {
+                port,
+                server_name,
+                timeout_ms,
+            } => Self::Tls(tls(*port, server_name.as_deref(), *timeout_ms)),
+            CheckConfig::Http(config) => Self::Http(http(config)),
+            CheckConfig::Snmp(config) => Self::Snmp(snmp(config)),
+            CheckConfig::Dns {
+                name,
+                record_type,
+                resolver,
+                expected,
+            } => Self::Dns(DnsView {
+                name: name.clone(),
+                record_type: (*record_type).into(),
+                resolver: resolver.map(IpAddr),
+                expected: expected.clone(),
+            }),
+            CheckConfig::Push => Self::Push(push(check)),
+            CheckConfig::Group => Self::Group(GroupView {
+                group: check.id,
+                device: check.device,
+            }),
+            CheckConfig::Docker {
+                container,
+                timeout_ms,
+            } => Self::Docker(DockerView {
+                container: container.clone(),
+                timeout_ms: wide(*timeout_ms),
+            }),
+            CheckConfig::Systemd { unit, timeout_ms } => Self::Systemd(SystemdView {
+                unit: unit.clone(),
+                timeout_ms: wide(*timeout_ms),
+            }),
+            CheckConfig::TailscalePing { target, timeout_ms } => {
+                Self::TailscalePing(tailscale_ping(target.as_deref(), *timeout_ms))
+            }
+            CheckConfig::DomainExpiry {
+                domain,
+                warn_days,
+                timeout_ms,
+            } => Self::DomainExpiry(domain_expiry(domain, *warn_days, *timeout_ms)),
+        }
+    }
+}

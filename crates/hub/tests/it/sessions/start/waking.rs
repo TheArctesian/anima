@@ -3,7 +3,7 @@
 //! key, so the wake fails: the start still succeeds with `wakeSent` false, and the wake's own
 //! Error event says why. A device that is not Down is not tried.
 
-use anima_hub::sessions::Live;
+use anima_hub::fleet::sessions::Live;
 use serde_json::Value;
 use sqlx::PgPool;
 

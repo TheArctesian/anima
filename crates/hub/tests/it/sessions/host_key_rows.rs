@@ -1,8 +1,8 @@
 //! Migration 0600 keeps only host key rows the hub's reader accepts (SEC-006, SEC-007).
 
 use anima_hub::{
+    fleet::trust::{self, Fingerprint},
     ids::DeviceId,
-    trust::{self, Fingerprint},
 };
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use sqlx::PgPool;

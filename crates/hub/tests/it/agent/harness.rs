@@ -8,12 +8,13 @@ use std::{
 };
 
 use anima_hub::{
-    access,
     clock::Clock,
-    events::Bus,
-    logged,
-    metrics::{Feed, agent_router},
-    router,
+    fleet::{
+        access,
+        events::Bus,
+        metrics::{Feed, agent_router},
+    },
+    logged, router,
     schema::build_schema,
 };
 use axum::{

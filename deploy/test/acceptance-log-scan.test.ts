@@ -90,7 +90,7 @@ describe("each kind", () => {
 
 // The hub's process log is tracing JSON; a `?` field is a Rust Debug string, escaped again (M-3).
 function tracingLine(message: string): string {
-  return JSON.stringify({ level: "WARN", fields: { message }, target: "anima_hub::notifications" });
+  return JSON.stringify({ level: "WARN", fields: { message }, target: "anima_hub::fleet::notifications" });
 }
 
 describe("escaped and encoded views", () => {
@@ -121,7 +121,7 @@ describe("escaped and encoded views", () => {
 
 describe("Apprise schemes the hub accepts", () => {
   test("every scheme in the hub's allow list is detected", () => {
-    const rust = readFileSync(join(import.meta.dir, "../../crates/hub/src/notifications/channels/apprise_url.rs"), "utf8");
+    const rust = readFileSync(join(import.meta.dir, "../../crates/hub/src/fleet/notifications/channels/apprise_url.rs"), "utf8");
     const list = /const SCHEMES: \[&str; \d+\] = \[([^\]]*)\]/.exec(rust)?.[1] ?? "";
     const schemes = [...list.matchAll(/"([a-z0-9]+)"/g)].map((match) => String(match[1]));
     expect(schemes.length).toBeGreaterThanOrEqual(8);

@@ -3,7 +3,7 @@
 
 use std::time::Duration;
 
-use anima_hub::{events::Signal, vpn::Feed};
+use anima_hub::fleet::{events::Signal, vpn::Feed};
 use serde_json::{Value, json};
 use sqlx::PgPool;
 use tokio::sync::broadcast::{Receiver, error::RecvError};

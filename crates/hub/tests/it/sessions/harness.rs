@@ -4,18 +4,20 @@
 use std::{io::Write as _, sync::Arc};
 
 use anima_hub::{
-    access::Identity,
     clock::{Clock, FixedClock},
-    credentials::Vault,
-    devices::graphql::status_loader,
-    events::{Actor, Bus, ClientAddr, Operator},
-    ids::OperatorId,
-    sessions::{
-        Live,
-        graphql::{Mutation as SessionsMutation, Query, Subscription},
+    fleet::{
+        access::Identity,
+        credentials::Vault,
+        devices::graphql::status_loader,
+        events::{Actor, Bus, ClientAddr, Operator},
+        sessions::{
+            Live,
+            graphql::{Mutation as SessionsMutation, Query, Subscription},
+        },
+        targets::AddressPolicy,
+        trust::graphql::Mutation as TrustMutation,
     },
-    targets::AddressPolicy,
-    trust::graphql::Mutation as TrustMutation,
+    ids::OperatorId,
 };
 use async_graphql::{MergedObject, Request, Response, Schema};
 use base64::{Engine as _, engine::general_purpose::STANDARD};

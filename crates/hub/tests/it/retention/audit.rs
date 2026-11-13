@@ -1,7 +1,7 @@
 //! `setRetention` leaves one audit entry and one event, in the transaction of the change
 //! (LOG-004, LOG-005, HUB-005).
 
-use anima_hub::events::Source;
+use anima_hub::fleet::events::Source;
 use serde_json::{Value, json};
 use sqlx::PgPool;
 
