@@ -86,7 +86,7 @@ mod tests {
     #[test]
     fn bld_086_three_or_fewer_versions_are_all_kept() {
         let held = held(&[(0, 1, 1), (0, 1, 2), (0, 1, 3)]);
-        assert!(stale(held, 3, Version::new(0, 1, 3)).is_empty());
+        assert_eq!(stale(held, 3, Version::new(0, 1, 3)), Vec::<u32>::new());
     }
 
     #[test]
