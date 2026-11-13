@@ -10,7 +10,6 @@
 !bun.lock
 !apps/client/
 !apps/desktop/package.json
-!apps/site/package.json
 !quality/package.json
 !design/package.json
 !deploy/package.json

@@ -333,7 +333,7 @@ describe("hub image build context", () => {
     expect(lines[0]).toBe("*");
     const allowed = lines.filter((line) => line.startsWith("!"));
     // The Rust build, the lock files and the web stage's manifests and client; nothing else (SEC-001).
-    expect(allowed.filter((line) => !/^!(Cargo\.(toml|lock)|bun\.lock|package\.json|crates\/|apps\/client\/|apps\/desktop\/(src-tauri\/|package\.json)|apps\/site\/package\.json|(deploy(\/dns|\/headscale)?|design|quality)\/package\.json)$/.test(line))).toEqual([]);
+    expect(allowed.filter((line) => !/^!(Cargo\.(toml|lock)|bun\.lock|package\.json|crates\/|apps\/client\/|apps\/desktop\/(src-tauri\/|package\.json)|(deploy(\/dns|\/headscale)?|design|quality)\/package\.json)$/.test(line))).toEqual([]);
     expect(allowed).toContain("!crates/");
   });
 });

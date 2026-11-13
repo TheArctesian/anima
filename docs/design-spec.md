@@ -461,7 +461,7 @@ The metrics agent `anima-agent` keeps its own install path (MET-019, MET-024). A
 
 ### 3.12 Marketing website
 
-The operator's rule (operator, 2026-11-13): "we also need to make a marketing website with the install links". Built state: the source is built in `apps/site/` and is not deployed. SITE-001 to SITE-010 and SITE-012 are built. `apps/site/vercel.json` is the static Vercel configuration (SITE-011). The domain is open (OD-20).
+The operator's rule (operator, 2026-11-13): "we also need to make a marketing website with the install links". Built state: the source is built and is not deployed. It is in a repository of its own, `anima-site` (operator, 2026-11-13); it was first built in `apps/site/` of this repository and then moved. SITE-001 to SITE-010 and SITE-012 are built. `apps/site/vercel.json` is the static Vercel configuration (SITE-011). The domain is open (OD-20).
 
 - **SITE-001.** Anima must have a small public website. Its purpose is to say what Anima is and to give the install links. (operator, 2026-11-13)
 - **SITE-002.** The website must give one install link for each artefact of INS-001. Each link must use the stable name on the release host: `Anima.dmg` and `Anima-x86_64.AppImage` (UPD-010, BLD-066, DNS-007). Thus a link always gives the newest published release, with no change to the website.
@@ -472,7 +472,7 @@ The operator's rule (operator, 2026-11-13): "we also need to make a marketing we
 - **SITE-007.** The website must be static files only. It must have no account, no sign-in, no form, no cookie and no server code.
 - **SITE-008.** The website must not load a script, a font, an image or a style from a third party. It must have no tracker. The one exception is Vercel Web Analytics (Section 11, OD-21): its script must be loaded from the origin of the website, with no inline script, and it must set no cookie. The Content-Security-Policy must keep `script-src 'self'` and `connect-src 'self'`. It must include its font files, as UI-017 states for the client.
 - **SITE-009.** The website must take its colours, spaces, font sizes and motion values from the design tokens (TOK-001, UI-001). It must obey the rules of Section 5 that apply to a web page: contrast (UI-002, UI-004), status not by colour only (UI-003), target size (UI-013), `rem` sizes (TOK-020), keyboard access with a visible focus ring, reduced motion (MOT-040) and `prefers-contrast` (MAT-006).
-- **SITE-010.** The source of the website must be in `apps/site/` (Section 13). It must not import the GraphQL client code of `apps/client/`.
+- **SITE-010.** The source of the website must be in a repository of its own, `anima-site` (operator, 2026-11-13). It must not contain the GraphQL client code of `apps/client/`. It keeps a copy of the design tokens, the fonts and the logo of the client; when one of these changes, the copy must change too.
 - **SITE-011.** The host of the website is Vercel (operator, 2026-11-13, OD-20). The domain name is not decided. The operator must confirm each change to the Cloudflare account, the `anima.ing` zone or a different cloud account (DNS-008, VPS-005). The project must be static (`apps/site/vercel.json`): no function, no rewrite and no secret.
 - **SITE-012.** The website must say nothing about a paid hosted option until the operator decides the text (Section 11, OD-22).
 
@@ -1534,9 +1534,8 @@ anima/
 │   │       │   ├── icons/     Nerd Font icon table (UI-016)
 │   │       │   └── motion/    Springs, motion roles, reduced motion (MOT-041)
 │   │       └── styles/        Generated tokens.css, fonts
-│   ├── desktop/
-│   │   └── src-tauri/         Tauri shell: windows, key store, web views (WEB-004), builder steps, the `anima` link or launcher (INS-004)
-│   └── site/                  The marketing website: one static page, a bun build script, tests (SITE-010). Built, not deployed.
+│   └── desktop/
+│       └── src-tauri/         Tauri shell: windows, key store, web views (WEB-004), builder steps, the `anima` link or launcher (INS-004)
 └── deploy/
     ├── compose.yaml           Hub, gateway, PostgreSQL (DB-007 backup)
     ├── gateway/               guacd image with fonts (GW-001; RDP and VNC)
