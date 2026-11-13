@@ -5,7 +5,7 @@ a container image, models run on the machine directly, jobs call the model servi
 Status: a proposal for a ruling. The operator decided OD-W10 on 2026-11-12 (see "Decision").
 The requirements are not yet approved one by one. The decision changes R-115.
 Map: [work-plan.md](../../work-plan.md), category Use, decisions OD-W5, OD-W6 and OD-W10.
-Identifiers: USE-001 to USE-009, JOB-001 to JOB-007.
+Identifiers: USE-001 to USE-009, JOB-001 to JOB-010.
 
 ## Problem
 
@@ -31,8 +31,9 @@ applications ([hosted-applications.md](hosted-applications.md)).
   set this off for each machine, at the machine and in the client. A machine that is set off at
   the machine must stay off; the hub must not be able to set it on.
 - **USE-008.** The install command and the Device page must say that the agent takes work from
-  the hub (MET-019, MET-024). An agent that was installed before this function exists must not
-  start to take work with an update alone: the operator confirms one time for each such machine.
+  the hub (MET-019, MET-024). An agent that was installed before this function exists takes work
+  after its update, with no confirmation (operator, 2026-11-12: "On after update"). The hub must
+  write one event for each machine when this starts.
 - **USE-009.** "Takes work" is the permission. When a machine takes work is the device policy of
   the compute plan (CAP-010 to CAP-013): mains power, quiet hours, an active operator.
 - **USE-005.** The agent must ask the coordinator for work. The agent must not listen on a port
@@ -48,15 +49,22 @@ A job is one container image that runs to its end on one machine.
 
 - **JOB-001.** A job is a container image.
 - **JOB-002.** The operator can make the image from a folder of source code with Railpack.
-  Nixpacks is in maintenance, so do not use it (OD-W6).
+  Nixpacks is in maintenance, so do not use it. Test Railpack on one project of the operator
+  before this requirement is final (OD-W6).
 - **JOB-003.** The operator can make the image from a Nix recipe (a flake).
 - **JOB-004.** A later version can run a Nix recipe on a Mac without a container. Use this for a
   job that needs the Mac hardware directly.
 - **JOB-005.** One machine builds an image. The other machines pull it.
 - **JOB-006.** Queued jobs come first. A function that answers a request in milliseconds comes
-  later (OD-W5).
+  later (JOB-009).
 - **JOB-007.** The client must show each job with its machine, its state, its log and a stop
   control.
+- **JOB-008.** The operator can make the image from a Dockerfile. No builder is the only way
+  (OD-W6, operator, 2026-11-12: "leave the option to do both").
+- **JOB-009.** A later function that answers a request must be a container that stays warm, not
+  a WebAssembly runtime (OD-W5, operator, 2026-11-12).
+- **JOB-010.** The CLI tool of a rented service can run as a job (OD-W1). The hub must not hold
+  the write token: a client releases it for that one run (SCR-001, SCR-006).
 
 Fine-tuning (compute plan C7, #40) becomes the first job type. Its "done when" text in #40 stays.
 
@@ -104,6 +112,7 @@ This decision comes before C1 (#34), not only before jobs.
   contract or `/agent/v2/`, not a change to K8.
 - A security review of the work route (a `security` task for the security reviewer).
 - One contract for job state, progress and results, shared with #34 and #35.
-- A test of Railpack on one project of the operator (OD-W6).
+- A test of Railpack on one project of the operator (JOB-002).
+- A design for how a client releases a sealed secret to one job run (JOB-010).
 - After approval: change the title of #40 or add one issue for jobs, with the labels `compute`
   and `priority: later`.

@@ -36,9 +36,11 @@ What this means:
 | Large data | Not in the database copies. See [bulk-data-placement.md](bulk-data-placement.md). |
 | Each client | A small read-only copy of recent data, with its age |
 
-Issue #2 is not changed by this file. Its parts that sync between nodes (phases L1 to L4) do not
-agree with this decision. Its phase L0, a hash chain for the audit log, needs no copies and can
-stay. The operator decides what to do with the issue.
+The operator then made issue #2 smaller (2026-11-12): only its phase L0 stays, a hash chain for
+the audit log, which needs no copies. Its phases L1 to L5 are withdrawn.
+
+The operator also set the order: FND-006 (restore and move) comes directly after the device
+manager is accepted. The standbys come later, with the extensions.
 
 ## Proposal
 

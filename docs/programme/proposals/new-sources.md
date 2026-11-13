@@ -22,19 +22,23 @@ analytics. PRJ-003 applies: an allow list of methods and paths.
 - The operator already uses Cloudflare for the DNS of `anima.ing` and for R2 releases. The token
   for this source must be a different token, with read scopes only.
 
-## Spotify (Remember: a new timeline source)
+## A new extension: Activity (Remember)
 
-Recently played tracks and top artists. The History page (XP-07, #18) shows them. History only
-reads the timeline (HIS-002) and owns no source, so this source needs an owner: a new small
-extension, or the Library extension (XP-13, #24). The operator decides.
+History (XP-07, #18) only reads the timeline (HIS-002) and owns no source. The operator decided
+on 2026-11-12 that Spotify and Screen Time go to an extension of their own. This file calls it
+Activity: what the operator did on their devices. It gets the next free numbers: XP-15, and a
+migration range and paths in the table of Section 5.2 of the extensions plan. History shows its
+entries on the timeline.
+
+### Spotify
+
+Recently played tracks and top artists.
 
 - Not verified: the API gives only the last 50 plays. If so, the hub must read it frequently,
   and the full history comes from the data export as an upload source (ITG-005).
 - Not verified: the OAuth scopes and the rules for a developer application.
 
-## Screen Time (Remember: a new timeline source)
-
-The same owner question as Spotify applies.
+### Screen Time
 
 - macOS: the collector reads the local usage database. Not verified: the location and format of
   the database, and the permission that the collector needs to read it.
@@ -43,6 +47,6 @@ The same owner question as Spotify applies.
 ## Needs
 
 - One verification task for each provider, with a link to the provider documentation.
-- A decision on the owner of the Spotify and Screen Time sources.
-- Then: a change to the extensions plan, and a checklist line on #13, on the issue of the owner
-  and on #31 (accounts and keys).
+- Then: a change to the extensions plan, a checklist line on #13 and #31 (accounts and keys),
+  and one new issue for the Activity extension with the labels `extensions`, `life` and
+  `priority: later`.
