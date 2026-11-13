@@ -254,3 +254,32 @@ pub(in crate::builds) async fn set_written(
         .await?;
     Ok(())
 }
+
+/// The published jobs of `target` whose files are still in the bucket, with their versions
+/// (BLD-086).
+pub(in crate::builds) async fn unremoved_published(
+    db: impl PgExecutor<'_>,
+    target: Target,
+) -> Result<Vec<(BuildJobId, String)>, Error> {
+    Ok(sqlx::query_as(
+        "SELECT id, version FROM builds.jobs \
+         WHERE target = $1 AND state = 'published' AND objects_removed_at IS NULL",
+    )
+    .bind(target.as_str())
+    .fetch_all(db)
+    .await?)
+}
+
+/// Records that the hub deleted the files of published job `job` from the bucket (BLD-086).
+pub(in crate::builds) async fn mark_removed(
+    db: impl PgExecutor<'_>,
+    job: BuildJobId,
+    at: DateTime<Utc>,
+) -> Result<(), Error> {
+    sqlx::query("UPDATE builds.jobs SET objects_removed_at = $2 WHERE id = $1")
+        .bind(job)
+        .bind(at)
+        .execute(db)
+        .await?;
+    Ok(())
+}

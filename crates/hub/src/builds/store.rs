@@ -18,8 +18,8 @@ pub(super) use logs::{
 };
 pub(super) use publishing::{
     extend_upload_expiry, feed_of, feed_sent, files_of, hand_to_publisher, handed_over, hold,
-    is_published, is_publishing, mark_feed_sent, next_publishable, publish_attempt,
-    published_versions, set_written, still_held,
+    is_published, is_publishing, mark_feed_sent, mark_removed, next_publishable, publish_attempt,
+    published_versions, set_written, still_held, unremoved_published,
 };
 pub(super) use releases::{built, insert_release, jobs_of, lock_releases, releases_after};
 

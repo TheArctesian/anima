@@ -1,18 +1,21 @@
 //! The tries of the publisher (D-25): taking a job for one try and holding it, recording how
 //! the try ended, and removing the objects of a job that failed before any feed was sent for it
-//! (BLD-070). Each step reads the clock again, so a try that ran for minutes records the time it
+//! (BLD-070), and pruning the old versions of a target after one published (BLD-086). Each step reads the clock again, so a try that ran for minutes records the time it
 //! ended.
 
 use chrono::{DateTime, TimeDelta, Utc};
 use sqlx::{PgConnection, PgPool, Postgres, Transaction};
 
 use super::{
-    feed,
+    feed, pruning,
     run::{Outcome, Reach, Tried, Work},
     transfer,
 };
 use crate::{
-    builds::{BuildJob, BuildQueue, Error, JobState, JobUpdate, Missing, jobs, queue, store},
+    builds::{
+        BuildJob, BuildQueue, Error, JobState, JobUpdate, Missing, UploadedFile, jobs,
+        model::Target, queue, store,
+    },
     events::{self, Bus, NewEvent, Severity, Source},
 };
 
@@ -156,6 +159,9 @@ pub(super) async fn finish(
     if next.state == JobState::Failed && !feed_sent {
         remove_objects(build_queue.db, reach, &next).await?;
     }
+    if next.state == JobState::Published {
+        pruning::prune(build_queue.db, reach, &next).await;
+    }
     Ok(())
 }
 
@@ -209,24 +215,39 @@ async fn remove_objects(db: &PgPool, reach: Reach<'_>, job: &BuildJob) -> Result
         return Ok(());
     }
     let files = store::files_of(db, job.id).await?;
-    // The hub's own `.sig` of the updater file goes too (R-117).
-    let signature = feed::updater_name(job.target, &files).map(feed::signature_name);
+    delete_objects(reach, (job.target, &version), &files, "a failed job").await;
+    Ok(())
+}
+
+/// Deletes `files` of `version` of `target`, with the hub's own `.sig` of the updater file
+/// (R-117); whether every delete went through. A fault is logged, naming `whose` files they
+/// were, and the object stays.
+pub(super) async fn delete_objects(
+    reach: Reach<'_>,
+    (target, version): (Target, &str),
+    files: &[UploadedFile],
+    whose: &'static str,
+) -> bool {
+    let signature = feed::updater_name(target, files).map(feed::signature_name);
     let names = files.iter().map(|file| file.name.clone()).chain(signature);
+    let mut all = true;
     for name in names {
-        let object = format!("{}/{version}/{name}", job.target);
+        let object = format!("{target}/{version}/{name}");
         let delete = reach.bucket.delete(&object, reach.clock.now());
         if transfer::send(reach.http, delete, Vec::new(), &name)
             .await
             .is_err()
         {
+            all = false;
             tracing::warn!(
                 domain = "builds",
                 fault = "bucket delete",
-                "publishing could not remove a file of a failed job"
+                whose,
+                "publishing could not remove a file"
             );
         }
     }
-    Ok(())
+    all
 }
 
 /// The event of `job` published (BLD-082).
