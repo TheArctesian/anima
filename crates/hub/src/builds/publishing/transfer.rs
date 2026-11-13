@@ -100,7 +100,7 @@ pub(super) async fn read(
 }
 
 /// Reads the small object `what` by the signed `GET` `signed`: 200 and at most `max` bytes,
-/// refused at the first byte past them (R-116).
+/// refused at the first byte past them (R-117).
 pub(super) async fn read_small(
     http: &Client,
     signed: Signed,

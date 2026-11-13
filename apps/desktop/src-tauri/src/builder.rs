@@ -1,6 +1,6 @@
 //! The OS work of a builder computer (BLD-026, BLD-027): fixed build steps in the builder's own
 //! clone, the tool check and uploading the job's files. The builder holds no updater key and
-//! signs nothing: the hub signs the updater file it checked (R-116). The builder loop is the
+//! signs nothing: the hub signs the updater file it checked (R-117). The builder loop is the
 //! client's (`$lib/builds/`); it names a step and the job's commit, version and target, never a
 //! program.
 //!

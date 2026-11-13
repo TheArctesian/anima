@@ -209,7 +209,7 @@ async fn remove_objects(db: &PgPool, reach: Reach<'_>, job: &BuildJob) -> Result
         return Ok(());
     }
     let files = store::files_of(db, job.id).await?;
-    // The hub's own `.sig` of the updater file goes too (R-116).
+    // The hub's own `.sig` of the updater file goes too (R-117).
     let signature = feed::updater_name(job.target, &files).map(feed::signature_name);
     let names = files.iter().map(|file| file.name.clone()).chain(signature);
     for name in names {

@@ -1,5 +1,5 @@
 //! The check of a proposed feed (BLD-065, BLD-067 to BLD-069, UPD-009), the feed the hub writes
-//! once it signed the updater file (R-116), and the feed folders it writes it to. Pure: the feed,
+//! once it signed the updater file (R-117), and the feed folders it writes it to. Pure: the feed,
 //! the files, the signature and the published floor come in as parameters. A refusal names no
 //! builder text but checked file names and versions.
 
@@ -61,7 +61,7 @@ pub(super) fn updater_name(target: Target, files: &[UploadedFile]) -> Option<&st
     }
 }
 
-/// The name of the signature object of the updater file `updater`, beside it (R-116).
+/// The name of the signature object of the updater file `updater`, beside it (R-117).
 pub(super) fn signature_name(updater: &str) -> String {
     format!("{updater}.sig")
 }
@@ -112,7 +112,7 @@ fn check_top(top: &Map<String, Value>, expected: &Expected<'_>) -> Result<(), St
 }
 
 /// One platform entry: exactly the URL of a reported file of this job. A signature is refused:
-/// the hub signs the file it checked (R-116).
+/// the hub signs the file it checked (R-117).
 fn check_entry(entry: &Value, expected: &Expected<'_>) -> Result<CheckedFeed, String> {
     let refused = || {
         format!(
@@ -177,7 +177,7 @@ pub(super) fn check(feed: &str, expected: &Expected<'_>) -> Result<CheckedFeed, 
 }
 
 /// `feed` with `signature`, the hub's `.sig` text of its updater file, in each platform entry:
-/// the feed the hub writes (R-116, UPD-009). The same feed and signature always give the same
+/// the feed the hub writes (R-117, UPD-009). The same feed and signature always give the same
 /// text, so a later try can confirm a feed an earlier one wrote (D-25).
 ///
 /// # Errors

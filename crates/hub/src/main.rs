@@ -308,7 +308,7 @@ fn vault(config: &Config) -> Result<Vault, StartError> {
 }
 
 /// The release bucket when `ANIMA_RELEASES_ENDPOINT` is set, its token and the updater key read
-/// from their files now (BLD-060, R-108, R-116). An updater key that cannot be used turns
+/// from their files now (BLD-060, R-108, R-117). An updater key that cannot be used turns
 /// publishing off and the hub still starts; the log names the check that failed, never a value
 /// (LOG-007).
 fn release_bucket(config: &Config) -> Result<Option<Arc<builds::Bucket>>, StartError> {

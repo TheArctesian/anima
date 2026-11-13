@@ -40,7 +40,7 @@ interface Step {
 /** The upload, the last step: it runs once the job is reported `UPLOADING` (BLD-060 to BLD-063). */
 const UPLOAD = { name: 'upload', label: 'The upload' } as const;
 
-/** The steps of one job, in order (BLD-040 to BLD-044). The builder signs nothing: the hub does (R-116). */
+/** The steps of one job, in order (BLD-040 to BLD-044). The builder signs nothing: the hub does (R-117). */
 const STEPS: readonly Step[] = [
   { name: 'checkout', label: 'The checkout', run: (shell, job) => shell.checkout(job.commit) },
   { name: 'gates', label: 'The gates', run: (shell, job) => shell.runGates(job.commit) },

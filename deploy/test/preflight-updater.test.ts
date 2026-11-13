@@ -1,4 +1,4 @@
-// deploy/bin/preflight on the updater key pair and the secret files' owner and group (R-116, D-44,
+// deploy/bin/preflight on the updater key pair and the secret files' owner and group (R-117, D-44,
 // S-3, S-4, C-7, C-9). Nothing here needs Docker.
 import { describe, expect, test } from "bun:test";
 import { chmodSync, chownSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { finish } from "./finished-process.ts";
 import { GROUP, OWNER, SCRIPT, pair, preflight, secrets, withFolder, withPair, write } from "./preflight-fixture.ts";
 
-describe("preflight updater key pair (R-116, D-44)", () => {
+describe("preflight updater key pair (R-117, D-44)", () => {
   test.each([[pair], [pair.slice(0, 1)], [pair.slice(1)]])("D-44 warns but passes when %p is absent, for the hub starts with publishing off", async (absent) => {
     await withFolder(async (folder) => {
       withPair(folder);

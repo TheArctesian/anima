@@ -60,7 +60,7 @@ hyper-util.workspace = true
 http-body-util.workspace = true
 lettre.workspace = true
 # The updater key the hub signs each published updater file with, and the check of that
-# signature by the updater's own verifier (R-116, BLD-045, BLD-046, BLD-064).
+# signature by the updater's own verifier (R-117, BLD-045, BLD-046, BLD-064).
 updater-signature = { path = "../updater-signature" }
 
 [features]

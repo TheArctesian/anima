@@ -74,7 +74,7 @@ proptest! {
     }
 
     #[test]
-    fn r_116_any_key_password_or_public_key_text_is_read_without_a_panic(
+    fn r_117_any_key_password_or_public_key_text_is_read_without_a_panic(
         key in prop::collection::vec(any::<u8>(), 0..256),
         password in prop::collection::vec(any::<u8>(), 0..64),
         public in ".{0,256}",

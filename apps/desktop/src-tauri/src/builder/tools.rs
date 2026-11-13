@@ -1,6 +1,6 @@
 //! The tools a builder needs before it claims a job (BLD-028): git, bun, Rust with
 //! cargo-nextest (the gates run the Rust tests with it, R-112), PostgreSQL 17 (R-009), the Tauri
-//! system packages and the app's own updater public key. No updater key: the hub signs (R-116).
+//! system packages and the app's own updater public key. No updater key: the hub signs (R-117).
 //! Pure: whether a path exists is a parameter, and nothing is run.
 
 use std::path::{Path, PathBuf};

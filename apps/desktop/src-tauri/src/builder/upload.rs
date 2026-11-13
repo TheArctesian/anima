@@ -4,7 +4,7 @@
 //!
 //! The updater file is read into memory once, and its SHA-256 must be the bundle record's (D-22),
 //! so the bytes uploaded are the bytes the bundle step wrote; the hub signs the bytes it reads
-//! back (R-116). The web view chooses no byte it sends. A
+//! back (R-117). The web view chooses no byte it sends. A
 //! presigned URL is a credential: it never reaches a line, an error or a log (LOG-007, BLD-049);
 //! only the error code crosses back.
 
@@ -39,7 +39,7 @@ pub struct ReleaseFile {
 }
 
 /// The files the builder uploads, `SHA256SUMS` last, and the name of the updater file the feed
-/// names. No signature: the hub signs (R-116).
+/// names. No signature: the hub signs (R-117).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct ReleaseFiles {
     pub files: Vec<ReleaseFile>,

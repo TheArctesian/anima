@@ -118,7 +118,7 @@ describe('uploading a built job', () => {
     expect(api.uploaded.map((uploaded) => uploaded.files)).toEqual([[UPDATER, dmg, SUMS_FILE]]);
   });
 
-  it('BLD-063, BLD-067, R-116: the proposed feed names the unsigned updater file under the release folder, dated by the injected clock', async () => {
+  it('BLD-063, BLD-067, R-117: the proposed feed names the unsigned updater file under the release folder, dated by the injected clock', async () => {
     await settle(buildJob(JOB, { ...ports, now: () => new Date('2026-11-09T12:00:00.000Z') }));
     const feed: unknown = JSON.parse(api.uploaded[0]?.feed ?? 'null');
     const entry = { url: `https://releases.anima.ing/linux-x86_64/0.1.12/${UPDATER.name}` };

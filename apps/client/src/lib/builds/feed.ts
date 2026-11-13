@@ -1,6 +1,6 @@
 // The release feed the builder proposes (UPD-009, UPD-010, BLD-063, DNS-007): what latest.json lists, which stable
 // names the release carries and what SHA256SUMS says. No signature: the hub signs the updater file it checked and fills
-// each entry's `signature` (R-116). Pure: the date and the file digests are parameters.
+// each entry's `signature` (R-117). Pure: the date and the file digests are parameters.
 
 export interface UpdateFile {
   /** File name of the updater bundle in the release. */

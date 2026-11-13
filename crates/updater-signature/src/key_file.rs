@@ -1,5 +1,5 @@
 //! A minisign key pair: the secret key read from the key file `tauri signer generate` writes and
-//! decrypted in memory, and the public key (BLD-045, R-116). Pure: no file, no store, no log.
+//! decrypted in memory, and the public key (BLD-045, R-117). Pure: no file, no store, no log.
 //!
 //! The key file is the minisign text (an untrusted comment line, then base64 of the key) or, as
 //! Tauri writes it, base64 of that text. The key bytes are, in order: signature algorithm `Ed`,

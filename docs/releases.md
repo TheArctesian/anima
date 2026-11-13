@@ -5,14 +5,14 @@ Spec: Sections 3.9 (UPD-001 to UPD-012) and 3.10 (Builds), DNS-007.
 A release starts only from the Builds view (BLD-001, UPD-007). The operator's builders build each
 target and upload the unsigned files to the R2 bucket `anima-releases`. The hub checks them, signs
 the updater file with the updater key it holds, writes `<file>.sig` beside it and then
-`https://releases.anima.ing/<target>-<arch>/latest.json` (BLD-064 to BLD-067, R-116). Installed apps read
+`https://releases.anima.ing/<target>-<arch>/latest.json` (BLD-064 to BLD-067, R-117). Installed apps read
 that feed. The hub side, its R2 credentials and the bucket setup are in
 [deploy/README.md](../deploy/README.md).
 
 There is no GitHub release workflow: `.github/workflows/release.yml` was removed by R-114. No
-signing key is stored on GitHub or on a builder; it is a secret file of the hub (R-116). A
+signing key is stored on GitHub or on a builder; it is a secret file of the hub (R-117). A
 compromised hub can therefore sign updates that installed apps trust; the operator accepted this
-in R-116.
+in R-117.
 
 ## Once, by the operator
 
@@ -41,7 +41,7 @@ Agents never do these steps (UPD-012). Never paste a key or password into chat, 
    (`sudo docker compose logs hub | grep -i publishing`). A key file the hub cannot read leaves
    the hub running with publishing off.
 
-5. On each computer that was a builder before R-116, the old sealed key may still be in the key
+5. On each computer that was a builder before R-117, the old sealed key may still be in the key
    store. The app deletes it at start; to delete it by hand:
 
    ```sh

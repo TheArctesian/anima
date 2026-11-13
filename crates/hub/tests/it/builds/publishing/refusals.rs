@@ -66,10 +66,10 @@ async fn with_feed(publishing: &Publishing, files: &[File], feed: &Value) -> Hel
     held
 }
 
-/// R-116: a builder proposes a feed without a signature; one that carries a signature, even a
+/// R-117: a builder proposes a feed without a signature; one that carries a signature, even a
 /// good-looking one, is refused, and the hub signs nothing for it.
 #[sqlx::test(migrations = "./migrations")]
-async fn r_116_a_proposed_feed_with_a_signature_fails_the_job(pool: PgPool) {
+async fn r_117_a_proposed_feed_with_a_signature_fails_the_job(pool: PgPool) {
     let publishing = Publishing::start(&pool).await;
     let files = linux_files("0.1.12");
     let mut feed = linux_feed(&publishing, "0.1.12", &files[0]);

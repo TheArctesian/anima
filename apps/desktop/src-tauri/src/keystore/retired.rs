@@ -1,5 +1,5 @@
 //! The updater key entries the T2 builder import wrote (WP-36 D-19), which nothing reads since
-//! the hub signs (R-116, D-41). The shell deletes them so the sealed key does not outlive its use.
+//! the hub signs (R-117, D-41). The shell deletes them so the sealed key does not outlive its use.
 
 use keyring::Entry;
 

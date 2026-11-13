@@ -196,7 +196,7 @@ services:
       ANIMA_PUBLIC_ORIGIN: ${ANIMA_PUBLIC_ORIGIN:-https://hub.anima.ing}
       ANIMA_WEB_ROOT: /usr/share/anima/web
       ANIMA_LOG: ${ANIMA_LOG:-info}
-      # Release publishing (WP-36, R-108, R-116): off while the endpoint is empty. The R2 token
+      # Release publishing (WP-36, R-108, R-117): off while the endpoint is empty. The R2 token
       # and the updater key with its password are secret files the operator makes (README,
       # Release publishing); the hub signs with the key. The public key is a plain value.
       ANIMA_RELEASES_ENDPOINT: ${ANIMA_RELEASES_ENDPOINT:-}
@@ -211,7 +211,7 @@ services:
       - r2_secret_access_key
     volumes:
       - certs:/certs:ro
-      # The updater key and its password (R-116, D-44): a folder, not two `secrets:` entries,
+      # The updater key and its password (R-117, D-44): a folder, not two `secrets:` entries,
       # because compose refuses to create a container whose secret file is absent, and a hub
       # without the key must still start, with publishing off. Compose creates a missing folder
       # empty. The files are root:10001 0440 (README, Release publishing).

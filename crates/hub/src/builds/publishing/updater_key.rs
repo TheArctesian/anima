@@ -1,4 +1,4 @@
-//! The updater key the hub signs releases with (R-116, BLD-045, SEC-004): the minisign secret
+//! The updater key the hub signs releases with (R-117, BLD-045, SEC-004): the minisign secret
 //! key file `tauri signer generate` writes, sealed with scrypt, opened once at start from its
 //! Docker secret with the password in a second secret, and kept only if its public key is
 //! `ANIMA_UPDATER_PUBLIC_KEY`. The type has no `Debug`, `Display` or `Clone`; the seed is wiped
@@ -17,7 +17,7 @@ const MAX_KEY_FILE_BYTES: usize = 4096;
 /// The largest password file the hub reads; `updater-signature` takes at most 1024 bytes.
 const MAX_PASSWORD_FILE_BYTES: usize = 1026;
 
-/// Why the hub does not sign: publishing is then off, and the hub still starts (R-116).
+/// Why the hub does not sign: publishing is then off, and the hub still starts (R-117).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
 pub enum UpdaterKeyError {
     #[error("ANIMA_UPDATER_PUBLIC_KEY is unset")]

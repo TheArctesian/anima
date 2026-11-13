@@ -1,6 +1,6 @@
 //! A hub with a release bucket on the fake R2 and a throwaway updater key, a builder that
 //! uploads through the hub's presigned URLs, and the files, sums and unsigned feed of one job
-//! (R-116). No token or key here is real; the token and key files are in a temporary folder
+//! (R-117). No token or key here is real; the token and key files are in a temporary folder
 //! (SEC-004).
 
 use std::{io::Cursor, sync::Arc};
@@ -158,7 +158,7 @@ impl Publishing {
 
     /// Checks, with the reference minisign, that the hub signed `app` for `version`: the `.sig`
     /// beside it and the signature of each entry of the Linux feed are the same text, over
-    /// exactly `app`'s bytes, with `version` in the trusted comment (BLD-046, R-116).
+    /// exactly `app`'s bytes, with `version` in the trusted comment (BLD-046, R-117).
     pub fn assert_signed(&self, version: &str, app: &File) {
         let object = format!("linux-x86_64/{version}/{}.sig", app.name);
         let sig = self.fake.object(&object).expect("the .sig is written");
@@ -324,7 +324,7 @@ pub fn linux_files(version: &str) -> Vec<File> {
     vec![app, File::new("SHA256SUMS", sums)]
 }
 
-/// The unsigned feed a builder proposes for a Linux job of `version` naming `app` (R-116).
+/// The unsigned feed a builder proposes for a Linux job of `version` naming `app` (R-117).
 pub fn linux_feed(publishing: &Publishing, version: &str, app: &File) -> Value {
     let url = publishing.public(&format!("linux-x86_64/{version}/{}", app.name));
     json!({

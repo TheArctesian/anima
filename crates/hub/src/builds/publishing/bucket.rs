@@ -1,7 +1,7 @@
 //! The release bucket (BLD-060 to BLD-062, D-24, D-28): where its objects are, the presigned
 //! upload URL of one object for a builder, and the signed requests of the hub's own reads and
 //! writes. The R2 API token is read from its two files once, at start, and held only as
-//! `Zeroizing`, beside the opened updater key (R-116); the type has no `Debug`, and no error or
+//! `Zeroizing`, beside the opened updater key (R-117); the type has no `Debug`, and no error or
 //! log names a token, a key, a signature or a presigned URL (LOG-007).
 
 use std::path::Path;
@@ -64,7 +64,7 @@ pub(super) struct Signed {
 }
 
 /// The R2 bucket releases go to, with the key to sign for it and the updater key the hub signs
-/// its updater files with (R-116). No `Debug`.
+/// its updater files with (R-117). No `Debug`.
 pub struct Bucket {
     /// `scheme://host[:port]`.
     endpoint: String,

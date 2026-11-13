@@ -1,4 +1,4 @@
-//! Publishing (BLD-060 to BLD-070, D-24 to D-28, R-116): the presigned upload URLs a builder
+//! Publishing (BLD-060 to BLD-070, D-24 to D-28, R-117): the presigned upload URLs a builder
 //! gets for its job, and the publisher that takes each job whose files are in, checks them, signs
 //! the updater file with the hub's updater key and writes the `.sig`, the stable name and
 //! `latest.json`.
@@ -56,7 +56,7 @@ const MAX_PER_SWEEP: usize = 4;
 /// The reason of a job handed to a hub whose publishing is off (D-25).
 const PUBLISHING_OFF: &str = "Publishing is off on this hub: no release bucket, or no usable updater key (the hub log says which).";
 
-/// The release bucket of `releases` with the updater key opened from its files (R-116); `None`,
+/// The release bucket of `releases` with the updater key opened from its files (R-117); `None`,
 /// publishing off, when the updater key cannot be used. The warning names the check that failed,
 /// never a value (LOG-007), and the hub still starts, as with no release bucket.
 ///

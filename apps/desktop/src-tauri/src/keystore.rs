@@ -1,6 +1,6 @@
 //! The hub tokens, one of each kind per hub origin, in the OS key store (CLI-003, BLD-023,
 //! LOG-007). Device credentials never appear here (CLI-004): the hub keeps them, and the updater
-//! key never does: the hub holds it (R-116).
+//! key never does: the hub holds it (R-117).
 
 mod error;
 mod retired;
@@ -90,7 +90,7 @@ async fn builder_clear(origin: String) -> Result<(), KeystoreError> {
     blocking(move || token::clear_token(TokenKind::Builder, &origin)).await
 }
 
-/// Deletes the updater key entries an earlier version imported (R-116, D-41), off the main
+/// Deletes the updater key entries an earlier version imported (R-117, D-41), off the main
 /// thread. Logs only the error code, never an entry (LOG-007).
 pub async fn forget_retired_updater_key() {
     if let Err(error) = blocking(retired::forget_updater_key).await {

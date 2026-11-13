@@ -1,5 +1,5 @@
 //! The feed check and the signed feed the hub writes (BLD-065, BLD-067 to BLD-069, UPD-009,
-//! R-116).
+//! R-117).
 
 use serde_json::{Value, json};
 
@@ -63,7 +63,7 @@ fn bld_065_a_feed_of_the_job_names_its_updater_file() {
 }
 
 #[test]
-fn r_116_a_proposed_feed_that_carries_a_signature_is_refused() {
+fn r_117_a_proposed_feed_that_carries_a_signature_is_refused() {
     let signed = json!({ "linux-x86_64": { "signature": SIGNATURE, "url": appimage_url() } });
     let refused = check_linux(&linux_feed(&signed), None).unwrap_err();
     assert!(
@@ -74,7 +74,7 @@ fn r_116_a_proposed_feed_that_carries_a_signature_is_refused() {
 }
 
 #[test]
-fn r_116_the_hub_writes_the_feed_with_its_signature_in_each_entry() {
+fn r_117_the_hub_writes_the_feed_with_its_signature_in_each_entry() {
     let mac_files = vec![file("Anima.app.tar.gz", b"app"), file("SHA256SUMS", b"s")];
     let url = format!("{BASE}/darwin-universal/0.1.12/Anima.app.tar.gz");
     let mac = linux_feed(&json!({ "darwin-aarch64": entry(&url), "darwin-x86_64": entry(&url) }));
@@ -93,7 +93,7 @@ fn r_116_the_hub_writes_the_feed_with_its_signature_in_each_entry() {
 }
 
 #[test]
-fn r_116_the_updater_file_and_its_signature_object_are_named_from_the_files() {
+fn r_117_the_updater_file_and_its_signature_object_are_named_from_the_files() {
     let files = linux_files();
     assert_eq!(
         feed::updater_name(Target::LinuxX86_64, &files),

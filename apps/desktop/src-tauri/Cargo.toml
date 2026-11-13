@@ -35,7 +35,7 @@ uuid.workspace = true
 # Challenge hosts go through the URL standard's host parser, as pinned origins do (D-4).
 url = "2"
 # The agent's enrolment code in memory only as `Zeroizing` (MET-019). The builder holds no updater
-# key: the hub signs the updater file (R-116).
+# key: the hub signs the updater file (R-117).
 zeroize.workspace = true
 # The updater public key line in the app's `tauri.conf.json`, for the tool check (R-108).
 base64.workspace = true

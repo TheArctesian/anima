@@ -255,7 +255,7 @@ fn d_2_an_empty_web_root_is_none() {
 }
 
 #[test]
-fn r_116_d_44_the_updater_key_files_default_to_the_updater_secret_folder_and_may_be_moved() {
+fn r_117_d_44_the_updater_key_files_default_to_the_updater_secret_folder_and_may_be_moved() {
     let endpoint = (
         "ANIMA_RELEASES_ENDPOINT",
         "https://account.r2.cloudflarestorage.com",

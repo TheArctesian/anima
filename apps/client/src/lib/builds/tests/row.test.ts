@@ -78,7 +78,7 @@ async function show(): Promise<void> {
 const text = () => document.body.textContent.replace(/\s+/g, ' ');
 const toggle = () => document.querySelector<HTMLInputElement>('input[type="checkbox"]');
 
-it('BLD-020, R-116: shows the toggle off by default and the platform, and asks for no updater key', async () => {
+it('BLD-020, R-117: shows the toggle off by default and the platform, and asks for no updater key', async () => {
   await show();
   expect(toggle()?.checked).toBe(false);
   expect(text()).toContain('Build releases on this computer');

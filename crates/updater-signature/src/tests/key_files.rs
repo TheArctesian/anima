@@ -121,7 +121,7 @@ fn bld_045_a_key_file_asking_for_more_scrypt_work_than_the_cap_is_refused_before
 }
 
 #[test]
-fn r_116_a_public_key_reads_from_the_tauri_value_and_the_minisign_text() {
+fn r_117_a_public_key_reads_from_the_tauri_value_and_the_minisign_text() {
     let (file, public) = tauri_key_file(None);
     let key = SecretKey::from_key_file(file.as_bytes(), None).unwrap();
     let from_tauri = PublicKey::from_key_file(&tauri_public_key(&public)).unwrap();
@@ -140,7 +140,7 @@ fn r_116_a_public_key_reads_from_the_tauri_value_and_the_minisign_text() {
 }
 
 #[test]
-fn r_116_text_that_is_not_a_public_key_is_refused() {
+fn r_117_text_that_is_not_a_public_key_is_refused() {
     let (_, public) = tauri_key_file(None);
     let two_keys = format!(
         "{}\n{}\n",

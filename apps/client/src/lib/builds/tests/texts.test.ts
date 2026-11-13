@@ -50,7 +50,7 @@ describe('the Builds row texts (BLD-020)', () => {
     expect(builderText(false, false, { kind: 'waiting' })).toBe('Off.');
   });
 
-  it('BLD-028, R-116: names cargo-nextest among the tools, and no updater key', () => {
+  it('BLD-028, R-117: names cargo-nextest among the tools, and no updater key', () => {
     expect(TOOL_NAMES['cargo-nextest']).toBe('cargo-nextest');
     expect(Object.keys(TOOL_NAMES).some((tool) => tool.startsWith('updater-key'))).toBe(false);
   });

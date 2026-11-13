@@ -1,4 +1,4 @@
-//! The hub's updater signature of a release (R-116, BLD-045, BLD-046, UPD-002): signs the
+//! The hub's updater signature of a release (R-117, BLD-045, BLD-046, UPD-002): signs the
 //! BLAKE2b-512 hash of the updater file's checked bytes, with the version in the trusted
 //! comment, checks the signature with the updater's own verifier on a second read of the same
 //! object, and writes the `.sig` beside the file. Each try signs the same bytes: the trusted

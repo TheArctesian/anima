@@ -1,6 +1,6 @@
 //! Where releases are published (R-107, R-108; BLD-060 to BLD-066): the R2 S3 endpoint, the
 //! bucket, its public address, the files that hold the R2 API token, the files that hold the
-//! updater key and its password (R-116), and the updater public key. Publishing is off when the
+//! updater key and its password (R-117), and the updater public key. Publishing is off when the
 //! endpoint is unset or empty. Only paths are read here; the token and key files are opened by
 //! `builds` at start (SEC-004, BLD-062).
 
@@ -30,11 +30,11 @@ pub struct Releases {
     pub secret_access_key_file: PathBuf,
     /// `plugins.updater.pubkey` of `tauri.conf.json`; the two must be the same, and the key in
     /// `updater_key_file` must open to it. `None` when unset or empty: publishing is then off
-    /// (R-108, R-116).
+    /// (R-108, R-117).
     pub updater_public_key: Option<String>,
-    /// The minisign secret key file `tauri signer generate` writes, sealed with scrypt (R-116).
+    /// The minisign secret key file `tauri signer generate` writes, sealed with scrypt (R-117).
     pub updater_key_file: PathBuf,
-    /// The file that holds the updater key's password; empty for a key with none (R-116).
+    /// The file that holds the updater key's password; empty for a key with none (R-117).
     pub updater_key_password_file: PathBuf,
 }
 

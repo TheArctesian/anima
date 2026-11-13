@@ -1,4 +1,4 @@
-//! The tauri-updater signature of an Anima release (BLD-045, BLD-046, UPD-002, R-116): open the
+//! The tauri-updater signature of an Anima release (BLD-045, BLD-046, UPD-002, R-117): open the
 //! minisign secret key file `tauri signer generate` writes, sign the BLAKE2b-512 hash of an
 //! updater file with the version in the trusted comment, and check a `.sig` text with the
 //! verifier tauri-plugin-updater itself uses. In-house minisign (WP-36 D-11): ed25519-dalek,

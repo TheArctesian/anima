@@ -3,7 +3,7 @@ import { listen } from '@tauri-apps/api/event';
 
 const TOOLS = ['git', 'bun', 'rust', 'cargo-nextest', 'postgres', 'tauri-packages', 'updater-public-key'] as const;
 
-/** A tool the builder lacks (BLD-028), as the shell names it. The builder holds no updater key: the hub signs (R-116). */
+/** A tool the builder lacks (BLD-028), as the shell names it. The builder holds no updater key: the hub signs (R-117). */
 export type BuilderTool = (typeof TOOLS)[number];
 
 /** This computer's platform, as K1 `BuilderPlatformInput` names it, and the tools it lacks. */
@@ -29,7 +29,7 @@ export interface ReleaseFile {
 
 /**
  * The files of the last bundle, `SHA256SUMS` last as the shell wrote it, and the name of its updater file (BLD-063,
- * UPD-010). Unsigned: the hub signs the updater file it checked (R-116).
+ * UPD-010). Unsigned: the hub signs the updater file it checked (R-117).
  */
 export interface ReleaseFiles {
   readonly files: readonly ReleaseFile[];

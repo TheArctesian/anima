@@ -68,7 +68,7 @@ describe('the upload (BLD-060, BLD-063)', () => {
   const FILE = { name: 'Anima_0.1.12_amd64.AppImage', sha256: 'a'.repeat(64), size: 5 };
   const UPDATER = FILE.name;
 
-  it('BLD-063, R-116: the release files and the unsigned updater file name are read for the job, each field checked', async () => {
+  it('BLD-063, R-117: the release files and the unsigned updater file name are read for the job, each field checked', async () => {
     core.invoke.mockResolvedValue({ files: [FILE], updater: UPDATER });
     await expect(desktopBuilderShell.releaseFiles(JOB)).resolves.toEqual({ files: [FILE], updater: UPDATER });
     expect(core.invoke).toHaveBeenCalledWith('builder_release_files', { target: JOB.target, version: JOB.version });
@@ -117,7 +117,7 @@ describe('toolCheckFrom (BLD-028)', () => {
     { os: 'WINDOWS', arch: 'X86_64', missing: [] },
     { os: 'LINUX', arch: 'MIPS', missing: [] },
     { os: 'LINUX', arch: 'X86_64', missing: ['compiler'] },
-    // R-116: the builder holds no updater key, so a key is never a missing tool.
+    // R-117: the builder holds no updater key, so a key is never a missing tool.
     { os: 'LINUX', arch: 'X86_64', missing: ['updater-key'] },
     { os: 'LINUX', arch: 'X86_64', missing: ['updater-key-locked'] },
   ])(

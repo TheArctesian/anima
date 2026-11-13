@@ -195,7 +195,7 @@ check_secrets() {
     check_updater_key "$dir/updater"
 }
 
-# check_updater_key FOLDER: the updater key pair the hub signs with (R-116, D-44). An absent
+# check_updater_key FOLDER: the updater key pair the hub signs with (R-117, D-44). An absent
 # file only warns: compose mounts the folder, so the hub starts and turns publishing off. A
 # folder that holds a file must be root:10001 0750, so the hub can search it and no one else
 # can. A file that is there must have mode 0440 in group 10001, and the key must not be empty.

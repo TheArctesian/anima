@@ -1,5 +1,5 @@
 //! A job whose files are in ends `published` or `failed`, in the order BLD-064 to BLD-066 set,
-//! signed by the hub (R-116), and a publisher that stops is taken over (BLD-063 to BLD-070, D-25,
+//! signed by the hub (R-117), and a publisher that stops is taken over (BLD-063 to BLD-070, D-25,
 //! R-108).
 
 use std::time::Duration;
@@ -82,7 +82,7 @@ async fn bld_066_a_linux_job_publishes_its_sig_the_stable_name_then_latest_json_
 
 /// The files of a macOS job: the updater archive, the DMG and the sums.
 fn mac_files(publishing: &Publishing) -> (Vec<File>, Value) {
-    // The builder proposes no signature; the hub signs (R-116).
+    // The builder proposes no signature; the hub signs (R-117).
     let archive = File::new("Anima.app.tar.gz", "app archive ".repeat(300));
     let dmg = File::new("Anima_0.1.12_universal.dmg", "disk image ".repeat(300));
     let sums = format!(

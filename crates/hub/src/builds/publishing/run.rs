@@ -1,6 +1,6 @@
 //! One publish of one job, in the order of BLD-064 to BLD-066: check the feed and the file set,
 //! read every file back from the bucket itself and check it, sign the updater file's checked
-//! bytes and write its `.sig` (R-116), copy the stable name by the checked `ETag`, then write
+//! bytes and write its `.sig` (R-117), copy the stable name by the checked `ETag`, then write
 //! `latest.json` with the signature last (UPD-008, D-28), and read the checked files' `ETag`s
 //! again. Before each write the try checks it still holds the job (D-25). Each step may
 //! run again after a stop: a read changes nothing and a write puts the same bytes. Any refusal
@@ -59,7 +59,7 @@ pub(super) struct Work {
     /// An earlier try sent a feed write for the job (D-25).
     pub(super) feed_sent: bool,
     /// The time in the signature's trusted comment: when the job reached `uploading`, the same
-    /// on every try (R-116).
+    /// on every try (R-117).
     pub(super) signed_at: DateTime<Utc>,
 }
 
@@ -202,7 +202,7 @@ async fn steps(
 }
 
 /// Confirms the feed an earlier try sent (D-25): every feed folder must hold this job's feed,
-/// signed with the `.sig` that try wrote before it (R-116). A folder that holds another refuses
+/// signed with the `.sig` that try wrote before it (R-117). A folder that holds another refuses
 /// the job, whose files are kept.
 async fn confirm(reach: Reach<'_>, work: &Work) -> Result<&'static [&'static str], Stop> {
     let folders = feed::feed_folders(work.target, DEVELOPER_ID);

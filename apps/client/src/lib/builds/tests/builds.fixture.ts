@@ -26,7 +26,7 @@ export function refused(code: HubError['code']): HubResult<never> {
 
 export type StepCall = 'checkout' | 'gates' | 'bundle' | 'release-files' | 'upload';
 
-/** The updater file of `JOB`, unsigned: the hub signs it (R-116). */
+/** The updater file of `JOB`, unsigned: the hub signs it (R-117). */
 export const UPDATER: ReleaseFile = { name: 'Anima_0.1.12_amd64.AppImage', sha256: 'b'.repeat(64), size: 5 };
 /** The `SHA256SUMS` the shell writes for the job's files. */
 export const SUMS_FILE: ReleaseFile = { name: 'SHA256SUMS', sha256: 'd'.repeat(64), size: 94 };

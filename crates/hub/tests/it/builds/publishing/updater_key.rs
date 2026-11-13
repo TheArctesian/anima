@@ -1,4 +1,4 @@
-//! The hub's updater key at start and its `.sig` on a retry (R-116, SEC-004, LOG-007, D-25): a
+//! The hub's updater key at start and its `.sig` on a retry (R-117, SEC-004, LOG-007, D-25): a
 //! key that does not open with its password, or opens to another public key, turns publishing
 //! off with a fixed warning that names no key text, and the hub still has its other parts; a
 //! `.sig` write whose answer was lost, and that a stop then left cut short, is put again whole.
@@ -56,7 +56,7 @@ fn opened_with_log(releases: &anima_hub::config::Releases) -> (bool, String) {
 }
 
 #[tokio::test]
-async fn r_116_a_wrong_password_or_another_public_key_turns_publishing_off_and_logs_no_key() {
+async fn r_117_a_wrong_password_or_another_public_key_turns_publishing_off_and_logs_no_key() {
     let fake = FakeR2::start().await;
     let (folder, pair) = secret_files();
     let key_file = std::fs::read_to_string(folder.path().join("updater_key")).unwrap();
@@ -163,7 +163,7 @@ async fn d_44_cr_26_an_empty_password_opens_only_a_key_made_without_one() {
 /// the object is cut short, as a stop mid-write would leave it. The next try signs the same
 /// bytes again, puts the `.sig` whole and publishes a feed whose signature is that `.sig`.
 #[sqlx::test(migrations = "./migrations")]
-async fn d_25_r_116_a_retry_after_a_partial_sig_write_puts_the_same_sig_whole(pool: PgPool) {
+async fn d_25_r_117_a_retry_after_a_partial_sig_write_puts_the_same_sig_whole(pool: PgPool) {
     let publishing = Publishing::start(&pool).await;
     let (held, files) = uploaded_linux(&publishing, "0.1.12").await;
     let sig = format!("linux-x86_64/0.1.12/{}.sig", files[0].name);

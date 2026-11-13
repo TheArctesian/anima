@@ -1,4 +1,4 @@
-//! The retired updater key entries are deleted at start (R-116, D-41).
+//! The retired updater key entries are deleted at start (R-117, D-41).
 
 use super::{SECRET, use_memory_store};
 use crate::keystore::{
@@ -10,7 +10,7 @@ use crate::keystore::{
 const WRITTEN_BY_T2: [&str; 2] = ["updater-key", "updater-key-public"];
 
 #[test]
-fn r_116_d_41_the_retired_updater_key_entries_are_deleted_and_nothing_else() {
+fn r_117_d_41_the_retired_updater_key_entries_are_deleted_and_nothing_else() {
     let store = use_memory_store();
     let origin = "https://retired-key.anima.test";
     write_token(TokenKind::Access, origin, SECRET).unwrap();

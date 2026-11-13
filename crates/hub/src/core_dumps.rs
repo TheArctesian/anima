@@ -1,4 +1,4 @@
-//! Keeps the hub's memory out of core dumps (WP-36 D-45, R-116, SEC-004): the updater key's seed,
+//! Keeps the hub's memory out of core dumps (WP-36 D-45, R-117, SEC-004): the updater key's seed,
 //! the vault key and the R2 token live in it. Compose also sets the core size limit to 0; this
 //! covers a hub started any other way.
 

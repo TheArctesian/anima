@@ -72,7 +72,7 @@ async fn bld_070_a_job_that_fails_leaves_none_of_its_files_in_the_bucket(pool: P
         .with(|store| store.tamper = Some(keys[0].clone()));
     assert_eq!(publishing.sweep(ready()).await, 1);
     assert_eq!(publishing.job(&held).await.0, "failed");
-    // The hub's `.sig` is deleted too, written or not; a delete of no object is a no-op (R-116).
+    // The hub's `.sig` is deleted too, written or not; a delete of no object is a no-op (R-117).
     let mut keys = keys;
     keys.push(format!("linux-x86_64/0.1.12/{}.sig", files[0].name));
     assert_eq!(publishing.fake.with(|store| store.deletes.clone()), keys);

@@ -1,4 +1,4 @@
-//! The hub's updater key and its signature (R-116, BLD-045, BLD-046, UPD-002): the key opens
+//! The hub's updater key and its signature (R-117, BLD-045, BLD-046, UPD-002): the key opens
 //! only with its password and only as the key of `ANIMA_UPDATER_PUBLIC_KEY`, its signature is
 //! accepted by the reference minisign for the version, and no key text reaches an error. Every
 //! key is made here; no real key file is read.
@@ -38,7 +38,7 @@ fn signed(version: &str) -> Signed<'_> {
 }
 
 #[test]
-fn r_116_an_encrypted_key_opens_with_its_password_file() {
+fn r_117_an_encrypted_key_opens_with_its_password_file() {
     let (file, public, _) = tauri_key(Some(PASSWORD));
     for password in [
         PASSWORD.to_owned(),
@@ -52,7 +52,7 @@ fn r_116_an_encrypted_key_opens_with_its_password_file() {
 }
 
 #[test]
-fn r_116_a_wrong_or_missing_password_turns_publishing_off_with_a_fixed_error() {
+fn r_117_a_wrong_or_missing_password_turns_publishing_off_with_a_fixed_error() {
     let (file, public, _) = tauri_key(Some(PASSWORD));
     let open = |password: &[u8]| UpdaterKey::from_parts(file.as_bytes(), password, &public).err();
     assert_eq!(
@@ -76,7 +76,7 @@ fn r_116_a_wrong_or_missing_password_turns_publishing_off_with_a_fixed_error() {
 }
 
 #[test]
-fn r_116_a_key_that_is_not_the_configured_public_key_is_refused() {
+fn r_117_a_key_that_is_not_the_configured_public_key_is_refused() {
     let (file, _, _) = tauri_key(None);
     let (_, other_public, _) = tauri_key(None);
     assert_eq!(
@@ -113,7 +113,7 @@ fn releases(folder: &std::path::Path, public: Option<String>) -> Releases {
 }
 
 #[test]
-fn r_116_sec_004_the_key_and_its_password_are_read_from_their_files() {
+fn r_117_sec_004_the_key_and_its_password_are_read_from_their_files() {
     let folder = tempfile::tempdir().unwrap();
     let (file, public, _) = tauri_key(Some(PASSWORD));
     let releases = releases(folder.path(), Some(public.clone()));
@@ -196,7 +196,7 @@ fn log_007_the_key_has_no_debug_and_no_error_carries_key_text() {
     }
 }
 
-/// R-108, R-116: `ANIMA_UPDATER_PUBLIC_KEY` must be the app's `plugins.updater.pubkey`, so the
+/// R-108, R-117: `ANIMA_UPDATER_PUBLIC_KEY` must be the app's `plugins.updater.pubkey`, so the
 /// app's value must be a key the hub reads: the operator's, never the old placeholder.
 #[test]
 fn r_108_the_app_updater_key_is_one_the_hub_reads() {
@@ -213,10 +213,10 @@ fn r_108_the_app_updater_key_is_one_the_hub_reads() {
     );
 }
 
-/// R-116, T6 review: the trusted comment's time is the job's upload time in Unix seconds; a time
+/// R-117, T6 review: the trusted comment's time is the job's upload time in Unix seconds; a time
 /// before 1970 is refused, never signed as 1970.
 #[test]
-fn r_116_a_job_time_before_1970_is_refused_not_signed_as_1970() {
+fn r_117_a_job_time_before_1970_is_refused_not_signed_as_1970() {
     let at = DateTime::from_timestamp(1_888_000_000, 0).unwrap();
     assert!(matches!(signed_time(at), Ok(1_888_000_000)));
     let epoch = DateTime::from_timestamp(0, 0).unwrap();
