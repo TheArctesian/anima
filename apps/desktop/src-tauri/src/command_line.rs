@@ -86,7 +86,9 @@ fn carrier() -> Result<Carrier, CommandLineError> {
         carrier::bundle(&executable, program_exists)
     } else if cfg!(target_os = "linux") {
         let appimage = std::env::var_os("APPIMAGE");
-        let appdir = std::env::var_os("APPDIR");
+        // The mount, resolved as the executable path is, so a linked temporary folder agrees.
+        let appdir = std::env::var_os("APPDIR")
+            .map(|mount| std::fs::canonicalize(&mount).map_or(mount, PathBuf::into_os_string));
         carrier::app_image(
             appimage.as_deref(),
             appdir.as_deref(),
