@@ -59,9 +59,12 @@ function builds(builder: Builder, target: BuildTarget): boolean {
   return target === 'LINUX_X86_64' ? os === 'LINUX' && arch === 'X86_64' : os === 'MACOS' && arch === 'AARCH64';
 }
 
-/** "Waiting for a <target> builder" for a queued job when no online builder can build its target; otherwise `null` (BLD-007). */
-export function waitingText(job: Pick<JobView, 'state' | 'target'>, builders: readonly Builder[]): string | null {
-  if (job.state !== 'QUEUED') return null;
+/**
+ * "Waiting for a <target> builder" for a queued job when no online builder can build its target; otherwise `null`.
+ * `builders` is `null` until they have loaded once, and then nothing is said (BLD-007).
+ */
+export function waitingText(job: Pick<JobView, 'state' | 'target'>, builders: readonly Builder[] | null): string | null {
+  if (job.state !== 'QUEUED' || builders === null) return null;
   if (builders.some((builder) => builder.online && builds(builder, job.target))) return null;
   return `Waiting for a ${targetLabel(job.target)} builder`;
 }
@@ -69,11 +72,6 @@ export function waitingText(job: Pick<JobView, 'state' | 'target'>, builders: re
 /** Only a queued job can be cancelled (BLD-008). */
 export function canCancel(job: Pick<JobView, 'state'>): boolean {
   return job.state === 'QUEUED';
-}
-
-/** A job in one of these states changes no more, so its log needs no subscription (BLD-081). */
-export function isFinished(job: Pick<JobView, 'state'>): boolean {
-  return job.state === 'PUBLISHED' || job.state === 'FAILED' || job.state === 'CANCELLED';
 }
 
 /** `releases` with the changed job replaced where it is listed; a job the list does not hold changes nothing. */

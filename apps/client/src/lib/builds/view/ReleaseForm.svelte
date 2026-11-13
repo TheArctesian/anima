@@ -4,7 +4,7 @@
   import Input from '$lib/forms/input/Input.svelte';
   import type { HubError } from '$lib/hub/hub';
   import type { BuildTarget } from './api';
-  import { refusalText, validateRelease, withTarget, type ReleaseErrors } from './form';
+  import { normalized, refusalText, validateRelease, withTarget, type ReleaseErrors } from './form';
   import { TARGETS } from './release';
 
   interface Props {
@@ -38,7 +38,8 @@
     if (Object.keys(shown).length > 0) return;
     busy = true;
     try {
-      const error = await onrelease(version, commit, targets);
+      const sent = normalized({ version, commit, targets });
+      const error = await onrelease(sent.version, sent.commit, sent.targets);
       if (error !== null) refusal = refusalText(error);
       else commit = '';
     } finally {
@@ -60,7 +61,7 @@
       />
     {/snippet}
   </Field>
-  <Field label="Commit" constraint="The full commit of main: 40 lower-case hex digits." error={shown.commit}>
+  <Field label="Commit" constraint="The full commit of main: 40 hex digits." error={shown.commit}>
     {#snippet children(link)}
       <Input {...link} mono bind:value={commit} placeholder="0123456789abcdef0123456789abcdef01234567" />
     {/snippet}
@@ -79,7 +80,7 @@
         {target.label}
       </label>
     {/each}
-    <div role="alert">{#if shown.targets}<p class="error">{shown.targets}</p>{/if}</div>
+    <div role="status">{#if shown.targets}<p class="error">{shown.targets}</p>{/if}</div>
   </fieldset>
   <div role="alert">{#if refusal}<p class="error">{refusal}</p>{/if}</div>
   <FormButton type="submit" tone="primary" tabindex={0} {busy}>Release {version}</FormButton>

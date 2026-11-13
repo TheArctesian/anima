@@ -8,7 +8,7 @@
     job: JobView;
     /** The version of the release the job belongs to; it names the job's controls. */
     version: string;
-    builders: readonly Builder[];
+    builders: readonly Builder[] | null;
     now: Date;
     selected: boolean;
     /** The hub's refusal of the last cancel of this job. */

@@ -132,7 +132,7 @@ it('BLD-001: a commit that is not 40 hex digits is refused before the hub is ask
   const target = await open();
   type(input(target, 'Commit'), 'main');
   await submit(target);
-  expect(target.textContent).toContain('A commit is 40 lower-case hex digits.');
+  expect(target.textContent).toContain('A commit is 40 hex digits.');
   expect(hub.sent.some((request) => request.operation === 'CreateRelease')).toBe(false);
 });
 

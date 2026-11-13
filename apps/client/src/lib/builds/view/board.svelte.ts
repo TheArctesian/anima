@@ -13,7 +13,11 @@ export const REFRESH_MS = 30_000;
  */
 export class ReleaseBoard {
   releases = $state<readonly ReleaseView[] | null>(null);
-  builders = $state<readonly Builder[]>([]);
+  /** `null` until the builders have loaded once: without them nothing can be said about a waiting job (BLD-007). */
+  builders = $state<readonly Builder[] | null>(null);
+  buildersFailed = $state(false);
+  /** The subscription ended, so the list and the log may be out of date until the operator resumes it (BLD-081). */
+  liveStopped = $state(false);
   nextVersion = $state<string | null>(null);
   loadFailed = $state(false);
   /** The refusal of the last cancel, shown beside the job. */
@@ -52,14 +56,43 @@ export class ReleaseBoard {
 
   /** Reads the releases, the builders and the proposed version, and starts the live changes; `stop` ends them. */
   async open(): Promise<void> {
-    this.#stop ??= this.#api.watch(null, {
+    this.#watch();
+    await Promise.all([this.loadReleases(), this.loadBuilders(), this.loadNextVersion()]);
+  }
+
+  /** Starts the live changes again after they stopped, and reads what was missed (BLD-081). */
+  async resume(): Promise<void> {
+    this.#watch();
+    await this.#catchUp();
+  }
+
+  #watch(): void {
+    if (this.#stop !== null) return;
+    this.liveStopped = false;
+    this.#stop = this.#api.watch(null, {
       next: (change) => {
         this.#apply(change);
       },
-      error: () => undefined,
-      complete: () => undefined,
+      error: () => {
+        this.#ended();
+      },
+      complete: () => {
+        this.#ended();
+      },
     });
-    await Promise.all([this.loadReleases(), this.loadBuilders(), this.loadNextVersion()]);
+  }
+
+  /** The hub closed or refused the subscription: say so, and read the releases and the log once, so nothing shown is stale. */
+  #ended(): void {
+    this.#stop = null;
+    this.liveStopped = true;
+    void this.#catchUp();
+  }
+
+  async #catchUp(): Promise<void> {
+    const id = this.selectedId;
+    await this.loadReleases();
+    if (id !== null && this.selectedId === id) await this.#loadLog(id);
   }
 
   stop(): void {
@@ -75,6 +108,7 @@ export class ReleaseBoard {
 
   async loadBuilders(): Promise<void> {
     const result = await this.#builders.builders();
+    this.buildersFailed = !result.ok;
     if (result.ok) this.builders = result.value;
   }
 

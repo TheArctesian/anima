@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Builder } from '../../api';
 import type { JobChange, JobView, ReleaseView } from '../api';
-import { canCancel, isFinished, newestFirst, shortCommit, timeInState, waitingText, withChange } from '../release';
+import { canCancel, newestFirst, shortCommit, timeInState, waitingText, withChange } from '../release';
 
 const NOW = new Date('2026-11-12T12:00:00Z');
 
@@ -72,9 +72,8 @@ describe('Builds view logic', () => {
     }
   });
 
-  it('BLD-081: published, failed and cancelled jobs are finished', () => {
-    const states = ['QUEUED', 'BUILDING', 'PUBLISHED', 'FAILED', 'CANCELLED'] as const;
-    expect(states.map((state) => isFinished({ state }))).toEqual([false, false, true, true, true]);
+  it('BLD-007: nothing is said about waiting before the builders have loaded', () => {
+    expect(waitingText(job(), null)).toBeNull();
   });
 
   it('BLD-081: a job change replaces that job in its release and leaves the rest', () => {

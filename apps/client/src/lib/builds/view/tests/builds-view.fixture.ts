@@ -46,6 +46,8 @@ export interface SentRequest {
 export function fakeHub(answers: Answers) {
   const sent: SentRequest[] = [];
   let push: (change: JobChange) => void = () => undefined;
+  let end: { error: () => void; complete: () => void } = { error: () => undefined, complete: () => undefined };
+  const live = { subscribed: 0, stopped: 0 };
   const hub = {
     request: (document: TypedDocumentNode, variables: Record<string, unknown>) => {
       const operation = /(?:mutation|query) (\w+)/.exec(print(document))?.[1] ?? '';
@@ -54,14 +56,43 @@ export function fakeHub(answers: Answers) {
       const result = typeof answer === 'function' ? answer() : answer;
       return Promise.resolve(result ?? { ok: false, error: { code: 'unreachable', message: 'The hub did not answer.' } });
     },
-    subscribe: (_document: TypedDocumentNode, _variables: unknown, sink: { next: (value: unknown) => void }) => {
+    subscribe: (
+      _document: TypedDocumentNode,
+      _variables: unknown,
+      sink: { next: (value: unknown) => void; error: (error: HubError) => void; complete: () => void },
+    ) => {
+      live.subscribed += 1;
       push = (change) => {
         sink.next({ buildJobUpdated: change });
       };
-      return () => undefined;
+      end = {
+        error: () => {
+          sink.error({ code: 'UNAUTHENTICATED', message: 'The hub refused the token.' });
+        },
+        complete: () => {
+          sink.complete();
+        },
+      };
+      return () => {
+        live.stopped += 1;
+      };
     },
   } as unknown as Hub;
-  return { hub, sent, push: (change: JobChange) => { push(change); } };
+  return {
+    hub,
+    sent,
+    live,
+    push: (change: JobChange) => {
+      push(change);
+    },
+    /** The hub refuses or ends the subscription. */
+    fail: () => {
+      end.error();
+    },
+    finish: () => {
+      end.complete();
+    },
+  };
 }
 
 export async function settled(): Promise<void> {

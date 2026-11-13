@@ -7,7 +7,7 @@
   interface Props {
     /** Already newest first. */
     releases: readonly ReleaseView[];
-    builders: readonly Builder[];
+    builders: readonly Builder[] | null;
     now: Date;
     selectedId: string | null;
     cancelError: { readonly jobId: string; readonly message: string } | null;

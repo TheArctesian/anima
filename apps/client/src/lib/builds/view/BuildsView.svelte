@@ -23,6 +23,15 @@
   <section aria-label="New release">
     <ReleaseForm proposed={view.nextVersion} onrelease={(version, commit, targets) => view.release(version, commit, targets)} />
   </section>
+  {#if view.liveStopped}
+    <p role="alert">
+      Live updates stopped. What you see was read again just now.
+      <FormButton tabindex={0} onclick={() => view.resume()}>Resume live updates</FormButton>
+    </p>
+  {/if}
+  {#if view.buildersFailed}
+    <p role="status">Anima could not read the builders; the waiting notices may be out of date.</p>
+  {/if}
   <section aria-label="Releases" aria-busy={view.releases === null && !view.loadFailed}>
     {#if view.loadFailed && view.releases === null}
       <p role="alert">Anima could not load the releases.</p>
