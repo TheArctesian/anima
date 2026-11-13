@@ -13,3 +13,4 @@ pub mod invocation;
 pub mod output;
 pub mod private_file;
 pub mod prompt;
+pub mod sessions;

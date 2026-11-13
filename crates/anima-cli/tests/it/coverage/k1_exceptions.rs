@@ -123,9 +123,4 @@ pub const EXCEPTIONS: &[(&str, &str)] = &[
     ("Mutation.registerVpnNode", "vpn register"),         // T5
     ("Mutation.renewVpnKey", "vpn renew"),                // T5
     ("Mutation.approveSiteRoute", "vpn approve-route"),   // T5
-    // T6: session, ssh, files.
-    ("Query.sessions", "session list"),              // T6
-    ("Mutation.startSession", "ssh <device>"),       // T6
-    ("Mutation.endSession", "session end"),          // T6
-    ("Mutation.openFiles", "files ls, get and put"), // T6
 ];

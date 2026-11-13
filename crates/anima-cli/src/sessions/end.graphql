@@ -1,0 +1,14 @@
+# `anima session end`, and the recorded reason after `anima ssh` (K4 Section 8.4: authoritative).
+mutation SessionEnd($id: ID!) {
+  endSession(id: $id) {
+    id
+    deviceId
+    deviceName
+    protocol
+    operatorName
+    startedAt
+    endedAt
+    endReason
+    clientAddr
+  }
+}

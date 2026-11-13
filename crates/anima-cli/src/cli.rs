@@ -10,7 +10,7 @@ use crate::environment::Environment;
 use crate::failure::{Failure, exit};
 use crate::invocation::{Globals, Invocation};
 use crate::output::Output;
-use crate::{api, auth, contexts, devices};
+use crate::{api, auth, contexts, devices, sessions};
 
 /// The command line for an Anima hub.
 #[derive(Debug, Parser)]
@@ -39,6 +39,18 @@ enum Command {
         #[command(subcommand)]
         command: devices::DeviceCommand,
     },
+    /// Remote sessions (list, end).
+    Session {
+        #[command(subcommand)]
+        command: sessions::SessionCommand,
+    },
+    /// A terminal on a device through the hub (login token only).
+    Ssh(sessions::terminal::SshArgs),
+    /// Files on a device through the hub (ls, get, put; login token only).
+    Files {
+        #[command(subcommand)]
+        command: sessions::files::FilesCommand,
+    },
     /// Send a GraphQL document and print the hub's answer.
     Api(api::ApiArgs),
     /// Print shell completion.
@@ -51,6 +63,9 @@ impl Command {
             Self::Auth { command } => command.run(invocation).await,
             Self::Context { command } => command.run(invocation),
             Self::Device { command } => command.run(invocation).await,
+            Self::Session { command } => command.run(invocation).await,
+            Self::Ssh(args) => args.run(invocation).await,
+            Self::Files { command } => command.run(invocation).await,
             Self::Api(args) => args.run(invocation).await,
             Self::Completion { shell } => {
                 let mut command = Cli::command();

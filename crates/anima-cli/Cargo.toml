@@ -20,6 +20,10 @@ path = "src/main.rs"
 bytes.workspace = true
 clap.workspace = true
 clap_complete.workspace = true
+# `anima ssh`: raw mode and the window size, restored on every exit (K4 Section 8).
+crossterm.workspace = true
+# The tunnel socket's send and receive (CMD-003).
+futures-util = { version = "0.3", default-features = false, features = ["sink"] }
 graphql_client.workspace = true
 # The OS key store holds the token (CMD-012): the macOS Keychain, the Linux Secret Service.
 keyring.workspace = true
@@ -27,14 +31,20 @@ keyring.workspace = true
 reqwest.workspace = true
 # The password at the terminal, with echo off (CMD-010).
 rpassword.workspace = true
+# The tunnel's TLS (K4 Section 8.1): ring, no OpenSSL, the web PKI roots.
+rustls.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 # The token file and the configuration are written to a temporary file, then renamed (CMD-012).
 tempfile.workspace = true
 thiserror.workspace = true
-tokio.workspace = true
+tokio = { workspace = true, features = ["signal"] }
+# The terminal and files tunnels (K4 Sections 8 and 9): a WebSocket over our own TLS stream.
+tokio-rustls.workspace = true
+tokio-tungstenite.workspace = true
 # A device given by ID rather than by name (`device get`).
 uuid.workspace = true
+webpki-roots.workspace = true
 zeroize.workspace = true
 
 [dev-dependencies]

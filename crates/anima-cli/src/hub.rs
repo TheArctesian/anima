@@ -9,6 +9,7 @@ pub mod error;
 pub mod origin;
 pub mod scalars;
 pub mod token;
+pub mod tunnel;
 
 use std::time::Duration;
 
