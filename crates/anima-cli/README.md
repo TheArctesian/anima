@@ -19,9 +19,9 @@ The `anima` command line (docs/cli-mcp-plan.md). `hub/` is the only network code
    hold a secret derives neither `Debug` nor `Serialize` (see `auth/documents.rs`).
 4. `src/checks/<verb>.rs`: `#[derive(Debug, clap::Args)] pub struct GetArgs` and its `run`:
    `let hub = invocation.hub()?;` then `hub.run::<CheckGet>(check_get::Variables { .. }).await?`.
-5. `src/lib.rs`: one `pub mod checks;` line. `src/cli.rs`: one `Command` variant
-   (`Check { #[command(subcommand)] command: checks::CheckCommand }`) and its arm in
-   `Command::run`. Nothing else in shared files changes.
+5. `src/lib.rs`: one `pub mod checks;` line. `src/cli/`: one variant and its arm in the group the
+   noun belongs to: `fleet.rs` (what the operator works on), `hub_records.rs` (what the hub keeps
+   and decides) or `program.rs` (the program itself). `cli.rs` joins the groups and does not change.
 6. `tests/it/coverage/k1_exceptions.rs`: delete the entries your documents now use. The
    coverage test (CMD-031) fails until you do, and for any K1 root field neither used nor
    excepted.
@@ -54,13 +54,15 @@ A `watch` command is a subscription document and a loop (`events/watch.rs` is th
 `while let Some(answer) = stream.next().await { let value = answer?.device_status_changed; .. }`.
 The socket speaks `graphql-transport-ws`, sends the token in `connection_init` (never in the URL),
 answers pings, and maps close code 4403 to `UNAUTHENTICATED`. Print each answer with
-`output::stream::line` (one line for a person, `serde_json::to_string` with `--json`) and stop when
-it returns `Reader::Gone`. Test it with `SubscriptionHub::start(Script::Next(..))`.
+`output::stream::emit` (one line for a person, one JSON object with `--json`) and stop when it
+returns `Reader::Gone`. Test it with `SubscriptionHub::start(Script::Next(..))`. `output::stream::emit` prints one change as a line or as
+JSON; `release log --follow` and `device metrics --watch` are `watch` flags on a noun's own command.
 
 ## Test
 
-Integration tests run the real program: `tests/it/<noun>.rs` (a folder when it grows), one
-`mod` line in `tests/it/main.rs`; `devices.rs` is the example. `FakeHub::start()` serves `POST /graphql` and answers by operation name
+Integration tests run the real program: `tests/it/<group>/<noun>.rs` (a folder when it grows), one
+`mod` line in the group file (`tests/it/fleet.rs`); `fleet/devices.rs` is the example.
+`FakeHub::start()` serves `POST /graphql` and answers by operation name
 (`hub.answer("CheckGet", data(json!(..)))` or `refusal("NOT_FOUND", "..")`); `hub.seen()`
 returns what it was sent. `Anima::new().with("ANIMA_TOKEN", ..).run(&[.., "--hub",
 &hub.origin])` returns stdout, stderr and the exit code. Assert on table and `--json` output,

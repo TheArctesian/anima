@@ -98,7 +98,7 @@ read key; change commands with a write key).
 | --- | --- |
 | `auth` | `login`, `logout`, `status` |
 | `context` | `list`, `add`, `use`, `remove` |
-| `device` | `list`, `get`, `create`, `update` L, `delete` L, `wake`, `test`, `metrics`, `uptime`, `watch` |
+| `device` | `list`, `get`, `create`, `update` L, `delete` L, `wake`, `test`, `metrics` (`--watch`), `uptime`, `watch` |
 | `device credential` | `set ssh\|rdp\|vnc` L, `clear ssh\|rdp\|vnc` L |
 | `device trust` | `accept-host-key` L, `accept-certificate` L |
 | `site` | `list`, `create`, `set-wake-relay` |
@@ -115,13 +115,17 @@ read key; change commands with a write key).
 | `notify channel` | `list`, `create`, `update`, `delete`, `test` |
 | `notify` | `settings get\|set`, `deliveries` |
 | `retention` | `list`, `set` L |
-| `release` | `list`, `next-version`, `create` L, `cancel` L, `log` |
+| `release` | `list`, `next-version`, `create` L, `cancel` L, `log` (`--follow`) |
 | `builder` | `list`, `enrol` L, `revoke` L |
-| `vpn` | `status`, `invite` L, `router-key` L, `register` L, `renew` L, `approve-route` L |
+| `vpn` | `status` (`--watch`), `invite` L, `router-key` L, `register` L, `renew` L, `approve-route` L |
 | `key` | `list` L, `create` L, `revoke` L |
 | `api` | Send a GraphQL document from a file or standard input |
 | `mcp` | Start the MCP server (Section 7) |
 | `completion` | Shell completion |
+
+`watch`, `--watch` and `--follow` keep a subscription open: one line for each change, or one JSON
+object per line with `--json`. `release log --follow` ends when the job is published, failed or
+cancelled; the others end when you stop them.
 
 Not in the command line, with the reason:
 
