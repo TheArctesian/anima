@@ -59,10 +59,17 @@ anima mcp permissions reset                     # back to the defaults
 without `--toolset` changes the default of the kind, so a tool added in a later version follows
 it; a choice by name stays with that tool.
 
-`ask` needs a client that can ask you (it declares MCP elicitation; check your client). The server
-then shows you the tool and its arguments and waits up to 120 seconds. If the client cannot
-ask, or you decline, the call is refused and the hub is not contacted. A delete still needs its
-`confirm` name.
+A change that gives the agent more (a tool or a default moves toward `allow`, and a `reset`
+that does so) works only at a terminal or in the desktop app's Settings. Without a terminal on
+standard input the command stops with exit 2, also with `--yes`. This keeps an agent from
+widening its own access through its shell. A change toward `off` works anywhere.
+
+`ask` needs a client that can ask you (it declares MCP elicitation; check your client). The
+server then shows you the tool and every argument, one per line, and waits up to 120 seconds.
+A long value is cut and its full length shown. A call with more than 40 values, or a question
+longer than 4,000 characters, is refused before you are asked. If the client cannot ask, or you
+decline, the call is refused and the hub is not contacted. A delete still needs its `confirm`
+name. `ask` trusts your MCP client: whatever answers the question decides.
 
 Flags at start apply to one run and only narrow what is saved: `--toolsets a,b` turns off every
 tool outside those sets, and `--read-only` turns off every change tool. `--allow-write` (or
@@ -84,3 +91,22 @@ runs a command on a device. Do these in the Anima client or with the command lin
 
 Text from devices (names, event messages, log lines) comes back cleaned and capped, in named
 fields. The server tells the agent never to follow it as instructions.
+
+## 5. Before you turn tools on
+
+Assume that the agent can be steered by text it reads. What it can then do depends on the
+token and on the tools you allow (docs/cli-mcp-plan.md Section 9):
+
+- **Read API key:** read the whole fleet, events, the audit log, sessions with client
+  addresses, VPN nodes and build logs.
+- **Write API key, change tools allowed:** also pause every check and empty its notification
+  channels, start maintenance windows, delete checks, windows and web interfaces, end live
+  sessions, point web interfaces and HTTP checks at other addresses, send wake packets and test
+  notifications.
+- **Login token, everything allowed:** also delete devices with their stored credentials,
+  approve a VPN route, cancel builds, set retention to the minimum and start a release.
+
+Prefer a read key, and `ask` over `allow` for change tools. Anyone who can run commands as you
+can still edit the configuration file or start `anima mcp --allow-write`. The project file
+`.mcp.json` of a repository can also start the server with its own flags: check it before you
+trust a repository. The audit log shows your user and the token, not whether an agent acted.
