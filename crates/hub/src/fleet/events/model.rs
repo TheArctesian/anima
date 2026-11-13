@@ -14,7 +14,7 @@ use super::actor::{Actor, ActorKind, TokenKind};
 use crate::{
     ids::{
         ApiKeyId, BuildJobId, BuilderId, ChannelId, CheckId, DeviceId, EventId, OperatorId,
-        ReleaseId, SessionId, SiteId, WindowId,
+        ProjectId, ReleaseId, SessionId, SiteId, SourceAccountId, WindowId,
     },
     status::Status,
 };
@@ -267,6 +267,10 @@ pub enum AuditTarget {
     /// The VPN: a key, a registration or a route made through the broker (VP-7). It has no
     /// id of its own; the change names the site or node.
     Vpn,
+    /// A connection to an outside source (SRC-003).
+    SourceAccount(SourceAccountId),
+    /// A project, its repositories or its resources (PRO-001).
+    Project(ProjectId),
 }
 
 impl AuditTarget {
@@ -290,6 +294,8 @@ impl AuditTarget {
             Self::Builder(_) => "builder",
             Self::ApiKey(_) => "api_key",
             Self::Vpn => "vpn",
+            Self::SourceAccount(_) => "source_account",
+            Self::Project(_) => "project",
         }
     }
 
@@ -312,6 +318,8 @@ impl AuditTarget {
             Self::Builder(id) => id.to_string(),
             Self::ApiKey(id) => id.to_string(),
             Self::Vpn => "vpn".to_owned(),
+            Self::SourceAccount(id) => id.to_string(),
+            Self::Project(id) => id.to_string(),
         }
     }
 }

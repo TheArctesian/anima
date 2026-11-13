@@ -265,10 +265,12 @@ dependencies = [
  "rand 0.10.3",
  "rcgen",
  "reqwest 0.12.28",
+ "ring",
  "rpassword",
  "russh",
  "russh-sftp",
  "rustls",
+ "rustls-pki-types",
  "serde",
  "serde_json",
  "sha1 0.11.0",
@@ -6522,6 +6524,15 @@ dependencies = [
  "gobject-sys",
  "libc",
  "system-deps",
+]
+
+[[package]]
+name = "source-exchange"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "serde_json",
+ "thiserror 2.0.21",
 ]
 
 [[package]]

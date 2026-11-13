@@ -1,6 +1,8 @@
 {
   "groups": [
-    "fleet"
+    "fleet",
+    "engine",
+    "work"
   ],
   "leaves": [
     "ids",
@@ -86,6 +88,19 @@
       "devices",
       "events",
       "checks"
+    ],
+    "extensions": [
+      "events"
+    ],
+    "sources": [
+      "extensions",
+      "credentials",
+      "events"
+    ],
+    "projects": [
+      "sources",
+      "extensions",
+      "events"
     ]
   },
   "graphql": {
@@ -126,6 +141,15 @@
       "access"
     ],
     "vpn": [
+      "access"
+    ],
+    "extensions": [
+      "access"
+    ],
+    "sources": [
+      "access"
+    ],
+    "projects": [
       "access"
     ]
   }
