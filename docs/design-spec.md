@@ -267,7 +267,7 @@ Before LOG-012 the hub stored only the operator name and the client IP address f
 
 Reason for the direction of trust: a wrong "User" hides the work of an AI agent, and a wrong "Agent" hides nothing. Thus a program can only raise its actor kind to Agent. The hub controls the API key attribute, so the key is the strong signal. The declaration is a second signal for a program that holds the operator's login token.
 
-A Hub entry names the operator "Anima" with the nil operator ID: the hub's own work is done for no operator (OD-15). The hub refuses an unknown header value without an error, so the value cannot be used to probe the hub. The declaration only raises the actor kind, so the hub accepts it from each client; the browser cannot send it, because CORS does not allow the header.
+A Hub entry keeps the operator who started the thing that the hub acted on, if there is one. For example, when the hub ends a session at a timeout or at shutdown, the entry names the operator who started the session, with the kind Hub. If there is no such operator, the entry names the operator "Anima" with the nil operator ID (OD-15). The hub refuses an unknown header value without an error, so the value cannot be used to probe the hub. The declaration only raises the actor kind, so the hub accepts it from each client; the browser cannot send it, because CORS does not allow the header.
 
 Limit: the program makes the declaration. A program that runs with the operator's login token and sends no declaration is recorded as User. The reliable method to mark the work of an AI agent is an API key made for an agent.
 

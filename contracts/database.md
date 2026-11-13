@@ -116,7 +116,9 @@ events.audit_log          id uuid, at timestamptz, operator_id uuid, operator_na
                           change jsonb; partitioned by range (at); the runtime role has
                           only SELECT and INSERT (LOG-006, R-016); 0505: actor_kind text null,
                           token_kind text null, api_key_name text null (operator, 2026-11-13, LOG-012 to LOG-020; ruling number to be assigned).
-                          A hub entry has operator_id nil and operator_name 'Anima' (OD-15)
+                          A hub entry keeps the operator who started what the hub acted on, when
+                          there is one (a session the hub ended); otherwise it has operator_id nil
+                          and operator_name 'Anima' (OD-15)
 
 sessions.sessions         id uuid pk, device_id uuid null, device_name text, protocol text,
                           operator_id uuid, client_addr inet, started_at, ended_at null,

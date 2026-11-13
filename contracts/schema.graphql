@@ -1149,7 +1149,7 @@ type AuditEntry {
   clientAddr: IpAddr!
   "Changed fields. Secret values are replaced with \"[redacted]\"."
   change: JSON!
-  "(operator, 2026-11-13, LOG-012 to LOG-020; ruling number to be assigned) Null for an entry written before LOG-012. For a HUB entry, operatorName is Anima."
+  "(operator, 2026-11-13, LOG-012 to LOG-020; ruling number to be assigned) Null for an entry written before LOG-012. A HUB entry names the operator who started what the hub acted on, when there is one (for example the session the hub ended); otherwise operatorName is Anima, with the nil operator ID."
   actorKind: ActorKind
   "(operator, 2026-11-13, LOG-012 to LOG-020; ruling number to be assigned) Null for a HUB entry and an old entry (LOG-018)."
   tokenKind: TokenKind
