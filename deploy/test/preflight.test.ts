@@ -1,14 +1,17 @@
 // deploy/bin/preflight, checked on plain inputs (NET-003, DB-002). Nothing here needs Docker.
 import { describe, expect, test } from "bun:test";
-import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, chownSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { finish } from "./finished-process.ts";
 
 const SCRIPT = join(import.meta.dir, "..", "bin", "preflight");
 
+/** The test's own user and group stand in for root and the hub's group 10001. */
+const OWNERS = { ANIMA_SECRETS_OWNER: String(process.getuid?.()), ANIMA_SECRETS_GROUP: String(process.getgid?.()) };
+
 async function preflight(...args: string[]): Promise<{ ok: boolean; message: string }> {
-  const result = await finish(["sh", SCRIPT, ...args]);
+  const result = await finish(["sh", SCRIPT, ...args], { env: { ...process.env, ...OWNERS } });
   return { ok: result.exitCode === 0, message: result.stderr };
 }
 
@@ -211,6 +214,7 @@ describe("preflight updater key pair (R-116, D-44)", () => {
   const pair = ["updater/updater_key", "updater/updater_key_password"];
   function withPair(folder: string): void {
     mkdirSync(join(folder, "updater"), { recursive: true });
+    chmodSync(join(folder, "updater"), 0o750);
     for (const name of [...names, ...pair]) write(folder, name);
   }
 
@@ -254,4 +258,45 @@ describe("preflight updater key pair (R-116, D-44)", () => {
       expect(result.message).not.toContain("updater-value-1");
     });
   });
+
+  test.skipIf(process.getuid?.() === 0)("S-3 refuses a folder it cannot search and says to run with sudo, never that the pair is absent", async () => {
+    await withFolder(async (folder) => {
+      withPair(folder);
+      chmodSync(join(folder, "updater"), 0o640);
+      const result = await preflight("secrets", folder);
+      chmodSync(join(folder, "updater"), 0o750);
+      expect(result.ok).toBe(false);
+      expect(result.message).toContain("run preflight with sudo");
+      expect(result.message).not.toContain("no updater key pair");
+    });
+  });
+
+  test("S-3 refuses an updater folder that is not 0750 and names it", async () => {
+    await withFolder(async (folder) => {
+      withPair(folder);
+      chmodSync(join(folder, "updater"), 0o755);
+      const result = await preflight("secrets", folder);
+      expect(result.ok).toBe(false);
+      expect(result.message).toContain("mode 0750");
+    });
+  });
+
+  // Another group the test's user is in, so one file can leave the stand-in hub group.
+  const otherGroup = (process.getgroups?.() ?? []).find((group) => group !== process.getgid?.());
+
+  test.skipIf(otherGroup === undefined).each(["updater", "updater/updater_key", "updater/updater_key_password", "r2_secret_access_key"])(
+    "S-3 refuses %s outside the hub's group and prints no value",
+    async (name) => {
+      await withFolder(async (folder) => {
+        withPair(folder);
+        write(folder, "updater/updater_key", "updater-value-1");
+        chownSync(join(folder, name), process.getuid?.() ?? 0, otherGroup ?? 0);
+        const result = await preflight("secrets", folder);
+        expect(result.ok).toBe(false);
+        expect(result.message).toContain(`${name} is not`);
+        expect(result.message).toContain(`group ${OWNERS.ANIMA_SECRETS_GROUP}`);
+        expect(result.message).not.toContain("updater-value-1");
+      });
+    },
+  );
 });

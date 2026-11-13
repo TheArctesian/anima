@@ -11,12 +11,18 @@
 #            another container (VP-13). Reads the environment, defaults as in compose.yaml.
 #   secrets  every secret file of compose.yaml exists and is not empty in the secrets folder
 #            (ANIMA_SECRETS_DIR, default deploy/secrets), and has the mode make-secrets sets:
-#            0440, or 0400 for cloudflare_dns_token. The updater key pair in its folder
-#            (updater/) may be absent: then the hub starts with publishing off, and this warns.
+#            0440, or 0400 for cloudflare_dns_token. The R2 files and the updater key pair are
+#            in the hub's group 10001. The updater key pair in its folder (updater/, root:10001
+#            0750) may be absent: then the hub starts with publishing off, and this warns. Run
+#            it as root (sudo): only root and the hub's group can search the updater folder.
 # One argument pair checks one thing from the value given: `preflight address 100.64.0.1`.
+# ANIMA_SECRETS_OWNER and ANIMA_SECRETS_GROUP (default 0 and 10001) are for tests, which cannot
+# make root-owned files, as ANIMA_SECRETS_CHOWN is for make-secrets.
 set -eu
 
 here=$(cd "$(dirname "$0")" && pwd)
+secret_owner=${ANIMA_SECRETS_OWNER:-0}
+hub_group=${ANIMA_SECRETS_GROUP:-10001}
 fail() {
     echo "preflight: $1" >&2
     exit 1
@@ -151,6 +157,14 @@ file_mode() {
     stat -c '%a' "$1" 2>/dev/null || stat -f '%Lp' "$1"
 }
 
+# file_group FILE, file_owner FILE: the numeric group and owner (GNU stat, else BSD stat).
+file_group() {
+    stat -c '%g' "$1" 2>/dev/null || stat -f '%g' "$1"
+}
+file_owner() {
+    stat -c '%u' "$1" 2>/dev/null || stat -f '%u' "$1"
+}
+
 check_secrets() {
     dir=$1
     for name in postgres_password owner_password hub_password owner_database_url \
@@ -167,27 +181,43 @@ check_secrets() {
         [ -s "$dir/$name" ] || fail "missing or empty secret file $dir/$name; see README, Release publishing"
         [ "$(file_mode "$dir/$name")" = 440 ] ||
             fail "secret file $dir/$name does not have mode 0440; see README, Release publishing"
+        [ "$(file_group "$dir/$name")" = "$hub_group" ] ||
+            fail "secret file $dir/$name is not in the hub's group $hub_group; see README, Release publishing"
     done
     check_updater_key "$dir/updater"
 }
 
 # check_updater_key FOLDER: the updater key pair the hub signs with (R-116, D-44). An absent
-# file only warns: compose mounts the folder, so the hub starts and turns publishing off. A file
-# that is there must have mode 0440, and the key must not be empty. The password may be empty,
-# for a key made with no password, so it is checked with -e, not -s.
+# file only warns: compose mounts the folder, so the hub starts and turns publishing off. A
+# folder that holds a file must be root:10001 0750, so the hub can search it and no one else
+# can. A file that is there must have mode 0440 in group 10001, and the key must not be empty.
+# The password may be empty, for a key made with no password, so it is checked with -e, not -s.
 check_updater_key() {
+    if [ -e "$1" ] && [ ! -x "$1" ]; then
+        fail "cannot search $1, which only root and the hub's group may; run preflight with sudo (README, Release publishing)"
+    fi
     if [ ! -e "$1/updater_key" ] || [ ! -e "$1/updater_key_password" ]; then
         echo "preflight: warning: no updater key pair in $1; the hub starts with publishing off (README, Release publishing)" >&2
     fi
+    if [ -e "$1/updater_key" ] || [ -e "$1/updater_key_password" ]; then
+        [ "$(file_owner "$1"):$(file_group "$1"):$(file_mode "$1")" = "$secret_owner:$hub_group:750" ] ||
+            fail "folder $1 is not owner $secret_owner, group $hub_group, mode 0750; see README, Release publishing"
+    fi
     if [ -e "$1/updater_key" ]; then
         [ -s "$1/updater_key" ] || fail "secret file $1/updater_key is empty; see README, Release publishing"
-        [ "$(file_mode "$1/updater_key")" = 440 ] ||
-            fail "secret file $1/updater_key does not have mode 0440; see README, Release publishing"
+        check_updater_file "$1/updater_key"
     fi
     if [ -e "$1/updater_key_password" ]; then
-        [ "$(file_mode "$1/updater_key_password")" = 440 ] ||
-            fail "secret file $1/updater_key_password does not have mode 0440; see README, Release publishing"
+        check_updater_file "$1/updater_key_password"
     fi
+}
+
+# check_updater_file FILE: mode 0440 in the hub's group, which the hub reads it through.
+check_updater_file() {
+    [ "$(file_mode "$1")" = 440 ] ||
+        fail "secret file $1 does not have mode 0440; see README, Release publishing"
+    [ "$(file_group "$1")" = "$hub_group" ] ||
+        fail "secret file $1 is not in the hub's group $hub_group, so the hub cannot read it; see README, Release publishing"
 }
 
 case ${1:-all} in

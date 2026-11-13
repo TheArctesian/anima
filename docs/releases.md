@@ -34,9 +34,14 @@ Agents never do these steps (UPD-012). Never paste a key or password into chat, 
    its password, as the hub's secret files `secrets/updater/updater_key` and `secrets/updater/updater_key_password`
    ("Release publishing" in [deploy/README.md](../deploy/README.md), UPD-012). Then delete the copy
    in your home folder on the VPS. The key is never in GitHub, on a builder or in a file the agents
-   read.
+   read. Check the files as root, `sudo sh -c 'set -a; . ./.env; set +a; sh bin/preflight'`:
+   only root and the hub's group can search `secrets/updater/`.
+4. Deploy the hub, then check that its start log shows publishing true on its `release bucket`
+   line and holds no "publishing is off" warning
+   (`sudo docker compose logs hub | grep -i publishing`). A key file the hub cannot read leaves
+   the hub running with publishing off.
 
-4. On each computer that was a builder before R-116, the old sealed key may still be in the key
+5. On each computer that was a builder before R-116, the old sealed key may still be in the key
    store. The app deletes it at start; to delete it by hand:
 
    ```sh

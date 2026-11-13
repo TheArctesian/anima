@@ -97,13 +97,13 @@ Each service writes its log as JSON files, 10 MB each, 10 files.
 3. Check the host:
 
    ```sh
-   set -a; . ./.env; set +a
-   sh bin/preflight
+   sudo sh -c 'set -a; . ./.env; set +a; sh bin/preflight'
    ```
 
    It refuses an address outside 100.64.0.0/10 (so never `0.0.0.0`), a Docker Engine older
    than 28, a network subnet outside 172.30.0.0/16 or a fixed hub or guacd address that Docker
-   could hand out (VP-13), and a missing secret file.
+   could hand out (VP-13), and a missing secret file. Run it as root, as above: only root and the
+   hub's group can search `secrets/updater/`, and without sudo preflight refuses to guess.
 
 4. Start:
 
@@ -288,11 +288,16 @@ step (VPS-005): agents do not create the R2 token or change `deploy/.env` on the
   `compose.yaml` mounts the folder read-only at `/run/secrets/updater` (`ANIMA_UPDATER_KEY_FILE`,
   `ANIMA_UPDATER_KEY_PASSWORD_FILE`). It is a folder, not two compose secrets, because compose
   refuses to create a container whose secret file is absent; with the folder, a hub without the
-  key still starts, with publishing off (D-44). `bin/preflight` warns, and passes, when either file
-  is absent; a file that is there must have mode `0440`, and `updater_key` must not be empty. The
-  hub opens the key once at start and never logs it, its password or its seed. Install the pair
-  before you deploy a hub that signs (WP-36 T6): until then that hub has publishing off. Unlike
-  the updater pair, the R2 token files are compose secrets: while one is absent, compose does not
+  key still starts, with publishing off (D-44). Run preflight as root,
+  `sudo sh -c 'set -a; . ./.env; set +a; sh bin/preflight'`: it cannot search the folder
+  otherwise, and says so. It warns, and passes, when either file is absent. A folder that holds a
+  file must be `root:10001` mode `0750`; a file that is there must be mode `0440` in group 10001,
+  and `updater_key` must not be empty. The hub opens the key once at start and never logs it, its
+  password or its seed. Install the pair before you deploy a hub that signs (WP-36 T6): until then
+  that hub has publishing off. After the deploy, check that the hub's start log shows publishing
+  true on its `release bucket` line and holds no "publishing is off" warning
+  (`sudo docker compose logs hub | grep -i publishing`): a file the hub cannot read turns
+  publishing off without stopping the hub. Unlike the updater pair, the R2 token files are compose secrets: while one is absent, compose does not
   start the hub at all, and `bin/preflight` fails.
 - **`ANIMA_UPDATER_PUBLIC_KEY` must be the same text as `plugins.updater.pubkey` in
   `apps/desktop/src-tauri/tauri.conf.json`,** and the key in `secrets/updater/updater_key` must be
