@@ -8,6 +8,7 @@ WORKDIR /src
 COPY package.json bun.lock ./
 COPY apps/client/package.json ./apps/client/package.json
 COPY apps/desktop/package.json ./apps/desktop/package.json
+COPY apps/site/package.json ./apps/site/package.json
 COPY quality/package.json ./quality/package.json
 COPY design/package.json ./design/package.json
 COPY deploy/package.json ./deploy/package.json
