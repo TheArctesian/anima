@@ -2,11 +2,12 @@
 
 use super::documents::{CheckHeartbeats, check_heartbeats};
 use crate::checks::resolve::CheckRef;
+use crate::connection_page;
 use crate::failure::Failure;
-use crate::hub::Hub;
 use crate::invocation::Invocation;
-use crate::output::text::{enum_name, shell_word};
+use crate::output::text::enum_name;
 use crate::output::{Cell, Table};
+use crate::paging::{CommandLine, fetch, note_next, page_size};
 
 /// The hub's largest heartbeat page; `--all` asks for pages of this size.
 const MAX_PAGE: i64 = 500;
@@ -26,8 +27,6 @@ pub struct HeartbeatsArgs {
     all: bool,
 }
 
-type Page = check_heartbeats::CheckHeartbeatsCheckHeartbeats;
-
 impl HeartbeatsArgs {
     /// Prints the heartbeats as a table or, with `--json`, as the K1 `HeartbeatConnection`.
     ///
@@ -36,84 +35,37 @@ impl HeartbeatsArgs {
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let hub = invocation.hub()?;
         let id = self.check.resolve(&hub).await?;
-        let paging = Paging {
-            first: if self.all { MAX_PAGE } else { self.limit },
-            after: self.after,
-            all: self.all,
-        };
-        let beats = fetch(&hub, &id, paging).await?;
-        invocation.output.data(&beats, table)?;
-        if beats.page_info.has_next_page {
-            let cursor = beats.page_info.end_cursor.as_deref().unwrap_or_default();
-            let device = self
+        let first = Some(page_size(self.limit, self.all, MAX_PAGE));
+        let (hub, id) = (&hub, &id);
+        let beats = fetch(self.after, self.all, move |after| async move {
+            let variables = check_heartbeats::Variables {
+                id: id.clone(),
+                first,
+                after,
+            };
+            let check = hub
+                .run::<CheckHeartbeats>(variables)
+                .await?
                 .check
-                .device()
-                .map_or_default(|device| format!(" --device {}", shell_word(device)));
-            invocation.output.note(&format!(
-                "{} heartbeats. Next page: anima check heartbeats {}{device} --after {cursor} (or --all)",
-                beats.edges.len(),
-                shell_word(self.check.label())
-            ));
-        }
+                .ok_or_else(|| Failure::NotFound {
+                    message: format!("No check has the ID {id}."),
+                    hint: Some("anima check list --device <id-or-name>".to_owned()),
+                })?;
+            Ok(check.heartbeats)
+        })
+        .await?;
+        invocation.output.data(&beats, table)?;
+        let command = CommandLine::new("anima check heartbeats")
+            .word(self.check.label())
+            .flag("--device", self.check.device());
+        note_next(invocation, &beats, "heartbeats", &command);
         Ok(())
     }
 }
 
-/// Which page to ask for, and whether to follow the rest.
-struct Paging {
-    first: i64,
-    after: Option<String>,
-    all: bool,
-}
+connection_page!(check_heartbeats::CheckHeartbeatsCheckHeartbeats);
 
-async fn fetch(hub: &Hub, id: &str, paging: Paging) -> Result<Page, Failure> {
-    let Paging {
-        first,
-        mut after,
-        all,
-    } = paging;
-    let mut joined: Option<Page> = None;
-    loop {
-        let variables = check_heartbeats::Variables {
-            id: id.to_owned(),
-            first: Some(first),
-            after: after.take(),
-        };
-        let answer = hub.run::<CheckHeartbeats>(variables).await?;
-        let page = answer
-            .check
-            .ok_or_else(|| Failure::NotFound {
-                message: format!("No check has the ID {id}."),
-                hint: Some("anima check list --device <id-or-name>".to_owned()),
-            })?
-            .heartbeats;
-        let next = page
-            .page_info
-            .end_cursor
-            .clone()
-            .filter(|_| page.page_info.has_next_page);
-        let mut beats = match joined.take() {
-            Some(mut beats) => {
-                beats.edges.extend(page.edges);
-                beats.page_info = page.page_info;
-                beats
-            }
-            None => page,
-        };
-        match next {
-            Some(cursor) if all => {
-                after = Some(cursor);
-                joined = Some(beats);
-            }
-            _ => {
-                beats.page_info.has_next_page &= !all;
-                return Ok(beats);
-            }
-        }
-    }
-}
-
-fn table(beats: &Page) -> Table {
+fn table(beats: &check_heartbeats::CheckHeartbeatsCheckHeartbeats) -> Table {
     let mut table = Table::new(vec!["AT", "STATUS", "RESPONSE", "MESSAGE"]);
     for edge in &beats.edges {
         let beat = &edge.node;

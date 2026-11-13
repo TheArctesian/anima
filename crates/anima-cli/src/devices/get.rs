@@ -1,12 +1,13 @@
 //! `anima device get <id-or-name>`: one device, found by ID or by its exact name.
 
 use super::documents::{DeviceGet, device_get, device_list};
-use super::list::{MAX_PAGE, Query, fetch};
+use super::list::{Query, fetch};
 use crate::failure::Failure;
 use crate::hub::Hub;
 use crate::invocation::Invocation;
 use crate::output::text::enum_name;
 use crate::output::{Cell, Table};
+use crate::paging::MAX_PAGE;
 
 #[derive(Debug, clap::Args)]
 pub struct GetArgs {

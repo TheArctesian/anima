@@ -19,6 +19,7 @@ pub mod maintenance;
 pub mod mcp;
 pub mod notifications;
 pub mod output;
+pub mod paging;
 pub mod private_file;
 pub mod prompt;
 pub mod releases;

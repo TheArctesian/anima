@@ -320,3 +320,45 @@ async fn cmd_021_a_device_that_is_not_there_is_exit_3() {
         "{run:?}"
     );
 }
+
+#[tokio::test]
+async fn cmd_026_s4_a_name_lookup_stops_on_a_hub_that_never_ends() {
+    let hub = FakeHub::start().await;
+    let devices = fixture_devices();
+    hub.answer("DeviceList", page(&devices[..1], Some("c-loop"), 9));
+    let run = signed_in()
+        .run(&["device", "get", "no-such-name", "--hub", &hub.origin])
+        .await;
+    assert_eq!(run.code, 1, "{run:?}");
+    assert!(run.stderr.contains("Stopped paging"), "{}", run.stderr);
+}
+
+#[tokio::test]
+async fn cmd_026_c3_the_next_page_hint_keeps_the_filters() {
+    let hub = FakeHub::start().await;
+    let devices = fixture_devices();
+    hub.answer("DeviceList", page(&devices[..1], Some("c-1"), 9));
+    let run = signed_in()
+        .run(&[
+            "device",
+            "list",
+            "--status",
+            "down",
+            "--tag",
+            "infra",
+            "--name",
+            "my pve",
+            "--sort",
+            "status",
+            "--hub",
+            &hub.origin,
+        ])
+        .await;
+    assert!(
+        run.stderr.contains(
+            "anima device list --status down --tag infra --name 'my pve' --sort status --after c-1"
+        ),
+        "{}",
+        run.stderr
+    );
+}

@@ -5,9 +5,9 @@ use std::io::Write as _;
 use super::documents::{BuildJobLog, build_job_log};
 use super::follow;
 use crate::failure::Failure;
-use crate::hub::Hub;
 use crate::invocation::Invocation;
 use crate::output::text::clean;
+use crate::paging::{CommandLine, Page, fetch, note_next, page_size};
 
 /// The hub's largest page of log lines.
 const MAX_PAGE: i64 = 1000;
@@ -43,55 +43,60 @@ impl LogArgs {
             return follow::run(&self.job, invocation).await;
         }
         let hub = invocation.hub()?;
-        let first = if self.all { MAX_PAGE } else { self.limit };
-        let request = Request {
-            job: &self.job,
-            first,
-            all: self.all,
-        };
-        let lines = fetch(&hub, &request, self.after).await?;
+        let first = page_size(self.limit, self.all, MAX_PAGE);
+        let (hub, job) = (&hub, &self.job);
+        let log = fetch(self.after, self.all, move |after| async move {
+            let variables = build_job_log::Variables {
+                id: job.clone(),
+                after,
+                first: Some(first),
+            };
+            let lines = hub.run::<BuildJobLog>(variables).await?.build_job_log;
+            let full = i64::try_from(lines.len()).is_ok_and(|count| count == first);
+            Ok(LogPage { lines, full })
+        })
+        .await?;
         if invocation.output.json() {
             invocation
                 .output
-                .data(&lines, |_| crate::output::Table::record())?;
+                .data(&log.lines, |_| crate::output::Table::record())?;
         } else {
-            print_lines(&lines)?;
+            print_lines(&log.lines)?;
         }
-        let full = i64::try_from(lines.len()).is_ok_and(|count| count == first);
-        if let Some(last) = lines.last().filter(|_| full && !self.all) {
-            invocation.output.note(&format!(
-                "Maybe more. Next: anima release log {} --after {} (or --all)",
-                self.job, last.sequence
-            ));
-        }
+        let command = CommandLine::new("anima release log").word(&self.job);
+        note_next(invocation, &log, "lines (maybe more)", &command);
         Ok(())
     }
 }
 
-/// What to ask for: the job, the page size, and whether to follow every page.
-struct Request<'a> {
-    job: &'a str,
-    first: i64,
-    all: bool,
+/// Log lines and whether the page was full, which is the only sign there may be more: the
+/// hub pages the log by line sequence, with no page info.
+struct LogPage {
+    lines: Lines,
+    full: bool,
 }
 
-/// One page after `after`, or with `all` pages until one is short.
-async fn fetch(hub: &Hub, request: &Request<'_>, after: Option<i64>) -> Result<Lines, Failure> {
-    let mut lines: Lines = Vec::new();
-    let mut after = after;
-    loop {
-        let variables = build_job_log::Variables {
-            id: request.job.to_owned(),
-            after,
-            first: Some(request.first),
-        };
-        let page = hub.run::<BuildJobLog>(variables).await?.build_job_log;
-        let full = i64::try_from(page.len()).is_ok_and(|count| count == request.first);
-        after = page.last().map(|line| line.sequence).or(after);
-        lines.extend(page);
-        if !(request.all && full) {
-            return Ok(lines);
-        }
+impl Page for LogPage {
+    type Cursor = i64;
+
+    fn next_cursor(&self) -> Option<i64> {
+        self.lines
+            .last()
+            .map(|line| line.sequence)
+            .filter(|_| self.full)
+    }
+
+    fn append(&mut self, later: Self) {
+        self.lines.extend(later.lines);
+        self.full = later.full;
+    }
+
+    fn end(&mut self) {
+        self.full = false;
+    }
+
+    fn edge_count(&self) -> usize {
+        self.lines.len()
     }
 }
 

@@ -1,15 +1,13 @@
 //! `anima session list`: sessions newest first, with a device filter and pages (CMD-026).
 
 use super::documents::{SessionList, session_list};
+use crate::connection_page;
 use crate::devices::get::resolve;
 use crate::failure::Failure;
-use crate::hub::Hub;
 use crate::invocation::Invocation;
 use crate::output::text::enum_name;
 use crate::output::{Cell, Table, Tone};
-
-/// The hub's largest page of sessions (sessions `page.rs`).
-const MAX_PAGE: i64 = 200;
+use crate::paging::{CommandLine, MAX_PAGE, fetch, note_next, page_size};
 
 #[derive(Debug, clap::Args)]
 pub struct ListArgs {
@@ -36,60 +34,34 @@ impl ListArgs {
     /// # Errors
     /// [`Failure`] for an unknown device or a hub refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
+        let command = CommandLine::new("anima session list")
+            .flag("--device", self.device.as_deref())
+            .switch("--live", self.live);
         let hub = invocation.hub()?;
         let device_id = match &self.device {
             Some(device) => Some(resolve(&hub, device).await?),
             None => None,
         };
-        let variables = session_list::Variables {
-            device_id,
-            live: self.live.then_some(true),
-            first: Some(if self.all { MAX_PAGE } else { self.limit }),
-            after: self.after,
-        };
-        let sessions = fetch(&hub, variables, self.all).await?;
+        let first = Some(page_size(self.limit, self.all, MAX_PAGE));
+        let live = self.live.then_some(true);
+        let (hub, device_id) = (&hub, &device_id);
+        let sessions = fetch(self.after, self.all, move |after| async move {
+            let variables = session_list::Variables {
+                device_id: device_id.clone(),
+                live,
+                first,
+                after,
+            };
+            Ok(hub.run::<SessionList>(variables).await?.sessions)
+        })
+        .await?;
         invocation.output.data(&sessions, table)?;
-        if sessions.page_info.has_next_page {
-            let cursor = sessions.page_info.end_cursor.as_deref().unwrap_or_default();
-            invocation.output.note(&format!(
-                "{} sessions shown. Next page: anima session list --after {cursor} (or --all)",
-                sessions.edges.len()
-            ));
-        }
+        note_next(invocation, &sessions, "sessions shown", &command);
         Ok(())
     }
 }
 
-/// The first page, or with `all` every page joined into one connection.
-async fn fetch(
-    hub: &Hub,
-    mut variables: session_list::Variables,
-    all: bool,
-) -> Result<session_list::SessionListSessions, Failure> {
-    let mut joined: Option<session_list::SessionListSessions> = None;
-    loop {
-        let page = hub.run::<SessionList>(variables.clone()).await?.sessions;
-        let next = page
-            .page_info
-            .end_cursor
-            .clone()
-            .filter(|_| all && page.page_info.has_next_page);
-        let mut sessions = match joined.take() {
-            Some(mut sessions) => {
-                sessions.edges.extend(page.edges);
-                sessions.page_info = page.page_info;
-                sessions
-            }
-            None => page,
-        };
-        let Some(cursor) = next else {
-            sessions.page_info.has_next_page &= !all;
-            return Ok(sessions);
-        };
-        variables.after = Some(cursor);
-        joined = Some(sessions);
-    }
-}
+connection_page!(session_list::SessionListSessions);
 
 fn table(sessions: &session_list::SessionListSessions) -> Table {
     let mut table = Table::new(vec![

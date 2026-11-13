@@ -91,3 +91,40 @@ async fn session_end_refuses_what_is_not_an_id_and_keeps_the_hubs_codes() {
         .await;
     assert_eq!(run.code, 3, "{run:?}");
 }
+
+#[tokio::test]
+async fn cmd_026_s4_all_stops_when_the_hub_repeats_its_cursor() {
+    let hub = FakeHub::start().await;
+    hub.answer("SessionList", page(Some("c-2")));
+    let run = signed_in()
+        .run(&["session", "list", "--all", "--hub", &hub.origin])
+        .await;
+    assert_eq!(run.code, 1, "{run:?}");
+    assert!(run.stderr.contains("Stopped paging"), "{}", run.stderr);
+    assert_eq!(hub.seen().len(), 2, "one page, then the repeat");
+}
+
+#[tokio::test]
+async fn cmd_026_c3_the_next_page_hint_keeps_the_filters() {
+    let hub = FakeHub::start().await;
+    hub.answer("SessionList", page(Some("c-2")));
+    let device = "0190a000-0000-7000-8002-000000000001";
+    let run = signed_in()
+        .run(&[
+            "session",
+            "list",
+            "--live",
+            "--device",
+            device,
+            "--hub",
+            &hub.origin,
+        ])
+        .await;
+    assert!(
+        run.stderr.contains(&format!(
+            "anima session list --device {device} --live --after c-2"
+        )),
+        "{}",
+        run.stderr
+    );
+}

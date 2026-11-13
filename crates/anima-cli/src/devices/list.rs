@@ -6,9 +6,7 @@ use crate::hub::Hub;
 use crate::invocation::Invocation;
 use crate::output::text::enum_name;
 use crate::output::{Cell, Table};
-
-/// The hub's largest page (devices `page.rs`); `--all` asks for pages of this size.
-pub const MAX_PAGE: i64 = 200;
+use crate::paging::{self, CommandLine, MAX_PAGE, Page, note_next, page_size};
 
 #[derive(Debug, clap::Args)]
 pub struct ListArgs {
@@ -67,6 +65,12 @@ impl ListArgs {
     /// # Errors
     /// [`Failure`] for an unknown site or a hub refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
+        let command = CommandLine::new("anima device list")
+            .choices("--status", &self.status)
+            .flags("--tag", self.tag.iter().map(String::as_str))
+            .flag("--name", self.name.as_deref())
+            .flag("--site", self.site.as_deref())
+            .choices("--sort", [&self.sort]);
         let hub = invocation.hub()?;
         let site_id = match &self.site {
             Some(site) => Some(site_id(&hub, site).await?),
@@ -81,18 +85,12 @@ impl ListArgs {
                 site_id,
             },
             sort: self.sort.k1(),
-            first: if self.all { MAX_PAGE } else { self.limit },
+            first: page_size(self.limit, self.all, MAX_PAGE),
         };
         let devices = fetch(&hub, &query, self.after, self.all).await?;
         invocation.output.data(&devices, table)?;
-        if devices.page_info.has_next_page {
-            let cursor = devices.page_info.end_cursor.as_deref().unwrap_or_default();
-            invocation.output.note(&format!(
-                "{} of {} devices. Next page: anima device list --after {cursor} (or --all)",
-                devices.edges.len(),
-                devices.total_count
-            ));
-        }
+        let what = format!("of {} devices", devices.total_count);
+        note_next(invocation, &devices, &what, &command);
         Ok(())
     }
 }
@@ -100,47 +98,47 @@ impl ListArgs {
 /// The first page after `after`, or with `all` every page joined into one connection.
 ///
 /// # Errors
-/// The hub's refusal.
+/// The hub's refusal; [`Failure::Paging`] when the hub does not page.
 pub async fn fetch(
     hub: &Hub,
     query: &Query,
     after: Option<String>,
     all: bool,
 ) -> Result<device_list::DeviceListDevices, Failure> {
-    let mut joined: Option<device_list::DeviceListDevices> = None;
-    let mut after = after;
-    loop {
+    paging::fetch(after, all, move |after| async move {
         let variables = device_list::Variables {
             filter: Some(query.filter.clone()),
             sort: Some(query.sort.clone()),
             first: Some(query.first),
-            after: after.take(),
+            after,
         };
-        let page = hub.run::<DeviceList>(variables).await?.devices;
-        let next = page
-            .page_info
+        Ok(hub.run::<DeviceList>(variables).await?.devices)
+    })
+    .await
+}
+
+impl Page for device_list::DeviceListDevices {
+    type Cursor = String;
+
+    fn next_cursor(&self) -> Option<String> {
+        self.page_info
             .end_cursor
             .clone()
-            .filter(|_| page.page_info.has_next_page);
-        let mut devices = match joined.take() {
-            Some(mut devices) => {
-                devices.edges.extend(page.edges);
-                devices.page_info = page.page_info;
-                devices.total_count = page.total_count;
-                devices
-            }
-            None => page,
-        };
-        match next {
-            Some(cursor) if all => {
-                after = Some(cursor);
-                joined = Some(devices);
-            }
-            _ => {
-                devices.page_info.has_next_page &= !all;
-                return Ok(devices);
-            }
-        }
+            .filter(|_| self.page_info.has_next_page)
+    }
+
+    fn append(&mut self, later: Self) {
+        self.edges.extend(later.edges);
+        self.page_info = later.page_info;
+        self.total_count = later.total_count;
+    }
+
+    fn end(&mut self) {
+        self.page_info.has_next_page = false;
+    }
+
+    fn edge_count(&self) -> usize {
+        self.edges.len()
     }
 }
 

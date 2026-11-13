@@ -248,3 +248,17 @@ async fn cmd_026_the_next_page_hint_keeps_the_device_of_a_check_given_by_name() 
         run.stderr
     );
 }
+
+#[tokio::test]
+async fn cmd_026_s4_heartbeats_all_stops_when_the_hub_repeats_its_cursor() {
+    let hub = FakeHub::start().await;
+    hub.answer(
+        "CheckHeartbeats",
+        beats("h1.2", true, "2026-11-12T10:00:00+00:00"),
+    );
+    let run = signed_in()
+        .run(&["check", "heartbeats", CHECK, "--all", "--hub", &hub.origin])
+        .await;
+    assert_eq!(run.code, 1, "{run:?}");
+    assert!(run.stderr.contains("Stopped paging"), "{}", run.stderr);
+}

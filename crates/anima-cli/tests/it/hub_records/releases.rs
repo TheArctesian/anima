@@ -221,3 +221,22 @@ async fn release_log_of_an_unknown_job_exits_3() {
         .await;
     assert_eq!(run.code, 3, "{run:?}");
 }
+
+#[tokio::test]
+async fn cmd_026_s4_release_list_and_log_stop_on_a_hub_that_never_ends() {
+    let hub = FakeHub::start().await;
+    hub.answer("ReleaseList", releases_page(Some("r1")));
+    let run = signed_in()
+        .run(&["release", "list", "--all", "--hub", &hub.origin])
+        .await;
+    assert_eq!(run.code, 1, "{run:?}");
+    assert!(run.stderr.contains("Stopped paging"), "{}", run.stderr);
+
+    let hub = FakeHub::start().await;
+    hub.answer("BuildJobLog", log_lines(1, 1000));
+    let run = signed_in()
+        .run(&["release", "log", JOB, "--all", "--hub", &hub.origin])
+        .await;
+    assert_eq!(run.code, 1, "{run:?}");
+    assert!(run.stderr.contains("Stopped paging"), "{}", run.stderr);
+}

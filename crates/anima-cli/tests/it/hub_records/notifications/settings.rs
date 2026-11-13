@@ -108,3 +108,34 @@ async fn not_004_deliveries_show_the_reason_and_filter_by_channel_name() {
     );
     assert_eq!(delivery.variables["first"], 50);
 }
+
+#[tokio::test]
+async fn cmd_026_c3_the_deliveries_hint_keeps_the_channel() {
+    let hub = FakeHub::start().await;
+    let node = fixtures()["deliveries"][0].clone();
+    hub.answer(
+        "DeliveryList",
+        data(
+            json!({ "deliveries": { "edges": [{ "cursor": "c", "node": node }],
+                "pageInfo": { "hasNextPage": true, "endCursor": "d-1" } } }),
+        ),
+    );
+    let channel = "0190a000-0000-7000-8017-000000000002";
+    let run = signed_in()
+        .run(&[
+            "notify",
+            "deliveries",
+            "--channel",
+            channel,
+            "--hub",
+            &hub.origin,
+        ])
+        .await;
+    assert!(
+        run.stderr.contains(&format!(
+            "anima notify deliveries --channel {channel} --after d-1"
+        )),
+        "{}",
+        run.stderr
+    );
+}

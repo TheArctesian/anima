@@ -2,11 +2,12 @@
 
 use super::channel::resolve;
 use super::documents::{DeliveryList, delivery_list};
-use crate::events::paging::{MAX_PAGE, Page, fetch, note_next, page_size};
+use crate::connection_page;
 use crate::failure::Failure;
 use crate::invocation::Invocation;
 use crate::output::text::enum_name;
 use crate::output::{Cell, Table, Tone};
+use crate::paging::{CommandLine, MAX_PAGE, fetch, note_next, page_size};
 
 #[derive(Debug, clap::Args)]
 pub struct DeliveriesArgs {
@@ -30,13 +31,16 @@ impl DeliveriesArgs {
     /// # Errors
     /// [`Failure::NotFound`] for an unknown channel; the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
+        let command =
+            CommandLine::new("anima notify deliveries").flag("--channel", self.channel.as_deref());
         let hub = invocation.hub()?;
         let channel_id = match &self.channel {
             Some(channel) => Some(resolve(&hub, channel).await?),
             None => None,
         };
-        let first = Some(page_size(self.limit, self.all));
-        let deliveries = fetch(self.after, self.all, async |after| {
+        let first = Some(page_size(self.limit, self.all, MAX_PAGE));
+        let (hub, channel_id) = (&hub, &channel_id);
+        let deliveries = fetch(self.after, self.all, move |after| async move {
             let variables = delivery_list::Variables {
                 channel_id: channel_id.clone(),
                 first,
@@ -46,37 +50,12 @@ impl DeliveriesArgs {
         })
         .await?;
         invocation.output.data(&deliveries, table)?;
-        note_next(
-            invocation,
-            &deliveries,
-            "deliveries",
-            "anima notify deliveries",
-        );
+        note_next(invocation, &deliveries, "deliveries", &command);
         Ok(())
     }
 }
 
-impl Page for delivery_list::DeliveryListDeliveries {
-    fn next_cursor(&self) -> Option<String> {
-        self.page_info
-            .end_cursor
-            .clone()
-            .filter(|_| self.page_info.has_next_page)
-    }
-
-    fn append(&mut self, later: Self) {
-        self.edges.extend(later.edges);
-        self.page_info = later.page_info;
-    }
-
-    fn end(&mut self) {
-        self.page_info.has_next_page = false;
-    }
-
-    fn edge_count(&self) -> usize {
-        self.edges.len()
-    }
-}
+connection_page!(delivery_list::DeliveryListDeliveries);
 
 fn table(deliveries: &delivery_list::DeliveryListDeliveries) -> Table {
     let mut table = Table::new(vec!["AT", "CHANNEL", "KIND", "RESULT"]);

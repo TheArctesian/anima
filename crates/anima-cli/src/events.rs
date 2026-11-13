@@ -4,7 +4,6 @@
 pub mod audit;
 pub mod documents;
 pub mod list;
-pub mod paging;
 pub mod watch;
 
 use crate::failure::Failure;

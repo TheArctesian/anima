@@ -2,12 +2,13 @@
 //! (CMD-026).
 
 use super::documents::{EventList, event_list};
-use super::paging::{MAX_PAGE, Page, fetch, note_next, page_size};
+use crate::connection_page;
 use crate::devices::get::resolve;
 use crate::failure::Failure;
 use crate::invocation::Invocation;
 use crate::output::text::enum_name;
 use crate::output::{Cell, Table, Tone};
+use crate::paging::{CommandLine, MAX_PAGE, fetch, note_next, page_size};
 
 #[derive(Debug, clap::Args)]
 pub struct ListArgs {
@@ -54,11 +55,21 @@ enum SourceArg {
 }
 
 impl ListArgs {
+    /// `anima event list` with the filters in use, for the next-page hint.
+    fn next_page_command(&self) -> CommandLine {
+        CommandLine::new("anima event list")
+            .choices("--severity", &self.severity)
+            .choices("--source", &self.source)
+            .flag("--device", self.device.as_deref())
+            .flag("--since", self.since.as_deref())
+    }
+
     /// Prints the events as a table or, with `--json`, as the K1 `EventConnection`.
     ///
     /// # Errors
     /// [`Failure`] for an unknown device or a hub refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
+        let command = self.next_page_command();
         let hub = invocation.hub()?;
         let device_id = match &self.device {
             Some(device) => Some(resolve(&hub, device).await?),
@@ -72,8 +83,9 @@ impl ListArgs {
             device_id,
             since: self.since,
         };
-        let first = Some(page_size(self.limit, self.all));
-        let events = fetch(self.after, self.all, async |after| {
+        let first = Some(page_size(self.limit, self.all, MAX_PAGE));
+        let (hub, filter) = (&hub, &filter);
+        let events = fetch(self.after, self.all, move |after| async move {
             let variables = event_list::Variables {
                 filter: Some(filter.clone()),
                 first,
@@ -83,32 +95,12 @@ impl ListArgs {
         })
         .await?;
         invocation.output.data(&events, table)?;
-        note_next(invocation, &events, "events", "anima event list");
+        note_next(invocation, &events, "events", &command);
         Ok(())
     }
 }
 
-impl Page for event_list::EventListEvents {
-    fn next_cursor(&self) -> Option<String> {
-        self.page_info
-            .end_cursor
-            .clone()
-            .filter(|_| self.page_info.has_next_page)
-    }
-
-    fn append(&mut self, later: Self) {
-        self.edges.extend(later.edges);
-        self.page_info = later.page_info;
-    }
-
-    fn end(&mut self) {
-        self.page_info.has_next_page = false;
-    }
-
-    fn edge_count(&self) -> usize {
-        self.edges.len()
-    }
-}
+connection_page!(event_list::EventListEvents);
 
 fn table(events: &event_list::EventListEvents) -> Table {
     let mut table = Table::new(vec!["AT", "SEVERITY", "SOURCE", "DEVICE", "MESSAGE"]);

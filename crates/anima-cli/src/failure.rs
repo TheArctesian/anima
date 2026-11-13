@@ -43,6 +43,9 @@ pub enum Failure {
     /// Reading a document, variables or a token from a file or standard input.
     #[error("Could not read {what}: {reason}.")]
     Input { what: String, reason: String },
+    /// Paging with `--all` stopped: the hub repeated a cursor or the list passed the row cap.
+    #[error("Stopped paging: {reason}.")]
+    Paging { reason: String },
     /// Standard output failed (not a closed pipe).
     #[error("Could not write the output: {reason}.")]
     Write { reason: String },
@@ -86,6 +89,7 @@ impl Failure {
             | Self::Store(_)
             | Self::Input { .. }
             | Self::Write { .. }
+            | Self::Paging { .. }
             | Self::NotDelivered { .. } => "FAILED",
         }
     }
@@ -112,6 +116,7 @@ impl Failure {
             | Self::Store(_)
             | Self::Input { .. }
             | Self::Write { .. }
+            | Self::Paging { .. }
             | Self::NotDelivered { .. } => exit::FAILURE,
         }
     }
@@ -138,7 +143,8 @@ impl Failure {
             | Self::Config(_)
             | Self::Store(_)
             | Self::Input { .. }
-            | Self::Write { .. } => None,
+            | Self::Write { .. }
+            | Self::Paging { .. } => None,
         }
     }
 

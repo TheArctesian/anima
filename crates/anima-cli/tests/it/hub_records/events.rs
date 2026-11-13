@@ -260,3 +260,47 @@ async fn cmd_021_event_watch_ends_with_the_code_of_an_error_frame() {
     assert_eq!(run.code, 5, "{run:?}");
     assert!(run.stderr.contains("Not permitted."), "{}", run.stderr);
 }
+
+#[tokio::test]
+async fn cmd_026_s4_event_all_stops_when_the_hub_repeats_its_cursor() {
+    let hub = FakeHub::start().await;
+    hub.answer(
+        "EventList",
+        events_page(&[event(1, "INFO", None, "x")], Some("loop")),
+    );
+    let run = signed_in()
+        .run(&["event", "list", "--all", "--hub", &hub.origin])
+        .await;
+    assert_eq!(run.code, 1, "{run:?}");
+    assert!(run.stderr.contains("Stopped paging"), "{}", run.stderr);
+}
+
+#[tokio::test]
+async fn cmd_026_c3_the_event_hint_keeps_severity_source_and_since() {
+    let hub = FakeHub::start().await;
+    hub.answer(
+        "EventList",
+        events_page(&[event(1, "INFO", None, "x")], Some("c-1")),
+    );
+    let run = signed_in()
+        .run(&[
+            "event",
+            "list",
+            "--severity",
+            "error",
+            "--source",
+            "check",
+            "--since",
+            "2026-11-01T00:00:00Z",
+            "--hub",
+            &hub.origin,
+        ])
+        .await;
+    assert!(
+        run.stderr.contains(
+            "anima event list --severity error --source check --since 2026-11-01T00:00:00Z --after c-1"
+        ),
+        "{}",
+        run.stderr
+    );
+}
