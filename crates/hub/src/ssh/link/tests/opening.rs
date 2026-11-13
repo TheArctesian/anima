@@ -189,3 +189,19 @@ async fn od_9_no_stored_credential_is_refused_after_the_pin(pool: PgPool) {
     ));
     assert_eq!(bench.server.heard(), []);
 }
+
+/// A credential entered for loopback is not sent once the device's host is `localhost`: the
+/// same address, another host text (SEC-011). The key is the accepted one; no sign-in follows.
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../tests/fixtures", scripts("devices"))
+)]
+async fn sec_011_a_credential_entered_for_another_host_is_not_sent(pool: PgPool) {
+    let mut bench = bench(&pool, Answer::Echo).await;
+    "localhost".clone_into(&mut bench.device.host);
+    assert!(matches!(
+        refused(&bench, &reaching()).await,
+        Error::CredentialForOtherHost
+    ));
+    assert_eq!(bench.server.heard(), []);
+}

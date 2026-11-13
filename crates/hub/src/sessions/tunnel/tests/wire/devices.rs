@@ -8,14 +8,16 @@ use sqlx::PgPool;
 use tokio_tungstenite::tungstenite::http::StatusCode;
 
 use super::{
-    bench::{DRIVE_ROOT, LOOPBACK, PASSWORD, Setup, VNC_PASSWORD, docker_host, move_host},
+    bench::{
+        DRIVE_ROOT, LOOPBACK, PASSWORD, Setup, VNC_PASSWORD, docker_host, enter_again, move_host,
+    },
     ended_once,
     fake_guacd::{FakeGuacd, RDP_ARGS, Script, VNC_ARGS, connect_values, fake_guacd},
     opened,
     records::ended,
     socket::{open, open_with},
 };
-use crate::sessions::Protocol;
+use crate::{credentials::PasswordKind, sessions::Protocol};
 
 async fn serving(args: &'static [u8]) -> FakeGuacd {
     fake_guacd(Script::Serve {
@@ -214,6 +216,7 @@ async fn r_032_an_ipv4_mapped_host_reaches_guacd_as_the_ipv4_address_it_is(pool:
     let mut guacd = serving(RDP_ARGS).await;
     let bench = super::bench(&pool, &guacd.address, Setup::default()).await;
     move_host(&pool, "::ffff:127.0.0.1").await;
+    enter_again(&pool, &bench, PasswordKind::Rdp, "::ffff:127.0.0.1").await;
     let mut client = open(&bench.url).await;
     opened(&mut client).await;
     let handshake = (&mut guacd.handshake).await.unwrap();

@@ -3,6 +3,7 @@
 
 mod batch;
 mod concurrency;
+mod host;
 mod kinds;
 mod round_trip;
 mod schema;

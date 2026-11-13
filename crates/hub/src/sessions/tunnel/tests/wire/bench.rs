@@ -186,6 +186,25 @@ pub(super) async fn desktop_ready(pool: &PgPool, vault: &Vault, rdp_port: u16, a
     }
 }
 
+/// Stores `docker-host`'s password of `kind` again, the same text, bound to `host`, as the
+/// operator does after changing the device's host (SEC-011).
+pub(super) async fn enter_again(pool: &PgPool, bench: &Bench, kind: PasswordKind, host: &str) {
+    let text = match kind {
+        PasswordKind::Rdp => PASSWORD,
+        PasswordKind::Vnc => VNC_PASSWORD,
+    };
+    let mut conn = pool.acquire().await.unwrap();
+    let password = (kind, Secret::from(text.to_owned()));
+    credentials::store_password(
+        &mut conn,
+        &bench.route.vault,
+        (docker_host(), host),
+        password,
+    )
+    .await
+    .unwrap();
+}
+
 /// The session a client asks for on `docker-host` over `protocol`.
 pub(super) fn request(protocol: Protocol) -> StartRequest {
     StartRequest {

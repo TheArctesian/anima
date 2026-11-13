@@ -79,8 +79,9 @@ pub enum Error {
 }
 
 /// Replaces every SSH secret of the device with `secret`, sealed per part and bound to `host`,
-/// the device's host it was entered for (SEC-011), in the caller's connection. Runs in its own transaction (a savepoint inside the caller's), so a failure
-/// leaves the previous secret in place.
+/// the device's host it was entered for (SEC-011), in the caller's connection. Runs in its own
+/// transaction (a savepoint inside the caller's), so a failure leaves the previous secret in
+/// place.
 ///
 /// Concurrent stores and clears for one device are serialised: each waits for this domain's
 /// per-device advisory lock, held until the caller's transaction ends, so two writers never

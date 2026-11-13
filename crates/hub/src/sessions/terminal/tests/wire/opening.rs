@@ -132,6 +132,26 @@ async fn d_3_no_stored_credential_is_auth_failed_and_nothing_is_sent(pool: PgPoo
     assert_eq!(bench.ssh.heard_so_far(), [], "no authentication request");
 }
 
+/// The device moved to `localhost` after its password was entered for loopback: the same
+/// address, another host text, so the key matches and still nothing is sent (SEC-011).
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
+)]
+async fn sec_011_a_moved_credential_is_auth_failed_and_nothing_is_sent(pool: PgPool) {
+    let mut bench = bench(&pool, Setup::default()).await;
+    sqlx::query("update devices.devices set host = 'localhost' where id = $1")
+        .bind(docker_host())
+        .execute(&pool)
+        .await
+        .unwrap();
+    let message = "The device's address changed after its SSH credential was entered, so the \
+                   hub sent no credential. Enter the credential again in the device's SSH \
+                   settings.";
+    refused(&pool, &bench, message).await;
+    assert_eq!(bench.ssh.heard_so_far(), [], "no authentication request");
+}
+
 #[sqlx::test(
     migrations = "./migrations",
     fixtures(path = "../../../../../tests/fixtures", scripts("devices"))

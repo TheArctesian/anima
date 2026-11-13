@@ -14,6 +14,7 @@ use crate::{
     credentials::{self, Vault},
     devices::Device,
     events::{self, Bus, NewEvent, Severity, Source},
+    ids::DeviceId,
     sessions::{Conflict, Desktop, Error, Protocol, find_device},
 };
 
@@ -26,7 +27,7 @@ use crate::{
 /// `Events` or `Database` when a dependency fails.
 pub(in crate::sessions) async fn refuse_moved(
     (db, vault, bus): (&PgPool, &Vault, &Bus),
-    device: crate::ids::DeviceId,
+    device: DeviceId,
     protocol: Protocol,
     now: DateTime<Utc>,
 ) -> Result<(), Error> {

@@ -10,6 +10,7 @@ mod deny_list;
 mod devices;
 mod fake_guacd;
 mod interruption;
+mod moved;
 mod opening;
 mod policy;
 mod refusals;

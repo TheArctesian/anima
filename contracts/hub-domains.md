@@ -268,11 +268,22 @@ pub async fn with_ssh(db: &Db, devices: &[DeviceId]) -> Result<HashSet<DeviceId>
 pub async fn clear_ssh(conn: &mut PgConnection, device: DeviceId) -> Result<bool, Error>;
 ```
 
+(Changed, operator, 2026-11-13; ruling number to be assigned; SEC-011.) The device's SSH, RDP and VNC credentials are bound to the device host they were entered for. Each writer gives that host and each reader the host it is about to connect to, as `(device, host)`; a reader gets `Error::EnteredForOtherHost` for any other host and must send nothing. These lines replace the WP-07 and WP-21 signatures of the same functions:
+
+```rust
+pub async fn store_ssh(conn: &mut PgConnection, vault: &Vault, (device, host): (DeviceId, &str), s: SshSecret) -> Result<(), Error>;
+pub async fn load_ssh(db: &Db, vault: &Vault, (device, host): (DeviceId, &str)) -> Result<Option<SshSecret>, Error>;
+pub async fn store_password(conn: &mut PgConnection, vault: &Vault, (device, host): (DeviceId, &str), (kind, s): (PasswordKind, Secret)) -> Result<(), Error>;
+pub async fn load_password(db: &Db, vault: &Vault, (device, host): (DeviceId, &str), kind: PasswordKind) -> Result<Option<Secret>, Error>;
+pub enum Error { /* as before */ EnteredForOtherHost }
+```
+
 Context values (R-010). Each caller uses exactly this byte string, so a value sealed for one row cannot be opened for another:
 
 | Use | `context` |
 | --- | --- |
-| SSH secret (inside `credentials`) | `credentials.secrets:<device_id>:<kind>` |
+| SSH secret, RDP or VNC password, sealed before SEC-011 (inside `credentials`) | `credentials.secrets:<device_id>:<kind>` |
+| (SEC-011) SSH secret, RDP or VNC password with its host: plaintext is the host length (2 bytes, big-endian), the host text, the secret (inside `credentials`) | `credentials.secrets.host:<device_id>:<kind>` |
 | TOTP secret (WP-05) | `access.operators.totp:<operator_id>` |
 | (Phase 3) Notification channel secrets (WP-45) | `notifications.channels:<channel_id>` |
 
