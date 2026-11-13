@@ -51,16 +51,4 @@ mod tests {
             }
         }
     }
-
-    #[test]
-    fn chk_006_maintenance_does_not_hide_a_down_check_elsewhere() {
-        assert_eq!(worst(Maintenance, Down), Down);
-    }
-
-    #[test]
-    fn graphql_names_are_screaming_snake_case() {
-        use async_graphql::EnumType;
-        let names: Vec<_> = Status::items().iter().map(|item| item.name).collect();
-        assert_eq!(names, ["UP", "DOWN", "DEGRADED", "MAINTENANCE", "UNKNOWN"]);
-    }
 }

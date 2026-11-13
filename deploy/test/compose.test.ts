@@ -59,15 +59,7 @@ function secretsOf(service: Container): string[] {
 }
 
 describe("published ports (NET-003, DB-001, GW-002)", () => {
-  test("DB-001 postgres publishes no port", () => {
-    expect(compose.services["postgres"]?.ports).toBeUndefined();
-  });
-
-  test("GW-002 guacd publishes no port", () => {
-    expect(compose.services["guacd"]?.ports).toBeUndefined();
-  });
-
-  test("NET-003 the hub is the only service with a port, and it binds ANIMA_HUB_ADDRESS", () => {
+  test("NET-003 DB-001 GW-002 the hub is the only service with a port, and it binds ANIMA_HUB_ADDRESS", () => {
     const published = services.filter(([, service]) => service.ports !== undefined);
     expect(published.map(([name]) => name)).toEqual(["hub"]);
     const ports = compose.services["hub"]?.ports ?? [];

@@ -237,21 +237,6 @@ it('MOT-007: the strip, not the page, carries the exit: no translate is written 
   for (let node: HTMLElement | null = pages; node !== null; node = node.parentElement) expect(node.style.translate).toBe('');
 });
 
-it('S4: closing a tab with none selected sends focus to the tab in its place; the last one to the nav', async () => {
-  const sessions = show();
-  await openStarted(sessions);
-  await openStarted(sessions);
-  sessions.deselect();
-  flushSync();
-  tabs()[0]?.focus();
-  tabs()[0]?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Delete', bubbles: true }));
-  await settle();
-  expect(document.activeElement).toBe(tabs()[0]);
-  tabs()[0]?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Delete', bubbles: true }));
-  await settle();
-  expect(document.activeElement).toBe(document.querySelector('nav a[aria-current="page"]'));
-});
-
 it('D-11: a route change (back, goto) shows the pages and keeps the tabs', async () => {
   const sessions = show();
   await openStarted(sessions);

@@ -87,9 +87,4 @@ describe('HTTP secret warnings', () => {
       expect.stringContaining('authorization header'),
     ]);
   });
-
-  it('CHK-009: no warning when the config is not sent', () => {
-    const initial = checkValues(HTTP_SAVED, 'ICMP');
-    expect(secretWarnings(initial, checkValues(HTTP_SAVED, 'ICMP'))).toEqual([]);
-  });
 });

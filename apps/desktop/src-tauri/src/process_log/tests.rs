@@ -104,11 +104,15 @@ fn log_008_a_folder_that_cannot_be_created_is_failed_and_the_opener_does_not_run
     fs::create_dir_all(&root).unwrap();
     let file = root.join("a file");
     fs::write(&file, "").unwrap();
-    // `true` would succeed if it ran; the create step must stop first.
+    let marker = root.join("opener-ran");
+    let opener = script(&root.join("opener"), r#": > "${0%/*}/opener-ran""#, 0o755);
     assert_eq!(
-        open(&file.join("logs"), "true"),
+        open(&file.join("logs"), &opener),
         Err(ProcessLogError::Failed)
     );
+    assert!(!marker.try_exists().unwrap());
+    assert_eq!(open(&root, &opener), Ok(()));
+    assert!(marker.is_file());
     fs::remove_dir_all(root).unwrap();
 }
 

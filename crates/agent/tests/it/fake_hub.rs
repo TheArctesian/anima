@@ -64,13 +64,17 @@ type Shared = Arc<Mutex<Script>>;
 
 impl FakeHub {
     pub async fn start() -> Self {
+        let listener = TcpListener::bind("127.0.0.1:0").await.expect("a port");
+        Self::serve(listener)
+    }
+
+    pub fn serve(listener: TcpListener) -> Self {
         let script = Shared::default();
         let app = Router::new()
             .route("/agent/v1/push", post(|s, h, b| answer("push", s, h, b)))
             .route("/agent/v1/renew", post(|s, h, b| answer("renew", s, h, b)))
             .route("/agent/v1/enrol", post(|s, h, b| answer("enrol", s, h, b)))
             .with_state(script.clone());
-        let listener = TcpListener::bind("127.0.0.1:0").await.expect("a port");
         let url =
             Url::parse(&format!("http://{}", listener.local_addr().expect("addr"))).expect("a URL");
         tokio::spawn(async move { axum::serve(listener, app).await.ok() });

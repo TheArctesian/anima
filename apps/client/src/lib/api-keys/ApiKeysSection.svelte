@@ -100,8 +100,7 @@
     <FormButton tabindex={0} data-create onclick={() => { creating = true; }}>Create API key</FormButton>
   </SettingRow>
   <!--
-    One grid cell. A hidden row keeps one key's space, the skeleton lies over it, and what the hub answers lands in the
-    same place: one key, no key or a failure moves nothing below (MOT-007). More keys than one need more room.
+    A hidden row sets the space for the result. Extra keys scroll within it so the VPN section below stays in place (MOT-007).
   -->
   <div class="stack" aria-busy={loading}>
     <ul class="sizer" aria-hidden="true" inert>
@@ -167,6 +166,13 @@
 
   .sizer {
     visibility: hidden;
+  }
+
+  .list {
+    align-self: stretch;
+    contain: size;
+    overflow-y: auto;
+    scrollbar-gutter: stable;
   }
 
   /* The skeleton covers what lies under it with the card's own colour. */

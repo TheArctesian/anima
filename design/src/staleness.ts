@@ -8,7 +8,7 @@ export interface StaleFile {
 }
 
 /** Files whose text on disk differs from the freshly built text, in output order (TOK-002). */
-export function staleFiles(built: Outputs, onDisk: Readonly<Record<string, string | undefined>>): StaleFile[] {
+function staleFiles(built: Outputs, onDisk: Readonly<Record<string, string | undefined>>): StaleFile[] {
   return Object.entries(built).flatMap(([path, text]): StaleFile[] => {
     const current = onDisk[path];
     if (current === undefined) return [{ path, reason: 'missing' }];
