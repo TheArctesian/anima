@@ -93,42 +93,54 @@ async fn play(mut socket: WebSocket, shared: Arc<Shared>) {
     }
     send(&mut socket, json!({ "type": "connection_ack" })).await;
     send(&mut socket, json!({ "type": "ping" })).await;
-    loop {
-        let Some(frame) = read(&mut socket).await else {
-            return;
+    if await_subscription(&mut socket, &shared).await {
+        answer(&mut socket, &shared.script).await;
+        // Let the client read what was sent before the socket drops.
+        while read(&mut socket).await.is_some() {}
+    }
+}
+
+/// Reads until the client has subscribed and answered the ping; false when it left first.
+async fn await_subscription(socket: &mut WebSocket, shared: &Shared) -> bool {
+    let mut subscribed = false;
+    while !subscribed || shared.received.lock().expect("received").pongs == 0 {
+        let Some(frame) = read(socket).await else {
+            return false;
         };
         match frame["type"].as_str() {
             Some("pong") => shared.received.lock().expect("received").pongs += 1,
             Some("subscribe") => {
                 shared.received.lock().expect("received").subscribe = frame["payload"].clone();
-                break;
+                subscribed = true;
             }
             _ => {}
         }
     }
-    match &shared.script {
+    true
+}
+
+async fn answer(socket: &mut WebSocket, script: &Script) {
+    match script {
         Script::Next(answers) => {
             for data in answers {
                 let payload = json!({ "data": data });
                 send(
-                    &mut socket,
+                    socket,
                     json!({ "id": "1", "type": "next", "payload": payload }),
                 )
                 .await;
             }
-            send(&mut socket, json!({ "id": "1", "type": "complete" })).await;
+            send(socket, json!({ "id": "1", "type": "complete" })).await;
         }
         Script::Error(errors) => {
             send(
-                &mut socket,
+                socket,
                 json!({ "id": "1", "type": "error", "payload": errors }),
             )
             .await;
         }
         Script::Refuse => {}
     }
-    // Let the client read what was sent before the socket drops.
-    while read(&mut socket).await.is_some() {}
 }
 
 async fn send(socket: &mut WebSocket, frame: Value) {

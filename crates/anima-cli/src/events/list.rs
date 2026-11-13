@@ -105,7 +105,7 @@ impl Page for event_list::EventListEvents {
         self.page_info.has_next_page = false;
     }
 
-    fn len(&self) -> usize {
+    fn edge_count(&self) -> usize {
         self.edges.len()
     }
 }
@@ -126,7 +126,7 @@ fn table(events: &event_list::EventListEvents) -> Table {
 }
 
 /// A K1 `Severity` in its colour.
-pub fn severity_cell(name: &str) -> Cell {
+fn severity_cell(name: &str) -> Cell {
     let tone = match name {
         "ERROR" => Tone::Bad,
         "WARNING" => Tone::Warning,

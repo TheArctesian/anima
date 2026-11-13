@@ -16,7 +16,7 @@ pub trait Page {
     /// Says there is no next page: `--all` has read them all.
     fn end(&mut self);
     /// How many edges this holds.
-    fn len(&self) -> usize;
+    fn edge_count(&self) -> usize;
 }
 
 /// The page after `after`, or with `all` every page joined into one.
@@ -29,15 +29,13 @@ pub async fn fetch<P: Page>(
     mut fetch: impl AsyncFnMut(Option<String>) -> Result<P, Failure>,
 ) -> Result<P, Failure> {
     let mut joined = fetch(after).await?;
-    while all {
-        let Some(cursor) = joined.next_cursor() else {
-            break;
-        };
+    if !all {
+        return Ok(joined);
+    }
+    while let Some(cursor) = joined.next_cursor() {
         joined.append(fetch(Some(cursor)).await?);
     }
-    if all {
-        joined.end();
-    }
+    joined.end();
     Ok(joined)
 }
 
@@ -52,7 +50,7 @@ pub fn note_next(invocation: &Invocation, page: &impl Page, what: &str, command:
     if let Some(cursor) = page.next_cursor() {
         invocation.output.note(&format!(
             "{} {what}. Next page: {command} --after {cursor} (or --all)",
-            page.len()
+            page.edge_count()
         ));
     }
 }
@@ -77,7 +75,7 @@ mod tests {
         fn end(&mut self) {
             self.next = None;
         }
-        fn len(&self) -> usize {
+        fn edge_count(&self) -> usize {
             self.edges.len()
         }
     }

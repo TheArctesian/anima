@@ -73,7 +73,7 @@ impl Page for delivery_list::DeliveryListDeliveries {
         self.page_info.has_next_page = false;
     }
 
-    fn len(&self) -> usize {
+    fn edge_count(&self) -> usize {
         self.edges.len()
     }
 }

@@ -6,6 +6,10 @@ use graphql_client::GraphQLQuery;
 use crate::hub::scalars::{DateTime, IpAddr};
 
 /// K1 `JSON`: an audit change record, printed as the hub wrote it.
+#[expect(
+    clippy::upper_case_acronyms,
+    reason = "graphql_client looks a scalar up by its K1 name"
+)]
 type JSON = serde_json::Value;
 
 #[derive(GraphQLQuery)]
