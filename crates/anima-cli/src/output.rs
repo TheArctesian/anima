@@ -132,6 +132,14 @@ impl Output {
         }
     }
 
+    /// Prints `text` and a line break, as it is.
+    ///
+    /// # Errors
+    /// As [`Output::data`].
+    pub fn line(self, text: &str) -> Result<(), Failure> {
+        write_out(&format!("{text}\n"))
+    }
+
     /// Prints JSON as it is, for `anima api`.
     ///
     /// # Errors
@@ -144,7 +152,7 @@ impl Output {
     /// A message for a person on standard error; none with `--json`.
     pub fn note(self, message: &str) {
         if !self.json {
-            write_err(&format!("{}\n", text::clean(message)));
+            write_err(&format!("{}\n", text::clean_lines(message)));
         }
     }
 

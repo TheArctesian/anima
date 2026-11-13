@@ -64,13 +64,9 @@ async fn met_012_agent_enrol_prints_the_one_time_code_and_its_expiry() {
         .run(&["agent", "enrol", DEVICE, "--hub", &hub.origin])
         .await;
     assert_eq!(run.code, 0, "{run:?}");
-    let code_line = run
-        .stdout
-        .lines()
-        .find(|line| line.starts_with("Code"))
-        .expect("a code line");
-    assert!(code_line.ends_with(CODE), "{code_line}");
-    assert!(run.stdout.contains("2026-11-13T09:15:00"));
+    assert_eq!(run.stdout, format!("{CODE}\n"), "the code alone on stdout");
+    assert!(run.stderr.contains("2026-11-13T09:15:00"), "{}", run.stderr);
+    assert!(run.stderr.contains("shown one time"), "{}", run.stderr);
     assert!(
         !run.stderr.contains(CODE),
         "the code is printed once, on standard output"

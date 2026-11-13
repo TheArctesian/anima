@@ -73,13 +73,11 @@ async fn int_003_key_create_prints_the_secret_once_with_a_note_on_standard_error
         ])
         .await;
     assert_eq!(run.code, 0, "{run:?}");
-    let secret = run
-        .stdout
-        .lines()
-        .find(|line| line.starts_with("Secret"))
-        .expect("a secret line");
-    assert!(secret.ends_with(SECRET), "{secret}");
-    assert_eq!(run.stdout.matches(SECRET).count(), 1);
+    assert_eq!(
+        run.stdout,
+        format!("{SECRET}\n"),
+        "the secret alone on stdout"
+    );
     assert!(run.stderr.contains("shown one time"), "{}", run.stderr);
     assert!(!run.stderr.contains(SECRET));
     run.assert_never_shows(TOKEN);

@@ -226,3 +226,73 @@ async fn vpn_approve_route_names_the_site_by_its_id() {
         .await;
     assert_eq!(run.code, 3, "{run:?}");
 }
+
+#[tokio::test]
+async fn cmd_014_s5_to_file_refuses_an_existing_file_before_asking_the_hub_unless_forced() {
+    let hub = FakeHub::start().await;
+    hub.answer("VpnInvite", key_answer("createVpnInvite"));
+    let dir = tempfile::tempdir().expect("a folder");
+    let path = dir.path().join("vpn.key");
+    std::fs::write(&path, "precious").expect("a file");
+    let path_text = path.to_str().expect("a path");
+    let args = [
+        "vpn",
+        "invite",
+        "--to-file",
+        path_text,
+        "--hub",
+        &hub.origin,
+    ];
+    let run = signed_in().run(&args).await;
+    assert_eq!(run.code, 6, "{run:?}");
+    assert!(run.stderr.contains("--force"), "{}", run.stderr);
+    assert!(
+        hub.seen().is_empty(),
+        "no key was made for a file that cannot be written"
+    );
+    assert_eq!(std::fs::read_to_string(&path).expect("kept"), "precious");
+
+    let forced = [
+        "vpn",
+        "invite",
+        "--to-file",
+        path_text,
+        "--force",
+        "--hub",
+        &hub.origin,
+    ];
+    let run = signed_in().run(&forced).await;
+    assert_eq!(run.code, 0, "{run:?}");
+    assert_eq!(std::fs::read_to_string(&path).expect("replaced"), KEY);
+}
+
+#[tokio::test]
+async fn cmd_014_s5_a_key_with_control_characters_is_cleaned_on_the_terminal() {
+    let hub = FakeHub::start().await;
+    hub.answer(
+        "VpnInvite",
+        data(json!({ "createVpnInvite": {
+            "key": "abc\u{1b}[2Jdef\u{202E}", "expiresAt": "2026-11-12T11:00:00+00:00",
+            "steps": ["one"],
+        }})),
+    );
+    let run = signed_in()
+        .run(&["vpn", "invite", "--hub", &hub.origin])
+        .await;
+    assert_eq!(run.stdout, "abc [2Jdef\n");
+}
+
+#[tokio::test]
+async fn cmd_020_s5_the_steps_note_keeps_one_step_to_a_line() {
+    let hub = FakeHub::start().await;
+    hub.answer("VpnInvite", key_answer("createVpnInvite"));
+    let run = signed_in()
+        .run(&["vpn", "invite", "--hub", &hub.origin])
+        .await;
+    assert!(
+        run.stderr
+            .contains("in order:\n  1. install tailscale\n  2. tailscale up"),
+        "{}",
+        run.stderr
+    );
+}

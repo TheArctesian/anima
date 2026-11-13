@@ -1,11 +1,13 @@
 //! `anima agent enrol`: a one-time code that turns on the metrics agent of a device (MET-012).
 //! Printing the code is the command's purpose; nothing else ever prints it.
 
+use serde_json::json;
+
 use super::documents::{AgentEnrol, agent_enrol};
 use crate::devices::get::resolve;
 use crate::failure::Failure;
 use crate::invocation::Invocation;
-use crate::output::Table;
+use crate::one_time_secret::{Secret, ToFile, show_once};
 
 #[derive(Debug, clap::Args)]
 pub struct EnrolArgs {
@@ -25,15 +27,19 @@ impl EnrolArgs {
             device_id: resolve(&hub, &self.device).await?,
         };
         let enrolment = hub.run::<AgentEnrol>(variables).await?.enrol_agent;
-        invocation.output.data(&enrolment, |enrolment| {
-            let mut table = Table::record();
-            table.pair("Code", enrolment.code.as_str());
-            table.pair("Expires", enrolment.expires_at.as_str());
-            table
-        })?;
         invocation
             .output
-            .note("The code works once and is not shown again.");
-        Ok(())
+            .note(&format!("The code expires {}.", enrolment.expires_at));
+        let secret = Secret {
+            label: "enrolment code",
+            field: "code",
+            value: &enrolment.code,
+            to_file: &ToFile::default(),
+        };
+        show_once(
+            invocation,
+            &secret,
+            json!({ "expiresAt": enrolment.expires_at }),
+        )
     }
 }

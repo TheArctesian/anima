@@ -3,16 +3,14 @@
 //! output once, or with `--to-file` to a `0600` file; the answer derives neither `Debug` nor
 //! `Serialize`.
 
-use std::path::PathBuf;
-
 use serde_json::json;
 use zeroize::Zeroizing;
 
 use super::documents::{BuilderEnrol, builder_enrol};
 use crate::failure::Failure;
 use crate::invocation::Invocation;
+use crate::one_time_secret::{Secret, ToFile, show_once};
 use crate::output::text::enum_name;
-use crate::vpn::key::{Secret, show_once};
 
 #[derive(Debug, clap::Args)]
 pub struct EnrolArgs {
@@ -25,9 +23,8 @@ pub struct EnrolArgs {
     /// The processor architecture.
     #[arg(long, value_enum)]
     arch: ArchArg,
-    /// Write the token to this file (mode 0600) instead of standard output.
-    #[arg(long, value_name = "PATH")]
-    to_file: Option<PathBuf>,
+    #[command(flatten)]
+    to_file: ToFile,
 }
 
 #[derive(Clone, Copy, Debug, clap::ValueEnum)]
@@ -49,6 +46,7 @@ impl EnrolArgs {
     /// # Errors
     /// [`Failure`] for a hub refusal (a name in use, not a VPN address) or an unwritable file.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
+        self.to_file.check()?;
         let hub = invocation.hub()?;
         let variables = builder_enrol::Variables {
             name: self.name,
@@ -86,7 +84,7 @@ impl EnrolArgs {
             label: "builder token",
             field: "token",
             value: &token,
-            to_file: self.to_file.as_deref(),
+            to_file: &self.to_file,
         };
         show_once(invocation, &secret, public)
     }

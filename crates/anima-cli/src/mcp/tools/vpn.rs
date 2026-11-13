@@ -5,12 +5,12 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 use serde_json::{Value, json};
 
+use crate::devices::list::site_id as resolve_site;
 use crate::hub::Hub;
 use crate::mcp::arguments::{json, object, parse, short};
 use crate::mcp::catalogue::Access;
 use crate::mcp::definition::{Definition, Effect};
 use crate::mcp::outcome::ToolError;
-use crate::vpn::approve_route::resolve_site;
 use crate::vpn::documents::{VpnApproveRoute, VpnStatus, vpn_approve_route, vpn_status};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

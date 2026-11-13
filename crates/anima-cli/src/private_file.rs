@@ -51,14 +51,36 @@ pub fn read(path: &Path) -> Result<Option<Zeroizing<Vec<u8>>>, PrivateFileError>
 /// # Errors
 /// [`PrivateFileError::Io`] when a step fails; the old file is then left as it was.
 pub fn write(dir: &Path, name: &str, bytes: &[u8]) -> Result<(), PrivateFileError> {
+    save(dir, name, bytes, Replace::Yes)
+}
+
+/// As [`write`], but fails with [`io::ErrorKind::AlreadyExists`] when `dir/name` is there.
+///
+/// # Errors
+/// [`PrivateFileError::Io`] when a step fails or the file exists.
+pub fn write_new(dir: &Path, name: &str, bytes: &[u8]) -> Result<(), PrivateFileError> {
+    save(dir, name, bytes, Replace::No)
+}
+
+/// Whether a file already at the destination is replaced.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Replace {
+    Yes,
+    No,
+}
+
+fn save(dir: &Path, name: &str, bytes: &[u8], replace: Replace) -> Result<(), PrivateFileError> {
     DirBuilder::new().recursive(true).mode(0o700).create(dir)?;
     // `tempfile` creates the file `0600` and exclusively, so no other process can have it.
     let mut temporary = tempfile::Builder::new().prefix(".tmp-").tempfile_in(dir)?;
     temporary.write_all(bytes)?;
     temporary.as_file().sync_all()?;
-    temporary
-        .persist(dir.join(name))
-        .map_err(|error| error.error)?;
+    let destination = dir.join(name);
+    match replace {
+        Replace::Yes => temporary.persist(destination),
+        Replace::No => temporary.persist_noclobber(destination),
+    }
+    .map_err(|error| error.error)?;
     File::open(dir)?.sync_all()?;
     Ok(())
 }

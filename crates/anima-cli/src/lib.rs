@@ -18,6 +18,7 @@ pub mod keys;
 pub mod maintenance;
 pub mod mcp;
 pub mod notifications;
+pub mod one_time_secret;
 pub mod output;
 pub mod paging;
 pub mod private_file;
