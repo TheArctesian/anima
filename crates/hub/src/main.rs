@@ -3,6 +3,7 @@
 //! `anima-hub operator totp <username> [--disable]` (D-9) or `anima-hub health` (the compose
 //! healthcheck).
 
+mod core_dumps;
 mod upkeep;
 
 use std::{
@@ -81,6 +82,8 @@ enum StartError {
     /// Names the setting, never a value (SEC-004, LOG-007).
     #[error("{0}")]
     Bucket(#[from] builds::BucketError),
+    #[error("core dumps cannot be turned off: {0}")]
+    CoreDumps(std::io::Error),
 }
 
 /// Prints the plain error (`Display`, never `Debug`) and exits with a failure code.
@@ -96,6 +99,8 @@ async fn main() -> ExitCode {
 }
 
 async fn run() -> Result<(), StartError> {
+    // Before any secret is read: the vault key, the R2 token and the updater key (D-45).
+    core_dumps::forbid().map_err(StartError::CoreDumps)?;
     let env = config::collect_env(std::env::vars_os())?;
     let config = Arc::new(config::from_env(&env)?);
     let args: Vec<String> = std::env::args().skip(1).collect();

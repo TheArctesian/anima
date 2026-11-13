@@ -69,6 +69,10 @@ updater-signature = { path = "../updater-signature" }
 # `cargo build --release --bin anima-hub`.
 test-support = []
 
+# `process`: prctl(PR_SET_DUMPABLE, 0) keeps the hub's keys out of core dumps (WP-36 D-45).
+[target.'cfg(target_os = "linux")'.dependencies]
+nix = { version = "0.31", default-features = false, features = ["process"] }
+
 [dev-dependencies]
 agent-core = { path = "../agent-core", features = ["test-support"] }
 anima-hub = { path = ".", features = ["test-support"] }

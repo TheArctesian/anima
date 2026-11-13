@@ -84,6 +84,10 @@ describe("hub configuration", () => {
     }
   });
 
+  test("D-45 the hub writes no core file, so no dump holds its keys", () => {
+    expect((compose.services["hub"] as Container & { ulimits?: unknown }).ulimits).toEqual({ core: 0 });
+  });
+
   test("D-44 the hub reads the updater key pair from a read-only folder, so an absent file does not stop it", () => {
     const environment = compose.services["hub"]?.environment ?? {};
     expect(environment["ANIMA_UPDATER_KEY_FILE"]).toBe(`${UPDATER_FOLDER.target}/updater_key`);

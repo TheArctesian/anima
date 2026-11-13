@@ -9,7 +9,8 @@
     "targets",
     "api_errors",
     "text",
-    "fingerprint"
+    "fingerprint",
+    "core_dumps"
   ],
   "wiring": [
     "main",

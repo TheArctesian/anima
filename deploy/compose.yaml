@@ -163,6 +163,9 @@ services:
 
   hub:
     <<: [*hardened, *hub-image]
+    # No core file can hold the vault key, the R2 token or the updater key's seed (WP-36 D-45).
+    ulimits:
+      core: 0
     environment:
       ANIMA_LISTEN: ${ANIMA_HUB_IP:-172.30.0.10}:8443
       ANIMA_DATABASE_URL_FILE: /run/secrets/database_url
