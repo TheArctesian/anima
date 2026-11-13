@@ -210,14 +210,14 @@ describe("preflight R2 token files (R-108)", () => {
   });
 });
 
-describe("preflight updater key pair (R-116, D-44)", () => {
-  const pair = ["updater/updater_key", "updater/updater_key_password"];
-  function withPair(folder: string): void {
-    mkdirSync(join(folder, "updater"), { recursive: true });
-    chmodSync(join(folder, "updater"), 0o750);
-    for (const name of [...names, ...pair]) write(folder, name);
-  }
+const pair = ["updater/updater_key", "updater/updater_key_password"];
+function withPair(folder: string): void {
+  mkdirSync(join(folder, "updater"), { recursive: true });
+  chmodSync(join(folder, "updater"), 0o750);
+  for (const name of [...names, ...pair]) write(folder, name);
+}
 
+describe("preflight updater key pair (R-116, D-44)", () => {
   test.each([[pair], [pair.slice(0, 1)], [pair.slice(1)]])("D-44 warns but passes when %p is absent, for the hub starts with publishing off", async (absent) => {
     await withFolder(async (folder) => {
       withPair(folder);
@@ -259,6 +259,9 @@ describe("preflight updater key pair (R-116, D-44)", () => {
     });
   });
 
+});
+
+describe("preflight updater folder rights and contents (S-3, C-7, D-44)", () => {
   test.skipIf(process.getuid?.() === 0)("S-3 refuses a folder it cannot search and says to run with sudo, never that the pair is absent", async () => {
     await withFolder(async (folder) => {
       withPair(folder);
