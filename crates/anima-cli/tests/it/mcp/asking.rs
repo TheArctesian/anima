@@ -9,29 +9,14 @@ use crate::kit::fake_hub::FakeHub;
 use crate::kit::fake_hub::data;
 
 /// `desk` with saved permissions that ask before every change tool.
-async fn asking(hub: &FakeHub, desk: Desk) -> Desk {
-    let (code, _, stderr) = desk
-        .run(
-            LOGIN_TOKEN,
-            &[
-                "mcp",
-                "permissions",
-                "set",
-                "--ask-all",
-                "--kind",
-                "change",
-                "--hub",
-                &hub.origin,
-            ],
-        )
-        .await;
-    assert_eq!(code, 0, "{stderr}");
+fn asking(hub: &FakeHub, desk: Desk) -> Desk {
+    desk.save_permissions(&hub.origin, &json!({ "change": "ask" }));
     desk
 }
 
 /// A session whose client can ask the person.
 async fn with_elicitation(hub: &FakeHub) -> Session {
-    let desk = asking(hub, Desk::asking()).await;
+    let desk = asking(hub, Desk::asking());
     desk.start(hub, LOGIN_TOKEN, &[]).await.0
 }
 
@@ -88,10 +73,8 @@ async fn mcp_013_a_declined_or_unchecked_or_failed_question_refuses_without_the_
             .call("anima_session_end", json!({ "session": SESSION }))
             .await;
         assert_eq!(answer["isError"], true, "{approval:?}: {answer}");
-        assert!(
-            text(&answer).contains("anima mcp permissions set --allow anima_session_end"),
-            "{answer}"
-        );
+        assert!(text(&answer).contains("ask the operator"), "{answer}");
+        assert!(!text(&answer).contains("anima mcp"), "{answer}");
     }
     assert_eq!(session.asked.len(), 4);
     session.finish().await;
@@ -99,9 +82,9 @@ async fn mcp_013_a_declined_or_unchecked_or_failed_question_refuses_without_the_
 }
 
 #[tokio::test]
-async fn mcp_013_a_client_without_elicitation_is_refused_with_the_way_to_allow_the_tool() {
+async fn mcp_013_a_client_without_elicitation_is_refused_and_sent_to_the_operator() {
     let hub = hub().await;
-    let desk = asking(&hub, Desk::new()).await;
+    let desk = asking(&hub, Desk::new());
     let (mut session, _) = desk.start(&hub, LOGIN_TOKEN, &[]).await;
     let names = session.tool_names().await;
     assert!(names.contains(&"anima_session_end".to_owned()), "listed");

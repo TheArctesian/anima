@@ -14,6 +14,7 @@ pub mod selection;
 pub mod server;
 pub mod tools;
 pub mod untrusted;
+pub mod widening;
 
 use crate::auth::documents::{Me, me};
 use crate::failure::Failure;

@@ -7,6 +7,7 @@ use super::catalogue::{Kind, ToolSet};
 use super::permissions::{Permissions, Scope, State, resolve};
 use super::selection::{Flags, Row, select, statement};
 use super::tools::{Entry, catalogue};
+use super::widening::by_a_person;
 use crate::failure::Failure;
 use crate::invocation::Invocation;
 use crate::output::Table;
@@ -107,13 +108,16 @@ impl PermissionsCommand {
     /// Shows, saves or resets this hub's permissions.
     ///
     /// # Errors
-    /// [`Failure::Usage`] for an unknown name or an unconfirmed `--allow-all`; [`Failure`] for
+    /// [`Failure::Usage`] for an unknown name, an unconfirmed `--allow-all` or a widening
+    /// without a terminal on standard input (MCP-014); [`Failure`] for
     /// an unreadable or unwritable configuration.
     pub fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         match self {
             Self::Show => show(invocation, &saved(invocation)?),
             Self::Set(args) => args.save(invocation),
             Self::Reset => {
+                let (before, after) = (saved(invocation)?, Permissions::default());
+                by_a_person(invocation.stdin_terminal(), &before, &after, &catalogue())?;
                 let mut config = invocation.config()?;
                 config.mcp.remove(&invocation.origin()?.as_text());
                 config.save(invocation.config_dir()?)?;
@@ -179,8 +183,15 @@ impl SetArgs {
     fn save(self, invocation: &Invocation) -> Result<(), Failure> {
         let origin = invocation.origin()?.as_text();
         let mut config = invocation.config()?;
-        let mut permissions = saved(invocation)?;
+        let before = saved(invocation)?;
+        let mut permissions = before.clone();
         self.apply(&mut permissions, &catalogue())?;
+        by_a_person(
+            invocation.stdin_terminal(),
+            &before,
+            &permissions,
+            &catalogue(),
+        )?;
         if self.bulk.allow_all && self.kind != Some(Kind::Read) {
             let question = "Allow change tools: the agent may then change the hub without asking?";
             invocation.prompter.confirm(question)?;

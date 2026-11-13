@@ -14,6 +14,7 @@ use serde::Deserialize;
 mod question;
 
 use super::definition::Definition;
+use super::outcome::OPERATOR_ONLY;
 use question::{MAX_LENGTH, MAX_VALUES, TooLarge, question};
 
 /// How long the server waits for the person's answer.
@@ -99,8 +100,7 @@ pub fn sentence(refusal: &Refusal, tool: &str) -> String {
     };
     format!(
         "Not run, and the hub was not contacted: {tool} needs the operator's approval for each \
-         call, and {why}. Do not retry on your own. The operator must approve the call when \
-         asked, or allow the tool with `anima mcp permissions set --allow {tool}`."
+         call, and {why}. Do not retry on your own: tell the operator. {OPERATOR_ONLY}"
     )
 }
 
@@ -132,12 +132,20 @@ mod tests {
     }
 
     #[test]
-    fn mcp_013_the_refusal_says_how_the_operator_allows_the_tool() {
+    fn mcp_013_f4_the_refusal_sends_the_agent_to_the_operator_without_a_command() {
+        for refusal in [
+            Refusal::NoAsking,
+            Refusal::Declined,
+            Refusal::NoAnswer,
+            Refusal::TooLarge { values: 50 },
+        ] {
+            let text = sentence(&refusal, "anima_check_delete");
+            assert!(!text.contains("anima mcp"), "{text}");
+            assert!(!text.contains('`'), "{text}");
+        }
         let text = sentence(&Refusal::NoAsking, "anima_check_delete");
-        assert!(
-            text.contains("anima mcp permissions set --allow anima_check_delete"),
-            "{text}"
-        );
+        assert!(text.contains("ask the operator"), "{text}");
+        assert!(text.contains("must not change Anima's settings"), "{text}");
         assert!(text.contains("elicitation"), "{text}");
         assert!(sentence(&Refusal::NoAnswer, "x").contains("120 seconds"));
     }

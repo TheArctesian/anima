@@ -12,6 +12,12 @@ use crate::hub::{Code, HubError, TokenKind};
 /// The longest hub message passed on; it could echo a name a device chose.
 const MESSAGE_CAP: usize = 300;
 
+/// What every refusal of a tool the agent may not use ends with (MCP-002). It holds no command
+/// line, so it does not teach the agent to widen its own access.
+pub const OPERATOR_ONLY: &str = "Only the operator decides which Anima tools an agent may use: \
+                                 ask the operator. You must not change Anima's settings, its \
+                                 configuration or the way it is started yourself.";
+
 /// Why a tool did not run to the end.
 #[derive(Debug, thiserror::Error)]
 pub enum ToolError {
