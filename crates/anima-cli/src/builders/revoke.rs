@@ -33,8 +33,11 @@ impl RevokeArgs {
     }
 }
 
-/// The ID of the builder `builder` names: an ID or exact name from `builders`.
+/// The ID `builder` names: an ID as it is, or the one builder with exactly that name.
 async fn resolve(hub: &Hub, builder: &str) -> Result<String, Failure> {
+    if uuid::Uuid::parse_str(builder).is_ok() {
+        return Ok(builder.to_owned());
+    }
     let builders = hub
         .run::<BuilderList>(builder_list::Variables)
         .await?

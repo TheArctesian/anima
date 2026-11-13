@@ -1,7 +1,8 @@
 //! `anima maintenance create`: a window that silences the checks of its targets while it is on.
 
 use super::documents::{MaintenanceCreate, maintenance_create};
-use super::fields::{WindowFields, into_input};
+use super::fields::{WindowFields, into_input, require};
+use super::targets;
 use crate::failure::Failure;
 use crate::invocation::Invocation;
 use crate::output::Table;
@@ -20,8 +21,11 @@ impl CreateArgs {
     /// [`Failure::Usage`] for a missing or unreadable flag; the hub's refusal (VALIDATION
     /// for a schedule that does not fit its kind).
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
-        let input = into_input(self.fields.apply(serde_json::Map::new())?)?;
+        let mut input = self.fields.apply(serde_json::Map::new())?;
+        require(&input)?;
         let hub = invocation.hub()?;
+        targets::resolve(&hub, &mut input).await?;
+        let input = into_input(input)?;
         let answer = hub
             .run::<MaintenanceCreate>(maintenance_create::Variables { input })
             .await?;

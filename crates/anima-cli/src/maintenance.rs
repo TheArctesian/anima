@@ -7,6 +7,7 @@ pub mod delete;
 pub mod documents;
 pub mod fields;
 pub mod list;
+pub mod targets;
 pub mod update;
 
 use crate::failure::Failure;

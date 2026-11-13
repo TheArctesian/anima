@@ -4,6 +4,7 @@
 use super::documents::{MaintenanceUpdate, maintenance_update};
 use super::fields::{INPUT, WindowFields, into_input};
 use super::list::find;
+use super::targets;
 use crate::failure::{Failure, Hint};
 use crate::invocation::Invocation;
 use crate::output::Table;
@@ -41,7 +42,9 @@ impl UpdateArgs {
                 .map(|(key, value)| (key.clone(), value.clone()))
                 .collect()
         });
-        let input = into_input(self.fields.apply(base)?)?;
+        let mut input = self.fields.apply(base)?;
+        targets::resolve(&hub, &mut input).await?;
+        let input = into_input(input)?;
         let answer = hub
             .run::<MaintenanceUpdate>(maintenance_update::Variables { id, input })
             .await?;

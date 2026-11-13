@@ -2,6 +2,7 @@
 
 use serde_json::{Value, json};
 
+use crate::fleet::devices::{fixture_devices, page};
 use crate::kit::Anima;
 use crate::kit::fake_hub::{FakeHub, data, refusal};
 
@@ -98,7 +99,7 @@ async fn maintenance_create_maps_each_flag_to_its_k1_input_field() {
             "--duration-minutes",
             "30",
             "--targets",
-            "device:d1,tag:infra",
+            "device:0190a000-0000-7000-8002-000000000001,tag:infra",
             "--hub",
             &hub.origin,
         ])
@@ -109,7 +110,7 @@ async fn maintenance_create_maps_each_flag_to_its_k1_input_field() {
         json!({
             "name": "Nightly", "kind": "RECURRING_WEEKDAY", "timezone": "Europe/Berlin",
             "weekdays": ["MON", "FRI"], "startTime": "01:00", "durationMinutes": 30,
-            "targets": [{ "type": "DEVICE", "target": "d1" }, { "type": "TAG", "target": "infra" }],
+            "targets": [{ "type": "DEVICE", "target": "0190a000-0000-7000-8002-000000000001" }, { "type": "TAG", "target": "infra" }],
         })
     );
 
@@ -240,4 +241,50 @@ async fn cmd_021_maintenance_refusals_and_unknown_windows_have_their_exit_codes(
         ])
         .await;
     assert_eq!(run.code, 3, "{run:?}");
+}
+
+#[tokio::test]
+async fn cmd_021_c9_maintenance_update_with_no_flag_is_exit_2_and_sends_nothing() {
+    let hub = FakeHub::start().await;
+    hub.answer("MaintenanceList", listed());
+    let run = signed_in()
+        .run(&["maintenance", "update", WINDOW, "--hub", &hub.origin])
+        .await;
+    assert_eq!(run.code, 2, "{run:?}");
+    assert!(run.stderr.contains("Nothing to change"), "{}", run.stderr);
+    assert!(hub.seen().is_empty(), "no request of any kind");
+}
+
+#[tokio::test]
+async fn cmd_024_c10_a_device_target_may_be_an_exact_name() {
+    let hub = FakeHub::start().await;
+    let devices = fixture_devices();
+    hub.answer("DeviceList", page(&devices[..1], None, 1))
+        .answer(
+            "MaintenanceCreate",
+            changed("createMaintenanceWindow", false),
+        );
+    let name = devices[0]["name"].as_str().expect("name");
+    let target = format!("device:{name}");
+    let run = signed_in()
+        .run(&[
+            "maintenance",
+            "create",
+            "--name",
+            "Nightly",
+            "--kind",
+            "manual",
+            "--timezone",
+            "Europe/Berlin",
+            "--targets",
+            &target,
+            "--hub",
+            &hub.origin,
+        ])
+        .await;
+    assert_eq!(run.code, 0, "{run:?}");
+    assert_eq!(
+        sent(&hub, "MaintenanceCreate")["input"]["targets"],
+        json!([{ "type": "DEVICE", "target": devices[0]["id"] }])
+    );
 }

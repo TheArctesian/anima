@@ -172,3 +172,15 @@ async fn builder_revoke_of_an_unknown_builder_exits_3_and_a_forbidden_enrol_exit
     assert_eq!(run.code, 5, "{run:?}");
     assert_eq!(run.stdout, "");
 }
+
+#[tokio::test]
+async fn cmd_024_c10_revoke_by_id_does_not_list_the_builders_first() {
+    let hub = FakeHub::start().await;
+    hub.answer("BuilderRevoke", data(json!({ "revokeBuilder": ID })));
+    let run = signed_in()
+        .run(&["builder", "revoke", ID, "--yes", "--hub", &hub.origin])
+        .await;
+    assert_eq!(run.code, 0, "{run:?}");
+    let operations: Vec<String> = hub.seen().into_iter().map(|seen| seen.operation).collect();
+    assert_eq!(operations, ["BuilderRevoke"]);
+}

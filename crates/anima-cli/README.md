@@ -31,10 +31,12 @@ The `anima` command line (docs/cli-mcp-plan.md). `hub/` is the only network code
 `invocation.output.data(&value, table)?` prints `value` as JSON with `--json` (K1 field names,
 from the generated `Serialize`) or else the `Table` that `table(&value)` builds: `Table::new`
 with column names and `row`s for a list, `Table::record` with `pair`s for one thing.
-`Cell::status` colours a K1 `Status`; `output::text::enum_name` gives an enum's K1 name. Cells
-are cleaned of control characters. Messages for people go through `invocation.output.note`
+`Cell::status` colours a K1 `Status`; `output::text::enum_name` gives an enum's K1 name. Under `--json` a command prints the bare value of its root field: a delete or revoke prints
+the bare ID string, not `{"deleteDevice": ".."}`. Cells are cleaned of control characters. Messages for people go through `invocation.output.note`
 (standard error, silent with `--json`). Lists take `--limit`, `--after` and `--all`
-(`devices/list.rs`, CMD-026).
+(`devices/list.rs`, CMD-026): pages go through the one pager, `paging.rs` (`fetch`, `note_next`,
+`CommandLine` for a next-page hint that keeps the filters; `connection_page!` makes a K1
+connection a `Page`). It stops on a repeated cursor and after 100,000 rows.
 
 ## Fail
 
@@ -43,7 +45,11 @@ and keeps its K7 code; `failure.rs` maps codes to exit codes (CMD-021: NOT_FOUND
 UNAUTHENTICATED 4, FORBIDDEN 5, CONFLICT 6, UNAVAILABLE 7, VALIDATION and usage 2) and hints.
 For your own checks use `Failure::NotFound { message, hint }` or `Failure::Usage`. Ask through
 `invocation.prompter` (`ask`, `ask_secret`, `confirm`): it fails with exit 2 and names the flag
-under `--no-input` (CMD-023). A delete calls `confirm` (`--yes`, CMD-024). A secret comes from
+under `--no-input` (CMD-023). A delete calls `confirm` (`--yes`, CMD-024); an answer other than yes fails with
+`Failure::Declined` (`DECLINED`, exit 1), so no command handles a "no" itself. A hint is
+`Hint::run("anima ..")` (a command) or `Hint::say("..")` (a sentence). A secret the hub shows once
+goes through `one_time_secret::show_once`; a document from a file or `-` through `input::read`
+and `input::json` (bad JSON is exit 2 everywhere). A secret comes from
 a prompt, standard input or `--from-file`, never an argument (CMD-025).
 
 ## Watch

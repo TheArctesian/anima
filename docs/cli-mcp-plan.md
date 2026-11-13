@@ -75,17 +75,32 @@ The hub has two tokens that a program can hold (design specification INT-003):
 ## 5. Output and behaviour
 
 - **CMD-020.** Each command prints a table for a person. With `--json` it prints JSON with the
-  field names of K1. Data goes to standard output; messages and errors go to standard error.
+  field names of K1: the bare value of the command's root field, with no envelope (a delete or
+  revoke prints the bare ID string, an approval the bare boolean). Data goes to standard output;
+  messages and errors go to standard error. A secret the hub shows once goes alone on standard
+  output as one line (under its field with `--json`), with the "shown one time" note on standard
+  error.
 - **CMD-021.** Exit codes: 0 success, 1 failure, 2 wrong usage, 3 not found, 4 sign-in needed,
   5 not permitted, 6 conflict, 7 the hub or a dependency is not available.
 - **CMD-022.** With `--json`, an error is `{"error":{"code","message","hint"}}` on standard error.
-  `code` is the K7 code. `hint` is the next command to try.
+  `code` is a K7 code, or one of the local codes the hub has no code for: `USAGE` (wrong usage,
+  exit 2), `FAILED` (a local failure such as an unreadable file, a failed write, a notification
+  that did not arrive, or paging that stopped, exit 1) and `DECLINED` (the operator answered no
+  to a confirmation, exit 1). `hint` is a command to run (the text shows it as ``run `...` ``) or
+  a sentence (shown as it is). A usage error from the command line parser names the missing
+  flags and points at the command's `--help`. Every string from the hub is cleaned of control
+  characters before it reaches a terminal.
 - **CMD-023.** A command asks a question only when standard input is a terminal. `--no-input`
   never asks and fails with the flag that is missing.
-- **CMD-024.** A command that deletes must ask for confirmation, or get `--yes` (DEV-014).
+- **CMD-024.** A command that deletes must ask for confirmation, or get `--yes` (DEV-014). Every
+  confirmation ends the same way: an answer other than `y` or `yes` is `DECLINED`, exit 1 with a
+  message on standard error (and the JSON error under `--json`), so a script can tell that the
+  delete did not run. Nothing is sent to the hub after a decline.
 - **CMD-025.** A secret that a command takes (a device password, a private key) comes from a
   prompt, from standard input (`-`) or from `--from-file`. Never from an argument.
-- **CMD-026.** Lists take `--limit` and `--after` (the K1 cursor) and `--all`.
+- **CMD-026.** Lists take `--limit` and `--after` (the K1 cursor) and `--all`. `--all` stops
+  with a failure when the hub repeats a cursor, and after 100,000 rows. The next-page hint keeps
+  the filters of the command that printed it.
 - **CMD-027.** Colour is off when the output is not a terminal or `NO_COLOR` is set.
 - **CMD-028.** `anima completion <shell>` prints shell completion.
 

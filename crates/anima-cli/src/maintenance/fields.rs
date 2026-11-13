@@ -5,6 +5,7 @@
 use serde::de::DeserializeOwned;
 use serde_json::{Map, Value, json};
 
+use super::targets;
 use crate::failure::{Failure, Hint};
 
 #[derive(Clone, Copy, Debug, clap::ValueEnum)]
@@ -62,7 +63,7 @@ pub struct WindowFields {
     /// How long a recurring window lasts, in minutes.
     #[arg(long)]
     duration_minutes: Option<i64>,
-    /// What the window covers: device:ID, check:ID or tag:NAME, comma separated (or repeat the flag).
+    /// What the window covers: device:ID-or-name, check:ID or check:DEVICE/NAME, tag:NAME, comma separated (or repeat the flag).
     #[arg(long, value_name = "TYPE:TARGET", value_delimiter = ',')]
     targets: Vec<String>,
 }
@@ -159,7 +160,7 @@ impl WindowFields {
             let targets = self
                 .targets
                 .iter()
-                .map(|text| target(text))
+                .map(|text| targets::parse(text))
                 .collect::<Result<Vec<_>, _>>()?;
             base.insert("targets".to_owned(), json!(targets));
         }
@@ -167,30 +168,11 @@ impl WindowFields {
     }
 }
 
-/// `device:ID`, `check:ID` or `tag:NAME` as a K1 `WindowTargetInput`.
-fn target(text: &str) -> Result<Value, Failure> {
-    let usage = || Failure::Usage {
-        message: format!("{text} is not a target: use device:ID, check:ID or tag:NAME."),
-        hint: Some(Hint::run("anima maintenance create --help")),
-    };
-    let (kind, name) = text.split_once(':').ok_or_else(usage)?;
-    let kind = match kind {
-        "device" => "DEVICE",
-        "check" => "CHECK",
-        "tag" => "TAG",
-        _ => return Err(usage()),
-    };
-    if name.is_empty() {
-        return Err(usage());
-    }
-    Ok(json!({ "type": kind, "target": name }))
-}
-
-/// The input as one operation's generated type; serde checks every value.
+/// Fails when `input` lacks a field every window needs.
 ///
 /// # Errors
-/// [`Failure::Usage`] naming the fields a new window needs, or the one that does not fit.
-pub fn into_input<T: DeserializeOwned>(input: Value) -> Result<T, Failure> {
+/// [`Failure::Usage`] naming the missing flag.
+pub fn require(input: &Value) -> Result<(), Failure> {
     for needed in ["name", "kind", "timezone"] {
         if input.get(needed).is_none_or(Value::is_null) {
             return Err(Failure::Usage {
@@ -199,6 +181,15 @@ pub fn into_input<T: DeserializeOwned>(input: Value) -> Result<T, Failure> {
             });
         }
     }
+    Ok(())
+}
+
+/// The input as one operation's generated type; serde checks every value.
+///
+/// # Errors
+/// [`Failure::Usage`] naming the fields a new window needs, or the one that does not fit.
+pub fn into_input<T: DeserializeOwned>(input: Value) -> Result<T, Failure> {
+    require(&input)?;
     let mut input = input;
     if input.get("targets").is_none() {
         input["targets"] = json!([]);
