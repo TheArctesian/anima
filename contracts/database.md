@@ -4,7 +4,7 @@ Status: **frozen for Phase 3** (change only through a programme ruling, CON-001)
 
 ## Rules
 
-- One PostgreSQL **schema per hub domain**. A domain's `store.rs` is the only code that names its schema (CQ-032). The import-graph and grep gates check this: the string `"<schema>.` may appear only under `crates/hub/src/<domain>/`.
+- One PostgreSQL **schema per hub domain**. A domain's `store.rs` is the only code that names its schema (CQ-032). The import-graph and grep gates check this: the string `"<schema>.` may appear only under `crates/hub/src/<domain>/` (after the regroup, under `crates/hub/src/<group>/<domain>/`; operator, 2026-11-13; ruling number to be assigned; K-E8).
 - One migrations folder: `crates/hub/migrations/`, files `NNNN_<domain>_<what>.sql`. Each domain uses only its number range below, so parallel packages never collide (CON-004). sqlx applies any migration not yet applied, so a lower number added later still runs.
 - Migrations are additive within Phase 1, Phase 2 and Phase 3, with two exceptions: the Q2-05 split (D-31) moves two tables to the schema `trust` (range 0920–0939), and R-113 removes session recording (0121, 0662, 0901). Do not edit a migration after its package is accepted; add a new one.
 - Time-series tables are partitioned by day on their time column (DB-004). Retention drops whole partitions (DB-005). A partition helper (`create_daily_partitions`, `drop_partitions_before`) lives in the owning domain's store.
@@ -47,6 +47,11 @@ Status: **frozen for Phase 3** (change only through a programme ruling, CON-001)
 | 0980–0999 | reserved | — | Phase 4 |
 | 1000–1019 (Phase 3, VP-5) | vpn | `vpn` | warnings |
 | 1000 (Phase 3, VP-5) | events (vpn) | `events` | `event_log_source_check` lists all eight sources, adding `vpn`; numbered after 0852 |
+| 0221 (operator, 2026-11-13; ruling number to be assigned; K-E8, PRJ-018) | credentials (engine addition) | `credentials` | `source_secrets` (`id uuid pk`, `nonce bytea`, `ciphertext bytea`, `key_id text`, `created_at timestamptz default now()`); sealed with context `credentials.source_secrets:<account_id>` |
+| 2000–2019 (operator, 2026-11-13; ruling number to be assigned; K-E1, K-E8) | engine/sources | `sources` | `accounts`, `sync_runs` (outline in `contracts/extensions/sources.md` Section 5); `accounts.credential_id` references `credentials.source_secrets` |
+| 2020–2029 (operator, 2026-11-13; ruling number to be assigned; K-E7, K-E8) | engine/extensions | `extensions` | `switches` (`key text pk`, `is_on boolean`, `changed_at`, `changed_by`); no seed rows (EXT-001) |
+| 2030–2099 (operator, 2026-11-13; ruling number to be assigned; K-E8) | reserved | — | other engine domains; not assigned now |
+| 2100–3599 (operator, 2026-11-13; ruling number to be assigned; K-E8) | the extensions | one schema each | as Section 5.2 of `docs/extensions-plan.md` (Projects 2200–2299, `projects`); a foreign key points only into a lower range |
 
 ## Roles (R-016, LOG-006)
 
