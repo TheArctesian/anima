@@ -3,13 +3,17 @@
 //! database of its own (R-009, R-019). Each test starts its own hub. Every test reads what it
 //! changed back through the hub, not only from the command's output.
 
+mod actors;
 mod checks;
 mod devices;
 mod hub;
 mod keys;
+mod mcp;
+mod paging;
 mod sign_in;
 mod terminal;
 mod totp;
+mod watch;
 
 /// The arguments of a command line written as one line: words split at spaces.
 fn words(line: &str) -> Vec<&str> {
