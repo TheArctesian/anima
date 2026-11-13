@@ -124,7 +124,8 @@ other identifiers keep their text.
   `claude/anima-cli`). Projects and builds must obey it. An MCP tool must not take or return a
   signing key or a provider token (MCP-004).
 - **PRO-018.** The hub only reads a rented service (PRJ-003). An action uses the CLI tool of the
-  service (OD-W1).
+  service (OD-W1). GitHub is the exception: the hub makes changes there through the GitHub App
+  (PRJ-017; operator, 2026-11-13). A different service gets the same only with its own ruling.
 - **PRO-019.** A machine with `anima-agent` takes work by default, and the operator can set a
   machine off (OD-W10, USE-004). A build is such work.
 

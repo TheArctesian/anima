@@ -24,7 +24,7 @@ Anima is for the operator first. Nothing in this file moves work in the priority
 
 | Text | Says | Change that it needs |
 | --- | --- | --- |
-| Extensions plan 1.1 | "Anima has one user: the operator. It is not a product for other people." | New wording. The operator approves it. |
+| Extensions plan 1.1 | "Anima has one user: the operator. It is not a product for other people." | New wording: three layers, one operator for each hub. The operator approved it on 2026-11-13. |
 | EXT-000, CMP-001 | Build only for the services, devices and models that the operator uses. No general catalogue. | Stays for what is built. ETH-009 adds: a different person must be able to add a source without a change to the engine. |
 | Design specification 1.4 | "Multiple operators with different permissions" is out of scope. | Stays. Each person has their own hub. |
 | SEC-008, NET-003 | The hub must not be on the public internet. | A hosted hub needs a decision: each person joins a VPN of their hub, or the hosted hub has a public address with more protection. |
@@ -67,5 +67,4 @@ These are not new work. They are checks on work that is done for other reasons.
 ## Needs
 
 - A ruling number in `programme.md`.
-- Approval of the new wording for the extensions plan 1.1 (with #26).
 - No issue yet. Make one with the label `priority: later` when the operator wants to start.

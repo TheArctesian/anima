@@ -132,7 +132,7 @@ Decisions of the other plans stay in their issues (Section 4, tier 1). These are
 
 | Number | Decision | Recommendation |
 | --- | --- | --- |
-| OD-W1 | Can Anima change a rented resource (redeploy, purge a cache, restart the VPS)? | **Decided (operator, 2026-11-12): yes, with the CLI tool of each service, never from the hub.** The hub stays read-only (PRJ-003). First, the client runs the CLI on the operator's computer with `anima run` (SCR-006). When jobs exist, a CLI can also run as a job. It changes PRJ-010 ("changes happen there, not in Anima"). |
+| OD-W1 | Can Anima change a rented resource (redeploy, purge a cache, restart the VPS)? | **Decided (operator, 2026-11-12): yes, with the CLI tool of each service, never from the hub.** The hub stays read-only (PRJ-003). First, the client runs the CLI on the operator's computer with `anima run` (SCR-006). When jobs exist, a CLI can also run as a job. It changes PRJ-010 ("changes happen there, not in Anima"). **Exception (operator, 2026-11-13): GitHub.** The hub makes changes on GitHub through the GitHub App of the operator, each change a named function that is in the audit log (PRJ-017, PRJ-027 to PRJ-029). A different rented service can get the same later, with one ruling for each service. Until then this decision applies to it. |
 | OD-W2 | How do other persons use Anima? | **Decided (operator, 2026-11-12): both. A person can host Anima on a service of their choice, and a paid hosted option runs it for them.** [other-operators.md](programme/proposals/other-operators.md) has the operator's words and what this changes. Nothing is built for it now. |
 | OD-W3 | The name of the hub in the interface | **Decided (operator, 2026-11-12): keep "hub".** |
 | OD-W4 | How do commands get to the agent? | Not a decision of this plan. It is open in #34, #41 and #44. OD-W10 gives its direction: the agent asks the hub for work and listens on no port (USE-005, MET-020). |
@@ -157,11 +157,11 @@ These changes are not made. The operator must approve each one (operator checkpo
 | Extensions plan 4.2 and 9 | Add Cloudflare after verification ([new-sources.md](programme/proposals/new-sources.md)). |
 | Extensions plan 4 and 9 | Add Spotify and Screen Time after verification ([new-sources.md](programme/proposals/new-sources.md)). |
 | Extensions plan PRJ-010 and Section 4.4 | Permit an action on a rented service through its CLI tool with `anima run` (OD-W1). |
-| Extensions plan 1.1 and EXT-000, design specification 1.4 | Anima is no longer for one person only (OD-W2). The operator must approve new wording. |
+| Extensions plan 1.1 and EXT-000, design specification 1.4 | Anima is no longer for one person only (OD-W2). The operator approved the new wording of Section 1.1 on 2026-11-13: three layers (foundation, extensions, community extensions later), one operator for each hub. The wording is on the branch `claude/spec-cli-distribution`, not yet on `main`. |
 | Extensions plan FIL-001 | Keep files on the operator's machines, not in a volume on the hub ([bulk-data-placement.md](programme/proposals/bulk-data-placement.md)). |
 | Compute plan CMP-002 and OD-C8 | A machine with the agent takes work by default (OD-W10). Issue #50 has the old recommendation. |
 | Compute plan 3.3, 12.1 and 13 | Agree with R-084 and with the new scope of #34 and #35 (#41). Make C7 the second job type of [jobs.md](programme/proposals/jobs.md), after the build (OD-W12). |
-| Extensions plan PRJ-001 and Section 4.2 | Import each repository; the operator leaves some out (OD-W11). PRJ-001 says that the operator accepts each project. |
+| Extensions plan PRJ-001 and Section 4.2 | Import each repository; the operator leaves some out (OD-W11). PRJ-001 says that the operator accepts each project. OD-W11 is the ruling; PRJ-001 takes the new wording. |
 | [jobs.md](programme/proposals/jobs.md) JOB-001, JOB-004, USE-001 | Changed on 2026-11-13 (OD-W12): a job is a container job or a native job on a Mac, and the build is the first job type. |
 | Design specification BLD-001 to BLD-082 | The builder takes a project as a parameter; the release of Anima becomes one project (OD-W11). |
 | `AGENTS.md`, [cli-mcp-plan.md](cli-mcp-plan.md) | Done on the branch `claude/anima-cli`: the command-line-first rule (CMD-030). |
