@@ -32,14 +32,16 @@ use super::{
     Actor, FieldError, Live, Session, SessionChange, Ticket,
     connection_test::{ConnectionTest, TestRequest, test_connection},
     end::end_session,
-    start, store,
+    start,
+    start::refuse_moved,
+    store,
 };
 use crate::{
     access::Authenticated,
     api_errors::{invalid, schema_dependency},
     clock::Clock,
     credentials::Vault,
-    events::{ClientAddr, Operator},
+    events::{Bus, ClientAddr, Operator},
     ids::SessionId,
 };
 
@@ -97,16 +99,30 @@ pub struct Mutation;
 /// Merged into the root `Mutation`.
 #[Object(name = "SessionsMutation")]
 impl Mutation {
-    /// Starts a session and returns its single-use tunnel ticket (K4 §1, API-009).
+    /// Starts a session and returns its single-use tunnel ticket (K4 §1, API-009). A stored
+    /// credential entered for another host than the device's host now refuses the start
+    /// (SEC-011).
     #[graphql(guard = "Authenticated")]
     async fn start_session(&self, ctx: &Context<'_>, input: StartSessionInput) -> Result<Ticket> {
         let mut request = input.into_request().map_err(|fields| invalid(&fields))?;
+        let db = schema_dependency::<PgPool>(ctx)?;
+        let clock = schema_dependency::<Arc<dyn Clock>>(ctx)?;
+        let stores = (
+            db,
+            schema_dependency::<Vault>(ctx)?,
+            schema_dependency::<Bus>(ctx)?,
+        );
+        let operator = schema_dependency::<Operator>(ctx)?;
+        let what = (request.device, request.protocol);
+        refuse_moved(stores, what, operator.actor.kind(), clock.now())
+            .await
+            .map_err(to_graphql)?;
         request.wake = Some(ticket::waking(ctx, request.device).await?);
         start(
-            schema_dependency::<PgPool>(ctx)?,
-            schema_dependency::<Arc<dyn Clock>>(ctx)?,
+            db,
+            clock,
             schema_dependency::<Live>(ctx)?,
-            schema_dependency::<Operator>(ctx)?,
+            operator,
             *schema_dependency::<ClientAddr>(ctx)?,
             request,
         )

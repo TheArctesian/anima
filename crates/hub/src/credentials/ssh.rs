@@ -59,6 +59,8 @@ impl SshKind {
 /// The associated data that binds a sealed value to its device and kind, so a value moved to
 /// another row does not open:
 /// `credentials.secrets:<device_id>:<kind>`, the device id as hyphenated lowercase UUID text.
+/// Rows sealed since SEC-011 use the host-bound context of `host` instead; this one opens only
+/// rows sealed before it.
 pub(super) fn context(device: DeviceId, kind: SshKind) -> Vec<u8> {
     format!("credentials.secrets:{device}:{}", kind.as_sql()).into_bytes()
 }

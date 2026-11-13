@@ -23,6 +23,9 @@ pub(super) struct StoredSecret {
     pub(super) nonce: Vec<u8>,
     pub(super) ciphertext: Vec<u8>,
     pub(super) key_id: String,
+    /// The host migration 0220 recorded for a row sealed before its host was sealed with it
+    /// (SEC-011); `None` for every row sealed since.
+    pub(super) legacy_host: Option<String>,
 }
 
 /// Waits for, then holds until the transaction ends, this domain's advisory lock on the
@@ -52,7 +55,8 @@ pub(super) async fn delete_kinds(
     Ok(done.rows_affected())
 }
 
-/// Inserts one sealed row of `kind` with a fresh UUID v7 id.
+/// Inserts one sealed row of `kind` with a fresh UUID v7 id and no `legacy_host`: the value
+/// holds its host (SEC-011).
 ///
 /// # Errors
 ///
@@ -93,7 +97,7 @@ pub(super) async fn fetch_kinds(
     kinds: &[&str],
 ) -> Result<Vec<StoredSecret>, Error> {
     Ok(sqlx::query_as(
-        "SELECT kind, nonce, ciphertext, key_id FROM credentials.secrets \
+        "SELECT kind, nonce, ciphertext, key_id, legacy_host FROM credentials.secrets \
          WHERE device_id = $1 AND kind = ANY($2)",
     )
     .bind(device)

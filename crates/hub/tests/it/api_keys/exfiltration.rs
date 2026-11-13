@@ -21,7 +21,7 @@ use sqlx::PgPool;
 use tokio::net::TcpListener;
 
 use super::{kind_refused, rows, secret};
-use crate::hub::{Hub, dependencies, error, set_operator, start, test_vault};
+use crate::hub::{Hub, dependencies, error, host_of, set_operator, start, test_vault};
 
 const PVE_01: &str = "0190a000-0000-7000-8002-000000000001";
 
@@ -100,7 +100,8 @@ async fn trusted_device(pool: &PgPool, port: u16) {
     let device: DeviceId = PVE_01.parse().unwrap();
     let password = SshSecret::Password(Secret::from("stored ssh password".to_owned()));
     let mut conn = pool.acquire().await.unwrap();
-    store_ssh(&mut conn, &test_vault(), device, password)
+    let host = host_of(pool, device).await;
+    store_ssh(&mut conn, &test_vault(), (device, &host), password)
         .await
         .unwrap();
 }

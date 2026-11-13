@@ -103,6 +103,7 @@ const fn link_code(error: &LinkError) -> Option<ErrorCode> {
         | LinkError::HostKeyChanged
         | LinkError::RefusedTarget
         | LinkError::NoCredential
+        | LinkError::CredentialForOtherHost
         | LinkError::CredentialRefused
         | LinkError::UnreadableKey => Some(ErrorCode::Conflict),
         LinkError::Unresolved

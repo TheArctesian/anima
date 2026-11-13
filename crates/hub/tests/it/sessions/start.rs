@@ -4,6 +4,7 @@
 
 mod hosts;
 mod limit;
+mod moved;
 mod protocols;
 mod waking;
 

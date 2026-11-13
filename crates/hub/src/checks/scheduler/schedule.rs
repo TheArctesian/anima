@@ -144,6 +144,16 @@ pub(super) fn status_message(device: &str, status: Status) -> String {
     format!("{device} is {}", word(status))
 }
 
+/// The event message for SNMP secrets removed because the device host changed: the check and
+/// device names only, never a host or a secret (SEC-010, LOG-007).
+pub(super) fn moved_secrets_message(check: &str, device: &str) -> String {
+    format!(
+        "Check {check} on {device} stopped: the device host changed after its SNMP secrets \
+         were entered, so the hub removed them and sends nothing. Enter the community or the \
+         v3 passwords again"
+    )
+}
+
 /// The event message for a late check: the check and device names only (LOG-007).
 pub(super) fn late_message(check: &str, device: &str) -> String {
     format!("Check {check} on {device} is late by more than 2 intervals")

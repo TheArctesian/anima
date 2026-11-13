@@ -3,6 +3,7 @@
 //! and its audit entry, and issues the single-use ticket.
 
 mod limit;
+mod moved;
 mod waking;
 
 use std::{net::IpAddr, sync::Arc};
@@ -30,6 +31,7 @@ use crate::{
     trust,
 };
 
+pub(super) use moved::refuse_moved;
 pub use waking::Waking;
 
 /// What the operator asks for: a device, a protocol and the view the client will show, and

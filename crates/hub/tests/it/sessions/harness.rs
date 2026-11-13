@@ -8,7 +8,7 @@ use anima_hub::{
     clock::{Clock, FixedClock},
     credentials::Vault,
     devices::graphql::status_loader,
-    events::{Bus, ClientAddr, Operator},
+    events::{Actor, Bus, ClientAddr, Operator},
     ids::OperatorId,
     sessions::{
         Live,
@@ -69,8 +69,16 @@ pub fn operator() -> Operator {
     Operator {
         id: OPERATOR_ID.parse::<OperatorId>().unwrap(),
         name: "operator".to_owned(),
-        actor: anima_hub::events::Actor::for_tests(),
+        actor: Actor::for_tests(),
     }
+}
+
+/// A request from the K6 operator signed in with an API key made for an AI agent, so the hub
+/// records it as Agent (LOG-014, LOG-015), from [`CLIENT_ADDR`] for a day after `now()`.
+pub fn signed_in_as_agent(query: &str) -> Request {
+    Identity::agent_key_for_tests(operator(), now() + TimeDelta::hours(24))
+        .attach(Request::new(query))
+        .data(ClientAddr(CLIENT_ADDR.parse().unwrap()))
 }
 
 /// A request from the K6 operator whose identity expires at `expires_at` hours after `now()`.

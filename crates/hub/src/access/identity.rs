@@ -104,6 +104,20 @@ impl Identity {
         Self::new(operator, grant)
     }
 
+    /// A write API key identity for `operator` with a key made for an AI agent, so its
+    /// requests are Agent (LOG-014, LOG-015), for other domains' tests of the kind they record.
+    /// Only with the `test-support` feature, as [`Self::for_tests`].
+    #[cfg(feature = "test-support")]
+    #[must_use]
+    pub fn agent_key_for_tests(operator: Operator, expires_at: DateTime<Utc>) -> Self {
+        let grant = Grant {
+            made_for: Some(MadeFor::Agent),
+            key_name: Some("agent".to_owned()),
+            ..Grant::plain(TokenKind::ApiKey, Scope::Write, expires_at)
+        };
+        Self::new(operator, grant)
+    }
+
     /// The operator the token stands for; `None` for a builder token, which stands for no
     /// operator, not even the one who enrolled it (BLD-022, R-107).
     #[must_use]

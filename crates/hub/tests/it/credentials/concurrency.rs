@@ -10,8 +10,8 @@ use anima_hub::credentials::{
 use sqlx::PgPool;
 
 use super::{
-    DOCKER_HOST, KEY, PVE_01, RDP_PASSWORD, VNC_PASSWORD, device, kinds, password, private_key,
-    secret, store, vault,
+    DOCKER_HOST, HOST, KEY, PVE_01, RDP_PASSWORD, VNC_PASSWORD, device, kinds, password,
+    private_key, secret, store, vault,
 };
 
 /// Upper bound for any wait in these tests, so a broken lock fails instead of hanging.
@@ -59,13 +59,15 @@ async fn advisory_lock_waiter(pool: &PgPool) -> bool {
 async fn concurrent_stores_for_one_device_are_serialised(pool: PgPool) {
     let (vault, id) = (vault(1), device(PVE_01));
     let mut first = pool.begin().await.unwrap();
-    store_ssh(&mut first, &vault, id, password()).await.unwrap();
+    store_ssh(&mut first, &vault, (id, HOST), password())
+        .await
+        .unwrap();
 
     let second = tokio::spawn({
         let (pool, vault) = (pool.clone(), vault.clone());
         async move {
             let mut tx = pool.begin().await.unwrap();
-            store_ssh(&mut tx, &vault, id, private_key(None))
+            store_ssh(&mut tx, &vault, (id, HOST), private_key(None))
                 .await
                 .unwrap();
             tx.commit().await.unwrap();
@@ -89,7 +91,7 @@ async fn concurrent_stores_for_one_device_are_serialised(pool: PgPool) {
         .unwrap();
 
     assert_eq!(kinds(&pool, id).await, ["ssh_private_key"]);
-    let loaded = load_ssh(&pool, &vault, id).await.unwrap();
+    let loaded = load_ssh(&pool, &vault, (id, HOST)).await.unwrap();
     assert!(matches!(
         loaded,
         Some(SshSecret::PrivateKey { key, passphrase: None }) if key.expose() == KEY.as_bytes()
@@ -103,7 +105,9 @@ async fn concurrent_stores_for_one_device_are_serialised(pool: PgPool) {
 async fn no_device_lock_outlives_its_transaction(pool: PgPool) {
     let (vault, id) = (vault(1), device(PVE_01));
     let mut tx = pool.begin().await.unwrap();
-    store_ssh(&mut tx, &vault, id, password()).await.unwrap();
+    store_ssh(&mut tx, &vault, (id, HOST), password())
+        .await
+        .unwrap();
     tx.commit().await.unwrap();
     let mut tx = pool.begin().await.unwrap();
     assert!(clear_ssh(&mut tx, id).await.unwrap());
@@ -127,7 +131,7 @@ async fn clear_waits_for_a_concurrent_store(pool: PgPool) {
     let (vault, id) = (vault(1), device(PVE_01));
     store(&pool, &vault, id, password()).await.unwrap();
     let mut first = pool.begin().await.unwrap();
-    store_ssh(&mut first, &vault, id, private_key(None))
+    store_ssh(&mut first, &vault, (id, HOST), private_key(None))
         .await
         .unwrap();
 
@@ -164,7 +168,7 @@ async fn clear_waits_for_a_concurrent_store(pool: PgPool) {
 async fn stores_for_different_devices_do_not_wait(pool: PgPool) {
     let vault = vault(1);
     let mut first = pool.begin().await.unwrap();
-    store_ssh(&mut first, &vault, device(PVE_01), password())
+    store_ssh(&mut first, &vault, (device(PVE_01), HOST), password())
         .await
         .unwrap();
 
@@ -186,15 +190,22 @@ async fn stores_for_different_devices_do_not_wait(pool: PgPool) {
 async fn password_store_waits_for_a_concurrent_ssh_store(pool: PgPool) {
     let (vault, id) = (vault(1), device(PVE_01));
     let mut first = pool.begin().await.unwrap();
-    store_ssh(&mut first, &vault, id, password()).await.unwrap();
+    store_ssh(&mut first, &vault, (id, HOST), password())
+        .await
+        .unwrap();
 
     let second = tokio::spawn({
         let (pool, vault) = (pool.clone(), vault.clone());
         async move {
             let mut tx = pool.begin().await.unwrap();
-            store_password(&mut tx, &vault, id, PasswordKind::Rdp, secret(RDP_PASSWORD))
-                .await
-                .unwrap();
+            store_password(
+                &mut tx,
+                &vault,
+                (id, HOST),
+                (PasswordKind::Rdp, secret(RDP_PASSWORD)),
+            )
+            .await
+            .unwrap();
             tx.commit().await.unwrap();
         }
     });
@@ -226,9 +237,8 @@ async fn ssh_clear_waits_for_a_concurrent_password_store(pool: PgPool) {
     store_password(
         &mut first,
         &vault,
-        id,
-        PasswordKind::Vnc,
-        secret(VNC_PASSWORD),
+        (id, HOST),
+        (PasswordKind::Vnc, secret(VNC_PASSWORD)),
     )
     .await
     .unwrap();
@@ -261,7 +271,7 @@ async fn ssh_clear_waits_for_a_concurrent_password_store(pool: PgPool) {
         .unwrap();
     assert!(removed && !rdp);
     assert_eq!(kinds(&pool, id).await, ["vnc_password"]);
-    let vnc = load_password(&pool, &vault, id, PasswordKind::Vnc)
+    let vnc = load_password(&pool, &vault, (id, HOST), PasswordKind::Vnc)
         .await
         .unwrap();
     assert!(vnc.is_some_and(|p| p.expose() == VNC_PASSWORD.as_bytes()));
@@ -278,9 +288,8 @@ async fn password_clear_waits_for_a_concurrent_password_store(pool: PgPool) {
     store_password(
         &mut first,
         &vault,
-        id,
-        PasswordKind::Rdp,
-        secret(RDP_PASSWORD),
+        (id, HOST),
+        (PasswordKind::Rdp, secret(RDP_PASSWORD)),
     )
     .await
     .unwrap();

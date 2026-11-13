@@ -4,8 +4,8 @@ use anima_hub::credentials::{Error, PasswordKind, load_password, load_ssh};
 use sqlx::PgPool;
 
 use super::{
-    DOCKER_HOST, PASSPHRASE, PVE_01, RDP_PASSWORD, VNC_PASSWORD, device, password, private_key,
-    store, store_pw, vault,
+    DOCKER_HOST, HOST, PASSPHRASE, PVE_01, RDP_PASSWORD, VNC_PASSWORD, device, password,
+    private_key, store, store_pw, vault,
 };
 
 #[sqlx::test(
@@ -22,7 +22,7 @@ async fn sec_003_row_moved_to_another_device_fails_to_open(pool: PgPool) {
         .await
         .unwrap();
     assert!(matches!(
-        load_ssh(&pool, &vault, to).await,
+        load_ssh(&pool, &vault, (to, HOST)).await,
         Err(Error::Decrypt)
     ));
 }
@@ -44,7 +44,7 @@ async fn passphrase_without_its_key_is_malformed(pool: PgPool) {
     .await
     .unwrap();
     assert!(matches!(
-        load_ssh(&pool, &vault, id).await,
+        load_ssh(&pool, &vault, (id, HOST)).await,
         Err(Error::Malformed)
     ));
 }
@@ -57,7 +57,7 @@ async fn sec_003_other_vault_key_fails(pool: PgPool) {
     let id = device(PVE_01);
     store(&pool, &vault(1), id, password()).await.unwrap();
     assert!(matches!(
-        load_ssh(&pool, &vault(2), id).await,
+        load_ssh(&pool, &vault(2), (id, HOST)).await,
         Err(Error::WrongKey)
     ));
 }
@@ -84,7 +84,7 @@ async fn sec_003_kind_relabelled_fails_to_open(pool: PgPool) {
         .await
         .unwrap();
     assert!(matches!(
-        load_ssh(&pool, &vault, id).await,
+        load_ssh(&pool, &vault, (id, HOST)).await,
         Err(Error::Decrypt)
     ));
 }
@@ -104,7 +104,7 @@ async fn sec_003_rdp_password_relabelled_vnc_fails_to_open(pool: PgPool) {
         .await
         .unwrap();
     assert!(matches!(
-        load_password(&pool, &vault, id, PasswordKind::Vnc).await,
+        load_password(&pool, &vault, (id, HOST), PasswordKind::Vnc).await,
         Err(Error::Decrypt)
     ));
 }
@@ -130,11 +130,11 @@ async fn sec_003_rdp_password_copied_to_another_device_fails_to_open(pool: PgPoo
     .await
     .unwrap();
     assert!(matches!(
-        load_password(&pool, &vault, to, PasswordKind::Rdp).await,
+        load_password(&pool, &vault, (to, HOST), PasswordKind::Rdp).await,
         Err(Error::Decrypt)
     ));
     assert!(
-        load_password(&pool, &vault, from, PasswordKind::Rdp)
+        load_password(&pool, &vault, (from, HOST), PasswordKind::Rdp)
             .await
             .is_ok()
     );
@@ -150,7 +150,7 @@ async fn sec_003_password_under_another_vault_key_fails(pool: PgPool) {
         .await
         .unwrap();
     assert!(matches!(
-        load_password(&pool, &vault(2), id, PasswordKind::Vnc).await,
+        load_password(&pool, &vault(2), (id, HOST), PasswordKind::Vnc).await,
         Err(Error::WrongKey)
     ));
 }

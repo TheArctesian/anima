@@ -16,7 +16,7 @@ use sqlx::PgPool;
 
 use crate::{
     checks::{
-        self, Check, CheckSettings, Definition, NewCheck,
+        self, Check, CheckSettings, Definition, NewCheck, Sealer,
         config::CheckConfig,
         scheduler::{
             Probing,
@@ -49,6 +49,15 @@ pub fn vault_with(byte: u8) -> Vault {
 /// The vault the test schedulers use.
 pub fn vault() -> Vault {
     vault_with(7)
+}
+
+/// Seals with `vault` for the loopback host. Only SNMP secrets are bound to a host (SEC-010);
+/// a test of them names its host itself.
+pub fn sealer(vault: &Vault) -> Sealer<'_> {
+    Sealer {
+        vault,
+        host: "127.0.0.1",
+    }
 }
 
 pub fn rng() -> StdRng {
@@ -163,7 +172,7 @@ pub async fn add(pool: &PgPool, device: DeviceId, definition: Definition, retrie
 
 pub async fn add_check(pool: &PgPool, new: NewCheck) -> CheckId {
     let mut conn = pool.acquire().await.unwrap();
-    checks::create_check(&mut conn, &vault(), new)
+    checks::create_check(&mut conn, sealer(&vault()), new)
         .await
         .unwrap()
         .id

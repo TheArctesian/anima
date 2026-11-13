@@ -3,7 +3,10 @@
 //! gateway. Pure. Every message is a fixed sentence with no device text, address, value or
 //! session content (LOG-007, RA-008).
 
-use crate::sessions::end::{Cause, End};
+use crate::sessions::{
+    Protocol, credential_moved,
+    end::{Cause, End},
+};
 
 /// The request did not offer the `anima-terminal` subprotocol.
 pub(super) const NOT_TERMINAL: &str = "The client did not open the tunnel as a terminal \
@@ -12,6 +15,8 @@ pub(super) const NOT_TERMINAL: &str = "The client did not open the tunnel as a t
 pub(super) const NO_CREDENTIAL: &str = "No SSH credential is stored for the device, so the hub \
                                         could not sign in. Store one in the device's SSH \
                                         settings.";
+/// The stored credential was entered for another host than the device's host now (SEC-011).
+pub(super) const CREDENTIAL_MOVED: &str = credential_moved(Protocol::Ssh);
 /// The stored private key or its passphrase does not decode.
 pub(super) const UNREADABLE_KEY: &str = "The stored SSH private key or its passphrase cannot be \
                                          read, so the hub could not sign in.";

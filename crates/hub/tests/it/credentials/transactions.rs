@@ -12,8 +12,8 @@ use anima_hub::{
 use sqlx::{Connection as _, PgPool};
 
 use super::{
-    PASSWORD, PVE_01, RDP_PASSWORD, device, kinds, password, private_key, secret, store, store_pw,
-    vault,
+    HOST, PASSWORD, PVE_01, RDP_PASSWORD, device, kinds, password, private_key, secret, store,
+    store_pw, vault,
 };
 
 #[sqlx::test(
@@ -35,9 +35,11 @@ async fn store_failure_keeps_the_callers_transaction_usable(pool: PgPool) {
     let (vault, id) = (vault(1), device(PVE_01));
     let mut tx = pool.begin().await.unwrap();
     let unknown = DeviceId::from(uuid::Uuid::now_v7());
-    let failed = store_ssh(&mut tx, &vault, unknown, password()).await;
+    let failed = store_ssh(&mut tx, &vault, (unknown, HOST), password()).await;
     assert!(matches!(failed, Err(Error::UnknownDevice)));
-    store_ssh(&mut tx, &vault, id, password()).await.unwrap();
+    store_ssh(&mut tx, &vault, (id, HOST), password())
+        .await
+        .unwrap();
     tx.commit().await.unwrap();
     assert!(has_ssh(&pool, id).await.unwrap());
 }
@@ -50,7 +52,9 @@ async fn store_in_a_rolled_back_transaction_leaves_nothing(pool: PgPool) {
     let (vault, id) = (vault(1), device(PVE_01));
     let mut conn = pool.acquire().await.unwrap();
     let mut tx = conn.begin().await.unwrap();
-    store_ssh(&mut tx, &vault, id, password()).await.unwrap();
+    store_ssh(&mut tx, &vault, (id, HOST), password())
+        .await
+        .unwrap();
     tx.rollback().await.unwrap();
     assert!(!has_ssh(&pool, id).await.unwrap());
 }
@@ -91,7 +95,7 @@ async fn log_007_failed_store_keeps_the_previous_secret_and_reveals_no_plaintext
         .execute(&pool)
         .await
         .unwrap();
-    let loaded = load_ssh(&pool, &vault, id).await.unwrap();
+    let loaded = load_ssh(&pool, &vault, (id, HOST)).await.unwrap();
     assert!(matches!(loaded, Some(SshSecret::Password(p)) if p.expose() == PASSWORD.as_bytes()));
 }
 
@@ -103,11 +107,22 @@ async fn password_store_for_unknown_device_keeps_the_callers_transaction(pool: P
     let (vault, id) = (vault(1), device(PVE_01));
     let unknown = DeviceId::from(uuid::Uuid::now_v7());
     let mut tx = pool.begin().await.unwrap();
-    let failed = store_password(&mut tx, &vault, unknown, PasswordKind::Rdp, secret("x")).await;
+    let failed = store_password(
+        &mut tx,
+        &vault,
+        (unknown, HOST),
+        (PasswordKind::Rdp, secret("x")),
+    )
+    .await;
     assert!(matches!(failed, Err(Error::UnknownDevice)));
-    store_password(&mut tx, &vault, id, PasswordKind::Rdp, secret(RDP_PASSWORD))
-        .await
-        .unwrap();
+    store_password(
+        &mut tx,
+        &vault,
+        (id, HOST),
+        (PasswordKind::Rdp, secret(RDP_PASSWORD)),
+    )
+    .await
+    .unwrap();
     tx.commit().await.unwrap();
     assert_eq!(kinds(&pool, unknown).await, Vec::<String>::new());
     assert_eq!(kinds(&pool, id).await, ["rdp_password"]);
@@ -148,7 +163,7 @@ async fn log_007_failed_password_store_keeps_the_previous_password(pool: PgPool)
         .execute(&pool)
         .await
         .unwrap();
-    let loaded = load_password(&pool, &vault, id, PasswordKind::Rdp)
+    let loaded = load_password(&pool, &vault, (id, HOST), PasswordKind::Rdp)
         .await
         .unwrap();
     assert!(loaded.is_some_and(|p| p.expose() == RDP_PASSWORD.as_bytes()));

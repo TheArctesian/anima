@@ -23,8 +23,10 @@ Status: **frozen for Phase 3** (change only through a programme ruling, CON-001)
 | 0120–0129 (Phase 3) | devices (WP-47) | `devices` | `devices.session_limit int null check (session_limit between 1 and 100)`. `devices.record_sessions` (0120) is removed (R-113): 0121 drops the column |
 | 0200–0299 | credentials (WP-07) | `credentials` | `secrets` |
 | 0210–0299 (Phase 2) | credentials (WP-21) | `credentials` | `secrets.kind` check adds `rdp_password`, `vnc_password` |
+| 0220 (Phase 3, SEC-011) | credentials | `credentials` | `secrets.legacy_host text null`: for a row sealed before SEC-011, the host its device had when 0220 ran; null for every row sealed since, which holds its host inside the sealed value (operator, 2026-11-13; ruling number to be assigned) |
 | 0300–0399 | checks (WP-09) | `checks` | `checks`, `heartbeats` (partitioned), `uptime_minute`, `uptime_hour`, `uptime_day` |
 | 0310–0399 (Phase 2) | checks (WP-29) | `checks` | `checks.type` identifiers `docker`, `snmp`, `tailscale_ping`, `systemd`; SNMP secrets sealed in the config with context `checks.checks.snmp:<check_id>` |
+| 0324 (Phase 3, SEC-010) | checks | `checks` | `checks.snmp_legacy_host text null` with a check that it is set only on an SNMP check with sealed secrets: for secrets sealed before SEC-010, the host their device had when 0324 ran; null for secrets sealed since, which hold their host inside the sealed binding (operator, 2026-11-13; ruling number to be assigned) |
 | 0320–0349 (Phase 3) | checks (WP-46) | `checks` | `checks.type` adds `domain_expiry`; `checks.checks.domain_not_after timestamptz null` (beside `cert_not_after`); `checks.defaults` (`id bool pk default true check (id)`, `interval_seconds`, `retries`, `retry_interval_seconds`, `degraded_threshold_ms`, each with the schema default and the bounds of `checks.checks`), seeded with one row |
 | 0400–0499 | maintenance (WP-09) | `maintenance` | `windows`, `window_targets` |
 | 0500–0599 | events (WP-05) | `events` | `event_log` (partitioned), `audit_log` (partitioned) |
@@ -82,7 +84,8 @@ devices.ssh_settings      device_id uuid pk fk on delete cascade, enabled bool, 
 credentials.secrets       id uuid pk, device_id uuid fk -> devices.devices on delete cascade,
                           kind text check (kind in ('ssh_password','ssh_private_key',
                           'ssh_passphrase')), nonce bytea, ciphertext bytea, key_id text,
-                          created_at; unique (device_id, kind)
+                          created_at; unique (device_id, kind);
+                          legacy_host text null (0220, SEC-011)
 
 checks.checks             id uuid pk, device_id uuid fk on delete cascade, parent_id uuid null
                           fk (group), type text, name text, interval_seconds int default 60,
@@ -90,7 +93,8 @@ checks.checks             id uuid pk, device_id uuid fk on delete cascade, paren
                           degraded_threshold_ms int default 1000, invert bool default false,
                           paused bool default false, config jsonb (typed per type in Rust),
                           operator_edited bool default false,
-                          repair_tried_at timestamptz null (CHK-013)
+                          repair_tried_at timestamptz null (CHK-013);
+                          snmp_legacy_host text null (0324, SEC-010)
 checks.heartbeats         check_id uuid, at timestamptz, status text, response_time_ms int null,
                           message text null; partitioned by range (at); pk (check_id, at)
 checks.uptime_minute|hour|day

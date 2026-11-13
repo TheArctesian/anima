@@ -14,6 +14,7 @@ use super::{
     probe::ProbeResult,
 };
 use crate::{
+    credentials::Vault,
     devices::Device,
     ids::{CheckId, DeviceId},
     status::Status,
@@ -176,6 +177,14 @@ impl CheckDefaults {
     }
 }
 
+/// How a check write seals its HTTP and SNMP secrets: with this vault, and SNMP secrets for
+/// this device host, the host of the check's device as the operator sees it (SEC-010).
+#[derive(Clone, Copy)]
+pub struct Sealer<'a> {
+    pub vault: &'a Vault,
+    pub host: &'a str,
+}
+
 /// A check to add (the API's `CreateCheckInput`).
 pub struct NewCheck {
     pub device: DeviceId,
@@ -193,8 +202,9 @@ pub struct NewCheck {
 /// stored one: an empty value of a secret header keeps the stored value of the header with
 /// that name in the same position, an empty basic password keeps the stored password and an
 /// empty bearer token keeps the stored token. An SNMP definition keeps an absent or empty
-/// community or password only when the version and user name are the stored ones; otherwise
-/// it is a field error that asks for it (SEC-005).
+/// community or password only when the version, the user name and the device host are the
+/// ones they were entered for; otherwise it is a field error that asks for it (SEC-005,
+/// SEC-010).
 #[derive(Default)]
 pub struct CheckChange {
     /// `Some(None)` removes the check from its group.

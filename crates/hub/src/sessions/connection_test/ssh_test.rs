@@ -76,6 +76,9 @@ pub(in crate::sessions) const CHANGED_KEY: &str = "The device presented a differ
      it changed.";
 pub(in crate::sessions) const NO_CREDENTIAL: &str =
     "The host key is the accepted one, but the hub holds no credential for this device.";
+pub(in crate::sessions) const CREDENTIAL_MOVED: &str = "The host key is the accepted one, but \
+     the device's address changed after its SSH credential was entered, so no credential was \
+     sent. Enter the credential again.";
 pub(in crate::sessions) const AUTH_FAILED: &str = "The device refused the credential.";
 pub(in crate::sessions) const UNREADABLE_KEY: &str =
     "The private key or its passphrase cannot be read.";
@@ -91,6 +94,8 @@ struct Plan {
     accepted: Option<HostKey>,
     /// The user name and secret, read only when a key is accepted.
     login: Option<(String, SshSecret)>,
+    /// The stored secret was entered for another host, so none is sent (SEC-011).
+    credential_moved: bool,
 }
 
 /// What the probe saw.
@@ -121,6 +126,7 @@ pub(in crate::sessions) async fn test_connection(
             port,
             accepted: None,
             login: None,
+            credential_moved: false,
         },
         TestSubject::Device { id, credential } => plan(db, vault, id, credential).await?,
     };
@@ -147,11 +153,12 @@ pub(in crate::sessions) async fn test_connection(
         SignIn::SignedIn => Seen::SignedIn,
         SignIn::OtherKey(key) => Seen::Key(live.sightings().observe(endpoint, key, request.at)),
     });
-    outcome(plan.accepted.as_ref(), seen)
+    outcome(plan.accepted.as_ref(), plan.credential_moved, seen)
 }
 
 /// A saved device's plan: its host and SSH port, its accepted key, and the credential only
-/// when a key is accepted.
+/// when a key is accepted and, for the stored one, only when it was entered for the device's
+/// host now (SEC-011).
 async fn plan(
     db: &PgPool,
     vault: &Vault,
@@ -160,18 +167,21 @@ async fn plan(
 ) -> Result<Plan, Error> {
     let device = find_device(db, id).await?;
     let accepted = trust::host_key(db, id).await?;
-    let secret = match (&accepted, credential) {
-        (None, _) => None,
-        (Some(_), Some(credential)) => Some(credential),
-        (Some(_), None) => credentials::load_ssh(db, vault, id)
-            .await
-            .map_err(Error::Credentials)?,
+    let stored = match (&accepted, credential) {
+        (None, _) => Ok(None),
+        (Some(_), Some(credential)) => Ok(Some(credential)),
+        (Some(_), None) => credentials::load_ssh(db, vault, (id, &device.host)).await,
+    };
+    let (secret, credential_moved) = match stored {
+        Err(credentials::Error::EnteredForOtherHost) => (None, true),
+        stored => (stored.map_err(Error::Credentials)?, false),
     };
     Ok(Plan {
         host: device.host,
         port: device.ssh.port,
         accepted,
         login: secret.map(|secret| (device.ssh.username, secret)),
+        credential_moved,
     })
 }
 
@@ -184,10 +194,12 @@ pub(super) fn refused_host() -> FieldError {
     )
 }
 
-/// The result K1 describes for what the probe saw, given the accepted key; a refused
-/// target is the operator's `Validation` error on `host` (R-032).
+/// The result K1 describes for what the probe saw, given the accepted key and whether the
+/// stored credential was held back because it was entered for another host; a refused target
+/// is the operator's `Validation` error on `host` (R-032).
 fn outcome(
     accepted: Option<&HostKey>,
+    credential_moved: bool,
     seen: Result<Seen, SshError>,
 ) -> Result<ConnectionTest, Error> {
     let reached = |message| ConnectionTest {
@@ -210,7 +222,13 @@ fn outcome(
             ..reached(SIGNED_IN)
         },
         Ok(Seen::Key(seen)) => match accepted {
-            Some(accepted) if accepted.public_key == seen.presented => reached(NO_CREDENTIAL),
+            Some(accepted) if accepted.public_key == seen.presented => {
+                reached(if credential_moved {
+                    CREDENTIAL_MOVED
+                } else {
+                    NO_CREDENTIAL
+                })
+            }
             accepted => ConnectionTest {
                 host_key: Some(HostKey {
                     public_key: seen.presented,
@@ -293,7 +311,7 @@ mod tests {
             ),
         ];
         for (case, pinned, seen, message) in cases {
-            let test = outcome(pinned, seen).unwrap_or_else(|_| panic!("{case}"));
+            let test = outcome(pinned, false, seen).unwrap_or_else(|_| panic!("{case}"));
             assert_eq!(test.message, message, "{case}");
             assert!(!test.certificate_matched, "{case}");
         }

@@ -15,7 +15,7 @@ use sqlx::PgPool;
 
 use super::{
     ED25519_KEY, PVE_01, add_operator,
-    harness::{CLIENT_ADDR, TestSchema, signed_in_until},
+    harness::{CLIENT_ADDR, TestSchema, signed_in_as_agent, signed_in_until},
     put_host_key,
 };
 
@@ -39,6 +39,13 @@ pub fn start_request(device: &str, display: &Value) -> Request {
 pub fn protocol_start_request(device: &str, protocol: &str, display: &Value) -> Request {
     let input = json!({ "deviceId": device, "protocol": protocol, "display": display });
     signed_in_until(START, 24).variables(Variables::from_json(json!({ "input": input })))
+}
+
+/// `startSession` for `device` over the K1 `protocol` with [`display`], from the K6 operator
+/// signed in with an API key made for an AI agent (LOG-015).
+pub fn agent_start_request(device: &str, protocol: &str) -> Request {
+    let input = json!({ "deviceId": device, "protocol": protocol, "display": display() });
+    signed_in_as_agent(START).variables(Variables::from_json(json!({ "input": input })))
 }
 
 /// `endSession` for `id`, from the K6 operator.

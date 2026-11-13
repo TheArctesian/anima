@@ -7,7 +7,7 @@ use tokio::{sync::broadcast::Receiver, task::JoinHandle};
 
 use super::support::{
     DOCKER_HOST, JELLYFIN, add, add_check, beats, closed_port, database_now, due_at, events_of,
-    new_check, on_loopback, rng, scheduler, stored, tcp, vault_with,
+    new_check, on_loopback, rng, scheduler, sealer, stored, tcp, vault_with,
 };
 use crate::{
     checks::{
@@ -247,7 +247,7 @@ tick_test! {
         let device = on_loopback(&pool, DOCKER_HOST).await;
         let new = new_check(device, "Web", http_with_password(), 0);
         let mut conn = pool.acquire().await.unwrap();
-        let id = checks::create_check(&mut conn, &vault_with(8), new).await.unwrap().id;
+        let id = checks::create_check(&mut conn, sealer(&vault_with(8)), new).await.unwrap().id;
         let now = database_now(&pool).await;
         due_at(&pool, id, now).await;
         let mut scheduler = scheduler(&pool, &Bus::new(16));

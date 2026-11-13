@@ -12,6 +12,7 @@ mod http_urls;
 mod retention;
 mod secrets;
 mod snmp;
+mod snmp_host;
 mod statuses;
 mod uptime;
 mod writes;
@@ -20,7 +21,7 @@ use std::io::Write as _;
 
 use anima_hub::{
     checks::{
-        self, Beat, CheckSettings, CheckState, Definition, NewCheck, Recorded,
+        self, Beat, CheckSettings, CheckState, Definition, NewCheck, Recorded, Sealer,
         config::{CheckConfig, IpVersion},
     },
     credentials::Vault,
@@ -32,6 +33,8 @@ use chrono::{DateTime, DurationRound, TimeDelta, Utc};
 use sqlx::PgPool;
 
 const PVE_01: &str = "0190a000-0000-7000-8002-000000000001";
+/// The host of `pve-01` in the fixtures.
+const PVE_01_HOST: &str = "pve-01.home.lan";
 const DOCKER_HOST: &str = "0190a000-0000-7000-8002-000000000002";
 const JELLYFIN: &str = "0190a000-0000-7000-8002-000000000006";
 const TRUENAS: &str = "0190a000-0000-7000-8002-000000000007";
@@ -55,6 +58,15 @@ fn vault_with(byte: u8) -> Vault {
 
 fn vault() -> Vault {
     vault_with(7)
+}
+
+/// Seals with `vault` for `pve-01`'s host. The host matters only for SNMP checks, which these
+/// tests put on `pve-01` (SEC-010).
+fn sealer(vault: &Vault) -> Sealer<'_> {
+    Sealer {
+        vault,
+        host: PVE_01_HOST,
+    }
 }
 
 /// The database clock, truncated to the second so stored and expected times compare equal.
@@ -86,7 +98,7 @@ fn new_check(device_text: &str, name: &str, definition: Definition) -> NewCheck 
 /// Adds a check and returns its id.
 async fn create(pool: &PgPool, new: NewCheck) -> CheckId {
     let mut conn = pool.acquire().await.unwrap();
-    checks::create_check(&mut conn, &vault(), new)
+    checks::create_check(&mut conn, sealer(&vault()), new)
         .await
         .unwrap()
         .id

@@ -12,9 +12,17 @@
 //! back ([`load_ssh`], [`load_password`]); the API sees only whether one exists ([`has_ssh`],
 //! [`with_ssh`], [`with_password`]) (SEC-005).
 //!
+//! Each secret is bound to the device host it was entered for, sealed inside the value with it
+//! (SEC-011). The readers take the host they are about to connect to and open a secret only for
+//! that host, letter case aside; for any other host they return
+//! [`Error::EnteredForOtherHost`] and the caller sends nothing. The host is the device's host
+//! text, never a resolved address. A refused secret stays stored: it opens again if the device
+//! goes back to its host, and storing it again binds it to the new one.
+//!
 //! Writers of every kind take one advisory lock per device, so the lock order documented on
 //! each writer holds for all of them.
 
+mod host;
 mod password;
 mod secret;
 mod ssh;
@@ -64,11 +72,16 @@ pub enum Error {
     /// The OS random source yielded no nonce, so nothing was sealed.
     #[error("the OS random source failed")]
     Random(#[source] getrandom::Error),
+    /// The secret was entered for another host than the one the caller connects to; the
+    /// opened secret was dropped (SEC-011). Names neither host (LOG-007).
+    #[error("the credential was entered for another host of the device")]
+    EnteredForOtherHost,
 }
 
-/// Replaces every SSH secret of the device with `secret`, sealed per part, in the caller's
-/// connection. Runs in its own transaction (a savepoint inside the caller's), so a failure
-/// leaves the previous secret in place.
+/// Replaces every SSH secret of the device with `secret`, sealed per part and bound to `host`,
+/// the device's host it was entered for (SEC-011), in the caller's connection. Runs in its own
+/// transaction (a savepoint inside the caller's), so a failure leaves the previous secret in
+/// place.
 ///
 /// Concurrent stores and clears for one device are serialised: each waits for this domain's
 /// per-device advisory lock, held until the caller's transaction ends, so two writers never
@@ -85,13 +98,18 @@ pub enum Error {
 pub async fn store_ssh(
     conn: &mut PgConnection,
     vault: &Vault,
-    device: DeviceId,
+    (device, host): (DeviceId, &str),
     secret: SshSecret,
 ) -> Result<(), Error> {
     let sealed = secret
         .into_parts()
         .into_iter()
-        .map(|(kind, part)| Ok((kind, vault.seal(&part, &ssh::context(device, kind))?)))
+        .map(|(kind, part)| {
+            Ok((
+                kind,
+                host::seal(vault, (device, host), kind.as_sql(), &part)?,
+            ))
+        })
         .collect::<Result<Vec<_>, Error>>()?;
     let mut tx = conn.begin().await?;
     store::lock_device(&mut tx, device).await?;
@@ -103,17 +121,19 @@ pub async fn store_ssh(
     Ok(())
 }
 
-/// Opens the device's SSH secret; `None` when none is stored.
+/// Opens the device's SSH secret for a connection to `host`, the device's host the caller is
+/// about to connect to; `None` when none is stored.
 ///
 /// # Errors
 ///
+/// [`Error::EnteredForOtherHost`] when it was entered for another host (SEC-011);
 /// [`Error::WrongKey`] or [`Error::Decrypt`] when a row does not open with this vault for this
 /// device, [`Error::Malformed`] for a stored row set no [`SshSecret`] produces, and
 /// [`Error::Database`].
 pub async fn load_ssh(
     db: &PgPool,
     vault: &Vault,
-    device: DeviceId,
+    (device, host): (DeviceId, &str),
 ) -> Result<Option<SshSecret>, Error> {
     let rows = store::fetch_kinds(db, device, &SshKind::SQL_KINDS).await?;
     if rows.is_empty() {
@@ -123,8 +143,8 @@ pub async fn load_ssh(
         .into_iter()
         .map(|row| {
             let kind = SshKind::from_sql(&row.kind)?;
-            let sealed = Sealed::from_parts(&row.nonce, row.ciphertext, row.key_id)?;
-            Ok((kind, vault.open(&sealed, &ssh::context(device, kind))?))
+            let legacy = ssh::context(device, kind);
+            Ok((kind, host::open(vault, row, (device, host), &legacy)?))
         })
         .collect::<Result<Vec<_>, Error>>()?;
     SshSecret::from_parts(parts).map(Some)
@@ -167,7 +187,8 @@ pub async fn clear_ssh(conn: &mut PgConnection, device: DeviceId) -> Result<bool
     Ok(removed > 0)
 }
 
-/// Replaces the device's password of `kind` with `secret`, sealed, in the caller's connection.
+/// Replaces the device's password of `kind` with `secret`, sealed and bound to `host`, the
+/// device's host it was entered for (SEC-011), in the caller's connection.
 /// Runs in its own transaction (a savepoint inside the caller's), so a failure leaves the
 /// previous password in place. Other kinds, SSH included, are left as they are.
 ///
@@ -179,18 +200,13 @@ pub async fn clear_ssh(conn: &mut PgConnection, device: DeviceId) -> Result<bool
 ///
 /// [`Error::Random`] when the OS random source fails, [`Error::UnknownDevice`] when no device
 /// has this id, [`Error::Database`] otherwise.
-#[expect(
-    clippy::too_many_arguments,
-    reason = "the hub contract fixes the signature of store_password"
-)]
 pub async fn store_password(
     conn: &mut PgConnection,
     vault: &Vault,
-    device: DeviceId,
-    kind: PasswordKind,
-    secret: Secret,
+    (device, host): (DeviceId, &str),
+    (kind, secret): (PasswordKind, Secret),
 ) -> Result<(), Error> {
-    let sealed = vault.seal(&secret, &password::context(device, kind))?;
+    let sealed = host::seal(vault, (device, host), kind.as_sql(), &secret)?;
     drop(secret);
     let mut tx = conn.begin().await?;
     store::lock_device(&mut tx, device).await?;
@@ -200,17 +216,19 @@ pub async fn store_password(
     Ok(())
 }
 
-/// Opens the device's password of `kind`; `None` when none is stored.
+/// Opens the device's password of `kind` for a connection to `host`, the device's host the
+/// caller is about to connect to; `None` when none is stored.
 ///
 /// # Errors
 ///
+/// [`Error::EnteredForOtherHost`] when it was entered for another host (SEC-011);
 /// [`Error::WrongKey`] or [`Error::Decrypt`] when the row does not open with this vault for
 /// this device and kind, [`Error::Malformed`] for a row not in the sealed layout, and
 /// [`Error::Database`].
 pub async fn load_password(
     db: &PgPool,
     vault: &Vault,
-    device: DeviceId,
+    (device, host): (DeviceId, &str),
     kind: PasswordKind,
 ) -> Result<Option<Secret>, Error> {
     // The unique (device_id, kind) constraint allows at most one row.
@@ -220,10 +238,8 @@ pub async fn load_password(
     else {
         return Ok(None);
     };
-    let sealed = Sealed::from_parts(&row.nonce, row.ciphertext, row.key_id)?;
-    vault
-        .open(&sealed, &password::context(device, kind))
-        .map(Some)
+    let legacy = password::context(device, kind);
+    host::open(vault, row, (device, host), &legacy).map(Some)
 }
 
 /// Which of the given devices have a password of `kind` stored, in one query (API-005).

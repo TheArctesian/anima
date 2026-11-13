@@ -3,7 +3,10 @@
 //! SEC-005, LOG-005, LOG-007).
 //!
 //! Each runs in one transaction. `credentials` takes its per-device lock first, before this
-//! domain reads the device row, the lock order `credentials` asks of its callers.
+//! domain locks the device row, the lock order `credentials` asks of its callers. A set reads
+//! the device first, without a lock, to bind the secret to the device's host now (SEC-011): a
+//! host changed in between leaves the secret bound to the earlier host, so it is refused, never
+//! sent to the new one.
 
 use async_graphql::{Context, Error as GraphQlError, ID, Result};
 
@@ -59,10 +62,10 @@ pub(super) async fn set(
     let vault = schema_dependency::<Vault>(ctx)?;
     let trail = Trail::from_context(ctx)?;
     let mut tx = begin(ctx).await?;
-    store_ssh(&mut tx, vault, id, secret)
+    let device = store::fetch(&mut *tx, id).await.map_err(to_graphql)?;
+    store_ssh(&mut tx, vault, (id, &device.host), secret)
         .await
         .map_err(|error| credential_error(error, id))?;
-    let device = store::fetch(&mut *tx, id).await.map_err(to_graphql)?;
     trail
         .write(&mut tx, trail::credential_set(&device, kind))
         .await

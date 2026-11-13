@@ -1,6 +1,7 @@
 //! Unit tests for the credentials crypto, grouped by concept; shared fixtures live here.
 
 mod disclosure;
+mod host;
 mod key;
 mod layout;
 mod password;

@@ -13,13 +13,14 @@ use sqlx::PgPool;
 use super::PVE_01;
 use crate::devices::{
     DOCKER_HOST,
-    credential::store_password as store_ssh_password,
+    credential::{PVE_01_HOST, store_password as store_ssh_password},
     harness::{
         error_json, hardened_schema, schema_for, schema_with_bus, signed_in, validation_fields,
         vault, with_variables,
     },
     leak::{assert_absent, captured},
 };
+use crate::hub::host_of;
 
 macro_rules! fixture_test {
     ($(async fn $name:ident($pool:ident: PgPool) $body:block)+) => {$(
@@ -84,7 +85,8 @@ fn device(text: &str) -> DeviceId {
 pub async fn store_pw(pool: &PgPool, id: &str, kind: PasswordKind, password: &str) {
     let mut conn = pool.acquire().await.unwrap();
     let secret = Secret::from(password.to_owned());
-    store_password(&mut conn, &vault(), device(id), kind, secret)
+    let host = host_of(pool, device(id)).await;
+    store_password(&mut conn, &vault(), (device(id), &host), (kind, secret))
         .await
         .unwrap();
 }
@@ -149,7 +151,7 @@ fixture_test! {
             let data = ok(set(&pool, protocol, PVE_01, PASSWORD).await);
             assert_eq!(data[protocol.set]["credentialStored"], true);
             assert_eq!(stored(&pool, PVE_01).await, expected, "{}", protocol.set);
-            let opened = load_password(&pool, &vault(), device(PVE_01), protocol.kind)
+            let opened = load_password(&pool, &vault(), (device(PVE_01), PVE_01_HOST), protocol.kind)
                 .await
                 .unwrap();
             assert!(opened.is_some_and(|p| p.expose() == PASSWORD.as_bytes()));

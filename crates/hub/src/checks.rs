@@ -9,7 +9,8 @@
 //!
 //! HTTP and SNMP secrets are sealed with the vault, bound to their check, and never returned
 //! by a read; only [`load_http_secrets`] and [`load_snmp_secrets`] open them, for the probe
-//! (SEC-003, LOG-007).
+//! (SEC-003, LOG-007). SNMP secrets are also bound to the device host they were entered for
+//! and open only for a probe of that host (SEC-010).
 
 pub mod config;
 mod evaluation;
@@ -50,7 +51,7 @@ pub use exposition::exposition_router;
 pub(in crate::checks) use model::Attempt;
 pub use model::{
     Beat, Check, CheckChange, CheckDefaults, Definition, Due, FieldError, Heartbeat, HttpSetup,
-    Missing, NewCheck, PushToken, Recorded, SnmpSetup,
+    Missing, NewCheck, PushToken, Recorded, Sealer, SnmpSetup,
 };
 pub use push::push_router;
 pub use scheduler::{Probing, spawn_scheduler};
@@ -79,6 +80,10 @@ pub enum Error {
     /// not used (SEC-005).
     #[error("the stored secrets do not match the check's address")]
     SecretsUnbound,
+    /// The SNMP secrets were entered for another device host than the device has now, so they
+    /// are not used (SEC-010).
+    #[error("the stored SNMP secrets were entered for another device host")]
+    SecretsForOtherHost,
     /// Another check already has this push token. The database detail, which holds the
     /// token, is dropped (LOG-007).
     #[error("the push token is already in use")]
@@ -287,13 +292,14 @@ pub(in crate::checks) fn fresh_push_token() -> Result<PushToken, Error> {
 }
 
 /// Adds a check in the caller's transaction. A parent must be a group on the same device.
+/// `sealer.host` is the host of `new.device`; SNMP secrets are bound to it (SEC-010).
 ///
 /// # Errors
 /// `Validation` with every field in error, including the constraint the database refused;
 /// `Credentials` (`Random`) when the OS random source fails while sealing secrets.
 pub async fn create_check(
     conn: &mut PgConnection,
-    vault: &Vault,
+    sealer: Sealer<'_>,
     new: NewCheck,
 ) -> Result<Check, Error> {
     let id = CheckId::from(Uuid::now_v7());
@@ -312,20 +318,21 @@ pub async fn create_check(
         config: &prepared.config,
         settings: new.settings,
         push_token: prepared.push_token.as_ref(),
-        sealed: sealed(vault, id, &prepared)?,
+        sealed: sealed(sealer, id, &prepared)?,
     };
     store::insert(conn, id, row).await
 }
 
 /// Changes the fields present in the caller's transaction (see [`CheckChange`] for the
-/// secret rule). The type of a check never changes.
+/// secret rule). The type of a check never changes. `sealer.host` is the host of the check's
+/// device; SNMP secrets are kept and sealed only for it (SEC-010).
 ///
 /// # Errors
 /// `NotFound` when there is no such check; `Validation` with the fields in error;
 /// `Credentials` (`Random`) when the OS random source fails while sealing secrets.
 pub async fn update_check(
     conn: &mut PgConnection,
-    vault: &Vault,
+    sealer: Sealer<'_>,
     id: CheckId,
     mut change: CheckChange,
 ) -> Result<Check, Error> {
@@ -334,7 +341,7 @@ pub async fn update_check(
     let mut tx = conn.begin().await?;
     let current = store::lock(&mut tx, id).await?;
     let prepared = match definition {
-        Some(definition) => prepare_change(vault, id, current, definition).map(Some),
+        Some(definition) => prepare_change(sealer, id, current, definition).map(Some),
         None => Ok(None),
     };
     let (name, prepared) = match (name, prepared) {
@@ -346,7 +353,7 @@ pub async fn update_check(
     };
     let config = prepared
         .as_ref()
-        .map(|prepared| Ok::<_, Error>((&prepared.config, sealed(vault, id, prepared)?)))
+        .map(|prepared| Ok::<_, Error>((&prepared.config, sealed(sealer, id, prepared)?)))
         .transpose()?;
     let changed = store::Change {
         fields: &change,
@@ -395,20 +402,23 @@ pub async fn load_http_secrets(
     store::load_http_secrets(db, vault, check).await
 }
 
-/// The stored SNMP configuration of the check with its opened secrets, for its probe only:
-/// the secrets go only to the version and user name they were given for (SEC-005). `None`
-/// when the check is not an SNMP check and holds no secrets.
+/// The stored SNMP configuration of the check with its opened secrets, for a probe of `host`
+/// only: the secrets go only to the version and user name they were given for (SEC-005), and
+/// only to the device host they were entered for (SEC-010). Pass the host the probe sends to.
+/// `None` when the check is not an SNMP check and holds no secrets.
 ///
 /// # Errors
 /// `Credentials` when the sealed value does not open for this check; `SecretsUnbound` when
-/// the configuration names another version or user name; `Unreadable` when the check holds
-/// secrets but no readable SNMP configuration.
+/// the configuration names another version or user name; `SecretsForOtherHost` when they
+/// were entered for another host; `Unreadable` when the check holds secrets but no readable
+/// SNMP configuration.
 pub async fn load_snmp_secrets(
     db: &PgPool,
     vault: &Vault,
     check: CheckId,
+    host: &str,
 ) -> Result<Option<SnmpSetup>, Error> {
-    store::load_snmp_secrets(db, vault, check).await
+    store::load_snmp_secrets(db, vault, check, host).await
 }
 
 /// Records one result in the caller's transaction: the heartbeat, its minute, hour and day

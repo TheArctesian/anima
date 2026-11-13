@@ -38,8 +38,8 @@ use crate::{
     access,
     clock::Clock,
     credentials::Vault,
-    devices,
-    events::Bus,
+    devices::{self, Device},
+    events::{ActorKind, Bus},
     sessions::{
         Live, admission, end::CLIENT_IDLE, live::FilesRelay, quiet::Quiet, tickets::FILES_PATH,
     },
@@ -197,6 +197,31 @@ async fn open(
     upgrade.on_upgrade(move |client| relay(client, files, admitted, opened))
 }
 
+/// A link to `device`. A link refused because the device presented another host key, or
+/// because its stored credential was entered for another host (SEC-011), also writes the
+/// event that says so, with the kind of the request that opened the tunnel (`actor`, LOG-013);
+/// no credential was sent either way.
+async fn linked(files: &Files, device: &Device, actor: ActorKind) -> Result<SshLink, NotOpened> {
+    let now = files.clock.now();
+    let error = match link(&files.db, &files.vault, &files.policy, device, now).await {
+        Ok(link) => return Ok(link),
+        Err(error) => error,
+    };
+    let written = match error {
+        LinkError::HostKeyChanged => {
+            trail::host_key_changed(&files.db, &files.bus, now, device).await
+        }
+        LinkError::CredentialForOtherHost => {
+            trail::credential_moved((&files.db, &files.bus), now, device, actor).await
+        }
+        _ => Ok(()),
+    };
+    if let Err(error) = written {
+        tracing::error!(%error, "the event of a refused files tunnel could not be written");
+    }
+    Err(NotOpened::Link(error))
+}
+
 /// The device, a link to it, its `sftp` subsystem and the SFTP session over it.
 async fn opened(files: &Files, ticket: &FilesTicket) -> Result<Opened, NotOpened> {
     let device = devices::get(&files.db, ticket.device)
@@ -205,17 +230,7 @@ async fn opened(files: &Files, ticket: &FilesTicket) -> Result<Opened, NotOpened
             devices::Error::NotFound(_) => NotOpened::Gone,
             _ => NotOpened::Devices,
         })?;
-    let now = files.clock.now();
-    let link = match link(&files.db, &files.vault, &files.policy, &device, now).await {
-        Ok(link) => link,
-        Err(LinkError::HostKeyChanged) => {
-            if let Err(error) = trail::host_key_changed(&files.db, &files.bus, now, &device).await {
-                tracing::error!(%error, "the event of a refused host key could not be written");
-            }
-            return Err(NotOpened::Link(LinkError::HostKeyChanged));
-        }
-        Err(error) => return Err(NotOpened::Link(error)),
-    };
+    let link = linked(files, &device, ticket.operator.actor.kind()).await?;
     let stream = link
         .sftp(files.timing.device)
         .await

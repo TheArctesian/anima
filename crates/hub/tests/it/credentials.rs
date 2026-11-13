@@ -3,6 +3,7 @@
 
 mod batch;
 mod concurrency;
+mod host;
 mod kinds;
 mod round_trip;
 mod schema;
@@ -20,6 +21,8 @@ use sqlx::PgPool;
 
 const PVE_01: &str = "0190a000-0000-7000-8002-000000000001";
 const DOCKER_HOST: &str = "0190a000-0000-7000-8002-000000000002";
+/// The device host every secret here is entered for and opened for (SEC-011).
+const HOST: &str = "pve-01.lan";
 const PASSWORD: &str = "correct horse battery staple";
 const KEY: &str =
     "-----BEGIN OPENSSH PRIVATE KEY-----\nthrowaway\n-----END OPENSSH PRIVATE KEY-----\n";
@@ -54,7 +57,7 @@ fn private_key(passphrase: Option<&str>) -> SshSecret {
 }
 
 async fn store(pool: &PgPool, vault: &Vault, id: DeviceId, s: SshSecret) -> Result<(), Error> {
-    store_ssh(&mut pool.acquire().await.unwrap(), vault, id, s).await
+    store_ssh(&mut pool.acquire().await.unwrap(), vault, (id, HOST), s).await
 }
 
 /// Stores a password sealed with `vault(1)`, the vault these tests open with.
@@ -65,7 +68,7 @@ async fn store_pw(
     text: &str,
 ) -> Result<(), Error> {
     let mut conn = pool.acquire().await.unwrap();
-    store_password(&mut conn, &vault(1), id, kind, secret(text)).await
+    store_password(&mut conn, &vault(1), (id, HOST), (kind, secret(text))).await
 }
 
 async fn kinds(pool: &PgPool, id: DeviceId) -> Vec<String> {

@@ -9,7 +9,7 @@ use uuid::Uuid;
 
 use crate::{
     checks::{
-        Error,
+        Error, Sealer,
         config::{CheckConfig, HttpAuth, HttpConfig, HttpHeader, HttpSecrets},
         rules::{Prepared, Sealable},
         sealing::sealed,
@@ -199,7 +199,14 @@ fn q2_14_secrets_for_a_url_without_an_origin_are_not_sealed_and_name_the_url() {
             secrets: Some(Sealable::Http(secrets())),
             push_token: None,
         };
-        let Err(Error::Validation(fields)) = sealed(&vault, id, &prepared) else {
+        let Err(Error::Validation(fields)) = sealed(
+            Sealer {
+                vault: &vault,
+                host: "pve-01.home.lan",
+            },
+            id,
+            &prepared,
+        ) else {
             panic!("secrets for {url} were sealed");
         };
         assert_eq!(fields.len(), 1, "{url}");

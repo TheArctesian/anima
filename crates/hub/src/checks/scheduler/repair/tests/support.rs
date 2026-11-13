@@ -13,6 +13,7 @@ use sqlx::PgPool;
 use crate::{
     checks::{
         self, Beat, Check, CheckChange, CheckSettings, CheckState, Definition, NewCheck, Recorded,
+        Sealer,
         config::{CheckConfig, IpVersion},
         probe::{Failure, ProbeResult},
         scheduler::{
@@ -138,10 +139,17 @@ pub async fn add_check(
         },
     };
     let mut conn = pool.acquire().await.unwrap();
-    let id = checks::create_check(&mut conn, &vault(), new)
-        .await
-        .unwrap()
-        .id;
+    let id = checks::create_check(
+        &mut conn,
+        Sealer {
+            vault: &vault(),
+            host: "127.0.0.1",
+        },
+        new,
+    )
+    .await
+    .unwrap()
+    .id;
     make_due(pool, id, at).await;
     id
 }
@@ -181,9 +189,17 @@ pub async fn edit(pool: &PgPool, id: CheckId) {
         ..CheckChange::default()
     };
     let mut conn = pool.acquire().await.unwrap();
-    checks::update_check(&mut conn, &vault(), id, change)
-        .await
-        .unwrap();
+    checks::update_check(
+        &mut conn,
+        Sealer {
+            vault: &vault(),
+            host: "127.0.0.1",
+        },
+        id,
+        change,
+    )
+    .await
+    .unwrap();
 }
 
 pub async fn stored(pool: &PgPool, id: CheckId) -> Check {

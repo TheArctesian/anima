@@ -15,18 +15,18 @@ use super::{
 };
 use crate::{
     api_errors::{begin, commit, internal, invalid, pool, schema_dependency},
-    checks::{self, Check, CheckChange, FieldError, config::CheckType, store},
+    checks::{self, Check, CheckChange, FieldError, Sealer, config::CheckType, store},
     credentials::Vault,
-    devices,
+    devices::{self, Device},
     events::Trail,
     ids::{CheckId, DeviceId},
     notifications,
 };
 
 /// The device a new check goes on; a missing one is the operator's `deviceId` error.
-async fn new_device_name(db: &PgPool, device: DeviceId) -> Result<String> {
+async fn new_device(db: &PgPool, device: DeviceId) -> Result<Device> {
     match devices::get(db, device).await {
-        Ok(found) => Ok(found.name),
+        Ok(found) => Ok(found),
         Err(devices::Error::NotFound(_)) => Err(invalid(&[FieldError::new(
             "deviceId",
             "There is no such device.",
@@ -35,13 +35,17 @@ async fn new_device_name(db: &PgPool, device: DeviceId) -> Result<String> {
     }
 }
 
-/// Every device name is read before the transaction opens: a mutation never holds one
-/// connection while it waits for a second (API-010).
+/// Every device is read before the transaction opens: a mutation never holds one connection
+/// while it waits for a second (API-010). Its host as read here is the host SNMP secrets are
+/// sealed for; if it changes before the commit, the probe finds the secrets bound to another
+/// host and sends nothing (SEC-010).
+async fn device_of(db: &PgPool, device: DeviceId) -> Result<Device> {
+    devices::get(db, device).await.map_err(from_devices)
+}
+
+/// The device's name, for the audit entry.
 async fn device_name(db: &PgPool, device: DeviceId) -> Result<String> {
-    devices::get(db, device)
-        .await
-        .map(|device| device.name)
-        .map_err(from_devices)
+    device_of(db, device).await.map(|device| device.name)
 }
 
 /// Why this check cannot be a child of a group on `device`.
@@ -82,7 +86,7 @@ async fn validate_children(db: &PgPool, children: &[CheckId], device: DeviceId) 
 /// Makes `wanted` the children of `group`, and lets out those of `current` not in `wanted`.
 async fn regroup(
     conn: &mut PgConnection,
-    vault: &Vault,
+    sealer: Sealer<'_>,
     group: CheckId,
     (current, wanted): (&[CheckId], &[CheckId]),
 ) -> Result<()> {
@@ -96,7 +100,7 @@ async fn regroup(
             regrouping: true,
             ..CheckChange::default()
         };
-        checks::update_check(conn, vault, child, change)
+        checks::update_check(conn, sealer, child, change)
             .await
             .map_err(to_graphql)?;
     }
@@ -109,11 +113,14 @@ pub(super) async fn create(ctx: &Context<'_>, input: CreateShape) -> Result<Chec
     if let Some(children) = &form.children {
         validate_children(db, children, form.new.device).await?;
     }
-    let device = new_device_name(db, form.new.device).await?;
-    let vault = schema_dependency::<Vault>(ctx)?;
+    let device = new_device(db, form.new.device).await?;
+    let sealer = Sealer {
+        vault: schema_dependency::<Vault>(ctx)?,
+        host: &device.host,
+    };
     let trail = Trail::from_context(ctx)?;
     let mut tx = begin(ctx).await?;
-    let check = checks::create_check(&mut tx, vault, form.new)
+    let check = checks::create_check(&mut tx, sealer, form.new)
         .await
         .map_err(to_graphql)?;
     // A new check notifies the channels marked "on by default" (NOT-003).
@@ -121,7 +128,7 @@ pub(super) async fn create(ctx: &Context<'_>, input: CreateShape) -> Result<Chec
         .await
         .map_err(internal)?;
     if let Some(children) = &form.children {
-        regroup(&mut tx, vault, check.id, (&[], children)).await?;
+        regroup(&mut tx, sealer, check.id, (&[], children)).await?;
     }
     let extras = Extras {
         sealed: form.sealed,
@@ -129,7 +136,7 @@ pub(super) async fn create(ctx: &Context<'_>, input: CreateShape) -> Result<Chec
         rotated: false,
     };
     trail
-        .write(&mut tx, trail::created(&check, &device, &extras))
+        .write(&mut tx, trail::created(&check, &device.name, &extras))
         .await
         .map_err(internal)?;
     commit(tx).await?;
@@ -146,11 +153,14 @@ pub(super) async fn update(ctx: &Context<'_>, id: &ID, input: UpdateShape) -> Re
         let nothing = FieldError::new("input", "Send at least one field to change.");
         return Err(invalid(&[nothing]));
     }
-    let device = device_name(db, before.device).await?;
+    let device = device_of(db, before.device).await?;
     if let Some(children) = &form.children {
         validate_children(db, children, before.device).await?;
     }
-    let vault = schema_dependency::<Vault>(ctx)?;
+    let sealer = Sealer {
+        vault: schema_dependency::<Vault>(ctx)?,
+        host: &device.host,
+    };
     let trail = Trail::from_context(ctx)?;
     let mut tx = begin(ctx).await?;
     // The audit compares against the row as it is under our lock, not as it was when the
@@ -158,14 +168,14 @@ pub(super) async fn update(ctx: &Context<'_>, id: &ID, input: UpdateShape) -> Re
     let before = store::fetch_for_update(&mut tx, id)
         .await
         .map_err(to_graphql)?;
-    let after = checks::update_check(&mut tx, vault, id, form.change)
+    let after = checks::update_check(&mut tx, sealer, id, form.change)
         .await
         .map_err(to_graphql)?;
     if let Some(children) = &form.children {
         let current = store::children_for_update(&mut tx, id)
             .await
             .map_err(to_graphql)?;
-        regroup(&mut tx, vault, id, (&current, children)).await?;
+        regroup(&mut tx, sealer, id, (&current, children)).await?;
     }
     let extras = Extras {
         sealed: form.sealed,
@@ -173,7 +183,10 @@ pub(super) async fn update(ctx: &Context<'_>, id: &ID, input: UpdateShape) -> Re
         rotated: form.rotated,
     };
     trail
-        .write(&mut tx, trail::updated(&before, &after, &device, &extras))
+        .write(
+            &mut tx,
+            trail::updated(&before, &after, &device.name, &extras),
+        )
         .await
         .map_err(internal)?;
     commit(tx).await?;

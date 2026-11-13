@@ -15,8 +15,11 @@ use super::{
     harness::{error_json, schema_for, schema_with_bus, validation_fields, vault, with_variables},
     leak::{assert_absent, captured},
 };
+use crate::hub::host_of;
 
 pub const PVE_01: &str = "0190a000-0000-7000-8002-000000000001";
+/// PVE-01's host in the fixture, which its stored credentials are bound to (SEC-011).
+pub const PVE_01_HOST: &str = "pve-01.home.lan";
 const UNKNOWN: &str = "0190a000-0000-7000-8002-0000000000ff";
 const PASSWORD: &str = "hunter2-correct-horse-battery";
 const KEY: &str = "-----BEGIN OPENSSH PRIVATE KEY-----\nb3BlbnNzaC1rZXktdjEthrowawaybody\n-----END OPENSSH PRIVATE KEY-----\n";
@@ -49,7 +52,8 @@ fn device(text: &str) -> DeviceId {
 pub async fn store_password(pool: &PgPool, id: &str, password: &str) {
     let secret = SshSecret::Password(Secret::from(password.to_owned()));
     let mut conn = pool.acquire().await.unwrap();
-    store_ssh(&mut conn, &vault(), device(id), secret)
+    let host = host_of(pool, device(id)).await;
+    store_ssh(&mut conn, &vault(), (device(id), &host), secret)
         .await
         .unwrap();
 }
@@ -151,7 +155,7 @@ fixture_test! {
             json!({ "id": PVE_01, "credential": private_key(Some(PASSPHRASE)) })).await;
         assert!(response.errors.is_empty(), "{:?}", response.errors);
         let Some(SshSecret::PrivateKey { key, passphrase: Some(passphrase) }) =
-            load_ssh(&pool, &vault(), device(PVE_01)).await.unwrap()
+            load_ssh(&pool, &vault(), (device(PVE_01), PVE_01_HOST)).await.unwrap()
         else {
             panic!("a key with a passphrase");
         };
@@ -171,7 +175,7 @@ fixture_test! {
             json!({ "id": PVE_01, "credential": { "password": PASSWORD } })).await;
         assert!(response.errors.is_empty(), "{:?}", response.errors);
         let Some(SshSecret::Password(password)) =
-            load_ssh(&pool, &vault(), device(PVE_01)).await.unwrap()
+            load_ssh(&pool, &vault(), (device(PVE_01), PVE_01_HOST)).await.unwrap()
         else {
             panic!("a password");
         };
@@ -192,7 +196,7 @@ fixture_test! {
             assert_eq!(error["extensions"]["code"], "INTERNAL", "{error}");
         }
         let Some(SshSecret::Password(password)) =
-            load_ssh(&pool, &vault(), device(PVE_01)).await.unwrap()
+            load_ssh(&pool, &vault(), (device(PVE_01), PVE_01_HOST)).await.unwrap()
         else {
             panic!("the earlier password");
         };

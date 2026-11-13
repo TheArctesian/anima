@@ -12,7 +12,7 @@ use anima_hub::{
 use sqlx::{Connection as _, PgPool};
 
 use super::{
-    DOCKER_HOST, PVE_01, beat, create, database_now, device, icmp, new_check, record, vault,
+    DOCKER_HOST, PVE_01, beat, create, database_now, device, icmp, new_check, record, sealer, vault,
 };
 
 macro_rules! devices_test {
@@ -46,12 +46,12 @@ fn fields(error: Error) -> Vec<&'static str> {
 
 async fn try_create(pool: &PgPool, new: NewCheck) -> Result<Check, Error> {
     let mut conn = pool.acquire().await.unwrap();
-    checks::create_check(&mut conn, &vault(), new).await
+    checks::create_check(&mut conn, sealer(&vault()), new).await
 }
 
 async fn update(pool: &PgPool, id: CheckId, change: CheckChange) -> Result<Check, Error> {
     let mut conn = pool.acquire().await.unwrap();
-    checks::update_check(&mut conn, &vault(), id, change).await
+    checks::update_check(&mut conn, sealer(&vault()), id, change).await
 }
 
 fn with_settings(settings: CheckSettings) -> NewCheck {

@@ -7,6 +7,7 @@ mod accept;
 mod connection_test;
 mod deny_list;
 mod leak;
+mod moved;
 mod server;
 
 use anima_hub::{
@@ -25,6 +26,7 @@ use super::{
     harness::{TestSchema, schema_at, signed_in_until, vault},
     now,
 };
+use crate::hub::host_of;
 
 pub const TEST: &str = "mutation($input: ConnectionTestInput!) { testConnection(input: $input) \
                         { reachable authenticated hostKey { algorithm fingerprintSha256 \
@@ -81,7 +83,8 @@ pub async fn point_at(pool: &PgPool, server: &SshServer) {
 pub async fn store_credential(pool: &PgPool, secret: SshSecret) {
     let device: DeviceId = PVE_01.parse().unwrap();
     let mut conn = pool.acquire().await.unwrap();
-    store_ssh(&mut conn, &vault(), device, secret)
+    let host = host_of(pool, device).await;
+    store_ssh(&mut conn, &vault(), (device, &host), secret)
         .await
         .unwrap();
 }

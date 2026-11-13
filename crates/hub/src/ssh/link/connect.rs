@@ -93,17 +93,21 @@ async fn reach(policy: &AddressPolicy, device: &Device) -> Result<TcpStream, Err
     Err(Error::Unreachable)
 }
 
-/// Signs in as the device's user with its stored credential. The decrypted secret is
-/// dropped, its bytes zeroed, before this returns.
+/// Signs in as the device's user with its stored credential, opened only for the host this
+/// link resolved (SEC-011). The decrypted secret is dropped, its bytes zeroed, before this
+/// returns.
 async fn sign_in(
     db: &PgPool,
     vault: &credentials::Vault,
     device: &Device,
     handle: &mut Handle<Observer>,
 ) -> Result<(), Error> {
-    let secret = credentials::load_ssh(db, vault, device.id)
+    let secret = credentials::load_ssh(db, vault, (device.id, &device.host))
         .await
-        .map_err(Error::Credentials)?
+        .map_err(|error| match error {
+            credentials::Error::EnteredForOtherHost => Error::CredentialForOtherHost,
+            other => Error::Credentials(other),
+        })?
         .ok_or(Error::NoCredential)?;
     let signed_in = ssh::authenticate(handle, &device.ssh.username, &secret).await;
     drop(secret);

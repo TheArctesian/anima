@@ -143,7 +143,7 @@ pub(super) struct Bench {
 
 /// Turns RDP (NLA on `rdp_port`, user `ops` in `LAB`) and VNC (user `viewer`) on for
 /// `docker-host`, accepts the RDP server certificate whose fingerprint is `accepted` and
-/// stores both passwords.
+/// stores both passwords, bound to loopback, where the bench moves the device (SEC-011).
 pub(super) async fn desktop_ready(pool: &PgPool, vault: &Vault, rdp_port: u16, accepted: &str) {
     add_operator(pool).await;
     sqlx::query(
@@ -180,10 +180,29 @@ pub(super) async fn desktop_ready(pool: &PgPool, vault: &Vault, rdp_port: u16, a
         (PasswordKind::Vnc, VNC_PASSWORD),
     ] {
         let secret = Secret::from(password.to_owned());
-        credentials::store_password(&mut conn, vault, docker_host(), kind, secret)
+        credentials::store_password(&mut conn, vault, (docker_host(), LOOPBACK), (kind, secret))
             .await
             .unwrap();
     }
+}
+
+/// Stores `docker-host`'s password of `kind` again, the same text, bound to `host`, as the
+/// operator does after changing the device's host (SEC-011).
+pub(super) async fn enter_again(pool: &PgPool, bench: &Bench, kind: PasswordKind, host: &str) {
+    let text = match kind {
+        PasswordKind::Rdp => PASSWORD,
+        PasswordKind::Vnc => VNC_PASSWORD,
+    };
+    let mut conn = pool.acquire().await.unwrap();
+    let password = (kind, Secret::from(text.to_owned()));
+    credentials::store_password(
+        &mut conn,
+        &bench.route.vault,
+        (docker_host(), host),
+        password,
+    )
+    .await
+    .unwrap();
 }
 
 /// The session a client asks for on `docker-host` over `protocol`.
