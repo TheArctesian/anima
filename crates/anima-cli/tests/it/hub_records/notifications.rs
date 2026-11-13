@@ -1,5 +1,5 @@
 //! `anima notify` against the scripted hub (NOT-001..007, CMD-024, CMD-025): the shared fixtures;
-//! the tests are in `channels` and `settings`.
+//! the tests are in `channels`, `channel_test` and `settings`.
 
 use serde_json::{Value, json};
 
@@ -63,5 +63,6 @@ pub fn webhook_document() -> String {
     .to_string()
 }
 
+mod channel_test;
 mod channels;
 mod settings;
