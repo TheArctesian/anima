@@ -1,0 +1,16 @@
+# `anima device update`: the device after the change.
+mutation DeviceUpdate($id: ID!, $input: UpdateDeviceInput!) {
+  updateDevice(id: $id, input: $input) {
+    id
+    name
+    host
+    kind
+    os
+    tags
+    status
+    site {
+      id
+      name
+    }
+  }
+}

@@ -1,0 +1,21 @@
+# `anima web list`: a device's web interfaces and the suggestions waiting for an answer.
+query WebList($id: ID!) {
+  device(id: $id) {
+    id
+    name
+    webInterfaces {
+      id
+      deviceId
+      label
+      url
+      openIn
+      pinnedFingerprintSha256
+      pinnedAt
+    }
+    webInterfaceSuggestions {
+      checkId
+      url
+      label
+    }
+  }
+}

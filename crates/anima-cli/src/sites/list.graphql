@@ -1,0 +1,12 @@
+# `anima site list`.
+query SiteList {
+  sites {
+    id
+    name
+    subnet
+    wakeRelay {
+      id
+      name
+    }
+  }
+}

@@ -1,0 +1,9 @@
+# `anima agent revoke`: the source stays AGENT, shown as stale, until the operator changes it.
+mutation AgentRevoke($deviceId: ID!) {
+  revokeAgentToken(deviceId: $deviceId) {
+    id
+    name
+    metricsSource
+    metricsStale
+  }
+}

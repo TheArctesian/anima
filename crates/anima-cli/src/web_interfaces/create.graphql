@@ -1,0 +1,12 @@
+# `anima web create`.
+mutation WebCreate($deviceId: ID!, $input: WebInterfaceInput!) {
+  createWebInterface(deviceId: $deviceId, input: $input) {
+    id
+    deviceId
+    label
+    url
+    openIn
+    pinnedFingerprintSha256
+    pinnedAt
+  }
+}

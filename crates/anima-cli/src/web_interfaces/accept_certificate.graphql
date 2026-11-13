@@ -1,0 +1,13 @@
+# `anima web accept-certificate`: pins the certificate; the hub answers CONFLICT when the
+# fingerprint is not the one it saw (WEB-008).
+mutation WebCertificateAccept($id: ID!, $fingerprintSha256: String!) {
+  acceptWebCertificate(id: $id, fingerprintSha256: $fingerprintSha256) {
+    id
+    deviceId
+    label
+    url
+    openIn
+    pinnedFingerprintSha256
+    pinnedAt
+  }
+}

@@ -145,7 +145,10 @@ pub async fn fetch(
 }
 
 /// The ID of the site `site` names: an ID as it is, or the site with exactly that name.
-async fn site_id(hub: &Hub, site: &str) -> Result<String, Failure> {
+///
+/// # Errors
+/// [`Failure::NotFound`] when no site has the name; the hub's refusal.
+pub async fn site_id(hub: &Hub, site: &str) -> Result<String, Failure> {
     if uuid::Uuid::parse_str(site).is_ok() {
         return Ok(site.to_owned());
     }

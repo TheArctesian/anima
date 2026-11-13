@@ -37,7 +37,7 @@ enum Command {
         #[command(subcommand)]
         command: contexts::ContextCommand,
     },
-    /// Devices (list, get).
+    /// Devices (list, get, create, update, delete, wake, test, metrics, uptime, credential, trust).
     Device {
         #[command(subcommand)]
         command: devices::DeviceCommand,
@@ -92,6 +92,26 @@ enum Command {
         #[command(subcommand)]
         command: keys::KeyCommand,
     },
+    /// Sites (list, create, set-wake-relay).
+    Site {
+        #[command(subcommand)]
+        command: crate::sites::SiteCommand,
+    },
+    /// Tags (list).
+    Tag {
+        #[command(subcommand)]
+        command: crate::tags::TagCommand,
+    },
+    /// Web interfaces of devices (list, create, update, delete, suggestion, accept-certificate).
+    Web {
+        #[command(subcommand)]
+        command: crate::web_interfaces::WebCommand,
+    },
+    /// Metrics agents (status, enrol, revoke).
+    Agent {
+        #[command(subcommand)]
+        command: crate::agents::AgentCommand,
+    },
     /// Send a GraphQL document and print the hub's answer.
     Api(api::ApiArgs),
     /// Print shell completion.
@@ -114,6 +134,10 @@ impl Command {
             Self::Notify { command } => command.run(invocation).await,
             Self::Retention { command } => command.run(invocation).await,
             Self::Key { command } => command.run(invocation).await,
+            Self::Site { command } => command.run(invocation).await,
+            Self::Tag { command } => command.run(invocation).await,
+            Self::Web { command } => command.run(invocation).await,
+            Self::Agent { command } => command.run(invocation).await,
             Self::Api(args) => args.run(invocation).await,
             Self::Completion { shell } => {
                 let mut command = Cli::command();

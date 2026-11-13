@@ -3,10 +3,14 @@
 //!
 //! One module for each noun (`devices`); `basics` holds the commands every noun relies on.
 
+mod agents;
 mod basics;
 mod builders;
 mod checks;
 mod coverage;
+mod device_changes;
+mod device_secrets;
+mod device_trust;
 mod devices;
 mod events;
 mod keys;
@@ -15,4 +19,6 @@ mod maintenance;
 mod notifications;
 mod releases;
 mod retention;
+mod sites;
 mod vpn;
+mod web_interfaces;
