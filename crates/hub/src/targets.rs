@@ -37,10 +37,11 @@ impl AddressPolicy {
 
     /// Also allows plain loopback (`127.0.0.0/8` and `::1` as written, not an IPv6 form that
     /// carries a loopback address), for the tests that reach local listeners only. The deny
-    /// list still wins.
+    /// list still wins. Public for the command line's end-to-end tests, whose SSH device
+    /// listens on loopback and is reached through `/files` (`test-support` only).
     #[cfg(any(test, feature = "test-support"))]
     #[must_use]
-    pub(crate) fn allowing_loopback(mut self) -> Self {
+    pub fn allowing_loopback(mut self) -> Self {
         self.allow_loopback = true;
         self
     }

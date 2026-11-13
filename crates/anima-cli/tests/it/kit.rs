@@ -48,16 +48,23 @@ impl Anima {
         self.run_with_input(args, "").await
     }
 
-    /// Runs with `input` on standard input, which is a pipe, never a terminal.
-    pub async fn run_with_input(&self, args: &[&str], input: &str) -> Outcome {
-        let mut command = Command::new(env!("CARGO_BIN_EXE_anima"));
+    /// `program` with this computer's clean environment; no standard stream is set.
+    pub fn command(&self, program: &str) -> Command {
+        let mut command = Command::new(program);
         command
-            .args(args)
             .env_clear()
             .env("HOME", self.home.path())
             .env("XDG_CONFIG_HOME", self.home.path().join("config"))
             .env("ANIMA_TOKEN_STORE", "file")
-            .envs(self.variables.iter().map(|(name, value)| (name, value)))
+            .envs(self.variables.iter().map(|(name, value)| (name, value)));
+        command
+    }
+
+    /// Runs with `input` on standard input, which is a pipe, never a terminal.
+    pub async fn run_with_input(&self, args: &[&str], input: &str) -> Outcome {
+        let mut command = self.command(env!("CARGO_BIN_EXE_anima"));
+        command
+            .args(args)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
