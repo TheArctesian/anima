@@ -4,7 +4,7 @@ From: a side chat with the operator on 2026-11-13, sent to the planning session.
 Status: the operator decided the six points in "Decision" (OD-W11) and the points in "Decision
 on the proposals" (OD-W12). Nothing is built.
 Map: [work-plan.md](../../work-plan.md), categories See and Use, decision OD-W11.
-Identifiers: PRO-001 to PRO-024. The prefix `PRJ` belongs to the extensions plan and is not
+Identifiers: PRO-001 to PRO-026. The prefix `PRJ` belongs to the extensions plan and is not
 changed here.
 
 ## Problem
@@ -109,6 +109,19 @@ other identifiers keep their text.
   ([other-operators.md](other-operators.md)). The local sign-in stays the root, so that a forge
   that is down or an account that is locked never stops access to the owned machines.
 
+## Builds in the client (operator, 2026-11-13)
+
+The operator's words, from a side chat: "we can embed it in to the UI somehow on the bittom I like
+just above the settings maybe for build running and live sessions".
+
+- **PRO-025.** When builds are jobs of a project, the client must show the builds of a project on
+  the project page, and the release of Anima must start from the Anima project. Then the
+  navigation bar must not have a "Builds" entry. Until then the Builds view stays, because it is
+  the only way to release Anima (BLD-001, BLD-080, UPD-007).
+- **PRO-026.** The navigation bar must have an area at the bottom, above Settings, that shows
+  what runs now: each build that runs and each session that is open. The area must show nothing
+  when nothing runs.
+
 ## Conflicts with text that exists
 
 | Text | Says | This proposal |
@@ -117,6 +130,7 @@ other identifiers keep their text.
 | JOB-001, USE-001 | A job is a container image. Jobs run in containers. | Decided (PRO-011): a job is a container job or a native job on a Mac. JOB-004 comes early and is not only Nix: Nix does not supply Xcode or the macOS SDK. PRO-022 to PRO-024 give the limits of a native job. [jobs.md](jobs.md) has the new text. |
 | [jobs.md](jobs.md), "Fine-tuning becomes the first job type" | C7 is first | Decided: the build is first (PRO-009). |
 | BLD-001 to BLD-082 | The builder builds the Anima desktop application, started from the Builds view | The same machinery, with a project as a parameter. The identifiers stay; the release of Anima becomes one project. |
+| BLD-080, BLD-001, UPD-007, design specification Section 5.3 | A "Builds" navigation entry; a release starts from the Builds view | PRO-025 and PRO-026 replace these when builds are jobs of a project. The design specification is not changed yet. |
 | Design specification, sign-in (SEC-002, NAV-009, the `access` domain) | One sign-in: user name, password, authenticator code | Not changed now. PRO-016 adds methods later and keeps this one as the root. |
 | Work plan tier 3b | "Projects comes early in that order" | Projects moves before the other extensions and gets its own row. |
 
@@ -142,6 +156,11 @@ SDK. Nothing is changed. Put this on issue #1 or make a defect issue.
 
 ## Open points
 
+- The area of PRO-026: does an entry open its build or its session (assumed, not said by the
+  operator), and its order with Reminders, which the extensions plan Section 3.3 also puts at
+  the bottom above Settings.
+- The Builds view is in a redesign on the branch `claude/stoic-blackburn-a88d9b`. The operator
+  decides if that work moves to the build section of the project page.
 - The design of the build user on a Mac (PRO-022): how the agent starts a process as that user,
   and how Xcode gets a signing identity for one job from a keychain that is deleted after it
   (PRO-023). The Developer ID and the updater key have rulings (R-116, R-117); read them before
