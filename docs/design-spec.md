@@ -364,6 +364,7 @@ releases.anima.ing/
 - **BLD-068.** The hub must write the macOS feed for a published macOS job, because every macOS build has Developer ID signing and notarization (BLD-083 to BLD-085; changed by R-116).
 - **BLD-069.** The hub must not write a feed whose version is lower than the published feed of that target. Rollback is a manual act (Section 3.9).
 - **BLD-070.** If a check fails, the job must go to `failed` with the reason. The hub must not write `latest.json`. The older feed stays.
+- **BLD-086.** After a job publishes and `latest.json` is written, the hub must delete from the release bucket the files of every published version of that target that is not among the 3 newest, with each `.sig`, and must never delete the version `latest.json` names. It records each removal, so it does not delete twice. The version stays published, so BLD-069 and D-27 still count it. A delete that fails is logged by its fault word and does not fail the publish; the next publish of the target tries again (R-118).
 
 #### 3.10.5 In the app
 

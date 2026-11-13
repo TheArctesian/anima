@@ -88,6 +88,8 @@ pub struct Store {
     pub no_etag: Option<String>,
     /// Every API call answers 503.
     pub unavailable: bool,
+    /// Every `DELETE` answers 500.
+    pub delete_fails: bool,
 }
 
 pub type Shared = Arc<Mutex<Store>>;
@@ -215,6 +217,9 @@ async fn api(State(store): State<Shared>, request: Request) -> Response {
         Method::PUT => write(&store, &key, &parts.headers, body.to_vec()).await,
         Method::DELETE => {
             let mut store = store.lock().unwrap();
+            if store.delete_fails {
+                return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+            }
             store.objects.remove(&key);
             store.deletes.push(key);
             StatusCode::NO_CONTENT.into_response()

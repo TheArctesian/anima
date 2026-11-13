@@ -36,18 +36,16 @@ async fn bld_086_a_fourth_published_version_removes_the_oldest_versions_objects(
         assert!(publishing.fake.object(&key).is_some(), "{key}");
     }
     assert!(publishing.fake.object(LINUX_FEED).is_some());
-    let removed: Vec<String> = sqlx::query_scalar(
-        "SELECT version FROM builds.jobs WHERE objects_removed_at IS NOT NULL",
-    )
-    .fetch_all(&pool)
-    .await
-    .unwrap();
-    assert_eq!(removed, ["0.1.1"]);
-    let state: String =
-        sqlx::query_scalar("SELECT state FROM builds.jobs WHERE version = '0.1.1'")
-            .fetch_one(&pool)
+    let removed: Vec<String> =
+        sqlx::query_scalar("SELECT version FROM builds.jobs WHERE objects_removed_at IS NOT NULL")
+            .fetch_all(&pool)
             .await
             .unwrap();
+    assert_eq!(removed, ["0.1.1"]);
+    let state: String = sqlx::query_scalar("SELECT state FROM builds.jobs WHERE version = '0.1.1'")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
     assert_eq!(state, "published");
 }
 
@@ -60,17 +58,20 @@ async fn bld_086_a_delete_fault_does_not_fail_the_publish_and_the_next_publish_t
         uploaded_linux(&publishing, version).await;
         assert_eq!(publishing.sweep(ready()).await, 1);
     }
+    publishing.fake.with(|store| store.delete_fails = true);
     let (held, _) = uploaded_linux(&publishing, "0.1.4").await;
-    publishing.fake.with(|store| store.unavailable = true);
-    // The fake answers every request with a fault, so the publish itself is retried; what this
-    // checks is that nothing is marked removed while deletes fail.
-    publishing.sweep(ready()).await;
-    publishing.fake.with(|store| store.unavailable = false);
-    let _ = held;
-    let removed: i64 =
-        sqlx::query_scalar("SELECT count(*) FROM builds.jobs WHERE objects_removed_at IS NOT NULL")
-            .fetch_one(&pool)
-            .await
-            .unwrap();
-    assert_eq!(removed, 0);
+    assert_eq!(publishing.sweep(ready()).await, 1);
+    assert_eq!(publishing.job(&held).await, ("published".to_owned(), None));
+    assert_eq!(removed(&pool).await, 0);
+    publishing.fake.with(|store| store.delete_fails = false);
+    uploaded_linux(&publishing, "0.1.5").await;
+    assert_eq!(publishing.sweep(ready()).await, 1);
+    assert_eq!(removed(&pool).await, 2);
+}
+
+async fn removed(pool: &PgPool) -> i64 {
+    sqlx::query_scalar("SELECT count(*) FROM builds.jobs WHERE objects_removed_at IS NOT NULL")
+        .fetch_one(pool)
+        .await
+        .unwrap()
 }
