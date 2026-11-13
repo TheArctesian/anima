@@ -15,7 +15,7 @@ This document obeys the writing rules in Section 0 of the design specification.
 
 ### 1.1 Purpose
 
-This plan adds 14 extensions to Anima. With the extensions, Anima also keeps a record of the life and work of the operator. The device manager stays the core.
+This plan adds 15 extensions to Anima. With the extensions, Anima also keeps a record of the life and work of the operator. The device manager stays the core.
 
 Anima has one user: the operator. It is not a product for other people.
 
@@ -39,6 +39,7 @@ The "Ideas from" column shows where an idea came from. Anima takes ideas from Au
 | 12 | AI coding sessions | HQ coding sessions, Auracle assistants | 4.12 |
 | 13 | Wardrobe | New | 4.13 |
 | 14 | Library | New, with Auracle reading connectors | 4.14 |
+| 15 | Model gateway | Tailscale Aperture, OpenRouter | 4.15 |
 
 
 ### 1.2 Changes to the design specification
@@ -51,7 +52,8 @@ The extensions change these parts of the design specification. Operator checkpoi
 | 1.4 Out of scope | Remove nothing. Multiple operators stay out of scope. |
 | 5.3 Navigation bar | Add the extension pages (Section 3.3 of this plan). |
 | 5.4 Design principles, Purpose | Each screen helps the operator find a problem, get into a device, or find a fact about their own life. |
-| 6.9 Integrations | Join with extension 5 (Section 4.5). |
+| 4.1 Network (SEC-008) | Add the model gateway routes of the hub. They are available on the VPN only (MGW-001). |
+| 6.9 Integrations | Join with extension 5 (Section 4.5). Add the model use counts to the Prometheus endpoint (MGW-013). |
 | 7 Settings page | Add an Integrations section (Section 4.5). |
 | 13 Repository structure | Add the new domains and the collector (Section 6). |
 
@@ -71,6 +73,9 @@ These terms add to Section 2 of the design specification.
 | Collector | The Anima process on an operator computer that reads local sources. |
 | Sealed | Encrypted at rest with a data key (Section 2.4). |
 | Client-sealed | Encrypted on the client. The hub keeps only the ciphertext. |
+| Secret handle | A text that names one secret and does not contain its value, for example `anima://secrets/global/OPENROUTER_API_KEY` (SCR-011). |
+| Model gateway | The hub function that sends model requests from the operator computers to an upstream and adds the key (Section 4.15). It is not the session gateway (`guacd`). |
+| Upstream | One place that answers model requests: a model provider, OpenRouter, or a model server on an operator device. |
 
 ## 2. Engine (Phase E0)
 
@@ -145,8 +150,8 @@ The hub runs on the Hostinger VPS (OD-9). A VPS breach must not expose the most 
 
 | Class | Data | Protection |
 | --- | --- | --- |
-| A | Secrets, identity documents, recovery codes | Client-sealed. The hub cannot read it. |
-| B | Health, money, messages, location, AI session text | Sealed on the hub with a data key for each extension. |
+| A | Identity documents, recovery codes | Client-sealed. The hub cannot read it. |
+| B | Secrets, health, money, messages, location, AI session text | Sealed on the hub with a data key for each extension. |
 | C | Projects, books, clothes, writing, the people directory, own posts | Database encryption at rest only. |
 
 - **VLT-001.** The vault key for Class A must be in the operating system key store of each client (CLI-003). The hub must never receive it.
@@ -155,6 +160,7 @@ The hub runs on the Hostinger VPS (OD-9). A VPS breach must not expose the most 
 - **VLT-004.** The hub must record a reveal of a Class A record in the audit log. Do not log the value (LOG-007).
 - **VLT-005.** A reveal of a Class A record must ask for the TOTP code again if the last TOTP code is older than 5 minutes.
 - **VLT-006.** Search on sealed text must use a search index that is also sealed, or search on the client. Do not keep plain text copies for search.
+- **VLT-007.** Secrets are Class B, not Class A. The hub must be able to open a secret, because the model gateway adds keys to requests (MGW-003) and each operator computer gets secrets from the hub (SCR-006, SCR-012). The operator accepts that a breach of the hub exposes the secrets. Fast rotation in one place decreases this risk (SCR-014). (operator, 2026-11-13)
 
 ### 2.5 Redaction
 
@@ -240,7 +246,7 @@ The navigation bar has groups. Each group shows only the extensions that are on.
 
 | Group | Items |
 | --- | --- |
-| Infrastructure | Devices, Projects |
+| Infrastructure | Devices, Projects, Model gateway |
 | Life | History, Map, People, Health, Money |
 | Belongings | Library, Wardrobe |
 | Vault | Secrets, Documents |
@@ -349,20 +355,32 @@ This part comes after the other extensions. The operator keeps most of it by han
 
 ### 4.4 Secrets
 
-**Purpose.** Keep project secrets and personal secrets, and put them into a command. **Class:** A.
+**Purpose.** Keep global secrets and project secrets on the hub, and give them to a command, to a pipe or to the model gateway. **Class:** B (VLT-007).
 
 This is not a password manager for websites. Use a dedicated password manager for that.
 
-**Data.** `secret` (project or "personal", name, environment, client-sealed value, rotation days, last rotation), `secret_access` (audit).
+**Data.** `secret` (scope, project, environment, name, sealed value, rotation days, last rotation), `secret_access` (audit).
 
-- **SCR-001.** The client must seal each value before it sends it to the hub (VLT-001).
-- **SCR-002.** The secret list must show names, environments and rotation status only. A value shows only after the operator selects "Reveal".
+| Scope | Belongs to | Examples | Secret handle |
+| --- | --- | --- | --- |
+| Global | The hub | An OpenRouter key, an Anthropic key | `anima://secrets/global/<name>` |
+| Project | One project and one environment | A database URL, a payment test key | `anima://secrets/<project>/<environment>/<name>` |
+
+- **SCR-001.** The hub must seal each value with the data key of Secrets before it writes the value to the database (VLT-003, VLT-007). The database must not contain a plain text value. (Changed: the value was client-sealed. operator, 2026-11-13)
+- **SCR-002.** The secret list must show names, scopes, environments and rotation status only. A value shows only after the operator selects "Reveal". The hub must record each reveal in the audit log (SCR-007). VLT-005 does not apply to a secret.
 - **SCR-003.** Each secret can have a rotation period. The status values are: OK, Expiring (30 days or fewer), Due (14 days or fewer), Overdue, Unrecorded and Unset.
 - **SCR-004.** The hub must send a reminder 30, 7 and 1 days before a rotation date (Section 4.11).
 - **SCR-005.** The client must compare the secrets of a project with the `.env.example` file of its repository. It must show the missing names and the extra names.
-- **SCR-006.** A command line tool (`anima run <project> --env <environment> -- <command>`) must open the secrets on the client and give them to the command as environment variables. It must not write them to a file.
-- **SCR-007.** The tool must record each use in the audit log: project, environment, names, time and computer. Do not record values.
-- **SCR-008.** The import function must read a `.env` file that the operator selects. The client seals the values. Anima must not read a `.env` file without an operator action.
+- **SCR-006.** A command line tool (`anima run <project> --env <environment> -- <command>`) must get the secrets of the project from the hub and give them to the command as environment variables. It must not write them to a file.
+- **SCR-007.** The hub must record each read of a value in the audit log: scope, project, environment, names, time, computer and actor kind (LOG-012). A read is a reveal, a run, a piped read or a use by the model gateway. Do not record values (LOG-007).
+- **SCR-008.** The import function must read a `.env` file that the operator selects. The client sends the values to the hub, and the hub seals them. Anima must not read a `.env` file without an operator action.
+- **SCR-009.** Each secret must have exactly one scope: global or project. A global secret has no project and no environment. The scope does not change who can read the value. (operator, 2026-11-13)
+- **SCR-010.** When a project has a secret with the same name as a global secret, the project secret must be used for that project. `anima run` and the model gateway (MGW-004) obey this rule.
+- **SCR-011.** Each secret must have a secret handle of the form in the table above. A secret handle contains no value. The hub can show a secret handle in a list, in a log and in an MCP tool result.
+- **SCR-012.** `anima run` must replace each secret handle in the environment of the command with its value. It must not replace a secret handle in an argument, because other processes can read the arguments.
+- **SCR-013.** `anima secrets read <secret handle>` must write the value alone on standard output as one line (CMD-020), so that the operator can pipe it. When standard output is a terminal, the command must refuse and must name the `--reveal` flag. With `--reveal`, it writes the value to the terminal.
+- **SCR-014.** When the operator changes a value, the next run, the next piped read and the next model gateway request must use the new value. No restart is necessary. Thus the operator rotates a key in one place.
+- **SCR-015.** The MCP tools of Secrets must return names, scopes, rotation status and secret handles only. No tool takes a value and no tool returns one (MCP-004). Thus an AI agent can put a secret handle in a command, and it does not see the value.
 
 ### 4.5 Integrations
 
@@ -633,6 +651,43 @@ Goodreads closed its API in 2020. Letterboxd gives its API only to approved appl
 - **LIB-010.** The hub must poll the Goodreads and Letterboxd RSS feeds each 6 hours. An RSS entry that matches an existing book or film must update it. It must not add a copy.
 - **LIB-011.** Each watched date of a film must make a timeline entry with the category "media". A film on physical media (DVD, Blu-ray) can have a place, as LIB-004.
 
+### 4.15 Model gateway
+
+**Purpose.** Give each operator computer one address for AI model requests. The keys stay on the hub. **Class:** C. The hub keeps counts only, not the text of a request.
+
+The operator installs Anima on a computer (INS-001), and that computer can then use each model that the operator has, with no key on the computer. The idea comes from Tailscale Aperture and from OpenRouter. Anima builds this function in the hub. It does not use those products as the gateway.
+
+**Upstreams.**
+
+| Upstream | Method | Key |
+| --- | --- | --- |
+| Model provider (Anthropic, OpenAI) | The API of the provider | A global secret |
+| OpenRouter | OpenAI-compatible API | A global secret. One key gives many models. |
+| Local model server on an operator device (llama.cpp, Ollama, vLLM) | OpenAI-compatible API on the VPN | None |
+| Subscription of the operator (for example a Claude plan in Claude Code) | Passthrough (MGW-008) | The authorization that the program sends |
+
+A model that the operator tuned with Unsloth is a local model. A local model server gives it to the gateway. Unsloth is not an upstream.
+
+**Data.** `upstream` (name, kind, base address, device, secret handle, passthrough flag, state), `model_use` (time, device, project, upstream, model, input tokens, output tokens, cost, duration, status), `model_budget` (device, amount, period).
+
+- **MGW-001.** The hub must serve two routes for model requests: one with the form of the Anthropic Messages API and one with the form of the OpenAI API. The routes must be available on the VPN only (SEC-008).
+- **MGW-002.** The hub must identify the caller by its VPN address and must find the device with that address. The hub must refuse a request from an address that is not a device of the operator. The caller sends no key of its own.
+- **MGW-003.** The hub must remove the placeholder key that a program sends and must add the key of the upstream. The key is a global secret (SCR-009). The hub must record the use (SCR-007).
+- **MGW-004.** A request can name a project in the header `X-Anima-Project`. Then the hub must use the project secret with the same name when the project has one (SCR-010).
+- **MGW-005.** The hub must not send an upstream key to a caller. The key must not be in a log, an error or a metric (LOG-007).
+- **MGW-006.** The hub must send each part of a streamed answer to the caller when it arrives. It must not hold the answer until the end.
+- **MGW-007.** A model name has the form `<upstream>/<model>`, for example `openrouter/<model>` or `anthropic/<model>`. The hub selects the upstream from the first part. The operator can give a short name to a model.
+- **MGW-008.** When an upstream has the passthrough flag and the request has its own authorization, the hub must send that authorization without change and must not store it. The hub must record the use as for other requests.
+- **MGW-009.** The operator must be able to add a local model server as an upstream: a device and a port that answer the OpenAI API. The hub must read the list of models from the server.
+- **MGW-010.** A request for a local upstream must not go through the hub when the hub is on the VPS. It must go from the operator computer to the device with the model, on the VPN. The hub still gives the route and records the use (OD-E11).
+- **MGW-011.** The operator can set a budget for a device: an amount in USD for each day or each month. When the device is at its budget, the hub must refuse the request with HTTP 429 and a message that names the budget.
+- **MGW-012.** The hub must record each request in `model_use`. It must not keep the text of the request or of the answer. The AI coding sessions extension keeps session text (Section 4.12).
+- **MGW-013.** The Prometheus endpoint (spec Section 6.9) must give the token counts and the cost, by device, upstream and model.
+- **MGW-014.** The hub must calculate the cost from the token counts and a price for each model. When the upstream gives the cost in its answer (OpenRouter), the hub must use that value. A local upstream has a cost of zero. A passthrough request has no cost value.
+- **MGW-015.** `anima gateway setup` must set the gateway address and a placeholder key in the configuration of Claude Code and Codex on this computer. It must show each change before it writes it. The desktop application must offer the same function after the installation.
+- **MGW-016.** The function must have its commands and its MCP tools (CMD-030): list the upstreams and their state, show the use, show and set the budgets. No tool takes or returns a key (MCP-004).
+- **MGW-017.** The page must show: each upstream with its state, the use by device, by model and by day, the cost for the month, and each budget with the amount that is used.
+
 ## 5. Build order: engine first, then one workflow per extension
 
 The extensions start only when the current device manager build is finished: Phase 1 is accepted, `phase-1` is merged into `main`, and the macOS and Linux desktop applications are built.
@@ -717,12 +772,13 @@ Each extension owns only its paths. It adds one line to each registry of the eng
 | XP-12 | #23 | Wardrobe | 4.13 | `life/belongings/wardrobe/` | `routes/wardrobe/`, `$lib/wardrobe/` | — | 3200–3299 | — |
 | XP-13 | #24 | Library | 4.14 | `life/belongings/library/` | `routes/library/`, `$lib/library/` | `providers/{open_library,goodreads,letterboxd,kindle}/` | 3300–3399 | — |
 | XP-14 | #25 | Project design and map | 4.2.1 | `work/projects/design/` | `$lib/projects/design/`, `$lib/projects/map/` | — | 3400–3499 | Needs XP-02 first |
+| XP-15 | none | Model gateway | 4.15 | `fleet/model_gateway/` | `routes/model-gateway/`, `$lib/model-gateway/` | `crates/anima-cli/` | 3500–3599 | security (keys, MGW-005). Needs XP-04 first |
 
 - **XP-001.** An extension workflow must not change an engine path or a path of a different extension. If it needs an engine change, it stops and reports a contract change request to the operator.
 - **XP-002.** Each workflow uses the task loop of the implementation plan (Section 3.1): plan, build, gate, review, fix. A task with a security tag needs the security reviewer (AGT-004).
 - **XP-003.** Each workflow works in its own worktree on the branch `xp/NN-slug`. It merges into `main` only after the gates pass and the operator confirms.
-- **XP-004.** Only XP-14 depends on a different extension (XP-02). All other workflows can run in any order and at the same time.
-- **XP-005.** Suggested order when the operator runs them one at a time: XP-11, XP-02, XP-01, XP-07, XP-10, XP-13, XP-12, XP-05, XP-08, XP-06, XP-04, XP-09, XP-14. Low-risk developer data first; the vault-heavy extensions after the engine has some use.
+- **XP-004.** Only XP-14 and XP-15 depend on a different extension (XP-02 and XP-04). All other workflows can run in any order and at the same time.
+- **XP-005.** Suggested order when the operator runs them one at a time: XP-11, XP-02, XP-01, XP-07, XP-10, XP-13, XP-12, XP-05, XP-08, XP-06, XP-04, XP-15, XP-09, XP-14. Low-risk developer data first; the vault-heavy extensions after the engine has some use.
 
 ### 5.3 Acceptance criteria for each extension
 
@@ -731,7 +787,7 @@ Each extension owns only its paths. It adds one line to each registry of the eng
 | XP-01 | An OwnTracks or Overland fix and a Google Timeline export show as trails and visits. A gap shows as a dashed line. No tile request leaves the network. |
 | XP-02 | Each GitHub project shows its Vercel, Neon and Hostinger deployments with their state. A test proves that the clients of these services refuse a write request. PostHog and Vercel analytics show where they exist. |
 | XP-03 | The operator writes, saves and restores a draft. A save from a second client with an old revision is refused. The Obsidian vault shows read-only. |
-| XP-04 | `anima run` gives secrets to a command. A test proves that the hub database has no plain text value. Each reveal and each run is in the audit log. |
+| XP-04 | `anima run` gives secrets to a command and replaces a secret handle. `anima secrets read` writes a value to a pipe and refuses a terminal without `--reveal`. A project secret is used before a global secret with the same name. A test proves that the hub database has no plain text value. Each reveal, run and piped read is in the audit log. |
 | XP-05 | Contacts, iMessage, Instagram and X accounts of one person show as one person. A display name alone never joins two accounts. |
 | XP-06 | All 11 accounts show in net worth, with the API sources synced and each statement parser tested with a redacted statement. Overlapping statements make no duplicates. |
 | XP-07 | One week shows entries from at least three extensions. Hours with no data show as "Unknown". |
@@ -742,6 +798,7 @@ Each extension owns only its paths. It adds one line to each registry of the eng
 | XP-12 | A garment photo gives a cut-out and proposed fields. Moving 10 garments to a different place is one action. |
 | XP-13 | A barcode, a shelf photo, a Goodreads CSV and the Letterboxd RSS feed add books and films without duplicates. |
 | XP-14 | A project shows its design tokens from a repository file and a hand-drawn map with live state on linked nodes. |
+| XP-15 | Claude Code on a computer with no key gets a streamed answer through the gateway from a provider, from OpenRouter and from a local model server. A test proves that no upstream key is in an answer or a log. A device at its budget gets HTTP 429. Each request shows in the use counts. |
 
 ### 5.4 Seam tasks
 
@@ -757,7 +814,7 @@ A seam joins two finished extensions, for example the AI sessions of a project o
 | Photo location as a visit | XP-05 with XP-01 (PPL-012) |
 
 - **PH-E-001.** A security review (Opus) must accept the vault design before XP-04, XP-06 and XP-09 start.
-- **PH-E-002.** The vault review must include a test that the hub cannot read a Class A value.
+- **PH-E-002.** The vault review must include a test that the hub cannot read a Class A value. Secrets are Class B (VLT-007), so this test applies to XP-09 and not to XP-04.
 - **PH-E-003.** The Phase 1 rule applies: do not start the web and iOS work until Phase 2 is complete.
 
 ## 6. Repository changes
@@ -767,7 +824,7 @@ New hub domains, each with the shape of Section 13 of the spec:
 ```text
 crates/
 ├── hub/src/
-│   ├── fleet/            The device manager domains (devices, checks, maintenance, metrics, sessions, ...)
+│   ├── fleet/            The device manager domains (devices, checks, maintenance, metrics, sessions, ...); XP: model_gateway/
 │   ├── engine/           E0: sources/, timeline/, places/, files/, links/, reminders/, extensions/
 │   ├── vault/            E0: data keys and sealing; XP: secrets/, identity_documents/
 │   ├── life/             XP: locations/, people/, money/, history/, health/, belongings/
@@ -775,7 +832,7 @@ crates/
 ├── providers/            Pure provider normalisers, one module for each source (XP-owned)
 ├── redaction/            The redaction function (Section 2.5, E0)
 ├── collector/            anima-collector binary (E0) and its parsers (XP-owned modules)
-└── anima-cli/            The `anima run` command (XP-04)
+└── anima-cli/            The `anima run` and `anima secrets` commands (XP-04); the `anima gateway` commands (XP-15)
 ```
 
 - **REPO-E-001.** Without groups, the hub `src/` folder has more than 12 domains (REPO-005). As the first task of E0, group the domains under the parent nouns above. This is OD-E5.
@@ -796,6 +853,8 @@ crates/
 | OD-E8 | Obsidian two-way sync | Read-only in this version (WRT-005). Decide after XP-03. |
 | OD-E9 | People sources | Decided: macOS Contacts, iMessage, Instagram, X and GitHub. Bluesky is not needed. |
 | OD-E10 | Price source for holdings that the source does not price | IBKR, Coinbase and Gemini give their own prices. For MetaMask tokens and the SimpleFIN holdings, select one free price API. |
+| OD-E11 | Path for a request to a local upstream (MGW-010). A program such as Claude Code has one base address, so it cannot select the path itself. | The `anima` program on each computer listens on the loopback address. It sends a request for a local upstream directly to the device on the VPN, sends all other requests to the hub, and reports the use to the hub. Not verified: the added work and the failure cases. Alternative: all requests go through the hub, and local requests are slower. |
+| OD-E12 | Secrets on the hub (VLT-007) | Decided: the hub seals and can open each secret. One class of secret with two scopes, global and project (SCR-009). Each read is in the audit log; a piped read refuses a terminal. No other limit. (operator, 2026-11-13) |
 
 ## 8. Ideas taken from Auracle and HQ
 
@@ -866,6 +925,8 @@ Anima is a personal application for one operator. Register each developer applic
 | SimpleFIN Bridge | bridge.simplefin.org | Money (BofA, Chase, Robinhood, Acorns) | Paid (about 15 USD each year). Connect each institution in the Bridge. Give Anima one setup token. |
 | MetaMask | Copy the public addresses only | Money | No key. Never give a seed phrase or a private key. |
 | Garmin Connect | Your Garmin email and password, one time | Health | The bridge keeps only the tokens (GAR-004). MFA is supported. |
+| OpenRouter | openrouter.ai > Keys | Model gateway | Keep it as a global secret. Set a credit limit on the key. |
+| Anthropic, OpenAI | The console of each provider > API keys | Model gateway | Only for the providers that the operator uses (EXT-000). Keep each key as a global secret. |
 
 ### 9.4 Exports to upload (no key)
 
@@ -895,3 +956,4 @@ Anima is a personal application for one operator. Register each developer applic
 | Apple Developer Program | 99 USD each year | Only for the iOS client (Phase 5) and for signed macOS releases |
 | Hosted vision model | Pay for use | Only if OD-E4 is yes |
 | SimpleFIN Bridge | About 15 USD each year | For the US accounts (OD-E3) |
+| OpenRouter and model providers | Pay for use | For the model gateway (Section 4.15). A local model has no cost. |

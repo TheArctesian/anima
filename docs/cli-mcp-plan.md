@@ -149,7 +149,11 @@ Not in the command line, with the reason:
   `anima device wake` still apply.
 - The appearance settings, the updater and the builder pipeline of the desktop application: they
   are functions of that application, not of the hub.
-- `anima run` (SCR-006): it needs the Secrets extension (#15). The command name is reserved.
+- `anima run` (SCR-006) and `anima secrets` (SCR-013): they need the Secrets extension (#15). The
+  command names are reserved. `anima secrets read` prints a value, so it has no MCP tool; the
+  Secrets tools return secret handles only (SCR-015, MCP-004).
+- `anima gateway` (MGW-015, MGW-016): it needs the Model gateway extension (extensions plan,
+  Section 4.15). The command name is reserved.
 - The operator password and the authenticator setup: they stay on the hub host
   (`anima-hub operator`).
 
