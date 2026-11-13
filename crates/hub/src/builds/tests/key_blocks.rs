@@ -152,3 +152,20 @@ fn bld_049_the_updater_secret_key_is_redacted_and_its_public_key_kept() {
     let config = format!("\"pubkey\": \"{public_file}\"");
     assert_eq!(log_lines::clean(&config), config);
 }
+
+/// BLD-049, LOG-007 (T6 security review C-5): a minisign secret key's base64 line printed on
+/// its own, with no comment line before it, is redacted as the client redacts it; a word that
+/// only holds those letters inside it is kept.
+#[test]
+fn bld_049_a_bare_minisign_secret_key_line_is_redacted() {
+    for kdf in [&b"Sc"[..], &[0, 0][..]] {
+        let mut key = b"Ed".to_vec();
+        key.extend_from_slice(kdf);
+        key.extend_from_slice(b"B2");
+        key.extend_from_slice(&[7; 152]);
+        let probe = format!("key {}", STANDARD.encode(&key));
+        assert_eq!(log_lines::clean(&probe), "[redacted]", "{probe}");
+    }
+    let inside = "sha256 0RWRTY0Iy0 ok";
+    assert_eq!(log_lines::clean(inside), inside);
+}

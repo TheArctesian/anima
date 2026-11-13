@@ -35,6 +35,12 @@ const KEY_HEADERS: [&str; 14] = [
 /// (the Tauri updater's `TAURI_SIGNING_PRIVATE_KEY`).
 const MINISIGN_WORD: &str = "dW50cnVzdGVkIGNvbW1lbnQ6";
 
+/// How a minisign secret key's base64 line starts, without its comment line: `Ed`, the KDF
+/// (`Sc` for scrypt, two zero bytes for none) and `B2`, encoded (`EdScB2`, `Ed\0\0B2`). The
+/// client's `redaction.ts` matches the same words. A public key (`Ed` and its key ID) starts with
+/// `RWQ` too, but only a key ID that begins `00 00 42 32` would match.
+const MINISIGN_SECRET_WORDS: [&str; 2] = ["RWRTY0Iy", "RWQAAEIy"];
+
 /// The base64 characters read to find a minisign key file's comment line: 120 decode to 90
 /// bytes, more than the comment line takes.
 const MINISIGN_COMMENT_CHARS: usize = 120;
@@ -73,9 +79,10 @@ pub(super) fn is_material(line: &str) -> bool {
 }
 
 /// Whether `text` is secret as a whole: it opens a private key block (a one-line key holds
-/// its body on that line), or holds a minisign secret key file as one word.
+/// its body on that line), holds a minisign secret key file as one word, or holds a minisign
+/// secret key's base64 line on its own.
 pub(super) fn is_secret_text(text: &str) -> bool {
-    opens(text).is_some() || holds_minisign_secret(text)
+    opens(text).is_some() || holds_minisign_secret(text) || holds_minisign_secret_line(text)
 }
 
 /// In a minisign public key's comment line (`untrusted comment: minisign public key: 1E1D…`),
@@ -97,14 +104,25 @@ fn is_base64(byte: u8) -> bool {
     byte.is_ascii_alphanumeric() || matches!(byte, b'+' | b'/' | b'=')
 }
 
+/// Where the base64 words of `text` that start with `prefix` start.
+fn word_starts<'a>(text: &'a str, prefix: &'a str) -> impl Iterator<Item = usize> + 'a {
+    text.match_indices(prefix)
+        .map(|(start, _)| start)
+        .filter(|&start| start == 0 || !is_base64(text.as_bytes()[start - 1]))
+}
+
+/// Whether `text` holds a word that starts like a minisign secret key's base64 line.
+fn holds_minisign_secret_line(text: &str) -> bool {
+    MINISIGN_SECRET_WORDS
+        .iter()
+        .any(|word| word_starts(text, word).next().is_some())
+}
+
 /// Whether `text` holds a minisign key file written as one base64 word whose comment line does
 /// not name a public key. A word that does not decode counts as secret.
 fn holds_minisign_secret(text: &str) -> bool {
     let bytes = text.as_bytes();
-    text.match_indices(MINISIGN_WORD).any(|(start, _)| {
-        if start > 0 && is_base64(bytes[start - 1]) {
-            return false;
-        }
+    word_starts(text, MINISIGN_WORD).any(|start| {
         let len = bytes[start..].iter().take_while(|b| is_base64(**b)).count();
         let read = if len > MINISIGN_COMMENT_CHARS {
             MINISIGN_COMMENT_CHARS
