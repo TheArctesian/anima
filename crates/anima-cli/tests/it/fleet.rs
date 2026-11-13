@@ -3,6 +3,7 @@
 mod agents;
 mod checks;
 mod device_changes;
+mod device_paging;
 mod device_secrets;
 mod device_trust;
 pub mod devices;
