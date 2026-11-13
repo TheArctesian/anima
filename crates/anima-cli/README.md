@@ -1,0 +1,57 @@
+# anima-cli
+
+The `anima` command line (docs/cli-mcp-plan.md). `hub/` is the only network code (CMD-003);
+`devices/` is the worked example of a noun. Copy it.
+
+## Add a noun (for example `checks/`)
+
+1. `src/checks.rs`: `pub mod documents; pub mod list; ...` and `pub enum CheckCommand`
+   (`#[derive(Debug, clap::Subcommand)]`) with `pub async fn run(self, invocation: &Invocation)
+   -> Result<(), Failure>` that matches each verb to its `Args::run`.
+2. `src/checks/<verb>.graphql`: one operation per file, named `Check<Verb>` (`query CheckGet(...)`).
+   Select only what the command prints; never a secret field.
+3. `src/checks/documents.rs`: one struct per file, as in `devices/documents.rs`:
+   `#[derive(GraphQLQuery)] #[graphql(schema_path = "../../contracts/schema.graphql",
+   query_path = "src/checks/get.graphql", response_derives = "Debug, Serialize",
+   variables_derives = "Debug", skip_serializing_none)] pub struct CheckGet;`
+   The build fails when the document does not agree with K1 (CMD-004). Import the custom
+   scalars the document uses from `crate::hub::scalars`. A document whose variables or answer
+   hold a secret derives neither `Debug` nor `Serialize` (see `auth/documents.rs`).
+4. `src/checks/<verb>.rs`: `#[derive(Debug, clap::Args)] pub struct GetArgs` and its `run`:
+   `let hub = invocation.hub()?;` then `hub.run::<CheckGet>(check_get::Variables { .. }).await?`.
+5. `src/lib.rs`: one `pub mod checks;` line. `src/cli.rs`: one `Command` variant
+   (`Check { #[command(subcommand)] command: checks::CheckCommand }`) and its arm in
+   `Command::run`. Nothing else in shared files changes.
+6. `tests/it/coverage/k1_exceptions.rs`: delete the entries your documents now use. The
+   coverage test (CMD-031) fails until you do, and for any K1 root field neither used nor
+   excepted.
+
+## Print
+
+`invocation.output.data(&value, table)?` prints `value` as JSON with `--json` (K1 field names,
+from the generated `Serialize`) or else the `Table` that `table(&value)` builds: `Table::new`
+with column names and `row`s for a list, `Table::record` with `pair`s for one thing.
+`Cell::status` colours a K1 `Status`; `output::text::enum_name` gives an enum's K1 name. Cells
+are cleaned of control characters. Messages for people go through `invocation.output.note`
+(standard error, silent with `--json`). Lists take `--limit`, `--after` and `--all`
+(`devices/list.rs`, CMD-026).
+
+## Fail
+
+Return `Failure`; never print an error yourself. A hub error becomes `Failure::Hub` through `?`
+and keeps its K7 code; `failure.rs` maps codes to exit codes (CMD-021: NOT_FOUND 3,
+UNAUTHENTICATED 4, FORBIDDEN 5, CONFLICT 6, UNAVAILABLE 7, VALIDATION and usage 2) and hints.
+For your own checks use `Failure::NotFound { message, hint }` or `Failure::Usage`. Ask through
+`invocation.prompter` (`ask`, `ask_secret`, `confirm`): it fails with exit 2 and names the flag
+under `--no-input` (CMD-023). A delete calls `confirm` (`--yes`, CMD-024). A secret comes from
+a prompt, standard input or `--from-file`, never an argument (CMD-025).
+
+## Test
+
+Integration tests run the real program: `tests/it/<noun>.rs` (a folder when it grows), one
+`mod` line in `tests/it/main.rs`; `devices.rs` is the example. `FakeHub::start()` serves `POST /graphql` and answers by operation name
+(`hub.answer("CheckGet", data(json!(..)))` or `refusal("NOT_FOUND", "..")`); `hub.seen()`
+returns what it was sent. `Anima::new().with("ANIMA_TOKEN", ..).run(&[.., "--hub",
+&hub.origin])` returns stdout, stderr and the exit code. Assert on table and `--json` output,
+on exit codes, and that no output holds a token (`assert_never_shows`). Use the K6 fixtures.
+Tests keep tokens in the 0600 file (`ANIMA_TOKEN_STORE=file`), never the key store.
