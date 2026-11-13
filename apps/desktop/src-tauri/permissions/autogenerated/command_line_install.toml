@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-command-line-install"
+description = "Enables the command_line_install command without any pre-configured scope."
+commands.allow = ["command_line_install"]
+
+[[permission]]
+identifier = "deny-command-line-install"
+description = "Denies the command_line_install command without any pre-configured scope."
+commands.deny = ["command_line_install"]

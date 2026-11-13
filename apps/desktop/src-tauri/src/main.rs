@@ -3,6 +3,7 @@
 
 mod agent;
 mod builder;
+mod command_line;
 mod keystore;
 mod mcp_permissions;
 mod os_program;
@@ -15,6 +16,8 @@ mod web_view;
 use tauri::Manager;
 
 fn main() {
+    // An AppImage started by the `anima` launcher runs the command line, not the window (INS-005).
+    command_line::dispatch::run_if_asked();
     let app = tauri::Builder::default().plugin(process_log::plugin());
     // Release desktop builds only: `tauri dev` never checks for or loads an update (UPD-001).
     #[cfg(all(desktop, not(debug_assertions)))]
@@ -50,6 +53,9 @@ fn main() {
             this_machine::this_machine_read,
             agent::agent_bundled,
             agent::agent_install,
+            command_line::command_line_read,
+            command_line::command_line_install,
+            command_line::command_line_remove,
             system_browser::system_browser_open,
             web_view::commands::web_view_pinning,
             web_view::commands::web_view_open,
