@@ -144,3 +144,53 @@ async fn mcp_013_a_read_tool_in_allow_is_never_asked_about() {
     assert_eq!(session.asked.len(), 0);
     session.finish().await;
 }
+
+#[tokio::test]
+async fn mcp_013_f1_the_question_shows_every_argument_after_long_values() {
+    let hub = hub().await;
+    let mut session = with_elicitation(&hub).await;
+    session.approval = Some(json!({ "action": "decline" }));
+    let long = "q".repeat(480);
+    let answer = session
+        .call(
+            "anima_check_update",
+            json!({ "check": "HTTPS", "device": "prod-db-01", "invert": true,
+                    "config": { "http": { "url": "https://db.example/health",
+                                           "keyword": long, "jsonQuery": long } } }),
+        )
+        .await;
+    assert_eq!(answer["isError"], true, "{answer}");
+    let message = session.asked[0]["message"].as_str().unwrap_or_default();
+    for shown in [
+        "device: \"prod-db-01\"",
+        "invert: true",
+        "config.http.url: \"https://db.example/health\"",
+        "config.http.jsonQuery:",
+        "of 480 characters",
+        "6 argument values",
+    ] {
+        assert!(message.contains(shown), "{shown} missing: {message}");
+    }
+    session.finish().await;
+    assert_eq!(operations(&hub), ["Me"]);
+}
+
+#[tokio::test]
+async fn mcp_013_f1_arguments_too_large_to_show_are_refused_without_asking() {
+    let hub = hub().await;
+    let mut session = with_elicitation(&hub).await;
+    session.approval = Some(json!({ "action": "accept", "content": { "approve": true } }));
+    let children: Vec<String> = (0..50).map(|index| format!("child-{index}")).collect();
+    let answer = session
+        .call(
+            "anima_check_update",
+            json!({ "check": "group", "device": "web-1",
+                    "config": { "group": { "childIds": children } } }),
+        )
+        .await;
+    assert_eq!(answer["isError"], true, "{answer}");
+    assert!(text(&answer).contains("Send a smaller change"), "{answer}");
+    assert_eq!(session.asked.len(), 0);
+    session.finish().await;
+    assert_eq!(operations(&hub), ["Me"]);
+}
