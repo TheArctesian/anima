@@ -110,15 +110,15 @@
   --layer-popover: 30;
   --layer-modal: 40;
   --layer-toast: 50;
-  --material-chrome-bg: color-mix(in srgb, var(--surface-base) 82%, transparent);
-  --material-chrome-blur: 20px;
-  --material-chrome-saturate: 140%;
-  --material-panel-bg: color-mix(in srgb, var(--surface-raised) 90%, transparent);
-  --material-panel-blur: 12px;
-  --material-panel-saturate: 100%;
-  --material-overlay-bg: color-mix(in srgb, var(--surface-overlay) 92%, transparent);
-  --material-overlay-blur: 24px;
-  --material-overlay-saturate: 100%;
+  --material-chrome-bg: color-mix(in srgb, var(--surface-base) 76%, transparent);
+  --material-chrome-blur: 28px;
+  --material-chrome-saturate: 160%;
+  --material-panel-bg: color-mix(in srgb, var(--surface-raised) 82%, transparent);
+  --material-panel-blur: 16px;
+  --material-panel-saturate: 130%;
+  --material-overlay-bg: color-mix(in srgb, var(--surface-overlay) 86%, transparent);
+  --material-overlay-blur: 32px;
+  --material-overlay-saturate: 150%;
   --elevation-0: none;
   --elevation-1: none;
   --elevation-2: 0 4px 16px color-mix(in srgb, var(--shadow) 40%, transparent);
@@ -226,6 +226,8 @@
   --danger: var(--graphite-aurora-11-danger);
   --on-danger: var(--graphite-dark-sunken);
   --scrim: color-mix(in srgb, var(--graphite-black) 55%, transparent);
+  --material-edge: color-mix(in srgb, var(--graphite-white) 14%, transparent);
+  --material-sheen: color-mix(in srgb, var(--graphite-white) 5%, transparent);
   --focus-ring: var(--accent);
   --shadow: var(--graphite-black);
   --chart-grid: var(--graphite-dark-border-strong);
@@ -276,6 +278,8 @@
   --danger: var(--status-down-text);
   --on-danger: var(--graphite-white);
   --scrim: color-mix(in srgb, var(--graphite-light-text) 35%, transparent);
+  --material-edge: color-mix(in srgb, var(--graphite-white) 80%, transparent);
+  --material-sheen: color-mix(in srgb, var(--graphite-white) 5%, transparent);
   --focus-ring: var(--accent);
   --shadow: var(--graphite-light-text);
   --chart-grid: var(--graphite-light-border-strong);
@@ -327,6 +331,8 @@
     --danger: var(--status-down-text);
     --on-danger: var(--graphite-white);
     --scrim: color-mix(in srgb, var(--graphite-light-text) 35%, transparent);
+    --material-edge: color-mix(in srgb, var(--graphite-white) 80%, transparent);
+    --material-sheen: color-mix(in srgb, var(--graphite-white) 5%, transparent);
     --focus-ring: var(--accent);
     --shadow: var(--graphite-light-text);
     --chart-grid: var(--graphite-light-border-strong);
@@ -379,6 +385,8 @@
   --danger: var(--nord-11-danger);
   --on-danger: var(--nord-0);
   --scrim: color-mix(in srgb, var(--nord-0) 50%, transparent);
+  --material-edge: color-mix(in srgb, var(--nord-white) 14%, transparent);
+  --material-sheen: color-mix(in srgb, var(--nord-white) 5%, transparent);
   --focus-ring: var(--accent);
   --shadow: var(--nord-0);
   --chart-grid: var(--nord-3);
@@ -429,6 +437,8 @@
   --danger: var(--status-down-text);
   --on-danger: var(--nord-white);
   --scrim: color-mix(in srgb, var(--nord-0) 35%, transparent);
+  --material-edge: color-mix(in srgb, var(--nord-white) 80%, transparent);
+  --material-sheen: color-mix(in srgb, var(--nord-white) 5%, transparent);
   --focus-ring: var(--accent);
   --shadow: var(--nord-0);
   --chart-grid: var(--nord-4);
@@ -480,6 +490,8 @@
     --danger: var(--status-down-text);
     --on-danger: var(--nord-white);
     --scrim: color-mix(in srgb, var(--nord-0) 35%, transparent);
+    --material-edge: color-mix(in srgb, var(--nord-white) 80%, transparent);
+    --material-sheen: color-mix(in srgb, var(--nord-white) 5%, transparent);
     --focus-ring: var(--accent);
     --shadow: var(--nord-0);
     --chart-grid: var(--nord-4);
@@ -535,6 +547,8 @@
     --material-overlay-bg: var(--surface-overlay);
     --material-overlay-blur: 0px;
     --material-overlay-saturate: 100%;
+    --material-edge: transparent;
+    --material-sheen: transparent;
   }
 }
 /* Increased contrast (MAT-006): solid materials; every border uses border-strong (UI-023, 5.1.2). */
@@ -549,7 +563,23 @@
     --material-overlay-bg: var(--surface-overlay);
     --material-overlay-blur: 0px;
     --material-overlay-saturate: 100%;
+    --material-edge: transparent;
+    --material-sheen: transparent;
     --border-strong: var(--text-secondary);
     --border-subtle: var(--border-strong);
   }
+}
+/* Reduced transparency as a setting: the Linux build sets data-transparency="reduce" when the Devices page is slower than 16.7 ms (MAT-007). */
+:root[data-transparency="reduce"], :root[data-transparency="reduce"][data-theme], :root[data-transparency="reduce"][data-palette], :root[data-transparency="reduce"][data-palette][data-theme] {
+  --material-chrome-bg: var(--surface-base);
+  --material-chrome-blur: 0px;
+  --material-chrome-saturate: 100%;
+  --material-panel-bg: var(--surface-raised);
+  --material-panel-blur: 0px;
+  --material-panel-saturate: 100%;
+  --material-overlay-bg: var(--surface-overlay);
+  --material-overlay-blur: 0px;
+  --material-overlay-saturate: 100%;
+  --material-edge: transparent;
+  --material-sheen: transparent;
 }

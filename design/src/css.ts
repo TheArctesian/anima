@@ -7,6 +7,10 @@ const SOLID_BLUR = '0px';
 const SOLID_SATURATE = '100%';
 /** Every preference block matches each palette and appearance selector, so it comes last at their specificity (MAT-006). */
 const PREFERENCE_SELECTOR = ':root, :root[data-theme], :root[data-palette], :root[data-palette][data-theme]';
+/** The same selectors with one more attribute, so a setting wins over a palette at every specificity (MAT-007). */
+const TRANSPARENCY_SELECTOR = PREFERENCE_SELECTOR.split(', ')
+  .map((selector) => selector.replace(':root', ':root[data-transparency="reduce"]'))
+  .join(', ');
 
 function fontFamily(names: unknown): string {
   return (names as readonly string[]).map((name) => (/\s/.test(name) ? `"${name}"` : name)).join(', ');
@@ -92,8 +96,9 @@ function reducedMotion(tokens: readonly Token[]): Declaration[] {
   return [...changed, ...springs];
 }
 
+/** A solid material has no blur, no edge highlight and no sheen (MAT-006, MAT-010). */
 function solidMaterials(tokens: readonly Token[]): Declaration[] {
-  return tokensOfType(tokens, 'material').flatMap((token): Declaration[] => {
+  const surfaces = tokensOfType(tokens, 'material').flatMap((token): Declaration[] => {
     const base = aliasName(fieldsOf(token.source)['base']);
     return [
       [`--${token.name}-bg`, `var(--${base ?? 'surface-raised'})`],
@@ -101,6 +106,7 @@ function solidMaterials(tokens: readonly Token[]): Declaration[] {
       [`--${token.name}-saturate`, SOLID_SATURATE],
     ];
   });
+  return surfaces.length === 0 ? surfaces : [...surfaces, ['--material-edge', 'transparent'], ['--material-sheen', 'transparent']];
 }
 
 function media(query: string, lines: readonly Declaration[], selector = ':root'): string {
@@ -191,6 +197,8 @@ export function renderCss(tokens: readonly Token[], palettes: readonly Palette[]
     media('prefers-reduced-transparency: reduce', solid, PREFERENCE_SELECTOR),
     '/* Increased contrast (MAT-006): solid materials; every border uses border-strong (UI-023, 5.1.2). */',
     media('prefers-contrast: more', [...solid, ['--border-strong', 'var(--text-secondary)'], ['--border-subtle', 'var(--border-strong)']], PREFERENCE_SELECTOR),
+    '/* Reduced transparency as a setting: the Linux build sets data-transparency="reduce" when the Devices page is slower than 16.7 ms (MAT-007). */',
+    ...(solid.length === 0 ? [] : [block(TRANSPARENCY_SELECTOR, solid)]),
     '',
   ].join('\n');
 }

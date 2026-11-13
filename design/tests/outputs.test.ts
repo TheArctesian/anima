@@ -140,13 +140,28 @@ describe('sizes and type', () => {
 describe('materials and motion', () => {
   const reducedMotion = (): string => /@media \(prefers-reduced-motion: reduce\) \{[^@]*\n\}/.exec(css)?.[0] ?? '';
 
-  test('MAT-006 chrome is 82 % surface-base with 20 px blur and 140 % saturation (5.6); solid under reduced transparency', () => {
-    expect(css).toContain('--material-chrome-bg: color-mix(in srgb, var(--surface-base) 82%, transparent);');
-    expect(css).toContain('--material-chrome-blur: 20px;');
-    expect(css).toContain('--material-chrome-saturate: 140%;');
+  test('MAT-006 chrome is 76 % surface-base with 28 px blur and 160 % saturation (5.6); solid under reduced transparency', () => {
+    expect(css).toContain('--material-chrome-bg: color-mix(in srgb, var(--surface-base) 76%, transparent);');
+    expect(css).toContain('--material-chrome-blur: 28px;');
+    expect(css).toContain('--material-chrome-saturate: 160%;');
     const transparency = css.slice(css.indexOf('@media (prefers-reduced-transparency: reduce)'));
     expect(transparency).toContain('--material-chrome-bg: var(--surface-base);');
     expect(transparency).toContain('--material-chrome-blur: 0px;');
+  });
+
+  for (const query of ['@media (prefers-reduced-transparency: reduce)', '@media (prefers-contrast: more)']) {
+    test(`MAT-010: ${query} removes the edge highlight and the sheen along with the blur`, () => {
+      const block = css.slice(css.indexOf(query)).split('\n}')[0] ?? '';
+      expect(block).toContain('--material-edge: transparent;');
+      expect(block).toContain('--material-sheen: transparent;');
+    });
+  }
+
+  test('MAT-007: data-transparency="reduce" gives the solid values at an attribute count above every palette block', () => {
+    const block = css.slice(css.indexOf(':root[data-transparency="reduce"], ')).split('\n}')[0] ?? '';
+    expect(block).toContain(':root[data-transparency="reduce"][data-palette][data-theme] {');
+    for (const name of ['chrome', 'panel', 'overlay']) expect(block).toContain(`--material-${name}-blur: 0px;`);
+    expect(block).toContain('--material-edge: transparent;');
   });
 
   test('MAT-006 increased contrast makes every border border-strong, and border-subtle follows it (5.1.2)', () => {

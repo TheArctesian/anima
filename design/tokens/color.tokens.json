@@ -457,6 +457,42 @@
             }
           }
         },
+        "material-edge": {
+          "$type": "color",
+          "$value": {
+            "color": "{color.nord.white}",
+            "percent": 14,
+            "over": "transparent"
+          },
+          "$description": "The 1 px inner edge highlight of a material: white at 14 % (dark) or 80 % (light). Removed with the blur (MAT-010).",
+          "$extensions": {
+            "anima": {
+              "light": {
+                "color": "{color.nord.white}",
+                "percent": 80,
+                "over": "transparent"
+              }
+            }
+          }
+        },
+        "material-sheen": {
+          "$type": "color",
+          "$value": {
+            "color": "{color.nord.white}",
+            "percent": 5,
+            "over": "transparent"
+          },
+          "$description": "The top-to-bottom sheen of a material: white at 5 % at the top edge, none at the bottom. Removed with the blur (MAT-010).",
+          "$extensions": {
+            "anima": {
+              "light": {
+                "color": "{color.nord.white}",
+                "percent": 5,
+                "over": "transparent"
+              }
+            }
+          }
+        },
         "focus-ring": {
           "$type": "color",
           "$value": "{color.role.nord.accent}",
@@ -1010,6 +1046,42 @@
               "light": {
                 "color": "{color.graphite.light-text}",
                 "percent": 35,
+                "over": "transparent"
+              }
+            }
+          }
+        },
+        "material-edge": {
+          "$type": "color",
+          "$value": {
+            "color": "{color.graphite.white}",
+            "percent": 14,
+            "over": "transparent"
+          },
+          "$description": "The 1 px inner edge highlight of a material: white at 14 % (dark) or 80 % (light). Removed with the blur (MAT-010).",
+          "$extensions": {
+            "anima": {
+              "light": {
+                "color": "{color.graphite.white}",
+                "percent": 80,
+                "over": "transparent"
+              }
+            }
+          }
+        },
+        "material-sheen": {
+          "$type": "color",
+          "$value": {
+            "color": "{color.graphite.white}",
+            "percent": 5,
+            "over": "transparent"
+          },
+          "$description": "The top-to-bottom sheen of a material: white at 5 % at the top edge, none at the bottom. Removed with the blur (MAT-010).",
+          "$extensions": {
+            "anima": {
+              "light": {
+                "color": "{color.graphite.white}",
+                "percent": 5,
                 "over": "transparent"
               }
             }

@@ -98,6 +98,7 @@ describe('golden: the output without data-motion is unchanged (R-085, MOT-040)',
     // then the reduced-motion media block and the two preference media blocks, in order (UI-023, MAT-006).
     const openings = rest.split('\n').filter((line) => line.endsWith('{'));
     const preference = ':root, :root[data-theme], :root[data-palette], :root[data-palette][data-theme] {';
+    const transparency = preference.replaceAll(':root', ':root[data-transparency="reduce"]');
     expect(openings).toEqual([
       ':root {',
       ':root, :root[data-palette="graphite"] {',
@@ -114,6 +115,8 @@ describe('golden: the output without data-motion is unchanged (R-085, MOT-040)',
       `  ${preference}`,
       '@media (prefers-contrast: more) {',
       `  ${preference}`,
+      // The Linux build's switch to reduced transparency (MAT-007).
+      transparency,
     ]);
   });
 });
