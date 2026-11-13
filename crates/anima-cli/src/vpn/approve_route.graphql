@@ -1,0 +1,4 @@
+# `anima vpn approve-route --site`: approves the waiting route of the site's router.
+mutation VpnApproveRoute($siteId: ID!) {
+  approveSiteRoute(siteId: $siteId)
+}

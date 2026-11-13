@@ -1,0 +1,25 @@
+# `anima release list`: newest first, with each release's jobs (CMD-026).
+query ReleaseList($first: Int, $after: String) {
+  releases(first: $first, after: $after) {
+    edges {
+      cursor
+      node {
+        id
+        version
+        commit
+        createdAt
+        createdBy
+        jobs {
+          id
+          target
+          state
+          failureReason
+        }
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+  }
+}

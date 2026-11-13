@@ -1,0 +1,4 @@
+# `anima builder revoke`: deletes the builder and revokes its token (BLD-025).
+mutation BuilderRevoke($id: ID!) {
+  revokeBuilder(id: $id)
+}

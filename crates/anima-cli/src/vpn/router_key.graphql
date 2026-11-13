@@ -1,0 +1,8 @@
+# `anima vpn router-key`. The answer holds a one-use pre-auth key, shown once (VPN-001).
+mutation VpnRouterKey($siteId: ID!) {
+  createRouterKey(siteId: $siteId) {
+    key
+    expiresAt
+    steps
+  }
+}

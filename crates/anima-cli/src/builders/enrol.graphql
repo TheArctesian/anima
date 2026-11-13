@@ -1,0 +1,17 @@
+# `anima builder enrol`. The answer holds the builder token, shown once (BLD-023).
+mutation BuilderEnrol($name: String!, $platform: BuilderPlatformInput!) {
+  enrolBuilder(name: $name, platform: $platform) {
+    builder {
+      id
+      name
+      platform {
+        os
+        arch
+      }
+      clientAddr
+      enrolledAt
+    }
+    token
+    expiresAt
+  }
+}

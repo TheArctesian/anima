@@ -1,0 +1,4 @@
+# `anima release next-version`: null before the first release.
+query ReleaseNextVersion {
+  nextReleaseVersion
+}

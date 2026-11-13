@@ -1,0 +1,12 @@
+# `anima release cancel <job id>`.
+mutation ReleaseCancel($id: ID!) {
+  cancelBuildJob(id: $id) {
+    id
+    releaseId
+    target
+    version
+    state
+    failureReason
+    stateChangedAt
+  }
+}

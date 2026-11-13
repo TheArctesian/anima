@@ -1,0 +1,8 @@
+# `anima vpn renew <name>`: a new key expiry for an untagged operator node.
+mutation VpnRenew($name: String!) {
+  renewVpnKey(name: $name) {
+    name
+    address
+    keyExpiry
+  }
+}

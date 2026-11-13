@@ -1,0 +1,8 @@
+# `anima vpn invite`. The answer holds a one-use pre-auth key, shown once (VPN-003).
+mutation VpnInvite {
+  createVpnInvite {
+    key
+    expiresAt
+    steps
+  }
+}

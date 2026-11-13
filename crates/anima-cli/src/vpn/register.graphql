@@ -1,0 +1,8 @@
+# `anima vpn register <auth id>`: the computer shows the auth ID on its own screen.
+mutation VpnRegister($authId: String!) {
+  registerVpnNode(authId: $authId) {
+    name
+    address
+    keyExpiry
+  }
+}
