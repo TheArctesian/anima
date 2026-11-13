@@ -79,12 +79,78 @@ fn usage(error: &clap::Error, json: bool, environment: &Environment) -> ExitCode
         let _ = error.print();
         return ExitCode::from(exit::USAGE);
     }
-    let rendered = error.render().to_string();
-    let first = rendered.lines().next().unwrap_or_default();
-    let failure = Failure::Usage {
-        message: first.trim_start_matches("error: ").to_owned(),
-        hint: Some(Hint::run("anima --help")),
-    };
+    let failure = usage_failure(&error.render().to_string());
     Output::new(true, environment.terminals.stdout, true).failure(&failure);
     ExitCode::from(exit::USAGE)
+}
+
+/// The CMD-022 failure for what clap printed: its first paragraph as the message, so the
+/// missing flags are named, and the help of the command that was being run as the hint.
+fn usage_failure(rendered: &str) -> Failure {
+    let mut paragraph = rendered
+        .lines()
+        .take_while(|line| !line.trim().is_empty())
+        .map(str::trim);
+    let first = paragraph.next().unwrap_or_default();
+    // "the following required arguments were not provided:" lists them one to a line.
+    let listed: Vec<&str> = paragraph.collect();
+    let message = if listed.is_empty() {
+        first.to_owned()
+    } else {
+        format!("{first} {}", listed.join(", "))
+    };
+    let command: Vec<&str> = rendered
+        .lines()
+        .find_map(|line| line.strip_prefix("Usage: "))
+        .map(|usage| {
+            usage
+                .split_whitespace()
+                .take_while(|word| !word.starts_with(['-', '<', '[']))
+                .collect()
+        })
+        .unwrap_or_default();
+    let command = if command.is_empty() {
+        "anima".to_owned()
+    } else {
+        command.join(" ")
+    };
+    Failure::Usage {
+        message: message.trim_start_matches("error: ").to_owned(),
+        hint: Some(Hint::run(format!("{command} --help"))),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn rendered(args: &[&str]) -> String {
+        Cli::try_parse_from(args)
+            .expect_err("a usage error")
+            .render()
+            .to_string()
+    }
+
+    #[test]
+    fn cmd_022_c1_a_missing_flag_is_named_and_the_hint_is_the_commands_help() {
+        let failure = usage_failure(&rendered(&["anima", "key", "create"]));
+        let Failure::Usage { message, hint } = failure else {
+            panic!("a usage failure");
+        };
+        assert!(
+            message.contains("--name <NAME>") && message.contains("--expires <EXPIRES>"),
+            "{message}"
+        );
+        assert_eq!(hint, Some(Hint::run("anima key create --help")));
+    }
+
+    #[test]
+    fn cmd_022_c1_an_unknown_flag_keeps_its_one_line() {
+        let failure = usage_failure(&rendered(&["anima", "device", "list", "--nope"]));
+        let Failure::Usage { message, hint } = failure else {
+            panic!("a usage failure");
+        };
+        assert_eq!(message, "unexpected argument '--nope' found");
+        assert_eq!(hint, Some(Hint::run("anima device list --help")));
+    }
 }

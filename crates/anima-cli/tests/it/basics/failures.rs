@@ -206,3 +206,40 @@ async fn cmd_014_the_token_never_appears_in_any_output() {
         run.assert_never_shows(TOKEN);
     }
 }
+
+#[tokio::test]
+async fn cmd_022_c1_a_missing_required_flag_is_named_in_the_json_error() {
+    let cases: [(&[&str], &[&str], &str); 3] = [
+        (
+            &["key", "create"],
+            &["--name", "--expires"],
+            "anima key create --help",
+        ),
+        (
+            &["device", "create"],
+            &["--site", "--host", "<NAME>"],
+            "anima device create --help",
+        ),
+        (
+            &["retention", "set"],
+            &["<SUBJECT>", "<DAYS>"],
+            "anima retention set --help",
+        ),
+    ];
+    for (words, flags, help) in cases {
+        let mut args = vec!["--json"];
+        args.extend(words);
+        let run = Anima::new().run(&args).await;
+        assert_eq!(run.code, 2, "{words:?}: {run:?}");
+        let error = run.error();
+        let message = error["message"].as_str().expect("a message");
+        for flag in flags {
+            assert!(
+                message.contains(flag),
+                "{words:?} should name {flag}: {message}"
+            );
+        }
+        assert_eq!(error["hint"], help, "{words:?}");
+        assert_eq!(error["code"], "USAGE");
+    }
+}
