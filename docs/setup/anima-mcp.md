@@ -6,14 +6,18 @@ token as the `anima` command line.
 
 ## 1. Make an API key
 
-Give the agent an API key, not your login. Make a read key first:
+Give the agent an API key made for an agent, not your login. Make a read key first:
 
 ```sh
 # On your computer, signed in with `anima auth login`.
-anima key create --name coding-agent --scope read --expires 90d
+anima key create --name coding-agent --for agent --scope read --expires 90d
 ```
 
 The key is shown once. Do not paste it into chat or a commit.
+
+`--for agent` makes the hub record each change made with the key as the work of an AI agent
+(actor kind Agent, LOG-015). The value cannot change later. `anima audit list --actor agent`
+shows that work.
 
 ## 2. Register the server
 
@@ -29,6 +33,10 @@ Another agent: run the command `anima mcp` with `ANIMA_TOKEN` in its environment
 
 At start the server checks the token with the hub. A bad token stops it before the session
 starts, with the usual exit code and hint.
+
+The server also declares itself to the hub on each request it makes, the start check too: the
+header `Anima-Actor: agent` (LOG-016). The hub then records its changes as Agent with any token.
+The other `anima` commands do not send it.
 
 ## 3. What the agent may do
 
@@ -115,4 +123,9 @@ token and on the tools you allow (docs/cli-mcp-plan.md Section 9):
 Prefer a read key, and `ask` over `allow` for change tools. Anyone who can run commands as you
 can still edit the configuration file or start `anima mcp --allow-write`. The project file
 `.mcp.json` of a repository can also start the server with its own flags: check it before you
-trust a repository. The audit log shows your user and the token, not whether an agent acted.
+trust a repository.
+
+The audit log names the actor kind of each change: User, Agent or Hub (LOG-012). The limit: a
+program decides itself whether it declares an agent. A program that runs with your login token
+and does not declare itself is recorded as User. Only a key made with `--for agent` marks the
+work of an agent whatever the program sends; use one for `anima mcp`.

@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 use crate::devices::get::resolve;
+use crate::events::audit::NOT_RECORDED;
 use crate::events::documents::{AuditList, EventList, audit_list, event_list};
 use crate::hub::Hub;
 use crate::mcp::arguments::{Page, json, object, parse};
@@ -62,8 +63,20 @@ pub struct SearchInput {
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct AuditInput {
+    /// Only the entries of this actor: USER (a person), AGENT (an AI agent) or HUB (Anima
+    /// itself).
+    actor: Option<ActorInput>,
     #[serde(flatten)]
     page: Page,
+}
+
+/// K1 `ActorKind`.
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, JsonSchema)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum ActorInput {
+    User,
+    Agent,
+    Hub,
 }
 
 impl EventTool {
@@ -90,7 +103,11 @@ impl EventTool {
                 Access::Read,
                 Effect::Reads,
                 "Lists the audit trail, newest first: who changed what and when (operator, \
-                 action, target, client address, changed fields with secrets redacted).",
+                 action, target, client address, changed fields with secrets redacted). Each \
+                 entry names its actor kind (USER a person, AGENT an AI agent, HUB Anima \
+                 itself; \"Not recorded\" for an old entry), its token kind (LOGIN, BROWSER \
+                 or API_KEY) and, for an API key, the key's name. Give `actor` to see only \
+                 the work of one kind.",
             )
             .returns(&[
                 ("entries", "array", "The audit entries of this page."),
@@ -142,20 +159,33 @@ async fn search(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolE
 
 async fn audit(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
     let input: AuditInput = parse(arguments)?;
+    let actor_kind = k1_list::<_, audit_list::ActorKind>(input.actor.as_slice())?
+        .and_then(|mut kinds| kinds.pop());
     let variables = audit_list::Variables {
         first: Some(input.page.size()),
         after: input.page.after,
+        actor_kind,
     };
     let page = hub.run::<AuditList>(variables).await?.audit;
     let next = page
         .page_info
         .end_cursor
         .filter(|_| page.page_info.has_next_page);
-    let entries: Vec<Value> = page.edges.iter().map(|edge| json(&edge.node)).collect();
+    let entries: Vec<Value> = page.edges.iter().map(|edge| entry(&edge.node)).collect();
     Ok(Value::Object(object([
         ("entries", Value::Array(entries)),
         ("nextCursor", json!(next)),
     ])))
+}
+
+/// One audit entry with its actor kind, token kind and key name; an entry from before the hub
+/// recorded them says "Not recorded" (LOG-020).
+fn entry(node: &audit_list::AuditListAuditEdgesNode) -> Value {
+    let mut entry = json(node);
+    if node.actor_kind.is_none() {
+        entry["actorKind"] = json!(NOT_RECORDED);
+    }
+    entry
 }
 
 /// The K1 enum values of `values` (the generated enums read K1 names); none when empty.

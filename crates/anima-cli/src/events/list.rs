@@ -103,13 +103,21 @@ impl ListArgs {
 connection_page!(event_list::EventListEvents);
 
 fn table(events: &event_list::EventListEvents) -> Table {
-    let mut table = Table::new(vec!["AT", "SEVERITY", "SOURCE", "DEVICE", "MESSAGE"]);
+    let mut table = Table::new(vec![
+        "AT", "SEVERITY", "SOURCE", "ACTOR", "DEVICE", "MESSAGE",
+    ]);
     for edge in &events.edges {
         let event = &edge.node;
         table.row(vec![
             event.at.as_str().into(),
             severity_cell(&enum_name(&event.severity)),
             enum_name(&event.source).into(),
+            // LOG-013: who caused it; "-" for an event from before the hub recorded it.
+            event
+                .actor_kind
+                .as_ref()
+                .map_or_else(|| "-".to_owned(), enum_name)
+                .into(),
             event.device_name.as_deref().unwrap_or("-").into(),
             event.message.as_str().into(),
         ]);

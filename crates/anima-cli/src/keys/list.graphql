@@ -3,6 +3,7 @@ query KeyList {
     id
     name
     scope
+    madeFor
     prefix
     expiresAt
     createdAt

@@ -32,7 +32,10 @@ async fn int_003_key_list_shows_prefix_and_expiry_and_never_a_secret() {
         .find(|line| line.starts_with("metrics-scrape"))
         .expect("a row");
     assert!(
-        row.contains("READ") && row.contains("anima_Ab12Cd") && row.contains("2027-06-01"),
+        row.contains("READ")
+            && row.contains("USER")
+            && row.contains("anima_Ab12Cd")
+            && row.contains("2027-06-01"),
         "{row}"
     );
     let unused = run
@@ -40,7 +43,10 @@ async fn int_003_key_list_shows_prefix_and_expiry_and_never_a_secret() {
         .lines()
         .find(|line| line.starts_with("old-script"))
         .expect("a row");
-    assert!(unused.contains("never"), "{unused}");
+    assert!(
+        unused.contains("never") && unused.contains("AGENT"),
+        "{unused}"
+    );
 
     let run = signed_in()
         .run(&["key", "list", "--json", "--hub", &hub.origin])
@@ -64,6 +70,8 @@ async fn int_003_key_create_prints_the_secret_once_with_a_note_on_standard_error
             "create",
             "--name",
             "ci",
+            "--for",
+            "user",
             "--scope",
             "write",
             "--expires",
@@ -89,18 +97,18 @@ async fn int_003_key_create_prints_the_secret_once_with_a_note_on_standard_error
     let expires = input["expiresAt"].as_str().expect("a time");
     assert!(expires.ends_with('Z') && expires.len() == 20, "{expires}");
 
+    let json_run = [
+        "key",
+        "create",
+        "--name",
+        "ci",
+        "--for",
+        "user",
+        "--expires",
+        "30d",
+    ];
     let run = signed_in()
-        .run(&[
-            "key",
-            "create",
-            "--name",
-            "ci",
-            "--expires",
-            "30d",
-            "--json",
-            "--hub",
-            &hub.origin,
-        ])
+        .run(&[&json_run[..], &["--json", "--hub", &hub.origin]].concat())
         .await;
     let json = run.json();
     assert_eq!(
@@ -118,7 +126,16 @@ async fn int_003_key_create_prints_the_secret_once_with_a_note_on_standard_error
 async fn int_003_key_create_needs_an_expiry_of_at_most_a_year() {
     let hub = FakeHub::start().await;
     let run = signed_in()
-        .run(&["key", "create", "--name", "ci", "--hub", &hub.origin])
+        .run(&[
+            "key",
+            "create",
+            "--name",
+            "ci",
+            "--for",
+            "user",
+            "--hub",
+            &hub.origin,
+        ])
         .await;
     assert_eq!(run.code, 2, "{run:?}");
     assert!(run.stderr.contains("--expires"), "{}", run.stderr);
@@ -128,6 +145,8 @@ async fn int_003_key_create_needs_an_expiry_of_at_most_a_year() {
             "create",
             "--name",
             "ci",
+            "--for",
+            "user",
             "--expires",
             "400d",
             "--hub",
@@ -137,6 +156,52 @@ async fn int_003_key_create_needs_an_expiry_of_at_most_a_year() {
     assert_eq!(run.code, 2, "{run:?}");
     assert!(run.stderr.contains("at most one year"), "{}", run.stderr);
     assert!(hub.seen().is_empty(), "nothing was sent");
+}
+
+#[tokio::test]
+async fn log_015_key_create_needs_for_and_sends_it() {
+    let hub = FakeHub::start().await;
+    let missing = signed_in()
+        .run(&[
+            "key",
+            "create",
+            "--name",
+            "ci",
+            "--expires",
+            "30d",
+            "--no-input",
+            "--hub",
+            &hub.origin,
+        ])
+        .await;
+    assert_eq!(missing.code, 2, "{missing:?}");
+    assert!(missing.stderr.contains("--for"), "{}", missing.stderr);
+    assert!(hub.seen().is_empty(), "nothing was sent");
+
+    let mut key = keys()[1].clone();
+    key["name"] = json!("claude");
+    hub.answer("KeyCreate", created(&key));
+    let run = signed_in()
+        .run(&[
+            "key",
+            "create",
+            "--name",
+            "claude",
+            "--for",
+            "agent",
+            "--expires",
+            "30d",
+            "--hub",
+            &hub.origin,
+        ])
+        .await;
+    assert_eq!(run.code, 0, "{run:?}");
+    assert_eq!(hub.seen()[0].variables["input"]["madeFor"], "AGENT");
+    assert!(run.stderr.contains("for AGENT"), "{}", run.stderr);
+    assert!(
+        hub.seen()[0].actor.is_none(),
+        "the command line declares nothing"
+    );
 }
 
 #[tokio::test]
@@ -152,6 +217,8 @@ async fn int_003_key_create_with_an_api_key_is_forbidden_with_exit_5() {
             "create",
             "--name",
             "ci",
+            "--for",
+            "user",
             "--expires",
             "30d",
             "--hub",

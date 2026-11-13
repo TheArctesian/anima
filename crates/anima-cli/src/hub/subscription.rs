@@ -126,7 +126,8 @@ async fn start<V: serde::Serialize>(
         socket: connect(hub.origin(), &origin).await?,
         origin,
     };
-    link.send(init_message(hub.token())).await?;
+    link.send(init_message(hub.token(), hub.declares_agent()))
+        .await?;
     while link.frame().await? != Frame::Ack {}
     let subscribe = json!({ "id": OPERATION_ID, "type": "subscribe", "payload": body });
     link.send(Message::text(subscribe.to_string())).await?;
@@ -182,19 +183,23 @@ impl Link {
     }
 }
 
-/// `connection_init` with the token. The bytes are wiped when the message drops.
-fn init_message(token: Option<&Token>) -> Message {
+/// `connection_init` with the token and, for an agent, its declaration (LOG-016). The bytes
+/// are wiped when the message drops.
+fn init_message(token: Option<&Token>, agent: bool) -> Message {
     let mut bytes = Zeroizing::new(Vec::with_capacity(8 * 1024));
-    bytes.extend_from_slice(br#"{"type":"connection_init","payload":"#);
+    bytes.extend_from_slice(br#"{"type":"connection_init","payload":{"#);
     if let Some(token) = token {
         let text = Zeroizing::new(format!("Bearer {}", token.expose()));
-        bytes.extend_from_slice(br#"{"authorization":"#);
+        bytes.extend_from_slice(br#""authorization":"#);
         serde_json::to_writer(&mut *bytes, &*text).expect("a string serialises");
-        bytes.push(b'}');
-    } else {
-        bytes.extend_from_slice(b"{}");
     }
-    bytes.push(b'}');
+    if agent {
+        if token.is_some() {
+            bytes.push(b',');
+        }
+        bytes.extend_from_slice(br#""actor":"agent""#);
+    }
+    bytes.extend_from_slice(b"}}");
     let text = Utf8Bytes::try_from(Bytes::from_owner(bytes)).expect("JSON is UTF-8");
     Message::Text(text)
 }
@@ -286,7 +291,7 @@ mod tests {
     #[test]
     fn cmd_003_the_token_is_in_the_init_payload() {
         let token = Token::new(Zeroizing::new("tok-123".to_owned())).expect("token");
-        let Message::Text(text) = init_message(Some(&token)) else {
+        let Message::Text(text) = init_message(Some(&token), false) else {
             panic!("a text message");
         };
         let value: Value = serde_json::from_str(&text).expect("JSON");
@@ -294,6 +299,32 @@ mod tests {
             value,
             json!({ "type": "connection_init", "payload": { "authorization": "Bearer tok-123" } })
         );
+    }
+
+    #[test]
+    fn log_016_an_agent_declares_itself_in_the_init_payload() {
+        let token = Token::new(Zeroizing::new("tok-123".to_owned())).expect("token");
+        for (token, payload) in [
+            (
+                Some(&token),
+                json!({ "authorization": "Bearer tok-123", "actor": "agent" }),
+            ),
+            (None, json!({ "actor": "agent" })),
+        ] {
+            let Message::Text(text) = init_message(token, true) else {
+                panic!("a text message");
+            };
+            let value: Value = serde_json::from_str(&text).expect("JSON");
+            assert_eq!(
+                value,
+                json!({ "type": "connection_init", "payload": payload })
+            );
+        }
+        let Message::Text(text) = init_message(None, false) else {
+            panic!("a text message");
+        };
+        let value: Value = serde_json::from_str(&text).expect("JSON");
+        assert_eq!(value, json!({ "type": "connection_init", "payload": {} }));
     }
 
     #[test]

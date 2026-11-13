@@ -146,3 +146,54 @@ async fn mcp_009_retention_list_returns_every_period() {
     assert_eq!(periods[0]["days"], 90);
     session.finish().await;
 }
+
+/// One audit edge with `who` (its actor kind, token kind and key name).
+fn audit_edge(id: u32, who: &Value) -> Value {
+    let mut node = json!({
+        "id": format!("0190a000-0000-7000-8031-{id:012}"), "at": "2026-11-13T09:00:00Z",
+        "operatorName": "operator", "action": "create", "targetType": "site",
+        "targetId": "0190a000-0000-7000-8011-000000000001", "clientAddr": "10.10.0.5",
+        "change": {},
+    });
+    for field in ["actorKind", "tokenKind", "apiKeyName"] {
+        node[field] = who[field].clone();
+    }
+    json!({ "cursor": format!("a{id}"), "node": node })
+}
+
+#[tokio::test]
+async fn log_016_log_020_the_audit_tool_declares_an_agent_and_names_each_actor() {
+    let hub = hub().await;
+    let agent = json!({ "actorKind": "AGENT", "tokenKind": "API_KEY", "apiKeyName": "claude" });
+    let old = json!({ "actorKind": null, "tokenKind": null, "apiKeyName": null });
+    hub.answer(
+        "AuditList",
+        data(json!({ "audit": {
+            "edges": [audit_edge(1, &agent), audit_edge(2, &old)],
+            "pageInfo": { "hasNextPage": false, "endCursor": "a2" } } })),
+    );
+    let desk = Desk::new();
+    let (mut session, _) = desk.start(&hub, API_KEY, &[]).await;
+    let answer = session
+        .call("anima_audit_list", json!({ "actor": "AGENT" }))
+        .await;
+    let found = structured(&answer);
+    let first = &found["entries"][0];
+    assert_eq!(
+        (
+            &first["actorKind"],
+            &first["tokenKind"],
+            &first["apiKeyName"]
+        ),
+        (&json!("AGENT"), &json!("API_KEY"), &json!("claude"))
+    );
+    assert_eq!(found["entries"][1]["actorKind"], "Not recorded");
+    let seen = hub.seen();
+    assert_eq!(seen.last().expect("a list").variables["actorKind"], "AGENT");
+    assert!(seen.iter().any(|sent| sent.operation == "Me"), "{seen:?}");
+    for sent in &seen {
+        assert_eq!(sent.actor.as_deref(), Some("agent"), "{}", sent.operation);
+    }
+    let (printed, stderr) = session.finish().await;
+    assert_protocol_only(&printed, &stderr, API_KEY);
+}

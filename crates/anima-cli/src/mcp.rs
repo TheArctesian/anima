@@ -75,7 +75,8 @@ impl McpArgs {
 /// Checks the token with `me` before any protocol output, then serves.
 async fn start(flags: StartFlags, invocation: &Invocation) -> Result<(), Failure> {
     let permissions = saved(invocation)?;
-    let hub = invocation.hub()?;
+    // Every request of the server declares an AI agent, the check below too (LOG-016).
+    let hub = invocation.hub()?.declaring_agent();
     hub.run::<Me>(me::Variables).await?;
     let token = hub.token().map_or(TokenKind::Login, Token::kind);
     let flags = Flags {
