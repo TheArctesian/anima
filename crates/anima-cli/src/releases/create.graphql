@@ -1,0 +1,16 @@
+# `anima release create`: one job for each target.
+mutation ReleaseCreate($version: String!, $commit: String!, $targets: [BuildTarget!]!) {
+  createRelease(version: $version, commit: $commit, targets: $targets) {
+    id
+    version
+    commit
+    createdAt
+    createdBy
+    jobs {
+      id
+      target
+      state
+      failureReason
+    }
+  }
+}

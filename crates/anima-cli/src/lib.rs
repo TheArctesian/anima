@@ -3,6 +3,7 @@
 
 pub mod api;
 pub mod auth;
+pub mod builders;
 pub mod cli;
 pub mod contexts;
 pub mod devices;
@@ -13,3 +14,5 @@ pub mod invocation;
 pub mod output;
 pub mod private_file;
 pub mod prompt;
+pub mod releases;
+pub mod vpn;

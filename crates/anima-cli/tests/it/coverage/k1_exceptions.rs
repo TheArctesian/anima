@@ -108,21 +108,6 @@ pub const EXCEPTIONS: &[(&str, &str)] = &[
     ("Subscription.metricsAdded", "device metrics --watch"), // T4
     ("Subscription.buildJobUpdated", "release log --follow"), // T4
     ("Subscription.vpnChanged", "vpn status --watch"),     // T4
-    // T5: release, builder, vpn.
-    ("Query.releases", "release list"),                   // T5
-    ("Query.nextReleaseVersion", "release next-version"), // T5
-    ("Query.builders", "builder list"),                   // T5
-    ("Query.buildJobLog", "release log"),                 // T5
-    ("Query.vpn", "vpn status"),                          // T5
-    ("Mutation.createRelease", "release create"),         // T5
-    ("Mutation.cancelBuildJob", "release cancel"),        // T5
-    ("Mutation.enrolBuilder", "builder enrol"),           // T5
-    ("Mutation.revokeBuilder", "builder revoke"),         // T5
-    ("Mutation.createVpnInvite", "vpn invite"),           // T5
-    ("Mutation.createRouterKey", "vpn router-key"),       // T5
-    ("Mutation.registerVpnNode", "vpn register"),         // T5
-    ("Mutation.renewVpnKey", "vpn renew"),                // T5
-    ("Mutation.approveSiteRoute", "vpn approve-route"),   // T5
     // T6: session, ssh, files.
     ("Query.sessions", "session list"),              // T6
     ("Mutation.startSession", "ssh <device>"),       // T6
