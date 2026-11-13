@@ -1,6 +1,7 @@
 //! The `devices` tool set: the fleet, devices, their metrics, sites, wake, and the changes.
 
 mod change;
+mod metrics;
 mod read;
 
 use rmcp::model::JsonObject;
@@ -39,9 +40,8 @@ impl DeviceTool {
     #[must_use]
     pub fn definition(self) -> Definition {
         match self {
-            Self::FleetOverview | Self::Search | Self::Get | Self::Metrics => {
-                read::definition(self)
-            }
+            Self::Metrics => metrics::definition(),
+            Self::FleetOverview | Self::Search | Self::Get => read::definition(self),
             other => change::definition(other),
         }
     }
@@ -55,7 +55,7 @@ impl DeviceTool {
             Self::FleetOverview => read::overview(hub).await,
             Self::Search => read::search(hub, arguments).await,
             Self::Get => read::get(hub, arguments).await,
-            Self::Metrics => read::metrics(hub, arguments).await,
+            Self::Metrics => metrics::metrics(hub, arguments).await,
             Self::Create => change::create(hub, arguments).await,
             Self::SiteCreate => change::site_create(hub, arguments).await,
             Self::Wake => change::wake(hub, arguments).await,

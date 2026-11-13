@@ -33,7 +33,8 @@ pub struct Timing {
     invert: Option<bool>,
 }
 
-#[derive(Debug, Deserialize, JsonSchema)]
+// No `Debug`: `config` is what the agent sent, refused secret fields included (CMD-014).
+#[derive(Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct CreateInput {
     /// The device's id or exact name.
@@ -48,7 +49,8 @@ pub struct CreateInput {
     timing: Timing,
 }
 
-#[derive(Debug, Deserialize, JsonSchema)]
+// No `Debug`, as for `CreateInput`.
+#[derive(Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct UpdateInput {
     /// The check's id, or its exact name together with `device`.
