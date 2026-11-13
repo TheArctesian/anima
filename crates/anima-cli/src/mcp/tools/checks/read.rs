@@ -99,23 +99,81 @@ pub async fn get(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, Tool
     ])))
 }
 
-/// The check `id` as K1 JSON without its push path: the path holds the push token (MCP-004).
+/// The check `id` as the hub has it, push path included.
 ///
 /// # Errors
 /// [`ToolError`] when the hub has no such check, or refuses.
-pub async fn current(hub: &Hub, id: &str) -> Result<Value, ToolError> {
-    let check = hub
-        .run::<CheckGet>(check_get::Variables { id: id.to_owned() })
+pub async fn fetched(hub: &Hub, id: &str) -> Result<check_get::CheckGetCheck, ToolError> {
+    hub.run::<CheckGet>(check_get::Variables { id: id.to_owned() })
         .await?
         .check
         .ok_or_else(|| {
             ToolError::Refused(format!(
                 "No check has the id {id}. Call anima_device_get to list a device's checks."
             ))
-        })?;
-    let mut check = json(&check);
+        })
+}
+
+/// The check `id` as K1 JSON for an agent: without its push path (it holds the push token,
+/// MCP-004) and with an HTTP check's URL shown by [`shown_url`].
+///
+/// # Errors
+/// [`ToolError`] when the hub has no such check, or refuses.
+pub async fn current(hub: &Hub, id: &str) -> Result<Value, ToolError> {
+    let mut check = json(&fetched(hub, id).await?);
     if let Some(config) = check.get_mut("config").and_then(Value::as_object_mut) {
         config.remove("pushPath");
+        if let Some(Value::String(url)) = config.get_mut("url") {
+            *url = shown_url(url);
+        }
     }
     Ok(check)
+}
+
+/// `url` without the parts that can hold a secret: the query string, the fragment and a user
+/// name or password. Says so when it removed any; a URL that does not parse is not shown.
+fn shown_url(url: &str) -> String {
+    let Ok(mut parsed) = reqwest::Url::parse(url) else {
+        return "(not shown: not a valid URL)".to_owned();
+    };
+    let hidden = parsed.query().is_some()
+        || parsed.fragment().is_some()
+        || !parsed.username().is_empty()
+        || parsed.password().is_some();
+    if !hidden {
+        return url.to_owned();
+    }
+    parsed.set_query(None);
+    parsed.set_fragment(None);
+    // A URL that cannot have a user name has none to remove.
+    let _ = parsed.set_username("");
+    let _ = parsed.set_password(None);
+    format!("{parsed} (query string, fragment and user name removed)")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn mcp_004_an_http_check_url_is_shown_without_query_fragment_or_user() {
+        assert_eq!(
+            shown_url("https://a.example/health"),
+            "https://a.example/health"
+        );
+        for url in [
+            "https://a.example/health?token=s3cret",
+            "https://a.example/health#s3cret",
+            "https://me:s3cret@a.example/health",
+        ] {
+            let shown = shown_url(url);
+            assert!(!shown.contains("s3cret"), "{shown}");
+            assert!(shown.starts_with("https://a.example/health"), "{shown}");
+            assert!(shown.ends_with("removed)"), "{shown}");
+        }
+        assert_eq!(
+            shown_url("no url?token=s3cret"),
+            "(not shown: not a valid URL)"
+        );
+    }
 }

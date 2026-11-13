@@ -6,6 +6,7 @@
 use serde::de::DeserializeOwned;
 use serde_json::{Map, Value};
 
+use crate::checks::read::documents::check_get::{CheckGetCheckConfig, HttpAuthKind};
 use crate::mcp::outcome::ToolError;
 
 /// The fields an agent may give, by kind. Anything else is refused, so a secret field that
@@ -111,18 +112,28 @@ fn check(config: &Value) -> Result<(), ToolError> {
     )))
 }
 
-/// Whether the check's current settings hold a secret that a new config without it would
-/// drop: an HTTP check with authentication or headers.
+/// Whether the check's current settings can hold a secret that a new config from an agent
+/// would drop: an HTTP check with authentication or headers, or any SNMP check (the community
+/// or the v3 passwords are never read back, so their presence cannot be seen). Every kind is
+/// named, so a kind added to K1 does not compile until it is classed here.
 #[must_use]
-pub fn holds_secret(current: &Value) -> bool {
-    let http = current["__typename"] == "HttpConfig";
-    let auth = current["authKind"]
-        .as_str()
-        .is_some_and(|kind| kind != "NONE");
-    let headers = current["headers"]
-        .as_array()
-        .is_some_and(|headers| !headers.is_empty());
-    http && (auth || headers)
+pub fn holds_secret(current: &CheckGetCheckConfig) -> bool {
+    match current {
+        CheckGetCheckConfig::HttpConfig(http) => {
+            !matches!(http.auth_kind, HttpAuthKind::NONE) || !http.headers.is_empty()
+        }
+        CheckGetCheckConfig::SnmpConfig(_) => true,
+        CheckGetCheckConfig::IcmpConfig(_)
+        | CheckGetCheckConfig::TcpConfig(_)
+        | CheckGetCheckConfig::TlsConfig(_)
+        | CheckGetCheckConfig::DnsConfig(_)
+        | CheckGetCheckConfig::PushConfig(_)
+        | CheckGetCheckConfig::GroupConfig(_)
+        | CheckGetCheckConfig::DockerConfig(_)
+        | CheckGetCheckConfig::TailscalePingConfig(_)
+        | CheckGetCheckConfig::SystemdConfig(_)
+        | CheckGetCheckConfig::DomainExpiryConfig(_) => false,
+    }
 }
 
 #[cfg(test)]
@@ -171,17 +182,29 @@ mod tests {
         assert!(refusal(&json!("tcp")).contains("exactly one"));
     }
 
+    fn config(value: Value) -> CheckGetCheckConfig {
+        serde_json::from_value(value).expect("a K1 CheckConfig")
+    }
+
     #[test]
-    fn mcp_004_an_http_check_with_authentication_holds_a_secret() {
-        let plain = json!({ "__typename": "HttpConfig", "authKind": "NONE", "headers": [] });
-        assert!(!holds_secret(&plain));
-        let bearer = json!({ "__typename": "HttpConfig", "authKind": "BEARER", "headers": [] });
-        assert!(holds_secret(&bearer));
-        let headers = json!({ "__typename": "HttpConfig", "authKind": "NONE",
-                              "headers": [{ "name": "X-Key" }] });
-        assert!(holds_secret(&headers));
-        assert!(!holds_secret(
-            &json!({ "__typename": "TcpConfig", "port": 22 })
-        ));
+    fn mcp_004_f3_http_with_authentication_or_headers_and_every_snmp_check_hold_a_secret() {
+        let http = |auth: &str, headers: Value| {
+            config(
+                json!({ "__typename": "HttpConfig", "url": "https://a.example",
+                "method": "GET", "headers": headers, "maxRedirects": 0, "acceptedStatus": [],
+                "keyword": null, "jsonQuery": null, "jsonExpected": null, "authKind": auth,
+                "verifyTls": true, "timeoutMs": 1 }),
+            )
+        };
+        assert!(!holds_secret(&http("NONE", json!([]))));
+        assert!(holds_secret(&http("BEARER", json!([]))));
+        assert!(holds_secret(&http("NONE", json!([{ "name": "X-Key" }]))));
+        let snmp = config(
+            json!({ "__typename": "SnmpConfig", "port": 161, "version": "V2C",
+            "oid": "1.3.6", "expected": null, "username": null, "timeoutMs": 1 }),
+        );
+        assert!(holds_secret(&snmp));
+        let tcp = config(json!({ "__typename": "TcpConfig", "port": 22, "timeoutMs": 1 }));
+        assert!(!holds_secret(&tcp));
     }
 }

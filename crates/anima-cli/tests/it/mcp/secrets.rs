@@ -92,6 +92,72 @@ async fn mcp_004_check_get_never_returns_the_push_path() {
     );
 }
 
+/// A K1 check on [`DEVICE`] with this `config`.
+fn check_with(config: &Value) -> Value {
+    json!({
+        "id": CHECK, "name": "probe", "type": "HTTP", "status": "UP", "paused": false,
+        "invert": false, "intervalSeconds": 60, "retries": 3, "retryIntervalSeconds": 20,
+        "degradedThresholdMs": 1000, "certificateDaysLeft": null, "domainDaysLeft": null,
+        "device": { "id": DEVICE, "name": "nas" }, "parent": null, "config": config,
+        "notifications": { "resendEveryBeats": 0, "channels": [] },
+        "lastHeartbeat": null, "uptime": 1.0,
+    })
+}
+
+#[tokio::test]
+async fn mcp_004_f3_a_new_config_for_an_snmp_check_is_refused_so_its_secrets_stay() {
+    let hub = hub().await;
+    let snmp = json!({ "__typename": "SnmpConfig", "port": 161, "version": "V2C",
+                       "oid": "1.3.6.1", "expected": null, "username": null, "timeoutMs": 5000 });
+    hub.answer("CheckGet", data(json!({ "check": check_with(&snmp) })));
+    let desk = Desk::new();
+    let (mut session, _) = desk.start(&hub, API_KEY, &["--allow-write"]).await;
+    let answer = session
+        .call(
+            "anima_check_update",
+            json!({ "check": CHECK, "config": { "tcp": { "port": 22 } } }),
+        )
+        .await;
+    assert_eq!(answer["isError"], true, "{answer}");
+    assert!(text(&answer).contains("--from-file"), "{answer}");
+    assert!(text(&answer).contains("SNMP"), "{answer}");
+    session.finish().await;
+    let operations: Vec<String> = hub.seen().into_iter().map(|seen| seen.operation).collect();
+    assert_eq!(operations, ["Me", "CheckGet"]);
+}
+
+#[tokio::test]
+async fn mcp_004_check_get_shows_an_http_url_without_its_query_string() {
+    let hub = hub().await;
+    let http = json!({ "__typename": "HttpConfig",
+        "url": "https://nas.lan/health?token=s3cret-query#s3cret-fragment", "method": "GET",
+        "headers": [], "maxRedirects": 0, "acceptedStatus": [], "keyword": null,
+        "jsonQuery": null, "jsonExpected": null, "authKind": "NONE", "verifyTls": true,
+        "timeoutMs": 1000 });
+    hub.answer("CheckGet", data(json!({ "check": check_with(&http) })));
+    hub.answer(
+        "CheckHeartbeats",
+        data(json!({ "check": { "heartbeats": { "edges": [],
+            "pageInfo": { "hasNextPage": false, "endCursor": null } } } })),
+    );
+    let desk = Desk::new();
+    let (mut session, _) = desk.start(&hub, LOGIN_TOKEN, &[]).await;
+    let answer = session
+        .call("anima_check_get", json!({ "check": CHECK }))
+        .await;
+    assert_eq!(answer["isError"], false, "{answer}");
+    let url = answer["structuredContent"]["check"]["config"]["url"]
+        .as_str()
+        .unwrap_or_default();
+    assert!(url.starts_with("https://nas.lan/health"), "{url}");
+    assert!(url.contains("removed"), "{url}");
+    let (printed, _) = session.finish().await;
+    assert!(
+        printed.iter().all(|line| !line.contains("s3cret")),
+        "{printed:?}"
+    );
+}
+
 #[tokio::test]
 async fn mcp_009_an_unknown_argument_beside_a_page_is_refused() {
     let hub = hub().await;

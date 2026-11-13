@@ -6,7 +6,7 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 
 use super::config::{holds_secret, typed};
-use super::read::current;
+use super::read::{current, fetched};
 use crate::checks::resolve::find;
 use crate::checks::write::documents::{
     CheckCreate, CheckDelete, CheckSetPaused, CheckUpdate, check_create, check_delete,
@@ -119,10 +119,12 @@ pub async fn update(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, T
     let config: Option<check_update::CheckConfigInput> =
         input.config.as_ref().map(typed).transpose()?;
     let id = find(hub, &input.check, input.device.as_deref()).await?;
-    if config.is_some() && holds_secret(&current(hub, &id).await?["config"]) {
+    if config.is_some() && holds_secret(&fetched(hub, &id).await?.config) {
         return Err(ToolError::Refused(
-            "This HTTP check has authentication or headers; a config from here would drop \
-             them. The operator changes it with `anima check update --from-file`."
+            "Not changed: this check can hold a secret (HTTP authentication or headers, or an \
+             SNMP community or v3 passwords) that a config from here would drop. Change its \
+             timing or name here; the operator changes its config with `anima check update \
+             --from-file`."
                 .to_owned(),
         ));
     }
