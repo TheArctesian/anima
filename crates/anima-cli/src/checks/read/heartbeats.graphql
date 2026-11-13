@@ -1,0 +1,20 @@
+# `anima check heartbeats`: a page of the check's heartbeats, newest first (CMD-026).
+query CheckHeartbeats($id: ID!, $first: Int, $after: String) {
+  check(id: $id) {
+    heartbeats(first: $first, after: $after) {
+      edges {
+        cursor
+        node {
+          at
+          status
+          responseTimeMs
+          message
+        }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+    }
+  }
+}

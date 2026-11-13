@@ -1,0 +1,48 @@
+query ChannelList {
+  notificationChannels {
+    id
+    name
+    kind
+    onByDefault
+    settings {
+      __typename
+      ... on WebhookSettings {
+        origin
+        method
+        headerNames
+      }
+      ... on NtfySettings {
+        server
+        priority
+        tokenStored
+      }
+      ... on EmailSettings {
+        host
+        port
+        security
+        username
+        from
+        to
+        passwordStored
+      }
+      ... on AppriseSettings {
+        server
+        mode
+        tags
+      }
+    }
+    template {
+      title
+      body
+    }
+    lastDelivery {
+      id
+      at
+      ok
+      reason
+      code
+    }
+    createdAt
+    updatedAt
+  }
+}

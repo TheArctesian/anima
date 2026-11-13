@@ -19,6 +19,7 @@ export function desktopCapabilities(userAgent: string = navigator.userAgent): Ca
     thisMachine: true,
     systemSettings: isMac(userAgent),
     builds: true,
+    mcpPermissions: true,
     overlayTitleBar: isMac(userAgent),
   };
 }

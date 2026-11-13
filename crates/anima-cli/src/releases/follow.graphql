@@ -1,0 +1,16 @@
+# `anima release log --follow`: the changes of one build job, with the log lines each added
+# (K1 buildJobUpdated, BLD-081).
+subscription BuildJobUpdated($jobId: ID) {
+  buildJobUpdated(jobId: $jobId) {
+    job {
+      id
+      state
+      failureReason
+      stateChangedAt
+    }
+    logLines {
+      sequence
+      text
+    }
+  }
+}

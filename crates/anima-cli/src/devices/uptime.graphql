@@ -1,0 +1,8 @@
+# `anima device uptime`: the ratio 0..1 over a window.
+query DeviceUptime($id: ID!, $window: UptimeWindow!) {
+  device(id: $id) {
+    id
+    name
+    uptime(window: $window)
+  }
+}

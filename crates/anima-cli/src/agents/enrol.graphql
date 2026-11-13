@@ -1,0 +1,7 @@
+# `anima agent enrol`: the one-time code, shown once (MET-012, LOG-007).
+mutation AgentEnrol($deviceId: ID!) {
+  enrolAgent(deviceId: $deviceId) {
+    code
+    expiresAt
+  }
+}

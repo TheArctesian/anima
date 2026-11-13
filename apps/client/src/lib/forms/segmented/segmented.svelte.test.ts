@@ -18,8 +18,8 @@ const options = [
   { value: 'down', label: 'Offline' },
 ];
 
-function group(onchange: (value: string) => void = () => undefined) {
-  app = mount(Segmented<string>, { target: document.body, props: { label: 'Status', options, value: 'all', onchange } });
+function group(onchange: (value: string) => void = () => undefined, arrowsChoose = true) {
+  app = mount(Segmented<string>, { target: document.body, props: { label: 'Status', options, value: 'all', onchange, arrowsChoose } });
   flushSync();
   return [...document.querySelectorAll<HTMLButtonElement>('[role="radio"]')];
 }
@@ -75,4 +75,32 @@ it('UI-013: a click chooses; clicking the chosen option reports nothing', () => 
 it('movedTo: other keys do not move', () => {
   expect(movedTo('a', 0, 3)).toBeUndefined();
   expect(movedTo('ArrowDown', 2, 3)).toBe(0);
+});
+
+it('MCP-021: with arrowsChoose off, arrow keys only move focus: nothing is chosen or reported, and the tab stop stays', async () => {
+  const onchange = vi.fn();
+  const radios = group(onchange, false);
+  await press(radios[0] as HTMLElement, 'ArrowRight');
+  await press(radios[1] as HTMLElement, 'ArrowRight');
+  await press(radios[2] as HTMLElement, 'ArrowLeft');
+  expect(document.activeElement).toBe(radios[1]);
+  expect(onchange).not.toHaveBeenCalled();
+  expect(radios.map((radio) => radio.getAttribute('aria-checked'))).toEqual(['true', 'false', 'false']);
+  expect(radios.map((radio) => radio.tabIndex)).toEqual([0, -1, -1]);
+  radios[1]?.click();
+  expect(onchange).toHaveBeenCalledExactlyOnceWith('up');
+});
+
+it('MCP-021: with arrowsChoose off, focus stops at the ends and does not wrap', async () => {
+  const radios = group(undefined, false);
+  await press(radios[0] as HTMLElement, 'ArrowLeft');
+  expect(document.activeElement).toBe(radios[0]);
+  await press(radios[2] as HTMLElement, 'ArrowRight');
+  expect(document.activeElement).toBe(radios[2]);
+});
+
+it('movedTo: without wrapping, the ends hold', () => {
+  expect(movedTo('ArrowDown', 2, 3, false)).toBe(2);
+  expect(movedTo('ArrowUp', 0, 3, false)).toBe(0);
+  expect(movedTo('ArrowRight', 0, 3, false)).toBe(1);
 });

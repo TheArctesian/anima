@@ -1,0 +1,19 @@
+# `anima web update`: the web interfaces of every device, to find the one being changed.
+query WebCurrent($first: Int, $after: String) {
+  devices(first: $first, after: $after) {
+    edges {
+      node {
+        webInterfaces {
+          id
+          label
+          url
+          openIn
+        }
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+  }
+}

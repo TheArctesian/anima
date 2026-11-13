@@ -1,0 +1,12 @@
+# `anima site create`.
+mutation SiteCreate($name: String!, $subnet: Cidr!) {
+  createSite(name: $name, subnet: $subnet) {
+    id
+    name
+    subnet
+    wakeRelay {
+      id
+      name
+    }
+  }
+}

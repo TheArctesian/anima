@@ -1,0 +1,7 @@
+# `anima device wake`: which relay sent the Wake-on-LAN packet, and when.
+mutation DeviceWake($deviceId: ID!) {
+  wakeDevice(deviceId: $deviceId) {
+    sentAt
+    relayName
+  }
+}

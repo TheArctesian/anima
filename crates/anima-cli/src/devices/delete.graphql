@@ -1,0 +1,4 @@
+# `anima device delete`: the hub returns the deleted ID.
+mutation DeviceDelete($id: ID!) {
+  deleteDevice(id: $id)
+}

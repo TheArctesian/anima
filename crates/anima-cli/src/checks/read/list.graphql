@@ -1,0 +1,60 @@
+# `anima check list --device`: the checks of one device, each with its key settings.
+# A push check's path holds its token, so only `check get` selects it.
+query CheckList($device: ID!) {
+  device(id: $device) {
+    id
+    name
+    checks {
+      id
+      name
+      type
+      status
+      paused
+      intervalSeconds
+      config {
+        __typename
+        ... on IcmpConfig {
+          ipVersion
+        }
+        ... on TcpConfig {
+          port
+        }
+        ... on TlsConfig {
+          port
+          serverName
+        }
+        ... on HttpConfig {
+          url
+          method
+        }
+        ... on DnsConfig {
+          name
+          recordType
+        }
+        ... on GroupConfig {
+          children {
+            id
+          }
+        }
+        ... on DockerConfig {
+          container
+        }
+        ... on SnmpConfig {
+          port
+          version
+          oid
+        }
+        ... on TailscalePingConfig {
+          target
+        }
+        ... on SystemdConfig {
+          unit
+        }
+        ... on DomainExpiryConfig {
+          domain
+          warnDays
+        }
+      }
+    }
+  }
+}

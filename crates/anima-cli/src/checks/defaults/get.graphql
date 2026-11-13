@@ -1,0 +1,9 @@
+# `anima check defaults get`, and the current values `check defaults set` starts from.
+query CheckDefaultsGet {
+  checkDefaults {
+    intervalSeconds
+    retries
+    retryIntervalSeconds
+    degradedThresholdMs
+  }
+}

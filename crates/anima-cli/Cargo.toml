@@ -1,0 +1,61 @@
+[package]
+name = "anima-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[lib]
+name = "anima_cli"
+
+[[bin]]
+name = "anima"
+path = "src/main.rs"
+
+[dependencies]
+# One body type for every request: the serialised document is wiped when it drops.
+bytes.workspace = true
+# API-key expiry from a number of days (`key create --expires 90d`).
+chrono.workspace = true
+clap.workspace = true
+clap_complete.workspace = true
+# `anima ssh`: raw mode and the window size, restored on every exit (K4 Section 8).
+crossterm.workspace = true
+# The stream and sink halves of the subscription and tunnel WebSockets (CMD-003).
+futures-util = { version = "0.3", default-features = false, features = ["sink"] }
+graphql_client.workspace = true
+# The OS key store holds the token (CMD-012): the macOS Keychain, the Linux Secret Service.
+keyring.workspace = true
+# Plain `rustls-tls` with the web PKI roots; no redirect, no proxy, no cookie (CMD-003).
+reqwest.workspace = true
+# The password at the terminal, with echo off (CMD-010).
+rpassword.workspace = true
+# The sockets' TLS (`hub/wire.rs`): ring, no OpenSSL, the web PKI roots.
+rustls.workspace = true
+# `anima mcp`: the MCP protocol on standard input and output (MCP-001); `elicitation` asks the
+# person to approve a call of a tool in state `ask` (MCP-013).
+rmcp = { workspace = true, features = ["elicitation"] }
+# The MCP tools' input schemas (MCP-009).
+schemars.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+# The token file and the configuration are written to a temporary file, then renamed (CMD-012).
+tempfile.workspace = true
+thiserror.workspace = true
+tokio = { workspace = true, features = ["signal"] }
+# The sockets' TLS handshake (`hub/wire.rs`).
+tokio-rustls.workspace = true
+# `graphql-transport-ws` for subscriptions, over the same `hub/wire.rs` stream as the tunnels (CMD-003).
+tokio-tungstenite.workspace = true
+# A device given by ID rather than by name (`device get`).
+uuid.workspace = true
+webpki-roots.workspace = true
+zeroize.workspace = true
+
+[dev-dependencies]
+axum.workspace = true
+graphql-parser.workspace = true
+tokio = { workspace = true, features = ["process"] }

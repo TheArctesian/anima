@@ -11,6 +11,7 @@ export const browserCapabilities: Capabilities = {
   thisMachine: false,
   systemSettings: false,
   builds: false,
+  mcpPermissions: false,
   overlayTitleBar: false,
 };
 

@@ -1,0 +1,18 @@
+# `anima device metrics`: the series of one range.
+query DeviceMetrics($id: ID!, $range: MetricRange!) {
+  device(id: $id) {
+    id
+    name
+    metrics(range: $range) {
+      kind
+      label
+      gpuIndex
+      points {
+        at
+        value
+        min
+        max
+      }
+    }
+  }
+}

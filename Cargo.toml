@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/hub", "crates/guac-protocol", "crates/agent-core", "crates/agent", "crates/theme", "crates/updater-signature", "apps/desktop/src-tauri"]
+members = ["crates/hub", "crates/guac-protocol", "crates/agent-core", "crates/agent", "crates/theme", "crates/updater-signature", "crates/anima-cli", "apps/desktop/src-tauri"]
 
 [workspace.package]
 version = "0.1.0"
@@ -80,6 +80,22 @@ if-addrs = "0.15"
 whoami = { version = "2.1", default-features = false, features = ["std"] }
 # Reads the agent's launchd property list in its tests (WP-54 T4, MET-019).
 plist = "1"
+# The `anima` command line (CMD-001): typed GraphQL documents checked against K1 at build time (CMD-004).
+graphql_client = { version = "0.16", default-features = false, features = ["graphql_query_derive"] }
+# Parses K1 and the command line's documents in its coverage test (CMD-031); already under graphql_client.
+graphql-parser = "0.4"
+# The command line's arguments (CMD-020..028), derive only, with the help colour off when NO_COLOR is set.
+clap = { version = "4.6", default-features = false, features = ["std", "derive", "help", "usage", "error-context", "suggestions", "color", "env"] }
+# `anima completion <shell>` (CMD-028).
+clap_complete = "4.6"
+# `anima ssh`: raw mode and the terminal size without `unsafe` (K4 Section 8); no event loop.
+crossterm = { version = "0.29", default-features = false }
+# `anima ssh` and `anima files`: the tunnel's TLS trusts the web PKI roots, as the GraphQL request does.
+webpki-roots = "1"
+# `anima mcp` (MCP-001): the official MCP SDK (Apache-2.0), server over standard input and output only.
+rmcp = { version = "=3.10.0", default-features = false, features = ["server", "transport-io"] }
+# The input schemas of the MCP tools (MCP-009); the major version rmcp builds its schemas with.
+schemars = { version = "1", default-features = false, features = ["derive", "std"] }
 
 [workspace.lints.rust]
 warnings = "deny"

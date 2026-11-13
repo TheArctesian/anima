@@ -1,0 +1,12 @@
+mutation ChannelTest($id: ID!) {
+  sendTestNotification(id: $id) {
+    id
+    channelId
+    channelName
+    kind
+    at
+    ok
+    reason
+    code
+  }
+}

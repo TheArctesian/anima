@@ -1,0 +1,10 @@
+mutation SettingsSet($input: NotificationSettingsInput!) {
+  setNotificationSettings(input: $input) {
+    certificateDays
+    template {
+      title
+      body
+    }
+    placeholders
+  }
+}

@@ -1,0 +1,55 @@
+# `anima device get`. Secrets are never in K1; `credentialStored` only says one is kept.
+query DeviceGet($id: ID!) {
+  device(id: $id) {
+    id
+    name
+    host
+    ip
+    kind
+    os
+    distribution
+    tags
+    maintenance
+    status
+    macAddress
+    metricsSource
+    metricsStale
+    sessionLimit
+    accessWarnings
+    site {
+      id
+      name
+    }
+    ssh {
+      enabled
+      port
+      username
+      credentialStored
+      hostKey {
+        algorithm
+        fingerprintSha256
+      }
+    }
+    rdp {
+      enabled
+      port
+      username
+      credentialStored
+    }
+    vnc {
+      enabled
+      port
+      credentialStored
+    }
+    checks {
+      id
+      name
+      type
+      status
+      paused
+    }
+    uptime(window: DAY)
+    createdAt
+    updatedAt
+  }
+}

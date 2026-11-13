@@ -1,0 +1,20 @@
+query EventList($filter: EventFilter, $first: Int, $after: String) {
+  events(filter: $filter, first: $first, after: $after) {
+    edges {
+      cursor
+      node {
+        id
+        at
+        severity
+        source
+        deviceId
+        deviceName
+        message
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+  }
+}

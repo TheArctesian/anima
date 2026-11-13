@@ -1,0 +1,21 @@
+query DeliveryList($channelId: ID, $first: Int, $after: String) {
+  deliveries(channelId: $channelId, first: $first, after: $after) {
+    edges {
+      cursor
+      node {
+        id
+        channelId
+        channelName
+        kind
+        at
+        ok
+        reason
+        code
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+  }
+}

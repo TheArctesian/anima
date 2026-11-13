@@ -1,0 +1,47 @@
+# `anima vpn status` (VPN-005, VPN-008). Null when the hub has not read the VPN yet.
+fragment VpnNodeRow on VpnNode {
+  name
+  address
+  os
+  role
+  tags
+  routes
+  waitingRoutes
+  online
+  lastSeen
+  keyExpiry
+  keyState
+  path
+  relayRegion
+  inAnima
+}
+
+query VpnStatus {
+  vpn {
+    readAt
+    fresh
+    broker
+    hub {
+      ...VpnNodeRow
+    }
+    sites {
+      site {
+        id
+        name
+      }
+      router {
+        name
+      }
+      state
+      path
+      relayRegion
+      hasPingCheck
+      waitingRouter {
+        name
+      }
+    }
+    nodes {
+      ...VpnNodeRow
+    }
+  }
+}

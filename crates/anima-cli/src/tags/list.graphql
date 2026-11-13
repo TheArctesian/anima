@@ -1,0 +1,4 @@
+# `anima tag list`.
+query TagList {
+  tags
+}

@@ -1,0 +1,9 @@
+# `anima device trust accept-host-key`: the hub answers CONFLICT when the fingerprint is not the
+# one it saw (SEC-006).
+mutation HostKeyAccept($deviceId: ID!, $fingerprintSha256: String!) {
+  acceptHostKey(deviceId: $deviceId, fingerprintSha256: $fingerprintSha256) {
+    algorithm
+    fingerprintSha256
+    firstSeenAt
+  }
+}

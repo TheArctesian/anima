@@ -1,0 +1,10 @@
+# `anima device trust accept-certificate`: the hub answers CONFLICT when the fingerprint is not
+# the one it saw (SEC-007).
+mutation CertificateAccept($deviceId: ID!, $fingerprintSha256: String!) {
+  acceptServerCertificate(deviceId: $deviceId, fingerprintSha256: $fingerprintSha256) {
+    fingerprintSha256
+    subject
+    notAfter
+    firstSeenAt
+  }
+}

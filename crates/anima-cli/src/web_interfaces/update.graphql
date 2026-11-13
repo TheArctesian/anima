@@ -1,0 +1,12 @@
+# `anima web update`.
+mutation WebUpdate($id: ID!, $input: WebInterfaceInput!) {
+  updateWebInterface(id: $id, input: $input) {
+    id
+    deviceId
+    label
+    url
+    openIn
+    pinnedFingerprintSha256
+    pinnedAt
+  }
+}

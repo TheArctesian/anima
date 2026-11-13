@@ -1,0 +1,7 @@
+# `--site <name>`: the site's ID from its name.
+query SiteNames {
+  sites {
+    id
+    name
+  }
+}

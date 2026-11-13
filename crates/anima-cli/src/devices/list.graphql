@@ -1,0 +1,28 @@
+# `anima device list` and the name lookup of `anima device get` (CMD-026).
+query DeviceList($filter: DeviceFilter, $sort: DeviceSort, $first: Int, $after: String) {
+  devices(filter: $filter, sort: $sort, first: $first, after: $after) {
+    edges {
+      cursor
+      node {
+        id
+        name
+        host
+        ip
+        kind
+        os
+        status
+        tags
+        maintenance
+        site {
+          id
+          name
+        }
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+    totalCount
+  }
+}

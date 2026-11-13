@@ -1,0 +1,7 @@
+# `anima release log <job id>`: lines after a sequence, oldest first (BLD-048).
+query BuildJobLog($id: ID!, $after: Int, $first: Int) {
+  buildJobLog(id: $id, after: $after, first: $first) {
+    sequence
+    text
+  }
+}

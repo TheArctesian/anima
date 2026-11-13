@@ -1,0 +1,15 @@
+# `anima builder list`, and the name lookup of `anima builder revoke`.
+query BuilderList {
+  builders {
+    id
+    name
+    platform {
+      os
+      arch
+    }
+    clientAddr
+    enrolledAt
+    lastSeenAt
+    online
+  }
+}

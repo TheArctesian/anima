@@ -55,6 +55,8 @@ with a reason: `#[expect(clippy::rule, reason = "...")]` or
 - Client: routes compose components; logic lives in `.ts` beside the component;
   shared code lives in `$lib/<domain>/`.
 - Tauri shell (`apps/desktop/src-tauri`) holds only OS work: windows, key store, web views.
+- Command line (`crates/anima-cli`): one folder for each operator noun, with its GraphQL
+  documents, its commands and its MCP tools. Only `hub/` talks to the network.
 - Design values come from tokens (`design/tokens/`); motion uses the helpers in
   `$lib/motion/` (spec Sections 5.5 and 5.7).
 
@@ -72,6 +74,22 @@ domain, run the gates, then lower the baseline.
 - **I** Reads like the language's standard style and its neighbours?
 - **D** Names from the domain? Would a newcomer find it?
 - Did a baselined file grow, or a suppression appear without a reason?
+- Does a new or changed hub function have its `anima` command and its MCP tool (CMD-030)?
+
+## Command line first
+
+The plan is [docs/cli-mcp-plan.md](docs/cli-mcp-plan.md). Build each new function in this order
+(CMD-030, operator, 2026-11-12):
+
+1. The hub API (and its contract).
+2. The `anima` command (`crates/anima-cli/`).
+3. The MCP tool (`anima mcp`, same crate), unless Section 7 of the plan excludes it: a tool must
+   not take or return a secret, make a trust decision or open a session.
+4. The graphical client.
+
+A function is not complete until steps 2 and 3 are done or the plan gives the reason that they do
+not apply. Do not merge a change that adds a function only to the graphical client. The coverage
+test (CMD-031) fails when a root field of `contracts/schema.graphql` has no command.
 
 ## Tests
 
