@@ -3,7 +3,7 @@
 
 use serde_json::json;
 
-use crate::devices::page;
+use crate::fleet::devices::page;
 use crate::kit::Anima;
 use crate::kit::fake_hub::FakeHub;
 

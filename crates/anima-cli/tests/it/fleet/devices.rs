@@ -9,7 +9,7 @@ const TOKEN: &str = "login-token-for-device-tests";
 
 /// The K6 Phase 1 devices as `DeviceList` nodes, with their site names.
 pub fn fixture_devices() -> Vec<Value> {
-    let text = include_str!("../../../../contracts/fixtures/phase1.json");
+    let text = include_str!("../../../../../contracts/fixtures/phase1.json");
     let fixtures: Value = serde_json::from_str(text).expect("fixtures");
     let sites = fixtures["sites"].as_array().expect("sites");
     let devices = fixtures["devices"].as_array().expect("devices");

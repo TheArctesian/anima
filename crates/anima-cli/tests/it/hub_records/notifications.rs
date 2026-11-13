@@ -11,7 +11,7 @@ pub const WEBHOOK_URL: &str = "https://hooks.example.net/services/T000/B000/SECR
 pub const SMTP_PASSWORD: &str = "smtp-password-that-must-not-leak";
 
 pub fn fixtures() -> Value {
-    let text = include_str!("../../../../contracts/fixtures/phase3.json");
+    let text = include_str!("../../../../../contracts/fixtures/phase3.json");
     serde_json::from_str(text).expect("fixtures")
 }
 

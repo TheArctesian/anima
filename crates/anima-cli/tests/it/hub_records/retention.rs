@@ -8,7 +8,7 @@ use crate::kit::fake_hub::{FakeHub, data, refusal};
 const TOKEN: &str = "login-token-for-retention-tests";
 
 fn periods() -> Vec<Value> {
-    let text = include_str!("../../../../contracts/fixtures/phase3.json");
+    let text = include_str!("../../../../../contracts/fixtures/phase3.json");
     let fixtures: Value = serde_json::from_str(text).expect("fixtures");
     fixtures["retention"].as_array().expect("retention").clone()
 }

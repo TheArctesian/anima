@@ -9,7 +9,7 @@ const TOKEN: &str = "login-token-for-key-tests";
 const SECRET: &str = "anima_NewSecretNewSecretNewSecretNewSecretNew12";
 
 fn keys() -> Vec<Value> {
-    let text = include_str!("../../../../contracts/fixtures/phase3.json");
+    let text = include_str!("../../../../../contracts/fixtures/phase3.json");
     let fixtures: Value = serde_json::from_str(text).expect("fixtures");
     fixtures["apiKeys"].as_array().expect("apiKeys").clone()
 }
