@@ -121,8 +121,9 @@ pub async fn update(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, T
     let id = find(hub, &input.check, input.device.as_deref()).await?;
     if config.is_some() && holds_secret(&fetched(hub, &id).await?.config) {
         return Err(ToolError::Refused(
-            "Not changed: this check can hold a secret (HTTP authentication or headers, or an \
-             SNMP community or v3 passwords) that a config from here would drop. Change its \
+            "Not changed: this check can hold a secret (an HTTP request body, headers or \
+             authentication, or an SNMP community or v3 passwords) that a config from here \
+             would drop. Change its \
              timing or name here; the operator changes its config with `anima check update \
              --from-file`."
                 .to_owned(),

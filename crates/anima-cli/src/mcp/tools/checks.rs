@@ -56,9 +56,10 @@ impl CheckTool {
                 Access::Write,
                 Effect::Sets,
                 "Changes a check; only the fields given change. A new config replaces the \
-                 whole config and follows the rules of anima_check_create; it is refused for an \
-                 HTTP check with authentication or headers and for every SNMP check, whose \
-                 secrets it would drop. Returns the check.",
+                 whole config and follows the rules of anima_check_create; it is refused for \
+                 every HTTP check (the hub does not say whether a request body is stored, and \
+                 a body, headers or authentication would be dropped) and for every SNMP check, \
+                 whose secrets it would drop. Returns the check.",
             )
             .returns(&CHECK),
             Self::SetPaused => Definition::new::<change::PausedInput>(

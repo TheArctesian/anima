@@ -6,7 +6,7 @@
 use serde::de::DeserializeOwned;
 use serde_json::{Map, Value};
 
-use crate::checks::read::documents::check_get::{CheckGetCheckConfig, HttpAuthKind};
+use crate::checks::read::documents::check_get::CheckGetCheckConfig;
 use crate::mcp::outcome::ToolError;
 
 /// The fields an agent may give, by kind. Anything else is refused, so a secret field that
@@ -113,16 +113,14 @@ fn check(config: &Value) -> Result<(), ToolError> {
 }
 
 /// Whether the check's current settings can hold a secret that a new config from an agent
-/// would drop: an HTTP check with authentication or headers, or any SNMP check (the community
-/// or the v3 passwords are never read back, so their presence cannot be seen). Every kind is
-/// named, so a kind added to K1 does not compile until it is classed here.
+/// would drop: any HTTP check or any SNMP check. The hub's check read does not say whether an
+/// HTTP request body is stored (the `CheckGet` document does not select `body`, which can hold a
+/// token), and the SNMP community and v3 passwords are never read back, so their presence cannot
+/// be seen. Every kind is named, so a kind added to K1 does not compile until it is classed here.
 #[must_use]
 pub fn holds_secret(current: &CheckGetCheckConfig) -> bool {
     match current {
-        CheckGetCheckConfig::HttpConfig(http) => {
-            !matches!(http.auth_kind, HttpAuthKind::NONE) || !http.headers.is_empty()
-        }
-        CheckGetCheckConfig::SnmpConfig(_) => true,
+        CheckGetCheckConfig::HttpConfig(_) | CheckGetCheckConfig::SnmpConfig(_) => true,
         CheckGetCheckConfig::IcmpConfig(_)
         | CheckGetCheckConfig::TcpConfig(_)
         | CheckGetCheckConfig::TlsConfig(_)
@@ -187,16 +185,17 @@ mod tests {
     }
 
     #[test]
-    fn mcp_004_f3_http_with_authentication_or_headers_and_every_snmp_check_hold_a_secret() {
+    fn mcp_004_f3_every_http_check_and_every_snmp_check_hold_a_secret() {
+        // A body is not in the check read, so a plain HTTP check (no auth, no headers) may still hold one.
         let http = |auth: &str, headers: Value| {
             config(
                 json!({ "__typename": "HttpConfig", "url": "https://a.example",
-                "method": "GET", "headers": headers, "maxRedirects": 0, "acceptedStatus": [],
+                "method": "POST", "headers": headers, "maxRedirects": 0, "acceptedStatus": [],
                 "keyword": null, "jsonQuery": null, "jsonExpected": null, "authKind": auth,
                 "verifyTls": true, "timeoutMs": 1 }),
             )
         };
-        assert!(!holds_secret(&http("NONE", json!([]))));
+        assert!(holds_secret(&http("NONE", json!([]))));
         assert!(holds_secret(&http("BEARER", json!([]))));
         assert!(holds_secret(&http("NONE", json!([{ "name": "X-Key" }]))));
         let snmp = config(

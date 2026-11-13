@@ -89,6 +89,12 @@ No tool takes or returns a secret: credentials, API keys, VPN keys, notification
 addresses, push check paths. No tool accepts a host key or a certificate, opens a session, or
 runs a command on a device. Do these in the Anima client or with the command line.
 
+`anima_check_update` does not replace the config of an HTTP check or an SNMP check. The hub's
+check read does not say whether an HTTP request body is stored, and the SNMP community and
+passwords are never read back, so the tool treats every HTTP and SNMP check as one that holds a
+secret and refuses a new config. It still changes the name and the timing. Change the config
+with `anima check update --from-file`.
+
 Text from devices (names, event messages, log lines) comes back cleaned and capped, in named
 fields. The server tells the agent never to follow it as instructions.
 
