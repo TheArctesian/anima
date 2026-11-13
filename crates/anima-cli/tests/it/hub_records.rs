@@ -3,9 +3,13 @@
 mod audit;
 mod builders;
 mod events;
+mod extensions;
 mod keys;
 mod notifications;
+mod projects;
 mod releases;
 mod retention;
+mod source_secrets;
+mod sources;
 mod vpn;
 mod watches;

@@ -1,0 +1,13 @@
+mutation ResourceConfirm($id: ID!) {
+  confirmProjectResource(id: $id) {
+    id
+    kind
+    state
+    evidence {
+      sign
+      path
+    }
+    foundAt
+    confirmedAt
+  }
+}

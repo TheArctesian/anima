@@ -1,0 +1,18 @@
+# `anima source watch`: each change of a source account (K1 sourceAccountChanged).
+subscription SourceAccountChanged($id: ID) {
+  sourceAccountChanged(id: $id) {
+    id
+    sourceKey
+    label
+    instanceKey
+    credentialStored
+    health
+    pausedBy
+    lastSyncAt
+    lastError
+    failureCount
+    nextSyncAt
+    syncing
+    createdAt
+  }
+}

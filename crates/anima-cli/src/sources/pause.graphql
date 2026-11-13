@@ -1,0 +1,17 @@
+mutation SourcePause($id: ID!, $paused: Boolean!) {
+  setSourceAccountPaused(id: $id, paused: $paused) {
+    id
+    sourceKey
+    label
+    instanceKey
+    credentialStored
+    health
+    pausedBy
+    lastSyncAt
+    lastError
+    failureCount
+    nextSyncAt
+    syncing
+    createdAt
+  }
+}

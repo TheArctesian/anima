@@ -1,0 +1,34 @@
+query SourceAccounts($sourceKey: String, $runs: Int) {
+  sourceAccounts(sourceKey: $sourceKey) {
+    id
+    sourceKey
+    label
+    instanceKey
+    credentialStored
+    health
+    pausedBy
+    lastSyncAt
+    lastError
+    failureCount
+    nextSyncAt
+    syncing
+    createdAt
+    runs(first: $runs) {
+      id
+      trigger
+      startedAt
+      endedAt
+      outcome
+      inserted
+      changed
+      unchanged
+      removed
+      problems {
+        code
+        subject
+        message
+      }
+      error
+    }
+  }
+}

@@ -1,0 +1,19 @@
+query ExtensionList {
+  extensions {
+    key
+    name
+    dataClass
+    built
+    fixed
+    on
+    needs
+    worksWith
+    neededBy
+    navigation {
+      group
+      label
+      route
+    }
+    changedAt
+  }
+}
