@@ -22,6 +22,7 @@ fn audit_entry(change: Value) -> NewAudit {
         operator: Operator {
             id: OperatorId::from(uuid::Uuid::now_v7()),
             name: "operator".to_owned(),
+            actor: anima_hub::events::Actor::for_tests(),
         },
         action: AuditAction::Update,
         target: AuditTarget::Device(ROUTER.parse().unwrap()),

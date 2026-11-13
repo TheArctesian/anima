@@ -18,6 +18,7 @@ async fn events_source_vpn_is_stored_and_read_back(pool: PgPool) {
         source: Source::Vpn,
         device: None,
         message: "VPN node guest (100.64.0.8) is not in Anima".to_owned(),
+        actor: crate::events::ActorKind::Hub,
     };
     record(&mut conn, &Bus::new(1), at, event).await.unwrap();
     let filter = EventFilter {

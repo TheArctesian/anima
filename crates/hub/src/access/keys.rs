@@ -1,6 +1,7 @@
-//! API keys for scripts: named, READ or WRITE, with an expiry at most one year away. The secret
-//! is shown once; the hub keeps only its SHA-256 and the first 12 characters. Each change has
-//! its audit entry and event (INT-003, LOG-005, D-23, P3-004).
+//! API keys for scripts and AI agents: named, READ or WRITE, made for a user's script or for an
+//! AI agent, with an expiry at most one year away. The secret is shown once; the hub keeps only
+//! its SHA-256 and the first 12 characters. Each change has its audit entry and event (INT-003,
+//! LOG-005, LOG-015, D-23, P3-004).
 
 mod graphql;
 mod rules;
@@ -15,7 +16,7 @@ use zeroize::Zeroizing;
 pub(super) use graphql::{ApiKeyCreated, ApiKeyInput, api_keys, create_api_key, revoke_api_key};
 
 use super::{
-    Scope,
+    MadeFor, Scope,
     store::{self, KEY_NAME_INDEX, NewKey, StoredKey},
     tokens::TOKEN_BYTES,
 };
@@ -30,6 +31,8 @@ pub struct ApiKey {
     id: ApiKeyId,
     name: String,
     scope: Scope,
+    /// Who the key is for; it never changes (LOG-015).
+    made_for: MadeFor,
     /// The first 12 characters of the secret.
     prefix: String,
     expires_at: DateTime<Utc>,
@@ -47,6 +50,7 @@ struct Created {
 struct Wanted {
     name: String,
     scope: Scope,
+    made_for: MadeFor,
     expires_at: DateTime<Utc>,
 }
 
@@ -58,7 +62,8 @@ enum Error {
     NameTaken,
     #[error("No such API key.")]
     NotFound,
-    /// A stored row holds a scope this hub does not know, or one no API key has.
+    /// A stored row holds a scope or a "made for" this hub does not know, or a scope no API
+    /// key has.
     #[error("an API key row cannot be read")]
     Unreadable,
     #[error("database error")]
@@ -76,6 +81,7 @@ impl ApiKey {
             scope: Scope::from_stored(&row.scope)
                 .filter(|scope| *scope != Scope::Builder)
                 .ok_or(Error::Unreadable)?,
+            made_for: MadeFor::from_stored(row.made_for.as_deref()).ok_or(Error::Unreadable)?,
             prefix: row.display_prefix,
             expires_at: row.expires_at,
             created_at: row.created_at,
@@ -107,6 +113,7 @@ async fn create(
         hash: draft.token.hash(),
         name: &draft.name,
         scope: draft.scope,
+        made_for: wanted.made_for,
         display_prefix: &draft.token.key_display_prefix(),
         expires_at: draft.expires_at,
         created_at: trail.now,

@@ -35,6 +35,7 @@ pub(super) fn created(key: &ApiKey) -> TrailEntry {
         json!({
             "name": key.name,
             "scope": key.scope.as_str(),
+            "madeFor": key.made_for.as_str(),
             "expiresAt": key.expires_at,
         }),
     )

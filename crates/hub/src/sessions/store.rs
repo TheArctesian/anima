@@ -11,7 +11,7 @@ use super::{
     page::{Cursor, Page, split_page},
 };
 use crate::{
-    events::{ClientAddr, Operator},
+    events::{Actor, ClientAddr, Operator},
     ids::{DeviceId, OperatorId, SessionId},
 };
 
@@ -215,7 +215,12 @@ pub(super) async fn close_stale<'e>(
         .into_iter()
         .map(|(session, id, name, client)| Stale {
             session,
-            operator: Operator { id, name },
+            // The hub ends a session a previous process left live (LOG-014 rule 1).
+            operator: Operator {
+                id,
+                name,
+                actor: Actor::hub(),
+            },
             client: ClientAddr(client),
         })
         .collect();

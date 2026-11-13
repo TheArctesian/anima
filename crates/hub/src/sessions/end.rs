@@ -98,8 +98,9 @@ async fn end_tickets(
         let mut tx = db.begin().await?;
         let mut rows = Vec::with_capacity(ends.len());
         for (ticket, end) in &ends {
+            // A timeout or the hub's shutdown ends it: the hub's own work (LOG-014 rule 1).
             let by = Actor {
-                operator: ticket.operator.clone(),
+                operator: ticket.operator.clone().by_hub(),
                 client: ticket.client,
                 at: now,
             };

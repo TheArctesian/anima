@@ -9,7 +9,9 @@ use async_graphql::{
 use chrono::{DateTime, TimeDelta, TimeZone, Utc};
 use uuid::Uuid;
 
-use super::{Authenticated, Identity, Operator, Scope, SignInRequired, TokenKind, identity::Grant};
+use super::{
+    Authenticated, Identity, MadeFor, Operator, Scope, SignInRequired, TokenKind, identity::Grant,
+};
 use crate::{
     clock::{Clock, FixedClock},
     credentials::Vault,
@@ -44,6 +46,7 @@ fn operator() -> Operator {
     Operator {
         id: "0190a000-0000-7000-8000-000000000001".parse().unwrap(),
         name: "operator".to_owned(),
+        actor: crate::events::Actor::for_tests(),
     }
 }
 
@@ -57,6 +60,8 @@ fn identity_of(kind: TokenKind, scope: Scope, expires_at: DateTime<Utc>) -> Iden
         kind,
         scope,
         expires_at,
+        made_for: (kind == TokenKind::ApiKey).then_some(MadeFor::User),
+        key_name: (kind == TokenKind::ApiKey).then(|| "tests".to_owned()),
     };
     Identity::new(operator(), grant)
 }

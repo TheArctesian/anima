@@ -107,7 +107,8 @@ async fn int_003_p3_004_only_the_sha_256_of_the_secret_is_stored(pool: PgPool) {
 
 /// The `expiresAt` refusal, and that no key was made.
 async fn refused_expiry(hub: &Hub, pool: &PgPool, token: &str, expires_at: Value) {
-    let input = json!({ "name": "late", "scope": "READ", "expiresAt": expires_at });
+    let input =
+        json!({ "name": "late", "scope": "READ", "madeFor": "USER", "expiresAt": expires_at });
     let response = create(hub, token, input).await;
     let (code, fields) = coded(&response);
     assert_eq!(code, "VALIDATION", "{expires_at}: {response}");
@@ -130,7 +131,12 @@ async fn d_23_the_expiry_is_in_the_future_and_at_most_one_year_away(pool: PgPool
     ] {
         refused_expiry(&hub, &pool, &token, json!(refused)).await;
     }
-    let missing = create(&hub, &token, json!({ "name": "late", "scope": "READ" })).await;
+    let missing = create(
+        &hub,
+        &token,
+        json!({ "name": "late", "scope": "READ", "madeFor": "USER" }),
+    )
+    .await;
     assert!(missing["errors"].is_array(), "{missing}");
     assert_eq!(
         count(&pool, "access.api_tokens where kind = 'api_key'").await,
@@ -138,7 +144,8 @@ async fn d_23_the_expiry_is_in_the_future_and_at_most_one_year_away(pool: PgPool
     );
 
     for (name, allowed) in [("soon", start() + TimeDelta::seconds(1)), ("a year", year)] {
-        let input = json!({ "name": name, "scope": "WRITE", "expiresAt": allowed });
+        let input =
+            json!({ "name": name, "scope": "WRITE", "madeFor": "USER", "expiresAt": allowed });
         let key = &create(&hub, &token, input).await["data"]["createApiKey"]["key"];
         assert_eq!(instant(&key["expiresAt"]), allowed, "{name}");
     }

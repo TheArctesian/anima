@@ -33,6 +33,7 @@ fn event(severity: Severity, message: &str) -> EventSummary {
         source: Source::Check,
         device: None,
         message: message.to_owned(),
+        actor: Some(crate::events::ActorKind::Hub),
     }
 }
 
@@ -117,6 +118,7 @@ fn signed_in(request: &str) -> Request {
     let operator = Operator {
         id: OperatorId::from(Uuid::now_v7()),
         name: "operator".to_owned(),
+        actor: crate::events::Actor::for_tests(),
     };
     Request::new(request).data(Identity::for_tests(operator, now() + TimeDelta::days(1)))
 }

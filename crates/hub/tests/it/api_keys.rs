@@ -41,7 +41,7 @@ async fn create(hub: &Hub, token: &str, input: Value) -> Value {
 
 /// The input of a key named `name` with `scope` that expires in 30 days.
 fn input(name: &str, scope: &str) -> Value {
-    json!({ "name": name, "scope": scope, "expiresAt": start() + TimeDelta::days(30) })
+    json!({ "name": name, "scope": scope, "madeFor": "USER", "expiresAt": start() + TimeDelta::days(30) })
 }
 
 /// A key made with `token`, as `createApiKey` answered it.

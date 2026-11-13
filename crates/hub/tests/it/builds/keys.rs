@@ -23,8 +23,8 @@ async fn api_key(pool: &PgPool, scope: &str, fill: u8) -> String {
     let name = format!("script-{scope}");
     sqlx::query(
         "INSERT INTO access.api_tokens \
-         (id, operator_id, token_hash, kind, name, display_prefix, scope, expires_at, created_at) \
-         SELECT gen_random_uuid(), id, $1, 'api_key', $4, 'anima_BwcHBw', $5, $2, $3 \
+         (id, operator_id, token_hash, kind, made_for, name, display_prefix, scope, expires_at, created_at) \
+         SELECT gen_random_uuid(), id, $1, 'api_key', 'user', $4, 'anima_BwcHBw', $5, $2, $3 \
          FROM access.operators",
     )
     .bind(Sha256::digest(secret).to_vec())

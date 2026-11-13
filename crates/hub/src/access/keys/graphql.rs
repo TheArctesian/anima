@@ -15,7 +15,7 @@ use chrono::{DateTime, Utc};
 
 use super::{ApiKey, Created, Error, Wanted, create, list, revoke};
 use crate::{
-    access::{Error as AccessError, Scope, guard::operator_only, login},
+    access::{Error as AccessError, MadeFor, Scope, guard::operator_only, login},
     api_errors::{ErrorCode, FieldError, begin, coded, commit, internal, invalid, pool},
     events::Trail,
     ids::ApiKeyId,
@@ -66,6 +66,12 @@ impl ApiKey {
         token_scope(self.scope)
     }
 
+    /// Who the key is for: a script the operator runs, or an AI agent. It never changes, and
+    /// the hub records each request with an agent key as Agent (LOG-015, LOG-017).
+    async fn made_for(&self) -> MadeFor {
+        self.made_for
+    }
+
     /// The first 12 characters of the secret, so the operator can tell keys apart.
     async fn prefix(&self) -> &str {
         &self.prefix
@@ -104,6 +110,8 @@ impl ApiKeyCreated {
 pub struct ApiKeyInput {
     name: String,
     scope: TokenScope,
+    /// Required; it cannot change later (LOG-015).
+    made_for: MadeFor,
     /// Required; at most one year from now (D-23).
     expires_at: DateTime<Utc>,
 }
@@ -126,6 +134,7 @@ pub(in crate::access) async fn create_api_key(
     let wanted = Wanted {
         name: input.name,
         scope: input.scope.into(),
+        made_for: input.made_for,
         expires_at: input.expires_at,
     };
     let trail = Trail::from_context(ctx)?;

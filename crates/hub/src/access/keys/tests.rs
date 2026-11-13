@@ -10,7 +10,7 @@ use super::{
     Wanted,
     rules::{Draft, draft},
 };
-use crate::access::{Scope, tokens::TokenHash};
+use crate::access::{MadeFor, Scope, tokens::TokenHash};
 
 fn now() -> DateTime<Utc> {
     Utc.with_ymd_and_hms(2030, 2, 28, 12, 0, 0).unwrap()
@@ -20,6 +20,7 @@ fn wanted(name: &str, expires_at: DateTime<Utc>) -> Wanted {
     Wanted {
         name: name.to_owned(),
         scope: Scope::Read,
+        made_for: MadeFor::User,
         expires_at,
     }
 }

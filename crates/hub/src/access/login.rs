@@ -10,6 +10,7 @@ use uuid::Uuid;
 
 use super::{
     ClientAddr, Error, Identity, Operator,
+    actor::{self, Declaration, Signals},
     password::{self, DUMMY_HASH, Password},
     store::{self, Account, AttemptKey, NewToken, Outcome},
     throttle,
@@ -21,7 +22,9 @@ use sign_out::retire;
 
 use crate::{
     credentials::Vault,
-    events::{self, AuditAction, AuditTarget, Bus, NewAudit, NewEvent, Severity, Source},
+    events::{
+        self, Actor, ActorKind, AuditAction, AuditTarget, Bus, NewAudit, NewEvent, Severity, Source,
+    },
 };
 
 /// Password checks that run at once. Each takes 19 MiB and a CPU for tens of milliseconds,
@@ -41,6 +44,21 @@ pub(super) struct Attempt {
     pub at: DateTime<Utc>,
     /// The token a success gives.
     pub issue: Issue,
+    /// Whether the request declared an AI agent (LOG-016).
+    pub declared: Declaration,
+}
+
+impl Attempt {
+    /// Who the attempt's records name as the actor: the kind of token it asks for, raised to
+    /// Agent by the declaration (LOG-014, LOG-018).
+    fn actor(&self) -> Actor {
+        let signals = Signals {
+            token: self.issue.kind,
+            made_for: None,
+            declared: self.declared,
+        };
+        actor::actor(signals, None)
+    }
 }
 
 /// The token a sign-in gives: always `write`, of this kind, for this long; and the browser
@@ -109,6 +127,8 @@ pub(super) async fn login(
     attempt: Attempt,
 ) -> Result<SignedIn, Error> {
     let stored_name = stored_username(&attempt.username);
+    let actor = attempt.actor();
+    let kind = actor.kind();
     let key = AttemptKey {
         id: store::start_attempt(db, attempt.at, &stored_name, attempt.client.0).await?,
         at: attempt.at,
@@ -130,15 +150,24 @@ pub(super) async fn login(
             account,
             step: factor.step(),
             issue: attempt.issue,
+            actor,
         };
         if let Some(signed_in) = succeed(db, bus, &key, checked).await? {
             return Ok(signed_in);
         }
     }
-    warn_failed_sign_in(db, bus, &key, name.as_deref()).await?;
+    let failed = failed_message(&key, name.as_deref());
+    record_access(db, bus, &key, access_event(Severity::Warning, failed, kind)).await?;
     match factor {
         SecondFactor::Unopenable(error) => {
-            record_unopenable(db, bus, &key, name.as_deref()).await?;
+            let unopenable = unopenable_message(name.as_deref());
+            record_access(
+                db,
+                bus,
+                &key,
+                access_event(Severity::Error, unopenable, kind),
+            )
+            .await?;
             Err(Error::TotpSecret(error))
         }
         _ => Err(Error::WrongCredentials),
@@ -187,12 +216,13 @@ async fn password_matches(password: Password, account: Option<&Account>) -> Resu
     Ok(known && matched)
 }
 
-/// An account whose password and second factor were checked, the TOTP step to claim and the
-/// token to give.
+/// An account whose password and second factor were checked, the TOTP step to claim, the
+/// token to give and who asked for it.
 struct Checked {
     account: Account,
     step: Option<i64>,
     issue: Issue,
+    actor: Actor,
 }
 
 /// Records the success, the token, the audit entry and the event in one transaction, or
@@ -214,6 +244,7 @@ async fn succeed(
         account,
         step,
         issue,
+        actor,
     } = checked;
     let client = ClientAddr(attempt.client);
     let token = Token::from_random(random::<TOKEN_BYTES>()?);
@@ -228,6 +259,7 @@ async fn succeed(
     let operator = Operator {
         id: account.id,
         name: account.username.clone(),
+        actor,
     };
     let mut tx = db.begin().await?;
     if !store::lock_unchanged(&mut tx, &account).await? {
@@ -241,10 +273,13 @@ async fn succeed(
     }
     store::finish_attempt(&mut *tx, attempt.id, Outcome::Ok).await?;
     store::insert_token(&mut tx, &new_token, attempt.at).await?;
-    if let Some(replaced) = issue.replaces {
+    if let Some(mut replaced) = issue.replaces {
+        // This sign-in deletes the old token, so its sign-out is this request's (LOG-014).
+        replaced.operator.actor = operator.actor.clone();
         retire(&mut tx, replaced, client, attempt.at).await?;
     }
     let message = format!("Operator {} signed in.", operator.name);
+    let kind = operator.actor.kind();
     events::audit(
         &mut tx,
         attempt.at,
@@ -255,7 +290,7 @@ async fn succeed(
         &mut tx,
         bus,
         attempt.at,
-        access_event(Severity::Info, message),
+        access_event(Severity::Info, message, kind),
     )
     .await?;
     tx.commit().await?;
@@ -266,36 +301,24 @@ async fn succeed(
     }))
 }
 
-/// Records a failed sign-in as an `ACCESS` warning. The typed username is named only when it
+/// The `ACCESS` warning of a failed sign-in. The typed username is named only when it
 /// belongs to an operator: an unknown one may be a password typed in the wrong field.
-async fn warn_failed_sign_in(
-    db: &PgPool,
-    bus: &Bus,
-    attempt: &AttemptKey,
-    operator: Option<&str>,
-) -> Result<(), Error> {
+fn failed_message(attempt: &AttemptKey, operator: Option<&str>) -> String {
     let who = operator.map_or_else(
         || "an unknown username".to_owned(),
         |name| format!("operator {name}"),
     );
-    let message = format!("Sign-in failed for {who} from {}.", attempt.client);
-    record_access(db, bus, attempt, access_event(Severity::Warning, message)).await
+    format!("Sign-in failed for {who} from {}.", attempt.client)
 }
 
-/// Records, as an `ACCESS` error, that the operator's TOTP secret does not open with the hub
-/// key, so the operator cannot sign in until it is enrolled again. Names no secret.
-async fn record_unopenable(
-    db: &PgPool,
-    bus: &Bus,
-    attempt: &AttemptKey,
-    operator: Option<&str>,
-) -> Result<(), Error> {
+/// The `ACCESS` error that the operator's TOTP secret does not open with the hub key, so the
+/// operator cannot sign in until it is enrolled again. Names no secret.
+fn unopenable_message(operator: Option<&str>) -> String {
     let name = operator.unwrap_or_default();
-    let message = format!(
+    format!(
         "The second factor of operator {name} cannot be checked: its TOTP secret does not \
          open with the hub key. Enrol it again with anima-hub operator totp."
-    );
-    record_access(db, bus, attempt, access_event(Severity::Error, message)).await
+    )
 }
 
 async fn record_access(
@@ -319,12 +342,13 @@ fn audit_entry(operator: Operator, action: AuditAction, client: ClientAddr) -> N
     }
 }
 
-const fn access_event(severity: Severity, message: String) -> NewEvent {
+const fn access_event(severity: Severity, message: String, actor: ActorKind) -> NewEvent {
     NewEvent {
         severity,
         source: Source::Access,
         device: None,
         message,
+        actor,
     }
 }
 

@@ -119,7 +119,7 @@ async fn log_005_create_and_revoke_each_leave_an_audit_entry_and_an_event(pool: 
     assert_eq!(instant(&expires_at), instant(&key["key"]["expiresAt"]));
     assert_eq!(
         audits[0]["change"],
-        json!({ "name": "backup", "scope": "read", "expiresAt": null })
+        json!({ "name": "backup", "scope": "read", "madeFor": "user", "expiresAt": null })
     );
     assert_eq!(audits[1]["change"], json!({ "name": "backup" }));
     for row in &audits {

@@ -61,6 +61,7 @@ fn device_event(message: &str) -> NewEvent {
         source: Source::Check,
         device: Some((DEVICE.parse().unwrap(), "lab-router".to_owned())),
         message: message.to_owned(),
+        actor: crate::events::ActorKind::Hub,
     }
 }
 
@@ -69,6 +70,7 @@ fn new_audit(change: Value) -> NewAudit {
         operator: Operator {
             id: OPERATOR.parse().unwrap(),
             name: "operator".to_owned(),
+            actor: crate::events::Actor::for_tests(),
         },
         action: AuditAction::Update,
         target: AuditTarget::Device(DEVICE.parse().unwrap()),
@@ -123,6 +125,7 @@ async fn stored_event(conn: &mut PgConnection, id: EventId) -> EventSummary {
         source: from_stored(&SOURCES, row.get("source")),
         device: device_id.zip(device_name),
         message: row.get("message"),
+        actor: Some(crate::events::ActorKind::Hub),
     }
 }
 
@@ -178,6 +181,7 @@ async fn log_004_record_without_a_device_or_subscriber_succeeds(pool: PgPool) {
         source: Source::Hub,
         device: None,
         message: "Hub started".to_owned(),
+        actor: crate::events::ActorKind::Hub,
     };
 
     let id = record(&mut conn, &Bus::new(1), day(2026, 3, 14), event)

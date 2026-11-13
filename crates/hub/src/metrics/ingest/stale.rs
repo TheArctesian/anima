@@ -17,7 +17,7 @@ use super::{Error, store};
 use crate::{
     clock::Clock,
     devices::{self, MetricsSource},
-    events::{self, Bus, NewEvent, Severity, Source},
+    events::{self, ActorKind, Bus, NewEvent, Severity, Source},
     ids::DeviceId,
 };
 
@@ -112,6 +112,7 @@ fn went_stale(device: DeviceId, name: &str) -> NewEvent {
         source: Source::Metrics,
         device: Some((device, name.to_owned())),
         message: format!("The agent on {name} sent no metrics for 30 seconds; they are stale."),
+        actor: ActorKind::Hub,
     }
 }
 

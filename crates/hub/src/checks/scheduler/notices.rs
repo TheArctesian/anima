@@ -13,7 +13,7 @@ use super::{
 use crate::{
     checks::{self, Due, Missing},
     devices,
-    events::{self, NewEvent, Severity, Signal, Source},
+    events::{self, ActorKind, NewEvent, Severity, Signal, Source},
     ids::DeviceId,
     status::Status,
 };
@@ -46,6 +46,7 @@ pub(super) async fn settle(
         source: Source::Check,
         device: Some((device, name.clone())),
         message: schedule::status_message(&name, status),
+        actor: ActorKind::Hub,
     };
     let written = write_event(ctx, event, now).await;
     if logged(
@@ -99,6 +100,7 @@ pub(super) async fn report_late(ctx: &Context, check: &Due, now: DateTime<Utc>) 
         source: Source::Check,
         device: Some((check.device, device.clone())),
         message: schedule::late_message(&name, &device),
+        actor: ActorKind::Hub,
     };
     match write_event(ctx, event, now).await {
         Ok(()) => true,

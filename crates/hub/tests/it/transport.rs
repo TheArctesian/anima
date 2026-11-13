@@ -89,8 +89,8 @@ async fn d_23_a_read_key_may_read_but_not_sign_out_on_the_real_schema(pool: PgPo
     let token = format!("anima_{}", URL_SAFE_NO_PAD.encode([5_u8; 32]));
     sqlx::query(
         "insert into access.api_tokens \
-         (id, operator_id, token_hash, kind, name, display_prefix, scope, expires_at, created_at) \
-         select gen_random_uuid(), id, $1, 'api_key', 'reader', 'anima_BQUFBQ', 'read', $2, $3 \
+         (id, operator_id, token_hash, kind, made_for, name, display_prefix, scope, expires_at, created_at) \
+         select gen_random_uuid(), id, $1, 'api_key', 'user', 'reader', 'anima_BQUFBQ', 'read', $2, $3 \
          from access.operators",
     )
     .bind(Sha256::digest([5_u8; 32]).to_vec())

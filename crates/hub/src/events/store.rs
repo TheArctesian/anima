@@ -6,6 +6,7 @@ use uuid::Uuid;
 
 use super::{
     Refusal,
+    actor::{ActorKind, TokenKind},
     model::{AuditRecord, EventFilter, EventSummary, NewAudit, NewEvent, Severity, Source},
     page::Position,
     retention::{LOGS, Log},
@@ -187,8 +188,8 @@ pub(super) async fn insert_event(
         .unzip();
     let at = sqlx::query_scalar(
         "insert into events.event_log \
-         (id, at, severity, source, device_id, device_name, message) \
-         values ($1, $2, $3, $4, $5, $6, $7) returning at",
+         (id, at, severity, source, device_id, device_name, message, actor_kind) \
+         values ($1, $2, $3, $4, $5, $6, $7, $8) returning at",
     )
     .bind(id)
     .bind(at)
@@ -197,6 +198,7 @@ pub(super) async fn insert_event(
     .bind(device_id)
     .bind(device_name)
     .bind(&event.message)
+    .bind(event.actor.as_str())
     .fetch_one(&mut *conn)
     .await?;
     Ok(EventSummary {
@@ -206,20 +208,24 @@ pub(super) async fn insert_event(
         source: event.source,
         device: event.device,
         message: event.message,
+        actor: Some(event.actor),
     })
 }
 
-/// Inserts the audit entry as given; the caller has already redacted `change`.
+/// Inserts the audit entry as given; the caller has already redacted `change`. The actor's
+/// kind, token kind and key name go in their own columns; never the token (LOG-018).
 pub(super) async fn insert_audit(
     conn: &mut PgConnection,
     at: DateTime<Utc>,
     entry: &NewAudit,
 ) -> Result<(), sqlx::Error> {
     ensure_day_partition(conn, "audit_log", at).await?;
+    let actor = &entry.operator.actor;
     sqlx::query(
         "insert into events.audit_log \
-         (id, at, operator_id, operator_name, action, target_type, target_id, client_addr, change) \
-         values ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+         (id, at, operator_id, operator_name, action, target_type, target_id, client_addr, \
+         change, actor_kind, token_kind, api_key_name) \
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)",
     )
     .bind(Uuid::now_v7())
     .bind(at)
@@ -230,6 +236,9 @@ pub(super) async fn insert_audit(
     .bind(entry.target.id())
     .bind(entry.client.0)
     .bind(&entry.change)
+    .bind(actor.kind().as_str())
+    .bind(actor.token().map(TokenKind::as_str))
+    .bind(actor.api_key_name())
     .execute(&mut *conn)
     .await?;
     Ok(())
@@ -245,6 +254,7 @@ struct EventRow {
     device_id: Option<DeviceId>,
     device_name: Option<String>,
     message: String,
+    actor_kind: Option<String>,
 }
 
 impl TryFrom<EventRow> for EventSummary {
@@ -259,6 +269,7 @@ impl TryFrom<EventRow> for EventSummary {
             source: Source::from_stored(&row.source).ok_or_else(|| unknown("source"))?,
             device: row.device_id.zip(row.device_name),
             message: row.message,
+            actor: stored_kind(row.actor_kind.as_deref(), ActorKind::from_stored)?,
         })
     }
 }
@@ -279,7 +290,7 @@ pub(super) async fn list_events(
         .as_ref()
         .map(|all| all.iter().map(|source| source.as_str()).collect());
     let rows: Vec<EventRow> = sqlx::query_as(
-        "select id, at, severity, source, device_id, device_name, message \
+        "select id, at, severity, source, device_id, device_name, message, actor_kind \
          from events.event_log \
          where ($1::text[] is null or severity = any($1)) \
            and ($2::text[] is null or source = any($2)) \
@@ -311,28 +322,53 @@ struct AuditRow {
     target_id: String,
     client_addr: std::net::IpAddr,
     change: serde_json::Value,
+    actor_kind: Option<String>,
+    token_kind: Option<String>,
+    api_key_name: Option<String>,
 }
 
-/// Up to `limit` audit entries, newest first, after `after` when it is given.
+/// The kind stored as `text`, read with `parse`; `None` for a row written before the column
+/// existed, an error for text this hub does not know.
+fn stored_kind<T>(
+    text: Option<&str>,
+    parse: impl Fn(&str) -> Option<T>,
+) -> Result<Option<T>, sqlx::Error> {
+    text.map(|text| {
+        parse(text).ok_or_else(|| sqlx::Error::Decode("unknown actor or token kind".into()))
+    })
+    .transpose()
+}
+
+/// Up to `limit` audit entries of `actor` (every kind when `None`), newest first, after
+/// `after` when it is given. An entry with no recorded kind matches only `None` (LOG-020).
 pub(super) async fn list_audit(
     db: &PgPool,
+    actor: Option<ActorKind>,
     after: Option<Position>,
     limit: i64,
 ) -> Result<Vec<AuditRecord>, sqlx::Error> {
     let rows: Vec<AuditRow> = sqlx::query_as(
-        "select id, at, operator_name, action, target_type, target_id, client_addr, change \
+        "select id, at, operator_name, action, target_type, target_id, client_addr, change, \
+         actor_kind, token_kind, api_key_name \
          from events.audit_log \
-         where ($1::timestamptz is null or (at, id) < ($1, $2)) \
-         order by at desc, id desc limit $3",
+         where ($1::text is null or actor_kind = $1) \
+           and ($2::timestamptz is null or (at, id) < ($2, $3)) \
+         order by at desc, id desc limit $4",
     )
+    .bind(actor.map(ActorKind::as_str))
     .bind(after.map(|position| position.at))
     .bind(after.map(|position| position.id))
     .bind(limit)
     .fetch_all(db)
     .await?;
-    Ok(rows
-        .into_iter()
-        .map(|row| AuditRecord {
+    rows.into_iter().map(AuditRecord::try_from).collect()
+}
+
+impl TryFrom<AuditRow> for AuditRecord {
+    type Error = sqlx::Error;
+
+    fn try_from(row: AuditRow) -> Result<Self, Self::Error> {
+        Ok(Self {
             id: row.id,
             at: row.at,
             operator_name: row.operator_name,
@@ -341,6 +377,9 @@ pub(super) async fn list_audit(
             target_id: row.target_id,
             client: row.client_addr,
             change: row.change,
+            actor_kind: stored_kind(row.actor_kind.as_deref(), ActorKind::from_stored)?,
+            token_kind: stored_kind(row.token_kind.as_deref(), TokenKind::from_stored)?,
+            api_key_name: row.api_key_name,
         })
-        .collect())
+    }
 }

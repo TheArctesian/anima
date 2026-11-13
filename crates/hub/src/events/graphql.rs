@@ -14,6 +14,7 @@ use tokio::sync::broadcast::{Receiver, error::RecvError};
 use self::connection::{AuditConnection, EventConnection, EventNode};
 use super::{
     Bus, Signal,
+    actor::ActorKind,
     model::{EventFilter, EventSummary, Severity, Source},
     page::{MAX_PAGE_SIZE, Position, decode_cursor, fetch_limit, page_size, split_page},
     retention::Log,
@@ -70,17 +71,24 @@ impl Query {
         Ok(split_page(rows, size).into())
     }
 
-    /// The audit log, newest first (LOG-005).
+    /// The audit log, newest first (LOG-005); only the entries of `actorKind` when it is
+    /// given (LOG-020).
     #[graphql(guard = "Authenticated")]
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "K1 fixes the argument list of Query.audit"
+    )]
     async fn audit(
         &self,
         ctx: &Context<'_>,
         #[graphql(default_with = "Some(DEFAULT_FIRST)")] first: Option<i32>,
         after: Option<String>,
+        actor_kind: Option<ActorKind>,
     ) -> Result<AuditConnection> {
         let (size, after) =
             paging(Log::Audit, first, after.as_deref()).map_err(|bad| invalid(&[bad]))?;
-        let rows = store::list_audit(schema_dependency::<PgPool>(ctx)?, after, fetch_limit(size))
+        let db = schema_dependency::<PgPool>(ctx)?;
+        let rows = store::list_audit(db, actor_kind, after, fetch_limit(size))
             .await
             .map_err(internal)?;
         Ok(split_page(rows, size).into())

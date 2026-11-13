@@ -95,9 +95,9 @@ async fn sec_002_operator_for_token_takes_only_a_login_token(pool: PgPool) {
             .await
             .unwrap();
         sqlx::query(
-            "insert into access.api_tokens (id, operator_id, token_hash, kind, name, \
+            "insert into access.api_tokens (id, operator_id, token_hash, kind, made_for, name, \
              display_prefix, scope, expires_at, created_at) \
-             select gen_random_uuid(), id, $1, 'api_key', 'script', 'anima_BwcHBw', $2, $3, $4 \
+             select gen_random_uuid(), id, $1, 'api_key', 'user', 'script', 'anima_BwcHBw', $2, $3, $4 \
              from access.operators",
         )
         .bind(hash(&secret))

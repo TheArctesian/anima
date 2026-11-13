@@ -4,7 +4,10 @@ use chrono::{DateTime, Utc};
 use sqlx::{FromRow, PgConnection, PgExecutor};
 
 use crate::{
-    access::tokens::{Scope, TokenHash, TokenKind},
+    access::{
+        MadeFor,
+        tokens::{Scope, TokenHash, TokenKind},
+    },
     ids::{ApiKeyId, OperatorId},
 };
 
@@ -12,7 +15,8 @@ use crate::{
 pub(in crate::access) const KEY_NAME_INDEX: &str = "api_tokens_key_name";
 
 /// The columns of an API key the operator may see; never the hash.
-const KEY_COLUMNS: &str = "id, name, scope, display_prefix, expires_at, created_at, last_used_at";
+const KEY_COLUMNS: &str =
+    "id, name, scope, made_for, display_prefix, expires_at, created_at, last_used_at";
 
 /// An API key row to insert.
 pub(in crate::access) struct NewKey<'a> {
@@ -21,6 +25,7 @@ pub(in crate::access) struct NewKey<'a> {
     pub hash: TokenHash,
     pub name: &'a str,
     pub scope: Scope,
+    pub made_for: MadeFor,
     pub display_prefix: &'a str,
     pub expires_at: DateTime<Utc>,
     pub created_at: DateTime<Utc>,
@@ -32,6 +37,8 @@ pub(in crate::access) struct StoredKey {
     pub id: ApiKeyId,
     pub name: String,
     pub scope: String,
+    /// Null only for a row that is no API key; migration 0011 checks that.
+    pub made_for: Option<String>,
     pub display_prefix: String,
     pub expires_at: DateTime<Utc>,
     pub created_at: DateTime<Utc>,
@@ -46,8 +53,8 @@ pub(in crate::access) async fn insert_key(
 ) -> Result<StoredKey, sqlx::Error> {
     sqlx::query_as(&format!(
         "insert into access.api_tokens (id, operator_id, token_hash, kind, name, scope, \
-         display_prefix, expires_at, created_at) values ($1, $2, $3, $4, $5, $6, $7, $8, $9) \
-         returning {KEY_COLUMNS}"
+         made_for, display_prefix, expires_at, created_at) \
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) returning {KEY_COLUMNS}"
     ))
     .bind(key.id)
     .bind(key.operator)
@@ -55,6 +62,7 @@ pub(in crate::access) async fn insert_key(
     .bind(TokenKind::ApiKey.as_str())
     .bind(key.name)
     .bind(key.scope.as_str())
+    .bind(key.made_for.as_str())
     .bind(key.display_prefix)
     .bind(key.expires_at)
     .bind(key.created_at)

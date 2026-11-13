@@ -6,6 +6,7 @@ use chrono::{DateTime, Utc};
 
 use crate::{
     events::{
+        actor::{ActorKind, TokenKind},
         model::{AuditRecord, EventSummary, Severity, Source},
         page::{Page, Position, encode_cursor},
         retention::Log,
@@ -26,6 +27,8 @@ pub(in crate::events) struct EventNode {
     /// The device name when the event happened; it stays after a rename or delete.
     device_name: Option<String>,
     message: String,
+    /// Who caused the event; null for an event written before LOG-013.
+    actor_kind: Option<ActorKind>,
 }
 
 #[cfg(test)]
@@ -49,6 +52,7 @@ impl From<EventSummary> for EventNode {
             device_id,
             device_name,
             message: event.message,
+            actor_kind: event.actor,
         }
     }
 }
@@ -106,6 +110,12 @@ struct AuditNode {
     client_addr: IpAddr,
     /// Changed fields. Secret values are replaced with "[redacted]".
     change: Json<serde_json::Value>,
+    /// Who did it; null for an entry written before LOG-012.
+    actor_kind: Option<ActorKind>,
+    /// The token the request signed in with; null for a Hub entry and an old entry (LOG-018).
+    token_kind: Option<TokenKind>,
+    /// The name of the API key, for an API key only; never the key itself (LOG-018).
+    api_key_name: Option<String>,
 }
 
 #[derive(SimpleObject)]
@@ -143,6 +153,9 @@ impl From<Page<AuditRecord>> for AuditConnection {
                     target_id: entry.target_id,
                     client_addr: IpAddr(entry.client),
                     change: Json(entry.change),
+                    actor_kind: entry.actor_kind,
+                    token_kind: entry.token_kind,
+                    api_key_name: entry.api_key_name,
                 },
             })
             .collect();

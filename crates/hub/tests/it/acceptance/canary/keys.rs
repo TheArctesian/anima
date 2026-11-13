@@ -16,7 +16,7 @@ const CREATE: &str =
 
 /// Makes a READ key with the operator's `token` and uses it on each path.
 pub async fn api_key(hub: &WholeHub, token: &str, now: DateTime<Utc>, secrets: &mut Secrets) {
-    let input = json!({ "name": "scraper", "scope": "READ",
+    let input = json!({ "name": "scraper", "scope": "READ", "madeFor": "USER",
                         "expiresAt": now + TimeDelta::days(30) });
     let made = hub.data(token, CREATE, json!({ "input": input })).await;
     let secret = made["createApiKey"]["secret"].as_str().unwrap().to_owned();

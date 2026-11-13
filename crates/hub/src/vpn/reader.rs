@@ -23,7 +23,7 @@ use crate::{
     checks::{self, config::CheckType},
     clock::Clock,
     devices,
-    events::{self, Bus, NewEvent, Source},
+    events::{self, ActorKind, Bus, NewEvent, Source},
     ids::{DeviceId, SiteId},
 };
 
@@ -237,6 +237,7 @@ pub(super) async fn write_warnings(
                 source: Source::Vpn,
                 device: warning.device.clone(),
                 message: warning.message.clone(),
+                actor: ActorKind::Hub,
             };
             events::record(&mut tx, bus, now, event).await?;
         }

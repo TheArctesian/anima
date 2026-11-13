@@ -32,6 +32,7 @@ pub(in crate::sessions) fn operator() -> Operator {
     Operator {
         id: OPERATOR.parse::<OperatorId>().unwrap(),
         name: "operator".to_owned(),
+        actor: crate::events::Actor::for_tests(),
     }
 }
 

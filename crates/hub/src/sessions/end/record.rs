@@ -169,6 +169,7 @@ async fn write(
         source: Source::Session,
         device: row.device.map(|device| (device, row.device_name.clone())),
         message: end.message.of(ticket.protocol).to_owned(),
+        actor: by.operator.actor.kind(),
     };
     events::record(&mut tx, &records.bus, now, event).await?;
     tx.commit().await?;

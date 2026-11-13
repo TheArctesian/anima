@@ -41,6 +41,7 @@ pub(super) fn pending(n: u128) -> PendingTicket {
                 .parse::<OperatorId>()
                 .unwrap(),
             name: "operator".to_owned(),
+            actor: crate::events::Actor::for_tests(),
         },
         session: session(n),
         client: client(CLIENT),

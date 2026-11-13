@@ -27,7 +27,7 @@ use super::{
 };
 use crate::{
     clock::Clock,
-    events::{self, Bus, NewEvent, Severity, Source},
+    events::{self, ActorKind, Bus, NewEvent, Severity, Source},
 };
 
 /// The permitted networks and the refusals written, shared by the accept-time check of the
@@ -208,6 +208,8 @@ impl Edge {
                 source: Source::Access,
                 device: None,
                 message,
+                // Refused before any sign-in, so no request kind exists (LOG-013).
+                actor: ActorKind::Hub,
             };
             if let Err(error) = self.record(refusal.now, event).await {
                 error.log();

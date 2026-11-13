@@ -16,6 +16,7 @@ Status: **frozen for Phase 3** (change only through a programme ruling, CON-001)
 | --- | --- | --- | --- |
 | 0001–0099 | access (WP-05) | `access` | `operators`, `api_tokens`, `login_attempts`, `permitted_networks` |
 | 0010–0029 (Phase 3) | access (WP-43) | `access` | `api_tokens.kind text not null default 'login' check (kind in ('login','browser','api_key'))`; `api_tokens.name text null` (required and unique for `api_key`, 1..64 characters); `api_tokens.display_prefix text null` (12 characters, `api_key` only); a check that `browser` and `login` rows have scope `write`; index `(kind, operator_id)`. Prune: expired `login` and `browser` rows at once, expired `api_key` rows 30 days after expiry |
+| 0011 (operator, 2026-11-13, LOG-012 to LOG-020; ruling number to be assigned) | access | `access` | `api_tokens.made_for text null check (made_for in ('user','agent'))`, required exactly for kind `api_key` (`api_tokens_made_for_keys`); existing `api_key` rows become `user`; a trigger refuses any change of `made_for` (LOG-015) |
 | 0030 (Phase 3, WP-36, R-107) | access (WP-36) | `access` | Builder tokens (D-1, BLD-022): `api_tokens.kind` check adds `builder`; `api_tokens.scope` check adds `builder`; a check that a row has kind `builder` exactly when it has scope `builder`; `api_tokens_signed_in_write` lets `api_key` and `builder` rows skip scope `write`. Prune: expired `builder` rows at once (deleting the token deletes its `builds.builders` row) |
 | 0100–0199 | devices (WP-06) | `devices` | `sites`, `devices`, `device_tags`, `ssh_settings` |
 | 0110–0199 (Phase 2) | devices (WP-21) | `devices` | `rdp_settings`, `vnc_settings` (device_id pk fk cascade, columns as K1, defaults in the schema, DB-011); `devices.mac_address macaddr null`, `devices.metrics_source text check in ('none','ssh') default 'none'`, `devices.transfer_upload`, `_download`, `_copy`, `_paste bool default true`; `sites.wake_relay_device_id uuid null fk -> devices.devices on delete set null` |
@@ -27,6 +28,7 @@ Status: **frozen for Phase 3** (change only through a programme ruling, CON-001)
 | 0320–0349 (Phase 3) | checks (WP-46) | `checks` | `checks.type` adds `domain_expiry`; `checks.checks.domain_not_after timestamptz null` (beside `cert_not_after`); `checks.defaults` (`id bool pk default true check (id)`, `interval_seconds`, `retries`, `retry_interval_seconds`, `degraded_threshold_ms`, each with the schema default and the bounds of `checks.checks`), seeded with one row |
 | 0400–0499 | maintenance (WP-09) | `maintenance` | `windows`, `window_targets` |
 | 0500–0599 | events (WP-05) | `events` | `event_log` (partitioned), `audit_log` (partitioned) |
+| 0505 (operator, 2026-11-13, LOG-012 to LOG-020; ruling number to be assigned) | events | `events` | `audit_log` gets `actor_kind text null check (in ('user','agent','hub'))`, `token_kind text null check (in ('login','browser','api_key'))` and `api_key_name text null` (1..64 characters); a `hub` row has no `token_kind`, and only an `api_key` row has `api_key_name`. `event_log` gets `actor_kind text null` with the same check. Null for every row written before 0505; no stored row changes (LOG-006) |
 | 0852 (Phase 3) | events (WP-45, handoff) | `events` | `event_log_source_check` lists all seven sources, adding `notification`; numbered after 0701, which re-adds the check (CR-13) |
 | 0600–0699 | sessions (WP-10) | `sessions` | `sessions`, `host_keys` |
 | 0610–0649 (Phase 2) | sessions (WP-22) | `sessions` | `sessions.protocol` check `('ssh','rdp','vnc')`; `end_reason` adds `server_certificate_mismatch`; `server_certificates` (device_id pk fk cascade, fingerprint_sha256, subject null, not_after null, first_seen_at, accepted_by) |
@@ -103,11 +105,14 @@ maintenance.window_targets window_id uuid fk on delete cascade, target_type text
                           (target_type in ('device','check','tag')), target text
 
 events.event_log          id uuid, at timestamptz, severity text, source text, device_id uuid
-                          null, device_name text null, message text; partitioned by range (at)
+                          null, device_name text null, message text; partitioned by range (at);
+                          0505: actor_kind text null (operator, 2026-11-13, LOG-012 to LOG-020; ruling number to be assigned)
 events.audit_log          id uuid, at timestamptz, operator_id uuid, operator_name text, action
                           text, target_type text, target_id text, client_addr inet,
                           change jsonb; partitioned by range (at); the runtime role has
-                          only SELECT and INSERT (LOG-006, R-016)
+                          only SELECT and INSERT (LOG-006, R-016); 0505: actor_kind text null,
+                          token_kind text null, api_key_name text null (operator, 2026-11-13, LOG-012 to LOG-020; ruling number to be assigned).
+                          A hub entry has operator_id nil and operator_name 'Anima' (OD-15)
 
 sessions.sessions         id uuid pk, device_id uuid null, device_name text, protocol text,
                           operator_id uuid, client_addr inet, started_at, ended_at null,

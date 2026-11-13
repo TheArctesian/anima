@@ -17,7 +17,9 @@ use super::{
 use crate::{
     clock::Clock,
     devices::Device,
-    events::{self, AuditAction, AuditTarget, Bus, NewEvent, Severity, Source, TrailEntry},
+    events::{
+        self, ActorKind, AuditAction, AuditTarget, Bus, NewEvent, Severity, Source, TrailEntry,
+    },
     sessions::Error,
 };
 
@@ -127,6 +129,8 @@ pub(super) async fn host_key_changed(
         source: Source::Session,
         device: Some((device.id, device.name.clone())),
         message: HOST_KEY_CHANGED.to_owned(),
+        // The hub refuses the device's key by itself (SEC-007), so the event is Hub (LOG-013).
+        actor: ActorKind::Hub,
     };
     let mut tx = db.begin().await?;
     events::record(&mut tx, bus, now, event).await?;

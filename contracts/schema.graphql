@@ -67,11 +67,21 @@ type BrowserSignIn {
   expiresAt: DateTime!
 }
 
+# Actor kinds (operator, 2026-11-13, LOG-012 to LOG-020; ruling number to be assigned).
+
+"What an API key is made for: a script that the operator runs, or an AI agent. Set once (LOG-015)."
+enum MadeFor {
+  USER
+  AGENT
+}
+
 type ApiKey {
   id: ID!
   "1..64 characters, unique."
   name: String!
   scope: TokenScope!
+  "(operator, 2026-11-13, LOG-012 to LOG-020; ruling number to be assigned) It never changes. Each request with an AGENT key is recorded as AGENT (LOG-015, LOG-017)."
+  madeFor: MadeFor!
   "The first 12 characters of the secret, for example anima_Ab12Cd, so the operator can tell keys apart."
   prefix: String!
   expiresAt: DateTime!
@@ -94,6 +104,8 @@ type AgentEnrolment {
 input ApiKeyInput {
   name: String!
   scope: TokenScope!
+  "Required; it cannot change later (operator, 2026-11-13, LOG-012 to LOG-020; ruling number to be assigned) (LOG-015)."
+  madeFor: MadeFor!
   "Required; at most one year from now (D-23)."
   expiresAt: DateTime!
 }
@@ -1082,6 +1094,22 @@ enum EventSource {
   VPN
 }
 
+# Actor kinds (operator, 2026-11-13, LOG-012 to LOG-020; ruling number to be assigned).
+
+"Who did a recorded action: USER a person, AGENT an AI agent, HUB the code of Anima (LOG-012)."
+enum ActorKind {
+  USER
+  AGENT
+  HUB
+}
+
+"The kind of token a request signed in with (LOG-018). A HUB entry has none."
+enum TokenKind {
+  LOGIN
+  BROWSER
+  API_KEY
+}
+
 type Event {
   id: ID!
   at: DateTime!
@@ -1090,6 +1118,8 @@ type Event {
   deviceId: ID
   deviceName: String
   message: String!
+  "(operator, 2026-11-13, LOG-012 to LOG-020; ruling number to be assigned) Null for an event written before LOG-013."
+  actorKind: ActorKind
 }
 
 type EventEdge {
@@ -1119,6 +1149,12 @@ type AuditEntry {
   clientAddr: IpAddr!
   "Changed fields. Secret values are replaced with \"[redacted]\"."
   change: JSON!
+  "(operator, 2026-11-13, LOG-012 to LOG-020; ruling number to be assigned) Null for an entry written before LOG-012. For a HUB entry, operatorName is Anima."
+  actorKind: ActorKind
+  "(operator, 2026-11-13, LOG-012 to LOG-020; ruling number to be assigned) Null for a HUB entry and an old entry (LOG-018)."
+  tokenKind: TokenKind
+  "(operator, 2026-11-13, LOG-012 to LOG-020; ruling number to be assigned) The API key's name, for an API_KEY entry only; never the key (LOG-018)."
+  apiKeyName: String
 }
 
 type AuditEdge {
@@ -1622,7 +1658,8 @@ type Query {
   maintenanceWindows: [MaintenanceWindow!]!
 
   events(filter: EventFilter, first: Int = 100, after: String): EventConnection!
-  audit(first: Int = 100, after: String): AuditConnection!
+  "actorKind (operator, 2026-11-13, LOG-012 to LOG-020; ruling number to be assigned): only the entries of that kind; an entry with no recorded kind matches none (LOG-020)."
+  audit(first: Int = 100, after: String, actorKind: ActorKind): AuditConnection!
 
   sessions(deviceId: ID, live: Boolean, first: Int = 50, after: String): SessionConnection!
 

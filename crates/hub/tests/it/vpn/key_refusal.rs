@@ -58,6 +58,7 @@ async fn d_23_the_vpn_resolvers_refuse_an_api_key_without_the_backstop() {
     let operator = || Operator {
         id: OperatorId::from(uuid::Uuid::from_u128(1)),
         name: "operator".to_owned(),
+        actor: anima_hub::events::Actor::for_tests(),
     };
     let until = start() + TimeDelta::days(1);
     for document in DOCUMENTS {

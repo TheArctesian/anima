@@ -23,7 +23,9 @@ use sqlx::PgPool;
 use crate::{
     credentials,
     devices::{self, Device},
-    events::{self, AuditAction, AuditTarget, Bus, NewAudit, NewEvent, Severity, Source},
+    events::{
+        self, ActorKind, AuditAction, AuditTarget, Bus, NewAudit, NewEvent, Severity, Source,
+    },
     ids::DeviceId,
     sessions::Actor,
     ssh::{LinkError, link},
@@ -132,6 +134,9 @@ fn event(device: &Device, sent: &Result<WakeSent, Error>) -> NewEvent {
         source: Source::Session,
         device: Some((device.id, device.name.clone())),
         message,
+        // K3 fixes `wake` without its caller, so the event is Hub; the `device.wake` audit
+        // entry records the request's kind (LOG-013).
+        actor: ActorKind::Hub,
     }
 }
 
