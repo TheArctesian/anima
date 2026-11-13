@@ -55,7 +55,7 @@ The coordinator is the hub of the design specification. The interface, the speci
 | Remember | Keep a copy of the life of the operator | Health, Money, Map, People, History, Documents, Writing, Reminders, Library, Wardrobe, AI coding sessions | Extensions plan Sections 2 and 4. [new-sources.md](programme/proposals/new-sources.md) |
 | Use | Make the machines do work | Model service, builds, jobs, AI agent runs, hosted applications | [compute-plan.md](compute-plan.md). [jobs.md](programme/proposals/jobs.md), [projects-and-builds.md](programme/proposals/projects-and-builds.md), [agent-runs.md](programme/proposals/agent-runs.md), [hosted-applications.md](programme/proposals/hosted-applications.md) |
 
-The command line and the MCP server are not a category. They are a second and a third way to use each function of each category ([cli-mcp-plan.md](cli-mcp-plan.md) on the branch `claude/anima-cli`). A new function is built in this order: the hub API, the `anima` command, the MCP tool, the graphical client (CMD-030).
+The command line and the MCP server are not a category. They are a second and a third way to use each function of each category ([cli-mcp-plan.md](cli-mcp-plan.md); design specification Section 6.10). They are built and are on `main`. A new function is built in this order: the hub API, the `anima` command, the MCP tool, the graphical client (CMD-030).
 
 ## 4. Priority order
 
@@ -102,7 +102,10 @@ One document owns each concern. Add a requirement to its owner, not to this docu
 | AI agent runs | [agent-runs.md](programme/proposals/agent-runs.md) | AGN-001 to AGN-008 |
 | Hosted applications | [hosted-applications.md](programme/proposals/hosted-applications.md) | HOST-001 to HOST-009 |
 | Projects as the front door: import from a forge, resources that Anima finds, builds as jobs, sign-in with a forge | [projects-and-builds.md](programme/proposals/projects-and-builds.md) | PRO-001 to PRO-019 |
-| The `anima` command line and the MCP server | [cli-mcp-plan.md](cli-mcp-plan.md) (on the branch `claude/anima-cli`) | CMD, MCP |
+| The `anima` command line and the MCP server | [cli-mcp-plan.md](cli-mcp-plan.md). The design specification Section 6.10 gives the summary. | CMD, MCP |
+| Who did an action: the actor kinds User, Agent and Hub in the audit log and the event log | [design-spec.md](design-spec.md) Section 3.8.1 | LOG-012 to LOG-020 |
+| Installation: the disk image and the AppImage, with the `anima` program inside | [design-spec.md](design-spec.md) Section 3.11 | INS-001 to INS-009 |
+| The marketing website with the install links | [design-spec.md](design-spec.md) Section 3.12 | SITE-001 to SITE-012 |
 | Cloudflare source for Projects. A new Activity extension for Spotify and Screen Time | [new-sources.md](programme/proposals/new-sources.md) | None until each provider is verified |
 | Other persons: self-hosting and a hosted option | [other-operators.md](programme/proposals/other-operators.md) | None yet |
 | Rulings and the state of each package | [programme/programme.md](programme/programme.md), [programme/handoff.md](programme/handoff.md) | R, CR |
@@ -162,3 +165,9 @@ These changes are not made. The operator must approve each one (operator checkpo
 | [jobs.md](programme/proposals/jobs.md) JOB-001, JOB-004, USE-001 | A macOS or iOS build cannot run in a container. Native jobs on a Mac must come early (PRO-011). Not changed until OD-W12 is decided. |
 | Design specification BLD-001 to BLD-082 | The builder takes a project as a parameter; the release of Anima becomes one project (OD-W11). |
 | `AGENTS.md`, [cli-mcp-plan.md](cli-mcp-plan.md) | Done on the branch `claude/anima-cli`: the command-line-first rule (CMD-030). |
+| Design specification 6.10, 7, 9 and 13 | Done (operator, 2026-11-13): the command line and the MCP server are part of the specification. SET-004 names the "MCP" section. |
+| Design specification 3.8.1 | Done as text (operator, 2026-11-13): the actor kinds User, Agent and Hub (LOG-012 to LOG-020). Not built. |
+| `contracts/schema.graphql` (K1), `contracts/database.md` (K2), `contracts/conventions.md` (K7) | Not made: the additions for the actor kinds, in the table of design specification Section 3.8.1. They need a programme ruling (CON-001, design specification OD-15). |
+| Design specification 3.11 | Done as text (operator, 2026-11-13): installation from the disk image or the AppImage, with the `anima` program inside (INS-001 to INS-009). INS-002 to INS-007 are not built. |
+| Design specification 3.12 and 11 | Done as text (operator, 2026-11-13): the marketing website (SITE-001 to SITE-012). Not built. The operator must decide OD-20, OD-21 and OD-22 of the design specification. |
+| [cli-mcp-plan.md](cli-mcp-plan.md) Sections 6 and 7 | Not made: `anima key create` takes "made for"; `anima audit list` gets the actor column and `--actor`; `anima mcp` sends the agent declaration (LOG-015, LOG-016, LOG-020). Make them with the build, after the ruling. |

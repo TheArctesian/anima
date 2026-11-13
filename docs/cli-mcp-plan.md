@@ -313,14 +313,22 @@ Read tools are `allow` and change tools are `off` by default (MCP-002). L: needs
    as an MCP tool would let a coding agent run a command on each device, with the stored
    credential. This plan does not build it (MCP-006). It needs an operator decision and a security
    review.
-2. **Who did it.** The audit log records the operator and the token. It does not record that an
-   agent, not a person, made the request. A hub change could add the client name.
+2. **Who did it.** Decided (operator, 2026-11-13), not built: each audit log entry gets an actor
+   kind, User, Agent or Hub (design specification Section 3.8.1, LOG-012 to LOG-020). `anima mcp`
+   must send the agent declaration with each request (LOG-016). `anima key create` must take the
+   "made for" attribute (LOG-015). `anima audit list` gets a column and `--actor`, and
+   `anima_audit_list` gets the field (LOG-020). The contract change needs a programme ruling
+   (design specification OD-15). Today the audit log records the operator name and the client
+   address only.
 3. **Login token for the MCP server.** The "L" tools work only when the operator starts
    `anima mcp` with a login token. That gives the agent more than INT-003 permits an API key.
    They are `off` until the operator sets them to `allow` or `ask` (MCP-002); the operator can
    decide to remove them.
-4. **Distribution.** How `anima` gets to a computer (with the desktop application, Homebrew, the
-   R2 release feed) is not planned.
+4. **Distribution.** Decided (operator, 2026-11-13), not built: `anima` is inside the disk image
+   and the AppImage of the desktop application, at the same version, and the application puts it
+   on the `PATH` (design specification Section 3.11, INS-001 to INS-009). There is no package
+   manager channel (INS-008). Three mechanisms are not verified (design specification OD-16,
+   OD-17, OD-18).
 5. **MCP protocol version.** The current revision is 2026-07-28. The Rust SDK (`rmcp`) can speak
    it and the earlier revisions. Which revision each coding agent uses was not verified.
 6. **SNMP secrets after a host change.** The hub keeps a check's SNMP community and v3 passwords
@@ -334,17 +342,19 @@ Read tools are `allow` and change tools are `off` by default (MCP-002). L: needs
 8. **Who writes the start.** The flags of `anima mcp` (`--allow-write`, `--toolsets`) and the
    configuration location (`XDG_CONFIG_HOME`, `--context`) come from whoever writes the MCP
    client's configuration. That includes a project `.mcp.json` in a repository.
-9. **The audit log cannot tell who acted.** It cannot tell an agent from the operator, or an API
-   key from a login token (see point 2).
+9. **The audit log cannot tell who acted.** Decided (operator, 2026-11-13), not built: the actor
+   kind tells an agent from the operator (LOG-012, LOG-014), and the token kind with the key name
+   tells an API key from a login token (LOG-018). See point 2. One limit stays: a program that
+   holds the operator's login token and sends no declaration is recorded as User.
 10. **Accepted risk: the operator's own account.** `anima mcp permissions set` and `reset` widen
     access only with a terminal on standard input (MCP-014). A program that runs commands as the
     operator can still edit the configuration file by hand, start the server with
     `--allow-write`, or run the command inside a pseudo-terminal. The check stops an agent from
     widening its access by accident or because a refusal told it how; it does not stop an agent
     that sets out to do it. The hub token stays the real limit (MCP-003).
-11. **SET-004 lists the sections.** The Settings page now has an "MCP" section (MCP-018..023), and
-    `docs/design-spec.md` SET-004 does not name it. The operator must approve adding "MCP" to the
-    list; this plan does not edit the design spec.
+11. **SET-004 lists the sections.** Closed (operator, 2026-11-13): `docs/design-spec.md` SET-004
+    now names the "MCP" section (MCP-018..023). The design specification also records that the
+    section list and the jump menu of SET-004 are not built.
 
 ### What a compromised agent can do
 

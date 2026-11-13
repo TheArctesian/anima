@@ -54,6 +54,8 @@ Anima uses `guacd` from Guacamole as a separate process. Anima does not copy sou
 
 The desktop applications are the first priority. Do not start the web and iOS work until Phase 2 is complete.
 
+The desktop package also carries the command line (Section 6.10). Section 3.11 gives the installation rules. A public website gives the install links (Section 3.12).
+
 ### 1.4 Out of scope for this version
 
 - Windows desktop package. Tauri supports Windows, so a later version can add it.
@@ -61,6 +63,8 @@ The desktop applications are the first priority. Do not start the web and iOS wo
 - Multiple operators with different permissions.
 - File transfer between the client and a device.
 - Access from outside the private network. Each client must be on the same network as the hub and the devices (Section 4.1).
+- A package manager channel for the desktop package or the command line, for example Homebrew or apt (INS-008).
+- An MCP server that listens on the network. The MCP server uses standard input and standard output only (MCP-001).
 
 ## 2. Terms
 
@@ -76,6 +80,10 @@ The desktop applications are the first priority. Do not start the web and iOS wo
 | Heartbeat | The result of one check at one time. |
 | Metric | One measured value of resource usage, for example CPU usage. |
 | Credential | A user name with a password, or a user name with an SSH private key. |
+| Command line | The `anima` program. The operator and scripts use it in a terminal (Section 6.10). It is not the client. |
+| MCP server | The `anima mcp` command of the command line. It gives the hub functions to an AI agent as tools (Section 6.10). |
+| AI agent | A program that an AI model controls, for example a coding agent. It is not `anima-agent`, the metrics program of Section 6.6. |
+| Actor kind | The type of actor that did a recorded action: User, Agent or Hub (LOG-012). Agent means an AI agent. |
 
 ## 3. System architecture
 
@@ -103,6 +111,8 @@ Anima has three components: the client, the hub and the gateway.
                                      | Devices                   |
                                      +---------------------------+
 ```
+
+The command line and the MCP server (Section 6.10) use the same GraphQL API as the client. They are not a fourth component: they add no route and no process to the hub.
 
 ### 3.2 Reasons for this architecture
 
@@ -224,6 +234,59 @@ Anima keeps three types of log.
 - **LOG-009.** The client must show the event log in a Logs panel on the Devices page. It must also show it in the Logs tab of the device detail view. The operator must be able to filter it by time, severity, device and source.
 - **LOG-010.** The client must receive new event log entries through a GraphQL subscription.
 - **LOG-011.** The Logs panel must follow new entries while the operator is at the end of the list. When the operator scrolls away from the end, new entries must not move the list. A "N new" button then shows the count and goes to the end. A Live and Paused switch stops and starts the follow. The `/` key moves the focus to the search field, except in a text field or a session tab. (R-115)
+
+#### 3.8.1 Actor kinds (not built)
+
+The operator's rule (operator, 2026-11-13): "We can clasify agent (meaning AI agent did the work, Hub meaning code did the work and User meaning human did the work".
+
+| Actor kind | Meaning | Examples |
+| --- | --- | --- |
+| User | A person did the action. | The operator in the client. The operator at a terminal with the command line. A script that the operator runs. |
+| Agent | An AI agent did the action. | A coding agent through the MCP server. A program that uses an API key made for an agent. |
+| Hub | The code of Anima did the action. No person and no AI agent asked for it. | The check scheduler. A retention run. A policy. |
+
+Today the hub stores the operator name and the client IP address for each audit log entry. It cannot tell an AI agent from the operator. It cannot tell an API key from a login token. The requirements LOG-012 to LOG-020 change that. They are not built.
+
+- **LOG-012.** Each audit log entry must have an actor kind. The actor kind must be exactly one of User, Agent or Hub. (operator, 2026-11-13)
+- **LOG-013.** Each event log entry must have an actor kind. An entry that a request caused takes the actor kind of that request. All other entries are Hub.
+- **LOG-014.** The hub must decide the actor kind with these rules, in this order:
+  1. Hub, when no request caused the action.
+  2. Agent, when the request has the agent declaration (LOG-016) or uses an API key made for an agent (LOG-015).
+  3. User, for each other request.
+- **LOG-015.** Each API key must have the attribute "made for", with the value `USER` or `AGENT`. `USER` is for a script that the operator runs. `AGENT` is for an AI agent. The operator must set the attribute when the operator makes the key. The attribute must not change after that. A key made before this requirement is `USER`.
+- **LOG-016.** The agent declaration is the header `Anima-Actor: agent` on `POST /graphql`. For a subscription, it is the field `"actor": "agent"` in the `connection_init` payload. The MCP server must send the declaration with each request. `agent` is the only value. The hub must ignore each other value.
+- **LOG-017.** A request must not be able to lower its actor kind. No header, field or argument can make a request User or Hub. The hub must record Agent when the key is an agent key or the declaration is present, also when only one of the two applies.
+- **LOG-018.** Each audit log entry that a request caused must also record the token kind: login token, browser token or API key. For an API key, the entry must record the name of the key. The entry must never contain the token or a part of it (LOG-007). A Hub entry has no token kind and no key name.
+- **LOG-019.** A request with a builder token (BLD-022) or an agent token (MET-013) comes from a program of Anima. The hub must record an event log entry from such a request as Hub.
+- **LOG-020.** The actor kind must show as a word in each of these places, never as a colour only (UI-003):
+  - the audit list of the client, with a filter by actor kind;
+  - `anima audit list`, as a column, with the filter `--actor user|agent|hub`;
+  - the MCP tool `anima_audit_list`, as a field of each entry.
+
+  An entry that was written before LOG-012 has no actor kind. Each place must show "Not recorded" for it. The hub must not add an actor kind to an old entry (LOG-006). The client has no audit list today; build order follows CMD-030.
+
+Reason for the direction of trust: a wrong "User" hides the work of an AI agent, and a wrong "Agent" hides nothing. Thus a program can only raise its actor kind to Agent. The hub controls the API key attribute, so the key is the strong signal. The declaration is a second signal for a program that holds the operator's login token.
+
+Limit: the program makes the declaration. A program that runs with the operator's login token and sends no declaration is recorded as User. The reliable method to mark the work of an AI agent is an API key made for an agent.
+
+These requirements change the frozen contracts K1, K2 and K7 (CON-001). Do not change a contract for them without a programme ruling (Section 11, OD-15). The ruling and the implementation issue can cite this table:
+
+| Contract | File | Addition |
+| --- | --- | --- |
+| K1 | `contracts/schema.graphql` | `enum ActorKind { USER AGENT HUB }` |
+| K1 | `contracts/schema.graphql` | `enum TokenKind { LOGIN BROWSER API_KEY }` |
+| K1 | `contracts/schema.graphql` | `enum MadeFor { USER AGENT }` |
+| K1 | `contracts/schema.graphql` | `AuditEntry.actorKind: ActorKind` (null for an entry written before LOG-012) |
+| K1 | `contracts/schema.graphql` | `AuditEntry.tokenKind: TokenKind` and `AuditEntry.apiKeyName: String` (null for Hub and for an old entry) |
+| K1 | `contracts/schema.graphql` | `Query.audit` gets the argument `actorKind: ActorKind` |
+| K1 | `contracts/schema.graphql` | `Event.actorKind: ActorKind` (null for an entry written before LOG-013) |
+| K1 | `contracts/schema.graphql` | `ApiKeyInput.madeFor: MadeFor!` (required) and `ApiKey.madeFor: MadeFor!` |
+| K2 | `contracts/database.md` | `events.audit_log` gets `actor_kind`, `token_kind` and `api_key_name`, each `text null` with a check on its values |
+| K2 | `contracts/database.md` | `events.event_log` gets `actor_kind text null`; `access.api_tokens` gets `made_for text null`, required for kind `api_key` |
+| K7 | `contracts/conventions.md` | "Authentication transport": the header `Anima-Actor: agent` and the `connection_init` field `"actor": "agent"` |
+| K7 | `contracts/conventions.md` | "Logging": the standard field `actor_kind` |
+
+`AuditEntry.operatorName` is required in K1. The ruling must also decide its value for a Hub entry.
 
 ### 3.9 Desktop releases and updates
 
@@ -370,6 +433,46 @@ releases.anima.ing/
 - **BLD-080.** The navigation bar must have a "Builds" item in the desktop app. The Builds view must list releases, newest first, with the state of each job and its time in that state.
 - **BLD-081.** Selecting a job must show its log. The log of a job that is not finished must update through a subscription (API-002).
 - **BLD-082.** The hub must write the release, the cancellation and each builder enrolment and revocation to the audit log (LOG-005). It must write each published and failed job to the event log.
+
+### 3.11 Installation
+
+The operator's rule (operator, 2026-11-13): "Instalation is either dmg or app img that is installed". This section is about the operator's computer. The hub is not installed this way: it is a Docker image (Section 3.4).
+
+| Platform | Artefact | Stable name (UPD-010) | Contains |
+| --- | --- | --- | --- |
+| macOS, universal | Disk image (`.dmg`) | `Anima.dmg` | The desktop application. The `anima` program (INS-002, not built). |
+| Linux, x86_64 | AppImage | `Anima-x86_64.AppImage` | The desktop application. The `anima` program (INS-002, not built). |
+
+Built state: the two artefacts are built, signed and published (Sections 3.9 and 3.10). The `anima` program is not in the artefacts today. INS-002 to INS-007 are not built.
+
+- **INS-001.** The operator must install Anima from the disk image on macOS or from the AppImage on Linux. There is no other installation path for the desktop application or for the command line. (operator, 2026-11-13)
+- **INS-002.** Each artefact must contain the `anima` program beside the desktop application. The two must come from the same commit and must have the same version. Thus there is one download. (Not built.)
+- **INS-003.** `anima --version` must print the version of the desktop application that contains it. (Not built; Section 11, OD-17.)
+- **INS-004.** On macOS, the Settings page of the desktop application must offer "Install the command line tool". The application must propose a directory that is on the operator's `PATH`. The operator must confirm the directory. Then the application must make a link named `anima` in that directory. The link must point to the `anima` program inside the installed application. (Not built.)
+- **INS-005.** On Linux, the AppImage must offer the same function. An AppImage is one file that mounts itself, so a link into it is not possible. The application must write a small launcher named `anima` in the directory that the operator confirms. The launcher must start the `anima` program of the AppImage file. It must pass the arguments, standard input, standard output, standard error and the exit code without a change. (Not built; Section 11, OD-18.)
+- **INS-006.** The "Command line tool" row must be in the Updates section of the Settings page, in the desktop application only. It must show the state in words: not installed, installed with its path, or not valid with the cause. It must have a "Remove" button, which deletes only the link or the launcher that the application made. The application must not replace a file that it did not make, unless the operator confirms. (Not built.)
+- **INS-007.** An update of the desktop application (UPD-002, UPD-003) must replace the application and the `anima` program together. After the update, the link or the launcher must work with no new step by the operator. The updater file must contain the `anima` program, and the hub signs that file (BLD-045, BLD-046). (Not built; Section 11, OD-16 and OD-18.)
+- **INS-008.** There is no package manager channel. Do not plan a Homebrew formula, an apt repository or a different channel.
+- **INS-009.** The link and the launcher are operating system work. The Tauri shell must do them (REPO-003). The shell must not ask for, read or keep an administrator password. If the directory needs more rights, the operating system asks the operator.
+
+The metrics agent `anima-agent` keeps its own install path (MET-019, MET-024). A device that runs `anima-agent` does not need the desktop application or the `anima` program.
+
+### 3.12 Marketing website
+
+The operator's rule (operator, 2026-11-13): "we also need to make a marketing website with the install links". The website is not built.
+
+- **SITE-001.** Anima must have a small public website. Its purpose is to say what Anima is and to give the install links. (operator, 2026-11-13)
+- **SITE-002.** The website must give one install link for each artefact of INS-001. Each link must use the stable name on the release host: `Anima.dmg` and `Anima-x86_64.AppImage` (UPD-010, BLD-066, DNS-007). Thus a link always gives the newest published release, with no change to the website.
+- **SITE-003.** The website must show the version of each artefact and a link to the `SHA256SUMS` file of that version. It must take the version from the `latest.json` feed of the target, the same feed that the updater reads (UPD-008, BLD-066, BLD-067). It must not keep a version number in its source. (Section 11, OD-19.)
+- **SITE-004.** The website must tell the operator how to verify a download. For macOS: the disk image has a Developer ID signature and is notarized (BLD-083, BLD-084). For Linux: compare the SHA-256 of the file with `SHA256SUMS`.
+- **SITE-005.** The website must give the install steps for each platform in plain words. It must say that the application needs a hub that the operator runs.
+- **SITE-006.** The website is the only public part of Anima. The hub stays off the public internet (SEC-008, NET-003, DNS-005). The website must not link to the hub, must not show the address or the name of a hub, and must not send a request to a hub.
+- **SITE-007.** The website must be static files only. It must have no account, no sign-in, no form, no cookie and no server code.
+- **SITE-008.** The website must not load a script, a font, an image or a style from a third party. It must have no tracker and no analytics script, unless the operator decides differently (Section 11, OD-21). It must include its font files, as UI-017 states for the client.
+- **SITE-009.** The website must take its colours, spaces, font sizes and motion values from the design tokens (TOK-001, UI-001). It must obey the rules of Section 5 that apply to a web page: contrast (UI-002, UI-004), status not by colour only (UI-003), target size (UI-013), `rem` sizes (TOK-020), keyboard access with a visible focus ring, reduced motion (MOT-040) and `prefers-contrast` (MAT-006).
+- **SITE-010.** The source of the website must be in `apps/site/` (Section 13). It must not import the GraphQL client code of `apps/client/`.
+- **SITE-011.** The domain name and the host of the website are a decision of the operator (Section 11, OD-20). The operator must confirm each change to the Cloudflare account, the `anima.ing` zone or a different cloud account (DNS-008, VPS-005).
+- **SITE-012.** The website must say nothing about a paid hosted option until the operator decides the text (Section 11, OD-22).
 
 ## 4. Security
 
@@ -1157,14 +1260,34 @@ The view has these tabs:
 - **INT-003.** The operator must be able to make API keys for the GraphQL API. Each key must have a scope (read or write) and an expiry date. A key is `anima_` and 43 base64url characters. The hub must keep only the SHA-256 of a key. The expiry date is required and must be at most one year away. An API key must not manage API keys. It must not call `signInBrowser`, `startSession`, `openFiles`, `enrolAgent` or `revokeAgentToken`. It must not set or clear a device credential, and it must not decide where one is sent: it must not call `acceptHostKey`, `acceptServerCertificate`, `acceptWebCertificate`, `updateDevice` or `deleteDevice`. It must not call `setRetention`. (D-23, R-081, R-100, R-113)
 - **INT-004.** A later version can add public status pages, incidents and status badges.
 
+### 6.10 Command line and MCP server
+
+`anima` is the command line. It is one program for the operator and for scripts. It gives each function of the hub as a command, with a table for a person and JSON for a script.
+
+`anima mcp` is the MCP server. It is a command of the same program. It gives the hub functions to an AI agent as tools, on standard input and standard output (MCP-001). It uses the same sign-in as the command line.
+
+[cli-mcp-plan.md](cli-mcp-plan.md) owns the requirements `CMD-nnn` (command line) and `MCP-nnn` (MCP server). This section gives only the rules that the other sections of this document depend on. The prefix `CLI-` in this document is for the client (Section 3.3), not for the command line.
+
+Built state: the command line and the MCP server are built and are on `main`, in `crates/anima-cli/` (Section 13). They are not in the installation artefacts (INS-002).
+
+- **One API.** The command line and the MCP server use the same GraphQL API as the client (Section 3.7). They need no other route (CMD-003). The command line crate does not change the hub or a contract (CMD-005).
+- **Order for a new function.** Build a new function in this order: the hub API, the command, the MCP tool, the client. The function is not complete until each of the three has it, or the plan gives the reason (CMD-030).
+- **Coverage test.** A test compares the root fields of the API with the fields that the command line uses. A field that no command uses, and that is not a listed exception, fails the gates (CMD-031).
+- **Sign-in.** The operator signs in with a login token (CMD-010). A script or an AI agent uses an API key (CMD-011). The limits of INT-003 stay: the hub applies them to each API key (MCP-003).
+- **Three limits of the MCP server.** No tool takes or returns a secret (MCP-004). No tool makes a trust decision (MCP-005). No tool opens a session (MCP-006).
+- **Three permission states.** Each tool is `allow`, `ask` or `off` (MCP-002). `allow`: the AI agent can call the tool. `ask`: a person approves each call (MCP-013). `off`: the tool is not listed and a call is refused. By default each read tool is `allow` and each change tool is `off`.
+- **Who did it.** The MCP server must declare itself to the hub, so that the audit log records Agent (LOG-016, not built).
+
 ## 7. Settings page
 
 - **SET-001.** The Settings page must be available from the navigation bar.
 - **SET-002.** Withdrawn (2026-11-11, UI redesign; it described the Phase 1 page). Replaced by SET-004.
 - **SET-003.** The Settings page must show a "VPN" section with two lists under their own headings. "Sites": each site's name, its route in the monospace font and its router state in words (for example "Router: none set up", "Router waiting for approval" with an "Approve route" button on the row). "Computers": each node's name, its role and its address, with the key expiry as a status ("Expires in 3 days" as a warning, "Never expires" as plain text), and the nodes that are not in Anima marked as such. When the hub has no VPN picture, the section must say: "VPN status is not available. The hub cannot reach the VPN service." with the technical cause (no LocalAPI proxy, `ANIMA_TAILSCALE_LOCALAPI`, or no answer since the hub started) in a HelpTip.
-- **SET-004.** The Settings page must show a section list beside the content on windows of `bp-wide` and above, and a section jump menu below that width. The sections are Account, Appearance, Hub, Notifications, Checks, Data retention, Updates, API keys and VPN; each has an anchor. The content column is at most `content-form` wide.
+- **SET-004.** The Settings page must show a section list beside the content on windows of `bp-wide` and above, and a section jump menu below that width. The sections are Account, Appearance, Hub, Notifications, Checks, Data retention, Updates, API keys, VPN and MCP; each has an anchor. The MCP section is in the desktop client only (MCP-018 to MCP-023; operator, 2026-11-13). The content column is at most `content-form` wide.
 - **SET-005.** A section whose fields belong together has one "Save changes" button at its end, enabled only when something changed. A single toggle or choice saves at once and shows "Saved" inline. Every result (saved, failed, test passed) shows in a Notice inside its section.
 - **SET-006.** The Updates section shows the version, the update state and "Check for updates". Packaging and signing details (Tauri packages, updater key, build host) are in a "Details for developers" Disclosure, closed by default.
+
+Known gap (interface review, 2026-11-13): the Settings page has no section list and no section jump menu. That part of SET-004 is not built.
 
 A later version adds these items to the Settings page:
 
@@ -1184,6 +1307,11 @@ The Proxmox VE integration (PVE-001 to PVE-041) is withdrawn (R-109). Anima mana
 | 4 | Withdrawn (R-109). | — |
 | 5 | iOS client. The iOS device as a part-time member of the network (Section 10.1). | All |
 | 6 | Site agents for Wake-on-LAN and local checks. Traffic data (Section 4.3). | All |
+
+Work outside the phases. This table has no row for work that is not part of a phase, and this document has no other record of it. Thus this note records it:
+
+- The command line and the MCP server (Section 6.10) are built and are on `main`. They have no phase number.
+- The actor kinds (LOG-012 to LOG-020), the `anima` program in the installation artefacts (INS-002 to INS-007) and the marketing website (SITE-001 to SITE-012) are specified and not built. They have no phase number. [work-plan.md](work-plan.md) and the GitHub issues give their priority.
 
 ### 9.1 Phase 1 acceptance criteria
 
@@ -1242,6 +1370,14 @@ What iOS does not allow, so no phase plans it: control of the device, SSH, VNC o
 | OD-13 | Apple Developer ID | Closed by R-116 (2026-11-12): the operator has a Developer ID (team `7GDLG48PV6`). macOS builds are signed, notarized and stapled (BLD-083 to BLD-085), and the hub writes the macOS feed (BLD-068). |
 | OD-14 | Compute workers (R-110) | The hub keeps a job queue for compute work. A job is a WebGPU (WGSL) compute shader with WebAssembly, so every client runs it: desktop, web and iOS (WebKit on iOS 26 has WebGPU). An iOS device works only in the foreground and on the charger, and stops when it gets hot. Built-in jobs can use Core ML. Before a phase depends on it: one test job on an iPad and a Mac, compared. Background GPU work on iOS 26 (continued processing tasks) is not verified. |
 | OD-6 | Central log search | Not necessary now. A later version can send the process log to Loki or a similar system. |
+| OD-15 | Contract change for the actor kinds (Section 3.8.1) | A programme ruling must approve the additions to K1, K2 and K7 before the build (CON-001). The ruling must also give the value of `AuditEntry.operatorName` for a Hub entry. |
+| OD-16 | A second program in the bundle (INS-002, INS-007) | Not verified: that the Tauri bundle step can add the `anima` program to the application, to the AppImage and to the updater file, and that the Developer ID signature and the notarization of BLD-083 to BLD-085 cover it. Make one test build on each target before the work starts. |
+| OD-17 | The version of the `anima` program (INS-003) | The builder gives the release version only to the Tauri configuration (BLD-043). The workspace version does not change. Give the same release version to the build of the `anima` program. Not verified. |
+| OD-18 | The launcher for an AppImage, and the link after an update (INS-005, INS-007) | Not verified: how the AppImage entry point starts the `anima` program in place of the desktop application; that the updater keeps the path of the application and of the AppImage file; what occurs when the operator moves the file. Test each case before the work starts. A computer with no display is one more case to decide. |
+| OD-19 | How the website reads the feed (SITE-003) | Two options: a build step of the website at each release, or a script in the page. A script in the page needs cross-origin read access to the release host, which is not verified. Recommendation: the build step, so that the page works without a script. |
+| OD-20 | Domain name and host of the website (SITE-011) | The operator decides. Cloudflare holds the `anima.ing` zone and the release bucket, so a static host in the same account needs no new provider. |
+| OD-21 | Analytics on the website (SITE-008) | None. |
+| OD-22 | What the website can say about the paid hosted option (SITE-012; [work-plan.md](work-plan.md) OD-W2, [other-operators.md](programme/proposals/other-operators.md)) | Nothing now. The proposal has no requirements. Add text only after the operator approves the words. |
 
 ## 12. Code quality (CUPID)
 
@@ -1369,6 +1505,7 @@ anima/
 │   │   │   └── traffic/       DNS and flow data (Phase 6)
 │   │   ├── migrations/        sqlx migrations
 │   │   └── tests/it/          Integration tests (CQ-042)
+│   ├── anima-cli/             The command line binary (anima) with the MCP server (anima mcp): one folder for each operator noun (Section 6.10)
 │   ├── agent/                 The metrics agent binary (anima-agent): enrolment, sampling, push, OS readers
 │   ├── agent-core/            Agent logic with no I/O: parsers (MET-016), points, batching, buffer, wire types
 │   ├── guac-protocol/         Guacamole protocol: parse and encode, no I/O
@@ -1393,8 +1530,9 @@ anima/
 │   │       │   ├── icons/     Nerd Font icon table (UI-016)
 │   │       │   └── motion/    Springs, motion roles, reduced motion (MOT-041)
 │   │       └── styles/        Generated tokens.css, fonts
-│   └── desktop/
-│       └── src-tauri/         Tauri shell: windows, key store, web views (WEB-004)
+│   ├── desktop/
+│   │   └── src-tauri/         Tauri shell: windows, key store, web views (WEB-004)
+│   └── site/                  Planned: the marketing website, static files only (SITE-010). Not built.
 └── deploy/
     ├── compose.yaml           Hub, gateway, PostgreSQL (DB-007 backup)
     ├── gateway/               guacd image with fonts (GW-001; RDP and VNC)
