@@ -4,6 +4,16 @@ Status: **frozen for Phase 3** (change only through a programme ruling, CON-001)
 
 These are the only functions and types one hub domain may use from another. Everything else in a domain is private or `pub(crate)` for its own submodules. Signatures are the contract; parameter names and doc comments may vary. `Db` is `sqlx::PgPool`; functions that must join a caller's transaction take `&mut sqlx::PgConnection` instead.
 
+## Folder groups (OD-E5, E0-1, 2026-11-13)
+
+The hub groups its domains under parent nouns so `crates/hub/src/` stays within 12 files (REPO-005, REPO-E-001). A group is a folder and its face, such as `fleet/` and `fleet.rs`; the face only declares the group's modules and holds no code. A group is not a domain: the rules of this contract name each domain by its own name, wherever its folder is, and a domain inside a group keeps the shape of Section 13 of the spec.
+
+| Group | Modules |
+| --- | --- |
+| `crates/hub/src/fleet/` | The device manager: `access`, `builds`, `checks`, `credentials`, `devices`, `events`, `maintenance`, `metrics`, `notifications`, `retention`, `sessions`, `ssh`, `targets` (a leaf), `trust`, `vpn`, `web_interfaces` |
+
+The leaf modules other than `targets` and the wiring stay at `crates/hub/src/`. A domain path in Rust goes through its group: `crate::fleet::devices`, `anima_hub::fleet::checks`. `quality/hub-modules.json` lists the groups under `groups`; the REPO-004 check reads a module inside a group as a top-level module. Later groups (`engine/`, `vault/`, `life/`, `work/`, Section 6 of `docs/extensions-plan.md`) are added by the task that adds their first code.
+
 ## Leaf modules (owned by WP-01; every domain may import them; they import no domain)
 
 | Module | Content |
@@ -13,11 +23,11 @@ These are the only functions and types one hub domain may use from another. Ever
 | `crates/hub/src/clock.rs` | `pub trait Clock: Send + Sync { fn now(&self) -> DateTime<Utc>; }`, `SystemClock`, and `FixedClock` for tests. The only clock read in the hub (CQ-021). |
 | `crates/hub/src/config.rs` | `pub struct Config` from the environment (see `conventions.md`) |
 | `crates/hub/src/paging.rs` | `PageEnd`, exposed as K1 `PageInfo { hasNextPage, endCursor }` (R-014; the Rust name avoids the banned word "info"). Every connection uses it; cursors stay opaque and per domain. |
-| `crates/hub/src/targets.rs` (Phase 2) | `AddressPolicy`, the target rule and deny list (P2-004). It moves here from `checks` (programme-owned, as R-003), so `sessions`, `checks` and `metrics` share one deny-list type without new edges. WP-20 makes the move. |
+| `crates/hub/src/fleet/targets.rs` (Phase 2; in `fleet/` since OD-E5, E0-1, 2026-11-13) | `AddressPolicy`, the target rule and deny list (P2-004). It moves here from `checks` (programme-owned, as R-003), so `sessions`, `checks` and `metrics` share one deny-list type without new edges. WP-20 makes the move. |
 | (Phase 3) `crates/hub/src/api_errors.rs` (Q2-06) | `ErrorCode` (the K7 codes), `internal`, `coded`, `invalid`, `FieldError`, `field_names`, `schema_dependency`, generic `pool`, `begin`, `commit`. Each domain keeps its own `to_graphql(Error)` |
 | (Phase 3) `crates/hub/src/text.rs` (Q2-11) | `is_invisible(char)` (the widest table), `is_plain(&str)`, `clean(&str, max_chars) -> String` |
 | (Phase 3) `crates/hub/src/fingerprint.rs` (Q2-10) | `CertificateFingerprint`: parses 64 hex digits or 32 colon pairs; one canonical value; two renderings |
-| (Phase 3) `crates/hub/src/targets.rs` (changed) | Adds `pub async fn resolve_checked(host: &str, port: u16, policy: &AddressPolicy) -> Result<Vec<SocketAddr>, TargetError>` (moved from `checks/probe/resolve.rs`, P3-003). `sessions/target.rs` is deleted (Q2-09); the loopback test switch stays on `AddressPolicy` |
+| (Phase 3) `crates/hub/src/fleet/targets.rs` (changed) | Adds `pub async fn resolve_checked(host: &str, port: u16, policy: &AddressPolicy) -> Result<Vec<SocketAddr>, TargetError>` (moved from `checks/probe/resolve.rs`, P3-003). `sessions/target.rs` is deleted (Q2-09); the loopback test switch stays on `AddressPolicy` |
 | `crates/hub/src/scalars.rs` | GraphQL scalars `IpAddr` and `Cidr` (network only, no host bits) for K1 (R-012). `DateTime` is `chrono::DateTime<Utc>` and `JSON` is `async_graphql::Json<T>`. Domains never define their own scalar with a K1 name. |
 
 ## Wiring (owned by WP-01: `main.rs`, `schema.rs`)

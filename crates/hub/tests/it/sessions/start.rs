@@ -8,7 +8,7 @@ mod moved;
 mod protocols;
 mod waking;
 
-use anima_hub::sessions::{self, Live, Protocol};
+use anima_hub::fleet::sessions::{self, Live, Protocol};
 use chrono::{DateTime, TimeDelta, Utc};
 use serde_json::{Value, json};
 use sqlx::PgPool;

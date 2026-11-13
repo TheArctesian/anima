@@ -49,7 +49,7 @@ interface Shape {
 
 const B64URL = String.raw`A-Za-z0-9_\-`;
 const PLACEHOLDER = /^(?:null|none|true|false|\*+|\[redacted\]|<redacted>|redacted)$/i;
-// Every scheme the hub accepts (crates/hub/src/notifications/channels/apprise_url.rs; a test keeps the lists in
+// Every scheme the hub accepts (crates/hub/src/fleet/notifications/channels/apprise_url.rs; a test keeps the lists in
 // step), then the other Apprise schemes an operator might paste.
 const APPRISE_SCHEMES =
   "apprises?|discord|tgram|slack|pover|pbul|gchat|pagerduty|opsgenie|" +

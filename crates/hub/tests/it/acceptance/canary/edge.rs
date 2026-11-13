@@ -5,12 +5,15 @@
 use std::{collections::BTreeMap, net::SocketAddr, sync::Arc};
 
 use anima_hub::{
-    access, all_routes,
+    all_routes,
     clock::{Clock, FixedClock},
     config,
-    events::Bus,
+    fleet::{
+        access,
+        events::Bus,
+        vpn::{Broker, Feed},
+    },
     schema::Dependencies,
-    vpn::{Broker, Feed},
 };
 use axum::{
     Router,

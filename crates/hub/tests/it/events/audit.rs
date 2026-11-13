@@ -4,7 +4,7 @@
 use std::net::{IpAddr, Ipv4Addr};
 
 use anima_hub::{
-    events::{self, AuditAction, AuditTarget, ClientAddr, NewAudit, Operator},
+    fleet::events::{self, AuditAction, AuditTarget, ClientAddr, NewAudit, Operator},
     ids::OperatorId,
 };
 use chrono::TimeDelta;
@@ -22,7 +22,7 @@ fn audit_entry(change: Value) -> NewAudit {
         operator: Operator {
             id: OperatorId::from(uuid::Uuid::now_v7()),
             name: "operator".to_owned(),
-            actor: anima_hub::events::Actor::for_tests(),
+            actor: anima_hub::fleet::events::Actor::for_tests(),
         },
         action: AuditAction::Update,
         target: AuditTarget::Device(ROUTER.parse().unwrap()),

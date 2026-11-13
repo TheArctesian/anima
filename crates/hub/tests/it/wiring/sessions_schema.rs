@@ -1,8 +1,8 @@
 //! WP-10 handoffs 1 and 2: the sessions part of the hub schema runs on the `Live` that
 //! `Dependencies` carries, so a ticket the schema issues is one that `Live` redeems.
 
-use anima_hub::sessions::Presented;
-use anima_hub::{events::ClientAddr, sessions::Live};
+use anima_hub::fleet::sessions::Presented;
+use anima_hub::fleet::{events::ClientAddr, sessions::Live};
 use serde_json::{Value, json};
 use sqlx::PgPool;
 

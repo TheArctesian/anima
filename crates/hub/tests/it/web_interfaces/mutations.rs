@@ -96,7 +96,7 @@ fixture_test! {
         assert_eq!(hidden["dismissWebInterfaceSuggestion"], HTTP_CHECK);
         data(&schema, DISMISS, json!({ "checkId": HTTP_CHECK })).await;
         let device: anima_hub::ids::DeviceId = PVE_01.parse().unwrap();
-        let offered = anima_hub::web_interfaces::suggestions(&pool, &[device]).await.unwrap();
+        let offered = anima_hub::fleet::web_interfaces::suggestions(&pool, &[device]).await.unwrap();
         assert!(offered.get(&device).is_none_or(Vec::is_empty));
     }
 }

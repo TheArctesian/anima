@@ -1,7 +1,7 @@
 //! Where a token may travel: the `Authorization` header and the WebSocket `connection_init`
 //! payload, never a URL query (K7 "Authentication transport", R-020, SEC-002).
 
-use anima_hub::access;
+use anima_hub::fleet::access;
 use axum::{
     body::Body,
     http::{Request, StatusCode, header},

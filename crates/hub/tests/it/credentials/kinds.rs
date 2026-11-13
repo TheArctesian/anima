@@ -1,7 +1,7 @@
 //! SSH secrets and RDP and VNC passwords share the table but never each other's rows (D-8,
 //! SEC-003, SEC-005).
 
-use anima_hub::credentials::{
+use anima_hub::fleet::credentials::{
     PasswordKind, SshSecret, clear_password, clear_ssh, has_ssh, load_password, load_ssh,
     with_password, with_ssh,
 };

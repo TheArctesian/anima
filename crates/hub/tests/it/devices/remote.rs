@@ -7,7 +7,7 @@ mod relay;
 mod session_controls;
 
 use anima_hub::{
-    devices::{
+    fleet::devices::{
         self, Error, MacAddress, MetricsSource, Missing, RdpSecurity, RdpSettings, ResizeMethod,
         TransferPolicy, VncSettings,
     },

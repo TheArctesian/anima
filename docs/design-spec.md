@@ -1502,18 +1502,19 @@ anima/
 │   │   ├── src/
 │   │   │   ├── main.rs        Start-up and wiring only
 │   │   │   ├── schema.rs      GraphQL schema root: joins the domain parts (CQ-033)
-│   │   │   ├── access/        Login, tokens, API keys, permitted networks (NET-001)
-│   │   │   ├── devices/       Device inventory, sites, tags
-│   │   │   ├── checks/        Check types, scheduler, heartbeats, watchdog
-│   │   │   ├── maintenance/   Maintenance windows (pure rules + store)
-│   │   │   ├── metrics/       Collection (agent ingest, SSH, GPU), aggregates, retention
-│   │   │   ├── sessions/      Session start, tunnel, history
-│   │   │   ├── credentials/   Encryption and storage of credentials
-│   │   │   ├── web_interfaces/ Web interface records and suggestions
-│   │   │   ├── events/        Event log and audit log
-│   │   │   ├── builds/        Release queue, builders, leases, publishing (Section 3.10)
-│   │   │   ├── notifications/ Channels and rules (Phase 3)
-│   │   │   └── traffic/       DNS and flow data (Phase 6)
+│   │   │   └── fleet/         The device manager domains, grouped (REPO-E-001, OD-E5)
+│   │   │       ├── access/        Login, tokens, API keys, permitted networks (NET-001)
+│   │   │       ├── devices/       Device inventory, sites, tags
+│   │   │       ├── checks/        Check types, scheduler, heartbeats, watchdog
+│   │   │       ├── maintenance/   Maintenance windows (pure rules + store)
+│   │   │       ├── metrics/       Collection (agent ingest, SSH, GPU), aggregates, retention
+│   │   │       ├── sessions/      Session start, tunnel, history
+│   │   │       ├── credentials/   Encryption and storage of credentials
+│   │   │       ├── web_interfaces/ Web interface records and suggestions
+│   │   │       ├── events/        Event log and audit log
+│   │   │       ├── builds/        Release queue, builders, leases, publishing (Section 3.10)
+│   │   │       ├── notifications/ Channels and rules (Phase 3)
+│   │   │       └── traffic/       DNS and flow data (Phase 6)
 │   │   ├── migrations/        sqlx migrations
 │   │   └── tests/it/          Integration tests (CQ-042)
 │   ├── anima-cli/             The command line binary (anima) with the MCP server (anima mcp): one folder for each operator noun (Section 6.10)

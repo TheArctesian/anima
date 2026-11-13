@@ -1,0 +1,169 @@
+//! What a check mutation leaves behind: one audit entry and one event, written in the
+//! mutation's own transaction (LOG-004, LOG-005, LOG-007).
+//!
+//! The `change` objects are built by pure functions from the stored checks. A secret appears
+//! only as `"[set]"` under the key `sealed`; no URL, body or header value is recorded.
+
+use serde_json::{Map, Value, json};
+
+use crate::{
+    fleet::{
+        checks::{
+            Check,
+            config::{CheckConfig, HttpAuth},
+        },
+        events::{AuditAction, AuditTarget, Severity, Source, TrailEntry},
+    },
+    ids::CheckId,
+};
+
+/// What the configuration says without its secrets: the type, and for HTTP only the method,
+/// the sign-in kind and the header names.
+fn config_json(config: &CheckConfig) -> Value {
+    match config {
+        CheckConfig::Http(http) => {
+            let sign_in = match http.auth {
+                HttpAuth::None => "none",
+                HttpAuth::Basic { .. } => "basic",
+                HttpAuth::Bearer => "bearer",
+            };
+            let names: Vec<&str> = http.headers.iter().map(|h| h.name.as_str()).collect();
+            json!({
+                "type": "http",
+                "origin": reqwest::Url::parse(&http.url).map(|url| url.origin().ascii_serialization()).ok(),
+                "method": http.method,
+                "signIn": sign_in,
+                "headerNames": names,
+            })
+        }
+        CheckConfig::Push => json!({ "type": "push" }),
+        other => serde_json::to_value(other).unwrap_or(Value::Null),
+    }
+}
+
+fn fields(check: &Check) -> Map<String, Value> {
+    let mut fields = Map::new();
+    fields.insert("name".into(), json!(check.name));
+    fields.insert(
+        "parentId".into(),
+        json!(check.parent.map(|id| id.to_string())),
+    );
+    fields.insert(
+        "intervalSeconds".into(),
+        json!(check.settings.interval_seconds),
+    );
+    fields.insert("retries".into(), json!(check.settings.retries));
+    fields.insert(
+        "retryIntervalSeconds".into(),
+        json!(check.settings.retry_interval_seconds),
+    );
+    fields.insert(
+        "degradedThresholdMs".into(),
+        json!(check.settings.degraded_threshold_ms),
+    );
+    fields.insert("invert".into(), json!(check.settings.invert));
+    fields.insert("config".into(), config_json(&check.config));
+    fields
+}
+
+fn entry(
+    check: &Check,
+    device: &str,
+    action: AuditAction,
+    (verb, change): (&str, Value),
+) -> TrailEntry {
+    TrailEntry {
+        source: Source::Check,
+        severity: Severity::Info,
+        device: Some((check.device, device.to_owned())),
+        message: format!("Check {} on {device} {verb}.", check.name),
+        action,
+        target: AuditTarget::Check(check.id),
+        change,
+    }
+}
+
+fn child_ids(children: &[CheckId]) -> Value {
+    json!(children.iter().map(ToString::to_string).collect::<Vec<_>>())
+}
+
+/// What a mutation did besides the plain fields.
+pub(super) struct Extras<'a> {
+    /// The operator sent a non-empty secret.
+    pub(super) sealed: bool,
+    /// A group's new set of children.
+    pub(super) children: Option<&'a [CheckId]>,
+    /// The push check got a new token (never recorded).
+    pub(super) rotated: bool,
+}
+
+fn add_extras(change: &mut Map<String, Value>, extras: &Extras<'_>) {
+    if extras.sealed {
+        change.insert("sealed".into(), json!("[set]"));
+    }
+    if let Some(children) = extras.children {
+        change.insert("childIds".into(), child_ids(children));
+    }
+    if extras.rotated {
+        change.insert("pushPath".into(), json!("[changed]"));
+    }
+}
+
+pub(super) fn created(check: &Check, device: &str, extras: &Extras<'_>) -> TrailEntry {
+    let mut change = fields(check);
+    change.insert("deviceId".into(), json!(check.device.to_string()));
+    add_extras(&mut change, extras);
+    entry(
+        check,
+        device,
+        AuditAction::Create,
+        ("added", Value::Object(change)),
+    )
+}
+
+/// Only the fields that differ appear in `change`.
+pub(super) fn updated(
+    before: &Check,
+    after: &Check,
+    device: &str,
+    extras: &Extras<'_>,
+) -> TrailEntry {
+    let (old, new) = (fields(before), fields(after));
+    let mut change = Map::new();
+    for (key, value) in &new {
+        if old.get(key) != Some(value) {
+            change.insert(key.clone(), value.clone());
+        }
+    }
+    add_extras(&mut change, extras);
+    entry(
+        after,
+        device,
+        AuditAction::Update,
+        ("updated", Value::Object(change)),
+    )
+}
+
+/// The deleted check's name and type, so the entry outlives the check. A deleted group also
+/// lists the children it let go of.
+pub(super) fn deleted(check: &Check, device: &str, freed: &[CheckId]) -> TrailEntry {
+    let mut change = json!({ "name": check.name, "type": check.kind().as_sql() });
+    if !freed.is_empty() {
+        change["childIds"] = child_ids(freed);
+    }
+    entry(check, device, AuditAction::Delete, ("deleted", change))
+}
+
+pub(super) fn paused(check: &Check, device: &str) -> TrailEntry {
+    let (verb, action) = if check.paused {
+        ("paused", AuditAction::Pause)
+    } else {
+        ("resumed", AuditAction::Resume)
+    };
+    entry(
+        check,
+        device,
+        action,
+        (verb, json!({ "paused": check.paused })),
+    )
+}

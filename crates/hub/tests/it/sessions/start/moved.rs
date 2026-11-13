@@ -4,9 +4,11 @@
 //! is not refused, whatever its letter case.
 
 use anima_hub::{
-    credentials::{PasswordKind, Secret, SshSecret, store_password, store_ssh},
+    fleet::{
+        credentials::{PasswordKind, Secret, SshSecret, store_password, store_ssh},
+        sessions::Live,
+    },
     ids::DeviceId,
-    sessions::Live,
 };
 use serde_json::Value;
 use sqlx::PgPool;

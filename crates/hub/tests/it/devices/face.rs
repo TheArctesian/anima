@@ -1,6 +1,6 @@
 //! The public face of `devices` (K3) against the K6 rows.
 
-use anima_hub::devices::{self, Error, Missing, OperatingSystem, SshAuth};
+use anima_hub::fleet::devices::{self, Error, Missing, OperatingSystem, SshAuth};
 use anima_hub::ids::DeviceId;
 use sqlx::PgPool;
 

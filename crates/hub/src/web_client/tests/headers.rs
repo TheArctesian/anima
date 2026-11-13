@@ -3,7 +3,7 @@
 use axum::http::{Method, StatusCode};
 
 use super::{Answer, WebRoot, get, get_with, router_at, send};
-use crate::access::PublicOrigin;
+use crate::fleet::access::PublicOrigin;
 use crate::web_client::web_client;
 
 /// The policy for `INDEX_HTML` and `https://hub.anima.ing`, written out by hand.

@@ -4,7 +4,9 @@ use std::sync::{Arc, atomic::Ordering};
 
 use anima_hub::{
     clock::{Clock, FixedClock},
-    devices::graphql::{Mutation, Query, web_interface_suggestions_loader, web_interfaces_loader},
+    fleet::devices::graphql::{
+        Mutation, Query, web_interface_suggestions_loader, web_interfaces_loader,
+    },
 };
 use async_graphql::{EmptySubscription, Schema};
 use serde_json::Value;

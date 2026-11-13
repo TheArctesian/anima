@@ -2,7 +2,7 @@
 //! secret fields it set or cleared and never a secret or a whole URL (LOG-004, LOG-005,
 //! LOG-007).
 
-use anima_hub::events::Source;
+use anima_hub::fleet::events::Source;
 use serde_json::{Value, json};
 use sqlx::PgPool;
 

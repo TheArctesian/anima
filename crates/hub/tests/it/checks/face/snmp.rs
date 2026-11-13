@@ -4,11 +4,15 @@
 //! D-5).
 
 use anima_hub::{
-    checks::{
-        self, CheckChange, Definition, Error,
-        config::{CheckConfig, SnmpConfig, SnmpCredentials, SnmpInput, SnmpSecrets, SnmpVersion},
+    fleet::{
+        checks::{
+            self, CheckChange, Definition, Error,
+            config::{
+                CheckConfig, SnmpConfig, SnmpCredentials, SnmpInput, SnmpSecrets, SnmpVersion,
+            },
+        },
+        credentials::Secret,
     },
-    credentials::Secret,
     ids::CheckId,
 };
 use sqlx::PgPool;

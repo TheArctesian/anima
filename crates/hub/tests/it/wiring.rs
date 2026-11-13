@@ -15,12 +15,14 @@ mod uri_log;
 use std::sync::Arc;
 
 use anima_hub::{
-    access::Identity,
     clock::{Clock, FixedClock},
-    events::{Bus, Operator},
+    fleet::{
+        access::Identity,
+        events::{Bus, Operator},
+        sessions::Live,
+    },
     ids::OperatorId,
     schema::{Dependencies, HubSchema, build_schema},
-    sessions::Live,
 };
 use async_graphql::{Request, Variables};
 use chrono::{DateTime, TimeDelta, Utc};
@@ -98,11 +100,13 @@ fn signed_in(query: &str, variables: Value) -> Request {
     let operator = Operator {
         id: OPERATOR_ID.parse::<OperatorId>().unwrap(),
         name: "operator".to_owned(),
-        actor: anima_hub::events::Actor::for_tests(),
+        actor: anima_hub::fleet::events::Actor::for_tests(),
     };
     Identity::for_tests(operator, now() + TimeDelta::hours(24))
         .attach(Request::new(query).variables(Variables::from_json(variables)))
-        .data(anima_hub::events::ClientAddr(CLIENT_ADDR.parse().unwrap()))
+        .data(anima_hub::fleet::events::ClientAddr(
+            CLIENT_ADDR.parse().unwrap(),
+        ))
 }
 
 /// The data of a signed-in request that must have no errors.

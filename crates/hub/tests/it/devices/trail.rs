@@ -1,7 +1,7 @@
 //! Every device mutation leaves one event and one audit entry, in its own transaction
 //! (LOG-004, LOG-005, LOG-007).
 
-use anima_hub::events::{Signal, Source};
+use anima_hub::fleet::events::{Signal, Source};
 use serde_json::{Value, json};
 use sqlx::PgPool;
 
@@ -213,7 +213,7 @@ fixture_test! {
     fixtures(path = "../../fixtures", scripts("devices"))
 )]
 async fn api_010_a_mutation_without_its_bus_or_clock_is_internal_and_stores_nothing(pool: PgPool) {
-    use anima_hub::devices::graphql::{Mutation, Query};
+    use anima_hub::fleet::devices::graphql::{Mutation, Query};
     use async_graphql::{EmptySubscription, Schema};
 
     let schema = Schema::build(Query, Mutation, EmptySubscription)

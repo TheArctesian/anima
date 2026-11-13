@@ -14,8 +14,10 @@ use std::{
 
 use anima_hub::{
     clock::FixedClock,
-    events::Bus,
-    vpn::{Broker, Feed, Reading, spawn_reader},
+    fleet::{
+        events::Bus,
+        vpn::{Broker, Feed, Reading, spawn_reader},
+    },
 };
 use chrono::{DateTime, Utc};
 use serde_json::{Value, json};
@@ -31,7 +33,7 @@ use super::{
 };
 
 /// The hub's status as a `LocalAPI` proxy answers it.
-const STATUS: &str = include_str!("../../../../src/vpn/tests/fixtures/status-active.json");
+const STATUS: &str = include_str!("../../../../src/fleet/vpn/tests/fixtures/status-active.json");
 /// `home` in the `devices` fixture, whose subnet the broker's policy names.
 const HOME: &str = "0190a000-0000-7000-8001-000000000001";
 

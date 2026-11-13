@@ -7,7 +7,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use anima_hub::events::process_log::subscriber;
+use anima_hub::fleet::events::process_log::subscriber;
 use serde_json::{Value, json};
 use sqlx::PgPool;
 

@@ -2,10 +2,10 @@
 //! holds, and `close_stale` at the next start ends what a previous process left open, each
 //! with one `session.end` audit entry.
 
-use anima_hub::sessions::Presented;
+use anima_hub::fleet::sessions::Presented;
 use std::time::Duration;
 
-use anima_hub::{
+use anima_hub::fleet::{
     events::ClientAddr,
     sessions::{self, EndReason, Live, Tunnel},
 };

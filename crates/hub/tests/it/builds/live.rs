@@ -4,10 +4,12 @@
 use std::{sync::Arc, time::Duration};
 
 use anima_hub::{
-    access::Identity,
-    builds::{self, BuildQueue, JobState, Report, Updates},
     clock::{Clock, FixedClock},
-    events::{Bus, Operator},
+    fleet::{
+        access::Identity,
+        builds::{self, BuildQueue, JobState, Report, Updates},
+        events::{Bus, Operator},
+    },
     ids::{BuildJobId, OperatorId},
     schema::{Dependencies, build_schema},
 };
@@ -26,7 +28,7 @@ fn signed_in(job: &str) -> Request {
     let operator = Operator {
         id: OperatorId::from(uuid::Uuid::now_v7()),
         name: "operator".to_owned(),
-        actor: anima_hub::events::Actor::for_tests(),
+        actor: anima_hub::fleet::events::Actor::for_tests(),
     };
     let request =
         Request::new(SUBSCRIPTION).variables(Variables::from_json(json!({ "jobId": job })));

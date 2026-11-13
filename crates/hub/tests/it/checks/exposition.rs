@@ -10,8 +10,8 @@ mod series;
 use std::sync::{Arc, Mutex};
 
 use anima_hub::{
-    checks::{self, Beat, CheckState, Recorded, exposition_router},
     clock::Clock,
+    fleet::checks::{self, Beat, CheckState, Recorded, exposition_router},
     ids::CheckId,
     status::Status,
 };

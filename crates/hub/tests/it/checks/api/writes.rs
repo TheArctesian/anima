@@ -1,7 +1,7 @@
 //! The four check mutations: what they store, audit, record and roll back (CHK-005, API-003,
 //! LOG-004, LOG-005, LOG-007).
 
-use anima_hub::events::{Signal, Source};
+use anima_hub::fleet::events::{Signal, Source};
 use serde_json::{Value, json};
 use sqlx::PgPool;
 

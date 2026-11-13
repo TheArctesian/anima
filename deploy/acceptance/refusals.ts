@@ -9,7 +9,7 @@ export const CLIENT_ORIGINS: readonly string[] = ["tauri://localhost", "http://t
 export const FOREIGN_ORIGIN = "https://evil.example";
 
 /**
- * The roots an API key may never select: a copy of `API_KEY_REFUSED_ROOTS` in `crates/hub/src/access/guard.rs`, in its
+ * The roots an API key may never select: a copy of `API_KEY_REFUSED_ROOTS` in `crates/hub/src/fleet/access/guard.rs`, in its
  * order, with the VPN roots (VP-7, VP-10) and without the recording roots (R-113); a test keeps the lists equal (D-23,
  * R-100, R-107).
  */

@@ -1,0 +1,248 @@
+//! The world a round test starts from: `docker-host` on a test SSH server with its key
+//! accepted and its password stored, `pve-01` and `win-desktop` also set to SSH metrics, a
+//! clock the test moves, and the stored events.
+
+use std::{
+    io::Write as _,
+    sync::{Arc, Mutex},
+    time::Duration,
+};
+
+use base64::{Engine as _, engine::general_purpose::STANDARD};
+use chrono::{DateTime, TimeDelta, Utc};
+use russh::keys::HashAlg;
+use sqlx::PgPool;
+use tokio::sync::broadcast::Receiver;
+
+use super::server::{PASSWORD, Server, host_key, serve};
+use crate::{
+    clock::Clock,
+    fleet::{
+        credentials::{self, Secret, SshSecret, Vault},
+        events::Bus,
+        metrics::{
+            Feed, MetricsAdded,
+            collector::{Collecting, Context, GPU_WINDOW, round::Collector},
+        },
+        targets::AddressPolicy,
+    },
+    ids::DeviceId,
+};
+use agent_core::readings::captures::{
+    DF_LINUX, LSBLK_POP_OS, PROC_DISKSTATS, PROC_LOADAVG, PROC_MEMINFO, PROC_NET_DEV, PROC_STAT,
+    PROC_UPTIME,
+};
+
+pub(super) const DOCKER_HOST: &str = "0190a000-0000-7000-8002-000000000002";
+/// Linux, no host key accepted: every link fails.
+pub(super) const PVE_01: &str = "0190a000-0000-7000-8002-000000000001";
+pub(super) const WIN_DESKTOP: &str = "0190a000-0000-7000-8002-00000000000d";
+pub(super) const OPERATOR: &str = "0190a000-0000-7000-8000-000000000001";
+
+/// The command lines of a Linux collection whose `lsblk` knows `MOUNTPOINTS`, in order (D-3).
+pub(super) const LINUX_LINES: [&str; 9] = [
+    "cat /proc/stat",
+    "cat /proc/meminfo",
+    "cat /proc/net/dev",
+    "cat /proc/uptime",
+    "cat /proc/loadavg",
+    "df -P -B1",
+    "cat /proc/diskstats",
+    LSBLK_LINE,
+    "cat /etc/os-release",
+];
+
+/// The `lsblk` line of util-linux 2.37 and later (MET-027).
+pub(super) const LSBLK_LINE: &str = "lsblk -J -b -o NAME,TYPE,SIZE,ROTA,TRAN,MOUNTPOINTS";
+
+/// The `lsblk` line run when the one above fails (MET-027).
+pub(super) const LSBLK_OLD_LINE: &str = "lsblk -J -b -o NAME,TYPE,SIZE,ROTA,TRAN,MOUNTPOINT";
+
+/// The os-release of a Pop!_OS device (DEV-016).
+pub(super) const OS_RELEASE: &[u8] =
+    b"NAME=\"Pop!_OS\"\nVERSION=\"22.04 LTS\"\nID=pop\nID_LIKE=\"ubuntu debian\"\n";
+
+/// The GPU read lines of a Linux collection that looks for GPUs, in order: NVIDIA, AMD,
+/// Intel (spec 6.6, D-30). The test server answers none of them unless a test says so, as a
+/// device without GPUs (exit status 127).
+pub(super) const LINUX_GPU_LINES: [&str; 3] = [
+    concat!(
+        "nvidia-smi --query-gpu=index,name,utilization.gpu,memory.used,memory.total,",
+        "temperature.gpu,power.draw --format=csv,noheader,nounits"
+    ),
+    concat!(
+        "grep -H . /sys/class/drm/card*/device/gpu_busy_percent ",
+        "/sys/class/drm/card*/device/mem_info_vram_used ",
+        "/sys/class/drm/card*/device/mem_info_vram_total"
+    ),
+    "timeout --preserve-status -s INT -k 1 2 intel_gpu_top -J -s 500",
+];
+
+/// A clock the test moves.
+pub(super) struct Steps(Mutex<DateTime<Utc>>);
+
+impl Steps {
+    pub(super) fn advance(&self, seconds: i64) {
+        *self.0.lock().unwrap() += TimeDelta::seconds(seconds);
+    }
+}
+
+impl Clock for Steps {
+    fn now(&self) -> DateTime<Utc> {
+        *self.0.lock().unwrap()
+    }
+}
+
+/// `docker-host` on a test server with its password stored; `pve-01` and `win-desktop` also
+/// set to SSH metrics. The host key is accepted when `accepted`.
+pub(super) struct Bench {
+    pub(super) server: Server,
+    pub(super) clock: Arc<Steps>,
+    pub(super) feed: Receiver<MetricsAdded>,
+    pub(super) collector: Collector,
+}
+
+pub(super) fn device(text: &str) -> DeviceId {
+    text.parse().unwrap()
+}
+
+pub(super) async fn execute(pool: &PgPool, sql: &str, id: &str) {
+    sqlx::query(sql).bind(id).execute(pool).await.unwrap();
+}
+
+pub(super) async fn bench(pool: &PgPool, accepted: bool) -> Bench {
+    let policy = AddressPolicy::default().allowing_loopback();
+    bench_with(pool, accepted, policy, GPU_WINDOW).await
+}
+
+/// [`bench`] with links held to `policy` and GPU reads cut `gpu_window` after a collection
+/// starts.
+pub(super) async fn bench_with(
+    pool: &PgPool,
+    accepted: bool,
+    policy: AddressPolicy,
+    gpu_window: Duration,
+) -> Bench {
+    let server = serve().await;
+    for (line, stdout) in LINUX_LINES.iter().zip([
+        PROC_STAT,
+        PROC_MEMINFO,
+        PROC_NET_DEV,
+        PROC_UPTIME,
+        PROC_LOADAVG,
+        DF_LINUX,
+        PROC_DISKSTATS,
+        LSBLK_POP_OS,
+        OS_RELEASE,
+    ]) {
+        server.answer(line, stdout);
+    }
+    let vault = vault();
+    prepare(pool, &vault, server.port, accepted).await;
+    let start: DateTime<Utc> = sqlx::query_scalar("select pg_catalog.now()")
+        .fetch_one(pool)
+        .await
+        .unwrap();
+    let clock = Arc::new(Steps(Mutex::new(start - TimeDelta::minutes(10))));
+    let feed = Feed::new();
+    let subscribed = feed.subscribe();
+    let collector = Collector::new(Context {
+        db: pool.clone(),
+        feed,
+        bus: Bus::new(64),
+        clock: Arc::clone(&clock) as Arc<dyn Clock>,
+        collecting: Collecting { vault, policy },
+        gpu_window,
+    });
+    Bench {
+        server,
+        clock,
+        feed: subscribed,
+        collector,
+    }
+}
+
+/// The operator, the devices set to SSH metrics, `docker-host` pointed at the server on
+/// `port` with its password, and its host key when `accepted`.
+pub(super) async fn prepare(pool: &PgPool, vault: &Vault, port: u16, accepted: bool) {
+    execute(
+        pool,
+        "insert into access.operators (id, username, password_hash, created_at) \
+         values ($1::text::uuid, 'operator', '$argon2id$x', now())",
+        OPERATOR,
+    )
+    .await;
+    if accepted {
+        accept(pool).await;
+    }
+    for id in [DOCKER_HOST, PVE_01, WIN_DESKTOP] {
+        set_source(pool, id, "ssh").await;
+    }
+    execute(
+        pool,
+        "update devices.devices set host = '127.0.0.1' where id = $1::text::uuid",
+        DOCKER_HOST,
+    )
+    .await;
+    sqlx::query("update devices.ssh_settings set port = $2 where device_id = $1::text::uuid")
+        .bind(DOCKER_HOST)
+        .bind(i32::from(port))
+        .execute(pool)
+        .await
+        .unwrap();
+    let mut conn = pool.acquire().await.unwrap();
+    let password = SshSecret::Password(Secret::from(PASSWORD.to_owned()));
+    credentials::store_ssh(
+        &mut conn,
+        vault,
+        (device(DOCKER_HOST), "127.0.0.1"),
+        password,
+    )
+    .await
+    .unwrap();
+}
+
+/// A vault over a throwaway key in a temporary file (SEC-004).
+pub(super) fn vault() -> Vault {
+    let mut key_file = tempfile::NamedTempFile::new().unwrap();
+    writeln!(key_file, "{}", STANDARD.encode([5; 32])).unwrap();
+    Vault::from_key_file(key_file.path()).unwrap()
+}
+
+/// Accepts the test server's host key for `docker-host`.
+pub(super) async fn accept(pool: &PgPool) {
+    let key = host_key();
+    sqlx::query(
+        "insert into trust.host_keys (device_id, algorithm, fingerprint_sha256, public_key, \
+                first_seen_at, accepted_at, accepted_by) \
+         values ($1::text::uuid, $2, $3, $4, now(), now(), $5::text::uuid)",
+    )
+    .bind(DOCKER_HOST)
+    .bind(key.algorithm().as_str())
+    .bind(key.fingerprint(HashAlg::Sha256).to_string())
+    .bind(STANDARD.encode(key.to_bytes().unwrap()))
+    .bind(OPERATOR)
+    .execute(pool)
+    .await
+    .unwrap();
+}
+
+pub(super) async fn set_source(pool: &PgPool, id: &str, source: &str) {
+    sqlx::query("update devices.devices set metrics_source = $2 where id = $1::text::uuid")
+        .bind(id)
+        .bind(source)
+        .execute(pool)
+        .await
+        .unwrap();
+}
+
+/// The events stored, oldest first: severity, device name and message.
+pub(super) async fn events(pool: &PgPool) -> Vec<(String, String, String)> {
+    sqlx::query_as(
+        "select severity, device_name, message from events.event_log \
+         where source = 'metrics' order by at, device_name",
+    )
+    .fetch_all(pool)
+    .await
+    .unwrap()
+}

@@ -1,6 +1,6 @@
 //! `operator set` clearing the way back in, and retention at its boundaries (D-8, D-9, K2).
 
-use anima_hub::access::{self, Password};
+use anima_hub::fleet::access::{self, Password};
 use chrono::{DateTime, TimeDelta, Utc};
 use sqlx::PgPool;
 

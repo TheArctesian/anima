@@ -1,7 +1,7 @@
 //! Tokens at the edge: storage, expiry, logout, `me` and API-003 for every root field
 //! (SEC-002, API-003, LOG-007, D-7, D-9).
 
-use anima_hub::access::{self, Password};
+use anima_hub::fleet::access::{self, Password};
 use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use chrono::TimeDelta;
 use serde_json::json;

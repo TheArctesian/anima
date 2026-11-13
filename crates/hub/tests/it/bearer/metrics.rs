@@ -7,10 +7,12 @@ use std::{
 };
 
 use anima_hub::{
-    access::{self, Scope},
     clock::{Clock, FixedClock},
-    events::process_log,
     exposition,
+    fleet::{
+        access::{self, Scope},
+        events::process_log,
+    },
 };
 use axum::{
     Router,

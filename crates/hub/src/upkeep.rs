@@ -4,15 +4,17 @@
 use std::{sync::Arc, time::Duration};
 
 use anima_hub::{
-    access, builds, checks,
     clock::Clock,
-    credentials::Vault,
-    events::{self, Bus},
-    metrics, notifications,
-    retention::{self, Subject},
+    fleet::{
+        access, builds, checks,
+        credentials::Vault,
+        events::{self, Bus},
+        metrics, notifications,
+        retention::{self, Subject},
+        targets::AddressPolicy,
+        vpn,
+    },
     schema::Dependencies,
-    targets::AddressPolicy,
-    vpn,
 };
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;

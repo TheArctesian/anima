@@ -20,7 +20,7 @@ describe("the probe's copies of the hub's lists", () => {
   });
 
   test("D-23 R-100: the refused roots are API_KEY_REFUSED_ROOTS of guard.rs", () => {
-    const guard = source("crates/hub/src/access/guard.rs");
+    const guard = source("crates/hub/src/fleet/access/guard.rs");
     const list = quoted(/const API_KEY_REFUSED_ROOTS: \[&str; \d+\] = \[([^\]]*)\]/.exec(guard)?.[1] ?? "");
     expect(list.length).toBeGreaterThan(20);
     expect(list).toEqual([...refusals.REFUSED_ROOTS]);
@@ -40,14 +40,14 @@ describe("the probe's copies of the hub's lists", () => {
   });
 
   test("D-23: the READ refusal text is the hub's ReadOnly error", () => {
-    const text = /#\[error\("([^"]+)"\)\]\s*ReadOnly,/.exec(source("crates/hub/src/access/error.rs"))?.[1];
+    const text = /#\[error\("([^"]+)"\)\]\s*ReadOnly,/.exec(source("crates/hub/src/fleet/access/error.rs"))?.[1];
     expect(text).toBe(refusals.READ_ONLY_MESSAGE);
   });
 
   test("INT-001 CHK-011: the families and windows are those render.rs and model.rs write", () => {
-    const render = source("crates/hub/src/checks/exposition/render.rs");
+    const render = source("crates/hub/src/fleet/checks/exposition/render.rs");
     expect(new Set(render.match(/"anima_[a-z_]+"/g)?.map((name) => name.slice(1, -1)))).toEqual(new Set(Object.keys(K7_FAMILIES)));
-    const model = source("crates/hub/src/checks/exposition/model.rs");
+    const model = source("crates/hub/src/fleet/checks/exposition/model.rs");
     expect([...model.matchAll(/\(UptimeWindow::\w+, "(\w+)"\)/g)].map((match) => match[1])).toEqual([...WINDOWS]);
   });
 });

@@ -2,7 +2,7 @@
 
 use sqlx::PgPool;
 
-use anima_hub::credentials::{PasswordKind, clear_ssh};
+use anima_hub::fleet::credentials::{PasswordKind, clear_ssh};
 
 use super::{
     PASSPHRASE, PVE_01, RDP_PASSWORD, VNC_PASSWORD, constraint_of, device, kinds, password,

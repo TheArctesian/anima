@@ -4,9 +4,11 @@
 use std::{sync::Arc, time::Duration};
 
 use anima_hub::{
-    access::{self, Password},
     clock::Clock,
-    events::Severity,
+    fleet::{
+        access::{self, Password},
+        events::Severity,
+    },
 };
 use chrono::TimeDelta;
 use serde_json::json;

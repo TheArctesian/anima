@@ -9,18 +9,20 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 
 use anima_hub::{
-    DRAIN_LIMIT, Shutdown,
-    access::{self, Password, listen},
-    all_routes, builds,
+    DRAIN_LIMIT, Shutdown, all_routes,
     clock::{Clock, SystemClock},
     config,
-    credentials::Vault,
-    events::Bus,
-    metrics,
+    fleet::{
+        access::{self, Password, listen},
+        builds,
+        credentials::Vault,
+        events::Bus,
+        metrics, sessions,
+        targets::AddressPolicy,
+        vpn,
+    },
     schema::Dependencies,
-    serve_until, sessions,
-    targets::AddressPolicy,
-    vpn,
+    serve_until,
 };
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use serde_json::{Value, json};

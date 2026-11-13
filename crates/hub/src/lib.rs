@@ -1,33 +1,18 @@
 //! Hub library face: module tree, HTTP router and the serving steps around it, so integration
 //! tests can reach them.
 
-pub mod access;
 pub mod api_errors;
-pub mod builds;
-pub mod checks;
 pub mod clock;
 pub mod config;
-pub mod credentials;
-pub mod devices;
-pub mod events;
 pub mod fingerprint;
+pub mod fleet;
 pub mod ids;
-pub mod maintenance;
-pub mod metrics;
-pub mod notifications;
 pub mod paging;
-pub mod retention;
 pub mod scalars;
 pub mod schema;
-pub mod sessions;
-pub mod ssh;
 pub mod status;
-pub mod targets;
 pub mod text;
-pub mod trust;
-pub mod vpn;
 pub mod web_client;
-pub mod web_interfaces;
 
 use std::{future::Future, path::Path, sync::Arc, time::Duration};
 
@@ -61,7 +46,7 @@ struct GraphqlRoute {
     clock: Arc<dyn clock::Clock>,
     /// `ANIMA_PUBLIC_ORIGIN`; without it no request is marked same-origin, so no browser
     /// cookie is read and `signInBrowser` is refused (D-3, D-4).
-    origin: Option<access::PublicOrigin>,
+    origin: Option<fleet::access::PublicOrigin>,
 }
 
 /// The origins of the desktop app's web view: `tauri://localhost` on macOS and Linux,
@@ -102,7 +87,7 @@ pub fn router_at(
     schema: schema::HubSchema,
     db: PgPool,
     clock: Arc<dyn clock::Clock>,
-    origin: access::PublicOrigin,
+    origin: fleet::access::PublicOrigin,
 ) -> Router {
     routes(GraphqlRoute {
         schema,
@@ -128,14 +113,16 @@ fn routes(route: GraphqlRoute) -> Router {
 /// Apply it to a router after its last route is added; [`all_routes`] wraps each router it
 /// merges in, such as `/tunnel` and `/push`.
 pub fn logged(routes: Router) -> Router {
-    routes.layer(middleware::from_fn(events::process_log::http_request))
+    routes.layer(middleware::from_fn(
+        fleet::events::process_log::http_request,
+    ))
 }
 
 /// The web client as the hub's fallback when `root` is set (D-2): any other `GET` gets a file
 /// or `index.html`, in a logged span like every route. Merge it beside the explicit routes,
 /// which win, and before the NET-002 layer, which then covers it. Without a root it adds
 /// nothing, so an unknown path gets 404.
-pub fn web_fallback(root: Option<&Path>, origin: &access::PublicOrigin) -> Router {
+pub fn web_fallback(root: Option<&Path>, origin: &fleet::access::PublicOrigin) -> Router {
     root.map_or_else(Router::new, |root| {
         logged(web_client::web_client(root, origin))
     })
@@ -151,31 +138,34 @@ pub fn pushes(dependencies: &schema::Dependencies) -> Router {
         metrics_feed,
         ..
     } = dependencies;
-    let agent = metrics::agent_router(
+    let agent = fleet::metrics::agent_router(
         pool.clone(),
         metrics_feed.clone(),
         bus.clone(),
         clock.clone(),
     );
-    logged(checks::push_router(pool.clone(), bus.clone(), clock.clone()).merge(agent))
+    logged(fleet::checks::push_router(pool.clone(), bus.clone(), clock.clone()).merge(agent))
 }
 
 /// Every route the hub serves, as `main.rs` serves it: `/graphql` and `/health` at the public
 /// origin of `dependencies.config`, then the routes [`beside_graphql`] adds, all behind the
 /// permitted-networks layer of `edge` (K3, NET-002). The schema takes `dependencies`.
-pub fn all_routes(dependencies: schema::Dependencies, edge: access::Edge) -> Router {
-    let origin = access::PublicOrigin::new(dependencies.config.public_origin.clone());
+pub fn all_routes(dependencies: schema::Dependencies, edge: fleet::access::Edge) -> Router {
+    let origin = fleet::access::PublicOrigin::new(dependencies.config.public_origin.clone());
     let beside = beside_graphql(&dependencies, &origin);
     let (pool, clock) = (dependencies.pool.clone(), dependencies.clock.clone());
     router_at(schema::build_schema(dependencies), pool, clock, origin)
         .merge(beside)
-        .layer(access::permitted_networks_layer(edge))
+        .layer(fleet::access::permitted_networks_layer(edge))
 }
 
 /// The routes beside `/graphql`, each logged by its template only, never its token (K3,
 /// LOG-007, R-028, R-051): the session tunnels, the push routes ([`pushes`]), `/metrics` behind a READ bearer
 /// (D-24) and, last, the web client at `config.web_root` as the fallback (D-2).
-fn beside_graphql(dependencies: &schema::Dependencies, origin: &access::PublicOrigin) -> Router {
+fn beside_graphql(
+    dependencies: &schema::Dependencies,
+    origin: &fleet::access::PublicOrigin,
+) -> Router {
     let (pool, clock) = (&dependencies.pool, &dependencies.clock);
     let web_root = dependencies.config.web_root.as_deref();
     tunnels(dependencies)
@@ -189,8 +179,12 @@ fn beside_graphql(dependencies: &schema::Dependencies, origin: &access::PublicOr
 /// no build. The layer wraps the route only, never the fallback, so a merge cannot put the
 /// bearer check on unknown paths. Merge it before the NET-002 layer, which then covers it.
 pub fn exposition(db: PgPool, clock: Arc<dyn clock::Clock>) -> Router {
-    let scrapes = checks::exposition_router(db.clone(), clock.clone());
-    logged(scrapes.route_layer(access::bearer_layer(db, clock, access::Scope::Read)))
+    let scrapes = fleet::checks::exposition_router(db.clone(), clock.clone());
+    logged(scrapes.route_layer(fleet::access::bearer_layer(
+        db,
+        clock,
+        fleet::access::Scope::Read,
+    )))
 }
 
 /// The session tunnels, each logged by its template only (K4 Sections 8, 9): `/terminal` for
@@ -199,7 +193,7 @@ pub fn exposition(db: PgPool, clock: Arc<dyn clock::Clock>) -> Router {
 ///
 /// `main.rs` builds one address policy for every outbound connection (R-030, R-032): `/files`,
 /// the probes and the collector take it as `policy`; the terminal, the Guacamole tunnel and the
-/// connection tests take it through `live`'s target rule ([`sessions::Live::denying`]).
+/// connection tests take it through `live`'s target rule ([`fleet::sessions::Live::denying`]).
 pub fn tunnels(dependencies: &schema::Dependencies) -> Router {
     let schema::Dependencies {
         config,
@@ -211,7 +205,7 @@ pub fn tunnels(dependencies: &schema::Dependencies) -> Router {
         policy,
         ..
     } = dependencies;
-    let serving = sessions::Serving {
+    let serving = fleet::sessions::Serving {
         db: pool.clone(),
         vault: vault.clone(),
         bus: bus.clone(),
@@ -220,9 +214,9 @@ pub fn tunnels(dependencies: &schema::Dependencies) -> Router {
         guacd: config.guacd.clone(),
         drive_root: config.guacd_drive_root.to_string_lossy().into_owned(),
     };
-    let terminal = sessions::terminal_router(&serving);
-    let tunnel = sessions::tunnel_router(&serving);
-    let files = sessions::files_router(
+    let terminal = fleet::sessions::terminal_router(&serving);
+    let tunnel = fleet::sessions::tunnel_router(&serving);
+    let files = fleet::sessions::files_router(
         pool.clone(),
         vault.clone(),
         bus.clone(),
@@ -247,7 +241,7 @@ pub const DRAIN_LIMIT: Duration = Duration::from_secs(10);
 pub struct Shutdown {
     pub db: PgPool,
     /// The `Live` the schema and the tunnel serve with.
-    pub live: sessions::Live,
+    pub live: fleet::sessions::Live,
     pub clock: Arc<dyn clock::Clock>,
     /// [`DRAIN_LIMIT`] in the hub.
     pub drain_limit: Duration,
@@ -259,7 +253,7 @@ pub struct Shutdown {
 /// upgraded connections such as tunnels; then stops accepting and drains the open requests for
 /// at most `shutdown.drain_limit` (R-040).
 pub async fn serve_until(
-    entrance: access::listen::Entrance,
+    entrance: fleet::access::listen::Entrance,
     app: Router,
     shutdown: Shutdown,
     signal: impl Future<Output = ()> + Send + 'static,
@@ -272,8 +266,8 @@ pub async fn serve_until(
     } = shutdown;
     let stop = async move {
         signal.await;
-        if let Err(error) = sessions::shut_down(&db, &live, clock.now()).await {
-            // The error's text is fixed and holds no value (sessions::Error, LOG-007).
+        if let Err(error) = fleet::sessions::shut_down(&db, &live, clock.now()).await {
+            // The error's text is fixed and holds no value (fleet::sessions::Error, LOG-007).
             tracing::error!(%error, "sessions did not all end at shutdown");
         }
     };
@@ -308,13 +302,15 @@ async fn graphql(
         )
             .into_response();
     };
-    if let Some(client) = access::client_addr(&extensions) {
+    if let Some(client) = fleet::access::client_addr(&extensions) {
         request = request.data(client);
     }
     // For a sign-in, which has no identity yet to carry it (LOG-016).
-    request = request.data(access::Declaration::of_headers(&headers));
-    let from = (route.origin.as_ref()).and_then(|origin| access::SameOrigin::of(&headers, origin));
-    let identified = access::identify(&route.db, &headers, from.as_ref(), route.clock.now()).await;
+    request = request.data(fleet::access::Declaration::of_headers(&headers));
+    let from =
+        (route.origin.as_ref()).and_then(|origin| fleet::access::SameOrigin::of(&headers, origin));
+    let identified =
+        fleet::access::identify(&route.db, &headers, from.as_ref(), route.clock.now()).await;
     if let Some(from) = from {
         request = request.data(from);
     }
@@ -324,7 +320,7 @@ async fn graphql(
         // The schema's boundary never sees this error, so the route logs its cause chain (H-5).
         Err(error) => {
             let error = error.into_response_error();
-            events::process_log::log_failure(&error);
+            fleet::events::process_log::log_failure(&error);
             async_graphql::Response::from_errors(vec![error])
         }
     };
@@ -344,10 +340,13 @@ async fn subscriptions(
     let Ok(upgrade) = upgrade else {
         return StatusCode::METHOD_NOT_ALLOWED.into_response();
     };
-    let mut access =
-        access::SocketAccess::new(route.db, route.clock, access::client_addr(&extensions));
+    let mut access = fleet::access::SocketAccess::new(
+        route.db,
+        route.clock,
+        fleet::access::client_addr(&extensions),
+    );
     if let Some(origin) = &route.origin {
         access = access.with_upgrade(&headers, origin);
     }
-    access::accept_socket(upgrade, route.schema, access)
+    fleet::access::accept_socket(upgrade, route.schema, access)
 }

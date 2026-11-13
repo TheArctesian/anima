@@ -3,7 +3,7 @@
 
 use std::sync::atomic::Ordering;
 
-use anima_hub::{schema::build_schema, sessions::Live};
+use anima_hub::{fleet::sessions::Live, schema::build_schema};
 use serde_json::{Value, json};
 use sqlx::PgPool;
 

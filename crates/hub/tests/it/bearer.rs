@@ -8,10 +8,10 @@ mod metrics;
 use std::{collections::BTreeMap, net::SocketAddr, path::Path, sync::Arc};
 
 use anima_hub::{
-    access, all_routes,
+    all_routes,
     clock::{Clock, FixedClock},
     config,
-    events::Bus,
+    fleet::{access, events::Bus},
     schema::Dependencies,
 };
 use axum::{

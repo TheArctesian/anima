@@ -10,8 +10,8 @@ use super::{
     add_operator, now, put_host_key,
 };
 use anima_hub::{
+    fleet::trust::{self, Error},
     ids::DeviceId,
-    trust::{self, Error},
 };
 
 fn device(id: &str) -> DeviceId {

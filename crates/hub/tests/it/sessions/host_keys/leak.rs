@@ -9,9 +9,11 @@ use std::{
 
 use anima_hub::{
     clock::{Clock, FixedClock},
-    events::process_log::subscriber,
+    fleet::{
+        events::process_log::subscriber,
+        sessions::graphql::{Query, Subscription},
+    },
     schema::harden,
-    sessions::graphql::{Query, Subscription},
 };
 use async_graphql::{Request, Response, Schema, Variables};
 use serde_json::{Value, json};

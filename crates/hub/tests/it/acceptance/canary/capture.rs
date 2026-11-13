@@ -15,7 +15,7 @@ use std::{
     },
 };
 
-use anima_hub::events::process_log;
+use anima_hub::fleet::events::process_log;
 use tracing::{
     Dispatch, Event, Metadata, Subscriber,
     span::{Attributes, Id, Record},

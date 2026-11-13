@@ -1,7 +1,7 @@
 //! `checkDefaults` and `setCheckDefaults`: what they store, refuse, audit and hand to the
 //! default check of a new device (D-26, DB-011, API-003, LOG-005).
 
-use anima_hub::checks::{self, CheckSettings};
+use anima_hub::fleet::checks::{self, CheckSettings};
 use serde_json::{Value, json};
 use sqlx::PgPool;
 

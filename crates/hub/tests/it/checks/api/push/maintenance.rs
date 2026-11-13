@@ -1,7 +1,7 @@
 //! A push under maintenance is recorded, published and shown as Maintenance, the same as a
 //! scheduled attempt (CHK-006).
 
-use anima_hub::{events::Signal, status::Status};
+use anima_hub::{fleet::events::Signal, status::Status};
 use async_graphql::futures_util::StreamExt as _;
 use axum::http::StatusCode;
 use serde_json::json;

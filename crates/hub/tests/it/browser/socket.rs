@@ -9,9 +9,11 @@ use std::{
 };
 
 use anima_hub::{
-    access::{self, PublicOrigin},
     clock::{Clock, FixedClock},
-    events::Bus,
+    fleet::{
+        access::{self, PublicOrigin},
+        events::Bus,
+    },
     schema::build_schema,
 };
 use async_graphql::futures_util::{SinkExt as _, StreamExt as _};

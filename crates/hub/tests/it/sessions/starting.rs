@@ -1,10 +1,10 @@
 //! What `startSession` and `endSession` tests share: requests, ready devices, and the rows and
 //! audit entries a session leaves behind.
 
-use anima_hub::sessions::Presented;
+use anima_hub::fleet::sessions::Presented;
 use std::net::IpAddr;
 
-use anima_hub::{
+use anima_hub::fleet::{
     events::ClientAddr,
     sessions::{Live, Redeemed},
 };

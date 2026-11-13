@@ -87,7 +87,7 @@ describe("REPO-004 allow-list", () => {
   });
 
   test("a cyclic allow-list fails", () => {
-    const cyclic: HubModules = { leaves: [], wiring: [], domains: { a: ["b"], b: ["a"] }, graphql: {} };
+    const cyclic: HubModules = { groups: [], leaves: [], wiring: [], domains: { a: ["b"], b: ["a"] }, graphql: {} };
     expect(checkImports([], cyclic).map((v) => v.signal)).toEqual(["allow-list-cycle"]);
   });
 
@@ -100,6 +100,7 @@ describe("REPO-004 allow-list", () => {
 
 describe("REPO-004 cycles", () => {
   const loose: HubModules = {
+    groups: [],
     leaves: [],
     wiring: [],
     domains: { a: ["b", "c"], b: ["a", "c"], c: ["a"] },
@@ -121,6 +122,46 @@ describe("REPO-004 cycles", () => {
 
   test("a one-way chain passes", () => {
     expect(cycles(hub("a/x.rs", "use crate::b::B;"), hub("b/y.rs", "use crate::c::C;"))).toEqual([]);
+  });
+});
+
+describe("REPO-E-001 domains inside a group", () => {
+  test("a grouped domain is checked under its own name", () => {
+    expect(signals(hub("fleet/checks/x.rs", "use crate::fleet::devices::store;"))).toEqual(["foreign-store crate::fleet::devices::store"]);
+    expect(signals(hub("fleet/events/x.rs", "use crate::fleet::{devices, ids::DeviceId};"))).toEqual(["forbidden-edge events -> devices"]);
+    expect(signals(hub("fleet/checks/x.rs", "use crate::fleet::devices::Device;\nuse crate::ids::CheckId;"))).toEqual([]);
+  });
+
+  test("super paths that climb into the group name its domains", () => {
+    expect(signals(hub("fleet/checks/inner/x.rs", "use super::super::super::devices::store::Q;"))).toHaveLength(1);
+    expect(signals(hub("fleet/devices.rs", "use super::events::Event;\nfn f() { super::checks::run(); }"))).toEqual([
+      "forbidden-edge devices -> checks",
+    ]);
+  });
+
+  test("leaves and wiring reach grouped domains through the group", () => {
+    expect(signals(hub("ids.rs", "use crate::fleet::devices::Device;"))).toEqual(["leaf-imports-domain ids -> devices"]);
+    expect(signals(hub("fleet/targets.rs", "use crate::fleet::events::Bus;"))).toEqual(["leaf-imports-domain targets -> events"]);
+    expect(signals(hub("schema.rs", "use crate::fleet::{access, devices::graphql};"), hub("fleet.rs", "pub mod devices;"))).toEqual([]);
+  });
+
+  test("an unlisted module inside a group is named with its folder", () => {
+    expect(run(hub("fleet/reports/x.rs"))).toEqual([
+      { path: "crates/hub/src/fleet/reports", signal: "unlisted-module", detail: '"reports" is not in hub-modules.json' },
+    ]);
+  });
+
+  test("a cycle between grouped domains reports the grouped folder", () => {
+    const grouped: HubModules = { groups: ["fleet"], leaves: [], wiring: [], domains: { a: ["b"], b: ["a"] }, graphql: {} };
+    const files = [hub("fleet/a/x.rs", "use crate::fleet::b::B;"), hub("fleet/b/y.rs", "use super::super::a::A;")];
+    expect(checkImports(files, grouped).filter((v) => v.signal === "import-cycle")).toEqual([
+      { path: "crates/hub/src/fleet/a", signal: "import-cycle", detail: "a -> b -> a" },
+    ]);
+  });
+
+  test("a group may not share a name with a module", () => {
+    expect(() => parseHubModules('{"groups":["a"],"leaves":[],"wiring":[],"domains":{"a":[]}}')).toThrow(HubModulesShapeError);
+    expect(() => parseHubModules('{"groups":["ids"],"leaves":["ids"],"wiring":[],"domains":{}}')).toThrow(HubModulesShapeError);
   });
 });
 

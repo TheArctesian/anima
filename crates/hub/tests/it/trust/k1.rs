@@ -1,7 +1,7 @@
 //! The trust part of the hub declares exactly its K1 root fields (CON-002; the exact schema
 //! comparison is `contract`).
 
-use anima_hub::{sessions::graphql::Query, trust::graphql::Mutation};
+use anima_hub::fleet::{sessions::graphql::Query, trust::graphql::Mutation};
 use async_graphql::{EmptySubscription, Schema};
 
 use crate::contract::{k1, schema};

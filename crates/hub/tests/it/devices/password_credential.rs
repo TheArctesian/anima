@@ -1,7 +1,7 @@
 //! The RDP and VNC credential argument holds its value as a secret and never quotes it
 //! (DEV-011, SEC-005, LOG-007).
 
-use anima_hub::devices::graphql::PasswordCredential;
+use anima_hub::fleet::devices::graphql::PasswordCredential;
 use async_graphql::{InputType, Name, Pos, Value, indexmap::IndexMap};
 
 const SECRET: &str = "s3cr3t-pw-do-not-log";

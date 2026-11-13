@@ -11,17 +11,19 @@ use std::{
 };
 
 use anima_hub::{
-    access::Identity,
-    checks::{
-        self, Beat, CheckState,
-        graphql::{
-            Mutation, Query, Subscription, check_status_loader, check_uptime_loader,
-            heartbeats_loader, last_heartbeat_loader,
-        },
-    },
     clock::{Clock, FixedClock},
-    credentials::Vault,
-    events::{Bus, ClientAddr, Operator, process_log::subscriber},
+    fleet::{
+        access::Identity,
+        checks::{
+            self, Beat, CheckState,
+            graphql::{
+                Mutation, Query, Subscription, check_status_loader, check_uptime_loader,
+                heartbeats_loader, last_heartbeat_loader,
+            },
+        },
+        credentials::Vault,
+        events::{Bus, ClientAddr, Operator, process_log::subscriber},
+    },
     ids::{CheckId, OperatorId},
     schema::harden,
     status::Status,
@@ -128,7 +130,7 @@ pub fn signed_in(query: &str) -> Request {
     let operator = Operator {
         id: OPERATOR_ID.parse::<OperatorId>().unwrap(),
         name: "operator".to_owned(),
-        actor: anima_hub::events::Actor::for_tests(),
+        actor: anima_hub::fleet::events::Actor::for_tests(),
     };
     Identity::for_tests(operator, now() + TimeDelta::days(3650))
         .attach(Request::new(query))

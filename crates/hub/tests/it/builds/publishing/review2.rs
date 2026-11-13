@@ -6,9 +6,11 @@
 use std::sync::Arc;
 
 use anima_hub::{
-    builds::{self, Updates},
     clock::Clock,
-    events::Bus,
+    fleet::{
+        builds::{self, Updates},
+        events::Bus,
+    },
 };
 use chrono::{DateTime, TimeDelta, Utc};
 use sqlx::PgPool;

@@ -3,7 +3,7 @@
 
 use std::sync::Arc;
 
-use anima_hub::events::{Signal, Source};
+use anima_hub::fleet::events::{Signal, Source};
 use serde_json::{Value, json};
 use sqlx::PgPool;
 
@@ -225,7 +225,7 @@ fixture_test! {
     fixtures(path = "../../fixtures", scripts("maintenance"))
 )]
 async fn api_010_a_mutation_without_its_bus_or_clock_is_internal_and_stores_nothing(pool: PgPool) {
-    use anima_hub::maintenance::graphql::{Mutation, Query};
+    use anima_hub::fleet::maintenance::graphql::{Mutation, Query};
     use async_graphql::{EmptySubscription, Schema};
 
     let schema = Schema::build(Query, Mutation, EmptySubscription)

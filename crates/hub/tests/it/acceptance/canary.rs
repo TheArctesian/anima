@@ -164,7 +164,7 @@ async fn log_007_no_phase_3_secret_reaches_the_process_log(pool: PgPool) {
     let now = database_now(&pool).await;
     let mut secrets = Secrets::default();
     let broker = vpn::FakeBroker::start(&mut secrets);
-    let feed = anima_hub::vpn::Feed::new();
+    let feed = anima_hub::fleet::vpn::Feed::new();
     let hub = WholeHub::new(&pool, now, (feed.clone(), broker.broker())).await;
     let token = operator::sign_in(&hub, &pool, now, &mut secrets).await;
     keys::api_key(&hub, &token, now, &mut secrets).await;

@@ -3,7 +3,7 @@
 
 use std::time::Duration;
 
-use anima_hub::credentials::{
+use anima_hub::fleet::credentials::{
     PasswordKind, SshSecret, clear_password, clear_ssh, load_password, load_ssh, store_password,
     store_ssh,
 };

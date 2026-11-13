@@ -13,7 +13,7 @@ use std::{
 };
 
 use anima_hub::{
-    checks::{self, UptimeWindow},
+    fleet::checks::{self, UptimeWindow},
     ids::DeviceId,
 };
 use chrono::{DateTime, Utc};

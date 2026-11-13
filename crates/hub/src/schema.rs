@@ -10,19 +10,21 @@ use async_graphql::{MergedObject, MergedSubscription, Schema, SchemaBuilder};
 use sqlx::PgPool;
 
 use crate::{
-    access, builds, checks,
     clock::Clock,
     config::Config,
-    credentials::Vault,
-    devices,
-    events::{
-        self, Bus,
-        process_log::{InternalErrors, RequestSpan},
+    fleet::{
+        access, builds, checks,
+        credentials::Vault,
+        devices,
+        events::{
+            self, Bus,
+            process_log::{InternalErrors, RequestSpan},
+        },
+        maintenance, metrics, notifications, retention,
+        sessions::{self, Live},
+        targets::AddressPolicy,
+        trust, vpn, web_interfaces,
     },
-    maintenance, metrics, notifications, retention,
-    sessions::{self, Live},
-    targets::AddressPolicy,
-    trust, vpn, web_interfaces,
 };
 
 // One line per domain in each root (K3).

@@ -1,6 +1,6 @@
 //! The stored periods: seeded with the defaults, read for the daily run (HUB-005, DB-011, D-25).
 
-use anima_hub::retention::{self, Subject};
+use anima_hub::fleet::retention::{self, Subject};
 use chrono::Days;
 use sqlx::PgPool;
 

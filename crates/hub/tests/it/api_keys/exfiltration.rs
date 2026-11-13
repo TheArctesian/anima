@@ -11,10 +11,12 @@ use std::sync::{
 
 use anima_hub::{
     clock::{Clock, FixedClock},
-    credentials::{Secret, SshSecret, store_ssh},
-    events::Bus,
+    fleet::{
+        credentials::{Secret, SshSecret, store_ssh},
+        events::Bus,
+        sessions::Live,
+    },
     ids::DeviceId,
-    sessions::Live,
 };
 use serde_json::json;
 use sqlx::PgPool;

@@ -1,5 +1,5 @@
 import { stripComments } from "./lexing.ts";
-import { findCycle, isListed, type HubModules } from "./hub-modules.ts";
+import { findCycle, isListed, ungrouped, type HubModules } from "./hub-modules.ts";
 import type { Violation } from "./report.ts";
 import type { SourceFile } from "./source.ts";
 import { bindingsOf, mentionsIn, modulePathOf, resolveInline, type ModulePath } from "./use-paths.ts";
@@ -9,6 +9,8 @@ export const HUB_MODULES_FILE = "quality/hub-modules.json";
 
 interface Reference {
   from: string;
+  /** The folder of `from`, such as `crates/hub/src/fleet/devices`. */
+  home: string;
   to: string;
   path: string;
   isStore: boolean;
@@ -23,28 +25,44 @@ function hubModulePath(file: SourceFile): ModulePath | undefined {
   return modulePathOf(file.path.slice(HUB_SOURCE.length));
 }
 
+/** The path of the top-level module `own` names inside `module` (`own` is `module` without its group). */
+function topOf(module: ModulePath, own: ModulePath): ModulePath {
+  return module.slice(0, module.length - own.length + 1);
+}
+
 /** Domains a file refers to (`from` is its own top-level module), by `use` and inline paths, through aliases. */
 function referencesFrom(file: SourceFile, module: ModulePath, modules: HubModules): Reference[] {
-  const from = module[0];
+  const own = ungrouped(modules, module);
+  const from = own[0];
   if (from === undefined) return [];
+  const home = `${HUB_SOURCE}${topOf(module, own).join("/")}`;
   const { uses, inline } = mentionsIn(stripComments(file.text, ".rs", true));
   const bindings = bindingsOf(uses, module);
   const resolved = [...uses.map((use) => use.path), ...inline].map((path) => resolveInline(path, module, bindings));
   return resolved.flatMap((absolute) => {
-    const [to, member] = absolute ?? [];
+    if (absolute === undefined) return [];
+    const named = ungrouped(modules, absolute);
+    const [to, member] = named;
     if (to === undefined || to === from || !Object.hasOwn(modules.domains, to)) return [];
-    const isGlob = absolute?.at(-1) === "*";
-    const isGraphql = module[1] === "graphql";
-    return [{ from, to, path: file.path, isStore: member === "store", isGlob, isGraphql, target: `crate::${to}::${member ?? ""}` }];
+    const isGlob = absolute.at(-1) === "*";
+    const isGraphql = own[1] === "graphql";
+    const target = `crate::${[...topOf(absolute, named), member ?? ""].join("::")}`;
+    return [{ from, home, to, path: file.path, isStore: member === "store", isGlob, isGraphql, target }];
   });
 }
 
 function unlistedModules(files: SourceFile[], modules: HubModules): Violation[] {
-  const tops = new Set(files.flatMap((file) => hubModulePath(file)?.slice(0, 1) ?? []));
-  return [...tops]
+  const tops = new Map<string, string>();
+  for (const file of files) {
+    const module = hubModulePath(file);
+    if (module === undefined) continue;
+    const own = ungrouped(modules, module);
+    if (own[0] !== undefined) tops.set(own[0], `${HUB_SOURCE}${topOf(module, own).join("/")}`);
+  }
+  return [...tops.keys()]
     .filter((top) => !isListed(modules, top))
     .sort()
-    .map((top) => ({ path: `${HUB_SOURCE}${top}`, signal: "unlisted-module", detail: `"${top}" is not in hub-modules.json` }));
+    .map((top) => ({ path: tops.get(top) ?? HUB_SOURCE, signal: "unlisted-module", detail: `"${top}" is not in hub-modules.json` }));
 }
 
 function edgeViolations(reference: Reference, modules: HubModules): Violation[] {
@@ -84,7 +102,7 @@ function cycleViolation(signal: string, path: string, edges: [string, string][])
 export function checkImports(files: SourceFile[], modules: HubModules): Violation[] {
   const references = files.flatMap((file) => {
     const module = hubModulePath(file);
-    return module && isListed(modules, module[0] ?? "") ? referencesFrom(file, module, modules) : [];
+    return module && isListed(modules, ungrouped(modules, module)[0] ?? "") ? referencesFrom(file, module, modules) : [];
   });
   const allowed = Object.entries(modules.domains).flatMap(([from, tos]) => tos.map((to): [string, string] => [from, to]));
   const used = references.filter(
@@ -96,7 +114,7 @@ export function checkImports(files: SourceFile[], modules: HubModules): Violatio
     ...cycleViolation("allow-list-cycle", HUB_MODULES_FILE, allowed),
     ...cycleViolation(
       "import-cycle",
-      `${HUB_SOURCE}${used[0]?.from ?? ""}`,
+      used[0]?.home ?? HUB_SOURCE,
       used.map((reference): [string, string] => [reference.from, reference.to]),
     ),
   ];

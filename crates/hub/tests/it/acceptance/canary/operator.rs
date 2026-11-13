@@ -2,7 +2,7 @@
 //! (G-14), a password in a URL, and a TOTP secret, code and replayed code (SEC-002, D-3, D-8,
 //! LOG-007).
 
-use anima_hub::access::{self, Password};
+use anima_hub::fleet::access::{self, Password};
 use axum::{body::Body, http::Request};
 use chrono::{DateTime, Utc};
 use serde_json::{Value, json};

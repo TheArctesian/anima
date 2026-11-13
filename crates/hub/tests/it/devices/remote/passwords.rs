@@ -2,8 +2,10 @@
 //! (DEV-011, SEC-003, SEC-005, LOG-005, LOG-007).
 
 use anima_hub::{
-    credentials::{PasswordKind, Secret, load_password, store_password},
-    events::Signal,
+    fleet::{
+        credentials::{PasswordKind, Secret, load_password, store_password},
+        events::Signal,
+    },
     ids::DeviceId,
 };
 use async_graphql::Request;

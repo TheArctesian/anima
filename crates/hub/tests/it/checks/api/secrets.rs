@@ -3,7 +3,7 @@
 
 use std::fmt::Write as _;
 
-use anima_hub::{checks, events::Signal};
+use anima_hub::fleet::{checks, events::Signal};
 use serde_json::{Value, json};
 use sqlx::PgPool;
 

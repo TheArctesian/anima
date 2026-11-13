@@ -8,10 +8,12 @@ use std::sync::Arc;
 
 use anima_hub::{
     clock::{Clock, FixedClock},
-    events::Bus,
-    sessions::{
-        FilesMutation, Live,
-        graphql::{Mutation as SessionsMutation, Query, Subscription},
+    fleet::{
+        events::Bus,
+        sessions::{
+            FilesMutation, Live,
+            graphql::{Mutation as SessionsMutation, Query, Subscription},
+        },
     },
 };
 use async_graphql::{MergedObject, Request, Response, Schema, Variables};

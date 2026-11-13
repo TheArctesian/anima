@@ -79,7 +79,7 @@ async fn net_001_permit_networks_makes_the_configured_rows_match_the_variable(po
 async fn h_2_a_container_network_is_never_permitted(pool: PgPool) {
     for given in ["172.30.0.0/24", "172.16.0.0/12", "::ffff:172.30.0.0/120"] {
         let net: ipnet::IpNet = given.parse().unwrap();
-        let refused = anima_hub::access::permit_networks(&pool, &[net]).await;
+        let refused = anima_hub::fleet::access::permit_networks(&pool, &[net]).await;
         let Err(error) = refused else {
             panic!("{given} was permitted");
         };
@@ -87,7 +87,7 @@ async fn h_2_a_container_network_is_never_permitted(pool: PgPool) {
     }
     assert!(stored(&pool).await.is_empty(), "nothing was written");
     let wider: ipnet::IpNet = "172.0.0.0/8".parse().unwrap();
-    anima_hub::access::permit_networks(&pool, &[wider])
+    anima_hub::fleet::access::permit_networks(&pool, &[wider])
         .await
         .unwrap();
 }

@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 
-use anima_hub::checks::{
+use anima_hub::fleet::checks::{
     self, Definition,
     config::{CheckConfig, HttpCredentials, HttpInput, HttpMethod, StatusRange},
 };

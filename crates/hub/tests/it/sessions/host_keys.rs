@@ -11,9 +11,11 @@ mod moved;
 mod server;
 
 use anima_hub::{
-    credentials::{Secret, SshSecret, store_ssh},
+    fleet::{
+        credentials::{Secret, SshSecret, store_ssh},
+        sessions::Live,
+    },
     ids::DeviceId,
-    sessions::Live,
 };
 use async_graphql::{Request, Variables};
 use russh::keys::{HashAlg, PrivateKey};

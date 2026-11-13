@@ -5,17 +5,19 @@ use std::{collections::BTreeMap, io::Write as _, net::SocketAddr, sync::Arc};
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 
 use anima_hub::{
-    access::{self, Password},
     clock::{Clock, FixedClock},
     config,
-    credentials::Vault,
-    events::Bus,
+    fleet::{
+        access::{self, Password},
+        credentials::Vault,
+        events::Bus,
+        metrics::Feed,
+        sessions::Live,
+        targets::AddressPolicy,
+    },
     ids::DeviceId,
-    metrics::Feed,
     router,
     schema::{Dependencies, build_schema},
-    sessions::Live,
-    targets::AddressPolicy,
 };
 use axum::{
     Router,
@@ -145,9 +147,9 @@ pub fn dependencies(pool: &PgPool, clock: Arc<dyn Clock>, bus: Bus) -> Dependenc
         live: Live::default(),
         policy: AddressPolicy::default(),
         metrics_feed: Feed::new(),
-        build_updates: anima_hub::builds::Updates::new(),
+        build_updates: anima_hub::fleet::builds::Updates::new(),
         bucket: None,
-        vpn_feed: anima_hub::vpn::Feed::new(),
+        vpn_feed: anima_hub::fleet::vpn::Feed::new(),
         vpn_broker: None,
     }
 }

@@ -9,9 +9,8 @@ use std::sync::{
 };
 
 use anima_hub::{
-    checks::push_router,
     clock::{Clock, FixedClock},
-    events::Bus,
+    fleet::{checks::push_router, events::Bus},
     schema::{HubSchema, build_schema},
 };
 use async_graphql::{Response, Variables};

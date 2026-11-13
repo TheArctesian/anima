@@ -9,17 +9,19 @@ use std::{
 };
 
 use anima_hub::{
-    access::Identity,
-    checks::graphql::{check_status_loader, check_uptime_loader, last_heartbeat_loader},
     clock::{Clock, FixedClock},
-    credentials::Vault,
-    devices::graphql::{
-        Mutation, Query, checks_loader, credential_loader, device_loader, devices_by_site_loader,
-        gpus_loader, rdp_credential_loader, readings_loader, resolved_ip_loader, site_loader,
-        status_loader, uptime_loader, vnc_credential_loader, web_interface_suggestions_loader,
-        web_interfaces_loader,
+    fleet::{
+        access::Identity,
+        checks::graphql::{check_status_loader, check_uptime_loader, last_heartbeat_loader},
+        credentials::Vault,
+        devices::graphql::{
+            Mutation, Query, checks_loader, credential_loader, device_loader,
+            devices_by_site_loader, gpus_loader, rdp_credential_loader, readings_loader,
+            resolved_ip_loader, site_loader, status_loader, uptime_loader, vnc_credential_loader,
+            web_interface_suggestions_loader, web_interfaces_loader,
+        },
+        events::{Bus, ClientAddr, Operator},
     },
-    events::{Bus, ClientAddr, Operator},
     ids::OperatorId,
     schema::harden,
 };
@@ -120,7 +122,7 @@ pub fn signed_in(query: &str) -> Request {
     let operator = Operator {
         id: OPERATOR_ID.parse::<OperatorId>().unwrap(),
         name: "operator".to_owned(),
-        actor: anima_hub::events::Actor::for_tests(),
+        actor: anima_hub::fleet::events::Actor::for_tests(),
     };
     Identity::for_tests(operator, now() + TimeDelta::days(3650))
         .attach(Request::new(query))

@@ -4,7 +4,7 @@
 mod canary;
 
 use anima_hub::{
-    checks::{self, Beat, CheckState, Recorded},
+    fleet::checks::{self, Beat, CheckState, Recorded},
     ids::CheckId,
     status::Status,
 };
