@@ -259,8 +259,7 @@ fn gateway_error(i: &Instruction) -> HandshakeError {
         message: i
             .args
             .first()
-            .map(|message| truncated(message, GATEWAY_MESSAGE_CHARS))
-            .unwrap_or_default(),
+            .map_or_default(|message| truncated(message, GATEWAY_MESSAGE_CHARS)),
     }
 }
 
