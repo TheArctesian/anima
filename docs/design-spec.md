@@ -459,7 +459,7 @@ The metrics agent `anima-agent` keeps its own install path (MET-019, MET-024). A
 
 ### 3.12 Marketing website
 
-The operator's rule (operator, 2026-11-13): "we also need to make a marketing website with the install links". The website is not built.
+The operator's rule (operator, 2026-11-13): "we also need to make a marketing website with the install links". Built state: the source is built in `apps/site/` and is not deployed (OD-20). SITE-001 to SITE-010 and SITE-012 are built; SITE-011 is a decision of the operator.
 
 - **SITE-001.** Anima must have a small public website. Its purpose is to say what Anima is and to give the install links. (operator, 2026-11-13)
 - **SITE-002.** The website must give one install link for each artefact of INS-001. Each link must use the stable name on the release host: `Anima.dmg` and `Anima-x86_64.AppImage` (UPD-010, BLD-066, DNS-007). Thus a link always gives the newest published release, with no change to the website.
@@ -1311,7 +1311,7 @@ The Proxmox VE integration (PVE-001 to PVE-041) is withdrawn (R-109). Anima mana
 Work outside the phases. This table has no row for work that is not part of a phase, and this document has no other record of it. Thus this note records it:
 
 - The command line and the MCP server (Section 6.10) are built and are on `main`. They have no phase number.
-- The actor kinds (LOG-012 to LOG-020), the `anima` program in the installation artefacts (INS-002 to INS-007) and the marketing website (SITE-001 to SITE-012) are specified and not built. They have no phase number. [work-plan.md](work-plan.md) and the GitHub issues give their priority.
+- The actor kinds (LOG-012 to LOG-020), the `anima` program in the installation artefacts (INS-002 to INS-007) and the marketing website (SITE-001 to SITE-012) are specified. The marketing website is built and not deployed (Section 3.12). The other two are not built. They have no phase number. [work-plan.md](work-plan.md) and the GitHub issues give their priority.
 
 ### 9.1 Phase 1 acceptance criteria
 
@@ -1374,8 +1374,8 @@ What iOS does not allow, so no phase plans it: control of the device, SSH, VNC o
 | OD-16 | A second program in the bundle (INS-002, INS-007) | Not verified: that the Tauri bundle step can add the `anima` program to the application, to the AppImage and to the updater file, and that the Developer ID signature and the notarization of BLD-083 to BLD-085 cover it. Make one test build on each target before the work starts. |
 | OD-17 | The version of the `anima` program (INS-003) | The builder gives the release version only to the Tauri configuration (BLD-043). The workspace version does not change. Give the same release version to the build of the `anima` program. Not verified. |
 | OD-18 | The launcher for an AppImage, and the link after an update (INS-005, INS-007) | Not verified: how the AppImage entry point starts the `anima` program in place of the desktop application; that the updater keeps the path of the application and of the AppImage file; what occurs when the operator moves the file. Test each case before the work starts. A computer with no display is one more case to decide. |
-| OD-19 | How the website reads the feed (SITE-003) | Two options: a build step of the website at each release, or a script in the page. A script in the page needs cross-origin read access to the release host, which is not verified. Recommendation: the build step, so that the page works without a script. |
-| OD-20 | Domain name and host of the website (SITE-011) | The operator decides. Cloudflare holds the `anima.ing` zone and the release bucket, so a static host in the same account needs no new provider. |
+| OD-19 | How the website reads the feed (SITE-003) | Two options: a build step of the website at each release, or a script in the page. A script in the page needs cross-origin read access to the release host, which is not verified. **Decided and built:** the build step. `bun run --cwd apps/site build` reads `<folder>/latest.json` and `<folder>/<version>/SHA256SUMS` from `ANIMA_SITE_RELEASE_SOURCE` (a URL or a folder; default `https://releases.anima.ing`). It checks the shape and stops with no output when a file is missing or wrong. The feed has no checksum of the files, so the checksums come from `SHA256SUMS` of the version that the feed names. The page needs no script. |
+| OD-20 | Domain name and host of the website (SITE-011) | Open. The operator decides. The site is built and not deployed. Cloudflare holds the `anima.ing` zone and the release bucket, so a static host in the same account needs no new provider. |
 | OD-21 | Analytics on the website (SITE-008) | None. |
 | OD-22 | What the website can say about the paid hosted option (SITE-012; [work-plan.md](work-plan.md) OD-W2, [other-operators.md](programme/proposals/other-operators.md)) | Nothing now. The proposal has no requirements. Add text only after the operator approves the words. |
 
@@ -1532,7 +1532,7 @@ anima/
 │   │       └── styles/        Generated tokens.css, fonts
 │   ├── desktop/
 │   │   └── src-tauri/         Tauri shell: windows, key store, web views (WEB-004)
-│   └── site/                  Planned: the marketing website, static files only (SITE-010). Not built.
+│   └── site/                  The marketing website: one static page, a bun build script, tests (SITE-010). Built, not deployed.
 └── deploy/
     ├── compose.yaml           Hub, gateway, PostgreSQL (DB-007 backup)
     ├── gateway/               guacd image with fonts (GW-001; RDP and VNC)
