@@ -1,0 +1,12 @@
+# `anima site set-wake-relay`: a null `deviceId` clears the relay.
+mutation SiteSetWakeRelay($siteId: ID!, $deviceId: ID) {
+  setSiteWakeRelay(siteId: $siteId, deviceId: $deviceId) {
+    id
+    name
+    subnet
+    wakeRelay {
+      id
+      name
+    }
+  }
+}

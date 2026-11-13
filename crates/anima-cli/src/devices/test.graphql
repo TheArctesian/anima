@@ -1,0 +1,22 @@
+# `anima device test`: a saved device. Fingerprints are public; no secret is selected.
+mutation DeviceTest($input: ConnectionTestInput!) {
+  testConnection(input: $input) {
+    reachable
+    authenticated
+    hostKey {
+      algorithm
+      fingerprintSha256
+      firstSeenAt
+    }
+    hostKeyChanged
+    message
+    serverCertificate {
+      fingerprintSha256
+      subject
+      notAfter
+      firstSeenAt
+    }
+    certificateChanged
+    certificateMatched
+  }
+}

@@ -1,0 +1,4 @@
+# `anima web delete`: the hub returns the deleted ID.
+mutation WebDelete($id: ID!) {
+  deleteWebInterface(id: $id)
+}

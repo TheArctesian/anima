@@ -1,0 +1,12 @@
+# `anima web suggestion accept`: the suggestion becomes a web interface.
+mutation WebSuggestionAccept($checkId: ID!) {
+  acceptWebInterfaceSuggestion(checkId: $checkId) {
+    id
+    deviceId
+    label
+    url
+    openIn
+    pinnedFingerprintSha256
+    pinnedAt
+  }
+}

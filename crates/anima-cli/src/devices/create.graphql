@@ -1,0 +1,16 @@
+# `anima device create`: the new device, as `device list` shows it.
+mutation DeviceCreate($input: CreateDeviceInput!) {
+  createDevice(input: $input) {
+    id
+    name
+    host
+    kind
+    os
+    tags
+    status
+    site {
+      id
+      name
+    }
+  }
+}

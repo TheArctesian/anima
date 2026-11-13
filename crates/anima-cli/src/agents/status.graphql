@@ -1,0 +1,12 @@
+# `anima agent status`: where the device's metrics come from and whether they are current.
+query AgentStatus($id: ID!) {
+  device(id: $id) {
+    id
+    name
+    metricsSource
+    metricsStale
+    readings {
+      at
+    }
+  }
+}

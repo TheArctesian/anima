@@ -1,0 +1,4 @@
+# `anima web suggestion dismiss`: the hub returns the check ID it stopped suggesting.
+mutation WebSuggestionDismiss($checkId: ID!) {
+  dismissWebInterfaceSuggestion(checkId: $checkId)
+}
