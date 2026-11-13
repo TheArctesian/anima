@@ -41,7 +41,8 @@ anthropic.com/engineering/writing-tools-for-agents, github.com/github/github-mcp
   `anima run`), one binary, `anima`.
 - **CMD-002.** One folder for each operator noun, with the names of the hub domains: `devices/`,
   `checks/`, `sessions/`, and so on. Each folder holds the GraphQL documents of that noun, its
-  commands, its table output, and its MCP tools.
+  commands and its table output. The MCP tools live in `src/mcp/` (`src/mcp/tools/<set>.rs`, one
+  file or folder for each tool set) and call the documents of the noun folders.
 - **CMD-003.** `hub/` is the only code that talks to the network: the GraphQL request, the
   subscription socket, the error codes. The commands and the MCP tools both call the same typed
   operations. The MCP server must not start the `anima` program.
@@ -142,8 +143,10 @@ Not in the command line, with the reason:
 - **MCP-001.** `anima mcp` is an MCP server on standard input and output. It uses the same
   context and token as the command line. A remote HTTP server is not planned: it needs OAuth and
   a hub change.
-- **MCP-002.** The default is read-only. `--allow-write` adds the tools that change things.
-  `--toolsets` limits the tools to the nouns that the operator names.
+- **MCP-002.** Each tool has one state: `allow` (listed; the agent may call it), `ask` (listed;
+  each call needs the person's approval, MCP-013) or `off` (not listed, and refused if called,
+  without a hub request). With nothing saved, every read tool is `allow` and every change tool is
+  `off`: the server is read-only.
 - **MCP-003.** The hub token is the real limit. The server shows only the tools that its token
   can use. With an API key, the limits of INT-003 apply and the hub enforces them.
 - **MCP-004.** No tool takes a secret and no tool returns one. Thus these are not tools: set a
@@ -161,10 +164,45 @@ Not in the command line, with the reason:
   The default result is short; `detail: true` gives all fields.
 - **MCP-010.** A hub error is a tool result with `isError` and a sentence that says what to do.
 - **MCP-011.** Tool names are `anima_<noun>_<verb>`.
+- **MCP-012.** The states are saved in the configuration file, by hub origin, under `mcp`: a
+  default for each kind (`read`, `change`) and the operator's explicit choices by tool name
+  (`tools`). A tool with no choice takes its kind's default, so a tool added later takes the
+  default of its kind. The file holds no secret. The form before MCP-012 (`toolsets`, `write`)
+  is read once as explicit choices and is not written again.
+- **MCP-013.** When the agent calls a tool in state `ask`, the server asks the person at the
+  MCP client to approve that one call. It sends an MCP elicitation request in form mode with
+  one yes-or-no field (`approve`). The message names the tool and shows the arguments, cleaned
+  and capped; a key that the tool does not take is shown by name only. The call runs only after
+  a clear yes. If the client did not declare elicitation, or the person declines or cancels, or
+  there is no answer in 120 seconds, or the request fails, the call is refused with `isError`
+  and a sentence that names `anima mcp permissions set --allow <tool>`. The hub is not asked.
+  A delete in state `ask` still needs its `confirm` (MCP-007).
+- **MCP-014.** `anima mcp permissions show` prints one row for each tool: tool set, tool, kind
+  (`read` or `change`), needs sign-in (`yes` or `no`) and state. `--json` gives
+  `{ hub, summary, tools: [{ toolset, tool, kind, needsSignIn, state, description }] }`; the
+  Settings panel reads this form. `permissions set` takes `--allow`, `--ask` and `--off` with
+  comma lists of tool or tool set names; the bulk forms `--allow-all`, `--ask-all`, `--off-all`,
+  narrowed by `--toolset <set>` and `--kind read|change`; and `--read-only` (every change tool
+  `off`). Bulk forms apply first, then `--allow`, `--ask`, `--off`. An unknown name exits 2 and
+  lists the valid names. `--allow-all` that covers change tools needs `--yes` or a yes at the
+  terminal. `permissions reset` deletes the saved states of the hub.
+- **MCP-015.** The flags of `anima mcp` apply to one run and only narrow: `--toolsets a,b` turns
+  off every tool outside those sets; `--read-only` turns off every change tool. The one
+  exception is `--allow-write [sets]`: it allows the change tools (of every set, or of the sets
+  named) that have no saved choice and no saved `change` default. A saved `off` or `ask` is
+  never weakened by a flag. The token comes last: an API key never gets a tool that needs a
+  login token, whatever is saved (MCP-003).
+- **MCP-016.** The server instructions, the line on standard error at start, and
+  `permissions show` state the current picture in plain words: the tool sets that are on, the
+  change tools that are allowed, the tools that ask, and the tools that are off.
+- **MCP-017.** Each tool has at least one integration test that calls it over JSON-RPC against
+  the scripted hub (`tests/it/mcp/`).
 
 ### Tools
 
-| Set | Read (default) | Change (`--allow-write`) |
+Read tools are `allow` and change tools are `off` by default (MCP-002). L: needs a login token.
+
+| Set | Read | Change |
 | --- | --- | --- |
 | `devices` | `anima_fleet_overview`, `anima_devices_search`, `anima_device_get`, `anima_device_metrics` | `anima_device_create`, `anima_site_create`, `anima_device_wake`, `anima_device_update` L, `anima_device_delete` L |
 | `checks` | `anima_check_get` (with heartbeats and uptime) | `anima_check_create`, `anima_check_update`, `anima_check_set_paused`, `anima_check_delete` |
@@ -196,7 +234,8 @@ Not in the command line, with the reason:
    agent, not a person, made the request. A hub change could add the client name.
 3. **Login token for the MCP server.** The "L" tools work only when the operator starts
    `anima mcp` with a login token. That gives the agent more than INT-003 permits an API key.
-   The plan keeps them behind `--allow-write`; the operator can decide to remove them.
+   They are `off` until the operator sets them to `allow` or `ask` (MCP-002); the operator can
+   decide to remove them.
 4. **Distribution.** How `anima` gets to a computer (with the desktop application, Homebrew, the
    R2 release feed) is not planned.
 5. **MCP protocol version.** The current revision is 2026-07-28. The Rust SDK (`rmcp`) can speak
@@ -214,6 +253,8 @@ Not in the command line, with the reason:
 | T6 | `session`, `ssh`, `files` | Opus | security |
 | T7 | `anima mcp`: server, tool sets, read tools, change tools | Opus | security |
 | T8 | Review (CUPID, tests), security review, gates | Sonnet, Opus | |
+| T9 | Per-tool states `allow`, `ask`, `off`; `permissions show\|set\|reset`; `ask` by elicitation; the `sessions` tool set (MCP-012..017) | Opus | security |
+| T10 | The MCP permissions panel in the desktop Settings page, on `permissions show --json` | | |
 
 Done when: `bun run gates` passes; each row of Section 6 works against a test hub; the coverage
 test of CMD-031 passes; an MCP client lists the tools and reads the device list.

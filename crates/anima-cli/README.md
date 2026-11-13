@@ -78,12 +78,18 @@ set: an enum with one variant per tool, its `ALL` list, `definition` and `call`.
    variant (`catalogue.rs`) and a `Tool` variant (`tools.rs`).
 2. `definition`: `Definition::new::<Input>(name, access, effect, description).returns(&[..])`.
    The name is `anima_<noun>_<verb>` (MCP-011). The description tells an agent that has never
-   seen Anima what it returns, when to use it and what to call next. `Access::Login` for what
-   INT-003 denies an API key.
+   seen Anima what it returns, when to use it and what to call next. `Access::Read` tools start
+   `allow`, `Write` and `Login` (what INT-003 denies an API key) start `off` (MCP-002).
 3. `Input`: `#[derive(Deserialize, JsonSchema)]` with `deny_unknown_fields` and a doc comment on
    each field (it becomes the schema). Lists flatten `arguments::Page`; `detail` adds fields.
 4. `call`: `parse` the input, resolve names with the noun's resolver, then
    `hub.run::<Document>(..)` with the noun's existing document. Return a JSON object of named
    fields; the server cleans and caps every string (MCP-008). A delete calls `confirmed`.
 5. Never a tool that takes or returns a secret, makes a trust decision or opens a session
-   (MCP-004..006). Test it over JSON-RPC in `tests/it/mcp/`.
+   (MCP-004..006). Test a call over JSON-RPC in `tests/it/mcp/` (MCP-017).
+
+Permissions (MCP-012..016): `permissions.rs` is the saved form, `selection.rs` the pure choice
+of each tool's state for a run, `approval.rs` the `ask` question (form elicitation). The
+Settings panel reads `anima mcp permissions show --json`; keep this shape stable:
+`{"hub": origin, "summary": text, "tools": [{"toolset", "tool", "kind": "read"|"change",
+"needsSignIn": bool, "state": "allow"|"ask"|"off", "description"}]}`.
