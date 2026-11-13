@@ -35,7 +35,10 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "macOS": { "minimumSystemVersion": "14.2" },
+    "macOS": {
+      "minimumSystemVersion": "14.2",
+      "signingIdentity": "Developer ID Application: Stephen Okita (7GDLG48PV6)"
+    },
     "createUpdaterArtifacts": true
   },
   "plugins": {

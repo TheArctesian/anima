@@ -9,6 +9,7 @@ mod plans;
 // The reaper is Linux only: macOS has no subreaper.
 #[cfg(target_os = "linux")]
 mod reaping;
+mod signing;
 mod upload;
 
 use std::{

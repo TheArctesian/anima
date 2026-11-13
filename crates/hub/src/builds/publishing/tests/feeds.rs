@@ -6,7 +6,7 @@ use serde_json::{Value, json};
 use super::file;
 use crate::builds::{
     model::{Target, UploadedFile},
-    publishing::feed::{self, CheckedFeed, Expected, feed_folders},
+    publishing::feed::{self, CheckedFeed, Expected, platform_keys},
     version::Version,
 };
 
@@ -209,14 +209,10 @@ fn bld_067_a_universal_feed_lists_both_mac_keys_with_one_entry() {
 }
 
 #[test]
-fn bld_067_bld_068_feed_folders_follow_the_target_and_developer_id() {
-    assert_eq!(feed_folders(Target::LinuxX86_64, false), ["linux-x86_64"]);
+fn bld_067_bld_068_feed_folders_follow_the_target() {
+    assert_eq!(platform_keys(Target::LinuxX86_64), ["linux-x86_64"]);
     assert_eq!(
-        feed_folders(Target::DarwinUniversal, false),
-        [] as [&str; 0]
-    );
-    assert_eq!(
-        feed_folders(Target::DarwinUniversal, true),
+        platform_keys(Target::DarwinUniversal),
         ["darwin-aarch64", "darwin-x86_64"]
     );
 }

@@ -127,7 +127,7 @@ fn app_public_key<R: Runtime>(app: &AppHandle<R>) -> Option<String> {
     tools::key_line(encoded)
 }
 
-/// This computer's platform and the tools it lacks (BLD-028).
+/// This computer's platform and the tools it lacks (BLD-028, BLD-083).
 #[tauri::command]
 pub async fn builder_tools_check<R: Runtime>(
     webview: Webview<R>,
@@ -140,9 +140,17 @@ pub async fn builder_tools_check<R: Runtime>(
         Target::DarwinUniversal => ("MACOS", "AARCH64"),
     };
     let app_key = tools::app_public_key(app_public_key(&app).as_deref());
+    let identity = tools::readings::signing_identity();
     let mut missing = tauri::async_runtime::spawn_blocking(move || {
         let env = Environment::from_parent(std::env::vars_os());
-        tools::missing(target, &env, std::path::Path::exists)
+        let mut missing = tools::missing(target, &env, std::path::Path::exists);
+        if target == Target::DarwinUniversal {
+            missing.extend(tools::signing_identity(
+                identity.as_deref(),
+                &tools::readings::keychain_identities(),
+            ));
+        }
+        missing
     })
     .await
     .map_err(|_| BuilderError::Failed)?;

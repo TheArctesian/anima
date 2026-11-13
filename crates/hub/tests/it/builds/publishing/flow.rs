@@ -13,7 +13,7 @@ use super::{
     fake_r2::{Object, hex},
     setup::{
         File, Held, LINUX_FEED, LINUX_STABLE, MACOS, Publishing, ready, until_waiting,
-        uploaded_linux,
+        uploaded_linux, verified_version,
     },
 };
 use crate::{builds::harness::data, hub::error};
@@ -102,10 +102,12 @@ fn mac_files(publishing: &Publishing) -> (Vec<File>, Value) {
     (vec![archive, dmg, File::new("SHA256SUMS", sums)], feed)
 }
 
-/// BLD-068 until OD-13 (R-108): a macOS job publishes its versioned files and the DMG's stable
-/// name, and no feed and no `.sig`.
+/// BLD-068 (R-116, R-117): a macOS job publishes its versioned files, the DMG's stable name, the
+/// `.sig` the hub made over the checked archive, and the signed feed in both Mac folders.
 #[sqlx::test(migrations = "./migrations")]
-async fn bld_068_a_macos_job_publishes_without_a_feed(pool: PgPool) {
+async fn bld_068_a_macos_job_publishes_its_hub_signed_feed_for_both_mac_architectures(
+    pool: PgPool,
+) {
     let publishing = Publishing::start(&pool).await;
     publishing.release("0.1.12", "DARWIN_UNIVERSAL").await;
     let held = publishing.uploading("mac-mini", MACOS).await;
@@ -116,18 +118,32 @@ async fn bld_068_a_macos_job_publishes_without_a_feed(pool: PgPool) {
     let fake = &publishing.fake;
     let dmg = parts(fake.object("Anima.dmg"));
     assert_eq!(dmg, Some(object(&files[1].bytes, "no-cache")));
-    let feeds = fake.with(|store| {
-        store
-            .objects
-            .keys()
-            .filter(|key| key.ends_with("latest.json"))
-            .count()
-    });
-    assert_eq!(feeds, 0);
-    assert_eq!(written(&publishing, &held).await, Some(Vec::new()));
-    // No feed names the archive, so the hub signs nothing (BLD-068, T6 security review C-2).
-    let sig = fake.object("darwin-universal/0.1.12/Anima.app.tar.gz.sig");
-    assert!(sig.is_none());
+    let sig = fake
+        .object("darwin-universal/0.1.12/Anima.app.tar.gz.sig")
+        .expect("the hub writes the .sig");
+    let sig = String::from_utf8(sig.bytes).unwrap();
+    assert_eq!(
+        verified_version(&publishing.pair, &sig, &files[0].bytes),
+        Ok("0.1.12".to_owned())
+    );
+    for folder in ["darwin-aarch64", "darwin-x86_64"] {
+        let stored = fake.object(&format!("{folder}/latest.json")).unwrap();
+        let written: Value = serde_json::from_slice(&stored.bytes).unwrap();
+        assert_eq!(written["version"], feed["version"]);
+        for platform in ["darwin-aarch64", "darwin-x86_64"] {
+            let entry = &written["platforms"][platform];
+            assert_eq!(entry["url"], feed["platforms"][platform]["url"]);
+            assert_eq!(entry["signature"], sig.as_str());
+        }
+        assert_eq!(stored.cache_control.as_deref(), Some("no-cache"));
+    }
+    assert_eq!(
+        written(&publishing, &held).await,
+        Some(vec![
+            "darwin-aarch64".to_owned(),
+            "darwin-x86_64".to_owned()
+        ])
+    );
 }
 
 /// D-25: a hub that stops after the stable copy, before it sends `latest.json`, leaves the job

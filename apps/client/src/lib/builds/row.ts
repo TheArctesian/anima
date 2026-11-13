@@ -11,6 +11,7 @@ export const TOOL_NAMES: Readonly<Record<BuilderTool, string>> = {
   postgres: 'PostgreSQL 17',
   'tauri-packages': 'the Tauri system packages',
   'updater-public-key': "this app's updater public key (an app built with the placeholder cannot build releases)",
+  'signing-identity': 'the Developer ID certificate in the login keychain',
 };
 
 const OS_NAMES: Readonly<Record<BuilderPlatform['os'], string>> = { LINUX: 'Linux', MACOS: 'macOS' };

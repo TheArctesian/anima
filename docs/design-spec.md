@@ -244,7 +244,7 @@ desktop app ── at start and every 4 hours ── GET latest.json ── vers
 | Version | Chosen by the operator in the release form (BLD-001, BLD-002). Do not commit version changes. |
 | Platforms | macOS universal (`.app.tar.gz` for the updater, `Anima.dmg` for people), Linux x86_64 (`.AppImage`) |
 | Updater signature | Tauri updater key pair. The public key is in `tauri.conf.json`. The private key is a secret file of the hub, which signs each release (BLD-045, R-117). |
-| macOS signature | Ad-hoc (`APPLE_SIGNING_IDENTITY=-`) until the operator has an Apple Developer ID (OD-13). Until then macOS has no feed (BLD-068). |
+| macOS signature | Developer ID Application certificate of team `7GDLG48PV6`, named in `bundle.macOS.signingIdentity` of `tauri.conf.json`, and notarization with the `notarytool` keychain profile `anima-notary` (BLD-083 to BLD-085, R-116). |
 | Rollback | `allowDowngrades: true`. To roll back, the operator writes an older `latest.json` to the target by hand (BLD-069). |
 
 - **UPD-001.** The desktop app must check the feed at start and then every 4 hours. Development builds, the web client and the iOS client must not check and must not load the updater plugin.
@@ -257,7 +257,7 @@ desktop app ── at start and every 4 hours ── GET latest.json ── vers
 - **UPD-008.** The hub must write `latest.json` only after it has verified all files of the job (BLD-064 to BLD-066) (changed by R-107).
 - **UPD-009.** Each `latest.json` must list only the platform keys of its own target. A target that did not build keeps its older feed (changed by R-107).
 - **UPD-010.** Each release must have versioned updater files, stable-named files for people (`Anima.dmg`, `Anima-x86_64.AppImage`) and a `SHA256SUMS` file.
-- **UPD-011.** The macOS builder must verify the bundle with `codesign --verify --deep --strict` and must verify that `lipo -archs` gives `x86_64` and `arm64`.
+- **UPD-011.** The macOS builder must verify the bundle with `codesign --verify --deep --strict` and must verify that `lipo -archs` gives `x86_64` and `arm64`. After notarization it must verify the app and the DMG with `xcrun stapler validate` (BLD-085, R-116).
 - **UPD-012.** Only the operator makes the updater key pair and installs the private key and its password as the hub's secret files `updater_key` and `updater_key_password`. Agents must not read the private key file. The operator must keep a backup of the private key: if it is lost, each installed app must be installed again by hand (changed by R-107 and R-117).
 
 ### 3.10 Builds
@@ -335,6 +335,9 @@ queued ──► claimed ──► building ──► uploading ──► publis
 - **BLD-045.** The hub must sign the updater file. It opens the key from the secret files `updater_key` and `updater_key_password` (`ANIMA_UPDATER_KEY_FILE`, `ANIMA_UPDATER_KEY_PASSWORD_FILE`; SEC-004) once at start and holds it in memory that is cleared on drop. The key, its password and its seed must never go to a log, an error, `Debug` output, the database or the bucket (LOG-007). If a file is absent or unreadable, the key does not open, or its public key is not `ANIMA_UPDATER_PUBLIC_KEY`, publishing is off with a fixed reason and the hub still starts. The password file is empty when the key was made with no password; a wrong or missing password file turns publishing off (CR-26). The builder signs nothing (changed by R-117).
 - **BLD-046.** The signature must have the format that `tauri-plugin-updater` verifies, with the version in the trusted comment (`requireSignedVersion`, UPD-002). The hub signs exactly the bytes it verified (BLD-064), then checks the signature with `ANIMA_UPDATER_PUBLIC_KEY` over a second signed `GET` pinned to the same `ETag`, before it writes anything public (changed by R-117).
 - **BLD-047.** On macOS the builder must verify the bundle as UPD-011 states.
+- **BLD-083.** On macOS the builder must sign with the Developer ID Application identity that `bundle.macOS.signingIdentity` in `tauri.conf.json` names. The identity must be in the login keychain of the builder computer. A builder whose keychain does not have that identity must not claim a macOS job (R-116).
+- **BLD-084.** After the bundle step, the macOS builder must notarize the DMG with `xcrun notarytool submit --keychain-profile anima-notary --wait`, then staple the ticket to the DMG and to the app with `xcrun stapler staple`. The Apple credentials stay in the keychain profile; no Apple password, key or token may be in a step's environment, a file the builder writes, a log or the hub (BLD-044, R-116).
+- **BLD-085.** The builder must make the updater file from the stapled app, so an updated app opens with no Gatekeeper check over the network. A notarization that Apple does not accept fails the job, with Apple's status in the log (R-116).
 - **BLD-048.** The builder must send the log of each step to the hub in parts, with each report. The hub must keep at most the last 2 MB of each job log.
 - **BLD-049.** Build logs must obey LOG-007. The builder must remove the builder token, upload URLs and key material from each line before it sends it. The hub must apply the event-log redaction (`events/redaction`) before it stores a line.
 
@@ -358,7 +361,7 @@ releases.anima.ing/
 - **BLD-065.** The hub must check the proposed feed: the job version, only the platform keys of the job target, and URLs under `https://releases.anima.ing/<target>/<version>/`. The hub must refuse any other feed.
 - **BLD-066.** When the checks pass and the `.sig` is written, the hub must fill each feed entry's `signature` with it, then copy the file to its stable name with R2 `CopyObject` and `x-amz-copy-source-if-match: <ETag>` (UPD-010). An answer of 412 fails the job. Then the hub must write `latest.json` with `Cache-Control: no-cache` last. Then the job is `published` (changed by R-108 and R-117).
 - **BLD-067.** For `darwin-universal`, the hub writes the same feed to `darwin-aarch64/latest.json` and `darwin-x86_64/latest.json`, because the bundle is universal.
-- **BLD-068.** The hub must not write a macOS feed until the build has Developer ID signing and notarization (OD-13). Until then a macOS job publishes the DMG and its stable name only.
+- **BLD-068.** The hub must write the macOS feed for a published macOS job, because every macOS build has Developer ID signing and notarization (BLD-083 to BLD-085; changed by R-116).
 - **BLD-069.** The hub must not write a feed whose version is lower than the published feed of that target. Rollback is a manual act (Section 3.9).
 - **BLD-070.** If a check fails, the job must go to `failed` with the reason. The hub must not write `latest.json`. The older feed stays.
 
@@ -1233,7 +1236,7 @@ What iOS does not allow, so no phase plans it: control of the device, SSH, VNC o
 | OD-10 | Headscale or the Tailscale hosted control server | Headscale, because it keeps the control server under the control of the operator. Headscale does not have "Tailnet Lock" (devices must approve each new node). The Tailscale hosted plan has it. Verify this before Phase 1. |
 | OD-11 | Gateway location | The gateway runs with the hub on the VPS. A session to a device at a site then goes VPS to site. If the latency is too high, a later version can run a gateway at each site (Guacamole supports a gateway for each connection). |
 | OD-12 | Build trigger | Phase 2: the operator starts each release (Section 3.10). A later version can let the hub poll `main` and queue a release for each new commit. |
-| OD-13 | Apple Developer ID | Until the operator has one, macOS builds are ad-hoc signed and do not update themselves (BLD-068). With one, the macOS builder signs and notarizes with keys from its key store. |
+| OD-13 | Apple Developer ID | Closed by R-116 (2026-11-12): the operator has a Developer ID (team `7GDLG48PV6`). macOS builds are signed, notarized and stapled (BLD-083 to BLD-085), and the hub writes the macOS feed (BLD-068). |
 | OD-14 | Compute workers (R-110) | The hub keeps a job queue for compute work. A job is a WebGPU (WGSL) compute shader with WebAssembly, so every client runs it: desktop, web and iOS (WebKit on iOS 26 has WebGPU). An iOS device works only in the foreground and on the charger, and stops when it gets hot. Built-in jobs can use Core ML. Before a phase depends on it: one test job on an iPad and a Mac, compared. Background GPU work on iOS 26 (continued processing tasks) is not verified. |
 | OD-6 | Central log search | Not necessary now. A later version can send the process log to Loki or a similar system. |
 

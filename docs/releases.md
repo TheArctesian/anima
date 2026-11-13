@@ -10,9 +10,12 @@ that feed. The hub side, its R2 credentials and the bucket setup are in
 [deploy/README.md](../deploy/README.md).
 
 There is no GitHub release workflow: `.github/workflows/release.yml` was removed by R-114. No
-signing key is stored on GitHub or on a builder; it is a secret file of the hub (R-117). A
+builder holds the updater signing key; it is a secret file of the hub (R-117). A
 compromised hub can therefore sign updates that installed apps trust; the operator accepted this
 in R-117.
+
+The operator also keeps a `release` environment on GitHub with the Apple secrets and a copy of
+the updater key, `TAURI_SIGNING_PRIVATE_KEY` (R-116). Nothing in the repository reads them.
 
 ## Once, by the operator
 
@@ -30,18 +33,25 @@ Agents never do these steps (UPD-012). Never paste a key or password into chat, 
    installed again by hand.
 2. Put the text of `~/.config/anima/updater.key.pub` in `apps/desktop/src-tauri/tauri.conf.json` as
    `plugins.updater.pubkey`, and commit it. The public key is not a secret.
-3. Put the key on the VPS: copy `~/.config/anima/updater.key` there yourself and install it, with
+3. On each macOS builder, install the Developer ID Application certificate that
+   `bundle.macOS.signingIdentity` names into the login keychain (BLD-083), and store the
+   notarization credentials once in the keychain profile `anima-notary` (BLD-084). Make an
+   app-specific password at account.apple.com; the command asks for it:
+
+   ```sh
+   xcrun notarytool store-credentials anima-notary --apple-id <your Apple account> --team-id 7GDLG48PV6
+   ```
+4. Put the key on the VPS: copy `~/.config/anima/updater.key` there yourself and install it, with
    its password, as the hub's secret files `secrets/updater/updater_key` and `secrets/updater/updater_key_password`
    ("Release publishing" in [deploy/README.md](../deploy/README.md), UPD-012). Then delete the copy
-   in your home folder on the VPS. The key is never in GitHub, on a builder or in a file the agents
-   read. Check the files as root, with no `.env`: `sudo sh bin/preflight secrets` (only root and
+   in your home folder on the VPS. The key is never on a builder or in a file the agents read. Check the files as root, with no `.env`: `sudo sh bin/preflight secrets` (only root and
    the hub's group can search `secrets/updater/`).
-4. Deploy the hub, then check that its start log shows publishing true on its `release bucket`
+5. Deploy the hub, then check that its start log shows publishing true on its `release bucket`
    line and holds no "publishing is off" warning
    (`sudo docker compose logs hub | grep -i publishing`). A key file the hub cannot read leaves
    the hub running with publishing off.
 
-5. On each computer that was a builder before R-117, the old sealed key may still be in the key
+6. On each computer that was a builder before R-117, the old sealed key may still be in the key
    store. The app deletes it at start; to delete it by hand:
 
    ```sh
@@ -76,8 +86,6 @@ says why.
    - **Up to date.**
    - **No update is published for this computer yet.** The feed answered 404, or lists no platform
      for this target.
-   - **Updates for the Mac are not published yet.** The same, on a Mac. The hub writes no macOS feed
-     until the build has Developer ID signing and notarization (BLD-068, OD-13).
    - **An update was refused because its signature did not verify.** Nothing is installed and the
      app keeps running; the process log has "Update signature refused."
    - **The last update attempt failed.** The network, or the disk. The next check runs at the usual

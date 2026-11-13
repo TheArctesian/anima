@@ -30,13 +30,9 @@ use crate::{
     ids::BuildJobId,
 };
 
-/// Whether macOS builds have Developer ID signing and notarization. Until OD-13 they do not, so
-/// no macOS feed is written (BLD-068, R-108).
-const DEVELOPER_ID: bool = false;
-
 /// What one publish ended with.
 pub(super) enum Outcome {
-    /// Published, with the feed folders written (none for macOS, BLD-068) and the checked files
+    /// Published, with the feed folders written (one per platform key, BLD-067, BLD-068) and the checked files
     /// the bucket held other bytes for afterwards (D-28).
     Published(&'static [&'static str], Vec<String>),
     Refused(String),
@@ -174,22 +170,17 @@ async fn steps(
         etag: etag_of(&etags, &checked.updater),
         digest: first.digest,
     };
-    let folders = feed::feed_folders(work.target, DEVELOPER_ID);
-    // No feed folder, no `.sig`: a signature no feed names is never written (BLD-068).
-    let feed = if folders.is_empty() {
-        String::new()
-    } else {
-        let sig = signature::sign(reach, work, &verified).await?;
-        tried.holds(db, reach.clock).await?;
-        signature::write(reach, work, &checked.updater, &sig).await?;
-        feed::signed(&work.feed, &sig).map_err(Stop::Refused)?
-    };
+    let sig = signature::sign(reach, work, &verified).await?;
+    tried.holds(db, reach.clock).await?;
+    signature::write(reach, work, &checked.updater, &sig).await?;
+    let feed = feed::signed(&work.feed, &sig).map_err(Stop::Refused)?;
     tried.holds(db, reach.clock).await?;
     let from = format!("{}/{}/{source}", work.target, work.version);
     let copy = reach
         .bucket
         .copy((&from, etag_of(&etags, &source)), stable, reach.clock.now());
     transfer::send(reach.http, copy, Vec::new(), stable).await?;
+    let folders = feed::platform_keys(work.target);
     for folder in folders {
         tried.holds(db, reach.clock).await?;
         store::mark_feed_sent(db, tried.job, reach.clock.now())
@@ -205,10 +196,7 @@ async fn steps(
 /// signed with the `.sig` that try wrote before it (R-117). A folder that holds another refuses
 /// the job, whose files are kept.
 async fn confirm(reach: Reach<'_>, work: &Work) -> Result<&'static [&'static str], Stop> {
-    let folders = feed::feed_folders(work.target, DEVELOPER_ID);
-    if folders.is_empty() {
-        return Ok(folders);
-    }
+    let folders = feed::platform_keys(work.target);
     let updater = feed::updater_name(work.target, &work.files)
         .ok_or_else(|| Stop::Refused("The job has no single updater file.".to_owned()))?;
     let sig = signature::written(reach, work, updater).await?;

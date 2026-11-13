@@ -1,6 +1,5 @@
 <script lang="ts">
   import { press } from '$lib/motion/roles/press';
-  import { isMac } from '$lib/platform/mac';
   import SettingRow from '$lib/settings/SettingRow.svelte';
   import { describeUpdate, canCheck } from './status';
   import { useUpdates } from './updates.svelte';
@@ -23,7 +22,7 @@
     </p>
   {/snippet}
   {#snippet hint()}
-    <p class="hint state" aria-live="polite">{describeUpdate(snapshot, time, isMac(navigator.userAgent))}</p>
+    <p class="hint state" aria-live="polite">{describeUpdate(snapshot, time)}</p>
   {/snippet}
   <button type="button" tabindex="0" disabled={!canCheck(snapshot)} onclick={() => void updates.checkNow()} {@attach press()}>
     Check for updates

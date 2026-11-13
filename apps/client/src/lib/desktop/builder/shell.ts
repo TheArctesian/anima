@@ -1,7 +1,7 @@
 import { invoke, isTauri } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 
-const TOOLS = ['git', 'bun', 'rust', 'cargo-nextest', 'postgres', 'tauri-packages', 'updater-public-key'] as const;
+const TOOLS = ['git', 'bun', 'rust', 'cargo-nextest', 'postgres', 'tauri-packages', 'updater-public-key', 'signing-identity'] as const;
 
 /** A tool the builder lacks (BLD-028), as the shell names it. The builder holds no updater key: the hub signs (R-117). */
 export type BuilderTool = (typeof TOOLS)[number];

@@ -23,21 +23,12 @@ pub(super) struct CheckedFeed {
     pub(super) updater: String,
 }
 
-/// The platform keys a feed of `target` lists: a universal macOS bundle serves both Mac
-/// architectures (BLD-067).
+/// The platform keys a feed of `target` lists, which are also the folders whose `latest.json`
+/// the hub writes: a universal macOS bundle serves both Mac architectures (BLD-067, BLD-068).
 pub(super) const fn platform_keys(target: Target) -> &'static [&'static str] {
     match target {
         Target::LinuxX86_64 => &["linux-x86_64"],
         Target::DarwinUniversal => &["darwin-aarch64", "darwin-x86_64"],
-    }
-}
-
-/// The folders whose `latest.json` the hub writes for `target`: one per platform key (BLD-067),
-/// and none for macOS until the build has Developer ID signing (BLD-068, OD-13).
-pub(super) const fn feed_folders(target: Target, developer_id: bool) -> &'static [&'static str] {
-    match target {
-        Target::DarwinUniversal if !developer_id => &[],
-        _ => platform_keys(target),
     }
 }
 

@@ -140,8 +140,19 @@ impl Workshop<'_> {
         Ok(())
     }
 
-    /// Compiles and bundles `target` at `version`, checks a macOS bundle, and returns the
-    /// updater file (BLD-043, BLD-047).
+    /// Notarizes `dmg`, then staples and validates the ticket on it and on `app`, so the
+    /// updater file is made from the stapled app (BLD-084, BLD-085). A submission Apple does not
+    /// accept fails the step; its status is in the step's log.
+    async fn notarize(&self, dmg: &Path, app: &Path) -> Result<(), BuilderError> {
+        if !artifact::notarized(&self.run(&plan::notarize(dmg)).await?) {
+            return Err(BuilderError::StepFailed);
+        }
+        self.run_all(&plan::staple(dmg)).await?;
+        self.run_all(&plan::staple(app)).await
+    }
+
+    /// Compiles and bundles `target` at `version`, checks, notarizes and staples a macOS bundle,
+    /// and returns the updater file (BLD-043, BLD-047, BLD-083 to BLD-085).
     pub async fn bundle(
         &self,
         commit: &Commit,
@@ -160,6 +171,10 @@ impl Workshop<'_> {
             if !artifact::universal(&self.run(&lipo).await?) {
                 return Err(BuilderError::Bundle);
             }
+            let dmg =
+                artifact::dmg_file(&self.clone, target, version).ok_or(BuilderError::Bundle)?;
+            self.notarize(&artifact::own_file(&self.clone, &dmg)?, &app)
+                .await?;
             self.run(&plan::app_archive(&app, &updater)).await?;
         }
         artifact::own_file(&self.clone, &updater)

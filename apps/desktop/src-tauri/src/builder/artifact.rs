@@ -100,3 +100,9 @@ pub fn universal(archs: &[String]) -> bool {
         .collect();
     words.contains(&"x86_64") && words.contains(&"arm64")
 }
+
+/// Whether `notarytool submit --wait` printed Apple's final answer as Accepted (BLD-085). Its
+/// progress lines say `Current status: ...`; only the final `status:` line counts.
+pub fn notarized(lines: &[String]) -> bool {
+    lines.iter().any(|line| line.trim() == "status: Accepted")
+}

@@ -15,7 +15,7 @@ export type UpdateLine =
   | typeof NO_FEED_LINE
   | typeof SIGNATURE_REFUSED_LINE;
 
-/** Why the last attempt failed (UPD-002, BLD-068); `other` covers the network and the disk. */
+/** Why the last attempt failed (UPD-002); `other` covers the network and the disk. */
 export type FailureReason = 'no-feed' | 'signature' | 'other';
 
 /** The reason a failed port call carries, `other` for any error that carries none. */

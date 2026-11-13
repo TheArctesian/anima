@@ -111,6 +111,14 @@ describe('toolCheckFrom (BLD-028)', () => {
     });
   });
 
+  it('BLD-083: a Mac without the Developer ID identity lists it as missing', () => {
+    expect(toolCheckFrom({ os: 'MACOS', arch: 'AARCH64', missing: ['signing-identity'] })).toEqual({
+      os: 'MACOS',
+      arch: 'AARCH64',
+      missing: ['signing-identity'],
+    });
+  });
+
   it.each([
     null,
     'LINUX',

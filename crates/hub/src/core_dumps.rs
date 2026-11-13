@@ -8,6 +8,13 @@
 /// # Errors
 ///
 /// The OS error when the kernel refuses.
+#[cfg_attr(
+    not(target_os = "linux"),
+    expect(
+        clippy::unnecessary_wraps,
+        reason = "the Linux build returns the kernel's refusal; other targets share the signature"
+    )
+)]
 pub fn forbid() -> std::io::Result<()> {
     #[cfg(target_os = "linux")]
     nix::sys::prctl::set_dumpable(false)?;
