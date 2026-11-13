@@ -11,7 +11,7 @@ use crate::failure::{Failure, exit};
 use crate::invocation::{Globals, Invocation};
 use crate::output::Output;
 use crate::{
-    api, auth, builders, checks, contexts, devices, events, keys, maintenance, notifications,
+    api, auth, builders, checks, contexts, devices, events, keys, maintenance, mcp, notifications,
     releases, retention, vpn,
 };
 
@@ -112,6 +112,8 @@ enum Command {
         #[command(subcommand)]
         command: crate::agents::AgentCommand,
     },
+    /// An MCP server on standard input and output for coding agents, and its permissions.
+    Mcp(mcp::McpArgs),
     /// Send a GraphQL document and print the hub's answer.
     Api(api::ApiArgs),
     /// Print shell completion.
@@ -138,6 +140,7 @@ impl Command {
             Self::Tag { command } => command.run(invocation).await,
             Self::Web { command } => command.run(invocation).await,
             Self::Agent { command } => command.run(invocation).await,
+            Self::Mcp(args) => args.run(invocation).await,
             Self::Api(args) => args.run(invocation).await,
             Self::Completion { shell } => {
                 let mut command = Cli::command();

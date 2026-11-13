@@ -31,6 +31,10 @@ keyring.workspace = true
 reqwest.workspace = true
 # The password at the terminal, with echo off (CMD-010).
 rpassword.workspace = true
+# `anima mcp`: the MCP protocol on standard input and output (MCP-001).
+rmcp.workspace = true
+# The MCP tools' input schemas (MCP-009).
+schemars.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 # The token file and the configuration are written to a temporary file, then renamed (CMD-012).
