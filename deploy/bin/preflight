@@ -9,20 +9,19 @@
 #            firewall keeps off the VPN and the hub refuses as a site subnet; ANIMA_HUB_IP and
 #            ANIMA_GUACD_IP differ and are outside ANIMA_HUB_IP_RANGE, so Docker gives neither to
 #            another container (VP-13). Reads the environment, defaults as in compose.yaml.
-#   secrets  every secret file of compose.yaml exists and is not empty in the secrets folder
-#            (ANIMA_SECRETS_DIR, default deploy/secrets), and has the mode make-secrets sets:
+#   secrets  every secret file of compose.yaml exists and is not empty in deploy/secrets, the
+#            folder compose mounts, and has the mode make-secrets sets:
 #            0440, or 0400 for cloudflare_dns_token. The R2 files and the updater key pair are
 #            in the hub's group 10001. The updater key pair in its folder (updater/, root:10001
 #            0750) may be absent: then the hub starts with publishing off, and this warns. Run
 #            it as root (sudo): only root and the hub's group can search the updater folder.
 # One argument pair checks one thing from the value given: `preflight address 100.64.0.1`.
-# ANIMA_SECRETS_OWNER and ANIMA_SECRETS_GROUP (default 0 and 10001) are for tests, which cannot
-# make root-owned files, as ANIMA_SECRETS_CHOWN is for make-secrets.
+# `preflight secrets [FOLDER [OWNER GROUP]]` takes the folder, owner uid and hub gid only as
+# arguments, for tests, which cannot make root-owned files; the environment never changes them,
+# so a line in .env cannot make a wrong owner or group pass (S-4).
 set -eu
 
 here=$(cd "$(dirname "$0")" && pwd)
-secret_owner=${ANIMA_SECRETS_OWNER:-0}
-hub_group=${ANIMA_SECRETS_GROUP:-10001}
 fail() {
     echo "preflight: $1" >&2
     exit 1
@@ -165,8 +164,15 @@ file_owner() {
     stat -c '%u' "$1" 2>/dev/null || stat -f '%u' "$1"
 }
 
+# check_secrets FOLDER OWNER GROUP: OWNER and GROUP are the numeric owner of the secret files
+# and the hub's group, 0 and 10001 outside tests.
 check_secrets() {
     dir=$1
+    case $2$3 in
+    '' | *[!0-9]*) fail "secret owner '$2' and group '$3' must be numbers" ;;
+    esac
+    secret_owner=$2
+    hub_group=$3
     for name in postgres_password owner_password hub_password owner_database_url \
         hub_database_url anima_key cloudflare_dns_token; do
         [ -s "$dir/$name" ] || fail "missing or empty secret file $dir/$name; run bin/make-secrets"
@@ -237,13 +243,13 @@ address) check_address "${2:-}" ;;
 public) check_public_address "${2:-}" ;;
 docker) check_docker "${2:-}" ;;
 networks) check_networks ;;
-secrets) check_secrets "${2:-}" ;;
+secrets) check_secrets "${2:-$here/../secrets}" "${3:-0}" "${4:-10001}" ;;
 all)
     check_address "${ANIMA_HUB_ADDRESS:-}"
     check_public_address "${ANIMA_VPS_PUBLIC_ADDRESS:-}"
     check_networks
     check_docker "$(docker version --format '{{.Server.Version}}')"
-    check_secrets "${ANIMA_SECRETS_DIR:-$here/../secrets}"
+    check_secrets "$here/../secrets" 0 10001
     echo "preflight: ok"
     ;;
 *) fail "unknown check '$1'" ;;

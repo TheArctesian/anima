@@ -8,11 +8,17 @@ import { finish } from "./finished-process.ts";
 const SCRIPT = join(import.meta.dir, "..", "bin", "preflight");
 
 /** The test's own user and group stand in for root and the hub's group 10001. */
-const OWNERS = { ANIMA_SECRETS_OWNER: String(process.getuid?.()), ANIMA_SECRETS_GROUP: String(process.getgid?.()) };
+const OWNER = String(process.getuid?.());
+const GROUP = String(process.getgid?.());
 
 async function preflight(...args: string[]): Promise<{ ok: boolean; message: string }> {
-  const result = await finish(["sh", SCRIPT, ...args], { env: { ...process.env, ...OWNERS } });
+  const result = await finish(["sh", SCRIPT, ...args]);
   return { ok: result.exitCode === 0, message: result.stderr };
+}
+
+/** The secrets check of `folder`, with the test's user and group as the owner and hub group. */
+async function secrets(folder: string): Promise<{ ok: boolean; message: string }> {
+  return preflight("secrets", folder, OWNER, GROUP);
 }
 
 describe("preflight address", () => {
@@ -94,15 +100,15 @@ describe("preflight secrets", () => {
   test("DB-002 accepts a folder with every secret file and names the one that is missing", async () => {
     await withFolder(async (folder) => {
       for (const name of names.slice(1)) write(folder, name);
-      const missing = await preflight("secrets", folder);
+      const missing = await secrets(folder);
       expect(missing.ok).toBe(false);
       expect(missing.message).toContain("postgres_password");
       write(folder, "postgres_password", "");
-      expect((await preflight("secrets", folder)).ok).toBe(false);
+      expect((await secrets(folder)).ok).toBe(false);
       write(folder, "postgres_password");
-      expect((await preflight("secrets", folder)).ok).toBe(true);
+      expect((await secrets(folder)).ok).toBe(true);
       write(folder, "cloudflare_dns_token", "");
-      expect((await preflight("secrets", folder)).message).toContain("cloudflare_dns_token");
+      expect((await secrets(folder)).message).toContain("cloudflare_dns_token");
     });
   });
 
@@ -110,7 +116,7 @@ describe("preflight secrets", () => {
     await withFolder(async (folder) => {
       for (const name of names) write(folder, name);
       write(folder, "hub_password", "secret-value-1", mode);
-      const result = await preflight("secrets", folder);
+      const result = await secrets(folder);
       expect(result.ok).toBe(false);
       expect(result.message).toContain("hub_password");
       expect(result.message).toContain("mode 0440");
@@ -123,7 +129,7 @@ describe("preflight secrets", () => {
     await withFolder(async (folder) => {
       for (const name of names) write(folder, name);
       write(folder, "cloudflare_dns_token", "token-value-1", mode);
-      const result = await preflight("secrets", folder);
+      const result = await secrets(folder);
       expect(result.ok).toBe(false);
       expect(result.message).toContain("mode 0400");
       expect(result.message).toContain("make-secrets");
@@ -191,7 +197,7 @@ describe("preflight R2 token files (R-108)", () => {
   test.each(["r2_access_key_id", "r2_secret_access_key"])("R-108 names a missing %s and points at the README, not make-secrets", async (name) => {
     await withFolder(async (folder) => {
       for (const other of names.filter((n) => n !== name)) write(folder, other);
-      const result = await preflight("secrets", folder);
+      const result = await secrets(folder);
       expect(result.ok).toBe(false);
       expect(result.message).toContain(name);
       expect(result.message).toContain("Release publishing");
@@ -202,7 +208,7 @@ describe("preflight R2 token files (R-108)", () => {
     await withFolder(async (folder) => {
       for (const name of names) write(folder, name);
       write(folder, "r2_secret_access_key", "r2-value-1", mode);
-      const result = await preflight("secrets", folder);
+      const result = await secrets(folder);
       expect(result.ok).toBe(false);
       expect(result.message).toContain("mode 0440");
       expect(result.message).not.toContain("r2-value-1");
@@ -222,7 +228,7 @@ describe("preflight updater key pair (R-116, D-44)", () => {
     await withFolder(async (folder) => {
       withPair(folder);
       for (const name of absent) rmSync(join(folder, name));
-      const result = await preflight("secrets", folder);
+      const result = await secrets(folder);
       expect(result.ok).toBe(true);
       expect(result.message).toContain("warning: no updater key pair");
       expect(result.message).toContain("publishing off");
@@ -232,11 +238,11 @@ describe("preflight updater key pair (R-116, D-44)", () => {
   test("D-44 is silent with the pair, accepts an empty password for a key with none and refuses an empty key", async () => {
     await withFolder(async (folder) => {
       withPair(folder);
-      expect(await preflight("secrets", folder)).toEqual({ ok: true, message: "" });
+      expect(await secrets(folder)).toEqual({ ok: true, message: "" });
       write(folder, "updater/updater_key_password", "");
-      expect(await preflight("secrets", folder)).toEqual({ ok: true, message: "" });
+      expect(await secrets(folder)).toEqual({ ok: true, message: "" });
       write(folder, "updater/updater_key", "");
-      const result = await preflight("secrets", folder);
+      const result = await secrets(folder);
       expect(result.ok).toBe(false);
       expect(result.message).toContain("updater_key is empty");
     });
@@ -251,7 +257,7 @@ describe("preflight updater key pair (R-116, D-44)", () => {
     await withFolder(async (folder) => {
       withPair(folder);
       write(folder, name, "updater-value-1", mode);
-      const result = await preflight("secrets", folder);
+      const result = await secrets(folder);
       expect(result.ok).toBe(false);
       expect(result.message).toContain(name);
       expect(result.message).toContain("mode 0440");
@@ -266,7 +272,7 @@ describe("preflight updater folder rights and contents (S-3, C-7, D-44)", () => 
     await withFolder(async (folder) => {
       withPair(folder);
       chmodSync(join(folder, "updater"), 0o640);
-      const result = await preflight("secrets", folder);
+      const result = await secrets(folder);
       chmodSync(join(folder, "updater"), 0o750);
       expect(result.ok).toBe(false);
       expect(result.message).toContain("run preflight with sudo");
@@ -278,7 +284,7 @@ describe("preflight updater folder rights and contents (S-3, C-7, D-44)", () => 
     await withFolder(async (folder) => {
       withPair(folder);
       chmodSync(join(folder, "updater"), 0o755);
-      const result = await preflight("secrets", folder);
+      const result = await secrets(folder);
       expect(result.ok).toBe(false);
       expect(result.message).toContain("mode 0750");
     });
@@ -294,10 +300,10 @@ describe("preflight updater folder rights and contents (S-3, C-7, D-44)", () => 
         withPair(folder);
         write(folder, "updater/updater_key", "updater-value-1");
         chownSync(join(folder, name), process.getuid?.() ?? 0, otherGroup ?? 0);
-        const result = await preflight("secrets", folder);
+        const result = await secrets(folder);
         expect(result.ok).toBe(false);
         expect(result.message).toContain(`${name} is not`);
-        expect(result.message).toContain(`group ${OWNERS.ANIMA_SECRETS_GROUP}`);
+        expect(result.message).toContain(`group ${GROUP}`);
         expect(result.message).not.toContain("updater-value-1");
       });
     },
@@ -308,11 +314,38 @@ describe("preflight updater folder rights and contents (S-3, C-7, D-44)", () => 
       withPair(folder);
       write(folder, "updater/updater_key.bak", "updater-value-1");
       write(folder, "updater/.updater_key.swp", "updater-value-2");
-      const result = await preflight("secrets", folder);
+      const result = await secrets(folder);
       expect(result.ok).toBe(true);
       expect(result.message).toContain("'updater_key.bak', which is not part of the updater key pair");
       expect(result.message).toContain("'.updater_key.swp', which is not part of the updater key pair");
       expect(result.message).not.toContain("updater-value-");
+    });
+  });
+});
+
+describe("preflight secrets owner and group (S-4)", () => {
+  test("S-4 a .env sourced as the README does cannot move the folder, owner or hub group", async () => {
+    await withFolder(async (folder) => {
+      withPair(folder);
+      const env = join(folder, "dot-env");
+      writeFileSync(env, `ANIMA_SECRETS_OWNER=${OWNER}\nANIMA_SECRETS_GROUP=${GROUP}\nANIMA_SECRETS_DIR=${folder}\n`);
+      const run = (check: string) => finish(["sh", "-c", `set -a; . "${env}"; set +a; ${check}`]);
+      const named = await run(`sh "${SCRIPT}" secrets "${folder}"`);
+      expect(named.exitCode).toBe(1);
+      expect(named.stderr).toContain("is not in the hub's group 10001");
+      const unnamed = await run(`sh "${SCRIPT}" secrets`);
+      expect(unnamed.exitCode).toBe(1);
+      expect(unnamed.stderr).not.toContain(folder);
+      expect(unnamed.stderr).toContain("/bin/../secrets/");
+    });
+  });
+
+  test("S-4 refuses an owner or group that is not a number", async () => {
+    await withFolder(async (folder) => {
+      withPair(folder);
+      const result = await preflight("secrets", folder, OWNER, "hub");
+      expect(result.ok).toBe(false);
+      expect(result.message).toContain("must be numbers");
     });
   });
 });
