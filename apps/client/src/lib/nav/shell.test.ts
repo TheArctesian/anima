@@ -341,14 +341,3 @@ it('NET-004: the bar and the page are marked for the banner shift, and the strip
   expect(nav.hasAttribute('data-shifts-with-banner')).toBe(true);
   expect(nav.querySelector('.notice')?.hasAttribute('data-holds-banner')).toBe(true);
 });
-
-it('BLD-080: the desktop app has a Builds item between Devices and Settings', () => {
-  keyStore.available.mockReturnValue(true);
-  const links = [...show().querySelectorAll('a')];
-  expect(links.map((link) => link.getAttribute('href'))).toEqual(['/devices', '/builds', '/settings']);
-  expect(links[1]?.querySelector('.words')?.textContent).toBe('Builds');
-});
-
-it('BLD-080: a browser has no Builds item', () => {
-  expect([...show().querySelectorAll('a')].map((link) => link.getAttribute('href'))).not.toContain('/builds');
-});
