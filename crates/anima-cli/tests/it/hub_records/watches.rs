@@ -28,7 +28,7 @@ async fn bld_081_release_log_follow_prints_new_lines_and_stops_at_an_end_state()
     let updates = vec![
         update(
             "BUILDING",
-            Value::Null,
+            None,
             &[(1, "cargo build"), (2, "Sess\u{1b}[2Jion")],
         ),
         update("FAILED", Some("exit 101"), &[(3, "error: linking")]),
