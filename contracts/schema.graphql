@@ -1981,14 +1981,14 @@ type Mutation {
   approveSiteRoute(siteId: ID!): Boolean!
 
   # Engine and Projects (operator, 2026-11-13; ruling number to be assigned; K-E7, K-E1, XP-02)
-  "On also sets on each extension it needs (EXT-011). Off is refused with CONFLICT while an extension that is on needs it; extensions.neededBy names it (EXT-012). Off keeps every record (EXT-003). Returns each extension whose switch changed, the named one first; empty when nothing changed. Login or browser token only."
+  "On also sets on each extension it needs (EXT-011). Off is refused with CONFLICT while an extension that is on needs it; extensions.neededBy names it (EXT-012). Off keeps every record (EXT-003). Returns each extension whose switch changed, the named one first; empty when nothing changed. Closed to API keys: login or browser token only. The task that adds this root to API_KEY_REFUSED_ROOTS restores the standard words (key_roots.rs)."
   setExtension(key: String!, on: Boolean!): [Extension!]! @pending
-  "Checks the key with GitHub before it stores it; UNAVAILABLE when GitHub cannot be reached, VALIDATION when GitHub refuses the key. The same App ID and installation ID again replaces the stored key and keeps the account and its records. Login or browser token only."
+  "Checks the key with GitHub before it stores it; UNAVAILABLE when GitHub cannot be reached, VALIDATION when GitHub refuses the key. The same App ID and installation ID again replaces the stored key and keeps the account and its records. Closed to API keys: login or browser token only. The task that adds this root to API_KEY_REFUSED_ROOTS restores the standard words (key_roots.rs)."
   connectGithubApp(input: GithubAppInput!): SourceAccount! @pending
   "Starts a sync now and returns at once. CONFLICT while the account is paused or no extension that uses it is on. A sync that already runs is not started twice."
   syncSourceAccount(id: ID!): SourceAccount! @pending
   setSourceAccountPaused(id: ID!, paused: Boolean!): SourceAccount! @pending
-  "Deletes the account and its stored key. deleteRecords false keeps what it imported (ITG-004). Returns the ID. Login or browser token only."
+  "Deletes the account and its stored key. deleteRecords false keeps what it imported (ITG-004). Returns the ID. Closed to API keys: login or browser token only. The task that adds this root to API_KEY_REFUSED_ROOTS restores the standard words (key_roots.rs)."
   removeSourceAccount(id: ID!, deleteRecords: Boolean!): ID! @pending
   "The hub does not import or read the repository again until it is restored (PRO-002)."
   leaveOutRepository(id: ID!): Project! @pending
