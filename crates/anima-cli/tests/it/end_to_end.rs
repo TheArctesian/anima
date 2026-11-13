@@ -10,6 +10,7 @@ mod hub;
 mod keys;
 mod mcp;
 mod paging;
+mod sessions;
 mod sign_in;
 mod terminal;
 mod totp;
