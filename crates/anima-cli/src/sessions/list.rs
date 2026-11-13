@@ -34,7 +34,7 @@ impl ListArgs {
     /// # Errors
     /// [`Failure`] for an unknown device or a hub refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
-        let command = CommandLine::new("anima session list")
+        let command = CommandLine::new("anima session list", self.limit)
             .flag("--device", self.device.as_deref())
             .switch("--live", self.live);
         let hub = invocation.hub()?;

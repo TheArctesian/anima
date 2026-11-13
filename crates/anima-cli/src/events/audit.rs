@@ -43,8 +43,8 @@ impl ListArgs {
     /// # Errors
     /// [`Failure`] for a hub refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
-        let command =
-            CommandLine::new("anima audit list").choices("--actor", self.actor.as_slice());
+        let command = CommandLine::new("anima audit list", self.limit)
+            .choices("--actor", self.actor.as_slice());
         let hub = invocation.hub()?;
         let first = Some(page_size(self.limit, self.all, MAX_PAGE));
         let (hub, actor) = (&hub, self.actor);

@@ -65,7 +65,7 @@ impl ListArgs {
     /// # Errors
     /// [`Failure`] for an unknown site or a hub refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
-        let command = CommandLine::new("anima device list")
+        let command = CommandLine::new("anima device list", self.limit)
             .choices("--status", &self.status)
             .flags("--tag", self.tag.iter().map(String::as_str))
             .flag("--name", self.name.as_deref())

@@ -46,7 +46,7 @@ async fn cmd_026_c3_the_next_page_hint_keeps_the_filters() {
         .await;
     assert!(
         run.stderr.contains(
-            "anima device list --status down --tag infra --name 'my pve' --sort status --after c-1"
+            "anima device list --status down --tag infra --name 'my pve' --sort status --limit 50 --after c-1"
         ),
         "{}",
         run.stderr

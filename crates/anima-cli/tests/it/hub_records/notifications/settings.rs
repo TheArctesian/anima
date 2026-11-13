@@ -133,7 +133,7 @@ async fn cmd_026_c3_the_deliveries_hint_keeps_the_channel() {
         .await;
     assert!(
         run.stderr.contains(&format!(
-            "anima notify deliveries --channel {channel} --after d-1"
+            "anima notify deliveries --channel {channel} --limit 50 --after d-1"
         )),
         "{}",
         run.stderr

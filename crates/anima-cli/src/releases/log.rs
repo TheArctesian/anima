@@ -63,7 +63,7 @@ impl LogArgs {
         } else {
             print_lines(&log.lines)?;
         }
-        let command = CommandLine::new("anima release log").word(&self.job);
+        let command = CommandLine::new("anima release log", self.limit).word(&self.job);
         note_next(invocation, &log, "lines (maybe more)", &command);
         Ok(())
     }

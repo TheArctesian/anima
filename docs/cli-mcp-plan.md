@@ -102,7 +102,7 @@ The hub has two tokens that a program can hold (design specification INT-003):
   prompt, from standard input (`-`) or from `--from-file`. Never from an argument.
 - **CMD-026.** Lists take `--limit` and `--after` (the K1 cursor) and `--all`. `--all` stops
   with a failure when the hub repeats a cursor, and after 100,000 rows. The next-page hint keeps
-  the filters of the command that printed it.
+  the filters and the `--limit` of the command that printed it.
 - **CMD-027.** Colour is off when the output is not a terminal or `NO_COLOR` is set.
 - **CMD-028.** `anima completion <shell>` prints shell completion.
 

@@ -56,6 +56,17 @@ webpki-roots.workspace = true
 zeroize.workspace = true
 
 [dev-dependencies]
+# The end-to-end suite (`tests/it/end_to_end/`) serves the real hub in the test, with its
+# test switches; never a dependency of the program.
+anima-hub = { path = "../hub", features = ["test-support"] }
 axum.workspace = true
+base64.workspace = true
 graphql-parser.workspace = true
+# The end-to-end suite's authenticator app (RFC 6238) and SSH device with its `sftp` subsystem.
+hmac.workspace = true
+russh.workspace = true
+russh-sftp.workspace = true
+sha1.workspace = true
+# Each end-to-end test gets its own migrated database on the throwaway server (R-009, R-019).
+sqlx.workspace = true
 tokio = { workspace = true, features = ["process"] }

@@ -5,10 +5,10 @@ use std::process::Stdio;
 use std::time::Duration;
 
 use serde_json::{Value, json};
-use tempfile::TempDir;
 use tokio::io::{AsyncBufReadExt as _, AsyncWriteExt as _, BufReader, Lines};
 use tokio::process::{Child, ChildStdin, ChildStdout, Command};
 
+use crate::kit::Anima;
 use crate::kit::fake_hub::{FakeHub, data};
 
 pub const LOGIN_TOKEN: &str = "login-token-for-mcp-tests";
@@ -16,7 +16,7 @@ pub const API_KEY: &str = "anima_mcpTestKeyAbcdefghijklmnopqrstuvwxyz0123456";
 
 /// The operator's computer: a home folder for the configuration file.
 pub struct Desk {
-    home: TempDir,
+    anima: Anima,
     /// What the MCP client declares at `initialize`.
     capabilities: Value,
 }
@@ -50,17 +50,32 @@ pub async fn hub() -> FakeHub {
 
 impl Desk {
     pub fn new() -> Self {
+        Self::on(Anima::new())
+    }
+
+    /// The desk of `anima`'s computer: the same home folder and variables.
+    pub fn on(anima: Anima) -> Self {
         Self {
-            home: tempfile::tempdir().expect("a home folder"),
+            anima,
             capabilities: json!({}),
         }
     }
 
+    /// The command line of this computer.
+    pub const fn anima(&self) -> &Anima {
+        &self.anima
+    }
+
     /// A desk whose MCP client can ask the person (form elicitation, MCP-013).
     pub fn asking() -> Self {
+        Self::new().with_elicitation()
+    }
+
+    /// This desk with an MCP client that can ask the person (form elicitation, MCP-013).
+    pub fn with_elicitation(self) -> Self {
         Self {
             capabilities: json!({ "elicitation": { "form": {} } }),
-            ..Self::new()
+            ..self
         }
     }
 
@@ -69,20 +84,16 @@ impl Desk {
     /// `anima mcp permissions set` makes those only at a terminal (MCP-014), and the tests run
     /// it without one. Process-level tests keep the command for showing, narrowing and refusal.
     pub fn save_permissions(&self, origin: &str, saved: &Value) {
-        let dir = self.home.path().join("config").join("anima");
+        let dir = self.anima.config_dir();
         std::fs::create_dir_all(&dir).expect("the configuration folder");
         let config = json!({ "contexts": {}, "mcp": { origin: saved } });
         std::fs::write(dir.join("config.json"), config.to_string()).expect("written");
     }
 
     fn command(&self, token: &str, args: &[&str]) -> Command {
-        let mut command = Command::new(env!("CARGO_BIN_EXE_anima"));
+        let mut command = self.anima.command(env!("CARGO_BIN_EXE_anima"));
         command
             .args(args)
-            .env_clear()
-            .env("HOME", self.home.path())
-            .env("XDG_CONFIG_HOME", self.home.path().join("config"))
-            .env("ANIMA_TOKEN_STORE", "file")
             .env("ANIMA_TOKEN", token)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
@@ -108,9 +119,14 @@ impl Desk {
 
     /// Starts `anima mcp <args> --hub <hub>` and initialises the session.
     pub async fn start(&self, hub: &FakeHub, token: &str, args: &[&str]) -> (Session, Value) {
+        self.start_at(&hub.origin, token, args).await
+    }
+
+    /// Starts `anima mcp <args> --hub <origin>` and initialises the session.
+    pub async fn start_at(&self, origin: &str, token: &str, args: &[&str]) -> (Session, Value) {
         let mut all = vec!["mcp"];
         all.extend_from_slice(args);
-        all.extend_from_slice(&["--hub", &hub.origin]);
+        all.extend_from_slice(&["--hub", origin]);
         let mut child = self.command(token, &all).spawn().expect("anima mcp starts");
         let stdin = child.stdin.take().expect("stdin");
         let stdout = BufReader::new(child.stdout.take().expect("stdout")).lines();

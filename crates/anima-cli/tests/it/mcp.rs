@@ -8,5 +8,5 @@ mod listing;
 mod permissions;
 mod reads;
 mod secrets;
-mod session;
+pub mod session;
 mod text;
