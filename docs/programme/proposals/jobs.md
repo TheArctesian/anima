@@ -2,8 +2,10 @@
 
 From: the planning session of 2026-11-12. The operator agreed the form in a side chat: a job is
 a container image, models run on the machine directly, jobs call the model service.
-Status: a proposal for a ruling. Not approved. It conflicts with R-115 (see below).
+Status: a proposal for a ruling. The operator decided OD-W10 on 2026-11-12 (see "Decision").
+The requirements are not yet approved one by one. The decision changes R-115.
 Map: [work-plan.md](../../work-plan.md), category Use, decisions OD-W5, OD-W6 and OD-W10.
+Identifiers: USE-001 to USE-009, JOB-001 to JOB-007.
 
 ## Problem
 
@@ -25,8 +27,14 @@ applications ([hosted-applications.md](hosted-applications.md)).
   use a model on a Mac.
 - **USE-003.** The coordinator decides where work runs. The placement must be a pure function, as
   in the compute plan (CMP-011).
-- **USE-004.** A machine takes work only when the operator sets this on for that machine
-  (CMP-002).
+- **USE-004.** A machine with `anima-agent` takes work by default. The operator must be able to
+  set this off for each machine, at the machine and in the client. A machine that is set off at
+  the machine must stay off; the hub must not be able to set it on.
+- **USE-008.** The install command and the Device page must say that the agent takes work from
+  the hub (MET-019, MET-024). An agent that was installed before this function exists must not
+  start to take work with an update alone: the operator confirms one time for each such machine.
+- **USE-009.** "Takes work" is the permission. When a machine takes work is the device policy of
+  the compute plan (CAP-010 to CAP-013): mains power, quiet hours, an active operator.
 - **USE-005.** The agent must ask the coordinator for work. The agent must not listen on a port
   (MET-020).
 - **USE-006.** The agent must accept only the work types in a fixed list. It must refuse all
@@ -52,32 +60,48 @@ A job is one container image that runs to its end on one machine.
 
 Fine-tuning (compute plan C7, #40) becomes the first job type. Its "done when" text in #40 stays.
 
-## Conflict with R-115
+## Decision (OD-W10, operator, 2026-11-12)
 
-R-115 (operator, 2026-11-12) lists as **not taken**: "a command channel from the agent to the
+R-115 (operator, 2026-11-12) listed as **not taken**: "a command channel from the agent to the
 hub, because it would make the agent a remote-execution endpoint (MET-013, MET-020); anything
 that changes a device". K8 says that the agent makes no request other than enrol, push and renew.
+A job is remote execution. So are CAG-003 of the compute plan (install a runtime, start a
+server), HOST-002 and the store machines of [bulk-data-placement.md](bulk-data-placement.md).
 
-A job is remote execution. So are CAG-003 of the compute plan (install a runtime, start a server)
-and HOST-002. USE-005 and USE-006 limit the risk but do not remove it. Issues #34, #41 and #44
-already record that the command transport is open against MET-020.
+The options were: one agent with work off by default (the recommendation), a second program
+for compute machines, or R-115 kept as it is. The operator selected one agent and changed the
+default: **"it should be on by default"**.
 
-The operator must select one of these (OD-W10):
+What this means:
 
-1. **One agent, work off by default.** `anima-agent` gets a work route in a new contract. A
-   machine takes work only after the operator sets it on at that machine, not from the hub
-   (USE-004). The metrics agent on all other machines stays as R-115 describes it.
-2. **Two programs.** `anima-agent` stays metrics only, as R-115 says. A second program takes
-   work, and the operator installs it only on compute machines. This is against #44, which says
-   not to make a second binary.
-3. **Keep R-115 as it is.** No jobs, no hosted applications, and the model service needs a
-   different design.
+| Subject | Decided |
+| --- | --- |
+| Programs | One: `anima-agent` (as #44 says). No second binary. |
+| Default | A machine with the agent takes work (USE-004). The operator can set a machine off. |
+| R-115 | Its "not taken: a command channel" line is replaced. The other lines of R-115 stay. |
+| MET-020 | Not changed: the agent listens on no port and connects only to the hub (USE-005). |
+| Compute plan CMP-002, OD-C8 (#50) | They say "off by default". They must change to agree. |
+
+The cost that the operator accepts: a person who controls the hub can run work on each machine
+that has the agent. R-084 selected the agent so that the hub needs no SSH login on each device
+(OD-9); this decision gives the hub a second way in. These rules limit it, and none needs a step
+from the operator:
+
+- The agent accepts only the work types in a fixed list (USE-006). There is no "run this
+  command" type.
+- Jobs run in containers (USE-001), with no access to the agent token or the home folder.
+- A machine that is set off at the machine cannot be set on from the hub (USE-004).
+- Each item of work is in the audit log (LOG-005), and the machine keeps its own log of the work
+  that it took.
 
 This decision comes before C1 (#34), not only before jobs.
 
 ## Needs
 
-- A ruling on OD-W10, then the transport decision in #34 and #41.
+- A ruling number in `programme.md` that changes R-115, then the transport decision in #34 and
+  #41, and the new default in #50.
+- A new contract for the work route. K8 is frozen for Phase 3 (CON-001), so this is a new
+  contract or `/agent/v2/`, not a change to K8.
 - A security review of the work route (a `security` task for the security reviewer).
 - One contract for job state, progress and results, shared with #34 and #35.
 - A test of Railpack on one project of the operator (OD-W6).

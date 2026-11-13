@@ -3,8 +3,8 @@
 From: the planning session of 2026-11-12. The operator wants easy self-hosting of published
 applications on the owned machines: the container management part of Portainer, not the build
 pipeline of Coolify.
-Status: a proposal for a ruling. Not approved. It needs the OD-W10 decision of
-[jobs.md](jobs.md).
+Status: a proposal for a ruling. Not approved. It needs the work route of [jobs.md](jobs.md),
+whose direction is decided (OD-W10).
 Map: [work-plan.md](../../work-plan.md), category Use.
 
 ## Problem
@@ -36,7 +36,7 @@ published applications. Anima is not a build platform.
 
 HOST-001 is read-only. It can come first and alone: R-115 lists "read-only service discovery
 (systemd, Docker, listeners, cron and timers)" as later work, and it needs no new permission.
-HOST-002 to HOST-007 change a device, so they need OD-W10.
+HOST-002 to HOST-007 change a device, so they need the work route of [jobs.md](jobs.md).
 
 ## Work that already exists
 
@@ -47,7 +47,7 @@ HOST-002 to HOST-007 change a device, so they need OD-W10.
 
 ## Needs
 
-- The OD-W10 decision ([jobs.md](jobs.md)) for all of this except HOST-001.
+- The work route of [jobs.md](jobs.md) for all of this except HOST-001.
 - A decision on how the data copy of HOST-005 is made: a volume backup, or replication that the
   application supplies. [bulk-data-placement.md](bulk-data-placement.md) can hold the backup.
 - A decision on Docker only, or Docker and Podman.

@@ -31,7 +31,7 @@ or limit what it can touch.
 
 ## Needs
 
-- [jobs.md](jobs.md) approved, with its OD-W10 decision.
+- [jobs.md](jobs.md) approved, with its work route.
 - The model service (C1, #34), or a decision that the first runs use a hosted model.
 - A decision on which agent library (AGN-006), and on how a run gets a secret that it needs
   (the Secrets extension, XP-04, #15).

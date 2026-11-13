@@ -3,7 +3,7 @@
 | Item | Value |
 | --- | --- |
 | Document | Work plan: purpose, categories and priority order |
-| Version | 0.3 (draft) |
+| Version | 0.4 (draft) |
 | Date | 2026-11-12 |
 | Language | ASD-STE100 Simplified Technical English (STE) |
 | Status | For review. The operator has not approved the principles or the priority order. |
@@ -39,7 +39,7 @@ The coordinator is the hub of the design specification (OD-W3).
 - **ETH-004. The operator confirms a new home.** Anima finds a failure and selects the best copy. A copy becomes the home only after the operator confirms. Anima must not elect a new home alone.
 - **ETH-005. Spread the work, not the state.** Work that holds no data can run on any machine. Only the home accepts writes. A machine that has no key can hold only encrypted pieces.
 - **ETH-006. Own first.** When owned and rented resources can do the same work, Anima shows the owned resource first.
-- **ETH-007. Control follows ownership.** Anima can change an owned resource (OD-W10). For a rented resource, see OD-W1. Anima only reads a resource that is held about the operator.
+- **ETH-007. Control follows ownership.** Anima can change an owned resource: a machine with `anima-agent` takes work from the coordinator by default, and the operator can set a machine off (USE-004). For a rented resource, see OD-W1. Anima only reads a resource that is held about the operator.
 - **ETH-008. Private by construction.** The coordinator is not on the public internet (SEC-008). A source uses read-only access unless ETH-007 permits more.
 - **ETH-009. Build for use.** Build only for the services and devices that the operator uses (EXT-000, CMP-001). A different person must be able to add a source without a change to the engine.
 
@@ -66,7 +66,7 @@ The tiers come from the issue labels `priority: foundation`, `priority: later` a
 | 3 | See, Remember, Reach | The extensions, in the order of XP-005. Projects comes early in that order. | #12, #13, #15 to #25, #6, #32. Decisions #28, #29, #30 | Planned. `priority: later` |
 | 3 | Use | Jobs, then AI agent runs, then hosted applications | #40 (C7), #36 (C3). No issue yet for the three proposals | #40 is planned. The proposals are not approved. |
 | 3 | Foundation | Standby copies of the coordinator database, and the move procedure | No issue yet | Proposal. Its direction is decided (OD-W9). The operator decides its tier. |
-| 3 | Foundation | Bulk data in encrypted pieces on the operator's machines | No issue yet. It changes the file store of #8 | Proposal. Its direction is decided (OD-W9). Decide it before E0-5 (#8) starts, and after OD-W10. |
+| 3 | Foundation | Bulk data in encrypted pieces on the operator's machines | No issue yet. It changes the file store of #8 | Proposal. Its direction is decided (OD-W9). Decide it before E0-5 (#8) starts. |
 | 4 | Use | Level 2: one model across machines (C4 to C6) | #37, #38, #39. Decisions #45, #46 | Parked. Start only after Level 1 is in daily use (CMP-004, PH-C-001). |
 | 4 | Foundation | Replicated ledger and sync between nodes | #2 | The OD-W9 decision does not agree with its phases L1 to L4. Its phase L0 (a hash chain for the audit log) can stay. The issue is not yet changed. |
 | 4 | Foundation, Reach | iOS client (Phase 5). Site operations and traffic data (Phase 6) | Design specification Section 9. #55 | Planned. #55 puts Phase 6 after the extension foundations and compute. |
@@ -93,7 +93,7 @@ One document owns each concern. Add a requirement to its owner, not to this docu
 | Model service and pooled models | [compute-plan.md](compute-plan.md), as changed by #34 and #35 | CMP, CAG, CAP, RTR and the others there |
 | Copies of the coordinator database, and the move of the coordinator | [coordinator-standby.md](programme/proposals/coordinator-standby.md) | FND-001 to FND-012 |
 | Bulk data on the operator's machines | [bulk-data-placement.md](programme/proposals/bulk-data-placement.md) | STO-001 to STO-011 |
-| Rules for all work on machines, and jobs | [jobs.md](programme/proposals/jobs.md) | USE-001 to USE-007, JOB-001 to JOB-007 |
+| Rules for all work on machines, and jobs | [jobs.md](programme/proposals/jobs.md) | USE-001 to USE-009, JOB-001 to JOB-007 |
 | AI agent runs | [agent-runs.md](programme/proposals/agent-runs.md) | AGN-001 to AGN-008 |
 | Hosted applications | [hosted-applications.md](programme/proposals/hosted-applications.md) | HOST-001 to HOST-009 |
 | Cloudflare, Spotify and Screen Time sources | [new-sources.md](programme/proposals/new-sources.md) | None until each provider is verified |
@@ -124,13 +124,13 @@ Decisions of the other plans stay in their issues (Section 4, tier 1). These are
 | OD-W1 | Can Anima change a rented resource (redeploy, purge a cache, restart the VPS)? | Stay read-only now (PRJ-003, PRJ-010). Add a short fixed list of actions later, each with a confirmation and an audit entry. |
 | OD-W2 | How do other persons use Anima? | Self-host first. A later service can supply the public parts only: VPN coordination, a relay and the OAuth applications. It must not be able to read data. |
 | OD-W3 | The name of the hub in the interface | Consider "anima" for the coordinator. Decide before more interface text says "hub". |
-| OD-W4 | How do commands get to the agent? | Not a decision of this plan. It is open in #34, #41 and #44, against MET-020. OD-W10 must come first. |
+| OD-W4 | How do commands get to the agent? | Not a decision of this plan. It is open in #34, #41 and #44. OD-W10 gives its direction: the agent asks the hub for work and listens on no port (USE-005, MET-020). |
 | OD-W5 | The runtime for functions that answer a request | Decide after jobs are in use. WebAssembly is one option. |
 | OD-W6 | Railpack as the image builder | Test it on one project of the operator before JOB-002 is final. |
 | OD-W7 | The compute plan says that the agent is optional and that metrics use SSH | Not a decision of this plan. #41 and #44 record that R-084 replaces that text. |
 | OD-W8 | The position of Use against the extensions in tier 3 | The operator decides. The two do not depend on each other. |
 | OD-W9 | One home with copies, or a copy on each node that syncs between nodes when the hub is down (issue #2) | **Decided (operator, 2026-11-12): one home, copies by policy.** The section "Decision" of [coordinator-standby.md](programme/proposals/coordinator-standby.md) has the operator's words. It needs a ruling number in `programme.md`. Open: what to do with issue #2. |
-| OD-W10 | Can the agent do work that the coordinator gives it? R-115 (2026-11-12) did not take "a command channel from the agent to the hub, because it would make the agent a remote-execution endpoint". Jobs, hosted applications and the model service (CAG-003) all need the agent to start work. | The operator must change or keep R-115 before C1 (#34) starts. The section "Conflict with R-115" of [jobs.md](programme/proposals/jobs.md) gives the options. |
+| OD-W10 | Can the agent do work that the coordinator gives it? R-115 did not take a command channel to the agent. | **Decided (operator, 2026-11-12): yes, one agent, on by default ("it should be on by default").** The section "Decision" of [jobs.md](programme/proposals/jobs.md) has the limits. It needs a ruling number that changes R-115. It also changes CMP-002 and the recommendation of OD-C8 (#50). |
 
 ## 8. Changes that this plan needs in other documents
 
@@ -144,4 +144,5 @@ These changes are not made. The operator must approve each one (operator checkpo
 | Extensions plan 4.2 and 9 | Add Cloudflare after verification ([new-sources.md](programme/proposals/new-sources.md)). |
 | Extensions plan 4 and 9 | Add Spotify and Screen Time after verification ([new-sources.md](programme/proposals/new-sources.md)). |
 | Extensions plan FIL-001 | Keep files on the operator's machines, not in a volume on the hub ([bulk-data-placement.md](programme/proposals/bulk-data-placement.md)). |
+| Compute plan CMP-002 and OD-C8 | A machine with the agent takes work by default (OD-W10). Issue #50 has the old recommendation. |
 | Compute plan 3.3, 12.1 and 13 | Agree with R-084 and with the new scope of #34 and #35 (#41). Make C7 the first job type of [jobs.md](programme/proposals/jobs.md). |

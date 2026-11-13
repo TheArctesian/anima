@@ -62,9 +62,10 @@ have free space, but different amounts, and some are not always on.
 
 ## Open points
 
-- A store machine must receive and send pieces. That is new work for `anima-agent`, so OD-W10
-  (work that the hub gives to the agent) applies. Until OD-W10 is decided, only the hub's own
-  machine and the standbys can be store machines.
+- A store machine must receive and send pieces. That is new work for `anima-agent`. OD-W10 is
+  decided ([jobs.md](jobs.md)): a machine with the agent takes work by default, so it is a store
+  machine by default, inside its storage limit (STO-005). "Store a piece" and "send a piece" must
+  be in the fixed list of work types (USE-006).
 - A copy outside all sites of the operator (object storage, for example R2) is optional. It is a
   rented service, so the operator decides.
 - Model files are large and are not secret. They can use the same placement without sealing, or
@@ -74,7 +75,7 @@ have free space, but different amounts, and some are not always on.
 ## Needs
 
 - A ruling number in `programme.md`.
-- The OD-W10 decision.
+- The work route of [jobs.md](jobs.md).
 - A change to FIL-001 before the engine builds the file store (#8). The engine is
   `priority: foundation`, so this proposal must be decided before E0-5 starts.
 - After approval: one issue with the labels `infrastructure`, `security` and a priority label.
