@@ -11,7 +11,7 @@ use super::{
     AuditAction, AuditTarget, Bus, ClientAddr, EventSummary, NewAudit, NewEvent, Operator,
     Severity, Signal, Source, audit, record,
 };
-use crate::ids::{DeviceId, EventId, OperatorId};
+use crate::ids::{DeviceId, EventId, OperatorId, ProjectId, SourceAccountId};
 
 mod partition_grants;
 mod partitions;
@@ -250,6 +250,34 @@ async fn log_005_audit_records_operator_client_and_change(pool: PgPool) {
     );
     assert_eq!(row.get::<Value, _>("change"), change);
     assert_eq!(row.get::<&str, _>("partition"), "events.audit_log_20310630");
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn src_003_audit_entries_for_source_account_and_project_are_stored_and_read_back(
+    pool: PgPool,
+) {
+    let mut conn = pool.acquire().await.unwrap();
+    let account = SourceAccountId::from(Uuid::now_v7());
+    let project = ProjectId::from(Uuid::now_v7());
+    for target in [
+        AuditTarget::SourceAccount(account),
+        AuditTarget::Project(project),
+    ] {
+        let mut entry = new_audit(json!({ "label": "work" }));
+        entry.target = target;
+        audit(&mut conn, day(2031, 6, 30), entry).await.unwrap();
+        let row = sqlx::query(
+            "select target_type, target_id from events.audit_log where target_type = $1",
+        )
+        .bind(target.kind())
+        .fetch_one(&mut *conn)
+        .await
+        .unwrap();
+        assert_eq!(row.get::<&str, _>("target_id"), target.id());
+    }
+    assert_eq!(AuditTarget::SourceAccount(account).kind(), "source_account");
+    assert_eq!(AuditTarget::Project(project).kind(), "project");
+    assert_eq!(AuditTarget::Project(project).id(), project.to_string());
 }
 
 #[test]

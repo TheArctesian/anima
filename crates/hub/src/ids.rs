@@ -80,6 +80,18 @@ entity_id! {
     BuildJobId,
     /// A computer the operator enrolled to build releases.
     BuilderId,
+    /// A connection to an outside source, such as one GitHub App installation.
+    SourceAccountId,
+    /// The sealed credential of a source account.
+    SourceSecretId,
+    /// One sync run of a source account.
+    SyncRunId,
+    /// A project.
+    ProjectId,
+    /// A repository of a project.
+    RepositoryId,
+    /// A resource a project uses, such as a Cloudflare or Vercel deployment.
+    ResourceId,
 }
 
 #[cfg(test)]
