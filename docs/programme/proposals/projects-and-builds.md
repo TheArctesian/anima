@@ -70,7 +70,7 @@ other identifiers keep their text.
 - **PRO-010. Anima schedules builds, and can start a workflow of GitHub Actions.** Decided:
   both. The GitHub App tells the hub about a push with a webhook. The webhook goes to the
   webhook receiver of the engine, and the hub gets it over a connection that the hub opens, so
-  the hub stays off the public internet (WHK-001 to WHK-008, SEC-008; operator, 2026-11-13:
+  the hub stays off the public internet (WHK-001 to WHK-010, SEC-008; operator, 2026-11-13:
   "I would prefer the webhook version"). The hub places the build job on a machine. The result
   goes back to the commit as a status. Anima must not register a machine as a self-hosted
   runner of GitHub Actions. Reason: one coordinator (ETH-001), and the same path works for a
@@ -149,10 +149,10 @@ SDK. Nothing is changed. Put this on issue #1 or make a defect issue.
 - How a builder gets a project secret for one job. JOB-010 says that a client releases it. The
   extensions plan now says that the hub seals and opens each secret (VLT-007, OD-E12, on the
   branch `claude/spec-cli-distribution`). The two texts do not agree. The operator decides.
-- Where the webhook receiver runs (OD-E15, not decided): a Cloudflare Worker with a queue, or a
-  small program on the VPS with one public port. Each changes SITE-006 ("the website is the
-  only public part of Anima") and needs the confirmation of the operator (VPS-005). Builds from
-  a push need the receiver; until it exists, the slow poll is the only path.
+- The webhook receiver runs on the VPS, as a separate small program with one public port
+  (OD-E15, operator, 2026-11-13: "on the VPS"; WHK-001 to WHK-010). It changes SITE-006 ("the
+  website is the only public part of Anima"). To open the port needs the confirmation of the
+  operator at that time (VPS-005). Until the receiver exists, the slow poll is the only path.
 - The first GitHub functions that make a change (OD-E14) are not decided. PRO-010 and PRO-020
   need three of them: write a commit status, start a workflow by hand, start a workflow run
   again.
