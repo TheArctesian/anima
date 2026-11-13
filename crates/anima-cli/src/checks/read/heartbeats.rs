@@ -48,8 +48,7 @@ impl HeartbeatsArgs {
             let device = self
                 .check
                 .device()
-                .map(|device| format!(" --device {}", shell_word(device)))
-                .unwrap_or_default();
+                .map_or_default(|device| format!(" --device {}", shell_word(device)));
             invocation.output.note(&format!(
                 "{} heartbeats. Next page: anima check heartbeats {}{device} --after {cursor} (or --all)",
                 beats.edges.len(),

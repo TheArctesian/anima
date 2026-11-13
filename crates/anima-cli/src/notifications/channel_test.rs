@@ -40,11 +40,10 @@ impl TestArgs {
 
 /// The hub's fixed reason for the failure, and the HTTP or SMTP code when it has one.
 fn not_delivered(delivery: &channel_test::ChannelTestSendTestNotification) -> String {
-    let reason = delivery.reason.as_ref().map(enum_name).unwrap_or_default();
+    let reason = delivery.reason.as_ref().map_or_default(enum_name);
     let code = delivery
         .code
-        .map(|code| format!(", code {code}"))
-        .unwrap_or_default();
+        .map_or_default(|code| format!(", code {code}"));
     format!(
         "The test message to {} was not delivered ({reason}{code}).",
         clean(&delivery.channel_name)

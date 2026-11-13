@@ -111,12 +111,10 @@ fn notification_rows(table: &mut Table, notifications: &check_get::CheckGetCheck
 fn heartbeat_line(beat: &check_get::CheckGetCheckLastHeartbeat) -> String {
     let time = beat
         .response_time_ms
-        .map(|ms| format!(" {ms} ms"))
-        .unwrap_or_default();
+        .map_or_default(|ms| format!(" {ms} ms"));
     let message = beat
         .message
         .as_ref()
-        .map(|text| format!(" {text}"))
-        .unwrap_or_default();
+        .map_or_default(|text| format!(" {text}"));
     format!("{} {}{time}{message}", beat.at, enum_name(&beat.status))
 }

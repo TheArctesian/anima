@@ -60,7 +60,6 @@ fn ending(job: &build_job_updated::BuildJobUpdatedBuildJobUpdatedJob) -> Option<
     let reason = job
         .failure_reason
         .as_deref()
-        .map(|reason| format!(": {}", clean(reason)))
-        .unwrap_or_default();
+        .map_or_default(|reason| format!(": {}", clean(reason)));
     Some(format!("The job is {}{reason}.", enum_name(&job.state)))
 }

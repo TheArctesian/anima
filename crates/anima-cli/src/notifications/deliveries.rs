@@ -98,7 +98,7 @@ pub fn result_cell(ok: bool, reason: Option<&impl serde::Serialize>, code: Optio
     if ok {
         return Cell::toned("ok", Tone::Good);
     }
-    let reason = reason.map(enum_name).unwrap_or_default();
-    let code = code.map(|code| format!(" {code}")).unwrap_or_default();
+    let reason = reason.map_or_default(enum_name);
+    let code = code.map_or_default(|code| format!(" {code}"));
     Cell::toned(&format!("failed: {reason}{code}"), Tone::Bad)
 }

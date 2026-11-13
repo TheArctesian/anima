@@ -62,7 +62,7 @@ fn last_delivery(channel: &Channel) -> Cell {
         None => Cell::toned("never", Tone::Muted),
         Some(delivery) if delivery.ok => Cell::toned(&format!("ok {}", delivery.at), Tone::Good),
         Some(delivery) => {
-            let reason = delivery.reason.as_ref().map(enum_name).unwrap_or_default();
+            let reason = delivery.reason.as_ref().map_or_default(enum_name);
             Cell::toned(&format!("failed {reason} {}", delivery.at), Tone::Bad)
         }
     }

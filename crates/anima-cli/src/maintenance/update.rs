@@ -34,16 +34,13 @@ impl UpdateArgs {
         let window = find(&hub, &self.window).await?;
         let id = window.id.clone();
         let existing = serde_json::to_value(&window).unwrap_or_default();
-        let base = existing
-            .as_object()
-            .map(|fields| {
-                fields
-                    .iter()
-                    .filter(|(key, _)| INPUT.contains(&key.as_str()))
-                    .map(|(key, value)| (key.clone(), value.clone()))
-                    .collect()
-            })
-            .unwrap_or_default();
+        let base = existing.as_object().map_or_default(|fields| {
+            fields
+                .iter()
+                .filter(|(key, _)| INPUT.contains(&key.as_str()))
+                .map(|(key, value)| (key.clone(), value.clone()))
+                .collect()
+        });
         let input = into_input(self.fields.apply(base)?)?;
         let answer = hub
             .run::<MaintenanceUpdate>(maintenance_update::Variables { id, input })
