@@ -68,16 +68,19 @@ other identifiers keep their text.
   extensions. Fine-tuning (C7, #40) is the second job type. This is the order of the work only:
   Projects stays an extension that is off in a new installation (EXT-005, OD-E13).
 - **PRO-010. Anima schedules builds, and can start a workflow of GitHub Actions.** Decided:
-  both. The hub finds a push when it polls GitHub (PRJ-019: the webhook of the App is off). The
-  hub places the build job on a machine. The result goes back to the commit as a status. Anima
-  must not register a machine as a self-hosted runner of GitHub Actions. Reason: one coordinator
-  (ETH-001), and the same path works for a different forge (PRO-007).
+  both. The GitHub App tells the hub about a push with a webhook. The webhook goes to the
+  webhook receiver of the engine, and the hub gets it over a connection that the hub opens, so
+  the hub stays off the public internet (WHK-001 to WHK-008, SEC-008; operator, 2026-11-13:
+  "I would prefer the webhook version"). The hub places the build job on a machine. The result
+  goes back to the commit as a status. Anima must not register a machine as a self-hosted
+  runner of GitHub Actions. Reason: one coordinator (ETH-001), and the same path works for a
+  different forge (PRO-007).
 - **PRO-020.** For a repository that has workflows, Anima can start a workflow by hand and can
   start a workflow run again. Each is a named GitHub function (PRJ-027, OD-E14). The run stays
   on the runners of GitHub. Anima shows its state (Section 4.2 of the extensions plan).
-- **PRO-021.** The hub must not start a second build for a commit that it has built. The poll
-  interval is the longest time between a push and the start of its build; the project page must
-  show the time of the last poll.
+- **PRO-021.** The hub must not start a second build for a commit that it has built. A webhook
+  is a signal to read, not the record: a slow poll must find a push whose webhook was lost. The
+  project page must show the time of the last webhook and of the last poll.
 - **PRO-011. Native jobs on a Mac come early.** Decided. A job has two kinds: a container job
   (the default) and a native job on a Mac. Use a native job only when the work needs macOS
   directly, for example a macOS or iOS build.
@@ -146,7 +149,10 @@ SDK. Nothing is changed. Put this on issue #1 or make a defect issue.
 - How a builder gets a project secret for one job. JOB-010 says that a client releases it. The
   extensions plan now says that the hub seals and opens each secret (VLT-007, OD-E12, on the
   branch `claude/spec-cli-distribution`). The two texts do not agree. The operator decides.
-- The poll interval for pushes (PRO-021), within the rate limit of an installation token.
+- Where the webhook receiver runs (OD-E15, not decided): a Cloudflare Worker with a queue, or a
+  small program on the VPS with one public port. Each changes SITE-006 ("the website is the
+  only public part of Anima") and needs the confirmation of the operator (VPS-005). Builds from
+  a push need the receiver; until it exists, the slow poll is the only path.
 - The first GitHub functions that make a change (OD-E14) are not decided. PRO-010 and PRO-020
   need three of them: write a commit status, start a workflow by hand, start a workflow run
   again.
