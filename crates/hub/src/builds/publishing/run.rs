@@ -7,7 +7,7 @@
 //! leaves `latest.json` as it was (BLD-070). Once a feed write was sent, a later try only
 //! confirms the feed (D-25).
 
-use chrono::TimeDelta;
+use chrono::{DateTime, TimeDelta, Utc};
 use reqwest::Client;
 use sqlx::PgPool;
 use updater_signature::Prehash;
@@ -58,9 +58,9 @@ pub(super) struct Work {
     pub(super) floor: Option<Version>,
     /// An earlier try sent a feed write for the job (D-25).
     pub(super) feed_sent: bool,
-    /// The time in the signature's trusted comment, in seconds since the Unix epoch: when the
-    /// job reached `uploading`, the same on every try (R-116).
-    pub(super) signed_at: u64,
+    /// The time in the signature's trusted comment: when the job reached `uploading`, the same
+    /// on every try (R-116).
+    pub(super) signed_at: DateTime<Utc>,
 }
 
 /// What a publish reaches: the bucket, the HTTP client, and the clock read for each signed

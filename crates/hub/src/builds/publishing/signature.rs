@@ -5,6 +5,7 @@
 //! comment's time is the time the job reached `uploading`, so a retry writes what an earlier try
 //! wrote (D-25). A signature or key never reaches a log or a refusal (LOG-007).
 
+use chrono::{DateTime, Utc};
 use updater_signature::Signed;
 
 use super::{
@@ -38,6 +39,14 @@ fn unsigned(name: &str, version: &str) -> Stop {
     ))
 }
 
+/// The trusted comment's time of a job that reached `uploading` at `at`, in seconds since the
+/// Unix epoch. A time before 1970 has none, and is refused rather than signed as 1970.
+pub(super) fn signed_time(at: DateTime<Utc>) -> Result<u64, Stop> {
+    u64::try_from(at.timestamp()).map_err(|_| {
+        Stop::Refused("The job's upload time is before 1970; the hub cannot sign it.".to_owned())
+    })
+}
+
 /// Signs the verified updater file for the job's version, then checks the signature on a second
 /// read of the same object, which must still have the checked `ETag`, size and SHA-256: the
 /// signature is over exactly the verified bytes (BLD-046, BLD-064). Returns the `.sig` text.
@@ -49,7 +58,7 @@ pub(super) async fn sign(
     let version = work.version.to_string();
     let name = verified.file.name.as_str();
     let signed = Signed {
-        timestamp: work.signed_at,
+        timestamp: signed_time(work.signed_at)?,
         file_name: name,
         version: &version,
     };

@@ -66,7 +66,6 @@ pub(super) async fn take(
     let feed = store::feed_of(&mut *tx, job.id).await?.unwrap_or_default();
     let published = store::published_versions(&mut *tx, job.target).await?;
     tx.commit().await?;
-    let signed_at = job.times.uploading.unwrap_or(job.created_at).timestamp();
     let work = Work {
         target: job.target,
         version: job.version,
@@ -74,7 +73,7 @@ pub(super) async fn take(
         feed,
         floor: published.iter().filter_map(|v| v.parse().ok()).max(),
         feed_sent,
-        signed_at: u64::try_from(signed_at).unwrap_or(0),
+        signed_at: job.times.uploading.unwrap_or(job.created_at),
     };
     Ok(Some((
         Tried {

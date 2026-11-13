@@ -6,12 +6,17 @@
 use std::io::Cursor;
 
 use base64::{Engine as _, engine::general_purpose::STANDARD};
+use chrono::DateTime;
 use minisign::SignatureBox;
 use updater_signature::{Prehash, PublicKey, SignatureError, Signed};
 
 use super::{tauri_key, updater_key};
 use crate::{
-    builds::publishing::updater_key::{UpdaterKey, UpdaterKeyError},
+    builds::publishing::{
+        signature::signed_time,
+        transfer::Stop,
+        updater_key::{UpdaterKey, UpdaterKeyError},
+    },
     config::Releases,
 };
 
@@ -206,4 +211,16 @@ fn r_108_the_app_updater_key_is_one_the_hub_reads() {
         PublicKey::from_key_file(pubkey).is_ok(),
         "plugins.updater.pubkey is not a minisign public key"
     );
+}
+
+/// R-116, T6 review: the trusted comment's time is the job's upload time in Unix seconds; a time
+/// before 1970 is refused, never signed as 1970.
+#[test]
+fn r_116_a_job_time_before_1970_is_refused_not_signed_as_1970() {
+    let at = DateTime::from_timestamp(1_888_000_000, 0).unwrap();
+    assert!(matches!(signed_time(at), Ok(1_888_000_000)));
+    let epoch = DateTime::from_timestamp(0, 0).unwrap();
+    assert!(matches!(signed_time(epoch), Ok(0)));
+    let before = DateTime::from_timestamp(-1, 0).unwrap();
+    assert!(matches!(signed_time(before), Err(Stop::Refused(reason)) if reason.contains("1970")));
 }
