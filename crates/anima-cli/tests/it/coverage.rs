@@ -198,3 +198,122 @@ fn cmd_004_every_document_is_typed_by_a_query_path() {
         );
     }
 }
+
+/// A source file with its comment lines removed, so a doc comment never counts as a use.
+struct Source {
+    path: PathBuf,
+    code: String,
+}
+
+fn sources_outside_mcp() -> Vec<Source> {
+    let mcp = crate_source().join("mcp");
+    files(&crate_source(), "rs")
+        .into_iter()
+        .filter(|path| !path.starts_with(&mcp))
+        .map(|path| {
+            let text = std::fs::read_to_string(&path).expect("source");
+            let code = text
+                .lines()
+                .filter(|line| !line.trim_start().starts_with("//"))
+                .collect::<Vec<_>>()
+                .join("\n");
+            Source { path, code }
+        })
+        .collect()
+}
+
+/// Whether `word` is in `code` as a whole identifier.
+fn has_word(code: &str, word: &str) -> bool {
+    code.match_indices(word).any(|(start, _)| {
+        let before = code[..start].chars().next_back();
+        let after = code[start + word.len()..].chars().next();
+        let part = |c: char| c.is_alphanumeric() || c == '_';
+        !before.is_some_and(part) && !after.is_some_and(part)
+    })
+}
+
+/// The `pub struct XArgs` and `pub enum XCommand` a file declares: the commands it holds.
+fn command_types(code: &str) -> Vec<&str> {
+    code.lines()
+        .filter_map(|line| {
+            let line = line.trim();
+            line.strip_prefix("pub struct ")
+                .or_else(|| line.strip_prefix("pub enum "))
+        })
+        .map(|rest| rest.split(['{', '(', ';', ' ']).next().unwrap_or_default())
+        .filter(|name| name.ends_with("Args") || name.ends_with("Command"))
+        .collect()
+}
+
+/// Whether `other` can hold the enum that wires `child` in: a file of the same folder, a
+/// module file above it (`devices.rs` for `devices/wake.rs`), or, for a file at the crate
+/// root, any other file.
+fn can_wire(other: &Path, child: &Path) -> bool {
+    if other == child {
+        return false;
+    }
+    let root = crate_source();
+    let mut folder = child.parent().expect("a folder");
+    if folder == root || other.parent() == Some(folder) {
+        return true;
+    }
+    while folder != root {
+        if other == folder.with_extension("rs") {
+            return true;
+        }
+        folder = folder.parent().expect("a folder");
+    }
+    false
+}
+
+/// The document types a `documents.rs` declares: `pub struct Name;`.
+fn declared_documents() -> Vec<(String, PathBuf)> {
+    files(&crate_source(), "rs")
+        .into_iter()
+        .filter(|path| path.file_name().is_some_and(|name| name == "documents.rs"))
+        .flat_map(|path| {
+            let text = std::fs::read_to_string(&path).expect("source");
+            text.lines()
+                .filter_map(|line| line.trim().strip_prefix("pub struct "))
+                .filter_map(|rest| rest.strip_suffix(';'))
+                .map(|name| (name.to_owned(), path.clone()))
+                .collect::<Vec<_>>()
+        })
+        .collect()
+}
+
+/// CMD-031: a document counts as used only when a call that names it (`run::<T>`,
+/// `open::<T>`, `send_wiping::<T>`, `<T as GraphQLQuery>`) outside the documents files has a
+/// command in the same file that another file names, so a command taken out of its enum
+/// leaves its document unused.
+#[test]
+fn cmd_031_every_document_is_called_by_a_command_that_is_wired_in() {
+    let sources = sources_outside_mcp();
+    let documents = declared_documents();
+    assert!(documents.len() > 60, "found {} documents", documents.len());
+    let mut unused = Vec::new();
+    for (name, declared_in) in &documents {
+        let called = sources.iter().any(|source| {
+            let is_documents = source.path.file_name().is_some_and(|n| n == "documents.rs");
+            let calls = source.code.contains(&format!("::<{name}>"))
+                || source.code.contains(&format!("<{name} as "));
+            if is_documents || !calls {
+                return false;
+            }
+            let commands = command_types(&source.code);
+            commands.is_empty()
+                || commands.iter().any(|command| {
+                    sources.iter().any(|other| {
+                        can_wire(&other.path, &source.path) && has_word(&other.code, command)
+                    })
+                })
+        });
+        if !called {
+            unused.push(format!("{name} ({})", declared_in.display()));
+        }
+    }
+    assert!(
+        unused.is_empty(),
+        "documents no wired-in command calls (delete them or wire the command): {unused:?}"
+    );
+}
