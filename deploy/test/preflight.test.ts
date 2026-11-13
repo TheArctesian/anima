@@ -299,4 +299,17 @@ describe("preflight updater key pair (R-116, D-44)", () => {
       });
     },
   );
+
+  test("C-7 warns of each other name in the updater folder but passes, and prints no value", async () => {
+    await withFolder(async (folder) => {
+      withPair(folder);
+      write(folder, "updater/updater_key.bak", "updater-value-1");
+      write(folder, "updater/.updater_key.swp", "updater-value-2");
+      const result = await preflight("secrets", folder);
+      expect(result.ok).toBe(true);
+      expect(result.message).toContain("'updater_key.bak', which is not part of the updater key pair");
+      expect(result.message).toContain("'.updater_key.swp', which is not part of the updater key pair");
+      expect(result.message).not.toContain("updater-value-");
+    });
+  });
 });

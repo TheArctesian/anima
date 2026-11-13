@@ -210,6 +210,18 @@ check_updater_key() {
     if [ -e "$1/updater_key_password" ]; then
         check_updater_file "$1/updater_key_password"
     fi
+    if [ -d "$1" ]; then warn_strays "$1"; fi
+}
+
+# warn_strays FOLDER: warns of each name in the updater folder other than the pair, such as a
+# backup, a `.pub` file or an editor's swap file; the hub can read every one of them (C-7).
+warn_strays() {
+    ls -A "$1" | while IFS= read -r entry; do
+        case $entry in
+        updater_key | updater_key_password) ;;
+        *) echo "preflight: warning: $1 holds '$entry', which is not part of the updater key pair; move it out of the folder the hub reads" >&2 ;;
+        esac
+    done
 }
 
 # check_updater_file FILE: mode 0440 in the hub's group, which the hub reads it through.

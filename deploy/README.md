@@ -290,7 +290,8 @@ step (VPS-005): agents do not create the R2 token or change `deploy/.env` on the
   refuses to create a container whose secret file is absent; with the folder, a hub without the
   key still starts, with publishing off (D-44). Run preflight as root,
   `sudo sh -c 'set -a; . ./.env; set +a; sh bin/preflight'`: it cannot search the folder
-  otherwise, and says so. It warns, and passes, when either file is absent. A folder that holds a
+  otherwise, and says so. It warns, and passes, when either file is absent, and for any other
+  name in the folder (a backup, a `.pub` file, an editor's swap file: the hub can read it). A folder that holds a
   file must be `root:10001` mode `0750`; a file that is there must be mode `0440` in group 10001,
   and `updater_key` must not be empty. The hub opens the key once at start and never logs it, its
   password or its seed. Install the pair before you deploy a hub that signs (WP-36 T6): until then
