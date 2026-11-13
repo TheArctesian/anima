@@ -22,7 +22,6 @@ async fn bld_086_a_fourth_published_version_removes_the_oldest_versions_objects(
     assert_eq!(publishing.sweep(later(3)).await, 1);
     assert_eq!(publishing.job(&held).await, ("published".to_owned(), None));
 
-    let name = &files[0].name;
     let mut deletes = publishing.fake.with(|store| store.deletes.clone());
     deletes.sort();
     let mut expected: Vec<String> = oldest
@@ -32,8 +31,10 @@ async fn bld_086_a_fourth_published_version_removes_the_oldest_versions_objects(
         .collect();
     expected.sort();
     assert_eq!(deletes, expected);
-    for kept in ["0.1.2", "0.1.3", "0.1.4"] {
-        let key = format!("linux-x86_64/{kept}/{name}");
+    let newest = (published[1].0, &published[1].2);
+    let kept = [newest, (published[2].0, &published[2].2), ("0.1.4", &files)];
+    for (version, files) in kept {
+        let key = format!("linux-x86_64/{version}/{}", files[0].name);
         assert!(publishing.fake.object(&key).is_some(), "{key}");
     }
     assert!(publishing.fake.object(LINUX_FEED).is_some());
