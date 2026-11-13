@@ -1,19 +1,24 @@
-//! The command tree. A new noun adds one variant to [`Command`] and one arm to
-//! [`Command::run`], beside its `mod` line in `lib.rs`; nothing else here changes.
+//! The command tree. Nouns are grouped by what the operator works on: `fleet` (devices and how
+//! they are reached), `hub_records` (what the hub keeps) and `program` (the program itself). A new
+//! noun adds one variant and one arm to the group it belongs to, beside its `mod` line in `lib.rs`.
 
 use std::ffi::OsString;
 use std::process::ExitCode;
 
-use clap::{CommandFactory as _, Parser};
+use clap::Parser;
 
 use crate::environment::Environment;
 use crate::failure::{Failure, exit};
 use crate::invocation::{Globals, Invocation};
 use crate::output::Output;
-use crate::{
-    api, auth, builders, checks, contexts, devices, events, keys, maintenance, notifications,
-    releases, retention, sessions, vpn,
-};
+
+mod fleet;
+mod hub_records;
+mod program;
+
+use fleet::FleetCommand;
+use hub_records::HubRecordCommand;
+use program::ProgramCommand;
 
 /// The command line for an Anima hub.
 #[derive(Debug, Parser)]
@@ -25,140 +30,23 @@ pub struct Cli {
     command: Command,
 }
 
+/// The groups the operator thinks in; each noun lives in exactly one.
 #[derive(Debug, clap::Subcommand)]
 enum Command {
-    /// Sign in and out (login, logout, status).
-    Auth {
-        #[command(subcommand)]
-        command: auth::AuthCommand,
-    },
-    /// Named hubs (list, add, use, remove).
-    Context {
-        #[command(subcommand)]
-        command: contexts::ContextCommand,
-    },
-    /// Devices (list, get, create, update, delete, wake, test, metrics, uptime, credential, trust).
-    Device {
-        #[command(subcommand)]
-        command: devices::DeviceCommand,
-    },
-    /// Releases of the desktop application (list, next-version, create, cancel, log).
-    Release {
-        #[command(subcommand)]
-        command: releases::ReleaseCommand,
-    },
-    /// Release builders (list, enrol, revoke).
-    Builder {
-        #[command(subcommand)]
-        command: builders::BuilderCommand,
-    },
-    /// The VPN (status, invite, router-key, register, renew, approve-route).
-    Vpn {
-        #[command(subcommand)]
-        command: vpn::VpnCommand,
-    },
-    /// Checks (list, get, create, update, delete, pause, resume, heartbeats, defaults, notifications).
-    Check {
-        #[command(subcommand)]
-        command: checks::CheckCommand,
-    },
-    /// Maintenance windows (list, create, update, delete, start, stop).
-    Maintenance {
-        #[command(subcommand)]
-        command: maintenance::MaintenanceCommand,
-    },
-    /// Events (list, watch).
-    Event {
-        #[command(subcommand)]
-        command: events::EventCommand,
-    },
-    /// The audit trail (list).
-    Audit {
-        #[command(subcommand)]
-        command: events::AuditCommand,
-    },
-    /// Notification channels, settings and deliveries.
-    Notify {
-        #[command(subcommand)]
-        command: notifications::NotifyCommand,
-    },
-    /// How long the hub keeps records (list, set).
-    Retention {
-        #[command(subcommand)]
-        command: retention::RetentionCommand,
-    },
-    /// API keys (list, create, revoke).
-    Key {
-        #[command(subcommand)]
-        command: keys::KeyCommand,
-    },
-    /// Sites (list, create, set-wake-relay).
-    Site {
-        #[command(subcommand)]
-        command: crate::sites::SiteCommand,
-    },
-    /// Tags (list).
-    Tag {
-        #[command(subcommand)]
-        command: crate::tags::TagCommand,
-    },
-    /// Web interfaces of devices (list, create, update, delete, suggestion, accept-certificate).
-    Web {
-        #[command(subcommand)]
-        command: crate::web_interfaces::WebCommand,
-    },
-    /// Metrics agents (status, enrol, revoke).
-    Agent {
-        #[command(subcommand)]
-        command: crate::agents::AgentCommand,
-    },
-    /// Remote sessions (list, end).
-    Session {
-        #[command(subcommand)]
-        command: sessions::SessionCommand,
-    },
-    /// A terminal on a device through the hub (login token only).
-    Ssh(sessions::terminal::SshArgs),
-    /// Files on a device through the hub (ls, get, put; login token only).
-    Files {
-        #[command(subcommand)]
-        command: sessions::files::FilesCommand,
-    },
-    /// Send a GraphQL document and print the hub's answer.
-    Api(api::ApiArgs),
-    /// Print shell completion.
-    Completion { shell: clap_complete::Shell },
+    #[command(flatten)]
+    Fleet(FleetCommand),
+    #[command(flatten)]
+    HubRecord(HubRecordCommand),
+    #[command(flatten)]
+    Program(ProgramCommand),
 }
 
 impl Command {
     async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         match self {
-            Self::Auth { command } => command.run(invocation).await,
-            Self::Context { command } => command.run(invocation),
-            Self::Device { command } => command.run(invocation).await,
-            Self::Release { command } => command.run(invocation).await,
-            Self::Builder { command } => command.run(invocation).await,
-            Self::Vpn { command } => command.run(invocation).await,
-            Self::Check { command } => command.run(invocation).await,
-            Self::Maintenance { command } => command.run(invocation).await,
-            Self::Event { command } => command.run(invocation).await,
-            Self::Audit { command } => command.run(invocation).await,
-            Self::Notify { command } => command.run(invocation).await,
-            Self::Retention { command } => command.run(invocation).await,
-            Self::Key { command } => command.run(invocation).await,
-            Self::Site { command } => command.run(invocation).await,
-            Self::Tag { command } => command.run(invocation).await,
-            Self::Web { command } => command.run(invocation).await,
-            Self::Agent { command } => command.run(invocation).await,
-            Self::Session { command } => command.run(invocation).await,
-            Self::Ssh(args) => args.run(invocation).await,
-            Self::Files { command } => command.run(invocation).await,
-            Self::Api(args) => args.run(invocation).await,
-            Self::Completion { shell } => {
-                let mut command = Cli::command();
-                clap_complete::generate(shell, &mut command, "anima", &mut std::io::stdout());
-                Ok(())
-            }
+            Self::Fleet(command) => command.run(invocation).await,
+            Self::HubRecord(command) => command.run(invocation).await,
+            Self::Program(command) => command.run(invocation).await,
         }
     }
 }
