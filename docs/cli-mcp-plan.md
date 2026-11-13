@@ -324,11 +324,13 @@ Read tools are `allow` and change tools are `off` by default (MCP-002). L: needs
    `anima mcp` with a login token. That gives the agent more than INT-003 permits an API key.
    They are `off` until the operator sets them to `allow` or `ask` (MCP-002); the operator can
    decide to remove them.
-4. **Distribution.** Decided (operator, 2026-11-13), not built: `anima` is inside the disk image
-   and the AppImage of the desktop application, at the same version, and the application puts it
-   on the `PATH` (design specification Section 3.11, INS-001 to INS-009). There is no package
-   manager channel (INS-008). Three mechanisms are not verified (design specification OD-16,
-   OD-17, OD-18).
+4. **Distribution.** Decided (operator, 2026-11-13) and built (branch `fix/bundle-anima`):
+   `anima` is inside the disk image and the AppImage of the desktop application, at the same
+   version, and Settings > Updates > Command line tool puts it on the `PATH` (design
+   specification Section 3.11, INS-001 to INS-009). There is no package manager channel
+   (INS-008). The mechanisms are decided by the implementation and need a real release to
+   confirm the signature, the notarization and the AppImage launcher (design specification
+   OD-16, OD-17, OD-18).
 5. **MCP protocol version.** The current revision is 2026-07-28. The Rust SDK (`rmcp`) can speak
    it and the earlier revisions. Which revision each coding agent uses was not verified.
 6. **SNMP secrets after a host change.** The hub keeps a check's SNMP community and v3 passwords

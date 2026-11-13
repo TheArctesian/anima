@@ -4,6 +4,16 @@
 MCP-001 to MCP-017). A coding agent starts it and calls its tools. It uses the same hub and
 token as the `anima` command line.
 
+## 0. Install `anima`
+
+`anima` comes with the desktop application; there is no other download (INS-001, INS-002).
+
+1. Install Anima from `Anima.dmg` (macOS: drag it to Applications, then open it from there) or
+   from `Anima-x86_64.AppImage` (Linux).
+2. In Anima, open Settings > Updates > Command line tool. Select **Install**, check the path it
+   shows, then select **Confirm**. If the row shows a line for your shell profile, add it.
+3. In a new terminal, `anima --version` prints the version of the application.
+
 ## 1. Make an API key
 
 Give the agent an API key, not your login. Make a read key first:
