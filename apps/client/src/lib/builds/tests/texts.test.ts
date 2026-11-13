@@ -55,6 +55,11 @@ describe('the Builds row texts (BLD-020)', () => {
     expect(Object.keys(TOOL_NAMES).some((tool) => tool.startsWith('updater-key'))).toBe(false);
   });
 
+  it('BLD-028: a missing darwin Rust target names the target and the rustup command to add it', () => {
+    expect(TOOL_NAMES['rust-target-x86_64-apple-darwin']).toContain('rustup target add x86_64-apple-darwin');
+    expect(TOOL_NAMES['rust-target-aarch64-apple-darwin']).toContain('rustup target add aarch64-apple-darwin');
+  });
+
   it('BLD-020: names the platform once the shell has answered', () => {
     expect(thisPlatformText(null, false)).toBe('');
     expect(thisPlatformText(null, true)).toBe('This computer could not say which platform it is.');

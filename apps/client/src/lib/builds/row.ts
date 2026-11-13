@@ -12,6 +12,10 @@ export const TOOL_NAMES: Readonly<Record<BuilderTool, string>> = {
   'tauri-packages': 'the Tauri system packages',
   'updater-public-key': "this app's updater public key (an app built with the placeholder cannot build releases)",
   'signing-identity': 'the Developer ID certificate in the login keychain',
+  'rust-target-aarch64-apple-darwin':
+    'the Rust standard library for aarch64-apple-darwin (with rustup: rustup target add aarch64-apple-darwin)',
+  'rust-target-x86_64-apple-darwin':
+    'the Rust standard library for x86_64-apple-darwin (with rustup: rustup target add x86_64-apple-darwin)',
 };
 
 const OS_NAMES: Readonly<Record<BuilderPlatform['os'], string>> = { LINUX: 'Linux', MACOS: 'macOS' };

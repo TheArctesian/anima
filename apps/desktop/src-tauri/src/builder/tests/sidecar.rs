@@ -1,5 +1,6 @@
 //! The `anima` program in the release (INS-002, INS-003, OD-16, OD-17): its build, where it is
-//! put for the bundle, and the checks of the bundle that carries it.
+//! put for the bundle, the checks of the bundle that carries it, and the Rust targets a universal
+//! build needs before a job is claimed (BLD-028).
 
 use std::{
     fs,
@@ -9,10 +10,12 @@ use std::{
 
 use crate::builder::{
     artifact,
+    environment::Environment,
     error::BuilderError,
     job::{Target, Version},
     plan::Program,
     sidecar,
+    tools::{self, Tool},
 };
 
 fn args(command: &crate::builder::plan::Command) -> Vec<&str> {
@@ -185,4 +188,46 @@ fn ins_002_staging_copies_cargos_output_and_never_writes_through_a_planted_link(
         artifact::stage(&clone, &escape, &staged),
         Err(BuilderError::Bundle)
     );
+}
+
+/// `exists` for a sysroot `/toolchain` that has the standard library of each of `triples`.
+fn toolchain_with(triples: &'static [&'static str]) -> impl Fn(&Path) -> bool {
+    move |path: &Path| {
+        triples
+            .iter()
+            .any(|triple| path == Path::new("/toolchain/lib/rustlib").join(triple).join("lib"))
+    }
+}
+
+#[test]
+fn bld_028_a_universal_build_needs_both_darwin_standard_libraries() {
+    let sysroot = Some(Path::new("/toolchain"));
+    let both = toolchain_with(&["aarch64-apple-darwin", "x86_64-apple-darwin"]);
+    assert_eq!(
+        tools::rust_targets(Target::DarwinUniversal, sysroot, both),
+        []
+    );
+    // A system toolchain, as Homebrew's, carries the host's library only.
+    let host = toolchain_with(&["aarch64-apple-darwin"]);
+    assert_eq!(
+        tools::rust_targets(Target::DarwinUniversal, sysroot, host),
+        [Tool::RustTargetX86_64Darwin]
+    );
+    assert_eq!(
+        tools::rust_targets(Target::DarwinUniversal, None, |_| true),
+        [Tool::RustTargetAarch64Darwin, Tool::RustTargetX86_64Darwin]
+    );
+    assert_eq!(
+        tools::rust_targets(Target::LinuxX86_64, None, |_| false),
+        []
+    );
+    let json = serde_json::to_string(&[Tool::RustTargetX86_64Darwin]).unwrap();
+    assert_eq!(json, r#"["rust-target-x86_64-apple-darwin"]"#);
+}
+
+#[test]
+fn bld_028_the_sysroot_is_read_from_the_rustc_the_steps_find() {
+    let env = Environment::from_parent(std::env::vars_os());
+    let sysroot = tools::readings::rust_sysroot(&env, Path::new("/")).expect("a rustc");
+    assert!(sysroot.join("lib/rustlib").is_dir(), "{sysroot:?}");
 }

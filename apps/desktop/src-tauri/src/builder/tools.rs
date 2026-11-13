@@ -30,6 +30,40 @@ pub enum Tool {
     /// The login keychain has no valid identity named `bundle.macOS.signingIdentity`, so this
     /// Mac cannot sign a release (BLD-083).
     SigningIdentity,
+    /// The Rust toolchain that builds has no standard library for `aarch64-apple-darwin`; the
+    /// universal app and `anima` need it (BLD-043, INS-002).
+    #[serde(rename = "rust-target-aarch64-apple-darwin")]
+    RustTargetAarch64Darwin,
+    /// The same for `x86_64-apple-darwin`: `rustup target add x86_64-apple-darwin` with rustup.
+    #[serde(rename = "rust-target-x86_64-apple-darwin")]
+    RustTargetX86_64Darwin,
+}
+
+/// The Rust targets a `darwin-universal` build compiles, and the tool each one's absence is.
+const DARWIN_TARGETS: [(&str, Tool); 2] = [
+    ("aarch64-apple-darwin", Tool::RustTargetAarch64Darwin),
+    ("x86_64-apple-darwin", Tool::RustTargetX86_64Darwin),
+];
+
+/// The Rust targets whose standard library is missing for `target`: none for Linux, which builds
+/// for the host. `sysroot` is what `rustc --print sysroot` printed for the toolchain the steps
+/// run, rustup's or a system one; `None` when it printed nothing, so every target is missing.
+/// A target is there when `<sysroot>/lib/rustlib/<triple>/lib` exists.
+pub fn rust_targets(
+    target: Target,
+    sysroot: Option<&Path>,
+    exists: impl Fn(&Path) -> bool,
+) -> Vec<Tool> {
+    if target != Target::DarwinUniversal {
+        return Vec::new();
+    }
+    DARWIN_TARGETS
+        .iter()
+        .filter(|(triple, _)| {
+            !sysroot.is_some_and(|root| exists(&root.join("lib/rustlib").join(triple).join("lib")))
+        })
+        .map(|(_, tool)| *tool)
+        .collect()
 }
 
 /// The length of a minisign public key: `Ed`, the 8-byte key ID and the 32-byte key.

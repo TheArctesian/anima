@@ -119,6 +119,14 @@ describe('toolCheckFrom (BLD-028)', () => {
     });
   });
 
+  it('BLD-028: a Mac without the x86_64 standard library lists that target as missing', () => {
+    expect(toolCheckFrom({ os: 'MACOS', arch: 'AARCH64', missing: ['rust-target-x86_64-apple-darwin'] })).toEqual({
+      os: 'MACOS',
+      arch: 'AARCH64',
+      missing: ['rust-target-x86_64-apple-darwin'],
+    });
+  });
+
   it.each([
     null,
     'LINUX',
