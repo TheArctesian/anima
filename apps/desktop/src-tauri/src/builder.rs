@@ -145,7 +145,7 @@ pub async fn builder_tools_check<R: Runtime>(
         Target::DarwinUniversal => ("MACOS", "AARCH64"),
     };
     let app_key = tools::app_public_key(crate::updater_key::app_public_key(&app).as_deref());
-    let identity = app.config().bundle.macos.signing_identity.clone();
+    let identity = tools::readings::signing_identity();
     let mut missing = tauri::async_runtime::spawn_blocking(move || {
         let env = Environment::from_parent(std::env::vars_os());
         let key = tools::readings::key_readiness(&app.state::<UnlockedKey>());

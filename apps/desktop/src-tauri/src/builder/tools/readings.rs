@@ -1,6 +1,7 @@
 //! What the tool check reads from this computer at the OS edge (BLD-028, BLD-083, D-19): where
 //! the updater key stands, whether the app's memory is guarded, and the signing identities in
-//! the login keychain. The decisions on these readings are in `tools`.
+//! the login keychain, and the identity this app was built to sign with. The decisions on these
+//! readings are in `tools`.
 
 use super::KeyReadiness;
 use crate::updater_key::{self, UnlockedKey};
@@ -36,4 +37,15 @@ pub fn keychain_identities() -> Vec<String> {
                 .collect()
         })
         .unwrap_or_default()
+}
+
+/// The identity `bundle.macOS.signingIdentity` names in the `tauri.conf.json` this app was built
+/// from (BLD-083). Tauri keeps no bundle settings in the running app's config, so the file is
+/// read at compile time.
+pub fn signing_identity() -> Option<String> {
+    let config: serde_json::Value =
+        serde_json::from_str(include_str!("../../../tauri.conf.json")).ok()?;
+    config["bundle"]["macOS"]["signingIdentity"]
+        .as_str()
+        .map(str::to_owned)
 }

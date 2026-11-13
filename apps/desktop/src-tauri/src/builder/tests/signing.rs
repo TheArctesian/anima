@@ -1,6 +1,6 @@
 //! The Developer ID identity a Mac builder needs before it claims a job (BLD-083).
 
-use crate::builder::tools::{self, Tool};
+use crate::builder::tools::{self, Tool, readings};
 
 const IDENTITY: &str = "Developer ID Application: Stephen Okita (7GDLG48PV6)";
 
@@ -36,4 +36,9 @@ fn bld_083_a_mac_without_the_named_identity_in_its_keychain_lacks_the_signing_id
     );
     let json = serde_json::to_string(&[Tool::SigningIdentity]).unwrap();
     assert_eq!(json, r#"["signing-identity"]"#);
+}
+
+#[test]
+fn bld_083_the_running_app_knows_the_identity_its_config_names() {
+    assert_eq!(readings::signing_identity().as_deref(), Some(IDENTITY));
 }
