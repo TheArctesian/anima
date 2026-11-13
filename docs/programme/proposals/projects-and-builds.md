@@ -146,16 +146,13 @@ SDK. Nothing is changed. Put this on issue #1 or make a defect issue.
   and how Xcode gets a signing identity for one job from a keychain that is deleted after it
   (PRO-023). The Developer ID and the updater key have rulings (R-116, R-117); read them before
   the design.
-- How a builder gets a project secret for one job. JOB-010 says that a client releases it. The
-  extensions plan now says that the hub seals and opens each secret (VLT-007, OD-E12, on the
-  branch `claude/spec-cli-distribution`). The two texts do not agree. The operator decides.
+- A builder gets a project secret from the hub for one job (JOB-010; operator, 2026-11-13). The
+  design of the release and of the deletion on the machine is not made.
 - The webhook receiver runs on the VPS, as a separate small program with one public port
   (OD-E15, operator, 2026-11-13: "on the VPS"; WHK-001 to WHK-010). It changes SITE-006 ("the
   website is the only public part of Anima"). To open the port needs the confirmation of the
   operator at that time (VPS-005). Until the receiver exists, the slow poll is the only path.
-- The first GitHub functions that make a change (OD-E14) are not decided. PRO-010 and PRO-020
-  need three of them: write a commit status, start a workflow by hand, start a workflow run
-  again.
+- The first GitHub functions that make a change are decided (OD-E14 of the extensions plan).
 - The cost data of decision 1 ("cost"): which providers give cost through a read-only API. Not
   verified.
 - Nothing here is verified against the documentation of a provider (as in

@@ -69,8 +69,11 @@ A job runs to its end on one machine. It is a container image, or it is a native
   (OD-W6, operator, 2026-11-12: "leave the option to do both").
 - **JOB-009.** A later function that answers a request must be a container that stays warm, not
   a WebAssembly runtime (OD-W5, operator, 2026-11-12).
-- **JOB-010.** The CLI tool of a rented service can run as a job (OD-W1). The hub must not hold
-  the write token: a client releases it for that one run (SCR-001, SCR-006).
+- **JOB-010.** The CLI tool of a rented service can run as a job (OD-W1). The hub opens the
+  secret of the project and gives it to the machine for that one job (VLT-007, OD-E12). The hub
+  must record the release in the audit log, and the machine must delete the secret when the job
+  ends. Thus a build that a push starts needs no client. (operator, 2026-11-13; the first text
+  said that a client releases it.)
 
 The build of a project is the first job type (PRO-009, OD-W12). Fine-tuning (compute plan C7,
 #40) is the second. Its "done when" text in #40 stays.
@@ -121,6 +124,7 @@ This decision comes before C1 (#34), not only before jobs.
 - A security review of the work route (a `security` task for the security reviewer).
 - One contract for job state, progress and results, shared with #34 and #35.
 - A test of Railpack on one project of the operator (JOB-002).
-- A design for how a client releases a sealed secret to one job run (JOB-010).
+- A design for how the hub gives a secret to one job run and how the machine deletes it
+  (JOB-010), with the security review of the work route.
 - After approval: change the title of #40 or add one issue for jobs, with the labels `compute`
   and `priority: later`.
