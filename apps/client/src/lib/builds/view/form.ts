@@ -17,14 +17,20 @@ export interface ReleaseErrors {
 
 /** The hub's own check: three numbers with dots between, each of 1 to 9 digits and no leading zero (BLD-002). */
 const VERSION = /^(?:0|[1-9]\d{0,8})(?:\.(?:0|[1-9]\d{0,8})){2}$/;
-/** A full commit: 40 lower-case hex digits. */
-const COMMIT = /^[0-9a-f]{40}$/;
+/** A full commit: 40 hex digits; the hub accepts either case and lowers it. */
+const COMMIT = /^[0-9a-fA-F]{40}$/;
+
+/** What the hub is sent: both texts trimmed, as the hub reads them, and the commit in lower case (BLD-001, BLD-002). */
+export function normalized(values: ReleaseValues): ReleaseValues {
+  return { ...values, version: values.version.trim(), commit: values.commit.trim().toLowerCase() };
+}
 
 /** The mistakes the operator can see before asking the hub, with the hub's words (BLD-001, BLD-002). */
-export function validateRelease(values: ReleaseValues): ReleaseErrors {
+export function validateRelease(raw: ReleaseValues): ReleaseErrors {
+  const values = normalized(raw);
   return {
     ...(VERSION.test(values.version) ? {} : { version: 'A version is three numbers with dots between, such as 0.1.12.' }),
-    ...(COMMIT.test(values.commit) ? {} : { commit: 'A commit is 40 lower-case hex digits.' }),
+    ...(COMMIT.test(values.commit) ? {} : { commit: 'A commit is 40 hex digits.' }),
     ...(values.targets.length > 0 ? {} : { targets: 'Select at least one target.' }),
   };
 }

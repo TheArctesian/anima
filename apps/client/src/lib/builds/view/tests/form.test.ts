@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { HubError } from '$lib/hub/hub';
-import { refusalText, validateRelease, withTarget } from '../form';
+import { normalized, refusalText, validateRelease, withTarget } from '../form';
 
 const COMMIT = '0123456789abcdef0123456789abcdef01234567';
 const good = { version: '0.1.12', commit: COMMIT, targets: ['LINUX_X86_64'] } as const;
@@ -14,8 +14,19 @@ describe('release form', () => {
     expect(validateRelease({ ...good, version }).version).toBe('A version is three numbers with dots between, such as 0.1.12.');
   });
 
-  it.each(['', 'main', COMMIT.slice(1), `${COMMIT}0`, COMMIT.toUpperCase(), `${COMMIT.slice(1)}g`])('BLD-001: %j is not a commit', (commit) => {
-    expect(validateRelease({ ...good, commit }).commit).toBe('A commit is 40 lower-case hex digits.');
+  it.each(['', 'main', COMMIT.slice(1), `${COMMIT}0`, `${COMMIT.slice(1)}g`])('BLD-001: %j is not a commit', (commit) => {
+    expect(validateRelease({ ...good, commit }).commit).toBe('A commit is 40 hex digits.');
+  });
+
+  it('BLD-001: the hub trims both texts and accepts upper-case hex, so the form does too', () => {
+    expect(validateRelease({ ...good, version: ` 0.1.12\n`, commit: ` ${COMMIT.toUpperCase()} ` })).toEqual({});
+  });
+
+  it('BLD-001: what is sent is trimmed, with the commit in lower case', () => {
+    expect(normalized({ ...good, version: ' 0.1.12 ', commit: ` ${COMMIT.toUpperCase()}\n` })).toMatchObject({
+      version: '0.1.12',
+      commit: COMMIT,
+    });
   });
 
   it('BLD-001: at least one target is needed', () => {
