@@ -14,6 +14,7 @@ use super::{
     error::BuilderError,
     job::{Commit, Target, Version},
     plan::{self, CLONE_CONFIG_KEYS, Command, Repository},
+    sidecar,
 };
 
 /// The claim, the environment, the repository and the clone of one step.
@@ -151,8 +152,31 @@ impl Workshop<'_> {
         self.run_all(&plan::staple(app)).await
     }
 
-    /// Compiles and bundles `target` at `version`, checks, notarizes and staples a macOS bundle,
-    /// and returns the updater file (BLD-043, BLD-047, BLD-083 to BLD-085).
+    /// Builds `anima` for `target` with the release version and puts it where the bundle takes it
+    /// (INS-002, OD-17): the universal file on macOS, an x86-64 ELF file on Linux.
+    async fn command_line(&self, target: Target, version: &Version) -> Result<(), BuilderError> {
+        self.run(&sidecar::build(&self.clone, target, version))
+            .await?;
+        for (built, staged) in sidecar::copies(&self.clone, target) {
+            artifact::stage(&self.clone, &built, &staged)?;
+        }
+        let staged = sidecar::staged(&self.clone, target);
+        if let Some(lipo) = sidecar::universal(&self.clone, target) {
+            self.run(&lipo).await?;
+            if !artifact::universal(&self.run(&sidecar::archs(&staged)).await?) {
+                return Err(BuilderError::Bundle);
+            }
+        } else if !sidecar::is_x86_64_elf(&artifact::header(&self.clone, &staged, 20)?) {
+            return Err(BuilderError::Bundle);
+        }
+        Ok(())
+    }
+
+    /// Builds `anima`, compiles and bundles `target` at `version` with it, checks, notarizes and
+    /// staples a macOS bundle, and returns the updater file (INS-002, BLD-043, BLD-047, BLD-083 to
+    /// BLD-085). On macOS the bundled `anima` must pass `codesign --verify --strict` and be
+    /// universal; notarization then refuses it unless it has the Developer ID signature, the
+    /// hardened runtime and a secure timestamp (OD-16).
     pub async fn bundle(
         &self,
         commit: &Commit,
@@ -160,16 +184,21 @@ impl Workshop<'_> {
         version: &Version,
     ) -> Result<PathBuf, BuilderError> {
         self.at(commit).await?;
+        self.command_line(target, version).await?;
         self.run_all(&plan::bundle(&self.clone, target, version))
             .await?;
         let updater = artifact::updater_file(&self.clone, target, version);
         if target == Target::DarwinUniversal {
             let app = artifact::mac_app(&self.clone);
-            let binary = artifact::mac_binary(&self.clone, &app)?;
-            let [codesign, lipo] = plan::bundle_checks(&app, &binary);
+            let binaries = artifact::mac_binaries(&self.clone, &app)?;
+            let [codesign, lipo] = plan::bundle_checks(&app, &binaries.app);
             self.run(&codesign).await?;
-            if !artifact::universal(&self.run(&lipo).await?) {
-                return Err(BuilderError::Bundle);
+            self.run(&sidecar::signature(&binaries.command_line))
+                .await?;
+            for binary in [&lipo, &sidecar::archs(&binaries.command_line)] {
+                if !artifact::universal(&self.run(binary).await?) {
+                    return Err(BuilderError::Bundle);
+                }
             }
             let dmg =
                 artifact::dmg_file(&self.clone, target, version).ok_or(BuilderError::Bundle)?;

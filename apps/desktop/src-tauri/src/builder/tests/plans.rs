@@ -134,7 +134,7 @@ fn bld_043_linux_compiles_then_bundles_an_appimage_with_the_version_in_config() 
             "build",
             "--no-bundle",
             "--config",
-            r#"{"version":"0.1.12"}"#
+            r#"{"bundle":{"externalBin":["binaries/anima"]},"version":"0.1.12"}"#
         ]
     );
     assert_eq!(
@@ -149,7 +149,7 @@ fn bld_043_linux_compiles_then_bundles_an_appimage_with_the_version_in_config() 
             "appimage",
             "--no-sign",
             "--config",
-            r#"{"bundle":{"createUpdaterArtifacts":false},"version":"0.1.12"}"#
+            r#"{"bundle":{"createUpdaterArtifacts":false,"externalBin":["binaries/anima"]},"version":"0.1.12"}"#
         ]
     );
     assert_eq!(bundle.env, [("APPIMAGE_EXTRACT_AND_RUN", "1".to_owned())]);
