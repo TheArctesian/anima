@@ -27,6 +27,15 @@ pub struct DeviceGet;
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "../../contracts/schema.graphql",
+    query_path = "src/devices/current.graphql",
+    response_derives = "Debug, Serialize",
+    variables_derives = "Debug"
+)]
+pub struct DeviceCurrent;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "../../contracts/schema.graphql",
     query_path = "src/devices/sites.graphql",
     response_derives = "Debug, Serialize"
 )]

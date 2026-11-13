@@ -13,6 +13,15 @@ use crate::hub::scalars::DateTime;
 )]
 pub struct WebList;
 
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "../../contracts/schema.graphql",
+    query_path = "src/web_interfaces/current.graphql",
+    response_derives = "Debug, Serialize",
+    variables_derives = "Debug"
+)]
+pub struct WebCurrent;
+
 // The input is built from flags as JSON (`fields.rs`), so its type derives `Deserialize` too.
 #[derive(GraphQLQuery)]
 #[graphql(

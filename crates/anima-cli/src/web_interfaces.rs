@@ -3,6 +3,7 @@
 
 pub mod accept_certificate;
 pub mod create;
+pub mod current;
 pub mod delete;
 pub mod documents;
 pub mod fields;
@@ -20,7 +21,7 @@ pub enum WebCommand {
     List(list::ListArgs),
     /// Add a web interface to a device.
     Create(create::CreateArgs),
-    /// Replace a web interface's address, label and place to open.
+    /// Change a web interface's address, label or place to open.
     Update(update::UpdateArgs),
     /// Delete a web interface.
     Delete(delete::DeleteArgs),

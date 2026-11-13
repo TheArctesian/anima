@@ -1,0 +1,35 @@
+# `anima device update`: the groups a flag replaces, as the hub has them now. Never a secret:
+# every field here is also a field of K1 input (`SshSettingsInput` and the others).
+query DeviceCurrent($id: ID!) {
+  device(id: $id) {
+    ssh {
+      enabled
+      port
+      username
+      auth
+    }
+    rdp {
+      enabled
+      port
+      username
+      domain
+      security
+      ignoreCertificate
+      resizeMethod
+      audioOut
+      microphone
+      sharedDrive
+    }
+    vnc {
+      enabled
+      port
+      username
+    }
+    transfer {
+      upload
+      download
+      copy
+      paste
+    }
+  }
+}

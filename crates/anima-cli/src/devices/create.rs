@@ -5,7 +5,7 @@ use serde_json::json;
 use super::documents::{DeviceCreate, device_create};
 use super::list::site_id;
 use super::saved::Saved;
-use super::settings::{SettingsFlags, typed};
+use super::settings::{Current, SettingsFlags, typed};
 use crate::failure::Failure;
 use crate::invocation::Invocation;
 use crate::output::text::enum_name;
@@ -35,7 +35,7 @@ impl CreateArgs {
     /// the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let hub = invocation.hub()?;
-        let mut input = self.settings.fields()?;
+        let mut input = self.settings.fields(&Current::default())?;
         input.insert("siteId".to_owned(), json!(site_id(&hub, &self.site).await?));
         input.insert("name".to_owned(), json!(self.name));
         input.insert("host".to_owned(), json!(self.host));

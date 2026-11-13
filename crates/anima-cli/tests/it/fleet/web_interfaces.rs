@@ -78,7 +78,8 @@ async fn cmd_020_web_create_and_update_send_the_input_flags() {
     .answer(
         "WebUpdate",
         data(json!({ "updateWebInterface": web(None) })),
-    );
+    )
+    .answer("WebCurrent", current_page());
     let run = signed_in()
         .run(&[
             "web",
@@ -116,8 +117,48 @@ async fn cmd_020_web_create_and_update_send_the_input_flags() {
     assert_eq!(run.code, 0, "{run:?}");
     assert_eq!(
         variables(&hub, "WebUpdate"),
-        json!({ "id": WEB, "input": { "url": "https://nas.lan/" } })
+        json!({ "id": WEB, "input": {
+            "url": "https://nas.lan/", "label": "Admin", "openIn": "ANIMA_TAB" } }),
+        "the flags are laid over the current label and place to open"
     );
+}
+
+/// The `WebCurrent` answer: one device that holds the web interface `WEB`.
+fn current_page() -> Value {
+    data(json!({ "devices": {
+        "edges": [{ "node": { "webInterfaces": [web(None)] } }],
+        "pageInfo": { "hasNextPage": false, "endCursor": null },
+    }}))
+}
+
+#[tokio::test]
+async fn cmd_020_web_update_keeps_the_url_when_only_the_label_changes() {
+    let hub = FakeHub::start().await;
+    hub.answer("WebCurrent", current_page()).answer(
+        "WebUpdate",
+        data(json!({ "updateWebInterface": web(None) })),
+    );
+    let run = signed_in()
+        .run(&[
+            "web",
+            "update",
+            WEB,
+            "--label",
+            "Console",
+            "--hub",
+            &hub.origin,
+        ])
+        .await;
+    assert_eq!(run.code, 0, "{run:?}");
+    assert_eq!(
+        variables(&hub, "WebUpdate")["input"],
+        json!({ "url": "https://nas.lan:8443/", "label": "Console", "openIn": "ANIMA_TAB" })
+    );
+
+    let run = signed_in()
+        .run(&["web", "update", WEB, "--hub", &hub.origin])
+        .await;
+    assert_eq!(run.code, 2, "no flag is a usage error: {run:?}");
 }
 
 #[tokio::test]

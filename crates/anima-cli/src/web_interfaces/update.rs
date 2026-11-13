@@ -1,8 +1,9 @@
-//! `anima web update`: replaces a web interface's address, label and place to open. A flag
-//! left out takes its K1 default, as at creation.
+//! `anima web update`: changes a web interface's address, label or place to open. The flags are
+//! laid over the current values, which are read first.
 
+use super::current;
 use super::documents::{WebUpdate, web_update};
-use super::fields::WebFields;
+use super::fields::WebChanges;
 use super::shown::Shown;
 use crate::failure::Failure;
 use crate::invocation::Invocation;
@@ -13,7 +14,7 @@ pub struct UpdateArgs {
     /// The web interface's ID (`anima web list <device>`).
     id: String,
     #[command(flatten)]
-    fields: WebFields,
+    changes: WebChanges,
 }
 
 impl UpdateArgs {
@@ -22,10 +23,17 @@ impl UpdateArgs {
     /// # Errors
     /// The hub's refusal, such as `NOT_FOUND` for an unknown ID.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
+        if self.changes.is_empty() {
+            return Err(Failure::Usage {
+                message: "Nothing to change: give at least one flag.".to_owned(),
+                hint: Some("anima web update --help".to_owned()),
+            });
+        }
         let hub = invocation.hub()?;
+        let current = current::find(&hub, &self.id).await?;
         let variables = web_update::Variables {
+            input: self.changes.typed_over(current)?,
             id: self.id,
-            input: self.fields.typed()?,
         };
         let web = hub.run::<WebUpdate>(variables).await?.update_web_interface;
         invocation.output.data(&web, |web| {
