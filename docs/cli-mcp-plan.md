@@ -337,7 +337,7 @@ Read tools are `allow` and change tools are `off` by default (MCP-002). L: needs
    address it chose, and the next SNMP check sent the community there. Now the hub binds the
    SNMP secrets to the device host for which they were entered, inside the encrypted value. At
    each probe it compares that host with the host it sends to. If they are different, it sends
-   nothing, removes the secrets, records a Down heartbeat and writes a Warning event that tells
+   nothing, removes the secrets, records a failed attempt and writes a Warning event that tells
    the operator to enter the secrets again. The check is made at the point of use, so it
    protects against every way a host can change. Secrets stored before the fix are bound to the
    host that their device had when migration 0324 ran.
