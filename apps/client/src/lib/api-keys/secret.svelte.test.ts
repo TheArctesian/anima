@@ -4,7 +4,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { installAnimations } from '$lib/forms/animations.fixture';
 import ApiKeysSection from './ApiKeysSection.svelte';
 import { button, failure, fakeHub, field, keyField, FAKE_SECRET, FIXTURE_KEYS, MADE_KEY, NOW, ok, radio, settled, typeInto } from './api-keys.fixture';
-import { DATE_MISSING, DATE_TOO_FAR, NAME_MISSING, NAME_TOO_LONG } from './new-key';
+import { DATE_MISSING, DATE_TOO_FAR, MADE_FOR_MISSING, NAME_MISSING, NAME_TOO_LONG } from './new-key';
 
 const mocks = vi.hoisted(() => ({ hub: undefined as unknown }));
 
@@ -37,7 +37,8 @@ afterEach(async () => {
 
 const CREATED = ok({ createApiKey: { key: MADE_KEY, secret: FAKE_SECRET } });
 
-async function openDialog(answers: Parameters<typeof fakeHub>[0] = {}): Promise<HTMLElement> {
+/** Opens the create dialog as the operator first sees it, with nothing chosen for "Used by". */
+async function openBlankDialog(answers: Parameters<typeof fakeHub>[0] = {}): Promise<HTMLElement> {
   hub = fakeHub({ ApiKeys: ok({ apiKeys: FIXTURE_KEYS }), ...answers });
   mocks.hub = hub.hub;
   const target = document.createElement('div');
@@ -46,6 +47,14 @@ async function openDialog(answers: Parameters<typeof fakeHub>[0] = {}): Promise<
   flushSync();
   await settled();
   button('Create API key').click();
+  flushSync();
+  return target;
+}
+
+/** Opens the create dialog with "A script I run" chosen, so a test of another field meets only that field's rule. */
+async function openDialog(answers: Parameters<typeof fakeHub>[0] = {}): Promise<HTMLElement> {
+  const target = await openBlankDialog(answers);
+  radio('A script I run').click();
   flushSync();
   return target;
 }
@@ -75,6 +84,29 @@ it('INT-003: an empty name is refused before anything is sent', async () => {
   expect(problems()).toEqual([NAME_MISSING]);
   expect(nameField().getAttribute('aria-invalid')).toBe('true');
   expect(hub.sent.map((request) => request.operation)).toEqual(['ApiKeys']);
+});
+
+it('LOG-015: nothing is chosen for "Used by" at first, and Create refuses until the operator chooses', async () => {
+  await openBlankDialog({ CreateApiKey: CREATED });
+  typeInto(nameField(), 'backup-job');
+  const group = document.querySelector('[role="dialog"] [role="radiogroup"]');
+  if (group === null) throw new Error('no "Used by" group');
+  expect(group.getAttribute('aria-required')).toBe('true');
+  expect(document.getElementById(group.getAttribute('aria-labelledby') ?? '')?.textContent).toBe('Used by');
+  expect([radio('A script I run').checked, radio('An AI agent').checked]).toEqual([false, false]);
+  expect(radio('An AI agent').required).toBe(true);
+  await create();
+  expect(problems()).toEqual([MADE_FOR_MISSING]);
+  expect(group.getAttribute('aria-invalid')).toBe('true');
+  expect(document.activeElement).toBe(radio('A script I run'));
+  expect(hub.sent.map((request) => request.operation)).toEqual(['ApiKeys']);
+  radio('An AI agent').click();
+  flushSync();
+  await create();
+  expect(hub.sent.at(-1)).toEqual({
+    operation: 'CreateApiKey',
+    variables: { input: { name: 'backup-job', scope: 'READ', madeFor: 'AGENT', expiresAt: '2027-02-05T12:00:00.000Z' } },
+  });
 });
 
 it('INT-003: a name over 64 characters is refused before anything is sent', async () => {

@@ -5,7 +5,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { installAnimations } from '$lib/forms/animations.fixture';
 import type { HubResult } from '$lib/hub/hub';
 import ApiKeysSection from './ApiKeysSection.svelte';
-import { button, fakeHub, field, keyField, FAKE_SECRET, FIXTURE_KEYS, MADE_KEY, NOW, ok, settled, typeInto } from './api-keys.fixture';
+import { button, fakeHub, field, keyField, FAKE_SECRET, FIXTURE_KEYS, MADE_KEY, NOW, ok, radio, settled, typeInto } from './api-keys.fixture';
 
 const mocks = vi.hoisted(() => ({ hub: undefined as unknown }));
 
@@ -70,6 +70,8 @@ async function openDialog(createAnswer: HubResult<unknown> | Promise<HubResult<u
   button('Create API key').click();
   flushSync();
   typeInto(field('[role="dialog"] input[type="text"]'), 'backup-job');
+  radio('A script I run').click();
+  flushSync();
 }
 
 function pending(): { answer: Promise<HubResult<unknown>>; release: (result: HubResult<unknown>) => void } {

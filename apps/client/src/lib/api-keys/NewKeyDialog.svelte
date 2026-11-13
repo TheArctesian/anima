@@ -32,6 +32,7 @@
   const opened = untrack(() => now());
   const preview = $derived(expiryOf(form, opened));
   const nameProblem = $derived(problems.find((problem) => problem.field === 'name')?.message ?? '');
+  const madeForProblem = $derived(problems.find((problem) => problem.field === 'madeFor')?.message ?? '');
   const expiryProblem = $derived(problems.find((problem) => problem.field === 'expiry')?.message ?? '');
 
   async function submit(event: SubmitEvent): Promise<void> {
@@ -89,12 +90,21 @@
             <label><input type="radio" name="{ids}-scope" value={scope.id} bind:group={form.scope} /> {scope.label} <small>{scope.hint}</small></label>
           {/each}
         </fieldset>
-        <fieldset class="choice">
-          <legend>Used by</legend>
-          {#each MADE_FOR as user (user.id)}
-            <label><input type="radio" name="{ids}-made-for" value={user.id} bind:group={form.madeFor} /> {user.label}</label>
+        <!-- Nothing is chosen at first: the operator must say who uses the key (LOG-015). -->
+        <fieldset
+          class="choice"
+          role="radiogroup"
+          aria-labelledby="{ids}-madeFor-label"
+          aria-required="true"
+          aria-invalid={madeForProblem !== ''}
+          aria-describedby="{ids}-madeFor-hint {ids}-madeFor-problem"
+        >
+          <legend id="{ids}-madeFor-label">Used by</legend>
+          {#each MADE_FOR as user, index (user.id)}
+            <label><input id={index === 0 ? `${ids}-madeFor` : undefined} type="radio" name="{ids}-made-for" value={user.id} required bind:group={form.madeFor} /> {user.label}</label>
           {/each}
-          <small>It cannot change later.</small>
+          <small id="{ids}-madeFor-hint">It cannot change later.</small>
+          <small id="{ids}-madeFor-problem" class="problem">{madeForProblem}</small>
         </fieldset>
         <fieldset class="choice" aria-describedby="{ids}-expiry-problem">
           <legend>Expires</legend>

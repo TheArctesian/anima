@@ -41,27 +41,31 @@ export const MADE_FOR: readonly { readonly id: ApiKeyInput['madeFor']; readonly 
   { id: 'AGENT', label: 'An AI agent' },
 ];
 
-/** What the operator typed and chose. `date` is an `<input type="date">` value (`YYYY-MM-DD`), `''` when empty. */
+/**
+ * What the operator typed and chose. `date` is an `<input type="date">` value (`YYYY-MM-DD`), `''` when empty.
+ * `madeFor` is `null` until the operator chooses: the operator must set it (LOG-015), so the form never guesses.
+ */
 export interface NewKeyForm {
   name: string;
   scope: ApiKeyInput['scope'];
-  madeFor: ApiKeyInput['madeFor'];
+  madeFor: ApiKeyInput['madeFor'] | null;
   expiry: ExpiryChoice;
   date: string;
 }
 
 export function emptyForm(): NewKeyForm {
-  return { name: '', scope: 'READ', madeFor: 'USER', expiry: '90d', date: '' };
+  return { name: '', scope: 'READ', madeFor: null, expiry: '90d', date: '' };
 }
 
 export const NAME_MISSING = 'Enter a name.';
 export const NAME_TOO_LONG = `Use at most ${String(NAME_MAX)} characters.`;
+export const MADE_FOR_MISSING = 'Choose who will use the key.';
 export const DATE_MISSING = 'Choose an expiry date.';
 export const DATE_PAST = 'Choose a date after today.';
 export const DATE_TOO_FAR = 'Choose a date at most one year away.';
 
 export interface NewKeyProblem {
-  readonly field: 'name' | 'expiry';
+  readonly field: 'name' | 'madeFor' | 'expiry';
   readonly message: string;
 }
 
@@ -104,6 +108,10 @@ function nameProblem(name: string): NewKeyProblem | null {
   return length > NAME_MAX ? { field: 'name', message: NAME_TOO_LONG } : null;
 }
 
+function madeForProblem(madeFor: NewKeyForm['madeFor']): NewKeyProblem | null {
+  return madeFor === null ? { field: 'madeFor', message: MADE_FOR_MISSING } : null;
+}
+
 function expiryProblem(expiresAt: Date | null, now: Date): NewKeyProblem | null {
   if (expiresAt === null) return { field: 'expiry', message: DATE_MISSING };
   if (expiresAt.getTime() <= now.getTime()) return { field: 'expiry', message: DATE_PAST };
@@ -114,8 +122,8 @@ function expiryProblem(expiresAt: Date | null, now: Date): NewKeyProblem | null 
 export function checkNewKey(form: NewKeyForm, now: Date): NewKeyCheck {
   const name = form.name.trim();
   const expiresAt = expiryOf(form, now);
-  const problems = [nameProblem(name), expiryProblem(expiresAt, now)].filter((problem) => problem !== null);
-  if (problems.length > 0 || expiresAt === null) return { ok: false, problems };
+  const problems = [nameProblem(name), madeForProblem(form.madeFor), expiryProblem(expiresAt, now)].filter((problem) => problem !== null);
+  if (problems.length > 0 || expiresAt === null || form.madeFor === null) return { ok: false, problems };
   return { ok: true, input: { name, scope: form.scope, madeFor: form.madeFor, expiresAt: expiresAt.toISOString() } };
 }
 

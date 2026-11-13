@@ -7,6 +7,7 @@ import {
   DATE_PAST,
   DATE_TOO_FAR,
   emptyForm,
+  MADE_FOR_MISSING,
   expiryOf,
   latestExpiry,
   NAME_MISSING,
@@ -19,12 +20,17 @@ const DAY_MS = 86_400_000;
 const HUB_BOUND_MS = 365 * DAY_MS;
 
 function form(changes: Partial<NewKeyForm>): NewKeyForm {
-  return { ...emptyForm(), name: 'backup-job', ...changes };
+  return { ...emptyForm(), name: 'backup-job', madeFor: 'USER', ...changes };
 }
 
 describe('the create form (INT-003, D-23)', () => {
-  it('D-23: the form starts with scope Read and expiry 90 days', () => {
-    expect(emptyForm()).toEqual({ name: '', scope: 'READ', madeFor: 'USER', expiry: '90d', date: '' });
+  it('D-23, LOG-015: the form starts with scope Read, expiry 90 days and no choice of who uses the key', () => {
+    expect(emptyForm()).toEqual({ name: '', scope: 'READ', madeFor: null, expiry: '90d', date: '' });
+  });
+
+  it('LOG-015: a key nobody chose a user for is refused; the operator must set it', () => {
+    expect(checkNewKey(form({ madeFor: null }), NOW)).toEqual({ ok: false, problems: [{ field: 'madeFor', message: MADE_FOR_MISSING }] });
+    expect(checkNewKey({ ...emptyForm(), name: 'backup-job' }, NOW).ok).toBe(false);
   });
 
   it('LOG-015: a key for an AI agent is sent as AGENT, and each choice reads as words', () => {
@@ -73,8 +79,8 @@ describe('the expiry bounds (D-23)', () => {
   });
 
   it('D-23: every problem is reported at once', () => {
-    const checked = checkNewKey(form({ name: '', expiry: 'date', date: '' }), NOW);
-    expect(checked.ok ? [] : checked.problems.map((problem) => problem.field)).toEqual(['name', 'expiry']);
+    const checked = checkNewKey(form({ name: '', madeFor: null, expiry: 'date', date: '' }), NOW);
+    expect(checked.ok ? [] : checked.problems.map((problem) => problem.field)).toEqual(['name', 'madeFor', 'expiry']);
   });
 
   it('INT-003: a valid form gives the trimmed name, the scope and the expiry as an ISO instant', () => {
