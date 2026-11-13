@@ -49,7 +49,7 @@ HOST-002 to HOST-007 change a device, so they need OD-W10.
 
 - The OD-W10 decision ([jobs.md](jobs.md)) for all of this except HOST-001.
 - A decision on how the data copy of HOST-005 is made: a volume backup, or replication that the
-  application supplies. OD-W9 applies to HOST-004 and HOST-005.
+  application supplies. [bulk-data-placement.md](bulk-data-placement.md) can hold the backup.
 - A decision on Docker only, or Docker and Podman.
 - After approval: one issue for HOST-001 and HOST-008, and one for the rest, with the label
   `priority: later`.
