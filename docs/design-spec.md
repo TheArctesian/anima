@@ -699,9 +699,11 @@ The navigation bar, the session toolbar and the logs panel header are floating l
 
 | Token | Use | Value | Reduced transparency |
 | --- | --- | --- | --- |
-| `material-chrome` | Navigation bar, session toolbar | `surface-base` at 82 % opacity, blur 20 px, saturation 140 % | `surface-base`, no blur |
-| `material-panel` | Side panels | `surface-raised` at 90 % opacity, blur 12 px | `surface-raised`, no blur |
-| `material-overlay` | Menus, popovers, toasts | `surface-overlay` at 92 % opacity, blur 24 px | `surface-overlay`, no blur |
+| `material-chrome` | Navigation bar | `surface-base` at 76 % opacity, blur 28 px, saturation 160 % (operator instruction, 2026-11-13) | `surface-base`, no blur, no edge, no sheen |
+| `material-panel` | Side panels | `surface-raised` at 82 % opacity, blur 16 px, saturation 130 % (operator instruction, 2026-11-13) | `surface-raised`, no blur, no edge, no sheen |
+| `material-overlay` | Menus, popovers, tips, the modal's glass layer | `surface-overlay` at 86 % opacity, blur 32 px, saturation 150 % (operator instruction, 2026-11-13) | `surface-overlay`, no blur, no edge, no sheen |
+| `material-edge` | The 1 px inner edge of every material | White at 14 % (dark) or 80 % (light) (operator instruction, 2026-11-13) | Transparent |
+| `material-sheen` | The top-to-bottom sheen of every material | White at 5 % at the top edge, none at the bottom edge, in both appearances (operator instruction, 2026-11-13) | Transparent |
 | `elevation-1` | Cards | Surface contrast only (`surface-raised` on `surface-sunken`): no border, no shadow | A `border-strong` outline under `prefers-contrast: more` |
 | `elevation-2` | Popovers, menus | Shadow 0 4 px 16 px, the palette's shadow colour at 40 % | Same |
 | `elevation-3` | Modal dialogs, sheets | Shadow 0 12 px 40 px, the palette's shadow colour at 55 % | Same |
@@ -714,7 +716,8 @@ The navigation bar, the session toolbar and the logs panel header are floating l
 - **MAT-005.** Text on a translucent material must use `text`, not `text-secondary`.
 - **MAT-006.** The client must obey `prefers-reduced-transparency` and `prefers-contrast: more`. With `prefers-contrast: more`, materials are solid and borders use `border-strong`.
 - **MAT-007.** WebKitGTK on Linux can be slow with `backdrop-filter`. Measure the frame time of the Devices page on the reference Linux computer. If it is more than 16.7 ms, the Linux build must use the "reduced transparency" values.
-- **MAT-008.** Never animate the content of a remote display (SSH terminal, RDP, VNC or Web view). Do not put a material or a blur over a live remote display.
+- **MAT-008.** Never animate the content of a remote display (SSH terminal, RDP, VNC or Web view). Do not put a material or a blur over a live remote display. Menus and dialogs that can lie over a live display stay solid.
+- **MAT-010.** (operator instruction, 2026-11-13) A material shows a 1 px inner edge (`material-edge`, an inset shadow, so the layout does not move) and a sheen (`material-sheen`, a gradient of at most 6 %). One stylesheet, `styles/materials.css`, makes them; a component does not repeat the blur. Reduced transparency, `prefers-contrast: more` and `data-transparency="reduce"` (MAT-007) remove the blur, the edge and the sheen together. A material inside another material is solid (MAT-002). The opacities are the least that keep `text` at 4.5:1 over the worst backdrop in every palette (MAT-005); a test computes it. A modal puts its glass on a layer behind its content, because a backdrop filter makes its owner the containing block of a fixed HelpTip.
 
 ### 5.7 Motion
 
