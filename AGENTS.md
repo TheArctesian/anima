@@ -93,6 +93,13 @@ The gates run in this order and stop at the first failure: `cargo fmt --check`,
 `bun run lint`, `bun run check`, `bun run test`, `bun run --cwd apps/client build`,
 `bun run quality:limits`, `bun run quality:names`, `bun run quality:imports`,
 `bun run quality:baseline -- --base $BASE_REF`. See [quality/README.md](quality/README.md).
+The gates share compiled Rust between worktrees through sccache (`brew install sccache`, or
+`cargo install sccache --locked`). When `sccache` is on `PATH`, the runner sets `RUSTC_WRAPPER` to it
+and `CARGO_INCREMENTAL=0`, and prints `rust cache: sccache` first; without it, it prints
+`rust cache: off` and builds from scratch. Each worktree still keeps its own `target/`: only compiler
+outputs are shared, so a new worktree's first run reuses what any other worktree already built. Never
+share one `CARGO_TARGET_DIR` between worktrees: cargo locks it, so parallel runs wait on each other.
+Set `RUSTC_WRAPPER=` (empty) to run without the cache. `sccache --show-stats` shows the hit rate.
 cargo-nextest must be on `PATH` (`cargo install cargo-nextest --locked`; put `~/.cargo/bin` on `PATH`).
 Leave `DATABASE_URL` unset so each run gets its own PostgreSQL server: sqlx names test databases
 by test path, so two worktrees that share one server destroy each other's databases (R-019).
