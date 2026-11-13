@@ -45,6 +45,21 @@ impl Page {
     pub fn size(&self) -> i64 {
         i64::from(self.limit.unwrap_or(DEFAULT_LIMIT).clamp(1, MAX_LIMIT))
     }
+
+    /// This page of a whole list the hub returns at once; the cursor is the next position.
+    #[must_use]
+    pub fn of(&self, all: Vec<Value>) -> (Vec<Value>, Option<String>) {
+        let start = self
+            .after
+            .as_deref()
+            .and_then(|after| after.parse::<usize>().ok())
+            .unwrap_or_default();
+        let size = usize::try_from(self.size()).unwrap_or(1);
+        let total = all.len();
+        let page: Vec<Value> = all.into_iter().skip(start).take(size).collect();
+        let end = start + page.len();
+        (page, (end < total).then(|| end.to_string()))
+    }
 }
 
 /// Refuses a delete unless `confirm` is exactly `name` (MCP-007).
@@ -81,6 +96,33 @@ pub fn json<T: serde::Serialize>(value: &T) -> Value {
     serde_json::to_value(value).unwrap_or(Value::Null)
 }
 
+/// The fields of `value` that are given (not null), as K1 input fields.
+#[must_use]
+pub fn present(value: &impl serde::Serialize) -> Map<String, Value> {
+    match json(value) {
+        Value::Object(fields) => fields
+            .into_iter()
+            .filter(|(_, value)| !value.is_null())
+            .collect(),
+        _ => Map::new(),
+    }
+}
+
+/// `fields` as the generated K1 input type `T`; serde checks every value.
+///
+/// # Errors
+/// [`ToolError::Refused`] naming `what` and the field that does not fit.
+pub fn k1_input<T: DeserializeOwned>(
+    fields: Map<String, Value>,
+    what: &str,
+) -> Result<T, ToolError> {
+    serde_json::from_value(Value::Object(fields)).map_err(|error| {
+        ToolError::Refused(format!(
+            "The {what} is not complete or not valid: {error}. Correct it and call again."
+        ))
+    })
+}
+
 /// The JSON object of these named values.
 #[must_use]
 pub fn object<const N: usize>(fields: [(&str, Value); N]) -> Map<String, Value> {
@@ -102,6 +144,24 @@ mod tests {
         assert_eq!(page(None).size(), 25);
         assert_eq!(page(Some(0)).size(), 1);
         assert_eq!(page(Some(5_000)).size(), 100);
+    }
+
+    #[test]
+    fn mcp_009_a_whole_list_is_paged_with_a_position_cursor() {
+        let all: Vec<Value> = (0..5).map(|index| json!(index)).collect();
+        let first = Page {
+            limit: Some(2),
+            after: None,
+        };
+        assert_eq!(
+            first.of(all.clone()),
+            (vec![json!(0), json!(1)], Some("2".to_owned()))
+        );
+        let last = Page {
+            limit: Some(2),
+            after: Some("4".to_owned()),
+        };
+        assert_eq!(last.of(all), (vec![json!(4)], None));
     }
 
     #[test]

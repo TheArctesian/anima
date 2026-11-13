@@ -1,7 +1,15 @@
 //! Every MCP tool, one module for each tool set. A tool calls the typed documents of its noun
 //! through [`Hub`] (MCP-001, CMD-003); it never starts the `anima` program.
 
+pub mod checks;
 pub mod devices;
+pub mod events;
+pub mod maintenance;
+pub mod notifications;
+pub mod releases;
+pub mod retention;
+pub mod vpn;
+pub mod web;
 
 use rmcp::model::JsonObject;
 use serde_json::Value;
@@ -15,6 +23,14 @@ use crate::hub::Hub;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Tool {
     Devices(devices::DeviceTool),
+    Checks(checks::CheckTool),
+    Maintenance(maintenance::MaintenanceTool),
+    Events(events::EventTool),
+    Notifications(notifications::NotificationTool),
+    Web(web::WebTool),
+    Releases(releases::ReleaseTool),
+    Vpn(vpn::VpnTool),
+    Retention(retention::RetentionTool),
 }
 
 impl Tool {
@@ -23,6 +39,14 @@ impl Tool {
     pub fn all() -> Vec<Self> {
         let mut tools: Vec<Self> = Vec::new();
         tools.extend(devices::DeviceTool::ALL.map(Self::Devices));
+        tools.extend(checks::CheckTool::ALL.map(Self::Checks));
+        tools.extend(maintenance::MaintenanceTool::ALL.map(Self::Maintenance));
+        tools.extend(events::EventTool::ALL.map(Self::Events));
+        tools.extend(notifications::NotificationTool::ALL.map(Self::Notifications));
+        tools.extend(web::WebTool::ALL.map(Self::Web));
+        tools.extend(releases::ReleaseTool::ALL.map(Self::Releases));
+        tools.extend(vpn::VpnTool::ALL.map(Self::Vpn));
+        tools.extend(retention::RetentionTool::ALL.map(Self::Retention));
         tools
     }
 
@@ -30,6 +54,14 @@ impl Tool {
     pub const fn set(self) -> ToolSet {
         match self {
             Self::Devices(_) => ToolSet::Devices,
+            Self::Checks(_) => ToolSet::Checks,
+            Self::Maintenance(_) => ToolSet::Maintenance,
+            Self::Events(_) => ToolSet::Events,
+            Self::Notifications(_) => ToolSet::Notifications,
+            Self::Web(_) => ToolSet::Web,
+            Self::Releases(_) => ToolSet::Releases,
+            Self::Vpn(_) => ToolSet::Vpn,
+            Self::Retention(_) => ToolSet::Retention,
         }
     }
 
@@ -37,6 +69,14 @@ impl Tool {
     pub fn definition(self) -> Definition {
         match self {
             Self::Devices(tool) => tool.definition(),
+            Self::Checks(tool) => tool.definition(),
+            Self::Maintenance(tool) => tool.definition(),
+            Self::Events(tool) => tool.definition(),
+            Self::Notifications(tool) => tool.definition(),
+            Self::Web(tool) => tool.definition(),
+            Self::Releases(tool) => tool.definition(),
+            Self::Vpn(tool) => tool.definition(),
+            Self::Retention(tool) => tool.definition(),
         }
     }
 
@@ -47,6 +87,14 @@ impl Tool {
     pub async fn call(self, hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
         match self {
             Self::Devices(tool) => tool.call(hub, arguments).await,
+            Self::Checks(tool) => tool.call(hub, arguments).await,
+            Self::Maintenance(tool) => tool.call(hub, arguments).await,
+            Self::Events(tool) => tool.call(hub, arguments).await,
+            Self::Notifications(tool) => tool.call(hub, arguments).await,
+            Self::Web(tool) => tool.call(hub, arguments).await,
+            Self::Releases(tool) => tool.call(hub, arguments).await,
+            Self::Vpn(tool) => tool.call(hub, arguments).await,
+            Self::Retention(tool) => tool.call(hub, arguments).await,
         }
     }
 }

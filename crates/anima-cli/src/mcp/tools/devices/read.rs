@@ -6,6 +6,7 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 use serde_json::{Value, json};
 
+use super::DeviceTool;
 use crate::devices::documents::{
     DeviceGet, DeviceMetrics, device_get, device_list, device_metrics,
 };
@@ -13,6 +14,8 @@ use crate::devices::get::resolve;
 use crate::devices::list::{Query, fetch, site_id};
 use crate::hub::Hub;
 use crate::mcp::arguments::{Page, json, object, parse, short};
+use crate::mcp::catalogue::Access;
+use crate::mcp::definition::{Definition, Effect};
 use crate::mcp::outcome::ToolError;
 use crate::web_interfaces::documents::{WebList, web_list};
 
@@ -92,6 +95,81 @@ pub struct MetricsInput {
     /// Add up to 60 points to each series.
     #[serde(default)]
     detail: bool,
+}
+
+pub fn definition(tool: DeviceTool) -> Definition {
+    match tool {
+        DeviceTool::FleetOverview => overview_definition(),
+        DeviceTool::Search => Definition::new::<SearchInput>(
+            "anima_devices_search",
+            Access::Read,
+            Effect::Reads,
+            "Finds devices by part of the name, status, tag or site. Returns for each \
+             device its id, name, status, site and tags (detail adds host, ip, kind, os). \
+             Use it to turn a name into an id. Next: anima_device_get.",
+        )
+        .returns(&[
+            ("devices", "array", "The devices of this page."),
+            ("totalCount", "integer", "How many devices match in all."),
+            (
+                "nextCursor",
+                "string",
+                "Give as `after` for the next page; absent at the end.",
+            ),
+        ]),
+        DeviceTool::Get => Definition::new::<GetInput>(
+            "anima_device_get",
+            Access::Read,
+            Effect::Reads,
+            "One device by id or exact name: status, site, host, tags, maintenance, its \
+             checks (id, name, type, status) with uptime of the last 24 hours, its web \
+             interfaces and access warnings. detail adds SSH, RDP and VNC settings (never \
+             a credential). Next: anima_check_get for a check, anima_device_metrics.",
+        )
+        .returns(&[
+            ("device", "object", "The device."),
+            (
+                "webInterfaces",
+                "array",
+                "The device's web interfaces: id, label, url.",
+            ),
+        ]),
+        _ => Definition::new::<MetricsInput>(
+            "anima_device_metrics",
+            Access::Read,
+            Effect::Reads,
+            "A device's metrics (CPU, memory, disk, network, GPU, load) over the last \
+             HOUR, DAY or WEEK. Returns each series with its last, lowest and highest \
+             value; detail adds up to 60 points per series. Empty when the device sends \
+             no metrics.",
+        )
+        .returns(&[
+            ("device", "object", "The device: id and name."),
+            ("series", "array", "One entry per metric series."),
+        ]),
+    }
+}
+
+/// `anima_fleet_overview`: the first tool an agent calls.
+fn overview_definition() -> Definition {
+    Definition::new::<Nothing>(
+        "anima_fleet_overview",
+        Access::Read,
+        Effect::Reads,
+        "Start here. Returns how many devices the Anima hub watches, how many are UP, \
+         DOWN, DEGRADED, in MAINTENANCE or UNKNOWN, the devices that are DOWN or \
+         DEGRADED (name, id, site) and the sites. Next: anima_device_get for one \
+         device, anima_events_search for what happened.",
+    )
+    .returns(&[
+        ("counts", "object", "Devices by status, and the total."),
+        (
+            "attention",
+            "array",
+            "Devices that are DOWN or DEGRADED, worst first.",
+        ),
+        ("sites", "array", "Every site: id and name."),
+    ])
 }
 
 const SEARCH_KEYS: [&str; 5] = ["id", "name", "status", "site", "tags"];

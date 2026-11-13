@@ -4,17 +4,17 @@
 use rmcp::model::JsonObject;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use serde_json::{Map, Value, json};
+use serde_json::{Value, json};
 
 use super::DeviceTool;
 use crate::devices::documents::{
-    DeviceCreate, DeviceDelete, DeviceGet, DeviceUpdate, DeviceWake, device_create, device_delete,
-    device_get, device_update, device_wake,
+    DeviceCreate, DeviceDelete, DeviceUpdate, DeviceUptime, DeviceWake, device_create,
+    device_delete, device_update, device_uptime, device_wake,
 };
 use crate::devices::get::resolve;
 use crate::devices::list::site_id;
 use crate::hub::Hub;
-use crate::mcp::arguments::{confirmed, json, object, parse};
+use crate::mcp::arguments::{confirmed, json, k1_input, object, parse, present};
 use crate::mcp::catalogue::Access;
 use crate::mcp::definition::{Definition, Effect};
 use crate::mcp::outcome::ToolError;
@@ -140,10 +140,10 @@ pub fn definition(tool: DeviceTool) -> Definition {
 pub async fn create(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
     let input: CreateInput = parse(arguments)?;
     let site = site_id(hub, &input.site).await?;
-    let mut fields = fields_of(&input);
+    let mut fields = present(&input);
     fields.remove("site");
     fields.insert("siteId".to_owned(), json!(site));
-    let input: device_create::CreateDeviceInput = typed(fields)?;
+    let input: device_create::CreateDeviceInput = k1_input(fields, "device")?;
     let device = hub
         .run::<DeviceCreate>(device_create::Variables { input })
         .await?
@@ -174,7 +174,7 @@ pub async fn wake(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, Too
 pub async fn update(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
     let input: UpdateInput = parse(arguments)?;
     let id = resolve(hub, &input.device).await?;
-    let input: device_update::UpdateDeviceInput = typed(fields_of(&input))?;
+    let input: device_update::UpdateDeviceInput = k1_input(present(&input), "device")?;
     let device = hub
         .run::<DeviceUpdate>(device_update::Variables { id, input })
         .await?
@@ -190,7 +190,10 @@ pub async fn delete(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, T
     }
     let id = resolve(hub, &input.device).await?;
     let name = hub
-        .run::<DeviceGet>(device_get::Variables { id: id.clone() })
+        .run::<DeviceUptime>(device_uptime::Variables {
+            id: id.clone(),
+            window: device_uptime::UptimeWindow::DAY,
+        })
         .await?
         .device
         .map(|device| device.name)
@@ -201,20 +204,4 @@ pub async fn delete(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, T
         .await?
         .delete_device;
     Ok(Value::Object(object([("deleted", json!(deleted))])))
-}
-
-/// The given fields of `input` as K1 input fields; absent ones are left out.
-fn fields_of(input: &impl Serialize) -> Map<String, Value> {
-    match json(input) {
-        Value::Object(fields) => fields
-            .into_iter()
-            .filter(|(_, value)| !value.is_null())
-            .collect(),
-        _ => Map::new(),
-    }
-}
-
-fn typed<T: serde::de::DeserializeOwned>(fields: Map<String, Value>) -> Result<T, ToolError> {
-    serde_json::from_value(Value::Object(fields))
-        .map_err(|error| ToolError::Refused(format!("The device fields are not valid: {error}.")))
 }

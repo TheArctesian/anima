@@ -16,6 +16,7 @@ mod events;
 mod keys;
 mod kit;
 mod maintenance;
+mod mcp;
 mod notifications;
 mod releases;
 mod retention;
