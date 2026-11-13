@@ -171,9 +171,9 @@ describe('fonts load from the application package (UI-017)', () => {
     }
   });
 
-  it('imports tokens.css and then fonts.css from global.css', () => {
+  it('imports tokens.css, then fonts.css, then materials.css from global.css', () => {
     const imports = [...stripComments(globalCss).matchAll(/@import\s+["']([^"']+)["']\s*;/g)].map((m) => m[1]);
-    expect(imports).toEqual(['./tokens.css', './fonts.css']);
+    expect(imports).toEqual(['./tokens.css', './fonts.css', './materials.css']);
   });
 });
 

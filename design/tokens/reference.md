@@ -53,6 +53,8 @@ Generated from `design/tokens/*.tokens.json` (TOK-001). Names follow contract K5
 | `danger` | `--danger: var(--nord-11-danger)` = `#CC8B93`<br>light: `--danger: var(--status-down-text)` = `#D9B4BB` | Destructive buttons. Dark: status-down lifted until on-danger reaches 4.5:1 (UI-004). Light: status-down-text (5.1.2). |
 | `on-danger` | `--on-danger: var(--nord-0)` = `#2E3440`<br>light: `--on-danger: var(--nord-white)` = `#FFFFFF` | Text on a danger fill: nord0 (dark), white (light) (5.1.2, UI-004). |
 | `scrim` | `--scrim: color-mix(in srgb, var(--nord-0) 50%, transparent)`<br>light: `--scrim: color-mix(in srgb, var(--nord-0) 35%, transparent)` | Modal dim: nord0 at 50 % (dark) or 35 % (light) (MAT-003). |
+| `material-edge` | `--material-edge: color-mix(in srgb, var(--nord-white) 14%, transparent)`<br>light: `--material-edge: color-mix(in srgb, var(--nord-white) 80%, transparent)` | The 1 px inner edge highlight of a material: white at 14 % (dark) or 80 % (light). Removed with the blur (MAT-010). |
+| `material-sheen` | `--material-sheen: color-mix(in srgb, var(--nord-white) 5%, transparent)`<br>light: `--material-sheen: color-mix(in srgb, var(--nord-white) 5%, transparent)` | The top-to-bottom sheen of a material: white at 5 % at the top edge, none at the bottom. Removed with the blur (MAT-010). |
 | `focus-ring` | `--focus-ring: var(--accent)` = `#88C0D0`<br>light: `--focus-ring: var(--accent)` = `#88C0D0` | The 2 px focus outline (5.1.2). |
 | `shadow` | `--shadow: var(--nord-0)` = `#2E3440`<br>light: `--shadow: var(--nord-0)` = `#2E3440` | Shadow colour of elevation-2 and elevation-3 (5.6). |
 | `chart-grid` | `--chart-grid: var(--nord-3)` = `#4C566A`<br>light: `--chart-grid: var(--nord-4)` = `#D8DEE9` | Chart grid lines (K5, MET-004). |
@@ -106,6 +108,8 @@ Generated from `design/tokens/*.tokens.json` (TOK-001). Names follow contract K5
 | `danger` | `--danger: var(--graphite-aurora-11-danger)` = `#C0656E`<br>light: `--danger: var(--status-down-text)` = `#CA888F` | Destructive buttons. Dark: status-down lifted until on-danger reaches 4.5:1 (UI-004). Light: status-down-text (5.1.2). |
 | `on-danger` | `--on-danger: var(--graphite-dark-sunken)` = `#16181B`<br>light: `--on-danger: var(--graphite-white)` = `#FFFFFF` | Text on a danger fill (5.1.2, UI-004). |
 | `scrim` | `--scrim: color-mix(in srgb, var(--graphite-black) 55%, transparent)`<br>light: `--scrim: color-mix(in srgb, var(--graphite-light-text) 35%, transparent)` | Modal dim: black at 55 % (dark), ink at 35 % (light) (MAT-003). |
+| `material-edge` | `--material-edge: color-mix(in srgb, var(--graphite-white) 14%, transparent)`<br>light: `--material-edge: color-mix(in srgb, var(--graphite-white) 80%, transparent)` | The 1 px inner edge highlight of a material: white at 14 % (dark) or 80 % (light). Removed with the blur (MAT-010). |
+| `material-sheen` | `--material-sheen: color-mix(in srgb, var(--graphite-white) 5%, transparent)`<br>light: `--material-sheen: color-mix(in srgb, var(--graphite-white) 5%, transparent)` | The top-to-bottom sheen of a material: white at 5 % at the top edge, none at the bottom. Removed with the blur (MAT-010). |
 | `focus-ring` | `--focus-ring: var(--accent)` = `#88C0D0`<br>light: `--focus-ring: var(--accent)` = `#88C0D0` | The 2 px focus outline (5.1.2). |
 | `shadow` | `--shadow: var(--graphite-black)` = `#000000`<br>light: `--shadow: var(--graphite-light-text)` = `#1D2024` | Shadow colour of elevation-2 and elevation-3: black (dark), ink (light) (5.6). |
 | `chart-grid` | `--chart-grid: var(--graphite-dark-border-strong)` = `#41464E`<br>light: `--chart-grid: var(--graphite-light-border-strong)` = `#C3C7CD` | Chart grid lines (K5, MET-004). |
@@ -247,9 +251,9 @@ Generated from `design/tokens/*.tokens.json` (TOK-001). Names follow contract K5
 
 | Token | CSS value | Use |
 | --- | --- | --- |
-| `material-chrome` | `--material-chrome-bg: color-mix(in srgb, var(--surface-base) 82%, transparent)`<br>`--material-chrome-blur: 20px`<br>`--material-chrome-saturate: 140%` | Navigation bar, session toolbar (5.6). Reduced transparency: surface-base, no blur |
-| `material-panel` | `--material-panel-bg: color-mix(in srgb, var(--surface-raised) 90%, transparent)`<br>`--material-panel-blur: 12px`<br>`--material-panel-saturate: 100%` | Logs panel, side panels. Reduced transparency: surface-raised, no blur |
-| `material-overlay` | `--material-overlay-bg: color-mix(in srgb, var(--surface-overlay) 92%, transparent)`<br>`--material-overlay-blur: 24px`<br>`--material-overlay-saturate: 100%` | Menus, popovers, toasts. Reduced transparency: surface-overlay, no blur |
+| `material-chrome` | `--material-chrome-bg: color-mix(in srgb, var(--surface-base) 76%, transparent)`<br>`--material-chrome-blur: 28px`<br>`--material-chrome-saturate: 160%` | Navigation bar, session toolbar (5.6). Reduced transparency: surface-base, no blur |
+| `material-panel` | `--material-panel-bg: color-mix(in srgb, var(--surface-raised) 82%, transparent)`<br>`--material-panel-blur: 16px`<br>`--material-panel-saturate: 130%` | Logs panel, side panels. Reduced transparency: surface-raised, no blur |
+| `material-overlay` | `--material-overlay-bg: color-mix(in srgb, var(--surface-overlay) 86%, transparent)`<br>`--material-overlay-blur: 32px`<br>`--material-overlay-saturate: 150%` | Menus, popovers, toasts. Reduced transparency: surface-overlay, no blur |
 
 ## depth.elevation
 

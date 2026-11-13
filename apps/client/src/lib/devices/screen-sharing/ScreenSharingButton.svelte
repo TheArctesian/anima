@@ -103,7 +103,7 @@
   <!-- Always mounted, so a change is announced; failures have their own alert. -->
   <span class="live" role="status">{liveText(stage)}</span>
   {#if stage.kind !== 'idle'}
-    <div class="panel" bind:this={panel} transition:popover={{ from: button ?? undefined }} {@attach placeNear(() => button ?? undefined)}>
+    <div class="panel material-overlay" bind:this={panel} transition:popover={{ from: button ?? undefined }} {@attach placeNear(() => button ?? undefined)}>
       {#if stage.kind === 'failed'}
         <p role="alert">{stage.message}</p>
         <button type="button" class="device-action" tabindex="0" onclick={stop} {@attach press()}>Close</button>
@@ -193,9 +193,6 @@
     padding: var(--space-2);
     border: var(--border-thin) solid var(--border-strong);
     border-radius: var(--radius-md);
-    background: var(--material-overlay-bg);
-    backdrop-filter: blur(var(--material-overlay-blur)) saturate(var(--material-overlay-saturate));
-    box-shadow: var(--elevation-2);
     font-size: var(--text-sm);
   }
 

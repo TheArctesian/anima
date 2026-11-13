@@ -41,10 +41,12 @@
     icon?: IconName;
     /** Shows a Close button at the end of the title row; it calls `onClose`, as Escape does. */
     dismissible?: boolean;
+    /** Solid, not frosted: for a dialog that can open over a live remote display (MAT-008). */
+    solid?: boolean;
     children: Snippet;
   }
 
-  const { open, title, onClose, size = 'content', warning = false, describedBy, closeOnScrim = true, returnTo, width = 8, preset, footer, lowered = false, icon, dismissible = false, children }: Props = $props();
+  const { open, title, onClose, size = 'content', warning = false, describedBy, closeOnScrim = true, returnTo, width = 8, preset, footer, lowered = false, icon, dismissible = false, solid = false, children }: Props = $props();
   const PRESET_WIDTH = { sm: 6, md: 8, lg: 12 } as const;
   const span = $derived(preset === undefined ? width : PRESET_WIDTH[preset]);
   const titleId = $props.id();
@@ -160,7 +162,7 @@
       }}
     >
       <div
-        class="surface"
+        class="surface frosted-host"
         class:form={size === 'form'}
         class:warning
         class:dismissible
@@ -177,6 +179,8 @@
           keydown(event, event.currentTarget);
         }}
       >
+        <!-- The glass sits behind the content, not on the surface: a backdrop filter would make the surface the containing block of a fixed HelpTip (MAT-010). -->
+        <div class="glass-layer material-overlay" data-solid={solid || undefined} aria-hidden="true"></div>
         <h2 id={titleId}>{#if warning}<Icon name="nf-md-alert" />{/if}{title}</h2>
         {#if icon !== undefined && !warning}
           <!-- Beside the title, not in it: the heading's text stays the title alone. -->
@@ -241,17 +245,11 @@
     inline-size: min(100%, calc(var(--space-16) * var(--modal-width)));
     max-block-size: 100%;
     padding: var(--space-5);
-    background: var(--surface-overlay);
     border-radius: var(--radius-lg);
     box-shadow: var(--elevation-3);
     color: var(--text);
-  }
-
-  /* Materials are solid and bordered with prefers-contrast: more (MAT-006). */
-  @media (prefers-contrast: more) {
-    .surface {
-      border: var(--border-thin) solid var(--border-strong);
-    }
+    /* Keeps the glass layer's negative stacking inside the surface. */
+    isolation: isolate;
   }
 
   .warning {

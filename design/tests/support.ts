@@ -44,7 +44,7 @@ function primitiveHex(path: string): HexColour {
 }
 
 /** A source value as a hex: an alias to a role (same palette or any), an alias to a primitive, a plain colour or a mix. */
-function resolveSource(source: unknown, appearance: Appearance): HexColour {
+export function resolveSource(source: unknown, appearance: Appearance): HexColour {
   if (typeof source === 'string') {
     const alias = /^\{(.+)\}$/.exec(source)?.[1];
     if (alias === undefined) return source as HexColour;

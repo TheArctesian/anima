@@ -75,7 +75,7 @@
     <Icon name="nf-md-chevron_down" size="sm" />
   </button>
   {#if open}
-    <div class="panel" id="{id}-panel" role="group" aria-label={label} transition:popover={{ from: button }} {@attach keepInside}>
+    <div class="panel material-overlay" id="{id}-panel" role="group" aria-label={label} transition:popover={{ from: button }} {@attach keepInside}>
       {#each options as option (option.value)}
         <label class="option">
           <input
@@ -151,9 +151,6 @@
     overflow-y: auto;
     border: var(--border-thin) solid var(--border-strong);
     border-radius: var(--radius-md);
-    background: var(--material-overlay-bg);
-    backdrop-filter: blur(var(--material-overlay-blur)) saturate(var(--material-overlay-saturate));
-    box-shadow: var(--elevation-2);
   }
 
   .option {
