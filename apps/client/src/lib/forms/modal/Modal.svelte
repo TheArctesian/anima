@@ -252,24 +252,6 @@
     isolation: isolate;
   }
 
-  /* The modal's material (MAT-003): the overlay glass over the scrim. The surface carries the elevation-3 shadow, so the layer adds none. */
-  .glass-layer {
-    --material-lift: 0 0 0 transparent;
-    position: absolute;
-    inset: 0;
-    /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- behind the content inside the surface's own stacking context; no layer token is below zero */
-    z-index: -1;
-    border-radius: inherit;
-    pointer-events: none;
-  }
-
-  /* Materials are solid and bordered with prefers-contrast: more (MAT-006). */
-  @media (prefers-contrast: more) {
-    .surface {
-      border: var(--border-thin) solid var(--border-strong);
-    }
-  }
-
   .warning {
     border-block-start: var(--border-focus) solid var(--status-warning);
   }

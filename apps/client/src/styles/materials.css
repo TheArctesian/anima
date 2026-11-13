@@ -59,3 +59,17 @@
   backdrop-filter: none;
   box-shadow: var(--material-lift, 0 0 0 transparent);
 }
+
+/*
+ * The glass of a modal (MAT-003): a layer behind the surface's content, over the scrim. The surface carries the elevation-3
+ * shadow, so the layer adds none. The surface sets `isolation: isolate`, which keeps the layer's stacking inside it.
+ */
+.glass-layer {
+  --material-lift: 0 0 0 transparent;
+  position: absolute;
+  inset: 0;
+  /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- behind the content inside the surface's own stacking context; no layer token is below zero */
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+}
