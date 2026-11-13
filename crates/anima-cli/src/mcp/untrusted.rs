@@ -72,8 +72,7 @@ pub fn fitted(mut result: Map<String, Value>) -> Map<String, Value> {
         .iter()
         .filter_map(|(key, value)| value.as_array().map(|values| (key.clone(), values.len())))
         .max_by_key(|(_, length)| *length)
-        .map(|(key, _)| key)
-        .unwrap_or_default();
+        .map_or_else(String::new, |(key, _)| key);
     let mut dropped = 0_usize;
     while size(&result) > RESULT_CAP {
         let popped = result

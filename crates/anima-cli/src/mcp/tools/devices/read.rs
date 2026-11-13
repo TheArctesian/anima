@@ -217,8 +217,7 @@ pub async fn get(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, Tool
         .run::<WebList>(web_list::Variables { id })
         .await?
         .device
-        .map(|device| json(&device.web_interfaces))
-        .unwrap_or_default();
+        .map_or(Value::Null, |device| json(&device.web_interfaces));
     Ok(Value::Object(object([
         ("device", short(json(&device), &GET_KEYS, input.detail)),
         ("webInterfaces", web),

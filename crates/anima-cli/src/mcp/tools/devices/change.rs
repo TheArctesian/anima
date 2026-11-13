@@ -196,8 +196,7 @@ pub async fn delete(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, T
         })
         .await?
         .device
-        .map(|device| device.name)
-        .unwrap_or_default();
+        .map_or_else(String::new, |device| device.name);
     confirmed(&input.confirm, &name, "device")?;
     let deleted = hub
         .run::<DeviceDelete>(device_delete::Variables { id })

@@ -168,8 +168,7 @@ async fn interface(hub: &Hub, device: &str, wanted: &str) -> Result<(String, Str
         .run::<WebList>(web_list::Variables { id })
         .await?
         .device
-        .map(|device| device.web_interfaces)
-        .unwrap_or_default();
+        .map_or_else(Vec::new, |device| device.web_interfaces);
     let mut matches: Vec<(String, String)> = interfaces
         .into_iter()
         .filter(|candidate| candidate.id == wanted || candidate.label == wanted)
