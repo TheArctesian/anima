@@ -1,7 +1,14 @@
-import { applyChange, describeChange, type McpChange, type McpTool } from './permissions';
+import { applyChange, controlOf, describeChange, nameChange, type McpChange, type McpTool } from './permissions';
 import { McpShellError, type McpShell } from '$lib/desktop/mcp/shell';
 
 export type McpStatus = 'loading' | 'ready' | 'failed';
+
+/** A change the shell refused: which control it came from, what it tried, and why it failed. */
+export interface WriteProblem {
+  readonly control: string;
+  readonly attempt: string;
+  readonly reason: string;
+}
 
 function messageOf(reason: unknown): string {
   return reason instanceof McpShellError ? reason.message : 'The permissions could not be changed.';
@@ -16,8 +23,8 @@ export class McpPermissionsStore {
   status = $state<McpStatus>('loading');
   /** Why the file could not be read; empty while it can. */
   loadProblem = $state('');
-  /** The last change that failed, in words; empty after the next one is saved. */
-  writeProblem = $state('');
+  /** The last change that failed. It stays until the operator dismisses it or the same control is saved (MCP-021). */
+  problem = $state.raw<WriteProblem | null>(null);
   /** What the last saved change did; one quiet line that a screen reader announces (MCP-022). */
   saved = $state('');
   #confirmed = $state.raw<readonly McpTool[]>([]);
@@ -50,15 +57,20 @@ export class McpPermissionsStore {
     return this.#tail;
   }
 
+  /** Hides the failure; the operator has read it. */
+  dismissProblem(): void {
+    this.problem = null;
+  }
+
   async #save(change: McpChange): Promise<void> {
     try {
       const next = await this.shell.write(this.hub, change);
       this.#confirmed = next.tools;
-      this.writeProblem = '';
+      if (this.problem?.control === controlOf(change)) this.problem = null;
       this.saved = describeChange(change, next.tools);
     } catch (reason) {
       this.saved = '';
-      this.writeProblem = messageOf(reason);
+      this.problem = { control: controlOf(change), attempt: nameChange(change), reason: messageOf(reason) };
     } finally {
       this.#queue = this.#queue.filter((queued) => queued !== change);
     }

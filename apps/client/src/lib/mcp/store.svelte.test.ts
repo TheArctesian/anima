@@ -23,7 +23,7 @@ describe('McpPermissionsStore', () => {
     await saving;
     expect(stateOf(store, 'anima_check_update')).toBe('ask');
     expect(store.saved).toBe('Check update: ask.');
-    expect(store.writeProblem).toBe('');
+    expect(store.problem).toBeNull();
   });
 
   it('MCP-021: a refused change goes back and says so, and keeps the changes that were fine', async () => {
@@ -31,12 +31,25 @@ describe('McpPermissionsStore', () => {
     shell.writeProblem = 'unwritable';
     await store.change({ type: 'choose', names: ['anima_check_update'], state: 'allow' });
     expect(stateOf(store, 'anima_check_update')).toBe('off');
-    expect(store.writeProblem).toContain('could not be saved');
+    expect(store.problem?.reason).toContain('could not be saved');
+    expect(store.problem?.attempt).toBe('Check update to allow');
     expect(store.saved).toBe('');
     shell.writeProblem = null;
     await store.change({ type: 'choose', names: ['anima_check_update'], state: 'ask' });
     expect(stateOf(store, 'anima_check_update')).toBe('ask');
-    expect(store.writeProblem).toBe('');
+    // The same tool was saved, so its failure is over.
+    expect(store.problem).toBeNull();
+  });
+
+  it('MCP-021: a failure stays when another control is saved, until it is dismissed', async () => {
+    const { store, shell } = await loaded();
+    shell.writeProblem = 'unwritable';
+    await store.change({ type: 'choose', names: ['anima_check_update'], state: 'allow' });
+    shell.writeProblem = null;
+    await store.change({ type: 'choose', names: ['anima_device_get'], state: 'ask' });
+    expect(store.problem?.attempt).toBe('Check update to allow');
+    store.dismissProblem();
+    expect(store.problem).toBeNull();
   });
 
   it('MCP-021: changes reach the shell one at a time, in the order they were made', async () => {

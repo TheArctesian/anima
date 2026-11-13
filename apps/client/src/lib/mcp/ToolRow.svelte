@@ -1,6 +1,5 @@
 <script lang="ts">
   import Segmented from '$lib/forms/segmented/Segmented.svelte';
-  import HelpTip from '$lib/overlay/helptip/HelpTip.svelte';
   import { STATES, toolLabel, type McpState, type McpTool } from './permissions';
 
   interface Props {
@@ -22,11 +21,13 @@
         <span class="marker">{tool.kind === 'read' ? 'Read' : 'Change'}</span>
         {#if tool.needsSignIn}
           <span class="marker">Needs sign-in</span>
-          <HelpTip label="needs sign-in">This tool works only when <code>anima mcp</code> runs with your own sign-in. An API key never lists it.</HelpTip>
+        {/if}
+        {#if tool.kind === 'change' && tool.state === 'allow'}
+          <span class="marker warn">Can change the hub without asking</span>
         {/if}
       </span>
     </div>
-    <Segmented label="{toolLabel(tool.tool)} permission" options={STATES} value={tool.state} onchange={onchoose} size="sm" />
+    <Segmented label="{toolLabel(tool.tool)} permission" options={STATES} value={tool.state} onchange={onchoose} arrowsChoose={false} />
   </div>
   <button type="button" class="more" aria-expanded={open} aria-controls="{id}-about" onclick={() => { open = !open; }}>
     {open ? 'Hide description' : 'Show description'}
@@ -87,8 +88,16 @@
     font-size: var(--text-xs);
   }
 
+  .marker.warn {
+    border-color: var(--text-secondary);
+    color: var(--text);
+  }
+
   .more {
     align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    min-block-size: var(--control-sm);
     padding: 0;
     border: 0;
     background: none;

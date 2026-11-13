@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { FIXTURE_TOOLS } from './mcp.fixture';
-import { applyChange, bulkActions, countsText, countStates, describeChange, groupTools, needsConfirmation, toolLabel, type McpChange, type McpTool } from './permissions';
+import { applyChange, bulkActions, controlOf, countChanged, countsText, countStates, describeChange, groupLabel, groupTools, nameChange, needsConfirmation, TOOLSET_COUNT, toolLabel, type McpChange, type McpTool } from './permissions';
 
 const stateOf = (tools: readonly McpTool[], name: string) => tools.find((each) => each.tool === name)?.state;
 
@@ -60,7 +60,7 @@ describe('confirmation', () => {
   });
 
   it('MCP-020: a set has the same bulk actions without Reset', () => {
-    expect(bulkActions().map((action) => action.label)).toEqual(['Allow all', 'Ask for all', 'Turn off all changes', 'Reset']);
+    expect(bulkActions().map((action) => action.label)).toEqual(['Allow all', 'Ask for all', 'Read-only (turn off all changes)', 'Reset']);
     expect(bulkActions('vpn').map((action) => action.label)).toEqual(['Allow all', 'Ask for all', 'Turn off changes']);
     expect(bulkActions('vpn')[2]?.change).toEqual({ type: 'bulk', toolset: 'vpn', kind: 'change', state: 'off' });
   });
@@ -71,5 +71,40 @@ describe('describeChange', () => {
     expect(describeChange({ type: 'bulk', toolset: 'devices', state: 'ask' }, FIXTURE_TOOLS)).toBe('Devices: every tool set to ask (3 tools).');
     expect(describeChange({ type: 'bulk', kind: 'change', state: 'off' }, FIXTURE_TOOLS)).toBe('Every change tool set to off (3 tools).');
     expect(describeChange({ type: 'choose', names: ['anima_check_update'], state: 'allow' }, FIXTURE_TOOLS)).toBe('Check update: allow.');
+  });
+});
+
+describe('changes from the default', () => {
+  it('MCP-019: counts the tools that are not in their default state, read tools by allow and change tools by off', () => {
+    expect(countChanged(FIXTURE_TOOLS)).toBe(0);
+    const next = applyChange(FIXTURE_TOOLS, { type: 'bulk', toolset: 'checks', state: 'ask' });
+    expect(countChanged(next)).toBe(2);
+    expect(countChanged(applyChange(next, { type: 'reset' }))).toBe(0);
+  });
+
+  it('MCP-019: a group header adds the count only when it is above zero', () => {
+    const [devices] = groupTools(FIXTURE_TOOLS);
+    expect(groupLabel(devices as never)).toBe('Devices: 1 allow, 0 ask, 2 off');
+    const [changed] = groupTools(applyChange(FIXTURE_TOOLS, { type: 'choose', names: ['anima_device_create'], state: 'allow' }));
+    expect(groupLabel(changed as never)).toBe('Devices: 2 allow, 0 ask, 1 off; 1 changed from default');
+  });
+
+  it('MCP-019: ten tool sets are known, for the placeholder list', () => {
+    expect(TOOLSET_COUNT).toBe(10);
+  });
+});
+
+describe('failures name their control', () => {
+  it('MCP-021: the same tool or the same bulk button is the same control', () => {
+    expect(controlOf({ type: 'choose', names: ['a'], state: 'ask' })).toBe(controlOf({ type: 'choose', names: ['a'], state: 'ask' }));
+    expect(controlOf({ type: 'choose', names: ['a'], state: 'ask' })).not.toBe(controlOf({ type: 'choose', names: ['b'], state: 'ask' }));
+    expect(controlOf({ type: 'bulk', toolset: 'web', state: 'ask' })).not.toBe(controlOf({ type: 'bulk', state: 'ask' }));
+  });
+
+  it('MCP-021: says what the change tried to do', () => {
+    expect(nameChange({ type: 'choose', names: ['anima_check_update'], state: 'allow' })).toBe('Check update to allow');
+    expect(nameChange({ type: 'bulk', toolset: 'checks', state: 'ask' })).toBe('Every Checks tool to ask');
+    expect(nameChange({ type: 'bulk', kind: 'change', state: 'off' })).toBe('Every change tool to off');
+    expect(nameChange({ type: 'reset' })).toBe('Reset to default');
   });
 });

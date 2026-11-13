@@ -7,6 +7,8 @@
     open: boolean;
     title: string;
     body: string;
+    /** Short lines under the body, such as what the change lets a program do; none for most confirmations. */
+    lines?: readonly string[];
     /** For example "Delete nas". */
     confirmLabel: string;
     /** Runs once; on success the buttons stay off, so the owner leaves or sets `open` to false. */
@@ -14,7 +16,7 @@
     onCancel: () => void;
   }
 
-  const { open, title, body, confirmLabel, onConfirm, onCancel }: Props = $props();
+  const { open, title, body, lines = [], confirmLabel, onConfirm, onCancel }: Props = $props();
   let busy = $state(false);
   let done = $state(false);
   let failure = $state<HubError | null>(null);
@@ -32,6 +34,11 @@
 
 <Modal {open} {title} onClose={onCancel} preset="sm">
   <p>{body}</p>
+  {#if lines.length > 0}
+    <ul>
+      {#each lines as line (line)}<li>{line}</li>{/each}
+    </ul>
+  {/if}
   {#if failure !== null}
     <p class="failure" role="alert">{failure.message}</p>
   {/if}
@@ -47,6 +54,15 @@
 <style>
   p {
     margin: 0;
+    line-height: var(--leading-normal);
+  }
+
+  ul {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    margin: var(--space-3) 0 0;
+    padding-inline-start: var(--space-5);
     line-height: var(--leading-normal);
   }
 

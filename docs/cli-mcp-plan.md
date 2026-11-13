@@ -166,7 +166,9 @@ Not in the command line, with the reason:
   can use. With an API key, the limits of INT-003 apply and the hub enforces them.
 - **MCP-004.** No tool takes a secret and no tool returns one. Thus these are not tools: set a
   device credential, make an API key, enrol an agent or a builder, make a VPN key, make a
-  notification channel (its address can hold a secret).
+  notification channel (its address can hold a secret). `anima_check_update` does not replace
+  the config of any HTTP check or SNMP check: the check read does not show an HTTP request body,
+  so such a check may hold a secret that a new config would drop.
 - **MCP-005.** No tool makes a trust decision: accept a host key or a certificate. A person does
   that, in the client or with the command line.
 - **MCP-006.** No tool opens a session or runs a command on a device. (Open point 1.)
@@ -234,25 +236,42 @@ The desktop application has an "MCP" section on the Settings page. It sets the s
   shell returns is a code with fixed text; it holds no path and no file content (LOG-007).
   At the top the section says in plain words what the MCP server is, that the states apply to
   coding agents on this computer for this hub, that the hub token still limits everything, and
-  that `anima mcp` starts it.
+  that `anima mcp` starts it. It also says that Allow lets an agent use a tool without asking
+  and that text an agent reads can steer it, what Ask does (the agent's app shows each call; if
+  it cannot ask, the call is refused), and what MCP stands for.
 - **MCP-019.** The section shows one group for each tool set, in the order of Section 7, closed
   by default. The group's name carries the number of tools in each state, in words ("3 allow,
   1 ask, 2 off"). A group opens to one row for each tool: its name in plain words, the tool ID
   in a secondary style, a "Read" or "Change" mark, a "Needs sign-in" mark with a hint where
   `needsSignIn` is true (the tool works only when `anima mcp` runs with the operator's own
   sign-in, never an API key; MCP-003), its description on request, and a choice of Allow, Ask
-  or Off.
-- **MCP-020.** Bulk actions are "Allow all", "Ask for all", "Turn off all changes" (every change
-  tool `off`: read-only) and "Reset" (MCP-014: `permissions reset`) for all tools. Each group has
+  or Off. A group header also says how many tools differ from the default ("2 changed from
+  default"), when any do. A group with a tool that needs sign-in says in view what that means.
+  A change tool that is on Allow shows a mark, in words, that it can change the hub without
+  asking.
+- **MCP-020.** Bulk actions are "Allow all", "Ask for all", "Read-only (turn off all changes)"
+  (every change tool `off`) and "Reset" (MCP-014: `permissions reset`) for all tools. Each group has
   "Allow all", "Ask for all" and "Turn off changes" for its own set. "Allow all" asks for a
   confirmation first, because it turns on change tools without a question for each call, as
-  `--allow-all` does (MCP-014). Every other action is saved at once. A group has no "Reset":
+  `--allow-all` does (MCP-014). The question names its scope in the title ("Allow every tool on
+  this hub?" or "Allow every Checks tool?"), says that the read tools of that scope are turned
+  on too, and lists in at most three lines what an agent steered by text it reads could then do
+  without asking: with an API key that can write, and with the operator's own sign-in. Only the
+  consequences of the tools in the scope are listed; they come from data keyed by tool set,
+  taken from "What a compromised agent can do" below. A single tool set to Allow from its row
+  needs no question. Every other action is saved at once. A group has no "Reset":
   it would forget the states of every set.
-- **MCP-021.** The choice for one tool is a radio group named after the tool. A change shows at
-  once and is saved after the changes before it, one at a time. If the shell refuses it, the
-  control goes back to its earlier state and the section says: "Not saved", the reason in
-  fixed words, and that the control went back. While the file is read the section shows a
-  loading state; if it cannot be read, an error without a path and a "Try again" button.
+- **MCP-021.** The choice for one tool is a radio group named after the tool. The arrow keys only
+  move the focus and do not wrap from the last option to the first; Space or Enter chooses, so a
+  key press never passes through Allow. A change shows at once and is saved after the changes
+  before it, one at a time. If the shell refuses it, the control goes back to its earlier state
+  and the section says: "Not saved", the tool or action that failed, the reason in fixed words,
+  and that the control went back. The message stays until the operator dismisses it
+  or the same control is saved. From the first paint the section holds a placeholder of ten closed
+  groups, as tall as the list, so that loading, a failed read and the loaded list take the same
+  height and nothing below moves (SET-004, MOT-007); there is no delay before it shows. If the file
+  cannot be read, the section shows an error without a path and a "Try again" button in that
+  place.
 - **MCP-022.** Every control can be reached with the keyboard and shows a focus ring. The state
   of a tool is a word, never a colour alone. After a change the section shows one quiet line
   ("Saved. Devices: every tool set to ask (7 tools).") in a polite live region, also for a bulk

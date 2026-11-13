@@ -58,6 +58,8 @@ export interface ToolGroup {
   readonly label: string;
   readonly tools: readonly McpTool[];
   readonly counts: StateCounts;
+  /** How many tools are not in the state they have when nothing is saved. */
+  readonly changed: number;
 }
 
 /** How many of `tools` are in each state. */
@@ -67,13 +69,18 @@ export function countStates(tools: readonly McpTool[]): StateCounts {
   return counts;
 }
 
+/** How many of `tools` are not in their default state (MCP-012). */
+export function countChanged(tools: readonly McpTool[]): number {
+  return tools.filter((tool) => tool.state !== defaultState(tool.kind)).length;
+}
+
 /** The tools by set, sets in the command line's order, then any set this client does not know, in the order met. */
 export function groupTools(tools: readonly McpTool[]): readonly ToolGroup[] {
   const names = [...Object.keys(TOOLSET_NAMES), ...tools.map((tool) => tool.toolset)];
   return [...new Set(names)]
     .map((toolset) => {
       const own = tools.filter((tool) => tool.toolset === toolset);
-      return { toolset, label: toolsetLabel(toolset), tools: own, counts: countStates(own) };
+      return { toolset, label: toolsetLabel(toolset), tools: own, counts: countStates(own), changed: countChanged(own) };
     })
     .filter((group) => group.tools.length > 0);
 }
@@ -89,7 +96,7 @@ export function toolLabel(tool: string): string {
 }
 
 /** The state a tool has when nothing is saved: read tools allow, change tools off (MCP-002). */
-function builtIn(kind: McpKind): McpState {
+export function defaultState(kind: McpKind): McpState {
   return kind === 'read' ? 'allow' : 'off';
 }
 
@@ -98,7 +105,7 @@ export function applyChange(tools: readonly McpTool[], change: McpChange): reado
   return tools.map((tool) => {
     switch (change.type) {
       case 'reset':
-        return { ...tool, state: builtIn(tool.kind) };
+        return { ...tool, state: defaultState(tool.kind) };
       case 'choose':
         return change.names.includes(tool.tool) ? { ...tool, state: change.state } : tool;
       case 'bulk':
@@ -144,7 +151,7 @@ export function bulkActions(toolset?: string): readonly BulkAction[] {
   const actions: BulkAction[] = [
     { label: 'Allow all', change: { type: 'bulk', ...scope, state: 'allow' } },
     { label: 'Ask for all', change: { type: 'bulk', ...scope, state: 'ask' } },
-    { label: toolset === undefined ? 'Turn off all changes' : 'Turn off changes', change: { type: 'bulk', ...scope, kind: 'change', state: 'off' } },
+    { label: toolset === undefined ? 'Read-only (turn off all changes)' : 'Turn off changes', change: { type: 'bulk', ...scope, kind: 'change', state: 'off' } },
   ];
   return toolset === undefined ? [...actions, { label: 'Reset', change: { type: 'reset' } }] : actions;
 }
@@ -152,4 +159,41 @@ export function bulkActions(toolset?: string): readonly BulkAction[] {
 /** "3 allow, 1 ask, 2 off": the counts in words, so no state rests on colour (UI-003). */
 export function countsText(counts: StateCounts): string {
   return STATES.map(({ value }) => `${String(counts[value])} ${value}`).join(', ');
+}
+
+/** A group's header text: its name, its counts in words, and how many differ from the default when any do. */
+export function groupLabel(group: ToolGroup): string {
+  const changed = group.changed > 0 ? `; ${String(group.changed)} changed from default` : '';
+  return `${group.label}: ${countsText(group.counts)}${changed}`;
+}
+
+/** How many tool sets there are, for a placeholder as tall as the list that replaces it. */
+export const TOOLSET_COUNT = Object.keys(TOOLSET_NAMES).length;
+
+/** Which control a change comes from: the same tool, or the same bulk button. A later save of it ends an earlier failure. */
+export function controlOf(change: McpChange): string {
+  switch (change.type) {
+    case 'reset':
+      return 'reset';
+    case 'choose':
+      return `choose:${change.names.join(',')}`;
+    case 'bulk':
+      return `bulk:${change.toolset ?? ''}:${change.kind ?? ''}:${change.state}`;
+  }
+}
+
+/** What a change tried to do, for a failure that must name it: "Check update to allow" or "Every Checks tool to ask". */
+export function nameChange(change: McpChange): string {
+  switch (change.type) {
+    case 'reset':
+      return 'Reset to default';
+    case 'choose':
+      return change.names.length === 1 && change.names[0] !== undefined
+        ? `${toolLabel(change.names[0])} to ${change.state}`
+        : `${String(change.names.length)} tools to ${change.state}`;
+    case 'bulk': {
+      const where = change.toolset === undefined ? 'Every' : `Every ${toolsetLabel(change.toolset)}`;
+      return `${where} ${change.kind === 'change' ? 'change tool' : 'tool'} to ${change.state}`;
+    }
+  }
 }

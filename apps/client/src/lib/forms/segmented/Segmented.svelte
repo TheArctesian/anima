@@ -15,6 +15,11 @@
     options: readonly Option[];
     value: Value;
     size?: 'sm' | 'md' | 'lg';
+    /**
+     * Whether an arrow key also chooses (the default, as radios do) or only moves focus, stopping at the ends, so that
+     * Space or Enter chooses. For a choice that is risky to pass through on the way to another.
+     */
+    arrowsChoose?: boolean;
     onchange?: (value: Value) => void;
   }
 
@@ -23,7 +28,7 @@
    * and a screen reader would read the row as independent switches. Radios also give arrow keys, which move and
    * choose together, and one tab stop (the chosen option).
    */
-  let { label, options, value = $bindable(), size = 'md', onchange }: Props = $props();
+  let { label, options, value = $bindable(), size = 'md', arrowsChoose = true, onchange }: Props = $props();
   let radios: (HTMLButtonElement | undefined)[] = $state([]);
 
   function choose(next: Value): void {
@@ -33,11 +38,11 @@
   }
 
   async function onkeydown(event: KeyboardEvent, index: number): Promise<void> {
-    const target = movedTo(event.key, index, options.length);
+    const target = movedTo(event.key, index, options.length, arrowsChoose);
     const option = target === undefined ? undefined : options[target];
     if (target === undefined || option === undefined) return;
     event.preventDefault();
-    choose(option.value);
+    if (arrowsChoose) choose(option.value);
     await tick();
     radios[target]?.focus();
   }
