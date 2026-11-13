@@ -266,19 +266,24 @@ step (VPS-005): agents do not create the R2 token or change `deploy/.env` on the
   Agents never do these steps and never read these files (UPD-012, VPS-005). On your computer,
   copy the key file that `tauri signer generate` wrote to the VPS yourself, for example
   `scp ~/.config/anima/updater.key <you>@<vps>:updater.key`. Then, on the VPS, in the deploy folder
-  (group 10001 is the hub's, `anima-hub` on the VPS, as for the R2 files):
+  (group 10001 is the hub's, `anima-hub` on the VPS, as for the R2 files). Run the block in
+  `bash`: `read -s` is not POSIX `sh`.
 
-  ```sh
+  ```bash
   sudo install -d -m 0750 -o root -g 10001 secrets/updater
   sudo install -m 0440 -o root -g 10001 ~/updater.key secrets/updater/updater_key
   shred -u ~/updater.key
   # Type the key's password; it is not echoed. Press Enter alone only for a key made with no
   # password: an encrypted key with an empty password leaves publishing off.
-  read -rs password && (umask 077 && printf '%s' "$password" > ~/updater_key_password)
+  IFS= read -rs password && (umask 077 && printf '%s' "$password" > ~/updater_key_password)
   unset password
   sudo install -m 0440 -o root -g 10001 ~/updater_key_password secrets/updater/updater_key_password
   shred -u ~/updater_key_password
   ```
+
+  `shred` overwrites the file in place, which gives no guarantee on a journaling or copy-on-write
+  file system or on an SSD: old blocks may survive. Keep the copies in your home folder as short
+  lived as the block makes them, and treat the VPS disk as holding the key.
 
   `compose.yaml` mounts the folder read-only at `/run/secrets/updater` (`ANIMA_UPDATER_KEY_FILE`,
   `ANIMA_UPDATER_KEY_PASSWORD_FILE`). It is a folder, not two compose secrets, because compose
