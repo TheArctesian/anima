@@ -68,6 +68,15 @@ A job is one container image that runs to its end on one machine.
 
 Fine-tuning (compute plan C7, #40) becomes the first job type. Its "done when" text in #40 stays.
 
+## A conflict to decide (2026-11-13)
+
+[projects-and-builds.md](projects-and-builds.md) proposes that a build is the first job type
+(PRO-009), before fine-tuning. A macOS or iOS build cannot run in a container. Thus JOB-001 and
+USE-001 cannot be true for each job, and JOB-004 (a native job on a Mac) cannot be "a later
+version" and cannot be only a Nix recipe: Nix does not supply Xcode or the macOS SDK. This file
+is not changed until the operator decides OD-W12. A native job has no container around it, so it
+needs its own limits before it is built.
+
 ## Decision (OD-W10, operator, 2026-11-12)
 
 R-115 (operator, 2026-11-12) listed as **not taken**: "a command channel from the agent to the

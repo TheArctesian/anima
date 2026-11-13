@@ -3,8 +3,8 @@
 | Item | Value |
 | --- | --- |
 | Document | Work plan: purpose, categories and priority order |
-| Version | 0.6 (draft) |
-| Date | 2026-11-12 |
+| Version | 0.7 (draft) |
+| Date | 2026-11-13 |
 | Language | ASD-STE100 Simplified Technical English (STE) |
 | Status | For review. The operator has not approved the principles or the priority order. |
 | Related | [design-spec.md](design-spec.md), [extensions-plan.md](extensions-plan.md), [compute-plan.md](compute-plan.md), [vpn-plan.md](vpn-plan.md), [programme/handoff.md](programme/handoff.md), [programme/proposals/](programme/proposals/) |
@@ -27,6 +27,8 @@ Anima joins three types of resource:
 | Rented | Hostinger, Vercel, Cloudflare, Neon | Oversees them |
 | Held about you | WHOOP, Garmin, Apple Health, Spotify, a bank | Brings a copy home |
 
+The three types stay different. A project can run on owned compute and on rented compute. A service that holds data about the operator is a source only: nothing runs there, and a project never lists it as its hosting (OD-W11, PRO-006).
+
 Anima is for the operator first. Later, other persons can run their own Anima on a service of their choice, or pay for a hosted one. Each person has their own coordinator and their own data (OD-W2, [other-operators.md](programme/proposals/other-operators.md)).
 
 ## 2. Principles
@@ -48,10 +50,12 @@ The coordinator is the hub of the design specification. The interface, the speci
 | Category | Meaning | Content | Owner documents |
 | --- | --- | --- | --- |
 | Foundation | The parts that all other work uses | Coordinator, VPN between sites, `anima-agent` on each machine, the clients, the standby copies, bulk data on the operator's machines | Design specification Sections 3, 4, 5 and 10. [vpn-plan.md](vpn-plan.md). [coordinator-standby.md](programme/proposals/coordinator-standby.md), [bulk-data-placement.md](programme/proposals/bulk-data-placement.md) |
-| See | Know the state of all that is yours | Checks, metrics, notifications, cloud accounts (Projects), the Integrations section | Design specification Section 6. Extensions plan Sections 4.2 and 4.5 |
+| See | Know the state of all that is yours | Checks, metrics, notifications, Projects (the front door for rented accounts), the Integrations section | Design specification Section 6. Extensions plan Sections 4.2 and 4.5. [projects-and-builds.md](programme/proposals/projects-and-builds.md) |
 | Reach | Go into a thing and act on it | SSH, RDP, VNC, web interfaces, Secrets | Design specification Section 6.3. Extensions plan Section 4.4 |
 | Remember | Keep a copy of the life of the operator | Health, Money, Map, People, History, Documents, Writing, Reminders, Library, Wardrobe, AI coding sessions | Extensions plan Sections 2 and 4. [new-sources.md](programme/proposals/new-sources.md) |
-| Use | Make the machines do work | Model service, jobs, AI agent runs, hosted applications | [compute-plan.md](compute-plan.md). [jobs.md](programme/proposals/jobs.md), [agent-runs.md](programme/proposals/agent-runs.md), [hosted-applications.md](programme/proposals/hosted-applications.md) |
+| Use | Make the machines do work | Model service, builds, jobs, AI agent runs, hosted applications | [compute-plan.md](compute-plan.md). [jobs.md](programme/proposals/jobs.md), [projects-and-builds.md](programme/proposals/projects-and-builds.md), [agent-runs.md](programme/proposals/agent-runs.md), [hosted-applications.md](programme/proposals/hosted-applications.md) |
+
+The command line and the MCP server are not a category. They are a second and a third way to use each function of each category ([cli-mcp-plan.md](cli-mcp-plan.md) on the branch `claude/anima-cli`). A new function is built in this order: the hub API, the `anima` command, the MCP tool, the graphical client (CMD-030).
 
 ## 4. Priority order
 
@@ -64,8 +68,9 @@ The tiers come from the issue labels `priority: foundation`, `priority: later` a
 | 1 | All | Decisions and approvals that the foundation work needs | Extensions: #26, #27, #31. Compute: #41, #42, #43, #44, #47, #49, #50. This plan: Section 7 | Open |
 | 2a | See, Remember | The engine (E0), with Writing as its sample extension | #4, #5, #7, #8, #9, #10, #11, #14 | Planned. `priority: foundation` |
 | 2b | Use | Level 1 model service: C1 and C2 | #34, #35 | Planned. `priority: foundation`. The issues were given a new scope on 2026-11-07 and are newer than the compute plan. |
-| 3a | Use | Jobs, then AI agent runs | #40 (C7), #36 (C3). No issue yet for the two proposals | #40 is planned. The proposals are not approved. The operator put this before the extensions (OD-W8). |
-| 3b | See, Remember, Reach | The extensions, in the order of XP-005, one at a time. Projects comes early in that order. | #12, #13, #15 to #25, #6, #32. Decisions #28, #29, #30 | Planned. `priority: later` |
+| 3a | See | Projects: import each GitHub repository, find where it runs, propose resources (PRO-001 to PRO-008) | #13 | The direction is decided (OD-W11). It changes PRJ-001. It needs the engine (tier 2a). |
+| 3a | Use | Jobs, with the build as the first job type. Then AI agent runs. | #40 (C7), #36 (C3). No issue yet for the proposals | #40 is planned. The proposals are not approved. The operator put jobs before the extensions (OD-W8). The build as a job, directly after Projects, is a proposal to confirm (PRO-009). |
+| 3b | See, Remember, Reach | The other extensions, in the order of XP-005, one at a time | #12, #15 to #25, #6, #32. Decisions #28, #29, #30 | Planned. `priority: later` |
 | 3c | Use | Hosted applications | No issue yet | Proposal. Not approved. |
 | 3 | Foundation | Standby copies of the coordinator database (FND-001 to FND-005, FND-007 to FND-012) | No issue yet | Proposal. Its direction is decided (OD-W9). |
 | 3 | Foundation | Bulk data in encrypted pieces on the operator's machines | No issue yet. It changes the file store of #8 | Proposal. Its direction is decided (OD-W9). Decide it before E0-5 (#8) starts. |
@@ -96,11 +101,13 @@ One document owns each concern. Add a requirement to its owner, not to this docu
 | Rules for all work on machines, and jobs | [jobs.md](programme/proposals/jobs.md) | USE-001 to USE-009, JOB-001 to JOB-010 |
 | AI agent runs | [agent-runs.md](programme/proposals/agent-runs.md) | AGN-001 to AGN-008 |
 | Hosted applications | [hosted-applications.md](programme/proposals/hosted-applications.md) | HOST-001 to HOST-009 |
+| Projects as the front door: import from a forge, resources that Anima finds, builds as jobs, sign-in with a forge | [projects-and-builds.md](programme/proposals/projects-and-builds.md) | PRO-001 to PRO-019 |
+| The `anima` command line and the MCP server | [cli-mcp-plan.md](cli-mcp-plan.md) (on the branch `claude/anima-cli`) | CMD, MCP |
 | Cloudflare source for Projects. A new Activity extension for Spotify and Screen Time | [new-sources.md](programme/proposals/new-sources.md) | None until each provider is verified |
 | Other persons: self-hosting and a hosted option | [other-operators.md](programme/proposals/other-operators.md) | None yet |
 | Rulings and the state of each package | [programme/programme.md](programme/programme.md), [programme/handoff.md](programme/handoff.md) | R, CR |
 
-The seven proposals are drafts. A proposal becomes a plan when the operator approves it with a ruling. Then its work gets an issue with the labels of Section 4.
+The eight proposals are drafts. A proposal becomes a plan when the operator approves it with a ruling. Then its work gets an issue with the labels of Section 4.
 
 ## 6. Not planned
 
@@ -132,6 +139,8 @@ Decisions of the other plans stay in their issues (Section 4, tier 1). These are
 | OD-W8 | The position of Use against the extensions in tier 3 | **Decided (operator, 2026-11-12): jobs and AI agent runs first, then the extensions one at a time, then hosted applications.** |
 | OD-W9 | One home with copies, or a copy on each node that syncs between nodes when the hub is down (issue #2) | **Decided (operator, 2026-11-12): one home, copies by policy.** The section "Decision" of [coordinator-standby.md](programme/proposals/coordinator-standby.md) has the operator's words. It needs a ruling number in `programme.md`. Issue #2 keeps only its phase L0. |
 | OD-W10 | Can the agent do work that the coordinator gives it? R-115 did not take a command channel to the agent. | **Decided (operator, 2026-11-12): yes, one agent, on by default ("it should be on by default").** The section "Decision" of [jobs.md](programme/proposals/jobs.md) has the limits. It needs a ruling number that changes R-115. It also changes CMP-002 and the recommendation of OD-C8 (#50). An agent that is already installed takes work after its update, with no confirmation. |
+| OD-W11 | Are projects the front door for rented accounts, and does the builder build each project? | **Decided (operator, 2026-11-13): yes.** Connect GitHub, import each repository, leave out the ones that the operator selects. Anima proposes resources from signs in the repository. The builder is no longer specific to Anima. The three resource types stay different. A different forge must be possible. [projects-and-builds.md](programme/proposals/projects-and-builds.md) has the six points. |
+| OD-W12 | The proposals that follow OD-W11 | **Not decided.** The operator heard them and did not refuse: a build is a job and comes directly after Projects; Anima schedules builds and does not use GitHub Actions runners; native jobs on a Mac come early; keys belong to the project; no builds of pull requests from forks; read access first; sign-in with a forge later, with the local sign-in as the root (PRO-009 to PRO-016). |
 
 ## 8. Changes that this plan needs in other documents
 
@@ -149,3 +158,7 @@ These changes are not made. The operator must approve each one (operator checkpo
 | Extensions plan FIL-001 | Keep files on the operator's machines, not in a volume on the hub ([bulk-data-placement.md](programme/proposals/bulk-data-placement.md)). |
 | Compute plan CMP-002 and OD-C8 | A machine with the agent takes work by default (OD-W10). Issue #50 has the old recommendation. |
 | Compute plan 3.3, 12.1 and 13 | Agree with R-084 and with the new scope of #34 and #35 (#41). Make C7 the first job type of [jobs.md](programme/proposals/jobs.md). |
+| Extensions plan PRJ-001 and Section 4.2 | Import each repository; the operator leaves some out (OD-W11). PRJ-001 says that the operator accepts each project. |
+| [jobs.md](programme/proposals/jobs.md) JOB-001, JOB-004, USE-001 | A macOS or iOS build cannot run in a container. Native jobs on a Mac must come early (PRO-011). Not changed until OD-W12 is decided. |
+| Design specification BLD-001 to BLD-082 | The builder takes a project as a parameter; the release of Anima becomes one project (OD-W11). |
+| `AGENTS.md`, [cli-mcp-plan.md](cli-mcp-plan.md) | Done on the branch `claude/anima-cli`: the command-line-first rule (CMD-030). |
