@@ -1,0 +1,9 @@
+# A check given by name: the checks of its device, to find the one with that name.
+query CheckNames($device: ID!) {
+  device(id: $device) {
+    checks {
+      id
+      name
+    }
+  }
+}

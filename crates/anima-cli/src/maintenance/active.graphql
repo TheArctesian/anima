@@ -1,0 +1,9 @@
+# `anima maintenance start` and `anima maintenance stop`: a manual window on or off.
+mutation MaintenanceSetActive($id: ID!, $active: Boolean!) {
+  setManualWindowActive(id: $id, active: $active) {
+    id
+    name
+    kind
+    activeNow
+  }
+}

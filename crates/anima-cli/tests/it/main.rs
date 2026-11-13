@@ -4,6 +4,8 @@
 //! One module for each noun (`devices`); `basics` holds the commands every noun relies on.
 
 mod basics;
+mod checks;
 mod coverage;
 mod devices;
 mod kit;
+mod maintenance;

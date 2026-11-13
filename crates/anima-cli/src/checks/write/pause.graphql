@@ -1,0 +1,10 @@
+# `anima check pause` and `anima check resume`.
+mutation CheckSetPaused($id: ID!, $paused: Boolean!) {
+  setCheckPaused(id: $id, paused: $paused) {
+    id
+    name
+    type
+    status
+    paused
+  }
+}

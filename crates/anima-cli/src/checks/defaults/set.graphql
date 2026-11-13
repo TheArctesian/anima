@@ -1,0 +1,9 @@
+# `anima check defaults set`.
+mutation CheckDefaultsSet($input: CheckDefaultsInput!) {
+  setCheckDefaults(input: $input) {
+    intervalSeconds
+    retries
+    retryIntervalSeconds
+    degradedThresholdMs
+  }
+}

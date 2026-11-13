@@ -59,23 +59,6 @@ pub const EXCEPTIONS: &[(&str, &str)] = &[
     ("Mutation.acceptWebCertificate", "web accept-certificate"),    // T2
     ("Mutation.enrolAgent", "agent enrol"),                         // T2
     ("Mutation.revokeAgentToken", "agent revoke"),                  // T2
-    // T3: check, maintenance.
-    ("Query.check", "check get"),                                  // T3
-    ("Query.checkDefaults", "check defaults get"),                 // T3
-    ("Query.maintenanceWindows", "maintenance list"),              // T3
-    ("Mutation.createCheck", "check create"),                      // T3
-    ("Mutation.updateCheck", "check update"),                      // T3
-    ("Mutation.deleteCheck", "check delete"),                      // T3
-    ("Mutation.setCheckPaused", "check pause and resume"),         // T3
-    ("Mutation.setCheckDefaults", "check defaults set"),           // T3
-    ("Mutation.setCheckNotifications", "check notifications set"), // T3
-    ("Mutation.createMaintenanceWindow", "maintenance create"),    // T3
-    ("Mutation.updateMaintenanceWindow", "maintenance update"),    // T3
-    ("Mutation.deleteMaintenanceWindow", "maintenance delete"),    // T3
-    (
-        "Mutation.setManualWindowActive",
-        "maintenance start and stop",
-    ), // T3
     // T4: event, audit, notify, retention, key, and the watch commands.
     ("Query.events", "event list"),                        // T4
     ("Query.audit", "audit list"),                         // T4

@@ -1,0 +1,10 @@
+# `anima check update`.
+mutation CheckUpdate($id: ID!, $input: UpdateCheckInput!) {
+  updateCheck(id: $id, input: $input) {
+    id
+    name
+    type
+    status
+    paused
+  }
+}

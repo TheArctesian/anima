@@ -1,0 +1,10 @@
+# `anima check create`. The answer leaves out the config: a push check's path holds its token.
+mutation CheckCreate($input: CreateCheckInput!) {
+  createCheck(input: $input) {
+    id
+    name
+    type
+    status
+    paused
+  }
+}
