@@ -1,0 +1,7 @@
+# `anima files`: the files tunnel's ticket for a live SSH session (K4 Section 9). Holds a token.
+mutation SessionOpenFiles($sessionId: ID!) {
+  openFiles(sessionId: $sessionId) {
+    token
+    tunnelPath
+  }
+}

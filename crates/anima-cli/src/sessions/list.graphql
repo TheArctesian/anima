@@ -1,0 +1,23 @@
+# `anima session list` (CMD-026): newest first, live and ended.
+query SessionList($deviceId: ID, $live: Boolean, $first: Int, $after: String) {
+  sessions(deviceId: $deviceId, live: $live, first: $first, after: $after) {
+    edges {
+      cursor
+      node {
+        id
+        deviceId
+        deviceName
+        protocol
+        operatorName
+        startedAt
+        endedAt
+        endReason
+        clientAddr
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+  }
+}

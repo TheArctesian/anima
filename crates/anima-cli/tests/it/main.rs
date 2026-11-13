@@ -19,6 +19,7 @@ mod maintenance;
 mod notifications;
 mod releases;
 mod retention;
+mod sessions;
 mod sites;
 mod vpn;
 mod web_interfaces;

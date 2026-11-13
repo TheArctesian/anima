@@ -167,19 +167,23 @@ dependencies = [
  "chrono",
  "clap",
  "clap_complete",
+ "crossterm",
  "futures-util",
  "graphql-parser",
  "graphql_client",
  "keyring",
  "reqwest 0.12.28",
  "rpassword",
+ "rustls",
  "serde",
  "serde_json",
  "tempfile",
  "thiserror 2.0.21",
  "tokio",
+ "tokio-rustls",
  "tokio-tungstenite",
  "uuid",
+ "webpki-roots 1.0.11",
  "zeroize",
 ]
 
@@ -1430,6 +1434,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a31eee39dddec8330830986fcd7625edb5a24ec90ea038215273bbc3adb08ac6"
 
 [[package]]
+name = "crossterm"
+version = "0.29.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d8b9f2e4c67f833b660cdb0a3523065869fb35570177239812ed4c905aeff87b"
+dependencies = [
+ "bitflags 2.13.2",
+ "document-features",
+ "parking_lot",
+ "rustix",
+]
+
+[[package]]
 name = "crypto-bigint"
 version = "0.7.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1883,6 +1899,15 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.119",
+]
+
+[[package]]
+name = "document-features"
+version = "0.2.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d4b8a88685455ed29a21542a33abd9cb6510b6b129abadabdcef0f4c55bc8f61"
+dependencies = [
+ "litrs",
 ]
 
 [[package]]
@@ -3687,6 +3712,12 @@ name = "litemap"
 version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "47d9d19d1d6efa0109d2f65ff4c85cddd50bd572e5a00127ab10987290bcefae"
+
+[[package]]
+name = "litrs"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4744e383959f0db86ede514b809b1c53251889093803c05267acc7d4e7030d70"
 
 [[package]]
 name = "lock_api"

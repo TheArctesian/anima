@@ -1,0 +1,10 @@
+# `anima ssh` and `anima files`: an SSH session and its single-use ticket (K4 Section 1). The answer
+# holds the ticket token, so the document derives neither `Debug` nor `Serialize` (CMD-014).
+mutation SessionStart($input: StartSessionInput!) {
+  startSession(input: $input) {
+    sessionId
+    token
+    tunnelPath
+    wakeSent
+  }
+}

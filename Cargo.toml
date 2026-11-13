@@ -88,6 +88,10 @@ graphql-parser = "0.4"
 clap = { version = "4.6", default-features = false, features = ["std", "derive", "help", "usage", "error-context", "suggestions", "color", "env"] }
 # `anima completion <shell>` (CMD-028).
 clap_complete = "4.6"
+# `anima ssh`: raw mode and the terminal size without `unsafe` (K4 Section 8); no event loop.
+crossterm = { version = "0.29", default-features = false }
+# `anima ssh` and `anima files`: the tunnel's TLS trusts the web PKI roots, as the GraphQL request does.
+webpki-roots = "1"
 
 [workspace.lints.rust]
 warnings = "deny"

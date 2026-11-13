@@ -33,9 +33,5 @@ pub const EXCEPTIONS: &[(&str, &str)] = &[
     ("Subscription.metricsAdded", "device metrics --watch"), // T4
     ("Subscription.buildJobUpdated", "release log --follow"), // T4
     ("Subscription.vpnChanged", "vpn status --watch"),    // T4
-    // T6: session, ssh, files.
-    ("Query.sessions", "session list"),              // T6
-    ("Mutation.startSession", "ssh <device>"),       // T6
-    ("Mutation.endSession", "session end"),          // T6
-    ("Mutation.openFiles", "files ls, get and put"), // T6
+                                                          // T6: session, ssh, files.
 ];

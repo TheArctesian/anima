@@ -22,6 +22,7 @@ pub mod private_file;
 pub mod prompt;
 pub mod releases;
 pub mod retention;
+pub mod sessions;
 pub mod sites;
 pub mod tags;
 pub mod vpn;
