@@ -26,7 +26,14 @@ fn mint_path(installation: &str) -> String {
     format!("/app/installations/{installation}/access_tokens")
 }
 
-fn parse_minted(_: &[u8]) -> Result<Minted, Problem> {
+fn parse_minted(body: &[u8]) -> Result<Minted, Problem> {
+    if body.is_empty() {
+        return Err(Problem {
+            code: "empty_reply",
+            subject: "token".to_owned(),
+            message: "the reply was empty".to_owned(),
+        });
+    }
     Ok(Minted {
         token: "t".to_owned(),
         expires_at: Utc.with_ymd_and_hms(2030, 1, 1, 0, 0, 0).unwrap(),
@@ -60,4 +67,5 @@ fn src_001_a_declaration_names_its_mint_path_for_an_installation() {
     };
     assert_eq!((key.mint_path)("42"), "/app/installations/42/access_tokens");
     assert!((key.parse_minted)(b"{}").is_ok());
+    assert_eq!((key.parse_minted)(b"").err().unwrap().code, "empty_reply");
 }
