@@ -89,11 +89,10 @@ describe("hub configuration", () => {
   });
 
   test("D-44 the hub reads the updater key pair from a read-only folder, so an absent file does not stop it", () => {
-    const environment = compose.services["hub"]?.environment ?? {};
-    expect(environment["ANIMA_UPDATER_KEY_FILE"]).toBe(`${UPDATER_FOLDER.target}/updater_key`);
-    expect(environment["ANIMA_UPDATER_KEY_PASSWORD_FILE"]).toBe(`${UPDATER_FOLDER.target}/updater_key_password`);
-    const source = readFileSync(join(ROOT, "crates", "hub", "src", "config", "releases.rs"), "utf8");
-    for (const name of ["updater_key", "updater_key_password"]) expect(source).toContain(`"${UPDATER_FOLDER.target}/${name}"`);
+    const hub = compose.services["hub"] as Container;
+    expect(hub.volumes).toContainEqual(UPDATER_FOLDER);
+    expect(hub.environment?.["ANIMA_UPDATER_KEY_FILE"]).toBe(`${UPDATER_FOLDER.target}/updater_key`);
+    expect(hub.environment?.["ANIMA_UPDATER_KEY_PASSWORD_FILE"]).toBe(`${UPDATER_FOLDER.target}/updater_key_password`);
   });
 
   test("VP-7 the hub reaches the broker socket inside the read-only broker folder", () => {
