@@ -135,3 +135,44 @@ async fn d_43_a_refused_uploaded_report_leaves_the_job_unlocked(pool: PgPool) {
     assert!(matches!(refused, Err(Error::Forbidden(_))), "{refused:?}");
     assert!(!row_locked((*pool.connect_options()).clone(), JOB));
 }
+
+/// Whether another connection to this test's database is still inside a transaction, asked
+/// from another thread while this one is blocked, as [`row_locked`] asks.
+fn transaction_left_open(options: PgConnectOptions) -> bool {
+    std::thread::spawn(move || {
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        runtime.block_on(async {
+            let mut conn = PgConnection::connect_with(&options).await.unwrap();
+            let open: i64 = sqlx::query_scalar(
+                "select count(*) from pg_stat_activity \
+                 where datname = current_database() and pid <> pg_backend_pid() \
+                   and state like 'idle in transaction%'",
+            )
+            .fetch_one(&mut conn)
+            .await
+            .unwrap();
+            open > 0
+        })
+    })
+    .join()
+    .unwrap()
+}
+
+/// D-43 (T6 review): a claim refused because the builder is not enrolled ends its transaction
+/// before it returns, so the builder row it asked to lock and the queue stay free.
+#[sqlx::test(migrations = "./migrations")]
+async fn d_43_a_claim_refused_as_not_enrolled_leaves_no_transaction_open(pool: PgPool) {
+    queued_job(&pool, JOB).await;
+    let (bus, updates) = (Bus::new(16), Updates::new());
+    let build_queue = BuildQueue {
+        db: &pool,
+        bus: &bus,
+        updates: &updates,
+    };
+    let refused = jobs::claim(build_queue, &builder(BUILDER), now()).await;
+    assert!(matches!(refused, Err(Error::Forbidden(_))), "{refused:?}");
+    assert!(!transaction_left_open((*pool.connect_options()).clone()));
+}
