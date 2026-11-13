@@ -1,0 +1,43 @@
+[package]
+name = "anima-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[lib]
+name = "anima_cli"
+
+[[bin]]
+name = "anima"
+path = "src/main.rs"
+
+[dependencies]
+# One body type for every request: the serialised document is wiped when it drops.
+bytes.workspace = true
+clap.workspace = true
+clap_complete.workspace = true
+graphql_client.workspace = true
+# The OS key store holds the token (CMD-012): the macOS Keychain, the Linux Secret Service.
+keyring.workspace = true
+# Plain `rustls-tls` with the web PKI roots; no redirect, no proxy, no cookie (CMD-003).
+reqwest.workspace = true
+# The password at the terminal, with echo off (CMD-010).
+rpassword.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+# The token file and the configuration are written to a temporary file, then renamed (CMD-012).
+tempfile.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+# A device given by ID rather than by name (`device get`).
+uuid.workspace = true
+zeroize.workspace = true
+
+[dev-dependencies]
+axum.workspace = true
+graphql-parser.workspace = true
+tokio = { workspace = true, features = ["process"] }

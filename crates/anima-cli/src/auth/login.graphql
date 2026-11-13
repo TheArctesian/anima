@@ -1,0 +1,11 @@
+# The token goes straight into the key store; it is never printed (CMD-012, CMD-014).
+mutation Login($input: LoginInput!) {
+  login(input: $input) {
+    token
+    expiresAt
+    operator {
+      id
+      username
+    }
+  }
+}
