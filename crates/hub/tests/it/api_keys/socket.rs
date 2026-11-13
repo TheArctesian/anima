@@ -55,7 +55,7 @@ async fn signed_in_socket(addr: std::net::SocketAddr, secret: &str) -> Socket {
     socket
 }
 
-const CREATE_KEY: &str = "mutation { createApiKey(input: { name: \"x\", scope: WRITE, \
+const CREATE_KEY: &str = "mutation { createApiKey(input: { name: \"x\", scope: WRITE, madeFor: USER, \
                           expiresAt: \"2030-06-01T00:00:00Z\" }) { secret } }";
 
 #[sqlx::test(migrations = "./migrations")]

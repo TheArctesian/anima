@@ -12,7 +12,6 @@ mod tests;
 use std::net::{IpAddr, Ipv4Addr};
 
 use chrono::{DateTime, Utc};
-use uuid::Uuid;
 
 use super::attempt::{Context, warn};
 use crate::{
@@ -23,7 +22,8 @@ use crate::{
     },
     devices::{self, Device},
     events::{
-        self, AuditAction, AuditTarget, ClientAddr, NewAudit, NewEvent, Operator, Severity, Source,
+        self, ActorKind, AuditAction, AuditTarget, ClientAddr, NewAudit, NewEvent, Operator,
+        Severity, Source,
     },
 };
 
@@ -93,10 +93,7 @@ async fn answering_port(ctx: &Context, device: &Device, now: DateTime<Utc>) -> O
 
 /// The hub as the actor of its own repairs (D-4).
 fn hub() -> (Operator, ClientAddr) {
-    let operator = Operator {
-        id: Uuid::nil().into(),
-        name: "Anima".to_owned(),
-    };
+    let operator = Operator::hub();
     (operator, ClientAddr(IpAddr::V4(Ipv4Addr::LOCALHOST)))
 }
 
@@ -115,6 +112,7 @@ impl Candidate<'_> {
             source: Source::Check,
             device: Some((self.due.device, self.device.to_owned())),
             message,
+            actor: ActorKind::Hub,
         }
     }
 }

@@ -19,6 +19,7 @@ function oneOf<T extends string>(allowed: readonly T[], value: string): T {
 export const CHANNEL_KINDS = ['WEBHOOK', 'NTFY', 'EMAIL', 'APPRISE'] as const;
 export const NOTIFICATION_KINDS = ['DOWN', 'UP', 'STILL_DOWN', 'CERTIFICATE_EXPIRY', 'DOMAIN_EXPIRY', 'TEST'] as const;
 export const TOKEN_SCOPES = ['READ', 'WRITE'] as const;
+export const MADE_FOR = ['USER', 'AGENT'] as const;
 export const RETENTION_SUBJECTS = ['HEARTBEATS', 'METRICS', 'EVENTS', 'DELIVERIES'] as const;
 export const WEBHOOK_METHODS = ['POST', 'PUT'] as const;
 export const SMTP_SECURITY = ['TLS', 'STARTTLS'] as const;
@@ -82,6 +83,7 @@ export interface ApiKey {
   id: string;
   name: string;
   scope: (typeof TOKEN_SCOPES)[number];
+  madeFor: (typeof MADE_FOR)[number];
   prefix: string;
   expiresAt: string;
   createdAt: string;
@@ -154,7 +156,7 @@ export const deliveries: readonly Delivery[] = raw.deliveries.map((d) => ({
   reason: d.reason === null ? null : oneOf(DELIVERY_REASONS, d.reason),
 }));
 
-export const apiKeys: readonly ApiKey[] = raw.apiKeys.map((k) => ({ ...k, scope: oneOf(TOKEN_SCOPES, k.scope) }));
+export const apiKeys: readonly ApiKey[] = raw.apiKeys.map((k) => ({ ...k, scope: oneOf(TOKEN_SCOPES, k.scope), madeFor: oneOf(MADE_FOR, k.madeFor) }));
 
 export const retention: readonly RetentionPeriod[] = raw.retention.map((p) => ({
   ...p,

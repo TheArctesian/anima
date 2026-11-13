@@ -104,7 +104,7 @@ pub async fn revoke_builder_token(conn: &mut PgConnection, id: TokenId) -> Resul
 ## events (WP-05)
 
 ```rust
-pub struct Operator { pub id: OperatorId, pub name: String }   // re-exported by access (R-019)
+pub struct Operator { pub id: OperatorId, pub name: String }   // re-exported by access (R-019); see the actor kinds below
 pub struct ClientAddr(pub std::net::IpAddr);                     // re-exported by access (R-019)
 pub struct HeartbeatSummary { pub at: DateTime<Utc>, pub status: Status, pub response_time_ms: Option<u32>, pub message: Option<String> }   // used by checks (R-019); `message` as stored: cleaned, at most MESSAGE_MAX chars; Clone, not Copy (R-036)
 pub enum Severity { Info, Warning, Error }
@@ -147,6 +147,27 @@ impl Trail {
 // CR-9: drop_expired_partitions(db, now, events_keep: chrono::Days) also takes the period (wiring only).
 // CR-9: AuditTarget::Setting(&'static str) names a hub setting by its dotted name (retention.events, checks.defaults).
 ```
+
+(operator, 2026-11-13, LOG-012 to LOG-020; ruling number to be assigned) Actor kinds (LOG-012 to LOG-019):
+
+```rust
+pub enum ActorKind { User, Agent, Hub }            // K1 ActorKind
+pub enum TokenKind { Login, Browser, ApiKey }      // K1 TokenKind, as the audit log records it
+/// Who did an action; never the token (LOG-018). Only `access` builds a request's actor.
+pub struct Actor { /* kind, token kind, API key name */ }
+impl Actor { pub const fn hub() -> Self; pub fn request(kind: ActorKind, token: TokenKind, api_key_name: Option<String>) -> Self;
+             pub fn kind(&self) -> ActorKind; pub fn token(&self) -> Option<TokenKind>; pub fn api_key_name(&self) -> Option<&str>; }
+pub struct Operator { pub id: OperatorId, pub name: String, pub actor: Actor }   // replaces the row above
+impl Operator { pub fn hub() -> Self;              // nil id, name "Anima", Hub (OD-15)
+                pub fn by_hub(self) -> Self; }     // the same operator, for the hub's own work on their behalf
+pub struct NewEvent { pub severity: Severity, pub source: Source, pub device: Option<(DeviceId, String)>,
+                      pub message: String, pub actor: ActorKind }   // Hub for an event no request caused
+```
+
+`NewAudit` takes its actor from `operator.actor`. A writer that no request drives (scheduler, retention, prune,
+policy, builder and agent tokens per LOG-019) uses `Operator::hub()` and `ActorKind::Hub`.
+`access` adds `pub struct Declaration` (the agent declaration, `of_headers`, `of_payload`), `pub enum MadeFor
+{ User, Agent }` and `pub const ACTOR_HEADER`; the decision itself is private to `access` (LOG-014).
 
 ### Allowed domain dependencies (the import-graph gate enforces this list; REPO-004)
 

@@ -19,6 +19,10 @@ pub struct CreateArgs {
     /// What the key may do: read, or read and change.
     #[arg(long, value_enum, default_value_t = ScopeArg::Read)]
     scope: ScopeArg,
+    /// Who uses the key: a script you run (user) or an AI agent (agent). The hub records each
+    /// change made with an agent key as the work of an AI agent. It cannot change later.
+    #[arg(long = "for", value_enum)]
+    made_for: MadeForArg,
     /// When the key stops working: a number of days (90d) or a time (2027-01-31T00:00:00Z),
     /// at most a year from now.
     #[arg(long)]
@@ -29,6 +33,13 @@ pub struct CreateArgs {
 enum ScopeArg {
     Read,
     Write,
+}
+
+/// K1 `MadeFor` (LOG-015).
+#[derive(Clone, Copy, Debug, clap::ValueEnum)]
+enum MadeForArg {
+    User,
+    Agent,
 }
 
 impl CreateArgs {
@@ -48,6 +59,7 @@ impl CreateArgs {
         let input = key_create::ApiKeyInput {
             name: self.name,
             scope: self.scope.k1(),
+            made_for: self.made_for.k1(),
             expires_at,
         };
         let created = hub
@@ -56,15 +68,17 @@ impl CreateArgs {
             .create_api_key;
         let key = &created.key;
         invocation.output.note(&format!(
-            "API key {} ({}), id {}, expires {}. The hub keeps only its hash.",
+            "API key {} ({}, for {}), id {}, expires {}. The hub keeps only its hash.",
             key.name,
             enum_name(&key.scope),
+            enum_name(&key.made_for),
             key.id,
             key.expires_at
         ));
         let public = json!({
             "key": {
                 "id": key.id, "name": key.name, "scope": enum_name(&key.scope),
+                "madeFor": enum_name(&key.made_for),
                 "prefix": key.prefix, "expiresAt": key.expires_at,
                 "createdAt": key.created_at, "lastUsedAt": key.last_used_at,
             },
@@ -76,6 +90,15 @@ impl CreateArgs {
             to_file: &ToFile::default(),
         };
         show_once(invocation, &secret, public)
+    }
+}
+
+impl MadeForArg {
+    const fn k1(self) -> key_create::MadeFor {
+        match self {
+            Self::User => key_create::MadeFor::USER,
+            Self::Agent => key_create::MadeFor::AGENT,
+        }
     }
 }
 

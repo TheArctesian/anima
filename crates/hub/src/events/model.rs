@@ -10,6 +10,7 @@ use async_graphql::Enum;
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
+use super::actor::{Actor, ActorKind, TokenKind};
 use crate::{
     ids::{
         ApiKeyId, BuildJobId, BuilderId, ChannelId, CheckId, DeviceId, EventId, OperatorId,
@@ -105,6 +106,8 @@ pub struct NewEvent {
     pub source: Source,
     pub device: Option<(DeviceId, String)>,
     pub message: String,
+    /// The kind of the request that caused it; `Hub` for every other event (LOG-013).
+    pub actor: ActorKind,
 }
 
 /// A stored event, as subscribers and the event list see it.
@@ -116,6 +119,8 @@ pub struct EventSummary {
     pub source: Source,
     pub device: Option<(DeviceId, String)>,
     pub message: String,
+    /// `None` for an event written before LOG-013.
+    pub actor: Option<ActorKind>,
 }
 
 /// Which events a list shows (K1 `EventFilter`). `None` lets every value through; an empty
@@ -129,11 +134,40 @@ pub(super) struct EventFilter {
     pub(super) since: Option<DateTime<Utc>>,
 }
 
-/// The signed-in operator who made a request (API-003).
+/// The operator a recorded action is made for (API-003), and who did it for them (LOG-012).
+/// A request's operator comes only from `access`, which decides `actor` (LOG-014); the hub's
+/// own work uses [`Operator::hub`].
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Operator {
     pub id: OperatorId,
     pub name: String,
+    pub actor: Actor,
+}
+
+impl Operator {
+    /// The name a Hub entry records as its operator: the hub's own work is done for no
+    /// operator, so the entry names Anima with the nil id (OD-15).
+    pub const HUB_NAME: &'static str = "Anima";
+
+    /// The operator of an action the hub did by itself (LOG-014 rule 1).
+    #[must_use]
+    pub fn hub() -> Self {
+        Self {
+            id: OperatorId::from(Uuid::nil()),
+            name: Self::HUB_NAME.to_owned(),
+            actor: Actor::hub(),
+        }
+    }
+
+    /// The same operator, for an action the hub does by itself on their behalf, such as
+    /// ending their session at a timeout or at shutdown (LOG-014 rule 1).
+    #[must_use]
+    pub fn by_hub(self) -> Self {
+        Self {
+            actor: Actor::hub(),
+            ..self
+        }
+    }
 }
 
 /// The network address the request came from (LOG-005).
@@ -306,4 +340,8 @@ pub(super) struct AuditRecord {
     pub(super) client: IpAddr,
     /// Already redacted when it was written (LOG-007).
     pub(super) change: serde_json::Value,
+    /// `None` for an entry written before LOG-012.
+    pub(super) actor_kind: Option<ActorKind>,
+    pub(super) token_kind: Option<TokenKind>,
+    pub(super) api_key_name: Option<String>,
 }

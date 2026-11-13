@@ -91,6 +91,7 @@ impl<'a> Trail<'a> {
     ///
     /// `Error::Database` if either row cannot be written; the caller rolls back.
     pub async fn write(self, conn: &mut PgConnection, entry: TrailEntry) -> Result<(), Error> {
+        let actor = self.operator.actor.kind();
         let row = NewAudit {
             operator: self.operator,
             action: entry.action,
@@ -104,6 +105,7 @@ impl<'a> Trail<'a> {
             source: entry.source,
             device: entry.device,
             message: entry.message,
+            actor,
         };
         record(conn, self.bus, self.now, event).await.map(drop)
     }

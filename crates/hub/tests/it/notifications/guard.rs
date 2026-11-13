@@ -46,8 +46,8 @@ pub async fn api_key(pool: &PgPool, byte: u8, scope: &str) -> String {
     let secret = [byte; 32];
     sqlx::query(
         "insert into access.api_tokens \
-         (id, operator_id, token_hash, kind, name, display_prefix, scope, expires_at, created_at) \
-         select gen_random_uuid(), id, $1, 'api_key', $4, 'anima_BQUFBQ', $5, $2, $3 \
+         (id, operator_id, token_hash, kind, made_for, name, display_prefix, scope, expires_at, created_at) \
+         select gen_random_uuid(), id, $1, 'api_key', 'user', $4, 'anima_BQUFBQ', $5, $2, $3 \
          from access.operators",
     )
     .bind(Sha256::digest(secret).to_vec())

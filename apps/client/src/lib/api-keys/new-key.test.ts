@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { focusAfterRevoke, isExpired, lastUsedText, scopeLabel } from './listing';
+import { focusAfterRevoke, isExpired, lastUsedText, madeForLabel, scopeLabel } from './listing';
 import {
   checkNewKey,
   createFailure,
@@ -24,7 +24,13 @@ function form(changes: Partial<NewKeyForm>): NewKeyForm {
 
 describe('the create form (INT-003, D-23)', () => {
   it('D-23: the form starts with scope Read and expiry 90 days', () => {
-    expect(emptyForm()).toEqual({ name: '', scope: 'READ', expiry: '90d', date: '' });
+    expect(emptyForm()).toEqual({ name: '', scope: 'READ', madeFor: 'USER', expiry: '90d', date: '' });
+  });
+
+  it('LOG-015: a key for an AI agent is sent as AGENT, and each choice reads as words', () => {
+    const checked = checkNewKey(form({ madeFor: 'AGENT' }), NOW);
+    expect(checked.ok ? checked.input.madeFor : null).toBe('AGENT');
+    expect([madeForLabel('USER'), madeForLabel('AGENT')]).toEqual(['A script I run', 'An AI agent']);
   });
 
   it('INT-003: an empty or blank name is refused', () => {
@@ -74,11 +80,11 @@ describe('the expiry bounds (D-23)', () => {
   it('INT-003: a valid form gives the trimmed name, the scope and the expiry as an ISO instant', () => {
     expect(checkNewKey(form({ name: '  backup-job ', scope: 'WRITE' }), NOW)).toEqual({
       ok: true,
-      input: { name: 'backup-job', scope: 'WRITE', expiresAt: '2027-02-05T12:00:00.000Z' },
+      input: { name: 'backup-job', scope: 'WRITE', madeFor: 'USER', expiresAt: '2027-02-05T12:00:00.000Z' },
     });
     expect(checkNewKey(form({ expiry: 'date', date: '2027-06-01' }), NOW)).toEqual({
       ok: true,
-      input: { name: 'backup-job', scope: 'READ', expiresAt: new Date(2027, 5, 1).toISOString() },
+      input: { name: 'backup-job', scope: 'READ', madeFor: 'USER', expiresAt: new Date(2027, 5, 1).toISOString() },
     });
   });
 

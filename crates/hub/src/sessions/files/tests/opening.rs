@@ -50,6 +50,7 @@ async fn ra_032_another_operator_or_address_gets_no_ticket(pool: PgPool) {
             .parse::<OperatorId>()
             .unwrap(),
         name: "other".to_owned(),
+        actor: crate::events::Actor::for_tests(),
     };
     let (db, live, session) = (&bench.db, &bench.live, bench.session);
     let other = Actor {

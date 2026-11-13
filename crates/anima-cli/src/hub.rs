@@ -33,12 +33,18 @@ pub const TIMEOUT: Duration = Duration::from_secs(30);
 /// The largest answer read; a page of 200 devices is well under it (the hub's page limit).
 const MAX_ANSWER: usize = 32 * 1024 * 1024;
 
-/// One hub and the token sent to it. `Debug` shows the origin and the token's kind only.
+/// The header of the agent declaration and its one value (K7, LOG-016).
+pub const ACTOR_HEADER: &str = "anima-actor";
+pub const AGENT: &str = "agent";
+
+/// One hub and the token sent to it, and whether this program declares itself an AI agent.
+/// `Debug` shows the origin and the token's kind only.
 #[derive(Debug)]
 pub struct Hub {
     origin: Origin,
     token: Option<Token>,
     http: Client,
+    declares_agent: bool,
 }
 
 impl Hub {
@@ -57,7 +63,23 @@ impl Hub {
             origin,
             token,
             http,
+            declares_agent: false,
         })
+    }
+
+    /// The same client, sending the agent declaration with every request it makes: the
+    /// `Anima-Actor: agent` header, and `"actor": "agent"` in a socket's `connection_init`, so
+    /// the hub records its work as an AI agent's (LOG-016). Only `anima mcp` uses it.
+    #[must_use]
+    pub const fn declaring_agent(mut self) -> Self {
+        self.declares_agent = true;
+        self
+    }
+
+    /// Whether this client declares itself an AI agent.
+    #[must_use]
+    pub const fn declares_agent(&self) -> bool {
+        self.declares_agent
     }
 
     #[must_use]
@@ -125,6 +147,9 @@ impl Hub {
             .body(Bytes::from_owner(body));
         if let Some(token) = &self.token {
             request = request.header(AUTHORIZATION, bearer(token)?);
+        }
+        if self.declares_agent {
+            request = request.header(ACTOR_HEADER, AGENT);
         }
         let mut response = request
             .send()

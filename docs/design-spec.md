@@ -221,7 +221,7 @@ Anima keeps three types of log.
 | --- | --- | --- | --- |
 | Process log | Technical events of the hub process: start, stop, errors, warnings, slow queries, scheduler events | Standard output in JSON format. Docker collects it. | Docker log rotation: 10 files of 10 MB |
 | Event log | Events that the operator must see: device status changes, check failures, session start and end, errors | PostgreSQL table `event_log` | 90 days |
-| Audit log | Each change that the operator makes: login, logout, add, change and delete of items, power actions | PostgreSQL table `audit_log` | 1 year |
+| Audit log | Each change to the hub: login, logout, add, change and delete of items, power actions. Each entry records who did it: the operator, an AI agent or the hub itself (Section 3.8.1) | PostgreSQL table `audit_log` | 1 year |
 
 - **LOG-001.** The hub must use the Rust `tracing` crate for all process log entries.
 - **LOG-002.** Each process log entry must have a time, a level, a module name and a message. Each entry must also have a request ID when it is part of a request.
@@ -235,7 +235,7 @@ Anima keeps three types of log.
 - **LOG-010.** The client must receive new event log entries through a GraphQL subscription.
 - **LOG-011.** The Logs panel must follow new entries while the operator is at the end of the list. When the operator scrolls away from the end, new entries must not move the list. A "N new" button then shows the count and goes to the end. A Live and Paused switch stops and starts the follow. The `/` key moves the focus to the search field, except in a text field or a session tab. (R-115)
 
-#### 3.8.1 Actor kinds (not built)
+#### 3.8.1 Actor kinds
 
 The operator's rule (operator, 2026-11-13): "We can clasify agent (meaning AI agent did the work, Hub meaning code did the work and User meaning human did the work".
 
@@ -245,7 +245,7 @@ The operator's rule (operator, 2026-11-13): "We can clasify agent (meaning AI ag
 | Agent | An AI agent did the action. | A coding agent through the MCP server. A program that uses an API key made for an agent. |
 | Hub | The code of Anima did the action. No person and no AI agent asked for it. | The check scheduler. A retention run. A policy. |
 
-Today the hub stores the operator name and the client IP address for each audit log entry. It cannot tell an AI agent from the operator. It cannot tell an API key from a login token. The requirements LOG-012 to LOG-020 change that. They are not built.
+Before LOG-012 the hub stored only the operator name and the client IP address for each audit log entry. It could not tell an AI agent from the operator, or an API key from a login token. The requirements LOG-012 to LOG-020 change that. They are built in the hub, the command line and the MCP server (operator, 2026-11-13). The audit list of the client (LOG-020, first item) is not built.
 
 - **LOG-012.** Each audit log entry must have an actor kind. The actor kind must be exactly one of User, Agent or Hub. (operator, 2026-11-13)
 - **LOG-013.** Each event log entry must have an actor kind. An entry that a request caused takes the actor kind of that request. All other entries are Hub.
@@ -259,7 +259,7 @@ Today the hub stores the operator name and the client IP address for each audit 
 - **LOG-018.** Each audit log entry that a request caused must also record the token kind: login token, browser token or API key. For an API key, the entry must record the name of the key. The entry must never contain the token or a part of it (LOG-007). A Hub entry has no token kind and no key name.
 - **LOG-019.** A request with a builder token (BLD-022) or an agent token (MET-013) comes from a program of Anima. The hub must record an event log entry from such a request as Hub.
 - **LOG-020.** The actor kind must show as a word in each of these places, never as a colour only (UI-003):
-  - the audit list of the client, with a filter by actor kind;
+  - the audit list of the client, with a filter by actor kind (not built: the client has no audit list yet);
   - `anima audit list`, as a column, with the filter `--actor user|agent|hub`;
   - the MCP tool `anima_audit_list`, as a field of each entry.
 
@@ -267,9 +267,11 @@ Today the hub stores the operator name and the client IP address for each audit 
 
 Reason for the direction of trust: a wrong "User" hides the work of an AI agent, and a wrong "Agent" hides nothing. Thus a program can only raise its actor kind to Agent. The hub controls the API key attribute, so the key is the strong signal. The declaration is a second signal for a program that holds the operator's login token.
 
+A Hub entry names the operator "Anima" with the nil operator ID: the hub's own work is done for no operator (OD-15). The hub refuses an unknown header value without an error, so the value cannot be used to probe the hub. The declaration only raises the actor kind, so the hub accepts it from each client; the browser cannot send it, because CORS does not allow the header.
+
 Limit: the program makes the declaration. A program that runs with the operator's login token and sends no declaration is recorded as User. The reliable method to mark the work of an AI agent is an API key made for an agent.
 
-These requirements change the frozen contracts K1, K2 and K7 (CON-001). Do not change a contract for them without a programme ruling (Section 11, OD-15). The ruling and the implementation issue can cite this table:
+These requirements change the frozen contracts K1, K2 and K7 (CON-001). The operator decided the change on 2026-11-13 (Section 11, OD-15); each addition in the contracts is marked "(operator, 2026-11-13, LOG-012 to LOG-020; ruling number to be assigned)". The build also changed K3 (`contracts/hub-domains.md`: `Operator.actor`, `NewEvent.actor`, the `Actor` type) and the K6 fixture keys (`madeFor`). The table lists the additions:
 
 | Contract | File | Addition |
 | --- | --- | --- |
@@ -1257,7 +1259,7 @@ The view has these tabs:
 
 - **INT-001.** The hub must supply a Prometheus endpoint at `/metrics` with the status, response time, uptime ratio and certificate days of each check.
 - **INT-002.** Prometheus labels must not include values that change often.
-- **INT-003.** The operator must be able to make API keys for the GraphQL API. Each key must have a scope (read or write) and an expiry date. A key is `anima_` and 43 base64url characters. The hub must keep only the SHA-256 of a key. The expiry date is required and must be at most one year away. An API key must not manage API keys. It must not call `signInBrowser`, `startSession`, `openFiles`, `enrolAgent` or `revokeAgentToken`. It must not set or clear a device credential, and it must not decide where one is sent: it must not call `acceptHostKey`, `acceptServerCertificate`, `acceptWebCertificate`, `updateDevice` or `deleteDevice`. It must not call `setRetention`. (D-23, R-081, R-100, R-113)
+- **INT-003.** The operator must be able to make API keys for the GraphQL API. Each key must have a scope (read or write), a "made for" value (a script that the operator runs, or an AI agent; LOG-015) and an expiry date. A key is `anima_` and 43 base64url characters. The hub must keep only the SHA-256 of a key. The expiry date is required and must be at most one year away. An API key must not manage API keys. It must not call `signInBrowser`, `startSession`, `openFiles`, `enrolAgent` or `revokeAgentToken`. It must not set or clear a device credential, and it must not decide where one is sent: it must not call `acceptHostKey`, `acceptServerCertificate`, `acceptWebCertificate`, `updateDevice` or `deleteDevice`. It must not call `setRetention`. (D-23, R-081, R-100, R-113)
 - **INT-004.** A later version can add public status pages, incidents and status badges.
 
 ### 6.10 Command line and MCP server
@@ -1276,7 +1278,7 @@ Built state: the command line and the MCP server are built and are on `main`, in
 - **Sign-in.** The operator signs in with a login token (CMD-010). A script or an AI agent uses an API key (CMD-011). The limits of INT-003 stay: the hub applies them to each API key (MCP-003).
 - **Three limits of the MCP server.** No tool takes or returns a secret (MCP-004). No tool makes a trust decision (MCP-005). No tool opens a session (MCP-006).
 - **Three permission states.** Each tool is `allow`, `ask` or `off` (MCP-002). `allow`: the AI agent can call the tool. `ask`: a person approves each call (MCP-013). `off`: the tool is not listed and a call is refused. By default each read tool is `allow` and each change tool is `off`.
-- **Who did it.** The MCP server must declare itself to the hub, so that the audit log records Agent (LOG-016, not built).
+- **Who did it.** The MCP server must declare itself to the hub, so that the audit log records Agent (LOG-016).
 
 ## 7. Settings page
 
@@ -1312,7 +1314,7 @@ Work outside the phases. This table has no row for work that is not part of a ph
 
 - The command line and the MCP server (Section 6.10) are built and are on `main`. They have no phase number.
 - The `anima` program in the installation artefacts (INS-002 to INS-007) is built and has no phase number. A real release must still verify OD-16 to OD-18.
-- The marketing website (SITE-001 to SITE-012) is built and not deployed (Section 3.12). The actor kinds (LOG-012 to LOG-020) are specified. They have no phase number.
+- The marketing website (SITE-001 to SITE-012) is built and not deployed (Section 3.12). The actor kinds (LOG-012 to LOG-020) are built, except the audit list of the client. They have no phase number.
 
 ### 9.1 Phase 1 acceptance criteria
 
@@ -1372,6 +1374,7 @@ What iOS does not allow, so no phase plans it: control of the device, SSH, VNC o
 | OD-14 | Compute workers (R-110) | The hub keeps a job queue for compute work. A job is a WebGPU (WGSL) compute shader with WebAssembly, so every client runs it: desktop, web and iOS (WebKit on iOS 26 has WebGPU). An iOS device works only in the foreground and on the charger, and stops when it gets hot. Built-in jobs can use Core ML. Before a phase depends on it: one test job on an iPad and a Mac, compared. Background GPU work on iOS 26 (continued processing tasks) is not verified. |
 | OD-6 | Central log search | Not necessary now. A later version can send the process log to Loki or a similar system. |
 | OD-15 | Contract change for the actor kinds (Section 3.8.1) | A programme ruling must approve the additions to K1, K2 and K7 before the build (CON-001). The ruling must also give the value of `AuditEntry.operatorName` for a Hub entry. |
+| | | The operator decided it on 2026-11-13 ("I wanted do fix those here"), and it is built. Still to number in `programme.md`: the ruling for the K1, K2, K3, K6 and K7 additions, and for `operatorName` "Anima" on a Hub entry. |
 | OD-16 | A second program in the bundle (INS-002, INS-007) | Decided by the implementation (2026-11-13); the operator must confirm. Mechanism: Tauri's external binary, `bundle.externalBin: ["binaries/anima"]` in the builder's `--config`. Tauri copies `binaries/anima-<target triple>` beside the app's executable: `Contents/MacOS/anima` on macOS, `usr/bin/anima` in the AppImage. For `universal-apple-darwin` it takes `binaries/anima-universal-apple-darwin`, which the builder makes with `lipo -create` from the `aarch64` and `x86_64` builds, as Tauri makes the app's own universal binary. The `tauri build` step of each architecture also needs its own `anima-<triple>`. Verified on this Mac: an unsigned local `tauri build --target universal-apple-darwin --no-sign` put a universal `anima` (`x86_64 arm64`) in `Contents/MacOS` beside `anima-desktop`, and it printed the release version. A missing file fails `tauri-build` (`resource path ... doesn't exist`). Verified by code reading: the macOS updater file is a `tar` of the stapled app folder, so it contains `anima`; the AppImage is the Linux updater file. Signing: the bundler is compiled into the Tauri CLI and its source is not in this repository, so it was not read. Its configuration says that the hardened runtime is on for executables (`bundle.macOS.hardenedRuntime`, default true), and the app has no entitlements file, so `anima` gets none. That the bundler signs the external binary with the Developer ID before it signs the app is not verified here. The pipeline now checks: `Contents/MacOS` holds exactly `anima-desktop` and `anima`; `codesign --verify --strict` of `anima`; `lipo -archs` of `anima` names `x86_64` and `arm64`; then, as before, `codesign --verify --deep --strict` of the app, notarization and stapling. Apple's notary service refuses a submission in which any executable lacks the Developer ID signature, the hardened runtime or a secure timestamp, so an accepted notarization (BLD-085) shows that `anima` has them. Only a real release on the macOS builder can confirm that the signature and the notarization pass. |
 | OD-17 | The version of the `anima` program (INS-003) | Decided by the implementation (2026-11-13); the operator must confirm. The builder gives the release version to the Tauri configuration (BLD-043) and, as `ANIMA_VERSION`, to its `cargo build` of `anima`. `crates/anima-cli/build.rs` then sets `CARGO_PKG_VERSION` for the package, so `anima --version` and the MCP server print the release version. Without the variable, the crate version stays (a development build). A value that the builder's version rule refuses fails the build. The workspace version does not change. Verified: a local build with `ANIMA_VERSION=9.8.7` printed `anima 9.8.7` for both architectures. |
 | OD-18 | The launcher for an AppImage, and the link after an update (INS-005, INS-007) | Decided by the implementation (2026-11-13); the operator must confirm. The AppImage runtime sets `APPIMAGE` (the real path of the file), `APPDIR` (the mount) and `OWD` (the folder the command was typed in), then runs `AppRun`, which runs the app's own executable with the arguments. `AppRun` cannot start a second program, so the launcher runs `"$APPIMAGE" --anima-cli "$@"`. Before it opens a window or uses a display, the app sees `--anima-cli` as the first argument and replaces itself (`exec`) with the `anima` beside it, in the folder `OWD`. Thus the arguments, standard input and output, signals and the exit code are those of `anima`, and a computer with no display works (it still needs FUSE, as every AppImage does). The launcher names the AppImage file, never the mount. `tauri-plugin-updater` 2.14 installs an AppImage update by moving the old file away and writing the new file at the same `$APPIMAGE` path with the same mode, so the launcher keeps working. A moved or deleted AppImage makes the launcher say so and exit with 127; the row then shows that the launcher points at another path. On macOS the updater exchanges the new app bundle with the old one at the same path (`renamex_np` with `RENAME_SWAP`, or two renames), so the link keeps working. Tested: the launcher with `/bin/sh` and a stand-in AppImage (arguments, input, exit code, a replaced file, a missing file). Not tested: a real AppImage on Linux, the `AppRun` of the bundler with the `--anima-cli` argument, and the variables that the GTK hook of `AppRun` adds to the environment of `anima`. |

@@ -9,7 +9,7 @@ use sqlx::{PgConnection, PgPool};
 use super::{CODE_LIFETIME, Error, TOKEN_LIFETIME, store};
 use crate::{
     devices,
-    events::{self, Bus, NewEvent, Severity, Source},
+    events::{self, ActorKind, Bus, NewEvent, Severity, Source},
     ids::DeviceId,
 };
 
@@ -113,6 +113,7 @@ pub(super) async fn enrol(
         source: Source::Metrics,
         device: Some((device, name.clone())),
         message: format!("The agent on {name} enrolled; its metrics now come from the agent."),
+        actor: ActorKind::Hub,
     };
     events::record(&mut tx, bus, now, event).await?;
     tx.commit().await?;

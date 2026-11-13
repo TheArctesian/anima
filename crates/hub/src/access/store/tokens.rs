@@ -65,6 +65,9 @@ pub(in crate::access) struct StoredToken {
     pub scope: String,
     pub expires_at: DateTime<Utc>,
     pub last_used_at: Option<DateTime<Utc>>,
+    /// An API key's name and what it is made for; `None` for the other kinds (LOG-015).
+    pub name: Option<String>,
+    pub made_for: Option<String>,
 }
 
 pub(in crate::access) async fn token_by_hash(
@@ -72,8 +75,8 @@ pub(in crate::access) async fn token_by_hash(
     hash: TokenHash,
 ) -> Result<Option<StoredToken>, sqlx::Error> {
     sqlx::query_as(
-        "select t.id, t.operator_id, o.username, t.kind, t.scope, t.expires_at, t.last_used_at \
-         from access.api_tokens t join access.operators o on o.id = t.operator_id \
+        "select t.id, t.operator_id, o.username, t.kind, t.scope, t.expires_at, t.last_used_at, \
+         t.name, t.made_for from access.api_tokens t join access.operators o on o.id = t.operator_id \
          where t.token_hash = $1",
     )
     .bind(&hash.0[..])

@@ -15,7 +15,7 @@ use sqlx::PgPool;
 use super::samples::Rows;
 use crate::{
     devices::{self, MetricsSource},
-    events::{self, Bus, NewEvent, Severity, Source},
+    events::{self, ActorKind, Bus, NewEvent, Severity, Source},
     ids::DeviceId,
     metrics::{
         Gpu,
@@ -113,5 +113,6 @@ fn fresh_again(device: DeviceId, name: &str) -> NewEvent {
         source: Source::Metrics,
         device: Some((device, name.to_owned())),
         message: format!("The agent on {name} sends metrics again."),
+        actor: ActorKind::Hub,
     }
 }

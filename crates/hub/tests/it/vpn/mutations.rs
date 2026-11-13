@@ -88,7 +88,7 @@ async fn d_23_vpn_mutations_refuse_an_api_key(pool: PgPool) {
     let fake = answering(|_| new_key());
     let (hub, token, home, reader) = hub_over(&pool, &fake).await;
     let create = "mutation($input: ApiKeyInput!) { createApiKey(input: $input) { secret } }";
-    let input = json!({ "name": "script", "scope": "WRITE",
+    let input = json!({ "name": "script", "scope": "WRITE", "madeFor": "USER",
                         "expiresAt": clock_start() + TimeDelta::days(30) });
     let made = data(&hub, &token, create, json!({ "input": input })).await;
     let secret = made["createApiKey"]["secret"].as_str().unwrap();

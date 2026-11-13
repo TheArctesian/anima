@@ -83,8 +83,8 @@ async fn met_013_an_agent_token_or_code_is_refused_on_the_websocket(pool: PgPool
 async fn api_key(pool: &PgPool) -> String {
     sqlx::query(
         "INSERT INTO access.api_tokens \
-         (id, operator_id, token_hash, kind, name, display_prefix, scope, expires_at, created_at) \
-         SELECT gen_random_uuid(), id, $1, 'api_key', 'script', 'anima_CQkJCQ', 'write', $2, $3 \
+         (id, operator_id, token_hash, kind, made_for, name, display_prefix, scope, expires_at, created_at) \
+         SELECT gen_random_uuid(), id, $1, 'api_key', 'user', 'script', 'anima_CQkJCQ', 'write', $2, $3 \
          FROM access.operators",
     )
     .bind(Sha256::digest([9_u8; 32]).to_vec())

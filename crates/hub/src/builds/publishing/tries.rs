@@ -13,7 +13,7 @@ use super::{
 };
 use crate::{
     builds::{BuildJob, BuildQueue, Error, JobState, JobUpdate, Missing, jobs, queue, store},
-    events::{self, Bus, NewEvent, Severity, Source},
+    events::{self, ActorKind, Bus, NewEvent, Severity, Source},
 };
 
 /// How long one try holds a job; a hub that stopped mid-publish is taken over after it.
@@ -236,6 +236,7 @@ fn published_event(job: &BuildJob) -> NewEvent {
         source: Source::Hub,
         device: None,
         message: format!("Anima {} for {} is published.", job.version, job.target),
+        actor: ActorKind::Hub,
     }
 }
 
@@ -261,6 +262,7 @@ async fn record_changed(
             job.target,
             changed.join(" and ")
         ),
+        actor: ActorKind::Hub,
     };
     events::record(tx, bus, now, event).await?;
     Ok(())

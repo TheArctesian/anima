@@ -34,6 +34,7 @@ async fn record(
         source,
         device,
         message: message.to_owned(),
+        actor: anima_hub::events::ActorKind::Hub,
     };
     events::record(&mut conn, &hub.bus, at, event)
         .await

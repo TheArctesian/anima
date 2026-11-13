@@ -69,6 +69,7 @@ pub fn operator() -> Operator {
     Operator {
         id: OPERATOR_ID.parse::<OperatorId>().unwrap(),
         name: "operator".to_owned(),
+        actor: anima_hub::events::Actor::for_tests(),
     }
 }
 

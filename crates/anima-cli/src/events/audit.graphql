@@ -1,5 +1,5 @@
-query AuditList($first: Int, $after: String) {
-  audit(first: $first, after: $after) {
+query AuditList($first: Int, $after: String, $actorKind: ActorKind) {
+  audit(first: $first, after: $after, actorKind: $actorKind) {
     edges {
       cursor
       node {
@@ -11,6 +11,9 @@ query AuditList($first: Int, $after: String) {
         targetId
         clientAddr
         change
+        actorKind
+        tokenKind
+        apiKeyName
       }
     }
     pageInfo {

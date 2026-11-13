@@ -116,6 +116,7 @@ async fn set_retention(db: &PgPool, now: DateTime<Utc>, subject: &str, days: i32
     let operator = Operator {
         id: OperatorId::from(Uuid::now_v7()),
         name: "operator".to_owned(),
+        actor: crate::events::Actor::for_tests(),
     };
     let request = Identity::for_tests(operator, now + TimeDelta::days(1))
         .attach(Request::new(format!(

@@ -1,6 +1,7 @@
 //! The event log and the audit log: what happened and who changed what (LOG-004, LOG-005),
 //! and the live broadcast of new events and status changes (LOG-010).
 
+mod actor;
 mod bus;
 pub mod graphql;
 mod model;
@@ -17,6 +18,7 @@ mod upkeep;
 use chrono::{DateTime, Days, TimeDelta, Utc};
 use sqlx::{PgConnection, PgPool};
 
+pub use actor::{Actor, ActorKind, TokenKind};
 pub use bus::{Bus, Signal};
 pub use model::{
     AuditAction, AuditTarget, ClientAddr, EventSummary, HeartbeatSummary, NewAudit, NewEvent,

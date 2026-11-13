@@ -184,10 +184,8 @@ pub async fn audit_removed(
     if gone.is_empty() {
         return Ok(0);
     }
-    let hub = Operator {
-        id: OperatorId::from(Uuid::nil()),
-        name: "Anima".to_owned(),
-    };
+    // The hub removes them as part of a credentials change, so the entries are Hub (LOG-014).
+    let hub = Operator::hub();
     let mut tx = db.begin().await?;
     for builder in &gone {
         let entry = NewAudit {

@@ -10,6 +10,7 @@ query EventList($filter: EventFilter, $first: Int, $after: String) {
         deviceId
         deviceName
         message
+        actorKind
       }
     }
     pageInfo {

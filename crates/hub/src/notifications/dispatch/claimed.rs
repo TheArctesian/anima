@@ -29,7 +29,7 @@ use super::{
     retry::{self, Next},
 };
 use crate::{
-    events::{self, NewEvent, Severity, Source},
+    events::{self, ActorKind, NewEvent, Severity, Source},
     ids::DeliveryId,
     notifications::{
         Delivery, InstallationSettings, NotificationKind, Outbox, store, template::Values,
@@ -178,6 +178,7 @@ pub(super) fn given_up(channel_name: &str, row: &Outbox, last: Option<Failure>) 
             kind_words(row.kind),
             if tries == 1 { "try" } else { "tries" },
         ),
+        actor: ActorKind::Hub,
     }
 }
 

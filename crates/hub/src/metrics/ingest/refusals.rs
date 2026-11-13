@@ -19,7 +19,7 @@ use sqlx::PgPool;
 use super::{Error, throttle::Throttle};
 use crate::{
     devices,
-    events::{self, Bus, ClientAddr, NewEvent, Severity, Source},
+    events::{self, ActorKind, Bus, ClientAddr, NewEvent, Severity, Source},
     ids::DeviceId,
 };
 
@@ -154,6 +154,7 @@ impl Recorder {
             source: Source::Metrics,
             device,
             message,
+            actor: ActorKind::Hub,
         };
         let mut conn = self.db.acquire().await?;
         events::record(&mut conn, &self.bus, now, event).await?;

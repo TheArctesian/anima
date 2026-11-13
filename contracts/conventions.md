@@ -51,6 +51,14 @@ Status: **frozen for Phase 3** (change only through a programme ruling, CON-001)
   - **API keys:** the same `Authorization: Bearer` header. The secret is `anima_` plus 43 base64url characters.
     The kind rules of D-23 are enforced in the access guard, before any resolver, with FORBIDDEN.
 
+(operator, 2026-11-13, LOG-012 to LOG-020; ruling number to be assigned) **Agent declaration** (LOG-016, LOG-017):
+  - HTTP `POST /graphql`: the header `Anima-Actor: agent`. WebSocket: the field `"actor": "agent"` in the
+    `connection_init` payload, beside `authorization`. `agent` (any case) is the only value; the hub ignores
+    each other value, a repeated header and a non-text value, and never answers with an error for one.
+  - The declaration can only raise the actor kind of a request to `AGENT`; nothing makes a request `USER`
+    or `HUB`. An API key made for `AGENT` is `AGENT` with or without it. `anima mcp` sends it on every request.
+  - CORS (`CLIENT_ORIGINS`) does not allow the header: the clients have no use for it.
+
 (Phase 3) **HTTP surface.** Every route sits behind the NET-002 layer and is logged by its template only.
 
   | Route | Authentication | Owner |
@@ -72,7 +80,7 @@ Status: **frozen for Phase 3** (change only through a programme ruling, CON-001)
 
 ## Logging (process log)
 
-- `tracing` with JSON output (LOG-001). Standard fields: `request_id`, `operator_id`, `device_id`, `session_id`, `domain`.
+- `tracing` with JSON output (LOG-001). Standard fields: `request_id`, `operator_id`, `device_id`, `session_id`, `domain`, and `actor_kind` (`user`, `agent` or `hub`) (operator, 2026-11-13, LOG-012 to LOG-020; ruling number to be assigned). Never the token or the value of the `Anima-Actor` header as sent.
 - Spans at I/O boundaries only (CQ-026): GraphQL request, SQL call, probe, gateway connection, tunnel.
 - Never log: passwords, private keys, passphrases, tokens, tunnel tokens, session content (LOG-007). (Phase 2) Also never log: RDP and VNC passwords, SNMP communities and v3 passwords, file content, and file paths in the process log (paths go only to the audit log). Secret types implement neither `Debug` nor `Display` (see `hub-domains.md`).
 - (Phase 3) Never log API key secrets, browser tokens and cookie values, notification secrets (whole webhook URLs, webhook header values, ntfy topics and tokens, SMTP passwords, Apprise URLs and keys), email recipient addresses in the process log, a notification target's reply body, agent tokens and agent enrolment codes (K8).

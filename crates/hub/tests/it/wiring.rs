@@ -98,6 +98,7 @@ fn signed_in(query: &str, variables: Value) -> Request {
     let operator = Operator {
         id: OPERATOR_ID.parse::<OperatorId>().unwrap(),
         name: "operator".to_owned(),
+        actor: anima_hub::events::Actor::for_tests(),
     };
     Identity::for_tests(operator, now() + TimeDelta::hours(24))
         .attach(Request::new(query).variables(Variables::from_json(variables)))

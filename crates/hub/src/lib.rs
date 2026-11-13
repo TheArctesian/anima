@@ -311,6 +311,8 @@ async fn graphql(
     if let Some(client) = access::client_addr(&extensions) {
         request = request.data(client);
     }
+    // For a sign-in, which has no identity yet to carry it (LOG-016).
+    request = request.data(access::Declaration::of_headers(&headers));
     let from = (route.origin.as_ref()).and_then(|origin| access::SameOrigin::of(&headers, origin));
     let identified = access::identify(&route.db, &headers, from.as_ref(), route.clock.now()).await;
     if let Some(from) = from {

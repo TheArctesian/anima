@@ -5,7 +5,7 @@
 //! reason of a failure goes to the process log with the device id only.
 
 use crate::{
-    events::{NewEvent, Severity, Source},
+    events::{ActorKind, NewEvent, Severity, Source},
     ids::DeviceId,
 };
 
@@ -44,5 +44,6 @@ pub(super) fn event(change: Change, device: DeviceId, name: String) -> NewEvent 
         source: Source::Metrics,
         device: Some((device, name)),
         message: message.to_owned(),
+        actor: ActorKind::Hub,
     }
 }

@@ -288,7 +288,7 @@ async fn unguarded(kind: TokenKind, document: &str) -> Response {
 
 const KEY_DOCUMENTS: [&str; 3] = [
     "{ apiKeys { id } }",
-    "mutation { createApiKey(input: { name: \"x\", scope: WRITE, \
+    "mutation { createApiKey(input: { name: \"x\", scope: WRITE, madeFor: USER, \
      expiresAt: \"2030-06-01T00:00:00Z\" }) { secret } }",
     "mutation { revokeApiKey(id: \"0190a000-0000-7000-8000-0000000000aa\") }",
 ];

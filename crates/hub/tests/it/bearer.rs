@@ -111,8 +111,10 @@ async fn stored_bytes(
     };
     sqlx::query(
         "insert into access.api_tokens \
-         (id, operator_id, token_hash, kind, name, display_prefix, scope, expires_at, created_at) \
-         select gen_random_uuid(), id, $1, $2, $3, $4, $5, $6, $6 - interval '1 day' \
+         (id, operator_id, token_hash, kind, name, display_prefix, scope, expires_at, created_at, \
+         made_for) \
+         select gen_random_uuid(), id, $1, $2, $3, $4, $5, $6, $6 - interval '1 day', \
+         case when $2 = 'api_key' then 'user' end \
          from access.operators",
     )
     .bind(Sha256::digest(bytes).to_vec())

@@ -1,7 +1,7 @@
 <script lang="ts">
   import FormButton from '$lib/forms/FormButton.svelte';
   import type { ApiKey } from './api';
-  import { isExpired, lastUsedText, scopeLabel, shownDate } from './listing';
+  import { isExpired, lastUsedText, madeForLabel, scopeLabel, shownDate } from './listing';
 
   interface Props {
     key: ApiKey;
@@ -23,6 +23,7 @@
   </div>
   <dl>
     <div><dt>Scope</dt><dd>{scopeLabel(key.scope)}</dd></div>
+    <div><dt>Used by</dt><dd>{madeForLabel(key.madeFor)}</dd></div>
     <div><dt>Prefix</dt><dd class="mono">{key.prefix}</dd></div>
     <div>
       <dt>Expires</dt>

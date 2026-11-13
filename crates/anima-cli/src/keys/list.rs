@@ -25,6 +25,7 @@ fn table(keys: &Vec<key_list::KeyListApiKeys>) -> Table {
     let mut table = Table::new(vec![
         "NAME",
         "SCOPE",
+        "FOR",
         "PREFIX",
         "EXPIRES",
         "LAST USED",
@@ -34,6 +35,7 @@ fn table(keys: &Vec<key_list::KeyListApiKeys>) -> Table {
         table.row(vec![
             key.name.as_str().into(),
             enum_name(&key.scope).into(),
+            enum_name(&key.made_for).into(),
             key.prefix.as_str().into(),
             key.expires_at.as_str().into(),
             key.last_used_at.as_deref().unwrap_or("never").into(),

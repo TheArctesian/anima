@@ -13,7 +13,7 @@ use super::{
     store, upload,
 };
 use crate::{
-    events::{self, Bus, NewEvent, Severity, Source},
+    events::{self, ActorKind, Bus, NewEvent, Severity, Source},
     ids::BuildJobId,
 };
 
@@ -97,6 +97,7 @@ pub(super) async fn record_failure(
             "The build of {} for {} failed: {reason}.",
             job.version, job.target
         ),
+        actor: ActorKind::Hub,
     };
     events::record(conn, bus, job.times.changed, event).await?;
     Ok(())

@@ -46,6 +46,7 @@ fn signed_in(query: &str) -> Request {
     let operator = Operator {
         id: OPERATOR_ID.parse::<OperatorId>().unwrap(),
         name: "operator".to_owned(),
+        actor: anima_hub::events::Actor::for_tests(),
     };
     Identity::for_tests(operator, now() + TimeDelta::days(3650)).attach(Request::new(query))
 }

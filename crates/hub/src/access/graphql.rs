@@ -10,7 +10,7 @@ use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 
 use super::{
-    Authenticated, ClientAddr, Error, Identity, SameOrigin, TokenKind, browser,
+    Authenticated, ClientAddr, Declaration, Error, Identity, SameOrigin, TokenKind, browser,
     keys::{self, ApiKey, ApiKeyCreated, ApiKeyInput},
     login::{self, Attempt, Issue, SignedIn},
     password::Password,
@@ -180,6 +180,7 @@ async fn sign_in(
         client: *need::<ClientAddr>(ctx)?,
         at: need::<Arc<dyn Clock>>(ctx)?.now(),
         issue,
+        declared: ctx.data_opt::<Declaration>().copied().unwrap_or_default(),
     };
     let (db, bus, vault) = (need::<PgPool>(ctx)?, need::<Bus>(ctx)?, need::<Vault>(ctx)?);
     login::login(db, bus, vault, attempt)

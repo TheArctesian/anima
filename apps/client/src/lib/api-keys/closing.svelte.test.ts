@@ -194,6 +194,6 @@ it('D-23: the expiry counts from when Create is pressed, not from when the dialo
   await settled();
   expect(hub.sent.at(-1)).toEqual({
     operation: 'CreateApiKey',
-    variables: { input: { name: 'backup-job', scope: 'READ', expiresAt: '2027-02-06T12:00:00.000Z' } },
+    variables: { input: { name: 'backup-job', scope: 'READ', madeFor: 'USER', expiresAt: '2027-02-06T12:00:00.000Z' } },
   });
 });

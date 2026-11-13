@@ -16,6 +16,8 @@ use tokio::net::TcpListener;
 pub struct Seen {
     pub operation: String,
     pub authorization: Option<String>,
+    /// The `Anima-Actor` header, when the request declared itself (LOG-016).
+    pub actor: Option<String>,
     pub variables: Value,
 }
 
@@ -81,6 +83,10 @@ async fn answer(State(script): State<Shared>, headers: HeaderMap, body: String) 
         operation: operation.clone(),
         authorization: headers
             .get(header::AUTHORIZATION)
+            .and_then(|value| value.to_str().ok())
+            .map(str::to_owned),
+        actor: headers
+            .get("anima-actor")
             .and_then(|value| value.to_str().ok())
             .map(str::to_owned),
         variables: request["variables"].clone(),

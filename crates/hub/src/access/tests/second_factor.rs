@@ -34,6 +34,7 @@ fn attempt(code: Option<&str>) -> Attempt {
         client: ClientAddr(IpAddr::V4(Ipv4Addr::new(100, 64, 0, 9))),
         at: now(),
         issue: Issue::LOGIN,
+        declared: crate::access::Declaration::default(),
     }
 }
 

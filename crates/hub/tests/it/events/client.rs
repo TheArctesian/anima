@@ -186,6 +186,7 @@ pub fn publish(bus: &Bus, severity: Severity, message: &str) {
         source: Source::Hub,
         device: None,
         message: message.to_owned(),
+        actor: Some(anima_hub::events::ActorKind::Hub),
     }));
 }
 

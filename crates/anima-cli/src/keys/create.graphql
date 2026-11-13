@@ -5,6 +5,7 @@ mutation KeyCreate($input: ApiKeyInput!) {
       id
       name
       scope
+      madeFor
       prefix
       expiresAt
       createdAt

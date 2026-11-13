@@ -7,6 +7,13 @@ export function scopeLabel(scope: ApiKey['scope']): string {
   return SCOPE_LABELS[scope];
 }
 
+/** Who uses the key, in words (LOG-015). */
+const MADE_FOR_LABELS: Record<ApiKey['madeFor'], string> = { USER: 'A script I run', AGENT: 'An AI agent' };
+
+export function madeForLabel(madeFor: ApiKey['madeFor']): string {
+  return MADE_FOR_LABELS[madeFor];
+}
+
 /** Whether the key has stopped working at `now`. A date the client cannot read counts as not expired. */
 export function isExpired(key: Pick<ApiKey, 'expiresAt'>, now: Date): boolean {
   return Date.parse(key.expiresAt) <= now.getTime();
@@ -31,6 +38,7 @@ export const PLACEHOLDER_KEY: ApiKey = {
   id: 'placeholder',
   name: 'placeholder-key',
   scope: 'WRITE',
+  madeFor: 'AGENT',
   prefix: 'anima_AAAAAA',
   expiresAt: '2099-12-31T00:00:00Z',
   createdAt: '2099-12-31T00:00:00Z',

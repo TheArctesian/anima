@@ -8,7 +8,7 @@ use zeroize::Zeroizing;
 
 use super::{Lease, SocketAccess, Verdict};
 use crate::access::{
-    Error, Identity, PublicOrigin, SameOrigin, browser,
+    Declaration, Error, Identity, PublicOrigin, SameOrigin, browser,
     identity::{identify_connection, resolve},
     tokens::Transport,
 };
@@ -70,7 +70,9 @@ async fn identify_socket(
     let now = access.clock.now();
     match &access.cookie {
         Some(cookie) if payload.get("authorization").is_none() => {
-            resolve(&access.db, &cookie.0, Transport::Cookie, now).await
+            let identity = resolve(&access.db, &cookie.0, Transport::Cookie, now).await?;
+            let declaration = Declaration::of_payload(payload);
+            Ok(identity.map(|identity| identity.declared(declaration)))
         }
         _ => identify_connection(&access.db, payload, now).await,
     }

@@ -84,6 +84,9 @@ async fn bld_008_only_a_queued_job_can_be_cancelled(pool: PgPool) {
     assert_eq!(cancels, 0);
 }
 
+/// The operator name, actor kind, token kind and key name of an audit entry.
+type Who = (String, Option<String>, Option<String>, Option<String>);
+
 /// The `(action, reason)` of each builder audit entry the hub itself wrote.
 async fn removals(pool: &PgPool) -> Vec<(String, String)> {
     sqlx::query_as(
@@ -115,6 +118,18 @@ async fn bld_025_a_builder_pruned_with_its_expired_token_is_audited(pool: PgPool
     );
     let expected = vec![("delete".to_owned(), "token expired".to_owned())];
     assert_eq!(removals(&pool).await, expected);
+    // The prune is the hub's own work: Hub, with no token and no key (LOG-014, LOG-018, OD-15).
+    let who: Vec<Who> = sqlx::query_as(
+        "SELECT operator_name, actor_kind, token_kind, api_key_name FROM events.audit_log \
+         WHERE target_type = 'builder' AND change ? 'reason'",
+    )
+    .fetch_all(&pool)
+    .await
+    .unwrap();
+    assert_eq!(
+        who,
+        [("Anima".to_owned(), Some("hub".to_owned()), None, None)]
+    );
 }
 
 #[sqlx::test(migrations = "./migrations")]

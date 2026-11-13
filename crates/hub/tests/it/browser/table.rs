@@ -33,8 +33,9 @@ impl Row {
 async fn insert(pool: &PgPool, row: &Row) -> Result<(), sqlx::Error> {
     sqlx::query(
         "insert into access.api_tokens (id, operator_id, token_hash, kind, name, display_prefix, \
-         scope, expires_at, created_at) \
-         select gen_random_uuid(), id, $1, $2, $3, $4, $5, $6, $7 from access.operators",
+         scope, expires_at, created_at, made_for) \
+         select gen_random_uuid(), id, $1, $2, $3, $4, $5, $6, $7, \
+         case when $2 = 'api_key' then 'user' end from access.operators",
     )
     .bind(vec![row.fill; 32])
     .bind(row.kind)

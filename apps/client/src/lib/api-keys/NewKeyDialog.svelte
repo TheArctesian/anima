@@ -5,7 +5,7 @@
   import type { ApiKey, ApiKeysApi } from './api';
   import KeySecret from './KeySecret.svelte';
   import { shownDate } from './listing';
-  import { checkNewKey, createFailure, dayText, emptyForm, EXPIRY_CHOICES, expiryOf, latestExpiry, SCOPES, type NewKeyProblem } from './new-key';
+  import { checkNewKey, createFailure, dayText, emptyForm, EXPIRY_CHOICES, expiryOf, latestExpiry, MADE_FOR, SCOPES, type NewKeyProblem } from './new-key';
 
   interface Props {
     api: Pick<ApiKeysApi, 'create'>;
@@ -88,6 +88,13 @@
           {#each SCOPES as scope (scope.id)}
             <label><input type="radio" name="{ids}-scope" value={scope.id} bind:group={form.scope} /> {scope.label} <small>{scope.hint}</small></label>
           {/each}
+        </fieldset>
+        <fieldset class="choice">
+          <legend>Used by</legend>
+          {#each MADE_FOR as user (user.id)}
+            <label><input type="radio" name="{ids}-made-for" value={user.id} bind:group={form.madeFor} /> {user.label}</label>
+          {/each}
+          <small>It cannot change later.</small>
         </fieldset>
         <fieldset class="choice" aria-describedby="{ids}-expiry-problem">
           <legend>Expires</legend>

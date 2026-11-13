@@ -1,6 +1,7 @@
 //! The event and audit lists and the live `eventAdded` subscription (K1; LOG-004, LOG-005,
 //! LOG-010, API-006, R-020, H-6).
 
+mod actors;
 mod audit;
 pub mod client;
 mod lists;

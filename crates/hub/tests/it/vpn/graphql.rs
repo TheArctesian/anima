@@ -237,6 +237,7 @@ async fn vpn_005_vpn_changed_sends_the_next_picture(pool: PgPool) {
             .parse::<OperatorId>()
             .unwrap(),
         name: "operator".to_owned(),
+        actor: anima_hub::events::Actor::for_tests(),
     };
     let request = Identity::for_tests(operator, start() + TimeDelta::days(3650)).attach(
         Request::new("subscription { vpnChanged { fresh nodes { name path } } }"),
@@ -268,8 +269,7 @@ async fn vpn_005_an_api_key_may_read_vpn(pool: PgPool) {
     let (hub, token) = hub_reading(&pool, &feed, None).await;
     let reader = read_status(&pool, &feed).await;
     let create = "mutation($input: ApiKeyInput!) { createApiKey(input: $input) { secret } }";
-    let input =
-        json!({ "name": "status", "scope": "READ", "expiresAt": start() + TimeDelta::days(30) });
+    let input = json!({ "name": "status", "scope": "READ", "madeFor": "USER", "expiresAt": start() + TimeDelta::days(30) });
     let made = data(&hub, &token, create, json!({ "input": input })).await;
     let secret = made["createApiKey"]["secret"].as_str().unwrap();
 

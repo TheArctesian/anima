@@ -40,6 +40,7 @@ fn operator() -> Operator {
     Operator {
         id: OperatorId::from(Uuid::now_v7()),
         name: "operator".to_owned(),
+        actor: crate::events::Actor::for_tests(),
     }
 }
 
