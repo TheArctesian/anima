@@ -7,3 +7,4 @@ mod notifications;
 mod releases;
 mod retention;
 mod vpn;
+mod watches;

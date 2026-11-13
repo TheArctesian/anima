@@ -3,6 +3,7 @@
 pub mod cancel;
 pub mod create;
 pub mod documents;
+pub mod follow;
 pub mod list;
 pub mod log;
 pub mod next_version;

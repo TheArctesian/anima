@@ -1,0 +1,8 @@
+# `anima device watch`: a device's status changed (K1 deviceStatusChanged).
+subscription DeviceStatusChanged($deviceId: ID) {
+  deviceStatusChanged(deviceId: $deviceId) {
+    deviceId
+    status
+    at
+  }
+}

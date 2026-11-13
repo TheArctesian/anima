@@ -8,6 +8,7 @@ pub mod list;
 pub mod pace;
 pub mod start;
 pub mod terminal;
+pub mod watch;
 
 use crate::failure::Failure;
 use crate::invocation::Invocation;
@@ -18,6 +19,8 @@ pub enum SessionCommand {
     List(list::ListArgs),
     /// End a live session.
     End(end::EndArgs),
+    /// Print each start and end of a session until interrupted.
+    Watch(watch::WatchArgs),
 }
 
 impl SessionCommand {
@@ -29,6 +32,7 @@ impl SessionCommand {
         match self {
             Self::List(args) => args.run(invocation).await,
             Self::End(args) => args.run(invocation).await,
+            Self::Watch(args) => args.run(invocation).await,
         }
     }
 }

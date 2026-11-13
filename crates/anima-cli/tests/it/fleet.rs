@@ -9,4 +9,5 @@ pub mod devices;
 mod maintenance;
 mod sessions;
 mod sites;
+mod watches;
 mod web_interfaces;

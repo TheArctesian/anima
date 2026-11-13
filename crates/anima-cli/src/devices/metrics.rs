@@ -1,7 +1,9 @@
-//! `anima device metrics`: the metric series of a device over an hour, a day or a week.
+//! `anima device metrics`: the metric series of a device over an hour, a day or a week, or with
+//! `--watch` each new reading.
 
 use super::documents::{DeviceMetrics, device_metrics};
 use super::get::resolve;
+use super::watch;
 use crate::failure::Failure;
 use crate::invocation::Invocation;
 use crate::output::text::enum_name;
@@ -14,6 +16,9 @@ pub struct MetricsArgs {
     /// How far back.
     #[arg(long, value_enum, default_value_t = RangeArg::Hour)]
     range: RangeArg,
+    /// Print each new reading until interrupted, instead of the series.
+    #[arg(long, conflicts_with = "range")]
+    watch: bool,
 }
 
 #[derive(Clone, Copy, Debug, clap::ValueEnum)]
@@ -29,6 +34,9 @@ impl MetricsArgs {
     /// # Errors
     /// [`Failure::NotFound`] for an unknown device; the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
+        if self.watch {
+            return watch::metrics::run(&self.device, invocation).await;
+        }
         let hub = invocation.hub()?;
         let id = resolve(&hub, &self.device).await?;
         let variables = device_metrics::Variables {

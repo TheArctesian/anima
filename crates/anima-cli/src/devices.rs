@@ -15,6 +15,7 @@ pub mod trust;
 pub mod update;
 pub mod uptime;
 pub mod wake;
+pub mod watch;
 
 use crate::failure::Failure;
 use crate::invocation::Invocation;
@@ -37,6 +38,8 @@ pub enum DeviceCommand {
     Test(test::TestArgs),
     /// Show a device's metric series.
     Metrics(metrics::MetricsArgs),
+    /// Print each status change of the devices until interrupted.
+    Watch(watch::status::WatchArgs),
     /// Show a device's uptime over a window.
     Uptime(uptime::UptimeArgs),
     /// Store or clear the credentials the hub signs in with.
@@ -62,6 +65,7 @@ impl DeviceCommand {
             Self::Wake(args) => args.run(invocation).await,
             Self::Test(args) => args.run(invocation).await,
             Self::Metrics(args) => args.run(invocation).await,
+            Self::Watch(args) => args.run(invocation).await,
             Self::Uptime(args) => args.run(invocation).await,
             Self::Credential(command) => command.run(invocation).await,
             Self::Trust(command) => command.run(invocation).await,

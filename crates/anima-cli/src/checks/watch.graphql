@@ -1,0 +1,13 @@
+# `anima check watch`: a check ran (K1 heartbeatAdded).
+subscription HeartbeatAdded($checkId: ID, $deviceId: ID) {
+  heartbeatAdded(checkId: $checkId, deviceId: $deviceId) {
+    checkId
+    deviceId
+    heartbeat {
+      at
+      status
+      responseTimeMs
+      message
+    }
+  }
+}

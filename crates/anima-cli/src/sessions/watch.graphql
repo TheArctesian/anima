@@ -1,0 +1,16 @@
+# `anima session watch`: every start and end of a session (K1 sessionChanged).
+subscription SessionChanged {
+  sessionChanged {
+    session {
+      id
+      deviceId
+      deviceName
+      protocol
+      operatorName
+      startedAt
+      endedAt
+      endReason
+      clientAddr
+    }
+  }
+}

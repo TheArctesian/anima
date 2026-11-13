@@ -39,3 +39,12 @@ pub struct SessionStart;
     query_path = "src/sessions/open_files.graphql"
 )]
 pub struct SessionOpenFiles;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "../../contracts/schema.graphql",
+    query_path = "src/sessions/watch.graphql",
+    response_derives = "Debug, Serialize",
+    variables_derives = "Debug"
+)]
+pub struct SessionChanged;

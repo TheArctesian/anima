@@ -5,6 +5,7 @@ pub mod documents;
 pub mod key;
 pub mod registration;
 pub mod status;
+pub mod watch;
 
 use crate::failure::Failure;
 use crate::invocation::Invocation;

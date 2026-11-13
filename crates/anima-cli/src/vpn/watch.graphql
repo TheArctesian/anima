@@ -1,0 +1,19 @@
+# `anima vpn status --watch`: each new VPN picture, about once a minute (K1 vpnChanged).
+subscription VpnChanged {
+  vpnChanged {
+    readAt
+    fresh
+    broker
+    sites {
+      site {
+        name
+      }
+      state
+      path
+    }
+    nodes {
+      name
+      online
+    }
+  }
+}

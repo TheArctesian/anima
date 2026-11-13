@@ -1,0 +1,12 @@
+# `anima device metrics --watch`: new readings of a device (K1 metricsAdded).
+subscription MetricsAdded($deviceId: ID) {
+  metricsAdded(deviceId: $deviceId) {
+    deviceId
+    at
+    readings {
+      cpuPercent
+      memoryPercent
+      diskPercent
+    }
+  }
+}

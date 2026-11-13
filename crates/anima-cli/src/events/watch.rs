@@ -32,14 +32,7 @@ impl WatchArgs {
         let mut events = Subscription::open::<EventAdded>(&hub, variables).await?;
         while let Some(answer) = events.next().await {
             let event = answer?.event_added;
-            let text = if invocation.output.json() {
-                serde_json::to_string(&event).map_err(|error| Failure::Write {
-                    reason: error.to_string(),
-                })?
-            } else {
-                line(&event)
-            };
-            if stream::line(&text)? == Reader::Gone {
+            if stream::emit(invocation.output.json(), &event, line)? == Reader::Gone {
                 break;
             }
         }

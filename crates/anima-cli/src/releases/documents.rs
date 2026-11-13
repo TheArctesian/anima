@@ -49,3 +49,12 @@ pub struct ReleaseCancel;
     skip_serializing_none
 )]
 pub struct BuildJobLog;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "../../contracts/schema.graphql",
+    query_path = "src/releases/follow.graphql",
+    response_derives = "Debug, Serialize",
+    variables_derives = "Debug"
+)]
+pub struct BuildJobUpdated;

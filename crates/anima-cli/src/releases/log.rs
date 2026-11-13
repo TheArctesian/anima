@@ -3,6 +3,7 @@
 use std::io::Write as _;
 
 use super::documents::{BuildJobLog, build_job_log};
+use super::follow;
 use crate::failure::Failure;
 use crate::hub::Hub;
 use crate::invocation::Invocation;
@@ -18,14 +19,18 @@ pub struct LogArgs {
     /// The build job's ID.
     job: String,
     /// Lines per page, 1 to 1000.
-    #[arg(long, default_value_t = 500, value_parser = clap::value_parser!(i64).range(1..=MAX_PAGE))]
+    #[arg(long, default_value_t = 500, conflicts_with = "follow", value_parser = clap::value_parser!(i64).range(1..=MAX_PAGE))]
     limit: i64,
     /// Start after this line sequence (from the previous page).
-    #[arg(long, conflicts_with = "all")]
+    #[arg(long, conflicts_with_all = ["all", "follow"])]
     after: Option<i64>,
     /// Every line, following the pages to the end.
-    #[arg(long)]
+    #[arg(long, conflicts_with = "follow")]
     all: bool,
+    /// Print the lines that arrive from now on, until the job is published, failed or
+    /// cancelled. Earlier lines: run without --follow first.
+    #[arg(long)]
+    follow: bool,
 }
 
 impl LogArgs {
@@ -34,6 +39,9 @@ impl LogArgs {
     /// # Errors
     /// [`Failure`] for an unknown job or a hub refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
+        if self.follow {
+            return follow::run(&self.job, invocation).await;
+        }
         let hub = invocation.hub()?;
         let first = if self.all { MAX_PAGE } else { self.limit };
         let request = Request {

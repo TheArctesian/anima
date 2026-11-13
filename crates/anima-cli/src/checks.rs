@@ -7,6 +7,7 @@ pub mod read;
 pub mod resolve;
 pub mod settings;
 pub mod summary;
+pub mod watch;
 pub mod write;
 
 use crate::failure::Failure;
@@ -30,6 +31,8 @@ pub enum CheckCommand {
     Resume(write::pause::ResumeArgs),
     /// Show a page of a check's heartbeats, newest first.
     Heartbeats(read::heartbeats::HeartbeatsArgs),
+    /// Print each heartbeat until interrupted.
+    Watch(watch::WatchArgs),
     /// The values a new check starts with.
     Defaults {
         #[command(subcommand)]
@@ -71,6 +74,7 @@ impl CheckCommand {
             Self::Pause(args) => args.run(invocation).await,
             Self::Resume(args) => args.run(invocation).await,
             Self::Heartbeats(args) => args.run(invocation).await,
+            Self::Watch(args) => args.run(invocation).await,
             Self::Defaults { command } => match command {
                 DefaultsCommand::Get(args) => args.run(invocation).await,
                 DefaultsCommand::Set(args) => args.run(invocation).await,
