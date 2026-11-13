@@ -1,0 +1,13 @@
+{
+  "sha": "9fb037999f264ba9a7fc6274d15fa3ae2ab98312",
+  "url": "https://api.github.com/repos/arctesian/anima/git/trees/9fb037999f264ba9a7fc6274d15fa3ae2ab98312",
+  "tree": [
+    { "path": "README.md", "mode": "100644", "type": "blob", "sha": "44b4fc6d56897b048c772eb4087f854f46256132", "size": 132, "url": "https://api.github.com/repos/arctesian/anima/git/blobs/44b4fc6d56897b048c772eb4087f854f46256132" },
+    { "path": "apps", "mode": "040000", "type": "tree", "sha": "f484d249c660418515fb01c2b9662073663c242e", "url": "https://api.github.com/repos/arctesian/anima/git/trees/f484d249c660418515fb01c2b9662073663c242e" },
+    { "path": "apps/x", "mode": "040000", "type": "tree", "sha": "a1b2d249c660418515fb01c2b9662073663c242e", "url": "https://api.github.com/repos/arctesian/anima/git/trees/a1b2d249c660418515fb01c2b9662073663c242e" },
+    { "path": "apps/x/src-tauri", "mode": "040000", "type": "tree", "sha": "c3d4d249c660418515fb01c2b9662073663c242e", "url": "https://api.github.com/repos/arctesian/anima/git/trees/c3d4d249c660418515fb01c2b9662073663c242e" },
+    { "path": "apps/x/src-tauri/tauri.conf.json", "mode": "100644", "type": "blob", "sha": "e5f6fc6d56897b048c772eb4087f854f46256132", "size": 1210, "url": "https://api.github.com/repos/arctesian/anima/git/blobs/e5f6fc6d56897b048c772eb4087f854f46256132" },
+    { "path": "Dockerfile", "mode": "100644", "type": "blob", "sha": "0a1b2c6d56897b048c772eb4087f854f46256132", "size": 410, "url": "https://api.github.com/repos/arctesian/anima/git/blobs/0a1b2c6d56897b048c772eb4087f854f46256132" }
+  ],
+  "truncated": false
+}

@@ -1,0 +1,8 @@
+{
+  "sha": "7e8f037999f264ba9a7fc6274d15fa3ae2ab9831",
+  "url": "https://api.github.com/repos/arctesian/anima/git/trees/7e8f037999f264ba9a7fc6274d15fa3ae2ab9831",
+  "tree": [
+    { "path": "wrangler.jsonc", "mode": "100644", "type": "blob", "sha": "44b4fc6d56897b048c772eb4087f854f46256132", "size": 322, "url": "https://api.github.com/repos/arctesian/anima/git/blobs/44b4fc6d56897b048c772eb4087f854f46256132" }
+  ],
+  "truncated": true
+}

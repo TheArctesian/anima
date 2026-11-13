@@ -1,0 +1,33 @@
+{
+  "id": 612345678,
+  "node_id": "R_kgDOJBhGzg",
+  "name": "anima",
+  "full_name": "arctesian/anima",
+  "private": true,
+  "owner": {
+    "login": "arctesian",
+    "id": 1234567,
+    "node_id": "MDQ6VXNlcjEyMzQ1Njc=",
+    "type": "User",
+    "site_admin": false
+  },
+  "html_url": "https://github.com/arctesian/anima",
+  "description": "A self-hosted device manager",
+  "fork": false,
+  "url": "https://api.github.com/repos/arctesian/anima",
+  "created_at": "2024-02-11T09:30:12Z",
+  "updated_at": "2026-11-10T17:02:44Z",
+  "pushed_at": "2026-11-10T17:01:58Z",
+  "homepage": null,
+  "size": 18234,
+  "stargazers_count": 0,
+  "language": "Rust",
+  "has_issues": true,
+  "archived": false,
+  "disabled": false,
+  "open_issues_count": 3,
+  "license": null,
+  "visibility": "private",
+  "default_branch": "main",
+  "permissions": { "admin": true, "maintain": true, "push": true, "triage": true, "pull": true }
+}

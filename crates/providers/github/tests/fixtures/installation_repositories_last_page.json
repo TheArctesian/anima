@@ -1,0 +1,30 @@
+{
+  "total_count": 102,
+  "repository_selection": "all",
+  "repositories": [
+    {
+      "id": 700000101,
+      "name": "site",
+      "full_name": "arctesian/site",
+      "private": false,
+      "html_url": "https://github.com/arctesian/site",
+      "description": null,
+      "fork": false,
+      "pushed_at": "2026-10-01T08:00:00Z",
+      "archived": false,
+      "default_branch": "main"
+    },
+    {
+      "id": 700000102,
+      "name": "old-notes",
+      "full_name": "arctesian/old-notes",
+      "private": true,
+      "html_url": "https://github.com/arctesian/old-notes",
+      "description": "Kept for reference",
+      "fork": true,
+      "pushed_at": null,
+      "archived": true,
+      "default_branch": "master"
+    }
+  ]
+}
