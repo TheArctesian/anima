@@ -62,11 +62,18 @@ impl Page {
     }
 }
 
-/// Refuses a delete unless `confirm` is exactly `name` (MCP-007).
+/// Refuses a delete unless `confirm` is exactly `name` (MCP-007). An empty name confirms
+/// nothing: a thing without a name, or one the lookup did not find, is never deleted here.
 ///
 /// # Errors
 /// [`ToolError::Refused`] saying which name to give.
 pub fn confirmed(confirm: &str, name: &str, what: &str) -> Result<(), ToolError> {
+    if name.trim().is_empty() {
+        return Err(ToolError::Refused(format!(
+            "Nothing was deleted: the {what} has no name to confirm. The operator deletes it \
+             in the Anima client or with the command line."
+        )));
+    }
     if confirm == name {
         return Ok(());
     }
@@ -169,6 +176,13 @@ mod tests {
         assert!(confirmed("web-01", "web-01", "device").is_ok());
         assert!(confirmed("web-0", "web-01", "device").is_err());
         assert!(confirmed("WEB-01", "web-01", "device").is_err());
+    }
+
+    #[test]
+    fn mcp_007_f5_an_empty_name_or_confirm_never_confirms() {
+        assert!(confirmed("", "", "device").is_err());
+        assert!(confirmed(" ", " ", "device").is_err());
+        assert!(confirmed("", "web-01", "device").is_err());
     }
 
     #[test]

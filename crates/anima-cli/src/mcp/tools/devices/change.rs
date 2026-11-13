@@ -196,7 +196,14 @@ pub async fn delete(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, T
         })
         .await?
         .device
-        .map_or_else(String::new, |device| device.name);
+        .ok_or_else(|| {
+            ToolError::Refused(
+                "Nothing was deleted: the hub found no such device. Call anima_devices_search \
+                 to find it."
+                    .to_owned(),
+            )
+        })?
+        .name;
     confirmed(&input.confirm, &name, "device")?;
     let deleted = hub
         .run::<DeviceDelete>(device_delete::Variables { id })
