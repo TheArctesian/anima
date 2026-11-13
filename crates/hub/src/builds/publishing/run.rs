@@ -174,17 +174,22 @@ async fn steps(
         etag: etag_of(&etags, &checked.updater),
         digest: first.digest,
     };
-    let sig = signature::sign(reach, work, &verified).await?;
-    tried.holds(db, reach.clock).await?;
-    signature::write(reach, work, &checked.updater, &sig).await?;
-    let feed = feed::signed(&work.feed, &sig).map_err(Stop::Refused)?;
+    let folders = feed::feed_folders(work.target, DEVELOPER_ID);
+    // No feed folder, no `.sig`: a signature no feed names is never written (BLD-068).
+    let feed = if folders.is_empty() {
+        String::new()
+    } else {
+        let sig = signature::sign(reach, work, &verified).await?;
+        tried.holds(db, reach.clock).await?;
+        signature::write(reach, work, &checked.updater, &sig).await?;
+        feed::signed(&work.feed, &sig).map_err(Stop::Refused)?
+    };
     tried.holds(db, reach.clock).await?;
     let from = format!("{}/{}/{source}", work.target, work.version);
     let copy = reach
         .bucket
         .copy((&from, etag_of(&etags, &source)), stable, reach.clock.now());
     transfer::send(reach.http, copy, Vec::new(), stable).await?;
-    let folders = feed::feed_folders(work.target, DEVELOPER_ID);
     for folder in folders {
         tried.holds(db, reach.clock).await?;
         store::mark_feed_sent(db, tried.job, reach.clock.now())

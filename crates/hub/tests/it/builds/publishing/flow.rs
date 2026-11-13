@@ -13,7 +13,7 @@ use super::{
     fake_r2::{Object, hex},
     setup::{
         File, Held, LINUX_FEED, LINUX_STABLE, MACOS, Publishing, ready, until_waiting,
-        uploaded_linux, verified_version,
+        uploaded_linux,
     },
 };
 use crate::{builds::harness::data, hub::error};
@@ -103,7 +103,7 @@ fn mac_files(publishing: &Publishing) -> (Vec<File>, Value) {
 }
 
 /// BLD-068 until OD-13 (R-108): a macOS job publishes its versioned files and the DMG's stable
-/// name, and no feed.
+/// name, and no feed and no `.sig`.
 #[sqlx::test(migrations = "./migrations")]
 async fn bld_068_a_macos_job_publishes_without_a_feed(pool: PgPool) {
     let publishing = Publishing::start(&pool).await;
@@ -125,14 +125,9 @@ async fn bld_068_a_macos_job_publishes_without_a_feed(pool: PgPool) {
     });
     assert_eq!(feeds, 0);
     assert_eq!(written(&publishing, &held).await, Some(Vec::new()));
-    let sig = fake
-        .object("darwin-universal/0.1.12/Anima.app.tar.gz.sig")
-        .unwrap();
-    let sig = String::from_utf8(sig.bytes).unwrap();
-    assert_eq!(
-        verified_version(&publishing.pair, &sig, &files[0].bytes),
-        Ok("0.1.12".to_owned())
-    );
+    // No feed names the archive, so the hub signs nothing (BLD-068, T6 security review C-2).
+    let sig = fake.object("darwin-universal/0.1.12/Anima.app.tar.gz.sig");
+    assert!(sig.is_none());
 }
 
 /// D-25: a hub that stops after the stable copy, before it sends `latest.json`, leaves the job
