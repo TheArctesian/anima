@@ -18,9 +18,9 @@ export class ExtensionsStore {
   loadProblem = $state('');
   refusal = $state.raw<Refusal | null>(null);
   #all = $state.raw<readonly Extension[]>([]);
-  #pending = $state.raw<ReadonlyMap<string, boolean>>(new Map());
+  #pending = $state.raw<Readonly<Record<string, boolean>>>({});
 
-  readonly shown = $derived(this.#all.map((each) => ({ ...each, on: this.#pending.get(each.key) ?? each.on })));
+  readonly shown = $derived(this.#all.map((each) => ({ ...each, on: this.#pending[each.key] ?? each.on })));
 
   constructor(private readonly api: ExtensionsApi) {}
 
@@ -54,17 +54,14 @@ export class ExtensionsStore {
   /** Sends the change; the control shows it while it travels and goes back if the hub refuses. */
   async set(key: string, on: boolean): Promise<void> {
     this.refusal = null;
-    this.#pending = new Map(this.#pending).set(key, on);
+    this.#pending = { ...this.#pending, [key]: on };
     const result = await this.api.set(key, on);
     if (result.ok) {
-      const changed = new Map(result.value.map((each) => [each.key, each]));
-      this.#all = this.#all.map((each) => changed.get(each.key) ?? each);
+      this.#all = this.#all.map((each) => result.value.find((changed) => changed.key === each.key) ?? each);
     } else {
       this.refusal = { key, message: result.error.message };
     }
-    const rest = new Map(this.#pending);
-    rest.delete(key);
-    this.#pending = rest;
+    this.#pending = Object.fromEntries(Object.entries(this.#pending).filter(([pending]) => pending !== key));
     // What the other rows need changes with this one (EXT-012).
     if (result.ok) await this.load();
   }
