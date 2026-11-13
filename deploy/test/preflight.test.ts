@@ -1,25 +1,9 @@
 // deploy/bin/preflight, checked on plain inputs (NET-003, DB-002). Nothing here needs Docker.
 import { describe, expect, test } from "bun:test";
-import { chmodSync, chownSync, mkdirSync, renameSync, symlinkSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { chmodSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { finish } from "./finished-process.ts";
-
-const SCRIPT = join(import.meta.dir, "..", "bin", "preflight");
-
-/** The test's own user and group stand in for root and the hub's group 10001. */
-const OWNER = String(process.getuid?.());
-const GROUP = String(process.getgid?.());
-
-async function preflight(...args: string[]): Promise<{ ok: boolean; message: string }> {
-  const result = await finish(["sh", SCRIPT, ...args]);
-  return { ok: result.exitCode === 0, message: result.stderr };
-}
-
-/** The secrets check of `folder`, with the test's user and group as the owner and hub group. */
-async function secrets(folder: string): Promise<{ ok: boolean; message: string }> {
-  return preflight("secrets", folder, OWNER, GROUP);
-}
+import { SCRIPT, names, preflight, secrets, withFolder, write } from "./preflight-fixture.ts";
 
 describe("preflight address", () => {
   test.each(["100.64.0.1", "100.100.1.2", "100.127.255.255"])("NET-003 accepts the VPN address %s", async (ip) => {
@@ -77,24 +61,6 @@ describe("preflight docker", () => {
     expect((await preflight("docker", version)).ok).toBe(false);
   });
 });
-
-const names = ["postgres_password", "owner_password", "hub_password", "owner_database_url", "hub_database_url", "anima_key", "cloudflare_dns_token", "r2_access_key_id", "r2_secret_access_key"];
-const modeOf = (name: string) => (name === "cloudflare_dns_token" ? 0o400 : 0o440);
-
-function write(folder: string, name: string, content = "x", mode = modeOf(name)): void {
-  rmSync(join(folder, name), { force: true });
-  writeFileSync(join(folder, name), content);
-  chmodSync(join(folder, name), mode);
-}
-
-async function withFolder(body: (folder: string) => Promise<void>): Promise<void> {
-  const folder = mkdtempSync(join(tmpdir(), "anima-preflight-"));
-  try {
-    await body(folder);
-  } finally {
-    rmSync(folder, { recursive: true, force: true });
-  }
-}
 
 describe("preflight secrets", () => {
   test("DB-002 accepts a folder with every secret file and names the one that is missing", async () => {
@@ -231,169 +197,6 @@ describe("preflight R2 token files (R-108)", () => {
       expect(result.ok).toBe(false);
       expect(result.message).toContain("mode 0440");
       expect(result.message).not.toContain("r2-value-1");
-    });
-  });
-});
-
-const pair = ["updater/updater_key", "updater/updater_key_password"];
-function withPair(folder: string): void {
-  mkdirSync(join(folder, "updater"), { recursive: true });
-  chmodSync(join(folder, "updater"), 0o750);
-  for (const name of [...names, ...pair]) write(folder, name);
-}
-
-describe("preflight updater key pair (R-116, D-44)", () => {
-  test.each([[pair], [pair.slice(0, 1)], [pair.slice(1)]])("D-44 warns but passes when %p is absent, for the hub starts with publishing off", async (absent) => {
-    await withFolder(async (folder) => {
-      withPair(folder);
-      for (const name of absent) rmSync(join(folder, name));
-      const result = await secrets(folder);
-      expect(result.ok).toBe(true);
-      expect(result.message).toContain(absent.length === 2 ? "warning: no updater key pair" : `warning: ${join(folder, absent[0] ?? "")} is missing`);
-      expect(result.message).toContain("publishing off");
-    });
-  });
-
-  test("D-44 is silent with the pair, accepts an empty password for a key with none and refuses an empty key", async () => {
-    await withFolder(async (folder) => {
-      withPair(folder);
-      expect(await secrets(folder)).toEqual({ ok: true, message: "" });
-      write(folder, "updater/updater_key_password", "");
-      expect(await secrets(folder)).toEqual({ ok: true, message: "" });
-      write(folder, "updater/updater_key", "");
-      const result = await secrets(folder);
-      expect(result.ok).toBe(false);
-      expect(result.message).toContain("updater_key is empty");
-    });
-  });
-
-  test.each([
-    ["updater/updater_key", 0o600],
-    ["updater/updater_key", 0o444],
-    ["updater/updater_key_password", 0o600],
-    ["updater/updater_key_password", 0o400],
-  ])("D-44 refuses %s with mode %o and prints no value", async (name, mode) => {
-    await withFolder(async (folder) => {
-      withPair(folder);
-      write(folder, name, "updater-value-1", mode);
-      const result = await secrets(folder);
-      expect(result.ok).toBe(false);
-      expect(result.message).toContain(name);
-      expect(result.message).toContain("mode 0440");
-      expect(result.message).not.toContain("updater-value-1");
-    });
-  });
-
-});
-
-describe("preflight updater folder rights and contents (S-3, C-7, D-44)", () => {
-  test.skipIf(process.getuid?.() === 0)("S-3 refuses a folder it cannot search and says to run with sudo, never that the pair is absent", async () => {
-    await withFolder(async (folder) => {
-      withPair(folder);
-      chmodSync(join(folder, "updater"), 0o640);
-      const result = await secrets(folder);
-      chmodSync(join(folder, "updater"), 0o750);
-      expect(result.ok).toBe(false);
-      expect(result.message).toContain("run preflight with sudo");
-      expect(result.message).not.toContain("no updater key pair");
-    });
-  });
-
-  test("S-3 refuses an updater folder that is not 0750 and names it", async () => {
-    await withFolder(async (folder) => {
-      withPair(folder);
-      chmodSync(join(folder, "updater"), 0o755);
-      const result = await secrets(folder);
-      expect(result.ok).toBe(false);
-      expect(result.message).toContain("mode 0750");
-    });
-  });
-
-  // Another group the test's user is in, so one file can leave the stand-in hub group.
-  const otherGroup = (process.getgroups?.() ?? []).find((group) => group !== process.getgid?.());
-
-  test.skipIf(otherGroup === undefined).each(["updater", "updater/updater_key", "updater/updater_key_password", "r2_secret_access_key"])(
-    "S-3 refuses %s outside the hub's group and prints no value",
-    async (name) => {
-      await withFolder(async (folder) => {
-        withPair(folder);
-        write(folder, "updater/updater_key", "updater-value-1");
-        chownSync(join(folder, name), process.getuid?.() ?? 0, otherGroup ?? 0);
-        const result = await secrets(folder);
-        expect(result.ok).toBe(false);
-        expect(result.message).toContain(`${name} is not`);
-        expect(result.message).toContain(`group ${GROUP}`);
-        expect(result.message).not.toContain("updater-value-1");
-      });
-    },
-  );
-
-  test("C-7 warns of each other name in the updater folder but passes, and prints no value", async () => {
-    await withFolder(async (folder) => {
-      withPair(folder);
-      write(folder, "updater/updater_key.bak", "updater-value-1");
-      write(folder, "updater/.updater_key.swp", "updater-value-2");
-      const result = await secrets(folder);
-      expect(result.ok).toBe(true);
-      expect(result.message).toContain("'updater_key.bak', which is not part of the updater key pair");
-      expect(result.message).toContain("'.updater_key.swp', which is not part of the updater key pair");
-      expect(result.message).not.toContain("updater-value-");
-    });
-  });
-});
-
-describe("preflight secrets owner and group (S-4)", () => {
-  test("S-4 a .env sourced as the README does cannot move the folder, owner or hub group", async () => {
-    await withFolder(async (folder) => {
-      withPair(folder);
-      const env = join(folder, "dot-env");
-      writeFileSync(env, `ANIMA_SECRETS_OWNER=${OWNER}\nANIMA_SECRETS_GROUP=${GROUP}\nANIMA_SECRETS_DIR=${folder}\n`);
-      const run = (check: string) => finish(["sh", "-c", `set -a; . "${env}"; set +a; ${check}`]);
-      const named = await run(`sh "${SCRIPT}" secrets "${folder}"`);
-      expect(named.exitCode).toBe(1);
-      expect(named.stderr).toContain("is not in the hub's group 10001");
-      const unnamed = await run(`sh "${SCRIPT}" secrets`);
-      expect(unnamed.exitCode).toBe(1);
-      expect(unnamed.stderr).not.toContain(folder);
-      expect(unnamed.stderr).toContain("/bin/../secrets/");
-    });
-  });
-
-  test("S-4 refuses an owner or group that is not a number", async () => {
-    await withFolder(async (folder) => {
-      withPair(folder);
-      const result = await preflight("secrets", folder, OWNER, "hub");
-      expect(result.ok).toBe(false);
-      expect(result.message).toContain("must be numbers");
-    });
-  });
-});
-
-describe("preflight updater links (C-9)", () => {
-  test.each([
-    ["the folder", (folder: string) => {
-      renameSync(join(folder, "updater"), join(folder, "real"));
-      symlinkSync(join(folder, "real"), join(folder, "updater"));
-    }, "updater is a symbolic link"],
-    ["the key", (folder: string) => {
-      renameSync(join(folder, "updater/updater_key"), join(folder, "key"));
-      symlinkSync(join(folder, "key"), join(folder, "updater/updater_key"));
-    }, "updater_key is a symbolic link"],
-    ["a dangling key", (folder: string) => {
-      rmSync(join(folder, "updater/updater_key"));
-      symlinkSync(join(folder, "gone"), join(folder, "updater/updater_key"));
-    }, "updater_key is a symbolic link"],
-    ["another name", (folder: string) => {
-      symlinkSync(join(folder, "gone"), join(folder, "updater/.key.swp"));
-    }, ".key.swp is a symbolic link"],
-  ])("C-9 refuses %s as a symbolic link, never as absent", async (_, link, said) => {
-    await withFolder(async (folder) => {
-      withPair(folder);
-      link(folder);
-      const result = await secrets(folder);
-      expect(result.ok).toBe(false);
-      expect(result.message).toContain(said);
-      expect(result.message).not.toContain("no updater key pair");
     });
   });
 });
