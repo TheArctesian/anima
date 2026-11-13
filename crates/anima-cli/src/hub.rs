@@ -8,6 +8,7 @@ pub mod answer;
 pub mod error;
 pub mod origin;
 pub mod scalars;
+pub mod subscription;
 pub mod token;
 
 use std::time::Duration;

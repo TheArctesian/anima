@@ -1,0 +1,11 @@
+query KeyList {
+  apiKeys {
+    id
+    name
+    scope
+    prefix
+    expiresAt
+    createdAt
+    lastUsedAt
+  }
+}

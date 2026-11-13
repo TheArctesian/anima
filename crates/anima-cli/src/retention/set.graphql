@@ -1,0 +1,9 @@
+mutation RetentionSet($subject: RetentionSubject!, $days: Int!) {
+  setRetention(subject: $subject, days: $days) {
+    subject
+    days
+    minDays
+    maxDays
+    defaultDays
+  }
+}

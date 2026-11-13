@@ -18,8 +18,12 @@ path = "src/main.rs"
 [dependencies]
 # One body type for every request: the serialised document is wiped when it drops.
 bytes.workspace = true
+# API-key expiry from a number of days (`key create --expires 90d`).
+chrono.workspace = true
 clap.workspace = true
 clap_complete.workspace = true
+# The stream and sink halves of the subscription WebSocket (`hub/subscription.rs`).
+futures-util = { version = "0.3", default-features = false, features = ["sink"] }
 graphql_client.workspace = true
 # The OS key store holds the token (CMD-012): the macOS Keychain, the Linux Secret Service.
 keyring.workspace = true
@@ -33,6 +37,8 @@ serde_json.workspace = true
 tempfile.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
+# `graphql-transport-ws` for subscriptions, over rustls with the web PKI roots (CMD-003).
+tokio-tungstenite = { workspace = true, features = ["rustls-tls-webpki-roots"] }
 # A device given by ID rather than by name (`device get`).
 uuid.workspace = true
 zeroize.workspace = true

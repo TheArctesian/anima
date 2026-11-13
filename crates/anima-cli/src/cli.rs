@@ -10,7 +10,7 @@ use crate::environment::Environment;
 use crate::failure::{Failure, exit};
 use crate::invocation::{Globals, Invocation};
 use crate::output::Output;
-use crate::{api, auth, contexts, devices};
+use crate::{api, auth, contexts, devices, events, keys, notifications, retention};
 
 /// The command line for an Anima hub.
 #[derive(Debug, Parser)]
@@ -39,6 +39,31 @@ enum Command {
         #[command(subcommand)]
         command: devices::DeviceCommand,
     },
+    /// Events (list, watch).
+    Event {
+        #[command(subcommand)]
+        command: events::EventCommand,
+    },
+    /// The audit trail (list).
+    Audit {
+        #[command(subcommand)]
+        command: events::AuditCommand,
+    },
+    /// Notification channels, settings and deliveries.
+    Notify {
+        #[command(subcommand)]
+        command: notifications::NotifyCommand,
+    },
+    /// How long the hub keeps records (list, set).
+    Retention {
+        #[command(subcommand)]
+        command: retention::RetentionCommand,
+    },
+    /// API keys (list, create, revoke).
+    Key {
+        #[command(subcommand)]
+        command: keys::KeyCommand,
+    },
     /// Send a GraphQL document and print the hub's answer.
     Api(api::ApiArgs),
     /// Print shell completion.
@@ -51,6 +76,11 @@ impl Command {
             Self::Auth { command } => command.run(invocation).await,
             Self::Context { command } => command.run(invocation),
             Self::Device { command } => command.run(invocation).await,
+            Self::Event { command } => command.run(invocation).await,
+            Self::Audit { command } => command.run(invocation).await,
+            Self::Notify { command } => command.run(invocation).await,
+            Self::Retention { command } => command.run(invocation).await,
+            Self::Key { command } => command.run(invocation).await,
             Self::Api(args) => args.run(invocation).await,
             Self::Completion { shell } => {
                 let mut command = Cli::command();

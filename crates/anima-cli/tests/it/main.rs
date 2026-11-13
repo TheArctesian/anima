@@ -6,4 +6,8 @@
 mod basics;
 mod coverage;
 mod devices;
+mod events;
+mod keys;
 mod kit;
+mod notifications;
+mod retention;

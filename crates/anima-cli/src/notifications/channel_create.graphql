@@ -1,0 +1,10 @@
+# The variables hold the channel's secrets; the answer holds none (D-17).
+mutation ChannelCreate($input: NotificationChannelInput!) {
+  createNotificationChannel(input: $input) {
+    id
+    name
+    kind
+    onByDefault
+    updatedAt
+  }
+}
