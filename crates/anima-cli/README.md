@@ -66,3 +66,22 @@ returns what it was sent. `Anima::new().with("ANIMA_TOKEN", ..).run(&[.., "--hub
 &hub.origin])` returns stdout, stderr and the exit code. Assert on table and `--json` output,
 on exit codes, and that no output holds a token (`assert_never_shows`). Use the K6 fixtures.
 Tests keep tokens in the 0600 file (`ANIMA_TOKEN_STORE=file`), never the key store.
+
+## Add an MCP tool
+
+`anima mcp` lives in `src/mcp/` (docs/cli-mcp-plan.md Section 7). `tools/<set>.rs` holds one tool
+set: an enum with one variant per tool, its `ALL` list, `definition` and `call`.
+
+1. Add the variant, and its arm in `definition` and `call`. A new set also needs a `ToolSet`
+   variant (`catalogue.rs`) and a `Tool` variant (`tools.rs`).
+2. `definition`: `Definition::new::<Input>(name, access, effect, description).returns(&[..])`.
+   The name is `anima_<noun>_<verb>` (MCP-011). The description tells an agent that has never
+   seen Anima what it returns, when to use it and what to call next. `Access::Login` for what
+   INT-003 denies an API key.
+3. `Input`: `#[derive(Deserialize, JsonSchema)]` with `deny_unknown_fields` and a doc comment on
+   each field (it becomes the schema). Lists flatten `arguments::Page`; `detail` adds fields.
+4. `call`: `parse` the input, resolve names with the noun's resolver, then
+   `hub.run::<Document>(..)` with the noun's existing document. Return a JSON object of named
+   fields; the server cleans and caps every string (MCP-008). A delete calls `confirmed`.
+5. Never a tool that takes or returns a secret, makes a trust decision or opens a session
+   (MCP-004..006). Test it over JSON-RPC in `tests/it/mcp/`.

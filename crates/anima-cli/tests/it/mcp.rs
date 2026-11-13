@@ -4,5 +4,6 @@
 mod calls;
 mod listing;
 mod permissions;
+mod secrets;
 mod session;
 mod text;
