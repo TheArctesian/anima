@@ -69,11 +69,13 @@ pub(crate) async fn prepare(pool: &PgPool, vault: &Vault, accepted: &PublicKey) 
     store_password(pool, vault, PASSWORD).await;
 }
 
-/// Stores `password` as `docker-host`'s SSH credential, replacing the one stored.
+/// Stores `password` as `docker-host`'s SSH credential, replacing the one stored. It is bound
+/// to [`LOOPBACK`], where the tests' device servers listen and where they move the device
+/// before it is reached (SEC-011).
 pub(crate) async fn store_password(pool: &PgPool, vault: &Vault, password: &str) {
     let mut conn = pool.acquire().await.unwrap();
     let password = SshSecret::Password(Secret::from(password.to_owned()));
-    credentials::store_ssh(&mut conn, vault, docker_host(), password)
+    credentials::store_ssh(&mut conn, vault, (docker_host(), LOOPBACK), password)
         .await
         .unwrap();
 }

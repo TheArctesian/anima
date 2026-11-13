@@ -83,6 +83,10 @@ pub enum Error {
     HostKeyChanged,
     #[error("no SSH credential is stored for the device")]
     NoCredential,
+    /// The stored credential was entered for another host than the device's host now; nothing
+    /// was sent (SEC-011).
+    #[error("the device's host changed after its SSH credential was entered")]
+    CredentialForOtherHost,
     #[error("the device refused the stored SSH credential")]
     CredentialRefused,
     #[error("the stored private key or its passphrase cannot be read")]

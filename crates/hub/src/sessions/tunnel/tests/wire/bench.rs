@@ -143,7 +143,7 @@ pub(super) struct Bench {
 
 /// Turns RDP (NLA on `rdp_port`, user `ops` in `LAB`) and VNC (user `viewer`) on for
 /// `docker-host`, accepts the RDP server certificate whose fingerprint is `accepted` and
-/// stores both passwords.
+/// stores both passwords, bound to loopback, where the bench moves the device (SEC-011).
 pub(super) async fn desktop_ready(pool: &PgPool, vault: &Vault, rdp_port: u16, accepted: &str) {
     add_operator(pool).await;
     sqlx::query(
@@ -180,7 +180,7 @@ pub(super) async fn desktop_ready(pool: &PgPool, vault: &Vault, rdp_port: u16, a
         (PasswordKind::Vnc, VNC_PASSWORD),
     ] {
         let secret = Secret::from(password.to_owned());
-        credentials::store_password(&mut conn, vault, docker_host(), kind, secret)
+        credentials::store_password(&mut conn, vault, (docker_host(), LOOPBACK), (kind, secret))
             .await
             .unwrap();
     }

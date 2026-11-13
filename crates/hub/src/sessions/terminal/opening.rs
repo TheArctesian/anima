@@ -16,7 +16,7 @@ use russh::{
 use tokio::time::timeout;
 
 use super::{
-    ending::{NO_CREDENTIAL, UNREADABLE_KEY},
+    ending::{CREDENTIAL_MOVED, NO_CREDENTIAL, UNREADABLE_KEY},
     route::Terminal,
 };
 use crate::{
@@ -180,17 +180,21 @@ async fn opened(terminal: &Terminal, ticket: &PendingTicket) -> Result<Opening, 
     Ok(Opening::SignedIn(SignedIn { handle, channel }))
 }
 
-/// Signs in as the device's user with its stored credential; `Some` with the event message
-/// when there is none, it cannot be read or the device refuses it (D-3). The decrypted
+/// Signs in as the device's user with its stored credential, opened only for the host the
+/// connection went to (SEC-011); `Some` with the event message when there is none, it was
+/// entered for another host, it cannot be read or the device refuses it (D-3). The decrypted
 /// secret is dropped, zeroed, before this returns.
 async fn sign_in(
     terminal: &Terminal,
     device: &Device,
     handle: &mut Handle<Observer>,
 ) -> Result<Option<&'static str>, NotOpened> {
-    let secret = credentials::load_ssh(&terminal.db, &terminal.vault, device.id)
-        .await
-        .map_err(NotOpened::Credentials)?;
+    let secret =
+        match credentials::load_ssh(&terminal.db, &terminal.vault, (device.id, &device.host)).await
+        {
+            Err(credentials::Error::EnteredForOtherHost) => return Ok(Some(CREDENTIAL_MOVED)),
+            loaded => loaded.map_err(NotOpened::Credentials)?,
+        };
     let Some(secret) = secret else {
         return Ok(Some(NO_CREDENTIAL));
     };

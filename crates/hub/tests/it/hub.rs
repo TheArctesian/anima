@@ -10,6 +10,7 @@ use anima_hub::{
     config,
     credentials::Vault,
     events::Bus,
+    ids::DeviceId,
     metrics::Feed,
     router,
     schema::{Dependencies, build_schema},
@@ -31,6 +32,15 @@ use tower::ServiceExt;
 pub const USERNAME: &str = "operator";
 pub const PASSWORD: &str = "correct horse battery staple";
 pub const CLIENT: &str = "100.64.0.7";
+
+/// The device's host text now: what a credential stored for it is bound to (SEC-011).
+pub async fn host_of(pool: &PgPool, device: DeviceId) -> String {
+    sqlx::query_scalar("select host from devices.devices where id = $1")
+        .bind(device)
+        .fetch_one(pool)
+        .await
+        .unwrap()
+}
 
 pub fn start() -> DateTime<Utc> {
     Utc.with_ymd_and_hms(2030, 5, 5, 12, 0, 0).unwrap()

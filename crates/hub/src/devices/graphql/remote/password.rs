@@ -2,9 +2,10 @@
 //! password goes to `credentials`, sealed for its device and kind, and the audit entry and the
 //! event name only the protocol and "password" (DEV-011, SEC-003, SEC-005, LOG-005, LOG-007).
 //!
-//! Each runs in one transaction. `credentials` takes its per-device advisory lock first, the
-//! one lock whose order `credentials` asks of its callers; the device read after it takes no
-//! row lock. The SSH credential works the same way.
+//! Each runs in one transaction. `credentials` takes its per-device advisory lock, the one lock
+//! whose order `credentials` asks of its callers; the device read takes no row lock. A set
+//! reads the device first, to bind the password to the device's host now (SEC-011). The SSH
+//! credential works the same way.
 
 use async_graphql::{Context, ID, Result};
 
@@ -39,10 +40,10 @@ pub(in crate::devices::graphql) async fn set_password(
     let vault = schema_dependency::<Vault>(ctx)?;
     let trail = Trail::from_context(ctx)?;
     let mut tx = begin(ctx).await?;
-    store_password(&mut tx, vault, id, kind, secret)
+    let device = store::fetch(&mut *tx, id).await.map_err(to_graphql)?;
+    store_password(&mut tx, vault, (id, &device.host), (kind, secret))
         .await
         .map_err(|error| credential_error(error, id))?;
-    let device = store::fetch(&mut *tx, id).await.map_err(to_graphql)?;
     trail
         .write(&mut tx, trail::password_set(&device, kind))
         .await

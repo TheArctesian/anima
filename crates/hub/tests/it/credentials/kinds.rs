@@ -9,8 +9,8 @@ use sqlx::PgPool;
 use std::collections::HashSet;
 
 use super::{
-    DOCKER_HOST, KEY, PASSPHRASE, PASSWORD, PVE_01, RDP_PASSWORD, VNC_PASSWORD, device, kinds,
-    password, private_key, store, store_pw, vault,
+    DOCKER_HOST, HOST, KEY, PASSPHRASE, PASSWORD, PVE_01, RDP_PASSWORD, VNC_PASSWORD, device,
+    kinds, password, private_key, store, store_pw, vault,
 };
 
 #[sqlx::test(
@@ -28,7 +28,7 @@ async fn dev_011_passwords_alone_are_no_ssh_secret(pool: PgPool) {
 
     assert!(!has_ssh(&pool, id).await.unwrap());
     assert_eq!(with_ssh(&pool, &[id]).await.unwrap(), HashSet::new());
-    assert!(load_ssh(&pool, &vault, id).await.unwrap().is_none());
+    assert!(load_ssh(&pool, &vault, (id, HOST)).await.unwrap().is_none());
     assert!(
         !clear_ssh(&mut pool.acquire().await.unwrap(), id)
             .await
@@ -51,7 +51,7 @@ async fn dev_011_ssh_store_and_clear_leave_passwords(pool: PgPool) {
         .unwrap();
     store(&pool, &vault, id, password()).await.unwrap();
 
-    let loaded = load_ssh(&pool, &vault, id).await.unwrap();
+    let loaded = load_ssh(&pool, &vault, (id, HOST)).await.unwrap();
     assert!(matches!(loaded, Some(SshSecret::Password(p)) if p.expose() == PASSWORD.as_bytes()));
     assert_eq!(kinds(&pool, id).await, ["rdp_password", "ssh_password"]);
 
@@ -61,7 +61,7 @@ async fn dev_011_ssh_store_and_clear_leave_passwords(pool: PgPool) {
             .unwrap()
     );
     assert_eq!(kinds(&pool, id).await, ["rdp_password"]);
-    let rdp = load_password(&pool, &vault, id, PasswordKind::Rdp)
+    let rdp = load_password(&pool, &vault, (id, HOST), PasswordKind::Rdp)
         .await
         .unwrap();
     assert!(rdp.is_some_and(|p| p.expose() == RDP_PASSWORD.as_bytes()));
@@ -77,7 +77,7 @@ async fn dev_011_ssh_with_passwords_still_loads_as_ssh(pool: PgPool) {
     store_pw(&pool, id, PasswordKind::Vnc, VNC_PASSWORD)
         .await
         .unwrap();
-    let loaded = load_ssh(&pool, &vault, id).await.unwrap();
+    let loaded = load_ssh(&pool, &vault, (id, HOST)).await.unwrap();
     assert!(matches!(
         loaded,
         Some(SshSecret::PrivateKey { key, passphrase: None }) if key.expose() == KEY.as_bytes()
@@ -143,7 +143,7 @@ async fn dev_011_password_functions_leave_ssh_and_the_other_kind(pool: PgPool) {
         ["ssh_passphrase", "ssh_private_key", "vnc_password"]
     );
     assert!(
-        load_password(&pool, &vault, id, PasswordKind::Rdp)
+        load_password(&pool, &vault, (id, HOST), PasswordKind::Rdp)
             .await
             .unwrap()
             .is_none()
@@ -164,7 +164,7 @@ async fn dev_011_password_functions_leave_ssh_and_the_other_kind(pool: PgPool) {
         kinds(&pool, id).await,
         ["ssh_passphrase", "ssh_private_key"]
     );
-    let loaded = load_ssh(&pool, &vault, id).await.unwrap();
+    let loaded = load_ssh(&pool, &vault, (id, HOST)).await.unwrap();
     assert!(matches!(
         loaded,
         Some(SshSecret::PrivateKey { key, passphrase: Some(p) })
@@ -181,7 +181,7 @@ async fn dev_011_ssh_rows_are_no_password(pool: PgPool) {
     store(&pool, &vault, id, password()).await.unwrap();
     for kind in [PasswordKind::Rdp, PasswordKind::Vnc] {
         assert!(
-            load_password(&pool, &vault, id, kind)
+            load_password(&pool, &vault, (id, HOST), kind)
                 .await
                 .unwrap()
                 .is_none()

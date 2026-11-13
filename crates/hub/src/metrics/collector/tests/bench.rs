@@ -190,9 +190,14 @@ pub(super) async fn prepare(pool: &PgPool, vault: &Vault, port: u16, accepted: b
         .unwrap();
     let mut conn = pool.acquire().await.unwrap();
     let password = SshSecret::Password(Secret::from(PASSWORD.to_owned()));
-    credentials::store_ssh(&mut conn, vault, device(DOCKER_HOST), password)
-        .await
-        .unwrap();
+    credentials::store_ssh(
+        &mut conn,
+        vault,
+        (device(DOCKER_HOST), "127.0.0.1"),
+        password,
+    )
+    .await
+    .unwrap();
 }
 
 /// A vault over a throwaway key in a temporary file (SEC-004).

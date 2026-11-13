@@ -90,6 +90,29 @@ pub enum Conflict {
     /// The device has as many live sessions as its limit allows (RA-036).
     #[error("This device has reached its session limit.")]
     SessionLimit,
+    /// The stored credential for the protocol was entered for another host than the device's
+    /// host now; nothing was sent (SEC-011).
+    #[error("{}", credential_moved(*.0))]
+    CredentialMoved(Protocol),
+}
+
+/// The words of [`Conflict::CredentialMoved`] for `protocol`, which every refusal of a moved
+/// credential uses: at start, in the tunnels and for files.
+pub(in crate::sessions) const fn credential_moved(protocol: Protocol) -> &'static str {
+    match protocol {
+        Protocol::Ssh => {
+            "The device's address changed after its SSH credential was entered, so the hub \
+             sent no credential. Enter the credential again in the device's SSH settings."
+        }
+        Protocol::Rdp => {
+            "The device's address changed after its RDP password was entered, so the hub sent \
+             no password. Enter the password again in the device's RDP settings."
+        }
+        Protocol::Vnc => {
+            "The device's address changed after its VNC password was entered, so the hub sent \
+             no password. Enter the password again in the device's VNC settings."
+        }
+    }
 }
 
 /// Why a sessions operation failed. No variant holds a ticket token (LOG-007).

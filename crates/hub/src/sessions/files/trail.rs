@@ -18,7 +18,7 @@ use crate::{
     clock::Clock,
     devices::Device,
     events::{self, AuditAction, AuditTarget, Bus, NewEvent, Severity, Source, TrailEntry},
-    sessions::Error,
+    sessions::{self, Error, Protocol},
 };
 
 /// Where a files tunnel writes: the stores, the clock, who opened it and the device's name.
@@ -128,6 +128,30 @@ pub(super) async fn host_key_changed(
         device: Some((device.id, device.name.clone())),
         message: HOST_KEY_CHANGED.to_owned(),
     };
+    record(db, bus, now, event).await
+}
+
+/// Writes the Warning event of a files tunnel to `device` refused at `now` because its stored
+/// SSH credential was entered for another host than the device's host now (SEC-011).
+///
+/// # Errors
+/// `Database` or `Events` when the event cannot be written.
+pub(super) async fn credential_moved(
+    db: &PgPool,
+    bus: &Bus,
+    now: DateTime<Utc>,
+    device: &Device,
+) -> Result<(), Error> {
+    let event = NewEvent {
+        severity: Severity::Warning,
+        source: Source::Session,
+        device: Some((device.id, device.name.clone())),
+        message: sessions::credential_moved(Protocol::Ssh).to_owned(),
+    };
+    record(db, bus, now, event).await
+}
+
+async fn record(db: &PgPool, bus: &Bus, now: DateTime<Utc>, event: NewEvent) -> Result<(), Error> {
     let mut tx = db.begin().await?;
     events::record(&mut tx, bus, now, event).await?;
     tx.commit().await?;

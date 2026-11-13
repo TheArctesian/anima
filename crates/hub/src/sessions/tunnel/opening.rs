@@ -1,8 +1,9 @@
 //! Everything the tunnel does before the WebSocket upgrade, after the ticket is redeemed:
 //! load the device and check its protocol is still on, resolve and check its host (R-032),
 //! load the accepted RDP server certificate and check the device still presents it, load the
-//! stored password, build the `connect` values and run the guacd handshake (K4 Sections 2
-//! and 3).
+//! stored password for the host just resolved (SEC-011), build the `connect` values and run
+//! the guacd handshake (K4 Sections 2 and 3). A password entered for another host ends the
+//! session before guacd is reached.
 //!
 //! The certificate check (SEC-007, K4 Section 3): for RDP with TLS or NLA and certificates
 //! not ignored, the hub reads the server certificate itself at the checked address, as the
@@ -34,7 +35,8 @@ use super::{
     route::Route,
 };
 use crate::{
-    credentials, devices,
+    credentials::{self, Secret},
+    devices,
     devices::{Device, RdpSecurity},
     fingerprint::CertificateFingerprint,
     sessions::{
@@ -88,6 +90,10 @@ pub(super) enum NotOpened {
     StandardOnly,
     #[error("the device refused the RDP security the hub asked for to read its certificate")]
     SecurityRefused,
+    /// The stored password was entered for another host than the device's host now; guacd was
+    /// never reached (SEC-011).
+    #[error("the stored password was entered for another host of the device")]
+    CredentialMoved,
     #[error(transparent)]
     Values(#[from] BadConnectValue),
     #[error("guacd cannot be reached")]
@@ -145,6 +151,7 @@ impl NotOpened {
                 "The device refused the RDP security the hub asked for to check its server \
                  certificate. Check the security setting."
             }
+            Self::CredentialMoved => sessions::credential_moved(protocol),
             Self::Values(_) => {
                 "The device's settings or stored credential cannot be sent to the gateway."
             }
@@ -224,10 +231,7 @@ pub(super) async fn open(route: &Route, ticket: &PendingTicket) -> Result<Openin
         };
         device.rdp.security = pinned_security(device.rdp.security, chosen);
     }
-    let password =
-        credentials::load_password(&route.db, &route.vault, device.id, desktop.password())
-            .await
-            .map_err(NotOpened::Credentials)?;
+    let password = password(route, &device, desktop).await?;
     let sources = Sources {
         device: &device,
         target: address,
@@ -248,6 +252,22 @@ pub(super) async fn open(route: &Route, ticket: &PendingTicket) -> Result<Openin
     guacd::connect(&route.guacd, desktop.select(), params, route.timing)
         .await
         .map(|connected| Opening::Gateway(Box::new(Opened { connected, policy })))
+}
+
+/// The device's stored password for `desktop`, opened only for the device's host the opening
+/// resolved (SEC-011); a password entered for another host ends the opening before guacd.
+async fn password(
+    route: &Route,
+    device: &Device,
+    desktop: Desktop,
+) -> Result<Option<Secret>, NotOpened> {
+    let bound = (device.id, device.host.as_str());
+    credentials::load_password(&route.db, &route.vault, bound, desktop.password())
+        .await
+        .map_err(|error| match error {
+            credentials::Error::EnteredForOtherHost => NotOpened::CredentialMoved,
+            other => NotOpened::Credentials(other),
+        })
 }
 
 /// The device's accepted RDP server certificate, when it has one; an RDP session that needs

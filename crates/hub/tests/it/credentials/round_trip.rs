@@ -6,8 +6,8 @@ use anima_hub::credentials::{
 use sqlx::PgPool;
 
 use super::{
-    DOCKER_HOST, KEY, PASSPHRASE, PASSWORD, PVE_01, RDP_PASSWORD, VNC_PASSWORD, device, kinds,
-    password, private_key, secret, store, store_pw, vault,
+    DOCKER_HOST, HOST, KEY, PASSPHRASE, PASSWORD, PVE_01, RDP_PASSWORD, VNC_PASSWORD, device,
+    kinds, password, private_key, secret, store, store_pw, vault,
 };
 
 #[sqlx::test(
@@ -39,7 +39,7 @@ async fn sec_003_stored_row_holds_no_plaintext(pool: PgPool) {
 async fn sec_003_password_round_trips(pool: PgPool) {
     let (vault, id) = (vault(1), device(PVE_01));
     store(&pool, &vault, id, password()).await.unwrap();
-    let loaded = load_ssh(&pool, &vault, id).await.unwrap();
+    let loaded = load_ssh(&pool, &vault, (id, HOST)).await.unwrap();
     assert!(matches!(loaded, Some(SshSecret::Password(p)) if p.expose() == PASSWORD.as_bytes()));
 }
 
@@ -50,7 +50,7 @@ async fn sec_003_password_round_trips(pool: PgPool) {
 async fn sec_003_private_key_round_trips(pool: PgPool) {
     let (vault, id) = (vault(1), device(PVE_01));
     store(&pool, &vault, id, private_key(None)).await.unwrap();
-    let loaded = load_ssh(&pool, &vault, id).await.unwrap();
+    let loaded = load_ssh(&pool, &vault, (id, HOST)).await.unwrap();
     assert!(matches!(
         loaded,
         Some(SshSecret::PrivateKey { key, passphrase: None }) if key.expose() == KEY.as_bytes()
@@ -66,7 +66,7 @@ async fn sec_003_private_key_with_passphrase_round_trips(pool: PgPool) {
     store(&pool, &vault, id, private_key(Some(PASSPHRASE)))
         .await
         .unwrap();
-    let loaded = load_ssh(&pool, &vault, id).await.unwrap();
+    let loaded = load_ssh(&pool, &vault, (id, HOST)).await.unwrap();
     assert!(matches!(
         loaded,
         Some(SshSecret::PrivateKey { key, passphrase: Some(p) })
@@ -90,7 +90,7 @@ async fn sec_003_password_replaces_key_and_passphrase(pool: PgPool) {
 
     store(&pool, &vault, id, password()).await.unwrap();
     assert_eq!(kinds(&pool, id).await, ["ssh_password"]);
-    let loaded = load_ssh(&pool, &vault, id).await.unwrap();
+    let loaded = load_ssh(&pool, &vault, (id, HOST)).await.unwrap();
     assert!(matches!(loaded, Some(SshSecret::Password(p)) if p.expose() == PASSWORD.as_bytes()));
 }
 
@@ -101,7 +101,7 @@ async fn sec_003_password_replaces_key_and_passphrase(pool: PgPool) {
 async fn clear_ssh_removes_the_secret_once(pool: PgPool) {
     let (vault, id) = (vault(1), device(PVE_01));
     assert!(!has_ssh(&pool, id).await.unwrap());
-    assert!(load_ssh(&pool, &vault, id).await.unwrap().is_none());
+    assert!(load_ssh(&pool, &vault, (id, HOST)).await.unwrap().is_none());
 
     store(&pool, &vault, id, private_key(Some(PASSPHRASE)))
         .await
@@ -113,7 +113,7 @@ async fn clear_ssh_removes_the_secret_once(pool: PgPool) {
     assert!(clear_ssh(&mut conn, id).await.unwrap());
     assert!(!clear_ssh(&mut conn, id).await.unwrap());
     assert!(!has_ssh(&pool, id).await.unwrap());
-    assert!(load_ssh(&pool, &vault, id).await.unwrap().is_none());
+    assert!(load_ssh(&pool, &vault, (id, HOST)).await.unwrap().is_none());
 }
 
 #[sqlx::test(
@@ -127,14 +127,16 @@ async fn sec_003_each_password_kind_round_trips_and_is_replaced(pool: PgPool) {
         (PasswordKind::Vnc, VNC_PASSWORD),
     ] {
         assert!(
-            load_password(&pool, &vault, id, kind)
+            load_password(&pool, &vault, (id, HOST), kind)
                 .await
                 .unwrap()
                 .is_none()
         );
         store_pw(&pool, id, kind, "first").await.unwrap();
         store_pw(&pool, id, kind, text).await.unwrap();
-        let loaded = load_password(&pool, &vault, id, kind).await.unwrap();
+        let loaded = load_password(&pool, &vault, (id, HOST), kind)
+            .await
+            .unwrap();
         assert!(
             loaded.is_some_and(|p| p.expose() == text.as_bytes()),
             "{kind:?}"

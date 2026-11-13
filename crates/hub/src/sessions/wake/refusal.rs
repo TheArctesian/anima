@@ -62,6 +62,11 @@ fn link_sentence(error: &LinkError) -> &'static str {
         LinkError::NoCredential => {
             "No Wake-on-LAN packet was sent: no SSH credential is stored for the wake relay."
         }
+        LinkError::CredentialForOtherHost => {
+            "No Wake-on-LAN packet was sent: the wake relay's address changed after its SSH \
+             credential was entered, so the hub sent no credential. Enter the credential again \
+             in the relay's SSH settings."
+        }
         LinkError::CredentialRefused | LinkError::UnreadableKey => {
             "No Wake-on-LAN packet was sent: the wake relay did not accept its stored SSH \
              credential, or the stored key cannot be read."

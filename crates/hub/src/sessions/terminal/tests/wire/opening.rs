@@ -70,9 +70,14 @@ async fn refused(pool: &PgPool, bench: &super::Bench, message: &str) {
 /// Stores `secret` as `docker-host`'s SSH credential, replacing the password.
 async fn store(pool: &PgPool, bench: &super::Bench, secret: SshSecret) {
     let mut conn = pool.acquire().await.unwrap();
-    credentials::store_ssh(&mut conn, &bench.terminal.vault, docker_host(), secret)
-        .await
-        .unwrap();
+    credentials::store_ssh(
+        &mut conn,
+        &bench.terminal.vault,
+        (docker_host(), LOOPBACK),
+        secret,
+    )
+    .await
+    .unwrap();
 }
 
 /// The keyboard-interactive requests the server heard, after the client heard `AUTH_FAILED`

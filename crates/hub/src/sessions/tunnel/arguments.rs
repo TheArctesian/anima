@@ -39,7 +39,7 @@ impl Desktop {
     }
 
     /// Which stored password signs in.
-    pub(super) const fn password(self) -> PasswordKind {
+    pub(in crate::sessions) const fn password(self) -> PasswordKind {
         match self {
             Self::Rdp => PasswordKind::Rdp,
             Self::Vnc => PasswordKind::Vnc,
