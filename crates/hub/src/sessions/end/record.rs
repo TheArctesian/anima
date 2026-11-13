@@ -7,6 +7,7 @@
 
 use std::sync::Arc;
 
+use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 use tokio::runtime::Handle;
 
@@ -140,10 +141,28 @@ fn log_unwritten(session: SessionId, reason: EndReason, error: &Error) {
     );
 }
 
+/// Who `end` of `ticket`'s session is recorded as, at `now`: the `endSession` operator and
+/// address when there is one; else the ticket's operator and client, as Hub when the hub
+/// decided the end (LOG-014 rule 1, [`Cause::decided_by_hub`]). A Hub end keeps the operator
+/// who started the session on the entry.
+fn ended_by(end: &End, ticket: &PendingTicket, now: DateTime<Utc>) -> Actor {
+    if let Some(by) = &end.by {
+        return by.clone();
+    }
+    let operator = ticket.operator.clone();
+    Actor {
+        operator: if end.cause.decided_by_hub() {
+            operator.by_hub()
+        } else {
+            operator
+        },
+        client: ticket.client,
+        at: now,
+    }
+}
+
 /// The end row and its audit entry and, when this call ended the row, its event; returns the
-/// committed row, or `None` when it had already ended. The audit entry names who ended it:
-/// the `endSession` operator and address when there is one, else the ticket's operator and
-/// client.
+/// committed row, or `None` when it had already ended. Both name who ended it ([`ended_by`]).
 async fn write(
     records: &Records,
     ticket: &PendingTicket,
@@ -151,11 +170,7 @@ async fn write(
 ) -> Result<Option<Session>, Error> {
     let ending = end.cause.ending();
     let now = records.clock.now();
-    let by = end.by.clone().unwrap_or_else(|| Actor {
-        operator: ticket.operator.clone(),
-        client: ticket.client,
-        at: now,
-    });
+    let by = ended_by(end, ticket, now);
     let ended = SessionEnd {
         at: now,
         reason: ending.reason,

@@ -121,3 +121,27 @@ fn ra_008_an_end_message_names_the_session_protocol() {
         assert_eq!(refused, format!("The device refused the {name} sign-in."));
     }
 }
+
+#[test]
+fn log_014_only_the_client_and_the_far_side_end_a_session_as_the_request() {
+    // (cause, decided by the hub): a Hub end keeps the session's operator, with the kind Hub.
+    let table = [
+        (Cause::OperatorClosed, false),
+        (Cause::RemoteClosed, false),
+        (Cause::AuthFailed, true),
+        (Cause::GatewayError, true),
+        (Cause::HostKeyMismatch, true),
+        (Cause::ServerCertificateMismatch, true),
+        (Cause::Timeout, true),
+        (Cause::HubShutdown, true),
+        (Cause::InvalidInstruction, true),
+    ];
+    for (cause, by_hub) in table {
+        assert_eq!(cause.decided_by_hub(), by_hub, "{cause:?}");
+    }
+    // Every reason a session can end with is in the table.
+    for reason in EndReason::ALL {
+        let cause = Cause::from(reason);
+        assert!(table.iter().any(|(row, _)| *row == cause), "{reason:?}");
+    }
+}

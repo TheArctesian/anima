@@ -21,7 +21,7 @@ use super::{
 use crate::sessions::{
     Actor, Redeemed,
     end::{Cause, End, Records, finish},
-    tests::fixture::{LOOPBACK, address, ended, ended_once, now, operator},
+    tests::fixture::{LOOPBACK, address, end_kinds, ended, ended_once, now, operator},
 };
 
 /// A session redeemed and signed in, with no client socket yet.
@@ -90,6 +90,10 @@ async fn mv_003_a_failed_upgrade_is_operator_and_the_channel_is_closed(pool: PgP
         "info",
         LOOPBACK,
     );
+    // The client's own close: the kind of the request that started the session (LOG-014).
+    let user = Some("user".to_owned());
+    let kinds = (vec![("operator".to_owned(), user.clone())], vec![user]);
+    assert_eq!(end_kinds(&pool, bench.session).await, kinds);
 }
 
 #[sqlx::test(
@@ -153,4 +157,8 @@ async fn sec_007_a_changed_host_key_stays_the_cause_when_the_upgrade_fails(pool:
         "error",
         LOOPBACK,
     );
+    // The hub's pin check ended it: Hub, with the operator who started it kept (LOG-014 rule 1).
+    let hub = Some("hub".to_owned());
+    let kinds = (vec![("operator".to_owned(), hub.clone())], vec![hub]);
+    assert_eq!(end_kinds(&pool, bench.session).await, kinds);
 }

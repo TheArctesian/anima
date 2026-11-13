@@ -188,6 +188,27 @@ pub(in crate::sessions) fn ended_once(ended: &Ended, reason: &str, severity: &st
     assert_eq!(device.as_deref(), Some("docker-host"));
 }
 
+/// The `(operator_name, actor_kind)` of the session's `session.end` entries and the
+/// `actor_kind` of every event (LOG-012, LOG-013).
+pub(in crate::sessions) async fn end_kinds(
+    pool: &PgPool,
+    session: SessionId,
+) -> (Vec<(String, Option<String>)>, Vec<Option<String>>) {
+    let audits = sqlx::query_as(
+        "select operator_name, actor_kind from events.audit_log \
+         where action = 'end' and target_type = 'session' and target_id = $1",
+    )
+    .bind(session.to_string())
+    .fetch_all(pool)
+    .await
+    .unwrap();
+    let events = sqlx::query_scalar("select actor_kind from events.event_log")
+        .fetch_all(pool)
+        .await
+        .unwrap();
+    (audits, events)
+}
+
 /// Every text the database holds about sessions, audit and events, as one string.
 pub(in crate::sessions) async fn stored_text(pool: &PgPool) -> String {
     let rows: Vec<String> = sqlx::query_scalar(

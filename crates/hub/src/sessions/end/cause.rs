@@ -150,6 +150,34 @@ impl Cause {
         }
     }
 
+    /// Whether the hub decided this end by itself (LOG-014 rule 1). An end the hub decides is
+    /// recorded as Hub, with the operator who started the session kept on the entry; any other
+    /// end is recorded with the kind of the request that started the session. `endSession`
+    /// names who asked and is recorded with that request's kind, whatever this says.
+    ///
+    /// | Cause | Decided by | Kind |
+    /// | --- | --- | --- |
+    /// | `OperatorClosed` | the client closed the tunnel | the request's |
+    /// | `RemoteClosed` | the far side closed it (a shell `exit`, a log-off) | the request's |
+    /// | `AuthFailed` | the device refused the credential, or the hub had none to send | Hub |
+    /// | `GatewayError` | the gateway or the hub's tunnel failed | Hub |
+    /// | `HostKeyMismatch`, `ServerCertificateMismatch` | the hub's pin check (SEC-007) | Hub |
+    /// | `Timeout` | the hub's idle limit | Hub |
+    /// | `HubShutdown` | the hub stopped | Hub |
+    /// | `InvalidInstruction` | the hub refused what the client sent (GW-011) | Hub |
+    pub(in crate::sessions) const fn decided_by_hub(self) -> bool {
+        match self {
+            Self::OperatorClosed | Self::RemoteClosed => false,
+            Self::AuthFailed
+            | Self::GatewayError
+            | Self::HostKeyMismatch
+            | Self::ServerCertificateMismatch
+            | Self::Timeout
+            | Self::HubShutdown
+            | Self::InvalidInstruction => true,
+        }
+    }
+
     /// The event message for an end with this cause, naming the session's protocol; the
     /// terminal tunnel explains the causes whose words differ. Fixed text: it never holds
     /// guacd's words, an address, a value or session content (LOG-007, RA-008).
