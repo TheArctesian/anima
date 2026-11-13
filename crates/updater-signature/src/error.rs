@@ -12,6 +12,4 @@ pub enum SignatureError {
     Signature,
     #[error("the signature is not for this version")]
     SignedVersion,
-    #[error("the signed file could not be read")]
-    Read,
 }

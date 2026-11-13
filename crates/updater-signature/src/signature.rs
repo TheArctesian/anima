@@ -3,8 +3,6 @@
 //! holds `version:<v>` for `requireSignedVersion`. Pure over the bytes it is given; the time is a
 //! parameter (CQ-021).
 
-use std::io::Read;
-
 use base64::{Engine, engine::general_purpose::STANDARD};
 use blake2::{Blake2b512, Digest};
 use ed25519_dalek::Signer;
@@ -20,7 +18,6 @@ const UNTRUSTED: &str = "untrusted comment: signature from tauri secret key";
 const TRUSTED_PREFIX: &str = "trusted comment: ";
 /// The longest `.sig` text read; one is a few hundred bytes.
 const MAX_SIGNATURE_BYTES: usize = 4096;
-const CHUNK: usize = 64 * 1024;
 
 /// What one signature names in its trusted comment, as `tauri signer sign` writes it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -170,28 +167,5 @@ impl SignatureStream<'_> {
         } else {
             Err(SignatureError::SignedVersion)
         }
-    }
-}
-
-/// Checks `signature_file` over `file` with `public` for exactly `version` (BLD-046).
-///
-/// # Errors
-///
-/// As [`SignatureCheck::new`] and [`SignatureStream::finish`]; `Read` when `file` fails.
-pub fn verify(
-    public: &PublicKey,
-    mut file: impl Read,
-    signature_file: &str,
-    version: &str,
-) -> Result<(), SignatureError> {
-    let check = SignatureCheck::new(public, signature_file)?;
-    let mut stream = check.stream()?;
-    let mut buffer = vec![0; CHUNK];
-    loop {
-        let read = file.read(&mut buffer).map_err(|_| SignatureError::Read)?;
-        if read == 0 {
-            return stream.finish(version);
-        }
-        stream.update(&buffer[..read]);
     }
 }

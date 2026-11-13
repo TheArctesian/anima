@@ -56,7 +56,7 @@ impl PublicKey {
     /// The key line of a minisign public key file (`RWQ...`), as `minisign -p` and
     /// `minisign-verify` read it.
     #[must_use]
-    pub fn line(&self) -> String {
+    pub(crate) fn line(&self) -> String {
         let mut bytes = Vec::with_capacity(2 + KEYNUM_BYTES + PUBLIC_BYTES);
         bytes.extend_from_slice(SIG_ALG);
         bytes.extend_from_slice(&self.keynum);
@@ -69,7 +69,7 @@ impl PublicKey {
     /// # Errors
     ///
     /// `Format` for anything but one key line.
-    pub fn from_line(text: &str) -> Result<Self, SignatureError> {
+    pub(crate) fn from_line(text: &str) -> Result<Self, SignatureError> {
         let bytes = STANDARD
             .decode(text.trim())
             .map_err(|_| SignatureError::Format)?;

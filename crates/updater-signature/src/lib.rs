@@ -18,4 +18,4 @@ mod tests;
 
 pub use error::SignatureError;
 pub use key_file::{PublicKey, SecretKey};
-pub use signature::{Prehash, SignatureCheck, SignatureStream, Signed, verify};
+pub use signature::{Prehash, SignatureCheck, SignatureStream, Signed};

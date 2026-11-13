@@ -11,11 +11,23 @@ mod parsers;
 
 use crate::{
     Prehash, PublicKey, SecretKey, SignatureCheck, SignatureError, Signed, sealed::scrypt_cost,
-    verify,
 };
 
 const PASSWORD: &str = "correct horse";
 const DATA: &[u8] = b"an AppImage, as far as signing cares";
+
+/// Checks `signature` over the whole of `file` for exactly `version`, as the hub does in chunks.
+fn verify(
+    public: &PublicKey,
+    file: &[u8],
+    signature: &str,
+    version: &str,
+) -> Result<(), SignatureError> {
+    let check = SignatureCheck::new(public, signature)?;
+    let mut stream = check.stream()?;
+    stream.update(file);
+    stream.finish(version)
+}
 
 /// A reference key pair: the secret key file as `tauri signer generate` writes it (base64 of the
 /// minisign text) and the reference public key.
