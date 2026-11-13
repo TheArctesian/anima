@@ -4,10 +4,10 @@
 use serde_json::{Value, json};
 use sqlx::PgPool;
 
-use super::hub::{PASSWORD, RealHub, USERNAME};
-use super::terminal::Terminal;
-use super::totp::{code_now, wrong_code};
 use crate::kit::Anima;
+use crate::kit::real_hub::{PASSWORD, RealHub, USERNAME};
+use crate::kit::terminal::Terminal;
+use crate::kit::totp::{code_now, wrong_code};
 
 /// `auth login` at a terminal, answering each question as it appears; its exit code and screen.
 async fn log_in(anima: &Anima, code: &str) -> (i32, String) {

@@ -5,8 +5,8 @@
 use serde_json::{Value, json};
 use sqlx::PgPool;
 
-use super::hub::RealHub;
 use super::words;
+use crate::kit::real_hub::RealHub;
 use crate::kit::{Anima, Outcome};
 
 /// Makes an API key with `anima key create`; its secret, read from standard output.

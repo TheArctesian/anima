@@ -5,9 +5,9 @@
 use serde_json::{Value, json};
 use sqlx::PgPool;
 
-use super::hub::RealHub;
 use super::keys::make_key;
 use super::words;
+use crate::kit::real_hub::RealHub;
 use crate::mcp::session::Desk;
 
 /// Every audit row on the hub, newest first, read by the hub's own query.

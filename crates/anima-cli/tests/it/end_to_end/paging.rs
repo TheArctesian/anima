@@ -4,8 +4,8 @@
 use serde_json::Value;
 use sqlx::PgPool;
 
-use super::hub::RealHub;
 use super::words;
+use crate::kit::real_hub::RealHub;
 use crate::kit::{Anima, Outcome};
 
 /// The command line the next-page hint on standard error prints, after `anima`, as a shell

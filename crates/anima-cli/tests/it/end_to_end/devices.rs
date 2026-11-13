@@ -4,9 +4,9 @@
 use serde_json::{Value, json};
 use sqlx::PgPool;
 
-use super::hub::RealHub;
-use super::terminal::Terminal;
 use super::words;
+use crate::kit::real_hub::RealHub;
+use crate::kit::terminal::Terminal;
 
 /// The devices on the hub, as `[name, host, site name]`, read by the hub's own query.
 async fn devices_on(hub: &RealHub, reader: &str) -> Vec<[String; 3]> {

@@ -7,9 +7,9 @@ use serde_json::{Value, json};
 use sqlx::PgPool;
 
 use super::actors::audit_rows;
-use super::hub::RealHub;
-use super::terminal::Terminal;
 use super::words;
+use crate::kit::real_hub::RealHub;
+use crate::kit::terminal::Terminal;
 use crate::mcp::session::{Desk, Session};
 
 /// The sites on the hub, by name.
@@ -173,4 +173,41 @@ async fn mcp_013_an_asking_tool_changes_the_hub_only_when_the_person_approves(po
     let gone = hub.data(&reader, query, json!({ "id": nas })).await;
     assert_eq!(gone["device"], Value::Null);
     approved.finish().await;
+}
+
+#[sqlx::test(migrations = "../hub/migrations")]
+async fn mcp_009_every_read_tool_answers_from_the_real_hub(pool: PgPool) {
+    let hub = RealHub::start(pool).await;
+    let reader = hub.login_token().await;
+    let [nas, _] = fleet(&hub, &reader).await;
+    let query = "query($id: ID!) { device(id: $id) { checks { id } } }";
+    let checks = hub.data(&reader, query, json!({ "id": nas })).await;
+    let check = checks["device"]["checks"][0]["id"].clone();
+    let desk = Desk::on(hub.anima());
+    let (mut session, _) = desk.start_at(&hub.origin, &reader, &[]).await;
+    let metrics = json!({ "device": "nas", "range": "DAY", "detail": true });
+    let calls = [
+        ("anima_fleet_overview", json!({})),
+        ("anima_devices_search", json!({ "detail": true })),
+        (
+            "anima_device_get",
+            json!({ "device": "nas", "detail": true }),
+        ),
+        ("anima_device_metrics", metrics),
+        ("anima_check_get", json!({ "check": check, "detail": true })),
+        ("anima_maintenance_list", json!({})),
+        ("anima_events_search", json!({})),
+        ("anima_audit_list", json!({ "actor": "USER" })),
+        ("anima_sessions_list", json!({})),
+        ("anima_notifications_overview", json!({})),
+        ("anima_releases_list", json!({})),
+        ("anima_vpn_status", json!({})),
+        ("anima_retention_list", json!({})),
+    ];
+    for (tool, arguments) in calls {
+        let answer = session.call(tool, arguments).await;
+        assert_eq!(answer["isError"], false, "{tool}: {answer}");
+        assert!(answer["structuredContent"].is_object(), "{tool}: {answer}");
+    }
+    session.finish().await;
 }

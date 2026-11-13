@@ -4,9 +4,9 @@
 use serde_json::{Value, json};
 use sqlx::PgPool;
 
-use super::hub::RealHub;
 use super::words;
 use crate::kit::Anima;
+use crate::kit::real_hub::RealHub;
 
 /// The device's checks on the hub, as `(name, type, paused)`, by name.
 async fn checks_on(hub: &RealHub, reader: &str, device: &str) -> Vec<(String, String, bool)> {

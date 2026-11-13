@@ -4,16 +4,14 @@
 //! changed back through the hub, not only from the command's output.
 
 mod actors;
+mod breadth;
 mod checks;
 mod devices;
-mod hub;
 mod keys;
 mod mcp;
 mod paging;
 mod sessions;
 mod sign_in;
-mod terminal;
-mod totp;
 mod watch;
 
 /// The arguments of a command line written as one line: words split at spaces.

@@ -11,9 +11,9 @@ use serde_json::{Value, json};
 use sqlx::PgPool;
 
 use self::device::{Device, PASSWORD, USER};
-use super::hub::RealHub;
 use super::words;
 use crate::kit::Anima;
+use crate::kit::real_hub::RealHub;
 
 /// The device `box` on the hub at 127.0.0.1, SSH on `device`'s port with a stored password
 /// and its host key trusted, all through the command line; the device's ID.

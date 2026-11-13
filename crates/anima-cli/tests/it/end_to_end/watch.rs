@@ -9,8 +9,8 @@ use serde_json::Value;
 use sqlx::PgPool;
 use tokio::io::{AsyncBufReadExt as _, BufReader};
 
-use super::hub::{RealHub, USERNAME};
 use super::words;
+use crate::kit::real_hub::{RealHub, USERNAME};
 
 /// How long the whole watch may take.
 const DEADLINE: Duration = Duration::from_secs(30);
