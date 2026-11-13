@@ -4,6 +4,7 @@
 pub mod api_errors;
 pub mod clock;
 pub mod config;
+pub mod engine;
 pub mod fingerprint;
 pub mod fleet;
 pub mod ids;

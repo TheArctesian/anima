@@ -12,6 +12,7 @@ use sqlx::PgPool;
 use crate::{
     clock::Clock,
     config::Config,
+    engine::extensions,
     fleet::{
         access, builds, checks,
         credentials::Vault,
@@ -35,6 +36,7 @@ pub struct Query(
     checks::graphql::Query,
     devices::graphql::Query,
     events::graphql::Query,
+    extensions::graphql::Query,
     maintenance::graphql::Query,
     notifications::graphql::Query,
     retention::graphql::Query,
@@ -49,6 +51,7 @@ pub struct Mutation(
     builds::graphql::BuilderMutation,
     checks::graphql::Mutation,
     devices::graphql::Mutation,
+    extensions::graphql::Mutation,
     maintenance::graphql::Mutation,
     metrics::graphql::Mutation,
     notifications::graphql::Mutation,
