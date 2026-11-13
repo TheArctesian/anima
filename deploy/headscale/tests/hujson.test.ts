@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test';
+import { fileURLToPath } from 'node:url';
 import { HujsonError, parseHujson } from '../src/hujson.ts';
 
 const FUZZ_TIMEOUT_MS = 10_000;
@@ -20,7 +21,7 @@ describe('hujson', () => {
   });
 
   test('vpn_004 seeded fuzz rounds read back unchanged or raise HujsonError, within a time bound', () => {
-    const run = Bun.spawnSync([process.execPath, new URL('hujson-fuzz.ts', import.meta.url).pathname], { timeout: FUZZ_TIMEOUT_MS, stderr: 'pipe' });
+    const run = Bun.spawnSync([process.execPath, fileURLToPath(new URL('hujson-fuzz.ts', import.meta.url))], { timeout: FUZZ_TIMEOUT_MS, stderr: 'pipe' });
     expect(run.signalCode ?? null).toBeNull();
     expect(run.stderr.toString()).toBe('');
     expect(run.exitCode).toBe(0);

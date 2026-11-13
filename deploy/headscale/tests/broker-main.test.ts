@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, it } from 'bun:test';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { serve, type Served } from '../broker/serve.ts';
 import { readState, type BrokerFiles } from '../broker/state.ts';
 import { brokerFiles, FakeHeadscale, KEY, removeBrokerFiles } from './broker-fake.ts';
@@ -96,8 +97,8 @@ describe('serve: keys and limits', () => {
     const { fake, files } = world();
     const script = join(dirname(files.state), 'one-request.ts');
     writeFileSync(script, [
-      `import { serve } from ${JSON.stringify(new URL('../broker/serve.ts', import.meta.url).pathname)};`,
-      `import { FakeHeadscale } from ${JSON.stringify(new URL('./broker-fake.ts', import.meta.url).pathname)};`,
+      `import { serve } from ${JSON.stringify(fileURLToPath(new URL('../broker/serve.ts', import.meta.url)))};`,
+      `import { FakeHeadscale } from ${JSON.stringify(fileURLToPath(new URL('./broker-fake.ts', import.meta.url)))};`,
       `const fake = new FakeHeadscale(new Date(${JSON.stringify(NOW.toISOString())}));`,
       `const files = ${JSON.stringify(files)};`,
       'console.log(JSON.stringify((await serve(\'{"verb":"router-key","site":"home"}\', fake.runner, files, fake.now)).reply.ok));',

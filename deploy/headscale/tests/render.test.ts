@@ -4,9 +4,10 @@ import { afterAll, describe, expect, test } from 'bun:test';
 import { chmodSync, existsSync, mkdtempSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const script = new URL('../config/render.sh', import.meta.url).pathname;
-const templatePath = new URL('../config/config.yaml', import.meta.url).pathname;
+const script = fileURLToPath(new URL('../config/render.sh', import.meta.url));
+const templatePath = fileURLToPath(new URL('../config/config.yaml', import.meta.url));
 const template = await Bun.file(templatePath).text();
 
 const address = '80.240.10.10';

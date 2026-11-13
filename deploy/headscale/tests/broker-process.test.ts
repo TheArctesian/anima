@@ -4,11 +4,12 @@ import { afterEach, describe, expect, it } from 'bun:test';
 import { mkdtempSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { readLine } from '../broker/main.ts';
 import { MAX_REQUEST_BYTES } from '../broker/protocol.ts';
 import { EMPTY_STATE, maxNodesOf, parseState, readState, StateError, writeState } from '../broker/state.ts';
 
-const MAIN = new URL('../broker/main.ts', import.meta.url).pathname;
+const MAIN = fileURLToPath(new URL('../broker/main.ts', import.meta.url));
 const folders: string[] = [];
 afterEach(() => {
   for (const folder of folders.splice(0)) rmSync(folder, { recursive: true, force: true });
