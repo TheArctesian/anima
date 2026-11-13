@@ -1,6 +1,6 @@
 // deploy/bin/preflight, checked on plain inputs (NET-003, DB-002). Nothing here needs Docker.
 import { describe, expect, test } from "bun:test";
-import { chmodSync, chownSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, chownSync, mkdirSync, renameSync, symlinkSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { finish } from "./finished-process.ts";
@@ -249,7 +249,7 @@ describe("preflight updater key pair (R-116, D-44)", () => {
       for (const name of absent) rmSync(join(folder, name));
       const result = await secrets(folder);
       expect(result.ok).toBe(true);
-      expect(result.message).toContain("warning: no updater key pair");
+      expect(result.message).toContain(absent.length === 2 ? "warning: no updater key pair" : `warning: ${join(folder, absent[0] ?? "")} is missing`);
       expect(result.message).toContain("publishing off");
     });
   });
@@ -365,6 +365,35 @@ describe("preflight secrets owner and group (S-4)", () => {
       const result = await preflight("secrets", folder, OWNER, "hub");
       expect(result.ok).toBe(false);
       expect(result.message).toContain("must be numbers");
+    });
+  });
+});
+
+describe("preflight updater links (C-9)", () => {
+  test.each([
+    ["the folder", (folder: string) => {
+      renameSync(join(folder, "updater"), join(folder, "real"));
+      symlinkSync(join(folder, "real"), join(folder, "updater"));
+    }, "updater is a symbolic link"],
+    ["the key", (folder: string) => {
+      renameSync(join(folder, "updater/updater_key"), join(folder, "key"));
+      symlinkSync(join(folder, "key"), join(folder, "updater/updater_key"));
+    }, "updater_key is a symbolic link"],
+    ["a dangling key", (folder: string) => {
+      rmSync(join(folder, "updater/updater_key"));
+      symlinkSync(join(folder, "gone"), join(folder, "updater/updater_key"));
+    }, "updater_key is a symbolic link"],
+    ["another name", (folder: string) => {
+      symlinkSync(join(folder, "gone"), join(folder, "updater/.key.swp"));
+    }, ".key.swp is a symbolic link"],
+  ])("C-9 refuses %s as a symbolic link, never as absent", async (_, link, said) => {
+    await withFolder(async (folder) => {
+      withPair(folder);
+      link(folder);
+      const result = await secrets(folder);
+      expect(result.ok).toBe(false);
+      expect(result.message).toContain(said);
+      expect(result.message).not.toContain("no updater key pair");
     });
   });
 });

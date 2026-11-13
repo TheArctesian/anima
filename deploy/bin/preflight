@@ -200,12 +200,19 @@ check_secrets() {
 # folder that holds a file must be root:10001 0750, so the hub can search it and no one else
 # can. A file that is there must have mode 0440 in group 10001, and the key must not be empty.
 # The password may be empty, for a key made with no password, so it is checked with -e, not -s.
+# A symbolic link, as the folder or in it, is refused: a dangling one is not an absent file (C-9).
 check_updater_key() {
+    [ ! -L "$1" ] || fail "$1 is a symbolic link; make it a real folder (README, Release publishing)"
     if [ -e "$1" ] && [ ! -x "$1" ]; then
         fail "cannot search $1, which only root and the hub's group may; run preflight with sudo (README, Release publishing)"
     fi
-    if [ ! -e "$1/updater_key" ] || [ ! -e "$1/updater_key_password" ]; then
+    if [ -d "$1" ]; then check_entries "$1"; fi
+    if [ ! -e "$1/updater_key" ] && [ ! -e "$1/updater_key_password" ]; then
         echo "preflight: warning: no updater key pair in $1; the hub starts with publishing off (README, Release publishing)" >&2
+    elif [ ! -e "$1/updater_key" ]; then
+        echo "preflight: warning: $1/updater_key is missing; the hub starts with publishing off (README, Release publishing)" >&2
+    elif [ ! -e "$1/updater_key_password" ]; then
+        echo "preflight: warning: $1/updater_key_password is missing; the hub starts with publishing off (README, Release publishing)" >&2
     fi
     if [ -e "$1/updater_key" ] || [ -e "$1/updater_key_password" ]; then
         [ "$(file_owner "$1"):$(file_group "$1"):$(file_mode "$1")" = "$secret_owner:$hub_group:750" ] ||
@@ -218,16 +225,18 @@ check_updater_key() {
     if [ -e "$1/updater_key_password" ]; then
         check_updater_file "$1/updater_key_password"
     fi
-    if [ -d "$1" ]; then warn_strays "$1"; fi
 }
 
-# warn_strays FOLDER: warns of each name in the updater folder other than the pair, such as a
-# backup, a `.pub` file or an editor's swap file; the hub can read every one of them (C-7).
-warn_strays() {
-    ls -A "$1" | while IFS= read -r entry; do
-        case $entry in
+# check_entries FOLDER: refuses a symbolic link in the updater folder, and warns of each name
+# other than the pair, such as a backup, a `.pub` file or an editor's swap file; the hub can
+# read every one of them (C-7, C-9).
+check_entries() {
+    for entry in "$1"/* "$1"/.[!.]* "$1"/..?*; do
+        [ -e "$entry" ] || [ -L "$entry" ] || continue
+        [ ! -L "$entry" ] || fail "$entry is a symbolic link; install the file itself (README, Release publishing)"
+        case ${entry##*/} in
         updater_key | updater_key_password) ;;
-        *) echo "preflight: warning: $1 holds '$entry', which is not part of the updater key pair; move it out of the folder the hub reads" >&2 ;;
+        *) echo "preflight: warning: $1 holds '${entry##*/}', which is not part of the updater key pair; move it out of the folder the hub reads" >&2 ;;
         esac
     done
 }

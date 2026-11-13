@@ -294,7 +294,8 @@ step (VPS-005): agents do not create the R2 token or change `deploy/.env` on the
   `ANIMA_UPDATER_KEY_PASSWORD_FILE`). It is a folder, not two compose secrets, because compose
   refuses to create a container whose secret file is absent; with the folder, a hub without the
   key still starts, with publishing off (D-44). Check the files as root, with no `.env`:
-  `sudo sh bin/preflight secrets`; it cannot search the folder otherwise, and says so. It warns, and passes, when either file is absent, and for any other
+  `sudo sh bin/preflight secrets`; it cannot search the folder otherwise, and says so. It warns, naming the missing file, and passes, when either file is
+  absent; it refuses a symbolic link, as the folder or in it, even a dangling one. It warns for any other
   name in the folder (a backup, a `.pub` file, an editor's swap file: the hub can read it). A folder that holds a
   file must be `root:10001` mode `0750`; a file that is there must be mode `0440` in group 10001,
   and `updater_key` must not be empty. The hub opens the key once at start and never logs it, its
