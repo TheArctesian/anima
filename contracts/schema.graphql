@@ -1680,13 +1680,13 @@ type Extension {
 
 # ---------------------------------------------------------------- sources (E0-2, K-E1)
 
-enum AcquisitionMethod @pending { TOKEN_PULL }
-enum SourceHealth @pending { OK STARTING STALLED NEVER_SYNCED PAUSED NEEDS_RECONNECT }
-enum PauseReason @pending { OPERATOR EXTENSION_OFF }
-enum SyncTrigger @pending { CONNECT SCHEDULE MANUAL }
-enum SyncOutcome @pending { OK FAILED STOPPED }
+enum AcquisitionMethod { TOKEN_PULL }
+enum SourceHealth { OK STARTING STALLED NEVER_SYNCED PAUSED NEEDS_RECONNECT }
+enum PauseReason { OPERATOR EXTENSION_OFF }
+enum SyncTrigger { CONNECT SCHEDULE MANUAL }
+enum SyncOutcome { OK FAILED STOPPED }
 
-type Source @pending {
+type Source {
   "Stable identifier, for example github."
   key: String!
   name: String!
@@ -1701,13 +1701,13 @@ type Source @pending {
   accounts: [SourceAccount!]!
 }
 
-type SyncProblem @pending {
+type SyncProblem {
   code: String!
   subject: String!
   message: String!
 }
 
-type SyncRun @pending {
+type SyncRun {
   id: ID!
   trigger: SyncTrigger!
   startedAt: DateTime!
@@ -1723,7 +1723,7 @@ type SyncRun @pending {
   error: String
 }
 
-type SourceAccount @pending {
+type SourceAccount {
   id: ID!
   sourceKey: String!
   label: String!
@@ -1746,7 +1746,7 @@ type SourceAccount @pending {
   createdAt: DateTime!
 }
 
-input GithubAppInput @pending {
+input GithubAppInput {
   label: String!
   "Digits only."
   appId: String!
@@ -1861,8 +1861,8 @@ type Query {
   # Engine and Projects (operator, 2026-11-13; ruling number to be assigned; K-E7, K-E1, XP-02)
   "All 15, in the order of the plan."
   extensions: [Extension!]!
-  sources: [Source!]! @pending
-  sourceAccounts(sourceKey: String): [SourceAccount!]! @pending
+  sources: [Source!]!
+  sourceAccounts(sourceKey: String): [SourceAccount!]!
   "By name. leftOut true: only projects whose repositories are all left out. CONFLICT while Projects is off."
   projects(leftOut: Boolean = false, first: Int = 50, after: String): ProjectConnection! @pending
   "CONFLICT while Projects is off."
@@ -1983,13 +1983,13 @@ type Mutation {
   # Engine and Projects (operator, 2026-11-13; ruling number to be assigned; K-E7, K-E1, XP-02)
   "On also sets on each extension it needs (EXT-011). Off is refused with CONFLICT while an extension that is on needs it; extensions.neededBy names it (EXT-012). Off keeps every record (EXT-003). Returns each extension whose switch changed, the named one first; empty when nothing changed. Login or browser token only (D-23, R-100)."
   setExtension(key: String!, on: Boolean!): [Extension!]!
-  "Checks the key with GitHub before it stores it; UNAVAILABLE when GitHub cannot be reached, VALIDATION when GitHub refuses the key. The same App ID and installation ID again replaces the stored key and keeps the account and its records. Closed to API keys: login or browser token only. The task that adds this root to API_KEY_REFUSED_ROOTS restores the standard words (key_roots.rs)."
-  connectGithubApp(input: GithubAppInput!): SourceAccount! @pending
+  "Checks the key with GitHub before it stores it; UNAVAILABLE when GitHub cannot be reached, VALIDATION when GitHub refuses the key. The same App ID and installation ID again replaces the stored key and keeps the account and its records. Login or browser token only (D-23, R-100)."
+  connectGithubApp(input: GithubAppInput!): SourceAccount!
   "Starts a sync now and returns at once. CONFLICT while the account is paused or no extension that uses it is on. A sync that already runs is not started twice."
-  syncSourceAccount(id: ID!): SourceAccount! @pending
-  setSourceAccountPaused(id: ID!, paused: Boolean!): SourceAccount! @pending
-  "Deletes the account and its stored key. deleteRecords false keeps what it imported (ITG-004). Returns the ID. Closed to API keys: login or browser token only. The task that adds this root to API_KEY_REFUSED_ROOTS restores the standard words (key_roots.rs)."
-  removeSourceAccount(id: ID!, deleteRecords: Boolean!): ID! @pending
+  syncSourceAccount(id: ID!): SourceAccount!
+  setSourceAccountPaused(id: ID!, paused: Boolean!): SourceAccount!
+  "Deletes the account and its stored key. deleteRecords false keeps what it imported (ITG-004). Returns the ID. Login or browser token only (D-23, R-100)."
+  removeSourceAccount(id: ID!, deleteRecords: Boolean!): ID!
   "The hub does not import or read the repository again until it is restored (PRO-002)."
   leaveOutRepository(id: ID!): Project! @pending
   restoreRepository(id: ID!): Project! @pending
@@ -2009,7 +2009,7 @@ type Subscription {
   "Each new VPN picture, about once a minute."
   vpnChanged: VpnPicture!
   "Each change of an account: a sync that starts or ends, a pause, a new key. (operator, 2026-11-13; ruling number to be assigned; K-E1)"
-  sourceAccountChanged(id: ID): SourceAccount! @pending
+  sourceAccountChanged(id: ID): SourceAccount!
 }
 
 type DeviceStatusChange {

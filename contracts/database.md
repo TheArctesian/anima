@@ -47,7 +47,7 @@ Status: **frozen for Phase 3** (change only through a programme ruling, CON-001)
 | 0980–0999 | reserved | — | Phase 4 |
 | 1000–1019 (Phase 3, VP-5) | vpn | `vpn` | warnings |
 | 1000 (Phase 3, VP-5) | events (vpn) | `events` | `event_log_source_check` lists all eight sources, adding `vpn`; numbered after 0852 |
-| 0221 (operator, 2026-11-13; ruling number to be assigned; K-E8, PRJ-018) | credentials (engine addition) | `credentials` | `source_secrets` (`id uuid pk`, `nonce bytea`, `ciphertext bytea`, `key_id text`, `created_at timestamptz default now()`); sealed with context `credentials.source_secrets:<account_id>` |
+| 0221 (operator, 2026-11-13; ruling number to be assigned; K-E8, PRJ-018) | credentials (engine addition) | `credentials` | `source_secrets` (`id uuid pk`, `account_id uuid not null unique` (no foreign key: `sources.accounts` is in a higher range and points here; storing again for an account replaces the sealed columns and keeps the id), `nonce bytea`, `ciphertext bytea`, `key_id text`, `created_at timestamptz default now()`); sealed with context `credentials.source_secrets:<account_id>` |
 | 2000–2019 (operator, 2026-11-13; ruling number to be assigned; K-E1, K-E8) | engine/sources | `sources` | `accounts`, `sync_runs` (outline in `contracts/extensions/sources.md` Section 5); `accounts.credential_id` references `credentials.source_secrets` |
 | 2020–2029 (operator, 2026-11-13; ruling number to be assigned; K-E7, K-E8) | engine/extensions | `extensions` | `switches` (`key text pk`, `is_on boolean`, `changed_at`, `changed_by`); no seed rows (EXT-001) |
 | 2030–2099 (operator, 2026-11-13; ruling number to be assigned; K-E8) | reserved | — | other engine domains; not assigned now |

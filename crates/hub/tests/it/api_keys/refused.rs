@@ -11,7 +11,7 @@ use crate::hub::{Hub, PASSWORD, USERNAME, error};
 /// Every root field an API key may never select (D-23, A-6; `enrolAgent` and
 /// `revokeAgentToken` by name before they have resolvers, R-084, CR-8; pinning a device
 /// identity, moving or deleting a device, R-100; VPN keys, registration and renewal, VP-7).
-const REFUSED: [&str; 31] = [
+const REFUSED: [&str; 33] = [
     "createApiKey",
     "revokeApiKey",
     "apiKeys",
@@ -43,6 +43,8 @@ const REFUSED: [&str; 31] = [
     "renewVpnKey",
     "approveSiteRoute",
     "setExtension",
+    "connectGithubApp",
+    "removeSourceAccount",
 ];
 
 /// Documents that select `name` at the root: plainly, through an alias, an inline fragment, a

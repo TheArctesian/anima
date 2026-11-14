@@ -23,6 +23,7 @@ mod notifications;
 mod operator;
 mod retention;
 mod sessions;
+mod sources;
 mod start;
 mod tokens;
 mod totp;

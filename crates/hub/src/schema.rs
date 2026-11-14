@@ -12,7 +12,7 @@ use sqlx::PgPool;
 use crate::{
     clock::Clock,
     config::Config,
-    engine::extensions,
+    engine::{extensions, sources},
     fleet::{
         access, builds, checks,
         credentials::Vault,
@@ -41,6 +41,7 @@ pub struct Query(
     notifications::graphql::Query,
     retention::graphql::Query,
     sessions::graphql::Query,
+    sources::graphql::Query,
     vpn::graphql::Query,
 );
 
@@ -59,6 +60,7 @@ pub struct Mutation(
     sessions::graphql::Mutation,
     sessions::FilesMutation,
     sessions::WakeMutation,
+    sources::graphql::Mutation,
     trust::graphql::Mutation,
     vpn::graphql::Mutation,
     vpn::graphql::RouteMutation,
@@ -72,6 +74,7 @@ pub struct Subscription(
     events::graphql::Subscription,
     metrics::graphql::Subscription,
     sessions::graphql::Subscription,
+    sources::graphql::Subscription,
     vpn::graphql::Subscription,
 );
 
@@ -106,6 +109,9 @@ pub struct Dependencies {
     /// The hub's one VPN broker; the reader and the VPN mutations share its turn (BD-15).
     /// `None` when `ANIMA_VPN_BROKER` is unset.
     pub vpn_broker: Option<vpn::Broker>,
+    /// The sources' one registry, transport, token store and feed: the scheduler gets a clone
+    /// of this same value, so `sourceAccountChanged` sees its runs (K-E1).
+    pub sources: sources::Reach,
 }
 
 /// Put each dependency into the schema data, with the devices loaders (WP-06 H-2);
@@ -130,6 +136,7 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
         bucket,
         vpn_feed,
         vpn_broker,
+        sources,
     } = dependencies;
     let builder = harden(
         Schema::build(
@@ -172,6 +179,8 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
         // vpn
         .data(vpn_feed)
         .data(vpn_broker)
+        // sources
+        .data(sources)
         .finish()
 }
 
