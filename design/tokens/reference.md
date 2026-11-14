@@ -290,6 +290,7 @@ Generated from `design/tokens/*.tokens.json` (TOK-001). Names follow contract K5
 | `duration-fast` | `--duration-fast: 150ms` | Exits, hover colour |
 | `duration-base` | `--duration-base: 200ms` | Cross-fades, theme change |
 | `duration-highlight` | `--duration-highlight: 1500ms` | Fade of the highlight on a new log row or a status change |
+| `duration-breathe` | `--duration-breathe: 2400ms` | One breath of a live mark in the bar's running-now rows; still with reduced motion (UR-7 P2, MOT-011) |
 
 ## motion.ease
 
@@ -457,6 +458,7 @@ Generated from `design/tokens/*.tokens.json` (TOK-001). Names follow contract K5
 | `duration-fast` | `duration.fast` |
 | `duration-base` | `duration.base` |
 | `duration-highlight` | `duration.highlight` |
+| `duration-breathe` | `duration.breathe` |
 | `ease-enter` | `ease.enter` |
 | `ease-exit` | `ease.exit` |
 | `stagger-list` | `stagger.list` |

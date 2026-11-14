@@ -136,6 +136,7 @@
   --duration-fast: 150ms;
   --duration-base: 200ms;
   --duration-highlight: 1500ms;
+  --duration-breathe: 2400ms;
   --ease-enter: cubic-bezier(0.2, 0, 0, 1);
   --ease-exit: cubic-bezier(1, 0, 0.8, 1);
   --stagger-list: 20ms;
