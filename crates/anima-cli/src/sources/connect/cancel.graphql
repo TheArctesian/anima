@@ -1,0 +1,23 @@
+# `anima source connect github --cancel` and the tool `anima_github_connect_cancel`.
+mutation GithubConnectCancel($id: ID!) {
+  cancelGithubConnect(id: $id) {
+    id
+    phase
+    startedBy
+    startedAt
+    expiresAt
+    pageUrl
+    appId
+    appSlug
+    ownerLogin
+    installUrl
+    appSettingsUrl
+    failure
+    message
+    account {
+      id
+      label
+      health
+    }
+  }
+}

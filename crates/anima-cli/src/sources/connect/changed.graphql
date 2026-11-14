@@ -1,0 +1,33 @@
+# `anima source connect github`: each change of the open attempt (K1 githubConnectChanged).
+subscription GithubConnectChanged {
+  githubConnectChanged {
+    id
+    phase
+    startedBy
+    startedAt
+    expiresAt
+    pageUrl
+    appId
+    appSlug
+    ownerLogin
+    installUrl
+    appSettingsUrl
+    failure
+    message
+    account {
+      id
+      sourceKey
+      label
+      instanceKey
+      credentialStored
+      health
+      pausedBy
+      lastSyncAt
+      lastError
+      failureCount
+      nextSyncAt
+      syncing
+      createdAt
+    }
+  }
+}

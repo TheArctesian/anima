@@ -76,6 +76,10 @@ pub enum Failure {
     /// Standard output failed (not a closed pipe).
     #[error("Could not write the output: {reason}.")]
     Write { reason: String },
+    /// A long-running command ended without doing what it was asked: its words say why and
+    /// `status` is the exit code that tells a script (`source connect github`).
+    #[error("{message}")]
+    Ended { message: String, status: u8 },
 }
 
 /// CMD-021.
@@ -119,6 +123,13 @@ impl Failure {
             | Self::Write { .. }
             | Self::Paging { .. }
             | Self::NotDelivered { .. } => "FAILED",
+            Self::Ended { status, .. } => {
+                if *status == exit::UNAVAILABLE {
+                    Code::Unavailable.as_str()
+                } else {
+                    "FAILED"
+                }
+            }
         }
     }
 
@@ -139,6 +150,7 @@ impl Failure {
             Self::Forbidden { .. } => exit::NOT_PERMITTED,
             Self::NotFound { .. } => exit::NOT_FOUND,
             Self::Conflict { .. } => exit::CONFLICT,
+            Self::Ended { status, .. } => *status,
             Self::SignedOut { .. } => exit::SIGN_IN,
             Self::Declined
             | Self::Cancelled
@@ -175,7 +187,8 @@ impl Failure {
             | Self::Store(_)
             | Self::Input { .. }
             | Self::Write { .. }
-            | Self::Paging { .. } => None,
+            | Self::Paging { .. }
+            | Self::Ended { .. } => None,
         }
     }
 

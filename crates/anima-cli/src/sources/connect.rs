@@ -1,38 +1,70 @@
-//! `anima source connect github`: connects a GitHub App installation. The App's private key is
-//! the secret: it comes from a private file (mode 0600) or from standard input, never from an
-//! argument, and is wiped after the request. It is never printed (CMD-025, CMD-014, PRJ-018).
+//! `anima source connect github`: connects a GitHub account. Without `--from-file` the hub
+//! makes the GitHub App and the operator presses Create and Install on GitHub (PRJ-039,
+//! PRJ-040, PRJ-041); the command prints each phase. With `--from-file` the App's private key
+//! is the secret: it comes from a private file (mode 0600) or from standard input, never from
+//! an argument, and is wiped after the request. It is never printed (CMD-025, CMD-014,
+//! PRJ-018). The one-time link is shown once, at a terminal, and is in no other output
+//! (MCP-004, LOG-007).
+
+pub mod attempt;
+pub mod documents;
+pub mod flow;
+mod lines;
+mod open_attempt;
+pub mod report;
 
 use std::path::PathBuf;
 
 use zeroize::Zeroize as _;
 
+use self::flow::Request;
+use self::report::{Opener, Report, system_browser};
 use super::documents::{SourceConnect, source_connect};
 use super::render;
 use crate::devices::credentials::input::{from_file_only, send_wiping};
 use crate::failure::Failure;
+use crate::hub::Hub;
 use crate::invocation::Invocation;
 
 #[derive(Debug, clap::Subcommand)]
 pub enum ConnectCommand {
-    /// Connect a GitHub App installation, with the App's private key.
+    /// Connect a GitHub account: the hub makes the App and you press Create and Install on
+    /// GitHub, or give an App's private key with `--from-file`.
     Github(GithubArgs),
 }
 
 #[derive(clap::Args)]
 pub struct GithubArgs {
-    /// A name for the account.
-    #[arg(long)]
-    label: String,
-    /// The GitHub App's ID (digits).
-    #[arg(long, value_parser = digits)]
-    app_id: String,
-    /// The installation's ID (digits).
-    #[arg(long, value_parser = digits)]
-    installation_id: String,
+    /// A name for the account. Without it, the login of the App's owner.
+    #[arg(long, conflicts_with_all = ["state", "cancel"])]
+    label: Option<String>,
+    /// Make the App in this GitHub organisation, not in your own account.
+    #[arg(long, value_name = "LOGIN", conflicts_with_all = ["from_file", "state", "cancel"])]
+    organisation: Option<String>,
+    /// Print the link and do not open it in a browser.
+    #[arg(long, conflicts_with_all = ["from_file", "state", "cancel"])]
+    no_browser: bool,
+    /// Show the connection in progress, or that none is.
+    #[arg(long, conflicts_with_all = ["from_file", "cancel"])]
+    state: bool,
+    /// Cancel the connection in progress.
+    #[arg(long, conflicts_with = "from_file")]
+    cancel: bool,
+    /// The GitHub App's ID (digits). With `--from-file`.
+    #[arg(long, value_parser = digits, requires = "from_file")]
+    app_id: Option<String>,
+    /// The installation's ID (digits). With `--from-file`.
+    #[arg(long, value_parser = digits, requires = "from_file")]
+    installation_id: Option<String>,
     /// Read the App's private key (PEM) from this file, or from standard input for `-`. The
-    /// file must be mode 0600 and yours. The key is never taken as an argument.
-    #[arg(long, value_name = "PATH")]
-    from_file: PathBuf,
+    /// file must be mode 0600 and yours. The key is never taken as an argument. It needs
+    /// `--label`, `--app-id` and `--installation-id`.
+    #[arg(
+        long,
+        value_name = "PATH",
+        requires_all = ["label", "app_id", "installation_id"]
+    )]
+    from_file: Option<PathBuf>,
 }
 
 /// Debug output of the arguments names the file, never the key it holds.
@@ -67,25 +99,41 @@ impl ConnectCommand {
 }
 
 impl GithubArgs {
-    /// Connects the installation and prints the account. The hub checks the key with GitHub
-    /// before it stores it.
+    /// Connects GitHub and prints the account (or, with `--state` and `--cancel`, the attempt).
     ///
     /// # Errors
     /// [`Failure::Input`] for a key file that is missing, looser than 0600, empty or not text;
-    /// the hub's refusal (`VALIDATION` when GitHub refuses the key, `UNAVAILABLE` when GitHub
-    /// cannot be reached, `FORBIDDEN` for an API key).
+    /// the hub's refusal (`CONFLICT` at start while an App waits for Install, `VALIDATION`
+    /// when GitHub refuses a key, `UNAVAILABLE` when GitHub cannot be reached, `FORBIDDEN` for
+    /// an API key); [`Failure::Ended`] when the attempt failed or was cancelled (exit 1, or 7
+    /// for `GITHUB_UNREACHABLE`) and for Ctrl-C (exit 130).
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
+        if self.from_file.is_some() {
+            return self.with_key_file(invocation).await;
+        }
+        let hub = invocation.hub()?;
+        if self.state {
+            return open_attempt::show(&hub, invocation).await;
+        }
+        if self.cancel {
+            return open_attempt::cancel(&hub, invocation).await;
+        }
+        self.in_three_presses(&hub, invocation).await
+    }
+
+    /// The hub checks the key with GitHub before it stores it.
+    async fn with_key_file(self, invocation: &Invocation) -> Result<(), Failure> {
         let key = from_file_only(
             invocation.prompter,
             "The GitHub App private key",
-            Some(&self.from_file),
+            self.from_file.as_deref(),
         )?;
         let hub = invocation.hub()?;
         let variables = source_connect::Variables {
             input: source_connect::GithubAppInput {
-                label: self.label,
-                app_id: self.app_id,
-                installation_id: self.installation_id,
+                label: self.label.unwrap_or_default(),
+                app_id: self.app_id.unwrap_or_default(),
+                installation_id: self.installation_id.unwrap_or_default(),
                 private_key: key.as_str().to_owned(),
             },
         };
@@ -96,5 +144,27 @@ impl GithubArgs {
         invocation
             .output
             .data(&answer.connect_github_app, render::record)
+    }
+
+    async fn in_three_presses(self, hub: &Hub, invocation: &Invocation) -> Result<(), Failure> {
+        let mut notes = std::io::stderr();
+        let mut browser = system_browser;
+        let opener: Opener<'_> = &mut browser;
+        let mut report = Report {
+            notes: &mut notes,
+            terminal: invocation.stderr_terminal(),
+            json: invocation.output.json(),
+            browser: (!self.no_browser).then_some(opener),
+        };
+        let request = Request {
+            label: self.label,
+            organisation: self.organisation,
+        };
+        let last = flow::connect(hub, request, &mut report).await?;
+        if invocation.output.json() {
+            invocation.output.raw(&last)
+        } else {
+            invocation.output.data(&last["account"], render::record)
+        }
     }
 }
