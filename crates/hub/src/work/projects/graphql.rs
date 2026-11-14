@@ -1,6 +1,7 @@
 //! The projects GraphQL part (K1; XP-02): the projects, one project, leave out and restore a
 //! repository, confirm a resource; and, merged in, the live reads of a repository's pull
-//! requests, issues and workflow runs (PRJ-027 to PRJ-035) and the changes made there (OD-E14).
+//! requests, issues, workflow runs, history and code (PRJ-027 to PRJ-035) and the changes made
+//! there (OD-E14).
 //!
 //! Every field is `CONFLICT` while Projects is off (EXT-002). Each mutation that changes
 //! something writes its change, one audit entry and one event in one transaction.
@@ -13,7 +14,7 @@ use sqlx::{PgConnection, PgPool};
 
 use self::views::{ProjectConnection, ProjectView, ResourceView, Rows};
 use super::{
-    Error, issues,
+    Error, code, history, issues,
     model::ResourceKind,
     on,
     page::{After, decode_cursor, page_size},
@@ -37,6 +38,8 @@ pub struct Query(
     pull_requests::Query,
     issues::Query,
     workflows::Query,
+    history::Query,
+    code::Query,
 );
 
 /// K1's default for `first`.

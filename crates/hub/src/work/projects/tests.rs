@@ -1,8 +1,9 @@
 //! The pure rules of the projects domain: the slug, the import step, the proposals, the page
-//! cursor, the cursors, access, text and job counts of the live reads, and the words and
-//! records of a change to GitHub.
+//! cursor, the cursors, access, text and job counts of the live reads, where a file is, and the
+//! words and records of a change to GitHub.
 
 mod changes;
+mod code;
 mod cursor;
 mod forge;
 mod import;

@@ -8,6 +8,7 @@
 //! A named change goes through [`change::make`], which sends it once and records it (OD-E14,
 //! PRJ-028).
 
+mod argument;
 mod change;
 mod checks;
 pub(super) mod cursor;
@@ -24,10 +25,11 @@ use chrono::{DateTime, Utc};
 use source_exchange::{Body, Problem, Request, Response};
 
 pub(super) use self::{
+    argument::checked,
     change::make,
     checks::{CommitChecksView, commit_checks},
     cursor::{Cut, GITHUB_PAGE, Place, cut},
-    failure::{Subject, missing},
+    failure::{Subject, missing, unusable},
     filter::OpenOrClosed,
     reach::{RepositoryAccess, Target, access},
 };
@@ -107,6 +109,8 @@ pub(super) async fn target(ctx: &Context<'_>, repository: &ID) -> Result<Target>
             repository: id,
             account,
             name: row.full_name,
+            home: row.html_url,
+            default_branch: row.default_branch,
         }),
         (refused, _) => Err(coded(reach::refusal(refused), ErrorCode::Conflict)),
     }
