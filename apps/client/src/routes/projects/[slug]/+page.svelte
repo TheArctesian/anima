@@ -3,12 +3,15 @@
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
   import { projectsApi } from '$lib/projects/api';
+  import { forgeApi } from '$lib/projects/forge/api';
   import ProjectScreen from '$lib/projects/detail/ProjectScreen.svelte';
   import type { ProjectTab } from '$lib/projects/detail/tabs';
   import { ProjectsStore } from '$lib/projects/store.svelte';
   import { useHub } from '$lib/hub/context';
 
-  const store = new ProjectsStore(projectsApi(useHub()));
+  const hub = useHub();
+  const store = new ProjectsStore(projectsApi(hub));
+  const forge = forgeApi(hub);
   const slug = $derived(page.params['slug'] ?? '');
   $effect(() => {
     void store.open(slug);
@@ -17,6 +20,7 @@
 
 <ProjectScreen
   {store}
+  {forge}
   {slug}
   tab={page.url.searchParams.get('tab')}
   onTab={(tab: ProjectTab) => {

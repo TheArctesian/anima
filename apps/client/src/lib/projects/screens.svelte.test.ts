@@ -3,6 +3,8 @@ import { flushSync, mount, unmount } from 'svelte';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { installAnimations } from '$lib/forms/animations.fixture';
 import { projectsApi } from './api';
+import { forgeApi } from './forge/api';
+import { fakeForgeHub } from './forge/forge.fixture';
 import { fakeHub, type FakeHub } from './projects.fixture';
 import ProjectScreen from './detail/ProjectScreen.svelte';
 import ProjectsScreen from './ProjectsScreen.svelte';
@@ -18,6 +20,7 @@ vi.mock('motion', async (importOriginal) => ({
 let app: ReturnType<typeof mount> | undefined;
 let hub: FakeHub;
 let store: ProjectsStore;
+const forge = forgeApi(fakeForgeHub());
 
 beforeEach(() => {
   installAnimations();
@@ -44,7 +47,7 @@ async function openList(): Promise<void> {
 
 async function openDetail(slug: string): Promise<void> {
   await store.open(slug);
-  app = mount(ProjectScreen, { target: document.body, props: { store, slug } });
+  app = mount(ProjectScreen, { target: document.body, props: { store, forge, slug } });
   flushSync();
 }
 
@@ -154,7 +157,7 @@ it('UR-7, PRO-004: the list puts projects that need a look first, each with why'
 
 it('PRJ-030: a tab the hub does not serve yet does not show, and asking for it opens Overview', async () => {
   await store.open('acme-site');
-  app = mount(ProjectScreen, { target: document.body, props: { store, slug: 'acme-site', tab: 'work' } });
+  app = mount(ProjectScreen, { target: document.body, props: { store, forge, slug: 'acme-site', tab: 'work' } });
   flushSync();
   expect(document.querySelector('[role="tablist"]')).toBeNull();
   expect(text()).toContain('Where it runs');
