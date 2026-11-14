@@ -23,4 +23,24 @@ pub const EXCEPTIONS: &[(&str, &str)] = &[
         "Mutation.reportBuildUploaded",
         "builder token only: the desktop builder (BLD-022)",
     ),
+    (
+        "Query.githubConnect",
+        "temporary: the command-line task CG-6 adds its document and deletes this line (CMD-031)",
+    ),
+    (
+        "Mutation.startGithubConnect",
+        "temporary: the command-line task CG-6 adds its document and deletes this line (CMD-031)",
+    ),
+    (
+        "Mutation.openGithubConnect",
+        "temporary: the command-line task CG-6 adds its document and deletes this line (CMD-031)",
+    ),
+    (
+        "Mutation.cancelGithubConnect",
+        "temporary: the command-line task CG-6 adds its document and deletes this line (CMD-031)",
+    ),
+    (
+        "Subscription.githubConnectChanged",
+        "temporary: the command-line task CG-6 adds its document and deletes this line (CMD-031)",
+    ),
 ];

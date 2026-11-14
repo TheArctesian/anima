@@ -204,6 +204,7 @@ policy, builder and agent tokens per LOG-019) uses `Operator::hub()` and `ActorK
 | `vpn` (Phase 3, VP-5, new) | `devices`, `events`, `checks` (`for_devices` only) |
 | `extensions` (engine, new; operator, 2026-11-13; ruling number to be assigned; K-E7) | `events` |
 | `sources` (engine, new; same ruling; K-E1) | `extensions` (`Key`, `on_keys` only), `credentials` (`Vault`, `Secret`, `Error`, `store_source_secret`, `load_source_secret`, `clear_source_secret` only), `events` |
+| `sources` (Connect GitHub, replaces the row above; operator, 2026-11-14; ruling number to be assigned; K-E1 Section 7a) | the same, and `access` for `registration/routes.rs` only: `PublicOrigin`, `SameOrigin`, `identify`, and a cookie reader (K-E1 Section 12) |
 | `projects` (work, new; same ruling; XP-02) | `extensions` (`PROJECTS`, `require_on` only), `sources` (`Intake`, `Page`, `Taken`, `Counts`, `request_sync` only), `events` |
 
 (Phase 3) No cycle: `notifications` imports neither `checks` nor `sessions`. `ssh` and `trust` import neither `sessions` nor `checks`.
@@ -222,7 +223,7 @@ GraphQL composition edges (R-011). Only the file `<domain>/graphql.rs` may also 
 | `devices` (Phase 3) | `trust` (replaces `sessions` for these fields) | `SshSettings.hostKey`, `RdpSettings.serverCertificate` |
 | `checks` (Phase 3) | `notifications` | `Check.notifications` |
 | `notifications`, `retention`, `trust` (Phase 3) | `access` (R-022) | the `Authenticated` guard |
-| `extensions`, `sources`, `projects` (operator, 2026-11-13; ruling number to be assigned) | `access` | the `Authenticated` guard and the login-only guard on `setExtension`, `connectGithubApp`, `removeSourceAccount` |
+| `extensions`, `sources`, `projects` (operator, 2026-11-13; ruling number to be assigned) | `access` | the `Authenticated` guard and the login-only guard on `setExtension`, `connectGithubApp`, `removeSourceAccount`; and, from Connect GitHub, on `startGithubConnect`, `openGithubConnect`, `cancelGithubConnect` (they join `API_KEY_REFUSED_ROOTS`) |
 
 `sessions` already depends on `access`. Through these edges a `graphql.rs` uses only `access::Authenticated`; `Operator` and `ClientAddr` come from `events` (R-019).
 
@@ -608,6 +609,23 @@ pub fn spawn_scheduler(s: Scheduling) -> JoinHandle<()>;
 /// Sets `next_sync_at` of the account to now, in the caller's transaction (used by `projects`).
 pub async fn request_sync(conn: &mut PgConnection, account: SourceAccountId) -> Result<(), Error>;
 ```
+
+### engine::sources: Connect GitHub (operator, 2026-11-14; ruling number to be assigned); K-E1 Sections 1, 7, 7a, 10a
+
+```rust
+// engine::sources (connect.rs): the one storing path, called by connectGithubApp and by the connect flow
+pub async fn establish(s: &Scheduling, trail: Trail<'_>, input: Connection) -> Result<Established, Error>;
+pub struct Established { pub id: SourceAccountId, pub created: bool, pub consumer_on: bool }
+// engine::sources::registration (new module, in-memory attempt; no table)
+pub struct Attempts { /* Arc<Mutex<Option<Attempt>>> and a broadcast sender; held in Reach like Tokens */ }
+// engine::sources::acquisition
+pub struct AppSigner { pub app_id: u64, /* key pair */ }   // read(app_id, pem); token(now, random); bind(installation_id) -> AppKey
+pub fn convert(transport: &Transport, declaration: &Declaration, code: &str, now: DateTime<Utc>) -> Result<Converted, ConvertFailure>;
+// crate source-exchange: AppKey.registration: Option<Registration>, Converted, Owner, Installation, ManifestFacts, Webhook (K-E1 Section 1)
+// crate source-github: registration/manifest.rs (pure)
+```
+
+`sources/graphql/trail.rs` moves to `sources/trail.rs` so `connect.rs` can use `connected`. `graphql/registration.rs` holds the three roots and the subscription. `registration/routes.rs` is the only file that imports `access` beyond the guard.
 
 ## projects (work, XP-02 first slice; operator, 2026-11-13; ruling number to be assigned)
 

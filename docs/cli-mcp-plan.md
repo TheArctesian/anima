@@ -136,7 +136,7 @@ read key; change commands with a write key).
 | `builder` | `list`, `enrol` L, `revoke` L |
 | `vpn` | `status` (`--watch`), `invite` L, `router-key` L, `register` L, `renew` L, `approve-route` L |
 | `extension` | `list`, `on <key>` L, `off <key>` L (`on` prints "also sets X on" and asks unless `--yes`; `off` shows the hub's CONFLICT when another extension needs it) |
-| `source` | `kinds`, `list` (`--source github`), `get <id\|label>` (runs with counts), `connect github` L (`--label`, `--app-id`, `--installation-id`, `--from-file <path\|->`: the key comes from a 0600 file or standard input, never an argument, CMD-025), `sync`, `pause`, `resume`, `remove` L (`--keep-records` or `--delete-records`, one is required; it confirms, CMD-024), `watch [<id\|label>]` |
+| `source` | `kinds`, `list` (`--source github`), `get <id\|label>` (runs with counts), `connect github` L (`--label`, `--organisation <login>`, `--no-browser`, `--state`, `--cancel`: without `--from-file` the hub makes the App and the operator presses Create and Install on GitHub; on a terminal it asks for the one-time link, prints it and opens it, then prints one line for each phase; off a terminal it never asks for the link and prints the hub page to open in a signed-in browser. `--from-file <path\|->` selects the manual route and requires `--label`, `--app-id` and `--installation-id`: the key comes from a 0600 file or standard input, never an argument, CMD-025. `--app-id` or `--installation-id` without `--from-file`, or `--state` with `--cancel`, is `USAGE`, exit 2. All of it is login-only; exit 6 is `CONFLICT` at start, 7 is `GITHUB_UNREACHABLE`. (operator, 2026-11-14; ruling number to be assigned); PRJ-039, PRJ-040), `sync`, `pause`, `resume`, `remove` L (`--keep-records` or `--delete-records`, one is required; it confirms, CMD-024), `watch [<id\|label>]` |
 | `project` | `list` (`--left-out`, `--limit`, `--after`, `--all`), `get <slug>`, `leave-out <owner/name\|id>`, `restore <owner/name\|id>`, `resource confirm <slug> <kind>` |
 | `key` | `list` L, `create` L (`--for user\|agent`, required, LOG-015), `revoke` L |
 | `api` | Send a GraphQL document from a file or standard input |
@@ -306,10 +306,10 @@ Read tools are `allow` and change tools are `off` by default (MCP-002). L: needs
 | `vpn` | `anima_vpn_status` | `anima_vpn_approve_route` L |
 | `retention` | `anima_retention_list` | `anima_retention_set` L |
 | `extensions` | `anima_extensions_list` | `anima_extension_set` L |
-| `sources` | `anima_sources_overview` (declarations, accounts and their last runs; covers `Query.sources` and `Query.sourceAccounts`) | `anima_source_account_sync`, `anima_source_account_set_paused`, `anima_source_account_remove` L (`confirm` must equal the account label, MCP-007) |
+| `sources` | `anima_sources_overview` (declarations, accounts and their last runs; covers `Query.sources` and `Query.sourceAccounts`) | `anima_source_account_sync`, `anima_source_account_set_paused`, `anima_source_account_remove` L (`confirm` must equal the account label, MCP-007), `anima_github_connect_start` L, `anima_github_connect_cancel` L, and the read tool `anima_github_connect_state` (any token; phase, failure, message, `appSlug`, `ownerLogin`, `installUrl`, `appSettingsUrl`, and the account id, label and health). The start tool returns `{ attempt: { id, phase, expiresAt }, link }` where `link` is the fixed `https://<hub>/connect/github`: no state, no ticket, no attempt id. Alone it does nothing until a signed-in operator presses Continue. The start tool's description tells the agent to give the link to the operator and not to open it. `appSlug`, `ownerLogin` and the label go through `mcp/untrusted.rs` (operator, 2026-11-14; ruling number to be assigned) |
 | `projects` | `anima_projects_search`, `anima_project_get` | `anima_repository_set_left_out` (one tool, `leftOut: bool`), `anima_project_resource_confirm` |
 
-Fields with no MCP tool, with the reason (MCP-004): `Mutation.connectGithubApp` takes a secret (`GithubAppInput.privateKey`); `Subscription.sourceAccountChanged` is a subscription, and no subscription has a tool. Text from GitHub (names, descriptions, paths) goes through `mcp/untrusted.rs` as named, length-limited fields (MCP-008).
+Fields with no MCP tool, with the reason (MCP-004): `Mutation.connectGithubApp` takes a secret (`GithubAppInput.privateKey`); `Subscription.sourceAccountChanged` is a subscription, and no subscription has a tool; `Mutation.openGithubConnect` returns a ONE-TIME link that opens the connection in a browser, and a tool may not return one (the hub also refuses it, FORBIDDEN, for a request that declares an agent); `Subscription.githubConnectChanged` is a subscription (operator, 2026-11-14; ruling number to be assigned). Text from GitHub (names, descriptions, paths) goes through `mcp/untrusted.rs` as named, length-limited fields (MCP-008).
 
 ## 8. The rule for new functions
 
@@ -391,6 +391,7 @@ tools that are on:
 3. **Login token, everything allowed.** All of the above, and also delete every device with its
    stored credentials, approve a VPN route, cancel builds, set every retention period to the
    minimum and start a release.
+   With a write key or a login token it can also start a GitHub connection (`anima_github_connect_start`), which does nothing until the operator presses Continue on the hub page and then Create and Install on GitHub, behind GitHub's own confirmation. It cannot finish the flow, and it is given no one-time link (operator, 2026-11-14; ruling number to be assigned).
 
 ## 10. Work
 
