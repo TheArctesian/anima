@@ -25,7 +25,7 @@ use tokio::{io::AsyncReadExt as _, net::TcpListener};
 use super::{COMMENT_PATH, REPOSITORY, comment, live_kit, reply, striding};
 use crate::{
     hub::start,
-    sources::{kit, kit_of, stub::Heard, stub::Stub, unreachable},
+    sources::{kit_of, stub::Heard, stub::Stub, unreachable},
 };
 
 fn sent(kit: &crate::sources::Kit, path: &str) -> Vec<Heard> {
