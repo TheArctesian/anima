@@ -656,6 +656,85 @@ p.dl-group { margin-top:18px; }
   .dl-row:not(.s-row-up) .c-meta > span:last-child { display:inline; }
   .dl-tiles { grid-template-columns:1fr; }
 }
+
+/* ---------- Running now (the bar's foot, above the hub) ---------- */
+.running { display:flex; flex-direction:column; gap:2px; padding-bottom:6px; }
+.running .caps { padding:4px 10px 6px; }
+.running a { display:flex; align-items:center; gap:9px; min-height:30px; padding:0 10px; border-radius:var(--radius-md); font-size:var(--text-xs); color:var(--text-secondary); }
+.running a:hover { background:var(--surface-hover); color:var(--text); }
+.running .mk { position:relative; display:inline-flex; color:var(--accent); font-size:15px; }
+.running .mk i { position:absolute; top:-3px; right:-3px; width:7px; height:7px; border-radius:999px; background:var(--up); border:1px solid var(--surface-sunken); animation:breathe 2.4s ease-in-out infinite; }
+.running b { font-weight:var(--weight-regular); color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.running .d { margin-left:auto; color:var(--text-tertiary); white-space:nowrap; font-variant-numeric:tabular-nums; }
+@keyframes breathe { 50% { opacity:.35; } }
+@media (max-width:767px) { .running { display:none; } }
+@media (prefers-reduced-motion: reduce) { .running .mk i { animation:none; } }
+
+/* ---------- Projects ---------- */
+.projects-list { display:flex; flex-direction:column; gap:40px; margin-top:32px; }
+.project-name { display:flex; align-items:center; gap:11px; min-height:var(--control-md); font-size:var(--text-md); font-weight:var(--weight-medium); color:var(--text); }
+.project-name > iconify-icon:first-child { color:var(--accent); }
+.project-name .go { color:var(--text-quiet); transition:transform .25s var(--ease-enter); }
+.project-name:hover .go { transform:translateX(4px); color:var(--text-tertiary); }
+.project-name .n { margin-left:auto; font-size:var(--text-sm); font-weight:var(--weight-regular); color:var(--text-tertiary); }
+.prows { list-style:none; border-bottom:1px solid var(--border-subtle); }
+.prows + .prows { margin-top:12px; }
+.prows li { display:flex; align-items:center; flex-wrap:wrap; gap:4px 14px; min-height:44px; padding:6px 4px; border-top:1px solid var(--border-subtle); }
+.prows .mk { display:inline-flex; color:var(--text-tertiary); font-size:16px; }
+.prows .nm { flex:1; min-width:0; font-family:var(--font-mono); font-size:var(--text-sm); overflow-wrap:anywhere; }
+.prows .kd { font-size:var(--text-sm); }
+.prows .st { font-size:var(--text-sm); color:var(--text-tertiary); white-space:nowrap; }
+.prows .st.ok { color:var(--up); }
+.prows .st.prop { color:var(--warning); }
+.prows .st.gone { color:var(--down-text); }
+.prows .sign { flex:1; min-width:0; font-family:var(--font-mono); font-size:var(--text-xs); color:var(--text-tertiary); }
+.prows li.left { opacity:.62; }
+.project-body { display:grid; grid-template-columns:minmax(0,1fr) 18rem; gap:48px; margin-top:32px; }
+.project-body .section:first-child { margin-top:0; }
+.project-body aside .kv { grid-template-columns:7.5rem 1fr; font-size:var(--text-sm); }
+.lede { font-size:var(--text-sm); color:var(--text-tertiary); margin:-6px 0 14px; }
+@media (max-width:1100px) { .project-body { grid-template-columns:1fr; } }
+
+/* ---------- Extensions and integrations ---------- */
+.setting.off > div:first-child { color:var(--text-tertiary); }
+.setting .always { font-size:var(--text-sm); color:var(--text-tertiary); }
+.setting .soon { font-size:var(--text-xs); color:var(--text-quiet); border:1px solid var(--border-subtle); border-radius:999px; padding:2px 8px; }
+.ext-more { display:flex; align-items:center; gap:8px; width:100%; padding:12px 4px; border:0; border-bottom:1px solid var(--border-subtle); background:none; color:var(--text-tertiary); font-size:var(--text-sm); cursor:pointer; }
+.ext-more:hover { color:var(--text); }
+.account { border-bottom:1px solid var(--border-subtle); padding:14px 4px; }
+.account-top { display:flex; align-items:flex-start; gap:12px; flex-wrap:wrap; }
+.account-top .who { flex:1; min-width:14rem; }
+.account-top .who b { font-weight:var(--weight-regular); }
+.account-top .who p { font-size:var(--text-sm); color:var(--text-tertiary); margin-top:2px; }
+.account-top .acts { display:flex; gap:4px; }
+.health { display:inline-flex; align-items:center; gap:6px; font-size:var(--text-sm); margin-left:10px; }
+.health .dot { width:7px; height:7px; border-radius:999px; background:currentColor; }
+.syncs { margin-top:10px; }
+.syncs summary { display:inline-flex; align-items:center; gap:6px; font-size:var(--text-sm); color:var(--text-tertiary); cursor:pointer; list-style:none; }
+.syncs summary::-webkit-details-marker { display:none; }
+.syncs summary iconify-icon { transition:transform .2s var(--ease-enter); }
+.syncs[open] summary iconify-icon { transform:rotate(90deg); }
+.syncs ol { list-style:none; margin-top:10px; border-top:1px solid var(--border-subtle); }
+.syncs li { display:grid; grid-template-columns:6.5rem 4rem 1fr auto; gap:12px; align-items:center; padding:8px 4px; border-bottom:1px solid var(--border-subtle); font-size:var(--text-sm); color:var(--text-secondary); }
+.syncs .counts { color:var(--text-tertiary); }
+.syncs .when { color:var(--text-tertiary); text-align:right; font-variant-numeric:tabular-nums; }
+.syncs .err { grid-column:1 / -1; color:var(--down-text); font-size:var(--text-xs); }
+@media (max-width:767px) { .syncs li { grid-template-columns:1fr auto; } .syncs .counts { grid-column:1 / -1; } }
+
+/* ---------- Dialog (Connect GitHub) ---------- */
+.scrim { position:fixed; inset:0; z-index:40; display:grid; place-items:center; padding:16px; background:rgba(10,12,16,.55); }
+.scrim[hidden] { display:none; }
+.dialog { width:min(34rem, 100%); max-height:calc(100vh - 32px); overflow:auto; border-radius:var(--radius-md); padding:24px; }
+.dialog h2 { display:flex; align-items:center; gap:10px; font-size:var(--text-lg); font-weight:var(--weight-medium); }
+.dialog h2 iconify-icon { color:var(--accent); }
+.dialog > p { margin-top:8px; font-size:var(--text-sm); color:var(--text-secondary); }
+.dialog ol.steps { margin:16px 0 4px; padding-left:20px; font-size:var(--text-sm); color:var(--text-tertiary); display:flex; flex-direction:column; gap:4px; }
+.dialog form { display:flex; flex-direction:column; gap:14px; margin-top:20px; }
+.dialog .two { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.dialog textarea { min-height:6.5rem; resize:vertical; border:1px solid var(--border-strong); border-radius:var(--radius-md); background:var(--surface-base); padding:8px 10px; font-family:var(--font-mono); font-size:var(--text-xs); color:var(--text); -webkit-text-security:disc; }
+.dialog small { font-size:var(--text-xs); color:var(--text-tertiary); }
+.dialog .foot { display:flex; justify-content:flex-end; gap:8px; margin-top:8px; }
+@media (max-width:767px) { .dialog .two { grid-template-columns:1fr; } }
 </style>
 </head>
 <body>
@@ -687,9 +766,16 @@ p.dl-group { margin-top:18px; }
     <ul class="nav">
       <li><a href="#devices" data-nav="devices" title="Devices"><iconify-icon icon="carbon:bare-metal-server"></iconify-icon>Devices<span class="count num">12</span></a></li>
       <li><a href="#sessions" data-nav="sessions" title="Live sessions"><iconify-icon icon="carbon:screen"></iconify-icon>Live sessions<span class="count num">2</span></a></li>
+      <li><a href="#projects" data-nav="projects" title="Projects"><iconify-icon icon="carbon:folder"></iconify-icon>Projects<span class="count num">3</span></a></li>
       <li><a href="#devices" title="Builds"><iconify-icon icon="carbon:build-tool"></iconify-icon>Builds</a></li>
     </ul>
     <div class="foot">
+      <!-- Running now: what is in progress, at the foot of the bar above the hub; it takes no room when nothing runs. -->
+      <section class="running" aria-label="Running now">
+        <span class="caps">Running now</span>
+        <a href="#project" title="anima-site · Building · 2 min"><span class="mk"><iconify-icon icon="carbon:build-tool"></iconify-icon><i></i></span><b>anima-site</b><span class="d">Building · 2 min</span></a>
+        <a href="#sessions" title="atlas · RDP"><span class="mk"><iconify-icon icon="carbon:screen"></iconify-icon><i></i></span><b>atlas</b><span class="d">RDP</span></a>
+      </section>
       <div class="hub"><span class="status s-up"><span class="dot"></span></span><span>Connected</span></div>
       <ul class="nav"><li><a href="#settings" data-nav="settings" title="Settings"><iconify-icon icon="carbon:settings"></iconify-icon>Settings</a></li></ul>
     </div>
@@ -920,6 +1006,88 @@ p.dl-group { margin-top:18px; }
       </div>
     </section>
 
+
+    <!-- ======================= Projects ======================= -->
+    <!-- Content follows the client's Projects page (PRO-001, PRO-002, PRO-004); a project is its name over hairline rows of its repositories and the places it runs. -->
+    <section class="screen frame" id="screen-projects" hidden>
+      <div class="resolve">
+        <div class="label"><iconify-icon icon="carbon:folder"></iconify-icon><span class="rule"></span>From GitHub, through Integrations</div>
+        <div class="page-head"><div><h1 class="display">Projects</h1></div>
+          <div class="actions"><div class="seg" role="radiogroup" aria-label="Which projects"><button aria-pressed="true">Projects <span class="n">3</span></button><button>Left out <span class="n">1</span></button></div></div>
+        </div>
+      </div>
+      <div class="projects-list resolve">
+        <article>
+          <a class="project-name" href="#project"><iconify-icon icon="carbon:folder"></iconify-icon>anima-site<iconify-icon class="go" icon="carbon:chevron-right"></iconify-icon><span class="n">1 repository · 1 resource</span></a>
+          <ul class="prows">
+            <li><span class="mk"><iconify-icon icon="simple-icons:github"></iconify-icon></span><span class="nm">acme/anima-site</span><span class="st">Imported</span><button class="btn ghost sm">Leave out</button></li>
+          </ul>
+          <ul class="prows">
+            <li><span class="mk"><iconify-icon icon="simple-icons:cloudflare"></iconify-icon></span><span class="kd">Cloudflare</span><span class="st prop">Found in the repository</span><span class="sign">wrangler.toml</span></li>
+          </ul>
+        </article>
+        <article>
+          <a class="project-name" href="#project"><iconify-icon icon="carbon:folder"></iconify-icon>hub-dashboard<iconify-icon class="go" icon="carbon:chevron-right"></iconify-icon><span class="n">2 repositories · 2 resources</span></a>
+          <ul class="prows">
+            <li><span class="mk"><iconify-icon icon="simple-icons:github"></iconify-icon></span><span class="nm">acme/hub-dashboard</span><span class="st">Imported</span><button class="btn ghost sm">Leave out</button></li>
+            <li><span class="mk"><iconify-icon icon="simple-icons:github"></iconify-icon></span><span class="nm">acme/hub-dashboard-infra</span><span class="st">Archived on GitHub</span><button class="btn ghost sm">Leave out</button></li>
+          </ul>
+          <ul class="prows">
+            <li><span class="mk"><iconify-icon icon="carbon:bare-metal-server"></iconify-icon></span><span class="kd">Server</span><span class="st ok">Confirmed</span></li>
+            <li><span class="mk"><iconify-icon icon="simple-icons:vercel"></iconify-icon></span><span class="kd">Vercel</span><span class="st prop">Found in the repository</span><span class="sign">vercel.json</span></li>
+          </ul>
+        </article>
+        <article>
+          <a class="project-name" href="#project"><iconify-icon icon="carbon:folder"></iconify-icon>old-tool<iconify-icon class="go" icon="carbon:chevron-right"></iconify-icon><span class="n">1 repository</span></a>
+          <ul class="prows">
+            <li><span class="mk"><iconify-icon icon="simple-icons:github"></iconify-icon></span><span class="nm">acme/old-tool</span><span class="st gone">No longer on GitHub</span><button class="btn ghost sm">Leave out</button></li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <!-- ======================= Project ======================= -->
+    <!-- One detail bar, as every detail page: the project, the state of its first repository, and the way out to GitHub. -->
+    <section class="screen frame" id="screen-project" hidden>
+      <header class="detail-bar resolve">
+        <div class="tb">
+          <nav class="crumb" aria-label="Breadcrumb"><a href="#projects">Projects</a><span class="slash">/</span><iconify-icon icon="carbon:folder"></iconify-icon><h1>hub-dashboard</h1></nav>
+          <span class="status s-up"><span class="dot"></span>Imported</span>
+          <span class="mono quiet-mono">acme/hub-dashboard</span>
+          <div class="tb-actions"><a class="btn" href="#project"><iconify-icon icon="simple-icons:github"></iconify-icon>Open in GitHub</a></div>
+        </div>
+        <div class="tb-fold"><div>
+          <p class="tb-reason"><span class="s-warning"><iconify-icon icon="carbon:warning-alt"></iconify-icon></span><span><span class="t">One resource was found in the repository and is not confirmed.</span></span><a href="#project" class="inline-link">Review<iconify-icon icon="carbon:arrow-right"></iconify-icon></a></p>
+        </div></div>
+        <div style="height:16px"></div>
+      </header>
+      <div class="project-body resolve">
+        <div>
+          <div class="section"><div class="label"><iconify-icon icon="simple-icons:github"></iconify-icon><span class="rule"></span>Repositories</div>
+            <ul class="prows">
+              <li><span class="mk"><iconify-icon icon="simple-icons:github"></iconify-icon></span><span class="nm">acme/hub-dashboard</span><span class="st">Imported</span><button class="btn ghost sm">Leave out</button></li>
+              <li><span class="mk"><iconify-icon icon="simple-icons:github"></iconify-icon></span><span class="nm">acme/hub-dashboard-infra</span><span class="st">Archived on GitHub</span><button class="btn ghost sm">Leave out</button></li>
+              <li class="left"><span class="mk"><iconify-icon icon="simple-icons:github"></iconify-icon></span><span class="nm">acme/hub-dashboard-sketches</span><span class="st">Left out</span><button class="btn sm"><iconify-icon icon="carbon:renew"></iconify-icon>Restore</button></li>
+            </ul>
+          </div>
+          <div class="section"><div class="label"><iconify-icon icon="carbon:cloud-upload"></iconify-icon><span class="rule"></span>Resources</div>
+            <p class="lede">Where the project runs. A sign in the repository proposes one; it counts once you confirm it.</p>
+            <ul class="prows">
+              <li><span class="mk"><iconify-icon icon="carbon:bare-metal-server"></iconify-icon></span><span class="kd">Server</span><span class="st ok">Confirmed</span><span class="sign">Dockerfile, compose.yaml</span></li>
+              <li><span class="mk"><iconify-icon icon="simple-icons:vercel"></iconify-icon></span><span class="kd">Vercel</span><span class="st prop">Found in the repository</span><span class="sign">vercel.json</span><button class="btn sm"><iconify-icon icon="carbon:checkmark"></iconify-icon>Confirm</button></li>
+            </ul>
+          </div>
+        </div>
+        <aside class="section" aria-label="About this project">
+          <div class="label"><iconify-icon icon="carbon:information"></iconify-icon><span class="rule"></span>About</div>
+          <dl class="kv">
+            <dt>Source</dt><dd>GitHub · Personal</dd>
+            <dt>Synced</dt><dd class="num">4 min ago</dd>
+            <dt>Visibility</dt><dd>Private</dd>
+          </dl>
+        </aside>
+      </div>
+    </section>
     <!-- ======================= Settings ======================= -->
     <section class="screen frame" id="screen-settings" hidden>
       <div class="resolve">
@@ -937,6 +1105,8 @@ p.dl-group { margin-top:18px; }
           <a href="#settings"><iconify-icon icon="carbon:update-now"></iconify-icon>Updates</a>
           <a href="#settings"><iconify-icon icon="carbon:api-key"></iconify-icon>API keys</a>
           <a href="#settings"><iconify-icon icon="carbon:bot"></iconify-icon>MCP</a>
+          <a href="#settings"><iconify-icon icon="carbon:plug"></iconify-icon>Extensions</a>
+          <a href="#settings"><iconify-icon icon="carbon:data-share"></iconify-icon>Integrations</a>
           <a href="#settings"><iconify-icon icon="carbon:vpn"></iconify-icon>VPN</a>
         </nav>
         <div>
@@ -961,6 +1131,42 @@ p.dl-group { margin-top:18px; }
             </ul>
             <button class="btn" style="margin-top:14px"><iconify-icon icon="carbon:add"></iconify-icon>Create API key</button>
           </div>
+          <div class="section"><div class="label"><iconify-icon icon="carbon:plug"></iconify-icon><span class="rule"></span>Extensions</div>
+            <p class="lede" style="margin-top:0">What Anima does besides devices. Each starts off; a change is saved at once.</p>
+            <div style="border-top:1px solid var(--border-subtle)">
+              <div class="setting"><div>Integrations<p>Part of Anima. Always on.</p></div><span class="always">On</span></div>
+              <div class="setting"><div>Projects<p>Your GitHub repositories as projects, and where each one runs.</p></div><button class="switch" role="switch" aria-checked="true" aria-label="Projects"></button></div>
+              <div class="setting"><div>Model gateway<p>Needs Secrets</p></div><button class="switch" role="switch" aria-checked="false" aria-label="Model gateway"></button></div>
+              <div class="setting off"><div>Secrets<p>Model gateway needs it. Setting Model gateway on sets this on too.</p></div><button class="switch" role="switch" aria-checked="false" aria-label="Secrets"></button></div>
+              <div class="setting off"><div>Map</div><span class="soon">Not built yet</span></div><div class="setting off"><div>Writing</div><span class="soon">Not built yet</span></div>
+              <button class="ext-more"><iconify-icon icon="carbon:chevron-down"></iconify-icon>8 more not built yet</button>
+            </div>
+          </div>
+          <div class="section"><div class="label"><iconify-icon icon="carbon:data-share"></iconify-icon><span class="rule"></span>Integrations</div>
+            <p class="lede" style="margin-top:0">The places Anima reads records from. Each account keeps its key in the hub.</p>
+            <div class="setting" style="border-top:1px solid var(--border-subtle)"><div>GitHub<p>Reads your repositories through a GitHub App that you make in your own account.</p></div><a class="btn" href="#settings/connect"><iconify-icon icon="simple-icons:github"></iconify-icon>Connect GitHub</a></div>
+            <div class="account">
+              <div class="account-top">
+                <div class="who"><b>Personal</b><span class="health s-up"><span class="dot"></span>OK</span><p>GitHub App · Synced 4 min ago · It reads on schedule.</p></div>
+                <div class="acts"><button class="btn ghost sm"><iconify-icon icon="carbon:renew"></iconify-icon>Sync now</button><button class="btn ghost sm"><iconify-icon icon="carbon:pause"></iconify-icon>Pause</button><button class="btn danger sm"><iconify-icon icon="carbon:unlink"></iconify-icon>Disconnect</button></div>
+              </div>
+              <details class="syncs" open>
+                <summary><iconify-icon icon="carbon:chevron-right"></iconify-icon>Recent syncs</summary>
+                <ol>
+                  <li><span>On schedule</span><span class="s-up">Done</span><span class="counts">2 inserted · 5 changed · 41 unchanged</span><span class="when">4 min ago · 3 s</span></li>
+                  <li><span>By hand</span><span class="s-up">Done</span><span class="counts">1 changed · 47 unchanged · 1 removed</span><span class="when">1 h ago · 2 s</span></li>
+                  <li><span>On schedule</span><span class="s-down">Failed</span><span class="counts">Nothing read</span><span class="when">3 h ago · 30 s</span><span class="err">GitHub answered 502 for acme/hub-dashboard; the run tried again later.</span></li>
+                </ol>
+              </details>
+            </div>
+            <div class="account">
+              <div class="account-top">
+                <div class="who"><b>Work</b><span class="health s-warning"><span class="dot"></span>Needs reconnect</span><p>GitHub App · Synced 2 days ago · The source refused the key. Disconnect, then connect again with a working key.</p></div>
+                <div class="acts"><button class="btn ghost sm"><iconify-icon icon="carbon:renew"></iconify-icon>Sync now</button><button class="btn ghost sm"><iconify-icon icon="carbon:pause"></iconify-icon>Pause</button><button class="btn danger sm"><iconify-icon icon="carbon:unlink"></iconify-icon>Disconnect</button></div>
+              </div>
+            </div>
+          </div>
+
 </div>
       </div>
     </section>
@@ -1013,6 +1219,24 @@ p.dl-group { margin-top:18px; }
   </div>
 </div>
 
+<!-- ======================= Connect GitHub (dialog) ======================= -->
+<div class="scrim" id="connect" hidden>
+  <div class="dialog material-overlay resolve" role="dialog" aria-modal="true" aria-labelledby="connect-title">
+    <h2 id="connect-title"><iconify-icon icon="simple-icons:github"></iconify-icon>Connect GitHub</h2>
+    <p>You make the GitHub App in your own account and install it; Anima does not make it. The hub seals the key, and Anima does not show it again.</p>
+    <ol class="steps"><li>GitHub › Settings › Developer settings › GitHub Apps › New.</li><li>Give it read access to contents and metadata, then install it.</li><li>Generate a private key and enter it below.</li></ol>
+    <form onsubmit="event.preventDefault(); location.hash='settings'">
+      <label class="field"><span>Name</span><span class="input"><input value="Personal"></span><small>What this account is called in Anima.</small></label>
+      <div class="two">
+        <label class="field"><span>App ID</span><span class="input"><input class="mono" inputmode="numeric" placeholder="123456"></span></label>
+        <label class="field"><span>Installation ID</span><span class="input"><input class="mono" inputmode="numeric" placeholder="45678901"></span></label>
+      </div>
+      <label class="field"><span>Private key</span><textarea spellcheck="false" placeholder="-----BEGIN RSA PRIVATE KEY-----"></textarea><small>Paste the whole key, or <a class="inline-link" href="#settings/connect" style="color:var(--accent)">choose the .pem file</a>. The field hides it.</small></label>
+      <div class="foot"><a class="btn ghost" href="#settings">Cancel</a><button class="btn primary"><iconify-icon icon="carbon:connect"></iconify-icon>Connect</button></div>
+    </form>
+  </div>
+</div>
+
 <!-- ======================= Switcher ======================= -->
 <nav class="switcher" aria-label="Mockup screens">
   <button data-go="signin">Sign in</button>
@@ -1020,7 +1244,10 @@ p.dl-group { margin-top:18px; }
   <button data-go="device">Device</button>
   <button data-go="device/settings">Device settings</button>
   <button data-go="sessions">Sessions</button>
+  <button data-go="projects">Projects</button>
+  <button data-go="project">Project</button>
   <button data-go="settings">Settings</button>
+  <button data-go="settings/connect">Connect GitHub</button>
   <button data-go="specimen">Specimen</button>
   <span class="sep"></span>
   <button id="theme" aria-label="Switch appearance"><iconify-icon icon="carbon:contrast"></iconify-icon></button>
@@ -1240,7 +1467,9 @@ function show() {
   document.getElementById("screen-signin").hidden = !signin;
   document.getElementById("app").hidden = signin;
   document.querySelectorAll(".screen").forEach((s) => (s.hidden = s.id !== `screen-${name}`));
-  document.querySelectorAll("[data-nav]").forEach((a) => a.toggleAttribute("aria-current", a.dataset.nav === (name === "device" ? "devices" : name)));
+  document.getElementById("connect").hidden = full !== "settings/connect";
+  const navOf = { device: "devices", project: "projects" };
+  document.querySelectorAll("[data-nav]").forEach((a) => a.toggleAttribute("aria-current", a.dataset.nav === (navOf[name] ?? name)));
   document.querySelectorAll("[data-nav][aria-current]").forEach((a) => a.setAttribute("aria-current", "page"));
   document.querySelectorAll("[data-go]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.go === full)));
   document.getElementById("page").scrollTop = 0;
