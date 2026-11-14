@@ -5,6 +5,7 @@ mod ending;
 mod machine;
 mod slot;
 mod values;
+mod watch;
 
 use chrono::{DateTime, TimeDelta, TimeZone as _, Utc};
 use ring::rand::SystemRandom;

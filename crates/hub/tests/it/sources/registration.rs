@@ -8,6 +8,7 @@ mod flow;
 mod leaks;
 mod pages;
 mod refusals;
+mod review;
 
 use serde_json::{Value, json};
 

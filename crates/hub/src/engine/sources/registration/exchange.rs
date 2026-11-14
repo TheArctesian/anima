@@ -5,8 +5,11 @@
 //! converted, so a replay converts nothing. The key moves at once into the attempt; GitHub's
 //! two other secrets are never read. "App created" is audited as soon as GitHub made an App, so
 //! the operator can still delete it after a cancel or a restart.
+//!
+//! The conversion, the audit entry and the step to `APP_CREATED` run in a task of their own, so
+//! a browser that leaves does not stop them; a [`Settle`] fails the attempt if that task is
+//! dropped or panics before the App is kept.
 
-use ring::rand::SystemRandom;
 use source_exchange::{Converted, Declaration};
 use uuid::Uuid;
 use zeroize::Zeroizing;
@@ -14,8 +17,8 @@ use zeroize::Zeroizing;
 use super::{
     GITHUB,
     attempt::{App, Exchange, Failure, Refusal, Starter},
-    attempts::Attempts,
-    binding::Minted,
+    attempts::{Attempts, Settle},
+    binding::{Minted, Step},
     trail,
 };
 use crate::{
@@ -31,8 +34,10 @@ use crate::{
 
 /// Where the browser goes after `/created`.
 pub enum Created {
-    /// To GitHub's install page, with a new state S2; the URL holds S2.
+    /// To GitHub's install page with the state S2; the URL holds S2.
     Install(Zeroizing<String>),
+    /// The App is made and the request did not bring the spent S1: the waiting page, no change.
+    Waiting,
     /// Refused; the attempt is as it was.
     Refused(Refusal),
     /// The App could not be made or used; the attempt failed.
@@ -49,16 +54,49 @@ pub async fn created(
     let now = scheduling.clock.now();
     let begun = attempts.step(None, now, |held| {
         let exchange = held.begin_exchange(cookie, state)?;
-        Ok((exchange, held.id(), held.request().by.clone()))
+        let slug = held.snapshot().app.map(|app| app.slug);
+        Ok((exchange, held.id(), held.request().by.clone(), slug))
     });
-    match begun {
-        Err(refusal) => Created::Refused(refusal),
-        Ok((Exchange::Made, ..)) => install(scheduling, attempts, None, cookie),
-        Ok((Exchange::Fresh, id, by)) => {
-            let converted = converted(scheduling, code.unwrap_or_default()).await;
-            made(scheduling, attempts, (id, by), converted).await
+    let (exchange, id, by, slug) = match begun {
+        Ok(begun) => begun,
+        Err(refusal) => return Created::Refused(refusal),
+    };
+    // `begin_exchange` found the cookie to be the bound browser's.
+    let s2 = Minted::state(cookie.unwrap_or_default(), Step::Install);
+    match exchange {
+        Exchange::Waiting => Created::Waiting,
+        Exchange::Made => slug
+            .and_then(|slug| location(scheduling, &slug, &s2))
+            .map_or(Created::Refused(Refusal::Conflict), Created::Install),
+        Exchange::Fresh => {
+            let code = Zeroizing::new(code.unwrap_or_default().to_owned());
+            let task = tokio::spawn(exchanged(
+                scheduling.clone(),
+                attempts.clone(),
+                (id, by),
+                (code, s2),
+            ));
+            task.await.unwrap_or(Created::Failed)
         }
     }
+}
+
+/// The exchange for attempt `id`, in its own task: convert, audit, keep the App.
+async fn exchanged(
+    scheduling: Scheduling,
+    attempts: Attempts,
+    (id, by): (Uuid, Starter),
+    (code, s2): (Zeroizing<String>, Minted),
+) -> Created {
+    // Does nothing once the exchange has ended; fails it if this task is lost before then.
+    let _settle = Settle::new(
+        attempts.clone(),
+        id,
+        scheduling.clock.clone(),
+        |held, now| held.exchange_failed(Failure::GithubUnreachable, None, now),
+    );
+    let converted = converted(&scheduling, &code).await;
+    made(&scheduling, &attempts, (id, by), (converted, &s2)).await
 }
 
 /// The App and its key from GitHub's reply, or the failure.
@@ -88,12 +126,13 @@ async fn converted(scheduling: &Scheduling, code: &str) -> Result<Converted, Fai
     })
 }
 
-/// Keeps the App made for attempt `id` and sends the browser to Install; or fails the attempt.
+/// Keeps the App made for attempt `id` and sends the browser to Install with `s2`; or fails
+/// the attempt.
 async fn made(
     scheduling: &Scheduling,
     attempts: &Attempts,
     (id, by): (Uuid, Starter),
-    converted: Result<Converted, Failure>,
+    (converted, s2): (Result<Converted, Failure>, &Minted),
 ) -> Created {
     let converted = match converted {
         Ok(converted) => converted,
@@ -106,15 +145,22 @@ async fn made(
     };
     let key = converted.private_key_pem;
     audit(scheduling, by, &app).await;
-    if AppSigner::read(app.id, key.as_bytes()).is_err() {
+    let Some(location) = (AppSigner::read(app.id, key.as_bytes()).ok())
+        .and_then(|_| location(scheduling, &app.slug, s2))
+    else {
         return failed(
             attempts,
             id,
             (Failure::ReplyUnusable, Some(app)),
             scheduling,
         );
+    };
+    let now = scheduling.clock.now();
+    // A fresh App whose attempt ended meanwhile fails the page; the attempt keeps its facts.
+    match attempts.step(Some(id), now, |held| held.created(app, key, s2.hash())) {
+        Ok(()) => Created::Install(location),
+        Err(_) => Created::Failed,
     }
-    install(scheduling, attempts, Some((id, app, key)), None)
 }
 
 fn failed(
@@ -131,43 +177,16 @@ fn failed(
     Created::Failed
 }
 
-/// Mints S2 and sends the browser to Install: for the App just made (`fresh`), or again for
-/// the bound browser with `cookie`. A fresh App whose attempt ended meanwhile fails the page.
-fn install(
-    scheduling: &Scheduling,
-    attempts: &Attempts,
-    fresh: Option<(Uuid, App, Zeroizing<String>)>,
-    cookie: Option<&str>,
-) -> Created {
-    let (Some(registration), Ok(s2)) = (
-        super::github(&scheduling.registry),
-        Minted::new(&SystemRandom::new()),
-    ) else {
-        return Created::Refused(Refusal::Conflict);
-    };
-    let now = scheduling.clock.now();
-    let was_fresh = fresh.is_some();
-    let stepped = match fresh {
-        Some((id, app, key)) => attempts.step(Some(id), now, |held| {
-            let slug = app.slug.clone();
-            held.created(app, key, s2.hash()).map(|()| slug)
-        }),
-        None => attempts.step(None, now, |held| {
-            held.send_to_install(cookie, s2.hash())?;
-            let slug = held.snapshot().app.map(|app| app.slug);
-            slug.ok_or(Refusal::Conflict)
-        }),
-    };
-    match stepped {
-        Ok(slug) => Created::Install(Zeroizing::new(format!(
-            "{}{}?state={}",
-            registration.web_base,
-            (registration.install_path)(&slug),
-            s2.text()
-        ))),
-        Err(_) if was_fresh => Created::Failed,
-        Err(refusal) => Created::Refused(refusal),
-    }
+/// GitHub's install page for the App `slug`, with the state `s2`; `None` when the hub cannot
+/// make Apps on GitHub.
+fn location(scheduling: &Scheduling, slug: &str, s2: &Minted) -> Option<Zeroizing<String>> {
+    let registration = super::github(&scheduling.registry)?;
+    Some(Zeroizing::new(format!(
+        "{}{}?state={}",
+        registration.web_base,
+        (registration.install_path)(slug),
+        s2.text()
+    )))
 }
 
 /// Writes "App created" for the operator who started the attempt. A failed write is logged

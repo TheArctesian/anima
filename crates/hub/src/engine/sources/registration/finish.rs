@@ -2,15 +2,17 @@
 //! (K-E1 Section 10a).
 //!
 //! The store is taken under the lock (`Finishing`), so the `/installed` callback and the poll
-//! cannot both store. The audit entry is made for the operator and the address captured at the
-//! start. An unreachable mint or a database error goes back to `APP_CREATED` for the next poll;
-//! a refused key ends the attempt with `KEY_REFUSED`.
+//! cannot both store. It runs in a task of its own, so a browser that leaves does not stop it,
+//! and a [`Settle`] sends the attempt back to `APP_CREATED` if the store is dropped or panics.
+//! The audit entry is made for the operator and the address captured at the start. An
+//! unreachable mint or a database error goes back to `APP_CREATED` for the next poll; a refused
+//! key ends the attempt with `KEY_REFUSED`.
 
 use uuid::Uuid;
 
 use super::{
-    attempt::{Attempt, Failure, Finished},
-    attempts::Attempts,
+    attempt::{Failure, Finished},
+    attempts::{Attempts, Settle},
 };
 use crate::{
     engine::sources::{
@@ -21,14 +23,36 @@ use crate::{
 };
 
 /// Stores attempt `id` with installation `installation`, when it waits for Install and no
-/// other caller stores it. `None` when it did not take the store; otherwise how it went.
+/// other caller stores it. `None` when it did not take the store or its task was lost;
+/// otherwise how it went. The store goes on when the caller is dropped.
 pub async fn finish(
     scheduling: &Scheduling,
     attempts: &Attempts,
     (id, installation): (Uuid, u64),
 ) -> Option<Finished> {
+    let task = tokio::spawn(store(
+        scheduling.clone(),
+        attempts.clone(),
+        (id, installation),
+    ));
+    task.await.ok().flatten()
+}
+
+/// The store itself, in its own task.
+async fn store(
+    scheduling: Scheduling,
+    attempts: Attempts,
+    (id, installation): (Uuid, u64),
+) -> Option<Finished> {
     let now = scheduling.clock.now();
-    let finish = attempts.step(Some(id), now, Attempt::begin_finish).ok()?;
+    let finish = attempts
+        .step(Some(id), now, |held| held.begin_finish(now))
+        .ok()?;
+    let round = finish.round;
+    // Dropped or panicked before the outcome is known: back to `APP_CREATED`.
+    let mut settle = Settle::new(attempts, id, scheduling.clock.clone(), move |held, now| {
+        held.finished(round, Finished::Again, now);
+    });
     let trail = Trail::new(&scheduling.bus, (finish.by.operator, finish.by.client), now);
     let connection = Connection {
         label: finish.label,
@@ -36,18 +60,15 @@ pub async fn finish(
         installation_id: installation.to_string(),
         private_key: finish.key,
     };
-    let stored = establish(scheduling, trail, connection).await;
+    let stored = establish(&scheduling, trail, connection).await;
     if let Err(error) = &stored {
         // Fixed words only: the error holds no key, reply or token (LOG-007).
         tracing::warn!(%error, "github connection could not be stored");
     }
     let outcome = outcome(&stored);
-    let now = scheduling.clock.now();
-    // The attempt is held in `Finishing` until this step: nothing can replace it meanwhile.
-    let _ = attempts.step(Some(id), now, |held| {
-        held.finished(outcome, now);
-        Ok(())
-    });
+    settle.instead(move |held, now| held.finished(round, outcome, now));
+    // The attempt is held in `Finishing` until the settle runs: nothing can replace it meanwhile.
+    drop(settle);
     Some(outcome)
 }
 

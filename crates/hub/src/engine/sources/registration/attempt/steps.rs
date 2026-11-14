@@ -49,8 +49,12 @@ pub struct Request {
 pub enum Exchange {
     /// The state matched and is now spent: convert the code.
     Fresh,
-    /// The App is already made: convert nothing, send the browser to Install again.
+    /// The App is already made and the spent state came back: convert nothing, send the
+    /// browser to Install again with the same state.
     Made,
+    /// The App is already made and the spent state did not come back (a cross-site hit, say):
+    /// convert nothing, change nothing, show the waiting page.
+    Waiting,
 }
 
 /// What the store at the end needs: taken under the lock with the stage `Finishing`.
@@ -59,6 +63,8 @@ pub struct Finish {
     pub app_id: u64,
     pub key: Zeroizing<String>,
     pub by: Starter,
+    /// Which store this is: its outcome counts for this round only.
+    pub round: u32,
 }
 
 /// How the store at the end went.

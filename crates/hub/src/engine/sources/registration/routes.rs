@@ -21,7 +21,7 @@ use zeroize::Zeroizing;
 use super::{
     attempt::{Finished, Phase, Refusal},
     attempts::Attempts,
-    binding::Minted,
+    binding::{Minted, Step},
     exchange::{Created, created},
     github,
     installation::verified,
@@ -186,15 +186,14 @@ async fn open(State(flow): State<GithubFlow>, headers: HeaderMap) -> Response {
 }
 
 /// `GET /connect/github/start`: the bound browser gets the form that posts the manifest to
-/// GitHub with a fresh state S1.
+/// GitHub with its state S1, the same on every hit, so a second hit does not spoil the first.
 async fn start(State(flow): State<GithubFlow>, headers: HeaderMap) -> Response {
     let cookie = cookie_value(&headers, COOKIE);
-    let (Some(registration), Ok(s1)) = (
-        github(&flow.scheduling.registry),
-        Minted::new(&SystemRandom::new()),
-    ) else {
+    let Some(registration) = github(&flow.scheduling.registry) else {
         return notice(StatusCode::INTERNAL_SERVER_ERROR, Notice::TryAgain);
     };
+    // Used only once `send_to_github` has found the cookie to be the bound browser's.
+    let s1 = Minted::state(cookie.unwrap_or_default(), Step::Create);
     let now = flow.scheduling.clock.now();
     let sent = flow.attempts.step(None, now, |held| {
         held.send_to_github(cookie, s1.hash())?;
@@ -238,6 +237,7 @@ async fn back_from_create(
     );
     match created(&flow.scheduling, &flow.attempts, cookie, (code, state)).await {
         Created::Install(location) => see_other(&location, None),
+        Created::Waiting => notice(StatusCode::OK, Notice::Finishing),
         Created::Refused(Refusal::Conflict) => notice(StatusCode::CONFLICT, Notice::StepPassed),
         Created::Refused(_) => notice(StatusCode::BAD_REQUEST, Notice::NotThisBrowser),
         Created::Failed => last(StatusCode::OK, Notice::Failed),
@@ -245,8 +245,8 @@ async fn back_from_create(
 }
 
 /// `GET /connect/github/installed?installation_id&setup_action&state`: the browser is back from
-/// Install. The ID is checked with GitHub before anything is stored; a browser that is not the
-/// bound one only wakes the poll.
+/// Install. The ID is checked with GitHub before anything is stored. The bound browser with a
+/// state that does not match only wakes the poll; any other browser changes nothing.
 async fn back_from_install(
     State(flow): State<GithubFlow>,
     headers: HeaderMap,
@@ -260,15 +260,18 @@ async fn back_from_install(
     let now = flow.scheduling.clock.now();
     let seen = flow.attempts.step(None, now, |held| {
         // An ended attempt has spent its state: the cookie alone shows its last page.
-        let bound = if held.ended() {
+        let back = if held.ended() {
             held.bound(cookie)
         } else {
             held.back_from_install(cookie, state)
         };
-        Ok((bound, held.id(), held.snapshot().phase, held.waiting_app()))
+        let known = (held.bound(cookie), back);
+        Ok((known, held.id(), held.snapshot().phase, held.waiting_app()))
     });
-    let Ok((true, attempt, phase, waiting)) = seen else {
-        flow.attempts.wake();
+    let Ok(((_, true), attempt, phase, waiting)) = seen else {
+        if matches!(seen, Ok(((true, _), ..))) {
+            flow.attempts.wake();
+        }
         return notice(StatusCode::OK, Notice::MaybeInstalled);
     };
     match (phase, waiting, id) {

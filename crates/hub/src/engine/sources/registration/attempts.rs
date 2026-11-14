@@ -5,6 +5,9 @@
 //! attempt that runs and returns under it. Each step first expires an attempt whose time is
 //! over and drops one that ended more than 10 minutes ago; a change is published after the
 //! lock is released.
+//!
+//! Work that moves the attempt between two phases across an `await` (the exchange, the store)
+//! holds a [`Settle`]: when that work is dropped or panics, the attempt still leaves the phase.
 
 use std::{
     sync::{Arc, Mutex, PoisonError},
@@ -16,6 +19,7 @@ use tokio::sync::{Notify, broadcast};
 use uuid::Uuid;
 
 use super::attempt::{Attempt, Refusal, Snapshot};
+use crate::clock::Clock;
 
 /// How many changes a slow subscriber may fall behind before it skips some.
 const CAPACITY: usize = 32;
@@ -134,5 +138,54 @@ impl Attempts {
     #[must_use]
     pub const fn poll(&self) -> Duration {
         self.poll
+    }
+}
+
+/// The last step of work that holds attempt `id` between two phases: it runs when this is
+/// dropped, at the time of `clock`, whether the work ended, was dropped or panicked. The step
+/// runs under the lock, never across an `await`.
+pub struct Settle {
+    attempts: Attempts,
+    id: Uuid,
+    clock: Arc<dyn Clock>,
+    step: Option<SettleStep>,
+}
+
+/// What a [`Settle`] does to the attempt, at the time it runs.
+type SettleStep = Box<dyn FnOnce(&mut Attempt, DateTime<Utc>) + Send>;
+
+impl Settle {
+    /// Runs `step` on attempt `id` when dropped, unless [`Settle::instead`] replaces it.
+    #[must_use]
+    pub fn new(
+        attempts: Attempts,
+        id: Uuid,
+        clock: Arc<dyn Clock>,
+        step: impl FnOnce(&mut Attempt, DateTime<Utc>) + Send + 'static,
+    ) -> Self {
+        Self {
+            attempts,
+            id,
+            clock,
+            step: Some(Box::new(step)),
+        }
+    }
+
+    /// Runs `step` instead of the earlier one: the work knows how it ended.
+    pub fn instead(&mut self, step: impl FnOnce(&mut Attempt, DateTime<Utc>) + Send + 'static) {
+        self.step = Some(Box::new(step));
+    }
+}
+
+impl Drop for Settle {
+    fn drop(&mut self) {
+        if let Some(step) = self.step.take() {
+            let now = self.clock.now();
+            // `NotFound` means the attempt was replaced: nothing is left to settle.
+            let _ = self.attempts.step(Some(self.id), now, |held| {
+                step(held, now);
+                Ok(())
+            });
+        }
     }
 }

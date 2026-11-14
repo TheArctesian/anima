@@ -163,7 +163,7 @@ async fn prj_039_a_replayed_return_from_github_converts_once(pool: PgPool) {
     let (mut browser, s1) = at_github(&served).await;
     let first = install_state(&browser.created(&s1).await);
     let second = install_state(&browser.created(&s1).await);
-    assert_ne!(first, second, "a new state for the install page");
+    assert_eq!(first, second, "the same state: a replay replaces nothing");
     assert_eq!(conversions(&served.kit), 1, "the stub saw one conversion");
     assert_eq!(shown(&served.kit).await["phase"], "APP_CREATED");
     let mut stranger = Browser::new(&served);
