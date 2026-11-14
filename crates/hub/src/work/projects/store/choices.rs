@@ -91,3 +91,17 @@ pub(in crate::work::projects) async fn slug(
         .fetch_one(conn)
         .await
 }
+
+/// The slug of the project that holds repository `id`, for the record of a change made there.
+pub(in crate::work::projects) async fn repository_slug(
+    conn: &mut PgConnection,
+    id: RepositoryId,
+) -> Result<String, sqlx::Error> {
+    sqlx::query_scalar(
+        "SELECT p.slug FROM projects.repositories r \
+         JOIN projects.projects p ON p.id = r.project_id WHERE r.id = $1",
+    )
+    .bind(id)
+    .fetch_one(conn)
+    .await
+}

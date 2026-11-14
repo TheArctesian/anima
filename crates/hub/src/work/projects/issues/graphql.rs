@@ -19,8 +19,8 @@ use crate::{
 const DEFAULT_FIRST: i32 = 30;
 const MOST: usize = 100;
 /// How long each answer stays fresh (K-E1 Section 13.1).
-const LIST: Keep = Keep::for_seconds(30);
-const ONE: Keep = Keep::for_seconds(15);
+pub(super) const LIST: Keep = Keep::for_seconds(30);
+pub(super) const ONE: Keep = Keep::for_seconds(15);
 
 #[derive(Default)]
 pub struct Query;

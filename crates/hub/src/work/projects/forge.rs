@@ -4,13 +4,18 @@
 //!
 //! Text from GitHub is other people's: it stays a plain string, is cut as K1 states, and never
 //! reaches a log line or an error message (LOG-007).
+//!
+//! A named change goes through [`change::make`], which sends it once and records it (OD-E14,
+//! PRJ-028).
 
+mod change;
 mod checks;
 pub(super) mod cursor;
-mod failure;
+pub(super) mod failure;
 mod filter;
 pub(super) mod reach;
 pub(super) mod text;
+pub(super) mod trail;
 
 use std::sync::Arc;
 
@@ -19,9 +24,10 @@ use chrono::{DateTime, Utc};
 use source_exchange::{Body, Problem, Request, Response};
 
 pub(super) use self::{
+    change::make,
     checks::{CommitChecksView, commit_checks},
     cursor::{Cut, GITHUB_PAGE, Place, cut},
-    failure::missing,
+    failure::{Subject, missing},
     filter::OpenOrClosed,
     reach::{RepositoryAccess, Target, access},
 };

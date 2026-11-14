@@ -344,7 +344,7 @@ pub enum Settled { Done(Receipt), NotFound, NotPermitted, NotMergeable, HeadMove
 - **One caller.** `sources::change` is the only caller of `Transport::change(declaration, change, token)`, which is `pub(in crate::engine::sources)` like `mint` and `convert`. It takes no path, verb, URL or `Rendered`: it calls the declaration's `render` itself, so its only inputs are a declared source and a checked `Change`. The path goes through `Request::get(path, &[])` and `transport.url(..)`, so the path and host checks of Section 7 apply. The body cap is 1 MiB (a 65,536-character `Text`, every character escaped, is far below it), with `Content-Type: application/json`; a body over the cap is refused before sending. A source whose declaration has `changes: None` is refused before sending (`NoChanges`).
 - **Once.** A change whose connection failed before anything was sent is `Unreachable`. One that may have reached GitHub but got no whole answer (a timeout, a dropped connection) is `Settled::Unknown`, and the hub never sends it again. A 401 also drops the in-memory token, as a sync's does, and writes nothing.
 - **Unreachable from a sync.** A caller outside the engine can only name a `Change` value. No `Intake` method returns one. The hub never repeats a change.
-- `DECLARATION.scopes` and `write_reason` of GitHub must state the changes (they still say the version only reads).
+- GitHub's declaration names its changes: `changes` is `Some`, with the provider's `render` and `settle`, and `scopes` and `write_reason` state the changes it makes.
 
 ### 13.3 The functions (C.2)
 

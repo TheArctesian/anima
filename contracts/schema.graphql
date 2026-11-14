@@ -2288,7 +2288,7 @@ type CodeFile @pending {
   readAt: DateTime!
 }
 
-input NewIssueInput @pending {
+input NewIssueInput {
   repository: ID!
   "1 to 256 characters."
   title: String!
@@ -2607,11 +2607,11 @@ type Mutation {
   # The roots closed to API keys use temporary words until the task that lists them in API_KEY_REFUSED_ROOTS restores
   # "Login or browser token only (D-23, R-100)." (key_roots.rs keys on that phrase).
   "Makes an issue on GitHub. Not repeated by the hub: after UNAVAILABLE the issue may exist. Writes an audit entry (PRJ-028)."
-  createIssue(input: NewIssueInput!): Issue! @pending
+  createIssue(input: NewIssueInput!): Issue!
   "number is an issue or a pull request. body is 1 to 65,536 characters. Not repeated by the hub. Writes an audit entry (PRJ-028)."
-  addIssueComment(repository: ID!, number: Int!, body: String!): IssueComment! @pending
+  addIssueComment(repository: ID!, number: Int!, body: String!): IssueComment!
   "Closes or opens an issue. reason only with open false. No change when it is already so. VALIDATION when the number is a pull request. Writes an audit entry (PRJ-028)."
-  setIssueOpen(repository: ID!, number: Int!, open: Boolean!, reason: IssueCloseReason): Issue! @pending
+  setIssueOpen(repository: ID!, number: Int!, open: Boolean!, reason: IssueCloseReason): Issue!
   "CONFLICT when the head moved, it cannot merge, GitHub has not computed it, or the method is not allowed. FORBIDDEN for a pull request from a fork without forkConfirmed, and for any pull request from a fork when the request declares an AI agent (PRO-013). Returns it unchanged when it is already merged. Writes an audit entry (PRJ-028). Closed to API keys: login or browser token only. The task that adds this root to API_KEY_REFUSED_ROOTS restores the standard words (key_roots.rs)."
   mergePullRequest(input: MergePullRequestInput!): PullRequest! @pending
   "1 to 20 pull requests, no pair twice, merged one after another in the order given; a failure does not stop the rest. One result for each, in the same order (PRJ-033). Only CLEAN ones; never one from a fork. One audit entry for each one the hub sent to GitHub. Closed to API keys: login or browser token only. The task that adds this root to API_KEY_REFUSED_ROOTS restores the standard words (key_roots.rs)."
