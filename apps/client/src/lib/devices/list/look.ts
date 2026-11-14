@@ -16,7 +16,7 @@ export function groupOf(status: Status): GroupKey {
   return status === 'MAINTENANCE' ? 'maintenance' : 'look';
 }
 
-export type ListItem<T> =
+export type ListEntry<T> =
   | { readonly kind: 'group'; readonly key: string; readonly title: string; readonly count: number }
   | { readonly kind: 'device'; readonly key: string; readonly device: T };
 
@@ -24,12 +24,12 @@ export type ListItem<T> =
  * The list as rows: sorted by status and not filtered by it, each group opens with a quiet title and its count, so
  * the problems read first without a second list (D18). Any other order is the devices alone.
  */
-export function listItems<T extends LookDevice>(devices: readonly T[], query: Pick<ListQuery, 'sort' | 'statuses'>): readonly ListItem<T>[] {
+export function listItems<T extends LookDevice>(devices: readonly T[], query: Pick<ListQuery, 'sort' | 'statuses'>): readonly ListEntry<T>[] {
   const rows = devices.map((device) => ({ kind: 'device' as const, key: device.id, device }));
   if (!grouped(query.sort, query.statuses)) return rows;
   const counts = new Map<GroupKey, number>();
   for (const device of devices) counts.set(groupOf(device.status), (counts.get(groupOf(device.status)) ?? 0) + 1);
-  const items: ListItem<T>[] = [];
+  const items: ListEntry<T>[] = [];
   let open: GroupKey | null = null;
   for (const row of rows) {
     const group = groupOf(row.device.status);

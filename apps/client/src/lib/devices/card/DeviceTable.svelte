@@ -18,7 +18,7 @@
   import { hostLine } from './card';
   import Meters from '../list/Meters.svelte';
   import Why from '../list/Why.svelte';
-  import { listItems, UNGROUPED, type ListItem } from '../list/look';
+  import { listItems, UNGROUPED, type ListEntry } from '../list/look';
   import type { ListQuery } from '../query';
   import StatusBadge from '../status/StatusBadge.svelte';
 
@@ -34,7 +34,7 @@
   }
 
   const { devices, beats, query = UNGROUPED, onConnect, onOpenWeb, wake, screenSharing }: Props = $props();
-  const items: readonly ListItem<CardDevice>[] = $derived(listItems(devices, query));
+  const items: readonly ListEntry<CardDevice>[] = $derived(listItems(devices, query));
   const track = reorderMotion(() => items.map((item) => item.key).join('\n'));
 </script>
 
