@@ -338,19 +338,19 @@ pub enum Settled { Done(Receipt), NotFound, NotPermitted, NotMergeable, HeadMove
 
 ### 13.3 The functions (C.2)
 
-All paths are below `/repos/{owner}/{repo}`. Endpoints, methods, success statuses and body fields: to verify (C.7-1). Permissions: to verify (C.7-2); all are among the App's 23 (Section 1). "Pre-read" is a fresh GET the hub makes first.
+All paths are below `/repos/{owner}/{repo}`. Endpoints, methods and body fields are those of GitHub's documentation for API version 2022-11-28 (checked 2026-11-14); success is 201 for an issue, a comment, both runs again and a status, 200 for open or close and for a merge, 202 for a cancel, and 204 for a start (200 when GitHub returns the run). Permissions, all among the App's 23 (Section 1): Issues write for the issue functions, Contents write alone for a merge, Actions write for the run controls and a start, Commit statuses write for a status. "Pre-read" is a fresh GET the hub makes first.
 
 | Function | Endpoint | Pre-read | Repeat and idempotency |
 | --- | --- | --- | --- |
 | `createIssue` | `POST /issues` | none | Not idempotent. After a fault once sent, the issue may exist |
 | `addIssueComment` | `POST /issues/{n}/comments` | none | As above |
 | `setIssueOpen` | `PATCH /issues/{n}` | The issue: refuse a pull request (to verify, C.7-6); unchanged when already so | Idempotent |
-| `mergePullRequest(s)` | `PUT /pulls/{n}/merge` with the method and `sha` | The pull request, up to 3 times 1 s apart while GitHub computes (to verify, C.7-3, C.7-4) | The `sha` makes a second send safe; already merged returns unchanged |
+| `mergePullRequest(s)` | `PUT /pulls/{n}/merge` with the method and `sha` | The pull request, up to 3 times 1 s apart while GitHub computes (to verify, C.7-4; GitHub documents 405 when it cannot merge and 409 when `sha` no longer matches, but no answer for an already merged pull request or a refused method, so 405, 409 and 422 are each a refusal) | The `sha` makes a second send safe; already merged returns unchanged |
 | `rerunWorkflowRun` | `POST /actions/runs/{id}/rerun` | The run: status, head sha, fork (to verify, C.7-7) | A second send starts another attempt; the pre-read refuses a run that is not completed |
 | `rerunFailedWorkflowJobs` | `POST /actions/runs/{id}/rerun-failed-jobs` | As above | As above |
 | `cancelWorkflowRun` | `POST /actions/runs/{id}/cancel` | The run | Idempotent in effect |
-| `dispatchWorkflow` | `POST /actions/workflows/{id}/dispatches` with `ref` and `inputs` (to verify, C.7-8) | The workflow list (cached): active | Not idempotent: a second send starts a second run |
-| `setCommitStatus` | `POST /statuses/{sha}` (to verify, C.7-10) | none | A second send adds an equal status |
+| `dispatchWorkflow` | `POST /actions/workflows/{id}/dispatches` with `ref` and `inputs` (at most 25) | The workflow list (cached): active | Not idempotent: a second send starts a second run |
+| `setCommitStatus` | `POST /statuses/{sha}` (at most 1,000 for a sha and context) | none | A second send adds an equal status |
 
 **Merge rules.** The caller always names the method; there is no hub default, and `PullRequestConnection.mergeMethods` says which the repository allows (to verify, C.7-5). Not open, draft, `CONFLICT`, `BLOCKED` and `BEHIND` are refused before sending; `UNKNOWN` after three reads is `NOT_READY`; a head other than `expectedHeadSha` is `HEAD_MOVED`. `UNSTABLE` merges only alone and only with `allowFailingChecks: true`. The hub never bypasses a required check. A bulk merge is serial, in input order, each pre-read fresh just before its own merge, with a 90-second deadline for the whole request; the rest are `NOT_ATTEMPTED`.
 
@@ -408,7 +408,7 @@ Fixed words, the GraphQL message; never a reply of GitHub (LOG-007):
 | GitHub has not worked out whether it can merge. Try again. | `CONFLICT` |
 | The repository does not allow that merge method. | `CONFLICT` |
 | GitHub refused the branch or the inputs. | `VALIDATION` |
-| Issues are off for this repository. | `CONFLICT` (410; to verify, C.7-1) |
+| Issues are off for this repository. | `CONFLICT` (410) |
 
 ### 13.8 The code browser
 

@@ -15,3 +15,7 @@ serde_json.workspace = true
 source-exchange = { path = "../exchange" }
 thiserror.workspace = true
 zeroize.workspace = true
+
+[dev-dependencies]
+proptest = "1.12"
+regex = "1.13"
