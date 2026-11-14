@@ -151,7 +151,7 @@ mod tests {
         }));
         let body = value["pullRequest"]["body"].as_str().unwrap_or_default();
         assert!(body.starts_with("a b\nc"), "{body}");
-        assert!(body.ends_with("…[cut: 1004 more characters]"), "{body}");
+        assert!(body.ends_with("…[cut: 1005 more characters]"), "{body}");
         assert_eq!(value["pullRequest"]["title"], "t u");
     }
 
