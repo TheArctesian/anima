@@ -8,6 +8,7 @@
 
 mod app_token;
 mod inspection;
+pub mod live;
 mod name;
 mod problem;
 mod record;
