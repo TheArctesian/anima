@@ -11,6 +11,7 @@ vi.mock('$lib/access/SignOutRow.svelte', async () => ({ default: (await vi.impor
 vi.mock('$lib/updates/UpdatesRow.svelte', async () => ({ default: (await vi.importActual<{ default: unknown }>('./RowStub.svelte')).default }));
 vi.mock('$lib/updates/CommandLineRow.svelte', async () => ({ default: (await vi.importActual<{ default: unknown }>('./RowStub.svelte')).default }));
 vi.mock('$lib/process-log/LogFolderRow.svelte', async () => ({ default: (await vi.importActual<{ default: unknown }>('./LogRowStub.svelte')).default }));
+vi.mock('$lib/extensions/ExtensionsSection.svelte', () => ({ default: () => undefined }));
 vi.mock('$lib/builds/BuildsRow.svelte', async () => ({ default: (await vi.importActual<{ default: unknown }>('./RowStub.svelte')).default }));
 // Settings sections that load their own data (WP-50 F-3) find a hub that answers nothing, so they show their own error.
 vi.mock('$lib/hub/context', async () => {
