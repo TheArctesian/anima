@@ -4,7 +4,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { installAnimations } from '$lib/forms/animations.fixture';
 import { projectsApi } from './api';
 import { fakeHub, type FakeHub } from './projects.fixture';
-import ProjectScreen from './ProjectScreen.svelte';
+import ProjectScreen from './detail/ProjectScreen.svelte';
 import ProjectsScreen from './ProjectsScreen.svelte';
 import { ProjectsStore } from './store.svelte';
 import { repositoryStateWords } from './words';
@@ -150,4 +150,13 @@ it('UR-7, PRO-004: the list puts projects that need a look first, each with why'
   ]);
   expect(text()).toContain('Cloudflare was found in the repository (wrangler.toml) and is not confirmed.');
   expect(text()).toContain('A repository is no longer on GitHub.');
+});
+
+it('PRJ-030: a tab the hub does not serve yet does not show, and asking for it opens Overview', async () => {
+  await store.open('acme-site');
+  app = mount(ProjectScreen, { target: document.body, props: { store, slug: 'acme-site', tab: 'work' } });
+  flushSync();
+  expect(document.querySelector('[role="tablist"]')).toBeNull();
+  expect(text()).toContain('Where it runs');
+  expect(text()).toContain('Cloudflare was found in the repository (wrangler.toml) and is not confirmed.');
 });
