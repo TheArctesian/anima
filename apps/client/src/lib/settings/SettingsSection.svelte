@@ -55,7 +55,7 @@
     margin: 0;
     min-block-size: calc(var(--text-lg) * var(--leading-tight));
     font-size: var(--text-lg);
-    font-weight: var(--weight-bold);
+    font-weight: var(--weight-medium);
     line-height: var(--leading-tight);
   }
 

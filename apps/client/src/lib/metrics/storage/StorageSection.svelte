@@ -133,7 +133,7 @@
 
   .name {
     color: var(--text);
-    font-weight: var(--weight-bold);
+    font-weight: var(--weight-medium);
   }
 
   .kind,
@@ -179,7 +179,7 @@
 
   /* Degraded is also a marker and a bold value, not colour alone (MET-004). */
   .degraded .value {
-    font-weight: var(--weight-bold);
+    font-weight: var(--weight-medium);
   }
 
   .warn {

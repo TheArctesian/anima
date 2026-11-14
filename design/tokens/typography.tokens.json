@@ -13,11 +13,12 @@
       },
       "mono": {
         "$value": [
-          "Fira Code",
+          "IBM Plex Mono",
+          "Symbols Nerd Font Mono",
           "ui-monospace",
           "monospace"
         ],
-        "$description": "IP addresses, host names, code, the default typeface (UI-011)"
+        "$description": "IP addresses, host names, code and remote shells: IBM Plex Mono, one family with the interface face; the Nerd Font symbols face draws shell prompt glyphs (UI-011, UR-7 D2)"
       },
       "ui-opendyslexic": {
         "$value": [
@@ -70,7 +71,11 @@
       },
       "2xl": {
         "$value": "1.5rem",
-        "$description": "Page titles"
+        "$description": "Large headings"
+      },
+      "display": {
+        "$value": "2.25rem",
+        "$description": "The title of a top-level page only, in weight-light and tracking-tight (UR-7 D5)"
       }
     },
     "leading": {
@@ -101,17 +106,28 @@
       "small": {
         "$value": "0.01em",
         "$description": "Small text (TOK-021)"
+      },
+      "tight": {
+        "$value": "-0.03em",
+        "$description": "The display title (UR-7 D7)"
+      },
+      "label": {
+        "$value": "0.14em",
+        "$description": "Small-caps labels and section heads (UR-7 D7)"
       }
     },
     "weight": {
-      "$type": "fontWeight",
+      "light": {
+        "$value": 200,
+        "$description": "The display title only, at text-display (UR-7 D1); OpenDyslexic draws it at regular"
+      },
       "regular": {
         "$value": 400,
-        "$description": "Regular weight"
+        "$description": "Body text"
       },
-      "bold": {
-        "$value": 700,
-        "$description": "Bold weight (OpenDyslexic has only two weights)"
+      "medium": {
+        "$value": 500,
+        "$description": "Labels, names and emphasis (UR-7 D1); OpenDyslexic draws it bold, so the hierarchy keeps two weights"
       }
     }
   }

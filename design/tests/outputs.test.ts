@@ -124,7 +124,7 @@ describe('sizes and type', () => {
 
   test('UI-010 the default interface font is IBM Plex Sans with a system fallback (operator change, 2026-11-12)', () => {
     expect(css).toMatch(/--font-ui: "IBM Plex Sans", .*sans-serif;/);
-    expect(css).toContain('--font-mono: "Fira Code", ui-monospace, monospace;');
+    expect(css).toContain('--font-mono: "IBM Plex Mono", "Symbols Nerd Font Mono", ui-monospace, monospace;');
   });
 
   test('UI-020 OpenDyslexic is a token for each text role, for the Settings choice', () => {

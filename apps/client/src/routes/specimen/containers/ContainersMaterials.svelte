@@ -50,7 +50,7 @@
     margin: 0;
     color: var(--text);
     font-size: var(--text-2xl);
-    font-weight: var(--weight-bold);
+    font-weight: var(--weight-medium);
     line-height: var(--leading-tight);
     word-break: break-all;
   }

@@ -157,7 +157,7 @@
     gap: var(--space-2);
     padding-bottom: var(--space-3);
     font-size: var(--text-lg);
-    font-weight: var(--weight-bold);
+    font-weight: var(--weight-medium);
   }
 
   .brand img {

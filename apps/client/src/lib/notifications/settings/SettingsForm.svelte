@@ -164,7 +164,7 @@
     padding: var(--space-3) var(--space-4);
     border-block-start: var(--border-thin) solid var(--border-strong);
     font-size: var(--text-md);
-    font-weight: var(--weight-bold);
+    font-weight: var(--weight-medium);
     line-height: var(--leading-tight);
   }
 

@@ -69,7 +69,7 @@
   font-display: block;   /* bundled local fonts: no first-paint swap shift (MOT-007, R-042) */
 }
 
-/* Fira Code ships Regular and Bold only, the two weights the tokens use (weight-regular, weight-bold). */
+/* Fira Code ships Regular and Bold only, the two weights the tokens use (weight-regular, weight-medium). */
 @font-face {
   font-family: "Fira Code";
   src: url("./fonts/FiraCode-Regular.woff2") format("woff2");

@@ -119,7 +119,7 @@
   .group > legend {
     color: var(--text);
     font-size: var(--text-md);
-    font-weight: var(--weight-bold);
+    font-weight: var(--weight-medium);
   }
 
   .choice {

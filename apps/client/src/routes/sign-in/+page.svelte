@@ -251,7 +251,7 @@
     background: var(--accent);
     color: var(--on-accent);
     font: inherit;
-    font-weight: var(--weight-bold);
+    font-weight: var(--weight-medium);
     cursor: pointer;
     transition: background-color var(--duration-fast) var(--ease-enter);
   }

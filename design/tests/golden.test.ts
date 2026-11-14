@@ -65,17 +65,17 @@ describe('CSS spring curves (D-4)', () => {
 });
 
 const SPEC_VALUES: Record<string, string> = {
-  'radius-sm': '4px', 'radius-md': '6px', 'radius-lg': '10px', 'radius-pill': '999px',
+  'radius-sm': '2px', 'radius-md': '4px', 'radius-lg': '4px', 'radius-pill': '999px',
   'border-thin': '1px', 'border-focus': '2px',
   'icon-sm': '1rem', 'icon-md': '1.125rem', 'icon-lg': '1.25rem',
   'control-sm': '1.75rem', 'control-md': '2rem', 'control-lg': '2.5rem',
   'content-form': '44rem', 'content-page': '90rem',
   'target-min-desktop': '24px', 'target-min-touch': '44px',
   'layer-base': '0', 'layer-sticky': '10', 'layer-nav': '20', 'layer-popover': '30', 'layer-modal': '40', 'layer-toast': '50',
-  'weight-regular': '400', 'weight-bold': '700',
+  'weight-light': '200', 'weight-regular': '400', 'weight-medium': '500',
   'leading-tight': '1.2', 'leading-normal': '1.5', 'leading-relaxed': '1.7',
-  'text-xs': '0.75rem', 'text-sm': '0.8125rem', 'text-md': '0.875rem', 'text-lg': '1rem', 'text-xl': '1.25rem', 'text-2xl': '1.5rem',
-  'tracking-display': '-0.01em', 'tracking-small': '0.01em',
+  'text-xs': '0.75rem', 'text-sm': '0.8125rem', 'text-md': '0.875rem', 'text-lg': '1rem', 'text-xl': '1.25rem', 'text-2xl': '1.5rem', 'text-display': '2.25rem',
+  'tracking-display': '-0.01em', 'tracking-small': '0.01em', 'tracking-tight': '-0.03em', 'tracking-label': '0.14em',
   'space-0': '0', 'space-1': '0.25rem', 'space-2': '0.5rem', 'space-3': '0.75rem', 'space-4': '1rem', 'space-5': '1.25rem',
   'space-6': '1.5rem', 'space-8': '2rem', 'space-10': '2.5rem', 'space-12': '3rem', 'space-16': '4rem',
   'elevation-0': 'none', 'elevation-1': 'none',

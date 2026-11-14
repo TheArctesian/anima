@@ -171,7 +171,7 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     font-size: var(--text-2xl);
-    font-weight: var(--weight-bold);
+    font-weight: var(--weight-medium);
     letter-spacing: var(--tracking-display);
     line-height: var(--leading-tight);
   }

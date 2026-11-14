@@ -23,14 +23,14 @@ Components use semantic or component names. Primitive names (`nord-*`) appear on
 | Group | Names |
 | --- | --- |
 | Colour, primitive | `nord-0` … `nord-15` |
-| Colour, semantic (Phase 2: one set per palette, UI-023) | `surface-sunken`, `surface-base`, `surface-raised`, `surface-overlay`, `surface-hover`, `surface-selected`, `border-subtle`, `border-strong`, `text`, `text-secondary`, `text-tertiary`, `accent`, `accent-hover`, `accent-pressed`, `on-accent`, `danger`, `on-danger`, `status-up`, `status-down`, `status-degraded`, `status-warning`, `status-maintenance`, `status-unknown`, `status-up-text`, `status-down-text`, `status-degraded-text`, `status-warning-text`, `status-maintenance-text`, `status-unknown-text`, `scrim`, `focus-ring`, `shadow`. Notes: `surface-hover` is the fill under `text` for a hovered row or control (CR-10); `scrim` is R-049; `shadow` is the elevation colour (5.6) |
+| Colour, semantic (Phase 2: one set per palette, UI-023) | `surface-sunken`, `surface-base`, `surface-raised`, `surface-overlay`, `surface-hover`, `surface-selected`, `border-subtle`, `border-strong`, `text`, `text-secondary`, `text-tertiary`, `text-quiet`, `planned`, `accent`, `accent-hover`, `accent-pressed`, `on-accent`, `danger`, `on-danger`, `status-up`, `status-down`, `status-degraded`, `status-warning`, `status-maintenance`, `status-unknown`, `status-up-text`, `status-down-text`, `status-degraded-text`, `status-warning-text`, `status-maintenance-text`, `status-unknown-text`, `scrim`, `focus-ring`, `shadow`. Notes: `surface-hover` is the fill under `text` for a hovered row or control (CR-10); `scrim` is R-049; `shadow` is the elevation colour (5.6) |
 | Colour, chart (Phase 2) | `chart-grid`, `chart-axis`, `chart-threshold` (the 85 % line, MET-004), `chart-series-1` … `chart-series-6` (Nord frost then aurora, so up to six GPUs or mounts differ; K5) |
 | Colour, tint | `accent-tint`, `status-up-tint`, `status-down-tint`, `status-degraded-tint`, `status-warning-tint`, `status-maintenance-tint`, `status-unknown-tint` |
 | Font family | `font-ui`, `font-mono`, `font-icon`, `font-ui-opendyslexic`, `font-mono-opendyslexic` (added by operator decision, 2026-11-05: the Settings font choice, UI-020) |
-| Font size | `text-xs`, `text-sm`, `text-md`, `text-lg`, `text-xl`, `text-2xl` |
+| Font size | `text-xs`, `text-sm`, `text-md`, `text-lg`, `text-xl`, `text-2xl`, `text-display` |
 | Line height | `leading-tight`, `leading-normal`, `leading-relaxed` |
-| Tracking | `tracking-display`, `tracking-body`, `tracking-small` |
-| Weight | `weight-regular`, `weight-bold` |
+| Tracking | `tracking-tight`, `tracking-display`, `tracking-body`, `tracking-small`, `tracking-label` |
+| Weight | `weight-light`, `weight-regular`, `weight-medium` |
 | Space | `space-0`, `space-1`, `space-2`, `space-3`, `space-4`, `space-5`, `space-6`, `space-8`, `space-10`, `space-12`, `space-16` |
 | Radius | `radius-sm`, `radius-md`, `radius-lg`, `radius-pill` |
 | Border width | `border-thin`, `border-focus` |

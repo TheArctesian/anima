@@ -93,7 +93,7 @@
     border-radius: var(--radius-md);
     color: var(--text);
     font: inherit;
-    font-weight: var(--weight-bold);
+    font-weight: var(--weight-medium);
     white-space: nowrap;
     transition:
       background-color var(--duration-fast) var(--ease-enter),

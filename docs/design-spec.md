@@ -125,7 +125,7 @@ The command line and the MCP server (Section 6.10) use the same GraphQL API as t
 
 | Item | Decision |
 | --- | --- |
-| Fonts and icons | IBM Plex Sans for interface text and Fira Code for machine text by default; OpenDyslexic Nerd Font as a Settings choice; Nerd Font icons. See Section 5.2. |
+| Fonts and icons | IBM Plex Sans for interface text and IBM Plex Mono for machine text by default; OpenDyslexic Nerd Font as a Settings choice; Nerd Font icons. See Section 5.2. |
 | Framework | Tauri 2 |
 | Native layer | Rust |
 | User interface | TypeScript in the Tauri web view. See Section 11 for the framework decision. |
@@ -654,7 +654,8 @@ records the colour it comes from and the rule that made it.
 | `surface-hover`, `surface-selected` | Row and item states |
 | `border-subtle` | Where two equal surfaces meet; table row separators |
 | `border-strong` | Inputs and other control edges, at least 3:1 on `surface-raised` and `surface-sunken` (WCAG 1.4.11); every border under `prefers-contrast: more` |
-| `text`, `text-secondary`, `text-tertiary` | Primary text; secondary text; placeholder and disabled text (never the only carrier of information) |
+| `text`, `text-secondary`, `text-tertiary`, `text-quiet` | Primary text; secondary text; placeholder and disabled text (never the only carrier of information); quiet text for the second line of a row and the small-caps section label, at least 4.5:1 on `surface-base` |
+| `planned` | Things that are configured but not yet running: a planned machine, a pending change |
 | `accent`, `accent-hover`, `accent-pressed`, `on-accent`, `accent-tint` | The one accent: active place, focus, the primary action |
 | `status-up`, `status-down`, `status-degraded`, `status-warning`, `status-maintenance`, `status-unknown` | Status shapes: dots, edges, bars |
 | `status-*-text`, `status-*-tint` | Status badge text and badge fill |
@@ -673,27 +674,27 @@ records the colour it comes from and the rule that made it.
 
 ### 5.2 Typography and spacing
 
-Anima uses a proportional sans, IBM Plex Sans, for interface text and Fira Code for machine text, with Nerd Fonts for icons (UR-3, 2026-11-11; Fira Code as the interface font was temporary). The operator can change the interface text and the monospace text to OpenDyslexic in Settings, each on its own (UI-020). The Nerd Fonts project supplies OpenDyslexic with the icons already added (patched), so icons always come from the OpenDyslexic Propo file, whichever text font is chosen.
+Anima uses a proportional sans, IBM Plex Sans, for interface text and IBM Plex Mono for machine text, with Nerd Fonts for icons (UR-3, 2026-11-11; UR-7, 2026-11-13: the website's design language, so Plex Mono replaces Fira Code). The operator can change the interface text and the monospace text to OpenDyslexic in Settings, each on its own (UI-020). The Nerd Fonts project supplies OpenDyslexic with the icons already added (patched), so icons always come from the OpenDyslexic Propo file, whichever text font is chosen.
 
 | Use | Font family | File | Licence |
 | --- | --- | --- | --- |
-| Interface text (default) | IBM Plex Sans | Regular and Bold from the `IBM/plex` release, shipped unchanged because the licence reserves the name "Plex"; the release and hashes are pinned in `fonts.lock.json` | SIL OFL 1.1 |
-| Machine text: IP addresses, host names, ports, keys, fingerprints, commands, log messages, code (default) | Fira Code | `woff2/FiraCode-{Regular,Bold}.woff2` from the `tonsky/FiraCode` 6.2 release | SIL OFL 1.1 |
+| Interface text (default) | IBM Plex Sans | ExtraLight (200), Regular (400) and Medium (500) from the `IBM/plex` release, shipped unchanged because the licence reserves the name "Plex"; the release and hashes are pinned in `fonts.lock.json` | SIL OFL 1.1 |
+| Machine text: IP addresses, host names, ports, keys, fingerprints, commands, log messages, code (default) | IBM Plex Mono | Regular (400) and Medium (500) from the `IBM/plex` release, pinned in `fonts.lock.json` | SIL OFL 1.1 |
 | Interface text (choice) and icons | OpenDyslexic Nerd Font Propo | `ryanoasis/nerd-fonts`, `patched-fonts/OpenDyslexic/Regular/OpenDyslexicNerdFontPropo-{Regular,Bold,Italic,BoldItalic}.otf` | SIL OFL 1.1 |
 | Terminal; IP addresses, host names, code (choice) | OpenDyslexicM Nerd Font Mono | `ryanoasis/nerd-fonts`, `patched-fonts/OpenDyslexic/Mono-Regular/OpenDyslexicMNerdFontMono-Regular.otf` | SIL OFL 1.1 |
 | Icon fallback | Symbols Nerd Font | `patched-fonts/NerdFontsSymbolsOnly/SymbolsNerdFont-Regular.ttf` | MIT |
 
 - **UI-010.** Use IBM Plex Sans for all interface text by default. OpenDyslexic Nerd Font Propo is the alternative (UI-020).
-- **UI-011.** Use the monospace font only for machine text: IP addresses, host names, ports, keys, fingerprints, commands, log messages and code. Fira Code is the default; OpenDyslexicM Nerd Font Mono is the alternative (UI-020). Turn ligatures off for machine text (`font-variant-ligatures: none`). The SSH terminal uses OpenDyslexicM Nerd Font Mono (RA-011). Use the "Mono" variant in the terminal, because its icons are one cell wide.
+- **UI-011.** Use the monospace font only for machine text: IP addresses, host names, ports, keys, fingerprints, commands, log messages and code. IBM Plex Mono is the default, with Symbols Nerd Font Mono as its fallback for icon glyphs in remote output; OpenDyslexicM Nerd Font Mono is the alternative (UI-020). Turn ligatures off for machine text (`font-variant-ligatures: none`). The SSH terminal uses OpenDyslexicM Nerd Font Mono (RA-011). Use the "Mono" variant in the terminal, because its icons are one cell wide.
 - **UI-014.** Use Nerd Font glyphs for all icons. Do not use image files or a second icon library. Use the Propo variant for icons in the interface, because its icons have their natural width.
 - **UI-015.** Each icon must have `aria-hidden="true"`. A button that has only an icon must have a text label for screen readers and a tooltip.
 - **UI-016.** Refer to each icon by its Nerd Font class name in the code, for example `nf-md-server`. Keep a table of the class names and code points in one source file. Do not write raw code points in components.
 - **UI-017.** The client must include the font files in the application package. Do not load fonts from the internet at run time.
 - **UI-022.** The Bold and Italic files of OpenDyslexic Nerd Font Propo are not in the Nerd Fonts v3.4.0 release. They are on the main branch. Pin the font files to commit `f034eeafc0ccf79afa8dd952feb86b18e5d0469e` until a release includes them.
 - **UI-018.** Each font licence file must be in the application package and in the "About" information.
-- **UI-019.** Use `text-md` (0.875 rem) for body text, `text-sm` (0.8125 rem) for dense tables and for labels (never smaller), `text-xs` (0.75 rem) only for badges and chart axes, and `leading-normal` (1.5). A section title must be visibly larger and bolder than body text. Hierarchy must hold with weights 400 and 700 only, so that OpenDyslexic keeps it. OpenDyslexic is wider and taller than most fonts: test each layout in both interface typefaces. See Section 5.5.
+- **UI-019.** Use `text-md` (0.875 rem) for body text, `text-sm` (0.8125 rem) for dense tables and for labels (never smaller), `text-xs` (0.75 rem) only for badges and chart axes, and `leading-normal` (1.5). A section title must be visibly larger and bolder than body text. Use weights 400 and 500 only, and 200 for the one display title of a page (`text-display`, UR-7). Hierarchy must hold by size, colour and space as well as weight, because OpenDyslexic has only 400 and 700 and shows 500 as 400. OpenDyslexic is wider and taller than most fonts: test each layout in both interface typefaces. See Section 5.5.
 - **UI-021.** Apple recommends the system font first. Anima bundles IBM Plex Sans and offers OpenDyslexic for readability. This is a deliberate exception. The system font stays the fallback in every font token.
-- **UI-020.** The Settings page has two choices, "Interface font" and "Monospace font". "Interface font" is IBM Plex Sans (the default) or OpenDyslexic; "Monospace font" is Fira Code (the default) or OpenDyslexic. Each is saved on the device. A saved interface-font choice of "Fira Code" from an earlier version becomes the new default. The choice changes the `font-ui` and `font-mono` tokens, so no component reads it. A choice applies at once and before the first render after a restart. Icons do not change. More typefaces or text roles can be added to the same choice later.
+- **UI-020.** The Settings page has two choices, "Interface font" and "Monospace font". "Interface font" is IBM Plex Sans (the default) or OpenDyslexic; "Monospace font" is IBM Plex Mono (the default) or OpenDyslexic. A saved monospace choice of "Fira Code" from an earlier version becomes the new default. Each is saved on the device. A saved interface-font choice of "Fira Code" from an earlier version becomes the new default. The choice changes the `font-ui` and `font-mono` tokens, so no component reads it. A choice applies at once and before the first render after a restart. Icons do not change. More typefaces or text roles can be added to the same choice later.
 - **UI-012.** Use a 4-pixel spacing grid. Use the `space-*` tokens (Section 5.5.3).
 - **UI-013.** Interactive controls must have a minimum target size of 24 by 24 pixels on desktop and 44 by 44 points on iOS. Control heights come from the `control-*` tokens: `control-md` 32 px (the default), `control-sm` 28 px (dense rows and table actions only), `control-lg` 40 px (sign-in, empty-state actions). Text fields, selects, buttons and segmented controls in one row share one height.
 - **UI-025.** Numbers that are compared in columns or that update (uptime, metrics, counts, times in tables) must use tabular figures (`font-variant-numeric: tabular-nums`).
@@ -785,12 +786,12 @@ A design token is a named design value, for example a colour, a space or a sprin
 | Colour, semantic | The roles of Section 5.1.2 | Section 5.1.2 |
 | Colour, tint | `accent-tint`, `status-*-tint` | The colour at 12 to 16 % on its surface, set per palette so that `status-*-text` keeps 4.5:1 on it |
 | Font family | `font-ui`, `font-mono`, `font-ui-opendyslexic`, `font-mono-opendyslexic`, `font-icon` | Section 5.2 |
-| Font size | `text-xs`, `text-sm`, `text-md`, `text-lg`, `text-xl`, `text-2xl` | 0.75, 0.8125, 0.875, 1, 1.25, 1.5 rem |
+| Font size | `text-xs`, `text-sm`, `text-md`, `text-lg`, `text-xl`, `text-2xl`, `text-display` | 0.75, 0.8125, 0.875, 1, 1.25, 1.5, 2.25 rem |
 | Line height | `leading-tight`, `leading-normal`, `leading-relaxed` | 1.2, 1.5, 1.7 |
-| Tracking | `tracking-display`, `tracking-body`, `tracking-small` | −0.01 em, 0, +0.01 em |
-| Weight | `weight-regular`, `weight-bold` | 400, 700 (OpenDyslexic has only these two weights; the bundled sans and Fira Code ship these two) |
+| Tracking | `tracking-tight`, `tracking-display`, `tracking-body`, `tracking-small`, `tracking-label` | −0.03 em (the display title), −0.01 em, 0, +0.01 em, +0.14 em (small-caps labels) |
+| Weight | `weight-light`, `weight-regular`, `weight-medium` | 200, 400, 500 (UR-7; OpenDyslexic has 400 and 700 only, so it shows 200 and 500 as 400) |
 | Space | `space-0` to `space-16` | 0, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3, 4 rem (4-pixel grid) |
-| Radius | `radius-sm`, `radius-md`, `radius-lg`, `radius-pill` | 4, 6, 10, 999 px |
+| Radius | `radius-sm`, `radius-md`, `radius-lg`, `radius-pill` | 2, 4, 4, 999 px (UR-7: the website's near-square corners) |
 | Border width | `border-thin`, `border-focus` | 1, 2 px |
 | Icon size | `icon-sm`, `icon-md`, `icon-lg` | 16, 18, 20 px, as rem |
 | Control height | `control-sm`, `control-md`, `control-lg` | 28, 32, 40 px, as rem |

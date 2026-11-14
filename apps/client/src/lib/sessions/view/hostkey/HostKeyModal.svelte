@@ -131,7 +131,7 @@
   }
 
   .confirm {
-    font-weight: var(--weight-bold);
+    font-weight: var(--weight-medium);
   }
 
   .problem {

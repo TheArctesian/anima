@@ -203,7 +203,7 @@
     background: var(--surface-raised);
     color: var(--text);
     font: inherit;
-    font-weight: var(--weight-bold);
+    font-weight: var(--weight-medium);
     text-align: start;
     transition: background-color var(--duration-fast) var(--ease-enter);
   }

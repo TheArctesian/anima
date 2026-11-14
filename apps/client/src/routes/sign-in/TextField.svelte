@@ -52,7 +52,7 @@
 
   label {
     font-size: var(--text-sm);
-    font-weight: var(--weight-bold);
+    font-weight: var(--weight-medium);
     line-height: var(--leading-tight);
   }
 

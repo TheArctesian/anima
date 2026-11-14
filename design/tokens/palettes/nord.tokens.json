@@ -189,6 +189,14 @@
       "11-danger": {
         "$value": "#CC8B93",
         "$description": "nord-11-danger (dark danger): #C6767F mixed 17 % toward #ECEFF4, the least mix that reaches 4.5:1 on #2E3440 (danger, dark: status-down lifted toward nord6 until on-danger (nord0) reaches 4.5:1 (UI-004)). Source token only (TOK-010)."
+      },
+      "3-quiet": {
+        "$value": "#616E88",
+        "$description": "nord-3-quiet (dark text-quiet): decoration only, never the only carrier of information (UR-7 D10). Source token only (TOK-010)."
+      },
+      "3-quiet-light": {
+        "$value": "#A5ADBA",
+        "$description": "nord-3-quiet-light (light text-quiet): decoration only, never the only carrier of information (UR-7 D10). Source token only (TOK-010)."
       }
     }
   }

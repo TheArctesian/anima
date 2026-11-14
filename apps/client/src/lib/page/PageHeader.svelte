@@ -45,7 +45,7 @@
     margin: 0;
     overflow-wrap: anywhere;
     font-size: var(--text-2xl);
-    font-weight: var(--weight-bold);
+    font-weight: var(--weight-medium);
     line-height: var(--leading-tight);
     letter-spacing: var(--tracking-display);
   }

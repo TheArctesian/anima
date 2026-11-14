@@ -229,6 +229,14 @@
       "aurora-15": {
         "$value": "#B48EAD",
         "$description": "Aurora nord15 value, copied into the Graphite palette. Source token only (TOK-010)."
+      },
+      "dark-text-quiet": {
+        "$value": "#5C6169",
+        "$description": "Graphite dark text-quiet: decoration only (rules, quiet icons, units), never the only carrier of information (UR-7 D10). Source token only (TOK-010)."
+      },
+      "light-text-quiet": {
+        "$value": "#A3A7AE",
+        "$description": "Graphite light text-quiet: decoration only, never the only carrier of information (UR-7 D10). Source token only (TOK-010)."
       }
     }
   }

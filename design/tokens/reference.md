@@ -27,6 +27,8 @@ Generated from `design/tokens/*.tokens.json` (TOK-001). Names follow contract K5
 | `text` | `--text: var(--nord-6)` = `#ECEFF4`<br>light: `--text: var(--nord-0)` = `#2E3440` | Primary text (5.1.2). |
 | `text-secondary` | `--text-secondary: color-mix(in srgb, var(--nord-3) 25%, var(--nord-4))`<br>light: `--text-secondary: var(--nord-3)` = `#4C566A` | Secondary text. Dark: nord4 mixed 25 % toward nord3; reaches 4.5:1 on every surface tier (UI-002). |
 | `text-tertiary` | `--text-tertiary: var(--nord-3-tertiary)` = `#9199A8`<br>light: `--text-tertiary: var(--nord-3-tertiary-light)` = `#6B7384` | Placeholder and disabled text, visibly lighter than text-secondary. Dark: nord3 mixed toward nord4 to 3:1 on surface-overlay. Light: text-secondary mixed toward surface-raised by the largest share that keeps 4.5:1 on it. |
+| `text-quiet` | `--text-quiet: var(--nord-3-quiet)` = `#616E88`<br>light: `--text-quiet: var(--nord-3-quiet-light)` = `#A5ADBA` | Decoration only: section rules, quiet icons, units. Never the only carrier of information, so it is exempt from the 4.5:1 rule like text-tertiary placeholders (UR-7 D10). |
+| `planned` | `--planned: var(--nord-15-text)` = `#CEBCCE`<br>light: `--planned: var(--nord-15-deep-text)` = `#736278` | What is not built yet, in the planned colour (nord15), always with a word (UR-7 D10, UI-003). Text on surfaces: 4.5:1. |
 | `accent` | `--accent: var(--nord-8)` = `#88C0D0`<br>light: `--accent: var(--nord-10-deep)` = `#506B8D` | The one accent (5.1.2). Light: nord10 deepened to 4.5:1 on surface-sunken (UI-005). |
 | `accent-hover` | `--accent-hover: color-mix(in srgb, var(--nord-6) 15%, var(--nord-8))`<br>light: `--accent-hover: color-mix(in srgb, var(--nord-0) 12%, var(--accent))` | Dark: nord8 mixed 15 % toward nord6. Light: accent mixed 12 % toward nord0. |
 | `accent-pressed` | `--accent-pressed: var(--nord-10)` = `#5E81AC`<br>light: `--accent-pressed: color-mix(in srgb, var(--nord-0) 25%, var(--accent))` | Pressed primary button. Dark: nord10. Light: accent mixed 25 % toward nord0. |
@@ -82,6 +84,8 @@ Generated from `design/tokens/*.tokens.json` (TOK-001). Names follow contract K5
 | `text` | `--text: var(--graphite-dark-text)` = `#E6E7E9`<br>light: `--text: var(--graphite-light-text)` = `#1D2024` | Primary text (5.1.2). |
 | `text-secondary` | `--text-secondary: var(--graphite-dark-text-secondary)` = `#A4A8B0`<br>light: `--text-secondary: var(--graphite-light-text-secondary)` = `#5A5F68` | Secondary text; 4.5:1 on every surface tier (UI-002). |
 | `text-tertiary` | `--text-tertiary: var(--graphite-dark-text-tertiary)` = `#7E838C`<br>light: `--text-tertiary: var(--graphite-light-text-tertiary-derived)` = `#71757D` | Placeholder and disabled text, visibly lighter than text-secondary. Dark: 3:1 on surface-overlay. Light: text-secondary mixed toward surface-raised by the largest share that keeps 4.5:1 on it. |
+| `text-quiet` | `--text-quiet: var(--graphite-dark-text-quiet)` = `#5C6169`<br>light: `--text-quiet: var(--graphite-light-text-quiet)` = `#A3A7AE` | Decoration only: section rules, quiet icons, units. Never the only carrier of information, so it is exempt from the 4.5:1 rule like text-tertiary placeholders (UR-7 D10). |
+| `planned` | `--planned: var(--graphite-aurora-15-text)` = `#B997B3`<br>light: `--planned: var(--graphite-aurora-15-deep-text)` = `#7B657A` | What is not built yet, in the planned colour (nord15), always with a word (UR-7 D10, UI-003). Text on surfaces: 4.5:1. |
 | `accent` | `--accent: var(--graphite-frost-8)` = `#88C0D0`<br>light: `--accent: var(--graphite-accent-deep)` = `#2E6E80` | The one accent. Light: accent-deep, a chosen primitive (nord8 hue, darker, same chroma), 4.5:1 or more on every light surface (UI-005). |
 | `accent-hover` | `--accent-hover: color-mix(in srgb, var(--graphite-dark-text-lightest) 15%, var(--graphite-frost-…`<br>light: `--accent-hover: color-mix(in srgb, var(--graphite-light-text) 12%, var(--accent))` | Dark: accent mixed 15 % toward the lightest neutral. Light: accent mixed 12 % toward ink. |
 | `accent-pressed` | `--accent-pressed: var(--graphite-frost-10)` = `#5E81AC`<br>light: `--accent-pressed: color-mix(in srgb, var(--graphite-light-text) 25%, var(--accent))` | Pressed primary button. Dark: frost-10. Light: accent mixed 25 % toward ink. |
@@ -183,6 +187,8 @@ Generated from `design/tokens/*.tokens.json` (TOK-001). Names follow contract K5
 | `graphite-aurora-13` | `--graphite-aurora-13: #EBCB8B` | Aurora nord13 value, copied into the Graphite palette. Source token only (TOK-010). |
 | `graphite-aurora-14` | `--graphite-aurora-14: #A3BE8C` | Aurora nord14 value, copied into the Graphite palette. Source token only (TOK-010). |
 | `graphite-aurora-15` | `--graphite-aurora-15: #B48EAD` | Aurora nord15 value, copied into the Graphite palette. Source token only (TOK-010). |
+| `graphite-dark-text-quiet` | `--graphite-dark-text-quiet: #5C6169` | Graphite dark text-quiet: decoration only (rules, quiet icons, units), never the only carrier of information (UR-7 D10). Source token only (TOK-010). |
+| `graphite-light-text-quiet` | `--graphite-light-text-quiet: #A3A7AE` | Graphite light text-quiet: decoration only, never the only carrier of information (UR-7 D10). Source token only (TOK-010). |
 
 ## color.nord
 
@@ -235,6 +241,8 @@ Generated from `design/tokens/*.tokens.json` (TOK-001). Names follow contract K5
 | `nord-3-tertiary-text` | `--nord-3-tertiary-text: #BDC2CC` | nord-3-tertiary-text (dark unknown text): #9199A8 mixed 48 % toward #ECEFF4, the least mix that reaches 4.5:1 on #495060 (status-unknown text, dark, on its 16 % tint (UI-005)). Source token only (TOK-010). |
 | `nord-3-deep-text` | `--nord-3-deep-text: #5F6777` | nord-3-deep-text (light unknown text): #6B7384 mixed 19 % toward #2E3440, the least mix that reaches 4.5:1 on #E3E6EA (status-unknown text, light, on its 14 % tint (UI-005)). Source token only (TOK-010). |
 | `nord-11-danger` | `--nord-11-danger: #CC8B93` | nord-11-danger (dark danger): #C6767F mixed 17 % toward #ECEFF4, the least mix that reaches 4.5:1 on #2E3440 (danger, dark: status-down lifted toward nord6 until on-danger (nord0) reaches 4.5:1 (UI-004)). Source token only (TOK-010). |
+| `nord-3-quiet` | `--nord-3-quiet: #616E88` | nord-3-quiet (dark text-quiet): decoration only, never the only carrier of information (UR-7 D10). Source token only (TOK-010). |
+| `nord-3-quiet-light` | `--nord-3-quiet-light: #A5ADBA` | nord-3-quiet-light (light text-quiet): decoration only, never the only carrier of information (UR-7 D10). Source token only (TOK-010). |
 
 ## depth.layer
 
@@ -346,10 +354,10 @@ Generated from `design/tokens/*.tokens.json` (TOK-001). Names follow contract K5
 
 | Token | CSS value | Use |
 | --- | --- | --- |
-| `radius-sm` | `--radius-sm: 4px` | Small controls |
-| `radius-md` | `--radius-md: 6px` | Cards, inputs |
-| `radius-lg` | `--radius-lg: 10px` | Panels, dialogs |
-| `radius-pill` | `--radius-pill: 999px` | Pills and badges |
+| `radius-sm` | `--radius-sm: 2px` | Inner details: chips, menu items (UR-7 D8) |
+| `radius-md` | `--radius-md: 4px` | Controls, inputs, tiles: straight-edged (UR-7 D8) |
+| `radius-lg` | `--radius-lg: 4px` | Panels, dialogs: the same 4 px, no larger rounding (UR-7 D8) |
+| `radius-pill` | `--radius-pill: 999px` | Status dots only, never containers (UR-7 D8) |
 
 ## size.border
 
@@ -397,7 +405,8 @@ Generated from `design/tokens/*.tokens.json` (TOK-001). Names follow contract K5
 | `text-md` | `--text-md: 0.875rem` | Body text (UI-019) |
 | `text-lg` | `--text-lg: 1rem` | Emphasised body, small headings |
 | `text-xl` | `--text-xl: 1.25rem` | Headings |
-| `text-2xl` | `--text-2xl: 1.5rem` | Page titles |
+| `text-2xl` | `--text-2xl: 1.5rem` | Large headings |
+| `text-display` | `--text-display: 2.25rem` | The title of a top-level page only, in weight-light and tracking-tight (UR-7 D5) |
 
 ## size.leading
 
@@ -414,20 +423,23 @@ Generated from `design/tokens/*.tokens.json` (TOK-001). Names follow contract K5
 | `tracking-display` | `--tracking-display: -0.01em` | Large text (TOK-021) |
 | `tracking-body` | `--tracking-body: 0em` | Body text (TOK-021) |
 | `tracking-small` | `--tracking-small: 0.01em` | Small text (TOK-021) |
+| `tracking-tight` | `--tracking-tight: -0.03em` | The display title (UR-7 D7) |
+| `tracking-label` | `--tracking-label: 0.14em` | Small-caps labels and section heads (UR-7 D7) |
 
 ## size.weight
 
 | Token | CSS value | Use |
 | --- | --- | --- |
-| `weight-regular` | `--weight-regular: 400` | Regular weight |
-| `weight-bold` | `--weight-bold: 700` | Bold weight (OpenDyslexic has only two weights) |
+| `weight-light` | `--weight-light: 200` | The display title only, at text-display (UR-7 D1); OpenDyslexic draws it at regular |
+| `weight-regular` | `--weight-regular: 400` | Body text |
+| `weight-medium` | `--weight-medium: 500` | Labels, names and emphasis (UR-7 D1); OpenDyslexic draws it bold, so the hierarchy keeps two weights |
 
 ## typeface.font
 
 | Token | CSS value | Use |
 | --- | --- | --- |
 | `font-ui` | `--font-ui: "IBM Plex Sans", system-ui, -apple-system, sans-serif` | Interface text, the default typeface (UI-010, operator change 2026-11-12); the system font is the fallback (UI-021) |
-| `font-mono` | `--font-mono: "Fira Code", ui-monospace, monospace` | IP addresses, host names, code, the default typeface (UI-011) |
+| `font-mono` | `--font-mono: "IBM Plex Mono", "Symbols Nerd Font Mono", ui-monospace, monospace` | IP addresses, host names, code and remote shells: IBM Plex Mono, one family with the interface face; the Nerd Font symbols face draws shell prompt glyphs (UI-011, UR-7 D2) |
 | `font-ui-opendyslexic` | `--font-ui-opendyslexic: "OpenDyslexic Nerd Font Propo", system-ui, -apple-system, sans-serif` | Interface text when the operator chooses OpenDyslexic (UI-020) |
 | `font-mono-opendyslexic` | `--font-mono-opendyslexic: "OpenDyslexicM Nerd Font Mono", ui-monospace, monospace` | IP addresses, host names, code when the operator chooses OpenDyslexic (UI-020) |
 | `font-icon` | `--font-icon: "OpenDyslexic Nerd Font Propo", "Symbols Nerd Font"` | Nerd Font glyph icons (UI-014) |

@@ -34,7 +34,7 @@
   h2 {
     margin: 0;
     font-size: var(--text-lg);
-    font-weight: var(--weight-bold);
+    font-weight: var(--weight-medium);
     line-height: var(--leading-tight);
     text-align: center;
   }

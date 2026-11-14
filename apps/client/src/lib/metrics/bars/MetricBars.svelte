@@ -127,7 +127,7 @@
 
   /* Degraded is also a marker and a bold value, not colour alone (MET-004); the value slot keeps its width. */
   .degraded .value {
-    font-weight: var(--weight-bold);
+    font-weight: var(--weight-medium);
   }
 
   .warn {
