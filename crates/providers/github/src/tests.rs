@@ -74,8 +74,7 @@ pub(super) fn query<'a>(request: &'a Request, name: &str) -> &'a str {
         .query
         .iter()
         .find(|(key, _)| key == name)
-        .map(|(_, value)| value.as_str())
-        .unwrap_or_default()
+        .map_or("", |(_, value)| value.as_str())
 }
 
 pub(super) struct Run {
