@@ -188,10 +188,8 @@
       {/if}
     </form>
 
-    {#if desktop}
-      <HubLine host={hubHost(hub.address.origin)} bind:editing={editingAddress} bind:text={addressText} problem={addressProblem}
-        onsave={saveAddress} oncancel={cancelAddress} />
-    {/if}
+    <HubLine host={hubHost(hub.address.origin)} fixed={!desktop} bind:editing={editingAddress} bind:text={addressText} problem={addressProblem}
+      onsave={saveAddress} oncancel={cancelAddress} />
   </div>
 </div>
 

@@ -1,10 +1,13 @@
 <script lang="ts">
   import { tick } from 'svelte';
+  import Icon from '$lib/icons/Icon.svelte';
   import { press } from '$lib/motion/roles/press';
   import TextField from './TextField.svelte';
 
   interface Props {
     host: string;
+    /** The web client: the hub is the one that served the page, so it is told but cannot be changed (CLI-002). */
+    fixed?: boolean;
     editing: boolean;
     text: string;
     problem: string | undefined;
@@ -14,7 +17,7 @@
     oncancel: () => void;
   }
 
-  let { host, editing = $bindable(), text = $bindable(), problem, onsave, oncancel }: Props = $props();
+  let { host, fixed = false, editing = $bindable(), text = $bindable(), problem, onsave, oncancel }: Props = $props();
   let field: HTMLInputElement | undefined = $state();
   let change: HTMLButtonElement | undefined = $state();
 
@@ -32,25 +35,29 @@
   }
 </script>
 
-<!-- Desktop only: a browser talks only to the hub that served the page (CLI-002, NAV-009). -->
-<form
-  class="hub"
-  novalidate
-  onsubmit={(event) => {
-    event.preventDefault();
-    onsave();
-  }}
->
-  {#if editing}
-    <TextField id="hub-address" name="hubAddress" label="Hub address" autocomplete="off" bind:value={text} bind:input={field} error={problem} onkeydown={keyed} />
-  {:else}
-    <p class="line">
-      Hub: <code>{host}</code>
-      <!-- tabindex="0": WebKit skips plain buttons when Tab is pressed unless they are focusable (NAV-005). -->
-      <button type="button" tabindex="0" bind:this={change} onclick={() => { editing = true; }} {@attach press()}>Change</button>
-    </p>
-  {/if}
-</form>
+<!-- Only the desktop app can change its hub; a browser talks only to the hub that served the page (CLI-002, NAV-009). -->
+{#if fixed}
+  <p class="line"><Icon name="carbon:network-3" size="sm" />Hub: <code>{host}</code></p>
+{:else}
+  <form
+    class="hub"
+    novalidate
+    onsubmit={(event) => {
+      event.preventDefault();
+      onsave();
+    }}
+  >
+    {#if editing}
+      <TextField id="hub-address" name="hubAddress" label="Hub address" autocomplete="off" bind:value={text} bind:input={field} error={problem} onkeydown={keyed} />
+    {:else}
+      <p class="line">
+        <Icon name="carbon:network-3" size="sm" />Hub: <code>{host}</code>
+        <!-- tabindex="0": WebKit skips plain buttons when Tab is pressed unless they are focusable (NAV-005). -->
+        <button type="button" tabindex="0" bind:this={change} onclick={() => { editing = true; }} {@attach press()}>Change</button>
+      </p>
+    {/if}
+  </form>
+{/if}
 
 <style>
   .hub {
@@ -63,13 +70,13 @@
     justify-content: center;
     gap: var(--space-2);
     margin: 0;
-    color: var(--text-secondary);
-    font-size: var(--text-md);
+    color: var(--text-tertiary);
+    font-size: var(--text-sm);
   }
 
   code {
     font-family: var(--font-mono);
-    color: var(--text);
+    color: var(--text-secondary);
   }
 
   button {

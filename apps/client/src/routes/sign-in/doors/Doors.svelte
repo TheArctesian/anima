@@ -11,10 +11,12 @@
   const DOTS = doorDots(3200);
   /** The points outside the doorway, drawn when the form stands in it. */
   const AROUND = DOTS.filter((dot) => !inDoorway(dot));
-  /** Room between the form and the door's jambs, as a share of the form's size. */
-  const ROOM = 1.12;
+  /** Room between the form and the door's jambs, as a share of the form's width; tall enough for step 1. */
+  const ROOM = 1.2;
   /** Nearest frame to farthest: the frost blues, deep to light (the mark's own colours, D13). */
   const SHADES = ['--graphite-frost-10', '--graphite-frost-9', '--graphite-frost-8', '--graphite-frost-7', '--graphite-frost-7'];
+  /** On a light ground the pale blues vanish, so the light theme draws the deep ones, a little stronger. */
+  const SHADES_LIGHT = ['--graphite-frost-10', '--graphite-accent-deep', '--graphite-frost-10', '--graphite-accent-deep', '--graphite-frost-9'];
   /** How far a point wanders, in mark units, and how long one wander takes, in milliseconds. */
   const DRIFT = 0.004;
   const DRIFT_PERIOD = 1800;
@@ -35,7 +37,9 @@
     if (canvas === undefined || context === null || context === undefined) return;
     const still = motion.reduced;
     const style = getComputedStyle(canvas);
-    const colours = SHADES.map((name) => style.getPropertyValue(name).trim());
+    const light = style.colorScheme === 'light';
+    const colours = (light ? SHADES_LIGHT : SHADES).map((name) => style.getPropertyValue(name).trim());
+    const strength = light ? 0.45 : 0.3;
     let frame = 0;
 
     /**
@@ -46,7 +50,8 @@
       if (doorway === undefined) return { scale: Math.min(width, height) * 0.42, x: width / 2, y: height / 2, dots: DOTS };
       const box = doorway.getBoundingClientRect();
       const ground = target.getBoundingClientRect();
-      const scale = Math.max(box.width / (OPENING.right - OPENING.left), box.height / (OPENING.bottom - OPENING.top)) * ROOM * ratio;
+      // From the width alone, so the doors keep their size as the form changes step (D13).
+      const scale = (box.width / (OPENING.right - OPENING.left)) * ROOM * ratio;
       const middleX = (box.left - ground.left + box.width / 2) * ratio;
       const middleY = (box.top - ground.top + box.height / 2) * ratio;
       const left = middleX - ((OPENING.left + OPENING.right) / 2) * scale;
@@ -73,7 +78,7 @@
       const size = ratio * 1.4;
       for (const dot of dots) {
         const drift = still ? 0 : Math.sin(time / DRIFT_PERIOD + dot.phase) * DRIFT;
-        context.globalAlpha = 0.3 + dot.depth * 0.05;
+        context.globalAlpha = strength + dot.depth * 0.05;
         context.fillStyle = colours[Math.min(4, Math.floor(dot.depth))] ?? '';
         context.fillRect(x + (dot.x + drift) * scale, y + (dot.y + drift) * scale, size, size);
       }

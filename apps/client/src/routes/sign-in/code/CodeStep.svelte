@@ -19,7 +19,7 @@
   <CodeBoxes disabled={busy} {oncomplete} />
   <p class="busy" role="status">{#if busy}<Icon name="carbon:renew" />Signing in{/if}</p>
   <div class="links">
-    <button type="button" tabindex="0" disabled={busy} onclick={onback}>Back</button>
+    <button type="button" tabindex="0" disabled={busy} onclick={onback}><Icon name="carbon:arrow-left" size="sm" />Back</button>
     <button type="button" tabindex="0" disabled={busy} onclick={onskip}>Sign in without a code</button>
   </div>
 </div>
@@ -28,15 +28,14 @@
   .step {
     display: grid;
     gap: var(--space-4);
-    justify-items: center;
   }
 
   h2 {
     margin: 0;
-    font-size: var(--text-lg);
-    font-weight: var(--weight-medium);
+    color: var(--text-secondary);
+    font-size: var(--text-md);
+    font-weight: var(--weight-regular);
     line-height: var(--leading-tight);
-    text-align: center;
   }
 
   .busy {
@@ -52,19 +51,26 @@
   .links {
     display: flex;
     flex-wrap: wrap;
-    justify-content: center;
+    justify-content: space-between;
     gap: var(--space-4);
   }
 
   .links button {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
     padding: 0;
     border: 0;
     background: none;
-    color: var(--accent);
+    color: var(--text-tertiary);
     font: inherit;
     font-size: var(--text-sm);
-    text-decoration: underline;
     cursor: pointer;
+    transition: color var(--duration-fast) var(--ease-enter);
+  }
+
+  .links button:hover:enabled {
+    color: var(--text);
   }
 
   .links button:disabled {
