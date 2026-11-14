@@ -848,7 +848,7 @@ Motion in Anima tells the operator something. Examples: "this came from there", 
 - **MOT-007. Layout shift.** Loading must not move content. A placeholder (skeleton) must have the same size as the content that replaces it. The cumulative layout shift of each page must be 0.
 - **MOT-008. Readings.** A metric value (CPU, memory, VRAM, response time, uptime) must change with a cross-fade. It must not count up or down, because a count shows values that did not occur. A bar can move to its new length.
 - **MOT-009. Honest progress.** A progress indicator must show the real progress. Do not use easing on progress.
-- **MOT-010. Do not animate.** Do not animate focus rings, terminal text, remote displays, error text, or values in the audit log. Do not use confetti, particles, glows or bounces as decoration.
+- **MOT-010. Do not animate.** Do not animate focus rings, terminal text, remote displays, error text, or values in the audit log. Do not use confetti, particles, glows or bounces as decoration. The one exception is the doors mark drawn in points behind the sign-in form (UR-7, D13): it drifts slowly, and with reduced motion it is drawn once and stays still (MOT-040).
 - **MOT-011. Ambient motion.** The only motion that repeats is the "Live" indicator for GraphQL subscriptions and the terminal cursor. Each one must stop when the window is not visible and with reduced motion.
 
 #### 5.7.2 Motion tokens
