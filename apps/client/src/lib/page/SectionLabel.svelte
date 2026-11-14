@@ -9,9 +9,11 @@
     /** The heading level, when the label heads a section; a plain label otherwise. */
     level?: 2 | 3 | undefined;
     id?: string | undefined;
+    /** The heading can take focus from code (`tabindex="-1"`), for a page opened at its section. */
+    focusable?: boolean;
   }
 
-  const { text, icon, level, id }: Props = $props();
+  const { text, icon, level, id, focusable = false }: Props = $props();
 </script>
 
 <!-- The section head of the website's language (UR-7, D6): an icon, a short rule, then the words. -->
@@ -21,7 +23,7 @@
   {#if level === undefined}
     <span {id}>{text}</span>
   {:else}
-    <svelte:element this={`h${String(level)}`} {id}>{text}</svelte:element>
+    <svelte:element this={`h${String(level)}`} {id} tabindex={focusable ? -1 : undefined}>{text}</svelte:element>
   {/if}
 </div>
 
@@ -53,5 +55,12 @@
     margin: 0;
     font: inherit;
     color: inherit;
+  }
+
+  h2:focus-visible,
+  h3:focus-visible {
+    outline: var(--border-focus) solid var(--focus-ring);
+    outline-offset: var(--border-focus);
+    border-radius: var(--radius-sm);
   }
 </style>
