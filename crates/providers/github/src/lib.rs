@@ -46,6 +46,7 @@ pub const DECLARATION: Declaration = Declaration {
     ],
     poll_interval_seconds: 900,
     api_base: "https://api.github.com",
+    changes: None,
 };
 
 /// Starts a run. A finished or empty slice starts a new listing and keeps what was seen; a
