@@ -5,6 +5,7 @@ use std::{
     collections::{HashMap, HashSet},
     net::SocketAddr,
     sync::{Arc, Mutex},
+    time::Instant,
 };
 
 use axum::{
@@ -17,6 +18,7 @@ use axum::{
 use reqwest::Url;
 use serde_json::{Value, json};
 use sqlx::PgPool;
+use tokio::sync::Semaphore;
 use uuid::Uuid;
 
 /// A canned reply for one path.
@@ -34,6 +36,8 @@ pub struct Heard {
     pub path: String,
     pub headers: Vec<(String, Vec<u8>)>,
     pub body: Vec<u8>,
+    /// When the stub heard it.
+    pub at: Instant,
 }
 
 impl Heard {
@@ -65,6 +69,8 @@ pub struct Script {
     pub hooks: HashMap<String, String>,
     /// Paths answered with 200 and a body that never ends, sent in chunks with no length.
     pub endless: HashSet<String>,
+    /// Paths whose answer waits for one permit of the gate, so a test can hold requests open.
+    pub gates: HashMap<String, Arc<Semaphore>>,
 }
 
 /// The running stub. Clones share it.
@@ -91,6 +97,7 @@ impl Stub {
             replies: HashMap::new(),
             hooks: HashMap::new(),
             endless: HashSet::new(),
+            gates: HashMap::new(),
         };
         let stub = Self {
             script: Arc::new(Mutex::new(script)),
@@ -151,6 +158,11 @@ impl Stub {
         self.with(|s| s.endless.insert(path.to_owned()));
     }
 
+    /// Holds each answer to `path` until `gate` gives it a permit.
+    pub fn gate(&self, path: &str, gate: &Arc<Semaphore>) {
+        self.with(|s| s.gates.insert(path.to_owned(), gate.clone()));
+    }
+
     pub fn hook(&self, path: &str, sql: &str) {
         self.with(|s| s.hooks.insert(path.to_owned(), sql.to_owned()));
     }
@@ -204,6 +216,7 @@ fn hear(
                 .map(|(n, v)| (n.as_str().to_owned(), v.as_bytes().to_vec()))
                 .collect(),
             body: body.to_vec(),
+            at: Instant::now(),
         });
         s.app_tokens.extend(app_token);
         s.hooks.remove(uri.path())
@@ -217,6 +230,9 @@ async fn answer(
 ) -> Response {
     if let Some(sql) = hear(&stub, (&method, &uri, &headers), &body) {
         sqlx::query(&sql).execute(&stub.pool).await.unwrap();
+    }
+    if let Some(gate) = stub.with(|s| s.gates.get(uri.path()).cloned()) {
+        gate.acquire().await.unwrap().forget();
     }
     if stub.with(|s| s.endless.contains(uri.path())) {
         return endless();

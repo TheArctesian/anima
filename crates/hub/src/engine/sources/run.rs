@@ -38,7 +38,7 @@ pub struct Failure {
 }
 
 impl Failure {
-    const fn new(kind: ErrorKind, words: &'static str) -> Self {
+    pub(in crate::engine::sources) const fn new(kind: ErrorKind, words: &'static str) -> Self {
         Self {
             kind,
             words,
@@ -46,7 +46,7 @@ impl Failure {
         }
     }
 
-    const fn store() -> Self {
+    pub(in crate::engine::sources) const fn store() -> Self {
         Self::new(ErrorKind::Store, "The hub could not store what it read.")
     }
 }
