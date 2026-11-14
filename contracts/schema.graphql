@@ -1836,7 +1836,7 @@ type ProjectRepository {
   "True: the connection no longer lists it. The record is kept."
   gone: Boolean!
   "The client shows \"not connected\" from this and does not ask for the lists below unless it is READY (PRJ-032)."
-  access: RepositoryAccess! @pending
+  access: RepositoryAccess!
 }
 
 type ResourceEvidence {
@@ -1884,7 +1884,7 @@ type ProjectConnection {
 # are not UUIDs (K7, IDs). Names are forge-neutral (PRO-007).
 
 "Whether the hub can read and change a repository on GitHub now."
-enum RepositoryAccess @pending {
+enum RepositoryAccess {
   READY
   "No source account holds it (the account was removed and the records kept)."
   NOT_CONNECTED
@@ -1898,7 +1898,7 @@ enum RepositoryAccess @pending {
 }
 
 "When the hub read an answer from GitHub (PRJ-032)."
-type ForgeRead @pending {
+type ForgeRead {
   "When GitHub gave this answer."
   at: DateTime!
   "True: the newest read failed and this is the last good answer, at most one hour old."
@@ -1907,11 +1907,11 @@ type ForgeRead @pending {
   problem: String
 }
 
-enum OpenOrClosed @pending { OPEN CLOSED ALL }
-enum ChecksState @pending { NONE PENDING PASSED FAILED }
+enum OpenOrClosed { OPEN CLOSED ALL }
+enum ChecksState { NONE PENDING PASSED FAILED }
 
 "The check runs and commit statuses of one commit, counted together."
-type CommitChecks @pending {
+type CommitChecks {
   sha: String!
   "FAILED when any failed; else PENDING when any is not finished; else PASSED; NONE when the commit has none."
   state: ChecksState!
@@ -1926,9 +1926,9 @@ type CommitChecks @pending {
   partial: Boolean!
 }
 
-enum PullRequestState @pending { OPEN CLOSED MERGED }
-enum MergeMethod @pending { MERGE SQUASH REBASE }
-enum MergeState @pending {
+enum PullRequestState { OPEN CLOSED MERGED }
+enum MergeMethod { MERGE SQUASH REBASE }
+enum MergeState {
   "No conflict and the checks passed."
   CLEAN
   "No conflict; a check that is not required failed or still runs."
@@ -1943,14 +1943,14 @@ enum MergeState @pending {
   UNKNOWN
 }
 
-type PullRequestMergeability @pending {
+type PullRequestMergeability {
   state: MergeState!
   "True only for CLEAN on an open pull request that is not a draft (PRJ-033)."
   canMerge: Boolean!
 }
 
 "Identity is the repository and the number. It has no hub ID: the hub does not store it."
-type PullRequest @pending {
+type PullRequest {
   repository: ID!
   number: Int!
   "At most 300 characters. Text from GitHub."
@@ -1985,12 +1985,12 @@ type PullRequest @pending {
   checks: CommitChecks
 }
 
-type PullRequestEdge @pending {
+type PullRequestEdge {
   cursor: String!
   node: PullRequest!
 }
 
-type PullRequestConnection @pending {
+type PullRequestConnection {
   edges: [PullRequestEdge!]!
   pageInfo: PageInfo!
   read: ForgeRead!
@@ -1998,9 +1998,9 @@ type PullRequestConnection @pending {
   mergeMethods: [MergeMethod!]!
 }
 
-enum IssueCloseReason @pending { COMPLETED NOT_PLANNED }
+enum IssueCloseReason { COMPLETED NOT_PLANNED }
 
-type Issue @pending {
+type Issue {
   repository: ID!
   number: Int!
   "At most 300 characters. Text from GitHub."
@@ -2024,18 +2024,18 @@ type Issue @pending {
   bodyCut: Boolean!
 }
 
-type IssueEdge @pending {
+type IssueEdge {
   cursor: String!
   node: Issue!
 }
 
-type IssueConnection @pending {
+type IssueConnection {
   edges: [IssueEdge!]!
   pageInfo: PageInfo!
   read: ForgeRead!
 }
 
-type IssueComment @pending {
+type IssueComment {
   "GitHub's comment number, as digits."
   id: ID!
   "Text from GitHub."
@@ -2048,21 +2048,21 @@ type IssueComment @pending {
   url: String!
 }
 
-type IssueCommentEdge @pending {
+type IssueCommentEdge {
   cursor: String!
   node: IssueComment!
 }
 
-type IssueCommentConnection @pending {
+type IssueCommentConnection {
   edges: [IssueCommentEdge!]!
   pageInfo: PageInfo!
   read: ForgeRead!
 }
 
-enum WorkflowRunStatus @pending { QUEUED IN_PROGRESS COMPLETED }
-enum WorkflowConclusion @pending { SUCCESS FAILURE CANCELLED SKIPPED TIMED_OUT ACTION_REQUIRED NEUTRAL STALE OTHER }
+enum WorkflowRunStatus { QUEUED IN_PROGRESS COMPLETED }
+enum WorkflowConclusion { SUCCESS FAILURE CANCELLED SKIPPED TIMED_OUT ACTION_REQUIRED NEUTRAL STALE OTHER }
 
-type Workflow @pending {
+type Workflow {
   "GitHub's workflow number, as digits."
   id: ID!
   "Text from GitHub."
@@ -2074,7 +2074,7 @@ type Workflow @pending {
   url: String!
 }
 
-type WorkflowJobs @pending {
+type WorkflowJobs {
   total: Int!
   succeeded: Int!
   failed: Int!
@@ -2088,7 +2088,7 @@ type WorkflowJobs @pending {
   partial: Boolean!
 }
 
-type WorkflowRun @pending {
+type WorkflowRun {
   repository: ID!
   "GitHub's run number across the repository, as digits (it does not fit Int)."
   id: ID!
@@ -2127,12 +2127,12 @@ type WorkflowRun @pending {
   jobs: WorkflowJobs
 }
 
-type WorkflowRunEdge @pending {
+type WorkflowRunEdge {
   cursor: String!
   node: WorkflowRun!
 }
 
-type WorkflowRunConnection @pending {
+type WorkflowRunConnection {
   edges: [WorkflowRunEdge!]!
   pageInfo: PageInfo!
   read: ForgeRead!
@@ -2441,21 +2441,21 @@ type Query {
   # 5 seconds old). A page cursor holds GitHub's page number and the page size: after with a different first is
   # VALIDATION. Pages are GitHub's pages, so a row can repeat or be skipped when the list changes between pages.
   "Newest updated first. first is 1 to 50. One GitHub request, and more for mergeability and checks when selected (PRJ-031, PRJ-033)."
-  pullRequests(repository: ID!, state: OpenOrClosed = OPEN, first: Int = 20, after: String, fresh: Boolean = false): PullRequestConnection! @pending
+  pullRequests(repository: ID!, state: OpenOrClosed = OPEN, first: Int = 20, after: String, fresh: Boolean = false): PullRequestConnection!
   "Null when the repository has no pull request with this number."
-  pullRequest(repository: ID!, number: Int!, fresh: Boolean = false): PullRequest @pending
+  pullRequest(repository: ID!, number: Int!, fresh: Boolean = false): PullRequest
   "Newest updated first; pull requests are not in it. first is 1 to 100. A page can hold fewer than first rows and still have a next page (PRJ-031)."
-  issues(repository: ID!, state: OpenOrClosed = OPEN, first: Int = 30, after: String, fresh: Boolean = false): IssueConnection! @pending
+  issues(repository: ID!, state: OpenOrClosed = OPEN, first: Int = 30, after: String, fresh: Boolean = false): IssueConnection!
   "Null when the repository has no issue with this number, or the number is a pull request."
-  issue(repository: ID!, number: Int!, fresh: Boolean = false): Issue @pending
+  issue(repository: ID!, number: Int!, fresh: Boolean = false): Issue
   "Oldest first. number is an issue or a pull request. first is 1 to 100."
-  issueComments(repository: ID!, number: Int!, first: Int = 30, after: String, fresh: Boolean = false): IssueCommentConnection! @pending
+  issueComments(repository: ID!, number: Int!, first: Int = 30, after: String, fresh: Boolean = false): IssueCommentConnection!
   "Every workflow of the repository, at most 100, by name (PRJ-035)."
-  workflows(repository: ID!, fresh: Boolean = false): [Workflow!]! @pending
+  workflows(repository: ID!, fresh: Boolean = false): [Workflow!]!
   "Newest first. branch null: every branch. status null: every status. first is 1 to 50 (PRJ-031, PRJ-034)."
-  workflowRuns(repository: ID!, branch: String, status: WorkflowRunStatus, first: Int = 20, after: String, fresh: Boolean = false): WorkflowRunConnection! @pending
+  workflowRuns(repository: ID!, branch: String, status: WorkflowRunStatus, first: Int = 20, after: String, fresh: Boolean = false): WorkflowRunConnection!
   "Null when the repository has no run with this number."
-  workflowRun(repository: ID!, runId: ID!, fresh: Boolean = false): WorkflowRun @pending
+  workflowRun(repository: ID!, runId: ID!, fresh: Boolean = false): WorkflowRun
   "Newest first. ref is a branch name or a 40-digit commit; null: the default branch. first is 1 to 100."
   commits(repository: ID!, ref: String, first: Int = 30, after: String, fresh: Boolean = false): CommitConnection! @pending
   "By name. first is 1 to 100."
