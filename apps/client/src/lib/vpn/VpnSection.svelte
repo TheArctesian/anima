@@ -62,7 +62,7 @@
 
 {#if picture === undefined && live.error !== null}
   <div class="note">
-    <span class="mark"><Icon name="nf-md-alert_circle_outline" size="sm" /></span>
+    <span class="mark"><Icon name="carbon:warning" size="sm" /></span>
     <p role="alert">Could not load the VPN status.</p>
     <FormButton tabindex={0} aria-disabled={retrying} aria-busy={retrying} onclick={retry}>Retry</FormButton>
   </div>

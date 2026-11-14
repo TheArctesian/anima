@@ -106,7 +106,7 @@
     onkeydown={triggerKey}
     {@attach press()}
   >
-    <Icon name="nf-md-key" />
+    <Icon name="carbon:password" />
     <span>Keys</span>
   </button>
   {#if open}

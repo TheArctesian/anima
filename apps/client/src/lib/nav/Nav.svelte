@@ -81,7 +81,7 @@
   <div class="notice" role="status" data-holds-banner>
     {#if banner !== null}
       <div class="banner" transition:fade title="{banner.title}. {banner.origin}. {banner.advice}. {banner.age}">
-        <span class="alert"><Icon name="nf-md-alert" /></span>
+        <span class="alert"><Icon name="carbon:warning-alt" /></span>
         <strong>{banner.title}</strong>
         <span class="origin">{banner.origin}</span>
         <span>{banner.advice}</span>

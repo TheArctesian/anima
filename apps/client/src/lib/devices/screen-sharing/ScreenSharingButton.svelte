@@ -97,7 +97,7 @@
     }}
     {@attach press()}
   >
-    <Icon name="nf-md-plus" size="sm" />
+    <Icon name="carbon:add" size="sm" />
     {#if compact}VNC{:else}<span class="full">Set up screen sharing</span><span class="short">VNC</span>{/if}
   </button>
   <!-- Always mounted, so a change is announced; failures have their own alert. -->

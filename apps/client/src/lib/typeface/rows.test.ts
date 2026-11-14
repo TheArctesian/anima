@@ -39,7 +39,7 @@ it('UI-020: each text role has its own labelled choice, its default first', () =
   const target = show();
   const expected = [
     ['Interface font', ['IBM Plex Sans', 'OpenDyslexic'], 'ibm-plex-sans'],
-    ['Monospace font', ['Fira Code', 'OpenDyslexic'], 'fira-code'],
+    ['Monospace font', ['IBM Plex Mono', 'OpenDyslexic'], 'ibm-plex-mono'],
   ] as const;
   for (const [label, options, value] of expected) {
     const control = select(target, label);
@@ -51,13 +51,13 @@ it('UI-020: each text role has its own labelled choice, its default first', () =
 it('UI-020: choosing OpenDyslexic for the interface changes only the interface font, now and after a restart', async () => {
   const target = show();
   choose(select(target, 'Interface font'), 'opendyslexic');
-  expect(document.documentElement.dataset).toMatchObject({ fontUi: 'opendyslexic', fontMono: 'fira-code' });
+  expect(document.documentElement.dataset).toMatchObject({ fontUi: 'opendyslexic', fontMono: 'ibm-plex-mono' });
   if (app !== undefined) await unmount(app);
   app = undefined;
   document.body.innerHTML = '';
   const again = show();
   expect(select(again, 'Interface font').value).toBe('opendyslexic');
-  expect(select(again, 'Monospace font').value).toBe('fira-code');
+  expect(select(again, 'Monospace font').value).toBe('ibm-plex-mono');
 });
 
 it('UI-020: a storage that refuses to save still applies the font and says it will not last', () => {
@@ -79,7 +79,7 @@ it('UI-020: the "could not save" message goes once a later choice is saved', () 
   const target = show();
   choose(select(target, 'Monospace font'), 'opendyslexic');
   expect(target.querySelector('[role="alert"]')).not.toBeNull();
-  choose(select(target, 'Monospace font'), 'fira-code');
+  choose(select(target, 'Monospace font'), 'ibm-plex-mono');
   expect(setItem).toHaveBeenCalledTimes(2);
   expect(target.querySelector('[role="alert"]')).toBeNull();
 });

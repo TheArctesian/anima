@@ -42,7 +42,7 @@
       <span class="chip">
         {tag}
         <button type="button" aria-label="Remove tag {tag}" title="Remove tag {tag}" onclick={() => { remove(tag); }}>
-          <Icon name="nf-md-close" size="sm" />
+          <Icon name="carbon:close" size="sm" />
         </button>
       </span>
     {/each}

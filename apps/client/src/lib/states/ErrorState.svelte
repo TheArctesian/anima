@@ -18,7 +18,7 @@
 
 <!-- It replaces the content that failed to load and nothing else (UI-030). The text stays the text colour: --status-down text is under 4.5:1 (MAT-005). -->
 <div class="error" role="alert">
-  <span class="mark"><Icon name="nf-md-alert_circle_outline" size="lg" /></span>
+  <span class="mark"><Icon name="carbon:warning" size="lg" /></span>
   <p>{message}</p>
   <div class="next">
     <FormButton onclick={onRetry}>{retryLabel}</FormButton>

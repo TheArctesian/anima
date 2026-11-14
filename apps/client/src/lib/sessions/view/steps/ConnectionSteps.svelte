@@ -14,10 +14,10 @@
   const wake = $derived(wakeLine(progress, deviceName));
 
   const MARK_ICON: Readonly<Record<StepMark, IconName>> = {
-    waiting: 'nf-md-dots_vertical',
-    active: 'nf-md-refresh',
-    done: 'nf-md-check_circle',
-    failed: 'nf-md-close_circle',
+    waiting: 'carbon:overflow-menu-vertical',
+    active: 'carbon:renew',
+    done: 'carbon:checkmark-filled',
+    failed: 'carbon:close-filled',
   };
 
   const MARK_TEXT: Readonly<Record<StepMark, string>> = {

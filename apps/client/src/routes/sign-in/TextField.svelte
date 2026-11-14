@@ -40,7 +40,7 @@
   />
   <!-- Always rendered, so aria-describedby always names an element; empty until the field has a problem (UI-030). -->
   <p id="{id}-problem" class="problem" hidden={error === undefined}>
-    {#if error !== undefined}<span class="mark"><Icon name="nf-md-alert_circle_outline" size="sm" /></span>{error}{/if}
+    {#if error !== undefined}<span class="mark"><Icon name="carbon:warning" size="sm" /></span>{error}{/if}
   </p>
 </div>
 

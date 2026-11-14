@@ -17,7 +17,7 @@
 <!-- WEB-010: the reason and a Reload button, as EndedPanel. -->
 <section class="down" role="status" tabindex="-1">
   <p class="reason">
-    <Icon name="nf-md-lan_disconnect" />
+    <Icon name="carbon:unlink" />
     <span data-reason>{reason}</span>
   </p>
   {#if code !== undefined}
@@ -25,7 +25,7 @@
   {/if}
   {#if onreload !== undefined}
     <button type="button" onclick={onreload} {@attach press()}>
-      <Icon name="nf-md-refresh" />
+      <Icon name="carbon:renew" />
       <span>Reload</span>
     </button>
   {/if}

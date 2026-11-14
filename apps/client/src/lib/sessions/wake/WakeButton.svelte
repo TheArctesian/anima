@@ -33,7 +33,7 @@
 <!-- RA-031: a manual wake; the status line holds a fixed block so the text causes no layout shift (MOT-007). -->
 <div class="wake">
   <button type="button" onclick={wake} disabled={disabled || busy} aria-busy={busy} {@attach press()}>
-    <Icon name="nf-md-lan_connect" />
+    <Icon name="carbon:connect" />
     <span>Wake</span>
   </button>
   <p class="status" role="status">

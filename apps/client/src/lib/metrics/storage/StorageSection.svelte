@@ -21,7 +21,7 @@
 <!-- After Metrics, a device's drives one row each (MET-029); hidden when metrics are off, as Metrics says why. -->
 {#if hasMetrics(source)}
   <section class="overview-card storage" aria-labelledby="overview-storage">
-    <h2 id="overview-storage" class="overview-card-title"><Icon name="nf-md-harddisk" />Storage</h2>
+    <h2 id="overview-storage" class="overview-card-title"><Icon name="carbon:vmdk-disk" />Storage</h2>
     {#if error !== null}
       <p class="quiet">Storage is not available while metrics cannot load.</p>
     {:else if drives === null}

@@ -63,7 +63,7 @@ select {
   --nav-inline-size: calc(var(--space-3) * 2 + var(--titlebar-buttons-inline-size) + var(--target-min-touch));
 }
 
-/* The operator's typeface choice (UI-020): `lib/typeface` sets the data attributes; Fira Code is the token default. */
+/* The operator's typeface choice (UI-020): `lib/typeface` sets the data attributes; IBM Plex Mono is the token default. */
 :root[data-font-ui="opendyslexic"] {
   --font-ui: var(--font-ui-opendyslexic);
 }

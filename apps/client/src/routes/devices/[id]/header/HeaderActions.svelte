@@ -25,9 +25,9 @@
   const { device, line, onConnect, onOpenWeb, screenSharing, onSettings }: Props = $props();
 
   const PROTOCOL_ICONS: Record<SessionProtocol, IconName> = {
-    SSH: 'nf-md-console',
-    RDP: 'nf-md-remote_desktop',
-    VNC: 'nf-md-monitor_screenshot',
+    SSH: 'carbon:terminal',
+    RDP: 'carbon:remote-connection',
+    VNC: 'carbon:screen-map',
   };
 </script>
 
@@ -45,7 +45,7 @@
     }}
     {@attach press()}
   >
-    <Icon name={mode === 'set-up' ? 'nf-md-plus' : PROTOCOL_ICONS[protocol]} size="sm" />{protocol}
+    <Icon name={mode === 'set-up' ? 'carbon:add' : PROTOCOL_ICONS[protocol]} size="sm" />{protocol}
   </button>
 {/snippet}
 
@@ -69,7 +69,7 @@
     <WebMenu deviceName={device.name} interfaces={webInterfacesOf(device)} onOpen={onOpenWeb} />
   {/if}
   <button type="button" class="device-action" tabindex="0" onclick={() => { onSettings(null); }} {@attach press()}>
-    <Icon name="nf-md-pencil" size="sm" />Edit
+    <Icon name="carbon:edit" size="sm" />Edit
   </button>
 </div>
 

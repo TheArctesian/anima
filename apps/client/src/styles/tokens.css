@@ -190,7 +190,7 @@
   --weight-regular: 400;
   --weight-medium: 500;
   --font-ui: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
-  --font-mono: "IBM Plex Mono", "Symbols Nerd Font Mono", ui-monospace, monospace;
+  --font-mono: "IBM Plex Mono", "Symbols Nerd Font", ui-monospace, monospace;
   --font-ui-opendyslexic: "OpenDyslexic Nerd Font Propo", system-ui, -apple-system, sans-serif;
   --font-mono-opendyslexic: "OpenDyslexicM Nerd Font Mono", ui-monospace, monospace;
   --font-icon: "OpenDyslexic Nerd Font Propo", "Symbols Nerd Font";

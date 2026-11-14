@@ -20,7 +20,7 @@
 <div class="overview-facts-fit">
   <div class="overview-facts">
     <section class="overview-card" aria-labelledby="{id}-status">
-      <h2 id="{id}-status" class="overview-card-title"><Icon name="nf-md-heart_pulse" />Status</h2>
+      <h2 id="{id}-status" class="overview-card-title"><Icon name="carbon:activity" />Status</h2>
       <dl class="facts">
         <div>
           <dt>Status</dt>
@@ -28,12 +28,12 @@
         </div>
         <div>
           <dt>Maintenance</dt>
-          <dd><Icon name="nf-md-wrench_outline" size="sm" /><Reading value={device.maintenance}>{device.maintenance ? 'On' : 'Off'}</Reading></dd>
+          <dd><Icon name="carbon:tool-kit" size="sm" /><Reading value={device.maintenance}>{device.maintenance ? 'On' : 'Off'}</Reading></dd>
         </div>
       </dl>
     </section>
     <section class="overview-card" aria-labelledby="{id}-uptime">
-      <h2 id="{id}-uptime" class="overview-card-title"><Icon name="nf-md-timer_outline" />Uptime</h2>
+      <h2 id="{id}-uptime" class="overview-card-title"><Icon name="carbon:timer" />Uptime</h2>
       <dl class="overview-figures">
         {#each uptimeReadings(device) as reading (reading.label)}
           <div class="overview-figure">
@@ -44,7 +44,7 @@
       </dl>
     </section>
     <section class="overview-card" aria-labelledby="{id}-checks">
-      <h2 id="{id}-checks" class="overview-card-title"><Icon name="nf-md-clipboard_check_outline" />Checks</h2>
+      <h2 id="{id}-checks" class="overview-card-title"><Icon name="carbon:task-complete" />Checks</h2>
       {#if counts.length > 0}
         <!-- Worst first (R-044); each count is labelled with its status in words beside its dot (UI-003). -->
         <dl class="overview-figures">

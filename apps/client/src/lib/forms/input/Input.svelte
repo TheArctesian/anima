@@ -4,7 +4,7 @@
   interface Props extends Omit<HTMLInputAttributes, 'class' | 'size' | 'children'> {
     /** Height: `control-md` (default) or `control-lg` (sign-in). It matches the buttons and selects beside it (UI-013). */
     size?: 'md' | 'lg';
-    /** Machine text: an address, a port, a key, a command. Fira Code, ligatures off (UI-011). */
+    /** Machine text: an address, a port, a key, a command. The monospace font, ligatures off (UI-011). */
     mono?: boolean;
     /** The value failed validation: a danger edge and `aria-invalid`. Say why in a Field's error line, not here. */
     invalid?: boolean;

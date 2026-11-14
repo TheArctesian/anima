@@ -68,7 +68,7 @@
 <!-- The card's footer holds the note or, when the load failed, its notice and Try again, at one height (MOT-007). -->
 <div class="note">
   {#if loadFailed}
-    <span class="mark"><Icon name="nf-md-alert_circle_outline" size="sm" /></span>
+    <span class="mark"><Icon name="carbon:warning" size="sm" /></span>
     <p role="alert">Could not load the periods.</p>
     <FormButton tabindex={0} aria-disabled={retrying} aria-busy={retrying} onclick={retry}>Try again</FormButton>
   {:else}

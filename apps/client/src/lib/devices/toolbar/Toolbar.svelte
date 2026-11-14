@@ -37,7 +37,7 @@
 <div class="toolbar" role="search" aria-label="Filter devices">
   <label class="search">
     <span class="label">Search by name</span>
-    <Icon name="nf-md-magnify" size="sm" />
+    <Icon name="carbon:search" size="sm" />
     <input
       type="search"
       placeholder="Search by name"
@@ -50,7 +50,7 @@
   </label>
   <Menu
     label="Status"
-    icon="nf-md-filter_variant"
+    icon="carbon:filter"
     kind="checkbox"
     options={STATUS_OPTIONS}
     chosen={query.statuses}
@@ -60,7 +60,7 @@
   />
   <Menu
     label="Tags"
-    icon="nf-md-tag"
+    icon="carbon:tag"
     kind="checkbox"
     options={tagOptions}
     chosen={query.tags}
@@ -72,7 +72,7 @@
   <Menu
     label="Site"
     shown={siteButtonLabel(sites, query.site)}
-    icon="nf-md-lan_connect"
+    icon="carbon:connect"
     kind="radio"
     options={sites}
     chosen={[query.site ?? ALL_SITES]}
@@ -83,7 +83,7 @@
   />
   <Menu
     label="Sort"
-    icon="nf-md-sort"
+    icon="carbon:arrows-vertical"
     kind="radio"
     options={SORT_OPTIONS}
     chosen={[query.sort]}
@@ -105,7 +105,7 @@
     {/each}
   </div>
   <button type="button" class="add" tabindex="0" onclick={onAddDevice} {@attach press()}>
-    <Icon name="nf-md-plus" size="sm" />
+    <Icon name="carbon:add" size="sm" />
     <span>Add device</span>
   </button>
 </div>

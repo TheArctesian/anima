@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { glyph, type IconName } from './icons';
+  import { iconShape, type IconName } from './icons';
 
   interface Props {
     name: IconName;
@@ -7,25 +7,35 @@
   }
 
   let { name, size = 'md' }: Props = $props();
+  const shape = $derived(iconShape(name));
 </script>
 
-<span aria-hidden="true" class="icon icon-{size}">{glyph(name)}</span>
+<svg aria-hidden="true" class="icon icon-{size}" viewBox="0 0 {shape.width} {shape.height}" focusable="false">
+  {#each shape.parts as [tag, attributes], index (index)}
+    <svelte:element this={tag} {...attributes} />
+  {/each}
+</svg>
 
 <style>
   .icon {
-    font-family: var(--font-icon);
-    line-height: 1;
+    display: inline-block;
+    flex: none;
+    vertical-align: -0.125em;
+    fill: currentColor;
   }
 
   .icon-sm {
-    font-size: var(--icon-sm);
+    inline-size: var(--icon-sm);
+    block-size: var(--icon-sm);
   }
 
   .icon-md {
-    font-size: var(--icon-md);
+    inline-size: var(--icon-md);
+    block-size: var(--icon-md);
   }
 
   .icon-lg {
-    font-size: var(--icon-lg);
+    inline-size: var(--icon-lg);
+    block-size: var(--icon-lg);
   }
 </style>

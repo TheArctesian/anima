@@ -56,10 +56,10 @@
       onclick={() => void togglePause()}
       {@attach press()}
     >
-      <Icon name={check.paused ? 'nf-md-play' : 'nf-md-pause'} size="sm" />{check.paused ? 'Resume' : 'Pause'}
+      <Icon name={check.paused ? 'carbon:play' : 'carbon:pause'} size="sm" />{check.paused ? 'Resume' : 'Pause'}
     </button>
-    <button type="button" aria-label="Edit {check.name}" onclick={onEdit} {@attach press()}><Icon name="nf-md-pencil" size="sm" /></button>
-    <button type="button" aria-label="Delete {check.name}" onclick={onDelete} {@attach press()}><Icon name="nf-md-delete" size="sm" /></button>
+    <button type="button" aria-label="Edit {check.name}" onclick={onEdit} {@attach press()}><Icon name="carbon:edit" size="sm" /></button>
+    <button type="button" aria-label="Delete {check.name}" onclick={onDelete} {@attach press()}><Icon name="carbon:trash-can" size="sm" /></button>
   </span>
   {#if failure !== null}<p class="failure" role="alert">{failure.message}</p>{/if}
 </li>

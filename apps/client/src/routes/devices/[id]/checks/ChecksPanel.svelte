@@ -42,7 +42,7 @@
 
 <div class="checks">
   <button type="button" class="add" onclick={() => { edit(null); }} {@attach press()}>
-    <Icon name="nf-md-plus" size="sm" />Add check
+    <Icon name="carbon:add" size="sm" />Add check
   </button>
   <ul class="rows" aria-label="Checks">
     {#each checks as check (check.id)}

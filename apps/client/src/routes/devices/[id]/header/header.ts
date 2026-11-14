@@ -86,13 +86,13 @@ export function headerLine(device: HeaderDevice): HeaderLine {
 
 /** Words in a kind, first match wins: the operator types the kind freely, so it is matched by the words it holds. */
 const KIND_ICONS: readonly (readonly [RegExp, IconName])[] = [
-  [/laptop|notebook|macbook/, 'nf-md-laptop'],
-  [/phone|mobile|tablet|ipad/, 'nf-md-cellphone'],
-  [/\bnas\b|storage|file ?server/, 'nf-md-nas'],
-  [/router|switch|access ?point|firewall|gateway|\bap\b/, 'nf-md-router_wireless'],
-  [/monitor|display|screen|\btv\b|kiosk/, 'nf-md-monitor'],
-  [/workstation|desktop|\bpc\b|tower/, 'nf-md-desktop_tower'],
-  [/server|\bvm\b|virtual/, 'nf-md-server'],
+  [/laptop|notebook|macbook/, 'carbon:laptop'],
+  [/phone|mobile|tablet|ipad/, 'carbon:mobile'],
+  [/\bnas\b|storage|file ?server/, 'carbon:data-base'],
+  [/router|switch|access ?point|firewall|gateway|\bap\b/, 'carbon:router-wifi'],
+  [/monitor|display|screen|\btv\b|kiosk/, 'carbon:screen'],
+  [/workstation|desktop|\bpc\b|tower/, 'carbon:virtual-desktop'],
+  [/server|\bvm\b|virtual/, 'carbon:bare-metal-server'],
 ];
 
 /** The icon for a device's kind; a kind with no known word is a desktop for macOS and Windows and a server otherwise. */
@@ -100,7 +100,7 @@ export function kindIcon(kind: string, os: OperatingSystem): IconName {
   const words = kind.toLowerCase();
   const found = KIND_ICONS.find(([pattern]) => pattern.test(words));
   if (found !== undefined) return found[1];
-  return os === 'MACOS' || os === 'WINDOWS' ? 'nf-md-desktop_tower' : 'nf-md-server';
+  return os === 'MACOS' || os === 'WINDOWS' ? 'carbon:virtual-desktop' : 'carbon:bare-metal-server';
 }
 
 /** An IPv4 or IPv6 address, as opposed to a host name. */
@@ -110,14 +110,14 @@ const ADDRESS = /^(\d{1,3}(\.\d{1,3}){3}|[\da-f:]*:[\da-f:.]*)$/i;
 export function itemIcon(item: HeaderText, kind: IconName, os: IconName): IconName {
   switch (item.part) {
     case 'host':
-      return ADDRESS.test(item.text) ? 'nf-md-ip_network' : 'nf-md-dns';
+      return ADDRESS.test(item.text) ? 'carbon:ip' : 'carbon:server-dns';
     case 'ip':
-      return 'nf-md-ip_network';
+      return 'carbon:ip';
     case 'kind':
       return kind;
     case 'os':
       return os;
     case 'tag':
-      return 'nf-md-tag';
+      return 'carbon:tag';
   }
 }

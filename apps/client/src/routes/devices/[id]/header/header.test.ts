@@ -51,8 +51,8 @@ describe('headerLine (DEV-020, D-8)', () => {
       { part: 'tag', text: 'lab' },
       { part: 'tag', text: 'storage' },
     ]);
-    expect(line.kindIcon).toBe('nf-md-server');
-    expect(line.osIcon).toBe('nf-md-linux');
+    expect(line.kindIcon).toBe('carbon:bare-metal-server');
+    expect(line.osIcon).toBe('simple-icons:linux');
   });
 
   it.each([null, '', '192.168.1.20'])('D-8: the IP is left out when it is %j and the host is 192.168.1.20', (ip) => {
@@ -71,16 +71,16 @@ describe('headerLine (DEV-020, D-8)', () => {
 
 describe('kindIcon', () => {
   it.each([
-    ['laptop', 'LINUX', 'nf-md-laptop'],
-    ['Workstation', 'LINUX', 'nf-md-desktop_tower'],
-    ['server', 'MACOS', 'nf-md-server'],
-    ['router', 'OTHER', 'nf-md-router_wireless'],
-    ['switch', 'OTHER', 'nf-md-router_wireless'],
-    ['NAS', 'LINUX', 'nf-md-nas'],
-    ['phone', 'OTHER', 'nf-md-cellphone'],
-    ['display', 'OTHER', 'nf-md-monitor'],
-    ['printer', 'LINUX', 'nf-md-server'],
-    ['printer', 'MACOS', 'nf-md-desktop_tower'],
+    ['laptop', 'LINUX', 'carbon:laptop'],
+    ['Workstation', 'LINUX', 'carbon:virtual-desktop'],
+    ['server', 'MACOS', 'carbon:bare-metal-server'],
+    ['router', 'OTHER', 'carbon:router-wifi'],
+    ['switch', 'OTHER', 'carbon:router-wifi'],
+    ['NAS', 'LINUX', 'carbon:data-base'],
+    ['phone', 'OTHER', 'carbon:mobile'],
+    ['display', 'OTHER', 'carbon:screen'],
+    ['printer', 'LINUX', 'carbon:bare-metal-server'],
+    ['printer', 'MACOS', 'carbon:virtual-desktop'],
   ] as const)('the kind %j on %s shows %s', (kind, os, icon) => {
     expect(kindIcon(kind, os)).toBe(icon);
   });

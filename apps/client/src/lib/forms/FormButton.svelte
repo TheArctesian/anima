@@ -73,7 +73,7 @@
     <span class="labels">
       <span class="label" class:on={feedback === 'idle'} aria-hidden={feedback !== 'idle'}>{@render children?.()}</span>
       <span class="label waiting" class:on={feedback === 'pending'} aria-hidden={feedback !== 'pending'}>{pendingLabel}</span>
-      <span class="label done" class:on={feedback === 'done'} aria-hidden={feedback !== 'done'}><Icon name="nf-md-check" size="sm" />{doneLabel}</span>
+      <span class="label done" class:on={feedback === 'done'} aria-hidden={feedback !== 'done'}><Icon name="carbon:checkmark" size="sm" />{doneLabel}</span>
     </span>
   {/if}
 </button>

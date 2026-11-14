@@ -23,8 +23,8 @@
   {#each stages as stage (stage.name)}
     <li class="stage {stage.mark}">
       <span class="mark" aria-hidden="true">
-        {#if stage.mark === 'done'}<Icon name="nf-md-check" size="sm" />
-        {:else if stage.mark === 'failed'}<Icon name="nf-md-close" size="sm" />
+        {#if stage.mark === 'done'}<Icon name="carbon:checkmark" size="sm" />
+        {:else if stage.mark === 'failed'}<Icon name="carbon:close" size="sm" />
         {/if}
       </span>
       <span class="words">

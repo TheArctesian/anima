@@ -4,7 +4,16 @@
  * Family names must match the font-ui, font-mono, font-ui-opendyslexic, font-mono-opendyslexic and font-icon tokens.
  */
 
-/* IBM Plex Sans, the interface font (UI-010), ships Regular and Bold only, as upstream's unchanged woff2 files. */
+/* IBM Plex Sans, the interface font (UI-010), ships ExtraLight, Regular and Medium (weight-light, weight-regular,
+   weight-medium; UR-7), as upstream's unchanged woff2 files. */
+@font-face {
+  font-family: "IBM Plex Sans";
+  src: url("./fonts/IBMPlexSans-ExtraLight.woff2") format("woff2");
+  font-weight: 200;
+  font-style: normal;
+  font-display: block;   /* bundled local fonts: no first-paint swap shift (MOT-007, R-042) */
+}
+
 @font-face {
   font-family: "IBM Plex Sans";
   src: url("./fonts/IBMPlexSans-Regular.woff2") format("woff2");
@@ -15,8 +24,8 @@
 
 @font-face {
   font-family: "IBM Plex Sans";
-  src: url("./fonts/IBMPlexSans-Bold.woff2") format("woff2");
-  font-weight: 700;
+  src: url("./fonts/IBMPlexSans-Medium.woff2") format("woff2");
+  font-weight: 500;
   font-style: normal;
   font-display: block;   /* bundled local fonts: no first-paint swap shift (MOT-007, R-042) */
 }
@@ -69,19 +78,19 @@
   font-display: block;   /* bundled local fonts: no first-paint swap shift (MOT-007, R-042) */
 }
 
-/* Fira Code ships Regular and Bold only, the two weights the tokens use (weight-regular, weight-medium). */
+/* IBM Plex Mono, the monospace font (UI-011), ships Regular and Medium, the weights machine text uses. */
 @font-face {
-  font-family: "Fira Code";
-  src: url("./fonts/FiraCode-Regular.woff2") format("woff2");
+  font-family: "IBM Plex Mono";
+  src: url("./fonts/IBMPlexMono-Regular.woff2") format("woff2");
   font-weight: 400;
   font-style: normal;
   font-display: block;   /* bundled local fonts: no first-paint swap shift (MOT-007, R-042) */
 }
 
 @font-face {
-  font-family: "Fira Code";
-  src: url("./fonts/FiraCode-Bold.woff2") format("woff2");
-  font-weight: 700;
+  font-family: "IBM Plex Mono";
+  src: url("./fonts/IBMPlexMono-Medium.woff2") format("woff2");
+  font-weight: 500;
   font-style: normal;
   font-display: block;   /* bundled local fonts: no first-paint swap shift (MOT-007, R-042) */
 }
@@ -91,7 +100,7 @@ table, time, output, meter, [data-numeric], .numeric {
   font-variant-numeric: tabular-nums;
 }
 
-/* No ligatures: Fira Code joins characters such as -> and != into one glyph, and machine text (UI-011) must read as typed.
+/* No ligatures: a monospace font with ligatures joins characters such as -> and != into one glyph, and machine text (UI-011) must read as typed.
    The property inherits, so one rule on the root covers every use of the monospace font, whatever component sets it.
    The SSH terminal draws its own cells and is not affected (RA-011). */
 :root {

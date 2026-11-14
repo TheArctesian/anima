@@ -72,7 +72,7 @@
   >
     <Icon name={icon} size="sm" />
     <span>{kind === 'checkbox' ? menuLabel(label, chosen.length) : (shown ?? label)}</span>
-    <Icon name="nf-md-chevron_down" size="sm" />
+    <Icon name="carbon:chevron-down" size="sm" />
   </button>
   {#if open}
     <div class="panel material-overlay" id="{id}-panel" role="group" aria-label={label} transition:popover={{ from: button }} {@attach keepInside}>

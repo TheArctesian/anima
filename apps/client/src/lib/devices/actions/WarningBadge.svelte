@@ -13,7 +13,7 @@
 <!-- Below bp-compact only the icon shows; the word stays for assistive technology (UI-003). The word and the icon say it, not the colour alone; the tooltip lists each warning in words (RA-020). -->
 {#if warnings.length > 0}
   <span class="badge" title={warningLines(warnings).join('\n')}>
-    <Icon name="nf-md-alert" size="sm" /><span class="label">Warning</span>
+    <Icon name="carbon:warning-alt" size="sm" /><span class="label">Warning</span>
   </span>
 {/if}
 

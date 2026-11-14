@@ -113,7 +113,7 @@ it('SET-001, UI-005, MOT-043: the page is the title, then Account, then Appearan
   const fonts = ['OpenDyslexic'];
   expect(sectionTexts(target, 'Appearance')).toEqual([
     'Appearance', 'How Anima looks on this device.', 'Theme', 'Dark', 'Light', 'System', 'Colours', 'Graphite', 'Nord', 'Reduce motion', 'System', 'On', 'Off',
-    'Interface font', 'IBM Plex Sans', ...fonts, 'Monospace font', 'Fira Code', ...fonts,
+    'Interface font', 'IBM Plex Sans', ...fonts, 'Monospace font', 'IBM Plex Mono', ...fonts,
   ]);
   expect(target.querySelectorAll('[role="switch"], img, input, textarea, a, [tabindex]:not(button)')).toHaveLength(0);
 });

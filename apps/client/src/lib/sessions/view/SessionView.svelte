@@ -190,10 +190,10 @@
       onclick={() => (finding ? closeFind() : (finding = true))}
       {@attach press()}
     >
-      <Icon name="nf-md-magnify" />
+      <Icon name="carbon:search" />
       <span>Find</span>
     </button>
-    <button type="button" class="find" aria-expanded={filing} disabled={!ready} title="Files on the device" onclick={() => (filing = !filing)} {@attach press()}><Icon name="nf-md-folder" /><span>Files</span></button>
+    <button type="button" class="find" aria-expanded={filing} disabled={!ready} title="Files on the device" onclick={() => (filing = !filing)} {@attach press()}><Icon name="carbon:folder" /><span>Files</span></button>
     <span class="device">{device.name}</span>
     {#if ready && rules.notice !== undefined}<span class="policy" data-policy title={rules.notice}>{rules.notice}</span>{/if}
     <!-- Find and notices lie over the toolbar row, which has a fixed height, so the terminal never moves or resizes for them (MOT-007, UI-009). -->

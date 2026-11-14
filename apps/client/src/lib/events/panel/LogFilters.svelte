@@ -30,7 +30,7 @@
   </label>
   <Menu
     label="Severity"
-    icon="nf-md-alert"
+    icon="carbon:warning-alt"
     kind="checkbox"
     options={SEVERITY_CHOICES}
     chosen={filter.severities}
@@ -40,7 +40,7 @@
   />
   <Menu
     label="Source"
-    icon="nf-md-filter_variant"
+    icon="carbon:filter"
     kind="checkbox"
     options={SOURCE_CHOICES}
     chosen={filter.sources}

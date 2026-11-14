@@ -25,54 +25,54 @@
   <h1>Settings</h1>
 
   <!-- One section per subject, in the order of WP-50 F-10; each later section adds one element here. -->
-  <SettingsSection id="settings-account" title="Account" icon="nf-md-account_circle" description="Who is signed in to this hub.">
+  <SettingsSection id="settings-account" title="Account" icon="carbon:user-avatar" description="Who is signed in to this hub.">
     <SignOutRow />
   </SettingsSection>
 
   {#if keyStore}
-    <SettingsSection id="settings-hub" title="Hub" icon="nf-md-server_network" description="The hub this app talks to.">
+    <SettingsSection id="settings-hub" title="Hub" icon="carbon:network-enterprise" description="The hub this app talks to.">
       <HubRows />
     </SettingsSection>
   {/if}
 
-  <SettingsSection id="settings-appearance" title="Appearance" icon="nf-md-palette" description="How Anima looks on this device.">
+  <SettingsSection id="settings-appearance" title="Appearance" icon="carbon:color-palette" description="How Anima looks on this device.">
     <ThemeRow />
     <PaletteRow />
     <MotionRow />
     <TypefaceRows />
   </SettingsSection>
 
-  <SettingsSection id="settings-notifications" title="Notifications" icon="nf-md-bell_outline" description="Where the hub sends alerts.">
+  <SettingsSection id="settings-notifications" title="Notifications" icon="carbon:notification" description="Where the hub sends alerts.">
     <NotificationsSection />
   </SettingsSection>
 
-  <SettingsSection id="settings-check-defaults" title="Default check settings" icon="nf-md-tune" description="New checks start with these settings.">
+  <SettingsSection id="settings-check-defaults" title="Default check settings" icon="carbon:settings-adjust" description="New checks start with these settings.">
     <DefaultsSection />
   </SettingsSection>
 
-  <SettingsSection id="settings-retention" title="Data retention" icon="nf-md-database_clock" description="How long the hub keeps each kind of record.">
+  <SettingsSection id="settings-retention" title="Data retention" icon="carbon:data-backup" description="How long the hub keeps each kind of record.">
     <RetentionSection />
   </SettingsSection>
 
   {#if updates || commandLine || processLog || builds}
-    <SettingsSection id="settings-updates" title="Updates" icon="nf-md-update" description="This app's version, its command line tool, its log and its release builds.">
+    <SettingsSection id="settings-updates" title="Updates" icon="carbon:update-now" description="This app's version, its command line tool, its log and its release builds.">
       <DesktopRows />
     </SettingsSection>
   {/if}
 
-  <SettingsSection id="settings-api-keys" title="API keys" icon="nf-md-key_variant" description="Keys for programs that call the hub's GraphQL API.">
+  <SettingsSection id="settings-api-keys" title="API keys" icon="carbon:api-key" description="Keys for programs that call the hub's GraphQL API.">
     <ApiKeysSection />
   </SettingsSection>
 
   <!-- Desktop only: the MCP permissions are a file on this computer, which a browser cannot reach (MCP-023). -->
   {#if mcpPermissions}
-    <SettingsSection id="settings-mcp" title="MCP" icon="nf-md-shield_key" description="What coding agents may do through the anima mcp server on this computer.">
+    <SettingsSection id="settings-mcp" title="MCP" icon="carbon:security" description="What coding agents may do through the anima mcp server on this computer.">
       <McpSection />
     </SettingsSection>
   {/if}
 
   <!-- Last: the picture arrives after the page and has many rows, so nothing below it can move (MOT-007). -->
-  <SettingsSection id="settings-vpn" title="VPN" icon="nf-md-lan_connect" description="How the hub reaches each site, and when each VPN key expires.">
+  <SettingsSection id="settings-vpn" title="VPN" icon="carbon:connect" description="How the hub reaches each site, and when each VPN key expires.">
     <VpnSection />
   </SettingsSection>
 </div>

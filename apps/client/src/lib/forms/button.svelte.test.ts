@@ -34,7 +34,7 @@ it('UI-029: the tone and size props select the matching role classes; fill appli
 });
 
 it('UI-015: an icon-only button is named and has a tooltip from its label, and shows only the icon', () => {
-  const found = button({ children: undefined, icon: 'nf-md-delete', label: 'Delete key' });
+  const found = button({ children: undefined, icon: 'carbon:trash-can', label: 'Delete key' });
   expect(found.getAttribute('aria-label')).toBe('Delete key');
   expect(found.title).toBe('Delete key');
   expect(found.classList.contains('icon-only')).toBe(true);
@@ -42,7 +42,7 @@ it('UI-015: an icon-only button is named and has a tooltip from its label, and s
 });
 
 it('UI-026: a leading icon is hidden from assistive technology and sits before the label', () => {
-  const found = button({ icon: 'nf-md-plus' });
+  const found = button({ icon: 'carbon:add' });
   expect(found.firstElementChild?.getAttribute('aria-hidden')).toBe('true');
   expect(found.textContent).toContain('Save');
 });

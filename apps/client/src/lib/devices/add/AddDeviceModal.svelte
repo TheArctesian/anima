@@ -61,7 +61,7 @@
 </script>
 
 <!-- 11 steps of `--space-16` (44rem): the General fields sit in pairs. -->
-<Modal {open} {title} {onClose} size="form" width={11} icon="nf-md-plus" dismissible>
+<Modal {open} {title} {onClose} size="form" width={11} icon="carbon:add" dismissible>
   {#if machine !== null}
     <MachineChoice
       os={machine.os}

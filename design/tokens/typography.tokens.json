@@ -14,7 +14,7 @@
       "mono": {
         "$value": [
           "IBM Plex Mono",
-          "Symbols Nerd Font Mono",
+          "Symbols Nerd Font",
           "ui-monospace",
           "monospace"
         ],

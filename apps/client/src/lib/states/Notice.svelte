@@ -14,10 +14,10 @@
   const { tone, title, line }: Props = $props();
 
   const ICONS: Record<NoticeTone, IconName> = {
-    info: 'nf-md-information_outline',
-    success: 'nf-md-check_circle_outline',
-    warning: 'nf-md-alert',
-    error: 'nf-md-close_circle',
+    info: 'carbon:information',
+    success: 'carbon:checkmark-outline',
+    warning: 'carbon:warning-alt',
+    error: 'carbon:close-filled',
   };
 </script>
 

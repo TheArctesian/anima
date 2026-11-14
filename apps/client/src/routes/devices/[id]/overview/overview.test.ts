@@ -166,7 +166,7 @@ it('D-7: with no metrics source the panel says metrics are off, links to Setting
   const { calls } = show(WAITING, 'NONE');
   expect(document.body.textContent).toContain('Metrics are off. Install the agent or turn on SSH metrics in Settings.');
   expect(document.querySelector('[aria-label="Time range"]')).toBeNull();
-  expect(document.querySelector('svg')).toBeNull();
+  expect(document.querySelector('svg:not(.icon)')).toBeNull();
   button('Open Settings')?.click();
   expect(calls.settings).toHaveBeenCalledOnce();
 });

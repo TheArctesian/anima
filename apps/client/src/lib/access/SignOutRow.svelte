@@ -61,7 +61,7 @@
   {/snippet}
   <!-- tabindex="0": WebKit skips plain buttons when Tab is pressed unless they are focusable, as for the nav links (NAV-005, WP-11 H-6). -->
   <button type="button" tabindex="0" disabled={busy} onclick={leave} bind:this={button} {@attach press()}>
-    <Icon name="nf-md-logout" size="sm" />Sign out
+    <Icon name="carbon:logout" size="sm" />Sign out
   </button>
   {#snippet message()}
     <!-- Always rendered and empty when idle: a live region that is already there is announced more reliably than one

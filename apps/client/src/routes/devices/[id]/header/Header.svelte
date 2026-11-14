@@ -48,7 +48,7 @@
 -->
 <div class="fit">
 <header class="head">
-  <a class="back" href={resolve('/devices')} {@attach press()}><Icon name="nf-md-chevron_left" size="sm" />Devices</a>
+  <a class="back" href={resolve('/devices')} {@attach press()}><Icon name="carbon:chevron-left" size="sm" />Devices</a>
   <div class="title-row">
     {#if device !== null && line !== null}
       <div class="identity">
@@ -72,7 +72,7 @@
   {#if skeleton.visible}
     <!-- Over the header with its rows, after a ghost of the back link: the real header fades in under it without moving (MOT-007). -->
     <div class="head skeleton" aria-hidden="true" transition:crossFade>
-      <span class="back ghost"><Icon name="nf-md-chevron_left" size="sm" />Devices</span>
+      <span class="back ghost"><Icon name="carbon:chevron-left" size="sm" />Devices</span>
       <div class="title-row">
         <div class="identity"><span class="name"></span><span class="pill"></span></div>
         <span class="actions-place"></span>

@@ -4,10 +4,10 @@ import { osIcon, osLabel } from './os';
 
 describe('operating system logo', () => {
   it.each<[OperatingSystem, string, string]>([
-    ['LINUX', 'nf-md-linux', 'Linux'],
-    ['MACOS', 'nf-md-apple', 'macOS'],
-    ['WINDOWS', 'nf-md-microsoft_windows', 'Windows'],
-    ['OTHER', 'nf-md-monitor', 'Other OS'],
+    ['LINUX', 'simple-icons:linux', 'Linux'],
+    ['MACOS', 'simple-icons:apple', 'macOS'],
+    ['WINDOWS', 'simple-icons:windows', 'Windows'],
+    ['OTHER', 'carbon:screen', 'Other OS'],
   ])('UI-003: %s shows %s and is named %s', (os, icon, label) => {
     expect(osIcon(os)).toBe(icon);
     expect(osLabel(os)).toBe(label);

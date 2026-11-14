@@ -16,7 +16,7 @@
 
 <span class="select {size}">
   <select class={[mono && 'mono']} aria-invalid={invalid || undefined} bind:value {...rest}>{@render children()}</select>
-  <span class="chevron"><Icon name="nf-md-chevron_down" size="sm" /></span>
+  <span class="chevron"><Icon name="carbon:chevron-down" size="sm" /></span>
 </span>
 
 <style>

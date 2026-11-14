@@ -51,7 +51,7 @@
 
 <section class="panel" aria-label="Job log">
   <header>
-    <h3><span class="platform" aria-hidden="true"><Icon name="nf-md-console_line" /></span>Log: {targetLabel(job.target)}</h3>
+    <h3><span class="platform" aria-hidden="true"><Icon name="carbon:terminal" /></span>Log: {targetLabel(job.target)}</h3>
     <StatePill word={stateLabel(job.state)} tone={stateTone(job.state)} />
     <span class="facts">
       {#if job.builderName}<span>on {job.builderName}</span>{/if}

@@ -1,7 +1,7 @@
 {
   "commit": "f034eeafc0ccf79afa8dd952feb86b18e5d0469e",
-  "firaCodeRelease": "6.2",
   "plexSansRelease": "@ibm/plex-sans@1.1.0",
+  "plexMonoRelease": "@ibm/plex-mono@1.1.0",
   "files": [
     {
       "file": "OpenDyslexicNerdFontPropo-Regular.otf",
@@ -46,31 +46,38 @@
       "licence": "LICENSE-SymbolsNerdFont.txt"
     },
     {
-      "file": "FiraCode-Regular.woff2",
-      "url": "https://github.com/tonsky/FiraCode/releases/download/6.2/Fira_Code_v6.2.zip#woff2/FiraCode-Regular.woff2",
-      "sha256": "a6ce59520b90e15d7062ffef214f94c8add5a4085c0bbb1683602ef227a4d1fe",
-      "bytes": 103240,
-      "licence": "LICENSE-FiraCode.txt"
+      "file": "IBMPlexSans-ExtraLight.woff2",
+      "url": "https://github.com/IBM/plex/releases/download/%40ibm/plex-sans%401.1.0/ibm-plex-sans.zip#ibm-plex-sans/fonts/complete/woff2/IBMPlexSans-ExtraLight.woff2",
+      "sha256": "b4f2ee8ff0a3ae4c176dd92301cdcbbc66c42f73b376cca028507b9847bcbbb3",
+      "bytes": 66688,
+      "licence": "LICENSE-IBMPlex.txt"
     },
     {
-      "file": "FiraCode-Bold.woff2",
-      "url": "https://github.com/tonsky/FiraCode/releases/download/6.2/Fira_Code_v6.2.zip#woff2/FiraCode-Bold.woff2",
-      "sha256": "d778c19803c672d294663e9283c7b752cc125ab266f0ddb8e53b039da92caf67",
-      "bytes": 107788,
-      "licence": "LICENSE-FiraCode.txt"
+      "file": "IBMPlexSans-Medium.woff2",
+      "url": "https://github.com/IBM/plex/releases/download/%40ibm/plex-sans%401.1.0/ibm-plex-sans.zip#ibm-plex-sans/fonts/complete/woff2/IBMPlexSans-Medium.woff2",
+      "sha256": "5660f8a658f8bb50dbc005232f885eadffd2bc1c235c4f6fbb63469d1f9cde6d",
+      "bytes": 66740,
+      "licence": "LICENSE-IBMPlex.txt"
+    },
+    {
+      "file": "IBMPlexMono-Regular.woff2",
+      "url": "https://github.com/IBM/plex/releases/download/%40ibm/plex-mono%401.1.0/ibm-plex-mono.zip#ibm-plex-mono/fonts/complete/woff2/IBMPlexMono-Regular.woff2",
+      "sha256": "49ce58b41a0e1cb921c0f58d9a5b8b96a2cc21437c7066f3ba4f24873076d131",
+      "bytes": 45640,
+      "licence": "LICENSE-IBMPlex.txt"
+    },
+    {
+      "file": "IBMPlexMono-Medium.woff2",
+      "url": "https://github.com/IBM/plex/releases/download/%40ibm/plex-mono%401.1.0/ibm-plex-mono.zip#ibm-plex-mono/fonts/complete/woff2/IBMPlexMono-Medium.woff2",
+      "sha256": "8c2c290cbd998fa1f647e4572aca6ebbd72589551b0f3f9f8bb8628fbb8219d5",
+      "bytes": 46724,
+      "licence": "LICENSE-IBMPlex.txt"
     },
     {
       "file": "IBMPlexSans-Regular.woff2",
       "url": "https://github.com/IBM/plex/releases/download/%40ibm/plex-sans%401.1.0/ibm-plex-sans.zip#ibm-plex-sans/fonts/complete/woff2/IBMPlexSans-Regular.woff2",
       "sha256": "ba711a3085ff9f27440b6b9c4550cfc47c97bf36591d5da958b975bb3add8c1a",
       "bytes": 63020,
-      "licence": "LICENSE-IBMPlex.txt"
-    },
-    {
-      "file": "IBMPlexSans-Bold.woff2",
-      "url": "https://github.com/IBM/plex/releases/download/%40ibm/plex-sans%401.1.0/ibm-plex-sans.zip#ibm-plex-sans/fonts/complete/woff2/IBMPlexSans-Bold.woff2",
-      "sha256": "fa7130d854a660b39a7fc9e6e0f2dc23dba5f1346e2adea3e1fe37b6d884133d",
-      "bytes": 63012,
       "licence": "LICENSE-IBMPlex.txt"
     },
     {
@@ -90,12 +97,6 @@
       "url": "https://raw.githubusercontent.com/ryanoasis/nerd-fonts/f034eeafc0ccf79afa8dd952feb86b18e5d0469e/LICENSE",
       "sha256": "1f6ad4edae6479aaace3112ede5279a23284ae54b2a34db66357aef5f64df160",
       "bytes": 6200
-    },
-    {
-      "file": "LICENSE-FiraCode.txt",
-      "url": "https://raw.githubusercontent.com/tonsky/FiraCode/6.2/LICENSE",
-      "sha256": "1d41e10031ab125302780a05ec4c91d218e47db0c7e37cf315cce5e608cdc25c",
-      "bytes": 4389
     },
     {
       "file": "LICENSE-IBMPlex.txt",

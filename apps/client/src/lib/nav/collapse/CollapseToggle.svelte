@@ -21,7 +21,7 @@
   onclick={ontoggle}
   {@attach press()}
 >
-  <Icon name="nf-md-dock_left" />
+  <Icon name="carbon:side-panel-close" />
 </button>
 
 <style>

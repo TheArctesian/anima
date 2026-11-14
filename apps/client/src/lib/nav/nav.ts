@@ -8,9 +8,9 @@ export interface NavDestination {
   readonly icon: IconName;
 }
 
-export const DEVICES: NavDestination = { href: '/devices', label: 'Devices', icon: 'nf-md-server' };
-export const BUILDS: NavDestination = { href: '/builds', label: 'Builds', icon: 'nf-md-wrench' };
-export const SETTINGS: NavDestination = { href: '/settings', label: 'Settings', icon: 'nf-md-cog' };
+export const DEVICES: NavDestination = { href: '/devices', label: 'Devices', icon: 'carbon:bare-metal-server' };
+export const BUILDS: NavDestination = { href: '/builds', label: 'Builds', icon: 'carbon:tool-kit' };
+export const SETTINGS: NavDestination = { href: '/settings', label: 'Settings', icon: 'carbon:settings' };
 
 /** Whether `pathname` is `item`'s page or one below it (NAV-002). */
 export function isActive(item: NavDestination, pathname: string): boolean {

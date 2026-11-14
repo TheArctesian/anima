@@ -112,7 +112,7 @@
 <span class="helptip" bind:this={root} {@attach watch}>
   <!-- tabindex="0": WebKit skips plain buttons when Tab is pressed unless they are focusable (NAV-005). -->
   <button type="button" tabindex="0" bind:this={button} aria-label="About {label}" aria-expanded={open} aria-controls="{id}-tip" onclick={toggle}>
-    <Icon name="nf-md-information_outline" size="sm" />
+    <Icon name="carbon:information" size="sm" />
   </button>
   {#if open}
     <div class="anchor" transition:popover={{ from: button }} {@attach place}>

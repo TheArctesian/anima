@@ -439,7 +439,7 @@ Generated from `design/tokens/*.tokens.json` (TOK-001). Names follow contract K5
 | Token | CSS value | Use |
 | --- | --- | --- |
 | `font-ui` | `--font-ui: "IBM Plex Sans", system-ui, -apple-system, sans-serif` | Interface text, the default typeface (UI-010, operator change 2026-11-12); the system font is the fallback (UI-021) |
-| `font-mono` | `--font-mono: "IBM Plex Mono", "Symbols Nerd Font Mono", ui-monospace, monospace` | IP addresses, host names, code and remote shells: IBM Plex Mono, one family with the interface face; the Nerd Font symbols face draws shell prompt glyphs (UI-011, UR-7 D2) |
+| `font-mono` | `--font-mono: "IBM Plex Mono", "Symbols Nerd Font", ui-monospace, monospace` | IP addresses, host names, code and remote shells: IBM Plex Mono, one family with the interface face; the Nerd Font symbols face draws shell prompt glyphs (UI-011, UR-7 D2) |
 | `font-ui-opendyslexic` | `--font-ui-opendyslexic: "OpenDyslexic Nerd Font Propo", system-ui, -apple-system, sans-serif` | Interface text when the operator chooses OpenDyslexic (UI-020) |
 | `font-mono-opendyslexic` | `--font-mono-opendyslexic: "OpenDyslexicM Nerd Font Mono", ui-monospace, monospace` | IP addresses, host names, code when the operator chooses OpenDyslexic (UI-020) |
 | `font-icon` | `--font-icon: "OpenDyslexic Nerd Font Propo", "Symbols Nerd Font"` | Nerd Font glyph icons (UI-014) |

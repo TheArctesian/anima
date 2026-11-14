@@ -104,7 +104,7 @@
     onclick={activate}
     {@attach press()}
   >
-    <Icon name="nf-md-web" size="sm" />Web
+    <Icon name="carbon:earth" size="sm" />Web
   </button>
   {#if open}
     <div class="panel material-overlay" id="{id}-panel" role="group" aria-label="Web interfaces of {deviceName}" bind:this={panel} transition:popover={{ from: button }} {@attach place}>

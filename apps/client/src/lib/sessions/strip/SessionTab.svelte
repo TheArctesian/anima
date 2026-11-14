@@ -52,7 +52,7 @@
   {@attach press()}
 >
   <!-- The device's OS logo where the opener knew it; the tab is named by the device and the protocol, so the logo is decorative. -->
-  {#if tab.os === undefined}<Icon name="nf-md-console" size="sm" />{:else}<OsIcon os={tab.os} distribution={tab.distribution} size="sm" decorative />{/if}
+  {#if tab.os === undefined}<Icon name="carbon:terminal" size="sm" />{:else}<OsIcon os={tab.os} distribution={tab.distribution} size="sm" decorative />{/if}
   <span class="name">{tab.deviceName}</span>
   <span class="title" title={tab.title}>{tab.title ?? ''}</span>
   <span class="protocol" data-remote={tab.protocol === 'SSH' ? undefined : ''}>{tab.protocol}</span>
@@ -81,7 +81,7 @@
   onclick={onclose}
   {@attach press()}
 >
-  <Icon name="nf-md-close" size="sm" />
+  <Icon name="carbon:close" size="sm" />
 </button>
 
 <style>

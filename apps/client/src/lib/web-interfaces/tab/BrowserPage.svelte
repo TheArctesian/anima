@@ -28,7 +28,7 @@
     </dl>
     <p>Anima checks that the device still presents this certificate before it opens the page. The browser may ask you to trust it too: compare its fingerprint with this one.</p>
     <button type="button" disabled={opening} onclick={onopen} {@attach press()}>
-      <Icon name="nf-md-web" />
+      <Icon name="carbon:earth" />
       <span>{opening ? 'Checking the certificate…' : 'Open in system browser'}</span>
     </button>
   {/if}

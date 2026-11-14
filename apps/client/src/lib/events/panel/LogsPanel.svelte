@@ -114,7 +114,7 @@
         }}
         {@attach press()}
       >
-        <Icon name={placement.open ? 'nf-md-chevron_down' : 'nf-md-chevron_right'} size="sm" />
+        <Icon name={placement.open ? 'carbon:chevron-down' : 'carbon:chevron-right'} size="sm" />
         <span>{placement.open ? 'Collapse' : 'Expand'}</span>
       </button>
     </header>
