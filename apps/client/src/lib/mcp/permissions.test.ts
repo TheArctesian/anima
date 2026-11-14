@@ -89,8 +89,8 @@ describe('changes from the default', () => {
     expect(groupLabel(changed as never)).toBe('Devices: 2 allow, 0 ask, 1 off; 1 changed from default');
   });
 
-  it('MCP-019: ten tool sets are known, for the placeholder list', () => {
-    expect(TOOLSET_COUNT).toBe(10);
+  it('MCP-019: thirteen tool sets are known, for the placeholder list', () => {
+    expect(TOOLSET_COUNT).toBe(13);
   });
 });
 

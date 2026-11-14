@@ -130,13 +130,13 @@ it('MCP-021: arrow keys alone cause no write and never wrap between Off and Allo
   expect(shell.writes).toEqual([{ type: 'choose', names: ['anima_check_update'], state: 'ask' }]);
 });
 
-it('MCP-020: the section is as tall as its list from the first paint: ten group placeholders at once, then the ten groups', async () => {
+it('MCP-020: the section is as tall as its list from the first paint: one group placeholder for each known tool set at once, then the groups', async () => {
   const target = document.createElement('div');
   document.body.append(target);
   app = mount(McpSection, { target, props: { shell } });
   flushSync();
   expect(target.querySelector('[role="status"][aria-label="Loading MCP permissions"]')).not.toBeNull();
-  expect(target.querySelectorAll('.placeholder .row')).toHaveLength(10);
+  expect(target.querySelectorAll('.placeholder .row')).toHaveLength(13);
   await settled();
   expect(target.querySelector('.placeholder')).toBeNull();
 });
@@ -147,7 +147,7 @@ it('MCP-020: a failed read keeps the placeholders, hidden, under the error, so t
   const placeholder = target.querySelector('.placeholder');
   expect(placeholder?.classList.contains('hidden')).toBe(true);
   expect(placeholder?.getAttribute('aria-hidden')).toBe('true');
-  expect(target.querySelectorAll('.placeholder .row')).toHaveLength(10);
+  expect(target.querySelectorAll('.placeholder .row')).toHaveLength(13);
 });
 
 it('MCP-020: the intro says that Allow is risky, what Ask does, and expands MCP', async () => {

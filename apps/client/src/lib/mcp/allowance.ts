@@ -21,6 +21,9 @@ const CONSEQUENCES: Readonly<Record<string, Consequences>> = {
   releases: { key: [], signIn: ['start a release', 'cancel builds'] },
   vpn: { key: [], signIn: ['approve a VPN route'] },
   retention: { key: [], signIn: ['cut every data retention period to the minimum'] },
+  extensions: { key: [], signIn: ['set extensions on or off'] },
+  sources: { key: ['pause or start a sync of a connected account'], signIn: ['disconnect an account and delete its records'] },
+  projects: { key: ['leave repositories out of Projects', 'confirm where a project runs'], signIn: [] },
 };
 
 /** The text of the question that comes before "Allow all", for its scope. */

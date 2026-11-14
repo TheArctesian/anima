@@ -43,6 +43,9 @@ const TOOLSET_NAMES: Readonly<Record<string, string>> = {
   releases: 'Releases',
   vpn: 'VPN',
   retention: 'Data retention',
+  extensions: 'Extensions',
+  sources: 'Integrations',
+  projects: 'Projects',
 };
 
 export const STATES: readonly { readonly value: McpState; readonly label: string }[] = [

@@ -275,8 +275,8 @@ The desktop application has an "MCP" section on the Settings page. It sets the s
   before it, one at a time. If the shell refuses it, the control goes back to its earlier state
   and the section says: "Not saved", the tool or action that failed, the reason in fixed words,
   and that the control went back. The message stays until the operator dismisses it
-  or the same control is saved. From the first paint the section holds a placeholder of ten closed
-  groups, as tall as the list, so that loading, a failed read and the loaded list take the same
+  or the same control is saved. From the first paint the section holds a placeholder of
+  thirteen closed groups, one for each tool set, as tall as the list, so that loading, a failed read and the loaded list take the same
   height and nothing below moves (SET-004, MOT-007); there is no delay before it shows. If the file
   cannot be read, the section shows an error without a path and a "Try again" button in that
   place.
