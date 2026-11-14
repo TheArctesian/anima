@@ -5,6 +5,7 @@ mod builders;
 mod events;
 mod extensions;
 mod forge;
+mod history;
 mod keys;
 mod notifications;
 mod projects;

@@ -5,23 +5,8 @@ use serde::Serialize;
 use serde_json::Value;
 
 use crate::forge::comments;
-use crate::forge::render::{flag, many, names, number, text};
-use crate::output::{Cell, Table, Tone};
-
-/// A K1 `ChecksState` in its colour; `-` when the checks were not asked for.
-fn checks(pull: &Value) -> Cell {
-    let Some(checks) = pull.get("checks").filter(|checks| !checks.is_null()) else {
-        return "-".into();
-    };
-    let state = text(checks, "state");
-    let tone = match state {
-        "PASSED" => Tone::Good,
-        "FAILED" => Tone::Bad,
-        "PENDING" => Tone::Warning,
-        _ => Tone::Muted,
-    };
-    Cell::toned(state, tone)
-}
+use crate::forge::render::{checks, flag, many, names, number, text};
+use crate::output::Table;
 
 /// `yes` or `no` for whether GitHub says it can merge; `-` when it was not asked.
 fn can_merge(pull: &Value) -> &'static str {

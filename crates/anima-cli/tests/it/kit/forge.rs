@@ -96,3 +96,46 @@ pub fn run(id: &str, title: &str) -> Value {
                   "other": 0, "failing": ["test (linux)"], "partial": false },
     })
 }
+
+pub fn commit(sha: &str, title: &str) -> Value {
+    json!({
+        "repository": REPOSITORY, "sha": sha, "title": title, "message": title,
+        "authorName": "Octo Cat", "authorLogin": "octo", "committedAt": "2026-11-12T08:00:00Z",
+        "parents": [SHA], "url": format!("https://github.com/acme/anima/commit/{sha}"),
+        "checks": { "sha": sha, "state": "FAILED", "passed": 2, "failed": 1, "pending": 0,
+                    "other": 0, "failing": ["test (linux)"], "partial": false },
+    })
+}
+
+pub fn branch(name: &str, default: bool) -> Value {
+    json!({ "name": name, "sha": SHA, "protected": default, "default": default })
+}
+
+pub fn repository_release(tag: &str) -> Value {
+    json!({
+        "id": "9001", "tag": tag, "name": "Spring", "draft": false, "prerelease": true,
+        "authorLogin": "octo", "createdAt": "2026-11-01T08:00:00Z",
+        "publishedAt": "2026-11-02T08:00:00Z",
+        "url": format!("https://github.com/acme/anima/releases/tag/{tag}"),
+    })
+}
+
+pub fn code_entry(name: &str, kind: &str, size: i64) -> Value {
+    json!({ "name": name, "path": format!("src/{name}"), "kind": kind, "size": size,
+            "sha": SHA })
+}
+
+pub fn code_directory(entries: &[Value], partial: bool) -> Value {
+    json!({ "codeDirectory": {
+        "repository": REPOSITORY, "ref": "main", "path": "src", "entries": entries,
+        "partial": partial, "read": read() } })
+}
+
+/// A `CodeFile`: `content` is `TEXT`, `BINARY` or `TOO_LARGE`; `text` only for `TEXT`.
+pub fn code_file(path: &str, content: &str, text: Option<&str>) -> Value {
+    json!({ "codeFile": {
+        "repository": REPOSITORY, "ref": "main", "path": path, "name": "notes.txt", "sha": SHA,
+        "size": 12, "content": content, "text": text,
+        "url": format!("https://github.com/acme/anima/blob/main/{path}"),
+        "readAt": "2026-11-14T09:00:00Z" } })
+}

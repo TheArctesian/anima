@@ -1,0 +1,22 @@
+query BranchList($repository: ID!, $first: Int, $after: String, $fresh: Boolean) {
+  branches(repository: $repository, first: $first, after: $after, fresh: $fresh) {
+    edges {
+      cursor
+      node {
+        name
+        sha
+        protected
+        default
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+    read {
+      at
+      stale
+      problem
+    }
+  }
+}
