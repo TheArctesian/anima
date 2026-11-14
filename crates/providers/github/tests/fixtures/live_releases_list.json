@@ -1,0 +1,26 @@
+[
+  {
+    "id": 801,
+    "tag_name": "v1.2.0",
+    "name": "Version 1.2",
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2026-10-30T12:00:00Z",
+    "author": {
+      "login": "octo-writer"
+    },
+    "html_url": "https://github.com/sample-org/sample-repo/releases/tag/v1.2.0",
+    "body": "Notes for 1.2."
+  },
+  {
+    "id": 802,
+    "tag_name": "v1.3.0-rc1",
+    "name": null,
+    "draft": true,
+    "prerelease": true,
+    "published_at": null,
+    "author": null,
+    "html_url": "https://github.com/sample-org/sample-repo/releases/tag/untagged-abc",
+    "body": null
+  }
+]
