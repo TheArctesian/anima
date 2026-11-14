@@ -838,6 +838,62 @@ p.dl-group { margin-top:18px; }
 .h-acts { display:flex; gap:2px; }
 @media (max-width:1100px) { .code-split { grid-template-columns:1fr; } .tree { border-right:0; border-bottom:1px solid var(--border-subtle); max-height:14rem; overflow:auto; } }
 @media (max-width:767px) { .h-row { grid-template-columns:18px minmax(0,1fr) auto; } .h-row .tag, .h-row .h-acts { display:none; } .code-bar .sm-search { width:100%; margin-left:0; } .w-meta { display:none; } }
+
+/* ---------- Logs panel ---------- */
+.logs-clearance { height:46vh; }
+.logs { position:fixed; left:232px; right:0; bottom:0; z-index:8; display:flex; flex-direction:column; height:44vh; background:var(--surface-raised); border-top:1px solid var(--border-strong); box-shadow:0 -10px 30px rgba(0,0,0,.28); transition:height .32s var(--ease-enter); }
+.logs[data-open="false"] { height:46px; }
+.logs-edge { position:absolute; top:-4px; left:0; right:0; height:8px; cursor:row-resize; }
+.logs-edge::after { content:""; position:absolute; left:50%; top:5px; width:36px; height:3px; margin-left:-18px; border-radius:999px; background:var(--border-strong); opacity:0; transition:opacity .15s; }
+.logs-edge:hover::after, .logs-edge:focus-visible::after { opacity:1; }
+.logs-head { display:flex; align-items:center; gap:12px; height:46px; flex:none; padding:0 16px 0 10px; }
+.logs-head .btn iconify-icon { transition:transform .25s var(--ease-enter); }
+.logs[data-open="false"] .logs-head .btn iconify-icon { transform:rotate(180deg); }
+.lg-live { display:inline-flex; align-items:center; gap:6px; font-size:var(--text-xs); color:var(--text-tertiary); }
+.lg-live .dot { width:6px; height:6px; border-radius:999px; background:var(--up); animation:breathe 2.4s ease-in-out infinite; }
+.lg-ticker { display:none; align-items:baseline; gap:10px; min-width:0; flex:1; font-size:var(--text-sm); }
+.lg-ticker time { font-size:var(--text-xs); color:var(--text-tertiary); }
+.lg-ticker .t { color:var(--text-secondary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.logs[data-open="false"] .lg-ticker { display:flex; }
+.lg-tally { display:flex; align-items:center; gap:4px; margin-left:auto; font-size:var(--text-xs); }
+.lg-count { display:inline-flex; align-items:center; gap:6px; height:24px; padding:0 8px; border:0; border-radius:999px; background:none; font-size:var(--text-xs); cursor:pointer; }
+.lg-count:hover { background:var(--surface-hover); }
+.lg-count .dot, .lg-sevs .dot, .lg-sev .dot { width:7px; height:7px; border-radius:999px; background:currentColor; flex:none; }
+.logs-body { display:flex; flex-direction:column; flex:1; min-height:0; padding:0 16px; }
+.logs[data-open="false"] .logs-body { visibility:hidden; }
+.lg-filters { display:flex; align-items:center; flex-wrap:wrap; gap:8px 10px; padding-bottom:10px; border-bottom:1px solid var(--border-subtle); }
+.lg-filters .seg { height:var(--control-sm); }
+.lg-sevs { display:flex; gap:4px; }
+.chip { display:inline-flex; align-items:center; gap:6px; height:var(--control-sm); padding:0 10px; border:1px solid var(--border-subtle); border-radius:999px; background:none; color:var(--text-tertiary); font-size:var(--text-sm); cursor:pointer; }
+.chip[aria-pressed="true"] { border-color:var(--border-strong); background:var(--surface-overlay); color:var(--text); }
+.chip .n { color:var(--text-quiet); font-variant-numeric:tabular-nums; }
+.chip .dot.s-down { color:var(--down); } .chip .dot.s-warning { color:var(--warning); } .chip .dot.s-idle { color:var(--text-quiet); }
+.lg-pick { background:none; border:1px solid var(--border-subtle); color:var(--text-secondary); }
+.lg-clear { margin-left:auto; font-size:var(--text-xs); }
+.lg-scroll { position:relative; flex:1; min-height:0; overflow:auto; overscroll-behavior:contain; }
+.lg-new { position:sticky; top:8px; z-index:2; display:flex; align-items:center; gap:6px; margin:0 auto -30px; height:26px; padding:0 12px; border:0; border-radius:999px; background:var(--accent); color:var(--on-accent); font-size:var(--text-xs); font-weight:var(--weight-medium); cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,.3); }
+.lg-rows { list-style:none; }
+.lg-day { position:sticky; top:0; z-index:1; padding:12px 6px 6px; background:var(--surface-raised); border-bottom:1px solid var(--border-subtle); }
+.lg-row { display:grid; grid-template-columns:5.5rem 6rem 6.5rem 7.5rem minmax(0,1fr); align-items:baseline; gap:0 16px; padding:7px 6px; border-bottom:1px solid var(--border-subtle); font-size:var(--text-sm); }
+.lg-row:hover { background:var(--surface-hover); }
+.lg-row.s-row-down { box-shadow:inset 2px 0 0 var(--down); }
+.lg-row.s-row-warning { box-shadow:inset 2px 0 0 var(--warning); }
+.lg-row time { font-size:var(--text-xs); color:var(--text-tertiary); }
+.lg-sev { display:inline-flex; align-items:center; gap:6px; }
+.lg-sev.s-info { color:var(--text-tertiary); }
+.lg-src { display:inline-flex; align-items:center; gap:6px; color:var(--text-tertiary); }
+.lg-src iconify-icon { font-size:13px; color:var(--text-quiet); }
+.lg-dev a { color:var(--text-secondary); }
+.lg-dev a:hover { color:var(--text); text-decoration:underline; text-underline-offset:3px; }
+.lg-msg { color:var(--text); min-width:0; }
+.lg-more { display:flex; justify-content:center; padding:12px 0 16px; }
+@media (max-width:1100px) {
+  .lg-row { grid-template-columns:5rem minmax(0,1fr); grid-template-areas:"time msg" "meta meta"; }
+  .lg-row time { grid-area:time; } .lg-row .lg-msg { grid-area:msg; }
+  .lg-row .lg-sev, .lg-row .lg-src, .lg-row .lg-dev { display:none; }
+  .lg-tally .quiet { display:none; }
+}
+@media (max-width:767px) { .logs { left:0; bottom:58px; } .lg-ticker { display:none !important; } .lg-clear { display:none; } }
 </style>
 </head>
 <body>
@@ -911,6 +967,34 @@ p.dl-group { margin-top:18px; }
         </div>
       </div>
       <div id="device-list"></div>
+      <div class="logs-clearance" aria-hidden="true"></div>
+    <!-- ======================= Logs panel (Devices page, LOG-009 to LOG-011) ======================= -->
+    <!-- One opaque layer at the foot of the page (MAT-009). Collapsed, it is one line: the label, Live, the newest event and
+         the counts that need you. Open, the filters are one row and the events are hairline rows, newest first, by day. -->
+    <section class="logs" id="logs" data-open="true" aria-labelledby="logs-title">
+      <div class="logs-edge" role="separator" aria-label="Resize logs panel" tabindex="0"></div>
+      <header class="logs-head">
+        <button class="btn ghost icon" aria-label="Collapse logs" aria-expanded="true" onclick="const l=document.getElementById('logs');l.dataset.open=l.dataset.open==='true'?'false':'true';this.setAttribute('aria-expanded',l.dataset.open)"><iconify-icon icon="carbon:chevron-down"></iconify-icon></button>
+        <div class="label" id="logs-title"><iconify-icon icon="carbon:catalog"></iconify-icon><span class="rule"></span>Logs</div>
+        <span class="lg-live"><span class="dot"></span>Live</span>
+        <span class="lg-ticker"><time class="mono">14:02:11</time><span class="s-down">Error</span><span class="t">pi-garage · HTTP check on :8123 refused the connection.</span></span>
+        <span class="lg-tally"><button class="lg-count s-down" title="Show errors only"><span class="dot"></span>2 errors</button><button class="lg-count s-warning" title="Show warnings only"><span class="dot"></span>3 warnings</button><span class="quiet">in 24 h</span></span>
+      </header>
+      <div class="logs-body">
+        <div class="lg-filters" role="group" aria-label="Log filters">
+          <div class="seg" role="radiogroup" aria-label="Time"><button>1 h</button><button aria-pressed="true">24 h</button><button>7 d</button><button>All</button></div>
+          <div class="lg-sevs" role="group" aria-label="Severity"><button class="chip" aria-pressed="true"><span class="dot s-down"></span>Error<span class="n">2</span></button><button class="chip" aria-pressed="true"><span class="dot s-warning"></span>Warning<span class="n">3</span></button><button class="chip" aria-pressed="true"><span class="dot s-idle"></span>Info<span class="n">5</span></button></div>
+          <button class="btn sm lg-pick"><iconify-icon icon="carbon:filter"></iconify-icon>All sources<iconify-icon icon="carbon:chevron-down"></iconify-icon></button>
+          <button class="btn sm lg-pick"><iconify-icon icon="carbon:bare-metal-server"></iconify-icon>All devices<iconify-icon icon="carbon:chevron-down"></iconify-icon></button>
+          <span class="lg-clear quiet">10 events</span>
+        </div>
+        <div class="lg-scroll" tabindex="0" role="region" aria-label="Log list">
+          <button class="lg-new"><iconify-icon icon="carbon:arrow-up"></iconify-icon>3 new</button>
+          <ol class="lg-rows"><li class="lg-day caps">Today</li><li class="lg-row s-row-down"><time class="mono">14:02:11</time><span class="lg-sev s-down"><span class="dot"></span>Error</span><span class="lg-src"><iconify-icon icon="carbon:task-complete"></iconify-icon>Check</span><span class="lg-dev"><a href="#device">pi-garage</a></span><span class="lg-msg">HTTP check on :8123 refused the connection.</span></li><li class="lg-row s-row-warning"><time class="mono">14:01:40</time><span class="lg-sev s-warning"><span class="dot"></span>Warning</span><span class="lg-src"><iconify-icon icon="carbon:security"></iconify-icon>Access</span><span class="lg-dev"><a href="#device">nas</a></span><span class="lg-msg">The host key changed since the last session. Review it before you connect.</span></li><li class="lg-row s-row-info"><time class="mono">13:58:02</time><span class="lg-sev s-info"><span class="dot"></span>Info</span><span class="lg-src"><iconify-icon icon="carbon:recently-viewed"></iconify-icon>Session</span><span class="lg-dev"><a href="#device">atlas</a></span><span class="lg-msg">RDP session started by you from studio-mac.</span></li><li class="lg-row s-row-info"><time class="mono">13:41:19</time><span class="lg-sev s-info"><span class="dot"></span>Info</span><span class="lg-src"><iconify-icon icon="carbon:bare-metal-server"></iconify-icon>Device</span><span class="lg-dev"><a href="#device">pop-os</a></span><span class="lg-msg">Metrics source set to Agent.</span></li><li class="lg-row s-row-down"><time class="mono">13:12:55</time><span class="lg-sev s-down"><span class="dot"></span>Error</span><span class="lg-src"><iconify-icon icon="carbon:task-complete"></iconify-icon>Check</span><span class="lg-dev"><a href="#device">pi-garage</a></span><span class="lg-msg">Ping check failed 3 times in a row; the device is Down.</span></li><li class="lg-row s-row-warning"><time class="mono">12:30:07</time><span class="lg-sev s-warning"><span class="dot"></span>Warning</span><span class="lg-src"><iconify-icon icon="carbon:certificate"></iconify-icon>Check</span><span class="lg-dev"><a href="#device">pop-os</a></span><span class="lg-msg">The TLS certificate of Grafana expires in 9 days.</span></li><li class="lg-row s-row-info"><time class="mono">11:02:44</time><span class="lg-sev s-info"><span class="dot"></span>Info</span><span class="lg-src"><iconify-icon icon="carbon:network-3"></iconify-icon>Hub</span><span class="lg-dev"><span class="quiet">—</span></span><span class="lg-msg">The hub started (0.9.2).</span></li><li class="lg-row s-row-info"><time class="mono">09:15:30</time><span class="lg-sev s-info"><span class="dot"></span>Info</span><span class="lg-src"><iconify-icon icon="carbon:vpn"></iconify-icon>VPN</span><span class="lg-dev"><a href="#device">k3s-b</a></span><span class="lg-msg">k3s-b joined the VPN as 100.64.0.12.</span></li><li class="lg-day caps">Yesterday</li><li class="lg-row s-row-warning"><time class="mono">23:48:12</time><span class="lg-sev s-warning"><span class="dot"></span>Warning</span><span class="lg-src"><iconify-icon icon="carbon:task-complete"></iconify-icon>Check</span><span class="lg-dev"><a href="#device">win-gaming</a></span><span class="lg-msg">Every check is paused.</span></li><li class="lg-row s-row-info"><time class="mono">18:20:03</time><span class="lg-sev s-info"><span class="dot"></span>Info</span><span class="lg-src"><iconify-icon icon="carbon:recently-viewed"></iconify-icon>Session</span><span class="lg-dev"><a href="#device">workbench</a></span><span class="lg-msg">SSH session ended after 42 min.</span></li></ol>
+          <div class="lg-more"><button class="btn ghost sm">Load older</button></div>
+        </div>
+      </div>
+    </section>
     </section>
 
     <!-- ======================= Device ======================= -->
