@@ -136,7 +136,7 @@ it('MCP-020: the section is as tall as its list from the first paint: one group 
   app = mount(McpSection, { target, props: { shell } });
   flushSync();
   expect(target.querySelector('[role="status"][aria-label="Loading MCP permissions"]')).not.toBeNull();
-  expect(target.querySelectorAll('.placeholder .row')).toHaveLength(13);
+  expect(target.querySelectorAll('.placeholder .row')).toHaveLength(14);
   await settled();
   expect(target.querySelector('.placeholder')).toBeNull();
 });
@@ -147,7 +147,7 @@ it('MCP-020: a failed read keeps the placeholders, hidden, under the error, so t
   const placeholder = target.querySelector('.placeholder');
   expect(placeholder?.classList.contains('hidden')).toBe(true);
   expect(placeholder?.getAttribute('aria-hidden')).toBe('true');
-  expect(target.querySelectorAll('.placeholder .row')).toHaveLength(13);
+  expect(target.querySelectorAll('.placeholder .row')).toHaveLength(14);
 });
 
 it('MCP-020: the intro says that Allow is risky, what Ask does, and expands MCP', async () => {

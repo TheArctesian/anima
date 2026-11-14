@@ -1,0 +1,39 @@
+query WorkflowRunList($repository: ID!, $branch: String, $status: WorkflowRunStatus, $first: Int, $after: String, $fresh: Boolean) {
+  workflowRuns(repository: $repository, branch: $branch, status: $status, first: $first, after: $after, fresh: $fresh) {
+    edges {
+      cursor
+      node {
+        repository
+        id
+        workflowId
+        name
+        runNumber
+        attempt
+        event
+        status
+        conclusion
+        branch
+        headSha
+        commitTitle
+        actorLogin
+        fromFork
+        createdAt
+        updatedAt
+        startedAt
+        url
+        rerunnable
+        failedJobsRerunnable
+        cancellable
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+    read {
+      at
+      stale
+      problem
+    }
+  }
+}
