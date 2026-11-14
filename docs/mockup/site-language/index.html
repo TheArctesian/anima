@@ -755,19 +755,10 @@ p.dl-group { margin-top:18px; }
 .deploy .msg { color:var(--text-secondary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .deploy .meta { color:var(--text-tertiary); font-size:var(--text-xs); white-space:nowrap; }
 .deploy .meta .mono { color:var(--text-tertiary); }
-.pj-row { display:grid; grid-template-columns:7rem minmax(12rem,1fr) minmax(12rem,1fr) minmax(14rem,1.2fr) 1.5rem; align-items:center; gap:0 20px; min-height:56px; padding:6px 8px; border-bottom:1px solid var(--border-subtle); cursor:pointer; transition:background .15s var(--ease-enter); }
-.pj-row:hover { background:var(--surface-hover); }
-.pj-row:hover .go { color:var(--text-tertiary); transform:translateX(3px); }
-.pj-row .go { color:var(--text-quiet); transition:transform .25s var(--ease-enter); }
-.pj-row.s-row-down { box-shadow:inset 2px 0 0 var(--down); }
-.pj-row.s-row-warning { box-shadow:inset 2px 0 0 var(--warning); }
 .pj-name { display:flex; flex-direction:column; gap:2px; min-width:0; }
 .pj-name a { display:inline-flex; align-items:center; gap:8px; font-weight:var(--weight-medium); color:var(--text); }
 .pj-name a iconify-icon { color:var(--accent); }
 .pj-name .repo { font-family:var(--font-mono); font-size:var(--text-xs); color:var(--text-tertiary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.pj-head { min-height:30px; cursor:default; }
-.pj-head:hover { background:none; }
-.pj-why { grid-column:2 / -1; font-size:var(--text-sm); color:var(--text-secondary); }
 /* tiles */
 .pj-tiles { display:grid; grid-template-columns:repeat(auto-fill, minmax(19rem,1fr)); gap:12px; margin-top:12px; }
 .pj-tile { display:flex; flex-direction:column; gap:12px; padding:16px; border:1px solid var(--border-subtle); border-radius:var(--radius-md); cursor:pointer; transition:border-color .15s var(--ease-enter); }
@@ -783,29 +774,6 @@ p.dl-group { margin-top:18px; }
 .pj-tile .history i.n { background:var(--border-subtle); opacity:1; }
 .pj-tile .foot { display:flex; justify-content:space-between; font-size:var(--text-xs); color:var(--text-tertiary); }
 .pj-tile .why { font-size:var(--text-sm); color:var(--text-secondary); }
-/* by place */
-.pj-places { display:grid; grid-template-columns:repeat(auto-fill, minmax(26rem,1fr)); gap:36px 48px; margin-top:28px; }
-.pj-place .label { margin-bottom:12px; }
-.pj-place .label .n { color:var(--text-quiet); }
-.pj-sub { display:flex; align-items:center; gap:8px; padding:10px 4px 6px; font-size:var(--text-xs); color:var(--text-tertiary); }
-.pj-sub a { color:var(--text-secondary); }
-.pj-sub .status { font-size:var(--text-xs); }
-.pj-mini { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:2px 14px; padding:9px 4px; border-top:1px solid var(--border-subtle); cursor:pointer; }
-.pj-mini:last-child { border-bottom:1px solid var(--border-subtle); }
-.pj-mini:hover { background:var(--surface-hover); }
-.pj-mini a { display:inline-flex; align-items:center; gap:8px; color:var(--text); }
-.pj-mini .when { font-size:var(--text-xs); color:var(--text-tertiary); text-align:right; white-space:nowrap; }
-.pj-mini .also { grid-column:1 / -1; font-size:var(--text-xs); color:var(--text-tertiary); }
-@media (max-width:1100px) {
-  .pj-row { grid-template-columns:minmax(10rem,1fr) minmax(0,1.3fr) 1.5rem; grid-template-areas:"name deploy go" "status runs go"; gap:4px 20px; padding:10px 8px 10px 12px; }
-  .pj-row > .pst { grid-area:status; } .pj-row > .pj-name { grid-area:name; } .pj-row > .runs-on { grid-area:runs; } .pj-row > .deploy { grid-area:deploy; } .pj-row > .go { grid-area:go; }
-  .pj-head { display:none; }
-  .pj-why { grid-column:1 / -1; }
-}
-@media (max-width:767px) {
-  .pj-row { grid-template-columns:minmax(0,1fr) 1.5rem; grid-template-areas:"name go" "status go" "runs go" "deploy go"; }
-  .pj-places { grid-template-columns:1fr; }
-}
 
 /* ---------- Project page tabs ---------- */
 #screen-project .pt { display:none; }
@@ -1141,15 +1109,12 @@ p.dl-group { margin-top:18px; }
 
 
     <!-- ======================= Projects ======================= -->
-    <!-- Three layouts of the same projects, to compare: rows like Devices, tiles, and grouped by where each runs.
-         Deploys, builds and the device a server resource lives on are not sent by the hub yet; they are drawn as they would read. -->
+    <!-- Projects as tiles, problems first (operator's pick of three layouts, 2026-11-13): each tile is the project's state,
+         where it runs, its last deploy and the last 20 deploys. Deploys, builds and the device a server resource lives on are not sent by the hub yet; they are drawn as they would read. -->
     <section class="screen frame" id="screen-projects" hidden>
       <div class="resolve">
         <div class="label"><iconify-icon icon="carbon:folder"></iconify-icon><span class="rule"></span>From GitHub, through Integrations</div>
         <div class="page-head"><div><h1 class="display">Projects</h1></div>
-          <div class="actions">
-            <div class="seg" role="radiogroup" aria-label="Layout"><button data-pl="rows" title="Rows"><iconify-icon icon="carbon:list"></iconify-icon></button><button data-pl="tiles" title="Tiles"><iconify-icon icon="carbon:grid"></iconify-icon></button><button data-pl="places" title="By where it runs"><iconify-icon icon="carbon:cloud-upload"></iconify-icon></button></div>
-          </div>
         </div>
         <p class="pj-tally" id="pj-tally"></p>
       </div>
@@ -1426,9 +1391,7 @@ p.dl-group { margin-top:18px; }
   <button data-go="device">Device</button>
   <button data-go="device/settings">Device settings</button>
   <button data-go="sessions">Sessions</button>
-  <button data-go="projects/rows">Projects: rows</button>
-  <button data-go="projects/tiles">tiles</button>
-  <button data-go="projects/places">by place</button>
+  <button data-go="projects">Projects</button>
   <button data-go="project">Project</button>
   <button data-go="project/work">work</button>
   <button data-go="project/code">code</button>
@@ -1516,11 +1479,6 @@ const deploy = (p) => `<span class="deploy"><span class="msg">${p.msg ?? "—"}<
 const pname = (p) => `<span class="pj-name"><a href="#project"><iconify-icon icon="carbon:folder"></iconify-icon>${p.name}</a><span class="repo">${p.repo}</span></span>`;
 const PGROUPS = [["Needs a look", (p) => p.status === "down" || p.status === "warning"], ["Running", (p) => p.status === "up" || p.status === "live"], ["Not deployed", (p) => p.status === "idle"]];
 const go = "onclick=\"if(!event.target.closest('a,button'))location.hash='project'\"";
-function pjRows() {
-  return `<ul class="dl" style="margin-top:20px"><li class="pj-row pj-head caps"><span>Status</span><span>Project</span><span>Runs on</span><span>Last deploy</span><span></span></li>${
-    PGROUPS.map(([t, f]) => { const l = PROJECTS.filter(f); return l.length ? `<li class="dl-group caps">${t}<span class="n num">${l.length}</span></li>` + l.map((p) => `<li class="pj-row s-row-${p.status}" ${go}>${pst(p)}${pname(p)}${runsOn(p)}${deploy(p)}<iconify-icon class="go" icon="carbon:chevron-right"></iconify-icon>${p.why ? `<span class="pj-why">${p.why}</span>` : ""}</li>`).join("") : ""; }).join("")
-  }</ul>`;
-}
 function pjTiles() {
   return PGROUPS.map(([t, f]) => { const l = PROJECTS.filter(f); return l.length ? `<p class="dl-group caps">${t}<span class="n num">${l.length}</span></p><div class="pj-tiles">${l.map((p) => `
     <article class="pj-tile s-row-${p.status}" ${go}>
@@ -1532,31 +1490,11 @@ function pjTiles() {
       <div class="foot" style="margin-top:6px"><span>Last 20 deploys</span><span>${p.hist.includes("f") ? `${[...p.hist].filter((c) => c === "f").length} failed` : "all passed"}</span></div></div>
     </article>`).join("")}</div>` : ""; }).join("");
 }
-function pjPlaces() {
-  const devices = {};
-  PROJECTS.forEach((p) => p.runs.filter(([k]) => k === "server").forEach(([, d]) => (devices[d] ??= []).push(p)));
-  const DSTAT = { "k3s-b": "down" };
-  const mini = (p, here) => { const others = p.runs.filter((r) => r !== here).map(([k, d]) => d ?? PLACE[k][1]); return `<div class="pj-mini" ${go}><a href="#project">${pst({ ...p, word: "" })}${p.name}</a><span class="when">${p.when}</span>${others.length ? `<span class="also">Also on ${others.join(", ")}</span>` : ""}</div>`; };
-  const place = (icon, title, body, n) => `<section class="pj-place"><div class="label"><iconify-icon icon="${icon}"></iconify-icon><span class="rule"></span>${title}<span class="n num">${n}</span></div>${body}</section>`;
-  const of = (k) => PROJECTS.flatMap((p) => p.runs.filter(([kk]) => kk === k).map((r) => [p, r]));
-  const servers = Object.entries(devices).map(([d, l]) => `<div class="pj-sub"><iconify-icon icon="carbon:bare-metal-server"></iconify-icon><a href="#device">${d}</a>${DSTAT[d] ? `<span class="status s-down"><span class="dot"></span>Down</span>` : ""}</div>${l.map((p) => mini(p, p.runs.find(([, dd]) => dd === d))).join("")}`).join("");
-  const none = PROJECTS.filter((p) => !p.runs.length);
-  return `<div class="pj-places">
-    ${place("carbon:bare-metal-server", "Servers", servers, Object.keys(devices).length)}
-    ${place("simple-icons:cloudflare", "Cloudflare", of("cloudflare").map(([p, r]) => mini(p, r)).join(""), of("cloudflare").length)}
-    ${place("carbon:screen", "Desktop apps", of("desktop").map(([p, r]) => mini(p, r)).join(""), of("desktop").length)}
-    ${place("simple-icons:vercel", "Vercel · not confirmed", of("vercel").map(([p, r]) => mini(p, r)).join(""), of("vercel").length)}
-    ${place("carbon:help", "Not running anywhere", none.map((p) => mini(p, null)).join(""), none.length)}
-  </div>`;
-}
-function renderProjects(layout) {
-  const L = { rows: pjRows, tiles: pjTiles, places: pjPlaces }[layout] ? layout : "rows";
-  document.getElementById("pj-body").innerHTML = { rows: pjRows, tiles: pjTiles, places: pjPlaces }[L]();
-  document.querySelectorAll("[data-pl]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.pl === L)));
+function renderProjects() {
+  document.getElementById("pj-body").innerHTML = pjTiles();
   const bad = PROJECTS.filter((p) => p.status === "down").length, look = PROJECTS.filter((p) => p.status === "warning").length;
   document.getElementById("pj-tally").innerHTML = `<b>${PROJECTS.length} projects</b> · <span class="s-down">${bad} failing</span> · <span class="s-warning">${look} need a look</span> · 1 deploying`;
 }
-document.querySelectorAll("[data-pl]").forEach((b) => b.addEventListener("click", () => (location.hash = `projects/${b.dataset.pl}`)));
 
 function visible() {
   const list = DEVICES.filter((d) => (filter === "all" || d.status === filter) && d.name.includes(query.toLowerCase()));
@@ -1720,7 +1658,7 @@ function show() {
   document.getElementById("app").hidden = signin;
   document.querySelectorAll(".screen").forEach((s) => (s.hidden = s.id !== `screen-${name}`));
   document.getElementById("connect").hidden = full !== "settings/connect";
-  if (name === "projects") renderProjects(sub);
+  if (name === "projects") renderProjects();
   if (name === "project") {
     const pt = ["work", "code", "history"].includes(sub) ? sub : sub === "issue" ? "work" : "overview";
     document.getElementById("screen-project").dataset.pt = pt;
