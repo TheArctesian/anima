@@ -87,7 +87,7 @@ export function commit(sha: string, minutes: number, more: Partial<Commit> = {})
 
 const entry = (path: string, kind: CodeEntry['kind'], size = 0): CodeEntry => ({ name: path.split('/').at(-1) ?? path, path, kind, size });
 
-export interface ForgeData {
+export interface FakeRepository {
   access: RepositoryAccess;
   pulls: PullRequest[];
   issues: Issue[];
@@ -97,7 +97,7 @@ export interface ForgeData {
   branches: Branch[];
 }
 
-export function forgeData(): ForgeData {
+export function fakeRepository(): FakeRepository {
   return {
     access: 'READY',
     pulls: [pull(12), pull(11, { mergeability: { state: 'UNSTABLE', canMerge: false }, checks: { state: 'FAILED', passed: 2, failed: 1, pending: 0, failing: ['lint'] } }), pull(10, { fromFork: true, headRepository: 'stranger/acme-site' })],
@@ -120,7 +120,7 @@ const FILES: Record<string, { content: 'TEXT' | 'BINARY'; text: string | null }>
 };
 
 export interface FakeForgeHub extends Pick<Hub, 'request'> {
-  readonly data: ForgeData;
+  readonly data: FakeRepository;
   /** Each call as `Operation` with its variables, in order. */
   readonly calls: { name: string; variables: Record<string, unknown> }[];
   /** Operation names that answer with `failure`. */
@@ -135,7 +135,7 @@ const connection = <T>(rows: readonly T[], more: object = {}) => ({
   ...more,
 });
 
-export function fakeForgeHub(data: ForgeData = forgeData()): FakeForgeHub {
+export function fakeForgeHub(data: FakeRepository = fakeRepository()): FakeForgeHub {
   const hub: FakeForgeHub = {
     data,
     calls: [],
@@ -151,7 +151,7 @@ export function fakeForgeHub(data: ForgeData = forgeData()): FakeForgeHub {
   return hub;
 }
 
-function answer(data: ForgeData, name: string, variables: Record<string, unknown>): unknown {
+function answer(data: FakeRepository, name: string, variables: Record<string, unknown>): unknown {
   const v = variables as Record<string, never>;
   const state = v['state'] as string | undefined;
   switch (name) {
@@ -194,7 +194,7 @@ function code(name: string, v: Record<string, never>): unknown {
   }
 }
 
-function change(data: ForgeData, name: string, v: Record<string, never>): unknown {
+function change(data: FakeRepository, name: string, v: Record<string, never>): unknown {
   switch (name) {
     case 'ForgeCreateIssue': {
       const input = v['input'] as { title: string; body: string | null };
