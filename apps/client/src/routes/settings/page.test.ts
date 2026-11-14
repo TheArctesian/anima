@@ -106,7 +106,7 @@ function readable(element: Element): string {
 function sectionTexts(target: HTMLElement, heading: string): string[] {
   const section = sections(target).find((each) => each.querySelector('h2')?.textContent === heading);
   if (section === undefined) throw new Error(`no ${heading} section`);
-  return [...section.querySelectorAll('h2, p, label, button, option')].map(readable);
+  return [...section.querySelectorAll('h2, p, label, span.name, button, option')].map(readable);
 }
 
 it('SET-001, UI-005, MOT-043: the page is the title, then Account, then Appearance with Theme, Colours, Reduce motion and the two fonts, then Notifications, then Default check settings, then Data retention, then API keys, then VPN', async () => {

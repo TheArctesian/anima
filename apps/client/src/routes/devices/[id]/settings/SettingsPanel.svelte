@@ -11,7 +11,7 @@
   import Icon from '$lib/icons/Icon.svelte';
   import type { AgentCalls } from '$lib/metrics/agent/install.svelte';
   import type { ThisComputerShell } from '$lib/desktop/agent/shell';
-  import PageIndex from '$lib/page/PageIndex.svelte';
+  import PageIndex from '$lib/page/contents/PageIndex.svelte';
   import type { SettingsSection } from '../tabs/tabs';
   import type { SettingsCalls } from './calls';
   import ConnectionsSection from './connections/ConnectionsSection.svelte';

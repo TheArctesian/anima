@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { flushSync, mount, unmount } from 'svelte';
+import { choiceOf, type Choice } from '$lib/forms/segmented/choice.fixture';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { springMotion } from '$lib/motion/options';
 import { motionPreference } from '$lib/motion/preference';
@@ -15,16 +16,12 @@ function show(): HTMLElement {
   return target;
 }
 
-function motionSelect(target: HTMLElement): HTMLSelectElement {
-  const control = [...target.querySelectorAll('label')].find((each) => each.textContent === 'Reduce motion')?.control;
-  if (!(control instanceof HTMLSelectElement)) throw new Error('no Reduce motion');
-  return control;
+function motionSelect(target: HTMLElement): Choice {
+  return choiceOf(target, 'Reduce motion');
 }
 
-function choose(control: HTMLSelectElement, value: string): void {
-  control.value = value;
-  control.dispatchEvent(new Event('change', { bubbles: true }));
-  flushSync();
+function choose(control: Choice, value: string): void {
+  control.pick(value);
 }
 
 async function restart(): Promise<HTMLElement> {
@@ -60,7 +57,7 @@ afterEach(async () => {
 
 it('MOT-043: the labelled Reduce motion choice offers System, On and Off, and starts at System', () => {
   const control = motionSelect(show());
-  expect([...control.options].map((option) => option.textContent)).toEqual(['System', 'On', 'Off']);
+  expect(control.options.map((option) => option.textContent)).toEqual(['System', 'On', 'Off']);
   expect(control.value).toBe('system');
   expect(document.documentElement.hasAttribute('data-motion')).toBe(false);
 });

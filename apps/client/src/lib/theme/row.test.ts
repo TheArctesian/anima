@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { flushSync, mount, unmount } from 'svelte';
+import { choiceOf, type Choice } from '$lib/forms/segmented/choice.fixture';
 import { afterEach, expect, it, vi } from 'vitest';
 import ThemeRow from './ThemeRow.svelte';
 
@@ -13,16 +14,12 @@ function show(): HTMLElement {
   return target;
 }
 
-function themeSelect(target: HTMLElement): HTMLSelectElement {
-  const control = [...target.querySelectorAll('label')].find((each) => each.textContent === 'Theme')?.control;
-  if (!(control instanceof HTMLSelectElement)) throw new Error('no Theme');
-  return control;
+function themeSelect(target: HTMLElement): Choice {
+  return choiceOf(target, 'Theme');
 }
 
-function choose(control: HTMLSelectElement, value: string): void {
-  control.value = value;
-  control.dispatchEvent(new Event('change', { bubbles: true }));
-  flushSync();
+function choose(control: Choice, value: string): void {
+  control.pick(value);
 }
 
 async function restart(): Promise<HTMLElement> {
@@ -44,7 +41,7 @@ afterEach(async () => {
 
 it('UI-005: the labelled Theme choice offers Dark, Light and System, and starts at Dark', () => {
   const control = themeSelect(show());
-  expect([...control.options].map((option) => option.textContent)).toEqual(['Dark', 'Light', 'System']);
+  expect(control.options.map((option) => option.textContent)).toEqual(['Dark', 'Light', 'System']);
   expect(control.value).toBe('dark');
 });
 

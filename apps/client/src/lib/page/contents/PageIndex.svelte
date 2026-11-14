@@ -11,7 +11,7 @@
 
 <script lang="ts">
   import Icon from '$lib/icons/Icon.svelte';
-  import SmallCaps from './SmallCaps.svelte';
+  import SmallCaps from '../SmallCaps.svelte';
 
   interface Props {
     entries: readonly IndexEntry[];
@@ -27,27 +27,26 @@
   /** The section nearest the top of the window; the first until the page scrolls. */
   let current = $state<string | null>(null);
 
-  // A section is current once its head passes the top third of the window.
+  // The current section is the last one whose head has passed the top tenth of the window, so a link that brings a short
+  // section to the top marks that section; at the foot of the page it is the last section, which may never get that high.
+  // It is worked out again on every scroll of the page, whichever element scrolls (a few reads of layout).
   $effect(() => {
-    if (typeof IntersectionObserver !== 'function') return;
-    const shown: Record<string, boolean> = {};
-    const observer = new IntersectionObserver(
-      (changes) => {
-        for (const change of changes) {
-          const id = (change.target as HTMLElement).dataset['section'] ?? '';
-          shown[id] = change.isIntersecting;
-        }
-        current = entries.find((entry) => shown[entry.id] === true)?.id ?? current;
-      },
-      { rootMargin: '0px 0px -66% 0px' },
-    );
-    for (const entry of entries) {
-      // The entries' ids are the page's own anchors: plain words and hyphens.
-      const section = document.querySelector(`[data-section="${entry.id}"]`);
-      if (section !== null) observer.observe(section);
+    function update(): void {
+      const line = innerHeight / 10;
+      const page = document.scrollingElement ?? document.documentElement;
+      const atFoot = page.scrollTop > 0 && page.scrollTop + innerHeight >= page.scrollHeight - 1;
+      let next = entries[0]?.id ?? null;
+      for (const entry of entries) {
+        // The entries' ids are the page's own anchors: plain words and hyphens.
+        const section = document.querySelector(`[data-section="${entry.id}"]`);
+        if (section !== null && (atFoot || section.getBoundingClientRect().top <= line)) next = entry.id;
+      }
+      current = next;
     }
+    update();
+    document.addEventListener('scroll', update, { capture: true, passive: true });
     return () => {
-      observer.disconnect();
+      document.removeEventListener('scroll', update, { capture: true });
     };
   });
 </script>

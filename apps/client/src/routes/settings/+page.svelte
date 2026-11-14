@@ -18,7 +18,7 @@
   import VpnSection from '$lib/vpn/VpnSection.svelte';
   import PageHeader from '$lib/page/PageHeader.svelte';
   import { resolve as entrance } from '$lib/motion/roles/resolve';
-  import PageIndex from '$lib/page/PageIndex.svelte';
+  import PageIndex from '$lib/page/contents/PageIndex.svelte';
   import { SECTIONS, indexOf } from './index';
 
   // The desktop rows decide each row themselves; the page only leaves out the section when none can show (UPD-006, LOG-008,

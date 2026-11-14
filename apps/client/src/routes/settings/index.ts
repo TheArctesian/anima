@@ -1,4 +1,4 @@
-import type { IndexEntry } from '$lib/page/PageIndex.svelte';
+import type { IndexEntry } from '$lib/page/contents/PageIndex.svelte';
 
 /** What this platform can show: the Hub, Updates and MCP sections are desktop only (CLI-002, UPD-006, MCP-023). */
 export interface IndexShown {

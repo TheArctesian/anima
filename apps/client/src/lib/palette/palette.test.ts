@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { flushSync, mount, unmount } from 'svelte';
+import { choiceOf, type Choice } from '$lib/forms/segmented/choice.fixture';
 import { afterEach, expect, it, vi } from 'vitest';
 import PaletteRow from './PaletteRow.svelte';
 import { applyPalette, DEFAULT_PALETTE, PALETTES, storedPalette, storePalette } from './palette';
@@ -14,16 +15,12 @@ function show(): HTMLElement {
   return target;
 }
 
-function colours(target: HTMLElement): HTMLSelectElement {
-  const control = [...target.querySelectorAll('label')].find((each) => each.textContent === 'Colours')?.control;
-  if (!(control instanceof HTMLSelectElement)) throw new Error('no Colours');
-  return control;
+function colours(target: HTMLElement): Choice {
+  return choiceOf(target, 'Colours');
 }
 
-function choose(control: HTMLSelectElement, value: string): void {
-  control.value = value;
-  control.dispatchEvent(new Event('change', { bubbles: true }));
-  flushSync();
+function choose(control: Choice, value: string): void {
+  control.pick(value);
 }
 
 afterEach(async () => {
@@ -58,7 +55,7 @@ it('UI-032: a saved palette is read back from anima.palette, and applyPalette se
 
 it('UI-032: the labelled Colours choice offers Graphite and Nord, and each choice applies at once and lasts', async () => {
   const control = colours(show());
-  expect([...control.options].map((option) => option.textContent)).toEqual(['Graphite', 'Nord']);
+  expect(control.options.map((option) => option.textContent)).toEqual(['Graphite', 'Nord']);
   expect(control.value).toBe('graphite');
   choose(control, 'nord');
   expect(document.documentElement.dataset['palette']).toBe('nord');

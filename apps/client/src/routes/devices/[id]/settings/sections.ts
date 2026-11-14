@@ -1,4 +1,4 @@
-import type { IndexEntry } from '$lib/page/PageIndex.svelte';
+import type { IndexEntry } from '$lib/page/contents/PageIndex.svelte';
 
 /** The groups of the device's Settings tab, in order, as their heads and the "On this page" index name them (D17). */
 export const SECTIONS = {

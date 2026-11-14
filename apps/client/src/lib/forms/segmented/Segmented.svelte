@@ -53,6 +53,7 @@
     <button
       type="button"
       role="radio"
+      data-value={option.value}
       aria-checked={option.value === value}
       tabindex={option.value === value ? 0 : -1}
       bind:this={radios[index]}
