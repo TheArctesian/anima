@@ -21,7 +21,7 @@ const DEFAULT_FIRST: i32 = 20;
 const MOST: usize = 50;
 /// How long each answer stays fresh (K-E1 Section 13.1).
 const LIST: Keep = Keep::for_seconds(30);
-const ONE: Keep = Keep::for_seconds(15);
+pub(super) const ONE: Keep = Keep::for_seconds(15);
 const SETTINGS: Keep = Keep::for_seconds(600);
 
 /// The single read of `view`'s pull request, which holds its mergeability and comment count.

@@ -2299,7 +2299,7 @@ input NewIssueInput {
   labels: [String!]
 }
 
-input MergePullRequestInput @pending {
+input MergePullRequestInput {
   repository: ID!
   number: Int!
   "The head commit the operator saw, 40 hex digits. CONFLICT when the head moved since."
@@ -2311,13 +2311,13 @@ input MergePullRequestInput @pending {
   forkConfirmed: String
 }
 
-input PullRequestTargetInput @pending {
+input PullRequestTargetInput {
   repository: ID!
   number: Int!
   expectedHeadSha: String!
 }
 
-enum MergeOutcome @pending {
+enum MergeOutcome {
   MERGED
   "It was merged before this request. Nothing was changed."
   ALREADY_MERGED
@@ -2339,7 +2339,7 @@ enum MergeOutcome @pending {
   NOT_ATTEMPTED
 }
 
-type PullRequestMerge @pending {
+type PullRequestMerge {
   repository: ID!
   number: Int!
   outcome: MergeOutcome!
@@ -2613,10 +2613,10 @@ type Mutation {
   addIssueComment(repository: ID!, number: Int!, body: String!): IssueComment!
   "Closes or opens an issue. reason only with open false. No change when it is already so. VALIDATION when the number is a pull request. Writes an audit entry (PRJ-028)."
   setIssueOpen(repository: ID!, number: Int!, open: Boolean!, reason: IssueCloseReason): Issue!
-  "CONFLICT when the head moved, it cannot merge, GitHub has not computed it, or the method is not allowed. FORBIDDEN for a pull request from a fork without forkConfirmed, and for any pull request from a fork when the request declares an AI agent (PRO-013). Returns it unchanged when it is already merged. Writes an audit entry (PRJ-028). Closed to API keys: login or browser token only. The task that adds this root to API_KEY_REFUSED_ROOTS restores the standard words (key_roots.rs)."
-  mergePullRequest(input: MergePullRequestInput!): PullRequest! @pending
-  "1 to 20 pull requests, no pair twice, merged one after another in the order given; a failure does not stop the rest. One result for each, in the same order (PRJ-033). Only CLEAN ones; never one from a fork. One audit entry for each one the hub sent to GitHub. Closed to API keys: login or browser token only. The task that adds this root to API_KEY_REFUSED_ROOTS restores the standard words (key_roots.rs)."
-  mergePullRequests(pullRequests: [PullRequestTargetInput!]!, method: MergeMethod!): [PullRequestMerge!]! @pending
+  "CONFLICT when the head moved, it cannot merge, GitHub has not computed it, or the method is not allowed. FORBIDDEN for a pull request from a fork without forkConfirmed, and for any pull request from a fork when the request declares an AI agent (PRO-013). Returns it unchanged when it is already merged. Writes an audit entry (PRJ-028). Login or browser token only (D-23, R-100)."
+  mergePullRequest(input: MergePullRequestInput!): PullRequest!
+  "1 to 20 pull requests, no pair twice, merged one after another in the order given; a failure does not stop the rest. One result for each, in the same order (PRJ-033). Only CLEAN ones; never one from a fork. One audit entry for each one the hub sent to GitHub. Login or browser token only (D-23, R-100)."
+  mergePullRequests(pullRequests: [PullRequestTargetInput!]!, method: MergeMethod!): [PullRequestMerge!]!
   "Runs every job again. CONFLICT when it is not rerunnable or expectedHeadSha is not its head commit (PRJ-034). Writes an audit entry (PRJ-028). Closed to API keys: login or browser token only. The task that adds this root to API_KEY_REFUSED_ROOTS restores the standard words (key_roots.rs)."
   rerunWorkflowRun(repository: ID!, runId: ID!, expectedHeadSha: String!): WorkflowRun! @pending
   "Runs only the failed jobs again. CONFLICT as rerunWorkflowRun. Writes an audit entry (PRJ-028). Closed to API keys: login or browser token only. The task that adds this root to API_KEY_REFUSED_ROOTS restores the standard words (key_roots.rs)."

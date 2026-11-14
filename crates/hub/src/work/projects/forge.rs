@@ -26,7 +26,7 @@ use source_exchange::{Body, Problem, Request, Response};
 
 pub(super) use self::{
     argument::checked,
-    change::make,
+    change::{make, send},
     checks::{CommitChecksView, commit_checks},
     cursor::{Cut, GITHUB_PAGE, Place, cut},
     failure::{Subject, missing, unusable},

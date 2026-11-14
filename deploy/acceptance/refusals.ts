@@ -51,6 +51,8 @@ export const REFUSED_ROOTS: readonly string[] = [
   "openGithubConnect",
   "cancelGithubConnect",
   "codeFile",
+  "mergePullRequest",
+  "mergePullRequests",
 ];
 
 /** The refused roots that are query fields; every other one is a mutation field. */

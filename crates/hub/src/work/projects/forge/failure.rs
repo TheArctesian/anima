@@ -17,6 +17,7 @@ pub enum Subject {
     Issue,
     /// A comment goes on an issue or a pull request.
     IssueOrPullRequest,
+    PullRequest,
 }
 
 impl Subject {
@@ -24,6 +25,7 @@ impl Subject {
         match self {
             Self::Issue => "issue",
             Self::IssueOrPullRequest => "issue or pull request",
+            Self::PullRequest => "pull request",
         }
     }
 
@@ -31,6 +33,7 @@ impl Subject {
     const fn gone(self) -> &'static str {
         match self {
             Self::Issue | Self::IssueOrPullRequest => "Issues are off for this repository.",
+            Self::PullRequest => "GitHub refused the merge.",
         }
     }
 }

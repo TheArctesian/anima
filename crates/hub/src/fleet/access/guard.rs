@@ -234,7 +234,8 @@ fn refusal(identity: Option<&Identity>, document: &ExecutableDocument) -> Option
 /// an App key, and its one-time link binds a browser: login or browser token only (PRJ-039,
 /// PRJ-041). A file of a repository's code can hold a secret the hub does not look for: login or
 /// browser token only (PRJ-033, K-E1 Section 13.5).
-pub(super) const API_KEY_REFUSED_ROOTS: [&str; 37] = [
+/// A pull request merge runs code with the repository's secrets: login or browser token only.
+pub(super) const API_KEY_REFUSED_ROOTS: [&str; 39] = [
     "createApiKey",
     "revokeApiKey",
     "apiKeys",
@@ -272,6 +273,8 @@ pub(super) const API_KEY_REFUSED_ROOTS: [&str; 37] = [
     "openGithubConnect",
     "cancelGithubConnect",
     "codeFile",
+    "mergePullRequest",
+    "mergePullRequests",
 ];
 
 /// The root selections a token of `kind` may make, in every operation type. A new kind of

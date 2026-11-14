@@ -1,5 +1,8 @@
 //! Hub library face: module tree, HTTP router and the serving steps around it, so integration
 //! tests can reach them.
+// The schema's merged Mutation nests each part's future in the next; the layout of the whole
+// passed rustc's default depth of 128 when the pull request merges joined it (PRJ-033).
+#![recursion_limit = "256"]
 
 pub mod api_errors;
 pub mod clock;
