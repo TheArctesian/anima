@@ -2139,7 +2139,7 @@ type WorkflowRunConnection {
 }
 
 "GitHub accepted the request; the run appears in workflowRuns a moment later."
-type WorkflowDispatch @pending {
+type WorkflowDispatch {
   repository: ID!
   workflowId: ID!
   branch: String!
@@ -2224,9 +2224,9 @@ type RepositoryReleaseConnection {
   read: ForgeRead!
 }
 
-enum CommitStatusState @pending { PENDING SUCCESS FAILURE ERROR }
+enum CommitStatusState { PENDING SUCCESS FAILURE ERROR }
 
-type CommitStatus @pending {
+type CommitStatus {
   repository: ID!
   sha: String!
   context: String!
@@ -2350,14 +2350,14 @@ type PullRequestMerge @pending {
 }
 
 "One named input of a workflow started by hand. The operator types the name; GitHub checks it (PRJ-035)."
-input WorkflowInputValue @pending {
+input WorkflowInputValue {
   "1 to 100 characters: letters, digits, - and _."
   name: String!
   "At most 1,024 characters."
   value: String!
 }
 
-input DispatchWorkflowInput @pending {
+input DispatchWorkflowInput {
   repository: ID!
   workflowId: ID!
   "A branch of this repository."
@@ -2366,7 +2366,7 @@ input DispatchWorkflowInput @pending {
   inputs: [WorkflowInputValue!] = []
 }
 
-input CommitStatusInput @pending {
+input CommitStatusInput {
   repository: ID!
   "40 hex digits."
   sha: String!
@@ -2617,16 +2617,16 @@ type Mutation {
   mergePullRequest(input: MergePullRequestInput!): PullRequest! @pending
   "1 to 20 pull requests, no pair twice, merged one after another in the order given; a failure does not stop the rest. One result for each, in the same order (PRJ-033). Only CLEAN ones; never one from a fork. One audit entry for each one the hub sent to GitHub. Closed to API keys: login or browser token only. The task that adds this root to API_KEY_REFUSED_ROOTS restores the standard words (key_roots.rs)."
   mergePullRequests(pullRequests: [PullRequestTargetInput!]!, method: MergeMethod!): [PullRequestMerge!]! @pending
-  "Runs every job again. CONFLICT when it is not rerunnable or expectedHeadSha is not its head commit (PRJ-034). Writes an audit entry (PRJ-028). Closed to API keys: login or browser token only. The task that adds this root to API_KEY_REFUSED_ROOTS restores the standard words (key_roots.rs)."
-  rerunWorkflowRun(repository: ID!, runId: ID!, expectedHeadSha: String!): WorkflowRun! @pending
-  "Runs only the failed jobs again. CONFLICT as rerunWorkflowRun. Writes an audit entry (PRJ-028). Closed to API keys: login or browser token only. The task that adds this root to API_KEY_REFUSED_ROOTS restores the standard words (key_roots.rs)."
-  rerunFailedWorkflowJobs(repository: ID!, runId: ID!, expectedHeadSha: String!): WorkflowRun! @pending
-  "CONFLICT when it is not cancellable or expectedHeadSha is not its head commit. Writes an audit entry (PRJ-028). Closed to API keys: login or browser token only. The task that adds this root to API_KEY_REFUSED_ROOTS restores the standard words (key_roots.rs)."
-  cancelWorkflowRun(repository: ID!, runId: ID!, expectedHeadSha: String!): WorkflowRun! @pending
-  "Starts a workflow by hand on a branch (PRJ-035). VALIDATION when GitHub refuses the branch or the inputs; CONFLICT when the workflow is not active. Writes an audit entry (PRJ-028). Closed to API keys: login or browser token only. The task that adds this root to API_KEY_REFUSED_ROOTS restores the standard words (key_roots.rs)."
-  dispatchWorkflow(input: DispatchWorkflowInput!): WorkflowDispatch! @pending
-  "Writes a commit status under an anima/ context (PRO-010). Writes an audit entry (PRJ-028). Closed to API keys: login or browser token only. The task that adds this root to API_KEY_REFUSED_ROOTS restores the standard words (key_roots.rs)."
-  setCommitStatus(input: CommitStatusInput!): CommitStatus! @pending
+  "Runs every job again. CONFLICT when it is not rerunnable or expectedHeadSha is not its head commit (PRJ-034). Writes an audit entry (PRJ-028). Login or browser token only (D-23, R-100)."
+  rerunWorkflowRun(repository: ID!, runId: ID!, expectedHeadSha: String!): WorkflowRun!
+  "Runs only the failed jobs again. CONFLICT as rerunWorkflowRun. Writes an audit entry (PRJ-028). Login or browser token only (D-23, R-100)."
+  rerunFailedWorkflowJobs(repository: ID!, runId: ID!, expectedHeadSha: String!): WorkflowRun!
+  "CONFLICT when it is not cancellable or expectedHeadSha is not its head commit. Writes an audit entry (PRJ-028). Login or browser token only (D-23, R-100)."
+  cancelWorkflowRun(repository: ID!, runId: ID!, expectedHeadSha: String!): WorkflowRun!
+  "Starts a workflow by hand on a branch (PRJ-035). VALIDATION when GitHub refuses the branch or the inputs; CONFLICT when the workflow is not active. Writes an audit entry (PRJ-028). Login or browser token only (D-23, R-100)."
+  dispatchWorkflow(input: DispatchWorkflowInput!): WorkflowDispatch!
+  "Writes a commit status under an anima/ context (PRO-010). Writes an audit entry (PRJ-028). Login or browser token only (D-23, R-100)."
+  setCommitStatus(input: CommitStatusInput!): CommitStatus!
 }
 
 type Subscription {

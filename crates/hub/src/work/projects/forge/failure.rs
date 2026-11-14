@@ -10,13 +10,15 @@ use crate::{
     engine::sources::LiveFailure,
 };
 
-/// What a change is made to: the noun of its fixed words. The pull request, run, workflow and
-/// commit changes add theirs.
+/// What a change is made to: the noun of its fixed words. The pull request changes add theirs.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Subject {
     Issue,
     /// A comment goes on an issue or a pull request.
     IssueOrPullRequest,
+    Run,
+    Workflow,
+    Commit,
 }
 
 impl Subject {
@@ -24,6 +26,9 @@ impl Subject {
         match self {
             Self::Issue => "issue",
             Self::IssueOrPullRequest => "issue or pull request",
+            Self::Run => "run",
+            Self::Workflow => "workflow",
+            Self::Commit => "commit",
         }
     }
 
@@ -31,6 +36,9 @@ impl Subject {
     const fn gone(self) -> &'static str {
         match self {
             Self::Issue | Self::IssueOrPullRequest => "Issues are off for this repository.",
+            Self::Run | Self::Workflow | Self::Commit => {
+                "GitHub says it is gone. Nothing was changed."
+            }
         }
     }
 }

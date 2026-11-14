@@ -1,13 +1,18 @@
 //! The first changes Anima makes on GitHub, through GraphQL against the loopback GitHub
 //! (OD-E14, PRJ-027, PRJ-028; K-E1 Sections 13.2 to 13.7): make an issue, comment, close or
-//! open one. What the stub hears, the K1 result, the record each sent change leaves, the held
+//! open one; run a workflow run again, run its failed jobs again, cancel it, start a workflow
+//! and write a commit status (PRJ-034, PRJ-035, PRO-010). What the stub hears, the K1 result, the record each sent change leaves, the held
 //! answers it drops, the fixed words of every outcome, the refusals that send nothing, the token
 //! kinds, and the text that never reaches a log, an error or a record.
 
+mod controls;
+mod fences;
+mod guarded;
 mod made;
 mod outcomes;
 mod refusals;
 mod secrets;
+mod starts;
 mod tokens;
 
 use serde_json::{Value, json};

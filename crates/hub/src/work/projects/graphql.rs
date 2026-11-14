@@ -202,7 +202,12 @@ impl ProjectsQuery {
 /// the schema merges (K3; OD-E14).
 #[derive(MergedObject, Default)]
 #[graphql(name = "ProjectsMutations")]
-pub struct Mutation(ProjectsMutation, issues::Mutation);
+pub struct Mutation(
+    ProjectsMutation,
+    issues::Mutation,
+    workflows::Mutation,
+    history::Mutation,
+);
 
 #[derive(Default)]
 pub struct ProjectsMutation;
