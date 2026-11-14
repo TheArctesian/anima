@@ -85,7 +85,7 @@ pub fn statement(rows: &[Row]) -> String {
          call: {}. Off, not listed: {}. The hub token is still the final limit: an API key \
          with read scope cannot change anything, and the tools that need a login token \
          (device update and delete, release create, build cancel, VPN route approval, \
-         retention set) are never listed for an API key.",
+         retention set, extension set, source account removal) are never listed for an API key.",
         super::catalogue::joined(&sets),
         grouped(rows, |row| {
             row.state == State::Allow && row.entry.kind() == Kind::Change
