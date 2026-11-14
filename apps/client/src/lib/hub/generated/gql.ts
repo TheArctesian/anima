@@ -88,6 +88,13 @@ type Documents = {
     "\n  mutation DeleteNotificationChannel($id: ID!) {\n    deleteNotificationChannel(id: $id)\n  }\n": typeof types.DeleteNotificationChannelDocument,
     "\n  mutation SendTestNotification($id: ID!) {\n    sendTestNotification(id: $id) {\n      ...DeliveryFields\n    }\n  }\n": typeof types.SendTestNotificationDocument,
     "\n  mutation SetNotificationSettings($input: NotificationSettingsInput!) {\n    setNotificationSettings(input: $input) {\n      ...NotificationSettingsFields\n    }\n  }\n": typeof types.SetNotificationSettingsDocument,
+    "\n  fragment ResourceFields on ProjectResource {\n    id\n    kind\n    state\n    foundAt\n    confirmedAt\n    evidence {\n      sign\n      path\n    }\n  }\n": typeof types.ResourceFieldsFragmentDoc,
+    "\n  fragment ProjectFields on Project {\n    id\n    slug\n    name\n    subjectKey\n    syncedAt\n    repositories {\n      id\n      fullName\n      url\n      defaultBranch\n      private\n      archived\n      fork\n      description\n      leftOut\n      gone\n    }\n    resources {\n      ...ResourceFields\n    }\n  }\n": typeof types.ProjectFieldsFragmentDoc,
+    "\n  query Projects($leftOut: Boolean!, $first: Int!, $after: String) {\n    projects(leftOut: $leftOut, first: $first, after: $after) {\n      edges {\n        node {\n          ...ProjectFields\n        }\n      }\n      pageInfo {\n        hasNextPage\n        endCursor\n      }\n    }\n  }\n": typeof types.ProjectsDocument,
+    "\n  query Project($slug: String!) {\n    project(slug: $slug) {\n      ...ProjectFields\n    }\n  }\n": typeof types.ProjectDocument,
+    "\n  mutation LeaveOutRepository($id: ID!) {\n    leaveOutRepository(id: $id) {\n      ...ProjectFields\n    }\n  }\n": typeof types.LeaveOutRepositoryDocument,
+    "\n  mutation RestoreRepository($id: ID!) {\n    restoreRepository(id: $id) {\n      ...ProjectFields\n    }\n  }\n": typeof types.RestoreRepositoryDocument,
+    "\n  mutation ConfirmProjectResource($id: ID!) {\n    confirmProjectResource(id: $id) {\n      ...ResourceFields\n    }\n  }\n": typeof types.ConfirmProjectResourceDocument,
     "\n  query Retention {\n    retention {\n      subject\n      days\n      minDays\n      maxDays\n      defaultDays\n    }\n  }\n": typeof types.RetentionDocument,
     "\n  mutation SetRetention($subject: RetentionSubject!, $days: Int!) {\n    setRetention(subject: $subject, days: $days) {\n      subject\n      days\n      minDays\n      maxDays\n      defaultDays\n    }\n  }\n": typeof types.SetRetentionDocument,
     "\n  mutation StartSession($input: StartSessionInput!) {\n    startSession(input: $input) {\n      sessionId\n      token\n      tunnelPath\n      expiresAt\n      wakeSent\n    }\n  }\n": typeof types.StartSessionDocument,
@@ -203,6 +210,13 @@ const documents: Documents = {
     "\n  mutation DeleteNotificationChannel($id: ID!) {\n    deleteNotificationChannel(id: $id)\n  }\n": types.DeleteNotificationChannelDocument,
     "\n  mutation SendTestNotification($id: ID!) {\n    sendTestNotification(id: $id) {\n      ...DeliveryFields\n    }\n  }\n": types.SendTestNotificationDocument,
     "\n  mutation SetNotificationSettings($input: NotificationSettingsInput!) {\n    setNotificationSettings(input: $input) {\n      ...NotificationSettingsFields\n    }\n  }\n": types.SetNotificationSettingsDocument,
+    "\n  fragment ResourceFields on ProjectResource {\n    id\n    kind\n    state\n    foundAt\n    confirmedAt\n    evidence {\n      sign\n      path\n    }\n  }\n": types.ResourceFieldsFragmentDoc,
+    "\n  fragment ProjectFields on Project {\n    id\n    slug\n    name\n    subjectKey\n    syncedAt\n    repositories {\n      id\n      fullName\n      url\n      defaultBranch\n      private\n      archived\n      fork\n      description\n      leftOut\n      gone\n    }\n    resources {\n      ...ResourceFields\n    }\n  }\n": types.ProjectFieldsFragmentDoc,
+    "\n  query Projects($leftOut: Boolean!, $first: Int!, $after: String) {\n    projects(leftOut: $leftOut, first: $first, after: $after) {\n      edges {\n        node {\n          ...ProjectFields\n        }\n      }\n      pageInfo {\n        hasNextPage\n        endCursor\n      }\n    }\n  }\n": types.ProjectsDocument,
+    "\n  query Project($slug: String!) {\n    project(slug: $slug) {\n      ...ProjectFields\n    }\n  }\n": types.ProjectDocument,
+    "\n  mutation LeaveOutRepository($id: ID!) {\n    leaveOutRepository(id: $id) {\n      ...ProjectFields\n    }\n  }\n": types.LeaveOutRepositoryDocument,
+    "\n  mutation RestoreRepository($id: ID!) {\n    restoreRepository(id: $id) {\n      ...ProjectFields\n    }\n  }\n": types.RestoreRepositoryDocument,
+    "\n  mutation ConfirmProjectResource($id: ID!) {\n    confirmProjectResource(id: $id) {\n      ...ResourceFields\n    }\n  }\n": types.ConfirmProjectResourceDocument,
     "\n  query Retention {\n    retention {\n      subject\n      days\n      minDays\n      maxDays\n      defaultDays\n    }\n  }\n": types.RetentionDocument,
     "\n  mutation SetRetention($subject: RetentionSubject!, $days: Int!) {\n    setRetention(subject: $subject, days: $days) {\n      subject\n      days\n      minDays\n      maxDays\n      defaultDays\n    }\n  }\n": types.SetRetentionDocument,
     "\n  mutation StartSession($input: StartSessionInput!) {\n    startSession(input: $input) {\n      sessionId\n      token\n      tunnelPath\n      expiresAt\n      wakeSent\n    }\n  }\n": types.StartSessionDocument,
@@ -554,6 +568,34 @@ export function graphql(source: "\n  mutation SendTestNotification($id: ID!) {\n
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "\n  mutation SetNotificationSettings($input: NotificationSettingsInput!) {\n    setNotificationSettings(input: $input) {\n      ...NotificationSettingsFields\n    }\n  }\n"): (typeof documents)["\n  mutation SetNotificationSettings($input: NotificationSettingsInput!) {\n    setNotificationSettings(input: $input) {\n      ...NotificationSettingsFields\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  fragment ResourceFields on ProjectResource {\n    id\n    kind\n    state\n    foundAt\n    confirmedAt\n    evidence {\n      sign\n      path\n    }\n  }\n"): (typeof documents)["\n  fragment ResourceFields on ProjectResource {\n    id\n    kind\n    state\n    foundAt\n    confirmedAt\n    evidence {\n      sign\n      path\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  fragment ProjectFields on Project {\n    id\n    slug\n    name\n    subjectKey\n    syncedAt\n    repositories {\n      id\n      fullName\n      url\n      defaultBranch\n      private\n      archived\n      fork\n      description\n      leftOut\n      gone\n    }\n    resources {\n      ...ResourceFields\n    }\n  }\n"): (typeof documents)["\n  fragment ProjectFields on Project {\n    id\n    slug\n    name\n    subjectKey\n    syncedAt\n    repositories {\n      id\n      fullName\n      url\n      defaultBranch\n      private\n      archived\n      fork\n      description\n      leftOut\n      gone\n    }\n    resources {\n      ...ResourceFields\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  query Projects($leftOut: Boolean!, $first: Int!, $after: String) {\n    projects(leftOut: $leftOut, first: $first, after: $after) {\n      edges {\n        node {\n          ...ProjectFields\n        }\n      }\n      pageInfo {\n        hasNextPage\n        endCursor\n      }\n    }\n  }\n"): (typeof documents)["\n  query Projects($leftOut: Boolean!, $first: Int!, $after: String) {\n    projects(leftOut: $leftOut, first: $first, after: $after) {\n      edges {\n        node {\n          ...ProjectFields\n        }\n      }\n      pageInfo {\n        hasNextPage\n        endCursor\n      }\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  query Project($slug: String!) {\n    project(slug: $slug) {\n      ...ProjectFields\n    }\n  }\n"): (typeof documents)["\n  query Project($slug: String!) {\n    project(slug: $slug) {\n      ...ProjectFields\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation LeaveOutRepository($id: ID!) {\n    leaveOutRepository(id: $id) {\n      ...ProjectFields\n    }\n  }\n"): (typeof documents)["\n  mutation LeaveOutRepository($id: ID!) {\n    leaveOutRepository(id: $id) {\n      ...ProjectFields\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation RestoreRepository($id: ID!) {\n    restoreRepository(id: $id) {\n      ...ProjectFields\n    }\n  }\n"): (typeof documents)["\n  mutation RestoreRepository($id: ID!) {\n    restoreRepository(id: $id) {\n      ...ProjectFields\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation ConfirmProjectResource($id: ID!) {\n    confirmProjectResource(id: $id) {\n      ...ResourceFields\n    }\n  }\n"): (typeof documents)["\n  mutation ConfirmProjectResource($id: ID!) {\n    confirmProjectResource(id: $id) {\n      ...ResourceFields\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
