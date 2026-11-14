@@ -29,7 +29,8 @@ pub struct Minted { pub token: String, pub expires_at: DateTime<Utc> }
 
 pub enum Method { Get }                      // the only variant: a provider cannot express a write
 pub struct Request { pub method: Method, pub path: String, pub query: Vec<(String, String)> }
-pub struct Response<'a> { pub status: u16, pub body: &'a [u8] }
+pub struct Response<'a> { pub status: u16, pub body: Body<'a> }
+pub enum Body<'a> { Read(&'a [u8]), TooLarge }   // TooLarge: past the engine's body cap; none of it kept
 pub struct Problem { pub code: &'static str, pub subject: String, pub message: String }
 pub struct Normalised<R> { pub records: Vec<R>, pub state: serde_json::Value, pub problems: Vec<Problem> }
 ```
@@ -47,7 +48,7 @@ pub fn next_request(state: &Value) -> Option<Request>;   // None: the run is com
 pub fn normalise(request: &Request, response: &Response<'_>, state: &Value) -> Normalised<Record>;
 ```
 
-No I/O, clock, randomness or logging. `state` is the provider's own slice only (Section 4). `normalise` of the same input twice gives equal output.
+No I/O, clock, randomness or logging. `state` is the provider's own slice only (Section 4). `normalise` of the same input twice gives equal output. The provider decides what `Body::TooLarge` means for its request: a reply the run cannot go on without (a listing) keeps the slice, so the engine fails the run; a reply about one record (one repository's files) is that record's problem, and the run moves on.
 
 ## 3. Intake (hub side, `crates/hub/src/engine/sources/intake.rs`)
 
@@ -114,7 +115,7 @@ The account holds a credential reference (`credential_id`), never the value. The
 
 - `app_key.rs` (pure): parse the PEM with `rustls-pki-types`; build an RS256 JWT with `ring::signature::RsaKeyPair` (`iss` = App ID, `iat` = now − 60 s, `exp` = now + 540 s); refuse a key under 2048 bits and a PEM over 16 KiB.
 - `tokens.rs`: `Tokens` is an in-memory map `SourceAccountId -> (Secret, expires_at)`. It mints with `POST {api_base}{mint_path(installation)}` and mints again when under 5 minutes remain. The token is never written to the database or a log, has no `Debug`, and its header value is marked sensitive.
-- `transport.rs`: one `reqwest::Client` with redirects off, https only, 20 s timeout, 8 MiB body cap and `User-Agent: anima-hub`.
+- `transport.rs`: one `reqwest::Client` with redirects off, https only, 20 s timeout, 8 MiB body cap and `User-Agent: anima-hub`. Past the cap it stops reading, keeps none of the body and hands the normaliser `Body::TooLarge`; a mint reply past the cap is unusable.
   - The URL is always `base + request.path`. A path that does not start with `/` or that holds `://` or `@` is refused.
   - `Transport { client, base_override: Option<Url> }`: only tests set the override (a loopback stub). No environment variable.
   - 401 from the mint or from a request is `auth`. 403 or 429 with `x-ratelimit-remaining: 0` or `retry-after` is `rate_limit { until }`. Other non-2xx statuses go to the normaliser.

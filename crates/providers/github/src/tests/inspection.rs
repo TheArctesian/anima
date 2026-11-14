@@ -118,7 +118,7 @@ fn src_007_an_interrupted_signs_phase_resumes_where_it_stopped() {
         &list,
         &Response {
             status: 200,
-            body: page,
+            body: Body::Read(page),
         },
         &state,
     )
@@ -130,7 +130,7 @@ fn src_007_an_interrupted_signs_phase_resumes_where_it_stopped() {
         &tree_request,
         &Response {
             status: 200,
-            body: &tree,
+            body: Body::Read(&tree),
         },
         &state,
     )
@@ -146,7 +146,7 @@ fn src_007_an_interrupted_signs_phase_resumes_where_it_stopped() {
         &next,
         &Response {
             status: 200,
-            body: b"[]",
+            body: Body::Read(b"[]"),
         },
         &resumed,
     );

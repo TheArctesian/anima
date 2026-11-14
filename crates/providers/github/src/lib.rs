@@ -77,7 +77,9 @@ pub fn next_request(state: &Value) -> Option<Request> {
 
 /// Turns the response to `request` into records, the new slice and problems. A response that
 /// is not the answer to [`next_request`] of this slice, or a status with no rule, gives no
-/// records, the slice unchanged and a problem: the engine fails the run.
+/// records, the slice unchanged and a problem: the engine fails the run. A body larger than the
+/// hub reads fails the run only for the listing; for a tree or a deployments reply it is that
+/// repository's problem, and the repository counts as read for its `pushed_at`.
 #[must_use]
 pub fn normalise(request: &Request, response: &Response<'_>, state: &Value) -> Normalised<Record> {
     let slice = Slice::read(state);

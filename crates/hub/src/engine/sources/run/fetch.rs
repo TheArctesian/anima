@@ -31,7 +31,8 @@ const REFUSED_KEY: Failure = Failure::new(
 
 /// Fetches `request` for the claimed account: refused before anything is sent when its
 /// address could leave the source's API base; a 401 drops the token and is `auth`; a rate
-/// limit is `rate_limit` until its end. Any other reply is the provider's to read.
+/// limit is `rate_limit` until its end. Any other reply is the provider's to read, including one
+/// larger than the hub reads: the provider decides what that means for its request.
 pub(super) async fn fetch(
     scheduling: &Scheduling,
     (claim, declaration): (&Claim, &Declaration),
@@ -49,10 +50,6 @@ pub(super) async fn fetch(
         .map_err(|fault| match fault {
             Fault::Refused => REFUSED_PATH,
             Fault::Network => Failure::new(ErrorKind::Network, "The source could not be reached."),
-            Fault::TooLarge => Failure::new(
-                ErrorKind::Provider,
-                "The source sent a reply larger than the hub reads.",
-            ),
         })?;
     match judge(answer.status, answer.limits, scheduling.clock.now()) {
         Verdict::Usable => Ok(answer),

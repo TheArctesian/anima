@@ -23,7 +23,7 @@ pub struct OffArgs {
 
 impl OnArgs {
     /// Turns the extension on, after a confirmation (or `--yes`, CMD-024) when that also turns
-    /// others on, and prints every extension.
+    /// others on, and prints each extension whose switch changed, or that none did.
     ///
     /// # Errors
     /// [`Failure::NotFound`] for an unknown key; [`Failure::Declined`] when the operator says
@@ -60,7 +60,7 @@ impl OnArgs {
 }
 
 impl OffArgs {
-    /// Turns the extension off and prints every extension.
+    /// Turns the extension off and prints it, or that it was already off.
     ///
     /// # Errors
     /// The hub's refusal: `CONFLICT`, naming the extension that needs it (exit 6).
@@ -76,6 +76,13 @@ async fn set(invocation: &Invocation, key: &str, on: bool) -> Result<(), Failure
         on,
     };
     let answer = hub.run::<ExtensionSet>(variables).await?;
+    // The hub lists only the switches it changed: none when the extension was already so.
+    if answer.set_extension.is_empty() && !invocation.output.json() {
+        let state = if on { "on" } else { "off" };
+        return invocation
+            .output
+            .line(&format!("{key} is already {state}; nothing changed."));
+    }
     invocation.output.data(&answer.set_extension, table)
 }
 

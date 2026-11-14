@@ -85,6 +85,19 @@ pub fn files(stub: &Stub, full_name: &str, paths: &[&str], creators: &[&str]) {
     );
 }
 
+/// As [`files`], but GitHub cut the tree short: it says `truncated` and holds only `paths`.
+pub fn truncated_files(stub: &Stub, full_name: &str, paths: &[&str]) {
+    files(stub, full_name, &[], &[]);
+    let tree: Vec<Value> = paths
+        .iter()
+        .map(|path| json!({ "path": path, "type": "blob", "mode": "100644" }))
+        .collect();
+    stub.reply(
+        &format!("/repos/{full_name}/git/trees/main"),
+        ok(&json!({ "sha": "abc", "tree": tree, "truncated": true })),
+    );
+}
+
 /// The GET requests for the files of `full_name` (its tree or its deployments) so far.
 pub fn reads_of(stub: &Stub, full_name: &str) -> usize {
     let prefix = format!("/repos/{full_name}/");

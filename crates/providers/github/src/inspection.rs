@@ -1,7 +1,7 @@
 //! The signs phase: for each queued repository, its file tree and then its deployments.
 
 use serde::Deserialize;
-use source_exchange::{Normalised, Request, Response};
+use source_exchange::{Body, Normalised, Request, Response};
 
 use crate::name;
 use crate::problem::{problem, refuse, unexpected_status};
@@ -62,6 +62,36 @@ pub(crate) fn normalise(response: &Response<'_>, slice: &Slice) -> Normalised<Re
     }
 }
 
+/// The slice with `pending`, the first queued repository, read for its `pushed_at`, so the
+/// next listing queues it again only after a new push.
+fn finished(slice: &Slice, pending: &Pending) -> Slice {
+    let mut next = slice.clone();
+    next.pending.remove(0);
+    next.seen
+        .insert(pending.id.clone(), pending.pushed_at.clone());
+    next.settle();
+    next
+}
+
+/// A reply larger than the hub reads is that repository's problem, never the run's: no signs
+/// are read for it this time, it counts as read for its `pushed_at`, and the run moves on.
+fn too_large(
+    slice: &Slice,
+    pending: &Pending,
+    code: &'static str,
+    what: &str,
+) -> Normalised<Record> {
+    Normalised {
+        records: Vec::new(),
+        state: finished(slice, pending).to_value(),
+        problems: vec![problem(
+            code,
+            &pending.name,
+            &format!("the repository's {what} is larger than the hub reads"),
+        )],
+    }
+}
+
 fn signs_record(pending: &Pending, origin: Origin, signs: Vec<Sign>) -> Record {
     Record::Signs {
         external_id: pending.id.clone(),
@@ -75,7 +105,10 @@ fn tree(response: &Response<'_>, slice: &Slice, pending: &Pending) -> Normalised
     let mut problems = Vec::new();
     let found = match response.status {
         200 => {
-            let Ok(reply) = serde_json::from_slice::<Tree>(response.body) else {
+            let Body::Read(body) = response.body else {
+                return too_large(slice, pending, "tree_too_large", "file list");
+            };
+            let Ok(reply) = serde_json::from_slice::<Tree>(body) else {
                 return refuse(
                     slice,
                     "tree_unreadable",
@@ -122,7 +155,15 @@ fn deployments(response: &Response<'_>, slice: &Slice, pending: &Pending) -> Nor
     let mut problems = Vec::new();
     let found = match response.status {
         200 => {
-            let Ok(reply) = serde_json::from_slice::<Vec<Deployment>>(response.body) else {
+            let Body::Read(body) = response.body else {
+                return too_large(
+                    slice,
+                    pending,
+                    "deployments_too_large",
+                    "list of deployments",
+                );
+            };
+            let Ok(reply) = serde_json::from_slice::<Vec<Deployment>>(body) else {
                 return refuse(
                     slice,
                     "deployments_unreadable",
@@ -148,14 +189,9 @@ fn deployments(response: &Response<'_>, slice: &Slice, pending: &Pending) -> Nor
         }
         status => return unexpected_status(slice, status, &pending.name),
     };
-    let mut next = slice.clone();
-    next.pending.remove(0);
-    next.seen
-        .insert(pending.id.clone(), pending.pushed_at.clone());
-    next.settle();
     Normalised {
         records: vec![signs_record(pending, Origin::Deployments, found)],
-        state: next.to_value(),
+        state: finished(slice, pending).to_value(),
         problems,
     }
 }
