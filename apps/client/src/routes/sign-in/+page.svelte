@@ -35,6 +35,7 @@
   let message = $state<string | null>(null);
   let messageUnreachable = $state(false);
   let busy = $state(false);
+  let doorway: HTMLElement | undefined = $state();
   let inputs: Partial<Record<'username' | 'password', HTMLInputElement>> = $state({});
 
   let editingAddress = $state(false);
@@ -147,11 +148,11 @@
   }
 </script>
 
-<!-- Sign-in in the website's language (UR-7, D13): the particle doors behind one panel holding the mark, the title,
-     the form and, on the desktop app, the hub line. -->
+<!-- Sign-in in the website's language (UR-7, D13): the form stands in the doorway of the particle doors, on the bare
+     ground; only its fields and button are filled. -->
 <div class="screen">
-  <Doors />
-  <div class="panel" {@attach entrance()}>
+  <Doors {doorway} />
+  <div class="panel" bind:this={doorway} {@attach entrance()}>
     <p class="label"><img src={asset('/logo.png')} alt="" width="22" height="22" /><span class="rule" aria-hidden="true"></span>Anima</p>
     <h1>Sign in to Anima</h1>
 
@@ -205,17 +206,14 @@
     overflow: hidden;
   }
 
-  /* Opaque, so the doors behind never cost the form its contrast (operator 2026-11-13: no frosted glass). */
+  /* No fill and no border: the doorway frames the form, and no point is drawn inside it, so the text keeps its
+     contrast on the bare ground (operator 2026-11-13). */
   .panel {
     position: relative;
     box-sizing: border-box;
     display: grid;
     gap: var(--space-4);
-    inline-size: min(100%, calc(var(--space-16) * 5 + var(--space-8)));
-    padding: var(--space-8) calc(var(--space-6) + var(--space-1));
-    border: var(--border-thin) solid var(--border-subtle);
-    border-radius: var(--radius-md);
-    background: var(--surface-raised);
+    inline-size: min(100%, calc(var(--space-16) * 5));
   }
 
   .label {

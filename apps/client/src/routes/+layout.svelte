@@ -234,6 +234,11 @@
     }
   }
 
+  /* Sign-in fills the window edge to edge; the gutter is the shell's pages' alone. */
+  .bare > main {
+    padding: 0;
+  }
+
   .drag {
     display: none;
   }

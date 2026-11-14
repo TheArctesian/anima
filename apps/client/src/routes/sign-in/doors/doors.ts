@@ -63,3 +63,19 @@ export function doorDots(count: number, random: () => number = Math.random): Doo
     return { x: x1 + (x2 - x1) * share, y: y1 + (y2 - y1) * share, depth, phase: random() * Math.PI * 2 };
   });
 }
+
+/** The door the sign-in form stands in: the third frame, whose opening is about as wide as it is tall. */
+const DOORWAY = 2;
+
+/** The doorway's opening, inside its jambs, in mark units; its floor is the hill. */
+export const OPENING = (() => {
+  const [left, right, top, jamb] = FRAMES[DOORWAY];
+  const inner = { left: left + jamb, right: right - jamb, top: top + jamb };
+  return { ...inner, bottom: Math.min(hillAt(inner.left), hillAt(inner.right)) };
+})();
+
+/** Whether a point lies inside the doorway, where the form stands, so it is not drawn. */
+export function inDoorway(dot: Pick<DoorDot, 'x' | 'y'>): boolean {
+  const margin = 0.01;
+  return dot.x > OPENING.left + margin && dot.x < OPENING.right - margin && dot.y > OPENING.top + margin && dot.y < hillAt(dot.x) - margin;
+}
