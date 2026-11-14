@@ -30,7 +30,6 @@ function show(): void {
     target: document.body,
     props: {
       device: device(),
-      revision: 0,
       section: null,
       calls: {
         onSave: done,
@@ -44,7 +43,7 @@ function show(): void {
       agent: { calls: metricsApi(fakeHub().hub), origin: 'https://hub.test', reveal: false, shell: null },
       now: () => new Date(),
       onTest: vi.fn(),
-      onCancel: () => undefined,
+      onOpenChecks: () => undefined,
       onDelete: done,
     },
   });

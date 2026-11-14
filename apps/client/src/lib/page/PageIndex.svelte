@@ -1,12 +1,29 @@
+<script module lang="ts">
+  import type { IconName } from '$lib/icons/icons';
+
+  /** One section of a page, as the page's index links to it: the element whose `data-section` is `id`. */
+  export interface IndexEntry {
+    readonly id: string;
+    readonly title: string;
+    readonly icon: IconName;
+  }
+</script>
+
 <script lang="ts">
   import Icon from '$lib/icons/Icon.svelte';
-  import type { IndexEntry } from './index';
+  import SmallCaps from './SmallCaps.svelte';
 
   interface Props {
     entries: readonly IndexEntry[];
+    /** The navigation's accessible name, for example "Settings sections". */
+    label: string;
+    /** A small-caps heading over the links, for example "On this page". */
+    heading?: string | undefined;
+    /** Below a wide window: a scrolling row of links above the sections, or no index at all. */
+    narrow?: 'row' | 'hidden';
   }
 
-  const { entries }: Props = $props();
+  const { entries, label, heading, narrow = 'row' }: Props = $props();
   /** The section nearest the top of the window; the first until the page scrolls. */
   let current = $state<string | null>(null);
 
@@ -24,15 +41,21 @@
       },
       { rootMargin: '0px 0px -66% 0px' },
     );
-    for (const section of document.querySelectorAll('[data-section]')) observer.observe(section);
+    for (const entry of entries) {
+      // The entries' ids are the page's own anchors: plain words and hyphens.
+      const section = document.querySelector(`[data-section="${entry.id}"]`);
+      if (section !== null) observer.observe(section);
+    }
     return () => {
       observer.disconnect();
     };
   });
 </script>
 
-<!-- The page's sections (UR-7, SET-001): sticky beside them on a wide window, a scrolling row above them on a narrow one. -->
-<nav aria-label="Settings sections">
+<!-- A page's sections (UR-7, SET-001, D17): sticky beside them on a wide window; on a narrow one a scrolling row above
+     them, or nothing. -->
+<nav aria-label={label} class:hidden={narrow === 'hidden'}>
+  {#if heading !== undefined}<span class="heading"><SmallCaps>{heading}</SmallCaps></span>{/if}
   {#each entries as entry (entry.id)}
     <a href="#{entry.id}" aria-current={(current ?? entries[0]?.id) === entry.id ? 'true' : undefined}>
       <Icon name={entry.icon} size="sm" />{entry.title}
@@ -47,6 +70,10 @@
     display: flex;
     flex-direction: column;
     gap: var(--border-focus);
+  }
+
+  .heading {
+    padding: 0 var(--space-3) var(--space-2);
   }
 
   a {
@@ -86,8 +113,16 @@
       scrollbar-width: none;
     }
 
+    .heading {
+      display: none;
+    }
+
     a {
       flex: none;
+    }
+
+    .hidden {
+      display: none;
     }
   }
 </style>

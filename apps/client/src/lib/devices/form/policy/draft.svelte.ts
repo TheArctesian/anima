@@ -83,10 +83,18 @@ export class PolicyDraft {
     return problem === null;
   }
 
-  /** Saves the changed values of a saved device; answers false, with the sentence, when the hub did not take them. */
-  async save(): Promise<boolean> {
+  /** Whether the values differ from what the hub holds; false until they are read. */
+  get changed(): boolean {
+    return this.#stored !== null && Object.keys(updatePolicyInput(this.#stored, this.values)).length > 0;
+  }
+
+  /**
+   * Saves the changed `values` of a saved device, by default those shown; answers false, with the sentence, when the
+   * hub did not take them. The Settings tab passes the values as they were when the change was made (D17).
+   */
+  async save(values: PolicyValues = this.values): Promise<boolean> {
     if (this.#deviceId === null || this.#calls === null || this.#stored === null) return true;
-    const input = updatePolicyInput(this.#stored, this.values);
+    const input = updatePolicyInput(this.#stored, values);
     if (Object.keys(input).length === 0) return true;
     try {
       const result = await this.#calls.save(this.#deviceId, input);

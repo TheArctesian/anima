@@ -93,14 +93,33 @@ function remote(rdpStored: boolean, vncStored: boolean) {
   });
 }
 
-function typePassword(protocol: 'rdp' | 'vnc', secret: string): void {
-  const input = document.getElementById(`device-${protocol}-password`);
+/** Types into a protocol's password field; SSH's is the device credential's. */
+function typePassword(protocol: 'ssh' | 'rdp' | 'vnc', secret: string): void {
+  const input = document.getElementById(protocol === 'ssh' ? 'device-credential-password' : `device-${protocol}-password`);
   if (!(input instanceof HTMLInputElement)) throw new Error(`no ${protocol} password input`);
   input.value = secret;
   input.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
-const stored = (protocol: 'rdp' | 'vnc') => document.querySelector(`[data-section="${protocol}"]`)?.textContent.includes('Credential stored');
+const stored = (protocol: 'ssh' | 'rdp' | 'vnc') => document.querySelector(`[data-connection="${protocol}"]`)?.textContent.includes('in the hub, encrypted');
+
+/** Opens a protocol's row when it is closed. */
+async function openRow(protocol: 'rdp' | 'vnc'): Promise<void> {
+  const toggle = document.querySelector<HTMLButtonElement>(`[data-connection="${protocol}"] [aria-expanded]`);
+  if (toggle === null) throw new Error(`no ${protocol} row`);
+  if (toggle.getAttribute('aria-expanded') !== 'true') toggle.click();
+  await settle();
+}
+
+/** D17: a password is typed into a field of its own and stored by Save password. */
+async function storePassword(protocol: 'rdp' | 'vnc', secret: string): Promise<void> {
+  await openRow(protocol);
+  button('Add password', `[data-connection="${protocol}"]`).click();
+  await settle();
+  typePassword(protocol, secret);
+  button('Save password', `[data-connection="${protocol}"]`).click();
+  await settle();
+}
 const sent = (fake: ReturnType<typeof fakeHub>, operation: string) => fake.requests.filter((request) => request.operation === operation);
 
 /** Every console call so far, as text. */
@@ -109,7 +128,7 @@ function consoleText(spies: readonly ReturnType<typeof vi.spyOn>[]): string {
 }
 
 describe('settings tab: RDP and VNC passwords (DEV-011, LOG-007)', () => {
-  it('DEV-011, LOG-007: typed RDP and VNC passwords are each stored once, the form says so, and no console call holds them', async () => {
+  it('DEV-011, LOG-007, D17: RDP and VNC passwords typed and saved are each stored once, the rows say so, and no console call holds them', async () => {
     const spies = (['log', 'info', 'warn', 'error', 'debug'] as const).map((level) => vi.spyOn(console, level).mockImplementation(() => undefined));
     const fake = await show(
       answers({
@@ -119,12 +138,8 @@ describe('settings tab: RDP and VNC passwords (DEV-011, LOG-007)', () => {
       }),
       '?tab=settings&section=rdp',
     );
-    typePassword('rdp', RDP_SECRET);
-    button('VNC').click();
-    await settle();
-    typePassword('vnc', VNC_SECRET);
-    button('Save').click();
-    await settle();
+    await storePassword('rdp', RDP_SECRET);
+    await storePassword('vnc', VNC_SECRET);
     expect(sent(fake, 'SetRdpCredential')).toEqual([
       { operation: 'SetRdpCredential', variables: { deviceId: ID, credential: { password: RDP_SECRET } } },
     ]);
@@ -144,9 +159,7 @@ describe('settings tab: RDP and VNC passwords (DEV-011, LOG-007)', () => {
       }),
       '?tab=settings&section=rdp',
     );
-    typePassword('rdp', RDP_SECRET);
-    button('Save').click();
-    await settle();
+    await storePassword('rdp', RDP_SECRET);
     expect(sent(fake, 'SetRdpCredential')).toHaveLength(1);
     expect(document.body.textContent).toContain('The hub did not store the password.');
     expect(document.body.textContent).not.toContain(RDP_SECRET);
@@ -154,8 +167,37 @@ describe('settings tab: RDP and VNC passwords (DEV-011, LOG-007)', () => {
   });
 });
 
-describe('settings tab: removing RDP and VNC passwords (DEV-011)', () => {
-  it('DEV-011: Remove credential clears the stored RDP and VNC passwords through the hub', async () => {
+describe('settings tab: replacing and removing stored secrets (D17, D-4, DEV-011, DEV-012)', () => {
+  it('D-4: Remove clears the stored SSH credential, and the row no longer says one is stored', async () => {
+    const fake = await show(answers({ ClearSshCredential: { clearSshCredential: { credentialStored: false } } }), '?tab=settings');
+    button('Remove', '[data-connection="ssh"]').click();
+    await settle();
+    expect(fake.requests.at(-1)).toEqual({ operation: 'ClearSshCredential', variables: { deviceId: ID } });
+    expect(stored('ssh')).toBe(false);
+  });
+
+  it('D17, DEV-012: Replace opens a field of its own; Cancel sends nothing, Save password stores it once and the field goes', async () => {
+    const fake = await show(answers({ SetSshCredential: { setSshCredential: { credentialStored: true } } }), '?tab=settings');
+    button('Replace', '[data-connection="ssh"]').click();
+    await settle();
+    typePassword('ssh', 'hunter2');
+    button('Cancel', '[data-connection="ssh"]').click();
+    await settle();
+    expect(document.getElementById('device-credential-password')).toBeNull();
+    button('Replace', '[data-connection="ssh"]').click();
+    await settle();
+    expect((document.getElementById('device-credential-password') as HTMLInputElement | null)?.value).toBe('');
+    typePassword('ssh', 'hunter2');
+    button('Save password', '[data-connection="ssh"]').click();
+    await settle();
+    expect(sent(fake, 'SetSshCredential')).toEqual([
+      { operation: 'SetSshCredential', variables: { deviceId: ID, credential: { password: 'hunter2' } } },
+    ]);
+    expect(sent(fake, 'UpdateDevice')).toEqual([]);
+    expect(document.getElementById('device-credential-password')).toBeNull();
+  });
+
+  it('DEV-011: Remove clears the stored RDP and VNC passwords through the hub', async () => {
     const fake = await show(
       answers({
         Device: { device: remote(true, true) },
@@ -164,11 +206,11 @@ describe('settings tab: removing RDP and VNC passwords (DEV-011)', () => {
       }),
       '?tab=settings&section=rdp',
     );
-    button('Remove credential', '[data-section="rdp"]').click();
+    await openRow('rdp');
+    button('Remove', '[data-connection="rdp"]').click();
     await settle();
-    button('VNC').click();
-    await settle();
-    button('Remove credential', '[data-section="vnc"]').click();
+    await openRow('vnc');
+    button('Remove', '[data-connection="vnc"]').click();
     await settle();
     expect(sent(fake, 'ClearRdpCredential')).toEqual([{ operation: 'ClearRdpCredential', variables: { deviceId: ID } }]);
     expect(sent(fake, 'ClearVncCredential')).toEqual([{ operation: 'ClearVncCredential', variables: { deviceId: ID } }]);

@@ -48,15 +48,7 @@
   const detail = new Detail(hub, id, now);
   const { metrics, sessionPages, feed } = detail;
 
-  let revision = $state(0);
-  const calls = detailCalls(
-    hub,
-    detail,
-    () => {
-      revision += 1;
-    },
-    () => void goto(resolve('/devices')),
-  );
+  const calls = detailCalls(hub, detail, () => void goto(resolve('/devices')));
   const place = $derived(readPlace(page.url.searchParams));
   const device = $derived(detail.device);
   const loading = $derived(device === null && detail.error === null && !detail.missing);
@@ -209,13 +201,12 @@
       <TabPanel name="settings" loading={false}>
         <SettingsPanel
           {device}
-          {revision}
           section={place.section}
           calls={calls.settings}
           {agent}
           {now}
           onTest={calls.onTest}
-          onCancel={() => { revision += 1; }}
+          onOpenChecks={() => { go({ tab: 'checks', section: null, range: 'HOUR' }); }}
           onDelete={calls.onDelete}
         />
       </TabPanel>

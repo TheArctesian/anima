@@ -1,72 +1,86 @@
 <script lang="ts">
+  import { tick } from 'svelte';
   import type { DeviceDetail } from '$lib/devices/api';
   import type { ConnectionTestResult } from '$lib/devices/form/connection-test';
-  import DeviceForm from '$lib/devices/form/form/DeviceForm.svelte';
-  import type { DeviceFields } from '$lib/devices/form/values';
-  import FormButton from '$lib/forms/FormButton.svelte';
+  import { formValues } from '$lib/devices/form/values';
   import WebInterfaces from '$lib/devices/form/web/WebInterfaces.svelte';
+  import FormButton from '$lib/forms/FormButton.svelte';
   import ConfirmModal from '$lib/forms/modal/ConfirmModal.svelte';
   import type { ConnectionTestInput } from '$lib/hub/generated/graphql';
   import type { HubResult } from '$lib/hub/hub';
-  import AgentPanel from '$lib/metrics/agent/AgentPanel.svelte';
+  import Icon from '$lib/icons/Icon.svelte';
   import type { AgentCalls } from '$lib/metrics/agent/install.svelte';
   import type { ThisComputerShell } from '$lib/desktop/agent/shell';
+  import PageIndex from '$lib/page/PageIndex.svelte';
   import type { SettingsSection } from '../tabs/tabs';
   import type { SettingsCalls } from './calls';
+  import ConnectionsSection from './connections/ConnectionsSection.svelte';
+  import DeviceSection from './device/DeviceSection.svelte';
+  import MonitoringSection from './device/MonitoringSection.svelte';
+  import SessionsSection from './device/SessionsSection.svelte';
+  import { SettingsDraft, type Later } from './draft.svelte';
+  import { INDEX, SECTIONS } from './sections';
 
   interface Props {
     device: DeviceDetail;
-    /** Counts the saves; the form starts again from the saved device after each, so it never compares with stale values. */
-    revision: number;
     section: SettingsSection | null;
-    /** The hub calls of the form and the web interfaces (WEB-001, WEB-002, DEV-011, SEC-007). */
+    /** The hub calls of the settings and the web interfaces (WEB-001, WEB-002, DEV-011, SEC-007). */
     calls: SettingsCalls;
     /** The Install agent panel's hub calls and the hub origin the agent must reach (MET-019). */
     agent: { calls: AgentCalls; origin: string; reveal: boolean; shell: ThisComputerShell | null };
     now: () => Date;
     onTest: (input: ConnectionTestInput) => Promise<HubResult<ConnectionTestResult>>;
-    /** Discards the edits: the form starts again from the saved device. */
-    onCancel: () => void;
+    /** Opens the Checks tab. */
+    onOpenChecks: () => void;
     /** DEV-014: runs only after the confirmation; on success the route goes to the device list. */
     onDelete: () => Promise<HubResult<unknown>>;
+    /** How "Saved" waits before it fades; tests pass their own clock. */
+    later?: Later;
   }
 
-  const { device, revision, section, calls, agent, now, onTest, onCancel, onDelete }: Props = $props();
-  /** The device as the fields the form edits (D-3). */
-  const fields: DeviceFields = $derived(device);
+  const { device, section, calls, agent, now, onTest, onOpenChecks, onDelete, later }: Props = $props();
+  /** The device as the hub last stored it, in the shape the settings edit (D-3). */
+  const saved = $derived(formValues(device));
+  // The draft lives as long as the tab; it reads the saved device afresh for each change.
+  // svelte-ignore state_referenced_locally
+  const draft = new SettingsDraft(() => saved, (values) => calls.onSave(values), later);
   let confirming = $state(false);
+  let root = $state<HTMLElement>();
+
+  // DEV-022: the General place is the Device section; its first field takes focus.
+  $effect(() => {
+    if (section !== 'general') return;
+    void tick().then(() => {
+      const name = root?.querySelector<HTMLElement>('#device-name') ?? null;
+      name?.focus();
+      if (typeof name?.scrollIntoView === 'function') name.scrollIntoView({ block: 'nearest' });
+    });
+  });
 </script>
 
-<div class="settings">
-  {#key revision}
-    <DeviceForm
-      device={fields}
-      deviceId={device.id}
-      credentialStored={device.ssh.credentialStored}
-      rdpCredentialStored={fields.rdp?.credentialStored ?? false}
-      vncCredentialStored={fields.vnc?.credentialStored ?? false}
-      section={section ?? undefined}
-      onSave={(values) => calls.onSave(values)}
-      {onTest}
-      onAcceptHostKey={calls.onAcceptHostKey}
-      onAcceptServerCertificate={calls.onAcceptServerCertificate}
-      onClearCredential={calls.onClearCredential}
-      onClearRdpCredential={calls.onClearRdpCredential}
-      onClearVncCredential={calls.onClearVncCredential}
-      {onCancel}
-    />
-  {/key}
-  <p class="note">
-    New devices get one ping check with the defaults of Section 6.4: every 60 seconds, 3 retries 20 seconds apart, and Degraded
-    above 1000 ms. Change the checks in the Checks tab.
-  </p>
-  <WebInterfaces interfaces={device.webInterfaces} suggestions={device.webInterfaceSuggestions} calls={calls.webInterfaces} />
-  <AgentPanel deviceId={device.id} deviceName={device.name} host={device.host} source={device.metricsSource} calls={agent.calls} origin={agent.origin} reveal={agent.reveal} shell={agent.shell} {now} />
-  <section class="danger" aria-labelledby="device-delete-heading">
-    <h3 id="device-delete-heading">Delete device</h3>
-    <p>Its credentials, checks and history are deleted too.</p>
-    <FormButton tone="danger" onclick={() => { confirming = true; }}>Delete device</FormButton>
-  </section>
+<!-- The device's settings in one column of groups beside an index (UR-7, D17, DEV-028). Every change saves as it is
+     made; there is no Save or Cancel. -->
+<div class="settings" bind:this={root}>
+  <div class="column">
+    <p class="how">
+      <span class="quiet"><Icon name="carbon:cloud-upload" size="sm" /></span>Changes save as you make them. Text saves when you leave the field or press Return.
+    </p>
+    <div class="groups">
+    <DeviceSection {draft} />
+    <MonitoringSection {draft} {device} {agent} {now} {onOpenChecks} />
+    <ConnectionsSection {draft} {device} {saved} {calls} {section} {onTest} />
+    <SessionsSection {draft} deviceId={device.id} />
+    <div class="web" id={SECTIONS.web.id} data-section={SECTIONS.web.id}>
+      <WebInterfaces interfaces={device.webInterfaces} suggestions={device.webInterfaceSuggestions} calls={calls.webInterfaces} />
+    </div>
+    <section class="danger" aria-labelledby="device-delete-heading">
+      <h3 id="device-delete-heading">Delete device</h3>
+      <p>Its credentials, checks and history are deleted too.</p>
+      <FormButton tone="danger" onclick={() => { confirming = true; }}>Delete device</FormButton>
+    </section>
+    </div>
+  </div>
+  <PageIndex entries={INDEX} label="On this page" heading="On this page" narrow="hidden" />
 </div>
 
 <ConfirmModal
@@ -82,17 +96,41 @@
 
 <style>
   .settings {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-6);
-    max-inline-size: calc(var(--space-16) * 10);
+    display: grid;
+    grid-template-columns: minmax(0, calc(var(--content-form) + var(--space-8))) calc(var(--space-16) * 3);
+    gap: var(--space-12);
+    align-items: start;
   }
 
-  .note {
+  .column {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+    min-inline-size: 0;
+  }
+
+  .groups {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-10);
+  }
+
+  .how {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
     margin: 0;
-    color: var(--text-secondary);
+    color: var(--text-tertiary);
     font-size: var(--text-sm);
-    line-height: var(--leading-normal);
+  }
+
+  .quiet {
+    display: inline-flex;
+    color: var(--text-quiet);
+  }
+
+  .web {
+    scroll-margin-block-start: var(--space-6);
   }
 
   .danger {
@@ -112,5 +150,11 @@
   .danger p {
     margin: 0;
     color: var(--text-secondary);
+  }
+
+  @media (max-width: 1100.98px) {
+    .settings {
+      grid-template-columns: minmax(0, 1fr);
+    }
   }
 </style>

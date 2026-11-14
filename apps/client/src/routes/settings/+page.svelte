@@ -16,7 +16,7 @@
   import VpnSection from '$lib/vpn/VpnSection.svelte';
   import PageHeader from '$lib/page/PageHeader.svelte';
   import { resolve as entrance } from '$lib/motion/roles/resolve';
-  import SettingsIndex from './SettingsIndex.svelte';
+  import PageIndex from '$lib/page/PageIndex.svelte';
   import { SECTIONS, indexOf } from './index';
 
   // The desktop rows decide each row themselves; the page only leaves out the section when none can show (UPD-006, LOG-008,
@@ -34,7 +34,7 @@
 <!-- The index of the sections beside one readable column of them (UR-7, SET-001); on a narrow window the index is a
      row of links above. -->
 <div class="settings">
-<SettingsIndex entries={index} />
+<PageIndex entries={index} label="Settings sections" />
 <div class="page">
 
   <!-- One section per subject, in the order of WP-50 F-10; each later section adds one element here. -->
