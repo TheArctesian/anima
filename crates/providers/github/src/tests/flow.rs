@@ -157,7 +157,15 @@ fn prj_016_a_repository_the_operator_left_out_is_forgotten_by_the_slice() {
     let mut stepped = begin(&first.state);
     let request = next_request(&stepped).unwrap();
     let body = &pushed[0];
-    stepped = normalise(&request, &Response { status: 200, body }, &stepped).state;
+    stepped = normalise(
+        &request,
+        &Response {
+            status: 200,
+            body: Body::Read(body),
+        },
+        &stepped,
+    )
+    .state;
     assert!(next_request(&stepped).is_some(), "a tree request is queued");
 
     let forgotten = forget_repository(&stepped, ANIMA);
@@ -181,7 +189,7 @@ fn src_006_a_status_with_no_rule_gives_a_problem_and_keeps_the_slice() {
         &request,
         &Response {
             status: 500,
-            body: b"oops",
+            body: Body::Read(b"oops"),
         },
         &state,
     );
@@ -203,7 +211,7 @@ fn src_007_an_unreadable_listing_reports_no_repository_so_none_reads_as_gone() {
         &request,
         &Response {
             status: 200,
-            body: broken,
+            body: Body::Read(broken),
         },
         &state,
     );
@@ -226,7 +234,7 @@ fn src_006_a_response_for_another_request_is_refused() {
         &other,
         &Response {
             status: 200,
-            body: b"{}",
+            body: Body::Read(b"{}"),
         },
         &state,
     );
@@ -240,7 +248,10 @@ fn src_006_normalising_the_same_input_twice_gives_equal_output() {
     let state = begin(&json!({}));
     let request = next_request(&state).unwrap();
     let body = &one_repository()[0];
-    let response = Response { status: 200, body };
+    let response = Response {
+        status: 200,
+        body: Body::Read(body),
+    };
 
     assert_eq!(
         normalise(&request, &response, &state),

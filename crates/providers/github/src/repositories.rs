@@ -3,7 +3,7 @@
 use chrono::{DateTime, SecondsFormat, Utc};
 use serde::Deserialize;
 use serde_json::Value;
-use source_exchange::{Normalised, Problem, Request, Response};
+use source_exchange::{Body, Normalised, Problem, Request, Response};
 
 use crate::name;
 use crate::problem::{problem, refuse, unexpected_status};
@@ -112,7 +112,15 @@ pub(crate) fn normalise(response: &Response<'_>, slice: &Slice) -> Normalised<Re
     if response.status != 200 {
         return unexpected_status(slice, response.status, SUBJECT);
     }
-    let Some((repositories, last)) = read_page(response.body, slice.page) else {
+    let Body::Read(body) = response.body else {
+        return refuse(
+            slice,
+            "listing_too_large",
+            SUBJECT,
+            "GitHub's list of repositories is larger than the hub reads",
+        );
+    };
+    let Some((repositories, last)) = read_page(body, slice.page) else {
         return refuse(
             slice,
             "listing_unreadable",

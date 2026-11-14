@@ -7,7 +7,7 @@
 //! keeps the token from another host. TLS name verification is: the server must prove it is
 //! the declared host before the token is sent. The client follows no redirect,
 //! takes no proxy from the environment, speaks HTTPS only, gives up after 20 seconds and reads
-//! at most 8 MiB. The token header is marked sensitive, and no URL, header or body reaches a
+//! at most 8 MiB: past that it stops reading, keeps none of the body and says so. The token header is marked sensitive, and no URL, header or body reaches a
 //! log or an error (LOG-007).
 
 use std::{error::Error as StdError, net::IpAddr, sync::Arc, time::Duration};
@@ -39,8 +39,6 @@ pub enum Fault {
     Refused,
     #[error("the source could not be reached")]
     Network,
-    #[error("the source's reply is larger than the hub reads")]
-    TooLarge,
 }
 
 /// The transport could not be built. Fixed words.
@@ -52,8 +50,15 @@ pub struct BuildFailed(#[source] reqwest::Error);
 pub struct Answer {
     pub status: u16,
     pub limits: Limits,
+    pub content: Content,
+}
+
+/// The body of an answer, or the fact that it was larger than the hub reads.
+pub enum Content {
     /// Wiped on drop: a mint reply holds a token.
-    pub body: Zeroizing<Vec<u8>>,
+    Body(Zeroizing<Vec<u8>>),
+    /// Past [`BODY_CAP`]: reading stopped there and what was read is wiped.
+    TooLarge,
 }
 
 /// The hub's client for sources, with the installation tokens it sends. Cheap to clone; clones
@@ -283,23 +288,32 @@ pub fn address(base: &Url, path: &str, query: &[(String, String)]) -> Result<Url
     if same { Ok(url) } else { Err(Fault::Refused) }
 }
 
-/// The status, the rate-limit headers and at most [`BODY_CAP`] bytes of the body.
+/// The status, the rate-limit headers and the body, or [`Content::TooLarge`] as soon as the
+/// declared length or the bytes read pass [`BODY_CAP`]: the rest is never read.
 async fn read(mut response: Response) -> Result<Answer, Fault> {
     let status = response.status().as_u16();
     let limits = Limits::of(response.headers());
-    let expected = response
-        .content_length()
-        .and_then(|n| usize::try_from(n).ok());
-    let mut body = Zeroizing::new(Vec::with_capacity(expected.unwrap_or(0).min(BODY_CAP)));
-    while let Some(chunk) = response.chunk().await.map_err(|_| Fault::Network)? {
-        if body.len() + chunk.len() > BODY_CAP {
-            return Err(Fault::TooLarge);
-        }
-        body.extend_from_slice(&chunk);
-    }
+    let content = content(&mut response).await?;
     Ok(Answer {
         status,
         limits,
-        body,
+        content,
     })
+}
+
+async fn content(response: &mut Response) -> Result<Content, Fault> {
+    let expected = response
+        .content_length()
+        .and_then(|n| usize::try_from(n).ok());
+    if expected.is_some_and(|n| n > BODY_CAP) {
+        return Ok(Content::TooLarge);
+    }
+    let mut body = Zeroizing::new(Vec::with_capacity(expected.unwrap_or(0)));
+    while let Some(chunk) = response.chunk().await.map_err(|_| Fault::Network)? {
+        if body.len() + chunk.len() > BODY_CAP {
+            return Ok(Content::TooLarge);
+        }
+        body.extend_from_slice(&chunk);
+    }
+    Ok(Content::Body(body))
 }

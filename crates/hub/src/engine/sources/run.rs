@@ -17,6 +17,7 @@ use uuid::Uuid;
 
 use super::{
     Error, Scheduling,
+    acquisition::transport::{Answer, Content},
     intake::Intake,
     model::{Account, ErrorKind, Outcome, Trigger},
     store::{self, runs},
@@ -144,6 +145,16 @@ async fn sync(scheduling: &Scheduling, claim: &Claim, declaration: &Declaration)
     Stop::Done
 }
 
+/// Why a page that did not move the sync on fails the run. A reply too large to read is named
+/// as such: the provider found it too large for its request (the listing, say).
+fn stuck(answer: &Answer) -> Failure {
+    let words = match answer.content {
+        Content::TooLarge => "The source sent a reply larger than the hub reads.",
+        Content::Body(_) => "The source gave a page that did not move the sync on.",
+    };
+    Failure::new(ErrorKind::Provider, words)
+}
+
 /// Feeds one intake until it has no request left, from its stored slice.
 async fn feed(
     scheduling: &Scheduling,
@@ -176,12 +187,7 @@ async fn feed(
             slice: &slice,
         };
         match page::store(scheduling, claim, intake, fetched).await {
-            page::Stored::Moved(next) if next == slice => {
-                return Stop::Failed(Failure::new(
-                    ErrorKind::Provider,
-                    "The source gave a page that did not move the sync on.",
-                ));
-            }
+            page::Stored::Moved(next) if next == slice => return Stop::Failed(stuck(&answer)),
             page::Stored::Moved(next) => slice = next,
             page::Stored::Stop(stop) => return stop,
         }

@@ -86,6 +86,51 @@ async fn ext_011_extension_on_names_what_it_also_turns_on_and_asks_unless_yes() 
 }
 
 #[tokio::test]
+async fn ext_011_extension_on_prints_a_row_for_each_extension_that_changed() {
+    let hub = FakeHub::start().await;
+    hub.answer("ExtensionList", data(json!({ "extensions": listed() })));
+    let mut changed = listed();
+    changed[0]["on"] = json!(true);
+    changed.truncate(1);
+    hub.answer("ExtensionSet", data(json!({ "setExtension": changed })));
+
+    let run = signed_in()
+        .run(&["extension", "on", "projects", "--yes", "--hub", &hub.origin])
+        .await;
+
+    assert_eq!(run.code, 0, "{run:?}");
+    let row = run.stdout.lines().find(|line| line.starts_with("projects"));
+    assert!(row.is_some_and(|row| row.contains("on")), "{}", run.stdout);
+}
+
+#[tokio::test]
+async fn ext_011_extension_on_when_nothing_changed_says_so_and_json_is_the_hub_answer() {
+    let hub = FakeHub::start().await;
+    let mut already = listed();
+    already[0]["on"] = json!(true);
+    hub.answer("ExtensionList", data(json!({ "extensions": already })));
+    hub.answer("ExtensionSet", data(json!({ "setExtension": [] })));
+
+    let run = signed_in()
+        .run(&["extension", "on", "projects", "--yes", "--hub", &hub.origin])
+        .await;
+
+    assert_eq!(run.code, 0, "{run:?}");
+    assert_eq!(
+        run.stdout.trim(),
+        "projects is already on; nothing changed."
+    );
+    let run = signed_in()
+        .run(&["extension", "off", "links", "--hub", &hub.origin])
+        .await;
+    assert_eq!(run.stdout.trim(), "links is already off; nothing changed.");
+    let run = signed_in()
+        .run(&["extension", "off", "links", "--json", "--hub", &hub.origin])
+        .await;
+    assert_eq!(run.json(), json!([]));
+}
+
+#[tokio::test]
 async fn ext_011_extension_on_for_an_unknown_key_is_not_found_and_sets_nothing() {
     let hub = FakeHub::start().await;
     hub.answer("ExtensionList", data(json!({ "extensions": listed() })));

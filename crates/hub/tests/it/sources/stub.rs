@@ -2,14 +2,14 @@
 //! pages, and records every request it gets. Never the real GitHub (LOG-007, PRJ-018).
 
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     net::SocketAddr,
     sync::{Arc, Mutex},
 };
 
 use axum::{
     Router,
-    body::Body,
+    body::{Body, Bytes},
     extract::State,
     http::{HeaderMap, Method, StatusCode, Uri, header},
     response::Response,
@@ -41,6 +41,8 @@ pub struct Script {
     pub replies: HashMap<String, Reply>,
     /// SQL run once when its path is first requested, as another writer would.
     pub hooks: HashMap<String, String>,
+    /// Paths answered with 200 and a body that never ends, sent in chunks with no length.
+    pub endless: HashSet<String>,
 }
 
 /// The running stub. Clones share it.
@@ -65,6 +67,7 @@ impl Stub {
             pages: Vec::new(),
             replies: HashMap::new(),
             hooks: HashMap::new(),
+            endless: HashSet::new(),
         };
         let stub = Self {
             script: Arc::new(Mutex::new(script)),
@@ -120,6 +123,11 @@ impl Stub {
         self.with(|s| s.replies.insert(path.to_owned(), reply));
     }
 
+    /// Answers `path` with a body that never ends: only a reader that stops at its cap returns.
+    pub fn endless(&self, path: &str) {
+        self.with(|s| s.endless.insert(path.to_owned()));
+    }
+
     pub fn hook(&self, path: &str, sql: &str) {
         self.with(|s| s.hooks.insert(path.to_owned(), sql.to_owned()));
     }
@@ -133,6 +141,17 @@ fn respond(status: u16, headers: &[(&'static str, String)], body: String) -> Res
     response
         .header(header::CONTENT_TYPE, "application/json")
         .body(Body::from(body))
+        .unwrap()
+}
+
+/// 200 with 64 KiB chunks of spaces, forever: generated as it is sent, never held.
+fn endless() -> Response {
+    let chunk = Bytes::from(vec![b' '; 64 * 1024]);
+    let chunks = futures_util::stream::repeat_with(move || Ok::<_, std::io::Error>(chunk.clone()));
+    Response::builder()
+        .status(StatusCode::OK)
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from_stream(chunks))
         .unwrap()
 }
 
@@ -159,6 +178,9 @@ async fn answer(
     });
     if let Some(sql) = hook {
         sqlx::query(&sql).execute(&stub.pool).await.unwrap();
+    }
+    if stub.with(|s| s.endless.contains(uri.path())) {
+        return endless();
     }
     let (reply, mint_status, token, pages) = stub.with(|s| {
         (
