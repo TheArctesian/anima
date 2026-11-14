@@ -1,6 +1,6 @@
 //! The projects GraphQL part (K1; XP-02): the projects, one project, leave out and restore a
 //! repository, confirm a resource; and, merged in, the live reads of a repository's pull
-//! requests, issues and workflow runs (PRJ-027 to PRJ-035).
+//! requests, issues and workflow runs (PRJ-027 to PRJ-035) and the changes made there (OD-E14).
 //!
 //! Every field is `CONFLICT` while Projects is off (EXT-002). Each mutation that changes
 //! something writes its change, one audit entry and one event in one transaction.
@@ -195,11 +195,17 @@ impl ProjectsQuery {
     }
 }
 
+/// The projects mutations and the changes to their repositories on GitHub, under the one name
+/// the schema merges (K3; OD-E14).
+#[derive(MergedObject, Default)]
+#[graphql(name = "ProjectsMutations")]
+pub struct Mutation(ProjectsMutation, issues::Mutation);
+
 #[derive(Default)]
-pub struct Mutation;
+pub struct ProjectsMutation;
 
 #[Object(name = "ProjectsMutation")]
-impl Mutation {
+impl ProjectsMutation {
     /// The hub does not import or read the repository again until it is restored (PRO-002).
     #[graphql(guard = "Authenticated")]
     async fn leave_out_repository(&self, ctx: &Context<'_>, id: ID) -> Result<ProjectView> {
