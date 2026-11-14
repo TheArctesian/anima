@@ -21,6 +21,15 @@ fn said() -> String {
 const UNKNOWN: &str =
     "GitHub did not answer. The change may have been made: look before you try again.";
 
+/// A status, its headers, the words, the code and the recorded outcome.
+type Case<'a> = (
+    u16,
+    &'a [(&'static str, &'a str)],
+    &'static str,
+    &'static str,
+    &'static str,
+);
+
 #[sqlx::test(migrations = "./migrations")]
 async fn od_e14_each_answer_has_its_code_words_and_recorded_outcome(pool: PgPool) {
     let forge = forge(&pool).await;
@@ -29,7 +38,7 @@ async fn od_e14_each_answer_has_its_code_words_and_recorded_outcome(pool: PgPool
         ("x-ratelimit-remaining", "0"),
         ("x-ratelimit-reset", reset.as_str()),
     ];
-    let cases: [(u16, &[(&str, &str)], &str, &str, &str); 8] = [
+    let cases: [Case<'_>; 8] = [
         (
             401,
             &[],
@@ -158,5 +167,5 @@ async fn od_e14_a_change_github_made_that_cannot_be_recorded_is_internal(pool: P
     assert_eq!(error(&response).1, "INTERNAL", "{response}");
     assert_eq!(sent(&forge, "POST", "/issues").len(), 1, "never sent again");
     assert_eq!(audits(&pool).await, Vec::<Value>::new());
-    assert!(events(&pool).await.is_empty());
+    assert!(events(&pool).await.is_empty(), "nothing");
 }

@@ -125,5 +125,5 @@ async fn od_e14_a_repository_that_is_not_ready_or_projects_off_sends_nothing(poo
     }
     assert_eq!(changes_sent(&forge), 0);
     assert_eq!(forge.live_reads(), 0, "GitHub was never asked");
-    assert!(audits(&pool).await.is_empty());
+    assert!(audits(&pool).await.is_empty(), "nothing");
 }

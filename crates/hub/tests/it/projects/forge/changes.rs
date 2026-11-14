@@ -49,8 +49,8 @@ pub fn body(heard: &Heard) -> Value {
     serde_json::from_slice(&heard.body).unwrap()
 }
 
-/// GitHub answers the next `method` request for `BASE` + `tail` with `status` and `body`.
-pub fn answer(forge: &Forge, method: &str, tail: &str, status: u16, body: &Value) {
+/// GitHub answers each `method` request for `BASE` + `tail` with `status` and `body`.
+pub fn answer(forge: &Forge, (method, tail): (&str, &str), status: u16, body: &Value) {
     let path = format!("{BASE}{tail}");
     (forge.kit.stub).reply_to(method, &path, reply(status, &[], &body.to_string()));
 }

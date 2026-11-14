@@ -24,17 +24,16 @@ async fn log_007_the_text_of_a_change_and_githubs_answer_are_never_kept(pool: Pg
 
     let forge = forge(&pool).await;
     let github = json!({ "number": 7, "title": ANSWERED, "message": ANSWERED });
-    answer(&forge, "POST", "/issues", 201, &github);
+    answer(&forge, ("POST", "/issues"), 201, &github);
     let mut made = issue(7);
     made["body"] = json!(format!("{WRITTEN} body"));
     forge.ok("/issues/7", &made);
     let refusal = json!({ "message": ANSWERED, "errors": [{ "value": WRITTEN }] });
-    answer(&forge, "POST", "/issues/5/comments", 422, &refusal);
+    answer(&forge, ("POST", "/issues/5/comments"), 422, &refusal);
     forge.ok("/issues/3", &issue(3));
     answer(
         &forge,
-        "PATCH",
-        "/issues/3",
+        ("PATCH", "/issues/3"),
         500,
         &json!({ "message": ANSWERED }),
     );

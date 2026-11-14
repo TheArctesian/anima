@@ -30,19 +30,18 @@ async fn key(forge: &Forge, scope: &str, made_for: &str) -> String {
 }
 
 fn script(forge: &Forge) {
-    answer(forge, "POST", "/issues", 201, &json!({ "number": 7 }));
+    answer(forge, ("POST", "/issues"), 201, &json!({ "number": 7 }));
     forge.ok("/issues/7", &issue(7));
     answer(
         forge,
-        "POST",
-        "/issues/5/comments",
+        ("POST", "/issues/5/comments"),
         201,
         &json!({ "id": 9001 }),
     );
     forge.ok("/issues/5", &issue(5));
     forge.ok("/issues/5/comments", &json!([comment(9001, 5, "Seen it.")]));
     forge.ok("/issues/3", &issue(3));
-    answer(forge, "PATCH", "/issues/3", 200, &issue(3));
+    answer(forge, ("PATCH", "/issues/3"), 200, &issue(3));
 }
 
 /// The three changes, each with variables that work.
@@ -133,8 +132,11 @@ async fn d_23_a_read_key_and_a_signed_out_request_change_nothing(pool: PgPool) {
         let signed_out = forge.kit.hub.post(None, query, variables).await;
         assert_eq!(error(&signed_out), unauthenticated(), "{root}");
     }
-    assert!(sent(&forge, "POST", "/issues").is_empty());
-    assert!(sent(&forge, "POST", "/issues/5/comments").is_empty());
-    assert!(sent(&forge, "PATCH", "/issues/3").is_empty());
-    assert!(audits(&pool).await.is_empty());
+    assert!(sent(&forge, "POST", "/issues").is_empty(), "nothing");
+    assert!(
+        sent(&forge, "POST", "/issues/5/comments").is_empty(),
+        "nothing"
+    );
+    assert!(sent(&forge, "PATCH", "/issues/3").is_empty(), "nothing");
+    assert!(audits(&pool).await.is_empty(), "nothing");
 }

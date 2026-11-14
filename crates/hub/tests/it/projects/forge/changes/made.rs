@@ -42,7 +42,7 @@ async fn od_e14_create_issue_posts_the_title_body_and_labels_and_returns_the_new
 ) {
     let forge = forge(&pool).await;
     listed(&forge).await;
-    answer(&forge, "POST", "/issues", 201, &json!({ "number": 7 }));
+    answer(&forge, ("POST", "/issues"), 201, &json!({ "number": 7 }));
     let mut made = issue(7);
     made["title"] = json!("Printer jams");
     made["body"] = json!("Steps to see it.");
@@ -93,8 +93,7 @@ async fn od_e14_a_comment_is_posted_and_read_back_from_the_last_page(pool: PgPoo
     listed(&forge).await;
     answer(
         &forge,
-        "POST",
-        "/issues/5/comments",
+        ("POST", "/issues/5/comments"),
         201,
         &json!({ "id": 9001 }),
     );
@@ -142,7 +141,12 @@ async fn od_e14_closing_an_issue_patches_its_state_and_reason(pool: PgPool) {
     let stub = &forge.kit.stub;
     stub.reply_once("GET", &path, super::super::ok(&issue(3).to_string()));
     forge.ok("/issues/3", &closed(3, "not_planned"));
-    answer(&forge, "PATCH", "/issues/3", 200, &closed(3, "not_planned"));
+    answer(
+        &forge,
+        ("PATCH", "/issues/3"),
+        200,
+        &closed(3, "not_planned"),
+    );
 
     let response = forge
         .ask(
@@ -187,9 +191,9 @@ async fn od_e14_opening_an_open_issue_sends_nothing_and_records_nothing(pool: Pg
         .await;
     assert_eq!(shut["data"]["setIssueOpen"]["open"], false, "{shut}");
 
-    assert!(sent(&forge, "PATCH", "/issues/3").is_empty());
-    assert!(sent(&forge, "PATCH", "/issues/4").is_empty());
-    assert!(audits(&pool).await.is_empty());
+    assert!(sent(&forge, "PATCH", "/issues/3").is_empty(), "nothing");
+    assert!(sent(&forge, "PATCH", "/issues/4").is_empty(), "nothing");
+    assert!(audits(&pool).await.is_empty(), "nothing");
 }
 
 #[sqlx::test(migrations = "./migrations")]
