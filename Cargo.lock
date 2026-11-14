@@ -5133,6 +5133,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "provider-github"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "serde",
+ "serde_json",
+ "source-exchange",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "psm"
 version = "0.1.32"
 source = "registry+https://github.com/rust-lang/crates.io-index"
