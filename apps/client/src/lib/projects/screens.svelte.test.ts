@@ -137,3 +137,17 @@ it('PRO-001: an unknown slug says Project not found', async () => {
   await openDetail('missing');
   expect(text()).toContain('Project not found');
 });
+
+it('UR-7, PRO-004: the list puts projects that need a look first, each with why', async () => {
+  await openList();
+  const groups = [...document.querySelectorAll('section.group')].map((group) => [
+    group.getAttribute('aria-label'),
+    [...group.querySelectorAll('li.entry .name a')].map((link) => link.textContent.trim()),
+  ]);
+  expect(groups).toEqual([
+    ['Needs a look', ['acme-site', 'old-tool']],
+    ['Not deployed', ['notes']],
+  ]);
+  expect(text()).toContain('Cloudflare was found in the repository (wrangler.toml) and is not confirmed.');
+  expect(text()).toContain('A repository is no longer on GitHub.');
+});
