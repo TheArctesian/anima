@@ -1,7 +1,7 @@
 //! PRJ-039, PRJ-041: each step of the attempt and each refusal, with the time as a parameter.
 //! A refused step leaves the attempt as it was.
 
-use super::{Walked, app_created, at, at_github, exchanging, phase, t0, value, waiting};
+use super::{Walked, app, app_created, at, at_github, exchanging, key, phase, t0, value, waiting};
 use crate::{
     engine::sources::registration::attempt::{Exchange, Finished, Phase, Refusal},
     ids::SourceAccountId,
@@ -14,7 +14,7 @@ fn prj_039_the_flow_walks_every_phase_and_drops_the_key_at_the_end() {
     let mut walked = app_created();
     assert_eq!(phase(&walked.attempt), Phase::AppCreated);
     assert!(walked.attempt.waiting_app().is_some(), "the key is held");
-    let finish = walked.attempt.begin_finish().unwrap();
+    let finish = walked.attempt.begin_finish(at(9, 0)).unwrap();
     assert_eq!(
         (finish.label.as_str(), finish.app_id, finish.key.as_str()),
         ("octo-person", 1_234_567, "KEY-MARKER"),
@@ -30,7 +30,7 @@ fn prj_039_the_flow_walks_every_phase_and_drops_the_key_at_the_end() {
         account,
         consumer_on: true,
     };
-    walked.attempt.finished(connected, at(10, 0));
+    walked.attempt.finished(finish.round, connected, at(10, 0));
     let shown = walked.attempt.snapshot();
     assert_eq!(
         (shown.phase, shown.account),
@@ -164,39 +164,43 @@ fn prj_039_the_return_from_github_needs_the_cookie_and_the_state_and_changes_not
 }
 
 #[test]
-fn prj_039_a_return_after_the_app_is_made_converts_nothing() {
-    let mut walked = app_created();
-    let cookie = walked.cookie.text().to_owned();
-    assert_eq!(
-        walked
-            .attempt
-            .begin_exchange(Some(&cookie), Some("anything")),
-        Ok(Exchange::Made)
+fn prj_039_a_return_after_the_app_is_made_converts_nothing_and_changes_nothing() {
+    let walked = exchanging();
+    let (cookie, s1) = (
+        walked.cookie.text().to_owned(),
+        walked.state.text().to_owned(),
     );
+    let mut attempt = walked.attempt;
+    let s2 = value();
+    attempt.created(app(), key(), s2.hash()).unwrap();
+    let before = attempt.snapshot();
     assert_eq!(
-        walked.attempt.begin_exchange(None, None),
+        attempt.begin_exchange(Some(&cookie), Some(&s1)),
+        Ok(Exchange::Made),
+        "the spent S1 is sent to Install again"
+    );
+    for state in [None, Some("anything"), Some(s2.text())] {
+        assert_eq!(
+            attempt.begin_exchange(Some(&cookie), state),
+            Ok(Exchange::Waiting),
+            "{state:?}"
+        );
+    }
+    assert_eq!(
+        attempt.begin_exchange(None, Some(&s1)),
         Err(Refusal::Unbound)
     );
-    let s2 = value();
-    assert_eq!(
-        walked.attempt.send_to_install(Some(&cookie), s2.hash()),
-        Ok(())
+    assert_eq!(attempt.snapshot(), before, "nothing changed");
+    assert!(
+        attempt.back_from_install(Some(&cookie), Some(s2.text())),
+        "S2 still works"
     );
     assert!(
-        walked
-            .attempt
-            .back_from_install(Some(&cookie), Some(s2.text()))
-    );
-    assert!(
-        walked.attempt.back_from_install(Some(&cookie), None),
+        attempt.back_from_install(Some(&cookie), None),
         "GitHub may send no state"
     );
-    assert!(
-        !walked
-            .attempt
-            .back_from_install(Some(&cookie), Some(walked.state.text()))
-    );
-    assert!(!walked.attempt.back_from_install(None, Some(s2.text())));
+    assert!(!attempt.back_from_install(Some(&cookie), Some(&s1)));
+    assert!(!attempt.back_from_install(None, Some(s2.text())));
 }
 
 #[test]

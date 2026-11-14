@@ -1,11 +1,13 @@
-//! PRJ-041, LOG-007: the three values are 32 random bytes as base64url, kept only as hashes;
-//! and the words the operator reads name no value.
+//! PRJ-041, LOG-007: the ticket and the cookie are 32 random bytes as base64url, the states are
+//! derived from the cookie, each is kept only as a hash; and the words the operator reads name
+//! no value.
 
 use proptest::prelude::*;
 
 use super::{app, app_created, exchanging, value, waiting};
 use crate::engine::sources::registration::{
     attempt::{Failure, Phase, Snapshot},
+    binding::{Minted, Step},
     words,
 };
 
@@ -37,6 +39,24 @@ proptest! {
         changed[at] = changed[at].wrapping_add(by);
         let changed = String::from_utf8_lossy(&changed).into_owned();
         prop_assert!(!minted.hash().matches(&changed));
+    }
+
+    #[test]
+    fn prj_041_a_state_is_the_same_for_one_browser_and_step_and_unrelated_otherwise(
+        cookie in "\\PC{0,80}",
+        other in "\\PC{0,80}",
+    ) {
+        let s1 = Minted::state(&cookie, Step::Create);
+        let again = Minted::state(&cookie, Step::Create);
+        let s2 = Minted::state(&cookie, Step::Install);
+        prop_assert_eq!(s1.text(), again.text());
+        prop_assert_eq!(s1.text().len(), 43);
+        prop_assert!(s1.hash().matches(s1.text()));
+        prop_assert!(!s1.hash().matches(s2.text()));
+        if other != cookie {
+            let theirs = Minted::state(&other, Step::Create);
+            prop_assert_ne!(s1.text(), theirs.text());
+        }
     }
 }
 
