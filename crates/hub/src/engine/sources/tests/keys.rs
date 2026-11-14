@@ -11,7 +11,7 @@ use serde_json::Value;
 
 use super::{TEST_KEY, pem_of_bits};
 use crate::engine::sources::acquisition::{
-    app_key::{AppKey, KeyRefusal, MAX_PEM_BYTES},
+    app_key::{AppKey, AppSigner, KeyRefusal, MAX_PEM_BYTES},
     stored_key::{StoredKeyError, from_secret, to_secret},
 };
 
@@ -58,6 +58,33 @@ fn prj_018_the_app_token_is_rs256_with_the_app_id_and_a_ten_minute_window() {
     UnparsedPublicKey::new(&RSA_PKCS1_2048_8192_SHA256, key.public_key())
         .verify(signed.as_bytes(), &signature)
         .expect("the key's own public key verifies the token");
+}
+
+#[test]
+fn prj_039_an_app_signer_signs_as_the_app_and_binds_to_an_installation() {
+    assert_eq!(
+        AppSigner::read(0, TEST_KEY.as_bytes())
+            .err()
+            .map(KeyRefusal::field),
+        Some("appId")
+    );
+    assert_eq!(
+        AppSigner::read(4242, b"not a key").err(),
+        Some(KeyRefusal::NotRsaPem)
+    );
+    let signer = AppSigner::read(4242, TEST_KEY.as_bytes()).unwrap();
+    let now = Utc.with_ymd_and_hms(2030, 5, 5, 12, 0, 0).unwrap();
+    let token = signer.token(now, &SystemRandom::new()).unwrap();
+    let claims = token.split('.').nth(1).unwrap();
+    let claims: Value = serde_json::from_slice(&URL_SAFE_NO_PAD.decode(claims).unwrap()).unwrap();
+    assert_eq!(claims["iss"], 4242);
+    for bad in ["", "7a", "1/2", &"9".repeat(21)] {
+        let signer = AppSigner::read(4242, TEST_KEY.as_bytes()).unwrap();
+        assert_eq!(signer.bind(bad).err(), Some(KeyRefusal::InstallationId));
+    }
+    let key = signer.bind("77").unwrap();
+    assert_eq!(key.instance_key(), "4242/77");
+    assert_eq!(key.installation_id(), "77");
 }
 
 #[test]

@@ -1,9 +1,10 @@
-//! The pure parts of sources: health, schedule, verdicts, addresses, the App key and the
-//! in-memory token map.
+//! The pure parts of sources: health, schedule, verdicts, addresses, the App key, the paths of
+//! the connect flow and the in-memory token map.
 
 mod addresses;
 mod health_table;
 mod keys;
+mod registration_paths;
 mod schedule_times;
 mod tokens;
 

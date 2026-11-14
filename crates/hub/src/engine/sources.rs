@@ -21,6 +21,7 @@ mod scheduler;
 mod store;
 #[cfg(test)]
 mod tests;
+mod trail;
 
 use std::sync::Arc;
 
@@ -40,6 +41,7 @@ pub use acquisition::{
     tokens::Tokens,
     transport::{BuildFailed, Transport},
 };
+pub use connect::{Connection, Established, establish};
 pub use feed::Feed;
 pub use health::{HealthFacts, health};
 pub use intake::{Counts, Intake, IntakeError, Page, Registry, Taken};

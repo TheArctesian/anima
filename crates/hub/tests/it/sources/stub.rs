@@ -27,10 +27,32 @@ pub struct Reply {
     pub body: String,
 }
 
+/// One request as the stub heard it: every header and the body.
+#[derive(Clone)]
+pub struct Heard {
+    pub method: String,
+    pub path: String,
+    pub headers: Vec<(String, Vec<u8>)>,
+    pub body: Vec<u8>,
+}
+
+impl Heard {
+    /// The values of header `name`.
+    pub fn header(&self, name: &str) -> Vec<&[u8]> {
+        self.headers
+            .iter()
+            .filter(|(n, _)| n.eq_ignore_ascii_case(name))
+            .map(|(_, v)| v.as_slice())
+            .collect()
+    }
+}
+
 /// What the stub does and what it saw.
 pub struct Script {
     /// `(method, path with query, sent a bearer token)` of each request, in order.
     pub seen: Vec<(String, String, bool)>,
+    /// Each request in full, in order.
+    pub heard: Vec<Heard>,
     /// The App token (JWT) each mint request was signed in with, so a test can search for it.
     pub app_tokens: Vec<String>,
     pub mint_status: u16,
@@ -60,6 +82,7 @@ impl Stub {
         let address: SocketAddr = listener.local_addr().unwrap();
         let script = Script {
             seen: Vec::new(),
+            heard: Vec::new(),
             app_tokens: Vec::new(),
             mint_status: 201,
             // A token shape of the test's own: never assume a length or a prefix.
@@ -155,12 +178,12 @@ fn endless() -> Response {
         .unwrap()
 }
 
-async fn answer(
-    State(stub): State<Stub>,
-    method: Method,
-    uri: Uri,
-    headers: HeaderMap,
-) -> Response {
+/// Records a request; returns the SQL hook of its path, once.
+fn hear(
+    stub: &Stub,
+    (method, uri, headers): (&Method, &Uri, &HeaderMap),
+    body: &Bytes,
+) -> Option<String> {
     let path = uri.path_and_query().map_or("/", |p| p.as_str()).to_owned();
     let bearer = headers
         .get(header::AUTHORIZATION)
@@ -171,12 +194,28 @@ async fn answer(
         .and_then(|v| v.strip_prefix("Bearer "))
         .filter(|_| method == Method::POST)
         .map(str::to_owned);
-    let hook = stub.with(|s| {
+    stub.with(|s| {
         s.seen.push((method.to_string(), path.clone(), bearer));
+        s.heard.push(Heard {
+            method: method.to_string(),
+            path,
+            headers: headers
+                .iter()
+                .map(|(n, v)| (n.as_str().to_owned(), v.as_bytes().to_vec()))
+                .collect(),
+            body: body.to_vec(),
+        });
         s.app_tokens.extend(app_token);
         s.hooks.remove(uri.path())
-    });
-    if let Some(sql) = hook {
+    })
+}
+
+async fn answer(
+    State(stub): State<Stub>,
+    (method, uri, headers): (Method, Uri, HeaderMap),
+    body: Bytes,
+) -> Response {
+    if let Some(sql) = hear(&stub, (&method, &uri, &headers), &body) {
         sqlx::query(&sql).execute(&stub.pool).await.unwrap();
     }
     if stub.with(|s| s.endless.contains(uri.path())) {
