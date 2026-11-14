@@ -12,22 +12,33 @@ Repository checks that Clippy and ESLint do not cover. Run with bun from `qualit
 ## Local gates
 
 `bun run gates` (from the repository root) is the only gate entry point. There is no CI; gates run on the machine that makes the change.
-It runs fourteen gates as separate processes, in this order, and stops at the first failure (exit code of that gate, 1 if killed by a signal):
+It runs twenty gates as separate processes, in this order, and stops at the first failure (exit code of that gate, 1 if killed by a signal):
 
 1. `cargo fmt --check`
 2. `cargo clippy --all-targets -- -D warnings`
 3. `cargo nextest run --workspace` (through `bin/with-postgres.ts`)
 4. `cargo test --workspace --doc`
 5. `cargo test --workspace --test pinning`
-6. `bun install --frozen-lockfile`
-7. `bun run lint`
-8. `bun run check`
-9. `bun run test`
-10. `bun run --cwd apps/client build`
-11. `bun run quality:limits`
-12. `bun run quality:names`
-13. `bun run quality:imports`
-14. `bun run quality:baseline -- --base <BASE_REF>`
+6. `bun quality/bin/go-format.ts` (`gofmt -l` on each Go file; any output fails)
+7. `go -C link vet ./...`
+8. `go -C link tool staticcheck ./...`
+9. `go -C link tool revive -config revive.toml -set_exit_status ./...`
+10. `go -C link test -race ./...`
+11. `go -C link build ./...`
+12. `bun install --frozen-lockfile`
+13. `bun run lint`
+14. `bun run check`
+15. `bun run test`
+16. `bun run --cwd apps/client build`
+17. `bun run quality:limits`
+18. `bun run quality:names`
+19. `bun run quality:imports`
+20. `bun run quality:baseline -- --base <BASE_REF>`
+
+Gates 6 to 11 are for the Go module `link/`. Go must be on `PATH` (`brew install go`). `staticcheck` and
+`revive` are `tool` lines in `link/go.mod` and run with `go tool`, so they are not installed system-wide.
+`link/revive.toml` holds the function limits (60 lines, 4 parameters, complexity 15, nesting 4). The limits
+and names gates also measure `.go` files.
 
 `BASE_REF` is read from the environment and defaults to `phase-2` (a local branch; no remote needed).
 A missing executable is a failure, never a skip (CQ-024). The gate list and runner live in `src/gates/gates.ts`.

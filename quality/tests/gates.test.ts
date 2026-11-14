@@ -2,7 +2,8 @@ import { describe, expect, test } from "bun:test";
 import { gateList, missingRequirement, runGates, type Gate, type GateEvent } from "../src/gates/gates.ts";
 
 const NAMES = [
-  "fmt", "clippy", "rust-test", "doctest", "pinning", "install", "lint", "check", "test", "build", "limits", "names", "imports", "baseline",
+  "fmt", "clippy", "rust-test", "doctest", "pinning",
+  "go-fmt", "go-vet", "go-staticcheck", "go-revive", "go-test", "go-build", "install", "lint", "check", "test", "build", "limits", "names", "imports", "baseline",
 ];
 
 function recorder(codes: Record<number, number | Error> = {}) {
@@ -18,7 +19,7 @@ function recorder(codes: Record<number, number | Error> = {}) {
 }
 
 describe("gateList", () => {
-  test("CQ-010 lists the fourteen gates in the documented order", () => {
+  test("CQ-010 lists the twenty gates in the documented order", () => {
     expect(gateList("phase-1").map((gate) => gate.name)).toEqual(NAMES);
   });
 
@@ -35,6 +36,15 @@ describe("gateList", () => {
     expect(argvs).toContain("cargo test --workspace --test pinning");
   });
 
+  test("LNK runs each Go command inside the link module, with its lint tools from go.mod", () => {
+    const argvs = gateList("phase-1").map((gate) => gate.argv.join(" "));
+    expect(argvs).toContain("go -C link vet ./...");
+    expect(argvs).toContain("go -C link tool staticcheck ./...");
+    expect(argvs).toContain("go -C link tool revive -config revive.toml -set_exit_status ./...");
+    expect(argvs).toContain("go -C link test -race ./...");
+    expect(argvs).toContain("go -C link build ./...");
+  });
+
   test("CQ-011 passes the base ref to the baseline gate", () => {
     const baseline = gateList("abc").at(-1);
     expect(baseline?.argv).toEqual(["bun", "run", "quality:baseline", "--", "--base", "abc"]);
@@ -42,13 +52,13 @@ describe("gateList", () => {
 });
 
 describe("runGates", () => {
-  test("CQ-010 runs all fourteen gates in order and succeeds", () => {
+  test("CQ-010 runs all twenty gates in order and succeeds", () => {
     const { ran, events, run, report } = recorder();
     const gates = gateList("phase-1");
     const outcome = runGates(gates, run, report);
     expect(outcome).toEqual({ exitCode: 0 });
     expect(ran).toEqual(gates.map((gate) => gate.argv));
-    expect(events.at(-1)).toEqual({ kind: "done", passed: 14, total: 14 });
+    expect(events.at(-1)).toEqual({ kind: "done", passed: 20, total: 20 });
   });
 
   test("CQ-010 stops at the first failing gate and returns its exit code", () => {
@@ -57,7 +67,7 @@ describe("runGates", () => {
     const outcome = runGates(gates, run, report);
     expect(ran).toHaveLength(3);
     expect(outcome).toEqual({ exitCode: 101, stoppedAt: gates[2] });
-    expect(events.at(-1)).toEqual({ kind: "done", passed: 2, total: 14, stoppedAt: gates[2] });
+    expect(events.at(-1)).toEqual({ kind: "done", passed: 2, total: 20, stoppedAt: gates[2] });
   });
 
   test("CQ-024 treats a runner that throws as a failure, not a skip", () => {
@@ -82,6 +92,15 @@ describe("missingRequirement", () => {
   test("lets the gate run when cargo-nextest is in a PATH folder", () => {
     const present = (path: string) => path === "/home/op/.cargo/bin/cargo-nextest";
     expect(missingRequirement(rustTest, "/usr/bin:/home/op/.cargo/bin", present)).toBeUndefined();
+  });
+
+  test("CQ-024 fails a Go gate with the install command when go is not on PATH", () => {
+    const goVet = gateList("phase-1").find((gate) => gate.name === "go-vet");
+    if (goVet === undefined) throw new Error("no go-vet gate");
+    const message = missingRequirement(goVet, "/usr/bin:/bin", () => false);
+    expect(message).toContain("go is not on PATH");
+    expect(message).toContain("brew install go");
+    expect(message).not.toContain(".cargo");
   });
 
   test("needs nothing for a gate without requirements", () => {

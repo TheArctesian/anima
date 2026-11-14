@@ -8,7 +8,7 @@ const BANNED_WORDS = new Set([
 ]);
 const BANNED_FOLDERS = new Set(["utils", "helpers", "common", "components", "services", "models"]);
 const SKIPPED_PREFIXES = ["docs/", "node_modules/"];
-const TYPE_EXTENSIONS = [".rs", ".ts", ".js", ".svelte"];
+const TYPE_EXTENSIONS = [".rs", ".ts", ".js", ".svelte", ".go"];
 
 // Casing of TypeScript, JavaScript and Svelte file names (CQ1-18): kebab-case words with dot-separated suffixes
 // (`.svelte.test.ts`, `.fixture.ts`, `.d.ts`); PascalCase components; SvelteKit route files start with `+`.
@@ -27,6 +27,13 @@ const SVELTE_NAMES = [
 const RUST_TYPE = /^\s*(?:pub(?:\([^)]*\))?\s+)?(?:struct|enum|trait|type|union)\s+([A-Za-z_]\w*)/gm;
 const TS_TYPE =
   /^\s*(?:export\s+)?(?:default\s+)?(?:declare\s+)?(?:abstract\s+)?(?:const\s+)?(?:class|interface|type|enum)\s+([A-Za-z_$][\w$]*)/gm;
+
+const GO_TYPE = /^\s*type\s+([A-Za-z_]\w*)/gm;
+
+function typePattern(extension: string): RegExp {
+  if (extension === ".rs") return RUST_TYPE;
+  return extension === ".go" ? GO_TYPE : TS_TYPE;
+}
 
 /** Split a name into lowercase word segments: camelCase, PascalCase, snake_case, kebab-case, dots. */
 export function wordSegments(name: string): string[] {
@@ -81,8 +88,7 @@ function codeOf(text: string, extension: string): string {
 function declaredTypes(file: SourceFile): string[] {
   const extension = extensionOf(file.path);
   if (!TYPE_EXTENSIONS.includes(extension)) return [];
-  const pattern = extension === ".rs" ? RUST_TYPE : TS_TYPE;
-  return [...codeOf(file.text, extension).matchAll(pattern)].map((match) => match[1] ?? "");
+  return [...codeOf(file.text, extension).matchAll(typePattern(extension))].map((match) => match[1] ?? "");
 }
 
 function typeViolations(file: SourceFile): Violation[] {

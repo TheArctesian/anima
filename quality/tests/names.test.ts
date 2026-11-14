@@ -8,6 +8,8 @@ describe("CQ-030 banned names", () => {
     expect(signals("crates/hub/src/users/user.rs", "pub struct UserManager {}")).toEqual(["banned-type-name"]);
     expect(signals("apps/client/src/lib/user.ts", "export class UserManager {}")).toEqual(["banned-type-name"]);
     expect(signals("a/b.rs", "pub(crate) trait RequestHandler {}\ntype Items = u8;")).toHaveLength(2);
+    expect(signals("link/devices/list.go", "package devices\n\ntype DeviceManager struct{}\n")).toEqual(["banned-type-name"]);
+    expect(signals("link/devices/list.go", "package devices\n\n// type Helper struct{}\ntype Device struct{}\n")).toEqual([]);
   });
 
   test("a utils folder fails", () => {

@@ -1,9 +1,10 @@
 import { join } from "node:path";
 
-/** An executable a gate needs on `PATH`, and how to install it. */
+/** An executable a gate needs on `PATH`, how to install it, and the folder that install puts it in. */
 export interface Requirement {
   executable: string;
   install: string;
+  folder: string;
 }
 
 /** One local gate: a name, the argv that runs it from the repository root, and what it needs on `PATH`. */
@@ -29,11 +30,26 @@ export interface GateOutcome {
 export type RunProcess = (gate: Gate) => number;
 export type ReportGateEvent = (event: GateEvent) => void;
 
-const NEXTEST: Requirement = { executable: "cargo-nextest", install: "cargo install cargo-nextest --locked" };
+const NEXTEST: Requirement = {
+  executable: "cargo-nextest",
+  install: "cargo install cargo-nextest --locked",
+  folder: "~/.cargo/bin",
+};
+const GO: Requirement = { executable: "go", install: "brew install go", folder: "/opt/homebrew/bin, or /usr/local/go/bin" };
+const GOFMT: Requirement = { ...GO, executable: "gofmt" };
+
+/** The Go module of the link (LNK). `go -C` runs each command in it. */
+const GO_MODULE = "link";
+
+function goGate(name: string, ...args: string[]): Gate {
+  return { name, argv: ["go", "-C", GO_MODULE, ...args], requires: [GO] };
+}
+
 
 /**
- * The fourteen gates in the order they run (CQ-010, CQ-011). Gates 3 to 5 together run every test
+ * The twenty gates in the order they run (CQ-010, CQ-011). Gates 3 to 5 together run every test
  * `cargo test` runs (R-112): nextest the libtest tests, then the doctests, then the one non-libtest target.
+ * Gates 6 to 11 are the Go gates of the `link/` module; its lint tools are pinned in `link/go.mod`.
  */
 export function gateList(baseRef: string): Gate[] {
   return [
@@ -48,6 +64,12 @@ export function gateList(baseRef: string): Gate[] {
     { name: "doctest", argv: ["cargo", "test", "--workspace", "--doc"] },
     // `harness = false`, so not listable by nextest (.config/nextest.toml); `--workspace` keeps gate 3's build.
     { name: "pinning", argv: ["cargo", "test", "--workspace", "--test", "pinning"] },
+    { name: "go-fmt", argv: ["bun", "quality/bin/go-format.ts"], requires: [GOFMT] },
+    goGate("go-vet", "vet", "./..."),
+    goGate("go-staticcheck", "tool", "staticcheck", "./..."),
+    goGate("go-revive", "tool", "revive", "-config", "revive.toml", "-set_exit_status", "./..."),
+    goGate("go-test", "test", "-race", "./..."),
+    goGate("go-build", "build", "./..."),
     { name: "install", argv: ["bun", "install", "--frozen-lockfile"] },
     { name: "lint", argv: ["bun", "run", "lint"] },
     { name: "check", argv: ["bun", "run", "check"] },
@@ -100,7 +122,7 @@ export function missingRequirement(gate: Gate, pathEnv: string, exists: (path: s
   const dirs = pathEnv.split(":").filter((dir) => dir !== "");
   const missing = (gate.requires ?? []).find((need) => !dirs.some((dir) => exists(join(dir, need.executable))));
   if (missing === undefined) return undefined;
-  return `${missing.executable} is not on PATH; install it with \`${missing.install}\` and put its folder (~/.cargo/bin) on PATH`;
+  return `${missing.executable} is not on PATH; install it with \`${missing.install}\` and put its folder (${missing.folder}) on PATH`;
 }
 
 export function formatGateEvent(event: GateEvent): string {

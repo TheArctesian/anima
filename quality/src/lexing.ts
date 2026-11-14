@@ -16,6 +16,7 @@ const SYNTAX: Record<string, Syntax> = {
     quotes: "\"'`",
     rust: false,
   },
+  ".go": { lineComment: true, blocks: [C_BLOCK], quotes: "\"'`", rust: false },
   ".css": { lineComment: false, blocks: [C_BLOCK], quotes: "\"'", rust: false },
 };
 

@@ -24,6 +24,13 @@ describe("CQ-010 code lines per file", () => {
     expect(countCodeLines("let c = '\"'; // c\nlet l: &'a str;\n", ".rs")).toBe(2);
   });
 
+  test("CQ-010 Go files are measured, with raw strings and rune literals lexed", () => {
+    const violations = checkLimits([file("link/devices/big.go", lines(301, "x := 1"))], {});
+    expect(violations).toEqual([{ path: "link/devices/big.go", signal: "file-lines", detail: "301 > 300" }]);
+    expect(countCodeLines("// doc\npackage a\n\n/* c\n d */\nvar s = `// not a comment\n/* nor this */`\n", ".go")).toBe(3);
+    expect(countCodeLines("var q = '\"' // c\nvar u = \"http://x\"\n", ".go")).toBe(2);
+  });
+
   test("CQ-010 nested Rust block comments and raw strings are lexed", () => {
     expect(countCodeLines("/* a /* b */ still comment */\nlet x = 1;\n", ".rs")).toBe(1);
     expect(countCodeLines('let s = r#"say "hi" // not a comment\n/* nor this"#;\nlet y = 2;\n', ".rs")).toBe(3);
