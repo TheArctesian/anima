@@ -40,7 +40,7 @@ pub enum MintFailure {
 }
 
 /// How the source of `declaration` makes an App for the operator; `None` when it cannot.
-fn registration(declaration: &Declaration) -> Option<Registration> {
+pub(super) fn registration(declaration: &Declaration) -> Option<Registration> {
     // Acquisition and Minting are non_exhaustive: a later variant has no App to make.
     let Acquisition::TokenPull(Minting::AppKey(app)) = declaration.acquisition else {
         return None;

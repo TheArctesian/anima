@@ -5,6 +5,7 @@
 //! (D-23). A key never reaches a log, an audit entry, an event or an error (PRJ-018).
 
 mod changes;
+mod registration;
 mod views;
 
 use std::sync::Arc;
@@ -13,6 +14,10 @@ use async_graphql::{Context, ID, InputObject, Object, Result};
 use zeroize::Zeroizing;
 
 pub use self::changes::Subscription;
+pub use self::registration::{
+    Mutation as GithubConnectMutation, Query as GithubConnectQuery,
+    Subscription as GithubConnectSubscription,
+};
 use self::views::{AccountView, Seen, SourceView, accounts};
 use super::{
     Error, Reach, Scheduling,

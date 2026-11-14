@@ -52,7 +52,7 @@ pub struct Established {
 const MAX_LABEL: usize = 64;
 
 /// The label without control or invisible characters, trimmed, 1 to 64 characters.
-fn label(text: &str) -> Option<String> {
+pub(super) fn label(text: &str) -> Option<String> {
     let cleaned = crate::text::clean(text, MAX_LABEL * 4);
     let trimmed = cleaned.trim();
     let count = trimmed.chars().count();

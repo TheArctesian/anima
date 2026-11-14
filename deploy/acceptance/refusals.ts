@@ -47,6 +47,9 @@ export const REFUSED_ROOTS: readonly string[] = [
   "setExtension",
   "connectGithubApp",
   "removeSourceAccount",
+  "startGithubConnect",
+  "openGithubConnect",
+  "cancelGithubConnect",
 ];
 
 /** The refused roots that are query fields; every other one is a mutation field. */
