@@ -1,8 +1,8 @@
 <script lang="ts">
   import FormButton from '$lib/forms/FormButton.svelte';
   import Icon from '$lib/icons/Icon.svelte';
-  import type { IconName } from '$lib/icons/icons';
-  import type { ProjectResource, ResourceKind } from './api';
+  import type { ProjectResource } from './api';
+  import { KIND_ICONS } from './tile';
   import { evidenceWords, resourceKindWords, resourceStateWords } from './words';
 
   interface Props {
@@ -13,13 +13,6 @@
 
   const { resource, onConfirm }: Props = $props();
   const proposed = $derived(resource.state === 'FOUND_IN_REPOSITORY');
-
-  const KIND_ICONS: Readonly<Record<ResourceKind, IconName>> = {
-    CLOUDFLARE: 'simple-icons:cloudflare',
-    VERCEL: 'simple-icons:vercel',
-    SERVER: 'carbon:bare-metal-server',
-    DESKTOP_APPLICATION: 'carbon:screen',
-  };
 </script>
 
 <!-- One place the project runs, a hairline row (UR-7, D9): its kind, and whether the operator has confirmed it. A

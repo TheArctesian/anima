@@ -97,3 +97,33 @@ it('LOG-009: a filter change clears the old rows, and a failed reload leaves the
   expect(feed.error?.message).toBe('No hub.');
   expect(feed.log).toBeNull();
 });
+
+it('LOG-011: away from the newest rows, live rows wait and do not move the list; following again puts them in', async () => {
+  feed.start();
+  hub.pending[0]?.answer(page([event('a', 3)]));
+  await later();
+  feed.follow(false);
+  push(event('b', 2));
+  push(event('c', 1));
+  expect(ids()).toEqual(['a']);
+  expect(feed.waiting.map((row) => row.id)).toEqual(['c', 'b']);
+  feed.follow(true);
+  expect(ids()).toEqual(['c', 'b', 'a']);
+  expect(feed.waiting).toEqual([]);
+  expect(feed.fresh).toBe('c');
+});
+
+it('LOG-011: a row the filter leaves out is not counted as waiting, and a reload forgets the waiting rows', async () => {
+  feed.start();
+  hub.pending[0]?.answer(page([event('a', 3)]));
+  await later();
+  feed.setFilter({ ...DEFAULT_LOG_FILTER, deviceId: 'd2' });
+  hub.pending[1]?.answer(page([]));
+  await later();
+  feed.follow(false);
+  push(event('miss', 1, { deviceId: 'd1' }));
+  push(event('hit', 1, { deviceId: 'd2' }));
+  expect(feed.waiting.map((row) => row.id)).toEqual(['hit']);
+  void feed.retry();
+  expect(feed.waiting).toEqual([]);
+});

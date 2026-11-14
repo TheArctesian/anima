@@ -1,21 +1,29 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_LOG_FILTER } from '../log';
-import { switched, withDevice, withSince } from './filters';
-import { SEVERITY_CHOICES, deviceLabel, labelOf, timeLabel } from './view';
+import { SEVERITY_CHOICES, clockLabel, dayLabel, deviceLabel, labelOf, switched, timeLabel, withDevice, withSince } from './view';
 
-describe('timeLabel', () => {
+describe('time labels', () => {
   const now = new Date(2026, 10, 4, 15, 0, 0);
 
-  it('LOG-009: an event of today shows the clock time in the local zone', () => {
+  it('LOG-009: a time with no day heading shows the date when it is not today', () => {
     expect(timeLabel(new Date(2026, 10, 4, 9, 5, 7).toISOString(), now)).toBe('09:05:07');
-  });
-
-  it('LOG-009: an older event shows the date too', () => {
     expect(timeLabel(new Date(2026, 9, 31, 23, 59, 1).toISOString(), now)).toBe('10-31 23:59:01');
+    expect(timeLabel('not a time', now)).toBe('not a time');
   });
 
-  it('LOG-009: a time that does not parse shows as the hub sent it', () => {
-    expect(timeLabel('not a time', now)).toBe('not a time');
+  it('LOG-009: a row shows the clock time in the local zone', () => {
+    expect(clockLabel(new Date(2026, 9, 31, 9, 5, 7).toISOString())).toBe('09:05:07');
+  });
+
+  it('LOG-009: rows are grouped under Today, Yesterday, then the date', () => {
+    expect(dayLabel(new Date(2026, 10, 4, 0, 1).toISOString(), now)).toBe('Today');
+    expect(dayLabel(new Date(2026, 10, 3, 23, 59).toISOString(), now)).toBe('Yesterday');
+    expect(dayLabel(new Date(2026, 9, 31, 12).toISOString(), now)).toBe('Sat 31 Oct');
+  });
+
+  it('LOG-009: a time that does not parse shows as the hub sent it, under no day', () => {
+    expect(clockLabel('not a time')).toBe('not a time');
+    expect(dayLabel('not a time', now)).toBe('');
   });
 });
 

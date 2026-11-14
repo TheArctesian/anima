@@ -53,14 +53,21 @@ const lastFilter = () => eventRequests().at(-1)?.variables as { filter: Record<s
 const button = (text: string) =>
   [...document.querySelectorAll('button')].find((candidate) => candidate.textContent.includes(text));
 
-function choose(select: string, value: string): void {
-  const control = [...document.querySelectorAll('label.select')].find((label) => label.textContent.includes(select));
-  const element = control?.querySelector('select');
-  if (!element) throw new Error(`no ${select} select`);
-  element.value = value;
-  element.dispatchEvent(new Event('change', { bubbles: true }));
+function within(value: string): void {
+  const radio = document.querySelector<HTMLElement>(`[role="radiogroup"][aria-label="Time"] [data-value="${value}"]`);
+  if (!radio) throw new Error(`no ${value} window`);
+  radio.click();
+  flushSync();
 }
 
+function chip(severity: string): void {
+  const control = [...document.querySelectorAll('[aria-label="Severity"] button')].find((each) => each.textContent.includes(severity));
+  if (!(control instanceof HTMLElement)) throw new Error(`no ${severity} chip`);
+  control.click();
+  flushSync();
+}
+
+/** Opens the menu whose button says `menu` and checks or chooses `option`. */
 function pick(menu: string, option: string): void {
   button(menu)?.click();
   flushSync();
@@ -100,22 +107,30 @@ describe('LOG-009: the list', () => {
 describe('LOG-009: the filters', () => {
   it('sends the time filter', async () => {
     await show();
-    choose('Time', '1h');
+    within('1h');
     await settle();
     expect(lastFilter().filter).toEqual({ since: new Date(NOW.getTime() - 3_600_000).toISOString() });
-    choose('Time', 'all');
+    within('all');
     await settle();
     expect(lastFilter().filter).toEqual({});
   });
 
-  it('sends the severity filter, and several severities together', async () => {
+  it('sends the severity filter: every chip is on at first, and turning chips off narrows it', async () => {
     await show();
-    pick('Severity', 'Warning');
+    expect([...document.querySelectorAll('[aria-label="Severity"] [aria-pressed="true"]')]).toHaveLength(3);
+    chip('Info');
     await settle();
-    expect(lastFilter().filter).toMatchObject({ severity: ['WARNING'] });
-    pick('Severity', 'Error');
+    expect(lastFilter().filter).toMatchObject({ severity: ['ERROR', 'WARNING'] });
+    chip('Warning');
     await settle();
-    expect(lastFilter().filter).toMatchObject({ severity: ['WARNING', 'ERROR'] });
+    expect(lastFilter().filter).toMatchObject({ severity: ['ERROR'] });
+    chip('Error');
+    await settle();
+    expect(eventRequests()).toHaveLength(3);
+    chip('Info');
+    chip('Warning');
+    await settle();
+    expect(lastFilter().filter).not.toHaveProperty('severity');
   });
 
   it('sends the source filter', async () => {
@@ -127,18 +142,17 @@ describe('LOG-009: the filters', () => {
 
   it('sends the device filter from the devices the page has, and takes it off again', async () => {
     await show();
-    expect([...document.querySelectorAll('option')].map((option) => option.textContent)).toContain('NAS');
-    choose('Device', 'd2');
+    pick('All devices', 'NAS');
     await settle();
     expect(lastFilter().filter).toMatchObject({ deviceId: 'd2' });
-    choose('Device', '');
+    pick('NAS', 'All devices');
     await settle();
     expect(lastFilter().filter).not.toHaveProperty('deviceId');
   });
 
   it('does not show a live event that the filter does not match', async () => {
     await show();
-    choose('Device', 'd2');
+    pick('All devices', 'NAS');
     await settle();
     await push(event('e9', 0, { deviceId: 'd1' }));
     expect(ids()).not.toContain('message e9');
@@ -155,7 +169,7 @@ describe('LOG-009: the filters', () => {
 describe('LOG-010: one filter change', () => {
   it('makes exactly one request and one subscription', async () => {
     await show();
-    choose('Time', '1h');
+    within('1h');
     await settle();
     expect(eventRequests()).toHaveLength(2);
     expect(fake.subscriptions).toHaveLength(2);
@@ -197,7 +211,8 @@ describe('LOG-010: live events', () => {
   it('listens from INFO at first and again with the lowest chosen severity after a filter change', async () => {
     await show();
     expect(fake.subscriptions).toEqual([{ operation: 'EventAdded', variables: { minSeverity: 'INFO' } }]);
-    pick('Severity', 'Error');
+    chip('Info');
+    chip('Warning');
     await settle();
     expect(fake.subscriptions.at(-1)).toEqual({ operation: 'EventAdded', variables: { minSeverity: 'ERROR' } });
     expect(fake.listeners('EventAdded')).toBe(1);
@@ -205,7 +220,7 @@ describe('LOG-010: live events', () => {
 
   it('judges each live event by the clock at that time', async () => {
     await show();
-    choose('Time', '1h');
+    within('1h');
     await settle();
     await push(event('e5', 30));
     expect(ids()).toContain('message e5');

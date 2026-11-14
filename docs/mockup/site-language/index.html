@@ -656,6 +656,244 @@ p.dl-group { margin-top:18px; }
   .dl-row:not(.s-row-up) .c-meta > span:last-child { display:inline; }
   .dl-tiles { grid-template-columns:1fr; }
 }
+
+/* ---------- Running now (the bar's foot, above the hub) ---------- */
+.running { display:flex; flex-direction:column; gap:2px; padding-bottom:6px; }
+.running .caps { padding:4px 10px 6px; }
+.running a { display:flex; align-items:center; gap:9px; min-height:30px; padding:0 10px; border-radius:var(--radius-md); font-size:var(--text-xs); color:var(--text-secondary); }
+.running a:hover { background:var(--surface-hover); color:var(--text); }
+.running .mk { position:relative; display:inline-flex; color:var(--accent); font-size:15px; }
+.running .mk i { position:absolute; top:-3px; right:-3px; width:7px; height:7px; border-radius:999px; background:var(--up); border:1px solid var(--surface-sunken); animation:breathe 2.4s ease-in-out infinite; }
+.running b { font-weight:var(--weight-regular); color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.running .d { margin-left:auto; color:var(--text-tertiary); white-space:nowrap; font-variant-numeric:tabular-nums; }
+@keyframes breathe { 50% { opacity:.35; } }
+@media (max-width:767px) { .running { display:none; } }
+@media (prefers-reduced-motion: reduce) { .running .mk i { animation:none; } }
+
+/* ---------- Projects ---------- */
+.projects-list { display:flex; flex-direction:column; gap:40px; margin-top:32px; }
+.project-name { display:flex; align-items:center; gap:11px; min-height:var(--control-md); font-size:var(--text-md); font-weight:var(--weight-medium); color:var(--text); }
+.project-name > iconify-icon:first-child { color:var(--accent); }
+.project-name .go { color:var(--text-quiet); transition:transform .25s var(--ease-enter); }
+.project-name:hover .go { transform:translateX(4px); color:var(--text-tertiary); }
+.project-name .n { margin-left:auto; font-size:var(--text-sm); font-weight:var(--weight-regular); color:var(--text-tertiary); }
+.prows { list-style:none; border-bottom:1px solid var(--border-subtle); }
+.prows + .prows { margin-top:12px; }
+.prows li { display:flex; align-items:center; flex-wrap:wrap; gap:4px 14px; min-height:44px; padding:6px 4px; border-top:1px solid var(--border-subtle); }
+.prows .mk { display:inline-flex; color:var(--text-tertiary); font-size:16px; }
+.prows .nm { flex:1; min-width:0; font-family:var(--font-mono); font-size:var(--text-sm); overflow-wrap:anywhere; }
+.prows .kd { font-size:var(--text-sm); }
+.prows .st { font-size:var(--text-sm); color:var(--text-tertiary); white-space:nowrap; }
+.prows .st.ok { color:var(--up); }
+.prows .st.prop { color:var(--warning); }
+.prows .st.gone { color:var(--down-text); }
+.prows .sign { flex:1; min-width:0; font-family:var(--font-mono); font-size:var(--text-xs); color:var(--text-tertiary); }
+.prows li.left { opacity:.62; }
+.project-body { display:grid; grid-template-columns:minmax(0,1fr) 18rem; gap:48px; margin-top:32px; }
+.project-body .section:first-child { margin-top:0; }
+.project-body aside .kv { grid-template-columns:7.5rem 1fr; font-size:var(--text-sm); }
+.lede { font-size:var(--text-sm); color:var(--text-tertiary); margin:-6px 0 14px; }
+@media (max-width:1100px) { .project-body { grid-template-columns:1fr; } }
+
+/* ---------- Extensions and integrations ---------- */
+.setting.off > div:first-child { color:var(--text-tertiary); }
+.setting .always { font-size:var(--text-sm); color:var(--text-tertiary); }
+.setting .soon { font-size:var(--text-xs); color:var(--text-quiet); border:1px solid var(--border-subtle); border-radius:999px; padding:2px 8px; }
+.ext-more { display:flex; align-items:center; gap:8px; width:100%; padding:12px 4px; border:0; border-bottom:1px solid var(--border-subtle); background:none; color:var(--text-tertiary); font-size:var(--text-sm); cursor:pointer; }
+.ext-more:hover { color:var(--text); }
+.account { border-bottom:1px solid var(--border-subtle); padding:14px 4px; }
+.account-top { display:flex; align-items:flex-start; gap:12px; flex-wrap:wrap; }
+.account-top .who { flex:1; min-width:14rem; }
+.account-top .who b { font-weight:var(--weight-regular); }
+.account-top .who p { font-size:var(--text-sm); color:var(--text-tertiary); margin-top:2px; }
+.account-top .acts { display:flex; gap:4px; }
+.health { display:inline-flex; align-items:center; gap:6px; font-size:var(--text-sm); margin-left:10px; }
+.health .dot { width:7px; height:7px; border-radius:999px; background:currentColor; }
+.syncs { margin-top:10px; }
+.syncs summary { display:inline-flex; align-items:center; gap:6px; font-size:var(--text-sm); color:var(--text-tertiary); cursor:pointer; list-style:none; }
+.syncs summary::-webkit-details-marker { display:none; }
+.syncs summary iconify-icon { transition:transform .2s var(--ease-enter); }
+.syncs[open] summary iconify-icon { transform:rotate(90deg); }
+.syncs ol { list-style:none; margin-top:10px; border-top:1px solid var(--border-subtle); }
+.syncs li { display:grid; grid-template-columns:6.5rem 4rem 1fr auto; gap:12px; align-items:center; padding:8px 4px; border-bottom:1px solid var(--border-subtle); font-size:var(--text-sm); color:var(--text-secondary); }
+.syncs .counts { color:var(--text-tertiary); }
+.syncs .when { color:var(--text-tertiary); text-align:right; font-variant-numeric:tabular-nums; }
+.syncs .err { grid-column:1 / -1; color:var(--down-text); font-size:var(--text-xs); }
+@media (max-width:767px) { .syncs li { grid-template-columns:1fr auto; } .syncs .counts { grid-column:1 / -1; } }
+
+/* ---------- Dialog (Connect GitHub) ---------- */
+.scrim { position:fixed; inset:0; z-index:40; display:grid; place-items:center; padding:16px; background:rgba(10,12,16,.55); }
+.scrim[hidden] { display:none; }
+.dialog { width:min(34rem, 100%); max-height:calc(100vh - 32px); overflow:auto; border-radius:var(--radius-md); padding:24px; }
+.dialog h2 { display:flex; align-items:center; gap:10px; font-size:var(--text-lg); font-weight:var(--weight-medium); }
+.dialog h2 iconify-icon { color:var(--accent); }
+.dialog > p { margin-top:8px; font-size:var(--text-sm); color:var(--text-secondary); }
+.dialog ol.steps { margin:16px 0 4px; padding-left:20px; font-size:var(--text-sm); color:var(--text-tertiary); display:flex; flex-direction:column; gap:4px; }
+.dialog form { display:flex; flex-direction:column; gap:14px; margin-top:20px; }
+.dialog .two { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.dialog textarea { min-height:6.5rem; resize:vertical; border:1px solid var(--border-strong); border-radius:var(--radius-md); background:var(--surface-base); padding:8px 10px; font-family:var(--font-mono); font-size:var(--text-xs); color:var(--text); -webkit-text-security:disc; }
+.dialog small { font-size:var(--text-xs); color:var(--text-tertiary); }
+.dialog .foot { display:flex; justify-content:flex-end; gap:8px; margin-top:8px; }
+@media (max-width:767px) { .dialog .two { grid-template-columns:1fr; } }
+
+/* ---------- Projects: three layouts ---------- */
+.pj-tally { margin-top:10px; font-size:var(--text-sm); color:var(--text-tertiary); }
+.pj-tally b { font-weight:var(--weight-regular); color:var(--text-secondary); }
+.pj-tally .s-down, .pj-tally .s-warning { font-weight:var(--weight-regular); }
+.pst { display:inline-flex; align-items:center; gap:7px; font-size:var(--text-sm); white-space:nowrap; }
+.pst .dot { width:7px; height:7px; border-radius:999px; background:currentColor; }
+.pst.s-live .dot { animation:breathe 2.4s ease-in-out infinite; }
+.s-live { color:var(--accent); } .s-idle { color:var(--text-tertiary); }
+.runs-on { display:flex; flex-wrap:wrap; gap:4px 12px; min-width:0; font-size:var(--text-sm); color:var(--text-secondary); }
+.runs-on span { display:inline-flex; align-items:center; gap:5px; white-space:nowrap; }
+.runs-on iconify-icon { color:var(--text-tertiary); font-size:14px; }
+.runs-on a { color:var(--text-secondary); text-decoration:underline; text-decoration-color:var(--border-strong); text-underline-offset:3px; }
+.runs-on a:hover { color:var(--text); }
+.runs-on .prop { color:var(--warning); }
+.runs-on .none { color:var(--text-quiet); }
+.deploy { display:flex; flex-direction:column; gap:2px; min-width:0; font-size:var(--text-sm); }
+.deploy .msg { color:var(--text-secondary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.deploy .meta { color:var(--text-tertiary); font-size:var(--text-xs); white-space:nowrap; }
+.deploy .meta .mono { color:var(--text-tertiary); }
+.pj-name { display:flex; flex-direction:column; gap:2px; min-width:0; }
+.pj-name a { display:inline-flex; align-items:center; gap:8px; font-weight:var(--weight-medium); color:var(--text); }
+.pj-name a iconify-icon { color:var(--accent); }
+.pj-name .repo { font-family:var(--font-mono); font-size:var(--text-xs); color:var(--text-tertiary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+/* tiles */
+.pj-tiles { display:grid; grid-template-columns:repeat(auto-fill, minmax(19rem,1fr)); gap:12px; margin-top:12px; }
+.pj-tile { display:flex; flex-direction:column; gap:12px; padding:16px; border:1px solid var(--border-subtle); border-radius:var(--radius-md); cursor:pointer; transition:border-color .15s var(--ease-enter); }
+.pj-tile:hover { border-color:var(--border-strong); }
+.pj-tile.s-row-down { box-shadow:inset 2px 0 0 var(--down); }
+.pj-tile.s-row-warning { box-shadow:inset 2px 0 0 var(--warning); }
+.pj-tile .top { display:flex; align-items:flex-start; gap:10px; }
+.pj-tile .top .pst { margin-left:auto; }
+.pj-tile .history { display:flex; align-items:end; gap:3px; height:22px; }
+.pj-tile .history i { flex:1; height:100%; border-radius:1px; background:var(--up); opacity:.55; }
+.pj-tile .history i.f { background:var(--down); opacity:.9; }
+.pj-tile .history i.b { background:var(--accent); opacity:.9; }
+.pj-tile .history i.n { background:var(--border-subtle); opacity:1; }
+.pj-tile .foot { display:flex; justify-content:space-between; font-size:var(--text-xs); color:var(--text-tertiary); }
+.pj-tile .why { font-size:var(--text-sm); color:var(--text-secondary); }
+
+/* ---------- Project page tabs ---------- */
+#screen-project .pt { display:none; }
+#screen-project[data-pt="overview"] .pt-overview, #screen-project[data-pt="work"] .pt-work, #screen-project[data-pt="code"] .pt-code, #screen-project[data-pt="history"] .pt-history { display:block; }
+#screen-project[data-pt="overview"] .pt-overview { display:grid; }
+.tab-n { margin-left:4px; padding:0 6px; border-radius:999px; background:var(--surface-raised); font-size:var(--text-xs); color:var(--text-secondary); }
+.dev-link { color:var(--text); text-decoration:underline; text-decoration-color:var(--border-strong); text-underline-offset:3px; }
+.deploys { display:flex; align-items:center; gap:14px; margin-top:12px; }
+.deploys .history { display:flex; gap:3px; flex:1; height:18px; }
+.deploys .history i { flex:1; border-radius:1px; background:var(--up); opacity:.55; }
+.deploys .history i.f { background:var(--down); opacity:.9; }
+.ck { flex:none; font-size:15px; }
+.ck.ok { color:var(--up); } .ck.fail { color:var(--down-text); } .ck.run { color:var(--accent); } .ck.open { color:var(--text-tertiary); }
+.needs li { gap:10px; }
+.needs .kd { flex:1; }
+.needs .inline-link, .tb-reason .inline-link { display:inline-flex; align-items:center; gap:4px; color:var(--accent); font-size:var(--text-sm); }
+.synced { margin-left:auto; font-size:var(--text-xs); color:var(--text-quiet); }
+.banner { display:flex; align-items:center; flex-wrap:wrap; gap:10px 12px; margin-top:24px; padding:12px 14px; border-radius:var(--radius-md); border:1px solid var(--border-subtle); box-shadow:inset 2px 0 0 var(--down); font-size:var(--text-sm); color:var(--text-secondary); }
+.banner > iconify-icon { color:var(--down-text); font-size:16px; }
+.banner > span { flex:1; min-width:16rem; }
+.banner b { font-weight:var(--weight-medium); color:var(--text); }
+.pt-work .section:first-of-type { margin-top:32px; }
+.w-tools { display:flex; align-items:center; gap:10px; margin-bottom:10px; font-size:var(--text-sm); color:var(--text-tertiary); }
+.w-tools > :last-child { margin-left:auto; }
+.w-row { gap:12px !important; }
+.w-row input[type=checkbox] { accent-color:var(--accent); width:15px; height:15px; }
+.w-row.sel { background:var(--accent-tint); }
+.w-main { display:flex; flex-direction:column; gap:2px; flex:1; min-width:0; }
+.w-main a { color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.w-main a:hover { text-decoration:underline; text-underline-offset:3px; }
+.w-sub { font-size:var(--text-xs); color:var(--text-tertiary); }
+.w-state { font-size:var(--text-sm); white-space:nowrap; }
+.w-state.ok { color:var(--up); } .w-state.bad { color:var(--down-text); } .w-state.run { color:var(--text-tertiary); font-variant-numeric:tabular-nums; }
+.w-meta { display:inline-flex; align-items:center; gap:4px; min-width:3.5rem; font-size:var(--text-xs); color:var(--text-tertiary); }
+.tag { display:inline-flex; align-items:center; gap:5px; padding:1px 8px; border:1px solid var(--border-subtle); border-radius:999px; font-size:var(--text-xs); color:var(--text-secondary); white-space:nowrap; }
+.tag.dep { color:var(--accent); border-color:transparent; background:var(--accent-tint); }
+/* code */
+.code-bar { display:flex; align-items:center; flex-wrap:wrap; gap:10px 14px; margin-top:24px; }
+.code-bar .path { color:var(--text-secondary); font-size:var(--text-sm); }
+.code-bar .last { font-size:var(--text-sm); color:var(--text-tertiary); }
+.code-bar .last a { color:var(--text-secondary); }
+.code-bar .sm-search { margin-left:auto; width:13rem; height:var(--control-sm); }
+.code-split { display:grid; grid-template-columns:15rem minmax(0,1fr); margin-top:14px; border:1px solid var(--border-subtle); border-radius:var(--radius-md); overflow:hidden; }
+.tree { list-style:none; padding:8px 6px; border-right:1px solid var(--border-subtle); background:var(--surface-sunken); font-size:var(--text-sm); }
+.tree li { display:flex; align-items:center; gap:6px; height:28px; padding-left:calc(6px + var(--d) * 16px); border-radius:var(--radius-sm); color:var(--text-secondary); cursor:pointer; white-space:nowrap; }
+.tree li:hover { background:var(--surface-hover); color:var(--text); }
+.tree li[aria-current] { background:var(--surface-hover); color:var(--text); }
+.tree li iconify-icon { color:var(--text-tertiary); flex:none; }
+.tree .tw { width:12px; font-size:12px; }
+.file-head { display:flex; align-items:center; gap:10px; padding:8px 12px; border-bottom:1px solid var(--border-subtle); font-size:var(--text-sm); color:var(--text-secondary); }
+.file-head .num { color:var(--text-tertiary); font-size:var(--text-xs); }
+.file-head .seg { height:var(--control-sm); }
+.lines { list-style:none; padding:10px 0; font-family:var(--font-mono); font-size:var(--text-sm); line-height:1.7; overflow-x:auto; }
+.lines li { display:flex; }
+.lines .ln { width:3.5rem; flex:none; padding-right:16px; text-align:right; color:var(--text-quiet); user-select:none; }
+.lines code { font:inherit; color:var(--text); white-space:pre; }
+/* history */
+.pt-history .hist { margin-top:14px; border-bottom:0; }
+.h-day { padding:18px 4px 8px; border-top:0 !important; min-height:0 !important; }
+.h-row { display:grid !important; grid-template-columns:18px minmax(0,1fr) auto 5rem auto; gap:12px !important; }
+.h-row .sha { font-size:var(--text-xs); color:var(--text-tertiary); }
+.h-acts { display:flex; gap:2px; }
+@media (max-width:1100px) { .code-split { grid-template-columns:1fr; } .tree { border-right:0; border-bottom:1px solid var(--border-subtle); max-height:14rem; overflow:auto; } }
+@media (max-width:767px) { .h-row { grid-template-columns:18px minmax(0,1fr) auto; } .h-row .tag, .h-row .h-acts { display:none; } .code-bar .sm-search { width:100%; margin-left:0; } .w-meta { display:none; } }
+
+/* ---------- Logs panel ---------- */
+.logs-clearance { height:46vh; }
+.logs { position:fixed; left:232px; right:0; bottom:0; z-index:8; display:flex; flex-direction:column; height:44vh; background:var(--surface-raised); border-top:1px solid var(--border-strong); box-shadow:0 -10px 30px rgba(0,0,0,.28); transition:height .32s var(--ease-enter); }
+.logs[data-open="false"] { height:46px; }
+.logs-edge { position:absolute; top:-4px; left:0; right:0; height:8px; cursor:row-resize; }
+.logs-edge::after { content:""; position:absolute; left:50%; top:5px; width:36px; height:3px; margin-left:-18px; border-radius:999px; background:var(--border-strong); opacity:0; transition:opacity .15s; }
+.logs-edge:hover::after, .logs-edge:focus-visible::after { opacity:1; }
+.logs-head { display:flex; align-items:center; gap:12px; height:46px; flex:none; padding:0 16px 0 10px; }
+.logs-head .btn iconify-icon { transition:transform .25s var(--ease-enter); }
+.logs[data-open="false"] .logs-head .btn iconify-icon { transform:rotate(180deg); }
+.lg-live { display:inline-flex; align-items:center; gap:6px; font-size:var(--text-xs); color:var(--text-tertiary); }
+.lg-live .dot { width:6px; height:6px; border-radius:999px; background:var(--up); animation:breathe 2.4s ease-in-out infinite; }
+.lg-ticker { display:none; align-items:baseline; gap:10px; min-width:0; flex:1; font-size:var(--text-sm); }
+.lg-ticker time { font-size:var(--text-xs); color:var(--text-tertiary); }
+.lg-ticker .t { color:var(--text-secondary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.logs[data-open="false"] .lg-ticker { display:flex; }
+.lg-tally { display:flex; align-items:center; gap:4px; margin-left:auto; font-size:var(--text-xs); }
+.lg-count { display:inline-flex; align-items:center; gap:6px; height:24px; padding:0 8px; border:0; border-radius:999px; background:none; font-size:var(--text-xs); cursor:pointer; }
+.lg-count:hover { background:var(--surface-hover); }
+.lg-count .dot, .lg-sevs .dot, .lg-sev .dot { width:7px; height:7px; border-radius:999px; background:currentColor; flex:none; }
+.logs-body { display:flex; flex-direction:column; flex:1; min-height:0; padding:0 16px; }
+.logs[data-open="false"] .logs-body { visibility:hidden; }
+.lg-filters { display:flex; align-items:center; flex-wrap:wrap; gap:8px 10px; padding-bottom:10px; border-bottom:1px solid var(--border-subtle); }
+.lg-filters .seg { height:var(--control-sm); }
+.lg-sevs { display:flex; gap:4px; }
+.chip { display:inline-flex; align-items:center; gap:6px; height:var(--control-sm); padding:0 10px; border:1px solid var(--border-subtle); border-radius:999px; background:none; color:var(--text-tertiary); font-size:var(--text-sm); cursor:pointer; }
+.chip[aria-pressed="true"] { border-color:var(--border-strong); background:var(--surface-overlay); color:var(--text); }
+.chip .n { color:var(--text-quiet); font-variant-numeric:tabular-nums; }
+.chip .dot.s-down { color:var(--down); } .chip .dot.s-warning { color:var(--warning); } .chip .dot.s-idle { color:var(--text-quiet); }
+.lg-pick { background:none; border:1px solid var(--border-subtle); color:var(--text-secondary); }
+.lg-clear { margin-left:auto; font-size:var(--text-xs); }
+.lg-scroll { position:relative; flex:1; min-height:0; overflow:auto; overscroll-behavior:contain; }
+.lg-new { position:sticky; top:8px; z-index:2; display:flex; align-items:center; gap:6px; margin:0 auto -30px; height:26px; padding:0 12px; border:0; border-radius:999px; background:var(--accent); color:var(--on-accent); font-size:var(--text-xs); font-weight:var(--weight-medium); cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,.3); }
+.lg-rows { list-style:none; }
+.lg-day { position:sticky; top:0; z-index:1; padding:12px 6px 6px; background:var(--surface-raised); border-bottom:1px solid var(--border-subtle); }
+.lg-row { display:grid; grid-template-columns:5.5rem 6rem 6.5rem 7.5rem minmax(0,1fr); align-items:baseline; gap:0 16px; padding:7px 6px; border-bottom:1px solid var(--border-subtle); font-size:var(--text-sm); }
+.lg-row:hover { background:var(--surface-hover); }
+.lg-row.s-row-down { box-shadow:inset 2px 0 0 var(--down); }
+.lg-row.s-row-warning { box-shadow:inset 2px 0 0 var(--warning); }
+.lg-row time { font-size:var(--text-xs); color:var(--text-tertiary); }
+.lg-sev { display:inline-flex; align-items:center; gap:6px; }
+.lg-sev.s-info { color:var(--text-tertiary); }
+.lg-src { display:inline-flex; align-items:center; gap:6px; color:var(--text-tertiary); }
+.lg-src iconify-icon { font-size:13px; color:var(--text-quiet); }
+.lg-dev a { color:var(--text-secondary); }
+.lg-dev a:hover { color:var(--text); text-decoration:underline; text-underline-offset:3px; }
+.lg-msg { color:var(--text); min-width:0; }
+.lg-more { display:flex; justify-content:center; padding:12px 0 16px; }
+@media (max-width:1100px) {
+  .lg-row { grid-template-columns:5rem minmax(0,1fr); grid-template-areas:"time msg" "meta meta"; }
+  .lg-row time { grid-area:time; } .lg-row .lg-msg { grid-area:msg; }
+  .lg-row .lg-sev, .lg-row .lg-src, .lg-row .lg-dev { display:none; }
+  .lg-tally .quiet { display:none; }
+}
+@media (max-width:767px) { .logs { left:0; bottom:58px; } .lg-ticker { display:none !important; } .lg-clear { display:none; } }
 </style>
 </head>
 <body>
@@ -686,10 +924,15 @@ p.dl-group { margin-top:18px; }
     <div class="brand"><svg width="22" height="22" viewBox="115 115 410 410" aria-hidden="true" data-logo></svg><b>Anima</b><button class="btn ghost icon" aria-label="Collapse navigation"><iconify-icon icon="carbon:side-panel-close"></iconify-icon></button></div>
     <ul class="nav">
       <li><a href="#devices" data-nav="devices" title="Devices"><iconify-icon icon="carbon:bare-metal-server"></iconify-icon>Devices<span class="count num">12</span></a></li>
-      <li><a href="#sessions" data-nav="sessions" title="Live sessions"><iconify-icon icon="carbon:screen"></iconify-icon>Live sessions<span class="count num">2</span></a></li>
-      <li><a href="#devices" title="Builds"><iconify-icon icon="carbon:build-tool"></iconify-icon>Builds</a></li>
+      <li><a href="#projects" data-nav="projects" title="Projects"><iconify-icon icon="carbon:folder"></iconify-icon>Projects<span class="count num">7</span></a></li>
     </ul>
     <div class="foot">
+      <!-- Running now: what is in progress, at the foot of the bar above the hub; it takes no room when nothing runs. -->
+      <section class="running" aria-label="Running now">
+        <span class="caps">Running now</span>
+        <a href="#project" title="anima-site · Building · 2 min"><span class="mk"><iconify-icon icon="carbon:build-tool"></iconify-icon><i></i></span><b>anima-site</b><span class="d">Building · 2 min</span></a>
+        <a href="#device" title="atlas · RDP"><span class="mk"><iconify-icon icon="carbon:screen"></iconify-icon><i></i></span><b>atlas</b><span class="d">RDP</span></a>
+      </section>
       <div class="hub"><span class="status s-up"><span class="dot"></span></span><span>Connected</span></div>
       <ul class="nav"><li><a href="#settings" data-nav="settings" title="Settings"><iconify-icon icon="carbon:settings"></iconify-icon>Settings</a></li></ul>
     </div>
@@ -724,6 +967,34 @@ p.dl-group { margin-top:18px; }
         </div>
       </div>
       <div id="device-list"></div>
+      <div class="logs-clearance" aria-hidden="true"></div>
+    <!-- ======================= Logs panel (Devices page, LOG-009 to LOG-011) ======================= -->
+    <!-- One opaque layer at the foot of the page (MAT-009). Collapsed, it is one line: the label, Live, the newest event and
+         the counts that need you. Open, the filters are one row and the events are hairline rows, newest first, by day. -->
+    <section class="logs" id="logs" data-open="true" aria-labelledby="logs-title">
+      <div class="logs-edge" role="separator" aria-label="Resize logs panel" tabindex="0"></div>
+      <header class="logs-head">
+        <button class="btn ghost icon" aria-label="Collapse logs" aria-expanded="true" onclick="const l=document.getElementById('logs');l.dataset.open=l.dataset.open==='true'?'false':'true';this.setAttribute('aria-expanded',l.dataset.open)"><iconify-icon icon="carbon:chevron-down"></iconify-icon></button>
+        <div class="label" id="logs-title"><iconify-icon icon="carbon:catalog"></iconify-icon><span class="rule"></span>Logs</div>
+        <span class="lg-live"><span class="dot"></span>Live</span>
+        <span class="lg-ticker"><time class="mono">14:02:11</time><span class="s-down">Error</span><span class="t">pi-garage · HTTP check on :8123 refused the connection.</span></span>
+        <span class="lg-tally"><button class="lg-count s-down" title="Show errors only"><span class="dot"></span>2 errors</button><button class="lg-count s-warning" title="Show warnings only"><span class="dot"></span>3 warnings</button><span class="quiet">in 24 h</span></span>
+      </header>
+      <div class="logs-body">
+        <div class="lg-filters" role="group" aria-label="Log filters">
+          <div class="seg" role="radiogroup" aria-label="Time"><button>1 h</button><button aria-pressed="true">24 h</button><button>7 d</button><button>All</button></div>
+          <div class="lg-sevs" role="group" aria-label="Severity"><button class="chip" aria-pressed="true"><span class="dot s-down"></span>Error<span class="n">2</span></button><button class="chip" aria-pressed="true"><span class="dot s-warning"></span>Warning<span class="n">3</span></button><button class="chip" aria-pressed="true"><span class="dot s-idle"></span>Info<span class="n">5</span></button></div>
+          <button class="btn sm lg-pick"><iconify-icon icon="carbon:filter"></iconify-icon>All sources<iconify-icon icon="carbon:chevron-down"></iconify-icon></button>
+          <button class="btn sm lg-pick"><iconify-icon icon="carbon:bare-metal-server"></iconify-icon>All devices<iconify-icon icon="carbon:chevron-down"></iconify-icon></button>
+          <span class="lg-clear quiet">10 events</span>
+        </div>
+        <div class="lg-scroll" tabindex="0" role="region" aria-label="Log list">
+          <button class="lg-new"><iconify-icon icon="carbon:arrow-up"></iconify-icon>3 new</button>
+          <ol class="lg-rows"><li class="lg-day caps">Today</li><li class="lg-row s-row-down"><time class="mono">14:02:11</time><span class="lg-sev s-down"><span class="dot"></span>Error</span><span class="lg-src"><iconify-icon icon="carbon:task-complete"></iconify-icon>Check</span><span class="lg-dev"><a href="#device">pi-garage</a></span><span class="lg-msg">HTTP check on :8123 refused the connection.</span></li><li class="lg-row s-row-warning"><time class="mono">14:01:40</time><span class="lg-sev s-warning"><span class="dot"></span>Warning</span><span class="lg-src"><iconify-icon icon="carbon:security"></iconify-icon>Access</span><span class="lg-dev"><a href="#device">nas</a></span><span class="lg-msg">The host key changed since the last session. Review it before you connect.</span></li><li class="lg-row s-row-info"><time class="mono">13:58:02</time><span class="lg-sev s-info"><span class="dot"></span>Info</span><span class="lg-src"><iconify-icon icon="carbon:recently-viewed"></iconify-icon>Session</span><span class="lg-dev"><a href="#device">atlas</a></span><span class="lg-msg">RDP session started by you from studio-mac.</span></li><li class="lg-row s-row-info"><time class="mono">13:41:19</time><span class="lg-sev s-info"><span class="dot"></span>Info</span><span class="lg-src"><iconify-icon icon="carbon:bare-metal-server"></iconify-icon>Device</span><span class="lg-dev"><a href="#device">pop-os</a></span><span class="lg-msg">Metrics source set to Agent.</span></li><li class="lg-row s-row-down"><time class="mono">13:12:55</time><span class="lg-sev s-down"><span class="dot"></span>Error</span><span class="lg-src"><iconify-icon icon="carbon:task-complete"></iconify-icon>Check</span><span class="lg-dev"><a href="#device">pi-garage</a></span><span class="lg-msg">Ping check failed 3 times in a row; the device is Down.</span></li><li class="lg-row s-row-warning"><time class="mono">12:30:07</time><span class="lg-sev s-warning"><span class="dot"></span>Warning</span><span class="lg-src"><iconify-icon icon="carbon:certificate"></iconify-icon>Check</span><span class="lg-dev"><a href="#device">pop-os</a></span><span class="lg-msg">The TLS certificate of Grafana expires in 9 days.</span></li><li class="lg-row s-row-info"><time class="mono">11:02:44</time><span class="lg-sev s-info"><span class="dot"></span>Info</span><span class="lg-src"><iconify-icon icon="carbon:network-3"></iconify-icon>Hub</span><span class="lg-dev"><span class="quiet">—</span></span><span class="lg-msg">The hub started (0.9.2).</span></li><li class="lg-row s-row-info"><time class="mono">09:15:30</time><span class="lg-sev s-info"><span class="dot"></span>Info</span><span class="lg-src"><iconify-icon icon="carbon:vpn"></iconify-icon>VPN</span><span class="lg-dev"><a href="#device">k3s-b</a></span><span class="lg-msg">k3s-b joined the VPN as 100.64.0.12.</span></li><li class="lg-day caps">Yesterday</li><li class="lg-row s-row-warning"><time class="mono">23:48:12</time><span class="lg-sev s-warning"><span class="dot"></span>Warning</span><span class="lg-src"><iconify-icon icon="carbon:task-complete"></iconify-icon>Check</span><span class="lg-dev"><a href="#device">win-gaming</a></span><span class="lg-msg">Every check is paused.</span></li><li class="lg-row s-row-info"><time class="mono">18:20:03</time><span class="lg-sev s-info"><span class="dot"></span>Info</span><span class="lg-src"><iconify-icon icon="carbon:recently-viewed"></iconify-icon>Session</span><span class="lg-dev"><a href="#device">workbench</a></span><span class="lg-msg">SSH session ended after 42 min.</span></li></ol>
+          <div class="lg-more"><button class="btn ghost sm">Load older</button></div>
+        </div>
+      </div>
+    </section>
     </section>
 
     <!-- ======================= Device ======================= -->
@@ -920,6 +1191,118 @@ p.dl-group { margin-top:18px; }
       </div>
     </section>
 
+
+    <!-- ======================= Projects ======================= -->
+    <!-- Projects as tiles, problems first (operator's pick of three layouts, 2026-11-13): each tile is the project's state,
+         where it runs, its last deploy and the last 20 deploys. Deploys, builds and the device a server resource lives on are not sent by the hub yet; they are drawn as they would read. -->
+    <section class="screen frame" id="screen-projects" hidden>
+      <div class="resolve">
+        <div class="label"><iconify-icon icon="carbon:folder"></iconify-icon><span class="rule"></span>From GitHub, through Integrations</div>
+        <div class="page-head"><div><h1 class="display">Projects</h1></div>
+        </div>
+        <p class="pj-tally" id="pj-tally"></p>
+      </div>
+      <div id="pj-body" class="resolve"></div>
+    </section>
+
+    <!-- ======================= Project ======================= -->
+    <!-- A project's page: the GitHub work of HQ's project pages, laid out as Anima's detail pages. One bar (name, state,
+         repository, New issue, Open in GitHub, the failing-branch reason) over four tabs: Overview, Work, Code, History. -->
+    <section class="screen frame" id="screen-project" data-pt="overview" hidden>
+      <header class="detail-bar resolve">
+        <div class="tb">
+          <nav class="crumb" aria-label="Breadcrumb"><a href="#projects">Projects</a><span class="slash">/</span><iconify-icon icon="carbon:folder"></iconify-icon><h1>hub-dashboard</h1></nav>
+          <span class="status s-down"><span class="dot"></span>main failing</span>
+          <span class="mono quiet-mono">acme/hub-dashboard</span>
+          <div class="tb-actions"><a class="btn primary" href="#project/issue"><iconify-icon icon="carbon:add"></iconify-icon>New issue</a><a class="btn ghost" href="#project"><iconify-icon icon="simple-icons:github"></iconify-icon>Open in GitHub</a></div>
+        </div>
+        <div class="tb-fold"><div>
+          <p class="tb-reason"><span class="s-down"><iconify-icon icon="carbon:close-filled"></iconify-icon></span><span><span class="t">CI failed on main</span> at <span class="mono">4be91c0</span> “Pin traefik to 3.1”: the job test (ubuntu) failed.</span><a href="#project/work" class="inline-link">Re-run failed jobs<iconify-icon icon="carbon:arrow-right"></iconify-icon></a></p>
+        </div></div>
+        <nav class="tabs" role="tablist">
+          <a role="tab" data-pt="overview" href="#project"><iconify-icon icon="carbon:dashboard"></iconify-icon>Overview</a>
+          <a role="tab" data-pt="work" href="#project/work"><iconify-icon icon="carbon:task-complete"></iconify-icon>Work<span class="tab-n num">8</span></a>
+          <a role="tab" data-pt="code" href="#project/code"><iconify-icon icon="carbon:code"></iconify-icon>Code</a>
+          <a role="tab" data-pt="history" href="#project/history"><iconify-icon icon="carbon:recently-viewed"></iconify-icon>History</a>
+        </nav>
+      </header>
+
+      <!-- Overview: where it runs and how it is doing, what needs you, and the facts. -->
+      <div class="pt pt-overview project-body resolve">
+        <div>
+          <div class="section"><div class="label"><iconify-icon icon="carbon:cloud-upload"></iconify-icon><span class="rule"></span>Deployments</div>
+            <ul class="prows">
+              <li><span class="mk"><iconify-icon icon="carbon:bare-metal-server"></iconify-icon></span><span class="kd">Production · <a class="dev-link" href="#device">edge-vps</a></span><span class="st ok">Running</span><span class="sign">e02d7aa Show sync runs on the account row · 2 h ago</span><a class="btn ghost sm" href="#project">dash.acme.dev<iconify-icon icon="carbon:launch"></iconify-icon></a></li>
+              <li><span class="mk"><iconify-icon icon="simple-icons:vercel"></iconify-icon></span><span class="kd">Preview · Vercel</span><span class="st prop">Found in the repository</span><span class="sign">vercel.json</span><button class="btn sm"><iconify-icon icon="carbon:checkmark"></iconify-icon>Confirm</button></li>
+            </ul>
+            <div class="deploys"><span class="caps">Last 20 deploys · production</span><div class="history"><i></i><i></i><i></i><i></i><i></i><i></i><i class="f"></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="f"></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+          </div>
+          <div class="section"><div class="label"><iconify-icon icon="carbon:earth"></iconify-icon><span class="rule"></span>Domains</div>
+            <dl class="kv"><dt><iconify-icon icon="carbon:link"></iconify-icon><span class="mono">dash.acme.dev</span></dt><dd><span class="s-up">99.98%</span> up, 30 days · TLS expires in 61 days</dd></dl>
+          </div>
+          <div class="section"><div class="label"><iconify-icon icon="carbon:task-complete"></iconify-icon><span class="rule"></span>Needs you</div>
+            <ul class="prows needs">
+              <li><iconify-icon class="ck fail" icon="carbon:close-filled"></iconify-icon><span class="kd">main is failing its checks</span><a class="inline-link" href="#project/work">Work<iconify-icon icon="carbon:arrow-right"></iconify-icon></a></li>
+              <li><iconify-icon class="ck ok" icon="carbon:checkmark-filled"></iconify-icon><span class="kd">2 pull requests are ready to merge</span><a class="inline-link" href="#project/work">Work<iconify-icon icon="carbon:arrow-right"></iconify-icon></a></li>
+              <li><iconify-icon class="ck open" icon="carbon:circle-dash"></iconify-icon><span class="kd">2 issues are assigned to you</span><a class="inline-link" href="#project/work">Work<iconify-icon icon="carbon:arrow-right"></iconify-icon></a></li>
+            </ul>
+          </div>
+        </div>
+        <aside>
+          <div class="section"><div class="label"><iconify-icon icon="carbon:information"></iconify-icon><span class="rule"></span>About</div>
+            <dl class="kv">
+              <dt>Default branch</dt><dd class="mono">main</dd>
+              <dt>Visibility</dt><dd>Private</dd>
+              <dt>Language</dt><dd>TypeScript</dd>
+              <dt>Synced</dt><dd class="num">2 min ago</dd>
+            </dl>
+          </div>
+          <div class="section"><div class="label"><iconify-icon icon="simple-icons:github"></iconify-icon><span class="rule"></span>Repositories</div>
+            <ul class="prows">
+              <li><span class="nm">acme/hub-dashboard</span><span class="st">Imported</span></li>
+              <li><span class="nm">acme/hub-dashboard-infra</span><span class="st">Archived</span></li>
+            </ul>
+          </div>
+        </aside>
+      </div>
+
+      <!-- Work (PRJ-031 to PRJ-035): the failing branch, what runs now, pull requests to merge, issues. -->
+      <div class="pt pt-work resolve">
+        <div class="banner s-down-tint"><iconify-icon icon="carbon:close-filled"></iconify-icon><span><b>main fails its checks.</b> CI on <span class="mono">4be91c0</span> “Pin traefik to 3.1”: test (ubuntu) failed after 2 min 14 s.</span><button class="btn sm">Re-run failed jobs</button><button class="btn ghost sm">Re-run all</button></div>
+        <div class="section"><div class="label"><iconify-icon icon="carbon:play"></iconify-icon><span class="rule"></span>Running now<span class="synced">Synced 2 min ago</span></div>
+          <ul class="prows">
+            <li class="w-row"><iconify-icon class="ck run" icon="carbon:circle-dash" title="Checks running"></iconify-icon><span class="w-main"><a href="#project/work">CI</a><span class="w-sub">#42 · <span class="mono">refactor/hub-types</span> · <span class="mono">a91c3d2</span></span></span><span class="w-state run">1 min 12 s</span><button class="btn ghost sm">Cancel</button></li>
+          </ul>
+          <button class="btn ghost sm" style="margin-top:10px"><iconify-icon icon="carbon:play"></iconify-icon>Run a workflow…</button>
+        </div>
+        <div class="section"><div class="label"><iconify-icon icon="carbon:branch"></iconify-icon><span class="rule"></span>Pull requests<span class="synced">Synced 2 min ago</span></div>
+          <div class="w-tools"><span>2 selected</span><button class="btn primary sm"><iconify-icon icon="carbon:merge"></iconify-icon>Merge 2</button></div>
+          <ul class="prows"><li class="w-row sel"><input type="checkbox" aria-label="Select #44" checked ><iconify-icon class="ck ok" icon="carbon:checkmark-filled" title="Checks passed"></iconify-icon><span class="w-main"><a href="#project/work">Show sync runs on the account row</a><span class="w-sub"><span class="num">#44</span> · <span class="mono">feat/sync-runs</span></span></span><span class="w-state ok">Ready to merge</span></li><li class="w-row sel"><input type="checkbox" aria-label="Select #43" checked ><iconify-icon class="ck ok" icon="carbon:checkmark-filled" title="Checks passed"></iconify-icon><span class="w-main"><a href="#project/work">Bump vite to 6.4</a><span class="w-sub"><span class="num">#43</span> · <span class="mono">renovate/vite</span></span></span><span class="w-state ok">Ready to merge</span></li><li class="w-row"><input type="checkbox" aria-label="Select #42"  disabled><iconify-icon class="ck run" icon="carbon:circle-dash" title="Checks running"></iconify-icon><span class="w-main"><a href="#project/work">Move the hub client to the generated types</a><span class="w-sub"><span class="num">#42</span> · <span class="mono">refactor/hub-types</span></span></span><span class="w-state run">Checks running</span></li><li class="w-row"><input type="checkbox" aria-label="Select #39"  disabled><iconify-icon class="ck fail" icon="carbon:close-filled" title="Checks failed"></iconify-icon><span class="w-main"><a href="#project/work">Dark chart colours</a><span class="w-sub"><span class="num">#39</span> · <span class="mono">feat/chart-dark</span></span></span><span class="w-state bad">Conflict with main</span></li></ul>
+        </div>
+        <div class="section"><div class="label"><iconify-icon icon="carbon:circle-dash"></iconify-icon><span class="rule"></span>Issues<span class="synced">Synced 2 min ago</span></div>
+          <div class="w-tools"><div class="seg"><button aria-pressed="true">Open <span class="n">4</span></button><button>Assigned to you <span class="n">2</span></button><button>Closed</button></div><a class="btn sm" href="#project/issue"><iconify-icon icon="carbon:add"></iconify-icon>New issue</a></div>
+          <ul class="prows"><li class="w-row"><iconify-icon class="ck open" icon="carbon:circle-dash"></iconify-icon><span class="w-main"><a href="#project/work">Grafana panel misses the GPU row</a><span class="w-sub"><span class="num">#47</span> · opened 2 h ago</span></span><span class="tag">bug</span><span class="w-meta"><iconify-icon icon="carbon:user"></iconify-icon>You</span><span class="w-meta"><iconify-icon icon="carbon:chat"></iconify-icon>2</span></li><li class="w-row"><iconify-icon class="ck open" icon="carbon:circle-dash"></iconify-icon><span class="w-main"><a href="#project/work">Add a project map</a><span class="w-sub"><span class="num">#45</span> · opened yesterday</span></span><span class="tag">idea</span><span class="w-meta"></span><span class="w-meta"></span></li><li class="w-row"><iconify-icon class="ck open" icon="carbon:circle-dash"></iconify-icon><span class="w-main"><a href="#project/work">Sync stalls when a repository is renamed</a><span class="w-sub"><span class="num">#41</span> · opened 3 days ago</span></span><span class="tag">bug</span><span class="w-meta"><iconify-icon icon="carbon:user"></iconify-icon>You</span><span class="w-meta"><iconify-icon icon="carbon:chat"></iconify-icon>5</span></li><li class="w-row"><iconify-icon class="ck open" icon="carbon:circle-dash"></iconify-icon><span class="w-main"><a href="#project/work">Docs: how to run the dashboard locally</a><span class="w-sub"><span class="num">#36</span> · opened last week</span></span><span class="tag">docs</span><span class="w-meta"></span><span class="w-meta"><iconify-icon icon="carbon:chat"></iconify-icon>1</span></li></ul>
+        </div>
+      </div>
+
+      <!-- Code: read the repository at any branch or commit; editing stays on GitHub or in an editor. -->
+      <div class="pt pt-code resolve">
+        <div class="code-bar"><button class="btn sm"><iconify-icon icon="carbon:branch"></iconify-icon>main<iconify-icon icon="carbon:chevron-down"></iconify-icon></button><span class="path mono">hub-dashboard / README.md</span><span class="last">Last change <a href="#project/history" class="mono">e02d7aa</a> · 2 h ago</span><span class="input sm-search"><iconify-icon icon="carbon:search"></iconify-icon><input placeholder="Go to file" aria-label="Go to file"><span class="kbd" style="padding-left:0">T</span></span></div>
+        <div class="code-split">
+          <ul class="tree" aria-label="Files"><li style="--d:0"><iconify-icon class="tw" icon="carbon:chevron-right"></iconify-icon><iconify-icon icon="carbon:folder"></iconify-icon>.github</li><li style="--d:0"><iconify-icon class="tw" icon="carbon:chevron-down"></iconify-icon><iconify-icon icon="carbon:folder"></iconify-icon>src</li><li style="--d:1"><iconify-icon class="tw" icon="carbon:chevron-right"></iconify-icon><iconify-icon icon="carbon:folder"></iconify-icon>lib</li><li style="--d:1"><iconify-icon class="tw" icon="carbon:chevron-right"></iconify-icon><iconify-icon icon="carbon:folder"></iconify-icon>routes</li><li style="--d:1"><span class="tw"></span><iconify-icon icon="carbon:document"></iconify-icon>app.html</li><li style="--d:1"><span class="tw"></span><iconify-icon icon="carbon:document"></iconify-icon>hooks.server.ts</li><li style="--d:0"><iconify-icon class="tw" icon="carbon:chevron-right"></iconify-icon><iconify-icon icon="carbon:folder"></iconify-icon>static</li><li style="--d:0"><span class="tw"></span><iconify-icon icon="carbon:document"></iconify-icon>.env.example</li><li style="--d:0"><span class="tw"></span><iconify-icon icon="carbon:document"></iconify-icon>Dockerfile</li><li style="--d:0"><span class="tw"></span><iconify-icon icon="carbon:document"></iconify-icon>compose.yaml</li><li style="--d:0"><span class="tw"></span><iconify-icon icon="carbon:document"></iconify-icon>package.json</li><li aria-current="true" style="--d:0"><span class="tw"></span><iconify-icon icon="carbon:document"></iconify-icon>README.md</li><li style="--d:0"><span class="tw"></span><iconify-icon icon="carbon:document"></iconify-icon>vercel.json</li></ul>
+          <div class="file"><div class="file-head"><iconify-icon icon="carbon:document"></iconify-icon><span>README.md</span><span class="num">15 lines · 412 B</span><span style="margin-left:auto"></span><div class="seg"><button aria-pressed="true">Source</button><button>Preview</button></div><button class="btn ghost icon" aria-label="Copy the file" title="Copy"><iconify-icon icon="carbon:copy"></iconify-icon></button></div>
+            <ol class="lines"><li><span class="ln num">1</span><code># hub-dashboard</code></li><li><span class="ln num">2</span><code></code></li><li><span class="ln num">3</span><code>A small dashboard for the Anima hub: devices, checks and sync runs on one page.</code></li><li><span class="ln num">4</span><code></code></li><li><span class="ln num">5</span><code>## Run it</code></li><li><span class="ln num">6</span><code></code></li><li><span class="ln num">7</span><code>```sh</code></li><li><span class="ln num">8</span><code>bun install</code></li><li><span class="ln num">9</span><code>cp .env.example .env</code></li><li><span class="ln num">10</span><code>bun run dev</code></li><li><span class="ln num">11</span><code>```</code></li><li><span class="ln num">12</span><code></code></li><li><span class="ln num">13</span><code>## Deploy</code></li><li><span class="ln num">14</span><code></code></li><li><span class="ln num">15</span><code>`compose.yaml` runs it on **edge-vps** behind traefik. A push to `main` deploys.</code></li></ol>
+          </div>
+        </div>
+      </div>
+
+      <!-- History: the commits on a branch, with their checks and the deploys they made. -->
+      <div class="pt pt-history resolve">
+        <div class="code-bar"><button class="btn sm"><iconify-icon icon="carbon:branch"></iconify-icon>main<iconify-icon icon="carbon:chevron-down"></iconify-icon></button><span class="last">142 commits · Synced 2 min ago</span><span class="input sm-search"><iconify-icon icon="carbon:search"></iconify-icon><input placeholder="Search commits" aria-label="Search commits"></span></div>
+        <ul class="prows hist"><li class="h-day caps">Today</li><li class="h-row"><iconify-icon class="ck ok" icon="carbon:checkmark-filled" title="Checks passed"></iconify-icon><span class="w-main"><a href="#project/history">Show sync runs on the account row</a><span class="w-sub">You · 2 h ago</span></span><span class="tag dep"><iconify-icon icon="carbon:cloud-upload"></iconify-icon>Deployed to production</span><span class="mono sha">e02d7aa</span><span class="h-acts"><button class="btn ghost icon" aria-label="Browse the code at e02d7aa" title="Browse code at this commit"><iconify-icon icon="carbon:code"></iconify-icon></button><button class="btn ghost icon" aria-label="Copy e02d7aa" title="Copy"><iconify-icon icon="carbon:copy"></iconify-icon></button></span></li><li class="h-row"><iconify-icon class="ck ok" icon="carbon:checkmark-filled" title="Checks passed"></iconify-icon><span class="w-main"><a href="#project/history">Merge pull request #40 from feat/health-words</a><span class="w-sub">You · 3 h ago</span></span><span></span><span class="mono sha">b7741c2</span><span class="h-acts"><button class="btn ghost icon" aria-label="Browse the code at b7741c2" title="Browse code at this commit"><iconify-icon icon="carbon:code"></iconify-icon></button><button class="btn ghost icon" aria-label="Copy b7741c2" title="Copy"><iconify-icon icon="carbon:copy"></iconify-icon></button></span></li><li class="h-row"><iconify-icon class="ck fail" icon="carbon:close-filled" title="Checks failed"></iconify-icon><span class="w-main"><a href="#project/history">Pin traefik to 3.1</a><span class="w-sub">You · 5 h ago</span></span><span></span><span class="mono sha">4be91c0</span><span class="h-acts"><button class="btn ghost icon" aria-label="Browse the code at 4be91c0" title="Browse code at this commit"><iconify-icon icon="carbon:code"></iconify-icon></button><button class="btn ghost icon" aria-label="Copy 4be91c0" title="Copy"><iconify-icon icon="carbon:copy"></iconify-icon></button></span></li><li class="h-day caps">Yesterday</li><li class="h-row"><iconify-icon class="ck ok" icon="carbon:checkmark-filled" title="Checks passed"></iconify-icon><span class="w-main"><a href="#project/history">Read GitHub on a slow interval as well</a><span class="w-sub">You · yesterday 18:40</span></span><span></span><span class="mono sha">91aa0d3</span><span class="h-acts"><button class="btn ghost icon" aria-label="Browse the code at 91aa0d3" title="Browse code at this commit"><iconify-icon icon="carbon:code"></iconify-icon></button><button class="btn ghost icon" aria-label="Copy 91aa0d3" title="Copy"><iconify-icon icon="carbon:copy"></iconify-icon></button></span></li><li class="h-row"><iconify-icon class="ck ok" icon="carbon:checkmark-filled" title="Checks passed"></iconify-icon><span class="w-main"><a href="#project/history">Bump vite to 6.3</a><span class="w-sub">acme-bot · yesterday 11:02</span></span><span class="tag dep"><iconify-icon icon="carbon:cloud-upload"></iconify-icon>Deployed to production</span><span class="mono sha">3c0e11f</span><span class="h-acts"><button class="btn ghost icon" aria-label="Browse the code at 3c0e11f" title="Browse code at this commit"><iconify-icon icon="carbon:code"></iconify-icon></button><button class="btn ghost icon" aria-label="Copy 3c0e11f" title="Copy"><iconify-icon icon="carbon:copy"></iconify-icon></button></span></li><li class="h-day caps">12 November</li><li class="h-row"><iconify-icon class="ck ok" icon="carbon:checkmark-filled" title="Checks passed"></iconify-icon><span class="w-main"><a href="#project/history">First pass of the account row</a><span class="w-sub">You · 12 Nov</span></span><span></span><span class="mono sha">5f2e9a8</span><span class="h-acts"><button class="btn ghost icon" aria-label="Browse the code at 5f2e9a8" title="Browse code at this commit"><iconify-icon icon="carbon:code"></iconify-icon></button><button class="btn ghost icon" aria-label="Copy 5f2e9a8" title="Copy"><iconify-icon icon="carbon:copy"></iconify-icon></button></span></li></ul>
+      </div>
+    </section>
+
     <!-- ======================= Settings ======================= -->
     <section class="screen frame" id="screen-settings" hidden>
       <div class="resolve">
@@ -937,6 +1320,8 @@ p.dl-group { margin-top:18px; }
           <a href="#settings"><iconify-icon icon="carbon:update-now"></iconify-icon>Updates</a>
           <a href="#settings"><iconify-icon icon="carbon:api-key"></iconify-icon>API keys</a>
           <a href="#settings"><iconify-icon icon="carbon:bot"></iconify-icon>MCP</a>
+          <a href="#settings"><iconify-icon icon="carbon:plug"></iconify-icon>Extensions</a>
+          <a href="#settings"><iconify-icon icon="carbon:data-share"></iconify-icon>Integrations</a>
           <a href="#settings"><iconify-icon icon="carbon:vpn"></iconify-icon>VPN</a>
         </nav>
         <div>
@@ -961,6 +1346,42 @@ p.dl-group { margin-top:18px; }
             </ul>
             <button class="btn" style="margin-top:14px"><iconify-icon icon="carbon:add"></iconify-icon>Create API key</button>
           </div>
+          <div class="section"><div class="label"><iconify-icon icon="carbon:plug"></iconify-icon><span class="rule"></span>Extensions</div>
+            <p class="lede" style="margin-top:0">What Anima does besides devices. Each starts off; a change is saved at once.</p>
+            <div style="border-top:1px solid var(--border-subtle)">
+              <div class="setting"><div>Integrations<p>Part of Anima. Always on.</p></div><span class="always">On</span></div>
+              <div class="setting"><div>Projects<p>Your GitHub repositories as projects, and where each one runs.</p></div><button class="switch" role="switch" aria-checked="true" aria-label="Projects"></button></div>
+              <div class="setting"><div>Model gateway<p>Needs Secrets</p></div><button class="switch" role="switch" aria-checked="false" aria-label="Model gateway"></button></div>
+              <div class="setting off"><div>Secrets<p>Model gateway needs it. Setting Model gateway on sets this on too.</p></div><button class="switch" role="switch" aria-checked="false" aria-label="Secrets"></button></div>
+              <div class="setting off"><div>Map</div><span class="soon">Not built yet</span></div><div class="setting off"><div>Writing</div><span class="soon">Not built yet</span></div>
+              <button class="ext-more"><iconify-icon icon="carbon:chevron-down"></iconify-icon>8 more not built yet</button>
+            </div>
+          </div>
+          <div class="section"><div class="label"><iconify-icon icon="carbon:data-share"></iconify-icon><span class="rule"></span>Integrations</div>
+            <p class="lede" style="margin-top:0">The places Anima reads records from. Each account keeps its key in the hub.</p>
+            <div class="setting" style="border-top:1px solid var(--border-subtle)"><div>GitHub<p>Reads your repositories through a GitHub App that you make in your own account.</p></div><a class="btn" href="#settings/connect"><iconify-icon icon="simple-icons:github"></iconify-icon>Connect GitHub</a></div>
+            <div class="account">
+              <div class="account-top">
+                <div class="who"><b>Personal</b><span class="health s-up"><span class="dot"></span>OK</span><p>GitHub App · Synced 4 min ago · It reads on schedule.</p></div>
+                <div class="acts"><button class="btn ghost sm"><iconify-icon icon="carbon:renew"></iconify-icon>Sync now</button><button class="btn ghost sm"><iconify-icon icon="carbon:pause"></iconify-icon>Pause</button><button class="btn danger sm"><iconify-icon icon="carbon:unlink"></iconify-icon>Disconnect</button></div>
+              </div>
+              <details class="syncs" open>
+                <summary><iconify-icon icon="carbon:chevron-right"></iconify-icon>Recent syncs</summary>
+                <ol>
+                  <li><span>On schedule</span><span class="s-up">Done</span><span class="counts">2 inserted · 5 changed · 41 unchanged</span><span class="when">4 min ago · 3 s</span></li>
+                  <li><span>By hand</span><span class="s-up">Done</span><span class="counts">1 changed · 47 unchanged · 1 removed</span><span class="when">1 h ago · 2 s</span></li>
+                  <li><span>On schedule</span><span class="s-down">Failed</span><span class="counts">Nothing read</span><span class="when">3 h ago · 30 s</span><span class="err">GitHub answered 502 for acme/hub-dashboard; the run tried again later.</span></li>
+                </ol>
+              </details>
+            </div>
+            <div class="account">
+              <div class="account-top">
+                <div class="who"><b>Work</b><span class="health s-warning"><span class="dot"></span>Needs reconnect</span><p>GitHub App · Synced 2 days ago · The source refused the key. Disconnect, then connect again with a working key.</p></div>
+                <div class="acts"><button class="btn ghost sm"><iconify-icon icon="carbon:renew"></iconify-icon>Sync now</button><button class="btn ghost sm"><iconify-icon icon="carbon:pause"></iconify-icon>Pause</button><button class="btn danger sm"><iconify-icon icon="carbon:unlink"></iconify-icon>Disconnect</button></div>
+              </div>
+            </div>
+          </div>
+
 </div>
       </div>
     </section>
@@ -1013,6 +1434,40 @@ p.dl-group { margin-top:18px; }
   </div>
 </div>
 
+<!-- ======================= New issue (dialog) ======================= -->
+<div class="scrim" id="new-issue" hidden>
+  <div class="dialog material-overlay resolve" role="dialog" aria-modal="true" aria-labelledby="issue-title">
+    <h2 id="issue-title"><iconify-icon icon="carbon:add"></iconify-icon>New issue in acme/hub-dashboard</h2>
+    <form onsubmit="event.preventDefault(); location.hash='project/work'">
+      <label class="field"><span>Title</span><span class="input"><input value="Charts lose their colours in light mode"></span></label>
+      <label class="field"><span>Description</span><textarea style="-webkit-text-security:none;font-family:var(--font-ui);font-size:var(--text-sm);min-height:8rem">The CPU and memory charts draw in the dark palette after switching to light.</textarea><small>Markdown. It goes to GitHub as written.</small></label>
+      <div class="two">
+        <label class="field"><span>Labels</span><span class="input"><span class="tag">bug</span><input aria-label="Add a label"></span></label>
+        <label class="field"><span>Assignee</span><span class="input"><input value="You"></span></label>
+      </div>
+      <div class="foot"><a class="btn ghost" href="#project/work">Cancel</a><button class="btn primary"><iconify-icon icon="simple-icons:github"></iconify-icon>Create issue</button></div>
+    </form>
+  </div>
+</div>
+
+<!-- ======================= Connect GitHub (dialog) ======================= -->
+<div class="scrim" id="connect" hidden>
+  <div class="dialog material-overlay resolve" role="dialog" aria-modal="true" aria-labelledby="connect-title">
+    <h2 id="connect-title"><iconify-icon icon="simple-icons:github"></iconify-icon>Connect GitHub</h2>
+    <p>You make the GitHub App in your own account and install it; Anima does not make it. The hub seals the key, and Anima does not show it again.</p>
+    <ol class="steps"><li>GitHub › Settings › Developer settings › GitHub Apps › New.</li><li>Give it read access to contents and metadata, then install it.</li><li>Generate a private key and enter it below.</li></ol>
+    <form onsubmit="event.preventDefault(); location.hash='settings'">
+      <label class="field"><span>Name</span><span class="input"><input value="Personal"></span><small>What this account is called in Anima.</small></label>
+      <div class="two">
+        <label class="field"><span>App ID</span><span class="input"><input class="mono" inputmode="numeric" placeholder="123456"></span></label>
+        <label class="field"><span>Installation ID</span><span class="input"><input class="mono" inputmode="numeric" placeholder="45678901"></span></label>
+      </div>
+      <label class="field"><span>Private key</span><textarea spellcheck="false" placeholder="-----BEGIN RSA PRIVATE KEY-----"></textarea><small>Paste the whole key, or <a class="inline-link" href="#settings/connect" style="color:var(--accent)">choose the .pem file</a>. The field hides it.</small></label>
+      <div class="foot"><a class="btn ghost" href="#settings">Cancel</a><button class="btn primary"><iconify-icon icon="carbon:connect"></iconify-icon>Connect</button></div>
+    </form>
+  </div>
+</div>
+
 <!-- ======================= Switcher ======================= -->
 <nav class="switcher" aria-label="Mockup screens">
   <button data-go="signin">Sign in</button>
@@ -1020,7 +1475,13 @@ p.dl-group { margin-top:18px; }
   <button data-go="device">Device</button>
   <button data-go="device/settings">Device settings</button>
   <button data-go="sessions">Sessions</button>
+  <button data-go="projects">Projects</button>
+  <button data-go="project">Project</button>
+  <button data-go="project/work">work</button>
+  <button data-go="project/code">code</button>
+  <button data-go="project/history">history</button>
   <button data-go="settings">Settings</button>
+  <button data-go="settings/connect">Connect GitHub</button>
   <button data-go="specimen">Specimen</button>
   <span class="sep"></span>
   <button id="theme" aria-label="Switch appearance"><iconify-icon icon="carbon:contrast"></iconify-icon></button>
@@ -1079,6 +1540,46 @@ const connect = (d) => d.connect.map((p) => `<button class="btn ghost icon" aria
 const why = (d) => `<span class="why s-${d.status}"><span class="t">${d.reason}</span><span class="since">${d.since}</span><a href="#device" class="inline-link">${d.fix}<iconify-icon icon="carbon:arrow-right"></iconify-icon></a></span>`;
 
 let view = "rows", filter = "all", sort = "status", query = "";
+
+// ---- Projects (three layouts of one list) ----
+const PLACE = {
+  cloudflare: ["simple-icons:cloudflare", "Cloudflare"], vercel: ["simple-icons:vercel", "Vercel"],
+  server: ["carbon:bare-metal-server", "Server"], desktop: ["carbon:screen", "Desktop app"],
+};
+const PROJECTS = [
+  { name: "homelab-ansible", repo: "acme/homelab-ansible", status: "down", word: "Deploy failed", why: "The deploy to k3s-b stopped at “restart traefik”: the host did not answer.", runs: [["server", "pve"], ["server", "k3s-a"], ["server", "k3s-b"]], msg: "Pin traefik to 3.1", sha: "4be91c0", when: "38 min ago", hist: "ooooooooooooofoooff" },
+  { name: "hub-dashboard", repo: "acme/hub-dashboard", status: "warning", word: "Needs a look", why: "Vercel was found in the repository (vercel.json) and is not confirmed.", runs: [["server", "edge-vps"], ["vercel", null, true]], msg: "Show sync runs on the account row", sha: "e02d7aa", when: "2 h ago", hist: "oooooooooooooooooooo" },
+  { name: "old-tool", repo: "acme/old-tool", status: "warning", word: "Needs a look", why: "The repository is no longer on GitHub. Leave it out, or reconnect it.", runs: [], msg: null, when: "last seen 3 weeks ago", hist: "nnnnnnnnnnnnnoooooo" },
+  { name: "anima-site", repo: "acme/anima-site", status: "live", word: "Deploying", runs: [["cloudflare"]], msg: "Morph between chapters instead of walking through the doors", sha: "29b3f81", when: "started 2 min ago", hist: "ooooooooooooooooooob" },
+  { name: "anima", repo: "acme/anima", status: "up", word: "Running", runs: [["desktop"], ["server", "edge-vps"]], msg: "Release 0.9.2", sha: "8c190ef", when: "3 days ago", hist: "oooooofoooooooooooooo" },
+  { name: "blog", repo: "acme/blog", status: "up", word: "Running", runs: [["cloudflare"]], msg: "Post: a mesh network at home", sha: "71d0a3e", when: "6 days ago", hist: "nnnnnnnnoooooooooooo" },
+  { name: "notes", repo: "acme/notes", status: "idle", word: "Not deployed", runs: [], msg: "Archived on GitHub", sha: null, when: "4 months ago", hist: "nnnnnnnnnnnnnnnnnnnn" },
+];
+const pst = (p) => `<span class="pst s-${p.status}"><span class="dot"></span>${p.word}</span>`;
+const runsOn = (p) => p.runs.length
+  ? `<span class="runs-on">${p.runs.map(([k, dev, prop]) => { const [icon, word] = PLACE[k]; return `<span${prop ? ' class="prop" title="Found in the repository, not confirmed"' : ""}><iconify-icon icon="${icon}"></iconify-icon>${dev ? `<a href="#device">${dev}</a>` : word}${prop ? "?" : ""}</span>`; }).join("")}</span>`
+  : `<span class="runs-on"><span class="none">Not running anywhere</span></span>`;
+const deploy = (p) => `<span class="deploy"><span class="msg">${p.msg ?? "—"}</span><span class="meta">${p.sha ? `<span class="mono">${p.sha}</span> · ` : ""}${p.when}</span></span>`;
+const pname = (p) => `<span class="pj-name"><a href="#project"><iconify-icon icon="carbon:folder"></iconify-icon>${p.name}</a><span class="repo">${p.repo}</span></span>`;
+const PGROUPS = [["Needs a look", (p) => p.status === "down" || p.status === "warning"], ["Running", (p) => p.status === "up" || p.status === "live"], ["Not deployed", (p) => p.status === "idle"]];
+const go = "onclick=\"if(!event.target.closest('a,button'))location.hash='project'\"";
+function pjTiles() {
+  return PGROUPS.map(([t, f]) => { const l = PROJECTS.filter(f); return l.length ? `<p class="dl-group caps">${t}<span class="n num">${l.length}</span></p><div class="pj-tiles">${l.map((p) => `
+    <article class="pj-tile s-row-${p.status}" ${go}>
+      <div class="top">${pname(p)}${pst(p)}</div>
+      ${p.why ? `<p class="why">${p.why}</p>` : ""}
+      ${runsOn(p)}
+      ${deploy(p)}
+      <div><div class="history" title="Last 20 deploys">${[...p.hist.padStart(20, "n").slice(-20)].map((c) => `<i class="${c === "f" ? "f" : c === "b" ? "b" : c === "n" ? "n" : ""}"></i>`).join("")}</div>
+      <div class="foot" style="margin-top:6px"><span>Last 20 deploys</span><span>${p.hist.includes("f") ? `${[...p.hist].filter((c) => c === "f").length} failed` : "all passed"}</span></div></div>
+    </article>`).join("")}</div>` : ""; }).join("");
+}
+function renderProjects() {
+  document.getElementById("pj-body").innerHTML = pjTiles();
+  const bad = PROJECTS.filter((p) => p.status === "down").length, look = PROJECTS.filter((p) => p.status === "warning").length;
+  document.getElementById("pj-tally").innerHTML = `<b>${PROJECTS.length} projects</b> · <span class="s-down">${bad} failing</span> · <span class="s-warning">${look} need a look</span> · 1 deploying`;
+}
+
 function visible() {
   const list = DEVICES.filter((d) => (filter === "all" || d.status === filter) && d.name.includes(query.toLowerCase()));
   const by = { status: (a, b) => RANK[a.status] - RANK[b.status] || a.name.localeCompare(b.name), name: (a, b) => a.name.localeCompare(b.name), uptime: (a, b) => (a.up ?? -1) - (b.up ?? -1) };
@@ -1240,7 +1741,16 @@ function show() {
   document.getElementById("screen-signin").hidden = !signin;
   document.getElementById("app").hidden = signin;
   document.querySelectorAll(".screen").forEach((s) => (s.hidden = s.id !== `screen-${name}`));
-  document.querySelectorAll("[data-nav]").forEach((a) => a.toggleAttribute("aria-current", a.dataset.nav === (name === "device" ? "devices" : name)));
+  document.getElementById("connect").hidden = full !== "settings/connect";
+  if (name === "projects") renderProjects();
+  if (name === "project") {
+    const pt = ["work", "code", "history"].includes(sub) ? sub : sub === "issue" ? "work" : "overview";
+    document.getElementById("screen-project").dataset.pt = pt;
+    document.querySelectorAll("[data-pt]").forEach((t) => t.tagName === "A" && t.setAttribute("aria-selected", String(t.dataset.pt === pt)));
+  }
+  document.getElementById("new-issue").hidden = full !== "project/issue";
+  const navOf = { device: "devices", project: "projects" };
+  document.querySelectorAll("[data-nav]").forEach((a) => a.toggleAttribute("aria-current", a.dataset.nav === (navOf[name] ?? name)));
   document.querySelectorAll("[data-nav][aria-current]").forEach((a) => a.setAttribute("aria-current", "page"));
   document.querySelectorAll("[data-go]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.go === full)));
   document.getElementById("page").scrollTop = 0;
