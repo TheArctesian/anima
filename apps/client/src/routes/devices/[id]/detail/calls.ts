@@ -12,12 +12,12 @@ export interface DetailCalls {
   readonly onDelete: () => Promise<HubResult<unknown>>;
 }
 
-/** Builds the calls of `detail`'s Settings tab. `onSaved` runs after a full save, `onDeleted` after the hub deleted the device. */
-export function detailCalls(hub: Hub, detail: Detail, onSaved: () => void, onDeleted: () => void): DetailCalls {
+/** Builds the calls of `detail`'s Settings tab; `onDeleted` runs after the hub deleted the device. */
+export function detailCalls(hub: Hub, detail: Detail, onDeleted: () => void): DetailCalls {
   const connections = sessionsApi(hub);
   const settingsHub = { devices: devicesApi(hub), sessions: connections, webInterfaces: webInterfacesApi(hub) };
   return {
-    settings: settingsCalls(detail.id, settingsHub, detail, onSaved),
+    settings: settingsCalls(detail.id, settingsHub, detail),
     onTest: connections.testConnection,
     onDelete: () => detail.deleteDevice(onDeleted),
   };

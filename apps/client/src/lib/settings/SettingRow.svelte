@@ -12,23 +12,30 @@
     children: Snippet;
     /** The row's message line under it; give its element `role="alert"`. It keeps one line while empty (MOT-007). */
     message?: Snippet;
+    /** Beside the name: how the row's last save went (D17, `SaveMark`). */
+    status?: Snippet;
+    /** A control column wide enough for a name or an address, whose fields fill it (D17); the default fits a number. */
+    wide?: boolean;
   }
 
-  const { label, for: control, hint, children, message }: Props = $props();
+  const { label, for: control, hint, children, message, status, wide = false }: Props = $props();
 </script>
 
 <!-- One setting, a hairline row (UR-7, D9): its name and hint at the start of the line, its control at the end; stacked
      only in a narrow column. -->
-<div class="row">
+<div class="row" class:wide>
   <div class="line">
     <div class="text">
-      {#if typeof label !== 'string'}
-        {@render label()}
-      {:else if control === undefined}
-        <span class="name">{label}</span>
-      {:else}
-        <label class="name" for={control}>{label}</label>
-      {/if}
+      <span class="head">
+        {#if typeof label !== 'string'}
+          {@render label()}
+        {:else if control === undefined}
+          <span class="name">{label}</span>
+        {:else}
+          <label class="name" for={control}>{label}</label>
+        {/if}
+        {@render status?.()}
+      </span>
       {@render hint?.()}
     </div>
     <div class="control">{@render children()}</div>
@@ -97,6 +104,27 @@
     border-color: var(--status-down);
   }
 
+  /* A wide row: one column for the control, which its fields fill (D17). */
+  .wide .line {
+    grid-template-columns: minmax(0, 1fr) minmax(0, calc(var(--space-16) * 4.75));
+  }
+
+  .wide .control > :global(*) {
+    flex: 1;
+  }
+
+  .wide .control :global(:is(input, select)) {
+    inline-size: 100%;
+    text-align: start;
+  }
+
+  .head {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    min-inline-size: 0;
+  }
+
   /* The name's line is reserved from tokens, so a font load cannot move the row (MOT-007). */
   .name {
     min-block-size: calc(var(--text-md) * var(--leading-tight));
@@ -129,7 +157,8 @@
 
   /* A narrow card stacks the control under its name. */
   @container (max-inline-size: 28rem) {
-    .line {
+    .line,
+    .wide .line {
       grid-template-columns: minmax(0, 1fr);
     }
 

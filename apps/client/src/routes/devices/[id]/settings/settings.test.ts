@@ -68,6 +68,33 @@ function button(label: string, within = 'body'): HTMLButtonElement {
   return found;
 }
 
+/** The input with this id. */
+function field(id: string): HTMLInputElement {
+  const found = document.getElementById(id);
+  if (!(found instanceof HTMLInputElement)) throw new Error(`no input ${id}`);
+  return found;
+}
+
+/** Types `text` into the input, as each key press would leave it. */
+function type(id: string, text: string): void {
+  field(id).value = text;
+  field(id).dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+/** Leaves the input, as Tab or a click elsewhere would. */
+function leave(id: string): void {
+  field(id).dispatchEvent(new FocusEvent('blur'));
+}
+
+const sent = (fake: ReturnType<typeof fakeHub>, operation: string) => fake.requests.filter((request) => request.operation === operation);
+
+/** The SSH row's switch. */
+function sshSwitch(): HTMLButtonElement {
+  const found = document.querySelector<HTMLButtonElement>('[data-connection="ssh"] [role="switch"]');
+  if (found === null) throw new Error('no SSH switch');
+  return found;
+}
+
 beforeEach(() => {
   current.goto = [];
   current.opened = [];
@@ -103,33 +130,28 @@ describe('settings tab (D-7, DEV-014)', () => {
     expect(current.goto).toEqual([['/devices', undefined]]);
   });
 
-  it('D-2: a save sends only the changed field, the header shows the saved name, and saving again sends nothing', async () => {
-    const renamed = device({ name: 'vault' });
-    const fake = await show(answers({ UpdateDevice: { updateDevice: renamed } }), '?tab=settings');
-    const name = document.getElementById('device-name');
-    if (!(name instanceof HTMLInputElement)) throw new Error('no name input');
-    name.value = 'vault';
-    name.dispatchEvent(new Event('input', { bubbles: true }));
-    button('Save').click();
+  it('D17, D-2: a typed name is not sent while typing; leaving the field saves it once and the header shows it', async () => {
+    const fake = await show(answers({ UpdateDevice: { updateDevice: device({ name: 'vault' }) } }), '?tab=settings');
+    type('device-name', 'vau');
     await settle();
-    button('Save').click();
+    expect(sent(fake, 'UpdateDevice')).toEqual([]);
+    type('device-name', 'vault');
+    leave('device-name');
     await settle();
-    expect(fake.requests.filter((request) => request.operation === 'UpdateDevice')).toEqual([
-      { operation: 'UpdateDevice', variables: { id: ID, input: { name: 'vault' } } },
-    ]);
+    leave('device-name');
+    await settle();
+    expect(sent(fake, 'UpdateDevice')).toEqual([{ operation: 'UpdateDevice', variables: { id: ID, input: { name: 'vault' } } }]);
     expect(document.querySelector('header h1')?.textContent).toBe('vault');
   });
 
-  it('T3/T5: after a save the form compares with the saved device, so the test of the saved host goes by ID', async () => {
+  it('D17, T3/T5: Return saves a text field, and the test of the saved host then goes by ID', async () => {
     const moved = device({ host: 'vault.home.arpa' });
     const tested = { reachable: true, authenticated: true, hostKey: null, hostKeyChanged: false, message: null };
     const fake = await show(answers({ UpdateDevice: { updateDevice: moved }, TestConnection: { testConnection: tested } }), '?tab=settings');
-    const host = document.getElementById('device-host');
-    if (!(host instanceof HTMLInputElement)) throw new Error('no host input');
-    host.value = 'vault.home.arpa';
-    host.dispatchEvent(new Event('input', { bubbles: true }));
-    button('Save').click();
+    type('device-host', 'vault.home.arpa');
+    field('device-host').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
     await settle();
+    expect(sent(fake, 'UpdateDevice')).toEqual([{ operation: 'UpdateDevice', variables: { id: ID, input: { host: 'vault.home.arpa' } } }]);
     button('Test connection').click();
     await settle();
     expect(fake.requests.find((request) => request.operation === 'TestConnection')?.variables).toEqual({ input: { deviceId: ID } });
@@ -160,7 +182,7 @@ describe('settings tab: the agent (MET-019, D-7)', () => {
   });
 });
 
-describe('settings tab: credentials, cancel and sections (D-4, DEV-022, SEC-006)', () => {
+describe('settings tab: saving on change (D17, DEV-010, D-2, SEC-006)', () => {
   it('SEC-006: accepting the new host key makes SSH start sessions', async () => {
     const tested = { reachable: true, authenticated: true, hostKey: KEY, hostKeyChanged: false, message: null };
     await show(
@@ -174,28 +196,47 @@ describe('settings tab: credentials, cancel and sections (D-4, DEV-022, SEC-006)
     expect(button('SSH to nas')).not.toBeNull();
   });
 
-  it('D-4: removing the credential leaves the form without a stored one', async () => {
-    const fake = await show(answers({ ClearSshCredential: { clearSshCredential: { credentialStored: false } } }), '?tab=settings');
-    button('Remove credential').click();
+  it('D17: the SSH switch saves at once, with the rest of the SSH settings as the hub input needs them', async () => {
+    const off = device({}, { enabled: false });
+    const fake = await show(answers({ UpdateDevice: { updateDevice: off } }), '?tab=settings');
+    sshSwitch().click();
     await settle();
-    expect(fake.requests.at(-1)).toEqual({ operation: 'ClearSshCredential', variables: { deviceId: ID } });
-    expect(document.body.textContent).not.toContain('Credential stored');
+    expect(sent(fake, 'UpdateDevice')).toEqual([
+      { operation: 'UpdateDevice', variables: { id: ID, input: { ssh: { enabled: false, port: 22, username: 'root', auth: 'PASSWORD' } } } },
+    ]);
+    expect(sshSwitch().getAttribute('aria-checked')).toBe('false');
   });
 
-  it('D-2: Cancel puts the saved values back', async () => {
-    await show(answers(), '?tab=settings');
-    const name = document.getElementById('device-name');
-    if (!(name instanceof HTMLInputElement)) throw new Error('no name input');
-    name.value = 'vault';
-    name.dispatchEvent(new Event('input', { bubbles: true }));
-    button('Cancel').click();
+  it('D17, DEV-010: a port that is not a port is never sent; it stays typed and outlined, and a line under the fields says why', async () => {
+    const fake = await show(answers(), '?tab=settings');
+    type('device-ssh-port', 'abc');
+    leave('device-ssh-port');
     await settle();
-    expect((document.getElementById('device-name') as HTMLInputElement | null)?.value).toBe('nas');
+    expect(sent(fake, 'UpdateDevice')).toEqual([]);
+    expect(field('device-ssh-port').value).toBe('abc');
+    expect(field('device-ssh-port').getAttribute('aria-invalid')).toBe('true');
+    expect(document.getElementById('device-ssh-port-error')?.textContent).toBe('Enter a port from 1 to 65535.');
   });
 
+  it('D17, D-2: a value the hub refuses stays shown and unsaved, outlined, with the reason the hub gave under it', async () => {
+    const refusal = { code: 'VALIDATION', message: 'Invalid input', fields: [{ field: 'name', message: 'Another device has this name.' }] };
+    await show(answers({ UpdateDevice: refusal }), '?tab=settings');
+    type('device-name', 'atlas');
+    leave('device-name');
+    await settle();
+    expect(field('device-name').value).toBe('atlas');
+    expect(field('device-name').getAttribute('aria-invalid')).toBe('true');
+    expect(document.getElementById('device-name-error')?.textContent).toBe('Another device has this name.');
+    expect(document.querySelector('header h1')?.textContent).toBe('nas');
+  });
+
+});
+
+describe('settings tab: opening a section (DEV-022)', () => {
   it('DEV-022: a header button with Settings already open opens its section, and the no-key SSH focuses Test connection', async () => {
     await show(answers(), '?tab=settings&section=ssh');
-    const rdp = button('Remote Desktop (RDP)');
+    const rdp = document.querySelector<HTMLButtonElement>('[data-connection="rdp"] [aria-expanded]');
+    if (rdp === null) throw new Error('no RDP row');
     expect(rdp.getAttribute('aria-expanded')).toBe('false');
     route.search = '?tab=settings&section=rdp';
     await settle();

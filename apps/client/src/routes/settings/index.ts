@@ -1,11 +1,4 @@
-import type { IconName } from '$lib/icons/icons';
-
-/** One section of the Settings page, as its index links to it. */
-export interface IndexEntry {
-  readonly id: string;
-  readonly title: string;
-  readonly icon: IconName;
-}
+import type { IndexEntry } from '$lib/page/PageIndex.svelte';
 
 /** What this platform can show: the Hub, Updates and MCP sections are desktop only (CLI-002, UPD-006, MCP-023). */
 export interface IndexShown {

@@ -1242,6 +1242,7 @@ The operator clicks a device card to open the device detail view.
 - **DEV-022.** The split button's main action is the first protocol that connects, in the order SSH, RDP, VNC; when none does, it is SSH's "Test SSH" (an SSH device with no accepted host key) or "Set up SSH". Its menu holds the other protocols, those that connect first; a protocol that is not set up reads "Set up SSH" or "Set up RDP" with a "+" and opens the Settings tab of the device at that section, never a session. VNC is offered only when it is on.
 - **DEV-023.** While its data loads, the device detail view must show a loading skeleton for the header and the first tab. If the load fails, it must show an error state with "Try again" (UI-030).
 - **DEV-024.** The SSH host key fingerprint is not shown in the Overview. A "Host key" row shows its state ("Trusted", "Changed") and the fingerprint is in its HelpTip.
+- **DEV-028.** The Settings tab saves each change as the operator makes it (UR-7, D17); it has no Save or Cancel button. It is one column of sections, Device, Monitoring, Connections, and Sessions and files, with an "On this page" index beside it that is hidden in a window narrower than 1101 px. Each setting puts its label and hint on the left and its control on the right. A switch, a segmented control, a stepper or a tag saves at once; a text field or a select saves when the operator leaves it or presses Return. Beside the label, "Saving…" turns into "Saved", which fades. A value that fails validation (DEV-010) or that the hub refuses is never shown as saved: it stays as typed, its input is outlined, and one line under the fields says why. Connections has one row per protocol with a summary and an on/off switch, or "Set up" for a protocol that is not set up. A stored secret is a row, "Stored, in the hub, encrypted", with Replace and Remove; Replace opens its own field with "Save password" and Cancel, and the secret is sent only from there (DEV-011, DEV-012). The SSH row holds the host key and the connection test (DEV-013); the VNC warning is one sentence in the warning colour; the macOS Remote Login button shows only for a Mac. The session limit is a stepper, and upload, download, copy and paste are pairs of switches. Each change is sent through the existing whole-device write, so it adds no hub function (CMD-030).
 
 The view has these tabs:
 
@@ -1251,7 +1252,7 @@ The view has these tabs:
 | Checks | The list of checks, heartbeat history, response time chart |
 | Sessions | Session history for this device |
 | Logs | Event log entries for this device (Section 3.8) |
-| Settings | The form from Section 6.2 |
+| Settings | The fields of Section 6.2, saved as they change (DEV-028, D17) |
 
 ### 6.8 Notifications (Phase 3)
 
