@@ -37,7 +37,7 @@ pub fn intake() -> Arc<dyn Intake> {
 
 /// Why a projects operation failed. Fixed words: never a repository name or a record.
 #[derive(Debug, thiserror::Error)]
-pub enum Error {
+enum Error {
     #[error("database error")]
     Database(#[from] sqlx::Error),
     #[error("no repository has this ID")]
@@ -54,7 +54,7 @@ impl Error {
     /// `NOT_FOUND` or `CONFLICT` for what the operator can act on; `INTERNAL` with no detail
     /// otherwise (K7, API-010).
     #[must_use]
-    pub fn into_graphql(self) -> GraphQlError {
+    fn into_graphql(self) -> GraphQlError {
         match self {
             Self::NoRepository => coded("No repository has this ID.", ErrorCode::NotFound),
             Self::NoResource => coded("No resource has this ID.", ErrorCode::NotFound),
