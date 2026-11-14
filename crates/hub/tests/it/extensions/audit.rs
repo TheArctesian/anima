@@ -34,5 +34,5 @@ async fn ext_011_each_changed_switch_has_one_audit_entry_and_a_repeat_adds_none(
 async fn ext_011_a_refused_switch_leaves_no_entry(pool: PgPool) {
     let (hub, token) = signed_in(&pool).await;
     set(&hub, &token, "map", true).await;
-    assert!(audits(&pool).await.is_empty());
+    assert_eq!(audits(&pool).await.len(), 0);
 }
