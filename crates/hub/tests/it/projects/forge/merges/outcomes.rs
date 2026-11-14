@@ -20,12 +20,21 @@ const GITHUB_TEXT: &str = "GITHUB-MERGE-TEXT-7731";
 const UNKNOWN: &str =
     "GitHub did not answer. The change may have been made: look before you try again.";
 
+/// A status, its headers, the words, the code and the recorded outcome.
+type Case<'a> = (
+    u16,
+    &'a [(&'static str, &'a str)],
+    &'a str,
+    &'static str,
+    &'static str,
+);
+
 #[sqlx::test(migrations = "./migrations")]
 async fn od_e14_each_answer_to_a_merge_has_its_code_words_and_recorded_outcome(pool: PgPool) {
     let forge = forge(&pool).await;
     methods(&forge);
     let refused = "GitHub refused the merge.";
-    let cases: [(u16, &[(&'static str, &str)], &str, &str, &str); 7] = [
+    let cases: [Case<'_>; 7] = [
         (405, &[], refused, "CONFLICT", "refused"),
         (
             409,
@@ -129,6 +138,6 @@ async fn od_e14_a_pull_request_github_does_not_have_is_not_found_and_sends_nothi
             "NOT_FOUND".to_owned()
         )
     );
-    assert!(sent(&forge, 4040).is_empty());
-    assert!(audits(&pool).await.is_empty());
+    assert!(sent(&forge, 4040).is_empty(), "nothing was sent");
+    assert!(audits(&pool).await.is_empty(), "nothing was recorded");
 }
