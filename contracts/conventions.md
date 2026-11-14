@@ -10,6 +10,7 @@ Status: **frozen for Phase 3** (change only through a programme ruling, CON-001)
   Shape: `#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, sqlx::Type)] #[sqlx(transparent)] pub struct DeviceId(Uuid);`
 - GraphQL: the `ID` scalar, as the UUID string. Parse with the newtype's `FromStr` at the API boundary.
 - TypeScript: branded strings, e.g. `type DeviceId = string & { readonly __brand: 'DeviceId' }`.
+- (operator, 2026-11-14; ruling number to be assigned; PRJ-027 to PRJ-035) The rule above is for entities the hub stores. What the hub reads live from GitHub and does not store has no hub ID: a GitHub run, comment, workflow or release is an `ID` that holds GitHub's own number as digits (it may not fit `Int`), and a pull request or an issue is named by its repository (`ProjectRepository.id`, a UUID) and its `number: Int!`, with no `id` field. The hub checks such digits at the API boundary (1 to 2^53) and never treats them as UUIDs.
 
 ## Time
 
