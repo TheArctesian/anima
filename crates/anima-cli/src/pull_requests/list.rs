@@ -1,8 +1,7 @@
 //! `anima pr list <repository>`: pull requests, newest updated first, with pages (CMD-026).
 
-use super::documents::{PullRequestList, pull_request_list};
+use super::query::Query;
 use super::render;
-use crate::connection_page;
 use crate::failure::Failure;
 use crate::forge::StateArg;
 use crate::invocation::Invocation;
@@ -36,16 +35,6 @@ pub struct ListArgs {
     fresh: bool,
 }
 
-connection_page!(pull_request_list::PullRequestListPullRequests);
-
-const fn state(arg: StateArg) -> pull_request_list::OpenOrClosed {
-    match arg {
-        StateArg::Open => pull_request_list::OpenOrClosed::OPEN,
-        StateArg::Closed => pull_request_list::OpenOrClosed::CLOSED,
-        StateArg::All => pull_request_list::OpenOrClosed::ALL,
-    }
-}
-
 impl ListArgs {
     /// Prints the pull requests as a table or, with `--json`, as the K1
     /// `PullRequestConnection`.
@@ -59,18 +48,17 @@ impl ListArgs {
             .switch("--checks", self.checks);
         let hub = invocation.hub()?;
         let repository = resolve(&hub, &self.repository).await?;
-        let first = Some(page_size(self.limit, self.all, MAX_PAGE));
-        let (hub, repository, detail, fresh) = (&hub, &repository, self.checks, self.fresh);
-        let pulls = fetch(self.after, self.all, move |after| async move {
-            let variables = pull_request_list::Variables {
-                repository: repository.clone(),
-                state: Some(state(self.state)),
-                first,
-                after,
-                fresh: Some(fresh),
-                detail,
-            };
-            Ok(hub.run::<PullRequestList>(variables).await?.pull_requests)
+        let asked = |after| Query {
+            repository: repository.clone(),
+            state: self.state,
+            first: page_size(self.limit, self.all, MAX_PAGE),
+            after,
+            fresh: self.fresh,
+            checked: self.checks,
+        };
+        let (hub, asked) = (&hub, &asked);
+        let pulls = fetch(self.after.clone(), self.all, move |after| async move {
+            Ok(asked(after).run(hub).await?)
         })
         .await?;
         invocation.output.data(&pulls, render::list)?;

@@ -1,4 +1,4 @@
-query WorkflowRunList($repository: ID!, $branch: String, $status: WorkflowRunStatus, $first: Int, $after: String, $fresh: Boolean, $jobs: Boolean!) {
+query WorkflowRunList($repository: ID!, $branch: String, $status: WorkflowRunStatus, $first: Int, $after: String, $fresh: Boolean) {
   workflowRuns(repository: $repository, branch: $branch, status: $status, first: $first, after: $after, fresh: $fresh) {
     edges {
       cursor
@@ -24,16 +24,6 @@ query WorkflowRunList($repository: ID!, $branch: String, $status: WorkflowRunSta
         rerunnable
         failedJobsRerunnable
         cancellable
-        jobs @include(if: $jobs) {
-          total
-          succeeded
-          failed
-          running
-          queued
-          other
-          failing
-          partial
-        }
       }
     }
     pageInfo {

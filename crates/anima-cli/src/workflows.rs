@@ -3,6 +3,7 @@
 
 pub mod documents;
 pub mod list;
+pub mod query;
 pub mod render;
 pub mod run;
 pub mod runs;

@@ -33,3 +33,13 @@ pub struct WorkflowRunList;
     skip_serializing_none
 )]
 pub struct WorkflowRunGet;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "../../contracts/schema.graphql",
+    query_path = "src/workflows/runs_jobs.graphql",
+    response_derives = "Debug, Serialize",
+    variables_derives = "Debug",
+    skip_serializing_none
+)]
+pub struct WorkflowRunListJobs;

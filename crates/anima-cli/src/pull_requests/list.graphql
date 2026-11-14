@@ -1,4 +1,4 @@
-query PullRequestList($repository: ID!, $state: OpenOrClosed, $first: Int, $after: String, $fresh: Boolean, $detail: Boolean!) {
+query PullRequestList($repository: ID!, $state: OpenOrClosed, $first: Int, $after: String, $fresh: Boolean) {
   pullRequests(repository: $repository, state: $state, first: $first, after: $after, fresh: $fresh) {
     edges {
       cursor
@@ -20,20 +20,6 @@ query PullRequestList($repository: ID!, $state: OpenOrClosed, $first: Int, $afte
         updatedAt
         mergedAt
         url
-        mergeability @include(if: $detail) {
-          state
-          canMerge
-        }
-        checks @include(if: $detail) {
-          sha
-          state
-          passed
-          failed
-          pending
-          other
-          failing
-          partial
-        }
       }
     }
     pageInfo {
@@ -45,6 +31,5 @@ query PullRequestList($repository: ID!, $state: OpenOrClosed, $first: Int, $afte
       stale
       problem
     }
-    mergeMethods @include(if: $detail)
   }
 }

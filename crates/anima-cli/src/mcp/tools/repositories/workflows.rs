@@ -12,10 +12,8 @@ use crate::mcp::arguments::{Page, json, object, parse};
 use crate::mcp::catalogue::Access;
 use crate::mcp::definition::{Definition, Effect};
 use crate::mcp::outcome::ToolError;
-use crate::workflows::documents::{
-    WorkflowList, WorkflowRunGet, WorkflowRunList, workflow_list, workflow_run_get,
-    workflow_run_list,
-};
+use crate::workflows::documents::{WorkflowList, WorkflowRunGet, workflow_list, workflow_run_get};
+use crate::workflows::query::{Query, RunStatus};
 
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -35,6 +33,16 @@ pub enum StatusInput {
     Queued,
     InProgress,
     Completed,
+}
+
+impl From<StatusInput> for RunStatus {
+    fn from(status: StatusInput) -> Self {
+        match status {
+            StatusInput::Queued => Self::Queued,
+            StatusInput::InProgress => Self::InProgress,
+            StatusInput::Completed => Self::Completed,
+        }
+    }
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -138,23 +146,16 @@ pub async fn list(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, Too
 
 pub async fn runs(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
     let input: RunsInput = parse(arguments)?;
-    let repository = repository_id(hub, &input.repository).await?;
-    let status = input.status.map(|status| match status {
-        StatusInput::Queued => workflow_run_list::WorkflowRunStatus::QUEUED,
-        StatusInput::InProgress => workflow_run_list::WorkflowRunStatus::IN_PROGRESS,
-        StatusInput::Completed => workflow_run_list::WorkflowRunStatus::COMPLETED,
-    });
-    let variables = workflow_run_list::Variables {
-        repository,
+    let query = Query {
+        repository: repository_id(hub, &input.repository).await?,
         branch: input.branch,
-        status,
-        first: Some(size(&input.page, SMALL_PAGE)),
+        status: input.status.map(RunStatus::from),
+        first: size(&input.page, SMALL_PAGE),
         after: input.page.after,
-        fresh: input.fresh,
+        fresh: input.fresh.unwrap_or(false),
         jobs: input.detail.unwrap_or(false),
     };
-    let page = hub.run::<WorkflowRunList>(variables).await?.workflow_runs;
-    Ok(listing("runs", &page))
+    Ok(listing("runs", &query.run(hub).await?))
 }
 
 pub async fn run(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {

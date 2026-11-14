@@ -47,7 +47,6 @@ async fn prj_031_pr_list_names_the_repository_by_full_name_and_prints_a_table_an
     assert_eq!(sent["repository"], REPOSITORY);
     assert_eq!(sent["state"], "ALL");
     assert_eq!(sent["first"], 20);
-    assert_eq!(sent["detail"], false);
 
     let lookups = variables(&hub, "ProjectList").len();
     let json = ask(&hub, &["pr", "list", REPOSITORY, "--json", "--fresh"]).await;
@@ -68,10 +67,11 @@ async fn prj_033_pr_list_checks_asks_for_mergeability_checks_and_merge_methods()
     let pulls = [pull_request(7, "Fix the thing", None)];
     let mut page = connection("pullRequests", &pulls, None);
     page["pullRequests"]["mergeMethods"] = json!(["SQUASH", "MERGE"]);
-    hub.answer("PullRequestList", data(page));
+    hub.answer("PullRequestListChecked", data(page));
     let run = ask(&hub, &["pr", "list", REPOSITORY, "--checks"]).await;
     assert_eq!(run.code, 0, "{run:?}");
-    assert_eq!(variables(&hub, "PullRequestList")[0]["detail"], true);
+    assert_eq!(variables(&hub, "PullRequestListChecked").len(), 1);
+    assert_eq!(variables(&hub, "PullRequestList").len(), 0);
     assert!(run.stdout.contains("yes"), "{run:?}");
     assert!(run.stdout.contains("PASSED"), "{run:?}");
     assert!(
@@ -167,7 +167,10 @@ async fn prj_031_issue_list_sends_the_state_and_prints_the_labels() {
         (&json!("CLOSED"), &json!(5))
     );
     let json = ask(&hub, &["issue", "list", REPOSITORY, "--json"]).await;
-    assert_eq!(json.json()["edges"][0]["node"], issues[0]);
+    assert_eq!(
+        json.json()["edges"][0]["node"]["labels"],
+        json!(["help wanted"])
+    );
 }
 
 #[tokio::test]
@@ -176,10 +179,13 @@ async fn prj_030_issue_get_prints_the_issue_and_its_comments() {
     let found = issue(7, "It breaks", Some("Steps: run it"));
     hub.answer("IssueGet", data(json!({ "issue": found })));
     let comments = [comment("901", "Same here"), comment("902", "Fixed in #8")];
-    hub.answer(
-        "IssueComments",
-        data(connection("issueComments", &comments, Some("c2"))),
-    );
+    let (older, newer) = comments.split_at(1);
+    for (page, next) in [(older, Some("c2")), (newer, None)] {
+        hub.answer(
+            "IssueComments",
+            data(connection("issueComments", page, next)),
+        );
+    }
     let run = ask(
         &hub,
         &[
@@ -198,6 +204,7 @@ async fn prj_030_issue_get_prints_the_issue_and_its_comments() {
     }
     assert_eq!(variables(&hub, "IssueGet")[0]["number"], 7);
     assert_eq!(variables(&hub, "IssueComments")[0]["first"], 100);
+    assert_eq!(variables(&hub, "IssueComments")[1]["after"], "c2");
 
     let hub = FakeHub::start().await;
     hub.answer("IssueGet", data(json!({ "issue": null })));
@@ -221,10 +228,9 @@ async fn prj_035_workflow_list_prints_the_workflows() {
 async fn prj_034_workflow_runs_filters_by_branch_and_status_and_shows_the_commit() {
     let hub = FakeHub::start().await;
     let runs = [run("5001", "Break the build")];
-    hub.answer(
-        "WorkflowRunList",
-        data(connection("workflowRuns", &runs, None)),
-    );
+    for operation in ["WorkflowRunList", "WorkflowRunListJobs"] {
+        hub.answer(operation, data(connection("workflowRuns", &runs, None)));
+    }
     let table = ask(
         &hub,
         &[
@@ -249,15 +255,15 @@ async fn prj_034_workflow_runs_filters_by_branch_and_status_and_shows_the_commit
     ] {
         assert!(table.stdout.contains(shown), "{shown}: {table:?}");
     }
-    let sent = &variables(&hub, "WorkflowRunList")[0];
+    let sent = &variables(&hub, "WorkflowRunListJobs")[0];
     assert_eq!(
         (&sent["branch"], &sent["status"]),
         (&json!("main"), &json!("IN_PROGRESS"))
     );
-    assert_eq!((&sent["jobs"], &sent["first"]), (&json!(true), &json!(20)));
+    assert_eq!(sent["first"], 20);
     let json = ask(&hub, &["workflow", "runs", REPOSITORY, "--json"]).await;
     assert_eq!(json.json()["edges"][0]["node"]["id"], "5001");
-    assert_eq!(variables(&hub, "WorkflowRunList")[1]["jobs"], false);
+    assert_eq!(variables(&hub, "WorkflowRunList").len(), 1);
 }
 
 #[tokio::test]

@@ -4,6 +4,7 @@
 pub mod documents;
 pub mod get;
 pub mod list;
+pub mod query;
 pub mod render;
 
 use crate::failure::Failure;

@@ -11,9 +11,8 @@ use crate::mcp::arguments::{Page, json, object, parse};
 use crate::mcp::catalogue::Access;
 use crate::mcp::definition::{Definition, Effect};
 use crate::mcp::outcome::ToolError;
-use crate::pull_requests::documents::{
-    PullRequestGet, PullRequestList, pull_request_get, pull_request_list,
-};
+use crate::pull_requests::documents::{PullRequestGet, pull_request_get};
+use crate::pull_requests::query::Query;
 
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -99,22 +98,15 @@ pub fn get_definition() -> Definition {
 
 pub async fn list(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
     let input: ListInput = parse(arguments)?;
-    let repository = repository_id(hub, &input.repository).await?;
-    let state = match input.state.unwrap_or_default() {
-        StateInput::Open => pull_request_list::OpenOrClosed::OPEN,
-        StateInput::Closed => pull_request_list::OpenOrClosed::CLOSED,
-        StateInput::All => pull_request_list::OpenOrClosed::ALL,
-    };
-    let variables = pull_request_list::Variables {
-        repository,
-        state: Some(state),
-        first: Some(size(&input.page, SMALL_PAGE)),
+    let query = Query {
+        repository: repository_id(hub, &input.repository).await?,
+        state: input.state.unwrap_or_default().into(),
+        first: size(&input.page, SMALL_PAGE),
         after: input.page.after,
-        fresh: input.fresh,
-        detail: input.detail.unwrap_or(false),
+        fresh: input.fresh.unwrap_or(false),
+        checked: input.detail.unwrap_or(false),
     };
-    let page = hub.run::<PullRequestList>(variables).await?.pull_requests;
-    Ok(listing("pullRequests", &page))
+    Ok(listing("pullRequests", &query.run(hub).await?))
 }
 
 pub async fn get(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {

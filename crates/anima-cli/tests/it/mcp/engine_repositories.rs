@@ -71,7 +71,7 @@ async fn mcp_017_pull_requests_list_resolves_the_name_and_keeps_detail_for_the_a
     let pulls = [pull_request(7, "Fix the thing", None)];
     let mut page = connection("pullRequests", &pulls, Some("next-1"));
     page["pullRequests"]["mergeMethods"] = json!(["SQUASH"]);
-    hub.answer("PullRequestList", data(page));
+    hub.answer("PullRequestListChecked", data(page));
     let mut session = Desk::new().start(&hub, LOGIN_TOKEN, &[]).await.0;
     let answer = session
         .call(
@@ -84,12 +84,9 @@ async fn mcp_017_pull_requests_list_resolves_the_name_and_keeps_detail_for_the_a
     assert_eq!(result["nextCursor"], "next-1");
     assert_eq!(result["mergeMethods"], json!(["SQUASH"]));
     assert_eq!(result["read"]["stale"], false);
-    let asked = &sent(&hub, "PullRequestList")[0];
+    let asked = &sent(&hub, "PullRequestListChecked")[0];
     assert_eq!(asked["repository"], REPOSITORY);
-    assert_eq!(
-        (&asked["state"], &asked["detail"]),
-        (&json!("ALL"), &json!(true))
-    );
+    assert_eq!(asked["state"], "ALL");
     assert_eq!(
         asked["first"], 50,
         "the hub refuses more than 50 pull requests"
@@ -181,7 +178,7 @@ async fn mcp_017_workflow_tools_list_workflows_and_runs_and_get_one_run() {
     hub.answer("WorkflowList", data(json!({ "workflows": [workflow()] })));
     let runs = [run("5001", "Break the build")];
     hub.answer(
-        "WorkflowRunList",
+        "WorkflowRunListJobs",
         data(connection("workflowRuns", &runs, None)),
     );
     hub.answer(
@@ -204,12 +201,11 @@ async fn mcp_017_workflow_tools_list_workflows_and_runs_and_get_one_run() {
         )
         .await;
     assert_eq!(structured(&listed)["runs"][0]["jobs"]["failed"], 1);
-    let asked = &sent(&hub, "WorkflowRunList")[0];
+    let asked = &sent(&hub, "WorkflowRunListJobs")[0];
     assert_eq!(
         (&asked["branch"], &asked["status"]),
         (&json!("main"), &json!("IN_PROGRESS"))
     );
-    assert_eq!(asked["jobs"], true);
     let got = session
         .call(
             "anima_workflow_run_get",

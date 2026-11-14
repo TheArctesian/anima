@@ -3,6 +3,7 @@
 
 pub mod comments;
 pub mod render;
+pub mod rows;
 
 use crate::failure::Failure;
 use crate::invocation::Invocation;

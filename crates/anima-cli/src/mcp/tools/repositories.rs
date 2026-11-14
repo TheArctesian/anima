@@ -18,6 +18,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
 
 use crate::failure::Failure;
+use crate::forge::StateArg;
 use crate::forge::comments::{IssueComments, issue_comments};
 use crate::hub::Hub;
 use crate::mcp::arguments::{Page, json, object};
@@ -44,6 +45,16 @@ pub enum StateInput {
     Open,
     Closed,
     All,
+}
+
+impl From<StateInput> for StateArg {
+    fn from(state: StateInput) -> Self {
+        match state {
+            StateInput::Open => Self::Open,
+            StateInput::Closed => Self::Closed,
+            StateInput::All => Self::All,
+        }
+    }
 }
 
 impl RepositoryTool {

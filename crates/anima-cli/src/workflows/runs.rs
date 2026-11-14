@@ -1,8 +1,7 @@
 //! `anima workflow runs <repository>`: runs, newest first, with pages (CMD-026).
 
-use super::documents::{WorkflowRunList, workflow_run_list};
+use super::query::{Query, RunStatus};
 use super::render;
-use crate::connection_page;
 use crate::failure::Failure;
 use crate::invocation::Invocation;
 use crate::paging::{CommandLine, fetch, note_next, page_size};
@@ -20,7 +19,7 @@ pub struct RunsArgs {
     branch: Option<String>,
     /// Only runs with this status.
     #[arg(long, value_enum)]
-    status: Option<StatusArg>,
+    status: Option<RunStatus>,
     /// Also count each run's jobs (costs a request for each run).
     #[arg(long)]
     jobs: bool,
@@ -38,26 +37,6 @@ pub struct RunsArgs {
     fresh: bool,
 }
 
-/// K1 `WorkflowRunStatus`.
-#[derive(Clone, Copy, Debug, clap::ValueEnum)]
-enum StatusArg {
-    Queued,
-    InProgress,
-    Completed,
-}
-
-impl StatusArg {
-    const fn k1(self) -> workflow_run_list::WorkflowRunStatus {
-        match self {
-            Self::Queued => workflow_run_list::WorkflowRunStatus::QUEUED,
-            Self::InProgress => workflow_run_list::WorkflowRunStatus::IN_PROGRESS,
-            Self::Completed => workflow_run_list::WorkflowRunStatus::COMPLETED,
-        }
-    }
-}
-
-connection_page!(workflow_run_list::WorkflowRunListWorkflowRuns);
-
 impl RunsArgs {
     /// Prints the runs as a table or, with `--json`, as the K1 `WorkflowRunConnection`.
     ///
@@ -71,20 +50,18 @@ impl RunsArgs {
             .switch("--jobs", self.jobs);
         let hub = invocation.hub()?;
         let repository = resolve(&hub, &self.repository).await?;
-        let first = Some(page_size(self.limit, self.all, MAX_PAGE));
-        let (hub, repository, branch) = (&hub, &repository, &self.branch);
-        let (jobs, fresh, status) = (self.jobs, self.fresh, self.status);
-        let runs = fetch(self.after, self.all, move |after| async move {
-            let variables = workflow_run_list::Variables {
-                repository: repository.clone(),
-                branch: branch.clone(),
-                status: status.map(StatusArg::k1),
-                first,
-                after,
-                fresh: Some(fresh),
-                jobs,
-            };
-            Ok(hub.run::<WorkflowRunList>(variables).await?.workflow_runs)
+        let asked = |after| Query {
+            repository: repository.clone(),
+            branch: self.branch.clone(),
+            status: self.status,
+            first: page_size(self.limit, self.all, MAX_PAGE),
+            after,
+            fresh: self.fresh,
+            jobs: self.jobs,
+        };
+        let (hub, asked) = (&hub, &asked);
+        let runs = fetch(self.after.clone(), self.all, move |after| async move {
+            Ok(asked(after).run(hub).await?)
         })
         .await?;
         invocation.output.data(&runs, render::runs)?;

@@ -42,7 +42,8 @@ fn cut(cleaned: String, cap: usize) -> String {
 }
 
 /// `value` with every string cleaned and capped; the key `text` (a log line) gets the
-/// larger cap.
+/// larger cap, and the key `body` (Markdown from GitHub) keeps its line breaks and gets
+/// [`BODY_CAP`].
 #[must_use]
 pub fn cleaned(value: Value) -> Value {
     cleaned_under(value, TEXT_CAP)
@@ -141,6 +142,17 @@ mod tests {
         let cut = capped(&long, TEXT_CAP);
         assert!(cut.starts_with(&"a".repeat(TEXT_CAP)));
         assert!(cut.ends_with("…[cut: 9500 more characters]"), "{cut}");
+    }
+
+    #[test]
+    fn mcp_008_a_body_keeps_its_lines_and_is_cut_at_the_body_cap() {
+        let value = cleaned(json!({
+            "pullRequest": { "body": format!("a\u{1b}b\nc{}", "z".repeat(5_000)), "title": "t\nu" },
+        }));
+        let body = value["pullRequest"]["body"].as_str().unwrap_or_default();
+        assert!(body.starts_with("a b\nc"), "{body}");
+        assert!(body.ends_with("…[cut: 1004 more characters]"), "{body}");
+        assert_eq!(value["pullRequest"]["title"], "t u");
     }
 
     #[test]
