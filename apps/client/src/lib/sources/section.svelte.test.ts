@@ -68,7 +68,7 @@ function type(selector: string, value: string): void {
 }
 
 async function fillAndSend(privateKey: string): Promise<void> {
-  await click('Connect GitHub');
+  await click('Connect with a key file instead');
   type('input[id$="-label"]', 'Personal');
   type('input[id$="-appId"]', '12345');
   type('input[id$="-installationId"]', '678');
@@ -171,9 +171,9 @@ it('SRC-003: choosing Delete the records sends deleteRecords true', async () => 
   expect(hub.sent).toEqual([{ operation: 'RemoveSourceAccount', variables: { id: 'a', deleteRecords: true } }]);
 });
 
-it('PRJ-018: Connect GitHub says the operator makes the App, and sends the label, both IDs and the key', async () => {
+it('PRJ-018: the key-file dialog says the operator makes the App, and sends the label, both IDs and the key', async () => {
   await open();
-  await click('Connect GitHub');
+  await click('Connect with a key file instead');
   expect(text()).toContain('You make the GitHub App in your own account');
   await fillAndSend(KEY);
   const sent = hub.sent[0];
@@ -186,7 +186,7 @@ it('PRJ-018: Connect GitHub says the operator makes the App, and sends the label
 it('PRJ-018: after a send the key is nowhere: not in the page, a reopened dialog is empty, no storage, no log', async () => {
   await open();
   await fillAndSend(KEY);
-  await click('Connect GitHub');
+  await click('Connect with a key file instead');
   expect(keyField()?.value).toBe('');
   expect(document.body.innerHTML).not.toContain(KEY_BODY);
   expect(JSON.stringify({ ...localStorage })).not.toContain(KEY_BODY);
@@ -196,7 +196,7 @@ it('PRJ-018: after a send the key is nowhere: not in the page, a reopened dialog
 
 it('PRJ-018: after a refused connect the key field is empty, the other fields stay, and the hub words show', async () => {
   await open();
-  await click('Connect GitHub');
+  await click('Connect with a key file instead');
   hub.refuse = { code: 'CONFLICT', message: 'GitHub refused this App ID.' };
   type('input[id$="-label"]', 'Personal');
   type('input[id$="-appId"]', '12345');
@@ -208,14 +208,14 @@ it('PRJ-018: after a refused connect the key field is empty, the other fields st
   expect(document.querySelector('[role="alert"]')?.textContent).toBe('GitHub refused this App ID.');
   expect(document.body.innerHTML).not.toContain(KEY_BODY);
   await click('Cancel');
-  await click('Connect GitHub');
+  await click('Connect with a key file instead');
   expect(keyField()?.value).toBe('');
   expect(document.querySelector<HTMLInputElement>('input[id$="-appId"]')?.value).toBe('');
 });
 
 it('PRJ-018: the key field hides what is typed, is not named for the browser, and a form with no key sends nothing', async () => {
   await open();
-  await click('Connect GitHub');
+  await click('Connect with a key file instead');
   expect(keyField()?.type).toBe('password');
   expect(keyField()?.hasAttribute('name')).toBe(false);
   await click('Connect');
