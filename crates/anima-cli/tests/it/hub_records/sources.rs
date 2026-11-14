@@ -1,6 +1,8 @@
 //! `anima source kinds`, `list`, `get`, `sync`, `pause`, `resume` and `watch` against the
 //! scripted hub (ITG-001 to ITG-003).
 
+mod connect;
+
 use serde_json::{Value, json};
 
 use crate::kit::Anima;

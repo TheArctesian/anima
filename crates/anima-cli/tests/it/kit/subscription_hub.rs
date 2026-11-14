@@ -8,7 +8,7 @@ use axum::extract::State;
 use axum::extract::ws::{CloseFrame, Message, WebSocket, WebSocketUpgrade};
 use axum::http::Uri;
 use axum::response::Response;
-use axum::routing::get;
+use axum::routing::{MethodRouter, get};
 use serde_json::{Value, json};
 use tokio::net::TcpListener;
 
@@ -17,6 +17,8 @@ use tokio::net::TcpListener;
 pub enum Script {
     /// Sends each value as the `data` of a `next` frame, then `complete`.
     Next(Vec<Value>),
+    /// Sends each value as a `next` frame and keeps the subscription open.
+    Hold(Vec<Value>),
     /// Sends an `error` frame with these GraphQL errors.
     Error(Value),
     /// Closes the socket with 4403 at `connection_init`, as for a token it does not know.
@@ -41,29 +43,46 @@ struct Shared {
     received: Mutex<Received>,
 }
 
+/// The socket half of a hub: what the client sent it.
+pub struct Socket {
+    shared: Arc<Shared>,
+}
+
+impl Socket {
+    /// What the client has sent so far.
+    pub fn received(&self) -> Received {
+        self.shared.received.lock().expect("received").clone()
+    }
+}
+
+/// `GET /graphql` as a route to add to another scripted hub (see `FakeHub::start_with`), and
+/// the handle that shows what the client sent it.
+pub fn socket(script: Script) -> (MethodRouter, Socket) {
+    let shared = Arc::new(Shared {
+        script,
+        received: Mutex::default(),
+    });
+    (get(upgrade).with_state(shared.clone()), Socket { shared })
+}
+
 pub struct SubscriptionHub {
     pub origin: String,
-    shared: Arc<Shared>,
+    socket: Socket,
 }
 
 impl SubscriptionHub {
     pub async fn start(script: Script) -> Self {
         let listener = TcpListener::bind("127.0.0.1:0").await.expect("a port");
         let origin = format!("http://{}", listener.local_addr().expect("an address"));
-        let shared = Arc::new(Shared {
-            script,
-            received: Mutex::default(),
-        });
-        let app = Router::new()
-            .route("/graphql", get(upgrade))
-            .with_state(shared.clone());
+        let (route, socket) = socket(script);
+        let app = Router::new().route("/graphql", route);
         tokio::spawn(async move { axum::serve(listener, app).await.ok() });
-        Self { origin, shared }
+        Self { origin, socket }
     }
 
     /// What the client has sent so far.
     pub fn received(&self) -> Received {
-        self.shared.received.lock().expect("received").clone()
+        self.socket.received()
     }
 }
 
@@ -131,6 +150,16 @@ async fn answer(socket: &mut WebSocket, script: &Script) {
                 .await;
             }
             send(socket, json!({ "id": "1", "type": "complete" })).await;
+        }
+        Script::Hold(answers) => {
+            for data in answers {
+                let payload = json!({ "data": data });
+                send(
+                    socket,
+                    json!({ "id": "1", "type": "next", "payload": payload }),
+                )
+                .await;
+            }
         }
         Script::Error(errors) => {
             send(

@@ -6,6 +6,7 @@
 mod actors;
 mod breadth;
 mod checks;
+mod connect_github;
 mod devices;
 mod keys;
 mod mcp;

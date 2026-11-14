@@ -7,7 +7,7 @@ use std::sync::{Arc, Mutex};
 use axum::Router;
 use axum::extract::State;
 use axum::http::{HeaderMap, header};
-use axum::routing::post;
+use axum::routing::{MethodRouter, post};
 use serde_json::{Value, json};
 use tokio::net::TcpListener;
 
@@ -37,12 +37,18 @@ pub struct FakeHub {
 
 impl FakeHub {
     pub async fn start() -> Self {
+        Self::start_with(MethodRouter::new()).await
+    }
+
+    /// As [`FakeHub::start`], with `socket` answering `GET /graphql` (a subscription).
+    pub async fn start_with(socket: MethodRouter) -> Self {
         let listener = TcpListener::bind("127.0.0.1:0").await.expect("a port");
         let origin = format!("http://{}", listener.local_addr().expect("an address"));
         let script = Shared::default();
-        let app = Router::new()
-            .route("/graphql", post(answer))
-            .with_state(script.clone());
+        let app = Router::new().route(
+            "/graphql",
+            post(answer).with_state(script.clone()).merge(socket),
+        );
         tokio::spawn(async move { axum::serve(listener, app).await.ok() });
         Self { origin, script }
     }

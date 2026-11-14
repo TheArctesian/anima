@@ -7,12 +7,13 @@ use std::collections::BTreeMap;
 use std::io::Write as _;
 use std::net::SocketAddr;
 use std::sync::Arc;
+use std::time::Duration;
 
 use anima_hub::{
     DRAIN_LIMIT, Shutdown, all_routes,
     clock::{Clock, SystemClock},
     config,
-    engine::sources::{Reach, Transport},
+    engine::sources::{Attempts, INSTALLATION_POLL, Reach, Transport},
     fleet::{
         access::{self, Password, listen},
         builds,
@@ -114,10 +115,16 @@ impl RealHub {
     /// Serves the hub with the Projects intake wired in as `main.rs` wires it, its GitHub
     /// requests sent to a new loopback stub instead of GitHub.
     pub async fn with_github(pool: PgPool) -> (Self, Stub) {
+        Self::with_github_polling(pool, INSTALLATION_POLL).await
+    }
+
+    /// As [`RealHub::with_github`], with the Connect GitHub installation poll asking every `every`.
+    pub async fn with_github_polling(pool: PgPool, every: Duration) -> (Self, Stub) {
         let stub = Stub::start(&pool).await;
         let loopback = AddressPolicy::default().allowing_loopback();
         let mut reach = anima_hub::source_reach(vec![projects::intake()], loopback.clone())
             .expect("the source registry");
+        reach.attempts = Attempts::new(every);
         reach.transport =
             Transport::to_stub(stub.base.clone(), loopback).expect("the stub transport");
         (Self::serve(pool, Some(reach)).await, stub)

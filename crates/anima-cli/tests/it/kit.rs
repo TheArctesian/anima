@@ -1,5 +1,6 @@
 //! Runs the `anima` program with a clean environment and its own configuration folder.
 
+pub mod browser;
 pub mod fake_hub;
 pub mod github;
 pub mod real_hub;
