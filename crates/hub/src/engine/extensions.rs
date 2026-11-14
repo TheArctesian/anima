@@ -18,7 +18,7 @@ use sqlx::{PgConnection, PgPool};
 
 use crate::api_errors::{ErrorCode, coded, internal};
 
-pub use model::{DataClass, Entry, Key, Navigation, NavigationGroup};
+pub use model::{Entry, Key, Navigation, NavigationGroup, Sensitivity};
 pub use registry::{PROJECTS, registry};
 pub use switching::Refusal;
 use switching::plan;

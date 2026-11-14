@@ -52,7 +52,8 @@ impl Key {
 
 /// How sensitive the data of an extension is (EXT-004).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Enum)]
-pub enum DataClass {
+#[graphql(name = "DataClass")]
+pub enum Sensitivity {
     A,
     B,
     C,
@@ -82,7 +83,7 @@ pub struct Navigation {
 pub struct Entry {
     pub key: Key,
     pub name: &'static str,
-    pub data_class: DataClass,
+    pub data_class: Sensitivity,
     pub needs: &'static [Key],
     pub works_with: &'static [Key],
     pub navigation: Option<Navigation>,

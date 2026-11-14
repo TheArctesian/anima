@@ -1,7 +1,7 @@
 //! The fifteen extensions of Section 1.1 of the extensions plan, as data (K-E7, EXT-006,
 //! EXT-010). Only Projects is built; Integrations is part of the engine and always on.
 
-use super::model::{DataClass, Entry, Key, Navigation, NavigationGroup};
+use super::model::{Entry, Key, Navigation, NavigationGroup, Sensitivity};
 
 const MAP: Key = Key::new("map");
 pub const PROJECTS: Key = Key::new("projects");
@@ -23,7 +23,7 @@ static REGISTRY: [Entry; 15] = [
     Entry {
         key: MAP,
         name: "Map",
-        data_class: DataClass::B,
+        data_class: Sensitivity::B,
         needs: &[],
         works_with: &[HEALTH, HISTORY, PEOPLE],
         navigation: Some(Navigation {
@@ -39,7 +39,7 @@ static REGISTRY: [Entry; 15] = [
     Entry {
         key: PROJECTS,
         name: "Projects",
-        data_class: DataClass::C,
+        data_class: Sensitivity::C,
         needs: &[],
         works_with: &[SECRETS, MODEL_GATEWAY, ASSISTANT_SESSIONS, WRITING],
         navigation: Some(Navigation {
@@ -55,7 +55,7 @@ static REGISTRY: [Entry; 15] = [
     Entry {
         key: WRITING,
         name: "Writing",
-        data_class: DataClass::C,
+        data_class: Sensitivity::C,
         needs: &[],
         works_with: &[PROJECTS],
         navigation: Some(Navigation {
@@ -71,7 +71,7 @@ static REGISTRY: [Entry; 15] = [
     Entry {
         key: SECRETS,
         name: "Secrets",
-        data_class: DataClass::B,
+        data_class: Sensitivity::B,
         needs: &[],
         works_with: &[PROJECTS],
         navigation: Some(Navigation {
@@ -87,7 +87,7 @@ static REGISTRY: [Entry; 15] = [
     Entry {
         key: INTEGRATIONS,
         name: "Integrations",
-        data_class: DataClass::C,
+        data_class: Sensitivity::C,
         needs: &[],
         works_with: &[],
         navigation: None,
@@ -99,7 +99,7 @@ static REGISTRY: [Entry; 15] = [
     Entry {
         key: PEOPLE,
         name: "People",
-        data_class: DataClass::C,
+        data_class: Sensitivity::C,
         needs: &[],
         works_with: &[MAP, LIBRARY],
         navigation: Some(Navigation {
@@ -115,7 +115,7 @@ static REGISTRY: [Entry; 15] = [
     Entry {
         key: MONEY,
         name: "Money",
-        data_class: DataClass::B,
+        data_class: Sensitivity::B,
         needs: &[],
         works_with: &[WARDROBE],
         navigation: Some(Navigation {
@@ -131,7 +131,7 @@ static REGISTRY: [Entry; 15] = [
     Entry {
         key: HISTORY,
         name: "History",
-        data_class: DataClass::B,
+        data_class: Sensitivity::B,
         needs: &[],
         works_with: &[MAP],
         navigation: Some(Navigation {
@@ -147,7 +147,7 @@ static REGISTRY: [Entry; 15] = [
     Entry {
         key: HEALTH,
         name: "Health",
-        data_class: DataClass::B,
+        data_class: Sensitivity::B,
         needs: &[],
         works_with: &[MAP],
         navigation: Some(Navigation {
@@ -163,7 +163,7 @@ static REGISTRY: [Entry; 15] = [
     Entry {
         key: DOCUMENTS,
         name: "Documents",
-        data_class: DataClass::A,
+        data_class: Sensitivity::A,
         needs: &[],
         works_with: &[],
         navigation: Some(Navigation {
@@ -179,7 +179,7 @@ static REGISTRY: [Entry; 15] = [
     Entry {
         key: REMINDERS,
         name: "Reminders",
-        data_class: DataClass::C,
+        data_class: Sensitivity::C,
         needs: &[],
         works_with: &[],
         navigation: Some(Navigation {
@@ -195,7 +195,7 @@ static REGISTRY: [Entry; 15] = [
     Entry {
         key: ASSISTANT_SESSIONS,
         name: "AI coding sessions",
-        data_class: DataClass::B,
+        data_class: Sensitivity::B,
         needs: &[],
         works_with: &[PROJECTS],
         navigation: None,
@@ -207,7 +207,7 @@ static REGISTRY: [Entry; 15] = [
     Entry {
         key: WARDROBE,
         name: "Wardrobe",
-        data_class: DataClass::C,
+        data_class: Sensitivity::C,
         needs: &[],
         works_with: &[MONEY],
         navigation: Some(Navigation {
@@ -223,7 +223,7 @@ static REGISTRY: [Entry; 15] = [
     Entry {
         key: LIBRARY,
         name: "Library",
-        data_class: DataClass::C,
+        data_class: Sensitivity::C,
         needs: &[],
         works_with: &[PEOPLE],
         navigation: Some(Navigation {
@@ -239,7 +239,7 @@ static REGISTRY: [Entry; 15] = [
     Entry {
         key: MODEL_GATEWAY,
         name: "Model gateway",
-        data_class: DataClass::C,
+        data_class: Sensitivity::C,
         needs: &[SECRETS],
         works_with: &[PROJECTS],
         navigation: Some(Navigation {

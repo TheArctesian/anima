@@ -13,7 +13,7 @@ use async_graphql::{Context, Error as GraphQlError, Object, Result, SimpleObject
 use chrono::{DateTime, Utc};
 
 use super::{
-    DataClass, Entry, Error, Key, NavigationGroup, on_set, registry, store, switch,
+    Entry, Error, Key, NavigationGroup, Sensitivity, on_set, registry, store, switch,
     switching::needed_by,
 };
 use crate::{
@@ -38,7 +38,8 @@ struct ExtensionView {
     /// Stable identifier, for example projects.
     key: String,
     name: String,
-    data_class: DataClass,
+    #[graphql(name = "dataClass")]
+    data_class: Sensitivity,
     /// False: listed, not built. setExtension refuses it with CONFLICT.
     built: bool,
     /// True: part of the engine, always on, no switch (Integrations, ENG-002).
