@@ -121,8 +121,8 @@ export class ProjectsStore {
   }
 
   #merge(projects: readonly Project[]): void {
-    const ids = new Set(projects.map((project) => project.id));
-    this.#known = [...this.#known.filter((each) => !ids.has(each.id)), ...projects];
+    const ids = projects.map((project) => project.id);
+    this.#known = [...this.#known.filter((each) => !ids.includes(each.id)), ...projects];
   }
 
   #replaceResource(resource: ProjectResource): void {

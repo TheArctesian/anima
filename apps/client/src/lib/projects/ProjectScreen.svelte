@@ -27,6 +27,7 @@
       <h1>{project.name}</h1>
       <span class="status">{projectStatusWords(project)}</span>
       {#if primary !== undefined}
+        <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- an address on GitHub, not a route of this app -->
         <a href={primary.url} target="_blank" rel="noreferrer">Open in GitHub</a>
       {/if}
     </header>

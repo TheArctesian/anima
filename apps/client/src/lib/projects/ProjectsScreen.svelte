@@ -40,6 +40,7 @@
     <ul class="entries">
       {#each projects as project (project.id)}
         <li class="entry">
+          <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- the path comes from resolve(); the slug is the hub's and is encoded -->
           <a class="name" href={`${resolve('/projects')}/${encodeURIComponent(project.slug)}`}>{project.name}</a>
           <ul class="repositories">
             {#each project.repositories as repository (repository.id)}
