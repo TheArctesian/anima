@@ -93,6 +93,7 @@ One document owns each concern. Add a requirement to its owner, not to this docu
 | --- | --- | --- |
 | Device manager: hub, clients, sessions, checks, metrics, notifications | [design-spec.md](design-spec.md) | As published there |
 | VPN and enrolment | [vpn-plan.md](vpn-plan.md) | As published there |
+| One-click install, many hubs, shares and teams | [one-click-plan.md](one-click-plan.md) | `LNK`, `AWK`, `MHB`, `SHR`, `MBR` (proposed; not in the spec yet) |
 | Agent push | `contracts/agent-push.md` (K8), [phase-3-agent-delta.md](programme/phase-3-agent-delta.md) | MET-011 to MET-025 |
 | Engine and extensions | [extensions-plan.md](extensions-plan.md) | ENG, SRC, COL, VLT, XP, PRJ and the others there |
 | Model service and pooled models | [compute-plan.md](compute-plan.md), as changed by #34 and #35 | CMP, CAG, CAP, RTR and the others there |
