@@ -6,11 +6,13 @@
 
 mod declaration;
 mod exchange;
+mod registration;
 
 pub use declaration::{
     Acquisition, AppKey, Declaration, MIN_POLL_INTERVAL_SECONDS, Minted, Minting,
 };
 pub use exchange::{Body, Method, Normalised, Problem, Request, RequestError, Response};
+pub use registration::{Converted, Installation, ManifestFacts, Owner, Registration, Webhook};
 
 #[cfg(test)]
 mod tests;

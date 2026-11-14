@@ -1,0 +1,10 @@
+{
+  "id": 4322,
+  "account": { "login": "octo-person", "id": 9001, "type": "User" },
+  "repository_selection": "all",
+  "app_id": 1234567,
+  "target_id": 9001,
+  "target_type": "User",
+  "suspended_by": { "login": "octo-person", "id": 9001 },
+  "suspended_at": "2026-11-13T11:00:00Z"
+}

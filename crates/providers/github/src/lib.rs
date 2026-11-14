@@ -11,6 +11,7 @@ mod inspection;
 mod name;
 mod problem;
 mod record;
+mod registration;
 mod repositories;
 mod signs;
 mod state;
@@ -28,6 +29,7 @@ pub const DECLARATION: Declaration = Declaration {
     acquisition: Acquisition::TokenPull(Minting::AppKey(AppKey {
         mint_path: app_token::mint_path,
         parse_minted: app_token::parse_minted,
+        registration: Some(registration::REGISTRATION),
     })),
     scopes: &[
         "Metadata: read",

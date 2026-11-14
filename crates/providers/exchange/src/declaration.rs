@@ -3,6 +3,7 @@
 use chrono::{DateTime, Utc};
 
 use crate::exchange::Problem;
+use crate::registration::Registration;
 
 /// The shortest poll interval a declaration may ask for (SRC-021).
 pub const MIN_POLL_INTERVAL_SECONDS: u32 = 900;
@@ -54,6 +55,8 @@ pub struct AppKey {
     pub mint_path: fn(installation: &str) -> String,
     /// Reads the mint reply.
     pub parse_minted: fn(body: &[u8]) -> Result<Minted, Problem>,
+    /// `Some`: the hub can make the App for the operator (PRJ-039).
+    pub registration: Option<Registration>,
 }
 
 /// A token and the time it stops working. No `Debug`: the token is a secret.
