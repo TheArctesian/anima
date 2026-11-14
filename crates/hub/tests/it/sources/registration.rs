@@ -5,6 +5,7 @@
 mod api;
 mod browser;
 mod flow;
+mod installed;
 mod leaks;
 mod pages;
 mod refusals;

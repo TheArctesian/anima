@@ -8,6 +8,7 @@
 //!
 //! Work that moves the attempt between two phases across an `await` (the exchange, the store)
 //! holds a [`Settle`]: when that work is dropped or panics, the attempt still leaves the phase.
+//! A caller that waits for the attempt to end reads the feed, never the lock, and stops at a bound.
 
 use std::{
     sync::{Arc, Mutex, PoisonError},
@@ -18,7 +19,7 @@ use chrono::{DateTime, Utc};
 use tokio::sync::{Notify, broadcast};
 use uuid::Uuid;
 
-use super::attempt::{Attempt, Refusal, Snapshot};
+use super::attempt::{Attempt, Phase, Refusal, Snapshot};
 use crate::clock::Clock;
 
 /// How many changes a slow subscriber may fall behind before it skips some.
@@ -31,18 +32,21 @@ pub struct Attempts {
     sender: broadcast::Sender<Snapshot>,
     wake: Arc<Notify>,
     poll: Duration,
+    ending_wait: Duration,
 }
 
 impl Attempts {
-    /// An empty slot whose installation poll asks every `poll`.
+    /// An empty slot whose installation poll asks every `poll`, and whose
+    /// [`Attempts::ended_within`] waits at most `ending_wait`.
     #[must_use]
-    pub fn new(poll: Duration) -> Self {
+    pub fn new(poll: Duration, ending_wait: Duration) -> Self {
         let (sender, _) = broadcast::channel(CAPACITY);
         Self {
             held: Arc::default(),
             sender,
             wake: Arc::default(),
             poll,
+            ending_wait,
         }
     }
 
@@ -138,6 +142,36 @@ impl Attempts {
     #[must_use]
     pub const fn poll(&self) -> Duration {
         self.poll
+    }
+
+    /// The phase attempt `id` ended in (`CONNECTED`, `FAILED` or `CANCELLED`), waiting for it at
+    /// most the `ending_wait` given to [`Attempts::new`]; `None` when it has not ended by then or
+    /// is no longer held. Reads the time from `clock`; holds no lock while it waits.
+    pub async fn ended_within(&self, id: Uuid, clock: &dyn Clock) -> Option<Phase> {
+        // Subscribed before the first read, so no change between the two is missed.
+        let mut changes = self.subscribe();
+        let mut seen = self.current(clock.now());
+        let ended = async move {
+            loop {
+                let held = seen.filter(|held| held.id == id)?;
+                if matches!(
+                    held.phase,
+                    Phase::Connected | Phase::Failed | Phase::Cancelled
+                ) {
+                    return Some(held.phase);
+                }
+                seen = match changes.recv().await {
+                    Ok(change) => Some(change),
+                    Err(broadcast::error::RecvError::Lagged(_)) => self.current(clock.now()),
+                    // The sender lives in `self`: the feed cannot close while this waits.
+                    Err(broadcast::error::RecvError::Closed) => return None,
+                };
+            }
+        };
+        tokio::time::timeout(self.ending_wait, ended)
+            .await
+            .ok()
+            .flatten()
     }
 }
 

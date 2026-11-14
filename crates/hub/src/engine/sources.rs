@@ -70,6 +70,10 @@ pub struct Reach {
 /// Section 10a).
 pub const INSTALLATION_POLL: Duration = Duration::from_secs(5);
 
+/// How long the bound browser's page on `/connect/github/installed` waits for the attempt to end
+/// before it shows the "finishing" page (K-E1 Section 10a).
+pub const INSTALLED_PAGE_WAIT: Duration = Duration::from_secs(20);
+
 impl Reach {
     #[must_use]
     pub fn new(registry: Registry, transport: Transport) -> Self {
@@ -77,7 +81,7 @@ impl Reach {
             registry,
             transport,
             feed: Feed::new(),
-            attempts: Attempts::new(INSTALLATION_POLL),
+            attempts: Attempts::new(INSTALLATION_POLL, INSTALLED_PAGE_WAIT),
         }
     }
 }
