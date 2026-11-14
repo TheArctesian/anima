@@ -10,6 +10,12 @@
 pub mod attempt;
 pub mod attempts;
 pub mod binding;
+mod exchange;
+mod finish;
+pub mod installation;
+mod pages;
+mod query;
+pub mod routes;
 #[cfg(test)]
 mod tests;
 pub mod trail;

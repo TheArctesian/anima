@@ -34,7 +34,7 @@ use crate::{
 };
 
 /// Every row of every table, as text.
-async fn every_row(pool: &PgPool) -> String {
+pub(super) async fn every_row(pool: &PgPool) -> String {
     let tables: Vec<(String, String)> = sqlx::query_as(
         "SELECT table_schema::text, table_name::text FROM information_schema.tables \
          WHERE table_type = 'BASE TABLE' AND table_schema NOT IN ('pg_catalog', 'information_schema')",

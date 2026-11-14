@@ -47,7 +47,10 @@ pub use feed::Feed;
 pub use health::{HealthFacts, health};
 pub use intake::{Counts, Intake, IntakeError, Page, Registry, Taken};
 pub use model::{Account, ErrorKind, Health, Outcome, PauseReason, Trigger};
-pub use registration::attempts::Attempts;
+pub use registration::{
+    attempts::Attempts,
+    routes::{GithubFlow, router as github_connect_router},
+};
 pub use run::run;
 pub use schedule::next;
 pub use scheduler::{spawn_scheduler, start_due};

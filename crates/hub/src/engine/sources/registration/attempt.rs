@@ -4,22 +4,20 @@
 //! The App's private key lives only in the `AppCreated` and `Finishing` stages, so every step
 //! out of them (cancel, failure, expiry, success) drops it. The attempt has no `Debug` and no
 //! `Clone`; what may be shown leaves as a [`Snapshot`].
-#![expect(
-    clippy::unused_async_trait_impl,
-    reason = "the async-graphql Enum derive generates async trait impls"
-)]
 
-use async_graphql::Enum;
+mod shown;
+mod steps;
+
 use chrono::{DateTime, TimeDelta, Utc};
-use source_exchange::Owner;
 use uuid::Uuid;
 use zeroize::Zeroizing;
 
-use super::binding::Hash;
-use crate::{
-    fleet::events::{ActorKind, ClientAddr, Operator},
-    ids::SourceAccountId,
+pub use self::{
+    shown::{App, Failure, Phase, Snapshot},
+    steps::{Exchange, Finish, Finished, Refusal, Request, Starter},
 };
+use super::binding::Hash;
+use crate::ids::SourceAccountId;
 
 /// How long an attempt lives from its start, in every phase (GitHub's code lives one hour).
 pub const LIFETIME: TimeDelta = TimeDelta::minutes(55);
@@ -27,72 +25,6 @@ pub const LIFETIME: TimeDelta = TimeDelta::minutes(55);
 pub const TICKET_LIFETIME: TimeDelta = TimeDelta::minutes(5);
 /// How long an ended attempt stays readable.
 pub const READABLE_FOR: TimeDelta = TimeDelta::minutes(10);
-
-/// The phase the API shows (K1 `GithubConnectPhase`). The internal `Finishing` shows as
-/// `AppCreated`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Enum)]
-#[graphql(name = "GithubConnectPhase")]
-pub enum Phase {
-    WaitingForBrowser,
-    AtGithub,
-    AppCreated,
-    Connected,
-    Failed,
-    Cancelled,
-}
-
-/// Why an attempt failed (K1 `GithubConnectFailure`).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Enum)]
-#[graphql(name = "GithubConnectFailure")]
-pub enum Failure {
-    Expired,
-    ExchangeRefused,
-    GithubUnreachable,
-    ReplyUnusable,
-    KeyRefused,
-}
-
-/// Why a step was refused; the attempt is unchanged. Fixed words (LOG-007).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
-pub enum Refusal {
-    #[error("no attempt with this id is open")]
-    NotFound,
-    #[error("the attempt is not in a phase that allows this")]
-    Conflict,
-    #[error("an App is made and waits for Install")]
-    AppWaiting,
-    #[error("the link was already used or has ended")]
-    Ticket,
-    #[error("this browser is not the one bound to the attempt")]
-    Unbound,
-    #[error("the state does not match")]
-    State,
-}
-
-/// The App GitHub made: its facts from the conversion reply, text from GitHub.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct App {
-    pub id: u64,
-    pub slug: String,
-    pub owner: Owner,
-}
-
-/// Who started the attempt and from where, captured at the start for every audit entry and
-/// for the store at the end.
-#[derive(Clone)]
-pub struct Starter {
-    pub operator: Operator,
-    pub client: ClientAddr,
-}
-
-/// What the operator asked for at the start.
-pub struct Request {
-    pub label: Option<String>,
-    pub organisation: Option<String>,
-    /// The App's name, `anima-` and ten characters.
-    pub name: String,
-    pub by: Starter,
-}
 
 enum Stage {
     WaitingForBrowser,
@@ -116,49 +48,6 @@ enum Stage {
 struct Ticket {
     hash: Hash,
     issued_at: DateTime<Utc>,
-}
-
-/// What a hit on `/created` may do.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Exchange {
-    /// The state matched and is now spent: convert the code.
-    Fresh,
-    /// The App is already made: convert nothing, send the browser to Install again.
-    Made,
-}
-
-/// What the store at the end needs: taken under the lock with the stage `Finishing`.
-pub struct Finish {
-    pub label: String,
-    pub app_id: u64,
-    pub key: Zeroizing<String>,
-    pub by: Starter,
-}
-
-/// How the store at the end went.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Finished {
-    Connected {
-        account: SourceAccountId,
-        consumer_on: bool,
-    },
-    /// Unreachable or a database error: back to `AppCreated` for the next poll.
-    Again,
-    Failed(Failure),
-}
-
-/// What may be shown of an attempt: no key, ticket, cookie or state.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Snapshot {
-    pub id: Uuid,
-    pub phase: Phase,
-    pub started_by: ActorKind,
-    pub started_at: DateTime<Utc>,
-    pub expires_at: DateTime<Utc>,
-    pub app: Option<App>,
-    pub failure: Option<Failure>,
-    pub account: Option<SourceAccountId>,
-    pub consumer_on: bool,
 }
 
 /// One attempt. No `Debug` and no `Clone`: it holds the key between Create and Install.
@@ -482,35 +371,6 @@ impl Attempt {
                 self.end(Stage::Cancelled, now);
                 Ok(())
             }
-        }
-    }
-
-    /// What may be shown.
-    #[must_use]
-    pub fn snapshot(&self) -> Snapshot {
-        let (phase, failure, account, consumer_on) = match self.stage {
-            Stage::WaitingForBrowser => (Phase::WaitingForBrowser, None, None, false),
-            Stage::AtGithub { .. } => (Phase::AtGithub, None, None, false),
-            Stage::AppCreated { .. } | Stage::Finishing { .. } => {
-                (Phase::AppCreated, None, None, false)
-            }
-            Stage::Connected {
-                account,
-                consumer_on,
-            } => (Phase::Connected, None, Some(account), consumer_on),
-            Stage::Failed(failure) => (Phase::Failed, Some(failure), None, false),
-            Stage::Cancelled => (Phase::Cancelled, None, None, false),
-        };
-        Snapshot {
-            id: self.id,
-            phase,
-            started_by: self.request.by.operator.actor.kind(),
-            started_at: self.started_at,
-            expires_at: self.expires_at(),
-            app: self.app.clone(),
-            failure,
-            account,
-            consumer_on,
         }
     }
 }

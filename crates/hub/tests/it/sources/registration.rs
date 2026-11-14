@@ -3,6 +3,11 @@
 //! loopback stub. Never the real GitHub.
 
 mod api;
+mod browser;
+mod flow;
+mod leaks;
+mod pages;
+mod refusals;
 
 use serde_json::{Value, json};
 

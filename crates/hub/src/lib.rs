@@ -163,7 +163,7 @@ pub fn all_routes(dependencies: schema::Dependencies, edge: fleet::access::Edge)
 
 /// The routes beside `/graphql`, each logged by its template only, never its token (K3,
 /// LOG-007, R-028, R-051): the session tunnels, the push routes ([`pushes`]), `/metrics` behind a READ bearer
-/// (D-24) and, last, the web client at `config.web_root` as the fallback (D-2).
+/// (D-24), Connect GitHub ([`connect_github`]) and, last, the web client at `config.web_root` as the fallback (D-2).
 fn beside_graphql(
     dependencies: &schema::Dependencies,
     origin: &fleet::access::PublicOrigin,
@@ -173,7 +173,28 @@ fn beside_graphql(
     tunnels(dependencies)
         .merge(pushes(dependencies))
         .merge(exposition(pool.clone(), clock.clone()))
+        .merge(connect_github(dependencies, origin))
         .merge(web_fallback(web_root, origin))
+}
+
+/// The Connect GitHub routes (`/connect/github*`, K-E1 Section 7a), logged by their templates
+/// only: a ticket, a code or a state in a query never reaches the log (LOG-007).
+pub fn connect_github(
+    dependencies: &schema::Dependencies,
+    origin: &fleet::access::PublicOrigin,
+) -> Router {
+    let hub = (
+        dependencies.pool.clone(),
+        dependencies.bus.clone(),
+        dependencies.clock.clone(),
+    );
+    let reach = dependencies.sources.clone();
+    let flow = engine::sources::GithubFlow {
+        attempts: reach.attempts.clone(),
+        scheduling: engine::sources::Scheduling::new(hub, dependencies.vault.clone(), reach),
+        origin: origin.clone(),
+    };
+    logged(engine::sources::github_connect_router(flow))
 }
 
 /// `GET /metrics` for scrapers (INT-001, D-24): the checks' exposition behind a bearer token of

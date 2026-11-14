@@ -33,7 +33,6 @@ pub fn started(label: Option<&str>, organisation: Option<&str>, actor: ActorKind
 }
 
 /// GitHub made `app`. The entry is what lets the operator delete it after a hub restart.
-#[expect(dead_code, reason = "the /created route writes it (CG-5)")]
 pub fn app_created(app: &App) -> TrailEntry {
     entry(
         AuditAction::Create,

@@ -1,6 +1,7 @@
 //! The pure parts of Connect GitHub: the attempt machine with the time as a parameter, the one
 //! slot that holds it, the three values and the words (K-E1 Section 7a, PRJ-039, PRJ-041).
 
+mod ending;
 mod machine;
 mod slot;
 mod values;
@@ -12,13 +13,17 @@ use uuid::Uuid;
 use zeroize::Zeroizing;
 
 use super::{
-    attempt::{App, Attempt, Request, Starter},
+    attempt::{App, Attempt, Phase, Request, Starter},
     binding::Minted,
 };
 use crate::{
     fleet::events::{Actor, ActorKind, ClientAddr, Operator, TokenKind},
     ids::OperatorId,
 };
+
+fn phase(attempt: &Attempt) -> Phase {
+    attempt.snapshot().phase
+}
 
 fn t0() -> DateTime<Utc> {
     Utc.with_ymd_and_hms(2030, 5, 5, 12, 0, 0).unwrap()
