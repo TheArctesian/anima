@@ -13,7 +13,7 @@ use anima_hub::{
     DRAIN_LIMIT, Shutdown, all_routes,
     clock::{Clock, SystemClock},
     config,
-    engine::sources::{Attempts, INSTALLATION_POLL, Reach, Transport},
+    engine::sources::{Attempts, INSTALLATION_POLL, INSTALLED_PAGE_WAIT, Reach, Transport},
     fleet::{
         access::{self, Password, listen},
         builds,
@@ -124,7 +124,7 @@ impl RealHub {
         let loopback = AddressPolicy::default().allowing_loopback();
         let mut reach = anima_hub::source_reach(vec![projects::intake()], loopback.clone())
             .expect("the source registry");
-        reach.attempts = Attempts::new(every);
+        reach.attempts = Attempts::new(every, INSTALLED_PAGE_WAIT);
         reach.transport =
             Transport::to_stub(stub.base.clone(), loopback).expect("the stub transport");
         (Self::serve(pool, Some(reach)).await, stub)

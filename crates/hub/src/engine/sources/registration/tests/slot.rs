@@ -13,7 +13,7 @@ use crate::engine::sources::registration::{
 };
 
 fn slot() -> Attempts {
-    Attempts::new(Duration::from_secs(5))
+    Attempts::new(Duration::from_secs(5), Duration::from_secs(5))
 }
 
 #[test]
