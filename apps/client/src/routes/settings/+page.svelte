@@ -11,6 +11,7 @@
   import MotionRow from '$lib/theme/MotionRow.svelte';
   import RetentionSection from '$lib/retention/RetentionSection.svelte';
   import SettingsSection from '$lib/settings/SettingsSection.svelte';
+  import SourcesSection from '$lib/sources/SourcesSection.svelte';
   import ThemeRow from '$lib/theme/ThemeRow.svelte';
   import TypefaceRows from '$lib/typeface/TypefaceRows.svelte';
   import DesktopRows from '$lib/updates/DesktopRows.svelte';
@@ -67,6 +68,10 @@
 
   <SettingsSection id="settings-extensions" title="Extensions" icon="nf-md-folder" description="What Anima does besides devices. Each starts off; a change is saved at once.">
     <ExtensionsSection />
+  </SettingsSection>
+
+  <SettingsSection id="settings-integrations" title="Integrations" icon="nf-md-link" description="The places Anima reads records from. Each account keeps its key in the hub.">
+    <SourcesSection />
   </SettingsSection>
 
   <!-- Desktop only: the MCP permissions are a file on this computer, which a browser cannot reach (MCP-023). -->
