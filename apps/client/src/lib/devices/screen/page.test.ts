@@ -74,9 +74,9 @@ it('DEV-001: the page has one h1 and the list in a labelled list', async () => {
 
 it('DEV-003: a filter writes the URL query with replaceState, keeping focus and scroll', async () => {
   await show();
-  const toggle = document.querySelectorAll<HTMLButtonElement>('.views button')[1];
-  toggle?.click();
-  expect(current.goto).toEqual([['/devices?view=table', { replaceState: true, keepFocus: true, noScroll: true }]]);
+  const list = document.querySelector<HTMLButtonElement>('.views button[aria-label="List"]');
+  list?.click();
+  expect(current.goto).toEqual([['/devices?sort=NAME', { replaceState: true, keepFocus: true, noScroll: true }]]);
 });
 
 it('DEV-003: the URL query is what the page shows (Back and Forward restore the view)', async () => {
@@ -225,7 +225,7 @@ it('WP-13 H-1: when the sites cannot be read the modal stays closed and the page
 
 it('WP-13 H-1: Escape inside the modal closes the modal only; an open toolbar menu stays open', async () => {
   await show();
-  const status = [...document.querySelectorAll<HTMLButtonElement>('.control')].find((node) => node.textContent.includes('Status'));
+  const status = [...document.querySelectorAll<HTMLButtonElement>('.control')].find((node) => node.textContent.includes('Tags'));
   status?.click();
   flushSync();
   expect(status?.getAttribute('aria-expanded')).toBe('true');
@@ -241,7 +241,7 @@ it('WP-13 H-1: Escape inside the modal closes the modal only; an open toolbar me
 
 it('WP-14 H-1: SSH opens a session tab for the device, growing from the button', async () => {
   await show([device('a', { ssh: { enabled: true, hostKey: { fingerprintSha256: 'SHA256:abc' } } })]);
-  const ssh = [...document.querySelectorAll('button')].find((node) => node.textContent.trim() === 'SSH');
+  const ssh = document.querySelector<HTMLButtonElement>('button[aria-label="SSH to Device a"]') ?? undefined;
   expect(ssh).toBeDefined();
   ssh?.click();
   expect(current.opened).toEqual([
@@ -261,5 +261,5 @@ it('VPN-002: Clear filters clears the site', async () => {
   url.query = { ...url.query, site: 's1' };
   await show([]);
   button('Clear filters').click();
-  expect(current.goto.at(-1)?.[0]).toBe('/devices');
+  expect(current.goto.at(-1)?.[0]).toBe('/devices?view=grid&sort=NAME');
 });

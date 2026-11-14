@@ -14,7 +14,6 @@ endTransitionsAtOnce();
 
 let app: ReturnType<typeof mount> | undefined;
 const changes: ListQuery[] = [];
-const added: string[] = [];
 
 function show(query: ListQuery = DEFAULT_QUERY): void {
   changes.length = 0;
@@ -30,7 +29,6 @@ function show(query: ListQuery = DEFAULT_QUERY): void {
       ],
       sitesNote: 'No sites yet',
       onQueryChange: (next: ListQuery) => changes.push(next),
-      onAddDevice: () => added.push('add'),
     },
   });
   flushSync();
@@ -42,17 +40,18 @@ afterEach(async () => {
   document.body.innerHTML = '';
 });
 
+/** A menu's control by its name: its words, or "Sort: Status" when it shows its choice (D18). */
 const control = (label: string) =>
-  [...document.querySelectorAll<HTMLButtonElement>('.control')].find((node) => node.textContent.includes(label)) as HTMLButtonElement;
+  [...document.querySelectorAll<HTMLButtonElement>('.control')].find((node) => (node.getAttribute('aria-label') ?? node.textContent).includes(label)) as HTMLButtonElement;
 const panel = () => document.querySelector('.panel');
 
 it('Menu: the control opens its panel and says so with aria-expanded', () => {
   show();
-  expect(control('Status').getAttribute('aria-expanded')).toBe('false');
-  control('Status').click();
+  expect(control('Sort').getAttribute('aria-expanded')).toBe('false');
+  control('Sort').click();
   flushSync();
-  expect(control('Status').getAttribute('aria-expanded')).toBe('true');
-  expect(panel()?.querySelectorAll('input[type=checkbox]')).toHaveLength(5);
+  expect(control('Sort').getAttribute('aria-expanded')).toBe('true');
+  expect(panel()?.querySelectorAll('input[type=radio]')).toHaveLength(3);
 });
 
 it('Menu: Escape closes the panel and returns focus to the control', async () => {
@@ -84,25 +83,26 @@ it('Menu: a press outside closes the panel and a press inside does not', async (
 
 it('Menu: focus inside the panel returns to the control on an outside press', async () => {
   show();
-  control('Status').click();
+  control('Tags').click();
   flushSync();
   panel()?.querySelector('input')?.focus();
   document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
   flushSync();
-  expect(document.activeElement).toBe(control('Status'));
+  expect(document.activeElement).toBe(control('Tags'));
 });
 
-it('DEV-003: the Status menu counts the chosen statuses in its label', () => {
-  show({ ...DEFAULT_QUERY, statuses: ['UP', 'DOWN'] });
-  expect(control('Status').textContent).toContain('Status (2)');
+it('DEV-003: the Tags menu counts the chosen tags in its label', () => {
+  show({ ...DEFAULT_QUERY, tags: ['lab'] });
+  expect(control('Tags').textContent).toContain('Tags (1)');
 });
 
-it('DEV-004: Sort is one choice among Name, Status and Uptime', () => {
-  show({ ...DEFAULT_QUERY, sort: 'STATUS' });
+it('DEV-004, D18: Sort is one choice among Status, Name and Uptime, and its control names the choice', () => {
+  show({ ...DEFAULT_QUERY, sort: 'UPTIME' });
+  expect(control('Sort').getAttribute('aria-label')).toBe('Sort: Uptime');
   control('Sort').click();
   flushSync();
   const radios = [...(panel()?.querySelectorAll<HTMLInputElement>('input[type=radio]') ?? [])];
-  expect(radios.map((radio) => radio.checked)).toEqual([false, true, false]);
+  expect(radios.map((radio) => radio.checked)).toEqual([false, false, true]);
 });
 
 it('VPN-002: choosing a site sets the site filter; All sites clears it', () => {
@@ -119,17 +119,12 @@ it('VPN-002: choosing a site sets the site filter; All sites clears it', () => {
 
 it('D-4: the view toggle shows the current view with aria-pressed and writes the other', () => {
   show();
-  const [grid, table] = [...document.querySelectorAll<HTMLButtonElement>('.views button')];
-  expect(grid?.getAttribute('aria-pressed')).toBe('true');
-  expect(table?.getAttribute('aria-pressed')).toBe('false');
-  table?.click();
-  expect(changes.at(-1)?.view).toBe('table');
-});
-
-it('H-1: the Add device button calls onAddDevice', () => {
-  show();
-  [...document.querySelectorAll('button')].find((node) => node.textContent.includes('Add device'))?.click();
-  expect(added).toEqual(['add']);
+  const [list, grid] = [...document.querySelectorAll<HTMLButtonElement>('.views button')];
+  expect(list?.getAttribute('aria-label')).toBe('List');
+  expect(list?.getAttribute('aria-pressed')).toBe('true');
+  expect(grid?.getAttribute('aria-pressed')).toBe('false');
+  grid?.click();
+  expect(changes.at(-1)?.view).toBe('grid');
 });
 
 it('DEV-003: an empty tag menu says why', () => {
@@ -155,7 +150,7 @@ it('D-4: unmounting with a keystroke pending writes nothing', async () => {
 
 it('Menu: a press outside does not steal focus that is somewhere else', () => {
   show();
-  control('Status').click();
+  control('Tags').click();
   flushSync();
   const input = document.querySelector<HTMLInputElement>('input[type=search]');
   input?.focus();
@@ -179,9 +174,9 @@ it('Menu: Escape closes a menu a mouse click opened, with focus outside it (WebK
 
 it('WebKit: every button and option has tabindex 0, or Tab skips it (NAV-005)', () => {
   show();
-  control('Status').click();
+  control('Tags').click();
   flushSync();
   const controls = [...document.querySelectorAll('button, a[href], input[type=checkbox], input[type=radio]')];
-  expect(controls.length).toBeGreaterThan(8);
+  expect(controls.length).toBeGreaterThan(5);
   expect(controls.filter((node) => node.getAttribute('tabindex') !== '0')).toEqual([]);
 });

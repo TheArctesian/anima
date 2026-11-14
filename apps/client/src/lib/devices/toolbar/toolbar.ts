@@ -1,5 +1,4 @@
-import type { DeviceSort, Status } from '$lib/hub/generated/graphql';
-import { statusLabel } from '../card/card';
+import type { DeviceSort } from '$lib/hub/generated/graphql';
 import type { ListQuery } from '../query';
 
 /** The name filter sends its request this long after the last keystroke (D-4). It is not an animation timer (MOT-042). */
@@ -10,17 +9,11 @@ export interface MenuOption {
   readonly label: string;
 }
 
-const STATUS_ORDER: readonly Status[] = ['UP', 'DOWN', 'DEGRADED', 'MAINTENANCE', 'UNKNOWN'];
-
-export const STATUS_OPTIONS: readonly MenuOption[] = STATUS_ORDER.map((value) => ({
-  value,
-  label: statusLabel(value),
-}));
 
 export const SORT_OPTIONS: readonly (MenuOption & { readonly value: DeviceSort })[] = [
+  { value: 'STATUS', label: 'Status, problems first' },
   { value: 'NAME', label: 'Name' },
-  { value: 'STATUS', label: 'Status' },
-  { value: 'UPTIME', label: 'Uptime' },
+  { value: 'UPTIME', label: 'Uptime, lowest first' },
 ];
 
 /** The value of the "All sites" choice: no site filter (VPN-002). */

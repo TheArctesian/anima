@@ -1,5 +1,6 @@
 <script lang="ts">
   import './geometry.css';
+  import '../list/rows.css';
   import { resolve } from '$app/paths';
   import HeartbeatBar from '$lib/checks/HeartbeatBar.svelte';
   import { uptimeText, type Beat } from '$lib/checks/heartbeats';
@@ -10,163 +11,83 @@
   import { listRow } from '$lib/motion/roles/transitions';
   import type { SessionProtocol } from '$lib/sessions/tabs';
   import type { CardScreenSharing } from '$lib/devices/screen-sharing/setup';
+  import type { WakeApi } from '$lib/sessions/wake/api';
   import type { WebInterface } from '$lib/web-interfaces/api';
   import OsIcon from '$lib/devices/os/OsIcon.svelte';
-  import { hostLine } from './card';
   import { reorderMotion } from '$lib/motion/roles/reorder.svelte';
-  import StatusEdge from '../status/StatusEdge.svelte';
+  import { hostLine } from './card';
+  import Meters from '../list/Meters.svelte';
+  import Why from '../list/Why.svelte';
+  import { listItems, UNGROUPED, type ListItem } from '../list/look';
+  import type { ListQuery } from '../query';
   import StatusBadge from '../status/StatusBadge.svelte';
 
   interface Props {
     devices: readonly CardDevice[];
     beats: ReadonlyMap<string, readonly Beat[]>;
+    /** The order and the status filter, which decide whether the rows are grouped (D18). */
+    query?: Pick<ListQuery, 'sort' | 'statuses'>;
     onConnect: (device: CardDevice, protocol: SessionProtocol, button: HTMLElement) => void;
     onOpenWeb?: (device: CardDevice, webInterface: WebInterface, button: HTMLElement) => void;
+    wake?: WakeApi;
     screenSharing?: CardScreenSharing;
   }
 
-  const { devices, beats, onConnect, onOpenWeb, screenSharing }: Props = $props();
-  const track = reorderMotion(() => devices.map((device) => device.id).join('\n'));
+  const { devices, beats, query = UNGROUPED, onConnect, onOpenWeb, wake, screenSharing }: Props = $props();
+  const items: readonly ListItem<CardDevice>[] = $derived(listItems(devices, query));
+  const track = reorderMotion(() => items.map((item) => item.key).join('\n'));
 </script>
 
-<!-- A wide table scrolls inside its own box and does not widen the page. -->
-<div class="scroll">
-<table>
+<!-- The list view (UR-7, D18): hairline rows, problems first under their own group title, each problem with its
+     reason where an up device shows its meters. Below 1100 px each device takes two lines. -->
+<table class="device-rows">
   <caption class="caption">Devices</caption>
   <thead>
     <tr>
-      <th scope="col">Name</th>
-      <th scope="col">Status</th>
-      <th scope="col">Host</th>
-      <th scope="col">Uptime, 24 h</th>
-      <th scope="col">Heartbeats</th>
-      <th scope="col">Connect</th>
+      <th scope="col" class="c-status">Status</th>
+      <th scope="col" class="c-name">Name</th>
+      <th scope="col" class="c-uptime">24 h</th>
+      <th scope="col" class="c-beats">Last 50 checks</th>
+      <th scope="col" class="c-detail">Usage, or what is wrong</th>
+      <th scope="col" class="c-connect">Connect</th>
     </tr>
   </thead>
   <tbody>
-    {#each devices as device, index (device.id)}
-      {@const line = hostLine(device)}
-      {@const deviceBeats = beats.get(device.id)}
-      <tr transition:listRow={{ index }} {@attach track(device.id)}>
-        <th scope="row">
-          <span class="name">
+    {#each items as item, index (item.key)}
+      {#if item.kind === 'group'}
+        <tr class="group" transition:listRow={{ index }} {@attach track(item.key)}>
+          <th colspan="6" scope="colgroup">{item.title}<span class="count">{item.count}</span></th>
+        </tr>
+      {:else}
+        {@const device = item.device}
+        {@const line = hostLine(device)}
+        {@const deviceBeats = beats.get(device.id)}
+        <tr class="device" data-edge={device.status === 'UP' ? undefined : device.status.toLowerCase()} transition:listRow={{ index }} {@attach track(item.key)}>
+          <td class="c-status">
+            <span class="marks">
+              <StatusBadge status={device.status} deviceId={device.id} />
+              <WarningBadge warnings={device.accessWarnings} />
+            </span>
+          </td>
+          <th scope="row" class="c-name">
             <OsIcon os={device.os} distribution={device.distribution} />
-            <a
-              href="{resolve('/devices')}/{encodeURIComponent(device.id)}"
-              title={device.name}
-              tabindex="0"
-              data-device-id={device.id}
-              {@attach press()}
-            >
-              {device.name}
-            </a>
-          </span>
-        </th>
-        <td class="status">
-          <StatusEdge status={device.status} />
-          <span class="marks">
-            <StatusBadge status={device.status} deviceId={device.id} />
-            <WarningBadge warnings={device.accessWarnings} />
-          </span>
-        </td>
-        <td>
-          <span class="host" title={line.host}>{line.host}</span>
-          {#if line.ip !== null}<span class="ip">{line.ip}</span>{/if}
-        </td>
-        <td>{uptimeText(device.uptime)}</td>
-        <td>{#if deviceBeats !== undefined}<HeartbeatBar beats={deviceBeats} />{/if}</td>
-        <td>
-          <DeviceActions {device} {onConnect} {onOpenWeb} {screenSharing} />
-        </td>
-      </tr>
+            <a href="{resolve('/devices')}/{encodeURIComponent(device.id)}" title={device.name} tabindex="0" data-device-id={device.id} {@attach press()}>{device.name}</a>
+            <span class="host" title={line.host}>{line.host}</span>
+            {#if line.ip !== null}<span class="host ip">{line.ip}</span>{/if}
+          </th>
+          <td class="c-uptime">{uptimeText(device.uptime)}</td>
+          <td class="c-beats">{#if deviceBeats !== undefined}<HeartbeatBar beats={deviceBeats} />{/if}</td>
+          <td class="c-detail">
+            {#if device.status === 'UP'}
+              <Meters readings={device.readings ?? null} source={device.metricsSource} />
+            {:else}
+              <Why {device} beats={deviceBeats} />
+            {/if}
+          </td>
+          <td class="c-connect"><DeviceActions {device} {onConnect} {onOpenWeb} {wake} {screenSharing} compact /></td>
+          <td class="c-meta" aria-hidden="true"><span class="host">{line.host}</span><span>{uptimeText(device.uptime)}</span></td>
+        </tr>
+      {/if}
     {/each}
   </tbody>
 </table>
-</div>
-
-<style>
-  .caption {
-    position: absolute;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-  }
-
-  .scroll {
-    min-inline-size: 0;
-    overflow-x: auto;
-  }
-
-  table {
-    inline-size: 100%;
-    border-collapse: collapse;
-    color: var(--text);
-  }
-
-  th,
-  td {
-    box-sizing: border-box;
-    block-size: var(--device-row-block-size);
-    padding: 0 var(--space-3);
-    border-bottom: var(--border-thin) solid var(--border-strong);
-    text-align: start;
-    font-weight: var(--weight-regular);
-    white-space: nowrap;
-  }
-
-  thead th {
-    color: var(--text-secondary);
-    font-size: var(--text-sm);
-  }
-
-  tbody tr {
-    transition: background-color var(--duration-fast) var(--ease-enter);
-  }
-
-  tbody tr:hover {
-    background: var(--surface-overlay);
-  }
-
-  .status {
-    position: relative;
-  }
-
-  .marks {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-2);
-  }
-
-  .name {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-2);
-  }
-
-  .ip {
-    margin-inline-start: var(--space-2);
-    color: var(--text-secondary);
-    font-family: var(--font-mono);
-  }
-
-  a {
-    display: inline-block;
-    min-block-size: var(--target-min-desktop);
-    line-height: var(--target-min-desktop);
-    color: var(--text);
-    text-decoration: none;
-  }
-
-  a:active {
-    color: var(--text-secondary);
-  }
-
-  a:hover {
-    color: var(--accent);
-  }
-
-  a:focus-visible {
-    outline: var(--border-focus) solid var(--accent);
-    outline-offset: var(--border-focus);
-  }
-</style>

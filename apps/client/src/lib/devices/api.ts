@@ -52,12 +52,16 @@ export const Devices = graphql(`
           }
           checks {
             id
+            name
+            status
+            paused
             heartbeats(first: 50) {
               edges {
                 node {
                   at
                   status
                   responseTimeMs
+                  message
                 }
               }
             }

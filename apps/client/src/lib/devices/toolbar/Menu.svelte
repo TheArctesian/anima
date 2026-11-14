@@ -64,6 +64,7 @@
     tabindex="0"
     bind:this={button}
     aria-expanded={open}
+    aria-label={shown !== undefined && !shown.startsWith(label) ? `${label}: ${shown}` : undefined}
     aria-controls="{id}-panel"
     onclick={() => {
       open = !open;
@@ -106,18 +107,25 @@
     display: inline-flex;
     align-items: center;
     gap: var(--space-2);
-    block-size: calc(var(--target-min-desktop) + var(--space-2));
-    padding: 0 var(--space-3);
-    border: var(--border-thin) solid var(--border-strong);
+    block-size: var(--control-md);
+    padding: 0 var(--space-2);
+    border: 0;
     border-radius: var(--radius-md);
-    background: var(--surface-raised);
-    color: var(--text);
+    background: transparent;
+    color: var(--text-secondary);
     font: inherit;
-    transition: background-color var(--duration-fast) var(--ease-enter);
+    transition: background-color var(--duration-fast) var(--ease-enter), color var(--duration-fast) var(--ease-enter);
   }
 
-  .control:hover {
-    background: var(--surface-overlay);
+  /* A ghost button in the quiet toolbar (UR-7, D18); its chevron is quieter than its words. */
+  .control > :global(.icon:last-child) {
+    color: var(--text-quiet);
+  }
+
+  .control:hover,
+  .control[aria-expanded='true'] {
+    background: var(--surface-hover);
+    color: var(--text);
   }
 
   .control:active {
@@ -131,7 +139,7 @@
 
   .control:focus-visible,
   input:focus-visible {
-    outline: var(--border-focus) solid var(--accent);
+    outline: var(--border-focus) solid var(--focus-ring);
     outline-offset: var(--border-focus);
   }
 

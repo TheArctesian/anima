@@ -955,17 +955,17 @@ At the end of each phase, do a motion audit with the `motion-audit` procedure on
 
 ### 6.1 Device list
 
-The Devices page shows all devices in a grid of cards. The operator can change the grid to a table.
+The Devices page shows all devices as hairline rows (UR-7, D18). The operator can change the rows to a grid of tiles. Under the title, one count line is also the status filter: "12 devices · 1 down · 2 degraded · 8 up"; a count shows only its devices, and again shows all. The list is sorted by status by default, problems first. Sorted by status and not filtered by it, the list has groups, "Needs a look", "In maintenance" and "Up", each with its count. A device that is not up shows its reason, how long it has been so, and a link to its checks where an up device shows its usage, and carries a 2 px status edge. Below 1100 px each row takes two lines; on a phone the usage and reason column goes.
 
-Each device card shows:
+Each device row or tile shows:
 
 - The device name.
 - The host name or the IP address, in the monospace font.
 - The combined status (DEV-006) and, when it is not Up, its first reason.
 - The uptime percentage for the last 24 hours (UI-031).
 - A bar for the last 50 heartbeats, labelled "Last 50 checks", with a HelpTip.
-- CPU, memory, disk and VRAM usage as 6 px bars with their values, if metrics are available.
-- A Connect button for each protocol the device has set up, and "Wake" when the device can be woken.
+- CPU, memory, disk and VRAM usage, each an icon and a word over its value and a thin bar, if metrics are available. Over 85 % the icon and value take the warning colour.
+- A Connect icon button for each protocol the device has set up, named by its tooltip and label, and "Wake" when the device can be woken, in a fixed-width column so every row lines up.
 
 - **DEV-001.** The page must show the device list in less than 1 second for 200 devices.
 - **DEV-002.** The page must update the status of each device without a full reload.

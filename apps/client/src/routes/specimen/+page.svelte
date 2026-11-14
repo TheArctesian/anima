@@ -6,6 +6,7 @@
   import ContainersSection from './containers/ContainersSection.svelte';
   import ControlsSection from './controls/ControlsSection.svelte';
   import LanguageSection from './language/LanguageSection.svelte';
+  import DevicesSection from './devices/DevicesSection.svelte';
   import Corners from './tokens/Corners.svelte';
   import IconGrid from './tokens/IconGrid.svelte';
   import ScreenControls from './tokens/ScreenControls.svelte';
@@ -33,6 +34,7 @@
   <Section title="Components" icon="carbon:catalog">
     <div class="lanes">
       <LanguageSection />
+      <DevicesSection />
       <ControlsSection />
       <ContainersSection />
     </div>

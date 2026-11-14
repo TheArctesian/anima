@@ -63,6 +63,7 @@
   aria-busy={announcedBusy}
   aria-disabled={announcedDisabled}
   onclick={click}
+  tabindex="0"
   {...rest}
   {@attach press()}
 >
