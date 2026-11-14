@@ -5,7 +5,7 @@
   import Icon from '$lib/icons/Icon.svelte';
   import CollapseToggle from './collapse/CollapseToggle.svelte';
   import ResizeEdge from './collapse/ResizeEdge.svelte';
-  import HubStatus from './HubStatus.svelte';
+  import HubStatus from './status/HubStatus.svelte';
   import Running from './running/Running.svelte';
   import LiveSessions from '$lib/sessions/live/LiveSessions.svelte';
   import { press } from '$lib/motion/roles/press';

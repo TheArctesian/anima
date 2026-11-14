@@ -1,6 +1,6 @@
 <script lang="ts">
   import { useHub } from '$lib/hub/context';
-  import { statusLabel } from './nav';
+  import { statusLabel } from '../nav';
 
   interface Props {
     /** The bar shows icons only: the dot stands in for the words, which stay as the tooltip and the accessible name. */
