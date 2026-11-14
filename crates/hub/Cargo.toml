@@ -64,6 +64,11 @@ lettre.workspace = true
 # The updater key the hub signs each published updater file with, and the check of that
 # signature by the updater's own verifier (R-117, BLD-045, BLD-046, BLD-064).
 updater-signature = { path = "../updater-signature" }
+# Sources (K-E1): the types the engine and the providers share, the GitHub declaration the
+# wiring registers, and the boxed futures of the `Intake` trait object.
+source-exchange = { path = "../providers/exchange" }
+provider-github = { path = "../providers/github" }
+async-trait = "0.1"
 
 [features]
 # `access::Identity::for_tests`, for integration tests of guarded domains (D-6). Turned on
@@ -87,5 +92,7 @@ proptest = "1.12"
 # signatures (BLD-045, BLD-064), so the hub is proved against it and not only against itself.
 minisign = "0.10"
 rcgen.workspace = true
+# Makes the throwaway RSA App keys of the sources tests in the test itself; never a key file.
+rsa = { version = "0.9", features = ["getrandom"] }
 tokio = { workspace = true, features = ["test-util"] }
 tokio-tungstenite.workspace = true

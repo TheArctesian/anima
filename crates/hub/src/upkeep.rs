@@ -5,6 +5,7 @@ use std::{sync::Arc, time::Duration};
 
 use anima_hub::{
     clock::Clock,
+    engine::sources,
     fleet::{
         access, builds, checks,
         credentials::Vault,
@@ -68,8 +69,8 @@ pub fn spawn(dependencies: &Dependencies) -> Vec<tokio::task::JoinHandle<()>> {
 }
 
 /// Starts the loops that watch the devices and send: the check scheduler, the metrics
-/// collector and stale watch, the notification dispatcher, and, with a `LocalAPI` proxy, the
-/// VPN reader (R-072, VPN-008).
+/// collector and stale watch, the notification dispatcher, the source scheduler (SRC-021)
+/// and, with a `LocalAPI` proxy, the VPN reader (R-072, VPN-008).
 fn loops(dependencies: &Dependencies) -> Vec<tokio::task::JoinHandle<()>> {
     let (pool, bus, clock) = (&dependencies.pool, &dependencies.bus, &dependencies.clock);
     let (probing, collecting, sending) = reaching(
@@ -88,6 +89,11 @@ fn loops(dependencies: &Dependencies) -> Vec<tokio::task::JoinHandle<()>> {
         ),
         notifications::spawn_dispatcher(pool.clone(), bus.clone(), clock.clone(), sending),
         metrics::spawn_stale_watch(pool.clone(), bus.clone(), clock.clone()),
+        sources::spawn_scheduler(sources::Scheduling::new(
+            (pool.clone(), bus.clone(), clock.clone()),
+            dependencies.vault.clone(),
+            dependencies.sources.clone(),
+        )),
     ];
     let reading = vpn::Reading {
         pool: pool.clone(),

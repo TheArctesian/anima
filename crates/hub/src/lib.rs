@@ -228,6 +228,23 @@ pub fn tunnels(dependencies: &schema::Dependencies) -> Router {
     logged(terminal).merge(logged(tunnel)).merge(logged(files))
 }
 
+/// The sources the hub reads from, and the declared API bases its transport may reach: the
+/// only outbound destinations of the sources engine. `intakes` are the extensions' (K-E1
+/// Section 3); every address still passes `policy` (R-030).
+///
+/// # Errors
+/// [`engine::sources::BuildFailed`] when the TLS client cannot be built.
+pub fn source_reach(
+    intakes: Vec<Arc<dyn engine::sources::Intake>>,
+    policy: fleet::targets::AddressPolicy,
+) -> Result<engine::sources::Reach, engine::sources::BuildFailed> {
+    let declarations = vec![provider_github::DECLARATION];
+    let bases: Vec<&str> = declarations.iter().map(|d| d.api_base).collect();
+    let transport = engine::sources::Transport::new(bases, policy)?;
+    let registry = engine::sources::Registry::new(declarations, intakes);
+    Ok(engine::sources::Reach::new(registry, transport))
+}
+
 /// Liveness probe (R-026(4)): no sign-in, no database, body `ok`.
 async fn health() -> &'static str {
     "ok"

@@ -229,7 +229,9 @@ fn refusal(identity: Option<&Identity>, document: &ExecutableDocument) -> Option
 /// builder token outlives the key that enrolled it (D-23, R-107). A VPN key, a registration or a
 /// renewal admits a computer to the network: login or browser token only (VP-7, VP-10). Switching an
 /// extension on starts requests to outside services: login or browser token only (EXT-011).
-pub(super) const API_KEY_REFUSED_ROOTS: [&str; 31] = [
+/// Connecting a source takes its private key, and removing one can delete what it imported:
+/// login or browser token only (PRJ-018, ITG-004).
+pub(super) const API_KEY_REFUSED_ROOTS: [&str; 33] = [
     "createApiKey",
     "revokeApiKey",
     "apiKeys",
@@ -261,6 +263,8 @@ pub(super) const API_KEY_REFUSED_ROOTS: [&str; 31] = [
     "renewVpnKey",
     "approveSiteRoute",
     "setExtension",
+    "connectGithubApp",
+    "removeSourceAccount",
 ];
 
 /// The root selections a token of `kind` may make, in every operation type. A new kind of

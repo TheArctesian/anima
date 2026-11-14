@@ -343,6 +343,7 @@ pub async fn clear_password(conn: &mut PgConnection, device: DeviceId, kind: Pas
 pub async fn store_source_secret(conn: &mut PgConnection, vault: &Vault, account: SourceAccountId, s: Secret) -> Result<SourceSecretId, Error>;
 pub async fn load_source_secret(db: &Db, vault: &Vault, (id, account): (SourceSecretId, SourceAccountId)) -> Result<Secret, Error>;
 pub async fn clear_source_secret(conn: &mut PgConnection, id: SourceSecretId) -> Result<bool, Error>;
+pub enum Error { /* as before */ UnknownSourceSecret }   // load_source_secret: no row has this id
 ```
 
 A secret opens only with its own account ID (context in the table above). `load_source_secret` has one caller: the token minter in `engine/sources`. For a GitHub App key the plaintext is built by `sources` (K-E1 Section 6); `credentials` treats it as opaque bytes.

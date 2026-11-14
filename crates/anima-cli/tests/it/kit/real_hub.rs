@@ -95,6 +95,8 @@ async fn dependencies(pool: &PgPool, vault: Vault) -> Dependencies {
         build_updates: builds::Updates::new(),
         bucket: None,
         vpn_feed: vpn::Feed::new(),
+        sources: anima_hub::source_reach(Vec::new(), AddressPolicy::default())
+            .expect("the source transport"),
     }
 }
 

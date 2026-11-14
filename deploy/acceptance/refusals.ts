@@ -45,6 +45,8 @@ export const REFUSED_ROOTS: readonly string[] = [
   "renewVpnKey",
   "approveSiteRoute",
   "setExtension",
+  "connectGithubApp",
+  "removeSourceAccount",
 ];
 
 /** The refused roots that are query fields; every other one is a mutation field. */

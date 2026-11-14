@@ -151,6 +151,7 @@ pub fn dependencies(pool: &PgPool, clock: Arc<dyn Clock>, bus: Bus) -> Dependenc
         bucket: None,
         vpn_feed: anima_hub::fleet::vpn::Feed::new(),
         vpn_broker: None,
+        sources: anima_hub::source_reach(Vec::new(), AddressPolicy::default()).unwrap(),
     }
 }
 
