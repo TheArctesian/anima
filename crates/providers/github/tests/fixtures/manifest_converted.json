@@ -1,0 +1,18 @@
+{
+  "id": 1234567,
+  "slug": "anima-k3f9x2mq7b",
+  "node_id": "A_kwHOExample",
+  "owner": { "login": "octo-person", "id": 9001, "type": "User", "site_admin": false },
+  "name": "anima-k3f9x2mq7b",
+  "description": "Made by Anima for one hub.",
+  "external_url": "https://hub.example.test",
+  "html_url": "https://github.com/apps/anima-k3f9x2mq7b",
+  "created_at": "2026-11-13T10:00:00Z",
+  "updated_at": "2026-11-13T10:00:00Z",
+  "permissions": { "metadata": "read", "contents": "write" },
+  "events": [],
+  "client_id": "Iv1.exampleclientid",
+  "client_secret": "CLIENT-SECRET-MARKER-0000",
+  "webhook_secret": "WEBHOOK-SECRET-MARKER-1111",
+  "pem": "-----BEGIN RSA PRIVATE KEY-----\nPEM-MARKER-2222\n-----END RSA PRIVATE KEY-----\n"
+}
