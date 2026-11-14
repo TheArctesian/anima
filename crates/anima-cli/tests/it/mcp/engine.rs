@@ -3,6 +3,8 @@
 //! three sets. The tools of sources and projects are in `engine_sources` and
 //! `engine_projects`.
 
+mod connect;
+
 use serde_json::{Value, json};
 
 use super::session::{Desk, LOGIN_TOKEN, Session, hub};
@@ -107,8 +109,15 @@ async fn mcp_004_no_tool_of_the_three_sets_takes_a_key_and_the_github_app_has_no
     }
     for tool in tools {
         let name = tool["name"].as_str().unwrap_or_default();
+        // The App-key route has no tool; the three-press flow has exactly the tools of
+        // PRJ-041, none for the one-time link (`open`) or a subscription (`watch`).
+        let connect_flow = [
+            "anima_github_connect_start",
+            "anima_github_connect_state",
+            "anima_github_connect_cancel",
+        ];
         assert!(
-            !name.contains("connect") && !name.contains("watch"),
+            (!name.contains("connect") || connect_flow.contains(&name)) && !name.contains("watch"),
             "{name}"
         );
         let inputs = tool["inputSchema"]["properties"].as_object();

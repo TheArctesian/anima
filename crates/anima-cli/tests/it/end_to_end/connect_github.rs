@@ -19,6 +19,7 @@ use crate::kit::browser::Browser;
 use crate::kit::github::{self, Reply, Stub};
 use crate::kit::real_hub::RealHub;
 use crate::kit::terminal::Terminal;
+use crate::mcp::session::Desk;
 
 const CODE: &str = "CODEMARKER7c1f";
 const INSTALLATIONS: &str = include_str!(concat!(
@@ -147,4 +148,70 @@ async fn prj_039_the_command_connects_github_in_three_presses_and_the_projects_a
         !state.to_string().contains("ticket"),
         "the attempt holds no link: {state}"
     );
+}
+
+/// `openGithubConnect` for attempt `id` as the hub's own client sends it, with or without the
+/// agent declaration; the whole answer.
+async fn open_as(hub: &RealHub, token: &str, id: &str, agent: bool) -> Value {
+    let body = json!({
+        "query": "mutation($id: ID!) { openGithubConnect(id: $id) { expiresAt } }",
+        "variables": { "id": id },
+    });
+    let mut request = reqwest::Client::new()
+        .post(format!("{}/graphql", hub.origin))
+        .header("content-type", "application/json")
+        .header("authorization", format!("Bearer {token}"))
+        .body(body.to_string());
+    if agent {
+        request = request.header("anima-actor", "agent");
+    }
+    let answer = request.send().await.expect("the hub answers");
+    serde_json::from_str(&answer.text().await.expect("a body")).expect("JSON")
+}
+
+#[sqlx::test(migrations = "../hub/migrations")]
+async fn prj_041_an_mcp_session_starts_an_attempt_as_an_agent_and_the_hub_refuses_it_the_link(
+    pool: PgPool,
+) {
+    let (hub, _stub) = RealHub::with_github_polling(pool, Duration::from_millis(100)).await;
+    let token = hub.login_token().await;
+    let desk = Desk::on(hub.anima());
+    let (mut session, _) = desk.start_at(&hub.origin, &token, &["--allow-write"]).await;
+    let started = session.call("anima_github_connect_start", json!({})).await;
+    assert_eq!(started["isError"], false, "{started}");
+    let result = &started["structuredContent"];
+    assert_eq!(result["link"], "https://hub.anima.ing/connect/github");
+    let id = result["attempt"]["id"].as_str().expect("an id");
+    assert!(!started.to_string().contains("ticket"), "{started}");
+
+    let shown = hub
+        .data(&token, "{ githubConnect { startedBy phase } }", json!({}))
+        .await;
+    assert_eq!(
+        shown["githubConnect"]["startedBy"], "AGENT",
+        "the hub saw the declaration"
+    );
+    let refused = open_as(&hub, &token, id, true).await;
+    assert_eq!(
+        refused["errors"][0]["extensions"]["code"], "FORBIDDEN",
+        "{refused}"
+    );
+    assert!(!refused.to_string().contains("ticket="), "{refused}");
+    let person = open_as(&hub, &token, id, false).await;
+    assert!(
+        person.get("errors").is_none(),
+        "a person still gets it: {person}"
+    );
+
+    let state = session.call("anima_github_connect_state", json!({})).await;
+    assert_eq!(
+        state["structuredContent"]["attempt"]["phase"],
+        "WAITING_FOR_BROWSER"
+    );
+    let cancelled = session.call("anima_github_connect_cancel", json!({})).await;
+    assert_eq!(
+        cancelled["structuredContent"]["attempt"]["phase"],
+        "CANCELLED"
+    );
+    session.finish().await;
 }
