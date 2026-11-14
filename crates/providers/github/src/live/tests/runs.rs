@@ -2,8 +2,8 @@
 
 use super::{fixture, ok, path_and_query};
 use crate::live::runs::{
-    Conclusion, RunFilter, RunStatus, StatusFilter, WorkflowState, jobs_parse, jobs_request,
-    list_parse, list_request, one_parse, one_request, workflows_parse, workflows_request,
+    Conclusion, RunFilter, RunStatus, StatusFilter, jobs_parse, jobs_request, list_parse,
+    list_request, one_parse, one_request,
 };
 
 const REPOSITORY: &str = "sample-org/sample-repo";
@@ -37,7 +37,7 @@ fn prj_031_the_run_requests_have_the_documented_paths_and_queries() {
         "/repos/sample-org/sample-repo/actions/runs/77/jobs?per_page=100&page=1"
     );
     assert_eq!(
-        path_and_query(&workflows_request(REPOSITORY, 1).unwrap()),
+        path_and_query(&crate::live::workflows::list_request(REPOSITORY, 1).unwrap()),
         "/repos/sample-org/sample-repo/actions/workflows?per_page=100&page=1"
     );
 }
@@ -171,12 +171,22 @@ fn prj_031_the_jobs_fixture_parses_with_its_total() {
 
 #[test]
 fn prj_031_the_workflows_fixture_maps_states_and_unknown_states() {
-    let workflows = workflows_parse(&ok(&fixture("live_workflows_list.json"))).unwrap();
+    let workflows =
+        crate::live::workflows::list_parse(&ok(&fixture("live_workflows_list.json"))).unwrap();
 
     assert_eq!(workflows.len(), 3);
     assert_eq!(workflows[0].id, 31);
     assert_eq!(workflows[0].path, ".github/workflows/ci.yml");
-    assert_eq!(workflows[0].state, WorkflowState::Active);
-    assert_eq!(workflows[1].state, WorkflowState::DisabledManually);
-    assert_eq!(workflows[2].state, WorkflowState::Other);
+    assert_eq!(
+        workflows[0].state,
+        crate::live::workflows::WorkflowState::Active
+    );
+    assert_eq!(
+        workflows[1].state,
+        crate::live::workflows::WorkflowState::DisabledManually
+    );
+    assert_eq!(
+        workflows[2].state,
+        crate::live::workflows::WorkflowState::Other
+    );
 }

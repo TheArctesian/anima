@@ -14,6 +14,7 @@ pub mod issues;
 pub mod paging;
 pub mod pulls;
 pub mod runs;
+pub mod workflows;
 
 use serde::Deserialize;
 use serde::de::DeserializeOwned;

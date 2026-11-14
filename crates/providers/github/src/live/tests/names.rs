@@ -4,7 +4,7 @@
 use source_exchange::{Body, Response};
 
 use super::ok;
-use crate::live::{StateFilter, checks, comments, issues, pulls, runs};
+use crate::live::{StateFilter, checks, comments, issues, pulls, runs, workflows};
 
 const HOSTILE: [&str; 8] = [
     "../../../app/installations",
@@ -30,7 +30,7 @@ fn prj_030_a_hostile_repository_name_builds_no_request_in_any_read() {
             runs::list_request(name, runs::RunFilter::default(), 1),
             runs::one_request(name, 1),
             runs::jobs_request(name, 1, 1),
-            runs::workflows_request(name, 1),
+            workflows::list_request(name, 1),
             checks::check_runs_request(name, "main", 1),
             checks::status_request(name, "main", 1),
         ];
@@ -100,7 +100,7 @@ fn prj_032_a_malformed_body_is_a_problem_in_every_parse() {
             "reply_unreadable"
         );
         assert_eq!(
-            runs::workflows_parse(response).unwrap_err().code,
+            workflows::list_parse(response).unwrap_err().code,
             "reply_unreadable"
         );
         assert_eq!(
