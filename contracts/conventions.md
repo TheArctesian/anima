@@ -49,6 +49,10 @@ Status: **frozen for Phase 3** (change only through a programme ruling, CON-001)
     to the `GET /graphql` WebSocket upgrade. A socket that signed in by cookie may send an empty
     `connection_init` payload. A cookie with any other Origin, or with none, is ignored: the request is
     signed out.
+  - **Connect GitHub binding cookie** (operator, 2026-11-14; ruling number to be assigned): `__Host-anima-connect` (`Secure; HttpOnly; SameSite=Lax; Path=/`,
+    `Max-Age` 3600), set by `GET /connect/github` (with a ticket) or `POST /connect/github/open`, cleared by the done and
+    failure pages. It is not a token: it only binds one browser to one GitHub connection attempt (K-E1 Section 7a). `Lax`
+    is required so that GitHub's top-level redirect carries it. It never appears in a URL, GraphQL answer or log.
   - **API keys:** the same `Authorization: Bearer` header. The secret is `anima_` plus 43 base64url characters.
     The kind rules of D-23 are enforced in the access guard, before any resolver, with FORBIDDEN.
 
@@ -70,7 +74,13 @@ Status: **frozen for Phase 3** (change only through a programme ruling, CON-001)
   | `GET /metrics` | Bearer token, READ or higher | `checks`, behind `access::bearer_layer` |
   | `POST /agent/v1/enrol`, `POST /agent/v1/push`, `POST /agent/v1/renew` | Enrolment code in the body, or agent token (K8) | `metrics` |
   | `GET /health` | None; body `ok` | wiring |
+  | `GET /connect/github`, `POST /connect/github/open`, `GET /connect/github/start`, `/created`, `/installed` (operator, 2026-11-14; ruling number to be assigned) | The one-time ticket, or the `__Host-anima` browser session with a same Origin, then the `__Host-anima-connect` cookie and a state value (K-E1 Section 7a); fixed paths, no path parameters | `sources` (`registration/routes.rs`) |
   | Any other `GET` (the web client) | None; static files only, `index.html` for unknown paths | `web_client.rs` |
+
+  The `/connect/github*` routes answer with `Cache-Control: no-store`, `Referrer-Policy: no-referrer`,
+  `X-Content-Type-Options: nosniff`, HSTS, `Cross-Origin-Opener-Policy: same-origin` and a CSP of their own (the web
+  client's `form-action 'none'` would stop the page that posts the manifest to GitHub). They are merged before the
+  web client fallback.
 
   Static file headers: `Content-Security-Policy: default-src 'self'; script-src 'self' <SvelteKit hashes>;
   connect-src 'self' wss://<public host>; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline';
