@@ -7,6 +7,7 @@ mod host;
 mod kinds;
 mod round_trip;
 mod schema;
+mod source;
 mod tampering;
 mod transactions;
 

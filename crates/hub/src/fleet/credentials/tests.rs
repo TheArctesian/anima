@@ -6,6 +6,7 @@ mod key;
 mod layout;
 mod password;
 mod sealing;
+mod source;
 mod ssh;
 
 use zeroize::Zeroizing;
