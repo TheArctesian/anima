@@ -10,8 +10,9 @@ use crate::hub::{Hub, PASSWORD, USERNAME, error};
 
 /// Every root field an API key may never select (D-23, A-6; `enrolAgent` and
 /// `revokeAgentToken` by name before they have resolvers, R-084, CR-8; pinning a device
-/// identity, moving or deleting a device, R-100; VPN keys, registration and renewal, VP-7).
-const REFUSED: [&str; 33] = [
+/// identity, moving or deleting a device, R-100; VPN keys, registration and renewal, VP-7;
+/// connecting GitHub from the hub, PRJ-039, PRJ-041).
+const REFUSED: [&str; 36] = [
     "createApiKey",
     "revokeApiKey",
     "apiKeys",
@@ -45,6 +46,9 @@ const REFUSED: [&str; 33] = [
     "setExtension",
     "connectGithubApp",
     "removeSourceAccount",
+    "startGithubConnect",
+    "openGithubConnect",
+    "cancelGithubConnect",
 ];
 
 /// Documents that select `name` at the root: plainly, through an alias, an inline fragment, a

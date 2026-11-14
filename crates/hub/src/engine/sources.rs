@@ -15,6 +15,7 @@ pub mod graphql;
 mod health;
 mod intake;
 mod model;
+mod registration;
 mod run;
 mod schedule;
 mod scheduler;
@@ -23,7 +24,7 @@ mod store;
 mod tests;
 mod trail;
 
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
 use async_graphql::Error as GraphQlError;
 use sqlx::{PgConnection, PgPool};
@@ -46,19 +47,28 @@ pub use feed::Feed;
 pub use health::{HealthFacts, health};
 pub use intake::{Counts, Intake, IntakeError, Page, Registry, Taken};
 pub use model::{Account, ErrorKind, Health, Outcome, PauseReason, Trigger};
+pub use registration::{
+    attempts::Attempts,
+    routes::{GithubFlow, router as github_connect_router},
+};
 pub use run::run;
 pub use schedule::next;
 pub use scheduler::{spawn_scheduler, start_due};
 
 /// The sources' parts that `main.rs` builds once and the schema and the scheduler share: the
-/// registry, the transport (with the in-memory tokens) and the feed of changes. Clones share
-/// them.
+/// registry, the transport (with the in-memory tokens), the feed of changes and the one attempt
+/// to connect GitHub. Clones share them.
 #[derive(Clone)]
 pub struct Reach {
     pub registry: Registry,
     pub transport: Transport,
     pub feed: Feed,
+    pub attempts: Attempts,
 }
+
+/// How often the hub asks GitHub for the installation of an App that waits for Install (K-E1
+/// Section 10a).
+pub const INSTALLATION_POLL: Duration = Duration::from_secs(5);
 
 impl Reach {
     #[must_use]
@@ -67,6 +77,7 @@ impl Reach {
             registry,
             transport,
             feed: Feed::new(),
+            attempts: Attempts::new(INSTALLATION_POLL),
         }
     }
 }

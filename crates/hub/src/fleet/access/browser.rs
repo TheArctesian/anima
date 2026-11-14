@@ -52,6 +52,14 @@ pub(super) fn cookie_token<'h>(headers: &'h HeaderMap, _from: &SameOrigin) -> Op
     cookie::single(headers, COOKIE_NAME)
 }
 
+/// The value of the one cookie called `name`, for a route that binds a browser with a cookie
+/// of its own, such as Connect GitHub's `__Host-anima-connect` (K-E1 Section 12). `None` for
+/// no such cookie, two of them, an empty value or a `Cookie` header that is not text.
+#[must_use]
+pub fn cookie_value<'h>(headers: &'h HeaderMap, name: &str) -> Option<&'h str> {
+    cookie::single(headers, name)
+}
+
 /// The `Set-Cookie` value that gives the browser `token` for 7 days. Marked sensitive, so its
 /// `Debug` shows no token (LOG-007).
 pub(super) fn signed_in(token: &Token) -> HeaderValue {
