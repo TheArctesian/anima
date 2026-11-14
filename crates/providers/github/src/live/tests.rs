@@ -3,9 +3,13 @@
 use source_exchange::{Body, Request, Response};
 
 mod checks;
+mod contents_directory;
+mod contents_file;
+mod history;
 mod issues;
 mod names;
 mod paging;
+mod path;
 mod pulls;
 mod runs;
 

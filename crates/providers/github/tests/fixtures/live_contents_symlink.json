@@ -1,0 +1,12 @@
+{
+  "type": "symlink",
+  "size": 9,
+  "name": "latest",
+  "path": "latest",
+  "sha": "b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5",
+  "url": "https://api.github.com/repos/sample-org/sample-repo/contents/latest",
+  "git_url": null,
+  "html_url": "https://github.com/sample-org/sample-repo/blob/main/latest",
+  "download_url": null,
+  "target": "zeta.txt"
+}

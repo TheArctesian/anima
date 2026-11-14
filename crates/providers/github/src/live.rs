@@ -1,5 +1,5 @@
-//! Live reads of one repository: pull requests, issues, comments, workflow runs and checks
-//! (PRJ-030, PRJ-031, PRJ-032).
+//! Live reads of one repository: pull requests, issues, comments, workflow runs, checks,
+//! commits, branches, releases and the code (PRJ-030 to PRJ-034).
 //!
 //! Pure, like the sync: each module builds a [`Request`] and parses the [`Response`] to plain
 //! types of this crate. The hub sends the request and reads the `Link` header itself, and
@@ -10,9 +10,13 @@
 
 pub mod checks;
 pub mod comments;
+pub mod commits;
+pub mod contents;
 pub mod issues;
 pub mod paging;
+mod path;
 pub mod pulls;
+pub mod refs;
 pub mod runs;
 pub mod workflows;
 
