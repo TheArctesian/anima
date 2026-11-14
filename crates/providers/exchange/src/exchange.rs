@@ -15,6 +15,8 @@ pub enum RequestError {
     NotAbsolutePath,
     #[error("the path must not name a host or hold credentials")]
     NamesAHost,
+    #[error("the path must not hold a dot segment or an encoded dot")]
+    DotSegment,
 }
 
 /// What a provider wants fetched, below the source's `api_base`.
@@ -26,8 +28,9 @@ pub struct Request {
 }
 
 impl Request {
-    /// A `GET` of `path` with `query`. The path must start with `/` and hold no `://` or `@`,
-    /// so the engine's URL is always `api_base` plus this path.
+    /// A `GET` of `path` with `query`. The path must start with `/` and hold no `://`, no `@`,
+    /// no `.` or `..` segment and no encoded dot, so the engine's URL is always `api_base` plus
+    /// this path.
     ///
     /// # Errors
     /// [`RequestError`] when the path could point away from `api_base`.
@@ -38,6 +41,9 @@ impl Request {
         if path.contains("://") || path.contains('@') {
             return Err(RequestError::NamesAHost);
         }
+        if has_dot_segment(path) {
+            return Err(RequestError::DotSegment);
+        }
         Ok(Self {
             method: Method::Get,
             path: path.to_owned(),
@@ -47,6 +53,17 @@ impl Request {
                 .collect(),
         })
     }
+}
+
+/// Whether `path` has a `.` or `..` segment, or a percent-encoded dot anywhere: a URL parser
+/// resolves either, and the request would leave the path it names.
+fn has_dot_segment(path: &str) -> bool {
+    path.split('/')
+        .any(|segment| segment == "." || segment == "..")
+        || path
+            .as_bytes()
+            .windows(3)
+            .any(|w| w[0] == b'%' && w[1] == b'2' && w[2].eq_ignore_ascii_case(&b'e'))
 }
 
 /// What the engine got back. The provider only reads it.

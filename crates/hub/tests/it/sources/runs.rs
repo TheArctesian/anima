@@ -169,3 +169,25 @@ async fn ext_002_switching_the_consumer_off_mid_run_stops_it_and_on_resumes_it(p
     assert_eq!(kit.stub.gets(), ["/pages/1", "/pages/2", "/pages/3"]);
     assert_eq!(items(&pool, id).await.len(), 4);
 }
+
+#[sqlx::test(migrations = "./migrations")]
+async fn src_007_a_run_sends_at_most_two_thousand_requests_and_the_next_resumes(pool: PgPool) {
+    let kit = kit(&pool).await;
+    let (_, id) = kit.connect().await;
+    set_projects(&pool, true).await;
+    let empty: Vec<&[(&str, &str)]> = vec![&[]; 2001];
+    kit.stub.set_pages(&empty);
+
+    assert_eq!(kit.run(id).await, Some(Outcome::Stopped));
+    assert_eq!(kit.stub.gets().len(), 2000, "the cap");
+    assert_eq!(
+        slice(&pool, id).await,
+        json!({ "v": 1, "page": 2001, "done": false })
+    );
+
+    assert_eq!(kit.run(id).await, Some(Outcome::Ok));
+    assert_eq!(
+        kit.stub.gets().last().map(String::as_str),
+        Some("/pages/2001")
+    );
+}

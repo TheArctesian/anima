@@ -185,14 +185,17 @@ pub(super) async fn fetch_source(
     .await?)
 }
 
-/// Deletes the source secret with this id; returns whether a row was removed.
+/// Deletes the source secret with this id that belongs to `account`; returns whether a row was
+/// removed. A reference pointed at another account's row deletes nothing.
 pub(super) async fn delete_source(
     conn: &mut PgConnection,
-    id: SourceSecretId,
+    (id, account): (SourceSecretId, SourceAccountId),
 ) -> Result<bool, Error> {
-    let done = sqlx::query("DELETE FROM credentials.source_secrets WHERE id = $1")
-        .bind(id)
-        .execute(conn)
-        .await?;
+    let done =
+        sqlx::query("DELETE FROM credentials.source_secrets WHERE id = $1 AND account_id = $2")
+            .bind(id)
+            .bind(account)
+            .execute(conn)
+            .await?;
     Ok(done.rows_affected() > 0)
 }

@@ -1,9 +1,11 @@
 //! The one way a request leaves the hub for a source (K-E1 Section 7).
 //!
 //! The URL is always a declared `api_base` plus the request's path; a path that could point
-//! elsewhere is refused before anything is sent. The only destinations are the host names of
-//! the declared API bases: the resolver resolves no other name, and every address it returns
-//! must pass the hub's one address policy (R-030, P3-003). The client follows no redirect,
+//! elsewhere, on the host or off it, is refused before anything is sent. The resolver resolves
+//! only the host names of the declared API bases, and each address it returns must pass the
+//! hub's address policy (R-030, P3-003), which allows private and VPN ranges: it is not what
+//! keeps the token from another host. TLS name verification is: the server must prove it is
+//! the declared host before the token is sent. The client follows no redirect,
 //! takes no proxy from the environment, speaks HTTPS only, gives up after 20 seconds and reads
 //! at most 8 MiB. The token header is marked sensitive, and no URL, header or body reaches a
 //! log or an error (LOG-007).
@@ -66,7 +68,9 @@ pub struct Transport {
     tokens: Tokens,
 }
 
-/// Resolves only the allowed names, and only to addresses the policy permits.
+/// Resolves only the allowed names, and only to addresses the hub's address policy permits
+/// (private and VPN ranges included). TLS name verification, not this, ties the connection to
+/// the declared host.
 struct AllowedHosts {
     hosts: Arc<[String]>,
     policy: AddressPolicy,
@@ -232,7 +236,9 @@ fn bearer(token: &[u8]) -> Result<HeaderValue, Fault> {
 }
 
 /// Whether `path` stays below the base: one leading slash, no scheme, no user, no query or
-/// fragment of its own, no backslash, no control or space character.
+/// fragment of its own, no backslash, no control or space character, no `.` or `..` segment
+/// and no percent-encoded dot (the URL parser resolves both, so the token would go to another
+/// path on the same host).
 fn path_is_plain(path: &str) -> bool {
     path.starts_with('/')
         && !path.starts_with("//")
@@ -240,10 +246,18 @@ fn path_is_plain(path: &str) -> bool {
         && !path
             .chars()
             .any(|c| matches!(c, '@' | '?' | '#' | '\\') || c.is_control() || c.is_whitespace())
+        && !path
+            .split('/')
+            .any(|segment| segment == "." || segment == "..")
+        && !path
+            .as_bytes()
+            .windows(3)
+            .any(|w| w[0] == b'%' && w[1] == b'2' && w[2].eq_ignore_ascii_case(&b'e'))
 }
 
 /// `base` with `path` appended and `query` set. Refused when the path could leave the base, or
-/// when the result's scheme, host or port is not the base's.
+/// when the result's scheme, host or port is not the base's, or its path is not below the
+/// base's path.
 ///
 /// # Errors
 /// [`Fault::Refused`].
@@ -251,8 +265,9 @@ pub fn address(base: &Url, path: &str, query: &[(String, String)]) -> Result<Url
     if !path_is_plain(path) || !base.username().is_empty() || base.password().is_some() {
         return Err(Fault::Refused);
     }
+    let prefix = base.path().trim_end_matches('/');
     let mut url = base.clone();
-    url.set_path(&format!("{}{path}", base.path().trim_end_matches('/')));
+    url.set_path(&format!("{prefix}{path}"));
     url.set_query(None);
     url.set_fragment(None);
     if !query.is_empty() {
@@ -260,7 +275,11 @@ pub fn address(base: &Url, path: &str, query: &[(String, String)]) -> Result<Url
     }
     let same = url.scheme() == base.scheme()
         && url.host_str() == base.host_str()
-        && url.port_or_known_default() == base.port_or_known_default();
+        && url.port_or_known_default() == base.port_or_known_default()
+        && url
+            .path()
+            .strip_prefix(prefix)
+            .is_some_and(|rest| rest.starts_with('/'));
     if same { Ok(url) } else { Err(Fault::Refused) }
 }
 

@@ -23,8 +23,27 @@ pub(crate) fn check(full_name: &str) -> Result<(), UnusableName> {
     }
 }
 
+/// A branch name that cannot go into a path.
+#[derive(Debug, PartialEq, Eq, thiserror::Error)]
+#[error("a branch name must not have a segment that is a dot or two dots")]
+pub(crate) struct UnusableBranch;
+
+/// Checks that `branch` has no `.` or `..` segment, which a URL parser would resolve and so
+/// move the request off the repository it names.
+pub(crate) fn check_branch(branch: &str) -> Result<(), UnusableBranch> {
+    if branch
+        .split('/')
+        .any(|segment| segment == "." || segment == "..")
+    {
+        Err(UnusableBranch)
+    } else {
+        Ok(())
+    }
+}
+
 /// A branch name as one or more path segments: slashes stay, anything else unsafe is
-/// percent-encoded (a branch may hold `@`, `#`, `?` or `%`).
+/// percent-encoded (a branch may hold `@`, `#`, `?` or `%`). Only a branch that passed
+/// [`check_branch`] goes in.
 pub(crate) fn encode_branch(branch: &str) -> String {
     let mut out = String::with_capacity(branch.len());
     for byte in branch.bytes() {

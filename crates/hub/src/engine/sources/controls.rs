@@ -62,7 +62,7 @@ pub async fn remove(
     }
     store::delete(conn, id).await?;
     if let Some(credential) = account.credential_id {
-        clear_source_secret(conn, credential).await?;
+        clear_source_secret(conn, (credential, id)).await?;
     }
     Ok((account, deleted))
 }

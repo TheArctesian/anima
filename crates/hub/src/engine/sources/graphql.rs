@@ -188,6 +188,7 @@ impl Mutation {
             .registry
             .declaration(GITHUB)
             .ok_or_else(|| failed(Error::UnknownSource))?;
+        let ticket = s.transport.tokens().ticket();
         let minted = connect::prove(&s.transport, &declaration, &checked.key, s.clock.now())
             .await
             .map_err(failed)?;
@@ -213,11 +214,15 @@ impl Mutation {
             .map_err(internal)?;
         commit(tx).await?;
         drop(input);
-        drop(s.transport.tokens().keep(id, minted));
         s.feed.publish(id);
         let (shown, consumer_on) = seen(&s, stored(&s, id).await?).await?;
+        // The proving token is kept only for the run that uses it now; otherwise it is
+        // dropped here and the first run mints its own (PRJ-018).
         if consumer_on {
+            drop(s.transport.tokens().keep(id, minted, ticket));
             start(s, id, Trigger::Connect);
+        } else {
+            drop(minted);
         }
         Ok(shown)
     }

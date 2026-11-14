@@ -139,7 +139,8 @@ async fn src_009_a_refused_token_needs_a_reconnect_and_warns_once(pool: PgPool) 
         .filter(|p| p.starts_with("/app/"))
         .count();
     assert_eq!(
-        mints, 2,
-        "the connect's token, kept; a fresh one after it was refused"
+        mints, 3,
+        "the connect's proof (not kept: Projects was off), the first run's, and a fresh one \
+         after it was refused"
     );
 }

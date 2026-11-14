@@ -31,6 +31,8 @@ pub struct Reply {
 pub struct Script {
     /// `(method, path with query, sent a bearer token)` of each request, in order.
     pub seen: Vec<(String, String, bool)>,
+    /// The App token (JWT) each mint request was signed in with, so a test can search for it.
+    pub app_tokens: Vec<String>,
     pub mint_status: u16,
     pub token: String,
     /// Page n (from 1) holds `pages[n - 1]`, a list of `{ "id", "value" }`.
@@ -56,6 +58,7 @@ impl Stub {
         let address: SocketAddr = listener.local_addr().unwrap();
         let script = Script {
             seen: Vec::new(),
+            app_tokens: Vec::new(),
             mint_status: 201,
             // A token shape of the test's own: never assume a length or a prefix.
             token: format!("stubtoken-{}", Uuid::now_v7().simple()),
@@ -143,8 +146,15 @@ async fn answer(
     let bearer = headers
         .get(header::AUTHORIZATION)
         .is_some_and(|v| v.as_bytes().starts_with(b"Bearer "));
+    let app_token = headers
+        .get(header::AUTHORIZATION)
+        .and_then(|v| v.to_str().ok())
+        .and_then(|v| v.strip_prefix("Bearer "))
+        .filter(|_| method == Method::POST)
+        .map(str::to_owned);
     let hook = stub.with(|s| {
         s.seen.push((method.to_string(), path.clone(), bearer));
+        s.app_tokens.extend(app_token);
         s.hooks.remove(uri.path())
     });
     if let Some(sql) = hook {

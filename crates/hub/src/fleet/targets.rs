@@ -1,6 +1,8 @@
 //! Which addresses the hub may connect to: probes, sessions, metrics and every new outbound
-//! connection (SSRF protection, R-030, R-032, P3-003). The one target rule, and the one
-//! resolver that applies it before a connection.
+//! connection (R-030, R-032, P3-003). It refuses the addresses the hub must never touch
+//! (loopback, link-local and cloud metadata among them) and allows private and VPN ranges, so
+//! it does not decide which host on those networks is reached. The one target rule, and the
+//! one resolver that applies it before a connection.
 
 use std::{
     collections::HashMap,

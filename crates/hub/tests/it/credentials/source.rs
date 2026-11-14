@@ -118,8 +118,23 @@ async fn sec_003_table_holds_no_plaintext(pool: PgPool) {
 async fn src_008_clear_removes_the_secret(pool: PgPool) {
     let id = store(&pool, account(ACCOUNT), &pem()).await;
     let mut conn = pool.acquire().await.unwrap();
-    assert!(clear_source_secret(&mut conn, id).await.unwrap());
-    assert!(!clear_source_secret(&mut conn, id).await.unwrap());
+    assert!(
+        !clear_source_secret(&mut conn, (id, account(OTHER)))
+            .await
+            .unwrap(),
+        "another account's reference deletes nothing"
+    );
+    assert!(load(&pool, id, account(ACCOUNT)).await.is_ok());
+    assert!(
+        clear_source_secret(&mut conn, (id, account(ACCOUNT)))
+            .await
+            .unwrap()
+    );
+    assert!(
+        !clear_source_secret(&mut conn, (id, account(ACCOUNT)))
+            .await
+            .unwrap()
+    );
     assert!(matches!(
         load(&pool, id, account(ACCOUNT)).await,
         Err(Error::UnknownSourceSecret)

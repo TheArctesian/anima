@@ -1,9 +1,11 @@
-//! The pure parts of sources: health, schedule, verdicts, addresses and the App key.
+//! The pure parts of sources: health, schedule, verdicts, addresses, the App key and the
+//! in-memory token map.
 
 mod addresses;
 mod health_table;
 mod keys;
 mod schedule_times;
+mod tokens;
 
 use std::sync::LazyLock;
 

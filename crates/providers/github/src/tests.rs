@@ -1,12 +1,14 @@
 //! Tests run from JSON fixtures under `tests/fixtures`, shaped like GitHub's replies.
 
 use serde_json::{Value, json};
-use source_exchange::{Problem, Request, Response};
+use source_exchange::{Normalised, Problem, Request, Response};
 
 use super::*;
 
+mod branches;
 mod flow;
 mod inspection;
+mod listing;
 mod sign_rules;
 mod token;
 
@@ -72,8 +74,7 @@ pub(super) fn query<'a>(request: &'a Request, name: &str) -> &'a str {
         .query
         .iter()
         .find(|(key, _)| key == name)
-        .map(|(_, value)| value.as_str())
-        .unwrap_or_default()
+        .map_or("", |(_, value)| value.as_str())
 }
 
 pub(super) struct Run {
