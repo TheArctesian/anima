@@ -24,11 +24,16 @@ pub const MAX_SIDE: usize = 8192;
 #[error("a screen side must be from 1 to {MAX_SIDE} pixels")]
 pub struct BadSize;
 
-/// Why pixels were not read or written.
+/// An area that is not inside the screen.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
-pub enum AreaError {
-    #[error("the area is not inside the screen")]
-    OutsideScreen,
+#[error("the area is not inside the screen")]
+pub struct OutsideScreen;
+
+/// Why pixels were not written.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
+pub enum WriteError {
+    #[error(transparent)]
+    OutsideScreen(#[from] OutsideScreen),
     #[error("the pixels do not fill the area")]
     WrongLength,
 }
@@ -38,7 +43,8 @@ pub enum AreaError {
 pub struct Changes {
     /// The screen got a new size (or is new): the client must set its own size first.
     pub resized: bool,
-    /// The parts to send again. They do not overlap and lie inside the screen.
+    /// The parts to send again. They do not overlap, lie inside the screen and are ordered
+    /// by row, then by column.
     pub areas: Vec<Area>,
 }
 
@@ -49,6 +55,8 @@ pub struct Screen {
     rgb: Vec<u8>,
     changed: ChangedTiles,
     resized: bool,
+    /// The pixels of an area while it moves; kept so a scroll does not allocate each time.
+    moving: Vec<u8>,
 }
 
 impl Screen {
@@ -67,6 +75,7 @@ impl Screen {
             rgb: vec![0; width * height * BYTES_PER_PIXEL],
             changed: ChangedTiles::all(width, height),
             resized: true,
+            moving: Vec::new(),
         })
     }
 
@@ -80,11 +89,21 @@ impl Screen {
         self.height
     }
 
-    /// The device changed its screen size: the copy starts again, black and unseen.
+    /// The device announced a screen size. A new size starts the copy again, black and
+    /// unseen; the size the screen already has changes nothing.
     ///
     /// # Errors
     /// [`BadSize`] as [`Screen::new`]; the screen is then unchanged.
     pub fn resize(&mut self, width: usize, height: usize) -> Result<(), BadSize> {
+        if (width, height) == (self.width, self.height) {
+            return Ok(());
+        }
+        let sides = 1..=MAX_SIDE;
+        if !sides.contains(&width) || !sides.contains(&height) {
+            return Err(BadSize);
+        }
+        // Freed first, so the old and the new copy are never both in memory.
+        self.rgb = Vec::new();
         *self = Self::new(width, height)?;
         Ok(())
     }
@@ -93,12 +112,12 @@ impl Screen {
     /// as changed.
     ///
     /// # Errors
-    /// [`AreaError`] when `area` is not inside the screen or `rgb` does not fill it; the
+    /// [`WriteError`] when `area` is not inside the screen or `rgb` does not fill it; the
     /// screen is then unchanged.
-    pub fn write(&mut self, area: Area, rgb: &[u8]) -> Result<(), AreaError> {
+    pub fn write(&mut self, area: Area, rgb: &[u8]) -> Result<(), WriteError> {
         let row_bytes = self.row_bytes(area)?;
         if area.pixels().map(|pixels| pixels * BYTES_PER_PIXEL) != Some(rgb.len()) {
-            return Err(AreaError::WrongLength);
+            return Err(WriteError::WrongLength);
         }
         if row_bytes == 0 {
             return Ok(());
@@ -107,6 +126,7 @@ impl Screen {
             let y = area.y + row;
             let start = self.offset(area.x, y);
             let old = &mut self.rgb[start..start + row_bytes];
+            // Most rows a device repeats are equal as a whole: one comparison, no tile work.
             if old != new {
                 self.changed.mark_differences((area.x, y), old, new);
                 old.copy_from_slice(new);
@@ -119,17 +139,27 @@ impl Screen {
     /// device asks when it scrolls or moves a window. The areas may overlap.
     ///
     /// # Errors
-    /// [`AreaError::OutsideScreen`] when either area is not inside the screen.
-    pub fn move_area(&mut self, from: Area, x: usize, y: usize) -> Result<(), AreaError> {
-        let moved: Vec<u8> = self.rows(from)?.flatten().copied().collect();
-        self.write(Area { x, y, ..from }, &moved)
+    /// [`OutsideScreen`] when either area is not inside the screen; the screen is then
+    /// unchanged.
+    pub fn move_area(&mut self, from: Area, x: usize, y: usize) -> Result<(), OutsideScreen> {
+        let to = Area { x, y, ..from };
+        self.row_bytes(to)?;
+        let mut moving = std::mem::take(&mut self.moving);
+        moving.clear();
+        for row in self.rows(from)? {
+            moving.extend_from_slice(row);
+        }
+        let written = self.write(to, &moving);
+        self.moving = moving;
+        // Both areas are inside and have the same size, so the pixels fill the target.
+        written.map_err(|_| OutsideScreen)
     }
 
     /// The rows of `area`, top to bottom, each as its pixels' bytes.
     ///
     /// # Errors
-    /// [`AreaError::OutsideScreen`] when `area` is not inside the screen.
-    pub fn rows(&self, area: Area) -> Result<impl Iterator<Item = &[u8]>, AreaError> {
+    /// [`OutsideScreen`] when `area` is not inside the screen.
+    pub fn rows(&self, area: Area) -> Result<impl Iterator<Item = &[u8]>, OutsideScreen> {
         let row_bytes = self.row_bytes(area)?;
         Ok((area.y..area.y + area.height).map(move |y| {
             let start = self.offset(area.x, y);
@@ -146,11 +176,11 @@ impl Screen {
     }
 
     /// The bytes of one row of `area`, when `area` is inside the screen.
-    fn row_bytes(&self, area: Area) -> Result<usize, AreaError> {
+    fn row_bytes(&self, area: Area) -> Result<usize, OutsideScreen> {
         if area.is_inside(self.width, self.height) {
             Ok(area.width * BYTES_PER_PIXEL)
         } else {
-            Err(AreaError::OutsideScreen)
+            Err(OutsideScreen)
         }
     }
 

@@ -1,6 +1,8 @@
 //! The screen copy: what counts as a change, and what it refuses.
 
-use anima_gateway::screen::{Area, AreaError, BYTES_PER_PIXEL, BadSize, MAX_SIDE, Screen, TILE};
+use anima_gateway::screen::{
+    Area, BYTES_PER_PIXEL, BadSize, MAX_SIDE, OutsideScreen, Screen, TILE, WriteError,
+};
 
 pub(crate) fn whole(screen: &Screen) -> Vec<u8> {
     let all = Area {
@@ -99,29 +101,57 @@ fn one_changed_pixel_costs_one_tile() {
 }
 
 #[test]
-fn a_moved_area_arrives_where_it_was_sent() {
-    let mut screen = seen(120, 120);
+fn a_moved_area_keeps_its_pixels_when_it_overlaps_its_source() {
+    let (width, height) = (120, 120);
+    let mut screen = seen(width, height);
+    let all = Area {
+        x: 0,
+        y: 0,
+        width,
+        height,
+    };
+    // Every pixel differs from its neighbours, so a pixel copied from the wrong place shows.
+    let pattern: Vec<u8> = (0..=250u8)
+        .cycle()
+        .zip((0..=240u8).cycle())
+        .take(width * height)
+        .flat_map(|(fast, slow)| [fast, slow, 7])
+        .collect();
+    screen.write(all, &pattern).expect("inside");
     let from = Area {
         x: 0,
         y: 0,
         width: 50,
         height: 50,
     };
-    screen.write(from, &filled(from, 9)).expect("inside");
-    // Overlaps its source, as a scroll does.
     screen.move_area(from, 20, 30).expect("inside");
-    let to = Area {
-        x: 20,
-        y: 30,
-        ..from
+
+    let mut expected = pattern.clone();
+    for row in 0..from.height {
+        let source = row * width * BYTES_PER_PIXEL;
+        let target = ((30 + row) * width + 20) * BYTES_PER_PIXEL;
+        let bytes = from.width * BYTES_PER_PIXEL;
+        expected[target..target + bytes].copy_from_slice(&pattern[source..source + bytes]);
+    }
+    assert_eq!(whole(&screen), expected);
+}
+
+#[test]
+fn the_size_the_screen_already_has_keeps_its_pixels() {
+    let mut screen = seen(64, 64);
+    let all = Area {
+        x: 0,
+        y: 0,
+        width: 64,
+        height: 64,
     };
-    let moved: Vec<u8> = screen
-        .rows(to)
-        .expect("inside")
-        .flatten()
-        .copied()
-        .collect();
-    assert_eq!(moved, filled(to, 9));
+    screen.write(all, &filled(all, 5)).expect("inside");
+    screen.take_changes();
+    screen.resize(64, 64).expect("a valid size");
+    assert_eq!(whole(&screen), filled(all, 5));
+    let changes = screen.take_changes();
+    assert!(!changes.resized);
+    assert_eq!(changes.areas, []);
 }
 
 #[test]
@@ -169,7 +199,7 @@ fn writes_outside_the_screen_or_of_the_wrong_length_change_nothing() {
     };
     assert_eq!(
         screen.write(outside, &filled(outside, 1)),
-        Err(AreaError::OutsideScreen)
+        Err(WriteError::OutsideScreen(OutsideScreen))
     );
     let huge = Area {
         x: usize::MAX,
@@ -177,7 +207,10 @@ fn writes_outside_the_screen_or_of_the_wrong_length_change_nothing() {
         width: 2,
         height: 1,
     };
-    assert_eq!(screen.write(huge, &[]), Err(AreaError::OutsideScreen));
+    assert_eq!(
+        screen.write(huge, &[]),
+        Err(WriteError::OutsideScreen(OutsideScreen))
+    );
     let inside = Area {
         x: 0,
         y: 0,
@@ -186,12 +219,9 @@ fn writes_outside_the_screen_or_of_the_wrong_length_change_nothing() {
     };
     assert_eq!(
         screen.write(inside, &[1, 2, 3]),
-        Err(AreaError::WrongLength)
+        Err(WriteError::WrongLength)
     );
-    assert_eq!(
-        screen.move_area(inside, 47, 0),
-        Err(AreaError::OutsideScreen)
-    );
+    assert_eq!(screen.move_area(inside, 47, 0), Err(OutsideScreen));
     assert_eq!(screen.take_changes().areas, []);
     assert_eq!(whole(&screen), vec![0; 50 * 50 * BYTES_PER_PIXEL]);
 }

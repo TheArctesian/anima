@@ -40,7 +40,7 @@ impl ChangedTiles {
     }
 
     /// The changed tiles as areas that do not overlap, clipped to the `width` by `height`
-    /// screen; then no tile is changed.
+    /// screen, ordered by row and then by column; then no tile is changed.
     pub(super) fn take(&mut self, width: usize, height: usize) -> Vec<Area> {
         let mut finished = Vec::new();
         // Areas, in tiles, that reach the row above the one being read.
@@ -72,6 +72,7 @@ impl ChangedTiles {
         }
         finished.append(&mut open);
         self.tiles.fill(false);
+        finished.sort_unstable_by_key(|tiles| (tiles.y, tiles.x));
         finished
             .into_iter()
             .map(|tiles| in_pixels(tiles, width, height))

@@ -11,15 +11,13 @@ pub struct Area {
 
 impl Area {
     /// How many pixels the area holds; `None` when the number does not fit.
-    #[must_use]
-    pub const fn pixels(self) -> Option<usize> {
+    pub(super) const fn pixels(self) -> Option<usize> {
         self.width.checked_mul(self.height)
     }
 
     /// Whether the area lies inside a screen of `width` by `height`. An area with no
     /// pixels is inside when its corner is.
-    #[must_use]
-    pub const fn is_inside(self, width: usize, height: usize) -> bool {
+    pub(super) const fn is_inside(self, width: usize, height: usize) -> bool {
         let (Some(right), Some(bottom)) = (
             self.x.checked_add(self.width),
             self.y.checked_add(self.height),

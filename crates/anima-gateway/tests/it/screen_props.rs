@@ -103,24 +103,113 @@ impl Sent {
     }
 }
 
+/// One thing a device may do to its screen.
+#[derive(Clone, Debug)]
+enum Step {
+    Write(Sent),
+    /// Move the area of `from` so that its corner is at `to` (fitted into the screen).
+    Move {
+        from: Sent,
+        to: (usize, usize),
+    },
+    Resize(usize, usize),
+}
+
+fn step() -> impl Strategy<Value = Step> {
+    prop_oneof![
+        6 => sent().prop_map(Step::Write),
+        2 => (sent(), (0..100usize, 0..100usize)).prop_map(|(from, to)| Step::Move { from, to }),
+        1 => (1..100usize, 1..100usize).prop_map(|(width, height)| Step::Resize(width, height)),
+    ]
+}
+
+/// The screen as a plain picture, changed in the simplest way: what the copy must equal.
+struct Picture {
+    width: usize,
+    height: usize,
+    rgb: Vec<u8>,
+}
+
+impl Picture {
+    fn black(width: usize, height: usize) -> Self {
+        Self {
+            width,
+            height,
+            rgb: vec![0; width * height * BYTES_PER_PIXEL],
+        }
+    }
+
+    fn rows(&self, area: Area) -> Vec<u8> {
+        (area.y..area.y + area.height)
+            .flat_map(|y| {
+                let start = (y * self.width + area.x) * BYTES_PER_PIXEL;
+                self.rgb[start..start + area.width * BYTES_PER_PIXEL]
+                    .iter()
+                    .copied()
+            })
+            .collect()
+    }
+
+    fn draw(&mut self, area: Area, pixels: &[u8]) {
+        if area.width == 0 {
+            return;
+        }
+        for (row, new) in pixels
+            .chunks_exact(area.width * BYTES_PER_PIXEL)
+            .enumerate()
+        {
+            let start = ((area.y + row) * self.width + area.x) * BYTES_PER_PIXEL;
+            self.rgb[start..start + new.len()].copy_from_slice(new);
+        }
+    }
+}
+
+/// Does `step` to the screen copy and to the picture.
+fn apply(step: &Step, screen: &mut Screen, picture: &mut Picture) {
+    match step {
+        Step::Write(sent) => {
+            let (area, pixels) = sent.onto(screen);
+            screen.write(area, &pixels).expect("fitted into the screen");
+            picture.draw(area, &pixels);
+        }
+        Step::Move { from, to } => {
+            let (from, _) = from.onto(screen);
+            let x = to.0 % (screen.width() - from.width + 1);
+            let y = to.1 % (screen.height() - from.height + 1);
+            screen
+                .move_area(from, x, y)
+                .expect("fitted into the screen");
+            let moved = picture.rows(from);
+            picture.draw(Area { x, y, ..from }, &moved);
+        }
+        Step::Resize(width, height) => {
+            screen.resize(*width, *height).expect("a valid size");
+            if (*width, *height) != (picture.width, picture.height) {
+                *picture = Picture::black(*width, *height);
+            }
+        }
+    }
+}
+
 proptest! {
-    /// A client that redraws only the reported areas always shows the screen, and is never
-    /// told to draw a pixel twice in one round.
+    /// Whatever a device does, the copy holds the device's picture, a client that redraws
+    /// only the reported areas shows it too, and no pixel is drawn twice in one round.
     #[test]
     fn a_client_that_follows_the_changes_shows_the_screen(
         (width, height) in (1..100usize, 1..100usize),
-        rounds in prop::collection::vec(prop::collection::vec(sent(), 0..6), 1..6),
+        rounds in prop::collection::vec(prop::collection::vec(step(), 0..6), 1..6),
     ) {
         let mut screen = Screen::new(width, height).expect("a valid size");
+        let mut picture = Picture::black(width, height);
         let mut client = Client::of(&screen);
         for round in rounds {
-            for sent in round {
-                let (area, pixels) = sent.onto(&screen);
-                screen.write(area, &pixels).expect("fitted into the screen");
+            for step in &round {
+                apply(step, &mut screen, &mut picture);
             }
+            prop_assert_eq!(&whole(&screen), &picture.rgb);
             let most_drawn = client.follow(&mut screen);
             prop_assert!(most_drawn <= 1, "areas overlap: a pixel was drawn {most_drawn} times");
-            prop_assert_eq!(&client.rgb, &whole(&screen));
+            prop_assert_eq!(&client.rgb, &picture.rgb);
         }
     }
 
