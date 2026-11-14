@@ -9,28 +9,45 @@
 //! takes no proxy from the environment, speaks HTTPS only, gives up after 20 seconds and reads
 //! at most 8 MiB: past that it stops reading, keeps none of the body and says so. The token header is marked sensitive, and no URL, header or body reaches a
 //! log or an error (LOG-007).
+//!
+//! Every request names the API version it was written for and GitHub's media type (decision 1
+//! of the Projects slice). A named change is the only request with a body the hub builds from a
+//! provider: the transport renders it itself from a checked [`Change`], so no caller hands it a
+//! path, a verb or a URL.
+
+mod address;
 
 use std::{error::Error as StdError, net::IpAddr, sync::Arc, time::Duration};
 
 use reqwest::{
     Client, Response, Url,
     dns::{Addrs, Name, Resolve, Resolving},
-    header::{ACCEPT, AUTHORIZATION, HeaderValue},
+    header::{ACCEPT, AUTHORIZATION, CONTENT_TYPE, HeaderMap, HeaderName, HeaderValue},
     redirect::Policy,
 };
-use source_exchange::{Method, Request};
+use source_exchange::{Change, Declaration, Limit, Method, Request, Verb};
 use zeroize::Zeroizing;
 
+pub use self::address::address;
 use super::{tokens::Tokens, verdict::Limits};
-use crate::fleet::{
-    credentials::Secret,
-    targets::{AddressPolicy, resolve_checked},
+use crate::{
+    engine::sources::live::Live,
+    fleet::{
+        credentials::Secret,
+        targets::{AddressPolicy, resolve_checked},
+    },
 };
 
 /// The most body bytes read.
 pub const BODY_CAP: usize = 8 * 1024 * 1024;
 const TIMEOUT: Duration = Duration::from_secs(20);
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
+/// The most bytes of a change's JSON body: a 65,536-character text, escaped, fits.
+pub const CHANGE_BODY_CAP: usize = 1024 * 1024;
+/// The REST API version every request is written for (K-E1 Section 13.1).
+const API_VERSION: &str = "2022-11-28";
+/// GitHub's JSON media type.
+const MEDIA_TYPE: &str = "application/vnd.github+json";
 
 /// Why nothing usable came back. Fixed words: no URL, header or body (LOG-007).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
@@ -53,6 +70,29 @@ pub struct Answer {
     pub content: Content,
 }
 
+impl Answer {
+    /// The rate-limit headers as the provider's `settle` reads them: numbers, never text.
+    #[must_use]
+    pub fn limit(&self) -> Limit {
+        Limit {
+            remaining: self.limits.remaining,
+            reset_at: self
+                .limits
+                .reset
+                .and_then(|seconds| chrono::DateTime::from_timestamp(seconds, 0)),
+            retry_after_seconds: self.limits.retry_after,
+        }
+    }
+}
+
+/// What came of sending a change.
+pub enum Delivery {
+    Answered(Answer),
+    /// The request may have reached the source, but no whole answer came back: whether the
+    /// change was made is unknown. Never sent again.
+    Lost,
+}
+
 /// The body of an answer, or the fact that it was larger than the hub reads.
 pub enum Content {
     /// Wiped on drop: a mint reply holds a token, a conversion reply a key.
@@ -71,6 +111,8 @@ pub struct Transport {
     /// Replaces every API base: a loopback stub, set only by tests.
     base_override: Option<Url>,
     tokens: Tokens,
+    /// The live path's cache, budget and pace (K-E1 Section 13.1).
+    live: Live,
 }
 
 /// Resolves only the allowed names, and only to addresses the hub's address policy permits
@@ -112,9 +154,13 @@ fn client(
     policy: AddressPolicy,
     https_only: bool,
 ) -> Result<Client, BuildFailed> {
+    let version = HeaderValue::from_static(API_VERSION);
+    let headers =
+        HeaderMap::from_iter([(HeaderName::from_static("x-github-api-version"), version)]);
     Client::builder()
         .use_rustls_tls()
         .user_agent("anima-hub")
+        .default_headers(headers)
         .no_proxy()
         .redirect(Policy::none())
         .https_only(https_only)
@@ -151,6 +197,7 @@ impl Transport {
             allowed: hosts,
             base_override: None,
             tokens: Tokens::default(),
+            live: Live::default(),
         })
     }
 
@@ -167,6 +214,7 @@ impl Transport {
             allowed: hosts,
             base_override: Some(stub),
             tokens: Tokens::default(),
+            live: Live::default(),
         })
     }
 
@@ -174,6 +222,11 @@ impl Transport {
     #[must_use]
     pub fn tokens(&self) -> &Tokens {
         &self.tokens
+    }
+
+    /// The live path's cache, budget and pace, shared by clones.
+    pub(in crate::engine::sources) const fn live(&self) -> &Live {
+        &self.live
     }
 
     /// The URL of `request` below `api_base`, or [`Fault::Refused`] when the base is not an
@@ -211,7 +264,7 @@ impl Transport {
             .client
             .get(url)
             .header(AUTHORIZATION, bearer(token.expose())?)
-            .header(ACCEPT, HeaderValue::from_static("application/json"));
+            .header(ACCEPT, HeaderValue::from_static(MEDIA_TYPE));
         read(sent.send().await.map_err(|_| Fault::Network)?).await
     }
 
@@ -225,7 +278,7 @@ impl Transport {
             .client
             .post(url)
             .header(AUTHORIZATION, bearer(app_token.as_bytes())?)
-            .header(ACCEPT, HeaderValue::from_static("application/json"));
+            .header(ACCEPT, HeaderValue::from_static(MEDIA_TYPE));
         read(sent.send().await.map_err(|_| Fault::Network)?).await
     }
 
@@ -240,6 +293,58 @@ impl Transport {
     }
 }
 
+impl Transport {
+    /// Sends `change` to the source of `declaration` with the installation token: the
+    /// provider's `render` gives the path below `api_base` and the JSON body, and the change
+    /// fixes the verb. Refused before sending when the source makes no changes, the path fails
+    /// the checks of [`Self::url`] or the body passes [`CHANGE_BODY_CAP`]; [`Fault::Network`]
+    /// when the connection failed before anything was sent; [`Delivery::Lost`] once it may have
+    /// been.
+    pub(in crate::engine::sources) async fn change(
+        &self,
+        declaration: &Declaration,
+        change: &Change,
+        token: &Secret,
+    ) -> Result<Delivery, Fault> {
+        let changes = declaration.changes.ok_or(Fault::Refused)?;
+        let rendered = (changes.render)(change);
+        let target = Request::get(rendered.path(), &[]).map_err(|_| Fault::Refused)?;
+        let url = self.url(declaration.api_base, &target)?;
+        let body = match rendered.body() {
+            Some(json) => Some(serde_json::to_vec(json).map_err(|_| Fault::Refused)?),
+            None => None,
+        };
+        if body
+            .as_ref()
+            .is_some_and(|bytes| bytes.len() > CHANGE_BODY_CAP)
+        {
+            return Err(Fault::Refused);
+        }
+        let method = match rendered.verb() {
+            Verb::Post => reqwest::Method::POST,
+            Verb::Put => reqwest::Method::PUT,
+            Verb::Patch => reqwest::Method::PATCH,
+        };
+        let mut sent = self
+            .client
+            .request(method, url)
+            .header(AUTHORIZATION, bearer(token.expose())?)
+            .header(ACCEPT, HeaderValue::from_static(MEDIA_TYPE));
+        if let Some(bytes) = body {
+            sent = sent
+                .header(CONTENT_TYPE, HeaderValue::from_static("application/json"))
+                .body(bytes);
+        }
+        match sent.send().await {
+            Ok(response) => Ok(read(response)
+                .await
+                .map_or(Delivery::Lost, Delivery::Answered)),
+            Err(error) if error.is_connect() => Err(Fault::Network),
+            Err(_) => Ok(Delivery::Lost),
+        }
+    }
+}
+
 /// `Bearer <token>`, marked sensitive so it never appears in a `Debug` output.
 fn bearer(token: &[u8]) -> Result<HeaderValue, Fault> {
     let mut text = Zeroizing::new(Vec::with_capacity(token.len() + 7));
@@ -248,54 +353,6 @@ fn bearer(token: &[u8]) -> Result<HeaderValue, Fault> {
     let mut value = HeaderValue::from_bytes(&text).map_err(|_| Fault::Refused)?;
     value.set_sensitive(true);
     Ok(value)
-}
-
-/// Whether `path` stays below the base: one leading slash, no scheme, no user, no query or
-/// fragment of its own, no backslash, no control or space character, no `.` or `..` segment
-/// and no percent-encoded dot (the URL parser resolves both, so the token would go to another
-/// path on the same host).
-fn path_is_plain(path: &str) -> bool {
-    path.starts_with('/')
-        && !path.starts_with("//")
-        && !path.contains("://")
-        && !path
-            .chars()
-            .any(|c| matches!(c, '@' | '?' | '#' | '\\') || c.is_control() || c.is_whitespace())
-        && !path
-            .split('/')
-            .any(|segment| segment == "." || segment == "..")
-        && !path
-            .as_bytes()
-            .windows(3)
-            .any(|w| w[0] == b'%' && w[1] == b'2' && w[2].eq_ignore_ascii_case(&b'e'))
-}
-
-/// `base` with `path` appended and `query` set. Refused when the path could leave the base, or
-/// when the result's scheme, host or port is not the base's, or its path is not below the
-/// base's path.
-///
-/// # Errors
-/// [`Fault::Refused`].
-pub fn address(base: &Url, path: &str, query: &[(String, String)]) -> Result<Url, Fault> {
-    if !path_is_plain(path) || !base.username().is_empty() || base.password().is_some() {
-        return Err(Fault::Refused);
-    }
-    let prefix = base.path().trim_end_matches('/');
-    let mut url = base.clone();
-    url.set_path(&format!("{prefix}{path}"));
-    url.set_query(None);
-    url.set_fragment(None);
-    if !query.is_empty() {
-        url.query_pairs_mut().extend_pairs(query);
-    }
-    let same = url.scheme() == base.scheme()
-        && url.host_str() == base.host_str()
-        && url.port_or_known_default() == base.port_or_known_default()
-        && url
-            .path()
-            .strip_prefix(prefix)
-            .is_some_and(|rest| rest.starts_with('/'));
-    if same { Ok(url) } else { Err(Fault::Refused) }
 }
 
 /// The status, the rate-limit headers and the body, or [`Content::TooLarge`] as soon as the
