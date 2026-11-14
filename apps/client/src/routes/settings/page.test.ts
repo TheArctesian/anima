@@ -33,6 +33,8 @@ vi.mock('$lib/checks/defaults/DefaultsSection.svelte', () => ({ default: () => u
 vi.mock('$lib/retention/RetentionSection.svelte', () => ({ default: () => undefined }));
 // The Extensions section loads its own data and has its own tests in `$lib/extensions/` (EXT-001).
 vi.mock('$lib/extensions/ExtensionsSection.svelte', () => ({ default: () => undefined }));
+// The Integrations section loads its own data and has its own tests in `$lib/sources/` (SRC-009, PRJ-018).
+vi.mock('$lib/sources/SourcesSection.svelte', () => ({ default: () => undefined }));
 // The MCP section reads the shell and has its own tests in `$lib/mcp/` (MCP-018, MCP-023).
 vi.mock('$lib/mcp/McpSection.svelte', () => ({ default: () => undefined }));
 // The VPN section loads its own data and has its own tests in `$lib/vpn/` (SET-003).
@@ -110,7 +112,7 @@ function sectionTexts(target: HTMLElement, heading: string): string[] {
 it('SET-001, UI-005, MOT-043: the page is the title, then Account, then Appearance with Theme, Colours, Reduce motion and the two fonts, then Notifications, then Default check settings, then Data retention, then API keys, then VPN', async () => {
   const target = await open({ Me: ok({ me: { username: 'ann' } }) });
   expect(target.querySelector('h1')?.compareDocumentPosition(sections(target)[0] as Node)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
-  expect(sectionHeadings(target)).toEqual(['Account', 'Appearance', 'Notifications', 'Default check settings', 'Data retention', 'API keys', 'Extensions', 'VPN']);
+  expect(sectionHeadings(target)).toEqual(['Account', 'Appearance', 'Notifications', 'Default check settings', 'Data retention', 'API keys', 'Extensions', 'Integrations', 'VPN']);
   expect(sectionTexts(target, 'Account')).toEqual(['Account', 'Who is signed in to this hub.', 'Signed in as ann', 'Sign out', '']);
   const fonts = ['OpenDyslexic'];
   expect(sectionTexts(target, 'Appearance')).toEqual([
@@ -123,7 +125,7 @@ it('SET-001, UI-005, MOT-043: the page is the title, then Account, then Appearan
 it('SET-001, UPD-006, BLD-020: the desktop app adds the Updates section before API keys, holding the update, log folder and Builds rows', async () => {
   mocks.platform = DESKTOP_MAC;
   const target = await open({ Me: ok({ me: { username: 'ann' } }) });
-  expect(sectionHeadings(target)).toEqual(['Account', 'Hub', 'Appearance', 'Notifications', 'Default check settings', 'Data retention', 'Updates', 'API keys', 'Extensions', 'MCP', 'VPN']);
+  expect(sectionHeadings(target)).toEqual(['Account', 'Hub', 'Appearance', 'Notifications', 'Default check settings', 'Data retention', 'Updates', 'API keys', 'Extensions', 'Integrations', 'MCP', 'VPN']);
   const updates = target.querySelector('section[aria-labelledby="settings-updates"]');
   expect(updates?.querySelectorAll('[data-stub]')).toHaveLength(3);
   expect(target.querySelectorAll('[data-stub]')).toHaveLength(3);
