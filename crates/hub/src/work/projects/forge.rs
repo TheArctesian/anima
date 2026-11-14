@@ -6,10 +6,10 @@
 //! reaches a log line or an error message (LOG-007).
 
 mod checks;
-mod cursor;
+pub(super) mod cursor;
 mod failure;
 mod filter;
-mod reach;
+pub(super) mod reach;
 pub(super) mod text;
 
 use std::sync::Arc;

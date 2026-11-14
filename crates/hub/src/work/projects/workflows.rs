@@ -2,7 +2,7 @@
 //! PRJ-035), with the jobs of a run counted when they are selected.
 
 mod graphql;
-mod jobs;
+pub(super) mod jobs;
 mod views;
 
 pub(super) use self::graphql::Query;
