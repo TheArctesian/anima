@@ -3,12 +3,12 @@
 
 use std::time::Duration;
 
-use anima_hub::ids::SourceAccountId;
+use anima_hub::{engine::sources::Outcome, ids::SourceAccountId};
 use serde_json::{Value, json};
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use super::{Kit, items, kit, set_projects};
+use super::{CONNECT, Kit, TEST_KEY, items, kit, set_projects};
 use crate::hub::{error, start};
 
 const PAUSE: &str = "mutation($id: ID!, $paused: Boolean!) { setSourceAccountPaused(id: $id, paused: $paused) \
@@ -145,6 +145,55 @@ async fn itg_004_removing_an_account_keeps_or_forgets_its_records(pool: PgPool) 
     .unwrap();
     assert_eq!(change["deleteRecords"], true);
     assert_eq!(change["recordsDeleted"], 2);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn src_008_removing_an_account_never_deletes_another_accounts_key(pool: PgPool) {
+    let kit = kit(&pool).await;
+    let (_, a) = kit.connect().await;
+    let other = json!({ "input": { "label": "Other", "appId": "4242", "installationId": "78",
+        "privateKey": *TEST_KEY } });
+    let response = kit.hub.post(Some(&kit.token), CONNECT, other).await;
+    let b: SourceAccountId = response["data"]["connectGithubApp"]["id"]
+        .as_str()
+        .unwrap_or_else(|| panic!("connect failed: {response}"))
+        .parse()
+        .unwrap();
+    let b_secret: Uuid =
+        sqlx::query_scalar("SELECT credential_id FROM sources.accounts WHERE id = $1")
+            .bind(b)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    // A database writer points A's reference at B's key.
+    sqlx::query("UPDATE sources.accounts SET credential_id = $1 WHERE id = $2")
+        .bind(b_secret)
+        .bind(a)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let removed = kit
+        .hub
+        .post(
+            Some(&kit.token),
+            REMOVE,
+            json!({ "id": a, "delete": false }),
+        )
+        .await;
+    assert!(removed["errors"].is_null(), "{removed}");
+
+    let left: i64 =
+        sqlx::query_scalar("SELECT count(*) FROM credentials.source_secrets WHERE id = $1")
+            .bind(b_secret)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(left, 1, "B's key is still stored");
+    kit.reach.transport.tokens().forget(b);
+    set_projects(&pool, true).await;
+    kit.stub.set_pages(&[&[("a", "1")]]);
+    assert_eq!(kit.run(b).await, Some(Outcome::Ok), "B's key still opens");
 }
 
 #[sqlx::test(migrations = "./migrations")]

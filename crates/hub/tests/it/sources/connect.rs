@@ -4,7 +4,7 @@
 use serde_json::{Value, json};
 use sqlx::PgPool;
 
-use super::{CONNECT, TEST_KEY, input, kit, kit_with, stub::Stub, unreachable};
+use super::{CONNECT, TEST_KEY, input, kit, kit_with, set_projects, stub::Stub, unreachable};
 use crate::hub::{error, start};
 
 async fn stored(pool: &PgPool) -> (i64, i64) {
@@ -53,6 +53,25 @@ async fn src_003_connect_proves_the_key_then_stores_the_account_and_its_sealed_k
             words("user"),
             words("login")
         )
+    );
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn prj_018_the_proving_token_is_kept_only_while_a_consumer_is_on(pool: PgPool) {
+    let kit = kit(&pool).await;
+    let tokens = kit.reach.transport.tokens();
+    let (_, off) = kit.connect().await;
+    assert!(
+        tokens.fresh(off, start()).is_none(),
+        "Projects is off: no run will use it, so it is dropped"
+    );
+
+    set_projects(&pool, true).await;
+    let (_, on) = kit.connect().await;
+    assert_eq!(on, off, "the same installation");
+    assert!(
+        tokens.fresh(on, start()).is_some(),
+        "Projects is on: the connect's run uses it"
     );
 }
 

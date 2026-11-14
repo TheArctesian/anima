@@ -342,7 +342,7 @@ pub async fn clear_password(conn: &mut PgConnection, device: DeviceId, kind: Pas
 ```rust
 pub async fn store_source_secret(conn: &mut PgConnection, vault: &Vault, account: SourceAccountId, s: Secret) -> Result<SourceSecretId, Error>;
 pub async fn load_source_secret(db: &Db, vault: &Vault, (id, account): (SourceSecretId, SourceAccountId)) -> Result<Secret, Error>;
-pub async fn clear_source_secret(conn: &mut PgConnection, id: SourceSecretId) -> Result<bool, Error>;
+pub async fn clear_source_secret(conn: &mut PgConnection, (id, account): (SourceSecretId, SourceAccountId)) -> Result<bool, Error>;   // deletes only the row of this id and account
 pub enum Error { /* as before */ UnknownSourceSecret }   // load_source_secret: no row has this id
 ```
 

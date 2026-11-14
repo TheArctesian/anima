@@ -53,6 +53,37 @@ fn src_006_a_path_that_could_leave_the_base_is_refused() {
 }
 
 #[test]
+fn src_008_a_dot_segment_or_an_encoded_dot_is_refused() {
+    let base = Url::parse(BASE).unwrap();
+    for path in [
+        "/repos/o/n/git/trees/../../../../../app/installations",
+        "/repos/o/n/git/trees/main/..",
+        "/repos/./x",
+        "/.",
+        "/repos/o/n/git/trees/%2e%2e/%2E%2E/app",
+        "/repos/%2E./x",
+        "/repos/.%2e/x",
+        "/repos/a%2eb",
+    ] {
+        assert_eq!(address(&base, path, &[]), Err(Fault::Refused), "{path:?}");
+    }
+    assert!(
+        address(&base, "/repos/o/n.js/git/trees/v1.2", &[]).is_ok(),
+        "a dot inside a segment is plain"
+    );
+}
+
+#[test]
+fn src_008_a_base_with_a_path_cannot_be_escaped() {
+    let base = Url::parse("https://example.test/api/v3").unwrap();
+    for path in ["/../app/installations", "/x/../../app", "/%2e%2e/app"] {
+        assert_eq!(address(&base, path, &[]), Err(Fault::Refused), "{path:?}");
+    }
+    let url = address(&base, "/repos/a/b", &[]).unwrap();
+    assert_eq!(url.path(), "/api/v3/repos/a/b");
+}
+
+#[test]
 fn src_006_only_a_declared_https_base_is_a_destination() {
     let transport = Transport::new(
         [BASE, "https://10.0.0.1", "http://plain.example"],
@@ -95,6 +126,30 @@ proptest! {
                 prop_assert!(url.path().starts_with("/v3/"));
                 prop_assert!(url.username().is_empty());
             }
+        }
+    }
+
+    /// Whatever mix of plain, dot and encoded-dot segments, a URL that is made stays below the
+    /// base's path.
+    #[test]
+    fn src_008_no_mix_of_dot_segments_leaves_the_base_path(
+        segments in proptest::collection::vec(
+            prop_oneof![
+                Just(".".to_owned()),
+                Just("..".to_owned()),
+                Just("%2e".to_owned()),
+                Just("%2E%2e".to_owned()),
+                Just(".%2E".to_owned()),
+                "[a-z.]{1,4}",
+            ],
+            1..8,
+        )
+    ) {
+        let base = Url::parse("https://example.test/api/v3").unwrap();
+        let path = format!("/{}", segments.join("/"));
+        if let Ok(url) = address(&base, &path, &[]) {
+            prop_assert!(url.path().starts_with("/api/v3/"), "{}", url.path());
+            prop_assert!(!url.path().split('/').any(|s| s == "." || s == ".."));
         }
     }
 }

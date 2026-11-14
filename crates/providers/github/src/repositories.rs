@@ -3,7 +3,7 @@
 use chrono::{DateTime, SecondsFormat, Utc};
 use serde::Deserialize;
 use serde_json::Value;
-use source_exchange::{Normalised, Request, Response};
+use source_exchange::{Normalised, Problem, Request, Response};
 
 use crate::name;
 use crate::problem::{problem, refuse, unexpected_status};
@@ -11,6 +11,10 @@ use crate::record::{Record, Repository};
 use crate::state::{Pending, Phase, Slice, Step};
 
 const PER_PAGE: usize = 100;
+/// The most listing pages one listing reads (SRC-007).
+const MAX_PAGES: u32 = 1000;
+/// The most repositories one listing gathers.
+const MAX_REPOSITORIES: usize = 100_000;
 const SUBJECT: &str = "repositories";
 
 pub(crate) fn request(page: u32) -> Option<Request> {
@@ -100,14 +104,13 @@ pub(crate) fn normalise(response: &Response<'_>, slice: &Slice) -> Normalised<Re
             match queue(&repository, pushed_at) {
                 Ok(Some(pending)) => next.pending.push(pending),
                 Ok(None) => {}
-                Err(name::UnusableName) => problems.push(problem(
-                    "repository_name_unusable",
-                    &repository.full_name,
-                    "the repository name cannot be used to read its files",
-                )),
+                Err(unusable) => problems.push(unusable),
             }
         }
         records.push(Record::Repository(repository));
+    }
+    if !last && (slice.page >= MAX_PAGES || next.listed.len() > MAX_REPOSITORIES) {
+        return too_long(slice, records);
     }
     if last {
         let listed = std::mem::take(&mut next.listed);
@@ -128,13 +131,47 @@ pub(crate) fn normalise(response: &Response<'_>, slice: &Slice) -> Normalised<Re
     }
 }
 
-/// `None`: the repository has no branch yet, so there is nothing to read.
-fn queue(
-    repository: &Repository,
-    pushed_at: Option<String>,
-) -> Result<Option<Pending>, name::UnusableName> {
-    name::check(&repository.full_name)?;
-    Ok(repository.default_branch.as_ref().map(|branch| Pending {
+/// The listing went past the cap: the page's repositories are reported, the run stops with a
+/// problem, and the slice drops what this listing gathered so the next run lists from page 1.
+/// No `Listed` record: an unfinished listing must not read as one that left repositories out.
+fn too_long(slice: &Slice, records: Vec<Record>) -> Normalised<Record> {
+    let mut next = slice.clone();
+    next.listed.clear();
+    next.pending.clear();
+    next.page = 1;
+    next.phase = Phase::Done;
+    Normalised {
+        records,
+        state: next.to_value(),
+        problems: vec![problem(
+            "listing_too_long",
+            SUBJECT,
+            "GitHub's list of repositories did not end within 1,000 pages or 100,000 repositories",
+        )],
+    }
+}
+
+/// `None`: the repository has no branch yet, so there is nothing to read. A problem: its name
+/// or its branch cannot go into a path, so its signs are not read.
+fn queue(repository: &Repository, pushed_at: Option<String>) -> Result<Option<Pending>, Problem> {
+    name::check(&repository.full_name).map_err(|name::UnusableName| {
+        problem(
+            "repository_name_unusable",
+            &repository.full_name,
+            "the repository name cannot be used to read its files",
+        )
+    })?;
+    let Some(branch) = &repository.default_branch else {
+        return Ok(None);
+    };
+    name::check_branch(branch).map_err(|name::UnusableBranch| {
+        problem(
+            "branch_unusable",
+            &repository.full_name,
+            "the default branch name cannot be used to read its files",
+        )
+    })?;
+    Ok(Some(Pending {
         id: repository.external_id.clone(),
         name: repository.full_name.clone(),
         branch: branch.clone(),

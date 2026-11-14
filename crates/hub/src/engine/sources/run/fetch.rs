@@ -87,6 +87,9 @@ async fn token(
     if let Some(token) = scheduling.transport.tokens().fresh(account.id, now) {
         return Ok(token);
     }
+    // Taken before the key is read: a removal that forgets the token after this point makes
+    // the keep below store nothing.
+    let ticket = scheduling.transport.tokens().ticket();
     let credential = account.credential_id.ok_or(Failure::new(
         ErrorKind::Auth,
         "No key is stored. Connect the account again.",
@@ -128,5 +131,8 @@ async fn token(
             Failure::new(ErrorKind::Provider, "The source did not give a token.")
         }
     })?;
-    Ok(scheduling.transport.tokens().keep(account.id, minted))
+    Ok(scheduling
+        .transport
+        .tokens()
+        .keep(account.id, minted, ticket))
 }

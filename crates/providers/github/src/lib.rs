@@ -47,13 +47,14 @@ pub const DECLARATION: Declaration = Declaration {
 };
 
 /// Starts a run. A finished or empty slice starts a new listing and keeps what was seen; a
-/// run that stopped part-way keeps its place, so the next run resumes (SRC-007).
+/// run that stopped part-way keeps its place, so the next run resumes (SRC-007). A queued
+/// repository whose stored name or branch cannot go into a path is dropped (SRC-008).
 #[must_use]
 pub fn begin(state: &Value) -> Value {
     let mut slice = Slice::read(state);
-    slice
-        .pending
-        .retain(|pending| name::check(&pending.name).is_ok());
+    slice.pending.retain(|pending| {
+        name::check(&pending.name).is_ok() && name::check_branch(&pending.branch).is_ok()
+    });
     slice.settle();
     if slice.phase == Phase::Done {
         slice.phase = Phase::List;

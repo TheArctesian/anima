@@ -1,12 +1,14 @@
 //! Tests run from JSON fixtures under `tests/fixtures`, shaped like GitHub's replies.
 
 use serde_json::{Value, json};
-use source_exchange::{Problem, Request, Response};
+use source_exchange::{Normalised, Problem, Request, Response};
 
 use super::*;
 
+mod branches;
 mod flow;
 mod inspection;
+mod listing;
 mod sign_rules;
 mod token;
 

@@ -22,6 +22,25 @@ fn src_006_a_path_that_could_leave_the_api_base_is_refused() {
     }
 }
 
+#[test]
+fn src_008_a_path_with_a_dot_segment_or_an_encoded_dot_is_refused() {
+    for path in [
+        "/repos/o/n/git/trees/../../../../../app/installations",
+        "/repos/./x",
+        "/repos/x/..",
+        "/repos/%2E%2E/app",
+        "/repos/%2e/x",
+        "/repos/a%2Eb",
+    ] {
+        assert_eq!(
+            Request::get(path, &[]),
+            Err(RequestError::DotSegment),
+            "{path}"
+        );
+    }
+    assert!(Request::get("/repos/o/n.js/git/trees/v1.2", &[]).is_ok());
+}
+
 fn mint_path(installation: &str) -> String {
     format!("/app/installations/{installation}/access_tokens")
 }

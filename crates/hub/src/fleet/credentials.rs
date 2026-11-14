@@ -320,14 +320,16 @@ pub async fn load_source_secret(
     source::open(vault, row, account)
 }
 
-/// Deletes the source secret `id` in the caller's connection. Returns true if it was removed.
+/// Deletes the source secret `id` of `account`, the source account the caller acts for, in the
+/// caller's connection. Returns true if it was removed; a secret of another account is never
+/// removed.
 ///
 /// # Errors
 ///
 /// [`Error::Database`] when the store cannot be written.
 pub async fn clear_source_secret(
     conn: &mut PgConnection,
-    id: SourceSecretId,
+    (id, account): (SourceSecretId, SourceAccountId),
 ) -> Result<bool, Error> {
-    store::delete_source(conn, id).await
+    store::delete_source(conn, (id, account)).await
 }
