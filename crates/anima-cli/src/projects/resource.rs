@@ -4,6 +4,7 @@
 use super::documents::{ProjectGet, ResourceConfirm, project_get, resource_confirm};
 use super::render;
 use crate::failure::{Failure, Hint};
+use crate::hub::Hub;
 use crate::invocation::Invocation;
 use crate::output::text::enum_name;
 
@@ -63,51 +64,63 @@ impl ConfirmArgs {
     /// [`Failure::NotFound`] when the project has no resource of the kind; the hub's refusal.
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let hub = invocation.hub()?;
-        let answer = hub
-            .run::<ProjectGet>(project_get::Variables {
-                slug: self.slug.clone(),
-            })
-            .await?;
-        let project = answer.project.ok_or_else(|| Failure::NotFound {
-            message: format!("There is no project with the slug {}.", self.slug),
-            hint: Some(Hint::run("anima project list")),
-        })?;
-        let of_kind: Vec<_> = project
-            .resources
-            .iter()
-            .filter(|resource| enum_name(&resource.kind) == self.kind.k1())
-            .collect();
-        if of_kind.is_empty() {
-            return Err(Failure::NotFound {
-                message: format!(
-                    "The project {} has no {} resource.",
-                    self.slug,
-                    self.kind.k1()
-                ),
-                hint: Some(Hint::run(format!("anima project get {}", self.slug))),
-            });
-        }
-        let waiting: Vec<_> = of_kind
-            .iter()
-            .filter(|resource| enum_name(&resource.state) != "CONFIRMED")
-            .collect();
-        let targets = if waiting.is_empty() {
-            of_kind.iter().map(|resource| &resource.id).collect()
-        } else {
-            waiting
-                .iter()
-                .map(|resource| &resource.id)
-                .collect::<Vec<_>>()
-        };
-        let mut confirmed = Vec::new();
-        for id in targets {
-            let variables = resource_confirm::Variables { id: id.clone() };
-            confirmed.push(
-                hub.run::<ResourceConfirm>(variables)
-                    .await?
-                    .confirm_project_resource,
-            );
-        }
+        let confirmed = confirm(&hub, &self.slug, self.kind.k1()).await?;
         invocation.output.data(&confirmed, render::resources)
     }
+}
+
+/// Confirms the resources of `kind` (a K1 `ResourceKind` name) in the project `slug` that wait
+/// for it, or all of that kind when none waits, and returns them as the hub answers. The
+/// command and the MCP tool share it.
+///
+/// # Errors
+/// [`Failure::NotFound`] for an unknown project or one with no resource of that kind; the
+/// hub's refusal.
+pub async fn confirm(
+    hub: &Hub,
+    slug: &str,
+    kind: &str,
+) -> Result<Vec<resource_confirm::ResourceConfirmConfirmProjectResource>, Failure> {
+    let answer = hub
+        .run::<ProjectGet>(project_get::Variables {
+            slug: slug.to_owned(),
+        })
+        .await?;
+    let project = answer.project.ok_or_else(|| Failure::NotFound {
+        message: format!("There is no project with the slug {slug}."),
+        hint: Some(Hint::run("anima project list")),
+    })?;
+    let of_kind: Vec<_> = project
+        .resources
+        .iter()
+        .filter(|resource| enum_name(&resource.kind) == kind)
+        .collect();
+    if of_kind.is_empty() {
+        return Err(Failure::NotFound {
+            message: format!("The project {slug} has no {kind} resource."),
+            hint: Some(Hint::run(format!("anima project get {slug}"))),
+        });
+    }
+    let waiting: Vec<_> = of_kind
+        .iter()
+        .filter(|resource| enum_name(&resource.state) != "CONFIRMED")
+        .collect();
+    let targets = if waiting.is_empty() {
+        of_kind.iter().map(|resource| &resource.id).collect()
+    } else {
+        waiting
+            .iter()
+            .map(|resource| &resource.id)
+            .collect::<Vec<_>>()
+    };
+    let mut confirmed = Vec::new();
+    for id in targets {
+        let variables = resource_confirm::Variables { id: id.clone() };
+        confirmed.push(
+            hub.run::<ResourceConfirm>(variables)
+                .await?
+                .confirm_project_resource,
+        );
+    }
+    Ok(confirmed)
 }

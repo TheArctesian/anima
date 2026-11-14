@@ -4,11 +4,14 @@
 pub mod checks;
 pub mod devices;
 pub mod events;
+pub mod extensions;
 pub mod maintenance;
 pub mod notifications;
+pub mod projects;
 pub mod releases;
 pub mod retention;
 pub mod sessions;
+pub mod sources;
 pub mod vpn;
 pub mod web;
 
@@ -33,6 +36,9 @@ pub enum Tool {
     Releases(releases::ReleaseTool),
     Vpn(vpn::VpnTool),
     Retention(retention::RetentionTool),
+    Extensions(extensions::ExtensionTool),
+    Sources(sources::SourceTool),
+    Projects(projects::ProjectTool),
 }
 
 impl Tool {
@@ -50,6 +56,9 @@ impl Tool {
         tools.extend(releases::ReleaseTool::ALL.map(Self::Releases));
         tools.extend(vpn::VpnTool::ALL.map(Self::Vpn));
         tools.extend(retention::RetentionTool::ALL.map(Self::Retention));
+        tools.extend(extensions::ExtensionTool::ALL.map(Self::Extensions));
+        tools.extend(sources::SourceTool::ALL.map(Self::Sources));
+        tools.extend(projects::ProjectTool::ALL.map(Self::Projects));
         tools
     }
 
@@ -66,6 +75,9 @@ impl Tool {
             Self::Releases(_) => ToolSet::Releases,
             Self::Vpn(_) => ToolSet::Vpn,
             Self::Retention(_) => ToolSet::Retention,
+            Self::Extensions(_) => ToolSet::Extensions,
+            Self::Sources(_) => ToolSet::Sources,
+            Self::Projects(_) => ToolSet::Projects,
         }
     }
 
@@ -82,6 +94,9 @@ impl Tool {
             Self::Releases(tool) => tool.definition(),
             Self::Vpn(tool) => tool.definition(),
             Self::Retention(tool) => tool.definition(),
+            Self::Extensions(tool) => tool.definition(),
+            Self::Sources(tool) => tool.definition(),
+            Self::Projects(tool) => tool.definition(),
         }
     }
 
@@ -101,6 +116,9 @@ impl Tool {
             Self::Releases(tool) => tool.call(hub, arguments).await,
             Self::Vpn(tool) => tool.call(hub, arguments).await,
             Self::Retention(tool) => tool.call(hub, arguments).await,
+            Self::Extensions(tool) => tool.call(hub, arguments).await,
+            Self::Sources(tool) => tool.call(hub, arguments).await,
+            Self::Projects(tool) => tool.call(hub, arguments).await,
         }
     }
 }
