@@ -115,7 +115,8 @@ it('SET-001, UI-005, MOT-043: the page is the title, then Account, then Appearan
     'Appearance', 'How Anima looks on this device.', 'Theme', 'Dark', 'Light', 'System', 'Colours', 'Graphite', 'Nord', 'Reduce motion', 'System', 'On', 'Off',
     'Interface font', 'IBM Plex Sans', ...fonts, 'Monospace font', 'IBM Plex Mono', ...fonts,
   ]);
-  expect(target.querySelectorAll('[role="switch"], img, input, textarea, a, [tabindex]:not(button)')).toHaveLength(0);
+  const controls = '[role="switch"], img, input, textarea, a, [tabindex]:not(button)';
+  expect(sections(target).flatMap((section) => [...section.querySelectorAll(controls)])).toHaveLength(0);
 });
 
 it('SET-001, UPD-006, BLD-020: the desktop app adds the Updates section before API keys, holding the update, log folder and Builds rows', async () => {
