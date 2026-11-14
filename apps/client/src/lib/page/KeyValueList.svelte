@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Icon from '$lib/icons/Icon.svelte';
   import type { Pair } from './pair';
 
   interface Props {
@@ -10,11 +11,12 @@
   const { pairs, align = 'start' }: Props = $props();
 </script>
 
-<!-- Structured text in place of prose (O6): a label column in the secondary colour, values that wrap and never overflow. -->
+<!-- Structured text in place of prose (O6): hairline rows (UR-7, D9), a quiet label column led by an icon, values that wrap
+     and never overflow. -->
 <dl class:end={align === 'end'}>
   {#each pairs as pair (pair.label)}
     <div class="pair">
-      <dt>{pair.label}</dt>
+      <dt>{#if pair.icon !== undefined}<span class="mark"><Icon name={pair.icon} size="sm" /></span>{/if}{pair.label}</dt>
       <dd class:mono={pair.mono}>
         <span class="value">{pair.value}</span>
         {#if pair.copy}{@render pair.copy()}{/if}
@@ -29,23 +31,28 @@
     display: flex;
     flex-direction: column;
     margin: 0;
+    border-block-start: var(--border-thin) solid var(--border-subtle);
   }
 
   .pair {
     display: grid;
     grid-template-columns: minmax(8rem, 1fr) minmax(0, 3fr);
     gap: var(--space-1) var(--space-3);
-    padding-block: var(--space-2);
-    border-block-start: var(--border-thin) solid var(--border-subtle);
-  }
-
-  .pair:first-child {
-    border-block-start: 0;
+    padding: var(--space-3) var(--space-1);
+    border-block-end: var(--border-thin) solid var(--border-subtle);
   }
 
   dt {
-    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    color: var(--text-tertiary);
     overflow-wrap: anywhere;
+  }
+
+  .mark {
+    display: inline-flex;
+    color: var(--text-quiet);
   }
 
   dd {

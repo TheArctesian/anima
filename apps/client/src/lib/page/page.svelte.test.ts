@@ -40,7 +40,7 @@ it('UI-027: a section is named by its title, shows a lede, an action and a foote
   app = mount(Section, { target: document.body, props: { title: 'Account', children: text('<p>Body</p>') } });
   expect(document.querySelector('section')?.getAttribute('aria-labelledby')).toBe(document.querySelector('h2')?.id);
   expect(document.querySelector('footer')).toBeNull();
-  expect(document.querySelector('header p')).toBeNull();
+  expect(document.querySelector('section > p')).toBeNull();
 });
 
 it('SET-005: a section footer holds the save button and its state text', async () => {
@@ -50,7 +50,7 @@ it('SET-005: a section footer holds the save button and its state text', async (
     props: { title: 'Account', lede: 'Your sign-in', footer: text('<div><button>Save changes</button><span>Saved</span></div>'), children: text('<p>Body</p>') },
   });
   expect(document.querySelector('footer')?.textContent).toBe('Save changesSaved');
-  expect(document.querySelector('section')?.getAttribute('aria-describedby')).toBe(document.querySelector('header p')?.id);
+  expect(document.querySelector('section')?.getAttribute('aria-describedby')).toBe(document.querySelector('section > p')?.id);
 });
 
 it('O6: a key-value list is a definition list of label and value, mono values marked, with a copy slot', () => {

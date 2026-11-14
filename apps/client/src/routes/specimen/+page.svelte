@@ -1,12 +1,14 @@
 <script lang="ts">
   import ContainersSection from './containers/ContainersSection.svelte';
   import ControlsSection from './controls/ControlsSection.svelte';
+  import LanguageSection from './language/LanguageSection.svelte';
 </script>
 
 <svelte:head><title>Specimen – Anima</title></svelte:head>
 
 <main class="specimen">
   <h1>Specimen</h1>
+  <LanguageSection />
   <ControlsSection />
   <ContainersSection />
 </main>

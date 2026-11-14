@@ -37,10 +37,10 @@
 
 <div class="stack">
   <h3>Table: comfortable with day grouping and a truncated cell; dense without grouping</h3>
-  <Section title="Events" lede="Seven columns, no horizontal scroll at 1280 px." flush>
+  <Section title="Events" lede="Seven columns, no horizontal scroll at 1280 px.">
     <Table columns={COLUMNS} rows={ENTRIES} rowKey={(row) => row.id} caption="Events, comfortable rows, grouped by day" groupOf={day} />
   </Section>
-  <Section title="Events, dense" flush>
+  <Section title="Events, dense">
     <Table columns={COLUMNS} rows={ENTRIES} rowKey={(row) => row.id} caption="Events, dense rows" density="dense" />
   </Section>
 </div>
