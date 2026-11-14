@@ -98,6 +98,8 @@ export interface ProjectRepository {
   /** owner/name (PRJ-016). */
   readonly fullName: string;
   readonly url: string;
+  /** The branch Code and History open on, and a workflow starts on by default. */
+  readonly defaultBranch?: string | null;
   readonly description?: string | null;
   readonly private: boolean;
   readonly archived: boolean;
