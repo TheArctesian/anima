@@ -7,6 +7,7 @@
   import type { MetricsSource } from '$lib/hub/generated/graphql';
   import { flip, measure, type Places } from '$lib/motion/roles/flip';
   import { fade } from '$lib/motion/roles/transitions';
+  import SectionLabel from '$lib/page/SectionLabel.svelte';
   import { installCommand, refusalMessage } from './command';
   import { clockText } from './countdown';
   import { AgentInstall, type AgentCalls, type ClipboardSink } from './install.svelte';
@@ -65,7 +66,7 @@
   /** Each opening of the revoke dialog is a new dialog, so one that finished does not stay finished. */
   let opening = $state(0);
   let section = $state<HTMLElement>();
-  let heading = $state<HTMLElement>();
+  const heading = (): HTMLElement | null | undefined => section?.querySelector<HTMLElement>('#agent-heading');
   /** The line with the label and the code: focused when the code opens, so both are read out. */
   let codeLine = $state<HTMLElement>();
   const result = $derived(install.code === null ? null : installCommand({ release, target, code: install.code, origin }));
@@ -109,13 +110,13 @@
     const gone = document.activeElement === document.body || document.activeElement === null;
     if (from === to || !(gone || section?.contains(document.activeElement) === true)) return;
     if (to === 'code') codeLine?.focus();
-    else if (from === 'code' || gone) (section?.querySelector<HTMLElement>('[data-agent-start]') ?? heading)?.focus();
+    else if (from === 'code' || gone) (section?.querySelector<HTMLElement>('[data-agent-start]') ?? heading())?.focus();
   }
 
   onMount(() => {
     if (source === 'AGENT') void install.loadStatus();
     void here.check();
-    if (reveal) heading?.focus();
+    if (reveal) heading()?.focus();
   });
   onDestroy(() => { here.dispose(); });
   $effect(() => {
@@ -193,7 +194,7 @@
 {/snippet}
 
 <section class="agent" id="agent" aria-labelledby="agent-heading" bind:this={section}>
-  <h3 id="agent-heading" tabindex="-1" bind:this={heading}>Agent</h3>
+  <SectionLabel text="Agent" icon="carbon:chip" level={3} id="agent-heading" focusable />
   <!-- One-sided on purpose: the outgoing view holds the code and the focused button, so it leaves the document at once (LOG-007, WCAG 2.4.3); the incoming one fades in. -->
   {#key view}
     <div class="body" in:fade>
@@ -229,13 +230,7 @@
     flex-direction: column;
     align-items: flex-start;
     gap: var(--space-2);
-    padding-block-start: var(--space-4);
-    border-block-start: var(--border-thin) solid var(--border-strong);
-  }
-
-  h3 {
-    margin: 0;
-    font-size: var(--text-md);
+    padding-block-start: var(--space-6);
   }
 
   p {
@@ -261,7 +256,6 @@
     font-variant-numeric: tabular-nums;
   }
 
-  h3:focus-visible,
   p[tabindex]:focus-visible {
     outline: var(--border-focus) solid var(--accent);
     outline-offset: var(--border-focus);

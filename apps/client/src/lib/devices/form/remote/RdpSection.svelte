@@ -3,8 +3,8 @@
   import FormButton from '../../../forms/FormButton.svelte';
   import type { EditedValues } from '../form/editing';
   import Field from '../form/Field.svelte';
-  import type { RdpResizeMethod, RdpSecurity } from '$lib/hub/generated/graphql';
   import type { ServerCertificate } from '$lib/sessions/api';
+  import { RDP_RESIZE as RESIZE, RDP_SECURITY as SECURITY } from './choices';
   import { rdpWarnings, validUntil } from './warnings';
 
   interface Props {
@@ -21,18 +21,6 @@
 
   let { values = $bindable(), errors, credentialStored, serverCertificate = null, clearing, onClearCredential }: Props = $props();
 
-  const SECURITY: readonly { value: RdpSecurity; label: string }[] = [
-    { value: 'ANY', label: 'Any (the server chooses)' },
-    { value: 'NLA', label: 'Network Level Authentication' },
-    { value: 'NLA_EXT', label: 'Network Level Authentication, extended' },
-    { value: 'TLS', label: 'TLS' },
-    { value: 'VMCONNECT', label: 'Hyper-V virtual machine' },
-    { value: 'RDP', label: 'Standard RDP (weak)' },
-  ];
-  const RESIZE: readonly { value: RdpResizeMethod; label: string }[] = [
-    { value: 'DISPLAY_UPDATE', label: 'Display update' },
-    { value: 'RECONNECT', label: 'Reconnect' },
-  ];
   const warnings = $derived(rdpWarnings(values.rdp));
 </script>
 

@@ -1,8 +1,8 @@
 <script lang="ts">
+  import Segmented from '$lib/forms/segmented/Segmented.svelte';
   import SettingRow from '$lib/settings/SettingRow.svelte';
   import { applyPalette, PALETTES, storedPalette, storePalette, type Palette } from './palette';
 
-  const id = $props.id();
   let palette = $state<Palette>(storedPalette(localStorage));
   let problem = $state<string | null>(null);
 
@@ -18,12 +18,8 @@
   }
 </script>
 
-<SettingRow label="Colours" for={id}>
-  <select {id} value={palette} onchange={(event) => { choose(event.currentTarget.value as Palette); }}>
-    {#each PALETTES as each (each.id)}
-      <option value={each.id}>{each.label}</option>
-    {/each}
-  </select>
+<SettingRow label="Colours">
+  <Segmented label="Colours" options={PALETTES.map((each) => ({ value: each.id, label: each.label }))} value={palette} onchange={choose} />
   {#snippet message()}
     <!-- Only a refused save shows a message: the row stays one line until then. -->
     {#if problem !== null}<p role="alert">{problem}</p>{/if}

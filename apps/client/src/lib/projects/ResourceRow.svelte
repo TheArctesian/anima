@@ -1,6 +1,8 @@
 <script lang="ts">
   import FormButton from '$lib/forms/FormButton.svelte';
-  import type { ProjectResource } from './api';
+  import Icon from '$lib/icons/Icon.svelte';
+  import type { IconName } from '$lib/icons/icons';
+  import type { ProjectResource, ResourceKind } from './api';
   import { evidenceWords, resourceKindWords, resourceStateWords } from './words';
 
   interface Props {
@@ -11,16 +13,25 @@
 
   const { resource, onConfirm }: Props = $props();
   const proposed = $derived(resource.state === 'FOUND_IN_REPOSITORY');
+
+  const KIND_ICONS: Readonly<Record<ResourceKind, IconName>> = {
+    CLOUDFLARE: 'simple-icons:cloudflare',
+    VERCEL: 'simple-icons:vercel',
+    SERVER: 'carbon:bare-metal-server',
+    DESKTOP_APPLICATION: 'carbon:screen',
+  };
 </script>
 
-<li class="resource">
+<!-- One place the project runs, a hairline row (UR-7, D9): its kind, and whether the operator has confirmed it. A
+     proposal is marked in the warning colour and names its sign until it is confirmed (PRO-004). -->
+<li class="resource" class:proposed>
+  <span class="mark"><Icon name={KIND_ICONS[resource.kind]} size="sm" /></span>
   <span class="kind">{resourceKindWords(resource.kind)}</span>
   <span class="state">{resourceStateWords(resource)}</span>
   {#if proposed}
-    <!-- The sign that produced the proposal, until the operator confirms it (PRO-004). -->
     <span class="signs">{resource.evidence.map(evidenceWords).join(', ')}</span>
     {#if onConfirm !== undefined}
-      <FormButton size="sm" onclick={() => onConfirm(resource.id)}>Confirm</FormButton>
+      <FormButton size="sm" icon="carbon:checkmark" onclick={() => onConfirm(resource.id)}>Confirm</FormButton>
     {/if}
   {/if}
 </li>
@@ -30,19 +41,36 @@
     display: flex;
     align-items: center;
     flex-wrap: wrap;
-    gap: var(--space-3);
-    min-block-size: var(--control-md);
+    gap: var(--space-1) var(--space-3);
+    min-block-size: var(--control-lg);
+    border-block-start: var(--border-thin) solid var(--border-subtle);
   }
 
-  .state,
-  .signs {
-    color: var(--text-secondary);
+  .mark {
+    display: inline-flex;
+    flex: none;
+    color: var(--text-tertiary);
+  }
+
+  .kind {
     font-size: var(--text-sm);
+  }
+
+  .state {
+    color: var(--text-tertiary);
+    font-size: var(--text-sm);
+  }
+
+  .proposed .state {
+    color: var(--status-warning);
   }
 
   .signs {
     flex: 1;
     min-inline-size: 0;
     overflow-wrap: anywhere;
+    color: var(--text-tertiary);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
   }
 </style>

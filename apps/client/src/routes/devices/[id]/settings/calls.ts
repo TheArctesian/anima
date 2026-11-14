@@ -53,10 +53,10 @@ function saveCalls(hub: SettingsHub): DeviceSaveCalls {
 }
 
 /**
- * The Settings tab's calls for device `id` (WEB-001, WEB-002, DEV-011, SEC-007). `onSaved` runs after a save that
- * fully succeeded, so the form starts again from the saved device.
+ * The Settings tab's calls for device `id` (WEB-001, WEB-002, DEV-011, SEC-007, D17). A save, even a half-failed one,
+ * puts what the hub stored into the shown device, so the next change is built on it.
  */
-export function settingsCalls(id: string, hub: SettingsHub, shown: ShownDevice, onSaved: () => void): SettingsCalls {
+export function settingsCalls(id: string, hub: SettingsHub, shown: ShownDevice): SettingsCalls {
   async function patched<T>(pending: Promise<HubResult<T>>, change: (device: DeviceDetail, value: T) => DeviceDetail): Promise<HubResult<T>> {
     const result = await pending;
     if (result.ok && shown.device !== null) shown.setDevice(change(shown.device, result.value));
@@ -68,7 +68,6 @@ export function settingsCalls(id: string, hub: SettingsHub, shown: ShownDevice, 
       if (shown.device === null) return { ok: true, value: undefined };
       const saved = await saveDevice(shown.device, values, saveCalls(hub));
       shown.setDevice(saved.device);
-      if (saved.result.ok) onSaved();
       return saved.result;
     },
     onAcceptHostKey: (fingerprint) =>

@@ -48,6 +48,7 @@
   <GithubConnect {opener} />
   <FormButton
     tone="ghost"
+    icon="simple-icons:github"
     onclick={() => {
       connecting = true;
     }}
@@ -108,13 +109,10 @@
     list-style: none;
   }
 
-  .hint {
-    margin: 0;
-    color: var(--text-secondary);
-    font-size: var(--text-sm);
-  }
-
   .none {
-    padding: var(--space-3) var(--space-4);
+    margin: 0;
+    padding-block: var(--space-3);
+    color: var(--text-tertiary);
+    font-size: var(--text-sm);
   }
 </style>

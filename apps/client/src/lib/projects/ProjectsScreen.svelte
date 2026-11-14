@@ -5,6 +5,9 @@
   import LoadingState from '$lib/states/LoadingState.svelte';
   import Notice from '$lib/states/Notice.svelte';
   import FormButton from '$lib/forms/FormButton.svelte';
+  import Segmented from '$lib/forms/segmented/Segmented.svelte';
+  import Icon from '$lib/icons/Icon.svelte';
+  import PageHeader from '$lib/page/PageHeader.svelte';
   import RepositoryRow from './RepositoryRow.svelte';
   import ResourceRow from './ResourceRow.svelte';
   import type { ProjectsStore } from './store.svelte';
@@ -12,14 +15,20 @@
   const { store }: { store: ProjectsStore } = $props();
   let showing = $state<'main' | 'leftOut'>('main');
   const projects = $derived(showing === 'main' ? store.main : store.leftOut);
+  const VIEWS = [
+    { value: 'main', label: 'Projects' },
+    { value: 'leftOut', label: 'Left out' },
+  ] as const;
 </script>
 
+<!-- The Projects page in the website's language (UR-7, D9): the page head with the choice of view at its end, then each
+     project as a name over hairline rows of its repositories and the places it runs. -->
 <section class="projects">
-  <h1>Projects</h1>
-  <div class="views" role="group" aria-label="Which projects">
-    <FormButton size="sm" tone={showing === 'main' ? 'primary' : 'secondary'} aria-pressed={showing === 'main'} onclick={() => (showing = 'main')}>Projects</FormButton>
-    <FormButton size="sm" tone={showing === 'leftOut' ? 'primary' : 'secondary'} aria-pressed={showing === 'leftOut'} onclick={() => (showing = 'leftOut')}>Left out</FormButton>
-  </div>
+  <PageHeader title="Projects">
+    {#snippet actions()}
+      <Segmented label="Which projects" size="sm" options={VIEWS} bind:value={showing} />
+    {/snippet}
+  </PageHeader>
   {#if store.refusal !== null}
     <Notice tone="error" title="The hub refused" line={store.refusal.message} />
   {/if}
@@ -41,7 +50,9 @@
       {#each projects as project (project.id)}
         <li class="entry">
           <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- the path comes from resolve(); the slug is the hub's and is encoded -->
-          <a class="name" href={`${resolve('/projects')}/${encodeURIComponent(project.slug)}`}>{project.name}</a>
+          <a class="name" href={`${resolve('/projects')}/${encodeURIComponent(project.slug)}`}>
+            <span class="mark"><Icon name="carbon:folder" size="sm" /></span>{project.name}<span class="go"><Icon name="carbon:chevron-right" size="sm" /></span>
+          </a>
           <ul class="repositories">
             {#each project.repositories as repository (repository.id)}
               <RepositoryRow {repository} onLeaveOut={(id) => void store.leaveOut(id)} onRestore={(id) => void store.restore(id)} />
@@ -65,13 +76,10 @@
 
 <style>
   .projects {
-    min-inline-size: 0;
-  }
-
-  .views {
     display: flex;
-    gap: var(--space-2);
-    margin-block-end: var(--space-3);
+    flex-direction: column;
+    gap: var(--space-6);
+    min-inline-size: 0;
   }
 
   ul {
@@ -80,17 +88,51 @@
     list-style: none;
   }
 
-  .entry {
-    padding-block: var(--space-3);
-    border-block-end: var(--border-thin) solid var(--border-subtle);
+  .entries {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
   }
 
   .name {
-    font-size: var(--text-lg);
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-block-size: var(--control-md);
+    border-radius: var(--radius-md);
+    color: var(--text);
+    font-size: var(--text-md);
+    font-weight: var(--weight-medium);
+    text-decoration: none;
   }
 
+  .mark {
+    display: inline-flex;
+    color: var(--accent);
+  }
+
+  .go {
+    display: inline-flex;
+    color: var(--text-tertiary);
+    transition: translate var(--duration-fast) var(--ease-enter);
+  }
+
+  .name:hover .go {
+    translate: var(--space-1) 0;
+  }
+
+  .name:focus-visible {
+    outline: var(--border-focus) solid var(--focus-ring);
+    outline-offset: var(--border-focus);
+  }
+
+  /* The repositories and resources sit under the name, their hairlines closing with one under the last. */
   .repositories,
   .resources {
-    padding-inline-start: var(--space-3);
+    border-block-end: var(--border-thin) solid var(--border-subtle);
+  }
+
+  .resources {
+    margin-block-start: var(--space-3);
   }
 </style>

@@ -1,8 +1,8 @@
 <script lang="ts">
+  import Segmented from '$lib/forms/segmented/Segmented.svelte';
   import SettingRow from '$lib/settings/SettingRow.svelte';
   import { applyMotion, MOTION_CHOICES, storedMotion, storeMotion, type MotionChoice } from './motion-choice';
 
-  const id = $props.id();
   let motion = $state<MotionChoice>(storedMotion(localStorage));
   let problem = $state<string | null>(null);
 
@@ -18,12 +18,8 @@
   }
 </script>
 
-<SettingRow label="Reduce motion" for={id}>
-  <select {id} value={motion} onchange={(event) => { choose(event.currentTarget.value as MotionChoice); }}>
-    {#each MOTION_CHOICES as each (each.id)}
-      <option value={each.id}>{each.label}</option>
-    {/each}
-  </select>
+<SettingRow label="Reduce motion">
+  <Segmented label="Reduce motion" options={MOTION_CHOICES.map((each) => ({ value: each.id, label: each.label }))} value={motion} onchange={choose} />
   {#snippet message()}
     {#if problem !== null}<p role="alert">{problem}</p>{/if}
   {/snippet}

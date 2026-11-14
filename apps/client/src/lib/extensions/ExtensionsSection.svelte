@@ -1,5 +1,6 @@
 <script lang="ts">
   import ConfirmModal from '$lib/forms/modal/ConfirmModal.svelte';
+  import Switch from '$lib/forms/switch/Switch.svelte';
   import ErrorState from '$lib/states/ErrorState.svelte';
   import SettingRow from '$lib/settings/SettingRow.svelte';
   import { alsoSetsSentence, extensionRows } from './switches';
@@ -15,17 +16,15 @@
     void store.ensureLoaded();
   });
 
-  function change(event: Event & { currentTarget: HTMLInputElement }, key: string, label: string): void {
-    const input = event.currentTarget;
-    const on = input.checked;
+  /** False keeps the switch where it was until the operator says yes. */
+  function change(on: boolean, key: string, label: string): boolean {
     const sentence = on ? alsoSetsSentence(key, store.settled) : null;
     if (sentence === null) {
       void store.set(key, on);
-      return;
+      return true;
     }
-    // The switch stays where it was until the operator says yes.
-    input.checked = !on;
     confirming = { key, name: label, sentence };
+    return false;
   }
 
   async function confirmed(): Promise<{ ok: true; value: undefined }> {
@@ -47,17 +46,12 @@
             <p class="hint" id="extension-{row.key}-hint">{row.hint}</p>
           {/snippet}
           {#if row.kind === 'switch' || row.kind === 'needed'}
-            <input
+            <Switch
               id="extension-{row.key}"
-              class="toggle"
-              type="checkbox"
-              role="switch"
               checked={row.on}
               disabled={row.kind === 'needed'}
-              aria-describedby="extension-{row.key}-hint"
-              onchange={(event) => {
-                change(event, row.key, row.label);
-              }}
+              describedby="extension-{row.key}-hint"
+              onchange={(on) => change(on, row.key, row.label)}
             />
           {:else if row.kind === 'fixed'}
             <span class="state">On</span>
@@ -94,13 +88,5 @@
   .state {
     color: var(--text-secondary);
     font-size: var(--text-sm);
-  }
-
-  /* The row's input look is for text fields; a checkbox keeps its own. */
-  input[type='checkbox'].toggle {
-    inline-size: var(--space-5);
-    block-size: var(--space-5);
-    padding: 0;
-    accent-color: var(--accent);
   }
 </style>

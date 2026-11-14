@@ -7,6 +7,7 @@
   import ControlsSection from './controls/ControlsSection.svelte';
   import LanguageSection from './language/LanguageSection.svelte';
   import DevicesSection from './devices/DevicesSection.svelte';
+  import SettingsLane from './devices/SettingsLane.svelte';
   import Corners from './tokens/Corners.svelte';
   import IconGrid from './tokens/IconGrid.svelte';
   import ScreenControls from './tokens/ScreenControls.svelte';
@@ -35,6 +36,7 @@
     <div class="lanes">
       <LanguageSection />
       <DevicesSection />
+      <SettingsLane />
       <ControlsSection />
       <ContainersSection />
     </div>

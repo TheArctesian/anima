@@ -30,10 +30,12 @@
     <p class="hint">{lastSyncText(account.lastSyncAt, now)}{account.syncing ? '. Syncing now' : ''}</p>
     {#if account.lastError !== null}<p class="hint error">Last error: {account.lastError}</p>{/if}
   {/snippet}
-  <FormButton size="sm" onclick={onSync} aria-disabled={working || account.syncing} aria-busy={working}>Sync now</FormButton>
+  <FormButton size="sm" tone="ghost" icon="carbon:renew" onclick={onSync} aria-disabled={working || account.syncing} aria-busy={working}>Sync now</FormButton>
   <!-- An account paused because its extension is off is resumed by setting that extension on, not here. -->
   <FormButton
     size="sm"
+    tone="ghost"
+    icon={paused ? 'carbon:play' : 'carbon:pause'}
     onclick={() => {
       onPause(!paused);
     }}
@@ -41,7 +43,7 @@
   >
     {paused ? 'Resume' : 'Pause'}
   </FormButton>
-  <FormButton size="sm" tone="danger" onclick={onDisconnect} aria-disabled={working}>Disconnect</FormButton>
+  <FormButton size="sm" tone="danger" icon="carbon:unlink" onclick={onDisconnect} aria-disabled={working}>Disconnect</FormButton>
   {#snippet message()}
     <p class="refusal" role="alert">{refusal}</p>
   {/snippet}
@@ -53,14 +55,8 @@
 </div>
 
 <style>
-  .hint {
-    margin: 0;
-    color: var(--text-secondary);
-    font-size: var(--text-sm);
-  }
-
   .health {
-    color: var(--text);
+    color: var(--text-secondary);
   }
 
   .refusal:not(:empty) {
@@ -71,6 +67,6 @@
   }
 
   .runs {
-    padding: 0 var(--space-4) var(--space-3);
+    padding-block-end: var(--space-3);
   }
 </style>

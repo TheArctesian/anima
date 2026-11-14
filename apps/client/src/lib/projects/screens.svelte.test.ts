@@ -128,7 +128,8 @@ it('PRO-001: the detail page holds the name, the status and Open in GitHub in on
   const header = document.querySelector('header');
   expect(header?.textContent).toContain('acme-site');
   expect(header?.textContent).toContain('Imported');
-  expect(header?.querySelector('a')?.getAttribute('href')).toBe('https://github.com/acme/acme-site');
+  const github = [...(header?.querySelectorAll('a') ?? [])].find((link) => link.textContent.trim() === 'Open in GitHub');
+  expect(github?.getAttribute('href')).toBe('https://github.com/acme/acme-site');
   expect(text()).not.toContain('Builds');
 });
 

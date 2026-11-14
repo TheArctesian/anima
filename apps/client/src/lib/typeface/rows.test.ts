@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { flushSync, mount, unmount } from 'svelte';
+import { choiceOf, type Choice } from '$lib/forms/segmented/choice.fixture';
 import { afterEach, expect, it, vi } from 'vitest';
 import TypefaceRows from './TypefaceRows.svelte';
 
@@ -13,16 +14,12 @@ function show(): HTMLElement {
   return target;
 }
 
-function select(target: HTMLElement, label: string): HTMLSelectElement {
-  const control = [...target.querySelectorAll('label')].find((each) => each.textContent === label)?.control;
-  if (!(control instanceof HTMLSelectElement)) throw new Error(`no ${label}`);
-  return control;
+function select(target: HTMLElement, label: string): Choice {
+  return choiceOf(target, label);
 }
 
-function choose(control: HTMLSelectElement, value: string): void {
-  control.value = value;
-  control.dispatchEvent(new Event('change', { bubbles: true }));
-  flushSync();
+function choose(control: Choice, value: string): void {
+  control.pick(value);
 }
 
 afterEach(async () => {
@@ -43,7 +40,7 @@ it('UI-020: each text role has its own labelled choice, its default first', () =
   ] as const;
   for (const [label, options, value] of expected) {
     const control = select(target, label);
-    expect([...control.options].map((option) => option.textContent)).toEqual(options);
+    expect(control.options.map((option) => option.textContent)).toEqual(options);
     expect(control.value).toBe(value);
   }
 });
