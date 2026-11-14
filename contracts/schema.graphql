@@ -1758,11 +1758,11 @@ input GithubAppInput {
 
 # ---------------------------------------------------------------- projects (XP-02, first slice)
 
-enum ResourceKind @pending { CLOUDFLARE VERCEL SERVER DESKTOP_APPLICATION }
-enum ResourceState @pending { FOUND_IN_REPOSITORY CONFIRMED }
-enum RepositorySign @pending { WRANGLER_CONFIG VERCEL_JSON VERCEL_DEPLOYMENT DOCKERFILE COMPOSE_FILE TAURI_CONF }
+enum ResourceKind { CLOUDFLARE VERCEL SERVER DESKTOP_APPLICATION }
+enum ResourceState { FOUND_IN_REPOSITORY CONFIRMED }
+enum RepositorySign { WRANGLER_CONFIG VERCEL_JSON VERCEL_DEPLOYMENT DOCKERFILE COMPOSE_FILE TAURI_CONF }
 
-type ProjectRepository @pending {
+type ProjectRepository {
   id: ID!
   "owner/name (PRJ-016)."
   fullName: String!
@@ -1778,13 +1778,13 @@ type ProjectRepository @pending {
   gone: Boolean!
 }
 
-type ResourceEvidence @pending {
+type ResourceEvidence {
   sign: RepositorySign!
   "Null for a deployment record."
   path: String
 }
 
-type ProjectResource @pending {
+type ProjectResource {
   id: ID!
   kind: ResourceKind!
   "FOUND_IN_REPOSITORY until the operator confirms it (PRO-004)."
@@ -1794,7 +1794,7 @@ type ProjectResource @pending {
   confirmedAt: DateTime
 }
 
-type Project @pending {
+type Project {
   id: ID!
   slug: String!
   name: String!
@@ -1806,12 +1806,12 @@ type Project @pending {
   syncedAt: DateTime
 }
 
-type ProjectEdge @pending {
+type ProjectEdge {
   cursor: String!
   node: Project!
 }
 
-type ProjectConnection @pending {
+type ProjectConnection {
   edges: [ProjectEdge!]!
   pageInfo: PageInfo!
 }
@@ -1863,10 +1863,10 @@ type Query {
   extensions: [Extension!]!
   sources: [Source!]!
   sourceAccounts(sourceKey: String): [SourceAccount!]!
-  "By name. leftOut true: only projects whose repositories are all left out. CONFLICT while Projects is off."
-  projects(leftOut: Boolean = false, first: Int = 50, after: String): ProjectConnection! @pending
-  "CONFLICT while Projects is off."
-  project(slug: String!): Project @pending
+  "By name, then ID. leftOut false: the projects with at least one repository that is not left out. leftOut true: only the projects whose repositories are all left out. The two lists hold every project once. first is 1 to 200. CONFLICT while Projects is off."
+  projects(leftOut: Boolean = false, first: Int = 50, after: String): ProjectConnection!
+  "Any project, left out or not. Null when no project has this slug. CONFLICT while Projects is off."
+  project(slug: String!): Project
 }
 
 type Mutation {
@@ -1990,11 +1990,12 @@ type Mutation {
   setSourceAccountPaused(id: ID!, paused: Boolean!): SourceAccount!
   "Deletes the account and its stored key. deleteRecords false keeps what it imported (ITG-004). Returns the ID. Login or browser token only (D-23, R-100)."
   removeSourceAccount(id: ID!, deleteRecords: Boolean!): ID!
-  "The hub does not import or read the repository again until it is restored (PRO-002)."
-  leaveOutRepository(id: ID!): Project! @pending
-  restoreRepository(id: ID!): Project! @pending
-  "CONFLICT when it is already confirmed."
-  confirmProjectResource(id: ID!): ProjectResource! @pending
+  "By the repository's ID (ProjectRepository.id). The hub does not import or read the repository again until it is restored, and its proposed resources are withdrawn (PRO-002). No change when it is already left out. Returns its project. NOT_FOUND for an unknown ID; CONFLICT while Projects is off."
+  leaveOutRepository(id: ID!): Project!
+  "By the repository's ID. Its proposed resources come back, and its account is made due so its signs are read again on the next sync (PRO-002). No change when it is not left out. Returns its project. NOT_FOUND for an unknown ID; CONFLICT while Projects is off."
+  restoreRepository(id: ID!): Project!
+  "CONFLICT when it is already confirmed, or while Projects is off. NOT_FOUND for an unknown ID."
+  confirmProjectResource(id: ID!): ProjectResource!
 }
 
 type Subscription {
