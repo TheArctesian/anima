@@ -2146,7 +2146,7 @@ type WorkflowDispatch @pending {
   acceptedAt: DateTime!
 }
 
-type Commit @pending {
+type Commit {
   repository: ID!
   "40 lower-case hex digits."
   sha: String!
@@ -2165,18 +2165,18 @@ type Commit @pending {
   checks: CommitChecks
 }
 
-type CommitEdge @pending {
+type CommitEdge {
   cursor: String!
   node: Commit!
 }
 
-type CommitConnection @pending {
+type CommitConnection {
   edges: [CommitEdge!]!
   pageInfo: PageInfo!
   read: ForgeRead!
 }
 
-type Branch @pending {
+type Branch {
   "Text from GitHub."
   name: String!
   sha: String!
@@ -2185,19 +2185,19 @@ type Branch @pending {
   default: Boolean!
 }
 
-type BranchEdge @pending {
+type BranchEdge {
   cursor: String!
   node: Branch!
 }
 
-type BranchConnection @pending {
+type BranchConnection {
   edges: [BranchEdge!]!
   pageInfo: PageInfo!
   read: ForgeRead!
 }
 
 "A release on GitHub. Not a release of Anima (type Release)."
-type RepositoryRelease @pending {
+type RepositoryRelease {
   "GitHub's release number, as digits."
   id: ID!
   "Text from GitHub."
@@ -2213,12 +2213,12 @@ type RepositoryRelease @pending {
   url: String!
 }
 
-type RepositoryReleaseEdge @pending {
+type RepositoryReleaseEdge {
   cursor: String!
   node: RepositoryRelease!
 }
 
-type RepositoryReleaseConnection @pending {
+type RepositoryReleaseConnection {
   edges: [RepositoryReleaseEdge!]!
   pageInfo: PageInfo!
   read: ForgeRead!
@@ -2236,9 +2236,9 @@ type CommitStatus @pending {
   createdAt: DateTime!
 }
 
-enum CodeEntryKind @pending { FILE DIRECTORY SYMLINK SUBMODULE }
+enum CodeEntryKind { FILE DIRECTORY SYMLINK SUBMODULE }
 
-type CodeEntry @pending {
+type CodeEntry {
   "One path segment. Text from GitHub."
   name: String!
   "From the repository root, no leading slash. Text from GitHub."
@@ -2249,7 +2249,7 @@ type CodeEntry @pending {
   sha: String!
 }
 
-type CodeDirectory @pending {
+type CodeDirectory {
   repository: ID!
   "The branch name or commit asked for."
   ref: String!
@@ -2262,19 +2262,20 @@ type CodeDirectory @pending {
   read: ForgeRead!
 }
 
-enum CodeFileContent @pending {
+enum CodeFileContent {
   "text holds the file."
   TEXT
   "Not valid UTF-8, or it holds a NUL byte. No content is returned."
   BINARY
-  "Larger than 1,048,576 bytes. No content is returned."
+  "Larger than 1,000,000 bytes. No content is returned."
   TOO_LARGE
 }
 
 "Bytes from a repository: untrusted. The hub does not look for secrets in it and makes no promise that it holds none."
-type CodeFile @pending {
+type CodeFile {
   repository: ID!
   ref: String!
+  "The path GitHub read. When the path asked is a link to a file in the same repository, the path of that file."
   path: String!
   name: String!
   sha: String!
@@ -2457,15 +2458,15 @@ type Query {
   "Null when the repository has no run with this number."
   workflowRun(repository: ID!, runId: ID!, fresh: Boolean = false): WorkflowRun
   "Newest first. ref is a branch name or a 40-digit commit; null: the default branch. first is 1 to 100."
-  commits(repository: ID!, ref: String, first: Int = 30, after: String, fresh: Boolean = false): CommitConnection! @pending
+  commits(repository: ID!, ref: String, first: Int = 30, after: String, fresh: Boolean = false): CommitConnection!
   "By name. first is 1 to 100."
-  branches(repository: ID!, first: Int = 100, after: String, fresh: Boolean = false): BranchConnection! @pending
+  branches(repository: ID!, first: Int = 100, after: String, fresh: Boolean = false): BranchConnection!
   "Newest first. first is 1 to 100. Releases on GitHub, not releases of Anima."
-  repositoryReleases(repository: ID!, first: Int = 20, after: String, fresh: Boolean = false): RepositoryReleaseConnection! @pending
+  repositoryReleases(repository: ID!, first: Int = 20, after: String, fresh: Boolean = false): RepositoryReleaseConnection!
   "One directory. ref null: the default branch. path empty: the root. VALIDATION when the path is a file. Names only: open to a read key."
-  codeDirectory(repository: ID!, ref: String, path: String = "", fresh: Boolean = false): CodeDirectory! @pending
-  "One file, never kept by the hub. VALIDATION when the path is a directory. No MCP tool returns it (operator, 2026-11-14; ruling number to be assigned). Closed to API keys: login or browser token only. The task that adds this root to API_KEY_REFUSED_ROOTS restores the standard words (key_roots.rs)."
-  codeFile(repository: ID!, ref: String, path: String!): CodeFile! @pending
+  codeDirectory(repository: ID!, ref: String, path: String = "", fresh: Boolean = false): CodeDirectory!
+  "One file, never kept by the hub. VALIDATION when the path is a directory. No MCP tool returns it (operator, 2026-11-14; ruling number to be assigned). Login or browser token only (D-23, R-100)."
+  codeFile(repository: ID!, ref: String, path: String!): CodeFile!
 }
 
 type Mutation {

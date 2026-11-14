@@ -159,6 +159,8 @@ pub(in crate::work::projects) async fn evidence(
 #[derive(Clone, Debug, sqlx::FromRow)]
 pub(in crate::work::projects) struct ReachRow {
     pub full_name: String,
+    pub html_url: String,
+    pub default_branch: Option<String>,
     pub account_id: Option<SourceAccountId>,
     pub left_out: bool,
     pub gone: bool,
@@ -170,8 +172,9 @@ pub(in crate::work::projects) async fn reach(
     id: RepositoryId,
 ) -> Result<Option<ReachRow>, sqlx::Error> {
     sqlx::query_as(
-        "SELECT full_name, account_id, left_out_at IS NOT NULL AS left_out, \
-         gone_at IS NOT NULL AS gone FROM projects.repositories WHERE id = $1",
+        "SELECT full_name, html_url, default_branch, account_id, \
+         left_out_at IS NOT NULL AS left_out, gone_at IS NOT NULL AS gone \
+         FROM projects.repositories WHERE id = $1",
     )
     .bind(id)
     .fetch_optional(db)

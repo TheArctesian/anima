@@ -6,8 +6,10 @@
 //! (PRO-003, PRO-004). Text from GitHub is stored as given and never interpreted or logged.
 //! No domain imports this one; wiring registers the intake and merges [`graphql`].
 
+mod code;
 mod forge;
 pub mod graphql;
+mod history;
 mod import;
 mod intake;
 mod issues;

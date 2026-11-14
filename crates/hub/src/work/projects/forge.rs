@@ -5,6 +5,7 @@
 //! Text from GitHub is other people's: it stays a plain string, is cut as K1 states, and never
 //! reaches a log line or an error message (LOG-007).
 
+mod argument;
 mod checks;
 pub(super) mod cursor;
 mod failure;
@@ -19,9 +20,10 @@ use chrono::{DateTime, Utc};
 use source_exchange::{Body, Problem, Request, Response};
 
 pub(super) use self::{
+    argument::checked,
     checks::{CommitChecksView, commit_checks},
     cursor::{Cut, GITHUB_PAGE, Place, cut},
-    failure::missing,
+    failure::{missing, unusable},
     filter::OpenOrClosed,
     reach::{RepositoryAccess, Target, access},
 };
@@ -101,6 +103,8 @@ pub(super) async fn target(ctx: &Context<'_>, repository: &ID) -> Result<Target>
             repository: id,
             account,
             name: row.full_name,
+            home: row.html_url,
+            default_branch: row.default_branch,
         }),
         (refused, _) => Err(coded(reach::refusal(refused), ErrorCode::Conflict)),
     }

@@ -424,6 +424,7 @@ Fixed words, the GraphQL message; never a reply of GitHub (LOG-007):
 
 - **Path.** At most 1,024 bytes and 40 segments; no empty, `.` or `..` segment; no leading slash, backslash, control character or NUL. Each segment is percent-encoded by a pure function (to verify, C.7-11). The result passes `Request::get` and `Transport::url`, and is always appended to `/repos/{owner}/{repo}/contents/`.
 - **Ref.** A `BranchName` or a `CommitSha`, sent only as the query value `ref`, never in the path.
-- **Size.** Decided from the reply's `size` before decoding: over 1,048,576 bytes is `TOO_LARGE` with no content (to verify, C.7-11). The transport's 8 MiB cap stays the backstop.
+- **Size.** Decided from the reply's `size` before decoding: over 1,000,000 bytes is `TOO_LARGE` with no content (GitHub's 1 MB limit for the default reply). The transport's 8 MiB cap stays the backstop.
 - **Binary.** A NUL byte or invalid UTF-8 after decoding is `BINARY`, with no content. No lossy decoding.
+- **Links.** GitHub answers a link to a file in the same repository with that file: it stays inside the repository, so it is shown, with the path GitHub read as `CodeFile.path`. A link object is shown as a `SYMLINK` entry and never followed; `codeFile` on it, or on a submodule, is `VALIDATION`.
 - **Never interpreted.** The hub parses nothing in a file, and makes no promise that it holds no secret.

@@ -232,8 +232,9 @@ fn refusal(identity: Option<&Identity>, document: &ExecutableDocument) -> Option
 /// Connecting a source takes its private key, and removing one can delete what it imported:
 /// login or browser token only (PRJ-018, ITG-004). Connecting GitHub from the hub makes and keeps
 /// an App key, and its one-time link binds a browser: login or browser token only (PRJ-039,
-/// PRJ-041).
-pub(super) const API_KEY_REFUSED_ROOTS: [&str; 36] = [
+/// PRJ-041). A file of a repository's code can hold a secret the hub does not look for: login or
+/// browser token only (PRJ-033, K-E1 Section 13.5).
+pub(super) const API_KEY_REFUSED_ROOTS: [&str; 37] = [
     "createApiKey",
     "revokeApiKey",
     "apiKeys",
@@ -270,6 +271,7 @@ pub(super) const API_KEY_REFUSED_ROOTS: [&str; 36] = [
     "startGithubConnect",
     "openGithubConnect",
     "cancelGithubConnect",
+    "codeFile",
 ];
 
 /// The root selections a token of `kind` may make, in every operation type. A new kind of

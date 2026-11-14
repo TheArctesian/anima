@@ -60,10 +60,15 @@ pub const fn refusal(access: RepositoryAccess) -> &'static str {
 }
 
 /// A READY repository: the account that reads it and its `owner/name`, which the provider
-/// checks again before it builds a path.
+/// checks again before it builds a path; its page on GitHub and its default branch as the
+/// last sync read them.
 #[derive(Clone, Debug)]
 pub struct Target {
     pub repository: RepositoryId,
     pub account: SourceAccountId,
     pub name: String,
+    /// The repository's page on GitHub, from GitHub (PRJ-010).
+    pub home: String,
+    /// `None` for an empty repository.
+    pub default_branch: Option<String>,
 }

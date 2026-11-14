@@ -1,11 +1,14 @@
 //! Live reads of a project repository through GraphQL against the loopback GitHub (K-E1
-//! Section 13; PRJ-027 to PRJ-035): pull requests, issues and workflow runs in K1's shapes,
+//! Section 13; PRJ-027 to PRJ-035): pull requests, issues, workflow runs, history and code in K1's shapes,
 //! the repository's access, the cache, GitHub's failures as fixed words, the token kinds, and
 //! GitHub's text passed through unchanged and never logged.
 
 mod access;
 mod cache;
+mod code;
+mod code_safety;
 mod failures;
+mod history;
 mod issues;
 mod leaks;
 mod pull_requests;
