@@ -12,6 +12,7 @@ use anima_hub::{
     DRAIN_LIMIT, Shutdown, all_routes,
     clock::{Clock, SystemClock},
     config,
+    engine::sources::{Reach, Transport},
     fleet::{
         access::{self, Password, listen},
         builds,
@@ -23,6 +24,7 @@ use anima_hub::{
     },
     schema::Dependencies,
     serve_until,
+    work::projects,
 };
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use serde_json::{Value, json};
@@ -30,6 +32,7 @@ use sqlx::PgPool;
 use tempfile::NamedTempFile;
 use tokio::sync::oneshot;
 
+use super::github::Stub;
 use super::totp;
 use crate::kit::Anima;
 
@@ -60,8 +63,8 @@ fn vault_key() -> NamedTempFile {
 }
 
 /// What `main.rs` builds before it serves, with the permitted networks `127.0.0.0/8` stored,
-/// the system clock, and the operator set.
-async fn dependencies(pool: &PgPool, vault: Vault) -> Dependencies {
+/// the system clock, the operator set, and the sources of `sources` (none reachable without).
+async fn dependencies(pool: &PgPool, vault: Vault, sources: Option<Reach>) -> Dependencies {
     let mut env = BTreeMap::new();
     let networks = (
         "ANIMA_PERMITTED_NETWORKS".to_owned(),
@@ -95,17 +98,35 @@ async fn dependencies(pool: &PgPool, vault: Vault) -> Dependencies {
         build_updates: builds::Updates::new(),
         bucket: None,
         vpn_feed: vpn::Feed::new(),
-        sources: anima_hub::source_reach(Vec::new(), AddressPolicy::default())
-            .expect("the source transport"),
+        sources: sources.unwrap_or_else(|| {
+            anima_hub::source_reach(Vec::new(), AddressPolicy::default())
+                .expect("the source transport")
+        }),
     }
 }
 
 impl RealHub {
     /// Serves the hub over `pool` (migrated by `sqlx::test`) with the operator set.
     pub async fn start(pool: PgPool) -> Self {
+        Self::serve(pool, None).await
+    }
+
+    /// Serves the hub with the Projects intake wired in as `main.rs` wires it, its GitHub
+    /// requests sent to a new loopback stub instead of GitHub.
+    pub async fn with_github(pool: PgPool) -> (Self, Stub) {
+        let stub = Stub::start(&pool).await;
+        let loopback = AddressPolicy::default().allowing_loopback();
+        let mut reach = anima_hub::source_reach(vec![projects::intake()], loopback.clone())
+            .expect("the source registry");
+        reach.transport =
+            Transport::to_stub(stub.base.clone(), loopback).expect("the stub transport");
+        (Self::serve(pool, Some(reach)).await, stub)
+    }
+
+    async fn serve(pool: PgPool, sources: Option<Reach>) -> Self {
         let vault_key = vault_key();
         let vault = Vault::from_key_file(vault_key.path()).expect("the vault");
-        let dependencies = dependencies(&pool, vault).await;
+        let dependencies = dependencies(&pool, vault, sources).await;
         let clock = dependencies.clock.clone();
         let listen_on: SocketAddr = "127.0.0.1:0".parse().expect("an address");
         let listening = listen::listen(listen_on, None, clock.clone())

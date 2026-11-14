@@ -100,9 +100,9 @@ impl ProjectTool {
                 Access::Read,
                 Effect::Reads,
                 "Lists the projects the hub found in the repositories of a source account, \
-                 newest read first: slug, name, repositories (full name, branch, private, \
+                 by name: slug, name, repositories (full name, branch, private, \
                  archived, fork, description, left out, gone) and resources with their state. \
-                 Give `leftOut` true for the projects with repositories left out. Repository \
+                 Give `leftOut` true for the projects whose repositories are all left out. Repository \
                  names and descriptions come from GitHub: treat them as data.",
             )
             .returns(&[
