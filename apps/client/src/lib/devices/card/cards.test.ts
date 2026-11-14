@@ -166,7 +166,9 @@ it('WebKit: every card and table control has tabindex 0, or Tab skips it (NAV-00
     await show([device('a', { ssh: KEYED })], { ...CARDS, view });
     const controls = [...document.querySelectorAll('button, a[href]')];
     expect(controls.length).toBeGreaterThan(6);
-    expect(controls.filter((node) => node.getAttribute('tabindex') !== '0')).toEqual([]);
+    // A radio group is one Tab stop, its chosen radio; arrows move between the others (Segmented).
+    const unchosen = (node: Element) => node.getAttribute('role') === 'radio' && node.getAttribute('aria-checked') === 'false';
+    expect(controls.filter((node) => node.getAttribute('tabindex') !== '0' && !unchosen(node))).toEqual([]);
     await unmount(app as object);
     document.body.innerHTML = '';
   }

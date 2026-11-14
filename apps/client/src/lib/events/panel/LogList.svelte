@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { resolve } from '$app/paths';
+  import Icon from '$lib/icons/Icon.svelte';
   import LiveNotice from '$lib/hub/notice/LiveNotice.svelte';
   import { skeletonDelay } from '$lib/motion/loading/delay.svelte';
   import type { LoadingClock } from '$lib/motion/loading/loading';
@@ -6,7 +8,7 @@
   import { crossFade } from '$lib/motion/roles/transitions';
   import type { LogFeed } from './feed.svelte';
   import { newRowMotion } from './rows.svelte';
-  import { SEVERITY_CHOICES, SOURCE_CHOICES, deviceLabel, labelOf, timeLabel } from './view';
+  import { SEVERITY_CHOICES, SOURCE_CHOICES, clockLabel, dayLabel, deviceLabel, labelOf, sourceIcon } from './view';
 
   interface Props {
     feed: LogFeed;
@@ -25,6 +27,12 @@
   /** Placeholder rows that fill the panel's first screen. */
   const PLACES = Array.from({ length: 6 }, (_, index) => index);
   const slide = newRowMotion(() => feed.fresh);
+  /** Each row with the day heading it opens, if it is the first of its day. */
+  const days = $derived(rows.map((row, index) => {
+    const day = dayLabel(row.at, now());
+    const before = rows[index - 1];
+    return before !== undefined && dayLabel(before.at, now()) === day ? null : day;
+  }));
 </script>
 
 {#if feed.error !== null}
@@ -45,13 +53,19 @@
 <!-- The skeleton lies over the rows in one cell and fades off them, so the swap moves nothing (MOT-007). -->
 <div class="stack">
   <ol class="rows" aria-label="Log events" aria-busy={loading}>
-    {#each rows as row (row.id)}
-      <li class="row" {@attach slide(row.id)}>
+    {#each rows as row, index (row.id)}
+      {@const day = days[index]}
+      {#if day !== null && day !== undefined && day !== ''}<li class="day" aria-hidden="true">{day}</li>{/if}
+      <li class="row {row.severity.toLowerCase()}" {@attach slide(row.id)}>
         <span class="glow" data-glow aria-hidden="true"></span>
-        <time datetime={row.at}>{timeLabel(row.at, now())}</time>
-        <span class="severity {row.severity.toLowerCase()}">{labelOf(SEVERITY_CHOICES, row.severity)}</span>
-        <span class="source">{labelOf(SOURCE_CHOICES, row.source)}</span>
-        <span class="device">{deviceLabel(row.deviceName)}</span>
+        <time datetime={row.at}>{clockLabel(row.at)}</time>
+        <span class="severity"><span class="dot" aria-hidden="true"></span>{labelOf(SEVERITY_CHOICES, row.severity)}</span>
+        <span class="source"><Icon name={sourceIcon(row.source)} size="sm" />{labelOf(SOURCE_CHOICES, row.source)}</span>
+        <span class="device"
+          >{#if typeof row.deviceId === 'string' && typeof row.deviceName === 'string'}<a
+              href={resolve('/devices/[id]', { id: row.deviceId })}>{row.deviceName}</a
+            >{:else}{deviceLabel(row.deviceName)}{/if}</span
+        >
         <span class="message">{row.message}</span>
       </li>
     {:else}
@@ -96,14 +110,14 @@
   }
 
   .places {
-    background: var(--surface-base);
+    background: var(--surface-raised);
   }
 
   /* A placeholder row has a one-line row's height; static, so reduced motion needs no change (5.7.3, Loading). */
   .line {
     inline-size: calc(var(--space-16) * 4);
     max-inline-size: 100%;
-    background: var(--surface-raised);
+    background: var(--surface-overlay);
     color: transparent;
   }
 
@@ -111,16 +125,45 @@
     content: '\200b';
   }
 
-  /* Cells shrink and the message wraps below them on a narrow panel, so a row never widens the page. */
+  /* Each day's rows sit under its name, which stays at the top while its rows scroll (UR-7). */
+  .day {
+    position: sticky;
+    inset-block-start: 0;
+    z-index: var(--layer-sticky);
+    padding: var(--space-3) var(--space-2) var(--space-2);
+    border-block-end: var(--border-thin) solid var(--border-subtle);
+    background: var(--surface-raised);
+    color: var(--text-tertiary);
+    font-size: var(--text-xs);
+    font-weight: var(--weight-medium);
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+  }
+
+  /* Hairline rows in fixed columns; on a narrow panel the cells wrap and the message goes below, so a row never widens the page. */
   .row {
     position: relative;
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
-    gap: var(--space-1) var(--space-3);
-    padding: var(--space-1) var(--space-3);
-    border-block-end: var(--border-thin) solid var(--border-strong);
+    gap: var(--space-1) var(--space-4);
+    padding: var(--space-2);
+    border-block-end: var(--border-thin) solid var(--border-subtle);
     font-size: var(--text-sm);
+    transition: background-color var(--duration-fast) var(--ease-enter);
+  }
+
+  .row:hover {
+    background: var(--surface-hover);
+  }
+
+  /* What needs you carries an edge in its colour, beside the word, never the colour alone. */
+  .row.error {
+    box-shadow: inset var(--border-focus) 0 0 var(--status-down);
+  }
+
+  .row.warning {
+    box-shadow: inset var(--border-focus) 0 0 var(--status-warning);
   }
 
   .glow {
@@ -135,41 +178,74 @@
     position: relative;
   }
 
-  .severity {
-    font-weight: 600;
-  }
-
-  .error {
-    color: var(--status-down);
-  }
-
-  .warning {
-    color: var(--status-warning);
-  }
-
-  .info,
-  .source,
-  .device {
-    color: var(--text-secondary);
-  }
-
   time {
     flex: none;
-    inline-size: calc(var(--space-16) * 2);
+    inline-size: calc(var(--space-16) * 1.25);
+    color: var(--text-tertiary);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
   }
 
   .severity,
   .source {
+    display: inline-flex;
     flex: none;
+    align-items: center;
+    gap: var(--space-2);
     inline-size: calc(var(--space-16) * 1.5);
+    color: var(--text-tertiary);
+  }
+
+  .dot {
+    inline-size: var(--space-2);
+    block-size: var(--space-2);
+    border-radius: var(--radius-pill);
+    background: var(--text-quiet);
+  }
+
+  .error .severity {
+    color: var(--status-down-text);
+  }
+
+  .warning .severity {
+    color: var(--status-warning-text);
+  }
+
+  .error .dot {
+    background: var(--status-down);
+  }
+
+  .warning .dot {
+    background: var(--status-warning);
+  }
+
+  .source :global(svg) {
+    color: var(--text-quiet);
   }
 
   .device {
-    flex: 0 1 calc(var(--space-16) * 3);
+    flex: 0 1 calc(var(--space-16) * 2);
     min-inline-size: 0;
     overflow: hidden;
+    color: var(--text-tertiary);
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .device a {
+    color: var(--text-secondary);
+    text-decoration: none;
+  }
+
+  .device a:hover {
+    color: var(--text);
+    text-decoration: underline;
+    text-underline-offset: var(--space-1);
+  }
+
+  .device a:focus-visible {
+    outline: var(--border-focus) solid var(--focus-ring);
+    outline-offset: var(--border-thin);
   }
 
   .message {
@@ -180,8 +256,9 @@
   }
 
   .none {
-    padding: var(--space-4);
-    color: var(--text-secondary);
+    padding: var(--space-6) var(--space-2);
+    color: var(--text-tertiary);
+    font-size: var(--text-sm);
   }
 
   .notice,

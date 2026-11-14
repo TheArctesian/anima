@@ -25,6 +25,10 @@ export class LogFeed {
   loadingOlder = $state(false);
   /** The id of the row that arrived live last; the panel moves and highlights it. */
   fresh = $state.raw<string | null>(null);
+  /** Whether live rows join the list as they come; off while the operator is away from the newest rows or paused (LOG-011). */
+  following = $state(true);
+  /** Live rows that came while not following, newest first; `follow(true)` puts them in the list. */
+  waiting = $state.raw<readonly LogEvent[]>([]);
 
   readonly #api;
   readonly #now: () => Date;
@@ -61,6 +65,16 @@ export class LogFeed {
     this.#listen();
   }
 
+  /** Starts or stops following; starting puts the waiting rows in the list, and the newest of them is the fresh one (LOG-011). */
+  follow(on: boolean): void {
+    this.following = on;
+    if (!on || this.waiting.length === 0 || this.log === null) return;
+    const waiting = this.waiting;
+    this.waiting = [];
+    this.log = waiting.reduceRight((log, event) => addLive(log, event, this.filter, this.#now()), this.log);
+    this.fresh = waiting[0]?.id ?? null;
+  }
+
   /** Loads the first page again, after a failure. */
   retry(): Promise<void> {
     return this.#reload();
@@ -86,6 +100,7 @@ export class LogFeed {
     this.#generation += 1;
     const mine = this.#generation;
     this.#held = [];
+    this.waiting = [];
     this.#loading = true;
     const result = await this.#api.list(eventVariables(this.filter, this.#now()));
     if (mine !== this.#generation) return;
@@ -118,6 +133,10 @@ export class LogFeed {
     if (this.log === null) return;
     const next = addLive(this.log, event, this.filter, this.#now());
     if (next === this.log) return;
+    if (!this.following) {
+      if (!this.waiting.some((row) => row.id === event.id)) this.waiting = [event, ...this.waiting];
+      return;
+    }
     this.log = next;
     this.fresh = event.id;
   }
