@@ -124,6 +124,12 @@ impl Invocation {
         self.environment.terminals.stdin
     }
 
+    /// Whether standard error is a terminal.
+    #[must_use]
+    pub const fn stderr_terminal(&self) -> bool {
+        self.environment.terminals.stderr
+    }
+
     /// Whether `ANIMA_TOKEN` is set.
     #[must_use]
     pub const fn has_token_variable(&self) -> bool {

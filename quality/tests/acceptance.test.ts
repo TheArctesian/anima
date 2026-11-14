@@ -79,6 +79,11 @@ describe("criterion 24 on this repository", () => {
     expect(baselineEntries(baseline)).toEqual([]);
   });
 
+  test("the repository baseline is empty", () => {
+    const baseline = readFileSync(resolve(import.meta.dir, "..", "baseline.json"), "utf8");
+    expect(baselineEntries(baseline)).toEqual([]);
+  });
+
   test("the repository at this commit passes", () => {
     expect(checkPhase3(resolve(import.meta.dir, "..", ".."))).toEqual([]);
   });

@@ -67,6 +67,7 @@ fn src_021_the_poll_interval_has_a_floor_of_fifteen_minutes() {
         acquisition: Acquisition::TokenPull(Minting::AppKey(AppKey {
             mint_path,
             parse_minted,
+            registration: None,
         })),
         scopes: &[],
         write_reason: None,
@@ -83,6 +84,7 @@ fn src_001_a_declaration_names_its_mint_path_for_an_installation() {
     let key = AppKey {
         mint_path,
         parse_minted,
+        registration: None,
     };
     assert_eq!((key.mint_path)("42"), "/app/installations/42/access_tokens");
     assert!((key.parse_minted)(b"{}").is_ok());

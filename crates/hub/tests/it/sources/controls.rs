@@ -124,8 +124,17 @@ async fn itg_004_removing_an_account_keeps_or_forgets_its_records(pool: PgPool) 
     .unwrap();
     assert_eq!(left, (0, 0, 0));
 
+    // Connected with Projects off, as above, so `establish` starts no first run of its own: a
+    // first run that held the claim would make this run skip, and the removal could then come
+    // before any page was stored.
+    set_projects(&pool, false).await;
     let (_, again) = kit.connect().await;
-    kit.run(again).await;
+    set_projects(&pool, true).await;
+    assert_eq!(
+        kit.run(again).await,
+        Some(Outcome::Ok),
+        "this run stored the pages"
+    );
     let removed = kit
         .hub
         .post(

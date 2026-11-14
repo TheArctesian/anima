@@ -28,6 +28,8 @@ pub struct Environment {
 pub struct Terminals {
     pub stdin: bool,
     pub stdout: bool,
+    /// Standard error: a link is for a person only when it is.
+    pub stderr: bool,
 }
 
 impl Environment {
@@ -46,6 +48,7 @@ impl Environment {
             terminals: Terminals {
                 stdin: std::io::stdin().is_terminal(),
                 stdout: std::io::stdout().is_terminal(),
+                stderr: std::io::stderr().is_terminal(),
             },
         }
     }

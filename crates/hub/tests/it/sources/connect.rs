@@ -1,8 +1,15 @@
 //! `connectGithubApp`: the key is proved with a mint before anything is stored (SRC-003,
-//! SRC-008, PRJ-018); a bad key, a refused key or an unreachable source stores nothing.
+//! SRC-008, PRJ-018); a bad key, a refused key or an unreachable source stores nothing. The
+//! connect flow's `establish` leaves the same rows, audit entry and event (PRJ-039).
 
+use anima_hub::{
+    engine::sources::{Connection, establish},
+    fleet::events::{Actor, Bus, ClientAddr, Operator, Signal, Trail},
+    ids::{OperatorId, SourceAccountId},
+};
 use serde_json::{Value, json};
 use sqlx::PgPool;
+use zeroize::Zeroizing;
 
 use super::{CONNECT, TEST_KEY, input, kit, kit_with, set_projects, stub::Stub, unreachable};
 use crate::hub::{error, start};
@@ -183,4 +190,87 @@ async fn d_23_an_api_key_is_forbidden_on_connect_and_remove(pool: PgPool) {
         .post(Some(secret), "{ sourceAccounts { id } }", Value::Null)
         .await;
     assert!(listed["errors"].is_null(), "an API key may list: {listed}");
+}
+
+/// What one connect left behind for the account `id`: its row, its key, its audit entry (the
+/// change without the instance key) and its event, minus ids, times and the client address.
+async fn left_behind(pool: &PgPool, id: SourceAccountId) -> (Value, Value, Value, String) {
+    let account: Value = sqlx::query_scalar(
+        "SELECT jsonb_build_object('source', source, 'label', label, \
+         'secrets', (SELECT count(*) FROM credentials.source_secrets s WHERE s.id = a.credential_id)) \
+         FROM sources.accounts a WHERE id = $1",
+    )
+    .bind(id)
+    .fetch_one(pool)
+    .await
+    .unwrap();
+    let audit: (Value, Value) = sqlx::query_as(
+        "SELECT jsonb_build_object('action', action, 'type', target_type, 'operator', operator_id, \
+         'name', operator_name, 'actor', actor_kind, 'token', token_kind), change - 'instanceKey' \
+         FROM events.audit_log WHERE target_id = $1",
+    )
+    .bind(id.to_string())
+    .fetch_one(pool)
+    .await
+    .unwrap();
+    let event: String = sqlx::query_scalar(
+        "SELECT severity || ' ' || source || ' ' || message FROM events.event_log \
+         ORDER BY at DESC, id DESC LIMIT 1",
+    )
+    .fetch_one(pool)
+    .await
+    .unwrap();
+    (account, audit.0, audit.1, event)
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn prj_039_establish_leaves_what_connect_github_app_leaves(pool: PgPool) {
+    let kit = kit(&pool).await;
+    let mut feed = kit.reach.feed.subscribe();
+    let (_, by_api) = kit.connect().await;
+    assert_eq!(feed.recv().await.unwrap(), by_api, "published");
+    let api = left_behind(&pool, by_api).await;
+
+    let (id, name): (OperatorId, String) =
+        sqlx::query_as("SELECT id, username FROM access.operators")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    let operator = Operator {
+        id,
+        name,
+        actor: Actor::for_tests(),
+    };
+    let bus = Bus::new(16);
+    let mut events = bus.subscribe();
+    let trail = Trail::new(
+        &bus,
+        (operator, ClientAddr("127.0.0.1".parse().unwrap())),
+        start(),
+    );
+    let connection = Connection {
+        label: "Mine".to_owned(),
+        app_id: "4242".to_owned(),
+        installation_id: "78".to_owned(),
+        private_key: Zeroizing::new(TEST_KEY.clone()),
+    };
+    let established = establish(&kit.at(start()), trail, connection)
+        .await
+        .unwrap();
+    assert!(established.created);
+    assert!(!established.consumer_on, "Projects is off");
+    assert_eq!(feed.recv().await.unwrap(), established.id, "published");
+    let Ok(Signal::Event(event)) = events.recv().await else {
+        panic!("no event on the bus");
+    };
+    assert_eq!(event.message, "Source account Mine connected.");
+    assert_eq!(left_behind(&pool, established.id).await, api);
+    assert_eq!(stored(&pool).await, (2, 2));
+    let instance: String =
+        sqlx::query_scalar("SELECT instance_key FROM sources.accounts WHERE id = $1")
+            .bind(established.id)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(instance, "4242/78");
 }

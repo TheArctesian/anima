@@ -4,9 +4,12 @@
 mod changes;
 mod connect;
 mod controls;
+mod conversion;
 mod failures;
+mod installations;
 mod intake;
 mod leaks;
+mod registration;
 mod runs;
 /// The loopback GitHub; the Projects tests script it with GitHub's own replies.
 pub mod stub;

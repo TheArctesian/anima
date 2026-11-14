@@ -1,0 +1,24 @@
+# `anima source connect github` and the tool `anima_github_connect_start`: starts an attempt.
+# The answer holds no one-time value (PRJ-041).
+mutation GithubConnectStart($input: StartGithubConnectInput) {
+  startGithubConnect(input: $input) {
+    id
+    phase
+    startedBy
+    startedAt
+    expiresAt
+    pageUrl
+    appId
+    appSlug
+    ownerLogin
+    installUrl
+    appSettingsUrl
+    failure
+    message
+    account {
+      id
+      label
+      health
+    }
+  }
+}

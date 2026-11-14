@@ -1,7 +1,10 @@
 //! The `sources` tool set: where the hub reads data from and the accounts it reads with
-//! (ITG-001 to ITG-004). No tool connects an account, for that takes the GitHub App's private
-//! key (MCP-004), and none watches changes (no subscription has a tool). Text from GitHub
-//! (labels, problem messages) is cleaned and cut on its way out (MCP-008).
+//! (ITG-001 to ITG-004), and the three tools of the Connect GitHub flow (`connect`). No tool
+//! connects an account with a key, for that takes the GitHub App's private key (MCP-004), and
+//! none watches changes (no subscription has a tool). Text from GitHub (labels, problem
+//! messages) is cleaned and cut on its way out (MCP-008).
+
+mod connect;
 
 use rmcp::model::JsonObject;
 use schemars::JsonSchema;
@@ -26,6 +29,9 @@ pub enum SourceTool {
     Sync,
     SetPaused,
     Remove,
+    GithubConnectStart,
+    GithubConnectState,
+    GithubConnectCancel,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -73,7 +79,15 @@ pub struct RemoveInput {
 }
 
 impl SourceTool {
-    pub const ALL: [Self; 4] = [Self::Overview, Self::Sync, Self::SetPaused, Self::Remove];
+    pub const ALL: [Self; 7] = [
+        Self::Overview,
+        Self::Sync,
+        Self::SetPaused,
+        Self::Remove,
+        Self::GithubConnectStart,
+        Self::GithubConnectState,
+        Self::GithubConnectCancel,
+    ];
 
     #[must_use]
     pub fn definition(self) -> Definition {
@@ -120,6 +134,9 @@ impl SourceTool {
                  account's exact label. Returns the removed account's id.",
             )
             .returns(&[("removed", "string", "The id of the removed account.")]),
+            Self::GithubConnectStart => connect::start_definition(),
+            Self::GithubConnectState => connect::state_definition(),
+            Self::GithubConnectCancel => connect::cancel_definition(),
         }
     }
 
@@ -133,6 +150,9 @@ impl SourceTool {
             Self::Sync => sync(hub, arguments).await,
             Self::SetPaused => set_paused(hub, arguments).await,
             Self::Remove => remove(hub, arguments).await,
+            Self::GithubConnectStart => connect::start(hub, arguments).await,
+            Self::GithubConnectState => connect::state(hub, arguments).await,
+            Self::GithubConnectCancel => connect::cancel(hub, arguments).await,
         }
     }
 }

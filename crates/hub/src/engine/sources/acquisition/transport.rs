@@ -55,7 +55,7 @@ pub struct Answer {
 
 /// The body of an answer, or the fact that it was larger than the hub reads.
 pub enum Content {
-    /// Wiped on drop: a mint reply holds a token.
+    /// Wiped on drop: a mint reply holds a token, a conversion reply a key.
     Body(Zeroizing<Vec<u8>>),
     /// Past [`BODY_CAP`]: reading stopped there and what was read is wiped.
     TooLarge,
@@ -225,6 +225,16 @@ impl Transport {
             .client
             .post(url)
             .header(AUTHORIZATION, bearer(app_token.as_bytes())?)
+            .header(ACCEPT, HeaderValue::from_static("application/json"));
+        read(sent.send().await.map_err(|_| Fault::Network)?).await
+    }
+
+    /// Converts a manifest code at `url`: a POST with no `Authorization` header and no body,
+    /// because the one-time code in the path is the only proof the source asks for (PRJ-039).
+    pub(in crate::engine::sources) async fn convert(&self, url: Url) -> Result<Answer, Fault> {
+        let sent = self
+            .client
+            .post(url)
             .header(ACCEPT, HeaderValue::from_static("application/json"));
         read(sent.send().await.map_err(|_| Fault::Network)?).await
     }

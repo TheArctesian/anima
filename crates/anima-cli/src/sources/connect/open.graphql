@@ -1,0 +1,7 @@
+# ONE-TIME link (MCP-004): only the command line asks for it, and only at a terminal. The
+# generated types derive no Debug, so no debug output can print it.
+mutation GithubConnectOpen($id: ID!) {
+  openGithubConnect(id: $id) {
+    url
+  }
+}

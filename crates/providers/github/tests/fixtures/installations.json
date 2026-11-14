@@ -1,0 +1,14 @@
+[
+  {
+    "id": 4321,
+    "account": { "login": "octo-person", "id": 9001, "type": "User" },
+    "app_id": 1234567,
+    "suspended_at": null
+  },
+  {
+    "id": 4322,
+    "account": { "login": "octo-org", "id": 9002, "type": "Organization" },
+    "app_id": 1234567,
+    "suspended_at": "2026-11-13T11:00:00Z"
+  }
+]

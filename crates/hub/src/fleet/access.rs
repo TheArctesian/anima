@@ -35,7 +35,7 @@ use zeroize::Zeroizing;
 pub use crate::fleet::events::{ClientAddr, Operator};
 pub use actor::{ACTOR_HEADER, Declaration, MadeFor};
 pub use bearer::bearer_layer;
-pub use browser::SameOrigin;
+pub use browser::{SameOrigin, cookie_value};
 pub use builder_tokens::{IssuedToken, issue_builder_token, revoke_builder_token};
 pub use connection::{MESSAGE_LIMIT, SUBPROTOCOL, SocketAccess, accept_socket};
 pub use error::Error;

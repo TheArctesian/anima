@@ -22,7 +22,13 @@ const CONSEQUENCES: Readonly<Record<string, Consequences>> = {
   vpn: { key: [], signIn: ['approve a VPN route'] },
   retention: { key: [], signIn: ['cut every data retention period to the minimum'] },
   extensions: { key: [], signIn: ['set extensions on or off'] },
-  sources: { key: ['pause or start a sync of a connected account'], signIn: ['disconnect an account and delete its records'] },
+  sources: {
+    key: ['pause or start a sync of a connected account'],
+    signIn: [
+      'disconnect an account and delete its records',
+      'start a GitHub connection, which does nothing until you press Continue, Create and Install',
+    ],
+  },
   projects: { key: ['leave repositories out of Projects', 'confirm where a project runs'], signIn: [] },
 };
 

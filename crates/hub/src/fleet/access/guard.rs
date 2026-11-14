@@ -230,8 +230,10 @@ fn refusal(identity: Option<&Identity>, document: &ExecutableDocument) -> Option
 /// renewal admits a computer to the network: login or browser token only (VP-7, VP-10). Switching an
 /// extension on starts requests to outside services: login or browser token only (EXT-011).
 /// Connecting a source takes its private key, and removing one can delete what it imported:
-/// login or browser token only (PRJ-018, ITG-004).
-pub(super) const API_KEY_REFUSED_ROOTS: [&str; 33] = [
+/// login or browser token only (PRJ-018, ITG-004). Connecting GitHub from the hub makes and keeps
+/// an App key, and its one-time link binds a browser: login or browser token only (PRJ-039,
+/// PRJ-041).
+pub(super) const API_KEY_REFUSED_ROOTS: [&str; 36] = [
     "createApiKey",
     "revokeApiKey",
     "apiKeys",
@@ -265,6 +267,9 @@ pub(super) const API_KEY_REFUSED_ROOTS: [&str; 33] = [
     "setExtension",
     "connectGithubApp",
     "removeSourceAccount",
+    "startGithubConnect",
+    "openGithubConnect",
+    "cancelGithubConnect",
 ];
 
 /// The root selections a token of `kind` may make, in every operation type. A new kind of

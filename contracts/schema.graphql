@@ -1756,6 +1756,65 @@ input GithubAppInput {
   privateKey: String!
 }
 
+# Connect GitHub in three presses (operator, 2026-11-14; ruling number to be assigned; PRJ-039 to PRJ-042, K-E1 Section 7a).
+
+enum GithubConnectPhase {
+  WAITING_FOR_BROWSER
+  AT_GITHUB
+  APP_CREATED
+  CONNECTED
+  FAILED
+  CANCELLED
+}
+
+enum GithubConnectFailure {
+  EXPIRED
+  EXCHANGE_REFUSED
+  GITHUB_UNREACHABLE
+  REPLY_UNUSABLE
+  KEY_REFUSED
+}
+
+"The one attempt to connect GitHub that the hub holds in memory. Holds no key, code, ticket or state (PRJ-041, LOG-007)."
+type GithubConnectAttempt {
+  id: ID!
+  phase: GithubConnectPhase!
+  "Who started it."
+  startedBy: ActorKind!
+  startedAt: DateTime!
+  "55 minutes after startedAt."
+  expiresAt: DateTime!
+  "The hub page a signed-in operator opens: <public origin>/connect/github. Holds no secret and no one-time value (PRJ-041)."
+  pageUrl: String!
+  "From APP_CREATED on. Text from GitHub."
+  appId: String
+  appSlug: String
+  ownerLogin: String
+  "Set in APP_CREATED: where the operator presses Install."
+  installUrl: String
+  "Where the operator deletes an App the hub does not use: set in FAILED or CANCELLED when an App may exist. GitHub has no API to delete an App."
+  appSettingsUrl: String
+  failure: GithubConnectFailure
+  "Fixed words. Never a key, a code or a provider reply (LOG-007)."
+  message: String
+  "Set in CONNECTED."
+  account: SourceAccount
+}
+
+input StartGithubConnectInput {
+  "1 to 64 characters. Null: the login of the App's owner."
+  label: String
+  "A GitHub organisation login. Null: the operator's own account. The graphical client offers the personal account only."
+  organisation: String
+}
+
+"ONE-TIME. Never logged, never in the audit log, never returned by an MCP tool (MCP-004)."
+type GithubConnectLink {
+  "ONE-TIME. Works once, for 5 minutes, in one browser. Never logged; no MCP tool returns it."
+  url: String!
+  expiresAt: DateTime!
+}
+
 # ---------------------------------------------------------------- projects (XP-02, first slice)
 
 enum ResourceKind { CLOUDFLARE VERCEL SERVER DESKTOP_APPLICATION }
@@ -1867,6 +1926,8 @@ type Query {
   projects(leftOut: Boolean = false, first: Int = 50, after: String): ProjectConnection!
   "Any project, left out or not. Null when no project has this slug. CONFLICT while Projects is off."
   project(slug: String!): Project
+  "The open attempt, or one that ended in the last 10 minutes; null otherwise. Open to a read key: it holds nothing secret."
+  githubConnect: GithubConnectAttempt
 }
 
 type Mutation {
@@ -1996,6 +2057,12 @@ type Mutation {
   restoreRepository(id: ID!): Project!
   "CONFLICT when it is already confirmed, or while Projects is off. NOT_FOUND for an unknown ID."
   confirmProjectResource(id: ID!): ProjectResource!
+  "CONFLICT while an attempt has made an App that is not installed; an attempt with no App is replaced. Login or browser token only (D-23, R-100)."
+  startGithubConnect(input: StartGithubConnectInput): GithubConnectAttempt!
+  "Returns a ONE-TIME link; an earlier one stops working. CONFLICT outside WAITING_FOR_BROWSER and AT_GITHUB. FORBIDDEN for a request that declares an AI agent. Login or browser token only (D-23, R-100)."
+  openGithubConnect(id: ID!): GithubConnectLink!
+  "Drops the attempt and any key it holds. NOT_FOUND for another id; CONFLICT once CONNECTED. Login or browser token only (D-23, R-100)."
+  cancelGithubConnect(id: ID!): GithubConnectAttempt!
 }
 
 type Subscription {
@@ -2011,6 +2078,8 @@ type Subscription {
   vpnChanged: VpnPicture!
   "Each change of an account: a sync that starts or ends, a pause, a new key. (operator, 2026-11-13; ruling number to be assigned; K-E1)"
   sourceAccountChanged(id: ID): SourceAccount!
+  "Each change of the open attempt to connect GitHub. Open to a read key (operator, 2026-11-14; ruling number to be assigned; K-E1 Section 7a)."
+  githubConnectChanged: GithubConnectAttempt!
 }
 
 type DeviceStatusChange {

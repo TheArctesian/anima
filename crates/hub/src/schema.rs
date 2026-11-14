@@ -44,6 +44,7 @@ pub struct Query(
     retention::graphql::Query,
     sessions::graphql::Query,
     sources::graphql::Query,
+    sources::graphql::GithubConnectQuery,
     vpn::graphql::Query,
 );
 
@@ -64,6 +65,7 @@ pub struct Mutation(
     sessions::FilesMutation,
     sessions::WakeMutation,
     sources::graphql::Mutation,
+    sources::graphql::GithubConnectMutation,
     trust::graphql::Mutation,
     vpn::graphql::Mutation,
     vpn::graphql::RouteMutation,
@@ -78,6 +80,7 @@ pub struct Subscription(
     metrics::graphql::Subscription,
     sessions::graphql::Subscription,
     sources::graphql::Subscription,
+    sources::graphql::GithubConnectSubscription,
     vpn::graphql::Subscription,
 );
 
