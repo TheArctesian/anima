@@ -6,7 +6,7 @@
 | Version | 1.0 |
 | Date | 2026-11-13 |
 | Language | ASD-STE100 Simplified Technical English (STE) |
-| Status | Approved. The operator approved the principles and the priority order on 2026-11-13. The proposals stay drafts until each has a ruling (Section 5). OD-W12 is not decided. |
+| Status | Approved. The operator approved the principles and the priority order on 2026-11-13. The proposals stay drafts until each has a ruling (Section 5). |
 | Related | [design-spec.md](design-spec.md), [extensions-plan.md](extensions-plan.md), [compute-plan.md](compute-plan.md), [vpn-plan.md](vpn-plan.md), [programme/handoff.md](programme/handoff.md), [programme/proposals/](programme/proposals/) |
 
 This document obeys the writing rules in Section 0 of the design specification.
@@ -69,7 +69,7 @@ The tiers come from the issue labels `priority: foundation`, `priority: later` a
 | 2a | See, Remember | The engine (E0), with Writing as its sample extension | #4, #5, #7, #8, #9, #10, #11, #14 | Planned. `priority: foundation` |
 | 2b | Use | Level 1 model service: C1 and C2 | #34, #35 | Planned. `priority: foundation`. The issues were given a new scope on 2026-11-07 and are newer than the compute plan. |
 | 3a | See | Projects: import each GitHub repository, find where it runs, propose resources (PRO-001 to PRO-008) | #13 | The direction is decided (OD-W11). It changes PRJ-001. It needs the engine (tier 2a). |
-| 3a | Use | Jobs, with the build as the first job type. Then AI agent runs. | #40 (C7), #36 (C3). No issue yet for the proposals | #40 is planned. The proposals are not approved. The operator put jobs before the extensions (OD-W8). The build as a job, directly after Projects, is a proposal to confirm (PRO-009). |
+| 3a | Use | Jobs, with the build as the first job type. Then AI agent runs. | #40 (C7), #36 (C3). No issue yet for the proposals | #40 is planned. The operator put jobs before the extensions (OD-W8) and the build as a job directly after Projects (PRO-009, OD-W12). A Mac build is a native job (PRO-011). |
 | 3b | See, Remember, Reach | The other extensions, in the order of XP-005, one at a time | #12, #15 to #25, #6, #32. Decisions #28, #29, #30 | Planned. `priority: later` |
 | 3c | Use | Hosted applications | No issue yet | Proposal. Not approved. |
 | 3 | Foundation | Standby copies of the coordinator database (FND-001 to FND-005, FND-007 to FND-012) | No issue yet | Proposal. Its direction is decided (OD-W9). |
@@ -101,7 +101,7 @@ One document owns each concern. Add a requirement to its owner, not to this docu
 | Rules for all work on machines, and jobs | [jobs.md](programme/proposals/jobs.md) | USE-001 to USE-009, JOB-001 to JOB-010 |
 | AI agent runs | [agent-runs.md](programme/proposals/agent-runs.md) | AGN-001 to AGN-008 |
 | Hosted applications | [hosted-applications.md](programme/proposals/hosted-applications.md) | HOST-001 to HOST-009 |
-| Projects as the front door: import from a forge, resources that Anima finds, builds as jobs, sign-in with a forge | [projects-and-builds.md](programme/proposals/projects-and-builds.md) | PRO-001 to PRO-019 |
+| Projects as the front door: import from a forge, resources that Anima finds, builds as jobs, sign-in with a forge | [projects-and-builds.md](programme/proposals/projects-and-builds.md) | PRO-001 to PRO-024 |
 | The `anima` command line and the MCP server | [cli-mcp-plan.md](cli-mcp-plan.md). The design specification Section 6.10 gives the summary. | CMD, MCP |
 | Who did an action: the actor kinds User, Agent and Hub in the audit log and the event log | [design-spec.md](design-spec.md) Section 3.8.1 | LOG-012 to LOG-020 |
 | Installation: the disk image and the AppImage, with the `anima` program inside | [design-spec.md](design-spec.md) Section 3.11 | INS-001 to INS-009 |
@@ -132,7 +132,7 @@ Decisions of the other plans stay in their issues (Section 4, tier 1). These are
 
 | Number | Decision | Recommendation |
 | --- | --- | --- |
-| OD-W1 | Can Anima change a rented resource (redeploy, purge a cache, restart the VPS)? | **Decided (operator, 2026-11-12): yes, with the CLI tool of each service, never from the hub.** The hub stays read-only (PRJ-003). First, the client runs the CLI on the operator's computer with `anima run` (SCR-006). When jobs exist, a CLI can also run as a job. It changes PRJ-010 ("changes happen there, not in Anima"). |
+| OD-W1 | Can Anima change a rented resource (redeploy, purge a cache, restart the VPS)? | **Decided (operator, 2026-11-12): yes, with the CLI tool of each service, never from the hub.** The hub stays read-only (PRJ-003). First, the client runs the CLI on the operator's computer with `anima run` (SCR-006). When jobs exist, a CLI can also run as a job. It changes PRJ-010 ("changes happen there, not in Anima"). **Exception (operator, 2026-11-13): GitHub.** The hub makes changes on GitHub through the GitHub App of the operator, each change a named function that is in the audit log (PRJ-017, PRJ-027 to PRJ-029). A different rented service can get the same later, with one ruling for each service. Until then this decision applies to it. |
 | OD-W2 | How do other persons use Anima? | **Decided (operator, 2026-11-12): both. A person can host Anima on a service of their choice, and a paid hosted option runs it for them.** [other-operators.md](programme/proposals/other-operators.md) has the operator's words and what this changes. Nothing is built for it now. |
 | OD-W3 | The name of the hub in the interface | **Decided (operator, 2026-11-12): keep "hub".** |
 | OD-W4 | How do commands get to the agent? | Not a decision of this plan. It is open in #34, #41 and #44. OD-W10 gives its direction: the agent asks the hub for work and listens on no port (USE-005, MET-020). |
@@ -143,7 +143,7 @@ Decisions of the other plans stay in their issues (Section 4, tier 1). These are
 | OD-W9 | One home with copies, or a copy on each node that syncs between nodes when the hub is down (issue #2) | **Decided (operator, 2026-11-12): one home, copies by policy.** The section "Decision" of [coordinator-standby.md](programme/proposals/coordinator-standby.md) has the operator's words. It needs a ruling number in `programme.md`. Issue #2 keeps only its phase L0. |
 | OD-W10 | Can the agent do work that the coordinator gives it? R-115 did not take a command channel to the agent. | **Decided (operator, 2026-11-12): yes, one agent, on by default ("it should be on by default").** The section "Decision" of [jobs.md](programme/proposals/jobs.md) has the limits. It needs a ruling number that changes R-115. It also changes CMP-002 and the recommendation of OD-C8 (#50). An agent that is already installed takes work after its update, with no confirmation. |
 | OD-W11 | Are projects the front door for rented accounts, and does the builder build each project? | **Decided (operator, 2026-11-13): yes.** Connect GitHub, import each repository, leave out the ones that the operator selects. Anima proposes resources from signs in the repository. The builder is no longer specific to Anima. The three resource types stay different. A different forge must be possible. [projects-and-builds.md](programme/proposals/projects-and-builds.md) has the six points. |
-| OD-W12 | The proposals that follow OD-W11 | **Not decided.** The operator heard them and did not refuse: a build is a job and comes directly after Projects; Anima schedules builds and does not use GitHub Actions runners; native jobs on a Mac come early; keys belong to the project; no builds of pull requests from forks; read access first; sign-in with a forge later, with the local sign-in as the root (PRO-009 to PRO-016). |
+| OD-W12 | The proposals that follow OD-W11 | **Decided (operator, 2026-11-13).** A build is the first job type and comes directly after Projects (PRO-009). Anima schedules builds from a webhook of the GitHub App, through the webhook receiver of the engine (WHK-001 to WHK-010), with a slow poll that repairs a lost webhook. Anima can also start a workflow of GitHub Actions; a machine is not a runner (PRO-010, PRO-020, PRO-021). The receiver runs on the VPS as a separate program (OD-E15); to open its port needs the confirmation of the operator (VPS-005). A Mac build is a native job that runs as a build user, in a new checkout that is deleted, on a Mac that the operator set on for it (PRO-011, PRO-022 to PRO-024). Keys belong to the project (PRO-012). No builds of pull requests from forks (PRO-013). Sign-in with a forge comes later, with the local sign-in as the root (PRO-015, PRO-016). PRJ-017 replaces "read access first" (PRO-014). The hub gives a project secret to one job (JOB-010). The first build is the path to Projects only: the hub folder regroup (E0-1), the sources framework (E0-2), the extension registry (E0-8), then Projects (operator, 2026-11-13). |
 
 ## 8. Changes that this plan needs in other documents
 
@@ -157,12 +157,12 @@ These changes are not made. The operator must approve each one (operator checkpo
 | Extensions plan 4.2 and 9 | Add Cloudflare after verification ([new-sources.md](programme/proposals/new-sources.md)). |
 | Extensions plan 4 and 9 | Add Spotify and Screen Time after verification ([new-sources.md](programme/proposals/new-sources.md)). |
 | Extensions plan PRJ-010 and Section 4.4 | Permit an action on a rented service through its CLI tool with `anima run` (OD-W1). |
-| Extensions plan 1.1 and EXT-000, design specification 1.4 | Anima is no longer for one person only (OD-W2). The operator must approve new wording. |
+| Extensions plan 1.1 and EXT-000, design specification 1.4 | Anima is no longer for one person only (OD-W2). The operator approved the new wording of Section 1.1 on 2026-11-13: three layers (foundation, extensions, community extensions later), one operator for each hub. The wording is in Section 1.1 of the extensions plan. |
 | Extensions plan FIL-001 | Keep files on the operator's machines, not in a volume on the hub ([bulk-data-placement.md](programme/proposals/bulk-data-placement.md)). |
 | Compute plan CMP-002 and OD-C8 | A machine with the agent takes work by default (OD-W10). Issue #50 has the old recommendation. |
-| Compute plan 3.3, 12.1 and 13 | Agree with R-084 and with the new scope of #34 and #35 (#41). Make C7 the first job type of [jobs.md](programme/proposals/jobs.md). |
-| Extensions plan PRJ-001 and Section 4.2 | Import each repository; the operator leaves some out (OD-W11). PRJ-001 says that the operator accepts each project. |
-| [jobs.md](programme/proposals/jobs.md) JOB-001, JOB-004, USE-001 | A macOS or iOS build cannot run in a container. Native jobs on a Mac must come early (PRO-011). Not changed until OD-W12 is decided. |
+| Compute plan 3.3, 12.1 and 13 | Agree with R-084 and with the new scope of #34 and #35 (#41). Make C7 the second job type of [jobs.md](programme/proposals/jobs.md), after the build (OD-W12). |
+| Extensions plan PRJ-001 and Section 4.2 | Import each repository; the operator leaves some out (OD-W11). PRJ-001 says that the operator accepts each project. OD-W11 is the ruling; PRJ-001 takes the new wording. |
+| [jobs.md](programme/proposals/jobs.md) JOB-001, JOB-004, USE-001 | Changed on 2026-11-13 (OD-W12): a job is a container job or a native job on a Mac, and the build is the first job type. |
 | Design specification BLD-001 to BLD-082 | The builder takes a project as a parameter; the release of Anima becomes one project (OD-W11). |
 | `AGENTS.md`, [cli-mcp-plan.md](cli-mcp-plan.md) | Done on the branch `claude/anima-cli`: the command-line-first rule (CMD-030). |
 | Design specification 6.10, 7, 9 and 13 | Done (operator, 2026-11-13): the command line and the MCP server are part of the specification. SET-004 names the "MCP" section. |

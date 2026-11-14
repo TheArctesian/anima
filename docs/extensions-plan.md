@@ -15,9 +15,17 @@ This document obeys the writing rules in Section 0 of the design specification.
 
 ### 1.1 Purpose
 
-This plan adds 15 extensions to Anima. With the extensions, Anima also keeps a record of the life and work of the operator. The device manager stays the core.
+This plan adds 15 extensions to Anima. With the extensions, Anima also keeps a record of the life and work of the operator. The device manager stays the foundation.
 
-Anima has one user: the operator. It is not a product for other people.
+Anima has three layers. The model is the Obsidian application: a small foundation, and functions that each person sets on or off.
+
+| Layer | Contents | Can be set off |
+| --- | --- | --- |
+| Foundation | The device manager of the design specification (devices, checks, sessions, the VPN, the hub) and the engine of Section 2 | No |
+| Extensions | The 15 extensions of this plan. The Anima project builds them, and they are part of each installation. | Yes, each one (Section 2.8) |
+| Community extensions | Extensions from other people. Not in this plan (EXT-009). | Yes |
+
+Each hub has one operator (spec Section 1.4). Other people can install their own Anima. Each operator selects the extensions that they want, and a new installation has no extension on (EXT-001). Thus Anima must not need an extension that an operator does not want. (operator, 2026-11-13)
 
 - **EXT-000.** Build only for the accounts, devices and services that the operator uses. Do not build a general connector catalogue, a "planned" source, or support for a service that the operator does not use. When the operator starts to use a new service, add it then.
 
@@ -53,6 +61,7 @@ The extensions change these parts of the design specification. Operator checkpoi
 | 5.3 Navigation bar | Add the extension pages (Section 3.3 of this plan). |
 | 5.4 Design principles, Purpose | Each screen helps the operator find a problem, get into a device, or find a fact about their own life. |
 | 4.1 Network (SEC-008) | Add the model gateway routes of the hub. They are available on the VPN only (MGW-001). |
+| Marketing website (SITE-006) | The website is no longer the only public part of Anima. Add the webhook receiver (Section 2.12, OD-E15). |
 | 6.9 Integrations | Join with extension 5 (Section 4.5). Add the model use counts to the Prometheus endpoint (MGW-013). |
 | 7 Settings page | Add an Integrations section (Section 4.5). |
 | 13 Repository structure | Add the new domains and the collector (Section 6). |
@@ -117,7 +126,7 @@ The sources are the services in Section 9. Each source uses the same small shape
 The hub is not on the public internet (SEC-008). This has two results:
 
 - **SRC-020.** OAuth must use the loopback redirect of the desktop client with PKCE (RFC 8252). The client sends the code to the hub. The hub exchanges the code. Verify for each provider that it accepts a loopback redirect.
-- **SRC-021.** Anima does not receive webhooks. The hub polls each source. The default poll interval is 15 minutes. A source can set a longer interval for its rate limit.
+- **SRC-021.** A source can receive webhooks through the webhook receiver (Section 2.12). A source that has no webhook, or that the receiver does not serve, is polled. The default poll interval is 15 minutes. A source can set a longer interval for its rate limit. (Changed: Anima did not receive webhooks. operator, 2026-11-13)
 
 ### 2.2 Collector
 
@@ -196,6 +205,24 @@ Map, Wardrobe, Library and Reminders use places. The places domain owns them. Th
 - **EXT-002.** When an extension is off, the hub must not poll its sources. The navigation bar must not show its page.
 - **EXT-003.** When the operator sets an extension off, the hub must keep its data. A separate "Delete data" action removes the data, after a confirmation.
 - **EXT-004.** Each extension must state its data class in its section of this plan.
+- **EXT-005.** The foundation must operate with all extensions off. It must not read a table of an extension. Projects is an extension, not a part of the foundation.
+- **EXT-006.** Two relations between extensions are permitted. "Needs": the extension cannot do its function without the other. "Works with": the extension shows more when the other is on, and operates without it. If an extension can do its primary function without the other, the relation must be "works with". (operator, 2026-11-13)
+- **EXT-010.** Each extension must declare what it needs in its section of this plan and in the extension registry. The table below is the full list. A needed extension must need nothing, and the foundation must need no extension (EXT-005).
+- **EXT-011.** When the operator sets an extension on, the hub must also set on each extension that it needs. The client must tell the operator before the change, for example "Model gateway also sets Secrets on".
+- **EXT-012.** The hub must refuse to set an extension off while an extension that is on needs it. The message must name that extension. The hub must not set a second extension off without an instruction.
+- **EXT-007.** For "works with": when two extensions are on, each can show the records of the other. They must join through record links and the shared subject keys (Section 2.10), not through a table of the other extension. When one of the two is off, the other must not show an empty section or an error for it.
+
+| Extension | Needs | Works with |
+| --- | --- | --- |
+| Model gateway | Secrets | Projects |
+| Project design and map (Section 4.2.1) | Projects | — |
+| Secrets | — | Projects |
+| AI coding sessions | — | Projects |
+| Projects | — | Secrets, Model gateway, AI coding sessions, Writing |
+| All other extensions | — | As their seams in Section 5.4 |
+
+- **EXT-008.** At the first start, the client must ask the operator what Anima must do, and must offer sets of extensions. One set is the developer set: Projects, Secrets, Model gateway and AI coding sessions. The operator can select a set, select single extensions, or select none. The operator can change the selection in Settings at any time.
+- **EXT-009.** Community extensions are a later phase. Do not start them until the 15 extensions of this plan are built. The first function for other people must be a new source (Section 2.1), because a source gives records only and gets only its own token. The hub must not run the code of other people until a design for isolation and permissions is approved. (operator, 2026-11-13)
 
 ### 2.9 Vision and text extraction
 
@@ -222,6 +249,21 @@ Many extensions send reminders (expiry dates, monthly uploads, failed deployment
 - **ENG-001.** The reminder rule evaluation, the place state and the delivery (Section 4.11, REM-001 to REM-010). An extension adds triggers through the trigger contract (K-E6). It does not change the reminder code.
 - **ENG-002.** The Settings > Integrations section (Section 4.5). An extension adds its sources to the source registry. It does not change the Integrations page.
 - **ENG-003.** The navigation groups and the extension switches (Sections 2.8 and 3.3). An extension adds one entry to the extension registry.
+
+### 2.12 Webhook receiver
+
+Some services tell Anima about an event with a webhook: a push to GitHub, a finished deployment. The hub is not on the public internet (SEC-008). Thus a small public receiver on the same machine takes the webhook, and the hub gets it from the receiver. GitHub is the first user. Later sources and jobs use the same receiver.
+
+- **WHK-001.** The webhook receiver must be the only part that a service can reach. It must accept a POST request on one address for each source account and must refuse all other requests. The hub must stay off the public internet (SEC-008).
+- **WHK-002.** The hub must get the deliveries from the receiver through a connection that the hub opens. The receiver must not open a connection to the hub.
+- **WHK-003.** The hub must check the signature of each delivery with the webhook secret of that source account before it uses the delivery. The webhook secret stays on the hub, with the credentials domain (SRC-008). The receiver must not have a key of a source and must not be able to read data of the hub.
+- **WHK-004.** The receiver must keep a delivery only until the hub confirms it, and for a maximum of 7 days. It must refuse a body that is larger than a fixed limit.
+- **WHK-005.** The hub must use a delivery one time only. It must keep the delivery identifier of the service and must ignore a second delivery with the same identifier.
+- **WHK-006.** A webhook is a signal to read, not the record. After a delivery, the hub reads the changed item from the API of the service. A source that uses webhooks must also poll on a slow interval, so that a lost delivery is repaired.
+- **WHK-007.** A source declares the events that it wants (SRC-001). The provider normaliser of the source stays a pure function (SRC-006).
+- **WHK-008.** The Integrations section must show for each source account: the webhook address, the time of the last delivery and the count of refused deliveries.
+- **WHK-009.** The receiver must be a separate program on the machine of the hub (OD-E15). It must listen on one public port with TLS. It must run as its own user, with no access to the hub database, the credential key or the data keys. It must write each delivery to a queue that the hub reads on the same machine. The host firewall must open only this port to the public internet, and the hub port must stay closed (NET-003, DNS-005).
+- **WHK-010.** The receiver must limit the request rate for each sender address and must answer a request for an unknown address with 404 and no other text.
 
 ## 3. Client
 
@@ -291,7 +333,9 @@ Each section gives: purpose, sources, data, interface, requirements and data cla
 
 ### 4.2 Projects: deployments and analytics
 
-**Purpose.** Show each project of the operator, where it is deployed, if each deployment is healthy, and how many people use it. Projects is a view only. It does not run commands, recipes or agents. **Class:** C.
+**Purpose.** Show each project of the operator, where it is deployed, if each deployment is healthy, and how many people use it. For Vercel, Neon, Hostinger and PostHog, Projects is a view only (PRJ-003). For GitHub, Anima can also make changes (PRJ-017). Projects does not run recipes or agents. **Class:** C.
+
+Projects is an extension as all others are (EXT-005). An operator who uses Anima only for devices does not set it on. Only the project design and map needs it (EXT-010). Secrets, the model gateway and AI coding sessions get more functions when Projects is on, and they operate without it.
 
 All projects are on GitHub. They are hosted on Vercel, Neon or the Hostinger VPS. PostHog gives the analytics.
 
@@ -299,7 +343,7 @@ All projects are on GitHub. They are hosted on Vercel, Neon or the Hostinger VPS
 
 | Service | Method | Gives |
 | --- | --- | --- |
-| GitHub | OAuth (read scopes) | Repositories, default branch, latest commits, open pull requests, Actions run status |
+| GitHub | GitHub App of the operator, installed on the account of the operator (PRJ-017) | Repositories, default branch, latest commits, branches, open pull requests, issues, Actions run status, releases |
 | Vercel | Access token | Projects with their linked GitHub repository, deployments (production and preview), build state, commit, domains, Web Analytics (visitors and page views) where it is on |
 | Neon | API key | Projects, branches, databases, compute state (active or idle), storage and usage against the plan limits |
 | Hostinger | API token (hPanel > Dev Tools > API) | VPS state, CPU, memory, disk and network metrics, Docker projects on the VPS |
@@ -308,7 +352,7 @@ All projects are on GitHub. They are hosted on Vercel, Neon or the Hostinger VPS
 
 **Data.** `project` (slug, name, GitHub repositories), `deployment` (project, service, service ID, environment, URL, state, commit, created), `deployment_link` (project, service, service resource ID), `analytics_day` (project, source, day, pageviews, unique users).
 
-- **PRJ-001.** The hub must find projects from the GitHub repositories of the operator. The operator must accept each project before Anima adds it. A project can have more than one repository.
+- **PRJ-001.** The hub must import each GitHub repository that the connection can read, as one project for each repository. The operator can leave a repository out. The hub must not import a left-out repository again. A project can have more than one repository. (Changed by OD-W11 of the work plan: the operator accepted each project. operator, 2026-11-13)
 - **PRJ-002.** The hub must link a Vercel project to an Anima project by its linked GitHub repository. The operator links Neon projects, Hostinger resources and PostHog projects by hand, one time.
 - **PRJ-003.** The hub must use only read requests to Vercel, Neon and Hostinger. The HTTP client for each of these services must have an allow list of methods and paths. It must refuse every other request. The tokens of these services can also change resources, so this rule protects the accounts (VPS-005).
 - **PRJ-004.** The project page must show each deployment with: the service, the environment, the state, the commit and its message, the time and the URL.
@@ -318,10 +362,31 @@ All projects are on GitHub. They are hosted on Vercel, Neon or the Hostinger VPS
 - **PRJ-008.** The Hostinger VPS must link to its Anima device. The page shows the VPS metrics from the Hostinger API next to the Anima checks.
 - **PRJ-009.** Analytics: only PostHog and Vercel Web Analytics give analytics. The hub must read them once each hour and keep one row for each project, source and day. The page shows pageviews and unique users for 7, 30 and 90 days, and the top pages. Verify which Vercel Web Analytics data the Vercel REST API gives.
 - **PRJ-015.** A project with no PostHog project and no Vercel Web Analytics must not show an analytics section. It must not show zero values. Neon and Hostinger give status and usage only, not analytics.
-- **PRJ-010.** Each item must have an "Open in" link to the dashboard of its service: GitHub, Vercel, the Neon console, hPanel or PostHog. Changes happen there, not in Anima.
+- **PRJ-010.** Each item must have an "Open in" link to the dashboard of its service: GitHub, Vercel, the Neon console, hPanel or PostHog. For Vercel, Neon, Hostinger and PostHog, changes happen there, not in Anima.
 - **PRJ-012.** The Projects page must show all projects as cards. Each card shows the production state, the last deployment time, the uptime and, if the project has analytics (PRJ-015), the users of the last 7 days.
 - **PRJ-013.** A failed production deployment must make an event log entry and can trigger a reminder (Section 4.11).
-- **PRJ-014.** The project page must also show the AI coding sessions (Section 4.12), the drafts (Section 4.3) and the secrets (Section 4.4) of the project.
+- **PRJ-014.** The project page must also show the AI coding sessions (Section 4.12), the drafts (Section 4.3), the secrets (Section 4.4) and the model use (Section 4.15) of the project. It must show a section only when its extension is on (EXT-007).
+- **PRJ-017.** Anima must connect to GitHub as a GitHub App that the operator makes in their own account (Section 9.2). The App has read and write permission on each repository permission that GitHub offers. This is an exception to SRC-010. Reason: the operator wants Anima to be their GitHub, not only a view of it. (operator, 2026-11-13)
+- **PRJ-018.** The hub must keep the App ID, the installation ID and the private key of the App with the credentials domain (SRC-008, SEC-003). The hub signs a short token with the private key and gets an installation token from GitHub. An installation token is valid for one hour. The hub must keep it in memory only and must not write it to the database or to a log (LOG-007).
+- **PRJ-019.** The App must send its webhook events to the webhook receiver (Section 2.12). The hub must also read GitHub on a slow interval, because a webhook delivery can be lost (WHK-006). No OAuth redirect is necessary for an installation token, so SRC-020 does not apply to GitHub. (operator, 2026-11-13)
+- **PRJ-027.** A full permission does not make a function. Each change that Anima can make on GitHub must be one named function with its hub API, its `anima` command and its MCP tool (CMD-030). The MCP tool of a change is off until the operator sets it on (MCP-002). OD-E14 gives the first functions.
+- **PRJ-028.** The hub must record each change that it makes on GitHub in the audit log: the function, the repository, the target and the actor kind (LOG-012).
+- **PRJ-029.** A change that cannot be undone (delete a branch, delete a repository, change a repository setting, force a push) must ask for a confirmation that names the target (CMD-024, MCP-007).
+- **PRJ-016.** The subject key of a project is the name of its GitHub repository (LNK-004). Other extensions keep the repository name with their records. Thus their records show under the project when Projects is set on later, with no change to the stored records.
+
+#### 4.2.2 Pages for GitHub work
+
+The ideas come from the Projects pages of HQ. HQ also has parts that Anima must not copy; PRJ-038 lists them.
+
+- **PRJ-030.** The project page must have three tabs only: Overview (PRJ-004 to PRJ-009), Work, and Design and map (Section 4.2.1, only when that extension is on). A tab must not show before its function is built.
+- **PRJ-031.** The Work tab must show, in this order: a banner when the default branch fails its checks; the workflow runs that run now; the open pull requests; the open issues. Each list is one data path from the hub. Do not build a second path for the same list.
+- **PRJ-032.** Each list must show when the hub last read GitHub, for example "Synced 2 min ago", and must show "Stale" when the last read failed. Loading, error, not connected and empty must be four different states with different text.
+- **PRJ-033.** The pull request list must show for each row if the pull request can merge (no conflict, checks passed). The operator can select rows and merge them in one action. The action must ask for a confirmation and must then show which merges succeeded and which failed.
+- **PRJ-034.** A workflow run must have these controls: run again, run only the failed jobs again, cancel. Each confirmation must show the commit.
+- **PRJ-035.** The operator must be able to start a workflow by hand, with a branch and the named inputs of that workflow.
+- **PRJ-036.** The Projects page can show one list of items that need the operator across all projects: failed default branches, pull requests that wait for the operator, and issues assigned to the operator. The operator can mark an item "Done" or "Snooze 1 day". The item must come back when it has new activity.
+- **PRJ-037.** A project card can show one small chart for each of these weekly counts: merged pull requests, issues opened and closed, failed workflow runs. Each chart has its own scale.
+- **PRJ-038.** Do not build these parts of HQ: a list of projects in code (projects come from GitHub, PRJ-001); a tab or a panel with placeholder text; marketing text for a project; a second route to the same list; settings for density or pane width; a note that explains what a count does not mean. The team, the cost and the agent sections of HQ are out of scope, because Anima has one operator.
 
 #### 4.2.1 Project design and map (later, XP-14)
 
@@ -371,7 +436,7 @@ This is not a password manager for websites. Use a dedicated password manager fo
 - **SCR-003.** Each secret can have a rotation period. The status values are: OK, Expiring (30 days or fewer), Due (14 days or fewer), Overdue, Unrecorded and Unset.
 - **SCR-004.** The hub must send a reminder 30, 7 and 1 days before a rotation date (Section 4.11).
 - **SCR-005.** The client must compare the secrets of a project with the `.env.example` file of its repository. It must show the missing names and the extra names.
-- **SCR-006.** A command line tool (`anima run <project> --env <environment> -- <command>`) must get the secrets of the project from the hub and give them to the command as environment variables. It must not write them to a file.
+- **SCR-006.** A command line tool (`anima run <project> --env <environment> -- <command>`) must get the secrets of the project from the hub and give them to the command as environment variables. Without a project (`anima run -- <command>`), it gives the global secrets. It must not write them to a file.
 - **SCR-007.** The hub must record each read of a value in the audit log: scope, project, environment, names, time, computer and actor kind (LOG-012). A read is a reveal, a run, a piped read or a use by the model gateway. Do not record values (LOG-007).
 - **SCR-008.** The import function must read a `.env` file that the operator selects. The client sends the values to the hub, and the hub seals them. Anima must not read a `.env` file without an operator action.
 - **SCR-009.** Each secret must have exactly one scope: global or project. A global secret has no project and no environment. The scope does not change who can read the value. (operator, 2026-11-13)
@@ -381,6 +446,7 @@ This is not a password manager for websites. Use a dedicated password manager fo
 - **SCR-013.** `anima secrets read <secret handle>` must write the value alone on standard output as one line (CMD-020), so that the operator can pipe it. When standard output is a terminal, the command must refuse and must name the `--reveal` flag. With `--reveal`, it writes the value to the terminal.
 - **SCR-014.** When the operator changes a value, the next run, the next piped read and the next model gateway request must use the new value. No restart is necessary. Thus the operator rotates a key in one place.
 - **SCR-015.** The MCP tools of Secrets must return names, scopes, rotation status and secret handles only. No tool takes a value and no tool returns one (MCP-004). Thus an AI agent can put a secret handle in a command, and it does not see the value.
+- **SCR-016.** The project scope is available only when the Projects extension is on. When Projects is off, the client and the command line must show the global scope only, with no project field. If the operator sets Projects off, the hub keeps the project secrets (EXT-003) and a secret handle still opens them.
 
 ### 4.5 Integrations
 
@@ -408,7 +474,7 @@ Integrations is a section of the Settings page (route `settings/integrations`). 
 | iMessage | Collector (macOS) | Who the operator messages, and when. Message text (Class B). |
 | Instagram | "Download your information" export (JSON), uploaded | Followers, following, direct messages (Class B). The Instagram API is only for business and creator accounts. |
 | X | Account archive, uploaded | Followers, following, direct messages (Class B). The X API is paid, so do not use it. |
-| GitHub | OAuth (shared with Projects) | Followers, following, collaborators on the projects of the operator |
+| GitHub | The GitHub App of Projects (PRJ-017) when Projects is on. Verify that an installation token can read these lists. | Followers, following, collaborators on the projects of the operator |
 
 **Data.** `person` (name, photo, tags, birthday, notes), `person_account` (person, service, account ID, handle, URL, how found), `contact_event` (person, service, direction, time, kind; message text sealed), `merge_suggestion`.
 
@@ -585,7 +651,7 @@ Reminders deliver only to the devices of the operator.
 
 ### 4.12 AI coding sessions
 
-**Purpose.** Keep a record of the AI coding sessions of the operator, by project. **Class:** B for the text. C for the counts.
+**Purpose.** Keep a record of the AI coding sessions of the operator, by repository. **Class:** B for the text. C for the counts.
 
 **Sources.**
 
@@ -598,13 +664,13 @@ Reminders deliver only to the devices of the operator.
 **Data.** `assistant_session` (source, external ID, project, repository, branch, worktree, title, model, start, end, counts of prompts, tool calls and tokens), `assistant_turn` (role, kind, sealed text, truncated flag).
 
 - **AIS-001.** The collector must read each session file from its last read position (COL-004). A session that changes must update the stored session. It must not add a copy.
-- **AIS-002.** The collector must link a session to a project by the git remote of its working folder. It must map worktree paths (`.claude/worktrees/*`, `.codex/worktrees/*`) to the main repository.
+- **AIS-002.** The collector must link a session to a repository by the git remote of its working folder. The repository name is the subject key (LNK-004). When Projects is on, the session shows under the project that has this repository (PRJ-016). It must map worktree paths (`.claude/worktrees/*`, `.codex/worktrees/*`) to the main repository.
 - **AIS-003.** The collector must keep sub-agent sessions as child sessions of their parent session.
 - **AIS-004.** The collector must redact the text (Section 2.5). It must not send tool output. It can send the tool name and the tool input, clipped to 2000 characters.
 - **AIS-005.** The hub must keep a maximum of 64 000 characters for each turn and mark a clipped turn.
-- **AIS-006.** The page must show: sessions by project and by day, the model, the duration, the counts, and a search in the prompts of the operator.
+- **AIS-006.** The page must show: sessions by repository and by day (by project when Projects is on), the model, the duration, the counts, and a search in the prompts of the operator.
 - **AIS-007.** Each session must be a timeline entry with the category "code".
-- **AIS-008.** The operator must be able to exclude a project or a folder. The collector must not read sessions from an excluded folder.
+- **AIS-008.** The operator must be able to exclude a repository or a folder. The collector must not read sessions from an excluded folder.
 
 ### 4.13 Wardrobe
 
@@ -673,7 +739,7 @@ A model that the operator tuned with Unsloth is a local model. A local model ser
 - **MGW-001.** The hub must serve two routes for model requests: one with the form of the Anthropic Messages API and one with the form of the OpenAI API. The routes must be available on the VPN only (SEC-008).
 - **MGW-002.** The hub must identify the caller by its VPN address and must find the device with that address. The hub must refuse a request from an address that is not a device of the operator. The caller sends no key of its own.
 - **MGW-003.** The hub must remove the placeholder key that a program sends and must add the key of the upstream. The key is a global secret (SCR-009). The hub must record the use (SCR-007).
-- **MGW-004.** A request can name a project in the header `X-Anima-Project`. Then the hub must use the project secret with the same name when the project has one (SCR-010).
+- **MGW-004.** When Projects is on, a request can name a project in the header `X-Anima-Project`. Then the hub must record the project with the use and must use the project secret with the same name when the project has one (SCR-010).
 - **MGW-005.** The hub must not send an upstream key to a caller. The key must not be in a log, an error or a metric (LOG-007).
 - **MGW-006.** The hub must send each part of a streamed answer to the caller when it arrives. It must not hold the answer until the end.
 - **MGW-007.** A model name has the form `<upstream>/<model>`, for example `openrouter/<model>` or `anthropic/<model>`. The hub selects the upstream from the first part. The operator can give a short name to a model.
@@ -687,6 +753,7 @@ A model that the operator tuned with Unsloth is a local model. A local model ser
 - **MGW-015.** `anima gateway setup` must set the gateway address and a placeholder key in the configuration of Claude Code and Codex on this computer. It must show each change before it writes it. The desktop application must offer the same function after the installation.
 - **MGW-016.** The function must have its commands and its MCP tools (CMD-030): list the upstreams and their state, show the use, show and set the budgets. No tool takes or returns a key (MCP-004).
 - **MGW-017.** The page must show: each upstream with its state, the use by device, by model and by day, the cost for the month, and each budget with the amount that is used.
+- **MGW-018.** The model gateway needs the Secrets extension (EXT-010), because each upstream key is a global secret. Thus a key has one store and the operator rotates it in one place (SCR-014).
 
 ## 5. Build order: engine first, then one workflow per extension
 
@@ -759,7 +826,7 @@ Each extension owns only its paths. It adds one line to each registry of the eng
 | ID | Issue | Extension | Section | Hub domain | Client | Other owned paths | Migrations | Tags |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | XP-01 | #12 | Map | 4.1 | `life/locations/` | `routes/map/`, `$lib/map/` | `providers/location/`, PMTiles and Photon in `deploy/` | 2100–2199 | — |
-| XP-02 | #13 | Projects | 4.2 | `work/projects/` | `routes/projects/`, `$lib/projects/` | `providers/{github,vercel,neon,hostinger,posthog}/` | 2200–2299 | security (tokens, PRJ-003) |
+| XP-02 | #13 | Projects | 4.2 | `work/projects/` | `routes/projects/`, `$lib/projects/` | `providers/{github,vercel,neon,hostinger,posthog}/` | 2200–2299 | security (tokens, PRJ-003; GitHub App key and write functions, PRJ-017 to PRJ-029) |
 | XP-03 | #14 | Writing | 4.3 | `work/writing/` | `routes/writing/`, `$lib/writing/` | `collector/obsidian/` | 2300–2399 | Part of E0 (ENG-010) |
 | XP-04 | #15 | Secrets | 4.4 | `vault/secrets/` | `routes/secrets/`, `$lib/secrets/` | `crates/anima-cli/` | 2400–2499 | security |
 | XP-05 | #16 | People | 4.6 | `life/people/` | `routes/people/`, `$lib/people/` | `collector/{contacts,imessage}/`, `providers/{instagram,x}/` | 2500–2599 | — |
@@ -785,7 +852,7 @@ Each extension owns only its paths. It adds one line to each registry of the eng
 | ID | The extension is done when |
 | --- | --- |
 | XP-01 | An OwnTracks or Overland fix and a Google Timeline export show as trails and visits. A gap shows as a dashed line. No tile request leaves the network. |
-| XP-02 | Each GitHub project shows its Vercel, Neon and Hostinger deployments with their state. A test proves that the clients of these services refuse a write request. PostHog and Vercel analytics show where they exist. |
+| XP-02 | With all other extensions off, each GitHub project shows its Vercel, Neon and Hostinger deployments with their state. A test proves that the clients of Vercel, Neon and Hostinger refuse a write request. The hub reads GitHub with an installation token of the App, and a test proves that the private key and the token are not in the database as plain text or in a log. Each GitHub change of OD-E14 works from the command line and is in the audit log. PostHog and Vercel analytics show where they exist. |
 | XP-03 | The operator writes, saves and restores a draft. A save from a second client with an old revision is refused. The Obsidian vault shows read-only. |
 | XP-04 | `anima run` gives secrets to a command and replaces a secret handle. `anima secrets read` writes a value to a pipe and refuses a terminal without `--reveal`. A project secret is used before a global secret with the same name. A test proves that the hub database has no plain text value. Each reveal, run and piped read is in the audit log. |
 | XP-05 | Contacts, iMessage, Instagram and X accounts of one person show as one person. A display name alone never joins two accounts. |
@@ -794,7 +861,7 @@ Each extension owns only its paths. It adds one line to each registry of the eng
 | XP-08 | Strava, WHOOP, Oura and Garmin data show as canonical metrics with the ranking applied. A lab report PDF gives confirmed lab results. |
 | XP-09 | A passport photo gives proposed fields from on-client extraction only. A test proves that the hub cannot read the image. Expiry reminders arrive. |
 | XP-10 | The operator makes a time, a place and a source-event rule, and each one arrives as a device notification. |
-| XP-11 | Claude Code and Codex sessions from two computers show under their projects. A known secret in a fixture session is redacted before it leaves the collector. |
+| XP-11 | Claude Code and Codex sessions from two computers show under their repositories, with Projects off. A known secret in a fixture session is redacted before it leaves the collector. |
 | XP-12 | A garment photo gives a cut-out and proposed fields. Moving 10 garments to a different place is one action. |
 | XP-13 | A barcode, a shelf photo, a Goodreads CSV and the Letterboxd RSS feed add books and films without duplicates. |
 | XP-14 | A project shows its design tokens from a repository file and a hand-drawn map with live state on linked nodes. |
@@ -855,6 +922,9 @@ crates/
 | OD-E10 | Price source for holdings that the source does not price | IBKR, Coinbase and Gemini give their own prices. For MetaMask tokens and the SimpleFIN holdings, select one free price API. |
 | OD-E11 | Path for a request to a local upstream (MGW-010). A program such as Claude Code has one base address, so it cannot select the path itself. | The `anima` program on each computer listens on the loopback address. It sends a request for a local upstream directly to the device on the VPN, sends all other requests to the hub, and reports the use to the hub. Not verified: the added work and the failure cases. Alternative: all requests go through the hub, and local requests are slower. |
 | OD-E12 | Secrets on the hub (VLT-007) | Decided: the hub seals and can open each secret. One class of secret with two scopes, global and project (SCR-009). Each read is in the audit log; a piped read refuses a terminal. No other limit. (operator, 2026-11-13) |
+| OD-E13 | Is Projects a part of the foundation? | Decided: no. The foundation is the device manager and the engine. Projects is an extension, off by default. Only the project design and map needs it; Secrets, the model gateway and AI coding sessions work with it (EXT-005, EXT-006, EXT-010). Community extensions come after the 15 extensions, sources first (EXT-009). (operator, 2026-11-13) |
+| OD-E14 | The first GitHub functions that make a change (PRJ-027) | Decided: make an issue, add a comment, close or open an issue, merge a pull request (also many in one action, PRJ-033), run a workflow again, run its failed jobs again, cancel a run, start a workflow by hand (PRJ-034, PRJ-035), write a commit status for a build of Anima (PRO-010, PRO-020 of the projects proposal). Add others one at a time when the operator needs them. (operator, 2026-11-13) |
+| OD-E15 | Where the webhook receiver runs (Section 2.12) | Decided: on the VPS, as a small separate program that is not the hub (WHK-009). It works where the hub runs and needs no other service. This changes SITE-006 ("the website is the only public part of Anima"). To open the port on the VPS needs the operator's confirmation at that time (VPS-005). (operator, 2026-11-13) |
 
 ## 8. Ideas taken from Auracle and HQ
 
@@ -874,11 +944,13 @@ Auracle and HQ serve many users and many sources. Anima serves one operator. Thi
 | HQ | Optimistic save with an expected revision, immutable history | WRT-003, WRT-004 |
 | HQ | Secret status values and rotation policies; compare with `.env.example` | SCR-003, SCR-005 |
 | HQ | `run` command that injects secrets into a command | SCR-006 |
+| HQ | A banner for a failed default branch, bulk merge with a result list, run controls, workflow start by hand, a list of items that need the operator, the "Synced" line | PRJ-031 to PRJ-036 |
+| HQ | GitHub App for reads, with a mirror that is also polled | PRJ-017, PRJ-019 |
 | HQ | Coding session import keyed by git remote, with worktree mapping | AIS-002 |
 | HQ | A provider failure shows as a stale value, not an error page | MON-009 |
 | HQ | Cache age by month: current month short, older months long | MON-004 |
 
-Auracle receives webhooks and uses a public OAuth callback. Anima cannot, because the hub is not on the public internet (SEC-008). SRC-020 and SRC-021 replace these methods.
+Auracle receives webhooks and uses a public OAuth callback on its server. The Anima hub is not on the public internet (SEC-008). Thus Anima uses the loopback redirect (SRC-020) and a separate webhook receiver (Section 2.12).
 
 ## 9. Services and keys
 
@@ -903,7 +975,7 @@ Anima is a personal application for one operator. Register each developer applic
 
 | Service | Where to register | What you get | Used by | Note |
 | --- | --- | --- | --- | --- |
-| GitHub | GitHub > Settings > Developer settings > OAuth Apps | Client ID, client secret | Projects, People | Free. Read scopes only. |
+| GitHub | GitHub > Settings > Developer settings > GitHub Apps > New GitHub App | App ID, installation ID, private key (`.pem` file), webhook secret | Projects, People | Free. Set the webhook URL to the address that Anima shows (WHK-008) and set a webhook secret. Select "Read and write" for each repository permission (PRJ-017). Select "Only on this account". Then install the App on your account for all repositories. The operator does these steps; Anima does not make the App. |
 | Strava | strava.com/settings/api | Client ID, client secret | Health, Map | Free. A new application allows one athlete, which is enough. Set the callback domain to `localhost`. |
 | WHOOP | developer.whoop.com (developer dashboard) | Client ID, client secret | Health | Free. Needs a WHOOP membership. |
 | Oura | cloud.ouraring.com > API applications | Client ID, client secret | Health | Free. Needs an Oura membership. Use OAuth, not a personal access token. |
