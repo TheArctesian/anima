@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
@@ -20,7 +21,7 @@
   import ChecksPanel from '../checks/ChecksPanel.svelte';
   import type { DeviceId } from '../device-id';
   import { Detail } from '../detail.svelte';
-  import Header from '../header/Header.svelte';
+  import DeviceBar from '../header/DeviceBar.svelte';
   import OverviewPanel from '../overview/OverviewPanel.svelte';
   import OverviewSkeleton from '../overview/OverviewSkeleton.svelte';
   import SessionsPanel from '../sessions/SessionsPanel.svelte';
@@ -58,7 +59,7 @@
   );
   const place = $derived(readPlace(page.url.searchParams));
   const device = $derived(detail.device);
-  const headerLoading = $derived(device === null && detail.error === null && !detail.missing);
+  const loading = $derived(device === null && detail.error === null && !detail.missing);
   const checksLoading = $derived(detail.checks === null && detail.checksError === null);
   const metricsSource = $derived(device?.metricsSource ?? null);
 
@@ -82,6 +83,11 @@
 
   $effect(() => {
     detail.showTab(place.tab);
+  });
+
+  // The bar says why a device is not up from its checks (D16), so they load on every tab while it is not.
+  $effect(() => {
+    if (device !== null && device.status !== 'UP') untrack(() => void detail.loadChecks());
   });
 
   $effect(() => {
@@ -124,12 +130,16 @@
   </div>
 {/snippet}
 
+{#snippet deviceTabs()}
+  <Tabs items={TAB_ITEMS} selected={place.tab} label="Device" idPrefix="device" onSelect={(tab) => { if (isTab(tab)) go({ tab, section: null, range: 'HOUR' }); }} />
+{/snippet}
+
 {#snippet overviewSkeleton()}
   <OverviewSkeleton range={place.range} source={metricsSource ?? 'NONE'} ssh={device?.ssh ?? null} {now} />
 {/snippet}
 
 <section class="detail">
-  <Header {device} loading={headerLoading} onConnect={connect} onOpenWeb={openWeb} {screenSharing} onSettings={settings} />
+  <DeviceBar {device} checks={detail.checks} onConnect={connect} onOpenWeb={openWeb} {screenSharing} onSettings={settings} tabs={device !== null || loading ? deviceTabs : undefined} />
   {#if page.state.credentialError !== undefined}
     <p class="notice" role="alert">
       The device was added, but its credential was not stored: {page.state.credentialError} Enter it again in Settings.
@@ -144,7 +154,6 @@
     </div>
   {:else if device !== null}
     <LiveNotice message={detail.liveError?.message ?? null} gap="end" />
-    <Tabs items={TAB_ITEMS} selected={place.tab} label="Device" idPrefix="device" onSelect={(tab) => { if (isTab(tab)) go({ tab, section: null, range: 'HOUR' }); }} />
     {#if place.tab === 'overview'}
       <TabPanel name="overview" loading={checksLoading} skeleton={overviewSkeleton}>
         {#if detail.checksError !== null}

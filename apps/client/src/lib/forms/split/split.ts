@@ -4,6 +4,8 @@ import type { IconName } from '$lib/icons/icons';
 export interface SplitChoice {
   readonly id: string;
   readonly label: string;
+  /** The accessible name when the label alone is too short: "RDP to nas" for "RDP". */
+  readonly spoken?: string;
   readonly icon?: IconName;
   /** A key the operator can press for it, shown at the end of the row (for example "⌘K"). */
   readonly shortcut?: string;

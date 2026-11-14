@@ -4,6 +4,7 @@
   import type { Pathname } from '$app/types';
   import Icon from '$lib/icons/Icon.svelte';
   import type { IconName } from '$lib/icons/icons';
+  import { sharedItem } from '$lib/motion/shared/shared';
   import { pageTitle } from './title';
 
   interface Props {
@@ -11,8 +12,13 @@
     back: { readonly to: Pathname; readonly label: string };
     /** The thing's kind or system, in the accent colour: a device type, a session's protocol. */
     icon: IconName;
-    /** The thing's name: the visible `h1`, and the window title "<title> – Anima" (NAV-010). */
-    title: string;
+    /**
+     * The thing's name: the visible `h1`, and the window title "<title> – Anima" (NAV-010). `null` while it loads, or
+     * when there is no such thing: only the back link shows, and a placeholder keeps the row's height (D-13, MOT-007).
+     */
+    title: string | null;
+    /** The key of the shared-element morph the name flies from, such as the list row's name (MOT-005). */
+    shared?: string | undefined;
     /** Status and identity beside the name: a status mark, a host in mono. Stays while the bar is pinned. */
     meta?: Snippet;
     /** The page's actions at the end of the row: Connect, a split button, an overflow menu. */
@@ -23,7 +29,7 @@
     tabs?: Snippet;
   }
 
-  const { back, icon, title, meta, actions, reason, tabs }: Props = $props();
+  const { back, icon, title, shared, meta, actions, reason, tabs }: Props = $props();
   let sentinel = $state<HTMLElement>();
   let stuck = $state(false);
 
@@ -40,7 +46,7 @@
   });
 </script>
 
-<svelte:head><title>{pageTitle(title)}</title></svelte:head>
+<svelte:head><title>{title === null ? 'Anima' : pageTitle(title)}</title></svelte:head>
 
 <div class="sentinel" aria-hidden="true" bind:this={sentinel}></div>
 <!-- The detail bar (UR-7, D16): every detail page's header. The list it came from, the thing's icon and name, its
@@ -49,9 +55,13 @@
   <div class="top">
     <nav class="crumb" aria-label="Breadcrumb">
       <a href={resolve(back.to)}>{back.label}</a>
-      <span class="slash" aria-hidden="true">/</span>
-      <span class="mark"><Icon name={icon} size="md" /></span>
-      <h1>{title}</h1>
+      {#if title === null}
+        <span class="placeholder" aria-hidden="true"></span>
+      {:else}
+        <span class="slash" aria-hidden="true">/</span>
+        <span class="mark"><Icon name={icon} size="md" /></span>
+        <h1 {title} {@attach shared === undefined ? undefined : sharedItem(shared)}>{title}</h1>
+      {/if}
     </nav>
     {#if meta}<div class="meta">{@render meta()}</div>{/if}
     {#if actions}<div class="actions">{@render actions()}</div>{/if}
@@ -74,7 +84,7 @@
     z-index: var(--layer-sticky);
     display: flex;
     flex-direction: column;
-    margin: calc(var(--space-3) * -1) calc(var(--page-gutter, var(--space-6)) * -1) 0;
+    margin: calc(var(--space-3) * -1) calc(var(--page-gutter, var(--space-6)) * -1) var(--space-4);
     padding: var(--space-3) var(--page-gutter, var(--space-6)) 0;
     border-block-end: var(--border-thin) solid var(--border-subtle);
     background: var(--surface-base);
@@ -89,7 +99,9 @@
     padding-block-end: var(--space-3);
   }
 
+  /* A container, so an action can fit its words to the bar's width, as "Set up screen sharing" does (R-079). */
   .top {
+    container-type: inline-size;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -127,6 +139,11 @@
   .mark {
     display: inline-flex;
     color: var(--accent);
+  }
+
+  /* The name's place while it loads: as tall as the name, and empty, so nothing flashes (D-13, MOT-007). */
+  .placeholder {
+    block-size: calc(var(--text-xl) * var(--leading-tight));
   }
 
   h1 {
@@ -188,6 +205,12 @@
 
   .tabs {
     margin-block-start: var(--space-3);
+  }
+
+  /* The strip sits on the bar's own rule: its underline and gap give way, and the selected tab's line overlaps the rule. */
+  .tabs > :global(*) {
+    margin-block-end: calc(var(--border-thin) * -1);
+    box-shadow: none;
   }
 
   @media (prefers-reduced-motion: reduce) {

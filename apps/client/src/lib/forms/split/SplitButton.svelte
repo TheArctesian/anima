@@ -10,6 +10,8 @@
   interface Props {
     /** The main action's words, and its icon (UI-026). */
     label: string;
+    /** The main button's accessible name when its words alone are too short: "SSH to nas" for "SSH". */
+    mainLabel?: string | undefined;
     icon?: IconName | undefined;
     /** The other ways to do it, in the menu behind the chevron. */
     choices: readonly SplitChoice[];
@@ -20,7 +22,7 @@
     onChoose: (choice: SplitChoice, button: HTMLElement) => void;
   }
 
-  const { label, icon, choices, menuLabel, tone = 'secondary', onMain, onChoose }: Props = $props();
+  const { label, mainLabel, icon, choices, menuLabel, tone = 'secondary', onMain, onChoose }: Props = $props();
   const id = $props.id();
   let open = $state(false);
   let root: HTMLElement | undefined;
@@ -74,7 +76,7 @@
 
 <!-- A split button (UR-7, D16): the usual action, and a chevron for the other ways to do it. -->
 <span class="split {tone}" bind:this={root}>
-  <button type="button" class="main" tabindex="0" onclick={(event) => { onMain(event.currentTarget); }} {@attach press()}>
+  <button type="button" class="main" tabindex="0" aria-label={mainLabel} onclick={(event) => { onMain(event.currentTarget); }} {@attach press()}>
     {#if icon !== undefined}<Icon name={icon} size="sm" />{/if}{label}
   </button>
   <button
@@ -98,7 +100,7 @@
   {#if open}
     <div class="menu" id="{id}-menu" role="menu" aria-label={menuLabel} tabindex="-1" onkeydown={onMenuKey} transition:popover={{ from: chevron }} {@attach place}>
       {#each choices as choice, index (choice.id)}
-        <button type="button" role="menuitem" tabindex="-1" bind:this={items[index]} onclick={() => { choose(choice); }}>
+        <button type="button" role="menuitem" tabindex="-1" aria-label={choice.spoken} bind:this={items[index]} onclick={() => { choose(choice); }}>
           {#if choice.icon !== undefined}<Icon name={choice.icon} size="sm" />{/if}
           <span class="words">{choice.label}</span>
           {#if choice.shortcut !== undefined}<kbd>{choice.shortcut}</kbd>{/if}

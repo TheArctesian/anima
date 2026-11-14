@@ -54,3 +54,12 @@ it('UR-7: once the bar pins, the folded reason leaves the tab order, and comes b
   flushSync();
   expect(inert()).toBe(false);
 });
+
+it('D-13, MOT-007: with no title yet the bar holds only the back link and a hidden placeholder, and no heading', () => {
+  app = mount(DetailBar, { target: document.body, props: { back: { to: '/devices', label: 'Devices' }, icon: 'carbon:bare-metal-server', title: null } });
+  flushSync();
+  expect(document.querySelector('h1')).toBeNull();
+  expect(document.querySelector('nav')?.textContent.trim()).toBe('Devices');
+  expect(document.querySelector('.placeholder')?.getAttribute('aria-hidden')).toBe('true');
+  expect(document.title).toBe('Anima');
+});
