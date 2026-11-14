@@ -27,6 +27,7 @@ use anima_hub::{
     },
     schema::Dependencies,
     serve_until,
+    work::projects,
 };
 use sqlx::PgPool;
 
@@ -162,7 +163,7 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
     let bus = Bus::new(BUS_CAPACITY);
     let feed = metrics::Feed::new();
     // The sources reach only their declared API bases, through the same deny list (K-E1).
-    let sources = anima_hub::source_reach(Vec::new(), policy.clone())?;
+    let sources = anima_hub::source_reach(vec![projects::intake()], policy.clone())?;
     let dependencies = Dependencies {
         vpn_broker: config.vpn_broker.clone().map(vpn::Broker::new),
         config,

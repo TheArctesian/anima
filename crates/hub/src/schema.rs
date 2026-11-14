@@ -26,6 +26,7 @@ use crate::{
         targets::AddressPolicy,
         trust, vpn, web_interfaces,
     },
+    work::projects,
 };
 
 // One line per domain in each root (K3).
@@ -39,6 +40,7 @@ pub struct Query(
     extensions::graphql::Query,
     maintenance::graphql::Query,
     notifications::graphql::Query,
+    projects::graphql::Query,
     retention::graphql::Query,
     sessions::graphql::Query,
     sources::graphql::Query,
@@ -56,6 +58,7 @@ pub struct Mutation(
     maintenance::graphql::Mutation,
     metrics::graphql::Mutation,
     notifications::graphql::Mutation,
+    projects::graphql::Mutation,
     retention::graphql::Mutation,
     sessions::graphql::Mutation,
     sessions::FilesMutation,

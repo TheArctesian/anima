@@ -1,4 +1,4 @@
-//! `anima project list`: the projects, newest read first, with pages (CMD-026).
+//! `anima project list`: the projects, by name, with pages (CMD-026).
 
 use super::documents::{ProjectList, project_list};
 use super::render;
@@ -9,7 +9,7 @@ use crate::paging::{CommandLine, MAX_PAGE, fetch, note_next, page_size};
 
 #[derive(Debug, clap::Args)]
 pub struct ListArgs {
-    /// Only the projects that have a repository you left out.
+    /// Only the projects whose repositories are all left out.
     #[arg(long)]
     left_out: bool,
     /// Projects per page, 1 to 200.

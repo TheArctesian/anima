@@ -63,6 +63,8 @@ base64.workspace = true
 graphql-parser.workspace = true
 # The end-to-end suite's authenticator app (RFC 6238) and SSH device with its `sftp` subsystem.
 hmac.workspace = true
+# A throwaway GitHub App key for the end-to-end Projects flow, made in the test; never a key file.
+rsa = { version = "0.9", features = ["getrandom"] }
 russh.workspace = true
 russh-sftp.workspace = true
 sha1.workspace = true

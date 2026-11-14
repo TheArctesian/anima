@@ -8,7 +8,8 @@ mod failures;
 mod intake;
 mod leaks;
 mod runs;
-mod stub;
+/// The loopback GitHub; the Projects tests script it with GitHub's own replies.
+pub mod stub;
 mod transport;
 
 use std::sync::{Arc, LazyLock};

@@ -14,6 +14,7 @@ pub mod schema;
 pub mod status;
 pub mod text;
 pub mod web_client;
+pub mod work;
 
 use std::{future::Future, path::Path, sync::Arc, time::Duration};
 

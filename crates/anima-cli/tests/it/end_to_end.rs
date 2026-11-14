@@ -10,6 +10,7 @@ mod devices;
 mod keys;
 mod mcp;
 mod paging;
+mod projects;
 mod sessions;
 mod sign_in;
 mod watch;
