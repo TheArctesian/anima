@@ -10,6 +10,7 @@ mod credentials;
 mod devices;
 mod edge;
 mod events;
+mod extensions;
 mod graphql;
 mod hub;
 mod listening;

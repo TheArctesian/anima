@@ -1646,18 +1646,18 @@ type BuildUploadHeader {
 # ---------------------------------------------------------------- extensions (E0-8, K-E7)
 # Operator, 2026-11-13; ruling number to be assigned. Pending until the hub serves it.
 
-enum DataClass @pending { A B C }
+enum DataClass { A B C }
 
-enum NavigationGroup @pending { INFRASTRUCTURE LIFE BELONGINGS VAULT WORK BOTTOM }
+enum NavigationGroup { INFRASTRUCTURE LIFE BELONGINGS VAULT WORK BOTTOM }
 
-type NavigationEntry @pending {
+type NavigationEntry {
   group: NavigationGroup!
   label: String!
   "A client route, for example /projects."
   route: String!
 }
 
-type Extension @pending {
+type Extension {
   "Stable identifier, for example projects."
   key: String!
   name: String!
@@ -1860,7 +1860,7 @@ type Query {
 
   # Engine and Projects (operator, 2026-11-13; ruling number to be assigned; K-E7, K-E1, XP-02)
   "All 15, in the order of the plan."
-  extensions: [Extension!]! @pending
+  extensions: [Extension!]!
   sources: [Source!]! @pending
   sourceAccounts(sourceKey: String): [SourceAccount!]! @pending
   "By name. leftOut true: only projects whose repositories are all left out. CONFLICT while Projects is off."
@@ -1981,8 +1981,8 @@ type Mutation {
   approveSiteRoute(siteId: ID!): Boolean!
 
   # Engine and Projects (operator, 2026-11-13; ruling number to be assigned; K-E7, K-E1, XP-02)
-  "On also sets on each extension it needs (EXT-011). Off is refused with CONFLICT while an extension that is on needs it; extensions.neededBy names it (EXT-012). Off keeps every record (EXT-003). Returns each extension whose switch changed, the named one first; empty when nothing changed. Closed to API keys: login or browser token only. The task that adds this root to API_KEY_REFUSED_ROOTS restores the standard words (key_roots.rs)."
-  setExtension(key: String!, on: Boolean!): [Extension!]! @pending
+  "On also sets on each extension it needs (EXT-011). Off is refused with CONFLICT while an extension that is on needs it; extensions.neededBy names it (EXT-012). Off keeps every record (EXT-003). Returns each extension whose switch changed, the named one first; empty when nothing changed. Login or browser token only (D-23, R-100)."
+  setExtension(key: String!, on: Boolean!): [Extension!]!
   "Checks the key with GitHub before it stores it; UNAVAILABLE when GitHub cannot be reached, VALIDATION when GitHub refuses the key. The same App ID and installation ID again replaces the stored key and keeps the account and its records. Closed to API keys: login or browser token only. The task that adds this root to API_KEY_REFUSED_ROOTS restores the standard words (key_roots.rs)."
   connectGithubApp(input: GithubAppInput!): SourceAccount! @pending
   "Starts a sync now and returns at once. CONFLICT while the account is paused or no extension that uses it is on. A sync that already runs is not started twice."
