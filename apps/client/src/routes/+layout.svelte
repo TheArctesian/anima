@@ -4,6 +4,8 @@
   import '../styles/global.css';
   import { guardStart, showsSignedOutPage, startAt } from '$lib/access/navigation';
   import { provideDesktopBuilder } from '$lib/builds/desktop.svelte';
+  import { extensionsApi } from '$lib/extensions/api';
+  import { ExtensionsStore, provideExtensions } from '$lib/extensions/store.svelte';
   import { provideHub } from '$lib/hub/context';
   import { readAccessToken } from '$lib/desktop/token';
   import { createHub, type HubAddress } from '$lib/hub/hub';
@@ -75,6 +77,12 @@
     const hub = createHub({ address, token: readAccessToken });
     provideHub(hub);
     guardStart(page.url, hub);
+    // Which extensions are on decides the bar's entries and Settings (EXT-002); read once signed in.
+    const extensions = new ExtensionsStore(extensionsApi(hub));
+    provideExtensions(extensions);
+    $effect(() => {
+      if (!showsSignedOutPage(page.url)) void extensions.ensureLoaded();
+    });
     const clock = createClock(DATA_AGE_REFRESH_MS);
     provideDesktopUpdates();
     // A computer enrolled as a builder builds while the app runs (BLD-026).
@@ -131,7 +139,7 @@
       });
     });
 
-    return { api, clock, sessions, navigate };
+    return { api, clock, sessions, navigate, extensions };
   }
 </script>
 
@@ -142,12 +150,13 @@
     <main>{@render children()}</main>
   </div>
 {:else if shell !== null}
-  {@const { api, clock, sessions, navigate } = shell}
+  {@const { api, clock, sessions, navigate, extensions } = shell}
   <div class="shell">
     <Nav
       pathname={page.url.pathname}
       now={clock.current}
       onnavigate={navigate}
+      projectsOn={extensions.isOn('projects')}
       iconOnly={nav.iconOnly}
       {collapsed}
       canCollapse={!nav.compact}

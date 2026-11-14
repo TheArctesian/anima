@@ -9,7 +9,7 @@
   import { capabilities } from '$lib/platform/platform';
   import { fade } from '$lib/motion/roles/transitions';
   import { watchHubBanner } from './banner-shift';
-  import { BUILDS, DEVICES, SETTINGS, isActive, statusLabel, unreachableBanner, type NavDestination } from './nav';
+  import { BUILDS, DEVICES, PROJECTS, SETTINGS, isActive, statusLabel, unreachableBanner, type NavDestination } from './nav';
 
   interface Props {
     /** The current route, for the active item. */
@@ -18,6 +18,8 @@
     now: Date;
     /** Called when the operator picks a destination, even the current page (it leaves a session tab). */
     onnavigate?: () => void;
+    /** The Projects extension is on: its entry shows, and only then (EXT-002). */
+    projectsOn?: boolean;
     /** The bar shows icons only, so each item needs its words as a tooltip (UI-015). */
     iconOnly?: boolean;
     /** The operator collapsed the bar to icons. */
@@ -29,7 +31,7 @@
     oncollapse?: (collapsed: boolean) => void;
   }
 
-  const { pathname, now, onnavigate, iconOnly = false, collapsed = false, canCollapse = false, ontogglecollapse, oncollapse }: Props =
+  const { pathname, now, onnavigate, projectsOn = false, iconOnly = false, collapsed = false, canCollapse = false, ontogglecollapse, oncollapse }: Props =
     $props();
   const hub = useHub();
   // The Builds item is a desktop app item: a browser has no builder (BLD-080).
@@ -74,6 +76,9 @@
   </div>
   {@render destination(DEVICES)}
   <LiveSessions {hub} {iconOnly} />
+  {#if projectsOn}
+    {@render destination(PROJECTS)}
+  {/if}
   {#if builds}
     {@render destination(BUILDS)}
   {/if}
