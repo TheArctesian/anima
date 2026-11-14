@@ -1,6 +1,7 @@
 //! PRJ-018, LOG-007: after a connect, syncs and their failures, neither the App key, the App
 //! token (the JWT a mint is signed in with) nor an installation token is in any table, any
 //! process log line, any audit entry, any GraphQL answer or any `sourceAccountChanged` payload.
+//! PRJ-039: the secrets and the key in a conversion reply are in no log line and no error.
 
 use std::{sync::Arc, time::Duration};
 
@@ -21,7 +22,12 @@ use chrono::TimeDelta;
 use serde_json::json;
 use sqlx::PgPool;
 
-use super::{CONNECT, Kit, TEST_KEY, input, kit, set_projects, stub::Reply};
+use super::{
+    CONNECT, Kit, TEST_KEY,
+    conversion::{self, CODE, CONVERTED, PATH, converting},
+    input, kit, set_projects,
+    stub::Reply,
+};
 use crate::{
     hub::{dependencies, start},
     logs::Capture,
@@ -160,6 +166,57 @@ async fn prj_018_log_007_the_key_and_token_are_nowhere_after_connect_and_sync(po
     {
         for (what, needle) in &needles {
             assert!(!text.contains(needle), "{what} is in {place}");
+        }
+    }
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn prj_039_log_007_the_conversion_reply_secrets_are_in_no_log_or_error(pool: PgPool) {
+    let capture = Capture::default();
+    let writer = capture.clone();
+    let subscriber = process_log::subscriber("trace", move || writer.clone()).unwrap();
+    let _default = tracing::subscriber::set_default(subscriber);
+    tracing::callsite::rebuild_interest_cache();
+
+    let (stub, transport) = conversion::stub(&pool).await;
+    let unreadable = CONVERTED.replace("\"slug\"", "\"name_\"");
+    let mut texts = Vec::new();
+    for (status, body) in [
+        (201, CONVERTED),
+        (201, unreadable.as_str()),
+        (200, CONVERTED),
+        (400, CONVERTED),
+        (429, CONVERTED),
+        (502, CONVERTED),
+    ] {
+        stub.reply(
+            PATH,
+            conversion::reply(status, &[("retry-after", "1")], body),
+        );
+        match converting(&transport, CODE).await {
+            Ok(app) => texts.push(format!("{} {} {}", app.app_id, app.slug, app.owner.login)),
+            Err(failure) => texts.push(format!("{failure} {failure:?}")),
+        }
+    }
+    let marked = converting(&transport, "a/CLIENT-SECRET-MARKER-0000").await;
+    texts.extend(marked.err().map(|failure| format!("{failure} {failure:?}")));
+    assert_eq!(texts.len(), 7, "every outcome was read");
+    assert_eq!(
+        stub.paths().len(),
+        7,
+        "six replies, one of them tried twice"
+    );
+
+    let log = capture.text();
+    for needle in [
+        "CLIENT-SECRET-MARKER-0000",
+        "WEBHOOK-SECRET-MARKER-1111",
+        "PEM-MARKER-2222",
+        "PRIVATE KEY",
+    ] {
+        assert!(!log.contains(needle), "{needle} is in the log");
+        for text in &texts {
+            assert!(!text.contains(needle), "{needle} is in {text}");
         }
     }
 }

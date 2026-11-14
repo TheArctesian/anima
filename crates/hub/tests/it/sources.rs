@@ -4,7 +4,9 @@
 mod changes;
 mod connect;
 mod controls;
+mod conversion;
 mod failures;
+mod installations;
 mod intake;
 mod leaks;
 mod runs;

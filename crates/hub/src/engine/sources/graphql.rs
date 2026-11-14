@@ -5,7 +5,6 @@
 //! (D-23). A key never reaches a log, an audit entry, an event or an error (PRJ-018).
 
 mod changes;
-mod trail;
 mod views;
 
 use std::sync::Arc;
@@ -17,10 +16,10 @@ pub use self::changes::Subscription;
 use self::views::{AccountView, Seen, SourceView, accounts};
 use super::{
     Error, Reach, Scheduling,
-    connect::{self, Connection},
+    connect::{Connection, establish},
     controls,
     model::{Account, Trigger},
-    run, store,
+    run, store, trail,
 };
 use crate::{
     api_errors::{FieldError, begin, commit, internal, invalid, pool, schema_dependency},
@@ -33,9 +32,6 @@ use crate::{
     },
     ids::SourceAccountId,
 };
-
-/// The source `connectGithubApp` connects.
-const GITHUB: &str = "github";
 
 /// The parts a run needs, from the schema data.
 fn scheduling(ctx: &Context<'_>) -> Result<Scheduling> {
@@ -183,48 +179,9 @@ impl Mutation {
             installation_id: input.installation_id,
             private_key: Zeroizing::new(input.private_key),
         };
-        let checked = connect::check(&input).map_err(failed)?;
-        let declaration = *s
-            .registry
-            .declaration(GITHUB)
-            .ok_or_else(|| failed(Error::UnknownSource))?;
-        let ticket = s.transport.tokens().ticket();
-        let minted = connect::prove(&s.transport, &declaration, &checked.key, s.clock.now())
-            .await
-            .map_err(failed)?;
         let trail = Trail::from_context(ctx)?;
-        let mut tx = begin(ctx).await?;
-        let (id, created) = connect::store(
-            &mut tx,
-            &s.vault,
-            (&declaration, &checked, &input),
-            trail.now,
-        )
-        .await
-        .map_err(failed)?;
-        let instance_key = checked.key.instance_key();
-        let named = (
-            declaration.key,
-            checked.label.as_str(),
-            instance_key.as_str(),
-        );
-        trail
-            .write(&mut tx, trail::connected(id, named, created))
-            .await
-            .map_err(internal)?;
-        commit(tx).await?;
-        drop(input);
-        s.feed.publish(id);
-        let (shown, consumer_on) = seen(&s, stored(&s, id).await?).await?;
-        // The proving token is kept only for the run that uses it now; otherwise it is
-        // dropped here and the first run mints its own (PRJ-018).
-        if consumer_on {
-            drop(s.transport.tokens().keep(id, minted, ticket));
-            start(s, id, Trigger::Connect);
-        } else {
-            drop(minted);
-        }
-        Ok(shown)
+        let established = establish(&s, trail, input).await.map_err(failed)?;
+        view(&s, established.id).await
     }
 
     /// Starts a sync now and returns at once. `CONFLICT` while paused or while no consumer is

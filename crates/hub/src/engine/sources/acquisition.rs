@@ -1,7 +1,10 @@
 //! How the hub gets a token for a source and sends requests with it (SRC-002, PRJ-018, K-E1
-//! Section 7). Only the token pull with an App key is built.
+//! Section 7). Only the token pull with an App key is built, and the reads that let the hub
+//! make that App for the operator (PRJ-039).
 
 pub mod app_key;
+pub mod conversion;
+pub mod installations;
 pub mod stored_key;
 pub mod tokens;
 pub mod transport;
@@ -9,7 +12,7 @@ pub mod verdict;
 
 use chrono::{DateTime, Utc};
 use ring::rand::SecureRandom;
-use source_exchange::{Acquisition, Declaration, Minted, Minting, Request};
+use source_exchange::{Acquisition, Declaration, Minted, Minting, Registration, Request};
 
 use self::{
     app_key::AppKey,
@@ -34,6 +37,15 @@ pub enum MintFailure {
     NotAppKey,
     #[error("the App token could not be signed")]
     Unsigned,
+}
+
+/// How the source of `declaration` makes an App for the operator; `None` when it cannot.
+fn registration(declaration: &Declaration) -> Option<Registration> {
+    // Acquisition and Minting are non_exhaustive: a later variant has no App to make.
+    let Acquisition::TokenPull(Minting::AppKey(app)) = declaration.acquisition else {
+        return None;
+    };
+    app.registration
 }
 
 /// Mints an installation token for `key` at the source of `declaration`, at `now`.
