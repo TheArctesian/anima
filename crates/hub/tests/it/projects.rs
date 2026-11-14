@@ -59,10 +59,15 @@ impl Kit {
     /// Connects the test App with Projects off, so no run starts on its own; then sets
     /// Projects on. Returns the account id.
     pub async fn connect(&self) -> SourceAccountId {
-        let response = self
-            .hub
-            .post(Some(&self.token), CONNECT, input(&TEST_KEY))
-            .await;
+        self.connect_installation("77").await
+    }
+
+    /// As [`Kit::connect`], for the installation `installation` of the test App: a second
+    /// installation is a second account that lists the same repositories from the stub.
+    pub async fn connect_installation(&self, installation: &str) -> SourceAccountId {
+        let mut variables = input(&TEST_KEY);
+        variables["input"]["installationId"] = json!(installation);
+        let response = self.hub.post(Some(&self.token), CONNECT, variables).await;
         let id = response["data"]["connectGithubApp"]["id"]
             .as_str()
             .unwrap_or_else(|| panic!("connect failed: {response}"))

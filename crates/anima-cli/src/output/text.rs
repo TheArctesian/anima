@@ -2,6 +2,8 @@
 //! characters could move the cursor, rewrite earlier lines or set the window title, and
 //! invisible characters could carry text that a person cannot see but an agent reads.
 
+use std::fmt::Write as _;
+
 /// `text` with every control character (escape sequences, line breaks, tabs) and the line and
 /// paragraph separators as a space; the invisible characters (format characters, private use,
 /// noncharacters) removed. Ordinary non-ASCII text stays.
@@ -17,6 +19,27 @@ pub fn clean(text: &str) -> String {
             }
         })
         .collect()
+}
+
+/// `json` with DEL, the C1 controls, the line and paragraph separators and every invisible
+/// character written as `\uXXXX`: the same JSON value, but nothing in it can drive a terminal
+/// or hide text. Only for JSON `serde_json` wrote: it escapes the C0 controls in strings, and
+/// these characters can stand nowhere but in a string, so the layout's line breaks stay.
+#[must_use]
+pub fn json_for_terminal(json: &str) -> String {
+    let mut shown = String::with_capacity(json.len());
+    for character in json.chars() {
+        if matches!(character, '\u{7F}'..='\u{9F}' | '\u{2028}' | '\u{2029}')
+            || is_invisible(character)
+        {
+            for unit in character.encode_utf16(&mut [0; 2]) {
+                let _ = write!(shown, "\\u{unit:04x}");
+            }
+        } else {
+            shown.push(character);
+        }
+    }
+    shown
 }
 
 /// `text` cleaned line by line: line breaks stay, every other control character goes.

@@ -1988,7 +1988,7 @@ type Mutation {
   "Starts a sync now and returns at once. CONFLICT while the account is paused or no extension that uses it is on. A sync that already runs is not started twice."
   syncSourceAccount(id: ID!): SourceAccount!
   setSourceAccountPaused(id: ID!, paused: Boolean!): SourceAccount!
-  "Deletes the account and its stored key. deleteRecords false keeps what it imported (ITG-004). Returns the ID. Login or browser token only (D-23, R-100)."
+  "Deletes the account and its stored key. deleteRecords false keeps what it imported (ITG-004). deleteRecords true deletes what it imported, except the operator's decisions: a repository left out (PRO-002) or one whose project holds a confirmed resource (PRO-004) is kept without an account, and the account that lists it next adopts it as it is. Returns the ID. Login or browser token only (D-23, R-100)."
   removeSourceAccount(id: ID!, deleteRecords: Boolean!): ID!
   "By the repository's ID (ProjectRepository.id). The hub does not import or read the repository again until it is restored, and its proposed resources are withdrawn (PRO-002). No change when it is already left out. Returns its project. NOT_FOUND for an unknown ID; CONFLICT while Projects is off."
   leaveOutRepository(id: ID!): Project!

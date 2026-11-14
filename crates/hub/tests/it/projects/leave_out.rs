@@ -139,6 +139,59 @@ async fn pro_002_restore_brings_the_proposals_back_and_reads_the_files_again(poo
     assert_eq!(slugs(&kit.projects(false).await), ["blog", "site"]);
 }
 
+/// Waits until a session of this test's database waits for a row lock.
+async fn lock_waiter(pool: &PgPool) {
+    for _ in 0..500 {
+        let waiting: i64 = sqlx::query_scalar(
+            "SELECT count(*) FROM pg_stat_activity \
+             WHERE datname = current_database() AND wait_event_type = 'Lock'",
+        )
+        .fetch_one(pool)
+        .await
+        .unwrap();
+        if waiting > 0 {
+            return;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+    }
+    panic!("the restore never waited for the account row");
+}
+
+/// A sync page locks the account row and then the repository row; a restore takes them in
+/// the same order, so the two never deadlock: the restore waits and then completes.
+#[sqlx::test(migrations = "./migrations")]
+async fn pro_002_a_restore_during_a_sync_page_waits_and_never_deadlocks(pool: PgPool) {
+    let kit = kit(&pool).await;
+    let (id, repository) = imported(&kit).await;
+    kit.leave_out(&repository, true).await;
+    let mut page = pool.begin().await.unwrap();
+    // As the engine's `lock_claim` does.
+    sqlx::query("SELECT paused_at IS NOT NULL FROM sources.accounts WHERE id = $1 FOR UPDATE")
+        .bind(id)
+        .execute(&mut *page)
+        .await
+        .unwrap();
+    let (waiter, row) = (pool.clone(), repository.clone());
+    let held = async move {
+        lock_waiter(&waiter).await;
+        // As the intake's `store::known` does.
+        let locked =
+            sqlx::query("SELECT 1 FROM projects.repositories WHERE id = $1::uuid FOR UPDATE")
+                .bind(row)
+                .execute(&mut *page)
+                .await;
+        (locked.map(drop), page.commit().await)
+    };
+    let (restored, (locked, committed)) = tokio::join!(kit.leave_out(&repository, false), held);
+    locked.expect("the page locks the repository");
+    committed.expect("the page commits");
+    assert!(restored["errors"].is_null(), "{restored}");
+    assert_eq!(
+        restored["data"]["restoreRepository"]["repositories"][0]["leftOut"],
+        false
+    );
+}
+
 async fn audits(pool: &PgPool) -> Vec<Value> {
     sqlx::query_scalar(
         "SELECT to_jsonb(t) FROM events.audit_log t WHERE target_type = 'project' ORDER BY at, id",

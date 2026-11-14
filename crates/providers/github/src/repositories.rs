@@ -44,7 +44,33 @@ struct Entry {
     pushed_at: Option<DateTime<Utc>>,
 }
 
+/// `text` without U+0000, which no PostgreSQL text or JSON value can hold.
+fn nul_free(text: String) -> String {
+    if text.contains('\0') {
+        text.replace('\0', "")
+    } else {
+        text
+    }
+}
+
+/// `value` with U+0000 taken out of every string and key, and nothing else changed, so one
+/// entry cannot make its page fail to store. The parser's depth limit bounds the recursion.
+fn without_nul(value: Value) -> Value {
+    match value {
+        Value::String(text) => Value::String(nul_free(text)),
+        Value::Array(items) => Value::Array(items.into_iter().map(without_nul).collect()),
+        Value::Object(fields) => Value::Object(
+            fields
+                .into_iter()
+                .map(|(key, value)| (nul_free(key), without_nul(value)))
+                .collect(),
+        ),
+        other => other,
+    }
+}
+
 fn to_repository(original: Value) -> Option<Repository> {
+    let original = without_nul(original);
     let entry = Entry::deserialize(&original).ok()?;
     Some(Repository {
         external_id: entry.id.to_string(),
