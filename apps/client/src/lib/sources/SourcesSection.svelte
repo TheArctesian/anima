@@ -8,6 +8,8 @@
   import DisconnectDialog from './accounts/DisconnectDialog.svelte';
   import { sourcesApi } from './api';
   import ConnectGithubDialog from './connect/ConnectGithubDialog.svelte';
+  import GithubConnect from './connect/GithubConnect.svelte';
+  import type { LinkOpening } from './connect/browser';
   import { SourcesStore, type AccountRow as Account } from './store.svelte';
 
   // The Settings page draws the section and its heading; these are its rows (ITG-001). The operator makes the GitHub App
@@ -15,9 +17,11 @@
   interface Props {
     /** The clock for "Synced 4 min ago"; tests pass their own. */
     now?: () => Date;
+    /** Makes the opening for the one-time GitHub link, inside the click; tests pass their own. */
+    opener?: () => LinkOpening;
   }
 
-  const { now = () => new Date() }: Props = $props();
+  const { now = () => new Date(), opener }: Props = $props();
   // The hub is fixed for the life of the section.
   const store = untrack(() => new SourcesStore(sourcesApi(useHub())));
   let connecting = $state(false);
@@ -39,14 +43,16 @@
 
 <SettingRow label="GitHub">
   {#snippet hint()}
-    <p class="hint">Reads your repositories through a GitHub App that you make in your own account. Anima does not make it.</p>
+    <p class="hint">Anima makes a GitHub App in your own account and keeps its key in the hub. You press Create and Install on GitHub.</p>
   {/snippet}
+  <GithubConnect {opener} />
   <FormButton
+    tone="ghost"
     onclick={() => {
       connecting = true;
     }}
   >
-    Connect GitHub
+    Connect with a key file instead
   </FormButton>
 </SettingRow>
 

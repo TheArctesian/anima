@@ -1,6 +1,10 @@
 import type { TypedDocumentNode } from '@graphql-typed-document-node/core';
 import type { Hub, HubError, HubResult } from '$lib/hub/hub';
 import type { SourceAccount, SyncRun } from './api';
+import type { ConnectAttempt } from './connect/api';
+import { attempt, connectAnswer } from './connect/connect.fixture';
+
+export { attempt };
 
 // Test support: source accounts in the hub's shape and a hub that answers the source calls from memory. The hub does not
 // serve these fields yet (K-E1 is pending), so the section's tests run against this one.
@@ -46,24 +50,40 @@ export interface FakeHub extends Pick<Hub, 'request' | 'subscribe'> {
   refuse: HubError | null;
   /** Hands an event to every open `sourceAccountChanged` subscription. */
   emit(account: SourceAccount): void;
+  /** The GitHub connection the hub holds; `githubConnect` answers it and `startGithubConnect` sets it. */
+  connect: ConnectAttempt | null;
+  /** The one-time link `openGithubConnect` answers. */
+  link: string;
+  /** Hands an attempt to every open `githubConnectChanged` subscription. */
+  emitAttempt(attempt: ConnectAttempt): void;
 }
 
 /** A hub with one GitHub source that lists `start`, applies the account calls and sends `sourceAccountChanged`. */
 export function fakeHub(start: readonly SourceAccount[]): FakeHub {
   let accounts = [...start];
   const sinks = new Set<{ next(value: unknown): void }>();
+  const attemptSinks = new Set<{ next(value: unknown): void }>();
   const answer = <T>(value: unknown): Promise<HubResult<T>> => Promise.resolve({ ok: true, value } as HubResult<T>);
   const hub: FakeHub = {
     sent: [],
     refuse: null,
+    connect: null,
+    link: 'https://hub.example/connect/github?ticket=ONE-TIME-TICKET',
+    emitAttempt: (changed) => {
+      hub.connect = changed;
+      for (const sink of attemptSinks) sink.next({ githubConnectChanged: changed });
+    },
     emit: (changed) => {
       for (const sink of sinks) sink.next({ sourceAccountChanged: changed });
     },
     request: <TResult, TVariables extends Record<string, unknown>>(document: TypedDocumentNode<TResult, TVariables>, variables: TVariables) => {
       const operation = (document.definitions[0] as { name?: { value: string } }).name?.value ?? '';
       if (operation === 'Sources') return answer<TResult>({ sources: [{ key: 'github', name: 'GitHub', accounts }] });
+      if (operation === 'GithubConnect') return answer<TResult>({ githubConnect: hub.connect });
       hub.sent.push({ operation, variables });
       if (hub.refuse !== null) return Promise.resolve({ ok: false, error: hub.refuse } as HubResult<TResult>);
+      const connecting = connectAnswer(hub, operation);
+      if (connecting !== undefined) return answer<TResult>(connecting);
       if (operation === 'ConnectGithubApp') {
         const made = account('new', String((variables['input'] as { label: string }).label), { health: 'STARTING', lastSyncAt: null });
         accounts = [...accounts, made];
@@ -83,10 +103,12 @@ export function fakeHub(start: readonly SourceAccount[]): FakeHub {
       accounts = accounts.map((each) => (each.id === id ? changed : each));
       return answer<TResult>({ [operation === 'SyncSourceAccount' ? 'syncSourceAccount' : 'setSourceAccountPaused']: changed });
     },
-    subscribe: (_document, _variables, sink) => {
-      sinks.add(sink as { next(value: unknown): void });
+    subscribe: (document, _variables, sink) => {
+      const operation = (document.definitions[0] as { name?: { value: string } }).name?.value;
+      const open = operation === 'GithubConnectChanged' ? attemptSinks : sinks;
+      open.add(sink as { next(value: unknown): void });
       return () => {
-        sinks.delete(sink as { next(value: unknown): void });
+        open.delete(sink as { next(value: unknown): void });
       };
     },
   };
