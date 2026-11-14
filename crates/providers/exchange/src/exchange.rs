@@ -70,7 +70,17 @@ fn has_dot_segment(path: &str) -> bool {
 #[derive(Clone, Copy, Debug)]
 pub struct Response<'a> {
     pub status: u16,
-    pub body: &'a [u8],
+    pub body: Body<'a>,
+}
+
+/// The body of a reply, as far as the engine read it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Body<'a> {
+    /// The whole body.
+    Read(&'a [u8]),
+    /// The body was larger than the hub reads: the engine stopped at its cap and kept none of
+    /// it. The provider decides what that means for the request it made.
+    TooLarge,
 }
 
 /// Something wrong the provider saw that the operator should read. Fixed words, never a

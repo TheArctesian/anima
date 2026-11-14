@@ -1,7 +1,7 @@
 //! Tests run from JSON fixtures under `tests/fixtures`, shaped like GitHub's replies.
 
 use serde_json::{Value, json};
-use source_exchange::{Normalised, Problem, Request, Response};
+use source_exchange::{Body, Normalised, Problem, Request, Response};
 
 use super::*;
 
@@ -9,6 +9,7 @@ mod branches;
 mod flow;
 mod inspection;
 mod listing;
+mod oversize;
 mod sign_rules;
 mod token;
 
@@ -100,7 +101,7 @@ pub(super) fn run(state: &Value, replies: &Replies) -> Run {
             &request,
             &Response {
                 status,
-                body: &body,
+                body: Body::Read(&body),
             },
             &state,
         );

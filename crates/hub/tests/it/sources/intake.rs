@@ -13,7 +13,7 @@ use anima_hub::{
 };
 use async_trait::async_trait;
 use serde_json::{Value, json};
-use source_exchange::{Method, Problem, Request};
+use source_exchange::{Body, Method, Problem, Request};
 use sqlx::{PgConnection, PgPool};
 
 /// The table the stub intake writes; `writes` counts every insert or update of a row.
@@ -116,7 +116,7 @@ impl Intake for StubIntake {
     }
 
     async fn take(&self, conn: &mut PgConnection, page: Page<'_>) -> Result<Taken, IntakeError> {
-        if page.response.status != 200 {
+        let (200, Body::Read(raw)) = (page.response.status, page.response.body) else {
             let problem = Problem {
                 code: "status",
                 subject: "page".to_owned(),
@@ -127,8 +127,8 @@ impl Intake for StubIntake {
                 counts: Counts::default(),
                 problems: vec![problem],
             });
-        }
-        let body: Value = serde_json::from_slice(page.response.body).unwrap();
+        };
+        let body: Value = serde_json::from_slice(raw).unwrap();
         let mut counts = Counts::default();
         for item in body["items"].as_array().unwrap() {
             let pair = (

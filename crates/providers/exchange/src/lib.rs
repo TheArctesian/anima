@@ -10,7 +10,7 @@ mod exchange;
 pub use declaration::{
     Acquisition, AppKey, Declaration, MIN_POLL_INTERVAL_SECONDS, Minted, Minting,
 };
-pub use exchange::{Method, Normalised, Problem, Request, RequestError, Response};
+pub use exchange::{Body, Method, Normalised, Problem, Request, RequestError, Response};
 
 #[cfg(test)]
 mod tests;

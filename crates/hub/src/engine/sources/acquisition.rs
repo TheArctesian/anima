@@ -13,7 +13,7 @@ use source_exchange::{Acquisition, Declaration, Minted, Minting, Request};
 
 use self::{
     app_key::AppKey,
-    transport::{Fault, Transport},
+    transport::{Content, Fault, Transport},
     verdict::{Verdict, judge},
 };
 
@@ -62,14 +62,15 @@ pub async fn mint(
         .await
         .map_err(|fault| match fault {
             Fault::Network => MintFailure::Unreachable,
-            Fault::Refused | Fault::TooLarge => MintFailure::Unusable,
+            Fault::Refused => MintFailure::Unusable,
         })?;
     match (judge(answer.status, answer.limits, now), answer.status) {
         (Verdict::RateLimited(until), _) => Err(MintFailure::RateLimited(until)),
         (Verdict::Refused, _) | (Verdict::Usable, 400..=499) => Err(MintFailure::Refused),
-        (Verdict::Usable, 200..=299) => {
-            (app.parse_minted)(&answer.body).map_err(|_| MintFailure::Unusable)
-        }
+        (Verdict::Usable, 200..=299) => match &answer.content {
+            Content::Body(body) => (app.parse_minted)(body).map_err(|_| MintFailure::Unusable),
+            Content::TooLarge => Err(MintFailure::Unusable),
+        },
         (Verdict::Usable, _) => Err(MintFailure::Unusable),
     }
 }

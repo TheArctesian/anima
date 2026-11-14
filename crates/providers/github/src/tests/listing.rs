@@ -43,7 +43,14 @@ fn listing_at(page: u32, listed: usize) -> Value {
 
 fn read_one(state: &Value, body: &[u8]) -> Normalised<Record> {
     let request = next_request(state).unwrap();
-    normalise(&request, &Response { status: 200, body }, state)
+    normalise(
+        &request,
+        &Response {
+            status: 200,
+            body: Body::Read(body),
+        },
+        state,
+    )
 }
 
 fn assert_stopped_clean(out: &Normalised<Record>) {

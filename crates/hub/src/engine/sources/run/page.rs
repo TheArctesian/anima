@@ -3,12 +3,12 @@
 //! records of its page are stored.
 
 use serde_json::Value;
-use source_exchange::{Request, Response};
+use source_exchange::{Body, Request, Response};
 
 use super::{CLAIM_FOR, Claim, Failure, Stop};
 use crate::engine::sources::{
     Scheduling,
-    acquisition::transport::Answer,
+    acquisition::transport::{Answer, Content},
     intake::{Intake, Page},
     store::{
         self,
@@ -65,7 +65,10 @@ async fn write(
         request: fetched.request,
         response: Response {
             status: fetched.answer.status,
-            body: &fetched.answer.body,
+            body: match &fetched.answer.content {
+                Content::Body(body) => Body::Read(body),
+                Content::TooLarge => Body::TooLarge,
+            },
         },
         slice: fetched.slice,
         now,
