@@ -16,7 +16,7 @@ pub struct Repository {
     pub fork: bool,
     pub description: Option<String>,
     pub pushed_at: Option<DateTime<Utc>>,
-    /// The entry exactly as GitHub sent it (SRC-011).
+    /// The entry as GitHub sent it, without U+0000 (SRC-011).
     pub original: Value,
 }
 

@@ -157,3 +157,19 @@ async fn pro_001_a_clashing_slug_takes_the_owner_then_a_number(pool: PgPool) {
         .collect();
     assert_eq!(pairs, want);
 }
+
+/// PostgreSQL refuses U+0000 in text and JSON: one description that holds it must not stop the
+/// listing page, so both repositories are imported, the bad one without the NUL.
+#[sqlx::test(migrations = "./migrations")]
+async fn pro_001_a_repository_whose_text_holds_nul_does_not_stop_the_others(pool: PgPool) {
+    let kit = kit(&pool).await;
+    let id = kit.connect().await;
+    let mut bad = Repo::new(2, "me/blog");
+    bad.description = "half\u{0}way".to_owned();
+    list(&kit.stub, &[Repo::new(1, "me/site"), bad]);
+    assert_eq!(kit.run(id).await, Some(Outcome::Ok));
+    let projects = kit.projects(false).await;
+    assert_eq!(slugs(&projects), ["blog", "site"]);
+    let blog = by_slug(&projects, "blog");
+    assert_eq!(blog["repositories"][0]["description"], "halfway");
+}

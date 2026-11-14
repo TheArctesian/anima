@@ -186,12 +186,23 @@ pub(super) async fn left_out_ids(conn: &mut PgConnection) -> Result<Vec<String>,
     .await
 }
 
-/// Deletes the repositories of `account`, then each of their projects that has none left.
-/// Returns how many repositories it deleted.
+/// Deletes the repositories of `account`, then each of their projects that has none left. The
+/// operator's decisions outlive the account (PRO-002, PRO-004): a left-out repository, and one
+/// whose project holds a confirmed resource, is kept with no account, so the account that
+/// lists it next adopts it as it is. Returns how many repositories it deleted.
 pub(super) async fn forget(
     conn: &mut PgConnection,
     account: SourceAccountId,
 ) -> Result<u64, sqlx::Error> {
+    sqlx::query(
+        "UPDATE projects.repositories r SET account_id = NULL \
+         WHERE r.account_id = $1 AND (r.left_out_at IS NOT NULL OR EXISTS ( \
+             SELECT 1 FROM projects.resources c \
+             WHERE c.project_id = r.project_id AND c.state = 'confirmed'))",
+    )
+    .bind(account)
+    .execute(&mut *conn)
+    .await?;
     let projects: Vec<ProjectId> = sqlx::query_scalar(
         "DELETE FROM projects.repositories WHERE account_id = $1 RETURNING project_id",
     )

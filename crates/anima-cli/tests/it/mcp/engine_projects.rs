@@ -149,6 +149,38 @@ async fn mcp_017_project_resource_confirm_confirms_the_resources_of_one_kind() {
 }
 
 #[tokio::test]
+async fn prj_016_set_left_out_refuses_a_name_two_repositories_hold_and_sends_nothing() {
+    let hub = hub().await;
+    let mut stale = repository("x", true);
+    stale["id"] = json!("0190a000-0000-7000-9002-000000000009");
+    let mut both = project("x");
+    both["repositories"] = json!([stale, repository("x", false)]);
+    hub.answer(
+        "ProjectList",
+        data(
+            json!({ "projects": { "edges": [{ "cursor": "c1", "node": both }],
+                                   "pageInfo": { "hasNextPage": false, "endCursor": "c1" } } }),
+        ),
+    );
+    let mut session = writing(&hub, &Desk::new()).await;
+    let answer = session
+        .call(
+            "anima_repository_set_left_out",
+            json!({ "repository": "arctesian/anima", "leftOut": true }),
+        )
+        .await;
+    assert_eq!(answer["isError"], true, "{answer}");
+    let text = answer.to_string();
+    assert!(
+        text.contains("0190a000-0000-7000-9002-000000000009"),
+        "{text}"
+    );
+    assert!(text.contains(REPOSITORY), "{text}");
+    assert_eq!(sent(&hub, "RepositoryLeaveOut"), Vec::<Value>::new());
+    session.finish().await;
+}
+
+#[tokio::test]
 async fn mcp_008_a_repository_description_comes_back_cleaned_and_cut() {
     let hub = hub().await;
     let hostile = format!("ok\u{1b}[2J\u{7}line\nbreak {}", "x".repeat(2_000));

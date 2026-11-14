@@ -14,18 +14,27 @@ pub(in crate::work::projects) struct Chosen {
     pub left_out: bool,
 }
 
+const CHOSEN: &str = "SELECT project_id, account_id, left_out_at IS NOT NULL AS left_out \
+    FROM projects.repositories WHERE id = $1";
+
 /// The repository `id`, locked until the transaction ends.
 pub(in crate::work::projects) async fn repository(
     conn: &mut PgConnection,
     id: RepositoryId,
 ) -> Result<Option<Chosen>, sqlx::Error> {
-    sqlx::query_as(
-        "SELECT project_id, account_id, left_out_at IS NOT NULL AS left_out \
-         FROM projects.repositories WHERE id = $1 FOR UPDATE",
-    )
-    .bind(id)
-    .fetch_optional(conn)
-    .await
+    sqlx::query_as(&format!("{CHOSEN} FOR UPDATE"))
+        .bind(id)
+        .fetch_optional(conn)
+        .await
+}
+
+/// The repository `id` as it is now, not locked: what a choice reads before it locks the
+/// account row, so it takes the locks in the sync's order (account, then repository).
+pub(in crate::work::projects) async fn peek(
+    conn: &mut PgConnection,
+    id: RepositoryId,
+) -> Result<Option<Chosen>, sqlx::Error> {
+    sqlx::query_as(CHOSEN).bind(id).fetch_optional(conn).await
 }
 
 /// Sets the repository left out at `at`, or not left out when `at` is `None`.

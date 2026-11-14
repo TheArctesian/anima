@@ -19,6 +19,9 @@ pub use table::{Cell, Table, Tone};
 pub struct Output {
     json: bool,
     colour: bool,
+    /// Standard output is a terminal: JSON goes out with its terminal-moving characters
+    /// escaped, still the same value.
+    terminal: bool,
 }
 
 #[derive(Serialize)]
@@ -105,6 +108,7 @@ impl Output {
         Self {
             json,
             colour: stdout_terminal && !no_colour,
+            terminal: stdout_terminal,
         }
     }
 
@@ -123,12 +127,26 @@ impl Output {
         table: impl FnOnce(&T) -> Table,
     ) -> Result<(), Failure> {
         if self.json {
-            let text = serde_json::to_string_pretty(value).map_err(|error| Failure::Write {
-                reason: error.to_string(),
-            })?;
-            write_out(&format!("{text}\n"))
+            write_out(&self.json_text(value)?)
         } else {
             write_out(&table(value).render(self.colour))
+        }
+    }
+
+    /// `value` as pretty JSON and a line break; escaped for a terminal, as it is for a pipe or
+    /// a file (programs get the bytes `serde_json` wrote).
+    fn json_text<T: Serialize>(self, value: &T) -> Result<String, Failure> {
+        let text = serde_json::to_string_pretty(value).map_err(|error| Failure::Write {
+            reason: error.to_string(),
+        })?;
+        Ok(self.for_stdout(&format!("{text}\n")))
+    }
+
+    fn for_stdout(self, json: &str) -> String {
+        if self.terminal {
+            text::json_for_terminal(json)
+        } else {
+            json.to_owned()
         }
     }
 
@@ -140,13 +158,13 @@ impl Output {
         write_out(&format!("{text}\n"))
     }
 
-    /// Prints JSON as it is, for `anima api`.
+    /// Prints JSON as it is, for `anima api`: to a terminal escaped as [`Output::data`] does.
     ///
     /// # Errors
     /// As [`Output::data`].
     pub fn raw(self, value: &serde_json::Value) -> Result<(), Failure> {
         // A `Value` has string keys only, so it always serialises.
-        write_out(&format!("{value:#}\n"))
+        write_out(&self.for_stdout(&format!("{value:#}\n")))
     }
 
     /// A message for a person on standard error; none with `--json`.
@@ -231,6 +249,30 @@ mod tests {
             shown
                 .json()
                 .contains(r#""hint":"Pass --yes to skip the question.""#)
+        );
+    }
+
+    #[test]
+    fn cmd_022_json_to_a_terminal_escapes_del_c1_and_bidi_and_keeps_the_value() {
+        let hostile = serde_json::json!({
+            "description": "a\u{7f}b\u{9b}31mc\u{202e}d\u{2066}e\u{e0041}f",
+            "plain": "Ünïcode ✓",
+        });
+        let terminal = Output::new(true, true, true).json_text(&hostile).unwrap();
+        assert!(
+            !terminal.contains(['\u{7f}', '\u{9b}', '\u{202e}', '\u{2066}', '\u{e0041}']),
+            "{terminal:?}"
+        );
+        let escaped = "a#u007fb#u009b31mc#u202ed#u2066e#udb40#udc41f".replace('#', "\\");
+        assert!(terminal.contains(&escaped), "{terminal}");
+        assert!(terminal.contains("Ünïcode ✓"), "ordinary text stays");
+        let read: serde_json::Value = serde_json::from_str(&terminal).unwrap();
+        assert_eq!(read, hostile, "the same value");
+
+        let piped = Output::new(true, false, true).json_text(&hostile).unwrap();
+        assert_eq!(
+            piped,
+            serde_json::to_string_pretty(&hostile).unwrap() + "\n"
         );
     }
 

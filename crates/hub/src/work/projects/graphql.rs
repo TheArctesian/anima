@@ -8,7 +8,7 @@ mod trail;
 mod views;
 
 use async_graphql::{Context, Error as GraphQlError, ID, Object, Result};
-use sqlx::PgPool;
+use sqlx::{PgConnection, PgPool};
 
 use self::views::{ProjectConnection, ProjectView, ResourceView, Rows};
 use super::{
@@ -25,7 +25,7 @@ use crate::{
         sources,
     },
     fleet::{access::Authenticated, events::Trail},
-    ids::{ProjectId, RepositoryId, ResourceId},
+    ids::{ProjectId, RepositoryId, ResourceId, SourceAccountId},
 };
 
 /// K1's default for `first`.
@@ -73,6 +73,25 @@ async fn project_view(db: &PgPool, id: ProjectId) -> Result<ProjectView> {
         .ok_or_else(|| failed(Error::NoRepository))
 }
 
+/// Makes `account` due now; an account removed meanwhile has nothing to make due.
+async fn make_due(conn: &mut PgConnection, account: SourceAccountId) -> Result<()> {
+    match sources::request_sync(conn, account).await {
+        Ok(()) | Err(sources::Error::NotFound) => Ok(()),
+        Err(e) => Err(failed(Error::Sync(e))),
+    }
+}
+
+/// Before a restore locks the repository: makes its account due, which locks the account row
+/// first, as a sync page does, so the two never deadlock. Returns the account made due.
+async fn due_first(conn: &mut PgConnection, id: RepositoryId) -> Result<Option<SourceAccountId>> {
+    let peeked = choices::peek(conn, id).await.map_err(failed)?;
+    let Some(account) = peeked.filter(|p| p.left_out).and_then(|p| p.account_id) else {
+        return Ok(None);
+    };
+    make_due(conn, account).await?;
+    Ok(Some(account))
+}
+
 /// Leaves the repository `id` out, or restores it; a restore makes its account due, so its
 /// signs are read again on the next sync (PRO-002). No change when it is already so.
 async fn choose(ctx: &Context<'_>, id: &ID, left_out: bool) -> Result<ProjectView> {
@@ -80,6 +99,11 @@ async fn choose(ctx: &Context<'_>, id: &ID, left_out: bool) -> Result<ProjectVie
     let id: RepositoryId = parsed(id)?;
     let trail = Trail::from_context(ctx)?;
     let mut tx = begin(ctx).await?;
+    let due = if left_out {
+        None
+    } else {
+        due_first(&mut tx, id).await?
+    };
     let chosen = choices::repository(&mut tx, id)
         .await
         .map_err(failed)?
@@ -93,10 +117,9 @@ async fn choose(ctx: &Context<'_>, id: &ID, left_out: bool) -> Result<ProjectVie
             .await
             .map_err(failed)?;
         restate(&mut tx, project, now).await.map_err(failed)?;
-        if let (false, Some(account)) = (left_out, chosen.account_id) {
-            sources::request_sync(&mut tx, account)
-                .await
-                .map_err(|e| failed(Error::Sync(e)))?;
+        // Only when another choice changed the repository between the peek and the lock.
+        if let (false, Some(account)) = (left_out, chosen.account_id.filter(|a| due != Some(*a))) {
+            make_due(&mut tx, account).await?;
         }
         let slug = choices::slug(&mut tx, project).await.map_err(failed)?;
         trail

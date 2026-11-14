@@ -62,7 +62,8 @@ The engine cannot import an extension domain (EXT-005), so each extension hands 
     fn next_request(&self, slice: &Value) -> Option<Request>;
     /// Normalises one response and stores its records in `conn`, the engine's transaction.
     async fn take(&self, conn: &mut PgConnection, page: Page<'_>) -> Result<Taken, IntakeError>;
-    /// Deletes this intake's records of the account (removeSourceAccount with deleteRecords true).
+    /// Deletes this intake's records of the account (removeSourceAccount with deleteRecords true),
+    /// except the operator's decisions, which it keeps without the account; returns how many it deleted.
     async fn forget(&self, conn: &mut PgConnection, account: SourceAccountId) -> Result<u64, IntakeError>;
 }
 pub struct Page<'a> { pub account: SourceAccountId, pub request: &'a Request, pub response: Response<'a>, pub slice: &'a Value, pub now: DateTime<Utc> }

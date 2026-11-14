@@ -1,6 +1,32 @@
-//! SRC-007: a listing with no end does not grow the stored slice without limit.
+//! SRC-007: a listing with no end does not grow the stored slice without limit. A listed
+//! repository's text cannot hold U+0000, which no PostgreSQL text or JSON value takes.
 
 use super::*;
+
+#[test]
+fn src_011_u0000_is_taken_out_of_every_field_and_the_original() {
+    let mut entry = repository(7, "arctesian/n\u{0}ul", "2026-10-01T08:00:00Z");
+    entry["description"] = json!("half\u{0}way\u{0}");
+    entry["owner"] = json!({ "login": "arc\u{0}tesian", "tags": ["a\u{0}", 1, null] });
+    entry["we\u{0}ird"] = json!("v\u{0}");
+    let body = listing(1, &[entry]);
+
+    let out = read_one(&begin(&json!({})), &body);
+
+    let Some(Record::Repository(repository)) = out.records.first() else {
+        panic!("no repository: {:?}", out.records);
+    };
+    assert_eq!(repository.description.as_deref(), Some("halfway"));
+    assert_eq!(repository.full_name, "arctesian/nul");
+    assert_eq!(repository.original["description"], "halfway");
+    assert_eq!(
+        repository.original["owner"],
+        json!({ "login": "arctesian", "tags": ["a", 1, null] })
+    );
+    assert_eq!(repository.original["weird"], "v");
+    let text = serde_json::to_string(&repository.original).unwrap();
+    assert!(!text.contains("\\u0000"), "{text}");
+}
 
 fn full_page_without_a_total(first_id: u64) -> Vec<u8> {
     let entries: Vec<Value> = (first_id..first_id + 100)
