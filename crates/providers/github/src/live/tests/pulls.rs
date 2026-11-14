@@ -15,14 +15,14 @@ fn prj_031_the_pull_request_list_has_the_documented_path_and_query() {
 
     assert_eq!(
         path_and_query(&request),
-        "/repos/sample-org/sample-repo/pulls?state=open&sort=created&direction=desc&per_page=100&page=3"
+        "/repos/sample-org/sample-repo/pulls?state=open&sort=updated&direction=desc&per_page=100&page=3"
     );
     let all = list_request(REPOSITORY, StateFilter::All, 1).unwrap();
     assert!(path_and_query(&all).contains("state=all"));
     let closed = list_request(REPOSITORY, StateFilter::Closed, 0).unwrap();
     assert!(
         path_and_query(&closed)
-            .ends_with("state=closed&sort=created&direction=desc&per_page=100&page=1")
+            .ends_with("state=closed&sort=updated&direction=desc&per_page=100&page=1")
     );
 }
 

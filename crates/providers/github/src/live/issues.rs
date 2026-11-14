@@ -102,7 +102,7 @@ pub fn list_request(repository: &str, state: StateFilter, page: u32) -> Result<R
         "/issues",
         &[
             ("state", state.as_str()),
-            ("sort", "created"),
+            ("sort", "updated"),
             ("direction", "desc"),
         ],
         Some(page),

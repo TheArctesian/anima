@@ -12,7 +12,7 @@ fn prj_031_the_issue_requests_have_the_documented_paths_and_queries() {
     let list = list_request(REPOSITORY, StateFilter::Closed, 2).unwrap();
     assert_eq!(
         path_and_query(&list),
-        "/repos/sample-org/sample-repo/issues?state=closed&sort=created&direction=desc&per_page=100&page=2"
+        "/repos/sample-org/sample-repo/issues?state=closed&sort=updated&direction=desc&per_page=100&page=2"
     );
     let one = one_request(REPOSITORY, 21).unwrap();
     assert_eq!(

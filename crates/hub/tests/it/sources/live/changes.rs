@@ -16,7 +16,8 @@ use chrono::{TimeDelta, TimeZone as _, Utc};
 use reqwest::Url;
 use serde_json::json;
 use source_exchange::{
-    Change, CommitSha, IssueState, MergeMethod, Minted, Number, Receipt, RepositoryName, Settled,
+    Change, CommitSha, Declaration, IssueState, MergeMethod, Minted, Number, Receipt,
+    RepositoryName, Settled,
 };
 use sqlx::PgPool;
 use tokio::{io::AsyncReadExt as _, net::TcpListener};
@@ -24,7 +25,7 @@ use tokio::{io::AsyncReadExt as _, net::TcpListener};
 use super::{COMMENT_PATH, REPOSITORY, comment, live_kit, reply, striding};
 use crate::{
     hub::start,
-    sources::{kit, stub::Heard, unreachable},
+    sources::{kit, kit_of, stub::Heard, stub::Stub, unreachable},
 };
 
 fn sent(kit: &crate::sources::Kit, path: &str) -> Vec<Heard> {
@@ -195,7 +196,17 @@ async fn od_e14_a_change_that_could_not_connect_is_unreachable(pool: PgPool) {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn od_e14_a_source_that_declares_no_changes_is_refused_before_sending(pool: PgPool) {
-    let kit = kit(&pool).await;
+    let stub = Stub::start(&pool).await;
+    let transport = Transport::to_stub(
+        stub.base.clone(),
+        AddressPolicy::default().allowing_loopback(),
+    )
+    .unwrap();
+    let reads_only = Declaration {
+        changes: None,
+        ..provider_github::DECLARATION
+    };
+    let kit = kit_of(&pool, (stub, transport), reads_only).await;
     let (_, id) = kit.connect().await;
     let before = kit.stub.paths();
 
