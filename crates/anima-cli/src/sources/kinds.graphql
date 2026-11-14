@@ -1,0 +1,12 @@
+query SourceKinds {
+  sources {
+    key
+    name
+    acquisition
+    scopes
+    writeReason
+    gives
+    pollIntervalSeconds
+    consumers
+  }
+}

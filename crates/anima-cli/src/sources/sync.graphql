@@ -1,0 +1,17 @@
+mutation SourceSync($id: ID!) {
+  syncSourceAccount(id: $id) {
+    id
+    sourceKey
+    label
+    instanceKey
+    credentialStored
+    health
+    pausedBy
+    lastSyncAt
+    lastError
+    failureCount
+    nextSyncAt
+    syncing
+    createdAt
+  }
+}

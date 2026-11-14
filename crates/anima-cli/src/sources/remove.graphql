@@ -1,0 +1,3 @@
+mutation SourceRemove($id: ID!, $deleteRecords: Boolean!) {
+  removeSourceAccount(id: $id, deleteRecords: $deleteRecords)
+}

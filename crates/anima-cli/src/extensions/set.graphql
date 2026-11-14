@@ -1,0 +1,19 @@
+mutation ExtensionSet($key: String!, $on: Boolean!) {
+  setExtension(key: $key, on: $on) {
+    key
+    name
+    dataClass
+    built
+    fixed
+    on
+    needs
+    worksWith
+    neededBy
+    navigation {
+      group
+      label
+      route
+    }
+    changedAt
+  }
+}

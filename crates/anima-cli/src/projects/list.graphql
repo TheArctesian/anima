@@ -1,0 +1,42 @@
+query ProjectList($leftOut: Boolean, $first: Int, $after: String) {
+  projects(leftOut: $leftOut, first: $first, after: $after) {
+    edges {
+      cursor
+      node {
+        id
+        slug
+        name
+        subjectKey
+        repositories {
+          id
+          fullName
+          url
+          defaultBranch
+          private
+          archived
+          fork
+          description
+          pushedAt
+          leftOut
+          gone
+        }
+        resources {
+          id
+          kind
+          state
+          evidence {
+            sign
+            path
+          }
+          foundAt
+          confirmedAt
+        }
+        syncedAt
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+  }
+}

@@ -2,7 +2,9 @@
 
 use crate::failure::Failure;
 use crate::invocation::Invocation;
-use crate::{builders, events, keys, notifications, releases, retention, vpn};
+use crate::{
+    builders, events, extensions, keys, notifications, projects, releases, retention, sources, vpn,
+};
 
 #[derive(Debug, clap::Subcommand)]
 pub enum HubRecordCommand {
@@ -41,6 +43,21 @@ pub enum HubRecordCommand {
         #[command(subcommand)]
         command: builders::BuilderCommand,
     },
+    /// Extensions of the hub (list, on, off).
+    Extension {
+        #[command(subcommand)]
+        command: extensions::ExtensionCommand,
+    },
+    /// Sources and their accounts (kinds, list, get, connect, sync, pause, resume, remove, watch).
+    Source {
+        #[command(subcommand)]
+        command: sources::SourceCommand,
+    },
+    /// Projects found in repositories (list, get, leave-out, restore, resource).
+    Project {
+        #[command(subcommand)]
+        command: projects::ProjectCommand,
+    },
     /// The VPN (status, invite, router-key, register, renew, approve-route).
     Vpn {
         #[command(subcommand)]
@@ -58,6 +75,9 @@ impl HubRecordCommand {
             Self::Key { command } => command.run(invocation).await,
             Self::Release { command } => command.run(invocation).await,
             Self::Builder { command } => command.run(invocation).await,
+            Self::Extension { command } => command.run(invocation).await,
+            Self::Source { command } => command.run(invocation).await,
+            Self::Project { command } => command.run(invocation).await,
             Self::Vpn { command } => command.run(invocation).await,
         }
     }

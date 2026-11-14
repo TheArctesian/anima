@@ -1,0 +1,15 @@
+mutation RepositoryLeaveOut($id: ID!) {
+  leaveOutRepository(id: $id) {
+    id
+    slug
+    name
+    subjectKey
+    repositories {
+      id
+      fullName
+      leftOut
+      gone
+    }
+    syncedAt
+  }
+}

@@ -1,0 +1,18 @@
+# The input holds the App's private key: the variables derive no Debug (CMD-014, PRJ-018).
+mutation SourceConnect($input: GithubAppInput!) {
+  connectGithubApp(input: $input) {
+    id
+    sourceKey
+    label
+    instanceKey
+    credentialStored
+    health
+    pausedBy
+    lastSyncAt
+    lastError
+    failureCount
+    nextSyncAt
+    syncing
+    createdAt
+  }
+}
