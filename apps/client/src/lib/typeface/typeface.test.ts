@@ -30,9 +30,9 @@ const refusing: Storage = {
 };
 
 describe('storedTypefaces (UI-020)', () => {
-  const defaults = { ui: 'ibm-plex-sans', mono: 'fira-code' };
+  const defaults = { ui: 'ibm-plex-sans', mono: 'ibm-plex-mono' };
 
-  it('is IBM Plex Sans for the interface and Fira Code for monospace when nothing is stored', () => {
+  it('is IBM Plex Sans for the interface and IBM Plex Mono for monospace when nothing is stored', () => {
     expect(storedTypefaces(memoryStorage())).toEqual(defaults);
   });
 
@@ -49,26 +49,27 @@ describe('storedTypefaces (UI-020)', () => {
     expect(storedTypefaces(refusing)).toEqual(defaults);
   });
 
-  it('migrates a stored interface choice of fira-code, or atkinson-hyperlegible-next, to the new default', () => {
+  it('migrates a stored choice of fira-code, for either role, or atkinson-hyperlegible-next, to the new default', () => {
     expect(storedTypefaces(memoryStorage({ 'anima.typeface.ui': 'fira-code' })).ui).toBe('ibm-plex-sans');
+    expect(storedTypefaces(memoryStorage({ 'anima.typeface.mono': 'fira-code' })).mono).toBe('ibm-plex-mono');
     expect(storedTypefaces(memoryStorage({ 'anima.typeface.ui': 'atkinson-hyperlegible-next' })).ui).toBe('ibm-plex-sans');
   });
 
-  it('keeps a stored opendyslexic for the interface and fira-code or opendyslexic for monospace', () => {
-    const stored = storedTypefaces(memoryStorage({ 'anima.typeface.ui': 'opendyslexic', 'anima.typeface.mono': 'fira-code' }));
-    expect(stored).toEqual({ ui: 'opendyslexic', mono: 'fira-code' });
+  it('keeps a stored opendyslexic for the interface and ibm-plex-mono or opendyslexic for monospace', () => {
+    const stored = storedTypefaces(memoryStorage({ 'anima.typeface.ui': 'opendyslexic', 'anima.typeface.mono': 'ibm-plex-mono' }));
+    expect(stored).toEqual({ ui: 'opendyslexic', mono: 'ibm-plex-mono' });
     expect(storedTypefaces(memoryStorage({ 'anima.typeface.mono': 'opendyslexic' })).mono).toBe('opendyslexic');
   });
 
   it('does not offer ibm-plex-sans as a monospace font', () => {
-    expect(storedTypefaces(memoryStorage({ 'anima.typeface.mono': 'ibm-plex-sans' })).mono).toBe('fira-code');
+    expect(storedTypefaces(memoryStorage({ 'anima.typeface.mono': 'ibm-plex-sans' })).mono).toBe('ibm-plex-mono');
   });
 });
 
 describe('applyTypefaces (UI-020)', () => {
   it('marks the root with each role’s typeface', () => {
     const root = document.createElement('html');
-    applyTypefaces(root, { ui: 'opendyslexic', mono: 'fira-code' });
-    expect(root.dataset).toMatchObject({ fontUi: 'opendyslexic', fontMono: 'fira-code' });
+    applyTypefaces(root, { ui: 'opendyslexic', mono: 'ibm-plex-mono' });
+    expect(root.dataset).toMatchObject({ fontUi: 'opendyslexic', fontMono: 'ibm-plex-mono' });
   });
 });

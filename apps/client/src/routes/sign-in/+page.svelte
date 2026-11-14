@@ -153,7 +153,7 @@
   <form class="card" onsubmit={formSubmitted} novalidate>
     {#if unreachable !== null}
       <div role="status">
-        <Notice icon="nf-md-lan_disconnect">
+        <Notice icon="carbon:unlink">
           <p><strong>{unreachable.title}</strong></p>
           <p>{unreachable.advice}</p>
           <p class="detail"><code>{unreachable.origin}</code> · {unreachable.age}</p>
@@ -173,7 +173,7 @@
     {/if}
 
     {#if shownMessage !== null}
-      <Notice icon="nf-md-alert_circle_outline"><p role="alert">{shownMessage}</p></Notice>
+      <Notice icon="carbon:warning"><p role="alert">{shownMessage}</p></Notice>
     {/if}
 
     {#if step === 'credentials'}
@@ -251,7 +251,7 @@
     background: var(--accent);
     color: var(--on-accent);
     font: inherit;
-    font-weight: var(--weight-bold);
+    font-weight: var(--weight-medium);
     cursor: pointer;
     transition: background-color var(--duration-fast) var(--ease-enter);
   }

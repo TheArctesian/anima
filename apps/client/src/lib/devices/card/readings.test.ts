@@ -3,9 +3,8 @@ import { flushSync, mount, unmount } from 'svelte';
 import { afterEach, expect, it, vi } from 'vitest';
 import { readings } from '../../metrics/bars/bars.fixture';
 import { fakeHub } from '../hub.fixture';
-import { DEFAULT_QUERY } from '../query';
 import DeviceScreen from '../screen/DeviceScreen.svelte';
-import { device, devicesAnswer } from '../screen/screen.fixture.svelte';
+import { CARDS, device, devicesAnswer } from '../screen/screen.fixture.svelte';
 import { endTransitionsAtOnce } from '../transitions.fixture';
 
 vi.mock('motion', async (importOriginal) => ({
@@ -36,7 +35,7 @@ async function show(devices: Parameters<typeof devicesAnswer>[0]) {
   current.hub = fake.hub;
   app = mount(DeviceScreen, {
     target: document.body,
-    props: { query: DEFAULT_QUERY, onQueryChange: () => undefined, onAddDevice: () => undefined, onConnect: () => undefined },
+    props: { query: CARDS, onQueryChange: () => undefined, onAddDevice: () => undefined, onConnect: () => undefined },
   });
   await settle();
   return fake;

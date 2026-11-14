@@ -114,7 +114,7 @@
        mounted and are hidden unless needed, so the footer keeps its height and focus stays put (MOT-007, MV-005, UI-015). -->
   <div class="footer">
     <div class="note-block">
-      <span class="mark" class:hidden={notice === ''}><Icon name="nf-md-alert_circle_outline" size="sm" /></span>
+      <span class="mark" class:hidden={notice === ''}><Icon name="carbon:warning" size="sm" /></span>
       <p class="message" role="alert">{notice}</p>
       <div class="retry" class:hidden={!loadFailed}>
         <FormButton tabindex={0} data-retry aria-disabled={retrying} onclick={retry}>Try again</FormButton>

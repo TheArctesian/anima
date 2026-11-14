@@ -6,12 +6,13 @@ import { threshold } from '$lib/motion/tokens';
 import { fakeHub } from '../hub.fixture';
 import { DEFAULT_QUERY } from '../query';
 import { manualClock } from '$lib/motion/loading/clock.fixture';
-import tableSource from '../card/DeviceTable.svelte?raw';
 import DeviceTable from '../card/DeviceTable.svelte';
 import DeviceScreen from './DeviceScreen.svelte';
 import Skeleton from './Skeleton.svelte';
 import skeletonSource from './Skeleton.svelte?raw';
 import { device, devicesAnswer } from './screen.fixture.svelte';
+
+const tableSource = readFileSync('src/lib/devices/list/rows.css', 'utf8');
 import { endTransitionsAtOnce } from '../transitions.fixture';
 
 vi.mock('motion', async (importOriginal) => ({

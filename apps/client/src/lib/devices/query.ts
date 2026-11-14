@@ -14,7 +14,7 @@ export interface ListQuery {
 /** The first page holds the K1 maximum, so 200 devices render from one answer (DEV-001, API-006). */
 export const PAGE_SIZE = 200;
 
-export const DEFAULT_QUERY: ListQuery = { view: 'grid', name: '', statuses: [], tags: [], site: null, sort: 'NAME' };
+export const DEFAULT_QUERY: ListQuery = { view: 'table', name: '', statuses: [], tags: [], site: null, sort: 'STATUS' };
 
 const STATUSES: readonly Status[] = ['UP', 'DOWN', 'DEGRADED', 'MAINTENANCE', 'UNKNOWN'];
 const SORTS: readonly DeviceSort[] = ['NAME', 'STATUS', 'UPTIME'];
@@ -27,7 +27,7 @@ function known<T extends string>(values: readonly string[], allowed: readonly T[
 /** The query that `params` describe; the URL is typed by hand, so unknown values fall back to the defaults. */
 export function parseListQuery(params: URLSearchParams): ListQuery {
   return {
-    view: params.get('view') === 'table' ? 'table' : DEFAULT_QUERY.view,
+    view: params.get('view') === 'grid' ? 'grid' : DEFAULT_QUERY.view,
     name: params.get('q') ?? DEFAULT_QUERY.name,
     statuses: known(params.getAll('status'), STATUSES),
     tags: [...new Set(params.getAll('tag').filter((tag) => tag !== ''))],

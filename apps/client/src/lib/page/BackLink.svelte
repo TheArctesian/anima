@@ -15,7 +15,7 @@
 </script>
 
 <!-- A ghost link: a chevron and the word, with a target of at least 24 px (UI-013, finding O8). -->
-<a href={resolve(to)} {@attach press()}><Icon name="nf-md-chevron_left" size="sm" />{label}</a>
+<a href={resolve(to)} {@attach press()}><Icon name="carbon:chevron-left" size="sm" />{label}</a>
 
 <style>
   a {

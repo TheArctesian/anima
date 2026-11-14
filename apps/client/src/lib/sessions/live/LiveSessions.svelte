@@ -137,7 +137,7 @@
     onclick={toggle}
     {@attach press()}
   >
-    <Icon name="nf-md-access_point" />
+    <Icon name="carbon:connection-signal" />
     <span class="words" aria-hidden="true">Live sessions</span>
     <span class="count" aria-hidden="true">{live.sessions.length}</span>
   </button>
@@ -150,7 +150,7 @@
       {@attach placeBesideBar}
     >
       {#if live.loadFailure !== null}
-        <p class="failure" role="alert"><Icon name="nf-md-alert" />{live.loadFailure}</p>
+        <p class="failure" role="alert"><Icon name="carbon:warning-alt" />{live.loadFailure}</p>
       {/if}
       {#each live.sessions as session, index (session.id)}
         {@const failure = live.stopFailure(session.id)}
@@ -161,9 +161,9 @@
             <span>{session.clientAddr} · {startedTime(session)}</span>
             <!-- The sizer holds the failure line's place in every row, so a refused Stop moves nothing (MOT-007). -->
             <span class="slot">
-              <span class="failure sizer" aria-hidden="true"><Icon name="nf-md-alert" />{STOP_REFUSED}</span>
+              <span class="failure sizer" aria-hidden="true"><Icon name="carbon:warning-alt" />{STOP_REFUSED}</span>
               {#if failure !== null}
-                <span class="failure" role="alert"><Icon name="nf-md-alert" />{failure}</span>
+                <span class="failure" role="alert"><Icon name="carbon:warning-alt" />{failure}</span>
               {/if}
             </span>
           </div>
@@ -188,7 +188,7 @@
       {/each}
       <!-- Last, so that it appearing moves no row (MOT-007). -->
       {#if live.updatesStopped !== null}
-        <p class="failure" role="status"><Icon name="nf-md-alert" />{live.updatesStopped}</p>
+        <p class="failure" role="status"><Icon name="carbon:warning-alt" />{live.updatesStopped}</p>
       {/if}
     </div>
   {/if}

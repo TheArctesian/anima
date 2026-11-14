@@ -5,7 +5,8 @@
   import type { CardDevice } from '$lib/devices/api';
   import DeviceActions from '$lib/devices/actions/DeviceActions.svelte';
   import WarningBadge from '$lib/devices/actions/WarningBadge.svelte';
-  import MetricBars from '$lib/metrics/bars/MetricBars.svelte';
+  import Meters from '../list/Meters.svelte';
+  import Why from '../list/Why.svelte';
   import { press } from '$lib/motion/roles/press';
   import { sharedItem } from '$lib/motion/shared/shared';
   import type { SessionProtocol } from '$lib/sessions/tabs';
@@ -35,6 +36,8 @@
   const line = $derived(hostLine(device));
 </script>
 
+<!-- A hairline tile (UR-7, D18): the name and its status, the host, then the reason a device needs a look and its
+     meters, its last checks and uptime, and the ways to connect. -->
 <article class="card">
   <StatusEdge status={device.status} />
   <header>
@@ -58,16 +61,16 @@
       <StatusBadge status={device.status} deviceId={device.id} />
     </span>
   </header>
-  <p class="host">
-    <span title={line.host}>{line.host}</span>
-    {#if line.ip !== null}<span class="ip">{line.ip}</span>{/if}
-  </p>
-  <p class="uptime"><span>Uptime, 24 h</span> <strong>{uptimeText(device.uptime)}</strong></p>
-  <MetricBars readings={device.readings ?? null} source={device.metricsSource} />
-  <footer>
+  <p class="host"><span title={line.host}>{line.host}</span>{#if line.ip !== null}<span class="ip">{line.ip}</span>{/if}</p>
+  <div class="middle">
+    {#if device.status !== 'UP'}<Why {device} {beats} wrap />{/if}
+    {#if device.status === 'UP' || device.readings != null}<Meters readings={device.readings ?? null} source={device.metricsSource} />{/if}
+  </div>
+  <p class="uptime">
     {#if beats !== undefined}<HeartbeatBar {beats} />{/if}
-    <DeviceActions {device} {onConnect} {onOpenWeb} {wake} {screenSharing} />
-  </footer>
+    <span><span class="label">Uptime, 24 h</span> {uptimeText(device.uptime)}</span>
+  </p>
+  <footer><DeviceActions {device} {onConnect} {onOpenWeb} {wake} {screenSharing} compact /></footer>
 </article>
 
 <style>
@@ -77,15 +80,19 @@
     box-sizing: border-box;
     display: grid;
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: repeat(4, auto) 1fr;
+    grid-template-rows: auto auto 1fr auto auto;
     gap: var(--space-2);
     block-size: var(--device-card-block-size);
     padding: var(--space-4);
-    border: var(--border-thin) solid var(--border-strong);
-    border-radius: var(--radius-lg);
-    background: var(--surface-raised);
+    border: var(--border-thin) solid var(--border-subtle);
+    border-radius: var(--radius-md);
     color: var(--text);
     overflow: hidden;
+    transition: border-color var(--duration-fast) var(--ease-enter);
+  }
+
+  .card:hover {
+    border-color: var(--border-strong);
   }
 
   header {
@@ -102,6 +109,7 @@
     display: flex;
     align-items: center;
     gap: var(--space-2);
+    color: var(--text-tertiary);
   }
 
   .marks {
@@ -115,6 +123,7 @@
     margin: 0;
     min-inline-size: 0;
     font-size: var(--text-md);
+    font-weight: var(--weight-medium);
     line-height: var(--leading-tight);
   }
 
@@ -128,11 +137,11 @@
     white-space: nowrap;
     color: var(--text);
     text-decoration: none;
-    transition: color var(--duration-fast) var(--ease-enter);
   }
 
   a:hover {
-    color: var(--accent);
+    text-decoration: underline;
+    text-underline-offset: var(--space-1);
   }
 
   a:active {
@@ -140,16 +149,21 @@
     color: var(--text-secondary);
   }
 
-  .host,
-  .uptime {
-    min-inline-size: 0;
+  a:focus-visible {
+    outline: var(--border-focus) solid var(--focus-ring);
+    outline-offset: var(--border-focus);
+    border-radius: var(--radius-sm);
+  }
+
+  .host {
     display: flex;
     gap: var(--space-2);
-    margin: 0;
-    color: var(--text-secondary);
-    font-size: var(--text-sm);
-    line-height: var(--leading-tight);
+    margin: calc(var(--space-2) * -1) 0 0;
     overflow: hidden;
+    color: var(--text-tertiary);
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    text-overflow: ellipsis;
     white-space: nowrap;
   }
 
@@ -161,23 +175,41 @@
 
   .ip {
     flex: none;
-    font-family: var(--font-mono);
+    color: var(--text-quiet);
   }
 
-  strong {
-    color: var(--text);
-    font-weight: var(--weight-regular);
+  .middle {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: var(--space-2);
+    min-block-size: 0;
+    overflow: hidden;
+  }
+
+  .uptime {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: var(--text-sm);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .uptime > :global(:first-child) {
+    flex: 1 1 auto;
+  }
+
+  .label {
+    position: absolute;
+    overflow: hidden;
+    clip-path: inset(50%);
   }
 
   footer {
     display: flex;
-    align-items: end;
-    justify-content: space-between;
-    gap: var(--space-2);
-  }
-
-  a:focus-visible {
-    outline: var(--border-focus) solid var(--accent);
-    outline-offset: var(--border-focus);
+    margin: 0 calc(var(--space-2) * -1) calc(var(--space-2) * -1);
   }
 </style>

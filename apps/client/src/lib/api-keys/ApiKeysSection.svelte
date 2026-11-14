@@ -108,7 +108,7 @@
     </ul>
     {#if loadFailed}
       <div class="failed">
-        <span class="mark"><Icon name="nf-md-alert_circle_outline" size="sm" /></span>
+        <span class="mark"><Icon name="carbon:warning" size="sm" /></span>
         <p role="alert">Anima could not load the API keys.</p>
         <FormButton tabindex={0} aria-disabled={retrying} aria-busy={retrying} onclick={retry}>Try again</FormButton>
       </div>

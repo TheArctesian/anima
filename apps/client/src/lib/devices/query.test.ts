@@ -8,7 +8,7 @@ describe('list query in the URL (D-4)', () => {
 
   it('DEV-003, DEV-004 round-trips every part and writes them in a fixed order', () => {
     const query: ListQuery = {
-      view: 'table',
+      view: 'grid',
       name: 'nas',
       statuses: ['UP', 'DOWN'],
       tags: ['lab', 'home'],
@@ -16,7 +16,7 @@ describe('list query in the URL (D-4)', () => {
       sort: 'UPTIME',
     };
     const written = writeListQuery(query).toString();
-    expect(written).toBe('view=table&q=nas&status=UP&status=DOWN&tag=lab&tag=home&site=s1&sort=UPTIME');
+    expect(written).toBe('view=grid&q=nas&status=UP&status=DOWN&tag=lab&tag=home&site=s1&sort=UPTIME');
     expect(parseListQuery(new URLSearchParams(written))).toEqual(query);
   });
 
@@ -37,7 +37,7 @@ it('VPN-002: an empty site parameter is no site filter', () => {
 
 describe('list variables (DEV-001, DEV-003, DEV-004)', () => {
   it('DEV-001 asks for 200 devices and omits an empty filter', () => {
-    expect(listVariables(DEFAULT_QUERY)).toStrictEqual({ sort: 'NAME', first: 200 });
+    expect(listVariables(DEFAULT_QUERY)).toStrictEqual({ sort: 'STATUS', first: 200 });
   });
 
   it('DEV-003 sends only the filter parts that are set', () => {

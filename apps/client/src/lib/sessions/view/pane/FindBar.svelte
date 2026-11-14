@@ -48,13 +48,13 @@
     {@attach focusInput}
   />
   <button type="button" aria-label="Previous match" title="Previous match (Shift+Enter)" onclick={() => find(true)} {@attach press()}>
-    <span class="flip"><Icon name="nf-md-chevron_down" size="sm" /></span>
+    <span class="flip"><Icon name="carbon:chevron-down" size="sm" /></span>
   </button>
   <button type="button" aria-label="Next match" title="Next match (Enter)" onclick={() => find(false)} {@attach press()}>
-    <Icon name="nf-md-chevron_down" size="sm" />
+    <Icon name="carbon:chevron-down" size="sm" />
   </button>
   <button type="button" aria-label="Close find" title="Close (Escape)" onclick={onclose} {@attach press()}>
-    <Icon name="nf-md-close" size="sm" />
+    <Icon name="carbon:close" size="sm" />
   </button>
   <span class="status" role="status">{missing ? 'No match' : ''}</span>
 </div>

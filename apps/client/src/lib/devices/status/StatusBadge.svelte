@@ -34,7 +34,7 @@
   /* A fixed size: the longest label fits, so a new status moves nothing (MOT-007). */
   .slot {
     display: inline-grid;
-    inline-size: calc(var(--space-16) * 2);
+    inline-size: calc(var(--space-16) + var(--space-12));
     block-size: calc(var(--text-sm) * var(--leading-tight) + var(--space-2));
   }
 
@@ -50,21 +50,30 @@
     align-items: center;
     gap: var(--space-2);
     padding: 0 var(--space-2);
-    border-radius: var(--radius-pill);
+    border-radius: var(--radius-sm);
     background: var(--wash);
     color: var(--ink);
-    font-size: var(--text-sm);
+    font-size: var(--text-xs);
+    font-weight: var(--weight-medium);
     line-height: var(--leading-tight);
   }
 
+  /* Up and Unknown: no fill; Up keeps its colour in the word, as on the website (UR-7). */
   .quiet {
+    padding-inline: 0;
     background: none;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-regular);
+  }
+
+  .quiet.unknown {
     color: var(--text-secondary);
   }
 
   .dot {
-    inline-size: var(--space-2);
-    block-size: var(--space-2);
+    flex: none;
+    inline-size: calc(var(--space-2) - var(--border-thin));
+    block-size: calc(var(--space-2) - var(--border-thin));
     border-radius: var(--radius-pill);
     background: var(--tone);
   }

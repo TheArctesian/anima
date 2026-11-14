@@ -57,6 +57,8 @@
   --graphite-aurora-13: #EBCB8B;
   --graphite-aurora-14: #A3BE8C;
   --graphite-aurora-15: #B48EAD;
+  --graphite-dark-text-quiet: #5C6169;
+  --graphite-light-text-quiet: #A3A7AE;
   --nord-0: #2E3440;
   --nord-1: #3B4252;
   --nord-2: #434C5E;
@@ -104,6 +106,8 @@
   --nord-3-tertiary-text: #BDC2CC;
   --nord-3-deep-text: #5F6777;
   --nord-11-danger: #CC8B93;
+  --nord-3-quiet: #616E88;
+  --nord-3-quiet-light: #A5ADBA;
   --layer-base: 0;
   --layer-sticky: 10;
   --layer-nav: 20;
@@ -151,9 +155,9 @@
   --space-10: 2.5rem;
   --space-12: 3rem;
   --space-16: 4rem;
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 10px;
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 4px;
   --radius-pill: 999px;
   --border-thin: 1px;
   --border-focus: 2px;
@@ -173,16 +177,20 @@
   --text-lg: 1rem;
   --text-xl: 1.25rem;
   --text-2xl: 1.5rem;
+  --text-display: 2.25rem;
   --leading-tight: 1.2;
   --leading-normal: 1.5;
   --leading-relaxed: 1.7;
   --tracking-display: -0.01em;
   --tracking-body: 0em;
   --tracking-small: 0.01em;
+  --tracking-tight: -0.03em;
+  --tracking-label: 0.14em;
+  --weight-light: 200;
   --weight-regular: 400;
-  --weight-bold: 700;
+  --weight-medium: 500;
   --font-ui: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
-  --font-mono: "Fira Code", ui-monospace, monospace;
+  --font-mono: "IBM Plex Mono", "Symbols Nerd Font", ui-monospace, monospace;
   --font-ui-opendyslexic: "OpenDyslexic Nerd Font Propo", system-ui, -apple-system, sans-serif;
   --font-mono-opendyslexic: "OpenDyslexicM Nerd Font Mono", ui-monospace, monospace;
   --font-icon: "OpenDyslexic Nerd Font Propo", "Symbols Nerd Font";
@@ -200,6 +208,8 @@
   --text: var(--graphite-dark-text);
   --text-secondary: var(--graphite-dark-text-secondary);
   --text-tertiary: var(--graphite-dark-text-tertiary);
+  --text-quiet: var(--graphite-dark-text-quiet);
+  --planned: var(--graphite-aurora-15-text);
   --accent: var(--graphite-frost-8);
   --accent-hover: color-mix(in srgb, var(--graphite-dark-text-lightest) 15%, var(--graphite-frost-8));
   --accent-pressed: var(--graphite-frost-10);
@@ -252,6 +262,8 @@
   --text: var(--graphite-light-text);
   --text-secondary: var(--graphite-light-text-secondary);
   --text-tertiary: var(--graphite-light-text-tertiary-derived);
+  --text-quiet: var(--graphite-light-text-quiet);
+  --planned: var(--graphite-aurora-15-deep-text);
   --accent: var(--graphite-accent-deep);
   --accent-hover: color-mix(in srgb, var(--graphite-light-text) 12%, var(--accent));
   --accent-pressed: color-mix(in srgb, var(--graphite-light-text) 25%, var(--accent));
@@ -305,6 +317,8 @@
     --text: var(--graphite-light-text);
     --text-secondary: var(--graphite-light-text-secondary);
     --text-tertiary: var(--graphite-light-text-tertiary-derived);
+    --text-quiet: var(--graphite-light-text-quiet);
+    --planned: var(--graphite-aurora-15-deep-text);
     --accent: var(--graphite-accent-deep);
     --accent-hover: color-mix(in srgb, var(--graphite-light-text) 12%, var(--accent));
     --accent-pressed: color-mix(in srgb, var(--graphite-light-text) 25%, var(--accent));
@@ -359,6 +373,8 @@
   --text: var(--nord-6);
   --text-secondary: color-mix(in srgb, var(--nord-3) 25%, var(--nord-4));
   --text-tertiary: var(--nord-3-tertiary);
+  --text-quiet: var(--nord-3-quiet);
+  --planned: var(--nord-15-text);
   --accent: var(--nord-8);
   --accent-hover: color-mix(in srgb, var(--nord-6) 15%, var(--nord-8));
   --accent-pressed: var(--nord-10);
@@ -411,6 +427,8 @@
   --text: var(--nord-0);
   --text-secondary: var(--nord-3);
   --text-tertiary: var(--nord-3-tertiary-light);
+  --text-quiet: var(--nord-3-quiet-light);
+  --planned: var(--nord-15-deep-text);
   --accent: var(--nord-10-deep);
   --accent-hover: color-mix(in srgb, var(--nord-0) 12%, var(--accent));
   --accent-pressed: color-mix(in srgb, var(--nord-0) 25%, var(--accent));
@@ -464,6 +482,8 @@
     --text: var(--nord-0);
     --text-secondary: var(--nord-3);
     --text-tertiary: var(--nord-3-tertiary-light);
+    --text-quiet: var(--nord-3-quiet-light);
+    --planned: var(--nord-15-deep-text);
     --accent: var(--nord-10-deep);
     --accent-hover: color-mix(in srgb, var(--nord-0) 12%, var(--accent));
     --accent-pressed: color-mix(in srgb, var(--nord-0) 25%, var(--accent));

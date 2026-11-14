@@ -6,10 +6,13 @@ const START = Date.parse('2026-11-04T10:00:00Z');
 const at = (minute: number): string => new Date(START + minute * 60_000).toISOString();
 const beat = (minute: number, checkId = 'c1', status: Beat['status'] = 'UP'): Beat => ({ checkId, at: at(minute), status });
 const edge = (minute: number, status: Beat['status'] = 'UP') => ({
-  node: { at: at(minute), status, responseTimeMs: null },
+  node: { at: at(minute), status, responseTimeMs: null, message: null },
 });
 const check = (id: string, minutes: readonly number[]): CardDevice['checks'][number] => ({
   id,
+  name: id,
+  status: 'UP',
+  paused: false,
   heartbeats: { edges: minutes.map((minute) => edge(minute)) },
 });
 const minutesOf = (beats: readonly Beat[]) => beats.map((b) => (Date.parse(b.at) - START) / 60_000);
@@ -60,9 +63,9 @@ describe('DEV-002: latestBeats on a large device list', () => {
     const checks = Array.from({ length: 10 }, (_, index) => {
       const minutes = Array.from({ length: 50 }, () => next(80));
       const edges = minutes.map((minute, i) => ({
-        node: { at: i % 7 === 0 ? at(minute).replace('Z', '+00:00') : at(minute), status: (i % 3 === 0 ? 'DOWN' : 'UP') as Beat['status'], responseTimeMs: minute },
+        node: { at: i % 7 === 0 ? at(minute).replace('Z', '+00:00') : at(minute), status: (i % 3 === 0 ? 'DOWN' : 'UP') as Beat['status'], responseTimeMs: minute, message: null },
       }));
-      return { id: `c${String(index % 8)}`, heartbeats: { edges } };
+      return { id: `c${String(index % 8)}`, name: 'check', status: 'UP' as const, paused: false, heartbeats: { edges } };
     });
     expect(latestBeats(checks)).toEqual(byDefinition(checks));
   });

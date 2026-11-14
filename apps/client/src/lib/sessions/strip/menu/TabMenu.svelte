@@ -80,7 +80,7 @@
   onclick={toggle}
   {@attach press()}
 >
-  <Icon name="nf-md-dots_vertical" size="sm" />
+  <Icon name="carbon:overflow-menu-vertical" size="sm" />
 </button>
 {#if open}
   <div

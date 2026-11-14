@@ -111,7 +111,7 @@
     background: var(--surface-raised);
     box-shadow: 0 0 0 var(--border-thin) var(--border-subtle);
     color: var(--text);
-    font-weight: var(--weight-bold);
+    font-weight: var(--weight-medium);
   }
 
   button:focus-visible {

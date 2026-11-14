@@ -50,20 +50,20 @@
     "radius": {
       "$type": "dimension",
       "sm": {
-        "$value": "4px",
-        "$description": "Small controls"
+        "$value": "2px",
+        "$description": "Inner details: chips, menu items (UR-7 D8)"
       },
       "md": {
-        "$value": "6px",
-        "$description": "Cards, inputs"
+        "$value": "4px",
+        "$description": "Controls, inputs, tiles: straight-edged (UR-7 D8)"
       },
       "lg": {
-        "$value": "10px",
-        "$description": "Panels, dialogs"
+        "$value": "4px",
+        "$description": "Panels, dialogs: the same 4 px, no larger rounding (UR-7 D8)"
       },
       "pill": {
         "$value": "999px",
-        "$description": "Pills and badges"
+        "$description": "Status dots only, never containers (UR-7 D8)"
       }
     },
     "border": {

@@ -46,7 +46,7 @@
   {:else}
     <!-- The block the loaded section has when metrics are off, with its icon, sentence and button hidden. -->
     <div class="metrics-off ghost-text">
-      <span class="off-icon"><Icon name="nf-md-chart_line" size="lg" /></span>
+      <span class="off-icon"><Icon name="carbon:chart-line" size="lg" /></span>
       <p>&nbsp;</p>
       <span class="settings"></span>
     </div>

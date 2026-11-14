@@ -68,9 +68,7 @@ async function show(hubAnswers = answers(), search = ''): Promise<ReturnType<typ
 
 /** The button with this text (icon glyphs left out) or this accessible label, inside `within` when given. */
 function button(label: string, within = 'body'): HTMLButtonElement {
-  const found = [...document.querySelectorAll<HTMLButtonElement>(`${within} button`)].find(
-    (candidate) => candidate.textContent.replace(/\p{Co}/gu, '').trim() === label || candidate.getAttribute('aria-label') === label,
-  );
+  const found = [...document.querySelectorAll<HTMLButtonElement>(`${within} button`)].find((candidate) => candidate.textContent.replace(/\p{Co}/gu, '').trim() === label || candidate.getAttribute('aria-label') === label);
   if (!found) throw new Error(`no button ${label}`);
   return found;
 }
@@ -180,7 +178,7 @@ describe('6.7 tabs (D-9, D-10)', () => {
   });
 });
 
-describe('header buttons (D-8, DEV-022)', () => {
+describe('detail bar connect button (D-8, D16, DEV-022)', () => {
   it('D-8: SSH with an accepted host key opens a session that grows from the button', async () => {
     await show();
     button('SSH to nas').click();
@@ -203,6 +201,8 @@ describe('header buttons (D-8, DEV-022)', () => {
 
   it('DEV-022: RDP opens Settings at RDP and never starts a session; Edit opens Settings', async () => {
     await show();
+    button('More ways to connect to nas').click();
+    await settle();
     button('Set up RDP').click();
     button('Edit').click();
     expect(current.goto.map(([href]) => href)).toEqual([`/devices/${ID}?tab=settings&section=rdp`, `/devices/${ID}?tab=settings`]);

@@ -17,7 +17,8 @@
   const { label, for: control, hint, children, message }: Props = $props();
 </script>
 
-<!-- One setting: its name (and hint) at the start of the line, its control at the end; stacked only in a narrow card. -->
+<!-- One setting, a hairline row (UR-7, D9): its name and hint at the start of the line, its control at the end; stacked
+     only in a narrow column. -->
 <div class="row">
   <div class="line">
     <div class="text">
@@ -40,14 +41,14 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-1);
-    padding: var(--space-3) var(--space-4);
-    border-block-start: var(--border-thin) solid var(--border-strong);
+    padding: var(--space-3) var(--space-1);
+    border-block-start: var(--border-thin) solid var(--border-subtle);
   }
 
   .line {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
-    gap: var(--space-2) var(--space-4);
+    gap: var(--space-2) var(--space-6);
     align-items: center;
   }
 
@@ -71,7 +72,7 @@
     block-size: var(--space-8);
     border: var(--border-thin) solid var(--border-strong);
     border-radius: var(--radius-md);
-    background-color: var(--surface-raised);
+    background-color: var(--surface-base);
     color: var(--text);
     font: inherit;
     font-size: var(--text-md);
@@ -88,7 +89,7 @@
   }
 
   .control :global(:is(select, input):focus-visible) {
-    outline: var(--border-focus) solid var(--accent);
+    outline: var(--border-focus) solid var(--focus-ring);
     outline-offset: var(--border-focus);
   }
 
@@ -106,7 +107,7 @@
   .text > :global(.hint) {
     margin: 0;
     min-block-size: calc(var(--text-sm) * var(--leading-tight));
-    color: var(--text-secondary);
+    color: var(--text-tertiary);
     font-size: var(--text-sm);
     line-height: var(--leading-tight);
   }

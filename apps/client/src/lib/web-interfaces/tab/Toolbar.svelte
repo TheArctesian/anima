@@ -68,18 +68,18 @@
     onclick={onreload}
     {@attach press()}
   >
-    <Icon name="nf-md-refresh" />
+    <Icon name="carbon:renew" />
   </button>
   <p class="url" data-url title={url}>{url}</p>
   <p class="tls" data-tls={tls.tls} class:warned {title}>
-    <Icon name={warned ? 'nf-md-alert' : 'nf-md-lock'} size="sm" />
+    <Icon name={warned ? 'carbon:warning-alt' : 'carbon:locked'} size="sm" />
     <span class="label">{TLS_TEXT[tls.tls]}</span>
     {#if pinned !== undefined}
       <span class="hidden" data-fingerprint>{pinned}</span>
     {/if}
   </p>
   <button type="button" aria-label="Open in system browser" disabled={!browsable} onclick={onbrowser} {@attach press()}>
-    <Icon name="nf-md-web" size="sm" /><span class="label">Open in system browser</span>
+    <Icon name="carbon:earth" size="sm" /><span class="label">Open in system browser</span>
   </button>
   <button type="button" disabled={!poppable} onclick={onpopout} {@attach press()}>Pop out</button>
 </div>

@@ -29,7 +29,7 @@
 <!-- WEB-008 and SEC-007: the fingerprint is shown in full before any accept; a changed one stops the page. -->
 <section class="trust" aria-labelledby="{uid}-title" aria-describedby="{uid}-why" tabindex="-1" data-trust={changed ? 'changed' : 'first'}>
   {#if changed}
-    <h2 id="{uid}-title"><Icon name="nf-md-alert" /> The certificate of {label} on {deviceName} has changed</h2>
+    <h2 id="{uid}-title"><Icon name="carbon:warning-alt" /> The certificate of {label} on {deviceName} has changed</h2>
     <div id="{uid}-why">
       <p>{label} ({url}) presented a different certificate from the one Anima pinned, so Anima stopped loading it.</p>
       <p>
@@ -39,7 +39,7 @@
       </p>
     </div>
   {:else}
-    <h2 id="{uid}-title"><Icon name="nf-md-lock" /> Check the certificate of {label} on {deviceName}</h2>
+    <h2 id="{uid}-title"><Icon name="carbon:locked" /> Check the certificate of {label} on {deviceName}</h2>
     <div id="{uid}-why">
       <p>{label} ({url}) presented a certificate that this computer does not trust, so Anima has not loaded it.</p>
       <p>
@@ -133,7 +133,7 @@
   }
 
   .confirm {
-    font-weight: var(--weight-bold);
+    font-weight: var(--weight-medium);
   }
 
   .problem {

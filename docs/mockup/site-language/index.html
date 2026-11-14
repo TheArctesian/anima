@@ -1,0 +1,1373 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Anima – site language mockups</title>
+<!-- Mockup only (docs/ui-site-language-plan.md). The app bundles its fonts and icons (UI-017); this page loads them
+     from public CDNs so it opens straight from the repository. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400&family=IBM+Plex+Sans:wght@200;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/iconify-icon@2.1.0/dist/iconify-icon.min.js"></script>
+<style>
+/* ---------- Tokens: Graphite, with the proposed additions (D1, D5, D7, D8, D10) ---------- */
+:root, [data-theme="dark"] {
+  --surface-sunken:#16181B; --surface-base:#1B1D21; --surface-raised:#23262B; --surface-overlay:#2C3036;
+  --surface-hover:#1F2226; --border-subtle:#2C3036; --border-strong:#41464E;
+  --text:#E6E7E9; --text-secondary:#A4A8B0; --text-tertiary:#7E838C; --text-quiet:#5C6169;
+  --accent:#88C0D0; --on-accent:#16181B; --accent-tint:rgba(136,192,208,.12);
+  --up:#A3BE8C; --down:#BF616A; --down-text:#CA888F; --degraded:#EBCB8B; --warning:#D08770; --maintenance:#81A1C1; --unknown:#7E838C;
+  --planned:#B48EAD;
+  --frost-10:#5E81AC; --frost-9:#81A1C1; --frost-8:#88C0D0; --frost-7:#8FBCBB;
+  --hill:#16181B;
+  --chart-1:#88C0D0; --chart-2:#81A1C1; --chart-3:#8FBCBB;
+}
+[data-theme="light"] {
+  --surface-sunken:#EEEFF1; --surface-base:#F6F7F8; --surface-raised:#FFFFFF; --surface-overlay:#FFFFFF;
+  --surface-hover:#E6E8EB; --border-subtle:#DADDE1; --border-strong:#86898E;
+  --text:#1D2024; --text-secondary:#5A5F68; --text-tertiary:#676B72; --text-quiet:#9A9EA5;
+  --accent:#2E6E80; --on-accent:#FFFFFF; --accent-tint:rgba(46,110,128,.10);
+  --up:#617159; --down:#9F545C; --down-text:#9F545C; --degraded:#786B51; --warning:#8D6154; --maintenance:#4F6E95; --unknown:#676B72;
+  --planned:#7B657A; --hill:#EEEFF1;
+  --chart-1:#2E6E80; --chart-2:#4F6E95; --chart-3:#4E7F7E;
+}
+:root {
+  --font-ui:"IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --font-mono:"IBM Plex Mono", ui-monospace, monospace;
+  --weight-light:200; --weight-regular:400; --weight-medium:500;
+  --text-xs:.75rem; --text-sm:.8125rem; --text-md:.875rem; --text-lg:1rem; --text-xl:1.25rem; --text-display:2.25rem;
+  --tracking-tight:-.03em; --tracking-label:.14em;
+  --radius-sm:2px; --radius-md:4px;
+  --ease-enter:cubic-bezier(.2,0,0,1); --duration-base:200ms;
+  --control-sm:1.75rem; --control-md:2rem; --control-lg:2.5rem;
+}
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+html,body { height:100%; }
+body { background:var(--surface-sunken); color:var(--text); font:400 var(--text-md)/1.5 var(--font-ui); -webkit-font-smoothing:antialiased; }
+button,input,select { font:inherit; color:inherit; }
+a { color:inherit; text-decoration:none; }
+iconify-icon { display:inline-block; width:1em; height:1em; flex:none; font-size:16px; }
+.mono { font-family:var(--font-mono); font-size:.92em; }
+.num { font-variant-numeric:tabular-nums; }
+:focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:var(--radius-sm); }
+
+/* ---------- Mockup switcher (not part of the design) ---------- */
+.switcher { position:fixed; z-index:50; right:16px; bottom:16px; display:flex; gap:2px; padding:4px; background:var(--surface-overlay); border:1px solid var(--border-strong); border-radius:var(--radius-md); font-size:var(--text-sm); box-shadow:0 8px 30px rgba(0,0,0,.35); }
+.switcher button { border:0; background:none; padding:6px 10px; border-radius:var(--radius-sm); color:var(--text-secondary); cursor:pointer; }
+.switcher button[aria-pressed="true"] { background:var(--accent-tint); color:var(--text); }
+.switcher .sep { width:1px; background:var(--border-strong); margin:4px 4px; }
+
+/* ---------- Primitives ---------- */
+.label { display:flex; align-items:center; gap:10px; font-size:var(--text-sm); color:var(--text-tertiary); }
+.label iconify-icon { color:var(--accent); }
+.label .rule { width:28px; height:1px; background:var(--border-strong); }
+.caps { font-size:10.5px; font-weight:var(--weight-medium); letter-spacing:var(--tracking-label); text-transform:uppercase; color:var(--text-tertiary); }
+h1.display { font-weight:var(--weight-light); font-size:var(--text-display); letter-spacing:var(--tracking-tight); line-height:1.1; }
+.sub { color:var(--text-tertiary); margin-top:6px; }
+
+.btn { display:inline-flex; align-items:center; gap:7px; height:var(--control-md); padding:0 12px; border-radius:var(--radius-md); border:1px solid transparent; background:var(--surface-raised); color:var(--text); cursor:pointer; white-space:nowrap; transition:background .15s, border-color .15s, color .15s; }
+.btn:hover { background:var(--surface-overlay); }
+[data-theme="light"] .btn:not(.primary):not(.ghost):not(.danger) { border-color:var(--border-subtle); }
+.btn.primary { background:var(--accent); color:var(--on-accent); font-weight:var(--weight-medium); }
+.btn.primary:hover { filter:brightness(1.06); }
+.btn.ghost { background:none; color:var(--text-secondary); padding:0 8px; }
+.btn.ghost:hover { color:var(--text); background:var(--surface-hover); }
+.btn.danger { background:none; border-color:var(--border-strong); color:var(--down-text); }
+.btn.sm { height:var(--control-sm); padding:0 9px; font-size:var(--text-sm); }
+.btn.icon { width:var(--control-sm); padding:0; justify-content:center; }
+
+.input { height:var(--control-md); border:1px solid var(--border-strong); border-radius:var(--radius-md); background:var(--surface-base); padding:0 10px; display:flex; align-items:center; gap:8px; color:var(--text-tertiary); }
+.input input { border:0; background:none; outline:0; flex:1; color:var(--text); min-width:0; }
+.input:focus-within { border-color:var(--accent); }
+
+.status { display:inline-flex; align-items:center; gap:7px; font-size:var(--text-sm); }
+.dot { width:7px; height:7px; border-radius:999px; background:currentColor; flex:none; }
+.s-up { color:var(--up); } .s-down { color:var(--down-text); } .s-degraded { color:var(--degraded); } .s-warning { color:var(--warning); } .s-maintenance { color:var(--maintenance); } .s-unknown { color:var(--unknown); }
+.status b { font-weight:var(--weight-medium); }
+.badge { display:inline-flex; align-items:center; gap:6px; height:22px; padding:0 8px; border-radius:var(--radius-sm); font-size:var(--text-xs); font-weight:var(--weight-medium); }
+.badge.s-down { background:rgba(191,97,106,.14); }
+.badge.s-degraded { background:rgba(235,203,139,.12); }
+.badge.s-warning { background:rgba(208,135,112,.13); }
+
+/* Hairline rows (D9) */
+.rows { list-style:none; border-top:1px solid var(--border-subtle); }
+.rows > li, .row { border-bottom:1px solid var(--border-subtle); }
+.row { display:grid; align-items:center; gap:16px; min-height:44px; padding:10px 4px; transition:padding var(--duration-base) var(--ease-enter), background .15s; }
+a.row:hover, .row.link:hover { padding-left:10px; background:linear-gradient(90deg, var(--surface-hover), transparent 70%); }
+.row .go { color:var(--text-quiet); transition:color .15s, transform .25s var(--ease-enter); }
+a.row:hover .go, .row.link:hover .go { color:var(--accent); transform:translateX(2px); }
+
+/* Key-value list (D4: icons lead labels) */
+.kv { display:grid; grid-template-columns:minmax(10rem, 14rem) 1fr; border-top:1px solid var(--border-subtle); }
+.kv dt, .kv dd { padding:11px 4px; border-bottom:1px solid var(--border-subtle); }
+.kv dt { display:flex; align-items:center; gap:9px; color:var(--text-tertiary); }
+.kv dt iconify-icon { color:var(--text-quiet); }
+
+.bar { height:4px; background:var(--border-subtle); border-radius:var(--radius-sm); overflow:hidden; }
+.bar i { display:block; height:100%; background:var(--frost-9); }
+.bar i.hot { background:var(--degraded); }
+.beats { display:flex; gap:2px; align-items:flex-end; height:16px; }
+.beats i { width:3px; height:100%; border-radius:1px; background:var(--up); opacity:.75; }
+.beats i.d { background:var(--down); opacity:1; } .beats i.g { background:var(--degraded); opacity:1; } .beats i.u { background:var(--border-strong); }
+
+/* Section head (D6) */
+.section { margin-top:44px; }
+.section > .label { margin-bottom:16px; }
+
+/* Resolve entrance (D12) */
+@keyframes resolve { from { opacity:0; transform:translateY(4px); filter:blur(6px); } }
+.resolve > * { animation:resolve 420ms var(--ease-enter) both; }
+.resolve > *:nth-child(2) { animation-delay:40ms; } .resolve > *:nth-child(3) { animation-delay:80ms; } .resolve > *:nth-child(4) { animation-delay:120ms; } .resolve > *:nth-child(5) { animation-delay:160ms; }
+@media (prefers-reduced-motion: reduce) { .resolve > * { animation:none; } a.row, .row { transition:none; } }
+
+/* ---------- Shell ---------- */
+.app { display:grid; grid-template-columns:232px 1fr; height:100vh; }
+.app[hidden] { display:none; }
+.side { display:flex; flex-direction:column; border-right:1px solid var(--border-subtle); padding:14px 10px; background:var(--surface-sunken); }
+.brand { display:flex; align-items:center; gap:10px; height:24px; padding:0 8px; margin-bottom:26px; }
+.brand b { font-weight:var(--weight-regular); font-size:15px; }
+.brand .btn { margin-left:auto; color:var(--text-quiet); }
+.nav { list-style:none; display:flex; flex-direction:column; gap:2px; }
+.nav a { position:relative; display:flex; align-items:center; gap:11px; height:34px; padding:0 10px; border-radius:var(--radius-md); color:var(--text-secondary); }
+.nav a iconify-icon { font-size:18px; color:var(--text-tertiary); }
+.nav a:hover { color:var(--text); background:var(--surface-hover); }
+.nav a[aria-current="page"] { color:var(--text); background:var(--accent-tint); }
+.nav a[aria-current="page"] iconify-icon { color:var(--accent); }
+.nav a[aria-current="page"]::before { content:""; position:absolute; left:-10px; top:8px; bottom:8px; width:3px; border-radius:0 2px 2px 0; background:var(--accent); }
+.nav .count { margin-left:auto; font-size:var(--text-xs); color:var(--text-tertiary); }
+.side .foot { margin-top:auto; display:flex; flex-direction:column; gap:2px; }
+.hub { display:flex; align-items:center; gap:10px; padding:8px 10px; font-size:var(--text-sm); color:var(--text-tertiary); border-top:1px solid var(--border-subtle); margin-top:8px; padding-top:14px; }
+.hub .mono { color:var(--text-secondary); }
+.page { overflow:auto; }
+.frame { max-width:90rem; padding:36px 48px 80px; }
+.page-head { display:flex; align-items:flex-end; justify-content:space-between; gap:24px; margin-top:14px; }
+
+/* ---------- Devices ---------- */
+.toolbar { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-top:28px; }
+.toolbar .input { width:10rem; }
+.seg { display:flex; height:var(--control-md); border:1px solid var(--border-subtle); border-radius:var(--radius-md); overflow:hidden; }
+.seg button { display:inline-flex; align-items:center; gap:6px; border:0; background:none; padding:0 11px; color:var(--text-secondary); cursor:pointer; font-size:var(--text-sm); }
+.seg button + button { border-left:1px solid var(--border-subtle); }
+.seg button[aria-pressed="true"] { background:var(--surface-raised); color:var(--text); }
+.seg .n { color:var(--text-tertiary); font-variant-numeric:tabular-nums; }
+.toolbar .spacer { flex:1; }
+.attention .row { grid-template-columns:6.5rem 9rem minmax(0,1fr) 6rem 8.5rem; }
+.attention .row > :last-child { justify-self:end; }
+.attention .when { color:var(--text-tertiary); font-size:var(--text-sm); }
+.devices-rows .row { grid-template-columns:6.5rem minmax(0,1fr) 6.5rem 11.5rem 12rem 13.5rem; }
+.row.head > * { white-space:nowrap; }
+.devices-rows .row > :last-child, .devices-rows .head > :last-child { text-align:right; }
+.devices-rows .head { min-height:32px; padding-top:0; padding-bottom:6px; }
+.name b { font-weight:var(--weight-medium); display:block; }
+.name .mono { color:var(--text-tertiary); font-size:var(--text-sm); }
+.name .os { display:inline-flex; gap:6px; align-items:center; }
+.metrics { display:grid; grid-template-columns:3.2rem 1fr 2.4rem; align-items:center; gap:3px 8px; font-size:var(--text-xs); color:var(--text-tertiary); }
+.metrics .v { text-align:right; color:var(--text-secondary); font-variant-numeric:tabular-nums; }
+.uptime { font-variant-numeric:tabular-nums; }
+.actions { display:flex; gap:6px; justify-content:flex-end; }
+.tiles { display:grid; grid-template-columns:repeat(auto-fill, minmax(18rem,1fr)); gap:12px; }
+.tile { border:1px solid var(--border-subtle); border-radius:var(--radius-md); padding:16px; display:flex; flex-direction:column; gap:14px; transition:border-color .2s; }
+.tile:hover { border-color:var(--border-strong); }
+.tile .top { display:flex; justify-content:space-between; gap:10px; align-items:flex-start; }
+.tile .line { display:flex; justify-content:space-between; align-items:center; font-size:var(--text-sm); color:var(--text-tertiary); }
+.tile .reason { font-size:var(--text-sm); color:var(--text-secondary); margin-top:-6px; }
+
+/* ---------- Device page ---------- */
+.back { display:inline-flex; gap:6px; align-items:center; color:var(--text-tertiary); font-size:var(--text-sm); }
+.back:hover { color:var(--text); }
+.tabs { display:flex; gap:26px; margin-top:28px; border-bottom:1px solid var(--border-subtle); }
+.tabs a { display:inline-flex; gap:7px; align-items:center; padding:10px 0; color:var(--text-tertiary); border-bottom:2px solid transparent; margin-bottom:-1px; }
+.tabs a iconify-icon { font-size:15px; }
+.tabs a:hover { color:var(--text); }
+.tabs a[aria-selected="true"] { color:var(--text); border-color:var(--accent); }
+.split { display:grid; grid-template-columns:minmax(0,1.15fr) minmax(0,1fr); gap:48px; }
+.chart { height:120px; width:100%; display:block; }
+.legend { display:flex; gap:18px; font-size:var(--text-xs); color:var(--text-tertiary); margin-top:8px; }
+.legend i { display:inline-block; width:10px; height:2px; vertical-align:middle; margin-right:6px; }
+.checks .row { grid-template-columns:4.5rem minmax(0,1fr) 7.5rem 4.5rem 2rem; }
+
+/* ---------- Sessions ---------- */
+.sessions .row { grid-template-columns:minmax(0,1fr) 7rem 7rem 7rem 18rem; }
+.sessions .row > :last-child { justify-content:flex-end; }
+.proto { display:inline-flex; gap:7px; align-items:center; }
+.live { display:inline-flex; gap:7px; align-items:center; color:var(--up); font-size:var(--text-sm); }
+.live .dot { animation:pulse 2s var(--ease-enter) infinite; }
+@keyframes pulse { 50% { opacity:.35; } }
+
+/* ---------- Settings ---------- */
+.settings { display:grid; grid-template-columns:13rem minmax(0,44rem); gap:48px; margin-top:28px; }
+.settings nav { position:sticky; top:24px; align-self:start; display:flex; flex-direction:column; gap:2px; }
+.settings nav a { display:flex; gap:10px; align-items:center; height:32px; padding:0 10px; border-radius:var(--radius-md); color:var(--text-tertiary); }
+.settings nav a:hover { color:var(--text); }
+.settings nav a[aria-current="true"] { color:var(--text); background:var(--surface-hover); }
+.setting { display:grid; grid-template-columns:1fr auto; gap:24px; align-items:center; padding:14px 4px; border-bottom:1px solid var(--border-subtle); }
+.setting p { font-size:var(--text-sm); color:var(--text-tertiary); margin-top:2px; }
+.settings .section:first-child { margin-top:0; }
+.planned { display:inline-flex; gap:6px; align-items:center; font-size:var(--text-xs); color:var(--planned); }
+.switch { width:34px; height:20px; border-radius:999px; background:var(--border-strong); position:relative; border:0; cursor:pointer; }
+.switch::after { content:""; position:absolute; left:3px; top:3px; width:14px; height:14px; border-radius:999px; background:var(--surface-sunken); transition:transform .2s var(--ease-enter); }
+.switch[aria-checked="true"] { background:var(--accent); }
+.switch[aria-checked="true"]::after { transform:translateX(14px); }
+
+/* ---------- Sign-in ---------- */
+.signin { position:relative; height:100vh; display:grid; place-items:center; overflow:hidden; }
+.signin[hidden] { display:none; }
+.signin canvas { position:absolute; inset:0; width:100%; height:100%; }
+.signin form { position:relative; width:22rem; display:flex; flex-direction:column; gap:14px; }
+.signin h1 { margin:6px 0 10px; }
+.field { display:flex; flex-direction:column; gap:6px; }
+.field > span { font-size:var(--text-sm); color:var(--text-secondary); }
+.signin .btn.primary { height:var(--control-lg); justify-content:center; margin-top:6px; }
+.hubline { display:flex; justify-content:center; align-items:center; gap:8px; font-size:var(--text-sm); color:var(--text-tertiary); margin-top:6px; }
+.code { display:flex; gap:8px; justify-content:center; }
+.code input { width:42px; height:var(--control-lg); text-align:center; font-family:var(--font-mono); font-size:var(--text-lg); border:1px solid var(--border-strong); border-radius:var(--radius-md); background:var(--surface-base); }
+.code input:focus { outline:0; border-color:var(--accent); }
+.links { display:flex; justify-content:space-between; font-size:var(--text-sm); color:var(--text-tertiary); }
+.links a:hover { color:var(--text); }
+
+/* ---------- Specimen ---------- */
+.specimen .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(15rem,1fr)); gap:28px 40px; }
+.swatch { display:flex; gap:12px; align-items:center; padding:8px 0; border-bottom:1px solid var(--border-subtle); font-size:var(--text-sm); }
+.swatch i { width:28px; height:28px; border-radius:var(--radius-sm); border:1px solid var(--border-subtle); }
+.swatch span { color:var(--text-tertiary); margin-left:auto; }
+.type-row { display:grid; grid-template-columns:9rem 1fr; gap:24px; align-items:baseline; padding:14px 0; border-bottom:1px solid var(--border-subtle); }
+.type-row .caps { align-self:center; }
+.icons { display:grid; grid-template-columns:repeat(auto-fill,minmax(9rem,1fr)); gap:10px 16px; font-size:var(--text-sm); color:var(--text-secondary); }
+.icons div { display:flex; gap:10px; align-items:center; }
+.screen[hidden] { display:none; }
+
+.recent { grid-template-columns:minmax(0,1fr) auto auto; }
+.keys .row { grid-template-columns:7rem 6rem minmax(0,1fr) 7rem 7rem 5rem; }
+.keys .row > :last-child { justify-self:end; }
+.page-head { flex-wrap:wrap; }
+.page-head .actions { flex-wrap:wrap; }
+.nav a span.text { white-space:nowrap; }
+
+/* ---------- Medium: 768 to 1100 px (bp-medium) ---------- */
+@media (max-width:1100px) {
+  .app { grid-template-columns:64px 1fr; }
+  .side { padding:14px 8px; align-items:stretch; }
+  .brand { justify-content:center; padding:0; }
+  .brand b, .brand .btn, .nav .count, .hub > span:last-child { display:none; }
+  .nav a { justify-content:center; padding:0; font-size:0; gap:0; }
+  .nav a iconify-icon { font-size:20px; }
+  .nav a[aria-current="page"]::before { left:-8px; }
+  .hub { justify-content:center; padding-left:0; padding-right:0; }
+  .frame { padding:28px 32px 96px; }
+  .devices-rows .row { grid-template-columns:6.5rem minmax(0,1fr) 4.5rem auto; grid-template-areas:"status name uptime actions" ". metrics metrics metrics"; row-gap:8px; }
+  .devices-rows .row > :nth-child(1) { grid-area:status; } .devices-rows .row > :nth-child(2) { grid-area:name; }
+  .devices-rows .row > :nth-child(3) { grid-area:uptime; } .devices-rows .row > :nth-child(5) { grid-area:metrics; }
+  .devices-rows .row > :nth-child(6) { grid-area:actions; }
+  .devices-rows .row > .beats { display:none; }
+  .devices-rows .head { display:none; }
+  .devices-rows .metrics { grid-template-columns:repeat(3, auto minmax(2rem,1fr) 2.2rem); gap:0 8px; }
+  .sessions .row { grid-template-columns:minmax(0,1fr) 5.5rem 4rem 4.5rem auto; }
+  .split { grid-template-columns:1fr; gap:0; }
+  .settings { grid-template-columns:1fr; gap:20px; }
+  .settings nav { position:static; flex-direction:row; overflow-x:auto; gap:4px; padding-bottom:4px; scrollbar-width:none; }
+  .settings nav a { flex:none; }
+  .attention .row { grid-template-columns:6.5rem 8rem minmax(0,1fr) auto; }
+  .attention .when { display:none; }
+}
+
+/* ---------- Compact: below 768 px (bp-compact): the navigation moves to the bottom ---------- */
+@media (max-width:767px) {
+  :root { --text-display:1.875rem; }
+  .app { grid-template-columns:1fr; grid-template-rows:1fr auto; }
+  .page { grid-row:1; }
+  .side { grid-row:2; flex-direction:row; padding:6px 8px calc(6px + env(safe-area-inset-bottom)); border-right:0; border-top:1px solid var(--border-subtle); }
+  .brand, .hub { display:none; }
+  .side > .nav, .side .foot, .side .foot .nav { display:contents; }
+  .side .nav li { flex:1; list-style:none; }
+  .nav a { flex-direction:column; height:48px; font-size:10.5px; gap:3px; }
+  .nav a iconify-icon { font-size:20px; }
+  .nav a[aria-current="page"]::before { left:30%; right:30%; top:-7px; bottom:auto; width:auto; height:2px; border-radius:0 0 2px 2px; }
+  .frame { padding:68px 16px 32px; }
+  .section { margin-top:32px; }
+  .page-head { align-items:flex-start; flex-direction:column; gap:14px; }
+  .page-head .actions { justify-content:flex-start; }
+
+  .toolbar { gap:8px; }
+  .toolbar .input { width:100%; order:-2; }
+  .toolbar .seg[aria-label="Status"] { order:-1; width:100%; overflow-x:auto; scrollbar-width:none; }
+  .toolbar .seg[aria-label="Status"] button { flex:none; }
+  .toolbar .spacer { display:none; }
+  .toolbar .primary { margin-left:auto; }
+
+  .attention .row { grid-template-columns:auto minmax(0,1fr); grid-template-areas:"badge name" "cause cause" "act act"; gap:6px 12px; }
+  .attention .row > :nth-child(1) { grid-area:badge; } .attention .row > :nth-child(2) { grid-area:name; }
+  .attention .row > :nth-child(3) { grid-area:cause; color:var(--text-secondary); font-size:var(--text-sm); }
+  .attention .row > :last-child { grid-area:act; justify-self:start; padding-left:0; }
+
+  .devices-rows .head { display:none; }
+  .devices-rows .row { grid-template-columns:minmax(0,1fr) auto; grid-template-areas:"name status" "uptime beats" "metrics metrics" "actions actions"; gap:10px 12px; padding:14px 4px; }
+  .devices-rows .row > :nth-child(1) { grid-area:status; justify-self:end; }
+  .devices-rows .row > :nth-child(2) { grid-area:name; }
+  .devices-rows .row > :nth-child(3) { grid-area:uptime; font-size:var(--text-sm); color:var(--text-secondary); }
+  .devices-rows .row > .beats { display:flex; grid-area:beats; justify-self:end; }
+  .devices-rows .row > .beats i { width:2px; }
+  .devices-rows .row > :nth-child(5) { grid-area:metrics; }
+  .devices-rows .row > :nth-child(6) { grid-area:actions; justify-content:flex-start; flex-wrap:wrap; }
+  a.row:hover, .row.link:hover { padding-left:4px; }
+  .tiles { grid-template-columns:1fr; }
+
+  .tabs { gap:20px; overflow-x:auto; scrollbar-width:none; }
+  .tabs a { flex:none; }
+  .kv { grid-template-columns:1fr; }
+  .kv dt { border-bottom:0; padding-bottom:2px; }
+  .kv dd { padding-top:0; padding-left:29px; }
+  .checks .row { grid-template-columns:4.5rem minmax(0,1fr) auto 2rem; }
+  .checks .row > :nth-child(3) { display:none; }
+  .label[style*="space-between"] { flex-wrap:wrap; gap:10px; }
+
+  .sessions .head { display:none; }
+  .sessions .row { grid-template-columns:minmax(0,1fr) auto; grid-template-areas:"name proto" "time time" "act act"; gap:8px 12px; }
+  .sessions .row > :nth-child(1) { grid-area:name; } .sessions .row > :nth-child(2) { grid-area:proto; }
+  .sessions .row > :nth-child(3) { grid-area:time; font-size:var(--text-sm); color:var(--text-tertiary); }
+  .sessions .row > :nth-child(3)::before { content:"Started "; }
+  .sessions .row > :nth-child(4) { display:none; }
+  .sessions .row > :nth-child(5) { grid-area:act; justify-content:flex-start; }
+  .empty { flex-wrap:wrap; }
+
+  .setting { grid-template-columns:1fr; gap:10px; }
+  .setting .seg { justify-self:start; }
+  .keys .head { display:none; }
+  .keys .row { grid-template-columns:minmax(0,1fr) auto; gap:4px 12px; }
+  .keys .row > :nth-child(2), .keys .row > :nth-child(4) { display:none; }
+  .keys .row > :nth-child(3) { grid-column:1; color:var(--text-secondary); }
+  .keys .row > :nth-child(5) { grid-column:1; font-size:var(--text-sm); color:var(--text-tertiary); }
+  .keys .row > :last-child { grid-column:2; grid-row:1 / span 3; align-self:center; }
+
+  .type-row { grid-template-columns:1fr; gap:6px; }
+  .specimen .grid { grid-template-columns:1fr; }
+
+  .signin form { width:auto; margin:0 20px; max-width:22rem; }
+  .switcher { top:12px; bottom:auto; left:12px; right:12px; overflow-x:auto; scrollbar-width:none; }
+  .switcher button { flex:none; }
+}
+
+/* ---------- Device overview: grouped by the question each part answers ---------- */
+.notice { display:flex; align-items:center; gap:12px; margin-top:20px; padding:10px 12px; border-left:2px solid currentColor; background:linear-gradient(90deg, rgba(208,135,112,.10), transparent 75%); }
+.notice > iconify-icon { flex:none; }
+.notice p { flex:1; color:var(--text-secondary); font-size:var(--text-sm); }
+.notice p b { color:var(--text); font-weight:var(--weight-medium); }
+.glance section h2 { margin-bottom:8px; }
+.glance .quiet { color:var(--text-tertiary); }
+.groups { display:grid; grid-template-columns:3fr 2fr; gap:0 28px; }
+.group h3, .sub-head { display:flex; align-items:center; gap:10px; margin:6px 0 8px; }
+.sub-head { margin-top:0; }
+.group .usage { grid-template-columns:repeat(auto-fill, minmax(8.5rem, 1fr)); }
+.head-facts { display:flex; flex-wrap:wrap; align-items:center; gap:8px 14px; }
+.btn.setup { background:none; border:1px dashed var(--border-strong); color:var(--text-secondary); }
+.btn.setup:hover { border-color:var(--accent); color:var(--text); }
+.split-label { justify-content:space-between; flex-wrap:wrap; gap:10px; }
+.aside-note { margin-left:auto; color:var(--text-quiet); font-size:var(--text-xs); }
+.overview { display:grid; grid-template-columns:minmax(0,1fr) 17rem; grid-template-areas:"main glance"; gap:40px; margin-top:28px; }
+.main-col { grid-area:main; min-width:0; }
+.main-col .section.first { margin-top:0; }
+.main-col .section + .section { margin-top:28px; }
+.fold summary { display:flex; align-items:center; gap:8px; height:36px; cursor:pointer; list-style:none; border-top:1px solid var(--border-subtle); }
+.fold summary::-webkit-details-marker { display:none; }
+.fold summary .caps { color:var(--text-tertiary); }
+.fold summary:hover .caps, .fold summary:hover .chev { color:var(--text); }
+.fold .chev { font-size:14px; color:var(--text-quiet); transition:transform var(--duration-base) var(--ease-enter); }
+.fold[open] .chev { transform:rotate(90deg); }
+.fold-sum { margin-left:auto; font-size:var(--text-xs); color:var(--text-tertiary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.fold[open] .fold-sum { opacity:.7; }
+.fold .rows { border-top:0; }
+.main-col .fold + .fold { margin-top:0; }
+.main-col .fold:first-of-type { margin-top:28px; }
+.glance { grid-area:glance; position:sticky; top:24px; align-self:start; display:flex; flex-direction:column; gap:26px; }
+.glance dl { display:grid; grid-template-columns:auto 1fr; border-top:1px solid var(--border-subtle); font-size:var(--text-sm); }
+.glance dt, .glance dd { padding:8px 0; border-bottom:1px solid var(--border-subtle); min-height:36px; display:flex; align-items:center; }
+.glance dt { gap:8px; color:var(--text-tertiary); padding-right:14px; }
+.glance dt iconify-icon { color:var(--text-quiet); font-size:15px; }
+.glance dd { justify-content:flex-end; text-align:right; }
+.glance .with-action { gap:4px; }
+.uptime3 { gap:12px; }
+.uptime3 span { display:flex; flex-direction:column; align-items:flex-end; font-size:10.5px; color:var(--text-tertiary); line-height:1.2; }
+.uptime3 b { font-weight:var(--weight-regular); font-size:var(--text-sm); color:var(--text); }
+.inline-link:hover { text-decoration:underline; text-underline-offset:3px; }
+
+.usage { display:grid; grid-template-columns:repeat(auto-fill, minmax(10.5rem, 1fr)); border-top:1px solid var(--border-subtle); }
+.spark { padding:12px 14px 12px 0; border-bottom:1px solid var(--border-subtle); min-width:0; }
+.spark .t { display:flex; justify-content:space-between; align-items:baseline; gap:8px; font-size:var(--text-sm); color:var(--text-tertiary); }
+.spark .t b { font-weight:var(--weight-light); font-size:1.375rem; letter-spacing:-.02em; color:var(--text); font-variant-numeric:tabular-nums; }
+.spark .t b.hot { color:var(--degraded); }
+.spark svg { display:block; width:100%; height:40px; margin-top:6px; overflow:visible; }
+.spark .sub2 { font-size:10.5px; color:var(--text-quiet); margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+.streams .row { grid-template-columns:8.5rem minmax(0,1fr) 9rem 6.5rem; gap:18px; min-height:48px; }
+.streams .name b { font-weight:var(--weight-regular); }
+.streams .name small { display:block; font-size:var(--text-xs); color:var(--text-tertiary); }
+.streams svg { display:block; width:100%; height:26px; overflow:visible; }
+.streams .rate { text-align:right; font-size:var(--text-xs); color:var(--text-tertiary); line-height:1.5; font-variant-numeric:tabular-nums; }
+.streams .rate b { font-weight:var(--weight-regular); color:var(--text-secondary); }
+.streams .idle { grid-template-columns:8.5rem minmax(0,1fr); color:var(--text-tertiary); font-size:var(--text-sm); }
+.mounts { display:flex; flex-direction:column; gap:5px; font-size:var(--text-xs); color:var(--text-tertiary); }
+.mounts div { display:grid; grid-template-columns:minmax(3rem,auto) 1fr 2.4rem; gap:8px; align-items:center; }
+.mounts .v { text-align:right; color:var(--text-secondary); font-variant-numeric:tabular-nums; }
+
+@media (max-width:1100px) {
+  .overview { grid-template-columns:1fr; grid-template-areas:"glance" "main"; gap:28px; }
+  .glance { position:static; display:grid; grid-template-columns:1fr 1fr; gap:0 32px; }
+  .groups { grid-template-columns:1fr; }
+}
+@media (max-width:767px) {
+  .glance { grid-template-columns:1fr; gap:22px; }
+  .notice { flex-wrap:wrap; }
+  .glance dl + dl { border-top:0; }
+  .streams .row { grid-template-columns:minmax(0,1fr) auto; grid-template-areas:"name rate" "line line" "extra extra"; gap:6px 12px; }
+  .streams .row > .name { grid-area:name; } .streams .row > .rate { grid-area:rate; }
+  .streams .row > svg { grid-area:line; } .streams .row > .mounts { grid-area:extra; }
+  .streams .idle { grid-template-columns:1fr; }
+}
+
+/* ---------- Opaque surfaces (frosted glass taken out, operator 2026-11-13) ---------- */
+.material-chrome { background:var(--surface-sunken); }
+.material-panel { background:var(--surface-raised); border:1px solid var(--border-subtle); }
+.material-overlay { background:var(--surface-overlay); border:1px solid var(--border-strong); box-shadow:0 8px 30px rgba(0,0,0,.35); }
+
+.signin form.material-panel { padding:28px; border-radius:var(--radius-md); }
+.menu { position:absolute; right:0; top:calc(100% + 6px); z-index:20; width:15rem; padding:6px; border-radius:var(--radius-md); display:none; }
+.menu.open { display:block; }
+.menu button { display:flex; width:100%; align-items:center; gap:10px; height:32px; padding:0 10px; border:0; background:none; border-radius:var(--radius-sm); color:var(--text); cursor:pointer; text-align:left; }
+.menu button:hover { background:var(--accent-tint); }
+.menu hr { border:0; border-top:1px solid var(--border-subtle); margin:6px 4px; }
+
+/* ---------- Detail bar (every detail page: devices, sessions, projects, runs) ---------- */
+.detail-bar { position:sticky; top:0; z-index:6; margin:-12px -48px 0; padding:12px 48px 0; background:var(--surface-sunken); border-bottom:1px solid var(--border-subtle); }
+.detail-bar .tabs { margin-top:12px; border-bottom:0; }
+.tb { display:flex; align-items:center; gap:10px 16px; flex-wrap:wrap; min-height:var(--control-md); }
+.crumb { display:flex; align-items:center; gap:10px; min-width:0; }
+.crumb a { color:var(--text-tertiary); }
+.crumb a:hover { color:var(--text); }
+.crumb .slash { color:var(--text-quiet); }
+.crumb > iconify-icon { color:var(--accent); font-size:18px; }
+.crumb h1 { font-size:var(--text-xl); font-weight:var(--weight-medium); letter-spacing:-.01em; }
+.quiet-mono { color:var(--text-tertiary); }
+.tb-actions { margin-left:auto; display:flex; align-items:center; gap:6px; }
+.split-btn { display:inline-flex; }
+.split-btn > .btn:first-child { border-radius:var(--radius-md) 0 0 var(--radius-md); }
+.split-btn > .btn.chev { border-radius:0 var(--radius-md) var(--radius-md) 0; padding:0 7px; box-shadow:inset 1px 0 0 rgba(0,0,0,.2); }
+.kbd { margin-left:auto; padding-left:14px; font-family:var(--font-mono); font-size:var(--text-xs); color:var(--text-quiet); }
+/* the reason folds away while pinned: rows animate from 1fr to 0fr */
+.tb-fold { display:grid; grid-template-rows:1fr; transition:grid-template-rows .24s var(--ease-enter), opacity .18s var(--ease-enter); }
+.tb-fold > div { min-height:0; overflow:hidden; }
+.detail-bar.stuck .tb-fold { grid-template-rows:0fr; opacity:0; }
+.tb-reason { display:flex; align-items:center; gap:8px; padding-top:10px; font-size:var(--text-sm); color:var(--text-tertiary); flex-wrap:wrap; }
+.tb-reason .t { color:var(--text-secondary); }
+.tb-reason .inline-link { display:inline-flex; align-items:center; gap:4px; color:var(--accent); }
+/* while pinned, the status dot carries the state and the reason is one hover away */
+.detail-bar.stuck .tb .status { cursor:help; }
+@media (prefers-reduced-motion: reduce) { .tb-fold { transition:none; } }
+@media (max-width:1100px) { .detail-bar { margin:-12px -32px 0; padding:12px 32px 0; } }
+@media (max-width:767px) {
+  /* top:56px only clears the mockup switcher, which sits at the top on phones */
+  .detail-bar { top:56px; margin:-12px -16px 0; padding:12px 16px 0; }
+  .crumb h1 { font-size:var(--text-lg); }
+  .tb-actions { margin-left:0; width:100%; }
+  .tb-actions .menu { left:0; right:auto; }
+  .detail-bar.stuck .tb-actions { display:none; }
+}
+
+/* ---------- Device settings tab ---------- */
+.autosave-note { display:flex; align-items:center; gap:8px; margin-bottom:22px; font-size:var(--text-sm); color:var(--text-tertiary); }
+.autosave-note iconify-icon { color:var(--text-quiet); }
+/* save on change: a quiet mark beside the label, "Saving…" then "Saved", which fades; an error stays */
+.saved { display:inline-flex; align-items:center; gap:4px; margin-left:10px; font-size:var(--text-xs); color:var(--text-tertiary); vertical-align:middle; transition:opacity .6s var(--ease-enter); white-space:nowrap; }
+.saved.ok { color:var(--up); }
+.saved.err { color:var(--down-text); }
+.saved.gone { opacity:0; }
+@media (prefers-reduced-motion: reduce) { .saved { transition:none; } }
+.input.invalid { border-color:var(--down); }
+.field-error { grid-column:1 / -1; display:flex; align-items:center; gap:6px; font-size:var(--text-sm); color:var(--down-text); }
+.secret-edit { display:flex; gap:8px; align-items:center; }
+.secret-edit .input { flex:1; }
+#screen-device:not([data-pane="settings"]) .pane-settings, #screen-device[data-pane="settings"] .pane-overview { display:none; }
+.dset { display:grid; grid-template-columns:minmax(0,46rem) 12rem; gap:56px; margin-top:24px; align-items:start; }
+.dset-index { position:sticky; top:132px; display:flex; flex-direction:column; gap:2px; }
+.dset-index .caps { padding:0 10px 8px; }
+.dset-index a { display:flex; gap:10px; align-items:center; height:30px; padding:0 10px; border-radius:var(--radius-md); color:var(--text-tertiary); font-size:var(--text-sm); }
+.dset-index a:hover { color:var(--text); }
+.dset-index a[aria-current="true"] { color:var(--text); background:var(--surface-hover); }
+.dset .section { margin-top:36px; scroll-margin-top:140px; }
+.dset .section.first { margin-top:0; }
+.dset .section > .label { margin-bottom:6px; }
+.dset .setting { grid-template-columns:minmax(0,1fr) 19rem; padding:12px 4px; }
+.dset .setting > .input, .dset .setting > label.input { width:100%; }
+.dset .setting > .seg, .dset .setting > .btn, .dset .setting > .stepper, .dset .setting > .pair { justify-self:end; }
+.input.select { position:relative; padding-right:8px; }
+.input.select select { appearance:none; -webkit-appearance:none; border:0; background:none; color:var(--text); flex:1; min-width:0; font:inherit; outline:0; cursor:pointer; }
+.input.select .lead { color:var(--text-secondary); }
+.input.tags { flex-wrap:wrap; height:auto; min-height:var(--control-md); padding:3px 6px; gap:4px; }
+.input.tags input { min-width:5rem; }
+.chip { display:inline-flex; align-items:center; gap:2px; height:22px; padding:0 2px 0 8px; border-radius:var(--radius-sm); background:var(--surface-raised); color:var(--text); font-size:var(--text-sm); }
+.chip button { display:grid; place-items:center; width:18px; height:18px; border:0; background:none; color:var(--text-tertiary); cursor:pointer; border-radius:var(--radius-sm); }
+.chip button:hover { color:var(--text); }
+.stepper { display:inline-flex; height:var(--control-md); border:1px solid var(--border-strong); border-radius:var(--radius-md); overflow:hidden; background:var(--surface-base); }
+.stepper button { width:30px; border:0; background:none; color:var(--text-secondary); cursor:pointer; }
+.stepper button:hover { color:var(--text); background:var(--surface-hover); }
+.stepper input { width:3rem; border:0; border-left:1px solid var(--border-subtle); border-right:1px solid var(--border-subtle); background:none; color:var(--text); text-align:center; outline:0; }
+.pair { display:flex; gap:18px; }
+.pair label, .checks label { display:inline-flex; align-items:center; gap:9px; font-size:var(--text-sm); color:var(--text-secondary); cursor:pointer; white-space:nowrap; }
+.dset .switch { flex:none; }
+
+/* protocols: one hairline row each; the open one shows its fields indented under it */
+.conns { border-top:1px solid var(--border-subtle); }
+.conn { border-bottom:1px solid var(--border-subtle); }
+.conn-head { display:flex; align-items:center; gap:12px; min-height:48px; padding:0 4px; }
+.conn-toggle { flex:1; min-width:0; display:flex; align-items:center; gap:10px; height:48px; border:0; background:none; color:var(--text); cursor:pointer; text-align:left; font:inherit; }
+.conn-toggle b { font-weight:var(--weight-medium); white-space:nowrap; }
+.conn-toggle .chev { color:var(--text-quiet); transition:transform .2s var(--ease-enter); }
+.conn.open .conn-toggle .chev { transform:rotate(90deg); }
+.conn-toggle .sum { color:var(--text-tertiary); font-size:var(--text-sm); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.conn-toggle:hover .chev { color:var(--text); }
+.conn.off .conn-toggle b, .conn.off .conn-toggle > iconify-icon:not(.chev) { color:var(--text-tertiary); }
+.conn-body { display:none; padding:4px 4px 18px 30px; }
+.conn.open .conn-body { display:block; }
+.fields { display:grid; grid-template-columns:7rem minmax(0,1fr) minmax(0,1fr); gap:14px 14px; }
+.fields .field.wide { grid-column:1 / -1; }
+.fields .field.narrow + .field { grid-column:span 2; }
+.fields.rdp .field.narrow + .field { grid-column:auto; }
+.fields .field.span2 { grid-column:span 2; }
+.fields small { font-size:var(--text-xs); color:var(--text-tertiary); }
+.cred { display:flex; align-items:center; gap:10px; min-height:var(--control-md); padding:0 4px 0 10px; border:1px solid var(--border-subtle); border-radius:var(--radius-md); font-size:var(--text-sm); min-width:0; }
+.cred .quiet { color:var(--text-tertiary); }
+.cred .truncate { flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.grow { flex:1; }
+.danger-text { color:var(--down-text); }
+.inline-note { display:flex; gap:8px; align-items:flex-start; margin-top:14px; font-size:var(--text-sm); }
+.inline-note span { color:var(--text-secondary); }
+.inline-note iconify-icon { margin-top:2px; flex:none; }
+.conn-foot { display:flex; align-items:center; gap:12px; margin-top:16px; font-size:var(--text-sm); }
+.conn-foot .quiet { color:var(--text-tertiary); }
+.checks { display:grid; grid-template-columns:1fr 1fr; gap:12px 24px; margin-top:16px; }
+
+
+@media (max-width:1100px) {
+  .dset { grid-template-columns:minmax(0,1fr); }
+  .dset-index { display:none; }
+}
+@media (max-width:767px) {
+  .dset .setting { grid-template-columns:1fr; gap:10px; }
+  .dset .setting > .seg, .dset .setting > .btn, .dset .setting > .stepper, .dset .setting > .pair { justify-self:start; }
+  .fields { grid-template-columns:5.5rem minmax(0,1fr); }
+  .fields .field:not(.narrow):not(.wide) { grid-column:1 / -1; }
+  .fields .field.narrow + .field { grid-column:2; }
+  .conn-body { padding-left:4px; }
+  .conn-toggle .sum { display:none; }
+  .cred .quiet:not(.truncate) { display:none; }
+  .fields .field.span2 { grid-column:1 / -1; }
+  .checks { grid-template-columns:1fr; }
+  .pair { flex-direction:column; gap:10px; }
+}
+
+/* ---------- Devices list ---------- */
+.list-head { display:flex; align-items:flex-end; justify-content:space-between; gap:16px; }
+.tally { display:flex; flex-wrap:wrap; gap:4px 22px; margin-top:12px; }
+.tally button { display:inline-flex; align-items:center; gap:7px; height:30px; padding:0; border:0; border-bottom:1px solid transparent; background:none; color:var(--text-tertiary); font:inherit; font-size:var(--text-lg); cursor:pointer; }
+.tally button b { color:var(--text); font-weight:var(--weight-medium); }
+.tally button:hover { color:var(--text-secondary); }
+.tally button[aria-pressed="true"] { border-bottom-color:var(--accent); color:var(--text-secondary); }
+.dl-tools { display:flex; align-items:center; gap:6px; margin-top:22px; padding:8px 0; border-top:1px solid var(--border-subtle); border-bottom:1px solid var(--border-subtle); }
+.dl-tools .spacer { flex:1; }
+.dl-tools .dd { font-size:12px; color:var(--text-tertiary); }
+.dl-search { width:16rem; border-color:transparent; background:none; padding-left:4px; }
+.dl-search:focus-within { border-color:var(--accent); background:var(--surface-base); }
+.menu [role="menuitemradio"][aria-checked="true"] { color:var(--text); background:var(--surface-hover); }
+
+.dl { list-style:none; }
+.dl-head, .dl-row { display:grid; grid-template-columns:6rem minmax(11rem,.8fr) 3.5rem 8rem minmax(16rem,1.3fr) 6.5rem; align-items:center; gap:0 20px; padding:0 8px; }
+.dl-head { height:34px; }
+.dl-head .c-uptime { text-align:right; }
+.dl-group { display:flex; align-items:center; gap:8px; height:34px; margin-top:14px; padding:0 8px; border-bottom:1px solid var(--border-subtle); }
+.dl-group .n { color:var(--text-quiet); letter-spacing:0; }
+.dl-row { min-height:52px; border-bottom:1px solid var(--border-subtle); cursor:pointer; transition:background .15s var(--ease-enter); }
+.dl-row:hover { background:linear-gradient(90deg, var(--surface-hover), transparent 85%); }
+.c-name { display:flex; align-items:center; gap:10px; min-width:0; }
+.c-name iconify-icon { color:var(--text-tertiary); font-size:15px; flex:none; }
+.c-name a { font-weight:var(--weight-medium); color:var(--text); white-space:nowrap; }
+.c-name a:hover { text-decoration:underline; text-underline-offset:3px; }
+.c-name .host { color:var(--text-tertiary); font-size:var(--text-sm); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.c-uptime { text-align:right; color:var(--text-secondary); font-size:var(--text-sm); }
+.c-beats .beats { width:100%; }
+.c-connect { display:flex; justify-content:flex-end; gap:2px; }
+.c-meta { display:none; }
+.meters { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; width:100%; }
+.meters.n4 { grid-template-columns:repeat(4,minmax(0,1fr)); }
+.meters .m { display:flex; flex-direction:column; gap:3px; font-size:var(--text-sm); color:var(--text-secondary); min-width:0; }
+.meters .k { display:flex; align-items:center; gap:4px; font-size:11px; color:var(--text-tertiary); white-space:nowrap; overflow:hidden; }
+.meters .k iconify-icon { font-size:12px; color:var(--text-quiet); flex:none; }
+.meters .m.hot .k iconify-icon { color:var(--warning); }
+.meters .m i { display:block; height:2px; background:linear-gradient(90deg, var(--frost-9) var(--w), var(--border-subtle) var(--w)); }
+.meters .m.hot { color:var(--warning); }
+.meters .m.hot i { background:linear-gradient(90deg, var(--warning) var(--w), var(--border-subtle) var(--w)); }
+.quiet { color:var(--text-quiet); font-size:var(--text-sm); }
+.why { display:flex; align-items:baseline; gap:8px; min-width:0; font-size:var(--text-sm); }
+.why .t { color:var(--text-secondary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.why .since { color:var(--text-quiet); white-space:nowrap; }
+.why .inline-link { display:inline-flex; align-items:center; gap:3px; margin-left:auto; color:var(--accent); white-space:nowrap; }
+/* a problem row carries a 2 px status edge so the eye finds it without reading */
+.dl-row.s-row-down, .dl-tile.s-row-down { box-shadow:inset 2px 0 0 var(--down); }
+.dl-row.s-row-warning, .dl-tile.s-row-warning { box-shadow:inset 2px 0 0 var(--warning); }
+.dl-row.s-row-unknown { box-shadow:inset 2px 0 0 var(--border-strong); }
+
+.dl-tiles { display:grid; grid-template-columns:repeat(auto-fill, minmax(17rem,1fr)); gap:12px; margin-top:12px; }
+p.dl-group { margin-top:18px; }
+.dl-tile { display:flex; flex-direction:column; gap:10px; padding:14px; border:1px solid var(--border-subtle); border-radius:var(--radius-md); cursor:pointer; transition:border-color .15s var(--ease-enter); }
+.dl-tile:hover { border-color:var(--border-strong); }
+.dl-tile .top { display:flex; align-items:center; gap:9px; }
+.dl-tile .top iconify-icon { color:var(--text-tertiary); }
+.dl-tile .nm { font-weight:var(--weight-medium); color:var(--text); }
+.dl-tile .top .status { margin-left:auto; }
+.dl-tile .host { margin-top:-6px; color:var(--text-tertiary); font-size:var(--text-sm); }
+.dl-tile .mid { min-height:52px; display:flex; flex-direction:column; justify-content:center; gap:10px; }
+.dl-tile .why { flex-wrap:wrap; }
+.dl-tile .why .t { white-space:normal; }
+.dl-tile .bottom { display:flex; align-items:center; gap:10px; }
+.dl-tile .bottom .beats { flex:1; }
+.dl-tile .bottom .up { font-size:var(--text-sm); color:var(--text-secondary); }
+.dl-tile .c-connect { justify-content:flex-start; margin:0 -6px -6px; }
+.dl-empty { display:flex; flex-direction:column; align-items:center; gap:10px; padding:56px 0; color:var(--text-tertiary); }
+.dl-empty iconify-icon { font-size:22px; color:var(--text-quiet); }
+
+@media (max-width:1100px) {
+  /* two lines per device: name, then status · host · uptime; meters or the reason on the right */
+  .dl-head { display:none; }
+  .dl-row { grid-template-columns:minmax(9rem,.8fr) minmax(0,1.4fr) 6.5rem; grid-template-areas:"name detail connect" "meta detail connect"; padding:8px 8px 8px 12px; gap:2px 20px; }
+  .dl-row .c-status, .dl-row .c-uptime, .dl-row .c-beats { display:none; }
+  .dl-row .c-name { grid-area:name; }
+  .dl-row .c-name .host { display:none; }
+  .dl-row .c-detail { grid-area:detail; min-width:0; }
+  .dl-row .c-connect { grid-area:connect; }
+  .dl-row .c-meta { grid-area:meta; display:flex; gap:8px; min-width:0; font-size:var(--text-sm); color:var(--text-tertiary); padding-left:25px; }
+  .dl-row .c-meta > span:last-child { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .dl-row:not(.s-row-up) .c-meta > span:last-child { display:none; }
+}
+@media (max-width:767px) {
+  .list-head .btn .lbl { display:none; }
+  .tally { gap:2px 16px; }
+  .tally button { font-size:var(--text-md); }
+  .dl-tools { flex-wrap:wrap; }
+  .dl-search { width:100%; order:-1; border-color:var(--border-subtle); }
+  .dl-row { grid-template-columns:minmax(0,1fr) 6.5rem; grid-template-areas:"name connect" "meta connect"; gap:2px 12px; }
+  .dl-row .c-detail { display:none; }
+  .dl-row:not(.s-row-up) .c-meta > span:last-child { display:inline; }
+  .dl-tiles { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- ======================= Sign-in (D13) ======================= -->
+<main class="signin" id="screen-signin" hidden>
+  <canvas id="doors" aria-hidden="true"></canvas>
+  <form class="resolve material-panel" onsubmit="event.preventDefault(); step(2)">
+    <div class="label"><svg width="22" height="22" viewBox="115 115 410 410" aria-hidden="true" data-logo></svg><span class="rule"></span>Anima</div>
+    <h1 class="display">Sign in to Anima</h1>
+    <div id="step1" class="resolve" style="display:flex;flex-direction:column;gap:14px">
+      <label class="field"><span>User name</span><div class="input"><iconify-icon icon="carbon:user"></iconify-icon><input value="operator"></div></label>
+      <label class="field"><span>Password</span><div class="input"><iconify-icon icon="carbon:password"></iconify-icon><input type="password" value="................"></div></label>
+      <button class="btn primary">Continue<iconify-icon icon="carbon:arrow-right"></iconify-icon></button>
+    </div>
+    <div id="step2" class="resolve" style="display:none;flex-direction:column;gap:14px">
+      <p class="sub" style="margin:0">Enter the code from your authenticator app</p>
+      <div class="code"><input value="4"><input value="1"><input value="9"><input><input><input></div>
+      <div class="links"><a href="#" onclick="step(1);return false"><iconify-icon icon="carbon:arrow-left" style="font-size:14px;vertical-align:-2px"></iconify-icon> Back</a><a href="#">Sign in without a code</a></div>
+    </div>
+    <div class="hubline"><iconify-icon icon="carbon:network-3"></iconify-icon>Hub: <span class="mono">hub.anima.ing</span><button type="button" class="btn ghost sm">Change</button></div>
+  </form>
+</main>
+
+<!-- ======================= App shell ======================= -->
+<div class="app" id="app">
+  <aside class="side">
+    <div class="brand"><svg width="22" height="22" viewBox="115 115 410 410" aria-hidden="true" data-logo></svg><b>Anima</b><button class="btn ghost icon" aria-label="Collapse navigation"><iconify-icon icon="carbon:side-panel-close"></iconify-icon></button></div>
+    <ul class="nav">
+      <li><a href="#devices" data-nav="devices" title="Devices"><iconify-icon icon="carbon:bare-metal-server"></iconify-icon>Devices<span class="count num">12</span></a></li>
+      <li><a href="#sessions" data-nav="sessions" title="Live sessions"><iconify-icon icon="carbon:screen"></iconify-icon>Live sessions<span class="count num">2</span></a></li>
+      <li><a href="#devices" title="Builds"><iconify-icon icon="carbon:build-tool"></iconify-icon>Builds</a></li>
+    </ul>
+    <div class="foot">
+      <div class="hub"><span class="status s-up"><span class="dot"></span></span><span>Connected</span></div>
+      <ul class="nav"><li><a href="#settings" data-nav="settings" title="Settings"><iconify-icon icon="carbon:settings"></iconify-icon>Settings</a></li></ul>
+    </div>
+  </aside>
+
+  <div class="page" id="page">
+
+    <!-- ======================= Devices ======================= -->
+    <section class="screen frame" id="screen-devices">
+      <!-- The count line is both the summary and the status filter; problems sort to the top of the list instead of a second "Needs attention" list. -->
+      <header class="list-head resolve">
+        <h1 class="display">Devices</h1>
+        <button class="btn primary"><iconify-icon icon="carbon:add"></iconify-icon>Add device</button>
+      </header>
+      <nav class="tally resolve" aria-label="Show devices by status">
+        <button data-status="all" aria-pressed="true"><b class="num">12</b>devices</button>
+        <button data-status="down"><span class="dot s-down"></span><b class="num">1</b>down</button>
+        <button data-status="warning"><span class="dot s-warning"></span><b class="num">2</b>with a warning</button>
+        <button data-status="unknown"><span class="dot s-unknown"></span><b class="num">1</b>unknown</button>
+        <button data-status="up"><span class="dot s-up"></span><b class="num">8</b>up</button>
+      </nav>
+      <div class="dl-tools">
+        <label class="input dl-search"><iconify-icon icon="carbon:search"></iconify-icon><input placeholder="Search by name" id="dl-search" aria-label="Search devices by name"></label>
+        <button class="btn ghost"><iconify-icon icon="carbon:tag"></iconify-icon>Tags<iconify-icon class="dd" icon="carbon:chevron-down"></iconify-icon></button>
+        <button class="btn ghost"><iconify-icon icon="carbon:location"></iconify-icon>All sites<iconify-icon class="dd" icon="carbon:chevron-down"></iconify-icon></button>
+        <span class="spacer"></span>
+        <span style="position:relative"><button class="btn ghost" data-menu aria-haspopup="menu" aria-expanded="false" id="dl-sort-btn"><iconify-icon icon="carbon:arrows-vertical"></iconify-icon><span id="dl-sort-label">Status</span><iconify-icon class="dd" icon="carbon:chevron-down"></iconify-icon></button>
+          <div class="menu material-overlay" role="menu" id="dl-sort"><button role="menuitemradio" aria-checked="true" data-sort="status">Status<span class="kbd">problems first</span></button><button role="menuitemradio" aria-checked="false" data-sort="name">Name</button><button role="menuitemradio" aria-checked="false" data-sort="uptime">Uptime<span class="kbd">lowest first</span></button></div></span>
+        <div class="seg" role="group" aria-label="View">
+          <button aria-pressed="true" data-view="rows" aria-label="List"><iconify-icon icon="carbon:list"></iconify-icon></button>
+          <button data-view="tiles" aria-label="Grid"><iconify-icon icon="carbon:grid"></iconify-icon></button>
+        </div>
+      </div>
+      <div id="device-list"></div>
+    </section>
+
+    <!-- ======================= Device ======================= -->
+    <!-- Content follows the current device page (pop-os, 2026-11-13); only the drawing is new. -->
+    <section class="screen frame" id="screen-device" hidden>
+      <!-- The detail bar: who it is, its state and the ways in on one line; it stays pinned with the tabs, and the reason folds away once the page scrolls. -->
+      <header class="detail-bar resolve" id="detail-bar">
+        <div class="tb">
+          <nav class="crumb" aria-label="Breadcrumb"><a href="#devices">Devices</a><span class="slash">/</span><iconify-icon icon="simple-icons:popos" title="Pop!_OS"></iconify-icon><h1>pop-os</h1></nav>
+          <span class="status s-warning" title="The TLS certificate of the Grafana web interface expires in 9 days."><span class="dot"></span>Warning</span>
+          <span class="mono quiet-mono">100.64.0.3</span>
+          <div class="tb-actions">
+            <span class="split-btn" style="position:relative"><button class="btn primary"><iconify-icon icon="carbon:terminal"></iconify-icon>SSH</button><button class="btn primary chev" aria-label="Other ways to connect" data-menu aria-haspopup="menu" aria-expanded="false"><iconify-icon icon="carbon:chevron-down"></iconify-icon></button>
+              <div class="menu material-overlay" role="menu"><button role="menuitem"><iconify-icon icon="carbon:terminal"></iconify-icon>SSH<span class="kbd">22</span></button><button role="menuitem"><iconify-icon icon="carbon:screen"></iconify-icon>VNC<span class="kbd">5900</span></button><hr><button role="menuitem"><iconify-icon icon="carbon:add"></iconify-icon>Set up RDP</button></div></span>
+            <span style="position:relative"><button class="btn ghost"><iconify-icon icon="carbon:edit"></iconify-icon>Edit</button><button class="btn ghost icon" style="width:var(--control-md)" aria-label="More actions" data-menu aria-haspopup="menu" aria-expanded="false"><iconify-icon icon="carbon:overflow-menu-horizontal"></iconify-icon></button>
+              <div class="menu material-overlay" role="menu"><button role="menuitem"><iconify-icon icon="carbon:power"></iconify-icon>Wake</button><button role="menuitem"><iconify-icon icon="carbon:tool-kit"></iconify-icon>Start maintenance</button><hr><button role="menuitem"><iconify-icon icon="carbon:copy"></iconify-icon>Copy address</button></div></span>
+          </div>
+        </div>
+        <div class="tb-fold"><div>
+          <p class="tb-reason"><span class="s-warning"><iconify-icon icon="carbon:warning-alt"></iconify-icon></span><span><span class="t">The TLS certificate of the Grafana web interface expires in 9 days.</span> Every check passes.</span><a href="#device" class="inline-link">Review<iconify-icon icon="carbon:arrow-right"></iconify-icon></a></p>
+        </div></div>
+        <nav class="tabs" role="tablist">
+        <a role="tab" data-pane="overview" href="#device"><iconify-icon icon="carbon:dashboard"></iconify-icon>Overview</a>
+        <a role="tab" href="#device"><iconify-icon icon="carbon:activity"></iconify-icon>Checks</a>
+        <a role="tab" href="#device"><iconify-icon icon="carbon:recently-viewed"></iconify-icon>Sessions</a>
+        <a role="tab" href="#device"><iconify-icon icon="carbon:catalog"></iconify-icon>Logs</a>
+        <a role="tab" data-pane="settings" href="#device/settings"><iconify-icon icon="carbon:settings-adjust"></iconify-icon>Settings</a>
+      </nav>
+      </header>
+
+      <div class="overview pane-overview">
+        <aside class="glance" aria-label="Health and access">
+          <section>
+            <h2 class="caps">Health</h2>
+            <dl>
+              <dt><iconify-icon icon="carbon:activity"></iconify-icon>Checks</dt><dd><a href="#device" class="inline-link"><span class="status s-up"><span class="dot"></span>1 of 1 up</span></a></dd>
+              <dt><iconify-icon icon="carbon:time"></iconify-icon>Uptime</dt><dd class="uptime3"><span><b class="num">100%</b>24 h</span><span><b class="num">97.7%</b>7 d</span><span><b class="num">97.7%</b>30 d</span></dd>
+              <dt><iconify-icon icon="carbon:tool-kit"></iconify-icon>Maintenance</dt><dd class="quiet">Off</dd>
+            </dl>
+          </section>
+          <section>
+            <h2 class="caps">Access</h2>
+            <dl>
+              <dt><iconify-icon icon="carbon:login"></iconify-icon>Protocols</dt><dd>SSH, VNC <span class="quiet">&nbsp;· RDP not set up</span></dd>
+              <dt><iconify-icon icon="carbon:fingerprint-recognition"></iconify-icon>Host key</dt><dd class="with-action"><span class="status s-up"><iconify-icon icon="carbon:checkmark" style="font-size:14px"></iconify-icon>Trusted</span><button class="btn ghost icon" aria-label="Copy the host key fingerprint" title="ecdsa-sha2-nistp256 · SHA256:dJSdNiHJtVlBobL+mSjapOl7CgO/JNfSu4qORr1jXqA"><iconify-icon icon="carbon:copy"></iconify-icon></button></dd>
+              <dt><iconify-icon icon="carbon:vpn"></iconify-icon>VPN</dt><dd><span class="mono">100.64.0.3</span><span class="quiet">&nbsp;· direct</span></dd>
+              <dt><iconify-icon icon="carbon:password"></iconify-icon>VPN key</dt><dd>152 days left</dd>
+            </dl>
+          </section>
+        </aside>
+
+        <div class="main-col">
+          <div class="section first">
+            <div class="label split-label"><span class="label"><iconify-icon icon="carbon:chart-line"></iconify-icon><span class="rule"></span>Resources</span><span class="seg" style="height:var(--control-sm)"><button aria-pressed="true">1 hour</button><button>24 hours</button><button>7 days</button></span></div>
+            <div class="groups">
+              <div class="group"><h3 class="caps">Compute</h3><div class="usage" id="compute"></div></div>
+              <div class="group"><h3 class="caps">GPU · NVIDIA RTX A5000</h3><div class="usage" id="gpu"></div></div>
+            </div>
+          </div>
+
+          <details class="section fold" open>
+            <summary><iconify-icon class="chev" icon="carbon:chevron-right"></iconify-icon><span class="caps">Storage</span><span class="fold-sum"><span class="s-degraded">/ at 82%</span> · 4 drives · 6.5 TB</span></summary>
+            <ul class="rows streams" id="drives"></ul>
+          </details>
+
+          <details class="section fold">
+            <summary><iconify-icon class="chev" icon="carbon:chevron-right"></iconify-icon><span class="caps">Network</span><span class="fold-sum"><span class="mono">wlp3s0</span> 12 KiB/s in · 2 busy, 3 idle</span></summary>
+            <ul class="rows streams" id="nets"></ul>
+          </details>
+        </div>
+      </div>
+
+      <!-- Settings tab: one column of related groups, settings rows (label left, control right), protocols as an expandable list -->
+      <div class="pane-settings">
+        <div class="dset">
+          <form class="dset-form" onsubmit="event.preventDefault()" novalidate>
+            <p class="autosave-note"><iconify-icon icon="carbon:cloud-upload"></iconify-icon>Changes save as you make them. Text saves when you leave the field or press Return.</p>
+            <section class="section first" id="ds-device">
+              <div class="label"><iconify-icon icon="carbon:data-base"></iconify-icon><span class="rule"></span>Device</div>
+              <div class="setting"><div>Name</div><label class="input"><input value="pop-os"></label></div>
+              <div class="setting"><div>Address<p>A host name or an IP address.</p></div><label class="input"><input class="mono" value="100.64.0.3"></label></div>
+              <div class="setting"><div>Kind</div><label class="input select"><select><option>Workstation</option><option>Server</option><option>Laptop</option><option>Virtual machine</option></select><iconify-icon icon="carbon:chevron-down"></iconify-icon></label></div>
+              <div class="setting"><div>Operating system<p>Detected over SSH at the next collection.</p></div><label class="input select"><iconify-icon icon="simple-icons:linux" class="lead"></iconify-icon><select><option>Linux</option><option>macOS</option><option>Windows</option></select><iconify-icon icon="carbon:chevron-down"></iconify-icon></label></div>
+              <div class="setting"><div>Tags<p>Enter or a comma adds a tag.</p></div><label class="input tags"><span class="chip">lab<button type="button" aria-label="Remove lab"><iconify-icon icon="carbon:close"></iconify-icon></button></span><span class="chip">gpu<button type="button" aria-label="Remove gpu"><iconify-icon icon="carbon:close"></iconify-icon></button></span><input placeholder="Add a tag" data-tags></label></div>
+              <div class="setting"><div>MAC address<p>Optional. Lets Anima wake the device.</p></div><label class="input"><input class="mono" placeholder="aa:bb:cc:dd:ee:ff"></label></div>
+            </section>
+
+            <section class="section" id="ds-monitoring">
+              <div class="label"><iconify-icon icon="carbon:activity"></iconify-icon><span class="rule"></span>Monitoring</div>
+              <div class="setting"><div>Metrics source<p>Where CPU, memory, disk and network figures come from.</p></div><div class="seg"><button type="button">None</button><button type="button" aria-pressed="true">SSH</button><button type="button">Agent</button></div></div>
+              <div class="setting"><div>Checks<p>One ping check, every 60 seconds, 3 retries 20 seconds apart.</p></div><a class="btn ghost" href="#device">Open Checks<iconify-icon icon="carbon:arrow-right"></iconify-icon></a></div>
+            </section>
+
+            <section class="section" id="ds-connections">
+              <div class="label"><iconify-icon icon="carbon:login"></iconify-icon><span class="rule"></span>Connections</div>
+              <div class="conns">
+                <div class="conn open">
+            <div class="conn-head">
+              <button class="conn-toggle" aria-expanded="true"><iconify-icon class="chev" icon="carbon:chevron-right"></iconify-icon><iconify-icon icon="carbon:terminal"></iconify-icon><b>SSH</b><span class="sum">Port 22 · okita · password</span></button>
+              <button class="switch" role="switch" aria-checked="true" aria-label="SSH on"></button>
+            </div>
+                  <div class="conn-body">
+                    <div class="fields">
+                      <label class="field narrow"><span>Port</span><span class="input"><input class="mono" value="22" data-port inputmode="numeric"></span></label>
+                      <label class="field"><span>User name</span><span class="input"><input value="okita"></span></label>
+                      <div class="field wide"><span>Sign in with</span><div class="seg"><button type="button" aria-pressed="true"><iconify-icon icon="carbon:password"></iconify-icon>Password</button><button type="button"><iconify-icon icon="carbon:document"></iconify-icon>Private key</button></div></div>
+                      <div class="field wide"><span>Password</span><div class="cred"><span class="status s-up"><iconify-icon icon="carbon:locked"></iconify-icon>Stored</span><span class="quiet">in the hub, encrypted</span><span class="grow"></span><button type="button" class="btn sm">Replace</button><button type="button" class="btn sm ghost danger-text">Remove</button></div></div>
+                      <div class="field wide"><span>Host key</span><div class="cred"><span class="status s-up"><iconify-icon icon="carbon:checkmark"></iconify-icon>Trusted</span><span class="mono quiet truncate">ecdsa · SHA256:dJSdNiHJtVlBobL+mSjapOl7CgO/JNfSu4qORr1jXqA</span><button type="button" class="btn sm ghost icon" aria-label="Copy the fingerprint"><iconify-icon icon="carbon:copy"></iconify-icon></button></div></div>
+                    </div>
+                    <div class="conn-foot"><button type="button" class="btn sm"><iconify-icon icon="carbon:connection-signal"></iconify-icon>Test connection</button><span class="status s-up"><span class="dot"></span>Passed 2 min ago</span><span class="quiet">41 ms</span></div>
+                  </div>
+                </div>
+
+                <div class="conn">
+            <div class="conn-head">
+              <button class="conn-toggle" aria-expanded="false"><iconify-icon class="chev" icon="carbon:chevron-right"></iconify-icon><iconify-icon icon="carbon:screen"></iconify-icon><b>VNC</b><span class="sum">Port 5900 · okita · <span class="s-warning">not encrypted</span></span></button>
+              <button class="switch" role="switch" aria-checked="true" aria-label="VNC on"></button>
+            </div>
+                  <div class="conn-body">
+                    <div class="fields">
+                      <label class="field narrow"><span>Port</span><span class="input"><input class="mono" value="5900" data-port inputmode="numeric"></span></label>
+                      <label class="field"><span>User name</span><span class="input"><input value="okita"></span><small>Optional. macOS Screen Sharing needs one.</small></label>
+                      <div class="field wide"><span>Password</span><div class="cred"><span class="status s-up"><iconify-icon icon="carbon:locked"></iconify-icon>Stored</span><span class="quiet">in the hub, encrypted</span><span class="grow"></span><button type="button" class="btn sm">Replace</button><button type="button" class="btn sm ghost danger-text">Remove</button></div></div>
+                    </div>
+                    <p class="inline-note s-warning"><iconify-icon icon="carbon:warning-alt"></iconify-icon><span>VNC is not encrypted. Use it only over the VPN, and prefer SSH or RDP where the device has them.</span></p>
+                    <div class="conn-foot"><button type="button" class="btn sm"><iconify-icon icon="carbon:connection-signal"></iconify-icon>Test connection</button><span class="quiet">Not tested yet</span></div>
+                  </div>
+                </div>
+
+                <div class="conn off">
+            <div class="conn-head">
+              <button class="conn-toggle" aria-expanded="false"><iconify-icon class="chev" icon="carbon:chevron-right"></iconify-icon><iconify-icon icon="carbon:screen-map"></iconify-icon><b>Remote Desktop (RDP)</b><span class="sum">Not set up</span></button>
+              <button type="button" class="btn sm setup set-up-rdp"><iconify-icon icon="carbon:add"></iconify-icon>Set up</button>
+            </div>
+                  <div class="conn-body">
+                    <div class="fields rdp">
+                      <label class="field narrow"><span>Port</span><span class="input"><input class="mono" value="3389" data-port inputmode="numeric"></span></label>
+                      <label class="field"><span>User name</span><span class="input"><input></span></label>
+                      <label class="field"><span>Domain</span><span class="input"><input placeholder="Optional"></span></label>
+                      <label class="field span2"><span>Password</span><span class="input"><input type="password"></span></label>
+                      <label class="field"><span>When the window is resized</span><span class="input select"><select><option>Display update</option><option>Reconnect</option></select><iconify-icon icon="carbon:chevron-down"></iconify-icon></span></label>
+                      <label class="field span2"><span>Security</span><span class="input select"><select><option>Any (the server chooses)</option><option>Network Level Authentication</option><option>Network Level Authentication, extended</option><option>TLS</option><option>Hyper-V virtual machine</option><option>Standard RDP (weak)</option></select><iconify-icon icon="carbon:chevron-down"></iconify-icon></span></label>
+                    </div>
+                    <div class="checks">
+                      <label><button type="button" class="switch" role="switch" aria-checked="true"></button>Play sound from the device</label>
+                      <label><button type="button" class="switch" role="switch" aria-checked="false"></button>Send the microphone</label>
+                      <label><button type="button" class="switch" role="switch" aria-checked="false"></button>Share a drive</label>
+                      <label><button type="button" class="switch" role="switch" aria-checked="false"></button>Ignore the server certificate</label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section class="section" id="ds-sessions">
+              <div class="label"><iconify-icon icon="carbon:recently-viewed"></iconify-icon><span class="rule"></span>Sessions and files</div>
+              <div class="setting"><div>Session limit<p>The most live sessions at once, 1 to 100. File tunnels do not count.</p></div><span class="stepper"><button type="button" aria-label="One fewer"><iconify-icon icon="carbon:subtract"></iconify-icon></button><input class="mono" value="4" aria-label="Session limit"><button type="button" aria-label="One more"><iconify-icon icon="carbon:add"></iconify-icon></button></span></div>
+              <div class="setting"><div>Files<p>Moving files to and from the device in a session.</p></div><div class="pair"><label><button type="button" class="switch" role="switch" aria-checked="true"></button>Upload</label><label><button type="button" class="switch" role="switch" aria-checked="true"></button>Download</label></div></div>
+              <div class="setting"><div>Clipboard<p>Copying text between this computer and the device.</p></div><div class="pair"><label><button type="button" class="switch" role="switch" aria-checked="true"></button>Copy from it</label><label><button type="button" class="switch" role="switch" aria-checked="false"></button>Paste to it</label></div></div>
+            </section>
+          </form>
+
+          <nav class="dset-index" aria-label="On this page">
+            <span class="caps">On this page</span>
+            <a href="#ds-device" aria-current="true"><iconify-icon icon="carbon:data-base"></iconify-icon>Device</a>
+            <a href="#ds-monitoring"><iconify-icon icon="carbon:activity"></iconify-icon>Monitoring</a>
+            <a href="#ds-connections"><iconify-icon icon="carbon:login"></iconify-icon>Connections</a>
+            <a href="#ds-sessions"><iconify-icon icon="carbon:recently-viewed"></iconify-icon>Sessions and files</a>
+          </nav>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ======================= Live sessions ======================= -->
+    <section class="screen frame" id="screen-sessions" hidden>
+      <div class="resolve">
+        <div class="label"><iconify-icon icon="carbon:screen"></iconify-icon><span class="rule"></span>Open now</div>
+        <div class="page-head"><div><h1 class="display">Live sessions</h1><p class="sub">2 sessions open from this computer</p></div></div>
+      </div>
+      <div class="section sessions">
+        <ul class="rows">
+          <li class="row head caps"><span>Device</span><span>Protocol</span><span>Started</span><span>Duration</span><span></span></li>
+          <li class="row"><span class="name"><b>atlas</b><span class="mono">atlas.lan</span></span><span class="proto"><iconify-icon icon="carbon:terminal"></iconify-icon>SSH</span><span class="num">09:14</span><span class="num">42 min</span><span class="actions"><span class="live"><span class="dot"></span>Live</span><button class="btn sm">Show</button><button class="btn ghost sm" style="color:var(--down-text)">End session</button></span></li>
+          <li class="row"><span class="name"><b>studio-mac</b><span class="mono">studio.lan</span></span><span class="proto"><iconify-icon icon="carbon:screen"></iconify-icon>VNC</span><span class="num">10:02</span><span class="num">6 min</span><span class="actions"><span class="live"><span class="dot"></span>Live</span><button class="btn sm">Show</button><button class="btn ghost sm" style="color:var(--down-text)">End session</button></span></li>
+        </ul>
+      </div>
+      <div class="section"><div class="label"><iconify-icon icon="carbon:time"></iconify-icon><span class="rule"></span>Empty state</div>
+        <div class="empty" style="padding:36px 4px;border-top:1px solid var(--border-subtle);border-bottom:1px solid var(--border-subtle);display:flex;gap:16px;align-items:center">
+          <iconify-icon icon="carbon:screen-off" style="font-size:22px;color:var(--text-quiet)"></iconify-icon>
+          <div><b style="font-weight:500">No live sessions</b><p class="sub" style="margin-top:2px">Open a device and choose Connect to start one.</p></div>
+          <a class="btn" href="#devices" style="margin-left:auto">Go to Devices<iconify-icon icon="carbon:arrow-right"></iconify-icon></a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================= Settings ======================= -->
+    <section class="screen frame" id="screen-settings" hidden>
+      <div class="resolve">
+        <div class="label"><iconify-icon icon="carbon:settings"></iconify-icon><span class="rule"></span>This computer and the hub</div>
+        <div class="page-head"><div><h1 class="display">Settings</h1></div></div>
+      </div>
+      <div class="settings">
+        <nav aria-label="Settings sections">
+          <a href="#settings"><iconify-icon icon="carbon:user"></iconify-icon>Account</a>
+          <a href="#settings"><iconify-icon icon="carbon:network-3"></iconify-icon>Hub</a>
+          <a href="#settings" aria-current="true"><iconify-icon icon="carbon:color-palette"></iconify-icon>Appearance</a>
+          <a href="#settings"><iconify-icon icon="carbon:notification"></iconify-icon>Notifications</a>
+          <a href="#settings"><iconify-icon icon="carbon:activity"></iconify-icon>Default check settings</a>
+          <a href="#settings"><iconify-icon icon="carbon:data-base"></iconify-icon>Data retention</a>
+          <a href="#settings"><iconify-icon icon="carbon:update-now"></iconify-icon>Updates</a>
+          <a href="#settings"><iconify-icon icon="carbon:api-key"></iconify-icon>API keys</a>
+          <a href="#settings"><iconify-icon icon="carbon:bot"></iconify-icon>MCP</a>
+          <a href="#settings"><iconify-icon icon="carbon:vpn"></iconify-icon>VPN</a>
+        </nav>
+        <div>
+          <div class="section"><div class="label"><iconify-icon icon="carbon:color-palette"></iconify-icon><span class="rule"></span>Appearance</div>
+            <div class="setting" style="border-top:1px solid var(--border-subtle)"><div>Theme<p>System follows this computer.</p></div><div class="seg"><button>System</button><button aria-pressed="true" data-theme-set="dark">Dark</button><button data-theme-set="light">Light</button></div></div>
+            <div class="setting"><div>Colours<p>Graphite is neutral grey with one frost accent.</p></div><div class="seg"><button aria-pressed="true">Graphite</button><button>Nord</button></div></div>
+            <div class="setting"><div>Interface font</div><div class="seg"><button aria-pressed="true">IBM Plex Sans</button><button>OpenDyslexic</button></div></div>
+            <div class="setting"><div>Monospace font<p>For addresses, keys, commands and logs. Was Fira Code (D2).</p></div><div class="seg"><button aria-pressed="true">IBM Plex Mono</button><button>OpenDyslexic</button></div></div>
+            <div class="setting"><div>Reduce motion</div><button class="switch" role="switch" aria-checked="false" aria-label="Reduce motion"></button></div>
+          </div>
+          <div class="section"><div class="label"><iconify-icon icon="carbon:network-3"></iconify-icon><span class="rule"></span>Hub</div>
+            <dl class="kv">
+              <dt><iconify-icon icon="carbon:link"></iconify-icon>Hub address</dt><dd class="mono">https://hub.anima.ing</dd>
+            </dl>
+            <div style="display:flex;gap:8px;margin-top:14px"><button class="btn">Change hub</button><button class="btn ghost">Test connection</button></div>
+          </div>
+          <div class="section"><div class="label"><iconify-icon icon="carbon:api-key"></iconify-icon><span class="rule"></span>API keys</div>
+            <ul class="rows keys">
+              <li class="row head caps"><span>Prefix</span><span>Scope</span><span>Used by</span><span>Expires</span><span>Last used</span><span></span></li>
+              <li class="row"><span class="mono">ak_7f3c</span><span>Read</span><span>Grafana</span><span class="num">in 82 days</span><span class="num">4 min ago</span><button class="btn ghost sm" style="color:var(--down-text)">Revoke</button></li>
+              <li class="row"><span class="mono">ak_19be</span><span>Write</span><span>anima mcp</span><span class="num">never</span><span class="num">yesterday</span><button class="btn ghost sm" style="color:var(--down-text)">Revoke</button></li>
+            </ul>
+            <button class="btn" style="margin-top:14px"><iconify-icon icon="carbon:add"></iconify-icon>Create API key</button>
+          </div>
+</div>
+      </div>
+    </section>
+
+    <!-- ======================= Specimen ======================= -->
+    <section class="screen frame specimen" id="screen-specimen" hidden>
+      <div class="resolve">
+        <div class="label"><iconify-icon icon="carbon:color-palette"></iconify-icon><span class="rule"></span>Tokens and primitives</div>
+        <div class="page-head"><div><h1 class="display">Specimen</h1><p class="sub">The proposed additions, D1 to D12</p></div></div>
+      </div>
+      <div class="section"><div class="label"><iconify-icon icon="carbon:text-font"></iconify-icon><span class="rule"></span>Type</div>
+        <div class="type-row"><span class="caps">Display · 200</span><span class="display" style="font-weight:200;font-size:2.25rem;letter-spacing:-.03em">Every machine you own</span></div>
+        <div class="type-row"><span class="caps">XL · 400</span><span style="font-size:1.25rem">One private place that you run</span></div>
+        <div class="type-row"><span class="caps">Body · 400</span><span>Status of machines, cloud devices and servers, in one view.</span></div>
+        <div class="type-row"><span class="caps">Emphasis · 500</span><span style="font-weight:500">atlas is up, 99.9% over 24 hours</span></div>
+        <div class="type-row"><span class="caps">Label · 500 caps</span><span class="caps">Download for macOS</span></div>
+        <div class="type-row"><span class="caps">Mono · Plex</span><span class="mono">ssh ops@atlas.lan -p 22 · 100.64.0.12</span></div>
+        <div class="type-row"><span class="caps">Quiet</span><span style="color:var(--text-quiet)">Decoration only, never the only carrier of information</span></div>
+      </div>
+      <div class="section"><div class="label"><iconify-icon icon="carbon:color-palette"></iconify-icon><span class="rule"></span>Colour</div>
+        <div class="grid" id="swatches"></div>
+      </div>
+      <div class="section"><div class="label"><iconify-icon icon="carbon:carbon"></iconify-icon><span class="rule"></span>Icons · Carbon and Simple Icons</div>
+        <div class="icons" id="icons"></div>
+      </div>
+      <div class="section"><div class="label"><iconify-icon icon="carbon:cursor-1"></iconify-icon><span class="rule"></span>Controls</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+          <button class="btn primary"><iconify-icon icon="carbon:add"></iconify-icon>Add device</button>
+          <button class="btn"><iconify-icon icon="carbon:terminal"></iconify-icon>Connect SSH</button>
+          <button class="btn ghost">Cancel</button>
+          <button class="btn danger">Delete device</button>
+          <span class="badge s-down"><span class="dot"></span>Down</span>
+          <span class="badge s-degraded"><span class="dot"></span>Degraded</span>
+          <span class="status s-up"><span class="dot"></span>Up</span>
+          <span class="planned"><iconify-icon icon="carbon:time"></iconify-icon>Planned</span>
+        </div>
+        <div class="input" style="width:18rem;margin-top:14px"><iconify-icon icon="carbon:search"></iconify-icon><input placeholder="Search by name"></div>
+      </div>
+      <div class="section"><div class="label"><iconify-icon icon="carbon:corner"></iconify-icon><span class="rule"></span>Corners · 2, 4, 4 px</div>
+        <div style="display:flex;gap:16px">
+          <div style="width:72px;height:48px;border:1px solid var(--border-strong);border-radius:2px"></div>
+          <div style="width:72px;height:48px;border:1px solid var(--border-strong);border-radius:4px"></div>
+          <div style="width:72px;height:48px;background:var(--surface-raised);border-radius:4px"></div>
+        </div>
+      </div>
+      <div class="section"><div class="label"><iconify-icon icon="carbon:movement"></iconify-icon><span class="rule"></span>Motion · resolve</div>
+        <button class="btn" id="replay"><iconify-icon icon="carbon:renew"></iconify-icon>Replay the entrance</button>
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- ======================= Switcher ======================= -->
+<nav class="switcher" aria-label="Mockup screens">
+  <button data-go="signin">Sign in</button>
+  <button data-go="devices">Devices</button>
+  <button data-go="device">Device</button>
+  <button data-go="device/settings">Device settings</button>
+  <button data-go="sessions">Sessions</button>
+  <button data-go="settings">Settings</button>
+  <button data-go="specimen">Specimen</button>
+  <span class="sep"></span>
+  <button id="theme" aria-label="Switch appearance"><iconify-icon icon="carbon:contrast"></iconify-icon></button>
+</nav>
+
+<script>
+// ---- The doors mark, traced from the app's logo.png (as in anima-site's Logo.svelte) ----
+const LOGO = `
+  <path d="M165 165h310l-13 48H210zM236 241h200l-10 41H268zM286 300h122l-8 22H305z" fill="#263446"/>
+  <path d="M165 165l45 48v302h-45zM236 241l32 41v233h-32zM286 300l19 22v193h-19z" fill="#2C5561"/>
+  <path d="M125 515V125h390v390h-40V165H165v350z" fill="#5E81AC"/>
+  <path d="M210 515V213h252v302h-26V241H236v274z" fill="#81A1C1"/>
+  <path d="M268 515V282h158v233h-18V300H286v215z" fill="#88C0D0"/>
+  <path d="M305 515V322h95v193h-12V334h-71v181z" fill="#6FB3C2"/>
+  <path d="M318 515V336h68v179h-7V343h-54v172z" fill="#8FBCBB"/>
+  <path d="M150 525C215 478 285 436 335 422 360 414 382 413 398 422 425 442 450 478 475 525z" fill="var(--hill)"/>`;
+document.querySelectorAll("[data-logo]").forEach((svg) => (svg.innerHTML = LOGO));
+
+// ---- Devices ----
+const DEVICES = [
+  { name: "pi-garage", host: "192.168.1.40", os: "simple-icons:raspberrypi", status: "down", reason: "HTTP check on :8123 refused the connection", since: "12 min", fix: "Open checks", up: 92.4, m: null, connect: ["SSH"] },
+  { name: "pop-os", host: "100.64.0.3", os: "simple-icons:popos", status: "warning", reason: "Grafana's TLS certificate expires in 9 days", since: "today", fix: "Review", up: 100, m: [3, 28, 82, 9], drives: 4, connect: ["SSH", "VNC"], wake: true },
+  { name: "nas", host: "nas.lan", os: "simple-icons:truenas", status: "warning", reason: "Host key changed since the last session", since: "2 h", fix: "Review key", up: 100, m: [8, 34, 91], connect: ["SSH"] },
+  { name: "win-gaming", host: "win.lan", os: "simple-icons:windows", status: "unknown", reason: "Every check is paused", since: "3 days", fix: "Resume", up: null, m: null, connect: ["RDP"], wake: true },
+  { name: "atlas", host: "atlas.lan", os: "simple-icons:ubuntu", status: "up", up: 99.9, m: [23, 61, 78, 34], connect: ["SSH", "RDP"], wake: true },
+  { name: "edge-vps", host: "203.0.113.24", os: "simple-icons:debian", status: "up", up: 100, m: [3, 22, 40], connect: ["SSH"] },
+  { name: "k3s-a", host: "10.0.20.11", os: "simple-icons:ubuntu", status: "up", up: 100, m: [46, 70, 52], connect: ["SSH"] },
+  { name: "k3s-b", host: "10.0.20.12", os: "simple-icons:ubuntu", status: "up", up: 99.8, m: [38, 66, 51], connect: ["SSH"] },
+  { name: "pve", host: "pve.lan", os: "simple-icons:proxmox", status: "up", up: 100, m: [17, 58, 63], connect: ["SSH"], wake: true },
+  { name: "router", host: "192.168.1.1", os: "simple-icons:openwrt", status: "up", up: 100, m: [2, 31, 12], connect: ["SSH"] },
+  { name: "studio-mac", host: "studio.lan", os: "simple-icons:apple", status: "up", up: 99.2, m: [41, 72, 55], connect: ["SSH", "VNC"], wake: true },
+  { name: "workbench", host: "workbench.lan", os: "simple-icons:fedora", status: "up", up: 97.1, m: [12, 44, 35], connect: ["SSH", "VNC"] },
+];
+const LABEL = { up: "Up", down: "Down", warning: "Warning", degraded: "Degraded", unknown: "Unknown" };
+const RANK = { down: 0, warning: 1, degraded: 1, unknown: 2, up: 3 };
+const ICON = { SSH: "carbon:terminal", RDP: "carbon:screen", VNC: "carbon:screen" };
+const beats = (s) => Array.from({ length: 50 }, (_, i) => {
+  if (s === "unknown") return '<i class="u"></i>';
+  if (s === "down" && i > 44) return '<i class="d"></i>';
+  if (i === 17 && s !== "up") return '<i class="g"></i>';
+  return "<i></i>";
+}).join("");
+const pct = (v) => (v === null ? "—" : `${v % 1 === 0 ? v : v.toFixed(1)}%`);
+const statusWord = (d) => `<span class="status s-${d.status}"><span class="dot"></span>${LABEL[d.status]}</span>`;
+// CPU, memory, disk and, where the device has a GPU, its memory: each an icon and a word over its value and bar
+const METERS = [["CPU", "carbon:chip"], ["Memory", "carbon:sim-card"], ["Disk", "carbon:vmdk-disk"], ["VRAM", "carbon:spyre-accelerator"]];
+const meters = (m, d = {}) => m
+  ? `<span class="meters n${m.length}">${m.map((v, i) => {
+      const [word, icon] = METERS[i];
+      const title = i === 2 && d.drives > 1 ? `Disk / ${v}% · ${d.drives} drives` : `${word} ${v}%`;
+      return `<span class="m${v > 85 ? " hot" : ""}" title="${title}"><span class="k"><iconify-icon icon="${icon}"></iconify-icon>${word}</span><span class="v num">${v}%</span><i style="--w:${v}%"></i></span>`;
+    }).join("")}</span>`
+  : `<span class="quiet">No metrics</span>`;
+const connect = (d) => d.connect.map((p) => `<button class="btn ghost icon" aria-label="${p} to ${d.name}" title="${p}"><iconify-icon icon="${ICON[p]}"></iconify-icon></button>`).join("")
+  + (d.wake ? `<button class="btn ghost icon" aria-label="Wake ${d.name}" title="Wake"><iconify-icon icon="carbon:power"></iconify-icon></button>` : "");
+const why = (d) => `<span class="why s-${d.status}"><span class="t">${d.reason}</span><span class="since">${d.since}</span><a href="#device" class="inline-link">${d.fix}<iconify-icon icon="carbon:arrow-right"></iconify-icon></a></span>`;
+
+let view = "rows", filter = "all", sort = "status", query = "";
+function visible() {
+  const list = DEVICES.filter((d) => (filter === "all" || d.status === filter) && d.name.includes(query.toLowerCase()));
+  const by = { status: (a, b) => RANK[a.status] - RANK[b.status] || a.name.localeCompare(b.name), name: (a, b) => a.name.localeCompare(b.name), uptime: (a, b) => (a.up ?? -1) - (b.up ?? -1) };
+  return list.sort(by[sort]);
+}
+// with status order and no filter, problems and the rest get a quiet group line each
+function groups(list) {
+  if (sort !== "status" || filter !== "all") return [[null, list]];
+  const bad = list.filter((d) => d.status !== "up"), good = list.filter((d) => d.status === "up");
+  return [["Needs a look", bad], ["Up", good]].filter(([, l]) => l.length);
+}
+function row(d) {
+  return `<li class="dl-row s-row-${d.status}" onclick="if(!event.target.closest('button,a'))location.hash='device'">
+      <span class="c-status">${statusWord(d)}</span>
+      <span class="c-name"><iconify-icon icon="${d.os}"></iconify-icon><a href="#device">${d.name}</a><span class="mono host">${d.host}</span></span>
+      <span class="c-uptime num">${pct(d.up)}</span>
+      <span class="c-beats"><span class="beats">${beats(d.status)}</span></span>
+      <span class="c-detail">${d.status === "up" ? meters(d.m, d) : why(d)}</span>
+      <span class="c-connect">${connect(d)}</span>
+      <span class="c-meta">${d.status === "up" ? `<span class="mono">${d.host}</span><span class="num">${pct(d.up)}</span>` : `<span class="s-${d.status}">${LABEL[d.status]}</span><span>${d.reason}</span>`}</span>
+    </li>`;
+}
+function rows(list) {
+  if (!list.length) return empty();
+  return `<ul class="dl"><li class="dl-head caps"><span class="c-status">Status</span><span class="c-name">Name</span><span class="c-uptime">24 h</span><span class="c-beats">Last 50 checks</span><span class="c-detail">Usage, or what is wrong</span><span class="c-connect">Connect</span></li>
+    ${groups(list).map(([title, l]) => (title ? `<li class="dl-group caps">${title}<span class="n num">${l.length}</span></li>` : "") + l.map(row).join("")).join("")}</ul>`;
+}
+function tiles(list) {
+  if (!list.length) return empty();
+  return groups(list).map(([title, l]) => `${title ? `<p class="dl-group caps">${title}<span class="n num">${l.length}</span></p>` : ""}<div class="dl-tiles">${l.map((d) => `
+    <article class="dl-tile s-row-${d.status}" onclick="if(!event.target.closest('button,a'))location.hash='device'">
+      <div class="top"><iconify-icon icon="${d.os}"></iconify-icon><a href="#device" class="nm">${d.name}</a>${statusWord(d)}</div>
+      <span class="mono host">${d.host}</span>
+      <div class="mid">${d.status === "up" ? "" : why(d)}${d.m ? meters(d.m, d) : d.status === "up" ? meters(null) : ""}</div>
+      <div class="bottom"><span class="beats">${beats(d.status)}</span><span class="num up">${pct(d.up)}</span></div>
+      <div class="c-connect">${connect(d)}</div>
+    </article>`).join("")}</div>`).join("");
+}
+const empty = () => `<div class="dl-empty"><iconify-icon icon="carbon:search"></iconify-icon><p>No devices match.</p><button class="btn sm" onclick="resetFilters()">Clear filters</button></div>`;
+const list = document.getElementById("device-list");
+const renderList = () => { const l = visible(); list.innerHTML = view === "rows" ? rows(l) : tiles(l); };
+function resetFilters() { filter = "all"; query = ""; document.getElementById("dl-search").value = ""; document.querySelectorAll(".tally button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.status === "all"))); renderList(); }
+document.querySelectorAll("[data-view]").forEach((b) => b.addEventListener("click", () => {
+  view = b.dataset.view;
+  document.querySelectorAll("[data-view]").forEach((o) => o.setAttribute("aria-pressed", String(o === b)));
+  renderList();
+}));
+document.querySelectorAll(".tally button").forEach((b) => b.addEventListener("click", () => {
+  filter = b.dataset.status === filter && filter !== "all" ? "all" : b.dataset.status;
+  document.querySelectorAll(".tally button").forEach((o) => o.setAttribute("aria-pressed", String(o.dataset.status === filter)));
+  renderList();
+}));
+document.getElementById("dl-search").addEventListener("input", (e) => { query = e.target.value; renderList(); });
+document.querySelectorAll("[data-sort]").forEach((b) => b.addEventListener("click", () => {
+  sort = b.dataset.sort;
+  document.querySelectorAll("[data-sort]").forEach((o) => o.setAttribute("aria-checked", String(o === b)));
+  document.getElementById("dl-sort-label").textContent = b.firstChild.textContent;
+  renderList();
+}));
+renderList();
+
+// ---- Device overview: the current page's measurements, regrouped ----
+const noise = (seed) => (i) => Math.sin(i * 1.3 + seed) * 0.5 + Math.sin(i * 0.37 + seed * 2) * 0.35 + Math.sin(i * 3.1 + seed * 5) * 0.15;
+const series = (f, base, amp, n = 60) => Array.from({ length: n }, (_, i) => Math.max(0, base + f(i) * amp));
+const STROKES = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)"];
+const DASH = ["", "4 3", "1 3"];
+function line(lines, { top, threshold, h = 40, hot = false } = {}) {
+  const max = top ?? Math.max(...lines.flat(), 0.001) * 1.15;
+  const y = (v) => h - 1 - (v / max) * (h - 4);
+  const t = threshold ? `<line x1="0" x2="300" y1="${y(threshold)}" y2="${y(threshold)}" stroke="var(--degraded)" stroke-opacity=".5" stroke-dasharray="3 3" vector-effect="non-scaling-stroke"/>` : "";
+  const base = `<line x1="0" x2="300" y1="${h - 0.5}" y2="${h - 0.5}" stroke="var(--border-subtle)" vector-effect="non-scaling-stroke"/>`;
+  return `<svg viewBox="0 0 300 ${h}" preserveAspectRatio="none" aria-hidden="true">${base}${t}${lines.map((pts, k) => `<polyline points="${pts.map((v, i) => `${(i / (pts.length - 1)) * 300},${y(v)}`).join(" ")}" fill="none" stroke="${hot && k === 0 ? "var(--degraded)" : STROKES[k]}" stroke-width="1.4" stroke-dasharray="${DASH[k]}" vector-effect="non-scaling-stroke"/>`).join("")}</svg>`;
+}
+
+const USAGE = [
+  { t: "CPU", v: "3%", lines: [series(noise(1), 3, 1.5)], pct: true },
+  { t: "Memory", v: "28%", lines: [series(noise(2), 28, 0.6)], pct: true },
+  { t: "Usage", v: "26%", lines: [series(noise(10), 26, 1.2)], pct: true, gpu: true },
+  { t: "VRAM", v: "9%", lines: [series(() => 0, 9, 0)], pct: true, gpu: true },
+  { t: "Load", v: "1.42", lines: [series(noise(8), 1.15, 0.35), series(noise(9), 1.05, 0.15), series(() => 0, 1.0, 0)], sub: "1, 5 and 15 min averages" },
+];
+const spark = (u) => `
+  <figure class="spark" aria-label="${u.t} ${u.v}">
+    <div class="t">${u.t}<b>${u.v}</b></div>
+    ${line(u.lines, u.pct ? { top: 100, threshold: 85 } : {})}
+    <div class="sub2">${u.sub ?? ""}</div>
+  </figure>`;
+document.getElementById("compute").innerHTML = USAGE.filter((u) => !u.gpu).map(spark).join("");
+document.getElementById("gpu").innerHTML = USAGE.filter((u) => u.gpu).map(spark).join("");
+
+const rate = (r, w, a = "Read", b = "Write") => `<span class="rate">${a} <b>${r}</b><br>${b} <b>${w}</b></span>`;
+const DRIVES = [
+  { name: "nvme0n1", kind: "NVMe · 1 TB", mounts: [["/", 82], ["/boot/efi", 46]], act: [series((i) => noise(3)(i) * 0.3 + ((i + 2) % 11 === 0 ? 2 + Math.sin(i) : 0), 0.6, 0.8), series(noise(4), 0.35, 0.15)], r: "488 KiB/s", w: "96 KiB/s" },
+  { name: "nvme1n1", kind: "NVMe · 2 TB", mounts: [["/home", 61]], act: [series(noise(11), 0.2, 0.1), series(noise(12), 0.1, 0.05)], r: "12 KiB/s", w: "4 KiB/s" },
+  { name: "sdb", kind: "Hard disk · 3 TB", mounts: [["/mnt/archive", 37]], act: [series(() => 0, 0, 0), series(() => 0, 0, 0)], r: "0 B/s", w: "0 B/s" },
+];
+document.getElementById("drives").innerHTML = DRIVES.map((d) => `
+  <li class="row"><span class="name"><b class="mono">${d.name}</b><small>${d.kind}</small></span>
+    <div class="mounts">${d.mounts.map(([m, v]) => `<div><span class="mono">${m}</span><div class="bar"><i class="${v >= 80 ? "hot" : ""}" style="width:${v}%"></i></div><span class="v">${v}%</span></div>`).join("")}</div>
+    ${line(d.act, { h: 26 })}${rate(d.r, d.w)}</li>`).join("") +
+  `<li class="row idle"><span class="mono">sda</span><span>SSD · 500 GB · not mounted</span></li>`;
+
+const NETS = [
+  { name: "wlp3s0", kind: "Wi-Fi", lines: [series((i) => (i === 24 ? 18 : 0) + noise(6)(i) * 0.4, 0.6, 1), series(noise(7), 0.3, 0.2)], i: "12 KiB/s", o: "3 KiB/s" },
+  { name: "tailscale0", kind: "VPN", lines: [series(noise(5), 1.0, 0.04), series((i) => (i % 9 === 1 ? 1 : 0), 0.33, 0.15)], i: "1.0 KiB/s", o: "340 B/s" },
+];
+document.getElementById("nets").innerHTML = NETS.map((n) => `
+  <li class="row"><span class="name"><b class="mono">${n.name}</b><small>${n.kind}</small></span>${line(n.lines, { h: 26 })}<span></span>${rate(n.i, n.o, "In", "Out")}</li>`).join("") +
+  `<li class="row idle"><span>Idle</span><span><span class="mono">docker0</span>, <span class="mono">eno1</span>, <span class="mono">enp2s0</span> · no traffic this hour</span></li>`;
+
+// ---- Specimen ----
+const SW = [["surface-sunken", "Ground"], ["surface-base", "Inputs"], ["surface-raised", "Menus, dialogs"], ["border-subtle", "Hairline rows"], ["border-strong", "Control edges"], ["text", "Text"], ["text-secondary", "Secondary"], ["text-tertiary", "Tertiary"], ["text-quiet", "Quiet · new"], ["accent", "Accent"], ["frost-10", "Series 1"], ["frost-9", "Series 2"], ["frost-8", "Series 3"], ["frost-7", "Series 4"], ["up", "Up"], ["down", "Down"], ["degraded", "Degraded"], ["warning", "Warning"], ["planned", "Planned · new"]];
+document.getElementById("swatches").innerHTML = SW.map(([v, n]) => `<div class="swatch"><i style="background:var(--${v})"></i>${n}<span class="mono">${v}</span></div>`).join("");
+const IC = [["carbon:bare-metal-server", "Devices"], ["carbon:screen", "Live sessions"], ["carbon:settings", "Settings"], ["carbon:terminal", "SSH"], ["carbon:screen", "RDP, VNC"], ["carbon:power", "Wake"], ["carbon:activity", "Checks"], ["carbon:catalog", "Logs"], ["carbon:vpn", "Private network"], ["carbon:network-3", "Hub"], ["carbon:fingerprint-recognition", "Host key"], ["carbon:certificate", "Certificate"], ["carbon:api-key", "API keys"], ["carbon:warning-alt", "Needs attention"], ["carbon:chip", "Hardware"], ["carbon:data-share", "Integrations"], ["simple-icons:apple", "macOS"], ["simple-icons:linux", "Linux"], ["simple-icons:windows", "Windows"], ["simple-icons:ubuntu", "Ubuntu"], ["simple-icons:debian", "Debian"], ["simple-icons:raspberrypi", "Raspberry Pi"]];
+document.getElementById("icons").innerHTML = IC.map(([i, n]) => `<div><iconify-icon icon="${i}"></iconify-icon>${n}</div>`).join("");
+
+// ---- Sign-in: the particle doors behind the form (D13) ----
+function step(n) {
+  document.getElementById("step1").style.display = n === 1 ? "flex" : "none";
+  document.getElementById("step2").style.display = n === 2 ? "flex" : "none";
+}
+const FRAMES = [[-1, 1, -1, 0.205], [-0.564, 0.728, -0.549, 0.135], [-0.267, 0.544, -0.195, 0.092], [-0.077, 0.41, 0.01, 0.06], [-0.01, 0.338, 0.082, 0.036]];
+const hillAt = (x) => x <= -0.85 ? 1 : x < 0.2 ? 1 - 0.55 * Math.sin(((x + 0.85) / 1.05) * Math.PI / 2) : x < 0.4 ? 0.45 : Math.min(1, 0.45 + 0.55 * ((x - 0.4) / 0.4) ** 1.4);
+const segs = [];
+FRAMES.forEach(([l, r, t, b], i) => {
+  for (const k of [0, b]) segs.push([l + k, hillAt(l + k), l + k, t + k, i], [l + k, t + k, r - k, t + k, i], [r - k, t + k, r - k, hillAt(r - k), i]);
+  const n = FRAMES[i + 1];
+  if (n) segs.push([l + b, t + b, n[0], n[2], i + 0.5], [r - b, t + b, n[1], n[2], i + 0.5]);
+});
+for (let x = -0.9; x < 0.8; x += 0.05) segs.push([x, hillAt(x), x + 0.05, hillAt(x + 0.05), 1]);
+const lens = segs.map(([a, b, c, d]) => Math.hypot(c - a, d - b)), total = lens.reduce((s, v) => s + v, 0);
+const DOTS = Array.from({ length: 2600 }, () => {
+  let t = Math.random() * total, k = 0;
+  while (k < lens.length - 1 && t > lens[k]) t -= lens[k++];
+  const [a, b, c, d, depth] = segs[k], f = t / lens[k];
+  return { x: a + (c - a) * f, y: b + (d - b) * f, z: depth, j: Math.random() * 6.28 };
+});
+const canvas = document.getElementById("doors"), ctx = canvas.getContext("2d");
+const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const PAL = [[94, 129, 172], [129, 161, 193], [136, 192, 208], [111, 179, 194], [143, 188, 187]];
+function drawDoors(time) {
+  if (document.getElementById("screen-signin").hidden) return requestAnimationFrame(drawDoors);
+  const r = Math.min(devicePixelRatio, 2), w = (canvas.width = innerWidth * r), h = (canvas.height = innerHeight * r);
+  const s = Math.min(w, h) * 0.42, cx = w * 0.5, cy = h * 0.5;
+  for (const p of DOTS) {
+    const drift = still ? 0 : Math.sin(time / 1800 + p.j) * 0.004;
+    const [R, G, B] = PAL[Math.min(4, Math.floor(p.z))];
+    ctx.fillStyle = `rgba(${R},${G},${B},${0.3 + p.z * 0.05})`;
+    ctx.fillRect(cx + (p.x + drift) * s, cy + (p.y + drift) * s, r * 1.4, r * 1.4);
+  }
+  if (!still) requestAnimationFrame(drawDoors);
+}
+requestAnimationFrame(drawDoors);
+
+// ---- Screens ----
+function show() {
+  const full = location.hash.slice(1) || "devices", [name, sub] = full.split("/");
+  const signin = name === "signin";
+  document.getElementById("screen-signin").hidden = !signin;
+  document.getElementById("app").hidden = signin;
+  document.querySelectorAll(".screen").forEach((s) => (s.hidden = s.id !== `screen-${name}`));
+  document.querySelectorAll("[data-nav]").forEach((a) => a.toggleAttribute("aria-current", a.dataset.nav === (name === "device" ? "devices" : name)));
+  document.querySelectorAll("[data-nav][aria-current]").forEach((a) => a.setAttribute("aria-current", "page"));
+  document.querySelectorAll("[data-go]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.go === full)));
+  document.getElementById("page").scrollTop = 0;
+  const pane = name === "device" && sub === "settings" ? "settings" : "overview";
+  document.getElementById("screen-device").dataset.pane = pane;
+  document.querySelectorAll("[data-pane]").forEach((t) => t.setAttribute("aria-selected", String(t.dataset.pane === pane)));
+  replay();
+  if (signin) requestAnimationFrame(drawDoors);
+}
+function replay() {
+  document.querySelectorAll(".resolve").forEach((el) => { el.classList.remove("resolve"); void el.offsetWidth; el.classList.add("resolve"); });
+}
+document.getElementById("replay").addEventListener("click", replay);
+document.querySelectorAll("[data-go]").forEach((b) => b.addEventListener("click", () => (location.hash = b.dataset.go)));
+document.getElementById("theme").addEventListener("click", () => {
+  const html = document.documentElement;
+  html.dataset.theme = html.dataset.theme === "dark" ? "light" : "dark";
+});
+addEventListener("hashchange", show);
+// menus: a [data-menu] button opens the .menu beside it
+const closeMenus = () => document.querySelectorAll(".menu.open").forEach((m) => { m.classList.remove("open"); m.parentElement.querySelector("[data-menu]")?.setAttribute("aria-expanded", "false"); });
+document.querySelectorAll("[data-menu]").forEach((b) => b.addEventListener("click", (e) => {
+  e.stopPropagation();
+  const menu = b.parentElement.querySelector(".menu"), open = !menu.classList.contains("open");
+  closeMenus();
+  menu.classList.toggle("open", open); b.setAttribute("aria-expanded", String(open));
+}));
+addEventListener("click", closeMenus);
+
+// the device bar folds its reason once it pins (with a little hysteresis so it never flickers)
+const page = document.getElementById("page"), bar = document.getElementById("detail-bar");
+page.addEventListener("scroll", () => {
+  // the bar is the first thing on the page, so it pins after the frame's top padding scrolls away
+  if (page.scrollTop > 64) bar.classList.add("stuck");
+  else if (page.scrollTop < 28) bar.classList.remove("stuck");
+}, { passive:true });
+// device settings save on change: no Save button; every change confirms beside its own label
+const form = document.querySelector(".dset-form");
+function labelOf(el) {
+  const row = el.closest(".setting"); if (row) return row.firstElementChild;
+  const field = el.closest(".field"); if (field) return field.firstElementChild;
+  const head = el.closest(".conn-head"); if (head) return head.querySelector(".conn-toggle b");
+  return el.closest("label") || el;
+}
+function mark(el, error) {
+  // an error on a field in a grid gets its own full-width line under the fields, so it never squeezes a narrow column
+  const field = el.closest(".fields .field");
+  if (field) {
+    let line = field.parentElement.querySelector(`.field-error[data-for="${field.firstElementChild.textContent}"]`);
+    if (error) {
+      if (!line) { line = document.createElement("p"); line.className = "field-error"; line.dataset.for = field.firstElementChild.textContent; field.parentElement.append(line); }
+      line.innerHTML = `<iconify-icon icon="carbon:warning-alt"></iconify-icon>${field.firstElementChild.textContent}: ${error.replace("Not saved: ", "not saved, ")}.`;
+      return;
+    }
+    line?.remove();
+  }
+  const host = labelOf(el);
+  let m = host.querySelector(":scope > .saved");
+  if (!m) { m = document.createElement("span"); host.insertBefore(m, host.querySelector(":scope > p")); }
+  clearTimeout(m.t);
+  if (error) { m.className = "saved err"; m.innerHTML = `<iconify-icon icon="carbon:warning-alt"></iconify-icon>${error}`; return; }
+  m.className = "saved"; m.textContent = "Saving…";
+  m.t = setTimeout(() => { m.className = "saved ok"; m.innerHTML = '<iconify-icon icon="carbon:checkmark"></iconify-icon>Saved'; m.t = setTimeout(() => m.classList.add("gone"), 1800); }, 350);
+}
+// text and selects: "change" fires on leaving the field or Return, so half-typed values never save
+form.addEventListener("change", (e) => {
+  const el = e.target;
+  if (el.matches("[data-tags]")) return;
+  if (el.matches("[data-port]")) {
+    const n = Number(el.value), bad = !Number.isInteger(n) || n < 1 || n > 65535;
+    el.closest(".input").classList.toggle("invalid", bad);
+    if (bad) return mark(el, "Not saved: a port is 1 to 65535");
+    const conn = el.closest(".conn"); if (conn) conn.querySelector(".sum").textContent = conn.querySelector(".sum").textContent.replace(/Port \d+/, `Port ${n}`);
+  }
+  mark(el);
+});
+form.addEventListener("keydown", (e) => {
+  if (e.key !== "Enter" && e.key !== ",") return;
+  const el = e.target;
+  if (el.matches("[data-tags]") && el.value.trim()) {
+    e.preventDefault();
+    const chip = document.createElement("span"); chip.className = "chip";
+    chip.innerHTML = `${el.value.trim()}<button type="button" aria-label="Remove ${el.value.trim()}"><iconify-icon icon="carbon:close"></iconify-icon></button>`;
+    el.before(chip); el.value = ""; mark(el);
+  } else if (e.key === "Enter" && el.matches("input")) { e.preventDefault(); el.blur(); }
+});
+form.querySelectorAll(".conn-toggle").forEach((b) => b.addEventListener("click", () => { const p = b.closest(".conn"); p.classList.toggle("open"); b.setAttribute("aria-expanded", String(p.classList.contains("open"))); }));
+form.querySelector(".set-up-rdp").addEventListener("click", (e) => {
+  const p = e.target.closest(".conn"), head = p.querySelector(".conn-head");
+  p.classList.remove("off"); p.classList.add("open");
+  e.target.closest("button").outerHTML = '<button type="button" class="switch" role="switch" aria-checked="true" aria-label="RDP on"></button>';
+  p.querySelector(".sum").textContent = "Port 3389 · not tested";
+  mark(head.querySelector(".switch"));
+});
+form.addEventListener("click", (e) => {
+  const sw = e.target.closest(".switch");
+  if (sw) { sw.setAttribute("aria-checked", String(sw.getAttribute("aria-checked") !== "true")); return mark(sw); }
+  const seg = e.target.closest(".seg button");
+  if (seg) { seg.parentElement.querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", String(x === seg))); return mark(seg); }
+  const step = e.target.closest(".stepper button");
+  if (step) { const input = step.parentElement.querySelector("input"); input.value = Math.min(100, Math.max(1, Number(input.value) + (step.getAttribute("aria-label") === "One more" ? 1 : -1))); return mark(step); }
+  const chipX = e.target.closest(".chip button");
+  if (chipX) { const host = chipX.closest(".input"); chipX.closest(".chip").remove(); return mark(host); }
+  // a secret is the one thing typed on purpose and saved on purpose: Replace opens its own field and button
+  const btn = e.target.closest(".cred .btn");
+  if (btn && btn.textContent.trim() === "Replace") {
+    const cred = btn.closest(".cred"), keep = cred.outerHTML, field = cred.closest(".field");
+    const edit = document.createElement("div"); edit.className = "secret-edit";
+    edit.innerHTML = '<span class="input"><input type="password" placeholder="New password" aria-label="New password"></span><button type="button" class="btn sm primary">Save password</button><button type="button" class="btn sm ghost">Cancel</button>';
+    cred.replaceWith(edit); edit.querySelector("input").focus();
+    edit.addEventListener("change", (ev) => ev.stopPropagation());
+    edit.querySelector(".primary").addEventListener("click", () => { edit.outerHTML = keep.replace("in the hub, encrypted", "just now, in the hub"); mark(field); });
+    edit.querySelector(".ghost").addEventListener("click", () => { edit.outerHTML = keep; });
+    return;
+  }
+  if (btn && btn.textContent.trim() === "Remove") {
+    const cred = btn.closest(".cred");
+    cred.innerHTML = '<span class="quiet">No password stored.</span><span class="grow"></span><button type="button" class="btn sm">Add</button>';
+    return mark(cred);
+  }
+});
+document.querySelectorAll(".dset-index a").forEach((a) => a.addEventListener("click", (e) => {
+  e.preventDefault();
+  document.querySelector(a.getAttribute("href")).scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+  document.querySelectorAll(".dset-index a").forEach((x) => x.setAttribute("aria-current", String(x === a)));
+}));
+show();
+</script>
+</body>
+</html>

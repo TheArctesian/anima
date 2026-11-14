@@ -3,7 +3,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { ALL_FIRST_PAINT_FACES, FONT_WAIT_MS, firstPaintFaces, waitForFirstPaintFonts } from './first-paint';
 import type { TypefaceChoice } from './typeface';
 
-const FIRA: TypefaceChoice = { ui: 'ibm-plex-sans', mono: 'fira-code' };
+const DEFAULTS: TypefaceChoice = { ui: 'ibm-plex-sans', mono: 'ibm-plex-mono' };
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -23,29 +23,29 @@ async function settled(promise: Promise<void>): Promise<boolean> {
   return done;
 }
 
-it('UI-020: the first render waits for every face the chosen typeface and the icons use', async () => {
+it('UI-020: the first render waits for every face the chosen typefaces use', async () => {
   const load = vi.fn<(face: string) => Promise<FontFace[]>>().mockResolvedValue([]);
-  await waitForFirstPaintFonts({ ui: 'opendyslexic', mono: 'fira-code' }, { load });
+  await waitForFirstPaintFonts({ ui: 'opendyslexic', mono: 'ibm-plex-mono' }, { load });
   expect(load.mock.calls.map(([face]) => face).toSorted()).toEqual(
-    firstPaintFaces({ ui: 'opendyslexic', mono: 'fira-code' }).toSorted(),
+    firstPaintFaces({ ui: 'opendyslexic', mono: 'ibm-plex-mono' }).toSorted(),
   );
-  expect(firstPaintFaces(FIRA)).toContain('400 1em "OpenDyslexic Nerd Font Propo"');
+  expect(firstPaintFaces(DEFAULTS)).toEqual(['200 1em "IBM Plex Sans"', '400 1em "IBM Plex Sans"', '500 1em "IBM Plex Sans"', '400 1em "IBM Plex Mono"']);
 });
 
 it('MOT-007: it resolves once the fonts have loaded, without the cap', async () => {
   const load = vi.fn().mockResolvedValue([]);
-  expect(await settled(waitForFirstPaintFonts(FIRA, { load }))).toBe(true);
+  expect(await settled(waitForFirstPaintFonts(DEFAULTS, { load }))).toBe(true);
   expect(vi.getTimerCount()).toBe(0);
 });
 
 it('MOT-007: a font that fails to load does not stop the render', async () => {
   const load = vi.fn().mockRejectedValue(new Error('network'));
-  expect(await settled(waitForFirstPaintFonts(FIRA, { load }))).toBe(true);
+  expect(await settled(waitForFirstPaintFonts(DEFAULTS, { load }))).toBe(true);
 });
 
 it('MOT-007: a font that never settles holds the render for FONT_WAIT_MS and no longer', async () => {
   const load = vi.fn().mockReturnValue(new Promise(() => undefined));
-  const waiting = waitForFirstPaintFonts(FIRA, { load });
+  const waiting = waitForFirstPaintFonts(DEFAULTS, { load });
   await vi.advanceTimersByTimeAsync(FONT_WAIT_MS - 1);
   expect(await settled(waiting)).toBe(false);
   await vi.advanceTimersByTimeAsync(1);
@@ -53,7 +53,7 @@ it('MOT-007: a font that never settles holds the render for FONT_WAIT_MS and no 
 });
 
 it('MOT-007: an engine without font loading renders at once', async () => {
-  expect(await settled(waitForFirstPaintFonts(FIRA, undefined))).toBe(true);
+  expect(await settled(waitForFirstPaintFonts(DEFAULTS, undefined))).toBe(true);
   expect(vi.getTimerCount()).toBe(0);
 });
 

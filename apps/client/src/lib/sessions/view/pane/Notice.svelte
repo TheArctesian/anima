@@ -13,7 +13,7 @@
 
 <span class="notice" role="status" title={text}>{text}</span>
 <button type="button" class="dismiss" aria-label="Dismiss the message" onclick={ondismiss} {@attach press()}>
-  <Icon name="nf-md-close" size="sm" />
+  <Icon name="carbon:close" size="sm" />
 </button>
 
 <style>

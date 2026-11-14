@@ -43,7 +43,7 @@ function showCard(over: Partial<CardDevice>, withWeb = true) {
 }
 
 const named = (label: string) => document.querySelector<HTMLButtonElement>(`[aria-label="${label}"]`);
-const texts = () => [...document.querySelectorAll('footer button')].map((node) => node.textContent.replace(/\p{Co}/gu, '').trim());
+const texts = () => [...document.querySelectorAll('footer button')].map((node) => node.getAttribute('title') ?? node.textContent.trim());
 
 describe('card buttons (RA-030, WEB-003, D-4)', () => {
   it('RA-030: SSH, RDP and VNC show when on, and each calls onConnect with its protocol and button', () => {

@@ -4,10 +4,10 @@ import { distribution as named } from './distribution';
 
 /** Each K1 operating system's logo and its name in words, so the logo never stands alone (UI-003, UI-015). */
 const SYSTEMS: Record<OperatingSystem, { readonly icon: IconName; readonly label: string }> = {
-  LINUX: { icon: 'nf-md-linux', label: 'Linux' },
-  MACOS: { icon: 'nf-md-apple', label: 'macOS' },
-  WINDOWS: { icon: 'nf-md-microsoft_windows', label: 'Windows' },
-  OTHER: { icon: 'nf-md-monitor', label: 'Other OS' },
+  LINUX: { icon: 'simple-icons:linux', label: 'Linux' },
+  MACOS: { icon: 'simple-icons:apple', label: 'macOS' },
+  WINDOWS: { icon: 'simple-icons:windows', label: 'Windows' },
+  OTHER: { icon: 'carbon:screen', label: 'Other OS' },
 };
 
 /** A Linux device's distribution when the hub has read one that has a logo (DEV-016). */

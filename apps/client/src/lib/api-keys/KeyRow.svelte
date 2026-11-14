@@ -99,6 +99,6 @@
     margin-inline-start: var(--space-1);
     padding-inline-start: var(--space-1);
     border-inline-start: var(--border-focus) solid var(--status-warning);
-    font-weight: var(--weight-bold);
+    font-weight: var(--weight-medium);
   }
 </style>

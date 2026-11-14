@@ -20,6 +20,11 @@
   import type { WakeApi } from '$lib/sessions/wake/api';
   import type { WebInterface } from '$lib/web-interfaces/api';
   import Skeleton from './Skeleton.svelte';
+  import FormButton from '$lib/forms/FormButton.svelte';
+  import PageHeader from '$lib/page/PageHeader.svelte';
+  import { resolve as entrance } from '$lib/motion/roles/resolve';
+  import Tally from '../list/Tally.svelte';
+  import { tallyOf, type Tally as Counts } from '../list/look';
 
   interface Props {
     /** The query in the URL. */
@@ -59,6 +64,12 @@
         },
   );
 
+  /** The counts are of every device: while a count filters the list, they keep the last unfiltered ones (D18). */
+  let tally = $state<Counts>({ total: 0, parts: [] });
+  $effect(() => {
+    if (list !== null && query.statuses.length === 0) tally = tallyOf(list.devices);
+  });
+
   $effect(() => {
     void listing.load(query);
   });
@@ -72,7 +83,13 @@
   });
 </script>
 
-<Toolbar {query} tags={tags.names} tagsNote={tags.note} sites={sites.options} sitesNote={sites.note} {onQueryChange} {onAddDevice} />
+<div class="head" {@attach entrance()}>
+  <PageHeader title="Devices">
+    {#snippet actions()}<FormButton tone="primary" icon="carbon:add" onclick={onAddDevice}>Add device</FormButton>{/snippet}
+  </PageHeader>
+  <Tally {tally} {query} {onQueryChange} />
+  <Toolbar {query} tags={tags.names} tagsNote={tags.note} sites={sites.options} sitesNote={sites.note} {onQueryChange} />
+</div>
 
 <LiveNotice message={listing.liveError?.message ?? null} />
 
@@ -113,9 +130,9 @@
           {/if}
         </div>
       {:else if query.view === 'table'}
-        <DeviceTable devices={list.devices} beats={listing.beats} {onConnect} {onOpenWeb} screenSharing={sharing} />
+        <DeviceTable devices={list.devices} beats={listing.beats} {query} {onConnect} {onOpenWeb} {wake} screenSharing={sharing} />
       {:else}
-        <DeviceGrid devices={list.devices} beats={listing.beats} {onConnect} {onOpenWeb} {wake} screenSharing={sharing} />
+        <DeviceGrid devices={list.devices} beats={listing.beats} {query} {onConnect} {onOpenWeb} {wake} screenSharing={sharing} />
       {/if}
       {#if list.hasNextPage}
         <div class="more">
@@ -139,6 +156,16 @@
 <LogsPanel devices={list?.devices ?? []} />
 
 <style>
+  .head {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .head > :global(:last-child) {
+    margin-block-start: var(--space-3);
+  }
+
   /*
    * Room to scroll the last card clear of the logs panel at every stop: the 66 % stop plus the header. It is a constant, never
    * the live height, so a drag or a stop change reflows nothing. The 66vh is TWO_THIRDS_SHARE in lib/events/resize/resize.ts

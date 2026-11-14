@@ -15,7 +15,7 @@ export const APPEARANCES: readonly Appearance[] = ['dark', 'light'];
 export const ROLE_NAMES: readonly string[] = [
   'surface-sunken', 'surface-base', 'surface-raised', 'surface-overlay', 'surface-hover', 'surface-selected',
   'border-subtle', 'border-strong',
-  'text', 'text-secondary', 'text-tertiary',
+  'text', 'text-secondary', 'text-tertiary', 'text-quiet', 'planned',
   'accent', 'accent-hover', 'accent-pressed', 'on-accent', 'accent-tint',
   ...['up', 'down', 'degraded', 'warning', 'maintenance', 'unknown'].map((name) => `status-${name}`),
   ...['up', 'down', 'degraded', 'warning', 'maintenance', 'unknown'].map((name) => `status-${name}-text`),

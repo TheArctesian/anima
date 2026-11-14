@@ -149,7 +149,6 @@
 </script>
 
 <section>
-  <h1>Devices</h1>
   {#if addError !== null}
     <p class="notice" role="alert">Could not open Add device: {addError.message}</p>
   {/if}
@@ -181,16 +180,5 @@
   .notice {
     margin: 0 0 var(--space-4);
     color: var(--text);
-  }
-
-  /* The navigation bar already names the page, so the title is for screen readers only and the toolbar starts the page. */
-  h1 {
-    position: absolute;
-    inline-size: var(--border-thin);
-    block-size: var(--border-thin);
-    margin: 0;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
   }
 </style>

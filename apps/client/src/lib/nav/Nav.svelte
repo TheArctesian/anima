@@ -63,7 +63,7 @@
   </a>
 {/snippet}
 
-<nav id="main-nav" class="material-chrome" aria-label="Main" data-shifts-with-banner>
+<nav id="main-nav" aria-label="Main" data-shifts-with-banner>
   <!-- The top row holds the window buttons on a Mac, and moves the window there (data-tauri-drag-region). -->
   <div class="bar" data-tauri-drag-region>
     {#if canCollapse && ontogglecollapse}
@@ -86,7 +86,7 @@
   <div class="notice" role="status" data-holds-banner>
     {#if banner !== null}
       <div class="banner" transition:fade title="{banner.title}. {banner.origin}. {banner.advice}. {banner.age}">
-        <span class="alert"><Icon name="nf-md-alert" /></span>
+        <span class="alert"><Icon name="carbon:warning-alt" /></span>
         <strong>{banner.title}</strong>
         <span class="origin">{banner.origin}</span>
         <span>{banner.advice}</span>
@@ -114,9 +114,10 @@
     block-size: 100vh;
     display: flex;
     flex-direction: column;
-    gap: var(--space-1);
-    padding: var(--space-3);
-    border-right: var(--border-thin) solid var(--border-strong);
+    gap: var(--border-focus);
+    padding: var(--space-3) var(--space-2);
+    border-right: var(--border-thin) solid var(--border-subtle);
+    background: var(--surface-sunken);
     z-index: var(--layer-nav);
   }
 
@@ -140,29 +141,42 @@
     justify-content: center;
   }
 
+  /* With the window's own title bar the toggle sits at the end of the brand row, as on the website (UR-7). */
+  :global(:root:not([data-titlebar='overlay']):not([data-nav='icons'])) .bar {
+    position: absolute;
+    inset-block-start: calc(var(--space-3) - var(--space-1) / 2);
+    inset-inline-end: var(--space-2);
+    block-size: var(--control-sm);
+  }
+
   .item {
     box-sizing: border-box;
     display: flex;
     flex: none;
     align-items: center;
-    gap: var(--space-2);
-    block-size: var(--target-min-touch);
+    position: relative;
+    gap: var(--space-3);
+    block-size: var(--control-md);
     padding: 0 var(--space-3);
     border-radius: var(--radius-md);
-    color: var(--text);
+    color: var(--text-secondary);
     line-height: var(--leading-tight);
     text-decoration: none;
-    transition: background-color var(--duration-fast) var(--ease-enter);
+    transition: background-color var(--duration-fast) var(--ease-enter), color var(--duration-fast) var(--ease-enter);
+  }
+
+  .item :global(.icon) {
+    color: var(--text-tertiary);
   }
 
   .brand {
     display: flex;
     flex: none;
     align-items: center;
-    gap: var(--space-2);
-    padding-bottom: var(--space-3);
-    font-size: var(--text-lg);
-    font-weight: var(--weight-bold);
+    gap: var(--space-3);
+    padding: 0 var(--space-2) var(--space-6);
+    font-size: var(--text-md);
+    font-weight: var(--weight-regular);
   }
 
   .brand img {
@@ -171,7 +185,8 @@
   }
 
   .item:not([aria-current='page']):hover {
-    background: var(--surface-overlay);
+    background: var(--surface-hover);
+    color: var(--text);
   }
 
   .item:not([aria-current='page']):active {
@@ -179,13 +194,25 @@
     background: var(--surface-hover);
   }
 
-  /*
-   * --accent text on the chrome is 5.0:1 (nord8 on nord1); an accent bar marks the page instead of a tint (NAV-002).
-   * The active item gets no hover or press background: on nord2 it would be 4.31:1 and on nord3 3.69:1.
-   */
+  /* The current page (NAV-002, UR-7): the accent tint, an accent icon and an accent edge bar, a shape as well as a colour (UI-003). */
   .item[aria-current='page'] {
+    background: var(--accent-tint);
+    color: var(--text);
+  }
+
+  .item[aria-current='page'] :global(.icon) {
     color: var(--accent);
-    box-shadow: inset var(--border-focus) 0 0 var(--accent);
+  }
+
+  .item[aria-current='page']::before {
+    content: '';
+    position: absolute;
+    inset-block: var(--space-2);
+    inset-inline-start: calc(var(--space-2) * -1);
+    inline-size: var(--border-focus);
+    border-start-end-radius: var(--radius-sm);
+    border-end-end-radius: var(--radius-sm);
+    background: var(--accent);
   }
 
   .item:focus-visible {
@@ -322,7 +349,7 @@
     inline-size: 100%;
     margin: auto 0 var(--space-2);
     border: 0;
-    border-top: var(--border-thin) solid var(--border-strong);
+    border-top: var(--border-thin) solid var(--border-subtle);
   }
 
   /* One line with a height set from tokens, so the font swap cannot move the divider (MOT-007). */

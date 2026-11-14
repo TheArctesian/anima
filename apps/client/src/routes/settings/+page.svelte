@@ -16,91 +16,114 @@
   import TypefaceRows from '$lib/typeface/TypefaceRows.svelte';
   import DesktopRows from '$lib/updates/DesktopRows.svelte';
   import VpnSection from '$lib/vpn/VpnSection.svelte';
+  import PageHeader from '$lib/page/PageHeader.svelte';
+  import { resolve as entrance } from '$lib/motion/roles/resolve';
+  import SettingsIndex from './SettingsIndex.svelte';
+  import { SECTIONS, indexOf } from './index';
 
   // The desktop rows decide each row themselves; the page only leaves out the section when none can show (UPD-006, LOG-008,
   // BLD-020).
   // The Hub section is desktop only: a browser talks only to the hub that served it (CLI-002, D-5).
   const { updates, commandLine, processLog, builds, keyStore, mcpPermissions } = capabilities();
+  const desktopRows = updates || commandLine || processLog || builds;
+  const index = indexOf({ keyStore, desktopRows, mcpPermissions });
 </script>
 
+<div class="head" {@attach entrance()}>
+  <PageHeader title="Settings" eyebrow={{ text: 'This computer and the hub', icon: 'carbon:settings' }} />
+</div>
+
+<!-- The index of the sections beside one readable column of them (UR-7, SET-001); on a narrow window the index is a
+     row of links above. -->
+<div class="settings">
+<SettingsIndex entries={index} />
 <div class="page">
-  <h1>Settings</h1>
 
   <!-- One section per subject, in the order of WP-50 F-10; each later section adds one element here. -->
-  <SettingsSection id="settings-account" title="Account" icon="nf-md-account_circle" description="Who is signed in to this hub.">
+  <SettingsSection {...SECTIONS.account}>
     <SignOutRow />
   </SettingsSection>
 
   {#if keyStore}
-    <SettingsSection id="settings-hub" title="Hub" icon="nf-md-server_network" description="The hub this app talks to.">
+    <SettingsSection {...SECTIONS.hub}>
       <HubRows />
     </SettingsSection>
   {/if}
 
-  <SettingsSection id="settings-appearance" title="Appearance" icon="nf-md-palette" description="How Anima looks on this device.">
+  <SettingsSection {...SECTIONS.appearance}>
     <ThemeRow />
     <PaletteRow />
     <MotionRow />
     <TypefaceRows />
   </SettingsSection>
 
-  <SettingsSection id="settings-notifications" title="Notifications" icon="nf-md-bell_outline" description="Where the hub sends alerts.">
+  <SettingsSection {...SECTIONS.notifications}>
     <NotificationsSection />
   </SettingsSection>
 
-  <SettingsSection id="settings-check-defaults" title="Default check settings" icon="nf-md-tune" description="New checks start with these settings.">
+  <SettingsSection {...SECTIONS.checkDefaults}>
     <DefaultsSection />
   </SettingsSection>
 
-  <SettingsSection id="settings-retention" title="Data retention" icon="nf-md-database_clock" description="How long the hub keeps each kind of record.">
+  <SettingsSection {...SECTIONS.retention}>
     <RetentionSection />
   </SettingsSection>
 
-  {#if updates || commandLine || processLog || builds}
-    <SettingsSection id="settings-updates" title="Updates" icon="nf-md-update" description="This app's version, its command line tool, its log and its release builds.">
+  {#if desktopRows}
+    <SettingsSection {...SECTIONS.updates}>
       <DesktopRows />
     </SettingsSection>
   {/if}
 
-  <SettingsSection id="settings-api-keys" title="API keys" icon="nf-md-key_variant" description="Keys for programs that call the hub's GraphQL API.">
+  <SettingsSection {...SECTIONS.apiKeys}>
     <ApiKeysSection />
   </SettingsSection>
 
-  <SettingsSection id="settings-extensions" title="Extensions" icon="nf-md-folder" description="What Anima does besides devices. Each starts off; a change is saved at once.">
+  <SettingsSection {...SECTIONS.extensions}>
     <ExtensionsSection />
   </SettingsSection>
 
-  <SettingsSection id="settings-integrations" title="Integrations" icon="nf-md-link" description="The places Anima reads records from. Each account keeps its key in the hub.">
+  <SettingsSection {...SECTIONS.integrations}>
     <SourcesSection />
   </SettingsSection>
 
   <!-- Desktop only: the MCP permissions are a file on this computer, which a browser cannot reach (MCP-023). -->
   {#if mcpPermissions}
-    <SettingsSection id="settings-mcp" title="MCP" icon="nf-md-shield_key" description="What coding agents may do through the anima mcp server on this computer.">
+    <SettingsSection {...SECTIONS.mcp}>
       <McpSection />
     </SettingsSection>
   {/if}
 
   <!-- Last: the picture arrives after the page and has many rows, so nothing below it can move (MOT-007). -->
-  <SettingsSection id="settings-vpn" title="VPN" icon="nf-md-lan_connect" description="How the hub reaches each site, and when each VPN key expires.">
+  <SettingsSection {...SECTIONS.vpn}>
     <VpnSection />
   </SettingsSection>
 </div>
+</div>
 
 <style>
-  /* One readable column, as the system's own settings window (SET-001). */
+  .head {
+    margin-block-end: var(--space-8);
+  }
+
+  .settings {
+    display: grid;
+    grid-template-columns: calc(var(--space-16) * 3 + var(--space-4)) minmax(0, calc(var(--space-16) * 11));
+    gap: var(--space-12);
+    align-items: start;
+  }
+
   .page {
     display: flex;
     flex-direction: column;
-    gap: var(--space-8);
-    max-inline-size: calc(var(--space-16) * 11);
+    gap: var(--space-10);
+    min-inline-size: 0;
   }
 
-  /* The title's line height is reserved from tokens, so the font load cannot move it (WP-11 H-7, R-042). */
-  h1 {
-    margin: 0;
-    font-size: var(--text-2xl);
-    line-height: var(--leading-tight);
-    min-block-size: calc(var(--text-2xl) * var(--leading-tight));
+  @media (max-width: 1100.98px) {
+    .settings {
+      grid-template-columns: minmax(0, 1fr);
+      gap: var(--space-5);
+    }
   }
 </style>

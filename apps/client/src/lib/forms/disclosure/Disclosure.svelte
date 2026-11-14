@@ -157,7 +157,7 @@
       <span class="mark"><Icon name={icon} /></span>
     {/if}
     <span class="label">{label}</span>
-    <span class="chevron"><Icon name={open ? 'nf-md-chevron_down' : 'nf-md-chevron_right'} size="sm" /></span>
+    <span class="chevron"><Icon name={open ? 'carbon:chevron-down' : 'carbon:chevron-right'} size="sm" /></span>
   </button>
 {/snippet}
 
@@ -203,7 +203,7 @@
     background: var(--surface-raised);
     color: var(--text);
     font: inherit;
-    font-weight: var(--weight-bold);
+    font-weight: var(--weight-medium);
     text-align: start;
     transition: background-color var(--duration-fast) var(--ease-enter);
   }

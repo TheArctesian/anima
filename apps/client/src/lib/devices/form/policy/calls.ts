@@ -1,4 +1,4 @@
-import { DevicePolicy, SetDevicePolicy } from '$lib/devices/api';
+import { DevicePolicy, SetDevicePolicy } from '$lib/devices/policy/api';
 import { useHub } from '$lib/hub/context';
 import type { Hub, HubResult } from '$lib/hub/hub';
 import type { PolicyInput, StoredPolicy } from './policy';

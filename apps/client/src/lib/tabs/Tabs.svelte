@@ -179,7 +179,7 @@
   /* The selected tab is bold; the bold word is laid out invisibly under the plain one, so a tab never changes width. */
   button[aria-selected='true'] {
     color: var(--text);
-    font-weight: var(--weight-bold);
+    font-weight: var(--weight-medium);
   }
 
   .word {
@@ -193,7 +193,7 @@
     block-size: 0;
     overflow: hidden;
     visibility: hidden;
-    font-weight: var(--weight-bold);
+    font-weight: var(--weight-medium);
   }
 
   .count {

@@ -128,7 +128,7 @@
   .failed {
     padding-inline-start: var(--space-1);
     border-inline-start: var(--border-focus) solid var(--status-down);
-    font-weight: var(--weight-bold);
+    font-weight: var(--weight-medium);
   }
 
   /* What Send test came to keeps one line in a wide row and two in a narrow one, where the longest sentence wraps (MOT-007). */

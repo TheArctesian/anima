@@ -3,7 +3,7 @@ import { createRawSnippet, flushSync, mount, unmount } from 'svelte';
 import { afterEach, beforeEach, expect, it, onTestFinished, vi } from 'vitest';
 import type { Hub, HubStatus } from '$lib/hub/hub';
 import Layout from '../../routes/+layout.svelte';
-import Icon from '../icons/Icon.svelte';
+import { iconShape, type IconName } from '../icons/icons';
 import { runs } from '../motion/engine.fixture';
 import { route } from './route.fixture.svelte';
 
@@ -123,7 +123,8 @@ it('NAV-005: the items are real links to their pages, with the server and cog ic
   const nav = show();
   const links = [...nav.querySelectorAll('a')];
   expect(links.map((link) => link.getAttribute('href'))).toEqual(['/devices', '/settings']);
-  expect(links.map((link) => link.querySelector('.icon')?.textContent)).toEqual(['\u{F048B}', '\u{F0493}']);
+  const firstShape = (name: IconName) => iconShape(name).parts.find(([tag]) => tag === 'path')?.[1]['d'];
+  expect(links.map((link) => link.querySelector('.icon path')?.getAttribute('d'))).toEqual([firstShape('carbon:bare-metal-server'), firstShape('carbon:settings')]);
 });
 
 it('UI-015: each item keeps its words as its name; the tooltip is set only when the bar shows icons', () => {
@@ -201,16 +202,6 @@ it('MOT-001: a nav item presses on pointerdown', () => {
   const nav = show();
   nav.querySelector('a')?.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0 }));
   expect(runs.length).toBeGreaterThan(0);
-});
-
-it('UI-014: Icon renders hidden from assistive technology with one pinned glyph', async () => {
-  const target = document.createElement('div');
-  document.body.append(target);
-  const icon = mount(Icon, { target, props: { name: 'nf-md-cog' } });
-  const span = target.querySelector('span');
-  expect(span?.getAttribute('aria-hidden')).toBe('true');
-  expect(span?.textContent).toBe('\u{F0493}');
-  await unmount(icon);
 });
 
 it('CQ-044: the layout shows the page inside the shell', () => {
@@ -307,7 +298,7 @@ it('E-3: in a browser the layout never reads the key store, and stays while the 
   expect(router.goto).not.toHaveBeenCalled();
 });
 
-it('UI-020: the layout applies the stored fonts before the page shows, and Fira Code when nothing is stored', () => {
+it('UI-020: the layout applies the stored fonts before the page shows, and IBM Plex Mono when nothing is stored', () => {
   localStorage.setItem('anima.typeface.ui', 'opendyslexic');
   onTestFinished(() => {
     localStorage.clear();
@@ -316,7 +307,7 @@ it('UI-020: the layout applies the stored fonts before the page shows, and Fira 
   });
   show();
   expect(document.documentElement.dataset['fontUi']).toBe('opendyslexic');
-  expect(document.documentElement.dataset['fontMono']).toBe('fira-code');
+  expect(document.documentElement.dataset['fontMono']).toBe('ibm-plex-mono');
 });
 
 it('NET-004: the bar sets data-hub-banner on the root while the strip shows, for the bar and the page to make room', async () => {

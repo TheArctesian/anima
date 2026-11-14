@@ -4,9 +4,9 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { runs } from '../../motion/engine.fixture';
 import type { CardDevice } from '../api';
 import { fakeHub } from '../hub.fixture';
-import { DEFAULT_QUERY, listVariables, type ListQuery } from '../query';
+import { listVariables, type ListQuery } from '../query';
 import DeviceScreen from './DeviceScreen.svelte';
-import { device, devicesAnswer, url } from './screen.fixture.svelte';
+import { CARDS, device, devicesAnswer, url } from './screen.fixture.svelte';
 import { endTransitionsAtOnce } from '../transitions.fixture';
 
 vi.mock('motion', async (importOriginal) => ({
@@ -35,7 +35,7 @@ async function settle(): Promise<void> {
 
 async function show(
   devices = [device('a'), device('b')],
-  query: ListQuery = DEFAULT_QUERY,
+  query: ListQuery = CARDS,
   extra: Record<string, unknown> = {},
 ): Promise<void> {
   fake = fakeHub({ Devices: devicesAnswer(devices), Tags: { tags: ['lab', 'prod'] }, ...extra });
@@ -89,12 +89,12 @@ it('DEV-001: 200 devices from one request render 200 cards', async () => {
 }, 60_000);
 
 it('DEV-001: Load more asks for the next page with the end cursor and adds its cards', async () => {
-  await show([device('a')], DEFAULT_QUERY, { Devices: devicesAnswer([device('a')], 'cursor-1') });
+  await show([device('a')], CARDS, { Devices: devicesAnswer([device('a')], 'cursor-1') });
   button('Load more').click();
   await settle();
   const requests = fake.requests.filter((request) => request.operation === 'Devices');
   expect(requests).toHaveLength(2);
-  expect(requests[1]?.variables).toEqual(listVariables(DEFAULT_QUERY, 'cursor-1'));
+  expect(requests[1]?.variables).toEqual(listVariables(CARDS, 'cursor-1'));
 });
 
 it('DEV-002: a deviceStatusChanged push changes the pill without a new list request', async () => {
@@ -106,7 +106,7 @@ it('DEV-002: a deviceStatusChanged push changes the pill without a new list requ
 });
 
 it('DEV-002: the table row changes with the push too', async () => {
-  await show([device('a'), device('b')], { ...DEFAULT_QUERY, view: 'table' });
+  await show([device('a'), device('b')], { ...CARDS, view: 'table' });
   fake.push('DeviceStatusChanged', { deviceStatusChanged: { deviceId: 'b', status: 'DEGRADED', at: 'now' } });
   await settle();
   const row = [...document.querySelectorAll('tbody tr')].find((node) => node.textContent.includes('Device b'));
@@ -122,12 +122,11 @@ it('DEV-002: a heartbeatAdded push adds a beat to the right device', async () =>
   expect(labels).toEqual(['No heartbeats yet', '1 heartbeat, latest down']);
 });
 
-it('DEV-003: the status filter writes the query and the next request carries it', async () => {
-  await show();
-  expect(document.querySelectorAll('input[type=checkbox]')).toHaveLength(0);
-  button('Status').click();
-  await settle();
-  document.querySelectorAll<HTMLInputElement>('input[type=checkbox]')[1]?.click();
+it('DEV-003, D18: a count in the count line filters on its status, writes the query and the next request carries it', async () => {
+  await show([device('a'), device('b', { status: 'DOWN' })]);
+  const tally = document.querySelector('[aria-label="Show devices by status"]');
+  expect([...(tally?.querySelectorAll('button') ?? [])].map((node) => node.textContent.trim().replace(/\s+/g, ' '))).toEqual(['2devices', '1down', '1up']);
+  [...(tally?.querySelectorAll('button') ?? [])].find((node) => node.textContent.includes('down'))?.click();
   await settle();
   expect(url.writes.at(-1)?.statuses).toEqual(['DOWN']);
   const requests = fake.requests.filter((request) => request.operation === 'Devices');
@@ -165,7 +164,7 @@ it('DEV-003: typing a name writes the URL 200 ms after the last keystroke', asyn
 });
 
 it('DEV-003: a push to a status outside the status filter removes the card', async () => {
-  await show([device('a'), device('b')], { ...DEFAULT_QUERY, statuses: ['UP'] });
+  await show([device('a'), device('b')], { ...CARDS, statuses: ['UP'] });
   fake.push('DeviceStatusChanged', { deviceStatusChanged: { deviceId: 'a', status: 'DOWN', at: 'now' } });
   await settle();
   await vi.waitFor(() => {
@@ -174,7 +173,7 @@ it('DEV-003: a push to a status outside the status filter removes the card', asy
 });
 
 it('DEV-003: a push for an unknown device under a status filter fetches the list again', async () => {
-  await show([device('a')], { ...DEFAULT_QUERY, statuses: ['DOWN'] });
+  await show([device('a')], { ...CARDS, statuses: ['DOWN'] });
   fake.push('DeviceStatusChanged', { deviceStatusChanged: { deviceId: 'zz', status: 'DOWN', at: 'now' } });
   await settle();
   expect(fake.requests.filter((request) => request.operation === 'Devices')).toHaveLength(2);
@@ -192,10 +191,10 @@ it.each([
   ['Uptime', 'UPTIME'],
   ['Name', 'NAME'],
 ] as const)('DEV-004: the %s sort writes the URL and sends sort %s', async (label, sort) => {
-  await show([device('a')], { ...DEFAULT_QUERY, sort: sort === 'NAME' ? 'STATUS' : 'NAME' });
-  button('Sort').click();
+  await show([device('a')], { ...CARDS, sort: sort === 'NAME' ? 'STATUS' : 'NAME' });
+  document.querySelector<HTMLButtonElement>('button[aria-label^="Sort:"]')?.click();
   await settle();
-  const radio = [...document.querySelectorAll<HTMLInputElement>('.option')].find((node) => node.textContent.trim() === label);
+  const radio = [...document.querySelectorAll<HTMLInputElement>('.option')].find((node) => node.textContent.trim().startsWith(label));
   radio?.querySelector('input')?.click();
   await settle();
   expect(url.writes.at(-1)?.sort).toBe(sort);
@@ -203,7 +202,7 @@ it.each([
 });
 
 it('DEV-004: under STATUS, a device that turns Down moves first', async () => {
-  await show([device('a'), device('b'), device('c')], { ...DEFAULT_QUERY, sort: 'STATUS' });
+  await show([device('a'), device('b'), device('c')], { ...CARDS, sort: 'STATUS' });
   fake.push('DeviceStatusChanged', { deviceStatusChanged: { deviceId: 'c', status: 'DOWN', at: 'now' } });
   await settle();
   expect(names()).toEqual(['Device c', 'Device a', 'Device b']);
@@ -217,7 +216,7 @@ it('DEV-004: with reduced motion the new order is instant, without reduced motio
   for (const reduced of [true, false]) {
     runs.length = 0;
     preference.reduced = reduced;
-    await show([device('a'), device('b'), device('c')], { ...DEFAULT_QUERY, sort: 'STATUS' });
+    await show([device('a'), device('b'), device('c')], { ...CARDS, sort: 'STATUS' });
     fake.push('DeviceStatusChanged', { deviceStatusChanged: { deviceId: 'c', status: 'DOWN', at: 'now' } });
     await settle();
     expect(names()[0]).toBe('Device c');
@@ -237,32 +236,32 @@ it('DEV-005: no devices and no filter shows "No devices yet" and an Add device b
 });
 
 it('DEV-005: a filter with no result shows "No devices match" and Clear filters', async () => {
-  await show([], { ...DEFAULT_QUERY, name: 'zzz', sort: 'STATUS' });
+  await show([], { ...CARDS, name: 'zzz', sort: 'STATUS' });
   expect(document.body.textContent).toContain('No devices match');
   expect(document.body.textContent).not.toContain('No devices yet');
   button('Clear filters').click();
   await settle();
-  expect(url.writes.at(-1)).toEqual({ ...DEFAULT_QUERY, sort: 'STATUS' });
+  expect(url.writes.at(-1)).toEqual({ ...CARDS, sort: 'STATUS' });
 });
 
 it('DEV-001: the cards are a list, and the table has column headers', async () => {
   await show();
   expect(document.querySelectorAll('ul[aria-label="Devices"] > li')).toHaveLength(2);
-  url.query = { ...DEFAULT_QUERY, view: 'table' };
+  url.query = { ...CARDS, view: 'table' };
   await settle();
   expect([...document.querySelectorAll('thead th')].map((node) => node.textContent)).toEqual([
-    'Name',
     'Status',
-    'Host',
-    'Uptime, 24 h',
-    'Heartbeats',
+    'Name',
+    '24 h',
+    'Last 50 checks',
+    'Usage, or what is wrong',
     'Connect',
   ]);
   expect(fake.requests.filter((request) => request.operation === 'Devices')).toHaveLength(1);
 });
 
 it('K7: a failed load shows the error text and Retry loads again', async () => {
-  await show([], DEFAULT_QUERY, { Devices: { code: 'unreachable', message: 'The hub did not answer. Check the VPN client.' } });
+  await show([], CARDS, { Devices: { code: 'unreachable', message: 'The hub did not answer. Check the VPN client.' } });
   expect(document.querySelector('[role="alert"]')?.textContent).toContain('Check the VPN client');
   button('Retry').click();
   await settle();
@@ -284,7 +283,7 @@ it.each(['grid', 'table'] as const)('Reorder: when a %s item leaves, the items a
     const top = this.tagName === 'LI' || this.tagName === 'TR' ? [...(this.parentElement?.children ?? [])].indexOf(this) * 100 : 0;
     return { left: 0, right: 0, top, bottom: top, width: 0, height: 0, x: 0, y: top, toJSON: () => ({}) };
   });
-  await show([device('a'), device('b'), device('c')], { ...DEFAULT_QUERY, view, statuses: ['UP'] });
+  await show([device('a'), device('b'), device('c')], { ...CARDS, view, statuses: ['UP'] });
   runs.length = 0;
   fake.push('DeviceStatusChanged', { deviceStatusChanged: { deviceId: 'a', status: 'DOWN', at: 'now' } });
   await settle();
@@ -299,7 +298,7 @@ it.each(['grid', 'table'] as const)('Reorder: when a %s item leaves, the items a
 
 it('Loading: a list on screen stays while the next one loads, and no skeleton replaces it', async () => {
   await show([device('a')]);
-  url.query = { ...DEFAULT_QUERY, sort: 'STATUS' };
+  url.query = { ...CARDS, sort: 'STATUS' };
   await settle();
   expect(document.querySelectorAll('li.place')).toHaveLength(0);
   expect(document.querySelectorAll('article')).toHaveLength(1);
@@ -316,7 +315,7 @@ it('R-079: a card of a Linux device with VNC off sets screen sharing up: the VNC
   app = mount(DeviceScreen, {
     target: document.body,
     props: {
-      query: DEFAULT_QUERY,
+      query: CARDS,
       onQueryChange: vi.fn(),
       onAddDevice: vi.fn(),
       onConnect: (target: CardDevice, protocol: string) => protocols.push(`${target.id}:${protocol}`),

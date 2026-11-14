@@ -10,6 +10,8 @@
   import { canWake, connectLabel, connectProtocols, webInterfacesOf } from './actions';
   import './actions.css';
   import WebMenu from './WebMenu.svelte';
+  import Icon from '$lib/icons/Icon.svelte';
+  import type { IconName } from '$lib/icons/icons';
 
   interface Props {
     device: CardDevice;
@@ -21,24 +23,29 @@
     wake?: WakeApi;
     /** The "Screen sharing" button for a macOS or Linux device with VNC off (R-079); hidden while no route gives it. */
     screenSharing?: CardScreenSharing;
+    /** Icon buttons named by their tooltip and label, for the list's fixed connect column (UR-7, D18). */
+    compact?: boolean;
   }
 
-  const { device, onConnect, onOpenWeb, wake, screenSharing }: Props = $props();
+  const { device, onConnect, onOpenWeb, wake, screenSharing, compact = false }: Props = $props();
+  const ICONS: Record<SessionProtocol, IconName> = { SSH: 'carbon:terminal', RDP: 'carbon:screen', VNC: 'carbon:screen' };
   const web = $derived(webInterfacesOf(device));
 </script>
 
-<span class="actions">
+<span class="actions" class:compact>
   {#each connectProtocols(device) as protocol (protocol)}
     <!-- tabindex="0": WebKit skips plain buttons when Tab is pressed unless they are focusable (NAV-005). -->
     <button
       type="button"
       class="device-action"
+      class:icon-only={compact}
       tabindex="0"
       aria-label={connectLabel(protocol, device.name)}
+      title={compact ? protocol : undefined}
       onclick={(event) => {
         onConnect(device, protocol, event.currentTarget);
       }}
-      {@attach press()}>{protocol}</button
+      {@attach press()}>{#if compact}<Icon name={ICONS[protocol]} />{:else}{protocol}{/if}</button
     >
   {/each}
   {#if screenSharing !== undefined && offersScreenSharing(device)}
@@ -64,6 +71,10 @@
     flex: none;
     display: inline-flex;
     gap: var(--space-2);
+  }
+
+  .compact {
+    gap: var(--space-1);
   }
 
   .wake-slot {

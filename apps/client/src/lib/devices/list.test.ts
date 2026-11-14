@@ -3,6 +3,8 @@ import type { CardDevice, DevicePage } from './api';
 import { appendPage, applyStatus, applyVncEnabled, compareDevices, fromPage } from './list';
 import { DEFAULT_QUERY, type ListQuery } from './query';
 
+const BY_NAME: ListQuery = { ...DEFAULT_QUERY, sort: 'NAME' };
+
 function device(name: string, status: CardDevice['status'] = 'UP', uptime: number | null = 1): CardDevice {
   return {
     id: name,
@@ -95,21 +97,21 @@ describe('live status (DEV-003, DEV-004)', () => {
   const list = fromPage(page([device('a'), device('b'), device('c')], null, 3));
 
   it('DEV-003 changes the status in place under the name order', () => {
-    const next = applyStatus(list, change('b', 'DOWN'), DEFAULT_QUERY);
+    const next = applyStatus(list, change('b', 'DOWN'), BY_NAME);
     expect(names(next.devices)).toEqual(['a', 'b', 'c']);
     expect(next.devices[1]?.status).toBe('DOWN');
     expect(list.devices[1]?.status).toBe('UP');
   });
 
   it('DEV-003 removes a device that no longer matches the status filter', () => {
-    const query: ListQuery = { ...DEFAULT_QUERY, statuses: ['UP'] };
+    const query: ListQuery = { ...BY_NAME, statuses: ['UP'] };
     const next = applyStatus(list, change('b', 'DOWN'), query);
     expect(names(next.devices)).toEqual(['a', 'c']);
     expect(next.totalCount).toBe(2);
   });
 
   it('DEV-003 keeps a device whose new status the filter admits', () => {
-    const query: ListQuery = { ...DEFAULT_QUERY, statuses: ['UP', 'DOWN'] };
+    const query: ListQuery = { ...BY_NAME, statuses: ['UP', 'DOWN'] };
     const next = applyStatus(list, change('b', 'DOWN'), query);
     expect(names(next.devices)).toEqual(['a', 'b', 'c']);
     expect(next.totalCount).toBe(3);

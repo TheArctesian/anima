@@ -39,7 +39,7 @@
 
 <section class="overview-card metrics" aria-labelledby="overview-metrics">
   <div class="head">
-    <h2 id="overview-metrics" class="overview-card-title"><Icon name="nf-md-chart_line" />Metrics</h2>
+    <h2 id="overview-metrics" class="overview-card-title"><Icon name="carbon:chart-line" />Metrics</h2>
     {#if hasMetrics(source)}
       <div class="range" role="group" aria-label="Time range">
         {#each RANGES as choice (choice.range)}
@@ -53,9 +53,9 @@
   {#if !hasMetrics(source)}
     <!-- D-7: an empty state with its icon, the sentence and the way to turn metrics on. -->
     <div class="metrics-off">
-      <span class="off-icon"><Icon name="nf-md-chart_line" size="lg" /></span>
+      <span class="off-icon"><Icon name="carbon:chart-line" size="lg" /></span>
       <p>Metrics are off. Install the agent or turn on SSH metrics in Settings.</p>
-      <button type="button" class="settings" onclick={onSettings} {@attach press()}><Icon name="nf-md-cog_outline" size="sm" />Open Settings</button>
+      <button type="button" class="settings" onclick={onSettings} {@attach press()}><Icon name="carbon:settings-adjust" size="sm" />Open Settings</button>
     </div>
   {:else}
     <MetricBars readings={metrics.readings} {source} />

@@ -6,7 +6,7 @@ import type { CardDevice } from '../api';
 import { fakeHub } from '../hub.fixture';
 import { DEFAULT_QUERY, type ListQuery } from '../query';
 import DeviceScreen from '../screen/DeviceScreen.svelte';
-import { device, devicesAnswer, url } from '../screen/screen.fixture.svelte';
+import { CARDS, device, devicesAnswer, url } from '../screen/screen.fixture.svelte';
 import { endTransitionsAtOnce } from '../transitions.fixture';
 
 vi.mock('motion', async (importOriginal) => ({
@@ -37,7 +37,7 @@ async function settle(): Promise<void> {
 
 async function show(
   devices = [device('a'), device('b')],
-  query: ListQuery = DEFAULT_QUERY,
+  query: ListQuery = CARDS,
   extra: Record<string, unknown> = {},
 ): Promise<void> {
   fake = fakeHub({ Devices: devicesAnswer(devices), Tags: { tags: ['lab', 'prod'] }, ...extra });
@@ -107,7 +107,7 @@ it.each([
   ['grid', 'article a'],
   ['table', 'tbody th a'],
 ] as const)('6.1 card: the %s name link encodes an id with / ? and #', async (view, selector) => {
-  await show([device('a/b?c#d')], { ...DEFAULT_QUERY, view });
+  await show([device('a/b?c#d')], { ...CARDS, view });
   expect(document.querySelector(selector)?.getAttribute('href')).toBe('/devices/a%2Fb%3Fc%23d');
 });
 
@@ -115,7 +115,7 @@ it.each([
   ['grid', 'article'],
   ['table', 'tbody tr'],
 ] as const)('UI-015: each %s device shows its OS logo, named in words', async (view, selector) => {
-  await show([device('a', { os: 'MACOS' }), device('b', { os: 'WINDOWS' })], { ...DEFAULT_QUERY, view });
+  await show([device('a', { os: 'MACOS' }), device('b', { os: 'WINDOWS' })], { ...CARDS, view });
   const names = [...document.querySelectorAll(selector)].map((row) => row.querySelector('[role="img"][aria-label]:not(.bar)')?.getAttribute('aria-label'));
   expect(names).toEqual(['macOS', 'Windows']);
 });
@@ -130,7 +130,7 @@ it.each([
       device('b', { os: 'LINUX', distribution: null }),
       device('c', { os: 'LINUX', distribution: 'someos' }),
     ],
-    { ...DEFAULT_QUERY, view },
+    { ...CARDS, view },
   );
   const names = [...document.querySelectorAll(selector)].map((row) => row.querySelector('[role="img"][aria-label]:not(.bar)')?.getAttribute('aria-label'));
   expect(names).toEqual(['Pop!_OS', 'Linux', 'Linux']);
@@ -138,7 +138,7 @@ it.each([
 
 it('6.1 card: in the table SSH shows only when enabled with an accepted host key, and calls onConnect', async () => {
   await show([device('a', { ssh: KEYED }), device('b'), device('c', { ssh: { enabled: true, hostKey: null } })], {
-    ...DEFAULT_QUERY,
+    ...CARDS,
     view: 'table',
   });
   const buttons = [...document.querySelectorAll('tbody button')];
@@ -150,7 +150,7 @@ it('6.1 card: in the table SSH shows only when enabled with an accepted host key
 it('6.1 card: in the table the IP shows only next to a host name, not for an IP host or an empty ip', async () => {
   await show(
     [device('a', { ip: '10.0.0.5' }), device('b', { host: '10.0.0.9', ip: '10.0.0.9' }), device('c', { ip: '' })],
-    { ...DEFAULT_QUERY, view: 'table' },
+    { ...CARDS, view: 'table' },
   );
   const rows = [...document.querySelectorAll('tbody tr')];
   expect(rows.map((row) => row.querySelectorAll('.ip').length)).toEqual([1, 0, 0]);
@@ -163,7 +163,7 @@ it('6.1 card: in the grid an empty ip shows no IP', async () => {
 
 it('WebKit: every card and table control has tabindex 0, or Tab skips it (NAV-005)', async () => {
   for (const view of ['grid', 'table'] as const) {
-    await show([device('a', { ssh: KEYED })], { ...DEFAULT_QUERY, view });
+    await show([device('a', { ssh: KEYED })], { ...CARDS, view });
     const controls = [...document.querySelectorAll('button, a[href]')];
     expect(controls.length).toBeGreaterThan(6);
     expect(controls.filter((node) => node.getAttribute('tabindex') !== '0')).toEqual([]);

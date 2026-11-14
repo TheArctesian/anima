@@ -63,6 +63,7 @@
   aria-busy={announcedBusy}
   aria-disabled={announcedDisabled}
   onclick={click}
+  tabindex="0"
   {...rest}
   {@attach press()}
 >
@@ -73,7 +74,7 @@
     <span class="labels">
       <span class="label" class:on={feedback === 'idle'} aria-hidden={feedback !== 'idle'}>{@render children?.()}</span>
       <span class="label waiting" class:on={feedback === 'pending'} aria-hidden={feedback !== 'pending'}>{pendingLabel}</span>
-      <span class="label done" class:on={feedback === 'done'} aria-hidden={feedback !== 'done'}><Icon name="nf-md-check" size="sm" />{doneLabel}</span>
+      <span class="label done" class:on={feedback === 'done'} aria-hidden={feedback !== 'done'}><Icon name="carbon:checkmark" size="sm" />{doneLabel}</span>
     </span>
   {/if}
 </button>
@@ -93,7 +94,7 @@
     border-radius: var(--radius-md);
     color: var(--text);
     font: inherit;
-    font-weight: var(--weight-bold);
+    font-weight: var(--weight-regular);
     white-space: nowrap;
     transition:
       background-color var(--duration-fast) var(--ease-enter),
@@ -166,6 +167,7 @@
   .primary {
     background: var(--accent);
     color: var(--on-accent);
+    font-weight: var(--weight-medium);
   }
 
   .primary:hover:not(:disabled, [aria-disabled='true']) {
@@ -177,14 +179,14 @@
     background: var(--accent-pressed);
   }
 
-  /* The fill matches a hover fill (and the card, in light), so the edge shows the button, hover strengthens it and pressed shows the accent tint. */
+  /* A quiet raised fill with a hairline edge (UR-7); hover lifts it to the overlay surface. */
   .secondary {
-    background: var(--surface-overlay);
+    background: var(--surface-raised);
     border-color: var(--border-subtle);
   }
 
   .secondary:hover:not(:disabled, [aria-disabled='true']) {
-    border-color: var(--border-strong);
+    background: var(--surface-overlay);
   }
 
   .secondary:active:not(:disabled, [aria-disabled='true']) {
@@ -208,8 +210,9 @@
     color: var(--text);
   }
 
+  /* An outline in the control edge colour; only the words carry the danger (UR-7). */
   .danger {
-    border-color: var(--danger);
+    border-color: var(--border-strong);
     color: var(--status-down-text);
   }
 

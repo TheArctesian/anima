@@ -40,7 +40,7 @@
     <p class="body">Fields go here. The card is sized by its content.</p>
     {#snippet footer()}<span class="state">Unsaved changes</span><FormButton tone="primary">Save changes</FormButton>{/snippet}
   </Section>
-  <Section title="Device facts" flush>
+  <Section title="Device facts">
     <div class="pad"><KeyValueList pairs={PAIRS} /></div>
   </Section>
   <Section title="Right-aligned values">

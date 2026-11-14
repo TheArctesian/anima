@@ -1,10 +1,10 @@
 <script lang="ts">
   import Icon from '$lib/icons/Icon.svelte';
-  import type { DeviceSort, Status } from '$lib/hub/generated/graphql';
+  import type { DeviceSort } from '$lib/hub/generated/graphql';
   import { press } from '$lib/motion/roles/press';
   import type { ListQuery } from '../query';
   import Menu from './Menu.svelte';
-  import { ALL_SITES, NAME_DEBOUNCE_MS, SORT_OPTIONS, STATUS_OPTIONS, debounced, siteButtonLabel, toggled, type MenuOption } from './toolbar';
+  import { ALL_SITES, NAME_DEBOUNCE_MS, SORT_OPTIONS, debounced, siteButtonLabel, toggled, type MenuOption } from './toolbar';
 
   interface Props {
     query: ListQuery;
@@ -16,10 +16,9 @@
     /** The text for an empty site menu: why there are no sites. */
     sitesNote: string;
     onQueryChange: (query: ListQuery) => void;
-    onAddDevice: () => void;
   }
 
-  const { query, tags, tagsNote, sites, sitesNote, onQueryChange, onAddDevice }: Props = $props();
+  const { query, tags, tagsNote, sites, sitesNote, onQueryChange }: Props = $props();
   const tagOptions = $derived(tags.map((tag) => ({ value: tag, label: tag })));
   let text = $state('');
   const send = debounced(() => {
@@ -37,7 +36,7 @@
 <div class="toolbar" role="search" aria-label="Filter devices">
   <label class="search">
     <span class="label">Search by name</span>
-    <Icon name="nf-md-magnify" size="sm" />
+    <Icon name="carbon:search" size="sm" />
     <input
       type="search"
       placeholder="Search by name"
@@ -49,18 +48,8 @@
     />
   </label>
   <Menu
-    label="Status"
-    icon="nf-md-filter_variant"
-    kind="checkbox"
-    options={STATUS_OPTIONS}
-    chosen={query.statuses}
-    onChoose={(value) => {
-      onQueryChange({ ...query, statuses: toggled(query.statuses, value as Status) });
-    }}
-  />
-  <Menu
     label="Tags"
-    icon="nf-md-tag"
+    icon="carbon:tag"
     kind="checkbox"
     options={tagOptions}
     chosen={query.tags}
@@ -72,7 +61,7 @@
   <Menu
     label="Site"
     shown={siteButtonLabel(sites, query.site)}
-    icon="nf-md-lan_connect"
+    icon="carbon:location"
     kind="radio"
     options={sites}
     chosen={[query.site ?? ALL_SITES]}
@@ -81,9 +70,11 @@
       onQueryChange({ ...query, site: value === ALL_SITES ? null : value });
     }}
   />
+  <span class="spacer"></span>
   <Menu
     label="Sort"
-    icon="nf-md-sort"
+    shown={SORT_OPTIONS.find((option) => option.value === query.sort)?.label.split(',')[0] ?? 'Sort'}
+    icon="carbon:arrows-vertical"
     kind="radio"
     options={SORT_OPTIONS}
     chosen={[query.sort]}
@@ -92,45 +83,54 @@
     }}
   />
   <div class="views" role="group" aria-label="View">
-    {#each [{ view: 'grid', label: 'Grid' }, { view: 'table', label: 'Table' }] as const as option (option.view)}
+    {#each [{ view: 'table', label: 'List', icon: 'carbon:list' }, { view: 'grid', label: 'Grid', icon: 'carbon:grid' }] as const as option (option.view)}
       <button
         type="button"
         tabindex="0"
         aria-pressed={query.view === option.view}
+        aria-label={option.label}
+        title={option.label}
         onclick={() => {
           onQueryChange({ ...query, view: option.view });
         }}
-        {@attach press()}>{option.label}</button
+        {@attach press()}><Icon name={option.icon} size="sm" /></button
       >
     {/each}
   </div>
-  <button type="button" class="add" tabindex="0" onclick={onAddDevice} {@attach press()}>
-    <Icon name="nf-md-plus" size="sm" />
-    <span>Add device</span>
-  </button>
 </div>
 
 <style>
+  /* One quiet toolbar between hairlines (UR-7, D18): search, Tags and Site; then Sort and the view. */
   .toolbar {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: var(--space-2);
+    gap: var(--space-1) var(--space-2);
+    padding: var(--space-2) 0;
+    border-block: var(--border-thin) solid var(--border-subtle);
+  }
+
+  .spacer {
+    flex: 1;
   }
 
   .search {
-    flex: 1 1 calc(var(--space-16) * 3);
+    flex: 0 1 calc(var(--space-16) * 4);
     min-inline-size: 0;
-    max-inline-size: calc(var(--space-16) * 6);
     display: inline-flex;
     align-items: center;
     gap: var(--space-2);
-    block-size: calc(var(--target-min-desktop) + var(--space-2));
-    padding: 0 var(--space-3);
-    border: var(--border-thin) solid var(--border-strong);
+    block-size: var(--control-md);
+    padding: 0 var(--space-2) 0 var(--space-1);
+    border: var(--border-thin) solid transparent;
     border-radius: var(--radius-md);
-    background: var(--surface-raised);
-    color: var(--text-secondary);
+    color: var(--text-tertiary);
+    transition: border-color var(--duration-fast) var(--ease-enter), background-color var(--duration-fast) var(--ease-enter);
+  }
+
+  .search:focus-within {
+    border-color: var(--accent);
+    background: var(--surface-base);
   }
 
   .label {
@@ -143,7 +143,7 @@
   }
 
   input::placeholder {
-    color: var(--text-secondary);
+    color: var(--text-tertiary);
   }
 
   input {
@@ -157,54 +157,49 @@
     outline: none;
   }
 
-  .search:focus-within {
-    outline: var(--border-focus) solid var(--accent);
-    outline-offset: var(--border-focus);
-  }
-
   .views {
     display: inline-flex;
-    border: var(--border-thin) solid var(--border-strong);
+    padding: var(--border-focus);
+    border: var(--border-thin) solid var(--border-subtle);
     border-radius: var(--radius-md);
-    overflow: hidden;
   }
 
   button {
     box-sizing: border-box;
     display: inline-flex;
     align-items: center;
-    gap: var(--space-2);
-    block-size: calc(var(--target-min-desktop) + var(--space-2));
-    padding: 0 var(--space-3);
+    justify-content: center;
+    inline-size: var(--control-md);
+    block-size: calc(var(--control-md) - var(--space-2));
+    padding: 0;
     border: 0;
-    background: var(--surface-raised);
-    color: var(--text);
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text-tertiary);
     font: inherit;
-    transition: background-color var(--duration-fast) var(--ease-enter);
+    transition: background-color var(--duration-fast) var(--ease-enter), color var(--duration-fast) var(--ease-enter);
   }
 
   button:hover {
-    background: var(--surface-overlay);
-  }
-
-  button:active {
-    transition-duration: var(--duration-press);
-    background: var(--surface-hover);
+    color: var(--text);
   }
 
   button[aria-pressed='true'] {
-    background: var(--accent-tint);
-    color: var(--accent);
-  }
-
-  .add {
-    margin-inline-start: auto;
-    border: var(--border-thin) solid var(--accent);
-    border-radius: var(--radius-md);
+    background: var(--surface-raised);
+    color: var(--text);
   }
 
   button:focus-visible {
-    outline: var(--border-focus) solid var(--accent);
+    outline: var(--border-focus) solid var(--focus-ring);
     outline-offset: calc(var(--border-focus) * -1);
+  }
+
+  /* On a phone the search takes its own line, above the menus. */
+  @media (max-width: 767.98px) {
+    .search {
+      flex: 1 1 100%;
+      order: -1;
+      border-color: var(--border-subtle);
+    }
   }
 </style>

@@ -41,7 +41,7 @@
   }
 
   const files = begin();
-  const ICONS: Readonly<Record<EntryKind, IconName>> = { dir: 'nf-md-folder', file: 'nf-md-file', link: 'nf-md-link' };
+  const ICONS: Readonly<Record<EntryKind, IconName>> = { dir: 'carbon:folder', file: 'carbon:document', link: 'carbon:link' };
 
   let picker: HTMLInputElement | undefined = $state();
   let dragging = $state(false);
@@ -89,14 +89,14 @@
 >
   <div class="bar">
     <button type="button" class="control" aria-label="Up one folder" aria-disabled={!idle || files.listing === undefined} onclick={() => files.up()} {@attach press()}>
-      <Icon name="nf-md-arrow_up" size="sm" />
+      <Icon name="carbon:arrow-up" size="sm" />
     </button>
     <span class="where" title={files.listing?.path ?? ''}>{files.listing?.path ?? ''}</span>
     <button type="button" class="control" aria-label="Refresh the list" aria-disabled={!idle || files.listing === undefined} onclick={() => files.refresh()} {@attach press()}>
-      <Icon name="nf-md-refresh" size="sm" />
+      <Icon name="carbon:renew" size="sm" />
     </button>
     <button type="button" class="control labelled" aria-label="Upload a file" aria-disabled={!idle || files.listing === undefined} onclick={() => idle && picker?.click()} {@attach press()}>
-      <Icon name="nf-md-upload" size="sm" />
+      <Icon name="carbon:upload" size="sm" />
       <span>Upload</span>
     </button>
     <input bind:this={picker} class="picker" type="file" tabindex="-1" aria-hidden="true" onchange={picked} />
@@ -120,7 +120,7 @@
             <span class="slot"></span>
           {:else}
             <button type="button" class="control slot" aria-label="Download {entry.name}" aria-disabled={!idle} onclick={() => void files.download(entry)} {@attach press()}>
-              <Icon name="nf-md-download" size="sm" />
+              <Icon name="carbon:download" size="sm" />
             </button>
           {/if}
         </li>
@@ -130,7 +130,7 @@
       <ul class="entries places" aria-hidden="true" transition:crossFade>
         {#each PLACES as place (place)}
           <li class="entry">
-            <Icon name="nf-md-file" size="sm" />
+            <Icon name="carbon:document" size="sm" />
             <span class="hole name-hole"></span>
             <span class="hole"></span>
             <span class="hole"></span>

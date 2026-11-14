@@ -12,9 +12,9 @@ export const TEXT_ROLES = [
   {
     id: 'mono',
     label: 'Monospace font',
-    default: 'fira-code',
+    default: 'ibm-plex-mono',
     choices: [
-      { id: 'fira-code', label: 'Fira Code' },
+      { id: 'ibm-plex-mono', label: 'IBM Plex Mono' },
       { id: 'opendyslexic', label: 'OpenDyslexic' },
     ],
   },
@@ -41,9 +41,8 @@ function readText(storage: Storage, role: TextRole): string | null {
 }
 
 /**
- * The typeface the operator chose for one role; the role's default when nothing valid is stored. An interface choice
- * of "fira-code" saved by an earlier version, when Fira Code was the interface font, is not offered now and so reads
- * as the new default (UI-020).
+ * The typeface the operator chose for one role; the role's default when nothing valid is stored. A choice of
+ * "fira-code" saved by an earlier version, for either role, is not offered now and so reads as the new default (UI-020).
  */
 function chosen<R extends TextRole>(storage: Storage, role: RoleSpec<R>): Typeface<R> {
   const text = readText(storage, role.id);

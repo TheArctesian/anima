@@ -251,12 +251,12 @@
       {/each}
     </div>
     <div data-section="general">
-      <Disclosure label="General" icon="nf-md-card_text_outline" level={3} bind:open={general}>
+      <Disclosure label="General" icon="carbon:identification" level={3} bind:open={general}>
         <GeneralSection bind:values {errors} sites={creating ? sites : []} bind:siteId bind:newSite onHostBlur={checkHost} />
       </Disclosure>
     </div>
     <div data-section="ssh">
-      <Disclosure label="SSH" icon="nf-md-ssh" level={3} bind:open={ssh}>
+      <Disclosure label="SSH" icon="carbon:terminal" level={3} bind:open={ssh}>
         <SshSection bind:values {errors} {credentialStored} {clearing} onClearCredential={() => void clearWith(onClearCredential)} />
         <RemoteLoginButton sshOff={remoteLoginOff} />
         {#if values.ssh.enabled}
@@ -267,7 +267,7 @@
       </Disclosure>
     </div>
     <div data-section="rdp">
-      <Disclosure label="Remote Desktop (RDP)" icon="nf-md-remote_desktop" level={3} bind:open={rdp}>
+      <Disclosure label="Remote Desktop (RDP)" icon="carbon:remote-connection" level={3} bind:open={rdp}>
         <RdpSection
           bind:values
           {errors}
@@ -284,7 +284,7 @@
       </Disclosure>
     </div>
     <div data-section="vnc">
-      <Disclosure label="VNC" icon="nf-md-monitor" level={3} bind:open={vnc}>
+      <Disclosure label="VNC" icon="carbon:screen" level={3} bind:open={vnc}>
         <VncSection
           bind:values
           {errors}
@@ -302,7 +302,7 @@
     </div>
     <PolicySection {policy} bind:open={sessions} />
     <div data-section="files">
-      <Disclosure label="Files and clipboard" icon="nf-md-folder" level={3} bind:open={files}>
+      <Disclosure label="Files and clipboard" icon="carbon:folder" level={3} bind:open={files}>
         <TransferSection bind:values />
       </Disclosure>
     </div>

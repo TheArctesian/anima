@@ -28,3 +28,19 @@
   outline: var(--border-focus) solid var(--accent);
   outline-offset: var(--border-focus);
 }
+
+/* The list's connect column: a quiet square button, the protocol in its tooltip (UR-7, D18). */
+.device-action.icon-only {
+  justify-content: center;
+  inline-size: var(--control-md);
+  min-block-size: var(--control-md);
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.device-action.icon-only:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}

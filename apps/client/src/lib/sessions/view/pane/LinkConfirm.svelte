@@ -36,7 +36,7 @@
 
   .host {
     font-family: var(--font-mono);
-    font-weight: var(--weight-bold);
+    font-weight: var(--weight-medium);
     overflow-wrap: anywhere;
   }
 

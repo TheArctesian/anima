@@ -107,14 +107,14 @@
     background: var(--surface-raised);
     color: var(--text-secondary);
     font-size: var(--text-sm);
-    font-weight: var(--weight-bold);
+    font-weight: var(--weight-medium);
   }
 
   .group th {
     background: var(--surface-sunken);
     color: var(--text-secondary);
     font-size: var(--text-sm);
-    font-weight: var(--weight-bold);
+    font-weight: var(--weight-medium);
   }
 
   tbody tr:not(.group):hover {

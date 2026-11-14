@@ -196,13 +196,13 @@
     margin: 0;
     padding: var(--space-6);
     min-height: 100vh;
-    background: var(--surface-base);
+    background: var(--surface-sunken);
     color: var(--text);
   }
 
   .bare {
     min-height: 100vh;
-    background: var(--surface-base);
+    background: var(--surface-sunken);
     color: var(--text);
     font-family: var(--font-ui);
   }
@@ -213,7 +213,7 @@
     grid-template-columns: auto minmax(0, 1fr);
     align-items: start;
     min-height: 100vh;
-    background: var(--surface-base);
+    background: var(--surface-sunken);
     color: var(--text);
     font-family: var(--font-ui);
   }
@@ -225,7 +225,22 @@
     grid-template-rows: auto 1fr;
     grid-template-columns: minmax(0, 1fr);
     min-inline-size: 0;
-    padding: var(--space-6);
+    /* The page's side gutter (UR-7); a detail bar runs over it to the page's edges. */
+    --page-gutter: var(--space-12);
+    padding: var(--space-8) var(--page-gutter) var(--space-16);
+  }
+
+  @media (max-width: 1100.98px) {
+    main {
+      --page-gutter: var(--space-8);
+    }
+  }
+
+  @media (max-width: 767.98px) {
+    main {
+      --page-gutter: var(--space-4);
+      padding-block-start: var(--space-6);
+    }
   }
 
   .drag {

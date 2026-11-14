@@ -30,7 +30,7 @@
 
 <li class="job" class:selected>
   <button class="pick" type="button" tabindex="0" aria-pressed={selected} aria-label="Show log of {target} job of {version}" onclick={onselect}>
-    <span class="platform" aria-hidden="true"><Icon name={job.target === 'DARWIN_UNIVERSAL' ? 'nf-md-apple' : 'nf-md-linux'} /></span>
+    <span class="platform" aria-hidden="true"><Icon name={job.target === 'DARWIN_UNIVERSAL' ? 'simple-icons:apple' : 'simple-icons:linux'} /></span>
     <strong class="target">{target}</strong>
     <StatePill word={stateLabel(job.state)} tone={stateTone(job.state)} />
     <span class="facts">
@@ -38,7 +38,7 @@
       {#if job.builderName}<span>on {job.builderName}</span>{/if}
       {#if job.attempts > 1}<span>{job.attempts} attempts</span>{/if}
     </span>
-    <span class="open" aria-hidden="true"><Icon name="nf-md-console_line" size="sm" /></span>
+    <span class="open" aria-hidden="true"><Icon name="carbon:terminal" size="sm" /></span>
   </button>
   {#if tracked}<StageTrack stages={jobStages(job)} />{/if}
   {#if waiting !== null}<p class="note">{waiting}</p>{/if}

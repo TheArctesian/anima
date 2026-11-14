@@ -57,7 +57,7 @@
     border-block-start: var(--border-thin) solid var(--border-strong);
     min-block-size: calc(var(--text-md) * var(--leading-tight));
     font-size: var(--text-md);
-    font-weight: var(--weight-bold);
+    font-weight: var(--weight-medium);
     line-height: var(--leading-tight);
   }
 </style>

@@ -34,7 +34,7 @@
     <!-- The region is always there, so a screen reader hears an error when it appears (WCAG 4.1.3). -->
     <div role="alert">
       {#if error !== undefined && error !== ''}
-        <p class="error" id="{id}-error"><Icon name="nf-md-alert_circle_outline" size="sm" />{error}</p>
+        <p class="error" id="{id}-error"><Icon name="carbon:warning" size="sm" />{error}</p>
       {/if}
     </div>
   </div>
@@ -66,7 +66,7 @@
 
   label {
     font-size: var(--text-sm);
-    font-weight: var(--weight-bold);
+    font-weight: var(--weight-medium);
   }
 
   .body {

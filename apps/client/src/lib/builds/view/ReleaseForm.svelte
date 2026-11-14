@@ -105,7 +105,7 @@
   legend {
     padding: 0;
     font-size: var(--text-sm);
-    font-weight: var(--weight-bold);
+    font-weight: var(--weight-medium);
   }
 
   .target {

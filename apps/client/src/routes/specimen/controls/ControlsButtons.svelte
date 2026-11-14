@@ -20,11 +20,11 @@
 
   <h4>Leading icon and icon only</h4>
   <div class="row">
-    <FormButton tone="primary" icon="nf-md-plus">Add device</FormButton>
-    <FormButton icon="nf-md-cog">Settings</FormButton>
-    <FormButton tone="ghost" size="sm" icon="nf-md-delete" label="Delete key" />
-    <FormButton tone="secondary" icon="nf-md-cog" label="Settings" />
-    <FormButton tone="danger" size="sm" icon="nf-md-delete" label="Delete device" />
+    <FormButton tone="primary" icon="carbon:add">Add device</FormButton>
+    <FormButton icon="carbon:settings">Settings</FormButton>
+    <FormButton tone="ghost" size="sm" icon="carbon:trash-can" label="Delete key" />
+    <FormButton tone="secondary" icon="carbon:settings" label="Settings" />
+    <FormButton tone="danger" size="sm" icon="carbon:trash-can" label="Delete device" />
   </div>
 
   <h4>Disabled, busy, feedback</h4>

@@ -17,7 +17,7 @@
 <div class="step">
   <h2>Enter the code from your authenticator app</h2>
   <CodeBoxes disabled={busy} {oncomplete} />
-  <p class="busy" role="status">{#if busy}<Icon name="nf-md-refresh" />Signing in{/if}</p>
+  <p class="busy" role="status">{#if busy}<Icon name="carbon:renew" />Signing in{/if}</p>
   <div class="links">
     <button type="button" tabindex="0" disabled={busy} onclick={onback}>Back</button>
     <button type="button" tabindex="0" disabled={busy} onclick={onskip}>Sign in without a code</button>
@@ -34,7 +34,7 @@
   h2 {
     margin: 0;
     font-size: var(--text-lg);
-    font-weight: var(--weight-bold);
+    font-weight: var(--weight-medium);
     line-height: var(--leading-tight);
     text-align: center;
   }

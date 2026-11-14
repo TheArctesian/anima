@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { flushSync } from 'svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Hub } from '$lib/hub/hub';
-import { glyph } from '$lib/icons/icons';
+import { iconShape, type IconName } from '$lib/icons/icons';
 import { runs } from '$lib/motion/engine.fixture';
 import { route } from '$lib/nav/route.fixture.svelte';
 import Layout from '../../../routes/+layout.svelte';
@@ -265,8 +265,9 @@ it('UI-015: a tab opened with the device\'s OS shows its logo in place of the co
   sessions.openSession({ ...request, os: 'MACOS', origin: null });
   sessions.openSession({ ...request, origin: null });
   flushSync();
-  const glyphs = tabs().map((tab) => tab.querySelector('.icon')?.textContent);
-  expect(glyphs).toEqual([glyph('nf-md-apple'), glyph('nf-md-console')]);
+  const firstShape = (name: IconName) => iconShape(name).parts.find(([tag]) => tag === 'path')?.[1]['d'];
+  const shapes = tabs().map((tab) => tab.querySelector('.icon path')?.getAttribute('d'));
+  expect(shapes).toEqual([firstShape('simple-icons:apple'), firstShape('carbon:terminal')]);
   expect(tabs()[0]?.querySelector('[role="img"]')).toBeNull();
 });
 

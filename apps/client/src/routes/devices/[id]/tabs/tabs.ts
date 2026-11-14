@@ -5,11 +5,11 @@ import { tabIds as sharedIds, type TabSpec } from '$lib/tabs/tabs';
 
 /** The device detail tabs, in order (Section 6.7), each with the icon shown before its label. */
 export const TABS = [
-  { name: 'overview', label: 'Overview', icon: 'nf-md-speedometer' },
-  { name: 'checks', label: 'Checks', icon: 'nf-md-clipboard_check_outline' },
-  { name: 'sessions', label: 'Sessions', icon: 'nf-md-history' },
-  { name: 'logs', label: 'Logs', icon: 'nf-md-text_box_outline' },
-  { name: 'settings', label: 'Settings', icon: 'nf-md-cog_outline' },
+  { name: 'overview', label: 'Overview', icon: 'carbon:dashboard' },
+  { name: 'checks', label: 'Checks', icon: 'carbon:task-complete' },
+  { name: 'sessions', label: 'Sessions', icon: 'carbon:recently-viewed' },
+  { name: 'logs', label: 'Logs', icon: 'carbon:catalog' },
+  { name: 'settings', label: 'Settings', icon: 'carbon:settings-adjust' },
 ] as const satisfies readonly { readonly name: string; readonly label: string; readonly icon: IconName }[];
 
 export type TabName = (typeof TABS)[number]['name'];

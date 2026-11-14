@@ -52,12 +52,16 @@ export const Devices = graphql(`
           }
           checks {
             id
+            name
+            status
+            paused
             heartbeats(first: 50) {
               edges {
                 node {
                   at
                   status
                   responseTimeMs
+                  message
                 }
               }
             }
@@ -320,21 +324,3 @@ export interface ReadingsChange {
   readonly deviceId: string;
   readonly readings: Readings;
 }
-
-// F-3: the session policy field (RA-036) has its own documents, so a hub without them
-// still answers every other device operation.
-export const DevicePolicy = graphql(`
-  query DevicePolicy($id: ID!) {
-    device(id: $id) {
-      sessionLimit
-    }
-  }
-`);
-
-export const SetDevicePolicy = graphql(`
-  mutation SetDevicePolicy($id: ID!, $input: UpdateDeviceInput!) {
-    updateDevice(id: $id, input: $input) {
-      sessionLimit
-    }
-  }
-`);

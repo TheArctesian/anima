@@ -2,12 +2,12 @@
 import { flushSync, mount, unmount } from 'svelte';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { threshold } from '$lib/motion/tokens';
-import { DEFAULT_QUERY, type ListQuery } from '../query';
+import type { ListQuery } from '../query';
 import { endTransitionsAtOnce } from '../transitions.fixture';
 import { manualClock } from '$lib/motion/loading/clock.fixture';
 import DeviceScreen from './DeviceScreen.svelte';
 import { heldHub } from './held.fixture';
-import { device, url } from './screen.fixture.svelte';
+import { CARDS, device, url } from './screen.fixture.svelte';
 
 vi.mock('motion', async (importOriginal) => ({
   ...(await importOriginal<typeof import('motion')>()),
@@ -28,7 +28,7 @@ async function settle(): Promise<void> {
   flushSync();
 }
 
-async function show(query: ListQuery = DEFAULT_QUERY): Promise<void> {
+async function show(query: ListQuery = CARDS): Promise<void> {
   held = heldHub();
   current.hub = held.hub;
   time = manualClock();
@@ -62,8 +62,8 @@ afterEach(async () => {
 });
 
 it('DEV-003: an answer for filter A that arrives after filter B was answered does not show', async () => {
-  await show({ ...DEFAULT_QUERY, name: 'a' });
-  url.query = { ...DEFAULT_QUERY, name: 'b' };
+  await show({ ...CARDS, name: 'a' });
+  url.query = { ...CARDS, name: 'b' };
   await settle();
   expect(requests()).toBe(2);
   held.held[1]?.release([device('b')]);
@@ -82,7 +82,7 @@ it('DEV-003: a Load more in flight when the filter changes does not add its page
   });
   await settle();
   expect(requests()).toBe(2);
-  url.query = { ...DEFAULT_QUERY, name: 'b' };
+  url.query = { ...CARDS, name: 'b' };
   await settle();
   held.held[2]?.release([device('b')]);
   await settle();
@@ -119,7 +119,7 @@ it('Loading: unmounting while the skeleton is held leaves no timer, and nothing 
 });
 
 it('DEV-003: two pushes for unknown devices in flight give exactly one more fetch after the first', async () => {
-  await show({ ...DEFAULT_QUERY, statuses: ['DOWN'] });
+  await show({ ...CARDS, statuses: ['DOWN'] });
   held.held[0]?.release([device('a', { status: 'DOWN' })]);
   await settle();
   held.push('DeviceStatusChanged', { deviceStatusChanged: { deviceId: 'x', status: 'DOWN', at: 'now' } });
@@ -137,7 +137,7 @@ it('DEV-003: two pushes for unknown devices in flight give exactly one more fetc
 });
 
 it('DEV-003: the follow-up fetch is not sent after the page went away', async () => {
-  await show({ ...DEFAULT_QUERY, statuses: ['DOWN'] });
+  await show({ ...CARDS, statuses: ['DOWN'] });
   held.held[0]?.release([device('a', { status: 'DOWN' })]);
   await settle();
   held.push('DeviceStatusChanged', { deviceStatusChanged: { deviceId: 'x', status: 'DOWN', at: 'now' } });
@@ -151,7 +151,7 @@ it('DEV-003: the follow-up fetch is not sent after the page went away', async ()
 });
 
 it('DEV-003: a refresh drops a Load more that is in flight', async () => {
-  await show({ ...DEFAULT_QUERY, statuses: ['DOWN'] });
+  await show({ ...CARDS, statuses: ['DOWN'] });
   held.held[0]?.release([device('a', { status: 'DOWN' })], 'c1');
   await settle();
   [...document.querySelectorAll('button')].find((node) => node.textContent.includes('Load more'))?.click();
@@ -169,7 +169,7 @@ it('Loading: a list on screen stays while a slow reload runs, and no skeleton re
   await show();
   held.held[0]?.release([device('a')]);
   await settle();
-  url.query = { ...DEFAULT_QUERY, sort: 'STATUS' };
+  url.query = { ...CARDS, sort: 'STATUS' };
   await settle();
   time.advance(threshold.loading * 2);
   flushSync();
@@ -178,13 +178,13 @@ it('Loading: a list on screen stays while a slow reload runs, and no skeleton re
 });
 
 it('DEV-003: a refresh answer that arrives after the filter changed does not show', async () => {
-  await show({ ...DEFAULT_QUERY, statuses: ['DOWN'] });
+  await show({ ...CARDS, statuses: ['DOWN'] });
   held.held[0]?.release([device('a', { status: 'DOWN' })]);
   await settle();
   held.push('DeviceStatusChanged', { deviceStatusChanged: { deviceId: 'x', status: 'DOWN', at: 'now' } });
   await settle();
   expect(requests()).toBe(2);
-  url.query = { ...DEFAULT_QUERY, statuses: ['DOWN'], name: 'b' };
+  url.query = { ...CARDS, statuses: ['DOWN'], name: 'b' };
   await settle();
   held.held[2]?.release([device('b', { status: 'DOWN' })]);
   await settle();

@@ -190,7 +190,7 @@
   }
 
   .name {
-    font-weight: var(--weight-bold);
+    font-weight: var(--weight-medium);
   }
 
   /* Reserved: the text's own line, as the text uses it. The failure may take two lines and the button's height. */

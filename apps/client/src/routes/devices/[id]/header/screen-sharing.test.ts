@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
-import { flushSync, mount, unmount } from 'svelte';
+import { flushSync, mount, tick, unmount } from 'svelte';
 import { afterEach, expect, it, vi } from 'vitest';
 import { endTransitionsAtOnce } from '$lib/devices/transitions.fixture';
 import { answer, fakeCalls, settle, UPDATED } from '$lib/devices/screen-sharing/calls.fixture';
 import { device } from '../page.fixture.svelte';
-import Header from './Header.svelte';
+import DeviceBar from './DeviceBar.svelte';
 import type { HeaderDevice } from './header';
 
 endTransitionsAtOnce();
@@ -21,10 +21,11 @@ function show(shown: HeaderDevice, withCalls = true) {
   const fake = fakeCalls();
   const onConnect = vi.fn<(protocol: string, button: HTMLElement) => void>();
   const onEnabled = vi.fn();
-  app = mount(Header, {
+  app = mount(DeviceBar, {
     target: document.body,
     props: {
       device: shown,
+      checks: null,
       onConnect,
       onSettings: vi.fn(),
       screenSharing: withCalls ? { calls: fake.calls, onEnabled } : undefined,
@@ -37,7 +38,7 @@ function show(shown: HeaderDevice, withCalls = true) {
 const setUp = () =>
   [...document.querySelectorAll('button')].find((node) => node.getAttribute('aria-label')?.startsWith('Set up screen sharing'));
 
-it.each(['MACOS', 'LINUX'] as const)('R-079: a %s device with VNC off has the dashed "Set up screen sharing" button in the VNC slot', (os) => {
+it.each(['MACOS', 'LINUX'] as const)('R-079: a %s device with VNC off has the dashed "Set up screen sharing" button beside the connect button', (os) => {
   show(device({ os }));
   const found = setUp();
   expect(found?.querySelector('.full')?.textContent).toBe('Set up screen sharing');
@@ -51,10 +52,13 @@ it.each(['WINDOWS', 'OTHER'] as const)('R-079: a %s device has no screen sharing
   expect(setUp()).toBeUndefined();
 });
 
-it('R-079: with VNC on the VNC button shows and the set-up button does not', () => {
+it('R-079: with VNC on, VNC is in the connect menu and the set-up button does not show', async () => {
   show(device({ os: 'MACOS', vnc: { ...device().vnc, enabled: true } }));
   expect(setUp()).toBeUndefined();
-  expect(document.body.textContent).toContain('VNC');
+  document.querySelector<HTMLButtonElement>('[aria-label="More ways to connect to nas"]')?.click();
+  await tick();
+  flushSync();
+  expect(document.querySelector('[role="menuitem"][aria-label="VNC to nas"]')).not.toBeNull();
 });
 
 it('R-079: the button is hidden while no route gives the calls', () => {

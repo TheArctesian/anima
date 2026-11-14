@@ -24,11 +24,11 @@
 <!-- The reason is the plain text `ending` gives, never text from the hub or the gateway (RA-007, R-035). -->
 <div class="ended" role="status">
   <p class="reason">
-    <Icon name="nf-md-lan_disconnect" />
+    <Icon name="carbon:unlink" />
     <span data-reason={ending.reason ?? 'unknown'}>{ending.text}</span>
   </p>
   <button type="button" bind:this={action} disabled={!settled} onclick={onreconnect} {@attach press()}>
-    <Icon name="nf-md-refresh" />
+    <Icon name="carbon:renew" />
     <span>{certificateChanged ? 'Check certificate' : 'Reconnect'}</span>
   </button>
 </div>

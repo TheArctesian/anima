@@ -121,6 +121,26 @@
             }
           }
         },
+        "text-quiet": {
+          "$type": "color",
+          "$value": "{color.nord.3-quiet}",
+          "$description": "Decoration only: section rules, quiet icons, units. Never the only carrier of information, so it is exempt from the 4.5:1 rule like text-tertiary placeholders (UR-7 D10).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.nord.3-quiet-light}"
+            }
+          }
+        },
+        "planned": {
+          "$type": "color",
+          "$value": "{color.nord.15-text}",
+          "$description": "What is not built yet, in the planned colour (nord15), always with a word (UR-7 D10, UI-003). Text on surfaces: 4.5:1.",
+          "$extensions": {
+            "anima": {
+              "light": "{color.nord.15-deep-text}"
+            }
+          }
+        },
         "accent": {
           "$type": "color",
           "$value": "{color.nord.8}",
@@ -712,6 +732,26 @@
           "$extensions": {
             "anima": {
               "light": "{color.graphite.light-text-tertiary-derived}"
+            }
+          }
+        },
+        "text-quiet": {
+          "$type": "color",
+          "$value": "{color.graphite.dark-text-quiet}",
+          "$description": "Decoration only: section rules, quiet icons, units. Never the only carrier of information, so it is exempt from the 4.5:1 rule like text-tertiary placeholders (UR-7 D10).",
+          "$extensions": {
+            "anima": {
+              "light": "{color.graphite.light-text-quiet}"
+            }
+          }
+        },
+        "planned": {
+          "$type": "color",
+          "$value": "{color.graphite.aurora-15-text}",
+          "$description": "What is not built yet, in the planned colour (nord15), always with a word (UR-7 D10, UI-003). Text on surfaces: 4.5:1.",
+          "$extensions": {
+            "anima": {
+              "light": "{color.graphite.aurora-15-deep-text}"
             }
           }
         },

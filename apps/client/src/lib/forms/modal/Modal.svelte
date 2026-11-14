@@ -181,7 +181,7 @@
       >
         <!-- The glass sits behind the content, not on the surface: a backdrop filter would make the surface the containing block of a fixed HelpTip (MAT-010). -->
         <div class="glass-layer material-overlay" data-solid={solid || undefined} aria-hidden="true"></div>
-        <h2 id={titleId}>{#if warning}<Icon name="nf-md-alert" />{/if}{title}</h2>
+        <h2 id={titleId}>{#if warning}<Icon name="carbon:warning-alt" />{/if}{title}</h2>
         {#if icon !== undefined && !warning}
           <!-- Beside the title, not in it: the heading's text stays the title alone. -->
           <span class="mark"><Icon name={icon} /></span>
@@ -189,7 +189,7 @@
         {#if dismissible}
           <!-- Not the first stop: focus still starts in the body (see `initialFocusIn`). UI-015: a label and a tooltip. -->
           <button type="button" class="close" data-dismiss aria-label="Close" title="Close" onclick={onClose} {@attach press()}>
-            <Icon name="nf-md-close" />
+            <Icon name="carbon:close" />
           </button>
         {/if}
         <div class="body" {@attach edgeFade}>
@@ -318,7 +318,7 @@
     gap: var(--space-2);
     margin: 0;
     font-size: var(--text-lg);
-    font-weight: var(--weight-bold);
+    font-weight: var(--weight-medium);
     line-height: var(--leading-tight);
   }
 
