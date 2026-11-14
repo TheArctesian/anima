@@ -180,9 +180,10 @@ it('NAV-009: signing in with an invalid address sends nothing and keeps the type
   expect(document.activeElement).toBe(input(target, 'hub-address'));
 });
 
-it('CLI-002: a browser shows no hub line', () => {
+it('CLI-002, NAV-009: a browser names its hub but offers no way to change it', () => {
   mocks.desktop = false;
   const target = open();
-  expect(target.textContent).not.toContain('Hub:');
+  expect(target.textContent).toContain('Hub:');
+  expect(target.querySelector('#hub-address')).toBeNull();
   expect(target.querySelectorAll('button')).toHaveLength(1);
 });

@@ -91,15 +91,15 @@
 
   input {
     box-sizing: border-box;
-    inline-size: var(--control-lg);
-    block-size: var(--space-12);
+    inline-size: calc(var(--control-lg) + var(--space-1) / 2);
+    block-size: var(--control-lg);
     padding: 0;
     border: var(--border-thin) solid var(--border-strong);
     border-radius: var(--radius-md);
-    background: var(--surface-sunken);
+    background: var(--surface-base);
     color: var(--text);
     font-family: var(--font-mono);
-    font-size: var(--text-xl);
+    font-size: var(--text-lg);
     font-variant-numeric: tabular-nums;
     text-align: center;
     caret-color: transparent;

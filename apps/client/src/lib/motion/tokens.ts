@@ -34,6 +34,7 @@ export const duration = {
   fast: 150,
   base: 200,
   highlight: 1500,
+  breathe: 2400,
 } as const;
 
 export const ease = {
@@ -82,6 +83,7 @@ export const reducedMotion = {
     fast: 150,
     base: 200,
     highlight: 1500,
+    breathe: 2400,
   },
   stagger: {
     list: {

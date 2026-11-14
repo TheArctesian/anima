@@ -57,6 +57,10 @@
       "highlight": {
         "$value": "1500ms",
         "$description": "Fade of the highlight on a new log row or a status change"
+      },
+      "breathe": {
+        "$value": "2400ms",
+        "$description": "One breath of a live mark in the bar's running-now rows; still with reduced motion (UR-7 P2, MOT-011)"
       }
     },
     "ease": {

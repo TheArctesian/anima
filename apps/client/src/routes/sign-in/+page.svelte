@@ -7,11 +7,14 @@
   import { readAccessToken, writeAccessToken } from '$lib/desktop/token';
   import { useHub } from '$lib/hub/context';
   import { createHub, parseHubAddress, type Hub, type HubAddress } from '$lib/hub/hub';
+  import Icon from '$lib/icons/Icon.svelte';
   import { press } from '$lib/motion/roles/press';
+  import { resolve as entrance } from '$lib/motion/roles/resolve';
   import { createClock } from '$lib/nav/clock.svelte';
   import { DATA_AGE_REFRESH_MS } from '$lib/nav/nav';
   import { capabilities } from '$lib/platform/platform';
   import CodeStep from './code/CodeStep.svelte';
+  import Doors from './doors/Doors.svelte';
   import { afterEdit, checkLogin, firstInvalid, type FieldMessages, type LoginField } from './form';
   import HubLine from './HubLine.svelte';
   import Notice from './Notice.svelte';
@@ -32,6 +35,7 @@
   let message = $state<string | null>(null);
   let messageUnreachable = $state(false);
   let busy = $state(false);
+  let doorway: HTMLElement | undefined = $state();
   let inputs: Partial<Record<'username' | 'password', HTMLInputElement>> = $state({});
 
   let editingAddress = $state(false);
@@ -144,84 +148,99 @@
   }
 </script>
 
+<!-- Sign-in in the website's language (UR-7, D13): the form stands in the doorway of the particle doors, on the bare
+     ground; only its fields and button are filled. -->
 <div class="screen">
-  <header>
-    <img src={asset('/logo.png')} alt="" width="32" height="32" />
+  <Doors {doorway} />
+  <div class="panel" bind:this={doorway} {@attach entrance()}>
+    <p class="label"><img src={asset('/logo.png')} alt="" width="22" height="22" /><span class="rule" aria-hidden="true"></span>Anima</p>
     <h1>Sign in to Anima</h1>
-  </header>
 
-  <form class="card" onsubmit={formSubmitted} novalidate>
-    {#if unreachable !== null}
-      <div role="status">
-        <Notice icon="carbon:unlink">
-          <p><strong>{unreachable.title}</strong></p>
-          <p>{unreachable.advice}</p>
-          <p class="detail"><code>{unreachable.origin}</code> · {unreachable.age}</p>
-        </Notice>
-      </div>
-    {/if}
+    <form onsubmit={formSubmitted} novalidate>
+      {#if unreachable !== null}
+        <div role="status">
+          <Notice icon="carbon:unlink">
+            <p><strong>{unreachable.title}</strong></p>
+            <p>{unreachable.advice}</p>
+            <p class="detail"><code>{unreachable.origin}</code> · {unreachable.age}</p>
+          </Notice>
+        </div>
+      {/if}
 
-    {#if step === 'credentials'}
-      <div class="group">
-        <TextField id="username" name="username" label="User name" autocomplete="username" bind:value={username} bind:input={inputs.username}
-          error={fields.username} oninput={(event) => { edited('username', event); }} />
-        <TextField id="password" name="password" label="Password" type="password" autocomplete="current-password" bind:value={password}
-          bind:input={inputs.password} error={fields.password} oninput={(event) => { edited('password', event); }} />
-      </div>
-    {:else}
-      <CodeStep {busy} oncomplete={(code) => void submit(code)} onback={() => void backToCredentials()} onskip={() => void submit('')} />
-    {/if}
+      {#if step === 'credentials'}
+        <div class="group">
+          <TextField id="username" name="username" label="User name" icon="carbon:user" autocomplete="username" bind:value={username} bind:input={inputs.username}
+            error={fields.username} oninput={(event) => { edited('username', event); }} />
+          <TextField id="password" name="password" label="Password" icon="carbon:password" type="password" autocomplete="current-password" bind:value={password}
+            bind:input={inputs.password} error={fields.password} oninput={(event) => { edited('password', event); }} />
+        </div>
+      {:else}
+        <CodeStep {busy} oncomplete={(code) => void submit(code)} onback={() => void backToCredentials()} onskip={() => void submit('')} />
+      {/if}
 
-    {#if shownMessage !== null}
-      <Notice icon="carbon:warning"><p role="alert">{shownMessage}</p></Notice>
-    {/if}
+      {#if shownMessage !== null}
+        <Notice icon="carbon:warning"><p role="alert">{shownMessage}</p></Notice>
+      {/if}
 
-    {#if step === 'credentials'}
-      <!-- tabindex="0": WebKit skips plain buttons when Tab is pressed unless they are focusable, as for the nav links (NAV-005, WP-11 H-6). -->
-      <button type="submit" tabindex="0" {@attach press()}>Continue</button>
-    {/if}
-  </form>
+      {#if step === 'credentials'}
+        <!-- tabindex="0": WebKit skips plain buttons when Tab is pressed unless they are focusable, as for the nav links (NAV-005, WP-11 H-6). -->
+        <button type="submit" tabindex="0" {@attach press()}>Continue<Icon name="carbon:arrow-right" size="sm" /></button>
+      {/if}
+    </form>
 
-  {#if desktop}
-    <HubLine host={hubHost(hub.address.origin)} bind:editing={editingAddress} bind:text={addressText} problem={addressProblem}
+    <HubLine host={hubHost(hub.address.origin)} fixed={!desktop} bind:editing={editingAddress} bind:text={addressText} problem={addressProblem}
       onsave={saveAddress} oncancel={cancelAddress} />
-  {/if}
+  </div>
 </div>
 
 <style>
   .screen {
+    position: relative;
     box-sizing: border-box;
     display: grid;
-    align-content: center;
-    justify-items: center;
-    gap: var(--space-6);
+    place-items: center;
     min-block-size: 100vh;
-    padding: var(--space-6);
+    padding: var(--space-6) var(--space-4);
+    overflow: hidden;
   }
 
-  .screen > :global(:not(header)) {
-    inline-size: min(100%, 23rem);
-  }
-
-  header {
-    display: grid;
-    justify-items: center;
-    gap: var(--space-3);
-  }
-
-  h1 {
-    margin: 0;
-    font-size: var(--text-xl);
-    line-height: var(--leading-tight);
-  }
-
-  .card {
+  /* No fill and no border: the doorway frames the form, and no point is drawn inside it, so the text keeps its
+     contrast on the bare ground (operator 2026-11-13). */
+  .panel {
+    position: relative;
     box-sizing: border-box;
     display: grid;
     gap: var(--space-4);
-    padding: var(--space-6);
-    border-radius: var(--radius-lg);
-    background: var(--surface-raised);
+    inline-size: min(100%, calc(var(--space-16) * 5));
+  }
+
+  .label {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin: 0;
+    color: var(--text-tertiary);
+    font-size: var(--text-sm);
+    line-height: var(--leading-tight);
+  }
+
+  .rule {
+    inline-size: var(--space-8);
+    block-size: var(--border-thin);
+    background: var(--border-strong);
+  }
+
+  h1 {
+    margin: 0 0 var(--space-2);
+    font-size: var(--text-display);
+    font-weight: var(--weight-light);
+    line-height: var(--leading-tight);
+    letter-spacing: var(--tracking-tight);
+  }
+
+  form {
+    display: grid;
+    gap: var(--space-4);
   }
 
   .group {

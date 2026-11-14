@@ -1,15 +1,18 @@
 <script lang="ts">
+  import type { Snippet } from 'svelte';
   import { asset, resolve } from '$app/paths';
   import { useHub } from '$lib/hub/context';
   import Icon from '$lib/icons/Icon.svelte';
   import CollapseToggle from './collapse/CollapseToggle.svelte';
   import ResizeEdge from './collapse/ResizeEdge.svelte';
+  import HubStatus from './status/HubStatus.svelte';
+  import Running from './running/Running.svelte';
   import LiveSessions from '$lib/sessions/live/LiveSessions.svelte';
   import { press } from '$lib/motion/roles/press';
   import { capabilities } from '$lib/platform/platform';
   import { fade } from '$lib/motion/roles/transitions';
   import { watchHubBanner } from './banner-shift';
-  import { DEVICES, SETTINGS, isActive, optionalDestinations, statusLabel, unreachableBanner, type NavDestination } from './nav';
+  import { DEVICES, SETTINGS, isActive, optionalDestinations, unreachableBanner, type NavDestination } from './nav';
 
   interface Props {
     /** The current route, for the active item. */
@@ -29,12 +32,13 @@
     ontogglecollapse?: () => void;
     /** Called when the operator drags the bar's edge or uses its arrow keys, with the state it should rest in (5.7.4). */
     oncollapse?: (collapsed: boolean) => void;
+    /** What is running now (builds, live sessions), above the hub status; nothing takes no room (UR-7 P2). */
+    running?: Snippet;
   }
 
-  const { pathname, now, onnavigate, projectsOn = false, iconOnly = false, collapsed = false, canCollapse = false, ontogglecollapse, oncollapse }: Props =
+  const { pathname, now, onnavigate, projectsOn = false, iconOnly = false, collapsed = false, canCollapse = false, ontogglecollapse, oncollapse, running }: Props =
     $props();
   const hub = useHub();
-  const connected = $derived(hub.status.current.connection === 'connected');
   const banner = $derived(unreachableBanner(hub.status.current, hub.address.origin, now));
 
   // Below the compact breakpoint the bar and the page make room for the strip; the root attribute tells their styles (NET-004).
@@ -90,9 +94,8 @@
     {/if}
   </div>
   <hr />
-  <p class="status" title={iconOnly ? statusLabel(hub.status.current) : undefined}>
-    <span class="dot" class:connected aria-hidden="true"></span><span class="words">{statusLabel(hub.status.current)}</span>
-  </p>
+  {#if running !== undefined}<Running>{@render running()}</Running>{/if}
+  <HubStatus {iconOnly} />
   {@render destination(SETTINGS)}
   {#if canCollapse && oncollapse}
     <ResizeEdge {collapsed} onsettle={oncollapse} />
@@ -219,36 +222,6 @@
     flex: none;
   }
 
-  /*
-   * Connected is a filled dot and anything else a ring, so the state is a shape and not a colour alone (UI-003). The
-   * outline keeps 3:1 against the bar; under forced colours the system colours take over.
-   */
-  .dot {
-    display: none;
-    flex: none;
-    box-sizing: border-box;
-    inline-size: var(--space-3);
-    block-size: var(--space-3);
-    border: var(--border-thin) solid var(--text);
-    border-radius: var(--radius-pill);
-  }
-
-  .dot.connected {
-    background: var(--status-up);
-  }
-
-  @media (forced-colors: active) {
-    .dot {
-      /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- forced colours use system colours, not tokens */
-      border-color: CanvasText;
-    }
-
-    .dot.connected {
-      /* stylelint-disable-next-line scale-unlimited/declaration-strict-value -- forced colours use system colours, not tokens */
-      background: Highlight;
-    }
-  }
-
   .alert {
     display: none;
   }
@@ -273,16 +246,6 @@
 
   :global(:root[data-nav='icons']) .brand {
     justify-content: center;
-  }
-
-  :global(:root[data-nav='icons']) .status {
-    display: flex;
-    justify-content: center;
-    padding: 0;
-  }
-
-  :global(:root[data-nav='icons']) .dot {
-    display: block;
   }
 
   /* No blur: a backdrop filter would make the bar the containing block of the fixed strip below. */
@@ -345,19 +308,6 @@
     margin: auto 0 var(--space-2);
     border: 0;
     border-top: var(--border-thin) solid var(--border-subtle);
-  }
-
-  /* One line with a height set from tokens, so the font swap cannot move the divider (MOT-007). */
-  .status {
-    flex: none;
-    margin: 0;
-    padding: 0 var(--space-3);
-    block-size: calc(var(--text-sm) * var(--leading-tight));
-    line-height: var(--leading-tight);
-    overflow: hidden;
-    white-space: nowrap;
-    color: var(--text);
-    font-size: var(--text-sm);
   }
 
   .banner {

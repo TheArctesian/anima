@@ -39,12 +39,12 @@ afterEach(async () => {
 
 it('NAV-009, NET-004, UI-030: an unreachable hub shows a notice at the top of the card with the cause, the next step and the detail', () => {
   const target = open({}, { connection: 'unreachable', lastContactAt: null });
-  const notice = target.querySelector('.card [role="status"]');
+  const notice = target.querySelector('form [role="status"]');
   expect(notice?.textContent).toContain("Can't reach hub.example.org");
   expect(notice?.textContent).toContain('Check the VPN client, then try again.');
   expect(notice?.textContent).toContain('https://hub.example.org');
   expect(notice?.textContent).toContain('No data received yet');
-  expect(target.querySelector('.card')?.firstElementChild).toBe(notice);
+  expect(target.querySelector('form')?.firstElementChild).toBe(notice);
 });
 
 it('NAV-009: a hub that answers shows no status text at all', () => {
@@ -60,9 +60,9 @@ it('UI-030: the form-level message is a notice inside the card, above the Contin
   type(target, 'password', 'pw');
   await submit(target, 0);
   await pasteInto(target, 0, '123456');
-  const alert = target.querySelector('.card [role="alert"]');
+  const alert = target.querySelector('form [role="alert"]');
   expect(alert?.textContent).toBe('The user name, password or code is wrong.');
-  const button = target.querySelector('.card button[type="submit"]');
+  const button = target.querySelector('form button[type="submit"]');
   expect(alert?.closest('.notice')?.compareDocumentPosition(button as Node)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
 });
 
@@ -96,8 +96,8 @@ it('UI-030: when the hub did not answer and the notice already says so, the atte
   type(target, 'password', 'pw');
   await submit(target, 0);
   await pasteInto(target, 0, '123456');
-  expect(target.querySelector('.card [role="status"]')).not.toBeNull();
-  expect(target.querySelector('.card [role="alert"]')).toBeNull();
+  expect(target.querySelector('form [role="status"]')).not.toBeNull();
+  expect(target.querySelector('form [role="alert"]')).toBeNull();
 });
 
 it('UI-030: when the hub did not answer but no notice shows yet, the attempt says so itself', async () => {
@@ -106,5 +106,5 @@ it('UI-030: when the hub did not answer but no notice shows yet, the attempt say
   type(target, 'password', 'pw');
   await submit(target, 0);
   await pasteInto(target, 0, '123456');
-  expect(target.querySelector('.card [role="alert"]')?.textContent).toBe('The hub did not answer. Check the VPN client.');
+  expect(target.querySelector('form [role="alert"]')?.textContent).toBe('The hub did not answer. Check the VPN client.');
 });
