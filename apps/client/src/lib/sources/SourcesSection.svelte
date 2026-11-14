@@ -42,6 +42,7 @@
     <p class="hint">Reads your repositories through a GitHub App that you make in your own account. Anima does not make it.</p>
   {/snippet}
   <FormButton
+    icon="simple-icons:github"
     onclick={() => {
       connecting = true;
     }}
@@ -102,13 +103,10 @@
     list-style: none;
   }
 
-  .hint {
-    margin: 0;
-    color: var(--text-secondary);
-    font-size: var(--text-sm);
-  }
-
   .none {
-    padding: var(--space-3) var(--space-4);
+    margin: 0;
+    padding-block: var(--space-3);
+    color: var(--text-tertiary);
+    font-size: var(--text-sm);
   }
 </style>

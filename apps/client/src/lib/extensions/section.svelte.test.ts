@@ -47,7 +47,9 @@ async function open(): Promise<void> {
   await settled();
 }
 
-const switchOf = (key: string) => document.querySelector<HTMLInputElement>(`#extension-${key}`);
+const switchOf = (key: string) => document.querySelector<HTMLElement>(`#extension-${key}`);
+const isOn = (key: string) => switchOf(key)?.getAttribute('aria-checked') === 'true';
+const isDisabled = (key: string) => switchOf(key)?.getAttribute('aria-disabled') === 'true';
 const navHrefs = () => [...document.querySelectorAll('nav a')].map((link) => link.getAttribute('href'));
 
 async function flip(key: string): Promise<void> {
@@ -66,10 +68,10 @@ async function confirm(label: string): Promise<void> {
 
 it('EXT-001: each extension is a row with its switch, off by default, and a change is sent at once', async () => {
   await open();
-  expect(switchOf('projects')?.checked).toBe(false);
+  expect(isOn('projects')).toBe(false);
   await flip('projects');
   expect(hub.sent).toEqual(['projects:true']);
-  expect(switchOf('projects')?.checked).toBe(true);
+  expect(isOn('projects')).toBe(true);
   expect(document.querySelector('button[type="submit"]')).toBeNull();
 });
 
@@ -88,10 +90,10 @@ it('EXT-011: the "also sets Secrets on" sentence shows before anything is sent, 
   await flip('model_gateway');
   expect(document.body.textContent).toContain('Model gateway also sets Secrets on');
   expect(hub.sent).toEqual([]);
-  expect(switchOf('model_gateway')?.checked).toBe(false);
+  expect(isOn('model_gateway')).toBe(false);
   await confirm('Set on');
   expect(hub.sent).toEqual(['model_gateway:true']);
-  expect(switchOf('secrets')?.checked).toBe(true);
+  expect(isOn('secrets')).toBe(true);
 });
 
 it('EXT-011: cancelling the sentence sends nothing', async () => {
@@ -99,16 +101,16 @@ it('EXT-011: cancelling the sentence sends nothing', async () => {
   await flip('model_gateway');
   await confirm('Cancel');
   expect(hub.sent).toEqual([]);
-  expect(switchOf('model_gateway')?.checked).toBe(false);
+  expect(isOn('model_gateway')).toBe(false);
 });
 
 it('EXT-012: a needed extension has a disabled switch that names the extension that needs it', async () => {
   await open();
   await flip('model_gateway');
   await confirm('Set on');
-  expect(switchOf('secrets')?.disabled).toBe(true);
+  expect(isDisabled('secrets')).toBe(true);
   expect(document.querySelector('#extension-secrets-hint')?.textContent).toContain('Model gateway is on and needs it');
-  expect(switchOf('model_gateway')?.disabled).toBe(false);
+  expect(isDisabled('model_gateway')).toBe(false);
 });
 
 it('EXT-001: an extension that is not built has no live switch and says so', async () => {
@@ -122,7 +124,7 @@ it('EXT-012: a refused change puts the switch back and shows the hub words', asy
   hub.refuse = { code: 'CONFLICT', message: 'Model gateway is on and needs Secrets. Set Model gateway off first.' };
   await flip('projects');
   expect(hub.sent).toEqual(['projects:true']);
-  expect(switchOf('projects')?.checked).toBe(false);
+  expect(isOn('projects')).toBe(false);
   const alerts = [...document.querySelectorAll('[role="alert"]')].map((each) => each.textContent).filter((text) => text !== '');
   expect(alerts).toEqual([hub.refuse.message]);
   expect(navHrefs()).toEqual(['/devices', '/settings']);

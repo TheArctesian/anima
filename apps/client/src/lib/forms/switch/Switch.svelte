@@ -9,18 +9,21 @@
     /** The id of the visible text that names the switch. */
     labelledby?: string | undefined;
     id?: string | undefined;
+    /** The id of a line that says more about the setting, such as its hint. */
+    describedby?: string | undefined;
     /** The switch cannot change now; it keeps focus and says so (`aria-disabled`). */
     disabled?: boolean;
-    /** Runs with the new state after each flip by click, Space or Enter. */
-    onchange?: (next: boolean) => void;
+    /** Runs with the new state after each flip by click, Space or Enter; `false` puts the switch back, for a change that
+     *  waits on a confirmation. */
+    onchange?: (next: boolean) => unknown;
   }
 
-  let { checked = $bindable(), label, labelledby, id, disabled = false, onchange }: Props = $props();
+  let { checked = $bindable(), label, labelledby, id, describedby, disabled = false, onchange }: Props = $props();
 
   function flip(): void {
     if (disabled) return;
     checked = !checked;
-    onchange?.(checked);
+    if (onchange?.(checked) === false) checked = !checked;
   }
 </script>
 
@@ -34,6 +37,7 @@
   aria-checked={checked}
   aria-label={label}
   aria-labelledby={labelledby}
+  aria-describedby={describedby}
   aria-disabled={disabled || undefined}
   onclick={flip}
   {@attach press()}
