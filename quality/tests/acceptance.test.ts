@@ -84,7 +84,7 @@ describe("criterion 24 on this repository", () => {
     expect(baselineEntries(baseline)).toEqual([]);
   });
 
-  test.skip("the repository at this commit passes (Connect GitHub build: K1 holds @pending for the githubConnect roots until the last task removes it and restores this test)", () => {
+  test("the repository at this commit passes", () => {
     expect(checkPhase3(resolve(import.meta.dir, "..", ".."))).toEqual([]);
   });
 
