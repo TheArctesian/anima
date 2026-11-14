@@ -2,6 +2,7 @@
 
 pub mod browser;
 pub mod fake_hub;
+pub mod forge;
 pub mod github;
 pub mod real_hub;
 pub mod subscription_hub;

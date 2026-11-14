@@ -1,0 +1,19 @@
+query IssueGet($repository: ID!, $number: Int!, $fresh: Boolean) {
+  issue(repository: $repository, number: $number, fresh: $fresh) {
+    repository
+    number
+    title
+    open
+    closeReason
+    authorLogin
+    labels
+    assignees
+    comments
+    createdAt
+    updatedAt
+    closedAt
+    url
+    body
+    bodyCut
+  }
+}

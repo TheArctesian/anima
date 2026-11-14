@@ -5,7 +5,7 @@
 
 use serde_json::{Map, Value};
 
-use crate::output::text::clean;
+use crate::output::text::{clean, clean_lines};
 
 /// The longest string in a result, in characters, except a log line.
 pub const TEXT_CAP: usize = 500;
@@ -13,13 +13,26 @@ pub const TEXT_CAP: usize = 500;
 /// The longest log line (`text` of a build log line), in characters.
 pub const LOG_LINE_CAP: usize = 2_000;
 
+/// The longest `body` (a pull request, an issue or a comment from GitHub), in characters. The hub
+/// keeps up to 20,000; an agent gets 4,000, with a mark where the rest was cut (MCP-008).
+pub const BODY_CAP: usize = 4_000;
+
 /// The largest result, in bytes of JSON: about 15,000 tokens.
 pub const RESULT_CAP: usize = 60_000;
 
 /// `text` without control characters, cut to `cap` characters with a visible marker.
 #[must_use]
 pub fn capped(text: &str, cap: usize) -> String {
-    let cleaned = clean(text);
+    cut(clean(text), cap)
+}
+
+/// As [`capped`], but the line breaks stay, so a body of Markdown keeps its shape.
+#[must_use]
+pub fn capped_lines(text: &str, cap: usize) -> String {
+    cut(clean_lines(text), cap)
+}
+
+fn cut(cleaned: String, cap: usize) -> String {
     let length = cleaned.chars().count();
     if length <= cap {
         return cleaned;
@@ -48,12 +61,14 @@ fn cleaned_under(value: Value, cap: usize) -> Value {
             fields
                 .into_iter()
                 .map(|(key, value)| {
-                    let cap = if key == "text" {
-                        LOG_LINE_CAP
-                    } else {
-                        TEXT_CAP
+                    let value = match (key.as_str(), value) {
+                        ("text", value) => cleaned_under(value, LOG_LINE_CAP),
+                        ("body", Value::String(body)) => {
+                            Value::String(capped_lines(&body, BODY_CAP))
+                        }
+                        (_, value) => cleaned_under(value, TEXT_CAP),
                     };
-                    (capped(&key, TEXT_CAP), cleaned_under(value, cap))
+                    (capped(&key, TEXT_CAP), value)
                 })
                 .collect(),
         ),
