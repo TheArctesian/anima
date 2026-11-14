@@ -50,9 +50,9 @@ describe('MAT-010: the one place that makes glass', () => {
     expect(read(`${src}lib/events/panel/LogsPanel.svelte`)).toContain('background: var(--surface-raised);');
   });
 
-  it('MAT-010: the navigation bar, the menus, the tip and the modal glass layer take the shared class', () => {
+  it('MAT-010: the menus, the tip and the modal glass layer take the shared class; the bar is opaque (UR-7, D15)', () => {
+    expect(read(`${src}lib/nav/Nav.svelte`)).not.toContain('material-chrome');
     const uses: Record<string, string> = {
-      'lib/nav/Nav.svelte': '<nav id="main-nav" class="material-chrome"',
       'lib/devices/toolbar/Menu.svelte': 'class="panel material-overlay"',
       'lib/devices/actions/WebMenu.svelte': 'class="panel material-overlay"',
       'lib/devices/screen-sharing/ScreenSharingButton.svelte': 'class="panel material-overlay"',

@@ -43,6 +43,13 @@
       color var(--duration-fast) var(--ease-enter);
   }
 
+  /* With the window's own title bar the toggle is a quiet control at the end of the brand row (UR-7). */
+  :global(:root:not([data-titlebar='overlay']):not([data-nav='icons'])) button {
+    inline-size: var(--control-sm);
+    block-size: var(--control-sm);
+    color: var(--text-quiet);
+  }
+
   button:hover {
     background: var(--surface-overlay);
     color: var(--text);

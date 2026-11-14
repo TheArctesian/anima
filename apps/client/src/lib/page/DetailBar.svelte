@@ -74,8 +74,8 @@
     z-index: var(--layer-sticky);
     display: flex;
     flex-direction: column;
-    margin: calc(var(--space-3) * -1) calc(var(--space-6) * -1) 0;
-    padding: var(--space-3) var(--space-6) 0;
+    margin: calc(var(--space-3) * -1) calc(var(--page-gutter, var(--space-6)) * -1) 0;
+    padding: var(--space-3) var(--page-gutter, var(--space-6)) 0;
     border-block-end: var(--border-thin) solid var(--border-subtle);
     background: var(--surface-base);
   }

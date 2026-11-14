@@ -30,8 +30,9 @@ it('UI-029, UI-004: primary is the accent fill with an on-accent label, hover ac
   expect(declared('.primary:active:not(:disabled, [aria-disabled=\'true\'])', 'background')).toBe('var(--accent-pressed)');
 });
 
-it('UI-029: secondary is the neutral surface-overlay fill with text colour', () => {
-  expect(declared('.secondary', 'background')).toBe('var(--surface-overlay)');
+it('UI-029, UR-7: secondary is the quiet raised fill with text colour; hover lifts it to the overlay', () => {
+  expect(declared('.secondary', 'background')).toBe('var(--surface-raised)');
+  expect(declared('.secondary:hover:not(:disabled, [aria-disabled=\'true\'])', 'background')).toBe('var(--surface-overlay)');
   expect(declared('button', 'color')).toBe('var(--text)');
 });
 
@@ -44,7 +45,8 @@ it('UI-029: ghost has no fill and text-secondary; hover shows surface-hover and 
 });
 
 it('UI-029, UI-004: danger is an outline by default and a solid danger fill with an on-danger label when filled', () => {
-  expect(declared('.danger', 'border-color')).toBe('var(--danger)');
+  expect(declared('.danger', 'border-color')).toBe('var(--border-strong)');
+  expect(declared('.danger', 'color')).toBe('var(--status-down-text)');
   expect(declared('.danger', 'background')).toBeUndefined();
   expect(declared('.danger.fill', 'background')).toBe('var(--danger)');
   expect(declared('.danger.fill', 'color')).toBe('var(--on-danger)');

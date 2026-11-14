@@ -6,11 +6,15 @@
 /* The UI typeface for everything, including modals portalled to `body` outside the shell (UI-020). */
 body {
   font-family: var(--font-ui);
+  font-size: var(--text-md);
+  line-height: var(--leading-normal);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* The navigation bar's width; the logs panel starts beside it. */
 :root {
-  --nav-inline-size: calc(var(--space-16) * 3);
+  --nav-inline-size: calc(var(--space-16) * 3 + var(--space-10));
 }
 
 /* Native controls, their popups and scrollbars follow the theme: dark by default, light for the light theme (UI-005). */

@@ -98,7 +98,7 @@ tokens that are about to be orphaned or miss ones that are about to be needed.
 | B | Tokens: weights, `text-display`, tracking, radius, `text-quiet`, `planned`, chart order; spec text for every approved row | `bun run gates`; design tests |
 | C | Fonts and icons: bundle Plex Sans Light/Medium and Plex Mono (pinned in `fonts.lock.json`); replace the Nerd Font icon table with Carbon and Simple Icons; update every icon call site | Gates; a screenshot pass of every page |
 | D | Primitives: page header (display title), section head, row list, key-value row, small-caps label, the resolve entrance | Specimen route review |
-| E | Shell and pages: sidebar, sign-in, Devices, device page, Live sessions, Settings | `reviewer-interface` per page; operator look |
+| E | Shell and pages: sidebar, sign-in, Devices, device page, Live sessions, Settings. The app's `/specimen` route opens with the mockup's Specimen screen, section for section: label and display title, Type, Colour, Icons, Controls, Corners, Motion with a replay (operator, 2026-11-13); the component lanes follow below it | `reviewer-interface` per page; `/specimen` side by side with the mockup's `#specimen`; operator look |
 | F | `motion-audit`, screen-reader check, full gates | Operator approves the merge |
 
 ## 4. Risks
