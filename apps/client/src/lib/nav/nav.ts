@@ -14,6 +14,14 @@ export const PROJECTS: NavDestination = { href: '/projects', label: 'Projects', 
 export const BUILDS: NavDestination = { href: '/builds', label: 'Builds', icon: 'carbon:tool-kit' };
 export const SETTINGS: NavDestination = { href: '/settings', label: 'Settings', icon: 'carbon:settings' };
 
+/**
+ * The destinations between Devices and Settings that are not always there, in the bar's order: Projects only while its
+ * extension is on (EXT-002), Builds only in the desktop app, because a browser has no builder (BLD-080).
+ */
+export function optionalDestinations(projectsOn: boolean, builds: boolean): readonly NavDestination[] {
+  return [...(projectsOn ? [PROJECTS] : []), ...(builds ? [BUILDS] : [])];
+}
+
 /** Whether `pathname` is `item`'s page or one below it (NAV-002). */
 export function isActive(item: NavDestination, pathname: string): boolean {
   return pathname === item.href || pathname.startsWith(`${item.href}/`);

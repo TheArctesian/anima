@@ -9,7 +9,7 @@
   import { capabilities } from '$lib/platform/platform';
   import { fade } from '$lib/motion/roles/transitions';
   import { watchHubBanner } from './banner-shift';
-  import { BUILDS, DEVICES, PROJECTS, SETTINGS, isActive, statusLabel, unreachableBanner, type NavDestination } from './nav';
+  import { DEVICES, SETTINGS, isActive, optionalDestinations, statusLabel, unreachableBanner, type NavDestination } from './nav';
 
   interface Props {
     /** The current route, for the active item. */
@@ -34,8 +34,6 @@
   const { pathname, now, onnavigate, projectsOn = false, iconOnly = false, collapsed = false, canCollapse = false, ontogglecollapse, oncollapse }: Props =
     $props();
   const hub = useHub();
-  // The Builds item is a desktop app item: a browser has no builder (BLD-080).
-  const { builds } = capabilities();
   const connected = $derived(hub.status.current.connection === 'connected');
   const banner = $derived(unreachableBanner(hub.status.current, hub.address.origin, now));
 
@@ -76,12 +74,9 @@
   </div>
   {@render destination(DEVICES)}
   <LiveSessions {hub} {iconOnly} />
-  {#if projectsOn}
-    {@render destination(PROJECTS)}
-  {/if}
-  {#if builds}
-    {@render destination(BUILDS)}
-  {/if}
+  {#each optionalDestinations(projectsOn, capabilities().builds) as item (item.href)}
+    {@render destination(item)}
+  {/each}
   <!-- Always rendered, so a screen reader announces the text when it appears (NET-004). -->
   <div class="notice" role="status" data-holds-banner>
     {#if banner !== null}
