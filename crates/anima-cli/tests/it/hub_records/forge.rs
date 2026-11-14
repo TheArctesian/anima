@@ -1,6 +1,8 @@
 //! `anima pr`, `anima issue` and `anima workflow` against the scripted hub (PRJ-030 to PRJ-035,
 //! CMD-026, CMD-031).
 
+mod history;
+
 use serde_json::{Value, json};
 
 use crate::kit::Anima;

@@ -3,13 +3,13 @@
 
 use serde_json::json;
 
-use super::engine::{sent, structured};
-use super::session::{API_KEY, Desk, LOGIN_TOKEN, hub};
 use crate::kit::fake_hub::data;
 use crate::kit::forge::{
     REPOSITORY, SHA, branch, code_directory, code_entry, commit, connection, project,
     repository_release,
 };
+use crate::mcp::engine::{sent, structured};
+use crate::mcp::session::{API_KEY, Desk, LOGIN_TOKEN, hub};
 
 const TOOLS: [&str; 4] = [
     "anima_commits_list",
