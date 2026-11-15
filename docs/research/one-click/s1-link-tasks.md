@@ -240,8 +240,9 @@ Open items for the operator:
 1. **T14**: the second-Mac steps (spike report, Section 7). They set the keepalive numbers of
    LNK-009 and show if the slow first connection occurs between two machines.
 2. **Builders (BLD-042)** run `bun run gates`. Each builder computer now needs Go 1.27 on `PATH`.
-3. **Gate time.** The Go tests add about 4 minutes to `bun run gates`: they start real tunnels
-   on loopback, and some wait for time limits of the library.
+3. **Gate time.** The Go tests add about 100 seconds to `bun run gates`: they start real
+   tunnels on loopback, and some wait for time limits of the library. The full gates passed,
+   20 of 20, on commit `b316570a` (2026-11-14).
 4. **A session ends at a key renewal** (T9). To keep sessions, the hub link must let the old key's
    streams end by themselves. Not built.
 5. **Spec delta** (OI-2): the LNK texts of Section 5 and LNK-009, before a merge to `main`.
