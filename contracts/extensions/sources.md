@@ -284,7 +284,7 @@ Tables come with the webhook receiver (Section 2.12 of the plan), and only for w
 | Jobs of a run | 15 s; 10 min once the run is completed |
 | Commits, branches | 60 s |
 | Releases, workflows, repository settings (merge methods) | 5 to 10 min |
-| Directory | 60 s for a branch; 1 h for a 40-digit commit |
+| Directory | 60 s for a branch; 1 h for a 40-digit commit. Only a listing: GitHub answers a directory read of a file with its content, and that answer is never kept |
 | File content | Never kept |
 
 - **Fresh.** `fresh: true` skips the cache; the hub still reuses an answer less than 5 seconds old.
@@ -305,7 +305,7 @@ pub async fn change(s: &Scheduling, account: SourceAccountId, change: &Change) -
 pub fn forget(transport: &Transport, account: SourceAccountId, path_prefix: &str);
 pub async fn standing(conn: &mut PgConnection, accounts: &[SourceAccountId]) -> Result<Vec<(SourceAccountId, Standing)>, LiveFailure>;
 
-pub struct Keep;      // Keep::for_seconds(n), Keep::never() (file content), .longer_when(n, settled: fn(&[u8]) -> bool), .fresh(bool)
+pub struct Keep;      // Keep::for_seconds(n), Keep::never() (file content), .longer_when(n, settled: fn(&[u8]) -> bool), .only_when(holds: fn(&[u8]) -> bool), .fresh(bool)
 pub struct Reply;     // response() -> Response<'_>, at(), stale(), problem() -> Option<LiveFailure>; its Debug shows no body
 pub enum LiveFailure { NotFound, Paused, KeyRefused, Limited { until }, Unreachable, Unusable, Refused, NoChanges, Busy, Store }
 pub enum Standing { Ready, NeedsReconnect, Paused, NotFound }   // from the stored row: paused first, then no key or an `auth` error

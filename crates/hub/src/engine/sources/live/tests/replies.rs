@@ -95,6 +95,22 @@ fn prj_032_an_answer_kept_never_is_neither_held_nor_served() {
 }
 
 #[test]
+fn prj_032_an_answer_only_when_refuses_is_not_held_and_its_older_answer_goes() {
+    let mut replies = Replies::default();
+    let one = key(account(), "/repos/o/r/contents/a");
+    let keep = Keep::for_seconds(60).only_when(|body| body.starts_with(b"["));
+    replies.keep(one.clone(), keep, held(b"[]", now()));
+    replies.keep(
+        one.clone(),
+        keep,
+        held(b"{\"content\":\"c2VjcmV0\"}", now()),
+    );
+
+    assert_eq!(replies.size(), (0, 0));
+    assert!(replies.stale(&one, keep, now()).is_none());
+}
+
+#[test]
 fn prj_032_a_settled_answer_is_kept_longer() {
     let mut replies = Replies::default();
     let done = key(account(), "/done");
