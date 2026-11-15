@@ -53,8 +53,13 @@ pub struct Pacing {
 }
 
 impl Pacing {
+    /// A limit of no unanswered frames would send nothing; it counts as one.
     #[must_use]
-    pub const fn new(pace: Pace) -> Self {
+    pub fn new(pace: Pace) -> Self {
+        let pace = Pace {
+            most_unanswered: pace.most_unanswered.max(1),
+            ..pace
+        };
         Self {
             pace,
             unanswered: VecDeque::new(),
@@ -65,28 +70,33 @@ impl Pacing {
     /// When the next frame may be sent, at time `now`.
     #[must_use]
     pub fn next(&self, now: Duration) -> Next {
-        if self.unanswered.len() >= self.pace.most_unanswered.max(1) {
+        if self.unanswered.len() >= self.pace.most_unanswered {
             return Next::AfterAnswer;
         }
-        match self.latest {
-            Some((sent, _)) if now < sent + self.pace.least_interval => {
-                Next::At(sent + self.pace.least_interval)
-            }
+        let earliest = self
+            .latest
+            .map(|(sent, _)| sent.saturating_add(self.pace.least_interval));
+        match earliest {
+            Some(earliest) if now < earliest => Next::At(earliest),
             _ => Next::Now,
         }
     }
 
-    /// Notes a frame sent at `now` and gives the timestamp for its `sync`: the time in
-    /// milliseconds, and always more than the timestamp before it.
-    pub fn sent(&mut self, now: Duration) -> u64 {
+    /// Notes a frame sent at `now` and gives the timestamp for its `sync`; `None`, and
+    /// nothing noted, when no frame may be sent now ([`Pacing::next`]). The timestamp is the
+    /// time in milliseconds, at least 1 and always more than the one before it: the client
+    /// starts at 0 and answers only a timestamp that differs from its own
+    /// (guacamole-common-js `Guacamole.Client`, the `sync` handler).
+    pub fn send(&mut self, now: Duration) -> Option<u64> {
+        if self.next(now) != Next::Now {
+            return None;
+        }
         let millis = u64::try_from(now.as_millis()).unwrap_or(u64::MAX);
-        let timestamp = match self.latest {
-            Some((_, before)) => millis.max(before.saturating_add(1)),
-            None => millis,
-        };
+        let after = self.latest.map_or(0, |(_, before)| before);
+        let timestamp = millis.max(after.saturating_add(1));
         self.latest = Some((now, timestamp));
         self.unanswered.push_back(timestamp);
-        timestamp
+        Some(timestamp)
     }
 
     /// The client's `sync` with `timestamp`: it has drawn that frame and every frame

@@ -26,7 +26,7 @@ fn the_first_frame_goes_at_once() {
 #[test]
 fn the_next_frame_waits_for_the_frame_rate_limit() {
     let mut pacing = Pacing::new(PACE);
-    pacing.sent(at(100));
+    pacing.send(at(100)).expect("a frame may go");
     assert_eq!(pacing.next(at(105)), Next::At(at(120)));
     assert_eq!(pacing.next(at(120)), Next::Now);
 }
@@ -34,16 +34,16 @@ fn the_next_frame_waits_for_the_frame_rate_limit() {
 #[test]
 fn a_client_that_is_behind_gets_no_frame_however_long_it_takes() {
     let mut pacing = Pacing::new(PACE);
-    pacing.sent(at(0));
-    pacing.sent(at(20));
+    pacing.send(at(0)).expect("a frame may go");
+    pacing.send(at(20)).expect("a frame may go");
     assert_eq!(pacing.next(at(60_000)), Next::AfterAnswer);
 }
 
 #[test]
 fn an_answer_lets_the_next_frame_go() {
     let mut pacing = Pacing::new(PACE);
-    let first = pacing.sent(at(0));
-    pacing.sent(at(20));
+    let first = pacing.send(at(0)).expect("a frame may go");
+    pacing.send(at(20)).expect("a frame may go");
     pacing.answered(&first.to_string());
     assert_eq!(pacing.next(at(40)), Next::Now);
 }
@@ -54,24 +54,54 @@ fn an_answer_for_a_frame_answers_the_frames_before_it() {
         most_unanswered: 3,
         ..PACE
     });
-    pacing.sent(at(0));
-    pacing.sent(at(20));
-    let third = pacing.sent(at(40));
+    pacing.send(at(0)).expect("a frame may go");
+    pacing.send(at(20)).expect("a frame may go");
+    let third = pacing.send(at(40)).expect("a frame may go");
     pacing.answered(&third.to_string());
-    pacing.sent(at(60));
-    pacing.sent(at(80));
+    pacing.send(at(60)).expect("a frame may go");
+    pacing.send(at(80)).expect("a frame may go");
     assert_eq!(pacing.next(at(100)), Next::Now);
 }
 
 #[test]
 fn text_that_is_not_a_timestamp_answers_nothing() {
     let mut pacing = Pacing::new(PACE);
-    pacing.sent(at(0));
-    pacing.sent(at(20));
+    pacing.send(at(0)).expect("a frame may go");
+    pacing.send(at(20)).expect("a frame may go");
     for answer in ["", "soon", "-1", "1.5", "99999999999999999999999"] {
         pacing.answered(answer);
     }
     assert_eq!(pacing.next(at(40)), Next::AfterAnswer);
+}
+
+#[test]
+fn no_frame_is_noted_when_none_may_go() {
+    let mut pacing = Pacing::new(PACE);
+    assert_eq!(pacing.send(at(0)), Some(1));
+    assert_eq!(pacing.send(at(5)), None);
+    assert_eq!(pacing.send(at(20)), Some(20));
+    assert_eq!(pacing.send(at(60_000)), None);
+}
+
+#[test]
+fn the_first_timestamp_is_one_the_client_answers() {
+    // The client starts at timestamp 0 and does not answer a `sync` that repeats it.
+    let mut pacing = Pacing::new(Pace {
+        most_unanswered: 1,
+        ..PACE
+    });
+    assert!(pacing.send(at(0)).expect("a frame may go") > 0);
+}
+
+#[test]
+fn a_limit_of_no_unanswered_frames_still_sends_one() {
+    let mut pacing = Pacing::new(Pace {
+        most_unanswered: 0,
+        ..PACE
+    });
+    assert_eq!(pacing.next(at(0)), Next::Now);
+    pacing.send(at(0)).expect("a frame may go");
+    assert_eq!(pacing.next(at(100)), Next::AfterAnswer);
 }
 
 #[test]
@@ -80,7 +110,7 @@ fn frames_sent_in_the_same_millisecond_get_rising_timestamps() {
         least_interval: Duration::ZERO,
         most_unanswered: 8,
     });
-    let stamps: Vec<u64> = (0..4).map(|_| pacing.sent(at(7))).collect();
+    let stamps: Vec<u64> = (0..4).filter_map(|_| pacing.send(at(7))).collect();
     assert_eq!(stamps, [7, 8, 9, 10]);
 }
 
@@ -113,7 +143,7 @@ fn session(draw: u64) -> (usize, bool) {
         if pacing.next(at(now)) == Next::Now {
             let changes = screen.take_changes();
             if changes.resized || !changes.moved.is_empty() || !changes.areas.is_empty() {
-                let timestamp = pacing.sent(at(now));
+                let timestamp = pacing.send(at(now)).expect("a frame may go");
                 client.receive(
                     &frame(&screen, &changes, Formats::default(), timestamp).expect("a frame"),
                 );
@@ -169,7 +199,7 @@ proptest! {
                 Event::Tick(millis) => {
                     now += millis;
                     if pacing.next(at(now)) == Next::Now {
-                        let timestamp = pacing.sent(at(now));
+                        let timestamp = pacing.send(at(now)).expect("a frame may go");
                         if let Some((before_at, before)) = sent.last() {
                             prop_assert!(timestamp > *before);
                             prop_assert!(now - before_at >= 20);
