@@ -23,6 +23,8 @@ export interface Capabilities {
   readonly mcpPermissions: boolean;
   /** The shell puts the `anima` program the app carries on the `PATH` with a link or launcher (INS-004 to INS-006). */
   readonly commandLine: boolean;
+  /** The shell keeps this computer awake and has the tray item for it (AWK-004). */
+  readonly stayAwake: boolean;
   /** The window draws its content under the OS title bar, with the window buttons over the navigation bar (macOS). */
   readonly overlayTitleBar: boolean;
 }
