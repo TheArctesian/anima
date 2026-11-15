@@ -1,0 +1,147 @@
+# Link setup guide (`anima-link`)
+
+This guide runs the link by hand: an encrypted connection from a device to a hub, with no VPN
+client, no account and no administrator rights. Plan: `docs/one-click-plan.md`, Section 4.1
+(LNK-001 to LNK-008, and the proposed LNK-009). Source: `link/`.
+
+**Status.** `anima-link` is a program that runs by itself. The hub does not use it yet: plan item
+S5 (the hub permits clients by device key) is not built. Until S5, put only a service that has
+its own sign-in behind the link. The link tells such a service nothing about the device, and every
+connection reaches it from `127.0.0.1` (see 7).
+
+Rules for this guide:
+
+- Each code block starts with a comment that says where it runs.
+- Words in `<ANGLE_BRACKETS>` are values you fill in.
+- An invite and a hub address are secrets. Never paste one into chat, a note, a ticket or a
+  commit. `anima-link` reads an invite from standard input and never takes one as an argument,
+  because other users of a computer can read the arguments of a process.
+
+## 1. Build
+
+```sh
+# On each computer, or once on a Mac: the script builds for macOS and Linux.
+link/build.sh          # writes link/bin/anima-link-<os>-<arch>, 15 to 17 MB each
+```
+
+Go 1.27 is necessary to build. Nothing is necessary to run.
+
+## 2. Start the hub link
+
+```sh
+# On the hub computer.
+anima-link hub -state <HUB_STATE_DIR> -target 127.0.0.1:<PORT>
+```
+
+- `-target` is the loopback address of the service. The link refuses any other address.
+- `<HUB_STATE_DIR>` holds the hub's key, its list of devices and its open invites. Only your user
+  can read it; `anima-link` refuses a directory that others can reach. Keep its path short (a
+  socket is made in it).
+- The first start chooses a relay and saves it. The hub's address contains its key and its relay,
+  so it stays the same at each later start (LNK-001).
+- If the relay does not carry the hub's messages, the start fails with "the relay does not carry
+  this hub's messages".
+
+Relays. With no `-relay`, the hub uses the nearest of Tailscale's shared relays. A relay cannot
+read traffic, but Tailscale can record which keys and addresses connect, and the shared relays
+have a rate limit. A relayed path is slow for remote display (about 4 to 9 Mbit/s when the relay
+adds 40 ms; spike report `docs/research/one-click/spike-link.md`, on its branch). To use a relay
+of your own, start the first time with `-relay <HOST>[:<PORT>]`. The Headscale relay of the VPN
+setup does not work as it is: it accepts only the keys of its own network.
+
+## 3. Add a device
+
+```sh
+# On the hub computer. The answer holds the invite: a secret, valid for 15 minutes, for one use.
+anima-link ctl -state <HUB_STATE_DIR> invites.make '{"name":"<DEVICE_NAME>"}'
+```
+
+Give the invite to the person at the device by a private channel.
+
+```sh
+# On the device. Type or paste the invite, then press Return.
+anima-link join -state <DEVICE_STATE_DIR>
+```
+
+`join` prints the fingerprint of the device's key. Compare it with the hub's list:
+
+```sh
+# On the hub computer.
+anima-link ctl -state <HUB_STATE_DIR> devices.list
+```
+
+If the fingerprint in the list is a different one, another party used the invite: revoke that
+device (5) and make a new invite. A wrong, used or expired invite gets no answer; `join` then says
+that the hub did not answer. A hub that is off gives the same message.
+
+## 4. Use the link
+
+```sh
+# On the device.
+anima-link device -state <DEVICE_STATE_DIR> -listen 127.0.0.1:<LOCAL_PORT>
+```
+
+`127.0.0.1:<LOCAL_PORT>` on the device now reaches the service on the hub computer.
+
+```sh
+# On the device: the path is "direct" or "relayed" (LNK-006).
+anima-link ctl -state <DEVICE_STATE_DIR> status
+```
+
+`devices.list` on the hub shows the path of each device, and the relay's name when it is relayed.
+
+What the device link does by itself:
+
+- It pings the hub each 15 seconds. This keeps the link ready, and it connects again after a hub
+  restart (about 15 to 30 seconds).
+- It renews its key in the last 30 days of the key's 180 days (LNK-005). The sessions that are
+  open at that moment end once. A device that was off for the whole 30 days needs a new invite.
+
+## 5. Remove a device
+
+```sh
+# On the hub computer. <KEY> is the "key" of the device in devices.list.
+anima-link ctl -state <HUB_STATE_DIR> devices.revoke '{"key":"<KEY>"}'
+```
+
+The device's open sessions end in less than a second, and its key cannot connect again (LNK-004).
+
+## 6. Change the relay
+
+A different relay is a different hub address. Two steps let the connected devices follow:
+
+```sh
+# On the hub computer. Step 1: tell the connected devices the address that the hub will have.
+anima-link ctl -state <HUB_STATE_DIR> relay.announce '{"relay":"<HOST>[:<PORT>]"}'
+# Wait until each device has been connected once (a device reads the notice each 5 minutes).
+# Step 2: change. The hub link stops; start it again as in 2.
+anima-link ctl -state <HUB_STATE_DIR> relay.switch
+```
+
+A device that gets no answer at the old address tries the announced address after about 45
+seconds. A device that was off during step 1 does not know the new address. It needs a new
+invite, or a domain name:
+
+- Optional, off by default: put the hub address (`anima-link ctl ... address.show`) in a TXT
+  record named `_anima-link.<NAME>`, and join each device with `-hub-name <NAME>`. A device then
+  finds a hub that moved.
+- **Warning.** DNS is public. An address in DNS shows the hub's key, its pre-shared key and its
+  relay to everybody. The list of permitted devices is then the only protection. The hub still
+  refuses each key that is not in its list.
+
+## 7. What the service behind the link must know
+
+- Each connection comes from `127.0.0.1`. Do not treat that address as "trusted" in the service.
+- With `-name-device`, the hub link starts each connection with a PROXY protocol header
+  (version 2) that holds the device's key in the field `0xE0`. Start the hub link with this
+  option only for a service that reads the header, and only on a port that nothing else can
+  reach: whoever can write the header names the device.
+
+## 8. Limits and known faults
+
+- The clock of the hub computer decides when keys and invites expire. A clock that is set forward
+  expires every device.
+- The first connection of a device is sometimes 5 to 10 seconds late (found in the spike; the
+  cause is in the library and is not known).
+- No more than 128 open connections for each device and 1024 for all devices.
+- `anima-link` uses an unreleased version of the Tailcat library. See `link/UPSTREAM.md`.

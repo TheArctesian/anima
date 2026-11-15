@@ -1,6 +1,7 @@
 # S1 task breakdown: the link (`anima-link`)
 
-Date: 2026-11-14. Status: **waits for the operator's approval. No product code is written yet.**
+Date: 2026-11-14. Status: **approved by the operator on 2026-11-14 with every recommended
+decision. T1 to T13 are built on branch `claude/s1-link` (Section 8). T14 waits for a second Mac.**
 
 Branch: `claude/s1-link`, cut from `origin/main` at `604fec8d`. (The local `main` is 6 commits
 behind `origin/main`; `claude/s2-native-vnc` uses the same base.)
@@ -214,3 +215,34 @@ is called), for T7 (`revoke` in `serve.go`: the order that works) and for T6 (`d
 give the relayed test set-up for T14. The spike's `state.go` shows the saved relay region.
 The macOS firewall list on this Mac has an entry for the spike's `anima-link`; T14 must use a
 second Mac to see the prompt for a new program.
+
+## 8. What was built (2026-11-14)
+
+| # | Task | State | Differences from the plan above |
+| --- | --- | --- | --- |
+| T1 | Go gates | Built | Six gates, not five: `staticcheck` and `revive` are one gate each, so that each gate is one process. The build gate writes to `/dev/null`. |
+| T2 | Tunnel and test bed | Built | Secrets are a type of their own (`redacted`): no way of printing, logging or encoding shows a key, a pre-shared key, an address or an invite. |
+| T3 | Identity and stable address | Built | The state directory also refuses a symbolic link and a folder above that another user can change, and removes macOS access-control entries. |
+| T4 | Control socket and process rules | Built | No check of the caller's user by the socket itself: the directory (mode 700) is the protection. |
+| T5 | Permitted devices and the hub role | Built | Added: 128 streams for each device and 1024 in total. |
+| T6 | Device role and keepalive | Built | Measured on one machine: after a hub restart the device link works again in about 14 s (1 s keepalive in the test). The idle test is 5 minutes of real time and runs only with `ANIMA_LINK_SLOW_TESTS=1`; it was run once and passed (7 ms). |
+| T7 | Revocation | Built | `hublink.Revoke` holds the order. A sweep each 30 s finishes a revocation that was cut. |
+| T8 | Invites | Built | The operator gives the device's name when the invite is made. The invite's temporary key and the hub's own key can never become a device key. `join` prints the key fingerprint and `devices.list` shows it, so that the operator can see if another party used the invite. |
+| T9 | Key expiry and renewal | Built | Renewal has two steps and one list entry for each device. It completes only on a stream from the new key. **Known limit:** the sessions that are open when a renewal completes end once (about each 150 days for each device). |
+| T10 | Path report | Built | — |
+| T11 | Own relay and relay change | Built | Two operator steps: `relay.announce`, then `relay.switch` (the hub link stops and starts again). A device follows after about 45 s. |
+| T12 | Domain name; device key for the hub | Built | Both off by default. |
+| T13 | Build and documents | Built | `link/build.sh` (four programs, 15.1 to 16.7 MB; the limit is 20 MB). `docs/setup/link.md`. |
+| T14 | Live checks | **Not done** | Needs the operator and a second Mac. |
+
+Open items for the operator:
+
+1. **T14**: the second-Mac steps (spike report, Section 7). They set the keepalive numbers of
+   LNK-009 and show if the slow first connection occurs between two machines.
+2. **Builders (BLD-042)** run `bun run gates`. Each builder computer now needs Go 1.27 on `PATH`.
+3. **Gate time.** The Go tests add about 4 minutes to `bun run gates`: they start real tunnels
+   on loopback, and some wait for time limits of the library.
+4. **A session ends at a key renewal** (T9). To keep sessions, the hub link must let the old key's
+   streams end by themselves. Not built.
+5. **Spec delta** (OI-2): the LNK texts of Section 5 and LNK-009, before a merge to `main`.
+6. **Upstream issues** at Tailcat for the faults in `link/UPSTREAM.md`: not opened.

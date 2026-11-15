@@ -27,11 +27,14 @@ changes one must fail there.
 
 ## Known faults of the library (spike K-A, 2026-11-14)
 
-| Fault | Answer in the link |
-| --- | --- |
-| A client registers with the server only at its first use. After a server restart, a running client is unknown and gets no answer. | The device role registers again in its keepalive. |
-| A link that is idle for 150 s or more stalls for 1 to 5 s at the next request. | The keepalive. |
-| The first connection of a new process sometimes takes 5 to 10 s. The cause is not known. | Not answered yet. The second-machine check decides. |
+| Fault | Answer in the link | Test |
+| --- | --- | --- |
+| A client registers with the server only at its first use. After a server restart, a running client is unknown and gets no answer. | The device link's keepalive registers again. | `devicelink`: `TestLNK009ARunningDeviceLinkReachesTheHubAgainAfterAHubRestart` |
+| A link that is idle for 150 s or more stalls for 1 to 5 s at the next request. | The 15 s keepalive. | `devicelink`: `TestLNK009AnIdleLinkDoesNotStall` (5 minutes; runs only with `ANIMA_LINK_SLOW_TESTS=1`) |
+| A server that starts on a relay that refuses its key gives no error. | The hub sends a message to itself through the relay at start. | `tunnel`: `TestLNK007ARelayThatRefusesTheHubIsAnErrorAtStart` |
+| `DisconnectClient` leaves the client's streams open with no traffic. | The hub link closes the streams first. | `hublink`: `TestLNK004RevocationEndsTheOpenSessionOfThatDeviceOnly` |
+| The server answers a client's announce before the client has proved that it holds its private key. | Nothing in the link changes on an announce: the lists change only on a stream. | `devicelink`: the LNK-005 tests |
+| The first connection of a new process sometimes takes 5 to 10 s. The cause is not known. | Not answered. The check with a second machine decides. | — |
 
 No upstream issue is open for these. Opening one is the operator's decision.
 
