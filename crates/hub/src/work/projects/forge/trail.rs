@@ -139,7 +139,7 @@ pub fn target(change: &Change, settled: &Settled) -> String {
 }
 
 /// The checked parts that fit the function. No text the operator wrote but a branch name and
-/// a status context, which the parts bound.
+/// a status context, which the parts bound; of a start's inputs only their count.
 fn details(change: &Change, record: &mut Map<String, Value>) {
     let fields = match change {
         Change::CreateIssue { labels, .. } => json!({ "labels": labels.as_slice().len() }),
@@ -159,8 +159,12 @@ fn details(change: &Change, record: &mut Map<String, Value>) {
         | Change::RerunFailedWorkflowJobs { run, .. }
         | Change::CancelWorkflowRun { run, .. } => json!({ "run": run.get() }),
         Change::DispatchWorkflow {
-            workflow, branch, ..
-        } => json!({ "workflow": workflow.as_str(), "branch": branch.as_str() }),
+            workflow,
+            branch,
+            inputs,
+            ..
+        } => json!({ "workflow": workflow.as_str(), "branch": branch.as_str(),
+            "inputs": inputs.as_slice().len() }),
         Change::SetCommitStatus {
             sha,
             state,

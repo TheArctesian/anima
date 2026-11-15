@@ -51,6 +51,11 @@ export const REFUSED_ROOTS: readonly string[] = [
   "openGithubConnect",
   "cancelGithubConnect",
   "codeFile",
+  "rerunWorkflowRun",
+  "rerunFailedWorkflowJobs",
+  "cancelWorkflowRun",
+  "dispatchWorkflow",
+  "setCommitStatus",
 ];
 
 /** The refused roots that are query fields; every other one is a mutation field. */

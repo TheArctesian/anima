@@ -234,7 +234,10 @@ fn refusal(identity: Option<&Identity>, document: &ExecutableDocument) -> Option
 /// an App key, and its one-time link binds a browser: login or browser token only (PRJ-039,
 /// PRJ-041). A file of a repository's code can hold a secret the hub does not look for: login or
 /// browser token only (PRJ-033, K-E1 Section 13.5).
-pub(super) const API_KEY_REFUSED_ROOTS: [&str; 37] = [
+/// Running a workflow again, starting one or cancelling one makes code run with a repository's
+/// secrets or stops it, and a commit status can satisfy a required check: login or browser
+/// token only (PRJ-034, PRJ-035, PRO-010, K-E1 Section 13.5).
+pub(super) const API_KEY_REFUSED_ROOTS: [&str; 42] = [
     "createApiKey",
     "revokeApiKey",
     "apiKeys",
@@ -272,6 +275,11 @@ pub(super) const API_KEY_REFUSED_ROOTS: [&str; 37] = [
     "openGithubConnect",
     "cancelGithubConnect",
     "codeFile",
+    "rerunWorkflowRun",
+    "rerunFailedWorkflowJobs",
+    "cancelWorkflowRun",
+    "dispatchWorkflow",
+    "setCommitStatus",
 ];
 
 /// The root selections a token of `kind` may make, in every operation type. A new kind of

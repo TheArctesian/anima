@@ -28,8 +28,8 @@ const LAST_FILTERED_PAGE: u32 = 10;
 const BRANCH_BYTES: usize = 255;
 /// How long each answer stays fresh (K-E1 Section 13.1).
 const LIST: Keep = Keep::for_seconds(30);
-const ONE: Keep = Keep::for_seconds(15);
-const WORKFLOWS: Keep = Keep::for_seconds(300);
+pub(super) const ONE: Keep = Keep::for_seconds(15);
+pub(super) const WORKFLOWS: Keep = Keep::for_seconds(300);
 const JOBS: Keep = Keep::for_seconds(15);
 const SETTLED_SECONDS: i64 = 600;
 
