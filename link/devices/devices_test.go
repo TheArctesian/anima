@@ -178,9 +178,9 @@ func TestLNK005AKeyIsRenewedInItsLast30DaysInTwoSteps(t *testing.T) {
 	dir.Close()
 
 	store, _ = openStore(t, path) // a restart between the steps
-	replaced, promoted, err := store.Promote(next)
-	if err != nil || !promoted || replaced != old {
-		t.Fatalf("Promote = replaced the old key: %v, promoted: %v, err: %v", replaced == old, promoted, err)
+	promotion, err := store.Promote(next)
+	if err != nil || promotion == nil || promotion.Replaced != old || promotion.Device.Key != next {
+		t.Fatalf("Promote = %+v, %v; want the device with its next key, in place of the old key", promotion, err)
 	}
 	if store.Permits(old) || !store.Permits(next) {
 		t.Error("after the second step only the new key must be permitted")
@@ -188,7 +188,7 @@ func TestLNK005AKeyIsRenewedInItsLast30DaysInTwoSteps(t *testing.T) {
 	if all := store.All(); len(all) != 2 || all[0].Name != "phone" || all[1].Key != next || !all[1].Expires.Equal(today.Add(180*days)) {
 		t.Errorf("list after the renewal = %+v; want the laptop with its new key and 180 more days", all)
 	}
-	if _, again, _ := store.Promote(next); again {
+	if again, _ := store.Promote(next); again != nil {
 		t.Error("a second Promote of the same key changed the list")
 	}
 }
@@ -212,7 +212,7 @@ func TestLNK004RevokingADeviceInARenewalRemovesBothKeys(t *testing.T) {
 	if store.Permits(old) || store.Permits(next) || store.Count() != 0 {
 		t.Error("a key of the revoked device is still permitted")
 	}
-	if _, promoted, _ := store.Promote(next); promoted {
+	if promotion, _ := store.Promote(next); promotion != nil {
 		t.Error("the next key of a revoked device became a device key")
 	}
 }

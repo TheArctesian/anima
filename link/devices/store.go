@@ -76,18 +76,18 @@ func (s *Store) Renew(current, next tunnel.DeviceKey) (Device, error) {
 	return device, s.save(updated)
 }
 
-// Promote makes a next key the current key of its device, at the first time
-// that the next key connects. It returns the key that was replaced, for the
-// hub link to disconnect. It reports false, and changes nothing, for a key
-// that is not a next key.
-func (s *Store) Promote(next tunnel.DeviceKey) (old tunnel.DeviceKey, promoted bool, err error) {
+// Promote makes a next key the current key of its device. The caller has
+// a stream from the next key, which proves that the device holds it. The
+// result names the key that was replaced, for the hub link to disconnect.
+// For a key that is not a next key it returns nil and changes nothing.
+func (s *Store) Promote(next tunnel.DeviceKey) (*Promotion, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	updated, old, promoted := s.current.promoted(next, s.now().UTC())
+	updated, promotion, promoted := s.current.promoted(next, s.now().UTC())
 	if !promoted {
-		return tunnel.DeviceKey{}, false, nil
+		return nil, nil
 	}
-	return old, true, s.save(updated)
+	return &promotion, s.save(updated)
 }
 
 // Permits reports whether a key can connect now: it is the current or the

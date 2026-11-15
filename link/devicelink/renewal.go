@@ -6,22 +6,28 @@ import (
 
 	"github.com/TheArctesian/anima/link/devices"
 	"github.com/TheArctesian/anima/link/identity"
+	"github.com/TheArctesian/anima/link/invites"
 	"github.com/TheArctesian/anima/link/tunnel"
 )
 
-const renewLimit = 15 * time.Second
+const renewStepLimit = 5 * time.Second
 
 // renewIfDue replaces the device's key in the last part of its life, with
 // no action by the user (LNK-005). The steps keep one working key at each
 // moment, also when the device stops between them:
 //
-//  1. make the next key and save it;
+//  1. make the next key and save it beside the current key;
 //  2. give its public half to the hub, over the link, with the current key;
-//  3. save the next key as the current key;
-//  4. connect with it. The hub then drops the old key.
+//  3. connect with the next key and confirm it. The hub then makes it the
+//     device's key and drops the old key;
+//  4. save the next key as the current key, and use it.
 //
-// After a stop before step 3 the device repeats step 2 with the same next
-// key. After a stop after step 3 it only connects.
+// After a stop, the device starts again at step 2 with the same next key.
+// When the hub has already dropped the old key, step 2 gets no answer and
+// step 3 still works.
+//
+// The sessions that are open at step 4 end: they use the old key's tunnel.
+// This happens once in about 150 days.
 func (l *Link) renewIfDue(ctx context.Context) {
 	current := l.identity()
 	if l.save == nil || current.Expires.IsZero() {
@@ -37,20 +43,28 @@ func (l *Link) renewIfDue(ctx context.Context) {
 		}
 		l.setIdentity(current)
 	}
-	ctx, cancel := context.WithTimeout(ctx, renewLimit)
-	defer cancel()
-	reply, err := enrol(ctx, l.tunnel(), current.NextKey.Public())
+	next, err := tunnel.NewDevice(tunnel.DeviceConfig{Key: current.NextKey, Hub: current.Hub, DebugLogf: l.debugLogf})
 	if err != nil {
+		return
+	}
+	_, _ = step(ctx, l.tunnel(), current.NextKey.Public())
+	confirmed, err := step(ctx, next, current.NextKey.Public())
+	if err != nil {
+		next.Close()
 		return // the next keepalive tries again
 	}
-	renewed := identity.Device{Key: current.NextKey, Hub: current.Hub, Expires: reply.Expires}
+	renewed := identity.Device{Key: current.NextKey, Hub: current.Hub, Expires: confirmed.Expires}
 	if l.save(renewed) != nil {
+		// The hub has the new key and the file has both: a restart confirms again.
+		next.Close()
 		return
 	}
-	next, err := tunnel.NewDevice(tunnel.DeviceConfig{Key: renewed.Key, Hub: renewed.Hub, DebugLogf: l.debugLogf})
-	if err != nil {
-		return
-	}
-	old := l.replaceTunnel(next, renewed)
-	old.Close()
+	l.replaceTunnel(next, renewed).Close()
+}
+
+// step is one request of a renewal on the enrolment port, with its own time limit.
+func step(ctx context.Context, sender *tunnel.Device, key tunnel.DeviceKey) (invites.EnrolReply, error) {
+	ctx, cancel := context.WithTimeout(ctx, renewStepLimit)
+	defer cancel()
+	return enrol(ctx, sender, key)
 }

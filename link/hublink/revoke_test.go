@@ -84,8 +84,10 @@ func TestLNK004RevocationEndsTheOpenSessionOfThatDeviceOnly(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Error("the hub link's connection to the hub is still open 5 s after the revocation")
 	}
-	if got := r.link.Streams(revoked.Public()); got != 0 {
-		t.Errorf("the hub link still has %d streams of the revoked device", got)
+	for deadline := time.Now().Add(5 * time.Second); r.link.Streams(revoked.Public()) != 0; time.Sleep(20 * time.Millisecond) {
+		if time.Now().After(deadline) {
+			t.Fatalf("the hub link still has %d streams of the revoked device 5 s after the revocation", r.link.Streams(revoked.Public()))
+		}
 	}
 	if r.store.Permits(revoked.Public()) {
 		t.Error("the revoked key is still in the list")

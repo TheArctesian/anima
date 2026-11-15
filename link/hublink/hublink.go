@@ -77,9 +77,9 @@ type Link struct {
 
 	listeners []net.Listener
 	closeOnce sync.Once
-	// started closes when Start has finished; stopped closes when Close begins.
-	started, stopped chan struct{}
-	accepting        chan struct{}
+	// stopped closes when Close begins.
+	stopped   chan struct{}
+	accepting chan struct{}
 }
 
 // Start connects the hub link to its relay and starts to accept streams.
@@ -95,7 +95,7 @@ func Start(ctx context.Context, cfg Config) (*Link, error) {
 		PresharedKey: cfg.Identity.PresharedKey,
 		Relay:        cfg.Identity.Relay,
 		RelayMapURL:  cfg.RelayMapURL,
-		Admit:        link.admits,
+		Admit:        link.admitted,
 		DebugLogf:    cfg.DebugLogf,
 	})
 	if err != nil {
@@ -119,7 +119,6 @@ func Start(ctx context.Context, cfg Config) (*Link, error) {
 		sweep = DefaultSweep
 	}
 	go link.sweep(sweep)
-	close(link.started)
 	return link, nil
 }
 
@@ -127,7 +126,7 @@ func newLink(cfg Config, target string) *Link {
 	link := &Link{
 		target: target, log: cfg.Log, devices: cfg.Devices, invites: cfg.Invites, now: cfg.Now,
 		ownKey: cfg.Identity.Key.Public(), enrolling: make(chan struct{}, maxEnrolments),
-		started: make(chan struct{}), stopped: make(chan struct{}), accepting: make(chan struct{}, 2),
+		stopped: make(chan struct{}), accepting: make(chan struct{}, 2),
 	}
 	if link.log == nil {
 		link.log = slog.New(slog.NewTextHandler(io.Discard, nil))

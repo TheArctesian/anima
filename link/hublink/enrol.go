@@ -26,29 +26,6 @@ func (l *Link) admitted(key tunnel.DeviceKey) bool {
 	return l.devices.Permits(key) || (l.invites != nil && l.invites.Admits(key, l.now()))
 }
 
-// admits is the tunnel's question when a key connects. When the key is the
-// next key of a device, this first connection completes the renewal: the
-// next key becomes the device's key and the old key is disconnected
-// (LNK-005).
-func (l *Link) admits(key tunnel.DeviceKey) bool {
-	if !l.admitted(key) {
-		return false
-	}
-	old, promoted, err := l.devices.Promote(key)
-	if err != nil {
-		l.log.Error("a renewed key could not be saved", "device", key)
-	}
-	if promoted {
-		l.log.Info("a device renewed its key", "device", key, "replaced", old)
-		// The tunnel can ask before Start has returned; the disconnect waits.
-		go func() {
-			<-l.started
-			l.disconnect(old)
-		}()
-	}
-	return true
-}
-
 // enrol serves one stream of the enrolment port: one request, one reply.
 func (l *Link) enrol(stream net.Conn) {
 	defer stream.Close()
@@ -71,7 +48,7 @@ func (l *Link) enrol(stream net.Conn) {
 		return
 	}
 	if l.devices.Permits(sender) {
-		_ = json.NewEncoder(stream).Encode(l.renew(sender, request.Key))
+		_ = json.NewEncoder(stream).Encode(l.renewOrConfirm(sender, request.Key))
 		return
 	}
 	// From here the sender is the temporary key of an open invite.
@@ -107,19 +84,30 @@ func (l *Link) join(temporary, device tunnel.DeviceKey) (reply invites.EnrolRepl
 	return invites.EnrolReply{OK: true, Expires: permitted.Expires}, true
 }
 
-// renew records the next key of a permitted device. The reply's expiry time
-// is that of the next key if it connects now; the true time starts when it
-// first connects, which is not earlier.
-func (l *Link) renew(current, next tunnel.DeviceKey) invites.EnrolReply {
+// renewOrConfirm serves a permitted device (LNK-005). A device that sends
+// with its next key confirms the renewal: this stream proves that it holds
+// the next key, so the next key becomes its key and the old key is
+// disconnected. A device that sends with its current key gives its next key.
+func (l *Link) renewOrConfirm(sender, next tunnel.DeviceKey) invites.EnrolReply {
+	promotion, err := l.devices.Promote(sender)
+	if err != nil {
+		l.log.Error("a renewed key could not be saved", "device", sender)
+		return invites.EnrolReply{Code: codeOf(err)}
+	}
+	if promotion != nil {
+		l.log.Info("a device renewed its key", "device", sender, "replaced", promotion.Replaced, "name", promotion.Device.Name)
+		l.disconnect(promotion.Replaced)
+		return invites.EnrolReply{OK: true, Expires: promotion.Device.Expires}
+	}
 	if !l.deviceKey(next) {
 		return invites.EnrolReply{Code: codeBadKey}
 	}
-	device, err := l.devices.Renew(current, next)
+	device, err := l.devices.Renew(sender, next)
 	if err != nil {
 		return invites.EnrolReply{Code: codeOf(err)}
 	}
-	l.log.Info("a device gave its next key", "device", current, "name", device.Name)
-	return invites.EnrolReply{OK: true, Expires: l.now().UTC().Add(devices.KeyLife)}
+	l.log.Info("a device gave its next key", "device", sender, "name", device.Name)
+	return invites.EnrolReply{OK: true}
 }
 
 const codeBadKey = "bad_key"
