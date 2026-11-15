@@ -3,7 +3,8 @@
 //!
 //! ```text
 //! <root>/cluster/      the PostgreSQL data folder
-//! <root>/urls/         owner.url and hub.url; the hub's ANIMA_DATABASE_URL_FILE names hub.url
+//! <root>/urls/         superuser.url, owner.url and hub.url; the hub's
+//!                      ANIMA_DATABASE_URL_FILE names hub.url
 //! <root>/server.log    the server's own log
 //! <root>/lock          held by the one copy that runs this database
 //! <socket folder>/     the Unix socket; the server has no TCP listener (DB-001)
@@ -50,9 +51,12 @@ pub struct UserFolders {
     pub xdg_runtime_dir: Option<PathBuf>,
 }
 
-/// The two logins that get a URL file (K2 "Roles", R-016).
+/// The logins that get a URL file. The hub is given the owner's file for `migrate` and the
+/// hub's file to serve (K2 "Roles", R-016); it is never given the superuser's.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Role {
+    /// The cluster's superuser, for this crate's own work: the roles, the checks, an upgrade.
+    Superuser,
     /// Applies migrations and owns every object.
     Owner,
     /// The hub's runtime login, which owns nothing.
@@ -140,10 +144,17 @@ impl Layout {
         self.root.join("cluster")
     }
 
+    /// The folder of the URL files. Each file in it holds a password.
+    #[must_use]
+    pub fn urls_folder(&self) -> PathBuf {
+        self.root.join("urls")
+    }
+
     /// The file that holds `role`'s connection URL.
     #[must_use]
     pub fn url_file(&self, role: Role) -> PathBuf {
-        self.root.join("urls").join(match role {
+        self.urls_folder().join(match role {
+            Role::Superuser => "superuser.url",
             Role::Owner => "owner.url",
             Role::Hub => "hub.url",
         })

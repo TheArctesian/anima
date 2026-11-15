@@ -1,6 +1,7 @@
 # S3 task breakdown: the bundled PostgreSQL
 
-Date: 2026-11-14. Status: **waits for the operator's approval. No product code is written yet.**
+Date: 2026-11-14. Status: **approved by the operator on 2026-11-14 with the recommendation of each
+decision D-1 to D-10. The build is in progress; Section 6 has the choices taken on the way.**
 
 Branch: `claude/s3-database`, cut from `origin/main` at `604fec8d` (local `main` is 6 commits
 behind it; the S2 branch uses the same base).
@@ -248,3 +249,15 @@ Nothing is built yet. If this session stops:
   work; the others change a setting or a message.
 - The S2 branch (`claude/s2-native-vnc`) and S4 share two things with this work: the root
   `Cargo.toml` line, and the launcher that starts the hub's child programs.
+
+## 6. Choices taken while building
+
+Each is the option I recommend, with its reason. None changes a contract.
+
+| Task | Choice | Reason |
+| --- | --- | --- |
+| T2 | A third URL file, `urls/superuser.url`, for the cluster's superuser `anima_super`. The hub is never given it. | The roles (T4), `verify` (T7, `amcheck` needs a superuser) and a later upgrade need a superuser login after the first run. It is the same kind of file as D-3 approved, in the same 0700 folder. |
+| T2 | The read-back of the encoding and the locale provider with SQL is in T3's tests, not T2's. | It needs a running server. T2 proves the checksums with `pg_controldata`, the folder modes, SCRAM in `pg_hba.conf` and that no password file is left. |
+| T3 | No `PR_SET_PDEATHSIG` on Linux. | It needs `pre_exec`, which is `unsafe`; the workspace forbids `unsafe` code. The stop of a server left by an earlier copy covers the case on both platforms. |
+| T3 | The shutdown signal uses `nix`, the lock uses the standard library's `File::try_lock`. | `nix` is what the hub and the desktop shell already use; no new crate for the lock. |
+| All | The full gates for a task run in a second, detached worktree at the task's commit, while the next task is written in this one. | A gates run takes about 35 minutes and must test one fixed tree. |

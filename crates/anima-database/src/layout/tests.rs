@@ -111,6 +111,11 @@ fn a_root_with_a_space_gives_these_exact_paths() {
 
     assert_eq!(layout.root(), Path::new("/var/db root"));
     assert_eq!(layout.cluster(), Path::new("/var/db root/cluster"));
+    assert_eq!(layout.urls_folder(), Path::new("/var/db root/urls"));
+    assert_eq!(
+        layout.url_file(Role::Superuser),
+        Path::new("/var/db root/urls/superuser.url")
+    );
     assert_eq!(
         layout.url_file(Role::Owner),
         Path::new("/var/db root/urls/owner.url")
