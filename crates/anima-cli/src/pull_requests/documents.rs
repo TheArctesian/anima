@@ -33,3 +33,23 @@ pub struct PullRequestGet;
     skip_serializing_none
 )]
 pub struct PullRequestListChecked;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "../../contracts/schema.graphql",
+    query_path = "src/pull_requests/merge_one.graphql",
+    response_derives = "Debug, Serialize",
+    variables_derives = "Debug",
+    skip_serializing_none
+)]
+pub struct PullRequestMergeOne;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "../../contracts/schema.graphql",
+    query_path = "src/pull_requests/merge_many.graphql",
+    response_derives = "Debug, Serialize",
+    variables_derives = "Debug",
+    skip_serializing_none
+)]
+pub struct PullRequestMergeMany;

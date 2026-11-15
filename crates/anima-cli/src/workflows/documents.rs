@@ -43,3 +43,43 @@ pub struct WorkflowRunGet;
     skip_serializing_none
 )]
 pub struct WorkflowRunListJobs;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "../../contracts/schema.graphql",
+    query_path = "src/workflows/rerun.graphql",
+    response_derives = "Debug, Serialize",
+    variables_derives = "Debug",
+    skip_serializing_none
+)]
+pub struct WorkflowRunRerun;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "../../contracts/schema.graphql",
+    query_path = "src/workflows/rerun_failed.graphql",
+    response_derives = "Debug, Serialize",
+    variables_derives = "Debug",
+    skip_serializing_none
+)]
+pub struct WorkflowRunRerunFailed;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "../../contracts/schema.graphql",
+    query_path = "src/workflows/cancel.graphql",
+    response_derives = "Debug, Serialize",
+    variables_derives = "Debug",
+    skip_serializing_none
+)]
+pub struct WorkflowRunCancel;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "../../contracts/schema.graphql",
+    query_path = "src/workflows/start.graphql",
+    response_derives = "Debug, Serialize",
+    variables_derives = "Debug",
+    skip_serializing_none
+)]
+pub struct WorkflowStart;

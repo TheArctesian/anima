@@ -40,6 +40,20 @@ pub fn list<T: Serialize>(issues: &T) -> Table {
     table
 }
 
+/// An issue just made, closed or opened: number, title, state, labels and link. The body is not
+/// asked for, so text the operator sent is not printed back.
+#[must_use]
+pub fn changed<T: Serialize>(issue: &T) -> Table {
+    let issue = serde_json::to_value(issue).unwrap_or_default();
+    let mut table = Table::record();
+    table.pair("Number", number(&issue, "number"));
+    table.pair("Title", text(&issue, "title"));
+    table.pair("State", state(&issue));
+    table.pair("Labels", names(&issue, "labels"));
+    table.pair("Link", text(&issue, "url"));
+    table
+}
+
 /// One issue as label and value lines, with its comments when they were asked for.
 #[must_use]
 pub fn record<T: Serialize>(issue: &T) -> Table {

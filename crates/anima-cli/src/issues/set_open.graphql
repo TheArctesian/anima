@@ -1,0 +1,12 @@
+mutation IssueSetOpen($repository: ID!, $number: Int!, $open: Boolean!, $reason: IssueCloseReason) {
+  setIssueOpen(repository: $repository, number: $number, open: $open, reason: $reason) {
+    repository
+    number
+    title
+    open
+    closeReason
+    labels
+    createdAt
+    url
+  }
+}

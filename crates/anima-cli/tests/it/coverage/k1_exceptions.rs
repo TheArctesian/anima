@@ -23,44 +23,4 @@ pub const EXCEPTIONS: &[(&str, &str)] = &[
         "Mutation.reportBuildUploaded",
         "builder token only: the desktop builder (BLD-022)",
     ),
-    (
-        "Mutation.createIssue",
-        "temporary: the command-line task W13 adds its document and deletes this line (CMD-031)",
-    ),
-    (
-        "Mutation.addIssueComment",
-        "temporary: the command-line task W13 adds its document and deletes this line (CMD-031)",
-    ),
-    (
-        "Mutation.setIssueOpen",
-        "temporary: the command-line task W13 adds its document and deletes this line (CMD-031)",
-    ),
-    (
-        "Mutation.mergePullRequest",
-        "temporary: the command-line task W13 adds its document and deletes this line (CMD-031)",
-    ),
-    (
-        "Mutation.mergePullRequests",
-        "temporary: the command-line task W13 adds its document and deletes this line (CMD-031)",
-    ),
-    (
-        "Mutation.rerunWorkflowRun",
-        "temporary: the command-line task W13 adds its document and deletes this line (CMD-031)",
-    ),
-    (
-        "Mutation.rerunFailedWorkflowJobs",
-        "temporary: the command-line task W13 adds its document and deletes this line (CMD-031)",
-    ),
-    (
-        "Mutation.cancelWorkflowRun",
-        "temporary: the command-line task W13 adds its document and deletes this line (CMD-031)",
-    ),
-    (
-        "Mutation.dispatchWorkflow",
-        "temporary: the command-line task W13 adds its document and deletes this line (CMD-031)",
-    ),
-    (
-        "Mutation.setCommitStatus",
-        "temporary: the command-line task W13 adds its document and deletes this line (CMD-031)",
-    ),
 ];

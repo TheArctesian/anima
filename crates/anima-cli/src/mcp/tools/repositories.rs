@@ -1,6 +1,14 @@
 //! The `repositories` tool set: pull requests, issues, comments, workflows, runs, commits,
 //! branches, releases and directory listings of a repository that the hub reads live from
-//! GitHub (PRJ-030 to PRJ-039). Read tools only. No tool returns the content of a file.
+//! GitHub (PRJ-030 to PRJ-039), and three issue changes a write key may make (PRJ-028). No tool
+//! returns the content of a file.
+//!
+//! These K1 fields have no tool (operator, 2026-11-14; ruling number to be assigned):
+//! `mergePullRequest` and `mergePullRequests` (a merge is a trust decision, MCP-005, and the
+//! hub refuses every API key for it), and `rerunWorkflowRun`, `rerunFailedWorkflowJobs`,
+//! `cancelWorkflowRun`, `dispatchWorkflow` and `setCommitStatus` (each runs or stops code with
+//! the repository's secrets, or can satisfy a required check; the hub refuses every API key
+//! for them). The command line has them, behind a confirmation.
 //!
 //! Every title, body, comment, login, label, branch name, job name and commit title in a result
 //! was written by someone else on GitHub. The tools put them in named fields, and the server
@@ -11,6 +19,7 @@
 
 mod code;
 mod history;
+mod issue_changes;
 mod issues;
 mod pull_requests;
 mod workflows;
@@ -42,6 +51,9 @@ pub enum RepositoryTool {
     BranchesList,
     RepositoryReleasesList,
     CodeDirectoryList,
+    IssueCreate,
+    IssueCommentAdd,
+    IssueSetOpen,
 }
 
 /// K1 `OpenOrClosed`.
@@ -65,7 +77,7 @@ impl From<StateInput> for StateArg {
 }
 
 impl RepositoryTool {
-    pub const ALL: [Self; 11] = [
+    pub const ALL: [Self; 14] = [
         Self::PullRequestsList,
         Self::PullRequestGet,
         Self::IssuesList,
@@ -77,6 +89,9 @@ impl RepositoryTool {
         Self::BranchesList,
         Self::RepositoryReleasesList,
         Self::CodeDirectoryList,
+        Self::IssueCreate,
+        Self::IssueCommentAdd,
+        Self::IssueSetOpen,
     ];
 
     #[must_use]
@@ -93,6 +108,9 @@ impl RepositoryTool {
             Self::BranchesList => history::branches_definition(),
             Self::RepositoryReleasesList => history::releases_definition(),
             Self::CodeDirectoryList => code::directory_definition(),
+            Self::IssueCreate => issue_changes::create_definition(),
+            Self::IssueCommentAdd => issue_changes::comment_definition(),
+            Self::IssueSetOpen => issue_changes::set_open_definition(),
         }
     }
 
@@ -101,6 +119,10 @@ impl RepositoryTool {
     /// # Errors
     /// [`ToolError`] for wrong arguments, an unknown repository, pull request, issue or run,
     /// or the hub's refusal.
+    #[expect(
+        clippy::cognitive_complexity,
+        reason = "a flat dispatch with one arm for each tool"
+    )]
     pub async fn call(self, hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
         match self {
             Self::PullRequestsList => pull_requests::list(hub, arguments).await,
@@ -114,6 +136,9 @@ impl RepositoryTool {
             Self::BranchesList => history::branches(hub, arguments).await,
             Self::RepositoryReleasesList => history::releases(hub, arguments).await,
             Self::CodeDirectoryList => code::directory(hub, arguments).await,
+            Self::IssueCreate => issue_changes::create(hub, arguments).await,
+            Self::IssueCommentAdd => issue_changes::comment(hub, arguments).await,
+            Self::IssueSetOpen => issue_changes::set_open(hub, arguments).await,
         }
     }
 }

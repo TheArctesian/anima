@@ -43,3 +43,13 @@ pub struct BranchList;
     skip_serializing_none
 )]
 pub struct RepositoryReleaseList;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "../../contracts/schema.graphql",
+    query_path = "src/repositories/status.graphql",
+    response_derives = "Debug, Serialize",
+    variables_derives = "Debug",
+    skip_serializing_none
+)]
+pub struct CommitStatusSet;
