@@ -7,6 +7,7 @@
 mod checks_schema;
 mod devices_schema;
 mod edge;
+mod link;
 mod push;
 mod serving;
 mod sessions_schema;

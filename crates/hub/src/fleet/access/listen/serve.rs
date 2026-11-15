@@ -20,7 +20,7 @@ use hyper::{body::Incoming, server::conn::http1, service::service_fn};
 use hyper_util::rt::{TokioIo, TokioTimer};
 use tokio::{
     io::{AsyncRead, AsyncWrite},
-    net::{TcpListener, TcpStream},
+    net::{TcpListener, TcpStream, UnixStream},
     sync::watch,
     task::JoinSet,
 };
@@ -28,6 +28,7 @@ use tokio_rustls::TlsAcceptor;
 use tower::ServiceExt as _;
 
 use super::{
+    link::{self, LinkSocket},
     slots::{Slot, Slots},
     timed::{Holding, timed_body},
 };
@@ -114,17 +115,53 @@ impl Serving {
         Some(async move { serving.connection(stream, peer, slot).await })
     }
 
-    async fn connection(&self, stream: TcpStream, peer: SocketAddr, slot: Slot) {
-        if !from_here(&stream, peer) {
-            match self.edge.verdict(peer.ip(), CONNECTION).await {
-                Verdict::Permitted => {}
-                Verdict::Refused(written) => {
-                    drop(stream);
-                    return self.edge.write(written).await;
-                }
-                Verdict::Unavailable(error) => return self.edge.unavailable(&error),
+    /// The work of serving `stream` from the link's socket: its peer is the device the link
+    /// names in the header, which must arrive within the handshake time. A connection that
+    /// names no device of the link is closed and written to the event log (NET-002).
+    pub(super) fn admit_link(
+        self: &Arc<Self>,
+        mut stream: UnixStream,
+    ) -> impl Future<Output = ()> + Send + 'static {
+        let serving = Arc::clone(self);
+        async move {
+            let named =
+                tokio::time::timeout(serving.limits.handshake_time, link::device(&mut stream));
+            let Ok(Some(peer)) = named.await else {
+                drop(stream);
+                return serving.edge.write(serving.edge.unnamed()).await;
+            };
+            let Some(slot) = serving.connections.take(peer.ip()) else {
+                return;
+            };
+            if let Some(stream) = serving.permitted(stream, peer).await {
+                let stall = serving.limits.write_stall;
+                serving.http(Holding::new(stream, slot, stall), peer).await;
             }
         }
+    }
+
+    /// `stream` when the edge lets `peer` connect. A refused connection is closed first and
+    /// then written to the event log, so a slow write never keeps it open.
+    async fn permitted<S>(&self, stream: S, peer: SocketAddr) -> Option<S> {
+        match self.edge.verdict(peer.ip(), CONNECTION).await {
+            Verdict::Permitted => return Some(stream),
+            Verdict::Refused(written) => {
+                drop(stream);
+                self.edge.write(written).await;
+            }
+            Verdict::Unavailable(error) => self.edge.unavailable(&error),
+        }
+        None
+    }
+
+    async fn connection(&self, stream: TcpStream, peer: SocketAddr, slot: Slot) {
+        let stream = if from_here(&stream, peer) {
+            stream
+        } else if let Some(stream) = self.permitted(stream, peer).await {
+            stream
+        } else {
+            return;
+        };
         let stall = self.limits.write_stall;
         let Some(acceptor) = &self.tls else {
             return self.http(Holding::new(stream, slot, stall), peer).await;
@@ -176,10 +213,24 @@ fn late() -> Response {
     StatusCode::SERVICE_UNAVAILABLE.into_response()
 }
 
-/// Serves every connection `tcp` accepts until `stop` resolves; then stops accepting and
+/// The ways in: the listener and, in the link mode, the link's socket.
+pub(super) struct Ways {
+    pub tcp: TcpListener,
+    pub link: Option<LinkSocket>,
+}
+
+/// The next connection from the link; never, when the hub is not in the link mode.
+async fn from_link(link: Option<&LinkSocket>) -> io::Result<UnixStream> {
+    match link {
+        Some(link) => link.accept().await,
+        None => std::future::pending().await,
+    }
+}
+
+/// Serves every connection `ways` accept until `stop` resolves; then stops accepting and
 /// drains the open connections for at most `drain_limit` before aborting the rest (R-040).
 pub(super) async fn run(
-    tcp: TcpListener,
+    ways: Ways,
     serving: Arc<Serving>,
     stop: impl Future<Output = ()>,
     drain_limit: Duration,
@@ -190,13 +241,17 @@ pub(super) async fn run(
         tokio::select! {
             () = &mut stop => break,
             Some(_) = connections.join_next() => {}
-            incoming = tcp.accept() => match incoming {
+            incoming = ways.tcp.accept() => match incoming {
                 Ok((stream, peer)) => connections.extend(serving.admit(stream, peer)),
+                Err(error) => accept_failed(&error).await,
+            },
+            incoming = from_link(ways.link.as_ref()) => match incoming {
+                Ok(stream) => connections.extend([serving.admit_link(stream)]),
                 Err(error) => accept_failed(&error).await,
             },
         }
     }
-    drop(tcp);
+    drop(ways);
     serving.stopping.send_replace(true);
     drain(connections, drain_limit).await;
 }
