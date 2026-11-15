@@ -113,6 +113,7 @@ Thus the hub rules become key rules with no change to a frozen contract.
 | T1 to T3 | Link address in the device list; socket target with the header; tests of LNK-002 to LNK-005 by what a hub on the socket sees | `9142c7e9`, and the corrections after review |
 | T4 to T7 | `ANIMA_LINK_SOCKET` and the link mode; the header reader; the socket and its accept path; tests of the whole hub through the socket | `84340c05`, and the corrections after review |
 | T8 | `docs/setup/link.md` Section 7; this section | — |
+| T9 | Full gates on `5d353164` (the branch with `main` at `bb4c00d6` merged in): 20 of 20 pass; Rust 4731 tests passed, 1 skipped | — |
 
 ### 6.1 Tests for each rule
 
