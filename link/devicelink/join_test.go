@@ -46,6 +46,9 @@ type invitingHub struct {
 	devices *devices.Store
 	invites *invites.Store
 	clock   *clock
+	// identity and target are what the hub link starts from.
+	identity identity.Hub
+	target   string
 }
 
 func startInvitingHub(t *testing.T) invitingHub {
@@ -57,26 +60,37 @@ func startInvitingHub(t *testing.T) invitingHub {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { dir.Close() })
-	hub := invitingHub{clock: &clock{now: time.Date(2026, 11, 14, 12, 0, 0, 0, time.UTC)}}
+	hub := invitingHub{
+		clock:    &clock{now: time.Date(2026, 11, 14, 12, 0, 0, 0, time.UTC)},
+		identity: identity.Hub{Key: tunnel.NewPrivateKey(), PresharedKey: tunnel.NewPresharedKey(), Relay: testbed.StartRelay(t)},
+		target:   server.Listener.Addr().String(),
+	}
 	if hub.devices, err = devices.Open(dir, hub.clock.Now); err != nil {
 		t.Fatal(err)
 	}
 	if hub.invites, err = invites.Open(dir); err != nil {
 		t.Fatal(err)
 	}
-	hub.link, err = hublink.Start(t.Context(), hublink.Config{
-		Identity: identity.Hub{Key: tunnel.NewPrivateKey(), PresharedKey: tunnel.NewPresharedKey(), Relay: testbed.StartRelay(t)},
-		Target:   server.Listener.Addr().String(),
-		Devices:  hub.devices,
-		Invites:  hub.invites,
-		Now:      hub.clock.Now,
+	hub.link = hub.startLink(t)
+	return hub
+}
+
+// startLink starts the hub link from the hub's identity and lists.
+func (h invitingHub) startLink(t *testing.T) *hublink.Link {
+	t.Helper()
+	link, err := hublink.Start(t.Context(), hublink.Config{
+		Identity: h.identity,
+		Target:   h.target,
+		Devices:  h.devices,
+		Invites:  h.invites,
+		Now:      h.clock.Now,
 		Sweep:    200 * time.Millisecond,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { hub.link.Close() })
-	return hub
+	t.Cleanup(func() { link.Close() })
+	return link
 }
 
 func (h invitingHub) invite(t *testing.T, name string) invites.Invite {

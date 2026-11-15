@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"maps"
 	"time"
@@ -12,6 +13,7 @@ import (
 	"github.com/TheArctesian/anima/link/identity"
 	"github.com/TheArctesian/anima/link/invites"
 	"github.com/TheArctesian/anima/link/statedir"
+	"github.com/TheArctesian/anima/link/tunnel"
 )
 
 const (
@@ -22,6 +24,7 @@ const (
 func runHub(ctx context.Context, args []string, streams stdio) error {
 	flags, statePath := stateFlags("hub")
 	target := flags.String("target", "", "the hub's loopback address, host:port")
+	relay := flags.String("relay", "", "the hub's own relay, host or host:port; at the first start only")
 	stopWithStdin := flags.Bool("stop-with-stdin", false, "stop when standard input closes")
 	if err := flags.Parse(args); err != nil || *statePath == "" || *target == "" || flags.NArg() != 0 {
 		return errUsage
@@ -33,6 +36,9 @@ func runHub(ctx context.Context, args []string, streams stdio) error {
 		return err
 	}
 	defer dir.Close()
+	if err := chooseRelay(dir, *relay); err != nil {
+		return err
+	}
 	link, lists, err := startHubLink(ctx, dir, *target, log)
 	if err != nil {
 		return err
@@ -51,9 +57,37 @@ func runHub(ctx context.Context, args []string, streams stdio) error {
 	log.Info("the hub link is ready", "relay", link.Relay().Name(), "devices", lists.devices.Count())
 	verbs := hubVerbs(link, lists.devices)
 	maps.Copy(verbs, inviteVerbs(link, lists.invites, time.Now))
+	maps.Copy(verbs, relayVerbs(link, dir, stop))
 	err = control.Serve(ctx, listener, verbs)
 	log.Info("the hub link stopped")
 	return err
+}
+
+var errRelayIsSet = errors.New("this hub has a relay already; change it with the verbs relay.announce and relay.switch, so that its devices can follow")
+
+// chooseRelay saves the operator's own relay before the first start
+// (LNK-007). A hub that has a relay keeps it: a different relay is a
+// different address.
+func chooseRelay(dir *statedir.Dir, hostPort string) error {
+	if hostPort == "" {
+		return nil
+	}
+	relay, err := tunnel.OwnRelay(hostPort)
+	if err != nil {
+		return err
+	}
+	hub, err := identity.LoadHub(dir)
+	if err != nil {
+		return err
+	}
+	if !hub.Relay.IsZero() {
+		if hub.Relay.Name() == relay.Name() {
+			return nil
+		}
+		return errRelayIsSet
+	}
+	hub.Relay = relay
+	return hub.Save(dir)
 }
 
 // startHubLink starts the link from the saved identity and saves the relay

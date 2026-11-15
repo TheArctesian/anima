@@ -16,6 +16,13 @@ type EnrolRequest struct {
 	Key tunnel.DeviceKey `json:"key"`
 }
 
+// Notice is the one line that the hub link writes on the notice port.
+type Notice struct {
+	// NextHub is the address that the hub will have after its relay change,
+	// as text. It is empty when no change is planned. It is a secret.
+	NextHub string `json:"nextHub,omitempty"`
+}
+
 // EnrolReply is the one line that the hub link answers.
 type EnrolReply struct {
 	OK bool `json:"ok"`

@@ -19,13 +19,32 @@ const days = 24 * time.Hour
 type kept struct {
 	mu     sync.Mutex
 	device identity.Device
+	// saves is each identity that was saved, in order.
+	saves []identity.Device
 }
 
 func (k *kept) save(device identity.Device) error {
 	k.mu.Lock()
 	defer k.mu.Unlock()
 	k.device = device
+	k.saves = append(k.saves, device)
 	return nil
+}
+
+func (k *kept) history() []identity.Device {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+	return append([]identity.Device(nil), k.saves...)
+}
+
+// waitForSavedKey waits until the device has saved the wanted key as its key.
+func (k *kept) waitForSavedKey(t *testing.T, want tunnel.DeviceKey) {
+	t.Helper()
+	for deadline := time.Now().Add(30 * time.Second); k.get().Key.Public() != want; time.Sleep(50 * time.Millisecond) {
+		if time.Now().After(deadline) {
+			t.Fatal("the device did not save its next key as its key")
+		}
+	}
 }
 
 func (k *kept) get() identity.Device {
@@ -115,6 +134,12 @@ func TestLNK005ADeviceRenewsItsKeyWithNoUserAction(t *testing.T) {
 	if !renewed.NextKey.IsZero() || !renewed.Expires.Equal(hub.clock.Now().Add(180*days)) || renewed.Hub != device.Hub {
 		t.Errorf("saved identity after the renewal: next key set: %v, expires %v", !renewed.NextKey.IsZero(), renewed.Expires)
 	}
+	// Step 1 comes first: the next key is on disk, beside the key that still
+	// works, before the hub is told. A device that stops there has both.
+	first := saved.history()[0]
+	if first.Key.Public() != device.Key.Public() || first.NextKey.IsZero() || first.NextKey.Public() != renewed.Key.Public() {
+		t.Error("the first save of the renewal must hold the old key as the key and the next key beside it")
+	}
 	getUntil(t, link, 30*time.Second)
 	hub.refuses(t, device)
 }
@@ -138,9 +163,7 @@ func TestLNK005ARenewalThatWasCutLeavesOneWorkingKeyAndCompletes(t *testing.T) {
 			link, saved := hub.startRenewing(t, device)
 			getUntil(t, link, 30*time.Second)
 			hub.waitForKey(t, device.NextKey.Public(), "after the device came back")
-			if saved.get().Key.Public() != device.NextKey.Public() {
-				t.Error("the device did not save its next key as its key")
-			}
+			saved.waitForSavedKey(t, device.NextKey.Public())
 			getUntil(t, link, 30*time.Second)
 		})
 	}

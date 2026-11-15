@@ -5,8 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"sync/atomic"
+	"time"
 
 	"github.com/tailscale/tailcat"
+	"tailscale.com/tailcfg"
 	"tailscale.com/types/key"
 	"tailscale.com/types/logger"
 )
@@ -16,6 +19,10 @@ var (
 	ErrNoAdmit    = errors.New("tunnel: a hub needs an Admit function")
 	ErrNoIdentity = errors.New("tunnel: the key or the pre-shared key is not set")
 	ErrStart      = errors.New("tunnel: the link did not start")
+	// ErrRelay means that the hub started but its relay does not carry its
+	// messages: the relay is not reachable, or it refuses keys that it does
+	// not know. A relay that refuses gives no other sign (spike K-A, 5).
+	ErrRelay      = errors.New("tunnel: the relay does not carry this hub's messages; it is not reachable or it refuses this hub's key")
 	ErrBadAddress = errors.New("tunnel: the hub address is not valid")
 )
 
@@ -60,7 +67,11 @@ type HubConfig struct {
 type Hub struct {
 	server *tailcat.Server
 	relay  Relay
+	// probe is the key of the relay check while it runs.
+	probe atomic.Pointer[key.NodePublic]
 }
+
+const relayCheckLimit = 10 * time.Second
 
 // StartHub connects the hub side to its relay. ctx limits the start only.
 func StartHub(ctx context.Context, cfg HubConfig) (*Hub, error) {
@@ -70,17 +81,24 @@ func StartHub(ctx context.Context, cfg HubConfig) (*Hub, error) {
 	if cfg.Key.IsZero() || cfg.PresharedKey.IsZero() {
 		return nil, ErrNoIdentity
 	}
+	hub := &Hub{}
 	server := &tailcat.Server{
 		Key:          cfg.Key.node,
 		PresharedKey: cfg.PresharedKey.psk,
 		Region:       cfg.Relay.region,
 		DERPMapURL:   cfg.RelayMapURL,
 		Logf:         cfg.DebugLogf.orDiscard(),
-		AllowClient:  func(k key.NodePublic) bool { return cfg.Admit(DeviceKey{k}) },
+		AllowClient: func(k key.NodePublic) bool {
+			if probe := hub.probe.Load(); probe != nil && *probe == k {
+				return true
+			}
+			return cfg.Admit(DeviceKey{k})
+		},
 	}
 	if err := server.StartContext(ctx); err != nil {
 		return nil, startError{err}
 	}
+	hub.server = server
 	relay := cfg.Relay
 	if relay.IsZero() {
 		parsed, err := tailcat.ParseAddr(server.TailcatAddr())
@@ -90,7 +108,48 @@ func StartHub(ctx context.Context, cfg HubConfig) (*Hub, error) {
 		}
 		relay = Relay{parsed.Region[0]}
 	}
-	return &Hub{server: server, relay: relay}, nil
+	hub.relay = relay
+	if err := hub.checkRelay(ctx, cfg.DebugLogf); err != nil {
+		server.Close()
+		return nil, err
+	}
+	return hub, nil
+}
+
+// checkRelay sends a message from a key that exists only for this check to
+// the hub, through the relay, and waits for the hub's answer.
+func (h *Hub) checkRelay(ctx context.Context, debugLogf Logf) error {
+	probeKey := NewPrivateKey()
+	public := probeKey.node.Public()
+	h.probe.Store(&public)
+	defer func() {
+		h.probe.Store(nil)
+		h.server.DisconnectClient(public)
+	}()
+	probe, err := NewDevice(DeviceConfig{Key: probeKey, Hub: h.Address(), DebugLogf: debugLogf})
+	if err != nil {
+		return err
+	}
+	defer probe.Close()
+	ctx, cancel := context.WithTimeout(ctx, relayCheckLimit)
+	defer cancel()
+	if probe.Register(ctx) != nil {
+		return ErrRelay
+	}
+	return nil
+}
+
+// AddressOn is the address that a hub with these keys has on a relay. A hub
+// uses it to tell its devices where it will be after a relay change
+// (LNK-007).
+func AddressOn(key PrivateKey, psk PresharedKey, relay Relay) Address {
+	described := tailcat.ConnInfo{
+		ServerPublic:      tailcat.NodePublic{NodePublic: key.node.Public()},
+		ServerDiscoPublic: tailcat.DiscoPublicForNode(key.node),
+		PresharedKey:      psk.psk,
+		Region:            []*tailcfg.DERPRegion{relay.region},
+	}
+	return Address{text: described.Addr()}
 }
 
 // Address is the address that devices use. It is a secret (LNK-008).
@@ -143,6 +202,8 @@ const (
 	HubPort uint16 = 443
 	// EnrolPort is where a device with an invite gives its key (LNK-003).
 	EnrolPort uint16 = 444
+	// NoticePort is where a device reads the hub's next address (LNK-007).
+	NoticePort uint16 = 445
 )
 
 // Join copies bytes between two streams in both directions until both have

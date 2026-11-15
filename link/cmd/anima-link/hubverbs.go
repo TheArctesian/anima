@@ -29,6 +29,9 @@ type listedDevice struct {
 	Permitted   time.Time `json:"permitted"`
 	Expires     time.Time `json:"expires"`
 	Streams     int       `json:"streams"`
+	// NextFingerprint is set while the device renews its key: the short
+	// form of the key that will replace Key (LNK-005).
+	NextFingerprint string `json:"nextFingerprint,omitempty"`
 	// Path is "direct", "relayed" or "none" (LNK-006).
 	Path string `json:"path"`
 	// Relay is the relay's name when the path is relayed.
@@ -65,8 +68,13 @@ func hubVerbs(link *hublink.Link, permitted *devices.Store) map[string]control.V
 			listed := []listedDevice{}
 			for _, device := range permitted.All() {
 				path := link.Path(device.Key)
+				next := ""
+				if !device.NextKey.IsZero() {
+					next = device.NextKey.Fingerprint()
+				}
 				listed = append(listed, listedDevice{
-					Key: device.Key, Fingerprint: device.Key.Fingerprint(), Name: device.Name, Permitted: device.Permitted, Expires: device.Expires,
+					NextFingerprint: next,
+					Key:             device.Key, Fingerprint: device.Key.Fingerprint(), Name: device.Name, Permitted: device.Permitted, Expires: device.Expires,
 					Streams: link.Streams(device.Key), Path: string(path.Kind), Relay: path.Relay,
 				})
 			}

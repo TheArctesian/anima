@@ -29,9 +29,12 @@ const (
 	// traffic for 150 s or more stalls for seconds at the next request
 	// (spike K-A, 3.6); 15 s keeps it ready.
 	DefaultKeepalive = 15 * time.Second
-	pingLimit        = 5 * time.Second
-	registerLimit    = 10 * time.Second
-	dialLimit        = 15 * time.Second
+	// DefaultNoticeEvery makes the device read the hub's next address each
+	// 5 minutes with the default keepalive.
+	DefaultNoticeEvery = 20
+	pingLimit          = 5 * time.Second
+	registerLimit      = 10 * time.Second
+	dialLimit          = 15 * time.Second
 )
 
 // Config is what a device link needs to start.
@@ -44,6 +47,9 @@ type Config struct {
 	// Save keeps the device's identity when a renewal changes it (LNK-005).
 	// Nil means that the key is never renewed.
 	Save func(identity.Device) error
+	// NoticeEvery is how many keepalives pass between two reads of the
+	// hub's next address (LNK-007). Zero means DefaultNoticeEvery.
+	NoticeEvery int
 	// Now is the clock. Nil means the system clock.
 	Now       func() time.Time
 	DebugLogf tunnel.Logf
@@ -58,8 +64,12 @@ type Link struct {
 	now       func() time.Time
 	debugLogf tunnel.Logf
 
+	// noticeEvery is how many keepalives pass between two reads of the
+	// hub's notice. beats and failures belong to the keepalive goroutine.
+	noticeEvery, beats, failures int
+
 	mu     sync.Mutex
-	device *tunnel.Device // replaced when the key is renewed
+	device *tunnel.Device // replaced when the key is renewed or the hub moves
 	saved  identity.Device
 	path   tunnel.Path
 }
@@ -118,6 +128,10 @@ func Start(cfg Config) (*Link, error) {
 	}
 	if link.now == nil {
 		link.now = time.Now
+	}
+	link.noticeEvery = max(cfg.NoticeEvery, 0)
+	if link.noticeEvery == 0 {
+		link.noticeEvery = DefaultNoticeEvery
 	}
 	every := cfg.Keepalive
 	if every <= 0 {
@@ -179,9 +193,19 @@ func (l *Link) beat(ctx context.Context) {
 	l.mu.Lock()
 	l.path = path
 	l.mu.Unlock()
-	if path.Kind != tunnel.PathNone {
-		l.renewIfDue(ctx)
+	if path.Kind == tunnel.PathNone {
+		l.failures++
+		if l.failures >= failuresBeforeNextHub {
+			l.followHub(ctx)
+		}
+		return
 	}
+	l.failures = 0
+	l.renewIfDue(ctx)
+	if l.beats%l.noticeEvery == 0 {
+		l.readNotice(ctx)
+	}
+	l.beats++
 }
 
 func (l *Link) ping(ctx context.Context) (tunnel.Path, error) {

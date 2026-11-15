@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/netip"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/TheArctesian/anima/link/devices"
@@ -75,6 +76,10 @@ type Link struct {
 	enrolling  chan struct{}
 	enrolments sync.WaitGroup
 
+	identity identity.Hub
+	// next is the address that devices are told for after a relay change.
+	next atomic.Pointer[tunnel.Address]
+
 	listeners []net.Listener
 	closeOnce sync.Once
 	// stopped closes when Close begins.
@@ -101,7 +106,7 @@ func Start(ctx context.Context, cfg Config) (*Link, error) {
 	if err != nil {
 		return nil, err
 	}
-	serve := map[uint16]func(net.Conn){tunnel.HubPort: link.forward}
+	serve := map[uint16]func(net.Conn){tunnel.HubPort: link.forward, tunnel.NoticePort: link.notify}
 	if link.invites != nil {
 		serve[tunnel.EnrolPort] = link.enrol
 	}
@@ -125,7 +130,7 @@ func Start(ctx context.Context, cfg Config) (*Link, error) {
 func newLink(cfg Config, target string) *Link {
 	link := &Link{
 		target: target, log: cfg.Log, devices: cfg.Devices, invites: cfg.Invites, now: cfg.Now,
-		ownKey: cfg.Identity.Key.Public(), enrolling: make(chan struct{}, maxEnrolments),
+		ownKey: cfg.Identity.Key.Public(), enrolling: make(chan struct{}, maxEnrolments), identity: cfg.Identity,
 		stopped: make(chan struct{}), accepting: make(chan struct{}, 2),
 	}
 	if link.log == nil {
@@ -133,6 +138,9 @@ func newLink(cfg Config, target string) *Link {
 	}
 	if link.now == nil {
 		link.now = time.Now
+	}
+	if !cfg.Identity.NextRelay.IsZero() {
+		link.Announce(cfg.Identity.NextRelay)
 	}
 	return link
 }

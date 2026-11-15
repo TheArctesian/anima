@@ -26,8 +26,9 @@ const renewStepLimit = 5 * time.Second
 // When the hub has already dropped the old key, step 2 gets no answer and
 // step 3 still works.
 //
-// The sessions that are open at step 4 end: they use the old key's tunnel.
-// This happens once in about 150 days.
+// Known limit: the sessions that are open when step 3 completes end. They
+// use the old key's tunnel, and the hub disconnects the old key. This
+// happens once in about 150 days for each device.
 func (l *Link) renewIfDue(ctx context.Context) {
 	current := l.identity()
 	if l.save == nil || current.Expires.IsZero() {

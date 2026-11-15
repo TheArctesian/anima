@@ -27,7 +27,7 @@ var (
 	ErrKnown   = &Refusal{"device_known", "this key is already permitted"}
 	ErrBadName = &Refusal{"bad_name", "a device needs a name of 1 to 64 visible characters"}
 	ErrNoKey   = &Refusal{"no_key", "a device needs a key"}
-	ErrUnknown = &Refusal{"device_unknown", "this key is not in the list of permitted devices"}
+	ErrUnknown = &Refusal{"device_unknown", "this key is not in the list of permitted devices; a device that renewed its key has a new key (see devices.list)"}
 	ErrNotDue  = &Refusal{"renewal_not_due", "a key can be renewed only in its last 30 days"}
 )
 
