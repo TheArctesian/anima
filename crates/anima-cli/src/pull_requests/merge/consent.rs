@@ -5,6 +5,7 @@ use serde_json::Value;
 
 use crate::failure::Failure;
 use crate::forge::render::{flag, number, text};
+use crate::output::text::clean;
 use crate::prompt::Prompter;
 
 /// Whether `text` is a full commit: 40 hex digits.
@@ -99,7 +100,8 @@ pub fn fork(
 }
 
 /// What the operator sees before a merge: the title, the head, the fork, whether GitHub says it
-/// can merge, the checks and the method.
+/// can merge, the checks and the method. Each is one line, cleaned whole: text from GitHub with
+/// a line break in it could otherwise add a line of its own, such as fake checks (CMD-020).
 #[must_use]
 pub fn summary(shown: &str, pull: &Value, method: &str) -> String {
     let mut lines = vec![
@@ -129,7 +131,11 @@ pub fn summary(shown: &str, pull: &Value, method: &str) -> String {
         ));
     }
     lines.push(format!("Method: {method}"));
-    lines.join("\n")
+    lines
+        .iter()
+        .map(|line| clean(line))
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 #[cfg(test)]
