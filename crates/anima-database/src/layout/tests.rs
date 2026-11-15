@@ -65,9 +65,21 @@ fn linux_follows_the_xdg_folders() {
 }
 
 #[test]
-fn linux_ignores_an_xdg_folder_that_is_not_absolute() {
+fn linux_ignores_a_share_folder_that_is_not_absolute() {
     let folders = UserFolders {
         xdg_data_home: Some(PathBuf::from("share")),
+        ..user("/home/ada")
+    };
+
+    assert_eq!(
+        Layout::for_user(Platform::Linux, &folders),
+        Layout::for_user(Platform::Linux, &user("/home/ada"))
+    );
+}
+
+#[test]
+fn linux_ignores_an_empty_runtime_folder() {
+    let folders = UserFolders {
         xdg_runtime_dir: Some(PathBuf::new()),
         ..user("/home/ada")
     };
@@ -92,55 +104,25 @@ fn macos_ignores_the_xdg_folders() {
     );
 }
 
+/// The names are what the server, the roles and the hub's `ANIMA_DATABASE_URL_FILE` rely on.
 #[test]
-fn every_file_but_the_socket_is_below_the_root() {
+fn a_root_with_a_space_gives_these_exact_paths() {
     let layout = Layout::new(PathBuf::from("/var/db root"), PathBuf::from("/run/pg")).unwrap();
 
-    let files = [
-        layout.cluster(),
-        layout.url_file(Role::Owner),
-        layout.url_file(Role::Hub),
-        layout.server_log(),
-        layout.lock_file(),
-    ];
-
-    for file in &files {
-        assert!(file.starts_with("/var/db root"), "{}", file.display());
-    }
-    assert!(!layout.socket_file().starts_with(layout.root()));
-}
-
-#[test]
-fn each_role_and_each_purpose_has_its_own_file() {
-    let layout = Layout::new(PathBuf::from("/var/db"), PathBuf::from("/run/pg")).unwrap();
-
-    let mut files = vec![
-        layout.cluster(),
-        layout.url_file(Role::Owner),
-        layout.url_file(Role::Hub),
-        layout.server_log(),
-        layout.lock_file(),
-        layout.socket_file(),
-    ];
-    let count = files.len();
-    files.sort();
-    files.dedup();
-
-    assert_eq!(files.len(), count);
-}
-
-#[test]
-fn the_url_files_are_alone_in_their_folder() {
-    let layout = Layout::new(PathBuf::from("/var/db"), PathBuf::from("/run/pg")).unwrap();
-
-    let folder = layout.url_file(Role::Hub).parent().map(Path::to_path_buf);
-
+    assert_eq!(layout.root(), Path::new("/var/db root"));
+    assert_eq!(layout.cluster(), Path::new("/var/db root/cluster"));
     assert_eq!(
-        layout.url_file(Role::Owner).parent().map(Path::to_path_buf),
-        folder
+        layout.url_file(Role::Owner),
+        Path::new("/var/db root/urls/owner.url")
     );
-    assert!(!layout.cluster().starts_with(folder.as_deref().unwrap()));
-    assert!(!layout.server_log().starts_with(folder.as_deref().unwrap()));
+    assert_eq!(
+        layout.url_file(Role::Hub),
+        Path::new("/var/db root/urls/hub.url")
+    );
+    assert_eq!(layout.server_log(), Path::new("/var/db root/server.log"));
+    assert_eq!(layout.lock_file(), Path::new("/var/db root/lock"));
+    assert_eq!(layout.socket_folder(), Path::new("/run/pg"));
+    assert_eq!(layout.socket_file(), Path::new("/run/pg/.s.PGSQL.5432"));
 }
 
 #[test]
