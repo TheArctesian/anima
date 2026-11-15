@@ -14,6 +14,7 @@ guac-protocol = { path = "../guac-protocol" }
 jpeg-encoder = "0.6"
 png = "0.18"
 thiserror = { workspace = true }
+zeroize = { workspace = true }
 
 [dev-dependencies]
 flate2 = "1"

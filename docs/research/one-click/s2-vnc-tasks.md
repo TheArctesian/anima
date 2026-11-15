@@ -144,7 +144,8 @@ written here with its reason.
 | --- | --- | --- |
 | T1 Screen and changes | Done. Reviewed by `reviewer`; 6 findings corrected; full gates passed 14 of 14. | `88b420c2`, `0d0582c8` |
 | T2 Frame encoder | Done. Reviewed twice by `reviewer` (1 must-fix and 3 test findings corrected; second verdict: accept); full gates passed 14 of 14. | `2970dfad`, `aa78c4d1` |
-| T3 Frame pacing | Built; in review. | see the log |
+| T3 Frame pacing | Built; in review. | `09f1acdc` |
+| T4 Gateway handshake | Built; in review. | see the log |
 
 Choices:
 
@@ -191,6 +192,19 @@ Choices:
 - **T3, the limits.** At most 30 frames each second, and at most two frames on their way to
   the client and not yet answered with `sync`. Both are parameters (`Pace`). A client's
   `sync` text that is not a timestamp answers nothing.
+- **Full gates.** From T3 on, each task runs the gates of the crate (format, Clippy, tests,
+  limits, names, imports) before its review, and the full `bun run gates` runs after every
+  second task and before the merge. Reason: no other crate depends on `anima-gateway`, so
+  a workspace run can differ only through the lock file or the quality gates, and a full
+  run takes 25 minutes while other sessions build on this Mac.
+- **T4, `ready` before the device.** As guacd, the gateway sends `ready` as soon as
+  `connect` is read, before it reaches the device. A missing credential is asked for after
+  `ready` with `required`, and a device that cannot be reached or refuses the sign-in is an
+  `error` in the open session (0x0301 for a refused sign-in).
+- **T4, the device is an IP address only.** The hub sends the address it resolved and
+  checked (R-032). The gateway refuses a host name, so it never resolves a name itself.
+- **T4, the offered arguments.** `args` lists the six names the hub sets for VNC:
+  `hostname`, `port`, `username`, `password`, `disable-copy`, `disable-paste`.
 - **Merge and push.** The operator said in this session (2026-11-14): "Yes, merge into main
   and push when done". When every task that does not need the operator is done: bring the
   current `main` in, run the full gates, merge, push.
