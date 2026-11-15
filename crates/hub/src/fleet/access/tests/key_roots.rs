@@ -19,8 +19,8 @@ const KIND_REFUSED: &str = "This token cannot do that. Sign in to the hub to do 
 /// device identity and device fields, the R-107 builder and release fields, and the VP-7 VPN
 /// key, registration and renewal fields, the Connect GitHub fields (PRJ-039, PRJ-041), and the
 /// file of a repository's code (PRJ-033, K-E1 Section 13.5), and the run controls, a workflow
-/// started by hand and a commit status (PRJ-034, PRJ-035, PRO-010).
-const D_23: [&str; 42] = [
+/// started by hand and a commit status (PRJ-034, PRJ-035, PRO-010), and merging pull requests (PRJ-033, PRO-013).
+const D_23: [&str; 44] = [
     "createApiKey",
     "revokeApiKey",
     "apiKeys",
@@ -63,6 +63,8 @@ const D_23: [&str; 42] = [
     "cancelWorkflowRun",
     "dispatchWorkflow",
     "setCommitStatus",
+    "mergePullRequest",
+    "mergePullRequests",
 ];
 
 async fn run(kind: TokenKind, scope: Scope, request: Request) -> Response {

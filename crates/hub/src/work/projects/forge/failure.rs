@@ -19,6 +19,7 @@ pub enum Subject {
     Run,
     Workflow,
     Commit,
+    PullRequest,
 }
 
 impl Subject {
@@ -29,6 +30,7 @@ impl Subject {
             Self::Run => "run",
             Self::Workflow => "workflow",
             Self::Commit => "commit",
+            Self::PullRequest => "pull request",
         }
     }
 
@@ -39,6 +41,7 @@ impl Subject {
             Self::Run | Self::Workflow | Self::Commit => {
                 "GitHub says it is gone. Nothing was changed."
             }
+            Self::PullRequest => "GitHub refused the merge.",
         }
     }
 }

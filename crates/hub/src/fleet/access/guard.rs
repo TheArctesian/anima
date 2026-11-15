@@ -237,7 +237,8 @@ fn refusal(identity: Option<&Identity>, document: &ExecutableDocument) -> Option
 /// Running a workflow again, starting one or cancelling one makes code run with a repository's
 /// secrets or stops it, and a commit status can satisfy a required check: login or browser
 /// token only (PRJ-034, PRJ-035, PRO-010, K-E1 Section 13.5).
-pub(super) const API_KEY_REFUSED_ROOTS: [&str; 42] = [
+/// A pull request merge runs code with the repository's secrets: login or browser token only.
+pub(super) const API_KEY_REFUSED_ROOTS: [&str; 44] = [
     "createApiKey",
     "revokeApiKey",
     "apiKeys",
@@ -280,6 +281,8 @@ pub(super) const API_KEY_REFUSED_ROOTS: [&str; 42] = [
     "cancelWorkflowRun",
     "dispatchWorkflow",
     "setCommitStatus",
+    "mergePullRequest",
+    "mergePullRequests",
 ];
 
 /// The root selections a token of `kind` may make, in every operation type. A new kind of

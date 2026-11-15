@@ -12,6 +12,7 @@ mod failures;
 mod history;
 mod issues;
 mod leaks;
+mod merges;
 mod pull_requests;
 mod tokens;
 mod workflows;

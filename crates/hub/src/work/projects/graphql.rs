@@ -205,6 +205,7 @@ impl ProjectsQuery {
 pub struct Mutation(
     ProjectsMutation,
     issues::Mutation,
+    pull_requests::Mutation,
     workflows::Mutation,
     history::Mutation,
 );

@@ -84,7 +84,7 @@ describe("criterion 24 on this repository", () => {
     expect(baselineEntries(baseline)).toEqual([]);
   });
 
-  test.skip("the repository at this commit passes (Projects slice 2: K1 holds @pending for the work, code and history roots until the last task removes it and restores this test)", () => {
+  test("the repository at this commit passes", () => {
     expect(checkPhase3(resolve(import.meta.dir, "..", ".."))).toEqual([]);
   });
 

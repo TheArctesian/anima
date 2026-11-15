@@ -32,6 +32,19 @@ pub(in crate::work::projects) async fn make(
     change: &Change,
     subject: Subject,
 ) -> Result<Receipt> {
+    failure::settled(send(ctx, target, change).await?, subject)
+}
+
+/// Sends `change` to `target` once and records it; what came of it, whatever GitHub answered.
+///
+/// # Errors
+/// The fixed words of [`failure::unsent`] when nothing was sent, and `INTERNAL` when the record
+/// could not be written twice ([`failure::unrecorded`] once GitHub made the change).
+pub(in crate::work::projects) async fn send(
+    ctx: &Context<'_>,
+    target: &Target,
+    change: &Change,
+) -> Result<Settled> {
     let s = scheduling(ctx)?;
     let settled = sources::change(&s, target.account, change)
         .await
@@ -56,7 +69,7 @@ pub(in crate::work::projects) async fn make(
                 }
             })?;
     }
-    failure::settled(settled, subject)
+    Ok(settled)
 }
 
 /// One audit entry and one event for a change that was sent, in one transaction.
