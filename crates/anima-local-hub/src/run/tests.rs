@@ -32,22 +32,23 @@ while :; do sleep 0.05; done
 const HUB: &str = r#"#!/bin/sh
 here=$(dirname "$0")/..
 if [ "$1" = migrate ]; then
+  trap 'echo "migrate stop" >> "$here/events"; exit 1' TERM
   echo "migrate as $(basename "$ANIMA_DATABASE_URL_FILE")" >> "$here/events"
   [ -f "$here/migrate-fails" ] && exit 1
-  [ -f "$here/migrate-slow" ] && { trap 'echo "migrate stop" >> "$here/events"; exit 1' TERM; while :; do sleep 0.05; done; }
+  [ -f "$here/migrate-slow" ] && while :; do sleep 0.05; done
   exit 0
 fi
+trap 'echo "hub stop" >> "$here/events"; exit 0' TERM
 [ -f "$ANIMA_KEY_FILE" ] || exit 9
 echo "hub start as $(basename "$ANIMA_DATABASE_URL_FILE") gateway $ANIMA_GUACD" >> "$here/events"
-trap 'echo "hub stop" >> "$here/events"; exit 0' TERM
 echo '{"fields":{"message":"hub started","listen":"'"$ANIMA_LISTEN"'"}}'
 [ -f "$here/hub-ends" ] && { sleep 0.3; exit 7; }
 while :; do sleep 0.05; done
 "#;
 const GATEWAY: &str = r#"#!/bin/sh
 here=$(dirname "$0")/..
-echo "gateway start" >> "$here/events"
 trap 'echo "gateway stop" >> "$here/events"; exit 0' TERM
+echo "gateway start" >> "$here/events"
 echo "anima-gateway: listening on 127.0.0.1:4999" >&2
 while :; do sleep 0.05; done
 "#;

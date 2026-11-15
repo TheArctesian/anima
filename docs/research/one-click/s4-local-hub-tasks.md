@@ -187,8 +187,8 @@ out of tools.
 | Task | What | State | Commits |
 | --- | --- | --- | --- |
 | T1 | Crate, the folders, the lock, the key file rule | Done. `reviewer` and `reviewer-security`; findings corrected. | `5b954d7a`, `4521241f` |
-| T2 | A child program: sealed environment, ready line, log file, stop with a limit | Done. `reviewer`; findings corrected. | `5b954d7a`, `2e7486b1` |
-| T3 | The group: order, stop, a member that ends, the state; `run` and `status`. A test with the real programs. | Done. `reviewer`: 1 must-fix (a stop during the start) corrected. `reviewer-security`: no must-fix. | `5b954d7a`, `47e4cd60` |
+| T2 | A child program: sealed environment, ready line, log file, stop with a limit | Done. `reviewer` twice; findings corrected (the second: a member's end is seen also when its own child keeps the output open). | `5b954d7a`, `2e7486b1`, and the commit of this row |
+| T3 | The group: order, stop, a member that ends, the state; `run` and `status`. A test with the real programs. | Done. `reviewer`: 1 must-fix (a stop during the start) corrected; second review: closed, 2 test faults corrected. `reviewer-security`: no must-fix. | `5b954d7a`, `47e4cd60` |
 | T4 | The unit files, `install` and `remove`, the copy of the programs | Done. `reviewer`: 1 must-fix (the swap) corrected. `reviewer-security`: 2 should-fix corrected. | `5b954d7a`, `4521241f`, `47e4cd60` |
 | T5 | The Tauri shell commands | Done. Both reviews: sound. | `2ec288af`, `47e4cd60` |
 | T6 | Trial with a real LaunchAgent on this Mac, in a trial folder; removed after | Done. Section 7.3 has the result. | — |
@@ -242,6 +242,10 @@ texts in the spec delta (T8), and the choices marked "S4 recommendation" in Sect
   - `status` after a `kill -9` of `run` shows the last state with `"running":false`. The guide says
     to read `running` first.
   - SIGHUP is not handled.
+  - Tests that the second review asked for and that are not written: a state file that cannot be
+    written, a `status` at the instant a `run` starts, the note for a killed member, the 2 GB limit
+    of the copy, and a stop during the gateway's and the hub's own wait (the database's and the
+    migration's are tested).
 
 ## 7. State at hand-over
 

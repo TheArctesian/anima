@@ -20,6 +20,8 @@ async fn a_stop_that_was_asked_before_the_start_starts_nothing() {
 
     assert_eq!(ended, Ended::Asked);
     assert_eq!(rig.events(), Vec::<String>::new());
+    // A member that was started has a log file, also when it was stopped before a word.
+    assert!(!rig.plan.folders.logs().join("anima-database.log").exists());
     assert_eq!(rig.state(), Some(State::Stopped));
 }
 

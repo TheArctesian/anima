@@ -22,6 +22,9 @@ mod tests;
 /// The most bytes of one output line that go to the log.
 const LINE_LIMIT: usize = 16 * 1024;
 
+/// How long the last lines of a member that ended are waited for.
+const LAST_LINES: Duration = Duration::from_millis(500);
+
 /// What to run. The child gets `env` and nothing else of this program's environment.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Spec {
@@ -202,18 +205,32 @@ impl Child {
         mut pick: impl FnMut(&str) -> Option<T>,
     ) -> Result<T, ChildError> {
         let name = self.name;
+        let mut exit = self.exit.clone();
         let read = async {
             while let Some(lines) = self.lines.as_mut() {
-                // `None`: both outputs are closed. The member ends, or writes no more.
-                let Some(line) = lines.recv().await else {
-                    self.lines = None;
-                    break;
+                // The exit is watched too: a process that the member started can keep the
+                // output open long after the member ended.
+                let line = tokio::select! {
+                    biased;
+                    line = lines.recv() => line,
+                    _ = wait(&mut exit) => break,
                 };
+                match line.as_deref().map(&mut pick) {
+                    Some(Some(picked)) => return Ok(picked),
+                    Some(None) => {}
+                    // Both outputs are closed. The member ends, or writes no more.
+                    None => self.lines = None,
+                }
+            }
+            let status = wait(&mut exit).await;
+            // What the member wrote last can still be on its way.
+            while let Some(lines) = self.lines.as_mut()
+                && let Ok(Some(line)) = tokio::time::timeout(LAST_LINES, lines.recv()).await
+            {
                 if let Some(picked) = pick(&line) {
                     return Ok(picked);
                 }
             }
-            let status = wait(&mut self.exit).await;
             Err(ChildError::Ended { name, status })
         };
         tokio::time::timeout(limit, read)

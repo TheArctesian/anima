@@ -185,3 +185,23 @@ async fn lines_of_the_two_outputs_are_read_in_the_order_they_were_written() {
         .collect();
     assert_eq!(log.lines().collect::<Vec<_>>(), expected);
 }
+
+#[tokio::test]
+async fn a_member_that_ends_is_seen_at_once_also_when_its_own_child_keeps_the_output_open() {
+    let folder = tempfile::tempdir().unwrap();
+    let (mut child, _names) = start(folder.path(), "sleep 8 & echo last; exit 11");
+    let started = std::time::Instant::now();
+
+    let error = child
+        .line_where(SOON, |line| (line == "ready").then_some(()))
+        .await
+        .unwrap_err();
+
+    assert_eq!(error.exit_code(), Some(11), "{error}");
+    assert!(
+        started.elapsed() < Duration::from_secs(5),
+        "{:?}",
+        started.elapsed()
+    );
+    assert_eq!(log_of(folder.path()), "last\n");
+}

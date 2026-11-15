@@ -33,11 +33,11 @@ use carried::Carried;
 pub use error::LocalHubError;
 
 /// More than the worst case of `install`: the stop command and the wait for the hub to stop
-/// (120 s each), then a start command that is tried twice (120 s each). A kill in the middle
-/// would leave the hub stopped.
-const INSTALL_LIMIT: Duration = Duration::from_secs(600);
-/// `remove`: the stop command and the wait, 120 s each.
-const REMOVE_LIMIT: Duration = Duration::from_secs(300);
+/// (120 s each), then up to three start commands on Linux (120 s each), and the copy. A kill
+/// in the middle would leave the hub stopped.
+const INSTALL_LIMIT: Duration = Duration::from_secs(720);
+/// `remove`: the stop command, the wait and on Linux one more command, 120 s each.
+const REMOVE_LIMIT: Duration = Duration::from_secs(420);
 const STATUS_LIMIT: Duration = Duration::from_secs(10);
 
 /// The variables the program gets from the app, when they are set: where the user's folders
