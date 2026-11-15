@@ -1,8 +1,6 @@
 //! The cheapest form of one changed area: a colour, a PNG with a palette, a JPEG or a
 //! full-colour PNG.
 
-use std::collections::HashSet;
-
 use super::{Formats, FrameError, palette::Indexed};
 use crate::screen::{Area, BYTES_PER_PIXEL};
 
@@ -10,8 +8,8 @@ use crate::screen::{Area, BYTES_PER_PIXEL};
 const JPEG_QUALITY: u8 = 80;
 /// Below this many pixels a JPEG's header outweighs what it saves.
 const SMALLEST_JPEG_PIXELS: usize = 4096;
-/// How many pixels are looked at to tell a photograph from flat content.
-const SAMPLES: usize = 512;
+/// How many rows are looked at to tell a photograph from flat content.
+const SAMPLED_ROWS: usize = 16;
 
 /// How an area goes to the client.
 pub(super) enum Picture {
@@ -37,7 +35,7 @@ impl Picture {
                 bytes: indexed_png(&indexed, area)?,
             });
         }
-        if formats.jpeg && is_photograph(rgb) {
+        if formats.jpeg && is_photograph(rgb, area.width) {
             return Ok(Self::Image {
                 mimetype: "image/jpeg",
                 bytes: jpeg(rgb, area)?,
@@ -50,17 +48,24 @@ impl Picture {
     }
 }
 
-/// Whether most sampled pixels have a colour of their own, as in a photograph or a video.
-/// Text and window content repeat a few colours, and PNG keeps them exact and small.
-fn is_photograph(rgb: &[u8]) -> bool {
-    let pixels = rgb.len() / BYTES_PER_PIXEL;
-    if pixels < SMALLEST_JPEG_PIXELS {
+/// Whether the pixels are a photograph or a video: in the sampled rows, fewer than one
+/// pixel in four has the colour of the pixel before it. Text, window content and flat
+/// bands repeat colours along a row, and PNG keeps them exact.
+fn is_photograph(rgb: &[u8], width: usize) -> bool {
+    let (pixels, _) = rgb.as_chunks::<BYTES_PER_PIXEL>();
+    if pixels.len() < SMALLEST_JPEG_PIXELS || width < 2 {
         return false;
     }
-    let (all, _) = rgb.as_chunks::<BYTES_PER_PIXEL>();
-    let sampled: Vec<&[u8; BYTES_PER_PIXEL]> = all.iter().step_by(pixels / SAMPLES).collect();
-    let colours: HashSet<&[u8; BYTES_PER_PIXEL]> = sampled.iter().copied().collect();
-    colours.len() * 2 > sampled.len()
+    let rows = pixels.len() / width;
+    let (mut pairs, mut alike) = (0, 0);
+    for row in pixels
+        .chunks_exact(width)
+        .step_by(rows.div_ceil(SAMPLED_ROWS))
+    {
+        pairs += width - 1;
+        alike += row.windows(2).filter(|pair| pair[0] == pair[1]).count();
+    }
+    alike * 4 < pairs
 }
 
 /// A screen side as PNG wants it. A side is at most 8192, so it fits; one that did not

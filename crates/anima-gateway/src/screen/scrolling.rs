@@ -8,7 +8,7 @@
 use std::hash::{DefaultHasher, Hasher as _};
 
 /// Areas with fewer rows are cheap to send as they are.
-pub(super) const FEWEST_ROWS: usize = 48;
+const FEWEST_ROWS: usize = 48;
 /// A scroll is taken when this share of the rows it leaves in view match: 3 of 4.
 const MATCH_SHARE: (usize, usize) = (3, 4);
 /// How many rows of the new pixels are looked up in the old ones.

@@ -2,10 +2,14 @@
 //! screen, ending with `sync` (guacamole-server `src/libguac/protocol.c`).
 //!
 //! The bytes a frame costs decide how a session feels over a slow link, so each changed
-//! part goes out in its cheapest form: moved pixels as `copy`, one colour as `rect` and `cfill`, flat content as a
-//! PNG (with a palette when it has few colours), photographic content as a JPEG when the
-//! client draws JPEG. Parts that lie close
-//! together go out as one image, because each image has a fixed cost.
+//! part goes out in its cheapest form: moved pixels as `copy`, one colour as `rect` and
+//! `cfill`, flat content as a PNG (with a palette when it has few colours), photographic
+//! content as a JPEG when the client draws JPEG. Parts that lie close together go out as
+//! one image, because each image has a fixed cost.
+//!
+//! A JPEG is not exact. The client then shows pixels a little different from the screen
+//! copy until that part changes again, and a later `copy` moves them as they are. guacd
+//! accepts the same.
 //!
 //! Pure: no I/O and no clock; the caller gives the timestamp.
 
@@ -80,21 +84,19 @@ pub fn frame(
 
 /// `copy`: the client moves pixels it already shows.
 fn copy(moved: &Moved) -> Instruction {
-    let from = moved.from;
+    let Moved { from, x, y } = *moved;
     let source = [from.x, from.y, from.width, from.height].map(|value| value.to_string());
     let target = [
         OVER.to_owned(),
         SCREEN_LAYER.to_owned(),
-        moved.x.to_string(),
-        moved.y.to_string(),
+        x.to_string(),
+        y.to_string(),
     ];
-    let [x, y, width, height] = source;
-    let [mask, layer, to_x, to_y] = target;
-    instruction(
-        "copy",
-        [SCREEN_LAYER],
-        &[x, y, width, height, mask, layer, to_x, to_y],
-    )
+    let args = [SCREEN_LAYER.to_owned()]
+        .into_iter()
+        .chain(source)
+        .chain(target);
+    Instruction::new("copy", args)
 }
 
 /// Adds the instructions that draw `picture` at `area`.

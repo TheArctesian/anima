@@ -19,6 +19,11 @@ pub const BYTES_PER_PIXEL: usize = 3;
 /// The longest side of a screen: the largest size the Guacamole tunnel carries (K4
 /// Section 4). A screen of this size on both sides takes 192 MiB.
 pub const MAX_SIDE: usize = 8192;
+/// The most moves told to the client between two [`Screen::take_changes`]. A move costs the
+/// client about 50 bytes and the device 12, so a device that sends many small moves could
+/// otherwise make the gateway send several times what it received. Further moves are done
+/// as writes.
+pub const MOST_MOVES: usize = 64;
 
 /// Why a screen cannot have a size.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
@@ -153,7 +158,8 @@ impl Screen {
     }
 
     /// Copies the pixels of `from` to the same-sized area whose corner is (`x`, `y`), as a
-    /// device asks when it scrolls or moves a window. The areas may overlap.
+    /// device asks when it scrolls or moves a window. The areas may overlap. The work is in
+    /// proportion to the area, so the caller limits how many moves a device may ask for.
     ///
     /// # Errors
     /// [`OutsideScreen`] when either area is not inside the screen; the screen is then
@@ -161,18 +167,23 @@ impl Screen {
     pub fn move_area(&mut self, from: Area, x: usize, y: usize) -> Result<(), OutsideScreen> {
         let to = Area { x, y, ..from };
         self.row_bytes(to)?;
+        self.row_bytes(from)?;
+        if to == from || from.width == 0 || from.height == 0 {
+            return Ok(());
+        }
         let mut moving = std::mem::take(&mut self.moving);
         moving.clear();
         for row in self.rows(from)? {
             moving.extend_from_slice(row);
         }
-        let written = if self.changed.any_in(from) {
-            // The client does not have these pixels yet, so it cannot copy them.
-            self.write(to, &moving).map_err(|_| OutsideScreen)
-        } else {
+        let told = self.moved.len() < MOST_MOVES && !self.changed.any_in(from);
+        let written = if told {
             self.put(to, &moving);
             self.moved.push(Moved { from, x, y });
             Ok(())
+        } else {
+            // The client does not have these pixels yet, or has been told enough moves.
+            self.write(to, &moving).map_err(|_| OutsideScreen)
         };
         self.moving = moving;
         written
@@ -182,9 +193,6 @@ impl Screen {
     /// old rows, moves them in the copy and notes the move for the client. The write that
     /// follows then finds only the rows the scroll brought in.
     fn follow_scroll<'a>(&mut self, area: Area, new: impl Iterator<Item = &'a [u8]>) {
-        if area.height < scrolling::FEWEST_ROWS {
-            return;
-        }
         let Ok(old) = self.rows(area) else { return };
         let old = scrolling::row_marks(old);
         let Some(scroll) = scrolling::scroll(&old, &scrolling::row_marks(new)) else {
@@ -195,10 +203,8 @@ impl Screen {
             height: scroll.rows,
             ..area
         };
-        if !self.changed.any_in(from) {
-            // Inside the screen, as `area` is.
-            let _ = self.move_area(from, area.x, area.y + scroll.to);
-        }
+        // Inside the screen, as `area` is. A source the client lacks is written, not moved.
+        let _ = self.move_area(from, area.x, area.y + scroll.to);
     }
 
     /// Puts `rgb` into `to` without counting it as changed. `to` is inside the screen and

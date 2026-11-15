@@ -123,6 +123,25 @@ fn text_stays_exact_even_when_the_client_draws_jpeg() {
 }
 
 #[test]
+fn flat_content_with_many_colours_stays_exact_when_the_client_draws_jpeg() {
+    // 320 bands, each of one colour: more colours than a palette holds, but no photograph.
+    let area = Area {
+        x: 0,
+        y: 0,
+        width: 200,
+        height: 320,
+    };
+    let bands: Vec<u8> = (0..area.height)
+        .flat_map(|row| [row.to_le_bytes()[0], row.to_le_bytes()[1], 40].repeat(area.width))
+        .collect();
+    let (mut screen, mut client) = shown(200, 320);
+    screen.write(area, &bands).expect("inside");
+    send(&mut screen, &mut client, WITH_JPEG, 1);
+    assert_eq!(client.images, ["image/png"]);
+    assert_eq!(client.rgb, whole(&screen));
+}
+
+#[test]
 fn a_photograph_goes_out_as_jpeg_only_when_the_client_draws_jpeg() {
     let area = Area {
         x: 0,
@@ -240,7 +259,7 @@ proptest! {
     /// Whatever a device does, a client that draws each frame shows the device's picture.
     #[test]
     fn a_client_that_draws_the_frames_shows_the_screen(
-        (width, height) in (1..100usize, 1..100usize),
+        (width, height) in (1..160usize, 1..160usize),
         rounds in prop::collection::vec(prop::collection::vec(step(), 0..6), 1..5),
     ) {
         let mut screen = Screen::new(width, height).expect("a valid size");

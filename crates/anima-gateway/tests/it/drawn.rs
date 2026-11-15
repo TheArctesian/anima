@@ -5,6 +5,10 @@ use base64::Engine as _;
 use guac_protocol::{Decoder, Instruction, encode};
 
 const BYTES_PER_PIXEL: usize = 3;
+/// The default layer, the only one the gateway draws on.
+const SCREEN: &str = "0";
+/// The channel mask guacd sends with opaque drawing (`GUAC_COMP_OVER`).
+const OVER: &str = "14";
 
 /// What a client shows, and what it received.
 #[derive(Default)]
@@ -60,13 +64,18 @@ impl Drawn {
                 self.rgb = vec![0; width * height * BYTES_PER_PIXEL];
             }
             "copy" => {
+                assert_eq!([&args[0], &args[5], &args[6]], [SCREEN, OVER, SCREEN]);
                 let [x, y, width, height] = numbers(&args[1..5]);
                 let [to_x, to_y] = numbers(&args[7..9]);
                 let pixels = self.read([x, y, width, height]);
                 self.paint([to_x, to_y, width, height], &pixels);
             }
-            "rect" => self.rect = Some(numbers(&args[1..5])),
+            "rect" => {
+                assert_eq!(args[0], SCREEN);
+                self.rect = Some(numbers(&args[1..5]));
+            }
             "cfill" => {
+                assert_eq!([&args[0], &args[1]], [OVER, SCREEN]);
                 let [red, green, blue, alpha] =
                     numbers(&args[2..6]).map(|part| u8::try_from(part).expect("a colour part"));
                 assert_eq!(alpha, 255);
@@ -75,6 +84,7 @@ impl Drawn {
             }
             "img" => {
                 assert!(self.stream.is_none(), "one image at a time on the stream");
+                assert_eq!([&args[1], &args[2]], [OVER, SCREEN]);
                 self.images.push(args[3].clone());
                 self.stream = Some((args[3].clone(), numbers(&args[4..6]), Vec::new()));
             }
