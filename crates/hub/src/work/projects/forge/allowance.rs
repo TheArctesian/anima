@@ -71,11 +71,11 @@ const fn most(kind: Option<TokenKind>) -> u32 {
 pub(super) fn spend(ctx: &Context<'_>) -> Result<()> {
     let asked = schema_dependency::<Asked>(ctx)?;
     let most = most(ctx.data_opt::<Identity>().map(Identity::kind));
-    asked
-        .0
-        .try_update(Ordering::Relaxed, Ordering::Relaxed, |n| {
-            (n < most).then_some(n + 1)
-        })
-        .map(drop)
-        .map_err(|_| coded(SPENT, ErrorCode::Unavailable))
+    // One count per read a resolver asks: the body, depth and complexity limits and the page
+    // sizes keep a request far below `u32::MAX` of them, so the count cannot wrap.
+    if asked.0.fetch_add(1, Ordering::Relaxed) < most {
+        Ok(())
+    } else {
+        Err(coded(SPENT, ErrorCode::Unavailable))
+    }
 }
