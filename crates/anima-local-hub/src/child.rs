@@ -5,12 +5,12 @@ use std::ffi::OsString;
 use std::io;
 use std::path::PathBuf;
 use std::process::{ExitStatus, Stdio};
-use std::sync::{Arc, Mutex, PoisonError};
 use std::time::Duration;
 
 use nix::sys::signal::{Signal, kill};
 use nix::unistd::Pid;
 use tokio::io::{AsyncBufReadExt as _, AsyncRead, BufReader};
+use tokio::net::unix::pipe;
 use tokio::process::Command;
 use tokio::sync::{mpsc, watch};
 
@@ -144,14 +144,17 @@ impl Child {
             name,
             kind: error.kind(),
         };
+        // One pipe for both outputs: the lines arrive in the order the member wrote them, so
+        // a notice on standard error is read before the `ready` on standard output after it.
+        let (output, input) = std::io::pipe().map_err(failed)?;
         let mut child = Command::new(&spec.program)
             .args(&spec.args)
             .env_clear()
             .envs(spec.env.iter().map(|(key, value)| (key, value)))
             .current_dir("/")
             .stdin(Stdio::null())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
+            .stdout(input.try_clone().map_err(failed)?)
+            .stderr(input)
             .kill_on_drop(true)
             .spawn()
             .map_err(failed)?;
@@ -160,14 +163,9 @@ impl Child {
             .and_then(|id| i32::try_from(id).ok())
             .map(Pid::from_raw)
             .ok_or_else(|| failed(io::ErrorKind::Other.into()))?;
-        let log = Arc::new(Mutex::new(log));
+        let output = pipe::Receiver::from_owned_fd(output.into()).map_err(failed)?;
         let (line, lines) = mpsc::unbounded_channel();
-        if let Some(output) = child.stdout.take() {
-            tokio::spawn(copy_lines(output, Arc::clone(&log), line.clone()));
-        }
-        if let Some(output) = child.stderr.take() {
-            tokio::spawn(copy_lines(output, log, line));
-        }
+        tokio::spawn(copy_lines(output, log, line));
         let (report, exit) = watch::channel(None);
         tokio::spawn(async move {
             // An error here means the child cannot be waited for; the group treats that as ended.
@@ -278,7 +276,7 @@ async fn wait(exit: &mut watch::Receiver<Option<ExitStatus>>) -> ExitStatus {
 /// the end also when nobody takes the lines: a full pipe would stop the member.
 async fn copy_lines(
     output: impl AsyncRead + Unpin,
-    log: Arc<Mutex<LogFile>>,
+    mut log: LogFile,
     line: mpsc::UnboundedSender<String>,
 ) {
     let mut output = BufReader::new(output);
@@ -292,10 +290,7 @@ async fn copy_lines(
         let text = String::from_utf8_lossy(&bytes[..bytes.len().min(LINE_LIMIT)]);
         let text = text.trim_end_matches(['\n', '\r']);
         // A log that cannot be written must not stop the member.
-        let _ = log
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .line(text);
+        let _ = log.line(text);
         let _ = line.send(text.to_owned());
     }
 }

@@ -165,3 +165,23 @@ async fn a_stop_that_was_asked_before_anybody_waits_is_kept() {
     assert!(stop.is_asked());
     tokio::time::timeout(SOON, stop.asked()).await.unwrap();
 }
+
+#[tokio::test]
+async fn lines_of_the_two_outputs_are_read_in_the_order_they_were_written() {
+    let folder = tempfile::tempdir().unwrap();
+    let script =
+        "i=0; while [ $i -lt 200 ]; do echo \"e$i\" >&2; echo \"o$i\"; i=$((i+1)); done; echo end";
+    let (mut child, _names) = start(folder.path(), script);
+
+    child
+        .line_where(SOON, |line| (line == "end").then_some(()))
+        .await
+        .unwrap();
+
+    let log = log_of(folder.path());
+    let expected: Vec<String> = (0..200)
+        .flat_map(|i| [format!("e{i}"), format!("o{i}")])
+        .chain(["end".to_owned()])
+        .collect();
+    assert_eq!(log.lines().collect::<Vec<_>>(), expected);
+}
