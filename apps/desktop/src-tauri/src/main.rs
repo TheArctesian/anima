@@ -5,6 +5,7 @@ mod agent;
 mod builder;
 mod command_line;
 mod keystore;
+mod local_hub;
 mod mcp_permissions;
 mod os_program;
 mod process_log;
@@ -28,6 +29,7 @@ fn main() {
         .manage(builder::Running::default())
         .manage(builder::Bundled::default())
         .manage(agent::Installing::default())
+        .manage(local_hub::Changing::default())
         .setup(|_| {
             tauri::async_runtime::spawn(keystore::forget_retired_updater_key());
             Ok(())
@@ -53,6 +55,10 @@ fn main() {
             this_machine::this_machine_read,
             agent::agent_bundled,
             agent::agent_install,
+            local_hub::local_hub_carried,
+            local_hub::local_hub_install,
+            local_hub::local_hub_remove,
+            local_hub::local_hub_status,
             command_line::command_line_read,
             command_line::command_line_install,
             command_line::command_line_remove,
