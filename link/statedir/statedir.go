@@ -3,10 +3,12 @@
 package statedir
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
+	"net"
 	"os"
 	"path/filepath"
 	"syscall"
@@ -22,7 +24,13 @@ var (
 	ErrDamaged = errors.New("statedir: the file is damaged")
 	// ErrAbsent means that the file was never written.
 	ErrAbsent = errors.New("statedir: no such file")
+	// ErrLongPath means that the directory's path leaves no room for a
+	// socket name. The system limit for a socket path is about 100 bytes.
+	ErrLongPath = errors.New("statedir: the path is too long for a socket; use a shorter state directory")
 )
+
+// maxSocketPath is the smaller of the macOS and Linux limits, less the end byte.
+const maxSocketPath = 103
 
 const lockName = "lock"
 
@@ -100,6 +108,35 @@ func (d *Dir) Write(name string, value any) error {
 		return err
 	}
 	return os.Rename(temporary.Name(), filepath.Join(d.path, name))
+}
+
+// Listen makes the Unix socket name in the directory. Only the owner can
+// connect to it. A socket that an earlier process left is replaced: this
+// process holds the directory, so no other process serves it.
+func (d *Dir) Listen(name string) (net.Listener, error) {
+	path := filepath.Join(d.path, name)
+	if len(path) > maxSocketPath {
+		return nil, ErrLongPath
+	}
+	if err := os.Remove(path); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return nil, err
+	}
+	listener, err := net.Listen("unix", path)
+	if err != nil {
+		return nil, err
+	}
+	if err := os.Chmod(path, 0o600); err != nil {
+		listener.Close()
+		return nil, err
+	}
+	return listener, nil
+}
+
+// Dial connects to the socket name of the state directory at path. The
+// caller is a second process: it does not take the directory.
+func Dial(ctx context.Context, path, name string) (net.Conn, error) {
+	var dialer net.Dialer
+	return dialer.DialContext(ctx, "unix", filepath.Join(path, name))
 }
 
 // ownerOnly refuses a path that its group or other users can reach, or that

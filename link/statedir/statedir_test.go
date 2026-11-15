@@ -1,7 +1,9 @@
 package statedir_test
 
 import (
+	"context"
 	"errors"
+	"net"
 	"os"
 	"path/filepath"
 	"strings"
@@ -128,5 +130,60 @@ func TestLNK008ADamagedFileGivesAnErrorWithoutItsContent(t *testing.T) {
 	}
 	if strings.Contains(err.Error(), "privkey") || strings.Contains(err.Error(), "0123") {
 		t.Errorf("the error quotes the file: %q", err)
+	}
+}
+
+func shortDir(t *testing.T) string {
+	t.Helper()
+	path, err := os.MkdirTemp("/tmp", "anima-state-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.RemoveAll(path) })
+	return path
+}
+
+func TestLNK008OnlyTheOwnerCanConnectToASocketOfTheDirectory(t *testing.T) {
+	path := shortDir(t)
+	dir := open(t, path)
+	listener, err := dir.Listen("c.sock")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer listener.Close()
+	if got := mode(t, filepath.Join(path, "c.sock")); got != 0o600 {
+		t.Errorf("socket mode = %o, want 600", got)
+	}
+	conn, err := statedir.Dial(context.Background(), path, "c.sock")
+	if err != nil {
+		t.Fatalf("the owner cannot connect: %v", err)
+	}
+	conn.Close()
+}
+
+func TestASocketLeftByAnEarlierProcessIsReplaced(t *testing.T) {
+	path := shortDir(t)
+	first := open(t, path)
+	listener, err := first.Listen("c.sock")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// A killed process leaves its socket file. Keep the file when the listener closes.
+	listener.(*net.UnixListener).SetUnlinkOnClose(false)
+	listener.Close()
+	first.Close()
+
+	second := open(t, path)
+	again, err := second.Listen("c.sock")
+	if err != nil {
+		t.Fatalf("Listen over a stale socket: %v", err)
+	}
+	again.Close()
+}
+
+func TestAStateDirectoryWithATooLongPathCannotHaveASocket(t *testing.T) {
+	dir := open(t, filepath.Join(shortDir(t), strings.Repeat("d", 100)))
+	if _, err := dir.Listen("c.sock"); !errors.Is(err, statedir.ErrLongPath) {
+		t.Errorf("err = %v, want ErrLongPath", err)
 	}
 }
