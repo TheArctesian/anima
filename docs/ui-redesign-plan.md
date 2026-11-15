@@ -1,5 +1,7 @@
 # Anima UI redesign: plan and prompt (v0.2)
 
+Progress: the plan register in [work-plan.md](work-plan.md) Section 9 holds the state of this plan (PLN-005).
+
 Bottom-up order: philosophy and spec delta → tokens → primitives → shell → pages → final.
 Each layer is frozen before the next starts. The problem statement is
 `docs/ui-critique-2026-11-11.md` (findings 1–45, operator points O1–O11).
