@@ -20,8 +20,9 @@ use crate::{
     fleet::access::{Identity, TokenKind},
 };
 
-/// An API key's caller is a script or an agent, which can page: less than a screen.
-const KEY_READS: u32 = 60;
+/// An API key's caller is a script or an agent, which can page: one page of 30 pull requests
+/// with checks (91 reads), so `anima pr list --checks` works with a key.
+const KEY_READS: u32 = 100;
 /// A login or browser token: the client's fullest screen, 50 pull requests with checks.
 const SIGNED_IN_READS: u32 = 200;
 

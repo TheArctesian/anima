@@ -1,4 +1,4 @@
-//! K-E1 Section 13.1, "Request budget": one GraphQL request asks GitHub at most 60 times for an
+//! K-E1 Section 13.1, "Request budget": one GraphQL request asks GitHub at most 100 times for an
 //! API key and 200 times for a login or browser token. The reads past the budget are refused
 //! with fixed words, and a normal page with its checks stays well inside it.
 
@@ -44,7 +44,7 @@ fn messages(response: &Value) -> Vec<String> {
 }
 
 #[sqlx::test(migrations = "./migrations")]
-async fn prj_032_one_api_key_request_asks_github_at_most_60_times(pool: PgPool) {
+async fn prj_032_one_api_key_request_asks_github_at_most_100_times(pool: PgPool) {
     let forge = forge(&pool).await;
     listed(&forge, 50);
     let read_key = key(&forge, "READ").await;
@@ -62,7 +62,7 @@ async fn prj_032_one_api_key_request_asks_github_at_most_60_times(pool: PgPool) 
 
     let spent = forge.live_reads() - before;
     assert!(
-        spent <= 60,
+        spent <= 100,
         "one request of a key cost {spent} GitHub requests"
     );
     let refused = messages(&response);
