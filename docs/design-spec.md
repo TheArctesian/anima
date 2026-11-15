@@ -481,6 +481,21 @@ The operator's rule (operator, 2026-11-13): "we also need to make a marketing we
 - **SITE-011.** The host of the website is Vercel (operator, 2026-11-13, OD-20). The domain name is not decided. The operator must confirm each change to the Cloudflare account, the `anima.ing` zone or a different cloud account (DNS-008, VPS-005). The project must be static (`apps/site/vercel.json`): no function, no rewrite and no secret.
 - **SITE-012.** The website must say nothing about a paid hosted option until the operator decides the text (Section 11, OD-22).
 
+### 3.13 Stay awake
+
+A hub on the operator's computer does no checks while that computer sleeps. The desktop application has a "Stay awake" control for this. The work record is [research/one-click/s8-stay-awake-tasks.md](research/one-click/s8-stay-awake-tasks.md) (one-click plan S8; operator ruling OR-8, 2026-11-14).
+
+Built state: AWK-001 to AWK-007 are built in `apps/desktop/src-tauri/src/stay_awake/` and `apps/client/src/lib/stay-awake/`. The lid-closed level, a run of 8 hours and each Linux function are not verified on a real computer; the work record lists these checks.
+
+- **AWK-001.** The control must have three states: off, "Keep awake" and "Keep awake with the lid closed". The application must save the state and apply it when it starts.
+- **AWK-002.** "Keep awake" must stop idle sleep of the computer. The display can sleep. It must need no administrator rights. (Built: on macOS the shell runs `caffeinate -i`, which holds a power assertion. On Linux it runs `systemd-inhibit --what=sleep`.)
+- **AWK-003.** "Keep awake with the lid closed" must keep the computer on when the operator closes the lid. It must never be a default. On macOS it needs one set-up step that the operator starts, and the operating system asks for the administrator password (INS-009). The operator can remove the set-up. (Built: the set-up step lets this user run only `pmset -a disablesleep 0` and `pmset -a disablesleep 1`. On Linux the shell holds a `handle-lid-switch` inhibitor and needs no set-up. On KDE Plasma the desktop decides the lid, so the application does not offer this state.)
+- **AWK-004.** The control must be in the Settings page and in the menu bar or tray item of the desktop application. The two must always show the same state.
+- **AWK-005.** When this computer is the hub and the control is off, the application must tell the operator that the checks stop during sleep. (Built: the client takes a hub at a loopback address as this computer. The first-run flow of the in-app hub must use the same rule.)
+- **AWK-006.** The operator can set a battery level. On battery power below that level, the application must hold the control off and must say so. It must start the control again when mains power returns. The default is no level.
+- **AWK-007.** When the application stops, the computer must return to its sleep behaviour from before. This includes a stop by a failure. The application must not change a sleep setting that a different program made. When the hub runs as a service of its own, the same rule applies to the stop of that service.
+- **AWK-008.** When the application cannot hold the state that the operator chose, it must hold the highest state that it can and must show the cause.
+
 ## 4. Security
 
 The hub can open a session to every device. Thus the hub is a high-value target. Obey all the requirements in this section.
@@ -1295,7 +1310,7 @@ Built state: the command line and the MCP server are built and are on `main`, in
 - **SET-001.** The Settings page must be available from the navigation bar.
 - **SET-002.** Withdrawn (2026-11-11, UI redesign; it described the Phase 1 page). Replaced by SET-004.
 - **SET-003.** The Settings page must show a "VPN" section with two lists under their own headings. "Sites": each site's name, its route in the monospace font and its router state in words (for example "Router: none set up", "Router waiting for approval" with an "Approve route" button on the row). "Computers": each node's name, its role and its address, with the key expiry as a status ("Expires in 3 days" as a warning, "Never expires" as plain text), and the nodes that are not in Anima marked as such. When the hub has no VPN picture, the section must say: "VPN status is not available. The hub cannot reach the VPN service." with the technical cause (no LocalAPI proxy, `ANIMA_TAILSCALE_LOCALAPI`, or no answer since the hub started) in a HelpTip.
-- **SET-004.** The Settings page must show a section list beside the content on windows of `bp-wide` and above, and a section jump menu below that width. The sections are Account, Appearance, Hub, Notifications, Checks, Data retention, Updates, API keys, VPN and MCP; each has an anchor. The MCP section is in the desktop client only (MCP-018 to MCP-023; operator, 2026-11-13). The content column is at most `content-form` wide.
+- **SET-004.** The Settings page must show a section list beside the content on windows of `bp-wide` and above, and a section jump menu below that width. The sections are Account, Appearance, Hub, Stay awake, Notifications, Checks, Data retention, Updates, API keys, VPN and MCP; each has an anchor. The MCP section is in the desktop client only (MCP-018 to MCP-023; operator, 2026-11-13). The Stay awake section is in the desktop client only (AWK-004). The content column is at most `content-form` wide.
 - **SET-005.** A section whose fields belong together has one "Save changes" button at its end, enabled only when something changed. A single toggle or choice saves at once and shows "Saved" inline. Every result (saved, failed, test passed) shows in a Notice inside its section.
 - **SET-006.** The Updates section shows the version, the update state and "Check for updates". Packaging and signing details (Tauri packages, updater key, build host) are in a "Details for developers" Disclosure, closed by default.
 
