@@ -8,3 +8,13 @@ default-filter = "not binary_id(anima-desktop::pinning)"
 retries = 0
 # Stop starting tests after the first failure, as `cargo test` stops after the first failing binary.
 fail-fast = true
+
+# Each of these tests runs a PostgreSQL server of its own (one-click plan S3). macOS has 32
+# System V shared-memory segments for the whole computer and each server takes one, so with
+# every test at once `initdb` and `postgres` fail with "No space left on device".
+[test-groups]
+bundled-postgres = { max-threads = 4 }
+
+[[profile.default.overrides]]
+filter = "package(anima-database) | (package(anima-hub) & test(listening::bundled))"
+test-group = "bundled-postgres"

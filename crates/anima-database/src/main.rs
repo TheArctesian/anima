@@ -2,15 +2,21 @@
 //!
 //!   anima-database serve  --tree <folder> [--root <folder> --socket-folder <folder>]
 //!   anima-database status --tree <folder> [--root <folder> --socket-folder <folder>]
+//!   anima-database backup  <file> --tree <folder> [...]
+//!   anima-database restore <file> --tree <folder> [...]
+//!   anima-database verify  --tree <folder> [...]
+//!
+//! `backup`, `restore` and `verify` need a running `serve`.
 //!
 //! `serve` prints `ready` on standard output when the database accepts connections, and stops
 //! the server on SIGTERM or SIGINT. Nothing it prints holds a password (LOG-007).
 
 use std::io::Write as _;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::time::Duration;
 
+use anima_database::backup::Checked;
 use anima_database::startup::{self, BackupExclusion, Running, StartError};
 use anima_database::{
     Layout, LayoutError, Limits, Platform, ServerError, Settings, Tree, UserFolders,
@@ -24,6 +30,8 @@ const EXIT_ANOTHER_COPY: u8 = 10;
 const EXIT_OTHER_VERSION: u8 = 11;
 /// The server ended by itself.
 const EXIT_SERVER_ENDED: u8 = 3;
+/// `verify` found damage.
+const EXIT_DAMAGED: u8 = 4;
 
 const SETTINGS: Settings = Settings {
     max_connections: 30,
@@ -51,8 +59,22 @@ struct Arguments {
 enum Command {
     /// Bring the database up and keep it up until SIGTERM
     Serve(Place),
-    /// Print the versions and whether a copy runs
+    /// Print the versions and whether a server accepts connections
     Status(Place),
+    /// Write a backup of the hub's database to a file (mode 0600)
+    Backup {
+        file: PathBuf,
+        #[command(flatten)]
+        place: Place,
+    },
+    /// Restore a backup into the hub's database, which must be empty
+    Restore {
+        file: PathBuf,
+        #[command(flatten)]
+        place: Place,
+    },
+    /// Check every table and index for damage
+    Verify(Place),
 }
 
 #[derive(Args)]
@@ -92,6 +114,9 @@ fn main() -> ExitCode {
     let outcome = match Arguments::parse().command {
         Command::Serve(place) => serve(&place),
         Command::Status(place) => status(&place),
+        Command::Backup { file, place } => backup(&place, &file),
+        Command::Restore { file, place } => restore(&place, &file),
+        Command::Verify(place) => verify(&place),
     };
     match outcome {
         Ok(code) => code,
@@ -176,6 +201,31 @@ fn status(place: &Place) -> Result<ExitCode, Failure> {
     };
     println!("server: {server}");
     Ok(ExitCode::SUCCESS)
+}
+
+fn backup(place: &Place, file: &Path) -> Result<ExitCode, Failure> {
+    anima_database::backup::write(&Tree::at(&place.tree)?, &place.layout()?, file)?;
+    Ok(ExitCode::SUCCESS)
+}
+
+fn restore(place: &Place, file: &Path) -> Result<ExitCode, Failure> {
+    anima_database::backup::restore(&Tree::at(&place.tree)?, &place.layout()?, file)?;
+    Ok(ExitCode::SUCCESS)
+}
+
+fn verify(place: &Place) -> Result<ExitCode, Failure> {
+    match anima_database::backup::check(&Tree::at(&place.tree)?, &place.layout()?)? {
+        Checked::Sound => {
+            println!("sound");
+            Ok(ExitCode::SUCCESS)
+        }
+        Checked::Damaged(names) => {
+            for name in names {
+                println!("damaged: {name}");
+            }
+            Ok(ExitCode::from(EXIT_DAMAGED))
+        }
+    }
 }
 
 /// The error and each cause below it, on one line.

@@ -3,8 +3,8 @@ use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 
 use super::{
-    ACCESS_RULES, ClusterError, Fit, create, fit, initdb_reason, major_version, user_map,
-    was_stopped_cleanly,
+    ACCESS_RULES, ClusterError, Fit, create, fit, initdb_reason, is_plain_user_name, major_version,
+    user_map, was_stopped_cleanly,
 };
 use crate::scratch::local_tree;
 use crate::{Layout, Program, Tree, lock};
@@ -125,15 +125,22 @@ fn the_rules_have_no_line_for_a_network_connection() {
 }
 
 #[test]
-fn a_user_name_cannot_add_a_second_mapping() {
+fn db_003_a_user_name_means_only_itself_in_the_map() {
     assert_eq!(
         user_map("ada").lines().last(),
         Some("anima \"ada\" anima_super")
     );
     assert_eq!(
-        user_map("a b\" anima_super\nanima \"eve").lines().nth(1),
-        Some("anima \"a b\"\" anima_super")
+        user_map("a b\" anima_super").lines().last(),
+        Some("anima \"a b\"\" anima_super\" anima_super")
     );
+    assert!(is_plain_user_name("ada") && is_plain_user_name("ada lovelace"));
+    assert!(!is_plain_user_name("/^a.*$"), "a pattern");
+    assert!(
+        !is_plain_user_name("ada\nanima eve anima_super"),
+        "a second line"
+    );
+    assert!(!is_plain_user_name(""));
 }
 
 /// A tree whose `initdb` fails as the real one does: its error line on standard error.
@@ -165,18 +172,25 @@ fn a_failed_initdb_says_why_and_leaves_no_cluster() {
 }
 
 #[test]
-fn log_007_only_initdbs_own_error_line_is_passed_on() {
-    let printed = "initdb: warning: something small\n\
-        STATEMENT:  ALTER USER x WITH PASSWORD E'0707';\n\
+fn the_cause_of_a_failed_initdb_is_its_own_line_or_its_servers_fatal_line() {
+    let own = "initdb: warning: something small\n\
         initdb: error: directory \"/x\" exists but is not empty\n\
         initdb: hint: If you want to create a new database system, remove it.\n";
+    let of_server = "running bootstrap script ... 2026-11-14 10:00:00.000 UTC [7] FATAL:  could \
+        not create shared memory segment: No space left on device\n\
+        child process exited with exit code 1\n";
 
     assert_eq!(
-        initdb_reason(printed),
+        initdb_reason(own),
         "directory \"/x\" exists but is not empty"
     );
+    assert!(
+        initdb_reason(of_server).ends_with("shared memory segment: No space left on device"),
+        "{}",
+        initdb_reason(of_server)
+    );
     assert_eq!(
-        initdb_reason("STATEMENT:  ALTER USER x PASSWORD E'0707';\nchild process exited\n"),
+        initdb_reason("child process exited\n"),
         "it printed no cause"
     );
 }

@@ -4,6 +4,7 @@
 //! cannot tell this database from the one in Docker. This crate owns everything on the other
 //! side of that file: where the files are, the server process, the roles.
 
+pub mod backup;
 mod cluster;
 mod layout;
 mod owner_only;

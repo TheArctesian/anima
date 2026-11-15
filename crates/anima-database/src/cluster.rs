@@ -52,6 +52,11 @@ pub enum ClusterError {
     AlreadyThere,
     #[error("the operating system has no name for the user who runs the database")]
     UserName,
+    #[error(
+        "the name of the user who runs the database starts with `/` or has a control \
+         character; PostgreSQL would read it as a pattern or as two lines"
+    )]
+    UserNameForm,
     #[error("pg_controldata did not say how the cluster was stopped")]
     ControlText,
 }
@@ -139,11 +144,22 @@ pub fn admit_this_user(_lock: &Lock, layout: &Layout) -> Result<(), ClusterError
 }
 
 fn this_user() -> Result<String, ClusterError> {
-    User::from_uid(Uid::effective())
+    let name = User::from_uid(Uid::effective())
         .ok()
         .flatten()
         .map(|user| user.name)
-        .ok_or(ClusterError::UserName)
+        .ok_or(ClusterError::UserName)?;
+    if is_plain_user_name(&name) {
+        Ok(name)
+    } else {
+        Err(ClusterError::UserNameForm)
+    }
+}
+
+/// Whether `name` means only itself in `pg_ident.conf`. A leading `/` makes a quoted value a
+/// regular expression there, and a line break would start a second mapping.
+fn is_plain_user_name(name: &str) -> bool {
+    !name.is_empty() && !name.starts_with('/') && !name.chars().any(char::is_control)
 }
 
 /// The `pg_ident.conf` text that maps `user` to [`SUPERUSER`]. The name is quoted, so no
@@ -209,11 +225,18 @@ fn run_initdb(tree: &Tree, cluster: &Path) -> Result<(), ClusterError> {
     })
 }
 
-/// The cause in what `initdb` printed: its own `initdb: error:` line and no other.
+/// The cause in what `initdb` printed: its own `initdb: error:` line, or the `FATAL:` line of
+/// the server it runs to fill the cluster (for example "could not create shared memory
+/// segment: No space left on device"). No password exists when `initdb` runs.
 fn initdb_reason(errors: &str) -> String {
-    errors
+    let own = errors
         .lines()
-        .find_map(|line| line.strip_prefix("initdb: error: "))
+        .find_map(|line| line.strip_prefix("initdb: error: "));
+    let of_server = errors
+        .lines()
+        .find(|line| line.contains("FATAL:"))
+        .map(str::trim);
+    own.or(of_server)
         .unwrap_or("it printed no cause")
         .to_owned()
 }

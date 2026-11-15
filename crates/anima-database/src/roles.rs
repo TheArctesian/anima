@@ -82,15 +82,22 @@ impl Fresh {
     }
 }
 
-/// The settings that keep a statement out of the server log. The server starts with them;
-/// they are sent again with the connection and set again in the session, after whatever the
-/// caller's `PGOPTIONS` asked for, so the last word is this list's.
-const QUIET: [(&str, &str); 5] = [
+/// The settings that keep a statement, and the parse tree of one, out of the server log. The
+/// server starts with the first seven; they are sent again with the connection and set again
+/// in the session, after whatever the caller's `PGOPTIONS` asked for, so the last word is
+/// this list's. A statement here holds a login's verifier, never a password.
+const QUIET: [(&str, &str); 11] = [
     ("log_statement", "none"),
     ("log_min_error_statement", "panic"),
     ("log_min_duration_statement", "-1"),
     ("log_min_duration_sample", "-1"),
     ("log_transaction_sample_rate", "0"),
+    ("log_min_messages", "log"),
+    ("log_error_verbosity", "terse"),
+    ("debug_print_parse", "off"),
+    ("debug_print_rewritten", "off"),
+    ("debug_print_plan", "off"),
+    ("client_min_messages", "notice"),
 ];
 
 async fn apply(

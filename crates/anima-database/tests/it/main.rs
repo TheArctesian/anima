@@ -299,3 +299,33 @@ fn files_of(folder: &Path) -> Vec<(PathBuf, Vec<u8>)> {
     files.sort();
     files
 }
+
+#[test]
+fn db_007_backup_restore_and_verify_work_beside_a_running_serve() {
+    let source = Place::new();
+    let _serving = source.serve();
+    let file = source.folder.path().join("anima.backup");
+
+    let saved = source.command("backup").arg(&file).output().unwrap();
+    assert!(saved.status.success(), "{}", text(&saved.stderr));
+    let checked = source.command("verify").output().unwrap();
+    assert_eq!(
+        text(&checked.stdout),
+        "sound\n",
+        "{}",
+        text(&checked.stderr)
+    );
+
+    let target = Place::new();
+    let _target_serving = target.serve();
+    let restored = target.command("restore").arg(&file).output().unwrap();
+    assert!(restored.status.success(), "{}", text(&restored.stderr));
+    target.as_hub("select 1").unwrap();
+
+    let again = target.command("restore").arg(&file).output().unwrap();
+    assert_eq!(
+        again.status.code(),
+        Some(0),
+        "an empty backup restores twice"
+    );
+}

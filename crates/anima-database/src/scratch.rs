@@ -63,13 +63,19 @@ impl Database {
 
     /// Runs one statement as the superuser in the `postgres` database; `Err` when it fails.
     pub fn sql(&self, statement: &str) -> Result<String, String> {
+        self.sql_in("postgres", statement)
+    }
+
+    /// Runs statements as the superuser in `database`; the answer of the last one.
+    pub fn sql_in(&self, database: &str, statements: &str) -> Result<String, String> {
         let output = self
-            .psql("postgres")
-            .args(["-c", statement])
+            .psql(database)
+            .args(["-c", statements])
             .output()
             .unwrap();
         if output.status.success() {
-            Ok(String::from_utf8(output.stdout).unwrap().trim().to_owned())
+            let printed = String::from_utf8(output.stdout).unwrap();
+            Ok(printed.trim().lines().last().unwrap_or_default().to_owned())
         } else {
             Err(String::from_utf8_lossy(&output.stderr).into_owned())
         }

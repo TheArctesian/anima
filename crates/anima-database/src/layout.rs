@@ -64,6 +64,8 @@ pub enum Role {
 pub enum LayoutError {
     #[error("the {folder} is not an absolute path")]
     NotAbsolute { folder: &'static str },
+    #[error("the {folder}'s path has a control character")]
+    ControlCharacter { folder: &'static str },
     #[error(
         "the database socket path is {length} bytes and the limit is {limit}; \
          the home folder path is too long"
@@ -92,6 +94,18 @@ impl Layout {
     pub fn new(root: PathBuf, socket_folder: PathBuf) -> Result<Self, LayoutError> {
         absolute(&root, "database root")?;
         absolute(&socket_folder, "socket folder")?;
+        // PostgreSQL writes both paths as lines of `postmaster.pid`; a line break in one
+        // would move the lines that tell if the server is ready.
+        for (folder, name) in [(&root, "database root"), (&socket_folder, "socket folder")] {
+            let has_control = folder
+                .as_os_str()
+                .as_encoded_bytes()
+                .iter()
+                .any(u8::is_ascii_control);
+            if has_control {
+                return Err(LayoutError::ControlCharacter { folder: name });
+            }
+        }
         // `unix_socket_directories` is a list: a comma would split the path, and PostgreSQL
         // trims spaces at both ends of an entry. Either gives a folder that was never checked.
         let listed = socket_folder

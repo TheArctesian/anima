@@ -73,33 +73,42 @@ fn serve(envs: &[(&str, &str)]) -> (Running, SocketAddr) {
     }
 }
 
-#[test]
-fn db_002_r_016_the_hub_migrates_and_serves_on_the_bundled_database() {
-    let folder = tempfile::tempdir().unwrap();
-    let layout = Layout::new(folder.path().join("db root"), folder.path().join("s")).unwrap();
-    let database = startup::start(&tree(), &layout, SETTINGS, LIMITS).unwrap();
-    let owner_url = layout.url_file(Role::Owner);
-    let hub_url = layout.url_file(Role::Hub);
-    let key = folder.path().join("anima_key");
-    std::fs::write(&key, STANDARD.encode([5_u8; 32])).unwrap();
-
-    // The one-shot migration, as the owner.
+/// The one-shot migration, as the owner.
+fn migrate(owner_url: &Path, key: &Path) {
     let (migrated, stderr) = finished(spawn(
         &["migrate"],
         &[
-            ("ANIMA_DATABASE_URL_FILE", text(&owner_url)),
-            ("ANIMA_KEY_FILE", text(&key)),
+            ("ANIMA_DATABASE_URL_FILE", text(owner_url)),
+            ("ANIMA_KEY_FILE", text(key)),
         ],
     ));
     assert!(migrated, "{stderr}");
+}
 
-    // A write through the hub's own code, as the hub login that owns nothing.
-    let serving = [
-        ("ANIMA_DATABASE_URL_FILE", text(&hub_url)),
-        ("ANIMA_KEY_FILE", text(&key)),
+/// Serves the hub with the hub login's URL file and asks its own health check. A hub that
+/// starts has passed its start-up checks on this database: it is not a superuser and has no
+/// right to change the audit log (R-016, LOG-006).
+fn serves_and_is_healthy(hub_url: &Path, key: &Path) {
+    let (hub, address) = serve(&[
+        ("ANIMA_DATABASE_URL_FILE", text(hub_url)),
+        ("ANIMA_KEY_FILE", text(key)),
         ("ANIMA_LISTEN", "127.0.0.1:0"),
-    ];
-    let mut operator = super::spawn_with_input(&["operator", "set", "ada"], &serving);
+    ]);
+    let listen = address.to_string();
+    let (healthy, stderr) = finished(spawn(&["health"], &[("ANIMA_LISTEN", &listen)]));
+    assert!(healthy, "{stderr}");
+    drop(hub);
+}
+
+/// A write through the hub's own code, as the hub login that owns nothing.
+fn set_operator(hub_url: &Path, key: &Path) {
+    let mut operator = super::spawn_with_input(
+        &["operator", "set", "ada"],
+        &[
+            ("ANIMA_DATABASE_URL_FILE", text(hub_url)),
+            ("ANIMA_KEY_FILE", text(key)),
+        ],
+    );
     operator
         .0
         .stdin
@@ -109,17 +118,34 @@ fn db_002_r_016_the_hub_migrates_and_serves_on_the_bundled_database() {
         .unwrap();
     let (set, stderr) = finished(operator);
     assert!(set, "{stderr}");
+}
 
-    // The hub passes its start-up checks on this database (not a superuser, no right to
-    // change the audit log: R-016, LOG-006) and answers its own health check.
-    let (hub, address) = serve(&serving);
-    let listen = address.to_string();
-    let (healthy, stderr) = finished(spawn(&["health"], &[("ANIMA_LISTEN", &listen)]));
-    assert!(healthy, "{stderr}");
+#[test]
+fn db_002_r_016_the_hub_migrates_and_serves_on_the_bundled_database() {
+    let folder = tempfile::tempdir().unwrap();
+    let layout = Layout::new(folder.path().join("db root"), folder.path().join("s")).unwrap();
+    let database = startup::start(&tree(), &layout, SETTINGS, LIMITS).unwrap();
+    let key = folder.path().join("anima_key");
+    std::fs::write(&key, STANDARD.encode([5_u8; 32])).unwrap();
 
-    drop(hub);
+    migrate(&layout.url_file(Role::Owner), &key);
+    set_operator(&layout.url_file(Role::Hub), &key);
+    serves_and_is_healthy(&layout.url_file(Role::Hub), &key);
+
+    // DB-007: a backup of this database, restored into a new bundled database, is a
+    // database the hub serves on, with its migration records current.
+    let backup = folder.path().join("anima.backup");
+    anima_database::backup::write(&tree(), &layout, &backup).unwrap();
     assert_eq!(
         database.stop(LIMITS).unwrap(),
         anima_database::Stopped::Clean
     );
+    let second = tempfile::tempdir().unwrap();
+    let restored = Layout::new(second.path().join("db root"), second.path().join("s")).unwrap();
+    let restored_database = startup::start(&tree(), &restored, SETTINGS, LIMITS).unwrap();
+    anima_database::backup::restore(&tree(), &restored, &backup).unwrap();
+
+    serves_and_is_healthy(&restored.url_file(Role::Hub), &key);
+    migrate(&restored.url_file(Role::Owner), &key);
+    restored_database.stop(LIMITS).unwrap();
 }

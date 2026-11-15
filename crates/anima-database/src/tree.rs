@@ -15,6 +15,9 @@ pub enum Program {
     PgCtl,
     PgControldata,
     PgIsready,
+    PgDump,
+    PgRestore,
+    PgAmcheck,
 }
 
 impl Program {
@@ -28,6 +31,9 @@ impl Program {
             Self::PgCtl => "pg_ctl",
             Self::PgControldata => "pg_controldata",
             Self::PgIsready => "pg_isready",
+            Self::PgDump => "pg_dump",
+            Self::PgRestore => "pg_restore",
+            Self::PgAmcheck => "pg_amcheck",
         }
     }
 }

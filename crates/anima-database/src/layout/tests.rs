@@ -202,7 +202,7 @@ fn a_relative_folder_is_refused_and_named() {
 
 #[test]
 fn db_001_a_socket_folder_that_postgresql_would_read_as_a_list_is_refused() {
-    for folder in ["/run/a,/tmp/b", "/run/a\"b", "/run/a ", "/run/a\n"] {
+    for folder in ["/run/a,/tmp/b", "/run/a\"b", "/run/a "] {
         assert_eq!(
             Layout::new(PathBuf::from("/var/db"), PathBuf::from(folder)),
             Err(LayoutError::SocketFolderList),
@@ -220,5 +220,21 @@ fn db_001_a_socket_folder_that_is_not_utf_8_is_refused() {
     assert_eq!(
         Layout::new(PathBuf::from("/var/db"), folder),
         Err(LayoutError::SocketFolderList)
+    );
+}
+
+#[test]
+fn a_folder_with_a_line_break_in_its_path_is_refused() {
+    assert_eq!(
+        Layout::new(PathBuf::from("/var/db\nready"), PathBuf::from("/run/pg")),
+        Err(LayoutError::ControlCharacter {
+            folder: "database root"
+        })
+    );
+    assert_eq!(
+        Layout::new(PathBuf::from("/var/db"), PathBuf::from("/run/pg\n")),
+        Err(LayoutError::ControlCharacter {
+            folder: "socket folder"
+        })
     );
 }
