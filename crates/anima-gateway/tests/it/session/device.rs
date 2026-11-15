@@ -23,6 +23,8 @@ pub(crate) const ALL: Area = Area {
 /// What the test tells the device to send.
 pub(crate) enum Tell {
     Bytes(Vec<u8>),
+    /// Stop reading what the client sends, and keep the connection open.
+    StopReading,
     Close,
 }
 
@@ -43,6 +45,10 @@ pub(crate) struct Device {
     pub(crate) heard: Arc<Mutex<Vec<String>>>,
 }
 
+/// The note for an update request: all of the screen, or what changed.
+pub(crate) const ASKED_FOR_ALL: &str = "update all";
+pub(crate) const ASKED_FOR_CHANGES: &str = "update changes";
+
 impl Device {
     pub(crate) async fn start(sign_in: SignIn) -> Self {
         let listener = TcpListener::bind("127.0.0.1:0").await.expect("a port");
@@ -62,8 +68,20 @@ impl Device {
         }
     }
 
+    /// What the client sent, without its update requests.
     pub(crate) fn heard(&self) -> Vec<String> {
-        self.heard.lock().expect("notes").clone()
+        let all = self.heard.lock().expect("notes").clone();
+        all.into_iter()
+            .filter(|note| !note.starts_with("update"))
+            .collect()
+    }
+
+    /// The client's update requests, in order.
+    pub(crate) fn asked(&self) -> Vec<String> {
+        let all = self.heard.lock().expect("notes").clone();
+        all.into_iter()
+            .filter(|note| note.starts_with("update"))
+            .collect()
     }
 }
 
@@ -81,6 +99,7 @@ async fn serve(
             kind = client.read_u8() => hear(&mut client, kind?, &heard).await?,
             tell = told.recv() => match tell {
                 Some(Tell::Bytes(bytes)) => client.write_all(&bytes).await?,
+                Some(Tell::StopReading) => return std::future::pending().await,
                 Some(Tell::Close) | None => return Ok(()),
             },
         }
@@ -138,8 +157,9 @@ async fn hear(client: &mut TcpStream, kind: u8, heard: &Mutex<Vec<String>>) -> s
             client
                 .write_all(&rfb::update(&[rfb::raw(ALL, &red)]))
                 .await?;
-            return Ok(());
+            ASKED_FOR_ALL.to_owned()
         }
+        3 => ASKED_FOR_CHANGES.to_owned(),
         4 => format!(
             "key {} {}",
             u32::from_be_bytes([body[3], body[4], body[5], body[6]]),

@@ -4,14 +4,14 @@
 use tokio::io::{AsyncRead, AsyncReadExt as _, AsyncWrite, AsyncWriteExt as _};
 use tokio::net::tcp::OwnedWriteHalf;
 use tokio::sync::mpsc;
-use tokio::time::{Instant, sleep_until};
+use tokio::task::JoinHandle;
+use tokio::time::{Instant, sleep_until, timeout};
 
 use super::hub::Hub;
 use super::input::{Clipboard, Input, copy_to_client};
-use super::opening::{Opened, refuse};
+use super::opening::{Allowed, Opened, refuse};
 use super::{Ended, Settings, status};
 use crate::frames::{self, Next, Pacing};
-use crate::handshake::Opening;
 use crate::screen::Screen;
 use crate::view::View;
 use crate::vnc::{self, Event, requests};
@@ -25,7 +25,10 @@ const WAITING_READS: usize = 4;
 struct Running<'a, S> {
     hub: &'a mut Hub<S>,
     to_device: OwnedWriteHalf,
-    opening: Opening,
+    allowed: Allowed,
+    write_wait: std::time::Duration,
+    /// Reads the device; stopped when the session ends.
+    reader: JoinHandle<()>,
     device: vnc::Device,
     screen: Screen,
     view: View,
@@ -40,7 +43,7 @@ where
     S: AsyncRead + AsyncWrite + Send + 'static,
 {
     let Opened {
-        opening,
+        allowed,
         device,
         size,
     } = opened;
@@ -49,7 +52,7 @@ where
     };
     let (mut from_device, to_device) = device.into_split();
     let (read, mut reads) = mpsc::channel::<Vec<u8>>(WAITING_READS);
-    tokio::spawn(async move {
+    let reader = tokio::spawn(async move {
         let mut buffer = vec![0; READ_BYTES];
         while let Ok(count @ 1..) = from_device.read(&mut buffer).await {
             if read.send(buffer[..count].to_vec()).await.is_err() {
@@ -57,11 +60,13 @@ where
             }
         }
     });
-    let view = View::new(&screen, opening.view);
+    let view = View::new(&screen, allowed.view);
     let mut running = Running {
         hub,
         to_device,
-        opening,
+        allowed,
+        write_wait: settings.write_wait,
+        reader,
         device: vnc::Device::default(),
         screen,
         view,
@@ -76,6 +81,12 @@ where
         if let Err(ended) = running.turn(&mut reads).await {
             return ended;
         }
+    }
+}
+
+impl<S> Drop for Running<'_, S> {
+    fn drop(&mut self) {
+        self.reader.abort();
     }
 }
 
@@ -113,11 +124,13 @@ where
         Ended::ByDevice
     }
 
+    /// Writes to the device. A device that does not take the bytes within the write limit
+    /// has stopped reading: the session ends, so it cannot be held open.
     async fn write(&mut self, message: &[u8]) -> Result<(), Ended> {
-        self.to_device
-            .write_all(message)
-            .await
-            .map_err(|_| Ended::ByDevice)
+        match timeout(self.write_wait, self.to_device.write_all(message)).await {
+            Ok(Ok(())) => Ok(()),
+            _ => Err(Ended::ByDevice),
+        }
     }
 
     async fn ask_for_update(&mut self, incremental: bool) -> Result<(), Ended> {
@@ -134,7 +147,7 @@ where
         for event in events {
             match event {
                 Event::Updated => self.ask_for_update(true).await?,
-                Event::Clipboard(text) if self.opening.copy => {
+                Event::Clipboard(text) if self.allowed.copy => {
                     self.hub
                         .send(&copy_to_client(&text))
                         .await
@@ -159,7 +172,7 @@ where
                 self.view.set_client((width, height), &mut self.screen);
                 Ok(())
             }
-            Input::Paste(text) if self.opening.paste => {
+            Input::Paste(text) if self.allowed.paste => {
                 self.write(&requests::cut_text(&text)).await
             }
             Input::Drawn(timestamp) => {
@@ -180,7 +193,7 @@ where
             return Ok(());
         };
         let (shown, changes) = self.view.take_changes(&mut self.screen);
-        let Ok(frame) = frames::frame(shown, &changes, self.opening.formats, timestamp) else {
+        let Ok(frame) = frames::frame(shown, &changes, self.allowed.formats, timestamp) else {
             return Err(refuse(self.hub, status::SERVER_ERROR, Ended::Fault).await);
         };
         self.hub.send(&frame).await.map_err(|_| Ended::ByHub)

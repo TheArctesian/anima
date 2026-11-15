@@ -16,6 +16,7 @@ use guac_protocol::{Instruction, encode};
 use tokio::io::{AsyncRead, AsyncReadExt as _, AsyncWrite, AsyncWriteExt as _};
 use tokio::net::TcpStream;
 use tokio::time::timeout;
+use zeroize::{Zeroize, Zeroizing};
 
 use crate::frames::Pace;
 use hub::Hub;
@@ -41,6 +42,9 @@ pub struct Settings {
     pub device_wait: Duration,
     /// For the operator to answer a prompt for a credential.
     pub answer_wait: Duration,
+    /// The longest one write to the hub or to the device may take. A peer that stops
+    /// reading ends the session; it cannot hold it.
+    pub write_wait: Duration,
     pub pace: Pace,
     /// Another gateway (guacd) that serves the protocols this one does not, as `host:port`.
     pub other_gateway: Option<String>,
@@ -52,6 +56,7 @@ impl Default for Settings {
             handshake_wait: Duration::from_secs(10),
             device_wait: Duration::from_secs(8),
             answer_wait: Duration::from_secs(120),
+            write_wait: Duration::from_secs(15),
             pace: Pace::default(),
             other_gateway: None,
         }
@@ -95,7 +100,7 @@ pub async fn serve<S>(stream: S, connection_id: &str, settings: &Settings) -> En
 where
     S: AsyncRead + AsyncWrite + Send + 'static,
 {
-    let mut hub = Hub::new(stream);
+    let mut hub = Hub::new(stream, settings.write_wait);
     let first = timeout(
         settings.handshake_wait,
         opening::handshake(&mut hub, connection_id),
@@ -133,10 +138,14 @@ where
     let mut buffer = vec![0; 64 * 1024];
     loop {
         let passed = tokio::select! {
-            instruction = hub.next() => match instruction {
-                Some(instruction) => other.write_all(encode(&instruction).as_bytes()).await.is_ok(),
-                None => return Ended::ByHub,
-            },
+            instruction = hub.next() => {
+                let Some(mut instruction) = instruction else { return Ended::ByHub };
+                // `connect` of another protocol holds its credential: both copies are
+                // zeroed once written.
+                let wire = Zeroizing::new(encode(&instruction));
+                instruction.args.iter_mut().for_each(Zeroize::zeroize);
+                other.write_all(wire.as_bytes()).await.is_ok()
+            }
             read = other.read(&mut buffer) => match read {
                 Ok(count @ 1..) => hub.send_wire(&buffer[..count]).await.is_ok(),
                 _ => false,

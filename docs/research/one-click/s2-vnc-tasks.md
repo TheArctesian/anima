@@ -146,8 +146,8 @@ written here with its reason.
 | T2 Frame encoder | Done. Reviewed twice by `reviewer` (1 must-fix and 3 test findings corrected; second verdict: accept); full gates passed 14 of 14. | `2970dfad`, `aa78c4d1` |
 | T3 Frame pacing | Done; full gates passed 14 of 14 at `3a0d1032`. `reviewer`: fix, then accept; 3 findings corrected. | `09f1acdc`, `3a0d1032` |
 | T4 Gateway handshake | Done; full gates passed 14 of 14 at `3a0d1032` (before the correction commit). `reviewer`: accept, 4 findings corrected. `reviewer-security`: no critical or high; 1 medium and 2 low corrected, 3 notes carried to T6. | `dfca4494` and the correction after it |
-| T5 VNC client | Built; in review. | `58174c99` |
-| T6 Session and worker process | Built; in review. | `193342fb` |
+| T5 VNC client | `reviewer-security`: 3 high, 3 medium, 2 low; all corrected. `reviewer`: report not yet in. | `58174c99`, `e13e333d` |
+| T6 Session and worker process | `reviewer`: fix and re-review, no must-level fault; 2 test gaps and 3 code points corrected. `reviewer-security`: accept with 2 medium; M1 corrected, M2 answered in part (see Section 9). | `193342fb` and the correction after it |
 | T7 Large screens | Built; review next. | see the log |
 
 Choices:
@@ -243,6 +243,17 @@ Choices:
 - **T7, no time budget in the test.** The breakdown asked for an encode-time budget. A time
   limit in a test fails on a busy computer, so the test holds the size of the picture and
   the bytes of a whole-screen change; T9 measures the time.
+- **T5, after the security review.** An update is read one rectangle at a time (at most one
+  rectangle of a device's bytes is held; a trickling device costs linear work). One update
+  may send 2 screens of pixels and one new size. Apple's method: key of 128 to 512 bytes,
+  an odd prime of its stated length, generator above 1, public number between 1 and
+  prime - 1. With an account name only Apple's method is used; a device that offers only
+  "no sign-in" while the hub has a credential is refused. `aes` and `des` zero their keys.
+- **T6, after the reviews.** Each write to the hub or the device has a limit (15 s), so a
+  side that stops reading ends the session. The account is dropped after the sign-in. The
+  reader tasks stop with the session. The listener logs what it cannot accept or start,
+  and tells a connection beyond the limit that it is busy. Options the program does not
+  know are refused.
 - **Merge and push.** The operator said in this session (2026-11-14): "Yes, merge into main
   and push when done". When every task that does not need the operator is done: bring the
   current `main` in, run the full gates, merge, push.
@@ -258,6 +269,13 @@ Choices:
 | T4 `reviewer` | After a refused answer the hub lets the client answer only a new `required`: send `Prompt::required()` again. | T6 |
 | T4 `reviewer-security` | The gateway refuses addresses that are never a device, but allows loopback and link-local; the hub's rule (R-032) decides those. Look again if the gateway gets other network reach than a local program. | Security review of T6 |
 | T2 `reviewer` | "guacd pays the same fixed cost for a small update" is not verified. | T9 |
+
+## 9. Open for the operator
+
+| Item | Why it is open |
+| --- | --- |
+| A Unix socket with owner-only access for the gateway (decision D-2) | The security review of T6 proved that any local user of the Mac can take all 64 session places and keep them: loopback TCP is open to every user. A full gateway now answers `error` 0x0201 (busy), so the hub can tell it from a gateway that is down, but the places stay taken. The fix is the socket, and `ANIMA_GUACD` is `host:port` in K7: a contract change, which needs a ruling. |
+| T9 live checks | The operator types the password. |
 
 ## 8. Handoff note
 

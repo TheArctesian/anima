@@ -3,16 +3,19 @@
 
 use std::process::ExitCode;
 
-use anima_gateway::listening::{self, OTHER_GATEWAY, WORKER, Workers};
+use anima_gateway::listening::{self, MOST_SESSIONS, OTHER_GATEWAY, WORKER, Workers};
 use anima_gateway::session::{self, Settings};
 use tokio::net::TcpListener;
 
 const USAGE: &str = "usage: anima-gateway listen <address:port> [--other-gateway <host:port>]";
 
-/// The value of `--other-gateway` in `args`, if it is there.
-fn other_gateway(args: &[String]) -> Option<String> {
-    let at = args.iter().position(|arg| arg == OTHER_GATEWAY)?;
-    args.get(at + 1).cloned()
+/// `rest` as the options of a command: nothing, or `--other-gateway` and its value.
+fn other_gateway(rest: &[String]) -> std::io::Result<Option<String>> {
+    match rest {
+        [] => Ok(None),
+        [option, value] if option == OTHER_GATEWAY => Ok(Some(value.clone())),
+        _ => Err(std::io::Error::other(USAGE)),
+    }
 }
 
 async fn listen(address: &str, other_gateway: Option<String>) -> std::io::Result<()> {
@@ -20,6 +23,7 @@ async fn listen(address: &str, other_gateway: Option<String>) -> std::io::Result
     let workers = Workers {
         program: std::env::current_exe()?,
         other_gateway,
+        most_sessions: MOST_SESSIONS,
     };
     eprintln!("anima-gateway: listening on {}", listener.local_addr()?);
     listening::listen(listener, workers).await
@@ -47,13 +51,13 @@ fn main() -> ExitCode {
         eprintln!("anima-gateway: the runtime did not start");
         return ExitCode::FAILURE;
     };
-    let other = other_gateway(&args);
-    let ran = match args.first().map(String::as_str) {
-        Some("listen") => match args.get(1) {
-            Some(address) => runtime.block_on(listen(address, other)),
-            None => Err(std::io::Error::other(USAGE)),
-        },
-        Some(WORKER) => runtime.block_on(work(other)),
+    let ran = match args.split_first() {
+        Some((command, [address, rest @ ..])) if command == "listen" => {
+            other_gateway(rest).and_then(|other| runtime.block_on(listen(address, other)))
+        }
+        Some((command, rest)) if command == WORKER => {
+            other_gateway(rest).and_then(|other| runtime.block_on(work(other)))
+        }
         _ => Err(std::io::Error::other(USAGE)),
     };
     match ran {

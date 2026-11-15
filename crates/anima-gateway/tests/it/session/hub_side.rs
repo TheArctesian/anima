@@ -37,6 +37,14 @@ impl<S: AsyncRead + AsyncWrite + Unpin> HubSide<S> {
             .expect("sent to the gateway");
     }
 
+    /// Sends `instruction`; `false` when the gateway has closed the connection.
+    pub(crate) async fn try_send(&mut self, instruction: &Instruction) -> bool {
+        self.stream
+            .write_all(encode(instruction).as_bytes())
+            .await
+            .is_ok()
+    }
+
     /// The gateway's next instruction; `None` when it closed the connection.
     pub(crate) async fn next(&mut self) -> Option<Instruction> {
         let mut buffer = [0; 8192];
@@ -55,6 +63,26 @@ impl<S: AsyncRead + AsyncWrite + Unpin> HubSide<S> {
             );
         }
         self.waiting.pop_front()
+    }
+
+    /// Whether the gateway sends nothing for `time`.
+    pub(crate) async fn is_quiet_for(&mut self, time: Duration) -> bool {
+        if !self.waiting.is_empty() {
+            return false;
+        }
+        let mut buffer = [0; 8192];
+        match timeout(time, self.stream.read(&mut buffer)).await {
+            Err(_) => true,
+            Ok(read) => {
+                let count = read.unwrap_or(0);
+                self.waiting.extend(
+                    self.decoder
+                        .feed(&buffer[..count])
+                        .expect("the hub decodes it"),
+                );
+                false
+            }
+        }
     }
 
     /// Reads until an instruction with `opcode` comes, and gives it.

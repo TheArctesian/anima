@@ -14,9 +14,11 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio::process::{Child, Command};
 use tokio::sync::Semaphore;
 
-/// The most sessions at one time. A connection beyond it is closed at once, and the hub
-/// ends that session as it does when the gateway is not there.
+/// The most sessions at one time. A connection beyond it is told that the gateway is busy
+/// and closed.
 pub const MOST_SESSIONS: usize = 64;
+/// `GUAC_PROTOCOL_STATUS_SERVER_BUSY`.
+const SERVER_BUSY: u16 = 0x0201;
 /// The argument that makes the program a worker.
 pub const WORKER: &str = "session";
 /// The option that names another gateway for the protocols this one does not serve.
@@ -28,6 +30,8 @@ pub struct Workers {
     /// The gateway program itself.
     pub program: PathBuf,
     pub other_gateway: Option<String>,
+    /// The most sessions at one time; [`MOST_SESSIONS`] for the program.
+    pub most_sessions: usize,
 }
 
 /// Accepts connections until the listener fails for good.
@@ -35,21 +39,32 @@ pub struct Workers {
 /// # Errors
 /// Never returns `Ok`; the error is the reason the listener cannot go on.
 pub async fn listen(listener: TcpListener, workers: Workers) -> io::Result<()> {
-    let free = Arc::new(Semaphore::new(MOST_SESSIONS));
+    let free = Arc::new(Semaphore::new(workers.most_sessions));
     loop {
-        let Ok((connection, _)) = listener.accept().await else {
-            // Out of file descriptors, most likely: sessions that end free some.
-            tokio::time::sleep(Duration::from_millis(100)).await;
-            continue;
+        let connection = match listener.accept().await {
+            Ok((connection, _)) => connection,
+            Err(error) => {
+                // Out of file descriptors, most likely: sessions that end free some.
+                eprintln!("anima-gateway: a connection was not accepted: {error}");
+                tokio::time::sleep(Duration::from_millis(100)).await;
+                continue;
+            }
         };
         let Ok(place) = free.clone().try_acquire_owned() else {
+            eprintln!("anima-gateway: busy: a connection was refused");
+            // Fixed bytes, written without waiting; the listener still reads nothing.
+            let busy = guac_protocol::encode(&crate::handshake::error(SERVER_BUSY));
+            let _ = connection.try_write(busy.as_bytes());
             continue;
         };
-        if let Ok(mut worker) = start(connection, &workers) {
-            tokio::spawn(async move {
-                let _ = worker.wait().await;
-                drop(place);
-            });
+        match start(connection, &workers) {
+            Ok(mut worker) => {
+                tokio::spawn(async move {
+                    let _ = worker.wait().await;
+                    drop(place);
+                });
+            }
+            Err(error) => eprintln!("anima-gateway: a worker did not start: {error}"),
         }
     }
 }

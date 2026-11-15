@@ -2,6 +2,7 @@
 //! the other (K4 Sections 3 to 5).
 
 mod device;
+mod flow;
 mod hub_side;
 mod program;
 

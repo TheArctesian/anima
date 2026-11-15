@@ -11,6 +11,7 @@ use zeroize::{Zeroize, Zeroizing};
 
 use super::hub::Hub;
 use super::{Ended, Settings, status};
+use crate::frames::Formats;
 use crate::handshake::{
     self, Credential, Handshake, Opening, Prompt, PromptStep, Refused, Secret, Step,
 };
@@ -21,9 +22,22 @@ const MOST_BEFORE_CONNECT: usize = 32;
 /// Random bytes for one sign-in: the longest secret number and the filler of Apple's method.
 const RANDOM_BYTES: usize = 512 + 128;
 
+/// What a signed-in session still needs of its opening. The account is not among it: it
+/// is dropped, and so zeroed, when the sign-in ends.
+#[derive(Clone, Copy)]
+pub(super) struct Allowed {
+    /// The device's clipboard may go to the client (RA-033).
+    pub(super) copy: bool,
+    /// The client's clipboard may go to the device (RA-033).
+    pub(super) paste: bool,
+    pub(super) formats: Formats,
+    /// The client's view, in pixels.
+    pub(super) view: (usize, usize),
+}
+
 /// A session with its device signed in.
 pub(super) struct Opened {
-    pub(super) opening: Opening,
+    pub(super) allowed: Allowed,
     pub(super) device: TcpStream,
     /// The device's screen size.
     pub(super) size: (usize, usize),
@@ -107,15 +121,26 @@ where
         password: &password,
     };
     let mut left = &random[..];
+    let mut short = false;
     let mut hand_out = |buffer: &mut [u8]| {
         let (taken, rest) = left.split_at(buffer.len().min(left.len()));
+        short |= taken.len() < buffer.len();
         buffer[..taken.len()].copy_from_slice(taken);
         left = rest;
     };
     let signing = vnc::sign_in(&mut device, method, account, &mut hand_out);
-    match timeout(settings.device_wait, signing).await {
+    let signed_in = timeout(settings.device_wait, signing).await;
+    let allowed = Allowed {
+        copy: opening.copy,
+        paste: opening.paste,
+        formats: opening.formats,
+        view: opening.view,
+    };
+    match signed_in {
+        // A sign-in that asked for more random bytes than were made used zeros for the rest.
+        Ok(Ok(_)) if short => Err(refuse(hub, status::SERVER_ERROR, Ended::NoRandomNumbers).await),
         Ok(Ok(size)) => Ok(Opened {
-            opening,
+            allowed,
             device,
             size,
         }),

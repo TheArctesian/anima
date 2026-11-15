@@ -32,6 +32,15 @@ fn numbers<const N: usize>(args: &[String]) -> [usize; N] {
 }
 
 impl Drawn {
+    /// A client that shows a black screen of this size.
+    pub(crate) fn black(width: usize, height: usize) -> Self {
+        Self {
+            width,
+            rgb: vec![0; width * height * BYTES_PER_PIXEL],
+            ..Self::default()
+        }
+    }
+
     /// The same picture, with nothing counted as received yet.
     pub(crate) fn counted_from_here(self) -> Self {
         Self {
