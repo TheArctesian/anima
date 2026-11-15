@@ -163,29 +163,28 @@ mod tests {
                 })]),
             },
         };
-        struct Opaque;
-        assert_eq!(Probe(Opaque).debug_text(), None);
-        assert_eq!(Probe(MARK).debug_text(), Some(format!("{MARK:?}")));
+        assert_eq!(Probe(Opaque).debug_text(), "");
+        assert_eq!(Probe(MARK).debug_text(), format!("{MARK:?}"));
         let shown = Probe(variables).debug_text();
-        assert!(
-            !shown.as_deref().is_some_and(|text| text.contains(MARK)),
-            "{shown:?}"
-        );
+        assert!(!shown.contains(MARK), "{shown}");
     }
 
-    /// Its `Debug` text, or `None` when the type has no `Debug`: the inherent method wins
+    /// A type with no `Debug`.
+    struct Opaque;
+
+    /// Its `Debug` text, or nothing when the type has no `Debug`: the inherent method wins
     /// when `T: Debug`, the trait's otherwise.
     struct Probe<T>(T);
 
     impl<T: std::fmt::Debug> Probe<T> {
-        fn debug_text(&self) -> Option<String> {
-            Some(format!("{:?}", self.0))
+        fn debug_text(&self) -> String {
+            format!("{:?}", self.0)
         }
     }
 
     trait NoDebug {
-        fn debug_text(&self) -> Option<String> {
-            None
+        fn debug_text(&self) -> String {
+            String::new()
         }
     }
 
