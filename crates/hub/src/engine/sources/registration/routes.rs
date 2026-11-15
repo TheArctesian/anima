@@ -247,7 +247,7 @@ async fn back_from_create(
 /// `GET /connect/github/installed?installation_id&setup_action&state`: the browser is back from
 /// Install. The ID is checked with GitHub before anything is stored, and the bound browser's page
 /// waits a bounded time for the attempt to end. The bound browser with a state that does not
-/// match only wakes the poll; any other browser changes nothing.
+/// match, or with none, only wakes the poll; any other browser changes nothing.
 async fn back_from_install(
     State(flow): State<GithubFlow>,
     headers: HeaderMap,
