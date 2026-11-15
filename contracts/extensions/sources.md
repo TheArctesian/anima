@@ -348,7 +348,7 @@ pub enum Settled { Done(Receipt), NotFound, NotPermitted, NotMergeable, HeadMove
 
 ### 13.3 The functions (C.2)
 
-All paths are below `/repos/{owner}/{repo}`. Endpoints, methods and body fields are those of GitHub's documentation for API version 2022-11-28 (checked 2026-11-14); success is 201 for an issue, a comment, both runs again and a status, 200 for open or close and for a merge, 202 for a cancel, and 204 for a start (200 when GitHub returns the run). Permissions, all among the App's 23 (Section 1): Issues write for the issue functions, Contents write alone for a merge, Actions write for the run controls and a start, Commit statuses write for a status. "Pre-read" is a fresh GET the hub makes first.
+All paths are below `/repos/{owner}/{repo}`. Endpoints, methods and body fields are those of GitHub's documentation for API version 2022-11-28 (checked 2026-11-14); success is 201 for an issue, a comment, both runs again and a status, 200 for open or close and for a merge, 202 for a cancel, and 204 for a start (200 when GitHub returns the run). Permissions, all among the App's 23 (Section 1): Issues write for the issue functions, Contents write alone for a merge, Actions write for the run controls and a start, Commit statuses write for a status. "Pre-read" is a fresh GET the hub makes first: never answered from the cache, not even stale, so a failed pre-read refuses the change and sends nothing. Only a start's workflow list is read as the cache holds it: it names the workflow, and GitHub refuses a start of one that is gone or turned off.
 
 | Function | Endpoint | Pre-read | Repeat and idempotency |
 | --- | --- | --- | --- |
