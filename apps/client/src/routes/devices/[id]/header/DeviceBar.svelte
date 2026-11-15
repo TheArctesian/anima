@@ -44,7 +44,7 @@
   const PROTOCOL_ICONS: Record<SessionProtocol, IconName> = {
     SSH: 'carbon:terminal',
     RDP: 'carbon:remote-connection',
-    VNC: 'carbon:screen-map',
+    VNC: 'carbon:screen',
   };
 
   /** Not set up shows a "+" in place of the protocol's icon (DEV-022). */

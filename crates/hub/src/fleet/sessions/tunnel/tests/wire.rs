@@ -11,6 +11,7 @@ mod devices;
 mod fake_guacd;
 mod interruption;
 mod moved;
+mod native;
 mod opening;
 mod policy;
 mod refusals;
