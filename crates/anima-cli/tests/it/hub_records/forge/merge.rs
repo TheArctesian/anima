@@ -149,6 +149,8 @@ async fn pro_013_at_a_terminal_a_fork_name_typed_wrong_merges_nothing_even_with_
         "9",
         "--method",
         "merge",
+        "--sha",
+        SHA,
         "--yes",
         "--hub",
         &hub.origin,
@@ -218,4 +220,57 @@ async fn prj_033_a_pull_request_merged_before_or_closed_sends_nothing() {
     read_as(&hub, &closed);
     assert_eq!(ask(&hub, &args).await.code, 6);
     assert_eq!(merges(&hub), 0);
+}
+
+#[tokio::test]
+async fn prj_033_with_json_at_a_terminal_the_summary_is_still_shown_before_the_question() {
+    let hub = FakeHub::start().await;
+    read_as(&hub, &pull_request(7, "Fix the thing", None));
+    let args = [
+        "pr",
+        "merge",
+        REPOSITORY,
+        "7",
+        "--method",
+        "squash",
+        "--json",
+        "--hub",
+        &hub.origin,
+    ];
+    let mut terminal = Terminal::start(&signed_in(), &args);
+    terminal.expect("[y/N]").await;
+    let screen = terminal.screen();
+    terminal.type_line("n").await;
+    let _ = terminal.finish().await;
+    assert!(screen.contains("Fix the thing"), "{screen}");
+    assert!(screen.contains("PASSED: 3 passed"), "{screen}");
+    assert_eq!(merges(&hub), 0);
+}
+
+#[tokio::test]
+async fn prj_033_yes_at_a_terminal_without_sha_sends_no_merge() {
+    let hub = FakeHub::start().await;
+    read_as(&hub, &pull_request(7, "Fix the thing", None));
+    hub.answer(
+        "PullRequestMergeOne",
+        data(json!({ "mergePullRequest": merged(7) })),
+    );
+    let args = [
+        "pr",
+        "merge",
+        REPOSITORY,
+        "7",
+        "--method",
+        "squash",
+        "--yes",
+        "--hub",
+        &hub.origin,
+    ];
+    let terminal = Terminal::start(&signed_in(), &args);
+    let (code, screen) = terminal.finish().await;
+    assert_eq!(
+        merges(&hub),
+        0,
+        "merged a head no one confirmed (exit {code}): {screen}"
+    );
 }

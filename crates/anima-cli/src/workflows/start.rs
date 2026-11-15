@@ -13,7 +13,7 @@ use crate::projects::repository::resolve;
 
 type Workflow = workflow_list::WorkflowListWorkflows;
 
-#[derive(Debug, clap::Args)]
+#[derive(clap::Args)]
 pub struct StartArgs {
     /// The repository: `owner/name` or its ID.
     repository: String,
@@ -25,6 +25,19 @@ pub struct StartArgs {
     /// A named input of the workflow, `name=value`; repeat for more (at most 25).
     #[arg(long = "input", value_name = "NAME=VALUE")]
     inputs: Vec<String>,
+}
+
+/// Never an input's value, which may be a secret (LOG-007): only how many were given.
+impl std::fmt::Debug for StartArgs {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("StartArgs")
+            .field("repository", &self.repository)
+            .field("workflow", &self.workflow)
+            .field("branch", &self.branch)
+            .field("inputs", &self.inputs.len())
+            .finish()
+    }
 }
 
 impl StartArgs {
@@ -106,4 +119,74 @@ async fn find(hub: &Hub, repository: &str, name: &str, wanted: &str) -> Result<W
         });
     }
     Ok(workflow)
+}
+
+#[cfg(test)]
+mod tests {
+    use clap::Parser;
+
+    use super::*;
+
+    const MARK: &str = "S3CR3T-VALUE";
+
+    #[derive(Debug, clap::Parser)]
+    struct Wrapped {
+        #[command(flatten)]
+        args: StartArgs,
+    }
+
+    #[test]
+    fn log_007_the_parsed_command_never_shows_an_input_value_in_debug() {
+        let given = format!("token={MARK}");
+        let parsed = Wrapped::parse_from([
+            "anima",
+            "acme/anima",
+            "release.yml",
+            "--branch",
+            "main",
+            "--input",
+            &given,
+        ]);
+        assert!(!format!("{parsed:?}").contains(MARK), "{parsed:?}");
+    }
+
+    #[test]
+    fn log_007_the_variables_sent_never_show_an_input_value_in_debug() {
+        let variables = workflow_start::Variables {
+            input: workflow_start::DispatchWorkflowInput {
+                repository: "r".to_owned(),
+                workflow_id: "w".to_owned(),
+                branch: "main".to_owned(),
+                inputs: Some(vec![k1(Input {
+                    name: "token".to_owned(),
+                    value: MARK.to_owned(),
+                })]),
+            },
+        };
+        assert_eq!(Probe(Opaque).debug_text(), "");
+        assert_eq!(Probe(MARK).debug_text(), format!("{MARK:?}"));
+        let shown = Probe(variables).debug_text();
+        assert!(!shown.contains(MARK), "{shown}");
+    }
+
+    /// A type with no `Debug`.
+    struct Opaque;
+
+    /// Its `Debug` text, or nothing when the type has no `Debug`: the inherent method wins
+    /// when `T: Debug`, the trait's otherwise.
+    struct Probe<T>(T);
+
+    impl<T: std::fmt::Debug> Probe<T> {
+        fn debug_text(&self) -> String {
+            format!("{:?}", self.0)
+        }
+    }
+
+    trait NoDebug {
+        fn debug_text(&self) -> String {
+            String::new()
+        }
+    }
+
+    impl<T> NoDebug for Probe<T> {}
 }

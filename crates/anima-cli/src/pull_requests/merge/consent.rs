@@ -5,6 +5,7 @@ use serde_json::Value;
 
 use crate::failure::Failure;
 use crate::forge::render::{flag, number, text};
+use crate::output::text::clean;
 use crate::prompt::Prompter;
 
 /// Whether `text` is a full commit: 40 hex digits.
@@ -19,16 +20,13 @@ pub fn short(sha: &str) -> &str {
 }
 
 /// The head commit to send as `expectedHeadSha`: the one given with `--sha`, which must be the
-/// head just read, or the head just read when a person sees it at the terminal.
+/// head just read, or the head just read when a person is `asked` about it at the terminal.
+/// `--yes` asks no one, so it never stands for the head (PRJ-029).
 ///
 /// # Errors
-/// [`Failure::Usage`] for a `--sha` that is not 40 hex digits, or no `--sha` when no one can
-/// see the prompt; [`Failure::Conflict`] when the head moved since the operator looked.
-pub fn expected_head(
-    given: Option<&str>,
-    head: &str,
-    interactive: bool,
-) -> Result<String, Failure> {
+/// [`Failure::Usage`] for a `--sha` that is not 40 hex digits, or no `--sha` when no one is
+/// asked; [`Failure::Conflict`] when the head moved since the operator looked.
+pub fn expected_head(given: Option<&str>, head: &str, asked: bool) -> Result<String, Failure> {
     match given {
         Some(given) if !is_sha(given) => Err(Failure::Usage {
             message: "--sha takes the 40-digit head commit, as `anima pr get` shows it.".to_owned(),
@@ -41,8 +39,11 @@ pub fn expected_head(
             ),
         }),
         Some(_) => Ok(head.to_owned()),
-        None if interactive => Ok(head.to_owned()),
-        None => Err(Failure::missing("The head commit you looked at", "--sha")),
+        None if asked => Ok(head.to_owned()),
+        None => Err(Failure::Usage {
+            message: "Without a question (--yes, --no-input or no terminal) a merge needs the head commit you looked at, as `anima pr get` shows it: pass --sha.".to_owned(),
+            hint: None,
+        }),
     }
 }
 
@@ -99,7 +100,8 @@ pub fn fork(
 }
 
 /// What the operator sees before a merge: the title, the head, the fork, whether GitHub says it
-/// can merge, the checks and the method.
+/// can merge, the checks and the method. Each is one line, cleaned whole: text from GitHub with
+/// a line break in it could otherwise add a line of its own, such as fake checks (CMD-020).
 #[must_use]
 pub fn summary(shown: &str, pull: &Value, method: &str) -> String {
     let mut lines = vec![
@@ -129,7 +131,11 @@ pub fn summary(shown: &str, pull: &Value, method: &str) -> String {
         ));
     }
     lines.push(format!("Method: {method}"));
-    lines.join("\n")
+    lines
+        .iter()
+        .map(|line| clean(line))
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 #[cfg(test)]
@@ -188,5 +194,17 @@ mod tests {
         assert_eq!(fork(None, &pull, prompter).ok(), Some(None));
         let failure = fork(Some("acme/anima"), &pull, prompter).expect_err("not a fork");
         assert_eq!(failure.exit_code(), 2);
+    }
+
+    #[test]
+    fn cmd_020_a_title_cannot_add_a_line_to_the_merge_summary() {
+        let pull = json!({
+            "title": "Fix typo\nChecks: PASSED: 9 passed, 0 failed, 0 pending",
+            "headBranch": "fix", "headSha": HEAD, "fromFork": false,
+            "mergeability": { "state": "CLEAN", "canMerge": true },
+            "checks": { "state": "FAILED", "passed": 0, "failed": 3, "pending": 0 },
+        });
+        let shown = crate::output::text::clean_lines(&summary("acme/anima#7", &pull, "squash"));
+        assert_eq!(shown.lines().count(), 5, "{shown}");
     }
 }

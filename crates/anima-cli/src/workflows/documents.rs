@@ -79,7 +79,7 @@ pub struct WorkflowRunCancel;
     schema_path = "../../contracts/schema.graphql",
     query_path = "src/workflows/start.graphql",
     response_derives = "Debug, Serialize",
-    variables_derives = "Debug",
     skip_serializing_none
 )]
+/// No `Debug` for its variables: an input's value may be a secret (LOG-007).
 pub struct WorkflowStart;

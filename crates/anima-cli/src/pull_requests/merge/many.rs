@@ -1,12 +1,14 @@
 //! Merging several pull requests one after another: read them all, show them, confirm once,
 //! then one outcome for each. Never one from a fork (PRO-013).
 
+use serde_json::Value;
+
 use super::consent::short;
 use super::{MethodArg, outcomes, read};
 use crate::failure::{Failure, Hint, exit};
 use crate::forge::render::{flag, text};
 use crate::invocation::Invocation;
-use crate::output::text::enum_name;
+use crate::output::text::{clean, enum_name};
 use crate::projects::repository::resolve;
 use crate::pull_requests::documents::{PullRequestMergeMany, pull_request_merge_many};
 
@@ -34,18 +36,14 @@ pub async fn merge(
             });
         }
         let head = text(&pull, "headSha").to_owned();
-        lines.push(format!(
-            "{name}#{number} at {}: {}",
-            short(&head),
-            text(&pull, "title")
-        ));
+        lines.push(head_line(name, number, &pull));
         targets.push(pull_request_merge_many::PullRequestTargetInput {
             repository: repository.clone(),
             number,
             expected_head_sha: head,
         });
     }
-    invocation.output.note(&lines.join("\n"));
+    invocation.before_question(&lines.join("\n"));
     invocation.prompter.confirm(&format!(
         "Merge these {} pull requests of {name} by {}, one after another?",
         numbers.len(),
@@ -73,6 +71,16 @@ pub async fn merge(
         });
     }
     Ok(())
+}
+
+/// The pull request as the operator sees it before the question: which, at which head, and its
+/// title. One line, cleaned whole: a title with a line break could add a line (CMD-020).
+fn head_line(name: &str, number: i64, pull: &Value) -> String {
+    clean(&format!(
+        "{name}#{number} at {}: {}",
+        short(text(pull, "headSha")),
+        text(pull, "title")
+    ))
 }
 
 /// Whether the pull request is merged now, by this request or before it.
@@ -106,5 +114,25 @@ const fn k1(method: MethodArg) -> pull_request_merge_many::MergeMethod {
         MethodArg::Merge => pull_request_merge_many::MergeMethod::MERGE,
         MethodArg::Squash => pull_request_merge_many::MergeMethod::SQUASH,
         MethodArg::Rebase => pull_request_merge_many::MergeMethod::REBASE,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+
+    use super::*;
+
+    #[test]
+    fn cmd_020_a_title_cannot_add_a_line_to_the_heads_of_a_bulk_merge() {
+        let pull = json!({
+            "title": "First\nacme/anima#9 at 0000000: Harmless",
+            "headSha": "0123456789abcdef0123456789abcdef01234567",
+        });
+        let line = head_line("acme/anima", 7, &pull);
+        assert_eq!(
+            line,
+            "acme/anima#7 at 0123456: First acme/anima#9 at 0000000: Harmless"
+        );
     }
 }

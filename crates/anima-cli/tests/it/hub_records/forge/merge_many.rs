@@ -124,3 +124,35 @@ async fn cmd_021_each_hub_refusal_of_a_merge_has_its_exit_code() {
         }
     }
 }
+
+#[tokio::test]
+async fn prj_033_with_json_at_a_terminal_the_heads_sent_are_shown_before_the_question() {
+    use crate::kit::terminal::Terminal;
+    let hub = FakeHub::start().await;
+    read_as(&hub, &pull_request(7, "First", None));
+    let mut second = pull_request(8, "Second", None);
+    second["headSha"] = json!(OTHER_SHA);
+    read_as(&hub, &second);
+    let args = [
+        "pr",
+        "merge",
+        REPOSITORY,
+        "7",
+        "8",
+        "--method",
+        "rebase",
+        "--json",
+        "--hub",
+        &hub.origin,
+    ];
+    let anima = crate::kit::Anima::new().with("ANIMA_TOKEN", "login-token-for-forge-tests");
+    let mut terminal = Terminal::start(&anima, &args);
+    terminal.expect("[y/N]").await;
+    let screen = terminal.screen();
+    terminal.type_line("n").await;
+    let _ = terminal.finish().await;
+    for shown in ["First", "Second", "0123456", "fedcba9"] {
+        assert!(screen.contains(shown), "{shown}: {screen}");
+    }
+    assert_eq!(merges(&hub), 0);
+}
