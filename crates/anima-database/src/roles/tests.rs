@@ -123,7 +123,7 @@ fn db_003_the_hub_login_owns_nothing_and_reaches_only_its_database() {
 }
 
 #[test]
-fn db_002_log_007_the_passwords_are_in_two_private_files_and_nowhere_else() {
+fn db_002_log_007_the_passwords_are_in_private_files_and_not_in_the_log() {
     let database = Database::new();
     let _server = database.start();
 
@@ -139,7 +139,7 @@ fn db_002_log_007_the_passwords_are_in_two_private_files_and_nowhere_else() {
         names.push(entry.file_name().into_string().unwrap());
     }
     names.sort();
-    assert_eq!(names, ["hub.url", "owner.url"]);
+    assert_eq!(names, ["hub.url", "owner.url", "superuser.url"]);
 
     let log = fs::read_to_string(database.layout.server_log()).unwrap();
     for role in [Role::Owner, Role::Hub] {

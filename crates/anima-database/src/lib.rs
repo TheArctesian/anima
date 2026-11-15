@@ -10,6 +10,7 @@ mod owner_only;
 mod password;
 pub mod roles;
 mod server;
+pub mod startup;
 mod tree;
 pub mod urls;
 

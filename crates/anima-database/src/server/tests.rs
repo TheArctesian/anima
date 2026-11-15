@@ -13,9 +13,8 @@ mod logging;
 
 use super::pid_file::PidFile;
 use super::{Limits, Server, ServerError, Settings, Stopped, lock, stop_left_over};
-use crate::cluster::SUPERUSER;
 use crate::scratch::{Database, LIMITS, SETTINGS};
-use crate::{Layout, Password};
+use crate::{Layout, Password, Role};
 
 fn mode_of(path: &Path) -> u32 {
     fs::metadata(path).unwrap().permissions().mode() & 0o777
@@ -45,7 +44,10 @@ fn db_001_a_ready_server_listens_on_the_private_socket_only() {
 fn db_003_the_superuser_signs_in_with_the_password_it_was_made_with_and_no_other() {
     let mut database = Database::new();
     let _server = database.start();
-    assert_eq!(database.sql("select current_user").unwrap(), SUPERUSER);
+    assert_eq!(
+        database.sql("select current_user").unwrap(),
+        Role::Superuser.login()
+    );
 
     database.password = Password::from_bytes(&[8; 24]);
 

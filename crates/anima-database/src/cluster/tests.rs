@@ -2,9 +2,9 @@ use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 
-use super::{ClusterError, Fit, create, fit, initdb_reason, major_version};
+use super::{ClusterError, Fit, create, fit, initdb_reason, major_version, was_stopped_cleanly};
 use crate::scratch::local_tree;
-use crate::{Layout, Password, Program, lock};
+use crate::{Layout, Password, Program, Role, Tree, lock};
 
 fn layout_in(folder: &Path) -> Layout {
     Layout::new(folder.join("db root"), folder.join("s")).unwrap()
@@ -114,8 +114,12 @@ fn log_007_every_login_needs_scram_and_no_password_file_is_left() {
         .unwrap()
         .map(|entry| entry.unwrap().file_name())
         .collect();
-    assert!(left.is_empty(), "{left:?}");
-    assert_no_file_holds(layout.root(), password.expose());
+    assert_eq!(
+        left,
+        ["superuser.url"],
+        "the password file of initdb is gone"
+    );
+    assert_no_file_holds(&layout.cluster(), password.expose());
 }
 
 /// No file below `folder` holds `secret` as text: the cluster stores only a SCRAM verifier.
@@ -133,28 +137,89 @@ fn assert_no_file_holds(folder: &Path, secret: &str) {
     }
 }
 
+/// A tree whose `initdb` fails as the real one does: its error line on standard error.
+fn tree_with_a_failing_initdb(folder: &Path) -> Tree {
+    let bin = folder.join("tree/bin");
+    fs::create_dir_all(&bin).unwrap();
+    for program in ["postgres", "pg_ctl", "pg_isready"] {
+        fs::write(bin.join(program), "").unwrap();
+    }
+    let script = "#!/bin/sh\necho 'initdb: error: made to fail' >&2\nexit 1\n";
+    fs::write(bin.join("initdb"), script).unwrap();
+    fs::set_permissions(bin.join("initdb"), fs::Permissions::from_mode(0o755)).unwrap();
+    Tree::at(&folder.join("tree")).unwrap()
+}
+
 #[test]
-fn a_failed_initdb_leaves_no_password_file_and_says_why() {
+fn log_007_a_failed_initdb_says_why_and_leaves_no_password_file_and_no_cluster() {
     let folder = tempfile::tempdir().unwrap();
     let layout = layout_in(folder.path());
-    // initdb refuses a folder that already has files.
-    fs::create_dir_all(layout.cluster()).unwrap();
-    fs::write(layout.cluster().join("occupied"), "").unwrap();
+    let tree = tree_with_a_failing_initdb(folder.path());
 
     let error = create(
         &lock(&layout).unwrap(),
-        &local_tree(),
+        &tree,
         &layout,
         &Password::from_bytes(&[7; 24]),
     )
     .unwrap_err();
 
     assert!(
-        matches!(&error, ClusterError::Initdb { reason } if reason.contains("not empty")),
+        matches!(&error, ClusterError::Initdb { reason } if reason == "made to fail"),
         "{error}"
     );
     assert!(!layout.urls_folder().join("initdb.password").exists());
-    assert!(layout.cluster().join("occupied").exists());
+    assert!(!layout.url_file(Role::Superuser).exists());
+    assert_eq!(major_version(&layout).unwrap(), None);
+}
+
+#[test]
+fn a_cluster_folder_that_is_there_is_never_made_over() {
+    let folder = tempfile::tempdir().unwrap();
+    let layout = layout_in(folder.path());
+    let lock = lock(&layout).unwrap();
+    create(
+        &lock,
+        &local_tree(),
+        &layout,
+        &Password::from_bytes(&[7; 24]),
+    )
+    .unwrap();
+    let superuser_file = fs::read(layout.url_file(Role::Superuser)).unwrap();
+
+    let error = create(
+        &lock,
+        &local_tree(),
+        &layout,
+        &Password::from_bytes(&[8; 24]),
+    )
+    .unwrap_err();
+
+    assert!(matches!(error, ClusterError::AlreadyThere), "{error}");
+    assert_eq!(
+        fs::read(layout.url_file(Role::Superuser)).unwrap(),
+        superuser_file
+    );
+}
+
+#[test]
+fn a_half_made_cluster_left_by_a_crash_is_replaced() {
+    let folder = tempfile::tempdir().unwrap();
+    let layout = layout_in(folder.path());
+    fs::create_dir_all(layout.cluster_being_made().join("base")).unwrap();
+    fs::write(layout.cluster_being_made().join("PG_VERSION"), "17\n").unwrap();
+
+    create(
+        &lock(&layout).unwrap(),
+        &local_tree(),
+        &layout,
+        &Password::from_bytes(&[7; 24]),
+    )
+    .unwrap();
+
+    assert!(!layout.cluster_being_made().exists());
+    assert_eq!(control_value(&layout, "Data page checksum version"), "1");
+    assert!(was_stopped_cleanly(&local_tree(), &layout).unwrap());
 }
 
 #[test]

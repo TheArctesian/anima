@@ -158,6 +158,13 @@ impl Layout {
         self.root.join("cluster")
     }
 
+    /// Where a new cluster is made before it takes its place. A folder here never held data,
+    /// so one that a crash left is removed.
+    #[must_use]
+    pub fn cluster_being_made(&self) -> PathBuf {
+        self.root.join("cluster.new")
+    }
+
     /// The folder of the URL files. Each file in it holds a password.
     #[must_use]
     pub fn urls_folder(&self) -> PathBuf {

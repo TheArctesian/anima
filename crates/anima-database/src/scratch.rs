@@ -7,8 +7,8 @@ use std::time::Duration;
 
 use tempfile::TempDir;
 
-use crate::cluster::{self, SUPERUSER};
-use crate::{Layout, Limits, Lock, Password, Program, Server, Settings, Tree};
+use crate::cluster;
+use crate::{Layout, Limits, Lock, Password, Program, Role, Server, Settings, Tree};
 
 pub const SETTINGS: Settings = Settings {
     max_connections: 10,
@@ -60,7 +60,7 @@ impl Database {
             .args(["-X", "-q", "-t", "-A", "-v", "ON_ERROR_STOP=1"])
             .arg("-h")
             .arg(self.layout.socket_folder())
-            .args(["-U", SUPERUSER, "-d", database]);
+            .args(["-U", Role::Superuser.login(), "-d", database]);
         psql
     }
 

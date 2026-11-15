@@ -10,7 +10,6 @@ use std::io::{self, Write};
 
 use zeroize::Zeroizing;
 
-use crate::cluster::SUPERUSER;
 use crate::{Layout, Password, Role, owner_only};
 
 #[cfg(test)]
@@ -36,7 +35,7 @@ impl Role {
     #[must_use]
     pub const fn login(self) -> &'static str {
         match self {
-            Self::Superuser => SUPERUSER,
+            Self::Superuser => "anima_super",
             Self::Owner => "anima_owner",
             Self::Hub => "anima_hub",
         }
