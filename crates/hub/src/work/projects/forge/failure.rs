@@ -6,7 +6,7 @@ use async_graphql::Error as GraphQlError;
 use source_exchange::{Receipt, Refusal, Settled};
 
 use crate::{
-    api_errors::{ErrorCode, coded, internal},
+    api_errors::{ErrorCode, coded, internal, internal_stating},
     engine::sources::LiveFailure,
 };
 
@@ -224,12 +224,23 @@ pub fn refused(refusal: Refusal, subject: Subject) -> GraphQlError {
     coded(words, code)
 }
 
-/// `INTERNAL` once GitHub made the change and the hub could not record it, twice (K-E1
-/// Section 13.6). `cause` keeps its source for the process log.
+/// `INTERNAL` once the hub could not record what came of a change, twice (K-E1 Section 13.6):
+/// with fixed words when GitHub made it or may have made it, the generic text otherwise.
+/// `cause` stays for the process log.
 #[must_use]
-pub fn unrecorded(mut cause: GraphQlError) -> GraphQlError {
-    "GitHub made the change, but the hub could not record it.".clone_into(&mut cause.message);
-    cause
+pub fn unrecorded(settled: &Settled, cause: sqlx::Error) -> GraphQlError {
+    match settled {
+        Settled::Done(_) => internal_stating(
+            "GitHub made the change, but the hub could not record it.",
+            cause,
+        ),
+        Settled::Unknown => internal_stating(
+            "GitHub may have made the change, but the hub could not record it. Look before you \
+             try again.",
+            cause,
+        ),
+        Settled::Refused(_) | Settled::Limited { .. } => internal(cause),
+    }
 }
 
 /// `UNAVAILABLE`: GitHub made the change, but the hub could not read the result back.
