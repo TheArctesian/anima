@@ -107,3 +107,74 @@ async fn find(hub: &Hub, repository: &str, name: &str, wanted: &str) -> Result<W
     }
     Ok(workflow)
 }
+
+#[cfg(test)]
+mod tests {
+    use clap::Parser;
+
+    use super::*;
+
+    const MARK: &str = "S3CR3T-VALUE";
+
+    #[derive(Debug, clap::Parser)]
+    struct Wrapped {
+        #[command(flatten)]
+        args: StartArgs,
+    }
+
+    #[test]
+    fn log_007_the_parsed_command_never_shows_an_input_value_in_debug() {
+        let given = format!("token={MARK}");
+        let parsed = Wrapped::parse_from([
+            "anima",
+            "acme/anima",
+            "release.yml",
+            "--branch",
+            "main",
+            "--input",
+            &given,
+        ]);
+        assert!(!format!("{parsed:?}").contains(MARK), "{parsed:?}");
+    }
+
+    #[test]
+    fn log_007_the_variables_sent_never_show_an_input_value_in_debug() {
+        let variables = workflow_start::Variables {
+            input: workflow_start::DispatchWorkflowInput {
+                repository: "r".to_owned(),
+                workflow_id: "w".to_owned(),
+                branch: "main".to_owned(),
+                inputs: Some(vec![k1(Input {
+                    name: "token".to_owned(),
+                    value: MARK.to_owned(),
+                })]),
+            },
+        };
+        struct Opaque;
+        assert_eq!(Probe(Opaque).debug_text(), None);
+        assert_eq!(Probe(MARK).debug_text(), Some(format!("{MARK:?}")));
+        let shown = Probe(variables).debug_text();
+        assert!(
+            !shown.as_deref().is_some_and(|text| text.contains(MARK)),
+            "{shown:?}"
+        );
+    }
+
+    /// Its `Debug` text, or `None` when the type has no `Debug`: the inherent method wins
+    /// when `T: Debug`, the trait's otherwise.
+    struct Probe<T>(T);
+
+    impl<T: std::fmt::Debug> Probe<T> {
+        fn debug_text(&self) -> Option<String> {
+            Some(format!("{:?}", self.0))
+        }
+    }
+
+    trait NoDebug {
+        fn debug_text(&self) -> Option<String> {
+            None
+        }
+    }
+
+    impl<T> NoDebug for Probe<T> {}
+}

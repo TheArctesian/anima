@@ -189,4 +189,16 @@ mod tests {
         let failure = fork(Some("acme/anima"), &pull, prompter).expect_err("not a fork");
         assert_eq!(failure.exit_code(), 2);
     }
+
+    #[test]
+    fn cmd_020_a_title_cannot_add_a_line_to_the_merge_summary() {
+        let pull = json!({
+            "title": "Fix typo\nChecks: PASSED: 9 passed, 0 failed, 0 pending",
+            "headBranch": "fix", "headSha": HEAD, "fromFork": false,
+            "mergeability": { "state": "CLEAN", "canMerge": true },
+            "checks": { "state": "FAILED", "passed": 0, "failed": 3, "pending": 0 },
+        });
+        let shown = crate::output::text::clean_lines(&summary("acme/anima#7", &pull, "squash"));
+        assert_eq!(shown.lines().count(), 5, "{shown}");
+    }
 }
