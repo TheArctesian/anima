@@ -1,7 +1,8 @@
 # S3 task breakdown: the bundled PostgreSQL
 
 Date: 2026-11-14. Status: **approved by the operator on 2026-11-14 with the recommendation of each
-decision D-1 to D-10. The build is in progress; Section 6 has the choices taken on the way.**
+decision D-1 to D-10. Built: T1 to T10 and T15, as far as this Mac allows. Section 6 has the choices
+taken on the way; Section 7 has the state and what is open (T11 to T14).**
 
 Branch: `claude/s3-database`, cut from `origin/main` at `604fec8d` (local `main` is 6 commits
 behind it; the S2 branch uses the same base).
@@ -283,4 +284,48 @@ Each is the option I recommend, with its reason. None changes a contract.
 | Gates | `.config/nextest.toml` gets a test group: at most 4 tests that run a PostgreSQL server at one time. | macOS has 32 System V shared-memory segments for the whole computer and each server takes one. A full gates run started so many of these tests at once that `initdb` failed with "No space left on device". This is a shared file of the gates, not a contract. |
 | Security re-review | The roles session also turns off error detail and parse-tree printing. A user name that starts with `/` or has a control character is refused for the user map. A folder path with a control character is refused. | With these settings forced on through `PGOPTIONS`, the verifier (not the password) of a login reached the log. PostgreSQL reads a quoted name with a leading `/` as a pattern. |
 | Security re-review, not changed | A process is taken for this cluster's left-over server from its command line (`<path>/postgres -D <this cluster>`). A program of the same user that puts that text in its own command line is taken for it too. | Only a program of the same user can do this, and it gets a signal that it could send itself. A stricter match on the tree's own path would miss a server that an older tree version started. |
+| T9, T10 | One script, `apps/desktop/src-tauri/database-tree/build.sh`, for both platforms, with the pin in `postgresql.pin` beside it. The tree has nine programs (no `psql`: the tests take it from an installed PostgreSQL), `libpq`, the server's modules, `amcheck` and `pg_stat_statements`. The script checks its result before it copies it out, and keeps a built tree for the same pin. | The repository's own build steps are scripts; the release builder runs fixed programs and can call one script. A tree that fails a check must never reach a bundle. |
+| T11 | **Not switched on.** The release builder does not run the recipe and the bundle does not carry the tree yet. Section 7 has the exact steps. | Three reasons. (1) Nothing in the bundle uses the tree until S4 puts the hub and its launcher there, so each release would carry 31 MB of dead weight. (2) The Linux builder has no `patchelf`, `bison` or `flex`; its releases would fail until the operator installs them, and I do not install system-wide tools. (3) The acceptance line needs a release build with the operator's signing identity, which I must not use. The builder is also the most guarded code in the repository (BLD-044: fixed programs, a scrubbed environment, an exact list of files in the bundle); a change to it should come with the thing that needs it. |
 | All | The full gates for a task run in a second, detached worktree at the task's commit (`.claude/worktrees/s3-gates`; not below `/tmp`, where the desktop tests refuse to run), while the next task is written in this one. | A gates run takes about 35 minutes and must test one fixed tree. |
+
+## 7. State at hand-over, and what is open
+
+### 7.1 Done on this Mac
+
+| Task | State |
+| --- | --- |
+| T1 to T8 | Built, reviewed (`reviewer`, and `reviewer-security` where Section 2 names it), findings corrected. |
+| T9 | The recipe builds the universal tree on this Mac in about 3 minutes: 31 MB, both architectures, minimum macOS 14.2, no link outside the tree, ad hoc signature with the hardened runtime. All tests of `anima-database` pass against it; the start-up and program tests also pass as an `x86_64` build through Rosetta. |
+| T10 | The Linux half of the recipe ran in an `arm64` Debian 12 container (Section 7.3 has the result). The `x86_64` build on the real builder is open. |
+| T15 | `docs/setup/bundled-database.md` and `docs/research/one-click/s3-spec-delta.md`. |
+
+### 7.2 Open: needs the operator or other hardware
+
+| Task | Exact steps | Done when |
+| --- | --- | --- |
+| **T11** wiring (with S4) | 1. On the Linux builder install `patchelf`, `bison`, `flex` and the zlib headers. 2. In `apps/desktop/src-tauri/src/builder/`: add a step before `plan::bundle` that runs `database-tree/build.sh <target> <cache folder> apps/desktop/src-tauri/database` with `SIGN_IDENTITY` set to `bundle.macOS.signingIdentity` on macOS (the builder's `Program` list needs an entry for `sh`; the script must run from the checked-out commit, after the gates). 3. Build `anima-database` for each triple and `lipo` it, as `sidecar.rs` does for `anima`; add it to `bundle.externalBin` and to the two names `artifact::mac_binaries` accepts. 4. Add `"resources": {"database": "database"}` to the bundle configuration in `plan::bundle`. 5. After the bundle: `lipo -archs` and `codesign --verify --strict` on `Contents/Resources/database/bin/postgres`, beside the existing UPD-011 checks. 6. S4 copies `Contents/Resources/database` to a folder named for the PostgreSQL version and runs it from there. | A release build has the tree in `Contents/Resources/database/`, and `codesign --verify --deep --strict` passes on the application. |
+| **T12** signature and notary | 1. `SIGN_IDENTITY="Developer ID Application: …" apps/desktop/src-tauri/database-tree/build.sh darwin-universal <work> <out>`. 2. `codesign -dv --verbose=4 <out>/bin/postgres`: the Team ID is yours, the flags have `runtime`, a timestamp is there, and `codesign -d --entitlements - <out>/bin/postgres` prints no `disable-library-validation`. 3. `<out>/bin/initdb --version` and `ANIMA_POSTGRES_TREE=<out> cargo nextest run -p anima-database` pass (this proves that `libpq` and the modules load with the Team ID and no entitlement). 4. After T11: one release build; the notary answer is Accepted; on a second Mac or a new user account the downloaded application starts `anima-database serve` from the copied tree. | The notary answer is Accepted and the server starts on the second Mac. |
+| **T10** on the Linux builder | On the `x86_64` Linux build computer, with the tools of T11 step 1: `apps/desktop/src-tauri/database-tree/build.sh linux <work> <out>`, then `ANIMA_POSTGRES_TREE=<out> cargo nextest run -p anima-database`. | The recipe's checks and the tests pass. Write the builder's distribution and glibc version into the release notes (decision D-10). |
+| **T13** power cut | On a Mac that can lose power (a spare, or a Mac mini on a switched socket), with a built tree: 1. `anima-database serve --tree <out>`. 2. In a loop, as the owner (`urls/owner.url`), insert one row for each commit into a test table and write the count of acknowledged rows to a file on another computer or a USB drive. 3. Cut the power. 4. Start, run `anima-database serve` again (it says `recovered after an unclean stop`), run `verify`, count the rows. Five times. | Each time `verify` prints `sound` and the table has at least the acknowledged count. If no spare computer exists, close this as not run: D-4 then rests on PostgreSQL's documented behaviour of `fsync_writethrough`. |
+| **T14** Linux desktop | On a real Linux desktop as a normal user: `cargo nextest run -p anima-database` with an installed PostgreSQL 17, check that the socket is in `$XDG_RUNTIME_DIR/anima`, and stop a `serve` that runs in a systemd user unit with `systemctl --user stop`. | The tests pass and the unit stops with exit code 0 inside `TimeoutStopSec`. |
+| Spec delta | Read `docs/research/one-click/s3-spec-delta.md`; approve or change the text; then it goes into `docs/design-spec.md` and `contracts/database.md` (K2 rule) under OI-2. | The operator's ruling. |
+| D-9 | The raw retention of 3 days is in the spec delta, Section 2. No code sets it. | With S6, after the ruling. |
+
+### 7.3 Results of the last checks
+
+| Check | Result |
+| --- | --- |
+| The recipe on this Mac, `darwin-universal`, ad hoc signature | 31 MB; every program and library has both architectures, links only `/usr/lib` and the tree, needs macOS 14.2, and passes `codesign --verify --strict`. About 3 minutes with a source archive that was there. |
+| All tests of `anima-database` against that tree (arm64) | 106 of 106 pass. |
+| The start-up and program tests as an `x86_64` build through Rosetta, against that tree | 18 of 18 pass. |
+| The recipe in a Debian 12 container, `linux`, arm64 | 21 MB; its checks pass (only `libc`, `libm`, `libz` and its own `libpq`). |
+| The start-up and program tests in that container against that tree, as a user with no root rights | 18 of 18 pass; no server left. |
+| A local application bundle with the tree | Not made: T11 is not switched on. That signed files below `Contents/Resources` pass `codesign --verify --deep --strict` is still to be proved in T11 and T12. |
+| The full gates on the last commit | See the final report of the session; the commit message of the merge names the run. |
+
+### 7.4 Things to know that are not in a task
+
+- **A hub test that fails under load.** `sources::controls::src_004_a_paused_account_refuses_sync_now_until_it_is_resumed` (not part of this work) failed once in a full gates run while two other builds used the computer, and passed three of three alone. It waits on a timer.
+- **Two gates runs at the same time** can still use up the 32 shared-memory segments of macOS: each run now starts at most 4 database servers, plus its own test server.
+- **A cluster made by a commit before `abe19803`** has a superuser password file and other access rules. No such build left this branch; a test cluster from then must be made again.
+- The gates take about 35 minutes here, and longer when other sessions build.
