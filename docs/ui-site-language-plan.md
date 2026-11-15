@@ -1,5 +1,7 @@
 # Anima UI: the website's design language (draft for review)
 
+Progress: the plan register in [work-plan.md](work-plan.md) Section 9 holds the state of this plan (PLN-005).
+
 Status: **approved for implementation (operator, 2026-11-13).** Each phase lands on `main` once
 `bun run gates` passes. The mockups are in `docs/mockup/site-language/index.html`; the spec text
 for each row goes into `design-spec.md` in Phase B.

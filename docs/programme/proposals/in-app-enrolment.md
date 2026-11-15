@@ -1,5 +1,7 @@
 # Proposal: in-app VPN enrolment (no install, no terminal)
 
+Progress: the plan register in [work-plan.md](../../work-plan.md) Section 9 holds the state of this plan (PLN-005).
+
 From: the explainer session. The operator asked for this in chat on 2026-11-05 ("I don't want the
 user to have to install anything else or use the terminal") and then said "Yes, send it".
 Status: a proposal for a ruling and for issue #1 (R-007). Not Phase 1 scope (contracts frozen, CON-001).

@@ -1,5 +1,7 @@
 # Phase 3 delta: metrics push agent (R-084)
 
+Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds the state of this plan (PLN-005).
+
 Status: **Approved by the operator on 2026-11-07.** The text is in `docs/design-spec.md` (R-084).
 
 Operator decision: 2026-11-07. Ruling: R-084. Contract change: CR-8. New package: WP-54.

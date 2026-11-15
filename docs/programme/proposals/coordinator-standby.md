@@ -1,5 +1,7 @@
 # Proposal: copies of the coordinator database, and how to move the coordinator
 
+Progress: the plan register in [work-plan.md](../../work-plan.md) Section 9 holds the state of this plan (PLN-005).
+
 From: the planning session of 2026-11-12.
 Status: a proposal for a ruling. The operator decided its direction on 2026-11-12 (OD-W9, see
 "Decision"). The requirements below are not yet approved one by one.

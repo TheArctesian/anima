@@ -1,5 +1,7 @@
 # Proposal: bulk data on the operator's machines, in encrypted pieces
 
+Progress: the plan register in [work-plan.md](../../work-plan.md) Section 9 holds the state of this plan (PLN-005).
+
 From: the planning session of 2026-11-12. The operator asked that data be spread to other
 machines by their capacity, and that the VPS not carry the storage: "it also means a lot of
 storage burden on the hub no which is a VPS which is expensive". The operator agreed this form:
