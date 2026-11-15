@@ -189,3 +189,19 @@ func TestLNK009AnIdleLinkDoesNotStall(t *testing.T) {
 		t.Logf("the first request after 4 minutes idle took %v", took.Round(time.Millisecond))
 	}
 }
+
+func TestLNK006TheDeviceLinkReportsARelayedPath(t *testing.T) {
+	testbed.ForceRelay(t)
+	s := newSite(t)
+	s.startHub(t)
+	device := s.startDevice(t, 500*time.Millisecond)
+	getUntil(t, device, 30*time.Second)
+
+	deadline := time.Now().Add(30 * time.Second)
+	for device.Path().Kind != tunnel.PathRelayed || device.Path().Latency <= 0 {
+		if time.Now().After(deadline) {
+			t.Fatalf("path = %+v, want relayed with a latency", device.Path())
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+}

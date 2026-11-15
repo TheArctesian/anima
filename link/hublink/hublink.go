@@ -119,6 +119,16 @@ func (l *Link) Address() tunnel.Address { return l.hub.Address() }
 // Relay is the relay in use. The caller saves it with the identity (LNK-001).
 func (l *Link) Relay() tunnel.Relay { return l.hub.Relay() }
 
+// Path reports how the traffic of one device reaches the hub now, with the
+// relay's name when it is relayed (LNK-006). A device that is not connected
+// has no path.
+func (l *Link) Path(device tunnel.DeviceKey) tunnel.Path {
+	if path, known := l.hub.Paths()[device]; known {
+		return path
+	}
+	return tunnel.Path{Kind: tunnel.PathNone}
+}
+
 // Streams is the number of open streams of one device.
 func (l *Link) Streams(device tunnel.DeviceKey) int { return l.streams.count(device) }
 

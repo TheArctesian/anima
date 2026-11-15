@@ -282,3 +282,22 @@ func TestLNK003TheOperatorCancelsAnInvite(t *testing.T) {
 		t.Errorf("an invite with no name: %q, exit %d", text, code)
 	}
 }
+
+func TestLNK006TheOperatorSeesThePathOfEachDevice(t *testing.T) {
+	hub := startHub(t)
+	_, local := startDevice(t, hub)
+	if _, err := (&http.Client{Timeout: 30 * time.Second}).Get("http://" + local); err != nil {
+		t.Fatal(err)
+	}
+	deadline := time.Now().Add(30 * time.Second)
+	for {
+		listed, _ := hub.ctl(t, "devices.list")
+		if strings.Contains(listed, `"path":"direct"`) {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("devices.list = %s, want a direct path for the connected device", listed)
+		}
+		time.Sleep(200 * time.Millisecond)
+	}
+}

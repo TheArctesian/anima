@@ -25,6 +25,10 @@ type listedDevice struct {
 	Name      string           `json:"name"`
 	Permitted time.Time        `json:"permitted"`
 	Streams   int              `json:"streams"`
+	// Path is "direct", "relayed" or "none" (LNK-006).
+	Path string `json:"path"`
+	// Relay is the relay's name when the path is relayed.
+	Relay string `json:"relay,omitempty"`
 }
 
 // revokeRequest is the arguments of "devices.revoke".
@@ -56,7 +60,11 @@ func hubVerbs(link *hublink.Link, permitted *devices.Store, now func() time.Time
 		"devices.list": func(context.Context, json.RawMessage) (any, error) {
 			listed := []listedDevice{}
 			for _, device := range permitted.All() {
-				listed = append(listed, listedDevice{device.Key, device.Name, device.Permitted, link.Streams(device.Key)})
+				path := link.Path(device.Key)
+				listed = append(listed, listedDevice{
+					Key: device.Key, Name: device.Name, Permitted: device.Permitted,
+					Streams: link.Streams(device.Key), Path: string(path.Kind), Relay: path.Relay,
+				})
 			}
 			return listed, nil
 		},
