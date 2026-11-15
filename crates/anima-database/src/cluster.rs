@@ -5,12 +5,11 @@
 //! update can break), data checksums (PostgreSQL 18 turns them on, and an upgrade needs both
 //! sides equal) and `scram-sha-256` for every login.
 
-use std::fs::{self, DirBuilder, OpenOptions};
+use std::fs;
 use std::io::{self, Write};
-use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt};
 use std::path::Path;
 
-use crate::{Layout, Password, Program, Tree};
+use crate::{Layout, Password, Program, Tree, owner_only};
 
 #[cfg(test)]
 mod tests;
@@ -26,8 +25,17 @@ pub enum ClusterError {
         #[source]
         source: io::Error,
     },
-    #[error("initdb failed: {last_line}")]
-    Initdb { last_line: String },
+    #[error("initdb failed: {reason}")]
+    Initdb { reason: String },
+    #[error(
+        "the initdb password file could not be removed and still holds the superuser \
+         password (initdb failed: {initdb_failed})"
+    )]
+    PasswordFileLeft {
+        initdb_failed: bool,
+        #[source]
+        source: io::Error,
+    },
     #[error("the cluster's PG_VERSION file holds no version number")]
     VersionFile,
 }
@@ -85,21 +93,29 @@ pub fn create(
     superuser_password: &Password,
 ) -> Result<(), ClusterError> {
     for folder in [layout.root().to_path_buf(), layout.urls_folder()] {
-        private_folder(&folder)?;
+        owner_only::folder(&folder).map_err(|source| ClusterError::Io {
+            step: "make a database folder",
+            source,
+        })?;
     }
     let password_file = layout.urls_folder().join("initdb.password");
-    let result = write_private(&password_file, superuser_password.expose())
+    let made = owner_only::new_file(&password_file)
+        .and_then(|mut file| file.write_all(superuser_password.expose().as_bytes()))
+        .map_err(|source| ClusterError::Io {
+            step: "write the initdb password file",
+            source,
+        })
         .and_then(|()| run_initdb(tree, layout, &password_file));
-    // Removed whether initdb passed or failed; a missing file is the goal, not a fault.
+    // Removed whether initdb passed or failed. A file that stays holds the password, so that
+    // fault is reported before any other.
     match fs::remove_file(&password_file) {
         Err(source) if source.kind() != io::ErrorKind::NotFound => {
-            result?;
-            Err(ClusterError::Io {
-                step: "remove the initdb password file",
+            Err(ClusterError::PasswordFileLeft {
+                initdb_failed: made.is_err(),
                 source,
             })
         }
-        _ => result,
+        _ => made,
     }
 }
 
@@ -127,33 +143,18 @@ fn run_initdb(tree: &Tree, layout: &Layout, password_file: &Path) -> Result<(), 
     if output.status.success() {
         return Ok(());
     }
-    let errors = String::from_utf8_lossy(&output.stderr);
-    let last_line = errors.lines().rfind(|line| !line.trim().is_empty());
     Err(ClusterError::Initdb {
-        last_line: last_line.unwrap_or("no message").to_owned(),
+        reason: initdb_reason(&String::from_utf8_lossy(&output.stderr)),
     })
 }
 
-fn private_folder(folder: &Path) -> Result<(), ClusterError> {
-    DirBuilder::new()
-        .recursive(true)
-        .mode(0o700)
-        .create(folder)
-        .map_err(|source| ClusterError::Io {
-            step: "make a database folder",
-            source,
-        })
-}
-
-fn write_private(file: &Path, text: &str) -> Result<(), ClusterError> {
-    OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .mode(0o600)
-        .open(file)
-        .and_then(|mut file| file.write_all(text.as_bytes()))
-        .map_err(|source| ClusterError::Io {
-            step: "write the initdb password file",
-            source,
-        })
+/// The cause in what `initdb` printed: its own `initdb: error:` line. No other line is
+/// passed on, because `initdb` feeds the password to the server in a statement, and a server
+/// that fails there can print that statement (LOG-007).
+fn initdb_reason(errors: &str) -> String {
+    errors
+        .lines()
+        .find_map(|line| line.strip_prefix("initdb: error: "))
+        .unwrap_or("it printed no cause")
+        .to_owned()
 }

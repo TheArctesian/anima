@@ -2,7 +2,7 @@ use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 
-use super::{ClusterError, Fit, create, fit, major_version};
+use super::{ClusterError, Fit, create, fit, initdb_reason, major_version};
 use crate::local_tree::local_tree;
 use crate::{Layout, Password, Program};
 
@@ -137,7 +137,58 @@ fn a_failed_initdb_leaves_no_password_file_and_says_why() {
 
     let error = create(&local_tree(), &layout, &Password::from_bytes(&[7; 24])).unwrap_err();
 
-    assert!(matches!(error, ClusterError::Initdb { .. }), "{error}");
+    assert!(
+        matches!(&error, ClusterError::Initdb { reason } if reason.contains("not empty")),
+        "{error}"
+    );
     assert!(!layout.urls_folder().join("initdb.password").exists());
     assert!(layout.cluster().join("occupied").exists());
+}
+
+#[test]
+fn log_007_only_initdbs_own_error_line_is_passed_on() {
+    let printed = "initdb: warning: something small\n\
+        STATEMENT:  ALTER USER \"anima_super\" WITH PASSWORD E'0707';\n\
+        initdb: error: directory \"/x\" exists but is not empty\n\
+        initdb: hint: If you want to create a new database system, remove it.\n";
+
+    assert_eq!(
+        initdb_reason(printed),
+        "directory \"/x\" exists but is not empty"
+    );
+    assert_eq!(
+        initdb_reason("STATEMENT:  ALTER USER x PASSWORD E'0707';\nchild process exited\n"),
+        "it printed no cause"
+    );
+}
+
+#[test]
+fn db_003_a_root_that_was_open_to_others_is_closed_before_the_cluster_is_made() {
+    let folder = tempfile::tempdir().unwrap();
+    let layout = layout_in(folder.path());
+    fs::create_dir_all(layout.urls_folder()).unwrap();
+    fs::set_permissions(layout.root(), fs::Permissions::from_mode(0o755)).unwrap();
+    fs::set_permissions(layout.urls_folder(), fs::Permissions::from_mode(0o777)).unwrap();
+
+    create(&local_tree(), &layout, &Password::from_bytes(&[7; 24])).unwrap();
+
+    assert_eq!(mode_of(layout.root()), 0o700);
+    assert_eq!(mode_of(&layout.urls_folder()), 0o700);
+}
+
+#[test]
+fn log_007_a_password_file_left_by_a_crash_is_replaced_and_removed() {
+    let folder = tempfile::tempdir().unwrap();
+    let layout = layout_in(folder.path());
+    fs::create_dir_all(layout.urls_folder()).unwrap();
+    fs::write(
+        layout.urls_folder().join("initdb.password"),
+        "left by a crash",
+    )
+    .unwrap();
+
+    create(&local_tree(), &layout, &Password::from_bytes(&[7; 24])).unwrap();
+
+    assert!(!layout.urls_folder().join("initdb.password").exists());
+    assert_eq!(major_version(&layout).unwrap(), Some(17));
 }

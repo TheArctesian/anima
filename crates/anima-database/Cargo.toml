@@ -11,6 +11,8 @@ workspace = true
 
 [dependencies]
 getrandom.workspace = true
+# The shutdown signal to the server, as the hub and the desktop shell send theirs.
+nix = { version = "0.31", default-features = false, features = ["signal", "user"] }
 thiserror.workspace = true
 zeroize.workspace = true
 

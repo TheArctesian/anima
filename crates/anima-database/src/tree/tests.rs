@@ -1,6 +1,8 @@
 use std::fs;
 
-use super::{Program, Tree, TreeError, major_in};
+use std::path::Path;
+
+use super::{Tree, TreeError, major_in, sealed_command};
 use crate::local_tree::local_tree;
 
 #[test]
@@ -39,13 +41,25 @@ fn a_folder_without_the_server_programs_is_not_a_tree() {
 }
 
 #[test]
-fn a_command_carries_none_of_the_callers_environment() {
-    let command = local_tree().command(Program::Postgres);
+fn log_007_a_program_sees_none_of_the_callers_environment() {
+    // The test process has at least PATH; `env` prints what a child really gets.
+    assert!(std::env::var_os("PATH").is_some());
 
-    let names: Vec<_> = command
-        .get_envs()
-        .filter_map(|(name, value)| value.map(|_| name.to_string_lossy().into_owned()))
+    let output = sealed_command(Path::new("/usr/bin/env")).output().unwrap();
+
+    let mut seen: Vec<&str> = std::str::from_utf8(&output.stdout)
+        .unwrap()
+        .lines()
         .collect();
-
-    assert_eq!(names, ["LC_ALL", "TZ"]);
+    seen.sort_unstable();
+    assert_eq!(
+        seen,
+        [
+            "LC_ALL=C",
+            "PGPASSFILE=/dev/null",
+            "PGSERVICEFILE=/dev/null",
+            "PGSYSCONFDIR=/dev/null",
+            "TZ=UTC",
+        ]
+    );
 }

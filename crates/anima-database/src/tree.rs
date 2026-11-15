@@ -2,7 +2,7 @@
 //! system package installs it. The server finds its own `lib/` and `share/` from `bin/`.
 
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, ExitStatus};
 
 #[cfg(test)]
 mod tests;
@@ -14,9 +14,7 @@ pub enum Program {
     Initdb,
     PgCtl,
     PgControldata,
-    PgDump,
-    PgRestore,
-    PgAmcheck,
+    PgIsready,
 }
 
 impl Program {
@@ -29,9 +27,7 @@ impl Program {
             Self::Initdb => "initdb",
             Self::PgCtl => "pg_ctl",
             Self::PgControldata => "pg_controldata",
-            Self::PgDump => "pg_dump",
-            Self::PgRestore => "pg_restore",
-            Self::PgAmcheck => "pg_amcheck",
+            Self::PgIsready => "pg_isready",
         }
     }
 }
@@ -42,6 +38,8 @@ pub enum TreeError {
     ProgramMissing { program: &'static str },
     #[error("`postgres --version` could not run")]
     VersionRun(#[source] std::io::Error),
+    #[error("`postgres --version` ended with {status}")]
+    VersionExit { status: ExitStatus },
     #[error("`postgres --version` gave no PostgreSQL version")]
     VersionText,
 }
@@ -75,15 +73,10 @@ impl Tree {
         self.bin.join(program.file_name())
     }
 
-    /// A command for `program` with a fixed environment: nothing of the caller's environment
-    /// reaches PostgreSQL, so a `PGPASSWORD`, a `PGHOST` or a locale of the operator's shell
-    /// cannot change what the program does. The server does not start on macOS without a
-    /// valid locale.
+    /// A command for `program` with a fixed environment (see [`sealed_command`]).
     #[must_use]
     pub fn command(&self, program: Program) -> Command {
-        let mut command = Command::new(self.path_of(program));
-        command.env_clear().env("LC_ALL", "C").env("TZ", "UTC");
-        command
+        sealed_command(&self.path_of(program))
     }
 
     /// The major version of the tree's server: 17 for PostgreSQL 17.12.
@@ -96,8 +89,30 @@ impl Tree {
             .arg("--version")
             .output()
             .map_err(TreeError::VersionRun)?;
+        if !output.status.success() {
+            return Err(TreeError::VersionExit {
+                status: output.status,
+            });
+        }
         major_in(&String::from_utf8_lossy(&output.stdout)).ok_or(TreeError::VersionText)
     }
+}
+
+/// A command whose environment is fixed: nothing of the caller's environment reaches the
+/// program, so a `PGPASSWORD`, a `PGHOST` or a locale of the operator's shell cannot change
+/// what PostgreSQL does. The client programs would also read a password file and a service
+/// file from the home folder, which they find without `HOME`; both are pointed at nothing.
+/// The server does not start on macOS without a valid locale.
+fn sealed_command(program: &Path) -> Command {
+    let mut command = Command::new(program);
+    command
+        .env_clear()
+        .env("LC_ALL", "C")
+        .env("TZ", "UTC")
+        .env("PGPASSFILE", "/dev/null")
+        .env("PGSERVICEFILE", "/dev/null")
+        .env("PGSYSCONFDIR", "/dev/null");
+    command
 }
 
 /// The major version in the line `postgres --version` prints, for example

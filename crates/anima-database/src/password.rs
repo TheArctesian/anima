@@ -24,8 +24,7 @@ impl Password {
     }
 
     /// The password that `bytes` spell in lower-case hexadecimal.
-    #[must_use]
-    pub fn from_bytes(bytes: &[u8; BYTES]) -> Self {
+    pub(crate) fn from_bytes(bytes: &[u8; BYTES]) -> Self {
         const DIGITS: &[u8; 16] = b"0123456789abcdef";
         let mut text = Zeroizing::new(String::with_capacity(BYTES * 2));
         for byte in bytes {
