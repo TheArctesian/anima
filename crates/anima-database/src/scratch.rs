@@ -8,7 +8,6 @@ use std::time::Duration;
 use tempfile::TempDir;
 
 use crate::cluster::{self, SUPERUSER};
-use crate::local_tree::local_tree;
 use crate::{Layout, Limits, Lock, Password, Program, Server, Settings, Tree};
 
 pub const SETTINGS: Settings = Settings {
@@ -82,4 +81,24 @@ impl Database {
     pub fn pid_file(&self) -> PathBuf {
         self.layout.cluster().join("postmaster.pid")
     }
+}
+
+/// # Panics
+/// When this computer has no PostgreSQL 17.
+pub fn local_tree() -> Tree {
+    let named = std::env::var_os("ANIMA_POSTGRES_TREE").map(PathBuf::from);
+    let known = [
+        "/opt/homebrew/opt/postgresql@17",
+        "/usr/local/opt/postgresql@17",
+        "/usr/lib/postgresql/17",
+    ]
+    .map(PathBuf::from);
+    named
+        .iter()
+        .chain(&known)
+        .find_map(|folder| Tree::at(folder).ok())
+        .expect(
+            "no PostgreSQL 17 found: install it (macOS: brew install postgresql@17) \
+             or set ANIMA_POSTGRES_TREE to a folder with bin/postgres",
+        )
 }

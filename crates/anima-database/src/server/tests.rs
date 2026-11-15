@@ -1,17 +1,18 @@
 //! Each test makes its own cluster and runs a real server from this computer's PostgreSQL 17.
 
 use std::fs;
-use std::mem;
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
-use std::process::{Command, Stdio};
 use std::time::{Duration, SystemTime};
 
 use nix::sys::signal::{Signal, kill};
 use nix::unistd::Pid;
 
+mod left_over;
+mod logging;
+
 use super::pid_file::PidFile;
-use super::{Limits, Server, ServerError, Settings, Stopped, is_postgres_on, lock, stop_left_over};
+use super::{Limits, Server, ServerError, Settings, Stopped, lock, stop_left_over};
 use crate::cluster::SUPERUSER;
 use crate::scratch::{Database, LIMITS, SETTINGS};
 use crate::{Layout, Password};
@@ -53,72 +54,6 @@ fn db_003_the_superuser_signs_in_with_the_password_it_was_made_with_and_no_other
         refusal.contains("password authentication failed"),
         "{refusal}"
     );
-}
-
-#[test]
-fn log_007_no_statement_and_no_error_of_a_session_reaches_the_server_log() {
-    let database = Database::new();
-    let _server = database.start();
-    database
-        .sql("create table keyed (k text primary key)")
-        .unwrap();
-    database
-        .sql("insert into keyed values ('a-secret-key')")
-        .unwrap();
-
-    database
-        .sql("create role probe password 'a-secret-in-a-statement'")
-        .unwrap();
-    for failing in [
-        "alter role nobody_here password 'a-secret-in-a-failed-statement'",
-        "create role other password a_secret_unquoted",
-        "select 'a-secret-cast'::uuid",
-        "insert into keyed values ('a-secret-key')",
-    ] {
-        database.sql(failing).unwrap_err();
-    }
-
-    let log = fs::read_to_string(database.layout.server_log()).unwrap();
-    assert!(
-        log.contains("ready to accept connections"),
-        "starts are logged"
-    );
-    assert!(!log.contains("secret"), "{log}");
-    assert!(!log.contains("nobody_here"), "{log}");
-}
-
-#[test]
-fn a_refused_login_is_in_the_server_log() {
-    let mut database = Database::new();
-    let _server = database.start();
-    database.password = Password::from_bytes(&[8; 24]);
-
-    database.sql("select 1").unwrap_err();
-
-    let log = fs::read_to_string(database.layout.server_log()).unwrap();
-    assert!(log.contains("password authentication failed"), "{log}");
-    assert!(!log.contains(database.password.expose()));
-}
-
-#[test]
-fn log_007_the_hub_login_cannot_turn_the_logging_on() {
-    let database = Database::new();
-    let _server = database.start();
-    database.sql("create role plain login").unwrap();
-
-    for setting in [
-        "log_statement = 'all'",
-        "log_min_messages = 'debug1'",
-        "log_min_error_statement = 'error'",
-    ] {
-        let refusal = database
-            .sql(&format!("set role plain; set {setting}"))
-            .unwrap_err();
-        assert!(
-            refusal.contains("permission denied"),
-            "{setting}: {refusal}"
-        );
-    }
 }
 
 #[test]
@@ -228,22 +163,6 @@ fn every_acknowledged_row_survives_a_killed_server() {
 }
 
 #[test]
-fn a_server_left_by_a_killed_copy_is_stopped_before_the_next_start() {
-    let database = Database::new();
-    let left = database.start();
-    let left_process = left.process_id();
-    // The copy that owned the server is gone and nothing stops its server.
-    mem::forget(left);
-
-    assert!(stop_left_over(&database.lock, &database.tree, &database.layout, LIMITS).unwrap());
-
-    assert!(!database.pid_file().exists());
-    let server = database.start();
-    assert_ne!(server.process_id(), left_process);
-    assert_eq!(database.sql("select 1").unwrap(), "1");
-}
-
-#[test]
 fn a_child_that_fails_is_not_ready_because_another_server_answers() {
     let database = Database::new();
     let _running = database.start();
@@ -257,35 +176,6 @@ fn a_child_that_fails_is_not_ready_because_another_server_answers() {
         "{outcome:?}"
     );
     assert_eq!(database.sql("select 1").unwrap(), "1");
-}
-
-#[test]
-fn a_stale_file_that_names_another_program_gets_no_signal_and_blocks_no_start() {
-    let database = Database::new();
-    // A live process of this user that is not PostgreSQL, with the number a dead server left.
-    let mut bystander = Command::new("sleep")
-        .arg("600")
-        .stdout(Stdio::null())
-        .spawn()
-        .unwrap();
-    fs::write(
-        database.pid_file(),
-        pid_file_text(bystander.id(), 1, "ready"),
-    )
-    .unwrap();
-
-    let was_there =
-        stop_left_over(&database.lock, &database.tree, &database.layout, LIMITS).unwrap();
-
-    assert!(!was_there);
-    assert!(
-        bystander.try_wait().unwrap().is_none(),
-        "the bystander was signalled"
-    );
-    let _server = database.start();
-    assert_eq!(database.sql("select 1").unwrap(), "1");
-    bystander.kill().unwrap();
-    bystander.wait().unwrap();
 }
 
 #[test]
@@ -350,57 +240,4 @@ fn a_server_that_does_not_stop_in_time_is_told_to_quit_and_recovers_at_the_next_
     assert_eq!(database.sql("select n from kept").unwrap(), "1");
     let log = fs::read_to_string(database.layout.server_log()).unwrap();
     assert!(log.contains("automatic recovery in progress"), "{log}");
-}
-
-#[test]
-fn a_large_server_log_moves_aside_at_the_next_start() {
-    let database = Database::new();
-    let log = database.layout.server_log();
-    fs::write(&log, vec![b'x'; 8 * 1024 * 1024 + 1]).unwrap();
-
-    let _server = database.start();
-
-    let older = log.with_file_name("server.log.1");
-    assert_eq!(fs::metadata(&older).unwrap().len(), 8 * 1024 * 1024 + 1);
-    assert!(fs::metadata(&log).unwrap().len() < 1024 * 1024);
-    assert_eq!(mode_of(&log), 0o600);
-}
-
-#[test]
-fn a_pid_file_that_cannot_be_read_is_an_error_not_an_absent_server() {
-    let database = Database::new();
-    fs::create_dir(database.pid_file()).unwrap();
-
-    let outcome = stop_left_over(&database.lock, &database.tree, &database.layout, LIMITS);
-
-    assert!(
-        matches!(outcome, Err(ServerError::Io { .. })),
-        "{outcome:?}"
-    );
-}
-
-#[test]
-fn only_a_postgres_started_on_this_cluster_counts_as_its_server() {
-    let cluster = Path::new("/Users/a/Application Support/db/cluster");
-
-    assert!(is_postgres_on(
-        "/Applications/Anima.app/x/bin/postgres -D /Users/a/Application Support/db/cluster -c port=5432",
-        cluster
-    ));
-    assert!(is_postgres_on(
-        "postgres -D /Users/a/Application Support/db/cluster",
-        cluster
-    ));
-    assert!(
-        !is_postgres_on(
-            "/opt/homebrew/bin/postgres -D /opt/homebrew/var/postgresql@17",
-            cluster
-        ),
-        "another cluster's server"
-    );
-    assert!(
-        !is_postgres_on("sleep -D /Users/a/Application Support/db/cluster", cluster),
-        "another program"
-    );
-    assert!(!is_postgres_on("", cluster));
 }

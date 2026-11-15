@@ -3,7 +3,7 @@ use std::fs;
 use std::path::Path;
 
 use super::{Tree, TreeError, major_in, sealed_command};
-use crate::local_tree::local_tree;
+use crate::scratch::local_tree;
 
 #[test]
 fn the_major_version_is_read_from_the_version_line() {

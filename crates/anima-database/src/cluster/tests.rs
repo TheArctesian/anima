@@ -3,7 +3,7 @@ use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 
 use super::{ClusterError, Fit, create, fit, initdb_reason, major_version};
-use crate::local_tree::local_tree;
+use crate::scratch::local_tree;
 use crate::{Layout, Password, Program, lock};
 
 fn layout_in(folder: &Path) -> Layout {

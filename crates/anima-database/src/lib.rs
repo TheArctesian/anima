@@ -14,8 +14,6 @@ mod tree;
 pub mod urls;
 
 #[cfg(test)]
-mod local_tree;
-#[cfg(test)]
 mod scratch;
 
 pub use layout::{Layout, LayoutError, Platform, Role, UserFolders};
