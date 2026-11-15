@@ -18,11 +18,12 @@ const SOON: Duration = Duration::from_secs(20);
 /// rig's folder changes what it does.
 const DATABASE: &str = r#"#!/bin/sh
 here=$(dirname "$0")/..
+trap 'echo "database stop" >> "$here/events"; exit 0' TERM
 echo "database start" >> "$here/events"
 [ -f "$here/database-exit" ] && exit "$(cat "$here/database-exit")"
 mkdir -p "$5/cluster"
 [ -f "$here/recovered" ] && echo "anima-database: recovered after an unclean stop" >&2
-trap 'echo "database stop" >> "$here/events"; exit 0' TERM
+[ -f "$here/database-slow" ] && while :; do sleep 0.05; done
 echo ready
 while :; do sleep 0.05; done
 "#;
@@ -31,6 +32,7 @@ here=$(dirname "$0")/..
 if [ "$1" = migrate ]; then
   echo "migrate as $(basename "$ANIMA_DATABASE_URL_FILE")" >> "$here/events"
   [ -f "$here/migrate-fails" ] && exit 1
+  [ -f "$here/migrate-slow" ] && { trap 'echo "migrate stop" >> "$here/events"; exit 1' TERM; while :; do sleep 0.05; done; }
   exit 0
 fi
 [ -f "$ANIMA_KEY_FILE" ] || exit 9
@@ -284,7 +286,7 @@ async fn no_key_is_made_for_a_database_that_cannot_be_looked_at() {
 }
 
 #[tokio::test]
-async fn a_stop_that_is_asked_during_the_start_ends_it_after_the_step_in_progress() {
+async fn a_stop_that_was_asked_before_the_start_starts_nothing() {
     let rig = rig();
     let (ask, stop) = Stop::new();
     ask.send_replace(true);
@@ -295,8 +297,67 @@ async fn a_stop_that_is_asked_during_the_start_ends_it_after_the_step_in_progres
         .unwrap();
 
     assert_eq!(ended, Ended::Asked);
+    assert_eq!(rig.events(), Vec::<String>::new());
+    assert_eq!(rig.state(), Some(State::Stopped));
+}
+
+/// Runs the group, asks it to stop when `event` is in the events, and tells how long the
+/// run took from there.
+async fn run_until_event(rig: &Rig, event: &str) -> (Ended, Duration) {
+    let (ask, stop) = Stop::new();
+    let asking = async {
+        while !rig.events().iter().any(|line| line == event) {
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+        ask.send_replace(true);
+        std::time::Instant::now()
+    };
+    let (ended, asked_at) = tokio::join!(rig.run_with(stop, || panic!("not ready")), asking);
+    (ended.unwrap(), asked_at.elapsed())
+}
+
+#[tokio::test]
+async fn a_stop_during_a_long_database_start_does_not_wait_for_the_start() {
+    let rig = rig();
+    rig.set("database-slow", "");
+
+    let (ended, took) = run_until_event(&rig, "database start").await;
+
+    assert_eq!(ended, Ended::Asked);
+    assert!(took < Duration::from_secs(5), "{took:?}");
     assert_eq!(rig.events(), ["database start", "database stop"]);
     assert_eq!(rig.state(), Some(State::Stopped));
+}
+
+#[tokio::test]
+async fn a_stop_during_the_migration_ends_the_migration_and_then_the_database() {
+    let rig = rig();
+    rig.set("migrate-slow", "");
+
+    let (ended, took) = run_until_event(&rig, "migrate as owner.url").await;
+
+    assert_eq!(ended, Ended::Asked);
+    assert!(took < Duration::from_secs(5), "{took:?}");
+    assert_eq!(
+        rig.events()[1..],
+        ["migrate as owner.url", "migrate stop", "database stop"]
+    );
+}
+
+#[tokio::test]
+async fn a_migration_that_runs_past_its_limit_is_stopped_and_the_run_fails() {
+    let mut rig = rig();
+    rig.set("migrate-slow", "");
+    rig.plan.limits.migration = Duration::from_millis(300);
+    let (_ask, stop) = never_asked();
+
+    let ended = rig.run_with(stop, || {}).await.unwrap();
+
+    assert_eq!(ended, Ended::Failed);
+    assert_eq!(
+        rig.events()[1..],
+        ["migrate as owner.url", "migrate stop", "database stop"]
+    );
 }
 
 #[tokio::test]

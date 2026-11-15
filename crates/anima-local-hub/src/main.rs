@@ -168,8 +168,9 @@ fn serve(place: &Place, listen: SocketAddr, programs: Programs) -> Result<ExitCo
         // Before the first member starts: a signal that comes during the start is kept.
         let stop = Stop::on_signals()?;
         let ready = || {
-            println!("ready");
-            let _ = std::io::stdout().flush();
+            // Nobody may read it: a closed output must not end a hub that serves.
+            let mut output = std::io::stdout();
+            let _ = writeln!(output, "ready").and_then(|()| output.flush());
         };
         Ok::<_, Failure>(run::run(&plan, stop, ready).await?)
     })?;

@@ -32,11 +32,12 @@ use tauri_plugin_log::log;
 use carried::Carried;
 pub use error::LocalHubError;
 
-/// `install` copies about 35 MB, waits up to 120 s for a running hub to stop and runs up to
-/// three unit commands.
-const INSTALL_LIMIT: Duration = Duration::from_secs(300);
-/// `remove` waits up to 120 s for the hub to stop.
-const REMOVE_LIMIT: Duration = Duration::from_secs(180);
+/// More than the worst case of `install`: the stop command and the wait for the hub to stop
+/// (120 s each), then a start command that is tried twice (120 s each). A kill in the middle
+/// would leave the hub stopped.
+const INSTALL_LIMIT: Duration = Duration::from_secs(600);
+/// `remove`: the stop command and the wait, 120 s each.
+const REMOVE_LIMIT: Duration = Duration::from_secs(300);
 const STATUS_LIMIT: Duration = Duration::from_secs(10);
 
 /// The variables the program gets from the app, when they are set: where the user's folders

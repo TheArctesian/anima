@@ -181,6 +181,11 @@ impl Child {
         })
     }
 
+    #[must_use]
+    pub const fn name(&self) -> &'static str {
+        self.name
+    }
+
     /// The exit status when the member has ended.
     #[must_use]
     pub fn ended(&self) -> Option<ExitStatus> {

@@ -256,3 +256,15 @@ fn install_closes_a_hub_folder_that_was_open_to_others() {
 
     assert_eq!(mode_of(rig.folders.root()), 0o700);
 }
+
+#[test]
+fn a_unit_that_is_not_loaded_cannot_be_stopped_and_that_is_not_an_error() {
+    let rig = rig();
+
+    let outcome = install(&rig.request(Platform::MacOs), &rig.source, |step| {
+        Ok(!step.args.contains(&"bootout".to_owned()))
+    });
+
+    outcome.unwrap();
+    assert!(is_installed(&rig.request(Platform::MacOs)));
+}

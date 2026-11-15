@@ -8,7 +8,7 @@ use std::time::Duration;
 use anima_database::startup::RECOVERED_NOTICE;
 use tokio::sync::mpsc;
 
-use crate::child::{Child, ChildError, Spec, Stop};
+use crate::child::{Child, ChildError, Spec, Stop, Stopped};
 use crate::log_file::{LOG_LIMIT, LogFile};
 use crate::members::{self, Carried};
 use crate::state::Blocked;
@@ -112,8 +112,8 @@ impl Group {
     /// left running when this fails: call [`Group::stop`] in every case.
     ///
     /// # Errors
-    /// [`StartError::Blocked`] when a new start cannot help, [`StartError::StopAsked`] when
-    /// `stop` was asked between two steps, and the member's error otherwise.
+    /// [`StartError::Blocked`] when a new start cannot help, [`StartError::StopAsked`] as soon
+    /// as `stop` is asked, also in the middle of a wait, and the member's error otherwise.
     pub async fn start(&mut self, plan: &Plan, stop: &Stop) -> Result<Ready, StartError> {
         let Plan {
             carried,
@@ -134,40 +134,38 @@ impl Group {
             other => StartError::Key(other),
         })?;
 
+        still_wanted(stop)?;
         let database = self.launch(
             &members::database(carried, folders),
             plan,
             limits.database_stop,
         )?;
         let mut recovered = false;
-        database
-            .line_where(limits.database_ready, |line| {
-                recovered |= line == RECOVERED_NOTICE;
-                (line == "ready").then_some(())
-            })
+        let ready = database.line_where(limits.database_ready, |line| {
+            recovered |= line == RECOVERED_NOTICE;
+            (line == "ready").then_some(())
+        });
+        unless_stopped(stop, ready)
             .await
-            .map_err(database_refusal)?;
+            .map_err(|error| match error {
+                StartError::Member(ended) => database_refusal(ended),
+                other => other,
+            })?;
         database.stop_reading();
-        still_wanted(stop)?;
 
-        migrate(plan).await?;
-        still_wanted(stop)?;
+        migrate(plan, stop).await?;
 
         let gateway = self.launch(&members::gateway(carried), plan, limits.gateway_stop)?;
-        let gateway_address = gateway
-            .line_where(limits.gateway_ready, members::gateway_address)
-            .await?;
+        let ready = gateway.line_where(limits.gateway_ready, members::gateway_address);
+        let gateway_address = unless_stopped(stop, ready).await?;
         gateway.stop_reading();
-        still_wanted(stop)?;
 
         let hub = members::hub(carried, folders, plan.listen, gateway_address);
         let hub = self.launch(&hub, plan, limits.hub_stop)?;
-        let hub_address = hub
-            .line_where(limits.hub_ready, members::hub_address)
-            .await?;
+        let ready = hub.line_where(limits.hub_ready, members::hub_address);
+        let hub_address = unless_stopped(stop, ready).await?;
         hub.stop_reading();
         // Place for S6: the link starts here, with `hub_address`.
-        still_wanted(stop)?;
         Ok(Ready {
             hub: hub_address,
             recovered,
@@ -197,11 +195,36 @@ impl Group {
     }
 
     /// Stops the members, the last one started first. A member that does not end in its
-    /// time is killed; one that cannot be signalled is left to the unit's own kill.
-    pub async fn stop(self) {
+    /// time is killed. Returns one line for each member that did not end by itself.
+    pub async fn stop(self) -> Vec<String> {
+        let mut notes = Vec::new();
         for (child, limit) in self.members.into_iter().rev() {
-            let _ = child.stop(limit).await;
+            let name = child.name();
+            match child.stop(limit).await {
+                Ok(Stopped::Ended(_)) => {}
+                Ok(Stopped::Killed) => notes.push(format!(
+                    "{name} did not stop in {} s and was killed",
+                    limit.as_secs()
+                )),
+                // It is left to the unit's own kill.
+                Err(error) => notes.push(error.to_string()),
+            }
         }
+        notes
+    }
+}
+
+/// `wait`, unless a stop is asked for first. The member that `wait` is for keeps running;
+/// [`Group::stop`] ends it.
+async fn unless_stopped<T>(
+    stop: &Stop,
+    wait: impl Future<Output = Result<T, ChildError>>,
+) -> Result<T, StartError> {
+    let mut stop = stop.clone();
+    tokio::select! {
+        biased;
+        done = wait => Ok(done?),
+        () = stop.asked() => Err(StartError::StopAsked),
     }
 }
 
@@ -231,22 +254,28 @@ fn log(plan: &Plan, name: &'static str) -> Result<LogFile, StartError> {
     })
 }
 
-/// Runs `anima-hub migrate` to its end. One that runs past its limit is killed.
-async fn migrate(plan: &Plan) -> Result<(), StartError> {
+/// What a migration that must be given up gets between SIGTERM and SIGKILL. A migration is
+/// one transaction, so the database loses nothing.
+const MIGRATION_STOP: Duration = Duration::from_secs(5);
+
+/// Runs `anima-hub migrate` to its end. One that runs past its limit, or that a stop request
+/// finds running, is stopped.
+async fn migrate(plan: &Plan, stop: &Stop) -> Result<(), StartError> {
     let spec = members::migration(&plan.carried, &plan.folders);
     // Its end is awaited here, so nobody else is told of it.
     let (report_end, _ended) = mpsc::unbounded_channel();
     let mut migration = Child::start(&spec, log(plan, spec.name)?, report_end)?;
-    match migration.end_within(plan.limits.migration).await {
+    let ended = unless_stopped(stop, migration.end_within(plan.limits.migration)).await;
+    match ended {
         Ok(status) if status.success() => Ok(()),
         Ok(status) => Err(ChildError::Ended {
             name: spec.name,
             status,
         }
         .into()),
-        Err(late) => {
-            let _ = migration.stop(Duration::ZERO).await;
-            Err(late.into())
+        Err(given_up) => {
+            let _ = migration.stop(MIGRATION_STOP).await;
+            Err(given_up)
         }
     }
 }

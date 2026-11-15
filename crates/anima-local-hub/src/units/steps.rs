@@ -91,3 +91,54 @@ fn run_once(step: &Step, env: &[(&'static str, String)], limit: Duration) -> io:
         thread::sleep(Duration::from_millis(20));
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::time::Duration;
+
+    use super::{Step, run_step};
+
+    const SOON: Duration = Duration::from_secs(20);
+
+    #[test]
+    fn a_command_tells_if_it_succeeded_and_sees_only_the_given_environment() {
+        let folder = tempfile::tempdir().unwrap();
+        let seen = folder.path().join("seen");
+        let script = format!("/usr/bin/env > '{}'", seen.display());
+        let step = Step::new("/bin/sh", &["-c", &script]);
+
+        let done = run_step(&step, &[("ONLY", "this".into())], SOON);
+
+        assert!(done.unwrap());
+        let seen = std::fs::read_to_string(seen).unwrap();
+        assert!(
+            seen.contains("ONLY=this") && !seen.contains("HOME="),
+            "{seen}"
+        );
+        assert!(!run_step(&Step::new("/bin/sh", &["-c", "exit 3"]), &[], SOON).unwrap());
+    }
+
+    #[test]
+    fn a_step_with_a_retry_runs_once_more_after_a_failure() {
+        let folder = tempfile::tempdir().unwrap();
+        let mark = folder.path().join("ran-once");
+        // Fails the first time, succeeds the second.
+        let script = format!("[ -f '{0}' ] || {{ touch '{0}'; exit 1; }}", mark.display());
+        let step = Step::new("/bin/sh", &["-c", &script]);
+
+        assert!(!run_step(&step, &[], SOON).unwrap());
+        std::fs::remove_file(&mark).unwrap();
+        let retried = step.retried_after(Duration::from_millis(10));
+
+        assert!(run_step(&retried, &[], SOON).unwrap());
+    }
+
+    #[test]
+    fn a_command_that_does_not_end_is_killed_at_the_limit() {
+        let step = Step::new("/bin/sh", &["-c", "exec sleep 30"]);
+
+        let error = run_step(&step, &[], Duration::from_millis(200)).unwrap_err();
+
+        assert_eq!(error.kind(), std::io::ErrorKind::TimedOut);
+    }
+}

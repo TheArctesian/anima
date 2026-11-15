@@ -93,10 +93,17 @@ pub fn put_in_place(folders: &Folders) -> Result<(), CopyError> {
         folders.programs_replaced(),
     );
     remove_folder(&previous)?;
-    if current.symlink_metadata().is_ok() {
+    let had_current = current.symlink_metadata().is_ok();
+    if had_current {
         fs::rename(&current, &previous).map_err(io_error("move", &current))?;
     }
-    fs::rename(&next, &current).map_err(io_error("move", &next))?;
+    if let Err(error) = fs::rename(&next, &current) {
+        // The unit must not be left with no programs: the ones before go back.
+        if had_current {
+            fs::rename(&previous, &current).map_err(io_error("move", &previous))?;
+        }
+        return Err(io_error("move", &next)(error));
+    }
     remove_folder(&previous)
 }
 

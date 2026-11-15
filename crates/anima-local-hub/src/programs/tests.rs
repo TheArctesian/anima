@@ -197,3 +197,20 @@ fn remove_takes_the_programs_and_leaves_the_rest_of_the_hub() {
     assert!(!are_in_place(&folders));
     assert_eq!(fs::read_to_string(folders.vault_key()).unwrap(), "kept");
 }
+
+#[test]
+fn when_the_new_copy_cannot_take_its_place_the_programs_before_stay() {
+    let (_folder, carried, folders) = rig();
+    copy(&carried, &folders).unwrap();
+    put_in_place(&folders).unwrap();
+
+    // No copy was made, so there is nothing to put in place.
+    let error = put_in_place(&folders).unwrap_err();
+
+    assert!(matches!(error, CopyError::Io { .. }), "{error}");
+    assert!(are_in_place(&folders));
+    assert_eq!(
+        fs::read_to_string(current(&folders, "bin/anima-hub")).unwrap(),
+        "one"
+    );
+}
