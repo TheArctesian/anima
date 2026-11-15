@@ -436,6 +436,12 @@ tools that are on:
      `issues` or a label event runs, with the repository's secrets, and its steps may read the
      text the agent wrote. So the issue tools can start code that `workflow start` would need a
      login token and a confirmation for. This was not tested against GitHub.
+   - **The issue tools can be on without being named.** A tool with no choice of its own takes
+     its kind's saved default (MCP-012), and `--allow-write` allows the change tools with no saved
+     choice (MCP-015). An operator who set `change` to `allow` or `ask` before the issue tools
+     existed, or who starts the server with `--allow-write`, has them on without having named
+     them. This is the model as decided; the risk is accepted here, not changed. `anima mcp
+     permissions show` and the line at start (MCP-016) list them.
 5. **The operator's login token, no declaration.** A program that obtains the operator's stored
    login token (from the key store or the token file, or from `ANIMA_TOKEN`) and sends no agent
    declaration is recorded as User (LOG-016; open point 9). It can do everything the operator
