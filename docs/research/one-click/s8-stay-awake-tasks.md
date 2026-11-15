@@ -84,7 +84,7 @@ Answer to OI-4: yes. On macOS the lid-closed level needs administrator rights on
 | T3 OS holds, set-up, saved choice | Done as code and tests. Reviewed by `reviewer` (1 must-fix and 7 other findings corrected) and `reviewer-security` (no must-fix; 5 findings corrected). Not verified on a real lid or with a real administrator step (Section 6). | `53ab03a4`, `a4ddf905`, `122230fc` |
 | T4 Control, commands, tray | Done as code and tests. The app starts with the tray item on this Mac. The tray item itself was not looked at (Section 6). | `53ab03a4`, `a4ddf905` |
 | T5 Client | Done. Reviewed by `reviewer` (2 must-fix and 4 other findings corrected). | `b04b6254`, `a264b00f`, `06d2c600` |
-| T6 Merge and gates | Done: `origin/main` at `bb4c00d6` is merged; the result of the full gates is in the merge request to the operator. | `25548538` |
+| T6 Merge and gates | Done: `origin/main` at `bb4c00d6` is merged, and the full gates passed 14 of 14 on `4473456a` (2026-11-15). | `25548538`, `4473456a` |
 
 Choices made while building, after the reviews:
 
