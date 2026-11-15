@@ -104,7 +104,12 @@ func startHub(t *testing.T) runningHub {
 // startHubOn starts a hub link on a state directory that has its relay.
 func startHubOn(t *testing.T, state string) runningHub {
 	t.Helper()
-	target := fakeHub(t)
+	return startHubInFrontOf(t, state, fakeHub(t))
+}
+
+// startHubInFrontOf starts a hub link that sends streams to a target.
+func startHubInFrontOf(t *testing.T, state, target string) runningHub {
+	t.Helper()
 	stdinReader, stdinWriter := io.Pipe()
 	hub := runningHub{state: state, stdin: stdinWriter, log: &output{}, exited: make(chan int, 1)}
 	go func() {

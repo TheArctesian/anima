@@ -55,6 +55,13 @@ func startInvitingHub(t *testing.T) invitingHub {
 	t.Helper()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { fmt.Fprint(w, greeting) }))
 	t.Cleanup(server.Close)
+	return startInvitingHubInFrontOf(t, server.Listener.Addr().String())
+}
+
+// startInvitingHubInFrontOf starts the hub link in front of a target: a
+// loopback address or the path of a hub's socket.
+func startInvitingHubInFrontOf(t *testing.T, target string) invitingHub {
+	t.Helper()
 	dir, err := statedir.Open(filepath.Join(t.TempDir(), "s"))
 	if err != nil {
 		t.Fatal(err)
@@ -63,7 +70,7 @@ func startInvitingHub(t *testing.T) invitingHub {
 	hub := invitingHub{
 		clock:    &clock{now: time.Date(2026, 11, 14, 12, 0, 0, 0, time.UTC)},
 		identity: identity.Hub{Key: tunnel.NewPrivateKey(), PresharedKey: tunnel.NewPresharedKey(), Relay: testbed.StartRelay(t)},
-		target:   server.Listener.Addr().String(),
+		target:   target,
 	}
 	if hub.devices, err = devices.Open(dir, hub.clock.Now); err != nil {
 		t.Fatal(err)

@@ -4,6 +4,7 @@
 package devices
 
 import (
+	"net/netip"
 	"sort"
 	"strings"
 	"time"
@@ -29,6 +30,9 @@ var (
 	ErrNoKey   = &Refusal{"no_key", "a device needs a key"}
 	ErrUnknown = &Refusal{"device_unknown", "this key is not in the list of permitted devices; a device that renewed its key has a new key (see devices.list)"}
 	ErrNotDue  = &Refusal{"renewal_not_due", "a key can be renewed only in its last 30 days"}
+	// ErrAddressTaken is not expected in practice: two keys with one link
+	// address need about 2^80 tries to find.
+	ErrAddressTaken = &Refusal{"address_taken", "this key cannot be permitted: its link address belongs to another device; the device must make a new key"}
 )
 
 const maxNameLength = 64
@@ -40,8 +44,10 @@ const KeyLife = 180 * 24 * time.Hour
 type Device struct {
 	Key tunnel.DeviceKey `json:"key"`
 	// Name is what the operator calls the device.
-	Name      string    `json:"name"`
-	Permitted time.Time `json:"permitted"`
+	Name string `json:"name"`
+	// Address names the device to the hub. See address.go.
+	Address   netip.Addr `json:"address"`
+	Permitted time.Time  `json:"permitted"`
 	// Expires is when Key stops being permitted.
 	Expires time.Time `json:"expires"`
 	// NextKey is the key that the device gave to replace Key. It is zero
@@ -65,15 +71,20 @@ func (l list) holder(key tunnel.DeviceKey) (Device, bool) {
 	return Device{}, false
 }
 
-// permits reports whether a key can connect: it is the current or the next
-// key of a device, and the device's current key has not expired.
-func (l list) permits(key tunnel.DeviceKey, now time.Time) bool {
+// permitted returns the device that a key can connect as: the key is the
+// current or the next key of the device, and the device's current key has
+// not expired.
+func (l list) permitted(key tunnel.DeviceKey, now time.Time) (Device, bool) {
 	device, known := l.holder(key)
-	return known && now.Before(device.Expires)
+	if !known || !now.Before(device.Expires) {
+		return Device{}, false
+	}
+	return device, true
 }
 
 // with returns the list with one more device. A device with no expiry time
-// gets KeyLife from the time it was permitted.
+// gets KeyLife from the time it was permitted. The device gets the link
+// address of its key, whatever address the caller gave.
 func (l list) with(device Device) (list, error) {
 	device.Name = strings.TrimSpace(device.Name)
 	switch {
@@ -87,6 +98,10 @@ func (l list) with(device Device) (list, error) {
 	}
 	if device.Expires.IsZero() {
 		device.Expires = device.Permitted.Add(KeyLife)
+	}
+	device.Address = addressOf(device.Key)
+	if l.addressTaken(device.Address) {
+		return nil, ErrAddressTaken
 	}
 	next := l.copy()
 	next[device.Key] = device

@@ -16,12 +16,9 @@ import (
 	"github.com/TheArctesian/anima/link/devices"
 	"github.com/TheArctesian/anima/link/identity"
 	"github.com/TheArctesian/anima/link/invites"
+	"github.com/TheArctesian/anima/link/statedir"
 	"github.com/TheArctesian/anima/link/tunnel"
 )
-
-// ErrTarget means that the target is not a loopback address with a port.
-// The link must not send a device's traffic to another computer.
-var ErrTarget = errors.New("hublink: the target must be a loopback address and a port, for example 127.0.0.1:8443")
 
 // Times of the hub link.
 const (
@@ -39,7 +36,9 @@ const (
 // Config is what a hub link needs to start.
 type Config struct {
 	Identity identity.Hub
-	// Target is the hub's loopback address.
+	// Target is the path of the hub's socket for the link, or the hub's
+	// loopback address. With a socket each stream starts with the header
+	// that names the device (see deviceheader.go).
 	Target string
 	// Devices is the list of permitted devices (LNK-002). It is asked when a
 	// device connects and again for each stream.
@@ -68,7 +67,7 @@ type Config struct {
 type Link struct {
 	hub     *tunnel.Hub
 	ownKey  tunnel.DeviceKey
-	target  string
+	target  target
 	log     *slog.Logger
 	devices *devices.Store
 	invites *invites.Store
@@ -95,11 +94,11 @@ type Link struct {
 // Start connects the hub link to its relay and starts to accept streams.
 // ctx limits the start only.
 func Start(ctx context.Context, cfg Config) (*Link, error) {
-	target, err := netip.ParseAddrPort(cfg.Target)
-	if err != nil || !target.Addr().IsLoopback() || target.Port() == 0 {
-		return nil, ErrTarget
+	target, err := parseTarget(cfg.Target)
+	if err != nil {
+		return nil, err
 	}
-	link := newLink(cfg, target.String())
+	link := newLink(cfg, target)
 	link.hub, err = tunnel.StartHub(ctx, tunnel.HubConfig{
 		Key:          cfg.Identity.Key,
 		PresharedKey: cfg.Identity.PresharedKey,
@@ -132,10 +131,10 @@ func Start(ctx context.Context, cfg Config) (*Link, error) {
 	return link, nil
 }
 
-func newLink(cfg Config, target string) *Link {
+func newLink(cfg Config, target target) *Link {
 	link := &Link{
 		target: target, log: cfg.Log, devices: cfg.Devices, invites: cfg.Invites, now: cfg.Now,
-		nameDevice: cfg.NameDevice,
+		nameDevice: cfg.NameDevice || target.socket != "",
 		ownKey:     cfg.Identity.Key.Public(), enrolling: make(chan struct{}, maxEnrolments), identity: cfg.Identity,
 		stopped: make(chan struct{}), accepting: make(chan struct{}, 2),
 	}
@@ -223,26 +222,40 @@ func (l *Link) forward(stream net.Conn) {
 	// leave the list while connected. A revocation removes the key and then
 	// closes the recorded streams, so a stream is either closed by it or
 	// refused here.
-	if !l.devices.Permits(device) {
+	address, permitted := l.devices.AddressOf(device)
+	if !permitted {
 		stream.Close()
 		return
 	}
-	hub, err := net.DialTimeout("tcp", l.target, targetDialLimit)
+	hub, err := l.target.dial()
 	if err != nil {
-		l.log.Warn("the hub did not accept a connection on its loopback address", "device", device)
+		l.log.Warn("the hub did not accept a connection from the link", "device", device, "cause", dialFault(err))
 		stream.Close()
 		return
 	}
-	if l.nameDevice {
-		header := deviceHeader(device, addrPortOf(stream.RemoteAddr()), addrPortOf(stream.LocalAddr()))
-		_ = hub.SetWriteDeadline(time.Now().Add(targetDialLimit))
-		_, err := hub.Write(header)
-		_ = hub.SetWriteDeadline(time.Time{})
-		if err != nil {
-			stream.Close()
-			hub.Close()
-			return
-		}
+	if l.nameDevice && !named(hub, address, stream) {
+		stream.Close()
+		hub.Close()
+		return
 	}
 	tunnel.Join(stream, hub)
+}
+
+// named writes the header that names the device to the hub, before any
+// byte of the device.
+func named(hub net.Conn, device netip.Addr, stream net.Conn) bool {
+	header := deviceHeader(device, addrPortOf(stream.RemoteAddr()).Port(), addrPortOf(stream.LocalAddr()))
+	_ = hub.SetWriteDeadline(time.Now().Add(targetDialLimit))
+	_, err := hub.Write(header)
+	_ = hub.SetWriteDeadline(time.Time{})
+	return err == nil
+}
+
+// dialFault says in a fixed word why the hub could not be reached, for the
+// log: the error's own text holds a path.
+func dialFault(err error) string {
+	if errors.Is(err, statedir.ErrExposed) {
+		return "other users can reach the hub's socket or its folder"
+	}
+	return "no answer"
 }

@@ -1,15 +1,16 @@
 package hublink_test
 
 import (
-	"bytes"
 	"context"
-	"encoding/binary"
 	"io"
 	"net"
+	"net/http"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
-	"github.com/TheArctesian/anima/link/hublink"
+	"github.com/TheArctesian/anima/link/hublink/testhub"
 	"github.com/TheArctesian/anima/link/tunnel"
 )
 
@@ -69,7 +70,7 @@ func read(t *testing.T, from io.Reader, n int) []byte {
 	return buffer
 }
 
-func TestTheHubIsToldTheDeviceKeyOfEachStreamWhenItAsksForIt(t *testing.T) {
+func TestALoopbackHubIsToldTheDeviceOfEachStreamWhenItAsksForIt(t *testing.T) {
 	target, accepted := rawHub(t)
 	r := startInFrontOf(t, target, true)
 	for range 2 { // two devices: each stream names its own
@@ -77,23 +78,72 @@ func TestTheHubIsToldTheDeviceKeyOfEachStreamWhenItAsksForIt(t *testing.T) {
 		r.permit(t, key)
 		atHub := sendHello(t, r, accepted, key)
 
-		start := read(t, atHub, 16)
-		signature := []byte{0x0D, 0x0A, 0x0D, 0x0A, 0x00, 0x0D, 0x0A, 0x51, 0x55, 0x49, 0x54, 0x0A}
-		if !bytes.Equal(start[:12], signature) || start[12] != 0x21 || start[13] != 0x21 {
-			t.Fatalf("the stream does not start with a PROXY version 2 header for TCP over IPv6: % x", start)
-		}
-		rest := read(t, atHub, int(binary.BigEndian.Uint16(start[14:16])))
-		field := rest[36:] // after two IPv6 addresses and two ports
-		if field[0] != hublink.DeviceKeyField || int(binary.BigEndian.Uint16(field[1:3])) != len(field)-3 {
-			t.Fatalf("the header's extra field is not the device key field: % x", field[:3])
-		}
-		var named tunnel.DeviceKey
-		if err := named.UnmarshalText(field[3:]); err != nil || named != key.Public() {
-			t.Errorf("the header names the device %s, want %s", named, key.Public())
+		named, err := testhub.ReadHeader(atHub)
+		if want, _ := r.store.AddressOf(key.Public()); err != nil || named.Addr() != want {
+			t.Fatalf("the header names %v (%v), want the device's link address %v", named, err, want)
 		}
 		if got := read(t, atHub, 5); string(got) != "hello" {
 			t.Errorf("after the header the hub got %q, want the device's bytes", got)
 		}
+	}
+}
+
+func get(client *http.Client, path string) (string, error) {
+	response, err := client.Get("http://hub" + path)
+	if err != nil {
+		return "", err
+	}
+	defer response.Body.Close()
+	body, err := io.ReadAll(response.Body)
+	return string(body), err
+}
+
+func TestLNK002TheHubsSocketGetsEachDeviceByItsOwnAddressAndNoOtherKey(t *testing.T) {
+	hub := testhub.Start(t)
+	r := startInFrontOf(t, hub.Socket, false) // a socket always gets the header
+	laptop, desk, stranger := tunnel.NewPrivateKey(), tunnel.NewPrivateKey(), tunnel.NewPrivateKey()
+	r.permit(t, laptop)
+	r.permit(t, desk)
+	for _, key := range []tunnel.PrivateKey{laptop, desk} {
+		_, client := r.device(t, key)
+		want, _ := r.store.AddressOf(key.Public())
+		if got, err := get(client, "/"); err != nil || got != want.String() {
+			t.Errorf("the hub saw the device as %q (%v), want its link address %v", got, err, want)
+		}
+	}
+	named := hub.Named()
+	_, client := r.device(t, stranger)
+	client.Timeout = 3 * time.Second
+	if got, err := get(client, "/"); err == nil {
+		t.Errorf("a key that is not in the list reached the hub: %q", got)
+	}
+	if hub.Named() != named {
+		t.Error("the hub's socket got a connection for a key that is not in the list")
+	}
+}
+
+func TestTheLinkDoesNotConnectToASocketThatOtherUsersCanReach(t *testing.T) {
+	for name, expose := range map[string]func(*testhub.Hub) error{
+		"the socket":        func(hub *testhub.Hub) error { return os.Chmod(hub.Socket, 0o666) },
+		"the socket folder": func(hub *testhub.Hub) error { return os.Chmod(filepath.Dir(hub.Socket), 0o755) },
+	} {
+		t.Run(name, func(t *testing.T) {
+			hub := testhub.Start(t)
+			if err := expose(hub); err != nil {
+				t.Fatal(err)
+			}
+			r := startInFrontOf(t, hub.Socket, false)
+			key := tunnel.NewPrivateKey()
+			r.permit(t, key)
+			_, client := r.device(t, key)
+			client.Timeout = 5 * time.Second
+			if got, err := get(client, "/"); err == nil {
+				t.Errorf("the link sent a device's request to a socket that other users can reach: %q", got)
+			}
+			if hub.Named() != 0 {
+				t.Error("the exposed socket got a connection")
+			}
+		})
 	}
 }
 

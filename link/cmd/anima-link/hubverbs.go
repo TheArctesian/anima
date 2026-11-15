@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net/netip"
 	"time"
 
 	"github.com/TheArctesian/anima/link/control"
@@ -24,11 +25,13 @@ type listedDevice struct {
 	Key tunnel.DeviceKey `json:"key"`
 	// Fingerprint is the short form of Key that "anima-link join" prints
 	// on the device, so that the operator can compare the two.
-	Fingerprint string    `json:"fingerprint"`
-	Name        string    `json:"name"`
-	Permitted   time.Time `json:"permitted"`
-	Expires     time.Time `json:"expires"`
-	Streams     int       `json:"streams"`
+	Fingerprint string `json:"fingerprint"`
+	Name        string `json:"name"`
+	// Address is the name of the device in the hub's records.
+	Address   netip.Addr `json:"address"`
+	Permitted time.Time  `json:"permitted"`
+	Expires   time.Time  `json:"expires"`
+	Streams   int        `json:"streams"`
 	// NextFingerprint is set while the device renews its key: the short
 	// form of the key that will replace Key (LNK-005).
 	NextFingerprint string `json:"nextFingerprint,omitempty"`
@@ -74,7 +77,7 @@ func hubVerbs(link *hublink.Link, permitted *devices.Store) map[string]control.V
 				}
 				listed = append(listed, listedDevice{
 					NextFingerprint: next,
-					Key:             device.Key, Fingerprint: device.Key.Fingerprint(), Name: device.Name, Permitted: device.Permitted, Expires: device.Expires,
+					Key:             device.Key, Fingerprint: device.Key.Fingerprint(), Name: device.Name, Address: device.Address, Permitted: device.Permitted, Expires: device.Expires,
 					Streams: link.Streams(device.Key), Path: string(path.Kind), Relay: path.Relay,
 				})
 			}

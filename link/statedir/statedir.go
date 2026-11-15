@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"syscall"
+	"time"
 )
 
 // Errors of this package. None of them holds the content of a file.
@@ -171,6 +172,24 @@ func (d *Dir) Listen(name string) (net.Listener, error) {
 func Dial(ctx context.Context, path, name string) (net.Conn, error) {
 	var dialer net.Dialer
 	return dialer.DialContext(ctx, "unix", filepath.Join(path, name))
+}
+
+// DialOwned connects to a Unix socket of this user's other program, for
+// example the hub's socket for the link. It refuses a socket that another
+// user owns or can replace: what is sent there would reach that user. The
+// socket's folder must pass the same test as a state directory.
+func DialOwned(path string, limit time.Duration) (net.Conn, error) {
+	if err := private(filepath.Dir(path)); err != nil {
+		return nil, err
+	}
+	stat, err := os.Lstat(path)
+	if err != nil {
+		return nil, err
+	}
+	if stat.Mode().Type() != fs.ModeSocket || !ownerOnly(stat) {
+		return nil, fmt.Errorf("%w: %s", ErrExposed, path)
+	}
+	return net.DialTimeout("unix", path, limit)
 }
 
 // private refuses a directory that is a symbolic link, that other users can

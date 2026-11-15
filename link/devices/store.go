@@ -2,6 +2,7 @@ package devices
 
 import (
 	"errors"
+	"net/netip"
 	"sync"
 	"time"
 
@@ -31,6 +32,10 @@ func Open(dir *statedir.Dir, now func() time.Time) (*Store, error) {
 	}
 	current := list{}
 	for _, device := range saved {
+		// A list that was written before devices had addresses.
+		if !linkRange.Contains(device.Address) {
+			device.Address = addressOf(device.Key)
+		}
 		current[device.Key] = device
 	}
 	return &Store{dir: dir, now: now, current: current}, nil
@@ -96,9 +101,17 @@ func (s *Store) Promote(next tunnel.DeviceKey) (*Promotion, error) {
 // that is connected stays connected when it leaves the list or expires,
 // until the hub link disconnects it (LNK-004).
 func (s *Store) Permits(key tunnel.DeviceKey) bool {
+	_, permitted := s.AddressOf(key)
+	return permitted
+}
+
+// AddressOf returns the link address of the device that a key can connect
+// as now. It reports false for a key that Permits refuses.
+func (s *Store) AddressOf(key tunnel.DeviceKey) (netip.Addr, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return s.current.permits(key, s.now())
+	device, permitted := s.current.permitted(key, s.now())
+	return device.Address, permitted
 }
 
 // Count is the number of devices in the list.

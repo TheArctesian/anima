@@ -213,7 +213,7 @@ func TestAWebSocketPassesAndCountsAsAStreamOfItsDevice(t *testing.T) {
 }
 
 func TestTheTargetMustBeOnLoopback(t *testing.T) {
-	for _, target := range []string{"192.0.2.10:8443", "hub.example:8443", "127.0.0.1", "", "0.0.0.0:8443", "127.0.0.1:0", "[2001:db8::1]:8443"} {
+	for _, target := range []string{"192.0.2.10:8443", "hub.example:8443", "127.0.0.1", "", "0.0.0.0:8443", "127.0.0.1:0", "[2001:db8::1]:8443", "hub/link.sock", "unix:/run/hub/link.sock"} {
 		_, err := hublink.Start(context.Background(), hublink.Config{
 			Identity: identity.Hub{Key: tunnel.NewPrivateKey(), PresharedKey: tunnel.NewPresharedKey()},
 			Target:   target,
