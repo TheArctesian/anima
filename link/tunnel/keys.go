@@ -141,8 +141,9 @@ func (a Address) Reveal() string { return string(a.text) }
 // IsZero reports whether the address was never set.
 func (a Address) IsZero() bool { return a.text == "" }
 
-// SameHub reports whether two addresses name one hub: the same public key
-// and the same pre-shared key. Only the relay can differ. A device moves to
+// SameHub reports whether two addresses name one hub: the same public key,
+// the same path-discovery key and the same pre-shared key. Only the relay
+// can differ. A device moves to
 // a new address only when this holds: a new address can come from DNS,
 // which anybody can answer, and an address with another key is another
 // hub (LNK-007).
@@ -152,5 +153,7 @@ func (a Address) SameHub(b Address) bool {
 	if errOne != nil || errOther != nil {
 		return false
 	}
-	return one.ServerPublic.Equal(other.ServerPublic) && one.PresharedKey.Equal(other.PresharedKey) && !one.PresharedKey.IsZero()
+	return one.ServerPublic.Equal(other.ServerPublic) &&
+		one.ServerDiscoPublic.Equal(other.ServerDiscoPublic) &&
+		one.PresharedKey.Equal(other.PresharedKey) && !one.PresharedKey.IsZero()
 }

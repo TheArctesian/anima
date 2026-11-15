@@ -118,8 +118,12 @@ anima-link ctl -state <HUB_STATE_DIR> relay.announce '{"relay":"<HOST>[:<PORT>]"
 anima-link ctl -state <HUB_STATE_DIR> relay.switch
 ```
 
+If the hub link cannot start on the new relay (for example the name was wrong), no verb can run.
+Start it once with `-relay <HOST>[:<PORT>] -replace-relay` to take a relay that works. The
+devices that learned the announced address cannot follow this change.
+
 A device that gets no answer at the old address tries the announced address after about 45
-seconds. A device that was off during step 1 does not know the new address. It needs a new
+seconds. It moves only when the hub itself answers there through the tunnel. A device that was off during step 1 does not know the new address. It needs a new
 invite, or a domain name:
 
 - Optional, off by default: put the hub address (`anima-link ctl ... address.show`) in a TXT
@@ -134,12 +138,27 @@ invite, or a domain name:
 ## 7. What the service behind the link must know
 
 - Each connection comes from `127.0.0.1`. Do not treat that address as "trusted" in the service.
+  On the hub computer, each local user can connect to the service's loopback port.
 - With `-name-device`, the hub link starts each connection with a PROXY protocol header
-  (version 2) that holds the device's key in the field `0xE0`. Start the hub link with this
-  option only for a service that reads the header, and only on a port that nothing else can
-  reach: whoever can write the header names the device.
+  (version 2) that holds the device's key in the field `0xE0`. **Do not let a service decide
+  access by this header yet.** A loopback TCP port is open to each local user of the hub
+  computer, and whoever can write the header names the device. Without the option, the first
+  bytes of a connection are the device's own, and a device can make them look like a header.
+  Plan item S5 must give the hub a port that only the link's process can reach (for example a
+  Unix socket with owner-only access), must require the header on that port, and must read it
+  nowhere else.
 
 ## 8. Limits and known faults
+
+What the operator accepts with this version, the most important first:
+
+1. With a domain name, the list of permitted devices is the only protection of the hub.
+2. Each local user of a device can use that device's local port, and so reach the service.
+3. A relay can always stop the link. It cannot read it.
+4. A stolen device renews its key like any other, until you revoke it.
+
+Other limits:
+
 
 - The clock of the hub computer decides when keys and invites expire. A clock that is set forward
   expires every device.

@@ -25,6 +25,7 @@ func runHub(ctx context.Context, args []string, streams stdio) error {
 	flags, statePath := stateFlags("hub")
 	target := flags.String("target", "", "the hub's loopback address, host:port")
 	relay := flags.String("relay", "", "the hub's own relay, host or host:port; at the first start only")
+	replaceRelay := flags.Bool("replace-relay", false, "with -relay: take this relay although the hub has one; its devices cannot follow")
 	nameDevice := flags.Bool("name-device", false, "start each connection to the hub with a PROXY header that holds the device key")
 	stopWithStdin := flags.Bool("stop-with-stdin", false, "stop when standard input closes")
 	if err := flags.Parse(args); err != nil || *statePath == "" || *target == "" || flags.NArg() != 0 {
@@ -37,7 +38,7 @@ func runHub(ctx context.Context, args []string, streams stdio) error {
 		return err
 	}
 	defer dir.Close()
-	if err := chooseRelay(dir, *relay); err != nil {
+	if err := chooseRelay(dir, *relay, *replaceRelay); err != nil {
 		return err
 	}
 	link, lists, err := startHubLink(ctx, dir, hubOptions{target: *target, nameDevice: *nameDevice, log: log})
@@ -64,12 +65,15 @@ func runHub(ctx context.Context, args []string, streams stdio) error {
 	return err
 }
 
-var errRelayIsSet = errors.New("this hub has a relay already; change it with the verbs relay.announce and relay.switch, so that its devices can follow")
+var errRelayIsSet = errors.New("this hub has a relay already; change it with the verbs relay.announce and relay.switch, so that its devices can follow. " +
+	"If the hub cannot start on its relay, start it with -relay and -replace-relay")
 
 // chooseRelay saves the operator's own relay before the first start
 // (LNK-007). A hub that has a relay keeps it: a different relay is a
-// different address.
-func chooseRelay(dir *statedir.Dir, hostPort string) error {
+// different address. With replace, the operator takes another relay
+// anyway: the way back for a hub whose saved relay does not work, for
+// example after a relay.switch to a mistyped name.
+func chooseRelay(dir *statedir.Dir, hostPort string, replace bool) error {
 	if hostPort == "" {
 		return nil
 	}
@@ -81,13 +85,13 @@ func chooseRelay(dir *statedir.Dir, hostPort string) error {
 	if err != nil {
 		return err
 	}
-	if !hub.Relay.IsZero() {
+	if !hub.Relay.IsZero() && !replace {
 		if hub.Relay.Name() == relay.Name() {
 			return nil
 		}
 		return errRelayIsSet
 	}
-	hub.Relay = relay
+	hub.Relay, hub.NextRelay = relay, tunnel.Relay{}
 	return hub.Save(dir)
 }
 

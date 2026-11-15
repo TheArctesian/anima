@@ -59,7 +59,9 @@ func enrol(ctx context.Context, sender *tunnel.Device, key tunnel.DeviceKey) (in
 		return invites.EnrolReply{}, ErrNoAnswer
 	}
 	if !reply.OK {
-		return invites.EnrolReply{}, fmt.Errorf("%w (%s)", ErrRefused, reply.Code)
+		// %q: the code comes from the hub, and a hostile hub must not write
+		// control characters to the user's terminal.
+		return invites.EnrolReply{}, fmt.Errorf("%w (%q)", ErrRefused, reply.Code)
 	}
 	return reply, nil
 }

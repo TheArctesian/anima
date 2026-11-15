@@ -75,6 +75,8 @@ func TestLNK007TheOperatorChangesTheRelayInTwoSteps(t *testing.T) {
 	if after.Relay.Name() != "relay.example.org" || !after.NextRelay.IsZero() {
 		t.Errorf("saved relay = %q, next set: %v; want the announced relay as the relay", after.Relay.Name(), !after.NextRelay.IsZero())
 	}
+
+	checkTheWayBackFromABadRelay(t, hub.state)
 }
 
 // relayNow reads the relay name of a running hub link from its status.
@@ -92,5 +94,24 @@ func TestLNK007AHubThatHasARelayDoesNotTakeAnotherAtStart(t *testing.T) {
 	code := run(context.Background(), []string{"hub", "-state", state, "-target", "127.0.0.1:9", "-relay", "other.example.org"}, stdio{strings.NewReader(""), io.Discard, &stderr})
 	if code != 1 || !strings.Contains(stderr.String(), "relay.announce") {
 		t.Errorf("exit %d, %q; want a refusal that names the two verbs", code, stderr.String())
+	}
+}
+
+// checkTheWayBackFromABadRelay checks what the operator can do when the hub
+// cannot start on its saved relay, so that no verb can run.
+func checkTheWayBackFromABadRelay(t *testing.T, state string) {
+	t.Helper()
+	// The way back when the new relay does not work: the hub cannot start
+	// on it, so no verb can run. The operator replaces the relay at start.
+	var stderr output
+	args := []string{"hub", "-state", state, "-target", "127.0.0.1:9", "-relay", "back.example.org"}
+	if code := run(context.Background(), args, stdio{strings.NewReader(""), io.Discard, &stderr}); code != 1 || !strings.Contains(stderr.String(), "-replace-relay") {
+		t.Errorf("-relay on a hub that has a relay: exit %d, %q; want a refusal that names -replace-relay", code, stderr.String())
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	run(ctx, append(args, "-replace-relay"), stdio{strings.NewReader(""), io.Discard, &stderr})
+	if got := savedHub(t, state).Relay.Name(); got != "back.example.org" {
+		t.Errorf("saved relay after -replace-relay = %q, want the replaced relay", got)
 	}
 }

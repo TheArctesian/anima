@@ -84,7 +84,7 @@ func (l *Link) moveTo(ctx context.Context, address tunnel.Address) bool {
 	}
 	ctx, cancel := context.WithTimeout(ctx, registerLimit)
 	defer cancel()
-	if moved.Register(ctx) != nil {
+	if !answersAsHub(ctx, moved) {
 		moved.Close()
 		return false
 	}
@@ -95,6 +95,27 @@ func (l *Link) moveTo(ctx context.Context, address tunnel.Address) bool {
 	}
 	l.replaceTunnel(moved, current).Close()
 	return true
+}
+
+// answersAsHub reports whether the hub itself answers through a tunnel. An
+// answer to Register is not enough: the relay can give it, and so can
+// anybody on the relay. A stream needs the tunnel's handshake, which only
+// the holder of the hub's private key and pre-shared key can complete.
+func answersAsHub(ctx context.Context, device *tunnel.Device) bool {
+	if device.Register(ctx) != nil {
+		return false
+	}
+	stream, err := device.Dial(ctx, tunnel.NoticePort)
+	if err != nil {
+		return false
+	}
+	defer stream.Close()
+	if deadline, ok := ctx.Deadline(); ok {
+		_ = stream.SetDeadline(deadline)
+	}
+	// The hub writes one line and closes. A relay cannot make these bytes.
+	_, err = bufio.NewReader(stream).ReadBytes('\n')
+	return err == nil
 }
 
 // HubNameLabel comes before the hub's domain name in the name of the TXT

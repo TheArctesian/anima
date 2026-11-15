@@ -245,4 +245,19 @@ Open items for the operator:
 4. **A session ends at a key renewal** (T9). To keep sessions, the hub link must let the old key's
    streams end by themselves. Not built.
 5. **Spec delta** (OI-2): the LNK texts of Section 5 and LNK-009, before a merge to `main`.
-6. **Upstream issues** at Tailcat for the faults in `link/UPSTREAM.md`: not opened.
+6. **Upstream issues** at Tailcat for the faults in `link/UPSTREAM.md`: not opened. The draft
+   texts are in `docs/research/one-click/tailcat-upstream-issues.md`.
+7. **For S5** (from the security review of T12): the device key header is safe only if the hub
+   reads it on a port that only the link's process can reach (a Unix socket with owner-only
+   access, or a check of the caller), requires it there, and reads it nowhere else. A loopback
+   TCP port is open to each local user of the hub computer.
+
+Security findings that changed the design after the breakdown was approved:
+
+| Finding | Change |
+| --- | --- |
+| A device could give the invite's own temporary key as its key. A used invite would then work with no end. | The temporary key of an open invite, the invite's own key and the hub's key can not become a device key. |
+| The tunnel asks its admission question before the sender has proved its key. A renewal that completed there could be forced by the relay. | A renewal completes only on a stream from the new key. Nothing changes on an admission question. |
+| A device that looked for the hub by its domain name accepted an address with another hub's keys. | A device moves only to an address with its hub's key and pre-shared key, and only after a stream of the tunnel. |
+| A key, an address or an invite could show in structured logs and in JSON. | The type `redacted.Secret`; a test prints each secret in each way. |
+| macOS access-control entries can give access to the state files that the mode bits do not show. | The state directory removes them, after it has checked that the directory is the user's own. |
