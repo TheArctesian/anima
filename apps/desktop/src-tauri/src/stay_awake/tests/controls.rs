@@ -265,3 +265,87 @@ fn the_state_and_each_error_cross_to_the_client_in_a_fixed_shape() {
         assert_eq!(json["message"], error.to_string());
     }
 }
+
+#[test]
+fn release_on_a_mac_sets_the_sleep_setting_back() {
+    let rig = Rig::mac_set_up();
+    let mut control = control(&rig);
+    control.choose(Level::LidClosed).unwrap();
+    assert!(rig.marker().exists());
+    control.release();
+    assert_eq!(
+        rig.sudo_calls().last().unwrap(),
+        "sudo -n pmset -a disablesleep 0"
+    );
+    assert!(!rig.marker().exists());
+}
+
+#[test]
+fn a_computer_that_loses_the_idle_hold_also_ends_the_lid_hold() {
+    let mut rig = Rig::mac_set_up();
+    rig.platform.caffeinate = "/nonexistent/anima-caffeinate".into();
+    let status = control(&rig).choose(Level::LidClosed).unwrap();
+    assert_eq!(
+        (status.held, status.pause),
+        (Level::Off, Some(Pause::Unavailable))
+    );
+    assert_eq!(
+        rig.sudo_calls().last().unwrap(),
+        "sudo -n pmset -a disablesleep 0"
+    );
+    assert!(!rig.marker().exists());
+}
+
+/// A `pmset` that reports the battery at `percent` and counts its runs in `runs`.
+fn pmset_on_battery(rig: &Rig, percent: u8) -> std::path::PathBuf {
+    let runs = rig.dir.path().join("pmset-runs");
+    let body = format!(
+        "echo x >> '{}'; echo \"Now drawing from 'Battery Power'\"; echo ' -InternalBattery-0 {percent}%; discharging'",
+        runs.display()
+    );
+    rig.stand_in("pmset", &body);
+    runs
+}
+
+#[test]
+fn the_operators_own_change_ends_a_low_battery_pause() {
+    let rig = Rig::new(Os::Mac);
+    pmset_on_battery(&rig, 25);
+    let mut control = control(&rig);
+    control.set_floor(Some(20)).unwrap();
+    control.choose(Level::Awake).unwrap();
+    let low = control.apply(Power::Battery { percent: 12 });
+    assert_eq!(low.pause, Some(Pause::LowBattery));
+    assert_eq!(
+        control.refresh().pause,
+        Some(Pause::LowBattery),
+        "25% is still paused"
+    );
+    let chosen = control.choose(Level::Awake).unwrap();
+    assert_eq!((chosen.held, chosen.pause), (Level::Awake, None));
+}
+
+#[test]
+fn the_power_source_is_read_only_when_a_floor_can_change_the_answer() {
+    let rig = Rig::new(Os::Mac);
+    let runs = pmset_on_battery(&rig, 80);
+    let mut control = control(&rig);
+    control.choose(Level::Awake).unwrap();
+    control.refresh();
+    assert!(!runs.exists());
+    control.set_floor(Some(20)).unwrap();
+    assert!(runs.exists());
+}
+
+#[test]
+fn a_borrowed_sleep_setting_is_looked_at_again_and_taken_when_the_other_program_ends_it() {
+    let rig = Rig::mac_set_up();
+    rig.stand_in("pmset", "echo ' SleepDisabled 1'");
+    let mut control = control(&rig);
+    let borrowed = control.choose(Level::LidClosed).unwrap();
+    assert_eq!(borrowed.held, Level::LidClosed);
+    assert_eq!(rig.sudo_calls(), Vec::<String>::new());
+    rig.stand_in("pmset", "echo ' SleepDisabled 0'");
+    assert_eq!(control.refresh().held, Level::LidClosed);
+    assert_eq!(rig.sudo_calls(), ["sudo -n pmset -a disablesleep 1"]);
+}

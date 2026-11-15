@@ -169,3 +169,77 @@ fn a_marker_left_by_an_earlier_run_sets_sleep_back_and_a_failure_keeps_the_marke
     assert_eq!(rig.sudo_calls(), ["sudo -n pmset -a disablesleep 0"]);
     assert!(!marker.exists());
 }
+
+#[test]
+fn a_failed_new_hold_keeps_the_marker_of_a_setting_that_is_still_changed() {
+    let mut rig = Rig::mac_set_up();
+    let marker = rig.marker();
+    fs::write(&marker, "").unwrap();
+    rig.platform.pmset = rig.stand_in("pmset", "echo ' SleepDisabled 1'");
+    rig.platform.sudo = rig.stand_in("sudo", "exit 1");
+    assert_eq!(
+        hold::lid(&rig.platform, &marker).unwrap_err(),
+        HoldError::Setting
+    );
+    assert!(marker.exists());
+}
+
+#[test]
+fn a_watcher_that_cannot_start_sets_the_setting_back_at_once() {
+    let mut rig = Rig::mac_set_up();
+    rig.platform.shell = "/nonexistent/anima-sh".into();
+    let marker = rig.marker();
+    assert_eq!(
+        hold::lid(&rig.platform, &marker).unwrap_err(),
+        HoldError::CouldNotStart
+    );
+    assert_eq!(
+        rig.sudo_calls(),
+        [
+            "sudo -n pmset -a disablesleep 1",
+            "sudo -n pmset -a disablesleep 0"
+        ]
+    );
+    assert!(!marker.exists());
+}
+
+#[test]
+fn when_the_setting_cannot_be_set_back_the_watcher_stays_to_do_it_at_the_end() {
+    let mut rig = Rig::mac_set_up();
+    let mut followed = short_lived();
+    rig.platform.followed = followed.id();
+    let marker = rig.marker();
+    let log = rig.dir.path().join("calls");
+    // `sudo` refuses the first set-back only.
+    let once = rig.dir.path().join("refused-once");
+    let body = format!(
+        "case \"$*\" in *'disablesleep 0') [ -e '{once}' ] || {{ : > '{once}'; exit 1; }};; esac; echo \"sudo $*\" >> '{log}'",
+        once = once.display(),
+        log = log.display()
+    );
+    rig.platform.sudo = rig.stand_in("sudo", &body);
+    let held = hold::lid(&rig.platform, &marker).expect("the lid hold");
+    assert_eq!(
+        hold::release_lid(&rig.platform, &marker, held),
+        Err(HoldError::Setting)
+    );
+    assert!(marker.exists());
+    followed.wait().unwrap();
+    assert!(eventually(|| !marker.exists()));
+    assert_eq!(
+        rig.sudo_calls().last().unwrap(),
+        "sudo -n pmset -a disablesleep 0"
+    );
+}
+
+#[test]
+fn a_hold_program_that_ignores_the_end_signal_is_killed() {
+    let mut rig = Rig::new(Os::Linux);
+    let mark = format!("anima-stubborn-test-{}", std::process::id());
+    let body = format!("trap '' TERM; while :; do sleep 1; : {mark}; done");
+    rig.platform.inhibit = rig.stand_in("inhibit", &format!("exec sh -c \"{body}\""));
+    let held = hold::idle(&rig.platform).expect("a hold");
+    assert!(eventually(|| running(&mark)));
+    drop(held);
+    assert!(eventually(|| !running(&mark)));
+}

@@ -32,7 +32,10 @@ use super::{
 use crate::os_program::{self, AfterLimit, Limit, Stdout};
 
 /// A hold program that ends this soon after its start was refused by the OS.
-const SETTLE: Duration = Duration::from_millis(250);
+const SETTLE: Duration = Duration::from_millis(400);
+
+/// How long a hold program gets to end after `SIGTERM`, before `SIGKILL`.
+const END: Duration = Duration::from_secs(1);
 
 const POLL: Duration = Duration::from_millis(10);
 
@@ -91,12 +94,30 @@ impl Hold {
     }
 }
 
-impl Drop for Hold {
-    fn drop(&mut self) {
+impl Hold {
+    fn signal(&self, signal: Signal) {
         if let Ok(group) = i32::try_from(self.0.id()) {
             // The group is already gone when the program ended by itself.
-            let _ = killpg(Pid::from_raw(group), Signal::SIGTERM);
+            let _ = killpg(Pid::from_raw(group), signal);
         }
+    }
+
+    /// Lets the hold program run on with nobody to end it. Only for the watcher, which ends
+    /// by itself when the app's process ends.
+    fn leave(self) {
+        std::mem::forget(self);
+    }
+}
+
+impl Drop for Hold {
+    fn drop(&mut self) {
+        self.signal(Signal::SIGTERM);
+        let asked = Instant::now();
+        while self.alive() && asked.elapsed() < END {
+            thread::sleep(POLL);
+        }
+        // A program that ignores the first signal must not keep the hold, or the caller waiting.
+        self.signal(Signal::SIGKILL);
         let _ = self.0.wait();
     }
 }
@@ -194,10 +215,13 @@ fn setting(platform: &Platform, marker: &Path) -> Result<LidHold, HoldError> {
         return Ok(LidHold::Borrowed);
     }
     // The marker is written first: a failure after the setting changed still leaves a record.
+    let had_marker = marker.exists();
     fs::write(marker, b"").map_err(|_| HoldError::Setting)?;
     if let Err(error) = set_sleep_disabled(platform, true) {
-        // The setting did not change, so there is nothing to set back.
-        let _ = fs::remove_file(marker);
+        // A marker from before stays: the setting it records is still changed.
+        if !had_marker {
+            let _ = fs::remove_file(marker);
+        }
         return Err(error);
     }
     match watcher(platform, marker) {
@@ -245,9 +269,14 @@ pub fn release_lid(platform: &Platform, marker: &Path, hold: LidHold) -> Result<
     match hold {
         LidHold::Inhibitor(_) | LidHold::Borrowed => Ok(()),
         LidHold::Setting { watcher } => {
-            // The watcher ends first, so it cannot write after a later hold.
-            drop(watcher);
-            restore(platform, marker)
+            let restored = restore(platform, marker);
+            if restored.is_ok() {
+                drop(watcher);
+            } else {
+                // The watcher stays: it sets the setting back when the app ends.
+                watcher.leave();
+            }
+            restored
         }
     }
 }
