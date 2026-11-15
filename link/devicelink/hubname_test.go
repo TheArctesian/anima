@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/TheArctesian/anima/link/devicelink"
+	"github.com/TheArctesian/anima/link/devices"
 	"github.com/TheArctesian/anima/link/identity"
 	"github.com/TheArctesian/anima/link/tunnel"
 	"github.com/TheArctesian/anima/link/tunnel/testbed"
@@ -83,5 +84,42 @@ func TestLNK007ADeviceFindsAHubThatMovedByItsDomainName(t *testing.T) {
 	// A name only finds the hub. A key that is not in the list is still refused.
 	if got, err := get(strangerLink, 4*time.Second); err == nil {
 		t.Errorf("a device that is not permitted reached the hub through its domain name: %q", got)
+	}
+}
+
+// DNS can be answered by anybody. An address in it with another hub's keys
+// is another hub, and the device must not move to it.
+func TestLNK007ADeviceDoesNotFollowADomainNameToAnotherHub(t *testing.T) {
+	hub := startInvitingHub(t)
+	device := hub.joined(t)
+	device.HubName = "hub.example.org"
+	hub.link.Close() // the real hub is off, so the device looks for it
+
+	impostor := startInvitingHub(t)
+	if _, err := impostor.devices.Permit(devices.Device{Key: device.Key.Public(), Name: "the victim"}); err != nil {
+		t.Fatal(err)
+	}
+	names := &zone{}
+	names.set("_anima-link.hub.example.org", impostor.link.Address().Reveal())
+	saved := &kept{device: device}
+	link, err := devicelink.Start(devicelink.Config{
+		Identity: device, Listen: "127.0.0.1:0", Keepalive: 300 * time.Millisecond, Save: saved.save, LookupTXT: names.lookup,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer link.Close()
+
+	for deadline := time.Now().Add(90 * time.Second); len(names.names()) == 0; time.Sleep(200 * time.Millisecond) {
+		if time.Now().After(deadline) {
+			t.Fatal("the device never asked the domain name; the test proves nothing")
+		}
+	}
+	time.Sleep(15 * time.Second) // longer than the time to register at an address
+	if saved.get().Hub != device.Hub {
+		t.Fatal("the device saved the address of another hub as its hub")
+	}
+	if got, err := get(link, 4*time.Second); err == nil {
+		t.Errorf("the device's local port reaches another hub: %q", got)
 	}
 }

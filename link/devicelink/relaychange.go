@@ -35,7 +35,7 @@ func (l *Link) readNotice(ctx context.Context) {
 	}
 	next, err := tunnel.ParseAddress(notice.NextHub)
 	current := l.identity()
-	if err != nil || next == current.NextHub || next == current.Hub {
+	if err != nil || next == current.NextHub || next == current.Hub || !next.SameHub(current.Hub) {
 		return
 	}
 	current.NextHub = next
@@ -69,9 +69,15 @@ func (l *Link) followHub(ctx context.Context) {
 	}
 }
 
-// moveTo makes an address the hub's address if the hub answers there.
+// moveTo makes an address the hub's address if the hub answers there. The
+// address must name the hub that the device joined: the same key and the
+// same pre-shared key, on another relay. An address with another key is
+// refused, wherever it comes from.
 func (l *Link) moveTo(ctx context.Context, address tunnel.Address) bool {
 	current := l.identity()
+	if !address.SameHub(current.Hub) {
+		return false
+	}
 	moved, err := tunnel.NewDevice(tunnel.DeviceConfig{Key: current.Key, Hub: address, DebugLogf: l.debugLogf})
 	if err != nil {
 		return false

@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/TheArctesian/anima/link/tunnel"
+	"github.com/TheArctesian/anima/link/tunnel/testbed"
 )
 
 // everyPrinting gives the text of each ordinary way to print or log values.
@@ -132,5 +133,23 @@ func TestLNK008AStartErrorKeepsItsCauseOutOfItsText(t *testing.T) {
 	}
 	if strings.Contains(err.Error(), "relay-host-name") {
 		t.Errorf("the error text names the relay map: %q", err)
+	}
+}
+
+func TestLNK007TwoAddressesAreOneHubOnlyWithTheSameKeys(t *testing.T) {
+	id := newIdentity(t)
+	hub := startHub(t, id, admitAll)
+	elsewhere := tunnel.AddressOn(id.key, id.psk, testbed.StartRelay(t))
+	otherKey := tunnel.AddressOn(tunnel.NewPrivateKey(), id.psk, id.relay)
+	otherPSK := tunnel.AddressOn(id.key, tunnel.NewPresharedKey(), id.relay)
+
+	if got := tunnel.AddressOn(id.key, id.psk, hub.Relay()); got != hub.Address() {
+		t.Error("AddressOn does not give the address that the running hub has")
+	}
+	if elsewhere == hub.Address() || !elsewhere.SameHub(hub.Address()) {
+		t.Error("the same keys on another relay must be another address of the same hub")
+	}
+	if otherKey.SameHub(hub.Address()) || otherPSK.SameHub(hub.Address()) || (tunnel.Address{}).SameHub(hub.Address()) {
+		t.Error("an address with another key, another pre-shared key or no content is not the same hub")
 	}
 }
