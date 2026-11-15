@@ -1,0 +1,174 @@
+use std::fs;
+
+use super::rig::{Rig, eventually, running};
+use crate::stay_awake::{
+    control::{Control, ControlError, Status},
+    error::StayAwakeError,
+    level::{Level, Pause, Power},
+    lid_set_up::{Lid, SetUpError},
+    platform::Os,
+};
+
+fn control(rig: &Rig) -> Control {
+    Control::open(rig.platform.clone(), rig.folder())
+}
+
+#[test]
+fn a_new_control_is_off_and_a_choice_is_kept_for_the_next_run() {
+    let rig = Rig::new(Os::Linux);
+    let mut first = control(&rig);
+    assert_eq!(first.refresh().level, Level::Off);
+    first.set_floor(Some(30)).unwrap();
+    let chosen = first.choose(Level::Awake).unwrap();
+    assert_eq!(
+        (chosen.level, chosen.held, chosen.pause),
+        (Level::Awake, Level::Awake, None)
+    );
+    drop(first);
+    let again = control(&rig).refresh();
+    assert_eq!((again.level, again.battery_floor), (Level::Awake, Some(30)));
+}
+
+#[test]
+fn the_hold_program_runs_while_a_level_is_held_and_ends_at_release() {
+    let mut rig = Rig::new(Os::Linux);
+    let mark = format!("anima-control-test-{}", std::process::id());
+    rig.platform.inhibit = rig.stand_in("inhibit", &format!("sh -c 'sleep 30; : {mark}' & wait"));
+    let mut control = control(&rig);
+    control.choose(Level::Awake).unwrap();
+    assert!(eventually(|| running(&mark)));
+    control.release();
+    assert!(eventually(|| !running(&mark)));
+    assert_eq!(
+        control.refresh().level,
+        Level::Awake,
+        "the choice stays saved"
+    );
+}
+
+#[test]
+fn the_lid_level_without_the_set_up_step_holds_keep_awake_and_says_why() {
+    let rig = Rig::new(Os::Mac);
+    let status = control(&rig).choose(Level::LidClosed).unwrap();
+    assert_eq!(
+        status,
+        Status {
+            level: Level::LidClosed,
+            battery_floor: None,
+            held: Level::Awake,
+            pause: Some(Pause::LidNotReady),
+            lid: Lid::NeedsSetUp,
+        }
+    );
+}
+
+#[test]
+fn the_lid_level_that_the_os_refuses_holds_keep_awake() {
+    let mut rig = Rig::mac_set_up();
+    rig.platform.sudo = rig.stand_in("sudo", "exit 1");
+    let status = control(&rig).choose(Level::LidClosed).unwrap();
+    assert_eq!(
+        (status.held, status.pause),
+        (Level::Awake, Some(Pause::LidNotReady))
+    );
+}
+
+#[test]
+fn a_computer_that_refuses_every_hold_is_held_off_and_says_so() {
+    let mut rig = Rig::new(Os::Linux);
+    rig.platform.inhibit = "/nonexistent/anima-inhibit".into();
+    let status = control(&rig).choose(Level::Awake).unwrap();
+    assert_eq!(
+        (status.held, status.pause),
+        (Level::Off, Some(Pause::Unavailable))
+    );
+}
+
+#[test]
+fn below_the_floor_on_battery_the_holds_end_until_mains_power_returns() {
+    let rig = Rig::mac_set_up();
+    let mut control = control(&rig);
+    control.set_floor(Some(20)).unwrap();
+    control.choose(Level::LidClosed).unwrap();
+    let low = control.apply(Power::Battery { percent: 12 });
+    assert_eq!((low.held, low.pause), (Level::Off, Some(Pause::LowBattery)));
+    assert_eq!(
+        rig.sudo_calls().last().unwrap(),
+        "sudo -n pmset -a disablesleep 0"
+    );
+    assert!(!rig.marker().exists());
+    let still = control.apply(Power::Battery { percent: 25 });
+    assert_eq!(still.held, Level::Off);
+    let back = control.apply(Power::Mains);
+    assert_eq!((back.held, back.pause), (Level::LidClosed, None));
+    assert_eq!(
+        rig.sudo_calls().last().unwrap(),
+        "sudo -n pmset -a disablesleep 1"
+    );
+}
+
+#[test]
+fn a_start_after_a_failed_run_sets_the_sleep_setting_back() {
+    let rig = Rig::mac_set_up();
+    fs::write(rig.marker(), "").unwrap();
+    let _control = control(&rig);
+    assert_eq!(rig.sudo_calls(), ["sudo -n pmset -a disablesleep 0"]);
+    assert!(!rig.marker().exists());
+}
+
+#[test]
+fn removing_the_set_up_sets_sleep_back_before_the_rule_is_deleted() {
+    let rig = Rig::mac_set_up();
+    let mut control = control(&rig);
+    control.choose(Level::LidClosed).unwrap();
+    control.remove_lid_set_up().unwrap();
+    let calls = rig.calls();
+    let set_back = calls
+        .iter()
+        .position(|call| call.ends_with("disablesleep 0"));
+    let removed = calls.iter().position(|call| call.starts_with("osascript "));
+    assert!(set_back.is_some() && set_back < removed, "{calls:?}");
+}
+
+#[test]
+fn a_choice_that_cannot_be_saved_changes_nothing() {
+    let rig = Rig::new(Os::Linux);
+    let mut control = control(&rig);
+    // A file where the folder must be: the save fails.
+    fs::write(rig.folder(), "").unwrap();
+    assert_eq!(control.choose(Level::Awake), Err(ControlError::Unsaved));
+    assert_eq!(control.refresh().level, Level::Off);
+}
+
+#[test]
+fn the_state_and_each_error_cross_to_the_client_in_a_fixed_shape() {
+    let status = Status {
+        level: Level::LidClosed,
+        battery_floor: Some(20),
+        held: Level::Awake,
+        pause: Some(Pause::LidNotReady),
+        lid: Lid::NeedsSetUp,
+    };
+    assert_eq!(
+        serde_json::to_value(status).unwrap(),
+        serde_json::json!({
+            "level": "lid-closed", "batteryFloor": 20, "held": "awake",
+            "pause": "lid-not-ready", "lid": "needs-set-up"
+        })
+    );
+    let codes = [
+        (StayAwakeError::Caller, "caller"),
+        (ControlError::Unsaved.into(), "unsaved"),
+        (
+            ControlError::SetUp(SetUpError::Unsupported).into(),
+            "unsupported",
+        ),
+        (ControlError::SetUp(SetUpError::Refused).into(), "refused"),
+        (StayAwakeError::Failed, "failed"),
+    ];
+    for (error, code) in codes {
+        let json = serde_json::to_value(error).unwrap();
+        assert_eq!(json["code"], code);
+        assert_eq!(json["message"], error.to_string());
+    }
+}
