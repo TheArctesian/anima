@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc ef93d8bed7f058387ca65a7af72ae399ac71e52434f7b44a5f04600b85e696d9 # shrinks to (width, height) = (1, 10), rounds = [[Write(Sent { corner: (0, 10), size: (5, 1), seed: 1, repeat: false })]]

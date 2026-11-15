@@ -50,7 +50,7 @@
   <ConnectionRow
     protocol="vnc"
     name="VNC"
-    icon="carbon:screen-map"
+    icon="carbon:screen"
     {summary}
     bind:enabled={draft.values.vnc.enabled}
     setUp={settingUp || isSetUp(device, 'vnc')}
