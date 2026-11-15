@@ -128,6 +128,8 @@ invite, or a domain name:
 - **Warning.** DNS is public. An address in DNS shows the hub's key, its pre-shared key and its
   relay to everybody. The list of permitted devices is then the only protection. The hub still
   refuses each key that is not in its list.
+- A device moves only to an address that has the key and the pre-shared key of the hub that it
+  joined. So a false record in DNS cannot send a device to another hub; it can only fail to help.
 
 ## 7. What the service behind the link must know
 
