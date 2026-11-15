@@ -276,7 +276,10 @@ documents are built, reviewed and tested on macOS and in a Linux container.
 
 ### 7.3 Results
 
-- Gates: see the last commit of the branch.
+- Gates at `0e0c3269` (`origin/main` `bb4c00d6` merged in, private build folder): 14 of 14.
+  Gates 1 to 11 passed in one run (4910 Rust tests, 4381 client tests). Gates 12 to 14 were run
+  after it on the same commit: the first run had its build folder inside the checkout, and the
+  names gate read it.
 - macOS, a real LaunchAgent (label `ing.anima.hub`, trial root in `~/Library/Caches`, debug
   programs, the universal PostgreSQL tree of the S3 recipe), 2026-11-15:
   - `install`: the hub was `ready` in about 15 s on a new database; `anima-hub health` passed.
