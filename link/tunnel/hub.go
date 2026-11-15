@@ -19,6 +19,14 @@ var (
 	ErrBadAddress = errors.New("tunnel: the hub address is not valid")
 )
 
+// startError is ErrStart with the library's cause. Its text is fixed: the
+// library's text can name relay hosts and URLs (LNK-008). The cause stays
+// reachable with errors.Is and errors.As.
+type startError struct{ cause error }
+
+func (startError) Error() string     { return ErrStart.Error() }
+func (e startError) Unwrap() []error { return []error{ErrStart, e.cause} }
+
 // Logf is the library's log sink. It can get text that names keys and
 // network addresses, so it must not go to a normal log (LNK-008).
 type Logf func(format string, args ...any)
@@ -34,8 +42,12 @@ func (l Logf) orDiscard() logger.Logf {
 type HubConfig struct {
 	Key          PrivateKey
 	PresharedKey PresharedKey
-	// Relay is the saved relay. Zero at the first start only.
+	// Relay is the saved relay. Zero at the first start only: the hub then
+	// takes the nearest relay of the map at RelayMapURL.
 	Relay Relay
+	// RelayMapURL is where the relay map is when Relay is zero. Empty means
+	// Tailscale's map of shared relays.
+	RelayMapURL string
 	// Admit decides if a device key can connect. It is asked when a device
 	// that is not connected announces itself, and not again while it stays
 	// connected (LNK-002).
@@ -62,11 +74,12 @@ func StartHub(ctx context.Context, cfg HubConfig) (*Hub, error) {
 		Key:          cfg.Key.node,
 		PresharedKey: cfg.PresharedKey.psk,
 		Region:       cfg.Relay.region,
+		DERPMapURL:   cfg.RelayMapURL,
 		Logf:         cfg.DebugLogf.orDiscard(),
 		AllowClient:  func(k key.NodePublic) bool { return cfg.Admit(DeviceKey{k}) },
 	}
 	if err := server.StartContext(ctx); err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrStart, err)
+		return nil, startError{err}
 	}
 	relay := cfg.Relay
 	if relay.IsZero() {

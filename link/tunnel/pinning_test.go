@@ -22,7 +22,7 @@ func register(device *tunnel.Device, limit time.Duration) error {
 }
 
 func TestPinARefusedDeviceGetsNoAnswerUntilItIsAdmitted(t *testing.T) {
-	var permitted flag
+	var permitted admission
 	hub := startHub(t, newIdentity(t), permitted.admit)
 	serveEcho(t, hub)
 	key := tunnel.NewPrivateKey()
@@ -56,7 +56,9 @@ func TestPinTheHubKnowsTheKeyOfEachStream(t *testing.T) {
 		go func() {
 			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 			defer cancel()
-			device.Dial(ctx, echoPort)
+			if _, err := device.Dial(ctx, echoPort); err != nil {
+				t.Errorf("Dial: %v", err)
+			}
 		}()
 		stream, err := ln.Accept()
 		if err != nil {
@@ -71,7 +73,7 @@ func TestPinTheHubKnowsTheKeyOfEachStream(t *testing.T) {
 }
 
 func TestPinDisconnectStopsTrafficButLeavesTheStreamOpen(t *testing.T) {
-	var permitted flag
+	var permitted admission
 	permitted.Store(true)
 	hub := startHub(t, newIdentity(t), permitted.admit)
 	serveEcho(t, hub)
@@ -87,8 +89,12 @@ func TestPinDisconnectStopsTrafficButLeavesTheStreamOpen(t *testing.T) {
 		t.Error("a second Disconnect = true")
 	}
 
-	stream.SetDeadline(time.Now().Add(2 * time.Second))
-	stream.Write([]byte("after"))
+	if err := stream.SetDeadline(time.Now().Add(2 * time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := stream.Write([]byte("after")); err != nil {
+		t.Fatalf("write after Disconnect: %v", err)
+	}
 	_, err := stream.Read(make([]byte, 5))
 	var timeout net.Error
 	if !errors.As(err, &timeout) || !timeout.Timeout() {

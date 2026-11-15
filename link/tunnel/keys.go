@@ -5,10 +5,19 @@ package tunnel
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 
 	"github.com/tailscale/tailcat"
 	"tailscale.com/types/key"
 )
+
+// ErrBadKey means that a text is not a key. The error never holds the text,
+// because the text can be a damaged secret (LNK-008).
+var ErrBadKey = errors.New("tunnel: the text is not a key")
+
+// redacted is what a secret prints as, so that a secret in a log line or an
+// error made with %v shows nothing.
+const redacted = "[secret]"
 
 // PrivateKey is the secret identity of a hub or a device. Its text form is a
 // secret (LNK-008).
@@ -27,7 +36,18 @@ func (k PrivateKey) Public() DeviceKey { return DeviceKey{k.node.Public()} }
 func (k PrivateKey) MarshalText() ([]byte, error) { return k.node.MarshalText() }
 
 // UnmarshalText reads the form that MarshalText gives.
-func (k *PrivateKey) UnmarshalText(text []byte) error { return k.node.UnmarshalText(text) }
+func (k *PrivateKey) UnmarshalText(text []byte) error {
+	if k.node.UnmarshalText(text) != nil {
+		return ErrBadKey
+	}
+	return nil
+}
+
+// String hides the key.
+func (PrivateKey) String() string { return redacted }
+
+// GoString hides the key.
+func (PrivateKey) GoString() string { return redacted }
 
 // DeviceKey is the public key of a hub or a device. It is not a secret, but
 // logs must use Fingerprint and not the key (LNK-008).
@@ -46,7 +66,15 @@ func (k DeviceKey) Fingerprint() string {
 func (k DeviceKey) MarshalText() ([]byte, error) { return k.node.MarshalText() }
 
 // UnmarshalText reads the form that MarshalText gives.
-func (k *DeviceKey) UnmarshalText(text []byte) error { return k.node.UnmarshalText(text) }
+func (k *DeviceKey) UnmarshalText(text []byte) error {
+	if k.node.UnmarshalText(text) != nil {
+		return ErrBadKey
+	}
+	return nil
+}
+
+// String is the fingerprint, so that a key in a log line is not the key.
+func (k DeviceKey) String() string { return k.Fingerprint() }
 
 // PresharedKey is the second secret of a hub. It is part of the hub address.
 type PresharedKey struct{ psk tailcat.PresharedKey }
@@ -61,8 +89,26 @@ func (k PresharedKey) IsZero() bool { return k.psk.IsZero() }
 func (k PresharedKey) MarshalText() ([]byte, error) { return k.psk.MarshalText() }
 
 // UnmarshalText reads the form that MarshalText gives.
-func (k *PresharedKey) UnmarshalText(text []byte) error { return k.psk.UnmarshalText(text) }
+func (k *PresharedKey) UnmarshalText(text []byte) error {
+	if k.psk.UnmarshalText(text) != nil {
+		return ErrBadKey
+	}
+	return nil
+}
+
+// String hides the key.
+func (PresharedKey) String() string { return redacted }
+
+// GoString hides the key.
+func (PresharedKey) GoString() string { return redacted }
 
 // Address is what a device needs to find and authenticate a hub: the hub's
 // public key, its pre-shared key and its relay. It is a secret (LNK-008).
 type Address string
+
+// String hides the address. Use string(address) where the address itself
+// must go out, for example to the operator who makes an invite.
+func (Address) String() string { return redacted }
+
+// GoString hides the address.
+func (Address) GoString() string { return redacted }

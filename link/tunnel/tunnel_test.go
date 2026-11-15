@@ -98,6 +98,11 @@ func echo(t *testing.T, c net.Conn, message string) {
 
 func admitAll(tunnel.DeviceKey) bool { return true }
 
+// admission is an Admit answer that a test can change while the hub runs.
+type admission struct{ atomic.Bool }
+
+func (a *admission) admit(tunnel.DeviceKey) bool { return a.Load() }
+
 // waitForPath pings until the device reports the wanted kind of path.
 func waitForPath(t *testing.T, device *tunnel.Device, want tunnel.PathKind) tunnel.Path {
 	t.Helper()
@@ -167,8 +172,3 @@ func TestAHubNeedsAnAdmitFunctionAndItsKeys(t *testing.T) {
 		t.Errorf("no keys: err = %v, want ErrNoIdentity", err)
 	}
 }
-
-// flag is an Admit answer that a test can change while the hub runs.
-type flag struct{ atomic.Bool }
-
-func (f *flag) admit(tunnel.DeviceKey) bool { return f.Load() }
