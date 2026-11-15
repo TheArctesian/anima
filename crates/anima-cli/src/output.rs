@@ -158,6 +158,19 @@ impl Output {
         write_out(&format!("{text}\n"))
     }
 
+    /// Prints the text of a file exactly, with no line break added; to a terminal with its
+    /// control characters made harmless ([`text::clean_file`]).
+    ///
+    /// # Errors
+    /// As [`Output::data`].
+    pub fn file(self, file: &str) -> Result<(), Failure> {
+        if self.terminal {
+            write_out(&text::clean_file(file))
+        } else {
+            write_out(file)
+        }
+    }
+
     /// Prints JSON as it is, for `anima api`: to a terminal escaped as [`Output::data`] does.
     ///
     /// # Errors

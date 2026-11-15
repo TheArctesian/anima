@@ -24,26 +24,6 @@ pub const EXCEPTIONS: &[(&str, &str)] = &[
         "builder token only: the desktop builder (BLD-022)",
     ),
     (
-        "Query.commits",
-        "temporary: the command-line task W8 adds its document and deletes this line (CMD-031)",
-    ),
-    (
-        "Query.branches",
-        "temporary: the command-line task W8 adds its document and deletes this line (CMD-031)",
-    ),
-    (
-        "Query.repositoryReleases",
-        "temporary: the command-line task W8 adds its document and deletes this line (CMD-031)",
-    ),
-    (
-        "Query.codeDirectory",
-        "temporary: the command-line task W8 adds its document and deletes this line (CMD-031)",
-    ),
-    (
-        "Query.codeFile",
-        "temporary: the command-line task W8 adds its document and deletes this line (CMD-031)",
-    ),
-    (
         "Mutation.createIssue",
         "temporary: the command-line task W13 adds its document and deletes this line (CMD-031)",
     ),

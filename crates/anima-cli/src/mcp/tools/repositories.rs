@@ -1,5 +1,6 @@
-//! The `repositories` tool set: pull requests, issues, comments, workflows and runs of a
-//! repository that the hub reads live from GitHub (PRJ-030 to PRJ-035). Read tools only.
+//! The `repositories` tool set: pull requests, issues, comments, workflows, runs, commits,
+//! branches, releases and directory listings of a repository that the hub reads live from
+//! GitHub (PRJ-030 to PRJ-039). Read tools only. No tool returns the content of a file.
 //!
 //! Every title, body, comment, login, label, branch name, job name and commit title in a result
 //! was written by someone else on GitHub. The tools put them in named fields, and the server
@@ -8,6 +9,8 @@
 //!
 //! [`BODY_CAP`]: crate::mcp::untrusted::BODY_CAP
 
+mod code;
+mod history;
 mod issues;
 mod pull_requests;
 mod workflows;
@@ -35,6 +38,10 @@ pub enum RepositoryTool {
     WorkflowsList,
     WorkflowRunsList,
     WorkflowRunGet,
+    CommitsList,
+    BranchesList,
+    RepositoryReleasesList,
+    CodeDirectoryList,
 }
 
 /// K1 `OpenOrClosed`.
@@ -58,7 +65,7 @@ impl From<StateInput> for StateArg {
 }
 
 impl RepositoryTool {
-    pub const ALL: [Self; 7] = [
+    pub const ALL: [Self; 11] = [
         Self::PullRequestsList,
         Self::PullRequestGet,
         Self::IssuesList,
@@ -66,6 +73,10 @@ impl RepositoryTool {
         Self::WorkflowsList,
         Self::WorkflowRunsList,
         Self::WorkflowRunGet,
+        Self::CommitsList,
+        Self::BranchesList,
+        Self::RepositoryReleasesList,
+        Self::CodeDirectoryList,
     ];
 
     #[must_use]
@@ -78,6 +89,10 @@ impl RepositoryTool {
             Self::WorkflowsList => workflows::list_definition(),
             Self::WorkflowRunsList => workflows::runs_definition(),
             Self::WorkflowRunGet => workflows::run_definition(),
+            Self::CommitsList => history::commits_definition(),
+            Self::BranchesList => history::branches_definition(),
+            Self::RepositoryReleasesList => history::releases_definition(),
+            Self::CodeDirectoryList => code::directory_definition(),
         }
     }
 
@@ -95,6 +110,10 @@ impl RepositoryTool {
             Self::WorkflowsList => workflows::list(hub, arguments).await,
             Self::WorkflowRunsList => workflows::runs(hub, arguments).await,
             Self::WorkflowRunGet => workflows::run(hub, arguments).await,
+            Self::CommitsList => history::commits(hub, arguments).await,
+            Self::BranchesList => history::branches(hub, arguments).await,
+            Self::RepositoryReleasesList => history::releases(hub, arguments).await,
+            Self::CodeDirectoryList => code::directory(hub, arguments).await,
         }
     }
 }

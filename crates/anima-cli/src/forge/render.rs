@@ -3,6 +3,8 @@
 
 use serde_json::Value;
 
+use crate::output::{Cell, Tone};
+
 /// The text under `key`, or `-` when it is null or missing.
 #[must_use]
 pub fn text<'a>(value: &'a Value, key: &str) -> &'a str {
@@ -41,4 +43,20 @@ pub fn number(value: &Value, key: &str) -> String {
         .get(key)
         .and_then(Value::as_i64)
         .map_or_else(|| "-".to_owned(), |number| number.to_string())
+}
+
+/// The K1 `ChecksState` under `checks` in its colour; `-` when the checks were not asked for.
+#[must_use]
+pub fn checks(pull: &Value) -> Cell {
+    let Some(checks) = pull.get("checks").filter(|checks| !checks.is_null()) else {
+        return "-".into();
+    };
+    let state = text(checks, "state");
+    let tone = match state {
+        "PASSED" => Tone::Good,
+        "FAILED" => Tone::Bad,
+        "PENDING" => Tone::Warning,
+        _ => Tone::Muted,
+    };
+    Cell::toned(state, tone)
 }

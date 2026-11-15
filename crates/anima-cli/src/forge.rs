@@ -1,4 +1,4 @@
-//! What `anima pr`, `anima issue` and `anima workflow` share: the rows a repository on GitHub
+//! What `anima pr`, `anima issue`, `anima workflow`, `anima code` and `anima repo` share: the rows a repository on GitHub
 //! gives (PRJ-030 to PRJ-035). The hub reads them live; the command line only asks and prints.
 
 pub mod comments;
@@ -7,7 +7,7 @@ pub mod rows;
 
 use crate::failure::Failure;
 use crate::invocation::Invocation;
-use crate::{issues, pull_requests, workflows};
+use crate::{code, issues, pull_requests, repositories, workflows};
 
 /// The nouns that read a repository on GitHub through the hub.
 #[derive(Debug, clap::Subcommand)]
@@ -27,6 +27,16 @@ pub enum ForgeCommand {
         #[command(subcommand)]
         command: workflows::WorkflowCommand,
     },
+    /// The code of a repository (ls, show).
+    Code {
+        #[command(subcommand)]
+        command: code::CodeCommand,
+    },
+    /// The history of a repository on GitHub (commits, branches, releases).
+    Repo {
+        #[command(subcommand)]
+        command: repositories::RepositoryCommand,
+    },
 }
 
 impl ForgeCommand {
@@ -39,6 +49,8 @@ impl ForgeCommand {
             Self::Pr { command } => command.run(invocation).await,
             Self::Issue { command } => command.run(invocation).await,
             Self::Workflow { command } => command.run(invocation).await,
+            Self::Code { command } => command.run(invocation).await,
+            Self::Repo { command } => command.run(invocation).await,
         }
     }
 }
