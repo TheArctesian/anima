@@ -144,8 +144,10 @@ fn the_watcher_sets_sleep_back_when_the_followed_process_ends() {
     rig.platform.followed = followed.id();
     let held = hold::lid(&rig.platform, &rig.marker()).expect("the lid hold");
     followed.wait().unwrap();
-    assert!(eventually(|| rig.sudo_calls().len() == 2));
+    let marker = rig.marker();
+    assert!(eventually(|| !marker.exists()));
     assert_eq!(rig.sudo_calls()[1], "sudo -n pmset -a disablesleep 0");
+    assert_eq!(rig.sudo_calls().len(), 2);
     // The app is gone in this story: nothing else may set the setting back a second time.
     std::mem::forget(held);
 }

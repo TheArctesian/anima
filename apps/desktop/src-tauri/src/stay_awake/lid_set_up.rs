@@ -82,8 +82,15 @@ fn install_script(platform: &Platform) -> String {
     )
 }
 
-fn remove_script(platform: &Platform) -> String {
-    format!("/bin/rm -f '{}'", platform.rule.display())
+/// The script root runs to delete the rule. `set_sleep_back`: Anima changed the sleep setting
+/// and could not set it back; root does it here, because nothing can after the rule is gone.
+fn remove_script(platform: &Platform, set_sleep_back: bool) -> String {
+    let restore = if set_sleep_back {
+        format!("{RULE_PMSET} -a disablesleep 0; ")
+    } else {
+        String::new()
+    };
+    format!("{restore}/bin/rm -f '{}'", platform.rule.display())
 }
 
 /// Why a set-up step did not finish. A cancelled password dialog is `Refused` too.
@@ -123,6 +130,6 @@ pub fn set_up(platform: &Platform) -> Result<(), SetUpError> {
 ///
 /// # Errors
 /// As `set_up`.
-pub fn remove(platform: &Platform) -> Result<(), SetUpError> {
-    as_administrator(platform, &remove_script(platform))
+pub fn remove(platform: &Platform, set_sleep_back: bool) -> Result<(), SetUpError> {
+    as_administrator(platform, &remove_script(platform, set_sleep_back))
 }

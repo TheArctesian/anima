@@ -71,10 +71,10 @@
     {#snippet hint()}
       <p class="hint state">
         {#if status?.lid === 'ready'}
-          Set up. Anima can change one sleep setting of this Mac, and nothing else.
+          Set up. Programs of this user can change one sleep setting of this Mac with no password, and nothing else.
         {:else}
-          macOS asks for an administrator one time. After that, Anima can change one sleep setting of this Mac, and
-          nothing else.
+          macOS asks for an administrator one time. After that, programs of this user can change one sleep setting of
+          this Mac with no password, and nothing else.
         {/if}
       </p>
     {/snippet}

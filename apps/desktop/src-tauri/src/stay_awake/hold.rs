@@ -43,8 +43,9 @@ const PMSET_WRITE: Limit = Limit {
 };
 
 /// The watcher: waits for the followed process to end, then sets the sleep setting back.
-/// `$0` is the process ID, `$1` is `sudo`, `$2` is `pmset`.
-const WATCHER: &str = r#"while /bin/kill -0 "$0" 2>/dev/null; do /bin/sleep 2; done; exec "$1" -n "$2" -a disablesleep 0"#;
+/// `$0` is the process ID, `$1` is `sudo`, `$2` is `pmset`, `$3` is the marker. The marker goes
+/// with the setting: a later start must not set back a setting that a different program made.
+const WATCHER: &str = r#"while /bin/kill -0 "$0" 2>/dev/null; do /bin/sleep 2; done; "$1" -n "$2" -a disablesleep 0 && /bin/rm -f "$3""#;
 
 /// Why a hold was not taken.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
@@ -170,14 +171,15 @@ fn set_sleep_disabled(platform: &Platform, disabled: bool) -> Result<(), HoldErr
         .map_err(|_| HoldError::Setting)
 }
 
-fn watcher(platform: &Platform) -> Result<Hold, HoldError> {
+fn watcher(platform: &Platform, marker: &Path) -> Result<Hold, HoldError> {
     let followed = platform.followed.to_string();
-    let args: [&OsStr; 5] = [
+    let args: [&OsStr; 6] = [
         "-c".as_ref(),
         WATCHER.as_ref(),
         followed.as_ref(),
         platform.sudo.as_ref(),
         platform.pmset.as_ref(),
+        marker.as_ref(),
     ];
     Hold::start(&platform.shell, &args)
 }
@@ -198,7 +200,7 @@ fn setting(platform: &Platform, marker: &Path) -> Result<LidHold, HoldError> {
         let _ = fs::remove_file(marker);
         return Err(error);
     }
-    match watcher(platform) {
+    match watcher(platform, marker) {
         Ok(watcher) => Ok(LidHold::Setting { watcher }),
         Err(error) => {
             let _ = restore(platform, marker);

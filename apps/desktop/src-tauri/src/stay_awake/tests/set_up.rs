@@ -91,12 +91,20 @@ fn the_set_up_script_is_a_whole_shell_script() {
 #[test]
 fn remove_deletes_only_the_rule_file() {
     let rig = Rig::mac_set_up();
-    lid_set_up::remove(&rig.platform).unwrap();
+    lid_set_up::remove(&rig.platform, false).unwrap();
     let call = rig.calls().pop().unwrap();
-    assert!(
-        call.contains(&format!(" /bin/rm -f '{}' ", rig.platform.rule.display())),
-        "{call}"
-    );
+    let delete = format!("/bin/rm -f '{}'", rig.platform.rule.display());
+    assert!(call.contains(&format!(" end run {delete} ")), "{call}");
+}
+
+#[test]
+fn remove_sets_sleep_back_as_root_when_anima_could_not() {
+    let rig = Rig::mac_set_up();
+    lid_set_up::remove(&rig.platform, true).unwrap();
+    let call = rig.calls().pop().unwrap();
+    let delete = format!("/bin/rm -f '{}'", rig.platform.rule.display());
+    let both = format!(" end run /usr/bin/pmset -a disablesleep 0; {delete} ");
+    assert!(call.contains(&both), "{call}");
 }
 
 #[test]
@@ -110,7 +118,7 @@ fn a_cancelled_dialog_is_refused_and_linux_has_no_set_up_step() {
         Err(SetUpError::Unsupported)
     );
     assert_eq!(
-        lid_set_up::remove(&linux.platform),
+        lid_set_up::remove(&linux.platform, false),
         Err(SetUpError::Unsupported)
     );
     assert_eq!(linux.calls(), Vec::<String>::new());

@@ -1,7 +1,11 @@
 //! The stay-awake control of this computer: the operator's choice, the holds that are taken
 //! for it and the state the client and the tray show (AWK-001 to AWK-008).
 
-use std::path::PathBuf;
+use std::{
+    fs,
+    path::PathBuf,
+    time::{Duration, Instant},
+};
 
 use serde::Serialize;
 
@@ -9,9 +13,43 @@ use super::{
     hold::{self, Hold, LidHold},
     level::{Held, Level, Pause, Power, Wanted, held},
     lid_set_up::{self, Lid, SetUpError},
-    platform::Platform,
+    platform::{Os, Platform},
     power, saved,
 };
+
+/// After a refused administrator step, the next one is refused with no dialog for this long,
+/// so a script in the web view cannot show the operator one password dialog after another.
+const REFUSAL_REST: Duration = Duration::from_secs(15);
+
+/// The two administrator steps of the lid-closed level (macOS).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Step {
+    SetUp,
+    Remove,
+}
+
+/// One administrator step, ready to run. It runs with no lock on the control: the password
+/// dialog can stay open for minutes, and the app must still be able to end its holds.
+#[derive(Debug)]
+pub struct Ask {
+    platform: Platform,
+    step: Step,
+    /// Anima changed the sleep setting and could not set it back before a `Remove`.
+    set_sleep_back: bool,
+}
+
+impl Ask {
+    /// Shows the dialog and waits for it.
+    ///
+    /// # Errors
+    /// `Refused` when the dialog was cancelled or the script failed.
+    pub fn run(&self) -> Result<(), SetUpError> {
+        match self.step {
+            Step::SetUp => lid_set_up::set_up(&self.platform),
+            Step::Remove => lid_set_up::remove(&self.platform, self.set_sleep_back),
+        }
+    }
+}
 
 /// What the client and the tray show.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -45,6 +83,9 @@ pub struct Control {
     was_low: bool,
     idle: Option<Hold>,
     lid: Option<LidHold>,
+    /// An administrator dialog is open.
+    asking: bool,
+    refused_at: Option<Instant>,
 }
 
 impl Control {
@@ -61,6 +102,8 @@ impl Control {
             was_low: false,
             idle: None,
             lid: None,
+            asking: false,
+            refused_at: None,
         }
     }
 
@@ -113,7 +156,9 @@ impl Control {
     /// Takes and ends holds for the choice on `power`, and gives the state that results.
     pub fn apply(&mut self, power: Power) -> Status {
         let lid = lid_set_up::lid(&self.platform);
-        let mut target = held(self.wanted, power, lid == Lid::Ready, self.was_low);
+        // No lid hold is taken while an administrator step runs: the rule can go at any moment.
+        let lid_ready = lid == Lid::Ready && !self.asking;
+        let mut target = held(self.wanted, power, lid_ready, self.was_low);
         if target.level == Level::LidClosed && !self.hold_lid() {
             target = held(self.wanted, power, false, self.was_low);
         }
@@ -171,24 +216,56 @@ impl Control {
         self.change(self.wanted.with_floor(floor))
     }
 
-    /// The set-up step of the lid-closed level (macOS).
+    /// Starts an administrator step. `None`: there is nothing to ask, the computer is already
+    /// in the state the step gives. A `Remove` sets the sleep setting back first, while the
+    /// rule still lets it.
     ///
     /// # Errors
-    /// `SetUp` when this system has no such step, or the administrator step did not finish.
-    pub fn set_up_lid(&mut self) -> Result<Status, ControlError> {
-        lid_set_up::set_up(&self.platform)?;
-        Ok(self.refresh())
+    /// `SetUp(Unsupported)` off macOS; `SetUp(Refused)` while a dialog is open, and for a short
+    /// time after a refused step.
+    pub fn begin(&mut self, step: Step, now: Instant) -> Result<Option<Ask>, ControlError> {
+        if self.platform.os != Os::Mac {
+            return Err(SetUpError::Unsupported.into());
+        }
+        let resting = self
+            .refused_at
+            .is_some_and(|at| now.duration_since(at) < REFUSAL_REST);
+        if self.asking || resting {
+            return Err(SetUpError::Refused.into());
+        }
+        let set_up = lid_set_up::lid(&self.platform) == Lid::Ready;
+        if set_up == (step == Step::SetUp) {
+            return Ok(None);
+        }
+        self.asking = true;
+        if step == Step::Remove {
+            self.drop_lid();
+        }
+        Ok(Some(Ask {
+            platform: self.platform.clone(),
+            step,
+            set_sleep_back: saved::marker(&self.folder).exists(),
+        }))
     }
 
-    /// Removes the set-up step. The sleep setting is set back first, while the rule still lets it.
+    /// Ends the administrator step `ask` with what its dialog answered.
     ///
     /// # Errors
-    /// As `set_up_lid`.
-    pub fn remove_lid_set_up(&mut self) -> Result<Status, ControlError> {
-        self.drop_lid();
-        let removed = lid_set_up::remove(&self.platform);
+    /// `SetUp(Refused)` when the step did not finish; the state is as before the step.
+    pub fn finish(
+        &mut self,
+        ask: &Ask,
+        asked: Result<(), SetUpError>,
+        now: Instant,
+    ) -> Result<Status, ControlError> {
+        self.asking = false;
+        self.refused_at = asked.is_err().then_some(now);
+        if asked.is_ok() && ask.set_sleep_back {
+            // Root set the sleep setting back with the rule's removal.
+            let _ = fs::remove_file(saved::marker(&self.folder));
+        }
         let status = self.refresh();
-        removed.map(|()| status).map_err(ControlError::from)
+        asked.map(|()| status).map_err(ControlError::from)
     }
 
     /// Ends every hold: the computer sleeps as before (AWK-007). The choice stays saved.

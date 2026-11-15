@@ -21,13 +21,13 @@ mod tests;
 use std::{
     sync::{Arc, Mutex, MutexGuard, PoisonError},
     thread,
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 use tauri::{AppHandle, Emitter, EventTarget, Manager, State, Webview};
 use tauri_plugin_log::log;
 
-use control::{Control, ControlError, Status};
+use control::{Control, ControlError, Status, Step};
 pub use error::StayAwakeError;
 use level::Level;
 use platform::Platform;
@@ -107,7 +107,7 @@ fn publish(app: &AppHandle, status: Status) {
 /// Runs one change of the control off the async threads, then shows the new state.
 async fn change(
     app: AppHandle,
-    job: impl FnOnce(&mut Control) -> Result<Status, ControlError> + Send + 'static,
+    job: impl FnOnce(&StayAwake) -> Result<Status, ControlError> + Send + 'static,
 ) -> Result<Status, StayAwakeError> {
     let Some(shared) = app
         .try_state::<StayAwake>()
@@ -115,7 +115,7 @@ async fn change(
     else {
         return Err(StayAwakeError::Failed);
     };
-    let done = tauri::async_runtime::spawn_blocking(move || job(&mut shared.control()))
+    let done = tauri::async_runtime::spawn_blocking(move || job(&shared))
         .await
         .map_err(|_| StayAwakeError::Failed)?;
     match done {
@@ -131,11 +131,21 @@ async fn change(
     }
 }
 
+/// One administrator step. The lock on the control is not held while the dialog is open, so
+/// the tray, the watch and the release at exit do not wait for the operator.
+fn administrator_step(shared: &StayAwake, step: Step) -> Result<Status, ControlError> {
+    let Some(ask) = shared.control().begin(step, Instant::now())? else {
+        return Ok(shared.control().refresh());
+    };
+    let asked = ask.run();
+    shared.control().finish(&ask, asked, Instant::now())
+}
+
 /// The tray chose `level`. The tray has no place for an error: the lines show the state that is.
 fn choose_from_tray(app: &AppHandle, level: Level) {
     let app = app.clone();
     tauri::async_runtime::spawn(async move {
-        if change(app.clone(), move |control| control.choose(level))
+        if change(app.clone(), move |shared| shared.control().choose(level))
             .await
             .is_err()
             && let Some(shared) = app.try_state::<StayAwake>()
@@ -175,7 +185,7 @@ pub async fn stay_awake_choose(
     level: Level,
 ) -> Result<Status, StayAwakeError> {
     from_main(webview.label())?;
-    change(app, move |control| control.choose(level)).await
+    change(app, move |shared| shared.control().choose(level)).await
 }
 
 /// Sets the battery floor in percent, or removes it (AWK-006).
@@ -186,7 +196,7 @@ pub async fn stay_awake_floor(
     floor: Option<u8>,
 ) -> Result<Status, StayAwakeError> {
     from_main(webview.label())?;
-    change(app, move |control| control.set_floor(floor)).await
+    change(app, move |shared| shared.control().set_floor(floor)).await
 }
 
 /// Runs the set-up step of the lid-closed level; macOS asks for an administrator (AWK-003).
@@ -196,7 +206,7 @@ pub async fn stay_awake_lid_set_up(
     app: AppHandle,
 ) -> Result<Status, StayAwakeError> {
     from_main(webview.label())?;
-    change(app, Control::set_up_lid).await
+    change(app, |shared| administrator_step(shared, Step::SetUp)).await
 }
 
 /// Removes the set-up step of the lid-closed level; macOS asks for an administrator.
@@ -206,5 +216,5 @@ pub async fn stay_awake_lid_remove(
     app: AppHandle,
 ) -> Result<Status, StayAwakeError> {
     from_main(webview.label())?;
-    change(app, Control::remove_lid_set_up).await
+    change(app, |shared| administrator_step(shared, Step::Remove)).await
 }
