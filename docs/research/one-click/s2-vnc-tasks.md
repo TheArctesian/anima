@@ -135,7 +135,40 @@ and then report one of:
   `reviewer-interface`. I report their findings as they are, then correct them.
 - No push and no merge.
 
-## 6. Handoff note
+## 6. Progress and choices made while building
+
+The operator asked for no stops between tasks (2026-11-14). Each small design choice is
+written here with its reason.
+
+| Task | State | Commits |
+| --- | --- | --- |
+| T1 Screen and changes | Done. Reviewed by `reviewer`; 6 findings corrected; full gates passed 14 of 14. | `88b420c2`, `0d0582c8` |
+| T2 Frame encoder | Built; in review. | see the log |
+
+Choices:
+
+- **T1, workspace member.** `crates/anima-gateway` is in the root `Cargo.toml`. The
+  operator's approval of D-4 and "start T1" was taken as the ruling.
+- **T2, the byte budget test.** The breakdown named "recorded update sequences from the
+  spike". The spike kept no recordings. The test makes a text session itself: a terminal
+  of 80 x 25 cells prints 60 lines and scrolls, and sends its whole window for each line.
+  The device's bytes are counted with a ZRLE-like encoding (64 x 64 tiles, one bit for a
+  pixel, one zlib stream for the session). Result: 29 523 bytes to the client for 58 838
+  bytes from the device, a factor of 0.5. The budget was a factor of 2.
+- **T2, scroll detection.** Without it the factor was 9.5. The screen copy now finds new
+  pixels that are its old pixels moved up or down (row marks, three probe rows) and tells
+  the client to `copy`. The hint is checked by the normal comparison afterwards, so a wrong
+  hint costs bytes and never a wrong picture. A move is told to the client only when the
+  client already has the source pixels.
+- **T2, palette PNG.** An area with at most 256 colours goes out as a PNG with a palette (1,
+  2, 4 or 8 bits for a pixel). For two-colour text this is several times smaller than a
+  full-colour PNG.
+- **T2, changed rows.** A changed area is cut to the screen rows that changed, so a new line
+  of text is not sent with the unchanged line above it.
+- **T2, new dependencies.** `png` (already in the lock file), `jpeg-encoder` (new, pure Rust,
+  MIT or Apache-2.0); for tests only `flate2` and `jpeg-decoder`.
+
+## 7. Handoff note
 
 Nothing is built yet. If this session stops: the spike's VNC code
 (`spikes/display/vnc-probe` on the spike branch) is the reference for T5; `guac-frames`

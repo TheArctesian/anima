@@ -11,6 +11,9 @@ pub const TILE: usize = 32;
 pub(super) struct ChangedTiles {
     columns: usize,
     tiles: Vec<bool>,
+    /// For each screen row, whether a pixel in it changed: an area is cut to the rows that
+    /// did, so one new line of text is not sent with the unchanged line above it.
+    rows: Vec<bool>,
 }
 
 impl ChangedTiles {
@@ -21,12 +24,14 @@ impl ChangedTiles {
         Self {
             columns,
             tiles: vec![true; columns * height.div_ceil(TILE)],
+            rows: vec![true; height],
         }
     }
 
     /// Marks each tile of screen row `y` in which `old` and `new` differ. Both hold the
     /// row's pixels from column `x` on, and have the same length.
     pub(super) fn mark_differences(&mut self, (x, y): (usize, usize), old: &[u8], new: &[u8]) {
+        self.rows[y] = true;
         let row = y / TILE * self.columns;
         let (mut column, mut at) = (x, 0);
         while at < new.len() {
@@ -37,6 +42,19 @@ impl ChangedTiles {
             }
             (column, at) = (tile_end, end);
         }
+    }
+
+    /// Whether a tile that `area` touches is changed.
+    pub(super) fn any_in(&self, area: Area) -> bool {
+        if area.width == 0 || area.height == 0 {
+            return false;
+        }
+        let columns = area.x / TILE..=(area.x + area.width - 1) / TILE;
+        (area.y / TILE..=(area.y + area.height - 1) / TILE).any(|row| {
+            columns
+                .clone()
+                .any(|column| self.tiles[row * self.columns + column])
+        })
     }
 
     /// The changed tiles as areas that do not overlap, clipped to the `width` by `height`
@@ -73,10 +91,30 @@ impl ChangedTiles {
         finished.append(&mut open);
         self.tiles.fill(false);
         finished.sort_unstable_by_key(|tiles| (tiles.y, tiles.x));
-        finished
+        let areas = finished
             .into_iter()
-            .map(|tiles| in_pixels(tiles, width, height))
-            .collect()
+            .map(|tiles| self.changed_rows_of(in_pixels(tiles, width, height)))
+            .collect();
+        self.rows.fill(false);
+        areas
+    }
+}
+
+impl ChangedTiles {
+    /// `area` without the unchanged rows at its top and bottom. An area of changed tiles
+    /// has a changed row.
+    fn changed_rows_of(&self, area: Area) -> Area {
+        let rows = &self.rows[area.y..area.y + area.height];
+        let first = rows.iter().position(|changed| *changed).unwrap_or(0);
+        let last = rows
+            .iter()
+            .rposition(|changed| *changed)
+            .unwrap_or(area.height - 1);
+        Area {
+            y: area.y + first,
+            height: last + 1 - first,
+            ..area
+        }
     }
 }
 

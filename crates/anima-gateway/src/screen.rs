@@ -8,6 +8,7 @@
 
 mod area;
 mod changed;
+mod scrolling;
 
 pub use area::Area;
 use changed::ChangedTiles;
@@ -38,11 +39,24 @@ pub enum WriteError {
     WrongLength,
 }
 
-/// What changed on the screen since the last [`Screen::take_changes`].
+/// Pixels that moved on the screen: the client copies `from`, as it shows it, to the
+/// same-sized area whose corner is (`x`, `y`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Moved {
+    pub from: Area,
+    pub x: usize,
+    pub y: usize,
+}
+
+/// What changed on the screen since the last [`Screen::take_changes`]. A client that has
+/// the screen as it was then gets the screen as it is now by doing `moved` in order and
+/// then drawing `areas`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Changes {
     /// The screen got a new size (or is new): the client must set its own size first.
     pub resized: bool,
+    /// The moves to do first, in this order.
+    pub moved: Vec<Moved>,
     /// The parts to send again. They do not overlap, lie inside the screen and are ordered
     /// by row, then by column.
     pub areas: Vec<Area>,
@@ -55,6 +69,7 @@ pub struct Screen {
     rgb: Vec<u8>,
     changed: ChangedTiles,
     resized: bool,
+    moved: Vec<Moved>,
     /// The pixels of an area while it moves; kept so a scroll does not allocate each time.
     moving: Vec<u8>,
 }
@@ -75,6 +90,7 @@ impl Screen {
             rgb: vec![0; width * height * BYTES_PER_PIXEL],
             changed: ChangedTiles::all(width, height),
             resized: true,
+            moved: Vec::new(),
             moving: Vec::new(),
         })
     }
@@ -122,6 +138,7 @@ impl Screen {
         if row_bytes == 0 {
             return Ok(());
         }
+        self.follow_scroll(area, rgb.chunks_exact(row_bytes));
         for (row, new) in rgb.chunks_exact(row_bytes).enumerate() {
             let y = area.y + row;
             let start = self.offset(area.x, y);
@@ -149,10 +166,52 @@ impl Screen {
         for row in self.rows(from)? {
             moving.extend_from_slice(row);
         }
-        let written = self.write(to, &moving);
+        let written = if self.changed.any_in(from) {
+            // The client does not have these pixels yet, so it cannot copy them.
+            self.write(to, &moving).map_err(|_| OutsideScreen)
+        } else {
+            self.put(to, &moving);
+            self.moved.push(Moved { from, x, y });
+            Ok(())
+        };
         self.moving = moving;
-        // Both areas are inside and have the same size, so the pixels fill the target.
-        written.map_err(|_| OutsideScreen)
+        written
+    }
+
+    /// When the `new` rows of `area` are its old rows scrolled, and the client has those
+    /// old rows, moves them in the copy and notes the move for the client. The write that
+    /// follows then finds only the rows the scroll brought in.
+    fn follow_scroll<'a>(&mut self, area: Area, new: impl Iterator<Item = &'a [u8]>) {
+        if area.height < scrolling::FEWEST_ROWS {
+            return;
+        }
+        let Ok(old) = self.rows(area) else { return };
+        let old = scrolling::row_marks(old);
+        let Some(scroll) = scrolling::scroll(&old, &scrolling::row_marks(new)) else {
+            return;
+        };
+        let from = Area {
+            y: area.y + scroll.from,
+            height: scroll.rows,
+            ..area
+        };
+        if !self.changed.any_in(from) {
+            // Inside the screen, as `area` is.
+            let _ = self.move_area(from, area.x, area.y + scroll.to);
+        }
+    }
+
+    /// Puts `rgb` into `to` without counting it as changed. `to` is inside the screen and
+    /// `rgb` fills it.
+    fn put(&mut self, to: Area, rgb: &[u8]) {
+        let row_bytes = to.width * BYTES_PER_PIXEL;
+        if row_bytes == 0 {
+            return;
+        }
+        for (row, pixels) in rgb.chunks_exact(row_bytes).enumerate() {
+            let start = self.offset(to.x, to.y + row);
+            self.rgb[start..start + row_bytes].copy_from_slice(pixels);
+        }
     }
 
     /// The rows of `area`, top to bottom, each as its pixels' bytes.
@@ -171,6 +230,7 @@ impl Screen {
     pub fn take_changes(&mut self) -> Changes {
         Changes {
             resized: std::mem::take(&mut self.resized),
+            moved: std::mem::take(&mut self.moved),
             areas: self.changed.take(self.width, self.height),
         }
     }

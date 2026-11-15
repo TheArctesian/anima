@@ -26,6 +26,23 @@ impl Client {
         if changes.resized {
             *self = Self::of(screen);
         }
+        for moved in &changes.moved {
+            let from = moved.from;
+            let mut pixels = Vec::new();
+            for row in from.y..from.y + from.height {
+                let start = (row * self.width + from.x) * BYTES_PER_PIXEL;
+                pixels.extend_from_slice(&self.rgb[start..start + from.width * BYTES_PER_PIXEL]);
+            }
+            if from.width > 0 {
+                for (row, moved_row) in pixels
+                    .chunks_exact(from.width * BYTES_PER_PIXEL)
+                    .enumerate()
+                {
+                    let start = ((moved.y + row) * self.width + moved.x) * BYTES_PER_PIXEL;
+                    self.rgb[start..start + moved_row.len()].copy_from_slice(moved_row);
+                }
+            }
+        }
         let mut drawn = vec![0u8; self.rgb.len() / BYTES_PER_PIXEL];
         for area in changes.areas {
             let rows = screen.rows(area).expect("a reported area is inside");
@@ -45,7 +62,7 @@ impl Client {
 /// One write a device may send: where, what colour pattern, and whether it only repeats
 /// what the screen already shows.
 #[derive(Clone, Debug)]
-struct Sent {
+pub(crate) struct Sent {
     corner: (usize, usize),
     size: (usize, usize),
     seed: u8,
@@ -105,7 +122,7 @@ impl Sent {
 
 /// One thing a device may do to its screen.
 #[derive(Clone, Debug)]
-enum Step {
+pub(crate) enum Step {
     Write(Sent),
     /// Move the area of `from` so that its corner is at `to` (fitted into the screen).
     Move {
@@ -113,25 +130,31 @@ enum Step {
         to: (usize, usize),
     },
     Resize(usize, usize),
+    /// Send the area of `of` again with its rows moved up by `by` (fitted), as a scroll.
+    Scroll {
+        of: Sent,
+        by: usize,
+    },
 }
 
-fn step() -> impl Strategy<Value = Step> {
+pub(crate) fn step() -> impl Strategy<Value = Step> {
     prop_oneof![
         6 => sent().prop_map(Step::Write),
         2 => (sent(), (0..100usize, 0..100usize)).prop_map(|(from, to)| Step::Move { from, to }),
         1 => (1..100usize, 1..100usize).prop_map(|(width, height)| Step::Resize(width, height)),
+        3 => (sent(), 1..40usize).prop_map(|(of, by)| Step::Scroll { of, by }),
     ]
 }
 
 /// The screen as a plain picture, changed in the simplest way: what the copy must equal.
-struct Picture {
+pub(crate) struct Picture {
     width: usize,
     height: usize,
-    rgb: Vec<u8>,
+    pub(crate) rgb: Vec<u8>,
 }
 
 impl Picture {
-    fn black(width: usize, height: usize) -> Self {
+    pub(crate) fn black(width: usize, height: usize) -> Self {
         Self {
             width,
             height,
@@ -165,7 +188,7 @@ impl Picture {
 }
 
 /// Does `step` to the screen copy and to the picture.
-fn apply(step: &Step, screen: &mut Screen, picture: &mut Picture) {
+pub(crate) fn apply(step: &Step, screen: &mut Screen, picture: &mut Picture) {
     match step {
         Step::Write(sent) => {
             let (area, pixels) = sent.onto(screen);
@@ -181,6 +204,14 @@ fn apply(step: &Step, screen: &mut Screen, picture: &mut Picture) {
                 .expect("fitted into the screen");
             let moved = picture.rows(from);
             picture.draw(Area { x, y, ..from }, &moved);
+        }
+        Step::Scroll { of, by } => {
+            let (area, _) = of.onto(screen);
+            let row_bytes = area.width * BYTES_PER_PIXEL;
+            let mut pixels = picture.rows(area);
+            pixels.rotate_left((by % (area.height + 1)).min(area.height) * row_bytes);
+            screen.write(area, &pixels).expect("fitted into the screen");
+            picture.draw(area, &pixels);
         }
         Step::Resize(width, height) => {
             screen.resize(*width, *height).expect("a valid size");

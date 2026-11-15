@@ -71,7 +71,7 @@ fn pixels_the_same_as_before_are_not_a_change() {
 }
 
 #[test]
-fn one_changed_pixel_costs_one_tile() {
+fn one_changed_pixel_costs_one_row_of_one_tile() {
     let mut screen = seen(200, 200);
     let pixel = Area {
         x: 70,
@@ -93,9 +93,9 @@ fn one_changed_pixel_costs_one_tile() {
         screen.take_changes().areas,
         [Area {
             x: 64,
-            y: 32,
+            y: 40,
             width: TILE,
-            height: TILE
+            height: 1
         }]
     );
 }
