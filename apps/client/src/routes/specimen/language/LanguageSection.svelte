@@ -31,7 +31,7 @@
 
   const CONNECT: readonly SplitChoice[] = [
     { id: 'ssh', label: 'SSH', icon: 'carbon:terminal', shortcut: '⌘1' },
-    { id: 'vnc', label: 'VNC', icon: 'carbon:screen-map', shortcut: '⌘2' },
+    { id: 'vnc', label: 'VNC', icon: 'carbon:screen', shortcut: '⌘2' },
     { id: 'wake', label: 'Wake', icon: 'carbon:power' },
   ];
 </script>
