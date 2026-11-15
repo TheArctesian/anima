@@ -20,6 +20,8 @@ pub use sign_in::{Account, Method, Offered, SignInError, offered, sign_in};
 /// send a pixel more often, and without a limit one message could keep the gateway busy
 /// for a long time.
 const MOST_SCREENS_IN_AN_UPDATE: usize = 2;
+/// Above this many bytes of room, the unread buffer is given back once it is nearly empty.
+const LARGE_BUFFER: usize = 1 << 20;
 
 /// Why a device's bytes cannot be read further. The session ends.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
@@ -91,6 +93,10 @@ impl Device {
             read += length;
         }
         self.unread.drain(..read);
+        // The room one large rectangle needed is not kept for the rest of the session.
+        if self.unread.capacity() > LARGE_BUFFER && self.unread.len() < LARGE_BUFFER / 16 {
+            self.unread.shrink_to(LARGE_BUFFER / 16);
+        }
         Ok(events)
     }
 
@@ -138,11 +144,15 @@ impl Device {
         };
         let pixels = rect.area.width * rect.area.height;
         if rect.body == Body::NewSize {
-            // One new size in an update; the limit then counts for the new screen.
+            // One new size in an update. What is left of the limit must at least hold the new
+            // screen once, and is never more than the limit of the new screen.
             if std::mem::replace(&mut update.resized, true) {
                 return Err(Malformed::BadSize);
             }
-            update.pixels_left = pixels * MOST_SCREENS_IN_AN_UPDATE;
+            update.pixels_left = update
+                .pixels_left
+                .min(pixels * MOST_SCREENS_IN_AN_UPDATE)
+                .max(pixels);
         } else {
             update.pixels_left = update
                 .pixels_left

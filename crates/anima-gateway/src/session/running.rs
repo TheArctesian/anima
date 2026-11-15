@@ -1,13 +1,13 @@
 //! The open session: the device's updates into the screen copy, frames to the client as
 //! fast as it draws them, and the client's input to the device. I/O edge.
 
-use tokio::io::{AsyncRead, AsyncReadExt as _, AsyncWrite, AsyncWriteExt as _};
+use tokio::io::{AsyncRead, AsyncReadExt as _, AsyncWrite};
 use tokio::net::tcp::OwnedWriteHalf;
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
-use tokio::time::{Instant, sleep_until, timeout};
+use tokio::time::{Instant, sleep_until};
 
-use super::hub::Hub;
+use super::hub::{Hub, write_unless_stalled};
 use super::input::{Clipboard, Input, copy_to_client};
 use super::opening::{Allowed, Opened, refuse};
 use super::{Ended, Settings, status};
@@ -124,13 +124,12 @@ where
         Ended::ByDevice
     }
 
-    /// Writes to the device. A device that does not take the bytes within the write limit
-    /// has stopped reading: the session ends, so it cannot be held open.
+    /// Writes to the device. A device that takes no byte within the write limit has stopped
+    /// reading: the session ends, so it cannot be held open.
     async fn write(&mut self, message: &[u8]) -> Result<(), Ended> {
-        match timeout(self.write_wait, self.to_device.write_all(message)).await {
-            Ok(Ok(())) => Ok(()),
-            _ => Err(Ended::ByDevice),
-        }
+        write_unless_stalled(&mut self.to_device, message, self.write_wait)
+            .await
+            .map_err(|_| Ended::ByDevice)
     }
 
     async fn ask_for_update(&mut self, incremental: bool) -> Result<(), Ended> {

@@ -3,6 +3,7 @@
 use anima_gateway::frames::{Formats, frame};
 use anima_gateway::screen::{Area, BYTES_PER_PIXEL, Screen};
 use anima_gateway::view::View;
+use proptest::prelude::*;
 
 use crate::drawn::Drawn;
 use crate::screen::whole;
@@ -238,4 +239,65 @@ fn a_mac_with_three_displays_costs_what_the_client_view_holds() {
     // A whole-screen change is a picture of under 1 megapixel, not of 14.
     assert_eq!(client.rgb.len(), 1085 * 900 * BYTES_PER_PIXEL);
     assert!(bytes < 200_000, "{bytes} bytes for a whole-screen change");
+}
+
+/// The picture of `device` in `size`, made from the whole screen at once: each pixel is the
+/// mean of the device pixels it covers.
+fn whole_picture(device: &Screen, size: (usize, usize)) -> Vec<u8> {
+    let real = whole(device);
+    let (real_width, real_height) = (device.width(), device.height());
+    let covered = |at: usize, shown: usize, real: usize| {
+        let first = at * real / shown;
+        first..((at + 1) * real / shown).max(first + 1).min(real)
+    };
+    let mut picture = Vec::new();
+    for y in 0..size.1 {
+        for x in 0..size.0 {
+            let mut sums = [0usize; BYTES_PER_PIXEL];
+            let (rows, columns) = (
+                covered(y, size.1, real_height),
+                covered(x, size.0, real_width),
+            );
+            for (row, column) in rows
+                .clone()
+                .flat_map(|row| columns.clone().map(move |column| (row, column)))
+            {
+                let at = (row * real_width + column) * BYTES_PER_PIXEL;
+                sums.iter_mut()
+                    .zip(&real[at..])
+                    .for_each(|(sum, part)| *sum += usize::from(*part));
+            }
+            let count = rows.len() * columns.len();
+            picture.extend(sums.map(|sum| u8::try_from(sum / count).expect("a mean of bytes")));
+        }
+    }
+    picture
+}
+
+proptest! {
+    /// After any writes, what a client has drawn from the view's changes is the picture of
+    /// the whole device screen: no changed pixel at an edge is left out.
+    #[test]
+    fn the_picture_follows_every_change(
+        device_size in (1..90usize, 1..90usize),
+        client_size in (1..100usize, 1..100usize),
+        writes in prop::collection::vec(((0..90usize, 0..90usize), (1..40usize, 1..40usize), any::<u8>()), 1..8),
+    ) {
+        let mut device = Screen::new(device_size.0, device_size.1).expect("a valid size");
+        let mut view = View::new(&device, client_size);
+        let mut client = Drawn::default();
+        send(&mut view, &mut device, &mut client);
+        for ((x, y), (width, height), seed) in writes {
+            let (x, y) = (x % device_size.0, y % device_size.1);
+            let area = Area { x, y, width: width.min(device_size.0 - x), height: height.min(device_size.1 - y) };
+            let pixels: Vec<u8> = (0..area.width * area.height * BYTES_PER_PIXEL)
+                .map(|at| seed.wrapping_mul(31).wrapping_add(at.to_le_bytes()[0]))
+                .collect();
+            device.write(area, &pixels).expect("inside");
+            send(&mut view, &mut device, &mut client);
+            let size = view.size(&device);
+            prop_assert!(size.0 <= client_size.0.max(1) || size == device_size);
+            prop_assert_eq!(&client.rgb, &whole_picture(&device, size));
+        }
+    }
 }

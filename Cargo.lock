@@ -263,6 +263,7 @@ version = "0.1.0"
 dependencies = [
  "aes 0.9.4",
  "agent-core",
+ "anima-gateway",
  "anima-hub",
  "argon2",
  "async-graphql",

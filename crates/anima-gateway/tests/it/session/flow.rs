@@ -60,6 +60,32 @@ async fn frames_wait_for_the_client_and_requests_wait_for_the_device() {
 }
 
 #[tokio::test]
+async fn a_client_view_smaller_than_the_device_gets_a_smaller_picture() {
+    let device = Device::start(SignIn::None).await;
+    let (mut hub, _served) = session(Settings::default());
+    hub.open("vnc", values(device.address, &[]))
+        .await
+        .expect("ready");
+    let first = hub.next_of("sync").await;
+    hub.send(&first).await;
+
+    // The client's window becomes half the device's 64 x 48 screen.
+    hub.send(&Instruction::new("size", ["32", "24"])).await;
+    show(&device, [0, 200, 0]).await;
+    assert_eq!(hub.next_of("size").await.args, ["0", "32", "24"]);
+    // The corner of the smaller picture is the corner of the device's screen.
+    hub.send(&Instruction::new("mouse", ["31", "23", "0"]))
+        .await;
+    for _ in 0..500 {
+        if !device.heard().is_empty() {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+    assert_eq!(device.heard(), ["pointer 63 47 0"]);
+}
+
+#[tokio::test]
 async fn a_device_that_stops_reading_cannot_hold_the_session() {
     let device = Device::start(SignIn::None).await;
     let settings = Settings {

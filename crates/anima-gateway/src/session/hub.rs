@@ -58,14 +58,35 @@ where
         self.send_wire(wire.as_bytes()).await
     }
 
-    /// Sends bytes that are Guacamole instructions already. A hub that does not take them
-    /// within the write limit has stopped reading.
+    /// Sends bytes that are Guacamole instructions already.
     pub(super) async fn send_wire(&mut self, wire: &[u8]) -> io::Result<()> {
-        match timeout(self.write_wait, self.write.write_all(wire)).await {
-            Ok(written) => written,
-            Err(_) => Err(io::ErrorKind::TimedOut.into()),
-        }
+        write_unless_stalled(&mut self.write, wire, self.write_wait).await
     }
+}
+
+/// Writes all of `bytes`. A peer that takes no byte for `wait` has stopped reading, and
+/// the write fails; a slow peer that keeps taking bytes is not cut off, however long the
+/// whole write takes. The hub gives its client the same time for one instruction (K4
+/// Section 5).
+pub(super) async fn write_unless_stalled<W>(
+    to: &mut W,
+    mut bytes: &[u8],
+    wait: Duration,
+) -> io::Result<()>
+where
+    W: AsyncWrite + Unpin,
+{
+    while !bytes.is_empty() {
+        let written = match timeout(wait, to.write(bytes)).await {
+            Ok(written) => written?,
+            Err(_) => return Err(io::ErrorKind::TimedOut.into()),
+        };
+        if written == 0 {
+            return Err(io::ErrorKind::WriteZero.into());
+        }
+        bytes = &bytes[written..];
+    }
+    Ok(())
 }
 
 /// Reads and decodes until the hub closes, sends bytes that do not decode, or the session

@@ -144,7 +144,7 @@ where
                 // zeroed once written.
                 let wire = Zeroizing::new(encode(&instruction));
                 instruction.args.iter_mut().for_each(Zeroize::zeroize);
-                other.write_all(wire.as_bytes()).await.is_ok()
+                hub::write_unless_stalled(&mut other, wire.as_bytes(), settings.write_wait).await.is_ok()
             }
             read = other.read(&mut buffer) => match read {
                 Ok(count @ 1..) => hub.send_wire(&buffer[..count]).await.is_ok(),
