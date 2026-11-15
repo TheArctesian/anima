@@ -6,6 +6,8 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"fmt"
+	"log/slog"
 
 	"github.com/tailscale/tailcat"
 	"tailscale.com/types/key"
@@ -15,16 +17,51 @@ import (
 // because the text can be a damaged secret (LNK-008).
 var ErrBadKey = errors.New("tunnel: the text is not a key")
 
-// redacted is what a secret prints as, so that a secret in a log line or an
-// error made with %v shows nothing.
+// secret is what PrivateKey, PresharedKey and Address have in common: no
+// way of printing, logging or encoding shows them (LNK-008). Only Reveal
+// gives the text. A printer that reads memory by reflection is not covered.
+type secret struct{}
+
 const redacted = "[secret]"
 
-// PrivateKey is the secret identity of a hub or a device. Its text form is a
-// secret (LNK-008).
-type PrivateKey struct{ node key.NodePrivate }
+// String hides the secret.
+func (secret) String() string { return redacted }
+
+// GoString hides the secret.
+func (secret) GoString() string { return redacted }
+
+// Format hides the secret for every verb, also %d and %x.
+func (secret) Format(state fmt.State, _ rune) { fmt.Fprint(state, redacted) }
+
+// LogValue hides the secret in structured logs.
+func (secret) LogValue() slog.Value { return slog.StringValue(redacted) }
+
+// MarshalText hides the secret in JSON and in every other text encoding.
+func (secret) MarshalText() ([]byte, error) { return []byte(redacted), nil }
+
+// PrivateKey is the secret identity of a hub or a device.
+type PrivateKey struct {
+	secret
+	node key.NodePrivate
+}
 
 // NewPrivateKey makes a new identity.
-func NewPrivateKey() PrivateKey { return PrivateKey{key.NewNode()} }
+func NewPrivateKey() PrivateKey { return PrivateKey{node: key.NewNode()} }
+
+// ParsePrivateKey reads the text that Reveal gives.
+func ParsePrivateKey(text string) (PrivateKey, error) {
+	var k PrivateKey
+	if k.node.UnmarshalText([]byte(text)) != nil || k.node.IsZero() {
+		return PrivateKey{}, ErrBadKey
+	}
+	return k, nil
+}
+
+// Reveal gives the key as text, for the state file only.
+func (k PrivateKey) Reveal() string {
+	text, _ := k.node.MarshalText() // never fails for a key
+	return string(text)
+}
 
 // IsZero reports whether the key was never set.
 func (k PrivateKey) IsZero() bool { return k.node.IsZero() }
@@ -32,25 +69,8 @@ func (k PrivateKey) IsZero() bool { return k.node.IsZero() }
 // Public returns the key that a hub puts in its list of permitted devices.
 func (k PrivateKey) Public() DeviceKey { return DeviceKey{k.node.Public()} }
 
-// MarshalText gives the form that a state file holds.
-func (k PrivateKey) MarshalText() ([]byte, error) { return k.node.MarshalText() }
-
-// UnmarshalText reads the form that MarshalText gives.
-func (k *PrivateKey) UnmarshalText(text []byte) error {
-	if k.node.UnmarshalText(text) != nil {
-		return ErrBadKey
-	}
-	return nil
-}
-
-// String hides the key.
-func (PrivateKey) String() string { return redacted }
-
-// GoString hides the key.
-func (PrivateKey) GoString() string { return redacted }
-
 // DeviceKey is the public key of a hub or a device. It is not a secret, but
-// logs must use Fingerprint and not the key (LNK-008).
+// it prints and logs as its fingerprint (LNK-008). Its JSON form is the key.
 type DeviceKey struct{ node key.NodePublic }
 
 // IsZero reports whether the key was never set.
@@ -61,6 +81,12 @@ func (k DeviceKey) Fingerprint() string {
 	sum := sha256.Sum256(k.node.AppendTo(nil))
 	return hex.EncodeToString(sum[:4])
 }
+
+// String is the fingerprint.
+func (k DeviceKey) String() string { return k.Fingerprint() }
+
+// LogValue is the fingerprint.
+func (k DeviceKey) LogValue() slog.Value { return slog.StringValue(k.Fingerprint()) }
 
 // MarshalText gives the form that the list of permitted devices holds.
 func (k DeviceKey) MarshalText() ([]byte, error) { return k.node.MarshalText() }
@@ -73,42 +99,52 @@ func (k *DeviceKey) UnmarshalText(text []byte) error {
 	return nil
 }
 
-// String is the fingerprint, so that a key in a log line is not the key.
-func (k DeviceKey) String() string { return k.Fingerprint() }
-
 // PresharedKey is the second secret of a hub. It is part of the hub address.
-type PresharedKey struct{ psk tailcat.PresharedKey }
+type PresharedKey struct {
+	secret
+	psk tailcat.PresharedKey
+}
 
 // NewPresharedKey makes a new random pre-shared key.
-func NewPresharedKey() PresharedKey { return PresharedKey{tailcat.NewPresharedKey()} }
+func NewPresharedKey() PresharedKey { return PresharedKey{psk: tailcat.NewPresharedKey()} }
+
+// ParsePresharedKey reads the text that Reveal gives.
+func ParsePresharedKey(text string) (PresharedKey, error) {
+	var k PresharedKey
+	if k.psk.UnmarshalText([]byte(text)) != nil || k.psk.IsZero() {
+		return PresharedKey{}, ErrBadKey
+	}
+	return k, nil
+}
+
+// Reveal gives the key as text, for the state file only.
+func (k PresharedKey) Reveal() string {
+	text, _ := k.psk.MarshalText() // never fails for a key
+	return string(text)
+}
 
 // IsZero reports whether the key was never set.
 func (k PresharedKey) IsZero() bool { return k.psk.IsZero() }
 
-// MarshalText gives the form that a state file holds.
-func (k PresharedKey) MarshalText() ([]byte, error) { return k.psk.MarshalText() }
-
-// UnmarshalText reads the form that MarshalText gives.
-func (k *PresharedKey) UnmarshalText(text []byte) error {
-	if k.psk.UnmarshalText(text) != nil {
-		return ErrBadKey
-	}
-	return nil
+// Address is what a device needs to find and authenticate a hub: the hub's
+// public key, its pre-shared key and its relay.
+type Address struct {
+	secret
+	text tailcat.Addr
 }
 
-// String hides the key.
-func (PresharedKey) String() string { return redacted }
+// ParseAddress reads the text that Reveal gives.
+func ParseAddress(text string) (Address, error) {
+	if _, err := tailcat.ParseAddr(tailcat.Addr(text)); err != nil {
+		// The cause is dropped: it can quote the address.
+		return Address{}, ErrBadAddress
+	}
+	return Address{text: tailcat.Addr(text)}, nil
+}
 
-// GoString hides the key.
-func (PresharedKey) GoString() string { return redacted }
+// Reveal gives the address as text: for the state file, and for the operator
+// who gives it to a device.
+func (a Address) Reveal() string { return string(a.text) }
 
-// Address is what a device needs to find and authenticate a hub: the hub's
-// public key, its pre-shared key and its relay. It is a secret (LNK-008).
-type Address string
-
-// String hides the address. Use string(address) where the address itself
-// must go out, for example to the operator who makes an invite.
-func (Address) String() string { return redacted }
-
-// GoString hides the address.
-func (Address) GoString() string { return redacted }
+// IsZero reports whether the address was never set.
+func (a Address) IsZero() bool { return a.text == "" }

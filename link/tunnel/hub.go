@@ -94,7 +94,7 @@ func StartHub(ctx context.Context, cfg HubConfig) (*Hub, error) {
 }
 
 // Address is the address that devices use. It is a secret (LNK-008).
-func (h *Hub) Address() Address { return Address(h.server.TailcatAddr()) }
+func (h *Hub) Address() Address { return Address{text: h.server.TailcatAddr()} }
 
 // Relay is the relay in use. Save it and give it back at the next start, or
 // the address changes (LNK-001).
@@ -136,3 +136,11 @@ func (h *Hub) Paths() map[DeviceKey]Path {
 
 // Close stops the hub side.
 func (h *Hub) Close() error { return h.server.Close() }
+
+// HubPort is the port of the link that carries the hub's own traffic.
+const HubPort uint16 = 443
+
+// Join copies bytes between two streams in both directions until both have
+// ended, then closes both. When one direction ends, the other stays open, so
+// a side can end its request and still read the answer.
+func Join(a, b net.Conn) { tailcat.ProxyConns(a, b) }

@@ -133,7 +133,7 @@ func TestLNK008ADamagedIdentityGivesAnErrorWithoutTheKey(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	keyText, _ := hub.Key.MarshalText()
+	keyText := hub.Key.Reveal()
 	damaged := fmt.Sprintf(`{"key":"%sXX","presharedKey":"zz"}`, keyText)
 	if err := os.WriteFile(filepath.Join(path, "hub.json"), []byte(damaged), 0o600); err != nil {
 		t.Fatal(err)
@@ -142,7 +142,7 @@ func TestLNK008ADamagedIdentityGivesAnErrorWithoutTheKey(t *testing.T) {
 	if !errors.Is(err, statedir.ErrDamaged) {
 		t.Fatalf("err = %v, want ErrDamaged", err)
 	}
-	if strings.Contains(err.Error(), string(keyText)) || strings.Contains(err.Error(), string(keyText[len(keyText)-16:])) {
+	if strings.Contains(err.Error(), keyText) || strings.Contains(err.Error(), keyText[len(keyText)-16:]) {
 		t.Error("the error holds the private key")
 	}
 }

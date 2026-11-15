@@ -107,18 +107,25 @@ func TestPinTheAddressIsTheSameAfterARestartFromSavedState(t *testing.T) {
 	first := startHub(t, id, admitAll)
 	address := first.Address()
 
-	saved := struct {
-		Key   tunnel.PrivateKey
-		PSK   tunnel.PresharedKey
-		Relay tunnel.Relay
-	}{id.key, id.psk, first.Relay()}
-	text, err := json.Marshal(saved)
+	// What a state file holds: the two secrets as text and the relay as JSON.
+	keyText, pskText := id.key.Reveal(), id.psk.Reveal()
+	relayText, err := json.Marshal(first.Relay())
 	if err != nil {
 		t.Fatal(err)
 	}
 	first.Close()
-	saved.Key, saved.PSK, saved.Relay = tunnel.PrivateKey{}, tunnel.PresharedKey{}, tunnel.Relay{}
-	if err := json.Unmarshal(text, &saved); err != nil {
+	var saved struct {
+		Key   tunnel.PrivateKey
+		PSK   tunnel.PresharedKey
+		Relay tunnel.Relay
+	}
+	if saved.Key, err = tunnel.ParsePrivateKey(keyText); err != nil {
+		t.Fatal(err)
+	}
+	if saved.PSK, err = tunnel.ParsePresharedKey(pskText); err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(relayText, &saved.Relay); err != nil {
 		t.Fatal(err)
 	}
 

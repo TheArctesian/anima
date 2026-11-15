@@ -82,8 +82,8 @@ func TestLNK008ADirectoryThatOthersCanReadIsRefused(t *testing.T) {
 	if err := os.Mkdir(path, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := statedir.Open(path); !errors.Is(err, statedir.ErrOpen) {
-		t.Errorf("Open of a 755 directory: err = %v, want ErrOpen", err)
+	if _, err := statedir.Open(path); !errors.Is(err, statedir.ErrExposed) {
+		t.Errorf("Open of a 755 directory: err = %v, want ErrExposed", err)
 	}
 }
 
@@ -97,8 +97,8 @@ func TestLNK008AFileThatOthersCanReadIsRefused(t *testing.T) {
 		t.Fatal(err)
 	}
 	var got note
-	if err := dir.Read("note.json", &got); !errors.Is(err, statedir.ErrOpen) {
-		t.Errorf("Read of a 644 file: err = %v, want ErrOpen", err)
+	if err := dir.Read("note.json", &got); !errors.Is(err, statedir.ErrExposed) {
+		t.Errorf("Read of a 644 file: err = %v, want ErrExposed", err)
 	}
 }
 
@@ -185,5 +185,43 @@ func TestAStateDirectoryWithATooLongPathCannotHaveASocket(t *testing.T) {
 	dir := open(t, filepath.Join(shortDir(t), strings.Repeat("d", 100)))
 	if _, err := dir.Listen("c.sock"); !errors.Is(err, statedir.ErrLongPath) {
 		t.Errorf("err = %v, want ErrLongPath", err)
+	}
+}
+
+func TestLNK008ASymbolicLinkIsNotAStateDirectoryOrAStateFile(t *testing.T) {
+	base := t.TempDir()
+	target := filepath.Join(base, "real")
+	dir := open(t, target)
+	if err := dir.Write("note.json", note{"x"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(filepath.Join(target, "note.json"), filepath.Join(target, "link.json")); err != nil {
+		t.Fatal(err)
+	}
+	var got note
+	if err := dir.Read("link.json", &got); !errors.Is(err, statedir.ErrExposed) {
+		t.Errorf("Read through a symbolic link: err = %v, want ErrExposed", err)
+	}
+	dir.Close()
+
+	linked := filepath.Join(base, "linked")
+	if err := os.Symlink(target, linked); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := statedir.Open(linked); !errors.Is(err, statedir.ErrExposed) {
+		t.Errorf("Open of a symbolic link: err = %v, want ErrExposed", err)
+	}
+}
+
+func TestLNK008ADirectoryThatAnotherUserCanReplaceIsRefused(t *testing.T) {
+	parent := filepath.Join(t.TempDir(), "shared")
+	if err := os.Mkdir(parent, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(parent, 0o777); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := statedir.Open(filepath.Join(parent, "state")); !errors.Is(err, statedir.ErrExposed) {
+		t.Errorf("Open under a folder that all can write: err = %v, want ErrExposed", err)
 	}
 }

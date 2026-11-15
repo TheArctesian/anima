@@ -25,12 +25,11 @@ func NewDevice(cfg DeviceConfig) (*Device, error) {
 	if cfg.Key.IsZero() {
 		return nil, ErrNoIdentity
 	}
-	if _, err := tailcat.ParseAddr(tailcat.Addr(cfg.Hub)); err != nil {
-		// The cause is dropped: it can quote the address, which is a secret.
+	if cfg.Hub.IsZero() {
 		return nil, ErrBadAddress
 	}
 	return &Device{client: &tailcat.Client{
-		Server: tailcat.Addr(cfg.Hub),
+		Server: cfg.Hub.text,
 		Key:    cfg.Key.node,
 		Logf:   cfg.DebugLogf.orDiscard(),
 	}}, nil

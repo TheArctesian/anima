@@ -155,8 +155,11 @@ func TestBytesCrossTheLinkThroughTheRelay(t *testing.T) {
 }
 
 func TestADeviceNeedsAValidAddressAndAKey(t *testing.T) {
-	if _, err := tunnel.NewDevice(tunnel.DeviceConfig{Key: tunnel.NewPrivateKey(), Hub: "not an address"}); err != tunnel.ErrBadAddress {
-		t.Errorf("bad address: err = %v, want ErrBadAddress", err)
+	if _, err := tunnel.ParseAddress("not an address"); err != tunnel.ErrBadAddress {
+		t.Errorf("bad address text: err = %v, want ErrBadAddress", err)
+	}
+	if _, err := tunnel.NewDevice(tunnel.DeviceConfig{Key: tunnel.NewPrivateKey()}); err != tunnel.ErrBadAddress {
+		t.Errorf("no address: err = %v, want ErrBadAddress", err)
 	}
 	if _, err := tunnel.NewDevice(tunnel.DeviceConfig{}); err != tunnel.ErrNoIdentity {
 		t.Errorf("no key: err = %v, want ErrNoIdentity", err)

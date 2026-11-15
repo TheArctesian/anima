@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"net"
 	"os"
@@ -18,8 +19,9 @@ import (
 var (
 	// ErrInUse means that another anima-link has the directory.
 	ErrInUse = errors.New("statedir: another anima-link uses this directory")
-	// ErrOpen means that other users can reach the directory or a file.
-	ErrOpen = errors.New("statedir: other users can read this path; set owner-only access")
+	// ErrExposed means that other users can reach the directory or a file,
+	// or can replace it.
+	ErrExposed = errors.New("statedir: other users can reach this path; set owner-only access")
 	// ErrDamaged means that a file cannot be read as what it must hold.
 	ErrDamaged = errors.New("statedir: the file is damaged")
 	// ErrAbsent means that the file was never written.
@@ -43,10 +45,17 @@ type Dir struct {
 // Open makes the directory if it is absent, checks that only its owner can
 // reach it, and takes it for this process.
 func Open(path string) (*Dir, error) {
-	if err := os.MkdirAll(path, 0o700); err != nil {
+	path, err := filepath.Abs(path)
+	if err != nil {
 		return nil, err
 	}
-	if err := ownerOnly(path); err != nil {
+	if err := os.MkdirAll(path, 0o700); err != nil {
+		return nil, fmt.Errorf("statedir: make the directory: %w", err)
+	}
+	if err := dropInheritedAccess(path); err != nil {
+		return nil, err
+	}
+	if err := private(path); err != nil {
 		return nil, err
 	}
 	lock, err := os.OpenFile(filepath.Join(path, lockName), os.O_CREATE|os.O_RDWR, 0o600)
@@ -66,15 +75,25 @@ func (d *Dir) Close() error { return d.lock.Close() }
 // Read fills value from the JSON file name. It returns ErrAbsent when the
 // file was never written.
 func (d *Dir) Read(name string, value any) error {
-	path := filepath.Join(d.path, name)
-	text, err := os.ReadFile(path)
+	file, err := os.OpenFile(filepath.Join(d.path, name), os.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0)
 	if errors.Is(err, fs.ErrNotExist) {
 		return fmt.Errorf("%w: %s", ErrAbsent, name)
 	}
 	if err != nil {
+		return fmt.Errorf("%w: %s", ErrExposed, name)
+	}
+	defer file.Close()
+	// The check and the read use the same open file, so the file cannot be
+	// replaced between them.
+	stat, err := file.Stat()
+	if err != nil {
 		return err
 	}
-	if err := ownerOnly(path); err != nil {
+	if !stat.Mode().IsRegular() || !ownerOnly(stat) {
+		return fmt.Errorf("%w: %s", ErrExposed, name)
+	}
+	text, err := io.ReadAll(file)
+	if err != nil {
 		return err
 	}
 	if err := json.Unmarshal(text, value); err != nil {
@@ -107,7 +126,21 @@ func (d *Dir) Write(name string, value any) error {
 	if err := temporary.Close(); err != nil {
 		return err
 	}
-	return os.Rename(temporary.Name(), filepath.Join(d.path, name))
+	if err := os.Rename(temporary.Name(), filepath.Join(d.path, name)); err != nil {
+		return err
+	}
+	return d.sync()
+}
+
+// sync makes a rename in the directory last through a power loss. Without
+// it a hub could lose its new identity file and come back as another hub.
+func (d *Dir) sync() error {
+	directory, err := os.Open(d.path)
+	if err != nil {
+		return err
+	}
+	defer directory.Close()
+	return directory.Sync()
 }
 
 // Listen makes the Unix socket name in the directory. Only the owner can
@@ -139,16 +172,33 @@ func Dial(ctx context.Context, path, name string) (net.Conn, error) {
 	return dialer.DialContext(ctx, "unix", filepath.Join(path, name))
 }
 
-// ownerOnly refuses a path that its group or other users can reach, or that
-// another user owns.
-func ownerOnly(path string) error {
-	stat, err := os.Stat(path)
+// private refuses a directory that is a symbolic link, that other users can
+// reach, or that another user can replace because a folder above it is open
+// for writing with no sticky bit.
+func private(path string) error {
+	stat, err := os.Lstat(path)
 	if err != nil {
 		return err
 	}
-	owner, known := stat.Sys().(*syscall.Stat_t)
-	if stat.Mode().Perm()&0o077 != 0 || (known && int(owner.Uid) != os.Getuid()) {
-		return fmt.Errorf("%w: %s", ErrOpen, path)
+	if !stat.IsDir() || !ownerOnly(stat) {
+		return fmt.Errorf("%w: %s", ErrExposed, path)
 	}
-	return nil
+	for above := filepath.Dir(path); ; above = filepath.Dir(above) {
+		stat, err := os.Stat(above)
+		if err != nil {
+			return err
+		}
+		if stat.Mode().Perm()&0o022 != 0 && stat.Mode()&os.ModeSticky == 0 {
+			return fmt.Errorf("%w: %s", ErrExposed, above)
+		}
+		if above == filepath.Dir(above) {
+			return nil
+		}
+	}
+}
+
+// ownerOnly reports whether only this user can reach the file.
+func ownerOnly(stat fs.FileInfo) bool {
+	owner, known := stat.Sys().(*syscall.Stat_t)
+	return stat.Mode().Perm()&0o077 == 0 && (!known || int(owner.Uid) == os.Getuid())
 }
