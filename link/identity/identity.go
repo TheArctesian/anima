@@ -56,6 +56,19 @@ func LoadHub(dir *statedir.Dir) (Hub, error) {
 	return Hub{Key: key, PresharedKey: psk, Relay: saved.Relay, NextRelay: saved.NextRelay}, nil
 }
 
+// ErrNoNextRelay means that the hub has announced no relay to change to.
+var ErrNoNextRelay = errors.New("identity: no relay is announced")
+
+// Switched returns the identity in which the announced relay is the hub's
+// relay (LNK-007). The hub link starts on it at its next start.
+func (h Hub) Switched() (Hub, error) {
+	if h.NextRelay.IsZero() {
+		return Hub{}, ErrNoNextRelay
+	}
+	h.Relay, h.NextRelay = h.NextRelay, tunnel.Relay{}
+	return h, nil
+}
+
 // Save writes the hub's identity. A hub calls it when its relay is chosen
 // or changed.
 func (h Hub) Save(dir *statedir.Dir) error {

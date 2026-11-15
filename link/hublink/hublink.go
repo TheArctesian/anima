@@ -235,7 +235,10 @@ func (l *Link) forward(stream net.Conn) {
 	}
 	if l.nameDevice {
 		header := deviceHeader(device, addrPortOf(stream.RemoteAddr()), addrPortOf(stream.LocalAddr()))
-		if _, err := hub.Write(header); err != nil {
+		_ = hub.SetWriteDeadline(time.Now().Add(targetDialLimit))
+		_, err := hub.Write(header)
+		_ = hub.SetWriteDeadline(time.Time{})
+		if err != nil {
 			stream.Close()
 			hub.Close()
 			return

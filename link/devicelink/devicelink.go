@@ -32,8 +32,9 @@ const (
 	// DefaultNoticeEvery makes the device read the hub's next address each
 	// 5 minutes with the default keepalive.
 	DefaultNoticeEvery = 20
-	pingLimit          = 5 * time.Second
-	registerLimit      = 10 * time.Second
+	// DefaultAnswerLimit is how long the device waits for one answer of the
+	// hub before it counts the hub as silent.
+	DefaultAnswerLimit = 5 * time.Second
 	dialLimit          = 15 * time.Second
 )
 
@@ -44,6 +45,10 @@ type Config struct {
 	Listen string
 	// Keepalive is the time between pings. Zero means DefaultKeepalive.
 	Keepalive time.Duration
+	// AnswerLimit is how long the device waits for one answer of the hub. A
+	// registration, which is two messages, gets twice this. Zero means
+	// DefaultAnswerLimit.
+	AnswerLimit time.Duration
 	// Save keeps the device's identity when a renewal changes it (LNK-005).
 	// Nil means that the key is never renewed.
 	Save func(identity.Device) error
@@ -71,6 +76,8 @@ type Link struct {
 	// noticeEvery is how many keepalives pass between two reads of the
 	// hub's notice. beats and failures belong to the keepalive goroutine.
 	noticeEvery, beats, failures int
+	// pingLimit and registerLimit come from Config.AnswerLimit.
+	pingLimit, registerLimit time.Duration
 
 	mu     sync.Mutex
 	device *tunnel.Device // replaced when the key is renewed or the hub moves
@@ -137,6 +144,11 @@ func Start(cfg Config) (*Link, error) {
 	if link.lookupTXT == nil {
 		link.lookupTXT = net.DefaultResolver.LookupTXT
 	}
+	link.pingLimit = cfg.AnswerLimit
+	if link.pingLimit <= 0 {
+		link.pingLimit = DefaultAnswerLimit
+	}
+	link.registerLimit = 2 * link.pingLimit
 	link.noticeEvery = max(cfg.NoticeEvery, 0)
 	if link.noticeEvery == 0 {
 		link.noticeEvery = DefaultNoticeEvery
@@ -191,7 +203,7 @@ func (l *Link) keepAlive(ctx context.Context, every time.Duration) {
 func (l *Link) beat(ctx context.Context) {
 	path, err := l.ping(ctx)
 	if err != nil {
-		registerCtx, cancel := context.WithTimeout(ctx, registerLimit)
+		registerCtx, cancel := context.WithTimeout(ctx, l.registerLimit)
 		registered := l.tunnel().Register(registerCtx) == nil
 		cancel()
 		if registered {
@@ -217,7 +229,7 @@ func (l *Link) beat(ctx context.Context) {
 }
 
 func (l *Link) ping(ctx context.Context) (tunnel.Path, error) {
-	ctx, cancel := context.WithTimeout(ctx, pingLimit)
+	ctx, cancel := context.WithTimeout(ctx, l.pingLimit)
 	defer cancel()
 	return l.tunnel().Path(ctx)
 }

@@ -112,6 +112,7 @@ func TestLNK005ADeviceRenewsItsKeyWithNoUserAction(t *testing.T) {
 	if !device.Expires.Equal(hub.clock.Now().Add(180 * days)) {
 		t.Fatalf("the device learned the expiry %v at the join, want 180 days from now", device.Expires)
 	}
+	device.HubName = "hub.example.org"
 	link, saved := hub.startRenewing(t, device)
 	getUntil(t, link, 30*time.Second)
 
@@ -131,6 +132,9 @@ func TestLNK005ADeviceRenewsItsKeyWithNoUserAction(t *testing.T) {
 	}
 	renewed := saved.get()
 	hub.waitForKey(t, renewed.Key.Public(), "after the renewal")
+	if renewed.HubName != device.HubName {
+		t.Error("the renewal lost the hub's domain name")
+	}
 	if !renewed.NextKey.IsZero() || !renewed.Expires.Equal(hub.clock.Now().Add(180*days)) || renewed.Hub != device.Hub {
 		t.Errorf("saved identity after the renewal: next key set: %v, expires %v", !renewed.NextKey.IsZero(), renewed.Expires)
 	}

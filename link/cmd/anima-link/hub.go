@@ -86,7 +86,7 @@ func chooseRelay(dir *statedir.Dir, hostPort string, replace bool) error {
 		return err
 	}
 	if !hub.Relay.IsZero() && !replace {
-		if hub.Relay.Name() == relay.Name() {
+		if hub.Relay.SameAs(relay) {
 			return nil
 		}
 		return errRelayIsSet

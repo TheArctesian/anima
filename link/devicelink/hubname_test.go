@@ -63,7 +63,7 @@ func TestLNK007ADeviceFindsAHubThatMovedByItsDomainName(t *testing.T) {
 	start := func(who identity.Device) (*devicelink.Link, *kept) {
 		saved := &kept{device: who}
 		link, err := devicelink.Start(devicelink.Config{
-			Identity: who, Listen: "127.0.0.1:0", Keepalive: 300 * time.Millisecond, Save: saved.save, LookupTXT: names.lookup,
+			Identity: who, Listen: "127.0.0.1:0", Keepalive: 300 * time.Millisecond, AnswerLimit: time.Second, Save: saved.save, LookupTXT: names.lookup,
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -103,7 +103,7 @@ func TestLNK007ADeviceDoesNotFollowADomainNameToAnotherHub(t *testing.T) {
 	names.set("_anima-link.hub.example.org", impostor.link.Address().Reveal())
 	saved := &kept{device: device}
 	link, err := devicelink.Start(devicelink.Config{
-		Identity: device, Listen: "127.0.0.1:0", Keepalive: 300 * time.Millisecond, Save: saved.save, LookupTXT: names.lookup,
+		Identity: device, Listen: "127.0.0.1:0", Keepalive: 300 * time.Millisecond, AnswerLimit: time.Second, Save: saved.save, LookupTXT: names.lookup,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -115,7 +115,7 @@ func TestLNK007ADeviceDoesNotFollowADomainNameToAnotherHub(t *testing.T) {
 			t.Fatal("the device never asked the domain name; the test proves nothing")
 		}
 	}
-	time.Sleep(15 * time.Second) // longer than the time to register at an address
+	time.Sleep(5 * time.Second) // longer than the time to register at an address (2 s here)
 	if saved.get().Hub != device.Hub {
 		t.Fatal("the device saved the address of another hub as its hub")
 	}

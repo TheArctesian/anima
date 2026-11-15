@@ -45,3 +45,22 @@ func TestLNK007AnOwnRelayIsAHostNameWithAnOptionalPort(t *testing.T) {
 		}
 	}
 }
+
+func TestTwoRelaysAreOneOnlyWithTheSameHostAndPort(t *testing.T) {
+	relay := func(text string) tunnel.Relay {
+		made, err := tunnel.OwnRelay(text)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return made
+	}
+	if !relay("relay.example.org").SameAs(relay("relay.example.org:443")) {
+		t.Error("a relay with no port is the relay on port 443")
+	}
+	if relay("relay.example.org").SameAs(relay("relay.example.org:8443")) || relay("a.example.org").SameAs(relay("b.example.org")) {
+		t.Error("another port or another host is another relay")
+	}
+	if relay("relay.example.org").SameAs(tunnel.Relay{}) || !(tunnel.Relay{}).SameAs(tunnel.Relay{}) {
+		t.Error("no relay is the same as no relay only")
+	}
+}

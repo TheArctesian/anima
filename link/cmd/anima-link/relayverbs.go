@@ -61,15 +61,16 @@ func relayVerbs(link *hublink.Link, dir *statedir.Dir, stop context.CancelFunc) 
 			if err != nil {
 				return nil, err
 			}
-			if hub.NextRelay.IsZero() {
+			switched, err := hub.Switched()
+			if errors.Is(err, identity.ErrNoNextRelay) {
 				return nil, errNoNextRelay
 			}
-			hub.Relay, hub.NextRelay = hub.NextRelay, tunnel.Relay{}
-			if err := hub.Save(dir); err != nil {
+			if err := switched.Save(dir); err != nil {
 				return nil, err
 			}
+			// The server sends this reply before it stops.
 			stop()
-			return relayStatus{Relay: hub.Relay.Name()}, nil
+			return relayStatus{Relay: switched.Relay.Name()}, nil
 		},
 	}
 }

@@ -26,15 +26,26 @@ func OwnRelay(hostPort string) (Relay, error) {
 		}
 		host, port = h, number
 	}
-	if host == "" || net.ParseIP(host) == nil && !validHostName(host) {
+	if host == "" || net.ParseIP(host) == nil && !ValidHostName(host) {
 		return Relay{}, ErrBadRelay
 	}
 	node := &tailcfg.DERPNode{Name: "own", RegionID: ownRegion, HostName: host, DERPPort: port}
 	return Relay{&tailcfg.DERPRegion{RegionID: ownRegion, RegionCode: host, RegionName: host, Nodes: []*tailcfg.DERPNode{node}}}, nil
 }
 
-func validHostName(host string) bool {
-	if len(host) > 253 {
+// SameAs reports whether two relays are one relay: the same host and port.
+func (r Relay) SameAs(other Relay) bool {
+	if r.region == nil || other.region == nil || len(r.region.Nodes) == 0 || len(other.region.Nodes) == 0 {
+		return r.region == nil && other.region == nil
+	}
+	one, two := r.region.Nodes[0], other.region.Nodes[0]
+	return one.HostName == two.HostName && one.DERPPort == two.DERPPort
+}
+
+// ValidHostName reports whether a text can be a host name: letters, digits,
+// hyphens and dots, at most 253 characters.
+func ValidHostName(host string) bool {
+	if host == "" || len(host) > 253 {
 		return false
 	}
 	for _, r := range host {

@@ -18,7 +18,7 @@ func (l *Link) readNotice(ctx context.Context) {
 	if l.save == nil {
 		return
 	}
-	ctx, cancel := context.WithTimeout(ctx, pingLimit)
+	ctx, cancel := context.WithTimeout(ctx, l.pingLimit)
 	defer cancel()
 	stream, err := l.tunnel().Dial(ctx, tunnel.NoticePort)
 	if err != nil {
@@ -82,7 +82,7 @@ func (l *Link) moveTo(ctx context.Context, address tunnel.Address) bool {
 	if err != nil {
 		return false
 	}
-	ctx, cancel := context.WithTimeout(ctx, registerLimit)
+	ctx, cancel := context.WithTimeout(ctx, l.registerLimit)
 	defer cancel()
 	if !answersAsHub(ctx, moved) {
 		moved.Close()
@@ -118,9 +118,9 @@ func answersAsHub(ctx context.Context, device *tunnel.Device) bool {
 	return err == nil
 }
 
-// HubNameLabel comes before the hub's domain name in the name of the TXT
+// hubNameLabel comes before the hub's domain name in the name of the TXT
 // record that holds the hub address.
-const HubNameLabel = "_anima-link."
+const hubNameLabel = "_anima-link."
 
 // addressesOfName reads the hub addresses that a domain name holds
 // (LNK-007). A name only finds the hub: the hub still admits only the keys
@@ -130,9 +130,9 @@ func (l *Link) addressesOfName(ctx context.Context, name string) []tunnel.Addres
 	if name == "" {
 		return nil
 	}
-	ctx, cancel := context.WithTimeout(ctx, pingLimit)
+	ctx, cancel := context.WithTimeout(ctx, l.pingLimit)
 	defer cancel()
-	records, err := l.lookupTXT(ctx, HubNameLabel+name)
+	records, err := l.lookupTXT(ctx, hubNameLabel+name)
 	if err != nil {
 		return nil
 	}

@@ -40,7 +40,9 @@ func TestLNK007AHubOnARelayThatRefusesItSaysSoAndStops(t *testing.T) {
 	dir.Close()
 
 	var stderr output
-	code := run(context.Background(), []string{"hub", "-state", state, "-target", "127.0.0.1:9"}, stdio{strings.NewReader(""), io.Discard, &stderr})
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second) // a hub that starts anyway must not hang the test
+	defer cancel()
+	code := run(ctx, []string{"hub", "-state", state, "-target", "127.0.0.1:9"}, stdio{strings.NewReader(""), io.Discard, &stderr})
 	if code != 1 || !strings.Contains(stderr.String(), "relay does not carry") {
 		t.Errorf("exit %d, %q; want a failed start that names the relay as the cause", code, stderr.String())
 	}

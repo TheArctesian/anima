@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net"
+	"sync"
 	"syscall"
 	"time"
 )
@@ -62,11 +63,16 @@ type reply struct {
 const maxLine = 1 << 20
 
 // Serve answers requests on each connection of the listener until ctx ends.
+//
+// A request that has started gets its reply before Serve returns: a verb
+// can end the server (by ending ctx) and its caller still hears the answer.
 func Serve(ctx context.Context, listener net.Listener, verbs map[string]Verb) error {
 	go func() {
 		<-ctx.Done()
 		listener.Close()
 	}()
+	var inFlight sync.WaitGroup
+	defer inFlight.Wait()
 	for {
 		conn, err := AcceptPatiently(ctx, listener)
 		if err != nil {
@@ -75,7 +81,7 @@ func Serve(ctx context.Context, listener net.Listener, verbs map[string]Verb) er
 			}
 			return err
 		}
-		go answer(ctx, conn, verbs)
+		go answer(ctx, conn, verbs, &inFlight)
 	}
 }
 
@@ -96,13 +102,16 @@ func AcceptPatiently(ctx context.Context, listener net.Listener) (net.Conn, erro
 	}
 }
 
-func answer(ctx context.Context, conn net.Conn, verbs map[string]Verb) {
+func answer(ctx context.Context, conn net.Conn, verbs map[string]Verb, inFlight *sync.WaitGroup) {
 	defer conn.Close()
 	lines := bufio.NewScanner(conn)
 	lines.Buffer(make([]byte, 0, 4096), maxLine)
 	encoder := json.NewEncoder(conn)
 	for lines.Scan() {
-		if encoder.Encode(run(ctx, lines.Bytes(), verbs)) != nil {
+		inFlight.Add(1)
+		err := encoder.Encode(run(ctx, lines.Bytes(), verbs))
+		inFlight.Done()
+		if err != nil {
 			return
 		}
 	}

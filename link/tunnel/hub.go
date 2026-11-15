@@ -131,9 +131,13 @@ func (h *Hub) checkRelay(ctx context.Context, debugLogf Logf) error {
 		return err
 	}
 	defer probe.Close()
+	parent := ctx
 	ctx, cancel := context.WithTimeout(ctx, relayCheckLimit)
 	defer cancel()
 	if probe.Register(ctx) != nil {
+		if parent.Err() != nil {
+			return startError{parent.Err()} // the caller's own limit, not the relay
+		}
 		return ErrRelay
 	}
 	return nil

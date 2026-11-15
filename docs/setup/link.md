@@ -39,8 +39,9 @@ anima-link hub -state <HUB_STATE_DIR> -target 127.0.0.1:<PORT>
   socket is made in it).
 - The first start chooses a relay and saves it. The hub's address contains its key and its relay,
   so it stays the same at each later start (LNK-001).
-- If the relay does not carry the hub's messages, the start fails with "the relay does not carry
-  this hub's messages".
+- The hub link needs the network at its start: it sends a message to itself through the relay.
+  If the relay does not carry it, the start fails with "the relay does not carry this hub's
+  messages". The relay is then not reachable, or it refuses this hub's key.
 
 Relays. With no `-relay`, the hub uses the nearest of Tailscale's shared relays. A relay cannot
 read traffic, but Tailscale can record which keys and addresses connect, and the shared relays
@@ -114,9 +115,12 @@ A different relay is a different hub address. Two steps let the connected device
 # On the hub computer. Step 1: tell the connected devices the address that the hub will have.
 anima-link ctl -state <HUB_STATE_DIR> relay.announce '{"relay":"<HOST>[:<PORT>]"}'
 # Wait until each device has been connected once (a device reads the notice each 5 minutes).
-# Step 2: change. The hub link stops; start it again as in 2.
+# Step 2: change. The hub link stops and does not start by itself: start it again as in 2.
 anima-link ctl -state <HUB_STATE_DIR> relay.switch
 ```
+
+After step 2 the hub has a new address. If you use a domain name, put the new address
+(`address.show`) in the TXT record.
 
 If the hub link cannot start on the new relay (for example the name was wrong), no verb can run.
 Start it once with `-relay <HOST>[:<PORT>] -replace-relay` to take a relay that works. The

@@ -15,7 +15,7 @@ func TestLNK007AConnectedDeviceFollowsTheHubToANewRelayWithNoNewInvite(t *testin
 	saved := &kept{device: device}
 	names := &zone{}
 	link, err := devicelink.Start(devicelink.Config{
-		Identity: device, Listen: "127.0.0.1:0", Keepalive: 300 * time.Millisecond, NoticeEvery: 1, Save: saved.save,
+		Identity: device, Listen: "127.0.0.1:0", Keepalive: 300 * time.Millisecond, AnswerLimit: time.Second, NoticeEvery: 1, Save: saved.save,
 		LookupTXT: names.lookup,
 	})
 	if err != nil {
@@ -60,7 +60,7 @@ func TestLNK007AConnectedDeviceFollowsTheHubToANewRelayWithNoNewInvite(t *testin
 	}
 
 	// The device that was off still has the old address only.
-	old, err := devicelink.Start(devicelink.Config{Identity: absent, Listen: "127.0.0.1:0", Keepalive: 300 * time.Millisecond, Save: (&kept{}).save})
+	old, err := devicelink.Start(devicelink.Config{Identity: absent, Listen: "127.0.0.1:0", Keepalive: 300 * time.Millisecond, AnswerLimit: time.Second, Save: (&kept{}).save})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -10,6 +10,7 @@ import (
 	"github.com/TheArctesian/anima/link/identity"
 	"github.com/TheArctesian/anima/link/invites"
 	"github.com/TheArctesian/anima/link/statedir"
+	"github.com/TheArctesian/anima/link/tunnel"
 )
 
 const joinLimit = 30 * time.Second
@@ -21,6 +22,9 @@ func runJoin(ctx context.Context, args []string, streams stdio) error {
 	flags, statePath := stateFlags("join")
 	hubName := flags.String("hub-name", "", "a domain name that holds the hub's address in a TXT record (optional)")
 	if err := flags.Parse(args); err != nil || *statePath == "" || flags.NArg() != 0 {
+		return errUsage
+	}
+	if *hubName != "" && !tunnel.ValidHostName(*hubName) {
 		return errUsage
 	}
 	line, _ := bufio.NewReader(streams.in).ReadString('\n')

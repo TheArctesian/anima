@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/TheArctesian/anima/link/devices"
-	"github.com/TheArctesian/anima/link/identity"
 	"github.com/TheArctesian/anima/link/invites"
 	"github.com/TheArctesian/anima/link/tunnel"
 )
@@ -54,7 +53,10 @@ func (l *Link) renewIfDue(ctx context.Context) {
 		next.Close()
 		return // the next keepalive tries again
 	}
-	renewed := identity.Device{Key: current.NextKey, Hub: current.Hub, Expires: confirmed.Expires}
+	// Only the key changes: the hub's address, its name and its announced
+	// next address stay.
+	renewed := current
+	renewed.Key, renewed.NextKey, renewed.Expires = current.NextKey, tunnel.PrivateKey{}, confirmed.Expires
 	if l.save(renewed) != nil {
 		// The hub has the new key and the file has both: a restart confirms again.
 		next.Close()

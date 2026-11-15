@@ -173,3 +173,53 @@ func TestServeGoesOnWhenTheSystemHasNoFreeFileForAMoment(t *testing.T) {
 		t.Errorf("after three failed accepts: add = %d, %v; the server stopped", got, err)
 	}
 }
+
+func TestAVerbThatEndsTheServerStillGetsItsReplyOut(t *testing.T) {
+	dir, err := os.MkdirTemp("/tmp", "anima-control-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+	listener, err := net.Listen("unix", filepath.Join(dir, "c.sock"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, stop := context.WithCancel(context.Background())
+	defer stop()
+	served := make(chan error, 1)
+	go func() {
+		served <- control.Serve(ctx, listener, map[string]control.Verb{
+			"stop": func(context.Context, json.RawMessage) (any, error) {
+				stop()
+				time.Sleep(100 * time.Millisecond) // the server must wait for this request
+				return "stopping", nil
+			},
+		})
+	}()
+	conn, err := net.Dial("unix", listener.Addr().String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	replied := make(chan string, 1)
+	go func() {
+		var reply string
+		control.Call(conn, "stop", nil, &reply)
+		replied <- reply
+	}()
+
+	select {
+	case <-served:
+	case <-time.After(5 * time.Second):
+		t.Fatal("Serve still runs 5 s after a verb ended it")
+	}
+	// Serve has returned: the reply must be on its way already.
+	select {
+	case reply := <-replied:
+		if reply != "stopping" {
+			t.Errorf("reply = %q, want the verb's answer", reply)
+		}
+	case <-time.After(2 * time.Second):
+		t.Error("the caller of the verb that ended the server got no reply")
+	}
+}
