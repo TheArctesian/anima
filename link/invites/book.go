@@ -69,13 +69,16 @@ func (b book) keeping(keep func(Record) bool) book {
 	return next
 }
 
-// sorted returns the invites that are open now, the first to expire first.
-func (b book) sorted(now time.Time) []Record {
+// openAt returns the invites that are open at a time, the first to expire first.
+func (b book) openAt(now time.Time) []Record {
+	return b.keeping(func(each Record) bool { return now.Before(each.Expires) }).all()
+}
+
+// all returns every invite of the book, the first to expire first.
+func (b book) all() []Record {
 	all := []Record{}
 	for _, record := range b {
-		if now.Before(record.Expires) {
-			all = append(all, record)
-		}
+		all = append(all, record)
 	}
 	sort.Slice(all, func(i, j int) bool { return all[i].Expires.Before(all[j].Expires) })
 	return all

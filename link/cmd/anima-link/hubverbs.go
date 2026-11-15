@@ -21,10 +21,14 @@ type hubStatus struct {
 
 // listedDevice is one line of the "devices.list" answer.
 type listedDevice struct {
-	Key       tunnel.DeviceKey `json:"key"`
-	Name      string           `json:"name"`
-	Permitted time.Time        `json:"permitted"`
-	Streams   int              `json:"streams"`
+	Key tunnel.DeviceKey `json:"key"`
+	// Fingerprint is the short form of Key that "anima-link join" prints
+	// on the device, so that the operator can compare the two.
+	Fingerprint string    `json:"fingerprint"`
+	Name        string    `json:"name"`
+	Permitted   time.Time `json:"permitted"`
+	Expires     time.Time `json:"expires"`
+	Streams     int       `json:"streams"`
 	// Path is "direct", "relayed" or "none" (LNK-006).
 	Path string `json:"path"`
 	// Relay is the relay's name when the path is relayed.
@@ -47,7 +51,7 @@ type permitRequest struct {
 	Name string           `json:"name"`
 }
 
-func hubVerbs(link *hublink.Link, permitted *devices.Store, now func() time.Time) map[string]control.Verb {
+func hubVerbs(link *hublink.Link, permitted *devices.Store) map[string]control.Verb {
 	return map[string]control.Verb{
 		"status": func(context.Context, json.RawMessage) (any, error) {
 			return hubStatus{Role: "hub", Relay: link.Relay().Name(), Devices: permitted.Count()}, nil
@@ -62,7 +66,7 @@ func hubVerbs(link *hublink.Link, permitted *devices.Store, now func() time.Time
 			for _, device := range permitted.All() {
 				path := link.Path(device.Key)
 				listed = append(listed, listedDevice{
-					Key: device.Key, Name: device.Name, Permitted: device.Permitted,
+					Key: device.Key, Fingerprint: device.Key.Fingerprint(), Name: device.Name, Permitted: device.Permitted, Expires: device.Expires,
 					Streams: link.Streams(device.Key), Path: string(path.Kind), Relay: path.Relay,
 				})
 			}
@@ -73,7 +77,7 @@ func hubVerbs(link *hublink.Link, permitted *devices.Store, now func() time.Time
 			if err := control.Arguments(args, &request); err != nil {
 				return nil, err
 			}
-			err := permitted.Permit(devices.Device{Key: request.Key, Name: request.Name, Permitted: now().UTC()})
+			_, err := permitted.Permit(devices.Device{Key: request.Key, Name: request.Name})
 			return nil, refusalOf(err)
 		},
 		"devices.revoke": func(_ context.Context, args json.RawMessage) (any, error) {
@@ -81,11 +85,8 @@ func hubVerbs(link *hublink.Link, permitted *devices.Store, now func() time.Time
 			if err := control.Arguments(args, &request); err != nil {
 				return nil, err
 			}
-			if err := permitted.Revoke(request.Key); err != nil {
-				return nil, refusalOf(err)
-			}
-			closed, err := link.Disconnect(request.Key)
-			return revoked{closed}, err
+			closed, err := link.Revoke(request.Key)
+			return revoked{closed}, refusalOf(err)
 		},
 	}
 }

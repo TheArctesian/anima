@@ -60,10 +60,7 @@ func TestLNK006ARevokedDeviceHasNoPath(t *testing.T) {
 	r.session(t, key)
 	r.waitForPath(t, key.Public(), tunnel.PathDirect)
 
-	if err := r.store.Revoke(key.Public()); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := r.link.Disconnect(key.Public()); err != nil {
+	if _, err := r.link.Revoke(key.Public()); err != nil {
 		t.Fatal(err)
 	}
 	r.waitForPath(t, key.Public(), tunnel.PathNone)

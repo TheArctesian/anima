@@ -5,6 +5,7 @@ package identity
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/TheArctesian/anima/link/statedir"
 	"github.com/TheArctesian/anima/link/tunnel"
@@ -62,12 +63,19 @@ type Device struct {
 	Key tunnel.PrivateKey
 	// Hub is the address of the device's hub. It is zero before enrolment.
 	Hub tunnel.Address
+	// Expires is when the hub stops permitting Key (LNK-005).
+	Expires time.Time
+	// NextKey is the key that replaces Key. It is set from the moment the
+	// device starts a renewal until the hub has accepted it.
+	NextKey tunnel.PrivateKey
 }
 
 // savedDevice is the file form of Device.
 type savedDevice struct {
-	Key string `json:"key"`
-	Hub string `json:"hub,omitempty"`
+	Key     string    `json:"key"`
+	Hub     string    `json:"hub,omitempty"`
+	Expires time.Time `json:"expires,omitzero"`
+	NextKey string    `json:"nextKey,omitempty"`
 }
 
 // LoadDevice reads the device's identity. At the first call it makes the
@@ -82,9 +90,14 @@ func LoadDevice(dir *statedir.Dir) (Device, error) {
 	if err != nil {
 		return Device{}, err
 	}
-	device := Device{}
+	device := Device{Expires: saved.Expires}
 	if device.Key, err = tunnel.ParsePrivateKey(saved.Key); err != nil {
 		return Device{}, fmt.Errorf("%w: %s", statedir.ErrDamaged, deviceFile)
+	}
+	if saved.NextKey != "" {
+		if device.NextKey, err = tunnel.ParsePrivateKey(saved.NextKey); err != nil {
+			return Device{}, fmt.Errorf("%w: %s", statedir.ErrDamaged, deviceFile)
+		}
 	}
 	if saved.Hub != "" {
 		if device.Hub, err = tunnel.ParseAddress(saved.Hub); err != nil {
@@ -96,5 +109,9 @@ func LoadDevice(dir *statedir.Dir) (Device, error) {
 
 // Save writes the device's identity.
 func (d Device) Save(dir *statedir.Dir) error {
-	return dir.Write(deviceFile, savedDevice{d.Key.Reveal(), d.Hub.Reveal()})
+	saved := savedDevice{Key: d.Key.Reveal(), Hub: d.Hub.Reveal(), Expires: d.Expires}
+	if !d.NextKey.IsZero() {
+		saved.NextKey = d.NextKey.Reveal()
+	}
+	return dir.Write(deviceFile, saved)
 }

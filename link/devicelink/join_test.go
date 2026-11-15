@@ -58,17 +58,19 @@ func startInvitingHub(t *testing.T) invitingHub {
 	}
 	t.Cleanup(func() { dir.Close() })
 	hub := invitingHub{clock: &clock{now: time.Date(2026, 11, 14, 12, 0, 0, 0, time.UTC)}}
-	if hub.devices, err = devices.Open(dir); err != nil {
+	if hub.devices, err = devices.Open(dir, hub.clock.Now); err != nil {
 		t.Fatal(err)
 	}
 	if hub.invites, err = invites.Open(dir); err != nil {
 		t.Fatal(err)
 	}
 	hub.link, err = hublink.Start(t.Context(), hublink.Config{
-		Identity:  identity.Hub{Key: tunnel.NewPrivateKey(), PresharedKey: tunnel.NewPresharedKey(), Relay: testbed.StartRelay(t)},
-		Target:    server.Listener.Addr().String(),
-		Permits:   hub.devices.Permits,
-		Enrolment: &hublink.Enrolment{Invites: hub.invites, Devices: hub.devices, Now: hub.clock.Now},
+		Identity: identity.Hub{Key: tunnel.NewPrivateKey(), PresharedKey: tunnel.NewPresharedKey(), Relay: testbed.StartRelay(t)},
+		Target:   server.Listener.Addr().String(),
+		Devices:  hub.devices,
+		Invites:  hub.invites,
+		Now:      hub.clock.Now,
+		Sweep:    200 * time.Millisecond,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -185,5 +187,30 @@ func TestLNK003TheTemporaryKeyOfAnInviteDoesNotReachTheHub(t *testing.T) {
 	}
 	if _, err := join(invite, identity.Device{Key: tunnel.NewPrivateKey()}, 30*time.Second); err != nil {
 		t.Errorf("the invite must still work for its purpose: %v", err)
+	}
+}
+
+// Whoever reads a used invite later can make its temporary key. So that key
+// must never become a device's key.
+func TestLNK003TheTemporaryKeyOfAnInviteCannotBecomeADeviceKey(t *testing.T) {
+	hub := startInvitingHub(t)
+	invite := hub.invite(t, "laptop")
+
+	asInvite := identity.Device{Key: invite.TemporaryKey()}
+	if _, err := join(invite, asInvite, 30*time.Second); !errors.Is(err, devicelink.ErrRefused) {
+		t.Fatalf("a join that gives the invite's own key: err = %v, want ErrRefused", err)
+	}
+	if hub.devices.Count() != 0 {
+		t.Fatal("the invite's temporary key is in the list of devices")
+	}
+
+	asInvite.Hub = invite.Hub
+	link, err := devicelink.Start(devicelink.Config{Identity: asInvite, Listen: "127.0.0.1:0", Keepalive: time.Second})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer link.Close()
+	if got, err := get(link, 4*time.Second); err == nil {
+		t.Errorf("the text of a used invite still reaches the hub: %q", got)
 	}
 }

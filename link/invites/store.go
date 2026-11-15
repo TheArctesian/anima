@@ -62,9 +62,26 @@ func (s *Store) Admits(key tunnel.DeviceKey, now time.Time) bool {
 	return s.current.open(key, now)
 }
 
-// Use ends an open invite and returns its record. Only the first call for
-// an invite succeeds, also when what the caller does next fails (LNK-003).
-// Cancelling an invite is the same act.
+// Cancel ends the open invite with the given ID: the fingerprint of its
+// temporary key, as All shows it.
+func (s *Store) Cancel(id string, now time.Time) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, record := range s.current.openAt(now) {
+		if record.Key.Fingerprint() == id {
+			next, _, err := s.current.without(record.Key, now)
+			if err != nil {
+				return err
+			}
+			return s.save(next)
+		}
+	}
+	return ErrNotOpen
+}
+
+// Use ends an open invite, because a device used it, and returns its
+// record. Only the first call for an invite succeeds, also when what the
+// caller does next fails (LNK-003).
 func (s *Store) Use(key tunnel.DeviceKey, now time.Time) (Record, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -72,18 +89,19 @@ func (s *Store) Use(key tunnel.DeviceKey, now time.Time) (Record, error) {
 	if err != nil {
 		return Record{}, err
 	}
-	return record, s.save(next)
+	// The expired invites leave the file with this one.
+	return record, s.save(next.keeping(func(each Record) bool { return now.Before(each.Expires) }))
 }
 
 // All returns the invites that are open now, the first to expire first.
 func (s *Store) All(now time.Time) []Record {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.current.sorted(now)
+	return s.current.openAt(now)
 }
 
 func (s *Store) save(next book) error {
-	if err := s.dir.Write(fileName, next.sorted(time.Time{})); err != nil {
+	if err := s.dir.Write(fileName, next.all()); err != nil {
 		return err
 	}
 	s.current = next

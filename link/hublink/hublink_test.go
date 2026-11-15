@@ -27,6 +27,10 @@ import (
 
 func TestMain(m *testing.M) { testbed.Main(m) }
 
+// sessionsEndedOnTheHub gets one value each time the fake hub sees a
+// WebSocket end: the connection from the hub link to the hub is closed.
+var sessionsEndedOnTheHub = make(chan struct{}, 64)
+
 // fakeHub stands in for the hub: plain HTTP and a WebSocket echo on loopback.
 func fakeHub(t *testing.T) string {
 	t.Helper()
@@ -45,6 +49,7 @@ func fakeHub(t *testing.T) string {
 			return
 		}
 		defer c.CloseNow()
+		defer func() { sessionsEndedOnTheHub <- struct{}{} }()
 		for {
 			kind, message, err := c.Read(r.Context())
 			if err != nil || c.Write(r.Context(), kind, message) != nil {
@@ -70,7 +75,7 @@ func start(t *testing.T) rig {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { dir.Close() })
-	store, err := devices.Open(dir)
+	store, err := devices.Open(dir, time.Now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -79,7 +84,8 @@ func start(t *testing.T) rig {
 	link, err := hublink.Start(ctx, hublink.Config{
 		Identity: identity.Hub{Key: tunnel.NewPrivateKey(), PresharedKey: tunnel.NewPresharedKey(), Relay: testbed.StartRelay(t)},
 		Target:   fakeHub(t),
-		Permits:  store.Permits,
+		Devices:  store,
+		Sweep:    200 * time.Millisecond,
 	})
 	if err != nil {
 		t.Fatalf("Start: %v", err)
@@ -106,7 +112,7 @@ func (r rig) device(t *testing.T, key tunnel.PrivateKey) (*tunnel.Device, *http.
 
 func (r rig) permit(t *testing.T, key tunnel.PrivateKey) {
 	t.Helper()
-	if err := r.store.Permit(devices.Device{Key: key.Public(), Name: "test device", Permitted: time.Now()}); err != nil {
+	if _, err := r.store.Permit(devices.Device{Key: key.Public(), Name: "test device"}); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -204,7 +210,6 @@ func TestTheTargetMustBeOnLoopback(t *testing.T) {
 		_, err := hublink.Start(context.Background(), hublink.Config{
 			Identity: identity.Hub{Key: tunnel.NewPrivateKey(), PresharedKey: tunnel.NewPresharedKey()},
 			Target:   target,
-			Permits:  func(tunnel.DeviceKey) bool { return false },
 		})
 		if !errors.Is(err, hublink.ErrTarget) {
 			t.Errorf("target %q: err = %v, want ErrTarget", target, err)

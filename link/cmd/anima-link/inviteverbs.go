@@ -9,7 +9,6 @@ import (
 	"github.com/TheArctesian/anima/link/control"
 	"github.com/TheArctesian/anima/link/hublink"
 	"github.com/TheArctesian/anima/link/invites"
-	"github.com/TheArctesian/anima/link/tunnel"
 )
 
 // inviteRequest is the arguments of "invites.make".
@@ -63,21 +62,7 @@ func inviteVerbs(link *hublink.Link, open *invites.Store, now func() time.Time) 
 			if err := control.Arguments(args, &request); err != nil {
 				return nil, err
 			}
-			key, found := inviteWithID(open, request.ID, now())
-			if !found {
-				return nil, refusalOf(invites.ErrNotOpen)
-			}
-			_, err := open.Use(key, now())
-			return nil, refusalOf(err)
+			return nil, refusalOf(open.Cancel(request.ID, now()))
 		},
 	}
-}
-
-func inviteWithID(open *invites.Store, id string, now time.Time) (tunnel.DeviceKey, bool) {
-	for _, record := range open.All(now) {
-		if record.Key.Fingerprint() == id {
-			return record.Key, true
-		}
-	}
-	return tunnel.DeviceKey{}, false
 }

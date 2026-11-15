@@ -32,25 +32,34 @@ func Join(ctx context.Context, invite invites.Invite, device identity.Device) (i
 		return identity.Device{}, err
 	}
 	defer temporary.Close()
-	stream, err := temporary.Dial(ctx, tunnel.EnrolPort)
+	reply, err := enrol(ctx, temporary, device.Key.Public())
 	if err != nil {
-		return identity.Device{}, ErrNoAnswer
+		return identity.Device{}, err
+	}
+	device.Hub, device.Expires = invite.Hub, reply.Expires
+	return device, nil
+}
+
+// enrol sends one request on the enrolment port and reads its reply.
+func enrol(ctx context.Context, sender *tunnel.Device, key tunnel.DeviceKey) (invites.EnrolReply, error) {
+	stream, err := sender.Dial(ctx, tunnel.EnrolPort)
+	if err != nil {
+		return invites.EnrolReply{}, ErrNoAnswer
 	}
 	defer stream.Close()
 	if deadline, ok := ctx.Deadline(); ok {
 		_ = stream.SetDeadline(deadline)
 	}
-	if err := json.NewEncoder(stream).Encode(invites.EnrolRequest{Key: device.Key.Public()}); err != nil {
-		return identity.Device{}, ErrNoAnswer
+	if err := json.NewEncoder(stream).Encode(invites.EnrolRequest{Key: key}); err != nil {
+		return invites.EnrolReply{}, ErrNoAnswer
 	}
 	var reply invites.EnrolReply
 	line, err := bufio.NewReader(stream).ReadBytes('\n')
 	if err != nil || json.Unmarshal(line, &reply) != nil {
-		return identity.Device{}, ErrNoAnswer
+		return invites.EnrolReply{}, ErrNoAnswer
 	}
 	if !reply.OK {
-		return identity.Device{}, fmt.Errorf("%w (%s)", ErrRefused, reply.Code)
+		return invites.EnrolReply{}, fmt.Errorf("%w (%s)", ErrRefused, reply.Code)
 	}
-	device.Hub = invite.Hub
-	return device, nil
+	return reply, nil
 }

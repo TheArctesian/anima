@@ -39,7 +39,9 @@ func runDevice(ctx context.Context, args []string, streams stdio) error {
 	if err != nil {
 		return err
 	}
-	link, err := devicelink.Start(devicelink.Config{Identity: device, Listen: *listen})
+	link, err := devicelink.Start(devicelink.Config{Identity: device, Listen: *listen, Save: func(renewed identity.Device) error {
+		return renewed.Save(dir)
+	}})
 	if err != nil {
 		return err
 	}

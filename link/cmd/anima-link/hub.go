@@ -49,7 +49,7 @@ func runHub(ctx context.Context, args []string, streams stdio) error {
 		go stopWhenClosed(streams.in, stop)
 	}
 	log.Info("the hub link is ready", "relay", link.Relay().Name(), "devices", lists.devices.Count())
-	verbs := hubVerbs(link, lists.devices, time.Now)
+	verbs := hubVerbs(link, lists.devices)
 	maps.Copy(verbs, inviteVerbs(link, lists.invites, time.Now))
 	err = control.Serve(ctx, listener, verbs)
 	log.Info("the hub link stopped")
@@ -63,7 +63,7 @@ func startHubLink(ctx context.Context, dir *statedir.Dir, target string, log *sl
 	if err != nil {
 		return nil, hubLists{}, err
 	}
-	permitted, err := devices.Open(dir)
+	permitted, err := devices.Open(dir, time.Now)
 	if err != nil {
 		return nil, hubLists{}, err
 	}
@@ -73,10 +73,7 @@ func startHubLink(ctx context.Context, dir *statedir.Dir, target string, log *sl
 	}
 	ctx, cancel := context.WithTimeout(ctx, startLimit)
 	defer cancel()
-	link, err := hublink.Start(ctx, hublink.Config{
-		Identity: hub, Target: target, Permits: permitted.Permits, Log: log,
-		Enrolment: &hublink.Enrolment{Invites: open, Devices: permitted, Now: time.Now},
-	})
+	link, err := hublink.Start(ctx, hublink.Config{Identity: hub, Target: target, Devices: permitted, Invites: open, Log: log})
 	if err != nil {
 		return nil, hubLists{}, err
 	}

@@ -45,6 +45,9 @@ func runJoin(ctx context.Context, args []string, streams stdio) error {
 	if err := joined.Save(dir); err != nil {
 		return err
 	}
-	_, err = fmt.Fprintln(streams.out, "This device has joined the hub. Start the link with: anima-link device -state", *statePath)
+	// The fingerprint lets the operator check, in devices.list on the hub,
+	// that the device that joined is this one and not a thief of the invite.
+	_, err = fmt.Fprintf(streams.out, "This device has joined the hub. Its key fingerprint is %s.\nStart the link with: anima-link device -state %s\n",
+		joined.Key.Public().Fingerprint(), *statePath)
 	return err
 }

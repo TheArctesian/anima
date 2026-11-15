@@ -8,12 +8,15 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/TheArctesian/anima/link/devicelink"
+	"github.com/TheArctesian/anima/link/devices"
 	"github.com/TheArctesian/anima/link/hublink"
 	"github.com/TheArctesian/anima/link/identity"
+	"github.com/TheArctesian/anima/link/statedir"
 	"github.com/TheArctesian/anima/link/tunnel"
 	"github.com/TheArctesian/anima/link/tunnel/testbed"
 )
@@ -25,9 +28,10 @@ const greeting = "the hub answers"
 // site is one hub with one permitted device: what the hub keeps between
 // starts, and the device's identity.
 type site struct {
-	hub    identity.Hub
-	target string
-	device identity.Device
+	hub       identity.Hub
+	target    string
+	device    identity.Device
+	permitted *devices.Store
 }
 
 func newSite(t *testing.T) *site {
@@ -36,11 +40,23 @@ func newSite(t *testing.T) *site {
 		fmt.Fprint(w, greeting)
 	}))
 	t.Cleanup(server.Close)
-	return &site{
+	dir, err := statedir.Open(filepath.Join(t.TempDir(), "s"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { dir.Close() })
+	s := &site{
 		hub:    identity.Hub{Key: tunnel.NewPrivateKey(), PresharedKey: tunnel.NewPresharedKey(), Relay: testbed.StartRelay(t)},
 		target: server.Listener.Addr().String(),
 		device: identity.Device{Key: tunnel.NewPrivateKey()},
 	}
+	if s.permitted, err = devices.Open(dir, time.Now); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.permitted.Permit(devices.Device{Key: s.device.Key.Public(), Name: "the device"}); err != nil {
+		t.Fatal(err)
+	}
+	return s
 }
 
 // startHub starts the hub link. It also gives the device the hub address,
@@ -49,11 +65,7 @@ func (s *site) startHub(t *testing.T) *hublink.Link {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
-	link, err := hublink.Start(ctx, hublink.Config{
-		Identity: s.hub,
-		Target:   s.target,
-		Permits:  func(key tunnel.DeviceKey) bool { return key == s.device.Key.Public() },
-	})
+	link, err := hublink.Start(ctx, hublink.Config{Identity: s.hub, Target: s.target, Devices: s.permitted})
 	if err != nil {
 		t.Fatalf("hublink.Start: %v", err)
 	}
@@ -165,28 +177,28 @@ func TestTheLocalPortMustBeOnLoopbackAndTheDeviceEnrolled(t *testing.T) {
 	}
 }
 
-// TestLNK009AnIdleLinkDoesNotStall takes more than 4 minutes of real time,
+// TestLNK009AnIdleLinkDoesNotStall takes more than 5 minutes of real time,
 // because the stall that it guards against comes from the timers of the
 // tunnel. It runs only when ANIMA_LINK_SLOW_TESTS is set.
 func TestLNK009AnIdleLinkDoesNotStall(t *testing.T) {
 	if os.Getenv("ANIMA_LINK_SLOW_TESTS") == "" {
-		t.Skip("set ANIMA_LINK_SLOW_TESTS=1 to run this 4-minute test")
+		t.Skip("set ANIMA_LINK_SLOW_TESTS=1 to run this 5-minute test")
 	}
 	s := newSite(t)
 	s.startHub(t)
 	device := s.startDevice(t, devicelink.DefaultKeepalive)
 	getUntil(t, device, 30*time.Second)
 
-	time.Sleep(4 * time.Minute)
+	time.Sleep(5 * time.Minute)
 
 	start := time.Now()
 	if got, err := get(device, 30*time.Second); err != nil || got != greeting {
-		t.Fatalf("after 4 minutes idle: %q, %v", got, err)
+		t.Fatalf("after 5 minutes idle: %q, %v", got, err)
 	}
 	if took := time.Since(start); took > time.Second {
-		t.Errorf("the first request after 4 minutes idle took %v, want under 1 s", took)
+		t.Errorf("the first request after 5 minutes idle took %v, want under 1 s", took)
 	} else {
-		t.Logf("the first request after 4 minutes idle took %v", took.Round(time.Millisecond))
+		t.Logf("the first request after 5 minutes idle took %v", took.Round(time.Millisecond))
 	}
 }
 
@@ -203,5 +215,24 @@ func TestLNK006TheDeviceLinkReportsARelayedPath(t *testing.T) {
 			t.Fatalf("path = %+v, want relayed with a latency", device.Path())
 		}
 		time.Sleep(100 * time.Millisecond)
+	}
+}
+
+func TestCloseReturnsAlsoWhenTheHubNeverAnswers(t *testing.T) {
+	s := newSite(t)
+	s.startHub(t).Close() // the device has the address; the hub is off
+	device, err := devicelink.Start(devicelink.Config{Identity: s.device, Listen: "127.0.0.1:0", Keepalive: 200 * time.Millisecond})
+	if err != nil {
+		t.Fatal(err)
+	}
+	go get(device, 30*time.Second) // a request that waits for the hub
+	time.Sleep(500 * time.Millisecond)
+
+	closed := make(chan struct{})
+	go func() { device.Close(); close(closed) }()
+	select {
+	case <-closed:
+	case <-time.After(5 * time.Second):
+		t.Fatal("Close still waits 5 s after the call, with a hub that does not answer")
 	}
 }

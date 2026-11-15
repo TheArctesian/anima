@@ -41,18 +41,55 @@ type Config struct {
 	Listen string
 	// Keepalive is the time between pings. Zero means DefaultKeepalive.
 	Keepalive time.Duration
+	// Save keeps the device's identity when a renewal changes it (LNK-005).
+	// Nil means that the key is never renewed.
+	Save func(identity.Device) error
+	// Now is the clock. Nil means the system clock.
+	Now       func() time.Time
 	DebugLogf tunnel.Logf
 }
 
 // Link is a running device link.
 type Link struct {
-	device   *tunnel.Device
-	listener net.Listener
-	stop     context.CancelFunc
-	done     sync.WaitGroup
+	listener  net.Listener
+	stop      context.CancelFunc
+	done      sync.WaitGroup
+	save      func(identity.Device) error
+	now       func() time.Time
+	debugLogf tunnel.Logf
 
-	mu   sync.Mutex
-	path tunnel.Path
+	mu     sync.Mutex
+	device *tunnel.Device // replaced when the key is renewed
+	saved  identity.Device
+	path   tunnel.Path
+}
+
+// tunnel is the device side of the tunnel for the device's current key.
+func (l *Link) tunnel() *tunnel.Device {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.device
+}
+
+func (l *Link) identity() identity.Device {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.saved
+}
+
+func (l *Link) setIdentity(device identity.Device) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.saved = device
+}
+
+// replaceTunnel makes a renewed key the key in use and returns the tunnel
+// of the old key.
+func (l *Link) replaceTunnel(next *tunnel.Device, renewed identity.Device) (old *tunnel.Device) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	old, l.device, l.saved = l.device, next, renewed
+	return old
 }
 
 // Start opens the local port and starts the keepalive. It does not wait for
@@ -75,7 +112,13 @@ func Start(cfg Config) (*Link, error) {
 		return nil, err
 	}
 	ctx, stop := context.WithCancel(context.Background())
-	link := &Link{device: device, listener: listener, stop: stop, path: tunnel.Path{Kind: tunnel.PathNone}}
+	link := &Link{
+		device: device, saved: cfg.Identity, listener: listener, stop: stop, path: tunnel.Path{Kind: tunnel.PathNone},
+		save: cfg.Save, now: cfg.Now, debugLogf: cfg.DebugLogf,
+	}
+	if link.now == nil {
+		link.now = time.Now
+	}
 	every := cfg.Keepalive
 	if every <= 0 {
 		every = DefaultKeepalive
@@ -100,7 +143,7 @@ func (l *Link) Path() tunnel.Path {
 func (l *Link) Close() error {
 	l.stop()
 	l.listener.Close()
-	err := l.device.Close()
+	err := l.tunnel().Close()
 	l.done.Wait()
 	return err
 }
@@ -127,7 +170,7 @@ func (l *Link) beat(ctx context.Context) {
 	path, err := l.ping(ctx)
 	if err != nil {
 		registerCtx, cancel := context.WithTimeout(ctx, registerLimit)
-		registered := l.device.Register(registerCtx) == nil
+		registered := l.tunnel().Register(registerCtx) == nil
 		cancel()
 		if registered {
 			path, _ = l.ping(ctx)
@@ -136,12 +179,15 @@ func (l *Link) beat(ctx context.Context) {
 	l.mu.Lock()
 	l.path = path
 	l.mu.Unlock()
+	if path.Kind != tunnel.PathNone {
+		l.renewIfDue(ctx)
+	}
 }
 
 func (l *Link) ping(ctx context.Context) (tunnel.Path, error) {
 	ctx, cancel := context.WithTimeout(ctx, pingLimit)
 	defer cancel()
-	return l.device.Path(ctx)
+	return l.tunnel().Path(ctx)
 }
 
 func (l *Link) accept(ctx context.Context) {
@@ -159,7 +205,7 @@ func (l *Link) accept(ctx context.Context) {
 func (l *Link) forward(ctx context.Context, local net.Conn) {
 	ctx, cancel := context.WithTimeout(ctx, dialLimit)
 	defer cancel()
-	hub, err := l.device.Dial(ctx, tunnel.HubPort)
+	hub, err := l.tunnel().Dial(ctx, tunnel.HubPort)
 	if err != nil {
 		local.Close()
 		return
