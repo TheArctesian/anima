@@ -39,16 +39,22 @@ export class StayAwakeControl {
   busy = $state(false);
   problem = $state<string | null>(null);
 
+  /** How many states the shell has announced. */
+  private announced = 0;
+
   constructor(private readonly shell: StayAwakeShell) {}
 
   private async run(call: () => Promise<StayAwakeResult>): Promise<void> {
     if (this.busy) return;
     this.busy = true;
     this.problem = null;
-    const result = await call();
+    const before = this.announced;
+    let result = await call();
+    if (!result.ok) this.problem = problemText(result.problem);
+    // A state announced during the call can be newer or older than the call's answer: the shell says which is true.
+    if (this.announced !== before) result = await this.shell.read();
     this.busy = false;
     if (result.ok) this.status = result.status;
-    else this.problem = problemText(result.problem);
   }
 
   /** Reads the state and listens for changes; returns the function that stops listening. */
@@ -57,6 +63,7 @@ export class StayAwakeControl {
     let stop: (() => void) | undefined;
     void this.shell
       .onChange((status) => {
+        this.announced += 1;
         this.status = status;
       })
       .then((unlisten) => {

@@ -5,7 +5,7 @@
   import { useHub } from '$lib/hub/context';
   import { isMac } from '$lib/platform/mac';
   import SettingRow from '$lib/settings/SettingRow.svelte';
-  import { describeStayAwake, FLOORS, hubIsThisComputer, LEVELS, sleepNotice } from './stay-awake';
+  import { describeStayAwake, floorChoices, hubIsThisComputer, LEVELS, sleepNotice } from './stay-awake';
   import { desktopStayAwakeShell, StayAwakeControl, type StayAwakeShell } from './stay-awake.svelte';
 
   interface Props {
@@ -26,17 +26,21 @@
 
   const status = $derived(control.status);
   const notice = $derived(status === null ? null : sleepNotice(thisComputerIsHub, status));
-  const setUpRow = $derived(mac && status !== null && status.lid !== 'unsupported');
+  const setUpRow = $derived(mac && status !== null);
 
   const NO_FLOOR = 'none';
 
-  function choose(event: Event & { currentTarget: HTMLSelectElement }): void {
-    void control.choose(event.currentTarget.value as Level);
+  // After each change the select shows the state that is, also when the shell refused the change.
+  async function choose(event: Event & { currentTarget: HTMLSelectElement }): Promise<void> {
+    const select = event.currentTarget;
+    await control.choose(select.value as Level);
+    select.value = control.status?.level ?? 'off';
   }
 
-  function setFloor(event: Event & { currentTarget: HTMLSelectElement }): void {
-    const { value } = event.currentTarget;
-    void control.setFloor(value === NO_FLOOR ? null : Number(value));
+  async function setFloor(event: Event & { currentTarget: HTMLSelectElement }): Promise<void> {
+    const select = event.currentTarget;
+    await control.setFloor(select.value === NO_FLOOR ? null : Number(select.value));
+    select.value = String(control.status?.batteryFloor ?? NO_FLOOR);
   }
 </script>
 
@@ -51,11 +55,12 @@
         {/if}
       {/if}
     </p>
-    {#if notice !== null}
-      <p class="hint notice">{notice}</p>
+    {#if thisComputerIsHub}
+      <!-- Always there on a hub computer: its line is reserved (MOT-007) and a new text is announced. -->
+      <p class="hint notice" class:shown={notice !== null} role="status">{notice ?? ''}</p>
     {/if}
   {/snippet}
-  <select id="stay-awake-level" value={status?.level ?? 'off'} disabled={status === null || control.busy} onchange={choose}>
+  <select id="stay-awake-level" value={status?.level ?? 'off'} disabled={status === null || control.busy} onchange={(event) => void choose(event)}>
     {#each LEVELS as level (level.value)}
       <option value={level.value} disabled={level.value === 'lid-closed' && status?.lid !== 'ready'}>{level.label}</option>
     {/each}
@@ -91,9 +96,9 @@
   {#snippet hint()}
     <p class="hint">Below this charge, stay awake is off until mains power returns.</p>
   {/snippet}
-  <select id="stay-awake-floor" value={status?.batteryFloor ?? NO_FLOOR} disabled={status === null || control.busy} onchange={setFloor}>
+  <select id="stay-awake-floor" value={status?.batteryFloor ?? NO_FLOOR} disabled={status === null || control.busy} onchange={(event) => void setFloor(event)}>
     <option value={NO_FLOOR}>Stay awake at any charge</option>
-    {#each FLOORS as floor (floor)}
+    {#each floorChoices(status?.batteryFloor ?? null) as floor (floor)}
       <option value={floor}>Off below {floor}%</option>
     {/each}
   </select>
@@ -108,7 +113,11 @@
   /* The warning keeps the text colour; a bar marks it, as the row's error line does (MAT-005). */
   .notice {
     padding-inline-start: var(--space-2);
-    border-inline-start: var(--border-focus) solid var(--status-warning);
+    border-inline-start: var(--border-focus) solid transparent;
     color: var(--text);
+  }
+
+  .notice.shown {
+    border-inline-start-color: var(--status-warning);
   }
 </style>

@@ -23,13 +23,14 @@ afterEach(async () => {
   document.body.innerHTML = '';
 });
 
-interface Fake extends StayAwakeShell {
+/** A shell whose calls a test can replace. */
+type Fake = { -readonly [Call in keyof StayAwakeShell]: StayAwakeShell[Call] } & {
   readonly calls: string[];
   /** The answer of the next change; without one, the change is applied to the status. */
   next: StayAwakeResult | null;
   announce: (status: StayAwakeStatus) => void;
   stopped: boolean;
-}
+};
 
 function fake(start: StayAwakeStatus): Fake {
   let status = start;
@@ -154,15 +155,15 @@ it('AWK-005: when the hub is this computer and nothing keeps it awake, the row s
   mocks.origin = 'https://localhost:8443';
   const shell = fake(READY);
   await show(shell);
-  const notice = () => document.querySelector('.notice')?.textContent;
+  const notice = () => document.querySelector('[role="status"]')?.textContent;
   expect(notice()).toBe('This computer is the hub. Its checks stop while the computer sleeps.');
   await pick('stay-awake-level', 'awake');
-  expect(notice()).toBeUndefined();
+  expect(notice()).toBe('');
 });
 
 it('AWK-005: a hub on a different computer gets no such line', async () => {
   await show(fake(READY));
-  expect(document.querySelector('.notice')).toBeNull();
+  expect(document.querySelector('[role="status"]')).toBeNull();
 });
 
 it('a failed change shows fixed text, and the rows stop listening when they go', async () => {
@@ -171,7 +172,51 @@ it('a failed change shows fixed text, and the rows stop listening when they go',
   await show(shell);
   await pick('stay-awake-level', 'awake');
   expect(alert()).toBe('Anima could not save this choice, so nothing changed.');
+  expect(select('stay-awake-level').value).toBe('off');
+  shell.next = null;
+  await pick('stay-awake-level', 'awake');
+  expect(alert()).toBe('');
   if (app) await unmount(app);
   app = undefined;
   expect(shell.stopped).toBe(true);
+});
+
+it('AWK-006: a refused floor goes back to the saved one, and a saved floor outside the steps is still shown', async () => {
+  const shell = fake({ ...READY, batteryFloor: 15 });
+  await show(shell);
+  expect(select('stay-awake-floor').value).toBe('15');
+  shell.next = { ok: false, problem: 'unsaved' };
+  await pick('stay-awake-floor', '40');
+  expect(select('stay-awake-floor').value).toBe('15');
+});
+
+it('AWK-004: a state announced while a change is on its way is not lost: the row asks the shell which is true', async () => {
+  const shell = fake(READY);
+  await show(shell);
+  let answer: (result: StayAwakeResult) => void = () => undefined;
+  shell.choose = () => new Promise((resolve) => (answer = resolve));
+  const picked = pick('stay-awake-level', 'awake');
+  flushSync();
+  expect(select('stay-awake-level').disabled).toBe(true);
+  const fromTray: StayAwakeStatus = { ...READY, level: 'lid-closed', held: 'lid-closed' };
+  shell.read = () => Promise.resolve({ ok: true, status: fromTray });
+  shell.announce(fromTray);
+  answer({ ok: true, status: { ...READY, level: 'awake', held: 'awake' } });
+  await picked;
+  await settle();
+  expect(select('stay-awake-level').value).toBe('lid-closed');
+  expect(select('stay-awake-level').disabled).toBe(false);
+});
+
+it('rows that go before the shell starts to listen still stop listening', async () => {
+  const shell = fake(READY);
+  let listening: (stop: () => void) => void = () => undefined;
+  shell.onChange = () => new Promise((resolve) => (listening = resolve));
+  await show(shell);
+  if (app) await unmount(app);
+  app = undefined;
+  let stopped = false;
+  listening(() => (stopped = true));
+  await settle();
+  expect(stopped).toBe(true);
 });

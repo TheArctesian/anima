@@ -48,8 +48,10 @@ export function describeStayAwake(status: StayAwakeStatus): string {
 const LOOPBACK_HOSTS: readonly string[] = ['localhost', '127.0.0.1', '[::1]'];
 
 /**
- * Whether the hub this client talks to runs on this computer (AWK-005): its address is a loopback address. The in-app
- * hub answers there; the first-run flow of that hub uses this same rule.
+ * Whether the hub this client talks to runs on this computer (AWK-005): its address is a loopback address, where the
+ * in-app hub answers. The first-run flow of that hub must ask this function too. The rule cannot see a hub on this
+ * computer that is reached by another address, and it takes a loopback port that forwards to another computer as this
+ * one.
  */
 export function hubIsThisComputer(origin: string): boolean {
   return URL.canParse(origin) && LOOPBACK_HOSTS.includes(new URL(origin).hostname);
@@ -58,4 +60,9 @@ export function hubIsThisComputer(origin: string): boolean {
 /** The line that tells the operator that checks stop during sleep, or `null` when it does not apply (AWK-005). */
 export function sleepNotice(thisComputerIsHub: boolean, status: StayAwakeStatus): string | null {
   return thisComputerIsHub && status.held === 'off' ? 'This computer is the hub. Its checks stop while the computer sleeps.' : null;
+}
+
+/** The floors the control offers: the fixed steps, and the saved floor when it is not one of them (AWK-006). */
+export function floorChoices(saved: number | null): readonly number[] {
+  return saved === null || FLOORS.includes(saved) ? FLOORS : [...FLOORS, saved].sort((a, b) => a - b);
 }
