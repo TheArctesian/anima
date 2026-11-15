@@ -6,7 +6,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use anima_hub::engine::sources::{Keep, ask, change};
+use anima_hub::engine::sources::{Keep, Reserve, ask, change};
 use source_exchange::{Change, RepositoryName, RunId};
 use sqlx::PgPool;
 use tokio::sync::Semaphore;
@@ -76,7 +76,7 @@ async fn prj_033_two_changes_of_one_account_are_a_second_apart_and_another_accou
     .into_iter()
     .map(|(account, made)| {
         let s = kit.at(start());
-        tokio::spawn(async move { change(&s, account, &made).await })
+        tokio::spawn(async move { change(&s, account, &made, Reserve::Spendable).await })
     })
     .collect();
     for made in changes {

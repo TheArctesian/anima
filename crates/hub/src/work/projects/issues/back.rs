@@ -1,6 +1,7 @@
 //! An issue or a comment read from GitHub around a change: the issue before it is closed or
-//! opened, and what GitHub made, read back once the change was made (K1 returns it). Each read
-//! is fresh: the change dropped the held answers.
+//! opened, and what GitHub made, read back once the change was made (K1 returns it). The read
+//! before never comes from the cache, fresh or stale; the read back is fresh: the change
+//! dropped the held answers.
 
 use async_graphql::{Context, Result};
 use provider_github::live::{
@@ -15,6 +16,7 @@ use super::{
 };
 use crate::{
     api_errors::{FieldError, invalid},
+    engine::sources::Keep,
     work::projects::forge::{self, GITHUB_PAGE, Target, failure, missing},
 };
 
@@ -25,7 +27,8 @@ use crate::{
 /// the fixed words of a failed read.
 pub(super) async fn before(ctx: &Context<'_>, target: &Target, number: u64) -> Result<Issue> {
     let request = github::one_request(&target.name, number);
-    let reply = forge::read(ctx, target, request, ONE.fresh(true))
+    // Never a held answer, not even a stale one: the change acts on it (K-E1 Section 13.3).
+    let reply = forge::read(ctx, target, request, Keep::never())
         .await?
         .ok_or_else(|| missing("issue"))?;
     if matches!(reply.response().body, Body::Read(body) if is_pull_request(body)) {

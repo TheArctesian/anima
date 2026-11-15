@@ -7,6 +7,7 @@
 
 mod controls;
 mod fences;
+mod fresh;
 mod guarded;
 mod made;
 mod outcomes;

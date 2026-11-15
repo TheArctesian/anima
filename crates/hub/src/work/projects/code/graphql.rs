@@ -19,11 +19,18 @@ use crate::{
     work::projects::forge::{self, Target, missing},
 };
 
-/// A directory of a branch, which can move, and of a commit, which cannot.
-const BRANCH_DIRECTORY: Keep = Keep::for_seconds(60);
-const COMMIT_DIRECTORY: Keep = Keep::for_seconds(3_600);
+/// A directory of a branch, which can move, and of a commit, which cannot. GitHub answers a
+/// directory read of a file with the file, content included: only a listing is ever kept.
+const BRANCH_DIRECTORY: Keep = Keep::for_seconds(60).only_when(listing);
+const COMMIT_DIRECTORY: Keep = Keep::for_seconds(3_600).only_when(listing);
 /// The ref K1 shows for the default branch when the last sync read none (an empty repository).
 const HEAD: &str = "HEAD";
+
+/// Whether a contents answer is a directory listing: a JSON array. A file, a link or a
+/// submodule is an object (K-E1 Section 13.1: file content is never kept).
+fn listing(body: &[u8]) -> bool {
+    body.trim_ascii_start().first() == Some(&b'[')
+}
 
 /// `VALIDATION` on `path` with fixed words: never the path itself.
 fn wrong_kind(words: &'static str) -> async_graphql::Error {

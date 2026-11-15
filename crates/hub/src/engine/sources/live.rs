@@ -24,7 +24,7 @@ use sqlx::PgConnection;
 
 use self::{budget::Budget, pace::Pace, replies::Replies};
 pub use self::{
-    model::{Keep, LiveFailure, Reply, Standing},
+    model::{Keep, LiveFailure, Reply, Reserve, Standing},
     read::ask,
     write::change,
 };
@@ -61,6 +61,13 @@ pub fn forget(transport: &Transport, account: SourceAccountId, path_prefix: &str
     transport
         .live()
         .replies(|replies| replies.forget(account, path_prefix));
+}
+
+/// Drops every held answer of `account`, once it is removed.
+pub(in crate::engine::sources) fn forget_account(transport: &Transport, account: SourceAccountId) {
+    transport
+        .live()
+        .replies(|replies| replies.forget_account(account));
 }
 
 /// Whether each of `accounts` can be read now, from the stored rows; nothing is written.

@@ -1,9 +1,9 @@
-//! One live read: the cache, the budget, the pace, the token and the send, in that order
-//! (K-E1 Section 13.1).
+//! One live read: the account, the cache, the budget, the pace, the token and the send, in
+//! that order (K-E1 Section 13.1).
 
 use std::sync::Arc;
 
-use source_exchange::Request;
+use source_exchange::{Declaration, Request};
 
 use super::{
     Keep, LiveFailure, Reply,
@@ -16,11 +16,13 @@ use crate::{
     engine::sources::{
         Scheduling,
         acquisition::transport::{Content, Fault},
+        model::Account,
     },
     ids::SourceAccountId,
 };
 
-/// Reads `request` for `account`: the held answer while `keep` says it is fresh, otherwise a
+/// Reads `request` for `account`, once the account may be read (a paused or removed account
+/// serves nothing, held or not): the held answer while `keep` says it is fresh, otherwise a
 /// new `GET` with the account's installation token. A 2xx answer is held as `keep` says; any
 /// other answer the source gave is returned as it is and not held. When the read fails for a
 /// passing reason (a rate limit or the reserve, an unreachable source, a 5xx, a full queue), an
@@ -38,11 +40,18 @@ pub async fn ask(
 ) -> Result<Reply, LiveFailure> {
     let key = Key::of(account, request);
     let live = s.transport.live();
-    let now = s.clock.now();
-    if let Some(held) = live.replies(|r| r.fresh(&key, keep, now)) {
-        return Ok(reply(held, None));
-    }
-    match send(s, account, request).await {
+    // The account first: a paused or removed account serves nothing, not even a held answer.
+    let sent = match reachable(s, account).await {
+        Ok(reached) => {
+            let now = s.clock.now();
+            if let Some(held) = live.replies(|r| r.fresh(&key, keep, now)) {
+                return Ok(reply(held, None));
+            }
+            send(s, reached, request).await
+        }
+        Err(failure) => Err(failure),
+    };
+    match sent {
         Ok(answer) => Ok(settle(s, (key, keep), answer)),
         Err(failure) if failure.passes() => {
             let now = s.clock.now();
@@ -60,13 +69,13 @@ struct Answered {
     body: Option<Arc<[u8]>>,
 }
 
-/// Sends the read when the account, the budget and the pace allow it.
+/// Sends the read of the reachable account when the budget and the pace allow it.
 async fn send(
     s: &Scheduling,
-    id: SourceAccountId,
+    (account, declaration): (Account, Declaration),
     request: &Request,
 ) -> Result<Answered, LiveFailure> {
-    let (account, declaration) = reachable(s, id).await?;
+    let id = account.id;
     let url = s
         .transport
         .url(declaration.api_base, request)

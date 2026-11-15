@@ -95,6 +95,22 @@ fn prj_032_an_answer_kept_never_is_neither_held_nor_served() {
 }
 
 #[test]
+fn prj_032_an_answer_only_when_refuses_is_not_held_and_its_older_answer_goes() {
+    let mut replies = Replies::default();
+    let one = key(account(), "/repos/o/r/contents/a");
+    let keep = Keep::for_seconds(60).only_when(|body| body.starts_with(b"["));
+    replies.keep(one.clone(), keep, held(b"[]", now()));
+    replies.keep(
+        one.clone(),
+        keep,
+        held(b"{\"content\":\"c2VjcmV0\"}", now()),
+    );
+
+    assert_eq!(replies.size(), (0, 0));
+    assert!(replies.stale(&one, keep, now()).is_none());
+}
+
+#[test]
 fn prj_032_a_settled_answer_is_kept_longer() {
     let mut replies = Replies::default();
     let done = key(account(), "/done");
@@ -206,4 +222,21 @@ fn prj_028_forget_drops_exactly_the_paths_below_the_prefix_of_that_account() {
             "{path}"
         );
     }
+}
+
+#[test]
+fn itg_004_a_removed_account_leaves_no_answer_held_and_another_keeps_its_own() {
+    let mut replies = Replies::default();
+    let (removed, other) = (account(), account());
+    let keep = Keep::for_seconds(30);
+    for path in ["/repos/o/r/pulls", "/repos/o/r/contents", "/app"] {
+        replies.keep(key(removed, path), keep, held(b"1", now()));
+        replies.keep(key(other, path), keep, held(b"22", now()));
+    }
+
+    replies.forget_account(removed);
+
+    assert_eq!(replies.size(), (3, 6), "only the other account's answers");
+    let pulls = key(removed, "/repos/o/r/pulls");
+    assert!(replies.stale(&pulls, keep, now()).is_none());
 }

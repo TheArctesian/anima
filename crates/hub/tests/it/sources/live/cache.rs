@@ -1,6 +1,6 @@
 //! PRJ-032, K-E1 Section 13.1: the cache sends nothing while an answer is fresh, reads again on
 //! `fresh` and on expiry, serves the held answer stale when a refresh fails, keeps no file
-//! content, and forgets exactly one repository's paths.
+//! content, forgets exactly one repository's paths, and serves nothing of a paused account.
 
 use anima_hub::engine::sources::{Keep, LiveFailure, ask, forget};
 use chrono::TimeDelta;
@@ -150,4 +150,20 @@ async fn prj_028_forget_drops_exactly_that_repositorys_answers(pool: PgPool) {
     let gets = kit.stub.gets();
     assert_eq!(gets.len(), 5, "{gets:?}");
     assert_eq!(gets[3..], [PULLS, "/repos/octo/widgets/pulls/12"]);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn prj_032_a_paused_account_serves_nothing_held(pool: PgPool) {
+    let (kit, id) = live_kit(&pool).await;
+    kit.stub.reply(PULLS, ok("[1]"));
+    ask(&kit.at(start()), id, &get(PULLS), KEEP).await.unwrap();
+    sqlx::query("UPDATE sources.accounts SET paused_at = now()")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let paused = ask(&kit.at(start() + secs(1)), id, &get(PULLS), KEEP).await;
+
+    assert_eq!(paused.unwrap_err(), LiveFailure::Paused);
+    assert_eq!(kit.stub.gets(), [PULLS]);
 }

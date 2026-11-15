@@ -1,17 +1,18 @@
 //! K-E1 Sections 13.6 and 13.7, decisions items 2 and 7: every answer to a sent merge reaches
 //! the client as its K7 code and fixed words, never GitHub's text, and leaves an audit entry
-//! with its outcome; a merge whose answer was lost is unknown, recorded, and sent once.
+//! with its outcome; a merge whose answer was lost is unknown, recorded, and sent once; a merge
+//! GitHub made that cannot be recorded says so (PRJ-028).
 
 use serde_json::json;
 use sqlx::PgPool;
 
-use super::{clean, merge, methods, sent};
+use super::{MERGE_MANY, clean, merge, merges, methods, sent};
 use crate::{
     hub::error,
     projects::forge::{
         BASE,
         changes::{audits, events},
-        forge, reply,
+        forge, reply, sha,
     },
 };
 
@@ -122,6 +123,46 @@ async fn od_e14_a_dropped_answer_to_a_merge_is_unknown_recorded_and_sent_once(po
                 .to_owned()
         )]
     );
+}
+
+/// K-E1 Section 13.6: the bulk merge stops at the hub's own failure, as one merge would, and
+/// says that GitHub made the merge it could not record.
+#[sqlx::test(migrations = "./migrations")]
+async fn prj_028_a_bulk_merge_github_made_that_cannot_be_recorded_says_so_and_stops(pool: PgPool) {
+    let forge = forge(&pool).await;
+    methods(&forge);
+    for number in [1, 2] {
+        forge.ok(&format!("/pulls/{number}"), &clean(number));
+        merges(&forge, number);
+    }
+    forge.kit.stub.hook(
+        &format!("{BASE}/pulls/1/merge"),
+        "ALTER TABLE events.audit_log ADD CONSTRAINT no_repository_entries \
+         CHECK (target_type <> 'repository')",
+    );
+    let targets: Vec<_> = [1, 2]
+        .map(|n| json!({ "repository": forge.repository, "number": n, "expectedHeadSha": sha(n) }))
+        .into();
+
+    let response = forge
+        .kit
+        .post(
+            MERGE_MANY,
+            json!({ "pullRequests": targets, "method": "MERGE" }),
+        )
+        .await;
+
+    assert_eq!(
+        error(&response),
+        (
+            "GitHub made the change, but the hub could not record it.".to_owned(),
+            "INTERNAL".to_owned()
+        ),
+        "{response}"
+    );
+    assert_eq!(sent(&forge, 1).len(), 1, "sent once");
+    assert!(sent(&forge, 2).is_empty(), "the hub stopped");
+    assert!(audits(&pool).await.is_empty(), "nothing recorded");
 }
 
 #[sqlx::test(migrations = "./migrations")]

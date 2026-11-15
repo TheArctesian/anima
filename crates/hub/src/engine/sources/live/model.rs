@@ -8,6 +8,9 @@ use source_exchange::{Body, Response};
 /// Whether a body says it will not change soon. Pure.
 pub type Settles = fn(body: &[u8]) -> bool;
 
+/// Whether a body may be kept at all. Pure.
+pub type Holdable = fn(body: &[u8]) -> bool;
+
 /// How long an answer stays fresh in the cache, and whether this read must be new.
 #[derive(Clone, Copy, Debug)]
 pub struct Keep {
@@ -15,6 +18,8 @@ pub struct Keep {
     fresh_for: Option<TimeDelta>,
     /// A longer window for an answer `settled` says will not change soon.
     settled: Option<(TimeDelta, Settles)>,
+    /// Only an answer this says may be kept is kept; any other is never held.
+    holds: Option<Holdable>,
     forced: bool,
 }
 
@@ -25,6 +30,7 @@ impl Keep {
         Self {
             fresh_for: Some(TimeDelta::seconds(seconds)),
             settled: None,
+            holds: None,
             forced: false,
         }
     }
@@ -35,7 +41,18 @@ impl Keep {
         Self {
             fresh_for: None,
             settled: None,
+            holds: None,
             forced: false,
+        }
+    }
+
+    /// Kept only when `holds` says of the body that it may be: a directory read answered with
+    /// a file's content is never held (K-E1 Section 13.1). `holds` must be pure.
+    #[must_use]
+    pub const fn only_when(self, holds: Holdable) -> Self {
+        Self {
+            holds: Some(holds),
+            ..self
         }
     }
 
@@ -70,11 +87,24 @@ impl Keep {
     /// How long `body` stays fresh; `None` when it is not kept.
     pub(super) fn fresh_for(self, body: &[u8]) -> Option<TimeDelta> {
         let short = self.fresh_for?;
+        if self.holds.is_some_and(|holds| !holds(body)) {
+            return None;
+        }
         Some(match self.settled {
             Some((long, settled)) if settled(body) => long,
             _ => short,
         })
     }
+}
+
+/// Whether a change may spend the requests the hub keeps for the sync (K-E1 Section 13.1).
+/// The caller decides from who asked; the engine knows no token.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Reserve {
+    /// The operator's own change (a login or browser token): it may go down to 0.
+    Spendable,
+    /// A script's or an agent's change (an API key): it stops at the reserve, as a read does.
+    Kept,
 }
 
 /// Why a live read or change got no answer. Fixed words only: never a token, a path, a body

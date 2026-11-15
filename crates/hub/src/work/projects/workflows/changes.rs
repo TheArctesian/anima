@@ -2,8 +2,8 @@
 //! again, run its failed jobs again, cancel it, and start a workflow on a branch.
 //!
 //! Each checks its input into the parts of a [`Change`] first, then the repository, then reads
-//! GitHub fresh: the run, whose state the rule of [`controls`] judges, or the repository's
-//! workflows, of which the one named must be active. A refusal there sends nothing and records
+//! GitHub: the run, never from the cache, whose state the rule of [`controls`] judges, or the
+//! repository's workflows, as the cache holds them, of which the one named must be active. A refusal there sends nothing and records
 //! nothing. The change is sent once and recorded by [`forge::make`]; a run is read back from
 //! GitHub. Each makes code run with the repository's secrets or stops it: login or browser
 //! token only (D-23, R-100; K-E1 Section 13.5).
@@ -26,6 +26,7 @@ use super::{
 use crate::{
     api_errors::{ErrorCode, FieldError, coded, invalid, schema_dependency},
     clock::Clock,
+    engine::sources::Keep,
     fleet::access::{Authenticated, operator_only},
     work::projects::forge::{self, Asked, Subject, Target, failure, missing},
 };
@@ -138,7 +139,8 @@ async fn control(ctx: &Context<'_>, asking: Asking<'_>, control: Control) -> Res
     let (run_id, expected) = parts(run_id, expected)?;
     let target = forge::target(ctx, repository).await?;
     let repository = named(&target)?;
-    let found = one(ctx, &target, run_id)
+    // Never a held answer, not even a stale one: the rule acts on it (K-E1 Section 13.3).
+    let found = one(ctx, &target, run_id, Keep::never())
         .await?
         .ok_or_else(|| missing("run"))?;
     controls::decide(control, &RunState::of(&found), &expected, now(ctx)?)
@@ -158,7 +160,10 @@ async fn control(ctx: &Context<'_>, asking: Asking<'_>, control: Control) -> Res
         },
     };
     forge::make(ctx, &target, &change, Subject::Run).await?;
-    let after = one(ctx, &target, run_id).await.ok().flatten();
+    let after = one(ctx, &target, run_id, ONE.fresh(true))
+        .await
+        .ok()
+        .flatten();
     let after = after.ok_or_else(failure::unread)?;
     Ok(run(
         after,
@@ -191,16 +196,18 @@ fn parts(run_id: &ID, expected: &str) -> Result<(RunId, CommitSha)> {
     }
 }
 
-/// Run `run` as GitHub has it now; `None` when GitHub has no such run.
-async fn one(ctx: &Context<'_>, target: &Target, run: RunId) -> Result<Option<Run>> {
+/// Run `run` as GitHub has it now, read as `keep` says; `None` when GitHub has no such run.
+async fn one(ctx: &Context<'_>, target: &Target, run: RunId, keep: Keep) -> Result<Option<Run>> {
     let request = github::one_request(&target.name, run.get());
-    let Some(reply) = forge::read(ctx, target, request, ONE.fresh(true)).await? else {
+    let Some(reply) = forge::read(ctx, target, request, keep).await? else {
         return Ok(None);
     };
     forge::parsed(&reply, github::one_parse).map(Some)
 }
 
-/// The repository's workflows, as the cache holds them (K-E1 Section 13.3).
+/// The repository's workflows, as the cache holds them (K-E1 Section 13.3). A held or stale
+/// list is safe here: it names the workflow to start, and GitHub itself refuses a start of
+/// one that is gone or turned off.
 async fn workflows(ctx: &Context<'_>, target: &Target) -> Result<Vec<Workflow>> {
     let request = github_workflows::list_request(&target.name, 1);
     let reply = forge::read(ctx, target, request, WORKFLOWS)

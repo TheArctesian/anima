@@ -1,6 +1,7 @@
 //! What every live read of a project repository on GitHub shares (K-E1 Section 13; PRJ-031,
-//! PRJ-032): the repository's reach, the read through the engine's cache, the read stamp, the
-//! K7 cursors over GitHub's pages, the fixed failure words and the cut of GitHub's text.
+//! PRJ-032): the repository's reach, the read through the engine's cache within each request's
+//! budget of reads, the read stamp, the K7 cursors over GitHub's pages, the fixed failure words
+//! and the cut of GitHub's text.
 //!
 //! Text from GitHub is other people's: it stays a plain string, is cut as K1 states, and never
 //! reaches a log line or an error message (LOG-007).
@@ -8,12 +9,14 @@
 //! A named change goes through [`change::make`], which sends it once and records it (OD-E14,
 //! PRJ-028).
 
+mod allowance;
 mod argument;
 mod change;
 mod checks;
 pub(super) mod cursor;
 pub(super) mod failure;
 mod filter;
+mod pace;
 pub(super) mod reach;
 pub(super) mod text;
 pub(super) mod trail;
@@ -24,6 +27,7 @@ use async_graphql::{Context, ID, Result, SimpleObject};
 use chrono::{DateTime, Utc};
 use source_exchange::{Body, Problem, Request, Response};
 
+pub use self::{allowance::RequestReads, pace::KeyChanges};
 pub(super) use self::{
     argument::checked,
     change::{make, send},
@@ -135,7 +139,8 @@ fn scheduling(ctx: &Context<'_>) -> Result<Scheduling> {
 /// 200, `None` for a 404.
 ///
 /// # Errors
-/// `CONFLICT` when the provider refused the repository's name; the K7 code and fixed words of
+/// `CONFLICT` when the provider refused the repository's name; `UNAVAILABLE` once the request
+/// has asked GitHub as often as it may ([`allowance::spend`]); the K7 code and fixed words of
 /// [`failure::failed`] and [`failure::answered`] otherwise.
 pub(super) async fn read(
     ctx: &Context<'_>,
@@ -144,6 +149,7 @@ pub(super) async fn read(
     keep: Keep,
 ) -> Result<Option<Reply>> {
     let request = request.map_err(|_| failure::unnamed())?;
+    allowance::spend(ctx)?;
     let reply = sources::ask(&scheduling(ctx)?, target.account, &request, keep)
         .await
         .map_err(failure::failed)?;

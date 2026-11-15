@@ -1,7 +1,8 @@
 //! K-E1 Section 13.5, D-23: the issue changes take a login token and a write key made for a
 //! user or an agent, and a request that declares an agent; a read key and a signed-out request
 //! are refused and send nothing. The record names the actor kind and the token kind (LOG-014
-//! to LOG-018).
+//! to LOG-018). A key's changes stop at the sync's reserve and go at most 20 a minute; a login
+//! token's do neither (K-E1 Section 13.1).
 
 use axum::{
     body::Body,
@@ -14,7 +15,7 @@ use sqlx::PgPool;
 use super::{COMMENT, CREATE, SET_OPEN, answer, audits, comment, sent};
 use crate::{
     hub::{error, start, unauthenticated},
-    projects::forge::{Forge, forge, issue},
+    projects::forge::{BASE, Forge, forge, issue, reply},
 };
 
 /// The secret of a key of `scope` made by the signed-in operator for `made_for`.
@@ -139,4 +140,98 @@ async fn d_23_a_read_key_and_a_signed_out_request_change_nothing(pool: PgPool) {
     );
     assert!(sent(&forge, "PATCH", "/issues/3").is_empty(), "nothing");
     assert!(audits(&pool).await.is_empty(), "nothing");
+}
+
+/// K-E1 Section 13.1, "Budget": a change made with an API key stops at the sync's reserve, as
+/// a read does; a login token's change may spend it.
+#[sqlx::test(migrations = "./migrations")]
+async fn od_e14_a_key_change_stops_at_the_reserve_and_a_login_change_does_not(pool: PgPool) {
+    let forge = forge(&pool).await;
+    script(&forge);
+    let reset = (start() + TimeDelta::minutes(20)).timestamp().to_string();
+    let left = [
+        ("x-ratelimit-remaining", "500"),
+        ("x-ratelimit-reset", reset.as_str()),
+    ];
+    let made = json!({ "number": 7 }).to_string();
+    let path = format!("{BASE}/issues");
+    (forge.kit.stub).reply_to("POST", &path, reply(201, &left, &made));
+    let write = key(&forge, "WRITE", "USER").await;
+    let [(root, query, variables), ..] = calls(&forge);
+    forge.kit.post(query, variables.clone()).await;
+    assert_eq!(sent(&forge, "POST", "/issues").len(), 1, "{root}");
+
+    forge.clock.advance(2);
+    let refused = forge
+        .kit
+        .hub
+        .post(Some(&write), query, variables.clone())
+        .await;
+    assert_eq!(
+        error(&refused),
+        (
+            "GitHub limits requests until 12:20.".to_owned(),
+            "UNAVAILABLE".to_owned()
+        )
+    );
+    assert_eq!(
+        sent(&forge, "POST", "/issues").len(),
+        1,
+        "the key's change was not sent"
+    );
+
+    forge.clock.advance(2);
+    forge.kit.post(query, variables).await;
+    assert_eq!(
+        sent(&forge, "POST", "/issues").len(),
+        2,
+        "the login's change went"
+    );
+    assert_eq!(
+        audits(&pool).await.len(),
+        2,
+        "the refused change records nothing"
+    );
+}
+
+/// A key makes at most 20 changes a minute; the next is refused and sent nowhere, and the
+/// minute after it goes again. A login token is not held back by a key's pace.
+#[sqlx::test(migrations = "./migrations")]
+async fn od_e14_a_key_makes_at_most_20_changes_a_minute(pool: PgPool) {
+    let forge = forge(&pool).await;
+    script(&forge);
+    let write = key(&forge, "WRITE", "USER").await;
+    let [(_, query, variables), ..] = calls(&forge);
+    for n in 1..=20 {
+        forge.clock.advance(2);
+        let response = forge
+            .kit
+            .hub
+            .post(Some(&write), query, variables.clone())
+            .await;
+        assert!(response["errors"].is_null(), "change {n}: {response}");
+    }
+
+    forge.clock.advance(2);
+    let refused = forge
+        .kit
+        .hub
+        .post(Some(&write), query, variables.clone())
+        .await;
+    assert_eq!(
+        error(&refused),
+        (
+            "This key makes at most 20 changes a minute. Try again in a minute.".to_owned(),
+            "UNAVAILABLE".to_owned()
+        )
+    );
+    assert_eq!(sent(&forge, "POST", "/issues").len(), 20);
+    let login = forge.kit.post(query, variables.clone()).await;
+    assert!(login["errors"].is_null(), "{login}");
+
+    forge.clock.advance(60);
+    let again = forge.kit.hub.post(Some(&write), query, variables).await;
+    assert!(again["errors"].is_null(), "{again}");
+    assert_eq!(sent(&forge, "POST", "/issues").len(), 22);
+    assert_eq!(audits(&pool).await.len(), 22);
 }

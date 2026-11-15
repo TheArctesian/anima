@@ -2,30 +2,36 @@
 //! sends it once, the held answers it made old are dropped, and every change that was sent is
 //! recorded with what came of it before the caller hears the outcome.
 //!
-//! No transaction is open while the change is on the network: the record begins after GitHub's
-//! answer. A change the engine did not send records nothing.
+//! The send, the forgetting and the record run to the end in a task of their own: a client that
+//! goes away while GitHub works still leaves the record of the change GitHub made (as the VPN
+//! broker's changes do, LOG-005). No transaction is open while the change is on the network:
+//! the record begins after GitHub's answer. A change the engine did not send records nothing.
 
-use async_graphql::{Context, Error as GraphQlError, Result};
+use async_graphql::{Context, Result};
 use source_exchange::{Change, Receipt, Settled};
+use tracing::Instrument;
 
 use super::{
     Target,
     failure::{self, Subject},
-    scheduling, trail,
+    pace, scheduling, trail,
 };
 use crate::{
-    api_errors::{commit, pool},
-    engine::sources,
-    fleet::events::Trail,
-    work::projects::{Error, store::choices},
+    api_errors::{internal, schema_dependency},
+    engine::sources::{self, Scheduling},
+    fleet::events::{ClientAddr, Operator, Trail},
+    work::projects::store::choices,
 };
+
+/// Who made the change, for its record.
+type Who = (Operator, ClientAddr);
 
 /// Sends `change` to `target` once and records it; the receipt when GitHub made it.
 ///
 /// # Errors
 /// The fixed words of [`failure::unsent`] when nothing was sent, of [`failure::settled`] for a
 /// refusal, a limit or an unknown outcome, and `INTERNAL` when the record could not be written
-/// twice ([`failure::unrecorded`] once GitHub made the change).
+/// twice ([`failure::unrecorded`]).
 pub(in crate::work::projects) async fn make(
     ctx: &Context<'_>,
     target: &Target,
@@ -36,61 +42,79 @@ pub(in crate::work::projects) async fn make(
 }
 
 /// Sends `change` to `target` once and records it; what came of it, whatever GitHub answered.
+/// An API key's change keeps the sync's reserve and goes at the key's pace ([`pace`]).
 ///
 /// # Errors
-/// The fixed words of [`failure::unsent`] when nothing was sent, and `INTERNAL` when the record
-/// could not be written twice ([`failure::unrecorded`] once GitHub made the change).
+/// `UNAVAILABLE` past the key's pace, the fixed words of [`failure::unsent`] when nothing was
+/// sent, and `INTERNAL` when the record could not be written twice ([`failure::unrecorded`]).
 pub(in crate::work::projects) async fn send(
     ctx: &Context<'_>,
     target: &Target,
     change: &Change,
 ) -> Result<Settled> {
     let s = scheduling(ctx)?;
-    let settled = sources::change(&s, target.account, change)
-        .await
-        .map_err(failure::unsent)?;
-    for path in dropped(change) {
-        sources::forget(&s.transport, target.account, &path);
-    }
-    if record(ctx, target, change, &settled).await.is_err() {
-        // The cause reaches the process log with the second failure, if there is one.
-        tracing::warn!(
-            function = change.function(),
-            "the record of a change to GitHub failed; trying once more"
-        );
-        let made = matches!(settled, Settled::Done(_));
-        record(ctx, target, change, &settled)
-            .await
-            .map_err(|second| {
-                if made {
-                    failure::unrecorded(second)
-                } else {
-                    second
-                }
-            })?;
-    }
-    Ok(settled)
+    let reserve = pace::reserve(ctx)?;
+    let who = (
+        schema_dependency::<Operator>(ctx)?.clone(),
+        *schema_dependency::<ClientAddr>(ctx)?,
+    );
+    let (target, change) = (target.clone(), change.clone());
+    let sent_and_recorded = tokio::spawn(
+        async move {
+            let settled = sources::change(&s, target.account, &change, reserve)
+                .await
+                .map_err(failure::unsent)?;
+            for path in dropped(&change) {
+                sources::forget(&s.transport, target.account, &path);
+            }
+            recorded(&s, &who, (&target, &change), &settled).await?;
+            Ok(settled)
+        }
+        .in_current_span(),
+    );
+    sent_and_recorded.await.map_err(internal)?
 }
 
-/// One audit entry and one event for a change that was sent, in one transaction.
-async fn record(
-    ctx: &Context<'_>,
-    target: &Target,
-    change: &Change,
+/// Records what came of `change`, with one more try when the first fails.
+///
+/// # Errors
+/// [`failure::unrecorded`] when both tries fail.
+async fn recorded(
+    s: &Scheduling,
+    who: &Who,
+    sent: (&Target, &Change),
     settled: &Settled,
-) -> Result<(), GraphQlError> {
-    let failed = |e: sqlx::Error| Error::from(e).into_graphql();
-    let trail = Trail::from_context(ctx)?;
-    let mut tx = pool(ctx)?.begin().await.map_err(failed)?;
-    let slug = choices::repository_slug(&mut tx, target.repository)
+) -> Result<()> {
+    if record(s, who.clone(), sent, settled).await.is_ok() {
+        return Ok(());
+    }
+    // The cause reaches the process log with the second failure, if there is one.
+    tracing::warn!(
+        function = sent.1.function(),
+        "the record of a change to GitHub failed; trying once more"
+    );
+    record(s, who.clone(), sent, settled)
         .await
-        .map_err(failed)?;
+        .map_err(|second| failure::unrecorded(settled, second))
+}
+
+/// One audit entry and one event for a change that was sent, in one transaction, stamped when
+/// it is written.
+async fn record(
+    s: &Scheduling,
+    who: Who,
+    (target, change): (&Target, &Change),
+    settled: &Settled,
+) -> Result<(), sqlx::Error> {
+    let trail = Trail::new(&s.bus, who, s.clock.now());
+    let mut tx = s.pool.begin().await?;
+    let slug = choices::repository_slug(&mut tx, target.repository).await?;
     let entry = trail::entry(change, (target.repository, &slug), settled);
     trail
         .write(&mut tx, entry)
         .await
-        .map_err(crate::api_errors::internal)?;
-    commit(tx).await
+        .map_err(|crate::fleet::events::Error::Database(error)| error)?;
+    tx.commit().await
 }
 
 /// The paths whose held answers `change` may have made old: each with what lies below it

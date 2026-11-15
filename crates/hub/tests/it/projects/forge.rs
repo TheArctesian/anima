@@ -14,6 +14,7 @@ mod issues;
 mod leaks;
 mod merges;
 mod pull_requests;
+mod request_budget;
 mod tokens;
 mod workflows;
 

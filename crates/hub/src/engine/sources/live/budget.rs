@@ -85,8 +85,9 @@ impl Budget {
         );
     }
 
-    /// Whether a live read of `account` may go at `now`; `Err` holds the time the count starts
-    /// again. Changes do not ask: they may spend the reserve.
+    /// Whether a live read of `account`, or a change that keeps the reserve, may go at `now`;
+    /// `Err` holds the time the count starts again. The operator's own changes do not ask: they
+    /// may spend the reserve.
     pub(super) fn read(
         &self,
         account: SourceAccountId,

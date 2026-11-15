@@ -9,7 +9,7 @@ use std::sync::{
 };
 
 use anima_hub::{
-    engine::sources::{LiveFailure, Transport, change},
+    engine::sources::{LiveFailure, Reserve, Transport, change},
     fleet::targets::AddressPolicy,
 };
 use chrono::{TimeDelta, TimeZone as _, Utc};
@@ -40,7 +40,9 @@ async fn od_e14_the_stub_hears_exactly_the_verb_path_body_and_headers(pool: PgPo
     let text = "\"".repeat(65_536);
     kit.stub.reply(COMMENT_PATH, reply(201, &[], "{}"));
 
-    let made = change(&kit.at(start()), id, &comment(&text)).await.unwrap();
+    let made = change(&kit.at(start()), id, &comment(&text), Reserve::Spendable)
+        .await
+        .unwrap();
 
     assert_eq!(made, Settled::Done(Receipt::Created { number: 201 }));
     let heard = sent(&kit, COMMENT_PATH);
@@ -89,7 +91,7 @@ async fn od_e14_the_verb_is_the_changes_own(pool: PgPool) {
     };
     let s = striding(&kit, kit.reach.transport.clone());
     for (made, verb) in [(merge, "PUT"), (close, "PATCH")] {
-        change(&s, id, &made).await.unwrap();
+        change(&s, id, &made, Reserve::Spendable).await.unwrap();
         let path = format!("/repos/octo/widgets/test-changes/{}", made.function());
         let heard = sent(&kit, &path);
         assert_eq!(
@@ -108,7 +110,9 @@ async fn od_e14_every_status_reaches_settle_and_a_401_drops_the_token(pool: PgPo
     ] {
         kit.stub
             .reply(COMMENT_PATH, reply(status, &[], "{\"message\":\"no\"}"));
-        let settled = change(&s, id, &comment("hello")).await.unwrap();
+        let settled = change(&s, id, &comment("hello"), Reserve::Spendable)
+            .await
+            .unwrap();
         assert_eq!(
             settled,
             Settled::Done(Receipt::Created {
@@ -126,7 +130,9 @@ async fn od_e14_every_status_reaches_settle_and_a_401_drops_the_token(pool: PgPo
         ("x-ratelimit-reset", &*reset.timestamp().to_string()),
     ];
     kit.stub.reply(COMMENT_PATH, reply(403, &headers, "{}"));
-    let limited = change(&s, id, &comment("hello")).await.unwrap();
+    let limited = change(&s, id, &comment("hello"), Reserve::Spendable)
+        .await
+        .unwrap();
     assert_eq!(
         limited,
         Settled::Limited { until: reset },
@@ -176,7 +182,13 @@ async fn od_e14_a_change_whose_answer_was_lost_is_unknown_and_sent_once(pool: Pg
     let transport = Transport::to_stub(base, AddressPolicy::default().allowing_loopback()).unwrap();
     hand_token(&transport, id);
 
-    let settled = change(&striding(&kit, transport), id, &comment("hello")).await;
+    let settled = change(
+        &striding(&kit, transport),
+        id,
+        &comment("hello"),
+        Reserve::Spendable,
+    )
+    .await;
 
     assert_eq!(settled.unwrap(), Settled::Unknown);
     tokio::time::sleep(std::time::Duration::from_millis(300)).await;
@@ -189,7 +201,13 @@ async fn od_e14_a_change_that_could_not_connect_is_unreachable(pool: PgPool) {
     let transport = unreachable();
     hand_token(&transport, id);
 
-    let failed = change(&striding(&kit, transport), id, &comment("hello")).await;
+    let failed = change(
+        &striding(&kit, transport),
+        id,
+        &comment("hello"),
+        Reserve::Spendable,
+    )
+    .await;
 
     assert_eq!(failed.unwrap_err(), LiveFailure::Unreachable);
 }
@@ -210,7 +228,7 @@ async fn od_e14_a_source_that_declares_no_changes_is_refused_before_sending(pool
     let (_, id) = kit.connect().await;
     let before = kit.stub.paths();
 
-    let refused = change(&kit.at(start()), id, &comment("hello")).await;
+    let refused = change(&kit.at(start()), id, &comment("hello"), Reserve::Spendable).await;
 
     assert_eq!(refused.unwrap_err(), LiveFailure::NoChanges);
     assert_eq!(kit.stub.paths(), before, "nothing was sent");

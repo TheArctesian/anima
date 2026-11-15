@@ -1,6 +1,6 @@
 //! K-E1 Section 13.8, D-23, LOG-007: what keeps the code browser safe. A hostile path or ref
 //! is refused before anything is sent; names reach GitHub encoded; a directory is kept and a
-//! file never; a file is closed to every API key; and neither a file's content nor its path
+//! file never, even when a directory read finds one; a file is closed to every API key; and neither a file's content nor its path
 //! reaches a log line or an error message.
 
 use anima_hub::fleet::events::process_log;
@@ -124,6 +124,35 @@ async fn prj_033_a_directory_is_kept_and_a_file_never(pool: PgPool) {
         forge.heard("/contents/src").len(),
         2,
         "a branch's directory: 60 s"
+    );
+}
+
+/// K-E1 Section 13.1, "File content is never kept": GitHub answers a directory read of a file
+/// with the file, content included, and a read key may ask it.
+#[sqlx::test(migrations = "./migrations")]
+async fn prj_033_a_directory_read_of_a_file_never_keeps_its_content(pool: PgPool) {
+    let forge = forge(&pool).await;
+    forge.ok(
+        "/contents/deploy/prod.env",
+        &file("deploy/prod.env", b"TOKEN=hunter2\n"),
+    );
+    let read_key = key(&forge, "READ").await;
+    let mut variables = json!({ "path": "deploy/prod.env" });
+    variables["repository"] = json!(forge.repository);
+
+    for _ in 0..2 {
+        let response = forge
+            .kit
+            .hub
+            .post(Some(&read_key), DIRECTORY, variables.clone())
+            .await;
+        assert_eq!(error(&response).1, "VALIDATION", "{response}");
+    }
+
+    assert_eq!(
+        forge.heard("/contents/deploy/prod.env").len(),
+        2,
+        "the second read was served from a held file"
     );
 }
 
