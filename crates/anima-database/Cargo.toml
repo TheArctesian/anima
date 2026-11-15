@@ -1,0 +1,13 @@
+[package]
+name = "anima-database"
+description = "The PostgreSQL that the desktop application carries: its folders, its server and its roles (DB-001 to DB-003, OR-6)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+thiserror.workspace = true
