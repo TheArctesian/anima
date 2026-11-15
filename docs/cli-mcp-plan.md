@@ -97,7 +97,9 @@ The hub has two tokens that a program can hold (design specification INT-003):
 - **CMD-024.** A command that deletes must ask for confirmation, or get `--yes` (DEV-014). Every
   confirmation ends the same way: an answer other than `y` or `yes` is `DECLINED`, exit 1 with a
   message on standard error (and the JSON error under `--json`), so a script can tell that the
-  delete did not run. Nothing is sent to the hub after a decline.
+  delete did not run. Nothing is sent to the hub after a decline. What a question is about
+  (a merge summary, the heads of a bulk merge) is shown on standard error before it is asked,
+  with `--json` too: the operator never answers a question about something they were not shown.
 - **CMD-025.** A secret that a command takes (a device password, a private key) comes from a
   prompt, from standard input (`-`) or from `--from-file`. Never from an argument.
 - **CMD-026.** Lists take `--limit` and `--after` (the K1 cursor) and `--all`. `--all` stops

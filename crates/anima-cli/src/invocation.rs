@@ -157,6 +157,17 @@ impl Invocation {
         Ok((Hub::new(origin, Some(token))?, source))
     }
 
+    /// Shows what the next question is about on standard error (CMD-024). A person at the
+    /// terminal sees it with `--json` too, since they agree to it; with `--json` and no one
+    /// to ask it is left out, as every note is.
+    pub fn before_question(&self, about: &str) {
+        if self.prompter.interactive() {
+            self.output.message(about);
+        } else {
+            self.output.note(about);
+        }
+    }
+
     /// [`Invocation::signed_in`] without the source.
     ///
     /// # Errors

@@ -45,7 +45,7 @@ pub async fn merge(
             expected_head_sha: head,
         });
     }
-    invocation.output.note(&lines.join("\n"));
+    invocation.before_question(&lines.join("\n"));
     invocation.prompter.confirm(&format!(
         "Merge these {} pull requests of {name} by {}, one after another?",
         numbers.len(),

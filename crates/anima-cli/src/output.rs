@@ -183,8 +183,14 @@ impl Output {
     /// A message for a person on standard error; none with `--json`.
     pub fn note(self, message: &str) {
         if !self.json {
-            write_err(&format!("{}\n", text::clean_lines(message)));
+            self.message(message);
         }
+    }
+
+    /// A message for a person on standard error, with or without `--json`: what a question at
+    /// the terminal is about, which the person must see before answering (CMD-024).
+    pub fn message(self, message: &str) {
+        write_err(&format!("{}\n", text::clean_lines(message)));
     }
 
     /// The failure on standard error: a sentence and a hint, or the CMD-022 JSON object. Every
