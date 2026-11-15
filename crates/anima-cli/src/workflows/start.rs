@@ -13,7 +13,7 @@ use crate::projects::repository::resolve;
 
 type Workflow = workflow_list::WorkflowListWorkflows;
 
-#[derive(Debug, clap::Args)]
+#[derive(clap::Args)]
 pub struct StartArgs {
     /// The repository: `owner/name` or its ID.
     repository: String,
@@ -25,6 +25,19 @@ pub struct StartArgs {
     /// A named input of the workflow, `name=value`; repeat for more (at most 25).
     #[arg(long = "input", value_name = "NAME=VALUE")]
     inputs: Vec<String>,
+}
+
+/// Never an input's value, which may be a secret (LOG-007): only how many were given.
+impl std::fmt::Debug for StartArgs {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("StartArgs")
+            .field("repository", &self.repository)
+            .field("workflow", &self.workflow)
+            .field("branch", &self.branch)
+            .field("inputs", &self.inputs.len())
+            .finish()
+    }
 }
 
 impl StartArgs {
