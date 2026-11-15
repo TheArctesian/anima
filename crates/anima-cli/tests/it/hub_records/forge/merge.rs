@@ -149,6 +149,8 @@ async fn pro_013_at_a_terminal_a_fork_name_typed_wrong_merges_nothing_even_with_
         "9",
         "--method",
         "merge",
+        "--sha",
+        SHA,
         "--yes",
         "--hub",
         &hub.origin,

@@ -27,8 +27,8 @@ pub struct MergeArgs {
     /// How to merge; the repository must allow it.
     #[arg(long, value_enum)]
     method: MethodArg,
-    /// The 40-digit head commit you looked at. Required for one number when no terminal shows
-    /// the head before you confirm.
+    /// The 40-digit head commit you looked at. Required for one number whenever no question is
+    /// asked: with `--yes`, `--no-input` or no terminal.
     #[arg(long, value_name = "SHA")]
     sha: Option<String>,
     /// Also merge when a check that is not required failed. One number only.

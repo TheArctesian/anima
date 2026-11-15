@@ -61,6 +61,12 @@ impl Prompter {
         self.stdin_terminal && !self.no_input
     }
 
+    /// Whether [`Prompter::confirm`] asks a person, rather than taking `--yes` or failing.
+    #[must_use]
+    pub const fn asks(self) -> bool {
+        !self.yes && self.interactive()
+    }
+
     /// Asks for `what` with echo; fails naming `flag` when it cannot ask.
     ///
     /// # Errors
@@ -171,6 +177,21 @@ mod tests {
         assert!(Prompter::new(true, false, false).reading_stdin("x").is_ok());
         let refused = Prompter::new(true, true, false).reading_stdin("The document");
         assert!(matches!(refused, Err(Failure::Usage { .. })));
+    }
+
+    #[test]
+    fn cmd_024_only_a_terminal_without_yes_or_no_input_asks_a_person() {
+        assert!(Prompter::new(true, false, false).asks());
+        for (terminal, no_input, yes) in [
+            (true, false, true),
+            (true, true, false),
+            (false, false, false),
+        ] {
+            assert!(
+                !Prompter::new(terminal, no_input, yes).asks(),
+                "{terminal} {no_input} {yes}"
+            );
+        }
     }
 
     #[test]

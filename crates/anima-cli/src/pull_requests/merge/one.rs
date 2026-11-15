@@ -41,8 +41,11 @@ pub async fn merge(invocation: &Invocation, asked: &Asked<'_>) -> Result<(), Fai
         }
         _ => {}
     }
-    let interactive = invocation.prompter.interactive();
-    let head = expected_head(asked.sha, text(&pull, "headSha"), interactive)?;
+    let head = expected_head(
+        asked.sha,
+        text(&pull, "headSha"),
+        invocation.prompter.asks(),
+    )?;
     invocation.before_question(&summary(&shown, &pull, asked.method.word()));
     let fork_confirmed = fork(asked.fork, &pull, invocation.prompter)?;
     invocation.prompter.confirm(&format!(

@@ -19,16 +19,13 @@ pub fn short(sha: &str) -> &str {
 }
 
 /// The head commit to send as `expectedHeadSha`: the one given with `--sha`, which must be the
-/// head just read, or the head just read when a person sees it at the terminal.
+/// head just read, or the head just read when a person is `asked` about it at the terminal.
+/// `--yes` asks no one, so it never stands for the head (PRJ-029).
 ///
 /// # Errors
-/// [`Failure::Usage`] for a `--sha` that is not 40 hex digits, or no `--sha` when no one can
-/// see the prompt; [`Failure::Conflict`] when the head moved since the operator looked.
-pub fn expected_head(
-    given: Option<&str>,
-    head: &str,
-    interactive: bool,
-) -> Result<String, Failure> {
+/// [`Failure::Usage`] for a `--sha` that is not 40 hex digits, or no `--sha` when no one is
+/// asked; [`Failure::Conflict`] when the head moved since the operator looked.
+pub fn expected_head(given: Option<&str>, head: &str, asked: bool) -> Result<String, Failure> {
     match given {
         Some(given) if !is_sha(given) => Err(Failure::Usage {
             message: "--sha takes the 40-digit head commit, as `anima pr get` shows it.".to_owned(),
@@ -41,8 +38,11 @@ pub fn expected_head(
             ),
         }),
         Some(_) => Ok(head.to_owned()),
-        None if interactive => Ok(head.to_owned()),
-        None => Err(Failure::missing("The head commit you looked at", "--sha")),
+        None if asked => Ok(head.to_owned()),
+        None => Err(Failure::Usage {
+            message: "Without a question (--yes, --no-input or no terminal) a merge needs the head commit you looked at, as `anima pr get` shows it: pass --sha.".to_owned(),
+            hint: None,
+        }),
     }
 }
 
