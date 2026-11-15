@@ -232,6 +232,14 @@ impl Screen {
         }))
     }
 
+    /// The client no longer has what it was told: the whole screen counts as new, as after
+    /// [`Screen::new`], and keeps its pixels.
+    pub fn forget_what_was_told(&mut self) {
+        self.changed = ChangedTiles::all(self.width, self.height);
+        self.moved.clear();
+        self.resized = true;
+    }
+
     /// Whether [`Screen::take_changes`] would give something to tell the client.
     #[must_use]
     pub fn has_changes(&self) -> bool {

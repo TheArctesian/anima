@@ -144,10 +144,11 @@ written here with its reason.
 | --- | --- | --- |
 | T1 Screen and changes | Done. Reviewed by `reviewer`; 6 findings corrected; full gates passed 14 of 14. | `88b420c2`, `0d0582c8` |
 | T2 Frame encoder | Done. Reviewed twice by `reviewer` (1 must-fix and 3 test findings corrected; second verdict: accept); full gates passed 14 of 14. | `2970dfad`, `aa78c4d1` |
-| T3 Frame pacing | Done but for the full gates. `reviewer`: fix, then accept; 3 findings corrected. | `09f1acdc`, `3a0d1032` |
-| T4 Gateway handshake | Done but for the full gates. `reviewer`: accept, 4 findings corrected. `reviewer-security`: no critical or high; 1 medium and 2 low corrected, 3 notes carried to T6. | `dfca4494` and the correction after it |
+| T3 Frame pacing | Done; full gates passed 14 of 14 at `3a0d1032`. `reviewer`: fix, then accept; 3 findings corrected. | `09f1acdc`, `3a0d1032` |
+| T4 Gateway handshake | Done; full gates passed 14 of 14 at `3a0d1032` (before the correction commit). `reviewer`: accept, 4 findings corrected. `reviewer-security`: no critical or high; 1 medium and 2 low corrected, 3 notes carried to T6. | `dfca4494` and the correction after it |
 | T5 VNC client | Built; in review. | `58174c99` |
-| T6 Session and worker process | Built; review next. | see the log |
+| T6 Session and worker process | Built; in review. | `193342fb` |
+| T7 Large screens | Built; review next. | see the log |
 
 Choices:
 
@@ -233,6 +234,15 @@ Choices:
 - **T6, the other gateway.** `--other-gateway host:port` passes each session of a protocol
   this gateway does not serve to that gateway (guacd), instruction by instruction.
 - **T6, the client's `size`.** Read and not yet used; T7 uses it to scale the screen.
+- **T7, how the picture is made smaller.** When the device's screen does not fit the
+  client's view, the gateway keeps a second, smaller copy: each of its pixels is the mean of
+  the device pixels it covers, and only the parts that changed are made again. The shape of
+  the screen is kept. A screen that fits is sent as it is. The pointer goes to the device
+  pixel under the middle of the client's pixel. The Mac of the spike (4104 x 3404) in a
+  1440 x 900 view is a picture of 1085 x 900.
+- **T7, no time budget in the test.** The breakdown asked for an encode-time budget. A time
+  limit in a test fails on a busy computer, so the test holds the size of the picture and
+  the bytes of a whole-screen change; T9 measures the time.
 - **Merge and push.** The operator said in this session (2026-11-14): "Yes, merge into main
   and push when done". When every task that does not need the operator is done: bring the
   current `main` in, run the full gates, merge, push.

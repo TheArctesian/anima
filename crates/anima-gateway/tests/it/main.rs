@@ -5,4 +5,5 @@ mod frames;
 mod handshake;
 mod screen;
 mod session;
+mod view;
 mod vnc;

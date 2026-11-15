@@ -13,6 +13,7 @@ use super::{Ended, Settings, status};
 use crate::frames::{self, Next, Pacing};
 use crate::handshake::Opening;
 use crate::screen::Screen;
+use crate::view::View;
 use crate::vnc::{self, Event, requests};
 
 /// Bytes read from the device at a time.
@@ -27,6 +28,7 @@ struct Running<'a, S> {
     opening: Opening,
     device: vnc::Device,
     screen: Screen,
+    view: View,
     pacing: Pacing,
     clipboard: Clipboard,
     started: Instant,
@@ -55,12 +57,14 @@ where
             }
         }
     });
+    let view = View::new(&screen, opening.view);
     let mut running = Running {
         hub,
         to_device,
         opening,
         device: vnc::Device::default(),
         screen,
+        view,
         pacing: Pacing::new(settings.pace),
         clipboard: Clipboard::default(),
         started: Instant::now(),
@@ -85,7 +89,7 @@ where
         // A frame held back by the frame rate goes out when its time comes. One held back
         // by the client goes out after the client's next `sync`, which is an instruction.
         let due = match self.pacing.next(self.started.elapsed()) {
-            Next::At(time) if self.screen.has_changes() => Some(self.started + time),
+            Next::At(time) if self.view.has_changes(&self.screen) => Some(self.started + time),
             _ => None,
         };
         tokio::select! {
@@ -146,13 +150,14 @@ where
         match self.clipboard.read(instruction) {
             Input::Key { keysym, pressed } => self.write(&requests::key(keysym, pressed)).await,
             Input::Pointer { x, y, buttons } => {
-                let within =
-                    |at: usize, side: usize| u16::try_from(at.min(side - 1)).unwrap_or(u16::MAX);
-                let (x, y) = (
-                    within(x, self.screen.width()),
-                    within(y, self.screen.height()),
-                );
-                self.write(&requests::pointer(buttons, x, y)).await
+                let (x, y) = self.view.to_device((x, y), &self.screen);
+                let on_wire = |at: usize| u16::try_from(at).unwrap_or(u16::MAX);
+                self.write(&requests::pointer(buttons, on_wire(x), on_wire(y)))
+                    .await
+            }
+            Input::View(width, height) => {
+                self.view.set_client((width, height), &mut self.screen);
+                Ok(())
             }
             Input::Paste(text) if self.opening.paste => {
                 self.write(&requests::cut_text(&text)).await
@@ -162,21 +167,20 @@ where
                 Ok(())
             }
             Input::Disconnect => Err(Ended::ByHub),
-            Input::Paste(_) | Input::View(..) | Input::Nothing => Ok(()),
+            Input::Paste(_) | Input::Nothing => Ok(()),
         }
     }
 
     /// Sends a frame when the screen changed and one may go.
     async fn send_frame(&mut self) -> Result<(), Ended> {
-        if !self.screen.has_changes() {
+        if !self.view.has_changes(&self.screen) {
             return Ok(());
         }
         let Some(timestamp) = self.pacing.send(self.started.elapsed()) else {
             return Ok(());
         };
-        let changes = self.screen.take_changes();
-        let Ok(frame) = frames::frame(&self.screen, &changes, self.opening.formats, timestamp)
-        else {
+        let (shown, changes) = self.view.take_changes(&mut self.screen);
+        let Ok(frame) = frames::frame(shown, &changes, self.opening.formats, timestamp) else {
             return Err(refuse(self.hub, status::SERVER_ERROR, Ended::Fault).await);
         };
         self.hub.send(&frame).await.map_err(|_| Ended::ByHub)
