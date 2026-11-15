@@ -7,7 +7,7 @@ use std::path::Path;
 use sqlx::Connection as _;
 use sqlx::postgres::PgConnection;
 
-use super::prepare;
+use super::{login_statement, prepare};
 use crate::scratch::Database;
 use crate::{Layout, Role, urls};
 
@@ -59,7 +59,7 @@ fn rights(database: &Database) -> String {
 fn db_003_r_016_the_roles_are_the_roles_of_the_docker_installation() {
     let bundled = Database::new();
     let _bundled_server = bundled.start();
-    prepare(&bundled.layout, &bundled.password).unwrap();
+    prepare(&bundled.layout).unwrap();
 
     let docker = Database::new();
     let _docker_server = docker.start();
@@ -91,7 +91,7 @@ fn db_003_r_016_the_roles_are_the_roles_of_the_docker_installation() {
 fn db_003_the_hub_login_owns_nothing_and_reaches_only_its_database() {
     let database = Database::new();
     let _server = database.start();
-    prepare(&database.layout, &database.password).unwrap();
+    prepare(&database.layout).unwrap();
     let layout = &database.layout;
 
     assert_eq!(as_role(layout, Role::Hub, "select 1"), Ok(()));
@@ -127,7 +127,7 @@ fn db_002_log_007_the_passwords_are_in_private_files_and_not_in_the_log() {
     let database = Database::new();
     let _server = database.start();
 
-    prepare(&database.layout, &database.password).unwrap();
+    prepare(&database.layout).unwrap();
 
     let mut names = Vec::new();
     for entry in fs::read_dir(database.layout.urls_folder()).unwrap() {
@@ -139,21 +139,20 @@ fn db_002_log_007_the_passwords_are_in_private_files_and_not_in_the_log() {
         names.push(entry.file_name().into_string().unwrap());
     }
     names.sort();
-    assert_eq!(names, ["hub.url", "owner.url", "superuser.url"]);
+    assert_eq!(names, ["hub.url", "owner.url"]);
 
     let log = fs::read_to_string(database.layout.server_log()).unwrap();
     for role in [Role::Owner, Role::Hub] {
         let password = urls::password(&database.layout, role).unwrap().unwrap();
         assert!(!log.contains(password.expose()), "the log holds a password");
     }
-    assert!(!log.contains(database.password.expose()));
 }
 
 #[test]
 fn a_second_run_after_a_crash_gives_logins_that_work() {
     let database = Database::new();
     let _server = database.start();
-    prepare(&database.layout, &database.password).unwrap();
+    prepare(&database.layout).unwrap();
     as_role(&database.layout, Role::Owner, "create schema kept").unwrap();
     let first = urls::password(&database.layout, Role::Hub)
         .unwrap()
@@ -161,7 +160,7 @@ fn a_second_run_after_a_crash_gives_logins_that_work() {
     // A crash after the roles were made and before the hub's file was written.
     fs::remove_file(database.layout.url_file(Role::Hub)).unwrap();
 
-    prepare(&database.layout, &database.password).unwrap();
+    prepare(&database.layout).unwrap();
 
     assert_eq!(as_role(&database.layout, Role::Hub, "select 1"), Ok(()));
     assert_eq!(
@@ -180,14 +179,60 @@ fn a_second_run_after_a_crash_gives_logins_that_work() {
 }
 
 #[test]
-fn log_007_a_refused_superuser_gives_an_error_without_the_password() {
-    let mut database = Database::new();
+fn log_007_a_login_statement_holds_the_verifier_and_never_a_password() {
+    let password = crate::Password::from_bytes(&[5; 24]);
+    let verifier = password.scram_verifier(&[2; 16]);
+
+    let made = login_statement("anima_hub", false, "anima_runtime", &verifier);
+    let changed = login_statement("anima_owner", true, "", &verifier);
+
+    assert_eq!(
+        made,
+        format!(
+            "create role anima_hub login nosuperuser nocreatedb nocreaterole nobypassrls \
+             noreplication in role anima_runtime password '{verifier}'"
+        )
+    );
+    assert_eq!(
+        changed,
+        format!(
+            "alter role anima_owner login nosuperuser nocreatedb nocreaterole nobypassrls \
+             noreplication password '{verifier}'"
+        )
+    );
+    assert!(!made.contains(password.expose()) && !changed.contains(password.expose()));
+}
+
+#[test]
+fn log_007_what_the_server_stores_is_what_it_was_sent_and_the_password_signs_in() {
+    let database = Database::new();
     let _server = database.start();
-    database.password = crate::Password::from_bytes(&[5; 24]);
+    prepare(&database.layout).unwrap();
 
-    let error = prepare(&database.layout, &database.password).unwrap_err();
+    let stored = database
+        .sql("select rolpassword from pg_authid where rolname = 'anima_hub'")
+        .unwrap();
+    let password = urls::password(&database.layout, Role::Hub)
+        .unwrap()
+        .unwrap();
 
-    let text = format!("{error} {error:?}");
-    assert!(text.contains("28P01"), "{text}");
-    assert!(!text.contains(database.password.expose()));
+    assert!(stored.starts_with("SCRAM-SHA-256$4096:"), "{stored}");
+    assert!(!stored.contains(password.expose()));
+    assert_eq!(as_role(&database.layout, Role::Hub, "select 1"), Ok(()));
+}
+
+#[test]
+fn a_database_that_another_role_owns_is_given_to_the_owner() {
+    let database = Database::new();
+    let _server = database.start();
+    database.sql("create database anima").unwrap();
+
+    prepare(&database.layout).unwrap();
+
+    assert_eq!(
+        database
+            .sql("select pg_get_userbyid(datdba) from pg_database where datname = 'anima'")
+            .unwrap(),
+        "anima_owner"
+    );
 }

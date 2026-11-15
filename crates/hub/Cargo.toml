@@ -81,6 +81,8 @@ test-support = []
 nix = { version = "0.31", default-features = false, features = ["process"] }
 
 [dev-dependencies]
+# The bundled database of the application mode (one-click plan S3): a test runs the hub on it.
+anima-database = { path = "../anima-database" }
 agent-core = { path = "../agent-core", features = ["test-support"] }
 anima-hub = { path = ".", features = ["test-support"] }
 http-body-util.workspace = true

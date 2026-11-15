@@ -6,6 +6,7 @@
 use sqlx::postgres::{PgConnectOptions, PgConnection};
 use sqlx::{ConnectOptions as _, Connection as _};
 
+use crate::cluster::SUPERUSER;
 use crate::urls::{self, DATABASE, UrlError};
 use crate::{Layout, Password, Role};
 
@@ -37,54 +38,111 @@ pub enum RolesError {
 /// owner's and the hub's URL files. Safe to run again after a crash at any point: a login
 /// that is there gets a new password, and the URL files are written last.
 ///
+/// It signs in as the superuser through the socket, as the operating-system user who runs
+/// the database; there is no superuser password. The server is sent each login's SCRAM
+/// verifier and never a password, so no setting of the server or of the caller's environment
+/// can put a password into a log (LOG-007).
+///
+/// It waits on its own small async runtime, so it must not be called from inside one.
+///
 /// # Errors
 /// When the superuser cannot sign in, a statement fails or a URL file cannot be written. An
-/// error never carries statement text: a statement here holds a password (LOG-007).
-pub fn prepare(layout: &Layout, superuser_password: &Password) -> Result<(), RolesError> {
-    let owner = Password::random().map_err(RolesError::Random)?;
-    let hub = Password::random().map_err(RolesError::Random)?;
+/// error carries a SQLSTATE and never statement text.
+pub fn prepare(layout: &Layout) -> Result<(), RolesError> {
+    let owner = Fresh::new()?;
+    let hub = Fresh::new()?;
     tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
         .map_err(RolesError::Client)?
-        .block_on(apply(layout, superuser_password, &owner, &hub))?;
-    urls::write(layout, Role::Owner, &owner)?;
-    urls::write(layout, Role::Hub, &hub)?;
+        .block_on(apply(layout, &owner.verifier(), &hub.verifier()))?;
+    urls::write(layout, Role::Owner, &owner.password)?;
+    urls::write(layout, Role::Hub, &hub.password)?;
     Ok(())
 }
 
+/// A new password and the salt of its verifier.
+struct Fresh {
+    password: Password,
+    salt: [u8; 16],
+}
+
+impl Fresh {
+    fn new() -> Result<Self, RolesError> {
+        let mut salt = [0_u8; 16];
+        getrandom::fill(&mut salt).map_err(RolesError::Random)?;
+        Ok(Self {
+            password: Password::random().map_err(RolesError::Random)?,
+            salt,
+        })
+    }
+
+    fn verifier(&self) -> String {
+        self.password.scram_verifier(&self.salt)
+    }
+}
+
+/// The settings that keep a statement out of the server log. The server starts with them;
+/// they are sent again with the connection and set again in the session, after whatever the
+/// caller's `PGOPTIONS` asked for, so the last word is this list's.
+const QUIET: [(&str, &str); 5] = [
+    ("log_statement", "none"),
+    ("log_min_error_statement", "panic"),
+    ("log_min_duration_statement", "-1"),
+    ("log_min_duration_sample", "-1"),
+    ("log_transaction_sample_rate", "0"),
+];
+
 async fn apply(
     layout: &Layout,
-    superuser_password: &Password,
-    owner: &Password,
-    hub: &Password,
+    owner_verifier: &str,
+    hub_verifier: &str,
 ) -> Result<(), RolesError> {
-    let mut session = PgConnectOptions::new()
+    let mut session = PgConnectOptions::new_without_pgpass()
         .socket(layout.socket_folder())
         .port(5432)
-        .username(Role::Superuser.login())
-        .password(superuser_password.expose())
-        .database(Role::Superuser.database())
+        .username(SUPERUSER)
+        .database("postgres")
+        .application_name("anima-database")
+        .options(QUIET)
         .disable_statement_logging()
         .connect()
         .await
         .map_err(|error| RolesError::SignIn {
             cause: sqlstate(&error),
         })?;
-    // The server starts with these already; a session can never turn them on by accident.
-    for setting in [
-        "set log_statement = none",
-        "set log_min_error_statement = panic",
-        "set log_min_duration_statement = -1",
-    ] {
-        run(&mut session, "set the session's logging off", setting).await?;
+    for (setting, value) in QUIET {
+        let statement = format!("set {setting} = {value}");
+        run(&mut session, "set the session's logging off", &statement).await?;
     }
     login_group(&mut session).await?;
-    login(&mut session, Role::Owner, "", owner).await?;
-    login(&mut session, Role::Hub, RUNTIME_GROUP, hub).await?;
+    let question = "select exists (select from pg_catalog.pg_roles where rolname = $1)";
+    for (role, group, verifier) in [
+        (Role::Owner, "", owner_verifier),
+        (Role::Hub, RUNTIME_GROUP, hub_verifier),
+    ] {
+        let is_there = exists(&mut session, "make a login", question, role.login()).await?;
+        let statement = login_statement(role.login(), is_there, group, verifier);
+        run(&mut session, "make a login", &statement).await?;
+    }
     database(&mut session).await?;
     session.close().await.ok();
     Ok(())
+}
+
+/// The statement that makes the login `name`, or gives a login that is there the new
+/// verifier. `group` is the group it joins, or empty. A verifier is Base64 with `$` and `:`,
+/// so it needs no quoting.
+fn login_statement(name: &str, is_there: bool, group: &str, verifier: &str) -> String {
+    if is_there {
+        return format!("alter role {name} {PLAIN_LOGIN} password '{verifier}'");
+    }
+    let membership = if group.is_empty() {
+        String::new()
+    } else {
+        format!("in role {group} ")
+    };
+    format!("create role {name} {PLAIN_LOGIN} {membership}password '{verifier}'")
 }
 
 async fn exists(
@@ -114,36 +172,6 @@ async fn login_group(session: &mut PgConnection) -> Result<(), RolesError> {
     Ok(())
 }
 
-/// Makes `role`'s login, or gives a login that is there the new password. `group` is the
-/// group it joins, or empty. The password is hexadecimal, so it needs no quoting.
-async fn login(
-    session: &mut PgConnection,
-    role: Role,
-    group: &str,
-    password: &Password,
-) -> Result<(), RolesError> {
-    const STEP: &str = "make a login";
-    let name = role.login();
-    let question = "select exists (select from pg_catalog.pg_roles where rolname = $1)";
-    let statement = if exists(session, STEP, question, name).await? {
-        format!(
-            "alter role {name} {PLAIN_LOGIN} password '{}'",
-            password.expose()
-        )
-    } else {
-        let membership = if group.is_empty() {
-            String::new()
-        } else {
-            format!("in role {group}")
-        };
-        format!(
-            "create role {name} {PLAIN_LOGIN} {membership} password '{}'",
-            password.expose()
-        )
-    };
-    run(session, STEP, &statement).await
-}
-
 async fn database(session: &mut PgConnection) -> Result<(), RolesError> {
     const STEP: &str = "make the database";
     let owner = Role::Owner.login();
@@ -157,6 +185,8 @@ async fn database(session: &mut PgConnection) -> Result<(), RolesError> {
         .await?;
     }
     for grant in [
+        // Also when the database was there: only the owner's database takes migrations.
+        format!("alter database {DATABASE} owner to {owner}"),
         format!("revoke connect, temporary on database {DATABASE} from public"),
         format!("grant connect on database {DATABASE} to {RUNTIME_GROUP}"),
         "revoke connect on database postgres from public".to_owned(),

@@ -11,15 +11,17 @@ use std::path::PathBuf;
 use std::process::ExitCode;
 use std::time::Duration;
 
-use anima_database::startup::{self, Running, StartError};
+use anima_database::startup::{self, BackupExclusion, Running, StartError};
 use anima_database::{
-    Layout, LayoutError, Limits, Platform, ServerError, Settings, Tree, UserFolders, cluster,
+    Layout, LayoutError, Limits, Platform, ServerError, Settings, Tree, UserFolders,
 };
 use clap::{Args, Parser, Subcommand};
 use tokio::signal::unix::{Signal, SignalKind, signal};
 
 /// Another copy runs this database.
 const EXIT_ANOTHER_COPY: u8 = 10;
+/// The cluster is of another PostgreSQL major version and was not touched.
+const EXIT_OTHER_VERSION: u8 = 11;
 /// The server ended by itself.
 const EXIT_SERVER_ENDED: u8 = 3;
 
@@ -85,6 +87,8 @@ impl Place {
 }
 
 fn main() -> ExitCode {
+    // A core file of this program could hold a password; none is written.
+    nix::sys::resource::setrlimit(nix::sys::resource::Resource::RLIMIT_CORE, 0, 0).ok();
     let outcome = match Arguments::parse().command {
         Command::Serve(place) => serve(&place),
         Command::Status(place) => status(&place),
@@ -93,11 +97,12 @@ fn main() -> ExitCode {
         Ok(code) => code,
         Err(error) => {
             eprintln!("anima-database: {}", with_causes(error.as_ref()));
-            let another_copy = matches!(
-                error.downcast_ref::<StartError>(),
-                Some(StartError::Server(ServerError::AnotherCopy))
-            );
-            ExitCode::from(if another_copy { EXIT_ANOTHER_COPY } else { 1 })
+            let start = error.downcast_ref::<StartError>();
+            ExitCode::from(match start {
+                Some(refusal) if refusal.is_another_copy() => EXIT_ANOTHER_COPY,
+                Some(refusal) if refusal.is_version_refusal() => EXIT_OTHER_VERSION,
+                _ => 1,
+            })
         }
     }
 }
@@ -108,7 +113,8 @@ fn serve(place: &Place) -> Result<ExitCode, Failure> {
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()?;
-    // Before the server starts, so a signal during the start still stops it cleanly.
+    // Before the server starts: a signal that comes during the start is kept, and stops the
+    // server cleanly as soon as the start is done. It does not cut the start short.
     let (terminate, interrupt) = {
         let _context = runtime.enter();
         (
@@ -121,6 +127,9 @@ fn serve(place: &Place) -> Result<ExitCode, Failure> {
     let mut running = startup::start(&tree, &layout, SETTINGS, LIMITS)?;
     if running.recovered {
         eprintln!("anima-database: recovered after an unclean stop");
+    }
+    if running.backup_exclusion == BackupExclusion::Failed {
+        eprintln!("anima-database: the cluster could not be excluded from Time Machine");
     }
     println!("ready");
     std::io::stdout().flush()?;
@@ -154,17 +163,18 @@ async fn asked_to_stop_or_ended(
 }
 
 fn status(place: &Place) -> Result<ExitCode, Failure> {
-    let tree = Tree::at(&place.tree)?;
-    let layout = place.layout()?;
-    let of_cluster = cluster::major_version(&layout)?;
-    println!("tree: PostgreSQL {}", tree.major_version()?);
-    match of_cluster {
+    let status = startup::status(&Tree::at(&place.tree)?, &place.layout()?)?;
+    println!("tree: PostgreSQL {}", status.tree);
+    match status.cluster {
         Some(version) => println!("cluster: PostgreSQL {version}"),
         None => println!("cluster: none"),
     }
-    let runs = of_cluster.is_some()
-        && matches!(anima_database::lock(&layout), Err(ServerError::AnotherCopy));
-    println!("running: {}", if runs { "yes" } else { "no" });
+    let server = if status.server_accepts_connections {
+        "accepts connections"
+    } else {
+        "not running"
+    };
+    println!("server: {server}");
     Ok(ExitCode::SUCCESS)
 }
 

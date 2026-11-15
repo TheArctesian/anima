@@ -35,7 +35,6 @@ impl Role {
     #[must_use]
     pub const fn login(self) -> &'static str {
         match self {
-            Self::Superuser => "anima_super",
             Self::Owner => "anima_owner",
             Self::Hub => "anima_hub",
         }
@@ -45,7 +44,6 @@ impl Role {
     #[must_use]
     pub const fn database(self) -> &'static str {
         match self {
-            Self::Superuser => "postgres",
             Self::Owner | Self::Hub => DATABASE,
         }
     }
@@ -61,6 +59,10 @@ pub fn write(layout: &Layout, role: Role, password: &Password) -> Result<(), Url
     let mut beside = file.clone().into_os_string();
     beside.push(".new");
     let text = url(layout, role, password);
+    owner_only::folder(&layout.urls_folder()).map_err(|source| UrlError::Io {
+        step: "make the folder of",
+        source,
+    })?;
     owner_only::new_file(beside.as_ref())
         .and_then(|mut new| {
             new.write_all(text.as_bytes())?;

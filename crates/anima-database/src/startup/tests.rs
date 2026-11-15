@@ -1,6 +1,6 @@
 use std::fs;
 
-use super::{Running, StartError, start};
+use super::{BackupExclusion, Running, StartError, start, status};
 use crate::scratch::{LIMITS, SETTINGS, local_tree};
 use crate::{Layout, Role, ServerError, Stopped, urls};
 
@@ -122,24 +122,118 @@ fn a_crash_between_the_roles_and_their_files_is_mended_at_the_next_start() {
 }
 
 #[test]
-fn a_cluster_without_its_superuser_file_is_not_given_new_logins() {
+fn a_new_cluster_gets_new_logins_also_when_old_url_files_are_there() {
     let folder = tempfile::tempdir().unwrap();
     let layout = layout_in(folder.path());
     start(&local_tree(), &layout, SETTINGS, LIMITS)
         .unwrap()
         .stop(LIMITS)
         .unwrap();
-    fs::remove_file(layout.url_file(Role::Hub)).unwrap();
-    fs::remove_file(layout.url_file(Role::Superuser)).unwrap();
+    let old = hub_password(&layout);
+    fs::remove_dir_all(layout.cluster()).unwrap();
 
-    let outcome = start(&local_tree(), &layout, SETTINGS, LIMITS);
+    let _running = start(&local_tree(), &layout, SETTINGS, LIMITS).unwrap();
+
+    assert_ne!(hub_password(&layout), old);
+}
+
+#[test]
+fn a_missing_owner_file_alone_also_gets_the_logins_made_again() {
+    let folder = tempfile::tempdir().unwrap();
+    let layout = layout_in(folder.path());
+    start(&local_tree(), &layout, SETTINGS, LIMITS)
+        .unwrap()
+        .stop(LIMITS)
+        .unwrap();
+    fs::remove_file(layout.url_file(Role::Owner)).unwrap();
+
+    let _running = start(&local_tree(), &layout, SETTINGS, LIMITS).unwrap();
+
+    assert!(urls::password(&layout, Role::Owner).unwrap().is_some());
+}
+
+#[test]
+fn a_cluster_of_another_major_version_is_refused_before_a_server_starts() {
+    let folder = tempfile::tempdir().unwrap();
+    let layout = layout_in(folder.path());
+    start(&local_tree(), &layout, SETTINGS, LIMITS)
+        .unwrap()
+        .stop(LIMITS)
+        .unwrap();
+    let version_file = layout.cluster().join("PG_VERSION");
+
+    fs::write(&version_file, "18\n").unwrap();
+    let newer = start(&local_tree(), &layout, SETTINGS, LIMITS).unwrap_err();
+    fs::write(&version_file, "16\n").unwrap();
+    let older = start(&local_tree(), &layout, SETTINGS, LIMITS).unwrap_err();
 
     assert!(
-        matches!(outcome, Err(StartError::SuperuserFileMissing)),
-        "{outcome:?}"
+        matches!(
+            newer,
+            StartError::ClusterNewer {
+                cluster: 18,
+                tree: 17
+            }
+        ),
+        "{newer}"
     );
     assert!(
-        !layout.cluster().join("postmaster.pid").exists(),
-        "no server is left"
+        matches!(
+            older,
+            StartError::ClusterOlder {
+                cluster: 16,
+                tree: 17
+            }
+        ),
+        "{older}"
+    );
+    assert!(newer.is_version_refusal() && older.is_version_refusal());
+    assert!(!layout.server_log().exists() || !layout.cluster().join("postmaster.pid").exists());
+}
+
+#[test]
+fn a_new_cluster_on_macos_is_excluded_from_time_machine() {
+    let folder = tempfile::tempdir().unwrap();
+    let layout = layout_in(folder.path());
+
+    let first = start(&local_tree(), &layout, SETTINGS, LIMITS).unwrap();
+
+    if cfg!(target_os = "macos") {
+        assert_eq!(first.backup_exclusion, BackupExclusion::Set);
+        let asked = std::process::Command::new("/usr/bin/tmutil")
+            .arg("isexcluded")
+            .arg(layout.cluster())
+            .output()
+            .unwrap();
+        assert!(
+            String::from_utf8_lossy(&asked.stdout).contains("[Excluded]"),
+            "{asked:?}"
+        );
+    } else {
+        assert_eq!(first.backup_exclusion, BackupExclusion::NotDue);
+    }
+    first.stop(LIMITS).unwrap();
+    let second = start(&local_tree(), &layout, SETTINGS, LIMITS).unwrap();
+    assert_eq!(second.backup_exclusion, BackupExclusion::NotDue);
+}
+
+#[test]
+fn status_looks_without_the_lock_and_tells_if_a_server_accepts_connections() {
+    let folder = tempfile::tempdir().unwrap();
+    let layout = layout_in(folder.path());
+    let nothing = status(&local_tree(), &layout).unwrap();
+    assert_eq!((nothing.tree, nothing.cluster), (17, None));
+    assert!(!nothing.server_accepts_connections);
+
+    let running = start(&local_tree(), &layout, SETTINGS, LIMITS).unwrap();
+    let up = status(&local_tree(), &layout).unwrap();
+    assert_eq!(up.cluster, Some(17));
+    assert!(up.server_accepts_connections);
+
+    running.stop(LIMITS).unwrap();
+    assert!(
+        !status(&local_tree(), &layout)
+            .unwrap()
+            .server_accepts_connections
     );
 }

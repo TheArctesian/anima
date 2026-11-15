@@ -117,10 +117,6 @@ fn a_root_with_a_space_gives_these_exact_paths() {
     );
     assert_eq!(layout.urls_folder(), Path::new("/var/db root/urls"));
     assert_eq!(
-        layout.url_file(Role::Superuser),
-        Path::new("/var/db root/urls/superuser.url")
-    );
-    assert_eq!(
         layout.url_file(Role::Owner),
         Path::new("/var/db root/urls/owner.url")
     );
@@ -206,7 +202,7 @@ fn a_relative_folder_is_refused_and_named() {
 
 #[test]
 fn db_001_a_socket_folder_that_postgresql_would_read_as_a_list_is_refused() {
-    for folder in ["/run/a,/tmp/b", "/run/a\"b"] {
+    for folder in ["/run/a,/tmp/b", "/run/a\"b", "/run/a ", "/run/a\n"] {
         assert_eq!(
             Layout::new(PathBuf::from("/var/db"), PathBuf::from(folder)),
             Err(LayoutError::SocketFolderList),
@@ -214,4 +210,15 @@ fn db_001_a_socket_folder_that_postgresql_would_read_as_a_list_is_refused() {
         );
     }
     assert!(Layout::new(PathBuf::from("/var/db"), PathBuf::from("/run/a b")).is_ok());
+}
+
+#[test]
+fn db_001_a_socket_folder_that_is_not_utf_8_is_refused() {
+    use std::os::unix::ffi::OsStrExt as _;
+    let folder = PathBuf::from(std::ffi::OsStr::from_bytes(b"/run/\xff"));
+
+    assert_eq!(
+        Layout::new(PathBuf::from("/var/db"), folder),
+        Err(LayoutError::SocketFolderList)
+    );
 }

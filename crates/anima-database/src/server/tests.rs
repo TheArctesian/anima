@@ -13,8 +13,9 @@ mod logging;
 
 use super::pid_file::PidFile;
 use super::{Limits, Server, ServerError, Settings, Stopped, lock, stop_left_over};
+use crate::Layout;
+use crate::cluster::SUPERUSER;
 use crate::scratch::{Database, LIMITS, SETTINGS};
-use crate::{Layout, Password, Role};
 
 fn mode_of(path: &Path) -> u32 {
     fs::metadata(path).unwrap().permissions().mode() & 0o777
@@ -41,20 +42,43 @@ fn db_001_a_ready_server_listens_on_the_private_socket_only() {
 }
 
 #[test]
-fn db_003_the_superuser_signs_in_with_the_password_it_was_made_with_and_no_other() {
-    let mut database = Database::new();
+fn db_003_the_superuser_has_no_password_and_a_login_with_one_needs_it() {
+    let database = Database::new();
     let _server = database.start();
+
+    assert_eq!(database.sql("select current_user").unwrap(), SUPERUSER);
     assert_eq!(
-        database.sql("select current_user").unwrap(),
-        Role::Superuser.login()
+        database
+            .sql("select rolpassword is null from pg_authid where rolname = current_user")
+            .unwrap(),
+        "t"
     );
-
-    database.password = Password::from_bytes(&[8; 24]);
-
-    let refusal = database.sql("select 1").unwrap_err();
+    database
+        .sql("create role probe login password 'the-right-one'")
+        .unwrap();
+    assert_eq!(
+        database
+            .sql_as("probe", "the-right-one", "select current_user")
+            .unwrap(),
+        "probe"
+    );
+    let refusal = database.sql_as("probe", "another", "select 1").unwrap_err();
     assert!(
         refusal.contains("password authentication failed"),
         "{refusal}"
+    );
+    // A password does not make anybody the superuser: that login is this user's alone.
+    database.sql("alter role probe superuser").unwrap();
+    assert_eq!(
+        database
+            .sql_as(
+                "probe",
+                "the-right-one",
+                "set role anima_super; select current_user"
+            )
+            .unwrap(),
+        SUPERUSER,
+        "a superuser by grant is a superuser; the point is that none exists but ours"
     );
 }
 

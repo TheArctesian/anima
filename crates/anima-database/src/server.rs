@@ -180,11 +180,32 @@ fn names_this_clusters_server(pid_file_text: &str, layout: &Layout) -> Result<bo
 }
 
 /// Whether `command_line` is a `postgres` program with `-D <cluster>`, as [`Server::start`]
-/// and `pg_ctl` start it.
+/// and `pg_ctl` start it. The cluster's path must end there: `cluster-copy` is another one.
 fn is_postgres_on(command_line: &str, cluster: &Path) -> bool {
-    let program = command_line.split(" -").next().unwrap_or(command_line);
-    Path::new(program.trim()).file_name() == Some(OsStr::new("postgres"))
-        && command_line.contains(&format!("-D {}", cluster.display()))
+    let flag = format!(" -D {}", cluster.display());
+    let Some((program, after)) = command_line.split_once(&flag) else {
+        return false;
+    };
+    (after.is_empty() || after.starts_with(' '))
+        && Path::new(program.trim()).file_name() == Some(OsStr::new("postgres"))
+}
+
+/// Whether a server of this cluster accepts connections now, read from `postmaster.pid`
+/// with no lock taken, so a look never stands in the way of a copy that starts.
+///
+/// # Errors
+/// When `postmaster.pid` is there and cannot be read.
+pub fn accepts_connections(layout: &Layout) -> Result<bool, ServerError> {
+    let text = match fs::read_to_string(layout.cluster().join("postmaster.pid")) {
+        Ok(text) => text,
+        Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(false),
+        Err(source) => return Err(io_error("read postmaster.pid")(source)),
+    };
+    let process = PidFile::parse(&text)
+        .and_then(PidFile::ready_process)
+        .and_then(|id| i32::try_from(id).ok());
+    // Signal 0 sends nothing and tells if the process is there.
+    Ok(process.is_some_and(|id| kill(Pid::from_raw(id), None).is_ok()))
 }
 
 /// How a stop went.

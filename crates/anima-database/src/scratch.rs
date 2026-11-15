@@ -7,8 +7,8 @@ use std::time::Duration;
 
 use tempfile::TempDir;
 
-use crate::cluster;
-use crate::{Layout, Limits, Lock, Password, Program, Role, Server, Settings, Tree};
+use crate::cluster::{self, SUPERUSER};
+use crate::{Layout, Limits, Lock, Program, Server, Settings, Tree};
 
 pub const SETTINGS: Settings = Settings {
     max_connections: 10,
@@ -23,7 +23,6 @@ pub const LIMITS: Limits = Limits {
 pub struct Database {
     pub tree: Tree,
     pub layout: Layout,
-    pub password: Password,
     pub lock: Lock,
     _folder: TempDir,
 }
@@ -34,13 +33,11 @@ impl Database {
         let folder = tempfile::tempdir().unwrap();
         let layout = Layout::new(folder.path().join("db root"), folder.path().join("s")).unwrap();
         let tree = local_tree();
-        let password = Password::from_bytes(&[9; 24]);
         let lock = crate::lock(&layout).unwrap();
-        cluster::create(&lock, &tree, &layout, &password).unwrap();
+        cluster::create(&lock, &tree, &layout).unwrap();
         Self {
             tree,
             layout,
-            password,
             lock,
             _folder: folder,
         }
@@ -53,14 +50,14 @@ impl Database {
     }
 
     /// The tree's `psql`, signed in as the superuser on `database`, with no start-up file.
+    /// No password: the test runs as the operating-system user that the cluster admits.
     pub fn psql(&self, database: &str) -> Command {
         let mut psql = Command::new(self.tree.path_of(Program::Postgres).with_file_name("psql"));
         psql.env_clear()
-            .env("PGPASSWORD", self.password.expose())
             .args(["-X", "-q", "-t", "-A", "-v", "ON_ERROR_STOP=1"])
             .arg("-h")
             .arg(self.layout.socket_folder())
-            .args(["-U", Role::Superuser.login(), "-d", database]);
+            .args(["-U", SUPERUSER, "-d", database]);
         psql
     }
 
@@ -69,6 +66,23 @@ impl Database {
         let output = self
             .psql("postgres")
             .args(["-c", statement])
+            .output()
+            .unwrap();
+        if output.status.success() {
+            Ok(String::from_utf8(output.stdout).unwrap().trim().to_owned())
+        } else {
+            Err(String::from_utf8_lossy(&output.stderr).into_owned())
+        }
+    }
+
+    /// One statement as `login` with `password`, as a client with a password signs in.
+    pub fn sql_as(&self, login: &str, password: &str, statement: &str) -> Result<String, String> {
+        let output = Command::new(self.tree.path_of(Program::Postgres).with_file_name("psql"))
+            .env_clear()
+            .env("PGPASSWORD", password)
+            .args(["-X", "-q", "-t", "-A", "-v", "ON_ERROR_STOP=1", "-h"])
+            .arg(self.layout.socket_folder())
+            .args(["-U", login, "-d", "postgres", "-c", statement])
             .output()
             .unwrap();
         if output.status.success() {

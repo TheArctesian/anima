@@ -27,6 +27,11 @@ impl PidFile {
         })
     }
 
+    /// The server process that wrote the file, when the file says it accepts connections.
+    pub fn ready_process(self) -> Option<u32> {
+        self.is_ready.then_some(self.process_id)
+    }
+
     /// Whether this file is the ready mark of the child `process_id` that was started at
     /// `spawned_at`. A file from before the start is stale, also when an old server had the
     /// number that the new child has now.

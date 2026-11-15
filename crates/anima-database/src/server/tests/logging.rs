@@ -3,7 +3,6 @@
 use std::fs;
 
 use super::mode_of;
-use crate::Password;
 use crate::scratch::Database;
 
 #[test]
@@ -39,16 +38,23 @@ fn log_007_no_statement_and_no_error_of_a_session_reaches_the_server_log() {
 }
 
 #[test]
-fn a_refused_login_is_in_the_server_log() {
-    let mut database = Database::new();
+fn a_refused_login_is_in_the_server_log_without_the_password_that_was_tried() {
+    let database = Database::new();
     let _server = database.start();
-    database.password = Password::from_bytes(&[8; 24]);
+    database
+        .sql("create role probe login password 'the-right-one'")
+        .unwrap();
 
-    database.sql("select 1").unwrap_err();
+    database
+        .sql_as("probe", "a-wrong-guess", "select 1")
+        .unwrap_err();
 
     let log = fs::read_to_string(database.layout.server_log()).unwrap();
     assert!(log.contains("password authentication failed"), "{log}");
-    assert!(!log.contains(database.password.expose()));
+    assert!(
+        !log.contains("a-wrong-guess") && !log.contains("the-right-one"),
+        "{log}"
+    );
 }
 
 #[test]

@@ -96,6 +96,21 @@ impl Place {
     }
 }
 
+/// A failed test must leave no server: one that a killed `serve` left is stopped at once.
+impl Drop for Place {
+    fn drop(&mut self) {
+        if self.server_runs() {
+            Command::new(tree().join("bin/pg_ctl"))
+                .arg("stop")
+                .arg("--pgdata")
+                .arg(self.root().join("cluster"))
+                .args(["--mode", "immediate", "--silent"])
+                .status()
+                .ok();
+        }
+    }
+}
+
 /// A running `serve`. Dropping it asks it to stop, so a failed test leaves no server.
 struct Serving {
     child: Option<Child>,
@@ -196,14 +211,14 @@ fn log_007_status_tells_the_versions_and_no_secret() {
     let before = place.command("status").output().unwrap();
     assert_eq!(
         text(&before.stdout),
-        "tree: PostgreSQL 17\ncluster: none\nrunning: no\n"
+        "tree: PostgreSQL 17\ncluster: none\nserver: not running\n"
     );
 
     let serving = place.serve();
     let during = place.command("status").output().unwrap();
     assert_eq!(
         text(&during.stdout),
-        "tree: PostgreSQL 17\ncluster: PostgreSQL 17\nrunning: yes\n"
+        "tree: PostgreSQL 17\ncluster: PostgreSQL 17\nserver: accepts connections\n"
     );
     let served = serving.finish(Signal::SIGTERM);
 
@@ -241,4 +256,46 @@ fn a_folder_that_is_not_a_tree_is_refused_before_anything_is_made() {
     assert_eq!(output.status.code(), Some(1));
     assert!(text(&output.stderr).contains("has no program `postgres`"));
     assert!(!Path::new(&place.root()).exists());
+}
+
+#[test]
+fn a_cluster_of_another_major_version_is_refused_and_not_touched() {
+    let place = Place::new();
+    assert!(place.serve().finish(Signal::SIGTERM).status.success());
+    let version_file = place.root().join("cluster/PG_VERSION");
+
+    for (version, told) in [("18", "newer Anima"), ("16", "upgrades the database")] {
+        fs::write(&version_file, format!("{version}\n")).unwrap();
+        let before = files_of(&place.root().join("cluster"));
+
+        let refused = place.command("serve").output().unwrap();
+
+        assert_eq!(refused.status.code(), Some(11), "{version}");
+        assert!(
+            text(&refused.stderr).contains(told),
+            "{}",
+            text(&refused.stderr)
+        );
+        assert_eq!(files_of(&place.root().join("cluster")), before, "{version}");
+    }
+
+    fs::write(&version_file, "17\n").unwrap();
+    let _serving = place.serve();
+    place.as_hub("select 1").unwrap();
+}
+
+/// Every file below `folder` with its bytes.
+fn files_of(folder: &Path) -> Vec<(PathBuf, Vec<u8>)> {
+    let mut files = Vec::new();
+    for entry in fs::read_dir(folder).unwrap() {
+        let path = entry.unwrap().path();
+        if path.is_dir() {
+            files.extend(files_of(&path));
+        } else {
+            let bytes = fs::read(&path).unwrap();
+            files.push((path, bytes));
+        }
+    }
+    files.sort();
+    files
 }

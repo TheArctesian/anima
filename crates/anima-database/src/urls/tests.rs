@@ -33,12 +33,6 @@ fn db_002_a_url_names_the_login_its_database_and_the_socket_folder() {
             "postgres://anima_owner:{secret}@localhost:5432/anima?host=%2Frun%2Fapp%20support%2Fpg"
         )
     );
-    assert_eq!(
-        *url(&layout, Role::Superuser, &password),
-        format!(
-            "postgres://anima_super:{secret}@localhost:5432/postgres?host=%2Frun%2Fapp%20support%2Fpg"
-        )
-    );
 }
 
 #[test]

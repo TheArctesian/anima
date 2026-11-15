@@ -3,8 +3,7 @@
 //!
 //! ```text
 //! <root>/cluster/      the PostgreSQL data folder
-//! <root>/urls/         superuser.url, owner.url and hub.url; the hub's
-//!                      ANIMA_DATABASE_URL_FILE names hub.url
+//! <root>/urls/         owner.url and hub.url; the hub's ANIMA_DATABASE_URL_FILE names hub.url
 //! <root>/server.log    the server's own log
 //! <root>/lock          held by the one copy that runs this database
 //! <socket folder>/     the Unix socket; the server has no TCP listener (DB-001)
@@ -51,12 +50,10 @@ pub struct UserFolders {
     pub xdg_runtime_dir: Option<PathBuf>,
 }
 
-/// The logins that get a URL file. The hub is given the owner's file for `migrate` and the
-/// hub's file to serve (K2 "Roles", R-016); it is never given the superuser's.
+/// The two logins that get a URL file. The hub is given the owner's file for `migrate` and
+/// its own to serve (K2 "Roles", R-016).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Role {
-    /// The cluster's superuser, for this crate's own work: the roles, the checks, an upgrade.
-    Superuser,
     /// Applies migrations and owns every object.
     Owner,
     /// The hub's runtime login, which owns nothing.
@@ -73,7 +70,8 @@ pub enum LayoutError {
     )]
     SocketPathTooLong { length: usize, limit: usize },
     #[error(
-        "the socket folder's path has a comma or a quotation mark, which PostgreSQL reads as a list"
+        "the socket folder's path has a comma, a quotation mark or a space at an end, or is \
+         not UTF-8; PostgreSQL would read another folder from it"
     )]
     SocketFolderList,
 }
@@ -94,13 +92,11 @@ impl Layout {
     pub fn new(root: PathBuf, socket_folder: PathBuf) -> Result<Self, LayoutError> {
         absolute(&root, "database root")?;
         absolute(&socket_folder, "socket folder")?;
-        // `unix_socket_directories` is a list: a comma would split the path, and a part of
-        // it could name a folder that others can reach.
+        // `unix_socket_directories` is a list: a comma would split the path, and PostgreSQL
+        // trims spaces at both ends of an entry. Either gives a folder that was never checked.
         let listed = socket_folder
-            .as_os_str()
-            .as_encoded_bytes()
-            .iter()
-            .any(|byte| matches!(byte, b',' | b'"'));
+            .to_str()
+            .is_none_or(|text| text.contains([',', '"']) || text.trim() != text);
         if listed {
             return Err(LayoutError::SocketFolderList);
         }
@@ -175,7 +171,6 @@ impl Layout {
     #[must_use]
     pub fn url_file(&self, role: Role) -> PathBuf {
         self.urls_folder().join(match role {
-            Role::Superuser => "superuser.url",
             Role::Owner => "owner.url",
             Role::Hub => "hub.url",
         })

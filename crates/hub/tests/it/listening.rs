@@ -3,6 +3,7 @@
 //! and refuses other addresses (SEC-001, NET-001, NET-002). Ports are chosen by the system;
 //! every spawn has a deadline and is killed when the test ends.
 
+mod bundled;
 mod served;
 
 use std::{
@@ -38,6 +39,21 @@ fn spawn(args: &[&str], envs: &[(&str, &str)]) -> Running {
 }
 
 /// The standard error of a hub that must stop by itself, and whether it succeeded.
+/// As [`spawn`], with a pipe for standard input.
+fn spawn_with_input(args: &[&str], envs: &[(&str, &str)]) -> Running {
+    let child = Command::new(env!("CARGO_BIN_EXE_anima-hub"))
+        .args(args)
+        .env_clear()
+        .env("ANIMA_LOG", "info")
+        .envs(envs.iter().copied())
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    Running(child)
+}
+
 fn refused_start(envs: &[(&str, &str)]) -> (bool, String) {
     finished(spawn(&[], envs))
 }

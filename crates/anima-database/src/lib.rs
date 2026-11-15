@@ -4,20 +4,26 @@
 //! cannot tell this database from the one in Docker. This crate owns everything on the other
 //! side of that file: where the files are, the server process, the roles.
 
-pub mod cluster;
+mod cluster;
 mod layout;
 mod owner_only;
 mod password;
-pub mod roles;
+mod roles;
 mod server;
 pub mod startup;
 mod tree;
-pub mod urls;
+mod urls;
 
 #[cfg(test)]
 mod scratch;
 
+pub use cluster::ClusterError;
 pub use layout::{Layout, LayoutError, Platform, Role, UserFolders};
-pub use password::Password;
-pub use server::{Limits, Lock, Server, ServerError, Settings, Stopped, lock, stop_left_over};
-pub use tree::{Program, Tree, TreeError};
+pub use roles::RolesError;
+pub use server::{Limits, ServerError, Settings, Stopped};
+pub use tree::{Tree, TreeError};
+pub use urls::UrlError;
+
+use password::Password;
+use server::{Lock, Server, lock, stop_left_over};
+use tree::Program;

@@ -91,4 +91,18 @@ fn only_a_postgres_started_on_this_cluster_counts_as_its_server() {
         "another program"
     );
     assert!(!is_postgres_on("", cluster));
+    assert!(
+        !is_postgres_on(
+            "postgres -D /Users/a/Application Support/db/cluster-copy -c port=5432",
+            cluster
+        ),
+        "a cluster whose path only starts with this one"
+    );
+    assert!(
+        is_postgres_on(
+            "/Users/a/My -Apps/bin/postgres -D /Users/a/Application Support/db/cluster",
+            cluster
+        ),
+        "a tree path with a space and a dash"
+    );
 }

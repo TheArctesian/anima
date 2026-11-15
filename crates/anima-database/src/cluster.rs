@@ -2,18 +2,39 @@
 //!
 //! These choices are fixed when the cluster is made and cannot change without a dump: UTF-8,
 //! the built-in `C.UTF-8` locale provider (no ICU, and no index that an operating system
-//! update can break), data checksums (PostgreSQL 18 turns them on, and an upgrade needs both
-//! sides equal) and `scram-sha-256` for every login.
+//! update can break) and data checksums (PostgreSQL 18 turns them on, and an upgrade needs
+//! both sides equal).
+//!
+//! Who may sign in is this crate's own `pg_hba.conf`. The superuser has no password: it signs
+//! in only as the operating-system user who runs the database, which PostgreSQL asks the
+//! kernel about (`peer`). Every other login needs `scram-sha-256`. There is no rule for a
+//! network connection, and the server has no network listener (DB-001).
 
 use std::fs;
 use std::io::{self, Write};
 use std::path::Path;
 
-use crate::urls::{self, UrlError};
-use crate::{Layout, Lock, Password, Program, Role, Tree, owner_only};
+use nix::unistd::{Uid, User};
+
+use crate::{Layout, Lock, Program, Tree, owner_only};
 
 #[cfg(test)]
 mod tests;
+
+/// The superuser of a bundled cluster. Only this crate signs in with it, for the roles, the
+/// checks and an upgrade; the hub is never given it.
+pub const SUPERUSER: &str = "anima_super";
+
+/// The name of the map in `pg_ident.conf` that lets the operating-system user be [`SUPERUSER`].
+const USER_MAP: &str = "anima";
+
+const ACCESS_RULES: &str = "\
+# Written by anima-database; a change here is lost when the cluster is made again.
+# The superuser: only the operating-system user who runs the database, no password.
+local all anima_super peer map=anima
+# Every other login: its password, never in clear text.
+local all all scram-sha-256
+";
 
 #[derive(Debug, thiserror::Error)]
 pub enum ClusterError {
@@ -25,23 +46,18 @@ pub enum ClusterError {
     },
     #[error("initdb failed: {reason}")]
     Initdb { reason: String },
-    #[error(
-        "the initdb password file could not be removed and still holds the superuser \
-         password (initdb failed: {initdb_failed})"
-    )]
-    PasswordFileLeft {
-        initdb_failed: bool,
-        #[source]
-        source: io::Error,
-    },
     #[error("the cluster's PG_VERSION file holds no version number")]
     VersionFile,
     #[error("a cluster folder is there already; a new cluster is never made over it")]
     AlreadyThere,
-    #[error(transparent)]
-    Url(#[from] UrlError),
+    #[error("the operating system has no name for the user who runs the database")]
+    UserName,
     #[error("pg_controldata did not say how the cluster was stopped")]
     ControlText,
+}
+
+fn io_error(step: &'static str) -> impl FnOnce(io::Error) -> ClusterError {
+    move |source| ClusterError::Io { step, source }
 }
 
 /// How a cluster's major version stands to the tree that would run it.
@@ -76,65 +92,77 @@ pub fn major_version(layout: &Layout) -> Result<Option<u32>, ClusterError> {
             .map(Some)
             .map_err(|_| ClusterError::VersionFile),
         Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(None),
-        Err(source) => Err(ClusterError::Io {
-            step: "read the cluster's PG_VERSION",
-            source,
-        }),
+        Err(source) => Err(io_error("read the cluster's PG_VERSION")(source)),
     }
 }
 
-/// Makes the cluster with `initdb` and writes the superuser's URL file. The caller holds the
-/// [`Lock`]: two copies that make one cluster remove each other's half-made folder.
+/// Makes the cluster with `initdb`. The caller holds the [`Lock`]: two copies that make one
+/// cluster remove each other's half-made folder.
 ///
-/// The cluster is made beside its place and moved in last, after the URL file is written.
-/// So a crash at any point leaves either no cluster, and the next start makes one, or a
-/// whole cluster with its superuser's file.
-///
-/// The password reaches `initdb` through a file with mode 0600 that is removed again, never
-/// through the command line or the environment (LOG-007).
+/// The cluster is made beside its place, gets its access rules, and is moved in last. So a
+/// crash at any point leaves either no cluster, and the next start makes one, or a whole
+/// cluster. No password exists at this point: the superuser has none.
 ///
 /// # Errors
 /// When a cluster folder is there already, a folder or a file cannot be made, or `initdb`
 /// fails.
-pub fn create(
-    _lock: &Lock,
-    tree: &Tree,
-    layout: &Layout,
-    superuser_password: &Password,
-) -> Result<(), ClusterError> {
-    let io = |step| move |source| ClusterError::Io { step, source };
-    // Before anything is written: a new superuser file beside an old cluster would lock
-    // that cluster's owner out.
+pub fn create(_lock: &Lock, tree: &Tree, layout: &Layout) -> Result<(), ClusterError> {
     if layout.cluster().exists() {
         return Err(ClusterError::AlreadyThere);
     }
-    for folder in [layout.root().to_path_buf(), layout.urls_folder()] {
-        owner_only::folder(&folder).map_err(io("make a database folder"))?;
-    }
+    owner_only::folder(layout.root()).map_err(io_error("make the database root"))?;
     let being_made = layout.cluster_being_made();
     if let Err(error) = fs::remove_dir_all(&being_made)
         && error.kind() != io::ErrorKind::NotFound
     {
-        return Err(io("remove a half-made cluster")(error));
+        return Err(io_error("remove a half-made cluster")(error));
     }
-    let password_file = layout.urls_folder().join("initdb.password");
-    let made = owner_only::new_file(&password_file)
-        .and_then(|mut file| file.write_all(superuser_password.expose().as_bytes()))
-        .map_err(io("write the initdb password file"))
-        .and_then(|()| run_initdb(tree, &being_made, &password_file));
-    // Removed whether initdb passed or failed. A file that stays holds the password, so that
-    // fault is reported before any other.
-    if let Err(source) = fs::remove_file(&password_file)
-        && source.kind() != io::ErrorKind::NotFound
-    {
-        return Err(ClusterError::PasswordFileLeft {
-            initdb_failed: made.is_err(),
-            source,
-        });
-    }
-    made?;
-    urls::write(layout, Role::Superuser, superuser_password)?;
-    fs::rename(&being_made, layout.cluster()).map_err(io("move the new cluster into place"))
+    run_initdb(tree, &being_made)?;
+    replace(&being_made.join("pg_hba.conf"), ACCESS_RULES)
+        .map_err(io_error("write the cluster's access rules"))?;
+    replace(&being_made.join("pg_ident.conf"), &user_map(&this_user()?))
+        .map_err(io_error("write the cluster's user map"))?;
+    fs::rename(&being_made, layout.cluster()).map_err(io_error("move the new cluster into place"))
+}
+
+/// Lets the operating-system user who runs this program be the cluster's superuser, and
+/// nobody else. Run before each start: the user's name can change between two starts.
+///
+/// # Errors
+/// When the user has no name or the map cannot be written.
+pub fn admit_this_user(_lock: &Lock, layout: &Layout) -> Result<(), ClusterError> {
+    replace(
+        &layout.cluster().join("pg_ident.conf"),
+        &user_map(&this_user()?),
+    )
+    .map_err(io_error("write the cluster's user map"))
+}
+
+fn this_user() -> Result<String, ClusterError> {
+    User::from_uid(Uid::effective())
+        .ok()
+        .flatten()
+        .map(|user| user.name)
+        .ok_or(ClusterError::UserName)
+}
+
+/// The `pg_ident.conf` text that maps `user` to [`SUPERUSER`]. The name is quoted, so no
+/// character in it can add a second mapping.
+fn user_map(user: &str) -> String {
+    format!(
+        "# Written by anima-database at each start.\n{USER_MAP} \"{}\" {SUPERUSER}\n",
+        user.replace('"', "\"\"")
+    )
+}
+
+/// Writes `text` beside `file` and moves it in, so the server never reads half a file.
+fn replace(file: &Path, text: &str) -> io::Result<()> {
+    let mut beside = file.to_path_buf().into_os_string();
+    beside.push(".new");
+    let mut new = owner_only::new_file(beside.as_ref())?;
+    new.write_all(text.as_bytes())?;
+    new.sync_all()?;
+    fs::rename(&beside, file)
 }
 
 /// Whether the cluster's last server wrote its shutdown checkpoint. `false` after a kill or
@@ -147,10 +175,7 @@ pub fn was_stopped_cleanly(tree: &Tree, layout: &Layout) -> Result<bool, Cluster
         .command(Program::PgControldata)
         .arg(layout.cluster())
         .output()
-        .map_err(|source| ClusterError::Io {
-            step: "run pg_controldata",
-            source,
-        })?;
+        .map_err(io_error("run pg_controldata"))?;
     String::from_utf8_lossy(&output.stdout)
         .lines()
         .find_map(|line| line.strip_prefix("Database cluster state:"))
@@ -158,27 +183,24 @@ pub fn was_stopped_cleanly(tree: &Tree, layout: &Layout) -> Result<bool, Cluster
         .ok_or(ClusterError::ControlText)
 }
 
-fn run_initdb(tree: &Tree, cluster: &Path, password_file: &Path) -> Result<(), ClusterError> {
+fn run_initdb(tree: &Tree, cluster: &Path) -> Result<(), ClusterError> {
     let output = tree
         .command(Program::Initdb)
         .arg("--pgdata")
         .arg(cluster)
-        .args(["--username", Role::Superuser.login()])
-        .args(["--auth", "scram-sha-256", "--encoding", "UTF8"])
+        .args(["--username", SUPERUSER])
+        // Replaced by this crate's own rules before any server starts.
+        .args(["--auth-local", "peer", "--auth-host", "reject"])
+        .args(["--encoding", "UTF8", "--locale", "C"])
         .args([
             "--locale-provider",
             "builtin",
             "--builtin-locale",
             "C.UTF-8",
         ])
-        .args(["--locale", "C", "--data-checksums"])
-        .arg("--pwfile")
-        .arg(password_file)
+        .arg("--data-checksums")
         .output()
-        .map_err(|source| ClusterError::Io {
-            step: "run initdb",
-            source,
-        })?;
+        .map_err(io_error("run initdb"))?;
     if output.status.success() {
         return Ok(());
     }
@@ -187,9 +209,7 @@ fn run_initdb(tree: &Tree, cluster: &Path, password_file: &Path) -> Result<(), C
     })
 }
 
-/// The cause in what `initdb` printed: its own `initdb: error:` line. No other line is
-/// passed on, because `initdb` feeds the password to the server in a statement, and a server
-/// that fails there can print that statement (LOG-007).
+/// The cause in what `initdb` printed: its own `initdb: error:` line and no other.
 fn initdb_reason(errors: &str) -> String {
     errors
         .lines()

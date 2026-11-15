@@ -200,9 +200,12 @@ dependencies = [
 name = "anima-database"
 version = "0.1.0"
 dependencies = [
+ "base64 0.23.1",
  "clap",
  "getrandom 0.4.3",
+ "hmac 0.13.0",
  "nix 0.31.3",
+ "sha2 0.11.1",
  "sqlx",
  "static_assertions",
  "tempfile",
@@ -256,6 +259,7 @@ version = "0.1.0"
 dependencies = [
  "aes 0.9.4",
  "agent-core",
+ "anima-database",
  "anima-hub",
  "argon2",
  "async-graphql",
