@@ -43,6 +43,9 @@ type Config struct {
 	// when a device connects, not for each stream: a connected device stays
 	// connected until the hub link disconnects it.
 	Permits func(tunnel.DeviceKey) bool
+	// Enrolment lets devices join with an invite. Nil means that the list
+	// changes only by Permits' owner.
+	Enrolment *Enrolment
 	// Log gets what the operator must know. Nil means no log.
 	Log *slog.Logger
 	// RelayMapURL is where the relay map is at the first start. Empty means
@@ -60,6 +63,10 @@ type Link struct {
 	permits  func(tunnel.DeviceKey) bool
 	streams  streams
 	accepted chan struct{}
+
+	enrolment     *Enrolment
+	enrolListener net.Listener
+	enrolled      chan struct{}
 }
 
 // Start connects the hub link to its relay and starts to accept streams.
@@ -69,12 +76,18 @@ func Start(ctx context.Context, cfg Config) (*Link, error) {
 	if err != nil || !target.Addr().IsLoopback() || target.Port() == 0 {
 		return nil, ErrTarget
 	}
+	log := cfg.Log
+	if log == nil {
+		log = slog.New(slog.NewTextHandler(io.Discard, nil))
+	}
+	link := &Link{target: target.String(), log: log, permits: cfg.Permits, enrolment: cfg.Enrolment,
+		accepted: make(chan struct{}), enrolled: make(chan struct{})}
 	hub, err := tunnel.StartHub(ctx, tunnel.HubConfig{
 		Key:          cfg.Identity.Key,
 		PresharedKey: cfg.Identity.PresharedKey,
 		Relay:        cfg.Identity.Relay,
 		RelayMapURL:  cfg.RelayMapURL,
-		Admit:        cfg.Permits,
+		Admit:        func(key tunnel.DeviceKey) bool { return link.admits(key) },
 		DebugLogf:    cfg.DebugLogf,
 	})
 	if err != nil {
@@ -85,11 +98,17 @@ func Start(ctx context.Context, cfg Config) (*Link, error) {
 		hub.Close()
 		return nil, err
 	}
-	log := cfg.Log
-	if log == nil {
-		log = slog.New(slog.NewTextHandler(io.Discard, nil))
+	link.hub, link.listener = hub, listener
+	if cfg.Enrolment == nil {
+		close(link.enrolled)
+	} else {
+		if link.enrolListener, err = hub.Listen(tunnel.EnrolPort); err != nil {
+			listener.Close()
+			hub.Close()
+			return nil, err
+		}
+		go link.acceptEnrolments(link.enrolListener)
 	}
-	link := &Link{hub: hub, listener: listener, target: target.String(), log: log, permits: cfg.Permits, accepted: make(chan struct{})}
 	go link.accept()
 	return link, nil
 }
@@ -127,6 +146,10 @@ func (l *Link) Close() error {
 	l.streams.closing()
 	l.listener.Close()
 	<-l.accepted
+	if l.enrolListener != nil {
+		l.enrolListener.Close()
+	}
+	<-l.enrolled
 	l.streams.closeAll()
 	return l.hub.Close()
 }

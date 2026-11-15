@@ -6,9 +6,9 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"log/slog"
 
+	"github.com/TheArctesian/anima/link/redacted"
 	"github.com/tailscale/tailcat"
 	"tailscale.com/types/key"
 )
@@ -17,39 +17,28 @@ import (
 // because the text can be a damaged secret (LNK-008).
 var ErrBadKey = errors.New("tunnel: the text is not a key")
 
-// secret is what PrivateKey, PresharedKey and Address have in common: no
-// way of printing, logging or encoding shows them (LNK-008). Only Reveal
-// gives the text. Two cases are not covered: a printer that reads memory by
-// reflection, and fmt on a struct that holds a secret in an unexported
-// field (fmt cannot call the methods of such a field). Keep secrets in
-// exported fields.
-type secret struct{}
-
-const redacted = "[secret]"
-
-// String hides the secret.
-func (secret) String() string { return redacted }
-
-// GoString hides the secret.
-func (secret) GoString() string { return redacted }
-
-// Format hides the secret for every verb, also %d and %x.
-func (secret) Format(state fmt.State, _ rune) { fmt.Fprint(state, redacted) }
-
-// LogValue hides the secret in structured logs.
-func (secret) LogValue() slog.Value { return slog.StringValue(redacted) }
-
-// MarshalText hides the secret in JSON and in every other text encoding.
-func (secret) MarshalText() ([]byte, error) { return []byte(redacted), nil }
-
 // PrivateKey is the secret identity of a hub or a device.
 type PrivateKey struct {
-	secret
+	redacted.Secret
 	node key.NodePrivate
 }
 
 // NewPrivateKey makes a new identity.
 func NewPrivateKey() PrivateKey { return PrivateKey{node: key.NewNode()} }
+
+// PrivateKeyFromSeed makes the key that 32 secret bytes give. Two sides that
+// have the same bytes get the same key: an invite code gives a temporary key
+// in this way (LNK-003).
+func PrivateKeyFromSeed(seed [32]byte) PrivateKey {
+	// The form of a Curve25519 private key.
+	seed[0] &= 248
+	seed[31] = (seed[31] & 127) | 64
+	k, err := ParsePrivateKey("privkey:" + hex.EncodeToString(seed[:]))
+	if err != nil {
+		panic("tunnel: a seed of 32 bytes always gives a key")
+	}
+	return k
+}
 
 // ParsePrivateKey reads the text that Reveal gives.
 func ParsePrivateKey(text string) (PrivateKey, error) {
@@ -104,7 +93,7 @@ func (k *DeviceKey) UnmarshalText(text []byte) error {
 
 // PresharedKey is the second secret of a hub. It is part of the hub address.
 type PresharedKey struct {
-	secret
+	redacted.Secret
 	psk tailcat.PresharedKey
 }
 
@@ -132,7 +121,7 @@ func (k PresharedKey) IsZero() bool { return k.psk.IsZero() }
 // Address is what a device needs to find and authenticate a hub: the hub's
 // public key, its pre-shared key and its relay.
 type Address struct {
-	secret
+	redacted.Secret
 	text tailcat.Addr
 }
 

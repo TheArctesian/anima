@@ -217,3 +217,68 @@ func TestLNK004TheOperatorRevokesADeviceAndItsLocalPortStopsWorking(t *testing.T
 		t.Errorf("a second revoke: %q, exit %d", text, code)
 	}
 }
+
+func TestLNK003TheOperatorMakesAnInviteAndADeviceJoinsWithIt(t *testing.T) {
+	hub := startHub(t)
+	made, code := hub.ctl(t, "invites.make", `{"name":"Maya's laptop"}`)
+	var invite struct {
+		Invite  string
+		Expires time.Time
+	}
+	if err := json.Unmarshal([]byte(made), &invite); code != 0 || err != nil || invite.Invite == "" {
+		t.Fatalf("invites.make: exit %d", code)
+	}
+	if listed, _ := hub.ctl(t, "invites.list"); !strings.Contains(listed, "Maya's laptop") || strings.Contains(listed, invite.Invite[:40]) {
+		t.Errorf("invites.list must show the open invite by name and not its text")
+	}
+
+	state := stateDir(t)
+	var out, errs output
+	joinCode := run(context.Background(), []string{"join", "-state", state}, stdio{strings.NewReader(invite.Invite + "\n"), &out, &errs})
+	if joinCode != 0 || !strings.Contains(out.String(), "joined") {
+		t.Fatalf("join: exit %d, %q %q", joinCode, out.String(), errs.String())
+	}
+	if listed, _ := hub.ctl(t, "devices.list"); !strings.Contains(listed, "Maya's laptop") {
+		t.Errorf("devices.list = %s, want the joined device", listed)
+	}
+	if listed, _ := hub.ctl(t, "invites.list"); listed != "[]\n" {
+		t.Errorf("invites.list after the use = %q, want none", listed)
+	}
+
+	again := run(context.Background(), []string{"join", "-state", stateDir(t)}, stdio{strings.NewReader(invite.Invite), io.Discard, &errs})
+	if again != 1 || !strings.Contains(errs.String(), "did not answer") {
+		t.Errorf("a second join with the same invite: exit %d, %q", again, errs.String())
+	}
+
+	for _, shown := range []string{hub.log.String(), out.String(), errs.String()} {
+		if strings.Contains(shown, invite.Invite) || strings.Contains(shown, invite.Invite[15:40]) {
+			t.Error("the invite is in a log or in the output of join")
+		}
+	}
+}
+
+func TestLNK003TheOperatorCancelsAnInvite(t *testing.T) {
+	hub := startHub(t)
+	made, _ := hub.ctl(t, "invites.make", `{"name":"phone"}`)
+	var invite struct{ Invite string }
+	json.Unmarshal([]byte(made), &invite)
+	listed, _ := hub.ctl(t, "invites.list")
+	var open []struct{ ID string }
+	if err := json.Unmarshal([]byte(listed), &open); err != nil || len(open) != 1 {
+		t.Fatalf("invites.list = %s", listed)
+	}
+
+	if text, code := hub.ctl(t, "invites.cancel", fmt.Sprintf(`{"id":%q}`, open[0].ID)); code != 0 {
+		t.Fatalf("invites.cancel: %q, exit %d", text, code)
+	}
+	if text, code := hub.ctl(t, "invites.cancel", fmt.Sprintf(`{"id":%q}`, open[0].ID)); code != 1 || !strings.Contains(text, "no open invite") {
+		t.Errorf("a second cancel: %q, exit %d", text, code)
+	}
+	var errs output
+	if code := run(context.Background(), []string{"join", "-state", stateDir(t)}, stdio{strings.NewReader(invite.Invite), io.Discard, &errs}); code != 1 {
+		t.Errorf("join with a cancelled invite: exit %d", code)
+	}
+	if text, code := hub.ctl(t, "invites.make", `{"name":""}`); code != 1 || !strings.Contains(text, "name") {
+		t.Errorf("an invite with no name: %q, exit %d", text, code)
+	}
+}

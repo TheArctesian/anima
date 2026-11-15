@@ -137,8 +137,13 @@ func (h *Hub) Paths() map[DeviceKey]Path {
 // Close stops the hub side.
 func (h *Hub) Close() error { return h.server.Close() }
 
-// HubPort is the port of the link that carries the hub's own traffic.
-const HubPort uint16 = 443
+// The ports of the link.
+const (
+	// HubPort carries the hub's own traffic.
+	HubPort uint16 = 443
+	// EnrolPort is where a device with an invite gives its key (LNK-003).
+	EnrolPort uint16 = 444
+)
 
 // Join copies bytes between two streams in both directions until both have
 // ended, then closes both. When one direction ends, the other stays open, so

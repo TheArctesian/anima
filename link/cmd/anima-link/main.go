@@ -16,6 +16,7 @@ import (
 
 const usage = `usage: anima-link hub -state DIR -target 127.0.0.1:PORT [-stop-with-stdin]
        anima-link device -state DIR [-listen 127.0.0.1:PORT] [-stop-with-stdin]
+       anima-link join -state DIR          (the invite is read from standard input)
        anima-link ctl -state DIR VERB [JSON-ARGUMENTS]`
 
 // stdio is the three streams of the process. Tests give their own.
@@ -37,6 +38,7 @@ func run(ctx context.Context, args []string, streams stdio) int {
 	commands := map[string]func(context.Context, []string, stdio) error{
 		"hub":    runHub,
 		"device": runDevice,
+		"join":   runJoin,
 		"ctl":    runCtl,
 	}
 	if len(args) == 0 || commands[args[0]] == nil {

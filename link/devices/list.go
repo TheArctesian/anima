@@ -15,12 +15,12 @@ import (
 
 // Refusal is a rule of the list that a request broke. Code is for programs
 // and the text is for the operator.
-type Refusal struct {
-	Code string
-	text string
-}
+type Refusal struct{ code, text string }
 
 func (r *Refusal) Error() string { return r.text }
+
+// Code names the rule for a program.
+func (r *Refusal) Code() string { return r.code }
 
 // The rules of the list.
 var (
@@ -49,7 +49,7 @@ func (l list) with(device Device) (list, error) {
 	switch {
 	case device.Key.IsZero():
 		return nil, ErrNoKey
-	case !plainName(device.Name):
+	case ValidName(device.Name) != nil:
 		return nil, ErrBadName
 	}
 	if _, known := l[device.Key]; known {
@@ -77,18 +77,19 @@ func (l list) without(key tunnel.DeviceKey) (list, error) {
 	return next, nil
 }
 
-// plainName reports whether a name is 1 to 64 visible characters. A control
-// or format character could disguise a name on the operator's terminal.
-func plainName(name string) bool {
-	if name == "" || !utf8.ValidString(name) || utf8.RuneCountInString(name) > maxNameLength {
-		return false
+// ValidName returns ErrBadName unless a name is 1 to 64 visible characters
+// with no space at its ends. A control or format character could disguise a
+// name on the operator's terminal.
+func ValidName(name string) error {
+	if name == "" || name != strings.TrimSpace(name) || !utf8.ValidString(name) || utf8.RuneCountInString(name) > maxNameLength {
+		return ErrBadName
 	}
 	for _, r := range name {
 		if unicode.IsControl(r) || unicode.Is(unicode.Cf, r) {
-			return false
+			return ErrBadName
 		}
 	}
-	return true
+	return nil
 }
 
 // permits reports whether a key is in the list.

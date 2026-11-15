@@ -82,12 +82,15 @@ func hubVerbs(link *hublink.Link, permitted *devices.Store, now func() time.Time
 	}
 }
 
-// refusalOf passes a rule of the device list to the caller of the control
+// refusalOf passes a rule of the device list or of the invites to the caller of the control
 // socket with its code. Other errors stay inside.
 func refusalOf(err error) error {
-	var rule *devices.Refusal
+	var rule interface {
+		error
+		Code() string
+	}
 	if errors.As(err, &rule) {
-		return &control.Error{Code: rule.Code, Message: rule.Error()}
+		return &control.Error{Code: rule.Code(), Message: rule.Error()}
 	}
 	return err
 }
