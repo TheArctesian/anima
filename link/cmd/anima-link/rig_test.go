@@ -189,3 +189,46 @@ func (h runningHub) permit(t *testing.T, key tunnel.PrivateKey, name string) (st
 	keyText, _ := key.Public().MarshalText()
 	return h.ctl(t, "devices.permit", fmt.Sprintf(`{"key":%q,"name":%q}`, keyText, name))
 }
+
+// startDevice starts a device link, as a program, for a device that already
+// has its key permitted on the hub and the hub's address saved.
+func startDevice(t *testing.T, hub runningHub) (state, local string) {
+	t.Helper()
+	state = stateDir(t)
+	dir, err := statedir.Open(state)
+	if err != nil {
+		t.Fatal(err)
+	}
+	device, err := identity.LoadDevice(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if device.Hub, err = tunnel.ParseAddress(hub.address(t)); err != nil {
+		t.Fatal(err)
+	}
+	if err := device.Save(dir); err != nil {
+		t.Fatal(err)
+	}
+	dir.Close()
+	if text, code := hub.permit(t, device.Key, "device link"); code != 0 {
+		t.Fatalf("devices.permit: %q, exit %d", text, code)
+	}
+
+	stdinReader, stdinWriter := io.Pipe()
+	log := &output{}
+	go run(context.Background(), []string{"device", "-state", state, "-stop-with-stdin"}, stdio{stdinReader, io.Discard, log})
+	t.Cleanup(func() { stdinWriter.Close() })
+	deadline := time.Now().Add(20 * time.Second)
+	for !strings.Contains(log.String(), "ready") {
+		if time.Now().After(deadline) {
+			t.Fatalf("the device link did not start: %s", log)
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	text, code := runningHub{state: state}.ctl(t, "status")
+	var status struct{ Role, Local string }
+	if err := json.Unmarshal([]byte(text), &status); code != 0 || err != nil || status.Role != "device" {
+		t.Fatalf("device status = %q, exit %d", text, code)
+	}
+	return state, status.Local
+}

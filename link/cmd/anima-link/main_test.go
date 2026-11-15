@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/http"
 	"strings"
 	"testing"
 	"time"
@@ -152,5 +153,40 @@ func TestLNK008NoSecretIsInTheLogOrInAControlAnswer(t *testing.T) {
 	keyText, _ := key.Public().MarshalText()
 	if strings.Contains(hub.log.String(), string(keyText)) {
 		t.Error("the log names a device by its key and not by its fingerprint")
+	}
+}
+
+func TestTheDeviceProgramGivesALocalPortThatReachesTheHub(t *testing.T) {
+	hub := startHub(t)
+	state, local := startDevice(t, hub)
+
+	response, err := (&http.Client{Timeout: 30 * time.Second}).Get("http://" + local)
+	if err != nil {
+		t.Fatalf("through the local port of the device program: %v", err)
+	}
+	body, _ := io.ReadAll(response.Body)
+	response.Body.Close()
+	if string(body) != greeting {
+		t.Errorf("got %q, want the hub's answer", body)
+	}
+
+	deadline := time.Now().Add(30 * time.Second)
+	for {
+		text, _ := runningHub{state: state}.ctl(t, "status")
+		if strings.Contains(text, `"path":"direct"`) {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("device status = %s, want a direct path on one machine", text)
+		}
+		time.Sleep(200 * time.Millisecond)
+	}
+}
+
+func TestADeviceWithNoHubSaysThatItNeedsAnInvite(t *testing.T) {
+	var stderr output
+	code := run(context.Background(), []string{"device", "-state", stateDir(t)}, stdio{strings.NewReader(""), io.Discard, &stderr})
+	if code != 1 || !strings.Contains(stderr.String(), "needs an invite") {
+		t.Errorf("device with no hub: exit %d, %q", code, stderr.String())
 	}
 }

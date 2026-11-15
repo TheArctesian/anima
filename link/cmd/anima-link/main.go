@@ -15,6 +15,7 @@ import (
 )
 
 const usage = `usage: anima-link hub -state DIR -target 127.0.0.1:PORT [-stop-with-stdin]
+       anima-link device -state DIR [-listen 127.0.0.1:PORT] [-stop-with-stdin]
        anima-link ctl -state DIR VERB [JSON-ARGUMENTS]`
 
 // stdio is the three streams of the process. Tests give their own.
@@ -34,8 +35,9 @@ func main() {
 // code: 0 done, 1 failed, 2 wrong use.
 func run(ctx context.Context, args []string, streams stdio) int {
 	commands := map[string]func(context.Context, []string, stdio) error{
-		"hub": runHub,
-		"ctl": runCtl,
+		"hub":    runHub,
+		"device": runDevice,
+		"ctl":    runCtl,
 	}
 	if len(args) == 0 || commands[args[0]] == nil {
 		fmt.Fprintln(streams.err, usage)
