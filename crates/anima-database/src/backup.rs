@@ -31,9 +31,12 @@ pub enum BackupError {
     },
     #[error("pg_dump ended with {status}; is the database running?")]
     Dump { status: ExitStatus },
+    #[error("the backup file is not there")]
+    NoFile,
     #[error(
-        "pg_restore ended with {status} and changed nothing; the database is not empty, or \
-         the file is not a backup of this database"
+        "pg_restore ended with {status} and changed nothing. Either the database does not \
+         run, or it is not empty, or it lacks a login that the backup names, or the file is \
+         not a backup of this database"
     )]
     Restore { status: ExitStatus },
     #[error("pg_amcheck ended with {status} and checked nothing; is the database running?")]
@@ -59,7 +62,10 @@ pub fn write(tree: &Tree, layout: &Layout, file: &Path) -> Result<(), BackupErro
         .command(Program::PgDump)
         .arg("--host")
         .arg(layout.socket_folder())
-        .args(["--username", SUPERUSER, "--format", "custom", DATABASE])
+        .args(["--username", SUPERUSER, "--format", "custom"])
+        // `check` puts the `amcheck` extension into each database. It is a tool of this
+        // program, not a part of the hub's database, so a backup does not carry it.
+        .args(["--exclude-extension", "amcheck", DATABASE])
         .stdin(Stdio::null())
         .stdout(new.try_clone().map_err(io_error("make the backup file"))?)
         .stderr(Stdio::null())
@@ -85,8 +91,10 @@ pub fn write(tree: &Tree, layout: &Layout, file: &Path) -> Result<(), BackupErro
 /// ends the restore and undoes it.
 ///
 /// # Errors
-/// When `pg_restore` cannot run or fails.
+/// When the file is not there, or `pg_restore` cannot run or fails.
 pub fn restore(tree: &Tree, layout: &Layout, file: &Path) -> Result<(), BackupError> {
+    // A whole path, so a name that starts with `-` is never read as an option.
+    let file = fs::canonicalize(file).map_err(|_| BackupError::NoFile)?;
     let status = tree
         .command(Program::PgRestore)
         .arg("--host")
@@ -115,7 +123,8 @@ pub enum Checked {
 }
 
 /// Checks every table and B-tree index of the cluster with `pg_amcheck`, for use after an
-/// upgrade and after a recovery from a kill or a power cut.
+/// upgrade and after a recovery from a kill or a power cut. The first check adds the `amcheck`
+/// extension to each database; it changes nothing else.
 ///
 /// # Errors
 /// When `pg_amcheck` cannot run or could not check.
@@ -140,7 +149,8 @@ pub fn check(tree: &Tree, layout: &Layout) -> Result<Checked, BackupError> {
 }
 
 /// The relations `pg_amcheck` names as damaged. Its lines start with the kind and the quoted
-/// name, as `btree index "anima.checks.checks_pkey":`; the detail after it is not kept.
+/// name, as `btree index "anima.checks.checks_pkey":`; the detail after it is not kept. A name
+/// with a quotation mark in it would be cut there; no name of the hub has one.
 fn damaged_in(report: &str) -> BTreeSet<String> {
     report
         .lines()

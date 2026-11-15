@@ -79,14 +79,19 @@ impl Place {
 
     /// One statement as the hub, signed in from its URL file as the hub signs in.
     fn as_hub(&self, statement: &str) -> Result<(), sqlx::Error> {
-        let url = self.hub_url();
+        self.as_login("hub", statement)
+    }
+
+    /// Statements as the login of `urls/<name>.url`.
+    fn as_login(&self, name: &str, statements: &str) -> Result<(), sqlx::Error> {
+        let url = fs::read_to_string(self.root().join(format!("urls/{name}.url"))).unwrap();
         tokio::runtime::Builder::new_current_thread()
             .enable_all()
             .build()
             .unwrap()
             .block_on(async {
                 let mut session = PgConnection::connect(url.trim()).await?;
-                sqlx::raw_sql(statement).execute(&mut session).await?;
+                sqlx::raw_sql(statements).execute(&mut session).await?;
                 session.close().await
             })
     }
@@ -301,13 +306,20 @@ fn files_of(folder: &Path) -> Vec<(PathBuf, Vec<u8>)> {
 }
 
 #[test]
-fn db_007_backup_restore_and_verify_work_beside_a_running_serve() {
+fn db_007_verify_backup_and_restore_carry_the_owners_rows_to_a_new_database() {
     let source = Place::new();
     let _serving = source.serve();
+    source
+        .as_login(
+            "owner",
+            "create schema devices; create table devices.devices (id int primary key); \
+             insert into devices.devices select generate_series(1, 300); \
+             grant usage on schema devices to anima_runtime; \
+             grant select on devices.devices to anima_runtime",
+        )
+        .unwrap();
     let file = source.folder.path().join("anima.backup");
 
-    let saved = source.command("backup").arg(&file).output().unwrap();
-    assert!(saved.status.success(), "{}", text(&saved.stderr));
     let checked = source.command("verify").output().unwrap();
     assert_eq!(
         text(&checked.stdout),
@@ -315,17 +327,22 @@ fn db_007_backup_restore_and_verify_work_beside_a_running_serve() {
         "{}",
         text(&checked.stderr)
     );
+    let saved = source.command("backup").arg(&file).output().unwrap();
+    assert!(saved.status.success(), "{}", text(&saved.stderr));
 
     let target = Place::new();
     let _target_serving = target.serve();
     let restored = target.command("restore").arg(&file).output().unwrap();
     assert!(restored.status.success(), "{}", text(&restored.stderr));
-    target.as_hub("select 1").unwrap();
+    target
+        .as_hub("do $$ begin assert (select count(*) from devices.devices) = 300; end $$")
+        .unwrap();
 
     let again = target.command("restore").arg(&file).output().unwrap();
     assert_eq!(
         again.status.code(),
-        Some(0),
-        "an empty backup restores twice"
+        Some(1),
+        "a second restore finds the rows there"
     );
+    assert!(text(&again.stderr).contains("changed nothing"));
 }

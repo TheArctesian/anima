@@ -16,5 +16,6 @@ fail-fast = true
 bundled-postgres = { max-threads = 4 }
 
 [[profile.default.overrides]]
-filter = "package(anima-database) | (package(anima-hub) & test(listening::bundled))"
+# The modules named here are pure or touch files only; they start no server.
+filter = "(package(anima-database) & not test(/^(layout|password|urls|owner_only)::/)) | (package(anima-hub) & test(listening::bundled))"
 test-group = "bundled-postgres"

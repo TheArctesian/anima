@@ -10,6 +10,13 @@ use tempfile::TempDir;
 use crate::cluster::{self, SUPERUSER};
 use crate::{Layout, Limits, Lock, Program, Server, Settings, Tree};
 
+/// Where a package puts PostgreSQL 17.
+const KNOWN_TREES: [&str; 3] = [
+    "/opt/homebrew/opt/postgresql@17",
+    "/usr/local/opt/postgresql@17",
+    "/usr/lib/postgresql/17",
+];
+
 pub const SETTINGS: Settings = Settings {
     max_connections: 10,
     shared_buffers_mb: 16,
@@ -52,7 +59,7 @@ impl Database {
     /// The tree's `psql`, signed in as the superuser on `database`, with no start-up file.
     /// No password: the test runs as the operating-system user that the cluster admits.
     pub fn psql(&self, database: &str) -> Command {
-        let mut psql = Command::new(self.tree.path_of(Program::Postgres).with_file_name("psql"));
+        let mut psql = Command::new(self.psql_program());
         psql.env_clear()
             .args(["-X", "-q", "-t", "-A", "-v", "ON_ERROR_STOP=1"])
             .arg("-h")
@@ -83,7 +90,7 @@ impl Database {
 
     /// One statement as `login` with `password`, as a client with a password signs in.
     pub fn sql_as(&self, login: &str, password: &str, statement: &str) -> Result<String, String> {
-        let output = Command::new(self.tree.path_of(Program::Postgres).with_file_name("psql"))
+        let output = Command::new(self.psql_program())
             .env_clear()
             .env("PGPASSWORD", password)
             .args(["-X", "-q", "-t", "-A", "-v", "ON_ERROR_STOP=1", "-h"])
@@ -98,6 +105,20 @@ impl Database {
         }
     }
 
+    /// `psql` is a tool of the tests only. The application's own tree does not carry it, so
+    /// with such a tree in `ANIMA_POSTGRES_TREE` the tests take `psql` from an installed one.
+    fn psql_program(&self) -> PathBuf {
+        let own = self.tree.path_of(Program::Postgres).with_file_name("psql");
+        if own.is_file() {
+            return own;
+        }
+        KNOWN_TREES
+            .iter()
+            .map(|folder| PathBuf::from(folder).join("bin/psql"))
+            .find(|psql| psql.is_file())
+            .expect("no psql found in an installed PostgreSQL 17")
+    }
+
     pub fn pid_file(&self) -> PathBuf {
         self.layout.cluster().join("postmaster.pid")
     }
@@ -107,12 +128,7 @@ impl Database {
 /// When this computer has no PostgreSQL 17.
 pub fn local_tree() -> Tree {
     let named = std::env::var_os("ANIMA_POSTGRES_TREE").map(PathBuf::from);
-    let known = [
-        "/opt/homebrew/opt/postgresql@17",
-        "/usr/local/opt/postgresql@17",
-        "/usr/lib/postgresql/17",
-    ]
-    .map(PathBuf::from);
+    let known = KNOWN_TREES.map(PathBuf::from);
     named
         .iter()
         .chain(&known)

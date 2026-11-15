@@ -158,3 +158,95 @@ fn log_007_only_the_names_of_damaged_relations_are_kept() {
 
     assert_eq!(names, ["anima.checks.checks_pkey", "anima.devices.devices"]);
 }
+
+#[test]
+fn a_restore_that_fails_late_leaves_nothing_of_what_it_had_made() {
+    let (source, _source_server) = database_with_rows();
+    let folder = tempfile::tempdir().unwrap();
+    let file = folder.path().join("anima.backup");
+    write(&source.tree, &source.layout, &file).unwrap();
+    // A database with no logins: the schema is made, then giving it to its owner fails.
+    let target = Database::new();
+    let _target_server = target.start();
+    target.sql("create database anima").unwrap();
+
+    let outcome = restore(&target.tree, &target.layout, &file);
+
+    assert!(
+        matches!(outcome, Err(BackupError::Restore { .. })),
+        "{outcome:?}"
+    );
+    assert_eq!(
+        target
+            .sql_in(
+                "anima",
+                "select count(*) from pg_namespace where nspname = 'devices'"
+            )
+            .unwrap(),
+        "0",
+        "the schema that was made before the failure is gone again"
+    );
+}
+
+#[test]
+fn a_restore_of_a_file_that_is_not_there_says_so() {
+    let database = Database::new();
+
+    let outcome = restore(
+        &database.tree,
+        &database.layout,
+        std::path::Path::new("/nowhere/anima.backup"),
+    );
+
+    assert!(matches!(outcome, Err(BackupError::NoFile)), "{outcome:?}");
+}
+
+#[test]
+fn a_check_that_was_made_is_not_in_the_backup_and_the_backup_still_restores() {
+    let (source, _source_server) = database_with_rows();
+    assert_eq!(check(&source.tree, &source.layout).unwrap(), Checked::Sound);
+    let folder = tempfile::tempdir().unwrap();
+    let file = folder.path().join("anima.backup");
+
+    write(&source.tree, &source.layout, &file).unwrap();
+
+    let target = Database::new();
+    let _target_server = target.start();
+    roles::prepare(&target.layout).unwrap();
+    restore(&target.tree, &target.layout, &file).unwrap();
+    assert_eq!(
+        target
+            .sql_in(
+                "anima",
+                "select count(*) from pg_extension where extname = 'amcheck'"
+            )
+            .unwrap(),
+        "0"
+    );
+    assert_eq!(
+        target.sql_in("anima", ROWS).unwrap(),
+        "500 125250 anima_owner true"
+    );
+}
+
+#[test]
+fn a_check_that_says_damage_and_names_none_is_an_error() {
+    use std::os::unix::fs::PermissionsExt as _;
+    let database = Database::new();
+    let folder = tempfile::tempdir().unwrap();
+    let bin = folder.path().join("bin");
+    fs::create_dir(&bin).unwrap();
+    for program in ["postgres", "initdb", "pg_ctl", "pg_isready"] {
+        fs::write(bin.join(program), "").unwrap();
+    }
+    fs::write(bin.join("pg_amcheck"), "#!/bin/sh\nexit 2\n").unwrap();
+    fs::set_permissions(bin.join("pg_amcheck"), fs::Permissions::from_mode(0o755)).unwrap();
+    let tree = crate::Tree::at(folder.path()).unwrap();
+
+    let outcome = check(&tree, &database.layout);
+
+    assert!(
+        matches!(outcome, Err(BackupError::Check { .. })),
+        "{outcome:?}"
+    );
+}

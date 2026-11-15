@@ -38,7 +38,6 @@ fn spawn(args: &[&str], envs: &[(&str, &str)]) -> Running {
     Running(child)
 }
 
-/// The standard error of a hub that must stop by itself, and whether it succeeded.
 /// As [`spawn`], with a pipe for standard input.
 fn spawn_with_input(args: &[&str], envs: &[(&str, &str)]) -> Running {
     let child = Command::new(env!("CARGO_BIN_EXE_anima-hub"))
@@ -54,6 +53,7 @@ fn spawn_with_input(args: &[&str], envs: &[(&str, &str)]) -> Running {
     Running(child)
 }
 
+/// The standard error of a hub that must stop by itself, and whether it succeeded.
 fn refused_start(envs: &[(&str, &str)]) -> (bool, String) {
     finished(spawn(&[], envs))
 }
