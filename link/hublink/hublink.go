@@ -5,6 +5,8 @@ package hublink
 import (
 	"context"
 	"errors"
+	"io"
+	"log/slog"
 	"net"
 	"net/netip"
 	"time"
@@ -27,8 +29,12 @@ type Config struct {
 	Identity identity.Hub
 	// Target is the hub's loopback address.
 	Target string
-	// Permits answers if a device key can connect (LNK-002).
+	// Permits answers if a device key can connect (LNK-002). It is asked
+	// when a device connects, not for each stream: a connected device stays
+	// connected until the hub link disconnects it.
 	Permits func(tunnel.DeviceKey) bool
+	// Log gets what the operator must know. Nil means no log.
+	Log *slog.Logger
 	// RelayMapURL is where the relay map is at the first start. Empty means
 	// Tailscale's map of shared relays.
 	RelayMapURL string
@@ -40,14 +46,16 @@ type Link struct {
 	hub      *tunnel.Hub
 	listener net.Listener
 	target   string
+	log      *slog.Logger
 	streams  streams
+	accepted chan struct{}
 }
 
 // Start connects the hub link to its relay and starts to accept streams.
 // ctx limits the start only.
 func Start(ctx context.Context, cfg Config) (*Link, error) {
 	target, err := netip.ParseAddrPort(cfg.Target)
-	if err != nil || !target.Addr().IsLoopback() {
+	if err != nil || !target.Addr().IsLoopback() || target.Port() == 0 {
 		return nil, ErrTarget
 	}
 	hub, err := tunnel.StartHub(ctx, tunnel.HubConfig{
@@ -66,7 +74,11 @@ func Start(ctx context.Context, cfg Config) (*Link, error) {
 		hub.Close()
 		return nil, err
 	}
-	link := &Link{hub: hub, listener: listener, target: target.String()}
+	log := cfg.Log
+	if log == nil {
+		log = slog.New(slog.NewTextHandler(io.Discard, nil))
+	}
+	link := &Link{hub: hub, listener: listener, target: target.String(), log: log, accepted: make(chan struct{})}
 	go link.accept()
 	return link, nil
 }
@@ -80,13 +92,17 @@ func (l *Link) Relay() tunnel.Relay { return l.hub.Relay() }
 // Streams is the number of open streams of one device.
 func (l *Link) Streams(device tunnel.DeviceKey) int { return l.streams.count(device) }
 
-// Close stops the hub link and its streams.
+// Close stops the hub link. It returns when each stream and each
+// connection to the hub is closed.
 func (l *Link) Close() error {
 	l.listener.Close()
+	<-l.accepted
+	l.streams.closeAll()
 	return l.hub.Close()
 }
 
 func (l *Link) accept() {
+	defer close(l.accepted)
 	for {
 		stream, err := l.listener.Accept()
 		if err != nil {
@@ -104,10 +120,14 @@ func (l *Link) forward(stream net.Conn) {
 		stream.Close()
 		return
 	}
-	l.streams.add(device, stream)
+	if !l.streams.add(device, stream) {
+		stream.Close()
+		return
+	}
 	defer l.streams.remove(device, stream)
 	hub, err := net.DialTimeout("tcp", l.target, targetDialLimit)
 	if err != nil {
+		l.log.Warn("the hub did not accept a connection on its loopback address", "device", device)
 		stream.Close()
 		return
 	}

@@ -31,7 +31,7 @@ func runHub(ctx context.Context, args []string, streams stdio) error {
 		return err
 	}
 	defer dir.Close()
-	link, permitted, err := startHubLink(ctx, dir, *target)
+	link, permitted, err := startHubLink(ctx, dir, *target, log)
 	if err != nil {
 		return err
 	}
@@ -46,7 +46,7 @@ func runHub(ctx context.Context, args []string, streams stdio) error {
 	if *stopWithStdin {
 		go stopWhenClosed(streams.in, stop)
 	}
-	log.Info("the hub link is ready", "relay", link.Relay().Name(), "devices", len(permitted.All()))
+	log.Info("the hub link is ready", "relay", link.Relay().Name(), "devices", permitted.Count())
 	err = control.Serve(ctx, listener, hubVerbs(link, permitted, time.Now))
 	log.Info("the hub link stopped")
 	return err
@@ -54,7 +54,7 @@ func runHub(ctx context.Context, args []string, streams stdio) error {
 
 // startHubLink starts the link from the saved identity and saves the relay
 // that a first start chose, so that the address stays the same (LNK-001).
-func startHubLink(ctx context.Context, dir *statedir.Dir, target string) (*hublink.Link, *devices.Store, error) {
+func startHubLink(ctx context.Context, dir *statedir.Dir, target string, log *slog.Logger) (*hublink.Link, *devices.Store, error) {
 	hub, err := identity.LoadHub(dir)
 	if err != nil {
 		return nil, nil, err
@@ -65,7 +65,7 @@ func startHubLink(ctx context.Context, dir *statedir.Dir, target string) (*hubli
 	}
 	ctx, cancel := context.WithTimeout(ctx, startLimit)
 	defer cancel()
-	link, err := hublink.Start(ctx, hublink.Config{Identity: hub, Target: target, Permits: permitted.Permits})
+	link, err := hublink.Start(ctx, hublink.Config{Identity: hub, Target: target, Permits: permitted.Permits, Log: log})
 	if err != nil {
 		return nil, nil, err
 	}

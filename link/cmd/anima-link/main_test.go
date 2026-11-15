@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"strings"
 	"testing"
@@ -97,6 +98,16 @@ func TestLNK002TheOperatorPermitsADeviceAndItReachesTheHub(t *testing.T) {
 	}
 	if text, code := hub.permit(t, key, "again"); code != 1 || !strings.Contains(text, "already permitted") {
 		t.Errorf("a second permit of the same key: %q, exit %d", text, code)
+	}
+	keyJSON := fmt.Sprintf("%q", keyText)
+	for arguments, want := range map[string]string{
+		`{"key":` + keyJSON + `,"nam":"typo"}`:  "not valid",
+		`{"key":"nodekey:zz","name":"bad key"}`: "not valid",
+		`{"name":"no key"}`:                     "needs a key",
+	} {
+		if text, code := hub.ctl(t, "devices.permit", arguments); code != 1 || !strings.Contains(text, want) {
+			t.Errorf("devices.permit %s: %q, exit %d, want %q", arguments, text, code, want)
+		}
 	}
 }
 

@@ -4,7 +4,6 @@
 package devices
 
 import (
-	"errors"
 	"sort"
 	"strings"
 	"time"
@@ -12,11 +11,20 @@ import (
 	"github.com/TheArctesian/anima/link/tunnel"
 )
 
-// Errors of this package.
+// Refusal is a rule of the list that a request broke. Code is for programs
+// and the text is for the operator.
+type Refusal struct {
+	Code string
+	text string
+}
+
+func (r *Refusal) Error() string { return r.text }
+
+// The rules of the list.
 var (
-	ErrKnown   = errors.New("devices: this key is already permitted")
-	ErrBadName = errors.New("devices: a device needs a name of 1 to 64 characters")
-	ErrNoKey   = errors.New("devices: a device needs a key")
+	ErrKnown   = &Refusal{"device_known", "this key is already permitted"}
+	ErrBadName = &Refusal{"bad_name", "a device needs a name of 1 to 64 characters"}
+	ErrNoKey   = &Refusal{"no_key", "a device needs a key"}
 )
 
 const maxNameLength = 64

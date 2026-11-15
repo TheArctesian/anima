@@ -48,11 +48,20 @@ func (s *Store) Permit(device Device) error {
 	return nil
 }
 
-// Permits reports whether a key can connect now.
+// Permits reports whether a key is in the list. The hub link asks when a
+// device connects. A device that is connected stays connected when its key
+// leaves the list, until the hub link disconnects it (LNK-004).
 func (s *Store) Permits(key tunnel.DeviceKey) bool {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.current.permits(key)
+}
+
+// Count is the number of permitted devices.
+func (s *Store) Count() int {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return len(s.current)
 }
 
 // All returns the permitted devices, oldest first.

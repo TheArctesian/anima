@@ -5,6 +5,7 @@ package control
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -31,6 +32,17 @@ const (
 // error that is not an *Error reaches the caller as CodeFailed with a fixed
 // message, so that no detail leaves by accident.
 type Verb func(ctx context.Context, args json.RawMessage) (any, error)
+
+// Arguments reads the arguments of a request into value. A field that value
+// does not have is a mistake of the caller, and is refused.
+func Arguments(args json.RawMessage, value any) error {
+	decoder := json.NewDecoder(bytes.NewReader(args))
+	decoder.DisallowUnknownFields()
+	if decoder.Decode(value) != nil {
+		return &Error{CodeBadRequest, "the arguments of this verb are not valid"}
+	}
+	return nil
+}
 
 type request struct {
 	Verb string          `json:"verb"`

@@ -200,7 +200,7 @@ func TestAWebSocketPassesAndCountsAsAStreamOfItsDevice(t *testing.T) {
 }
 
 func TestTheTargetMustBeOnLoopback(t *testing.T) {
-	for _, target := range []string{"192.0.2.10:8443", "hub.example:8443", "127.0.0.1", "", "0.0.0.0:8443"} {
+	for _, target := range []string{"192.0.2.10:8443", "hub.example:8443", "127.0.0.1", "", "0.0.0.0:8443", "127.0.0.1:0", "[2001:db8::1]:8443"} {
 		_, err := hublink.Start(context.Background(), hublink.Config{
 			Identity: identity.Hub{Key: tunnel.NewPrivateKey(), PresharedKey: tunnel.NewPresharedKey()},
 			Target:   target,
@@ -209,5 +209,33 @@ func TestTheTargetMustBeOnLoopback(t *testing.T) {
 		if !errors.Is(err, hublink.ErrTarget) {
 			t.Errorf("target %q: err = %v, want ErrTarget", target, err)
 		}
+	}
+}
+
+func TestCloseEndsTheOpenStreamsOnBothSides(t *testing.T) {
+	r := start(t)
+	key := tunnel.NewPrivateKey()
+	r.permit(t, key)
+	_, client := r.device(t, key)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	socket, _, err := websocket.Dial(ctx, "ws://hub/ws", &websocket.DialOptions{HTTPClient: client})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer socket.CloseNow()
+
+	closed := make(chan struct{})
+	go func() { r.link.Close(); close(closed) }()
+	select {
+	case <-closed:
+	case <-time.After(10 * time.Second):
+		t.Fatal("Close still waits 10 s after the call")
+	}
+	if got := r.link.Streams(key.Public()); got != 0 {
+		t.Errorf("open streams after Close = %d, want 0", got)
+	}
+	if _, _, err := socket.Read(ctx); err == nil {
+		t.Error("the device's WebSocket is still open after the hub link closed")
 	}
 }

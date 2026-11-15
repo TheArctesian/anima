@@ -36,7 +36,7 @@ type permitRequest struct {
 func hubVerbs(link *hublink.Link, permitted *devices.Store, now func() time.Time) map[string]control.Verb {
 	return map[string]control.Verb{
 		"status": func(context.Context, json.RawMessage) (any, error) {
-			return hubStatus{Role: "hub", Relay: link.Relay().Name(), Devices: len(permitted.All())}, nil
+			return hubStatus{Role: "hub", Relay: link.Relay().Name(), Devices: permitted.Count()}, nil
 		},
 		// The answer is the hub address: a secret. It goes only to the caller
 		// of the control socket, never to a log (LNK-008).
@@ -52,24 +52,21 @@ func hubVerbs(link *hublink.Link, permitted *devices.Store, now func() time.Time
 		},
 		"devices.permit": func(_ context.Context, args json.RawMessage) (any, error) {
 			var request permitRequest
-			if json.Unmarshal(args, &request) != nil {
-				return nil, &control.Error{Code: control.CodeBadRequest, Message: `devices.permit needs {"key": "nodekey:...", "name": "..."}`}
+			if err := control.Arguments(args, &request); err != nil {
+				return nil, err
 			}
 			err := permitted.Permit(devices.Device{Key: request.Key, Name: request.Name, Permitted: now().UTC()})
-			return nil, deviceRefusal(err)
+			return nil, refusalOf(err)
 		},
 	}
 }
 
-// deviceRefusal turns a rule of the device list into a refusal that the
-// caller can read. Other errors stay inside.
-func deviceRefusal(err error) error {
-	for code, rule := range map[string]error{
-		"device_known": devices.ErrKnown, "bad_name": devices.ErrBadName, "no_key": devices.ErrNoKey,
-	} {
-		if errors.Is(err, rule) {
-			return &control.Error{Code: code, Message: rule.Error()}
-		}
+// refusalOf passes a rule of the device list to the caller of the control
+// socket with its code. Other errors stay inside.
+func refusalOf(err error) error {
+	var rule *devices.Refusal
+	if errors.As(err, &rule) {
+		return &control.Error{Code: rule.Code, Message: rule.Error()}
 	}
 	return err
 }

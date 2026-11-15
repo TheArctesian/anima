@@ -118,3 +118,16 @@ func TestServeStopsWithItsContext(t *testing.T) {
 		t.Fatal("Serve still runs 2 s after its context ended")
 	}
 }
+
+func TestArgumentsRefusesAFieldThatTheVerbDoesNotHave(t *testing.T) {
+	var in sum
+	if err := control.Arguments(json.RawMessage(`{"A":1,"B":2}`), &in); err != nil || in != (sum{1, 2}) {
+		t.Errorf("good arguments: %+v, %v", in, err)
+	}
+	for _, bad := range []string{`{"A":1,"C":2}`, `not json`, `[1,2]`} {
+		var told *control.Error
+		if err := control.Arguments(json.RawMessage(bad), &in); !errors.As(err, &told) || told.Code != control.CodeBadRequest {
+			t.Errorf("arguments %s: err = %v, want a bad request", bad, err)
+		}
+	}
+}
