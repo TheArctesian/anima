@@ -3,17 +3,17 @@
 | Item | Value |
 | --- | --- |
 | Document | Work plan: purpose, categories and priority order |
-| Version | 1.0 |
-| Date | 2026-11-13 |
+| Version | 1.1 |
+| Date | 2026-11-15 |
 | Language | ASD-STE100 Simplified Technical English (STE) |
-| Status | Approved. The operator approved the principles and the priority order on 2026-11-13. The proposals stay drafts until each has a ruling (Section 5). |
+| Status | Approved. The operator approved the principles and the priority order on 2026-11-13. The proposals stay drafts until each has a ruling (Section 5). Version 1.1 adds the plan register (Section 9) and the rules for plans (Section 10) on the operator's instruction of 2026-11-15. |
 | Related | [design-spec.md](design-spec.md), [extensions-plan.md](extensions-plan.md), [compute-plan.md](compute-plan.md), [vpn-plan.md](vpn-plan.md), [programme/handoff.md](programme/handoff.md), [programme/proposals/](programme/proposals/) |
 
 This document obeys the writing rules in Section 0 of the design specification.
 
-This document is a map. It gives the purpose of Anima, five categories for all planned work, and one priority order. It contains no build requirements. Each requirement is in the plan or the proposal that owns it (Section 5). This document does not replace a plan and does not change a requirement identifier.
+This document is a map and a register. It gives the purpose of Anima, five categories for all planned work, one priority order, and the state of each plan. It contains no build requirements. Each requirement is in the plan or the proposal that owns it (Section 5). This document does not replace a plan and does not change a requirement identifier.
 
-GitHub issues hold the state and the priority of each item of work. If this document and an issue do not agree, the issue is correct.
+This document holds the state of each plan and of each row of work (operator, 2026-11-15). A GitHub issue holds the discussion of one item of work. If this document and an issue do not agree, this document is correct. Section 10 gives the rules.
 
 ## 1. Purpose
 
@@ -68,7 +68,7 @@ The tiers come from the issue labels `priority: foundation`, `priority: later` a
 | 1 | All | Decisions and approvals that the foundation work needs | Extensions: #26, #27, #31. Compute: #41, #42, #43, #44, #47, #49, #50. This plan: Section 7 | Open |
 | 2a | See, Remember | The engine (E0), with Writing as its sample extension | #4, #5, #7, #8, #9, #10, #11, #14 | Planned. `priority: foundation` |
 | 2b | Use | Level 1 model service: C1 and C2 | #34, #35 | Planned. `priority: foundation`. The issues were given a new scope on 2026-11-07 and are newer than the compute plan. |
-| 3a | See | Projects: import each GitHub repository, find where it runs, propose resources (PRO-001 to PRO-008) | #13 | The direction is decided (OD-W11). It changes PRJ-001. It needs the engine (tier 2a). |
+| 3a | See | Projects: import each GitHub repository, find where it runs, propose resources (PRO-001 to PRO-008) | #13 | In progress. Connect GitHub (PRJ-039 to PRJ-042) is on `main` (2026-11-14). The direction is decided (OD-W11). It changes PRJ-001. It needs the engine (tier 2a). |
 | 3a | Use | Jobs, with the build as the first job type. Then AI agent runs. | #40 (C7), #36 (C3). No issue yet for the proposals | #40 is planned. The operator put jobs before the extensions (OD-W8) and the build as a job directly after Projects (PRO-009, OD-W12). A Mac build is a native job (PRO-011). |
 | 3b | See, Remember, Reach | The other extensions, in the order of XP-005, one at a time | #12, #15 to #25, #6, #32. Decisions #28, #29, #30 | Planned. `priority: later` |
 | 3c | Use | Hosted applications | No issue yet | Proposal. Not approved. |
@@ -83,6 +83,8 @@ Notes:
 
 - Tiers 2a and 2b do not depend on each other. They can run at the same time.
 - Each extension needs the engine (PH-E-000). The extensions are independent workflows (XP-004).
+- The native VNC gateway (S2) has commits on `main` and no row in this table. The operator must give it a tier ([s2-vnc-tasks.md](research/one-click/s2-vnc-tasks.md)).
+- The states in this table were read on 2026-11-12, except where a row gives a later date.
 - Phase 4 (Proxmox VE) is withdrawn (R-109). Session recording is deferred (R-113). This plan does not include them.
 
 ## 5. Where each requirement lives
@@ -171,3 +173,65 @@ These changes are not made. The operator must approve each one (operator checkpo
 | Design specification 3.11 | Done as text (operator, 2026-11-13): installation from the disk image or the AppImage, with the `anima` program inside (INS-001 to INS-009). INS-002 to INS-007 are built (branch `fix/bundle-anima`); a real release must confirm OD-16 to OD-18. |
 | Design specification 3.12 and 11 | Done as text (operator, 2026-11-13): the marketing website (SITE-001 to SITE-012). Not built. The operator must decide OD-20, OD-21 and OD-22 of the design specification. |
 | [cli-mcp-plan.md](cli-mcp-plan.md) Sections 6 and 7 | Not made: `anima key create` takes "made for"; `anima audit list` gets the actor column and `--actor`; `anima mcp` sends the agent declaration (LOG-015, LOG-016, LOG-020). Make them with the build, after the ruling. |
+
+## 9. Plan register
+
+This table is the only list of the plans of Anima. A document that is not in this table is not a plan (PLN-001). The states were checked on 2026-11-15 against the documents, the commits on `main` and the issues. "Not checked" means that no person or agent compared the plan with the code.
+
+| Document | Kind | State | Evidence |
+| --- | --- | --- | --- |
+| [design-spec.md](design-spec.md) | Specification | Approved | `AGENTS.md` names it the source of truth. |
+| [implementation-plan.md](implementation-plan.md) | Plan: Phase 1 | Done | Section 4, tier 0: Phases 1 to 3 are built. Its header still says "draft". |
+| [programme/phase-2-plan.md](programme/phase-2-plan.md) | Plan: Phase 2 | Done | Adopted (R-065). Section 4, tier 0. |
+| [programme/phase-3-plan.md](programme/phase-3-plan.md) | Plan: Phase 3 | In progress | Adopted (R-081). All packages are done. The acceptance run (WP-53) waits for the operator ([handoff.md](programme/handoff.md), 2026-11-12). |
+| [programme/phase-3-agent-delta.md](programme/phase-3-agent-delta.md) | Plan: change to Phase 3 | Done | Approved 2026-11-07. WP-54 is done ([handoff.md](programme/handoff.md)). |
+| [vpn-plan.md](vpn-plan.md) | Plan | Approved. Build state not checked | Accepted by the operator on 2026-11-10. |
+| [vpn-build.md](vpn-build.md) | Build specification of the VPN plan | Approved. Build state not checked | Version 0.2. |
+| [cli-mcp-plan.md](cli-mcp-plan.md) | Plan | In progress | Section 3: the command line and the MCP server are on `main`. The test against a real hub is open (#60). |
+| [extensions-plan.md](extensions-plan.md) | Plan | In progress | Its header says "For review". Connect GitHub (PRJ-039 to PRJ-042) is on `main` (2026-11-14). All other issues are open (#4 to #32). |
+| [compute-plan.md](compute-plan.md) | Plan | Draft | Its header says "For review". The issues #34 to #50 are open. |
+| [ui-redesign-direction.md](ui-redesign-direction.md) | Plan: direction of the redesign | Not checked | Its title says "draft for approval". |
+| [ui-redesign-plan.md](ui-redesign-plan.md) | Plan | Not checked | Version 0.2. |
+| [ui-site-language-plan.md](ui-site-language-plan.md) | Plan | Approved. Build state not checked | Approved for implementation on 2026-11-13. |
+| [research/one-click/s2-vnc-tasks.md](research/one-click/s2-vnc-tasks.md) | Task breakdown: native VNC gateway | In progress | Its Section 6: T1 to T8, T10 and T11 have commits on `main`. T9 waits for the operator. Its parent plan `docs/one-click-plan.md` is not on `main`. |
+| [programme/proposals/projects-and-builds.md](programme/proposals/projects-and-builds.md) | Proposal | In progress | Decided (OD-W11, OD-W12). Connect GitHub is on `main`. |
+| [programme/proposals/jobs.md](programme/proposals/jobs.md) | Proposal | Draft | Direction decided (OD-W10). No requirement is approved. |
+| [programme/proposals/coordinator-standby.md](programme/proposals/coordinator-standby.md) | Proposal | Draft | Direction decided (OD-W9). No requirement is approved. |
+| [programme/proposals/bulk-data-placement.md](programme/proposals/bulk-data-placement.md) | Proposal | Draft | Direction decided (OD-W9). No requirement is approved. |
+| [programme/proposals/other-operators.md](programme/proposals/other-operators.md) | Proposal | Draft | Direction decided (OD-W2). It has no requirements. |
+| [programme/proposals/agent-runs.md](programme/proposals/agent-runs.md) | Proposal | Draft | Not approved. |
+| [programme/proposals/hosted-applications.md](programme/proposals/hosted-applications.md) | Proposal | Draft | Not approved. |
+| [programme/proposals/new-sources.md](programme/proposals/new-sources.md) | Proposal | Draft | No provider is verified. |
+| [programme/proposals/add-this-machine.md](programme/proposals/add-this-machine.md) | Proposal | Draft. Build state not checked | Its status line: a proposal for a ruling. |
+| [programme/proposals/first-run-setup.md](programme/proposals/first-run-setup.md) | Proposal | Draft. Build state not checked | Its status line: a proposal for a ruling. |
+| [programme/proposals/in-app-enrolment.md](programme/proposals/in-app-enrolment.md) | Proposal | Draft. Build state not checked | Its status line: a proposal for a ruling. |
+| [programme/proposals/ssh-terminal.md](programme/proposals/ssh-terminal.md) | Proposal | Draft. Build state not checked | Its status line: a proposal for a ruling (R-062). |
+
+These documents are records, not plans. They must not add a requirement (PLN-009).
+
+| Documents | Kind |
+| --- | --- |
+| [programme/programme.md](programme/programme.md), [programme/handoff.md](programme/handoff.md), [programme/operator-changes.md](programme/operator-changes.md) | Rulings and the state of the programme |
+| `programme/packages/` | Task breakdown and log of each work package of a phase plan |
+| `programme/phase-2-*.md` and `programme/phase-3-*.md`, but not the two plans | Contracts, acceptance records and optional items of a phase |
+| `research/`, but not `s2-vnc-tasks.md` | Audits and reports |
+| `setup/`, [releases.md](releases.md), [programme/linux-client-setup.md](programme/linux-client-setup.md) | Procedures |
+| [ui-critique-2026-11-11.md](ui-critique-2026-11-11.md), [ui-inventory-2026-11-11.md](ui-inventory-2026-11-11.md) | Reviews of the interface |
+
+## 10. Rules for plans and progress
+
+These rules apply to each person and each agent (operator, 2026-11-15).
+
+- **PLN-001. One register.** Section 9 is the only list of plans. Do not build from a document that is not in it.
+- **PLN-002. No plan without a row.** Do not make a new plan, proposal or task breakdown unless the same commit adds its row to Section 9.
+- **PLN-003. Each plan has a parent.** A new plan must name the row of Section 4 that it serves. If no row applies, ask the operator for one first.
+- **PLN-004. Change a plan before you make a new one.** If a plan in Section 9 owns the concern (Section 5), change that plan.
+- **PLN-005. One standard.** Each plan obeys the writing rules in Section 0 of the design specification. Each plan has a title, a version, a date and a status. The line below its title points to Section 9.
+- **PLN-006. Tasks hold their state.** A plan or a task breakdown that has tasks must have a table with one row for each task. The row gives the state and the commits.
+- **PLN-007. The words for a state.** A plan is Draft, Approved, In progress, Done, Parked or Withdrawn. A task is Not started, In progress, Done or Cancelled. "Not checked" is permitted only in Section 9.
+- **PLN-008. Progress moves with the work.** Change the state of a task in the commit that does the work, or in its merge. Change Section 9 when the state of a plan changes.
+- **PLN-009. A state needs evidence.** "Done" must name a commit, an acceptance record or a ruling of the operator. Do not write "Done" for work that waits for a live check.
+- **PLN-010. Records are not plans.** A report, a log, a procedure or a review must not add a requirement. Put the requirement in its owner (Section 5).
+- **PLN-011. A plan on a branch.** A plan that is only on a branch is not a plan. Merge it with its row before work on it starts.
+
+A task list that an agent keeps for one session is not a document. These rules do not apply to it.

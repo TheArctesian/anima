@@ -1,5 +1,7 @@
 # Proposal: three new sources (Cloudflare, Spotify, Screen Time)
 
+Progress: the plan register in [work-plan.md](../../work-plan.md) Section 9 holds the state of this plan (PLN-005).
+
 From: the planning session of 2026-11-12. The operator named these services in a side chat.
 Status: a proposal. Nothing here is verified against the documentation of a provider. Do not
 write requirements from this file until each "Not verified" line is checked.

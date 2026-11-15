@@ -1,5 +1,7 @@
 # Proposal: AI agent runs as a job type
 
+Progress: the plan register in [work-plan.md](../../work-plan.md) Section 9 holds the state of this plan (PLN-005).
+
 From: the planning session of 2026-11-12. The operator said in a side chat: "I do want to embed
 agents quickly".
 Status: a proposal for a ruling. Not approved. It needs [jobs.md](jobs.md) first.
