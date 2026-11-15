@@ -175,6 +175,7 @@ dependencies = [
  "graphql_client",
  "hmac 0.13.0",
  "keyring",
+ "proptest",
  "reqwest 0.12.28",
  "rmcp",
  "rsa 0.9.10",

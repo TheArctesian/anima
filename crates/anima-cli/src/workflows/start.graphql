@@ -1,0 +1,8 @@
+mutation WorkflowStart($input: DispatchWorkflowInput!) {
+  dispatchWorkflow(input: $input) {
+    repository
+    workflowId
+    branch
+    acceptedAt
+  }
+}

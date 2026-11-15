@@ -2,6 +2,11 @@
 //! CMD-026, CMD-031).
 
 mod history;
+mod issue_changes;
+mod merge;
+mod merge_many;
+mod run_controls;
+mod start_and_status;
 
 use serde_json::{Value, json};
 

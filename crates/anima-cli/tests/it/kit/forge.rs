@@ -59,6 +59,25 @@ pub fn pull_request(number: i64, title: &str, body: Option<&str>) -> Value {
     })
 }
 
+/// A pull request whose head is in the fork `mallory/anima` (PRO-013).
+pub fn fork_pull_request(number: i64) -> Value {
+    let mut pull = pull_request(number, "Change from outside", None);
+    pull["fromFork"] = json!(true);
+    pull["headRepository"] = json!("mallory/anima");
+    pull
+}
+
+/// Every K7 code a hub refusal can carry, with the exit code CMD-021 gives it.
+pub const HUB_CODES: [(&str, i32); 7] = [
+    ("UNAUTHENTICATED", 4),
+    ("FORBIDDEN", 5),
+    ("NOT_FOUND", 3),
+    ("VALIDATION", 2),
+    ("CONFLICT", 6),
+    ("UNAVAILABLE", 7),
+    ("INTERNAL", 1),
+];
+
 pub fn issue(number: i64, title: &str, body: Option<&str>) -> Value {
     json!({
         "repository": REPOSITORY, "number": number, "title": title, "open": true,

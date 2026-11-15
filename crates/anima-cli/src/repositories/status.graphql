@@ -1,0 +1,11 @@
+mutation CommitStatusSet($input: CommitStatusInput!) {
+  setCommitStatus(input: $input) {
+    repository
+    sha
+    context
+    state
+    description
+    targetUrl
+    createdAt
+  }
+}
