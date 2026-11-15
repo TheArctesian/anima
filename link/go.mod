@@ -8,6 +8,7 @@ tool (
 )
 
 require (
+	github.com/coder/websocket v1.8.15
 	github.com/tailscale/tailcat v0.7.1-0.20261105151022-e00cdde6ff78
 	tailscale.com v1.105.0-pre.0.20261013225543-fb79793d99f5
 )
@@ -38,7 +39,6 @@ require (
 	github.com/axiomhq/hyperloglog v0.2.6 // indirect
 	github.com/benbjohnson/immutable v0.4.3 // indirect
 	github.com/bradfitz/reco v0.0.0-20260929154613-b883fbd17e3f // indirect
-	github.com/coder/websocket v1.8.15 // indirect
 	github.com/coreos/go-iptables v0.8.0 // indirect
 	github.com/creachadair/msync v0.10.1 // indirect
 	github.com/creack/pty v1.1.24 // indirect

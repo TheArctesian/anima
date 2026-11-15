@@ -1,85 +1,18 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"io"
-	"os"
-	"path/filepath"
 	"strings"
-	"sync"
 	"testing"
 	"time"
+
+	"github.com/TheArctesian/anima/link/tunnel"
 )
 
-// output is a buffer that the command and the test can use at the same time.
-type output struct {
-	mu   sync.Mutex
-	text bytes.Buffer
-}
-
-func (o *output) Write(p []byte) (int, error) {
-	o.mu.Lock()
-	defer o.mu.Unlock()
-	return o.text.Write(p)
-}
-
-func (o *output) String() string {
-	o.mu.Lock()
-	defer o.mu.Unlock()
-	return o.text.String()
-}
-
-// stateDir is a short path: a Unix socket path has a limit of about 100 bytes,
-// and the test's own temporary directory is too long on macOS.
-func stateDir(t *testing.T) string {
-	t.Helper()
-	path, err := os.MkdirTemp("/tmp", "anima-link-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { os.RemoveAll(path) })
-	return filepath.Join(path, "s")
-}
-
-// runningHub is a hub link that a test started.
-type runningHub struct {
-	state  string
-	stdin  io.Closer
-	log    *output
-	exited chan int
-}
-
-func startHub(t *testing.T) runningHub {
-	t.Helper()
-	state := stateDir(t)
-	stdinReader, stdinWriter := io.Pipe()
-	hub := runningHub{state: state, stdin: stdinWriter, log: &output{}, exited: make(chan int, 1)}
-	go func() {
-		hub.exited <- run(context.Background(), []string{"hub", "-state", state, "-stop-with-stdin"}, stdio{stdinReader, io.Discard, hub.log})
-	}()
-	t.Cleanup(func() { stdinWriter.Close() })
-	deadline := time.Now().Add(20 * time.Second)
-	for !strings.Contains(hub.log.String(), "ready") {
-		if time.Now().After(deadline) {
-			t.Fatalf("the hub link did not start: %s", hub.log)
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
-	return hub
-}
-
-// ctl runs one control verb as a second process would.
-func (h runningHub) ctl(t *testing.T, args ...string) (stdout string, code int) {
-	t.Helper()
-	var out, errs output
-	code = run(context.Background(), append([]string{"ctl", "-state", h.state}, args...), stdio{strings.NewReader(""), &out, &errs})
-	return out.String() + errs.String(), code
-}
-
 func TestRunRefusesAMissingOrUnknownCommand(t *testing.T) {
-	for _, args := range [][]string{nil, {"serve"}, {"hub"}, {"ctl", "-state", "x"}} {
+	for _, args := range [][]string{nil, {"serve"}, {"hub"}, {"hub", "-state", "x"}, {"ctl", "-state", "x"}} {
 		var stderr output
 		if code := run(context.Background(), args, stdio{strings.NewReader(""), io.Discard, &stderr}); code != 2 {
 			t.Errorf("run(%v) = %d, want 2", args, code)
@@ -94,12 +27,15 @@ func TestASecondProcessAsksTheRunningHubLinkForItsStatus(t *testing.T) {
 	hub := startHub(t)
 
 	text, code := hub.ctl(t, "status")
-	var status struct{ Role, Key string }
+	var status struct {
+		Role, Relay string
+		Devices     int
+	}
 	if err := json.Unmarshal([]byte(text), &status); code != 0 || err != nil {
 		t.Fatalf("ctl status = %q, exit %d", text, code)
 	}
-	if status.Role != "hub" || len(status.Key) != 8 {
-		t.Errorf("status = %+v, want the hub role and a key fingerprint", status)
+	if status.Role != "hub" || status.Relay == "" || status.Devices != 0 {
+		t.Errorf("status = %+v, want the hub role, its relay and no device", status)
 	}
 
 	if text, code := hub.ctl(t, "no-such-verb"); code != 1 || !strings.Contains(text, "no such verb") {
@@ -133,41 +69,77 @@ func TestTheHubLinkStopsWhenItsParentGoesAway(t *testing.T) {
 func TestASecondHubLinkOnTheSameStateDirectoryIsRefused(t *testing.T) {
 	hub := startHub(t)
 	var stderr output
-	code := run(context.Background(), []string{"hub", "-state", hub.state}, stdio{strings.NewReader(""), io.Discard, &stderr})
+	code := run(context.Background(), []string{"hub", "-state", hub.state, "-target", "127.0.0.1:1"}, stdio{strings.NewReader(""), io.Discard, &stderr})
 	if code != 1 || !strings.Contains(stderr.String(), "another anima-link") {
 		t.Errorf("second hub link: exit %d, %q", code, stderr.String())
 	}
 }
 
-// secretsOf reads every secret that a state directory holds, as the texts
-// that would show in a log.
-func secretsOf(t *testing.T, state string) []string {
-	t.Helper()
-	text, err := os.ReadFile(filepath.Join(state, "hub.json"))
-	if err != nil {
-		t.Fatal(err)
+func TestLNK002TheOperatorPermitsADeviceAndItReachesTheHub(t *testing.T) {
+	hub := startHub(t)
+	key := tunnel.NewPrivateKey()
+	address := hub.address(t)
+
+	if _, err := get(t, key, address, 4*time.Second); err == nil {
+		t.Fatal("a device that is not permitted reached the hub")
 	}
-	var saved struct{ Key, PresharedKey string }
-	if err := json.Unmarshal(text, &saved); err != nil {
-		t.Fatal(err)
+	if text, code := hub.permit(t, key, "laptop"); code != 0 {
+		t.Fatalf("devices.permit: %q, exit %d", text, code)
 	}
-	if saved.Key == "" || saved.PresharedKey == "" {
-		t.Fatal("the state file holds no key: the log test would prove nothing")
+	if got, err := get(t, key, address, 30*time.Second); err != nil || got != greeting {
+		t.Fatalf("the permitted device got %q, %v", got, err)
 	}
-	return []string{saved.Key, strings.TrimPrefix(saved.Key, "privkey:"), saved.PresharedKey}
+
+	listed, _ := hub.ctl(t, "devices.list")
+	keyText, _ := key.Public().MarshalText()
+	if !strings.Contains(listed, `"name":"laptop"`) || !strings.Contains(listed, string(keyText)) {
+		t.Errorf("devices.list = %s, want the laptop and its key", listed)
+	}
+	if text, code := hub.permit(t, key, "again"); code != 1 || !strings.Contains(text, "already permitted") {
+		t.Errorf("a second permit of the same key: %q, exit %d", text, code)
+	}
+}
+
+func TestLNK001TheAddressAndTheDevicesAreTheSameAfterARestart(t *testing.T) {
+	hub := startHub(t)
+	key := tunnel.NewPrivateKey()
+	hub.permit(t, key, "laptop")
+	address := hub.address(t)
+	hub.stdin.Close()
+	<-hub.exited
+
+	again := startHubOn(t, hub.state)
+	if again.address(t) != address {
+		t.Error("the address changed after a restart")
+	}
+	if got, err := get(t, key, address, 30*time.Second); err != nil || got != greeting {
+		t.Errorf("the device that was permitted before the restart got %q, %v", got, err)
+	}
 }
 
 func TestLNK008NoSecretIsInTheLogOrInAControlAnswer(t *testing.T) {
 	hub := startHub(t)
+	key := tunnel.NewPrivateKey()
+	address := hub.address(t)
 	answers, _ := hub.ctl(t, "status")
 	unknown, _ := hub.ctl(t, "no-such-verb")
+	permitted, _ := hub.permit(t, key, "laptop")
+	listed, _ := hub.ctl(t, "devices.list")
+	if _, err := get(t, key, address, 30*time.Second); err != nil {
+		t.Fatal(err)
+	}
 	hub.stdin.Close()
 	<-hub.exited
 
-	shown := hub.log.String() + answers + unknown
-	for _, secret := range secretsOf(t, hub.state) {
-		if strings.Contains(shown, secret) {
-			t.Errorf("a secret of the state directory is in the output of the run")
+	// The address is the answer of address.show and of nothing else.
+	everywhereElse := hub.log.String() + answers + unknown + permitted + listed
+	for _, secret := range append(secretsOf(t, hub.state), address, address[len(address)/2:]) {
+		if strings.Contains(everywhereElse, secret) {
+			t.Errorf("a secret of the hub is in the log or in a control answer")
 		}
+	}
+	keyText, _ := key.Public().MarshalText()
+	if strings.Contains(hub.log.String(), string(keyText)) {
+		t.Error("the log names a device by its key and not by its fingerprint")
 	}
 }

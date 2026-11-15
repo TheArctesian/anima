@@ -14,7 +14,7 @@ import (
 	"syscall"
 )
 
-const usage = `usage: anima-link hub -state DIR [-stop-with-stdin]
+const usage = `usage: anima-link hub -state DIR -target 127.0.0.1:PORT [-stop-with-stdin]
        anima-link ctl -state DIR VERB [JSON-ARGUMENTS]`
 
 // stdio is the three streams of the process. Tests give their own.
