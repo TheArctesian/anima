@@ -1,6 +1,8 @@
 # S2 task breakdown: native VNC
 
-Date: 2026-11-14. Status: **waits for the operator's approval. No product code is written yet.**
+Progress: the plan register in [work-plan.md](../../work-plan.md) Section 9 holds the state of this plan (PLN-005).
+
+Date: 2026-11-14. Status: **in progress.** Section 6 holds the state of each task. T9 waits for the operator.
 
 Branch: `claude/s2-native-vnc`, cut from `origin/main` at `604fec8d`.
 Sources: `docs/one-click-plan.md` Section 4.2 and the spike report

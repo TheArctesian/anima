@@ -1,5 +1,7 @@
 # Proposal: first-run setup in the app (no SSH to create the account)
 
+Progress: the plan register in [work-plan.md](../../work-plan.md) Section 9 holds the state of this plan (PLN-005).
+
 From: the orchestrator. The operator chose this in chat on 2026-11-05 ("yes first run setup")
 instead of an open sign-up page.
 Status: a proposal for a ruling and for issue #1 (R-007). Not Phase 1 scope (contracts frozen, CON-001).

@@ -1,5 +1,7 @@
 # Anima command line and MCP plan
 
+Progress: the plan register in [work-plan.md](work-plan.md) Section 9 holds the state of this plan (PLN-005).
+
 Version 0.1 (draft, 2026-11-12). Operator instruction, 2026-11-12: "plan out a CLI first and then
 a MCP such that coding agents like yourself can use it. The CLI should mirror all the app
 functionality and so show the MCP". And: "all new features first get built into CLI then MCP then
