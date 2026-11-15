@@ -56,8 +56,8 @@ fn log_007_a_program_sees_none_of_the_callers_environment() {
         seen,
         [
             "LC_ALL=C",
-            "PGPASSFILE=/dev/null",
-            "PGSERVICEFILE=/dev/null",
+            "PGPASSFILE=/dev/null/none",
+            "PGSERVICEFILE=/dev/null/none",
             "PGSYSCONFDIR=/dev/null",
             "TZ=UTC",
         ]

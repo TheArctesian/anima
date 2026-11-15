@@ -12,8 +12,11 @@ workspace = true
 [dependencies]
 getrandom.workspace = true
 # The shutdown signal to the server, as the hub and the desktop shell send theirs.
-nix = { version = "0.31", default-features = false, features = ["signal", "user"] }
+nix = { version = "0.31", default-features = false, features = ["fs", "signal", "user"] }
+# The roles step signs in over the socket. No TLS: the server has no network listener.
+sqlx.workspace = true
 thiserror.workspace = true
+tokio.workspace = true
 zeroize.workspace = true
 
 [dev-dependencies]

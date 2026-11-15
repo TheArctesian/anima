@@ -38,9 +38,10 @@ pub fn folder(path: &Path) -> io::Result<()> {
 /// # Errors
 /// When the old file cannot be removed or the new one cannot be made.
 pub fn new_file(path: &Path) -> io::Result<File> {
-    match fs::remove_file(path) {
-        Err(error) if error.kind() != io::ErrorKind::NotFound => return Err(error),
-        _ => {}
+    if let Err(error) = fs::remove_file(path)
+        && error.kind() != io::ErrorKind::NotFound
+    {
+        return Err(error);
     }
     OpenOptions::new()
         .write(true)
@@ -53,12 +54,13 @@ pub fn new_file(path: &Path) -> io::Result<File> {
 /// 0600 when it was there.
 ///
 /// # Errors
-/// When the file cannot be opened or its mode cannot be set.
+/// When the file cannot be opened or its mode cannot be set, or `path` is a symbolic link.
 pub fn appended_file(path: &Path) -> io::Result<File> {
     let file = OpenOptions::new()
         .append(true)
         .create(true)
         .mode(0o600)
+        .custom_flags(nix::fcntl::OFlag::O_NOFOLLOW.bits())
         .open(path)?;
     file.set_permissions(Permissions::from_mode(0o600))?;
     Ok(file)

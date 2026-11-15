@@ -199,3 +199,15 @@ fn a_relative_folder_is_refused_and_named() {
         })
     );
 }
+
+#[test]
+fn db_001_a_socket_folder_that_postgresql_would_read_as_a_list_is_refused() {
+    for folder in ["/run/a,/tmp/b", "/run/a\"b"] {
+        assert_eq!(
+            Layout::new(PathBuf::from("/var/db"), PathBuf::from(folder)),
+            Err(LayoutError::SocketFolderList),
+            "{folder}"
+        );
+    }
+    assert!(Layout::new(PathBuf::from("/var/db"), PathBuf::from("/run/a b")).is_ok());
+}

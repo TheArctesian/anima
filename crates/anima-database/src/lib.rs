@@ -8,11 +8,15 @@ pub mod cluster;
 mod layout;
 mod owner_only;
 mod password;
+pub mod roles;
 mod server;
 mod tree;
+pub mod urls;
 
 #[cfg(test)]
 mod local_tree;
+#[cfg(test)]
+mod scratch;
 
 pub use layout::{Layout, LayoutError, Platform, Role, UserFolders};
 pub use password::Password;

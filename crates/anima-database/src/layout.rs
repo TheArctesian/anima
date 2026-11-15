@@ -72,6 +72,10 @@ pub enum LayoutError {
          the home folder path is too long"
     )]
     SocketPathTooLong { length: usize, limit: usize },
+    #[error(
+        "the socket folder's path has a comma or a quotation mark, which PostgreSQL reads as a list"
+    )]
+    SocketFolderList,
 }
 
 /// Every path of one bundled database.
@@ -90,6 +94,16 @@ impl Layout {
     pub fn new(root: PathBuf, socket_folder: PathBuf) -> Result<Self, LayoutError> {
         absolute(&root, "database root")?;
         absolute(&socket_folder, "socket folder")?;
+        // `unix_socket_directories` is a list: a comma would split the path, and a part of
+        // it could name a folder that others can reach.
+        let listed = socket_folder
+            .as_os_str()
+            .as_encoded_bytes()
+            .iter()
+            .any(|byte| matches!(byte, b',' | b'"'));
+        if listed {
+            return Err(LayoutError::SocketFolderList);
+        }
         let layout = Self {
             root,
             socket_folder,

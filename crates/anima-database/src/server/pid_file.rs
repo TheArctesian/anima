@@ -4,9 +4,7 @@
 //! since 1970, and 8 the status, which is `ready` when the server accepts connections.
 //! `pg_ctl` reads the same lines to decide that a start is complete.
 
-use std::time::SystemTime;
-
-use super::epoch_seconds;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PidFile {
@@ -33,8 +31,11 @@ impl PidFile {
     /// `spawned_at`. A file from before the start is stale, also when an old server had the
     /// number that the new child has now.
     pub fn is_ready_for(self, process_id: u32, spawned_at: SystemTime) -> bool {
+        // A clock before 1970 gives no start time to compare with, so nothing is ready.
         self.is_ready
             && self.process_id == process_id
-            && self.started_at >= epoch_seconds(spawned_at)
+            && spawned_at
+                .duration_since(UNIX_EPOCH)
+                .is_ok_and(|spawned| self.started_at >= spawned.as_secs())
     }
 }

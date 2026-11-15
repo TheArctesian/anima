@@ -4,7 +4,7 @@ use std::path::Path;
 
 use super::{ClusterError, Fit, create, fit, initdb_reason, major_version};
 use crate::local_tree::local_tree;
-use crate::{Layout, Password, Program};
+use crate::{Layout, Password, Program, lock};
 
 fn layout_in(folder: &Path) -> Layout {
     Layout::new(folder.join("db root"), folder.join("s")).unwrap()
@@ -75,7 +75,13 @@ fn db_003_a_new_cluster_is_private_checksummed_and_of_the_trees_version() {
     let folder = tempfile::tempdir().unwrap();
     let layout = layout_in(folder.path());
 
-    create(&local_tree(), &layout, &Password::from_bytes(&[7; 24])).unwrap();
+    create(
+        &lock(&layout).unwrap(),
+        &local_tree(),
+        &layout,
+        &Password::from_bytes(&[7; 24]),
+    )
+    .unwrap();
 
     assert_eq!(major_version(&layout).unwrap(), Some(17));
     assert_eq!(control_value(&layout, "Data page checksum version"), "1");
@@ -90,7 +96,7 @@ fn log_007_every_login_needs_scram_and_no_password_file_is_left() {
     let layout = layout_in(folder.path());
     let password = Password::from_bytes(&[7; 24]);
 
-    create(&local_tree(), &layout, &password).unwrap();
+    create(&lock(&layout).unwrap(), &local_tree(), &layout, &password).unwrap();
 
     let rules = fs::read_to_string(layout.cluster().join("pg_hba.conf")).unwrap();
     let methods: Vec<&str> = rules
@@ -135,7 +141,13 @@ fn a_failed_initdb_leaves_no_password_file_and_says_why() {
     fs::create_dir_all(layout.cluster()).unwrap();
     fs::write(layout.cluster().join("occupied"), "").unwrap();
 
-    let error = create(&local_tree(), &layout, &Password::from_bytes(&[7; 24])).unwrap_err();
+    let error = create(
+        &lock(&layout).unwrap(),
+        &local_tree(),
+        &layout,
+        &Password::from_bytes(&[7; 24]),
+    )
+    .unwrap_err();
 
     assert!(
         matches!(&error, ClusterError::Initdb { reason } if reason.contains("not empty")),
@@ -170,7 +182,13 @@ fn db_003_a_root_that_was_open_to_others_is_closed_before_the_cluster_is_made() 
     fs::set_permissions(layout.root(), fs::Permissions::from_mode(0o755)).unwrap();
     fs::set_permissions(layout.urls_folder(), fs::Permissions::from_mode(0o777)).unwrap();
 
-    create(&local_tree(), &layout, &Password::from_bytes(&[7; 24])).unwrap();
+    create(
+        &lock(&layout).unwrap(),
+        &local_tree(),
+        &layout,
+        &Password::from_bytes(&[7; 24]),
+    )
+    .unwrap();
 
     assert_eq!(mode_of(layout.root()), 0o700);
     assert_eq!(mode_of(&layout.urls_folder()), 0o700);
@@ -187,7 +205,13 @@ fn log_007_a_password_file_left_by_a_crash_is_replaced_and_removed() {
     )
     .unwrap();
 
-    create(&local_tree(), &layout, &Password::from_bytes(&[7; 24])).unwrap();
+    create(
+        &lock(&layout).unwrap(),
+        &local_tree(),
+        &layout,
+        &Password::from_bytes(&[7; 24]),
+    )
+    .unwrap();
 
     assert!(!layout.urls_folder().join("initdb.password").exists());
     assert_eq!(major_version(&layout).unwrap(), Some(17));

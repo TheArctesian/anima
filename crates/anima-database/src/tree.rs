@@ -19,7 +19,7 @@ pub enum Program {
 
 impl Program {
     /// The programs a tree must have before the database can start.
-    const NEEDED_TO_START: [Self; 3] = [Self::Postgres, Self::Initdb, Self::PgCtl];
+    const NEEDED_TO_START: [Self; 4] = [Self::Postgres, Self::Initdb, Self::PgCtl, Self::PgIsready];
 
     const fn file_name(self) -> &'static str {
         match self {
@@ -101,7 +101,8 @@ impl Tree {
 /// A command whose environment is fixed: nothing of the caller's environment reaches the
 /// program, so a `PGPASSWORD`, a `PGHOST` or a locale of the operator's shell cannot change
 /// what PostgreSQL does. The client programs would also read a password file and a service
-/// file from the home folder, which they find without `HOME`; both are pointed at nothing.
+/// file from the home folder, which they find without `HOME`; both are pointed at a path
+/// that cannot exist (a file that is there and is not a plain file gets a warning).
 /// The server does not start on macOS without a valid locale.
 fn sealed_command(program: &Path) -> Command {
     let mut command = Command::new(program);
@@ -109,8 +110,8 @@ fn sealed_command(program: &Path) -> Command {
         .env_clear()
         .env("LC_ALL", "C")
         .env("TZ", "UTC")
-        .env("PGPASSFILE", "/dev/null")
-        .env("PGSERVICEFILE", "/dev/null")
+        .env("PGPASSFILE", "/dev/null/none")
+        .env("PGSERVICEFILE", "/dev/null/none")
         .env("PGSYSCONFDIR", "/dev/null");
     command
 }

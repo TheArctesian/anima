@@ -95,3 +95,15 @@ fn an_appended_file_keeps_its_text_and_is_closed_to_others() {
     assert_eq!(fs::read_to_string(&path).unwrap(), "first\nsecond\n");
     assert_eq!(mode_of(&path), 0o600);
 }
+
+#[test]
+fn an_appended_file_is_not_opened_through_a_link() {
+    let parent = tempfile::tempdir().unwrap();
+    let target = parent.path().join("elsewhere");
+    fs::write(&target, "untouched").unwrap();
+    let path = parent.path().join("log");
+    std::os::unix::fs::symlink(&target, &path).unwrap();
+
+    assert!(appended_file(&path).is_err());
+    assert_eq!(fs::read_to_string(&target).unwrap(), "untouched");
+}

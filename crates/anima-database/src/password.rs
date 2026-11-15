@@ -34,6 +34,11 @@ impl Password {
         Self(text)
     }
 
+    /// A password that was read back from where this crate stored it.
+    pub(crate) fn from_text(text: String) -> Self {
+        Self(Zeroizing::new(text))
+    }
+
     /// The text to give to PostgreSQL. Never log it.
     #[must_use]
     pub fn expose(&self) -> &str {

@@ -9,7 +9,7 @@ use std::fs;
 use std::io::{self, Write};
 use std::path::Path;
 
-use crate::{Layout, Password, Program, Tree, owner_only};
+use crate::{Layout, Lock, Password, Program, Tree, owner_only};
 
 #[cfg(test)]
 mod tests;
@@ -79,7 +79,8 @@ pub fn major_version(layout: &Layout) -> Result<Option<u32>, ClusterError> {
     }
 }
 
-/// Makes the cluster with `initdb`, with `superuser_password` for [`SUPERUSER`].
+/// Makes the cluster with `initdb`, with `superuser_password` for [`SUPERUSER`]. The caller
+/// holds the [`Lock`]: two copies that make one cluster remove each other's half-made folder.
 ///
 /// The password reaches `initdb` through a file with mode 0600 that is removed again, never
 /// through the command line or the environment (LOG-007). The root and the URL folder are
@@ -88,6 +89,7 @@ pub fn major_version(layout: &Layout) -> Result<Option<u32>, ClusterError> {
 /// # Errors
 /// When a folder or the password file cannot be made, or `initdb` fails.
 pub fn create(
+    _lock: &Lock,
     tree: &Tree,
     layout: &Layout,
     superuser_password: &Password,
