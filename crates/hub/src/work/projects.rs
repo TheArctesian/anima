@@ -26,6 +26,8 @@ mod workflows;
 use std::sync::Arc;
 
 use async_graphql::{Context, Error as GraphQlError};
+
+pub use self::forge::RequestReads;
 use chrono::{DateTime, Utc};
 use sqlx::{PgConnection, PgPool};
 
