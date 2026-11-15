@@ -36,7 +36,7 @@ changes one must fail there.
 | The server answers a client's announce before the client has proved that it holds its private key. | Nothing in the link changes on an announce: the lists change only on a stream. | `devicelink`: the LNK-005 tests |
 | The first connection of a new process sometimes takes 5 to 10 s. The cause is not known. | Not answered. The check with a second machine decides. | — |
 
-No upstream issue is open for these. Opening one is the operator's decision.
+No upstream issue is open for these. Draft texts are in `docs/research/one-click/tailcat-upstream-issues.md`; filing one is the operator's decision.
 
 ## How to follow upstream
 
