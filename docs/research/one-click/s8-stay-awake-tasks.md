@@ -1,8 +1,14 @@
 # S8 task breakdown: Stay awake
 
-Date: 2026-11-15. Branch: `claude/s8-stay-awake-7b13a5`, cut from `origin/main` at `4c27cceb`.
+Progress: the plan register in [work-plan.md](../../work-plan.md) Section 9 holds the state of this plan (PLN-005).
+
+Version 1.0. Date: 2026-11-15. Status: **in progress.** Section 5 holds the state of each task. The live
+checks of Section 6 wait for the operator.
+
+Branch: `claude/s8-stay-awake-7b13a5`, cut from `origin/main` at `4c27cceb`.
 Source: `docs/one-click-plan.md` Section 4.8 and ruling OR-8 (on branch `claude/one-click-plan`;
-not on `main`). Requirements: AWK-001 to AWK-007 from the plan, and AWK-008 (hold the highest state that is possible; added by this work), in spec Section 3.13.
+not on `main`). The requirements are in the design specification, Section 3.13: AWK-001 to
+AWK-007 from the plan, and AWK-008 (hold the highest state that is possible), which this work added.
 
 S8 adds no hub function. CMD-030 does not apply: there is no `anima` command and no MCP tool.
 
@@ -69,6 +75,72 @@ Answer to OI-4: yes. On macOS the lid-closed level needs administrator rights on
 - GNOME with systemd before 257: add a `gnome-session` inhibitor if the live check shows idle
   sleep with "Keep awake" on (F-11).
 
-## 5. Deferred live checks
+## 5. Progress and choices made while building
 
-Section 6 is filled at the end of the build.
+| Task | State | Commits |
+| --- | --- | --- |
+| T1 Spec | Done. | `a0752728` |
+| T2 Pure logic | Done. Reviewed by `reviewer` with T3 and T4. | `53ab03a4`, `122230fc` |
+| T3 OS holds, set-up, saved choice | Done as code and tests. Reviewed by `reviewer` (1 must-fix and 7 other findings corrected) and `reviewer-security` (no must-fix; 5 findings corrected). Not verified on a real lid or with a real administrator step (Section 6). | `53ab03a4`, `a4ddf905`, `122230fc` |
+| T4 Control, commands, tray | Done as code and tests. The app starts with the tray item on this Mac. The tray item itself was not looked at (Section 6). | `53ab03a4`, `a4ddf905` |
+| T5 Client | Done. Reviewed by `reviewer` (2 must-fix and 4 other findings corrected). | `b04b6254`, `a264b00f`, `06d2c600` |
+| T6 Merge and gates | Done: `origin/main` at `bb4c00d6` is merged; the result of the full gates is in the merge request to the operator. | `25548538` |
+
+Choices made while building, after the reviews:
+
+- **The administrator dialog** (security review). A step that would change nothing shows no
+  dialog. Only one dialog is open at a time. After a refused step the next one is refused for
+  15 seconds with no dialog. The control is not locked while the dialog is open.
+- **The rule is for the user, not for the application** (security review, accepted). Each
+  program of this user can run the two `pmset` commands. The set-up row says so.
+- **Remove** sets the sleep setting back before the rule goes. When that fails, the script that
+  deletes the rule also sets it back, as root.
+- **The watcher** removes the marker with the setting. When the application cannot set the
+  setting back, it leaves the watcher to do it at the end.
+- **Not changed** (review notes, accepted): the control is locked during a short program run
+  (at most a few seconds), so a slow `sudo` makes the next command wait. A hold program that
+  ends later than 0.4 seconds after its start counts as held until the next look, at most one
+  minute later.
+- **The battery floor in the client** has the steps 10 to 50 percent; the shell accepts 5 to 95.
+- **Closing the window ends the application** and thus the holds. A hub that outlives the
+  window is S4.
+
+## 6. Deferred live checks
+
+The operator does these on a real computer. No agent ran `sudo`, changed a power setting or
+closed a lid. This Mac had `SleepDisabled 1` from a different tool during the build (F-6): turn
+that tool off first, or check 3 shows only that Anima leaves the setting alone.
+
+macOS (a laptop, a release or debug build of the application):
+
+1. **Tray.** Start the application. The menu bar has the Anima item with "Stay awake: off",
+   "Keep awake", "Keep awake with the lid closed (set up in Settings)" and "Open Anima".
+2. **Keep awake.** Choose "Keep awake" in Settings > Stay awake. Run `pmset -g assertions`: a
+   `caffeinate` line with `PreventUserIdleSystemSleep` is there. The tray shows the same state.
+   Choose "Off": the line is gone.
+3. **Set-up.** Click "Set up" and type the administrator password. The row says "Set up".
+   `ls -l /private/etc/sudoers.d/anima-stay-awake` shows `-r--r----- root wheel`.
+   `sudo -n /usr/bin/pmset -a disablesleep 0` works with no password; `sudo -n /usr/bin/pmset -a sleep 5` is refused.
+4. **Lid closed.** Choose "Keep awake with the lid closed". `pmset -g | grep SleepDisabled`
+   shows 1. On battery, close the lid for 10 minutes; from a second computer, `ping` this one
+   the whole time. Open the lid, choose "Off": `SleepDisabled` shows 0.
+5. **Quit and failure.** With the lid level on, quit the application: `SleepDisabled` shows 0
+   at once. Start it, wait for 1, then `kill -9` the application: within 5 seconds it shows 0.
+6. **Battery floor.** Set the floor above the present charge and unplug the power: within one
+   minute the row says "Off for now" and the holds are gone. Plug the power in: within one
+   minute the level is back.
+7. **Remove.** Click "Remove": the rule file is gone and the lid state cannot be chosen.
+8. **Eight hours.** Leave "Keep awake" on overnight with the hub or the metrics agent on this
+   computer: the checks or metrics have no gap, and `pmset -g log | grep -c "Entering Sleep"`
+   does not grow.
+
+Linux (not run at all; no Linux computer in this build):
+
+9. The AppImage starts with the tray item (the AppIndicator library is there).
+10. "Keep awake": `systemd-inhibit --list` shows Anima with `sleep`, mode `block`; the computer
+    does not sleep when idle, and the screen still turns off. On GNOME with systemd before 257,
+    see F-11.
+11. "Keep awake with the lid closed" on GNOME: the list also shows `handle-lid-switch`, and
+    the computer stays on with the lid closed. On KDE Plasma the state cannot be chosen.
+12. Quit, and `kill -9`: both entries leave the list.
+13. A laptop on battery reports its charge (the floor of check 6).
