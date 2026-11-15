@@ -1,5 +1,8 @@
 //! The screen copy: what counts as a change, and what it refuses.
 
+mod moves;
+pub(crate) mod props;
+
 use anima_gateway::screen::{
     Area, BYTES_PER_PIXEL, BadSize, MAX_SIDE, OutsideScreen, Screen, TILE, WriteError,
 };

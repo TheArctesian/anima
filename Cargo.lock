@@ -239,14 +239,19 @@ dependencies = [
 name = "anima-gateway"
 version = "0.1.0"
 dependencies = [
+ "aes 0.9.4",
  "base64 0.23.1",
+ "des",
  "flate2",
  "guac-protocol",
  "jpeg-decoder",
  "jpeg-encoder",
+ "md-5",
+ "num-bigint 0.4.8",
  "png",
  "proptest",
  "thiserror 2.0.21",
+ "tokio",
  "zeroize",
 ]
 

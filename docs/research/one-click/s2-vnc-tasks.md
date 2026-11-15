@@ -146,7 +146,7 @@ written here with its reason.
 | T2 Frame encoder | Done. Reviewed twice by `reviewer` (1 must-fix and 3 test findings corrected; second verdict: accept); full gates passed 14 of 14. | `2970dfad`, `aa78c4d1` |
 | T3 Frame pacing | Done but for the full gates. `reviewer`: fix, then accept; 3 findings corrected. | `09f1acdc`, `3a0d1032` |
 | T4 Gateway handshake | Done but for the full gates. `reviewer`: accept, 4 findings corrected. `reviewer-security`: no critical or high; 1 medium and 2 low corrected, 3 notes carried to T6. | `dfca4494` and the correction after it |
-| T5 VNC client | In work: the pure parts are written and not yet compiled (see the handoff note). | — |
+| T5 VNC client | Built; in review. | see the log |
 
 Choices:
 
@@ -206,6 +206,19 @@ Choices:
   checked (R-032). The gateway refuses a host name, so it never resolves a name itself.
 - **T4, the offered arguments.** `args` lists the six names the hub sets for VNC:
   `hostname`, `port`, `username`, `password`, `disable-copy`, `disable-paste`.
+- **T5, no VNC crate.** The client is written in the crate (about 800 lines), as the spike
+  recommended. Its sign-in answers are checked against an independent source: the VNC
+  password answer against `openssl enc -des-ecb`, and Apple's method by a test device that
+  does the other side of the key exchange and reads the account back.
+- **T5, limits on a device.** A rectangle must be inside the screen; one update may send at
+  most 8 times the screen's pixels; packed data may not be longer than its pixels need,
+  before and after it is inflated; a ZRLE run may not pass its tile; a screen side is 1 to
+  8192; a key of Apple's method is at most 1024 bytes; a clipboard text over 1 MiB is
+  skipped and the session goes on.
+- **T5, the pointer.** No cursor encoding is asked for: the device draws the pointer into
+  the screen. Guacamole's `cursor` instruction is left for later.
+- **Tests folder.** The tests are grouped in folders by domain (`screen/`, `frames/`,
+  `handshake/`, `vnc/`), because one folder may hold 12 files.
 - **Merge and push.** The operator said in this session (2026-11-14): "Yes, merge into main
   and push when done". When every task that does not need the operator is done: bring the
   current `main` in, run the full gates, merge, push.
@@ -228,16 +241,14 @@ State at the last commit on `claude/s2-native-vnc`: T1 to T4 are built, reviewed
 corrected. The full gates passed for T1 and T2; the run for T3 and T4 is in the worktree
 `.claude/worktrees/s2-gates` (log `gates-t4.log` in the session's scratchpad).
 
-T5 is in work and not committed: `crates/anima-gateway/src/vnc/{messages,zrle,drawing,
-requests}.rs` exist in the working tree, are not declared in `lib.rs`, and have not been
-compiled. `Cargo.toml` of the crate already names their dependencies (`aes` 0.9, `des` 0.9,
-`md-5`, `num-bigint`, `flate2`). Still to write for T5: `src/vnc.rs` (the module face with
-the `Malformed` error), `vnc/auth.rs` (the VNC password answer and Apple's type 30, as pure
-functions that take their random bytes as arguments), `vnc/sign_in.rs` (the opening over a
-tokio stream, in two steps so a missing credential can be asked for between them), and the
-tests with a fake RFB server. The design: the server's bytes are read into a buffer with a
-cancel-safe `read`, `messages::first` cuts one whole message from it, `drawing` applies it
-to the screen. No cursor encoding is asked for, so the device draws the pointer.
+T5 (`src/vnc*`) is built and committed. The server's bytes go to `vnc::Device::receive`,
+which cuts whole messages from its buffer (`messages::first`) and draws them
+(`drawing`); the caller reads the socket with a cancel-safe `read`. The sign-in is in two
+steps (`vnc::offered`, then `vnc::sign_in`) so a missing credential can be asked for
+between them. No cursor encoding is asked for, so the device draws the pointer.
+
+Next is T6: `src/session*` and `src/main.rs` (the listener, one child process for each
+connection). Section 7 lists what the reviews carried to it.
 
 The spike's `vnc-probe` (branch `claude/spike-display-f9104d`) is the reference for the
 sign-in and ZRLE. The test host image `anima-spike-display-host` is on this Mac for T9.

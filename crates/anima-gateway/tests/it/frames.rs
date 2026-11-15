@@ -1,12 +1,15 @@
 //! A frame draws the screen in the client, in the cheapest form for each part.
 
+mod budget;
+mod pacing;
+
 use anima_gateway::frames::{Formats, frame};
 use anima_gateway::screen::{Area, BYTES_PER_PIXEL, Screen, TILE};
 use proptest::prelude::*;
 
 use crate::drawn::Drawn;
+use crate::screen::props::{Picture, apply, step};
 use crate::screen::whole;
-use crate::screen_props::{Picture, apply, step};
 
 const PNG_ONLY: Formats = Formats { jpeg: false };
 const WITH_JPEG: Formats = Formats { jpeg: true };

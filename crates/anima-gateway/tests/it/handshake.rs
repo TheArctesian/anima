@@ -1,5 +1,7 @@
 //! The gateway answers the hub's handshake as guacd does, and refuses what it cannot use.
 
+mod prompt;
+
 use anima_gateway::handshake::{Handshake, Opening, Refused, Secret, Step, error, ready};
 use guac_protocol::{
     ArgValues, ConnectParams, Display, Handshake as HubHandshake, HandshakeStep, Instruction,

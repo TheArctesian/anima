@@ -3,9 +3,10 @@
 //! and the client do not know which gateway they talk to.
 //!
 //! So far: the gateway's copy of the remote screen (`screen`), the instructions that draw
-//! its changes in the client (`frames`), and the opening of a session with the hub
-//! (`handshake`).
+//! its changes in the client (`frames`), the opening of a session with the hub
+//! (`handshake`), and the VNC client (`vnc`).
 
 pub mod frames;
 pub mod handshake;
 pub mod screen;
+pub mod vnc;
