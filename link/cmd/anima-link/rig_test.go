@@ -232,3 +232,17 @@ func startDevice(t *testing.T, hub runningHub) (state, local string) {
 	}
 	return state, status.Local
 }
+
+func loadDevice(t *testing.T, state string) identity.Device {
+	t.Helper()
+	dir, err := statedir.Open(state)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer dir.Close()
+	device, err := identity.LoadDevice(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return device
+}

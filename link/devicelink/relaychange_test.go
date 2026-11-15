@@ -13,8 +13,10 @@ func TestLNK007AConnectedDeviceFollowsTheHubToANewRelayWithNoNewInvite(t *testin
 	device := hub.joined(t)
 	absent := hub.joined(t) // a second device, which is off during the change
 	saved := &kept{device: device}
+	names := &zone{}
 	link, err := devicelink.Start(devicelink.Config{
 		Identity: device, Listen: "127.0.0.1:0", Keepalive: 300 * time.Millisecond, NoticeEvery: 1, Save: saved.save,
+		LookupTXT: names.lookup,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -49,6 +51,9 @@ func TestLNK007AConnectedDeviceFollowsTheHubToANewRelayWithNoNewInvite(t *testin
 	t.Logf("the device reached the hub on its new relay after %v", took.Round(time.Millisecond))
 	if after := saved.get(); after.Hub != announced || !after.NextHub.IsZero() {
 		t.Error("the device did not save the new address as the hub's address")
+	}
+	if asked := names.names(); len(asked) != 0 {
+		t.Errorf("a device with no hub name asked the resolver for %v", asked)
 	}
 	if hub.devices.Count() != 2 {
 		t.Errorf("the relay change changed the list of devices: %d", hub.devices.Count())

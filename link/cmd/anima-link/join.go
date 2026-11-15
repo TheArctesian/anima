@@ -19,6 +19,7 @@ const joinLimit = 30 * time.Second
 // (LNK-008).
 func runJoin(ctx context.Context, args []string, streams stdio) error {
 	flags, statePath := stateFlags("join")
+	hubName := flags.String("hub-name", "", "a domain name that holds the hub's address in a TXT record (optional)")
 	if err := flags.Parse(args); err != nil || *statePath == "" || flags.NArg() != 0 {
 		return errUsage
 	}
@@ -42,6 +43,7 @@ func runJoin(ctx context.Context, args []string, streams stdio) error {
 	if err != nil {
 		return err
 	}
+	joined.HubName = *hubName
 	if err := joined.Save(dir); err != nil {
 		return err
 	}

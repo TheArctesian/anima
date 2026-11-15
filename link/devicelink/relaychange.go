@@ -44,28 +44,76 @@ func (l *Link) readNotice(ctx context.Context) {
 	}
 }
 
-// followHub tries the address that the hub announced, after the hub has
-// stopped answering at its address. When the hub answers there, that
-// address becomes the hub's address.
+// followHub looks for the hub after it has stopped answering at its
+// address: first at the address that the hub announced, then at the
+// addresses that the hub's domain name holds. When the hub answers at one,
+// that address becomes the hub's address.
 func (l *Link) followHub(ctx context.Context) {
 	current := l.identity()
-	if l.save == nil || current.NextHub.IsZero() {
+	if l.save == nil {
 		return
 	}
-	moved, err := tunnel.NewDevice(tunnel.DeviceConfig{Key: current.Key, Hub: current.NextHub, DebugLogf: l.debugLogf})
+	candidates := []tunnel.Address{}
+	if !current.NextHub.IsZero() {
+		candidates = append(candidates, current.NextHub)
+	}
+	for _, named := range l.addressesOfName(ctx, current.HubName) {
+		if named != current.Hub && named != current.NextHub {
+			candidates = append(candidates, named)
+		}
+	}
+	for _, candidate := range candidates {
+		if l.moveTo(ctx, candidate) {
+			return
+		}
+	}
+}
+
+// moveTo makes an address the hub's address if the hub answers there.
+func (l *Link) moveTo(ctx context.Context, address tunnel.Address) bool {
+	current := l.identity()
+	moved, err := tunnel.NewDevice(tunnel.DeviceConfig{Key: current.Key, Hub: address, DebugLogf: l.debugLogf})
 	if err != nil {
-		return
+		return false
 	}
 	ctx, cancel := context.WithTimeout(ctx, registerLimit)
 	defer cancel()
 	if moved.Register(ctx) != nil {
 		moved.Close()
-		return
+		return false
 	}
-	current.Hub, current.NextHub = current.NextHub, tunnel.Address{}
+	current.Hub, current.NextHub = address, tunnel.Address{}
 	if l.save(current) != nil {
 		moved.Close()
-		return
+		return false
 	}
 	l.replaceTunnel(moved, current).Close()
+	return true
+}
+
+// HubNameLabel comes before the hub's domain name in the name of the TXT
+// record that holds the hub address.
+const HubNameLabel = "_anima-link."
+
+// addressesOfName reads the hub addresses that a domain name holds
+// (LNK-007). A name only finds the hub: the hub still admits only the keys
+// in its list. The address in the record is public, so its pre-shared key
+// protects nothing for a hub with a name.
+func (l *Link) addressesOfName(ctx context.Context, name string) []tunnel.Address {
+	if name == "" {
+		return nil
+	}
+	ctx, cancel := context.WithTimeout(ctx, pingLimit)
+	defer cancel()
+	records, err := l.lookupTXT(ctx, HubNameLabel+name)
+	if err != nil {
+		return nil
+	}
+	found := []tunnel.Address{}
+	for _, record := range records {
+		if address, err := tunnel.ParseAddress(record); err == nil {
+			found = append(found, address)
+		}
+	}
+	return found
 }

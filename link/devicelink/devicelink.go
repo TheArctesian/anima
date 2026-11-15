@@ -50,6 +50,9 @@ type Config struct {
 	// NoticeEvery is how many keepalives pass between two reads of the
 	// hub's next address (LNK-007). Zero means DefaultNoticeEvery.
 	NoticeEvery int
+	// LookupTXT reads the TXT records of a domain name, for a device whose
+	// identity has a HubName (LNK-007). Nil means the system's resolver.
+	LookupTXT func(ctx context.Context, name string) ([]string, error)
 	// Now is the clock. Nil means the system clock.
 	Now       func() time.Time
 	DebugLogf tunnel.Logf
@@ -61,6 +64,7 @@ type Link struct {
 	stop      context.CancelFunc
 	done      sync.WaitGroup
 	save      func(identity.Device) error
+	lookupTXT func(ctx context.Context, name string) ([]string, error)
 	now       func() time.Time
 	debugLogf tunnel.Logf
 
@@ -128,6 +132,10 @@ func Start(cfg Config) (*Link, error) {
 	}
 	if link.now == nil {
 		link.now = time.Now
+	}
+	link.lookupTXT = cfg.LookupTXT
+	if link.lookupTXT == nil {
+		link.lookupTXT = net.DefaultResolver.LookupTXT
 	}
 	link.noticeEvery = max(cfg.NoticeEvery, 0)
 	if link.noticeEvery == 0 {

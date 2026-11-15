@@ -25,6 +25,7 @@ func runHub(ctx context.Context, args []string, streams stdio) error {
 	flags, statePath := stateFlags("hub")
 	target := flags.String("target", "", "the hub's loopback address, host:port")
 	relay := flags.String("relay", "", "the hub's own relay, host or host:port; at the first start only")
+	nameDevice := flags.Bool("name-device", false, "start each connection to the hub with a PROXY header that holds the device key")
 	stopWithStdin := flags.Bool("stop-with-stdin", false, "stop when standard input closes")
 	if err := flags.Parse(args); err != nil || *statePath == "" || *target == "" || flags.NArg() != 0 {
 		return errUsage
@@ -39,7 +40,7 @@ func runHub(ctx context.Context, args []string, streams stdio) error {
 	if err := chooseRelay(dir, *relay); err != nil {
 		return err
 	}
-	link, lists, err := startHubLink(ctx, dir, *target, log)
+	link, lists, err := startHubLink(ctx, dir, hubOptions{target: *target, nameDevice: *nameDevice, log: log})
 	if err != nil {
 		return err
 	}
@@ -92,7 +93,14 @@ func chooseRelay(dir *statedir.Dir, hostPort string) error {
 
 // startHubLink starts the link from the saved identity and saves the relay
 // that a first start chose, so that the address stays the same (LNK-001).
-func startHubLink(ctx context.Context, dir *statedir.Dir, target string, log *slog.Logger) (*hublink.Link, hubLists, error) {
+// hubOptions is what the command line gives a hub link.
+type hubOptions struct {
+	target     string
+	nameDevice bool
+	log        *slog.Logger
+}
+
+func startHubLink(ctx context.Context, dir *statedir.Dir, options hubOptions) (*hublink.Link, hubLists, error) {
 	hub, err := identity.LoadHub(dir)
 	if err != nil {
 		return nil, hubLists{}, err
@@ -107,7 +115,10 @@ func startHubLink(ctx context.Context, dir *statedir.Dir, target string, log *sl
 	}
 	ctx, cancel := context.WithTimeout(ctx, startLimit)
 	defer cancel()
-	link, err := hublink.Start(ctx, hublink.Config{Identity: hub, Target: target, Devices: permitted, Invites: open, Log: log})
+	link, err := hublink.Start(ctx, hublink.Config{
+		Identity: hub, Target: options.target, NameDevice: options.nameDevice,
+		Devices: permitted, Invites: open, Log: options.log,
+	})
 	if err != nil {
 		return nil, hubLists{}, err
 	}

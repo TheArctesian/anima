@@ -14,9 +14,9 @@ import (
 	"syscall"
 )
 
-const usage = `usage: anima-link hub -state DIR -target 127.0.0.1:PORT [-relay HOST[:PORT]] [-stop-with-stdin]
+const usage = `usage: anima-link hub -state DIR -target 127.0.0.1:PORT [-relay HOST[:PORT]] [-name-device] [-stop-with-stdin]
        anima-link device -state DIR [-listen 127.0.0.1:PORT] [-stop-with-stdin]
-       anima-link join -state DIR          (the invite is read from standard input)
+       anima-link join -state DIR [-hub-name NAME]   (the invite is read from standard input)
        anima-link ctl -state DIR VERB [JSON-ARGUMENTS]`
 
 // stdio is the three streams of the process. Tests give their own.

@@ -52,6 +52,10 @@ type Config struct {
 	// RelayMapURL is where the relay map is at the first start. Empty means
 	// Tailscale's map of shared relays.
 	RelayMapURL string
+	// NameDevice makes the hub link start each stream to the hub with a
+	// PROXY protocol header that holds the device key (see deviceheader.go).
+	// The hub must expect it: a hub that does not would read it as data.
+	NameDevice bool
 	// Sweep is how often the hub link disconnects devices that are
 	// connected but not permitted any more. Zero means DefaultSweep.
 	Sweep time.Duration
@@ -76,7 +80,8 @@ type Link struct {
 	enrolling  chan struct{}
 	enrolments sync.WaitGroup
 
-	identity identity.Hub
+	nameDevice bool
+	identity   identity.Hub
 	// next is the address that devices are told for after a relay change.
 	next atomic.Pointer[tunnel.Address]
 
@@ -130,7 +135,8 @@ func Start(ctx context.Context, cfg Config) (*Link, error) {
 func newLink(cfg Config, target string) *Link {
 	link := &Link{
 		target: target, log: cfg.Log, devices: cfg.Devices, invites: cfg.Invites, now: cfg.Now,
-		ownKey: cfg.Identity.Key.Public(), enrolling: make(chan struct{}, maxEnrolments), identity: cfg.Identity,
+		nameDevice: cfg.NameDevice,
+		ownKey:     cfg.Identity.Key.Public(), enrolling: make(chan struct{}, maxEnrolments), identity: cfg.Identity,
 		stopped: make(chan struct{}), accepting: make(chan struct{}, 2),
 	}
 	if link.log == nil {
@@ -226,6 +232,14 @@ func (l *Link) forward(stream net.Conn) {
 		l.log.Warn("the hub did not accept a connection on its loopback address", "device", device)
 		stream.Close()
 		return
+	}
+	if l.nameDevice {
+		header := deviceHeader(device, addrPortOf(stream.RemoteAddr()), addrPortOf(stream.LocalAddr()))
+		if _, err := hub.Write(header); err != nil {
+			stream.Close()
+			hub.Close()
+			return
+		}
 	}
 	tunnel.Join(stream, hub)
 }

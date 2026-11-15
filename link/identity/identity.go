@@ -67,6 +67,10 @@ type Device struct {
 	Key tunnel.PrivateKey
 	// Hub is the address of the device's hub. It is zero before enrolment.
 	Hub tunnel.Address
+	// HubName is a domain name that holds the hub's address in a TXT
+	// record, or empty (LNK-007). The device asks it when the hub answers at
+	// no address that the device has.
+	HubName string
 	// NextHub is the address that the hub has announced for after its relay
 	// change. The device tries it when Hub does not answer (LNK-007).
 	NextHub tunnel.Address
@@ -81,6 +85,7 @@ type Device struct {
 type savedDevice struct {
 	Key     string    `json:"key"`
 	Hub     string    `json:"hub,omitempty"`
+	HubName string    `json:"hubName,omitempty"`
 	NextHub string    `json:"nextHub,omitempty"`
 	Expires time.Time `json:"expires,omitzero"`
 	NextKey string    `json:"nextKey,omitempty"`
@@ -98,7 +103,7 @@ func LoadDevice(dir *statedir.Dir) (Device, error) {
 	if err != nil {
 		return Device{}, err
 	}
-	device := Device{Expires: saved.Expires}
+	device := Device{Expires: saved.Expires, HubName: saved.HubName}
 	if device.Key, err = tunnel.ParsePrivateKey(saved.Key); err != nil {
 		return Device{}, fmt.Errorf("%w: %s", statedir.ErrDamaged, deviceFile)
 	}
@@ -122,7 +127,7 @@ func LoadDevice(dir *statedir.Dir) (Device, error) {
 
 // Save writes the device's identity.
 func (d Device) Save(dir *statedir.Dir) error {
-	saved := savedDevice{Key: d.Key.Reveal(), Hub: d.Hub.Reveal(), NextHub: d.NextHub.Reveal(), Expires: d.Expires}
+	saved := savedDevice{Key: d.Key.Reveal(), Hub: d.Hub.Reveal(), HubName: d.HubName, NextHub: d.NextHub.Reveal(), Expires: d.Expires}
 	if !d.NextKey.IsZero() {
 		saved.NextKey = d.NextKey.Reveal()
 	}

@@ -234,10 +234,11 @@ func TestLNK003TheOperatorMakesAnInviteAndADeviceJoinsWithIt(t *testing.T) {
 
 	state := stateDir(t)
 	var out, errs output
-	joinCode := run(context.Background(), []string{"join", "-state", state}, stdio{strings.NewReader(invite.Invite + "\n"), &out, &errs})
+	joinCode := run(context.Background(), []string{"join", "-state", state, "-hub-name", "hub.example.org"}, stdio{strings.NewReader(invite.Invite + "\n"), &out, &errs})
 	if joinCode != 0 || !strings.Contains(out.String(), "joined") {
 		t.Fatalf("join: exit %d, %q %q", joinCode, out.String(), errs.String())
 	}
+	checkJoined(t, state, out.String())
 	if listed, _ := hub.ctl(t, "devices.list"); !strings.Contains(listed, "Maya's laptop") {
 		t.Errorf("devices.list = %s, want the joined device", listed)
 	}
@@ -299,5 +300,17 @@ func TestLNK006TheOperatorSeesThePathOfEachDevice(t *testing.T) {
 			t.Fatalf("devices.list = %s, want a direct path for the connected device", listed)
 		}
 		time.Sleep(200 * time.Millisecond)
+	}
+}
+
+// checkJoined checks what a join leaves on the device and prints.
+func checkJoined(t *testing.T, state, printed string) {
+	t.Helper()
+	device := loadDevice(t, state)
+	if device.HubName != "hub.example.org" || device.Hub.IsZero() || device.Expires.IsZero() {
+		t.Error("join did not save the hub address, the key's expiry time and the hub name")
+	}
+	if !strings.Contains(printed, device.Key.Public().Fingerprint()) {
+		t.Error("join did not print the fingerprint of the device's key")
 	}
 }
