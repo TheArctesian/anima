@@ -223,3 +223,20 @@ fn prj_028_forget_drops_exactly_the_paths_below_the_prefix_of_that_account() {
         );
     }
 }
+
+#[test]
+fn itg_004_a_removed_account_leaves_no_answer_held_and_another_keeps_its_own() {
+    let mut replies = Replies::default();
+    let (removed, other) = (account(), account());
+    let keep = Keep::for_seconds(30);
+    for path in ["/repos/o/r/pulls", "/repos/o/r/contents", "/app"] {
+        replies.keep(key(removed, path), keep, held(b"1", now()));
+        replies.keep(key(other, path), keep, held(b"22", now()));
+    }
+
+    replies.forget_account(removed);
+
+    assert_eq!(replies.size(), (3, 6), "only the other account's answers");
+    let pulls = key(removed, "/repos/o/r/pulls");
+    assert!(replies.stale(&pulls, keep, now()).is_none());
+}

@@ -63,6 +63,13 @@ pub fn forget(transport: &Transport, account: SourceAccountId, path_prefix: &str
         .replies(|replies| replies.forget(account, path_prefix));
 }
 
+/// Drops every held answer of `account`, once it is removed.
+pub(in crate::engine::sources) fn forget_account(transport: &Transport, account: SourceAccountId) {
+    transport
+        .live()
+        .replies(|replies| replies.forget_account(account));
+}
+
 /// Whether each of `accounts` can be read now, from the stored rows; nothing is written.
 ///
 /// # Errors

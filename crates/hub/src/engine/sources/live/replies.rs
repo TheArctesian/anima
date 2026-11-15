@@ -154,10 +154,19 @@ impl Replies {
             path.strip_prefix(prefix)
                 .is_some_and(|rest| rest.is_empty() || rest.starts_with('/'))
         };
+        self.discard_where(|key| key.account == account && below(&key.path));
+    }
+
+    /// Drops every answer of `account`: it was removed.
+    pub(super) fn forget_account(&mut self, account: SourceAccountId) {
+        self.discard_where(|key| key.account == account);
+    }
+
+    fn discard_where(&mut self, gone: impl Fn(&Key) -> bool) {
         let gone: Vec<Key> = self
             .entries
             .keys()
-            .filter(|key| key.account == account && below(&key.path))
+            .filter(|key| gone(key))
             .cloned()
             .collect();
         for key in gone {
