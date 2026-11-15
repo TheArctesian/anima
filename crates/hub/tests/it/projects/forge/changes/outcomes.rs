@@ -1,16 +1,30 @@
 //! K-E1 Sections 13.6 and 13.7, decisions item 7: every answer to a sent change reaches the
 //! client as its K7 code and fixed words, never GitHub's text, and leaves an audit entry with
-//! its outcome; a change whose answer was lost is unknown, recorded, and sent once.
+//! its outcome; a change whose answer was lost is unknown, recorded, and sent once; a change
+//! that was sent is recorded even when the client goes away, and one that GitHub made, or may
+//! have made, and that cannot be recorded says so in fixed words (PRJ-028).
+
+use std::{sync::Arc, time::Duration};
 
 use chrono::TimeDelta;
 use serde_json::{Value, json};
 use sqlx::PgPool;
+use tokio::sync::Semaphore;
 
 use super::{CREATE, audits, events, sent};
 use crate::{
     hub::{error, start},
-    projects::forge::{BASE, forge, reply},
+    projects::forge::{BASE, forge, reply, tokens::key},
 };
+
+/// K-E1 Section 13.6: GitHub made the change and the hub could not record it.
+pub const MADE_UNRECORDED: &str = "GitHub made the change, but the hub could not record it.";
+/// As [`MADE_UNRECORDED`], when no whole answer came back.
+const MAYBE_UNRECORDED: &str = "GitHub may have made the change, but the hub could not record \
+    it. Look before you try again.";
+/// Makes every record of a change to a repository fail.
+pub const NO_RECORDS: &str = "ALTER TABLE events.audit_log ADD CONSTRAINT \
+    no_repository_entries CHECK (target_type <> 'repository')";
 
 const GITHUB_TEXT: &str = "GITHUB-OWN-TEXT-6620";
 
@@ -156,16 +170,86 @@ async fn od_e14_a_change_github_made_that_cannot_be_recorded_is_internal(pool: P
     let path = format!("{BASE}/issues");
     let made = reply(201, &[], &json!({ "number": 7 }).to_string());
     forge.kit.stub.reply_to("POST", &path, made);
-    forge.kit.stub.hook(
-        &path,
-        "ALTER TABLE events.audit_log ADD CONSTRAINT no_repository_entries \
-         CHECK (target_type <> 'repository')",
-    );
+    forge.kit.stub.hook(&path, NO_RECORDS);
 
     let response = forge.ask(CREATE, json!({ "title": "Printer jams" })).await;
 
-    assert_eq!(error(&response).1, "INTERNAL", "{response}");
+    assert_eq!(
+        error(&response),
+        (MADE_UNRECORDED.to_owned(), "INTERNAL".to_owned()),
+        "{response}"
+    );
     assert_eq!(sent(&forge, "POST", "/issues").len(), 1, "never sent again");
     assert_eq!(audits(&pool).await, Vec::<Value>::new());
     assert!(events(&pool).await.is_empty(), "nothing");
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn prj_028_a_change_that_may_have_been_made_and_cannot_be_recorded_says_so(pool: PgPool) {
+    let forge = forge(&pool).await;
+    let path = format!("{BASE}/issues/5/comments");
+    forge.kit.stub.drop_answer(&path);
+    forge.kit.stub.hook(&path, NO_RECORDS);
+
+    let response = forge
+        .ask(
+            super::COMMENT,
+            json!({ "number": 5, "body": "Seen it too." }),
+        )
+        .await;
+
+    assert_eq!(
+        error(&response),
+        (MAYBE_UNRECORDED.to_owned(), "INTERNAL".to_owned()),
+        "{response}"
+    );
+    assert_eq!(sent(&forge, "POST", "/issues/5/comments").len(), 1);
+    assert_eq!(audits(&pool).await, Vec::<Value>::new());
+}
+
+/// A client that goes away after the hub sent the change drops its request: GitHub has the
+/// change all the same, so the hub still records it, as it records a VPN broker change.
+#[sqlx::test(migrations = "./migrations")]
+async fn prj_028_a_sent_change_is_recorded_even_when_the_client_goes_away(pool: PgPool) {
+    let forge = forge(&pool).await;
+    let path = format!("{BASE}/issues");
+    forge.kit.stub.reply_to(
+        "POST",
+        &path,
+        reply(201, &[], &json!({ "number": 7 }).to_string()),
+    );
+    let gate = Arc::new(Semaphore::new(0));
+    forge.kit.stub.gate(&path, &gate);
+
+    let write = key(&forge, "WRITE").await;
+    let mut variables = json!({ "title": "Printer jams" });
+    variables["repository"] = json!(forge.repository);
+    let mut post = Box::pin(forge.kit.hub.post(Some(&write), CREATE, variables));
+    let heard = async {
+        while sent(&forge, "POST", "/issues").is_empty() {
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    };
+    tokio::select! {
+        response = &mut post => panic!("finished before the client left: {response}"),
+        () = heard => {}
+    }
+    // The client goes away: hyper drops the handler future of a closed connection.
+    drop(post);
+    gate.add_permits(1);
+    for _ in 0..300 {
+        if !audits(&pool).await.is_empty() {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+
+    assert_eq!(
+        sent(&forge, "POST", "/issues").len(),
+        1,
+        "GitHub got the change"
+    );
+    let entries = audits(&pool).await;
+    assert_eq!(entries.len(), 1, "one audit entry for the sent change");
+    assert_eq!(entries[0]["change"]["outcome"], "done");
 }

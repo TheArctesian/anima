@@ -96,3 +96,37 @@ async fn d_23_every_live_read_answers_a_login_token_and_both_key_scopes(pool: Pg
         assert_eq!(error(&signed_out), unauthenticated(), "{root}");
     }
 }
+
+/// No document shape reaches a root closed to an API key: an alias, a fragment, a second
+/// operation or a root `__typename` beside it (K-E1 Section 13.5).
+#[sqlx::test(migrations = "./migrations")]
+async fn d_23_an_api_key_reaches_no_closed_root_by_any_document_shape(pool: PgPool) {
+    let forge = forge(&pool).await;
+    let write = key(&forge, "WRITE").await;
+    let documents = [
+        "query($repository: ID!) { x: codeFile(repository: $repository, path: \"a\") { text } }",
+        "query($repository: ID!) { ... on Query { codeFile(repository: $repository, path: \"a\") { text } } }",
+        "query Q($repository: ID!) { ...F } fragment F on Query { codeFile(repository: $repository, path: \"a\") { text } }",
+        "query A { __typename } mutation B($repository: ID!) { m: mergePullRequest(input: { repository: $repository, number: 1, expectedHeadSha: \"0000000000000000000000000000000000000001\", method: MERGE }) { number } }",
+        "mutation($repository: ID!) { __typename setCommitStatus(input: { repository: $repository, sha: \"0000000000000000000000000000000000000001\", state: SUCCESS, context: \"anima/ci\" }) { sha } }",
+    ];
+    for document in documents {
+        let response = forge
+            .kit
+            .hub
+            .post(
+                Some(&write),
+                document,
+                json!({ "repository": forge.repository }),
+            )
+            .await;
+        assert_eq!(error(&response).1, "FORBIDDEN", "{document}: {response}");
+    }
+    let paths = forge.kit.stub.paths();
+    assert!(
+        paths.iter().all(|p| !p.contains("/contents/")
+            && !p.contains("/merge")
+            && !p.contains("/statuses/")),
+        "{paths:?}"
+    );
+}
