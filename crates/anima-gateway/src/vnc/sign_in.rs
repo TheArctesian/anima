@@ -82,7 +82,9 @@ impl Offered {
     ///   the weaker VNC password method, even when a device (or someone between) offers
     ///   only that.
     /// - Without one: a VNC password, else Apple's method (the name is then asked for).
-    /// - No sign-in: only when the hub has no credential at all. A device that suddenly
+    /// - With no credential at all: no sign-in when the device offers that, else a method
+    ///   whose credentials are then asked for.
+    /// - No sign-in is used only then. A device that suddenly
     ///   asks for none, while the hub holds a password for it, is not the device meant.
     ///
     /// # Errors
@@ -92,7 +94,7 @@ impl Offered {
         let order: &[Method] = match (has_username, has_password) {
             (true, _) => &[Method::Apple],
             (false, true) => &[Method::VncPassword, Method::Apple],
-            (false, false) => &[Method::VncPassword, Method::Apple, Method::None],
+            (false, false) => &[Method::None, Method::VncPassword, Method::Apple],
         };
         order
             .iter()

@@ -146,7 +146,7 @@ written here with its reason.
 | T2 Frame encoder | Done. Reviewed twice by `reviewer` (1 must-fix and 3 test findings corrected; second verdict: accept); full gates passed 14 of 14. | `2970dfad`, `aa78c4d1` |
 | T3 Frame pacing | Done; full gates passed 14 of 14 at `3a0d1032`. `reviewer`: fix, then accept; 3 findings corrected. | `09f1acdc`, `3a0d1032` |
 | T4 Gateway handshake | Done; full gates passed 14 of 14 at `3a0d1032` (before the correction commit). `reviewer`: accept, 4 findings corrected. `reviewer-security`: no critical or high; 1 medium and 2 low corrected, 3 notes carried to T6. | `dfca4494` and the correction after it |
-| T5 VNC client | `reviewer-security`: 3 high, 3 medium, 2 low; all corrected. `reviewer`: report not yet in. | `58174c99`, `e13e333d` |
+| T5 VNC client | `reviewer-security`: 3 high, 3 medium, 2 low; all corrected. `reviewer` (late report, on the first commit): accept, no protocol fault, 24 mutants; its 2 test gaps and 2 code points corrected. | `58174c99`, `e13e333d` |
 | T6 Session and worker process | `reviewer`: fix and re-review, no must-level fault; 2 test gaps and 3 code points corrected. `reviewer-security`: accept with 2 medium; M1 corrected, M2 answered in part (see Section 9). Second security review of the T5 and T6 corrections: all earlier findings closed but M2; 1 new medium (the write limit cut off slow links) corrected. | `193342fb` and the correction after it |
 | T7 Large screens | `reviewer`: accept; its own property test of 3000 cases held; 1 test gap corrected (a property test is now in the crate). | `fa85121b` and the correction after it |
 | T8 Hub tunnel against the gateway | Built: 2 hub tests pass with a throwaway PostgreSQL. | `bf1da47f` |
@@ -258,6 +258,10 @@ Choices:
   reader tasks stop with the session. The listener logs what it cannot accept or start,
   and tells a connection beyond the limit that it is busy. Options the program does not
   know are refused.
+- **T5, after the late review.** A new screen size from the device is an event of its own,
+  and the session then asks for all of the screen: the copy is black after a new size, and
+  a request for changes alone could leave it so. With no credential at all, "no sign-in"
+  is used when the device offers it, before a method that would need a prompt.
 - **Write limit.** The limit on a write counts time in which the peer takes no byte, not
   the time of the whole write: a slow relayed link is not cut off, a peer that stopped
   reading is (second security review).
@@ -291,7 +295,6 @@ Choices:
 | T9 live checks | The operator types the password. |
 | The RDP icon: a screen with a lock in it | The pinned Carbon set (`@iconify-json/carbon` 1.2.29, 2802 icons) has no such icon. It has `screen`, `screen-map`, `screen-off`, `virtual-desktop`, `remote-connection` and `locked`. RDP keeps `carbon:remote-connection`. Choices: (1) a `carbon:locked` badge over `carbon:screen`, made by a component from the two table icons; UI-014 and UI-016 do not say that an icon may be made of two, so this needs a line in the spec; (2) another Carbon icon for RDP, for example `carbon:virtual-desktop`. |
 | The gateway in the deployment (`deploy/compose.yaml`, the hub image) | Not changed. The Docker hub keeps `guacd` for both protocols, and a change of the compose file changes what the next deployment to the VPS does (VPS-005). `docs/setup/native-gateway.md` says how to run the program. The Mac application bundle is plan items S4 and S6. |
-| The `reviewer` report on T5 (VNC client) | The run did not report back. The two `reviewer-security` runs on T5 did, and their findings are corrected. |
 | A hub message for two gateway statuses | A device that offers only a VNC password while the device record has a user name ends with the general text "The gateway did not open the VNC session." The same holds for a busy gateway (0x0201). A clearer text is a hub change (`tunnel/opening.rs`), not made here. |
 | With a password and no user name, a Mac that offers both a VNC password and Apple's method gets the VNC password | Second security review, low. The operator sets the user name for a Mac, which selects Apple's method. |
 | Memory of a worker with a hostile device | Up to about 1.1 GiB for the largest screen. An address-space limit for each worker is not set. |

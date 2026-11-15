@@ -178,10 +178,7 @@ async fn the_method_follows_what_the_hub_has() {
         all.method(false, true).expect("a method"),
         Method::VncPassword
     );
-    assert_eq!(
-        all.method(false, false).expect("a method"),
-        Method::VncPassword
-    );
+    assert_eq!(all.method(false, false).expect("a method"), Method::None);
 }
 
 #[tokio::test]

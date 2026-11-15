@@ -35,6 +35,8 @@ struct Running<'a, S> {
     pacing: Pacing,
     clipboard: Clipboard,
     started: Instant,
+    /// The device's screen has a new size: the next request asks for all of it.
+    resized: bool,
 }
 
 /// Runs the session until one side ends it.
@@ -73,6 +75,7 @@ where
         pacing: Pacing::new(settings.pace),
         clipboard: Clipboard::default(),
         started: Instant::now(),
+        resized: false,
     };
     if running.ask_for_update(false).await.is_err() {
         return Ended::ByDevice;
@@ -145,7 +148,11 @@ where
         };
         for event in events {
             match event {
-                Event::Updated => self.ask_for_update(true).await?,
+                Event::Resized => self.resized = true,
+                Event::Updated => {
+                    let all = std::mem::take(&mut self.resized);
+                    self.ask_for_update(!all).await?;
+                }
                 Event::Clipboard(text) if self.allowed.copy => {
                     self.hub
                         .send(&copy_to_client(&text))

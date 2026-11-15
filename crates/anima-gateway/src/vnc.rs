@@ -51,6 +51,9 @@ pub enum Malformed {
 pub enum Event {
     /// An update arrived; the screen copy may have changed.
     Updated,
+    /// The device's screen has a new size and is black until the device sends it again:
+    /// the next request must ask for all of the screen.
+    Resized,
     /// The device's clipboard has this text.
     Clipboard(String),
     Bell,
@@ -159,7 +162,9 @@ impl Device {
                 .checked_sub(pixels)
                 .ok_or(Malformed::TooManyPixels)?;
         }
-        self.inflaters.draw(&[rect], screen)?;
+        if self.inflaters.draw(&[rect], screen)? {
+            events.push(Event::Resized);
+        }
         update.rects_left -= 1;
         if update.rects_left == 0 {
             self.update = None;

@@ -71,13 +71,14 @@ fn packed_data_a_device_may_not_send_ends_the_session() {
     let packed = |area, encoding, bytes: &[u8]| {
         rfb::update(&[Deflater::default().packed_as(area, encoding, bytes)])
     };
-    // A zlib bomb: far more data than one pixel needs.
+    // A zlib bomb: 100 kB of zeros pack to about 120 bytes, which a rectangle of one pixel
+    // may send, and inflate to far more than one pixel needs.
     assert_eq!(
-        refusal(&packed(pixel, 6, &vec![0; 1 << 20])),
+        refusal(&packed(pixel, 6, &vec![0; 100_000])),
         Some(Malformed::TooManyBytes)
     );
     assert_eq!(
-        refusal(&packed(pixel, 16, &vec![0; 1 << 20])),
+        refusal(&packed(pixel, 16, &vec![0; 100_000])),
         Some(Malformed::TooManyBytes)
     );
     // A tile that ends early, a run longer than its tile, a palette number outside the palette.
@@ -169,5 +170,50 @@ fn a_rectangle_is_drawn_as_soon_as_it_is_whole() {
             .receive(&bytes[bytes.len() - 10..], &mut screen)
             .expect("read"),
         [Event::Updated]
+    );
+}
+
+#[test]
+fn an_over_long_clipboard_text_is_skipped_across_reads() {
+    let mut bytes = rfb::cut_text(&vec![b'x'; (1 << 20) + 5000]);
+    bytes.push(2);
+    let mut device = Device::default();
+    let mut screen = screen();
+    let mut events = Vec::new();
+    for piece in bytes.chunks(70_000) {
+        events.extend(device.receive(piece, &mut screen).expect("read"));
+    }
+    assert_eq!(events, [Event::Bell]);
+}
+
+#[test]
+fn a_new_size_is_told_so_the_whole_screen_can_be_asked_for() {
+    let small = Area {
+        x: 0,
+        y: 0,
+        width: 20,
+        height: 10,
+    };
+    let update = rfb::update(&[rfb::desktop_size(20, 10), rfb::raw(small, &[5; 600])]);
+    let mut device = Device::default();
+    let mut screen = screen();
+    assert_eq!(
+        device.receive(&update, &mut screen).expect("read"),
+        [Event::Resized, Event::Updated]
+    );
+    // A larger screen, and a rectangle that fills it: the limit counts for the new size.
+    let large = Area {
+        x: 0,
+        y: 0,
+        width: 300,
+        height: 200,
+    };
+    let update = rfb::update(&[
+        rfb::desktop_size(300, 200),
+        rfb::raw(large, &vec![5; 300 * 200 * 3]),
+    ]);
+    assert_eq!(
+        device.receive(&update, &mut screen).expect("read"),
+        [Event::Resized, Event::Updated]
     );
 }
