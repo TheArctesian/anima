@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import type { Level } from '$lib/desktop/stay-awake';
+  import type { Level } from '$lib/desktop/stay-awake/shell';
   import FormButton from '$lib/forms/FormButton.svelte';
   import { useHub } from '$lib/hub/context';
   import { isMac } from '$lib/platform/mac';

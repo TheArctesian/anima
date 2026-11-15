@@ -53,7 +53,7 @@ Answer to OI-4: yes. On macOS the lid-closed level needs administrator rights on
 | T2 | Pure logic in `apps/desktop/src-tauri/src/stay_awake/`: the level from the choice, the power source and the lid state (`level.rs`); the power source readers (`power.rs`). | Unit tests for each rule of D-6, D-7 and D-11. | reviewer |
 | T3 | OS holds (`hold.rs`), the lid set-up (`lid_set_up.rs`), the saved choice and the marker (`saved.rs`). | Tests with stand-in programs; one test takes and releases a real `caffeinate` assertion on macOS. | reviewer, reviewer-security |
 | T4 | The control (`control.rs`), shell commands, the change event, the battery watch, restore at exit, the tray item (`stay_awake.rs`, `tray.rs`), capability and permissions. | The app builds; the control tests pass. The tray item itself is a live check. | reviewer, reviewer-security |
-| T5 | Client: `$lib/desktop/stay-awake.ts`, `$lib/stay-awake/`, the Settings section, the capability, AWK-005 notice. | Component and unit tests pass. | reviewer |
+| T5 | Client: `$lib/desktop/stay-awake/shell.ts`, `$lib/stay-awake/`, the Settings section, the capability, AWK-005 notice. | Component and unit tests pass. | reviewer |
 | T6 | Merge `origin/main`, full gates, deferred live checks listed. | `bun run gates` passes. | — |
 
 ## 4. Not in S8, recorded for later work

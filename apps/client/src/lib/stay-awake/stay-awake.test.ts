@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { StayAwakeStatus } from '$lib/desktop/stay-awake';
+import type { StayAwakeStatus } from '$lib/desktop/stay-awake/shell';
 import { describeStayAwake, hubIsThisComputer, sleepNotice } from './stay-awake';
 
 const status = (change: Partial<StayAwakeStatus>): StayAwakeStatus => ({ level: 'off', batteryFloor: null, held: 'off', pause: null, lid: 'ready', ...change });

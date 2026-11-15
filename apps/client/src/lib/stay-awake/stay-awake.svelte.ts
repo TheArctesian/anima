@@ -8,7 +8,7 @@ import {
   type Level,
   type StayAwakeResult,
   type StayAwakeStatus,
-} from '$lib/desktop/stay-awake';
+} from '$lib/desktop/stay-awake/shell';
 import { problemText } from './stay-awake';
 
 /** The shell calls the rows make; a test passes its own. */

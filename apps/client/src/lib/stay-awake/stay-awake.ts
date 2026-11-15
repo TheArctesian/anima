@@ -1,4 +1,4 @@
-import type { Level, StayAwakeProblem, StayAwakeStatus } from '$lib/desktop/stay-awake';
+import type { Level, StayAwakeProblem, StayAwakeStatus } from '$lib/desktop/stay-awake/shell';
 
 /** The three states in the order the control shows them (AWK-001). */
 export const LEVELS: readonly { readonly value: Level; readonly label: string }[] = [

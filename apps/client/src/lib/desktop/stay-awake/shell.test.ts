@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { chooseLevel, onStayAwake, readStayAwake, removeLidSetUp, setBatteryFloor, setUpLid, statusOf, type StayAwakeStatus } from './stay-awake';
+import { chooseLevel, onStayAwake, readStayAwake, removeLidSetUp, setBatteryFloor, setUpLid, statusOf, type StayAwakeStatus } from './shell';
 
 const shell = vi.hoisted(() => ({ invoke: vi.fn(), isTauri: vi.fn(() => true), listen: vi.fn() }));
 vi.mock('@tauri-apps/api/core', () => ({ invoke: shell.invoke, isTauri: shell.isTauri }));

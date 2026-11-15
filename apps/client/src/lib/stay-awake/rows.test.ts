@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { flushSync, mount, unmount } from 'svelte';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import type { StayAwakeResult, StayAwakeStatus } from '$lib/desktop/stay-awake';
+import type { StayAwakeResult, StayAwakeStatus } from '$lib/desktop/stay-awake/shell';
 import type { StayAwakeShell } from './stay-awake.svelte';
 import StayAwakeRows from './StayAwakeRows.svelte';
 
