@@ -7,7 +7,8 @@
 pub mod backup;
 mod cluster;
 mod layout;
-mod owner_only;
+// Also for the program that runs the hub's group (S4): its key, state and logs are in the hub root.
+pub mod owner_only;
 mod password;
 mod roles;
 mod server;

@@ -344,6 +344,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "anima-local-hub"
+version = "0.1.0"
+dependencies = [
+ "anima-database",
+ "base64 0.23.1",
+ "clap",
+ "getrandom 0.4.3",
+ "nix 0.31.3",
+ "plist",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.21",
+ "tokio",
+ "zeroize",
+]
+
+[[package]]
 name = "anima-theme"
 version = "0.1.0"
 

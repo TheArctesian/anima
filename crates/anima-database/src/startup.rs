@@ -64,6 +64,10 @@ pub enum BackupExclusion {
     Failed,
 }
 
+/// The line `anima-database serve` prints on standard error when [`Running::recovered`] is set.
+/// The program that runs the hub's group reads it (one-click plan S4).
+pub const RECOVERED_NOTICE: &str = "anima-database: recovered after an unclean stop";
+
 /// A database that is up: its server, and the lock that keeps other copies away.
 #[derive(Debug)]
 pub struct Running {

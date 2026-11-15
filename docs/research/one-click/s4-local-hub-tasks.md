@@ -114,7 +114,7 @@ standard input. A child's output is copied to its log file line by line; the log
 | `ANIMA_GUACD` | the gateway's address | S4 |
 | `ANIMA_LOG` | `info` | S4 |
 | `ANIMA_LISTEN` | `127.0.0.1:8443`, plain HTTP (NET-003 permits it on loopback only) | **S5.** S4 gives the K7 default so that the group can start. |
-| `ANIMA_PUBLIC_ORIGIN` | `http://127.0.0.1:8443` | **S5** |
+| `ANIMA_PUBLIC_ORIGIN` | not set: the hub's default, `https://hub.anima.ing` | **S5.** It must name the origin that the client uses. |
 | `ANIMA_PERMITTED_NETWORKS` | not set: the hub's default, `100.64.0.0/10` | **S5.** With the default, a client on loopback gets 403; only `/health` answers. S4 does not open the hub. |
 | `ANIMA_PROBE_DENY` | not set (the hub warns) | **S5** |
 | All others | not set: no TLS, no web client, no Tailscale, no VPN broker, no release publishing | — |

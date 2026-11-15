@@ -151,7 +151,7 @@ fn serve(place: &Place) -> Result<ExitCode, Failure> {
     let layout = place.layout()?;
     let mut running = startup::start(&tree, &layout, SETTINGS, LIMITS)?;
     if running.recovered {
-        eprintln!("anima-database: recovered after an unclean stop");
+        eprintln!("{}", startup::RECOVERED_NOTICE);
     }
     if running.backup_exclusion == BackupExclusion::Failed {
         eprintln!("anima-database: the cluster could not be excluded from Time Machine");
