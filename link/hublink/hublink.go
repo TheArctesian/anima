@@ -17,12 +17,22 @@ import (
 
 // Errors of this package.
 var (
+	// ErrStillPermitted means that Disconnect was called for a device that
+	// is in the list. A disconnected device that is permitted connects again
+	// at once, so the key must leave the list first (LNK-004).
+	ErrStillPermitted = errors.New("hublink: remove the device from the list before it is disconnected")
 	// ErrTarget means that the target is not a loopback address with a port.
 	// The link must not send a device's traffic to another computer.
 	ErrTarget = errors.New("hublink: the target must be a loopback address and a port, for example 127.0.0.1:8443")
 )
 
-const targetDialLimit = 5 * time.Second
+const (
+	targetDialLimit = 5 * time.Second
+	// closeGrace is the time that the close of a stream gets to reach the
+	// device before the tunnel stops carrying the device's traffic. The
+	// tunnel gives no sign that the close arrived.
+	closeGrace = 500 * time.Millisecond
+)
 
 // Config is what a hub link needs to start.
 type Config struct {
@@ -47,6 +57,7 @@ type Link struct {
 	listener net.Listener
 	target   string
 	log      *slog.Logger
+	permits  func(tunnel.DeviceKey) bool
 	streams  streams
 	accepted chan struct{}
 }
@@ -78,7 +89,7 @@ func Start(ctx context.Context, cfg Config) (*Link, error) {
 	if log == nil {
 		log = slog.New(slog.NewTextHandler(io.Discard, nil))
 	}
-	link := &Link{hub: hub, listener: listener, target: target.String(), log: log, accepted: make(chan struct{})}
+	link := &Link{hub: hub, listener: listener, target: target.String(), log: log, permits: cfg.Permits, accepted: make(chan struct{})}
 	go link.accept()
 	return link, nil
 }
@@ -91,6 +102,24 @@ func (l *Link) Relay() tunnel.Relay { return l.hub.Relay() }
 
 // Streams is the number of open streams of one device.
 func (l *Link) Streams(device tunnel.DeviceKey) int { return l.streams.count(device) }
+
+// Disconnect ends the open sessions of a device that left the list
+// (LNK-004), and returns how many streams it closed. It closes each stream
+// of the device, so that the device sees its sessions end, and then makes
+// the tunnel forget the device. The tunnel's own call does not close
+// streams: without the first step the sessions stay open with no traffic.
+func (l *Link) Disconnect(device tunnel.DeviceKey) (closed int, err error) {
+	if l.permits(device) {
+		return 0, ErrStillPermitted
+	}
+	closed = l.streams.closeOf(device)
+	if closed > 0 {
+		time.Sleep(closeGrace)
+	}
+	l.hub.Disconnect(device)
+	l.log.Info("a device was disconnected", "device", device, "streams", closed)
+	return closed, nil
+}
 
 // Close stops the hub link. It returns when each stream and each
 // connection to the hub is closed.
@@ -120,7 +149,9 @@ func (l *Link) accept() {
 // device key that the tunnel authenticated.
 func (l *Link) forward(stream net.Conn) {
 	device, known := l.hub.DeviceOf(stream.RemoteAddr())
-	if !known {
+	// The list is asked again for each stream: the tunnel asks it only when
+	// a device connects, and a device can leave the list while connected.
+	if !known || !l.permits(device) {
 		stream.Close()
 		return
 	}

@@ -27,6 +27,7 @@ var (
 	ErrKnown   = &Refusal{"device_known", "this key is already permitted"}
 	ErrBadName = &Refusal{"bad_name", "a device needs a name of 1 to 64 visible characters"}
 	ErrNoKey   = &Refusal{"no_key", "a device needs a key"}
+	ErrUnknown = &Refusal{"device_unknown", "this key is not in the list of permitted devices"}
 )
 
 const maxNameLength = 64
@@ -59,6 +60,20 @@ func (l list) with(device Device) (list, error) {
 		next[key] = each
 	}
 	next[device.Key] = device
+	return next, nil
+}
+
+// without returns the list with one device less.
+func (l list) without(key tunnel.DeviceKey) (list, error) {
+	if _, known := l[key]; !known {
+		return nil, ErrUnknown
+	}
+	next := make(list, len(l))
+	for each, device := range l {
+		if each != key {
+			next[each] = device
+		}
+	}
 	return next, nil
 }
 

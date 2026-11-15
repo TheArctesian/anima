@@ -98,3 +98,30 @@ func TestADeviceNeedsAKeyANameAndToBeNew(t *testing.T) {
 		t.Errorf("a refused device changed the list: %+v", store.All())
 	}
 }
+
+func TestLNK004ARevokedKeyIsRefusedAlsoAfterARestart(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "s")
+	store, dir := openStore(t, path)
+	laptop, phone := newKey(), newKey()
+	for name, key := range map[string]tunnel.DeviceKey{"laptop": laptop, "phone": phone} {
+		if err := store.Permit(devices.Device{Key: key, Name: name, Permitted: day}); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	if err := store.Revoke(laptop); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Revoke(laptop); !errors.Is(err, devices.ErrUnknown) {
+		t.Errorf("a second Revoke = %v, want ErrUnknown", err)
+	}
+	if store.Permits(laptop) || !store.Permits(phone) {
+		t.Error("Revoke did not remove the one key and keep the other")
+	}
+	dir.Close()
+
+	again, _ := openStore(t, path)
+	if again.Permits(laptop) || !again.Permits(phone) || again.Count() != 1 {
+		t.Error("after a restart the revoked key is back, or the other key is gone")
+	}
+}

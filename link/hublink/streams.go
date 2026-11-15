@@ -63,6 +63,16 @@ func (s *streams) count(device tunnel.DeviceKey) int {
 	return len(s.open[device])
 }
 
+// closeOf closes the streams of one device and returns how many it closed.
+func (s *streams) closeOf(device tunnel.DeviceKey) int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for stream := range s.open[device] {
+		stream.Close()
+	}
+	return len(s.open[device])
+}
+
 // closing notes that the hub link stops, before its listener ends.
 func (s *streams) closing() {
 	s.mu.Lock()

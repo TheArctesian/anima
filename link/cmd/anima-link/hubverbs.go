@@ -27,6 +27,16 @@ type listedDevice struct {
 	Streams   int              `json:"streams"`
 }
 
+// revokeRequest is the arguments of "devices.revoke".
+type revokeRequest struct {
+	Key tunnel.DeviceKey `json:"key"`
+}
+
+// revoked is the answer of "devices.revoke".
+type revoked struct {
+	StreamsClosed int `json:"streamsClosed"`
+}
+
 // permitRequest is the arguments of "devices.permit".
 type permitRequest struct {
 	Key  tunnel.DeviceKey `json:"key"`
@@ -57,6 +67,17 @@ func hubVerbs(link *hublink.Link, permitted *devices.Store, now func() time.Time
 			}
 			err := permitted.Permit(devices.Device{Key: request.Key, Name: request.Name, Permitted: now().UTC()})
 			return nil, refusalOf(err)
+		},
+		"devices.revoke": func(_ context.Context, args json.RawMessage) (any, error) {
+			var request revokeRequest
+			if err := control.Arguments(args, &request); err != nil {
+				return nil, err
+			}
+			if err := permitted.Revoke(request.Key); err != nil {
+				return nil, refusalOf(err)
+			}
+			closed, err := link.Disconnect(request.Key)
+			return revoked{closed}, err
 		},
 	}
 }

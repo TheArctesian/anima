@@ -190,3 +190,30 @@ func TestADeviceWithNoHubSaysThatItNeedsAnInvite(t *testing.T) {
 		t.Errorf("device with no hub: exit %d, %q", code, stderr.String())
 	}
 }
+
+func TestLNK004TheOperatorRevokesADeviceAndItsLocalPortStopsWorking(t *testing.T) {
+	hub := startHub(t)
+	_, local := startDevice(t, hub)
+	client := &http.Client{Timeout: 4 * time.Second, Transport: &http.Transport{DisableKeepAlives: true}}
+	if _, err := client.Get("http://" + local); err != nil {
+		t.Fatalf("before the revocation: %v", err)
+	}
+	listed, _ := hub.ctl(t, "devices.list")
+	var devices []struct{ Key, Name string }
+	if err := json.Unmarshal([]byte(listed), &devices); err != nil || len(devices) != 1 {
+		t.Fatalf("devices.list = %s", listed)
+	}
+
+	if text, code := hub.ctl(t, "devices.revoke", fmt.Sprintf(`{"key":%q}`, devices[0].Key)); code != 0 {
+		t.Fatalf("devices.revoke: %q, exit %d", text, code)
+	}
+	if _, err := client.Get("http://" + local); err == nil {
+		t.Error("the revoked device still reaches the hub through its local port")
+	}
+	if listed, _ := hub.ctl(t, "devices.list"); strings.Contains(listed, devices[0].Key) {
+		t.Errorf("devices.list still shows the revoked device: %s", listed)
+	}
+	if text, code := hub.ctl(t, "devices.revoke", fmt.Sprintf(`{"key":%q}`, devices[0].Key)); code != 1 || !strings.Contains(text, "not in the list") {
+		t.Errorf("a second revoke: %q, exit %d", text, code)
+	}
+}

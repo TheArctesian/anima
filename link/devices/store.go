@@ -48,6 +48,22 @@ func (s *Store) Permit(device Device) error {
 	return nil
 }
 
+// Revoke removes a device from the list (LNK-004). The key cannot connect
+// again. The hub link must then disconnect the device: see hublink.Disconnect.
+func (s *Store) Revoke(key tunnel.DeviceKey) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	next, err := s.current.without(key)
+	if err != nil {
+		return err
+	}
+	if err := s.dir.Write(fileName, next.sorted()); err != nil {
+		return err
+	}
+	s.current = next
+	return nil
+}
+
 // Permits reports whether a key is in the list. The hub link asks when a
 // device connects. A device that is connected stays connected when its key
 // leaves the list, until the hub link disconnects it (LNK-004).
