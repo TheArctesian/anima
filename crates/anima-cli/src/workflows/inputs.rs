@@ -90,7 +90,11 @@ mod tests {
 
     #[test]
     fn prj_035_inputs_split_at_the_first_equals_sign_in_order() {
-        let given = vec!["tag=v1.2".to_owned(), "query=a=b".to_owned(), "empty=".to_owned()];
+        let given = vec![
+            "tag=v1.2".to_owned(),
+            "query=a=b".to_owned(),
+            "empty=".to_owned(),
+        ];
         let inputs = parse(&given).expect("inputs");
         let pairs: Vec<(&str, &str)> = inputs
             .iter()

@@ -27,7 +27,11 @@ pub async fn merge(invocation: &Invocation, asked: &Asked<'_>) -> Result<(), Fai
     let pull = read(&hub, &repository, asked.name, asked.number).await?;
     match text(&pull, "state") {
         "MERGED" => {
-            let row = [shown, "ALREADY_MERGED".to_owned(), "Merged before: nothing was changed.".to_owned()];
+            let row = [
+                shown,
+                "ALREADY_MERGED".to_owned(),
+                "Merged before: nothing was changed.".to_owned(),
+            ];
             return invocation.output.data(&pull, |_| outcomes(vec![row]));
         }
         "CLOSED" => {

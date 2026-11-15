@@ -24,11 +24,14 @@ pub fn short(sha: &str) -> &str {
 /// # Errors
 /// [`Failure::Usage`] for a `--sha` that is not 40 hex digits, or no `--sha` when no one can
 /// see the prompt; [`Failure::Conflict`] when the head moved since the operator looked.
-pub fn expected_head(given: Option<&str>, head: &str, interactive: bool) -> Result<String, Failure> {
+pub fn expected_head(
+    given: Option<&str>,
+    head: &str,
+    interactive: bool,
+) -> Result<String, Failure> {
     match given {
         Some(given) if !is_sha(given) => Err(Failure::Usage {
-            message: "--sha takes the 40-digit head commit, as `anima pr get` shows it."
-                .to_owned(),
+            message: "--sha takes the 40-digit head commit, as `anima pr get` shows it.".to_owned(),
             hint: None,
         }),
         Some(given) if !given.eq_ignore_ascii_case(head) => Err(Failure::Conflict {
@@ -51,7 +54,11 @@ pub fn expected_head(given: Option<&str>, head: &str, interactive: bool) -> Resu
 /// [`Failure::Usage`] for `--fork` on a pull request that is not from a fork, or no name when no
 /// one can type it; [`Failure::Forbidden`] when the name is not the fork's, or the fork was
 /// deleted.
-pub fn fork(given: Option<&str>, pull: &Value, prompter: Prompter) -> Result<Option<String>, Failure> {
+pub fn fork(
+    given: Option<&str>,
+    pull: &Value,
+    prompter: Prompter,
+) -> Result<Option<String>, Failure> {
     if !flag(pull, "fromFork") {
         return match given {
             Some(_) => Err(Failure::Usage {
@@ -136,9 +143,15 @@ mod tests {
     #[test]
     fn prj_033_the_head_sent_is_the_head_the_operator_saw() {
         assert_eq!(expected_head(None, HEAD, true).ok().as_deref(), Some(HEAD));
-        assert_eq!(expected_head(Some(HEAD), HEAD, false).ok().as_deref(), Some(HEAD));
+        assert_eq!(
+            expected_head(Some(HEAD), HEAD, false).ok().as_deref(),
+            Some(HEAD)
+        );
         let upper = HEAD.to_ascii_uppercase();
-        assert_eq!(expected_head(Some(&upper), HEAD, false).ok().as_deref(), Some(HEAD));
+        assert_eq!(
+            expected_head(Some(&upper), HEAD, false).ok().as_deref(),
+            Some(HEAD)
+        );
         let moved = "f".repeat(40);
         let failure = expected_head(Some(&moved), HEAD, true).expect_err("moved");
         assert_eq!(failure.exit_code(), 6);

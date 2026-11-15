@@ -78,7 +78,10 @@ impl SetArgs {
                 target_url: self.url,
             },
         };
-        let status = hub.run::<CommitStatusSet>(variables).await?.set_commit_status;
+        let status = hub
+            .run::<CommitStatusSet>(variables)
+            .await?
+            .set_commit_status;
         invocation.output.data(&status, |status| {
             let shown = serde_json::to_value(status).unwrap_or_default();
             let mut table = Table::record();
