@@ -313,7 +313,7 @@ pub enum Standing { Ready, NeedsReconnect, Paused, NotFound }   // from the stor
 pub enum Reserve { Spendable, Kept }   // whether a change may spend the sync's reserve: the caller decides from who asked
 ```
 
-`ask` returns any answer the source gave but a 401, a rate limit and a 5xx; only a 2xx answer is held. A read that fails with `Limited`, `Unreachable`, `Unusable`, `Busy` or `Store` serves the held answer, at most an hour old, with `stale` and the failure as `problem`. `forget` drops the answers whose path is the prefix or lies below it (`/repos/o/r/pulls` keeps `/repos/o/r/pulls2`). A paused account is refused (`Paused`) by `ask` and `change`.
+`ask` returns any answer the source gave but a 401, a rate limit and a 5xx; only a 2xx answer is held. A read that fails with `Limited`, `Unreachable`, `Unusable`, `Busy` or `Store` serves the held answer, at most an hour old, with `stale` and the failure as `problem`. `forget` drops the answers whose path is the prefix or lies below it (`/repos/o/r/pulls` keeps `/repos/o/r/pulls2`). A paused account is refused (`Paused`) by `ask` and `change`; `ask` checks the account before the cache, so a paused or removed account serves nothing held.
 
 `ask` uses `Request` (still `Method::Get`), the token of Section 7 and the transport's path and host checks. A live 401 forgets the token, as a sync's does, and writes nothing. The live path never claims an account, never writes `sources.accounts` or `sources.sync_runs`, and never changes `next_sync_at`, `failure_count` or the health. It shares only the HTTP client and `Tokens`.
 
