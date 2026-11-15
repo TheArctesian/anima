@@ -120,6 +120,48 @@ fn a_device_given_by_name_is_refused_so_the_gateway_never_resolves() {
 }
 
 #[test]
+fn an_address_that_is_never_a_device_is_refused() {
+    for address in [
+        "0.0.0.0",
+        "::",
+        "224.0.0.1",
+        "255.255.255.255",
+        "ff02::1",
+        "::ffff:192.0.2.7",
+    ] {
+        assert_eq!(
+            refused(&[("hostname", address)]),
+            Refused::BadValue {
+                argument: "hostname"
+            },
+            "{address}"
+        );
+    }
+}
+
+#[test]
+fn a_client_that_draws_png_only_gets_no_jpeg() {
+    let mut gateway = Handshake::default();
+    gateway
+        .on_instruction(Instruction::new("select", ["vnc"]))
+        .expect("args");
+    gateway
+        .on_instruction(Instruction::new("size", ["800", "600", "96"]))
+        .expect("size");
+    gateway
+        .on_instruction(Instruction::new("image", ["image/png"]))
+        .expect("image");
+    let connect = Instruction::new(
+        "connect",
+        ["VERSION_1_5_0", "192.0.2.7", "5900", "", "", "", ""],
+    );
+    let Ok(Step::Opened(opening)) = gateway.on_instruction(connect) else {
+        panic!("opened")
+    };
+    assert!(!opening.formats.jpeg);
+}
+
+#[test]
 fn a_port_that_is_not_a_port_is_refused() {
     for port in ["0", "65536", "", "5900 ", "-1"] {
         assert_eq!(

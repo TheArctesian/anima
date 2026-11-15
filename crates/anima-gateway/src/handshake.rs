@@ -18,7 +18,7 @@ pub use opening::{Opening, Secret};
 pub use prompt::{Credential, Prompt, PromptStep};
 
 /// The protocol the gateway serves.
-pub const VNC: &str = "vnc";
+const VNC: &str = "vnc";
 /// The protocol version the gateway speaks; the hub answers with the same (K4 Section 3).
 const VERSION: &str = "VERSION_1_5_0";
 /// The `connect` values the gateway reads, in the order `args` lists them. They are the

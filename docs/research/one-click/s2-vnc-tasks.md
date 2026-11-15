@@ -144,8 +144,9 @@ written here with its reason.
 | --- | --- | --- |
 | T1 Screen and changes | Done. Reviewed by `reviewer`; 6 findings corrected; full gates passed 14 of 14. | `88b420c2`, `0d0582c8` |
 | T2 Frame encoder | Done. Reviewed twice by `reviewer` (1 must-fix and 3 test findings corrected; second verdict: accept); full gates passed 14 of 14. | `2970dfad`, `aa78c4d1` |
-| T3 Frame pacing | Built; in review. | `09f1acdc` |
-| T4 Gateway handshake | Built; in review. | see the log |
+| T3 Frame pacing | Done but for the full gates. `reviewer`: fix, then accept; 3 findings corrected. | `09f1acdc`, `3a0d1032` |
+| T4 Gateway handshake | Done but for the full gates. `reviewer`: accept, 4 findings corrected. `reviewer-security`: no critical or high; 1 medium and 2 low corrected, 3 notes carried to T6. | `dfca4494` and the correction after it |
+| T5 VNC client | In work: the pure parts are written and not yet compiled (see the handoff note). | — |
 
 Choices:
 
@@ -209,9 +210,34 @@ Choices:
   and push when done". When every task that does not need the operator is done: bring the
   current `main` in, run the full gates, merge, push.
 
-## 7. Handoff note
+## 7. Carried to later tasks from the reviews
 
-Nothing is built yet. If this session stops: the spike's VNC code
-(`spikes/display/vnc-probe` on the spike branch) is the reference for T5; `guac-frames`
-there is the naive version of T2 and shows what not to do with rectangles. The test host
-image `anima-spike-display-host` is on this Mac for T9.
+| From | Item | For |
+| --- | --- | --- |
+| T3 `reviewer` | The session loop must treat `Next::AfterAnswer` as "wait for the client", not as a timer. | T6 |
+| T4 `reviewer-security` | A deadline for the handshake and for reaching the device after `ready`; a limit on worker processes; a limit on instructions before `connect`. | T6 |
+| T4 `reviewer-security` | A refused sign-in must be `error` with status 0x0301, with a test, or the hub does not end the session `AUTH_FAILED`. | T6 |
+| T4 `reviewer-security` | Zero the `connect` instruction and the `blob` instructions of an `argv` answer after use (the `guac-protocol` decoder and `Instruction` do not; guac-protocol issue #1). | T6 |
+| T4 `reviewer` | After a refused answer the hub lets the client answer only a new `required`: send `Prompt::required()` again. | T6 |
+| T4 `reviewer-security` | The gateway refuses addresses that are never a device, but allows loopback and link-local; the hub's rule (R-032) decides those. Look again if the gateway gets other network reach than a local program. | Security review of T6 |
+| T2 `reviewer` | "guacd pays the same fixed cost for a small update" is not verified. | T9 |
+
+## 8. Handoff note
+
+State at the last commit on `claude/s2-native-vnc`: T1 to T4 are built, reviewed and
+corrected. The full gates passed for T1 and T2; the run for T3 and T4 is in the worktree
+`.claude/worktrees/s2-gates` (log `gates-t4.log` in the session's scratchpad).
+
+T5 is in work and not committed: `crates/anima-gateway/src/vnc/{messages,zrle,drawing,
+requests}.rs` exist in the working tree, are not declared in `lib.rs`, and have not been
+compiled. `Cargo.toml` of the crate already names their dependencies (`aes` 0.9, `des` 0.9,
+`md-5`, `num-bigint`, `flate2`). Still to write for T5: `src/vnc.rs` (the module face with
+the `Malformed` error), `vnc/auth.rs` (the VNC password answer and Apple's type 30, as pure
+functions that take their random bytes as arguments), `vnc/sign_in.rs` (the opening over a
+tokio stream, in two steps so a missing credential can be asked for between them), and the
+tests with a fake RFB server. The design: the server's bytes are read into a buffer with a
+cancel-safe `read`, `messages::first` cuts one whole message from it, `drawing` applies it
+to the screen. No cursor encoding is asked for, so the device draws the pointer.
+
+The spike's `vnc-probe` (branch `claude/spike-display-f9104d`) is the reference for the
+sign-in and ZRLE. The test host image `anima-spike-display-host` is on this Mac for T9.

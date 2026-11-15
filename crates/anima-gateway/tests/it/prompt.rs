@@ -118,10 +118,6 @@ fn an_answer_that_is_too_long_or_not_text_leaves_the_name_asked_for() {
             .as_deref(),
         Some("768")
     );
-    assert!(matches!(
-        prompt.on_instruction(&end("1")),
-        PromptStep::NotAnAnswer
-    ));
     assert!(!prompt.is_answered());
 
     prompt.on_instruction(&argv("2", "password"));
@@ -155,4 +151,51 @@ fn other_instructions_and_other_streams_are_not_answers() {
             PromptStep::NotAnAnswer
         ));
     }
+}
+
+#[test]
+fn a_second_answer_does_not_replace_the_one_being_read() {
+    let (mut prompt, _) = Prompt::ask(&[Credential::Username, Credential::Password]);
+    prompt.on_instruction(&argv("1", "username"));
+    assert_eq!(
+        outcome(prompt.on_instruction(&argv("2", "password")))
+            .0
+            .as_deref(),
+        Some("768")
+    );
+    prompt.on_instruction(&blob("1", b"ada"));
+    assert_eq!(
+        outcome(prompt.on_instruction(&end("1"))).1,
+        Some((Credential::Username, "ada".to_owned()))
+    );
+}
+
+#[test]
+fn an_empty_answer_is_refused() {
+    let (mut prompt, _) = Prompt::ask(&[Credential::Password]);
+    prompt.on_instruction(&argv("1", "password"));
+    let (status, answer) = outcome(prompt.on_instruction(&end("1")));
+    assert_eq!((status.as_deref(), answer), (Some("768"), None));
+    assert!(!prompt.is_answered());
+}
+
+#[test]
+fn what_follows_a_refused_answer_on_its_stream_is_dropped_and_the_name_is_asked_again() {
+    let (mut prompt, _) = Prompt::ask(&[Credential::Username, Credential::Password]);
+    prompt.on_instruction(&argv("5", "password"));
+    prompt.on_instruction(&blob("5", &[b'p'; 4097]));
+    // The rest of the password must not pass for another stream's content.
+    for rest in [blob("5", b"rest of it"), end("5")] {
+        assert_eq!(
+            outcome(prompt.on_instruction(&rest)).0.as_deref(),
+            Some("768")
+        );
+    }
+    assert_eq!(prompt.required().args, ["username", "password"]);
+}
+
+#[test]
+fn a_name_asked_twice_is_asked_once() {
+    let (_, required) = Prompt::ask(&[Credential::Password, Credential::Password]);
+    assert_eq!(required.args, ["password"]);
 }

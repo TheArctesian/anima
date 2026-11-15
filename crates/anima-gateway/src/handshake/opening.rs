@@ -6,7 +6,7 @@ use std::net::{IpAddr, SocketAddr};
 
 use zeroize::Zeroizing;
 
-use super::{ARGUMENTS, Refused};
+use super::Refused;
 use crate::frames::Formats;
 use crate::screen::MAX_SIDE;
 
@@ -60,14 +60,17 @@ impl Opening {
         formats: Formats,
     ) -> Result<Self, Refused> {
         let bad = |argument| Refused::BadValue { argument };
-        if args.len() != ARGUMENTS.len() + 1 || !args[0].starts_with("VERSION_") {
+        // The values may hold a password: each is zeroed when this function ends, however
+        // it ends.
+        let values = Zeroizing::new(args.split_off(args.len().min(1)));
+        // One value for each name in `ARGUMENTS`, in its order.
+        let [hostname, port, username, password, no_copy, no_paste] = values.as_slice() else {
             return Err(bad("connect"));
-        }
-        let [hostname, port, username, password, no_copy, no_paste] =
-            <[String; 6]>::try_from(args.split_off(1)).map_err(|_| bad("connect"))?;
-        // The values may hold a password: each is zeroed when this function ends.
-        let password = Zeroizing::new(password);
+        };
         let address: IpAddr = hostname.parse().map_err(|_| bad("hostname"))?;
+        if !may_be_a_device(address) {
+            return Err(bad("hostname"));
+        }
         let port = port
             .parse::<u16>()
             .ok()
@@ -76,7 +79,7 @@ impl Opening {
         Ok(Self {
             device: SocketAddr::new(address, port),
             username: secret(username).map_err(|()| bad("username"))?,
-            password: secret(password.as_str().to_owned()).map_err(|()| bad("password"))?,
+            password: secret(password).map_err(|()| bad("password"))?,
             copy: no_copy != "true",
             paste: no_paste != "true",
             view,
@@ -86,12 +89,23 @@ impl Opening {
 }
 
 /// A `connect` value as a secret: `None` when it is empty, refused when it is too long.
-fn secret(text: String) -> Result<Option<Secret>, ()> {
-    let text = Zeroizing::new(text);
+fn secret(text: &str) -> Result<Option<Secret>, ()> {
     match text.len() {
         0 => Ok(None),
-        1..=LONGEST_SECRET => Ok(Some(Secret::new(text.as_str().to_owned()))),
+        1..=LONGEST_SECRET => Ok(Some(Secret::new(text.to_owned()))),
         _ => Err(()),
+    }
+}
+
+/// Whether `address` can be a device. The hub has already applied its own rule (R-032) and
+/// sends an address in its plain form. The gateway refuses again what is never a device:
+/// no address, every address, a group of hosts, and an IPv4 address written as IPv6.
+fn may_be_a_device(address: IpAddr) -> bool {
+    match address {
+        IpAddr::V4(v4) => !(v4.is_unspecified() || v4.is_multicast() || v4.is_broadcast()),
+        IpAddr::V6(v6) => {
+            !(v6.is_unspecified() || v6.is_multicast() || v6.to_ipv4_mapped().is_some())
+        }
     }
 }
 

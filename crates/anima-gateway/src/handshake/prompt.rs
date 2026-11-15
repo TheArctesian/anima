@@ -52,20 +52,36 @@ pub struct Prompt {
     wanted: Vec<Credential>,
     /// The stream index of the answer being read, what it answers, and its bytes so far.
     reading: Option<(String, Credential, Zeroizing<Vec<u8>>)>,
+    /// The stream index of the last answer that was refused. What the client still sends
+    /// on it is dropped, so the rest of a refused password never passes for anything else,
+    /// such as clipboard text on a stream with the same index.
+    refused: Option<String>,
 }
 
 impl Prompt {
-    /// Asks for `wanted` and gives the `required` instruction to send.
+    /// Asks for `wanted`, each once, and gives the `required` instruction to send.
     #[must_use]
     pub fn ask(wanted: &[Credential]) -> (Self, Instruction) {
-        let required = Instruction::new("required", wanted.iter().map(|wanted| wanted.name()));
-        (
-            Self {
-                wanted: wanted.to_vec(),
-                reading: None,
-            },
-            required,
-        )
+        let mut once = Vec::new();
+        for credential in wanted {
+            if !once.contains(credential) {
+                once.push(*credential);
+            }
+        }
+        let prompt = Self {
+            wanted: once,
+            reading: None,
+            refused: None,
+        };
+        let required = prompt.required();
+        (prompt, required)
+    }
+
+    /// `required` with the names still asked for. The hub lets the client answer each name
+    /// of a `required` once (K4 Section 4), so after a refused answer this is sent again.
+    #[must_use]
+    pub fn required(&self) -> Instruction {
+        Instruction::new("required", self.wanted.iter().map(|wanted| wanted.name()))
     }
 
     /// Whether every credential asked for has been answered.
@@ -82,8 +98,13 @@ impl Prompt {
                 .as_ref()
                 .is_some_and(|(stream, ..)| args.first() == Some(stream))
         };
+        let refused = self
+            .refused
+            .as_ref()
+            .is_some_and(|stream| args.first() == Some(stream));
         match instruction.opcode.as_str() {
             "argv" => self.on_argv(args),
+            "blob" | "end" if refused => PromptStep::Acknowledge(ack(&args[0], BAD_REQUEST)),
             "blob" if reading_this(&self.reading) => self.on_blob(args),
             "end" if reading_this(&self.reading) => self.on_end(),
             _ => PromptStep::NotAnAnswer,
@@ -99,7 +120,11 @@ impl Prompt {
         match (asked, &self.reading) {
             (Some(at), None) => {
                 let credential = self.wanted.remove(at);
-                self.reading = Some((stream.clone(), credential, Zeroizing::new(Vec::new())));
+                // Its full size from the start: a buffer that grows would leave parts of
+                // the value behind in memory that is freed and not zeroed.
+                let bytes = Zeroizing::new(Vec::with_capacity(LONGEST_SECRET));
+                self.reading = Some((stream.clone(), credential, bytes));
+                self.refused = None;
                 PromptStep::Acknowledge(ack(stream, SUCCESS))
             }
             _ => PromptStep::Acknowledge(ack(stream, BAD_REQUEST)),
@@ -107,7 +132,8 @@ impl Prompt {
     }
 
     /// `blob,<stream>,<base64>`: more of the answer. One that does not decode, or makes
-    /// the answer too long, ends the stream; the credential stays asked for.
+    /// the answer too long, ends the stream. The credential is asked for again with
+    /// [`Prompt::required`].
     fn on_blob(&mut self, args: &[String]) -> PromptStep {
         let Some((stream, credential, mut bytes)) = self.reading.take() else {
             return PromptStep::NotAnAnswer;
@@ -123,29 +149,35 @@ impl Prompt {
                 self.reading = Some((stream, credential, bytes));
                 PromptStep::Acknowledge(ack)
             }
-            _ => {
-                self.wanted.push(credential);
-                PromptStep::Acknowledge(ack(&stream, BAD_REQUEST))
-            }
+            _ => self.refuse(stream, credential),
         }
     }
 
-    /// `end,<stream>`: the answer is complete, when it is text.
+    /// Ends the answer on `stream` as refused; `credential` is asked for again.
+    fn refuse(&mut self, stream: String, credential: Credential) -> PromptStep {
+        self.wanted.push(credential);
+        let ack = ack(&stream, BAD_REQUEST);
+        self.refused = Some(stream);
+        PromptStep::Acknowledge(ack)
+    }
+
+    /// `end,<stream>`: the answer is complete, when it is text and not empty.
     fn on_end(&mut self) -> PromptStep {
         let Some((stream, credential, bytes)) = self.reading.take() else {
             return PromptStep::NotAnAnswer;
         };
-        if let Ok(text) = std::str::from_utf8(&bytes) {
-            let value = Secret::new(text.to_owned());
-            let ack = ack(&stream, SUCCESS);
-            return PromptStep::Answered {
-                credential,
-                value,
-                ack,
-            };
+        match std::str::from_utf8(&bytes) {
+            Ok(text) if !text.is_empty() => {
+                let value = Secret::new(text.to_owned());
+                let ack = ack(&stream, SUCCESS);
+                PromptStep::Answered {
+                    credential,
+                    value,
+                    ack,
+                }
+            }
+            _ => self.refuse(stream, credential),
         }
-        self.wanted.push(credential);
-        PromptStep::Acknowledge(ack(&stream, BAD_REQUEST))
     }
 }
 
