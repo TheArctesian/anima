@@ -18,31 +18,51 @@
 # Needs: a C compiler, make, bison, flex, perl; on Linux also patchelf and the zlib headers.
 set -eu
 
+# The build sees a fixed environment and the system's own programs only. A variable of the
+# caller (CONFIG_SITE, LDFLAGS, CC, a PATH with a folder the user can write) would change what
+# is built or which program checks the pin.
+if [ "${DATABASE_TREE_ENVIRONMENT:-}" != fixed ]; then
+    exec /usr/bin/env -i DATABASE_TREE_ENVIRONMENT=fixed PATH=/usr/bin:/bin HOME="${HOME:-/}" \
+        SIGN_IDENTITY="${SIGN_IDENTITY:-}" ANIMA_POSTGRESQL_SOURCE="${ANIMA_POSTGRESQL_SOURCE:-}" \
+        /bin/sh "$0" "$@"
+fi
+umask 077
+
 TARGET=${1:?give the target: darwin-universal or linux}
 WORK=${2:?give a work folder}
 OUT=${3:?give the out folder}
 HERE=$(cd "$(dirname "$0")" && pwd)
 VERSION=$(sed -n 's/^version=//p' "$HERE/postgresql.pin")
 SHA256=$(sed -n 's/^sha256=//p' "$HERE/postgresql.pin")
-[ -n "$VERSION" ] && [ -n "$SHA256" ] || { echo "database-tree: postgresql.pin has no version or sha256" >&2; exit 1; }
+# Both go into a URL and into paths: nothing but a version number and a hash is accepted.
+echo "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+$' || { echo "database-tree: postgresql.pin has no version like 17.12" >&2; exit 1; }
+echo "$SHA256" | grep -Eq '^[0-9a-f]{64}$' || { echo "database-tree: postgresql.pin has no SHA-256" >&2; exit 1; }
 # The deployment target of the application (bundle.macOS.minimumSystemVersion).
 MACOS_MINIMUM=14.2
 PROGRAMS="postgres initdb pg_ctl pg_isready pg_controldata pg_dump pg_restore pg_amcheck pg_upgrade"
 MODULES="amcheck pg_stat_statements"
-STAMP="postgresql $VERSION $SHA256 $TARGET signed-by:${SIGN_IDENTITY:-ad-hoc}"
+# A change of this recipe makes a new tree, also with the same pin.
+RECIPE=$(shasum -a 256 "$0" 2>/dev/null || sha256sum "$0")
+STAMP="postgresql $VERSION $SHA256 $TARGET signed-by:${SIGN_IDENTITY:-ad-hoc} recipe:${RECIPE%% *}"
 
 fail() { echo "database-tree: $1" >&2; exit 1; }
+
+case "$TARGET" in darwin-universal | linux) ;; *) fail "unknown target $TARGET" ;; esac
 
 mkdir -p "$WORK"
 WORK=$(cd "$WORK" && pwd)
 if [ -f "$WORK/tree/STAMP" ] && [ "$(cat "$WORK/tree/STAMP")" = "$STAMP" ]; then
     echo "database-tree: PostgreSQL $VERSION for $TARGET is built already"
 else
-    ARCHIVE=${ANIMA_POSTGRESQL_SOURCE:-$WORK/postgresql-$VERSION.tar.bz2}
-    if [ ! -f "$ARCHIVE" ]; then
-        curl --fail --silent --show-error --location --output "$ARCHIVE.part" \
+    # The archive that is checked is the copy in the work folder, and only that copy is
+    # unpacked: nobody else can change it between the check and the build.
+    ARCHIVE=$WORK/postgresql-$VERSION.tar.bz2
+    rm -f "$ARCHIVE"
+    if [ -n "${ANIMA_POSTGRESQL_SOURCE:-}" ]; then
+        cp "$ANIMA_POSTGRESQL_SOURCE" "$ARCHIVE"
+    else
+        curl --fail --silent --show-error --location --output "$ARCHIVE" \
             "https://ftp.postgresql.org/pub/source/v$VERSION/postgresql-$VERSION.tar.bz2"
-        mv "$ARCHIVE.part" "$ARCHIVE"
     fi
     if command -v sha256sum >/dev/null 2>&1; then
         FOUND=$(sha256sum "$ARCHIVE" | cut -d' ' -f1)
@@ -164,6 +184,10 @@ linux)
 esac
 "$TREE/bin/postgres" --version | grep -q "(PostgreSQL) $VERSION\$" || fail "the tree's postgres is not version $VERSION"
 
+# The out folder is replaced only when it is a tree of this recipe, or is not there.
+if [ -e "$OUT" ] && [ ! -f "$OUT/STAMP" ]; then
+    fail "$OUT is there and is not a tree that this script made; it is not replaced"
+fi
 rm -rf "$OUT"
 mkdir -p "$(dirname "$OUT")"
 cp -R "$TREE" "$OUT"

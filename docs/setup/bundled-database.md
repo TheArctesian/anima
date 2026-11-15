@@ -75,7 +75,9 @@ On macOS the program excludes `cluster/` from Time Machine when it makes the clu
 cannot, `serve` says so on standard error and the database still works.
 
 To restore: start `serve` on a new, empty root, then run `restore <file>`. The restore puts
-back all of the backup or nothing. Then start the hub; `anima-hub migrate` applies any
+back all of the backup or nothing. It signs in as `anima_owner`, not as the superuser: a
+backup file holds statements, and a file that somebody changed must not get more rights than
+a migration has. `backup` refuses a folder that other users can write. Then start the hub; `anima-hub migrate` applies any
 migration that is newer than the backup.
 
 The schedule of backups and the place they are kept are not part of this program (plan item S9).

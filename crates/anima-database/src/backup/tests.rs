@@ -164,11 +164,16 @@ fn a_restore_that_fails_late_leaves_nothing_of_what_it_had_made() {
     let (source, _source_server) = database_with_rows();
     let folder = tempfile::tempdir().unwrap();
     let file = folder.path().join("anima.backup");
+    // The source has a grant to a role that the target lacks: the schema and the table are
+    // made and filled first, then the grant fails.
+    source.sql("create role auditor").unwrap();
+    source
+        .sql_in("anima", "grant select on devices.devices to auditor")
+        .unwrap();
     write(&source.tree, &source.layout, &file).unwrap();
-    // A database with no logins: the schema is made, then giving it to its owner fails.
     let target = Database::new();
     let _target_server = target.start();
-    target.sql("create database anima").unwrap();
+    roles::prepare(&target.layout).unwrap();
 
     let outcome = restore(&target.tree, &target.layout, &file);
 
@@ -249,4 +254,63 @@ fn a_check_that_says_damage_and_names_none_is_an_error() {
         matches!(outcome, Err(BackupError::Check { .. })),
         "{outcome:?}"
     );
+}
+
+#[test]
+fn a_backup_cannot_act_as_the_superuser_when_it_is_restored() {
+    let (source, _source_server) = database_with_rows();
+    let folder = tempfile::tempdir().unwrap();
+    let marker = folder.path().join("ran-as-superuser");
+    // A check that runs a program when a superuser loads the rows, as a tampered backup would.
+    let probe = format!(
+        "set role anima_owner; \
+         create function public.probe() returns boolean language plpgsql as $f$ \
+         begin \
+           if (select rolsuper from pg_roles where rolname = current_user) then \
+             execute $c$copy (select 1) to program 'touch {}'$c$; \
+           end if; \
+           return true; \
+         end $f$; \
+         alter table devices.devices add constraint probed check (public.probe())",
+        marker.display()
+    );
+    source.sql_in("anima", &probe).unwrap();
+    let file = folder.path().join("anima.backup");
+    write(&source.tree, &source.layout, &file).unwrap();
+    let target = Database::new();
+    let _target_server = target.start();
+    roles::prepare(&target.layout).unwrap();
+
+    restore(&target.tree, &target.layout, &file).unwrap();
+
+    assert!(
+        !marker.exists(),
+        "the backup ran a program as the superuser"
+    );
+    assert_eq!(
+        target
+            .sql_in("anima", "select count(*) from devices.devices")
+            .unwrap(),
+        "500"
+    );
+    assert!(!target.layout.urls_folder().join("restore.pgpass").exists());
+}
+
+#[test]
+fn a_backup_is_not_written_into_a_folder_that_others_can_write() {
+    let (database, _server) = database_with_rows();
+    let folder = tempfile::tempdir().unwrap();
+    fs::set_permissions(folder.path(), fs::Permissions::from_mode(0o777)).unwrap();
+
+    let outcome = write(
+        &database.tree,
+        &database.layout,
+        &folder.path().join("anima.backup"),
+    );
+
+    assert!(
+        matches!(outcome, Err(BackupError::SharedFolder)),
+        "{outcome:?}"
+    );
+    assert_eq!(fs::read_dir(folder.path()).unwrap().count(), 0);
 }
