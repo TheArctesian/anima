@@ -10,6 +10,7 @@ describe("CQ-030 banned names", () => {
     expect(signals("a/b.rs", "pub(crate) trait RequestHandler {}\ntype Items = u8;")).toHaveLength(2);
     expect(signals("link/devices/list.go", "package devices\n\ntype DeviceManager struct{}\n")).toEqual(["banned-type-name"]);
     expect(signals("link/devices/list.go", "package devices\n\n// type Helper struct{}\ntype Device struct{}\n")).toEqual([]);
+    expect(signals("link/devices/list.go", "package devices\n\ntype (\n\tDevice struct{}\n\tDeviceHelper struct{}\n)\n")).toEqual(["banned-type-name"]);
   });
 
   test("a utils folder fails", () => {

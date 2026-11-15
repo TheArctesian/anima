@@ -24,7 +24,7 @@ It runs twenty gates as separate processes, in this order, and stops at the firs
 8. `go -C link tool staticcheck ./...`
 9. `go -C link tool revive -config revive.toml -set_exit_status ./...`
 10. `go -C link test -race ./...`
-11. `go -C link build ./...`
+11. `go -C link build -o /dev/null ./...`
 12. `bun install --frozen-lockfile`
 13. `bun run lint`
 14. `bun run check`
@@ -37,7 +37,10 @@ It runs twenty gates as separate processes, in this order, and stops at the firs
 
 Gates 6 to 11 are for the Go module `link/`. Go must be on `PATH` (`brew install go`). `staticcheck` and
 `revive` are `tool` lines in `link/go.mod` and run with `go tool`, so they are not installed system-wide.
-`link/revive.toml` holds the function limits (60 lines, 4 parameters, complexity 15, nesting 4). The limits
+`link/revive.toml` holds the function limits (60 lines, 4 parameters, complexity 15, nesting 4). revive counts
+every line of a function, blanks and comments included, so it is a little stricter than "code lines". Complexity
+is cognitive complexity, the same measure that Clippy uses for Rust. The names gate reads `type Name` and
+`type ( ... )` groups. The limits
 and names gates also measure `.go` files.
 
 `BASE_REF` is read from the environment and defaults to `phase-2` (a local branch; no remote needed).

@@ -42,7 +42,7 @@ describe("gateList", () => {
     expect(argvs).toContain("go -C link tool staticcheck ./...");
     expect(argvs).toContain("go -C link tool revive -config revive.toml -set_exit_status ./...");
     expect(argvs).toContain("go -C link test -race ./...");
-    expect(argvs).toContain("go -C link build ./...");
+    expect(argvs).toContain("go -C link build -o /dev/null ./...");
   });
 
   test("CQ-011 passes the base ref to the baseline gate", () => {
@@ -101,6 +101,12 @@ describe("missingRequirement", () => {
     expect(message).toContain("go is not on PATH");
     expect(message).toContain("brew install go");
     expect(message).not.toContain(".cargo");
+  });
+
+  test("CQ-024 fails the format gate when gofmt is not on PATH", () => {
+    const goFmt = gateList("phase-1").find((gate) => gate.name === "go-fmt");
+    if (goFmt === undefined) throw new Error("no go-fmt gate");
+    expect(missingRequirement(goFmt, "/usr/bin", () => false)).toContain("gofmt is not on PATH");
   });
 
   test("needs nothing for a gate without requirements", () => {

@@ -29,10 +29,16 @@ const TS_TYPE =
   /^\s*(?:export\s+)?(?:default\s+)?(?:declare\s+)?(?:abstract\s+)?(?:const\s+)?(?:class|interface|type|enum)\s+([A-Za-z_$][\w$]*)/gm;
 
 const GO_TYPE = /^\s*type\s+([A-Za-z_]\w*)/gm;
+const GO_TYPE_GROUP = /^\s*type\s*\(([^)]*)\)/gm;
+const GO_GROUP_ENTRY = /^\s*([A-Za-z_]\w*)/gm;
 
-function typePattern(extension: string): RegExp {
-  if (extension === ".rs") return RUST_TYPE;
-  return extension === ".go" ? GO_TYPE : TS_TYPE;
+/** Go type names: `type Name ...` and each entry of a `type ( ... )` group. */
+function goTypes(code: string): string[] {
+  const single = [...code.matchAll(GO_TYPE)].map((match) => match[1] ?? "");
+  const grouped = [...code.matchAll(GO_TYPE_GROUP)].flatMap((group) =>
+    [...(group[1] ?? "").matchAll(GO_GROUP_ENTRY)].map((match) => match[1] ?? ""),
+  );
+  return [...single, ...grouped];
 }
 
 /** Split a name into lowercase word segments: camelCase, PascalCase, snake_case, kebab-case, dots. */
@@ -88,7 +94,9 @@ function codeOf(text: string, extension: string): string {
 function declaredTypes(file: SourceFile): string[] {
   const extension = extensionOf(file.path);
   if (!TYPE_EXTENSIONS.includes(extension)) return [];
-  return [...codeOf(file.text, extension).matchAll(typePattern(extension))].map((match) => match[1] ?? "");
+  if (extension === ".go") return goTypes(codeOf(file.text, extension));
+  const pattern = extension === ".rs" ? RUST_TYPE : TS_TYPE;
+  return [...codeOf(file.text, extension).matchAll(pattern)].map((match) => match[1] ?? "");
 }
 
 function typeViolations(file: SourceFile): Violation[] {

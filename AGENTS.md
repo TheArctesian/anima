@@ -124,7 +124,7 @@ outputs are shared, so a new worktree's first run reuses what any other worktree
 share one `CARGO_TARGET_DIR` between worktrees: cargo locks it, so parallel runs wait on each other.
 Set `RUSTC_WRAPPER=` (empty) to run without the cache. `sccache --show-stats` shows the hit rate.
 cargo-nextest must be on `PATH` (`cargo install cargo-nextest --locked`; put `~/.cargo/bin` on `PATH`).
-Go must be on `PATH` (`brew install go`); `link/go.mod` pins its version and the two lint tools, so
+Go must be on `PATH` (`brew install go`); `link/go.mod` sets the lowest Go version and pins the two lint tools, so
 nothing else is installed for the Go gates.
 Leave `DATABASE_URL` unset so each run gets its own PostgreSQL server: sqlx names test databases
 by test path, so two worktrees that share one server destroy each other's databases (R-019).

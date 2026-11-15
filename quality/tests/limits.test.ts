@@ -29,6 +29,7 @@ describe("CQ-010 code lines per file", () => {
     expect(violations).toEqual([{ path: "link/devices/big.go", signal: "file-lines", detail: "301 > 300" }]);
     expect(countCodeLines("// doc\npackage a\n\n/* c\n d */\nvar s = `// not a comment\n/* nor this */`\n", ".go")).toBe(3);
     expect(countCodeLines("var q = '\"' // c\nvar u = \"http://x\"\n", ".go")).toBe(2);
+    expect(countCodeLines("var p = `C:\\\\`\n// c\nvar q = 1\n// d\n", ".go")).toBe(2);
   });
 
   test("CQ-010 nested Rust block comments and raw strings are lexed", () => {

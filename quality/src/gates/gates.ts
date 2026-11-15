@@ -45,7 +45,6 @@ function goGate(name: string, ...args: string[]): Gate {
   return { name, argv: ["go", "-C", GO_MODULE, ...args], requires: [GO] };
 }
 
-
 /**
  * The twenty gates in the order they run (CQ-010, CQ-011). Gates 3 to 5 together run every test
  * `cargo test` runs (R-112): nextest the libtest tests, then the doctests, then the one non-libtest target.
@@ -69,7 +68,8 @@ export function gateList(baseRef: string): Gate[] {
     goGate("go-staticcheck", "tool", "staticcheck", "./..."),
     goGate("go-revive", "tool", "revive", "-config", "revive.toml", "-set_exit_status", "./..."),
     goGate("go-test", "test", "-race", "./..."),
-    goGate("go-build", "build", "./..."),
+    // `-o /dev/null`: with one main package, a plain `go build` writes the program into `link/`.
+    goGate("go-build", "build", "-o", "/dev/null", "./..."),
     { name: "install", argv: ["bun", "install", "--frozen-lockfile"] },
     { name: "lint", argv: ["bun", "run", "lint"] },
     { name: "check", argv: ["bun", "run", "check"] },
