@@ -1,5 +1,8 @@
 //! The answers of the two sign-in methods that use a password. Pure: the random bytes are
 //! arguments.
+//!
+//! The big numbers of `num-bigint` cannot be zeroed: the secret number and the shared
+//! secret stay in freed memory until it is used again. The byte copies are zeroed.
 
 use aes::cipher::{BlockCipherEncrypt as _, KeyInit as _};
 use md5::{Digest as _, Md5};
@@ -8,8 +11,10 @@ use zeroize::Zeroizing;
 
 /// The longest account name or password Apple's method carries, in bytes.
 pub(super) const APPLE_LONGEST: usize = 63;
-/// The longest Diffie-Hellman number taken from a device, in bytes (8192 bits).
-pub(super) const LONGEST_KEY: usize = 1024;
+/// The lengths of a Diffie-Hellman number taken from a device, in bytes: 1024 bits, what
+/// macOS sends, to 4096 bits. A shorter number lets anyone who sees the exchange find the
+/// secret and read the password; a longer one costs seconds of arithmetic.
+pub(super) const KEY_BYTES: std::ops::RangeInclusive<usize> = 128..=512;
 
 /// VNC authentication (RFC 6143 Section 7.2.2): the challenge encrypted with DES under the
 /// password. The password is cut to 8 bytes and each key byte has its bits in reverse
@@ -61,11 +66,13 @@ pub(super) fn apple_answer(
     let prime = BigUint::from_bytes_be(&challenge.prime);
     let server_public = BigUint::from_bytes_be(&challenge.server_public);
     let one = BigUint::from(1u8);
-    // A public number of 0, 1 or prime - 1 would make the secret a number anyone knows.
-    let usable = length > 0
+    // The prime must really have its stated length and be odd; a public number of 0, 1 or
+    // prime - 1 would make the secret a number anyone knows.
+    let usable = KEY_BYTES.contains(&length)
+        && prime.bits() > u64::try_from((length - 1) * 8).unwrap_or(u64::MAX)
+        && prime.bit(0)
         && challenge.generator > 1
         && server_public > one
-        && prime > BigUint::from(3u8)
         && server_public < &prime - &one;
     if !usable {
         return Err(NoAppleAnswer::BadNumbers);
@@ -97,7 +104,7 @@ fn put(field: &mut [u8], text: &[u8]) {
 
 /// The big-endian bytes of `number`, with zeros in front up to `length` bytes.
 fn padded(number: &BigUint, length: usize) -> Vec<u8> {
-    let bytes = number.to_bytes_be();
+    let bytes = Zeroizing::new(number.to_bytes_be());
     let mut out = vec![0; length.saturating_sub(bytes.len())];
     out.extend_from_slice(&bytes);
     out

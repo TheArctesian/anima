@@ -13,8 +13,13 @@ mod sign_in;
 mod zrle;
 
 use crate::screen::Screen;
-use messages::ServerMessage;
+use messages::{Body, Start};
 pub use sign_in::{Account, Method, Offered, SignInError, offered, sign_in};
+
+/// One update may send this many times the screen's pixels: a device has no reason to
+/// send a pixel more often, and without a limit one message could keep the gateway busy
+/// for a long time.
+const MOST_SCREENS_IN_AN_UPDATE: usize = 2;
 
 /// Why a device's bytes cannot be read further. The session ends.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
@@ -49,19 +54,30 @@ pub enum Event {
     Bell,
 }
 
+/// An update whose rectangles are still arriving.
+struct Update {
+    rects_left: usize,
+    /// The pixels its rectangles may still send.
+    pixels_left: usize,
+    /// It has changed the screen size; it may do so once.
+    resized: bool,
+}
+
 /// The device's side of an open session: the bytes not yet read as messages, and the
 /// state the encodings keep between updates.
 #[derive(Default)]
 pub struct Device {
+    /// At most one rectangle or clipboard text, and the read that completed it.
     unread: Vec<u8>,
     /// Bytes of an over-long clipboard text still to drop.
     skip: usize,
+    update: Option<Update>,
     inflaters: drawing::Inflaters,
 }
 
 impl Device {
-    /// Takes `bytes` as they arrive from the device and draws every whole message into
-    /// `screen`.
+    /// Takes `bytes` as they arrive from the device and draws each rectangle into `screen`
+    /// as soon as it is whole.
     ///
     /// # Errors
     /// [`Malformed`]: the stream cannot be read further and the session ends.
@@ -71,32 +87,74 @@ impl Device {
         self.unread.extend_from_slice(&bytes[dropped..]);
         let mut events = Vec::new();
         let mut read = 0;
-        loop {
-            let size = (screen.width(), screen.height());
-            let Some((message, length)) = messages::first(&self.unread[read..], size)? else {
-                break;
-            };
+        while let Some(length) = self.read_one(read, screen, &mut events)? {
             read += length;
-            match message {
-                ServerMessage::Update(rects) => {
-                    self.inflaters.draw(&rects, screen)?;
-                    events.push(Event::Updated);
+        }
+        self.unread.drain(..read);
+        Ok(events)
+    }
+
+    /// Reads what is at `from` in the unread bytes: a rectangle of the update in progress,
+    /// or the start of a message. Gives its length; `None` when it is not all there yet.
+    fn read_one(
+        &mut self,
+        from: usize,
+        screen: &mut Screen,
+        events: &mut Vec<Event>,
+    ) -> Result<Option<usize>, Malformed> {
+        let unread = &self.unread[from..];
+        let Some(update) = &mut self.update else {
+            let Some((start, mut length)) = messages::start(unread)? else {
+                return Ok(None);
+            };
+            match start {
+                Start::Update { rects: 0 } => events.push(Event::Updated),
+                Start::Update { rects } => {
+                    let pixels_left = screen.width() * screen.height() * MOST_SCREENS_IN_AN_UPDATE;
+                    self.update = Some(Update {
+                        rects_left: rects,
+                        pixels_left,
+                        resized: false,
+                    });
                 }
-                ServerMessage::Bell => events.push(Event::Bell),
+                Start::Bell => events.push(Event::Bell),
                 // Latin-1: each byte is the character with that number.
-                ServerMessage::CutText(latin1) => {
+                Start::CutText(latin1) => {
                     events.push(Event::Clipboard(
                         latin1.iter().map(|byte| char::from(*byte)).collect(),
                     ));
                 }
-                ServerMessage::LongCutText { skip } => {
-                    let here = skip.min(self.unread.len() - read);
-                    read += here;
+                Start::LongCutText { skip } => {
+                    let here = skip.min(unread.len() - length);
+                    length += here;
                     self.skip = skip - here;
                 }
             }
+            return Ok(Some(length));
+        };
+        let size = (screen.width(), screen.height());
+        let Some((rect, length)) = messages::rect(unread, size)? else {
+            return Ok(None);
+        };
+        let pixels = rect.area.width * rect.area.height;
+        if rect.body == Body::NewSize {
+            // One new size in an update; the limit then counts for the new screen.
+            if std::mem::replace(&mut update.resized, true) {
+                return Err(Malformed::BadSize);
+            }
+            update.pixels_left = pixels * MOST_SCREENS_IN_AN_UPDATE;
+        } else {
+            update.pixels_left = update
+                .pixels_left
+                .checked_sub(pixels)
+                .ok_or(Malformed::TooManyPixels)?;
         }
-        self.unread.drain(..read);
-        Ok(events)
+        self.inflaters.draw(&[rect], screen)?;
+        update.rects_left -= 1;
+        if update.rects_left == 0 {
+            self.update = None;
+            events.push(Event::Updated);
+        }
+        Ok(Some(length))
     }
 }

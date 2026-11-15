@@ -19,7 +19,7 @@ use crate::vnc::{self, Account, SignInError};
 /// The most instructions a hub sends before `connect`: seven, and room for `nop`.
 const MOST_BEFORE_CONNECT: usize = 32;
 /// Random bytes for one sign-in: the longest secret number and the filler of Apple's method.
-const RANDOM_BYTES: usize = 1024 + 128;
+const RANDOM_BYTES: usize = 512 + 128;
 
 /// A session with its device signed in.
 pub(super) struct Opened {
@@ -93,7 +93,7 @@ where
     let Ok(Ok(offered)) = timeout(settings.device_wait, vnc::offered(&mut device)).await else {
         return Err(refuse(hub, status::UPSTREAM_ERROR, Ended::NotVnc).await);
     };
-    let Ok(method) = offered.method(opening.username.is_some()) else {
+    let Ok(method) = offered.method(opening.username.is_some(), opening.password.is_some()) else {
         return Err(refuse(hub, status::UPSTREAM_ERROR, Ended::NoSignInMethod).await);
     };
     ask_for_missing(hub, &mut opening, method.needs(), settings).await?;

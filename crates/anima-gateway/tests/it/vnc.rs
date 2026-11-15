@@ -201,11 +201,13 @@ fn messages_and_rectangles_a_device_may_not_send_end_the_session() {
         refusal(&rfb::update(&[rfb::desktop_size(8193, 10)])),
         Some(Malformed::BadSize)
     );
-    let nine_screens = vec![rfb::copy_rect(ALL, (0, 0)); 9];
+    let three_screens = vec![rfb::copy_rect(ALL, (0, 0)); 3];
     assert_eq!(
-        refusal(&rfb::update(&nine_screens)),
+        refusal(&rfb::update(&three_screens)),
         Some(Malformed::TooManyPixels)
     );
+    let two_sizes = [rfb::desktop_size(20, 10), rfb::desktop_size(30, 10)];
+    assert_eq!(refusal(&rfb::update(&two_sizes)), Some(Malformed::BadSize));
 }
 
 #[test]
@@ -260,6 +262,70 @@ fn packed_data_a_device_may_not_send_ends_the_session() {
     assert_eq!(refusal(&not_zlib), Some(Malformed::BadZlib));
     let huge_length = [rfb::update(&[rfb::header(pixel, 6)]), vec![0xff; 4]].concat();
     assert_eq!(refusal(&huge_length), Some(Malformed::TooManyBytes));
+}
+
+#[test]
+fn an_update_that_trickles_in_costs_no_more_than_one_that_comes_at_once() {
+    // 20 000 one-pixel rectangles in reads of 16 bytes: each read looks at the rectangle
+    // it completes, not at the whole update again.
+    let pixel = Area {
+        x: 3,
+        y: 3,
+        width: 1,
+        height: 1,
+    };
+    let bytes = rfb::update(&vec![rfb::copy_rect(pixel, (4, 4)); 20_000]);
+    let mut device = Device::default();
+    let mut screen = screen();
+    let started = std::time::Instant::now();
+    let mut events = Vec::new();
+    for piece in bytes.chunks(16) {
+        events.extend(device.receive(piece, &mut screen).expect("read"));
+    }
+    assert_eq!(events, [Event::Updated]);
+    // Minutes when every read parses the update from its start; a moment when not.
+    assert!(
+        started.elapsed() < std::time::Duration::from_secs(20),
+        "{:?}",
+        started.elapsed()
+    );
+}
+
+#[test]
+fn a_rectangle_is_drawn_as_soon_as_it_is_whole() {
+    let first = Area {
+        x: 0,
+        y: 0,
+        width: 4,
+        height: 4,
+    };
+    let second = Area {
+        x: 10,
+        y: 10,
+        width: 4,
+        height: 4,
+    };
+    let bytes = rfb::update(&[rfb::raw(first, &[9; 48]), rfb::raw(second, &[7; 48])]);
+    let mut device = Device::default();
+    let mut screen = screen();
+    // All of the first rectangle and a part of the second.
+    let events = device
+        .receive(&bytes[..bytes.len() - 10], &mut screen)
+        .expect("read");
+    assert_eq!(events, []);
+    let drawn: Vec<u8> = screen
+        .rows(first)
+        .expect("inside")
+        .flatten()
+        .copied()
+        .collect();
+    assert_eq!(drawn, [9; 48]);
+    assert_eq!(
+        device
+            .receive(&bytes[bytes.len() - 10..], &mut screen)
+            .expect("read"),
+        [Event::Updated]
+    );
 }
 
 #[test]

@@ -8,7 +8,7 @@
 
 use tokio::io::{AsyncRead, AsyncReadExt as _, AsyncWrite, AsyncWriteExt as _};
 
-use super::auth::{self, AppleChallenge, LONGEST_KEY, NoAppleAnswer};
+use super::auth::{self, AppleChallenge, KEY_BYTES, NoAppleAnswer};
 use super::requests;
 use crate::handshake::Credential;
 use crate::screen::MAX_SIDE;
@@ -76,23 +76,27 @@ impl Method {
 pub struct Offered(Vec<u8>);
 
 impl Offered {
-    /// The method to use. With an account name, Apple's method when the device has it; a
-    /// VNC password otherwise, when the device has that; no sign-in only when the device
-    /// offers it.
+    /// The method to use for what the hub has.
+    ///
+    /// - With an account name: Apple's method only. The account's password is not sent by
+    ///   the weaker VNC password method, even when a device (or someone between) offers
+    ///   only that.
+    /// - Without one: a VNC password, else Apple's method (the name is then asked for).
+    /// - No sign-in: only when the hub has no credential at all. A device that suddenly
+    ///   asks for none, while the hub holds a password for it, is not the device meant.
     ///
     /// # Errors
-    /// [`SignInError::NoMethod`] when the device offers none of the three.
-    pub fn method(&self, has_username: bool) -> Result<Method, SignInError> {
+    /// [`SignInError::NoMethod`] when the device offers no method that may be used.
+    pub fn method(&self, has_username: bool, has_password: bool) -> Result<Method, SignInError> {
         let has = |method: Method| self.0.contains(&method.number());
-        let by_account = [Method::Apple, Method::VncPassword, Method::None];
-        let by_password = [Method::VncPassword, Method::Apple, Method::None];
-        let order = if has_username {
-            by_account
-        } else {
-            by_password
+        let order: &[Method] = match (has_username, has_password) {
+            (true, _) => &[Method::Apple],
+            (false, true) => &[Method::VncPassword, Method::Apple],
+            (false, false) => &[Method::VncPassword, Method::Apple, Method::None],
         };
         order
-            .into_iter()
+            .iter()
+            .copied()
             .find(|method| has(*method))
             .ok_or(SignInError::NoMethod)
     }
@@ -190,7 +194,7 @@ where
 {
     let generator = device.read_u16().await?;
     let length = usize::from(device.read_u16().await?);
-    if !(1..=LONGEST_KEY).contains(&length) {
+    if !KEY_BYTES.contains(&length) {
         return Err(SignInError::BadNumbers);
     }
     let mut challenge = AppleChallenge {

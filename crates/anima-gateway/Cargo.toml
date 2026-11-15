@@ -9,9 +9,9 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
-aes = "0.9"
+aes = { version = "0.9", features = ["zeroize"] }
 base64 = { workspace = true }
-des = "0.9"
+des = { version = "0.9", features = ["zeroize"] }
 flate2 = "1"
 getrandom = { workspace = true }
 guac-protocol = { path = "../guac-protocol" }

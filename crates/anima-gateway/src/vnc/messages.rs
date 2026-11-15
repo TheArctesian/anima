@@ -11,11 +11,6 @@ pub(super) const PIXEL_BYTES: usize = 4;
 /// The longest clipboard text taken from a device. A longer one is skipped, not an error:
 /// the operator may copy a large text on the device for another purpose.
 pub(super) const LONGEST_CUT_TEXT: usize = 1 << 20;
-/// One update may send this many times the screen's pixels. A device has no reason to
-/// send a pixel more than a few times in one update; without a limit it could keep the
-/// gateway busy for a long time with one message.
-const MOST_SCREENS_IN_AN_UPDATE: usize = 8;
-
 const RAW: i32 = 0;
 const COPY_RECT: i32 = 1;
 const ZLIB: i32 = 6;
@@ -45,9 +40,13 @@ pub(super) struct Rect<'a> {
     pub(super) body: Body<'a>,
 }
 
+/// How a message from the device begins.
 #[derive(Debug, PartialEq, Eq)]
-pub(super) enum ServerMessage<'a> {
-    Update(Vec<Rect<'a>>),
+pub(super) enum Start<'a> {
+    /// An update of this many rectangles, which follow one by one ([`rect`]).
+    Update {
+        rects: usize,
+    },
     Bell,
     /// The device's clipboard, in Latin-1.
     CutText(&'a [u8]),
@@ -91,48 +90,57 @@ impl<'a> Unread<'a> {
     }
 }
 
-/// The first message in `buffer` and its length in bytes, for a screen of `size`; `None`
-/// when the buffer does not hold a whole message yet.
-///
-/// # Errors
-/// [`Malformed`] when the bytes cannot be a message the gateway asked for, or break a
-/// limit. The session then ends: the stream cannot be read further.
-pub(super) fn first(
-    buffer: &[u8],
-    size: (usize, usize),
-) -> Result<Option<(ServerMessage<'_>, usize)>, Malformed> {
+/// Reads one thing from `buffer`; `None` when the buffer does not hold all of it yet.
+fn whole<'a, T>(
+    buffer: &'a [u8],
+    read: impl FnOnce(&mut Unread<'a>) -> Result<T, Stop>,
+) -> Result<Option<(T, usize)>, Malformed> {
     let mut unread = Unread(buffer);
-    match message(&mut unread, size) {
-        Ok(message) => Ok(Some((message, buffer.len() - unread.0.len()))),
+    match read(&mut unread) {
+        Ok(thing) => Ok(Some((thing, buffer.len() - unread.0.len()))),
         Err(Stop::Incomplete) => Ok(None),
         Err(Stop::Malformed(malformed)) => Err(malformed),
     }
 }
 
-fn message<'a>(unread: &mut Unread<'a>, size: (usize, usize)) -> Result<ServerMessage<'a>, Stop> {
-    match unread.take(1)?[0] {
+/// The start of the message at the front of `buffer`, and its length in bytes. An update
+/// is read rectangle by rectangle, so the gateway never holds more than one rectangle of
+/// a device's bytes.
+///
+/// # Errors
+/// [`Malformed`] when the bytes cannot be a message the gateway asked for. The session
+/// then ends: the stream cannot be read further.
+pub(super) fn start(buffer: &[u8]) -> Result<Option<(Start<'_>, usize)>, Malformed> {
+    whole(buffer, |unread| match unread.take(1)?[0] {
         0 => {
             unread.take(1)?;
-            update(unread, size).map(ServerMessage::Update)
+            Ok(Start::Update {
+                rects: unread.u16()?,
+            })
         }
-        2 => Ok(ServerMessage::Bell),
+        2 => Ok(Start::Bell),
         3 => {
             unread.take(3)?;
             let length = usize::try_from(unread.u32()?).unwrap_or(usize::MAX);
             if length > LONGEST_CUT_TEXT {
-                return Ok(ServerMessage::LongCutText { skip: length });
+                return Ok(Start::LongCutText { skip: length });
             }
-            Ok(ServerMessage::CutText(unread.take(length)?))
+            Ok(Start::CutText(unread.take(length)?))
         }
         _ => Err(Malformed::UnknownMessage.into()),
-    }
+    })
 }
 
-fn update<'a>(unread: &mut Unread<'a>, mut size: (usize, usize)) -> Result<Vec<Rect<'a>>, Stop> {
-    let count = unread.u16()?;
-    let mut rects = Vec::with_capacity(count.min(1024));
-    let mut pixels_left = size.0 * size.1 * MOST_SCREENS_IN_AN_UPDATE;
-    for _ in 0..count {
+/// The rectangle at the front of `buffer`, for a screen of `size`, and its length in
+/// bytes. A rectangle outside the screen is refused before its pixels are waited for.
+///
+/// # Errors
+/// [`Malformed`], as [`start`].
+pub(super) fn rect(
+    buffer: &[u8],
+    size: (usize, usize),
+) -> Result<Option<(Rect<'_>, usize)>, Malformed> {
+    whole(buffer, |unread| {
         let area = Area {
             x: unread.u16()?,
             y: unread.u16()?,
@@ -140,27 +148,21 @@ fn update<'a>(unread: &mut Unread<'a>, mut size: (usize, usize)) -> Result<Vec<R
             height: unread.u16()?,
         };
         let encoding = unread.u32()?.cast_signed();
-        let body = if encoding == DESKTOP_SIZE {
+        if encoding == DESKTOP_SIZE {
             if !(1..=MAX_SIDE).contains(&area.width) || !(1..=MAX_SIDE).contains(&area.height) {
                 return Err(Malformed::BadSize.into());
             }
-            size = (area.width, area.height);
-            pixels_left = pixels_left.max(size.0 * size.1 * MOST_SCREENS_IN_AN_UPDATE);
-            Body::NewSize
-        } else {
-            let inside = area.x + area.width <= size.0 && area.y + area.height <= size.1;
-            let pixels = area.width * area.height;
-            pixels_left = pixels_left
-                .checked_sub(pixels)
-                .ok_or(Malformed::TooManyPixels)?;
-            if !inside {
-                return Err(Malformed::OutsideScreen.into());
-            }
-            pixel_body(unread, encoding, pixels)?
-        };
-        rects.push(Rect { area, body });
-    }
-    Ok(rects)
+            return Ok(Rect {
+                area,
+                body: Body::NewSize,
+            });
+        }
+        if area.x + area.width > size.0 || area.y + area.height > size.1 {
+            return Err(Malformed::OutsideScreen.into());
+        }
+        let body = pixel_body(unread, encoding, area.width * area.height)?;
+        Ok(Rect { area, body })
+    })
 }
 
 /// The body of a rectangle of `pixels` pixels in `encoding`.
