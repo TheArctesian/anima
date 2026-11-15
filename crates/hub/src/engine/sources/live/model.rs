@@ -97,6 +97,16 @@ impl Keep {
     }
 }
 
+/// Whether a change may spend the requests the hub keeps for the sync (K-E1 Section 13.1).
+/// The caller decides from who asked; the engine knows no token.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Reserve {
+    /// The operator's own change (a login or browser token): it may go down to 0.
+    Spendable,
+    /// A script's or an agent's change (an API key): it stops at the reserve, as a read does.
+    Kept,
+}
+
 /// Why a live read or change got no answer. Fixed words only: never a token, a path, a body
 /// or a reply of the source (LOG-007).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]

@@ -189,6 +189,8 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
         .data(vpn_broker)
         // sources
         .data(sources)
+        // projects: the changes each API key made this minute (K-E1 Section 13.1)
+        .data(projects::KeyChanges::default())
         .finish()
 }
 

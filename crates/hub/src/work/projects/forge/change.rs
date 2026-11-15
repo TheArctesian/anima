@@ -14,7 +14,7 @@ use tracing::Instrument;
 use super::{
     Target,
     failure::{self, Subject},
-    scheduling, trail,
+    pace, scheduling, trail,
 };
 use crate::{
     api_errors::{internal, schema_dependency},
@@ -42,16 +42,18 @@ pub(in crate::work::projects) async fn make(
 }
 
 /// Sends `change` to `target` once and records it; what came of it, whatever GitHub answered.
+/// An API key's change keeps the sync's reserve and goes at the key's pace ([`pace`]).
 ///
 /// # Errors
-/// The fixed words of [`failure::unsent`] when nothing was sent, and `INTERNAL` when the record
-/// could not be written twice ([`failure::unrecorded`]).
+/// `UNAVAILABLE` past the key's pace, the fixed words of [`failure::unsent`] when nothing was
+/// sent, and `INTERNAL` when the record could not be written twice ([`failure::unrecorded`]).
 pub(in crate::work::projects) async fn send(
     ctx: &Context<'_>,
     target: &Target,
     change: &Change,
 ) -> Result<Settled> {
     let s = scheduling(ctx)?;
+    let reserve = pace::reserve(ctx)?;
     let who = (
         schema_dependency::<Operator>(ctx)?.clone(),
         *schema_dependency::<ClientAddr>(ctx)?,
@@ -59,7 +61,7 @@ pub(in crate::work::projects) async fn send(
     let (target, change) = (target.clone(), change.clone());
     let sent_and_recorded = tokio::spawn(
         async move {
-            let settled = sources::change(&s, target.account, &change)
+            let settled = sources::change(&s, target.account, &change, reserve)
                 .await
                 .map_err(failure::unsent)?;
             for path in dropped(&change) {

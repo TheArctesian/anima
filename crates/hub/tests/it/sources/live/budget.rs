@@ -1,8 +1,9 @@
 //! K-E1 Section 13.1, decisions 5 and 7: live reads stop at the sync's reserve of the count in
-//! the headers, a change still goes, and a 429, a 403 with no request left and a 403 with
-//! `retry-after` are limits while any other 403 is the provider's to read.
+//! the headers, as does a change that keeps the reserve, while the operator's change still
+//! goes; a 429, a 403 with no request left and a 403 with `retry-after` are limits while any
+//! other 403 is the provider's to read.
 
-use anima_hub::engine::sources::{Keep, LiveFailure, ask, change};
+use anima_hub::engine::sources::{Keep, LiveFailure, Reserve, ask, change};
 use chrono::{DateTime, TimeDelta, Utc};
 use source_exchange::{Receipt, Settled};
 use sqlx::PgPool;
@@ -57,7 +58,13 @@ async fn prj_032_reads_stop_at_500_left_until_the_reset_and_a_change_still_goes(
     );
 
     kit.stub.reply(COMMENT_PATH, reply(201, &[], "{}"));
-    let made = change(&kit.at(start()), id, &comment("hello"))
+    let kept = change(&kit.at(start()), id, &comment("hello"), Reserve::Kept).await;
+    assert_eq!(kept.unwrap_err(), LiveFailure::Limited { until: reset() });
+    assert!(
+        !kit.stub.paths().iter().any(|path| path == COMMENT_PATH),
+        "a change that keeps the reserve was not sent"
+    );
+    let made = change(&kit.at(start()), id, &comment("hello"), Reserve::Spendable)
         .await
         .unwrap();
     assert_eq!(made, Settled::Done(Receipt::Created { number: 201 }));

@@ -16,6 +16,7 @@ mod checks;
 pub(super) mod cursor;
 pub(super) mod failure;
 mod filter;
+mod pace;
 pub(super) mod reach;
 pub(super) mod text;
 pub(super) mod trail;
@@ -26,7 +27,7 @@ use async_graphql::{Context, ID, Result, SimpleObject};
 use chrono::{DateTime, Utc};
 use source_exchange::{Body, Problem, Request, Response};
 
-pub use self::allowance::RequestReads;
+pub use self::{allowance::RequestReads, pace::KeyChanges};
 pub(super) use self::{
     argument::checked,
     change::{make, send},

@@ -47,7 +47,7 @@ pub use connect::{Connection, Established, establish};
 pub use feed::Feed;
 pub use health::{HealthFacts, health};
 pub use intake::{Counts, Intake, IntakeError, Page, Registry, Taken};
-pub use live::{Keep, LiveFailure, Reply, Standing, ask, change, forget, standing};
+pub use live::{Keep, LiveFailure, Reply, Reserve, Standing, ask, change, forget, standing};
 pub use model::{Account, ErrorKind, Health, Outcome, PauseReason, Trigger};
 pub use registration::{
     attempts::Attempts,

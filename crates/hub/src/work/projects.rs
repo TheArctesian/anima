@@ -27,7 +27,7 @@ use std::sync::Arc;
 
 use async_graphql::{Context, Error as GraphQlError};
 
-pub use self::forge::RequestReads;
+pub use self::forge::{KeyChanges, RequestReads};
 use chrono::{DateTime, Utc};
 use sqlx::{PgConnection, PgPool};
 

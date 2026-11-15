@@ -2,7 +2,7 @@
 //! process log line, a failure's words or its `Debug`, or a reply's `Debug`.
 
 use anima_hub::{
-    engine::sources::{Keep, ask, change},
+    engine::sources::{Keep, Reserve, ask, change},
     fleet::events::process_log,
 };
 use sqlx::PgPool;
@@ -45,10 +45,22 @@ async fn log_007_the_token_and_the_bodies_are_in_no_log_line_or_error(pool: PgPo
     }
     kit.stub.reply(COMMENT_PATH, reply(422, &[], &echo));
     let body = format!("{CHANGE_MARKER} {token}");
-    note(format!("{:?}", change(&s, id, &comment(&body)).await));
+    note(format!(
+        "{:?}",
+        change(&s, id, &comment(&body), Reserve::Spendable).await
+    ));
     kit.stub.reply(COMMENT_PATH, reply(401, &[], &echo));
-    note(format!("{:?}", change(&s, id, &comment(&body)).await));
-    let failed = change(&striding(&kit, unreachable()), id, &comment(&body)).await;
+    note(format!(
+        "{:?}",
+        change(&s, id, &comment(&body), Reserve::Spendable).await
+    ));
+    let failed = change(
+        &striding(&kit, unreachable()),
+        id,
+        &comment(&body),
+        Reserve::Spendable,
+    )
+    .await;
     note(format!("{failed:?}"));
     if let Err(failure) = failed {
         note(failure.to_string());

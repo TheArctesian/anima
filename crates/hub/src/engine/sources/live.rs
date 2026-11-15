@@ -24,7 +24,7 @@ use sqlx::PgConnection;
 
 use self::{budget::Budget, pace::Pace, replies::Replies};
 pub use self::{
-    model::{Keep, LiveFailure, Reply, Standing},
+    model::{Keep, LiveFailure, Reply, Reserve, Standing},
     read::ask,
     write::change,
 };

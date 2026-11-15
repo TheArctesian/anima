@@ -1,7 +1,7 @@
 //! K-E1 Section 13.1: the live path leaves the sync alone. A live read, a live 401 and a change
 //! leave every row of `sources.accounts` and `sources.sync_runs` as it was.
 
-use anima_hub::engine::sources::{Keep, LiveFailure, Outcome, ask, change, standing};
+use anima_hub::engine::sources::{Keep, LiveFailure, Outcome, Reserve, ask, change, standing};
 use sqlx::PgPool;
 
 use super::{COMMENT_PATH, PULLS, comment, get, live_kit, ok, reply, striding};
@@ -39,7 +39,9 @@ async fn src_007_a_live_read_a_live_401_and_a_change_write_nothing_of_the_sync(p
     assert_eq!(refused.unwrap_err(), LiveFailure::KeyRefused);
     assert!(kit.reach.transport.tokens().fresh(id, start()).is_none());
     kit.stub.reply(COMMENT_PATH, reply(401, &[], "{}"));
-    change(&s, id, &comment("hello")).await.unwrap();
+    change(&s, id, &comment("hello"), Reserve::Spendable)
+        .await
+        .unwrap();
 
     assert_eq!(sync_rows(&pool).await, before);
     let mut conn = pool.acquire().await.unwrap();
