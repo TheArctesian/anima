@@ -16,12 +16,15 @@ use chrono::{TimeZone as _, Utc};
 use ipnet::IpNet;
 use tokio::{
     io::{AsyncReadExt as _, AsyncWriteExt as _},
-    net::UnixStream,
+    net::{TcpListener, TcpStream, UnixStream},
     task::JoinHandle,
 };
 
 use super::{
-    super::{Error, listen},
+    super::{
+        Error, listen,
+        serve::{self, Limits, SERVED, Serving, Ways},
+    },
     header, link_socket,
 };
 use crate::{
@@ -176,16 +179,20 @@ impl Drop for LinkedHub {
     }
 }
 
+fn peer_router() -> Router {
+    Router::new().route(
+        "/",
+        get(|ConnectInfo(peer): ConnectInfo<SocketAddr>| async move { peer.to_string() }),
+    )
+}
+
 async fn linked_hub(edge: Edge) -> LinkedHub {
     let (folder, socket) = private_folder();
     let listening = listen("127.0.0.1:0".parse().unwrap(), None, clock())
         .await
         .unwrap();
     let link = link_socket(&socket).unwrap();
-    let router = Router::new().route(
-        "/",
-        get(|ConnectInfo(peer): ConnectInfo<SocketAddr>| async move { peer.to_string() }),
-    );
+    let router = peer_router();
     let entrance = listening.admitting(edge.clone()).with_link(Some(link));
     let serving = tokio::spawn(async move {
         let stop = std::future::pending();
@@ -275,4 +282,44 @@ async fn net_002_a_connection_that_names_no_device_is_written_once_a_minute() {
         ]
     );
     assert_eq!(hub.edge.unnamed().messages(), [] as [String; 0]);
+}
+
+#[tokio::test]
+async fn clients_of_the_loopback_port_cannot_take_the_places_of_the_links_devices() {
+    let (folder, socket) = private_folder();
+    let tcp = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = tcp.local_addr().unwrap();
+    let ways = Ways {
+        tcp,
+        link: Some(link_socket(&socket).unwrap()),
+    };
+    let limits = Limits {
+        connections: 2,
+        connections_per_peer: 2,
+        ..SERVED
+    };
+    // Loopback is permitted, as in the link mode, so its idle connections hold places.
+    let both = [IpNet::V6(LINK_DEVICES), "127.0.0.0/8".parse().unwrap()];
+    let edge = Edge::permitting(&both, clock());
+    let serving = Serving::new(peer_router(), edge.clone(), None, limits);
+    let run = serve::run(ways, serving, std::future::pending(), Duration::ZERO);
+    let hub = LinkedHub {
+        _folder: folder,
+        socket,
+        edge,
+        serving: tokio::spawn(run),
+    };
+
+    let _first = TcpStream::connect(addr).await.unwrap();
+    let _second = TcpStream::connect(addr).await.unwrap();
+    let mut third = TcpStream::connect(addr).await.unwrap();
+    let mut none = Vec::new();
+    let full = tokio::time::timeout(DEADLINE, third.read_to_end(&mut none)).await;
+    assert!(
+        full.is_ok(),
+        "the listener's places must be taken for this test"
+    );
+
+    let answer = answer_to(&hub, &[FROM_THE_LINK, GET]).await;
+    assert!(answer.starts_with("HTTP/1.1 200"), "{answer}");
 }

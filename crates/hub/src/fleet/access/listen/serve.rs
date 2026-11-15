@@ -20,7 +20,7 @@ use hyper::{body::Incoming, server::conn::http1, service::service_fn};
 use hyper_util::rt::{TokioIo, TokioTimer};
 use tokio::{
     io::{AsyncRead, AsyncWrite},
-    net::{TcpListener, TcpStream, UnixStream},
+    net::{TcpListener, TcpStream},
     sync::watch,
     task::JoinSet,
 };
@@ -28,7 +28,7 @@ use tokio_rustls::TlsAcceptor;
 use tower::ServiceExt as _;
 
 use super::{
-    link::{self, LinkSocket},
+    link::{FromLink, LinkSocket},
     slots::{Slot, Slots},
     timed::{Holding, timed_body},
 };
@@ -79,6 +79,9 @@ pub(super) struct Serving {
     tls: Option<TlsAcceptor>,
     limits: Limits,
     connections: Arc<Slots>,
+    /// The places of the link's devices, apart from `connections`: clients of the listener
+    /// cannot take them.
+    link_connections: Arc<Slots>,
     handshakes: Arc<Slots>,
     /// Set once serving stops: open connections finish their request and close.
     stopping: watch::Sender<bool>,
@@ -97,6 +100,7 @@ impl Serving {
             tls,
             limits,
             connections: Slots::new(limits.connections, limits.connections_per_peer),
+            link_connections: Slots::new(limits.connections, limits.connections_per_peer),
             handshakes: Slots::new(limits.connections, limits.handshakes_per_peer),
             stopping: watch::Sender::new(false),
         })
@@ -117,20 +121,22 @@ impl Serving {
 
     /// The work of serving `stream` from the link's socket: its peer is the device the link
     /// names in the header, which must arrive within the handshake time. A connection that
-    /// names no device of the link is closed and written to the event log (NET-002).
+    /// names no device of the link is closed and written to the event log (NET-002). Until it
+    /// is named it holds no place: only the hub's own user can open the socket, and the
+    /// handshake time bounds it. A device whose places are all taken is closed with no answer,
+    /// as a client of the listener is.
     pub(super) fn admit_link(
         self: &Arc<Self>,
-        mut stream: UnixStream,
+        incoming: FromLink,
     ) -> impl Future<Output = ()> + Send + 'static {
         let serving = Arc::clone(self);
         async move {
-            let named =
-                tokio::time::timeout(serving.limits.handshake_time, link::device(&mut stream));
-            let Ok(Some(peer)) = named.await else {
-                drop(stream);
+            let named = tokio::time::timeout(serving.limits.handshake_time, incoming.named());
+            // A connection that is not named is dropped, and so closed, by here.
+            let Ok(Some((stream, peer))) = named.await else {
                 return serving.edge.write(serving.edge.unnamed()).await;
             };
-            let Some(slot) = serving.connections.take(peer.ip()) else {
+            let Some(slot) = serving.link_connections.take(peer.ip()) else {
                 return;
             };
             if let Some(stream) = serving.permitted(stream, peer).await {
@@ -220,7 +226,7 @@ pub(super) struct Ways {
 }
 
 /// The next connection from the link; never, when the hub is not in the link mode.
-async fn from_link(link: Option<&LinkSocket>) -> io::Result<UnixStream> {
+async fn from_link(link: Option<&LinkSocket>) -> io::Result<FromLink> {
     match link {
         Some(link) => link.accept().await,
         None => std::future::pending().await,
@@ -246,7 +252,7 @@ pub(super) async fn run(
                 Err(error) => accept_failed(&error).await,
             },
             incoming = from_link(ways.link.as_ref()) => match incoming {
-                Ok(stream) => connections.extend([serving.admit_link(stream)]),
+                Ok(incoming) => connections.extend([serving.admit_link(incoming)]),
                 Err(error) => accept_failed(&error).await,
             },
         }

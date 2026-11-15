@@ -131,7 +131,23 @@ Thus the hub rules become key rules with no change to a frozen contract.
 The link's test and the hub's tests read one file, `link/hublink/testdata/device-header.bin`, so
 the two programs agree on the header.
 
-### 6.2 Proposed row for K7 (not applied)
+### 6.2 What the security reviews changed
+
+| Finding | Correction |
+| --- | --- |
+| Medium, link: after a revocation, a key that once named the device (also the key that a renewal replaced) could join with a new invite and get the revoked device's address, and so its builder and its history | E-10: `retired.json` holds each key and address that left the list; none is permitted again |
+| Low, link: a device in its renewal could name a revoked key as its next key | The same record refuses it |
+| Low, link: a socket path through a symbolic link in a folder that others can write passed the check | Such a link is refused |
+| Note, link: a header on a loopback port proves nothing, because each local user can write one | E-5: `-name-device` is removed |
+| Medium, hub: clients of the loopback port could take every connection place, so that no device was served (on Linux, where a user can connect from many loopback addresses) | The link's devices have their own places |
+| Low, hub: on macOS an inherited access-control entry can give another user access to a socket of mode `0600` | The hub serves a socket connection only when the connecting process has the hub's user |
+| Low, hub: a race through a folder above the socket's folder | The same check of the connecting user |
+
+Not corrected, by decision: each local user of the hub computer can reach the loopback port and
+must sign in (E-7). The check of the connecting user has no test: a test cannot connect as
+another user.
+
+### 6.3 Proposed row for K7 (not applied)
 
 | Variable | Meaning | Default |
 | --- | --- | --- |

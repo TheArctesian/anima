@@ -21,8 +21,11 @@ use tokio::{
 
 use super::Error;
 
-/// The bound socket of the link.
-pub struct LinkSocket(UnixListener);
+/// The bound socket of the link, and the user that made it: the hub's.
+pub struct LinkSocket {
+    listener: UnixListener,
+    owner: u32,
+}
 
 /// Makes the socket at `path`, with mode `0600`. Its folder must be a folder of the hub's user
 /// that no other user can reach: whoever can open the socket names a device. A socket an
@@ -50,10 +53,11 @@ pub fn link_socket(path: &Path) -> Result<LinkSocket, Error> {
     match made {
         // The new socket belongs to the hub's user, so the folder must have the same owner.
         Ok((socket, folder)) if owner_only(&folder) && folder.uid() == socket.uid() => {
-            UnixListener::from_std(listener)
-                .map(LinkSocket)
-                .map_err(unmade(path))
+            let listener = UnixListener::from_std(listener).map_err(unmade(path))?;
+            let owner = socket.uid();
+            Ok(LinkSocket { listener, owner })
         }
+        // A socket that cannot be removed here stays unused; the next start replaces it.
         Ok(_) => {
             let _ = fs::remove_file(path);
             Err(exposed())
@@ -82,16 +86,35 @@ fn unmade(path: &Path) -> impl Fn(io::Error) -> Error {
 }
 
 impl LinkSocket {
-    /// The next connection from the link.
-    pub(super) async fn accept(&self) -> io::Result<UnixStream> {
-        self.0.accept().await.map(|(stream, _)| stream)
+    /// The next connection to the socket, and whether a process of the hub's own user made
+    /// it. The file modes let no other user connect; this holds also where they do not, for
+    /// example under an inherited access-control entry.
+    pub(super) async fn accept(&self) -> io::Result<FromLink> {
+        let (stream, _) = self.listener.accept().await?;
+        let own = stream
+            .peer_cred()
+            .is_ok_and(|peer| peer.uid() == self.owner);
+        Ok(FromLink { stream, own })
     }
 }
 
-/// Reads the header at the start of `stream`: the device the link names, as the connection's
-/// peer. `None` when the connection ends first or does not start with the link's header.
-pub(super) async fn device(stream: &mut UnixStream) -> Option<SocketAddr> {
-    let mut bytes = [0; header::LENGTH];
-    stream.read_exact(&mut bytes).await.ok()?;
-    header::device(&bytes)
+/// A connection to the link's socket.
+pub(super) struct FromLink {
+    stream: UnixStream,
+    own: bool,
+}
+
+impl FromLink {
+    /// The connection and the device it names as its peer, read from the header at its start.
+    /// `None` when another user's process connected, when the connection ends first or when
+    /// it does not start with the link's header.
+    pub(super) async fn named(self) -> Option<(UnixStream, SocketAddr)> {
+        let Self { mut stream, own } = self;
+        if !own {
+            return None;
+        }
+        let mut bytes = [0; header::LENGTH];
+        stream.read_exact(&mut bytes).await.ok()?;
+        Some((stream, header::device(&bytes)?))
+    }
 }
