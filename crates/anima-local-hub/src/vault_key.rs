@@ -21,7 +21,11 @@ pub enum KeyError {
         "the hub's key file is missing and the database is not new: put the key file back at {0}"
     )]
     Missing(String),
-    #[error("the hub's key file cannot be made ({0})")]
+    /// A link or a folder at the key's path. The hub would follow a link to a file that
+    /// others may read or change.
+    #[error("{0} is not a plain file: remove it and put the key file back")]
+    NotAFile(String),
+    #[error("the hub's key file cannot be made or looked at ({0})")]
     Write(io::ErrorKind),
     #[error("no random bytes for the hub's key")]
     Random,
@@ -36,9 +40,11 @@ pub enum KeyError {
 /// # Errors
 /// [`KeyError::Missing`] when the key is absent and the database is not new.
 pub fn prepare(path: &Path, database_is_new: bool) -> Result<(), KeyError> {
-    // `symlink_metadata`: a dangling link at the path is something, and is never replaced.
-    if path.symlink_metadata().is_ok() {
-        return Ok(());
+    match path.symlink_metadata() {
+        Ok(found) if found.is_file() => return Ok(()),
+        Ok(_) => return Err(KeyError::NotAFile(path.display().to_string())),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+        Err(error) => return Err(KeyError::Write(error.kind())),
     }
     if !database_is_new {
         return Err(KeyError::Missing(path.display().to_string()));
@@ -58,5 +64,10 @@ fn write(path: &Path, text: &[u8]) -> io::Result<()> {
     let mut file = owner_only::new_file(being_written)?;
     file.write_all(text)?;
     file.sync_all()?;
-    std::fs::rename(being_written, path)
+    std::fs::rename(being_written, path)?;
+    // The new name must survive a power cut as the database made after it does.
+    match path.parent() {
+        Some(folder) => std::fs::File::open(folder)?.sync_all(),
+        None => Ok(()),
+    }
 }

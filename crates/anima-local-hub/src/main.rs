@@ -146,11 +146,19 @@ fn main() -> ExitCode {
     }
 }
 
+/// NET-003: without TLS the hub may listen on loopback only. The hub checks it too.
+fn loopback(listen: SocketAddr) -> Result<SocketAddr, Failure> {
+    if !listen.ip().is_loopback() {
+        return Err("--listen must be a loopback address".into());
+    }
+    Ok(listen)
+}
+
 fn serve(place: &Place, listen: SocketAddr, programs: Programs) -> Result<ExitCode, Failure> {
     let plan = Plan {
         carried: programs.carried()?,
         folders: place.folders()?,
-        listen,
+        listen: loopback(listen)?,
         limits: LIMITS,
     };
     let runtime = tokio::runtime::Builder::new_current_thread()
@@ -205,6 +213,7 @@ impl User {
 
 fn install(place: &Place, tree: PathBuf, listen: Option<SocketAddr>) -> Result<ExitCode, Failure> {
     let (folders, user) = (place.folders()?, User::current()?);
+    let listen = listen.map(loopback).transpose()?;
     let program = std::env::current_exe()?;
     let source = Carried::new(
         program.parent().unwrap_or(Path::new("/")).to_path_buf(),

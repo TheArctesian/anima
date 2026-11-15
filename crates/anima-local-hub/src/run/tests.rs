@@ -268,6 +268,22 @@ async fn a_lost_key_blocks_the_hub_and_no_new_key_is_made() {
 }
 
 #[tokio::test]
+async fn no_key_is_made_for_a_database_that_cannot_be_looked_at() {
+    let rig = rig();
+    let database = rig.plan.folders.database().root().to_path_buf();
+    fs::create_dir_all(database.join("cluster")).unwrap();
+    fs::set_permissions(&database, fs::Permissions::from_mode(0o000)).unwrap();
+    let (_ask, stop) = never_asked();
+
+    let ended = rig.run_with(stop, || {}).await.unwrap();
+
+    fs::set_permissions(&database, fs::Permissions::from_mode(0o700)).unwrap();
+    assert_eq!(ended, Ended::Failed);
+    assert!(!rig.key().exists());
+    assert_eq!(rig.events(), Vec::<String>::new());
+}
+
+#[tokio::test]
 async fn a_stop_that_is_asked_during_the_start_ends_it_after_the_step_in_progress() {
     let rig = rig();
     let (ask, stop) = Stop::new();

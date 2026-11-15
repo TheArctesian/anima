@@ -3,6 +3,7 @@
 
 pub mod install;
 mod steps;
+mod trust;
 mod unit_file;
 
 pub use steps::{STEP_LIMIT, Step, run_step};

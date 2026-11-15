@@ -184,7 +184,7 @@ fn a_unit_folder_that_others_can_change_is_refused() {
     let (outcome, _ran) = rig.install(Platform::MacOs);
 
     assert!(
-        matches!(outcome, Err(InstallError::UnitFolder(_))),
+        matches!(outcome, Err(InstallError::OpenToOthers(_))),
         "{outcome:?}"
     );
     assert_eq!(fs::read_dir(&agents).unwrap().count(), 0);
@@ -226,4 +226,33 @@ fn remove_stops_the_unit_and_takes_the_file_and_the_programs_but_never_the_datab
         // A second remove finds nothing and is not an error.
         rig.remove(platform);
     }
+}
+
+#[test]
+fn a_hub_folder_below_a_folder_that_others_can_change_is_refused_before_anything_is_copied() {
+    let rig = rig();
+    let home = rig.home("");
+    fs::create_dir_all(&home).unwrap();
+    fs::set_permissions(&home, fs::Permissions::from_mode(0o777)).unwrap();
+
+    let (outcome, ran) = rig.install(Platform::MacOs);
+
+    assert!(
+        matches!(outcome, Err(InstallError::OpenToOthers(_))),
+        "{outcome:?}"
+    );
+    assert_eq!(ran, Vec::<String>::new());
+    assert!(!rig.folders.all_programs().exists());
+    fs::set_permissions(&home, fs::Permissions::from_mode(0o755)).unwrap();
+}
+
+#[test]
+fn install_closes_a_hub_folder_that_was_open_to_others() {
+    let rig = rig();
+    fs::create_dir_all(rig.folders.root()).unwrap();
+    fs::set_permissions(rig.folders.root(), fs::Permissions::from_mode(0o777)).unwrap();
+
+    rig.install(Platform::MacOs).0.unwrap();
+
+    assert_eq!(mode_of(rig.folders.root()), 0o700);
 }

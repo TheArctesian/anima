@@ -48,14 +48,21 @@ fn no_key_is_made_for_a_database_that_an_older_key_sealed() {
 }
 
 #[test]
-fn a_link_at_the_keys_path_is_left_alone() {
+fn a_link_at_the_keys_path_is_refused_and_not_followed() {
     let folder = tempfile::tempdir().unwrap();
     let path = folder.path().join("vault.key");
+    fs::write(folder.path().join("elsewhere"), "open to others").unwrap();
     std::os::unix::fs::symlink(folder.path().join("elsewhere"), &path).unwrap();
 
-    prepare(&path, true).unwrap();
+    for database_is_new in [true, false] {
+        let error = prepare(&path, database_is_new).unwrap_err();
 
-    assert!(!folder.path().join("elsewhere").exists());
+        assert!(matches!(error, KeyError::NotAFile(_)), "{error}");
+    }
+    assert_eq!(
+        fs::read_to_string(folder.path().join("elsewhere")).unwrap(),
+        "open to others"
+    );
 }
 
 #[test]

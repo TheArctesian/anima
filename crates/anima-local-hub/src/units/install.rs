@@ -5,14 +5,15 @@
 use std::fs::{self, OpenOptions};
 use std::io::{self, Write as _};
 use std::net::SocketAddr;
-use std::os::unix::fs::{MetadataExt, OpenOptionsExt};
+use std::os::unix::fs::OpenOptionsExt;
 use std::path::{Path, PathBuf};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use anima_database::Platform;
+use anima_database::{Platform, owner_only};
 
 use super::steps::Step;
+use super::trust;
 use super::unit_file::{self, LABEL, Launch, RenderError, SYSTEMD_UNIT};
 use crate::members::{Carried, LOCAL_HUB};
 use crate::programs::{self, CopyError};
@@ -30,8 +31,9 @@ pub enum InstallError {
     Copy(#[from] CopyError),
     #[error(transparent)]
     Render(#[from] RenderError),
-    #[error("{} is not a folder that only this user can change", .0.display())]
-    UnitFolder(PathBuf),
+    /// Another user could put a program of their own where the unit runs one at each login.
+    #[error("{} can be changed by other users: run `chmod go-w` on it", .0.display())]
+    OpenToOthers(PathBuf),
     #[error("cannot write {} ({kind})", path.display())]
     Write { path: PathBuf, kind: io::ErrorKind },
     #[error("`{program} {}` failed", args.join(" "))]
@@ -131,6 +133,9 @@ pub fn install(
 ) -> Result<PathBuf, InstallError> {
     let file = request.unit_file();
     let text = unit_file::render(request.platform, &request.launch())?;
+    let root = request.folders.root();
+    owner_only::folder(root).map_err(write_error(root))?;
+    private(root, request.uid)?;
     programs::copy(source, request.folders)?;
     run_steps(&[request.stop()], &mut run)?;
     wait_until_stopped(request)?;
@@ -208,16 +213,20 @@ fn write_error(path: &Path) -> impl FnOnce(io::Error) -> InstallError + '_ {
     }
 }
 
+/// Refuses a folder that another user can change, or that has such a folder above it.
+fn private(folder: &Path, uid: u32) -> Result<(), InstallError> {
+    match trust::open_to_others(folder, uid).map_err(write_error(folder))? {
+        Some(open) => Err(InstallError::OpenToOthers(open)),
+        None => Ok(()),
+    }
+}
+
 /// Writes the unit file whole, in a folder that only this user (or root) can change: the
 /// unit tool runs what the file names at each login.
 fn write_unit(file: &Path, text: &str, uid: u32) -> Result<(), InstallError> {
     let folder = file.parent().unwrap_or(file);
     fs::create_dir_all(folder).map_err(write_error(folder))?;
-    let found = fs::symlink_metadata(folder).map_err(write_error(folder))?;
-    let owner_is_trusted = found.uid() == uid || found.uid() == 0;
-    if !found.is_dir() || !owner_is_trusted || found.mode() & 0o022 != 0 {
-        return Err(InstallError::UnitFolder(folder.to_path_buf()));
-    }
+    private(folder, uid)?;
     let mut being_written = file.as_os_str().to_owned();
     being_written.push(".new");
     let being_written = Path::new(&being_written);

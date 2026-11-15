@@ -123,7 +123,12 @@ impl Group {
         } = plan;
         // Before the database: a crash after this leaves a key and no database, never a
         // database that no key opens.
-        let database_is_new = folders.database().cluster().symlink_metadata().is_err();
+        let database_is_new = match folders.database().cluster().symlink_metadata() {
+            Ok(_) => false,
+            Err(error) if error.kind() == io::ErrorKind::NotFound => true,
+            // A cluster that cannot be looked at is not a new one: no key is made for it.
+            Err(error) => return Err(StartError::Key(KeyError::Write(error.kind()))),
+        };
         vault_key::prepare(&folders.vault_key(), database_is_new).map_err(|error| match error {
             KeyError::Missing(_) => StartError::Blocked(Blocked::KeyMissing),
             other => StartError::Key(other),

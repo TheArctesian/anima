@@ -45,7 +45,7 @@ The application runs these for you. Each command accepts `--root <folder>` toget
 | Command | What it does |
 | --- | --- |
 | `anima-local-hub install --tree <folder>` | Copies the programs beside it and the PostgreSQL tree at `<folder>` to `programs/`, writes the unit file and starts the hub. On a hub that runs, it is an update: the hub stops, the programs are replaced, the hub starts. |
-| `anima-local-hub remove` | Stops the hub, removes the unit file and `programs/`. **It does not remove the database, the key or the logs.** To remove those, delete the hub root yourself. |
+| `anima-local-hub remove` | Stops the hub, removes the unit file and `programs/`. **It does not remove the database (with its URL files, which hold passwords), the key or the logs.** To remove those, delete the hub root yourself. On Linux, run `remove` with the same `XDG_DATA_HOME` as `install`: it finds the hub root from it. |
 | `anima-local-hub status` | Prints one line of JSON. |
 | `anima-local-hub run` | What the unit runs. It prints `ready` when the hub serves and stops on SIGTERM. |
 
@@ -102,7 +102,13 @@ Plan item S5 sets the rules and the addresses of the application mode.
 
 The gateway listens on a loopback port that the operating system picks. It has no sign-in, so
 any program of this computer can ask it to connect to a VNC host
-([native-gateway.md](native-gateway.md)).
+([native-gateway.md](native-gateway.md)). Another user of this computer can also hold all of
+its 64 sessions and so stop your remote display sessions. On a computer that other people
+use, this is a known limit until plan item S5 closes it.
+
+`install` refuses a hub root or a unit folder that another user can change, or that has such
+a folder above it: that user could put a program of their own where the unit runs one at
+each login. The message names the folder; run `chmod go-w` on it.
 
 ## 6. For plan item S6: what the application calls
 

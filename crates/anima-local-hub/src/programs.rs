@@ -8,7 +8,7 @@
 //! ```
 
 use std::fs::{self, DirBuilder, File, OpenOptions};
-use std::io;
+use std::io::{self, Read as _};
 use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt, PermissionsExt};
 use std::path::{Component, Path, PathBuf};
 
@@ -23,6 +23,8 @@ pub(crate) mod tests;
 /// More entries or deeper folders than a PostgreSQL tree has by far (about 1 000 and 6).
 const MOST_ENTRIES: usize = 20_000;
 const MOST_DEPTH: usize = 16;
+/// More bytes than the four programs and a tree have by far (about 60 MB optimised).
+const MOST_BYTES: u64 = 2 * 1024 * 1024 * 1024;
 
 #[derive(Debug, thiserror::Error)]
 pub enum CopyError {
@@ -61,6 +63,10 @@ pub fn copy(source: &Carried, folders: &Folders) -> Result<(), CopyError> {
     owner_only::folder(&folders.all_programs())
         .map_err(io_error("make", &folders.all_programs()))?;
     remove_folder(&next)?;
+    let mut budget = Budget {
+        entries: MOST_ENTRIES,
+        bytes: MOST_BYTES,
+    };
     let copied = Carried::installed_in(&next);
     owner_only::folder(copied.programs()).map_err(io_error("make", copied.programs()))?;
     for name in PROGRAMS {
@@ -68,10 +74,9 @@ pub fn copy(source: &Carried, folders: &Folders) -> Result<(), CopyError> {
         if !from.symlink_metadata().is_ok_and(|found| found.is_file()) {
             return Err(CopyError::NotCarried(from));
         }
-        copy_file(&from, &copied.program(name), 0o700)?;
+        copy_file(&from, &copied.program(name), 0o700, &mut budget)?;
     }
-    let mut entries = 0;
-    copy_folder(source.tree(), copied.tree(), MOST_DEPTH, &mut entries)?;
+    copy_folder(source.tree(), copied.tree(), MOST_DEPTH, &mut budget)?;
     Tree::at(copied.tree()).map_err(|error| CopyError::NotATree(error.to_string()))?;
     Ok(())
 }
@@ -119,7 +124,13 @@ fn remove_folder(folder: &Path) -> Result<(), CopyError> {
     }
 }
 
-fn copy_folder(from: &Path, to: &Path, depth: usize, entries: &mut usize) -> Result<(), CopyError> {
+/// What a copy may still take.
+struct Budget {
+    entries: usize,
+    bytes: u64,
+}
+
+fn copy_folder(from: &Path, to: &Path, depth: usize, budget: &mut Budget) -> Result<(), CopyError> {
     if depth == 0 {
         return Err(CopyError::TooLarge);
     }
@@ -129,18 +140,15 @@ fn copy_folder(from: &Path, to: &Path, depth: usize, entries: &mut usize) -> Res
         .map_err(io_error("make", to))?;
     for entry in fs::read_dir(from).map_err(io_error("read", from))? {
         let entry = entry.map_err(io_error("read", from))?;
-        *entries += 1;
-        if *entries > MOST_ENTRIES {
-            return Err(CopyError::TooLarge);
-        }
+        budget.entries = budget.entries.checked_sub(1).ok_or(CopyError::TooLarge)?;
         let (from, to) = (entry.path(), to.join(entry.file_name()));
         let kind = entry.file_type().map_err(io_error("read", &from))?;
         if kind.is_dir() {
-            copy_folder(&from, &to, depth - 1, entries)?;
+            copy_folder(&from, &to, depth - 1, budget)?;
         } else if kind.is_file() {
             let found = entry.metadata().map_err(io_error("read", &from))?;
             let runs = found.permissions().mode() & 0o111 != 0;
-            copy_file(&from, &to, if runs { 0o700 } else { 0o600 })?;
+            copy_file(&from, &to, if runs { 0o700 } else { 0o600 }, budget)?;
         } else if kind.is_symlink() {
             copy_link(&from, &to)?;
         } else {
@@ -164,19 +172,30 @@ fn copy_link(from: &Path, to: &Path) -> Result<(), CopyError> {
     std::os::unix::fs::symlink(&target, to).map_err(io_error("make", to))
 }
 
-fn copy_file(from: &Path, to: &Path, mode: u32) -> Result<(), CopyError> {
-    let mut source = OpenOptions::new()
+fn copy_file(from: &Path, to: &Path, mode: u32, budget: &mut Budget) -> Result<(), CopyError> {
+    use nix::fcntl::OFlag;
+    // No link is followed, and a pipe that took the file's place does not hold the copy.
+    let source = OpenOptions::new()
         .read(true)
-        .custom_flags(nix::fcntl::OFlag::O_NOFOLLOW.bits())
+        .custom_flags((OFlag::O_NOFOLLOW | OFlag::O_NONBLOCK).bits())
         .open(from)
         .map_err(io_error("read", from))?;
+    let found = source.metadata().map_err(io_error("read", from))?;
+    if !found.is_file() {
+        return Err(CopyError::Refused(from.to_path_buf()));
+    }
+    budget.bytes = budget
+        .bytes
+        .checked_sub(found.len())
+        .ok_or(CopyError::TooLarge)?;
     let mut copy: File = OpenOptions::new()
         .write(true)
         .create_new(true)
         .mode(mode)
         .open(to)
         .map_err(io_error("write", to))?;
-    io::copy(&mut source, &mut copy).map_err(io_error("write", to))?;
+    // No more than the size that was counted, also when the file grows meanwhile.
+    io::copy(&mut source.take(found.len()), &mut copy).map_err(io_error("write", to))?;
     // The mode of a new file is cut by the umask; the unit must be able to run a program.
     copy.set_permissions(fs::Permissions::from_mode(mode))
         .map_err(io_error("write", to))?;
