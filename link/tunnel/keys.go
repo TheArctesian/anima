@@ -19,7 +19,10 @@ var ErrBadKey = errors.New("tunnel: the text is not a key")
 
 // secret is what PrivateKey, PresharedKey and Address have in common: no
 // way of printing, logging or encoding shows them (LNK-008). Only Reveal
-// gives the text. A printer that reads memory by reflection is not covered.
+// gives the text. Two cases are not covered: a printer that reads memory by
+// reflection, and fmt on a struct that holds a secret in an unexported
+// field (fmt cannot call the methods of such a field). Keep secrets in
+// exported fields.
 type secret struct{}
 
 const redacted = "[secret]"

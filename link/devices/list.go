@@ -7,6 +7,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/TheArctesian/anima/link/tunnel"
 )
@@ -23,7 +25,7 @@ func (r *Refusal) Error() string { return r.text }
 // The rules of the list.
 var (
 	ErrKnown   = &Refusal{"device_known", "this key is already permitted"}
-	ErrBadName = &Refusal{"bad_name", "a device needs a name of 1 to 64 characters"}
+	ErrBadName = &Refusal{"bad_name", "a device needs a name of 1 to 64 visible characters"}
 	ErrNoKey   = &Refusal{"no_key", "a device needs a key"}
 )
 
@@ -46,7 +48,7 @@ func (l list) with(device Device) (list, error) {
 	switch {
 	case device.Key.IsZero():
 		return nil, ErrNoKey
-	case device.Name == "" || len([]rune(device.Name)) > maxNameLength:
+	case !plainName(device.Name):
 		return nil, ErrBadName
 	}
 	if _, known := l[device.Key]; known {
@@ -58,6 +60,20 @@ func (l list) with(device Device) (list, error) {
 	}
 	next[device.Key] = device
 	return next, nil
+}
+
+// plainName reports whether a name is 1 to 64 visible characters. A control
+// or format character could disguise a name on the operator's terminal.
+func plainName(name string) bool {
+	if name == "" || !utf8.ValidString(name) || utf8.RuneCountInString(name) > maxNameLength {
+		return false
+	}
+	for _, r := range name {
+		if unicode.IsControl(r) || unicode.Is(unicode.Cf, r) {
+			return false
+		}
+	}
+	return true
 }
 
 // permits reports whether a key is in the list.

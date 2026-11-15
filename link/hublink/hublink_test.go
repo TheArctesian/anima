@@ -239,3 +239,37 @@ func TestCloseEndsTheOpenStreamsOnBothSides(t *testing.T) {
 		t.Error("the device's WebSocket is still open after the hub link closed")
 	}
 }
+
+func TestOneDeviceCannotTakeEveryStream(t *testing.T) {
+	r := start(t)
+	greedy, other := tunnel.NewPrivateKey(), tunnel.NewPrivateKey()
+	r.permit(t, greedy)
+	r.permit(t, other)
+	device, _ := r.device(t, greedy)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	// One stream more than the limit. The hub link closes the stream that is
+	// over the limit; the others stay open and idle.
+	for range hublink.MaxStreamsOfDevice + 1 {
+		stream, err := device.Dial(ctx, tunnel.HubPort)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer stream.Close()
+	}
+	deadline := time.Now().Add(10 * time.Second)
+	for r.link.Streams(greedy.Public()) != hublink.MaxStreamsOfDevice {
+		if time.Now().After(deadline) {
+			t.Fatalf("open streams of the device = %d, want the limit of %d", r.link.Streams(greedy.Public()), hublink.MaxStreamsOfDevice)
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+
+	_, client := r.device(t, other)
+	response, err := client.Get("http://hub/blob?bytes=10")
+	if err != nil {
+		t.Fatalf("another device while one device is at its limit: %v", err)
+	}
+	response.Body.Close()
+}

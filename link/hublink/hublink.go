@@ -95,6 +95,7 @@ func (l *Link) Streams(device tunnel.DeviceKey) int { return l.streams.count(dev
 // Close stops the hub link. It returns when each stream and each
 // connection to the hub is closed.
 func (l *Link) Close() error {
+	l.streams.closing()
 	l.listener.Close()
 	<-l.accepted
 	l.streams.closeAll()
@@ -106,6 +107,9 @@ func (l *Link) accept() {
 	for {
 		stream, err := l.listener.Accept()
 		if err != nil {
+			if !l.streams.isClosing() {
+				l.log.Error("the hub link accepts no more streams", "cause", "the link's listener ended")
+			}
 			return
 		}
 		go l.forward(stream)
@@ -121,6 +125,7 @@ func (l *Link) forward(stream net.Conn) {
 		return
 	}
 	if !l.streams.add(device, stream) {
+		l.log.Warn("a stream was refused: the hub link has stopped or a stream limit is reached", "device", device)
 		stream.Close()
 		return
 	}

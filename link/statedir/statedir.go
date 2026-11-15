@@ -52,10 +52,11 @@ func Open(path string) (*Dir, error) {
 	if err := os.MkdirAll(path, 0o700); err != nil {
 		return nil, fmt.Errorf("statedir: make the directory: %w", err)
 	}
-	if err := dropInheritedAccess(path); err != nil {
+	if err := private(path); err != nil {
 		return nil, err
 	}
-	if err := private(path); err != nil {
+	// Only now: the directory is this user's own and nobody else reaches it.
+	if err := dropInheritedAccess(path); err != nil {
 		return nil, err
 	}
 	lock, err := os.OpenFile(filepath.Join(path, lockName), os.O_CREATE|os.O_RDWR, 0o600)
@@ -173,8 +174,8 @@ func Dial(ctx context.Context, path, name string) (net.Conn, error) {
 }
 
 // private refuses a directory that is a symbolic link, that other users can
-// reach, or that another user can replace because a folder above it is open
-// for writing with no sticky bit.
+// reach, or that another user can replace: a folder above it that another
+// user owns, or that others can write with no sticky bit.
 func private(path string) error {
 	stat, err := os.Lstat(path)
 	if err != nil {
@@ -183,18 +184,30 @@ func private(path string) error {
 	if !stat.IsDir() || !ownerOnly(stat) {
 		return fmt.Errorf("%w: %s", ErrExposed, path)
 	}
-	for above := filepath.Dir(path); ; above = filepath.Dir(above) {
-		stat, err := os.Stat(above)
+	// The folders above are checked on the real path, so that a symbolic
+	// link above cannot hide them.
+	resolved, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		return err
+	}
+	for above := filepath.Dir(resolved); ; above = filepath.Dir(above) {
+		stat, err := os.Lstat(above)
 		if err != nil {
 			return err
 		}
-		if stat.Mode().Perm()&0o022 != 0 && stat.Mode()&os.ModeSticky == 0 {
+		open := stat.Mode().Perm()&0o022 != 0 && stat.Mode()&os.ModeSticky == 0
+		if open || !ownedByRootOrThisUser(stat) {
 			return fmt.Errorf("%w: %s", ErrExposed, above)
 		}
 		if above == filepath.Dir(above) {
 			return nil
 		}
 	}
+}
+
+func ownedByRootOrThisUser(stat fs.FileInfo) bool {
+	owner, known := stat.Sys().(*syscall.Stat_t)
+	return !known || owner.Uid == 0 || int(owner.Uid) == os.Getuid()
 }
 
 // ownerOnly reports whether only this user can reach the file.

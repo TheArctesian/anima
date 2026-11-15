@@ -10,6 +10,8 @@ import (
 	"encoding/json"
 	"errors"
 	"net"
+	"syscall"
+	"time"
 )
 
 // Error is a refusal that crosses the socket. Code is for programs and
@@ -66,7 +68,7 @@ func Serve(ctx context.Context, listener net.Listener, verbs map[string]Verb) er
 		listener.Close()
 	}()
 	for {
-		conn, err := listener.Accept()
+		conn, err := AcceptPatiently(ctx, listener)
 		if err != nil {
 			if ctx.Err() != nil {
 				return nil
@@ -74,6 +76,23 @@ func Serve(ctx context.Context, listener net.Listener, verbs map[string]Verb) er
 			return err
 		}
 		go answer(ctx, conn, verbs)
+	}
+}
+
+// AcceptPatiently accepts one connection. When the system has no free file
+// for it, it waits and tries again: that state passes, and a server that
+// stopped for it could be stopped by whoever opens many connections.
+func AcceptPatiently(ctx context.Context, listener net.Listener) (net.Conn, error) {
+	for wait := 5 * time.Millisecond; ; wait = min(2*wait, time.Second) {
+		conn, err := listener.Accept()
+		if err == nil || !(errors.Is(err, syscall.EMFILE) || errors.Is(err, syscall.ENFILE)) {
+			return conn, err
+		}
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(wait):
+		}
 	}
 }
 

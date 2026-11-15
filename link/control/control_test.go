@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -129,5 +130,46 @@ func TestArgumentsRefusesAFieldThatTheVerbDoesNotHave(t *testing.T) {
 		if err := control.Arguments(json.RawMessage(bad), &in); !errors.As(err, &told) || told.Code != control.CodeBadRequest {
 			t.Errorf("arguments %s: err = %v, want a bad request", bad, err)
 		}
+	}
+}
+
+// busyListener fails with "too many open files" a number of times before it
+// accepts, as a system does when a process has used its files.
+type busyListener struct {
+	net.Listener
+	failures int
+}
+
+func (b *busyListener) Accept() (net.Conn, error) {
+	if b.failures > 0 {
+		b.failures--
+		return nil, &net.OpError{Op: "accept", Err: syscall.EMFILE}
+	}
+	return b.Listener.Accept()
+}
+
+func TestServeGoesOnWhenTheSystemHasNoFreeFileForAMoment(t *testing.T) {
+	dir, err := os.MkdirTemp("/tmp", "anima-control-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+	listener, err := net.Listen("unix", filepath.Join(dir, "c.sock"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, stop := context.WithCancel(context.Background())
+	defer stop()
+	go control.Serve(ctx, &busyListener{Listener: listener, failures: 3}, verbs)
+
+	conn, err := net.Dial("unix", listener.Addr().String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	conn.SetDeadline(time.Now().Add(5 * time.Second))
+	var got int
+	if err := control.Call(conn, "add", sum{1, 2}, &got); err != nil || got != 3 {
+		t.Errorf("after three failed accepts: add = %d, %v; the server stopped", got, err)
 	}
 }

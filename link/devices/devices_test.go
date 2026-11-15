@@ -89,6 +89,11 @@ func TestADeviceNeedsAKeyANameAndToBeNew(t *testing.T) {
 	if err := store.Permit(devices.Device{Key: newKey(), Name: strings.Repeat("n", 65), Permitted: day}); !errors.Is(err, devices.ErrBadName) {
 		t.Errorf("a name of 65 characters: err = %v, want ErrBadName", err)
 	}
+	for _, name := range []string{"esc\x1b[2Jape", "c1\u009bcontrol", "right\u202eto-left", "bad\xffutf8", "tab\there"} {
+		if err := store.Permit(devices.Device{Key: newKey(), Name: name, Permitted: day}); !errors.Is(err, devices.ErrBadName) {
+			t.Errorf("a name that can disguise itself (%q): err = %v, want ErrBadName", name, err)
+		}
+	}
 	if len(store.All()) != 1 {
 		t.Errorf("a refused device changed the list: %+v", store.All())
 	}

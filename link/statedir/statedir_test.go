@@ -225,3 +225,21 @@ func TestLNK008ADirectoryThatAnotherUserCanReplaceIsRefused(t *testing.T) {
 		t.Errorf("Open under a folder that all can write: err = %v, want ErrExposed", err)
 	}
 }
+
+func TestLNK008ALinkAboveCannotHideAFolderThatOthersCanWrite(t *testing.T) {
+	base := t.TempDir()
+	shared := filepath.Join(base, "shared")
+	if err := os.MkdirAll(filepath.Join(shared, "inner"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(shared, 0o777); err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(base, "link")
+	if err := os.Symlink(filepath.Join(shared, "inner"), link); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := statedir.Open(filepath.Join(link, "state")); !errors.Is(err, statedir.ErrExposed) {
+		t.Errorf("Open through a link into a folder that all can write: err = %v, want ErrExposed", err)
+	}
+}
