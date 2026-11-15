@@ -1,6 +1,8 @@
 # S4 spec delta: proposal
 
-Date: 2026-11-15. Status: **proposal for open item OI-2 of `docs/one-click-plan.md`. Nothing in
+Progress: the plan register in [work-plan.md](../../work-plan.md) Section 9 holds the state of this plan (PLN-005).
+
+Version 1.0. Date: 2026-11-15. Status: **Draft: a proposal for open item OI-2 of `docs/one-click-plan.md`. Nothing in
 `docs/design-spec.md` or `contracts/` is changed by this file.** The operator approves the text
 before it goes into the spec.
 

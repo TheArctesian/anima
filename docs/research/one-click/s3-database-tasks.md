@@ -1,8 +1,10 @@
 # S3 task breakdown: the bundled PostgreSQL
 
-Date: 2026-11-14. Status: **approved by the operator on 2026-11-14 with the recommendation of each
-decision D-1 to D-10. Built: T1 to T10 and T15, as far as this Mac allows. Section 6 has the choices
-taken on the way; Section 7 has the state and what is open (T11 to T14).**
+Progress: the plan register in [work-plan.md](../../work-plan.md) Section 9 holds the state of this plan (PLN-005).
+
+Version 1.0. Date: 2026-11-14. Status: **In progress.** Approved by the operator on 2026-11-14 with the
+recommendation of each decision D-1 to D-10. Section 7.5 holds the state of each task; Section 6
+has the choices taken on the way; Section 7.2 has what is open.
 
 Branch: `claude/s3-database`, cut from `origin/main` at `604fec8d` (local `main` is 6 commits
 behind it; the S2 branch uses the same base).
@@ -334,3 +336,23 @@ Each is the option I recommend, with its reason. None changes a contract.
 - **Two gates runs at the same time** can still use up the 32 shared-memory segments of macOS: each run now starts at most 4 database servers, plus its own test server.
 - **A cluster made by a commit before `abe19803`** has a superuser password file and other access rules. No such build left this branch; a test cluster from then must be made again.
 - The gates take about 35 minutes here, and longer when other sessions build.
+
+### 7.5 State of each task (PLN-006)
+
+| Task | State | Commits |
+| --- | --- | --- |
+| T1 Layout and socket rule | Done | `6d0114c5`, `09eb1ad2` |
+| T2 Tree and cluster | Done | `7b83b931`, `5745bfd1` |
+| T3 Server | Done | `5745bfd1`, `155b35ca`, `f994265f` |
+| T4 Roles and URL files | Done | `155b35ca`, `c9e036b8` |
+| T5 The program | Done | `c9e036b8` |
+| T6 The hub against the bundled database | Done | `abe19803` |
+| T7 Backup, restore, verify | Done | `9523340d`, `6b68c27d` |
+| T8 Version guard | Done | `abe19803` |
+| T9 The tree recipe, macOS | Done for the recipe. The Developer ID signature is T12. | `60aaf146`, `6b68c27d` |
+| T10 The tree recipe, Linux | In progress: proven in an arm64 container; the x86_64 run on the Linux builder is open. | `60aaf146` |
+| T11 In the bundle | Not started. It goes with task T9 of [s4-local-hub-tasks.md](s4-local-hub-tasks.md). | — |
+| T12 Signature and notary check | Not started: needs the operator's signing identity. | — |
+| T13 Power cut | Not started: needs a spare Mac. | — |
+| T14 Linux desktop check | Not started: needs a Linux desktop. | — |
+| T15 Documents | Done | `60aaf146`, `8f81e52c` |

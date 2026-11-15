@@ -73,7 +73,8 @@ Exit codes of `run`: 0 stopped on request, 1 a program of the group ended or did
 - **Login:** the unit starts `run`.
 - **Sign-out, shutdown, `remove`, an update:** the unit sends SIGTERM. `run` stops the hub (it
   ends the open sessions and drains requests for 10 seconds), then the gateway, then the
-  database. The unit waits 90 seconds before it kills what is left.
+  database. The unit waits 90 seconds before it kills what is left. A SIGTERM during a start
+  does not wait for the start: what did start is stopped in order.
 - **A program of the group ends by itself:** `run` stops the others in order and ends with
   code 1. The unit starts the group again after 10 seconds.
 - **`run` is killed:** launchd or systemd kills the programs it started. At the next start
