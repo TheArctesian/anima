@@ -146,7 +146,8 @@ written here with its reason.
 | T2 Frame encoder | Done. Reviewed twice by `reviewer` (1 must-fix and 3 test findings corrected; second verdict: accept); full gates passed 14 of 14. | `2970dfad`, `aa78c4d1` |
 | T3 Frame pacing | Done but for the full gates. `reviewer`: fix, then accept; 3 findings corrected. | `09f1acdc`, `3a0d1032` |
 | T4 Gateway handshake | Done but for the full gates. `reviewer`: accept, 4 findings corrected. `reviewer-security`: no critical or high; 1 medium and 2 low corrected, 3 notes carried to T6. | `dfca4494` and the correction after it |
-| T5 VNC client | Built; in review. | see the log |
+| T5 VNC client | Built; in review. | `58174c99` |
+| T6 Session and worker process | Built; review next. | see the log |
 
 Choices:
 
@@ -219,6 +220,19 @@ Choices:
   the screen. Guacamole's `cursor` instruction is left for later.
 - **Tests folder.** The tests are grouped in folders by domain (`screen/`, `frames/`,
   `handshake/`, `vnc/`), because one folder may hold 12 files.
+- **T6, the worker's connection.** The listener gives each worker the hub's connection as
+  its standard input, and the worker makes a socket from it with safe calls only (the
+  workspace forbids `unsafe`). The worker gets no environment. At most 64 sessions run at
+  one time; a connection beyond that is closed at once.
+- **T6, statuses.** A refused sign-in is `error` 0x0301, so the hub ends the session
+  `AUTH_FAILED`. A device that cannot be reached is 0x0207, a device that breaks the
+  protocol 0x0203, a handshake or a prompt that takes too long 0x0308, a protocol that is
+  not served 0x0100. The hub ends each of these `GATEWAY_ERROR`.
+- **T6, waits.** 10 s for the hub's handshake, 8 s for each step with the device, 120 s for
+  the operator to answer a prompt.
+- **T6, the other gateway.** `--other-gateway host:port` passes each session of a protocol
+  this gateway does not serve to that gateway (guacd), instruction by instruction.
+- **T6, the client's `size`.** Read and not yet used; T7 uses it to scale the screen.
 - **Merge and push.** The operator said in this session (2026-11-14): "Yes, merge into main
   and push when done". When every task that does not need the operator is done: bring the
   current `main` in, run the full gates, merge, push.
@@ -247,8 +261,11 @@ which cuts whole messages from its buffer (`messages::first`) and draws them
 steps (`vnc::offered`, then `vnc::sign_in`) so a missing credential can be asked for
 between them. No cursor encoding is asked for, so the device draws the pointer.
 
-Next is T6: `src/session*` and `src/main.rs` (the listener, one child process for each
-connection). Section 7 lists what the reviews carried to it.
+T6 (`src/session*`, `src/listening.rs`, `src/main.rs`) is built and committed: `serve`
+runs one session; `anima-gateway listen ADDRESS` starts one worker process for each
+connection. Next: the reviews of T5 and T6, then T7 (scale the screen to the client's
+view in `session/running.rs`; `Input::View` already carries the size), T8 (a hub
+integration test in `crates/hub/tests/it` against the started program), T10 and T11.
 
 The spike's `vnc-probe` (branch `claude/spike-display-f9104d`) is the reference for the
 sign-in and ZRLE. The test host image `anima-spike-display-host` is on this Mac for T9.

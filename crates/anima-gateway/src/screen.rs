@@ -232,6 +232,12 @@ impl Screen {
         }))
     }
 
+    /// Whether [`Screen::take_changes`] would give something to tell the client.
+    #[must_use]
+    pub fn has_changes(&self) -> bool {
+        self.resized || !self.moved.is_empty() || self.changed.any()
+    }
+
     /// What changed since the last call; after it nothing counts as changed.
     pub fn take_changes(&mut self) -> Changes {
         Changes {

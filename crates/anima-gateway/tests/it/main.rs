@@ -4,4 +4,5 @@ mod drawn;
 mod frames;
 mod handshake;
 mod screen;
+mod session;
 mod vnc;

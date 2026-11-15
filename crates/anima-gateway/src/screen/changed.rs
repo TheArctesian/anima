@@ -44,6 +44,11 @@ impl ChangedTiles {
         }
     }
 
+    /// Whether any tile is changed.
+    pub(super) fn any(&self) -> bool {
+        self.rows.iter().any(|changed| *changed)
+    }
+
     /// Whether a tile that `area` touches is changed.
     pub(super) fn any_in(&self, area: Area) -> bool {
         if area.width == 0 || area.height == 0 {

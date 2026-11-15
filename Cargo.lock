@@ -243,6 +243,7 @@ dependencies = [
  "base64 0.23.1",
  "des",
  "flate2",
+ "getrandom 0.4.3",
  "guac-protocol",
  "jpeg-decoder",
  "jpeg-encoder",
@@ -252,6 +253,7 @@ dependencies = [
  "proptest",
  "thiserror 2.0.21",
  "tokio",
+ "uuid",
  "zeroize",
 ]
 
