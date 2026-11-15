@@ -7,14 +7,14 @@ import (
 )
 
 // The hub sees each stream come from the link, so it cannot tell devices
-// apart. The hub link therefore puts a PROXY protocol header (version 2) at
-// the start of each stream to the hub: always when the target is the hub's
-// socket, and with Config.NameDevice when it is a loopback port. The
+// apart. When the target is the hub's socket, the hub link therefore puts a
+// PROXY protocol header (version 2) at the start of each stream. The
 // header's source address is the link address of the device whose key the
 // tunnel authenticated (see devices/address.go).
 //
-// Whoever can write this header names the device. The hub must read it only
-// where no other program can connect: on its socket for the link.
+// Whoever can write this header names the device. The hub reads it only on
+// its socket for the link, where no other user's program can connect. A
+// loopback port has no such limit, so a loopback target gets no header.
 
 var proxySignature = []byte{0x0D, 0x0A, 0x0D, 0x0A, 0x00, 0x0D, 0x0A, 0x51, 0x55, 0x49, 0x54, 0x0A}
 

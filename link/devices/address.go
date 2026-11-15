@@ -22,9 +22,6 @@ import (
 // link, so the two programs must agree on it.
 var linkRange = netip.MustParsePrefix("fd41:4e49:4d41::/48")
 
-// LinkRange is the range that holds every link address.
-func LinkRange() netip.Prefix { return linkRange }
-
 const addressLabel = "anima-link device address 1\n"
 
 // addressOf is the link address that a key gets when it joins.

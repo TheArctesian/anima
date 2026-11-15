@@ -70,11 +70,11 @@ type rig struct {
 
 func start(t *testing.T) rig {
 	t.Helper()
-	return startInFrontOf(t, fakeHub(t), false)
+	return startInFrontOf(t, fakeHub(t))
 }
 
 // startInFrontOf starts a hub link that sends streams to the given target.
-func startInFrontOf(t *testing.T, target string, nameDevice bool) rig {
+func startInFrontOf(t *testing.T, target string) rig {
 	t.Helper()
 	dir, err := statedir.Open(filepath.Join(t.TempDir(), "s"))
 	if err != nil {
@@ -88,11 +88,10 @@ func startInFrontOf(t *testing.T, target string, nameDevice bool) rig {
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 	link, err := hublink.Start(ctx, hublink.Config{
-		Identity:   identity.Hub{Key: tunnel.NewPrivateKey(), PresharedKey: tunnel.NewPresharedKey(), Relay: testbed.StartRelay(t)},
-		Target:     target,
-		NameDevice: nameDevice,
-		Devices:    store,
-		Sweep:      200 * time.Millisecond,
+		Identity: identity.Hub{Key: tunnel.NewPrivateKey(), PresharedKey: tunnel.NewPresharedKey(), Relay: testbed.StartRelay(t)},
+		Target:   target,
+		Devices:  store,
+		Sweep:    200 * time.Millisecond,
 	})
 	if err != nil {
 		t.Fatalf("Start: %v", err)

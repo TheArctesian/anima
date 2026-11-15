@@ -177,7 +177,9 @@ func Dial(ctx context.Context, path, name string) (net.Conn, error) {
 // DialOwned connects to a Unix socket of this user's other program, for
 // example the hub's socket for the link. It refuses a socket that another
 // user owns or can replace: what is sent there would reach that user. The
-// socket's folder must pass the same test as a state directory.
+// socket's folder must pass the same test as a state directory. The socket
+// is checked and then opened by its path: only this user or root can change
+// what the path leads to between the two.
 func DialOwned(path string, limit time.Duration) (net.Conn, error) {
 	if err := private(filepath.Dir(path)); err != nil {
 		return nil, err
@@ -203,6 +205,9 @@ func private(path string) error {
 	if !stat.IsDir() || !ownerOnly(stat) {
 		return fmt.Errorf("%w: %s", ErrExposed, path)
 	}
+	if err := noForeignLinkAbove(path); err != nil {
+		return err
+	}
 	// The folders above are checked on the real path, so that a symbolic
 	// link above cannot hide them.
 	resolved, err := filepath.EvalSymlinks(path)
@@ -222,6 +227,33 @@ func private(path string) error {
 			return nil
 		}
 	}
+}
+
+// noForeignLinkAbove checks the path as it is written. A symbolic link in
+// it passes only when no other user can change where it leads: the link is
+// root's or this user's, and so is its folder, where others cannot replace
+// it.
+// Without this, another user could turn such a link to a folder of their
+// own after the check on the real path.
+func noForeignLinkAbove(path string) error {
+	for above := filepath.Dir(path); above != filepath.Dir(above); above = filepath.Dir(above) {
+		stat, err := os.Lstat(above)
+		if err != nil {
+			return err
+		}
+		if stat.Mode()&os.ModeSymlink == 0 {
+			continue
+		}
+		folder, err := os.Lstat(filepath.Dir(above))
+		if err != nil {
+			return err
+		}
+		open := folder.Mode().Perm()&0o022 != 0 && folder.Mode()&os.ModeSticky == 0
+		if open || !ownedByRootOrThisUser(stat) || !ownedByRootOrThisUser(folder) {
+			return fmt.Errorf("%w: %s", ErrExposed, above)
+		}
+	}
+	return nil
 }
 
 func ownedByRootOrThisUser(stat fs.FileInfo) bool {

@@ -2,6 +2,7 @@ package devices
 
 import (
 	"errors"
+	"fmt"
 	"net/netip"
 	"sync"
 	"time"
@@ -20,6 +21,7 @@ type Store struct {
 
 	mu      sync.RWMutex
 	current list
+	retired retired
 }
 
 // Open reads the list from the state directory. A directory with no list
@@ -36,9 +38,16 @@ func Open(dir *statedir.Dir, now func() time.Time) (*Store, error) {
 		if !linkRange.Contains(device.Address) {
 			device.Address = addressOf(device.Key)
 		}
+		if current.addressTaken(device.Address) {
+			return nil, fmt.Errorf("%w: two devices have one address in %s", statedir.ErrDamaged, fileName)
+		}
 		current[device.Key] = device
 	}
-	return &Store{dir: dir, now: now, current: current}, nil
+	var gone retired
+	if err := dir.Read(retiredFileName, &gone); err != nil && !errors.Is(err, statedir.ErrAbsent) {
+		return nil, err
+	}
+	return &Store{dir: dir, now: now, current: current, retired: gone}, nil
 }
 
 // Permit adds a device to the list. A device with no Permitted time gets
@@ -48,6 +57,9 @@ func (s *Store) Permit(device Device) (Device, error) {
 	defer s.mu.Unlock()
 	if device.Permitted.IsZero() {
 		device.Permitted = s.now().UTC()
+	}
+	if s.retired.refuses(device.Key) {
+		return Device{}, ErrRetired
 	}
 	next, err := s.current.with(device)
 	if err != nil {
@@ -66,7 +78,7 @@ func (s *Store) Revoke(key tunnel.DeviceKey) (Device, error) {
 	if err != nil {
 		return Device{}, err
 	}
-	return device, s.save(next)
+	return device, s.saveWithout(next, s.retired.withDevice(device))
 }
 
 // Renew records the next key of the device that is connected with current
@@ -74,11 +86,20 @@ func (s *Store) Revoke(key tunnel.DeviceKey) (Device, error) {
 func (s *Store) Renew(current, next tunnel.DeviceKey) (Device, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if s.retired.hasKey(next) {
+		return Device{}, ErrRetired
+	}
+	// A next key that the device named before and now replaces has left
+	// the list too.
+	replaced := s.current[current].NextKey
 	updated, device, err := s.current.renewing(current, next, s.now())
 	if err != nil {
 		return Device{}, err
 	}
-	return device, s.save(updated)
+	if replaced == next {
+		return device, s.save(updated)
+	}
+	return device, s.saveWithout(updated, s.retired.withKeys(replaced))
 }
 
 // Promote makes a next key the current key of its device. The caller has
@@ -92,7 +113,7 @@ func (s *Store) Promote(next tunnel.DeviceKey) (*Promotion, error) {
 	if !promoted {
 		return nil, nil
 	}
-	return &promotion, s.save(updated)
+	return &promotion, s.saveWithout(updated, s.retired.withKeys(promotion.Replaced))
 }
 
 // Permits reports whether a key can connect now: it is the current or the
@@ -135,4 +156,16 @@ func (s *Store) save(next list) error {
 	}
 	s.current = next
 	return nil
+}
+
+// saveWithout writes what has left the list and then the list. The order
+// matters when the process stops between the two: a key that is retired
+// and still in the list keeps working until it is removed again, but a key
+// that left the list with no record could come back.
+func (s *Store) saveWithout(next list, gone retired) error {
+	if err := s.dir.Write(retiredFileName, gone); err != nil {
+		return err
+	}
+	s.retired = gone
+	return s.save(next)
 }

@@ -23,10 +23,9 @@ const (
 
 func runHub(ctx context.Context, args []string, streams stdio) error {
 	flags, statePath := stateFlags("hub")
-	target := flags.String("target", "", "the path of the hub's socket for the link, or the hub's loopback address, host:port")
+	target := flags.String("target", "", "the path of the hub's socket for the link; or a loopback address, host:port, for a service that needs no device names")
 	relay := flags.String("relay", "", "the hub's own relay, host or host:port; at the first start only")
 	replaceRelay := flags.Bool("replace-relay", false, "with -relay: take this relay although the hub has one; its devices cannot follow")
-	nameDevice := flags.Bool("name-device", false, "with a loopback target: start each connection with the PROXY header that names the device; a socket target always gets it")
 	stopWithStdin := flags.Bool("stop-with-stdin", false, "stop when standard input closes")
 	if err := flags.Parse(args); err != nil || *statePath == "" || *target == "" || flags.NArg() != 0 {
 		return errUsage
@@ -41,7 +40,7 @@ func runHub(ctx context.Context, args []string, streams stdio) error {
 	if err := chooseRelay(dir, *relay, *replaceRelay); err != nil {
 		return err
 	}
-	link, lists, err := startHubLink(ctx, dir, hubOptions{target: *target, nameDevice: *nameDevice, log: log})
+	link, lists, err := startHubLink(ctx, dir, hubOptions{target: *target, log: log})
 	if err != nil {
 		return err
 	}
@@ -99,9 +98,8 @@ func chooseRelay(dir *statedir.Dir, hostPort string, replace bool) error {
 // that a first start chose, so that the address stays the same (LNK-001).
 // hubOptions is what the command line gives a hub link.
 type hubOptions struct {
-	target     string
-	nameDevice bool
-	log        *slog.Logger
+	target string
+	log    *slog.Logger
 }
 
 func startHubLink(ctx context.Context, dir *statedir.Dir, options hubOptions) (*hublink.Link, hubLists, error) {
@@ -120,7 +118,7 @@ func startHubLink(ctx context.Context, dir *statedir.Dir, options hubOptions) (*
 	ctx, cancel := context.WithTimeout(ctx, startLimit)
 	defer cancel()
 	link, err := hublink.Start(ctx, hublink.Config{
-		Identity: hub, Target: options.target, NameDevice: options.nameDevice,
+		Identity: hub, Target: options.target,
 		Devices: permitted, Invites: open, Log: options.log,
 	})
 	if err != nil {

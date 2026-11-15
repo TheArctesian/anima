@@ -1,6 +1,13 @@
 package devices
 
-import "github.com/TheArctesian/anima/link/tunnel"
+import (
+	"net/netip"
+
+	"github.com/TheArctesian/anima/link/tunnel"
+)
+
+// LinkRange is the range that holds every link address.
+func LinkRange() netip.Prefix { return linkRange }
 
 // PermitBesideItsOwnAddress tries to permit a key in a list where another
 // device already has that key's link address. Two real keys with one

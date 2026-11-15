@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"io/fs"
 	"log/slog"
 	"net"
 	"net/netip"
@@ -36,9 +37,9 @@ const (
 // Config is what a hub link needs to start.
 type Config struct {
 	Identity identity.Hub
-	// Target is the path of the hub's socket for the link, or the hub's
-	// loopback address. With a socket each stream starts with the header
-	// that names the device (see deviceheader.go).
+	// Target is the path of the hub's socket for the link, or a loopback
+	// address. Only a socket gets the header that names the device (see
+	// deviceheader.go): to a loopback address every device looks the same.
 	Target string
 	// Devices is the list of permitted devices (LNK-002). It is asked when a
 	// device connects and again for each stream.
@@ -51,10 +52,6 @@ type Config struct {
 	// RelayMapURL is where the relay map is at the first start. Empty means
 	// Tailscale's map of shared relays.
 	RelayMapURL string
-	// NameDevice makes the hub link start each stream to the hub with a
-	// PROXY protocol header that holds the device key (see deviceheader.go).
-	// The hub must expect it: a hub that does not would read it as data.
-	NameDevice bool
 	// Sweep is how often the hub link disconnects devices that are
 	// connected but not permitted any more. Zero means DefaultSweep.
 	Sweep time.Duration
@@ -79,8 +76,7 @@ type Link struct {
 	enrolling  chan struct{}
 	enrolments sync.WaitGroup
 
-	nameDevice bool
-	identity   identity.Hub
+	identity identity.Hub
 	// next is the address that devices are told for after a relay change.
 	next atomic.Pointer[tunnel.Address]
 
@@ -94,11 +90,11 @@ type Link struct {
 // Start connects the hub link to its relay and starts to accept streams.
 // ctx limits the start only.
 func Start(ctx context.Context, cfg Config) (*Link, error) {
-	target, err := parseTarget(cfg.Target)
+	to, err := parseTarget(cfg.Target)
 	if err != nil {
 		return nil, err
 	}
-	link := newLink(cfg, target)
+	link := newLink(cfg, to)
 	link.hub, err = tunnel.StartHub(ctx, tunnel.HubConfig{
 		Key:          cfg.Identity.Key,
 		PresharedKey: cfg.Identity.PresharedKey,
@@ -131,11 +127,10 @@ func Start(ctx context.Context, cfg Config) (*Link, error) {
 	return link, nil
 }
 
-func newLink(cfg Config, target target) *Link {
+func newLink(cfg Config, to target) *Link {
 	link := &Link{
-		target: target, log: cfg.Log, devices: cfg.Devices, invites: cfg.Invites, now: cfg.Now,
-		nameDevice: cfg.NameDevice || target.socket != "",
-		ownKey:     cfg.Identity.Key.Public(), enrolling: make(chan struct{}, maxEnrolments), identity: cfg.Identity,
+		target: to, log: cfg.Log, devices: cfg.Devices, invites: cfg.Invites, now: cfg.Now,
+		ownKey: cfg.Identity.Key.Public(), enrolling: make(chan struct{}, maxEnrolments), identity: cfg.Identity,
 		stopped: make(chan struct{}), accepting: make(chan struct{}, 2),
 	}
 	if link.log == nil {
@@ -233,7 +228,7 @@ func (l *Link) forward(stream net.Conn) {
 		stream.Close()
 		return
 	}
-	if l.nameDevice && !named(hub, address, stream) {
+	if l.target.socket != "" && !named(hub, address, stream) {
 		stream.Close()
 		hub.Close()
 		return
@@ -256,6 +251,9 @@ func named(hub net.Conn, device netip.Addr, stream net.Conn) bool {
 func dialFault(err error) string {
 	if errors.Is(err, statedir.ErrExposed) {
 		return "other users can reach the hub's socket or its folder"
+	}
+	if errors.Is(err, fs.ErrNotExist) {
+		return "the hub's socket is not there; the hub makes it when it starts"
 	}
 	return "no answer"
 }

@@ -30,6 +30,8 @@ var (
 	ErrNoKey   = &Refusal{"no_key", "a device needs a key"}
 	ErrUnknown = &Refusal{"device_unknown", "this key is not in the list of permitted devices; a device that renewed its key has a new key (see devices.list)"}
 	ErrNotDue  = &Refusal{"renewal_not_due", "a key can be renewed only in its last 30 days"}
+	// ErrRetired refuses a key that was in the list before. See retired.go.
+	ErrRetired = &Refusal{"key_retired", "this key was permitted before and has left the list; the device must make a new key and join again"}
 	// ErrAddressTaken is not expected in practice: two keys with one link
 	// address need about 2^80 tries to find.
 	ErrAddressTaken = &Refusal{"address_taken", "this key cannot be permitted: its link address belongs to another device; the device must make a new key"}

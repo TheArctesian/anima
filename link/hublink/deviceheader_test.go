@@ -70,24 +70,6 @@ func read(t *testing.T, from io.Reader, n int) []byte {
 	return buffer
 }
 
-func TestALoopbackHubIsToldTheDeviceOfEachStreamWhenItAsksForIt(t *testing.T) {
-	target, accepted := rawHub(t)
-	r := startInFrontOf(t, target, true)
-	for range 2 { // two devices: each stream names its own
-		key := tunnel.NewPrivateKey()
-		r.permit(t, key)
-		atHub := sendHello(t, r, accepted, key)
-
-		named, err := testhub.ReadHeader(atHub)
-		if want, _ := r.store.AddressOf(key.Public()); err != nil || named.Addr() != want {
-			t.Fatalf("the header names %v (%v), want the device's link address %v", named, err, want)
-		}
-		if got := read(t, atHub, 5); string(got) != "hello" {
-			t.Errorf("after the header the hub got %q, want the device's bytes", got)
-		}
-	}
-}
-
 func get(client *http.Client, path string) (string, error) {
 	response, err := client.Get("http://hub" + path)
 	if err != nil {
@@ -100,7 +82,7 @@ func get(client *http.Client, path string) (string, error) {
 
 func TestLNK002TheHubsSocketGetsEachDeviceByItsOwnAddressAndNoOtherKey(t *testing.T) {
 	hub := testhub.Start(t)
-	r := startInFrontOf(t, hub.Socket, false) // a socket always gets the header
+	r := startInFrontOf(t, hub.Socket)
 	laptop, desk, stranger := tunnel.NewPrivateKey(), tunnel.NewPrivateKey(), tunnel.NewPrivateKey()
 	r.permit(t, laptop)
 	r.permit(t, desk)
@@ -132,7 +114,7 @@ func TestTheLinkDoesNotConnectToASocketThatOtherUsersCanReach(t *testing.T) {
 			if err := expose(hub); err != nil {
 				t.Fatal(err)
 			}
-			r := startInFrontOf(t, hub.Socket, false)
+			r := startInFrontOf(t, hub.Socket)
 			key := tunnel.NewPrivateKey()
 			r.permit(t, key)
 			_, client := r.device(t, key)
@@ -147,9 +129,9 @@ func TestTheLinkDoesNotConnectToASocketThatOtherUsersCanReach(t *testing.T) {
 	}
 }
 
-func TestTheHubGetsOnlyTheDevicesBytesWhenItDoesNotAskForTheKey(t *testing.T) {
+func TestALoopbackTargetGetsOnlyTheDevicesBytes(t *testing.T) {
 	target, accepted := rawHub(t)
-	r := startInFrontOf(t, target, false)
+	r := startInFrontOf(t, target)
 	key := tunnel.NewPrivateKey()
 	r.permit(t, key)
 	atHub := sendHello(t, r, accepted, key)

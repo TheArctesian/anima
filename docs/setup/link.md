@@ -4,10 +4,11 @@ This guide runs the link by hand: an encrypted connection from a device to a hub
 client, no account and no administrator rights. Plan: `docs/one-click-plan.md`, Section 4.1
 (LNK-001 to LNK-008, and the proposed LNK-009). Source: `link/`.
 
-**Status.** `anima-link` is a program that runs by itself. The hub does not use it yet: plan item
-S5 (the hub permits clients by device key) is not built. Until S5, put only a service that has
-its own sign-in behind the link. The link tells such a service nothing about the device, and every
-connection reaches it from `127.0.0.1` (see 7).
+**Status.** `anima-link` is a program that runs by itself. The hub has a link mode for it
+(plan item S5, Section 7): the hub then names each device in its rules. Nothing starts the two
+programs together yet (plan items S4 and S6); this guide starts them by hand. A service other
+than the hub learns nothing about the device from the link, and every connection reaches it from
+`127.0.0.1`: put only a service with its own sign-in there.
 
 Rules for this guide:
 
@@ -33,7 +34,8 @@ Go 1.27 is necessary to build. Nothing is necessary to run.
 anima-link hub -state <HUB_STATE_DIR> -target 127.0.0.1:<PORT>
 ```
 
-- `-target` is the loopback address of the service. The link refuses any other address.
+- `-target` is the path of the hub's socket (Section 7), or the loopback address of another
+  service. The link refuses any other address.
 - `<HUB_STATE_DIR>` holds the hub's key, its list of devices and its open invites. Only your user
   can read it; `anima-link` refuses a directory that others can reach. Keep its path short (a
   socket is made in it).
@@ -139,18 +141,36 @@ invite, or a domain name:
 - A device moves only to an address that has the key and the pre-shared key of the hub that it
   joined. So a false record in DNS cannot send a device to another hub; it can only fail to help.
 
-## 7. What the service behind the link must know
+## 7. The hub behind the link
 
-- Each connection comes from `127.0.0.1`. Do not treat that address as "trusted" in the service.
-  On the hub computer, each local user can connect to the service's loopback port.
-- With `-name-device`, the hub link starts each connection with a PROXY protocol header
-  (version 2) that holds the device's key in the field `0xE0`. **Do not let a service decide
-  access by this header yet.** A loopback TCP port is open to each local user of the hub
-  computer, and whoever can write the header names the device. Without the option, the first
-  bytes of a connection are the device's own, and a device can make them look like a header.
-  Plan item S5 must give the hub a port that only the link's process can reach (for example a
-  Unix socket with owner-only access), must require the header on that port, and must read it
-  nowhere else.
+The hub has a link mode (plan item S5). In it the hub's rules name a device, not a network
+address.
+
+```sh
+# On the hub computer. The folder must be the hub user's, with mode 0700.
+ANIMA_LINK_SOCKET=<FOLDER>/link.sock ANIMA_LISTEN=127.0.0.1:<PORT> anima-hub
+anima-link hub -state <HUB_STATE_DIR> -target <FOLDER>/link.sock
+```
+
+- The hub and `anima-link` must run as the same user. Either can start first.
+- Do not set `ANIMA_PERMITTED_NETWORKS`. The hub permits this computer (loopback) and the
+  devices of the link. The hub refuses to start on an address that is not loopback.
+- Each device has a link address, for example `fd41:4e49:4d41:5acc:…`. `devices.list` shows it
+  as `address`. The hub's audit log, its event log and the list of builders show the same
+  address. It is a name, not a network address: no packet goes to it.
+- A device keeps its address when it renews its key. A builder that the device enrolled stays
+  bound to it (BLD-024).
+- A key that left the list (revoked, or replaced by a renewal) is never permitted again. A
+  revoked device that joins again must first make a new key: use a new state folder on the
+  device. It then gets a new address, and what the hub bound to the old address stays unused.
+- **Always give the socket as the target of a hub.** With a loopback target the hub cannot tell
+  the devices apart: each device looks like this computer, a builder token works from each
+  device, and all devices share one request limit. A loopback target is only for a service
+  that needs no device names.
+- Each local user of the hub computer can connect to the hub's loopback port. They must still
+  sign in.
+- `anima-link` connects only to a socket that its own user owns, in a folder that no other
+  user can reach or replace. It writes the cause to its log when it refuses.
 
 ## 8. Limits and known faults
 

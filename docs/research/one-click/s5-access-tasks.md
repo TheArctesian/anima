@@ -73,10 +73,11 @@ Thus the hub rules become key rules with no change to a frozen contract.
 | E-2 | The address comes from the key at enrolment and does not change at renewal | A builder and a session stay bound to the device for longer than 180 days. |
 | E-3 | The hub does not read the device list. The link is the one place that permits a key | One list, one owner (S1). The socket lets only the link speak. |
 | E-4 | The PROXY header no longer has the key field `0xE0` of S1 | The hub does not use it. The address names the device. |
-| E-5 | With a socket target the header is always sent. `-name-device` stays for a TCP target | A hub on the socket cannot work without the header. |
+| E-5 | A socket target always gets the header. A loopback target never gets it; the option `-name-device` of S1 is removed (security review) | Each local user can connect to a loopback port and write a header, so a header there proves nothing. |
 | E-6 | The link checks, at each connection, that the socket and its folder belong to its user | A socket in a shared folder could be another user's program that takes sign-ins. |
 | E-7 | Loopback stays permitted in the link mode | The application and `anima` on the hub computer use it. Sign-in is still needed. |
 | E-8 | New variable `ANIMA_LINK_SOCKET`. The table in K7 (`contracts/conventions.md`) is not changed | K7 is frozen. `ANIMA_VPN_BROKER` is the same case. Proposed row: Section 6. |
+| E-10 | A key or an address that left the list is never permitted again (security review) | The hub keeps what it bound to an address. An old key must not get it back. |
 | E-9 | Reviews: one `reviewer` and one `reviewer-security` pass for the link tasks, and one of each for the hub tasks | The tasks of one side change the same files. |
 
 ## 4. Tasks
@@ -104,3 +105,64 @@ Thus the hub rules become key rules with no change to a frozen contract.
   The link authenticates the hub by its key." The hub side of the agent path is built here (T7).
 - The hub API, the command and the screen for invites and the device list (S6; needs K1).
 - Starting `anima-link` and the hub as services (S4).
+
+## 6. What was built
+
+| Task | Result | Commit |
+| --- | --- | --- |
+| T1 to T3 | Link address in the device list; socket target with the header; tests of LNK-002 to LNK-005 by what a hub on the socket sees | `9142c7e9`, and the corrections after review |
+| T4 to T7 | `ANIMA_LINK_SOCKET` and the link mode; the header reader; the socket and its accept path; tests of the whole hub through the socket | `84340c05`, and the corrections after review |
+| T8 | `docs/setup/link.md` Section 7; this section | — |
+
+### 6.1 Tests for each rule
+
+| Rule | Test |
+| --- | --- |
+| LNK-002 | `link/hublink`: `TestLNK002TheHubsSocketGetsEachDeviceByItsOwnAddressAndNoOtherKey`. Hub: `lnk_002_a_request_through_the_socket_has_the_named_device_as_its_peer` |
+| LNK-003 | `link/devicelink`: `TestLNK003ADeviceThatJoinedIsSeenByTheHubUnderItsOwnAddress` (the second use of the invite reaches neither the socket nor the list) |
+| LNK-004 | `link/devicelink`: `TestLNK004ARevokedDevicesSessionEndsAtTheHubAndItReachesTheHubNoMore`. `link/devices`: `TestLNK004AKeyThatLeftTheListIsNeverPermittedAgain` |
+| LNK-005 | `link/devicelink`: `TestLNK005TheHubSeesTheSameDeviceAfterAKeyRenewal`, `TestLNK005AnExpiredKeyDoesNotReachTheHubsSocket` |
+| NET-001 (link) | `config::link`: `net_001_in_the_link_mode_the_clients_are_this_computer_and_the_links_devices` |
+| NET-002 (link) | Hub: `net_002_a_socket_connection_that_names_no_device_gets_no_answer_and_is_logged`, `net_002_a_header_names_no_address_outside_the_link_range` |
+| NET-003 (link) | `config::link`: `net_003_in_the_link_mode_the_hub_listens_on_loopback_only`. Hub: `net_003_a_folder_other_users_can_reach_gets_no_socket` |
+| BLD-024 (link) | Hub: `bld_024_a_builder_token_works_only_from_the_device_that_enrolled_it` |
+| K8 (link) | Hub: `k8_an_agent_refusal_is_logged_for_each_device_of_the_link` |
+
+The link's test and the hub's tests read one file, `link/hublink/testdata/device-header.bin`, so
+the two programs agree on the header.
+
+### 6.2 Proposed row for K7 (not applied)
+
+| Variable | Meaning | Default |
+| --- | --- | --- |
+| `ANIMA_LINK_SOCKET` | Path of the Unix socket for `anima-link`; set means the link mode: the hub listens on loopback and this socket only, and `ANIMA_PERMITTED_NETWORKS` must not be set | empty: the hub is not in the link mode |
+
+## 7. What S6 (first run) and S4 (service) need from S5
+
+1. **Start order and user.** The hub and `anima-link hub` run as one user. The hub makes the
+   socket; the link connects at each stream, so either can start first. S4 owns the two service
+   units; S5 changed neither.
+2. **The socket's folder.** A folder of that user with mode `0700` and a short path (a socket
+   path has at most about 100 characters). The link's state folder is a good place: it already
+   has these properties.
+3. **The target.** Start the link with the socket as `-target`, never with the hub's loopback
+   port (see `docs/setup/link.md` Section 7).
+4. **Environment of the hub.** `ANIMA_LINK_SOCKET` and a loopback `ANIMA_LISTEN`; no
+   `ANIMA_PERMITTED_NETWORKS`; no TLS files (loopback serves plain HTTP).
+5. **`ANIMA_PUBLIC_ORIGIN`.** The hub compares a browser's `Origin` with it, and each device
+   reaches the hub at `http://127.0.0.1:<its local port>`. S6 must decide the origin rule of the
+   link mode: one fixed local port on each device, or a rule for loopback origins. S5 did not
+   change it. The desktop client and `anima` send a bearer token and are not affected.
+6. **Invites and the device list in the hub.** The operator makes an invite, sees the devices
+   with their addresses and revokes one through `anima-link ctl` today. S6 needs these in the hub
+   API, the `anima` command and the client (CMD-030). That is a change to K1; the control socket's
+   verbs (`invites.make`, `devices.list`, `devices.revoke`) then become a contract between the
+   hub and the link.
+7. **Names for addresses.** The audit log and the list of builders show a link address. The
+   client should show the device's name beside it, from `devices.list`.
+8. **A device that joins again.** A revoked device needs a new key before it can join again. The
+   join flow of S6 must make a new key when the hub answers `key_retired`.
+9. **The agent.** The metrics agent can use the link only after the ruling on K8 (Section 5).
+10. **Recovery.** A lost hub key means a new hub address and new invites for each device; the
+    hub's bindings to link addresses stay valid only if the link's state folder (`devices.json`,
+    `retired.json`) is restored with the hub's database. The backup (S9) must hold both.
