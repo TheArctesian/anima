@@ -103,8 +103,49 @@ pub fn set_open_definition() -> Definition {
     .returns(&[("issue", "object", "The issue after the change.")])
 }
 
+/// The hub's limits (K-E1 `NewIssueInput`, `addIssueComment`), checked here too so text over
+/// them is refused before any request, in fixed words that never repeat it.
+const TITLE_LONGEST: usize = 256;
+const BODY_LONGEST: usize = 65_536;
+const LABELS_MOST: usize = 20;
+const LABEL_LONGEST: usize = 50;
+
+/// Whether `text` has `least` to `most` characters; very long text is refused by its bytes
+/// before it is counted.
+fn bounded(text: &str, least: usize, most: usize) -> bool {
+    text.len() <= most.saturating_mul(4) && (least..=most).contains(&text.chars().count())
+}
+
+fn over_limit(rule: &str) -> ToolError {
+    ToolError::Refused(format!(
+        "Nothing was sent: {rule}. Shorten it and call again."
+    ))
+}
+
+/// The new issue's text within the hub's limits.
+fn issue_fits(input: &CreateInput) -> Result<(), ToolError> {
+    if !bounded(&input.title, 1, TITLE_LONGEST) {
+        return Err(over_limit("title must be 1 to 256 characters"));
+    }
+    if !input
+        .body
+        .as_deref()
+        .is_none_or(|body| bounded(body, 0, BODY_LONGEST))
+    {
+        return Err(over_limit("body must be at most 65,536 characters"));
+    }
+    let labels = input.labels.as_deref().unwrap_or_default();
+    if labels.len() > LABELS_MOST || !labels.iter().all(|label| bounded(label, 1, LABEL_LONGEST)) {
+        return Err(over_limit(
+            "labels must be at most 20, each 1 to 50 characters",
+        ));
+    }
+    Ok(())
+}
+
 pub async fn create(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
     let input: CreateInput = parse(arguments)?;
+    issue_fits(&input)?;
     let variables = issue_create::Variables {
         input: issue_create::NewIssueInput {
             repository: repository_id(hub, &input.repository).await?,
@@ -119,6 +160,9 @@ pub async fn create(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, T
 
 pub async fn comment(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
     let input: CommentInput = parse(arguments)?;
+    if !bounded(&input.body, 1, BODY_LONGEST) {
+        return Err(over_limit("body must be 1 to 65,536 characters"));
+    }
     let variables = issue_comment_add::Variables {
         repository: repository_id(hub, &input.repository).await?,
         number: input.number,
