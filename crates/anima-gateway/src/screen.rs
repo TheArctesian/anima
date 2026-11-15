@@ -19,10 +19,10 @@ pub const BYTES_PER_PIXEL: usize = 3;
 /// The longest side of a screen: the largest size the Guacamole tunnel carries (K4
 /// Section 4). A screen of this size on both sides takes 192 MiB.
 pub const MAX_SIDE: usize = 8192;
-/// The most moves told to the client between two [`Screen::take_changes`]. A move costs the
-/// client about 50 bytes and the device 12, so a device that sends many small moves could
-/// otherwise make the gateway send several times what it received. Further moves are done
-/// as writes.
+/// The most moves told to the client between two [`Screen::take_changes`], so in one
+/// frame. A move costs the client about 50 bytes and the device 12, so each frame can cost
+/// about 3 kB for moves and no more; further moves are done as writes. How many frames go
+/// out is the caller's limit (`frames::Pacing`).
 pub const MOST_MOVES: usize = 64;
 
 /// Why a screen cannot have a size.

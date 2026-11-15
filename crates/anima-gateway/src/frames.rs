@@ -14,6 +14,7 @@
 //! Pure: no I/O and no clock; the caller gives the timestamp.
 
 mod joining;
+mod pacing;
 mod palette;
 mod picture;
 
@@ -21,6 +22,7 @@ use base64::Engine as _;
 use guac_protocol::Instruction;
 
 use crate::screen::{Area, Changes, Moved, OutsideScreen, Screen};
+pub use pacing::{Next, Pace, Pacing};
 use picture::Picture;
 
 /// `GUAC_COMP_OVER`: draw over what the layer holds.

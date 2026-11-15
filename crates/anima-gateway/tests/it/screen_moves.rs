@@ -120,8 +120,9 @@ fn a_flood_of_small_moves_does_not_cost_more_than_sending_the_pixels() {
         .count();
     assert_eq!(copies, MOST_MOVES);
     assert_eq!(client.rgb, whole(&screen));
+    // The moves told are about 3 kB; the rest is the pixels of a small part of the screen.
     assert!(
-        client.wire_bytes <= 2 * 2000 * 12,
+        client.wire_bytes <= 10_000,
         "{} bytes for 24000 from the device",
         client.wire_bytes
     );

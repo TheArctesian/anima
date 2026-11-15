@@ -143,7 +143,8 @@ written here with its reason.
 | Task | State | Commits |
 | --- | --- | --- |
 | T1 Screen and changes | Done. Reviewed by `reviewer`; 6 findings corrected; full gates passed 14 of 14. | `88b420c2`, `0d0582c8` |
-| T2 Frame encoder | Built and reviewed by `reviewer`: 1 must-fix and 3 test findings corrected. | `2970dfad` and the correction after it |
+| T2 Frame encoder | Done. Reviewed twice by `reviewer` (1 must-fix and 3 test findings corrected; second verdict: accept); full gates passed 14 of 14. | `2970dfad`, `aa78c4d1` |
+| T3 Frame pacing | Built; in review. | see the log |
 
 Choices:
 
@@ -186,6 +187,13 @@ Choices:
   of text is not sent with the unchanged line above it.
 - **T2, new dependencies.** `png` (already in the lock file), `jpeg-encoder` (new, pure Rust,
   MIT or Apache-2.0); for tests only `flate2` and `jpeg-decoder`.
+
+- **T3, the limits.** At most 30 frames each second, and at most two frames on their way to
+  the client and not yet answered with `sync`. Both are parameters (`Pace`). A client's
+  `sync` text that is not a timestamp answers nothing.
+- **Merge and push.** The operator said in this session (2026-11-14): "Yes, merge into main
+  and push when done". When every task that does not need the operator is done: bring the
+  current `main` in, run the full gates, merge, push.
 
 ## 7. Handoff note
 
