@@ -68,6 +68,7 @@ fn view(sha: String, counts: Counts) -> CommitChecksView {
 
 fn answer(body: &[u8]) -> Response<'_> {
     Response {
+        link: None,
         status: 200,
         body: Body::Read(body),
     }

@@ -392,12 +392,12 @@ queued ──► claimed ──► building ──► uploading ──► publis
 - **BLD-025.** Turning the toggle off must revoke the builder token on the hub and delete it from the key store. The Settings page must list all builders and let the operator revoke each one.
 - **BLD-026.** The builder runs inside the desktop app while the app runs. The client holds the builder loop (`$lib/builds/`). The Tauri shell holds only the OS work: child processes, the key store and file upload (REPO-003; changed by R-117).
 - **BLD-027.** The shell must expose fixed build steps, not a general command runner. The web view can ask for "check out commit C", "run the gates", "bundle target T at version V", "upload file F to URL U". It cannot name a program. The builder signs nothing; the hub signs the updater file (changed by R-117).
-- **BLD-028.** Before the builder claims a job, it must check its tools: git, bun, Rust, PostgreSQL 17 (R-009) and the Tauri system packages (changed by R-117). The Settings row must name each missing tool. A builder with a missing tool must not claim.
+- **BLD-028.** Before the builder claims a job, it must check its tools: git, bun, Rust, Go, PostgreSQL 17 (R-009) and the Tauri system packages (changed by R-117; Go added 2026-11-16, task R3 of the projects and builds proposal). The Settings row must name each missing tool. A builder with a missing tool must not claim.
 - **BLD-029.** A builder runs one job at a time. It connects out to the hub over the VPN. It needs no open port and no GitHub runner.
 
 #### 3.10.3 The build
 
-- **BLD-040.** The builder must use its own clone of `https://github.com/TheArctesian/anima.git` in the app data folder. It must fetch, then check out the job commit with a clean tree.
+- **BLD-040.** The builder must use its own clone of `https://github.com/TheArctesian/anima.ing.git` in the app data folder (the repository's name since the rename; changed 2026-11-16, task R1 of the projects and builds proposal). It must fetch, then check out the job commit with a clean tree.
 - **BLD-041.** The builder must refuse a commit that is not an ancestor of `origin/main` (`git merge-base --is-ancestor`). GitHub serves fork commits through the main repository, so a commit hash alone is not proof.
 - **BLD-042.** The builder must run `bun run gates` with `DATABASE_URL` unset and `BASE_REF` set to the job commit. A gate failure makes the job `failed`.
 - **BLD-043.** The builder must compile with `tauri build --no-bundle` and the version in `--config`. Then it must bundle: `--bundles appimage` on Linux, `--bundles app,dmg` with `--target universal-apple-darwin` on macOS.

@@ -25,6 +25,14 @@ pub struct ReleaseNextVersion;
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "../../contracts/schema.graphql",
+    query_path = "src/releases/publishing.graphql",
+    response_derives = "Debug, Serialize"
+)]
+pub struct ReleasePublishing;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "../../contracts/schema.graphql",
     query_path = "src/releases/create.graphql",
     response_derives = "Debug, Serialize",
     variables_derives = "Debug"

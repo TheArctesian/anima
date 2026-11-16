@@ -12,6 +12,7 @@ const MAX_PAGE_SIZE: usize = 200;
 pub struct After {
     pub name: String,
     pub id: ProjectId,
+    pub rank: Option<i64>,
 }
 
 /// The page size the operator asked for (`first`), 1 to 200.
@@ -36,6 +37,9 @@ pub fn encode_cursor(after: &After) -> String {
         write!(cursor, "{byte:02x}").expect("writing to a String cannot fail");
     }
     write!(cursor, ".{}", after.id).expect("writing to a String cannot fail");
+    if let Some(rank) = after.rank {
+        write!(cursor, ".{rank}").expect("writing to a String cannot fail");
+    }
     cursor
 }
 
@@ -51,7 +55,12 @@ pub fn decode_cursor(cursor: &str) -> Result<After, FieldError> {
         )
     };
     let rest = cursor.strip_prefix(CURSOR_PREFIX).ok_or_else(bad)?;
-    let (hex, id) = rest.split_once('.').ok_or_else(bad)?;
+    let (hex, key) = rest.split_once('.').ok_or_else(bad)?;
+    let (id, rank) = if let Some((id, rank)) = key.split_once('.') {
+        (id, Some(rank.parse::<i64>().map_err(|_| bad())?))
+    } else {
+        (key, None)
+    };
     if !hex.is_ascii() || hex.len() % 2 != 0 {
         return Err(bad());
     }
@@ -63,5 +72,6 @@ pub fn decode_cursor(cursor: &str) -> Result<After, FieldError> {
     Ok(After {
         name: String::from_utf8(bytes).map_err(|_| bad())?,
         id: id.parse().map_err(|_| bad())?,
+        rank,
     })
 }

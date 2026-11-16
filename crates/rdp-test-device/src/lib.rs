@@ -23,11 +23,11 @@ use sha2::{Digest as _, Sha256};
 use tokio::sync::{mpsc, oneshot, watch};
 
 /// How long a test waits for the device, or for the client's side of a session.
-pub(crate) const WAIT: Duration = Duration::from_secs(10);
+pub const WAIT: Duration = Duration::from_secs(10);
 
 /// The security the device offers.
 #[derive(Clone, Copy)]
-pub(crate) enum Offered {
+pub enum Offered {
     /// TLS only; the client signs in with its Client Info, which the device notes.
     Tls,
     /// NLA only, with the one account it accepts.
@@ -39,15 +39,15 @@ pub(crate) enum Offered {
 
 /// What the device is.
 #[derive(Clone, Copy)]
-pub(crate) struct Setup {
+pub struct Setup {
     /// The size of its screen, in pixels.
-    pub(crate) size: (u16, u16),
-    pub(crate) offered: Offered,
+    pub size: (u16, u16),
+    pub offered: Offered,
 }
 
 /// What the device saw a client send, in order.
 #[derive(Debug, PartialEq, Eq)]
-pub(crate) enum Seen {
+pub enum Seen {
     /// The account of a TLS sign-in, from the Client Info PDU.
     SignIn {
         username: String,
@@ -84,10 +84,10 @@ struct Served {
     active: watch::Sender<Option<mpsc::Sender<Tell>>>,
 }
 
-pub(crate) struct Device {
-    pub(crate) address: SocketAddr,
+pub struct Device {
+    pub address: SocketAddr,
     /// The SHA-256 of its certificate's DER bytes.
-    pub(crate) fingerprint: [u8; 32],
+    pub fingerprint: [u8; 32],
     seen: mpsc::Receiver<Seen>,
     active: watch::Receiver<Option<mpsc::Sender<Tell>>>,
     /// Dropping it ends the device's thread, its listener and its connections.
@@ -95,7 +95,12 @@ pub(crate) struct Device {
 }
 
 impl Device {
-    pub(crate) fn start(setup: Setup) -> Self {
+    /// Starts the device on a loopback port.
+    ///
+    /// # Panics
+    /// When the test's computer gives no port, thread or certificate.
+    #[must_use]
+    pub fn start(setup: Setup) -> Self {
         let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("a port");
         listener
             .set_nonblocking(true)
@@ -139,7 +144,10 @@ impl Device {
     }
 
     /// The next thing the device saw.
-    pub(crate) async fn next(&mut self) -> Seen {
+    ///
+    /// # Panics
+    /// When the device saw nothing within [`WAIT`], which fails the test.
+    pub async fn next(&mut self) -> Seen {
         tokio::time::timeout(WAIT, self.seen.recv())
             .await
             .expect("the device saw something in time")
@@ -148,17 +156,17 @@ impl Device {
 
     /// Fills `area` of its screen with `colour` (red, green, blue) and sends it to the
     /// client of the active session as uncompressed bitmaps.
-    pub(crate) async fn paint(&mut self, area: Area, colour: [u8; 3]) {
+    pub async fn paint(&mut self, area: Area, colour: [u8; 3]) {
         self.tell(Tell::Paint { area, colour }).await;
     }
 
     /// Changes the size of its screen: Deactivate All, then a new capability exchange.
-    pub(crate) async fn resize(&mut self, width: u16, height: u16) {
+    pub async fn resize(&mut self, width: u16, height: u16) {
         self.tell(Tell::Resize { width, height }).await;
     }
 
     /// Closes the connection of the active session.
-    pub(crate) async fn close(&mut self) {
+    pub async fn close(&mut self) {
         self.tell(Tell::Close).await;
     }
 

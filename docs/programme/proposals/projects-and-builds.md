@@ -442,10 +442,10 @@ Group R: correct the release of Anima. It needs no other group. It is tier 0 of 
 
 | Task | Content | Needs | Done when | State | Commits |
 | --- | --- | --- | --- | --- | --- |
-| R1 | The clone address comes from one configuration value with the new name (D5). Change BLD-040. | — | A test proves that the builder clones the configured address. | Not started | — |
-| R2 | Delete the bundle folder before the bundle step (D1). | — | A test builds one version two times and uploads the file of the second attempt. | Not started | — |
-| R3 | Add Go to the tool check (D4, BLD-028). | — | A builder with no Go names Go and does not claim. | Not started | — |
-| R4 | The hub refuses a release when it cannot publish. The client hides the Builds entry and the builder row then (D8, PRO-037, PRO-038). | — | A hub with no updater key refuses `createRelease` with a typed reason. The command and the MCP tool give the reason. The client shows no Builds entry. | Not started | — |
+| R1 | The clone address comes from one configuration value with the new name (D5). Change BLD-040. | — | A test proves that the builder clones the configured address. | Done | Branch `builds/release-corrections`, merged to `main` |
+| R2 | Delete the bundle folder before the bundle step (D1). | — | A test builds one version two times and uploads the file of the second attempt. | Done | Branch `builds/release-corrections`, merged to `main` |
+| R3 | Add Go to the tool check (D4, BLD-028). | — | A builder with no Go names Go and does not claim. | Done | Branch `builds/release-corrections`, merged to `main` |
+| R4 | The hub refuses a release when it cannot publish. The client hides the Builds entry and the builder row then (D8, PRO-037, PRO-038). | — | A hub with no updater key refuses `createRelease` with a typed reason. The command and the MCP tool give the reason. The client shows no Builds entry. | Done | Branch `builds/release-corrections`, merged to `main` |
 | R5 | One name for the macOS application: `Anima.ing.app` (D2; OD-W19, operator, 2026-11-16). | — | The design specification Section 3.11, `carried.rs` and the builder say `Anima.ing.app`. The file names of a release stay `Anima_*` (UPD-010). | Not started | — |
 | R6 | The release carries the local hub (D3). | T9 of the S4 tasks; S3 T11 | As T9 of [s4-local-hub-tasks.md](../../research/one-click/s4-local-hub-tasks.md) states. This row only points to it. | Not started | — |
 | R7 | The first release. | R1 to R5; the operator | Each feed answers 200. An installed application updates on macOS and on Linux (D6, OD-16 to OD-18). The operator does this. | Not started | — |

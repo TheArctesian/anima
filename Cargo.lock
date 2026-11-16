@@ -275,7 +275,6 @@ dependencies = [
  "flate2",
  "getrandom 0.4.3",
  "guac-protocol",
- "ironrdp-acceptor",
  "ironrdp-cliprdr",
  "ironrdp-connector",
  "ironrdp-core",
@@ -292,7 +291,7 @@ dependencies = [
  "num-bigint 0.4.8",
  "png",
  "proptest",
- "rcgen",
+ "rdp-test-device",
  "rustls",
  "sha2 0.11.1",
  "thiserror 2.0.21",
@@ -337,6 +336,7 @@ dependencies = [
  "provider-github",
  "rand 0.10.3",
  "rcgen",
+ "rdp-test-device",
  "reqwest 0.12.28",
  "ring",
  "rpassword",
@@ -6151,6 +6151,25 @@ dependencies = [
  "time",
  "x509-parser",
  "yasna",
+]
+
+[[package]]
+name = "rdp-test-device"
+version = "0.1.0"
+dependencies = [
+ "anima-gateway",
+ "ironrdp-acceptor",
+ "ironrdp-connector",
+ "ironrdp-core",
+ "ironrdp-pdu",
+ "ironrdp-svc",
+ "ironrdp-tokio",
+ "rcgen",
+ "rustls",
+ "sha2 0.11.1",
+ "tokio",
+ "tokio-rustls",
+ "x509-parser",
 ]
 
 [[package]]

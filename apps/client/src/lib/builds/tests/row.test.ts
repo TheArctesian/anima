@@ -12,12 +12,13 @@ vi.mock('motion', async (importOriginal) => ({
   animate: (await import('../../motion/engine.fixture')).fakeRun,
 }));
 
-const current = vi.hoisted(() => ({ builder: undefined as unknown, hub: undefined as unknown, shell: undefined as unknown }));
+const current = vi.hoisted(() => ({ builder: undefined as unknown, hub: undefined as unknown, shell: undefined as unknown, publishing: { on: true } }));
 vi.mock('../builder.svelte', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../builder.svelte')>()),
   useThisBuilder: () => current.builder,
 }));
 vi.mock('$lib/hub/context', () => ({ useHub: () => current.hub }));
+vi.mock('../publishing.svelte', () => ({ usePublishing: () => current.publishing }));
 vi.mock('$lib/desktop/builder/shell', async (importOriginal) => ({
   ...(await importOriginal<typeof import('$lib/desktop/builder/shell')>()),
   desktopBuilderShell: { checkTools: () => (current.shell as FakeShell).checkTools() },
@@ -85,6 +86,14 @@ it('BLD-020, R-117: shows the toggle off by default and the platform, and asks f
   expect(text()).toContain('Linux, x86-64');
   expect(text()).not.toMatch(/updater key/i);
   expect(document.querySelector('input[type="password"]')).toBeNull();
+});
+
+it('PRO-038: a hub that cannot publish shows no builder row', async () => {
+  current.publishing = { on: false };
+  await show();
+  expect(toggle()).toBeNull();
+  expect(text()).not.toContain('Build releases on this computer');
+  current.publishing = { on: true };
 });
 
 it('BLD-028, I-7: lists each missing tool under "Missing:"', async () => {

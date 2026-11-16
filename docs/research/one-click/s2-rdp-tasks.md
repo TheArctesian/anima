@@ -2,7 +2,7 @@
 
 Progress: the plan register in [work-plan.md](../../work-plan.md) Section 9 holds the state of this plan (PLN-005).
 
-Date: 2026-11-15. Status: **built and reviewed; the hub test (R6) is open.** Section 5 holds the state of each task.
+Date: 2026-11-15. Status: **built and reviewed.** Section 5 holds the state of each task.
 
 Branch: `claude/s2-native-rdp`, cut from `origin/main` at `581e1d13`.
 Sources: the spike report `docs/research/one-click/spike-display.md` Sections 5, 7 and 9
@@ -87,7 +87,7 @@ for R1, R3 and R4, and the full `BASE_REF=origin/main bun run gates` before the 
 | R3 RDP opening | Built, with tests against an RDP device in the test. `reviewer-security`: 2 medium, 1 low, 3 notes; all corrected but the two items in Section 6. Second review of the corrections: all closed, 1 new medium and 2 smaller points, corrected. | `a896283b`, `3bc6cb53` |
 | R4 RDP session | Built, with tests of a whole session through `serve`. `reviewer`: fix and re-review, no fault in the keys or the loop, 24 of 39 mutants not caught; its 6 should-fix points corrected. | `9ab323c8` and the commit after R5 |
 | R5 Program and documents | Built: `--pass`, the setup document. | `4554a90f` |
-| R6 Hub tunnel against the gateway | Not built; see Section 6. | — |
+| R6 Hub tunnel against the gateway | Built: 2 hub tests pass with a throwaway PostgreSQL. `reviewer` (by reading): fix and re-review; the password and the drawing are now asserted, and a wait with no meaning is gone. | `dd9d67c8` and the commit after it |
 | R7 Check against real servers | Done; results below. | — |
 
 Choices:
@@ -159,6 +159,15 @@ Choices:
   clipboard channel as "no channel". Keys with no mapping: Pause, the keypad's `=`, the
   old keysym ranges for Greek and Cyrillic; Print goes without its second prefix.
 
+- **R6, the test device is a crate of its own.** The operator asked for R6 (2026-11-15). The
+  hub reads the device's certificate itself before the session, so the hub's tests need the
+  whole RDP device. It moved from the gateway's tests to `crates/rdp-test-device`, a
+  workspace member that only tests depend on, so there is one copy. The two hub tests are
+  in `tunnel/tests/wire/native/rdp.rs`: a session that signs in with the stored user name, password and domain, draws what the
+  device paints and takes a key, and a device with another certificate, which ends
+  `SERVER_CERTIFICATE_MISMATCH` and never gets the account. No hub source outside the
+  tests changed.
+
 ### R7. Check against real servers (2026-11-15)
 
 The spike's container on this Mac, with a password made for the run and kept in no file of
@@ -188,7 +197,6 @@ Not checked: a GNOME Remote Desktop host, and the certificate pin against a real
 | Item | Why it is open |
 | --- | --- |
 | Spec Section 6.3.2 and the device settings | On a hub with the native gateway an RDP device has no sound, no microphone and no shared drive. The settings still show these switches. |
-| R6, a hub test with an RDP device | The hub reads the device's certificate itself before the session, so the test needs a whole RDP server inside the hub's tests. The gateway's tests have one (four files on `ironrdp-acceptor`); a second copy in the hub crate, or a shared test crate, is a choice for the operator. What is proved without it: the hub's own `Handshake` opens an RDP session against the gateway with the value names of K4 Section 3, and the hub's relay is proved against the gateway with VNC. |
 | A GNOME Remote Desktop host | The operator has one; R-076 excludes Windows. The NLA path worked against FreeRDP's server. |
 | The account in memory | IronRDP and `sspi` do not zero the user name and the password when they drop them after the opening. The gateway zeroes its own copies, and IronRDP holds none after the opening. A correction needs a change in IronRDP. |
 | The device's keyboard layout | US only. The hub has no setting for a layout (`server-layout` is never sent). |

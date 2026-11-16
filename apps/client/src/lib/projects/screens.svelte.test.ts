@@ -2,10 +2,10 @@
 import { flushSync, mount, unmount } from 'svelte';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { installAnimations } from '$lib/forms/animations.fixture';
-import { projectsApi } from './api';
+import { projectsApi, type ProjectsApi } from './api';
 import { forgeApi } from './forge/api';
 import { fakeForgeHub } from './forge/forge.fixture';
-import { fakeHub, type FakeHub } from './projects.fixture';
+import { FIXTURE_PROJECTS, fakeHub, type FakeHub } from './projects.fixture';
 import ProjectScreen from './detail/ProjectScreen.svelte';
 import ProjectsScreen from './ProjectsScreen.svelte';
 import { ProjectsStore } from './store.svelte';
@@ -155,11 +155,54 @@ it('UR-7, PRO-004: the list puts projects that need a look first, each with why'
   expect(text()).toContain('A repository is no longer on GitHub.');
 });
 
-it('PRJ-030: a tab the hub does not serve yet does not show, and asking for it opens Overview', async () => {
+async function openTab(tab: string): Promise<void> {
   await store.open('acme-site');
-  app = mount(ProjectScreen, { target: document.body, props: { store, forge, slug: 'acme-site', tab: 'work' } });
+  app = mount(ProjectScreen, { target: document.body, props: { store, forge, slug: 'acme-site', tab } });
   flushSync();
-  expect(document.querySelector('[role="tablist"]')).toBeNull();
+}
+
+const tabs = () => [...document.querySelectorAll('[role="tab"]')];
+const selectedTab = () => tabs().find((each) => each.getAttribute('aria-selected') === 'true')?.textContent.trim();
+
+it('PRJ-030: the page has the Overview, Work, Code and History tabs, and asking for one opens it', async () => {
+  await openTab('work');
+  expect(tabs().map((each) => each.textContent.trim())).toEqual(['Overview', 'Work', 'Code', 'History']);
+  expect(selectedTab()).toBe('Work');
+  expect(text()).not.toContain('Where it runs');
+});
+
+it('PRJ-030: a tab word the page does not have opens Overview', async () => {
+  await openTab('design');
+  expect(selectedTab()).toBe('Overview');
   expect(text()).toContain('Where it runs');
-  expect(text()).toContain('Cloudflare was found in the repository (wrangler.toml) and is not confirmed.');
+});
+
+it('PRJ-012: the project controls use the hub order and send server filters', async () => {
+  const available = [FIXTURE_PROJECTS[2], FIXTURE_PROJECTS[0]].filter((project) => project !== undefined);
+  const list = vi.fn<ProjectsApi['list']>(async (leftOut, _after, browse) => ({
+    ok: true,
+    value: {
+      projects: leftOut ? [] : browse?.language === 'Rust' ? available.slice(0, 1) : available,
+      languages: ['Rust'],
+      next: null,
+    },
+  }));
+  store = new ProjectsStore({ ...projectsApi(hub), list });
+  await openList();
+  const choose = async (label: string, value: string): Promise<void> => {
+    const control = [...document.querySelectorAll('label')].find((each) => each.textContent.trim().startsWith(label))?.control;
+    if (!(control instanceof HTMLSelectElement)) throw new Error(`No select for ${label}`);
+    control.value = value;
+    control.dispatchEvent(new Event('change', { bubbles: true }));
+    await settled();
+  };
+
+  await choose('Sort by', 'STARS');
+  expect(list).toHaveBeenCalledWith(false, null, { order: 'STARS' });
+  expect([...document.querySelectorAll('li.entry .name a')].map((link) => link.textContent.trim())).toEqual(['notes', 'acme-site']);
+  await choose('Language', 'Rust');
+  await choose('Repository size', '1');
+  expect(list).toHaveBeenCalledWith(false, null, { order: 'STARS', language: 'Rust', minSizeKib: null, maxSizeKib: 1023 });
+  expect(text()).toContain('acme/notes');
+  expect(text()).not.toContain('acme/acme-site');
 });

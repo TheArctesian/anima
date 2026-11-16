@@ -53,6 +53,7 @@ fn branch(branch: Option<&str>) -> Result<Option<&str>> {
 /// The jobs body has jobs and every one has finished.
 fn jobs_settled(body: &[u8]) -> bool {
     let answer = Response {
+        link: None,
         status: 200,
         body: Body::Read(body),
     };

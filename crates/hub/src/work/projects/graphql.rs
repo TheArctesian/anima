@@ -14,7 +14,9 @@ use sqlx::{PgConnection, PgPool};
 
 use self::views::{ProjectConnection, ProjectView, ResourceView, Rows};
 use super::{
-    Error, code, history, issues,
+    Error,
+    browse::ProjectBrowse,
+    code, history, issues,
     model::ResourceKind,
     on,
     page::{After, decode_cursor, page_size},
@@ -166,6 +168,7 @@ impl ProjectsQuery {
         #[graphql(default_with = "Some(false)")] left_out: Option<bool>,
         #[graphql(default_with = "Some(DEFAULT_FIRST)")] first: Option<i32>,
         after: Option<String>,
+        browse: Option<ProjectBrowse>,
     ) -> Result<ProjectConnection> {
         let db = on(ctx).await?;
         let size = page_size(first.unwrap_or(DEFAULT_FIRST));
@@ -177,13 +180,25 @@ impl ProjectsQuery {
                 return Err(invalid(&errors));
             }
         };
+        let browse = browse.unwrap_or_default();
+        browse.validate().map_err(|error| invalid(&[error]))?;
+        let left_out = left_out.unwrap_or(false);
         let limit = i64::try_from(size + 1).unwrap_or(i64::MAX);
-        let mut rows = reads::page(db, left_out.unwrap_or(false), after.as_ref(), limit)
+        let mut rows = reads::page(db, (left_out, &browse), after.as_ref(), limit)
             .await
             .map_err(failed)?;
         let has_next_page = rows.len() > size;
         rows.truncate(size);
-        Ok(views::connection(shown(db, rows).await?, has_next_page))
+        let languages = if ctx.look_ahead().field("languages").exists() {
+            reads::languages(db, left_out).await.map_err(failed)?
+        } else {
+            Vec::new()
+        };
+        Ok(views::connection(
+            shown(db, rows).await?,
+            has_next_page,
+            languages,
+        ))
     }
 
     #[graphql(guard = "Authenticated")]

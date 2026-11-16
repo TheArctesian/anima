@@ -1,7 +1,9 @@
 //! The tunnel against the native gateway (`anima-gateway`) in place of guacd, and a VNC
 //! device behind it (plan item S2, K4 Sections 3 to 5): the hub's handshake, relay and end
 //! reasons are the same code that talks to guacd, so the pair is proved together here.
+//! `rdp` does the same with an RDP device.
 
+mod rdp;
 mod vnc_device;
 
 use std::time::Duration;

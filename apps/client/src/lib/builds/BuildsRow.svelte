@@ -6,9 +6,11 @@
   import { buildsApi } from './api';
   import { useThisBuilder } from './builder.svelte';
   import { BuildsPanel } from './panel.svelte';
+  import { usePublishing } from './publishing.svelte';
   import { builderText, platformText, thisPlatformText, TOOL_NAMES } from './row';
 
   const builder = useThisBuilder();
+  const publishing = usePublishing();
   const panel = new BuildsPanel({
     api: buildsApi(useHub()),
     shell: desktopBuilderShell,
@@ -34,53 +36,56 @@
   }
 </script>
 
-<!-- Rows of the Updates card, like the version and Logs rows above: name and hint at the start, control at the end (SET-001). -->
-<SettingRow label="Build releases on this computer" for="builder-toggle">
-  {#snippet hint()}
-    <!-- Each line keeps its height while it is empty, so the controls below do not move when it fills (MOT-007). -->
-    <p class="hint">{thisPlatformText(panel.tools, panel.toolsFailed)}</p>
-    <p class="hint" aria-live="polite">{builderText(builder.enrolled, builder.busy, builder.status)}</p>
-    {#if missing.length > 0}
-      <p class="hint" id="missing-tools">Missing:</p>
-      <ul class="hint missing" aria-labelledby="missing-tools">
-        {#each missing as tool (tool)}
-          <li>{TOOL_NAMES[tool]}</li>
-        {/each}
-      </ul>
-    {/if}
-  {/snippet}
-  <input
-    id="builder-toggle"
-    class="toggle"
-    type="checkbox"
-    checked={builder.enrolled === true}
-    aria-disabled={toggleBlocked}
-    aria-describedby={builder.problem === null ? undefined : 'builder-problem'}
-    onclick={blockWhileBusy}
-    onchange={(event) => void toggle(event)}
-  />
-  {#snippet message()}
-    <p id="builder-problem" role="alert">{builder.problem ?? ''}</p>
-  {/snippet}
-</SettingRow>
-
-<ul class="builders" aria-label="Builders" aria-describedby={panel.listProblem === null ? undefined : 'builders-problem'}>
-  {#each panel.builders as each (each.id)}
-    <li>
-      <SettingRow label={each.name}>
-        {#snippet hint()}
-          <p class="hint">{platformText(each.platform)}, {each.online ? 'online' : 'offline'}</p>
-        {/snippet}
-        <FormButton tabindex={0} tone="danger" aria-disabled={panel.revoking !== null} aria-label={`Revoke ${each.name}`} onclick={() => void panel.revoke(each.id)}>Revoke</FormButton>
-      </SettingRow>
-    </li>
-  {:else}
-    <!-- Until the list is read, an empty line holds its place rather than saying no computer builds (MOT-007). -->
-    <li class="note">{panel.buildersLoaded ? 'No computer builds releases.' : ''}</li>
-  {/each}
-</ul>
-{#if panel.listProblem !== null}
-  <p class="note" id="builders-problem" role="alert">{panel.listProblem}</p>
+<!-- A hub that cannot publish a release has no builders to show (PRO-038). -->
+{#if publishing.on}
+  <!-- Rows of the Updates card, like the version and Logs rows above: name and hint at the start, control at the end (SET-001). -->
+  <SettingRow label="Build releases on this computer" for="builder-toggle">
+    {#snippet hint()}
+      <!-- Each line keeps its height while it is empty, so the controls below do not move when it fills (MOT-007). -->
+      <p class="hint">{thisPlatformText(panel.tools, panel.toolsFailed)}</p>
+      <p class="hint" aria-live="polite">{builderText(builder.enrolled, builder.busy, builder.status)}</p>
+      {#if missing.length > 0}
+        <p class="hint" id="missing-tools">Missing:</p>
+        <ul class="hint missing" aria-labelledby="missing-tools">
+          {#each missing as tool (tool)}
+            <li>{TOOL_NAMES[tool]}</li>
+          {/each}
+        </ul>
+      {/if}
+    {/snippet}
+    <input
+      id="builder-toggle"
+      class="toggle"
+      type="checkbox"
+      checked={builder.enrolled === true}
+      aria-disabled={toggleBlocked}
+      aria-describedby={builder.problem === null ? undefined : 'builder-problem'}
+      onclick={blockWhileBusy}
+      onchange={(event) => void toggle(event)}
+    />
+    {#snippet message()}
+      <p id="builder-problem" role="alert">{builder.problem ?? ''}</p>
+    {/snippet}
+  </SettingRow>
+  
+  <ul class="builders" aria-label="Builders" aria-describedby={panel.listProblem === null ? undefined : 'builders-problem'}>
+    {#each panel.builders as each (each.id)}
+      <li>
+        <SettingRow label={each.name}>
+          {#snippet hint()}
+            <p class="hint">{platformText(each.platform)}, {each.online ? 'online' : 'offline'}</p>
+          {/snippet}
+          <FormButton tabindex={0} tone="danger" aria-disabled={panel.revoking !== null} aria-label={`Revoke ${each.name}`} onclick={() => void panel.revoke(each.id)}>Revoke</FormButton>
+        </SettingRow>
+      </li>
+    {:else}
+      <!-- Until the list is read, an empty line holds its place rather than saying no computer builds (MOT-007). -->
+      <li class="note">{panel.buildersLoaded ? 'No computer builds releases.' : ''}</li>
+    {/each}
+  </ul>
+  {#if panel.listProblem !== null}
+    <p class="note" id="builders-problem" role="alert">{panel.listProblem}</p>
+  {/if}
 {/if}
 
 <style>

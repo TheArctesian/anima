@@ -1,0 +1,25 @@
+[package]
+name = "rdp-test-device"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "An RDP device inside a test process, for the tests of the gateway and of the hub's tunnel. Never part of a shipped program."
+
+[lints]
+workspace = true
+
+[dependencies]
+anima-gateway = { path = "../anima-gateway" }
+ironrdp-acceptor = "0.12"
+ironrdp-connector = "0.12"
+ironrdp-core = "0.3"
+ironrdp-pdu = "0.11"
+ironrdp-svc = "0.10"
+ironrdp-tokio = "0.12"
+rcgen.workspace = true
+rustls.workspace = true
+sha2.workspace = true
+tokio = { workspace = true, features = ["rt", "net", "sync", "time", "macros"] }
+tokio-rustls.workspace = true
+x509-parser.workspace = true

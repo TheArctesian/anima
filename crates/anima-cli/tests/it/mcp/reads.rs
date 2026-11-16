@@ -106,6 +106,20 @@ async fn mcp_009_release_list_returns_releases_with_their_jobs() {
 }
 
 #[tokio::test]
+async fn pro_037_release_publishing_says_whether_the_hub_can_publish() {
+    let hub = hub().await;
+    hub.answer(
+        "ReleasePublishing",
+        data(json!({ "releasePublishing": false })),
+    );
+    let desk = Desk::new();
+    let (mut session, _) = desk.start(&hub, API_KEY, &[]).await;
+    let answer = session.call("anima_release_publishing", json!({})).await;
+    assert_eq!(structured(&answer)["publishing"], false, "{answer}");
+    session.finish().await;
+}
+
+#[tokio::test]
 async fn mcp_009_vpn_status_gives_short_nodes_unless_detail() {
     let hub = hub().await;
     let node = json!({

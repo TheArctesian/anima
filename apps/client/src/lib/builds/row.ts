@@ -8,6 +8,7 @@ export const TOOL_NAMES: Readonly<Record<BuilderTool, string>> = {
   bun: 'Bun',
   rust: 'Rust (cargo)',
   'cargo-nextest': 'cargo-nextest',
+  go: 'Go (for the gates of link/)',
   postgres: 'PostgreSQL 17',
   'tauri-packages': 'the Tauri system packages',
   'updater-public-key': "this app's updater public key (an app built with the placeholder cannot build releases)",
