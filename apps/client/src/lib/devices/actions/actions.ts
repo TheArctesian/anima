@@ -28,7 +28,7 @@ export function connectLabel(protocol: SessionProtocol, deviceName: string): str
 }
 
 const WARNING_TEXT: Record<AccessWarning, string> = {
-  IGNORED_CERTIFICATE: 'The certificate is ignored, so Anima cannot tell this device from an impostor.',
+  IGNORED_CERTIFICATE: 'The certificate is ignored, so Anima.ing cannot tell this device from an impostor.',
   RDP_SECURITY: 'Standard RDP security is weak: the sign-in is not protected the way the other modes protect it.',
   UNENCRYPTED_VNC: 'The VNC connection is not encrypted. Use it only over the VPN.',
 };

@@ -153,8 +153,8 @@
 <div class="screen">
   <Doors {doorway} />
   <div class="panel" bind:this={doorway} {@attach entrance()}>
-    <p class="label"><img src={asset('/logo.png')} alt="" width="22" height="22" /><span class="rule" aria-hidden="true"></span>Anima</p>
-    <h1>Sign in to Anima</h1>
+    <p class="label"><img src={asset('/logo.png')} alt="" width="22" height="22" /><span class="rule" aria-hidden="true"></span>Anima.ing</p>
+    <h1>Sign in to Anima.ing</h1>
 
     <form onsubmit={formSubmitted} novalidate>
       {#if unreachable !== null}

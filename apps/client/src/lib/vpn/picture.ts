@@ -77,7 +77,7 @@ export function renewable(node: Pick<VpnNode, 'role' | 'tags' | 'keyState'>): bo
 
 const needsAttention = (state: KeyState): boolean => state !== 'NEVER' && state !== 'VALID';
 
-/** Nodes not in Anima first, then those whose key needs attention, then by name. */
+/** Nodes not in Anima.ing first, then those whose key needs attention, then by name. */
 export function sortedNodes(nodes: readonly VpnNode[]): readonly VpnNode[] {
   const rank = (node: VpnNode): number => (node.inAnima ? 2 : 0) + (needsAttention(node.keyState) ? 0 : 1);
   return [...nodes].sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name));

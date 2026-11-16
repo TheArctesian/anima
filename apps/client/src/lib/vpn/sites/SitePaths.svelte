@@ -37,7 +37,7 @@
         {#if entry.router?.device}
           <a class="hint" href="{resolve('/devices')}/{encodeURIComponent(entry.router.device.id)}?tab=checks" tabindex="0" {@attach press()}>Add a ping check</a>
         {:else}
-          <span class="hint">The router is not a device in Anima</span>
+          <span class="hint">The router is not a device in Anima.ing</span>
         {/if}
       {/if}
       {#if entry.waitingRouter !== null}

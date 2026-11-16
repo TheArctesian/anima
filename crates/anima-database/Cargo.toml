@@ -1,0 +1,38 @@
+[package]
+name = "anima-database"
+description = "The PostgreSQL that the desktop application carries: its folders, its server and its roles (DB-001 to DB-003, OR-6)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "anima-database"
+path = "src/main.rs"
+
+[[test]]
+name = "it"
+path = "tests/it/main.rs"
+
+[dependencies]
+clap.workspace = true
+base64.workspace = true
+getrandom.workspace = true
+# The SCRAM verifier of a login: the server is never sent the password itself.
+hmac.workspace = true
+# The shutdown signal to the server, as the hub and the desktop shell send theirs.
+nix = { version = "0.31", default-features = false, features = ["fs", "resource", "signal", "user"] }
+sha2.workspace = true
+# The roles step signs in over the socket. No TLS: the server has no network listener.
+sqlx.workspace = true
+thiserror.workspace = true
+# The program waits for SIGTERM and SIGINT.
+tokio = { workspace = true, features = ["signal"] }
+zeroize.workspace = true
+
+[dev-dependencies]
+static_assertions.workspace = true
+tempfile.workspace = true

@@ -11,7 +11,7 @@
     try {
       await updates.restart();
     } catch {
-      problem = 'Anima could not restart. Quit it and open it again.';
+      problem = 'Anima.ing could not restart. Quit it and open it again.';
     }
   }
 </script>
@@ -25,7 +25,7 @@
 <div class="live" role="status">
   {#if shown.kind === 'installed'}
     <div class="banner" transition:fade>
-      <p>Anima {shown.version} is installed</p>
+      <p>Anima.ing {shown.version} is installed</p>
       <button type="button" tabindex="0" onclick={restart} {@attach press()}>Restart to update</button>
       {#if problem !== null}
         <p class="problem">{problem}</p>

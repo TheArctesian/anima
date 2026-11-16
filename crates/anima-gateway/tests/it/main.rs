@@ -3,6 +3,7 @@
 mod drawn;
 mod frames;
 mod handshake;
+mod rdp;
 mod screen;
 mod session;
 mod view;

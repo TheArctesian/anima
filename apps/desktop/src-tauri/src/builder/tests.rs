@@ -227,7 +227,7 @@ fn log_007_builder_errors_serialise_as_a_code_and_fixed_text() {
         json,
         serde_json::json!({
             "code": "not-on-main",
-            "message": "the commit is not on main of the Anima repository"
+            "message": "the commit is not on main of the Anima.ing repository"
         })
     );
 }

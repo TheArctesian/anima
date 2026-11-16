@@ -27,7 +27,7 @@ describe('the row words (INS-006)', () => {
     expect(describeCommandLine(ELSEWHERE)).toBe(
       '/Users/ann/bin/anima points at /Users/ann/Downloads/Anima.app/Contents/MacOS/anima, not this app. Install points it at this app.',
     );
-    expect(describeCommandLine({ state: 'unavailable', reason: 'disk-image' })).toContain('Move Anima to Applications');
+    expect(describeCommandLine({ state: 'unavailable', reason: 'disk-image' })).toContain('Move Anima.ing to Applications');
   });
 
   it('INS-009: the profile line is shown only when the folder is not on the PATH', () => {
@@ -36,7 +36,7 @@ describe('the row words (INS-006)', () => {
     expect(profileAdvice({ ...NOT_INSTALLED, onPath: false, profileLine: line })).toEqual({ folder: '/Users/ann/.local/bin', line });
   });
 
-  it('INS-006: Install writes to the proposed path or re-points another app\'s link; Remove only where Anima made one', () => {
+  it('INS-006: Install writes to the proposed path or re-points another app\'s link; Remove only where Anima.ing made one', () => {
     expect(installTarget(NOT_INSTALLED)).toEqual({ folder: '/Users/ann/.local/bin', path: '/Users/ann/.local/bin/anima' });
     expect(installTarget(ELSEWHERE)).toEqual({ folder: '/Users/ann/bin', path: '/Users/ann/bin/anima' });
     expect(installTarget(INSTALLED)).toBeNull();
@@ -48,7 +48,7 @@ describe('the row words (INS-006)', () => {
     const link = refusalText('occupied', { kind: 'link', linkTarget: '/opt/x/anima' }, '/a/anima');
     expect(link).toContain('There is a link at /a/anima to /opt/x/anima.');
     expect(refusalText('occupied', { kind: 'file', linkTarget: null }, '/a/anima')).toContain('There is a file at /a/anima.');
-    expect(refusalText('unwritable', null, '/a/anima')).toBe('Anima could not write to the folder.');
+    expect(refusalText('unwritable', null, '/a/anima')).toBe('Anima.ing could not write to the folder.');
   });
 });
 

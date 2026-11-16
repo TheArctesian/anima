@@ -13,7 +13,7 @@
       problem =
         reason instanceof LogFolderError && reason.problem === 'unavailable'
           ? 'Opening the log folder is not available on this system.'
-          : 'Anima could not open the log folder.';
+          : 'Anima.ing could not open the log folder.';
     }
   }
 </script>

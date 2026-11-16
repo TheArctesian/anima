@@ -16,7 +16,7 @@ it('WEB-001: an empty URL, another scheme, or no host is refused on the url fiel
   }
 });
 
-it('Section 6.3.4: a new interface opens in an Anima tab and has an empty label', () => {
+it('Section 6.3.4: a new interface opens in an Anima.ing tab and has an empty label', () => {
   expect(webValuesFrom()).toEqual({ label: '', url: '', openIn: 'ANIMA_TAB' });
   expect(webValuesFrom(SAVED)).toEqual({ label: 'Proxmox VE', url: 'https://pve.lan:8006', openIn: 'ANIMA_TAB' });
 });

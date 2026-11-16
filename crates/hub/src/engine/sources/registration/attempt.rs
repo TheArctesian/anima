@@ -200,7 +200,7 @@ impl Attempt {
         self.claim(binding)
     }
 
-    /// Binds a browser signed in to Anima to the attempt with the cookie hash `binding`. Any
+    /// Binds a browser signed in to Anima.ing to the attempt with the cookie hash `binding`. Any
     /// ticket stops working: one browser holds the attempt.
     ///
     /// # Errors

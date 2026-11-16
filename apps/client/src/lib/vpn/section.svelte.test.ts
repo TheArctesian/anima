@@ -80,11 +80,11 @@ it('VPN-009: a serving site that has a ping check offers none', async () => {
   expect(target.querySelector('a')).toBeNull();
 });
 
-it('VPN-009: a router that is not a device in Anima says so instead of offering a check', async () => {
+it('VPN-009: a router that is not a device in Anima.ing says so instead of offering a check', async () => {
   const sites = [{ ...home(), router: { ...ROUTER, device: null, inAnima: false } }];
   const target = await open({ Vpn: { vpn: picture({ sites }) } });
   expect(target.querySelector('a')).toBeNull();
-  expect(text(site(target, 'Home'))).toContain('The router is not a device in Anima');
+  expect(text(site(target, 'Home'))).toContain('The router is not a device in Anima.ing');
 });
 
 it('VPN-010: keys are listed with their expiry text', async () => {
@@ -100,11 +100,11 @@ it('VPN-010: keys are listed with their expiry text', async () => {
   }
 });
 
-it('VPN-011: a node not in Anima is marked and listed before the Anima nodes', async () => {
+it('VPN-011: a node not in Anima.ing is marked and listed before the Anima.ing nodes', async () => {
   const target = await open({ Vpn: { vpn: picture({ nodes: [node(), STRANGER] }) } });
   const rows = [...target.querySelectorAll('ul[aria-label="VPN nodes"] > li')];
   expect(rows.map((row) => row.getAttribute('aria-label'))).toEqual(['hub', 'stranger', 'mac']);
-  expect(text(rows[1])).toContain('Not in Anima');
+  expect(text(rows[1])).toContain('Not in Anima.ing');
 });
 
 it('SET-003: a new picture from vpnChanged replaces the shown one, and the hub is asked for one subscription', async () => {

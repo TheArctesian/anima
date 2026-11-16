@@ -5,7 +5,7 @@
   import { pageTitle } from './title';
 
   interface Props {
-    /** The page's name: the visible `h1`, and the window title "<title> – Anima" (NAV-010). */
+    /** The page's name: the visible `h1`, and the window title "<title> – Anima.ing" (NAV-010). */
     title: string;
     /** A secondary line under the title. */
     detail?: string;

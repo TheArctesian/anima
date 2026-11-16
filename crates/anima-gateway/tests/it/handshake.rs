@@ -1,6 +1,7 @@
 //! The gateway answers the hub's handshake as guacd does, and refuses what it cannot use.
 
 mod prompt;
+mod rdp;
 
 use anima_gateway::handshake::{Handshake, Opening, Refused, Secret, Step, error, ready};
 use guac_protocol::{
@@ -103,7 +104,7 @@ fn nothing_printed_about_an_opening_holds_the_password() {
 
 #[test]
 fn a_protocol_the_gateway_does_not_serve_is_refused_as_unsupported() {
-    let refusal = hub_opens("rdp", hub_values(&[])).expect_err("refused");
+    let refusal = hub_opens("ssh", hub_values(&[])).expect_err("refused");
     assert_eq!(refusal, Refused::NotServed);
     assert_eq!(error(refusal.status()).args, ["Aborted. See logs.", "256"]);
 }

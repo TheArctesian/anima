@@ -31,7 +31,7 @@
   {#if changed}
     <h2 id="{uid}-title"><Icon name="carbon:warning-alt" /> The certificate of {label} on {deviceName} has changed</h2>
     <div id="{uid}-why">
-      <p>{label} ({url}) presented a different certificate from the one Anima pinned, so Anima stopped loading it.</p>
+      <p>{label} ({url}) presented a different certificate from the one Anima.ing pinned, so Anima.ing stopped loading it.</p>
       <p>
         A new certificate is expected after the device is reset or its certificate is renewed. Otherwise it can mean
         that another machine is answering in its place, to read what you type, passwords included. Accept the new
@@ -41,10 +41,10 @@
   {:else}
     <h2 id="{uid}-title"><Icon name="carbon:locked" /> Check the certificate of {label} on {deviceName}</h2>
     <div id="{uid}-why">
-      <p>{label} ({url}) presented a certificate that this computer does not trust, so Anima has not loaded it.</p>
+      <p>{label} ({url}) presented a certificate that this computer does not trust, so Anima.ing has not loaded it.</p>
       <p>
         Compare the fingerprint below with the one the device shows, on its screen or in its settings. Accept it only
-        if they are the same. Anima then pins it for this web interface and stops if it ever changes.
+        if they are the same. Anima.ing then pins it for this web interface and stops if it ever changes.
       </p>
     </div>
   {/if}
@@ -59,7 +59,7 @@
   </dl>
 
   {#if current.step === 'mismatch' && current.confirming}
-    <p class="confirm">Accept this fingerprint as the certificate of {label}? Anima will trust it from now on.</p>
+    <p class="confirm">Accept this fingerprint as the certificate of {label}? Anima.ing will trust it from now on.</p>
   {/if}
   {#if problem !== undefined}
     <p class="problem" role="status">{problem}</p>

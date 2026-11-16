@@ -31,7 +31,7 @@ pub struct Definition {
     pub name: &'static str,
     pub access: Access,
     pub effect: Effect,
-    /// For an agent that has never seen Anima: what it returns, when to use it, what next.
+    /// For an agent that has never seen Anima.ing: what it returns, when to use it, what next.
     pub description: &'static str,
     pub input: Arc<JsonObject>,
     pub output: Arc<JsonObject>,

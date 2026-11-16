@@ -118,7 +118,7 @@ fn overview_definition() -> Definition {
         "anima_fleet_overview",
         Access::Read,
         Effect::Reads,
-        "Start here. Returns how many devices the Anima hub watches, how many are UP, \
+        "Start here. Returns how many devices the Anima.ing hub watches, how many are UP, \
          DOWN, DEGRADED, in MAINTENANCE or UNKNOWN, the devices that are DOWN or \
          DEGRADED (name, id, site) and the sites. Next: anima_device_get for one \
          device, anima_events_search for what happened.",

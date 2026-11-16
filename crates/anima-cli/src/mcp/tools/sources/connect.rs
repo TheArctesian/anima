@@ -43,7 +43,7 @@ pub fn start_definition() -> Definition {
         Access::Login,
         Effect::Adds,
         "Starts a connection of GitHub, which the operator finishes: the hub makes a GitHub App \
-         and the operator presses Continue on the hub page (signed in to Anima), then Create \
+         and the operator presses Continue on the hub page (signed in to Anima.ing), then Create \
          and Install on GitHub. Nothing happens until they do. Give `link` to the operator and \
          ask them to open it. Do not open it yourself and do not try to press anything for \
          them. Then watch `anima_github_connect_state`. The hub refuses while an App waits for \

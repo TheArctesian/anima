@@ -5,7 +5,7 @@ export const CHECKING = 'Testing the hub…';
 const HUB_ANSWERED = 'The hub answered.';
 const HUB_SILENT = 'The hub did not answer.';
 const HUB_ODD = 'The hub sent an odd answer.';
-const TOKEN_UNREAD = 'Anima cannot read the token.';
+const TOKEN_UNREAD = "Can't read Anima.ing's token.";
 
 /**
  * The sentence for a connection test. Any answer from the hub, including a refusal because nobody is signed in, shows
