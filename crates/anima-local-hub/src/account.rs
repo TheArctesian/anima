@@ -3,7 +3,10 @@
 //! standard input and standard output only; nothing of them is written, logged or put on a
 //! command line here (LOG-007).
 
+use std::fs;
 use std::io;
+use std::os::unix::fs::MetadataExt as _;
+use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus, Stdio};
 
 use anima_database::Role;
@@ -68,6 +71,45 @@ pub enum AccountError {
     NotReady,
     #[error("anima-hub cannot be run ({0})")]
     Start(io::ErrorKind),
+    /// Another user could have put a program there that would get the secrets (SEC-005).
+    #[error(
+        "{} is not a private folder or program of this user; the account command does not \
+         run it",
+        .0.display()
+    )]
+    Untrusted(PathBuf),
+}
+
+/// Group or others may read, write or enter.
+const GROUP_OR_OTHERS: u32 = 0o077;
+/// Group or others may write.
+const GROUP_OR_OTHERS_WRITE: u32 = 0o022;
+
+/// Refuses the program unless the hub root, each folder from it down to the program, and the
+/// program are this user's own, are not symbolic links, and no other user can change them. It
+/// changes nothing.
+fn trusted(folders: &Folders, program: &Path) -> Result<(), AccountError> {
+    let uid = nix::unistd::Uid::effective().as_raw();
+    let untrusted = |path: &Path| AccountError::Untrusted(path.to_path_buf());
+    let root = folders.root();
+    let below = program.strip_prefix(root).map_err(|_| untrusted(program))?;
+    let mut folder = root.to_path_buf();
+    let mut folders_down = vec![folder.clone()];
+    for part in below.parent().into_iter().flat_map(Path::components) {
+        folder.push(part);
+        folders_down.push(folder.clone());
+    }
+    for folder in &folders_down {
+        let found = fs::symlink_metadata(folder).map_err(|_| untrusted(folder))?;
+        if !found.is_dir() || found.uid() != uid || found.mode() & GROUP_OR_OTHERS != 0 {
+            return Err(untrusted(folder));
+        }
+    }
+    let found = fs::symlink_metadata(program).map_err(|_| untrusted(program))?;
+    if !found.is_file() || found.uid() != uid || found.mode() & GROUP_OR_OTHERS_WRITE != 0 {
+        return Err(untrusted(program));
+    }
+    Ok(())
 }
 
 /// The installed hub's command for `action`, with the database URL file of the hub's runtime
@@ -107,8 +149,9 @@ fn hub_is_ready(folders: &Folders) -> bool {
 /// standard output. Its standard error is not kept: the caller tells a fixed message.
 ///
 /// # Errors
-/// [`AccountError::NotReady`] before anything runs when the hub is not ready, and
-/// [`AccountError::Start`] when the hub's program cannot be run.
+/// [`AccountError::NotReady`] before anything runs when the hub is not ready,
+/// [`AccountError::Untrusted`] when another user could have changed the program or a folder
+/// above it, and [`AccountError::Start`] when the hub's program cannot be run.
 pub fn run(
     folders: &Folders,
     action: &Action,
@@ -119,6 +162,7 @@ pub fn run(
         return Err(AccountError::NotReady);
     }
     let spec = command(folders, action);
+    trusted(folders, &spec.program)?;
     Command::new(&spec.program)
         .args(&spec.args)
         .env_clear()

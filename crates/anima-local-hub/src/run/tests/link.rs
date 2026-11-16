@@ -105,6 +105,40 @@ async fn f_6_a_stop_during_the_links_pause_acts_at_once() {
 }
 
 #[tokio::test]
+async fn f_6_a_link_change_that_cannot_be_written_does_not_stop_the_group() {
+    use std::os::unix::fs::PermissionsExt as _;
+    let rig = rig();
+    rig.set("link-ends", "");
+    let root = rig.plan.folders.root().to_path_buf();
+    let (ask, stop) = Stop::new();
+    let asking = async {
+        while link_of(&rig).is_none() {
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+        // The state file cannot be replaced from now on.
+        fs::set_permissions(&root, fs::Permissions::from_mode(0o500)).unwrap();
+        let starts = rig.count(LINK_START);
+        while rig.count(LINK_START) < starts + 3 {
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+        fs::set_permissions(&root, fs::Permissions::from_mode(0o700)).unwrap();
+        ask.send_replace(true);
+    };
+
+    let (ended, ()) = tokio::join!(rig.run_with(stop, || {}), asking);
+
+    assert_eq!(ended.unwrap(), Ended::Asked);
+    assert_eq!(rig.count("hub stop"), 1, "the group ran until the stop");
+    assert_eq!(rig.state(), Some(State::Stopped));
+    let log = fs::read_to_string(rig.plan.folders.logs().join("local-hub.log")).unwrap();
+    assert_eq!(
+        log.matches("the state cannot be written").count(),
+        1,
+        "told once: {log}"
+    );
+}
+
+#[tokio::test]
 async fn f_6_a_link_that_cannot_be_run_leaves_the_hub_ready() {
     let rig = rig();
     fs::remove_file(rig.plan.carried.program("anima-link")).unwrap();
