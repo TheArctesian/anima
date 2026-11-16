@@ -58,6 +58,8 @@ export const REFUSED_ROOTS: readonly string[] = [
   "setCommitStatus",
   "mergePullRequest",
   "mergePullRequests",
+  "createLinkInvite",
+  "revokeLinkDevice",
 ];
 
 /** The refused roots that are query fields; every other one is a mutation field. */
