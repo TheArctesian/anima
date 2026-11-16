@@ -155,13 +155,26 @@ it('UR-7, PRO-004: the list puts projects that need a look first, each with why'
   expect(text()).toContain('A repository is no longer on GitHub.');
 });
 
-it('PRJ-030: a tab the hub does not serve yet does not show, and asking for it opens Overview', async () => {
+async function openTab(tab: string): Promise<void> {
   await store.open('acme-site');
-  app = mount(ProjectScreen, { target: document.body, props: { store, forge, slug: 'acme-site', tab: 'work' } });
+  app = mount(ProjectScreen, { target: document.body, props: { store, forge, slug: 'acme-site', tab } });
   flushSync();
-  expect(document.querySelector('[role="tablist"]')).toBeNull();
+}
+
+const tabs = () => [...document.querySelectorAll('[role="tab"]')];
+const selectedTab = () => tabs().find((each) => each.getAttribute('aria-selected') === 'true')?.textContent.trim();
+
+it('PRJ-030: the page has the Overview, Work, Code and History tabs, and asking for one opens it', async () => {
+  await openTab('work');
+  expect(tabs().map((each) => each.textContent.trim())).toEqual(['Overview', 'Work', 'Code', 'History']);
+  expect(selectedTab()).toBe('Work');
+  expect(text()).not.toContain('Where it runs');
+});
+
+it('PRJ-030: a tab word the page does not have opens Overview', async () => {
+  await openTab('design');
+  expect(selectedTab()).toBe('Overview');
   expect(text()).toContain('Where it runs');
-  expect(text()).toContain('Cloudflare was found in the repository (wrangler.toml) and is not confirmed.');
 });
 
 it('PRJ-012: the project controls use the hub order and send server filters', async () => {

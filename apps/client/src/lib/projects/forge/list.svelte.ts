@@ -1,5 +1,5 @@
 import { dataAge, type HubError, type HubResult } from '$lib/hub/hub';
-import type { PageAsk } from './api';
+import type { PageAsk } from './request';
 import type { ForgePage, ForgeRead } from './types';
 
 /** "Read 2 minutes ago", or "Stale, read 2 minutes ago" when the hub's last read failed (PRJ-032). */
