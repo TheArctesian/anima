@@ -88,9 +88,12 @@ relay and domain settings (S11), many hubs (S13), the metrics agent over the lin
   with the database URL file and the key file of the hub root. The secrets pass through standard
   input and standard output only (LOG-007).
 - **F-9 (M1).** Script in the main web view must not be able to take the account. The shell
-  permits `create` only while `account status` is `null` (the first run). Recovery (2.8) is one
-  shell command that first shows a native confirmation dialog from Rust, which script cannot
-  answer; only then it permits one `create` for 5 minutes. A user-presence check (macOS
+  creates at once only while `account status` is `null` (the first run). When an account
+  exists, the same `local_hub_account_create` command first shows a native confirmation dialog
+  from Rust, which script cannot answer, and replaces the account only on "Replace". Each
+  replacement needs its own confirmation; the shell keeps no permission for later (T6 review SF1).
+  After a cancel the command answers `busy` for 60 s and shows no dialog, so script cannot repeat
+  the dialog until the person clicks through it. A user-presence check (macOS
   LocalAuthentication) is a later addition (Section 5, OR-S6-6).
 - **F-10 (M2).** Before the client uses a loopback hub address, the shell checks that a process of
   the same user listens on that loopback port (macOS: `lsof` as the user, which sees only the
@@ -146,8 +149,13 @@ relay and domain settings (S11), many hubs (S13), the metrics agent over the lin
   end (10 s). The client saves `http://127.0.0.1:<port>` as the hub address and shows the sign-in.
 - **S3 of the review.** A successful join removes the saved token of that origin, so a token of
   an earlier hub is never sent to a new one.
-- The join screen shows the hub's address fingerprint, so that a person who got a false invite
-  can see that it is another hub.
+- The join screen shows this device's new key. The operator finds the same key in the hub's
+  "Devices on the link" list, so that a join with a false invite (another hub) shows as a key that
+  the operator's hub does not list. The link reports no hub identity at the join, so the screen
+  cannot show one (T8).
+- If the join succeeds but its finish fails (the key store or the port), the screen keeps the
+  joined state and offers "Retry", which repeats only the finish. The invite is used once, so the
+  screen never asks for it again.
 - A second use of the invite gets no answer from the hub (LNK-003); the client says that the
   invite is used, expired or wrong, or that the hub is off.
 
@@ -176,8 +184,9 @@ relay and domain settings (S11), many hubs (S13), the metrics agent over the lin
   database and the key; a remote reset would be a new path to take the hub.
 - The creation flow offers "Save a copy of the hub key": a native save dialog of the shell writes
   `vault.key` to a file that the operator chooses (mode 0600). The web view never sees the key.
-- The recovery screen also lists the link devices with "Revoke", so a device that an attacker
-  joined with a stolen token can be removed.
+- After recovery the operator removes a device that an attacker joined with a stolen token in
+  Settings, "Devices on the link" ("Revoke"). The recovery screen does not repeat the list (T8);
+  the guide gives this step.
 - The guide says: a Time Machine backup holds the database, `vault.key` and the link key together
   (FileVault and an encrypted backup disk protect them); a stolen hub computer is protected only
   by FileVault; an operator who loses the TOTP device away from the hub computer must wait until
@@ -197,14 +206,14 @@ and records `lsof -i` for each program.
 | Task | What | Proof | Review | State | Commits |
 | --- | --- | --- | --- | --- | --- |
 | T1 | This document, the spec delta, the register row | — | — | Done | the commit of this row |
-| T2 | Hub: `operator show`, `operator totp --new`, `operator create`; TOTP required and loopback names in the link mode | Tests: a wrong code saves nothing; a used code is refused at sign-in; tokens removed; no secret in logs | reviewer, reviewer-security | In progress (built, waits for review) | c4c383b4, dceb43af |
-| T3 | Hub: `fleet/link` domain, `ANIMA_LINK_CONTROL`, K1 fields, audit | Tests against a fake control socket; `LINK_OFF` without the variable; API key refused for the mutations | reviewer, reviewer-security | In progress (built, waits for review). `LINK_OFF` is `UNAVAILABLE` with a fixed message: K7 allows no new code | `4ad2d659` and the commit of this row |
-| T4 | `anima link devices|invite|revoke`; MCP `link_devices`; CMD-031 | CLI tests against the fake hub | reviewer | In progress (built, waits for review). The tool is `anima_link_devices` (MCP-011) | `88b6dea3` |
-| T5 | Local hub: the link member (F-6), hub link-mode environment, `account`, `start`, `stop` | Unit tests with stand-in programs; the existing real-program test | reviewer, reviewer-security | In progress (built, waits for review). `account` has `status`, `totp-new`, `create` (M3). | `a82f38e6`, and the commit of this row |
-| T6 | Tauri shell: account, start/stop, carried `anima-link`, device link (join, run, status); CSP | Rust unit tests; caller check on each command | reviewer, reviewer-security | In progress (built, waits for review) | the T6 commit on `s6-t6-shell` |
-| T7 | Client: loopback address rule (F-1), QR code, AWK-005 seam (F-3) | Vitest | reviewer | In progress (built, waits for review) | 3ffae7d5 |
-| T8 | Client: first-run screens (choices, create, account, TOTP, invite, join, recover) and the two Settings sections | Vitest; `reviewer-interface` | reviewer, reviewer-interface, reviewer-security (account and invite) | In progress (built, waits for review). Recovery uses `local_hub_account_create` with the shell's own dialog (`cancelled`); loopback addresses are `127.0.0.1` only (T6 review) | `a1e44e75`, `59061124`, `61727a28`, and the commit of this row |
-| T9 | Guide `docs/setup/first-run.md`; this document's results | — | — | Not started | — |
+| T2 | Hub: `operator show`, `operator totp --new`, `operator create`; TOTP required and loopback names in the link mode | Tests: a wrong code saves nothing; a used code is refused at sign-in; tokens removed; no secret in logs | reviewer, reviewer-security | Done. Review fixes: audit entries for `create` and `totp --disable`, no terminal for `create`, loopback `Host` for the health probe, atomic `create`. `operator set` writes no audit entry (unchanged; existing tests need an empty trail) | c4c383b4, dceb43af, 379869c5, 5170ee2a |
+| T3 | Hub: `fleet/link` domain, `ANIMA_LINK_CONTROL`, K1 fields, audit | Tests against a fake control socket; `UNAVAILABLE` without the variable; API key refused for the mutations | reviewer, reviewer-security | Done. With no control socket the fields answer `UNAVAILABLE` with a fixed message: K7 allows no new code. A change whose audit write fails is stated as `INTERNAL`, and an unaudited invite is cancelled | 4ad2d659, 4ab256a0 |
+| T4 | `anima link devices|invite|revoke`; MCP `link_devices`; CMD-031 | CLI tests against the fake hub | reviewer | Done. The tool is `anima_link_devices` (MCP-011) | 88b6dea3 |
+| T5 | Local hub: the link member (F-6), hub link-mode environment, `account`, `start`, `stop` | Unit tests with stand-in programs; the existing real-program test | reviewer, reviewer-security | Done. `account` has `status`, `totp-new`, `create` (M3) | a82f38e6, a1b528bb |
+| T6 | Tauri shell: account, start/stop, carried `anima-link`, device link (join, run, status); CSP | Rust unit tests; caller check on each command | reviewer, reviewer-security | Done. No separate recovery command: one dialog for each replacement, `busy` for 60 s after a cancel; a failed link swap restores the old link; `127.0.0.1` only (no `localhost`, no `[::1]`: the CSP cannot name an IPv6 literal) | 210a0fa4, 33f8c269 |
+| T7 | Client: loopback address rule (F-1), QR code, AWK-005 seam (F-3) | Vitest | reviewer | Done | 3ffae7d5, ed6f7490 |
+| T8 | Client: first-run screens (choices, create, account, TOTP, invite, join, recover) and the two Settings sections | Vitest; `reviewer-interface` | reviewer, reviewer-interface, reviewer-security | Done after two fix rounds: F-10 for a typed address, a pending check and each socket connection (MF-1); no secret in a live region; steps hold their height; join keeps the invite and offers Retry. The QR size comes from a space token, because K5 has no QR size and is frozen | 3f536a5c, a9a688b3 to ff67a2bf, 6a256238, 604295d3, bb9d80d7 |
+| T9 | Guide `docs/setup/first-run.md`; this document's results | — | — | Done (Section 6 is completed by T10 and T11) | f598e176 and the commit of this row |
 | T10 | `origin/main` merged, full gates on that commit | Gate record | — | Not started | — |
 | T11 | Run-through on this Mac from a clean state (create a hub, account, invite, a second device link on this Mac, second use of the invite, revocation, `lsof`); LaunchAgent and folders removed after | Section 6 | — | Not started | — |
 
@@ -232,4 +241,24 @@ Under load, re-run alone `ra_031_without_a_wake…`, `sources::controls::src_004
 
 ## 7. What S12 packaging needs
 
-(Filled in by T9.)
+1. **Carried programs.** A release build finds `anima-local-hub` and `anima-link` beside its own
+   executable only (`apps/desktop/src-tauri/src/carried.rs`). `anima-local-hub` in turn needs
+   `anima-hub`, `anima-database`, `anima-gateway` and a PostgreSQL 17 tree. The bundle must carry
+   all of them for each target (macOS arm64 and x86-64, Linux x86-64 and arm64). A debug build
+   reads `ANIMA_DEV_PROGRAMS` and `ANIMA_DEV_TREE` instead; a release build never does.
+2. **`anima-link` build.** Build it with `link/build.sh` only, which sets the build tags with
+   `ts_omit_portmapper`. A plain `go build` includes the port mapper (UPnP, NAT-PMP, PCP), which
+   can open a port on the router and break acceptance criterion 4.
+3. **Signing.** Sign every carried executable with the application's identity and the hardened
+   runtime, and notarize the bundle (macOS). `anima-local-hub account` and the shell check the
+   owner and mode of the hub root and of each program before they run it, so the bundle must
+   install them owned by the user and not writable by the group or others.
+4. **Key store.** Release builds use the service `ing.anima.desktop`; debug builds use
+   `ing.anima.desktop.dev`. The first release start finds no debug entries.
+5. **Origins.** The hub accepts the client origins `tauri://localhost` (macOS) and
+   `http://tauri.localhost` (Linux) in the link mode (F-11). A change of the bundle identifier or
+   the custom protocol must change `CLIENT_ORIGINS` in `crates/hub/src/lib.rs`.
+6. **CSP and capabilities.** The release `tauri.conf.json` keeps `connect-src` with
+   `http://127.0.0.1:*` and `ws://127.0.0.1:*` (OR-S6-7) and the `dialog` plugin (F-9).
+7. **Linux.** The local hub uses a systemd user unit. F-10 reads `/proc/net/tcp` and
+   `/proc/net/tcp6`; no `lsof` is needed. Check on a Linux computer (Section 6, deferred checks).
