@@ -75,11 +75,14 @@
     // The hub address is the stored setting on desktop and the serving origin in a browser (CLI-002, E-2); the token is
     // read from the desktop key store per call, and is none in a browser, where the cookie travels by itself (CLI-003).
     // On this computer's hub address the token is read only once a program of this user is found listening there (F-10).
-    const hub = createHub({ address, token: tokenFor(address, capabilities().keyStore) });
+    // The socket reconnects by itself after a dead hub, so its reader asks the shell before every connection (MF-1).
+    const desktop = capabilities().keyStore;
+    const hub = createHub({ address, token: tokenFor(address, desktop), socketToken: tokenFor(address, desktop, { fresh: true }) });
     provideHub(hub);
-    // A hub that stops answering may come back as another program on the same port: the next read checks again (M-C).
+    // A hub that stops answering may come back as another program on the same port: once the connection is not live,
+    // the next request checks again (M-C, MF-1).
     $effect(() => {
-      if (hub.status.current.connection === 'unreachable') untrack(() => forgetListener(address.origin));
+      if (hub.status.current.connection !== 'connected') untrack(() => forgetListener(address.origin));
     });
     guardStart(page.url, hub);
     // Which extensions are on decides the bar's entries and Settings (EXT-002); read once signed in.

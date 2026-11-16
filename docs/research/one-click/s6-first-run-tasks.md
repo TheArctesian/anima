@@ -98,6 +98,11 @@ relay and domain settings (S11), many hubs (S13), the metrics agent over the lin
   must also be the one that the shell's own `anima-link device` child reported. Otherwise the
   client sends nothing (no token, no password) and shows the error. Later: a Unix socket or a
   pinned certificate (S4 Section 7.4 item 2).
+  The client keeps an "own" answer for 5 s for HTTP requests. The socket asks the shell again before each
+  connection, because it connects again by itself after a hub stops. The client forgets the answer when
+  the connection stops being live, and before and after Start and Stop (security re-review MF-1).
+  Remaining risk: another program can take the port in the short time between the shell's check and the
+  send. Only a Unix socket or a pinned certificate removes this risk.
 - **F-11 (S1).** In the link mode the hub refuses a request whose `Host` is not a loopback literal,
   and a request whose `Origin` is present and not a client origin of the application. A page in a
   browser (DNS rebinding) then cannot drive sign-in failures into the throttle of `127.0.0.1`.

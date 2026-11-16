@@ -76,6 +76,8 @@ it('FRN-006: Stop stops the hub and shows the stopped state; Start starts it and
   await settle();
   expect(hub.stop).toHaveBeenCalledOnce();
   expect(hub.forget).toHaveBeenCalledWith('http://127.0.0.1:8443');
+  // Forgotten before the stop as well, so no request in flight during it uses the old answer (MF-1).
+  expect(hub.forget.mock.invocationCallOrder[0]).toBeLessThan(hub.stop.mock.invocationCallOrder[0] ?? 0);
   expect(target.querySelector('.hint')?.textContent).toContain('Stopped.');
   hub.forget.mockClear();
   click('Start');

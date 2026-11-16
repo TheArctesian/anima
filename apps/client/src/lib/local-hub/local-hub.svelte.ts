@@ -57,8 +57,10 @@ export class LocalHubWatch {
     if (this.busy) return;
     this.busy = true;
     this.problem = null;
-    // Another program may take the port while the hub is down: the next request checks again (F-10, M-C).
+    // Another program may take the port while the hub is down: forgotten before the call, so no request in flight
+    // during it uses an old answer, and after it (F-10, M-C, MF-1).
     const origin = this.origin;
+    if (origin !== null) this.shell.forget(origin);
     const done = await call();
     if (origin !== null) this.shell.forget(origin);
     if (!done.ok) this.problem = done.message;
