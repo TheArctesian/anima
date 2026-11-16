@@ -1,0 +1,100 @@
+import type { ListenerResult } from '$lib/desktop/hub-listener/shell';
+import type { DeviceLinkStatus } from '$lib/desktop/link/shell';
+import type { TokenProvider } from '$lib/hub/hub';
+
+/**
+ * Whether the desktop app must ask who listens at `origin` before it sends anything there (F-10): a plain `http`
+ * origin, which the hub address rules permit only for this computer. Anything that does not parse is checked too, and
+ * the shell refuses it.
+ */
+export function needsListenerCheck(origin: string, desktop: boolean): boolean {
+  if (!desktop) return false;
+  return !URL.canParse(origin) || new URL(origin).protocol === 'http:';
+}
+
+/** The decision for one loopback hub address: send to it only when a program of this user listens (F-10). */
+export type ListenerVerdict = { readonly safe: true } | { readonly safe: false; readonly listener: 'other' | 'none' | 'unknown' };
+
+export function verdictOf(result: ListenerResult): ListenerVerdict {
+  if (!result.ok) return { safe: false, listener: 'unknown' };
+  return result.listener === 'own' ? { safe: true } : { safe: false, listener: result.listener };
+}
+
+/** The gate refused: fixed text, so a hub client that reports it says nothing about the address (LOG-007). */
+export class ListenerRefused extends Error {
+  constructor() {
+    super('The hub address on this computer is not served by this app.');
+    this.name = 'ListenerRefused';
+  }
+}
+
+/** One page load's checks of loopback hub addresses (F-10). */
+export interface ListenerGate {
+  /** The verdict for `origin`, asked of the shell once per page load. */
+  verdict(origin: string): Promise<ListenerVerdict>;
+  /** Drops the verdict for `origin`, so that the next call asks again ("Check again"). */
+  forget(origin: string): void;
+  /** `token`, read only once the verdict for the address is safe; otherwise it rejects, so nothing is sent. */
+  token(token: TokenProvider): TokenProvider;
+}
+
+/** A gate that asks `check`; each origin is asked once until `forget`. */
+export function listenerGate(check: (origin: string) => Promise<ListenerResult>): ListenerGate {
+  const verdicts = new Map<string, Promise<ListenerVerdict>>();
+  const verdict = (origin: string): Promise<ListenerVerdict> => {
+    const known = verdicts.get(origin);
+    if (known !== undefined) return known;
+    const asked = check(origin).then(verdictOf, () => ({ safe: false, listener: 'unknown' }) as const);
+    verdicts.set(origin, asked);
+    return asked;
+  };
+  return {
+    verdict,
+    forget: (origin) => {
+      verdicts.delete(origin);
+    },
+    token: (token) => async (address) => {
+      if (!(await verdict(address.origin)).safe) throw new ListenerRefused();
+      return token(address);
+    },
+  };
+}
+
+/** What the sign-in page says when it will not send anything to the hub address (F-10). */
+export interface ListenerProblem {
+  readonly title: string;
+  readonly advice: string;
+}
+
+/** The port of `origin`, or `null` when it names none. */
+function portOf(origin: string): number | null {
+  if (!URL.canParse(origin)) return null;
+  const { port } = new URL(origin);
+  return port === '' ? null : Number(port);
+}
+
+/** The device link's own account of why it does not serve the hub address, or `null` when it is not about the link. */
+function linkProblem(origin: string, link: DeviceLinkStatus | null): ListenerProblem | null {
+  if (link === null || !link.joined || link.port !== portOf(origin)) return null;
+  const title = 'The link to the hub is not up';
+  if (link.reason === 'port-taken') return { title, advice: `Another program holds the link's port ${String(link.port)}. Close it, then check again.` };
+  if (link.reason === 'not-carried') return { title, advice: 'This build does not carry the link program.' };
+  if (link.state === 'starting') return { title: 'The link to the hub is starting', advice: 'Check again in a moment.' };
+  if (link.state === 'up') return null;
+  return { title, advice: 'The link ended. Check the network of this computer, then check again.' };
+}
+
+/** The fixed text for a refused verdict; for a joined device the link's state comes first (F-10). */
+export function listenerProblem(verdict: ListenerVerdict, origin: string, link: DeviceLinkStatus | null): ListenerProblem | null {
+  if (verdict.safe) return null;
+  const fromLink = linkProblem(origin, link);
+  if (fromLink !== null) return fromLink;
+  switch (verdict.listener) {
+    case 'other':
+      return { title: "Another program holds the hub's port", advice: 'Anima.ing sends nothing to it: no password and no token. Stop that program, then check again.' };
+    case 'none':
+      return { title: 'Nothing answers at the hub address', advice: "Start this computer's hub, or the link to your hub, then check again." };
+    case 'unknown':
+      return { title: 'The hub address could not be checked', advice: 'Anima.ing sends nothing to an address it cannot check. Check again.' };
+  }
+}

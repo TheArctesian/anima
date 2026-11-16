@@ -2,12 +2,12 @@
   import { page } from '$app/state';
   import { tick, untrack, type Snippet } from 'svelte';
   import '../styles/global.css';
+  import { tokenFor } from '$lib/access/listener/check';
   import { guardStart, showsSignedOutPage, startAt } from '$lib/access/navigation';
   import { provideDesktopBuilder } from '$lib/builds/desktop.svelte';
   import { extensionsApi } from '$lib/extensions/api';
   import { ExtensionsStore, provideExtensions } from '$lib/extensions/store.svelte';
   import { provideHub } from '$lib/hub/context';
-  import { readAccessToken } from '$lib/desktop/token';
   import { createHub, type HubAddress } from '$lib/hub/hub';
   import { crossFade } from '$lib/motion/roles/transitions';
   import { shiftShell } from '$lib/nav/banner-shift';
@@ -74,7 +74,8 @@
   function startShell(address: HubAddress) {
     // The hub address is the stored setting on desktop and the serving origin in a browser (CLI-002, E-2); the token is
     // read from the desktop key store per call, and is none in a browser, where the cookie travels by itself (CLI-003).
-    const hub = createHub({ address, token: readAccessToken });
+    // On this computer's hub address the token is read only once a program of this user is found listening there (F-10).
+    const hub = createHub({ address, token: tokenFor(address, capabilities().keyStore) });
     provideHub(hub);
     guardStart(page.url, hub);
     // Which extensions are on decides the bar's entries and Settings (EXT-002); read once signed in.
