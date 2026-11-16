@@ -114,9 +114,7 @@ impl Place {
             _ => Folders::for_user(
                 Platform::HOST,
                 &UserFolders {
-                    home: std::env::var_os("HOME")
-                        .map(PathBuf::from)
-                        .unwrap_or_default(),
+                    home: std::env::var_os("HOME").map_or_default(PathBuf::from),
                     xdg_data_home: std::env::var_os("XDG_DATA_HOME").map(PathBuf::from),
                     xdg_runtime_dir: std::env::var_os("XDG_RUNTIME_DIR").map(PathBuf::from),
                 },
