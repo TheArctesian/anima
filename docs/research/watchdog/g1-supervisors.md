@@ -1,12 +1,13 @@
 # Record: G1, what the supervisors show (watchdog prototype)
 
-Version: 2. Date: 2026-11-16.
-Status: Partly measured. The macOS part (launchd and Docker) is measured. The Linux part
-(systemd, and the right of WDG-040) is not measured: it needs the operator's Linux machine.
+Version: 3. Date: 2026-11-16.
+Status: Partly measured. launchd, Docker and systemd (the user manager) are measured. The right
+of WDG-040 is not measured: it needs root on the Linux machine.
 Version 2 adds the cases that an independent review found missing, and runs both scripts again.
-The reviewer accepted version 2.
+The reviewer accepted version 2. Version 3 adds the systemd results from the operator's Linux
+machine (operator, 2026-11-16: "you can run it on my linux machine with the anima cli").
 
-This document is a record (work plan, Section 9; PLN-010). It adds no requirement. Its Section 6
+This document is a record (work plan, Section 9; PLN-010). It adds no requirement. Its Section 7
 lists inputs for the owner of the requirements,
 [watchdog.md](../../programme/proposals/watchdog.md).
 
@@ -28,14 +29,14 @@ questions:
 - Each supervisor has one script. Each script starts the program in each case, reads the state of
   the supervisor at intervals, and removes what it made at the end, also when the script stops.
 - Each reading starts with the time since the step of the case, from the clock. launchd is read at
-  intervals of about 1 s, and Docker at intervals of about 0.55 s. A time in this record is thus
-  correct to about one interval.
+  intervals of about 1 s, and Docker and systemd at intervals of about 0.5 s. A time in this
+  record is thus correct to about one interval.
 
 | Supervisor | Script | Machine | Result |
 | --- | --- | --- | --- |
 | launchd | [g1/launchd.sh](g1/launchd.sh) | macOS 27.0.1 (26A434), Apple silicon, a job of the user domain `gui/501` | [launchd log](g1/results/launchd-macos-27.0.1.log) |
 | Docker | [g1/docker.sh](g1/docker.sh) | Docker Engine 29.9.3 in Docker Desktop, linux/arm64, on the same Mac. The image is built from `scratch`; nothing is downloaded. | [Docker log](g1/results/docker-29.9.3-desktop-arm64.log) |
-| systemd | [g1/systemd.sh](g1/systemd.sh) | Not run | — |
+| systemd | [g1/systemd.sh](g1/systemd.sh) | Pop!_OS 24.04, x86_64, systemd 255 (255.4-1ubuntu8.15pop0), the user manager of user 1000. The files went up with `anima files put`, the script ran through `anima ssh`, and the log came back with `anima files get`. | [systemd log](g1/results/systemd-255-pop-os-24.04-user.log) |
 
 The scripts read the state as a watchdog can read it: `launchctl print`, `docker inspect` and
 `docker events`, `systemctl show` and the journal. None reads the process table (WDG-006).
@@ -138,12 +139,51 @@ Findings:
   in the status.
 - **F-D10.** `docker restart` does not increase `RestartCount` (D9).
 
-## 5. Not measured
+## 5. Results: systemd
+
+Cases S1 to S7 of the systemd log. Each unit has `RestartSec=2`, `StartLimitIntervalSec=30` and
+`StartLimitBurst=3`. The journal lines are from `journalctl --user-unit`. `ExecMainCode` 1 is an
+exit and 2 is a signal.
+
+| Case | Restart | What happened | `systemctl show` | Journal |
+| --- | --- | --- | --- | --- |
+| S1 | `no` | `crash` exits 3 after 2 s. | `failed`/`failed`, `Result=exit-code`, `ExecMainCode=1`, `ExecMainStatus=3` | not read |
+| S2 | `on-failure` | `crash` exits 1 after 1 s, each time. | Between the runs: `activating`/`auto-restart` for about 2 s (`RestartSec`). `NRestarts` goes 0, 1, 2, 3. Then `failed`/`failed`, `Result=exit-code`, and no more starts. | not read |
+| S3 | `always` | A person: `systemctl stop`. | `inactive`/`dead`, `Result=success`, `NRestarts=0`. Not started again. | A job of type `stop`: "Stopping …" (`MESSAGE_ID=de5b426a…`), then "Stopped …" with `JOB_RESULT=done` (`MESSAGE_ID=9d1aaa27…`). |
+| S4 | `always` | A person: `systemctl kill --signal=TERM`. `serve` exits 0. | `activating`/`auto-restart` for about 2 s, then `active`/`running`, `NRestarts=1`. | "Sent signal SIGTERM to main process … on client request." Then "Scheduled restart job, restart counter is at 1." (`MESSAGE_ID=5eb03494…`). |
+| S5 | `always` | `serve` gets SIGKILL from a shell. | `Result=signal`, `ExecMainCode=2`, `ExecMainStatus=9`, `activating`/`auto-restart` for about 2 s, then `running`, `NRestarts=1`. | not read |
+| S6 | `always` | A person: `systemctl kill --signal=TERM`. `plain` does not catch it. | `Result=success`, `ExecMainCode=2`, `ExecMainStatus=15`, `auto-restart`, then `running`, `NRestarts=1`. | "Sent signal SIGTERM … on client request.", then "Scheduled restart job". |
+| S7 | `no` | `systemctl restart` (the restart of WDG-021). | `active`/`running`. `NRestarts` stays 0. | "Stopping …" (`JOB_TYPE=stop`), "Stopped …" with `JOB_TYPE=restart`, "Started …". |
+
+Findings:
+
+- **F-S1.** While systemd waits to start a unit again, the state is `ActiveState=activating` with
+  `SubState=auto-restart` (S2, S4, S5, S6). This is the state to wait for (WDG-023), as
+  WDG-023 says.
+- **F-S2.** When the start limit stops the attempts, the unit is `failed`/`failed` with
+  `Result=exit-code` and `NRestarts` at its last value (S2). `Result` does not say
+  `start-limit-hit` in this case. A `failed` unit with a restart rule other than `no` is thus the
+  sign that systemd stopped its attempts (WDG-024). The journal of S2 was not read.
+- **F-S3.** systemd shows a stop by a person in two ways. `systemctl stop` gives
+  `inactive`/`dead` with `Result=success`, and the journal has a job of type `stop` (S3).
+  `systemctl kill` writes "on client request" to the journal (S4, S6). A SIGKILL from a shell
+  gives `Result=signal` (S5); its journal was not read.
+- **F-S4.** `systemctl kill` does not stop the restart rule: with `Restart=always`, systemd starts
+  the unit again (S4, S6). Only `systemctl stop` keeps it stopped (S3).
+- **F-S5.** systemd counts a SIGTERM exit as a success: `Result=success` with
+  `ExecMainStatus=15` (S6).
+- **F-S6.** `systemctl restart` does not increase `NRestarts` (S7), as `docker restart` does not
+  increase `RestartCount` (F-D10).
+- **F-S7.** The first run of the script failed: it wrote the unit files with a double suffix
+  (`.service.service`), and systemd found no unit. The script is corrected; the log is of the
+  second run. Both runs removed their units.
+
+## 6. Not measured
 
 | Question | Why | What is needed |
 | --- | --- | --- |
-| systemd: the states to wait for (WDG-023) and the signs of `systemctl stop` (WDG-025) | No Linux machine here. Docker Desktop runs no systemd, and an image with systemd needs a download. | Run [g1/systemd.sh](g1/systemd.sh) on the operator's Linux machine and add its log to `g1/results/`. |
-| The right of WDG-040 (OD-WDG-2) | It needs root on a Linux machine and a polkit rule. | The manual steps at the end of [g1/systemd.sh](g1/systemd.sh). The group `docker` is not in them. |
+| systemd system units (not the user manager) | The `anima ssh` session is user 1000. | A run as root, if the watchdog is to watch system units. The rules of F-S1 to F-S6 are expected to be the same. |
+| The right of WDG-040 (OD-WDG-2) | It needs root on a Linux machine and a polkit rule. The session has no root, and this record does not use a password. | The operator does the manual steps at the end of [g1/systemd.sh](g1/systemd.sh). The group `docker` is not in them. |
 | Docker on Linux, not in Docker Desktop | Docker Desktop runs the Engine in a virtual machine. | Run [g1/docker.sh](g1/docker.sh) on the Linux machine. The results are expected to be the same, because the restart policy and the events are in the Engine. |
 | Docker after a restart of the daemon or the machine | To restart Docker Desktop stops the operator's other containers. | A run on the Linux machine. The Docker documentation says that `always` containers start again after a restart of the daemon, also after `docker stop`, and that `unless-stopped` containers stay stopped. |
 | How long the Engine keeps events for `docker events --since` | Not in the scripts. | A run that reads the events after a restart of the agent. |
@@ -151,39 +191,47 @@ Findings:
 | If launchd stops its attempts after more than 28 s | Not in the scripts. | A longer case L4. |
 | A launchd system job (LaunchDaemon) | It needs root. OD-WDG-10 recommends the jobs of the user only. | Only if OD-WDG-10 is decided the other way. |
 
-## 6. Inputs for the owner (watchdog.md)
+## 7. Inputs for the owner (watchdog.md)
 
 These are not requirements. They are inputs for the operator's decisions and for the next version
 of [watchdog.md](../../programme/proposals/watchdog.md).
 
-1. **WDG-023.** The states to wait for are `spawn scheduled` for launchd (F-L1) and `restarting`
-   for Docker (F-D1). The systemd states stay to be measured.
+1. **WDG-023.** The states to wait for are `spawn scheduled` for launchd (F-L1), `restarting`
+   for Docker (F-D1), and `activating`/`auto-restart` for systemd (F-S1).
 2. **WDG-025, launchd.** launchd does not show who stopped a job (F-L3). A SIGKILL from a shell
    can be a person or a failure (L1, L7). The findings mean that, for launchd, only a nonzero exit
    code (L4, L6) is a failure that a watchdog can tell. A signal such as SIGSEGV, SIGBUS, SIGILL
-   or SIGABRT is expected to be one too; no case produced these signals. An exit 0, SIGTERM and SIGKILL fall under "cannot tell". With KeepAlive true, launchd
-   restarts the job in each of these cases (F-L4). A person keeps a job stopped with `bootout` or
-   `disable` (F-L4).
+   or SIGABRT is expected to be one too; no case produced these signals. An exit 0, SIGTERM and
+   SIGKILL fall under "cannot tell". With KeepAlive true, launchd restarts the job in each of
+   these cases (F-L4). A person keeps a job stopped with `bootout` or `disable` (F-L4).
 3. **WDG-025, Docker.** The events tell a stop through the API (F-D6). A watchdog needs to read the
    events while it runs to use this sign. After a restart of the agent, the sign of F-D7 is
-   available for `always` and `unless-stopped`; `docker events --since` is not measured.
-4. **WDG-021, launchd.** `kickstart` without `-k` starts a job that is not running (F-L6).
+   available for `always`, and is expected for `unless-stopped`; `docker events --since` is not
+   measured.
+4. **WDG-025, systemd.** systemd tells a person: the journal has the job of type `stop`, or "on
+   client request" for `systemctl kill` (F-S3). Unlike Docker, the journal stays, so a watchdog
+   can read it after a restart of the agent. Only `systemctl stop` keeps a unit with a restart
+   rule stopped (F-S4).
+5. **WDG-021, launchd.** `kickstart` without `-k` starts a job that is not running (F-L6).
    `kickstart -k` restarts a running job, but its result can look like a person's stop (F-L6).
    `kickstart` returned only after 7 to 15 s in the cases measured (F-L5). This wait is not a
    failure of the command.
-5. **WDG-024.** For Docker, "the supervisor stopped its own attempts" is `exited` with
-   `RestartCount` equal to `MaximumRetryCount` under `on-failure:N` (F-D3). For launchd, the
-   attempts did not stop in 28 s (F-L2).
-6. **WDG-029.** A restart by the watchdog through `docker restart` is not in `RestartCount`
-   (F-D10). If the Docker check (CHK-014) counts restarts from `RestartCount`, it does not count
-   the watchdog's restarts. This record does not check how CHK-014 counts.
-7. **WDG-007.** Docker reports `unhealthy` and does nothing more (F-D8). The probe kind "Docker
+6. **WDG-024.** For Docker, "the supervisor stopped its own attempts" is `exited` with
+   `RestartCount` equal to `MaximumRetryCount` under `on-failure:N` (F-D3). For systemd, it is a
+   `failed` unit with a restart rule other than `no` (F-S2). For launchd, the attempts did not
+   stop in 28 s (F-L2).
+7. **WDG-029.** A restart by the watchdog through `docker restart` is not in `RestartCount`
+   (F-D10), and one through `systemctl restart` is not in `NRestarts` (F-S6). A check that counts
+   restarts from these counters does not count the watchdog's restarts. This record does not
+   check how CHK-014 counts.
+8. **WDG-007.** Docker reports `unhealthy` and does nothing more (F-D8). The probe kind "Docker
    health" does not conflict with the supervisor.
-8. **WDG-018 and WDG-025, Docker.** `paused` is a stop by a person that the status shows (F-D9).
+9. **WDG-018 and WDG-025, Docker.** `paused` is a stop by a person that the status shows (F-D9).
 
-## 7. Cleanup on the Mac
+## 8. Cleanup
 
-The scripts removed the launchd job, all `g1-*` containers and the image `g1-watch:local`.
+The scripts removed the launchd job, all `g1-*` containers, the image `g1-watch:local` and the
+`g1-watch-*` units. The files in `/tmp` of the Linux machine were deleted through `anima ssh`.
 `launchctl enable` in case L3 left one line `"ing.anima.g1.watch" => enabled` in the launchd
 override list of user 501. It has no effect: no job has that label. No command to remove the line
 was tried.

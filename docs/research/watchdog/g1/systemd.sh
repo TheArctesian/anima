@@ -64,12 +64,13 @@ journal_of() {
 		}'
 }
 
-# Writes and starts the unit $1 with Restart=$2; the rest are the arguments of g1prog.
+# Writes and starts the unit $1 (a name that ends in .service) with Restart=$2; the rest are
+# the arguments of g1prog.
 run() {
 	unit=$1
 	restart=$2
 	shift 2
-	cat >"$UNITS/$unit.service" <<EOF
+	cat >"$UNITS/$unit" <<EOF
 [Unit]
 Description=G1 prototype of the Anima watchdog
 StartLimitIntervalSec=30
