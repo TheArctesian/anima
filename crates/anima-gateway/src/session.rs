@@ -8,6 +8,8 @@
 mod hub;
 mod input;
 mod opening;
+mod picture;
+mod rdp;
 mod running;
 
 use std::time::Duration;
@@ -19,6 +21,7 @@ use tokio::time::timeout;
 use zeroize::{Zeroize, Zeroizing};
 
 use crate::frames::Pace;
+use crate::handshake::Desktop;
 use hub::Hub;
 use opening::First;
 
@@ -80,6 +83,12 @@ pub enum Ended {
     DeviceUnreachable,
     #[error("the device did not answer as a VNC server")]
     NotVnc,
+    #[error("the device did not answer as an RDP server")]
+    NotRdp,
+    #[error("the device does not offer the security the session must use")]
+    SecurityNotOffered,
+    #[error("the device's certificate is not the accepted one")]
+    OtherCertificate,
     #[error("the device offers no sign-in method the gateway has")]
     NoSignInMethod,
     #[error("the operator did not answer the prompt in time")]
@@ -88,7 +97,7 @@ pub enum Ended {
     SignInRefused,
     #[error("the sign-in did not finish")]
     SignInFailed,
-    #[error("the device sent what a VNC server may not send")]
+    #[error("the device sent what its protocol does not allow")]
     DeviceFault,
     #[error("the system gave no random numbers")]
     NoRandomNumbers,
@@ -116,9 +125,9 @@ where
         Ok(Err(ended)) => return ended,
         Err(_) => return opening::refuse(&mut hub, status::CLIENT_TIMEOUT, Ended::Refused).await,
     };
-    if matches!(opening.desktop, crate::handshake::Desktop::Rdp(_)) {
-        let not_served = crate::handshake::Refused::NotServed.status();
-        return opening::refuse(&mut hub, not_served, Ended::Refused).await;
+    if let Desktop::Rdp(rdp) = &opening.desktop {
+        let rdp = rdp.clone();
+        return rdp::serve(&mut hub, opening, &rdp, settings).await;
     }
     match opening::sign_in(&mut hub, opening, settings).await {
         Ok(opened) => running::run(&mut hub, opened, settings).await,

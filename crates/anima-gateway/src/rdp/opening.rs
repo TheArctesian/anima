@@ -108,7 +108,10 @@ pub async fn open(
     let upgrade = ironrdp_tokio::connect_begin(&mut plain, &mut connector)
         .await
         .map_err(|error| match error.kind() {
-            ConnectorErrorKind::Negotiation(_) => OpenError::Security,
+            // The device refused what was asked, or picked what was not asked.
+            ConnectorErrorKind::Negotiation(_) | ConnectorErrorKind::Reason(_) => {
+                OpenError::Security
+            }
             _ => OpenError::NotRdp,
         })?;
 

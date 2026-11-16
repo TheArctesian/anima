@@ -166,7 +166,7 @@ where
 
 /// Asks the operator for each credential in `needs` that the hub did not send, and puts
 /// the answers into `opening`.
-async fn ask_for_missing<S>(
+pub(super) async fn ask_for_missing<S>(
     hub: &mut Hub<S>,
     opening: &mut Opening,
     needs: &[Credential],
