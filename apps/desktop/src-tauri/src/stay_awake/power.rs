@@ -71,9 +71,7 @@ pub fn from_supplies(supplies: &[Supply]) -> Power {
 
 fn supply_at(entry: &Path) -> Supply {
     let field = |name: &str| {
-        fs::read_to_string(entry.join(name))
-            .map(|text| text.trim().to_owned())
-            .unwrap_or_default()
+        fs::read_to_string(entry.join(name)).map_or_default(|text| text.trim().to_owned())
     };
     Supply {
         kind: field("type"),
@@ -88,14 +86,12 @@ fn supply_at(entry: &Path) -> Supply {
 
 /// The supplies under `root` (`/sys/class/power_supply`); none when it cannot be read.
 fn supplies_under(root: &Path) -> Vec<Supply> {
-    fs::read_dir(root)
-        .map(|entries| {
-            entries
-                .flatten()
-                .map(|entry| supply_at(&entry.path()))
-                .collect()
-        })
-        .unwrap_or_default()
+    fs::read_dir(root).map_or_default(|entries| {
+        entries
+            .flatten()
+            .map(|entry| supply_at(&entry.path()))
+            .collect()
+    })
 }
 
 /// The output of `pmset` with `args` as text, or `None` when it did not run.
