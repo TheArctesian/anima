@@ -244,6 +244,7 @@ These documents are records, not plans. They must not add a requirement (PLN-009
 | `programme/phase-2-*.md` and `programme/phase-3-*.md`, but not the two plans | Contracts, acceptance records and optional items of a phase |
 | `research/`, but not the task breakdowns and spec delta proposals in `research/one-click/` that the register lists | Audits and reports |
 | `setup/`, [releases.md](releases.md), [programme/linux-client-setup.md](programme/linux-client-setup.md) | Procedures |
+| [need-human-testing.md](need-human-testing.md) | The list of checks that only a person can do, with the state of each |
 | [ui-critique-2026-11-11.md](ui-critique-2026-11-11.md), [ui-inventory-2026-11-11.md](ui-inventory-2026-11-11.md) | Reviews of the interface |
 
 ## 10. Rules for plans and progress
