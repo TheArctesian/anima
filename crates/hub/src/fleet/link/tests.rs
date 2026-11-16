@@ -1,11 +1,10 @@
-//! The link's wire form, the ownership check and the socket client against a fake control
-//! socket (FRN-009, LNK-003, LNK-004, LOG-007).
+//! The link's wire form; the socket client and the ownership check against a fake control
+//! socket are in `tests/` (FRN-009, LNK-003, LNK-004, LOG-007).
 
-use std::{
-    fs,
-    os::unix::fs::{PermissionsExt as _, symlink},
-    path::{Path, PathBuf},
-};
+mod owned;
+mod socket;
+
+use std::{fs, os::unix::fs::PermissionsExt as _, path::PathBuf};
 
 use proptest::prelude::*;
 use tokio::{
@@ -16,17 +15,15 @@ use tokio::{
 use super::{
     Error, LinkPath, Refusal,
     model::{ListedDevice, MadeInvite, Revoked},
-    owned,
-    socket::Control,
-    wire::{MAX_LINE, Request, parse_reply},
+    wire::{Request, parse_reply},
 };
 
-const INVITE: &str = "anima-invite.1.SECRETSECRETSECRET";
+pub(super) const INVITE: &str = "anima-invite.1.SECRETSECRETSECRET";
 const DEVICE: &str = r#"{"key":"nodekey:0a0b","fingerprint":"1a2b3c4d","name":"laptop",
     "address":"fd41:4e49:4d41::7","permitted":"2030-05-05T12:00:00.123456789Z",
     "expires":"2030-08-03T12:00:00.123456789Z","streams":2,"path":"relayed","relay":"derp-ams"}"#;
 
-fn uid() -> u32 {
+pub(super) fn uid() -> u32 {
     rustix::process::geteuid().as_raw()
 }
 
@@ -131,8 +128,23 @@ proptest! {
     }
 }
 
+#[test]
+fn frn_009_the_invite_verbs_and_an_answer_with_no_result() {
+    let text = |request: Request<'_>| String::from_utf8(request.line()).unwrap();
+    assert_eq!(text(Request::InvitesList), "{\"verb\":\"invites.list\"}\n");
+    assert_eq!(
+        text(Request::InvitesCancel { id: "ab12" }),
+        "{\"args\":{\"id\":\"ab12\"},\"verb\":\"invites.cancel\"}\n"
+    );
+    parse_reply::<()>(br#"{"ok":true,"result":null}"#).unwrap();
+    let missing = parse_reply::<Vec<ListedDevice>>(br#"{"ok":true,"result":null}"#);
+    assert!(matches!(missing, Err(Error::Unreadable)), "{missing:?}");
+}
+
 /// A private folder with a socket that answers each request line with `answer(line)`.
-fn fake(answer: impl Fn(&str) -> Vec<u8> + Send + Sync + 'static) -> (tempfile::TempDir, PathBuf) {
+pub(super) fn fake(
+    answer: impl Fn(&str) -> Vec<u8> + Send + Sync + 'static,
+) -> (tempfile::TempDir, PathBuf) {
     let folder = tempfile::tempdir().unwrap();
     fs::set_permissions(folder.path(), fs::Permissions::from_mode(0o700)).unwrap();
     let path = folder.path().join("control.sock");
@@ -155,111 +167,4 @@ async fn serve(stream: UnixStream, answer: Answer) {
     while let Ok(Some(line)) = lines.next_line().await {
         let _ = write.write_all(&answer(&line)).await;
     }
-}
-
-#[tokio::test]
-async fn lnk_003_the_client_sends_the_request_and_reads_the_invite() {
-    let (_folder, path) = fake(|line| {
-        assert_eq!(line, r#"{"args":{"name":"phone"},"verb":"invites.make"}"#);
-        format!(
-            r#"{{"ok":true,"result":{{"invite":"{INVITE}","expires":"2030-05-06T12:00:00Z"}}}}"#
-        )
-        .into_bytes()
-        .into_iter()
-        .chain(*b"\n")
-        .collect()
-    });
-    let made: MadeInvite = Control::new(path)
-        .call(Request::InvitesMake { name: "phone" })
-        .await
-        .unwrap();
-    assert_eq!(made.invite.expose(), INVITE);
-}
-
-#[tokio::test]
-async fn frn_009_a_reply_over_one_mebibyte_is_refused() {
-    let (_folder, path) = fake(|_| {
-        let mut long = br#"{"ok":true,"result":""#.to_vec();
-        long.resize(MAX_LINE + 10, b'a');
-        long
-    });
-    let error = Control::new(path)
-        .call::<Vec<ListedDevice>>(Request::DevicesList)
-        .await
-        .unwrap_err();
-    assert!(matches!(error, Error::Unreadable), "{error:?}");
-}
-
-#[tokio::test(start_paused = true)]
-async fn frn_009_a_link_that_does_not_answer_times_out() {
-    let (_folder, path) = fake(|_| Vec::new());
-    let error = Control::new(path)
-        .call::<Vec<ListedDevice>>(Request::DevicesList)
-        .await
-        .unwrap_err();
-    assert!(matches!(error, Error::TimedOut), "{error:?}");
-}
-
-#[tokio::test]
-async fn frn_009_a_missing_socket_is_a_link_that_does_not_run() {
-    let folder = tempfile::tempdir().unwrap();
-    fs::set_permissions(folder.path(), fs::Permissions::from_mode(0o700)).unwrap();
-    let error = Control::new(folder.path().join("control.sock"))
-        .call::<Vec<ListedDevice>>(Request::DevicesList)
-        .await
-        .unwrap_err();
-    assert!(matches!(error, Error::NotRunning), "{error:?}");
-}
-
-fn exposed(path: &Path, uid: u32) -> bool {
-    matches!(owned::check(path, uid), Err(Error::Exposed(_)))
-}
-
-#[tokio::test]
-async fn frn_009_the_socket_and_its_folder_must_be_the_hub_users_and_owner_only() {
-    let (folder, path) = fake(|_| Vec::new());
-    assert!(owned::check(&path, uid()).is_ok());
-    assert!(exposed(&path, uid() + 1), "another user's socket");
-
-    fs::set_permissions(&path, fs::Permissions::from_mode(0o660)).unwrap();
-    assert!(exposed(&path, uid()), "a socket the group can reach");
-    fs::set_permissions(&path, fs::Permissions::from_mode(0o600)).unwrap();
-
-    fs::set_permissions(folder.path(), fs::Permissions::from_mode(0o750)).unwrap();
-    assert!(exposed(&path, uid()), "a folder the group can reach");
-    fs::set_permissions(folder.path(), fs::Permissions::from_mode(0o700)).unwrap();
-
-    let regular = folder.path().join("file");
-    fs::write(&regular, "").unwrap();
-    fs::set_permissions(&regular, fs::Permissions::from_mode(0o600)).unwrap();
-    assert!(exposed(&regular, uid()), "not a socket");
-
-    let linked = folder.path().join("linked.sock");
-    symlink(&path, &linked).unwrap();
-    assert!(exposed(&linked, uid()), "the socket itself a symbolic link");
-}
-
-#[tokio::test]
-async fn frn_009_a_folder_above_that_others_can_write_is_refused() {
-    let (outer, _) = fake(|_| Vec::new());
-    let open = outer.path().join("open");
-    fs::create_dir(&open).unwrap();
-    let inner = open.join("link");
-    fs::create_dir(&inner).unwrap();
-    fs::set_permissions(&inner, fs::Permissions::from_mode(0o700)).unwrap();
-    let path = inner.join("control.sock");
-    let _listener = UnixListener::bind(&path).unwrap();
-    fs::set_permissions(&path, fs::Permissions::from_mode(0o600)).unwrap();
-    fs::set_permissions(&open, fs::Permissions::from_mode(0o755)).unwrap();
-    assert!(owned::check(&path, uid()).is_ok());
-    fs::set_permissions(&open, fs::Permissions::from_mode(0o777)).unwrap();
-    assert!(
-        exposed(&path, uid()),
-        "a folder above that others can write"
-    );
-    fs::set_permissions(&open, fs::Permissions::from_mode(0o1777)).unwrap();
-    assert!(
-        owned::check(&path, uid()).is_ok(),
-        "the sticky bit stops a replacement"
-    );
 }

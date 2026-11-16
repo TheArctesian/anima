@@ -4,8 +4,14 @@
 //! too; no folder above may be another user's or open to others without the sticky bit; and a
 //! symbolic link in the path passes only when no other user can change where it leads.
 //!
-//! The check reads file metadata only. Between it and the connect, only this user or root can
-//! change what the path leads to.
+//! On macOS an access-control list can admit another user whatever the mode bits say, so the
+//! socket and its folder must have none (the link drops them from its folder, `chmod -N`).
+//! Without `unsafe` the hub has no ACL call, so it reads them as `/bin/ls -lde` prints them.
+//! On Linux the group bits of a file with an ACL are its mask: the owner-only test already
+//! refuses any entry that grants access.
+//!
+//! The check reads file metadata. Between it and the connect, only this user or root can change
+//! what the path leads to.
 
 use std::{
     fs::{self, Metadata},
@@ -21,6 +27,8 @@ const FOLDER: &str = "the socket's folder is another user's, or others can reach
 const ABOVE: &str = "a folder above the socket is another user's, or others can write to it";
 const LINK: &str = "a symbolic link in the socket's path can be changed by another user";
 const UNREADABLE: &str = "a folder of the socket's path cannot be read";
+#[cfg(target_os = "macos")]
+const ACL: &str = "the socket or its folder has an access-control list";
 
 /// Whether the socket at `path` is safe to connect to for the user `uid`.
 ///
@@ -34,7 +42,53 @@ pub(super) fn check(path: &Path, uid: u32) -> Result<(), Error> {
     if !socket.file_type().is_socket() || !owner_only(&socket, uid) {
         return Err(Error::Exposed(SOCKET));
     }
+    without_acl(folder, path)
+}
+
+/// Neither path has an access-control list entry (macOS).
+#[cfg(target_os = "macos")]
+fn without_acl(folder: &Path, socket: &Path) -> Result<(), Error> {
+    let listed = std::process::Command::new("/bin/ls")
+        .arg("-lde")
+        .arg(folder)
+        .arg(socket)
+        .env_clear()
+        .output()
+        .map_err(|_| Error::Exposed(UNREADABLE))?;
+    if !listed.status.success() {
+        return Err(Error::Exposed(UNREADABLE));
+    }
+    if String::from_utf8_lossy(&listed.stdout)
+        .lines()
+        .any(acl_entry)
+    {
+        return Err(Error::Exposed(ACL));
+    }
     Ok(())
+}
+
+#[cfg(not(target_os = "macos"))]
+#[expect(
+    clippy::unnecessary_wraps,
+    reason = "the macOS check of the same signature can fail"
+)]
+const fn without_acl(_: &Path, _: &Path) -> Result<(), Error> {
+    Ok(())
+}
+
+/// A line `ls -le` prints for one ACL entry (` 0: group:everyone allow list`), or a mode with
+/// the `+` that marks an ACL. A name with a line break can only make the hub refuse.
+#[cfg(target_os = "macos")]
+fn acl_entry(line: &str) -> bool {
+    let entry = line.starts_with(' ')
+        && (line.trim_start().split_once(':')).is_some_and(|(index, _)| {
+            !index.is_empty() && index.bytes().all(|b| b.is_ascii_digit())
+        });
+    let marked = line
+        .split_whitespace()
+        .next()
+        .is_some_and(|mode| mode.len() == 11 && mode.ends_with('+'));
+    entry || marked
 }
 
 /// The folder is this user's and owner-only, and every folder above it is safe.

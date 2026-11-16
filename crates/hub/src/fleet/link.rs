@@ -14,11 +14,12 @@ mod socket;
 mod tests;
 mod wire;
 
-pub use model::{LinkPath, Refusal};
+pub use model::LinkPath;
+pub(crate) use model::Refusal;
 
 /// Why a call to the link failed. No variant holds a reply, an invite or a key (LOG-007).
 #[derive(Debug, thiserror::Error)]
-pub enum Error {
+pub(crate) enum Error {
     /// `ANIMA_LINK_CONTROL` is not set: the hub has no link to ask.
     #[error("the hub has no link control socket")]
     Off,

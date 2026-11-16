@@ -7,6 +7,7 @@ use std::{
     os::unix::fs::PermissionsExt as _,
     path::PathBuf,
     sync::{Arc, Mutex},
+    time::Duration,
 };
 
 use anima_hub::{
@@ -22,7 +23,10 @@ use tokio::{
     net::{UnixListener, UnixStream},
 };
 
-use crate::hub::{Hub, dependencies, set_operator, start};
+use crate::{
+    hub::{Hub, PASSWORD, USERNAME, dependencies, start},
+    totp::{code as totp_code, enrol},
+};
 
 pub const INVITE: &str = "anima-invite.1.ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 pub const KEY: &str = "nodekey:5c1a0000000000000000000000000000000000000000000000000000000000aa";
@@ -57,6 +61,14 @@ pub struct FakeLink {
 
 impl FakeLink {
     pub fn start(answer: impl Fn(&Value) -> String + Send + Sync + 'static) -> Self {
+        Self::slow(Duration::ZERO, answer)
+    }
+
+    /// A link that waits `delay` before each answer.
+    pub fn slow(
+        delay: Duration,
+        answer: impl Fn(&Value) -> String + Send + Sync + 'static,
+    ) -> Self {
         let folder = tempfile::tempdir().unwrap();
         fs::set_permissions(folder.path(), fs::Permissions::from_mode(0o700)).unwrap();
         let path = folder.path().join("control.sock");
@@ -66,7 +78,7 @@ impl FakeLink {
         let (answer, record): (Answer, _) = (Arc::new(answer), seen.clone());
         tokio::spawn(async move {
             while let Ok((stream, _)) = listener.accept().await {
-                tokio::spawn(serve(stream, answer.clone(), record.clone()));
+                tokio::spawn(serve(stream, delay, answer.clone(), record.clone()));
             }
         });
         Self {
@@ -74,6 +86,11 @@ impl FakeLink {
             path,
             seen,
         }
+    }
+
+    /// Every request the link got.
+    pub fn requests(&self) -> Vec<Value> {
+        self.seen.lock().unwrap().clone()
     }
 
     /// The requests the link got, other than `devices.list`.
@@ -88,12 +105,18 @@ impl FakeLink {
 type Answer = Arc<dyn Fn(&Value) -> String + Send + Sync>;
 
 /// Answers each request line of one connection.
-async fn serve(stream: UnixStream, answer: Answer, record: Arc<Mutex<Vec<Value>>>) {
+async fn serve(
+    stream: UnixStream,
+    delay: Duration,
+    answer: Answer,
+    record: Arc<Mutex<Vec<Value>>>,
+) {
     let (read, mut write) = stream.into_split();
     let mut lines = BufReader::new(read).lines();
     while let Ok(Some(line)) = lines.next_line().await {
         let request: Value = serde_json::from_str(&line).unwrap();
         record.lock().unwrap().push(request.clone());
+        tokio::time::sleep(delay).await;
         let _ = write.write_all(answer(&request).as_bytes()).await;
     }
 }
@@ -110,15 +133,27 @@ pub async fn hub_over(pool: &PgPool, link: &FakeLink) -> (Hub, String) {
             link.path.display().to_string(),
         ),
     ]);
-    set_operator(pool).await;
+    // The link mode refuses a sign-in without TOTP (FRN-007).
+    let secret = enrol(pool).await;
     let clock: Arc<dyn Clock> = Arc::new(FixedClock(start()));
     let parts = Dependencies {
         config: Arc::new(config::from_env(&env).unwrap()),
         ..dependencies(pool, clock, Bus::new(16))
     };
     let hub = Hub::serving(pool, parts);
-    let token = hub.token().await;
+    let token = signed_in(&hub, &totp_code(&secret, start())).await;
     (hub, token)
+}
+
+/// The operator's token from a sign-in with the password and `one_time_code`.
+async fn signed_in(hub: &Hub, one_time_code: &str) -> String {
+    let query = "mutation($input: LoginInput!) { login(input: $input) { token } }";
+    let input = json!({ "username": USERNAME, "password": PASSWORD, "totpCode": one_time_code });
+    let response = hub.post(None, query, json!({ "input": input })).await;
+    response["data"]["login"]["token"]
+        .as_str()
+        .unwrap_or_else(|| panic!("login failed: {response}"))
+        .to_owned()
 }
 
 /// An API key of `scope` made with the operator's `token`.
@@ -167,4 +202,22 @@ pub async fn written(pool: &PgPool) -> String {
     .fetch_one(pool)
     .await
     .unwrap()
+}
+
+/// Makes every later audit write of the test database fail, as a full disk would.
+pub async fn break_the_audit_log(pool: &PgPool) {
+    sqlx::query(
+        "create function events.refuse_audit() returns trigger language plpgsql as \
+         $$ begin raise exception 'audit refused'; end $$",
+    )
+    .execute(pool)
+    .await
+    .unwrap();
+    sqlx::query(
+        "create trigger refuse_audit before insert on events.audit_log \
+         for each row execute function events.refuse_audit()",
+    )
+    .execute(pool)
+    .await
+    .unwrap();
 }

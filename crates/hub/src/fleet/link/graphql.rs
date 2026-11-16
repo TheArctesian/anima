@@ -8,6 +8,8 @@
 
 mod change;
 
+use change::Change;
+
 use std::sync::Arc;
 
 use async_graphql::{Context, Error as GraphQlError, Object, Result};
@@ -29,6 +31,10 @@ use crate::{
 
 /// The longest device name the link takes (`link/devices/list.go`).
 const NAME_CHARS: usize = 64;
+/// A fingerprint is 8 hex digits (`tunnel.DeviceKey.Fingerprint`); the cap leaves room.
+const FINGERPRINT_CHARS: usize = 16;
+/// A relay is named by a host name, at most 253 characters.
+const RELAY_CHARS: usize = 253;
 /// Longer than any key text the link writes; a longer argument is not sent.
 const KEY_CHARS: usize = 256;
 
@@ -44,7 +50,7 @@ impl LinkDevice {
 
     /// The short form of the key that `anima-link join` prints on the device.
     async fn fingerprint(&self) -> String {
-        clean(&self.0.fingerprint, NAME_CHARS)
+        clean(&self.0.fingerprint, FINGERPRINT_CHARS)
     }
 
     async fn name(&self) -> String {
@@ -62,7 +68,7 @@ impl LinkDevice {
 
     /// The relay's name when the path is `RELAYED`.
     async fn relay(&self) -> Option<String> {
-        (self.0.relay.as_deref()).map(|relay| clean(relay, NAME_CHARS))
+        (self.0.relay.as_deref()).map(|relay| clean(relay, RELAY_CHARS))
     }
 
     /// When the device's key stops being permitted; null when the link gives no time.
@@ -123,14 +129,21 @@ impl Mutation {
         }
         // The answer holds a secret: no cache may keep it.
         ctx.insert_http_header("cache-control", "no-store");
-        let entry_name = name.clone();
-        let call = async move {
-            let request = Request::InvitesMake { name: &name };
-            control.call::<MadeInvite>(request).await
-        };
-        let made = change::run(ctx, call, Some("name"), move |made| {
-            change::invite_made(&entry_name, made)
-        })
+        let (asked, entry_name, undo_name) = (control.clone(), name.clone(), name.clone());
+        let made = change::run(
+            ctx,
+            Change {
+                call: async move {
+                    let request = Request::InvitesMake { name: &name };
+                    asked.call::<MadeInvite>(request).await
+                },
+                field: Some("name"),
+                entry_of: move |made: &MadeInvite| change::invite_made(&entry_name, made),
+                unwritten: move |made: MadeInvite| async move {
+                    change::withdrawn(&control, &undo_name, made.expires).await
+                },
+            },
+        )
         .await?;
         Ok(LinkInvite(made))
     }
@@ -149,13 +162,18 @@ impl Mutation {
         let device = (devices.into_iter())
             .find(|device| device.key == key)
             .ok_or_else(|| to_graphql(&Error::Refused(Refusal::DeviceUnknown), None))?;
-        let call = async move {
-            let request = Request::DevicesRevoke { key: &key };
-            control.call::<Revoked>(request).await
-        };
-        let revoked = change::run(ctx, call, Some("key"), move |revoked| {
-            change::device_revoked(&device, revoked)
-        })
+        let revoked = change::run(
+            ctx,
+            Change {
+                call: async move {
+                    let request = Request::DevicesRevoke { key: &key };
+                    control.call::<Revoked>(request).await
+                },
+                field: Some("key"),
+                entry_of: move |revoked: &Revoked| change::device_revoked(&device, revoked),
+                unwritten: |_: Revoked| std::future::ready(change::REVOKED_UNAUDITED),
+            },
+        )
         .await?;
         Ok(saturated(revoked.streams_closed))
     }
@@ -173,7 +191,7 @@ const UNKNOWN: &str = "No device on the link has this key.";
 fn control_of(ctx: &Context<'_>) -> Result<Control> {
     let config = schema_dependency::<Arc<Config>>(ctx)?;
     (config.link_control.clone())
-        .map(Control::new)
+        .map(|path| Control::new(path, rustix::process::geteuid().as_raw()))
         .ok_or_else(|| to_graphql(&Error::Off, None))
 }
 
