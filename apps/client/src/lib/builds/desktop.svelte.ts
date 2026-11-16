@@ -1,3 +1,4 @@
+import { gatedReader } from '$lib/access/listener/check';
 import { desktopBuilderShell } from '$lib/desktop/builder/shell';
 import { readThisMachine } from '$lib/desktop/this-machine';
 import { clearBuilderToken, readAccessToken, readBuilderToken, writeBuilderToken } from '$lib/desktop/token';
@@ -44,9 +45,12 @@ async function computerName(): Promise<string> {
  */
 export function provideDesktopBuilder(hub: Hub): void {
   const { address } = hub;
+  // On this computer's hub address the builder token goes on a request only after the listener check (F-10, S-1).
+  // The two reads below stay local: they only decide whether the loop runs and what a log line hides.
+  const builderToken = gatedReader(readBuilderToken, address, capabilities().keyStore);
   // The builder's calls carry the builder token and open no socket (D-1, BLD-022); a short timeout keeps reports
   // inside the lease's 15 s (BLD-005).
-  const builderHub = createRequestHub({ address, token: readBuilderToken, timeoutMs: BUILDER_CALL_TIMEOUT_MS });
+  const builderHub = createRequestHub({ address, token: builderToken, timeoutMs: BUILDER_CALL_TIMEOUT_MS });
   const builder = new ThisBuilder({
     operator: buildsApi(hub),
     builder: buildsApi(builderHub),

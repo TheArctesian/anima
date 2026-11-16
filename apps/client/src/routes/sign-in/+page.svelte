@@ -2,11 +2,11 @@
   import { onMount, tick } from 'svelte';
   import { asset } from '$app/paths';
   import { accessApi } from '$lib/access/api';
-  import { hubListeners, loopbackProblem } from '$lib/access/listener/check';
-  import type { ListenerProblem } from '$lib/access/listener/listener';
+  import { loopbackProblem, tokenFor } from '$lib/access/listener/check';
+  import { needsListenerCheck, type ListenerProblem } from '$lib/access/listener/listener';
   import { goToDevices, loadClientAt, reloadClient } from '$lib/access/navigation';
   import { storeHubAddress } from '$lib/desktop/address';
-  import { readAccessToken, writeAccessToken } from '$lib/desktop/token';
+  import { writeAccessToken } from '$lib/desktop/token';
   import { useHub } from '$lib/hub/context';
   import { createHub, parseHubAddress, type Hub, type HubAddress } from '$lib/hub/hub';
   import Icon from '$lib/icons/Icon.svelte';
@@ -44,15 +44,23 @@
   let addressText = $state(hub.address.origin);
   let addressProblem = $state<string | undefined>();
 
-  // F-10: on this computer's hub address nothing is sent until a program of this user is found listening there.
+  // F-10: on this computer's hub address nothing is sent until a program of this user is found listening there. The
+  // check runs at the start, for an address typed into the hub field, and again right before the password goes.
   let loopback = $state<ListenerProblem | null>(null);
-  let checking = $state(false);
+  let checking = $state(needsListenerCheck(hub.address.origin, desktop));
+  let checkedOrigin = hub.address.origin;
 
-  async function checkLoopback(again: boolean): Promise<void> {
+  /** Asks afresh whether the client may send to `origin`; true when it may. */
+  async function checkLoopback(origin: string): Promise<boolean> {
+    if (!needsListenerCheck(origin, desktop)) {
+      loopback = null;
+      return true;
+    }
     checking = true;
-    if (again) hubListeners.forget(hub.address.origin);
-    loopback = await loopbackProblem(hub.address.origin, desktop);
+    checkedOrigin = origin;
+    loopback = await loopbackProblem(origin, desktop);
     checking = false;
+    return loopback === null;
   }
 
   const unreachable = $derived(hubUnreachable(hub.status.current, hub.address.origin, clock.current));
@@ -61,7 +69,7 @@
 
   onMount(() => {
     inputs.username?.focus();
-    void checkLoopback(false);
+    void checkLoopback(hub.address.origin);
   });
 
   /** The address typed into the open hub field: `undefined` when the field is closed or unchanged, `null` (with the problem shown) when it is refused. */
@@ -76,18 +84,22 @@
     return parsed.value.origin === hub.address.origin ? undefined : parsed.value;
   }
 
-  /** The hub to sign in to: the current one, or one for the address typed into the open hub field. */
+  /**
+   * The hub to sign in to: the current one, or one for the address typed into the open hub field, whose token reader is
+   * behind the listener check too (F-10, M-A). Call it only after `checkLoopback` passed for that address.
+   */
   function chooseTarget(moved: HubAddress | undefined): { target: Hub; moved: HubAddress | undefined } {
     if (moved === undefined) return { target: hub, moved };
-    return { target: createHub({ address: moved, token: readAccessToken }), moved };
+    return { target: createHub({ address: moved, token: tokenFor(moved, desktop) }), moved };
   }
 
-  /** Step 1's Continue: check the two fields here and move on; nothing is sent. */
-  function continueToCode(): void {
+  /** Step 1's Continue: check the two fields here and move on; nothing goes to the hub. */
+  async function continueToCode(): Promise<void> {
     message = null;
-    if (loopback !== null) return;
+    if (checking) return;
     // A bad hub address is told now, while the form is still open to fix it (CLI-002).
-    if (typedAddress() === null) return;
+    const typed = typedAddress();
+    if (typed === null || !(await checkLoopback((typed ?? hub.address).origin))) return;
     fields = checkLogin({ username, password, totpCode: '' });
     const first = firstInvalid(fields);
     if (first === undefined) {
@@ -105,19 +117,26 @@
 
   function formSubmitted(event: SubmitEvent): void {
     event.preventDefault();
-    if (step === 'credentials') continueToCode();
+    if (step === 'credentials') void continueToCode();
   }
 
   async function submit(totpCode: string): Promise<void> {
     // One attempt at a time: a second browser sign-in would leave a token on the hub that no cookie holds.
-    if (busy || loopback !== null) return;
+    if (busy || checking) return;
     const typed = typedAddress();
     if (typed === null) return;
+    busy = true;
+    // A fresh answer for the address the password goes to, before any request or socket for it (F-10, M-A, M-B).
+    if (!(await checkLoopback((typed ?? hub.address).origin))) {
+      busy = false;
+      password = '';
+      step = 'credentials';
+      return;
+    }
     const { target, moved } = chooseTarget(typed);
     const form = { username, password, totpCode };
     // The secrets leave the page state as soon as they are read; only the user name stays (LOG-007).
     password = '';
-    busy = true;
     const outcome = await signIn({ api: accessApi(target), address: target.address, desktop, writeToken: writeAccessToken }, form);
     if (target !== hub) closeCandidate(target);
     if (outcome.signedIn && (!desktop || moved !== undefined)) {
@@ -177,7 +196,7 @@
           <Notice icon="carbon:locked">
             <p><strong>{loopback.title}</strong></p>
             <p>{loopback.advice}</p>
-            <p><button type="button" class="again" tabindex="0" disabled={checking} onclick={() => void checkLoopback(true)}>Check again</button></p>
+            <p><button type="button" class="again" tabindex="0" disabled={checking} onclick={() => void checkLoopback(checkedOrigin)}>Check again</button></p>
           </Notice>
         </div>
       {:else if unreachable !== null}
@@ -207,7 +226,7 @@
 
       {#if step === 'credentials'}
         <!-- tabindex="0": WebKit skips plain buttons when Tab is pressed unless they are focusable, as for the nav links (NAV-005, WP-11 H-6). -->
-        <button type="submit" tabindex="0" disabled={loopback !== null} {@attach press()}>Continue<Icon name="carbon:arrow-right" size="sm" /></button>
+        <button type="submit" tabindex="0" disabled={loopback !== null || checking} {@attach press()}>Continue<Icon name="carbon:arrow-right" size="sm" /></button>
       {/if}
     </form>
 

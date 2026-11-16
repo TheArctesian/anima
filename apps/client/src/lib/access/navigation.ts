@@ -45,7 +45,7 @@ export function reloadClient(): void {
  * signed by an old cookie survives. `replace`: the page left behind does not stay in the history. The path always
  * differs from the current one, so this is a load and never a jump within the page.
  */
-export function loadClientAt(path: '/devices' | typeof SIGN_IN_PATH): void {
+export function loadClientAt(path: '/devices' | typeof SIGN_IN_PATH | typeof WELCOME_PATH): void {
   location.replace(resolve(path));
 }
 

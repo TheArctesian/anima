@@ -28,24 +28,33 @@ export class ListenerRefused extends Error {
   }
 }
 
-/** One page load's checks of loopback hub addresses (F-10). */
+/** The checks of loopback hub addresses (F-10). */
 export interface ListenerGate {
-  /** The verdict for `origin`, asked of the shell once per page load. */
+  /** The verdict for `origin`; the shell is asked again once the last answer is older than the gate's lifetime. */
   verdict(origin: string): Promise<ListenerVerdict>;
-  /** Drops the verdict for `origin`, so that the next call asks again ("Check again"). */
+  /** Drops the verdict for `origin`, so that the next call asks again (Check again, Start, Stop, Leave, a lost hub). */
   forget(origin: string): void;
   /** `token`, read only once the verdict for the address is safe; otherwise it rejects, so nothing is sent. */
   token(token: TokenProvider): TokenProvider;
 }
 
-/** A gate that asks `check`; each origin is asked once until `forget`. */
-export function listenerGate(check: (origin: string) => Promise<ListenerResult>): ListenerGate {
-  const verdicts = new Map<string, Promise<ListenerVerdict>>();
+/** How long an answer stands: a program that takes the port later is seen within this time (security review M-C). */
+export const VERDICT_LIFETIME_MS = 5000;
+
+/** What the gate needs: the shell's check and the clock (CQ-021). */
+export interface GateParts {
+  readonly check: (origin: string) => Promise<ListenerResult>;
+  readonly now: () => number;
+}
+
+/** A gate that asks `check`; an answer stands for `VERDICT_LIFETIME_MS`, or until `forget`. */
+export function listenerGate({ check, now }: GateParts): ListenerGate {
+  const verdicts = new Map<string, { readonly asked: Promise<ListenerVerdict>; readonly at: number }>();
   const verdict = (origin: string): Promise<ListenerVerdict> => {
     const known = verdicts.get(origin);
-    if (known !== undefined) return known;
+    if (known !== undefined && now() - known.at < VERDICT_LIFETIME_MS) return known.asked;
     const asked = check(origin).then(verdictOf, () => ({ safe: false, listener: 'unknown' }) as const);
-    verdicts.set(origin, asked);
+    verdicts.set(origin, { asked, at: now() });
     return asked;
   };
   return {

@@ -1,3 +1,4 @@
+import { forgetListener } from '$lib/access/listener/check';
 import { readLocalHub, startLocalHub, stopLocalHub, type LocalHubResult, type LocalHubStatus } from '$lib/desktop/local-hub/shell';
 import { localHubOrigin } from './address';
 import { pollUntilSettled } from './state';
@@ -8,6 +9,8 @@ export interface LocalHubShell {
   readonly start: () => Promise<LocalHubResult<null>>;
   readonly stop: () => Promise<LocalHubResult<null>>;
   readonly wait: (ms: number) => Promise<void>;
+  /** Drops the listener answer for an origin, so that the next request checks the port again (F-10, M-C). */
+  readonly forget: (origin: string) => void;
 }
 
 export const desktopLocalHubShell: LocalHubShell = {
@@ -15,6 +18,7 @@ export const desktopLocalHubShell: LocalHubShell = {
   start: startLocalHub,
   stop: stopLocalHub,
   wait: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+  forget: forgetListener,
 };
 
 /**
@@ -53,7 +57,10 @@ export class LocalHubWatch {
     if (this.busy) return;
     this.busy = true;
     this.problem = null;
+    // Another program may take the port while the hub is down: the next request checks again (F-10, M-C).
+    const origin = this.origin;
     const done = await call();
+    if (origin !== null) this.shell.forget(origin);
     if (!done.ok) this.problem = done.message;
     if (waitForStop) await this.read();
     else if (done.ok) {

@@ -1,5 +1,6 @@
 import type { Joined, LinkResult } from '$lib/desktop/link/shell';
-import { parseHubAddress, type HubAddress } from '$lib/hub/hub';
+import type { HubAddress } from '$lib/hub/hub';
+import { deviceLinkAddress } from '$lib/link/devices';
 
 /** What a join needs; each part is injected, so that tests need no shell or key store. */
 export interface JoinParts {
@@ -11,12 +12,6 @@ export interface JoinParts {
 }
 
 export type JoinOutcome = { readonly ok: true; readonly fingerprint: string; readonly origin: string } | { readonly ok: false; readonly message: string };
-
-/** The hub address of the device link at `port`: always `127.0.0.1`, never `localhost` (F-1, F-2). */
-export function deviceLinkAddress(port: number): HubAddress | null {
-  const parsed = parseHubAddress(`http://127.0.0.1:${String(port)}`);
-  return parsed.ok ? parsed.value : null;
-}
 
 const PASTE = 'Paste the invite from the hub.';
 const NOT_CLEARED = 'This device joined, but the key store kept an old access token for the link address. Try again.';

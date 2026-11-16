@@ -2,7 +2,7 @@
   import { page } from '$app/state';
   import { tick, untrack, type Snippet } from 'svelte';
   import '../styles/global.css';
-  import { tokenFor } from '$lib/access/listener/check';
+  import { forgetListener, tokenFor } from '$lib/access/listener/check';
   import { guardStart, showsSignedOutPage, startAt } from '$lib/access/navigation';
   import { provideDesktopBuilder } from '$lib/builds/desktop.svelte';
   import { extensionsApi } from '$lib/extensions/api';
@@ -77,6 +77,10 @@
     // On this computer's hub address the token is read only once a program of this user is found listening there (F-10).
     const hub = createHub({ address, token: tokenFor(address, capabilities().keyStore) });
     provideHub(hub);
+    // A hub that stops answering may come back as another program on the same port: the next read checks again (M-C).
+    $effect(() => {
+      if (hub.status.current.connection === 'unreachable') untrack(() => forgetListener(address.origin));
+    });
     guardStart(page.url, hub);
     // Which extensions are on decides the bar's entries and Settings (EXT-002); read once signed in.
     const extensions = new ExtensionsStore(extensionsApi(hub));
