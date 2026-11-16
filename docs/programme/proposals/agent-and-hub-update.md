@@ -5,7 +5,8 @@ Progress: the plan register in [work-plan.md](../../work-plan.md) Section 9 hold
 Version: 1. Date: 2026-11-16.
 From: the operator's request of 2026-11-16 for two proposals: a watchdog
 ([watchdog.md](watchdog.md)), and the update of the agent and the hub.
-Status: Draft. A proposal for a ruling. No requirement is approved. Nothing is built.
+Status: Draft. A proposal for a ruling. No requirement is approved. Nothing is built. The
+operator decided its tier (OD-W23) and OD-ROL-8 on 2026-11-16. The other decisions are open.
 Map: [work-plan.md](../../work-plan.md), category Foundation, decision OD-W23.
 Identifiers: ROL-001 to ROL-052. The prefix `UPD` belongs to the desktop application (design
 specification Section 3.9) and is not changed here.
@@ -270,7 +271,7 @@ programs. The operator must accept this again, or select a second key (OD-ROL-2)
 | OD-ROL-5 | The values and the default of the automatic update | "Off" by default. "Machines" in stage B. "Machines and hub" only in stage C. |
 | OD-ROL-6 | The numbers: a quarter for each step, 10 minutes between steps, 1 hour after the first machine of an automatic rollout, 3 minutes and 5 minutes for the checks | As written. Fixed in the first version. |
 | OD-ROL-7 | Who selects the first machine | The policy, and the operator can change it in the confirmation (ROL-025). |
-| OD-ROL-8 | The targets of the agent and the hub | The agent: `linux-x86_64` and `darwin-universal`. The hub: `linux-x86_64`. Add a target only when the operator has such a machine and a builder for it (ETH-009). The operator must say if a Linux machine on ARM is in use. |
+| OD-ROL-8 | The targets of the agent and the hub | **Decided (operator, 2026-11-16): no Linux machine on ARM is in use ("don't have any").** The agent: `linux-x86_64` and `darwin-universal`. The hub: `linux-x86_64`. Add a target only when the operator has such a machine and a builder for it (ETH-009). |
 | OD-ROL-9 | Can an API key or an AI agent start, stop or roll back a rollout? | No. Add those calls to the list of INT-003. A key can read the state. |
 | OD-ROL-10 | Does a machine that has "Takes work" off (USE-004) get updates? | Yes. The update has its own switch at the machine (ROL-028). If not, a machine that takes no work keeps an old agent. |
 | OD-ROL-11 | What a rollout does when it stops: only stop, or also roll back each updated machine | Only stop (ROL-027). The updated machines passed their check. The operator has "Roll back" for one and for all. |
@@ -286,17 +287,22 @@ No task is started. The states obey PLN-007.
 
 | Task | Content | Needs | State | Commits |
 | --- | --- | --- | --- | --- |
-| U1 | Stage A. The agent reports its version; the hub keeps it and gives it. Hub API, then `anima`, then MCP, then the Device page. | A ruling for the optional member of K8 | Not started | — |
-| U2 | The release record: its fields, its signature, its place on the release host. The recipe of the Anima release makes the agent files and the record. | Tasks R5 to R7; OD-ROL-2, OD-ROL-8 | Not started | — |
+| U1 | Stage A. The agent reports its version; the hub keeps it and gives it. Hub API, then `anima`, then MCP, then the Device page. | R-118 (operator, 2026-11-16): the optional member of K8 | In progress | — |
+| U2 | The release record: its fields, its signature, its place on the release host. The recipe of the Anima release makes the agent files and the record. | Tasks R5 to R7; OD-ROL-2 | Not started | — |
 | U3 | A prototype on one Linux machine and one Mac: the second unit, the rename, the rollback of a version that stops at once and of one that does not answer, also after a restart of the machine (ROL-030). A record with measured results. | — | Not started | — |
 | U4 | The contract: how the hub tells a version, how an agent gets the record and the file, the states of a machine. | A ruling for OD-W10 and for K8; OD-ROL-1 | Not started | — |
 | U5 | The pure rules: the order of a rollout, the steps, the first machine, the states (ROL-023 to ROL-028, ROL-039 to ROL-041). | U4 | Not started | — |
 | U6 | Stage B in the hub and the agent: fetch, verify, serve, replace, check, roll back. Hub API, then `anima`, then MCP. | U2, U3, U5 | Not started | — |
 | U7 | Stage B in the client: the Updates group, the confirmation, the rollout, the list of machines. | U6 | Not started | — |
 | U8 | The automatic update of machines (ROL-046 to ROL-050). | U6 | Not started | — |
-| U9 | The gates of ROL-034 and ROL-037. | — | Not started | — |
+| U9 | The gates of ROL-034 and ROL-037. | The first release (task R7): before it, no earlier release exists to test against | Not started | — |
 | U10 | Stage C: the image of the hub in the release, the replacement of the hub with the backup and the check (ROL-019, ROL-033, ROL-035). | U6, U9; FND-006; the operator for the first installation on the VPS (VPS-005) | Not started | — |
 | U11 | The security review of the update. | U6; then U10 | Not started | — |
+
+No release is published (operator, 2026-11-16: "were still pre release"). Thus no machine has a
+released agent, and ROL-044 applies only to the agents that the operator built by hand. If U1 is
+done before the first release (task R7), each released agent reports its version from the start.
+U1 and U3 need no release. U2 and each later task wait for task R7.
 
 ## Needs
 
