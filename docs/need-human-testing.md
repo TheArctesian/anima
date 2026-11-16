@@ -169,6 +169,12 @@ image after the change.
 
 Result: Open.
 
+## Not built yet
+
+The Tools section of the Device page and the Tools filter of the device list
+([compute-plan.md](compute-plan.md) Section 11.1, CUI-010 to CUI-019) are not built. Their
+builder adds the entry.
+
 ## Checks that other documents hold
 
 These checks were open before this document. Their owner holds the steps and the state. They

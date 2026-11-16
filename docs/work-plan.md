@@ -212,7 +212,7 @@ This table is the only list of the plans of Anima. A document that is not in thi
 | [vpn-build.md](vpn-build.md) | Build specification of the VPN plan | Approved. Build state not checked | Version 0.2. |
 | [cli-mcp-plan.md](cli-mcp-plan.md) | Plan | In progress | Section 3: the command line and the MCP server are on `main`. The test against a real hub is open (#60). |
 | [extensions-plan.md](extensions-plan.md) | Plan | In progress | Its header says "For review". Connect GitHub (PRJ-039 to PRJ-042) is on `main` (2026-11-14). All other issues are open (#4 to #32). |
-| [compute-plan.md](compute-plan.md) | Plan | Draft | Its header says "For review". The issues #34 to #50 are open. |
+| [compute-plan.md](compute-plan.md) | Plan | In progress | Its header says "For review". The issues #34 to #50 are open. The tool inventory (CAP-020 to CAP-031) is built: the agent, the hub, `anima capability list` and the MCP tool (commits 1cb43b06 to a0cf53e5). Its live checks are open ([need-human-testing.md](need-human-testing.md), HT-002 to HT-006). Its client section is approved and not started (Section 11.1, CUI-010 to CUI-019). No other part is approved. |
 | [ui-redesign-direction.md](ui-redesign-direction.md) | Plan: direction of the redesign | Not checked | Its title says "draft for approval". |
 | [ui-redesign-plan.md](ui-redesign-plan.md) | Plan | Not checked | Version 0.2. |
 | [ui-site-language-plan.md](ui-site-language-plan.md) | Plan | Approved. Build state not checked | Approved for implementation on 2026-11-13. |

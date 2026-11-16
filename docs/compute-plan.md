@@ -122,7 +122,7 @@ These terms add to Section 2 of the design specification.
 
 #### Tool inventory
 
-Approved for build (operator, 2026-11-15: "lets build the two buildable ones now"; ruling number to be assigned). The first build leaves out the Apple SDKs, the simulator runtimes and the running state of the container runtime (CAP-023). The first build probes `claude` and `codex` only; a harness of AGN-009 gets a probe when the operator selects it. The graphical client comes later (CMD-030). An agent that runs as a system unit does not see the tools in the home folder of a user. On macOS, the agent does not run the placeholder programs of Apple in `/usr/bin` when the developer tools are absent. The operator said that an AI agent "will need to know what's installed so that it can either run commands or run agents". The placement of a job uses this inventory (JOB-012 to JOB-014 of [jobs.md](programme/proposals/jobs.md)). The tool inventory only reads. It needs no work route.
+Approved for build (operator, 2026-11-15: "lets build the two buildable ones now"; ruling number to be assigned). The first build leaves out the Apple SDKs, the simulator runtimes and the running state of the container runtime (CAP-023). The first build probes `claude` and `codex` only; a harness of AGN-009 gets a probe when the operator selects it. The graphical client is Section 11.1 (CUI-010 to CUI-019); it is not built. An agent that runs as a system unit does not see the tools in the home folder of a user. On macOS, the agent does not run the placeholder programs of Apple in `/usr/bin` when the developer tools are absent. The operator said that an AI agent "will need to know what's installed so that it can either run commands or run agents". The placement of a job uses this inventory (JOB-012 to JOB-014 of [jobs.md](programme/proposals/jobs.md)). The tool inventory only reads. It needs no work route.
 
 - **CAP-020.** The agent must report a tool inventory of its machine to the hub: the tools, the build targets and the AI agent programs.
 - **CAP-021.** The tool inventory must come from a fixed list of probes in the agent. The hub must not be able to send a probe or a command line to the agent.
@@ -390,6 +390,37 @@ Stages with different runtimes and quantised files give slightly different numbe
 - **CUI-004.** The Compute page must show the API keys of the router. The operator can make and revoke a key. The client shows a new key one time only.
 - **CUI-005.** The device card must show a compute badge when the device is a compute node.
 - **CUI-006.** If the hub cannot place or pull a model, the client must show the reason (PULL-003).
+
+### 11.1 Tool inventory in the client
+
+Approved for build (operator, 2026-11-16: "we should build this as a UI piece"; ruling number to be assigned). This is step 4 of CMD-030 for the tool inventory (CAP-020 to CAP-031). The hub function, the command and the MCP tool are on `main`. This section serves row 2b of Section 4 of the work plan. It needs no change to the hub and no change to a contract: it reads `Query.capabilities` (K1).
+
+- **CUI-010.** The Overview tab of the Device page must show a Tools section after Storage (MET-029).
+- **CUI-011.** On top, the section must show one summary line as text: the number of usable tools, the number of build targets, the architecture and the operating system version. Example: "12 tools · 3 build targets · aarch64 · macOS 27.0".
+- **CUI-012.** Then the section must show one row for each tool, in the groups of CAP-023 and in their order. A row gives the name of the tool and its version in the monospace font.
+- **CUI-013.** A tool that is not usable must show "Not usable", the reason as text and the repair hint (CAP-024). The client must not show this state with colour alone. The hint text must be the same as the text of `anima capability list`.
+- **CUI-014.** After the tools, the section must show the build targets as a list in the monospace font. A device with no build target shows no list.
+- **CUI-015.** The section must show when the agent found the inventory, as a relative time with the full time in a tooltip.
+- **CUI-016.** The loading and failed states must follow the Metrics section. The placeholder must be as tall as the loaded section of a typical device, so that nothing below moves (MOT-007).
+- **CUI-017.** The section must give the reason when it has no inventory. For a device with no agent: "The agent of this device reports its tools", with the Install agent action of MET-019. For a device whose agent sent no inventory: "This agent does not report tools. Update the agent."
+- **CUI-018.** The device list must have a Tools filter in its toolbar (DEV-008), after the tag filter. The operator selects one tool or types one build target. The list then shows only the devices that have it usable (`capabilities(tool, buildTarget)`). The filter must be in the address of the page, as the other filters are.
+- **CUI-019.** Text in a tool inventory comes from a device (CAP-031). The client must show it as text only, never as markup, and must cut a value that is longer than its column with the full value in a tooltip.
+
+Rules for the build:
+
+- The logic is in `$lib/metrics/tools/`, beside `$lib/metrics/storage/`: the GraphQL document in the client of the metrics domain, a pure function from the query result to the rows and the summary line, and the section component. The route only composes.
+- The values come from the design tokens and the motion helpers (design specification Sections 5.5 and 5.7). No new token is necessary.
+- The fixture for the mock hub (CON-003) must hold: a Mac with all tools, a Linux device with one tool that is not usable for each reason, a device with an agent and no inventory, and a device with no agent.
+- The tests must test what the operator sees: the summary line, the groups, each reason with its hint, each empty state, and the filter in the address.
+- The interface reviewer must measure the section in WebKit and Chromium: tokens, layout shift, reduced motion and the accessible names.
+- The builder must add an entry to [need-human-testing.md](need-human-testing.md) for the section on a real hub, in the same commit as the section.
+
+| Task | Content | State | Commits |
+| --- | --- | --- | --- |
+| T1 | The fixture, the GraphQL document and the pure function for rows and summary (CUI-011 to CUI-015, CUI-019) | Not started | — |
+| T2 | The Tools section on the Overview tab, with its states (CUI-010, CUI-016, CUI-017) | Not started | — |
+| T3 | The Tools filter of the device list (CUI-018) | Not started | — |
+| T4 | The interface review, the corrections and the entry in the human testing list | Not started | — |
 
 ## 12. Delivery
 
