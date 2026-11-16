@@ -1101,12 +1101,12 @@ The operator ruled on 2026-11-16: build E0-4 from Sections 2.3 and 2.10, keep a 
 
 | Task | Content | State | Commits |
 | --- | --- | --- | --- |
-| T1 | Contracts K-E3 (`contracts/extensions/timeline.md`) and the record-link and subject-key parts of K-E4 (`contracts/extensions/shared-records.md`), with the K1, K2, K3 and K-E8 rows. The places and files parts of K-E4 are a gap for E0-5. | In progress | |
-| T2 | Hub: the timeline domain with no table, the adapter interface, `superseded_by`, and the event log as its first adapter (TML-001 to TML-007) | In progress | |
-| T3 | Hub: the record-link domain with the table `links.record_link`, the label of a target that does not exist, and the shared subject keys (LNK-001, LNK-002, LNK-004) | In progress | |
-| T4 | Hub API: `Query.timeline`, `Query.recordLinks`, `Mutation.linkRecords`, `Mutation.unlinkRecords` | In progress | |
-| T5 | `anima timeline` and `anima record-link` commands (CMD-030) | Not started | |
-| T6 | MCP tools for the timeline and the record links (CMD-030) | Not started | |
+| T1 | Contracts K-E3 (`contracts/extensions/timeline.md`) and the record-link and subject-key parts of K-E4 (`contracts/extensions/shared-records.md`), with the K1, K2, K3 and K-E8 rows. The places and files parts of K-E4 are a gap for E0-5. | Done | `f4de06f9` |
+| T2 | Hub: the timeline domain with no table, the adapter interface, `superseded_by`, and the event log as its first adapter (TML-001 to TML-007) | Done | `f4de06f9` |
+| T3 | Hub: the record-link domain with the table `links.record_link`, the label of a target that does not exist, and the shared subject keys (LNK-001, LNK-002, LNK-004) | Done | `f4de06f9` |
+| T4 | Hub API: `Query.timeline`, `Query.recordLinks`, `Mutation.linkRecords`, `Mutation.unlinkRecords` | Done | `f4de06f9` |
+| T5 | `anima timeline list` and `anima record-link list`, `add`, `remove` (CMD-030). The noun `link` is the device link, so the record links have the noun `record-link`. | In progress | |
+| T6 | MCP tools `anima_timeline_list`, `anima_record_links_list`, `anima_record_link_add`, `anima_record_link_remove` (CMD-030) | In progress | |
 | T7 | Client: the one shared component that shows the links of a record (LNK-003). It waits for a ruling of the operator: issue #7 says it is not a foundation deliverable. | Not started | |
 | T8 | Live check on a real hub: the event log shows in `anima timeline list`, and a link is made and read | Not started | |
 

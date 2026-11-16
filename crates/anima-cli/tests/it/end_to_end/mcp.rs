@@ -202,6 +202,11 @@ async fn mcp_009_every_read_tool_answers_from_the_real_hub(pool: PgPool) {
         ("anima_notifications_overview", json!({})),
         ("anima_releases_list", json!({})),
         ("anima_vpn_status", json!({})),
+        (
+            "anima_timeline_list",
+            json!({ "from": "2000-01-01T00:00:00Z", "to": "2100-01-01T00:00:00Z" }),
+        ),
+        ("anima_record_links_list", json!({ "record": "book:1" })),
         ("anima_retention_list", json!({})),
     ];
     for (tool, arguments) in calls {
