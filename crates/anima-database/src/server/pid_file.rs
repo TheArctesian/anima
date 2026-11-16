@@ -1,0 +1,46 @@
+//! What `postmaster.pid` says about the server that wrote it. Pure.
+//!
+//! PostgreSQL writes one value on each line: 1 the process ID, 3 the start time in seconds
+//! since 1970, and 8 the status, which is `ready` when the server accepts connections.
+//! `pg_ctl` reads the same lines to decide that a start is complete.
+
+use std::time::{SystemTime, UNIX_EPOCH};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PidFile {
+    process_id: u32,
+    started_at: u64,
+    is_ready: bool,
+}
+
+impl PidFile {
+    /// `None` while the file is not yet whole.
+    pub fn parse(text: &str) -> Option<Self> {
+        let mut lines = text.lines();
+        let process_id = lines.next()?.trim().parse().ok()?;
+        let started_at = lines.nth(1)?.trim().parse().ok()?;
+        let status = lines.nth(4)?;
+        Some(Self {
+            process_id,
+            started_at,
+            is_ready: status.trim() == "ready",
+        })
+    }
+
+    /// The server process that wrote the file, when the file says it accepts connections.
+    pub fn ready_process(self) -> Option<u32> {
+        self.is_ready.then_some(self.process_id)
+    }
+
+    /// Whether this file is the ready mark of the child `process_id` that was started at
+    /// `spawned_at`. A file from before the start is stale, also when an old server had the
+    /// number that the new child has now.
+    pub fn is_ready_for(self, process_id: u32, spawned_at: SystemTime) -> bool {
+        // A clock before 1970 gives no start time to compare with, so nothing is ready.
+        self.is_ready
+            && self.process_id == process_id
+            && spawned_at
+                .duration_since(UNIX_EPOCH)
+                .is_ok_and(|spawned| self.started_at >= spawned.as_secs())
+    }
+}

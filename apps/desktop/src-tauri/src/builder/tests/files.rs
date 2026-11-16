@@ -65,8 +65,8 @@ fn upd_010_stabilize_names_renames_tauri_output_to_the_stable_anima_prefix() {
     artifact::stabilize_names(&clone, Target::LinuxX86_64, &version).unwrap();
     assert!(linux_to.is_file());
 
-    let dmg_from =
-        clone.join("target/universal-apple-darwin/release/bundle/dmg/Anima.ing_0.1.12_universal.dmg");
+    let dmg_from = clone
+        .join("target/universal-apple-darwin/release/bundle/dmg/Anima.ing_0.1.12_universal.dmg");
     fs::create_dir_all(dmg_from.parent().unwrap()).unwrap();
     fs::write(&dmg_from, b"disk").unwrap();
     artifact::stabilize_names(&clone, Target::DarwinUniversal, &version).unwrap();

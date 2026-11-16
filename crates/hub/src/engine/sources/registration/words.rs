@@ -29,9 +29,11 @@ pub fn message(snapshot: &Snapshot) -> String {
         (Phase::Connected, _) if snapshot.consumer_on => {
             "GitHub is connected. The first sync has started.".to_owned()
         }
-        (Phase::Connected, _) => "GitHub is connected. Projects is off, so Anima.ing does not read it \
+        (Phase::Connected, _) => {
+            "GitHub is connected. Projects is off, so Anima.ing does not read it \
              yet. Set Projects on in Settings > Extensions."
-            .to_owned(),
+                .to_owned()
+        }
         (Phase::Cancelled, _) => slug.map_or_else(
             || "Cancelled.".to_owned(),
             |slug| format!("Cancelled. The App {slug} is still on GitHub. Delete it there."),
