@@ -262,6 +262,25 @@ fn hear(
     })
 }
 
+fn scripted_reply(script: &mut Script, method: &Method, uri: &Uri) -> Option<Reply> {
+    let key = format!("{method} {}", uri.path());
+    script
+        .queued
+        .get_mut(&key)
+        .and_then(VecDeque::pop_front)
+        .or_else(|| {
+            script
+                .replies
+                .get(&key)
+                .or_else(|| {
+                    uri.path_and_query()
+                        .and_then(|path| script.replies.get(path.as_str()))
+                })
+                .or_else(|| script.replies.get(uri.path()))
+                .cloned()
+        })
+}
+
 async fn answer(
     State(stub): State<Stub>,
     (method, uri, headers): (Method, Uri, HeaderMap),
@@ -280,14 +299,8 @@ async fn answer(
         return dropped();
     }
     let (reply, mint_status, token, pages) = stub.with(|s| {
-        let key = format!("{method} {}", uri.path());
-        let queued = s.queued.get_mut(&key).and_then(VecDeque::pop_front);
         (
-            queued.or_else(|| {
-                (s.replies.get(&key))
-                    .or_else(|| s.replies.get(uri.path()))
-                    .cloned()
-            }),
+            scripted_reply(s, &method, &uri),
             s.mint_status,
             s.token.clone(),
             s.pages.clone(),
@@ -299,6 +312,14 @@ async fn answer(
     if method == Method::POST && uri.path().starts_with("/app/installations/") {
         let body = json!({ "token": token, "expires_at": "2099-01-01T00:00:00Z" });
         return respond(mint_status, &[], body.to_string());
+    }
+    if method == Method::GET
+        && uri.path().ends_with("/commits")
+        && uri
+            .query()
+            .is_some_and(|query| query.split('&').any(|pair| pair == "per_page=1"))
+    {
+        return respond(409, &[], "{}".to_owned());
     }
     let page: Option<usize> = uri
         .path()

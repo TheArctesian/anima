@@ -77,7 +77,7 @@ impl Forge {
         self.reply(tail, ok(&body.to_string()));
     }
 
-    /// The GET requests for `BASE` + `tail` (any query) so far, with their queries.
+    /// Live GET requests for `BASE` + `tail`, with their queries.
     pub fn heard(&self, tail: &str) -> Vec<String> {
         let path = format!("{BASE}{tail}");
         self.kit
@@ -85,19 +85,30 @@ impl Forge {
             .gets()
             .into_iter()
             .filter(|heard| heard.split('?').next() == Some(path.as_str()))
+            .filter(|heard| !sync_history(heard))
             .collect()
     }
 
-    /// Every GET request below `BASE` so far but the sync's tree and deployments.
+    /// Every live GET request below `BASE` so far.
     pub fn live_reads(&self) -> usize {
         self.kit
             .stub
             .gets()
             .iter()
             .filter(|heard| heard.starts_with(&format!("{BASE}/")))
-            .filter(|heard| !heard.contains("/git/trees/") && !heard.contains("/deployments"))
+            .filter(|heard| {
+                !heard.contains("/git/trees/")
+                    && !heard.contains("/deployments")
+                    && !sync_history(heard)
+            })
             .count()
     }
+}
+
+fn sync_history(path: &str) -> bool {
+    path.split_once('?').is_some_and(|(path, query)| {
+        path.ends_with("/commits") && query.split('&').any(|part| part == "per_page=1")
+    })
 }
 
 /// The repository synced once from the stub, at `start()`.

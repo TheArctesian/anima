@@ -68,6 +68,7 @@ pub struct Answer {
     pub status: u16,
     pub limits: Limits,
     pub content: Content,
+    pub link: Option<String>,
 }
 
 impl Answer {
@@ -360,11 +361,17 @@ fn bearer(token: &[u8]) -> Result<HeaderValue, Fault> {
 async fn read(mut response: Response) -> Result<Answer, Fault> {
     let status = response.status().as_u16();
     let limits = Limits::of(response.headers());
+    let link = response
+        .headers()
+        .get(reqwest::header::LINK)
+        .and_then(|header| header.to_str().ok())
+        .map(str::to_owned);
     let content = content(&mut response).await?;
     Ok(Answer {
         status,
         limits,
         content,
+        link,
     })
 }
 

@@ -3,6 +3,7 @@
 //! PRJ-016, SRC-012, EXT-002).
 
 mod accounts;
+mod browse;
 mod forge;
 mod github;
 mod guard;
