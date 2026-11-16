@@ -77,10 +77,22 @@ it('FRN-006: Stop stops the hub and shows the stopped state; Start starts it and
   expect(hub.stop).toHaveBeenCalledOnce();
   expect(hub.forget).toHaveBeenCalledWith('http://127.0.0.1:8443');
   expect(target.querySelector('.hint')?.textContent).toContain('Stopped.');
+  hub.forget.mockClear();
   click('Start');
   await settle();
   expect(hub.start).toHaveBeenCalledOnce();
+  expect(hub.forget).toHaveBeenCalledWith('http://127.0.0.1:8443');
   expect(target.querySelector('.hint')?.textContent).toContain('Ready.');
+});
+
+it('FRN-006: a hub that is still stopping offers no Start: the button says "Stopping…" and does nothing', async () => {
+  const hub = shell({ installed: true, running: true, state: 'stopping' });
+  const target = await open(new LocalHubWatch(hub));
+  const button = [...target.querySelectorAll('button')].find((found) => found.textContent.trim() === 'Stopping…');
+  expect(button?.getAttribute('aria-disabled')).toBe('true');
+  button?.click();
+  await settle();
+  expect(hub.start).not.toHaveBeenCalled();
 });
 
 it('2.8: "Save a copy of the hub key" opens the shell dialog and says where to keep it', async () => {

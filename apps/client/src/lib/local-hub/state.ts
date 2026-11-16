@@ -73,7 +73,8 @@ export interface Poll {
 export const POLL_MS = 1000;
 
 /**
- * Reads the status every second until it settles (ready, blocked or failed), the shell refuses or the screen goes.
+ * Reads the status every second until it settles (ready or blocked), the shell refuses or the screen goes. A failed
+ * hub starts again by itself in 10 seconds, so the poll goes on through it and shows each status.
  * Returns the last answer, or `null` when stopped.
  */
 export async function pollUntilSettled(poll: Poll): Promise<LocalHubResult<LocalHubStatus> | null> {
@@ -82,7 +83,8 @@ export async function pollUntilSettled(poll: Poll): Promise<LocalHubResult<Local
     if (poll.stopped()) return null;
     if (!result.ok) return result;
     poll.seen(result.value);
-    if (progressOf(result.value) !== 'waiting') return result;
+    const progress = progressOf(result.value);
+    if (progress === 'ready' || progress === 'blocked') return result;
     await poll.wait(POLL_MS);
   }
   return null;

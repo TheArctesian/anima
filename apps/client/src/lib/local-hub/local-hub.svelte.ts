@@ -67,6 +67,9 @@ export class LocalHubWatch {
       const last = await pollUntilSettled({ read: this.shell.read, wait: this.shell.wait, seen: (status) => (this.status = status), stopped: () => this.ended });
       if (last !== null && !last.ok) this.problem = last.message;
     }
+    // An answer taken while the hub was down ("none") must not outlast the start.
+    const after = this.origin;
+    if (after !== null) this.shell.forget(after);
     this.busy = false;
   }
 
