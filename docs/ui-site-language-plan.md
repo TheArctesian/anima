@@ -92,6 +92,31 @@ tokens that are about to be orphaned or miss ones that are about to be needed.
 | P5 | Project page with tabs and dense lists of pull requests and workflow runs, each with "Synced 2 min ago · Stale" | Dense row height (D14), a stale marker that reuses `degraded` |
 | P6 | Navigation groups shown only when their extension is on | The bar's length varies; the bottom group must not depend on a fixed count |
 
+## 2b. Theme authoring and installation
+
+Draft for review, 2026-11-15. This proposal extends the palette model in UI-005, UI-023, UI-024, UI-032 and TOK-011.
+
+- Add **Settings > Themes** beside **Extensions** and **Integrations**. Show the built-in and imported themes. Preview changes before applying them. Keep a reset to Graphite available. Keep the selected theme and the System, Light or Dark choice on the device.
+- Give authors a documented JSON template and token reference. A theme contains an identifier, name, author, licence and token schema version. Its values override an allowlist of semantic design tokens. Start with colour roles and light and dark variants. Accept theme files through the same validation for local preview and installation. The file contains typed values only. The client reads no scripts, CSS rules, fonts or remote assets from it.
+- Use Graphite values for roles the theme omits. Validate every resolved appearance against the existing contrast rules. Continue to honour high contrast and other system accessibility preferences. Refuse an invalid theme and show which token pairs failed. If a stored theme becomes invalid, use Graphite.
+- Give authors a preview of real controls and states on the Specimen page. Include text, focus, selection, status colours, charts and destructive actions. Decide the exact schema, additional token types and public distribution after testing the import and preview flow.
+
+### Theme references
+
+| Software | What the operator or author can do | Idea for Anima |
+| --- | --- | --- |
+| Obsidian | Browse themes in Appearance. Authors ship a stylesheet and manifest. Users can layer CSS snippets. [Appearance](https://obsidian.md/help/appearance), [Build a theme](https://github.com/obsidianmd/obsidian-developer-docs/blob/main/en/Themes/App%20themes/Build%20a%20theme.md). | Give themes their own Settings section. Use token overrides for small changes. |
+| VS Code and Zed | Preview themes in a picker. Override individual roles. VS Code can export the current colours. Zed also offers a theme builder. [VS Code](https://code.visualstudio.com/docs/configure/themes), [Zed](https://zed.dev/docs/themes). | Preview before apply. Let authors start from an existing theme. |
+| Blender and KiCad | Blender saves and installs XML theme presets. KiCad packages colour themes through its Plugin and Content Manager. [Blender](https://docs.blender.org/manual/en/4.4/editors/preferences/themes.html), [KiCad](https://dev-docs.kicad.org/en/addons/index.html). | Support a private file before a public gallery. |
+| Chrome and Firefox | Browser themes declare colours and image slots in a manifest. [Chrome](https://developer.chrome.com/docs/extensions/mv2/themes), [Firefox](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/manifest.json/theme). | Use a schema with a known list of keys. |
+| Home Assistant and JupyterLab | Home Assistant lists public theme variables with light and dark defaults. JupyterLab tells extension authors to reuse shared CSS variables. [Home Assistant](https://contributors.home-assistant.io/marketplace/reference/theme-variables/), [JupyterLab](https://jupyterlab.readthedocs.io/en/stable/developer/css.html). | Document the roles themes can override. Use those roles in extension surfaces. |
+| GNOME | Libadwaita exposes system appearance, accent and high contrast to applications. GNOME Shell has a separate User Themes extension. [Libadwaita](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest/styles-and-appearance.html), [Shell themes](https://extensions.gnome.org/extension/19/user-themes/). | Keep accessibility preferences independent of theme selection. |
+| KDE Plasma and Hyprland | Plasma lets the operator select which parts of a Global Theme to apply. Hyprland exposes separate controls for borders and decoration in configuration. [Plasma](https://docs.kde.org/stable_kf6/en/plasma-workspace/kcontrol/lookandfeel/), [Hyprland](https://wiki.hypr.land/configuring/core/config-options/). | Keep the palette choice independent of other appearance controls. |
+| WordPress, Shopify and Odoo | WordPress has JSON style variations. Shopify and Odoo expose colour palettes in their site editors. [WordPress](https://developer.wordpress.org/themes/global-settings-and-styles/style-variations/), [Shopify](https://help.shopify.com/en/manual/online-store/themes/customizing-themes/theme-editor/color-settings), [Odoo](https://www.odoo.com/documentation/19.0/applications/websites/website/web_design/themes.html). | Test named colours on actual controls and content. |
+| Windows Terminal | Named JSON colour schemes can apply to a profile. [Colour schemes](https://learn.microsoft.com/en-us/windows/terminal/customize-settings/color-schemes). | Give each colour role a stable name. |
+| Figma, Slack and Grafana | Figma offers System, Light and Dark for its own interface. Slack has personal theme choices. Grafana supports preference defaults at several levels. [Figma](https://help.figma.com/hc/en-us/articles/5576781786647-Change-themes-in-Figma), [Slack](https://slack.com/help/articles/205166337-Change-your-Slack-theme), [Grafana](https://grafana.com/docs/grafana/latest/administration/organization-preferences/). | Distinguish device preferences from shared defaults. |
+| Nextcloud and Node-RED | Nextcloud can set branding for the instance. Node-RED packages editor themes as plugins and selects them in server configuration. [Nextcloud](https://docs.nextcloud.com/server/stable/admin_manual/configuration_server/theming.html), [Node-RED](https://nodered.org/docs/api/ui/themes/). | Use a client preference for personal palettes. |
+
 ## 3. Phases once approved
 
 | Phase | What | Gate |

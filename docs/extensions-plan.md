@@ -25,7 +25,7 @@ Anima has three layers. The model is the Obsidian application: a small foundatio
 | --- | --- | --- |
 | Foundation | The device manager of the design specification (devices, checks, sessions, the VPN, the hub) and the engine of Section 2 | No |
 | Extensions | The 15 extensions of this plan. The Anima project builds them, and they are part of each installation. | Yes, each one (Section 2.8) |
-| Community extensions | Extensions from other people. Not in this plan (EXT-009). | Yes |
+| Community extensions | Extensions from other people. See EXT-009 and the draft direction in Section 2.8.1. | Yes |
 
 Each hub has one operator (spec Section 1.4). Other people can install their own Anima. Each operator selects the extensions that they want, and a new installation has no extension on (EXT-001). Thus Anima must not need an extension that an operator does not want. (operator, 2026-11-13)
 
@@ -226,6 +226,18 @@ Map, Wardrobe, Library and Reminders use places. The places domain owns them. Th
 - **EXT-008.** At the first start, the client must ask the operator what Anima must do, and must offer sets of extensions. One set is the developer set: Projects, Secrets, Model gateway and AI coding sessions. The operator can select a set, select single extensions, or select none. The operator can change the selection in Settings at any time.
 - **EXT-009.** Community extensions are a later phase. Do not start them until the 15 extensions of this plan are built. The first function for other people must be a new source (Section 2.1), because a source gives records only and gets only its own token. The hub must not run the code of other people until a design for isolation and permissions is approved. (operator, 2026-11-13)
 
+#### 2.8.1 Community extensions
+
+Draft for review, 2026-11-15. This direction follows EXT-009.
+
+- Give authors a sample source, a manifest reference and sample provider responses for tests. Let an author load a local project on a development hub. Let an operator install a versioned package from a file without a public listing. Decide the package format and execution model before implementation. Consider a public gallery after private installation works. [Zed development](https://zed.dev/docs/extensions/developing-extensions), [VS Code private packages](https://code.visualstudio.com/docs/configure/extensions/extension-marketplace#_install-from-a-vsix).
+- Use **Settings > Extensions** to install, enable, update, disable and remove packages. Use **Settings > Integrations** to connect accounts, grant access and see sync health. A connector can supply records after the operator connects an account. [Home Assistant setup](https://www.hacs.dev/docs/use/repositories/type/integration/), [Grafana data sources](https://grafana.com/docs/grafana/latest/datasources/).
+- Show the publisher, version, review status and requested access before the operator approves a community extension. Explain which data and actions the granted access permits. Allow private or unreviewed packages with an explicit risk acknowledgement. Record the approval for the package version and the permission grants. Ask again when an update requests more access. [Obsidian community plugins](https://obsidian.md/help/community-plugins), [Chrome permissions](https://developer.chrome.com/docs/extensions/develop/concepts/declare-permissions).
+- Define which access the runtime can enforce. Limit each source to the credential for its own connection. Include a way to disable an extension and revoke its grants. A review badge describes the checks on a release. Operator approval applies within the approved isolation and permissions design.
+- Consider an optional security assurance service. Candidates include review of a specific release and help with incident response. Evaluate insurance with an insurer or broker as a separate decision. Scope, eligibility and coverage are open.
+
+For background sync, see Section 2.12.1. For UI extensions, see Section 3.4. For extension actions and executable views, see Section 3.4.4. For token-only themes, see [Theme authoring and installation](ui-site-language-plan.md#2b-theme-authoring-and-installation).
+
 ### 2.9 Vision and text extraction
 
 Wardrobe, Library, Documents, Health and Money extract fields from photos and PDFs.
@@ -267,11 +279,49 @@ Some services tell Anima about an event with a webhook: a push to GitHub, a fini
 - **WHK-009.** The receiver must be a separate program on the machine of the hub (OD-E15). It must listen on one public port with TLS. It must run as its own user, with no access to the hub database, the credential key or the data keys. It must write each delivery to a queue that the hub reads on the same machine. The host firewall must open only this port to the public internet, and the hub port must stay closed (NET-003, DNS-005).
 - **WHK-010.** The receiver must limit the request rate for each sender address and must answer a request for an unknown address with 404 and no other text.
 
+#### 2.12.1 Community sources in the background
+
+Draft for review, 2026-11-15. This direction follows EXT-009. It uses Sections 8 to 10 of the [source contract](../contracts/extensions/sources.md) and the receiver of Section 2.12.
+
+| Software | Background model | What Anima can use |
+| --- | --- | --- |
+| Home Assistant | A data update coordinator polls once for several entities. It handles backoff and requests reauthentication when credentials fail. [Fetching data](https://contributors.home-assistant.io/core/integrations/fetching-data/). | One schedule and health state per connected account. |
+| Nextcloud | Apps can register timed jobs or queue work once after an event. A background job can prevent parallel runs. [Background jobs](https://docs.nextcloud.com/server/stable/developer_manual/basics/backgroundjobs.html). | Use the same runner for timed work and work from events. |
+| Chrome | Extension service workers wake for events and can stop when idle. Extensions persist state needed after a restart. [Service worker lifecycle](https://developer.chrome.com/docs/extensions/develop/concepts/service-workers/lifecycle). | Persist pending work and cursors. Run a source only when it has work. |
+| GitHub and Slack | They expect a quick response to each delivery. GitHub recommends queuing the work. Slack can retry an event if acknowledgement fails. [GitHub webhooks](https://docs.github.com/en/webhooks/using-webhooks/best-practices-for-using-webhooks), [Slack Events API](https://docs.slack.dev/apis/events-api/). | Acknowledge receipt after storing the delivery. Process it separately. |
+| Shopify and Stripe | Shopify recommends reconciliation against its API. Both document duplicate deliveries. Stripe also documents that events can arrive out of order. [Shopify deliveries](https://shopify.dev/docs/apps/build/webhooks/verify-deliveries), [Stripe webhooks](https://docs.stripe.com/webhooks#event-delivery-behaviors). | Fetch current data and repair missed deliveries by polling. |
+
+**Scheduled sync.** The source declares its provider, records, read scopes, interval and optional event types. Anima saves the schedule for each enabled source account. The hub runs it even when the client is closed. A community source uses the 15-minute default or a longer interval (SRC-021). The operator can pause the account or request a sync in **Settings > Integrations**.
+
+The first community sources should use declarative requests and mappings that Anima validates. Anima supplies the supported authentication, pagination and response handling. A connector can propose a cursor or record as output. The hub validates the output and commits it through the source intake. A connector that needs executable code must wait for the isolation design of EXT-009. That design must limit execution time and memory. Give each invocation only the input and state for one account.
+
+Schedule, webhook and manual requests use the same account claim and run limits. The hub persists pending work and the next due time. After a restart it resumes from the last committed cursor. It runs one catch-up sync for a due account. It keeps a concurrency limit across accounts and respects provider rate limits. Apply Retry-After and backoff to all triggers for the account. If credentials fail, pause automatic requests until the operator reconnects the account.
+
+**Webhooks.** Keep the public receiver separate from the private hub (WHK-001 to WHK-004, WHK-009). The receiver accepts only configured account routes. It bounds the queue and accepts a delivery only after it stores it. A successful HTTP response confirms queue receipt. The hub checks authenticity later. The receiver runs no connector code and holds no provider credentials.
+
+The hub uses an Anima-supported verifier and the account's webhook secret to verify the original delivery. It checks the account and the granted event types. It checks freshness when the provider signs a timestamp. In one transaction, it records the provider delivery ID for that account and sets pending sync work. Then it confirms the delivery to the receiver. On a storage failure, the hub leaves the delivery queued.
+
+The hub drops invalid or duplicate deliveries without running the connector. It keeps delivery outcomes without copying bodies or secrets into logs (LOG-007).
+
+A verified delivery requests a read for that account. It cannot invoke an arbitrary action. Coalesce a burst into one pending sync. Keep a follow-up request if an event arrives after the current run claims its work. Fetch current records from the provider. Keep a separate slow reconciliation deadline so a stream of webhooks cannot postpone it (WHK-006).
+
+**Background permissions.** The operator grants access for a specific package and source account. Background work uses this grant without an operator session. Show requested access before enabling it (Section 2.8.1). Require a new grant before adding access on update.
+
+| Grant | What it permits |
+| --- | --- |
+| Provider reads | Anima makes declared read requests for that account to approved HTTPS endpoints. It attaches the account credential only at its approved destination. The connector does not receive the token or webhook secret. |
+| Schedule and events | Anima can run the account on its approved interval or after a verified delivery of a granted event type. The connector cannot open a listener or register a public handler. |
+| Records and cursor | The connector supplies bounded records of declared types and its own sync state. Anima validates the records before storage. The grant supplies no database access or access to other accounts. |
+
+The first background contract grants no provider writes, shell, host files, general network access, session access or UI actions. Anima checks the active package and grant before each provider request and in the transaction that stores results. Pause, disable or revocation stops new work and clears pending work for the affected grant. A stale run cannot commit after the hub invalidates its claim. When the operator resumes, reconcile from the saved cursor.
+
+In **Settings > Integrations**, show the last trigger, last successful sync, next run and current reason for delay. Use the existing run history and webhook counters (ITG-003, WHK-008). For example, a certificate event requests a refresh of one account. The connector can supply the new expiry date. The event cannot schedule device maintenance.
+
 ## 3. Client
 
 ### 3.1 Pages
 
-Each extension adds one route in `apps/client/src/routes/`. The route composes components from `$lib/<domain>/` (CQ-044).
+Each built-in extension adds one route in `apps/client/src/routes/`. The route composes components from `$lib/<domain>/` (CQ-044).
 
 ### 3.2 Shared components
 
@@ -302,6 +352,88 @@ Integrations is not a navigation item. It is a section of the Settings page (Sec
 - **NAV-010.** The operator must be able to select the start page. The default stays Devices (NAV-004).
 - **NAV-011.** A group with no active items must not show.
 - **NAV-012.** The client must have a command palette (Cmd+K) that opens each page and each record type.
+
+### 3.4 Community UI extensions
+
+Draft for review, 2026-11-15. This part follows the community source contract (EXT-009).
+
+#### 3.4.1 Reference designs
+
+| Software | How contributions work | What Anima can use |
+| --- | --- | --- |
+| VS Code | The manifest declares commands, menu placement and views. The extension registers command handlers in code. Menu conditions control when a command appears. Tree views use a data provider. A webview can render a custom editor tab or sidebar view. [Commands](https://code.visualstudio.com/api/extension-guides/command), [Contribution points](https://code.visualstudio.com/api/references/contribution-points), [Tree views](https://code.visualstudio.com/api/extension-guides/tree-view), [Webviews](https://code.visualstudio.com/api/extension-guides/webview). | Use one command ID across surfaces. Give authors a native view for structured data. |
+| Obsidian | Plugins call `addCommand`, `addRibbonIcon` or `addSettingTab` from plugin code. A custom `ItemView` registers with `registerView`. The plugin can open the view in a workspace tab or a sidebar leaf. [Plugin API](https://github.com/obsidianmd/obsidian-api/blob/master/obsidian.d.ts), [Custom views](https://github.com/obsidianmd/obsidian-developer-docs/blob/main/en/Plugins/User%20interface/Views.md). | Let a command open a view. Keep the surface distinct from the action that opens it. |
+| JupyterLab | A plugin registers a command with a label and an execution function. It can add the same command to the palette or a toolbar. The application shell places widgets in named areas. [Extension points](https://jupyterlab.readthedocs.io/en/stable/extension/extension_points.html). | Keep command behavior in one place. Let the shell own placement. |
+| Grafana | An app declares its navigation pages in `plugin.json`. It can register links or components at named extension points. Grafana or another plugin owns the point that displays them. [App pages](https://grafana.com/developers/plugin-tools/tutorials/build-an-app-plugin), [Register content](https://grafana.com/developers/plugin-tools/how-to-guides/ui-extensions/register-an-extension). | Give extension pages their own routes. Publish a short list of places that accept contributions. |
+| Shopify | A target places a block on a resource page or adds an action to a menu. The target determines the context API and the UI components available to the extension. [Admin UI extensions](https://shopify.dev/docs/api/admin-extensions/latest). | Give a Device or Project panel only the context for that surface. |
+| Slack | An app publishes a Block Kit view to its Home tab or opens a modal with a structured view. Slack renders the controls. [App Home](https://docs.slack.dev/surfaces/app-home/), [Modals](https://docs.slack.dev/surfaces/modals/). | Build pages and panels from validated data and host controls. |
+| Chrome | The manifest declares a side panel page, a toolbar action or keyboard commands. Chrome owns their placement. An extension page can use the browser APIs available to it. [Side panel](https://developer.chrome.com/docs/extensions/reference/api/sidePanel), [Toolbar action](https://developer.chrome.com/docs/extensions/reference/api/action), [Commands](https://developer.chrome.com/docs/extensions/reference/api/commands). | Let the host reserve top-level controls. Use the package manifest for discovery. |
+| Figma | A plugin can declare menu commands. Its custom UI runs in an iframe and exchanges messages with the plugin code that has access to the document. [Manifest](https://developers.figma.com/docs/plugins/manifest/), [How plugins run](https://developers.figma.com/docs/plugins/how-plugins-run/). | If a custom view later needs code, define the message interface separately from the view. |
+
+#### 3.4.2 The first client contract
+
+An extension package declares its UI in a versioned manifest. Each contribution has an ID scoped to its package. The client validates the manifest against the supported UI contract version before it enables the contributions. Anima renders labels, tables, cards and links with its own controls and semantic tokens (TOK-010). The package supplies no HTML, CSS or client code for these surfaces.
+
+| Contribution | What the author declares | Where it appears |
+| --- | --- | --- |
+| Command | ID, label, required context and target page or record. A context can be global, the open device or the open project. | The existing command palette. A panel or page can link to the same command ID. The session shortcut follows design specification NAV-011. |
+| Panel | ID, title, a named slot, a host query and a card or table definition. | A read-only section below the built-in content on a Device or Project page. Anima gives the panel the ID of the open record. |
+| Page | ID, title, host query and layout made of cards, lists or tables. | A route under `/extensions/<package>/<page>`. The operator can open it from the palette or the package details. |
+
+The first commands navigate to pages or records. Section 3.4.4 describes commands that can make changes after this first contract.
+
+The host supplies the current record ID. The manifest can select an approved query and bind its typed arguments to that context. The hub checks the extension switch, the query grant and the record scope for each request. A query can return approved fields from the extension's connected sources. A panel filters to records linked to the open device or project (Section 2.10).
+
+The client loads panels when it displays their host page. It displays loading, empty and error states in the contributed section. A panel failure leaves the host page usable.
+
+The host controls titles, navigation, focus and keyboard access. The operator chooses which contributed pages to pin if pinning is added. Disabling the extension or revoking its access removes its commands and panels. A saved link to an unavailable page shows the reason in Anima. Disabling an extension keeps its data (EXT-003).
+
+#### 3.4.3 Author and operator example
+
+A certificate inventory connector supplies expiry records. An author adds three declarations to the same package.
+
+| ID | Declaration |
+| --- | --- |
+| `open-inventory` | A global command named **Open certificate inventory**. It opens the `inventory` page. |
+| `device-certificates` | A **Certificates** panel in the Device details slot. The panel uses the open Device ID to show linked certificates. |
+| `inventory` | A **Certificate inventory** page. It uses the package's approved certificate query and displays name, expiry date and status in a table. |
+
+The author previews the package on a development hub with sample records. The preview uses the same manifest validation and controls as an installed package. With no account, the page shows a link to **Settings > Integrations**. The operator installs and approves the package in **Settings > Extensions**, then connects the account. The source imports the certificate records. The panel displays records linked to the open device. The command opens the full inventory from any Anima page where the palette is available. If the operator disables the package, the command and panel disappear.
+
+#### 3.4.4 Commands that make changes and custom views
+
+Draft for review, 2026-11-15. Add named actions after the first client contract. An extension can use these actions from a host-rendered panel. A custom view can use the same actions after its isolation design is approved.
+
+| Software | Execution and permission model | Implication for Anima |
+| --- | --- | --- |
+| VS Code | The desktop extension host has the app's permissions. Webviews use message passing and can restrict scripts and local resources. [Runtime security](https://code.visualstudio.com/docs/configure/extensions/extension-runtime-security), [Webview security](https://code.visualstudio.com/api/extension-guides/webview#security). | Apply limits to the action handler as well as the view. |
+| Obsidian | Community plugins inherit app access. Restricted mode disables them. The directory scans releases and displays a safety scorecard. [Plugin security](https://obsidian.md/help/Extending%2BObsidian/Plugin%2Bsecurity). | Show review status and give the operator a disable control. Enforce grants when the extension runs. |
+| Zed | Extension code compiles to WebAssembly. Zed exposes host capabilities for operations such as starting processes and downloading files. Users can restrict those capabilities. [Development](https://zed.dev/docs/extensions/developing-extensions), [Capabilities](https://zed.dev/docs/extensions/capabilities). | Define a small set of host operations. Check each operation at the host boundary. |
+| Chrome | Extensions declare API and host permissions. Optional permissions can be granted later. Extension scripts and pages use messages to request work from other extension contexts. [Permissions](https://developer.chrome.com/docs/extensions/develop/concepts/declare-permissions), [Messaging](https://developer.chrome.com/docs/extensions/develop/concepts/messaging). | Grant access to a specific operation and resource. Validate each message at the receiver. |
+| Shopify | Checkout UI code runs in a worker without the page DOM. Shopify renders provided controls and grants selected capabilities, including network access. Admin targets expose APIs for their context. [Checkout security](https://shopify.dev/docs/api/checkout-ui-extensions/latest), [Admin targets](https://shopify.dev/docs/api/admin-extensions/latest). | Use host-rendered controls when they fit. Give a custom UI only the context it needs. |
+| Figma | Plugin code accesses the document inside a restricted runtime. An iframe renders custom UI and exchanges messages with that code. A manifest can restrict its network access. [How plugins run](https://developers.figma.com/docs/plugins/how-plugins-run/). | Give the view a message interface. Keep authority to change records in the host. |
+| Slack | Slack signs requests for slash commands and interactions. The app verifies the request and uses an OAuth token with granted scopes for Slack API calls. [Verify Slack requests](https://docs.slack.dev/authentication/verifying-requests-from-slack/), [OAuth scopes](https://docs.slack.dev/reference/scopes/). | Verify who asked for an action. Check separately what that caller can do. |
+| Grafana | Grafana documented an opt-in frontend sandbox. Its docs mark the preview deprecated. [Frontend sandbox](https://grafana.com/docs/grafana/latest/administration/plugin-management/plugin-frontend-sandbox/). | Make the isolation boundary part of the contract for executable community views. |
+
+**Actions that the hub runs.** A manifest declares an action ID, a named Anima operation and the typed inputs it uses. Anima publishes the eligible operations, the resources they accept and the fields they return. The extension can ask the host to invoke one operation. The hub uses its existing action code to make the change. Community actions have no interface for arbitrary GraphQL, shell commands, credentials, sessions or trust decisions.
+
+The operator grants each operation for specific resources in **Settings > Extensions**. For example, the operator can grant **Sync source account** for one connected account. A grant does not start work. Selecting a host-rendered command can start an action that needs no confirmation. A custom view can request a change. The operator confirms that request in Anima's own UI.
+
+For every action that needs confirmation, Anima shows the package, resolved target and intended change. Apply any additional confirmation the built-in action requires.
+
+The trusted client sends the request with the operator's session. The extension receives no session credential. The hub checks the operator, active package version, operation grant and target before it starts work. It binds confirmation to the action, target and inputs. It accepts a repeat submission of the same request at most once. A disable, revocation or package change invalidates pending requests. If work already started, Anima reports the actual result and uses the operation's existing cancellation rules.
+
+Record the operator, package, version, operation, target and outcome within the audit rules (LOG-007, LOG-012 to LOG-020). Return only the fields the operation permits. New hub functions follow CMD-030 and CMD-031. MCP tools keep the trust, secret and session limits (MCP-004 to MCP-006).
+
+For example, **Sync now** on a Certificate Inventory page can run the existing source sync for its approved account. A later **Schedule maintenance** action can open Anima's confirmation for one approved device. Anima resolves the device and shows the start and end before applying the change.
+
+**Views that run client code.** The first candidate is a sandboxed frame on a separate origin. Put it inside an extension page with an Anima header. The header identifies the package and keeps access to its settings. Load HTML and scripts from the approved package only. The frame has no access to the host DOM, session credentials, shared storage or Tauri IPC.
+
+Block external loads, direct network requests, popups and downloads. The host handles navigation requests. The frame reaches the hub through the message interface only. [Browser frame isolation](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/iframe#sandbox), [Tauri capabilities](https://v2.tauri.app/reference/acl/capability/).
+
+Use a versioned message interface for approved queries, action requests and navigation requests. Bind the interface to the loaded package version and view instance. The host validates the sender and message shape. It checks grants and scope for each request. The frame gets only the data needed for the view. Close the interface when the view closes, the package changes or the operator revokes access.
+
+Before shipping, prove that the boundary works on each supported desktop and web platform. Check access to the host DOM, network, storage and IPC. Check that stale or invalid requests fail and broken views leave Anima usable. Use host-rendered views where the boundary cannot be enforced. Keep plugin-defined background execution out of this client contract. A hub runtime for third-party code needs a separate design under EXT-009.
 
 ## 4. Extensions
 
@@ -861,9 +993,22 @@ Status: direction only. The proposed work package is XP-16. It is not in the tab
   daily digest (AIS-015).
 - **BOT-009.** The Bots extension must be free on every plan, as agent panes are (AIS-016). Its
   conversation text is sealed like session text (AIS-004, AIS-005).
+- **BOT-010.** Each bot can have its own computer: a virtual machine on one of the operator's devices,
+  or a rented machine (CVM-001). The bot's shell, files and agent panes run there, not on the host
+  device. The operator picks the size and the image when the bot is made (BOT-001).
+- **BOT-011.** A bot's own computer joins the mesh as a device with a tag for that bot only. Access
+  rules must not let one bot's computer reach another bot's computer, or the operator's devices,
+  unless the operator allows it.
+- **BOT-012.** The operator can make a bot read-only. A read-only bot can read checks, metrics, logs,
+  files and repositories that it is allowed to see, and it can write to the operator in its chat. It
+  cannot run change tools (MCP-002), write files, push, start agent panes, or act on a device. The
+  hub must enforce this on its side, not only in the bot's instructions.
+- **BOT-013.** A read-only bot must not be able to ask for more access itself. Only the operator can
+  change a bot from read-only, and that change goes in the audit log.
 
 **Depends on.** Model gateway (XP-15), agent panes (Section 4.12.1), the rule engine (ENG-001), and
-for long tasks the jobs and agent-runs proposals.
+for long tasks the jobs and agent-runs proposals. Rented bot computers (BOT-010) depend on the
+cloud machines proposal and are billed like any rented machine (CVM-009, CVM-010).
 
 **Risks.**
 
@@ -874,12 +1019,17 @@ for long tasks the jobs and agent-runs proposals.
   laptop ([cloud-machines.md](programme/proposals/cloud-machines.md)).
 - A bot with shell access is an agent that runs code. It needs the same isolation ruling as
   community extensions (EXT-009) before it runs anything that is not the operator's own instructions.
+  A bot's own computer (BOT-010) is the simplest way to meet that ruling, because a bad command
+  breaks only that computer.
+- A local virtual machine needs a hypervisor on the device: Apple Virtualization on macOS, KVM on
+  Linux, Hyper-V on Windows. Memory and disk for each bot come out of the operator's device.
 
 **Open decisions.**
 
 1. Whether a bot's chat lives in the Anima.ing client only, or also in Slack, iMessage or Telegram.
 2. Whether bots can talk to each other (a team of bots), or only to the operator in the first version.
 3. How the router judges "the cheapest model that can do the task".
+4. Whether a bot's computer is kept or wiped between tasks, and whether read-only bots get one at all.
 
 ## 5. Build order: engine first, then one workflow per extension
 
