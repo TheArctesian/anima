@@ -32,6 +32,7 @@ pub mod releases;
 pub mod retention;
 pub mod sessions;
 pub mod sites;
+pub mod snapshot;
 pub mod sources;
 pub mod tags;
 pub mod vpn;
