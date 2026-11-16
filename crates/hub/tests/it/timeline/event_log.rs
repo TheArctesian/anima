@@ -24,6 +24,7 @@ async fn tml_007_an_event_shows_as_evidence_with_each_field_of_tml_002(pool: PgP
             "title": "Ping failed.",
             "start": "2030-05-05T11:50:00+00:00",
             "end": null,
+            "receivedAt": null,
             "basis": "OBSERVED",
             "uncertainty": ["End time not given by the source."],
             "supersededBy": null,
@@ -110,4 +111,27 @@ async fn tml_001_reading_the_timeline_stores_nothing(pool: PgPool) {
     .await
     .unwrap();
     assert!(no_timeline_schema);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn tml_008_one_span_written_in_two_time_zones_gives_the_same_entries_in_utc(pool: PgPool) {
+    let (hub, token) = signed_in(&pool).await;
+    seed(&pool, &hub, (Source::Hub, "Kept at one instant."), 10).await;
+    // start() is 2030-05-05T12:00:00Z; the seeded event is at 11:50:00Z.
+    let spans = [
+        ("2030-05-05T19:00:00+08:00", "2030-05-05T19:59:00+08:00"),
+        ("2030-05-05T06:00:00-05:00", "2030-05-05T06:59:00-05:00"),
+    ];
+    for (from, to) in spans {
+        let response = hub
+            .post(
+                Some(&token),
+                super::TIMELINE,
+                json!({ "from": from, "to": to }),
+            )
+            .await;
+        assert_eq!(titles(&response), ["Kept at one instant."], "{from}");
+        let start = &response["data"]["timeline"]["edges"][0]["node"]["start"];
+        assert_eq!(start, "2030-05-05T11:50:00+00:00", "{from}");
+    }
 }

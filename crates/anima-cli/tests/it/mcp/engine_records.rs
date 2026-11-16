@@ -21,6 +21,7 @@ async fn mcp_017_timeline_list_returns_the_entries_and_the_next_cursor() {
     let hub = hub().await;
     let node = json!({ "reference": "event:1", "source": "event_log", "category": "DEVICE",
         "title": "Ping is down.", "start": "2026-11-06T08:00:00+00:00", "end": null,
+        "receivedAt": null,
         "basis": "OBSERVED", "uncertainty": ["End time not given by the source."],
         "supersededBy": null });
     hub.answer(

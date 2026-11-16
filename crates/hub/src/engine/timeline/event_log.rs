@@ -100,6 +100,7 @@ fn evidence(event: EventSummary) -> Option<Evidence> {
         title,
         start: event.at,
         end: None,
+        received_at: None,
         basis: Basis::Observed,
         uncertainty: vec![NO_END.to_owned()],
         occurrence: None,

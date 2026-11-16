@@ -9,13 +9,12 @@ pub mod link;
 pub mod maintenance;
 pub mod notifications;
 pub mod projects;
-pub mod records;
 pub mod releases;
 pub mod repositories;
 pub mod retention;
 pub mod sessions;
+pub mod shared_records;
 pub mod sources;
-pub mod timeline;
 pub mod vpn;
 pub mod web;
 
@@ -45,8 +44,8 @@ pub enum Tool {
     Sources(sources::SourceTool),
     Projects(projects::ProjectTool),
     Repositories(repositories::RepositoryTool),
-    Timeline(timeline::TimelineTool),
-    Records(records::RecordTool),
+    Timeline(shared_records::timeline::TimelineTool),
+    Records(shared_records::links::RecordTool),
 }
 
 impl Tool {
@@ -69,8 +68,8 @@ impl Tool {
         tools.extend(sources::SourceTool::ALL.map(Self::Sources));
         tools.extend(projects::ProjectTool::ALL.map(Self::Projects));
         tools.extend(repositories::RepositoryTool::ALL.map(Self::Repositories));
-        tools.extend(timeline::TimelineTool::ALL.map(Self::Timeline));
-        tools.extend(records::RecordTool::ALL.map(Self::Records));
+        tools.extend(shared_records::timeline::TimelineTool::ALL.map(Self::Timeline));
+        tools.extend(shared_records::links::RecordTool::ALL.map(Self::Records));
         tools
     }
 

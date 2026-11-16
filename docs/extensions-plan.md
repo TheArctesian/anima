@@ -155,6 +155,14 @@ The timeline joins the records of all sources. History, Map and Reminders read i
 - **TML-006.** An adapter must write an uncertainty note when it does not know a value, for example "end time not given by the source".
 - **TML-007.** The event log of the device manager (Section 3.8 of the spec) must also be a timeline source.
 
+The rules TML-008 to TML-012 and LNK-005 to LNK-006 come from issue #7 (operator, 2026-11-16).
+
+- **TML-008.** An event instant that Anima machines exchange or store must be one count: microseconds since 1970-01-01T00:00:00Z (UTC), as a signed 64-bit integer. A text form, such as RFC 3339 in the API, must give the same count when it is read again. A time zone changes only how an instant is shown. It must not change the instant or an old source time.
+- **TML-009.** Evidence must keep the event time that the source gives as its start time. When the hub receives a record later than the event, the received time is a separate value. Do not put a received time in place of an event time. When the event time is not known or is approximate, the adapter must write an uncertainty note.
+- **TML-010.** A calendar date, a recurring schedule and its time zone are not instants. Keep their meaning. Do not change a date to an instant at midnight.
+- **TML-011.** The timeline must not claim an exact order between entries from the clocks of different machines. Do not change old source events to hide clock skew. The policy for clock synchronization is not decided (OD-E16).
+- **TML-012.** A replay of the same source record must not make a second entry. A record of the same event from a different source is a separate entry (TML-005).
+
 ### 2.4 Vault and data classes
 
 The hub runs on the Hostinger VPS (OD-9). A VPS breach must not expose the most sensitive data. Thus each data type has a class.
@@ -255,6 +263,8 @@ Extensions refer to each other only through record links. Thus no extension wait
 - **LNK-002.** An extension can link to a record of an extension that does not exist yet. Until the target exists, the link keeps a text label, for example the name of a person.
 - **LNK-003.** Each record page must show its links with one shared component. An extension does not write code for the links of a different extension.
 - **LNK-004.** The engine must give shared subject keys that every extension can use without an import: a GitHub repository name, a `PlaceId`, a `PersonId` and a date.
+- **LNK-005.** A record reference is `kind:id`. Only the domain that owns the record reads the `id`. A reference is not the address of a row on one machine. A reference to the same record must not change when the record is imported again. How a second machine names the same record is not decided (OD-E17).
+- **LNK-006.** A link whose target does not exist keeps its target reference and its label. It must not stop the work of its source extension, and it must not copy the record of a different domain. What a link does when its target is deleted is not decided (OD-E17).
 
 ### 2.11 Reminder engine and Integrations section
 
@@ -1097,7 +1107,7 @@ The engine and the grouped items are GitHub issues with the `extensions` label:
 
 #### Tasks of E0-4, timeline and record links (PLN-006)
 
-The operator ruled on 2026-11-16: build E0-4 from Sections 2.3 and 2.10, keep a record reference as an opaque `kind:id` text, write the points that issue #7 lists as not decided into the contracts as open questions, and leave LNK-003 out until the operator rules on it. The branch is `engine/e0-4-timeline-links`. It is not merged into `main`. No task has a live check on a real hub; task T8 is that check.
+The operator ruled on 2026-11-16: issue #7 governs E0-4. The rules of issue #7 are TML-008 to TML-012 and LNK-005 to LNK-006. The wire unit of an event instant is Unix microseconds. A record reference is `kind:id` with an opaque `id`. The clock policy (OD-E16) and the portable reference and deleted targets (OD-E17) stay open. The work that was built before that ruling stays. The branch is `engine/e0-4-timeline-links`. It is not merged into `main`. No task has a live check on a real hub; task T8 is that check.
 
 | Task | Content | State | Commits |
 | --- | --- | --- | --- |
@@ -1105,10 +1115,11 @@ The operator ruled on 2026-11-16: build E0-4 from Sections 2.3 and 2.10, keep a 
 | T2 | Hub: the timeline domain with no table, the adapter interface, `superseded_by`, and the event log as its first adapter (TML-001 to TML-007) | Done | `f4de06f9` |
 | T3 | Hub: the record-link domain with the table `links.record_link`, the label of a target that does not exist, and the shared subject keys (LNK-001, LNK-002, LNK-004) | Done | `f4de06f9` |
 | T4 | Hub API: `Query.timeline`, `Query.recordLinks`, `Mutation.linkRecords`, `Mutation.unlinkRecords` | Done | `f4de06f9` |
-| T5 | `anima timeline list` and `anima record-link list`, `add`, `remove` (CMD-030). The noun `link` is the device link, so the record links have the noun `record-link`. | In progress | |
-| T6 | MCP tools `anima_timeline_list`, `anima_record_links_list`, `anima_record_link_add`, `anima_record_link_remove` (CMD-030) | In progress | |
-| T7 | Client: the one shared component that shows the links of a record (LNK-003). It waits for a ruling of the operator: issue #7 says it is not a foundation deliverable. | Not started | |
+| T5 | `anima timeline list` and `anima record-link list`, `add`, `remove` (CMD-030). The noun `link` is the device link, so the record links have the noun `record-link`. | Done | `611f68cf` |
+| T6 | MCP tools `anima_timeline_list`, `anima_record_links_list`, `anima_record_link_add`, `anima_record_link_remove` (CMD-030) | Done | `611f68cf` |
+| T7 | Client: the one shared component that shows the links of a record (LNK-003). Issue #7 makes it later work for the pages that use links (#18, #13, #22, #24, #16), not a part of E0-4. | Not started | |
 | T8 | Live check on a real hub: the event log shows in `anima timeline list`, and a link is made and read | Not started | |
+| T9 | The rules of issue #7: the instant unit (TML-008), the received time (TML-009), dates (TML-010), no exact order across clocks (TML-011), replays (TML-012), references and missing targets (LNK-005, LNK-006), in K-E3, K-E4, the hub and the tests | In progress | |
 
 ### 5.2 Extension work packages
 
@@ -1216,6 +1227,8 @@ crates/
 | OD-E13 | Is Projects a part of the foundation? | Decided: no. The foundation is the device manager and the engine. Projects is an extension, off by default. Only the project design and map needs it; Secrets, the model gateway and AI coding sessions work with it (EXT-005, EXT-006, EXT-010). Community extensions come after the 15 extensions, sources first (EXT-009). (operator, 2026-11-13) |
 | OD-E14 | The first GitHub functions that make a change (PRJ-027) | Decided: make an issue, add a comment, close or open an issue, merge a pull request (also many in one action, PRJ-033), run a workflow again, run its failed jobs again, cancel a run, start a workflow by hand (PRJ-034, PRJ-035), write a commit status for a build of Anima (PRO-010, PRO-020 of the projects proposal). Add others one at a time when the operator needs them. (operator, 2026-11-13) |
 | OD-E15 | Where the webhook receiver runs (Section 2.12) | Decided: on the VPS, as a small separate program that is not the hub (WHK-009). It works where the hub runs and needs no other service. This changes SITE-006 ("the website is the only public part of Anima"). To open the port on the VPS needs the operator's confirmation at that time (VPS-005). (operator, 2026-11-13) |
+| OD-E16 | Clock synchronization between Anima machines (TML-011, issue #7): how skew is found and reported, the permitted skew, and what an unreliable clock does | Not decided. E0-4 builds no clock check. Decide before a timeline source that uses the clocks of more than one machine. |
+| OD-E17 | The portable form of a record reference across machines and replicas, and what a link does when its target is deleted (LNK-005, LNK-006, issue #7) | Not decided. E0-4 uses `kind:id` with an opaque `id` and keeps a link and its label when the target is missing. |
 
 ## 8. Ideas taken from Auracle and HQ
 

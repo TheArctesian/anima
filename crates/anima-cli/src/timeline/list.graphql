@@ -9,6 +9,7 @@ query TimelineList($from: DateTime!, $to: DateTime!, $categories: [EvidenceCateg
         title
         start
         end
+        receivedAt
         basis
         uncertainty
         supersededBy

@@ -1,27 +1,24 @@
 //! The opaque cursor of a timeline page (API-006). Pure.
 
-use chrono::DateTime;
-
 use super::model::Mark;
-use crate::engine::records::Reference;
+use crate::engine::{
+    instants::{from_micros, micros},
+    records::Reference,
+};
 
 const PREFIX: &str = "t1.";
 
 /// The cursor that points just after `mark`: the prefix, the start in microseconds since the
 /// epoch, a dot and the reference.
 pub(super) fn encode(mark: &Mark) -> String {
-    format!(
-        "{PREFIX}{}.{}",
-        mark.start.timestamp_micros(),
-        mark.reference
-    )
+    format!("{PREFIX}{}.{}", micros(mark.start), mark.reference)
 }
 
 /// The mark a cursor points after; `None` for any text [`encode`] did not make.
 pub(super) fn decode(cursor: &str) -> Option<Mark> {
-    let (micros, reference) = cursor.strip_prefix(PREFIX)?.split_once('.')?;
+    let (count, reference) = cursor.strip_prefix(PREFIX)?.split_once('.')?;
     let mark = Mark {
-        start: DateTime::from_timestamp_micros(micros.parse().ok()?)?,
+        start: from_micros(count.parse().ok()?)?,
         reference: Reference::parse(reference).ok()?,
     };
     (encode(&mark) == cursor).then_some(mark)

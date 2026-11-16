@@ -28,6 +28,9 @@ struct EvidenceNode {
     start: DateTime<Utc>,
     /// Null: the source gives no end time.
     end: Option<DateTime<Utc>>,
+    /// When the hub received the record, when that is later than the event (TML-009). Null:
+    /// the hub saw the event when it happened, as for the event log.
+    received_at: Option<DateTime<Utc>>,
     basis: Basis,
     /// What the source does not say about this entry, one sentence each (TML-006).
     uncertainty: Vec<String>,
@@ -59,6 +62,7 @@ impl From<Evidence> for EvidenceEdge {
                 title: entry.title,
                 start: entry.start,
                 end: entry.end,
+                received_at: entry.received_at,
                 basis: entry.basis,
                 uncertainty: entry.uncertainty,
                 superseded_by: entry.superseded_by.map(|leader| leader.to_string()),

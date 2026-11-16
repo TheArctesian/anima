@@ -1,8 +1,8 @@
 # K-E4 — Record links and the shared subject keys (engine)
 
-Status: new (operator, 2026-11-16; ruling number to be assigned). Proposed for engine task E0-4; it is not part of the Phase 3 freeze. Change it only through a programme ruling (CON-001). Requirement IDs: LNK-001, LNK-002, LNK-004 of `docs/extensions-plan.md`. Owner: engine (`crates/hub/src/engine/links*`, `crates/hub/src/engine/records.rs`).
+Status: new (operator, 2026-11-16; ruling number to be assigned). Proposed for engine task E0-4; it is not part of the Phase 3 freeze. Change it only through a programme ruling (CON-001). Requirement IDs: LNK-001, LNK-002, LNK-004, LNK-005 and LNK-006 of `docs/extensions-plan.md` (LNK-005 and LNK-006 from issue #7, operator, 2026-11-16). Owner: engine (`crates/hub/src/engine/links*`, `crates/hub/src/engine/records.rs`).
 
-**Gap:** the places part and the files part of K-E4 (Sections 2.6 and 2.7 of the plan, PLC-* and FIL-*) are not written. Engine task E0-5 (#8) adds them to this file. LNK-003, the one shared client component, is not built: the operator has not ruled on it (Section 7).
+**Gap:** the places part and the files part of K-E4 (Sections 2.6 and 2.7 of the plan, PLC-* and FIL-*) are not written. Engine task E0-5 (#8) adds them to this file. LNK-003, the one shared client component, is not built: issue #7 makes it later work for the pages that use links.
 
 ## 1. Record reference (`crates/hub/src/engine/records.rs`, leaf)
 
@@ -12,6 +12,7 @@ A record reference names one record of one domain. It is the text `kind:id`.
 - `id` is the text after the first colon: 1 to 200 characters, no control character, no space at its start or end. It is opaque. Only the owner reads a meaning into it.
 - The plan writes `table:id` (TML-002, LNK-001). The reference is not the address of a database row: `kind` is not a table name, and no code other than the owner uses `id` to read a table (operator, 2026-11-16).
 - A reference does not prove that the record exists.
+- Identity (LNK-005): the owner gives each record one reference, and it does not change when the record is imported again, so a second import resolves to the same record and makes no second one. A link to the same source, target and kind is one row, also when it is made again. How a second machine or a replica names the same record is not decided (OD-E17).
 
 ```rust
 pub struct Reference(/* String */);
@@ -37,7 +38,8 @@ One table holds every link (schema `links`, migration 2030):
 - `label` is the text to show for the target while the target has no record, for example the name of a person. It is one line of at most 200 characters. The link keeps its label after the target has a record.
 - A link has a direction. The same source, target and kind is one link. To make it again writes nothing; with a different label it replaces the label. With no label it keeps the stored label.
 - A record cannot link to itself.
-- To remove a link does not change the two records. To delete a record does not delete its links: Section 7.
+- To remove a link does not change the two records.
+- Missing target (LNK-006): a link to a record that does not exist keeps its target reference and its label. It does not block the extension that made it, and no code copies the target's record into the link. To delete a record does not delete its links; what a link does then is not decided (OD-E17).
 
 ```rust
 // engine::links
@@ -58,7 +60,7 @@ A subject key is a reference that two extensions can both make without an import
 | A GitHub repository | `repository:<owner>/<name>` | Lower case. Each part has letters, digits, `-`, `_` and `.`; the owner at most 39 characters, the name at most 100. |
 | A place | `place:<PlaceId>` | A UUID in lower case with hyphens. |
 | A person | `person:<PersonId>` | A UUID in lower case with hyphens. |
-| A date | `date:<YYYY-MM-DD>` | A calendar date. It has no time and no time zone. It is not an instant. |
+| A date | `date:<YYYY-MM-DD>` | A calendar date. It has no time and no time zone. It is not an instant, and no code changes it to one (TML-010). |
 
 ```rust
 pub enum Subject { Repository(String), Place(PlaceId), Person(PersonId), Date(NaiveDate) }
@@ -109,9 +111,9 @@ pub trait Titles: Send + Sync {
 
 | Question | State in this contract |
 | --- | --- |
-| The portable form of a reference across machines (issue #7) | `kind:id` with an opaque `id`. How a second hub or a replica names the same record is not decided. |
-| A target that is deleted | Not decided. Now the link stays, with its label, and its target reference names a record that does not exist. No domain deletes links. |
+| The portable form of a reference across machines and replicas (OD-E17) | `kind:id` with an opaque `id`. How a second hub or a replica names the same record is not decided. |
+| A target that is deleted (OD-E17) | Not decided. Now the link stays, with its label, and its target reference names a record that does not exist. No domain deletes links. |
 | The data class of a label (it can be the name of a person) | Not decided; it waits for K-E5. Now the label is in `links.record_link` and in the audit entry, and not in the event log. |
 | A closed list of link kinds | None. An extension names its kinds. |
-| LNK-003, the shared client component | Not built. Issue #7 says it is not a foundation deliverable; the plan requires it. The operator decides. |
+| LNK-003, the shared client component | Not built. Issue #7: later work for the pages that use links (#18, #13, #22, #24, #16). |
 | More than 200 links for one record | `recordLinks` gives the newest 200 and has no pages. |

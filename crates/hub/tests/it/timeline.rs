@@ -15,7 +15,7 @@ use crate::hub::{Hub, set_operator, start};
 const TIMELINE: &str = "query($from: DateTime!, $to: DateTime!, $categories: [EvidenceCategory!], \
     $first: Int, $after: String) { timeline(from: $from, to: $to, categories: $categories, \
     first: $first, after: $after) { edges { cursor node { reference source category title start \
-    end basis uncertainty supersededBy } } pageInfo { hasNextPage endCursor } } }";
+    end receivedAt basis uncertainty supersededBy } } pageInfo { hasNextPage endCursor } } }";
 
 /// A hub at `start()` with the fixture operator and a login token.
 async fn signed_in(pool: &PgPool) -> (Hub, String) {

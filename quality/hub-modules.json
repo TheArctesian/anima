@@ -16,7 +16,8 @@
     "text",
     "fingerprint",
     "core_dumps",
-    "records"
+    "records",
+    "instants"
   ],
   "wiring": [
     "main",

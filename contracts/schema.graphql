@@ -2448,6 +2448,8 @@ type Evidence {
   start: DateTime!
   "Null: the source gives no end time. Then uncertainty says so (TML-006)."
   end: DateTime
+  "When the hub received the record, when that is later than the event, such as a delayed import (TML-009). It never replaces start. Null: the hub saw the event when it happened, as for the event log."
+  receivedAt: DateTime
   basis: EvidenceBasis!
   "What the source does not say about this entry, one sentence each (TML-006)."
   uncertainty: [String!]!

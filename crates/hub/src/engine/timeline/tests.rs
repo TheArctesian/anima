@@ -19,6 +19,7 @@ fn entry(reference: &str, source: (&str, u16), start: DateTime<Utc>) -> Evidence
         title: reference.to_owned(),
         start,
         end: None,
+        received_at: None,
         basis: Basis::Observed,
         uncertainty: Vec::new(),
         occurrence: None,
@@ -142,4 +143,37 @@ fn tml_001_a_page_holds_only_what_was_asked_newest_first_and_each_record_once() 
     let second = arrange(all, &rest);
     assert_eq!(references(&second.entries), ["note:5"]);
     assert!(!second.has_next_page);
+}
+
+#[test]
+fn tml_012_a_replayed_record_is_one_entry_and_another_source_of_its_event_is_a_second() {
+    let first = same_event(entry("garmin_activity:7", ("garmin", 80), hour(7)), "run");
+    let replay = first.clone();
+    let other = same_event(
+        entry("apple_workout:3", ("apple_health", 40), hour(7)),
+        "run",
+    );
+    let page = arrange(vec![first, replay, other], &day(10));
+    assert_eq!(
+        references(&page.entries),
+        ["garmin_activity:7", "apple_workout:3"]
+    );
+    assert_eq!(
+        page.entries[1]
+            .superseded_by
+            .as_ref()
+            .map(Reference::as_str),
+        Some("garmin_activity:7")
+    );
+}
+
+#[test]
+fn tml_009_a_record_received_late_keeps_its_event_time_and_sorts_by_it() {
+    let mut imported = entry("garmin_activity:7", ("garmin", 80), hour(3));
+    imported.received_at = Some(hour(20));
+    let recent = entry("note:1", ("notes", 1), hour(9));
+    let page = arrange(vec![imported, recent], &day(10));
+    assert_eq!(references(&page.entries), ["note:1", "garmin_activity:7"]);
+    assert_eq!(page.entries[1].start, hour(3));
+    assert_eq!(page.entries[1].received_at, Some(hour(20)));
 }

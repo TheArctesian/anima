@@ -57,8 +57,12 @@ pub struct Evidence {
     pub category: Category,
     /// One line for a list. It holds no secret.
     pub title: String,
+    /// When the event happened, as the source gives it (TML-009).
     pub start: DateTime<Utc>,
     pub end: Option<DateTime<Utc>>,
+    /// When the hub received the record, if that is later than the source wrote it, such as a
+    /// delayed import. It never replaces `start` (TML-009).
+    pub received_at: Option<DateTime<Utc>>,
     pub basis: Basis,
     /// What the adapter does not know about this entry, one sentence each (TML-006).
     pub uncertainty: Vec<String>,

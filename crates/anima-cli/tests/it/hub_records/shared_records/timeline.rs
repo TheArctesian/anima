@@ -12,7 +12,7 @@ fn signed_in() -> Anima {
 fn entry(reference: &str, title: &str, superseded_by: Option<&str>) -> Value {
     json!({
         "reference": reference, "source": "event_log", "category": "DEVICE", "title": title,
-        "start": "2026-11-06T08:00:00+00:00", "end": null, "basis": "OBSERVED",
+        "start": "2026-11-06T08:00:00+00:00", "end": null, "receivedAt": null, "basis": "OBSERVED",
         "uncertainty": ["End time not given by the source."], "supersededBy": superseded_by,
     })
 }
