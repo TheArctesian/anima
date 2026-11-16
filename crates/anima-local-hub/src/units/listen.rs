@@ -29,9 +29,32 @@ pub(super) fn record(folders: &Folders, listen: Option<SocketAddr>) -> io::Resul
 /// none: the unit then has the default (NET-003).
 #[must_use]
 pub(super) fn recorded(folders: &Folders) -> Option<SocketAddr> {
-    let text = fs::read_to_string(folders.listen_file()).ok()?;
+    let text = crate::plain_file::read_text(&folders.listen_file(), 64).ok()?;
     text.trim()
         .parse::<SocketAddr>()
         .ok()
-        .filter(|listen| listen.ip().is_loopback())
+        .filter(|listen| is_allowed(*listen))
+}
+
+/// `listen` when the hub may listen there.
+///
+/// # Errors
+/// [`NotAllowed`] otherwise.
+pub fn require_allowed(listen: SocketAddr) -> Result<SocketAddr, NotAllowed> {
+    if is_allowed(listen) {
+        Ok(listen)
+    } else {
+        Err(NotAllowed)
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
+#[error("--listen must be a loopback address with a port that is not 0")]
+pub struct NotAllowed;
+
+/// Whether the hub may listen at `listen`: a loopback address (NET-003) and a port that is
+/// named, because the unit file keeps it and the hub is told where to look for it.
+#[must_use]
+pub fn is_allowed(listen: SocketAddr) -> bool {
+    listen.ip().is_loopback() && listen.port() != 0
 }

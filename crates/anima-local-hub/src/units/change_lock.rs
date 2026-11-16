@@ -19,7 +19,7 @@ pub struct Change(#[expect(dead_code, reason = "the open file is the lock")] Fil
 pub fn take(folders: &Folders) -> Result<Change, InstallError> {
     owner_only::folder(folders.root()).map_err(write_error(folders.root()))?;
     let path = folders.change_lock();
-    let file = owner_only::appended_file(&path).map_err(write_error(&path))?;
+    let file = crate::plain_file::appended(&path).map_err(write_error(&path))?;
     match file.try_lock() {
         Ok(()) => Ok(Change(file)),
         Err(TryLockError::WouldBlock) => Err(InstallError::Busy),

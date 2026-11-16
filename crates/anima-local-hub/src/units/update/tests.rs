@@ -47,6 +47,7 @@ impl Rig {
             folders: &self.folders,
             listen: None,
             stop_limit: Duration::from_millis(300),
+            step_back: false,
             version: self.version.get(),
         }
     }
@@ -121,6 +122,7 @@ impl Rig {
 /// What a test does to a rig, with what it is.
 type Act = (&'static str, fn(&Rig));
 
+mod fifo;
 mod guards;
 mod listen;
 

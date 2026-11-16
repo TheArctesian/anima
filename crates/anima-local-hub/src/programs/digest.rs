@@ -40,7 +40,8 @@ impl Digest {
     /// made has no digest file, and then it differs.
     #[must_use]
     pub fn is_stored_in(&self, folders: &Folders) -> bool {
-        fs::read_to_string(folders.programs().join(FILE)).is_ok_and(|text| text.trim() == self.0)
+        crate::plain_file::read_text(&folders.programs().join(FILE), 128)
+            .is_ok_and(|text| text.trim() == self.0)
     }
 }
 

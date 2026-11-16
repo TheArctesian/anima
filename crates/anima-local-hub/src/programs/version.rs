@@ -37,7 +37,7 @@ pub fn is_older(carried: &str, installed: Option<&str>) -> bool {
 /// The version of the copy in `programs/current`, when it has a version file.
 #[must_use]
 pub fn installed(folders: &Folders) -> Option<String> {
-    let text = fs::read_to_string(folders.programs().join(FILE)).ok()?;
+    let text = crate::plain_file::read_text(&folders.programs().join(FILE), 64).ok()?;
     Some(text.trim().to_owned())
 }
 

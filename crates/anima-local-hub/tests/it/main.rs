@@ -335,5 +335,5 @@ fn update_of_a_hub_that_is_not_installed_prints_one_json_line_and_changes_nothin
         "{\"updated\":false}\n"
     );
     assert!(output.stderr.is_empty(), "{output:?}");
-    assert!(!rig.root().join("programs").exists());
+    assert!(!rig.root().exists(), "the hub root was made");
 }

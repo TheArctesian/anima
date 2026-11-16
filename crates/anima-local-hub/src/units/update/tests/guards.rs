@@ -91,17 +91,91 @@ fn programs_of_the_same_or_a_higher_version_with_another_digest_replace_them() {
     }
 }
 
+fn install_with(rig: &super::Rig, step_back: bool) -> Result<(), InstallError> {
+    let request = install::Request {
+        step_back,
+        ..rig.request()
+    };
+    install::install(&request, &rig.source, |_| Ok(true)).map(drop)
+}
+
 #[test]
-fn an_install_replaces_the_programs_also_with_a_lower_version() {
+fn an_install_of_a_lower_version_over_an_installed_hub_is_refused_unless_it_steps_back() {
     let rig = rig();
     rig.version.set("2.0.0");
     rig.install();
     rig.new_programs();
     rig.version.set("1.0.0");
 
-    rig.install();
+    let refused = install_with(&rig, false).unwrap_err();
+
+    assert!(
+        matches!(refused, InstallError::OlderThanInstalled { .. }),
+        "{refused}"
+    );
+    assert!(
+        refused
+            .to_string()
+            .contains("older than the hub's programs")
+    );
+    assert_eq!(rig.installed_program(), "one");
+    install_with(&rig, true).unwrap();
+    assert_eq!(rig.installed_program(), "two");
+}
+
+#[test]
+fn an_install_is_not_blocked_when_no_hub_is_installed_or_the_installed_version_is_unreadable() {
+    let rig = rig();
+    rig.version.set("0.0.1");
+    install_with(&rig, false).unwrap();
+
+    fs::remove_file(rig.folders.programs().join("version")).unwrap();
+    rig.new_programs();
+    install_with(&rig, false).unwrap();
 
     assert_eq!(rig.installed_program(), "two");
+}
+
+#[test]
+fn an_update_of_a_hub_in_a_folder_that_others_can_change_starts_and_recovers_nothing() {
+    use std::os::unix::fs::PermissionsExt as _;
+    let rig = rig();
+    rig.install();
+    let parent = rig.folders.root().parent().unwrap().to_path_buf();
+    fs::rename(rig.folders.programs(), rig.folders.programs_replaced()).unwrap();
+    fs::set_permissions(&parent, fs::Permissions::from_mode(0o777)).unwrap();
+
+    let (outcome, ran) = rig.outcome(Platform::MacOs, |step| !is_print(step));
+
+    fs::set_permissions(&parent, fs::Permissions::from_mode(0o755)).unwrap();
+    assert!(
+        matches!(outcome, Err(InstallError::OpenToOthers(_))),
+        "{outcome:?}"
+    );
+    assert_eq!(ran, Vec::<String>::new());
+    assert!(!rig.folders.programs().exists(), "nothing was recovered");
+}
+
+#[test]
+fn an_update_of_a_folder_that_is_not_there_makes_nothing() {
+    let rig = rig();
+
+    let (outcome, ran) = rig.outcome(Platform::MacOs, |_| true);
+
+    assert_eq!(outcome.unwrap(), Outcome::Unchanged);
+    assert_eq!(ran, Vec::<String>::new());
+    assert!(!rig.folders.root().exists());
+}
+
+#[test]
+fn the_line_that_update_prints_has_updated_first_and_tells_an_older_refusal() {
+    let older = Outcome::Older {
+        carried: "1.0.0".into(),
+        installed: "2.0.0".into(),
+    };
+    assert_eq!(Outcome::Replaced.json_line(), r#"{"updated":true}"#);
+    assert_eq!(Outcome::Unchanged.json_line(), r#"{"updated":false}"#);
+    assert_eq!(older.json_line(), r#"{"updated":false,"older":true}"#);
 }
 
 #[test]

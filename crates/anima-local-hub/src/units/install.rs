@@ -4,7 +4,6 @@
 
 use std::fs::{self, OpenOptions};
 use std::io::{self, Write as _};
-use std::net::SocketAddr;
 use std::os::unix::fs::OpenOptionsExt;
 use std::path::{Path, PathBuf};
 use std::thread;
@@ -14,18 +13,16 @@ use anima_database::{Platform, owner_only};
 
 use super::change_lock;
 use super::listen;
+pub use super::request::Request;
 use super::steps::Step;
 use super::trust;
-use super::unit_file::{self, LABEL, Launch, RenderError, SYSTEMD_UNIT};
-use crate::members::{Carried, LOCAL_HUB};
+use super::unit_file::{self, RenderError};
+use crate::members::Carried;
 use crate::programs::{self, CopyError};
-use crate::{Folders, run, stop_marker};
+use crate::{run, stop_marker};
 
 #[cfg(test)]
 mod tests;
-
-/// `launchctl bootstrap` right after `bootout` can fail once.
-const BOOTSTRAP_RETRY: Duration = Duration::from_secs(1);
 
 #[derive(Debug, thiserror::Error)]
 pub enum InstallError {
@@ -54,89 +51,13 @@ pub enum InstallError {
     NotInstalled,
     #[error("another change of the hub runs")]
     Busy,
-}
-
-/// Whose unit, and for which hub.
-#[derive(Debug, Clone)]
-pub struct Request<'a> {
-    pub platform: Platform,
-    pub uid: u32,
-    pub home: &'a Path,
-    pub folders: &'a Folders,
-    /// Where the hub listens when it is not the default. S5 owns this choice.
-    pub listen: Option<SocketAddr>,
-    /// How long the running hub may take to stop after the unit was told to stop it.
-    pub stop_limit: Duration,
-    /// The version of the programs that `source` holds; it is written beside the copy.
-    pub version: &'a str,
-}
-
-impl Request<'_> {
-    fn unit_file(&self) -> PathBuf {
-        unit_file::file(self.platform, self.home)
-    }
-
-    fn launch(&self) -> Launch {
-        let database = self.folders.database();
-        let mut args = vec!["run".to_owned(), "--root".to_owned()];
-        args.push(self.folders.root().to_string_lossy().into_owned());
-        args.push("--socket-folder".to_owned());
-        args.push(database.socket_folder().to_string_lossy().into_owned());
-        if let Some(listen) = self.listen {
-            args.extend(["--listen".to_owned(), listen.to_string()]);
-        }
-        Launch {
-            program: Carried::installed_in(&self.folders.programs()).program(LOCAL_HUB),
-            args,
-        }
-    }
-
-    fn stop(&self) -> Step {
-        match self.platform {
-            Platform::MacOs => Step::launchctl(&["bootout", &format!("gui/{}/{LABEL}", self.uid)]),
-            Platform::Linux => Step::systemctl(&["stop", SYSTEMD_UNIT]),
-        }
-        .may_fail()
-    }
-
-    fn start(&self, file: &Path) -> Vec<Step> {
-        match self.platform {
-            Platform::MacOs => vec![
-                Step::launchctl(&[
-                    "bootstrap",
-                    &format!("gui/{}", self.uid),
-                    &file.to_string_lossy(),
-                ])
-                .retried_after(BOOTSTRAP_RETRY),
-            ],
-            Platform::Linux => vec![
-                Step::systemctl(&["daemon-reload"]),
-                Step::systemctl(&["enable", SYSTEMD_UNIT]),
-                Step::systemctl(&["restart", SYSTEMD_UNIT]),
-            ],
-        }
-    }
-
-    /// Succeeds when launchd has the unit loaded.
-    fn loaded(&self) -> Step {
-        Step::launchctl(&["print", &format!("gui/{}/{LABEL}", self.uid)])
-    }
-
-    /// Starts the unit that `stop` stopped; it stays enabled for the next login.
-    fn start_again(&self, file: &Path) -> Vec<Step> {
-        match self.platform {
-            Platform::MacOs => self.start(file),
-            Platform::Linux => vec![Step::systemctl(&["start", SYSTEMD_UNIT])],
-        }
-    }
-
-    /// The unit does not start at the next login, and is stopped now.
-    fn retire(&self) -> Step {
-        match self.platform {
-            Platform::MacOs => self.stop(),
-            Platform::Linux => Step::systemctl(&["disable", "--now", SYSTEMD_UNIT]).may_fail(),
-        }
-    }
+    /// An older copy of the application would put older programs over a database that newer
+    /// ones may have changed.
+    #[error(
+        "this application (version {carried}) is older than the hub's programs (version {installed}); \
+         install it with --step-back to put the older programs in place"
+    )]
+    OlderThanInstalled { carried: String, installed: String },
 }
 
 /// Installs or updates the hub of `request`: copies `source`, stops a hub that runs, puts the
@@ -153,7 +74,17 @@ pub fn install(
     run: impl FnMut(&Step) -> io::Result<bool>,
 ) -> Result<PathBuf, InstallError> {
     let _change = change_lock::take(request.folders)?;
+    check_private(request)?;
     programs::recover(request.folders)?;
+    if !request.step_back && is_installed(request) {
+        let installed = programs::version::installed(request.folders);
+        if programs::version::is_older(request.version, installed.as_deref()) {
+            return Err(InstallError::OlderThanInstalled {
+                carried: request.version.to_owned(),
+                installed: installed.unwrap_or_default(),
+            });
+        }
+    }
     replace(request, source, run, Then::Start)
 }
 
@@ -319,6 +250,20 @@ pub(super) fn write_error(path: &Path) -> impl FnOnce(io::Error) -> InstallError
     move |error| InstallError::Write {
         path: path.to_path_buf(),
         kind: error.kind(),
+    }
+}
+
+/// Refuses a hub folder, or a folder of the unit file, that another user can change. A folder
+/// that is not there yet is made by `install` with the right mode.
+pub(super) fn check_private(request: &Request<'_>) -> Result<(), InstallError> {
+    let root = request.folders.root();
+    if root.exists() {
+        private(root, request.uid)?;
+    }
+    let unit = request.unit_file();
+    match unit.parent() {
+        Some(folder) if folder.exists() => private(folder, request.uid),
+        _ => Ok(()),
     }
 }
 

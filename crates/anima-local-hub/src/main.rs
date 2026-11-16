@@ -1,7 +1,7 @@
 //! `anima-local-hub`: wires the command line to the library and sets the exit code. No rules here.
 //!
 //!   anima-local-hub run     [--root <folder> --socket-folder <folder>] [--listen <address:port>]
-//!   anima-local-hub install --tree <folder> [--root ... --socket-folder ...] [--listen ...]
+//!   anima-local-hub install --tree <folder> [--root ... --socket-folder ...] [--listen ...] [--step-back]
 //!   anima-local-hub update  --tree <folder> [--root ... --socket-folder ...]
 //!   anima-local-hub remove  [--root <folder> --socket-folder <folder>]
 //!   anima-local-hub status  [--root <folder> --socket-folder <folder>]
@@ -10,9 +10,11 @@
 //!
 //! `install` runs from the application bundle: it copies the programs beside it and the
 //! PostgreSQL tree to the hub's folder and makes the unit that runs `run` at login.
+//! `install` refuses programs of a lower version than the installed ones unless `--step-back`
+//! is given; the application never gives it. `--listen` is a loopback address with a port.
 //! `update` does the same only when the installed hub exists and its programs differ from the
 //! ones that the application carries, and are not older; it prints `{"updated":true}` or
-//! `{"updated":false}` (the reason of a refusal goes to standard error). It keeps the `--listen`
+//! `{"updated":false}` (`{"updated":false,"older":true}` and a line on standard error when the programs are older). It keeps the `--listen`
 //! that `install` was given.
 //!
 //! `run` prints `ready` on standard output when the hub serves, and stops the group in order
@@ -31,7 +33,8 @@ use anima_local_hub::programs;
 use anima_local_hub::run::{self, Ended, RunError};
 use anima_local_hub::state::{self, Status};
 use anima_local_hub::units::install::{self, Request};
-use anima_local_hub::units::update::{self, Outcome};
+use anima_local_hub::units::listen::require_allowed;
+use anima_local_hub::units::update;
 use anima_local_hub::units::{STEP_LIMIT, run_step};
 use anima_local_hub::{Carried, Folders, Stop};
 use clap::{Args, Parser, Subcommand};
@@ -73,6 +76,9 @@ enum Command {
         /// Where the hub listens, when it is not the default
         #[arg(long)]
         listen: Option<SocketAddr>,
+        /// Put the programs of this application over installed ones of a higher version
+        #[arg(long)]
+        step_back: bool,
     },
     /// Replace the programs of the installed hub when the application carries other ones
     Update {
@@ -172,7 +178,8 @@ fn main() -> ExitCode {
             place,
             tree,
             listen,
-        } => install(&place, tree, listen),
+            step_back,
+        } => install(&place, tree, listen, step_back),
         Command::Update { place, tree } => update(&place, tree),
         Command::Remove(place) => remove(&place),
         Command::Status(place) => status(&place),
@@ -266,6 +273,7 @@ impl User {
             listen,
             stop_limit: STEP_LIMIT,
             version: programs::version::THIS,
+            step_back: false,
         }
     }
 }
@@ -279,11 +287,20 @@ fn carried_by_application(tree: PathBuf) -> Result<Carried, Failure> {
     ))
 }
 
-fn install(place: &Place, tree: PathBuf, listen: Option<SocketAddr>) -> Result<ExitCode, Failure> {
+fn install(
+    place: &Place,
+    tree: PathBuf,
+    listen: Option<SocketAddr>,
+    step_back: bool,
+) -> Result<ExitCode, Failure> {
     let (folders, user) = (place.folders()?, User::current()?);
-    let listen = listen.map(loopback).transpose()?;
+    let listen = listen.map(require_allowed).transpose()?;
     let source = carried_by_application(tree)?;
-    let file = install::install(&user.request(&folders, listen), &source, |step| {
+    let request = Request {
+        step_back,
+        ..user.request(&folders, listen)
+    };
+    let file = install::install(&request, &source, |step| {
         run_step(step, &user.session, STEP_LIMIT)
     })?;
     println!("installed: {}", file.display());
@@ -296,13 +313,10 @@ fn update(place: &Place, tree: PathBuf) -> Result<ExitCode, Failure> {
     let outcome = update::update(&user.request(&folders, None), &source, |step| {
         run_step(step, &user.session, STEP_LIMIT)
     })?;
-    if let Outcome::Older { carried, installed } = &outcome {
-        eprintln!(
-            "anima-local-hub: not updated: the application carries version {carried}, \
-             and the hub runs version {installed}"
-        );
+    if let Some(reason) = outcome.refusal() {
+        eprintln!("anima-local-hub: not updated: {reason}");
     }
-    println!("{}", serde_json::json!({ "updated": outcome.replaced() }));
+    println!("{}", outcome.json_line());
     Ok(ExitCode::SUCCESS)
 }
 

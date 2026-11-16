@@ -31,6 +31,28 @@ impl Outcome {
     pub const fn replaced(&self) -> bool {
         matches!(self, Self::Replaced)
     }
+
+    /// Why nothing was replaced, when the programs of the application were refused.
+    #[must_use]
+    pub fn refusal(&self) -> Option<String> {
+        match self {
+            Self::Older { carried, installed } => Some(format!(
+                "the application carries version {carried}, and the hub runs version {installed}"
+            )),
+            _ => None,
+        }
+    }
+
+    /// The one line that `update` prints: `updated` first, and `older` when the programs of
+    /// the application were refused for their version.
+    #[must_use]
+    pub const fn json_line(&self) -> &'static str {
+        match self {
+            Self::Replaced => "{\"updated\":true}",
+            Self::Unchanged => "{\"updated\":false}",
+            Self::Older { .. } => "{\"updated\":false,\"older\":true}",
+        }
+    }
 }
 
 /// Replaces the programs of the installed hub by those of `source` when their digest is not
@@ -51,7 +73,12 @@ pub fn update(
     source: &Carried,
     mut run: impl FnMut(&Step) -> io::Result<bool>,
 ) -> Result<Outcome, InstallError> {
+    // No hub, no folder: an update makes nothing where nothing was installed.
+    if request.folders.root().symlink_metadata().is_err() {
+        return Ok(Outcome::Unchanged);
+    }
     let _change = change_lock::take(request.folders)?;
+    install::check_private(request)?;
     programs::recover(request.folders)?;
     if !install::is_installed(request) {
         return Ok(Outcome::Unchanged);

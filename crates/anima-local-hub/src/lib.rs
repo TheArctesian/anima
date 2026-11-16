@@ -12,6 +12,7 @@ pub mod group;
 mod link_member;
 mod log_file;
 mod members;
+mod plain_file;
 pub mod programs;
 pub mod run;
 pub mod state;

@@ -3,7 +3,8 @@
 
 mod change_lock;
 pub mod install;
-mod listen;
+pub mod listen;
+mod request;
 mod steps;
 mod trust;
 mod unit_file;
