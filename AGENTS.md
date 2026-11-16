@@ -1,6 +1,6 @@
 # Anima — agent and contributor rules
 
-Anima is a self-hosted device manager: a Tauri client (macOS, Linux; later web and iOS),
+Anima is a self-hosted device manager: a Tauri client (macOS, Linux; later web, iOS and Android),
 a Rust hub (axum, async-graphql, PostgreSQL) and a Guacamole gateway (`guacd`).
 The design spec is [docs/design-spec.md](docs/design-spec.md). It is the source of truth;
 cite requirement IDs (for example `CHK-011`) in commits and pull requests.

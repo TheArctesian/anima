@@ -76,7 +76,7 @@ The tiers come from the issue labels `priority: foundation`, `priority: later` a
 | 3 | Foundation | Bulk data in encrypted pieces on the operator's machines | No issue yet. It changes the file store of #8 | Proposal. Its direction is decided (OD-W9). Decide it before E0-5 (#8) starts. |
 | 4 | Use | Level 2: one model across machines (C4 to C6) | #37, #38, #39. Decisions #45, #46 | Parked. Start only after Level 1 is in daily use (CMP-004, PH-C-001). |
 | 4 | Foundation | A hash chain for the audit log, so that a change to an old entry shows | #2 | The operator made the issue smaller on 2026-11-12: only its phase L0 stays. Its phases L1 to L5 are withdrawn (OD-W9). |
-| 4 | Foundation, Reach | iOS client (Phase 5). Site operations and traffic data (Phase 6) | Design specification Section 9. #55 | Planned. #55 puts Phase 6 after the extension foundations and compute. |
+| 4 | Foundation, Reach | iOS client and Android client (Phase 5). Site operations and traffic data (Phase 6) | Design specification Section 9. #55. [mobile-plan.md](mobile-plan.md) | Planned. #55 puts Phase 6 after the extension foundations and compute. The mobile clients start now, beside tier 0 (operator, 2026-11-16, OD-M2 of the mobile plan). |
 | — | All | Deferred items and ideas from other products | #1 | Recorded, not planned |
 
 Notes:
@@ -213,6 +213,7 @@ This table is the only list of the plans of Anima. A document that is not in thi
 | [cli-mcp-plan.md](cli-mcp-plan.md) | Plan | In progress | Section 3: the command line and the MCP server are on `main`. The test against a real hub is open (#60). |
 | [extensions-plan.md](extensions-plan.md) | Plan | In progress | Its header says "For review". Connect GitHub (PRJ-039 to PRJ-042) is on `main` (2026-11-14). All other issues are open (#4 to #32). |
 | [compute-plan.md](compute-plan.md) | Plan | Draft | Its header says "For review". The issues #34 to #50 are open. |
+| [mobile-plan.md](mobile-plan.md) | Plan | Approved | Version 0.2 (2026-11-16). The operator decided OD-M1 to OD-M8 on 2026-11-16. It serves Section 4, tier 4, "iOS client and Android client (Phase 5)", and starts now (OD-M2). MOB-001 to MOB-042. No task is started. Its facts are from a test build on the local branch `spike/mobile`, which is not for merge. |
 | [ui-redesign-direction.md](ui-redesign-direction.md) | Plan: direction of the redesign | Not checked | Its title says "draft for approval". |
 | [ui-redesign-plan.md](ui-redesign-plan.md) | Plan | Not checked | Version 0.2. |
 | [ui-site-language-plan.md](ui-site-language-plan.md) | Plan | Approved. Build state not checked | Approved for implementation on 2026-11-13. |

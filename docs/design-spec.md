@@ -51,15 +51,15 @@ Anima uses `guacd` from Guacamole as a separate process. Anima does not copy sou
 | Linux | Tauri desktop application | 1 |
 | Web | Static web application that the hub serves | 3 |
 | iOS | Tauri mobile application | 5 |
+| Android | Tauri mobile application | 5 |
 
-The desktop applications are the first priority. Do not start the web and iOS work until Phase 2 is complete.
+The desktop applications are the first priority. Do not start the web, iOS and Android work until Phase 2 is complete. [mobile-plan.md](mobile-plan.md) is the plan for iOS and Android (operator, 2026-11-16).
 
 The desktop package also carries the command line (Section 6.10). Section 3.11 gives the installation rules. A public website gives the install links (Section 3.12).
 
 ### 1.4 Out of scope for this version
 
 - Windows desktop package. Tauri supports Windows, so a later version can add it.
-- Android package.
 - Multiple operators with different permissions.
 - File transfer between the client and a device.
 - Access from outside the private network. Each client must be on the same network as the hub and the devices (Section 4.1).
@@ -722,7 +722,7 @@ Anima uses a proportional sans, IBM Plex Sans, for interface text and IBM Plex M
 
 ### 5.3 Navigation bar
 
-The navigation bar is on the left side of the window on desktop and web. It is at the bottom of the screen on iOS.
+The navigation bar is on the left side of the window on desktop and web. It is at the bottom of the screen on iOS and on Android.
 
 | Position | Item | Icon | Page |
 | --- | --- | --- | --- |
@@ -1332,7 +1332,7 @@ The Proxmox VE integration (PVE-001 to PVE-041) is withdrawn (R-109). Anima mana
 | 2 | RDP and VNC sessions. Web interfaces. Wake-on-LAN. SFTP. Live session list. SSH metrics. More check types. Device detail view with charts. | macOS, Linux |
 | 3 | Web client. Notifications. Prometheus endpoint and API keys. Settings page items. Metrics push agent for macOS and Linux (`anima-agent`), with GPU usage on Apple silicon (R-084). | macOS, Linux, Web |
 | 4 | Withdrawn (R-109). | — |
-| 5 | iOS client. The iOS device as a part-time member of the network (Section 10.1). | All |
+| 5 | iOS client and Android client ([mobile-plan.md](mobile-plan.md)). The iOS device as a part-time member of the network (Section 10.1). | All |
 | 6 | Site agents for Wake-on-LAN and local checks. Traffic data (Section 4.3). | All |
 
 Work outside the phases. This table has no row for work that is not part of a phase, and this document has no other record of it. Thus this note records it:
