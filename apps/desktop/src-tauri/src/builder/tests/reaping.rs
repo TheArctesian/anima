@@ -37,7 +37,7 @@ async fn s_1_a_process_that_left_the_group_with_setsid_does_not_outlive_the_step
         marker.display()
     );
     claim
-        .run(&command(&["-c", &script]), Path::new("/bin/sh"), Vec::new())
+        .read(&command(&["-c", &script]), Path::new("/bin/sh"), Vec::new())
         .await
         .unwrap();
     tokio::time::sleep(Duration::from_millis(2500)).await;
@@ -53,7 +53,7 @@ async fn s_1_a_server_started_like_pg_ctl_is_ended_with_the_step() {
     // pg_ctl starts the server in a session of its own and returns at once.
     let script = "setsid sleep 60 </dev/null >/dev/null 2>&1 & echo \"$!\"";
     let kept = claim
-        .run(&command(&["-c", script]), Path::new("/bin/sh"), Vec::new())
+        .read(&command(&["-c", script]), Path::new("/bin/sh"), Vec::new())
         .await
         .unwrap();
     let server: i32 = kept[0].parse().unwrap();
@@ -76,7 +76,7 @@ async fn s_1_cancel_ends_a_process_that_left_the_group() {
         let running = Arc::clone(&running);
         tokio::spawn(async move {
             let claim = running.claim(Arc::clone(&sink)).unwrap();
-            claim.run(&script, Path::new("/bin/sh"), Vec::new()).await
+            claim.read(&script, Path::new("/bin/sh"), Vec::new()).await
         })
     };
     let started = Instant::now();
@@ -117,7 +117,7 @@ async fn d_20_an_orphan_no_step_started_is_never_killed_and_never_waited_for() {
         .unwrap();
     let started = Instant::now();
     claim
-        .run(&command(&["-c", "true"]), Path::new("/bin/sh"), Vec::new())
+        .read(&command(&["-c", "true"]), Path::new("/bin/sh"), Vec::new())
         .await
         .unwrap();
     let took = started.elapsed();

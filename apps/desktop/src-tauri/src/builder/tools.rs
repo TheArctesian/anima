@@ -1,8 +1,9 @@
 //! The tools a builder needs before it claims a job (BLD-028): git, bun, Rust with
 //! cargo-nextest (the gates run the Rust tests with it, R-112), Go (the gates of `link/`),
 //! PostgreSQL 17 (R-009), the Tauri
-//! system packages, the app's own updater public key and, on macOS, the Developer ID signing
-//! identity (BLD-083). No updater key: the hub signs (R-117).
+//! system packages, on Linux the tools that build the PostgreSQL tree, the app's own updater
+//! public key and, on macOS, the Developer ID signing identity (BLD-083). No updater key: the hub
+//! signs (R-117).
 //! Pure: whether a path exists is a parameter, and nothing is run.
 
 pub mod readings;
@@ -27,6 +28,8 @@ pub enum Tool {
     Go,
     Postgres,
     TauriPackages,
+    /// On Linux, a program or the zlib header that `database-tree/build.sh` needs (S12 T3).
+    TreeTools,
     /// This app was built without the updater public key (`plugins.updater.pubkey` is the
     /// placeholder), so what it builds could never update (R-108).
     UpdaterPublicKey,
@@ -153,6 +156,29 @@ fn tauri_packages(target: Target, env: &Environment, exists: &impl Fn(&Path) -> 
     }
 }
 
+/// The programs `database-tree/build.sh` runs on Linux, `curl` for the source archive among them.
+/// The recipe runs with `PATH=/usr/bin:/bin` only, so each must be in one of those two folders.
+const TREE_PROGRAMS: &[&str] = &["make", "bison", "flex", "patchelf", "readelf", "curl"];
+const TREE_FOLDERS: &[&str] = &["/usr/bin", "/bin"];
+/// The header the recipe's PostgreSQL build compiles against for zlib.
+const ZLIB_HEADER: &str = "/usr/include/zlib.h";
+
+/// Whether this computer has what the recipe needs to build the tree for `target`. On macOS the
+/// Xcode tools have it, and [`tauri_packages`] asks for them already.
+fn tree_tools(target: Target, exists: &impl Fn(&Path) -> bool) -> bool {
+    match target {
+        Target::LinuxX86_64 => {
+            exists(Path::new(ZLIB_HEADER))
+                && TREE_PROGRAMS.iter().all(|program| {
+                    TREE_FOLDERS
+                        .iter()
+                        .any(|folder| exists(&Path::new(folder).join(program)))
+                })
+        }
+        Target::DarwinUniversal => true,
+    }
+}
+
 /// The tools missing for `target`, in the order the Settings row lists them. `psql` is not one:
 /// the gates start their own PostgreSQL with `initdb` and `pg_ctl` and never run it.
 pub fn missing(target: Target, env: &Environment, exists: impl Fn(&Path) -> bool) -> Vec<Tool> {
@@ -168,6 +194,7 @@ pub fn missing(target: Target, env: &Environment, exists: impl Fn(&Path) -> bool
         (Tool::Go, has("go")),
         (Tool::Postgres, postgres),
         (Tool::TauriPackages, tauri_packages(target, env, &exists)),
+        (Tool::TreeTools, tree_tools(target, &exists)),
     ]
     .into_iter()
     .filter_map(|(tool, present)| (!present).then_some(tool))

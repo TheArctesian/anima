@@ -16,13 +16,18 @@ use std::{
 
 use tokio::io::{AsyncRead, AsyncReadExt};
 
-use super::{error::BuilderError, lines::Lines, plan::Command, reaper};
+use super::{
+    error::BuilderError,
+    lines::Lines,
+    plan::{Command, Kept},
+    reaper,
+};
 
 /// Receives each output line of a step.
 pub type Sink = Arc<dyn Fn(String) + Send + Sync>;
 
-/// At most this many standard-output lines are kept for the caller to read (`git status`,
-/// `lipo -archs`); every line still goes to the sink.
+/// At most this many lines of the command's kept stream are kept for the caller to read (`git
+/// status`, `lipo -archs`, `codesign -d`); every line still goes to the sink.
 const KEPT_LINES_MAX: usize = 2000;
 /// How long the output may take to close after the process group is gone.
 const DRAIN: Duration = Duration::from_secs(5);
@@ -142,14 +147,39 @@ async fn read_lines(stream: Option<impl AsyncRead + Unpin>, sink: Sink, keep: bo
 }
 
 impl Claim<'_> {
-    /// Runs `command` as `program` with exactly `env`, and returns its kept standard-output
-    /// lines. `Cancelled` once the step is cancelled; `StepFailed` for a non-zero exit.
+    /// Runs `command` as `program` with exactly `env` for its exit status only. `Cancelled` once
+    /// the step is cancelled; `StepFailed` for a non-zero exit. A process that left the step and
+    /// still holds its output (a compiler cache server) does not fail it.
     pub async fn run(
         &self,
         command: &Command,
         program: &Path,
-        mut env: Vec<(OsString, OsString)>,
+        env: Vec<(OsString, OsString)>,
+    ) -> Result<(), BuilderError> {
+        self.finish(command, program, env).await.map(drop)
+    }
+
+    /// Runs `command` as [`Claim::run`] does and returns the lines of the stream `command.kept`
+    /// names, for a decision. A kept stream that did not close fails the step: its lines may be
+    /// cut short, and for `git status` or `codesign -d --entitlements` empty is the passing answer.
+    pub async fn read(
+        &self,
+        command: &Command,
+        program: &Path,
+        env: Vec<(OsString, OsString)>,
     ) -> Result<Vec<String>, BuilderError> {
+        self.finish(command, program, env)
+            .await?
+            .ok_or(BuilderError::StepFailed)
+    }
+
+    /// The kept lines of a run that exited 0, or `None` when the kept stream did not close.
+    async fn finish(
+        &self,
+        command: &Command,
+        program: &Path,
+        mut env: Vec<(OsString, OsString)>,
+    ) -> Result<Option<Vec<String>>, BuilderError> {
         env.push((reaper::MARKER.into(), self.marker.clone().into()));
         let mut process = tokio::process::Command::new(program);
         process
@@ -172,8 +202,9 @@ impl Claim<'_> {
             Ok((child.stdout.take(), child.stderr.take(), child))
         });
         let (stdout, stderr, mut child) = group?;
-        let out = tokio::spawn(read_lines(stdout, Arc::clone(&self.sink), true));
-        let err = tokio::spawn(read_lines(stderr, Arc::clone(&self.sink), false));
+        let keep_errors = command.kept == Kept::Errors;
+        let out = tokio::spawn(read_lines(stdout, Arc::clone(&self.sink), !keep_errors));
+        let err = tokio::spawn(read_lines(stderr, Arc::clone(&self.sink), keep_errors));
         let status = child.wait().await;
         // Anything the step left, in its group or out of it, would hold the output open.
         let group = self.running.with_slot(|slot| {
@@ -184,22 +215,28 @@ impl Claim<'_> {
         let marker = self.marker.clone();
         let _ = tokio::task::spawn_blocking(move || reaper::sweep(&marker, group)).await;
         let cancelled = self.running.with_slot(|slot| slot.cancelled);
-        let kept = tokio::time::timeout(DRAIN, out).await;
-        let _ = tokio::time::timeout(DRAIN, err).await;
-        outcome(cancelled, status.ok(), kept.ok().and_then(Result::ok))
+        // Both streams drain at once, so a stray holding both costs one `DRAIN`, not two.
+        let (out, err) = tokio::join!(
+            tokio::time::timeout(DRAIN, out),
+            tokio::time::timeout(DRAIN, err)
+        );
+        let out = out.ok().and_then(Result::ok);
+        let err = err.ok().and_then(Result::ok);
+        outcome(cancelled, status.ok(), if keep_errors { err } else { out })
     }
 }
 
+/// The kept lines, if the kept stream closed, of a run that exited 0.
 fn outcome(
     cancelled: bool,
     status: Option<ExitStatus>,
     kept: Option<Vec<String>>,
-) -> Result<Vec<String>, BuilderError> {
+) -> Result<Option<Vec<String>>, BuilderError> {
     if cancelled {
         return Err(BuilderError::Cancelled);
     }
     match status {
-        Some(status) if status.success() => Ok(kept.unwrap_or_default()),
+        Some(status) if status.success() => Ok(kept),
         _ => Err(BuilderError::StepFailed),
     }
 }

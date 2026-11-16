@@ -4,18 +4,18 @@
 
 use std::{
     ffi::OsString,
-    fs,
+    fs, io,
     path::{Path, PathBuf},
 };
 
 use super::{
     artifact,
+    carried::{link, mach_o::TeamId, rust_programs, signer},
     child::Claim,
     environment::Environment,
     error::BuilderError,
     job::{Commit, Target, Version},
-    plan::{self, CLONE_CONFIG_KEYS, Command, Repository},
-    sidecar,
+    plan::{self, CLONE_CONFIG_KEYS, Command, Program, Repository},
 };
 
 /// The claim, the environment, the repository and the clone of one step.
@@ -27,9 +27,13 @@ pub struct Workshop<'a> {
 }
 
 /// The files in `.git` that make git read objects, parents or history from somewhere other than
-/// the clone's own objects. `git clone` writes none of them; a build may (D-15, D-21).
+/// the clone's own objects, or that hide a changed or untracked file from `git status`. The
+/// checkout removes `info/exclude`, which `git clone` writes; a build may write any (D-15, D-21).
 const UNTRUSTED_FILES: &[&str] = &[
     "info/grafts",
+    "info/exclude",
+    "info/attributes",
+    "info/sparse-checkout",
     "shallow",
     "commondir",
     "objects/info/alternates",
@@ -38,6 +42,11 @@ const UNTRUSTED_FILES: &[&str] = &[
     "objects/info/commit-graphs",
 ];
 
+/// The files in `.git` the checkout and each later step remove: the index, which a build can mark
+/// to hide a changed file (`--skip-worktree`, `--assume-unchanged`), and the exclude rules,
+/// which hide an untracked one. git builds the index anew from the commit.
+const FORGOTTEN_FILES: &[&str] = &["index", "info/exclude"];
+
 /// Whether every key `git config --local --name-only --list` printed is one `git clone` writes.
 pub fn config_is_clones(keys: &[String]) -> bool {
     keys.iter()
@@ -45,15 +54,30 @@ pub fn config_is_clones(keys: &[String]) -> bool {
 }
 
 impl Workshop<'_> {
-    /// Runs one command; the program is found in the step's program folders.
-    async fn run(&self, command: &Command) -> Result<Vec<String>, BuilderError> {
-        let program = self
-            .env
-            .find(command.program.name(), Path::is_file)
-            .ok_or(BuilderError::ToolMissing)?;
+    /// Runs one command for its exit status only.
+    pub(super) async fn run(&self, command: &Command) -> Result<(), BuilderError> {
+        let program = self.program(command.program)?;
         self.claim
             .run(command, &program, self.variables(command))
             .await
+    }
+
+    /// Runs one command and returns the lines of its kept stream, for a decision; a stream that
+    /// did not close fails the step.
+    pub(super) async fn read(&self, command: &Command) -> Result<Vec<String>, BuilderError> {
+        let program = self.program(command.program)?;
+        self.claim
+            .read(command, &program, self.variables(command))
+            .await
+    }
+
+    /// Where `program` is: its fixed path (`/bin/sh`), or the first in the step's program folders.
+    pub fn program(&self, program: Program) -> Result<PathBuf, BuilderError> {
+        match program.fixed_path() {
+            Some(path) => path.is_file().then(|| path.to_owned()),
+            None => self.env.find(program.name(), Path::is_file),
+        }
+        .ok_or(BuilderError::ToolMissing)
     }
 
     /// The environment of `command`: the step's own, and cargo's output folder inside the clone,
@@ -82,9 +106,24 @@ impl Workshop<'_> {
         if !git.is_dir() || UNTRUSTED_FILES.iter().any(|file| git.join(file).exists()) {
             return false;
         }
-        self.run(&plan::config_keys(&self.clone))
+        self.read(&plan::config_keys(&self.clone))
             .await
             .is_ok_and(|keys| config_is_clones(&keys))
+    }
+
+    /// Removes `FORGOTTEN_FILES` from the clone's `.git`; a link there is removed as a link.
+    fn forget_index(&self) -> Result<(), BuilderError> {
+        for file in FORGOTTEN_FILES {
+            let path = self.clone.join(".git").join(file);
+            match fs::symlink_metadata(&path) {
+                Ok(kind) if kind.is_dir() => fs::remove_dir_all(&path),
+                Ok(_) => fs::remove_file(&path),
+                Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(()),
+                Err(error) => Err(error),
+            }
+            .map_err(|_| BuilderError::Failed)?;
+        }
+        Ok(())
     }
 
     /// Deletes the clone, if there is one, and clones the repository anew.
@@ -111,12 +150,12 @@ impl Workshop<'_> {
             .await?;
         match self.run(&plan::fsck(&self.clone)).await {
             Err(BuilderError::StepFailed) if !fresh => {}
-            other => return other.map(drop),
+            other => return other,
         }
         self.clone_anew().await?;
         self.run(&plan::fetch(&self.repository, &self.clone))
             .await?;
-        self.run(&plan::fsck(&self.clone)).await.map(drop)
+        self.run(&plan::fsck(&self.clone)).await
     }
 
     /// Makes the clone whole, refuses a commit that is not on `main`, then checks the commit out
@@ -126,23 +165,33 @@ impl Workshop<'_> {
         match self.run(&plan::ancestry(&self.clone, commit)).await {
             Err(BuilderError::StepFailed) => return Err(BuilderError::NotOnMain),
             other => other?,
-        };
+        }
+        self.forget_index()?;
         self.run_all(&plan::checkout(&self.clone, commit)).await?;
-        if self.run(&plan::status(&self.clone)).await?.is_empty() {
+        if self.read(&plan::status(&self.clone)).await?.is_empty() {
             Ok(())
         } else {
             Err(BuilderError::Dirty)
         }
     }
 
-    /// Fails unless the clone is at `commit` with a clean tree, so a later step cannot build
-    /// another tree than the one checked out.
-    async fn at(&self, commit: &Commit) -> Result<(), BuilderError> {
-        let head = self.run(&plan::head(&self.clone)).await?;
-        let clean = self.run(&plan::status(&self.clone)).await?.is_empty();
-        match head.as_slice() {
-            [line] if line == commit.as_str() && clean => Ok(()),
-            _ => Err(BuilderError::Dirty),
+    /// Fails unless the clone is still one `git clone` made, at `commit`, with a clean tree, so a
+    /// later step cannot build another tree than the one checked out. The index is built anew
+    /// from the commit first, so no mark a build put on an entry hides a change.
+    pub(super) async fn at(&self, commit: &Commit) -> Result<(), BuilderError> {
+        if !self.trusted_clone().await {
+            return Err(BuilderError::Dirty);
+        }
+        let head = self.read(&plan::head(&self.clone)).await?;
+        if !matches!(head.as_slice(), [line] if line == commit.as_str()) {
+            return Err(BuilderError::Dirty);
+        }
+        self.forget_index()?;
+        self.run(&plan::read_tree(&self.clone, commit)).await?;
+        if self.read(&plan::status(&self.clone)).await?.is_empty() {
+            Ok(())
+        } else {
+            Err(BuilderError::Dirty)
         }
     }
 
@@ -157,38 +206,18 @@ impl Workshop<'_> {
     /// updater file is made from the stapled app (BLD-084, BLD-085). A submission Apple does not
     /// accept fails the step; its status is in the step's log.
     async fn notarize(&self, dmg: &Path, app: &Path) -> Result<(), BuilderError> {
-        if !artifact::notarized(&self.run(&plan::notarize(dmg)).await?) {
+        if !artifact::notarized(&self.read(&plan::notarize(dmg)).await?) {
             return Err(BuilderError::StepFailed);
         }
         self.run_all(&plan::staple(dmg)).await?;
         self.run_all(&plan::staple(app)).await
     }
 
-    /// Builds `anima` for `target` with the release version and puts it where the bundle takes it
-    /// (INS-002, OD-17): the universal file on macOS, an x86-64 ELF file on Linux.
-    async fn command_line(&self, target: Target, version: &Version) -> Result<(), BuilderError> {
-        self.run(&sidecar::build(&self.clone, target, version))
-            .await?;
-        for (built, staged) in sidecar::copies(&self.clone, target) {
-            artifact::stage(&self.clone, &built, &staged)?;
-        }
-        let staged = sidecar::staged(&self.clone, target);
-        if let Some(lipo) = sidecar::universal(&self.clone, target) {
-            self.run(&lipo).await?;
-            if !artifact::universal(&self.run(&sidecar::archs(&staged)).await?) {
-                return Err(BuilderError::Bundle);
-            }
-        } else if !sidecar::is_x86_64_elf(&artifact::header(&self.clone, &staged, 20)?) {
-            return Err(BuilderError::Bundle);
-        }
-        Ok(())
-    }
-
-    /// Builds `anima`, compiles and bundles `target` at `version` with it, checks, notarizes and
-    /// staples a macOS bundle, and returns the updater file (INS-002, BLD-043, BLD-047, BLD-083 to
-    /// BLD-085). On macOS the bundled `anima` must pass `codesign --verify --strict` and be
-    /// universal; notarization then refuses it unless it has the Developer ID signature, the
-    /// hardened runtime and a secure timestamp (OD-16).
+    /// Builds what the release carries, compiles and bundles `target` at `version` with it,
+    /// checks, notarizes and staples a macOS bundle, and returns the updater file (INS-002,
+    /// BLD-043, BLD-047, BLD-083 to BLD-085, S12 2.2). In this order: the clone at `commit`; the
+    /// signing identity; the PostgreSQL tree; `anima-link`; then `cargo build`, whose build
+    /// scripts run code from the commit; the committed `tauri.conf.json` again; then Tauri.
     pub async fn bundle(
         &self,
         commit: &Commit,
@@ -196,30 +225,61 @@ impl Workshop<'_> {
         version: &Version,
     ) -> Result<PathBuf, BuilderError> {
         self.at(commit).await?;
-        self.command_line(target, version).await?;
+        let signer = self.signer(commit, target).await?;
+        self.tree(commit, target, signer.as_ref()).await?;
+        self.link(commit).await?;
+        self.stage(target, &link::copies(&self.clone, target), &[link::PROGRAM])
+            .await?;
+        self.check_staged(target, &[link::PROGRAM]).await?;
+        let binaries = rust_programs::PROGRAMS.map(|(_, binary)| binary);
+        self.rust_programs(target, version).await?;
+        self.stage(
+            target,
+            &rust_programs::copies(&self.clone, target),
+            &binaries,
+        )
+        .await?;
+        self.check_staged(target, &binaries).await?;
+        self.committed(commit, &[signer::CONFIG]).await?;
         artifact::clear_bundle(&self.clone, target)?;
-        self.run_all(&plan::bundle(&self.clone, target, version))
+        let identity = signer.as_ref().map(|signer| signer.identity.as_str());
+        self.run_all(&plan::bundle(&self.clone, target, version, identity))
             .await?;
         artifact::stabilize_names(&self.clone, target, version)?;
         let updater = artifact::updater_file(&self.clone, target, version);
-        if target == Target::DarwinUniversal {
-            let app = artifact::mac_app(&self.clone);
-            let binaries = artifact::mac_binaries(&self.clone, &app)?;
-            let [codesign, lipo] = plan::bundle_checks(&app, &binaries.app);
-            self.run(&codesign).await?;
-            self.run(&sidecar::signature(&binaries.command_line))
-                .await?;
-            for binary in [&lipo, &sidecar::archs(&binaries.command_line)] {
-                if !artifact::universal(&self.run(binary).await?) {
-                    return Err(BuilderError::Bundle);
-                }
-            }
-            let dmg =
-                artifact::dmg_file(&self.clone, target, version).ok_or(BuilderError::Bundle)?;
-            self.notarize(&artifact::own_file(&self.clone, &dmg)?, &app)
-                .await?;
-            self.run(&plan::app_archive(&app, &updater)).await?;
+        if let Some(signer) = &signer {
+            let app = artifact::own_folder(&self.clone, &artifact::mac_app(&self.clone))?;
+            self.check_app(&app, &signer.team).await?;
+            self.release_mac(version, &app, &updater).await?;
         }
         artifact::own_file(&self.clone, &updater)
+    }
+
+    /// Fails unless the signed `app` passes the checks of UPD-011: exactly the expected
+    /// programs, `codesign --verify --deep --strict` of the app, its own executable universal,
+    /// then every Mach-O file of it with the Developer ID signature of `team` (S12 2.3).
+    pub(super) async fn check_app(&self, app: &Path, team: &TeamId) -> Result<(), BuilderError> {
+        let executable = artifact::mac_executable(&self.clone, app)?;
+        let [codesign, lipo] = plan::bundle_checks(app, &executable);
+        self.run(&codesign).await?;
+        if !artifact::universal(&self.read(&lipo).await?) {
+            return Err(BuilderError::Bundle);
+        }
+        self.signed_mach_o(app, team).await
+    }
+
+    /// Makes the macOS updater file `updater` from the checked `app`: the DMG is notarized and
+    /// stapled, the app is stapled and archived (BLD-084, BLD-085).
+    async fn release_mac(
+        &self,
+        version: &Version,
+        app: &Path,
+        updater: &Path,
+    ) -> Result<(), BuilderError> {
+        let dmg = artifact::dmg_file(&self.clone, Target::DarwinUniversal, version)
+            .ok_or(BuilderError::Bundle)?;
+        self.notarize(&artifact::own_file(&self.clone, &dmg)?, app)
+            .await?;
+        self.run(&plan::app_archive(app, updater)).await
     }
 }

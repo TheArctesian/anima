@@ -30,6 +30,8 @@ nix = { version = "0.31", default-features = false, features = ["fs", "signal", 
 serde = { workspace = true, features = ["derive"] }
 # The state that `status` prints, and the hub's `hub started` log line.
 serde_json.workspace = true
+# The digest of the programs that the application carries, which decides an update.
+sha2.workspace = true
 thiserror.workspace = true
 tokio = { workspace = true, features = ["process", "signal", "rt"] }
 zeroize.workspace = true

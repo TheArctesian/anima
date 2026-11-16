@@ -137,5 +137,6 @@ apps/desktop/src-tauri/database-tree/build.sh linux <work folder> <out folder>
 
 For a release on macOS each file of the tree must have the Developer ID signature, the
 hardened runtime and a secure timestamp (`SIGN_IDENTITY`), and the tree must be signed before
-the application bundle is made. The release builder does not run this script yet; see
-`docs/research/one-click/s3-database-tasks.md`, Section 7.
+the application bundle is made. The release builder runs this script in its bundle step, from
+the pinned source at each release, and checks each file of the tree in the finished
+application (`docs/research/one-click/s12-packaging-tasks.md`, Sections 2.2 and 2.3).

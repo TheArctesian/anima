@@ -1,8 +1,9 @@
 # The first run of the desktop app
 
-Version 1.0. Date: 2026-11-15. Status: **Draft. The steps follow the code of plan item S6. A
-release of the application does not carry the hub programs yet, and the run-through on a clean
-computer (task T11) has not happened.** This guide is a procedure. It adds no requirement.
+Version 1.0. Date: 2026-11-15. Status: **Draft. The steps follow the code of plan item S6. The
+release builder puts the hub programs into the application (plan item S12); no release with
+them is published yet. The run-through of a bundle on this Mac is in
+`docs/research/one-click/s12-packaging-tasks.md`, Section 6.** This guide is a procedure. It adds no requirement.
 
 Write: Simplified Technical English (design spec Section 0). Plan:
 [s6-first-run-tasks.md](../research/one-click/s6-first-run-tasks.md). Requirements: FRN-001 to

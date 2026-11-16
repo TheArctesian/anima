@@ -56,6 +56,12 @@ describe('the Builds row texts (BLD-020)', () => {
     expect(Object.keys(TOOL_NAMES).some((tool) => tool.startsWith('updater-key'))).toBe(false);
   });
 
+  it('S12 T3: a Linux builder without the PostgreSQL tree tools names each of them', () => {
+    for (const tool of ['make', 'bison', 'flex', 'patchelf', 'readelf', 'curl', 'zlib']) {
+      expect(TOOL_NAMES['tree-tools']).toContain(tool);
+    }
+  });
+
   it('BLD-028: a missing darwin Rust target names the target and the rustup command to add it', () => {
     expect(TOOL_NAMES['rust-target-x86_64-apple-darwin']).toContain('rustup target add x86_64-apple-darwin');
     expect(TOOL_NAMES['rust-target-aarch64-apple-darwin']).toContain('rustup target add aarch64-apple-darwin');
