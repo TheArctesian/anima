@@ -37,6 +37,7 @@ export function issue(number: number, more: Partial<Issue> = {}): Issue {
     number,
     title: `Issue ${String(number)}`,
     open: true,
+    closeReason: null,
     authorLogin: 'octo',
     labels: [],
     assignees: [],
