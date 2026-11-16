@@ -7,7 +7,7 @@ use sqlx::PgPool;
 
 use crate::{
     ids::{ProjectId, RepositoryId, ResourceId, SourceAccountId},
-    work::projects::page::After,
+    work::projects::{browse::ProjectBrowse, page::After},
 };
 
 #[derive(Clone, Debug, sqlx::FromRow)]
@@ -17,6 +17,7 @@ pub(in crate::work::projects) struct ProjectRow {
     pub name: String,
     /// The name in lower case: the first part of the page order.
     pub sort_name: String,
+    pub rank: Option<i64>,
 }
 
 #[derive(Clone, Debug, sqlx::FromRow)]
@@ -55,28 +56,71 @@ pub(in crate::work::projects) struct ResourceRow {
 /// A sign of a repository of a project that is not left out: `(project, sign, path)`.
 pub(in crate::work::projects) type EvidenceRow = (ProjectId, String, Option<String>);
 
-const PROJECT: &str = "p.id, p.slug, p.name, lower(p.name) AS sort_name";
+const PROJECT: &str = "p.id, p.slug, p.name, lower(p.name) AS sort_name, NULL::bigint AS rank";
 
-/// Up to `limit` projects after `after`, by lower-case name then id. `left_out` false: those
-/// with a repository that is not left out; true: those whose repositories are all left out.
+// The first repository in the current view supplies the metadata for a project.
+const BROWSE_FROM: &str = "FROM projects.projects p
+    JOIN LATERAL (
+       SELECT r.primary_language, r.size_kib, r.last_commit_at, r.repository_created_at, r.commit_count, r.stars
+       FROM projects.repositories r
+       WHERE r.project_id = p.id AND (r.left_out_at IS NOT NULL) = $1
+       ORDER BY r.first_seen_at, r.id LIMIT 1
+    ) r ON true
+    WHERE (NOT $1 OR NOT EXISTS (
+       SELECT 1 FROM projects.repositories kept WHERE kept.project_id = p.id AND kept.left_out_at IS NULL
+    ))";
+
+/// Up to `limit` matching projects after `after`. Unknown metadata sorts last.
 pub(in crate::work::projects) async fn page(
     db: &PgPool,
-    left_out: bool,
+    (left_out, browse): (bool, &ProjectBrowse),
     after: Option<&After>,
     limit: i64,
 ) -> Result<Vec<ProjectRow>, sqlx::Error> {
+    let order = browse.order.unwrap_or_default();
     sqlx::query_as(&format!(
-        "SELECT {PROJECT} FROM projects.projects p \
-         WHERE EXISTS (SELECT 1 FROM projects.repositories r WHERE r.project_id = p.id) \
-         AND EXISTS (SELECT 1 FROM projects.repositories r \
-                     WHERE r.project_id = p.id AND r.left_out_at IS NULL) <> $1 \
-         AND ($2::text IS NULL OR (lower(p.name) COLLATE \"C\", p.id) > ($2 COLLATE \"C\", $3)) \
-         ORDER BY lower(p.name) COLLATE \"C\", p.id LIMIT $4"
+        "WITH ranked AS (
+            SELECT p.id, p.slug, p.name, lower(p.name) AS sort_name,
+                COALESCE(CASE $5
+                    WHEN 'commit' THEN extract(epoch FROM r.last_commit_at)::bigint
+                    WHEN 'created' THEN extract(epoch FROM r.repository_created_at)::bigint
+                    WHEN 'count' THEN r.commit_count::bigint
+                    WHEN 'stars' THEN r.stars::bigint
+                END, -9223372036854775807) AS rank
+            {BROWSE_FROM}
+            AND ($6::text IS NULL OR r.primary_language = $6)
+            AND ($7::integer IS NULL OR r.size_kib >= $7)
+            AND ($8::integer IS NULL OR r.size_kib <= $8)
+         )
+         SELECT id, slug, name, sort_name,
+                CASE WHEN $5 <> 'name' THEN rank END AS rank
+         FROM ranked WHERE $2::text IS NULL OR
+              (-rank, sort_name COLLATE \"C\", id) >
+              (-COALESCE($9::bigint, -9223372036854775807), $2 COLLATE \"C\", $3)
+         ORDER BY ranked.rank DESC, sort_name COLLATE \"C\", id LIMIT $4"
     ))
     .bind(left_out)
     .bind(after.map(|a| a.name.as_str()))
     .bind(after.map(|a| a.id))
     .bind(limit)
+    .bind(order.key())
+    .bind(&browse.language)
+    .bind(browse.min_size_kib)
+    .bind(browse.max_size_kib)
+    .bind(after.and_then(|a| a.rank))
+    .fetch_all(db)
+    .await
+}
+
+pub(in crate::work::projects) async fn languages(
+    db: &PgPool,
+    left_out: bool,
+) -> Result<Vec<String>, sqlx::Error> {
+    sqlx::query_scalar(&format!(
+        "SELECT DISTINCT r.primary_language {BROWSE_FROM}
+         AND r.primary_language IS NOT NULL ORDER BY r.primary_language"
+    ))
+    .bind(left_out)
     .fetch_all(db)
     .await
 }

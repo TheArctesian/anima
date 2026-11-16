@@ -4,7 +4,7 @@
 //! the transport. It calls [`begin`] to start a run, asks [`next_request`] what to fetch,
 //! fetches it, and hands the response to [`normalise`] with the same slice of state. A run
 //! lists the repositories the installation can see, then reads the signs of each one whose
-//! `pushed_at` changed: its recursive file tree and its deployment records.
+//! push time or default branch changed: its file tree, deployments and default branch history.
 
 mod app_token;
 mod changes;
@@ -95,7 +95,7 @@ pub fn next_request(state: &Value) -> Option<Request> {
 /// is not the answer to [`next_request`] of this slice, or a status with no rule, gives no
 /// records, the slice unchanged and a problem: the engine fails the run. A body larger than the
 /// hub reads fails the run only for the listing; for a tree or a deployments reply it is that
-/// repository's problem, and the repository counts as read for its `pushed_at`.
+/// repository's problem, and the run proceeds to its history.
 #[must_use]
 pub fn normalise(request: &Request, response: &Response<'_>, state: &Value) -> Normalised<Record> {
     let slice = Slice::read(state);
@@ -126,6 +126,7 @@ pub fn forget_repository(state: &Value, external_id: &str) -> Value {
     let mut slice = Slice::read(state);
     slice.pending.retain(|pending| pending.id != external_id);
     slice.seen.remove(external_id);
+    slice.branches.remove(external_id);
     slice.settle();
     slice.to_value()
 }

@@ -117,6 +117,7 @@ fn prj_032_a_malformed_body_is_a_problem_in_every_parse() {
 #[test]
 fn prj_032_a_status_other_than_200_and_a_too_large_body_are_problems_with_fixed_words() {
     let not_found = Response {
+        link: None,
         status: 404,
         body: Body::Read(b"{\"message\":\"secret words from GitHub\"}"),
     };
@@ -125,6 +126,7 @@ fn prj_032_a_status_other_than_200_and_a_too_large_body_are_problems_with_fixed_
     assert_eq!(problem.message, "GitHub answered with status 404");
 
     let too_large = Response {
+        link: None,
         status: 200,
         body: Body::TooLarge,
     };

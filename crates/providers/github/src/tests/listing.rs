@@ -46,6 +46,7 @@ fn read_one(state: &Value, body: &[u8]) -> Normalised<Record> {
     normalise(
         &request,
         &Response {
+            link: None,
             status: 200,
             body: Body::Read(body),
         },

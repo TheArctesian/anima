@@ -160,6 +160,7 @@ fn prj_016_a_repository_the_operator_left_out_is_forgotten_by_the_slice() {
     stepped = normalise(
         &request,
         &Response {
+            link: None,
             status: 200,
             body: Body::Read(body),
         },
@@ -188,6 +189,7 @@ fn src_006_a_status_with_no_rule_gives_a_problem_and_keeps_the_slice() {
     let out = normalise(
         &request,
         &Response {
+            link: None,
             status: 500,
             body: Body::Read(b"oops"),
         },
@@ -210,6 +212,7 @@ fn src_007_an_unreadable_listing_reports_no_repository_so_none_reads_as_gone() {
     let out = normalise(
         &request,
         &Response {
+            link: None,
             status: 200,
             body: Body::Read(broken),
         },
@@ -233,6 +236,7 @@ fn src_006_a_response_for_another_request_is_refused() {
     let out = normalise(
         &other,
         &Response {
+            link: None,
             status: 200,
             body: Body::Read(b"{}"),
         },
@@ -249,6 +253,7 @@ fn src_006_normalising_the_same_input_twice_gives_equal_output() {
     let request = next_request(&state).unwrap();
     let body = &one_repository()[0];
     let response = Response {
+        link: None,
         status: 200,
         body: Body::Read(body),
     };

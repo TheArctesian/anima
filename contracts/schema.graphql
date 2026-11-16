@@ -1872,7 +1872,17 @@ type ProjectEdge {
   node: Project!
 }
 
+enum ProjectOrder { NAME LAST_COMMIT CREATED COMMIT_COUNT STARS }
+
+input ProjectBrowse {
+  order: ProjectOrder
+  language: String
+  minSizeKib: Int
+  maxSizeKib: Int
+}
+
 type ProjectConnection {
+  languages: [String!]!
   edges: [ProjectEdge!]!
   pageInfo: PageInfo!
 }
@@ -2429,7 +2439,7 @@ type Query {
   sources: [Source!]!
   sourceAccounts(sourceKey: String): [SourceAccount!]!
   "By name, then ID. leftOut false: the projects with at least one repository that is not left out. leftOut true: only the projects whose repositories are all left out. The two lists hold every project once. first is 1 to 200. CONFLICT while Projects is off."
-  projects(leftOut: Boolean = false, first: Int = 50, after: String): ProjectConnection!
+  projects(leftOut: Boolean = false, first: Int = 50, after: String, browse: ProjectBrowse): ProjectConnection!
   "Any project, left out or not. Null when no project has this slug. CONFLICT while Projects is off."
   project(slug: String!): Project
   "The open attempt, or one that ended in the last 10 minutes; null otherwise. Open to a read key: it holds nothing secret."

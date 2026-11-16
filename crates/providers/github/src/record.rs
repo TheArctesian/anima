@@ -52,6 +52,13 @@ pub enum Record {
     Listed {
         external_ids: Vec<String>,
     },
+    /// The tip date and reachable commits of the default branch.
+    History {
+        external_id: String,
+        branch: String,
+        last_commit_at: Option<DateTime<Utc>>,
+        commit_count: Option<i32>,
+    },
     /// All signs of one origin for one repository. Replaces what was stored for that origin.
     Signs {
         external_id: String,

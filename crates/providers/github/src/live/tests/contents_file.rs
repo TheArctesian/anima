@@ -95,6 +95,7 @@ fn prj_030_empty_content_with_a_size_is_too_large() {
 #[test]
 fn prj_030_a_reply_cut_by_the_transport_is_too_large() {
     let cut = Response {
+        link: None,
         status: 200,
         body: Body::TooLarge,
     };
@@ -164,6 +165,7 @@ fn prj_030_content_that_cannot_be_read_is_a_problem_with_fixed_words() {
         assert!(!problem.message.contains("base64 !!!!"));
     }
     let missing = Response {
+        link: None,
         status: 404,
         body: Body::Read(b"{}"),
     };

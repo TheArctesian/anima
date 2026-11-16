@@ -166,6 +166,7 @@ impl Reply {
     #[must_use]
     pub fn response(&self) -> Response<'_> {
         Response {
+            link: None,
             status: self.status,
             body: self.body.as_deref().map_or(Body::TooLarge, Body::Read),
         }
