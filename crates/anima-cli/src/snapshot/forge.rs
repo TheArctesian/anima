@@ -5,7 +5,7 @@
 use super::SnapshotError;
 use super::git::Git;
 use super::git_output::{RemoteScratchRef, rejection, safe, scratch_refs};
-use super::object_paths::object_paths;
+use super::object_paths::changed_paths;
 use super::remote_name;
 use super::scratch_ref::{PREFIX, ScratchRef};
 use super::secret_paths::secret_paths;
@@ -44,13 +44,27 @@ pub fn push(
     send(git, remote, scratch, &refspec)
 }
 
-/// Refuses when an object that `commit` reaches and no remote-tracking ref of `remote` does
-/// has a path that matches a secret pattern: the push would send it, even when a later commit
-/// deleted the file. A stale or missing remote-tracking ref only makes this set larger.
+/// Checks paths added or changed in commits outside the remote-tracking history, even when a
+/// later commit deletes them. Git lists each changed path, including paths that share a blob.
 fn refuse_unsent_secrets(git: &Git, remote: &str, commit: &str) -> Result<(), SnapshotError> {
     let remotes = format!("--remotes={remote}");
-    let listed = git.bytes(&["rev-list", "-z", "--objects", commit, "--not", &remotes])?;
-    let all = object_paths(&listed);
+    let listed = git.bytes(&[
+        "log",
+        "--format=",
+        "--no-notes",
+        "--no-show-signature",
+        "--name-only",
+        "--diff-filter=AMT",
+        "--no-renames",
+        "--diff-merges=separate",
+        "--root",
+        "-z",
+        commit,
+        "--not",
+        &remotes,
+        "--",
+    ])?;
+    let all = changed_paths(&listed);
     let mut found = secret_paths(all.iter().map(String::as_str));
     if found.is_empty() {
         return Ok(());
