@@ -1,5 +1,6 @@
-//! The metrics GraphQL part: `Subscription.metricsAdded` (K1; API-003, MET-005, D-9), and
-//! `enrolAgent` and `revokeAgentToken` (K1, K8 Section 3; MET-012, MET-013).
+//! The metrics GraphQL part: `Query.capabilities` (K1; CAP-030), `Subscription.metricsAdded`
+//! (K1; API-003, MET-005, D-9), and `enrolAgent` and `revokeAgentToken` (K1, K8 Section 3;
+//! MET-012, MET-013).
 //!
 //! The metric types are served from `model.rs`; the `Device` fields that return them
 //! (`readings`, `metrics`, `gpus`) belong to the devices domain. Each mutation writes its
@@ -13,7 +14,7 @@ use serde_json::json;
 use tokio::sync::broadcast::{Receiver, error::RecvError};
 
 use super::{
-    Feed, MetricsAdded,
+    CapabilityFilter, DeviceCapabilities, Feed, MetricsAdded,
     ingest::{self, AgentEnrolment},
 };
 use crate::{
@@ -27,6 +28,28 @@ use crate::{
     },
     ids::DeviceId,
 };
+
+#[derive(Default)]
+pub struct Query;
+
+#[Object(name = "MetricsQuery")]
+impl Query {
+    /// The tool inventory of each device whose agent sent one, in device-name order; `tool`
+    /// keeps the devices where it is usable, `buildTarget` those with that target (CAP-030).
+    #[graphql(guard = "Authenticated")]
+    async fn capabilities(
+        &self,
+        ctx: &Context<'_>,
+        tool: Option<String>,
+        build_target: Option<String>,
+    ) -> Result<Vec<DeviceCapabilities>> {
+        let db = pool(ctx)?;
+        let filter = CapabilityFilter { tool, build_target };
+        let found = super::capabilities(db, &filter).await.map_err(internal)?;
+        let devices = devices::list(db).await.map_err(internal)?;
+        Ok(super::capabilities::with_devices(found, devices))
+    }
+}
 
 #[derive(Default)]
 pub struct Mutation;

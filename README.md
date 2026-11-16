@@ -85,7 +85,7 @@ There is no public download yet: [releases.anima.ing](https://releases.anima.ing
 
 ## Quick start (build from source)
 
-You will need a recent [Rust](https://rustup.rs) toolchain (the hub image is built with 1.99.1), [Bun](https://bun.sh) 1.3, and a clone of this repository. PostgreSQL 17 is required to run the hub and the test gates. [Go](https://go.dev) 1.27 is required only if you build `anima-link`.
+You will need [Rust](https://rustup.rs) through rustup (`rust-toolchain.toml` pins the version, 1.100.0, and the hub image is built with the same one), [Bun](https://bun.sh) 1.3, and a clone of this repository. PostgreSQL 17 is required to run the hub and the test gates. [Go](https://go.dev) 1.27 is required only if you build `anima-link`.
 
 ### Desktop client
 
