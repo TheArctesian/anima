@@ -65,7 +65,7 @@ person tested it yet.
   does not read the interfaces. Each question to the client has a limit of 1 second.
 - 71bfcbdb: the hub is the one source of the login server (`Query.vpnLoginServer`).
 
-State: Open, until the human test [HT-010](need-human-testing.md#ht-010-this-machine-with-the-anima-vpn-and-netbird-together)
+State: Open, until the human test [HT-017](need-human-testing.md#ht-017-this-machine-with-the-anima-vpn-and-netbird-together)
 passes.
 
 ### SF-002: the web view chooses the login server that the desktop shell trusts
