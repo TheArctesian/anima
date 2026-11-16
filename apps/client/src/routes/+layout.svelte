@@ -71,8 +71,8 @@
   const start = startAt(page.url);
   const shell = start.kind === 'shell' ? startShell(start.address) : null;
 
-  /** The operator shell's parts: the hub and its start guard, the clock, updates, the builder and the session strip. */
-  function startShell(address: HubAddress) {
+  /** The hub the shell talks to, provided to every page, with its token read behind the listener check (F-10). */
+  function startHub(address: HubAddress) {
     // The hub address is the stored setting on desktop and the serving origin in a browser (CLI-002, E-2); the token is
     // read from the desktop key store per call, and is none in a browser, where the cookie travels by itself (CLI-003).
     // On this computer's hub address the token is read only once a program of this user is found listening there (F-10).
@@ -85,6 +85,12 @@
     $effect(() => {
       if (hub.status.current.connection !== 'connected') untrack(() => forgetListener(address.origin));
     });
+    return hub;
+  }
+
+  /** The operator shell's parts: the hub and its start guard, the clock, updates, the builder and the session strip. */
+  function startShell(address: HubAddress) {
+    const hub = startHub(address);
     guardStart(page.url, hub);
     // Which extensions are on decides the bar's entries and Settings (EXT-002); read once signed in.
     const extensions = new ExtensionsStore(extensionsApi(hub));
