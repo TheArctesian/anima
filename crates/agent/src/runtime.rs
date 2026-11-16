@@ -1,6 +1,7 @@
-//! `anima-agent run`: two tasks and the clock. One samples every 2 seconds and hands points
-//! over; the other keeps the buffer and pushes every 10 seconds, so a slow hub never delays
-//! sampling (MET-014, K8 Section 7). This is the I/O edge: clock, sleep, signals.
+//! `anima-agent run`: three tasks and the clock. One samples every 2 seconds and hands points
+//! over; one probes the tool inventory at start and every 15 minutes (CAP-027); the other keeps
+//! the buffer and pushes every 10 seconds, so a slow hub or a slow probe never delays sampling
+//! (MET-014, K8 Section 7). This is the I/O edge: clock, sleep, signals.
 
 use std::time::Duration;
 
@@ -18,10 +19,14 @@ use crate::report;
 use crate::sampling::Sampler;
 use crate::sampling::drives::DriveWatch;
 use crate::sampling::gpu::Discovery;
+use crate::sampling::inventory::InventoryWatch;
 use crate::token_store::{TokenStore, TokenStoreError};
 
 /// The time between samplings (MET-014).
 const SAMPLE_EVERY: Duration = Duration::from_secs(2);
+
+/// The time between two probe runs of the tool inventory (CAP-027).
+const PROBE_EVERY: Duration = Duration::from_mins(15);
 
 /// Points waiting to cross from sampling to the pusher: far more than a slow push can build up.
 const CHANNEL_ROOM: usize = 64;
@@ -52,6 +57,7 @@ pub enum RunError {
 pub async fn run(home: &Home, stop: impl Future<Output = ()>) -> Result<(), RunError> {
     let (pusher, device) = prepare(home)?;
     let (sender, receiver) = mpsc::channel(CHANNEL_ROOM);
+    let probing = tokio::spawn(probe(Platform::current(), sender.clone()));
     let mut sampling = tokio::spawn(sample(Platform::current(), sender));
     report::running(device);
     let outcome = tokio::select! {
@@ -66,6 +72,8 @@ pub async fn run(home: &Home, stop: impl Future<Output = ()>) -> Result<(), RunE
         }
     };
     sampling.abort();
+    // Aborting drops a probe that is running, and its child with it (`kill_on_drop`).
+    probing.abort();
     outcome
 }
 
@@ -110,6 +118,22 @@ async fn sample(platform: Platform, events: mpsc::Sender<Event>) {
             .place_all(gpu::read(found.sources, mac).await);
         if let Some(point) = sampler.take(now, reading, &gpus)
             && events.send(Event::Point(point)).await.is_err()
+        {
+            return;
+        }
+    }
+}
+
+/// At start and every 15 minutes: probes the tools and hands the inventory over when it
+/// changed (CAP-027). A probe run waits for the one before; a slow one delays the next.
+async fn probe(platform: Platform, events: mpsc::Sender<Event>) {
+    let mut watch = InventoryWatch::new();
+    let mut ticks = interval(PROBE_EVERY);
+    ticks.set_missed_tick_behavior(MissedTickBehavior::Delay);
+    loop {
+        ticks.tick().await;
+        if let Some(changed) = watch.changed(readers::inventory(platform).await)
+            && events.send(Event::Inventory(changed)).await.is_err()
         {
             return;
         }

@@ -2,7 +2,7 @@
 
 use std::process::Command;
 
-use agent_core::wire::{Batch, RefusalCode};
+use agent_core::wire::{Announcements, Batch, RefusalCode};
 use anima_agent::hub::answer::{Answer, Cause};
 use anima_agent::hub::{HubClient, TIMEOUT};
 use reqwest::Url;
@@ -14,7 +14,7 @@ fn token() -> agent_core::wire::AgentToken {
 }
 
 fn batch() -> Batch {
-    Batch::new(uuid::Uuid::from_u128(1), [], (None, None))
+    Batch::new(uuid::Uuid::from_u128(1), [], Announcements::default())
 }
 
 #[tokio::test]

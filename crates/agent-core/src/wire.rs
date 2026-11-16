@@ -8,16 +8,20 @@
 mod batch;
 mod bodies;
 mod check;
+mod inventory;
 mod refusal;
 mod secrets;
 #[cfg(test)]
 mod tests;
 mod times;
 
-pub use batch::{Batch, BatchDrive, BatchGpu, BatchPoint, BatchSeries, DriveKind, GpuVendor};
+pub use batch::{
+    Announcements, Batch, BatchDrive, BatchGpu, BatchPoint, BatchSeries, DriveKind, GpuVendor,
+};
 pub use bodies::{
     DEVICE_NAME_CHARS, EnrolRequest, Enrolled, RenewRequest, Renewed, is_device_name,
 };
 pub use check::Accepted;
+pub use inventory::{BatchInventory, BatchTool, ToolState};
 pub use refusal::{Refusal, RefusalCode};
 pub use secrets::{AgentToken, CODE_BYTES, CodeHash, EnrolmentCode, TOKEN_BYTES, TokenHash};
