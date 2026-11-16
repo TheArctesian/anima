@@ -14,7 +14,7 @@ use super::actor::{Actor, ActorKind, TokenKind};
 use crate::{
     ids::{
         ApiKeyId, BuildJobId, BuilderId, ChannelId, CheckId, DeviceId, EventId, OperatorId,
-        ProjectId, ReleaseId, SessionId, SiteId, SourceAccountId, WindowId,
+        ProjectId, ReleaseId, RepositoryId, SessionId, SiteId, SourceAccountId, WindowId,
     },
     status::Status,
 };
@@ -209,6 +209,8 @@ pub enum AuditAction {
     Cancel,
     /// A test notification sent through a channel (NOT-004).
     Send,
+    /// A pull request merged on GitHub (PRJ-028, OD-E14).
+    Merge,
 }
 
 impl AuditAction {
@@ -233,6 +235,7 @@ impl AuditAction {
             Self::Wake => "wake",
             Self::Cancel => "cancel",
             Self::Send => "send",
+            Self::Merge => "merge",
         }
     }
 }
@@ -271,6 +274,9 @@ pub enum AuditTarget {
     SourceAccount(SourceAccountId),
     /// A project, its repositories or its resources (PRO-001).
     Project(ProjectId),
+    /// A project repository on GitHub, for a change the hub sent there; the change names the
+    /// issue, pull request, run or commit (PRJ-028, OD-E14).
+    Repository(RepositoryId),
 }
 
 impl AuditTarget {
@@ -296,6 +302,7 @@ impl AuditTarget {
             Self::Vpn => "vpn",
             Self::SourceAccount(_) => "source_account",
             Self::Project(_) => "project",
+            Self::Repository(_) => "repository",
         }
     }
 
@@ -320,6 +327,7 @@ impl AuditTarget {
             Self::Vpn => "vpn".to_owned(),
             Self::SourceAccount(id) => id.to_string(),
             Self::Project(id) => id.to_string(),
+            Self::Repository(id) => id.to_string(),
         }
     }
 }

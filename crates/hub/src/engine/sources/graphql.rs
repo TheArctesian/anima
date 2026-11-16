@@ -253,6 +253,7 @@ impl Mutation {
             .map_err(internal)?;
         commit(tx).await?;
         s.transport.tokens().forget(account);
+        super::live::forget_account(&s.transport, account);
         s.feed.publish(account);
         Ok(id)
     }

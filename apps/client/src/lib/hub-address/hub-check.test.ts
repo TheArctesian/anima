@@ -4,7 +4,7 @@ import { connectionSentence } from './hub-check';
 
 it('CLI-002: an unreadable token says nothing was sent, never that the hub answered', () => {
   const sentence = connectionSentence({ ok: false, error: TOKEN_UNREADABLE });
-  expect(sentence).toBe('Anima cannot read the token.');
+  expect(sentence).toBe("Can't read Anima.ing's token.");
   expect(sentence.length).toBeLessThanOrEqual(30);
 });
 

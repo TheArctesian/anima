@@ -10,7 +10,7 @@
 <div class="stack">
   <h3>Materials: chrome, panel and overlay glass over a busy backdrop; solid under reduced transparency or increased contrast</h3>
   <div class="backdrop">
-    <p class="noise" aria-hidden="true">Anima Anima Anima Anima Anima Anima Anima Anima Anima Anima Anima Anima Anima Anima Anima Anima Anima Anima Anima Anima Anima Anima Anima Anima</p>
+    <p class="noise" aria-hidden="true">Anima.ing Anima.ing Anima.ing Anima.ing Anima.ing Anima.ing Anima.ing Anima.ing Anima.ing Anima.ing Anima.ing Anima.ing Anima.ing Anima.ing Anima.ing Anima.ing Anima.ing Anima.ing Anima.ing Anima.ing Anima.ing Anima.ing Anima.ing Anima.ing</p>
     {#each MATERIALS as material (material.name)}
       <div class="sample {material.class}">
         <strong>{material.name}</strong>

@@ -78,7 +78,7 @@ impl ReleaseTool {
                 "anima_releases_list",
                 Access::Read,
                 Effect::Reads,
-                "Lists releases of the Anima desktop application, newest first, each with its \
+                "Lists releases of the Anima.ing desktop application, newest first, each with its \
                  build jobs (id, target, state, failure reason). Next: anima_build_log for a \
                  job that failed.",
             )

@@ -118,7 +118,7 @@ it('SET-001, UI-005, MOT-043: the page is the title, then Account, then Appearan
   expect(sectionTexts(target, 'Account')).toEqual(['Account', 'Who is signed in to this hub.', 'Signed in as ann', 'Sign out', '']);
   const fonts = ['OpenDyslexic'];
   expect(sectionTexts(target, 'Appearance')).toEqual([
-    'Appearance', 'How Anima looks on this device.', 'Theme', 'Dark', 'Light', 'System', 'Colours', 'Graphite', 'Nord', 'Reduce motion', 'System', 'On', 'Off',
+    'Appearance', 'How Anima.ing looks on this device.', 'Theme', 'Dark', 'Light', 'System', 'Colours', 'Graphite', 'Nord', 'Reduce motion', 'System', 'On', 'Off',
     'Interface font', 'IBM Plex Sans', ...fonts, 'Monospace font', 'IBM Plex Mono', ...fonts,
   ]);
   const controls = '[role="switch"], img, input, textarea, a, [tabindex]:not(button)';
@@ -183,7 +183,7 @@ it('API-003: an UNAUTHENTICATED me result goes to sign-in', async () => {
 it('NET-004: an unreachable hub does not go to sign-in, shows a fixed message and keeps Sign out', async () => {
   const target = await open({ Me: failure('unreachable', 'secret hub text') });
   expect(mocks.goToSignIn).not.toHaveBeenCalled();
-  expect(target.querySelector('[role="alert"]')?.textContent).toBe('Anima could not read who is signed in.');
+  expect(target.querySelector('[role="alert"]')?.textContent).toBe('Anima.ing could not read who is signed in.');
   expect(readable(signOutButton(target))).toBe('Sign out');
 });
 

@@ -154,6 +154,8 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
     )
     .disable_suggestions()
     .extension(access::SignInRequired)
+    // Each request's count of GitHub reads (K-E1 Section 13.1).
+    .extension(projects::RequestReads)
     // Shared dependencies (K3 wiring).
     .data(config)
     .data(clock.clone())
@@ -187,6 +189,8 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
         .data(vpn_broker)
         // sources
         .data(sources)
+        // projects: the changes each API key made this minute (K-E1 Section 13.1)
+        .data(projects::KeyChanges::default())
         .finish()
 }
 

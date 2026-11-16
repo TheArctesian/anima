@@ -33,6 +33,65 @@ fn bld_043_the_updater_file_is_where_tauri_bundles_it() {
 }
 
 #[test]
+fn the_macos_app_folder_uses_the_display_product_name() {
+    let clone = Path::new("/data/builds/anima");
+    assert_eq!(
+        artifact::mac_app(clone),
+        Path::new(
+            "/data/builds/anima/target/universal-apple-darwin/release/bundle/macos/Anima.ing.app"
+        )
+    );
+}
+
+#[test]
+fn upd_010_stabilize_names_renames_tauri_output_to_the_stable_anima_prefix() {
+    let root = tempfile::tempdir().unwrap();
+    let clone = root.path().join("clone");
+    let version = Version::parse("0.1.12").unwrap();
+
+    let linux_from = clone.join("target/release/bundle/appimage/Anima.ing_0.1.12_amd64.AppImage");
+    fs::create_dir_all(linux_from.parent().unwrap()).unwrap();
+    fs::write(&linux_from, b"image").unwrap();
+    artifact::stabilize_names(&clone, Target::LinuxX86_64, &version).unwrap();
+    let linux_to = artifact::updater_file(&clone, Target::LinuxX86_64, &version);
+    assert_eq!(
+        linux_to,
+        clone.join("target/release/bundle/appimage/Anima_0.1.12_amd64.AppImage")
+    );
+    assert!(linux_to.is_file());
+    assert!(!linux_from.exists());
+
+    // Already-stable names are left alone.
+    artifact::stabilize_names(&clone, Target::LinuxX86_64, &version).unwrap();
+    assert!(linux_to.is_file());
+
+    let dmg_from =
+        clone.join("target/universal-apple-darwin/release/bundle/dmg/Anima.ing_0.1.12_universal.dmg");
+    fs::create_dir_all(dmg_from.parent().unwrap()).unwrap();
+    fs::write(&dmg_from, b"disk").unwrap();
+    artifact::stabilize_names(&clone, Target::DarwinUniversal, &version).unwrap();
+    let dmg_to = artifact::dmg_file(&clone, Target::DarwinUniversal, &version).unwrap();
+    assert_eq!(
+        dmg_to,
+        clone.join("target/universal-apple-darwin/release/bundle/dmg/Anima_0.1.12_universal.dmg")
+    );
+    assert!(dmg_to.is_file());
+    assert!(!dmg_from.exists());
+}
+
+#[test]
+fn stabilize_names_fails_when_neither_name_is_present() {
+    let root = tempfile::tempdir().unwrap();
+    let clone = root.path().join("clone");
+    fs::create_dir_all(&clone).unwrap();
+    let version = Version::parse("0.1.12").unwrap();
+    assert_eq!(
+        artifact::stabilize_names(&clone, Target::LinuxX86_64, &version),
+        Err(BuilderError::Bundle)
+    );
+}
+
+#[test]
 fn bld_043_only_a_regular_file_inside_the_clone_is_the_builds_own() {
     let root = tempfile::tempdir().unwrap();
     let clone = root.path().join("clone");

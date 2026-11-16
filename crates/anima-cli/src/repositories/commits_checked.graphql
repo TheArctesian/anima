@@ -1,0 +1,37 @@
+query CommitListChecked($repository: ID!, $ref: String, $first: Int, $after: String, $fresh: Boolean) {
+  commits(repository: $repository, ref: $ref, first: $first, after: $after, fresh: $fresh) {
+    edges {
+      cursor
+      node {
+        repository
+        sha
+        title
+        message
+        authorName
+        authorLogin
+        committedAt
+        parents
+        url
+        checks {
+          sha
+          state
+          passed
+          failed
+          pending
+          other
+          failing
+          partial
+        }
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+    read {
+      at
+      stale
+      problem
+    }
+  }
+}

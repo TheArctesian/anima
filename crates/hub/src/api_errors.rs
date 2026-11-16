@@ -94,6 +94,30 @@ pub fn internal(cause: impl std::error::Error + Send + Sync + 'static) -> GraphQ
     error.extend_with(|_, extensions| extensions.set("code", ErrorCode::Internal.as_str()))
 }
 
+/// The hub's fault after something outside it already changed: the operator must hear what
+/// stands, so the API boundary answers `INTERNAL` with these fixed words, not the generic text,
+/// and logs the cause chain (K-E1 Section 13.6). The words are `'static`: never a value.
+#[derive(Debug, thiserror::Error)]
+#[error("{words}")]
+pub struct StatedFault {
+    pub words: &'static str,
+    #[source]
+    cause: Arc<dyn std::error::Error + Send + Sync>,
+}
+
+/// `INTERNAL` with the fixed `words` of a [`StatedFault`]; `cause` stays for the process log.
+pub fn internal_stating(
+    words: &'static str,
+    cause: impl std::error::Error + Send + Sync + 'static,
+) -> GraphQlError {
+    let mut error = internal(StatedFault {
+        words,
+        cause: Arc::new(cause),
+    });
+    words.clone_into(&mut error.message);
+    error
+}
+
 /// A `VALIDATION` error that lists every field the operator must fix.
 #[must_use]
 pub fn invalid(fields: &[FieldError]) -> GraphQlError {

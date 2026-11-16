@@ -1,0 +1,14 @@
+query CodeFileRead($repository: ID!, $ref: String, $path: String!) {
+  codeFile(repository: $repository, ref: $ref, path: $path) {
+    repository
+    ref
+    path
+    name
+    sha
+    size
+    content
+    text
+    url
+    readAt
+  }
+}

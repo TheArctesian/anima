@@ -13,7 +13,7 @@
   import { SourcesStore, type AccountRow as Account } from './store.svelte';
 
   // The Settings page draws the section and its heading; these are its rows (ITG-001). The operator makes the GitHub App
-  // in their own account; Anima only keeps its key (PRJ-018).
+  // in their own account; Anima.ing only keeps its key (PRJ-018).
   interface Props {
     /** The clock for "Synced 4 min ago"; tests pass their own. */
     now?: () => Date;
@@ -43,7 +43,7 @@
 
 <SettingRow label="GitHub">
   {#snippet hint()}
-    <p class="hint">Anima makes a GitHub App in your own account and keeps its key in the hub. You press Create and Install on GitHub.</p>
+    <p class="hint">Anima.ing makes a GitHub App in your own account and keeps its key in the hub. You press Create and Install on GitHub.</p>
   {/snippet}
   <GithubConnect {opener} />
   <FormButton

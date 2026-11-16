@@ -21,7 +21,7 @@ interface StartPlace {
 }
 
 /** Fixed text: it never repeats the origin. */
-export const ORIGIN_REFUSED = 'Anima runs only from the https address of its hub. Open the hub address in the browser.';
+export const ORIGIN_REFUSED = 'Anima.ing runs only from the https address of its hub. Open the hub address in the browser.';
 
 /**
  * Decides how the client starts. The desktop app talks to the hub in its settings; a browser talks only to the hub that

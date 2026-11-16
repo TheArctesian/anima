@@ -86,7 +86,7 @@
 <ConfirmModal
   open={confirming}
   title="Delete {device.name}?"
-  body="Anima deletes {device.name} with its credentials, checks, heartbeats and metrics. This cannot be undone."
+  body="Anima.ing deletes {device.name} with its credentials, checks, heartbeats and metrics. This cannot be undone."
   confirmLabel="Delete {device.name}"
   onConfirm={onDelete}
   onCancel={() => {

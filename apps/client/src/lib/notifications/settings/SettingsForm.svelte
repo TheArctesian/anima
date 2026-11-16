@@ -133,7 +133,7 @@
     {#snippet label()}
       <div class="note">
         {#if loadFailed}
-          <p id="{id}-failed" role="alert">Anima could not load the notification settings.</p>
+          <p id="{id}-failed" role="alert">Anima.ing could not load the notification settings.</p>
         {:else}
           <p class="outcome" role="status">{outcome}</p>
         {/if}

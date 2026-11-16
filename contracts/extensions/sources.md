@@ -27,7 +27,7 @@ pub struct AppKey {                          // the provider-specific part of "t
 }
 pub struct Minted { pub token: String, pub expires_at: DateTime<Utc> }
 
-pub enum Method { Get }                      // the only variant: a provider cannot express a write
+pub enum Method { Get }                      // the only variant: a provider request cannot express a write (writes: Section 13)
 pub struct Request { pub method: Method, pub path: String, pub query: Vec<(String, String)> }
 pub struct Response<'a> { pub status: u16, pub body: Body<'a> }
 pub enum Body<'a> { Read(&'a [u8]), TooLarge }   // TooLarge: past the engine's body cap; none of it kept
@@ -65,7 +65,7 @@ pub struct Installation { pub id: u64, pub app_id: u64, pub account_id: u64, pub
 
 The manifest asks for 23 repository permissions: `metadata` read and 22 others write (`contents`, `administration`, `actions`, `actions_variables`, `checks`, `deployments`, `environments`, `issues`, `pull_requests`, `statuses`, `workflows`, `secrets`, `repository_hooks`, `pages`, `discussions`, `repository_projects`, `security_events`, `vulnerability_alerts`, `dependabot_secrets`, `merge_queues`, `packages`, `secret_scanning_alerts`, `repository_custom_properties`). It sets `public: false`, `request_oauth_on_install: false`, no `callback_urls` and no `default_events`; `url`, `redirect_url` (`<origin>/connect/github/created`) and `setup_url` (`<origin>/connect/github/installed`) come from `ANIMA_PUBLIC_ORIGIN`. `hook_attributes` is `{ "url": "<origin>/connect/github/hook", "active": false }` for `InactiveAtHub`. `/connect/github/hook` is not routed.
 
-Later acquisition variants (OAuth pull, a stored plain token, collector push, file upload) are added to the `non_exhaustive` enums by contract change when a real source needs them (EXT-000). Nothing is built or named for them now. A new `Method` variant (a write) is also a contract change.
+Later acquisition variants (OAuth pull, a stored plain token, collector push, file upload) are added to the `non_exhaustive` enums by contract change when a real source needs them (EXT-000). Nothing is built or named for them now. A write is never a new `Method` variant: `Method` stays `Get` only, and a write is a named `Change` (Section 13). A new `Change` variant is a contract change (operator, 2026-11-14; ruling number to be assigned; PRJ-027, OD-E14).
 
 ## 2. Provider functions (SRC-006)
 
@@ -181,7 +181,7 @@ One attempt exists at a time, in hub memory only (`Attempts`: one `Arc<Mutex<Opt
 | `POST /connect/github/open` | `SameOrigin` and `access::identify` with the `__Host-anima` browser session | Claims as above. 401 page without a session; 409 page when no attempt is open |
 | `GET /connect/github/start` | Cookie hash equal; phase `AT_GITHUB` | Serves the browser's S1 (the same on every hit, so a second hit does not spoil the first) in a page that posts `manifest` to `https://github.com/settings/apps/new?state=S1` (or the organisation path). CSP `default-src 'none'; script-src 'sha256-<fixed script>'; style-src 'unsafe-inline'; form-action https://github.com; base-uri 'none'; frame-ancestors 'none'`. A "Continue to GitHub" button serves a browser without scripts |
 | `GET /connect/github/created?code&state` | Cookie and S1 | Consumes S1, posts the conversion, keeps App facts and key in memory, `303` to GitHub's install page with S2. Phase `APP_CREATED`; the installation poll starts. Once the App is made: the spent S1 gets the same `303` again; anything else gets the fixed "finishing" page; neither changes the attempt |
-| `GET /connect/github/installed?installation_id&setup_action&state` | The cookie; S2 if present. Not trusted either way | Verifies the installation with the App JWT (Section 10a), then `establish`. A hit without the bound cookie gets a fixed page, changes nothing and asks GitHub nothing; the bound browser with a state that does not match wakes the poll, which asks no sooner than one wait after its last ask (the poll interval, doubled after each unanswered ask or rate limit up to 5 minutes, reset by an answer) |
+| `GET /connect/github/installed?installation_id&setup_action&state` | The cookie and S2 (the install link carries S2, and GitHub returns it on the Setup URL). Not trusted either way | Verifies the installation with the App JWT (Section 10a), then `establish`. A hit without the bound cookie gets a fixed page, changes nothing and asks GitHub nothing; the bound browser with a state that does not match, or with none, wakes the poll, which asks no sooner than one wait after its last ask (the poll interval, doubled after each unanswered ask or rate limit up to 5 minutes, reset by an answer) |
 
 **What each attacker can do.**
 
@@ -261,3 +261,172 @@ The installation is verified before `establish`: `GET /app/installations/{N}` wi
 ## 12. Dependencies (K3)
 
 `sources` imports `extensions`, `credentials` (the Section 6 functions only) and `events`; its `graphql.rs` also imports `access`. (operator, 2026-11-14; ruling number to be assigned): `registration/routes.rs` also imports `access` (`PublicOrigin`, `SameOrigin`, `identify`, and a cookie reader that `access` exports for it). `registration/` imports no other domain's `store`. No foundation or engine module imports an extension domain; wiring passes the intake in.
+
+## 13. Live reads and named changes (operator, 2026-11-14; ruling number to be assigned; PRJ-027 to PRJ-035, OD-E14)
+
+The Work, Code and History tabs of a project (K1 "projects: work, code and history") read GitHub live through the hub, and the first changes of OD-E14 reach GitHub as named changes. This section adds no table and no migration. It does not touch a sync run (Section 8) or the schedule (Section 10).
+
+Facts about GitHub's REST API marked "to verify (C.7-n)" are not yet checked against GitHub's documentation; n is the item number of the verification list of the slice design. A builder confirms each one before the code that depends on it merges.
+
+### 13.1 Read model
+
+**Live reads, with a short cache in hub memory.** The hub reads GitHub when the operator asks, and keeps the raw answer in memory for a short time. Nothing of it is stored in PostgreSQL. Reasons: syncing four lists of every repository on a schedule would spend most of the installation's rate limit (5,000 requests an hour at the least, scaling with repositories and users up to 12,500) before paging; with no webhook a table would be up to 15 minutes old, and after a merge the operator expects the list to change at once; run and check states change every few seconds, so compare-before-write (SRC-012) gains nothing; Class C tables are not sealed, so private file content must not land in PostgreSQL; a cold cache refills on demand after a restart. GitHub's GraphQL API is not used: it is a POST with a free-form body, which the transport must not express. REST only.
+
+Tables come with the webhook receiver (Section 2.12 of the plan), and only for what needs them: the list across projects (PRJ-036) and the weekly counts (PRJ-037), which are deferred.
+
+**Cache.** Keyed by account, path and sorted query; it holds raw bodies.
+
+| Answer | Fresh for |
+| --- | --- |
+| Lists of pull requests, issues, runs; comments | 30 s |
+| One pull request (mergeability), one issue, one run | 15 s |
+| Checks of a commit | 30 s; 10 min once nothing is pending |
+| Jobs of a run | 15 s; 10 min once the run is completed |
+| Commits, branches | 60 s |
+| Releases, workflows, repository settings (merge methods) | 5 to 10 min |
+| Directory | 60 s for a branch; 1 h for a 40-digit commit. Only a listing: GitHub answers a directory read of a file with its content, and that answer is never kept |
+| File content | Never kept |
+
+- **Fresh.** `fresh: true` skips the cache; the hub still reuses an answer less than 5 seconds old.
+- **Stale.** A failed refresh serves the held answer for up to 1 hour with `ForgeRead.stale` true and fixed words in `ForgeRead.problem`. With nothing held the answer is `UNAVAILABLE`.
+- **Bounds.** At most 2,000 entries and 64 MiB; no body over 512 KiB is kept; the least recently used entry goes first. The cache's core is pure and takes `now` as a parameter (CQ-021).
+- **Forget.** A change drops the held answers of the paths it affects (13.6).
+- **Headers.** Every request the transport sends to GitHub (sync, mint, live read and change) carries `X-GitHub-Api-Version: 2022-11-28` and `User-Agent: anima-hub`; every one but the manifest conversion (Section 7a, `Accept: application/json`) sends `Accept: application/vnd.github+json`. The hub uses no behaviour of a later version. The headers are the transport's, beside its `User-Agent`: the transport sends only to declared GitHub bases today, and a second source with another API would move them into its `Declaration` by contract change.
+- **Budget.** The hub remembers the last `x-ratelimit-remaining` and `x-ratelimit-reset` it saw on a live answer (a read or a change) for each account, and assumes no total: GitHub's limit for an installation is at least 5,000 an hour and grows with its repositories and users, and a later answer may show more left than an earlier one, so the last answer wins. Live reads stop while 500 or fewer remain and the reset is ahead (`UNAVAILABLE`, "GitHub limits requests until HH:MM.", the reset time), which keeps the sync's share; with no reset header the stop lasts one minute. The operator's own change (a login or browser token) is not stopped by the reserve and may go down to 0. A change made with an API key stops at the reserve as a read does (`UNAVAILABLE`, the same words, nothing sent or recorded), and one key makes at most 20 changes a minute, counted in hub memory in fixed windows of a minute from its first (`UNAVAILABLE`, "This key makes at most 20 changes a minute. Try again in a minute.", nothing sent or recorded). The projects domain tells the engine which applies with a plain `Reserve` (`Spendable` or `Kept`); the engine learns nothing of tokens.
+- **Request budget.** One GraphQL request may ask GitHub at most 100 times with an API key and 200 times with a login or browser token; every read counts, a cache hit included, so a document costs the same whatever the cache holds. Each read past it is refused before sending with `UNAVAILABLE`, "This request asked GitHub too many times. Ask for less at once.", and the rest of the request goes on. A page of 30 pull requests with mergeability and checks costs 91.
+- **Limits.** A reply is a rate limit when its status is 429, or 403 with `x-ratelimit-remaining: 0`, or 403 with `retry-after`; it lasts until `retry-after` seconds, else the reset, else one minute, never more than a day. Live reads of the account then stop until it ends without sending. Any other 403 is "not permitted" and goes to the provider. (The sync keeps Section 7's rule.) A change's reply, a limit included, goes to the provider's `settle` as numbers in `Limit`, never as header text.
+- **Pace.** For each account at most 2 live reads are in flight; its changes go one at a time, each at least 1 second after the previous one ended, on the hub clock. Another account is not held up. A request that waits more than 30 seconds for its turn fails (`UNAVAILABLE`). The turn is a semaphore permit; no lock is held across an await.
+- **File content** (`codeFile`) is never cached, logged, put in an audit entry or an event. The file path is not in the process log (K7). A read writes no audit entry.
+
+**Engine functions** (`engine/sources/live.rs`; K3):
+
+```rust
+pub async fn ask(s: &Scheduling, account: SourceAccountId, request: &Request, keep: Keep) -> Result<Reply, LiveFailure>;
+pub async fn change(s: &Scheduling, account: SourceAccountId, change: &Change, reserve: Reserve) -> Result<Settled, LiveFailure>;
+pub fn forget(transport: &Transport, account: SourceAccountId, path_prefix: &str);
+pub async fn standing(conn: &mut PgConnection, accounts: &[SourceAccountId]) -> Result<Vec<(SourceAccountId, Standing)>, LiveFailure>;
+
+pub struct Keep;      // Keep::for_seconds(n), Keep::never() (file content), .longer_when(n, settled: fn(&[u8]) -> bool), .only_when(holds: fn(&[u8]) -> bool), .fresh(bool)
+pub struct Reply;     // response() -> Response<'_>, at(), stale(), problem() -> Option<LiveFailure>; its Debug shows no body
+pub enum LiveFailure { NotFound, Paused, KeyRefused, Limited { until }, Unreachable, Unusable, Refused, NoChanges, Busy, Store }
+pub enum Standing { Ready, NeedsReconnect, Paused, NotFound }   // from the stored row: paused first, then no key or an `auth` error
+pub enum Reserve { Spendable, Kept }   // whether a change may spend the sync's reserve: the caller decides from who asked
+```
+
+`ask` returns any answer the source gave but a 401, a rate limit and a 5xx; only a 2xx answer is held. A read that fails with `Limited`, `Unreachable`, `Unusable`, `Busy` or `Store` serves the held answer, at most an hour old, with `stale` and the failure as `problem`. `forget` drops the answers whose path is the prefix or lies below it (`/repos/o/r/pulls` keeps `/repos/o/r/pulls2`). A paused account is refused (`Paused`) by `ask` and `change`; `ask` checks the account before the cache, so a paused or removed account serves nothing held. Removing an account forgets its held answers.
+
+`ask` uses `Request` (still `Method::Get`), the token of Section 7 and the transport's path and host checks. A live 401 forgets the token, as a sync's does, and writes nothing. The live path never claims an account, never writes `sources.accounts` or `sources.sync_runs`, and never changes `next_sync_at`, `failure_count` or the health. It shares only the HTTP client and `Tokens`.
+
+### 13.2 Named changes (C.1)
+
+`Method` stays `Get` only and `Request` is unchanged. A change is a value of one closed enum in `source-exchange` (`change.rs`):
+
+```rust
+pub enum Change {
+    CreateIssue { repository: RepositoryName, title: Title, body: Option<Text>, labels: Vec<Label> },
+    AddComment { repository: RepositoryName, number: Number, body: Text },
+    SetIssueOpen { repository: RepositoryName, number: Number, open: bool, reason: Option<CloseReason> },
+    MergePullRequest { repository: RepositoryName, number: Number, head: CommitSha, method: MergeMethod },
+    RerunRun { repository: RepositoryName, run: RunId },
+    RerunFailedJobs { repository: RepositoryName, run: RunId },
+    CancelRun { repository: RepositoryName, run: RunId },
+    DispatchWorkflow { repository: RepositoryName, workflow: WorkflowId, branch: BranchName, inputs: Vec<(InputName, InputValue)> },
+    SetCommitStatus { repository: RepositoryName, sha: CommitSha, state: StatusState, context: StatusContext, description: Option<Text>, target_url: Option<String> },
+}
+pub enum Verb { Post, Put, Patch }                 // no Delete
+impl Change { pub const fn verb(&self) -> Verb; pub const fn function(&self) -> &'static str; }
+pub struct Rendered { pub path: String, pub body: Option<serde_json::Value> }
+pub struct Changes { pub render: fn(&Change) -> Rendered, pub settle: fn(&Change, u16, Body<'_>) -> Settled }
+pub enum Settled { Done(Receipt), NotFound, NotPermitted, NotMergeable, HeadMoved, Invalid, Gone, Refused }
+```
+
+- **Typed parts** (`parts.rs`). Each is a newtype with a private field and a checking `parse`: `RepositoryName` (the rule of `name::check`), `Number` and `RunId` (1 to 2^53), `CommitSha` (40 lower-case hex digits), `BranchName` (1 to 255 bytes, no `.` or `..` segment, no control character), `StatusContext` (`anima/[a-z0-9-]{1,40}`), and text with a length cap.
+- **Verb fixed per variant.** `Change::verb` is a `const fn` in the exchange crate; a provider cannot choose it.
+- **Rendered path fixed per variant.** `Declaration` gains `changes: Option<Changes>`; `None` for a read-only source. The provider's `render` builds the path with `format!` from the typed parts, always below `/repos/{owner}/{repo}/`, and the body with `serde_json`, never by joining strings. `settle` maps the status to `Settled` with fixed words and never quotes GitHub's reply.
+- **One caller.** `sources::change` is the only caller of `Transport::change(declaration, change, token)`, which is `pub(in crate::engine::sources)` like `mint` and `convert`. It takes no path, verb, URL or `Rendered`: it calls the declaration's `render` itself, so its only inputs are a declared source and a checked `Change`. The path goes through `Request::get(path, &[])` and `transport.url(..)`, so the path and host checks of Section 7 apply. The body cap is 1 MiB (a 65,536-character `Text`, every character escaped, is far below it), with `Content-Type: application/json`; a body over the cap is refused before sending. A source whose declaration has `changes: None` is refused before sending (`NoChanges`).
+- **Once.** A change whose connection failed before anything was sent is `Unreachable`. One that may have reached GitHub but got no whole answer (a timeout, a dropped connection) is `Settled::Unknown`, and the hub never sends it again. A 401 also drops the in-memory token, as a sync's does, and writes nothing.
+- **Unreachable from a sync.** A caller outside the engine can only name a `Change` value. No `Intake` method returns one. The hub never repeats a change.
+- GitHub's declaration names its changes: `changes` is `Some`, with the provider's `render` and `settle`, and `scopes` and `write_reason` state the changes it makes.
+
+### 13.3 The functions (C.2)
+
+All paths are below `/repos/{owner}/{repo}`. Endpoints, methods and body fields are those of GitHub's documentation for API version 2022-11-28 (checked 2026-11-14); success is 201 for an issue, a comment, both runs again and a status, 200 for open or close and for a merge, 202 for a cancel, and 204 for a start (200 when GitHub returns the run). Permissions, all among the App's 23 (Section 1): Issues write for the issue functions, Contents write alone for a merge, Actions write for the run controls and a start, Commit statuses write for a status. "Pre-read" is a fresh GET the hub makes first: never answered from the cache, not even stale, so a failed pre-read refuses the change and sends nothing. Only a start's workflow list is read as the cache holds it: it names the workflow, and GitHub refuses a start of one that is gone or turned off.
+
+| Function | Endpoint | Pre-read | Repeat and idempotency |
+| --- | --- | --- | --- |
+| `createIssue` | `POST /issues` | none | Not idempotent. After a fault once sent, the issue may exist |
+| `addIssueComment` | `POST /issues/{n}/comments` | none | As above |
+| `setIssueOpen` | `PATCH /issues/{n}` | The issue: refuse a pull request (to verify, C.7-6); unchanged when already so | Idempotent |
+| `mergePullRequest(s)` | `PUT /pulls/{n}/merge` with the method and `sha` | The pull request, up to 3 times 1 s apart while GitHub computes (to verify, C.7-4; GitHub documents 405 when it cannot merge and 409 when `sha` no longer matches, but no answer for an already merged pull request or a refused method, so 405, 409 and 422 are each a refusal) | The `sha` makes a second send safe; already merged returns unchanged |
+| `rerunWorkflowRun` | `POST /actions/runs/{id}/rerun` | The run: status, head sha, fork (to verify, C.7-7) | A second send starts another attempt; the pre-read refuses a run that is not completed |
+| `rerunFailedWorkflowJobs` | `POST /actions/runs/{id}/rerun-failed-jobs` | As above | As above |
+| `cancelWorkflowRun` | `POST /actions/runs/{id}/cancel` | The run | Idempotent in effect |
+| `dispatchWorkflow` | `POST /actions/workflows/{id}/dispatches` with `ref` and `inputs` (at most 25) | The workflow list (cached): active | Not idempotent: a second send starts a second run |
+| `setCommitStatus` | `POST /statuses/{sha}` (at most 1,000 for a sha and context) | none | A second send adds an equal status |
+
+**Merge rules.** The caller always names the method; there is no hub default, and `PullRequestConnection.mergeMethods` says which the repository allows (to verify, C.7-5). Not open, draft, `CONFLICT`, `BLOCKED` and `BEHIND` are refused before sending; `UNKNOWN` after three reads is `NOT_READY`; a head other than `expectedHeadSha` is `HEAD_MOVED`. `UNSTABLE` merges only alone and only with `allowFailingChecks: true`. The hub never bypasses a required check. A bulk merge is serial, in input order, each pre-read fresh just before its own merge, with a 90-second deadline for the whole request; the rest are `NOT_ATTEMPTED`.
+
+**Forks (PRO-013).** A pull request from a fork merges one at a time, only with `forkConfirmed` equal to its head repository, only with a login or browser token, never in bulk (`FORK_REFUSED`), and never for a request that declares an AI agent (FORBIDDEN, as `openGithubConnect`). There is no MCP path for it. A run of a fork is not run again from Anima (`CONFLICT`); cancelling one is allowed because it stops code.
+
+**Workflow inputs (PRJ-035).** GitHub's REST API does not give a workflow's inputs (to verify, C.7-8). The operator types name and value pairs, GitHub checks them, and the client links to the workflow file. The hub parses no YAML (operator, 2026-11-14; ruling number to be assigned).
+
+### 13.4 Confirmations (C.4; PRJ-029, PRJ-033, PRJ-034)
+
+The API binds each action to what the operator saw: `expectedHeadSha` on merge and on the three run controls.
+
+| Action | Command line (prompt, or `--yes`) names | MCP `confirm` must equal |
+| --- | --- | --- |
+| Merge one | `owner/name#12`, short head sha, method | `owner/name#12` |
+| Merge many | Every `owner/name#n` with its sha | Each entry carries its own `confirm` |
+| Run again, run failed jobs again, cancel | Run number, workflow name, the commit | The run's 40-digit head sha |
+| Start a workflow | Workflow path and branch | `<workflow path>@<branch>` |
+| Commit status | none | none (the context is fenced to `anima/`) |
+| Issue, comment, open or close | none | none |
+
+### 13.5 Who may call what (K1, D-23)
+
+Every read but `codeFile` is open to any token, a read key included. `codeFile` is closed to every API key and has no MCP tool: private code can hold a secret and the hub scans nothing. `createIssue`, `addIssueComment` and `setIssueOpen` take a write key. `mergePullRequest`, `mergePullRequests`, `rerunWorkflowRun`, `rerunFailedWorkflowJobs`, `cancelWorkflowRun`, `dispatchWorkflow` and `setCommitStatus` are login or browser token only: each makes code run with the repository's secrets, stops it, or can satisfy a required check (operator, 2026-11-14; ruling number to be assigned). The eight closed roots join `API_KEY_REFUSED_ROOTS`.
+
+### 13.6 Audit, event and forgetting (C.5; PRJ-028)
+
+- **When.** After GitHub's answer, in one transaction through `Trail`: every change that was sent gets an audit entry and an event, with its outcome (`done`, `refused`, `unknown`). A refusal before sending (validation, fork rule, not mergeable) records nothing. No transaction is held across the network call. The send, the forgetting and the record run in a task of their own, so a client that goes away after the change was sent still leaves its record.
+- **If the record fails:** one more try, then `INTERNAL` and an error in the process log; it is not swallowed. When GitHub made the change the message is the fixed sentence "GitHub made the change, but the hub could not record it."; when no whole answer came back (`unknown`), "GitHub may have made the change, but the hub could not record it. Look before you try again."; otherwise the generic `INTERNAL` text. A bulk merge stops there with that error, as one merge would.
+- **Entry.** Target `AuditTarget::Repository(RepositoryId)` (kind `repository`). The `change` record holds the function, the repository's full name, the target (`pull_request#12`, `issue#3`, `run#…`), the outcome, and as fits the head sha, method, run number, workflow, branch, context or issue number. Never a title, a body, a comment, an input value, file content or a reply of GitHub. Actor kind and token kind come from `Trail`.
+- **Action.** `Create` (issue, comment, status), `Update` (open or close), `Start` (run again, run failed jobs again, start a workflow), `Cancel`, and the new `Merge`.
+- **Event.** `Source::Hub`; Info for done, Warning for refused or unknown. Words with the project's slug and numbers only.
+- **Forgotten afterwards:**
+
+| Function | Dropped from the cache |
+| --- | --- |
+| Issue functions | The issue lists, that issue, its comments |
+| Merge | Pull request lists, that pull request, commits and branches, checks of the base, runs |
+| Run controls and start | Run lists, that run, its jobs |
+| Commit status | Checks of that sha |
+
+### 13.7 Failure words (C.6)
+
+Fixed words, the GraphQL message; never a reply of GitHub (LOG-007):
+
+| Words | Code |
+| --- | --- |
+| GitHub could not be reached. Nothing was changed. | `UNAVAILABLE` (fault before the request left) |
+| GitHub did not answer. The change may have been made: look before you try again. | `UNAVAILABLE` (fault after sending) |
+| GitHub limits requests until HH:MM. | `UNAVAILABLE` |
+| The GitHub App is not permitted to do that. Check its permissions on GitHub. | `FORBIDDEN` (403 with no rate limit) |
+| GitHub refused the key. Connect the account again. | `CONFLICT` |
+| GitHub has no such issue / pull request / run / workflow. | `NOT_FOUND` |
+| The pull request changed since you looked. Read it again. | `CONFLICT` |
+| It cannot merge now. | `CONFLICT` |
+| GitHub has not worked out whether it can merge. Try again. | `CONFLICT` |
+| The repository does not allow that merge method. | `CONFLICT` |
+| GitHub refused the branch or the inputs. | `VALIDATION` |
+| Issues are off for this repository. | `CONFLICT` (410) |
+
+### 13.8 The code browser
+
+- **Path.** At most 1,024 bytes and 40 segments; no empty, `.` or `..` segment; no leading slash, backslash, control character or NUL. Each segment is percent-encoded by a pure function (to verify, C.7-11). The result passes `Request::get` and `Transport::url`, and is always appended to `/repos/{owner}/{repo}/contents/`.
+- **Ref.** A `BranchName` or a `CommitSha`, sent only as the query value `ref`, never in the path.
+- **Size.** Decided from the reply's `size` before decoding: over 1,000,000 bytes is `TOO_LARGE` with no content (GitHub's 1 MB limit for the default reply). The transport's 8 MiB cap stays the backstop.
+- **Binary.** A NUL byte or invalid UTF-8 after decoding is `BINARY`, with no content. No lossy decoding.
+- **Links.** GitHub answers a link to a file in the same repository with that file: it stays inside the repository, so it is shown, with the path GitHub read as `CodeFile.path`. A link object is shown as a `SYMLINK` entry and never followed; `codeFile` on it, or on a submodule, is `VALIDATION`.
+- **Never interpreted.** The hub parses nothing in a file, and makes no promise that it holds no secret.

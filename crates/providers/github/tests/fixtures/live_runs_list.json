@@ -1,0 +1,63 @@
+{
+  "total_count": 3,
+  "workflow_runs": [
+    {
+      "id": 7000000000001,
+      "workflow_id": 31,
+      "name": "CI",
+      "display_title": "Add the sample widget",
+      "run_number": 88,
+      "run_attempt": 2,
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "failure",
+      "head_branch": "feature/widget",
+      "head_sha": "1111111111111111111111111111111111111111",
+      "head_commit": { "message": "Add the widget\n\nLonger explanation." },
+      "actor": { "login": "octo-writer" },
+      "repository": { "id": 500 },
+      "head_repository": { "id": 500 },
+      "created_at": "2026-11-02T09:00:00Z",
+      "updated_at": "2026-11-02T09:10:00Z",
+      "run_started_at": "2026-11-02T09:00:05Z",
+      "html_url": "https://github.com/sample-org/sample-repo/actions/runs/7000000000001"
+    },
+    {
+      "id": 7000000000002,
+      "workflow_id": 31,
+      "name": "CI",
+      "run_number": 89,
+      "run_attempt": 1,
+      "event": "pull_request",
+      "status": "in_progress",
+      "conclusion": null,
+      "head_branch": "typo",
+      "head_sha": "3333333333333333333333333333333333333333",
+      "head_commit": null,
+      "actor": null,
+      "repository": { "id": 500 },
+      "head_repository": { "id": 777 },
+      "created_at": "2026-11-02T10:00:00Z",
+      "updated_at": "2026-11-02T10:01:00Z",
+      "run_started_at": null,
+      "html_url": "https://github.com/sample-org/sample-repo/actions/runs/7000000000002"
+    },
+    {
+      "id": 7000000000003,
+      "workflow_id": 32,
+      "name": null,
+      "display_title": "Nightly",
+      "run_number": 4,
+      "event": "schedule",
+      "status": "frozen",
+      "conclusion": "exploded",
+      "head_branch": null,
+      "head_sha": "2222222222222222222222222222222222222222",
+      "repository": { "id": 500 },
+      "head_repository": null,
+      "created_at": "2026-11-01T03:00:00Z",
+      "updated_at": "2026-11-01T03:05:00Z",
+      "html_url": "https://github.com/sample-org/sample-repo/actions/runs/7000000000003"
+    }
+  ]
+}

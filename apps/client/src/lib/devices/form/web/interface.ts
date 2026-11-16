@@ -9,11 +9,11 @@ export interface WebValues {
 }
 
 export const OPEN_IN_CHOICES: readonly { readonly value: OpenIn; readonly text: string }[] = [
-  { value: 'ANIMA_TAB', text: 'Anima tab' },
+  { value: 'ANIMA_TAB', text: 'Anima.ing tab' },
   { value: 'SYSTEM_BROWSER', text: 'System browser' },
 ];
 
-/** The values of a stored interface, or the defaults for a new one (Anima tab). */
+/** The values of a stored interface, or the defaults for a new one (Anima.ing tab). */
 export function webValuesFrom(saved?: WebInterface): WebValues {
   return { label: saved?.label ?? '', url: saved?.url ?? '', openIn: saved?.openIn ?? 'ANIMA_TAB' };
 }

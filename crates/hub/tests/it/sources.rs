@@ -9,6 +9,7 @@ mod failures;
 mod installations;
 mod intake;
 mod leaks;
+mod live;
 mod registration;
 mod runs;
 /// The loopback GitHub; the Projects tests script it with GitHub's own replies.
@@ -32,6 +33,7 @@ use rsa::{
     rand_core::OsRng,
 };
 use serde_json::{Value, json};
+use source_exchange::Declaration;
 use sqlx::PgPool;
 
 use self::{intake::StubIntake, stub::Stub};
@@ -108,13 +110,19 @@ pub async fn kit(pool: &PgPool) -> Kit {
 
 /// A kit whose transport is `transport` (an unreachable one, say).
 pub async fn kit_with(pool: &PgPool, stub: Stub, transport: Transport) -> Kit {
+    kit_of(pool, (stub, transport), provider_github::DECLARATION).await
+}
+
+/// A kit whose GitHub is declared by `declaration` (one that makes changes, say).
+pub async fn kit_of(
+    pool: &PgPool,
+    (stub, transport): (Stub, Transport),
+    declaration: Declaration,
+) -> Kit {
     intake::make_table(pool).await;
     set_operator(pool).await;
     let intake = StubIntake::default();
-    let registry = Registry::new(
-        vec![provider_github::DECLARATION],
-        vec![Arc::new(intake.clone())],
-    );
+    let registry = Registry::new(vec![declaration], vec![Arc::new(intake.clone())]);
     let reach = Reach::new(registry, transport);
     let clock: Arc<dyn Clock> = Arc::new(FixedClock(start()));
     let parts = Dependencies {

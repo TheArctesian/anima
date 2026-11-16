@@ -202,7 +202,7 @@ describe('certificate changes and refusals (K4 §1, §3, §5)', () => {
     socket.gatewayError(0x0303);
     socket.closeWith(recorded === null ? 4003 : 1011);
     await settle();
-    expect(reasonOf(target)).toBe("The device's RDP certificate has changed, so Anima did not connect.");
+    expect(reasonOf(target)).toBe("The device's RDP certificate has changed, so Anima.ing did not connect.");
     expect(certificateModals()).toBe(1);
   });
 

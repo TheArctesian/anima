@@ -17,7 +17,7 @@ export interface ConnectProblem {
 }
 
 /** Fixed words: a key never appears in a message (PRJ-018, LOG-007). */
-export const KEY_FILE_UNREADABLE = 'Anima could not read that file. Paste the key instead.';
+export const KEY_FILE_UNREADABLE = 'Anima.ing could not read that file. Paste the key instead.';
 export const KEY_FILE_TOO_LARGE = 'That file is too large for a private key. Choose the .pem file GitHub gave you.';
 const MAX_KEY_BYTES = 16 * 1024;
 

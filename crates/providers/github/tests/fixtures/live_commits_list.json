@@ -1,0 +1,70 @@
+[
+  {
+    "sha": "1111111111111111111111111111111111111111",
+    "html_url": "https://github.com/sample-org/sample-repo/commit/1111111111111111111111111111111111111111",
+    "commit": {
+      "message": "Add the widget\n\nIt draws a box.\nSecond body line.",
+      "author": {
+        "name": "Ada Sample",
+        "email": "a@example.invalid",
+        "date": "2026-11-02T09:00:00Z"
+      },
+      "committer": {
+        "name": "GitHub",
+        "email": "noreply@example.invalid",
+        "date": "2026-11-02T09:30:00Z"
+      }
+    },
+    "author": {
+      "login": "octo-writer"
+    },
+    "parents": [
+      {
+        "sha": "cccccccccccccccccccccccccccccccccccccccc"
+      }
+    ]
+  },
+  {
+    "sha": "2222222222222222222222222222222222222222",
+    "html_url": "https://github.com/sample-org/sample-repo/commit/2222222222222222222222222222222222222222",
+    "commit": {
+      "message": "Merge branch 'feature'",
+      "author": {
+        "name": "Bo Sample",
+        "email": "a@example.invalid",
+        "date": "2026-11-02T09:00:00Z"
+      },
+      "committer": {
+        "name": "GitHub",
+        "email": "noreply@example.invalid",
+        "date": "2026-11-02T09:30:00Z"
+      }
+    },
+    "author": {},
+    "parents": [
+      {
+        "sha": "cccccccccccccccccccccccccccccccccccccccc"
+      },
+      {
+        "sha": "cccccccccccccccccccccccccccccccccccccccc"
+      }
+    ]
+  },
+  {
+    "sha": "3333333333333333333333333333333333333333",
+    "html_url": "https://github.com/sample-org/sample-repo/commit/3333333333333333333333333333333333333333",
+    "commit": {
+      "message": "Initial commit",
+      "author": {
+        "name": "Ada Sample",
+        "email": "a@example.invalid",
+        "date": "2026-11-02T09:00:00Z"
+      },
+      "committer": null
+    },
+    "author": {
+      "login": "octo-writer"
+    },
+    "parents": []
+  }
+]

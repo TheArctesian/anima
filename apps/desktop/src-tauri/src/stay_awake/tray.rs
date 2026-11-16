@@ -1,4 +1,4 @@
-//! The menu bar or tray item (AWK-004): the three levels as check lines, and "Open Anima".
+//! The menu bar or tray item (AWK-004): the three levels as check lines, and "Open Anima.ing".
 //! It shows the same state as the Settings page: each change redraws both.
 
 use tauri::{
@@ -61,7 +61,7 @@ pub fn build(app: &AppHandle, status: Status) -> tauri::Result<()> {
             none,
         )?,
     };
-    let open = MenuItem::with_id(app, OPEN, "Open Anima", true, none)?;
+    let open = MenuItem::with_id(app, OPEN, "Open Anima.ing", true, none)?;
     let menu = Menu::with_items(
         app,
         &[
@@ -74,7 +74,7 @@ pub fn build(app: &AppHandle, status: Status) -> tauri::Result<()> {
     )?;
     let mut tray = TrayIconBuilder::with_id("anima")
         .menu(&menu)
-        .tooltip("Anima")
+        .tooltip("Anima.ing")
         .on_menu_event(|app, event| on_menu_event(app, &event));
     if let Some(icon) = app.default_window_icon() {
         tray = tray.icon(icon.clone());

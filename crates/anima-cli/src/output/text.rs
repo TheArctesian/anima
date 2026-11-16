@@ -42,6 +42,24 @@ pub fn json_for_terminal(json: &str) -> String {
     shown
 }
 
+/// The text of a file for a terminal: line breaks and tabs stay, every other control character
+/// is a space and the invisible characters are removed, so the file cannot drive the terminal or
+/// hide text.
+#[must_use]
+pub fn clean_file(text: &str) -> String {
+    text.chars()
+        .filter(|character| !is_invisible(*character))
+        .map(|character| {
+            let moves = character.is_control() && !matches!(character, '\n' | '\t');
+            if moves || matches!(character, '\u{2028}' | '\u{2029}') {
+                ' '
+            } else {
+                character
+            }
+        })
+        .collect()
+}
+
 /// `text` cleaned line by line: line breaks stay, every other control character goes.
 #[must_use]
 pub fn clean_lines(text: &str) -> String {
@@ -127,6 +145,12 @@ mod tests {
         assert_eq!(clean("a\u{1b}]0;title\u{7}b\nc\td"), "a ]0;title b c d");
         assert_eq!(clean("\u{9b}31m"), " 31m");
         assert_eq!(clean("plain é"), "plain é");
+    }
+
+    #[test]
+    fn cmd_020_a_file_shown_on_a_terminal_keeps_its_lines_and_loses_its_escapes() {
+        assert_eq!(clean_file("a\u{1b}[31mb\n\tc\r\n"), "a [31mb\n\tc \n");
+        assert_eq!(clean_file("x\u{202E}y\u{2028}z"), "xy z");
     }
 
     #[test]

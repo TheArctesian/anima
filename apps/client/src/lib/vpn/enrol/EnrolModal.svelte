@@ -99,7 +99,7 @@
         <p id="{ids}-about">
           {siteId === null
             ? 'Pick the kind of computer. A Linux computer joins with a one-use key; a Mac or another computer joins by the ID it shows.'
-            : 'Anima makes a one-use key for the site’s subnet router. The key works for one hour.'}
+            : 'Anima.ing makes a one-use key for the site’s subnet router. The key works for one hour.'}
         </p>
         <div class="choices">
           {#if siteId === null}
@@ -114,7 +114,7 @@
         <!-- Always mounted, one line high, so a refusal moves nothing (MOT-007). -->
         <p class="notice" role="alert">{notice}</p>
       {:else if view === 'key'}
-        <p id="{ids}-about">Anima shows this key only once. It works for one use. Run the steps below on the new computer.</p>
+        <p id="{ids}-about">Anima.ing shows this key only once. It works for one use. Run the steps below on the new computer.</p>
         {#if key !== null}
           <KeySecret secret={key.key} label="Pre-auth key" />
           <p class="timer" role="timer" aria-live="off">Expires in {clockText(enrolment.left)}.</p>

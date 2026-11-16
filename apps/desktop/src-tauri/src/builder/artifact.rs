@@ -15,8 +15,13 @@ use super::{
     job::{Target, Version},
 };
 
-/// `productName` in `tauri.conf.json`; the file names in Section 3.10.4 follow it.
+/// Stable artefact prefix the hub, the site and Section 3.10.4 use (`Anima.dmg`,
+/// `Anima_{version}_amd64.AppImage`, `Anima.app.tar.gz`).
 const PRODUCT: &str = "Anima";
+/// `productName` in `tauri.conf.json`. Tauri names the `.app` folder and the first
+/// component of the DMG and AppImage after it. Official artefact file names stay
+/// `Anima` (UPD-010), so [`stabilize_names`] renames the DMG and AppImage after bundling.
+const DISPLAY: &str = "Anima.ing";
 /// The app's own executable in `Contents/MacOS`: the Cargo binary name.
 const MAC_EXECUTABLE: &str = "anima-desktop";
 /// The `anima` program beside it (INS-002).
@@ -60,9 +65,39 @@ pub fn dmg_file(clone: &Path, target: Target, version: &Version) -> Option<PathB
     }
 }
 
-/// The macOS app folder.
+/// The macOS app folder Tauri writes for `productName`.
 pub fn mac_app(clone: &Path) -> PathBuf {
-    bundle_folder(clone, Target::DarwinUniversal).join(format!("macos/{PRODUCT}.app"))
+    bundle_folder(clone, Target::DarwinUniversal).join(format!("macos/{DISPLAY}.app"))
+}
+
+/// Renames Tauri's `productName`-based DMG and AppImage to the stable `Anima_*` names
+/// the hub and the site expect (UPD-010). The `.app` folder keeps the display name;
+/// the updater archive is still written to `Anima.app.tar.gz`. No-op when the stable
+/// name is already present (for example a local build that still used `productName`
+/// `Anima`).
+pub fn stabilize_names(
+    clone: &Path,
+    target: Target,
+    version: &Version,
+) -> Result<(), BuilderError> {
+    let produced = match target {
+        Target::LinuxX86_64 => bundle_folder(clone, target).join(format!(
+            "appimage/{DISPLAY}_{}_amd64.AppImage",
+            version.as_str()
+        )),
+        Target::DarwinUniversal => bundle_folder(clone, target).join(format!(
+            "dmg/{DISPLAY}_{}_universal.dmg",
+            version.as_str()
+        )),
+    };
+    let wanted = match target {
+        Target::LinuxX86_64 => updater_file(clone, target, version),
+        Target::DarwinUniversal => dmg_file(clone, target, version).ok_or(BuilderError::Bundle)?,
+    };
+    if wanted == produced || wanted.is_file() {
+        return Ok(());
+    }
+    fs::rename(&produced, &wanted).map_err(|_| BuilderError::Bundle)
 }
 
 /// `path` when it is a regular file, not a link, inside `clone` once every link in its folders

@@ -40,7 +40,7 @@
     <p class="line">
       {TAB_BLOCKED}
       <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- the hub's own page, not a route of this app -->
-      <a href={pageUrl} target="_blank" rel="noopener noreferrer">Open the Anima connect page</a>
+      <a href={pageUrl} target="_blank" rel="noopener noreferrer">Open the Anima.ing connect page</a>
     </p>
   {/if}
   {#if store.refusal !== ''}

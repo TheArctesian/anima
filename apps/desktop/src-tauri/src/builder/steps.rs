@@ -187,6 +187,7 @@ impl Workshop<'_> {
         self.command_line(target, version).await?;
         self.run_all(&plan::bundle(&self.clone, target, version))
             .await?;
+        artifact::stabilize_names(&self.clone, target, version)?;
         let updater = artifact::updater_file(&self.clone, target, version);
         if target == Target::DarwinUniversal {
             let app = artifact::mac_app(&self.clone);

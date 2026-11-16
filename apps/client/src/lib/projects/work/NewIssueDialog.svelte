@@ -30,7 +30,7 @@
 <ChangeDialog
   open
   title="New issue"
-  body="Anima makes the issue on GitHub through your GitHub App."
+  body="Anima.ing makes the issue on GitHub through your GitHub App."
   confirmLabel="Create issue"
   ready={fits}
   onConfirm={send}
