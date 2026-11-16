@@ -1,5 +1,5 @@
-//! `anima-local-hub install` and `remove`: the copy of the programs, the unit file, and the
-//! commands that start and stop the unit. The commands run through a function the caller
+//! `anima-local-hub install`, `remove`, `start` and `stop`: the copy of the programs, the unit
+//! file, and the commands that start and stop the unit. The commands run through a function the caller
 //! gives, so a test runs none of them.
 
 use std::fs::{self, OpenOptions};
@@ -48,6 +48,8 @@ pub enum InstallError {
     },
     #[error("the hub of this folder still runs; stop it first")]
     StillRunning,
+    #[error("the hub is not installed; install it first")]
+    NotInstalled,
 }
 
 /// Whose unit, and for which hub.
@@ -109,6 +111,19 @@ impl Request<'_> {
         }
     }
 
+    /// Succeeds when launchd has the unit loaded.
+    fn loaded(&self) -> Step {
+        Step::launchctl(&["print", &format!("gui/{}/{LABEL}", self.uid)])
+    }
+
+    /// Starts the unit that `stop` stopped; it stays enabled for the next login.
+    fn start_again(&self, file: &Path) -> Vec<Step> {
+        match self.platform {
+            Platform::MacOs => self.start(file),
+            Platform::Linux => vec![Step::systemctl(&["start", SYSTEMD_UNIT])],
+        }
+    }
+
     /// The unit does not start at the next login, and is stopped now.
     fn retire(&self) -> Step {
         match self.platform {
@@ -167,6 +182,43 @@ pub fn remove(
     }
     programs::remove(request.folders)?;
     Ok(())
+}
+
+/// Stops the unit now and waits until the hub stopped. The unit stays installed: it starts
+/// again at the next login or at [`start`] (FRN-006).
+///
+/// # Errors
+/// When the unit tool cannot be run, or the hub does not stop in the request's limit.
+pub fn stop(
+    request: &Request<'_>,
+    mut run: impl FnMut(&Step) -> io::Result<bool>,
+) -> Result<(), InstallError> {
+    // A unit that is not loaded is stopped already.
+    run_steps(&[request.stop()], &mut run)?;
+    wait_until_stopped(request)
+}
+
+/// Starts the installed unit. A unit that launchd has loaded already is left as it is.
+///
+/// # Errors
+/// [`InstallError::NotInstalled`] when there is no unit to start, or when a command fails.
+pub fn start(
+    request: &Request<'_>,
+    mut run: impl FnMut(&Step) -> io::Result<bool>,
+) -> Result<(), InstallError> {
+    if !is_installed(request) {
+        return Err(InstallError::NotInstalled);
+    }
+    if request.platform == Platform::MacOs {
+        let loaded = request.loaded();
+        if run(&loaded).map_err(|error| InstallError::Run {
+            program: loaded.program,
+            kind: error.kind(),
+        })? {
+            return Ok(());
+        }
+    }
+    run_steps(&request.start_again(&request.unit_file()), &mut run)
 }
 
 /// Whether the unit file and the copied programs are there.

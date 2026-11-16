@@ -6,6 +6,7 @@
 //! <root>/programs/next/      a copy in progress; never run
 //! <root>/vault.key           the hub's ANIMA_KEY_FILE
 //! <root>/log/                one log for each member of the group
+//! <root>/link/               the state of `anima-link hub`: its key, devices, control socket
 //! <root>/lock                held by the one `run` of this root
 //! <root>/state               what `run` last reported
 //! ```
@@ -88,6 +89,25 @@ impl Folders {
     #[must_use]
     pub fn vault_key(&self) -> PathBuf {
         self.root.join("vault.key")
+    }
+
+    /// The state folder of `anima-link hub`. It holds the link's key.
+    #[must_use]
+    pub fn link(&self) -> PathBuf {
+        self.root.join("link")
+    }
+
+    /// The control socket that `anima-link hub` makes in its state folder.
+    #[must_use]
+    pub fn link_control(&self) -> PathBuf {
+        self.link().join("control.sock")
+    }
+
+    /// The hub's socket for the link (S5): in the database's socket folder, which is this
+    /// user's, mode 0700, with a short path.
+    #[must_use]
+    pub fn link_socket(&self) -> PathBuf {
+        self.database.socket_folder().join("link.sock")
     }
 
     #[must_use]

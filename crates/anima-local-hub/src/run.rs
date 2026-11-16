@@ -137,14 +137,20 @@ async fn keep(
     report(State::Starting)?;
     match group.start(plan, stop).await {
         Ok(up) => {
-            report(State::Ready {
+            let ready = |link| State::Ready {
                 hub: up.hub,
                 recovered: up.recovered,
-            })?;
-            Ok(match group.until_ended(stop).await {
-                Ending::Asked => Kept::Asked,
-                Ending::MemberEnded(name) => Kept::Failed(format!("{name} ended")),
-            })
+                link: Some(link),
+            };
+            report(ready(up.link))?;
+            loop {
+                match group.until_ended(stop).await {
+                    Ending::Asked => return Ok(Kept::Asked),
+                    Ending::MemberEnded(name) => return Ok(Kept::Failed(format!("{name} ended"))),
+                    // The group stays ready whatever the link does (F-6).
+                    Ending::LinkChanged(link) => report(ready(link))?,
+                }
+            }
         }
         Err(StartError::StopAsked) => Ok(Kept::Asked),
         Err(StartError::Blocked(reason)) => {
