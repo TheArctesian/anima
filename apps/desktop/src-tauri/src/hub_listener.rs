@@ -90,16 +90,13 @@ fn lsof_listeners(port: u16, uid: u32) -> Vec<Listener> {
             max_bytes: 64 * 1024,
         },
     )
-    .map(|printed| listeners::lsof_names(&String::from_utf8_lossy(&printed)))
-    .unwrap_or_default()
+    .map_or_default(|printed| listeners::lsof_names(&String::from_utf8_lossy(&printed)))
 }
 
 /// Every user's listeners, with their owners, from `/proc/net`.
 fn proc_listeners() -> Vec<Listener> {
     let read = |path, ipv6| {
-        std::fs::read_to_string(path)
-            .map(|text| listeners::proc_net_tcp(&text, ipv6))
-            .unwrap_or_default()
+        std::fs::read_to_string(path).map_or_default(|text| listeners::proc_net_tcp(&text, ipv6))
     };
     let mut all = read("/proc/net/tcp", false);
     all.extend(read("/proc/net/tcp6", true));
