@@ -68,10 +68,13 @@ where
     S: AsyncRead + AsyncWrite + Send + 'static,
 {
     let Terms { allowed, resizes } = terms;
-    let (device, size) = Device::new(opened.result);
+    // The size is checked before anything of that size is made.
+    let size = opened.result.desktop_size;
+    let size = (usize::from(size.width), usize::from(size.height));
     let Ok(picture) = Picture::new(size, &allowed, settings.pace) else {
         return refuse(hub, status::UPSTREAM_ERROR, Ended::DeviceFault).await;
     };
+    let device = Device::new(opened.result);
     let (mut from_device, to_device) = split_tokio_framed(opened.connection);
     let (to_device, _) = to_device.into_inner();
     let (read, mut reads) = mpsc::channel::<(Action, Vec<u8>)>(WAITING_MESSAGES);

@@ -2,6 +2,7 @@
 //! clipboard channel, and what the client's keys and pointer mean for it.
 
 mod certificate;
+mod channels;
 mod clipboard;
 mod device;
 mod drawing;

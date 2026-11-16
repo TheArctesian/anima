@@ -5,14 +5,16 @@
 //! No credential leaves before the certificate is checked (SEC-007). No error holds a
 //! value from the device or the account (LOG-007).
 //!
-//! `IronRDP` keeps the account for the whole session, to exchange capabilities again after
-//! a resize, and does not zero it. The worker process holds one session and ends with it.
+//! `IronRDP` does not zero the account when it drops it. After the opening it holds none:
+//! the settings it keeps for a later exchange of capabilities are made without one. The
+//! worker process holds one session and ends with it.
 //!
 //! I/O edge.
 
 use std::sync::Arc;
 
 use ironrdp_cliprdr::CliprdrClient;
+use ironrdp_connector::connection_activation::ConnectionActivationFactory;
 use ironrdp_connector::sspi::generator::NetworkRequest;
 use ironrdp_connector::{
     ClientConnector, Config, ConnectionOutcome, ConnectionResult, ConnectorErrorKind,
@@ -21,6 +23,7 @@ use ironrdp_connector::{
 use ironrdp_displaycontrol::client::DisplayControlClient;
 use ironrdp_dvc::DrdynvcClient;
 use ironrdp_pdu::gcc::{ConnectionType, KeyboardType};
+use ironrdp_pdu::nego::NegoRequestData;
 use ironrdp_pdu::rdp::capability_sets::{MajorPlatformType, RailSupportLevel};
 use ironrdp_pdu::rdp::client_info::{PerformanceFlags, TimezoneInfo};
 use ironrdp_tokio::{NetworkClient, TokioFramed};
@@ -115,25 +118,12 @@ pub async fn open(
             _ => OpenError::NotRdp,
         })?;
 
-    let tls = TlsConnector::from(Arc::new(any_certificate().map_err(|_| OpenError::Failed)?));
-    let name = TlsName::IpAddress(peer.ip().into());
-    let stream = tls
-        .connect(name, plain.into_inner_no_leftover())
-        .await
-        .map_err(|_| OpenError::Failed)?;
-    // The handshake is done and nothing of the account has been sent.
-    let shown = stream
-        .get_ref()
-        .1
-        .peer_certificates()
-        .and_then(<[_]>::first);
-    let shown = shown.ok_or(OpenError::Certificate)?;
-    if let Certificate::Accepted(accepted) = wanted.certificate
-        && Sha256::digest(shown).as_slice() != accepted
-    {
-        return Err(OpenError::Certificate);
-    }
-    let public_key = public_key(shown).ok_or(OpenError::Certificate)?;
+    let (stream, public_key) = secure(
+        plain.into_inner_no_leftover(),
+        peer.ip(),
+        wanted.certificate,
+    )
+    .await?;
 
     let upgraded = ironrdp_tokio::mark_as_upgraded(upgrade, &mut connector);
     let mut connection = TokioFramed::new(stream);
@@ -152,10 +142,54 @@ pub async fn open(
         _ => OpenError::Failed,
     })?;
     match outcome {
-        ConnectionOutcome::Connected(result) => Ok(Opened { connection, result }),
+        ConnectionOutcome::Connected(mut result) => {
+            // `IronRDP` keeps its settings to exchange capabilities again after a resize.
+            // That exchange needs no account: it gets settings without one.
+            let no_account = Wanted {
+                username: "",
+                password: "",
+                domain: None,
+                ..wanted
+            };
+            result.activation_factory = ConnectionActivationFactory::new(
+                config(&no_account),
+                result.io_channel_id,
+                result.user_channel_id,
+            );
+            Ok(Opened { connection, result })
+        }
         // A device that sends the session to another host: the hub checked this one only.
         ConnectionOutcome::Redirected(_) => Err(OpenError::Failed),
     }
+}
+
+/// TLS on the connection, and the check of the certificate the device shows. Gives the
+/// key of that certificate, which the sign-in inside TLS is bound to.
+async fn secure(
+    device: TcpStream,
+    address: std::net::IpAddr,
+    rule: Certificate,
+) -> Result<(TlsStream<TcpStream>, Vec<u8>), OpenError> {
+    let tls = TlsConnector::from(Arc::new(any_certificate().map_err(|_| OpenError::Failed)?));
+    let name = TlsName::IpAddress(address.into());
+    let stream = tls
+        .connect(name, device)
+        .await
+        .map_err(|_| OpenError::Failed)?;
+    // The handshake is done and nothing of the account has been sent.
+    let shown = stream
+        .get_ref()
+        .1
+        .peer_certificates()
+        .and_then(<[_]>::first);
+    let shown = shown.ok_or(OpenError::Certificate)?;
+    if let Certificate::Accepted(accepted) = rule
+        && Sha256::digest(shown).as_slice() != accepted
+    {
+        return Err(OpenError::Certificate);
+    }
+    let public_key = public_key(shown).ok_or(OpenError::Certificate)?;
+    Ok((stream, public_key))
 }
 
 /// The key of the certificate, which the sign-in inside TLS is bound to.
@@ -200,7 +234,9 @@ fn config(wanted: &Wanted<'_>) -> Config {
         rail_support_level: RailSupportLevel::empty(),
         platform: MajorPlatformType::UNSPECIFIED,
         hardware_id: None,
-        request_data: None,
+        // Without this `IronRDP` puts the user name into the first message, which goes
+        // out before TLS.
+        request_data: Some(NegoRequestData::cookie(CLIENT_NAME.to_owned())),
         autologon: !wanted.username.is_empty(),
         enable_audio_playback: false,
         enable_audio_capture: false,

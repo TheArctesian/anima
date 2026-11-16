@@ -10,12 +10,14 @@ use ironrdp_connector::ConnectionResult;
 use ironrdp_connector::connection_activation::ConnectionActivationSequence;
 use ironrdp_core::IntoOwned as _;
 use ironrdp_displaycontrol::pdu::MonitorLayoutEntry;
+use ironrdp_dvc::DrdynvcClient;
 use ironrdp_graphics::image_processing::PixelFormat;
 use ironrdp_pdu::Action;
 use ironrdp_pdu::input::fast_path::FastPathInputEvent;
 use ironrdp_session::image::DecodedImage;
 use ironrdp_session::{ActiveStage, ActiveStageBuilder, ActiveStageOutput};
 
+use super::channels::ChannelGuard;
 use super::clipboard::{Clipboard, Said, TEXT};
 use super::keys::Keyboard;
 use super::pointer::Pointer;
@@ -50,13 +52,22 @@ pub struct Device {
     pub(super) reactivating: Option<ConnectionActivationSequence>,
     keyboard: Keyboard,
     pointer: Pointer,
+    guard: ChannelGuard,
 }
 
 impl Device {
-    /// The device from the result of its opening, and its screen's size.
+    /// The device from the result of its opening. The caller has checked the size of its
+    /// screen.
     #[must_use]
-    pub fn new(opened: ConnectionResult) -> (Self, (usize, usize)) {
+    pub fn new(opened: ConnectionResult) -> Self {
         let size = opened.desktop_size;
+        let channels = &opened.static_channels;
+        let guard = ChannelGuard::new(
+            channels
+                .get_channel_id_by_type::<CliprdrClient>()
+                .into_iter()
+                .chain(channels.get_channel_id_by_type::<DrdynvcClient>()),
+        );
         let stage = ActiveStageBuilder {
             static_channels: opened.static_channels,
             user_channel_id: opened.user_channel_id,
@@ -68,15 +79,15 @@ impl Device {
             pointer_software_rendering: opened.pointer_software_rendering,
         }
         .build();
-        let device = Self {
+        Self {
             stage,
             image: DecodedImage::new(PixelFormat::RgbA32, size.width, size.height),
             activation: opened.activation_factory,
             reactivating: None,
             keyboard: Keyboard::default(),
             pointer: Pointer::default(),
-        };
-        (device, (usize::from(size.width), usize::from(size.height)))
+            guard,
+        }
     }
 
     /// Takes one message of the device, draws what it shows into `screen`, and gives what
@@ -90,6 +101,9 @@ impl Device {
         message: &[u8],
         screen: &mut Screen,
     ) -> Result<Vec<Event>, Malformed> {
+        if action == Action::X224 {
+            self.guard.check(message)?;
+        }
         if self.reactivating.is_some() {
             return resizing::go_on(self, Some((action, message)), screen);
         }
@@ -113,7 +127,11 @@ impl Device {
                 ActiveStageOutput::GraphicsUpdate(area) => {
                     drawing::draw(&self.image, &area, screen)?;
                 }
-                ActiveStageOutput::Terminate(_) => events.push(Event::Ended),
+                // A device that sends the session to another host: the hub checked this one
+                // only, so the session ends.
+                ActiveStageOutput::Terminate(_) | ActiveStageOutput::ServerRedirection(_) => {
+                    events.push(Event::Ended);
+                }
                 ActiveStageOutput::DeactivateAll => {
                     self.reactivating = Some(self.activation.create());
                     events.extend(resizing::go_on(self, None, screen)?);
