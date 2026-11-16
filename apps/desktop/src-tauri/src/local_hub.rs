@@ -34,7 +34,7 @@ use tauri::{Runtime, State, Webview};
 use tauri_plugin_log::log;
 
 use crate::carried::run::{self as program, Invocation};
-pub use account::RecoveryPermit;
+pub use account::Replacements;
 use carried::Carried;
 pub use error::LocalHubError;
 

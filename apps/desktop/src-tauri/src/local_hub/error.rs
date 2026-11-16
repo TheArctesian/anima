@@ -23,8 +23,8 @@ pub enum LocalHubError {
     Failed,
     #[error("a value is empty, too long or not of its form")]
     Argument,
-    #[error("the hub already has its operator account; recover it to replace it")]
-    Exists,
+    #[error("the account was not replaced: the confirmation was cancelled")]
+    Cancelled,
     #[error("the hub refused the account; check the code and try again")]
     Refused,
     #[error("the hub on this computer has no key file")]
@@ -45,7 +45,7 @@ impl LocalHubError {
         Self::TimedOut,
         Self::Failed,
         Self::Argument,
-        Self::Exists,
+        Self::Cancelled,
         Self::Refused,
         Self::NoKey,
         Self::Destination,
@@ -62,7 +62,7 @@ impl LocalHubError {
             Self::TimedOut => "timed-out",
             Self::Failed => "failed",
             Self::Argument => "argument",
-            Self::Exists => "exists",
+            Self::Cancelled => "cancelled",
             Self::Refused => "refused",
             Self::NoKey => "no-key",
             Self::Destination => "destination",

@@ -1,3 +1,5 @@
+//! The device link child, run as a stand-in script.
+
 use std::{
     fs,
     net::{Ipv4Addr, TcpListener},
@@ -8,24 +10,21 @@ use std::{
 };
 
 use super::super::{
-    LinkError,
-    device::{DeviceLink, Launch},
-    folder::{self, LinkFolders},
-    joining,
+    device::{DeviceLink, Launch, STOP_PATIENCE},
+    printed,
     state::{DeviceState, Phase, Reason},
 };
 
-const INVITE_LINE: &str = "anima-invite.1.q83vEjRWeJCrze8SNFZ4kA.hub\n";
-const PATIENCE: Duration = Duration::from_secs(10);
+pub const PATIENCE: Duration = Duration::from_secs(10);
 
-fn stand_in(folder: &Path, body: &str) -> PathBuf {
+pub fn stand_in(folder: &Path, body: &str) -> PathBuf {
     let program = folder.join("anima-link");
     fs::write(&program, format!("#!/bin/sh\n{body}\n")).unwrap();
     fs::set_permissions(&program, fs::Permissions::from_mode(0o755)).unwrap();
     program
 }
 
-fn free_port() -> u16 {
+pub fn free_port() -> u16 {
     TcpListener::bind((Ipv4Addr::LOCALHOST, 0))
         .unwrap()
         .local_addr()
@@ -43,7 +42,7 @@ fn launch(program: PathBuf, folder: &Path, port: u16) -> Launch {
     }
 }
 
-fn until(device: &DeviceLink, wanted: impl Fn(&DeviceState) -> bool) -> DeviceState {
+pub fn until(device: &DeviceLink, wanted: impl Fn(&DeviceState) -> bool) -> DeviceState {
     let end = Instant::now() + PATIENCE;
     loop {
         let state = device.state();
@@ -54,18 +53,27 @@ fn until(device: &DeviceLink, wanted: impl Fn(&DeviceState) -> bool) -> DeviceSt
     }
 }
 
-/// `anima-link device` as the shell starts it: `device -state DIR -listen ADDR -stop-with-stdin`.
-const READY_THEN_WAIT: &str = r#"
+/// `anima-link device` as the shell starts it: `device -state DIR -listen ADDR
+/// -stop-with-stdin`. It logs the ready line, waits for the end of its standard input, then
+/// writes `closed` in its state folder and ends, as `-stop-with-stdin` does.
+pub fn ready_then_wait() -> String {
+    format!(
+        r#"
 [ "$1 $2 $4 $6" = "device -state -listen -stop-with-stdin" ] || exit 9
 echo $$ > "$3/pid"
-echo "level=INFO msg=\"the device link is ready\" local=$5 key=1a2b3c4d" >&2
+echo "time=2026-11-15T10:00:00Z level=INFO {} local=$5 key=1a2b3c4d" >&2
 cat > /dev/null
-"#;
+echo closed > "$3/closed"
+"#,
+        // Inside the shell's double quotes.
+        printed::READY.replace('"', "\\\"")
+    )
+}
 
 #[test]
-fn the_device_link_comes_up_on_its_port_and_ends_when_stopped() {
+fn the_device_link_comes_up_on_its_port_and_ends_gracefully_when_stopped() {
     let folder = tempfile::tempdir().unwrap();
-    let program = stand_in(folder.path(), READY_THEN_WAIT);
+    let program = stand_in(folder.path(), &ready_then_wait());
     let port = free_port();
     let device = DeviceLink::default();
 
@@ -78,9 +86,15 @@ fn the_device_link_comes_up_on_its_port_and_ends_when_stopped() {
         .trim()
         .parse()
         .unwrap();
+    let stopping = Instant::now();
     device.stop();
+    assert!(
+        stopping.elapsed() < STOP_PATIENCE,
+        "the child was killed, not stopped"
+    );
     assert_eq!(device.state().phase, Phase::Stopped);
-    // The child read the end of its standard input and is gone.
+    // The child saw the end of its standard input, ended by itself and is gone.
+    assert!(folder.path().join("closed").exists());
     let gone = nix::sys::signal::kill(nix::unistd::Pid::from_raw(pid), None).is_err();
     assert!(gone);
 }
@@ -88,7 +102,7 @@ fn the_device_link_comes_up_on_its_port_and_ends_when_stopped() {
 #[test]
 fn a_taken_port_is_reported_and_the_link_is_not_started_on_another() {
     let folder = tempfile::tempdir().unwrap();
-    let program = stand_in(folder.path(), READY_THEN_WAIT);
+    let program = stand_in(folder.path(), &ready_then_wait());
     let holder = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
     let port = holder.local_addr().unwrap().port();
     let device = DeviceLink::default();
@@ -119,77 +133,4 @@ fn a_link_that_ends_is_started_again_after_the_pause() {
     device.stop();
 
     assert!(fs::read_to_string(&starts).unwrap().lines().count() >= 2);
-}
-
-/// `anima-link join -state DIR` with the invite on standard input.
-const JOIN: &str = r#"
-[ "$1 $2" = "join -state" ] || exit 9
-read -r invite
-mkdir -p "$3"
-case "$invite" in
-  anima-invite.1.q83vEjRWeJCrze8SNFZ4kA.hub)
-    echo "This device has joined the hub. Its key fingerprint is 1a2b3c4d."
-    echo "Start the link with: anima-link device -state $3" ;;
-  *)
-    echo "anima-link: devicelink: the hub did not answer; the invite is used, expired or wrong, or the hub is off" >&2
-    exit 1 ;;
-esac
-"#;
-
-#[test]
-fn a_join_makes_a_new_folder_with_a_port_that_replaces_the_old_one() {
-    let folder = tempfile::tempdir().unwrap();
-    let program = stand_in(folder.path(), JOIN);
-    let folders = LinkFolders::below(&folder.path().join("app"));
-    fs::create_dir_all(&folders.device).unwrap();
-    fs::write(folders.device.join("old-key"), "").unwrap();
-
-    let joined = joining::join(&program, &folders, INVITE_LINE, &[]).unwrap();
-
-    assert_eq!(joined.fingerprint, "1a2b3c4d");
-    assert_eq!(folder::read_port(&folders.next), Some(joined.port));
-    let mode = fs::metadata(folders.next.join("anima-port"))
-        .unwrap()
-        .permissions()
-        .mode();
-    assert_eq!(mode & 0o777, 0o600);
-    let link_mode = fs::metadata(folders.device.parent().unwrap())
-        .unwrap()
-        .permissions()
-        .mode();
-    assert_eq!(link_mode & 0o077, 0, "{link_mode:o}");
-
-    folders.take_next().unwrap();
-    assert_eq!(folder::read_port(&folders.device), Some(joined.port));
-    assert!(!folders.device.join("old-key").exists());
-    assert!(!folders.next.exists());
-}
-
-#[test]
-fn a_join_the_hub_does_not_answer_leaves_the_old_link_alone() {
-    let folder = tempfile::tempdir().unwrap();
-    let program = stand_in(folder.path(), JOIN);
-    let folders = LinkFolders::below(&folder.path().join("app"));
-    fs::create_dir_all(&folders.device).unwrap();
-    fs::write(folders.device.join("old-key"), "").unwrap();
-
-    let error = joining::join(&program, &folders, "anima-invite.1.used.hub\n", &[]).unwrap_err();
-
-    assert_eq!(error, LinkError::NoAnswer);
-    assert!(!folders.next.exists());
-    assert!(folders.device.join("old-key").exists());
-}
-
-#[test]
-fn leaving_removes_every_folder_of_the_link() {
-    let folder = tempfile::tempdir().unwrap();
-    let folders = LinkFolders::below(folder.path());
-    fs::create_dir_all(folders.device.join("inner")).unwrap();
-    fs::create_dir_all(&folders.next).unwrap();
-
-    folders.remove().unwrap();
-
-    assert!(!folders.device.exists());
-    assert!(!folders.next.exists());
-    folders.remove().unwrap();
 }

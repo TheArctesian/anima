@@ -8,6 +8,8 @@ use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
 use serde::Serialize;
 
+use crate::link::DeviceState;
+
 /// The state number of a listening socket in `/proc/net/tcp`.
 const LISTEN: &str = "0A";
 
@@ -24,36 +26,40 @@ pub enum Owner {
     Nobody,
 }
 
-/// The address a socket listens on.
+/// Which listeners the system's list holds, which decides how far a wildcard reaches.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Bound {
-    /// Every address of every family (`lsof`'s `*`).
-    Any,
-    At(IpAddr),
+pub enum Listed {
+    /// Every user's (Linux `/proc/net`). A wildcard `::` reaches IPv4 too (dual stack), so a
+    /// stranger's `::` listener counts against an IPv4 address.
+    EveryUser,
+    /// This user's only (macOS `lsof`). A wildcard reaches its own family only, so this user's
+    /// `::` listener never vouches for an IPv4 address.
+    ThisUser,
 }
 
-impl Bound {
-    /// Whether a connection to `target` can reach this socket. An unspecified address
-    /// (`0.0.0.0`, `::`) covers its own family only.
-    pub fn covers(self, target: IpAddr) -> bool {
-        match self {
-            Self::Any => true,
-            Self::At(address) if address.is_unspecified() => address.is_ipv4() == target.is_ipv4(),
-            Self::At(address) => address == target,
+/// Whether a socket bound to `bound` can take a connection to `target`.
+pub fn covers(bound: IpAddr, target: IpAddr, listed: Listed) -> bool {
+    let (bound, target) = (bound.to_canonical(), target.to_canonical());
+    match bound {
+        IpAddr::V4(address) if address.is_unspecified() => target.is_ipv4(),
+        IpAddr::V6(address) if address.is_unspecified() => {
+            target.is_ipv6() || listed == Listed::EveryUser
         }
+        address => address == target,
     }
 }
 
 /// One listening socket: its address, port and, where the system tells it, its owner.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Listener {
-    pub bound: Bound,
+    pub address: IpAddr,
     pub port: u16,
     pub uid: Option<u32>,
 }
 
 /// The listening sockets in the text of `/proc/net/tcp` (`ipv6` false) or `/proc/net/tcp6`.
-/// A line that is not of the form is passed over.
+/// A line that is not of the form is passed over. An IPv4-mapped address (`::ffff:a.b.c.d`)
+/// is read as the IPv4 address.
 pub fn proc_net_tcp(text: &str, ipv6: bool) -> Vec<Listener> {
     text.lines()
         .skip(1)
@@ -70,12 +76,12 @@ fn proc_line(line: &str, ipv6: bool) -> Option<Listener> {
     }
     let (address, port) = local.split_once(':')?;
     let address = if ipv6 {
-        IpAddr::V6(proc_ipv6(address)?)
+        IpAddr::V6(proc_ipv6(address)?).to_canonical()
     } else {
         IpAddr::V4(Ipv4Addr::from(proc_word(address)?))
     };
     Some(Listener {
-        bound: Bound::At(address),
+        address,
         port: u16::from_str_radix(port, 16).ok()?,
         uid: Some(uid.parse().ok()?),
     })
@@ -101,65 +107,76 @@ fn proc_ipv6(hex: &str) -> Option<Ipv6Addr> {
     Some(Ipv6Addr::from(octets))
 }
 
-/// The listening sockets in `lsof -F n` output: lines `n<address>:<port>`, the address `*`,
-/// an IPv4 address or an IPv6 address in brackets. Other lines are passed over. `lsof` gives
-/// no owner; the caller asked it for this user's processes only.
+/// The listening sockets in `lsof -F nt` output: a `t` line (`tIPv4` or `tIPv6`) before each
+/// `n` line (`n<address>:<port>`, the address `*`, an IPv4 address or an IPv6 address in
+/// brackets). `*` is the unspecified address of the `t` family; a `*` of no known family is
+/// passed over. `lsof` gives no owner; the caller asked it for this user's processes only.
 pub fn lsof_names(text: &str) -> Vec<Listener> {
-    text.lines()
-        .filter_map(|line| line.strip_prefix('n'))
-        .filter_map(|name| {
-            let (address, port) = name.rsplit_once(':')?;
-            let bound = if address == "*" {
-                Bound::Any
-            } else {
-                let address = address
-                    .strip_prefix('[')
-                    .and_then(|inner| inner.strip_suffix(']'))
-                    .unwrap_or(address);
-                Bound::At(address.parse().ok()?)
+    let mut family: Option<IpAddr> = None;
+    let mut found = Vec::new();
+    for line in text.lines() {
+        if let Some(kind) = line.strip_prefix('t') {
+            family = match kind {
+                "IPv4" => Some(IpAddr::V4(Ipv4Addr::UNSPECIFIED)),
+                "IPv6" => Some(IpAddr::V6(Ipv6Addr::UNSPECIFIED)),
+                _ => None,
             };
-            Some(Listener {
-                bound,
-                port: port.parse().ok()?,
-                uid: None,
-            })
-        })
-        .collect()
+        } else if let Some(name) = line.strip_prefix('n') {
+            found.extend(lsof_name(name, family));
+        } else if line.starts_with('f') || line.starts_with('p') {
+            family = None;
+        }
+    }
+    found
+}
+
+fn lsof_name(name: &str, wildcard: Option<IpAddr>) -> Option<Listener> {
+    let (address, port) = name.rsplit_once(':')?;
+    let address = if address == "*" {
+        wildcard?
+    } else {
+        address
+            .strip_prefix('[')
+            .and_then(|inner| inner.strip_suffix(']'))
+            .unwrap_or(address)
+            .parse()
+            .ok()?
+    };
+    Some(Listener {
+        address,
+        port: port.parse().ok()?,
+        uid: None,
+    })
 }
 
 /// Whether `listeners` let a connection to `target`:`port` reach only this user: at least one
 /// covers it, and each one that covers it is this user's (`uid`, or no owner told).
-pub fn only_own(listeners: &[Listener], target: IpAddr, port: u16, uid: u32) -> bool {
+pub fn only_own(
+    listeners: &[Listener],
+    listed: Listed,
+    (target, port): (IpAddr, u16),
+    uid: u32,
+) -> bool {
     let mut covering = listeners
         .iter()
-        .filter(|listener| listener.port == port && listener.bound.covers(target))
+        .filter(|listener| listener.port == port && covers(listener.address, target, listed))
         .peekable();
     covering.peek().is_some()
         && covering.all(|listener| listener.uid.is_none_or(|owner| owner == uid))
 }
 
-/// What one address of the hub origin gave.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Target {
-    /// A connection to it was accepted.
-    pub accepts: bool,
-    /// Only this user's processes listen on it.
-    pub own: bool,
+/// Whether the app's own device link permits `port` to be `own`: a port that is not the device
+/// link's saved port, or the device link up on the port it reported (F-10).
+pub fn link_permits(link: &DeviceState, port: u16) -> bool {
+    link.port != Some(port) || link.serves(port)
 }
 
-/// The verdict over every address the origin can reach: `Own` only when each address that
-/// someone listens on is this user's alone.
-pub fn verdict(targets: &[Target]) -> Owner {
-    let mut listened = targets
-        .iter()
-        .filter(|target| target.accepts || target.own)
-        .peekable();
-    if listened.peek().is_none() {
-        return Owner::Nobody;
-    }
-    if listened.all(|target| target.own) {
-        Owner::Own
-    } else {
-        Owner::Other
+/// The verdict: `accepts` when a connection was accepted, `own` when only this user's
+/// processes listen. A listener of this user that did not accept in time still counts as one.
+pub fn verdict(accepts: bool, own: bool) -> Owner {
+    match (accepts, own) {
+        (_, true) => Owner::Own,
+        (true, false) => Owner::Other,
+        (false, false) => Owner::Nobody,
     }
 }
