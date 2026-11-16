@@ -71,6 +71,6 @@
   }
 </script>
 
-<Modal open title={channel === null ? 'Add a channel' : `Edit ${channel.name}`} size="form" closeOnScrim={false} onClose={close}>
+<Modal open title={channel === null ? 'Add channel' : `Edit ${channel.name}`} size="form" closeOnScrim={false} onClose={close}>
   <ChannelForm bind:draft {stored} {problemOf} {failure} {busy} {placeholders} onsubmit={submit} onCancel={close} />
 </Modal>

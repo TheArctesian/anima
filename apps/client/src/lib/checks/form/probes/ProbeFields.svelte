@@ -30,7 +30,7 @@
     label="Target"
     bind:value={values.tailscalePing.target}
     error={error('target')}
-    hint="Leave empty to use the device host."
+    hint="Empty uses the device host."
   />
   <TextField label="Timeout (ms)" kind="numeric" bind:value={values.tailscalePing.timeoutMs} error={error('timeoutMs')} />
 {/if}

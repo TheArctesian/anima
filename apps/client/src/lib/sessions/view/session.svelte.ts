@@ -62,7 +62,7 @@ export type ConnectionStart<Tunnel, State extends FollowedState> = (
 
 /** Fixed text for a start the hub or the tunnel refused; never the hub's own message (LOG-007, R-035). */
 const REFUSED: Readonly<Record<string, string>> = {
-  CONFLICT: 'Could not open the session. The device has no accepted host key: run the connection test first.',
+  CONFLICT: 'Could not open the session. No accepted host key: run the connection test first.',
   NOT_FOUND: 'Could not open the session. The device no longer exists.',
   FORBIDDEN: 'Could not open the session. The hub does not allow it.',
   UNAUTHENTICATED: 'Could not open the session. Sign in to the hub again.',

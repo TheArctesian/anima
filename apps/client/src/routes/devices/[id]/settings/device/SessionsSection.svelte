@@ -25,8 +25,8 @@
   const last = $state<Partial<Record<string, string>>>({});
 
   const PAIRS = [
-    { name: 'Files', about: 'Moving files to and from the device in a session.', flags: [['upload', 'Upload'], ['download', 'Download']] },
-    { name: 'Clipboard', about: 'Copying text between this computer and the device.', flags: [['copy', 'Copy from it'], ['paste', 'Paste to it']] },
+    { name: 'Files', about: 'File transfer in a session.', flags: [['upload', 'Upload'], ['download', 'Download']] },
+    { name: 'Clipboard', about: 'Text between this computer and the device.', flags: [['copy', 'Copy from it'], ['paste', 'Paste to it']] },
   ] as const;
 
   /** A step saves at once, typed text when it is left or Return is pressed; a limit the hub would refuse is not sent. */
@@ -45,12 +45,12 @@
 </script>
 
 {#snippet limitMark()}<SaveMark mark={draft.marks[LIMIT]} />{/snippet}
-{#snippet limitHint()}<p class="hint" id="device-policy-sessionLimit-hint">The most live sessions at once, 1 to 100. File tunnels do not count.</p>{/snippet}
+{#snippet limitHint()}<p class="hint" id="device-policy-sessionLimit-hint">Live sessions at once, 1 to 100. File tunnels do not count.</p>{/snippet}
 {#snippet limitMessage()}
   <p role="alert" id="device-policy-message">
     {policy.message}
     {#if policy.phase === 'failed' || policy.retrying}
-      <FormButton size="sm" tone="ghost" aria-disabled={policy.phase !== 'failed'} aria-busy={policy.phase === 'loading'} onclick={() => void policy.load()}>Try again</FormButton>
+      <FormButton size="sm" tone="ghost" aria-disabled={policy.phase !== 'failed'} aria-busy={policy.phase === 'loading'} onclick={() => void policy.load()}>Retry</FormButton>
     {/if}
   </p>
 {/snippet}

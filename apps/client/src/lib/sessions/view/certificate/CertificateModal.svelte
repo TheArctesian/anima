@@ -76,7 +76,7 @@
 <Modal
   open
   solid
-  title="The certificate of {device.name} has changed"
+  title="Certificate of {device.name} changed"
   warning
   describedBy="certificate-why"
   closeOnScrim={false} width={9} lowered
@@ -86,13 +86,12 @@
   <div class="content" bind:this={content}>
     <div id="certificate-why" class="why">
       <p>
-        {device.name} presented a different RDP server certificate from the one Anima.ing accepted, so Anima.ing did not
-        connect.
+        {device.name} presented a different RDP server certificate from the accepted one. Not connected.
       </p>
       <p>
-        A new certificate is expected after the device is reinstalled or its certificate is renewed. Otherwise it can
-        mean that another machine is answering in its place, to see your screen and read what you type, passwords
-        included. Accept the new certificate only if you know why it changed. Until then, the old one stays.
+        Expected after a reinstall or a renewed certificate. Otherwise another machine may be answering in its place
+        and could see your screen and read what you type, passwords included. Accept only if you know why it changed.
+        Until then, the old one stays.
       </p>
     </div>
 
@@ -104,7 +103,7 @@
         {#if certificate !== undefined}
           <span data-fingerprint>{certificate.fingerprintSha256}</span>
         {:else if current.step === 'reading'}
-          <span class="pending">Reading the certificate…</span>
+          <span class="pending">Reading…</span>
         {/if}
       </dd>
       <dt>Subject</dt>
@@ -130,7 +129,7 @@
       <p class="notice" role="status">{PROBLEM.unchanged}</p>
     {/if}
     {#if current.step === 'accepted'}
-      <p role="status">The new certificate is accepted. Reconnecting…</p>
+      <p role="status">New certificate accepted. Reconnecting…</p>
     {/if}
     {#if notice !== undefined}
       <p class="notice" role="status">{notice}</p>
@@ -146,7 +145,7 @@
       {#if current.step === 'unchanged'}
         <button type="button" onclick={onaccepted} {@attach press()}>Reconnect</button>
       {:else if current.step === 'failed'}
-        <button type="button" onclick={retry} {@attach press()}>Read again</button>
+        <button type="button" onclick={retry} {@attach press()}>Retry</button>
       {:else if current.step !== 'accepted'}
         <button
           type="button"

@@ -6,9 +6,9 @@ import { Stopping } from './stopping.svelte';
 
 /** More than one operator's sessions at once. */
 const LIVE_LIMIT = 200;
-const NOT_LOADED = 'The live sessions could not be loaded.';
+const NOT_LOADED = 'Could not load live sessions.';
 /** Shown while `sessionChanged` is in error; the re-query on open keeps the list as current as it can be. */
-const LIVE_STOPPED = 'Live updates stopped; the list refreshes when you open it.';
+const LIVE_STOPPED = 'Live updates stopped. Reopen to refresh.';
 
 /**
  * The live sessions as the nav bar shows them (RA-034, D-6): the query's answer, kept current by `sessionChanged`.

@@ -23,8 +23,8 @@ export type JoinOutcome =
   | { readonly joined: false; readonly message: string; readonly inviteKept: boolean };
 
 const PASTE = 'Paste the invite from the hub.';
-const NOT_CLEARED = 'This device joined, but the key store kept an old access token for the link address. Retry.';
-const NO_ADDRESS = 'This device joined, but the link gave no address this app can use. Retry.';
+const NOT_CLEARED = 'Joined, but the key store kept an old access token. Retry.';
+const NO_ADDRESS = 'Joined, but the link gave no usable address. Retry.';
 
 /** Refusals that come before the invite reaches the hub: the pasted invite still works, so the field keeps it. */
 const BEFORE_USE: ReadonlySet<LinkProblem> = new Set(['caller', 'not-carried', 'busy', 'no-home', 'bad-invite', 'unavailable']);

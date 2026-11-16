@@ -67,8 +67,8 @@ it('FRN-005, S3: Join clears the old token, saves the link address, shows the de
   expect(mocks.clear.mock.calls[0]?.[0]).toMatchObject({ origin: 'http://127.0.0.1:41000' });
   expect(localStorage.getItem('anima.hubAddress')).toBe('http://127.0.0.1:41000');
   expect(target.querySelector('.fingerprint')?.textContent).toBe('ab12-cd34');
-  expect(target.textContent).toContain('Compare it with the device list on the hub.');
-  [...target.querySelectorAll('button')].find((button) => button.textContent.trim() === 'Continue to sign in')?.click();
+  expect(target.textContent).toContain("Compare it with the hub's device list.");
+  [...target.querySelectorAll('button')].find((button) => button.textContent.trim() === 'Sign in')?.click();
   expect(mocks.loadClientAt).toHaveBeenCalledWith('/sign-in');
 });
 
@@ -85,7 +85,7 @@ it('LNK-003, LOG-007: a used invite says why, saves nothing and never shows or l
 });
 
 it('FRN-005: a join refused before the hub saw the invite leaves it in the field', async () => {
-  mocks.join.mockResolvedValue({ ok: false, problem: 'busy', message: 'Another change to the link is running. Wait for it to finish.' });
+  mocks.join.mockResolvedValue({ ok: false, problem: 'busy', message: 'Another link change is running. Wait for it.' });
   const target = open();
   await paste(target, INVITE);
   expect(target.querySelector('textarea')?.value).toBe(INVITE);
@@ -105,5 +105,5 @@ it('FRN-005, S3: joined but the old token stays: the key shows, Retry finishes w
   await settle();
   expect(mocks.join).toHaveBeenCalledOnce();
   expect(localStorage.getItem('anima.hubAddress')).toBe('http://127.0.0.1:41000');
-  expect(buttons()).toEqual(['Continue to sign in']);
+  expect(buttons()).toEqual(['Sign in']);
 });

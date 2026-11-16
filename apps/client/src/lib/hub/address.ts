@@ -31,10 +31,10 @@ export const DEFAULT_HUB_ADDRESS: HubAddress = Object.freeze({
 const LOOPBACK_HOSTS: readonly string[] = ['127.0.0.1'];
 
 const MESSAGES: Record<AddressProblem, string> = {
-  'not-a-url': 'Type the hub address as a host name, for example hub.anima.ing.',
+  'not-a-url': 'Type a host name, for example hub.anima.ing.',
   'not-https': 'The hub address must use https. Only this computer may use http.',
   'has-credentials': 'Remove the user name and password from the hub address.',
-  'has-path': 'Type only the host name and port of the hub, without a path.',
+  'has-path': 'Type only the host name and port, no path.',
 };
 
 function refused(problem: AddressProblem): AddressResult {

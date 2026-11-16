@@ -74,7 +74,7 @@ describe('turning building on (BLD-021, BLD-023)', () => {
     await builder.enable();
     expect(stores.token).toBeNull();
     expect(builder.enrolled).not.toBe(true);
-    expect(builder.problem).toBe('The hub did not enrol this computer as a builder.');
+    expect(builder.problem).toBe('The hub did not enrol this computer.');
     expect(builderApi.claims).toBe(0);
   });
 
@@ -83,7 +83,7 @@ describe('turning building on (BLD-021, BLD-023)', () => {
     await builder.enable();
     expect(operator.revoke).toHaveBeenCalledWith('b-1');
     expect(stores.id).toBeNull();
-    expect(builder.problem).toBe('The builder token could not be kept in the key store.');
+    expect(builder.problem).toBe('Builder token not saved to the key store.');
   });
 
   it('BLD-026: a computer that already holds a token starts its loop when the app starts', async () => {
@@ -120,7 +120,7 @@ describe('turning building off (BLD-025)', () => {
     operator.revoke.mockResolvedValue(refused('unreachable'));
     await builder.disable();
     expect(stores.token).toBeNull();
-    expect(builder.problem).toBe('The hub could not revoke this builder. Revoke it in the list below.');
+    expect(builder.problem).toBe('Not revoked. Revoke it in the list below.');
   });
 
   it('BLD-025: revoking this computer in the list forgets its token; another builder’s does not', async () => {
@@ -138,7 +138,7 @@ describe('turning building off (BLD-025)', () => {
     await builder.disable();
     expect(operator.revoke).not.toHaveBeenCalled();
     expect(stores.token).toBeNull();
-    expect(builder.problem).toBe("This computer's builder could not be revoked here; revoke it in the list below.");
+    expect(builder.problem).toBe('Not revoked here. Revoke it in the list below.');
   });
 
   it('S-6: when the key store keeps the token, the builder ID and the enrolled state stay, and the row says so', async () => {
@@ -148,7 +148,7 @@ describe('turning building off (BLD-025)', () => {
     expect(stores.token).toBe(BUILDER_TOKEN);
     expect(stores.id).toBe('b-1');
     expect(builder.enrolled).toBe(true);
-    expect(builder.problem).toBe('The builder token could not be deleted from the key store. Turn building off again.');
+    expect(builder.problem).toBe('Builder token not deleted from the key store. Turn building off again.');
     stores.clearFails = false;
     await builder.disable();
     expect(stores.token).toBeNull();

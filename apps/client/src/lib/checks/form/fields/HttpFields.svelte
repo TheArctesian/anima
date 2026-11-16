@@ -23,7 +23,7 @@
     { value: 'BASIC', label: 'Basic (user name and password)' },
     { value: 'BEARER', label: 'Bearer token' },
   ];
-  const keepHint = 'Leave empty to keep the stored value.';
+  const keepHint = 'Empty keeps the stored value.';
   const secretHint = $derived(http.storedAuth === http.authKind ? keepHint : undefined);
   const error = (field: string) => messageFor(errors, field);
 </script>
@@ -32,7 +32,7 @@
 <SelectField label="Method" bind:value={http.method} options={methodOptions} />
 <TextField label="Timeout (ms)" kind="numeric" bind:value={http.timeoutMs} error={error('timeoutMs')} />
 <TextField label="Maximum redirects" kind="numeric" bind:value={http.maxRedirects} error={error('maxRedirects')} />
-<ToggleField label="Verify the TLS certificate" bind:checked={http.verifyTls} />
+<ToggleField label="Verify TLS certificate" bind:checked={http.verifyTls} />
 
 <fieldset>
   <legend>Accepted status codes</legend>
@@ -67,13 +67,13 @@
 </fieldset>
 
 <TextField label="Request body" kind="multiline" bind:value={http.body} error={error('body')} />
-<TextField label="Keyword the response must contain" bind:value={http.keyword} error={error('keyword')} />
-<TextField label="JSON pointer to check" bind:value={http.jsonQuery} error={error('jsonQuery')} />
+<TextField label="Keyword in response" bind:value={http.keyword} error={error('keyword')} />
+<TextField label="JSON pointer" bind:value={http.jsonQuery} error={error('jsonQuery')} />
 <TextField label="Expected JSON value" bind:value={http.jsonExpected} error={error('jsonExpected')} />
 
 <SelectField label="Authentication" bind:value={http.authKind} options={authOptions} error={error('auth')} />
 {#if http.authKind === 'BASIC'}
-  <TextField label="User name" bind:value={http.username} error={error('username')} hint={http.storedAuth === 'BASIC' ? 'Enter the stored user name again; the hub never returns it. If you change the user name, type the password again.' : undefined} />
+  <TextField label="User name" bind:value={http.username} error={error('username')} hint={http.storedAuth === 'BASIC' ? 'Enter the user name again; the hub never returns it. A new user name needs the password again.' : undefined} />
   <TextField label="Password" kind="password" bind:value={http.password} error={error('password')} hint={secretHint} />
 {:else if http.authKind === 'BEARER'}
   <TextField label="Bearer token" kind="password" bind:value={http.bearerToken} error={error('bearerToken')} hint={secretHint} />

@@ -132,7 +132,7 @@ export function needsConfirmation(change: McpChange): boolean {
 
 /** What a change did, for the quiet "Saved" line and the screen reader: "Devices: every tool set to ask (7 tools)." */
 export function describeChange(change: McpChange, tools: readonly McpTool[]): string {
-  if (change.type === 'reset') return 'Every tool is back to its default: read tools allow, change tools off.';
+  if (change.type === 'reset') return 'Defaults restored: read tools allow, change tools off.';
   if (change.type === 'choose') {
     const [only] = change.names;
     const name = only === undefined || change.names.length > 1 ? `${String(change.names.length)} tools` : toolLabel(only);

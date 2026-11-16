@@ -72,12 +72,12 @@ const CHANGED_KEY_WARNING = 'The host key changed. Do not trust this device unti
 export function outcomeText(outcome: TestOutcome): string {
   switch (outcome.kind) {
     case 'ok':
-      return 'The device answered and accepted the credential.';
+      return 'Connected. Credential accepted.';
     case 'unreachable':
     case 'authFailed':
       return outcome.message;
     case 'hostKeyNew':
-      return 'The device has a new host key. Check the fingerprint before you trust it.';
+      return 'New host key. Check the fingerprint before you trust it.';
     case 'hostKeyChanged':
     case 'hostKeyChangedUnknown':
       return CHANGED_KEY_WARNING;

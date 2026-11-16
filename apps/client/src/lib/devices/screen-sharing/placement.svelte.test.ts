@@ -37,5 +37,5 @@ it('R-079: the panel is placed again when its text changes, so a long failure st
   for (let turn = 0; turn < 5; turn += 1) await settle();
   flushSync();
   expect(placed.some((text) => text.startsWith('Checking port 5900'))).toBe(true);
-  expect(placed.at(-1)).toContain('did not answer on port 5900');
+  expect(placed.at(-1)).toContain('No answer on port 5900');
 });

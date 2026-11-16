@@ -82,22 +82,22 @@ export class JobReporter {
 export type StepCode = BuilderShellCode | 'hub-refused';
 
 const REASONS: Partial<Record<StepCode, string>> = {
-  'not-on-main': 'The commit is not on main of the Anima.ing repository.',
-  dirty: 'The working tree was not clean after the checkout.',
-  'tool-missing': 'A build tool is missing on this computer.',
-  cancelled: 'The build was cancelled on this computer.',
-  bundle: 'The bundle is not where the build puts it.',
-  upload: 'A file could not be sent to the release bucket.',
-  'hub-refused': 'The hub did not take the upload.',
-  busy: 'Another build step was running on this computer.',
-  commit: 'The builder refused the job: its commit is not a commit hash.',
-  version: 'The builder refused the job: its version is not MAJOR.MINOR.PATCH.',
-  target: 'The builder refused the job: its target is unknown.',
-  platform: 'The builder refused the job: this computer cannot build its target.',
+  'not-on-main': 'The commit is not on Anima.ing main.',
+  dirty: 'Working tree not clean after checkout.',
+  'tool-missing': 'A build tool is missing.',
+  cancelled: 'Build cancelled on the builder.',
+  bundle: 'The bundle is missing after the build.',
+  upload: 'A file did not reach the release bucket.',
+  'hub-refused': 'The hub refused the upload.',
+  busy: 'Another build step was running.',
+  commit: 'Builder refused: commit is not a hash.',
+  version: 'Builder refused: version is not MAJOR.MINOR.PATCH.',
+  target: 'Builder refused: unknown target.',
+  platform: 'Builder refused: it cannot build this target.',
 };
 
 /** The failure reason the hub shows for a step that ended with `code` (BLD-010); fixed text, never process output. */
 export function failureReason(stepLabel: string, code: StepCode): string {
-  if (code === 'step-failed') return `${stepLabel} failed. The job log says why.`;
-  return REASONS[code] ?? `${stepLabel} could not run on this computer.`;
+  if (code === 'step-failed') return `${stepLabel} failed. See the job log.`;
+  return REASONS[code] ?? `${stepLabel} could not run.`;
 }

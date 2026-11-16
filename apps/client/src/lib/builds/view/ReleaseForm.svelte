@@ -61,7 +61,7 @@
       />
     {/snippet}
   </Field>
-  <Field label="Commit" constraint="The full commit of main: 40 hex digits." error={shown.commit}>
+  <Field label="Commit" constraint="Full commit on main: 40 hex digits." error={shown.commit}>
     {#snippet children(link)}
       <Input {...link} mono bind:value={commit} placeholder="0123456789abcdef0123456789abcdef01234567" />
     {/snippet}

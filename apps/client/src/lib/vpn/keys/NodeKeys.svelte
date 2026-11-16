@@ -44,7 +44,7 @@
   {/each}
 </ul>
 <div class="add">
-  <FormButton tabindex={0} aria-disabled={reason !== null} aria-describedby={reason === null ? undefined : reasonId} onclick={() => { if (reason === null) onEnrol(); }}>Add a computer to the VPN</FormButton>
+  <FormButton tabindex={0} aria-disabled={reason !== null} aria-describedby={reason === null ? undefined : reasonId} onclick={() => { if (reason === null) onEnrol(); }}>Add computer</FormButton>
 </div>
 
 <style>

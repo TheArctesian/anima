@@ -136,10 +136,10 @@ it('F-3, MOT-007: while loading the fields wait, empty; a failed load offers Try
   const answers: Partial<Record<Operation, unknown>> = loaded({ NotificationSettings: failure('UNAVAILABLE') });
   await open(answers as Parameters<typeof fakeHub>[0]);
   expect([days().value, days().matches(':disabled'), form.getAttribute('aria-busy')]).toEqual(['', true, 'true']);
-  expect(form.querySelector('.note [role="alert"]')?.textContent).toBe('Anima.ing could not load the notification settings.');
+  expect(form.querySelector('.note [role="alert"]')?.textContent).toBe('Could not load the notification settings.');
   expect(document.querySelectorAll('.list > li')).toHaveLength(4);
   answers.NotificationSettings = ok({ notificationSettings: FIXTURE_SETTINGS });
-  button('Try again', form).click();
+  button('Retry', form).click();
   await settled();
   expect([days().value, days().matches(':disabled'), form.getAttribute('aria-busy')]).toEqual(['21, 14, 7', false, 'false']);
 });
@@ -147,7 +147,7 @@ it('F-3, MOT-007: while loading the fields wait, empty; a failed load offers Try
 it('MOT-007, NAV-005: Try again stays mounted and keeps focus while it retries and when it fails again, then focus goes to the first field', async () => {
   const answers: Partial<Record<Operation, unknown>> = loaded({ NotificationSettings: failure('UNAVAILABLE') });
   await open(answers as Parameters<typeof fakeHub>[0]);
-  const again = button('Try again', form);
+  const again = button('Retry', form);
   again.focus();
   again.click();
   flushSync();

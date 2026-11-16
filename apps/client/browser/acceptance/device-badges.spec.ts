@@ -8,7 +8,7 @@ test('DEV-007, RA-020: status and warning sit side by side inside the Status col
   await page.getByRole('button', { name: 'List', exact: true }).click();
   const row = page.getByRole('row', { name: /mac-mini/ });
   const status = row.getByRole('cell').filter({ hasText: 'Warning' });
-  const warning = status.getByTitle('The VNC connection is not encrypted. Use it only over the VPN.');
+  const warning = status.getByTitle('VNC is not encrypted. Use it only over the VPN.');
   const name = row.getByRole('rowheader');
   await expect(status.getByText('Up', { exact: true })).toBeVisible();
   await expect.poll(() => hub.recording.where({ channel: 'graphql-socket', operation: 'DeviceStatusChanged' }).length).toBe(1);

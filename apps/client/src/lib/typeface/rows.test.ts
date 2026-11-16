@@ -65,7 +65,7 @@ it('UI-020: a storage that refuses to save still applies the font and says it wi
   choose(select(target, 'Monospace font'), 'opendyslexic');
   expect(document.documentElement.dataset['fontMono']).toBe('opendyslexic');
   expect(target.querySelector('[role="alert"]')?.textContent).toBe(
-    'Anima.ing could not save this choice on this device; it lasts until the app restarts.',
+    'Not saved on this device. Lasts until restart.',
   );
 });
 

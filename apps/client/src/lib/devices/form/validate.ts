@@ -14,7 +14,7 @@ function sshErrors(values: DeviceFormValues): FieldError[] {
   if (ssh.auth === 'PRIVATE_KEY' && credential.privateKey.trim() !== '' && !PRIVATE_KEY_ARMOUR.test(credential.privateKey)) {
     errors.push({
       field: 'credential.privateKey.key',
-      message: 'This is not a private key. It must contain a "-----BEGIN ... PRIVATE KEY-----" line.',
+      message: 'Not a private key: no "-----BEGIN ... PRIVATE KEY-----" line.',
     });
   }
   return errors;

@@ -176,7 +176,7 @@ describe('credential prompt after Submit (GW-015)', () => {
     expect(saveBox()?.checked).toBe(false);
     expect(input('password')?.matches(':disabled')).toBe(true);
     expect(document.body.innerHTML).not.toContain(PASSWORD);
-    expect(document.activeElement?.textContent.trim()).toBe('Saving the password…');
+    expect(document.activeElement?.textContent.trim()).toBe('Saving password…');
     held.answer(true);
     await settle();
   });

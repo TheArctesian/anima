@@ -27,18 +27,18 @@ describe('the state of the hub on this computer', () => {
     const texts = states.map((status) => stateText(status, true));
     expect(new Set(texts).size).toBe(texts.length);
     expect(texts[1]).toContain('can take a few minutes');
-    expect(texts.at(-1)).toBe('Failed: anima-gateway ended. The hub starts again in 10 seconds.');
+    expect(texts.at(-1)).toBe('Failed: anima-gateway ended. Restarting in 10 seconds.');
   });
 
   it('2.8, OR-S6-1: a missing key says to put vault.key back and where, and never offers a new key', () => {
     const blocked: LocalHubStatus = { installed: true, running: true, state: 'blocked', reason: 'key-missing' };
-    expect(stateText(blocked, true)).toContain(`Put your copy of vault.key back in ${hubRoot(true)}`);
+    expect(stateText(blocked, true)).toContain(`Put your copy back in ${hubRoot(true)}`);
     expect(stateText(blocked, false)).toContain('~/.local/share/anima/hub');
     expect(stateText(blocked, true)).not.toMatch(/new key/i);
   });
 
   it('F-6: the link member has a sentence for each state, and none when absent', () => {
-    expect(linkText(READY)).toBe('The link is up: devices can join.');
+    expect(linkText(READY)).toBe('Link up: devices can join.');
     expect(linkText({ ...READY, link: { state: 'down', since: '' } })).toContain('This computer still reaches the hub.');
     expect(linkText({ installed: true, running: true })).toBeNull();
   });

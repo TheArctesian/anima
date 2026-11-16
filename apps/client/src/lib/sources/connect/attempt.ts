@@ -21,13 +21,13 @@ export const NO_ATTEMPT: AttemptView = { line: '', continueInBrowser: false, can
 
 const AGENT_STARTED = 'An AI agent started this.';
 export const HUB_RESTARTED =
-  'The hub restarted and dropped the connection. If you already made the App on GitHub, delete it, then start again.';
-export const TAB_BLOCKED = 'Your browser did not open the tab. Open this page in a browser that is signed in to Anima.ing and press Continue.';
+  'The hub restarted and dropped the connection. Delete any App you made on GitHub, then start again.';
+export const TAB_BLOCKED = 'The tab did not open. Open this page in a browser signed in to Anima.ing and press Continue.';
 
 const GITHUB = 'https://github.com/';
-const TRY_AGAIN = 'If GitHub lists a new App that starts with "anima-", delete it.';
+const TRY_AGAIN = 'Delete any new App on GitHub that starts with "anima-".';
 const AT_GITHUB =
-  'Waiting for you on GitHub. Press "Create GitHub App". If GitHub says the name is taken, change the name there and press it again. GitHub may ask you to confirm your password first.';
+  'Waiting for you on GitHub. Press "Create GitHub App". If the name is taken, change it there and press again. GitHub may ask for your password first.';
 
 /** An address the client opens for GitHub, or null: anything not on github.com is never opened. */
 export function githubAddress(url: string | null): string | null {
@@ -49,18 +49,18 @@ function failedLine(attempt: ConnectAttempt): string {
   switch (attempt.failure) {
     case 'EXPIRED':
       return made
-        ? `${app(attempt)} was made but not installed in time. Anima.ing does not use it. Delete it on GitHub, then start again.`
-        : 'The connection was not finished in time. Press Connect GitHub to start again.';
+        ? `${app(attempt)} was not installed in time. Delete it on GitHub, then start again.`
+        : 'The connection timed out. Press Connect GitHub.';
     case 'EXCHANGE_REFUSED':
       return `GitHub did not accept the reply from its page. Start again. ${TRY_AGAIN}`;
     case 'GITHUB_UNREACHABLE':
-      return `The hub could not reach GitHub to finish making the App. Start again. ${TRY_AGAIN}`;
+      return `The hub could not reach GitHub. Start again. ${TRY_AGAIN}`;
     case 'REPLY_UNUSABLE':
       return `GitHub's reply could not be used. Delete ${slug} on GitHub, then start again.`;
     case 'KEY_REFUSED':
       return `GitHub refused the new App's key. Delete ${slug} on GitHub, then start again.`;
     default:
-      return attempt.message ?? 'The connection did not finish. Press Connect GitHub to start again.';
+      return attempt.message ?? 'The connection did not finish. Press Connect GitHub.';
   }
 }
 
@@ -71,7 +71,7 @@ function cancelledLine(attempt: ConnectAttempt): string {
 
 function connectedLine(attempt: ConnectAttempt): string {
   if (attempt.account?.pausedBy === 'EXTENSION_OFF') {
-    return 'GitHub is connected. Projects is off, so Anima.ing does not read it yet. Set Projects on in Settings > Extensions.';
+    return 'GitHub is connected. Set Projects on in Settings > Extensions to read it.';
   }
   return 'GitHub is connected. The first sync has started.';
 }

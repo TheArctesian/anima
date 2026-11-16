@@ -106,7 +106,7 @@ it('FRN-004: a wrong code says to wait for a new one; a right code makes the acc
   const target = authenticator(onmade);
   await settle();
   await enterCode(target, '111111');
-  expect(target.querySelector('[role="alert"]')?.textContent).toBe('The code did not match. Wait for a new code and try again.');
+  expect(target.querySelector('[role="alert"]')?.textContent).toBe('Wrong code. Wait for a new one.');
   await enterCode(target, '222222');
   expect(mocks.create).toHaveBeenLastCalledWith({ name: 'ann', password: PASSWORD, secret: SECRET, code: '222222' });
   expect(onmade).toHaveBeenCalledOnce();

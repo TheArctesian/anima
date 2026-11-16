@@ -11,7 +11,7 @@
     try {
       await updates.restart();
     } catch {
-      problem = 'Anima.ing could not restart. Quit it and open it again.';
+      problem = 'Could not restart. Quit and reopen Anima.ing.';
     }
   }
 </script>

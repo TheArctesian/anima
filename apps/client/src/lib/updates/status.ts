@@ -1,17 +1,17 @@
 import type { FailureReason, UpdateSnapshot } from './schedule';
 
 const NEXT = (nextCheckAt: number | null, time: (at: Date) => string): string =>
-  nextCheckAt === null ? '' : ` The next check is at ${time(new Date(nextCheckAt))}.`;
+  nextCheckAt === null ? '' : ` Next check at ${time(new Date(nextCheckAt))}.`;
 
 /** What a failed attempt says, by reason. */
 function describeFailure(reason: FailureReason): string {
   switch (reason) {
     case 'no-feed':
-      return 'No update is published for this computer yet.';
+      return 'No update published for this computer yet.';
     case 'signature':
-      return 'An update was refused because its signature did not verify. Anima.ing kept the version it has.';
+      return 'Update refused: its signature did not verify. Current version kept.';
     case 'other':
-      return 'The last update attempt failed.';
+      return 'Last update failed.';
   }
 }
 

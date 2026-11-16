@@ -25,7 +25,7 @@
 
 {#if suggestions.length > 0}
   <section aria-labelledby="web-suggestions-heading">
-    <h4 id="web-suggestions-heading">Suggested from your HTTP checks</h4>
+    <h4 id="web-suggestions-heading">Suggested from HTTP checks</h4>
     {#if failure !== null}
       <p class="error" role="alert">{failure.message}</p>
     {/if}

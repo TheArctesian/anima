@@ -89,7 +89,7 @@ it('UI-003: an expired key says "Expired" in text, and a key never used says "Ne
 
 it('INT-003: with no keys the section says so and still offers Create', async () => {
   const target = await open({ ApiKeys: ok({ apiKeys: [] }) });
-  expect(target.querySelector('p.quiet')?.textContent).toBe("No API keys. Programs that call the hub's GraphQL API need one.");
+  expect(target.querySelector('p.quiet')?.textContent).toBe("No API keys.");
   expect(button('Create API key')).toBeDefined();
 });
 
@@ -132,10 +132,10 @@ it('MOT-007: a hidden key row keeps one key\'s space in the cell where the list,
 
 it('INT-003: a failed ApiKeys query shows only the section\'s fixed error, keeps Create, and Try again loads again', async () => {
   const target = await open({ ApiKeys: failure('INTERNAL', 'Unknown field "apiKeys"') });
-  expect(target.querySelector('[role="alert"]')?.textContent).toBe('Anima.ing could not load the API keys.');
+  expect(target.querySelector('[role="alert"]')?.textContent).toBe('Could not load the API keys.');
   expect(target.textContent).not.toContain('Unknown field');
   expect(button('Create API key').disabled).toBe(false);
-  button('Try again').click();
+  button('Retry').click();
   await settled();
   expect(hub.sent.map((request) => request.operation)).toEqual(['ApiKeys', 'ApiKeys']);
 });
@@ -205,7 +205,7 @@ it('NAV-005: after revoking the only key, focus goes to "Create API key"', async
 it('MOT-007, NAV-005: Try again stays mounted and keeps focus while it retries and when it fails again, then focus goes to Create', async () => {
   const answers: Parameters<typeof fakeHub>[0] = { ApiKeys: failure('INTERNAL') };
   await open(answers);
-  const again = button('Try again');
+  const again = button('Retry');
   again.focus();
   again.click();
   flushSync();

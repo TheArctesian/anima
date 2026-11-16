@@ -112,7 +112,7 @@ test.describe('signed out, refusals', () => {
     const lines = consoleLines(page);
     await openSignIn(page);
     await signInWith(page, WRONG_PASSWORD);
-    await expect(page.getByRole('alert')).toHaveText('The user name, password or code is wrong.');
+    await expect(page.getByRole('alert')).toHaveText('Wrong user name, password or code.');
 
     expect(page.url()).toBe(`${HUB_ORIGIN}/sign-in`);
     expect(await sessionCookie(context)).toBeUndefined();
@@ -130,7 +130,7 @@ test.describe('signed out, refusals', () => {
     });
     await openSignIn(page);
     await signInWith(page, OPERATOR.password);
-    await expect(page.getByRole('alert')).toHaveText('The hub refused sign-in from here. Check the VPN client and the page address.');
+    await expect(page.getByRole('alert')).toHaveText('The hub refused sign-in from here. Check the VPN client and page address.');
     expect(await page.content()).not.toContain('203.0.113.9');
   });
 

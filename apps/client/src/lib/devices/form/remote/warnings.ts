@@ -1,8 +1,8 @@
 import type { AccessWarning } from '$lib/devices/api';
 
 const RDP_WARNINGS = {
-  ignoreCertificate: 'Ignoring the certificate means Anima.ing cannot tell this device from an impostor.',
-  weakSecurity: 'Standard RDP security is weak: the sign-in is not protected the way the other modes protect it.',
+  ignoreCertificate: 'Ignoring the certificate means an impostor would not be detected.',
+  weakSecurity: 'Standard RDP security is weak: the sign-in is poorly protected.',
 } as const;
 
 /** RA-020: the warnings the RDP choices earn, as the operator is about to save them. */
@@ -16,7 +16,7 @@ export function rdpWarnings(rdp: { readonly ignoreCertificate: boolean; readonly
 /** RA-020: the sentence for a warning the hub reports on the saved VNC settings, or null for one that is not about VNC. */
 export function vncWarning(warnings: readonly AccessWarning[]): string | null {
   return warnings.includes('UNENCRYPTED_VNC')
-    ? 'This VNC connection is not encrypted. Use it only over the VPN, and prefer RDP or SSH where the device has them.'
+    ? 'VNC is not encrypted. Use it only over the VPN; prefer RDP or SSH.'
     : null;
 }
 

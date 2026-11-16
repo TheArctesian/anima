@@ -1,7 +1,7 @@
 <script lang="ts"></script>
 
 <h1>Device not found</h1>
-<p>There is no device at this address. It may have been deleted.</p>
+<p>It may have been deleted.</p>
 
 <style>
   h1 {

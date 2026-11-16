@@ -15,7 +15,7 @@
 </script>
 
 <div class="step">
-  <h2>Enter the code from your authenticator app</h2>
+  <h2>Enter code</h2>
   <CodeBoxes disabled={busy} {oncomplete} />
   <p class="busy" role="status">{#if busy}<Icon name="carbon:renew" />Signing in{/if}</p>
   <div class="links">

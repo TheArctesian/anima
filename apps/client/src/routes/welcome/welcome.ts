@@ -17,20 +17,20 @@ export interface ChoicePlace {
 /** The three choices of the first run, in order (FRN-001). The hosted sign-in has no service yet. */
 export function welcomeChoices(place: ChoicePlace): readonly Choice[] {
   return [
-    { id: 'sign-in', title: 'Sign in', line: 'Use the hub that Anima.ing hosts for you.', href: null, off: 'Not yet available.' },
+    { id: 'sign-in', title: 'Sign in', line: 'Use a hub hosted by Anima.ing.', href: null, off: 'Not yet available.' },
     {
       id: 'join',
       title: 'Join a hub',
-      line: 'Connect this computer to a hub with an invite from it.',
+      line: 'Link this computer to a hub with an invite.',
       href: '/welcome/join',
-      off: place.localHub ? null : 'Only the desktop app can join a hub.',
+      off: place.localHub ? null : 'Desktop app only.',
     },
     {
       id: 'create',
       title: 'Create a hub on this computer',
-      line: 'This computer runs the hub, its database and its link. Other devices join it.',
+      line: 'This computer runs the hub. Other devices join it.',
       href: '/welcome/create',
-      off: !place.localHub ? 'Only the desktop app can run a hub.' : place.carried ? null : 'This build does not carry the hub programs.',
+      off: !place.localHub ? 'Desktop app only.' : place.carried ? null : 'This build does not carry the hub programs.',
     },
   ];
 }

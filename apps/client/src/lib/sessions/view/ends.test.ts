@@ -38,10 +38,10 @@ describe('each end of a session (K4 §8.6, RA-007)', () => {
     ['the shell exits (1000)', 'REMOTE_CLOSED', 1000, 'The device closed the session.'],
     ['a close with no end message (1000)', undefined, 1000, 'The device closed the session.'],
     ['the hub loses its SSH connection (1011)', 'GATEWAY_ERROR', 1011, 'The hub lost the connection to the device.'],
-    ['the device refuses the credential (1011)', 'AUTH_FAILED', 1011, 'The device refused the sign-in, or no credential is stored for it.'],
-    ['a protocol error (1002)', 'PROTOCOL_ERROR', 1002, 'The app sent something the hub does not accept, so the hub closed the session.'],
-    ['client silence (4002)', 'TIMEOUT', 4002, 'The session timed out because the hub heard nothing from Anima.ing.'],
-    ['a close of 4002 with no end message', undefined, 4002, 'The session timed out because the hub heard nothing from Anima.ing.'],
+    ['the device refuses the credential (1011)', 'AUTH_FAILED', 1011, 'The device refused the sign-in, or no credential is stored.'],
+    ['a protocol error (1002)', 'PROTOCOL_ERROR', 1002, 'The hub closed the session: the app sent something it does not accept.'],
+    ['client silence (4002)', 'TIMEOUT', 4002, 'Timed out: the hub heard nothing from Anima.ing.'],
+    ['a close of 4002 with no end message', undefined, 4002, 'Timed out: the hub heard nothing from Anima.ing.'],
     ['the hub shuts down (1001)', 'HUB_SHUTDOWN', 1001, 'The hub shut down.'],
   ])('RA-007: %s gives its ended panel', async (_name, end, code, expected) => {
     const { text, hostKeyModal } = await endedBy(end, code);
@@ -51,7 +51,7 @@ describe('each end of a session (K4 §8.6, RA-007)', () => {
 
   it('SEC-007: a host key mismatch (end message and 4001) opens the host key warning, not a plain ended panel only', async () => {
     const { text, hostKeyModal } = await endedBy('HOST_KEY_MISMATCH', 4001);
-    expect(text).toBe("The device's host key has changed, so Anima.ing did not connect.");
+    expect(text).toBe("The device's host key changed. Not connected.");
     expect(hostKeyModal?.textContent).toContain('host key');
   });
 
@@ -67,7 +67,7 @@ describe('each end of a session (K4 §8.6, RA-007)', () => {
 
   it('D-4: the hub row from endSession wins over the end message', async () => {
     const { text } = await endedBy('GATEWAY_ERROR', 1011, 'AUTH_FAILED');
-    expect(text).toBe('The device refused the sign-in, or no credential is stored for it.');
+    expect(text).toBe('The device refused the sign-in, or no credential is stored.');
   });
 
   it('RA-007: a refusal before the upgrade (503, seen as 1006) says the session could not be opened, with the hub reason', async () => {

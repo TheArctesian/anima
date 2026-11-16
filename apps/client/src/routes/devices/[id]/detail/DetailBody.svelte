@@ -134,7 +134,7 @@
   <DeviceBar {device} checks={detail.checks} onConnect={connect} onOpenWeb={openWeb} {screenSharing} onSettings={settings} tabs={device !== null || loading ? deviceTabs : undefined} />
   {#if page.state.credentialError !== undefined}
     <p class="notice" role="alert">
-      The device was added, but its credential was not stored: {page.state.credentialError} Enter it again in Settings.
+      Device added, credential not stored: {page.state.credentialError} Enter it again in Settings.
     </p>
   {/if}
   {#if detail.missing}

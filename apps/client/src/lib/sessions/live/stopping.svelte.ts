@@ -1,5 +1,5 @@
 /** The fixed text for a refused Stop; the rows reserve its room. */
-export const STOP_REFUSED = 'The session could not be stopped.';
+export const STOP_REFUSED = 'Could not stop the session.';
 
 /** Which sessions the operator is stopping now, and which Stop the hub refused (RA-034). */
 export class Stopping {

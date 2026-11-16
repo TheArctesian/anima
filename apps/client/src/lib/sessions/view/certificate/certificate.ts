@@ -31,12 +31,12 @@ export const READING: CertificateStep = { step: 'reading' };
 
 /** Fixed texts; the hub's own messages are not shown (R-035, LOG-007). */
 export const PROBLEM = {
-  read: 'The connection test failed, so the new certificate could not be read. Try again.',
-  unreachable: 'The device could not be reached, so the new certificate could not be read. Try again.',
-  none: 'The connection test did not read a server certificate. Close this warning and check the device settings.',
-  accept: 'The hub did not accept the certificate. Try again, or close this warning.',
-  unchanged: 'The device now presents the certificate Anima.ing accepted, so there is nothing to accept. Reconnect.',
-  changed: 'The certificate changed again while you were reading it. This is the one the device presents now.',
+  read: 'Connection test failed. Certificate not read. Retry.',
+  unreachable: 'Device unreachable. Certificate not read. Retry.',
+  none: 'No server certificate read. Close and check the device settings.',
+  accept: 'The hub did not accept the certificate. Retry or close.',
+  unchanged: 'The device presents the accepted certificate again. Nothing to accept: reconnect.',
+  changed: 'The certificate changed again. This is the one the device presents now.',
 } as const;
 
 function readDone(notice: string | undefined, result: HubResult<ConnectionTest>): CertificateStep {

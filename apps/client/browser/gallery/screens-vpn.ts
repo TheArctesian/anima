@@ -6,7 +6,7 @@ import { failOperations, holdOperations, openedDialog, openSettings } from './st
 
 async function addComputer(page: Page): Promise<void> {
   await openSettings(page);
-  await page.getByRole('button', { name: 'Add a computer to the VPN' }).click();
+  await page.getByRole('button', { name: 'Add computer' }).click();
   await openedDialog(page);
 }
 
@@ -46,7 +46,7 @@ export const VPN_SCREENS: readonly Screen[] = [
     name: 'vpn-add-router',
     open: async (page) => {
       await openSettings(page);
-      await page.getByRole('button', { name: 'Add a router' }).first().click();
+      await page.getByRole('button', { name: 'Add router' }).first().click();
       await openedDialog(page);
     },
     windowOnly: true,
@@ -55,7 +55,7 @@ export const VPN_SCREENS: readonly Screen[] = [
     name: 'vpn-add-router-key',
     open: async (page) => {
       await openSettings(page);
-      await page.getByRole('button', { name: 'Add a router' }).first().click();
+      await page.getByRole('button', { name: 'Add router' }).first().click();
       await openedDialog(page);
       await dialog(page).getByRole('button', { name: /key/i }).first().click();
       await expect(dialog(page).getByRole('button', { name: 'Copy' }).first()).toBeVisible();

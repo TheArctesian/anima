@@ -75,7 +75,7 @@
   <SettingRow label="VPN status">
     {#snippet hint()}
       <p class="hint">
-        VPN status is not available. The hub has no LocalAPI proxy (ANIMA_TAILSCALE_LOCALAPI), or it has not answered since the hub
+        Not available. The hub has no LocalAPI proxy (ANIMA_TAILSCALE_LOCALAPI), or it has not answered since the hub
         started.
       </p>
     {/snippet}

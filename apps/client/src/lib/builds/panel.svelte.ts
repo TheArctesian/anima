@@ -45,7 +45,7 @@ export class BuildsPanel {
       this.builders = result.value;
       this.listProblem = null;
     } else {
-      this.listProblem = 'The list of builders could not be read.';
+      this.listProblem = 'Builders did not load.';
     }
     this.buildersLoaded = true;
   }

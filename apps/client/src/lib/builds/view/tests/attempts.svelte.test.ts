@@ -19,10 +19,10 @@ let app: ReturnType<typeof mount> | undefined;
 const ATTEMPTS = [
   release('rel-0', '0.1.0', '2026-11-10T10:00:00Z', [job({ id: 'job-0', releaseId: 'rel-0', state: 'PUBLISHED' })]),
   release('rel-1', '0.1.1', '2026-11-12T21:28:00Z', [
-    job({ id: 'job-1', releaseId: 'rel-1', target: 'DARWIN_UNIVERSAL', state: 'FAILED', failureReason: 'The gates failed. The job log says why.' }),
+    job({ id: 'job-1', releaseId: 'rel-1', target: 'DARWIN_UNIVERSAL', state: 'FAILED', failureReason: 'The gates failed. See the job log.' }),
   ]),
   release('rel-2', '0.1.1', '2026-11-12T21:55:00Z', [
-    job({ id: 'job-2', releaseId: 'rel-2', target: 'DARWIN_UNIVERSAL', state: 'FAILED', failureReason: 'The bundle failed. The job log says why.' }),
+    job({ id: 'job-2', releaseId: 'rel-2', target: 'DARWIN_UNIVERSAL', state: 'FAILED', failureReason: 'The bundle failed. See the job log.' }),
   ]),
   release('rel-3', '0.1.1', '2026-11-12T22:20:00Z', [
     job({ id: 'job-3', releaseId: 'rel-3', target: 'DARWIN_UNIVERSAL', state: 'BUILDING', builderName: 'mac' }),

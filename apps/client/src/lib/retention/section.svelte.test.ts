@@ -79,7 +79,7 @@ it('HUB-005: a value outside the bounds is refused before sending, with the mess
   type(field, '10');
   await save(target, 'Events');
   expect(sentSets()).toHaveLength(0);
-  expect(problemOf(target, 'Events')).toBe('Enter a number of days from 30 to 365.');
+  expect(problemOf(target, 'Events')).toBe('Enter 30 to 365 days.');
   expect(field.getAttribute('aria-invalid')).toBe('true');
   expect(field.getAttribute('aria-describedby')).toContain(row(target, 'Events').querySelector('[role="alert"]')?.id);
   expect(field.value).toBe('10');
@@ -111,7 +111,7 @@ it('HUB-005: a failed save shows a fixed message, not the hub text, and keeps wh
   const field = input(target, 'Events');
   type(field, '120');
   await save(target, 'Events');
-  expect(problemOf(target, 'Events')).toBe('Anima.ing could not save the events period.');
+  expect(problemOf(target, 'Events')).toBe('Could not save the events period.');
   expect(target.textContent).not.toContain('secret hub text');
   expect(field.value).toBe('120');
   expect(row(target, 'Events').querySelector('.hint')?.textContent).toContain('Keeps 90 days.');
@@ -127,7 +127,7 @@ it('HUB-005: a failed load shows a fixed message and Try again loads the periods
   expect(target.querySelector('.note [role="alert"]')?.textContent).toBe('Could not load the periods.');
   expect(target.textContent).not.toContain('secret hub text');
   hub.hub.request = (() => Promise.resolve(ok({ retention: FIXTURE_PERIODS }))) as typeof hub.hub.request;
-  [...target.querySelectorAll('button')].find((each) => each.textContent === 'Try again')?.click();
+  [...target.querySelectorAll('button')].find((each) => each.textContent === 'Retry')?.click();
   await settled();
   expect(input(target, 'Events').value).toBe('90');
   expect(target.querySelector('.note [role="alert"]')).toBeNull();
@@ -256,7 +256,7 @@ it('MOT-007: the note block is present in the loaded and the failed state', asyn
 it('MOT-007, NAV-005: Try again stays mounted and keeps focus while it retries and when it fails again, then focus goes to the first period', async () => {
   const answers: Parameters<typeof fakeHub>[0] = { Retention: failure('unreachable') };
   const target = await open(answers);
-  const again = [...target.querySelectorAll('button')].find((each) => each.textContent === 'Try again');
+  const again = [...target.querySelectorAll('button')].find((each) => each.textContent === 'Retry');
   if (again === undefined) throw new Error('no Try again');
   again.focus();
   again.click();

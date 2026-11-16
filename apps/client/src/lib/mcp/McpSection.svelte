@@ -48,16 +48,15 @@
 <div class="mcp">
   <div class="intro">
     <p>
-      The MCP server (Model Context Protocol, a way for coding agents to use tools) lets a coding agent on this computer work with this hub.
-      Start it with <code>anima mcp</code>. These permissions apply to every agent that uses it for this hub, and they are saved in a file on
-      this computer.
+      The MCP server (Model Context Protocol) lets coding agents on this computer work with this hub. Start it with <code>anima mcp</code>.
+      Permissions apply to every agent using this hub and are saved on this computer.
     </p>
     <p>
-      Allow lets an agent use a tool without asking you. Text that an agent reads, such as a device name or a log line, can steer it.
+      Allow: the agent uses the tool without asking. Text an agent reads, such as a device name or log line, can steer it.
     </p>
     <p>
-      Ask: the agent's app shows you each call to approve. If that app cannot ask, the call is refused. Off hides the tool. Your hub sign-in or
-      API key still limits everything: a key with read scope cannot change anything, whatever you allow here.
+      Ask: the agent's app asks you per call; if it cannot ask, the call is refused. Off hides the tool. Your hub sign-in or API key
+      still limits everything: a read key changes nothing.
     </p>
   </div>
 
@@ -103,7 +102,7 @@
   <p class="saved" role="status">{store.saved === '' ? '' : `Saved. ${store.saved}`}</p>
   <div class="problem" role="alert">
     {#if store.problem !== null}
-      <span>Not saved: {store.problem.attempt}. {store.problem.reason} It went back to its earlier state.</span>
+      <span>Not saved: {store.problem.attempt}. {store.problem.reason} Reverted.</span>
       <FormButton size="sm" onclick={() => { store.dismissProblem(); }}>Dismiss</FormButton>
     {/if}
   </div>

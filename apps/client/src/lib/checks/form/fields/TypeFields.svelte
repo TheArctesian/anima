@@ -35,7 +35,7 @@
     label="Server name"
     bind:value={values.tls.serverName}
     error={error('serverName')}
-    hint="Leave empty to use the device host."
+    hint="Empty uses the device host."
   />
   <TextField label="Timeout (ms)" kind="numeric" bind:value={values.tls.timeoutMs} error={error('timeoutMs')} />
 {:else if values.type === 'DNS'}
@@ -45,12 +45,12 @@
     label="Resolver"
     bind:value={values.dns.resolver}
     error={error('resolver')}
-    hint="An IP address. Leave empty to use the hub's resolver."
+    hint="IP address. Empty uses the hub's resolver."
   />
   <TextField label="Expected answer" bind:value={values.dns.expected} error={error('expected')} />
 {:else if values.type === 'PUSH'}
   {#if values.push.path === ''}
-    <p class="note">The hub creates the push address when you save. The device calls it at least once per interval.</p>
+    <p class="note">Created on save. The device calls it at least once per interval.</p>
   {:else}
     <TextField label="Push address (on the hub)" bind:value={values.push.path} disabled />
   {/if}

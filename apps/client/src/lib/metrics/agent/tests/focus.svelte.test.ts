@@ -47,7 +47,7 @@ describe('Install agent: focus, busy, copy and layout (WCAG 2.4.3, MET-019)', ()
     await focusAndClick('Install agent');
     await focusAndClick('Close');
     expect(text()).toContain('Metrics are current.');
-    expect(active()).toBe(button('Install agent again'));
+    expect(active()).toBe(button('Reinstall agent'));
   });
 
   it('MET-011, MET-012: a code that expires after it was used moves focus to the agent view, not to the page body', async () => {
@@ -55,7 +55,7 @@ describe('Install agent: focus, busy, copy and layout (WCAG 2.4.3, MET-019)', ()
     await focusAndClick('Install agent');
     await pass(15 * 60);
     expect(text()).toContain('Metrics are current.');
-    expect(active()).toBe(button('Install agent again'));
+    expect(active()).toBe(button('Reinstall agent'));
   });
 
   it('MET-012: an expiry does not take focus from a control outside the panel', async () => {
@@ -73,7 +73,7 @@ describe('Install agent: busy, copy and layout (MET-019)', () => {
   it('MET-019: while the code is being made the button says so', async () => {
     const answer = await showPending('enrolAgent', 'NONE');
     await click('Install agent');
-    expect(button('Making a code…').getAttribute('aria-busy')).toBe('true');
+    expect(button('Making code…').getAttribute('aria-busy')).toBe('true');
     await answer({ ok: true, value: { code: CODE, expiresAt: '2026-11-09T10:15:00Z' } });
   });
 

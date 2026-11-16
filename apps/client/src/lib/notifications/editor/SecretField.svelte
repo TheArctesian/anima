@@ -19,7 +19,7 @@
 
   let { label, value = $bindable(), problem, shape = 'line', stored = false, clear = $bindable(false), removable = false, hint }: Props = $props();
 
-  const shownHint = $derived(stored ? `Stored. Leave empty to keep it.${hint === undefined ? '' : ` ${hint}`}` : hint);
+  const shownHint = $derived(stored ? `Stored. Empty keeps it.${hint === undefined ? '' : ` ${hint}`}` : hint);
 
   /**
    * Empties the field the moment it starts to leave. A closing dialog, or a page left while the editor is open,
@@ -62,7 +62,7 @@
         if (clear) value = '';
       }}
     />
-    Remove the stored {label.toLowerCase()}
+    Remove stored {label.toLowerCase()}
   </label>
 {/if}
 

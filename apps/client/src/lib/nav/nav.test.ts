@@ -35,7 +35,7 @@ describe('navigation view logic', () => {
   });
 
   it('NET-004: with no contact yet the banner says no data was received', () => {
-    expect(unreachableBanner(status('unreachable'), 'https://h', NOW)?.age).toBe('No data received yet');
+    expect(unreachableBanner(status('unreachable'), 'https://h', NOW)?.age).toBe('No data yet');
   });
 
   it.each(['connected', 'connecting'] as const)('NET-004: no banner while %s', (connection) => {

@@ -49,7 +49,7 @@
   const key = $derived(enrolment.key);
   const notice = $derived(enrolment.expired ? 'The key expired. Make a new one.' : (enrolment.error?.message ?? ''));
   const title = $derived(
-    view === 'choose' ? (siteId === null ? 'Add a computer to the VPN' : 'Add a router') : view === 'register' ? 'Register a computer' : view === 'registered' ? 'Computer registered' : siteId === null ? 'Key for a Linux computer' : 'Key for the router',
+    view === 'choose' ? (siteId === null ? 'Add computer' : 'Add router') : view === 'register' ? 'Register computer' : view === 'registered' ? 'Computer registered' : siteId === null ? 'Linux computer key' : 'Router key',
   );
 
   // The key is one-use: when the site's router shows up, the key has been used and leaves the page (LOG-007).
@@ -98,8 +98,8 @@
       {#if view === 'choose'}
         <p id="{ids}-about">
           {siteId === null
-            ? 'Pick the kind of computer. A Linux computer joins with a one-use key; a Mac or another computer joins by the ID it shows.'
-            : 'Anima.ing makes a one-use key for the site’s subnet router. The key works for one hour.'}
+            ? 'Linux joins with a one-use key; a Mac or other computer joins by the ID it shows.'
+            : 'Makes a one-use key for the site’s subnet router, valid one hour.'}
         </p>
         <div class="choices">
           {#if siteId === null}
@@ -107,14 +107,14 @@
             <FormButton tabindex={0} onclick={() => { enrolment.openRegister(); }}>Mac or other computer</FormButton>
           {:else}
             <FormButton tabindex={0} onclick={() => void enrolment.makeRouterKey(siteId)} aria-disabled={enrolment.busy} aria-busy={enrolment.busy}>
-              Make a router key for {site?.site.name ?? 'the site'}
+              Make router key for {site?.site.name ?? 'the site'}
             </FormButton>
           {/if}
         </div>
         <!-- Always mounted, one line high, so a refusal moves nothing (MOT-007). -->
         <p class="notice" role="alert">{notice}</p>
       {:else if view === 'key'}
-        <p id="{ids}-about">Anima.ing shows this key only once. It works for one use. Run the steps below on the new computer.</p>
+        <p id="{ids}-about">Shown once, works once. Run these steps on the new computer.</p>
         {#if key !== null}
           <KeySecret secret={key.key} label="Pre-auth key" />
           <p class="timer" role="timer" aria-live="off">Expires in {clockText(enrolment.left)}.</p>
@@ -129,7 +129,7 @@
             {/each}
           </ol>
           <p class="notice" role="status">
-            {enrolment.copied === null ? '' : enrolment.copied.ok ? 'Copied.' : 'The step could not be copied. Select it and copy it.'}
+            {enrolment.copied === null ? '' : enrolment.copied.ok ? 'Copied.' : 'Could not copy. Select the step and copy it.'}
           </p>
         {:else if waiting !== null}
           {#if site !== undefined}

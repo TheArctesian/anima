@@ -22,18 +22,18 @@
   <h1>Builds</h1>
   {#if view.liveStopped}
     <p class="notice" role="alert">
-      Live updates stopped. What you see was read again just now.
-      <FormButton tabindex={0} onclick={() => view.resume()}>Resume live updates</FormButton>
+      Live updates stopped.
+      <FormButton tabindex={0} onclick={() => view.resume()}>Resume</FormButton>
     </p>
   {/if}
   {#if view.buildersFailed}
-    <p class="notice" role="status">Anima.ing could not read the builders; the waiting notices may be out of date.</p>
+    <p class="notice" role="status">Builders did not load. Waiting notices may be out of date.</p>
   {/if}
   <div class="columns">
     <section class="list" aria-label="Releases" aria-busy={view.releases === null && !view.loadFailed}>
       {#if view.loadFailed && view.releases === null}
-        <p role="alert">Anima.ing could not load the releases.</p>
-        <FormButton tabindex={0} onclick={() => view.loadReleases()}>Try again</FormButton>
+        <p role="alert">Releases did not load.</p>
+        <FormButton tabindex={0} onclick={() => view.loadReleases()}>Retry</FormButton>
       {:else if view.releases !== null && view.releases.length === 0}
         <p class="quiet">No releases yet.</p>
       {:else if view.releases !== null}

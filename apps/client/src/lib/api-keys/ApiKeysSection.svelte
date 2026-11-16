@@ -95,7 +95,7 @@
 <div class="keys" bind:this={root}>
   <SettingRow label="New key">
     {#snippet hint()}
-      <p class="hint">Anima.ing shows a new key once, when it is made.</p>
+      <p class="hint">Shown once, when made.</p>
     {/snippet}
     <FormButton tabindex={0} data-create onclick={() => { creating = true; }}>Create API key</FormButton>
   </SettingRow>
@@ -109,11 +109,11 @@
     {#if loadFailed}
       <div class="failed">
         <span class="mark"><Icon name="carbon:warning" size="sm" /></span>
-        <p role="alert">Anima.ing could not load the API keys.</p>
-        <FormButton tabindex={0} aria-disabled={retrying} aria-busy={retrying} onclick={retry}>Try again</FormButton>
+        <p role="alert">Could not load the API keys.</p>
+        <FormButton tabindex={0} aria-disabled={retrying} aria-busy={retrying} onclick={retry}>Retry</FormButton>
       </div>
     {:else if keys !== null && keys.length === 0}
-      <p class="quiet">No API keys. Programs that call the hub's GraphQL API need one.</p>
+      <p class="quiet">No API keys.</p>
     {:else if keys !== null}
       <ul class="list">
         {#each keys as key (key.id)}

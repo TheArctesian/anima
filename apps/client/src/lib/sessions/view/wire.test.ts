@@ -113,7 +113,7 @@ describe('the socket (K4 §8.1, §8.4)', () => {
     await settle();
     expect(socket.closedByClient).toBe(1000);
     expect(calls.endSession).toEqual(['session-1']);
-    expect(target.querySelector('[data-reason]')?.textContent).toBe('The connection to the hub was lost.');
+    expect(target.querySelector('[data-reason]')?.textContent).toBe('Connection to the hub lost.');
   });
 });
 
@@ -128,9 +128,9 @@ describe('a flood from the device (K4 §8.5)', () => {
     await settle();
     window.removeEventListener('error', caught);
     expect(errors).toEqual([]);
-    const notices = [...target.querySelectorAll('[role="status"]')].filter((entry) => entry.textContent.includes('some was skipped'));
+    const notices = [...target.querySelectorAll('[role="status"]')].filter((entry) => entry.textContent.includes('output was skipped'));
     expect(notices).toHaveLength(1);
-    expect(notices[0]?.textContent).toBe('Press Ctrl+L to redraw: output arrived faster than it could be drawn, so some was skipped.');
+    expect(notices[0]?.textContent).toBe('Some output was skipped. Press Ctrl+L to redraw.');
     expect(socket.closedByClient).toBeUndefined();
     expect(target.querySelector('[data-reason]')).toBeNull();
   });
@@ -243,7 +243,7 @@ describe('large paste and copy (RA-003)', () => {
     systemClipboard.refuse = true;
     heard.hooks?.oncopy('SECRET-CLIP');
     await settle();
-    expect(target.textContent).toContain('Could not copy the text to your clipboard.');
+    expect(target.textContent).toContain('Could not copy to your clipboard.');
     expect(target.textContent).not.toContain('SECRET-CLIP');
   });
 

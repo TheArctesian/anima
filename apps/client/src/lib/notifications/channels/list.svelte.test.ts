@@ -121,7 +121,7 @@ it('NOT-004: a delivered test says so; a refused call shows a fixed sentence, no
   expect(status()).toBe('Test delivered.');
   button('Send test through ops-webhook').click();
   await settled();
-  expect(status()).toBe('Anima.ing could not send the test. Try again.');
+  expect(status()).toBe('Test not sent. Retry.');
   expect(document.body.textContent).not.toContain(FAKE_SECRET);
 });
 
@@ -133,7 +133,7 @@ it('NOT-004, MOT-007: while the hub tests, Send test keeps its label and focus, 
   send.click();
   flushSync();
   expect([send.textContent.trim(), send.getAttribute('aria-disabled'), send.getAttribute('aria-busy'), document.activeElement]).toEqual(['Send test', 'true', 'true', send]);
-  expect(row(target, 'ops-webhook').querySelector('[role="status"]')?.textContent).toBe('Sending a test…');
+  expect(row(target, 'ops-webhook').querySelector('[role="status"]')?.textContent).toBe('Sending test…');
   send.click();
   await settled();
   expect(hub.sent.filter((request) => request.operation === 'SendTestNotification')).toHaveLength(1);
@@ -186,7 +186,7 @@ it('LOG-007: a refused delete shows a fixed sentence in the dialog, not the hub\
   flushSync();
   button('Delete phone-ntfy', document.querySelector('[role="dialog"]') ?? document).click();
   await settled();
-  expect(document.querySelector('[role="dialog"] [role="alert"]')?.textContent).toBe('The hub did not delete the channel. Try again.');
+  expect(document.querySelector('[role="dialog"] [role="alert"]')?.textContent).toBe('Channel not deleted. Retry.');
   expect(document.body.textContent).not.toContain(FAKE_SECRET);
 });
 
@@ -234,18 +234,18 @@ it('F-3, MOT-007: a failed load shows its own message and Try again in the kept 
   const answers: Partial<Record<Operation, unknown>> = loaded({ NotificationChannels: failure('UNAVAILABLE') });
   const target = await open(answers as Parameters<typeof fakeHub>[0]);
   const alert = target.querySelector('.stack [role="alert"]');
-  expect(alert?.textContent).toBe('Anima.ing could not load the notification channels.');
+  expect(alert?.textContent).toBe('Could not load the channels.');
   expect(target.querySelector<HTMLInputElement>('input[type="text"]')?.value).toBe('21, 14, 7');
   answers.NotificationChannels = ok({ notificationChannels: [] });
-  button('Try again').click();
+  button('Retry').click();
   await settled();
-  expect(target.querySelector('.stack p.quiet')?.textContent).toBe('No channels. Add one to hear when a check goes down or comes back up.');
+  expect(target.querySelector('.stack p.quiet')?.textContent).toBe('No channels. Add one to get alerts.');
 });
 
 it('MOT-007, NAV-005: Try again stays mounted and keeps focus while it retries and when it fails again, then focus goes to Add channel', async () => {
   const answers = loaded({ NotificationChannels: failure('UNAVAILABLE') });
   await open(answers);
-  const again = button('Try again');
+  const again = button('Retry');
   again.focus();
   again.click();
   flushSync();

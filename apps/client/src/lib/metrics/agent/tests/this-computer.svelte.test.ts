@@ -50,7 +50,7 @@ describe('Install agent on this computer, in the desktop app (MET-019, D-10 d)',
     expect(text()).not.toContain(CODE);
     expect(document.querySelector('pre')).toBeNull();
     expect(copied).toEqual([]);
-    expect(text()).toContain('The agent is installed and runs on this computer.');
+    expect(text()).toContain('Agent installed and running.');
     expect(text()).toContain('Metrics are current.');
   });
 

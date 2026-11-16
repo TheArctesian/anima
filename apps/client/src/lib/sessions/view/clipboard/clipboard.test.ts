@@ -26,7 +26,7 @@ afterEach(async () => {
 
 const ON: SessionTransfer = { copy: true, paste: true };
 const OFF: SessionTransfer = { copy: false, paste: false };
-const UNREAD_NOTICE = 'Copy and paste are off: the hub did not say whether this device allows them.';
+const UNREAD_NOTICE = 'Copy and paste are off: the hub did not answer.';
 const C = { key: 'c', code: 'KeyC', keyCode: 67 };
 
 /** An SSH view whose device answers `transfer` at the start, connected, with its screen. */
@@ -207,8 +207,8 @@ describe('typing and other edits of the text field (RA-003, RA-033)', () => {
 describe('the policy the view shows (RA-033)', () => {
   it.each([
     [ON, undefined],
-    [{ copy: false, paste: true }, 'Copy from the device is off for this device.'],
-    [{ copy: true, paste: false }, 'Paste to the device is off for this device.'],
+    [{ copy: false, paste: true }, 'Copy from the device is off.'],
+    [{ copy: true, paste: false }, 'Paste to the device is off.'],
     [OFF, 'Copy and paste are off for this device.'],
   ])('%o: the toolbar says what is off, with the reason as its tooltip', async (transfer, notice) => {
     const { target } = await connected(transfer);
@@ -246,6 +246,6 @@ describe('the policy the view shows (RA-033)', () => {
     expect(next).not.toBe(socket);
     expect(field).toBe(textareaOf(target));
     expect(next.typed()).toEqual([]);
-    expect(target.querySelector('[data-policy]')?.textContent).toBe('Paste to the device is off for this device.');
+    expect(target.querySelector('[data-policy]')?.textContent).toBe('Paste to the device is off.');
   });
 });

@@ -134,7 +134,7 @@ it('RA-034: a failed Stop keeps the row and shows fixed text, not the hub text',
   stopButton('desk').click();
   flushSync();
   await vi.waitFor(() => {
-    expect(panel()?.querySelector('[role="alert"]')?.textContent).toContain('The session could not be stopped.');
+    expect(panel()?.querySelector('[role="alert"]')?.textContent).toContain('Could not stop the session.');
   });
   expect(rows()).toHaveLength(1);
   expect(panel()?.textContent).not.toContain('secret hub text');
@@ -177,7 +177,7 @@ it('RA-034: a subscription error keeps the list and shows the fixed text; reopen
   flushSync();
   await open();
   expect(control().querySelector('.count')?.textContent).toBe('1');
-  expect(panel()?.textContent).toContain('Live updates stopped; the list refreshes when you open it.');
+  expect(panel()?.textContent).toContain('Live updates stopped. Reopen to refresh.');
   expect(panel()?.textContent).not.toContain('Unknown field');
   const before = fake.requests.filter((request) => request.operation === 'LiveSessions').length;
   control().click();
@@ -206,7 +206,7 @@ it('RA-034: a failed query shows fixed text and keeps the last list', async () =
   answers.LiveSessions = REFUSED;
   await open();
   await vi.waitFor(() => {
-    expect(panel()?.textContent).toContain('The live sessions could not be loaded.');
+    expect(panel()?.textContent).toContain('Could not load live sessions.');
   });
   expect(panel()?.textContent).not.toContain('secret hub text');
   expect(rows()).toHaveLength(1);

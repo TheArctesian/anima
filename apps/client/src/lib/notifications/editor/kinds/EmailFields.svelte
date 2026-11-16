@@ -64,7 +64,7 @@
     <input {...attributes} type="email" bind:value={email.from} autocomplete="off" spellcheck="false" />
   {/snippet}
 </Field>
-<Field label="To" hint="Separate addresses with commas." problem={problemOf('email.to')}>
+<Field label="To" hint="Comma-separated." problem={problemOf('email.to')}>
   {#snippet control(attributes)}
     <input {...attributes} type="text" bind:value={email.to} autocomplete="off" spellcheck="false" />
   {/snippet}

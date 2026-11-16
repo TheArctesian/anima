@@ -135,11 +135,11 @@ it('R-060: when SSH did not answer on this Mac, SSH is off and the Remote Login 
   open({ machine: { ...MAC, sshListening: false } });
   expect(sshBox()?.checked).toBe(false);
   expect(document.querySelector('.remote-login [role="status"]')?.textContent).toContain('SSH is off');
-  expect(document.querySelector('[data-section="ssh"]')?.textContent).toContain('Open Remote Login settings');
+  expect(document.querySelector('[data-section="ssh"]')?.textContent).toContain('Remote Login settings');
   button('Another device').click();
   flushSync();
   expect(remoteLogin()).not.toContain('SSH is off');
-  expect(remoteLogin()).toContain('Open Remote Login settings');
+  expect(remoteLogin()).toContain('Remote Login settings');
 });
 
 it('R-060: with SSH answering, the Remote Login button keeps its usual text', () => {
@@ -151,7 +151,7 @@ it('R-059, CLI-001: with the browser answers no Remote Login button is offered',
   platform.desktop = false;
   open({ machine: { ...MAC, sshListening: false } });
   expect(document.querySelector('.remote-login')).toBeNull();
-  expect(document.body.textContent).not.toContain('Open Remote Login settings');
+  expect(document.body.textContent).not.toContain('Remote Login settings');
 });
 
 it('R-060: asked by the app, the title is "Add this Mac?" and "Don\'t ask again on this Mac" is offered', () => {

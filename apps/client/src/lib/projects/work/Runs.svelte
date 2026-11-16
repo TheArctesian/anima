@@ -40,19 +40,19 @@
   });
 
   const CHANGE_WORDS: Record<RunChange, { title: string; body: string; label: string }> = {
-    rerunFailed: { title: 'Re-run failed jobs', body: 'Runs the jobs that failed again, with the repository’s secrets.', label: 'Re-run failed jobs' },
-    rerun: { title: 'Re-run every job', body: 'Runs every job of this run again, with the repository’s secrets.', label: 'Re-run' },
-    cancel: { title: 'Cancel the run', body: 'Stops the jobs that have not finished.', label: 'Cancel run' },
+    rerunFailed: { title: 'Re-run failed jobs', body: 'Re-runs the failed jobs with the repository’s secrets.', label: 'Re-run failed jobs' },
+    rerun: { title: 'Re-run every job', body: 'Re-runs every job with the repository’s secrets.', label: 'Re-run' },
+    cancel: { title: 'Cancel run', body: 'Stops unfinished jobs.', label: 'Cancel run' },
   };
 </script>
 
 {#snippet tools()}
   <span class="end">
-    <FormButton size="sm" tone="ghost" onclick={() => (dispatching = true)}><Icon name="carbon:play" size="sm" />Run a workflow</FormButton>
+    <FormButton size="sm" tone="ghost" onclick={() => (dispatching = true)}><Icon name="carbon:play" size="sm" />Run workflow</FormButton>
   </span>
 {/snippet}
 
-<ForgeSection title="Workflow runs" icon="carbon:play" {list} {now} {tools} empty="No workflow runs" emptyLine="Runs appear here once a workflow runs on GitHub.">
+<ForgeSection title="Workflow runs" icon="carbon:play" {list} {now} {tools} empty="No workflow runs">
   <ul class="rows" aria-label="Workflow runs">
     {#each list.rows as run (run.id)}
       {@const mark = runState(run)}

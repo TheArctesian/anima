@@ -45,8 +45,8 @@
     </p>
     {#if advice !== null && tool.confirming === null}
       <p class="hint">
-        Anima.ing did not find {advice.folder} on the PATH of a login shell. If a new terminal does not find anima, add this
-        line to your shell profile: <code>{advice.line}</code>
+        {advice.folder} is not on the login shell PATH. If a new terminal does not find anima, add this to your shell
+        profile: <code>{advice.line}</code>
       </p>
     {/if}
   {/snippet}

@@ -47,10 +47,10 @@
   open
   title={one === undefined ? `Merge ${String(pulls.length)} pull requests` : `Merge #${String(one.number)}`}
   body={one === undefined
-    ? 'Each is merged in turn at the commit shown; one that cannot merge is left and the rest go on.'
+    ? 'Merged in turn at the commit shown. One that cannot merge is skipped.'
     : unstable
-      ? 'A check that is not required failed. It merges at the commit shown; if the branch moved, GitHub refuses.'
-      : 'It merges at the commit shown; if the branch moved since, GitHub refuses.'}
+      ? 'An optional check failed. Merges at the commit shown; GitHub refuses if the branch moved.'
+      : 'Merges at the commit shown; GitHub refuses if the branch moved.'}
   {lines}
   confirmLabel={one === undefined ? `Merge ${String(pulls.length)}` : 'Merge'}
   tone={unstable || fork !== null ? 'danger' : 'primary'}
@@ -69,7 +69,7 @@
     </Field>
   {/if}
   {#if fork !== null}
-    <Field label="Type {fork === '' ? 'the fork' : fork} to merge" constraint="This pull request comes from another repository.">
+    <Field label="Type {fork === '' ? 'the fork' : fork} to merge" constraint="From another repository.">
       {#snippet children(link)}<Input {...link} mono autocomplete="off" bind:value={typed} />{/snippet}
     </Field>
   {/if}

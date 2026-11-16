@@ -12,12 +12,12 @@ export interface ClipboardRules {
   readonly pasteOff: string | undefined;
 }
 
-const UNREAD = 'Copy and paste are off: the hub did not say whether this device allows them.';
+const UNREAD = 'Copy and paste are off: the hub did not answer.';
 const UNREAD_PASTE = 'Off: the hub did not answer';
 const OFF_FOR_DEVICE = 'Off for this device';
 const BOTH_OFF = 'Copy and paste are off for this device.';
-const COPY_OFF = 'Copy from the device is off for this device.';
-const PASTE_OFF = 'Paste to the device is off for this device.';
+const COPY_OFF = 'Copy from the device is off.';
+const PASTE_OFF = 'Paste to the device is off.';
 
 /**
  * The rules for a session started with `policy`. An unread policy turns both off (it fails closed); only a

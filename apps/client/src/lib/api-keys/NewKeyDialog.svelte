@@ -73,10 +73,10 @@
   }
 </script>
 
-<Modal open title={created === null ? 'Create an API key' : `Copy the key ${created.name}`} describedBy="{ids}-about" closeOnScrim={created === null} width={7} onClose={close}>
+<Modal open title={created === null ? 'Create API key' : `Copy key ${created.name}`} describedBy="{ids}-about" closeOnScrim={created === null} width={7} onClose={close}>
   <div class="views" bind:this={views} style:min-block-size={reserved === null ? null : `${String(reserved)}px`}>
   {#if created === null}
-    <p id="{ids}-about">Programs use an API key to call the hub's GraphQL API. A key cannot make or revoke keys.</p>
+    <p id="{ids}-about">For programs that call the hub's GraphQL API. A key cannot make or revoke keys.</p>
     <form onsubmit={submit} novalidate>
       <fieldset class="fields" disabled={busy}>
         <div class="field">
@@ -103,7 +103,7 @@
           {#each MADE_FOR as user, index (user.id)}
             <label><input id={index === 0 ? `${ids}-madeFor` : undefined} type="radio" name="{ids}-made-for" value={user.id} required bind:group={form.madeFor} /> {user.label}</label>
           {/each}
-          <small id="{ids}-madeFor-hint">It cannot change later.</small>
+          <small id="{ids}-madeFor-hint">Cannot change later.</small>
           <small id="{ids}-madeFor-problem" class="problem">{madeForProblem}</small>
         </fieldset>
         <fieldset class="choice" aria-describedby="{ids}-expiry-problem">
@@ -122,7 +122,7 @@
             bind:value={form.date}
             aria-invalid={expiryProblem !== ''}
           />
-          <small>{preview === null ? 'At most one year away.' : `The key stops working on ${shownDate(preview.toISOString())}.`}</small>
+          <small>{preview === null ? 'At most one year away.' : `Stops working on ${shownDate(preview.toISOString())}.`}</small>
           <small id="{ids}-expiry-problem" class="problem">{expiryProblem}</small>
         </fieldset>
       </fieldset>
@@ -135,7 +135,7 @@
       </div>
     </form>
   {:else}
-    <p id="{ids}-about">Anima.ing shows this key only once. Copy it now and keep it where your program reads it; the hub keeps only a hash of it.</p>
+    <p id="{ids}-about">Shown once. Copy it now; the hub keeps only a hash.</p>
     {#if secret !== null}
       <KeySecret {secret} />
     {/if}

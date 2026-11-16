@@ -39,14 +39,14 @@ describe('the builder ID store (BLD-025)', () => {
 describe('the Builds row texts (BLD-020)', () => {
   it('BLD-020: says what the builder does', () => {
     expect(statusText({ kind: 'building', job: JOB, step: 'gates' })).toBe('Building 0.1.12: running the gates.');
-    expect(statusText({ kind: 'waiting' })).toBe('Waiting for a release to build.');
-    expect(statusText({ kind: 'missing', tools: ['git'] })).toBe('A tool is missing, so this computer claims no build.');
+    expect(statusText({ kind: 'waiting' })).toBe('Waiting for a release.');
+    expect(statusText({ kind: 'missing', tools: ['git'] })).toBe('A tool is missing. No builds claimed.');
   });
 
   it('I-4: says what turning building on or off is doing while it runs', () => {
     expect(builderText(false, true, { kind: 'stopped' })).toBe('Enrolling…');
     expect(builderText(true, true, { kind: 'waiting' })).toBe('Turning off…');
-    expect(builderText(true, false, { kind: 'waiting' })).toBe('Waiting for a release to build.');
+    expect(builderText(true, false, { kind: 'waiting' })).toBe('Waiting for a release.');
     expect(builderText(false, false, { kind: 'waiting' })).toBe('Off.');
   });
 
@@ -63,7 +63,7 @@ describe('the Builds row texts (BLD-020)', () => {
 
   it('BLD-020: names the platform once the shell has answered', () => {
     expect(thisPlatformText(null, false)).toBe('');
-    expect(thisPlatformText(null, true)).toBe('This computer could not say which platform it is.');
+    expect(thisPlatformText(null, true)).toBe('Platform not detected.');
     expect(thisPlatformText({ os: 'MACOS', arch: 'AARCH64', missing: [] }, false)).toBe('macOS, Apple silicon (arm64)');
   });
 });

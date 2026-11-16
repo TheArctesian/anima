@@ -13,10 +13,10 @@ export interface SignOut {
   readonly clearToken: (address: HubAddress) => Promise<void>;
 }
 
-export const TOKEN_KEPT_AFTER_LOGOUT = 'Signed out of the hub, but the access token could not be removed from the key store.';
+export const TOKEN_KEPT_AFTER_LOGOUT = 'Signed out, but the key store kept the access token.';
 export const TOKEN_KEPT_UNCONFIRMED =
-  'The hub did not confirm the sign-out, and the access token could not be removed from the key store.';
-export const COOKIE_KEPT = 'The hub did not confirm the sign-out, so this browser may still be signed in. Try again.';
+  'The hub did not confirm the sign-out, and the key store kept the access token.';
+export const COOKIE_KEPT = 'The hub did not confirm the sign-out, so this browser may still be signed in. Retry.';
 
 /** The hub's answer to `logout`; a rejected call is no answer (`null`). */
 async function logoutAnswer(api: Pick<AccessApi, 'logout'>): Promise<HubResult<boolean> | null> {

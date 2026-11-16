@@ -21,7 +21,7 @@
   ];
 </script>
 
-<Field label="Server" hint="https:// and the host only, for example https://ntfy.sh." problem={problemOf('ntfy.server')}>
+<Field label="Server" hint="https:// and host only, e.g. https://ntfy.sh." problem={problemOf('ntfy.server')}>
   {#snippet control(attributes)}
     <input {...attributes} type="url" bind:value={ntfy.server} autocomplete="off" autocapitalize="off" spellcheck="false" />
   {/snippet}

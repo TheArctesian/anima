@@ -82,7 +82,7 @@ it('UPD-004: a restart that fails shows a short message in the banner, not a dia
   flushSync();
   button('Restart to update')?.click();
   await settle();
-  expect(document.querySelector('[role="status"]')?.textContent).toContain('could not restart');
+  expect(document.querySelector('[role="status"]')?.textContent).toContain('Could not restart');
 });
 
 it('UPD-006: the row shows the current version, the state and an enabled Check for updates', async () => {
@@ -123,7 +123,7 @@ it('UPD-006: a failed check is plain text in the row, with no dialog or alert', 
   show(UpdatesRow, port);
   button('Check for updates')?.click();
   await settle();
-  expect(document.body.textContent).toContain('The last update attempt failed');
+  expect(document.body.textContent).toContain('Last update failed');
   expect(document.querySelector('[role="alert"], [role="alertdialog"], dialog')).toBeNull();
 });
 

@@ -16,7 +16,7 @@
   function submit(event: SubmitEvent): void {
     event.preventDefault();
     if (name.trim() === '' || password === '') {
-      problem = 'Enter the user name and the password of the account.';
+      problem = 'Enter the user name and password.';
       return;
     }
     problem = undefined;

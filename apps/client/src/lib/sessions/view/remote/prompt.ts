@@ -22,5 +22,5 @@ export function gatewayAsk(protocol: RemoteProtocol, required: readonly string[]
 }
 
 /** Fixed texts of a session the prompt ended; never the gateway's names (LOG-007, R-035). */
-export const PROMPT_CANCELLED = 'You cancelled the sign-in, so the session ended.';
-export const PROMPT_REFUSED = 'The device asked for a sign-in Anima.ing cannot give, so the session ended.';
+export const PROMPT_CANCELLED = 'Sign-in cancelled. Session ended.';
+export const PROMPT_REFUSED = 'The device asked for a sign-in Anima.ing cannot give. Session ended.';

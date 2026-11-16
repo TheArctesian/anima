@@ -114,7 +114,7 @@ it('VP-7: no step holds the key, and the key reaches no storage, URL or console'
 
 it('VPN-001: a router key is made for the site and its modal names the site', async () => {
   const { requests } = await open({ CreateRouterKey: { createRouterKey: MADE } }, 'site-home');
-  button('Make a router key for Home').click();
+  button('Make router key for Home').click();
   await settled();
   expect(requests).toEqual([{ operation: 'CreateRouterKey', variables: { siteId: 'site-home' } }]);
   expect(keyField()?.value).toBe(KEY);
@@ -122,18 +122,18 @@ it('VPN-001: a router key is made for the site and its modal names the site', as
 
 it('VPN-001: when the site has a waiting router the key leaves the page and the modal says the route waits', async () => {
   const { state } = await open({ CreateRouterKey: { createRouterKey: MADE } }, 'site-home');
-  button('Make a router key for Home').click();
+  button('Make router key for Home').click();
   await settled();
   state.sites = sites(true);
   flushSync();
   await settled();
   expect(documentHolds(KEY)).toBe(false);
-  expect(text(dialog())).toContain('lab-router offers 192.168.1.0/24 and waits for approval.');
+  expect(text(dialog())).toContain('lab-router offers 192.168.1.0/24, awaiting approval.');
 });
 
 it('VPN-001: when the key leaves because the router connected, focus moves to the Approve route button', async () => {
   const { state } = await open({ CreateRouterKey: { createRouterKey: MADE } }, 'site-home');
-  button('Make a router key for Home').click();
+  button('Make router key for Home').click();
   await settled();
   expect(document.activeElement).toBe(keyField());
   state.sites = sites(true);

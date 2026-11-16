@@ -153,8 +153,8 @@ it('MCP-020: a failed read keeps the placeholders, hidden, under the error, so t
 it('MCP-020: the intro says that Allow is risky, what Ask does, and expands MCP', async () => {
   const target = await open();
   const text = target.querySelector('.intro')?.textContent.replaceAll(/\s+/g, ' ') ?? '';
-  expect(text).toContain('Allow lets an agent use a tool without asking you. Text that an agent reads, such as a device name or a log line, can steer it.');
-  expect(text).toContain("Ask: the agent's app shows you each call to approve. If that app cannot ask, the call is refused.");
+  expect(text).toContain('Allow: the agent uses the tool without asking. Text an agent reads, such as a device name or log line, can steer it.');
+  expect(text).toContain("Ask: the agent's app asks you per call; if it cannot ask, the call is refused.");
   expect(text).toContain('Model Context Protocol');
 });
 
@@ -173,7 +173,7 @@ it('MCP-019: a group with a sign-in tool says once, in view, what Needs sign-in 
   const target = await open();
   const notes = [...target.querySelectorAll('.note')];
   expect(notes).toHaveLength(1);
-  expect(notes[0]?.textContent.replaceAll(/\s+/g, ' ')).toContain('With an API key the agent never gets it, whatever is set here.');
+  expect(notes[0]?.textContent.replaceAll(/\s+/g, ' ')).toContain('runs with your own sign-in, never with an API key.');
 });
 
 it('MCP-019: a group header says how many tools differ from the default, when any do', async () => {
@@ -192,7 +192,7 @@ it('MCP-021: a refused write puts the control back and says so in an alert', asy
   expect(checked('Check update', 'Off')).toBe(true);
   expect(checked('Check update', 'Allow')).toBe(false);
   expect(target.querySelector('[role="alert"]')?.textContent).toContain('Not saved: Check update to allow. The permissions could not be saved');
-  expect(target.querySelector('[role="alert"]')?.textContent).toContain('earlier state');
+  expect(target.querySelector('[role="alert"]')?.textContent).toContain('Reverted.');
 });
 
 it('MCP-021: a failure stays after a save of another control, until it is dismissed or the same control is saved', async () => {
@@ -247,7 +247,7 @@ it('MCP-020: "Allow all" asks first; Cancel saves nothing and changes nothing', 
   await click(button('Allow all, all tools'));
   const dialog = document.querySelector('[role="dialog"]');
   expect(dialog?.textContent).toContain('Allow every tool on this hub?');
-  expect(dialog?.textContent).toContain('the read tools too');
+  expect(dialog?.textContent).toContain('read tools too');
   expect(shell.writes).toHaveLength(0);
   await click(button('Cancel'));
   expect(shell.writes).toHaveLength(0);

@@ -51,7 +51,7 @@
       </button>
     </span>
   {/each}
-  <input {id} bind:value={typed} onkeydown={keydown} onblur={add} placeholder="Add a tag" autocomplete="off" aria-describedby={describedBy} />
+  <input {id} bind:value={typed} onkeydown={keydown} onblur={add} placeholder="Add tag" autocomplete="off" aria-describedby={describedBy} />
   <span class="announcement" role="status" aria-live="polite">{announcement}</span>
 </span>
 

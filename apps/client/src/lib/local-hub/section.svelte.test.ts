@@ -65,7 +65,7 @@ it('FRN-006, LHB-010, F-6: a ready hub shows its state and its link, and Stop', 
   const watch = new LocalHubWatch(shell(READY));
   const target = await open(watch);
   expect(target.querySelector('h2')?.textContent).toBe("This computer's hub");
-  expect(target.querySelector('.hint')?.textContent).toBe('Ready. The link is up: devices can join.');
+  expect(target.querySelector('.hint')?.textContent).toBe('Ready. Link up: devices can join.');
   expect(watch.origin).toBe('http://127.0.0.1:8443');
 });
 
@@ -100,7 +100,7 @@ it('FRN-006: a hub that is still stopping offers no Start: the button says "Stop
 it('2.8: "Save a copy of the hub key" opens the shell dialog and says where to keep it', async () => {
   mocks.saveHubKey.mockResolvedValue({ ok: true, value: true });
   const target = await open(new LocalHubWatch(shell(READY)));
-  click('Save a copy of the hub key');
+  click('Save a copy');
   await settle();
   expect(mocks.saveHubKey).toHaveBeenCalledOnce();
   expect(target.textContent).toContain('Saved. Keep it with your backups.');
@@ -108,8 +108,8 @@ it('2.8: "Save a copy of the hub key" opens the shell dialog and says where to k
 
 it('FRN-007: Recover the account opens the account step of the first run', async () => {
   await open(new LocalHubWatch(shell(READY)));
-  click('Recover the account');
+  click('Recover account');
   await settle();
   const headings = [...document.querySelectorAll('[role="dialog"] h2')].map((heading) => heading.textContent);
-  expect(headings).toEqual(['Recover the account', 'A new name and password']);
+  expect(headings).toEqual(['Recover account', 'New name and password']);
 });

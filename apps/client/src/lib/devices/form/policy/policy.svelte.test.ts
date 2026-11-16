@@ -137,7 +137,7 @@ it('RA-036: a failed policy load keeps the rest of the form usable, sends no pol
   await save();
   expect(calls.onSave).toHaveBeenCalledTimes(1);
   expect(sent.map((request) => request.operation)).toEqual(['DevicePolicy']);
-  button('Try again').click();
+  button('Retry').click();
   await settle();
   expect(limit().disabled).toBe(false);
   expect(limit().value).toBe('5');
@@ -213,11 +213,11 @@ it('MOT-007: every policy sentence fits one short line, so the form does not mov
 
 it('RA-036: Try again stays mounted and busy while it runs, and a successful load moves focus to the limit', async () => {
   await editing([down, ok({ device: POLICY })]);
-  const again = button('Try again');
+  const again = button('Retry');
   again.focus();
   again.click();
   flushSync();
-  expect(button('Try again')).toBe(again);
+  expect(button('Retry')).toBe(again);
   expect(again.getAttribute('aria-busy')).toBe('true');
   expect(document.activeElement).toBe(again);
   await settle();

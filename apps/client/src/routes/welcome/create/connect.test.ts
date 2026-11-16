@@ -42,7 +42,7 @@ describe('connecting to the hub on this computer', () => {
 
   it('FRN-002: a hub that stays not ready is read once a second for a while, then not checked', async () => {
     const starting = parts({ ...READY, state: 'starting' }, 'own');
-    expect(await connectLocalHub(starting)).toEqual({ ok: false, message: 'The hub on this computer is not ready. Wait for it, then try again.' });
+    expect(await connectLocalHub(starting)).toEqual({ ok: false, message: 'The hub on this computer is not ready. Retry shortly.' });
     expect(starting.read).toHaveBeenCalledTimes(READY_READS);
     expect(starting.wait.mock.calls).toEqual(Array.from({ length: READY_READS - 1 }, () => [POLL_MS]));
     expect(starting.check).not.toHaveBeenCalled();
@@ -72,7 +72,7 @@ describe('the first sign-in (FRN-004)', () => {
     const { hub } = fakeHub({ Login: failure('UNAUTHENTICATED', 'hub text') });
     const keep = vi.fn();
     const outcome = await signInFirst(accessApi(hub), keep, FORM);
-    expect(outcome).toEqual({ ok: false, message: 'The hub refused the code. Wait for the next code: the code that made the account cannot sign in.' });
+    expect(outcome).toEqual({ ok: false, message: 'The hub refused the code. Wait for the next one.' });
     expect(keep).not.toHaveBeenCalled();
   });
 

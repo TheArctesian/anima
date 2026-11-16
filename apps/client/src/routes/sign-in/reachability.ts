@@ -18,5 +18,5 @@ export interface HubUnreachable {
 export function hubUnreachable(status: HubStatus, origin: string, now: Date): HubUnreachable | null {
   const banner = unreachableBanner(status, origin, now);
   if (banner === null) return null;
-  return { title: `Can't reach ${hubHost(origin)}`, advice: 'Check the VPN client, then try again.', origin, age: banner.age };
+  return { title: `Can't reach ${hubHost(origin)}`, advice: 'Check the VPN client.', origin, age: banner.age };
 }

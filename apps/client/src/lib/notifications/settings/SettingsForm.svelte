@@ -78,7 +78,7 @@
     <SettingRow label="Certificate expiry days" for="{id}-days">
       {#snippet hint()}
         <p class="hint" id="{id}-days-hint">
-          A notice when a certificate or domain has fewer days left: up to 5 values from 1 to 365, largest first. Default {thresholdsText(DEFAULT_DAYS)}.
+          Days left before a certificate or domain notice: up to 5, from 1 to 365, largest first. Default {thresholdsText(DEFAULT_DAYS)}.
         </p>
       {/snippet}
       <input
@@ -133,14 +133,14 @@
     {#snippet label()}
       <div class="note">
         {#if loadFailed}
-          <p id="{id}-failed" role="alert">Anima.ing could not load the notification settings.</p>
+          <p id="{id}-failed" role="alert">Could not load the notification settings.</p>
         {:else}
           <p class="outcome" role="status">{outcome}</p>
         {/if}
       </div>
     {/snippet}
     {#if loadFailed}
-      <FormButton tabindex={0} aria-disabled={retrying} aria-busy={retrying} onclick={retry}>Try again</FormButton>
+      <FormButton tabindex={0} aria-disabled={retrying} aria-busy={retrying} onclick={retry}>Retry</FormButton>
     {:else}
       <FormButton tabindex={0} type="submit" tone="primary" aria-disabled={waiting || busy} aria-busy={busy}>Save</FormButton>
     {/if}

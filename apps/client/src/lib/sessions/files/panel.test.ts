@@ -58,7 +58,7 @@ describe('RA-032: opening and listing', () => {
 describe('RA-032: when the link or ticket fails', () => {
   it('RA-032: a ticket the hub refuses shows fixed text and never the hub message or the token', async () => {
     const { target, socket } = await show({ ok: false, error: UNREACHABLE });
-    expect(status(target)).toBe('Could not open the file connection. Check that the session is still running.');
+    expect(status(target)).toBe('Could not open the file connection. Check the session is still running.');
     expect(FakeFilesSocket.made).toHaveLength(0);
     expect(socket.frames).toEqual([]);
     expect(target.innerHTML).not.toContain('TOKEN-MARKER');
@@ -70,9 +70,9 @@ describe('RA-032: when the link or ticket fails', () => {
     await settle();
     flushSync();
     expect(status(target)).toBe('The connection to the device failed.');
-    expect(off(button(target, 'Refresh the list'))).toBe(true);
+    expect(off(button(target, 'Refresh list'))).toBe(true);
     expect(off(button(target, 'Download f'))).toBe(true);
-    expect(off(button(target, 'Upload a file'))).toBe(true);
+    expect(off(button(target, 'Upload file'))).toBe(true);
   });
 
   it('RA-032: a refused upgrade says the connection could not be opened', async () => {
@@ -109,7 +109,7 @@ describe('RA-032: when the link or ticket fails', () => {
 
   it('RA-032: a button keeps the keyboard focus through its own action', async () => {
     const { target, socket } = await listed([entry('docs', 'dir')]);
-    const refresh = button(target, 'Refresh the list');
+    const refresh = button(target, 'Refresh list');
     refresh.focus();
     await click(refresh);
     socket.text({ type: 'entries', path: HOME, entries: [entry('docs', 'dir')] });
@@ -137,7 +137,7 @@ describe('RA-032: navigation', () => {
     const before = socket.frames.length;
     for (const each of [...target.querySelectorAll<HTMLButtonElement>('.open')]) await click(each);
     expect(socket.frames).toHaveLength(before);
-    expect(status(target)).toBe('That name cannot be used as a file name on the device.');
+    expect(status(target)).toBe('The device cannot use that file name.');
   });
 
   it('RA-032: the device refusing a folder shows its fixed reason and keeps the list', async () => {

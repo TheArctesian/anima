@@ -29,7 +29,7 @@ export const UNREACHABLE: HubError = {
 
 export const MALFORMED: HubError = {
   code: 'malformed',
-  message: 'The hub sent an answer that Anima.ing cannot read.',
+  message: "Can't read the hub's answer.",
 };
 
 /** The token provider failed; nothing from its error is kept, since it may describe the key store (LOG-007). */

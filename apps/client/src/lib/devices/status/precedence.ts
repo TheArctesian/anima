@@ -46,8 +46,8 @@ export interface CombinedResult {
 }
 
 const WARNING_TEXT: Record<SecurityWarning, string> = {
-  HOST_KEY_CHANGED: 'The SSH host key has changed',
-  CERTIFICATE_CHANGED: 'The certificate has changed',
+  HOST_KEY_CHANGED: 'SSH host key changed',
+  CERTIFICATE_CHANGED: 'Certificate changed',
 };
 
 function enabled(facts: StatusFacts): readonly CheckState[] {
@@ -64,7 +64,7 @@ function days(count: number): string {
 }
 
 function maintenanceReasons(facts: StatusFacts): StatusReason[] {
-  return reasons('MAINTENANCE', facts.maintenance ? ['The device is in a maintenance window'] : []);
+  return reasons('MAINTENANCE', facts.maintenance ? ['In a maintenance window'] : []);
 }
 
 function downReasons(facts: StatusFacts): StatusReason[] {
@@ -73,20 +73,20 @@ function downReasons(facts: StatusFacts): StatusReason[] {
 
 function warningReasons(facts: StatusFacts): StatusReason[] {
   const soon = facts.expiries.filter((expiry) => expiry.daysLeft < facts.warnWithinDays);
-  const label = (expiry: Expiry): string => `The ${expiry.kind === 'CERTIFICATE' ? 'certificate' : 'domain'} ${expiry.name} ${days(expiry.daysLeft)}`;
+  const label = (expiry: Expiry): string => `${expiry.kind === 'CERTIFICATE' ? 'Certificate' : 'Domain'} ${expiry.name} ${days(expiry.daysLeft)}`;
   return reasons('WARNING', [...facts.securityWarnings.map((warning) => WARNING_TEXT[warning]), ...soon.map(label)]);
 }
 
 function degradedReasons(facts: StatusFacts): StatusReason[] {
   const slow = enabled(facts).filter((check) => check.status === 'DEGRADED').map((check) => `${check.name} is degraded`);
-  return reasons('DEGRADED', [...slow, ...facts.metricsOverThreshold.map((metric) => `${metric} is over its threshold`)]);
+  return reasons('DEGRADED', [...slow, ...facts.metricsOverThreshold.map((metric) => `${metric} over threshold`)]);
 }
 
 /** Up or Unknown, which apply only when nothing above does. */
 function restingReason(facts: StatusFacts): StatusReason {
   const checks = enabled(facts);
   if (checks.some((check) => check.status === 'UP')) return { status: 'UP', text: 'At least one check is up' };
-  const text = checks.length === 0 && facts.checks.length > 0 ? 'Every check is paused' : 'No check has a result yet';
+  const text = checks.length === 0 && facts.checks.length > 0 ? 'All checks paused' : 'No results yet';
   return { status: 'UNKNOWN', text };
 }
 

@@ -72,7 +72,7 @@
   <div class="message">
     <small id="{resendId}-message" role="status">{draft.message}</small>
     {#if draft.retryShown}
-      <FormButton aria-disabled={busy ? 'true' : undefined} onclick={() => void retry()}>Try again</FormButton>
+      <FormButton aria-disabled={busy ? 'true' : undefined} onclick={() => void retry()}>Retry</FormButton>
     {/if}
   </div>
 </fieldset>

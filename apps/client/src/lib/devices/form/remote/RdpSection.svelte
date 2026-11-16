@@ -51,7 +51,7 @@
   </Field>
   {#if credentialStored}
     <p class="stored">
-      Credential stored. Leave the password empty to keep it.
+      Credential stored. Leave empty to keep it.
       {#if onClearCredential !== undefined}
         <FormButton onclick={onClearCredential} aria-disabled={clearing}>Remove credential</FormButton>
       {/if}
@@ -66,7 +66,7 @@
       </select>
     {/snippet}
   </Field>
-  <Field label="When the window is resized" field="rdp.resizeMethod" {errors}>
+  <Field label="On window resize" field="rdp.resizeMethod" {errors}>
     {#snippet control(attributes)}
       <select {...attributes} bind:value={values.rdp.resizeMethod}>
         {#each RESIZE as option (option.value)}
@@ -75,10 +75,10 @@
       </select>
     {/snippet}
   </Field>
-  <label class="check"><input type="checkbox" bind:checked={values.rdp.ignoreCertificate} />Ignore the server certificate</label>
-  <label class="check"><input type="checkbox" bind:checked={values.rdp.audioOut} />Play sound from the device</label>
-  <label class="check"><input type="checkbox" bind:checked={values.rdp.microphone} />Send the microphone</label>
-  <label class="check"><input type="checkbox" bind:checked={values.rdp.sharedDrive} />Share a drive</label>
+  <label class="check"><input type="checkbox" bind:checked={values.rdp.ignoreCertificate} />Ignore server certificate</label>
+  <label class="check"><input type="checkbox" bind:checked={values.rdp.audioOut} />Play device sound</label>
+  <label class="check"><input type="checkbox" bind:checked={values.rdp.microphone} />Send microphone</label>
+  <label class="check"><input type="checkbox" bind:checked={values.rdp.sharedDrive} />Share drive</label>
   {#each warnings as warning (warning)}
     <p class="warning" role="note">{warning}</p>
   {/each}

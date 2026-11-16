@@ -228,7 +228,7 @@ describe('answers out of place (WEB-008, SEC-007)', () => {
   });
 
   it('LOG-007: the error page text is fixed for every reason', () => {
-    expect(failureText('timeout')).toContain('did not load in time');
+    expect(failureText('timeout')).toContain('timed out');
     expect(failureText('unknown_tab')).toContain('was closed');
     expect(failureText('https://nas.lan/')).not.toContain('nas.lan');
   });

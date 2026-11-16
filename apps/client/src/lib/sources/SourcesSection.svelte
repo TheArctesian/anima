@@ -43,7 +43,7 @@
 
 <SettingRow label="GitHub">
   {#snippet hint()}
-    <p class="hint">Anima.ing makes a GitHub App in your own account and keeps its key in the hub. You press Create and Install on GitHub.</p>
+    <p class="hint">Makes a GitHub App in your account; the hub keeps its key.</p>
   {/snippet}
   <GithubConnect {opener} />
   <FormButton
@@ -53,7 +53,7 @@
       connecting = true;
     }}
   >
-    Connect with a key file instead
+    Use key file
   </FormButton>
 </SettingRow>
 
@@ -78,7 +78,7 @@
     {/each}
   </ul>
   {#if store.status === 'ready' && store.rows.length === 0}
-    <p class="hint none">No source is connected.</p>
+    <p class="hint none">No sources connected.</p>
   {/if}
 {/if}
 

@@ -21,10 +21,10 @@
 
 <!-- The same steps as the first run (FRN-004). When the hub saves, the shell asks the person at this computer in a
      native dialog, which script cannot answer (F-9). -->
-<Modal open title="Recover the account" preset="md" closeOnScrim={false} onClose={onclose}>
+<Modal open title="Recover account" preset="md" closeOnScrim={false} onClose={onclose}>
   {#if chosen === null}
-    <AccountStep heading="A new name and password" onnext={(account) => (chosen = account)} />
+    <AccountStep heading="New name and password" onnext={(account) => (chosen = account)} />
   {:else}
-    <AuthenticatorStep heading="A new authenticator key" name={chosen.name} password={chosen.password} onmade={made} onback={() => (chosen = null)} />
+    <AuthenticatorStep heading="New authenticator key" name={chosen.name} password={chosen.password} onmade={made} onback={() => (chosen = null)} />
   {/if}
 </Modal>

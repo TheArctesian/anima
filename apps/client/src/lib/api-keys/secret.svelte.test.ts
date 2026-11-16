@@ -178,7 +178,7 @@ it('INT-003: after Create the key shows once with the once-only sentence, and th
   const shown = keyField();
   expect(shown.value).toBe(FAKE_SECRET);
   expect(document.activeElement).toBe(shown);
-  expect(dialog?.textContent).toContain('Anima.ing shows this key only once.');
+  expect(dialog?.textContent).toContain('Shown once.');
   expect(dialog?.getAttribute('aria-describedby')).toBe(dialog?.querySelector('p')?.id);
   expect(target.querySelector('li[aria-label="backup-job"]')).not.toBeNull();
   expect(target.textContent).not.toContain(FAKE_SECRET);
@@ -247,7 +247,7 @@ it('INT-003: a refused copy says so and leaves the key selectable in its field',
   button('Copy').click();
   await settled();
   const outcome = document.querySelector('[role="dialog"] [role="status"]')?.textContent.trim() ?? '';
-  expect(outcome).toBe('Anima.ing could not copy the key. Select it in the field and copy it yourself.');
+  expect(outcome).toBe('Could not copy. Select the key and copy it.');
   expect(outcome).not.toContain(FAKE_SECRET);
   const shown = keyField();
   expect([shown.value, shown.disabled]).toEqual([FAKE_SECRET, false]);

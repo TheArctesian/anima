@@ -9,9 +9,9 @@ export type LinkCheck = { readonly ok: true; readonly address: string } | { read
 
 /** One fixed sentence per reason; none holds the link's own text (LOG-007). */
 const REFUSAL_TEXT: Readonly<Record<LinkRefusal, string>> = {
-  scheme: 'The device asked to open a link that is not http or https. Anima.ing did not open it.',
-  credentials: 'The device asked to open a link with a user name or password in it. Anima.ing did not open it.',
-  'too-long': 'The device asked to open a link that is too long to check. Anima.ing did not open it.',
+  scheme: 'Blocked a link from the device: not http or https.',
+  credentials: 'Blocked a link from the device: it holds a user name or password.',
+  'too-long': 'Blocked a link from the device: too long to check.',
 };
 
 export function linkRefusalText(reason: LinkRefusal): string {

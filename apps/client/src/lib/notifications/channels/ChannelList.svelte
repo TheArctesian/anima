@@ -116,12 +116,12 @@
     {#if loadFailed}
       <SettingRow>
         {#snippet label()}
-          <p role="alert">Anima.ing could not load the notification channels.</p>
+          <p role="alert">Could not load the channels.</p>
         {/snippet}
-        <FormButton tabindex={0} aria-disabled={retrying} aria-busy={retrying} onclick={retry}>Try again</FormButton>
+        <FormButton tabindex={0} aria-disabled={retrying} aria-busy={retrying} onclick={retry}>Retry</FormButton>
       </SettingRow>
     {:else if channels !== null && channels.length === 0}
-      <p class="quiet">No channels. Add one to hear when a check goes down or comes back up.</p>
+      <p class="quiet">No channels. Add one to get alerts.</p>
     {:else if channels !== null}
       <ul class="list">
         {#each channels as channel (channel.id)}
@@ -157,7 +157,7 @@
   <ConfirmModal
     open={deleting !== null}
     title="Delete {deleting?.name ?? ''}?"
-    body="Checks that use it stop sending to it. Its stored secrets are deleted with it."
+    body="Checks stop sending to it. Its stored secrets are deleted."
     confirmLabel="Delete {deleting?.name ?? ''}"
     onConfirm={remove}
     onCancel={() => {

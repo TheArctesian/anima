@@ -208,11 +208,11 @@ it('F-3, R-085: a channel list that fails disables only this part; Try again kee
   expect(onSave).toHaveBeenCalledOnce();
   expect(sent.some((request) => request.operation === 'SetCheckNotifications')).toBe(false);
 
-  const retry = button('Try again');
+  const retry = button('Retry');
   retry.focus();
   retry.click();
   flushSync();
-  expect(button('Try again')).toBe(retry);
+  expect(button('Retry')).toBe(retry);
   expect(document.contains(retry)).toBe(true);
   expect(retry.getAttribute('aria-disabled')).toBe('true');
   expect(document.activeElement).toBe(retry);

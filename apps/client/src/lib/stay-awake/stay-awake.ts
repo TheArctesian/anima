@@ -12,10 +12,10 @@ export const FLOORS: readonly number[] = [10, 20, 30, 40, 50];
 
 const PROBLEMS: Readonly<Record<StayAwakeProblem, string>> = {
   caller: 'Only the main window can change this.',
-  unsaved: 'Anima.ing could not save this choice, so nothing changed.',
+  unsaved: 'Not saved. Nothing changed.',
   unsupported: 'This computer has no set-up step.',
-  refused: 'The administrator step was cancelled or did not finish. Nothing changed.',
-  failed: 'The stay-awake control could not be changed.',
+  refused: 'Administrator step cancelled or unfinished. Nothing changed.',
+  failed: 'Could not change stay awake.',
 };
 
 /** Fixed text for each problem; the shell's own message is never shown. */
@@ -24,22 +24,22 @@ export function problemText(problem: StayAwakeProblem): string {
 }
 
 const HELD: Readonly<Record<Level, string>> = {
-  off: 'This computer sleeps as usual.',
-  awake: 'This computer does not sleep while it is idle. The display can sleep.',
-  'lid-closed': 'This computer stays on with the lid closed. A closed computer gets warm: keep it on a hard surface.',
+  off: 'Sleeps as usual.',
+  awake: 'No idle sleep. The display can sleep.',
+  'lid-closed': 'Stays on with the lid closed. It gets warm: keep it on a hard surface.',
 };
 
 /** What the computer does now, and why when that is less than the choice (AWK-006, AWK-008). */
 export function describeStayAwake(status: StayAwakeStatus): string {
   switch (status.pause) {
     case 'low-battery':
-      return `Off for now: the battery is below ${String(status.batteryFloor ?? 0)}%. It starts again on mains power.`;
+      return `Paused: battery below ${String(status.batteryFloor ?? 0)}%. Resumes on mains power.`;
     case 'lid-not-ready':
       return status.lid === 'needs-set-up'
-        ? 'The lid-closed level is not set up. The computer is kept awake only while the lid is open.'
-        : 'This computer refused the lid-closed level. It is kept awake only while the lid is open.';
+        ? 'Lid-closed is not set up. Awake only while the lid is open.'
+        : 'This computer refused lid-closed. Awake only while the lid is open.';
     case 'unavailable':
-      return 'This system refused to keep the computer awake, so it sleeps as usual.';
+      return 'This system refused stay awake. Sleeps as usual.';
     case null:
       return HELD[status.held];
   }
@@ -56,7 +56,7 @@ export function hubIsThisComputer(origin: string, localHub: string | null): bool
 
 /** The line that tells the operator that checks stop during sleep, or `null` when it does not apply (AWK-005). */
 export function sleepNotice(thisComputerIsHub: boolean, status: StayAwakeStatus): string | null {
-  return thisComputerIsHub && status.held === 'off' ? 'This computer is the hub. Its checks stop while the computer sleeps.' : null;
+  return thisComputerIsHub && status.held === 'off' ? 'This computer is the hub: checks stop while it sleeps.' : null;
 }
 
 /** The floors the control offers: the fixed steps, and the saved floor when it is not one of them (AWK-006). */

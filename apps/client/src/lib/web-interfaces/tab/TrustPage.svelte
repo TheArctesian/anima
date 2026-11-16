@@ -31,30 +31,30 @@
   {#if changed}
     <h2 id="{uid}-title"><Icon name="carbon:warning-alt" /> The certificate of {label} on {deviceName} has changed</h2>
     <div id="{uid}-why">
-      <p>{label} ({url}) presented a different certificate from the one Anima.ing pinned, so Anima.ing stopped loading it.</p>
+      <p>{label} ({url}) presented a different certificate from the pinned one, so Anima.ing stopped loading it.</p>
       <p>
-        A new certificate is expected after the device is reset or its certificate is renewed. Otherwise it can mean
-        that another machine is answering in its place, to read what you type, passwords included. Accept the new
-        certificate only if you know why it changed. Until then, the pinned certificate stays.
+        Expected after a device reset or certificate renewal. Otherwise another machine may be answering in its
+        place, to read what you type, passwords included. Accept only if you know why it changed. Until then, the
+        pinned certificate stays.
       </p>
     </div>
   {:else}
     <h2 id="{uid}-title"><Icon name="carbon:locked" /> Check the certificate of {label} on {deviceName}</h2>
     <div id="{uid}-why">
-      <p>{label} ({url}) presented a certificate that this computer does not trust, so Anima.ing has not loaded it.</p>
+      <p>{label} ({url}) presented a certificate this computer does not trust, so it is not loaded.</p>
       <p>
-        Compare the fingerprint below with the one the device shows, on its screen or in its settings. Accept it only
-        if they are the same. Anima.ing then pins it for this web interface and stops if it ever changes.
+        Compare the fingerprint below with the one the device shows, on its screen or in its settings. Accept only
+        if they match. Anima.ing then pins it and stops if it ever changes.
       </p>
     </div>
   {/if}
 
   <dl class="fingerprints">
     {#if expected !== undefined}
-      <dt>Pinned certificate, SHA-256 fingerprint</dt>
+      <dt>Pinned certificate SHA-256</dt>
       <dd class="fingerprint" data-expected>{expected}</dd>
     {/if}
-    <dt>{changed ? 'Presented certificate' : 'Certificate'}, SHA-256 fingerprint</dt>
+    <dt>{changed ? 'Presented certificate' : 'Certificate'} SHA-256</dt>
     <dd class="fingerprint" data-presented>{presented}</dd>
   </dl>
 
@@ -71,8 +71,8 @@
     {:else if current.step === 'untrusted'}
       <button type="button" class="warning" onclick={onaccept} {@attach press()}>Accept certificate</button>
     {:else if current.confirming}
-      <button type="button" onclick={onback} {@attach press()}>Back to the warning</button>
-      <button type="button" class="warning" onclick={onaccept} {@attach press()}>Yes, accept this certificate</button>
+      <button type="button" onclick={onback} {@attach press()}>Back</button>
+      <button type="button" class="warning" onclick={onaccept} {@attach press()}>Yes, accept</button>
     {:else}
       <button type="button" class="warning" onclick={onconfirm} {@attach press()}>Accept new certificate</button>
     {/if}

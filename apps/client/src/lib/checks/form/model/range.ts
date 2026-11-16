@@ -43,7 +43,7 @@ export function byteLength(text: string): number {
 
 /** An error on `field` when `text` is longer than `max` bytes. */
 export function lengthError(field: string, text: string, max: number, what: string): FieldError[] {
-  return byteLength(text) > max ? [{ field, message: `${what} can be at most ${String(max)} bytes long.` }] : [];
+  return byteLength(text) > max ? [{ field, message: `${what} is at most ${String(max)} bytes.` }] : [];
 }
 
 /** Whether `text` (trimmed) is a whole number from `min` to `max`. */
