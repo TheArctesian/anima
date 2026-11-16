@@ -51,6 +51,9 @@ getrandom = "0.3"
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-updater.workspace = true
 tauri-plugin-process.workspace = true
+# Native dialogs from Rust only (no JavaScript API is granted): the recovery confirmation that
+# script in the web view cannot answer (F-9), and the save dialog for a copy of the hub key (2.8).
+tauri-plugin-dialog = "2"
 
 # Cancelling a build step kills the step's whole process group (BLD-027); on Linux the shell is
 # the child subreaper of every step process and reaps what escaped the group (S-1). `user`: the

@@ -108,7 +108,6 @@ fn cli_002_a_loopback_http_origin_keeps_a_token_and_no_other_http_origin_does() 
     for origin in [
         "http://127.0.0.1:8443",
         "http://localhost:9000",
-        "http://[::1]:8443",
     ] {
         write_token(TokenKind::Access, origin, SECRET).unwrap();
         assert_eq!(
@@ -124,6 +123,7 @@ fn cli_002_a_loopback_http_origin_keeps_a_token_and_no_other_http_origin_does() 
         "http://localhost:abc",
         "http://localhost:",
         "http://localhost:123456",
+        "http://[::1]:8443",
     ] {
         assert_eq!(
             read_token(TokenKind::Access, origin),

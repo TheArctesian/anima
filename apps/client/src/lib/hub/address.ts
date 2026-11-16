@@ -26,7 +26,8 @@ export const DEFAULT_HUB_ADDRESS: HubAddress = Object.freeze({
 });
 
 /** Hosts that may use plain `http` and `ws`: they never leave this computer (CLI-002; as `crates/anima-cli/src/hub/origin.rs`). */
-const LOOPBACK_HOSTS: readonly string[] = ['localhost', '127.0.0.1', '[::1]'];
+// No `[::1]`: a CSP source cannot name an IPv6 literal, so the desktop could not reach it.
+const LOOPBACK_HOSTS: readonly string[] = ['localhost', '127.0.0.1'];
 
 const MESSAGES: Record<AddressProblem, string> = {
   'not-a-url': 'Type the hub address as a host name, for example hub.anima.ing.',

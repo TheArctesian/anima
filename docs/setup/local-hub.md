@@ -133,17 +133,29 @@ each login. The message names the folder; run `chmod go-w` on it.
 
 ## 6. For plan item S6: what the application calls
 
-The Tauri shell has four commands, for the main window only. They take no argument.
+The Tauri shell has these commands, for the main window only.
 
 | Command | Result |
 | --- | --- |
 | `local_hub_carried` | `true` when this build carries the programs. |
 | `local_hub_install` | Runs `install`. Also the update: call it after the application updated itself. |
 | `local_hub_remove` | Runs `remove`. |
+| `local_hub_start`, `local_hub_stop` | Run `start` or `stop`. |
 | `local_hub_status` | The JSON object of Section 2. |
+| `local_hub_account` | `{ "name", "totp" }` of the operator account, or `null`. |
+| `local_hub_totp_new { name }` | `{ "secret", "uri" }`: a new TOTP secret. Nothing is saved. |
+| `local_hub_account_create { account: { name, password, secret, code } }` | Makes the account. Permitted only while there is no account, or for 5 minutes after `local_hub_recover`. |
+| `local_hub_recover` | Shows a native confirmation. `true` when the person confirmed. |
+| `local_hub_key_save` | Shows a native save dialog and copies `vault.key` there (mode 0600). `false` when cancelled. |
 
 An error is `{ "code", "message" }` with the codes `caller`, `unavailable`, `not-carried`,
-`busy`, `no-home`, `timed-out` and `failed`. The cause of a `failed` is in the application's log.
+`busy`, `no-home`, `timed-out`, `failed`, `argument`, `exists`, `refused`, `no-key` and
+`destination`. The cause of a `failed` is in the application's log. The account commands log no
+output of the program, only a code and the exit code.
+
+A debug build (`bun tauri dev`) carries no programs. To try the hub from a debug build, set
+`ANIMA_DEV_PROGRAMS` to a folder that holds `anima-local-hub` and `anima-link`, and
+`ANIMA_DEV_TREE` to a PostgreSQL tree. A release build ignores both variables.
 
 ## 7. The operator account
 

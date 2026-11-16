@@ -22,6 +22,7 @@ describe('parseHubAddress', () => {
     ['http://localhost.example.com', 'not-https'],
     ['http://10.0.0.5:8443', 'not-https'],
     ['ws://127.0.0.1:8443', 'not-https'],
+    ['http://[::1]:8443', 'not-https'],
     ['http://user:pw@127.0.0.1:8443', 'has-credentials'],
     ['http://127.0.0.1:8443/graphql', 'has-path'],
     ['wss://hub.anima.ing', 'not-https'],
@@ -36,7 +37,6 @@ describe('parseHubAddress', () => {
   it.each([
     ['http://127.0.0.1:8443', 'http://127.0.0.1:8443', 'ws://127.0.0.1:8443/graphql'],
     ['http://localhost:9000/', 'http://localhost:9000', 'ws://localhost:9000/graphql'],
-    ['http://[::1]:8443', 'http://[::1]:8443', 'ws://[::1]:8443/graphql'],
     ['127.0.0.1:8443', 'https://127.0.0.1:8443', 'wss://127.0.0.1:8443/graphql'],
   ])('CLI-002: %s is a loopback hub; plain http only there, a bare host stays https', (text, origin, socket) => {
     expect(parseHubAddress(text)).toEqual({ ok: true, value: { origin, http: `${origin}/graphql`, socket } });
