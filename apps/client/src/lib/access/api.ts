@@ -57,7 +57,7 @@ function mapValue<T, U>(result: HubResult<T>, pick: (value: T) => U): HubResult<
   return result.ok ? { ok: true, value: pick(result.value) } : result;
 }
 
-export function accessApi(hub: Hub): AccessApi {
+export function accessApi(hub: Pick<Hub, 'request'>): AccessApi {
   return {
     login: async (input) => mapValue(await hub.request(LOGIN, { input }), (value) => value.login.token),
     signInBrowser: async (input) => mapValue(await hub.request(SIGN_IN_BROWSER, { input }), (value) => value.signInBrowser.expiresAt),
