@@ -993,9 +993,22 @@ Status: direction only. The proposed work package is XP-16. It is not in the tab
   daily digest (AIS-015).
 - **BOT-009.** The Bots extension must be free on every plan, as agent panes are (AIS-016). Its
   conversation text is sealed like session text (AIS-004, AIS-005).
+- **BOT-010.** Each bot can have its own computer: a virtual machine on one of the operator's devices,
+  or a rented machine (CVM-001). The bot's shell, files and agent panes run there, not on the host
+  device. The operator picks the size and the image when the bot is made (BOT-001).
+- **BOT-011.** A bot's own computer joins the mesh as a device with a tag for that bot only. Access
+  rules must not let one bot's computer reach another bot's computer, or the operator's devices,
+  unless the operator allows it.
+- **BOT-012.** The operator can make a bot read-only. A read-only bot can read checks, metrics, logs,
+  files and repositories that it is allowed to see, and it can write to the operator in its chat. It
+  cannot run change tools (MCP-002), write files, push, start agent panes, or act on a device. The
+  hub must enforce this on its side, not only in the bot's instructions.
+- **BOT-013.** A read-only bot must not be able to ask for more access itself. Only the operator can
+  change a bot from read-only, and that change goes in the audit log.
 
 **Depends on.** Model gateway (XP-15), agent panes (Section 4.12.1), the rule engine (ENG-001), and
-for long tasks the jobs and agent-runs proposals.
+for long tasks the jobs and agent-runs proposals. Rented bot computers (BOT-010) depend on the
+cloud machines proposal and are billed like any rented machine (CVM-009, CVM-010).
 
 **Risks.**
 
@@ -1006,12 +1019,17 @@ for long tasks the jobs and agent-runs proposals.
   laptop ([cloud-machines.md](programme/proposals/cloud-machines.md)).
 - A bot with shell access is an agent that runs code. It needs the same isolation ruling as
   community extensions (EXT-009) before it runs anything that is not the operator's own instructions.
+  A bot's own computer (BOT-010) is the simplest way to meet that ruling, because a bad command
+  breaks only that computer.
+- A local virtual machine needs a hypervisor on the device: Apple Virtualization on macOS, KVM on
+  Linux, Hyper-V on Windows. Memory and disk for each bot come out of the operator's device.
 
 **Open decisions.**
 
 1. Whether a bot's chat lives in the Anima.ing client only, or also in Slack, iMessage or Telegram.
 2. Whether bots can talk to each other (a team of bots), or only to the operator in the first version.
 3. How the router judges "the cheapest model that can do the task".
+4. Whether a bot's computer is kept or wiped between tasks, and whether read-only bots get one at all.
 
 ## 5. Build order: engine first, then one workflow per extension
 
