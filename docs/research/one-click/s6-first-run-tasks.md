@@ -69,11 +69,18 @@ relay and domain settings (S11), many hubs (S13), the metrics agent over the lin
 - New hub commands (security tag):
   - `anima-hub operator show`: one JSON line, `{"name":…,"totp":true|false}` or `null`.
   - `anima-hub operator totp <name> --new`: makes a secret and prints one JSON line with the
-    secret (base32) and the `otpauth://` URI. It saves nothing. No terminal is needed.
-  - `anima-hub operator totp <name> --confirm`: reads the secret and one code from standard input
-    (two lines). It saves the secret (sealed) only when the code is correct now, records the code's
-    step so that the code cannot be used again, and removes the operator's tokens, as
-    `operator totp` does.
+    secret (base32) and the `otpauth://` URI. It saves nothing. No terminal is needed. The
+    operator need not exist: the name is only the label in the URI.
+  - `anima-hub operator create <name>`: reads the password, the secret and one code from
+    standard input (three lines). Only when the password passes the rules of `operator set` and
+    the code is correct now, one transaction makes or replaces the operator with the password
+    and the sealed secret, records the code's step so that the code cannot be used again, and
+    removes the operator's tokens and login attempts. So the account never exists without its
+    second factor (security review M3). The first run and the recovery (2.8) use this command.
+  - In the link mode, `login` and `signInBrowser` refuse an operator with no TOTP secret, with
+    the answer of a wrong password (SEC-002). In the link mode a request must also name a
+    loopback host (`127.0.0.1`, `[::1]` or `localhost`, any port) and carry no `Origin` or a
+    client origin, else 403 (security review S1: DNS rebinding).
 - **F-5.** The first run requires TOTP (OD-2). There is no "skip". The client signs in after the
   confirmation with the next code.
 - `anima-local-hub account status|set <name>|totp-new <name>|totp-confirm <name>` runs the
@@ -156,7 +163,7 @@ The run-through records `lsof -i` for each program.
 | Task | What | Proof | Review | State | Commits |
 | --- | --- | --- | --- | --- | --- |
 | T1 | This document, the spec delta, the register row | — | — | Done | the commit of this row |
-| T2 | Hub: `operator show`, `operator totp --new`, `operator totp --confirm` | Tests: a wrong code saves nothing; a used code is refused at sign-in; tokens removed; no secret in logs | reviewer, reviewer-security | Not started | — |
+| T2 | Hub: `operator show`, `operator totp --new`, `operator create`; TOTP required and loopback names in the link mode | Tests: a wrong code saves nothing; a used code is refused at sign-in; tokens removed; no secret in logs | reviewer, reviewer-security | In progress (built, waits for review) | c4c383b4, dceb43af |
 | T3 | Hub: `fleet/link` domain, `ANIMA_LINK_CONTROL`, K1 fields, audit | Tests against a fake control socket; `LINK_OFF` without the variable; API key refused for the mutations | reviewer, reviewer-security | Not started | — |
 | T4 | `anima link devices|invite|revoke`; MCP `link_devices`; CMD-031 | CLI tests against the fake hub | reviewer | Not started | — |
 | T5 | Local hub: the link member (F-6), hub link-mode environment, `account`, `start`, `stop` | Unit tests with stand-in programs; the existing real-program test | reviewer, reviewer-security | Not started | — |
