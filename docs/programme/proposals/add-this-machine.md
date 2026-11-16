@@ -5,7 +5,7 @@ Progress: the plan register in [work-plan.md](../../work-plan.md) Section 9 hold
 From: the orchestrator. The operator asked for this in chat on 2026-11-06 ("on sign in it should
 ask in a popup modal add this machine if the machine is not already added … identified across
 networks") and chose the machine ID over the MAC address.
-Status: a proposal for a ruling and for issue #1 (R-007). Not Phase 1 scope (contracts frozen,
+Status: a proposal for a ruling and for [deferred.md](../../deferred.md) (R-119). Not Phase 1 scope (contracts frozen,
 CON-001). It needs WP-13's Add device form, which it reuses.
 
 ## Problem
@@ -81,5 +81,5 @@ written by hand.
   hashing rule.
 - A K-contract change (devices model and API) after Phase 1.
 - WP-13 merged (Add device form).
-- An issue #1 checklist entry (R-007).
+- A [deferred.md](../../deferred.md) checklist entry (R-119).
 - For the VPN path: an operator ruling that changes vpn.md Section 11, and the broker of R-055.

@@ -17,7 +17,7 @@ changed here.
 
 ## Problem
 
-Projects (XP-02, #13) is one extension in a list. But the rented accounts of the operator
+Projects ([XP-02](../../work-items/extensions/XP-02.md)) is one extension in a list. But the rented accounts of the operator
 (Cloudflare, Vercel, Hostinger, Neon) only have a meaning through the project that runs on them.
 And the release builder (design specification BLD-001 to BLD-082) builds only the Anima desktop
 application. The operator wants one front door: connect GitHub, get each repository as a project,
@@ -75,7 +75,7 @@ again: the text below is the text of OD-W13.
 
 - **PRO-009. A build is a job.** Decided. The builder becomes the first job type of
   [jobs.md](jobs.md). The order is: Projects (See), then builds as jobs (Use), then the other
-  extensions. Fine-tuning (C7, #40) is the second job type. This is the order of the work only:
+  extensions. Fine-tuning ([C7](../../work-items/compute/C7.md)) is the second job type. This is the order of the work only:
   Projects stays an extension that is off in a new installation (EXT-005, OD-E13).
 - **PRO-010. Anima has two build models.** Decided (OD-W13, operator, 2026-11-16; it replaces
   the text of 2026-11-13).
@@ -560,9 +560,9 @@ Group A: builds of Anima's own.
 - A ruling number in `programme.md` for OD-W11, for OD-W12, for OD-W13 and for OD-W14 to OD-W21.
 - Rulings for the requirements that are still proposals: PRO-031, PRO-033 to PRO-035, PRO-039 to
   PRO-041, PRO-043 and PRO-045 to PRO-053.
-- A change to PRJ-001 and to Section 4.2 of the extensions plan (with #13 and #26): the import
+- A change to PRJ-001 and to Section 4.2 of the extensions plan (with [XP-02](../../work-items/extensions/XP-02.md) and [SPEC](../../work-items/extensions/SPEC.md)): the import
   takes each repository and the operator leaves some out.
 - A security review of builds before the design is final: they run repository code on owned
   machines and use signing keys. A native job (PRO-022 to PRO-024) is the primary subject.
-- A checklist on #13 for the import, and one issue for builds as jobs with the labels `compute`
-  and a priority label, when the operator wants to start.
+- A checklist on [XP-02](../../work-items/extensions/XP-02.md) for the import, and one work item for builds as jobs in
+  `docs/work-items/` (PLN-012), when the operator wants to start.

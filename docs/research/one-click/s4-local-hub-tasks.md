@@ -256,6 +256,8 @@ documents are built, reviewed and tested on macOS and in a Linux container.
 
 ### 7.2 Open
 
+Results: [operator-checks.md](../../operator-checks.md) holds the result of each check below (PLN-014).
+
 - **T9, the bundle.** A release does not carry the programs, so `local_hub_carried` answers
   `false` in every build today. Steps, with S3 T11 (its Section 7.2 has the security conditions):
   1. `builder/sidecar.rs`: build `anima-local-hub`, `anima-hub`, `anima-database` and

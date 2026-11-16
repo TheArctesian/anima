@@ -3,7 +3,7 @@ import { gateList, missingRequirement, runGates, type Gate, type GateEvent } fro
 
 const NAMES = [
   "fmt", "clippy", "rust-test", "doctest", "pinning",
-  "go-fmt", "go-vet", "go-staticcheck", "go-revive", "go-test", "go-build", "install", "lint", "check", "test", "build", "limits", "names", "imports", "baseline",
+  "go-fmt", "go-vet", "go-staticcheck", "go-revive", "go-test", "go-build", "install", "lint", "check", "test", "build", "limits", "names", "imports", "documents", "baseline",
 ];
 
 function recorder(codes: Record<number, number | Error> = {}) {
@@ -19,7 +19,7 @@ function recorder(codes: Record<number, number | Error> = {}) {
 }
 
 describe("gateList", () => {
-  test("CQ-010 lists the twenty gates in the documented order", () => {
+  test("CQ-010 lists the twenty-one gates in the documented order", () => {
     expect(gateList("phase-1").map((gate) => gate.name)).toEqual(NAMES);
   });
 
@@ -52,13 +52,13 @@ describe("gateList", () => {
 });
 
 describe("runGates", () => {
-  test("CQ-010 runs all twenty gates in order and succeeds", () => {
+  test("CQ-010 runs all twenty-one gates in order and succeeds", () => {
     const { ran, events, run, report } = recorder();
     const gates = gateList("phase-1");
     const outcome = runGates(gates, run, report);
     expect(outcome).toEqual({ exitCode: 0 });
     expect(ran).toEqual(gates.map((gate) => gate.argv));
-    expect(events.at(-1)).toEqual({ kind: "done", passed: 20, total: 20 });
+    expect(events.at(-1)).toEqual({ kind: "done", passed: 21, total: 21 });
   });
 
   test("CQ-010 stops at the first failing gate and returns its exit code", () => {
@@ -67,7 +67,7 @@ describe("runGates", () => {
     const outcome = runGates(gates, run, report);
     expect(ran).toHaveLength(3);
     expect(outcome).toEqual({ exitCode: 101, stoppedAt: gates[2] });
-    expect(events.at(-1)).toEqual({ kind: "done", passed: 2, total: 20, stoppedAt: gates[2] });
+    expect(events.at(-1)).toEqual({ kind: "done", passed: 2, total: 21, stoppedAt: gates[2] });
   });
 
   test("CQ-024 treats a runner that throws as a failure, not a skip", () => {

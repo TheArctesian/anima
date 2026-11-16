@@ -14,11 +14,11 @@ Identifiers: USE-001 to USE-009, JOB-001 to JOB-011.
 ## Problem
 
 The compute plan lets a machine answer model requests. It has one other type of work: C7,
-fine-tuning (#40). The operator also wants to run other work on the machines: a script, a batch,
+fine-tuning ([C7](../../work-items/compute/C7.md)). The operator also wants to run other work on the machines: a script, a batch,
 an AI agent run. There is no common form for that work, so each type would get its own path to
 the agent.
 
-Issues #34 and #35 already say that some model work needs "asynchronous job, progress and
+[C1](../../work-items/compute/C1.md) and [C2](../../work-items/compute/C2.md) already say that some model work needs "asynchronous job, progress and
 artifact/result contracts". This proposal must use the same contracts, not a second set.
 
 ## Rules for all work on machines
@@ -86,7 +86,7 @@ A job runs to its end on one machine. It is a container image, or it is a native
   the steps. Thus a `runner` item must have the isolation of PRO-029.
 
 The build of a project is the first job type (PRO-009, OD-W12). Fine-tuning (compute plan C7,
-#40) is the second. Its "done when" text in #40 stays. A `runner` is a work type and not a job
+[C7](../../work-items/compute/C7.md)) is the second. Its "done when" text in [C7](../../work-items/compute/C7.md) stays. A `runner` is a work type and not a job
 type: GitHub schedules it (PRO-047).
 
 The tasks for the work route are W1 to W6 in "Tasks" of
@@ -108,11 +108,11 @@ What this means:
 
 | Subject | Decided |
 | --- | --- |
-| Programs | One: `anima-agent` (as #44 says). No second binary. |
+| Programs | One: `anima-agent` (as [OD-C2](../../work-items/decisions/OD-C2.md) says). No second binary. |
 | Default | A machine with the agent takes work (USE-004). The operator can set a machine off. |
 | R-115 | Its "not taken: a command channel" line is replaced. The other lines of R-115 stay. |
 | MET-020 | Not changed: the agent listens on no port and connects only to the hub (USE-005). |
-| Compute plan CMP-002, OD-C8 (#50) | They say "off by default". They must change to agree. |
+| Compute plan CMP-002, [OD-C8](../../work-items/decisions/OD-C8.md) | They say "off by default". They must change to agree. |
 
 The cost that the operator accepts: a person who controls the hub can run work on each machine
 that has the agent. R-084 selected the agent so that the hub needs no SSH login on each device
@@ -128,18 +128,18 @@ from the operator:
 - Each item of work is in the audit log (LOG-005), and the machine keeps its own log of the work
   that it took.
 
-This decision comes before C1 (#34), not only before jobs.
+This decision comes before [C1](../../work-items/compute/C1.md), not only before jobs.
 
 ## Needs
 
-- A ruling number in `programme.md` that changes R-115, then the transport decision in #34 and
-  #41, and the new default in #50.
+- A ruling number in `programme.md` that changes R-115, then the transport decision in [C1](../../work-items/compute/C1.md) and
+  [SPEC-C](../../work-items/compute/SPEC-C.md), and the new default in [OD-C8](../../work-items/decisions/OD-C8.md).
 - A new contract for the work route. K8 is frozen for Phase 3 (CON-001), so this is a new
   contract or `/agent/v2/`, not a change to K8.
 - A security review of the work route (a `security` task for the security reviewer).
-- One contract for job state, progress and results, shared with #34 and #35.
+- One contract for job state, progress and results, shared with [C1](../../work-items/compute/C1.md) and [C2](../../work-items/compute/C2.md).
 - A test of Railpack on one project of the operator (JOB-002).
 - A design for how the hub gives a secret to one job run and how the machine deletes it
   (JOB-010), with the security review of the work route.
-- After approval: change the title of #40 or add one issue for jobs, with the labels `compute`
-  and `priority: later`.
+- After approval: change the title of [C7](../../work-items/compute/C7.md) or add one work item for jobs in
+  `docs/work-items/` (PLN-012).

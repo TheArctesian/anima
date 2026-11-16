@@ -42,9 +42,9 @@ HOST-002 to HOST-007 change a device, so they need the work route of [jobs.md](j
 
 ## Work that already exists
 
-- Issue #1, "Ideas from Coolify (hub)": the rules that make one status from many containers,
+- [deferred.md](../../deferred.md), "Ideas from Coolify (hub)": the rules that make one status from many containers,
   and the image and package scan.
-- Issue #1, "Ideas from Coolify Sentinel": how to calculate container metrics.
+- [deferred.md](../../deferred.md), "Ideas from Coolify Sentinel": how to calculate container metrics.
 - Spec Section 6.4: the Docker container check, and CHK-014 for restart loops.
 
 ## Needs
@@ -53,5 +53,5 @@ HOST-002 to HOST-007 change a device, so they need the work route of [jobs.md](j
 - A decision on how the data copy of HOST-005 is made: a volume backup, or replication that the
   application supplies. [bulk-data-placement.md](bulk-data-placement.md) can hold the backup.
 - A decision on Docker only, or Docker and Podman.
-- After approval: one issue for HOST-001 and HOST-008, and one for the rest, with the label
-  `priority: later`.
+- After approval: one work item for HOST-001 and HOST-008, and one for the rest, in
+  `docs/work-items/` (PLN-012).

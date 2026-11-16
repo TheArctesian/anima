@@ -4,7 +4,7 @@ Progress: the plan register in [work-plan.md](../../work-plan.md) Section 9 hold
 
 From: the orchestrator. The operator chose this in chat on 2026-11-05 ("yes first run setup")
 instead of an open sign-up page.
-Status: a proposal for a ruling and for issue #1 (R-007). Not Phase 1 scope (contracts frozen, CON-001).
+Status: a proposal for a ruling and for [deferred.md](../../deferred.md) (R-119). Not Phase 1 scope (contracts frozen, CON-001).
 
 ## Problem
 
@@ -67,6 +67,6 @@ so a second account could never be limited. One account and no sign-up stay.
   `setupRequired` and the setup mutation, and the setup-code handling under LOG-007.
 - The ruling on where the code appears is made: a root-only file (R-057).
 - A contract change to K3 (access surface) for the new query and mutation, after Phase 1.
-- An issue #1 checklist entry (R-007). This pairs with
+- A [deferred.md](../../deferred.md) checklist entry (R-119). This pairs with
   [in-app-enrolment.md](in-app-enrolment.md) (R-055): together they give "install the app,
   enter a code, done".

@@ -1,0 +1,19 @@
+# OD-E10: Decide: Price source for holdings the source does not price
+
+Progress: the index [README.md](../README.md) holds the state of this item (PLN-006). The plan register in [work-plan.md](../../work-plan.md) Section 9 lists the index.
+
+| Item | Value |
+| --- | --- |
+| Identifier | OD-E10 |
+| Kind | Decision |
+| Owner | [extensions-plan.md](../../extensions-plan.md) Section 7 |
+| Serves | Work plan Section 4, tier 3b (the other extensions) |
+| Version | 1.0 |
+| Date | 2026-11-16 |
+| Origin | GitHub issue #29: made 2026-11-06, last changed 2026-11-08, open at import. Labels: extensions, decision, design, priority: later. |
+| Text | Copied from the issue on 2026-11-16 (R-119). Only the links were changed. Not written in STE yet. "This issue" in the text means this document. |
+
+IBKR, Coinbase and Gemini give their own prices. MetaMask tokens and the SimpleFIN holdings (Robinhood, Acorns) need one free price API.
+
+**Plan:** [Section 7](../../extensions-plan.md)
+**Requirements:** OD-E10

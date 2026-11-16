@@ -194,6 +194,8 @@ Not checked: a GNOME Remote Desktop host, and the certificate pin against a real
 
 ## 6. Open for the operator
 
+Results: [operator-checks.md](../../operator-checks.md) holds the result of each check below (PLN-014).
+
 | Item | Why it is open |
 | --- | --- |
 | Spec Section 6.3.2 and the device settings | On a hub with the native gateway an RDP device has no sound, no microphone and no shared drive. The settings still show these switches. |

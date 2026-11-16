@@ -1414,7 +1414,7 @@ The backup uses the home router (step 5) and the hub's `--accept-routes` (step 3
    If you did not make them, **suspect the VPS**: treat it as taken over, check `hsctl nodes list`,
    `hsctl preauthkeys list`, the policy and the SSH logs before you prune.
 
-   The alert for a backup that has stopped arriving is deferred work (GitHub issue #1). Until then
+   The alert for a backup that has stopped arriving is deferred work ([deferred.md](../deferred.md)). Until then
    look at `systemctl list-timers headscale-backup.timer` on the VPS and at the snapshot list
    once a week.
 
@@ -1503,7 +1503,7 @@ any expiry you did not set is a reason to act. `bun deploy/headscale/bin/invento
 comparison for the nodes, tags, expiry, routes and the policy tests (step 5.4). `nodes.json` holds
 pre-auth keys in clear text: delete it on both machines after the check. Also look at the policy file on the
 server and compare it with the repository. Automatic alerting for this is deferred work, tracked
-on [GitHub issue #1](https://github.com/TheArctesian/anima/issues/1) (R-007).
+on [deferred.md](../deferred.md) (R-119).
 
 **The broker (Tier B).** The VPN build adds a small program, the broker, on the VPS. It is the only path from the hub to Headscale: the hub has no Headscale API key and no access to the Headscale socket. The broker runs one request for each connection on a unix socket. It has six verbs: `nodes`, `personal-key`, `router-key`, `approve-route`, `register` and `renew`. It refuses a tag that is not in the policy, strips every key from what it returns, limits the number of keys for each day and the number of nodes, and writes one log line for each request. It does not change the policy. The broker mount works only while SELinux is disabled (R-054); turning SELinux on needs a policy module first.
 

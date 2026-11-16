@@ -284,12 +284,14 @@ Choices:
 | T3 `reviewer` | The session loop must treat `Next::AfterAnswer` as "wait for the client", not as a timer. | T6 |
 | T4 `reviewer-security` | A deadline for the handshake and for reaching the device after `ready`; a limit on worker processes; a limit on instructions before `connect`. | T6 |
 | T4 `reviewer-security` | A refused sign-in must be `error` with status 0x0301, with a test, or the hub does not end the session `AUTH_FAILED`. | T6 |
-| T4 `reviewer-security` | Zero the `connect` instruction and the `blob` instructions of an `argv` answer after use (the `guac-protocol` decoder and `Instruction` do not; guac-protocol issue #1). | T6 |
+| T4 `reviewer-security` | Zero the `connect` instruction and the `blob` instructions of an `argv` answer after use (the `guac-protocol` decoder and `Instruction` do not; guac-protocol, [deferred.md](../../deferred.md)). | T6 |
 | T4 `reviewer` | After a refused answer the hub lets the client answer only a new `required`: send `Prompt::required()` again. | T6 |
 | T4 `reviewer-security` | The gateway refuses addresses that are never a device, but allows loopback and link-local; the hub's rule (R-032) decides those. Look again if the gateway gets other network reach than a local program. | Security review of T6 |
 | T2 `reviewer` | "guacd pays the same fixed cost for a small update" is not verified. | T9 |
 
 ## 9. Open for the operator
+
+Results: [operator-checks.md](../../operator-checks.md) holds the result of each check below (PLN-014).
 
 | Item | Why it is open |
 | --- | --- |

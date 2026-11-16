@@ -305,6 +305,8 @@ Each is the option I recommend, with its reason. None changes a contract.
 
 ### 7.2 Open: needs the operator or other hardware
 
+Results: [operator-checks.md](../../operator-checks.md) holds the result of each check below (PLN-014).
+
 | Task | Exact steps | Done when |
 | --- | --- | --- |
 | **T11** wiring (with S4) | 1. On the Linux builder install `patchelf`, `bison`, `flex` and the zlib headers. 2. In `apps/desktop/src-tauri/src/builder/`: add a step before `plan::bundle` that runs `database-tree/build.sh <target> <cache folder> apps/desktop/src-tauri/database` with `SIGN_IDENTITY` set to `bundle.macOS.signingIdentity` on macOS (the builder's `Program` list needs an entry for `sh`; the script must run from the checked-out commit, after the gates). 3. Build `anima-database` for each triple and `lipo` it, as `sidecar.rs` does for `anima`; add it to `bundle.externalBin` and to the two names `artifact::mac_binaries` accepts. 4. Add `"resources": {"database": "database"}` to the bundle configuration in `plan::bundle`. 5. After the bundle: `lipo -archs` and `codesign --verify --strict` on `Contents/Resources/database/bin/postgres`, beside the existing UPD-011 checks. 6. S4 copies `Contents/Resources/database` to a folder named for the PostgreSQL version and runs it from there. | A release build has the tree in `Contents/Resources/database/`, and `codesign --verify --deep --strict` passes on the application. |

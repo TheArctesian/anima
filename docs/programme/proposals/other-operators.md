@@ -69,4 +69,4 @@ These are not new work. They are checks on work that is done for other reasons.
 ## Needs
 
 - A ruling number in `programme.md`.
-- No issue yet. Make one with the label `priority: later` when the operator wants to start.
+- No work item yet. Make one in `docs/work-items/` (PLN-012) when the operator wants to start.

@@ -18,7 +18,7 @@ The same procedure is what moves the coordinator to a different host (ETH-002).
 ## Decision (OD-W9, operator, 2026-11-12)
 
 The operator selected one home with copies, not a copy on each node that syncs between nodes
-(issue #2). The operator's words:
+([GH-2](../../work-items/device-manager/GH-2.md)). The operator's words:
 
 - "lets go with the one in the side chat as the every machine has alocal copy doesn't really
   make sense as different computer have different capacities"
@@ -38,7 +38,7 @@ What this means:
 | Large data | Not in the database copies. See [bulk-data-placement.md](bulk-data-placement.md). |
 | Each client | A small read-only copy of recent data, with its age |
 
-The operator then made issue #2 smaller (2026-11-12): only its phase L0 stays, a hash chain for
+The operator then made [GH-2](../../work-items/device-manager/GH-2.md) smaller (2026-11-12): only its phase L0 stays, a hash chain for
 the audit log, which needs no copies. Its phases L1 to L5 are withdrawn.
 
 The operator also set the order: FND-006 (restore and move) comes directly after the device
@@ -107,5 +107,5 @@ manager is accepted. The standbys come later, with the extensions.
 - A ruling number in `programme.md` for the decision above.
 - A security review: the standby holds the key, and the switch moves the VPN name.
 - VPS and Headscale changes need the operator's confirmation in chat (VPS-005).
-- After approval: one issue for FND-006 (restore and move), and one for the standbys, with the
-  label `infrastructure` and a priority label.
+- After approval: one work item for FND-006 (restore and move), and one for the standbys, in
+  `docs/work-items/` (PLN-012), each with a tier.

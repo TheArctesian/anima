@@ -4,7 +4,7 @@ Progress: the plan register in [work-plan.md](../../work-plan.md) Section 9 hold
 
 From: the explainer session. The operator asked for this in chat on 2026-11-05 ("I don't want the
 user to have to install anything else or use the terminal") and then said "Yes, send it".
-Status: a proposal for a ruling and for issue #1 (R-007). Not Phase 1 scope (contracts frozen, CON-001).
+Status: a proposal for a ruling and for [deferred.md](../../deferred.md) (R-119). Not Phase 1 scope (contracts frozen, CON-001).
 
 ## Problem
 
@@ -54,4 +54,4 @@ share a VPS), so it is the operator's decision.
 - A spec change: a setup screen, invite and enrolment requirements, and Settings items beyond SET-002.
 - Rulings: (a) embedded VPN in the desktop shell; (b) the hub-to-broker permission and the broker's
   exact verbs.
-- Issue #1 checklist entries for both (R-007).
+- [deferred.md](../../deferred.md) checklist entries for both (R-119).

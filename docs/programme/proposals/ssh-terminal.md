@@ -4,7 +4,7 @@ Progress: the plan register in [work-plan.md](../../work-plan.md) Section 9 hold
 
 From: the orchestrator. The operator chose this in chat on 2026-11-06 ("I like option 2"), after
 the SSH tab showed `ile:/…;click_events=1` in front of the prompt.
-Status: a proposal for a ruling (R-062) and for issue #1 (R-007). Not Phase 1 scope: it changes
+Status: a proposal for a ruling (R-062) and for [deferred.md](../../deferred.md) (R-119). Not Phase 1 scope: it changes
 the frozen K4 tunnel contract (CON-001) and spec rules RA-011, RA-040 and RA-041.
 
 ## Problem
@@ -85,7 +85,7 @@ will carry the fix for RDP and VNC users of the terminal anyway.
 
 ## Needs
 
-- Ruling R-062 (made) and an issue #1 entry (R-007).
+- Ruling R-062 (made) and an [deferred.md](../../deferred.md) entry (R-119).
 - The spec and K4 changes above, after Phase 1 is accepted.
 - A work package: hub terminal session and tunnel (builder-heavy, security review), client
   terminal tab (builder, interface review), tests per K4 §7 plus a fake SSH server.

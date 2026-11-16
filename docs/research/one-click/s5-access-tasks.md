@@ -1,5 +1,7 @@
 # S5. Access rules by device key: task list
 
+Progress: the plan register in [work-plan.md](../../work-plan.md) Section 9 holds the state of this plan (PLN-005).
+
 Plan item S5 of `docs/one-click-plan.md` (Section 4.5), built on S1 (`s1-link-tasks.md`).
 Security tag: each task gets the `reviewer` and the `reviewer-security` agent.
 

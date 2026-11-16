@@ -153,5 +153,5 @@ Anima.ing must not start a GPU add-on on a provider that forbids resale.
 - A ruling on ETH-007, CMP-003 and MET-012 as they apply here.
 - Written consent from a GPU provider before any GPU add-on is offered.
 - A published price list, after the suggested prices are ruled on.
-- After approval: an issue with the labels of the Use category, and a security review of
+- After approval: a work item in `docs/work-items/` (PLN-012) in the Use category, and a security review of
   enrolment, wipe and spending caps.

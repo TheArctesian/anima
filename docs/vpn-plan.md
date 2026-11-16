@@ -89,7 +89,7 @@ The plan has two tiers:
 | `quality/hub-modules.json` | imports gate | A new domain and each new import is a contract change. |
 | PKG-001, R-082 | `phase-3-plan.md` Section 1 | Only WP-54 hand-offs and WP-52 (for D-8, D-24) change `deploy/headscale/`. Tier A items A3 to A5 need a ruling. |
 | Limits, `quality/baseline.json` is `{}` | AGENTS.md | 300 code lines for each file, 12 files for each folder. See Section 6. |
-| Programme location | `docs/programme/handoff.md` | The Linux-machine session runs Phase 3. New packages go to issue #1 (R-007) until the programme accepts them. |
+| Programme location | `docs/programme/handoff.md` | The Linux-machine session runs Phase 3. New packages go to [deferred.md](deferred.md) (R-119) until the programme accepts them. |
 
 ## 3. Facts from the code
 
@@ -526,7 +526,7 @@ The build session moved to a fresh session to keep turns short. State at this po
   3. Rebuild and reopen the desktop app; the operator adds the VPS device at 100.64.0.1 with
      ping and TCP 22 checks.
 - **Open, no action yet.** A dark-mode token for small accent text (m2); moving the broker off
-  docker.sock (issue #1); the operator may delete `~anima-admin/anima-broker.XNT2lY` on the VPS and
+  docker.sock ([deferred.md](deferred.md)); the operator may delete `~anima-admin/anima-broker.XNT2lY` on the VPS and
   the local `r2.env`; R2 publishing (`ANIMA_RELEASES_ENDPOINT`, `ANIMA_UPDATER_PUBLIC_KEY`) is a
   later operator step.
 - **Standing rules.** Every live VPS, Headscale or cloud change is announced in chat and confirmed

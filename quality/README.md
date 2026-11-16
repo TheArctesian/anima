@@ -8,11 +8,12 @@ Repository checks that Clippy and ESLint do not cover. Run with bun from `qualit
 | `bun run baseline -- --base <ref>` | CQ-011 | `baseline.json` has no new path, new signal or larger value than at `<ref>` (default `phase-2`) |
 | `bun run names` | CQ-030 | Banned words in file, folder and type names |
 | `bun run imports` | REPO-004 | No hub domain uses another domain's `store`; no domain cycle |
+| `bun run documents` | PLN-016, PLN-017 | Document links resolve; each plan is in the register and each work item in its index; one document defines each requirement identifier (`duplicate-identifiers.txt` is the shrink-only list of the known ones) |
 
 ## Local gates
 
 `bun run gates` (from the repository root) is the only gate entry point. There is no CI; gates run on the machine that makes the change.
-It runs twenty gates as separate processes, in this order, and stops at the first failure (exit code of that gate, 1 if killed by a signal):
+It runs twenty-one gates as separate processes, in this order, and stops at the first failure (exit code of that gate, 1 if killed by a signal):
 
 1. `cargo fmt --check`
 2. `cargo clippy --all-targets -- -D warnings`
@@ -33,7 +34,8 @@ It runs twenty gates as separate processes, in this order, and stops at the firs
 17. `bun run quality:limits`
 18. `bun run quality:names`
 19. `bun run quality:imports`
-20. `bun run quality:baseline -- --base <BASE_REF>`
+20. `bun run quality:documents`
+21. `bun run quality:baseline -- --base <BASE_REF>`
 
 Gates 6 to 11 are for the Go module `link/`. Go must be on `PATH` (`brew install go`). `staticcheck` and
 `revive` are `tool` lines in `link/go.mod` and run with `go tool`, so they are not installed system-wide.

@@ -58,8 +58,8 @@ have free space, but different amounts, and some are not always on.
 
 | Item | Change |
 | --- | --- |
-| Extensions plan FIL-001 | The file store is on the store machines, not in a volume on the hub. Issue #8 owns the file store. |
-| OD-E1, issue #27 (where Class B data lives) | A recommendation: sealed files live on the operator's machines; the VPS holds the database rows and the index. The rows of Class B data stay on the hub, so #27 is not closed by this. |
+| Extensions plan FIL-001 | The file store is on the store machines, not in a volume on the hub. [E0-5](../../work-items/engine/E0-5.md) owns the file store. |
+| [OD-E1](../../work-items/decisions/OD-E1.md) (where Class B data lives) | A recommendation: sealed files live on the operator's machines; the VPS holds the database rows and the index. The rows of Class B data stay on the hub, so [OD-E1](../../work-items/decisions/OD-E1.md) is not closed by this. |
 | Design specification VPS-006 | The backup goes to more than one site. |
 
 ## Open points
@@ -71,13 +71,13 @@ have free space, but different amounts, and some are not always on.
 - A copy outside all sites of the operator (object storage, for example R2) is optional. It is a
   rented service, so the operator decides.
 - Model files are large and are not secret. They can use the same placement without sealing, or
-  stay with the compute plan (PULL-001 to PULL-010). Decide with C1 (#34).
+  stay with the compute plan (PULL-001 to PULL-010). Decide with [C1](../../work-items/compute/C1.md).
 - The size of a piece, and the "set time" of STO-006.
 
 ## Needs
 
 - A ruling number in `programme.md`.
 - The work route of [jobs.md](jobs.md).
-- A change to FIL-001 before the engine builds the file store (#8). The engine is
+- A change to FIL-001 before the engine builds the file store ([E0-5](../../work-items/engine/E0-5.md)). The engine is
   `priority: foundation`, so this proposal must be decided before E0-5 starts.
-- After approval: one issue with the labels `infrastructure`, `security` and a priority label.
+- After approval: one work item in `docs/work-items/` (PLN-012), with a security review and a tier.

@@ -39,6 +39,8 @@ property it serves. Limits point at places to look; never change code only to sa
 
 ### Limits (code lines, blanks and comments excluded)
 
+These limits apply to code. They do not apply to the planning documents in `docs/` (PLN-015).
+
 | File | Function | Params | Complexity | Nesting | Files per folder |
 |---|---|---|---|---|---|
 | 300 | 60 | 4 | 15 | 4 | 12 |
@@ -97,9 +99,14 @@ test (CMD-031) fails when a root field of `contracts/schema.graphql` has no comm
 
 ## Plans and progress
 
-[docs/work-plan.md](docs/work-plan.md) is the register of all plans and holds their state
-(PLN-001 to PLN-011, operator, 2026-11-15).
+[docs/work-plan.md](docs/work-plan.md) is the entry point to all planning documents. Start there. Its
+parts are in `docs/plan/`: the priority order (`priorities.md`), the register of all plans with their
+state (`register.md`) and the rules (`rules.md`, PLN-001 to PLN-017, operator, 2026-11-15 and 2026-11-16).
 
+- Plan first (PLN-013). Before you change code, find the plan that owns the work, read it, and build
+  from it. If the plan does not include the work, change the plan first. If no plan owns the work,
+  write a short proposal with its register row first. If the build must be different from the plan,
+  change the plan in the same commit. A correction of a defect that adds no function needs no plan.
 - Do not build from a document that is not in Section 9 of the work plan.
 - Do not make a new plan, proposal or task breakdown unless the same commit adds its row to
   Section 9 and names the row of Section 4 that it serves. If no row applies, ask the operator.
@@ -108,6 +115,15 @@ test (CMD-031) fails when a root field of `contracts/schema.graphql` has no comm
 - Change the state of a task in the commit that does the work. "Done" must name a commit, an
   acceptance record or a ruling.
 - A report, a log or a procedure must not add a requirement.
+- Do not use GitHub issues, labels or project boards as a store (PLN-012, R-119). A work item or a defect
+  is a document in [docs/work-items/](docs/work-items/README.md). Deferred work is a line in
+  [docs/deferred.md](docs/deferred.md). An open decision is a row in its plan.
+- A check that only the operator can do gets a row in
+  [docs/operator-checks.md](docs/operator-checks.md) in the commit that defers it (PLN-014). Do not
+  write "Pass" for a check that you did not see. A task that waits for a check is not done.
+- One entry, one job, one owner (PLN-016). Each planning document is reachable from the work plan, has
+  one job, and points to the owner of a fact; it does not copy the fact. One document defines each
+  requirement identifier. `bun run quality:documents` checks this (PLN-017).
 
 ## Tests
 
@@ -128,7 +144,7 @@ The gates run in this order and stop at the first failure: `cargo fmt --check`,
 `cargo test --workspace --doc`, `cargo test --workspace --test pinning`, the six Go gates of `link/`
 (`gofmt`, `go vet`, `staticcheck`, `revive`, `go test -race`, `go build`), `bun install --frozen-lockfile`,
 `bun run lint`, `bun run check`, `bun run test`, `bun run --cwd apps/client build`,
-`bun run quality:limits`, `bun run quality:names`, `bun run quality:imports`,
+`bun run quality:limits`, `bun run quality:names`, `bun run quality:imports`, `bun run quality:documents`,
 `bun run quality:baseline -- --base $BASE_REF`. See [quality/README.md](quality/README.md).
 The gates share compiled Rust between worktrees through sccache (`brew install sccache`, or
 `cargo install sccache --locked`). When `sccache` is on `PATH`, the runner sets `RUSTC_WRAPPER` to it

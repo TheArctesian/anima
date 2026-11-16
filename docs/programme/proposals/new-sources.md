@@ -12,9 +12,9 @@ Map: [work-plan.md](../../work-plan.md), categories See and Remember.
 EXT-000 says to build only for the services that the operator uses, and to add a source when the
 operator starts to use it. The operator uses all three. Each one then goes into the extensions
 plan: a row in its Section 9 (services and keys), a provider folder in Section 5.2, and
-requirements in the section of its extension. That change needs the approval of #26 or a ruling.
+requirements in the section of its extension. That change needs the approval of [SPEC](../../work-items/extensions/SPEC.md) or a ruling.
 
-## Cloudflare (Projects, XP-02, #13)
+## Cloudflare (Projects, [XP-02](../../work-items/extensions/XP-02.md))
 
 A read-only source for zones, DNS records, Workers and Pages deployments, R2 usage and
 analytics. PRJ-003 applies: an allow list of methods and paths.
@@ -26,7 +26,7 @@ analytics. PRJ-003 applies: an allow list of methods and paths.
 
 ## A new extension: Activity (Remember)
 
-History (XP-07, #18) only reads the timeline (HIS-002) and owns no source. The operator decided
+History ([XP-07](../../work-items/extensions/XP-07.md)) only reads the timeline (HIS-002) and owns no source. The operator decided
 on 2026-11-12 that Spotify and Screen Time go to an extension of their own. This file calls it
 Activity: what the operator did on their devices. It gets the next free numbers: XP-15, and a
 migration range and paths in the table of Section 5.2 of the extensions plan. History shows its
@@ -49,6 +49,6 @@ Recently played tracks and top artists.
 ## Needs
 
 - One verification task for each provider, with a link to the provider documentation.
-- Then: a change to the extensions plan, a checklist line on #13 and #31 (accounts and keys),
+- Then: a change to the extensions plan, a checklist line on [XP-02](../../work-items/extensions/XP-02.md) and [KEYS](../../work-items/extensions/KEYS.md) (accounts and keys),
   and one new issue for the Activity extension with the labels `extensions`, `life` and
   `priority: later`.

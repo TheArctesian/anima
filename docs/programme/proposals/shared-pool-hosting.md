@@ -1,5 +1,7 @@
 # Shared Pool Hosting
 
+Progress: the plan register in [work-plan.md](../../work-plan.md) Section 9 holds the state of this plan (PLN-005).
+
 Proposal, 2026-11-16, not yet decided. Instead of one dedicated server per customer, run each
 customer's hub as an isolated instance on a few large shared servers (the pool), meter each hub's
 CPU, memory and disk, show that to the customer as a live gauge, and sell more of the pool, or a
