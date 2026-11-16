@@ -3,6 +3,7 @@
 //! stops it.
 
 use std::{
+    ffi::OsString,
     fs,
     path::{Path, PathBuf},
 };
@@ -51,8 +52,19 @@ impl Workshop<'_> {
             .find(command.program.name(), Path::is_file)
             .ok_or(BuilderError::ToolMissing)?;
         self.claim
-            .run(command, &program, self.env.for_step(&command.env))
+            .run(command, &program, self.variables(command))
             .await
+    }
+
+    /// The environment of `command`: the step's own, and cargo's output folder inside the clone,
+    /// whatever the builder's cargo configuration names (BLD-044).
+    pub fn variables(&self, command: &Command) -> Vec<(OsString, OsString)> {
+        let mut variables = self.env.for_step(&command.env);
+        variables.push((
+            "CARGO_TARGET_DIR".into(),
+            artifact::target_folder(&self.clone).into(),
+        ));
+        variables
     }
 
     async fn run_all(&self, commands: &[Command]) -> Result<(), BuilderError> {

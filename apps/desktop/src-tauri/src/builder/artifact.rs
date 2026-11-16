@@ -34,11 +34,20 @@ pub struct MacBinaries {
     pub command_line: PathBuf,
 }
 
+/// Where cargo writes what it builds in `clone`. Every step is told this folder
+/// (`CARGO_TARGET_DIR`), so a `target-dir` in the builder's own cargo configuration cannot move
+/// the bundle to a place the later steps do not look in.
+pub fn target_folder(clone: &Path) -> PathBuf {
+    clone.join("target")
+}
+
 /// The folder `tauri bundle` writes for `target`.
 fn bundle_folder(clone: &Path, target: Target) -> PathBuf {
     match target {
-        Target::LinuxX86_64 => clone.join("target/release/bundle"),
-        Target::DarwinUniversal => clone.join("target/universal-apple-darwin/release/bundle"),
+        Target::LinuxX86_64 => target_folder(clone).join("release/bundle"),
+        Target::DarwinUniversal => {
+            target_folder(clone).join("universal-apple-darwin/release/bundle")
+        }
     }
 }
 
