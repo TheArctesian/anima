@@ -10,7 +10,7 @@
 use std::{
     fs::{self, DirBuilder, OpenOptions},
     io::{self, ErrorKind, Read, Write},
-    os::unix::fs::{DirBuilderExt, OpenOptionsExt},
+    os::unix::fs::{DirBuilderExt, OpenOptionsExt, PermissionsExt},
     path::{Path, PathBuf},
 };
 
@@ -36,11 +36,15 @@ impl LinkFolders {
         }
     }
 
-    /// Makes the folders above the state folders, owner-only (0700) where it makes them, and
-    /// removes a join that did not finish.
+    /// Makes the folders above the state folders, owner-only (0700) where it makes them, sets
+    /// the link's own folder to 0700, and removes a join that did not finish.
     pub fn prepare_next(&self) -> io::Result<()> {
         let link = self.device.parent().ok_or(ErrorKind::InvalidInput)?;
         DirBuilder::new().recursive(true).mode(0o700).create(link)?;
+        if !fs::symlink_metadata(link)?.is_dir() {
+            return Err(ErrorKind::InvalidInput.into());
+        }
+        fs::set_permissions(link, fs::Permissions::from_mode(0o700))?;
         remove_folder(&self.next)
     }
 
