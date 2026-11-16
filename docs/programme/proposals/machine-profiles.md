@@ -12,7 +12,7 @@ Map: [work-plan.md](../../work-plan.md), category Foundation, next to "Add this 
 ([add-this-machine.md](add-this-machine.md)) and first-run setup. A rented cloud computer
 ([cloud-machines.md](cloud-machines.md)) can take a profile in one confirmation. A profile
 can also install the tools that agent panes and bots need.
-Identifiers: REP-001 to REP-024.
+Identifiers: REP-001 to REP-025.
 
 This is a new proposal. The "whatdog" plan is Watchdog, a service restarter planned with the
 Marketing Bot. Its proposal sits on the branch `claude/watchdog-autoupdate-proposals` and is
@@ -64,8 +64,11 @@ A step that fails does not stop the rest.
   signed into the App Store.
 - **REP-007.** Selected dotfiles and the Anima.ing prompt, if ticked, are copied to the same
   paths on the new machine.
-- **REP-008.** By default, the function makes a new SSH key on the new machine and can add it
-  to GitHub, with the operator's confirmation.
+- **REP-008.** By default, no private key is copied. Devices that Anima.ing can reach are
+  reached through Anima.ing (`anima ssh`, or plain `ssh` through a host entry that Anima.ing
+  writes), so the new machine needs no key for them (REP-025). For tools outside Anima.ing,
+  such as git over SSH, the function makes a new SSH key on the new machine and can add it to
+  GitHub, with the operator's confirmation.
 - **REP-009.** Copying an existing private key is off by default. It is opt-in, one key at a
   time. The key travels straight from the source machine to the new machine and must never be
   written to the hub (a stricter path than VLT-007).
@@ -94,10 +97,14 @@ A step that fails does not stop the rest.
 - **REP-022.** Applying a profile is a work type on the fixed list of USE-006, proposed name
   `apply_profile`. The hub cannot name an arbitrary command. The agent applies only the
   ticked items of a stored profile.
-- **REP-023.** The agent may install and copy only when the operator has confirmed a profile
-  apply. This is an exception to MET-002 and needs a ruling.
+- **REP-023.** The agent may install and copy when it applies a profile. This is an exception
+  to MET-002, granted 2026-11-16. Whether each apply asks first is the user's setting; by
+  default only steps that hand over a secret ask.
 - **REP-024.** The Settings switch that writes the prompt snippet, if approved, uses the same
   marked-block rule as [shell-prompt.md](shell-prompt.md) (INS-009).
+- **REP-025.** The profile may include an `ssh` host entry for each device, so that plain
+  `ssh studio` goes through Anima.ing in the same way as `anima ssh studio`. Writing that entry
+  is a marked block in `~/.ssh/config`, with the same yes-first rule as the prompt (CMD-038).
 
 ## First version and later
 
@@ -112,17 +119,22 @@ A step that fails does not stop the rest.
 | One-confirm apply on a rented cloud computer | — |
 | Tools that agent panes and bots need | — |
 
-## Conflicts that need a ruling
+## Conflicts: ruled (operator, 2026-11-16)
 
-- **MET-002.** The agent must only read values on the device. It may write only its own
-  configuration, token and buffer files. Installing apps and copying files needs an
-  exception (REP-023).
-- **USE-006.** The agent must accept only the work types in a fixed list. That list needs an
-  `apply_profile` type (REP-022). The hub still cannot name a command.
-- **INS-009.** The installer never edits the shell profile. The same question as in the
-  shell-prompt proposal (REP-024).
-- **VLT-007.** The hub can open stored secrets. Private keys should not use that path. They
-  go straight from machine to machine, and only when the operator ticks a key (REP-009).
+- **General rule.** Each safety setting here is the user's choice. The default is the
+  equivalent of full auto, as in MCP-024. A step that hands over a secret, such as copying a
+  private key (REP-009), still asks first.
+- **MET-002.** Exception granted: the agent may install apps and copy files when it applies a
+  profile (REP-023). By the general rule, the per-apply confirmation is on by default only for
+  steps that hand over a secret; the user can turn it on for every step.
+- **USE-006.** `apply_profile` joins the fixed list of work types (REP-022). The hub still
+  cannot name an arbitrary command.
+- **INS-009.** The installer never edits the shell profile. `anima shell setup` and the Settings
+  CLI installer add the line only when the operator says yes (shell-prompt CMD-037, CMD-038;
+  REP-024).
+- **VLT-007.** The default is no key copy: devices are reached through Anima.ing (REP-008,
+  REP-025). A copied key, for tools outside Anima.ing, goes machine to machine and never
+  through the hub (REP-009).
 
 ## Risks
 
@@ -155,12 +167,12 @@ A step that fails does not stop the rest.
 
 Make this a free extension called Machine profiles, Mac to Mac first, with the dry-run and
 the "cannot copy" list in the first version. Do not start Windows or cross-OS work. Do not
-put private keys on the hub. Wait for rulings on MET-002, USE-006, INS-009 and VLT-007
-before any build. Treat Watchdog as a separate proposal on its own branch.
+put private keys on the hub. MET-002, USE-006, INS-009 and VLT-007 are ruled
+(2026-11-16). Treat Watchdog as a separate proposal on its own branch.
 
 ## Needs
 
-- Rulings on MET-002, USE-006, INS-009 and VLT-007 as they apply here.
+- MET-002, USE-006, INS-009 and VLT-007: ruled 2026-11-16.
 - After approval: a row in the extensions plan for the work package, and a security review
   of key copy, undo and the new work type.
 - No change to the Watchdog branch as part of this work.
