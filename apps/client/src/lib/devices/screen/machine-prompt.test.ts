@@ -68,7 +68,7 @@ async function settle(): Promise<void> {
 /** Mounts /devices with `hosts` as the devices the hub has. */
 async function visit(hosts: readonly string[] = ['nas.lan'], answers: Record<string, unknown> = {}) {
   const list = devicesAnswer(hosts.map((host, index) => device(`d${String(index)}`, { host })));
-  const fake = fakeHub({ Devices: list, DeviceHosts: list, Tags: { tags: [] }, Sites: { sites: [{ id: 's1', name: 'Home' }] }, ...answers });
+  const fake = fakeHub({ Devices: list, DeviceHosts: list, Tags: { tags: [] }, Sites: { sites: [{ id: 's1', name: 'Home' }] }, VpnLoginServer: { vpnLoginServer: 'https://hs.anima.ing' }, ...answers });
   current.hub = fake.hub;
   app = mount(Page, { target: document.body });
   await settle();
@@ -78,7 +78,7 @@ async function visit(hosts: readonly string[] = ['nas.lan'], answers: Record<str
 /** Mounts /devices with the `DeviceHosts` read held until the returned `answer` is called. */
 async function visitWithHostsPending(): Promise<() => Promise<void>> {
   const list = devicesAnswer([device('d0', { host: 'nas.lan' })]);
-  const fake = fakeHub({ Devices: list, Tags: { tags: [] }, Sites: { sites: [{ id: 's1', name: 'Home' }] } });
+  const fake = fakeHub({ Devices: list, Tags: { tags: [] }, Sites: { sites: [{ id: 's1', name: 'Home' }] }, VpnLoginServer: { vpnLoginServer: 'https://hs.anima.ing' } });
   let release: () => void = () => undefined;
   const held = new Promise<void>((resolve) => {
     release = resolve;

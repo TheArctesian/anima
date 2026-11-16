@@ -15,9 +15,6 @@ use url::Url;
 use super::{OperatingSystem, address::is_vpn_address};
 use crate::os_program::{self, AfterLimit, Limit, Stdout};
 
-/// The Headscale server Anima's nodes log in to: the one in the hub's join steps
-/// (`crates/hub/src/fleet/vpn/steps.rs`) and in vpn.md.
-pub(super) const ANIMA_LOGIN_SERVER: &str = "https://hs.anima.ing";
 /// How long each question to the client may take; it answers in well under 200 ms.
 pub(super) const CLIENT_PATIENCE: Duration = Duration::from_secs(1);
 /// The most output read from the client; its answers without peers are a few KiB.

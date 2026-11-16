@@ -129,13 +129,14 @@ async fn mcp_009_vpn_status_gives_short_nodes_unless_detail() {
     });
     hub.answer(
         "VpnStatus",
-        data(json!({ "vpn": {
+        data(json!({ "vpnLoginServer": "https://hs.anima.ing", "vpn": {
             "readAt": "2026-11-13T09:00:00Z", "fresh": true, "broker": "READY",
             "hub": node, "sites": [], "nodes": [node] } })),
     );
     let desk = Desk::new();
     let (mut session, _) = desk.start(&hub, API_KEY, &[]).await;
     let answer = session.call("anima_vpn_status", json!({})).await;
+    assert_eq!(structured(&answer)["loginServer"], "https://hs.anima.ing");
     let vpn = &structured(&answer)["vpn"];
     assert_eq!(vpn["nodes"][0]["name"], "nas");
     assert!(vpn["nodes"][0].get("os").is_none(), "short by default");

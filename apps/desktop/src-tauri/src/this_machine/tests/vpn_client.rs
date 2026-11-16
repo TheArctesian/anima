@@ -11,10 +11,10 @@ use std::{
 
 use serde_json::{Value, json};
 
-use super::super::vpn_client::{
-    ANIMA_LOGIN_SERVER, CLIENT_PATIENCE, own_address, running_address, signed_in_to,
-};
+use super::super::vpn_client::{CLIENT_PATIENCE, own_address, running_address, signed_in_to};
 
+/// The hub's `vpnLoginServer`, as the web view passes it in.
+const ANIMA_LOGIN_SERVER: &str = "https://hs.anima.ing";
 const PATIENCE: Duration = Duration::from_millis(500);
 const ANIMA_ADDRESS: Ipv4Addr = Ipv4Addr::new(100, 101, 0, 9);
 
@@ -137,7 +137,6 @@ fn a_missing_failing_or_slow_client_gives_no_vpn_address_in_time() {
 }
 
 #[test]
-fn the_anima_client_is_the_one_on_hs_anima_ing_and_is_asked_for_at_most_a_second() {
-    assert_eq!(ANIMA_LOGIN_SERVER, "https://hs.anima.ing");
+fn the_client_is_asked_for_at_most_a_second() {
     assert_eq!(CLIENT_PATIENCE, Duration::from_secs(1));
 }

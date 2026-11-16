@@ -1,7 +1,7 @@
 //! What the desktop app can learn about the computer it runs on, so the Add device form can be
 //! filled in for it (R-058, R-060): its name, the OS user, the OS, its address on the Anima VPN
 //! (NET-001, R-052) as the Anima VPN client reports it (ADR-005) and whether SSH answers there.
-//! The web view passes nothing in.
+//! The web view passes in only the hub's VPN login server (`vpnLoginServer`).
 //!
 //! None of it is secret, but the user name and the address are not logged (LOG-007).
 
@@ -52,7 +52,7 @@ pub struct ThisMachine {
     pub user: String,
     pub os: OperatingSystem,
     /// This computer's own IPv4 address on the Anima VPN, as its Tailscale client logged in to
-    /// Anima's Headscale reports it (ADR-005). `None` when that client is missing, slow,
+    /// the hub's login server reports it (ADR-005). `None` when that client is missing, slow,
     /// stopped, logged out or signed in to another tailnet.
     pub vpn_address: Option<Ipv4Addr>,
     /// Whether TCP port 22 accepted a connection on `vpn_address`; false without one.
@@ -91,14 +91,11 @@ impl Serialize for ThisMachineError {
     }
 }
 
-/// Reads this computer from the OS. Blocks for up to the name, VPN client and SSH patience.
-fn read(os: OperatingSystem) -> ThisMachine {
+/// Reads this computer from the OS, with its VPN address on `login_server`. Blocks for up to
+/// the name, VPN client and SSH patience.
+fn read(os: OperatingSystem, login_server: &str) -> ThisMachine {
     let vpn_address = vpn_client::client_program(os).and_then(|program| {
-        vpn_client::own_address(
-            program,
-            vpn_client::ANIMA_LOGIN_SERVER,
-            vpn_client::CLIENT_PATIENCE,
-        )
+        vpn_client::own_address(program, login_server, vpn_client::CLIENT_PATIENCE)
     });
     let ssh_listening = address::ssh_answers(vpn_address, SSH_PORT, SSH_PATIENCE);
     ThisMachine {
@@ -111,12 +108,14 @@ fn read(os: OperatingSystem) -> ThisMachine {
 }
 
 /// Reads this computer's name, user, OS, VPN address and whether SSH answers on it.
+/// `login_server` is the hub's `vpnLoginServer`: only a client logged in to it gives the VPN
+/// address.
 #[tauri::command]
-pub async fn this_machine_read() -> Result<ThisMachine, ThisMachineError> {
+pub async fn this_machine_read(login_server: String) -> Result<ThisMachine, ThisMachineError> {
     let Some(os) = OperatingSystem::current() else {
         return Err(ThisMachineError::Unavailable);
     };
-    let machine = tauri::async_runtime::spawn_blocking(move || read(os))
+    let machine = tauri::async_runtime::spawn_blocking(move || read(os, &login_server))
         .await
         .map_err(|_| ThisMachineError::Failed);
     if let Err(error) = &machine {

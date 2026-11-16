@@ -17,8 +17,8 @@ pub struct StatusArgs {
 }
 
 impl StatusArgs {
-    /// Prints the picture as label and value lines or, with `--json`, as the K1 `VpnPicture`
-    /// (`null` while the hub has none).
+    /// Prints the login server and the picture as label and value lines or, with `--json`, the
+    /// K1 `VpnPicture` alone (`null` while the hub has none).
     ///
     /// # Errors
     /// [`Failure`] for a hub refusal.
@@ -28,14 +28,15 @@ impl StatusArgs {
         }
         let hub = invocation.hub()?;
         let answer = hub.run::<VpnStatus>(vpn_status::Variables).await?;
-        invocation
-            .output
-            .data(&answer.vpn, |picture| table(picture.as_ref()))
+        invocation.output.data(&answer.vpn, |picture| {
+            table(&answer.vpn_login_server, picture.as_ref())
+        })
     }
 }
 
-fn table(picture: Option<&vpn_status::VpnStatusVpn>) -> Table {
+fn table(login_server: &str, picture: Option<&vpn_status::VpnStatusVpn>) -> Table {
     let mut table = Table::record();
+    table.pair("Login server", login_server);
     let Some(picture) = picture else {
         table.pair(
             "VPN",

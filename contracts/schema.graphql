@@ -2470,6 +2470,8 @@ type Query {
   # Phase 3: VPN (VP-5)
   "The VPN picture; null when the hub has no LocalAPI proxy or has not read it yet (VPN-005)."
   vpn: VpnPicture
+  "The Headscale server every Anima node logs in to; the desktop app takes its own VPN address only from a client logged in to it (ADR-005)."
+  vpnLoginServer: String!
 
   # Engine and Projects (operator, 2026-11-13; ruling number to be assigned; K-E7, K-E1, XP-02)
   "All 15, in the order of the plan."

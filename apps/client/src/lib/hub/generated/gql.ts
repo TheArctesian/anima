@@ -157,6 +157,7 @@ type Documents = {
     "\n  fragment VpnNodeFields on VpnNode {\n    name\n    address\n    os\n    role\n    tags\n    routes\n    waitingRoutes\n    online\n    lastSeen\n    keyExpiry\n    keyState\n    path\n    relayRegion\n    inAnima\n    device {\n      id\n      name\n    }\n  }\n": typeof types.VpnNodeFieldsFragmentDoc,
     "\n  fragment VpnPictureFields on VpnPicture {\n    readAt\n    fresh\n    hub {\n      ...VpnNodeFields\n    }\n    sites {\n      site {\n        id\n        name\n        subnet\n      }\n      router {\n        ...VpnNodeFields\n      }\n      state\n      path\n      relayRegion\n      hasPingCheck\n      waitingRouter {\n        ...VpnNodeFields\n      }\n    }\n    nodes {\n      ...VpnNodeFields\n    }\n    broker\n  }\n": typeof types.VpnPictureFieldsFragmentDoc,
     "\n  query Vpn {\n    vpn {\n      ...VpnPictureFields\n    }\n  }\n": typeof types.VpnDocument,
+    "\n  query VpnLoginServer {\n    vpnLoginServer\n  }\n": typeof types.VpnLoginServerDocument,
     "\n  subscription VpnChanged {\n    vpnChanged {\n      ...VpnPictureFields\n    }\n  }\n": typeof types.VpnChangedDocument,
     "\n  mutation CreateVpnInvite {\n    createVpnInvite {\n      key\n      expiresAt\n      steps\n    }\n  }\n": typeof types.CreateVpnInviteDocument,
     "\n  mutation CreateRouterKey($siteId: ID!) {\n    createRouterKey(siteId: $siteId) {\n      key\n      expiresAt\n      steps\n    }\n  }\n": typeof types.CreateRouterKeyDocument,
@@ -316,6 +317,7 @@ const documents: Documents = {
     "\n  fragment VpnNodeFields on VpnNode {\n    name\n    address\n    os\n    role\n    tags\n    routes\n    waitingRoutes\n    online\n    lastSeen\n    keyExpiry\n    keyState\n    path\n    relayRegion\n    inAnima\n    device {\n      id\n      name\n    }\n  }\n": types.VpnNodeFieldsFragmentDoc,
     "\n  fragment VpnPictureFields on VpnPicture {\n    readAt\n    fresh\n    hub {\n      ...VpnNodeFields\n    }\n    sites {\n      site {\n        id\n        name\n        subnet\n      }\n      router {\n        ...VpnNodeFields\n      }\n      state\n      path\n      relayRegion\n      hasPingCheck\n      waitingRouter {\n        ...VpnNodeFields\n      }\n    }\n    nodes {\n      ...VpnNodeFields\n    }\n    broker\n  }\n": types.VpnPictureFieldsFragmentDoc,
     "\n  query Vpn {\n    vpn {\n      ...VpnPictureFields\n    }\n  }\n": types.VpnDocument,
+    "\n  query VpnLoginServer {\n    vpnLoginServer\n  }\n": types.VpnLoginServerDocument,
     "\n  subscription VpnChanged {\n    vpnChanged {\n      ...VpnPictureFields\n    }\n  }\n": types.VpnChangedDocument,
     "\n  mutation CreateVpnInvite {\n    createVpnInvite {\n      key\n      expiresAt\n      steps\n    }\n  }\n": types.CreateVpnInviteDocument,
     "\n  mutation CreateRouterKey($siteId: ID!) {\n    createRouterKey(siteId: $siteId) {\n      key\n      expiresAt\n      steps\n    }\n  }\n": types.CreateRouterKeyDocument,
@@ -918,6 +920,10 @@ export function graphql(source: "\n  fragment VpnPictureFields on VpnPicture {\n
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "\n  query Vpn {\n    vpn {\n      ...VpnPictureFields\n    }\n  }\n"): (typeof documents)["\n  query Vpn {\n    vpn {\n      ...VpnPictureFields\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  query VpnLoginServer {\n    vpnLoginServer\n  }\n"): (typeof documents)["\n  query VpnLoginServer {\n    vpnLoginServer\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */

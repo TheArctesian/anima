@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { fakeHub } from '$lib/devices/hub.fixture';
 import { agentBundled, installAgent, thisComputerShell } from './shell';
 
 const tauri = vi.hoisted(() => ({ invoke: vi.fn(), isTauri: vi.fn(() => true) }));
@@ -37,7 +38,7 @@ describe('installAgent (MET-019, D-10 d)', () => {
     tauri.isTauri.mockReturnValue(false);
     expect(await installAgent(CODE, 'https://hub.test')).toMatchObject({ ok: false, problem: 'unavailable' });
     expect(await agentBundled()).toBe(false);
-    expect(thisComputerShell()).toBeNull();
+    expect(thisComputerShell(fakeHub().hub)).toBeNull();
     expect(tauri.invoke).not.toHaveBeenCalled();
   });
 });

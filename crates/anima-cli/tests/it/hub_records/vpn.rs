@@ -11,6 +11,7 @@ use crate::kit::fake_hub::{FakeHub, data, refusal};
 const TOKEN: &str = "login-token-for-vpn-tests";
 const KEY: &str = "pre-auth-key-9f3a1c7e5b2d4a60";
 const SITE: &str = "0190a000-0000-7000-8001-000000000001";
+const LOGIN_SERVER: &str = "https://hs.anima.ing";
 
 fn signed_in() -> Anima {
     Anima::new().with("ANIMA_TOKEN", TOKEN)
@@ -26,7 +27,7 @@ fn node(name: &str, role: &str) -> Value {
 }
 
 fn picture() -> Value {
-    data(json!({ "vpn": {
+    data(json!({ "vpnLoginServer": LOGIN_SERVER, "vpn": {
         "readAt": "2026-11-12T10:00:00+00:00", "fresh": true, "broker": "READY",
         "hub": node("anima-hub", "HUB"),
         "sites": [{
@@ -54,6 +55,8 @@ async fn vpn_status_prints_the_hub_each_site_and_each_node() {
         .await;
     assert_eq!(run.code, 0, "{run:?}");
     for text in [
+        "Login server",
+        LOGIN_SERVER,
         "READY",
         "Hub",
         "Site home",
@@ -72,12 +75,16 @@ async fn vpn_status_prints_the_hub_each_site_and_each_node() {
 #[tokio::test]
 async fn vpn_status_without_a_picture_says_so_and_json_is_null() {
     let hub = FakeHub::start().await;
-    hub.answer("VpnStatus", data(json!({ "vpn": null })));
+    hub.answer(
+        "VpnStatus",
+        data(json!({ "vpnLoginServer": LOGIN_SERVER, "vpn": null })),
+    );
     let run = signed_in()
         .run(&["vpn", "status", "--hub", &hub.origin])
         .await;
     assert_eq!(run.code, 0, "{run:?}");
     assert!(run.stdout.contains("no picture yet"), "{}", run.stdout);
+    assert!(run.stdout.contains(LOGIN_SERVER), "{}", run.stdout);
     let run = signed_in()
         .run(&["vpn", "status", "--json", "--hub", &hub.origin])
         .await;
