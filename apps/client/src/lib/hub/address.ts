@@ -20,9 +20,10 @@ type AddressResult = { readonly ok: true; readonly value: HubAddress } | { reado
 
 /** The default hub (NET-005, DNS-001). */
 export const DEFAULT_HUB_ADDRESS: HubAddress = Object.freeze({
-  origin: 'https://hub.anima.ing',
-  http: 'https://hub.anima.ing/graphql',
-  socket: 'wss://hub.anima.ing/graphql',
+  // SPIKE: the local test hub.
+  origin: 'http://127.0.0.1:8477',
+  http: 'http://127.0.0.1:8477/graphql',
+  socket: 'ws://127.0.0.1:8477/graphql',
 });
 
 /** Hosts that may use plain `http` and `ws`: they never leave this computer (CLI-002, F-1). */

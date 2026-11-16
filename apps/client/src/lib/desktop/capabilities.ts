@@ -11,6 +11,24 @@ import { isMac } from '$lib/platform/mac';
  */
 export function desktopCapabilities(userAgent: string = navigator.userAgent): Capabilities | null {
   if (!isTauri()) return null;
+  // SPIKE: a phone shell has the key store only.
+  if (/iPhone|iPad|iPod|Android/.test(userAgent)) {
+    return {
+      keyStore: true,
+      webViewTabs: false,
+      popOut: false,
+      updates: false,
+      processLog: false,
+      thisMachine: false,
+      systemSettings: false,
+      builds: false,
+      mcpPermissions: false,
+      commandLine: false,
+      stayAwake: false,
+      localHub: false,
+      overlayTitleBar: false,
+    };
+  }
   return {
     keyStore: true,
     webViewTabs: true,

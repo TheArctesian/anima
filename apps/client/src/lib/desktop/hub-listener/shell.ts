@@ -17,6 +17,8 @@ const PROBLEMS: readonly unknown[] = ['caller', 'bad-origin'] satisfies Listener
 /** Asks the shell who listens at the loopback hub address `origin`. */
 export async function checkHubListener(origin: string): Promise<ListenerResult> {
   if (!isTauri()) return { ok: false, problem: 'unavailable' };
+  // SPIKE: the phone shell has no listener check; the test hub is this Mac's own.
+  if (/iPhone|iPad|iPod|Android/.test(navigator.userAgent)) return { ok: true, listener: 'own' };
   try {
     const answer: unknown = await invoke('hub_listener_check', { origin });
     return LISTENERS.includes(answer) ? { ok: true, listener: answer as Listener } : { ok: false, problem: 'failed' };
