@@ -1,5 +1,7 @@
 # Proposal: projects first (import from GitHub, the builder as a job, sign-in)
 
+Progress: the plan register in [work-plan.md](../../work-plan.md) Section 9 holds the state of this plan (PLN-005).
+
 From: a side chat with the operator on 2026-11-13, sent to the planning session.
 Status: the operator decided the six points in "Decision" (OD-W11) and the points in "Decision
 on the proposals" (OD-W12). Nothing is built.

@@ -1,5 +1,7 @@
 # Proposal: jobs (work that the coordinator gives to a machine)
 
+Progress: the plan register in [work-plan.md](../../work-plan.md) Section 9 holds the state of this plan (PLN-005).
+
 From: the planning session of 2026-11-12. The operator agreed the form in a side chat: a job is
 a container image, models run on the machine directly, jobs call the model service.
 Status: a proposal for a ruling. The operator decided OD-W10 on 2026-11-12 (see "Decision").

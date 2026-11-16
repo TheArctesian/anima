@@ -1,5 +1,7 @@
 # Anima Extensions Plan
 
+Progress: the plan register in [work-plan.md](work-plan.md) Section 9 holds the state of this plan (PLN-005).
+
 | Item | Value |
 | --- | --- |
 | Document | Extensions plan |
