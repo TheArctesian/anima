@@ -23,6 +23,11 @@ body {
   --viewport-block-size: calc(100vh - var(--safe-block-start) - var(--safe-block-end));
 }
 
+/* The Android web view gives no inset for the gesture bar at the bottom of the screen; the approved mockup keeps 24 px. */
+:root[data-os="android"] {
+  --safe-block-end: max(env(safe-area-inset-bottom, 0px), var(--space-6));
+}
+
 html {
   background: var(--surface-sunken);
 }
@@ -92,8 +97,9 @@ select {
   :root,
   :root[data-nav="icons"] {
     --nav-inline-size: 0px;
-    --phone-bar-item-size: calc(var(--target-min-touch) + var(--space-2));
-    --phone-bar-block-size: calc(var(--phone-bar-item-size) + var(--space-2) + var(--border-thin) + var(--safe-block-end));
+    /* 56 px, the bar of the approved mockup (docs/mockup/mobile, frame 6). */
+    --phone-bar-size: calc(var(--space-12) + var(--space-2));
+    --phone-bar-block-size: calc(var(--phone-bar-size) + var(--border-thin) + var(--safe-block-end));
   }
 }
 

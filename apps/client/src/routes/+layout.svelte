@@ -19,6 +19,7 @@
   import { fadeInWords } from '$lib/nav/collapse/words';
   import { createClock } from '$lib/nav/clock.svelte';
   import Nav from '$lib/nav/Nav.svelte';
+  import { isAndroid } from '$lib/platform/mobile';
   import { capabilities } from '$lib/platform/platform';
   import { sessionsApi } from '$lib/sessions/api';
   import { restoredScroll, type CoveredScroll } from '$lib/sessions/covered';
@@ -42,6 +43,7 @@
   applyMotion(document.documentElement, storedMotion(localStorage));
   // On a Mac the window draws under its title bar; the bar keeps room for the window buttons.
   if (capabilities().overlayTitleBar) document.documentElement.dataset['titlebar'] = 'overlay';
+  if (isAndroid(navigator)) document.documentElement.dataset['os'] = 'android';
   // The bar shows icons only below the compact breakpoint or when the operator collapses it; set before the first
   // render so the width never changes after load.
   let nav = $state({ iconOnly: false, compact: false });
