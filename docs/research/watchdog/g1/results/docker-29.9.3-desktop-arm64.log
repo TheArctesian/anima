@@ -1,147 +1,183 @@
 == D1 restart no, crash after 2 s with code 3
-t+00.0s status=running restarting=false exit=0 restarts=0 health=none policy=no:0
-t+00.5s status=running restarting=false exit=0 restarts=0 health=none policy=no:0
-t+01.0s status=running restarting=false exit=0 restarts=0 health=none policy=no:0
-t+01.5s status=running restarting=false exit=0 restarts=0 health=none policy=no:0
-t+02.0s status=exited restarting=false exit=3 restarts=0 health=none policy=no:0
-t+02.5s status=exited restarting=false exit=3 restarts=0 health=none policy=no:0
-t+03.0s status=exited restarting=false exit=3 restarts=0 health=none policy=no:0
-t+03.5s status=exited restarting=false exit=3 restarts=0 health=none policy=no:0
+t+  0.2s status=running restarting=false exit=0 restarts=0 health=none policy=no:0
+t+  0.7s status=running restarting=false exit=0 restarts=0 health=none policy=no:0
+t+  1.3s status=running restarting=false exit=0 restarts=0 health=none policy=no:0
+t+  1.8s status=running restarting=false exit=0 restarts=0 health=none policy=no:0
+t+  2.4s status=exited restarting=false exit=3 restarts=0 health=none policy=no:0
+t+  2.9s status=exited restarting=false exit=3 restarts=0 health=none policy=no:0
+t+  3.5s status=exited restarting=false exit=3 restarts=0 health=none policy=no:0
+t+  4.0s status=exited restarting=false exit=3 restarts=0 health=none policy=no:0
 create g1-d1 exitCode= signal=;start g1-d1 exitCode= signal=;die g1-d1 exitCode=3 signal=;
 == D2 restart on-failure, crash after 1 s with code 1: Docker restarts with its delay
-t+00.0s status=running restarting=false exit=0 restarts=0 health=none policy=on-failure:0
-t+00.5s status=running restarting=false exit=0 restarts=0 health=none policy=on-failure:0
-t+01.0s status=restarting restarting=true exit=1 restarts=1 health=none policy=on-failure:0
-t+01.5s status=running restarting=false exit=0 restarts=1 health=none policy=on-failure:0
-t+02.0s status=restarting restarting=true exit=1 restarts=2 health=none policy=on-failure:0
-t+02.5s status=running restarting=false exit=0 restarts=2 health=none policy=on-failure:0
-t+03.0s status=running restarting=false exit=0 restarts=2 health=none policy=on-failure:0
-t+03.5s status=running restarting=false exit=0 restarts=3 health=none policy=on-failure:0
-t+04.0s status=running restarting=false exit=0 restarts=3 health=none policy=on-failure:0
-t+04.5s status=restarting restarting=true exit=1 restarts=4 health=none policy=on-failure:0
-t+05.0s status=restarting restarting=true exit=1 restarts=4 health=none policy=on-failure:0
-t+05.5s status=running restarting=false exit=0 restarts=4 health=none policy=on-failure:0
-t+06.0s status=running restarting=false exit=0 restarts=4 health=none policy=on-failure:0
-t+06.5s status=restarting restarting=true exit=1 restarts=5 health=none policy=on-failure:0
-t+07.0s status=restarting restarting=true exit=1 restarts=5 health=none policy=on-failure:0
-t+07.5s status=restarting restarting=true exit=1 restarts=5 health=none policy=on-failure:0
-t+08.0s status=running restarting=false exit=0 restarts=5 health=none policy=on-failure:0
-t+08.5s status=running restarting=false exit=0 restarts=5 health=none policy=on-failure:0
-t+09.0s status=restarting restarting=true exit=1 restarts=6 health=none policy=on-failure:0
-t+09.5s status=restarting restarting=true exit=1 restarts=6 health=none policy=on-failure:0
-t+10.0s status=restarting restarting=true exit=1 restarts=6 health=none policy=on-failure:0
-t+10.5s status=restarting restarting=true exit=1 restarts=6 health=none policy=on-failure:0
-t+11.0s status=restarting restarting=true exit=1 restarts=6 health=none policy=on-failure:0
-t+11.5s status=restarting restarting=true exit=1 restarts=6 health=none policy=on-failure:0
-t+12.0s status=running restarting=false exit=0 restarts=6 health=none policy=on-failure:0
-t+12.5s status=running restarting=false exit=0 restarts=6 health=none policy=on-failure:0
-t+13.0s status=restarting restarting=true exit=1 restarts=7 health=none policy=on-failure:0
-t+13.5s status=restarting restarting=true exit=1 restarts=7 health=none policy=on-failure:0
-t+14.0s status=restarting restarting=true exit=1 restarts=7 health=none policy=on-failure:0
-t+14.5s status=restarting restarting=true exit=1 restarts=7 health=none policy=on-failure:0
-t+15.0s status=restarting restarting=true exit=1 restarts=7 health=none policy=on-failure:0
-t+15.5s status=restarting restarting=true exit=1 restarts=7 health=none policy=on-failure:0
-t+16.0s status=restarting restarting=true exit=1 restarts=7 health=none policy=on-failure:0
-t+16.5s status=restarting restarting=true exit=1 restarts=7 health=none policy=on-failure:0
-t+17.0s status=restarting restarting=true exit=1 restarts=7 health=none policy=on-failure:0
-t+17.5s status=restarting restarting=true exit=1 restarts=7 health=none policy=on-failure:0
-t+18.0s status=restarting restarting=true exit=1 restarts=7 health=none policy=on-failure:0
-t+18.5s status=running restarting=false exit=0 restarts=7 health=none policy=on-failure:0
-t+19.0s status=running restarting=false exit=0 restarts=7 health=none policy=on-failure:0
-t+19.5s status=restarting restarting=true exit=1 restarts=8 health=none policy=on-failure:0
+t+  0.1s status=running restarting=false exit=0 restarts=0 health=none policy=on-failure:0
+t+  0.7s status=running restarting=false exit=0 restarts=0 health=none policy=on-failure:0
+t+  1.2s status=running restarting=false exit=0 restarts=1 health=none policy=on-failure:0
+t+  1.8s status=running restarting=false exit=0 restarts=1 health=none policy=on-failure:0
+t+  2.4s status=restarting restarting=true exit=1 restarts=2 health=none policy=on-failure:0
+t+  2.9s status=running restarting=false exit=0 restarts=2 health=none policy=on-failure:0
+t+  3.4s status=running restarting=false exit=0 restarts=2 health=none policy=on-failure:0
+t+  4.0s status=running restarting=false exit=0 restarts=3 health=none policy=on-failure:0
+t+  4.6s status=running restarting=false exit=0 restarts=3 health=none policy=on-failure:0
+t+  5.1s status=restarting restarting=true exit=1 restarts=4 health=none policy=on-failure:0
+t+  5.7s status=restarting restarting=true exit=1 restarts=4 health=none policy=on-failure:0
+t+  6.2s status=running restarting=false exit=0 restarts=4 health=none policy=on-failure:0
+t+  6.8s status=running restarting=false exit=0 restarts=4 health=none policy=on-failure:0
+t+  7.3s status=restarting restarting=true exit=1 restarts=5 health=none policy=on-failure:0
+t+  7.9s status=restarting restarting=true exit=1 restarts=5 health=none policy=on-failure:0
+t+  8.4s status=restarting restarting=true exit=1 restarts=5 health=none policy=on-failure:0
+t+  9.0s status=running restarting=false exit=0 restarts=5 health=none policy=on-failure:0
+t+  9.5s status=running restarting=false exit=0 restarts=5 health=none policy=on-failure:0
+t+ 10.1s status=restarting restarting=true exit=1 restarts=6 health=none policy=on-failure:0
+t+ 10.6s status=restarting restarting=true exit=1 restarts=6 health=none policy=on-failure:0
+t+ 11.2s status=restarting restarting=true exit=1 restarts=6 health=none policy=on-failure:0
+t+ 11.7s status=restarting restarting=true exit=1 restarts=6 health=none policy=on-failure:0
+t+ 12.3s status=restarting restarting=true exit=1 restarts=6 health=none policy=on-failure:0
+t+ 12.8s status=restarting restarting=true exit=1 restarts=6 health=none policy=on-failure:0
+t+ 13.4s status=running restarting=false exit=0 restarts=6 health=none policy=on-failure:0
+t+ 14.0s status=restarting restarting=true exit=1 restarts=7 health=none policy=on-failure:0
+t+ 14.5s status=restarting restarting=true exit=1 restarts=7 health=none policy=on-failure:0
+t+ 15.1s status=restarting restarting=true exit=1 restarts=7 health=none policy=on-failure:0
+t+ 15.6s status=restarting restarting=true exit=1 restarts=7 health=none policy=on-failure:0
+t+ 16.2s status=restarting restarting=true exit=1 restarts=7 health=none policy=on-failure:0
+t+ 16.7s status=restarting restarting=true exit=1 restarts=7 health=none policy=on-failure:0
+t+ 17.3s status=restarting restarting=true exit=1 restarts=7 health=none policy=on-failure:0
+t+ 17.8s status=restarting restarting=true exit=1 restarts=7 health=none policy=on-failure:0
+t+ 18.4s status=restarting restarting=true exit=1 restarts=7 health=none policy=on-failure:0
+t+ 18.9s status=restarting restarting=true exit=1 restarts=7 health=none policy=on-failure:0
+t+ 19.5s status=restarting restarting=true exit=1 restarts=7 health=none policy=on-failure:0
+t+ 20.0s status=restarting restarting=true exit=1 restarts=7 health=none policy=on-failure:0
+t+ 20.6s status=running restarting=false exit=0 restarts=7 health=none policy=on-failure:0
+t+ 21.2s status=running restarting=false exit=0 restarts=7 health=none policy=on-failure:0
+t+ 21.7s status=restarting restarting=true exit=1 restarts=8 health=none policy=on-failure:0
+create g1-d2 exitCode= signal=;start g1-d2 exitCode= signal=;die g1-d2 exitCode=1 signal=;start g1-d2 exitCode= signal=;die g1-d2 exitCode=1 signal=;start g1-d2 exitCode= signal=;die g1-d2 exitCode=1 signal=;start g1-d2 exitCode= signal=;die g1-d2 exitCode=1 signal=;start g1-d2 exitCode= signal=;die g1-d2 exitCode=1 signal=;start g1-d2 exitCode= signal=;die g1-d2 exitCode=1 signal=;start g1-d2 exitCode= signal=;die g1-d2 exitCode=1 signal=;start g1-d2 exitCode= signal=;die g1-d2 exitCode=1 signal=;
 == D3 restart on-failure:2, crash after 1 s with code 1: Docker stops its attempts
-t+00.0s status=running restarting=false exit=0 restarts=0 health=none policy=on-failure:2
-t+00.5s status=running restarting=false exit=0 restarts=0 health=none policy=on-failure:2
-t+01.0s status=restarting restarting=true exit=1 restarts=1 health=none policy=on-failure:2
-t+01.5s status=running restarting=false exit=0 restarts=1 health=none policy=on-failure:2
-t+02.0s status=restarting restarting=true exit=1 restarts=2 health=none policy=on-failure:2
-t+02.5s status=running restarting=false exit=0 restarts=2 health=none policy=on-failure:2
-t+03.0s status=running restarting=false exit=0 restarts=2 health=none policy=on-failure:2
-t+03.5s status=exited restarting=false exit=1 restarts=2 health=none policy=on-failure:2
-t+04.0s status=exited restarting=false exit=1 restarts=2 health=none policy=on-failure:2
-t+04.5s status=exited restarting=false exit=1 restarts=2 health=none policy=on-failure:2
-t+05.0s status=exited restarting=false exit=1 restarts=2 health=none policy=on-failure:2
-t+05.5s status=exited restarting=false exit=1 restarts=2 health=none policy=on-failure:2
-t+06.0s status=exited restarting=false exit=1 restarts=2 health=none policy=on-failure:2
-t+06.5s status=exited restarting=false exit=1 restarts=2 health=none policy=on-failure:2
-t+07.0s status=exited restarting=false exit=1 restarts=2 health=none policy=on-failure:2
-t+07.5s status=exited restarting=false exit=1 restarts=2 health=none policy=on-failure:2
+t+  0.1s status=running restarting=false exit=0 restarts=0 health=none policy=on-failure:2
+t+  0.7s status=running restarting=false exit=0 restarts=0 health=none policy=on-failure:2
+t+  1.2s status=running restarting=false exit=0 restarts=1 health=none policy=on-failure:2
+t+  1.8s status=running restarting=false exit=0 restarts=1 health=none policy=on-failure:2
+t+  2.4s status=restarting restarting=true exit=1 restarts=2 health=none policy=on-failure:2
+t+  2.9s status=running restarting=false exit=0 restarts=2 health=none policy=on-failure:2
+t+  3.5s status=running restarting=false exit=0 restarts=2 health=none policy=on-failure:2
+t+  4.0s status=exited restarting=false exit=1 restarts=2 health=none policy=on-failure:2
+t+  4.5s status=exited restarting=false exit=1 restarts=2 health=none policy=on-failure:2
+t+  5.1s status=exited restarting=false exit=1 restarts=2 health=none policy=on-failure:2
+t+  5.6s status=exited restarting=false exit=1 restarts=2 health=none policy=on-failure:2
+t+  6.2s status=exited restarting=false exit=1 restarts=2 health=none policy=on-failure:2
+t+  6.8s status=exited restarting=false exit=1 restarts=2 health=none policy=on-failure:2
+t+  7.3s status=exited restarting=false exit=1 restarts=2 health=none policy=on-failure:2
+t+  7.9s status=exited restarting=false exit=1 restarts=2 health=none policy=on-failure:2
+t+  8.4s status=exited restarting=false exit=1 restarts=2 health=none policy=on-failure:2
 create g1-d3 exitCode= signal=;start g1-d3 exitCode= signal=;die g1-d3 exitCode=1 signal=;start g1-d3 exitCode= signal=;die g1-d3 exitCode=1 signal=;start g1-d3 exitCode= signal=;die g1-d3 exitCode=1 signal=;
 == D4 restart always, serve: docker stop (a person)
-t+00.0s status=exited restarting=false exit=0 restarts=0 health=none policy=always:0
-t+00.5s status=exited restarting=false exit=0 restarts=0 health=none policy=always:0
-t+01.0s status=exited restarting=false exit=0 restarts=0 health=none policy=always:0
-t+01.5s status=exited restarting=false exit=0 restarts=0 health=none policy=always:0
-t+02.0s status=exited restarting=false exit=0 restarts=0 health=none policy=always:0
-t+02.5s status=exited restarting=false exit=0 restarts=0 health=none policy=always:0
-t+03.0s status=exited restarting=false exit=0 restarts=0 health=none policy=always:0
-t+03.5s status=exited restarting=false exit=0 restarts=0 health=none policy=always:0
+t+  0.1s status=exited restarting=false exit=0 restarts=0 health=none policy=always:0
+t+  0.6s status=exited restarting=false exit=0 restarts=0 health=none policy=always:0
+t+  1.2s status=exited restarting=false exit=0 restarts=0 health=none policy=always:0
+t+  1.7s status=exited restarting=false exit=0 restarts=0 health=none policy=always:0
+t+  2.3s status=exited restarting=false exit=0 restarts=0 health=none policy=always:0
+t+  2.8s status=exited restarting=false exit=0 restarts=0 health=none policy=always:0
+t+  3.4s status=exited restarting=false exit=0 restarts=0 health=none policy=always:0
+t+  3.9s status=exited restarting=false exit=0 restarts=0 health=none policy=always:0
 create g1-d4 exitCode= signal=;start g1-d4 exitCode= signal=;kill g1-d4 exitCode= signal=15;stop g1-d4 exitCode= signal=;die g1-d4 exitCode=0 signal=;
 == D5 restart always, serve: docker kill (a person, SIGKILL)
-t+00.0s status=exited restarting=false exit=137 restarts=0 health=none policy=always:0
-t+00.5s status=exited restarting=false exit=137 restarts=0 health=none policy=always:0
-t+01.0s status=exited restarting=false exit=137 restarts=0 health=none policy=always:0
-t+01.5s status=exited restarting=false exit=137 restarts=0 health=none policy=always:0
-t+02.0s status=exited restarting=false exit=137 restarts=0 health=none policy=always:0
-t+02.5s status=exited restarting=false exit=137 restarts=0 health=none policy=always:0
-t+03.0s status=exited restarting=false exit=137 restarts=0 health=none policy=always:0
-t+03.5s status=exited restarting=false exit=137 restarts=0 health=none policy=always:0
+t+  0.1s status=exited restarting=false exit=137 restarts=0 health=none policy=always:0
+t+  0.6s status=exited restarting=false exit=137 restarts=0 health=none policy=always:0
+t+  1.2s status=exited restarting=false exit=137 restarts=0 health=none policy=always:0
+t+  1.7s status=exited restarting=false exit=137 restarts=0 health=none policy=always:0
+t+  2.3s status=exited restarting=false exit=137 restarts=0 health=none policy=always:0
+t+  2.8s status=exited restarting=false exit=137 restarts=0 health=none policy=always:0
+t+  3.4s status=exited restarting=false exit=137 restarts=0 health=none policy=always:0
+t+  3.9s status=exited restarting=false exit=137 restarts=0 health=none policy=always:0
 create g1-d5 exitCode= signal=;start g1-d5 exitCode= signal=;kill g1-d5 exitCode= signal=9;die g1-d5 exitCode=137 signal=;
 == D6 restart always, serve: docker kill --signal TERM (a person, the program exits 0)
-t+00.0s status=exited restarting=false exit=0 restarts=0 health=none policy=always:0
-t+00.5s status=exited restarting=false exit=0 restarts=0 health=none policy=always:0
-t+01.0s status=exited restarting=false exit=0 restarts=0 health=none policy=always:0
-t+01.5s status=exited restarting=false exit=0 restarts=0 health=none policy=always:0
-t+02.0s status=exited restarting=false exit=0 restarts=0 health=none policy=always:0
-t+02.5s status=exited restarting=false exit=0 restarts=0 health=none policy=always:0
-t+03.0s status=exited restarting=false exit=0 restarts=0 health=none policy=always:0
-t+03.5s status=exited restarting=false exit=0 restarts=0 health=none policy=always:0
+t+  0.0s status=exited restarting=false exit=0 restarts=0 health=none policy=always:0
+t+  0.6s status=exited restarting=false exit=0 restarts=0 health=none policy=always:0
+t+  1.2s status=exited restarting=false exit=0 restarts=0 health=none policy=always:0
+t+  1.7s status=exited restarting=false exit=0 restarts=0 health=none policy=always:0
+t+  2.3s status=exited restarting=false exit=0 restarts=0 health=none policy=always:0
+t+  2.8s status=exited restarting=false exit=0 restarts=0 health=none policy=always:0
+t+  3.4s status=exited restarting=false exit=0 restarts=0 health=none policy=always:0
+t+  3.9s status=exited restarting=false exit=0 restarts=0 health=none policy=always:0
 create g1-d6 exitCode= signal=;start g1-d6 exitCode= signal=;kill g1-d6 exitCode= signal=15;die g1-d6 exitCode=0 signal=;
-== D7 restart always, serve, unhealthy after 6 s: the health probe
-t+00.0s status=running restarting=false exit=0 restarts=0 health=starting policy=always:0
-t+00.5s status=running restarting=false exit=0 restarts=0 health=starting policy=always:0
-t+01.0s status=running restarting=false exit=0 restarts=0 health=starting policy=always:0
-t+01.5s status=running restarting=false exit=0 restarts=0 health=starting policy=always:0
-t+02.0s status=running restarting=false exit=0 restarts=0 health=healthy policy=always:0
-t+02.5s status=running restarting=false exit=0 restarts=0 health=healthy policy=always:0
-t+03.0s status=running restarting=false exit=0 restarts=0 health=healthy policy=always:0
-t+03.5s status=running restarting=false exit=0 restarts=0 health=healthy policy=always:0
-t+04.0s status=running restarting=false exit=0 restarts=0 health=healthy policy=always:0
-t+04.5s status=running restarting=false exit=0 restarts=0 health=healthy policy=always:0
-t+05.0s status=running restarting=false exit=0 restarts=0 health=healthy policy=always:0
-t+05.5s status=running restarting=false exit=0 restarts=0 health=healthy policy=always:0
-t+06.0s status=running restarting=false exit=0 restarts=0 health=healthy policy=always:0
-t+06.5s status=running restarting=false exit=0 restarts=0 health=healthy policy=always:0
-t+07.0s status=running restarting=false exit=0 restarts=0 health=healthy policy=always:0
-t+07.5s status=running restarting=false exit=0 restarts=0 health=unhealthy policy=always:0
-t+08.0s status=running restarting=false exit=0 restarts=0 health=unhealthy policy=always:0
-t+08.5s status=running restarting=false exit=0 restarts=0 health=unhealthy policy=always:0
-t+09.0s status=running restarting=false exit=0 restarts=0 health=unhealthy policy=always:0
-t+09.5s status=running restarting=false exit=0 restarts=0 health=unhealthy policy=always:0
-t+10.0s status=running restarting=false exit=0 restarts=0 health=unhealthy policy=always:0
-t+10.5s status=running restarting=false exit=0 restarts=0 health=unhealthy policy=always:0
-t+11.0s status=running restarting=false exit=0 restarts=0 health=unhealthy policy=always:0
-t+11.5s status=running restarting=false exit=0 restarts=0 health=unhealthy policy=always:0
-t+12.0s status=running restarting=false exit=0 restarts=0 health=unhealthy policy=always:0
-t+12.5s status=running restarting=false exit=0 restarts=0 health=unhealthy policy=always:0
-t+13.0s status=running restarting=false exit=0 restarts=0 health=unhealthy policy=always:0
-t+13.5s status=running restarting=false exit=0 restarts=0 health=unhealthy policy=always:0
+== D7 restart always, serve, unhealthy after 6 s: the health probe (interval 2 s, 2 retries)
+t+  0.2s status=running restarting=false exit=0 restarts=0 health=starting policy=always:0
+t+  0.7s status=running restarting=false exit=0 restarts=0 health=starting policy=always:0
+t+  1.2s status=running restarting=false exit=0 restarts=0 health=starting policy=always:0
+t+  1.8s status=running restarting=false exit=0 restarts=0 health=starting policy=always:0
+t+  2.3s status=running restarting=false exit=0 restarts=0 health=healthy policy=always:0
+t+  2.9s status=running restarting=false exit=0 restarts=0 health=healthy policy=always:0
+t+  3.4s status=running restarting=false exit=0 restarts=0 health=healthy policy=always:0
+t+  4.0s status=running restarting=false exit=0 restarts=0 health=healthy policy=always:0
+t+  4.5s status=running restarting=false exit=0 restarts=0 health=healthy policy=always:0
+t+  5.1s status=running restarting=false exit=0 restarts=0 health=healthy policy=always:0
+t+  5.6s status=running restarting=false exit=0 restarts=0 health=healthy policy=always:0
+t+  6.2s status=running restarting=false exit=0 restarts=0 health=healthy policy=always:0
+t+  6.8s status=running restarting=false exit=0 restarts=0 health=healthy policy=always:0
+t+  7.3s status=running restarting=false exit=0 restarts=0 health=healthy policy=always:0
+t+  7.9s status=running restarting=false exit=0 restarts=0 health=healthy policy=always:0
+t+  8.4s status=running restarting=false exit=0 restarts=0 health=unhealthy policy=always:0
+t+  9.0s status=running restarting=false exit=0 restarts=0 health=unhealthy policy=always:0
+t+  9.5s status=running restarting=false exit=0 restarts=0 health=unhealthy policy=always:0
+t+ 10.1s status=running restarting=false exit=0 restarts=0 health=unhealthy policy=always:0
+t+ 10.6s status=running restarting=false exit=0 restarts=0 health=unhealthy policy=always:0
+t+ 11.2s status=running restarting=false exit=0 restarts=0 health=unhealthy policy=always:0
+t+ 11.7s status=running restarting=false exit=0 restarts=0 health=unhealthy policy=always:0
+t+ 12.3s status=running restarting=false exit=0 restarts=0 health=unhealthy policy=always:0
+t+ 12.8s status=running restarting=false exit=0 restarts=0 health=unhealthy policy=always:0
+t+ 13.4s status=running restarting=false exit=0 restarts=0 health=unhealthy policy=always:0
+t+ 13.9s status=running restarting=false exit=0 restarts=0 health=unhealthy policy=always:0
+t+ 14.5s status=running restarting=false exit=0 restarts=0 health=unhealthy policy=always:0
+t+ 15.0s status=running restarting=false exit=0 restarts=0 health=unhealthy policy=always:0
 create g1-d7 exitCode= signal=;start g1-d7 exitCode= signal=;health_status: healthy g1-d7 exitCode= signal=;health_status: unhealthy g1-d7 exitCode= signal=;
-== D8 restart always, serve: docker pause
-t+00.0s status=paused restarting=false exit=0 restarts=0 health=none policy=always:0
-t+00.5s status=paused restarting=false exit=0 restarts=0 health=none policy=always:0
-t+01.0s status=paused restarting=false exit=0 restarts=0 health=none policy=always:0
-t+01.5s status=paused restarting=false exit=0 restarts=0 health=none policy=always:0
+== D8 restart always, serve: docker pause (a person)
+t+  0.1s status=paused restarting=false exit=0 restarts=0 health=none policy=always:0
+t+  0.6s status=paused restarting=false exit=0 restarts=0 health=none policy=always:0
+t+  1.2s status=paused restarting=false exit=0 restarts=0 health=none policy=always:0
+t+  1.7s status=paused restarting=false exit=0 restarts=0 health=none policy=always:0
+create g1-d8 exitCode= signal=;start g1-d8 exitCode= signal=;pause g1-d8 exitCode= signal=;
 == D9 restart no, serve: docker restart (the restart of WDG-021)
-t+00.0s status=running restarting=false exit=0 restarts=0 health=none policy=no:0
-t+00.5s status=running restarting=false exit=0 restarts=0 health=none policy=no:0
-t+01.0s status=running restarting=false exit=0 restarts=0 health=none policy=no:0
-t+01.5s status=running restarting=false exit=0 restarts=0 health=none policy=no:0
+t+  0.2s status=running restarting=false exit=0 restarts=0 health=none policy=no:0
+t+  0.7s status=running restarting=false exit=0 restarts=0 health=none policy=no:0
+t+  1.3s status=running restarting=false exit=0 restarts=0 health=none policy=no:0
+t+  1.8s status=running restarting=false exit=0 restarts=0 health=none policy=no:0
 create g1-d9 exitCode= signal=;start g1-d9 exitCode= signal=;kill g1-d9 exitCode= signal=15;stop g1-d9 exitCode= signal=;die g1-d9 exitCode=0 signal=;start g1-d9 exitCode= signal=;restart g1-d9 exitCode= signal=;
 == D10 restart no, stopped by docker stop: docker start
 status=exited restarting=false exit=0 restarts=0 health=none policy=no:0
-t+00.0s status=running restarting=false exit=0 restarts=0 health=none policy=no:0
-t+00.5s status=running restarting=false exit=0 restarts=0 health=none policy=no:0
-t+01.0s status=running restarting=false exit=0 restarts=0 health=none policy=no:0
-t+01.5s status=running restarting=false exit=0 restarts=0 health=none policy=no:0
-== end: 0 containers left
+t+  0.1s status=running restarting=false exit=0 restarts=0 health=none policy=no:0
+t+  0.6s status=running restarting=false exit=0 restarts=0 health=none policy=no:0
+t+  1.2s status=running restarting=false exit=0 restarts=0 health=none policy=no:0
+t+  1.7s status=running restarting=false exit=0 restarts=0 health=none policy=no:0
+== D11 restart always, crash after 1 s with code 1
+t+  0.2s status=running restarting=false exit=0 restarts=0 health=none policy=always:0
+t+  0.7s status=running restarting=false exit=0 restarts=0 health=none policy=always:0
+t+  1.2s status=running restarting=false exit=0 restarts=1 health=none policy=always:0
+t+  1.8s status=running restarting=false exit=0 restarts=1 health=none policy=always:0
+t+  2.4s status=restarting restarting=true exit=1 restarts=2 health=none policy=always:0
+t+  2.9s status=running restarting=false exit=0 restarts=2 health=none policy=always:0
+t+  3.5s status=running restarting=false exit=0 restarts=2 health=none policy=always:0
+t+  4.0s status=running restarting=false exit=0 restarts=3 health=none policy=always:0
+t+  4.6s status=running restarting=false exit=0 restarts=3 health=none policy=always:0
+t+  5.2s status=restarting restarting=true exit=1 restarts=4 health=none policy=always:0
+t+  5.7s status=restarting restarting=true exit=1 restarts=4 health=none policy=always:0
+t+  6.3s status=running restarting=false exit=0 restarts=4 health=none policy=always:0
+create g1-d11 exitCode= signal=;start g1-d11 exitCode= signal=;die g1-d11 exitCode=1 signal=;start g1-d11 exitCode= signal=;die g1-d11 exitCode=1 signal=;start g1-d11 exitCode= signal=;die g1-d11 exitCode=1 signal=;start g1-d11 exitCode= signal=;die g1-d11 exitCode=1 signal=;start g1-d11 exitCode= signal=;die g1-d11 exitCode=1 signal=;
+== D12 restart unless-stopped, serve: docker stop (a person)
+t+  0.1s status=exited restarting=false exit=0 restarts=0 health=none policy=unless-stopped:0
+t+  0.7s status=exited restarting=false exit=0 restarts=0 health=none policy=unless-stopped:0
+t+  1.3s status=exited restarting=false exit=0 restarts=0 health=none policy=unless-stopped:0
+t+  1.8s status=exited restarting=false exit=0 restarts=0 health=none policy=unless-stopped:0
+t+  2.4s status=exited restarting=false exit=0 restarts=0 health=none policy=unless-stopped:0
+t+  2.9s status=exited restarting=false exit=0 restarts=0 health=none policy=unless-stopped:0
+t+  3.4s status=exited restarting=false exit=0 restarts=0 health=none policy=unless-stopped:0
+t+  4.0s status=exited restarting=false exit=0 restarts=0 health=none policy=unless-stopped:0
+create g1-d12 exitCode= signal=;start g1-d12 exitCode= signal=;kill g1-d12 exitCode= signal=15;stop g1-d12 exitCode= signal=;die g1-d12 exitCode=0 signal=;
+== D13 restart always, plain (catches no signal): docker kill --signal HUP (a person)
+t+  0.0s status=exited restarting=false exit=129 restarts=0 health=none policy=always:0
+t+  0.6s status=exited restarting=false exit=129 restarts=0 health=none policy=always:0
+t+  1.2s status=exited restarting=false exit=129 restarts=0 health=none policy=always:0
+t+  1.7s status=exited restarting=false exit=129 restarts=0 health=none policy=always:0
+t+  2.3s status=exited restarting=false exit=129 restarts=0 health=none policy=always:0
+t+  2.8s status=exited restarting=false exit=129 restarts=0 health=none policy=always:0
+t+  3.4s status=exited restarting=false exit=129 restarts=0 health=none policy=always:0
+t+  4.0s status=exited restarting=false exit=129 restarts=0 health=none policy=always:0
+create g1-d13 exitCode= signal=;start g1-d13 exitCode= signal=;kill g1-d13 exitCode= signal=1;die g1-d13 exitCode=129 signal=;
+== end: 0 containers left, 0 images left

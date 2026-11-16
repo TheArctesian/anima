@@ -4,6 +4,7 @@
 //	g1prog serve [unhealthy-after-seconds]  runs until SIGTERM, then exits 0; writes the file
 //	                                        "ok" in its working folder and deletes it after the
 //	                                        given seconds (0: never)
+//	g1prog plain                            runs until a signal stops it; catches no signal
 //	g1prog crash <seconds> <code>           exits with <code> after <seconds>
 //	g1prog health                           exits 0 when the file "ok" exists, else 1
 package main
@@ -25,6 +26,10 @@ func main() {
 	switch os.Args[1] {
 	case "serve":
 		serve(argument(2, 0))
+	case "plain":
+		for {
+			time.Sleep(time.Hour)
+		}
 	case "crash":
 		time.Sleep(time.Duration(argument(2, 1)) * time.Second)
 		os.Exit(argument(3, 1))
