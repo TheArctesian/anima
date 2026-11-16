@@ -34,6 +34,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-007 | The pinned Rust version on the Linux computer | The Linux development computer | Open |
 | HT-008 | A macOS release build with the pinned Rust version | A Mac builder | Open |
 | HT-009 | The hub image builds with Rust 1.100.0 | The next hub deployment (VPS-005) | Open |
+| HT-010 | "This machine" with the Anima VPN and NetBird together | A Mac with Tailscale and NetBird, and a second tailnet account | Open |
 
 ### HT-001: `anima snapshot` against GitHub
 
@@ -166,6 +167,37 @@ image after the change.
 
 1. At the next hub deployment, build the hub image. Expected: the build completes.
 2. Start the hub. Expected: the health check passes and migration 0715 is applied.
+
+Result: Open.
+
+### HT-010: "This machine" with the Anima VPN and NetBird together
+
+Built: on the branch `claude/vpn-own-address` (bdb321f1, 71bfcbdb; ADR-005, R-060), not
+merged. The desktop app takes its own VPN address from the Tailscale client that is logged in
+to the hub's login server (`vpnLoginServer`). It does not read the interfaces. Security finding:
+[SF-001](security-findings.md#sf-001-this-machine-can-show-and-probe-the-address-of-another-overlay-network).
+
+The tests use a script in place of the Tailscale client. No test ran NetBird, and no test ran a
+second overlay network on the same computer. One check on the operator's Mac with only the Anima
+VPN gave the Anima address (`100.64.0.2`) and SSH on.
+
+1. Install the desktop app of this build on a Mac. Connect the Anima VPN (Tailscale logged in
+   to the hub's login server). Connect NetBird on the same Mac. If you can, use a NetBird network
+   that gives this Mac an address in `100.64.0.0/10` that is lower than its Anima address.
+2. Run `tailscale ip -4` and `netbird status`. Write down the two addresses. Expected: two
+   different addresses.
+3. Open the app, sign in, and open Add device > This Mac. Expected: the host is the Tailscale
+   address of step 2, not the NetBird address.
+4. Run `sudo tcpdump -ni any 'tcp port 22 and tcp[tcpflags] & tcp-syn != 0'` in a terminal.
+   Open Add device > This Mac again. Expected: one connection to the Tailscale address, and none
+   to the NetBird address. The SSH part of the form is on only if SSH answers on the Tailscale
+   address.
+5. Disconnect the Anima VPN (`tailscale down`). Keep NetBird connected. Open Add device again.
+   Expected: This Mac has no VPN address, and the form opens empty.
+6. Sign the Tailscale client in to a different tailnet, for example a personal Tailscale
+   account. Open Add device again. Expected: This Mac has no VPN address.
+7. Sign the Tailscale client in to the Anima login server again. Expected: step 3 gives the
+   Anima address again.
 
 Result: Open.
 

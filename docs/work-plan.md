@@ -257,6 +257,7 @@ These documents are records, not plans. They must not add a requirement (PLN-009
 | `research/`, but not the task breakdowns and spec delta proposals in `research/one-click/` that the register lists | Audits and reports |
 | `setup/`, [releases.md](releases.md), [programme/linux-client-setup.md](programme/linux-client-setup.md) | Procedures |
 | [need-human-testing.md](need-human-testing.md) | The list of checks that only a person can do, with the state of each |
+| [security-findings.md](security-findings.md) | The list of security findings, with the state of each |
 | [ui-critique-2026-11-11.md](ui-critique-2026-11-11.md), [ui-inventory-2026-11-11.md](ui-inventory-2026-11-11.md) | Reviews of the interface |
 
 ## 10. Rules for plans and progress
