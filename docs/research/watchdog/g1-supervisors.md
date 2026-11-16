@@ -4,6 +4,7 @@ Version: 2. Date: 2026-11-16.
 Status: Partly measured. The macOS part (launchd and Docker) is measured. The Linux part
 (systemd, and the right of WDG-040) is not measured: it needs the operator's Linux machine.
 Version 2 adds the cases that an independent review found missing, and runs both scripts again.
+The reviewer accepted version 2.
 
 This document is a record (work plan, Section 9; PLN-010). It adds no requirement. Its Section 6
 lists inputs for the owner of the requirements,
@@ -66,7 +67,7 @@ Findings:
 
 - **F-L1.** While launchd waits to start a job again, `state` is `spawn scheduled` (L1, L2, L4,
   L12, L13). This is the state to wait for (WDG-023). An earlier run, which is not in the log,
-  also showed `xpcproxy` for one reading during a start.
+  also showed `xpcproxy` for one reading during a start; this is not logged evidence.
 - **F-L2.** launchd starts a job again about 10 s after its last start (L1, L2, L4). In L4 the
   attempts did not stop in 28 s. This record does not show if launchd stops its attempts later.
 - **F-L3.** launchd does not show who stopped a job. After `launchctl kill SIGTERM`,
@@ -76,8 +77,9 @@ Findings:
 - **F-L4.** With KeepAlive true, a person cannot stop a job with `launchctl kill`,
   `launchctl stop` or `kill`: launchd starts it again (L2, L12, L13). In the cases measured, the
   stops that stay are a job that is not loaded (`bootout`) and a job that is disabled (L3).
-- **F-L5.** `launchctl kickstart` waits for the start before it returns, also during the 10 s of
-  F-L2 (L9 to L11, L15).
+- **F-L5.** `launchctl kickstart` returned only after 7 to 15 s (L9 to L11, L15). The waits are
+  about the time left until 10 s after the last start (F-L2), but the log does not show the
+  cause. The 15 s of L9, which added two runs, is not explained.
 - **F-L6.** `kickstart` without `-k` starts a job that is not running and adds one run (L10).
   `kickstart -k` on a job that is not running adds two runs and reports `Terminated: 15` (L9).
   `kickstart -k` on a running job reports the exit of the old process: `last exit code = 0` for
@@ -126,10 +128,11 @@ Findings:
   (D1, D2, D3, D11). A `stop` event came only from `docker stop` and `docker restart` (D4, D9,
   D12). Not measured: a SIGKILL from a process outside the Engine, which is expected to write a
   `die` only.
-- **F-D7.** One sign comes from `inspect` alone. With the policy `always` or `unless-stopped`, a
-  crash gives `restarting` (D11), and a stop through the API gives `exited` (D4, D5, D6, D12,
-  D13). Thus `exited` under these two policies means a stop through the API. With the policies
-  `no` and `on-failure`, this sign does not apply.
+- **F-D7.** One sign comes from `inspect` alone. With the policy `always`, a crash gives
+  `restarting` (D11), and a stop through the API gives `exited` (D4, D5, D6, D13). Thus `exited`
+  under `always` means a stop through the API. `unless-stopped` gave `exited` after a stop (D12);
+  its result after a crash is expected to be the same as `always`, but it is not measured. With
+  the policies `no` and `on-failure`, this sign does not apply.
 - **F-D8.** Docker does not restart an `unhealthy` container (D7).
 - **F-D9.** A paused container is `paused` (D8). This is a stop by a person, and Docker shows it
   in the status.
@@ -157,8 +160,8 @@ of [watchdog.md](../../programme/proposals/watchdog.md).
    for Docker (F-D1). The systemd states stay to be measured.
 2. **WDG-025, launchd.** launchd does not show who stopped a job (F-L3). A SIGKILL from a shell
    can be a person or a failure (L1, L7). The findings mean that, for launchd, only a nonzero exit
-   code or a signal such as SIGSEGV, SIGBUS, SIGILL or SIGABRT is a failure that a watchdog can
-   tell. An exit 0, SIGTERM and SIGKILL fall under "cannot tell". With KeepAlive true, launchd
+   code (L4, L6) is a failure that a watchdog can tell. A signal such as SIGSEGV, SIGBUS, SIGILL
+   or SIGABRT is expected to be one too; no case produced these signals. An exit 0, SIGTERM and SIGKILL fall under "cannot tell". With KeepAlive true, launchd
    restarts the job in each of these cases (F-L4). A person keeps a job stopped with `bootout` or
    `disable` (F-L4).
 3. **WDG-025, Docker.** The events tell a stop through the API (F-D6). A watchdog needs to read the
@@ -166,7 +169,7 @@ of [watchdog.md](../../programme/proposals/watchdog.md).
    available for `always` and `unless-stopped`; `docker events --since` is not measured.
 4. **WDG-021, launchd.** `kickstart` without `-k` starts a job that is not running (F-L6).
    `kickstart -k` restarts a running job, but its result can look like a person's stop (F-L6).
-   `kickstart` can wait up to about 10 s, or longer with `-k` (F-L5, L9). This wait is not a
+   `kickstart` returned only after 7 to 15 s in the cases measured (F-L5). This wait is not a
    failure of the command.
 5. **WDG-024.** For Docker, "the supervisor stopped its own attempts" is `exited` with
    `RestartCount` equal to `MaximumRetryCount` under `on-failure:N` (F-D3). For launchd, the
