@@ -11,7 +11,7 @@ use crate::builder::{
     plan::{Command, Program, command},
 };
 
-/// Each program's cargo package and binary, in the order of [`super::PROGRAMS`].
+/// Each program's cargo package and binary, in the order of [`super::programs`].
 pub const PROGRAMS: [(&str, &str); 5] = [
     ("anima-cli", "anima"),
     ("anima-local-hub", "anima-local-hub"),

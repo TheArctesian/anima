@@ -167,7 +167,7 @@ pub fn mac_executable(clone: &Path, app: &Path) -> Result<PathBuf, BuilderError>
         .collect::<Result<Vec<OsString>, _>>()
         .map_err(|_| BuilderError::Bundle)?;
     names.sort();
-    let mut expected: Vec<&str> = carried::PROGRAMS.to_vec();
+    let mut expected: Vec<&str> = carried::programs().collect();
     expected.push(MAC_EXECUTABLE);
     expected.sort_unstable();
     if names != expected {

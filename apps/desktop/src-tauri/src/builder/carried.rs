@@ -10,6 +10,7 @@ pub mod link;
 pub mod mach_o;
 pub mod on_disk;
 pub mod rust_programs;
+pub mod signer;
 mod steps;
 pub mod tree;
 
@@ -22,14 +23,12 @@ use super::{
 
 /// The programs beside the app's own executable, as `bundle.externalBin` names them under
 /// `binaries/`: the five Rust programs, then `anima-link`.
-pub const PROGRAMS: [&str; 6] = [
-    "anima",
-    "anima-local-hub",
-    "anima-hub",
-    "anima-database",
-    "anima-gateway",
-    "anima-link",
-];
+pub fn programs() -> impl Iterator<Item = &'static str> {
+    rust_programs::PROGRAMS
+        .iter()
+        .map(|(_, binary)| *binary)
+        .chain([link::PROGRAM])
+}
 /// The folder Tauri reads the programs from, in the clone.
 const STAGE: &str = "apps/desktop/src-tauri/binaries";
 const UNIVERSAL: &str = "universal-apple-darwin";
@@ -39,8 +38,7 @@ const MAC_TRIPLES: [&str; 2] = ["aarch64-apple-darwin", "x86_64-apple-darwin"];
 /// The `bundle` settings that make Tauri carry the six programs and the tree, whose folder
 /// `apps/desktop/src-tauri/database` becomes `database` in the resources.
 pub fn bundle_settings() -> serde_json::Value {
-    let programs: Vec<String> = PROGRAMS
-        .iter()
+    let programs: Vec<String> = programs()
         .map(|program| format!("binaries/{program}"))
         .collect();
     serde_json::json!({ "externalBin": programs, "resources": { "database": "database" } })

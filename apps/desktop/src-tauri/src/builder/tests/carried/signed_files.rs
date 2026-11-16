@@ -75,7 +75,11 @@ mod signed_here {
     use std::{path::Path, process::Command, sync::Arc};
 
     use crate::builder::{
-        carried::mach_o, child::Running, environment::Environment, error::BuilderError, plan,
+        carried::{mach_o, signer::Signer},
+        child::Running,
+        environment::Environment,
+        error::BuilderError,
+        plan,
     };
 
     const IDENTITY: &str = "Developer ID Application: Stephen Okita (7GDLG48PV6)";
@@ -87,7 +91,7 @@ mod signed_here {
         let claim = running.claim(Arc::new(|_| {})).unwrap();
         let env = Environment::from_parent(std::env::vars_os());
         let program = Path::new("/usr/bin").join(command.program.name());
-        claim.run(command, &program, env.for_step(&[])).await
+        claim.read(command, &program, env.for_step(&[])).await
     }
 
     fn signed_copy(folder: &Path, name: &str, extra: &[&str]) -> std::path::PathBuf {
@@ -120,7 +124,7 @@ mod signed_here {
                 entitlements.to_str().unwrap(),
             ],
         );
-        let team = mach_o::Signer::from_identity(IDENTITY).unwrap().team;
+        let team = Signer::from_identity(IDENTITY).unwrap().team;
         for file in [&hardened, &entitled, Path::new("/usr/bin/true")] {
             assert_eq!(
                 run(&mach_o::verify(file, &team)).await,

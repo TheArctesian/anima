@@ -19,8 +19,6 @@ const RECIPE: &str = "apps/desktop/src-tauri/database-tree/build.sh";
 const OUT: &str = "apps/desktop/src-tauri/database";
 /// The recipe's work folder, beside the clone, so `git clean` of the clone never reaches it.
 const WORK: &str = "database-tree";
-/// The Tauri configuration that names the signing identity, relative to the clone.
-pub const CONFIG: &str = "apps/desktop/src-tauri/tauri.conf.json";
 /// The files of the clone the recipe runs or reads, each checked against the commit before.
 pub const COMMITTED: [&str; 2] = [
     RECIPE,
@@ -60,11 +58,4 @@ pub fn build(
         sh.env.push((IDENTITY_VARIABLE, identity.to_owned()));
     }
     Ok(sh)
-}
-
-/// `bundle.macOS.signingIdentity` of a `tauri.conf.json`, when it names one (BLD-083).
-pub fn signing_identity(config: &serde_json::Value) -> Option<&str> {
-    config["bundle"]["macOS"]["signingIdentity"]
-        .as_str()
-        .filter(|name| !name.is_empty())
 }

@@ -1,6 +1,5 @@
-//! The file work of the carried step at the OS edge: the tree's new work folder, the signing
-//! identity in the clone's `tauri.conf.json`, the files that must not be in the clone, and the
-//! Mach-O files of the built app. The build wrote every one of these places, so no link is
+//! The file work of the carried step at the OS edge: the tree's new work folder, the files that
+//! must not be in the clone, and the Mach-O files of the built app. The build wrote every one of these places, so no link is
 //! followed and no path or text crosses in an error (LOG-007).
 
 use std::{
@@ -10,11 +9,8 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use super::{mach_o, tree};
+use super::mach_o;
 use crate::builder::{artifact, error::BuilderError};
-
-/// The most of `tauri.conf.json` that is read.
-const CONFIG_BYTES_MAX: u64 = 1 << 20;
 
 /// Whether `kind` is a folder of this user that nobody else may write to.
 fn private(kind: &Metadata) -> bool {
@@ -56,17 +52,6 @@ pub fn absent(path: &Path) -> Result<(), BuilderError> {
         Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(()),
         _ => Err(BuilderError::Dirty),
     }
-}
-
-/// `bundle.macOS.signingIdentity` of the clone's own `tauri.conf.json`, the one Tauri signs with
-/// (D-5, BLD-083); `Bundle` when the file is not the build's own or names none.
-pub fn signing_identity(clone: &Path) -> Result<String, BuilderError> {
-    let file = artifact::open_own(clone, &clone.join(tree::CONFIG))?;
-    let config: serde_json::Value =
-        serde_json::from_reader(file.take(CONFIG_BYTES_MAX)).map_err(|_| BuilderError::Bundle)?;
-    tree::signing_identity(&config)
-        .map(str::to_owned)
-        .ok_or(BuilderError::Bundle)
 }
 
 /// Whether `name` is one a checked file may have: no control character, so no line `codesign`

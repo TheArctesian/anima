@@ -2,11 +2,7 @@
 //! `--skip-worktree` or `--assume-unchanged`, an exclude rule, a changed recipe. Each is undone by
 //! the checkout or refused before a recipe runs. A local bare repository stands in for GitHub.
 
-use std::{
-    fs,
-    path::{Path, PathBuf},
-    sync::Arc,
-};
+use std::{fs, path::PathBuf, sync::Arc};
 
 use super::checkout::git;
 use crate::builder::{
@@ -19,12 +15,13 @@ use crate::builder::{
     steps::Workshop,
 };
 
-/// Fake recipes that write their name to `order` beside the clone; `link/build.sh` also writes
-/// the header of an x86-64 ELF program where the bundle step takes it.
-const FILES: [(&str, &str); 6] = [
+/// Fake recipes that write to `order` beside the clone: the tree's `tree` when its work folder is
+/// empty, else `stale`; the link's `link`, and it puts `link-output` beside the clone where the
+/// bundle step takes the Linux `anima-link`.
+const FILES: [(&str, &str); 7] = [
     (
         "apps/desktop/src-tauri/database-tree/build.sh",
-        "echo tree >> ../order\n",
+        "if [ -z \"$(ls -A \"$2\")\" ]; then echo tree; else echo stale; fi >> ../order\n",
     ),
     (
         "apps/desktop/src-tauri/database-tree/postgresql.pin",
@@ -32,11 +29,19 @@ const FILES: [(&str, &str); 6] = [
     ),
     (
         "link/build.sh",
-        "echo link >> ../order\nmkdir -p link/bin\nprintf '\\177ELF\\002\\001\\001\\000\\000\\000\\000\\000\\000\\000\\000\\000\\002\\000\\076\\000' > link/bin/anima-link-linux-amd64\n",
+        "echo link >> ../order\nmkdir -p link/bin\ncat ../link-output > link/bin/anima-link-linux-amd64\n",
     ),
     ("link/go.mod", "module example.org/link\n\ngo 1.21\n"),
     ("link/go.sum", ""),
     ("main.txt", "committed\n"),
+    (
+        "apps/desktop/src-tauri/tauri.conf.json",
+        r#"{"bundle":{"macOS":{"signingIdentity":"Developer ID Application: Stephen Okita (7GDLG48PV6)"}}}"#,
+    ),
+];
+/// The header of an x86-64 ELF executable.
+const ELF: [u8; 20] = [
+    0x7f, b'E', b'L', b'F', 2, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 62, 0,
 ];
 
 /// A bare repository whose `main` holds `FILES`, and the clone's path, in a folder reached
@@ -170,30 +175,81 @@ async fn m_1_a_recipe_that_is_not_the_committed_one_fails_its_check() {
 }
 
 #[tokio::test]
-async fn m_2_the_tree_recipe_then_the_link_run_before_cargo_and_a_go_workspace_stops_the_link() {
+async fn m_2_the_tree_recipe_in_a_new_work_folder_then_the_link_run_before_cargo() {
     let origin = checked_out().await;
     let running = Running::default();
     let workshop = workshop(&origin, &running);
     let version = Version::parse("0.1.12").unwrap();
-    let order = origin.clone.parent().unwrap().join("order");
+    let beside = origin.clone.parent().unwrap();
+    let order = beside.join("order");
+    // What an earlier run left in the work folder is gone before the recipe runs.
+    fs::create_dir_all(beside.join("database-tree")).unwrap();
+    fs::write(beside.join("database-tree/STAMP"), "an old stamp").unwrap();
+    fs::write(beside.join("link-output"), ELF).unwrap();
     // Linux: no signing identity. The repository has no Cargo.toml, so `cargo build` fails.
     let result = workshop
         .bundle(&origin.commit, Target::LinuxX86_64, &version)
         .await;
     assert_eq!(result, Err(BuilderError::StepFailed));
     assert_eq!(fs::read_to_string(&order).unwrap(), "tree\nlink\n");
+    // A link program that is not an x86-64 ELF program stops the step before `cargo build`.
+    // The checkout removes the link's output of the first run.
+    assert_eq!(workshop.checkout(&origin.commit).await, Ok(()));
     fs::remove_file(&order).unwrap();
+    fs::write(beside.join("link-output"), "#!/bin/sh\n").unwrap();
+    let result = workshop
+        .bundle(&origin.commit, Target::LinuxX86_64, &version)
+        .await;
+    assert_eq!(result, Err(BuilderError::Bundle));
+    assert_eq!(fs::read_to_string(&order).unwrap(), "tree\nlink\n");
+}
+
+#[tokio::test]
+async fn m_2_a_go_workspace_or_vendor_folder_stops_the_link_before_its_recipe() {
+    let origin = checked_out().await;
+    let running = Running::default();
+    let workshop = workshop(&origin, &running);
+    let order = origin.clone.parent().unwrap().join("order");
     fs::write(origin.clone.join("link/go.work"), "go 1.21\n").unwrap();
     assert_eq!(
-        workshop.link(&origin.commit, Target::LinuxX86_64).await,
+        workshop.link(&origin.commit).await,
         Err(BuilderError::Dirty)
     );
     assert!(!order.exists(), "the link recipe did not run");
     fs::remove_file(origin.clone.join("link/go.work")).unwrap();
     fs::create_dir_all(origin.clone.join("link/vendor")).unwrap();
     assert_eq!(
-        workshop.link(&origin.commit, Target::LinuxX86_64).await,
+        workshop.link(&origin.commit).await,
         Err(BuilderError::Dirty)
     );
-    assert!(Path::new(&origin.clone).join("link/go.mod").is_file());
+    assert!(!order.exists(), "the link recipe did not run");
+}
+
+#[tokio::test]
+async fn s12_s_2_a_mac_release_is_signed_by_the_builders_own_identity() {
+    let origin = checked_out().await;
+    let running = Running::default();
+    let workshop = workshop(&origin, &running);
+    let signer = workshop
+        .signer(&origin.commit, Target::DarwinUniversal)
+        .await
+        .unwrap()
+        .expect("a macOS release has a signer");
+    assert_eq!(signer.team.as_str(), "7GDLG48PV6");
+    assert_eq!(
+        workshop.signer(&origin.commit, Target::LinuxX86_64).await,
+        Ok(None)
+    );
+    let config = origin.clone.join("apps/desktop/src-tauri/tauri.conf.json");
+    fs::write(
+        &config,
+        r#"{"bundle":{"macOS":{"signingIdentity":"x (AAAAAAAAAA)"}}}"#,
+    )
+    .unwrap();
+    assert_eq!(
+        workshop
+            .signer(&origin.commit, Target::DarwinUniversal)
+            .await,
+        Err(BuilderError::Dirty)
+    );
 }

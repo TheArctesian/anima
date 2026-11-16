@@ -11,7 +11,7 @@ use std::{
 
 use super::args;
 use crate::builder::{
-    carried::{mach_o::Signer, on_disk, tree},
+    carried::{on_disk, tree},
     child::Running,
     environment::Environment,
     error::BuilderError,
@@ -138,66 +138,6 @@ fn s12_s_7_a_work_folder_reached_through_a_link_or_in_a_shared_folder_is_refused
 }
 
 #[test]
-fn s12_s_2_the_signer_is_the_builders_own_identity_when_the_clone_names_the_same() {
-    let signer = Signer::pinned(Some(IDENTITY), IDENTITY).unwrap();
-    assert_eq!(
-        (signer.identity.as_str(), signer.team.as_str()),
-        (IDENTITY, "7GDLG48PV6")
-    );
-    let other = "Developer ID Application: Other Ltd (24VZTF6M5V)";
-    for (own, clone) in [
-        (Some(IDENTITY), other),
-        (Some(other), IDENTITY),
-        (None, IDENTITY),
-        (Some(""), ""),
-        (
-            Some("Developer ID Application: X (bad)"),
-            "Developer ID Application: X (bad)",
-        ),
-    ] {
-        assert_eq!(
-            Signer::pinned(own, clone),
-            Err(BuilderError::Bundle),
-            "{own:?} {clone}"
-        );
-    }
-    assert_eq!(
-        crate::builder::tools::readings::signing_identity().as_deref(),
-        Some(IDENTITY),
-        "the builder's own identity comes from the config it was built with"
-    );
-}
-
-#[test]
-fn s12_d_5_the_signing_identity_is_read_from_the_clones_own_config() {
-    let root = tempfile::tempdir().unwrap();
-    let clone = fs::canonicalize(root.path()).unwrap().join("clone");
-    let config = clone.join(tree::CONFIG);
-    fs::create_dir_all(config.parent().unwrap()).unwrap();
-    let with = |identity: &str| {
-        serde_json::json!({ "bundle": { "macOS": { "signingIdentity": identity } } }).to_string()
-    };
-    fs::write(&config, with(IDENTITY)).unwrap();
-    assert_eq!(on_disk::signing_identity(&clone).unwrap(), IDENTITY);
-    let signer = Signer::from_identity(IDENTITY).unwrap();
-    assert_eq!(signer.team.as_str(), "7GDLG48PV6");
-    for bad in [
-        with(""),
-        r#"{"bundle":{}}"#.to_owned(),
-        "not json".to_owned(),
-    ] {
-        fs::write(&config, bad).unwrap();
-        assert_eq!(on_disk::signing_identity(&clone), Err(BuilderError::Bundle));
-    }
-    // A config the build swapped for a link to another file is not read.
-    let elsewhere = root.path().join("tauri.conf.json");
-    fs::write(&elsewhere, with(IDENTITY)).unwrap();
-    fs::remove_file(&config).unwrap();
-    symlink(&elsewhere, &config).unwrap();
-    assert_eq!(on_disk::signing_identity(&clone), Err(BuilderError::Bundle));
-}
-
-#[test]
 fn s12_t3_a_linux_builder_without_a_tool_of_the_tree_recipe_names_it() {
     let env = Environment::from_parent([("PATH".into(), "/usr/local/bin".into())]);
     let tree_tool = |path: &Path| {
@@ -211,7 +151,15 @@ fn s12_t3_a_linux_builder_without_a_tool_of_the_tree_recipe_names_it() {
         !tools::missing(Target::LinuxX86_64, &env, exists).contains(&Tool::TreeTools)
     };
     assert!(has_tree_tools(&tree_tool));
-    for absent in ["/usr/include/zlib.h", "/usr/bin/patchelf", "/usr/bin/flex"] {
+    for absent in [
+        "/usr/include/zlib.h",
+        "/usr/bin/make",
+        "/usr/bin/bison",
+        "/usr/bin/flex",
+        "/usr/bin/patchelf",
+        "/usr/bin/readelf",
+        "/usr/bin/curl",
+    ] {
         let without = |path: &Path| tree_tool(path) && path != Path::new(absent);
         assert!(!has_tree_tools(&without), "{absent}");
     }

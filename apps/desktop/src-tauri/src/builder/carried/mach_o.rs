@@ -6,6 +6,7 @@
 use std::path::Path;
 
 use crate::builder::{
+    artifact,
     error::BuilderError,
     plan::{Command, Kept, Program, command},
 };
@@ -37,34 +38,11 @@ pub fn is_mach_o(header: &[u8]) -> bool {
 pub struct TeamId(String);
 
 impl TeamId {
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
-}
-
-/// The identity that signs a release and the Team ID it names (D-5).
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Signer {
-    pub identity: String,
-    pub team: TeamId,
-}
-
-impl Signer {
-    /// The signer of a release: `own`, the identity this builder was built with, when the clone's
-    /// `tauri.conf.json` names the same one. The identity never comes from the clone, which a
-    /// build can change (BLD-083).
-    pub fn pinned(own: Option<&str>, clone: &str) -> Result<Self, BuilderError> {
-        match own {
-            Some(own) if !own.is_empty() && own == clone => Self::from_identity(own),
-            _ => Err(BuilderError::Bundle),
-        }
-    }
-
-    /// `identity` with the Team ID in its last parentheses, as `Developer ID Application: Name
-    /// (7GDLG48PV6)`. The Team ID goes into a code requirement, so anything but ten characters
-    /// of `A-Z0-9` at the end is refused.
-    pub fn from_identity(identity: &str) -> Result<Self, BuilderError> {
-        let team = identity
+    /// The Team ID in the last parentheses of `identity`, as `Developer ID Application: Name
+    /// (7GDLG48PV6)`. It goes into a code requirement, so anything but ten characters of
+    /// `A-Z0-9` at the end is refused.
+    pub fn of_identity(identity: &str) -> Result<Self, BuilderError> {
+        identity
             .strip_suffix(')')
             .and_then(|rest| rest.rsplit_once('('))
             .map(|(_, team)| team)
@@ -74,11 +52,12 @@ impl Signer {
                         .bytes()
                         .all(|b| b.is_ascii_uppercase() || b.is_ascii_digit())
             })
-            .ok_or(BuilderError::Bundle)?;
-        Ok(Self {
-            identity: identity.to_owned(),
-            team: TeamId(team.to_owned()),
-        })
+            .map(|team| Self(team.to_owned()))
+            .ok_or(BuilderError::Bundle)
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
     }
 }
 
@@ -170,4 +149,34 @@ pub fn no_entitlements(lines: &[String]) -> bool {
                 || text.ends_with("<plistversion=\"1.0\"><dict/></plist>"))
             && text.matches("<dict").count() == 1
             && !text.contains("<key>"))
+}
+
+/// What the checks of one Mach-O file read: `lipo -archs`, whether `codesign --verify -R`
+/// passed, and for each architecture `codesign -d --verbose=4` and its entitlements.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct Readings {
+    pub archs: Vec<String>,
+    pub verified: bool,
+    pub displays: Vec<(&'static str, Vec<String>)>,
+    pub entitlements: Vec<(&'static str, Vec<String>)>,
+}
+
+/// Whether one reading of each of `ARCHS`, and no other, is in `found` and passes `good`.
+fn each_arch(found: &[(&str, Vec<String>)], good: fn(&[String]) -> bool) -> bool {
+    found.len() == ARCHS.len()
+        && ARCHS.iter().all(|arch| {
+            found
+                .iter()
+                .any(|(read, lines)| read == arch && good(lines))
+        })
+}
+
+/// Whether the readings of one file are those of a release file (UPD-011, D-3): exactly the two
+/// architectures, the Developer ID signature of the team, and for each architecture the
+/// hardened runtime, a secure timestamp and no entitlement.
+pub fn released(readings: &Readings) -> bool {
+    artifact::universal(&readings.archs)
+        && readings.verified
+        && each_arch(&readings.displays, hardened_and_timestamped)
+        && each_arch(&readings.entitlements, no_entitlements)
 }

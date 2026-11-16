@@ -6,7 +6,7 @@
 
 use std::path::{Path, PathBuf};
 
-use super::staged_as;
+use super::{staged_as, triples};
 use crate::builder::{
     job::Target,
     plan::{Command, Program, command},
@@ -57,15 +57,19 @@ pub fn verify(clone: &Path) -> Command {
     ))
 }
 
-/// The Go platform of each Rust triple the app is built for.
-fn platforms(target: Target) -> &'static [(&'static str, &'static str)] {
-    match target {
-        Target::LinuxX86_64 => &[("linux-amd64", "x86_64-unknown-linux-gnu")],
-        Target::DarwinUniversal => &[
-            ("darwin-arm64", "aarch64-apple-darwin"),
-            ("darwin-amd64", "x86_64-apple-darwin"),
-        ],
-    }
+/// The Go platform (`<os>-<arch>`) of a Rust triple the app is built for.
+fn go_platform(triple: &str) -> String {
+    let os = if triple.ends_with("-apple-darwin") {
+        "darwin"
+    } else {
+        "linux"
+    };
+    let arch = if triple.starts_with("aarch64-") {
+        "arm64"
+    } else {
+        "amd64"
+    };
+    format!("{os}-{arch}")
 }
 
 /// `/bin/sh link/build.sh`, from the clone. Go is found on the step's `PATH`.
@@ -75,11 +79,13 @@ pub fn build(clone: &Path) -> Command {
 
 /// Each program the recipe wrote for `target`, and the name Tauri reads it under.
 pub fn copies(clone: &Path, target: Target) -> Vec<(PathBuf, PathBuf)> {
-    platforms(target)
+    triples(target)
         .iter()
-        .map(|(platform, triple)| {
+        .map(|triple| {
             (
-                clone.join(OUTPUT).join(format!("{PROGRAM}-{platform}")),
+                clone
+                    .join(OUTPUT)
+                    .join(format!("{PROGRAM}-{}", go_platform(triple))),
                 staged_as(clone, PROGRAM, triple),
             )
         })

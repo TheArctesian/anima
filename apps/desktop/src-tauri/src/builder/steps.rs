@@ -10,7 +10,7 @@ use std::{
 
 use super::{
     artifact,
-    carried::{mach_o::Signer, tree},
+    carried::{link, mach_o::TeamId, rust_programs, signer},
     child::Claim,
     environment::Environment,
     error::BuilderError,
@@ -54,11 +54,20 @@ pub fn config_is_clones(keys: &[String]) -> bool {
 }
 
 impl Workshop<'_> {
-    /// Runs one command and returns the lines of its kept stream.
-    pub(super) async fn run(&self, command: &Command) -> Result<Vec<String>, BuilderError> {
+    /// Runs one command for its exit status only.
+    pub(super) async fn run(&self, command: &Command) -> Result<(), BuilderError> {
         let program = self.program(command.program)?;
         self.claim
             .run(command, &program, self.variables(command))
+            .await
+    }
+
+    /// Runs one command and returns the lines of its kept stream, for a decision; a stream that
+    /// did not close fails the step.
+    pub(super) async fn read(&self, command: &Command) -> Result<Vec<String>, BuilderError> {
+        let program = self.program(command.program)?;
+        self.claim
+            .read(command, &program, self.variables(command))
             .await
     }
 
@@ -97,7 +106,7 @@ impl Workshop<'_> {
         if !git.is_dir() || UNTRUSTED_FILES.iter().any(|file| git.join(file).exists()) {
             return false;
         }
-        self.run(&plan::config_keys(&self.clone))
+        self.read(&plan::config_keys(&self.clone))
             .await
             .is_ok_and(|keys| config_is_clones(&keys))
     }
@@ -141,12 +150,12 @@ impl Workshop<'_> {
             .await?;
         match self.run(&plan::fsck(&self.clone)).await {
             Err(BuilderError::StepFailed) if !fresh => {}
-            other => return other.map(drop),
+            other => return other,
         }
         self.clone_anew().await?;
         self.run(&plan::fetch(&self.repository, &self.clone))
             .await?;
-        self.run(&plan::fsck(&self.clone)).await.map(drop)
+        self.run(&plan::fsck(&self.clone)).await
     }
 
     /// Makes the clone whole, refuses a commit that is not on `main`, then checks the commit out
@@ -156,10 +165,10 @@ impl Workshop<'_> {
         match self.run(&plan::ancestry(&self.clone, commit)).await {
             Err(BuilderError::StepFailed) => return Err(BuilderError::NotOnMain),
             other => other?,
-        };
+        }
         self.forget_index()?;
         self.run_all(&plan::checkout(&self.clone, commit)).await?;
-        if self.run(&plan::status(&self.clone)).await?.is_empty() {
+        if self.read(&plan::status(&self.clone)).await?.is_empty() {
             Ok(())
         } else {
             Err(BuilderError::Dirty)
@@ -173,13 +182,13 @@ impl Workshop<'_> {
         if !self.trusted_clone().await {
             return Err(BuilderError::Dirty);
         }
-        let head = self.run(&plan::head(&self.clone)).await?;
+        let head = self.read(&plan::head(&self.clone)).await?;
         if !matches!(head.as_slice(), [line] if line == commit.as_str()) {
             return Err(BuilderError::Dirty);
         }
         self.forget_index()?;
         self.run(&plan::read_tree(&self.clone, commit)).await?;
-        if self.run(&plan::status(&self.clone)).await?.is_empty() {
+        if self.read(&plan::status(&self.clone)).await?.is_empty() {
             Ok(())
         } else {
             Err(BuilderError::Dirty)
@@ -197,7 +206,7 @@ impl Workshop<'_> {
     /// updater file is made from the stapled app (BLD-084, BLD-085). A submission Apple does not
     /// accept fails the step; its status is in the step's log.
     async fn notarize(&self, dmg: &Path, app: &Path) -> Result<(), BuilderError> {
-        if !artifact::notarized(&self.run(&plan::notarize(dmg)).await?) {
+        if !artifact::notarized(&self.read(&plan::notarize(dmg)).await?) {
             return Err(BuilderError::StepFailed);
         }
         self.run_all(&plan::staple(dmg)).await?;
@@ -218,9 +227,20 @@ impl Workshop<'_> {
         self.at(commit).await?;
         let signer = self.signer(commit, target).await?;
         self.tree(commit, target, signer.as_ref()).await?;
-        self.link(commit, target).await?;
+        self.link(commit).await?;
+        self.stage(target, &link::copies(&self.clone, target), &[link::PROGRAM])
+            .await?;
+        self.check_staged(target, &[link::PROGRAM]).await?;
+        let binaries = rust_programs::PROGRAMS.map(|(_, binary)| binary);
         self.rust_programs(target, version).await?;
-        self.committed(commit, &[tree::CONFIG]).await?;
+        self.stage(
+            target,
+            &rust_programs::copies(&self.clone, target),
+            &binaries,
+        )
+        .await?;
+        self.check_staged(target, &binaries).await?;
+        self.committed(commit, &[signer::CONFIG]).await?;
         artifact::clear_bundle(&self.clone, target)?;
         let identity = signer.as_ref().map(|signer| signer.identity.as_str());
         self.run_all(&plan::bundle(&self.clone, target, version, identity))
@@ -228,32 +248,38 @@ impl Workshop<'_> {
         artifact::stabilize_names(&self.clone, target, version)?;
         let updater = artifact::updater_file(&self.clone, target, version);
         if let Some(signer) = &signer {
-            self.release_mac(version, signer, &updater).await?;
+            let app = artifact::own_folder(&self.clone, &artifact::mac_app(&self.clone))?;
+            self.check_app(&app, &signer.team).await?;
+            self.release_mac(version, &app, &updater).await?;
         }
         artifact::own_file(&self.clone, &updater)
     }
 
-    /// Checks the signed app (UPD-011): exactly the expected programs, `codesign --verify --deep
-    /// --strict` of the app, its own executable universal, then every Mach-O file of it (S12
-    /// 2.3). Then notarizes and staples the DMG and the app and archives the app as `updater`.
+    /// Fails unless the signed `app` passes the checks of UPD-011: exactly the expected
+    /// programs, `codesign --verify --deep --strict` of the app, its own executable universal,
+    /// then every Mach-O file of it with the Developer ID signature of `team` (S12 2.3).
+    pub(super) async fn check_app(&self, app: &Path, team: &TeamId) -> Result<(), BuilderError> {
+        let executable = artifact::mac_executable(&self.clone, app)?;
+        let [codesign, lipo] = plan::bundle_checks(app, &executable);
+        self.run(&codesign).await?;
+        if !artifact::universal(&self.read(&lipo).await?) {
+            return Err(BuilderError::Bundle);
+        }
+        self.signed_mach_o(app, team).await
+    }
+
+    /// Makes the macOS updater file `updater` from the checked `app`: the DMG is notarized and
+    /// stapled, the app is stapled and archived (BLD-084, BLD-085).
     async fn release_mac(
         &self,
         version: &Version,
-        signer: &Signer,
+        app: &Path,
         updater: &Path,
     ) -> Result<(), BuilderError> {
-        let app = artifact::own_folder(&self.clone, &artifact::mac_app(&self.clone))?;
-        let executable = artifact::mac_executable(&self.clone, &app)?;
-        let [codesign, lipo] = plan::bundle_checks(&app, &executable);
-        self.run(&codesign).await?;
-        if !artifact::universal(&self.run(&lipo).await?) {
-            return Err(BuilderError::Bundle);
-        }
-        self.signed_mach_o(&app, &signer.team).await?;
         let dmg = artifact::dmg_file(&self.clone, Target::DarwinUniversal, version)
             .ok_or(BuilderError::Bundle)?;
-        self.notarize(&artifact::own_file(&self.clone, &dmg)?, &app)
+        self.notarize(&artifact::own_file(&self.clone, &dmg)?, app)
             .await?;
-        self.run(&plan::app_archive(&app, updater)).await.map(drop)
+        self.run(&plan::app_archive(app, updater)).await
     }
 }

@@ -57,7 +57,7 @@ describe('the Builds row texts (BLD-020)', () => {
   });
 
   it('S12 T3: a Linux builder without the PostgreSQL tree tools names each of them', () => {
-    for (const tool of ['make', 'bison', 'flex', 'patchelf', 'readelf', 'zlib']) {
+    for (const tool of ['make', 'bison', 'flex', 'patchelf', 'readelf', 'curl', 'zlib']) {
       expect(TOOL_NAMES['tree-tools']).toContain(tool);
     }
   });

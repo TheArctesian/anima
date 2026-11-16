@@ -7,7 +7,7 @@ use std::path::Path;
 
 use super::args;
 use crate::builder::{
-    carried::mach_o,
+    carried::{mach_o, signer::Signer},
     error::BuilderError,
     plan::{Kept, Program},
 };
@@ -106,12 +106,12 @@ fn s12_d_4_a_file_is_mach_o_by_its_first_bytes_in_either_byte_order() {
 
 #[test]
 fn s12_d_5_the_team_id_is_the_last_parentheses_of_the_identity_and_nothing_else() {
-    let signer = mach_o::Signer::from_identity(IDENTITY).unwrap();
+    let signer = Signer::from_identity(IDENTITY).unwrap();
     assert_eq!(signer.identity, IDENTITY);
     assert_eq!(signer.team.as_str(), "7GDLG48PV6");
     let nested = "Developer ID Application: A (B) Ltd (L2GL58P3B6)";
     assert_eq!(
-        mach_o::Signer::from_identity(nested).unwrap().team.as_str(),
+        Signer::from_identity(nested).unwrap().team.as_str(),
         "L2GL58P3B6"
     );
     for bad in [
@@ -127,7 +127,7 @@ fn s12_d_5_the_team_id_is_the_last_parentheses_of_the_identity_and_nothing_else(
         "(7GDLG48P\u{d7}6)",
     ] {
         assert_eq!(
-            mach_o::Signer::from_identity(bad),
+            Signer::from_identity(bad),
             Err(BuilderError::Bundle),
             "{bad:?}"
         );
@@ -136,7 +136,7 @@ fn s12_d_5_the_team_id_is_the_last_parentheses_of_the_identity_and_nothing_else(
 
 #[test]
 fn upd_011_each_file_is_verified_against_the_developer_id_requirement_of_the_team() {
-    let team = mach_o::Signer::from_identity(IDENTITY).unwrap().team;
+    let team = Signer::from_identity(IDENTITY).unwrap().team;
     let file = Path::new("/c/Anima.ing.app/Contents/Resources/database/bin/postgres");
     let verify = mach_o::verify(file, &team);
     assert_eq!(verify.program, Program::Codesign);
@@ -155,7 +155,7 @@ fn upd_011_each_file_is_verified_against_the_developer_id_requirement_of_the_tea
             file.to_str().unwrap()
         ]
     );
-    let other = mach_o::Signer::from_identity("Developer ID Application: Other Ltd (24VZTF6M5V)")
+    let other = Signer::from_identity("Developer ID Application: Other Ltd (24VZTF6M5V)")
         .unwrap()
         .team;
     assert!(mach_o::requirement(&other).ends_with("leaf[subject.OU] = \"24VZTF6M5V\""));

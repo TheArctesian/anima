@@ -41,7 +41,7 @@ async fn bld_044_a_real_child_sees_only_the_scrubbed_environment() {
     let env = Environment::from_parent(parent_with_secrets());
     let vars = env.for_step(&[("BASE_REF", COMMIT.to_owned())]);
     let kept = claim
-        .run(&command(&[]), Path::new("/usr/bin/env"), vars)
+        .read(&command(&[]), Path::new("/usr/bin/env"), vars)
         .await
         .unwrap();
     let mut names: Vec<&str> = kept.iter().filter_map(|l| l.split('=').next()).collect();
@@ -74,7 +74,7 @@ async fn bld_042_a_non_zero_exit_fails_the_step_and_both_streams_reach_the_sink(
     let (sink, seen) = collecting();
     let claim = running.claim(Arc::clone(&sink)).unwrap();
     let script = command(&["-c", "echo out; echo err >&2; exit 3"]);
-    let result = claim.run(&script, Path::new("/bin/sh"), Vec::new()).await;
+    let result = claim.read(&script, Path::new("/bin/sh"), Vec::new()).await;
     assert_eq!(result, Err(BuilderError::StepFailed));
     let mut lines = seen.lock().unwrap().clone();
     lines.sort_unstable();
@@ -88,13 +88,13 @@ async fn upd_011_a_command_that_keeps_its_errors_gives_back_only_its_error_lines
     let claim = running.claim(Arc::clone(&sink)).unwrap();
     let mut script = command(&["-c", "echo out; echo err >&2"]);
     script.kept = Kept::Errors;
-    let kept = claim.run(&script, Path::new("/bin/sh"), Vec::new()).await;
+    let kept = claim.read(&script, Path::new("/bin/sh"), Vec::new()).await;
     assert_eq!(kept, Ok(vec!["err".to_owned()]));
     let mut lines = seen.lock().unwrap().clone();
     lines.sort_unstable();
     assert_eq!(lines, ["err", "out"], "both streams still reach the sink");
     script.kept = Kept::Output;
-    let kept = claim.run(&script, Path::new("/bin/sh"), Vec::new()).await;
+    let kept = claim.read(&script, Path::new("/bin/sh"), Vec::new()).await;
     assert_eq!(kept, Ok(vec!["out".to_owned()]));
 }
 
@@ -118,7 +118,7 @@ async fn bld_027_a_step_cancelled_before_it_starts_starts_nothing() {
     let claim = running.claim(Arc::clone(&sink)).unwrap();
     running.cancel();
     let script = command(&["-c", "echo ran"]);
-    let result = claim.run(&script, Path::new("/bin/sh"), Vec::new()).await;
+    let result = claim.read(&script, Path::new("/bin/sh"), Vec::new()).await;
     assert_eq!(result, Err(BuilderError::Cancelled));
     assert!(seen.lock().unwrap().is_empty());
 }
@@ -138,7 +138,7 @@ async fn bld_027_cancel_kills_the_whole_process_group() {
         let running = Arc::clone(&running);
         tokio::spawn(async move {
             let claim = running.claim(Arc::clone(&sink)).unwrap();
-            claim.run(&script, Path::new("/bin/sh"), Vec::new()).await
+            claim.read(&script, Path::new("/bin/sh"), Vec::new()).await
         })
     };
     let grandchild = loop {
@@ -168,7 +168,7 @@ async fn bld_027_a_process_left_behind_by_a_finished_step_is_killed() {
     let script = command(&["-c", "sleep 60 & echo \"$!\""]);
     let started = Instant::now();
     let kept = claim
-        .run(&script, Path::new("/bin/sh"), Vec::new())
+        .read(&script, Path::new("/bin/sh"), Vec::new())
         .await
         .unwrap();
     assert!(started.elapsed() < Duration::from_secs(5));
@@ -178,4 +178,43 @@ async fn bld_027_a_process_left_behind_by_a_finished_step_is_killed() {
         tokio::time::sleep(Duration::from_millis(20)).await;
     }
     assert!(!alive(sleeper));
+}
+
+/// A stray in a new session, out of the step's group and without its marker, that holds both
+/// streams open; it prints its process ID first.
+const STRAY: &str = "/usr/bin/env -u ANIMA_BUILD_STEP /usr/bin/perl -e \
+    'use POSIX; POSIX::setsid(); print \"$$\\n\"; STDOUT->flush(); sleep 30' & \
+    sleep 1";
+
+/// Kills the stray whose process ID is the first line `seen` got.
+fn kill_stray(seen: &Mutex<Vec<String>>) {
+    let pid: i32 = seen.lock().unwrap()[0].parse().unwrap();
+    let _ = nix::sys::signal::kill(
+        nix::unistd::Pid::from_raw(pid),
+        nix::sys::signal::Signal::SIGKILL,
+    );
+}
+
+#[tokio::test]
+async fn s12_2_a_stream_held_open_fails_a_decision_and_not_an_exit_status() {
+    let running = Running::default();
+    let (sink, seen) = collecting();
+    let claim = running.claim(Arc::clone(&sink)).unwrap();
+    let script = command(&["-c", STRAY]);
+    let started = Instant::now();
+    let read = claim.read(&script, Path::new("/bin/sh"), Vec::new()).await;
+    kill_stray(&seen);
+    assert_eq!(
+        read,
+        Err(BuilderError::StepFailed),
+        "the kept lines may be cut short"
+    );
+    assert!(
+        started.elapsed() < Duration::from_secs(8),
+        "one drain for both streams"
+    );
+    seen.lock().unwrap().clear();
+    let run = claim.run(&script, Path::new("/bin/sh"), Vec::new()).await;
+    kill_stray(&seen);
+    assert_eq!(run, Ok(()), "only the exit status counts");
 }

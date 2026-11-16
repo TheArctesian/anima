@@ -119,7 +119,18 @@ fn ins_002_the_bundle_names_the_six_programs_and_the_tree() {
         .map(|(_, binary)| *binary)
         .chain([link::PROGRAM])
         .collect();
-    assert_eq!(bins, carried::PROGRAMS);
+    assert_eq!(bins, carried::programs().collect::<Vec<_>>());
+    assert_eq!(
+        bins,
+        [
+            "anima",
+            "anima-local-hub",
+            "anima-hub",
+            "anima-database",
+            "anima-gateway",
+            "anima-link"
+        ]
+    );
     assert_eq!(
         carried::bundle_settings().to_string(),
         r#"{"externalBin":["binaries/anima","binaries/anima-local-hub","binaries/anima-hub","binaries/anima-database","binaries/anima-gateway","binaries/anima-link"],"resources":{"database":"database"}}"#
@@ -160,7 +171,7 @@ fn s12_2_3_the_mac_app_holds_exactly_its_own_executable_and_the_six_programs() {
     let macos = app.join("Contents/MacOS");
     fs::create_dir_all(&macos).unwrap();
     fs::write(macos.join("anima-desktop"), b"app").unwrap();
-    for program in &carried::PROGRAMS[..5] {
+    for program in carried::programs().take(5) {
         fs::write(macos.join(program), b"program").unwrap();
     }
     assert_eq!(
