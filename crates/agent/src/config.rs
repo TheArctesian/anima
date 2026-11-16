@@ -35,10 +35,10 @@ pub enum ConfigError {
 }
 
 impl Config {
-    /// Reads a configuration file. The stored hub is held to the https rule again.
+    /// Reads a configuration file. The stored hub is held to the origin rule again.
     ///
     /// # Errors
-    /// [`ConfigError`] when the bytes are not a configuration or name a non-https hub.
+    /// [`ConfigError`] when the bytes are not a configuration or name a hub that is not an origin.
     pub fn parse(bytes: &[u8]) -> Result<Self, ConfigError> {
         let stored: Stored = serde_json::from_slice(bytes).map_err(|_| ConfigError::Unreadable)?;
         Ok(Self {
@@ -86,7 +86,7 @@ mod tests {
         let text = br#"{"hub":"http://hub.anima.ing","device":"00000000-0000-0000-0000-000000000007","deviceName":"x"}"#;
         assert!(matches!(
             Config::parse(text),
-            Err(ConfigError::Hub(OriginError::NotHttps))
+            Err(ConfigError::Hub(OriginError::Scheme))
         ));
         assert!(matches!(Config::parse(b"{}"), Err(ConfigError::Unreadable)));
     }

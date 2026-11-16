@@ -45,7 +45,7 @@ pub struct HubClient {
 impl HubClient {
     /// A client for the hub at `base` that gives up on a request after `limit`, connection and
     /// answer together (callers pass [`TIMEOUT`]). Pass an [`Origin`](crate::config::origin::Origin)'s
-    /// URL; tests pass a local `http` URL, since the https rule belongs to the origin's parser.
+    /// URL; the rule for what a hub origin is belongs to the origin's parser.
     ///
     /// # Errors
     /// [`HubError`] when the TLS roots cannot be set up.
