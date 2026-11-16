@@ -15,6 +15,7 @@ mod members;
 pub mod programs;
 pub mod run;
 pub mod state;
+mod stop_marker;
 pub mod units;
 mod vault_key;
 

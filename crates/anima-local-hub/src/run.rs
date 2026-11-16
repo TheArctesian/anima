@@ -11,6 +11,7 @@ use crate::child::Stop;
 use crate::group::{Ending, Group, Plan, StartError};
 use crate::log_file::{LOG_LIMIT, LogFile};
 use crate::state::{self, State};
+use crate::stop_marker;
 
 #[cfg(test)]
 mod tests;
@@ -88,6 +89,8 @@ enum Kept {
 pub async fn run(plan: &Plan, mut stop: Stop, ready: impl FnOnce()) -> Result<Ended, RunError> {
     let folders = &plan.folders;
     let _lock = lock(folders)?;
+    // The hub starts now: an operator's stop is over.
+    stop_marker::clear(folders).map_err(io_error("take away the stop mark"))?;
     owner_only::folder(&folders.logs()).map_err(io_error("make the log folder"))?;
     let mut notes = LogFile::open(&folders.logs().join("local-hub.log"), LOG_LIMIT)
         .map_err(io_error("open the log"))?;

@@ -17,6 +17,7 @@ use anima_database::{Tree, owner_only};
 use crate::Folders;
 use crate::members::{Carried, LOCAL_HUB, PROGRAMS};
 
+pub mod digest;
 #[cfg(test)]
 pub(crate) mod tests;
 
@@ -52,7 +53,7 @@ fn io_error<'a>(step: &'static str, path: &'a Path) -> impl FnOnce(io::Error) ->
     }
 }
 
-/// Copies the four programs and the PostgreSQL tree of `source` to `programs/next`, in place
+/// Copies the five programs and the PostgreSQL tree of `source` to `programs/next`, in place
 /// of a copy that an earlier try left there. Nothing that runs is touched.
 ///
 /// # Errors
@@ -78,7 +79,8 @@ pub fn copy(source: &Carried, folders: &Folders) -> Result<(), CopyError> {
     }
     copy_folder(source.tree(), copied.tree(), MOST_DEPTH, &mut budget)?;
     Tree::at(copied.tree()).map_err(|error| CopyError::NotATree(error.to_string()))?;
-    Ok(())
+    // The digest of what was copied, not of the source: `update` compares the source to it.
+    digest::write(&next, &digest::of(&copied)?)
 }
 
 /// Makes the copy in `programs/next` the one the unit runs. The caller knows that nothing
@@ -168,6 +170,12 @@ fn copy_folder(from: &Path, to: &Path, depth: usize, budget: &mut Budget) -> Res
 /// A library's short name is a link to the file beside it. A link that names a path outside
 /// its own folder could make the copy run a file that is not in the copy.
 fn copy_link(from: &Path, to: &Path) -> Result<(), CopyError> {
+    let target = link_target(from)?;
+    std::os::unix::fs::symlink(&target, to).map_err(io_error("make", to))
+}
+
+/// The target of the link at `from`, when it names a file beside the link.
+fn link_target(from: &Path) -> Result<PathBuf, CopyError> {
     let target = fs::read_link(from).map_err(io_error("read", from))?;
     let stays_beside = matches!(
         target.components().collect::<Vec<_>>().as_slice(),
@@ -176,7 +184,7 @@ fn copy_link(from: &Path, to: &Path) -> Result<(), CopyError> {
     if !stays_beside {
         return Err(CopyError::Refused(from.to_path_buf()));
     }
-    std::os::unix::fs::symlink(&target, to).map_err(io_error("make", to))
+    Ok(target)
 }
 
 fn copy_file(from: &Path, to: &Path, mode: u32, budget: &mut Budget) -> Result<(), CopyError> {

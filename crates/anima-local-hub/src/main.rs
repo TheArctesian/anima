@@ -2,6 +2,7 @@
 //!
 //!   anima-local-hub run     [--root <folder> --socket-folder <folder>] [--listen <address:port>]
 //!   anima-local-hub install --tree <folder> [--root ... --socket-folder ...] [--listen ...]
+//!   anima-local-hub update  --tree <folder> [--root ... --socket-folder ...] [--listen ...]
 //!   anima-local-hub remove  [--root <folder> --socket-folder <folder>]
 //!   anima-local-hub status  [--root <folder> --socket-folder <folder>]
 //!   anima-local-hub start | stop  [--root <folder> --socket-folder <folder>]
@@ -9,6 +10,8 @@
 //!
 //! `install` runs from the application bundle: it copies the programs beside it and the
 //! PostgreSQL tree to the hub's folder and makes the unit that runs `run` at login.
+//! `update` does the same only when the installed hub exists and its programs differ from the
+//! ones that the application carries; it prints `{"updated":true}` or `{"updated":false}`.
 //!
 //! `run` prints `ready` on standard output when the hub serves, and stops the group in order
 //! on SIGTERM or SIGINT. Nothing it prints holds a secret (LOG-007).
@@ -25,6 +28,7 @@ use anima_local_hub::group::{LIMITS, Plan};
 use anima_local_hub::run::{self, Ended, RunError};
 use anima_local_hub::state::{self, Status};
 use anima_local_hub::units::install::{self, Request};
+use anima_local_hub::units::update;
 use anima_local_hub::units::{STEP_LIMIT, run_step};
 use anima_local_hub::{Carried, Folders, Stop};
 use clap::{Args, Parser, Subcommand};
@@ -58,6 +62,17 @@ enum Command {
     },
     /// Copy the programs out of the application and start the hub at each login
     Install {
+        #[command(flatten)]
+        place: Place,
+        /// The PostgreSQL tree that the application carries
+        #[arg(long)]
+        tree: PathBuf,
+        /// Where the hub listens, when it is not the default
+        #[arg(long)]
+        listen: Option<SocketAddr>,
+    },
+    /// Replace the programs of the installed hub when the application carries other ones
+    Update {
         #[command(flatten)]
         place: Place,
         /// The PostgreSQL tree that the application carries
@@ -160,6 +175,11 @@ fn main() -> ExitCode {
             tree,
             listen,
         } => install(&place, tree, listen),
+        Command::Update {
+            place,
+            tree,
+            listen,
+        } => update(&place, tree, listen),
         Command::Remove(place) => remove(&place),
         Command::Status(place) => status(&place),
         Command::Start(place) => start_or_stop(&place, true),
@@ -255,18 +275,34 @@ impl User {
     }
 }
 
+/// What the application carries: the programs beside this one, and `tree`.
+fn carried_by_application(tree: PathBuf) -> Result<Carried, Failure> {
+    let program = std::env::current_exe()?;
+    Ok(Carried::new(
+        program.parent().unwrap_or(Path::new("/")).to_path_buf(),
+        tree,
+    ))
+}
+
 fn install(place: &Place, tree: PathBuf, listen: Option<SocketAddr>) -> Result<ExitCode, Failure> {
     let (folders, user) = (place.folders()?, User::current()?);
     let listen = listen.map(loopback).transpose()?;
-    let program = std::env::current_exe()?;
-    let source = Carried::new(
-        program.parent().unwrap_or(Path::new("/")).to_path_buf(),
-        tree,
-    );
+    let source = carried_by_application(tree)?;
     let file = install::install(&user.request(&folders, listen), &source, |step| {
         run_step(step, &user.session, STEP_LIMIT)
     })?;
     println!("installed: {}", file.display());
+    Ok(ExitCode::SUCCESS)
+}
+
+fn update(place: &Place, tree: PathBuf, listen: Option<SocketAddr>) -> Result<ExitCode, Failure> {
+    let (folders, user) = (place.folders()?, User::current()?);
+    let listen = listen.map(loopback).transpose()?;
+    let source = carried_by_application(tree)?;
+    let updated = update::update(&user.request(&folders, listen), &source, |step| {
+        run_step(step, &user.session, STEP_LIMIT)
+    })?;
+    println!("{}", serde_json::json!({ "updated": updated }));
     Ok(ExitCode::SUCCESS)
 }
 

@@ -5,6 +5,7 @@ pub mod install;
 mod steps;
 mod trust;
 mod unit_file;
+pub mod update;
 
 pub use steps::{STEP_LIMIT, Step, run_step};
 pub use unit_file::{Launch, RenderError};

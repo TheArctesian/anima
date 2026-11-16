@@ -9,6 +9,7 @@
 //! <root>/link/               the state of `anima-link hub`: its key, devices, control socket
 //! <root>/lock                held by the one `run` of this root
 //! <root>/state               what `run` last reported
+//! <root>/stopped-by-operator the operator asked for a stop; no update starts the hub
 //! ```
 
 use std::path::{Path, PathBuf};
@@ -118,6 +119,12 @@ impl Folders {
     #[must_use]
     pub fn lock_file(&self) -> PathBuf {
         self.root.join("lock")
+    }
+
+    /// Present from `stop` until `start`, `install`, `remove` or the next `run`.
+    #[must_use]
+    pub fn stopped_by_operator(&self) -> PathBuf {
+        self.root.join("stopped-by-operator")
     }
 
     #[must_use]

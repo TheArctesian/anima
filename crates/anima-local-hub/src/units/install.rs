@@ -17,7 +17,7 @@ use super::trust;
 use super::unit_file::{self, LABEL, Launch, RenderError, SYSTEMD_UNIT};
 use crate::members::{Carried, LOCAL_HUB};
 use crate::programs::{self, CopyError};
-use crate::{Folders, run};
+use crate::{Folders, run, stop_marker};
 
 #[cfg(test)]
 mod tests;
@@ -144,7 +144,26 @@ impl Request<'_> {
 pub fn install(
     request: &Request<'_>,
     source: &Carried,
+    run: impl FnMut(&Step) -> io::Result<bool>,
+) -> Result<PathBuf, InstallError> {
+    replace(request, source, run, Then::Start)
+}
+
+/// What the unit does after the programs were replaced.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum Then {
+    Start,
+    /// The operator stopped the hub: it stays stopped until `start` or the next login.
+    StayStopped,
+}
+
+/// The steps of [`install`]: copy, stop, wait, put in place, write the unit file, and start
+/// the unit when `then` says so. A start takes the operator's stop mark away.
+pub(super) fn replace(
+    request: &Request<'_>,
+    source: &Carried,
     mut run: impl FnMut(&Step) -> io::Result<bool>,
+    then: Then,
 ) -> Result<PathBuf, InstallError> {
     let file = request.unit_file();
     let text = unit_file::render(request.platform, &request.launch())?;
@@ -156,7 +175,13 @@ pub fn install(
     wait_until_stopped(request)?;
     programs::put_in_place(request.folders)?;
     write_unit(&file, &text, request.uid)?;
-    run_steps(&request.start(&file), &mut run)?;
+    if then == Then::Start {
+        clear_stop_mark(request)?;
+        run_steps(&request.start(&file), &mut run)?;
+    } else if request.platform == Platform::Linux {
+        // systemd reads the new unit file now, so a later `start` runs what it names.
+        run_steps(&[Step::systemctl(&["daemon-reload"]).may_fail()], &mut run)?;
+    }
     Ok(file)
 }
 
@@ -170,6 +195,7 @@ pub fn remove(
     mut run: impl FnMut(&Step) -> io::Result<bool>,
 ) -> Result<(), InstallError> {
     let file = request.unit_file();
+    clear_stop_mark(request)?;
     run_steps(&[request.retire()], &mut run)?;
     wait_until_stopped(request)?;
     match fs::remove_file(&file) {
@@ -193,6 +219,9 @@ pub fn stop(
     request: &Request<'_>,
     mut run: impl FnMut(&Step) -> io::Result<bool>,
 ) -> Result<(), InstallError> {
+    // The mark first: a stop that fails half way is still the operator's.
+    stop_marker::set(request.folders)
+        .map_err(write_error(&request.folders.stopped_by_operator()))?;
     // A unit that is not loaded is stopped already.
     run_steps(&[request.stop()], &mut run)?;
     wait_until_stopped(request)
@@ -209,6 +238,7 @@ pub fn start(
     if !is_installed(request) {
         return Err(InstallError::NotInstalled);
     }
+    clear_stop_mark(request)?;
     if request.platform == Platform::MacOs {
         let loaded = request.loaded();
         if run(&loaded).map_err(|error| InstallError::Run {
@@ -225,6 +255,10 @@ pub fn start(
 #[must_use]
 pub fn is_installed(request: &Request<'_>) -> bool {
     request.unit_file().is_file() && programs::are_in_place(request.folders)
+}
+
+fn clear_stop_mark(request: &Request<'_>) -> Result<(), InstallError> {
+    stop_marker::clear(request.folders).map_err(write_error(&request.folders.stopped_by_operator()))
 }
 
 fn run_steps(
