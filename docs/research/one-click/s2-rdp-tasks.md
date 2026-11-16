@@ -84,7 +84,7 @@ for R1, R3 and R4, and the full `BASE_REF=origin/main bun run gates` before the 
 | --- | --- | --- |
 | R1 Handshake for RDP | Built. | `43e106aa` |
 | R2 Keys and pointer | Built. | `d64a2b62` |
-| R3 RDP opening | Built, with tests against an RDP device in the test. `reviewer-security`: 2 medium, 1 low, 3 notes; all corrected but the two items in Section 6. | `a896283b`, `3bc6cb53` |
+| R3 RDP opening | Built, with tests against an RDP device in the test. `reviewer-security`: 2 medium, 1 low, 3 notes; all corrected but the two items in Section 6. Second review of the corrections: all closed, 1 new medium and 2 smaller points, corrected. | `a896283b`, `3bc6cb53` |
 | R4 RDP session | Built, with tests of a whole session through `serve`. `reviewer`: fix and re-review, no fault in the keys or the loop, 24 of 39 mutants not caught; its 6 should-fix points corrected. | `9ab323c8` and the commit after R5 |
 | R5 Program and documents | Built: `--pass`, the setup document. | `4554a90f` |
 | R6 Hub tunnel against the gateway | Not built; see Section 6. | — |
@@ -146,6 +146,13 @@ Choices:
   not listen during the exchange and a release could be lost. New tests: each kind of key
   and button through a session, the statuses for a device that is not RDP and one that is
   not there, and `--pass`. The clipboard backend is `ClipboardNotes`.
+- **After the second security review.** All five corrections closed; one new medium of the
+  same kind, corrected: the parts of one drawing update are counted too (limit 8 MiB,
+  what the client says it takes), and a packed update ends the session. A channel part
+  with neither a first nor a last mark, outside a message, is a whole message and is not
+  counted on. With paste off the device is told nothing when the client's clipboard
+  changes. The live checks were repeated after the corrections: xrdp (TLS, keys, resize)
+  and the FreeRDP server (NLA, a wrong password) gave the same results.
 - **Not corrected from the review.** A read error of the device ends the session as a
   close (`disconnect`), not as an error. Every fault of the CredSSP step counts as a
   refused sign-in. `offer_text`, `ask_for_text` and `give_text` take a fault of IronRDP's

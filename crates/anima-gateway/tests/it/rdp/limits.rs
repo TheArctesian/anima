@@ -99,3 +99,47 @@ async fn a_channel_message_longer_than_a_clipboard_text_may_be_ends_the_session(
     let ended = (0..40).any(|_| session.receive(Action::X224, &more, &mut screen).is_err());
     assert!(ended);
 }
+
+/// A fast-path message with one part of a drawing update: 2 is the first part, 3 one
+/// between.
+fn update_part(fragmentation: u8, bytes: u16) -> Vec<u8> {
+    let length = (6 + bytes) | 0x8000;
+    let mut message = vec![0x00];
+    message.extend_from_slice(&length.to_be_bytes());
+    message.push(0x01 | (fragmentation << 4));
+    message.extend_from_slice(&bytes.to_le_bytes());
+    message.resize(message.len() + usize::from(bytes), 0x41);
+    message
+}
+
+#[tokio::test]
+async fn a_drawing_update_whose_parts_do_not_end_ends_the_session() {
+    let (_device, mut session, mut screen, _) = signed_in().await;
+    let first = update_part(2, 16_000);
+    assert!(
+        session
+            .receive(Action::FastPath, &first, &mut screen)
+            .is_ok()
+    );
+
+    // 8 MiB is what the client said it takes: 600 parts of 16 000 bytes are more.
+    let next = update_part(3, 16_000);
+    let ended = (0..600).any(|_| {
+        session
+            .receive(Action::FastPath, &next, &mut screen)
+            .is_err()
+    });
+    assert!(ended);
+}
+
+#[tokio::test]
+async fn a_packed_drawing_update_ends_the_session_because_no_packing_was_agreed() {
+    let (_device, mut session, mut screen, _) = signed_in().await;
+    let mut packed = update_part(0, 100);
+    packed[3] |= 0x80;
+
+    assert_eq!(
+        session.receive(Action::FastPath, &packed, &mut screen),
+        Err(Malformed)
+    );
+}

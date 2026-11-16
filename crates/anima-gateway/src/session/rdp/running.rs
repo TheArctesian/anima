@@ -211,7 +211,9 @@ where
                 }
                 Ok(())
             }
-            // The device learns that there is new text, when it may have it.
+            // The device learns that there is new text, when it may have it. With paste
+            // off it learns nothing, not even that the client's clipboard changed.
+            Input::Paste(_) if !self.allowed.paste => Ok(()),
             Input::Paste(text) => {
                 self.text = Some(text);
                 self.on_clipboard(Said::WhatIsThere).await

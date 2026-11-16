@@ -103,8 +103,9 @@ impl Device {
         message: &[u8],
         screen: &mut Screen,
     ) -> Result<Vec<Event>, Malformed> {
-        if action == Action::X224 {
-            self.guard.check(message)?;
+        match action {
+            Action::X224 => self.guard.check(message)?,
+            Action::FastPath => self.guard.check_updates(message)?,
         }
         if self.reactivating.is_some() {
             let mut events = resizing::go_on(self, Some((action, message)), screen)?;
