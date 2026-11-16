@@ -2,7 +2,8 @@
 //! spawns marks an agent stale once no batch came for more than 30 seconds, with one warning;
 //! the next batch clears it with one note. `Device.metricsStale` serves the mark, and a stale
 //! agent never makes the device Down. The time of the last batch never moves back. R-118: the
-//! version of the newest batch is kept and served as `Device.agentVersion`.
+//! version of the newest batch is kept and served as `Device.agentVersion`, only while the
+//! device's source is the agent.
 
 use std::time::Duration;
 
@@ -198,4 +199,38 @@ async fn r_118_a_new_token_forgets_the_version_and_a_bad_one_stores_nothing(pool
         .await;
     assert_eq!(pushed.0, StatusCode::NO_CONTENT);
     assert_eq!(agent_version(&agents).await, json!("0.4.0"));
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn r_118_a_device_that_leaves_the_agent_or_is_revoked_shows_no_version(pool: PgPool) {
+    let now = pushing_now(&pool).await;
+    let agents = Agents::at(&pool, now).await;
+    let token = agents.token_for(PVE_01).await;
+    let pushed = agents.push(&token, &signed(now, Some("0.3.1"))).await;
+    assert_eq!(pushed.0, StatusCode::NO_CONTENT);
+
+    let to_ssh =
+        "mutation($id: ID!) { updateDevice(id: $id, input: { metricsSource: SSH }) { id } }";
+    let moved: Value = agents.operate(to_ssh, json!({ "id": PVE_01 })).await;
+    assert!(moved["errors"].is_null(), "{moved}");
+    assert_eq!(
+        agent_version(&agents).await,
+        Value::Null,
+        "the version of an agent belongs to an AGENT device"
+    );
+
+    let again = agents.token_for(PVE_01).await;
+    let pushed = agents.push(&again, &signed(now, Some("0.4.0"))).await;
+    assert_eq!(pushed.0, StatusCode::NO_CONTENT);
+    let revoke = "mutation($id: ID!) { revokeAgentToken(deviceId: $id) { id } }";
+    let revoked: Value = agents.operate(revoke, json!({ "id": PVE_01 })).await;
+    assert!(revoked["errors"].is_null(), "{revoked}");
+    assert_eq!(
+        agent_version(&agents).await,
+        Value::Null,
+        "a revoked agent's version is gone"
+    );
 }
