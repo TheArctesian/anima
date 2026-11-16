@@ -88,9 +88,7 @@ pub async fn set_operator(
     check_credentials(username, &password)?;
     let hash = hash_password(password).await?;
     let mut tx = db.begin().await?;
-    let (id, action) = replace_account(&mut tx, username, &hash, now).await?;
-    let change = serde_json::json!({ "username": username, "reason": "operator set" });
-    events::audit(&mut tx, now, account_audit(id, action, change)).await?;
+    let (id, _) = replace_account(&mut tx, username, &hash, now).await?;
     tx.commit().await?;
     Ok(id)
 }

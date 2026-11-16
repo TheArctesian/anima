@@ -1,13 +1,13 @@
-//! The audit entries of the hub's own account commands (LOG-005, LOG-007): `operator set`,
-//! `operator create` and `operator totp --disable` each write one, with the hub as the actor,
-//! this computer as the client and no password or secret in the change.
+//! The audit entries of the hub's own account commands (LOG-005, LOG-007): `operator create`
+//! and `operator totp --disable` each write one, with the hub as the actor, this computer as
+//! the client and no password or secret in the change. `operator set` writes none.
 
 use anima_hub::fleet::access;
 use serde_json::{Value, json};
 use sqlx::PgPool;
 
 use super::{code, create::create_with, enrol};
-use crate::hub::{PASSWORD, USERNAME, set_operator, start};
+use crate::hub::{PASSWORD, USERNAME, start};
 
 /// Each audit entry, oldest first: (operator name, action, target type, client, change).
 async fn entries(pool: &PgPool) -> Vec<(String, String, String, String, Value)> {
@@ -46,22 +46,12 @@ async fn log_005_operator_create_audits_a_create_then_an_update(pool: PgPool) {
 }
 
 #[sqlx::test(migrations = "./migrations")]
-async fn log_005_operator_set_and_totp_disable_are_audited(pool: PgPool) {
-    set_operator(&pool).await;
+async fn log_005_operator_totp_disable_is_audited(pool: PgPool) {
     enrol(&pool).await;
     access::disable_totp(&pool, USERNAME, start())
         .await
         .unwrap();
-    let set = json!({ "username": USERNAME, "reason": "operator set" });
     let disabled =
         json!({ "username": USERNAME, "totp": false, "reason": "operator totp --disable" });
-    // `enrol` sets the operator again, so the second entry is an update.
-    assert_eq!(
-        entries(&pool).await,
-        [
-            entry("create", set.clone()),
-            entry("update", set),
-            entry("update", disabled)
-        ]
-    );
+    assert_eq!(entries(&pool).await, [entry("update", disabled)]);
 }

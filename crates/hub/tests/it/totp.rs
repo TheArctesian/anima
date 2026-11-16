@@ -275,8 +275,8 @@ async fn log_007_the_secret_and_codes_reach_no_log_event_or_audit_entry(pool: Pg
     .unwrap();
     assert_eq!(
         stored.len(),
-        6,
-        "four events and two audit entries (operator set, login): {stored:?}"
+        5,
+        "four events and one audit entry: {stored:?}"
     );
     written.push_str(&stored.join("\n"));
     let hex = secret.iter().fold(String::new(), |mut hex, byte| {
