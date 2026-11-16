@@ -13,7 +13,7 @@ use crate::builder::{
     environment::Environment,
     error::BuilderError,
     job::Commit,
-    plan::{self, Repository},
+    plan::Repository,
     steps::{Workshop, config_is_clones},
 };
 
@@ -312,36 +312,4 @@ async fn d_21_git_steps_print_no_graft_hint() {
             .any(|line| line.to_lowercase().contains("graft")),
         "{lines:?}"
     );
-}
-
-#[test]
-fn bld_044_every_step_is_told_to_build_inside_the_clone_whatever_the_builder_configured() {
-    let origin = origin();
-    let running = Running::default();
-    let parent = [
-        ("HOME".into(), "/home/builder".into()),
-        (
-            "CARGO_TARGET_DIR".into(),
-            "/home/builder/.cache/cargo-target".into(),
-        ),
-        ("CARGO_BUILD_TARGET_DIR".into(), "/elsewhere".into()),
-    ];
-    let workshop = Workshop {
-        claim: running.claim(Arc::new(|_| {})).unwrap(),
-        env: Environment::from_parent(parent),
-        repository: Repository::local(&origin.bare),
-        clone: origin.clone.clone(),
-    };
-    let gates = plan::gates(&origin.clone, &Commit::parse(&origin.on_main).unwrap());
-    let variables = workshop.variables(&gates);
-    let named = |name: &str| -> Vec<_> {
-        variables
-            .iter()
-            .filter(|(key, _)| key == name)
-            .map(|(_, value)| PathBuf::from(value))
-            .collect()
-    };
-    assert_eq!(named("CARGO_TARGET_DIR"), [origin.clone.join("target")]);
-    assert_eq!(named("CARGO_BUILD_TARGET_DIR"), [] as [PathBuf; 0]);
-    assert_eq!(named("BASE_REF"), [PathBuf::from(&origin.on_main)]);
 }

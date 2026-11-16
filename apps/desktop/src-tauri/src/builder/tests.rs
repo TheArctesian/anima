@@ -11,6 +11,7 @@ mod plans;
 mod reaping;
 mod sidecar;
 mod signing;
+mod target_folder;
 mod upload;
 
 use std::{
