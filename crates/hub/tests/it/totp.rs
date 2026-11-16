@@ -19,6 +19,7 @@ use crate::hub::{
     wrong_credentials,
 };
 
+mod audit;
 mod command;
 mod create;
 
@@ -167,7 +168,9 @@ async fn sec_002_a_new_secret_starts_with_no_used_step(pool: PgPool) {
     assert!(signed_in(
         &login(&hub, PASSWORD, Some(&code(&renewed, start()))).await
     ));
-    access::disable_totp(&pool, USERNAME).await.unwrap();
+    access::disable_totp(&pool, USERNAME, start())
+        .await
+        .unwrap();
     assert!(signed_in(&login(&hub, PASSWORD, None).await));
 }
 
@@ -272,8 +275,8 @@ async fn log_007_the_secret_and_codes_reach_no_log_event_or_audit_entry(pool: Pg
     .unwrap();
     assert_eq!(
         stored.len(),
-        5,
-        "four events and one audit entry: {stored:?}"
+        6,
+        "four events and two audit entries (operator set, login): {stored:?}"
     );
     written.push_str(&stored.join("\n"));
     let hex = secret.iter().fold(String::new(), |mut hex, byte| {

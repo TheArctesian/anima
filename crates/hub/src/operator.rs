@@ -32,8 +32,12 @@ pub(crate) async fn set(config: &Config, username: &str) -> Result<(), StartErro
 /// Reads the password, a secret from `operator totp --new` and a code of it from standard
 /// input, and creates or replaces the operator with both factors only when all three pass
 /// (FRN-004). The builders that went with the tokens are audited, as `operator set` audits
-/// them.
+/// them. A terminal on standard input is refused before anything is read: it would echo the
+/// password and the secret (LOG-007).
 pub(crate) async fn create(config: &Config, username: &str) -> Result<(), StartError> {
+    if std::io::stdin().is_terminal() {
+        return Err(StartError::CreateFromTerminal);
+    }
     let new = read_new_operator(username).map_err(|_| StartError::CreateInput)?;
     let vault = vault(config)?;
     let pool = connect(config).await?;
@@ -88,11 +92,22 @@ pub(crate) fn new_totp(username: &str) -> Result<(), StartError> {
     Ok(())
 }
 
-/// Turns TOTP off: the password alone signs in again.
+/// Turns TOTP off and signs every client out. Outside the link mode the password alone signs
+/// in again; in the link mode no sign-in passes until a new secret is set (FRN-007).
 pub(crate) async fn disable_totp(config: &Config, username: &str) -> Result<(), StartError> {
     let pool = connect(config).await?;
-    access::disable_totp(&pool, username).await?;
-    println!("TOTP is off for operator {username}.");
+    let before = builds::builders(&pool).await?;
+    let now = SystemClock.now();
+    access::disable_totp(&pool, username, now).await?;
+    builds::audit_removed(&pool, &before, now, builds::Removal::CredentialsChanged).await?;
+    if config.link_socket.is_some() {
+        println!(
+            "TOTP is off for operator {username}. In the link mode the hub then refuses \
+             sign-in until a new TOTP is set (anima-hub operator create)."
+        );
+    } else {
+        println!("TOTP is off for operator {username}.");
+    }
     Ok(())
 }
 

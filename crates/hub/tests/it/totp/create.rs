@@ -13,7 +13,7 @@ use crate::hub::{
 };
 
 /// A new secret from `operator totp --new`: its base32 text and its bytes.
-fn new_secret() -> (String, Vec<u8>) {
+pub(super) fn new_secret() -> (String, Vec<u8>) {
     let made = access::new_totp(USERNAME).unwrap();
     (made.secret().to_owned(), secret_of(made.uri()))
 }
@@ -30,6 +30,68 @@ fn new_operator(password: &str, secret: &str, typed: &str) -> NewOperator {
 async fn create(pool: &PgPool, new: NewOperator) -> Result<(), access::Error> {
     let created = access::create_operator(pool, &test_vault(), new, start()).await;
     created.map(|_| ())
+}
+
+/// `operator create` at [`start`] with this password, secret text and code.
+pub(super) async fn create_with(
+    pool: &PgPool,
+    password: &str,
+    secret: &str,
+    typed: &str,
+) -> Result<(), access::Error> {
+    create(pool, new_operator(password, secret, typed)).await
+}
+
+/// Makes every later write of a TOTP secret fail inside its transaction: the step after the
+/// account row is written.
+async fn refuse_totp_writes(pool: &PgPool) {
+    for sql in [
+        "create function access.refuse_totp() returns trigger language plpgsql as \
+         $$ begin raise exception 'refused by the test'; end $$",
+        "create trigger refuse_totp before update of totp_secret_enc on access.operators \
+         for each row execute function access.refuse_totp()",
+    ] {
+        sqlx::query(sql).execute(pool).await.unwrap();
+    }
+}
+
+async fn audit_entries(pool: &PgPool) -> i64 {
+    sqlx::query_scalar("select count(*) from events.audit_log")
+        .fetch_one(pool)
+        .await
+        .unwrap()
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn frn_004_a_failure_after_the_account_is_written_leaves_nothing(pool: PgPool) {
+    refuse_totp_writes(&pool).await;
+    let (text, secret) = new_secret();
+    let typed = code(&secret, start());
+    let failed = create_with(&pool, PASSWORD, &text, &typed).await;
+    assert!(
+        matches!(failed, Err(access::Error::Database(_))),
+        "{failed:?}"
+    );
+    assert_eq!(
+        operators(&pool).await,
+        0,
+        "no account without its second factor"
+    );
+    assert_eq!(audit_entries(&pool).await, 0);
+
+    // An existing account keeps its password, its tokens and its sign-ins.
+    set_operator(&pool).await;
+    let hub = Hub::new(&pool, start());
+    let token = hub.token().await;
+    let before = audit_entries(&pool).await;
+    let failed = create_with(&pool, "a recovered long passphrase", &text, &typed).await;
+    assert!(failed.is_err());
+    assert_eq!(audit_entries(&pool).await, before);
+    let me = hub
+        .post(Some(&token), "{ me { username } }", json!({}))
+        .await;
+    assert_eq!(me["data"]["me"]["username"], USERNAME, "{me}");
+    assert!(hub.login(USERNAME, PASSWORD).await["data"]["login"]["token"].is_string());
 }
 
 async fn operators(pool: &PgPool) -> i64 {

@@ -104,7 +104,9 @@ fn refused_like_a_wrong_password(response: &Value) -> bool {
 #[sqlx::test(migrations = "./migrations")]
 async fn frn_007_sec_002_the_link_mode_refuses_an_operator_without_totp(pool: PgPool) {
     let hub = serve_linked(&pool).await;
-    access::disable_totp(&pool, USERNAME).await.unwrap();
+    access::disable_totp(&pool, USERNAME, start())
+        .await
+        .unwrap();
 
     let refused = graphql(&hub, From::ThisComputer, None, login_request(None)).await;
     assert!(refused_like_a_wrong_password(&refused), "{refused}");
@@ -135,4 +137,10 @@ async fn frn_007_the_vps_mode_answers_any_host_and_origin(pool: PgPool) {
     request.extensions_mut().insert(ConnectInfo(peer));
     let response = app.oneshot(request).await.unwrap();
     assert_eq!(response.status(), StatusCode::OK);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn frn_007_the_health_probe_passes_the_link_modes_host_rule(pool: PgPool) {
+    let hub = serve_linked(&pool).await;
+    access::listen::check_health(hub.addr, None).await.unwrap();
 }

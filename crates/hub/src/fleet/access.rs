@@ -26,7 +26,10 @@ mod throttle;
 mod tokens;
 mod totp;
 
-use std::sync::{Mutex, MutexGuard, PoisonError};
+use std::{
+    net::{IpAddr, Ipv4Addr},
+    sync::{Mutex, MutexGuard, PoisonError},
+};
 
 use chrono::{DateTime, TimeDelta, Utc};
 use ipnet::IpNet;
@@ -49,7 +52,10 @@ pub use rebinding::loopback_names_layer;
 pub use tokens::{Scope, TokenKind};
 
 use crate::{
-    fleet::credentials::{self, Secret, Vault},
+    fleet::{
+        credentials::{self, Secret, Vault},
+        events::{self, AuditAction, AuditTarget, NewAudit},
+    },
     ids::OperatorId,
 };
 
@@ -82,7 +88,9 @@ pub async fn set_operator(
     check_credentials(username, &password)?;
     let hash = hash_password(password).await?;
     let mut tx = db.begin().await?;
-    let id = replace_account(&mut tx, username, &hash, now).await?;
+    let (id, action) = replace_account(&mut tx, username, &hash, now).await?;
+    let change = serde_json::json!({ "username": username, "reason": "operator set" });
+    events::audit(&mut tx, now, account_audit(id, action, change)).await?;
     tx.commit().await?;
     Ok(id)
 }
@@ -132,12 +140,33 @@ pub async fn create_operator(
         message: "The code does not match the secret now. Nothing was saved.",
     })?;
     let hash = hash_password(password).await?;
+    // Every write below is in this one transaction: a failure at any step leaves no account
+    // and no change to an existing one (tested in `tests/it/totp/create.rs`).
     let mut tx = db.begin().await?;
-    let id = replace_account(&mut tx, &username, &hash, now).await?;
+    let (id, action) = replace_account(&mut tx, &username, &hash, now).await?;
     let sealed = seal_totp(vault, id, &Secret::new(secret.to_vec()))?;
     store::set_totp(&mut *tx, id, Some(&sealed), Some(step)).await?;
+    let change = serde_json::json!({
+        "username": username,
+        "totp": true,
+        "reason": "operator create",
+    });
+    events::audit(&mut tx, now, account_audit(id, action, change)).await?;
     tx.commit().await?;
     Ok(id)
+}
+
+/// The audit entry of a change that the hub's own commands made to the operator account, on
+/// the hub computer (LOG-005): the hub is the actor and this computer the client. `change`
+/// names what changed, never a password or a secret (LOG-007).
+fn account_audit(id: OperatorId, action: AuditAction, change: serde_json::Value) -> NewAudit {
+    NewAudit {
+        operator: Operator::hub(),
+        action,
+        target: AuditTarget::Operator(id),
+        client: ClientAddr(IpAddr::V4(Ipv4Addr::LOCALHOST)),
+        change,
+    }
 }
 
 /// The PHC hash of `password` with a new salt, made off the async executor.
@@ -147,13 +176,14 @@ async fn hash_password(password: Password) -> Result<String, Error> {
 }
 
 /// Makes the one account have this username and hash, deletes all its tokens and clears the
-/// login attempts of the old and new username, in the caller's transaction. Returns its id.
+/// login attempts of the old and new username, in the caller's transaction. Returns its id and
+/// whether the account was created or updated.
 async fn replace_account(
     tx: &mut sqlx::PgConnection,
     username: &str,
     hash: &str,
     now: DateTime<Utc>,
-) -> Result<OperatorId, Error> {
+) -> Result<(OperatorId, AuditAction), Error> {
     let (id, previous) = store::replace_operator(tx, username, hash, now).await?;
     // Write the operator row before deleting tokens: a sign-in issues its token under that
     // row's lock, so the delete then sees it (D-9).
@@ -161,7 +191,12 @@ async fn replace_account(
     let mut usernames = vec![username];
     usernames.extend(previous.as_deref());
     store::delete_attempts_of(tx, &usernames).await?;
-    Ok(id)
+    let action = if previous.is_some() {
+        AuditAction::Update
+    } else {
+        AuditAction::Create
+    };
+    Ok((id, action))
 }
 
 /// What `operator show` prints (FRN-003): the one operator's username and whether it has
@@ -271,17 +306,30 @@ pub async fn enrol_totp(db: &PgPool, vault: &Vault, username: &str) -> Result<En
     )))
 }
 
-/// Removes the operator's TOTP secret for `anima-hub operator totp <username> --disable`;
-/// the password alone signs in again.
+/// Removes the operator's TOTP secret for `anima-hub operator totp <username> --disable`.
+/// In the same transaction it deletes the operator's tokens, as [`enrol_totp`] does, and
+/// writes an audit entry (LOG-005). Outside the link mode the password alone then signs in;
+/// in the link mode no sign-in passes until a new secret is set (FRN-007).
 ///
 /// # Errors
 ///
 /// `Error::Validation` when no operator has this username; `Error::Database` otherwise.
-pub async fn disable_totp(db: &PgPool, username: &str) -> Result<(), Error> {
-    let account = store::account_by_username(db, username)
+pub async fn disable_totp(db: &PgPool, username: &str, now: DateTime<Utc>) -> Result<(), Error> {
+    let mut tx = db.begin().await?;
+    let account = store::account_by_username(&mut *tx, username)
         .await?
         .ok_or(UNKNOWN_OPERATOR)?;
-    store::set_totp(db, account.id, None, None).await?;
+    store::set_totp(&mut *tx, account.id, None, None).await?;
+    // Row first, tokens second, as in `replace_operator` (D-9).
+    store::delete_operator_tokens(&mut tx, account.id).await?;
+    let change = serde_json::json!({
+        "username": account.username,
+        "totp": false,
+        "reason": "operator totp --disable",
+    });
+    let entry = account_audit(account.id, AuditAction::Update, change);
+    events::audit(&mut tx, now, entry).await?;
+    tx.commit().await?;
     Ok(())
 }
 

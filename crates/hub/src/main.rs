@@ -79,6 +79,12 @@ enum StartError {
     Stdin,
     #[error("the password, the TOTP secret and the code cannot be read from standard input")]
     CreateInput,
+    /// A terminal would echo the password and the secret (LOG-007).
+    #[error(
+        "operator create reads the password, the TOTP secret and the code from a pipe: pipe the \
+         three lines in; a terminal would show them"
+    )]
+    CreateFromTerminal,
     #[error("{0}")]
     Operator(#[from] access::Error),
     /// The cause is in the process log, by fault word and SQLSTATE (LOG-007).
