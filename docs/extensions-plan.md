@@ -689,6 +689,59 @@ Reminders deliver only to the devices of the operator.
 - **AIS-007.** Each session must be a timeline entry with the category "code".
 - **AIS-008.** The operator must be able to exclude a repository or a folder. The collector must not read sessions from an excluded folder.
 
+#### 4.12.1 Agent panes (Herdr-style, operator direction 2026-11-16)
+
+**Purpose.** Do everything [Herdr](https://herdr.dev) does for a herd of coding agents, inside this
+extension and free: background terminal panes that stay alive, one view of every agent on every
+device, and an alert when an agent needs the operator. The operator's words: "build hrdr into the
+agent extension so it can be a tmux like thing ... so they are free but we just do everything they
+do". Status: direction only. It has no work package yet and is not in the build order (Section 5).
+
+Herdr (`github.com/herdrdev/herdr`) is Apache 2.0, so its code can be reused in this AGPL project
+with its licence notice kept. Whether to embed it or write our own is open decision 1 below.
+
+- **AIS-009.** The agent on each device must run a session server that keeps terminal panes alive
+  when no client is attached, like tmux. A pane must survive a client disconnect and an agent
+  restart.
+- **AIS-010.** Each pane must show a state: working, waiting for the operator, done or idle. For
+  Claude Code and Codex the state must come from the session files the collector already reads
+  (AIS-001). For other programs it must come from terminal activity.
+- **AIS-011.** One page must list every pane on every device, those waiting for the operator first,
+  with the device, repository, branch and time in the current state. The operator must be able to
+  open any pane in the browser terminal from this page.
+- **AIS-012.** The hub must send an alert through the notification system that sends check alerts (the NOT requirements in the design spec) when a pane
+  changes to waiting or done. One alert per state change, and the operator can mute a pane or a
+  device.
+- **AIS-013.** The operator must be able to start a new pane on a chosen device, in a chosen
+  repository, from the page and from the CLI. When agent runs are approved
+  (`docs/programme/proposals/agent-runs.md`, AGN-001 to AGN-008), they must use these panes.
+- **AIS-014.** The CLI must offer `anima agents` (list panes and states, across devices) and
+  `anima attach <device>/<pane>`.
+- **AIS-015.** The operator can turn on a daily digest of finished sessions that wait for review,
+  so work can be checked in one sitting instead of watching panes live.
+- **AIS-016.** Agent panes must be free on every plan, including self-host. They must not be a
+  paid feature of the hosted Solo plan.
+
+- **AIS-017.** The page must warn the operator when more agents need attention than one
+  person can follow. It must count the panes that are working or waiting at the same time,
+  across devices, and compare the count with a limit the operator sets. The default limit is
+  16, the ceiling DHH reports. Over the limit, the page must suggest pausing or queueing
+  panes, or switching to the daily digest (AIS-015). It must also say how long the operator
+  has been switching between panes without a break. It must not block anything, and the
+  operator can turn it off.
+
+**Why.** The human, not the machines, is the limit: DHH reports a ceiling of about 16 agent threads
+across 4 to 5 machines, and fewer as agents get faster (Lex Fridman Podcast #501, 1:38:09). The
+answer is routing the operator's attention to the agent that needs it (AIS-010 to AIS-012, AIS-015),
+from one seat, without a KVM box per machine.
+
+**Open decisions.**
+
+1. Embed Herdr's core or write our own session server. Embedding is faster; our own keeps one
+   agent binary and one protocol.
+2. Whether the Herdr phone apps or terminal client can connect to Anima panes.
+3. How waiting-for-input is detected for agents that do not write session files.
+
 ### 4.13 Wardrobe
 
 **Purpose.** Keep a record of each item of clothing, with a photo and its place. **Class:** C.
@@ -771,6 +824,62 @@ A model that the operator tuned with Unsloth is a local model. A local model ser
 - **MGW-016.** The function must have its commands and its MCP tools (CMD-030): list the upstreams and their state, show the use, show and set the budgets. No tool takes or returns a key (MCP-004).
 - **MGW-017.** The page must show: each upstream with its state, the use by device, by model and by day, the cost for the month, and each budget with the amount that is used.
 - **MGW-018.** The model gateway needs the Secrets extension (EXT-010), because each upstream key is a global secret. Thus a key has one store and the operator rotates it in one place (SCR-014).
+
+### 4.16 Bots (proposed, operator direction 2026-11-16)
+
+**Purpose.** Always-on bots that work like employees, run on the operator's own computers, and use
+the operator's own models. The operator defines a bot by chatting with it: its job, its schedule,
+what it may touch. Each reply goes to a model that the router picks: the operator's subscription
+(Claude Code, Codex) or any upstream of the model gateway (Section 4.15). A bot that needs to code
+does so in an agent pane (Section 4.12.1). **Class:** B for the conversation text. C for the counts.
+Status: direction only. The proposed work package is XP-16. It is not in the tables of Section 5.
+
+**Data.** `bot` (name, job, instructions, device, model rule, schedule, permissions, state),
+`bot_message` (bot, role, sealed text, model used, time), `bot_task` (bot, title, state, pane, result).
+
+- **BOT-001.** The operator must be able to make a bot in a chat. The chat writes the bot definition:
+  name, job, instructions, schedule, allowed devices and allowed tools. The operator must see the
+  definition and confirm it before the bot starts.
+- **BOT-002.** A bot must run on a device that the operator chooses, under the Anima agent on that
+  device. The hub keeps the definition and the history. The bot keeps running when no client is open.
+- **BOT-003.** For each reply, the bot must choose a model by a rule: a fixed model, the cheapest
+  model that can do the task, or local first. It must send the request through the model gateway
+  (MGW-001, MGW-007). With no gateway upstream, it must use the operator's subscription through the
+  vendor's own program on that device, for example `claude -p` or `codex exec`. It must never take
+  or store the login of a subscription.
+- **BOT-004.** A bot can start a coding task in an agent pane (AIS-013) in an allowed repository. Its
+  state shows on the agent panes page with the other panes, and a task that waits for the operator
+  sends the same alert (AIS-012).
+- **BOT-005.** A bot can act on a schedule or an event: a time, a check that changes state, a new
+  issue or pull request (Integrations, Section 4.5). It uses the rule engine (ENG-001).
+- **BOT-006.** A bot must ask the operator before it sends a message to another person, spends money,
+  deletes data or pushes to a shared branch. The operator can give a standing permission for one kind
+  of action and can take it back.
+- **BOT-007.** Each bot must have a budget (MGW-011) and a log of its actions. The operator must be
+  able to pause or stop a bot in one action, from the client, the CLI (`anima bots`) and the phone.
+- **BOT-008.** Bots count toward the overload warning (AIS-017), and their finished work goes into the
+  daily digest (AIS-015).
+- **BOT-009.** The Bots extension must be free on every plan, as agent panes are (AIS-016). Its
+  conversation text is sealed like session text (AIS-004, AIS-005).
+
+**Depends on.** Model gateway (XP-15), agent panes (Section 4.12.1), the rule engine (ENG-001), and
+for long tasks the jobs and agent-runs proposals.
+
+**Risks.**
+
+- Subscription terms: driving a Claude or ChatGPT plan from our own code may break the vendor's
+  terms. Calling the vendor's own program (BOT-003) is the safe path. Check each vendor's terms before
+  release.
+- "Always on" only holds while the device is on. A cloud computer add-on would cover users with one
+  laptop (the cloud VM proposal is being written).
+- A bot with shell access is an agent that runs code. It needs the same isolation ruling as
+  community extensions (EXT-009) before it runs anything that is not the operator's own instructions.
+
+**Open decisions.**
+
+1. Whether a bot's chat lives in the Anima.ing client only, or also in Slack, iMessage or Telegram.
+2. Whether bots can talk to each other (a team of bots), or only to the operator in the first version.
+3. How the router judges "the cheapest model that can do the task".
 
 ## 5. Build order: engine first, then one workflow per extension
 
