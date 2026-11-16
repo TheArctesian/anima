@@ -39,11 +39,14 @@ tauri() {
     ( cd "$ROOT" && bun run --cwd apps/desktop tauri "$@" )
 }
 
+# The order of the bundle step: the tree, the link, then the Rust programs.
 mkdir -p "$STAGE"
-/bin/sh "$ROOT/link/build.sh"
 
 case "$(uname -s)" in
 Darwin)
+    # No SIGN_IDENTITY: the recipe gives the tree an ad hoc signature.
+    SIGN_IDENTITY='' /bin/sh "$HERE/database-tree/build.sh" darwin-universal "$TARGET_FOLDER/database-tree" "$HERE/database"
+    /bin/sh "$ROOT/link/build.sh"
     cargo_build --target aarch64-apple-darwin --target x86_64-apple-darwin
     for name in $RUST_PROGRAMS; do
         for triple in aarch64-apple-darwin x86_64-apple-darwin; do
@@ -56,8 +59,6 @@ Darwin)
         lipo -create -output "$STAGE/$name-universal-apple-darwin" \
             "$STAGE/$name-aarch64-apple-darwin" "$STAGE/$name-x86_64-apple-darwin"
     done
-    # No SIGN_IDENTITY: the recipe gives the tree an ad hoc signature.
-    SIGN_IDENTITY='' /bin/sh "$HERE/database-tree/build.sh" darwin-universal "$TARGET_FOLDER/database-tree" "$HERE/database"
     tauri build --no-bundle --target universal-apple-darwin \
         --config "{\"version\":\"$VERSION\",\"bundle\":{$CARRIED}}"
     tauri bundle --target universal-apple-darwin --bundles app,dmg \
@@ -67,10 +68,11 @@ Darwin)
 Linux)
     triple=$(rustc -vV | sed -n 's/^host: //p')
     case "$triple" in x86_64-*) go_arch=amd64 ;; aarch64-*) go_arch=arm64 ;; *) echo "trial-bundle: no build for $triple" >&2; exit 1 ;; esac
+    /bin/sh "$HERE/database-tree/build.sh" linux "$TARGET_FOLDER/database-tree" "$HERE/database"
+    /bin/sh "$ROOT/link/build.sh"
     cargo_build
     for name in $RUST_PROGRAMS; do cp "$TARGET_FOLDER/release/$name" "$STAGE/$name-$triple"; done
     cp "$ROOT/link/bin/anima-link-linux-$go_arch" "$STAGE/anima-link-$triple"
-    /bin/sh "$HERE/database-tree/build.sh" linux "$TARGET_FOLDER/database-tree" "$HERE/database"
     tauri build --no-bundle --config "{\"version\":\"$VERSION\",\"bundle\":{$CARRIED}}"
     APPIMAGE_EXTRACT_AND_RUN=1 tauri bundle --bundles appimage --no-sign \
         --config "{\"version\":\"$VERSION\",\"bundle\":{\"createUpdaterArtifacts\":false,$CARRIED}}"
