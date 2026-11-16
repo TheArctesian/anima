@@ -105,10 +105,7 @@ fn cli_003_token_round_trips_through_write_read_clear() {
 #[test]
 fn cli_002_a_loopback_http_origin_keeps_a_token_and_no_other_http_origin_does() {
     use_memory_store();
-    for origin in [
-        "http://127.0.0.1:8443",
-        "http://localhost:9000",
-    ] {
+    for origin in ["http://127.0.0.1:8443", "http://127.0.0.1"] {
         write_token(TokenKind::Access, origin, SECRET).unwrap();
         assert_eq!(
             read_token(TokenKind::Access, origin).unwrap().as_deref(),
@@ -116,6 +113,8 @@ fn cli_002_a_loopback_http_origin_keeps_a_token_and_no_other_http_origin_does() 
         );
     }
     for origin in [
+        "http://localhost:9000",
+        "http://localhost",
         "http://localhost.example.com",
         "http://127.0.0.1.evil.test",
         "http://10.0.0.5:8443",

@@ -2,9 +2,8 @@
 //! (2.8). The shell runs `anima-local-hub account` with each secret on standard input; it never
 //! logs what the program reads or prints, only a fixed code and the exit code (LOG-007).
 //!
-//! `create` is permitted only while the hub has no account (the first run), or once after the
-//! person at this computer confirmed recovery in a native dialog, which script in the web view
-//! cannot answer (F-9).
+//! `create` replaces an existing account only after the person at this computer confirmed that
+//! request in a native dialog, which script in the web view cannot answer (F-9).
 
 use std::{
     ffi::OsString,
@@ -13,7 +12,7 @@ use std::{
 };
 
 use serde::Deserialize;
-use tauri::{AppHandle, Runtime, State, Webview};
+use tauri::{AppHandle, Manager, Runtime, State, Webview, Window};
 use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
 use tauri_plugin_log::log;
 use zeroize::{Zeroize, Zeroizing};
@@ -22,7 +21,7 @@ use super::{
     Changing, LocalHubError,
     account_form::{self, Account, NewTotp},
     carried, environment, from_main, key_copy,
-    recovery::{self, CONFIRMATION, CONFIRMATION_TITLE, Recovery},
+    recovery::{self, CONFIRMATION, CONFIRMATION_TITLE, Cancellations},
 };
 use crate::carried::run::{ExchangeError, Invocation, exchange};
 
@@ -30,15 +29,9 @@ use crate::carried::run::{ExchangeError, Invocation, exchange};
 const ACCOUNT_LIMIT: Duration = Duration::from_mins(1);
 const KEY_FILE_NAME: &str = "anima-hub-key";
 
-/// The recovery permit of this app (F-9).
+/// When this app's last confirmation of a replacement was cancelled (F-9).
 #[derive(Debug, Default)]
-pub struct RecoveryPermit(Mutex<Recovery>);
-
-impl RecoveryPermit {
-    fn with<T>(&self, work: impl FnOnce(&mut Recovery) -> T) -> T {
-        work(&mut self.0.lock().unwrap_or_else(PoisonError::into_inner))
-    }
-}
+pub struct Replacements(Mutex<Cancellations>);
 
 /// What the client sends to make the account. Its secrets are wiped when it is dropped.
 #[derive(Deserialize)]
@@ -135,13 +128,30 @@ pub async fn local_hub_totp_new<R: Runtime>(
     .await
 }
 
-/// Makes the operator account, or replaces it after a confirmed recovery, with a password, a
-/// TOTP secret and a code of that secret. Every sign-in to the hub ends.
+/// Asks the person at this computer, in a native dialog, to confirm that this request replaces
+/// the account. Blocks: call it off the async runtime.
+fn confirm_replacement<R: Runtime>(app: &AppHandle<R>, window: &Window<R>) -> bool {
+    app.dialog()
+        .message(CONFIRMATION)
+        .title(CONFIRMATION_TITLE)
+        .kind(MessageDialogKind::Warning)
+        .parent(window)
+        .buttons(MessageDialogButtons::OkCancelCustom(
+            "Recover".into(),
+            "Cancel".into(),
+        ))
+        .blocking_show()
+}
+
+/// Makes the operator account with a password, a TOTP secret and a code of that secret. When
+/// the hub has an account, a native dialog asks the person at this computer to confirm its
+/// replacement first, for this request only (F-9); `cancelled` when they do not. Every sign-in
+/// to the hub ends.
 #[tauri::command]
 pub async fn local_hub_account_create<R: Runtime>(
+    app: AppHandle<R>,
     webview: Webview<R>,
     changing: State<'_, Changing>,
-    permit: State<'_, RecoveryPermit>,
     account: NewAccount,
 ) -> Result<(), LocalHubError> {
     from_main(webview.label())?;
@@ -149,53 +159,29 @@ pub async fn local_hub_account_create<R: Runtime>(
     let input = account_form::create_input(&account.password, &account.secret, &account.code)?;
     drop(account);
     let claim = changing.claim()?;
-    let held = permit.with(|recovery| recovery.is_held(Instant::now()));
+    let window = webview.window();
     let result = blocking(move || {
+        // The claim is held from the status to the end of `create`: no other change runs between.
         let _claim = claim;
-        recovery::may_create(status()?.is_some(), held)?;
+        let has_account = status()?.is_some();
+        let replacements = app.state::<Replacements>();
+        let mut cancellations = replacements
+            .0
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner);
+        recovery::may_create(has_account, &mut cancellations, Instant::now(), || {
+            confirm_replacement(&app, &window)
+        })?;
+        drop(cancellations);
         let args: [&OsString; 3] = [&"account".into(), &"create".into(), &name];
         run_account(&args, Some(&input), LocalHubError::Refused).map(drop)
     })
     .await;
     match &result {
-        Ok(()) => {
-            permit.with(Recovery::consume);
-            log::info!("the operator account of the hub on this computer was made");
-        }
+        Ok(()) => log::info!("the operator account of the hub on this computer was made"),
         Err(error) => log::warn!("the operator account was not made: {}", error.code()),
     }
     result
-}
-
-/// Asks the person at this computer, in a native dialog, to confirm recovery of the account.
-/// On "Recover" one `local_hub_account_create` may replace the account for five minutes.
-#[tauri::command]
-pub async fn local_hub_recover<R: Runtime>(
-    app: AppHandle<R>,
-    webview: Webview<R>,
-    permit: State<'_, RecoveryPermit>,
-) -> Result<bool, LocalHubError> {
-    from_main(webview.label())?;
-    let window = webview.window();
-    let confirmed = blocking(move || {
-        Ok(app
-            .dialog()
-            .message(CONFIRMATION)
-            .title(CONFIRMATION_TITLE)
-            .kind(MessageDialogKind::Warning)
-            .parent(&window)
-            .buttons(MessageDialogButtons::OkCancelCustom(
-                "Recover".into(),
-                "Cancel".into(),
-            ))
-            .blocking_show())
-    })
-    .await?;
-    if confirmed {
-        permit.with(|recovery| recovery.grant(Instant::now()));
-        log::info!("recovery of the operator account was confirmed at this computer");
-    }
-    Ok(confirmed)
 }
 
 /// Saves a copy of the hub's key at a place the operator chooses in a native save dialog.

@@ -40,7 +40,9 @@ impl TokenKind {
 const SCHEME: &str = "https://";
 /// Plain `http` is allowed only for this computer (CLI-002), as in `parseHubAddress`.
 /// No `[::1]`: the CSP cannot name an IPv6 literal, so the client never saves one.
-const LOOPBACK_SCHEMES: [&str; 2] = ["http://localhost", "http://127.0.0.1"];
+/// Desktop loopback hubs are `127.0.0.1` only (S6 F-1, F-10): `localhost` can resolve to an
+/// address that the loopback owner check does not cover.
+const LOOPBACK_SCHEMES: [&str; 1] = ["http://127.0.0.1"];
 
 /// Input check only, no URL resolution (REPO-003): `https://` (or `http://` for a loopback host) then a lowercase host (letters,
 /// digits, `.`, `-`, `_`, IPv6 brackets) with an optional port, as `parseHubAddress` produces.

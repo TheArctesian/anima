@@ -35,7 +35,8 @@ use device::Launch;
 pub use error::LinkError;
 use folder::LinkFolders;
 use joining::Joined;
-use state::{Event, Phase, Reason};
+pub use state::{DeviceState, Event};
+use state::{Phase, Reason};
 
 const PROGRAM: &str = "anima-link";
 const RESTART_AFTER: Duration = Duration::from_secs(10);
@@ -109,8 +110,17 @@ fn launch(program: PathBuf, folder: &Path, port: u16) -> Launch {
 }
 
 /// Starts the device link when this device has joined a hub. Called once at the app's start.
+/// A join that stopped half way is undone first: the folder before it is put back.
 pub fn start(device: &DeviceLink) {
     let Ok(folders) = folders() else { return };
+    if folders.recover().is_err() {
+        log::warn!("the device link's folder before a join could not be put back");
+    }
+    resume(device, crate::carried::program(PROGRAM), &folders);
+}
+
+/// Runs the device link of `folders.device` on its saved port, when this device has joined.
+fn resume(device: &DeviceLink, program: Option<PathBuf>, folders: &LinkFolders) {
     if !folders.device.is_dir() {
         return;
     }
@@ -118,10 +128,32 @@ pub fn start(device: &DeviceLink) {
         device.record(Event::Unable(Reason::NoPort));
         return;
     };
-    match crate::carried::program(PROGRAM) {
+    match program {
         Some(program) => device.start(launch(program, &folders.device, port)),
         None => device.record(Event::Unable(Reason::NotCarried)),
     }
+}
+
+/// Puts the joined folder in place of the one before and runs its device link. When the swap
+/// fails, the link before runs again on its own port. The folder before is removed last; a
+/// failure there is logged only, as the join itself succeeded.
+fn replace(
+    device: &DeviceLink,
+    program: PathBuf,
+    folders: &LinkFolders,
+    port: u16,
+) -> Result<(), LinkError> {
+    device.stop();
+    if folders.take_next().is_err() {
+        resume(device, Some(program), folders);
+        let _ = folders.prepare_next();
+        return Err(LinkError::Folder);
+    }
+    if folders.remove_old().is_err() {
+        log::warn!("the device link's folder before the join was not removed");
+    }
+    device.start(launch(program, &folders.device, port));
+    Ok(())
 }
 
 async fn blocking<T: Send + 'static>(
@@ -153,9 +185,7 @@ pub async fn link_join<R: Runtime>(
         let folders = folders()?;
         let env = environment(|name| std::env::var_os(name));
         let joined = joining::join(&program, &folders, &line, &env)?;
-        device.stop();
-        folders.take_next().map_err(|_| LinkError::Folder)?;
-        device.start(launch(program, &folders.device, joined.port));
+        replace(&device, program, &folders, joined.port)?;
         Ok(joined)
     })
     .await;

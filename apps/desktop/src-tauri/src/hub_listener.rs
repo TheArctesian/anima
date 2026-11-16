@@ -16,7 +16,7 @@ mod tests;
 
 use std::{
     ffi::OsStr,
-    net::{IpAddr, SocketAddr, TcpStream},
+    net::{IpAddr, Ipv4Addr, SocketAddr, TcpStream},
     sync::Arc,
     time::Duration,
 };
@@ -25,8 +25,7 @@ use serde::{Serialize, Serializer, ser::SerializeStruct};
 use tauri::{Runtime, State, Webview};
 
 use crate::link::DeviceLink;
-use listeners::{Listener, Owner, Target};
-use origin::LoopbackOrigin;
+use listeners::{Listed, Listener, Owner};
 
 const CONNECT_LIMIT: Duration = Duration::from_millis(300);
 const LSOF: &str = "/usr/sbin/lsof";
@@ -35,7 +34,7 @@ const LSOF: &str = "/usr/sbin/lsof";
 pub enum HubListenerError {
     #[error("only the main window may check a hub address")]
     Caller,
-    #[error("the address is not http://127.0.0.1, http://localhost or http://[::1] with a port")]
+    #[error("the address is not http://127.0.0.1 with a port")]
     BadOrigin,
 }
 
@@ -64,11 +63,11 @@ fn from_main(label: &str) -> Result<(), HubListenerError> {
 
 /// The listeners on `port` that the system shows: macOS this user's only, with no owner told;
 /// Linux every user's, with their owners.
-fn system_listeners(port: u16, uid: u32) -> Vec<Listener> {
+fn system_listeners(port: u16, uid: u32) -> (Vec<Listener>, Listed) {
     if cfg!(target_os = "macos") {
-        lsof_listeners(port, uid)
+        (lsof_listeners(port, uid), Listed::ThisUser)
     } else {
-        proc_listeners()
+        (proc_listeners(), Listed::EveryUser)
     }
 }
 
@@ -76,7 +75,8 @@ fn system_listeners(port: u16, uid: u32) -> Vec<Listener> {
 fn lsof_listeners(port: u16, uid: u32) -> Vec<Listener> {
     use crate::os_program::{self, AfterLimit, Limit, Stdout};
     let (uid, port) = (uid.to_string(), format!("-iTCP:{port}"));
-    let args: [&OsStr; 7] = ["-nP", "-a", "-u", &uid, &port, "-sTCP:LISTEN", "-Fn"].map(OsStr::new);
+    let args: [&OsStr; 7] =
+        ["-nP", "-a", "-u", &uid, &port, "-sTCP:LISTEN", "-Fnt"].map(OsStr::new);
     let limit = Limit {
         patience: Duration::from_secs(3),
         after: AfterLimit::Kill,
@@ -106,28 +106,20 @@ fn proc_listeners() -> Vec<Listener> {
     all
 }
 
-fn accepts(address: IpAddr, port: u16) -> bool {
-    TcpStream::connect_timeout(&SocketAddr::new(address, port), CONNECT_LIMIT).is_ok()
-}
-
-/// The verdict for `origin`. `link_serves` is false when the port is the device link's and
-/// the app's own child does not serve it now.
-fn owner(origin: &LoopbackOrigin, link_serves: bool) -> Owner {
+/// Who listens on `127.0.0.1:port`. `link_permits` is false when the port is the device
+/// link's and the app's own child does not serve it now.
+fn owner(port: u16, link_permits: bool) -> Owner {
     let uid = nix::unistd::getuid().as_raw();
-    let found = system_listeners(origin.port, uid);
-    let targets: Vec<Target> = origin
-        .addresses
-        .iter()
-        .map(|address| Target {
-            accepts: accepts(*address, origin.port),
-            own: link_serves && listeners::only_own(&found, *address, origin.port, uid),
-        })
-        .collect();
-    listeners::verdict(&targets)
+    let (found, listed) = system_listeners(port, uid);
+    let target = IpAddr::V4(Ipv4Addr::LOCALHOST);
+    let accepts = TcpStream::connect_timeout(&SocketAddr::new(target, port), CONNECT_LIMIT).is_ok();
+    let own = link_permits && listeners::only_own(&found, listed, (target, port), uid);
+    listeners::verdict(accepts, own)
 }
 
 /// `"own"`, `"other"` or `"none"`: who listens on the port of the loopback hub address
-/// `origin`. The client sends nothing to an address that is not `"own"`.
+/// `origin`, which must be `http://127.0.0.1:<port>`. The client sends nothing to an address
+/// that is not `"own"`.
 #[tauri::command]
 pub async fn hub_listener_check<R: Runtime>(
     webview: Webview<R>,
@@ -135,11 +127,10 @@ pub async fn hub_listener_check<R: Runtime>(
     origin: String,
 ) -> Result<Owner, HubListenerError> {
     from_main(webview.label())?;
-    let origin = origin::parse(&origin).ok_or(HubListenerError::BadOrigin)?;
-    let link = device.state();
-    let link_serves = link.port != Some(origin.port) || link.serves(origin.port);
+    let port = origin::port(&origin).ok_or(HubListenerError::BadOrigin)?;
+    let link_permits = listeners::link_permits(&device.state(), port);
     Ok(
-        tauri::async_runtime::spawn_blocking(move || owner(&origin, link_serves))
+        tauri::async_runtime::spawn_blocking(move || owner(port, link_permits))
             .await
             .unwrap_or(Owner::Other),
     )

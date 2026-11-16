@@ -13,12 +13,18 @@ const MOST_PASSWORD: usize = 1024;
 const MOST_SECRET: usize = 64;
 const CODE_DIGITS: usize = 6;
 
-/// The account's name. It goes on the command line, so it must not look like an option.
+/// The account's name, as `anima-local-hub account` takes it: 1 to 64 ASCII letters, digits,
+/// `.`, `_` or `-`, starting with a letter or a digit. It goes on the command line, so it can
+/// never look like an option.
 pub fn name(name: &str) -> Result<OsString, LocalHubError> {
-    let fits = !name.is_empty()
-        && name.len() <= MOST_NAME
-        && !name.starts_with('-')
-        && !name.chars().any(char::is_control);
+    let fits = name.len() <= MOST_NAME
+        && name
+            .bytes()
+            .next()
+            .is_some_and(|first| first.is_ascii_alphanumeric())
+        && name
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'_' | b'-'));
     if !fits {
         return Err(LocalHubError::Argument);
     }
