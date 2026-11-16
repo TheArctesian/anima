@@ -2,10 +2,21 @@ use chrono::{TimeZone as _, Utc};
 
 use super::*;
 
+mod change;
+mod parts;
+mod text;
+
+/// `count` copies of `c`.
+fn long(c: char, count: usize) -> String {
+    std::iter::repeat_n(c, count).collect()
+}
+
 #[test]
 fn src_006_a_provider_request_is_a_get_below_the_api_base() {
     let request = Request::get("/installation/repositories", &[("per_page", "100")]).unwrap();
-    assert_eq!(request.method, Method::Get);
+    // Irrefutable: `Method` has exactly one variant, so a request cannot express a write
+    // (PRJ-017, OD-E14). A second variant fails this line at compile time.
+    let Method::Get = request.method;
     assert_eq!(request.path, "/installation/repositories");
     assert_eq!(request.query, [("per_page".to_owned(), "100".to_owned())]);
 }
@@ -74,6 +85,7 @@ fn src_021_the_poll_interval_has_a_floor_of_fifteen_minutes() {
         gives: &[],
         poll_interval_seconds,
         api_base: "https://api.example",
+        changes: None,
     };
     assert!(declaration(900).poll_interval_is_allowed());
     assert!(!declaration(899).poll_interval_is_allowed());

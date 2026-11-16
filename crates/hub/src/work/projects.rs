@@ -6,26 +6,37 @@
 //! (PRO-003, PRO-004). Text from GitHub is stored as given and never interpreted or logged.
 //! No domain imports this one; wiring registers the intake and merges [`graphql`].
 
+mod code;
+mod forge;
 pub mod graphql;
+mod history;
 mod import;
 mod intake;
+mod issues;
 mod model;
 mod page;
 mod proposals;
+mod pull_requests;
 mod slug;
 mod store;
 #[cfg(test)]
 mod tests;
+mod workflows;
 
 use std::sync::Arc;
 
-use async_graphql::Error as GraphQlError;
+use async_graphql::{Context, Error as GraphQlError};
+
+pub use self::forge::{KeyChanges, RequestReads};
 use chrono::{DateTime, Utc};
-use sqlx::PgConnection;
+use sqlx::{PgConnection, PgPool};
 
 use crate::{
-    api_errors::{ErrorCode, coded, internal},
-    engine::sources::{self, Intake},
+    api_errors::{ErrorCode, coded, internal, pool},
+    engine::{
+        extensions::{self, PROJECTS},
+        sources::{self, Intake},
+    },
     ids::ProjectId,
 };
 
@@ -64,6 +75,15 @@ impl Error {
             other => internal(other),
         }
     }
+}
+
+/// The pool, once Projects is on; `CONFLICT` while it is off (EXT-002).
+async fn on<'a>(ctx: &Context<'a>) -> async_graphql::Result<&'a PgPool> {
+    let db = pool(ctx)?;
+    extensions::require_on(db, PROJECTS)
+        .await
+        .map_err(extensions::Error::into_graphql)?;
+    Ok(db)
 }
 
 /// Makes the resources of `project` match the signs of its repositories that are not left

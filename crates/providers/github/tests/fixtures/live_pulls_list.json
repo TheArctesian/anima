@@ -1,0 +1,70 @@
+[
+  {
+    "number": 12,
+    "title": "Add the sample widget",
+    "state": "open",
+    "draft": false,
+    "user": { "login": "octo-writer" },
+    "head": {
+      "ref": "feature/widget",
+      "sha": "1111111111111111111111111111111111111111",
+      "repo": { "id": 500, "full_name": "sample-org/sample-repo" }
+    },
+    "base": {
+      "ref": "main",
+      "sha": "2222222222222222222222222222222222222222",
+      "repo": { "id": 500, "full_name": "sample-org/sample-repo" }
+    },
+    "labels": [{ "name": "enhancement" }, { "name": "ui" }],
+    "created_at": "2026-11-01T09:00:00Z",
+    "updated_at": "2026-11-02T10:30:00Z",
+    "merged_at": null,
+    "html_url": "https://github.com/sample-org/sample-repo/pull/12",
+    "body": "Adds the widget.\n\n<b>not html here</b>"
+  },
+  {
+    "number": 9,
+    "title": "Fix the sample typo",
+    "state": "closed",
+    "draft": true,
+    "user": null,
+    "head": {
+      "ref": "typo",
+      "sha": "3333333333333333333333333333333333333333",
+      "repo": { "id": 777, "full_name": "someone-else/sample-repo" }
+    },
+    "base": {
+      "ref": "main",
+      "sha": "2222222222222222222222222222222222222222",
+      "repo": { "id": 500, "full_name": "sample-org/sample-repo" }
+    },
+    "labels": [],
+    "created_at": "2026-10-20T09:00:00Z",
+    "updated_at": "2026-10-21T10:30:00Z",
+    "merged_at": "2026-10-21T10:30:00Z",
+    "html_url": "https://github.com/sample-org/sample-repo/pull/9",
+    "body": null
+  },
+  {
+    "number": 7,
+    "title": "Orphaned head",
+    "state": "closed",
+    "user": { "login": "octo-writer" },
+    "head": {
+      "ref": "gone",
+      "sha": "4444444444444444444444444444444444444444",
+      "repo": null
+    },
+    "base": {
+      "ref": "main",
+      "sha": "2222222222222222222222222222222222222222",
+      "repo": { "id": 500, "full_name": "sample-org/sample-repo" }
+    },
+    "labels": [],
+    "created_at": "2026-10-10T09:00:00Z",
+    "updated_at": "2026-10-11T10:30:00Z",
+    "merged_at": null,
+    "html_url": "https://github.com/sample-org/sample-repo/pull/7",
+    "body": ""
+  }
+]

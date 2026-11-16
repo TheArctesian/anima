@@ -741,7 +741,7 @@ The logo block at the top of the navigation bar is 24 px high (UR-6).
 - **NAV-007.** On macOS the window must draw under the title bar. The window buttons must sit in the top row of the navigation bar, and that row and the strip above the page must move the window.
 - **NAV-008.** The Live sessions page must list every live session with its device, protocol, start time and duration, with "Show" and "End session" for each (RA-034). With no live session it shows an empty state that points to the Devices page.
 - **NAV-009.** Before sign-in the window must show only the sign-in page: no navigation items and no hub status. The sign-in form is centred, with the logo above it and a primary "Sign in" button. In the desktop app the hub address is one line under the form (the hub's host name with a "Change" ghost button); "Change" opens the address field in place, and the address is saved when the operator signs in or presses Enter in it, so the page has one primary button. In a browser the same line names the hub that served the page, with no "Change" (CLI-002, UR-7 D13). Sign-in has two steps (operator decision, 2026-11-12). Step 1 asks for the user name and password and sends nothing. Step 2 asks for the authenticator code in six single-digit boxes, centred: typing moves to the next box, Backspace to the previous one, a pasted six-digit code fills all six, and the sixth digit submits; it has a "Back" link to step 1 and a "Sign in without a code" link for an account with no second factor (OD-2). The hub then checks all three together and keeps its single answer for every failure (SEC-002): a refusal returns to step 1 with the message, keeping the user name.
-- **NAV-010.** Every page must have a visible title (`h1`) and must set the window and document title to "<page> – Anima".
+- **NAV-010.** Every page must have a visible title (`h1`) and must set the window and document title to "<page> – Anima.ing".
 - **NAV-011.** The operator must be able to open a command palette with ⌘K on macOS, and with Ctrl+K on Linux and the web. It finds devices by name, host and IP address, the pages, and the Settings sections. For a found device it offers "Connect" with each protocol that is set up, "Wake" and "Open". The palette works with the keyboard only and is an ARIA combobox with a list box. In a session tab, the shortcut goes to the remote device, not to the palette. (R-115)
 
 ### 5.4 Design principles
@@ -1540,6 +1540,7 @@ anima/
 │   ├── agent-core/            Agent logic with no I/O: parsers (MET-016), points, batching, buffer, wire types
 │   ├── guac-protocol/         Guacamole protocol: parse and encode, no I/O
 │   └── theme/                 Generated Rust tokens (terminal colour scheme)
+├── link/                      The link program (anima-link, Go): one package for each operator noun (Section 4.1 delta, LNK)
 ├── apps/
 │   ├── client/                SvelteKit user interface, used by desktop and web
 │   │   └── src/

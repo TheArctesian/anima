@@ -101,7 +101,8 @@
     "projects": [
       "sources",
       "extensions",
-      "events"
+      "events",
+      "access"
     ]
   },
   "graphql": {

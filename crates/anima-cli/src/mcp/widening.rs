@@ -39,7 +39,7 @@ pub fn by_a_person(
     }
     Err(Failure::Usage {
         message: "This change gives an MCP agent more access (a tool or a default moves toward \
-                  allow), so a person must make it: at a terminal, or in the Anima desktop \
+                  allow), so a person must make it: at a terminal, or in the Anima.ing desktop \
                   app's Settings. Standard input is not a terminal, and --yes does not change \
                   that. Changes toward off work anywhere."
             .to_owned(),

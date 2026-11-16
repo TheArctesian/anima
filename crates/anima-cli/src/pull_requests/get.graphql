@@ -1,0 +1,37 @@
+query PullRequestGet($repository: ID!, $number: Int!, $fresh: Boolean) {
+  pullRequest(repository: $repository, number: $number, fresh: $fresh) {
+    repository
+    number
+    title
+    state
+    draft
+    authorLogin
+    headBranch
+    headSha
+    baseBranch
+    fromFork
+    headRepository
+    labels
+    comments
+    createdAt
+    updatedAt
+    mergedAt
+    url
+    body
+    bodyCut
+    mergeability {
+      state
+      canMerge
+    }
+    checks {
+      sha
+      state
+      passed
+      failed
+      pending
+      other
+      failing
+      partial
+    }
+  }
+}

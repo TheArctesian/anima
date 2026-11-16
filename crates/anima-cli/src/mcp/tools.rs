@@ -9,6 +9,7 @@ pub mod maintenance;
 pub mod notifications;
 pub mod projects;
 pub mod releases;
+pub mod repositories;
 pub mod retention;
 pub mod sessions;
 pub mod sources;
@@ -39,6 +40,7 @@ pub enum Tool {
     Extensions(extensions::ExtensionTool),
     Sources(sources::SourceTool),
     Projects(projects::ProjectTool),
+    Repositories(repositories::RepositoryTool),
 }
 
 impl Tool {
@@ -59,6 +61,7 @@ impl Tool {
         tools.extend(extensions::ExtensionTool::ALL.map(Self::Extensions));
         tools.extend(sources::SourceTool::ALL.map(Self::Sources));
         tools.extend(projects::ProjectTool::ALL.map(Self::Projects));
+        tools.extend(repositories::RepositoryTool::ALL.map(Self::Repositories));
         tools
     }
 
@@ -78,6 +81,7 @@ impl Tool {
             Self::Extensions(_) => ToolSet::Extensions,
             Self::Sources(_) => ToolSet::Sources,
             Self::Projects(_) => ToolSet::Projects,
+            Self::Repositories(_) => ToolSet::Repositories,
         }
     }
 
@@ -97,6 +101,7 @@ impl Tool {
             Self::Extensions(tool) => tool.definition(),
             Self::Sources(tool) => tool.definition(),
             Self::Projects(tool) => tool.definition(),
+            Self::Repositories(tool) => tool.definition(),
         }
     }
 
@@ -104,6 +109,10 @@ impl Tool {
     ///
     /// # Errors
     /// [`ToolError`] for wrong arguments, a refusal before the hub, or the hub's refusal.
+    #[expect(
+        clippy::cognitive_complexity,
+        reason = "a flat dispatch with one arm for each tool set"
+    )]
     pub async fn call(self, hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
         match self {
             Self::Devices(tool) => tool.call(hub, arguments).await,
@@ -119,6 +128,7 @@ impl Tool {
             Self::Extensions(tool) => tool.call(hub, arguments).await,
             Self::Sources(tool) => tool.call(hub, arguments).await,
             Self::Projects(tool) => tool.call(hub, arguments).await,
+            Self::Repositories(tool) => tool.call(hub, arguments).await,
         }
     }
 }

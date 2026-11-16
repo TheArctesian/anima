@@ -46,6 +46,7 @@ const TOOLSET_NAMES: Readonly<Record<string, string>> = {
   extensions: 'Extensions',
   sources: 'Integrations',
   projects: 'Projects',
+  repositories: 'Repositories',
 };
 
 export const STATES: readonly { readonly value: McpState; readonly label: string }[] = [

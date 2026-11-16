@@ -15,7 +15,7 @@ export interface ShownCertificate {
 export type CertificateStep =
   | { readonly step: 'reading'; readonly notice?: string }
   | { readonly step: 'failed'; readonly problem: string }
-  /** The hub says the device presents the certificate Anima accepted (`certificateMatched`): nothing to accept. */
+  /** The hub says the device presents the certificate Anima.ing accepted (`certificateMatched`): nothing to accept. */
   | { readonly step: 'unchanged' }
   | { readonly step: 'shown'; readonly certificate: ShownCertificate; readonly notice?: string }
   | { readonly step: 'accepting'; readonly certificate: ShownCertificate }
@@ -35,7 +35,7 @@ export const PROBLEM = {
   unreachable: 'The device could not be reached, so the new certificate could not be read. Try again.',
   none: 'The connection test did not read a server certificate. Close this warning and check the device settings.',
   accept: 'The hub did not accept the certificate. Try again, or close this warning.',
-  unchanged: 'The device now presents the certificate Anima accepted, so there is nothing to accept. Reconnect.',
+  unchanged: 'The device now presents the certificate Anima.ing accepted, so there is nothing to accept. Reconnect.',
   changed: 'The certificate changed again while you were reading it. This is the one the device presents now.',
 } as const;
 

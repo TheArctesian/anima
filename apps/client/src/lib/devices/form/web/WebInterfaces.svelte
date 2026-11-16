@@ -74,7 +74,7 @@
   <ConfirmModal
     open={deleting !== null}
     title="Delete {deleting?.label ?? ''}?"
-    body="Anima stops showing {deleting?.url ?? ''} for this device."
+    body="Anima.ing stops showing {deleting?.url ?? ''} for this device."
     confirmLabel="Delete {deleting?.label ?? ''}"
     onConfirm={remove}
     onCancel={() => {

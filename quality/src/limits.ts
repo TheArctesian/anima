@@ -3,10 +3,10 @@ import { countCodeLines } from "./lexing.ts";
 import type { Violation } from "./report.ts";
 import { extensionOf, type SourceFile } from "./source.ts";
 
-export const MEASURED_EXTENSIONS = [".rs", ".ts", ".js", ".svelte", ".css"];
+export const MEASURED_EXTENSIONS = [".rs", ".ts", ".js", ".svelte", ".css", ".go"];
 export const FILE_LINES_LIMIT = 300;
 export const FOLDER_FILES_LIMIT = 12;
-const FOLDER_ROOTS = ["crates/", "apps/", "quality/", "design/"];
+const FOLDER_ROOTS = ["crates/", "apps/", "quality/", "design/", "link/"];
 
 export function isMeasured(path: string): boolean {
   return MEASURED_EXTENSIONS.includes(extensionOf(path));

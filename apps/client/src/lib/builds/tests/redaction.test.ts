@@ -25,7 +25,7 @@ describe('cleanLine (BLD-049, LOG-007)', () => {
   });
 
   it.each([
-    'https://bucket.s3.example/Anima.AppImage?X-Amz-Algorithm=AWS4&X-Amz-Signature=abc123',
+    'https://bucket.s3.example/Anima.ing.AppImage?X-Amz-Algorithm=AWS4&X-Amz-Signature=abc123',
     'https://bucket.example/file?X-Amz-Credential=AKIA%2F20261108',
     'http://hub.example/upload?sig=deadbeef',
     'https://hub.example/upload?a=1&token=secret',

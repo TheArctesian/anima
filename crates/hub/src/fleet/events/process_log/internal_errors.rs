@@ -17,7 +17,7 @@ use super::{
     causes::{Cause, chain},
     echoes::{self, Arguments},
 };
-use crate::api_errors::ErrorCode;
+use crate::api_errors::{ErrorCode, StatedFault};
 
 const CODE: &str = "code";
 const INTERNAL: &str = ErrorCode::Internal.as_str();
@@ -36,8 +36,8 @@ const GENERIC_MESSAGE: &str = "Something went wrong on the hub.";
 ///   from a resolver's own by its position: it is placed at the argument's value, a resolver
 ///   error at its field (COULD 1, COULD 2). The log keeps only the path and the argument;
 /// - answers every other resolver error without a code, and every `INTERNAL` error, with
-///   `INTERNAL` and a generic message, and writes its cause chain to the log at error level
-///   (H-5). An error with any other code that carries a hidden cause (an unreachable
+///   `INTERNAL` and a generic message, or the fixed words of a `StatedFault`, and writes its
+///   cause chain to the log at error level (H-5). An error with any other code that carries a hidden cause (an unreachable
 ///   database) is logged the same way and keeps its message.
 ///
 /// The chain never holds SQL text, values or tokens: links are masked by the audit redaction
@@ -103,10 +103,17 @@ pub fn log_failure(error: &ServerError) {
     log_cause(error, code_of(error).as_deref().unwrap_or_default());
 }
 
-/// Logs the fault's cause chain and answers `INTERNAL` with a generic message (API-010).
+/// Logs the fault's cause chain and answers `INTERNAL` with a generic message (API-010), or
+/// with the fixed words of a [`StatedFault`] (K-E1 Section 13.6).
 fn hide_internal(error: &mut ServerError) {
     log_cause(error, INTERNAL);
-    GENERIC_MESSAGE.clone_into(&mut error.message);
+    let stated = error
+        .source::<Cause>()
+        .and_then(|cause| cause.downcast_ref::<StatedFault>())
+        .map(|fault| fault.words);
+    stated
+        .unwrap_or(GENERIC_MESSAGE)
+        .clone_into(&mut error.message);
     error
         .extensions
         .get_or_insert_with(Default::default)

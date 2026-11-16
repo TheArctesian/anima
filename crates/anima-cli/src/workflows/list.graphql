@@ -1,0 +1,9 @@
+query WorkflowList($repository: ID!, $fresh: Boolean) {
+  workflows(repository: $repository, fresh: $fresh) {
+    id
+    name
+    path
+    active
+    url
+  }
+}

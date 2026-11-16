@@ -126,7 +126,7 @@ describe('RA-032, MOT-009: upload progress and refusals', () => {
 
   it.each([
     ['UPLOAD_OFF', 'Uploads are off for this device.'],
-    ['EXISTS', 'A file with this name is already there; Anima never replaces a file.'],
+    ['EXISTS', 'A file with this name is already there; Anima.ing never replaces a file.'],
     ['DENIED', 'The device did not allow that.'],
     ['NOT_FOUND', 'The device has no file or folder at that place.'],
   ] as const)('RA-032: an upload refused with %s shows its fixed text and the folder is listed again', async (reason, text) => {

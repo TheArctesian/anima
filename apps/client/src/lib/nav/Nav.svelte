@@ -74,7 +74,7 @@
   </div>
   <div class="brand">
     <img src={asset('/logo.png')} alt="" width="24" height="24" />
-    <span class="words">Anima</span>
+    <span class="words">Anima.ing</span>
   </div>
   {@render destination(DEVICES)}
   <LiveSessions {hub} {iconOnly} />

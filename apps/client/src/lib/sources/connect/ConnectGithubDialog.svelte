@@ -89,8 +89,8 @@
 <Modal open title="Connect GitHub" describedBy="{ids}-about" width={7} onClose={close}>
   <div class="body">
     <p id="{ids}-about">
-      You make the GitHub App in your own account (GitHub, Settings, Developer settings, GitHub Apps) and install it. Anima does not
-      make it. Enter its App ID, the installation ID and the private key. The hub seals the key, and Anima does not show it again.
+      You make the GitHub App in your own account (GitHub, Settings, Developer settings, GitHub Apps) and install it. Anima.ing does not
+      make it. Enter its App ID, the installation ID and the private key. The hub seals the key, and Anima.ing does not show it again.
     </p>
     <!-- No `name` attributes: a form that were ever submitted by the browser would put its fields in the URL (F-8). -->
     <form onsubmit={submit} novalidate>

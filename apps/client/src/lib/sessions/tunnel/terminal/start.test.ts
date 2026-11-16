@@ -76,7 +76,7 @@ describe('start and reconnect of an SSH session (D-3, D-5, RA-007)', () => {
     const result = await startTerminal(api, TARGET, SETUP);
     expect(result).toEqual({
       ok: false,
-      error: { problem: 'bad-address', message: 'The hub gave a tunnel address that Anima does not accept.' },
+      error: { problem: 'bad-address', message: 'The hub gave a tunnel address that Anima.ing does not accept.' },
       wakeSent: false,
     });
     expect(calls.endSession).toEqual(['session-1']);

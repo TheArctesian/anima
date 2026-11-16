@@ -33,7 +33,7 @@ it('VPN-010: a key is up, warning or down, by state', () => {
   expect((['NEVER', 'VALID', 'EXPIRING', 'TAGGED_WITH_EXPIRY', 'EXPIRED'] as const).map(keyTone)).toEqual(['up', 'up', 'warning', 'warning', 'down']);
 });
 
-it('VPN-011: nodes not in Anima come first, then keys that need attention, then by name', () => {
+it('VPN-011: nodes not in Anima.ing come first, then keys that need attention, then by name', () => {
   const nodes = [
     node({ name: 'b-fine' }),
     node({ name: 'a-fine' }),

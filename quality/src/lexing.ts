@@ -3,6 +3,8 @@ interface Syntax {
   blocks: [open: string, close: string][];
   quotes: string;
   rust: boolean;
+  /** A backtick string is a Go raw string: a backslash in it is not an escape. */
+  rawBackticks?: boolean;
 }
 
 const C_BLOCK: [string, string] = ["/*", "*/"];
@@ -16,6 +18,7 @@ const SYNTAX: Record<string, Syntax> = {
     quotes: "\"'`",
     rust: false,
   },
+  ".go": { lineComment: true, blocks: [C_BLOCK], quotes: "\"'`", rust: false, rawBackticks: true },
   ".css": { lineComment: false, blocks: [C_BLOCK], quotes: "\"'", rust: false },
 };
 
@@ -59,10 +62,10 @@ function skipLine(text: string, at: number): Step {
   return { keep: "", next: newline === -1 ? text.length : newline };
 }
 
-function readString(text: string, at: number, quote: string): Step {
+function readString(text: string, at: number, quote: string, escapes = true): Step {
   let end = at + 1;
   while (end < text.length && text.charAt(end) !== quote) {
-    if (text.charAt(end) === "\\") end++;
+    if (escapes && text.charAt(end) === "\\") end++;
     else if (text.charAt(end) === "\n" && quote !== "`") break;
     end++;
   }
@@ -84,7 +87,7 @@ function stepAt(text: string, at: number, syntax: Syntax): Step {
     const literal = RUST_CHAR.exec(text.slice(at, at + 12));
     if (literal) return { keep: literal[0], next: at + literal[0].length, literal: true };
   }
-  if (syntax.quotes.includes(char)) return readString(text, at, char);
+  if (syntax.quotes.includes(char)) return readString(text, at, char, !(char === "`" && syntax.rawBackticks === true));
   return { keep: char, next: at + 1 };
 }
 

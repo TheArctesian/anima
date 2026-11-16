@@ -1,0 +1,25 @@
+[
+  {
+    "name": "main",
+    "commit": {
+      "sha": "4444444444444444444444444444444444444444",
+      "url": "https://api.github.com/repos/sample-org/sample-repo/commits/4444444444444444444444444444444444444444"
+    },
+    "protected": true
+  },
+  {
+    "name": "feature/widget",
+    "commit": {
+      "sha": "5555555555555555555555555555555555555555",
+      "url": "x"
+    },
+    "protected": false
+  },
+  {
+    "name": "old",
+    "commit": {
+      "sha": "6666666666666666666666666666666666666666",
+      "url": "x"
+    }
+  }
+]

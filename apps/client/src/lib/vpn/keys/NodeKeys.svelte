@@ -35,7 +35,7 @@
       <span class="address">{node.address}</span>
       <span class="key {keyTone(node.keyState)}"><span class="dot" aria-hidden="true"></span>{keyText(node, now)}</span>
       {#if node !== hub && !node.inAnima}
-        <span class="strange">Not in Anima</span>
+        <span class="strange">Not in Anima.ing</span>
       {/if}
       {#if renewable(node)}
         <RenewKey {node} {renew} {now} {reason} {reasonId} />
