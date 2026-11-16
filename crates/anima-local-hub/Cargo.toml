@@ -21,6 +21,8 @@ path = "tests/it/main.rs"
 # The database root, its socket folder and the files only the user may read are the ones of S3.
 anima-database = { path = "../anima-database" }
 base64.workspace = true
+# The time of the link's last change in the state, as RFC 3339.
+chrono.workspace = true
 clap.workspace = true
 getrandom.workspace = true
 # SIGTERM to a member of the group, and the user ID that names the launchd domain.

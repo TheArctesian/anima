@@ -57,10 +57,28 @@ fn a_given_root_holds_everything_but_the_socket() {
         folders.logs(),
         folders.lock_file(),
         folders.state_file(),
+        folders.link(),
+        folders.link_control(),
         folders.database().root().to_path_buf(),
     ] {
         assert!(path.starts_with("/srv/trial"), "{}", path.display());
     }
+    // S5: the hub's socket for the link is in the short folder of the database's socket.
+    assert_eq!(folders.link_socket(), PathBuf::from("/srv/s/link.sock"));
+}
+
+#[test]
+fn a_macs_link_sockets_fit_the_socket_path_limit_for_a_usual_home() {
+    let home = "/Users/a-longer-user-name";
+    let folders = Folders::for_user(Platform::MacOs, &user(home)).unwrap();
+
+    assert_eq!(
+        folders.link_socket(),
+        PathBuf::from(format!(
+            "{home}/Library/Application Support/ing.anima.desktop/pg/link.sock"
+        ))
+    );
+    assert!(folders.link_control().as_os_str().len() <= crate::members::SOCKET_PATH_LIMIT);
 }
 
 #[test]

@@ -13,7 +13,7 @@ pub const LABEL: &str = "ing.anima.hub";
 pub const SYSTEMD_UNIT: &str = "anima-hub.service";
 
 /// Seconds the unit gives the program to stop the group in order before it kills it. More
-/// than the sum of the members' stop limits (`group::LIMITS`).
+/// than the sum of the members' stop limits (`group::LIMITS`), the link's included.
 pub const STOP_SECONDS: u32 = 90;
 /// Seconds between a failure and the next start.
 const RESTART_SECONDS: u32 = 10;

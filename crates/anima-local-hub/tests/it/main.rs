@@ -1,8 +1,12 @@
 //! The real program with the real hub, database and gateway (one-click plan S4).
 //!
-//! The three other programs are the ones this workspace builds: `cargo nextest run
-//! --workspace` and `cargo test --workspace` build them beside this program. The PostgreSQL
-//! tree is the one the gates already need.
+//! The hub, the database program and the gateway are the ones this workspace builds: `cargo
+//! nextest run --workspace` and `cargo test --workspace` build them beside this program. The
+//! PostgreSQL tree is the one the gates already need.
+//!
+//! `anima-link` is a Go program that needs a relay on the network, so each test puts a
+//! stand-in script beside links to the built programs, in a `programs` folder of its own. The
+//! stand-in prints the link's ready line and waits for SIGTERM: the tests stay offline.
 
 use std::io::{BufRead as _, BufReader, Read as _, Write as _};
 use std::net::{SocketAddr, TcpStream};
@@ -17,14 +21,42 @@ use tempfile::TempDir;
 const LIMIT: Duration = Duration::from_secs(120);
 const LOCAL_HUB: &str = env!("CARGO_BIN_EXE_anima-local-hub");
 
+/// The stand-in for `anima-link hub`: the ready line of the real one, on standard error.
+const LINK: &str = r#"#!/bin/sh
+trap 'exit 0' TERM
+echo 'time=2026-11-15T10:00:00Z level=INFO msg="the hub link is ready" relay=stand-in devices=0' >&2
+while :; do sleep 0.1; done
+"#;
+
 /// The folder cargo builds every program of the workspace into.
-fn programs() -> PathBuf {
+fn built() -> PathBuf {
     let folder = Path::new(LOCAL_HUB).parent().unwrap().to_path_buf();
     for name in ["anima-hub", "anima-database", "anima-gateway"] {
         assert!(
             folder.join(name).is_file(),
             "{name} is not built beside anima-local-hub: build the workspace (`cargo build --workspace`)"
         );
+    }
+    folder
+}
+
+/// A folder with the built programs and the stand-in link, as `install` would carry them.
+fn programs(rig: &Rig) -> PathBuf {
+    use std::os::unix::fs::PermissionsExt as _;
+    let folder = rig.folder.path().join("programs");
+    if !folder.is_dir() {
+        std::fs::create_dir(&folder).unwrap();
+        for name in [
+            "anima-local-hub",
+            "anima-hub",
+            "anima-database",
+            "anima-gateway",
+        ] {
+            std::os::unix::fs::symlink(built().join(name), folder.join(name)).unwrap();
+        }
+        std::fs::write(folder.join("anima-link"), LINK).unwrap();
+        let mode = std::fs::Permissions::from_mode(0o700);
+        std::fs::set_permissions(folder.join("anima-link"), mode).unwrap();
     }
     folder
 }
@@ -88,7 +120,7 @@ impl Rig {
         let mut child = self
             .command("run")
             .args(["--listen", "127.0.0.1:0", "--programs"])
-            .arg(programs())
+            .arg(programs(self))
             .arg("--tree")
             .arg(tree())
             .stdout(Stdio::piped())
@@ -126,6 +158,7 @@ impl Rig {
             "anima-database.log",
             "anima-hub.log",
             "anima-gateway.log",
+            "anima-link.log",
         ]
         .map(|name| {
             let text = std::fs::read_to_string(self.root().join("log").join(name));
@@ -154,7 +187,7 @@ fn hub_address(status: &serde_json::Value) -> SocketAddr {
 
 /// `anima-hub health`, the probe that the Docker installation uses.
 fn hub_is_healthy(address: SocketAddr) -> bool {
-    Command::new(programs().join("anima-hub"))
+    Command::new(built().join("anima-hub"))
         .arg("health")
         .env_clear()
         .env("ANIMA_LISTEN", address.to_string())
@@ -216,20 +249,52 @@ fn dbl_012_the_real_group_serves_stops_in_order_and_starts_again_on_the_same_dat
 }
 
 #[test]
-fn net_002_s4_opens_the_hub_to_nobody() {
+fn f_6_the_hub_is_in_the_link_mode_and_its_link_is_up() {
     let rig = Rig::new();
     let running = rig.run();
     let address = hub_address(&rig.status());
 
-    // The hub's own default: a client on loopback is not in the permitted networks. S5 sets
-    // the rules of the application mode.
+    // NET-001 in the link mode: this computer is a permitted client; the hub's API answers.
     assert_eq!(status_line_of(address, "/health"), "HTTP/1.1 200 OK");
-    assert_eq!(
-        status_line_of(address, "/graphql"),
-        "HTTP/1.1 403 Forbidden"
+    let graphql = status_line_of(address, "/graphql");
+    assert!(
+        graphql.starts_with("HTTP/1.1 ") && !graphql.contains("403"),
+        "{graphql}"
+    );
+    // The hub made the link's socket in the short socket folder (S5).
+    let socket = std::fs::symlink_metadata(rig.folder.path().join("s/link.sock")).unwrap();
+    assert!(std::os::unix::fs::FileTypeExt::is_socket(
+        &socket.file_type()
+    ));
+    let started = Instant::now();
+    while rig.status()["link"]["state"] != "up" {
+        assert!(started.elapsed() < LIMIT, "{}", rig.logs());
+        thread::sleep(Duration::from_millis(50));
+    }
+    assert!(
+        rig.status()["link"]["since"]
+            .as_str()
+            .unwrap()
+            .ends_with('Z')
     );
 
     assert!(stop(running).success());
+}
+
+#[test]
+fn frn_007_account_refuses_with_code_20_while_the_hub_does_not_run_and_checks_the_name() {
+    let rig = Rig::new();
+
+    let not_ready = rig.command("account").arg("status").output().unwrap();
+    let bad_name = rig
+        .command("account")
+        .args(["create", "ada/x"])
+        .output()
+        .unwrap();
+
+    assert_eq!(not_ready.status.code(), Some(20), "{not_ready:?}");
+    assert_eq!(not_ready.stdout, [] as [u8; 0]);
+    assert_eq!(bad_name.status.code(), Some(2), "{bad_name:?}");
 }
 
 #[test]
@@ -240,7 +305,7 @@ fn a_second_run_of_the_same_folder_ends_with_code_10() {
     let second = rig
         .command("run")
         .arg("--programs")
-        .arg(programs())
+        .arg(programs(&rig))
         .arg("--tree")
         .arg(tree())
         .output()

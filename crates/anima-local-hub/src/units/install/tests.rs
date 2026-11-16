@@ -10,6 +10,8 @@ use super::{InstallError, Request, install, is_installed, remove};
 use crate::programs::tests::carried;
 use crate::{Carried, Folders, run};
 
+mod start_stop;
+
 struct Rig {
     folder: TempDir,
     folders: Folders,

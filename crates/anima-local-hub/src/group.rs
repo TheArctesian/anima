@@ -1,17 +1,19 @@
 //! The hub's group: its members started in order, kept, and stopped in the reverse order
-//! (DBL-012).
+//! (DBL-012). The link, the last member, is kept apart: its end does not end the group (F-6).
 
 use std::io;
 use std::net::SocketAddr;
-use std::time::Duration;
+use std::path::PathBuf;
+use std::time::{Duration, SystemTime};
 
 use anima_database::startup::RECOVERED_NOTICE;
 use tokio::sync::mpsc;
 
 use crate::child::{Child, ChildError, Spec, Stop, Stopped};
+use crate::link_member::{Backoff, LinkMember};
 use crate::log_file::{LOG_LIMIT, LogFile};
 use crate::members::{self, Carried};
-use crate::state::Blocked;
+use crate::state::{Blocked, LinkState};
 use crate::{Folders, KeyError, vault_key};
 
 /// `anima-database`: another copy runs this database.
@@ -32,6 +34,10 @@ pub struct Limits {
     pub gateway_stop: Duration,
     /// The database's own limit to stop PostgreSQL is 30 s.
     pub database_stop: Duration,
+    /// The link's own limit to reach its relay is 30 s.
+    pub link_ready: Duration,
+    pub link_stop: Duration,
+    pub link_backoff: Backoff,
 }
 
 /// The limits of the program. Their stop limits sum to less than the 90 s of the unit.
@@ -43,6 +49,13 @@ pub const LIMITS: Limits = Limits {
     hub_stop: Duration::from_secs(20),
     gateway_stop: Duration::from_secs(5),
     database_stop: Duration::from_secs(45),
+    link_ready: Duration::from_secs(40),
+    link_stop: Duration::from_secs(5),
+    link_backoff: Backoff {
+        first: Duration::from_secs(10),
+        longest: Duration::from_secs(60),
+        steady: Duration::from_secs(300),
+    },
 };
 
 /// What one run of the group works with.
@@ -53,6 +66,8 @@ pub struct Plan {
     /// Where the hub listens. S5 owns this choice; see `members::hub_environment`.
     pub listen: SocketAddr,
     pub limits: Limits,
+    /// The time of the link's state changes.
+    pub clock: fn() -> SystemTime,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -79,6 +94,7 @@ pub enum StartError {
 pub struct Ready {
     pub hub: SocketAddr,
     pub recovered: bool,
+    pub link: LinkState,
 }
 
 /// Why a ready group is no longer kept.
@@ -86,12 +102,16 @@ pub struct Ready {
 pub enum Ending {
     Asked,
     MemberEnded(&'static str),
+    /// Not an end: the link changed its state, and the group is kept.
+    LinkChanged(LinkState),
 }
 
 /// The running members in start order, each with its time to stop.
 #[derive(Debug)]
 pub struct Group {
     members: Vec<(Child, Duration)>,
+    /// Started after the hub; stopped first.
+    link: Option<LinkMember>,
     ended: mpsc::UnboundedReceiver<&'static str>,
     report_end: mpsc::UnboundedSender<&'static str>,
 }
@@ -101,6 +121,7 @@ impl Default for Group {
         let (report_end, ended) = mpsc::unbounded_channel();
         Self {
             members: Vec::new(),
+            link: None,
             ended,
             report_end,
         }
@@ -165,10 +186,15 @@ impl Group {
         let ready = hub.line_where(limits.hub_ready, members::hub_address);
         let hub_address = unless_stopped(stop, ready).await?;
         hub.stop_reading();
-        // Place for S6: the link starts here, with `hub_address`.
+
+        // The group is ready without it: the hub serves this computer while the link waits.
+        let link = members::link(carried, folders);
+        let link = LinkMember::start(link, log_path(plan, members::LINK), *limits, plan.clock);
+        let link = self.link.insert(link).state();
         Ok(Ready {
             hub: hub_address,
             recovered,
+            link,
         })
     }
 
@@ -186,18 +212,30 @@ impl Group {
         }
     }
 
-    /// Returns when `stop` is asked for or a member ends by itself.
+    /// Returns when `stop` is asked for, a member other than the link ends by itself, or the
+    /// link changes its state. Cancel-safe.
     pub async fn until_ended(&mut self, stop: &mut Stop) -> Ending {
+        let link = self.link.as_mut();
+        let link_changed = async move {
+            match link {
+                Some(link) => link.changed().await,
+                None => std::future::pending().await,
+            }
+        };
         tokio::select! {
             () = stop.asked() => Ending::Asked,
             name = self.ended.recv() => Ending::MemberEnded(name.unwrap_or("a member")),
+            link = link_changed => Ending::LinkChanged(link),
         }
     }
 
     /// Stops the members, the last one started first. A member that does not end in its
     /// time is killed. Returns one line for each member that did not end by itself.
-    pub async fn stop(self) -> Vec<String> {
-        let mut notes = Vec::new();
+    pub async fn stop(mut self) -> Vec<String> {
+        let mut notes = match self.link.take() {
+            Some(link) => link.stop().await,
+            None => Vec::new(),
+        };
         for (child, limit) in self.members.into_iter().rev() {
             let name = child.name();
             match child.stop(limit).await {
@@ -243,14 +281,16 @@ fn database_refusal(error: ChildError) -> StartError {
     }
 }
 
-fn log(plan: &Plan, name: &'static str) -> Result<LogFile, StartError> {
+fn log_path(plan: &Plan, name: &str) -> PathBuf {
     // "anima-hub migrate" and "anima-hub" share the hub's log.
     let file = name.split(' ').next().unwrap_or(name);
-    LogFile::open(&plan.folders.logs().join(format!("{file}.log")), LOG_LIMIT).map_err(|error| {
-        StartError::Log {
-            name,
-            kind: error.kind(),
-        }
+    plan.folders.logs().join(format!("{file}.log"))
+}
+
+fn log(plan: &Plan, name: &'static str) -> Result<LogFile, StartError> {
+    LogFile::open(&log_path(plan, name), LOG_LIMIT).map_err(|error| StartError::Log {
+        name,
+        kind: error.kind(),
     })
 }
 

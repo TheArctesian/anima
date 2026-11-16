@@ -1,7 +1,7 @@
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
-use std::time::Duration;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use tempfile::TempDir;
 use tokio::sync::watch;
@@ -9,14 +9,16 @@ use tokio::sync::watch;
 use super::{Ended, RunError, run};
 use crate::child::Stop;
 use crate::group::{Limits, Plan};
-use crate::state::{self, Blocked, State};
-use crate::{Carried, Folders};
+use crate::state::{self, Link, LinkState, State};
+use crate::{Backoff, Carried, Folders};
 
+mod blocking;
+mod link;
 mod stopping;
 
 const SOON: Duration = Duration::from_secs(20);
 
-/// Stand-ins for the three programs. Each writes what it does to `events`, and a file in the
+/// Stand-ins for the four programs. Each writes what it does to `events`, and a file in the
 /// rig's folder changes what it does.
 const DATABASE: &str = r#"#!/bin/sh
 here=$(dirname "$0")/..
@@ -52,6 +54,24 @@ echo "gateway start" >> "$here/events"
 echo "anima-gateway: listening on 127.0.0.1:4999" >&2
 while :; do sleep 0.05; done
 "#;
+/// `anima-link hub -state <folder> -target <socket>`, whose ready line is slog text.
+const LINK: &str = r#"#!/bin/sh
+here=$(dirname "$0")/..
+trap 'echo "link stop" >> "$here/events"; exit 0' TERM
+echo "link start $(basename "$3") $(basename "$5")" >> "$here/events"
+[ -f "$here/link-ends" ] && { echo 'level=ERROR msg="the relay cannot be reached"' >&2; exit 1; }
+echo 'time=2026-11-15T10:00:00Z level=INFO msg="the hub link is ready" relay=r devices=0' >&2
+while :; do sleep 0.05; done
+"#;
+
+/// The time of each change of the link in a test.
+fn clock() -> SystemTime {
+    UNIX_EPOCH + Duration::from_hours(500_000)
+}
+
+fn link_state(link: Link) -> LinkState {
+    LinkState::at(link, clock())
+}
 
 struct Rig {
     folder: TempDir,
@@ -66,6 +86,7 @@ fn rig() -> Rig {
         ("anima-database", DATABASE),
         ("anima-hub", HUB),
         ("anima-gateway", GATEWAY),
+        ("anima-link", LINK),
     ] {
         let path = programs.join("bin").join(name);
         fs::write(&path, script).unwrap();
@@ -84,7 +105,15 @@ fn rig() -> Rig {
             hub_stop: limit,
             gateway_stop: limit,
             database_stop: limit,
+            link_ready: limit,
+            link_stop: limit,
+            link_backoff: Backoff {
+                first: Duration::from_millis(100),
+                longest: Duration::from_millis(400),
+                steady: Duration::from_secs(60),
+            },
         },
+        clock,
     };
     Rig { folder, plan }
 }
@@ -127,15 +156,25 @@ impl Rig {
 
     /// Runs the group, waits until its state is `wanted`, then asks it to stop.
     async fn run_until_state(&self, wanted: &State) -> Result<Ended, RunError> {
+        self.run_until(|rig| rig.state().as_ref() == Some(wanted))
+            .await
+    }
+
+    /// Runs the group, waits until `done` holds, then asks it to stop.
+    async fn run_until(&self, done: impl Fn(&Self) -> bool) -> Result<Ended, RunError> {
         let (ask, stop) = Stop::new();
         let asking = async {
-            while self.state().as_ref() != Some(wanted) {
+            while !done(self) {
                 tokio::time::sleep(Duration::from_millis(20)).await;
             }
             ask.send_replace(true);
         };
         let (ended, ()) = tokio::join!(self.run_with(stop, || {}), asking);
         ended
+    }
+
+    fn count(&self, event: &str) -> usize {
+        self.events().iter().filter(|line| *line == event).count()
     }
 }
 
@@ -150,8 +189,9 @@ fn mode_of(path: &Path) -> u32 {
 #[tokio::test]
 async fn dbl_012_the_group_starts_in_order_and_stops_in_the_reverse_order() {
     let rig = rig();
+    let link_is_up = |rig: &Rig| matches!(rig.state(), Some(State::Ready { link, .. }) if link == Some(link_state(Link::Up)));
 
-    let ended = rig.run_until_ready().await.unwrap();
+    let ended = rig.run_until(link_is_up).await.unwrap();
 
     assert_eq!(ended, Ended::Asked);
     assert_eq!(
@@ -161,6 +201,8 @@ async fn dbl_012_the_group_starts_in_order_and_stops_in_the_reverse_order() {
             "migrate as owner.url",
             "gateway start",
             "hub start as hub.url gateway 127.0.0.1:4999",
+            "link start link link.sock",
+            "link stop",
             "hub stop",
             "gateway stop",
             "database stop",
@@ -190,6 +232,7 @@ async fn the_ready_state_tells_where_the_hub_listens_and_that_the_database_recov
     let ready = State::Ready {
         hub: "127.0.0.1:8443".parse().unwrap(),
         recovered: true,
+        link: Some(link_state(Link::Up)),
     };
 
     let ended = rig.run_until_state(&ready).await.unwrap();
@@ -206,7 +249,13 @@ async fn when_a_member_ends_the_others_are_stopped_in_order_and_the_run_fails() 
     let ended = rig.run_with(stop, || {}).await.unwrap();
 
     assert_eq!(ended, Ended::Failed);
-    assert_eq!(rig.events()[4..], ["gateway stop", "database stop"]);
+    // The link, started after the hub, is stopped before the gateway.
+    let events = rig.events();
+    assert_eq!(
+        events[events.len() - 2..],
+        ["gateway stop", "database stop"]
+    );
+    assert_eq!(rig.count("hub stop"), 0);
     assert_eq!(
         rig.state(),
         Some(State::Failed {
@@ -229,63 +278,6 @@ async fn a_failed_migration_stops_the_database_and_never_starts_the_hub() {
         ["database start", "migrate as owner.url", "database stop"]
     );
     assert!(matches!(rig.state(), Some(State::Failed { .. })));
-}
-
-#[tokio::test]
-async fn dbl_009_a_database_of_another_version_blocks_the_hub_until_the_run_is_stopped() {
-    for (code, reason) in [
-        ("11", Blocked::DatabaseVersion),
-        ("10", Blocked::DatabaseInUse),
-    ] {
-        let rig = rig();
-        rig.set("database-exit", code);
-
-        let ended = rig
-            .run_until_state(&State::Blocked { reason })
-            .await
-            .unwrap();
-
-        // Not a failure: the unit must not start the group again in a loop.
-        assert_eq!(ended, Ended::Asked);
-        assert_eq!(rig.events(), ["database start"]);
-    }
-}
-
-#[tokio::test]
-async fn a_lost_key_blocks_the_hub_and_no_new_key_is_made() {
-    let rig = rig();
-    rig.run_until_ready().await.unwrap();
-    fs::remove_file(rig.key()).unwrap();
-    fs::remove_file(rig.folder.path().join("carried/events")).unwrap();
-    let blocked = State::Blocked {
-        reason: Blocked::KeyMissing,
-    };
-
-    let ended = rig.run_until_state(&blocked).await.unwrap();
-
-    assert_eq!(ended, Ended::Asked);
-    assert!(!rig.key().exists());
-    assert_eq!(
-        rig.events(),
-        Vec::<String>::new(),
-        "nothing of the group ran"
-    );
-}
-
-#[tokio::test]
-async fn no_key_is_made_for_a_database_that_cannot_be_looked_at() {
-    let rig = rig();
-    let database = rig.plan.folders.database().root().to_path_buf();
-    fs::create_dir_all(database.join("cluster")).unwrap();
-    fs::set_permissions(&database, fs::Permissions::from_mode(0o000)).unwrap();
-    let (_ask, stop) = never_asked();
-
-    let ended = rig.run_with(stop, || {}).await.unwrap();
-
-    fs::set_permissions(&database, fs::Permissions::from_mode(0o700)).unwrap();
-    assert_eq!(ended, Ended::Failed);
-    assert!(!rig.key().exists());
-    assert_eq!(rig.events(), Vec::<String>::new());
 }
 
 #[tokio::test]

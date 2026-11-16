@@ -62,7 +62,7 @@ fn the_launch_agent_starts_at_login_and_again_only_after_a_failure() {
 #[test]
 fn dbl_012_the_unit_gives_the_group_more_time_to_stop_than_its_members_need() {
     let limits = crate::group::LIMITS;
-    let members = limits.hub_stop + limits.gateway_stop + limits.database_stop;
+    let members = limits.link_stop + limits.hub_stop + limits.gateway_stop + limits.database_stop;
     let agent = agent("/Users/ada/hub");
     let unit = render(Platform::Linux, &launch("/home/ada/hub")).unwrap();
 
