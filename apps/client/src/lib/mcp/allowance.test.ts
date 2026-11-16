@@ -29,6 +29,8 @@ describe('allowQuestion', () => {
     const repositories = allowQuestion({ type: 'bulk', toolset: 'repositories', state: 'allow' }, ['repositories']);
     expect(repositories.title).toBe('Allow every Repositories tool?');
     expect(repositories.lines[0]).toContain('make issues and comments on GitHub');
+    expect(repositories.lines[0]).toContain('copy text it read in a private repository into an issue or a comment in a public one');
+    expect(repositories.lines[0]).toContain('set off a workflow of a repository that listens for issues or comments');
     expect(repositories.lines.join(' ')).not.toMatch(/merge|run again|start a workflow|sign-in/);
   });
 
