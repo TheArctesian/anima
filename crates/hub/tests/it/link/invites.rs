@@ -53,6 +53,7 @@ async fn lnk_003_create_link_invite_shows_the_invite_once_and_writes_no_copy(poo
 async fn frn_009_a_name_the_link_refuses_is_a_validation_error_on_name(pool: PgPool) {
     let link = FakeLink::start(|_| refusal("bad_name"));
     let (hub, token) = hub_over(&pool, &link).await;
+    let before = written(&pool).await;
 
     let response = hub
         .post(Some(&token), CREATE, json!({ "n": "\u{200b}" }))
@@ -63,7 +64,7 @@ async fn frn_009_a_name_the_link_refuses_is_a_validation_error_on_name(pool: PgP
         response["errors"][0]["extensions"]["fields"][0]["field"],
         "name"
     );
-    assert_eq!(written(&pool).await.trim(), "");
+    assert_eq!(written(&pool).await, before);
 }
 
 #[sqlx::test(migrations = "./migrations")]

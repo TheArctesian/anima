@@ -56,6 +56,7 @@ async fn lnk_004_revoke_link_device_closes_the_streams_and_writes_an_audit_entry
 async fn lnk_004_a_key_the_link_does_not_list_is_not_found_and_nothing_is_sent(pool: PgPool) {
     let link = FakeLink::start(|_| one_device());
     let (hub, token) = hub_over(&pool, &link).await;
+    let before = written(&pool).await;
 
     let response = hub
         .post(Some(&token), REVOKE, json!({ "k": "nodekey:00" }))
@@ -63,5 +64,5 @@ async fn lnk_004_a_key_the_link_does_not_list_is_not_found_and_nothing_is_sent(p
 
     assert_eq!(code(&response), "NOT_FOUND", "{response}");
     assert_eq!(link.changes(), Vec::<Value>::new());
-    assert_eq!(written(&pool).await.trim(), "");
+    assert_eq!(written(&pool).await, before);
 }
