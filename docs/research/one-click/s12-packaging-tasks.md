@@ -2,7 +2,7 @@
 
 Progress: the plan register in [work-plan.md](../../work-plan.md) Section 9 holds the state of this plan (PLN-005).
 
-Version 1.0. Date: 2026-11-16. Status: **In progress.** The S1 to S8 planning session started this
+Version 1.0. Date: 2026-11-16. Status: **Built; waits for the operator.** The S1 to S8 planning session started this
 item. Each design choice below is the recommendation of the build session; the choices that need
 an operator ruling are in Section 5.
 
@@ -110,14 +110,18 @@ step. It is never a release.
 
 | Task | What | Done when | Review | State | Commits |
 | --- | --- | --- | --- | --- | --- |
-| T1 | The builder builds and stages the five Rust programs, `anima-link` and the tree, and gives them to Tauri (2.1, 2.2) | Tests of the planned commands pass; a trial bundle has every file of 2.1 | reviewer, reviewer-security | Not started | — |
-| T2 | The macOS checks of 2.3 | Tests with the output of real `codesign` runs pass; an ad hoc signed file fails the check | reviewer-security | Not started | — |
-| T3 | The shell finds the tree on Linux under the product name; the tool check names the tools the tree recipe needs on Linux; the recipe's Linux hardening flags (S3 T11 d) | Tests pass | reviewer | Not started | — |
-| T4 | `anima-local-hub update` and the digest (2.4) | Tests pass: no change when the copy is the same, an update when one byte differs, the data folder is not touched | reviewer, reviewer-security | Not started | — |
-| T5 | The shell runs `update` at each start (2.4) | A test of the decision passes; the run-through of T7 shows the hub on the new programs | reviewer-security | Not started | — |
-| T6 | `trial-bundle.sh` (2.5) | The script makes an application on this Mac | reviewer | Not started | — |
-| T7 | Run-through on this Mac from a clean state, the update, the sizes | Section 6.1 has the result | — | Not started | — |
-| T8 | Documents: `docs/releases.md`, `docs/setup/local-hub.md`, the state of S3 T11 and S4 T9, the spec delta | The documents agree with the build | reviewer | Not started | — |
+| T1 | The builder builds and stages the five Rust programs, `anima-link` and the tree, and gives them to Tauri (2.1, 2.2) | Tests of the planned commands pass; a trial bundle has every file of 2.1 | reviewer, reviewer-security | Done | `f24f4c54`, `aec3c400`, `45af6bb5` |
+| T2 | The macOS checks of 2.3 | Tests with the output of real `codesign` runs pass; an ad hoc signed file fails the check | reviewer, reviewer-security | Done; the run with a Developer ID is deferred (6.3) | `f24f4c54`, `aec3c400`, `45af6bb5` |
+| T3 | The shell finds the tree on Linux under the product name; the tool check names the tools the tree recipe needs on Linux; the recipe's Linux hardening flags (S3 T11 d) | Tests pass; the recipe passes in a Linux container | reviewer | Done | `228ea35c`, `f24f4c54`, `bae8d42e`, `bce8ccb9` |
+| T4 | `anima-local-hub update` and the digest (2.4) | Tests pass: no change when the copy is the same, an update when one byte differs, the data folder is not touched | reviewer, reviewer-security (two rounds) | Done | `b6d6cf14`, `b39df9ef`, `ca714130`, `1cdf8628` |
+| T5 | The shell runs `update` at each start (2.4) | A test of the decision passes; the run-through of T7 shows the hub on the new programs | reviewer, reviewer-security | Done; not seen in a running window (6.1) | `9eaf3ee0`, `b90e9fef`, `6f939623` |
+| T6 | `trial-bundle.sh` (2.5) | The script makes an application on this Mac | reviewer | Done | `35ff91c5`, `720ae267`, `6f939623` |
+| T7 | Run-through on this Mac from a clean state, the update, the sizes | Section 6.1 has the result | — | Done | this commit |
+| T8 | Documents: `docs/releases.md`, `docs/setup/local-hub.md`, the state of S3 T11 and S4 T9, the spec delta | The documents agree with the build | — | Done | `73e735d4`, this commit |
+
+Reviews: each finding and its correction is in the commit messages above. The security reviews
+of T1, T2 (M-1, M-2, S-1 to S-8) and of T4, T5 (S1 to S5, then R1 to R4) have no open must-fix
+finding. What they left open is in Section 8.
 
 ## 4. Recorded decisions
 
@@ -145,17 +149,110 @@ step. It is never a release.
 
 ## 6. Results
 
-### 6.1 Run-through on this Mac
+### 6.1 Run-through on this Mac (T7, 2026-11-16)
 
-Not run yet.
+Two trial bundles from commit `720ae267` (`trial-bundle.sh 0.1.0` and `0.1.1`; ad hoc
+signature). A copy of the application was put in `~/Applications/S12Trial/`, a folder that did
+not exist before. Each step ran the program inside that copy with the arguments and the
+environment that the shell gives it (`env -i HOME=…`), and the hub's API with the origin of
+the application (`tauri://localhost`).
 
-### 6.2 Sizes
+**The window was not driven.** The operator's own Anima application was running on this Mac
+with the same bundle identifier. A second copy would share its saved hub address and its
+key-store entries. So the screens of the Create flow and the shell's own call of `update` at
+its start are proved by their tests only; Section 6.3 has the check on a second Mac.
 
-Not measured yet.
+| Step | What was seen | Result |
+| --- | --- | --- |
+| Clean state | No `ing.anima.hub` LaunchAgent, no hub root, nothing on 8443. | Pass |
+| The bundle | `Contents/MacOS` holds `anima-desktop` and the six programs; `Contents/Resources/database` holds the tree. `codesign --verify --deep --strict` passes. Each program has `x86_64 arm64` and the `runtime` flag; `anima-desktop` has no entitlement. | Pass |
+| `update` with no hub | `{"updated":false}`; no folder is made. | Pass |
+| Create: `install --tree <app>/Contents/Resources/database` | 28 s. The unit `ing.anima.hub` runs `programs/current/bin/anima-local-hub`. `ready` with the link `up` 77 s after the start of the install. `programs/current/version` is `0.1.0`; the digest file is there; the hub root is 0700 and `vault.key` 0600. | Pass |
+| Processes and listeners | `anima-local-hub run`, `anima-database serve`, `postgres`, `anima-gateway`, `anima-hub`, `anima-link hub`, all from `programs/current`. Listeners: the hub on `127.0.0.1:8443`, the gateway on a loopback port. | Pass |
+| Account | `account status`: `null`. `totp-new`, then `create` with a password, the secret and a code: `Operator ada is set, with TOTP.`; status `{"name":"ada","totp":true}`. | Pass |
+| Sign-in | `login` with the password and a code gives a token; `me` answers `ada`, `totpEnabled: true`. | Pass |
+| Invite | `createLinkInvite` gives an invite (`anima-invite.1.…`, 270 characters) that expires after 15 minutes. | Pass |
+| `update` with the same application | `{"updated":false}`; the hub's process is the same. | Pass |
+| Update: the copy replaced by 0.1.1, then `update` | `{"updated":true}` in 14 s; `ready` 3 s later, the link `up` 2 s after that. `programs/current/version` is `0.1.1`; the hub has a new process; `programs/previous` is gone. | Pass |
+| The data after the update | `vault.key` has the same SHA-256. `account status` shows `ada` with TOTP. Sign-in with the same password and secret works. | Pass |
+| A second start of 0.1.1 | `{"updated":false}`. | Pass |
+| An older application (0.1.0) | `update`: `{"updated":false,"older":true}`, exit 0, the hub keeps 0.1.1. `install`: refused with "this application (version 0.1.0) is older than the hub's programs (version 0.1.1)", exit 1. | Pass |
+| `stop`, `update`, `start` | `stop`: `stopped`, the mark `stopped-by-operator` is there. `update`: the hub stays stopped. `start`: `ready` in 3 s. | Pass |
+| Secrets in the logs | The password and the TOTP secret: 0 matches in the five logs. | Pass |
+| Clean-up | `remove`; then the hub root, `pg/` and the copy of the application were deleted. No unit, no process, nothing on 8443; `ing.anima.desktop` holds only `builds/`, as before. | Done |
+
+An earlier trial bundle (commit `35ff91c5`) gave the same result for the Create steps.
+
+**Linux, arm64 container (Debian 12, 2026-11-16, commit `228ea35c`).** `trial-bundle.sh` made
+`Anima.ing_0.1.0_aarch64.AppImage` (142 MiB). The six programs are in `usr/bin/` and the tree is
+in `usr/lib/Anima.ing/database/`. A copy of them in the installed layout ran
+`anima-local-hub run`: `ready` in 4 s, the link `up`, `/health` answers, and no process was left
+after SIGTERM. Three findings:
+
+- With an empty Go module cache `link/build.sh` built the link with no build tags. Corrected (D-11).
+- `libpq.so.5` kept the build folder as its library search path. Corrected in the recipe, with a
+  check; the recipe then passed again in the container (22 MB, `initdb` runs).
+- The AppImage tool (linuxdeploy) changes each ELF file of the tree and the five Rust programs: it
+  adds `$ORIGIN` to the search path. They still run and still pass the recipe's checks. The files
+  in the AppImage are therefore not the bytes that were checked before the bundle (Section 8).
+
+systemd was not run, and no x86-64 build was made (6.3).
+
+### 6.2 Sizes (macOS, universal, version 0.1.0 of the run-through)
+
+| Part | Size |
+| --- | --- |
+| `anima-hub` | 101.4 MB |
+| `anima-desktop` (the application itself) | 57.1 MB |
+| `anima` | 46.9 MB |
+| `anima-link` | 30.3 MB |
+| `anima-gateway` | 21.8 MB |
+| `anima-database` | 5.2 MB |
+| `anima-local-hub` | 4.8 MB |
+| PostgreSQL tree | 31.2 MB (`bin` 19.8, `lib` 7.5, `share` 3.9) |
+| **The application** | **300 MB** on disk |
+| **The DMG** | **113.5 MB** |
+| The hub's copy (`programs/`) after install | 207 MB |
+| A new database with one account | 50 MB |
+
+Before S12 the application held `anima-desktop` and `anima`: about 104 MB. Each program has two
+architectures. Linux, arm64: the AppImage is 142 MiB; `usr/bin` is 143 MB and the tree 25 MB.
+`anima-hub` is a third of the application; nothing was done to make it smaller.
 
 ### 6.3 Deferred: for the operator or other hardware
 
-Not written yet.
+None of these blocks the merge.
+
+1. **A release with the Developer ID (T2, S3 T12).** On the Mac builder, with the identity of
+   `tauri.conf.json` in the login keychain and the notary profile `anima-notary` (as
+   `docs/releases.md`, "Once, by the operator", step 3):
+   1. Install a builder application that was built from a commit with S12 (D-5: the builder
+      signs with the identity of its own build).
+   2. Start a release in the Builds view. Watch the bundle step: the tree recipe, `link/build.sh`,
+      `cargo build`, Tauri, then the check of each Mach-O file, then the notary service.
+   3. Done when the notary answer is `Accepted` and the job is published. If the check of a
+      Mach-O file fails, the step's log has the `codesign` output of that file. Two things are
+      not proved without this run: that Tauri gives no program an entitlement when it signs
+      with a real identity, and that `codesign -d` prints the lines that the checks read for
+      each file of a real release.
+   4. `spctl --assess --type execute -vv /Applications/Anima.ing.app` says `accepted` and
+      `source=Notarized Developer ID`.
+2. **A second Mac, or a new user account on this one.** Install the DMG of step 1. Then:
+   1. Start the application: the first run shows "Create a hub on this computer" as available.
+   2. Create the hub, the account and an invite in the window (`docs/setup/first-run.md`).
+      The first connection of the hub to a LAN device shows the Local Network prompt of macOS.
+   3. Publish a second release (a higher version). In the first application select "Restart to
+      update". Then `cat ~/Library/Application\ Support/ing.anima.desktop/hub/programs/current/version`
+      shows the new version, the application's log has "the hub on this computer got the
+      programs of this version", and the sign-in still works.
+3. **An x86-64 Linux build.** On the Linux builder install `patchelf`, `bison`, `flex`,
+   `binutils` (`readelf`), `make`, `curl` and the zlib headers; the tool check in Settings then
+   shows no "tree tools". Run `apps/desktop/src-tauri/trial-bundle.sh 0.1.0`, or a release job.
+   Done when the AppImage is made and `./Anima*.AppImage --appimage-extract` shows the six
+   programs in `squashfs-root/usr/bin/` and `squashfs-root/usr/lib/Anima.ing/database/bin/postgres`.
+4. **A real Linux desktop.** Run the AppImage of step 3, create a hub in the window, sign out
+   and in (the systemd user unit starts the hub), run a newer AppImage and check the version
+   file as in step 2.3. `kill -9` of `anima-local-hub run`: the unit starts it again (S4 T10).
 
 ## 7. The seam to S9 (hub update and backup)
 
@@ -166,3 +263,18 @@ Not written yet.
   state `blocked` with `database-version` (S3, S4); the upgrade is S9's.
 - OR-S12-2: the step back of the hub to an older release. S12 refuses it in `update`; only an
   explicit `install` does it.
+
+## 8. Open after the reviews
+
+Each row was found by a review of S12 and is not corrected. None was made by S12, except the
+last two.
+
+| Item | What | Proposed owner |
+| --- | --- | --- |
+| The DMG is not bound to the checked application | The checks run on the application folder. The DMG that Tauri made is checked only by the notary service, and its hash is not recorded at the bundle step (security review of T1, S-3). | The builder (BLD); a row of issue #1 |
+| The updater archive is not checked after `tar` | A process that outlived a step on macOS could change the application between the check and the archive (S-4). macOS has no reaper for such a process. | The builder; with the step sandbox of issue #1 |
+| The AppImage is not checked after `tauri bundle` | The AppImage tool is downloaded by Tauri and changes the carried ELF files (6.1). Nothing compares the result with what was staged. | The builder, with the x86-64 Linux build |
+| One `target/` for the gates and the bundle | Build scripts that the gates run can leave outputs that the release build uses. | The builder |
+| Ignored files in the clone | A file that the repository's `.gitignore` covers does not show in the clean check; the checkout removes it, but code of the gates step can write it again before the bundle. | The builder |
+| A copy of the application that was changed on disk | `update` compares the application with the digest that was written at the last copy. It does not read the hub's copy again, so it does not repair a copy that another program of the same user changed. | Accepted: that user can already change the unit. |
+| The window on a clean computer | 6.1: not driven on this Mac. | 6.3, step 2 |

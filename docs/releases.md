@@ -87,11 +87,16 @@ on this computer" needs, and puts them into the application (plan item S12,
 - A builder needs Go (the gates need it also). A Linux builder also needs `patchelf`, `bison`,
   `flex`, `readelf`, `make` and the zlib headers; the tool check in Settings names them when
   one is missing.
-- macOS signing order: the recipe signs each file of the tree with the identity of
-  `bundle.macOS.signingIdentity`, the hardened runtime and a secure timestamp. Then Tauri signs
-  each program in `Contents/MacOS`, then the application. No program has an entitlement.
+- The order is: the tree, then `anima-link` (after `go mod verify`, with a fixed Go
+  environment), then the Rust programs, then Tauri. The two scripts, the pin, the Go module
+  files and `tauri.conf.json` must be the files of the commit directly before their use.
+- macOS signing: the builder signs with the identity that the builder application itself was
+  built with, and the commit must name the same identity in `bundle.macOS.signingIdentity`.
+  So a new identity needs a new builder application first. The recipe signs each file of the
+  tree with the hardened runtime and a secure timestamp. Then Tauri signs each program in
+  `Contents/MacOS`, then the application. No program has an entitlement.
 - Before the builder sends the DMG to the notary service, it checks **each Mach-O file** of the
-  application: both architectures, a Developer ID Application signature of the team that the
+  application: exactly the two architectures, a Developer ID Application signature of the team that the
   identity names, the hardened runtime, a secure timestamp, no entitlement (UPD-011). A file
   that fails stops the job.
 - The updater file holds all of this, so an update replaces the programs in the application.

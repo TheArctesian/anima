@@ -194,7 +194,7 @@ out of tools.
 | T6 | Trial with a real LaunchAgent on this Mac, in a trial folder; removed after | Done. Section 7.3 has the result. | — |
 | T7 | Build and tests on Linux in a container | Done: arm64, Debian 12, a user without root; 65 of 65 tests at `2e7486b1`. | — |
 | T8 | Documents: `docs/setup/local-hub.md`, the spec delta, what S6 needs | Done | `5b954d7a`, `4521241f`, and the commit of this table |
-| T9 | The release builder carries the four programs and the tree (with S3 T11) | Not started. Section 7.2 has the steps. | — |
+| T9 | The release builder carries the programs and the tree (with S3 T11) | Done in plan item S12: [s12-packaging-tasks.md](s12-packaging-tasks.md), tasks T1 to T3. | `f24f4c54`, `aec3c400` |
 | T10 | The systemd user unit on a real Linux desktop; the macOS Local Network prompt for a hub that launchd started | Not started: needs the operator and a Linux desktop. | — |
 
 ## 3. Where a ruling is necessary

@@ -28,11 +28,12 @@ Everything is below the hub root, which only your user can open (mode 0700).
 | --- | --- |
 | `database/` | The database. See [bundled-database.md](bundled-database.md). |
 | `vault.key` | The hub's key (mode 0600). The hub seals the device credentials and the TOTP secrets with it. **Back it up with the database: a backup of the database is of no use without this file.** |
-| `programs/current/` | The programs that run: a copy from the application, made at install and at each update. Its file `digest` is a SHA-256 over the copy; `update` compares it with what the application carries. |
+| `programs/current/` | The programs that run: a copy from the application, made at install and at each update. Its file `digest` is a SHA-256 over the copy, which `update` compares with what the application carries; `version` is the version of the copy. |
 | `stopped-by-operator` | There after `stop`, until the hub starts again. An update then leaves the hub stopped. |
 | `link/` | The link's state: its key, its devices and invites, and its control socket `control.sock`. **Back it up with the database:** a new link key is a new hub address, and each device must join again. |
 | `log/` | `anima-hub.log`, `anima-gateway.log`, `anima-database.log`, `anima-link.log` and `local-hub.log`. Each has one older file (`.1`) and rotates at 8 MB. |
 | `state`, `lock` | What the program last reported, and the lock of the one copy that runs. |
+| `change.lock`, `listen` | The lock of the one change that runs, and the `--listen` address of the install when one was given. |
 
 The hub's socket for the link, `link.sock`, is in the database's socket folder: on macOS
 `~/Library/Application Support/ing.anima.desktop/pg`, on Linux `$XDG_RUNTIME_DIR/anima`. That
@@ -54,8 +55,8 @@ The application runs these for you. Each command accepts `--root <folder>` toget
 
 | Command | What it does |
 | --- | --- |
-| `anima-local-hub install --tree <folder>` | Copies the programs beside it and the PostgreSQL tree at `<folder>` to `programs/`, writes the unit file and starts the hub. On a hub that runs, it is an update: the hub stops, the programs are replaced, the hub starts. |
-| `anima-local-hub update --tree <folder>` | What the application runs at each of its starts. When the hub is installed and the application carries other programs than the hub's copy, it does what `install` does and prints `{"updated":true}`. Otherwise it changes nothing and prints `{"updated":false}`. A hub that you stopped with `stop` gets the new programs and stays stopped. |
+| `anima-local-hub install --tree <folder>` | Copies the programs beside it and the PostgreSQL tree at `<folder>` to `programs/`, writes the unit file and starts the hub. On a hub that runs, it is an update: the hub stops, the programs are replaced, the hub starts. It refuses programs of a lower version than the hub has, unless you give `--step-back`: an older hub can fail on a database that a newer hub changed. Only one of `install`, `update`, `remove`, `start` and `stop` runs at a time; a second one ends with "another change of the hub runs". |
+| `anima-local-hub update --tree <folder>` | What the application runs at each of its starts. When the hub is installed and the application carries other programs than the hub's copy, it does what `install` does and prints `{"updated":true}`. Otherwise it changes nothing and prints `{"updated":false}`. It never puts programs of a lower version in place: it then prints `{"updated":false,"older":true}`. A hub that you stopped with `stop` gets the new programs and stays stopped. When the programs are the same and the hub does not run, and you did not stop it, `update` starts it. It keeps the `--listen` address of the install. |
 | `anima-local-hub remove` | Stops the hub, removes the unit file and `programs/`. **It does not remove the database (with its URL files, which hold passwords), the key or the logs.** To remove those, delete the hub root yourself. On macOS also delete the socket folder `~/Library/Application Support/ing.anima.desktop/pg`, which keeps a stale `link.sock`. On Linux, run `remove` with the same `XDG_DATA_HOME` as `install`: it finds the hub root from it. |
 | `anima-local-hub status` | Prints one line of JSON. |
 | `anima-local-hub stop` | Stops the hub now and waits until it stopped. The hub stays installed: it starts again at the next login or with `start`. macOS: `launchctl bootout`; Linux: `systemctl --user stop`. |
@@ -166,7 +167,8 @@ output of the program, only a code and the exit code.
 
 A debug build (`bun tauri dev`) carries no programs. To try the hub from a debug build, set
 `ANIMA_DEV_PROGRAMS` to a folder that holds `anima-local-hub` and `anima-link`, and
-`ANIMA_DEV_TREE` to a PostgreSQL tree. A release build ignores both variables.
+`ANIMA_DEV_TREE` to a PostgreSQL tree. A release build ignores both variables. A debug build
+with both variables also runs `update` at its start, on the hub of your user.
 
 ## 7. The operator account
 
