@@ -40,8 +40,14 @@ const FIXED: &[(&str, &str)] = &[
 ];
 
 /// Folders searched after the app's `PATH`: an app started from the Dock or a desktop menu often
-/// lacks the ones rustup, bun and Homebrew install into.
-const EXTRA_DIRS: &[&str] = &["/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/bin"];
+/// lacks the ones rustup, bun, Homebrew and the Go installer install into.
+const EXTRA_DIRS: &[&str] = &[
+    "/opt/homebrew/bin",
+    "/usr/local/bin",
+    "/usr/local/go/bin",
+    "/usr/bin",
+    "/bin",
+];
 
 /// The variables and program folders of a build step.
 #[derive(Debug, Clone, PartialEq, Eq)]

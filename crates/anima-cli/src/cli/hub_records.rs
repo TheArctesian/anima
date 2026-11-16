@@ -34,7 +34,7 @@ pub enum HubRecordCommand {
         #[command(subcommand)]
         command: keys::KeyCommand,
     },
-    /// Releases of the desktop application (list, next-version, create, cancel, log).
+    /// Releases of the desktop application (list, next-version, publishing, create, cancel, log).
     Release {
         #[command(subcommand)]
         command: releases::ReleaseCommand,

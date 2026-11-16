@@ -1,5 +1,6 @@
 //! The tools a builder needs before it claims a job (BLD-028): git, bun, Rust with
-//! cargo-nextest (the gates run the Rust tests with it, R-112), PostgreSQL 17 (R-009), the Tauri
+//! cargo-nextest (the gates run the Rust tests with it, R-112), Go (the gates of `link/`),
+//! PostgreSQL 17 (R-009), the Tauri
 //! system packages, the app's own updater public key and, on macOS, the Developer ID signing
 //! identity (BLD-083). No updater key: the hub signs (R-117).
 //! Pure: whether a path exists is a parameter, and nothing is run.
@@ -22,6 +23,8 @@ pub enum Tool {
     Rust,
     /// `cargo-nextest`, which gate 3 runs the Rust tests with (R-112).
     CargoNextest,
+    /// `go`, which the six gates of `link/` run (D4 of the projects and builds proposal).
+    Go,
     Postgres,
     TauriPackages,
     /// This app was built without the updater public key (`plugins.updater.pubkey` is the
@@ -162,6 +165,7 @@ pub fn missing(target: Target, env: &Environment, exists: impl Fn(&Path) -> bool
         (Tool::Bun, has("bun")),
         (Tool::Rust, has("cargo") && has("rustc")),
         (Tool::CargoNextest, has("cargo-nextest")),
+        (Tool::Go, has("go")),
         (Tool::Postgres, postgres),
         (Tool::TauriPackages, tauri_packages(target, env, &exists)),
     ]

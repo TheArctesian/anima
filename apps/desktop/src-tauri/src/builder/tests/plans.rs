@@ -53,6 +53,15 @@ fn bld_040_every_git_command_runs_with_hooks_and_helpers_off() {
 }
 
 #[test]
+fn bld_040_the_builder_clones_the_repository_by_its_current_name() {
+    assert_eq!(Repository::anima().url(), plan::REPOSITORY);
+    assert_eq!(
+        plan::REPOSITORY,
+        "https://github.com/TheArctesian/anima.ing.git"
+    );
+}
+
+#[test]
 fn bld_041_ancestry_asks_git_whether_the_commit_is_on_main() {
     let commit = Commit::parse(COMMIT).unwrap();
     let command = plan::ancestry(Path::new("/c"), &commit);
