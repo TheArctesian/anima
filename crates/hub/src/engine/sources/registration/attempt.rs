@@ -200,7 +200,7 @@ impl Attempt {
         self.claim(binding)
     }
 
-    /// Binds a browser signed in to Anima to the attempt with the cookie hash `binding`. Any
+    /// Binds a browser signed in to Anima.ing to the attempt with the cookie hash `binding`. Any
     /// ticket stops working: one browser holds the attempt.
     ///
     /// # Errors
@@ -303,10 +303,14 @@ impl Attempt {
     }
 
     /// Whether a hit on `/installed` comes from the bound browser: its cookie, and the state
-    /// `s2` when GitHub sent one.
+    /// `s2` whenever the attempt has one. The install link carries `s2` and GitHub returns it
+    /// on the Setup URL, so a hit without it is not taken as the browser back from Install.
     #[must_use]
     pub fn back_from_install(&self, cookie: Option<&str>, state: Option<&str>) -> bool {
-        let state_ok = state.is_none_or(|state| self.state.is_some_and(|hash| hash.matches(state)));
+        let state_ok = match self.state {
+            Some(hash) => state.is_some_and(|state| hash.matches(state)),
+            None => state.is_none(),
+        };
         self.bound(cookie) && state_ok
     }
 

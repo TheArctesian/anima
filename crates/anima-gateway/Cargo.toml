@@ -15,16 +15,33 @@ des = { version = "0.9", features = ["zeroize"] }
 flate2 = "1"
 getrandom = { workspace = true }
 guac-protocol = { path = "../guac-protocol" }
+ironrdp-cliprdr = "0.9"
+ironrdp-connector = "0.12"
+ironrdp-core = "0.3"
+ironrdp-displaycontrol = "0.10"
+ironrdp-dvc = "0.10"
+ironrdp-graphics = "0.11"
+ironrdp-pdu = "0.11"
+ironrdp-session = "0.13"
+ironrdp-svc = "0.10"
+ironrdp-tokio = "0.12"
 jpeg-encoder = "0.6"
 md-5 = "0.10"
 num-bigint = "0.4"
 png = "0.18"
+rustls.workspace = true
+sha2.workspace = true
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["process"] }
+tokio-rustls.workspace = true
 uuid = { workspace = true }
+x509-parser.workspace = true
 zeroize = { workspace = true }
 
 [dev-dependencies]
 base64 = { workspace = true }
 jpeg-decoder = "0.3"
 proptest = "1.12"
+# For `tests/it` only. It depends on this crate, so a unit test inside `src` would see a
+# second copy of this crate's types.
+rdp-test-device = { path = "../rdp-test-device" }

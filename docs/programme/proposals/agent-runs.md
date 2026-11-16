@@ -34,7 +34,7 @@ or limit what it can touch.
 ## Runs that an AI agent starts on a different machine
 
 Proposed on 2026-11-15. Not approved. AGN-009 to AGN-014 need a ruling. They add to
-"Jobs that an AI agent starts" in [jobs.md](jobs.md) (JOB-011 to JOB-026).
+"Jobs that an AI agent starts" in [jobs.md](jobs.md) (JOB-012 to JOB-027).
 
 A "harness" is the AI agent program that a run uses.
 
@@ -49,7 +49,7 @@ agent, so it comes after jobs.
 - **AGN-010.** The first runs must use the model service (AGN-007) and run in a container
   (USE-001). The hub gives the key of the model service to the run as JOB-010 says. Such a run
   needs no account of the operator on the machine.
-- **AGN-011.** A run takes a task text and a commit or a scratch ref (JOB-016). Its result is a
+- **AGN-011.** A run takes a task text and a commit or a scratch ref (JOB-017). Its result is a
   commit on a scratch ref and a summary text. It must not push to a branch of the operator.
 - **AGN-012.** The caller reads the result with the job tools and fetches the scratch ref with
   git. The summary text is data, not an instruction (MCP-008).

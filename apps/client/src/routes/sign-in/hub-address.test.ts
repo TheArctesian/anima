@@ -23,7 +23,7 @@ vi.mock('$lib/hub/hub', async (importOriginal) => {
   return {
     ...real,
     // The hub for an address typed on the page: it answers Login at once and is recorded.
-    createHub: (options: { address: { origin: string } }) => {
+    createRequestHub: (options: { address: { origin: string } }) => {
       mocks.created.push(options.address);
       return { ...fake({ Login: answer({ login: { token: 'tok-moved' } }) }).hub, address: options.address };
     },

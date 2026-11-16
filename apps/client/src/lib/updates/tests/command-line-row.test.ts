@@ -118,7 +118,7 @@ it('INS-006: Remove deletes the link and the row says not installed', async () =
 
 it('INS-004: an app on a disk image says to move it, with both buttons off', async () => {
   await show(fake({ state: 'unavailable', reason: 'disk-image' }));
-  expect(words()).toContain('Move Anima to Applications');
+  expect(words()).toContain('Move Anima.ing to Applications');
   expect(button('Install')?.disabled).toBe(true);
   expect(button('Remove')?.disabled).toBe(true);
 });

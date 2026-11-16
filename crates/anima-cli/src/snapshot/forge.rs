@@ -1,6 +1,6 @@
 //! Scratch refs on the forge: push one, list them, delete one. Every ref sent is built from
 //! [`PREFIX`](super::scratch_ref::PREFIX); nothing is force-pushed and no branch or tag is
-//! touched (JOB-016).
+//! touched (JOB-017).
 
 use super::SnapshotError;
 use super::git::Git;

@@ -232,8 +232,15 @@ fn refusal(identity: Option<&Identity>, document: &ExecutableDocument) -> Option
 /// Connecting a source takes its private key, and removing one can delete what it imported:
 /// login or browser token only (PRJ-018, ITG-004). Connecting GitHub from the hub makes and keeps
 /// an App key, and its one-time link binds a browser: login or browser token only (PRJ-039,
-/// PRJ-041).
-pub(super) const API_KEY_REFUSED_ROOTS: [&str; 36] = [
+/// PRJ-041). A file of a repository's code can hold a secret the hub does not look for: login or
+/// browser token only (PRJ-033, K-E1 Section 13.5).
+/// Running a workflow again, starting one or cancelling one makes code run with a repository's
+/// secrets or stops it, and a commit status can satisfy a required check: login or browser
+/// token only (PRJ-034, PRJ-035, PRO-010, K-E1 Section 13.5).
+/// A pull request merge runs code with the repository's secrets: login or browser token only.
+/// A link invite admits a device to the hub, and a revocation is a trust decision: login or
+/// browser token only (FRN-009, OR-S6-3).
+pub(super) const API_KEY_REFUSED_ROOTS: [&str; 46] = [
     "createApiKey",
     "revokeApiKey",
     "apiKeys",
@@ -270,6 +277,16 @@ pub(super) const API_KEY_REFUSED_ROOTS: [&str; 36] = [
     "startGithubConnect",
     "openGithubConnect",
     "cancelGithubConnect",
+    "codeFile",
+    "rerunWorkflowRun",
+    "rerunFailedWorkflowJobs",
+    "cancelWorkflowRun",
+    "dispatchWorkflow",
+    "setCommitStatus",
+    "mergePullRequest",
+    "mergePullRequests",
+    "createLinkInvite",
+    "revokeLinkDevice",
 ];
 
 /// The root selections a token of `kind` may make, in every operation type. A new kind of

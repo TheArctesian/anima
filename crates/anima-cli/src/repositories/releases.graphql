@@ -1,0 +1,27 @@
+query RepositoryReleaseList($repository: ID!, $first: Int, $after: String, $fresh: Boolean) {
+  repositoryReleases(repository: $repository, first: $first, after: $after, fresh: $fresh) {
+    edges {
+      cursor
+      node {
+        id
+        tag
+        name
+        draft
+        prerelease
+        authorLogin
+        createdAt
+        publishedAt
+        url
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+    read {
+      at
+      stale
+      problem
+    }
+  }
+}

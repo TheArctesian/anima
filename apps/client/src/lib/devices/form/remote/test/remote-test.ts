@@ -80,7 +80,7 @@ export function remoteOutcome(protocol: RemoteProtocol, result: RemoteTestResult
   return { kind: 'reachable', message };
 }
 
-const REACHABLE_TEXT = 'The device answered. Anima signs in when a session starts.';
+const REACHABLE_TEXT = 'The device answered. Anima.ing signs in when a session starts.';
 const CHANGED_CERTIFICATE_WARNING = 'The server certificate changed. Do not trust this device until you check it.';
 
 /** DEV-013, SEC-007: the sentence for a test outcome. */

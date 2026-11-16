@@ -1,0 +1,9 @@
+mutation PullRequestMergeMany($pullRequests: [PullRequestTargetInput!]!, $method: MergeMethod!) {
+  mergePullRequests(pullRequests: $pullRequests, method: $method) {
+    repository
+    number
+    outcome
+    message
+    mergeSha
+  }
+}

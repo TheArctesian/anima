@@ -2,9 +2,10 @@
 //! pages, and records every request it gets. Never the real GitHub (LOG-007, PRJ-018).
 
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{HashMap, HashSet, VecDeque},
     net::SocketAddr,
     sync::{Arc, Mutex},
+    time::Instant,
 };
 
 use axum::{
@@ -17,6 +18,7 @@ use axum::{
 use reqwest::Url;
 use serde_json::{Value, json};
 use sqlx::PgPool;
+use tokio::sync::Semaphore;
 use uuid::Uuid;
 
 /// A canned reply for one path.
@@ -34,6 +36,8 @@ pub struct Heard {
     pub path: String,
     pub headers: Vec<(String, Vec<u8>)>,
     pub body: Vec<u8>,
+    /// When the stub heard it.
+    pub at: Instant,
 }
 
 impl Heard {
@@ -59,12 +63,19 @@ pub struct Script {
     pub token: String,
     /// Page n (from 1) holds `pages[n - 1]`, a list of `{ "id", "value" }`.
     pub pages: Vec<Value>,
-    /// Replies that win over the rules above, by path.
+    /// Replies that win over the rules above, by path, or by `METHOD path` (which wins over
+    /// the path alone).
     pub replies: HashMap<String, Reply>,
     /// SQL run once when its path is first requested, as another writer would.
     pub hooks: HashMap<String, String>,
     /// Paths answered with 200 and a body that never ends, sent in chunks with no length.
     pub endless: HashSet<String>,
+    /// Paths whose answer waits for one permit of the gate, so a test can hold requests open.
+    pub gates: HashMap<String, Arc<Semaphore>>,
+    /// Paths answered with a status line and then a dropped connection: no whole answer.
+    pub dropped: HashSet<String>,
+    /// Replies used once each, in order, by `METHOD path`; they win over `replies`.
+    pub queued: HashMap<String, VecDeque<Reply>>,
 }
 
 /// The running stub. Clones share it.
@@ -91,6 +102,9 @@ impl Stub {
             replies: HashMap::new(),
             hooks: HashMap::new(),
             endless: HashSet::new(),
+            gates: HashMap::new(),
+            dropped: HashSet::new(),
+            queued: HashMap::new(),
         };
         let stub = Self {
             script: Arc::new(Mutex::new(script)),
@@ -146,9 +160,33 @@ impl Stub {
         self.with(|s| s.replies.insert(path.to_owned(), reply));
     }
 
+    /// Answers `method` requests for `path` with `reply`; other methods keep their answer.
+    pub fn reply_to(&self, method: &str, path: &str, reply: Reply) {
+        self.with(|s| s.replies.insert(format!("{method} {path}"), reply));
+    }
+
+    /// Answers the next `method` request for `path` with `reply`, once, after the replies
+    /// queued before it.
+    pub fn reply_once(&self, method: &str, path: &str, reply: Reply) {
+        self.with(|s| {
+            let queue = s.queued.entry(format!("{method} {path}")).or_default();
+            queue.push_back(reply);
+        });
+    }
+
+    /// Answers `path` with a status line, then drops the connection before the body ends.
+    pub fn drop_answer(&self, path: &str) {
+        self.with(|s| s.dropped.insert(path.to_owned()));
+    }
+
     /// Answers `path` with a body that never ends: only a reader that stops at its cap returns.
     pub fn endless(&self, path: &str) {
         self.with(|s| s.endless.insert(path.to_owned()));
+    }
+
+    /// Holds each answer to `path` until `gate` gives it a permit.
+    pub fn gate(&self, path: &str, gate: &Arc<Semaphore>) {
+        self.with(|s| s.gates.insert(path.to_owned(), gate.clone()));
     }
 
     pub fn hook(&self, path: &str, sql: &str) {
@@ -173,6 +211,19 @@ fn endless() -> Response {
     let chunks = futures_util::stream::repeat_with(move || Ok::<_, std::io::Error>(chunk.clone()));
     Response::builder()
         .status(StatusCode::OK)
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from_stream(chunks))
+        .unwrap()
+}
+
+/// 201 and a body that fails after its first bytes: the connection drops mid-answer.
+fn dropped() -> Response {
+    let chunks = futures_util::stream::iter([
+        Ok::<_, std::io::Error>(Bytes::from_static(b"{\"partial\":")),
+        Err(std::io::Error::other("dropped")),
+    ]);
+    Response::builder()
+        .status(StatusCode::CREATED)
         .header(header::CONTENT_TYPE, "application/json")
         .body(Body::from_stream(chunks))
         .unwrap()
@@ -204,10 +255,30 @@ fn hear(
                 .map(|(n, v)| (n.as_str().to_owned(), v.as_bytes().to_vec()))
                 .collect(),
             body: body.to_vec(),
+            at: Instant::now(),
         });
         s.app_tokens.extend(app_token);
         s.hooks.remove(uri.path())
     })
+}
+
+fn scripted_reply(script: &mut Script, method: &Method, uri: &Uri) -> Option<Reply> {
+    let key = format!("{method} {}", uri.path());
+    script
+        .queued
+        .get_mut(&key)
+        .and_then(VecDeque::pop_front)
+        .or_else(|| {
+            script
+                .replies
+                .get(&key)
+                .or_else(|| {
+                    uri.path_and_query()
+                        .and_then(|path| script.replies.get(path.as_str()))
+                })
+                .or_else(|| script.replies.get(uri.path()))
+                .cloned()
+        })
 }
 
 async fn answer(
@@ -218,12 +289,18 @@ async fn answer(
     if let Some(sql) = hear(&stub, (&method, &uri, &headers), &body) {
         sqlx::query(&sql).execute(&stub.pool).await.unwrap();
     }
+    if let Some(gate) = stub.with(|s| s.gates.get(uri.path()).cloned()) {
+        gate.acquire().await.unwrap().forget();
+    }
     if stub.with(|s| s.endless.contains(uri.path())) {
         return endless();
     }
+    if stub.with(|s| s.dropped.contains(uri.path())) {
+        return dropped();
+    }
     let (reply, mint_status, token, pages) = stub.with(|s| {
         (
-            s.replies.get(uri.path()).cloned(),
+            scripted_reply(s, &method, &uri),
             s.mint_status,
             s.token.clone(),
             s.pages.clone(),
@@ -235,6 +312,14 @@ async fn answer(
     if method == Method::POST && uri.path().starts_with("/app/installations/") {
         let body = json!({ "token": token, "expires_at": "2099-01-01T00:00:00Z" });
         return respond(mint_status, &[], body.to_string());
+    }
+    if method == Method::GET
+        && uri.path().ends_with("/commits")
+        && uri
+            .query()
+            .is_some_and(|query| query.split('&').any(|pair| pair == "per_page=1"))
+    {
+        return respond(409, &[], "{}".to_owned());
     }
     let page: Option<usize> = uri
         .path()

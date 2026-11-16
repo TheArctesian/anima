@@ -35,6 +35,7 @@ async fn matches(hub: &Hub, name: &str) -> Result<Vec<Match>, Failure> {
                 left_out: Some(left_out),
                 first: Some(MAX_PAGE),
                 after,
+                browse: None,
             };
             Ok(hub.run::<ProjectList>(variables).await?.projects)
         })

@@ -46,7 +46,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn job_017_tree_entries_keep_odd_paths_and_mark_gitlinks() {
+    fn job_018_tree_entries_keep_odd_paths_and_mark_gitlinks() {
         let stdout = b"100644 blob aa11\ta.rs\0\
                        100644 blob bb22\tdir/with\nnewline.pem\0\
                        160000 commit cc33\tvendor/lib\0\
@@ -73,7 +73,7 @@ mod tests {
     }
 
     #[test]
-    fn job_017_rev_list_objects_give_their_paths() {
+    fn job_018_rev_list_objects_give_their_paths() {
         let stdout = b"c0ffee\0tree1\0b10b\0path=d d\0b10c\0path=d d/a\nb.env\0\
                        b10d\0path=path=x\0";
         assert_eq!(object_paths(stdout), ["d d", "d d/a\nb.env", "path=x"]);

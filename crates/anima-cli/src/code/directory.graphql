@@ -1,0 +1,20 @@
+query CodeDirectoryRead($repository: ID!, $ref: String, $path: String, $fresh: Boolean) {
+  codeDirectory(repository: $repository, ref: $ref, path: $path, fresh: $fresh) {
+    repository
+    ref
+    path
+    entries {
+      name
+      path
+      kind
+      size
+      sha
+    }
+    partial
+    read {
+      at
+      stale
+      problem
+    }
+  }
+}

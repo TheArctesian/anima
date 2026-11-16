@@ -1,5 +1,5 @@
-//! `anima snapshot push`: what is sent, what stays as it was, and what is refused (JOB-016,
-//! JOB-017).
+//! `anima snapshot push`: what is sent, what stays as it was, and what is refused (JOB-017,
+//! JOB-018).
 
 use super::repos::Repos;
 
@@ -24,7 +24,7 @@ fn left_nothing_behind(repos: &Repos) {
 }
 
 #[tokio::test]
-async fn job_016_push_sends_the_working_tree_and_leaves_the_repository_as_it_was() {
+async fn job_017_push_sends_the_working_tree_and_leaves_the_repository_as_it_was() {
     let repos = with_changes();
     let before = repos.state();
     let head = repos.git(&["rev-parse", "HEAD"]).trim().to_owned();
@@ -70,7 +70,7 @@ async fn job_016_push_sends_the_working_tree_and_leaves_the_repository_as_it_was
 }
 
 #[tokio::test]
-async fn job_016_push_prints_the_ref_and_the_fetch_line_for_a_person() {
+async fn job_017_push_prints_the_ref_and_the_fetch_line_for_a_person() {
     let repos = with_changes();
     let run = repos.anima(&["snapshot", "push"]).await;
     assert_eq!(run.code, 0, "{run:?}");
@@ -89,7 +89,7 @@ async fn job_016_push_prints_the_ref_and_the_fetch_line_for_a_person() {
 }
 
 #[tokio::test]
-async fn job_016_with_no_changes_head_itself_is_pushed() {
+async fn job_017_with_no_changes_head_itself_is_pushed() {
     let repos = Repos::new();
     let head = repos.git(&["rev-parse", "HEAD"]).trim().to_owned();
     let run = repos.anima(&["snapshot", "push", "--json"]).await;
@@ -108,7 +108,7 @@ async fn job_016_with_no_changes_head_itself_is_pushed() {
 }
 
 #[tokio::test]
-async fn job_017_each_secret_pattern_is_refused_and_nothing_is_pushed() {
+async fn job_018_each_secret_pattern_is_refused_and_nothing_is_pushed() {
     for path in [
         ".env",
         "apps/web/.env.local",
@@ -153,7 +153,7 @@ async fn job_017_each_secret_pattern_is_refused_and_nothing_is_pushed() {
 }
 
 #[tokio::test]
-async fn job_017_a_refusal_names_twenty_paths_and_counts_the_rest() {
+async fn job_018_a_refusal_names_twenty_paths_and_counts_the_rest() {
     let repos = Repos::new();
     for n in 0..25 {
         repos.write(&format!("k{n:02}.key"), "TOPSECRET-VALUE\n");
@@ -168,7 +168,7 @@ async fn job_017_a_refusal_names_twenty_paths_and_counts_the_rest() {
 }
 
 #[tokio::test]
-async fn job_017_templates_and_ignored_secrets_pass() {
+async fn job_018_templates_and_ignored_secrets_pass() {
     let repos = Repos::new();
     repos.write(".env.example", "KEY=\n");
     repos.write("apps/.env.sample", "KEY=\n");
@@ -184,7 +184,7 @@ async fn job_017_templates_and_ignored_secrets_pass() {
 }
 
 #[tokio::test]
-async fn job_016_with_no_git_identity_the_fallback_signs_the_commit() {
+async fn job_017_with_no_git_identity_the_fallback_signs_the_commit() {
     let repos = Repos::new();
     repos.git(&["config", "--unset", "user.name"]);
     repos.git(&["config", "--unset", "user.email"]);

@@ -1,5 +1,5 @@
 //! What a push sends beyond the working tree: commits the remote does not have yet, and files
-//! the remote already has (JOB-017).
+//! the remote already has (JOB-018).
 
 use super::repos::Repos;
 
@@ -18,7 +18,7 @@ fn secret_in_history() -> Repos {
 }
 
 #[tokio::test]
-async fn job_017_a_secret_in_a_commit_the_remote_lacks_is_refused() {
+async fn job_018_a_secret_in_a_commit_the_remote_lacks_is_refused() {
     let repos = secret_in_history();
     let blob = repos.blob_hash(SECRET);
     let before = repos.state();
@@ -57,7 +57,7 @@ async fn job_017_a_secret_in_a_commit_the_remote_lacks_is_refused() {
 }
 
 #[tokio::test]
-async fn job_017_history_the_remote_already_has_is_not_refused() {
+async fn job_018_history_the_remote_already_has_is_not_refused() {
     let repos = secret_in_history();
     repos.git(&["push", "--quiet", "origin", "main"]);
     let run = repos.anima(&["snapshot", "push", "--json"]).await;
@@ -84,7 +84,7 @@ async fn job_017_history_the_remote_already_has_is_not_refused() {
 }
 
 #[tokio::test]
-async fn job_017_a_secret_still_in_the_tree_is_refused_when_the_remote_has_it() {
+async fn job_018_a_secret_still_in_the_tree_is_refused_when_the_remote_has_it() {
     let repos = Repos::new();
     repos.write("keys/old.pem", SECRET);
     repos.git(&["add", "keys/old.pem"]);

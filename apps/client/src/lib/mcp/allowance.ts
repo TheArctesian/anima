@@ -30,6 +30,7 @@ const CONSEQUENCES: Readonly<Record<string, Consequences>> = {
     ],
   },
   projects: { key: ['leave repositories out of Projects', 'confirm where a project runs'], signIn: [] },
+  repositories: { key: ['make issues and comments on GitHub, and close or reopen issues'], signIn: [] },
 };
 
 /** The text of the question that comes before "Allow all", for its scope. */

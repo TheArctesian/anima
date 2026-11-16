@@ -102,7 +102,7 @@ mod tests {
     const B: &str = "fedcba9876543210fedcba9876543210fedcba98";
 
     #[test]
-    fn job_017_ls_remote_keeps_only_safe_scratch_refs() {
+    fn job_018_ls_remote_keeps_only_safe_scratch_refs() {
         let stdout = format!(
             "{A}\trefs/anima/wip/0123456789abcdef\n\
              {B}\trefs/heads/main\n\
@@ -126,7 +126,7 @@ mod tests {
     }
 
     #[test]
-    fn job_016_a_porcelain_bang_line_is_the_rejection() {
+    fn job_017_a_porcelain_bang_line_is_the_rejection() {
         let stdout = "To ../remote.git\n\
                       !\tabc:refs/anima/wip/x\t[rejected] (non-fast-forward)\n\
                       Done\n";
@@ -157,7 +157,7 @@ mod tests {
     }
 
     #[test]
-    fn job_016_error_text_is_short_and_never_empty() {
+    fn job_017_error_text_is_short_and_never_empty() {
         assert_eq!(safe(""), "git gave no reason");
         let long = "x".repeat(1000);
         assert_eq!(safe(&long).chars().count(), REASON_CHARACTERS + 1);

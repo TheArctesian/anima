@@ -5,10 +5,12 @@ pub mod checks;
 pub mod devices;
 pub mod events;
 pub mod extensions;
+pub mod link;
 pub mod maintenance;
 pub mod notifications;
 pub mod projects;
 pub mod releases;
+pub mod repositories;
 pub mod retention;
 pub mod sessions;
 pub mod sources;
@@ -36,9 +38,11 @@ pub enum Tool {
     Releases(releases::ReleaseTool),
     Vpn(vpn::VpnTool),
     Retention(retention::RetentionTool),
+    Link(link::LinkTool),
     Extensions(extensions::ExtensionTool),
     Sources(sources::SourceTool),
     Projects(projects::ProjectTool),
+    Repositories(repositories::RepositoryTool),
 }
 
 impl Tool {
@@ -56,9 +60,11 @@ impl Tool {
         tools.extend(releases::ReleaseTool::ALL.map(Self::Releases));
         tools.extend(vpn::VpnTool::ALL.map(Self::Vpn));
         tools.extend(retention::RetentionTool::ALL.map(Self::Retention));
+        tools.extend(link::LinkTool::ALL.map(Self::Link));
         tools.extend(extensions::ExtensionTool::ALL.map(Self::Extensions));
         tools.extend(sources::SourceTool::ALL.map(Self::Sources));
         tools.extend(projects::ProjectTool::ALL.map(Self::Projects));
+        tools.extend(repositories::RepositoryTool::ALL.map(Self::Repositories));
         tools
     }
 
@@ -75,9 +81,11 @@ impl Tool {
             Self::Releases(_) => ToolSet::Releases,
             Self::Vpn(_) => ToolSet::Vpn,
             Self::Retention(_) => ToolSet::Retention,
+            Self::Link(_) => ToolSet::Link,
             Self::Extensions(_) => ToolSet::Extensions,
             Self::Sources(_) => ToolSet::Sources,
             Self::Projects(_) => ToolSet::Projects,
+            Self::Repositories(_) => ToolSet::Repositories,
         }
     }
 
@@ -94,9 +102,11 @@ impl Tool {
             Self::Releases(tool) => tool.definition(),
             Self::Vpn(tool) => tool.definition(),
             Self::Retention(tool) => tool.definition(),
+            Self::Link(tool) => tool.definition(),
             Self::Extensions(tool) => tool.definition(),
             Self::Sources(tool) => tool.definition(),
             Self::Projects(tool) => tool.definition(),
+            Self::Repositories(tool) => tool.definition(),
         }
     }
 
@@ -104,6 +114,10 @@ impl Tool {
     ///
     /// # Errors
     /// [`ToolError`] for wrong arguments, a refusal before the hub, or the hub's refusal.
+    #[expect(
+        clippy::cognitive_complexity,
+        reason = "a flat dispatch with one arm for each tool set"
+    )]
     pub async fn call(self, hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
         match self {
             Self::Devices(tool) => tool.call(hub, arguments).await,
@@ -116,9 +130,11 @@ impl Tool {
             Self::Releases(tool) => tool.call(hub, arguments).await,
             Self::Vpn(tool) => tool.call(hub, arguments).await,
             Self::Retention(tool) => tool.call(hub, arguments).await,
+            Self::Link(tool) => tool.call(hub, arguments).await,
             Self::Extensions(tool) => tool.call(hub, arguments).await,
             Self::Sources(tool) => tool.call(hub, arguments).await,
             Self::Projects(tool) => tool.call(hub, arguments).await,
+            Self::Repositories(tool) => tool.call(hub, arguments).await,
         }
     }
 }

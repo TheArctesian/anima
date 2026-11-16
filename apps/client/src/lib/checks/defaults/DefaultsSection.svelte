@@ -25,7 +25,7 @@
   const saved = useActionFeedback();
   let retrying = $state(false);
   let form: HTMLFormElement | undefined = $state();
-  const notice = $derived(loadFailed ? 'Anima could not load the defaults.' : saveFailed ? 'Anima could not save the default check settings.' : '');
+  const notice = $derived(loadFailed ? 'Anima.ing could not load the defaults.' : saveFailed ? 'Anima.ing could not save the default check settings.' : '');
 
   /** Shows `defaults` as the hub holds them, in the fields and as the saved state. */
   function show(defaults: CheckDefaults): void {

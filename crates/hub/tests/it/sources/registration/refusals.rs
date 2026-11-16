@@ -1,6 +1,6 @@
 //! PRJ-041, K-E1 Section 7a: each refusal of the flow leaves the attempt as it was: a used or
-//! wrong ticket, a wrong state, a missing cookie, a second browser, and `/open` without a
-//! session or from another origin.
+//! wrong ticket, a wrong or missing state, a missing cookie, a second browser, and `/open`
+//! without a session or from another origin.
 
 use std::time::Duration;
 
@@ -8,7 +8,7 @@ use reqwest::StatusCode;
 use sqlx::PgPool;
 
 use super::{
-    browser::{Browser, PUBLIC, served, shown},
+    browser::{Browser, INSTALLATION, PUBLIC, install_state, served, shown},
     flow::at_github,
     link, started,
 };
@@ -81,6 +81,35 @@ async fn prj_039_a_wrong_state_a_missing_cookie_and_a_second_browser_change_noth
     );
 }
 
+/// The install link carries S2 and GitHub sends it back, so the bound browser back from
+/// Install without a state is treated as one with a wrong state: it only wakes the poll and
+/// the hub looks up no installation it named.
+#[sqlx::test(migrations = "./migrations")]
+async fn prj_039_the_bound_browser_back_from_install_without_a_state_looks_up_nothing(
+    pool: PgPool,
+) {
+    let served = served(&pool, SLOW).await;
+    let (mut browser, s1) = at_github(&served).await;
+    install_state(&browser.created(&s1).await);
+    let lookup = format!("/app/installations/{INSTALLATION}");
+
+    let back = browser
+        .get(&format!(
+            "/connect/github/installed?installation_id={INSTALLATION}&setup_action=install"
+        ))
+        .await;
+
+    assert_eq!(back.status, StatusCode::OK);
+    assert!(
+        back.body.contains("If you installed the App"),
+        "{}",
+        back.body
+    );
+    let paths = served.kit.stub.paths();
+    assert!(!paths.contains(&lookup), "{paths:?}");
+    assert_eq!(shown(&served.kit).await["phase"], "APP_CREATED");
+}
+
 #[sqlx::test(migrations = "./migrations")]
 async fn prj_041_open_needs_a_browser_session_from_anima(pool: PgPool) {
     let served = served(&pool, SLOW).await;
@@ -90,7 +119,11 @@ async fn prj_041_open_needs_a_browser_session_from_anima(pool: PgPool) {
         .post("/connect/github/open", &[("origin", PUBLIC)])
         .await;
     assert_eq!(unsigned.status, StatusCode::UNAUTHORIZED);
-    assert!(unsigned.body.contains("Sign in to Anima in this browser"));
+    assert!(
+        unsigned
+            .body
+            .contains("Sign in to Anima.ing in this browser")
+    );
 
     browser.sign_in().await;
     for origin in [&[("origin", "https://evil.example")][..], &[]] {

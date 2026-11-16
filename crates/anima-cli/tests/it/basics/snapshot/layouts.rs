@@ -1,5 +1,5 @@
 //! `anima snapshot push` in repositories that are not one plain checkout: a sparse checkout, a
-//! linked worktree, tags that git would follow, submodules and nested repositories (JOB-016).
+//! linked worktree, tags that git would follow, submodules and nested repositories (JOB-017).
 
 use super::repos::Repos;
 
@@ -10,7 +10,7 @@ fn files_at(repos: &Repos, scratch: &str) -> (std::path::PathBuf, String) {
 }
 
 #[tokio::test]
-async fn job_016_a_sparse_checkout_keeps_the_files_outside_the_cone() {
+async fn job_017_a_sparse_checkout_keeps_the_files_outside_the_cone() {
     let repos = Repos::new();
     repos.write("inside/x.txt", "x\n");
     repos.write("outside/y.txt", "y\n");
@@ -40,7 +40,7 @@ async fn job_016_a_sparse_checkout_keeps_the_files_outside_the_cone() {
 }
 
 #[tokio::test]
-async fn job_016_a_linked_worktree_is_snapshotted_without_touching_the_repository() {
+async fn job_017_a_linked_worktree_is_snapshotted_without_touching_the_repository() {
     let repos = Repos::new();
     repos.git(&["worktree", "add", "--quiet", "../linked", "-b", "linked"]);
     let linked = repos.work().join("../linked");
@@ -62,7 +62,7 @@ async fn job_016_a_linked_worktree_is_snapshotted_without_touching_the_repositor
 }
 
 #[tokio::test]
-async fn job_016_no_tag_follows_the_snapshot_to_the_remote() {
+async fn job_017_no_tag_follows_the_snapshot_to_the_remote() {
     let repos = Repos::new();
     repos.git(&["config", "push.followTags", "true"]);
     repos.git(&["tag", "--annotate", "v1", "--message", "v1"]);
@@ -76,7 +76,7 @@ async fn job_016_no_tag_follows_the_snapshot_to_the_remote() {
 }
 
 #[tokio::test]
-async fn job_016_a_submodule_is_not_pushed_and_its_path_is_named() {
+async fn job_017_a_submodule_is_not_pushed_and_its_path_is_named() {
     let repos = Repos::new();
     let library = repos.work().join("../library.git");
     let library_path = library.to_str().expect("UTF-8").to_owned();
@@ -127,7 +127,7 @@ async fn job_016_a_submodule_is_not_pushed_and_its_path_is_named() {
 }
 
 #[tokio::test]
-async fn job_016_a_nested_repository_is_named_as_a_gitlink() {
+async fn job_017_a_nested_repository_is_named_as_a_gitlink() {
     let repos = Repos::new();
     let nested = repos.work().join("nested");
     std::fs::create_dir(&nested).expect("a folder");

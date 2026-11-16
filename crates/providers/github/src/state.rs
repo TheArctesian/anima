@@ -20,6 +20,7 @@ pub(crate) enum Phase {
 pub(crate) enum Step {
     Tree,
     Deployments,
+    History,
 }
 
 /// A repository whose signs are still to be read.
@@ -42,6 +43,8 @@ pub(crate) struct Slice {
     pub listed: Vec<String>,
     pub pending: Vec<Pending>,
     pub seen: BTreeMap<String, Option<String>>,
+    #[serde(default)]
+    pub branches: BTreeMap<String, String>,
 }
 
 impl Slice {
@@ -53,6 +56,7 @@ impl Slice {
             listed: Vec::new(),
             pending: Vec::new(),
             seen: BTreeMap::new(),
+            branches: BTreeMap::new(),
         }
     }
 

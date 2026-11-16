@@ -36,7 +36,7 @@ pub fn started(label: Option<&str>, organisation: Option<&str>, actor: ActorKind
 pub fn app_created(app: &App) -> TrailEntry {
     entry(
         AuditAction::Create,
-        "A GitHub App was made for Anima.",
+        "A GitHub App was made for Anima.ing.",
         json!({ "appId": app.id.to_string(), "slug": app.slug, "ownerLogin": app.owner.login }),
     )
 }

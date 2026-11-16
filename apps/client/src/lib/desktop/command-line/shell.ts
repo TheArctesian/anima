@@ -36,14 +36,14 @@ const PROBLEMS: Readonly<Record<CommandLineProblem, string>> = {
   caller: 'Only the main window can install the command line tool.',
   unsupported: 'The command line tool cannot be installed on this system from the app.',
   'not-bundled': 'This build of the app carries no command line tool.',
-  'disk-image': 'Anima is running from the disk image. Move Anima to Applications, open it from there, then install.',
-  translocated: 'macOS runs Anima from a temporary place. Move Anima to Applications, open it from there, then install.',
-  'not-appimage': 'Anima is not running from its AppImage, so there is nothing for a launcher to start.',
+  'disk-image': 'Anima.ing is running from the disk image. Move Anima.ing to Applications, open it from there, then install.',
+  translocated: 'macOS runs Anima.ing from a temporary place. Move Anima.ing to Applications, open it from there, then install.',
+  'not-appimage': 'Anima.ing is not running from its AppImage, so there is nothing for a launcher to start.',
   unquotable: 'The path of the AppImage has a character a launcher cannot hold. Move the AppImage, then try again.',
-  'no-home': 'Anima could not find your home folder.',
+  'no-home': 'Anima.ing could not find your home folder.',
   changed: 'The proposed folder changed. Check the new path, then install.',
-  occupied: 'Something that Anima did not make is already there, so Anima did not replace it.',
-  unwritable: 'Anima could not write to the folder.',
+  occupied: 'Something that Anima.ing did not make is already there, so Anima.ing did not replace it.',
+  unwritable: 'Anima.ing could not write to the folder.',
   failed: 'The command line tool could not be changed.',
 };
 
@@ -128,7 +128,7 @@ export function installCommandLine(folder: string): Promise<CommandLineResult> {
   return call('command_line_install', { folder });
 }
 
-/** Removes only the link or launcher an Anima app made (INS-006). */
+/** Removes only the link or launcher an Anima.ing app made (INS-006). */
 export function removeCommandLine(): Promise<CommandLineResult> {
   return call('command_line_remove');
 }

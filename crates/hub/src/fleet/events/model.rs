@@ -14,7 +14,7 @@ use super::actor::{Actor, ActorKind, TokenKind};
 use crate::{
     ids::{
         ApiKeyId, BuildJobId, BuilderId, ChannelId, CheckId, DeviceId, EventId, OperatorId,
-        ProjectId, ReleaseId, SessionId, SiteId, SourceAccountId, WindowId,
+        ProjectId, ReleaseId, RepositoryId, SessionId, SiteId, SourceAccountId, WindowId,
     },
     status::Status,
 };
@@ -209,6 +209,8 @@ pub enum AuditAction {
     Cancel,
     /// A test notification sent through a channel (NOT-004).
     Send,
+    /// A pull request merged on GitHub (PRJ-028, OD-E14).
+    Merge,
 }
 
 impl AuditAction {
@@ -233,6 +235,7 @@ impl AuditAction {
             Self::Wake => "wake",
             Self::Cancel => "cancel",
             Self::Send => "send",
+            Self::Merge => "merge",
         }
     }
 }
@@ -267,10 +270,16 @@ pub enum AuditTarget {
     /// The VPN: a key, a registration or a route made through the broker (VP-7). It has no
     /// id of its own; the change names the site or node.
     Vpn,
+    /// The device link: an invite or a revoked device (FRN-009). It has no id of its own; the
+    /// change names the device, never an invite (LOG-007).
+    Link,
     /// A connection to an outside source (SRC-003).
     SourceAccount(SourceAccountId),
     /// A project, its repositories or its resources (PRO-001).
     Project(ProjectId),
+    /// A project repository on GitHub, for a change the hub sent there; the change names the
+    /// issue, pull request, run or commit (PRJ-028, OD-E14).
+    Repository(RepositoryId),
 }
 
 impl AuditTarget {
@@ -294,8 +303,10 @@ impl AuditTarget {
             Self::Builder(_) => "builder",
             Self::ApiKey(_) => "api_key",
             Self::Vpn => "vpn",
+            Self::Link => "link",
             Self::SourceAccount(_) => "source_account",
             Self::Project(_) => "project",
+            Self::Repository(_) => "repository",
         }
     }
 
@@ -318,8 +329,10 @@ impl AuditTarget {
             Self::Builder(id) => id.to_string(),
             Self::ApiKey(id) => id.to_string(),
             Self::Vpn => "vpn".to_owned(),
+            Self::Link => "link".to_owned(),
             Self::SourceAccount(id) => id.to_string(),
             Self::Project(id) => id.to_string(),
+            Self::Repository(id) => id.to_string(),
         }
     }
 }

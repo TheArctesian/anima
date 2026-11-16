@@ -1,0 +1,8 @@
+mutation IssueCommentAdd($repository: ID!, $number: Int!, $body: String!) {
+  addIssueComment(repository: $repository, number: $number, body: $body) {
+    id
+    authorLogin
+    createdAt
+    url
+  }
+}

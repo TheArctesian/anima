@@ -1,4 +1,4 @@
-//! The secret patterns of JOB-017: which paths look like secrets, judged on the path alone.
+//! The secret patterns of JOB-018: which paths look like secrets, judged on the path alone.
 //! The files are never opened. A fixed list until a project has its own.
 
 /// Endings that make a `.env` name a template rather than a secret.
@@ -61,7 +61,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn job_017_env_key_and_credential_files_match_at_any_depth() {
+    fn job_018_env_key_and_credential_files_match_at_any_depth() {
         for path in [
             ".env",
             ".env.local",
@@ -99,7 +99,7 @@ mod tests {
     }
 
     #[test]
-    fn job_017_templates_and_ordinary_files_pass() {
+    fn job_018_templates_and_ordinary_files_pass() {
         for path in [
             ".env.example",
             "apps/.env.sample",
@@ -125,7 +125,7 @@ mod tests {
     }
 
     #[test]
-    fn job_017_the_matching_paths_keep_their_order() {
+    fn job_018_the_matching_paths_keep_their_order() {
         let found = secret_paths(["a.rs", "b/.env", "c.txt", "d.pem"]);
         assert_eq!(found, ["b/.env", "d.pem"]);
     }

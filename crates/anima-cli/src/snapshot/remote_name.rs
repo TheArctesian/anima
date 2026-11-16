@@ -29,7 +29,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn job_016_a_remote_that_reads_as_an_option_or_a_pattern_is_refused() {
+    fn job_017_a_remote_that_reads_as_an_option_or_a_pattern_is_refused() {
         assert_eq!(checked("origin").unwrap(), "origin");
         assert_eq!(checked("my-forge.2").unwrap(), "my-forge.2");
         for name in [

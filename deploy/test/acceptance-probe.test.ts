@@ -90,7 +90,7 @@ const FAULTS: [Fault, string[]][] = [
   ["root-deleteDevice-allowed", ["refused-root-deleteDevice"]],
   ["socket-down", ["socket-foreign-cookie"]],
   ["cookie-set", ["graphql-foreign-cookie"]],
-  ["roots-read-only", refusals.REFUSED_ROOTS.filter((root) => root !== "apiKeys").map((root) => `refused-root-${root}`)],
+  ["roots-read-only", refusals.REFUSED_ROOTS.filter((root) => !refusals.QUERY_ROOTS.includes(root)).map((root) => `refused-root-${root}`)],
 ];
 
 describe("spawned probe against a hub that answers wrong", () => {

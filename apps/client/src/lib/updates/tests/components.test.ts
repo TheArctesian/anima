@@ -58,7 +58,7 @@ it('UPD-004: an installed update shows a role=status banner with the version and
   await updates.checkNow();
   flushSync();
   const banner = document.querySelector('[role="status"]');
-  expect(banner?.textContent).toContain('Anima 1.2.0 is installed');
+  expect(banner?.textContent).toContain('Anima.ing 1.2.0 is installed');
   expect(button('Restart to update')).toBeDefined();
 });
 
@@ -88,7 +88,7 @@ it('UPD-004: a restart that fails shows a short message in the banner, not a dia
 it('UPD-006: the row shows the current version, the state and an enabled Check for updates', async () => {
   show(UpdatesRow);
   await settle();
-  expect(document.body.textContent).toContain('Anima 1.0.0');
+  expect(document.body.textContent).toContain('Anima.ing 1.0.0');
   expect(document.body.textContent).toContain('Not checked yet');
   expect(document.body.textContent).not.toContain('Up to date');
   expect(button('Check for updates')?.disabled).toBe(false);
@@ -133,6 +133,6 @@ it('UPD-006: once installed the row says restart and the button is disabled', as
   const { updates } = show(UpdatesRow, port);
   await updates.checkNow();
   flushSync();
-  expect(document.body.textContent).toContain('Anima 1.2.0 is installed — restart to update');
+  expect(document.body.textContent).toContain('Anima.ing 1.2.0 is installed — restart to update');
   expect(button('Check for updates')?.disabled).toBe(true);
 });

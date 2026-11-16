@@ -41,13 +41,13 @@ it('PRJ-039: CONNECTED says the first sync started, or that Projects is off', ()
     start: false,
   });
   expect(describeAttempt(attempt({ phase: 'CONNECTED', account: { health: 'PAUSED', pausedBy: 'EXTENSION_OFF' } })).line).toBe(
-    'GitHub is connected. Projects is off, so Anima does not read it yet. Set Projects on in Settings > Extensions.',
+    'GitHub is connected. Projects is off, so Anima.ing does not read it yet. Set Projects on in Settings > Extensions.',
   );
 });
 
 it.each([
   ['EXPIRED', null, 'The connection was not finished in time. Press Connect GitHub to start again.'],
-  ['EXPIRED', TASK, 'The App anima-k3f9 was made but not installed in time. Anima does not use it. Delete it on GitHub, then start again.'],
+  ['EXPIRED', TASK, 'The App anima-k3f9 was made but not installed in time. Anima.ing does not use it. Delete it on GitHub, then start again.'],
   ['EXCHANGE_REFUSED', null, `GitHub did not accept the reply from its page. Start again. ${TRY}`],
   ['GITHUB_UNREACHABLE', null, `The hub could not reach GitHub to finish making the App. Start again. ${TRY}`],
   ['REPLY_UNUSABLE', TASK, "GitHub's reply could not be used. Delete the App anima-k3f9 on GitHub, then start again."],

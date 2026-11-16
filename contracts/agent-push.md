@@ -3,6 +3,7 @@
 Status: **frozen for Phase 3** (CR-15, R-092; change only through a programme ruling, CON-001). Written by
 WP-54 T2. Spec: MET-011 to MET-020, LOG-007, NET-002, NET-003, P3-004. Rust types: `agent_core::wire`.
 The drive kinds and `drives` (MET-027, MET-028) were added by the operator's ruling of 2026-11-12 (PKG-001, CR-24).
+The link origin of Section 1 was added by the operator's ruling of 2026-11-15 (one-click plan, S5).
 
 This contract is the whole interface between `anima-agent` and the hub. The agent makes no other request.
 
@@ -11,8 +12,15 @@ This contract is the whole interface between `anima-agent` and the hub. The agen
 - HTTPS to the hub's public origin (`ANIMA_PUBLIC_ORIGIN`, `https://hub.anima.ing`), tcp 443, at the hub's VPN
   address (MET-020). The agent verifies the certificate against the web PKI roots and the host name; there is
   no pin in Phase 3.
+- In the link mode (`ANIMA_LINK_SOCKET` set on the hub) the agent's hub origin is `http://127.0.0.1:<port>`,
+  the local port of `anima-link device` on the agent's computer, from 1024. The link authenticates the hub by
+  its key and encrypts the request; the hub sees the request come from the device's link address. The agent
+  accepts `http` for no other host, and not for `localhost` or `::1`. The agent's computer must run
+  `anima-link device` at that fixed port whenever the agent runs: a program of any local user that listens on
+  the port when the link does not would receive the agent token. Nothing detects that; the planned correction
+  is a Unix socket between the agent and the link, which needs a change to this section.
 - The agent sends no cookie, follows no redirect (a 3xx is a failed request), ignores proxy variables
-  (`HTTPS_PROXY`, `ALL_PROXY`), and listens on no port.
+  (`HTTPS_PROXY`, `HTTP_PROXY`, `ALL_PROXY`), and listens on no port.
 - Every route below sits behind the NET-002 layer like any other route, and is logged by its template only.
 - Bodies are UTF-8 JSON, `Content-Type: application/json`. Member names are camelCase. Unknown members are
   ignored by both sides, so either side can add an optional member without a new version.

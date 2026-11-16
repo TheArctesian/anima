@@ -189,7 +189,7 @@ async fn prj_039_a_forged_installation_is_ignored(pool: PgPool) {
         let answer = browser.installed(forged, &s2).await;
         assert_eq!(answer.status, StatusCode::OK, "{forged}");
         assert!(
-            answer.body.contains("Anima finishes the connection"),
+            answer.body.contains("Anima.ing finishes the connection"),
             "{forged}"
         );
         assert_eq!(shown(&served.kit).await["phase"], "APP_CREATED", "{forged}");

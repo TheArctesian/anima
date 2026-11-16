@@ -1,5 +1,8 @@
 //! Hub library face: module tree, HTTP router and the serving steps around it, so integration
 //! tests can reach them.
+// The schema's merged roots nest one future in another for each merged object; the default limit
+// of 128 is too small for them (OD-E14).
+#![recursion_limit = "256"]
 
 pub mod api_errors;
 pub mod clock;
@@ -151,14 +154,21 @@ pub fn pushes(dependencies: &schema::Dependencies) -> Router {
 
 /// Every route the hub serves, as `main.rs` serves it: `/graphql` and `/health` at the public
 /// origin of `dependencies.config`, then the routes [`beside_graphql`] adds, all behind the
-/// permitted-networks layer of `edge` (K3, NET-002). The schema takes `dependencies`.
+/// permitted-networks layer of `edge` (K3, NET-002). The schema takes `dependencies`. In the
+/// link mode a request must also name a loopback host and come from no origin or a client
+/// origin ([`fleet::access::loopback_names_layer`], FRN-007).
 pub fn all_routes(dependencies: schema::Dependencies, edge: fleet::access::Edge) -> Router {
     let origin = fleet::access::PublicOrigin::new(dependencies.config.public_origin.clone());
+    let link_mode = dependencies.config.link_socket.is_some();
     let beside = beside_graphql(&dependencies, &origin);
     let (pool, clock) = (dependencies.pool.clone(), dependencies.clock.clone());
-    router_at(schema::build_schema(dependencies), pool, clock, origin)
-        .merge(beside)
-        .layer(fleet::access::permitted_networks_layer(edge))
+    let routes = router_at(schema::build_schema(dependencies), pool, clock, origin).merge(beside);
+    let routes = if link_mode {
+        routes.layer(fleet::access::loopback_names_layer(&CLIENT_ORIGINS))
+    } else {
+        routes
+    };
+    routes.layer(fleet::access::permitted_networks_layer(edge))
 }
 
 /// The routes beside `/graphql`, each logged by its template only, never its token (K3,

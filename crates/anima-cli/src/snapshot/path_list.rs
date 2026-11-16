@@ -25,7 +25,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn job_017_a_message_names_twenty_paths_then_counts_the_rest() {
+    fn job_018_a_message_names_twenty_paths_then_counts_the_rest() {
         let few = vec!["a.pem".to_owned(), ".env".to_owned()];
         assert_eq!(shown(&few), "a.pem, .env");
 

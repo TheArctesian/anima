@@ -10,20 +10,24 @@
 
 mod opening;
 mod prompt;
+mod rdp;
 
 use guac_protocol::Instruction;
 
 use crate::frames::Formats;
-pub use opening::{Opening, Secret};
+pub use opening::{Desktop, Opening, Secret};
 pub use prompt::{Credential, Prompt, PromptStep};
+pub use rdp::{Certificate, Rdp, Security};
 
-/// The protocol the gateway serves.
+/// The protocols the gateway serves, as `select` names them.
 const VNC: &str = "vnc";
+const RDP: &str = "rdp";
 /// The protocol version the gateway speaks; the hub answers with the same (K4 Section 3).
 const VERSION: &str = "VERSION_1_5_0";
-/// The `connect` values the gateway reads, in the order `args` lists them. They are the
-/// names the hub sets for VNC (`tunnel/arguments.rs`); guacd's other VNC arguments have no
-/// meaning here, and the hub sends an empty value for any name it is not offered.
+/// The `connect` values the gateway reads for both protocols, in the order `args` lists
+/// them. They are the names the hub sets for VNC (`tunnel/arguments.rs`); RDP has those of
+/// `rdp::ARGUMENTS` after them. guacd's other arguments have no meaning here, and the hub
+/// sends a value only for a name it is offered.
 const ARGUMENTS: [&str; 6] = [
     "hostname",
     "port",
@@ -48,6 +52,8 @@ pub enum Refused {
     NoSize,
     #[error("the value of {argument} cannot be used")]
     BadValue { argument: &'static str },
+    #[error("the device's security setting is one the gateway does not have")]
+    SecurityNotServed,
 }
 
 impl Refused {
@@ -56,7 +62,7 @@ impl Refused {
     #[must_use]
     pub const fn status(self) -> u16 {
         match self {
-            Self::NotServed => 0x0100,
+            Self::NotServed | Self::SecurityNotServed => 0x0100,
             _ => 0x0300,
         }
     }
@@ -90,6 +96,7 @@ pub enum Step {
 enum State {
     AwaitingSelect,
     Collecting {
+        rdp: bool,
         size: Option<(usize, usize)>,
         formats: Formats,
     },
@@ -124,35 +131,54 @@ impl Handshake {
 }
 
 fn advance(state: State, instruction: Instruction) -> Result<(State, Step), Refused> {
-    let collecting = |size, formats| State::Collecting { size, formats };
-    match (state, instruction.opcode.as_str()) {
-        (State::AwaitingSelect, "select") => {
-            if instruction.args.first().map(String::as_str) != Some(VNC) {
-                return Err(Refused::NotServed);
-            }
-            let args = Instruction::new("args", [VERSION].into_iter().chain(ARGUMENTS));
-            Ok((collecting(None, Formats::default()), Step::Send(args)))
-        }
-        (State::AwaitingSelect, _) => Err(Refused::NotSelect),
-        (State::Collecting { formats, .. }, "size") => {
+    let State::Collecting { rdp, size, formats } = state else {
+        return match (state, instruction.opcode.as_str()) {
+            (State::AwaitingSelect, "select") => select(&instruction),
+            (State::AwaitingSelect, _) => Err(Refused::NotSelect),
+            _ => Err(Refused::Unexpected),
+        };
+    };
+    let collecting = |size, formats| State::Collecting { rdp, size, formats };
+    match instruction.opcode.as_str() {
+        "size" => {
             let size = opening::size(&instruction.args)?;
             Ok((collecting(Some(size), formats), Step::Read))
         }
-        (State::Collecting { size, .. }, "image") => {
+        "image" => {
             let jpeg = instruction
                 .args
                 .iter()
                 .any(|mimetype| mimetype == "image/jpeg");
             Ok((collecting(size, Formats { jpeg }), Step::Read))
         }
-        (State::Collecting { size, formats }, "audio" | "video" | "timezone" | "name" | "nop") => {
+        "audio" | "video" | "timezone" | "name" | "nop" => {
             Ok((collecting(size, formats), Step::Read))
         }
-        (State::Collecting { size, formats }, "connect") => {
+        "connect" => {
             let size = size.ok_or(Refused::NoSize)?;
-            let opening = Opening::from_connect(instruction.args, size, formats)?;
+            let opening = Opening::from_connect(instruction.args, rdp, size, formats)?;
             Ok((State::Finished, Step::Opened(Box::new(opening))))
         }
-        (State::Collecting { .. } | State::Finished, _) => Err(Refused::Unexpected),
+        _ => Err(Refused::Unexpected),
     }
+}
+
+/// `select`: `args` with the names of the selected protocol.
+fn select(instruction: &Instruction) -> Result<(State, Step), Refused> {
+    let rdp = match instruction.args.first().map(String::as_str) {
+        Some(VNC) => false,
+        Some(RDP) => true,
+        _ => return Err(Refused::NotServed),
+    };
+    let more: &[&str] = if rdp { &rdp::ARGUMENTS } else { &[] };
+    let names = [VERSION]
+        .into_iter()
+        .chain(ARGUMENTS)
+        .chain(more.iter().copied());
+    let state = State::Collecting {
+        rdp,
+        size: None,
+        formats: Formats::default(),
+    };
+    Ok((state, Step::Send(Instruction::new("args", names))))
 }

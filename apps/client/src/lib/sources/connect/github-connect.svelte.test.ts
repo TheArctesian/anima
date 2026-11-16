@@ -82,7 +82,7 @@ const logged = () => consoleSpies.flatMap((spy) => spy.mock.calls.flat().map(Str
 
 it('PRJ-039: the GitHub row says the hub keeps the key and offers the key-file way as the second action', async () => {
   await show();
-  expect(text()).toContain('Anima makes a GitHub App in your own account and keeps its key in the hub. You press Create and Install on GitHub.');
+  expect(text()).toContain('Anima.ing makes a GitHub App in your own account and keeps its key in the hub. You press Create and Install on GitHub.');
   expect(button('Connect GitHub')).toBeDefined();
   await click('Connect with a key file instead');
   expect(document.querySelector('[role="dialog"]')).not.toBeNull();

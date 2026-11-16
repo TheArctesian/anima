@@ -18,6 +18,7 @@ use super::{
 };
 use crate::{
     clock::Clock,
+    config::Config,
     fleet::{credentials::Vault, events::Bus},
 };
 
@@ -184,6 +185,7 @@ async fn sign_in(
         at: need::<Arc<dyn Clock>>(ctx)?.now(),
         issue,
         declared: ctx.data_opt::<Declaration>().copied().unwrap_or_default(),
+        totp_required: need::<Arc<Config>>(ctx)?.link_socket.is_some(),
     };
     let (db, bus, vault) = (need::<PgPool>(ctx)?, need::<Bus>(ctx)?, need::<Vault>(ctx)?);
     login::login(db, bus, vault, attempt)

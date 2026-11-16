@@ -4,6 +4,7 @@ mod audit;
 mod builders;
 mod events;
 mod extensions;
+mod forge;
 mod keys;
 mod notifications;
 mod projects;

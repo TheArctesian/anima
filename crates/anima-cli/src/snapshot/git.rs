@@ -149,7 +149,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn job_016_the_alternate_list_puts_the_repository_first_and_quotes_odd_paths() {
+    fn job_017_the_alternate_list_puts_the_repository_first_and_quotes_odd_paths() {
         assert_eq!(alternates("/r/.git/objects", None), "/r/.git/objects");
         assert_eq!(
             alternates("/r/.git/objects", Some("/x/objects")),

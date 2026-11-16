@@ -65,8 +65,8 @@ const settle = async () => {
   flushSync();
 };
 
-async function show(shell: Fake, mac = true): Promise<void> {
-  app = mount(StayAwakeRows, { target: document.body, props: { shell, mac } });
+async function show(shell: Fake, mac = true, localHub: string | null = null): Promise<void> {
+  app = mount(StayAwakeRows, { target: document.body, props: { shell, mac, localHub } });
   await settle();
 }
 
@@ -152,13 +152,19 @@ it('AWK-004, AWK-006: a change from the tray item or the battery shows without a
 });
 
 it('AWK-005: when the hub is this computer and nothing keeps it awake, the row says that checks stop during sleep', async () => {
-  mocks.origin = 'https://localhost:8443';
+  mocks.origin = 'http://127.0.0.1:8443';
   const shell = fake(READY);
-  await show(shell);
+  await show(shell, true, 'http://127.0.0.1:8443');
   const notice = () => document.querySelector('[role="status"]')?.textContent;
   expect(notice()).toBe('This computer is the hub. Its checks stop while the computer sleeps.');
   await pick('stay-awake-level', 'awake');
   expect(notice()).toBe('');
+});
+
+it('AWK-005, FRN-008: a loopback hub that is not the one run here gets no such line', async () => {
+  mocks.origin = 'http://127.0.0.1:8443';
+  await show(fake(READY));
+  expect(document.querySelector('[role="status"]')).toBeNull();
 });
 
 it('AWK-005: a hub on a different computer gets no such line', async () => {
@@ -171,7 +177,7 @@ it('a failed change shows fixed text, and the rows stop listening when they go',
   shell.next = { ok: false, problem: 'unsaved' };
   await show(shell);
   await pick('stay-awake-level', 'awake');
-  expect(alert()).toBe('Anima could not save this choice, so nothing changed.');
+  expect(alert()).toBe('Anima.ing could not save this choice, so nothing changed.');
   expect(select('stay-awake-level').value).toBe('off');
   shell.next = null;
   await pick('stay-awake-level', 'awake');

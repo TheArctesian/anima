@@ -1434,6 +1434,44 @@ type RetentionPeriod {
   defaultDays: Int!
 }
 
+# ---------------------------------------------------------------- device link (S6)
+# FRN-009, LNK-003, LNK-004 (OR-S6-3). The hub asks anima-link through its control socket
+# (ANIMA_LINK_CONTROL). Without the socket, or when the link does not answer, each link field is
+# UNAVAILABLE.
+
+"""How a device of the link reaches the hub now (LNK-006)."""
+enum LinkPath {
+  DIRECT
+  RELAYED
+  "No packet has crossed yet."
+  NONE
+}
+
+"""A device the link permits (LNK-004)."""
+type LinkDevice {
+  "The device's public key, as revokeLinkDevice takes it."
+  key: String!
+  "The short form of key that anima-link join prints on the device."
+  fingerprint: String!
+  name: String!
+  "The device's link address: the client address the hub records for it."
+  address: IpAddr!
+  path: LinkPath!
+  "The relay's name when path is RELAYED."
+  relay: String
+  "When the device's key stops being permitted; null when the link gives no time."
+  expiresAt: DateTime
+  "The streams open now."
+  streams: Int!
+}
+
+"""An invite for a new device of the link: shown once, works once, expires (LNK-003, LOG-007)."""
+type LinkInvite {
+  "The invite text. The hub keeps no copy and writes it to no log or audit entry."
+  invite: String!
+  expiresAt: DateTime!
+}
+
 # ---------------------------------------------------------------- sessions (WP-10)
 
 enum Protocol {
@@ -1877,6 +1915,8 @@ type ProjectRepository {
   leftOut: Boolean!
   "True: the connection no longer lists it. The record is kept."
   gone: Boolean!
+  "The client shows \"not connected\" from this and does not ask for the lists below unless it is READY (PRJ-032)."
+  access: RepositoryAccess!
 }
 
 type ResourceEvidence {
@@ -1912,9 +1952,521 @@ type ProjectEdge {
   node: Project!
 }
 
+enum ProjectOrder { NAME LAST_COMMIT CREATED COMMIT_COUNT STARS }
+
+input ProjectBrowse {
+  order: ProjectOrder
+  language: String
+  minSizeKib: Int
+  maxSizeKib: Int
+}
+
 type ProjectConnection {
+  languages: [String!]!
   edges: [ProjectEdge!]!
   pageInfo: PageInfo!
+}
+
+# ---------------------------------------------------------------- projects: work, code and history (XP-02, second slice)
+# PRJ-027 to PRJ-035, OD-E14. Read live from GitHub through the hub with a short cache in hub memory; none of it is stored
+# (K-E1 Section 13). "Text from GitHub" in a doc string means other people can write it: the client shows it as plain text,
+# never as HTML, and MCP passes it through `mcp/untrusted.rs`. Pull requests and issues have no hub ID; GitHub's numbers
+# are not UUIDs (K7, IDs). Names are forge-neutral (PRO-007).
+
+"Whether the hub can read and change a repository on GitHub now."
+enum RepositoryAccess {
+  READY
+  "No source account holds it (the account was removed and the records kept)."
+  NOT_CONNECTED
+  "GitHub refused the key of its account."
+  NEEDS_RECONNECT
+  "Its account is paused."
+  PAUSED
+  LEFT_OUT
+  "The connection no longer lists it."
+  GONE
+}
+
+"When the hub read an answer from GitHub (PRJ-032)."
+type ForgeRead {
+  "When GitHub gave this answer."
+  at: DateTime!
+  "True: the newest read failed and this is the last good answer, at most one hour old."
+  stale: Boolean!
+  "Set when stale. Fixed words; never a provider reply (LOG-007)."
+  problem: String
+}
+
+enum OpenOrClosed { OPEN CLOSED ALL }
+enum ChecksState { NONE PENDING PASSED FAILED }
+
+"The check runs and commit statuses of one commit, counted together."
+type CommitChecks {
+  sha: String!
+  "FAILED when any failed; else PENDING when any is not finished; else PASSED; NONE when the commit has none."
+  state: ChecksState!
+  passed: Int!
+  failed: Int!
+  pending: Int!
+  "Skipped, neutral or cancelled."
+  other: Int!
+  "Up to 10 names of failed checks, each at most 100 characters. Text from GitHub."
+  failing: [String!]!
+  "True: the commit has more than 100 check runs or statuses; the counts cover the first 100 of each."
+  partial: Boolean!
+}
+
+enum PullRequestState { OPEN CLOSED MERGED }
+enum MergeMethod { MERGE SQUASH REBASE }
+enum MergeState {
+  "No conflict and the checks passed."
+  CLEAN
+  "No conflict; a check that is not required failed or still runs."
+  UNSTABLE
+  CONFLICT
+  "A required check or review is missing."
+  BLOCKED
+  "The base branch moved and the repository requires an up-to-date branch."
+  BEHIND
+  DRAFT
+  "GitHub has not computed it yet. Ask again."
+  UNKNOWN
+}
+
+type PullRequestMergeability {
+  state: MergeState!
+  "True only for CLEAN on an open pull request that is not a draft (PRJ-033)."
+  canMerge: Boolean!
+}
+
+"Identity is the repository and the number. It has no hub ID: the hub does not store it."
+type PullRequest {
+  repository: ID!
+  number: Int!
+  "At most 300 characters. Text from GitHub."
+  title: String!
+  state: PullRequestState!
+  draft: Boolean!
+  "Text from GitHub."
+  authorLogin: String!
+  "Text from GitHub."
+  headBranch: String!
+  "40 lower-case hex digits."
+  headSha: String!
+  baseBranch: String!
+  "True: the head branch is in another repository. Such a pull request is never merged in bulk, and its workflow runs are not run again from Anima (PRO-013)."
+  fromFork: Boolean!
+  "owner/name of the head repository; null when it was deleted. Text from GitHub."
+  headRepository: String
+  "Up to 20 names. Text from GitHub."
+  labels: [String!]!
+  comments: Int!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  mergedAt: DateTime
+  "The page on GitHub (PRJ-010)."
+  url: String!
+  "Markdown source, cut at 20,000 characters. Text from GitHub: plain text, never HTML."
+  body: String
+  bodyCut: Boolean!
+  "Costs one GitHub request for each pull request when selected. Null for one that is not open."
+  mergeability: PullRequestMergeability
+  "The checks of headSha. Costs two GitHub requests for each pull request when selected."
+  checks: CommitChecks
+}
+
+type PullRequestEdge {
+  cursor: String!
+  node: PullRequest!
+}
+
+type PullRequestConnection {
+  edges: [PullRequestEdge!]!
+  pageInfo: PageInfo!
+  read: ForgeRead!
+  "The merge methods the repository allows. Costs one GitHub request when selected (kept 10 minutes)."
+  mergeMethods: [MergeMethod!]!
+}
+
+enum IssueCloseReason { COMPLETED NOT_PLANNED }
+
+type Issue {
+  repository: ID!
+  number: Int!
+  "At most 300 characters. Text from GitHub."
+  title: String!
+  open: Boolean!
+  "Set for a closed issue when GitHub gives it."
+  closeReason: IssueCloseReason
+  "Text from GitHub."
+  authorLogin: String!
+  "Up to 20 names. Text from GitHub."
+  labels: [String!]!
+  "Up to 10 logins. Text from GitHub."
+  assignees: [String!]!
+  comments: Int!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  closedAt: DateTime
+  url: String!
+  "Markdown source, cut at 20,000 characters. Text from GitHub: plain text, never HTML."
+  body: String
+  bodyCut: Boolean!
+}
+
+type IssueEdge {
+  cursor: String!
+  node: Issue!
+}
+
+type IssueConnection {
+  edges: [IssueEdge!]!
+  pageInfo: PageInfo!
+  read: ForgeRead!
+}
+
+type IssueComment {
+  "GitHub's comment number, as digits."
+  id: ID!
+  "Text from GitHub."
+  authorLogin: String!
+  "Markdown source, cut at 20,000 characters. Text from GitHub: plain text, never HTML."
+  body: String!
+  bodyCut: Boolean!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  url: String!
+}
+
+type IssueCommentEdge {
+  cursor: String!
+  node: IssueComment!
+}
+
+type IssueCommentConnection {
+  edges: [IssueCommentEdge!]!
+  pageInfo: PageInfo!
+  read: ForgeRead!
+}
+
+enum WorkflowRunStatus { QUEUED IN_PROGRESS COMPLETED }
+enum WorkflowConclusion { SUCCESS FAILURE CANCELLED SKIPPED TIMED_OUT ACTION_REQUIRED NEUTRAL STALE OTHER }
+
+type Workflow {
+  "GitHub's workflow number, as digits."
+  id: ID!
+  "Text from GitHub."
+  name: String!
+  "For example .github/workflows/ci.yml. Text from GitHub."
+  path: String!
+  "False: the workflow is disabled on GitHub."
+  active: Boolean!
+  url: String!
+}
+
+type WorkflowJobs {
+  total: Int!
+  succeeded: Int!
+  failed: Int!
+  running: Int!
+  queued: Int!
+  "Skipped or cancelled."
+  other: Int!
+  "Up to 10 names of failed jobs, each at most 100 characters. Text from GitHub."
+  failing: [String!]!
+  "True: the run has more than 100 jobs; the counts cover the first 100."
+  partial: Boolean!
+}
+
+type WorkflowRun {
+  repository: ID!
+  "GitHub's run number across the repository, as digits (it does not fit Int)."
+  id: ID!
+  workflowId: ID!
+  "The workflow's name. Text from GitHub."
+  name: String!
+  "The count of runs of this workflow."
+  runNumber: Int!
+  attempt: Int!
+  "For example push, pull_request, workflow_dispatch."
+  event: String!
+  status: WorkflowRunStatus!
+  "Null until COMPLETED."
+  conclusion: WorkflowConclusion
+  "Null for a run with no branch. Text from GitHub."
+  branch: String
+  "40 lower-case hex digits. Each confirmation shows it (PRJ-034)."
+  headSha: String!
+  "The first line of the commit message, at most 200 characters. Text from GitHub."
+  commitTitle: String
+  "Text from GitHub."
+  actorLogin: String
+  "True: the head commit is in another repository. The hub does not run such a run again (PRO-013)."
+  fromFork: Boolean!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  startedAt: DateTime
+  url: String!
+  "COMPLETED and not fromFork."
+  rerunnable: Boolean!
+  "rerunnable, and the conclusion is FAILURE, CANCELLED or TIMED_OUT."
+  failedJobsRerunnable: Boolean!
+  "QUEUED or IN_PROGRESS."
+  cancellable: Boolean!
+  "Costs one GitHub request for each run when selected."
+  jobs: WorkflowJobs
+}
+
+type WorkflowRunEdge {
+  cursor: String!
+  node: WorkflowRun!
+}
+
+type WorkflowRunConnection {
+  edges: [WorkflowRunEdge!]!
+  pageInfo: PageInfo!
+  read: ForgeRead!
+}
+
+"GitHub accepted the request; the run appears in workflowRuns a moment later."
+type WorkflowDispatch {
+  repository: ID!
+  workflowId: ID!
+  branch: String!
+  acceptedAt: DateTime!
+}
+
+type Commit {
+  repository: ID!
+  "40 lower-case hex digits."
+  sha: String!
+  "The first line of the message, at most 200 characters. Text from GitHub."
+  title: String!
+  "The rest of the message, cut at 5,000 characters. Text from GitHub."
+  message: String
+  "The name in the commit. Text from GitHub."
+  authorName: String!
+  "The GitHub login, when GitHub matched one. Text from GitHub."
+  authorLogin: String
+  committedAt: DateTime!
+  parents: [String!]!
+  url: String!
+  "Costs two GitHub requests for each commit when selected."
+  checks: CommitChecks
+}
+
+type CommitEdge {
+  cursor: String!
+  node: Commit!
+}
+
+type CommitConnection {
+  edges: [CommitEdge!]!
+  pageInfo: PageInfo!
+  read: ForgeRead!
+}
+
+type Branch {
+  "Text from GitHub."
+  name: String!
+  sha: String!
+  protected: Boolean!
+  "True for the repository's default branch."
+  default: Boolean!
+}
+
+type BranchEdge {
+  cursor: String!
+  node: Branch!
+}
+
+type BranchConnection {
+  edges: [BranchEdge!]!
+  pageInfo: PageInfo!
+  read: ForgeRead!
+}
+
+"A release on GitHub. Not a release of Anima (type Release)."
+type RepositoryRelease {
+  "GitHub's release number, as digits."
+  id: ID!
+  "Text from GitHub."
+  tag: String!
+  "Text from GitHub."
+  name: String
+  draft: Boolean!
+  prerelease: Boolean!
+  "Text from GitHub."
+  authorLogin: String
+  createdAt: DateTime!
+  publishedAt: DateTime
+  url: String!
+}
+
+type RepositoryReleaseEdge {
+  cursor: String!
+  node: RepositoryRelease!
+}
+
+type RepositoryReleaseConnection {
+  edges: [RepositoryReleaseEdge!]!
+  pageInfo: PageInfo!
+  read: ForgeRead!
+}
+
+enum CommitStatusState { PENDING SUCCESS FAILURE ERROR }
+
+type CommitStatus {
+  repository: ID!
+  sha: String!
+  context: String!
+  state: CommitStatusState!
+  description: String
+  targetUrl: String
+  createdAt: DateTime!
+}
+
+enum CodeEntryKind { FILE DIRECTORY SYMLINK SUBMODULE }
+
+type CodeEntry {
+  "One path segment. Text from GitHub."
+  name: String!
+  "From the repository root, no leading slash. Text from GitHub."
+  path: String!
+  kind: CodeEntryKind!
+  "Bytes; 0 for anything but a FILE."
+  size: Int!
+  sha: String!
+}
+
+type CodeDirectory {
+  repository: ID!
+  "The branch name or commit asked for."
+  ref: String!
+  "Empty for the root."
+  path: String!
+  "Directories first, then by name."
+  entries: [CodeEntry!]!
+  "True: GitHub lists at most 1,000 entries of one directory and this one may have more."
+  partial: Boolean!
+  read: ForgeRead!
+}
+
+enum CodeFileContent {
+  "text holds the file."
+  TEXT
+  "Not valid UTF-8, or it holds a NUL byte. No content is returned."
+  BINARY
+  "Larger than 1,000,000 bytes. No content is returned."
+  TOO_LARGE
+}
+
+"Bytes from a repository: untrusted. The hub does not look for secrets in it and makes no promise that it holds none."
+type CodeFile {
+  repository: ID!
+  ref: String!
+  "The path GitHub read. When the path asked is a link to a file in the same repository, the path of that file."
+  path: String!
+  name: String!
+  sha: String!
+  "Bytes."
+  size: Int!
+  content: CodeFileContent!
+  "Only for TEXT. Plain text: never render it as HTML and never run it."
+  text: String
+  "The file on GitHub (PRJ-010)."
+  url: String!
+  readAt: DateTime!
+}
+
+input NewIssueInput {
+  repository: ID!
+  "1 to 256 characters."
+  title: String!
+  "At most 65,536 characters."
+  body: String
+  "At most 20, each 1 to 50 characters."
+  labels: [String!]
+}
+
+input MergePullRequestInput {
+  repository: ID!
+  number: Int!
+  "The head commit the operator saw, 40 hex digits. CONFLICT when the head moved since."
+  expectedHeadSha: String!
+  method: MergeMethod!
+  "True also merges an UNSTABLE pull request (a check that is not required failed). BLOCKED is never merged."
+  allowFailingChecks: Boolean = false
+  "Required for a pull request from a fork: must equal its headRepository."
+  forkConfirmed: String
+}
+
+input PullRequestTargetInput {
+  repository: ID!
+  number: Int!
+  expectedHeadSha: String!
+}
+
+enum MergeOutcome {
+  MERGED
+  "It was merged before this request. Nothing was changed."
+  ALREADY_MERGED
+  HEAD_MOVED
+  "Conflict, a failed or missing check, a draft, or closed."
+  NOT_MERGEABLE
+  "GitHub had not computed whether it can merge. Try again."
+  NOT_READY
+  "From a fork: merge it alone, with forkConfirmed (PRO-013)."
+  FORK_REFUSED
+  "The repository does not allow this merge method."
+  METHOD_REFUSED
+  NOT_FOUND
+  "GitHub refused or could not be reached. Nothing was changed."
+  FAILED
+  "The request was sent and no answer came. It may be merged: read the list again."
+  UNKNOWN
+  "The hub stopped before it reached this one (90 seconds for the whole request)."
+  NOT_ATTEMPTED
+}
+
+type PullRequestMerge {
+  repository: ID!
+  number: Int!
+  outcome: MergeOutcome!
+  "Fixed words. Never a provider reply (LOG-007)."
+  message: String!
+  "Set for MERGED."
+  mergeSha: String
+}
+
+"One named input of a workflow started by hand. The operator types the name; GitHub checks it (PRJ-035)."
+input WorkflowInputValue {
+  "1 to 100 characters: letters, digits, - and _."
+  name: String!
+  "At most 1,024 characters."
+  value: String!
+}
+
+input DispatchWorkflowInput {
+  repository: ID!
+  workflowId: ID!
+  "A branch of this repository."
+  branch: String!
+  "At most 25."
+  inputs: [WorkflowInputValue!] = []
+}
+
+input CommitStatusInput {
+  repository: ID!
+  "40 hex digits."
+  sha: String!
+  state: CommitStatusState!
+  "anima/ then 1 to 40 of a-z, 0-9 and -. Anima cannot write the context of another system."
+  context: String!
+  "At most 140 characters."
+  description: String
+  "Null, or an address below the hub's public origin."
+  targetUrl: String
 }
 
 # ---------------------------------------------------------------- root types
@@ -1951,6 +2503,8 @@ type Query {
   releases(first: Int = 20, after: String): ReleaseConnection!
   "The highest version published or under way with the patch plus 1; null before the first."
   nextReleaseVersion: String
+  "Whether this hub holds the release bucket and the updater key, so it can publish a release. createRelease is refused with CONFLICT when false. (operator, 2026-11-16, PRO-037, PRO-038, OD-W20; ruling number to be assigned)"
+  releasePublishing: Boolean!
   builders: [Builder!]!
   "Up to `first` (1 to 1000) stored lines after sequence `after`, oldest first (BLD-048)."
   buildJobLog(id: ID!, after: Int, first: Int = 500): [BuildLogLine!]!
@@ -1965,7 +2519,7 @@ type Query {
   sources: [Source!]!
   sourceAccounts(sourceKey: String): [SourceAccount!]!
   "By name, then ID. leftOut false: the projects with at least one repository that is not left out. leftOut true: only the projects whose repositories are all left out. The two lists hold every project once. first is 1 to 200. CONFLICT while Projects is off."
-  projects(leftOut: Boolean = false, first: Int = 50, after: String): ProjectConnection!
+  projects(leftOut: Boolean = false, first: Int = 50, after: String, browse: ProjectBrowse): ProjectConnection!
   "Any project, left out or not. Null when no project has this slug. CONFLICT while Projects is off."
   project(slug: String!): Project
   "The open attempt, or one that ended in the last 10 minutes; null otherwise. Open to a read key: it holds nothing secret."
@@ -1974,6 +2528,45 @@ type Query {
   # Tool inventory (operator, 2026-11-15, CAP-020 to CAP-031; ruling number to be assigned)
   "Each device whose agent sent a tool inventory, by device name (byte order). tool: only the devices where that tool is usable. buildTarget: only the devices with that Rust target. A name the hub does not know matches no device (CAP-030). Open to a read key."
   capabilities(tool: String, buildTarget: String): [DeviceCapabilities!]!
+
+  # Projects: work, code and history (operator, 2026-11-13; ruling number to be assigned; PRJ-027 to PRJ-035, OD-E14)
+  # Every field below: CONFLICT while Projects is off or while ProjectRepository.access is not READY; NOT_FOUND for an
+  # unknown repository ID or a number, run or path GitHub does not have; VALIDATION (with extensions.fields) for a bad
+  # first, after, ref, path, sha or text length; UNAVAILABLE when GitHub cannot be reached, limits requests, or answers
+  # something the hub cannot use, and no earlier answer is held; FORBIDDEN for the token rules. No new code.
+  # repository is always ProjectRepository.id. fresh true skips the cache (the hub still reuses an answer less than
+  # 5 seconds old). A page cursor holds GitHub's page number and the page size: after with a different first is
+  # VALIDATION. Pages are GitHub's pages, so a row can repeat or be skipped when the list changes between pages.
+  "Newest updated first. first is 1 to 50. One GitHub request, and more for mergeability and checks when selected (PRJ-031, PRJ-033)."
+  pullRequests(repository: ID!, state: OpenOrClosed = OPEN, first: Int = 20, after: String, fresh: Boolean = false): PullRequestConnection!
+  "Null when the repository has no pull request with this number."
+  pullRequest(repository: ID!, number: Int!, fresh: Boolean = false): PullRequest
+  "Newest updated first; pull requests are not in it. first is 1 to 100. A page can hold fewer than first rows and still have a next page (PRJ-031)."
+  issues(repository: ID!, state: OpenOrClosed = OPEN, first: Int = 30, after: String, fresh: Boolean = false): IssueConnection!
+  "Null when the repository has no issue with this number, or the number is a pull request."
+  issue(repository: ID!, number: Int!, fresh: Boolean = false): Issue
+  "Oldest first. number is an issue or a pull request. first is 1 to 100."
+  issueComments(repository: ID!, number: Int!, first: Int = 30, after: String, fresh: Boolean = false): IssueCommentConnection!
+  "Every workflow of the repository, at most 100, by name (PRJ-035)."
+  workflows(repository: ID!, fresh: Boolean = false): [Workflow!]!
+  "Newest first. branch null: every branch. status null: every status. first is 1 to 50 (PRJ-031, PRJ-034)."
+  workflowRuns(repository: ID!, branch: String, status: WorkflowRunStatus, first: Int = 20, after: String, fresh: Boolean = false): WorkflowRunConnection!
+  "Null when the repository has no run with this number."
+  workflowRun(repository: ID!, runId: ID!, fresh: Boolean = false): WorkflowRun
+  "Newest first. ref is a branch name or a 40-digit commit; null: the default branch. first is 1 to 100."
+  commits(repository: ID!, ref: String, first: Int = 30, after: String, fresh: Boolean = false): CommitConnection!
+  "By name. first is 1 to 100."
+  branches(repository: ID!, first: Int = 100, after: String, fresh: Boolean = false): BranchConnection!
+  "Newest first. first is 1 to 100. Releases on GitHub, not releases of Anima."
+  repositoryReleases(repository: ID!, first: Int = 20, after: String, fresh: Boolean = false): RepositoryReleaseConnection!
+  "One directory. ref null: the default branch. path empty: the root. VALIDATION when the path is a file. Names only: open to a read key."
+  codeDirectory(repository: ID!, ref: String, path: String = "", fresh: Boolean = false): CodeDirectory!
+  "One file, never kept by the hub. VALIDATION when the path is a directory. No MCP tool returns it (operator, 2026-11-14; ruling number to be assigned). Login or browser token only (D-23, R-100)."
+  codeFile(repository: ID!, ref: String, path: String!): CodeFile!
+
+  # S6: the device link (FRN-009, OR-S6-3)
+  "The devices the link permits, in the link's order (LNK-004)."
+  linkDevices: [LinkDevice!]!
 }
 
 type Mutation {
@@ -2109,6 +2702,37 @@ type Mutation {
   openGithubConnect(id: ID!): GithubConnectLink!
   "Drops the attempt and any key it holds. NOT_FOUND for another id; CONFLICT once CONNECTED. Login or browser token only (D-23, R-100)."
   cancelGithubConnect(id: ID!): GithubConnectAttempt!
+
+  # Projects: the first GitHub changes (operator, 2026-11-13; ruling number to be assigned; PRJ-027 to PRJ-029, OD-E14)
+  # The errors of the Projects queries above apply. Each is a named change (K-E1 Section 13); the hub never repeats one.
+  # The roots closed to API keys use temporary words until the task that lists them in API_KEY_REFUSED_ROOTS restores
+  # "Login or browser token only (D-23, R-100)." (key_roots.rs keys on that phrase).
+  "Makes an issue on GitHub. Not repeated by the hub: after UNAVAILABLE the issue may exist. Writes an audit entry (PRJ-028)."
+  createIssue(input: NewIssueInput!): Issue!
+  "number is an issue or a pull request. body is 1 to 65,536 characters. Not repeated by the hub. Writes an audit entry (PRJ-028)."
+  addIssueComment(repository: ID!, number: Int!, body: String!): IssueComment!
+  "Closes or opens an issue. reason only with open false. No change when it is already so. VALIDATION when the number is a pull request. Writes an audit entry (PRJ-028)."
+  setIssueOpen(repository: ID!, number: Int!, open: Boolean!, reason: IssueCloseReason): Issue!
+  "CONFLICT when the head moved, it cannot merge, GitHub has not computed it, or the method is not allowed. FORBIDDEN for a pull request from a fork without forkConfirmed, and for any pull request from a fork when the request declares an AI agent (PRO-013). Returns it unchanged when it is already merged. Writes an audit entry (PRJ-028). Login or browser token only (D-23, R-100)."
+  mergePullRequest(input: MergePullRequestInput!): PullRequest!
+  "1 to 20 pull requests, no pair twice, merged one after another in the order given; a failure does not stop the rest. One result for each, in the same order (PRJ-033). Only CLEAN ones; never one from a fork. One audit entry for each one the hub sent to GitHub. Login or browser token only (D-23, R-100)."
+  mergePullRequests(pullRequests: [PullRequestTargetInput!]!, method: MergeMethod!): [PullRequestMerge!]!
+  "Runs every job again. CONFLICT when it is not rerunnable or expectedHeadSha is not its head commit (PRJ-034). Writes an audit entry (PRJ-028). Login or browser token only (D-23, R-100)."
+  rerunWorkflowRun(repository: ID!, runId: ID!, expectedHeadSha: String!): WorkflowRun!
+  "Runs only the failed jobs again. CONFLICT as rerunWorkflowRun. Writes an audit entry (PRJ-028). Login or browser token only (D-23, R-100)."
+  rerunFailedWorkflowJobs(repository: ID!, runId: ID!, expectedHeadSha: String!): WorkflowRun!
+  "CONFLICT when it is not cancellable or expectedHeadSha is not its head commit. Writes an audit entry (PRJ-028). Login or browser token only (D-23, R-100)."
+  cancelWorkflowRun(repository: ID!, runId: ID!, expectedHeadSha: String!): WorkflowRun!
+  "Starts a workflow by hand on a branch (PRJ-035). VALIDATION when GitHub refuses the branch or the inputs; CONFLICT when the workflow is not active. Writes an audit entry (PRJ-028). Login or browser token only (D-23, R-100)."
+  dispatchWorkflow(input: DispatchWorkflowInput!): WorkflowDispatch!
+  "Writes a commit status under an anima/ context (PRO-010). Writes an audit entry (PRJ-028). Login or browser token only (D-23, R-100)."
+  setCommitStatus(input: CommitStatusInput!): CommitStatus!
+
+  # S6: the device link (FRN-009, OR-S6-3)
+  "An invite for a new device named name (1 to 64 visible characters). Shown once; it works once and expires (LNK-003). The response is no-store. Writes an audit entry without the invite (LOG-005, LOG-007). Login or browser token only (D-23)."
+  createLinkInvite(name: String!): LinkInvite!
+  "Removes the device with this key from the link and closes its streams; returns how many it closed (LNK-004). NOT_FOUND when the link does not list the key. Writes an audit entry. Login or browser token only (D-23)."
+  revokeLinkDevice(key: String!): Int!
 }
 
 type Subscription {

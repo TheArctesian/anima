@@ -1,0 +1,12 @@
+mutation IssueCreate($input: NewIssueInput!) {
+  createIssue(input: $input) {
+    repository
+    number
+    title
+    open
+    closeReason
+    labels
+    createdAt
+    url
+  }
+}

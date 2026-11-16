@@ -18,7 +18,7 @@
   {#snippet label()}
     <!-- Both lines are always rendered with their height reserved, so nothing moves when they fill (MOT-007). -->
     <p class="version">
-      {#if updates.current !== null}Anima <strong>{updates.current}</strong>{/if}
+      {#if updates.current !== null}Anima.ing <strong>{updates.current}</strong>{/if}
     </p>
   {/snippet}
   {#snippet hint()}

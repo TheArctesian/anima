@@ -93,16 +93,25 @@ Thus the hub rules become key rules with no change to a frozen contract.
 | T7 | Hub, as a process: requests through the socket carry the device; refusals; BLD-024 and the agent limits for each device | Integration tests |
 | T8 | Documents: `docs/setup/link.md`, this file's results, the list for S6 | — |
 | T9 | Full gates on the branch with `main` merged in | Gate record |
+| T10 | Agent: the link origin `http://127.0.0.1:<port>` (K8 Section 1, MET-020; operator's ruling of 2026-11-15) | Unit tests of the origin rule; one push through the client |
 
 `main.rs` gets the wiring of the socket (T6). `schema.rs`, `contracts/` and `quality/` do not change.
 
 ## 5. Not in S5
 
-- **The agent's own transport.** K8 Section 1 (frozen) says that the agent uses HTTPS on port 443.
-  An agent that reaches the hub through the link uses HTTP to a loopback port of `anima-link`. That
-  is a change to K8 and to MET-020, and it needs a programme ruling. Proposed text: "In the link
-  mode the agent's hub origin is `http://127.0.0.1:<port>`, the local port of `anima-link device`.
-  The link authenticates the hub by its key." The hub side of the agent path is built here (T7).
+- **The agent's own transport: built after S5 (T10).** The operator ruled on 2026-11-15 that the
+  agent may use HTTP to a loopback port in the link mode. K8 Section 1 and MET-020 have the text.
+  `anima-agent enrol --hub http://127.0.0.1:<port>` now works: the origin rule accepts `http` only
+  for `127.0.0.1` with a port from 1024 (`crates/agent/src/config/origin.rs`). The token stays bound
+  to that origin, port included, so `anima-link device` must use a fixed `-listen` port on a
+  computer that runs the agent. Known remainder: a program of any local user of that computer that takes
+  the port while the link is stopped receives the agent token with the next push, and nothing
+  detects it. The planned correction is a Unix socket between the agent and the link (the HTTP
+  client and the link can both do it); it needs a new origin form in K8 and a ruling. The security
+  review (accept, nothing to correct before the merge) also found that MET-023 (`doctor`, not
+  built) speaks of TLS on port 443 and needs a clause for the link mode before it is built. Not proved here:
+  one test with a real agent, a real link and a real hub together (Rust and Go in one test); the
+  agent half is proved against a local HTTP server, the hub half by the tests of T7.
 - The hub API, the command and the screen for invites and the device list (S6; needs K1).
 - Starting `anima-link` and the hub as services (S4).
 

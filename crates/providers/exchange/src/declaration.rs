@@ -2,6 +2,7 @@
 
 use chrono::{DateTime, Utc};
 
+use crate::change::Changes;
 use crate::exchange::Problem;
 use crate::registration::Registration;
 
@@ -23,6 +24,8 @@ pub struct Declaration {
     pub gives: &'static [&'static str],
     pub poll_interval_seconds: u32,
     pub api_base: &'static str,
+    /// `None`: a read-only source. `Some`: the named changes it can make (OD-E14).
+    pub changes: Option<Changes>,
 }
 
 impl Declaration {

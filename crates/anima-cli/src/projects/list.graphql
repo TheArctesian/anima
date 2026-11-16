@@ -1,5 +1,5 @@
-query ProjectList($leftOut: Boolean, $first: Int, $after: String) {
-  projects(leftOut: $leftOut, first: $first, after: $after) {
+query ProjectList($leftOut: Boolean, $first: Int, $after: String, $browse: ProjectBrowse) {
+  projects(leftOut: $leftOut, first: $first, after: $after, browse: $browse) {
     edges {
       cursor
       node {

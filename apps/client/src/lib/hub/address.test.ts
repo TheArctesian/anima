@@ -19,6 +19,14 @@ describe('parseHubAddress', () => {
     ['', 'not-a-url'],
     ['https://', 'not-a-url'],
     ['http://hub.anima.ing', 'not-https'],
+    ['http://localhost.example.com', 'not-https'],
+    ['http://10.0.0.5:8443', 'not-https'],
+    ['ws://127.0.0.1:8443', 'not-https'],
+    ['http://[::1]:8443', 'not-https'],
+    // F-1, security review of T6: `localhost` may resolve to ::1 first, where another user can bind the same port.
+    ['http://localhost:9000', 'not-https'],
+    ['http://user:pw@127.0.0.1:8443', 'has-credentials'],
+    ['http://127.0.0.1:8443/graphql', 'has-path'],
     ['wss://hub.anima.ing', 'not-https'],
     ['https://operator:hunter2@hub.anima.ing', 'has-credentials'],
     ['https://hub.anima.ing/graphql', 'has-path'],
@@ -26,6 +34,13 @@ describe('parseHubAddress', () => {
   ])('refuses %j as %s', (text, problem) => {
     const result = parseHubAddress(text);
     expect(result.ok ? undefined : result.error.problem).toBe(problem);
+  });
+
+  it.each([
+    ['http://127.0.0.1:8443', 'http://127.0.0.1:8443', 'ws://127.0.0.1:8443/graphql'],
+    ['127.0.0.1:8443', 'https://127.0.0.1:8443', 'wss://127.0.0.1:8443/graphql'],
+  ])('CLI-002: %s is a loopback hub; plain http only there, a bare host stays https', (text, origin, socket) => {
+    expect(parseHubAddress(text)).toEqual({ ok: true, value: { origin, http: `${origin}/graphql`, socket } });
   });
 
   it('LOG-007: a refused address does not repeat a password from the input', () => {

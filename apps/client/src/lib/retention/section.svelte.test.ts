@@ -111,7 +111,7 @@ it('HUB-005: a failed save shows a fixed message, not the hub text, and keeps wh
   const field = input(target, 'Events');
   type(field, '120');
   await save(target, 'Events');
-  expect(problemOf(target, 'Events')).toBe('Anima could not save the events period.');
+  expect(problemOf(target, 'Events')).toBe('Anima.ing could not save the events period.');
   expect(target.textContent).not.toContain('secret hub text');
   expect(field.value).toBe('120');
   expect(row(target, 'Events').querySelector('.hint')?.textContent).toContain('Keeps 90 days.');

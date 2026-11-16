@@ -1,4 +1,4 @@
-//! `anima snapshot list` and `delete`, and the errors of every `snapshot` command (JOB-017,
+//! `anima snapshot list` and `delete`, and the errors of every `snapshot` command (JOB-018,
 //! CMD-021, CMD-024).
 
 use super::repos::Repos;
@@ -16,7 +16,7 @@ async fn pushed() -> (Repos, String, String) {
 }
 
 #[tokio::test]
-async fn job_017_list_shows_each_scratch_ref_and_its_commit() {
+async fn job_018_list_shows_each_scratch_ref_and_its_commit() {
     let (repos, scratch, commit) = pushed().await;
     let run = repos.anima(&["snapshot", "list", "--json"]).await;
     assert_eq!(run.code, 0, "{run:?}");
@@ -33,7 +33,7 @@ async fn job_017_list_shows_each_scratch_ref_and_its_commit() {
 }
 
 #[tokio::test]
-async fn job_017_delete_removes_the_one_scratch_ref() {
+async fn job_018_delete_removes_the_one_scratch_ref() {
     let (repos, scratch, commit) = pushed().await;
     let id = scratch.trim_start_matches("refs/anima/wip/");
     let main = repos.git_in(&repos.remote(), &["rev-parse", "main"]);
@@ -61,7 +61,7 @@ async fn cmd_024_delete_without_yes_and_no_terminal_asks_for_yes_and_keeps_the_r
 }
 
 #[tokio::test]
-async fn job_017_delete_refuses_a_ref_outside_the_scratch_space() {
+async fn job_018_delete_refuses_a_ref_outside_the_scratch_space() {
     let (repos, scratch, _) = pushed().await;
     let main = repos.git_in(&repos.remote(), &["rev-parse", "main"]);
     for target in [
@@ -80,7 +80,7 @@ async fn job_017_delete_refuses_a_ref_outside_the_scratch_space() {
 }
 
 #[tokio::test]
-async fn job_017_deleting_a_scratch_ref_that_is_not_there_is_not_found() {
+async fn job_018_deleting_a_scratch_ref_that_is_not_there_is_not_found() {
     let (repos, _, _) = pushed().await;
     let run = repos
         .anima(&["snapshot", "delete", "0000000000000000", "--yes"])

@@ -1,4 +1,6 @@
 import { graphql } from '$lib/hub/generated';
+import type { ProjectBrowse } from '$lib/hub/generated/graphql';
+export type { ProjectBrowse } from '$lib/hub/generated/graphql';
 import type { Hub, HubResult } from '$lib/hub/hub';
 
 // The fragments are only read by codegen, which inlines them into the documents that spread them.
@@ -42,8 +44,9 @@ void graphql(`
 `);
 
 const PROJECTS = graphql(`
-  query Projects($leftOut: Boolean!, $first: Int!, $after: String) {
-    projects(leftOut: $leftOut, first: $first, after: $after) {
+  query Projects($leftOut: Boolean!, $first: Int!, $after: String, $browse: ProjectBrowse) {
+    projects(leftOut: $leftOut, first: $first, after: $after, browse: $browse) {
+      languages
       edges {
         node {
           ...ProjectFields
@@ -134,12 +137,13 @@ export interface Project {
 export interface ProjectsPage {
   readonly projects: readonly Project[];
   readonly next: string | null;
+  readonly languages?: readonly string[];
 }
 
 /** The project calls of the hub (PRO-001, PRO-002, PRO-004). */
 export interface ProjectsApi {
-  /** One page by name; `leftOut` true lists the projects whose repositories are all left out. */
-  list(leftOut: boolean, after: string | null): Promise<HubResult<ProjectsPage>>;
+  /** One page in the requested order; `leftOut` true lists the projects whose repositories are all left out. */
+  list(leftOut: boolean, after: string | null, browse?: ProjectBrowse): Promise<HubResult<ProjectsPage>>;
   /** Null when no project has the slug. */
   find(slug: string): Promise<HubResult<Project | null>>;
   leaveOut(repositoryId: string): Promise<HubResult<Project>>;
@@ -155,8 +159,9 @@ function mapValue<T, U>(result: HubResult<T>, pick: (value: T) => U): HubResult<
 
 export function projectsApi(hub: Pick<Hub, 'request'>): ProjectsApi {
   return {
-    list: async (leftOut, after) =>
-      mapValue(await hub.request(PROJECTS, { leftOut, first: PAGE_SIZE, after }), ({ projects }) => ({
+    list: async (leftOut, after, browse) =>
+      mapValue(await hub.request(PROJECTS, { leftOut, first: PAGE_SIZE, after, browse }), ({ projects }) => ({
+        languages: projects.languages,
         projects: projects.edges.map((edge) => edge.node),
         next: projects.pageInfo.hasNextPage ? projects.pageInfo.endCursor : null,
       })),

@@ -117,6 +117,7 @@ fn src_007_an_interrupted_signs_phase_resumes_where_it_stopped() {
     let state = normalise(
         &list,
         &Response {
+            link: None,
             status: 200,
             body: Body::Read(page),
         },
@@ -129,6 +130,7 @@ fn src_007_an_interrupted_signs_phase_resumes_where_it_stopped() {
     let state = normalise(
         &tree_request,
         &Response {
+            link: None,
             status: 200,
             body: Body::Read(&tree),
         },
@@ -145,13 +147,25 @@ fn src_007_an_interrupted_signs_phase_resumes_where_it_stopped() {
     let out = normalise(
         &next,
         &Response {
+            link: None,
             status: 200,
             body: Body::Read(b"[]"),
         },
         &resumed,
     );
-    assert_eq!(out.state["phase"], "done");
-    assert!(next_request(&out.state).is_none());
+    let next = next_request(&out.state).unwrap();
+    assert!(next.path.ends_with("/commits"));
+    let history = normalise(
+        &next,
+        &Response {
+            link: None,
+            status: 200,
+            body: Body::Read(b"[]"),
+        },
+        &out.state,
+    );
+    assert_eq!(history.state["phase"], "done");
+    assert!(next_request(&history.state).is_none());
 }
 
 #[test]

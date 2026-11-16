@@ -22,7 +22,7 @@
   const { device, protocol, fields, client, api, onsent, oncancel }: Props = $props();
 
   /** Fixed text; the hub's own message is never shown (R-035, LOG-007). */
-  const UNSAVED = 'The hub did not save the password. It was used for this session only, so Anima will ask again next time.';
+  const UNSAVED = 'The hub did not save the password. It was used for this session only, so Anima.ing will ask again next time.';
   const EMPTY: Record<CredentialName, string> = { username: '', domain: '', password: '' };
 
   let values: Record<CredentialName, string> = $state({ ...EMPTY });
@@ -68,7 +68,7 @@
 <Modal open solid title="Sign in to {device.name}" describedBy="credential-why" closeOnScrim={false} width={7} lowered onClose={escape}>
   <div class="content">
     <p id="credential-why">
-      {device.name} asks for its {protocol} sign-in. Anima sends what you type to this session only; the hub keeps the
+      {device.name} asks for its {protocol} sign-in. Anima.ing sends what you type to this session only; the hub keeps the
       password only when you choose "Save password".
     </p>
 
@@ -80,8 +80,8 @@
             <label>
               <span>{field.label}</span>
               <!--
-                autocomplete="off": these are the device's credentials, not Anima's. A password manager would file them
-                under the hub's address and offer them for every device; the only place Anima keeps one is the hub,
+                autocomplete="off": these are the device's credentials, not Anima.ing's. A password manager would file them
+                under the hub's address and offer them for every device; the only place Anima.ing keeps one is the hub,
                 and only on "Save password" (GW-015).
               -->
               {#if field.secret}

@@ -1,8 +1,8 @@
-//! A commit of the working tree (JOB-016) made beside the operator's repository: the tree is
+//! A commit of the working tree (JOB-017) made beside the operator's repository: the tree is
 //! built in a temporary index and every new object goes to a temporary object folder that
 //! reads the repository's objects as an alternate. The index, the branch, HEAD, the stash, the
 //! working tree and the object store stay as they were. A tree with a path that looks like a
-//! secret is refused before a commit is made (JOB-017).
+//! secret is refused before a commit is made (JOB-018).
 
 use std::path::Path;
 

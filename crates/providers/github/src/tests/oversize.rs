@@ -20,6 +20,7 @@ fn listed(state: &Value, page: &[u8]) -> Value {
     let state = begin(state);
     let request = next_request(&state).unwrap();
     let response = Response {
+        link: None,
         status: 200,
         body: Body::Read(page),
     };
@@ -29,15 +30,30 @@ fn listed(state: &Value, page: &[u8]) -> Value {
 /// The answer to the next request of `state` with `body` and status 200.
 fn answer(state: &Value, body: Body<'_>) -> (Request, Normalised<Record>) {
     let request = next_request(state).unwrap();
-    let out = normalise(&request, &Response { status: 200, body }, state);
+    let out = normalise(
+        &request,
+        &Response {
+            link: None,
+            status: 200,
+            body,
+        },
+        state,
+    );
     (request, out)
 }
 
-/// Reads repository `me/a` whole: its tree and its deployments.
+/// Reads one repository’s tree, deployments and history.
 fn read_first(state: &Value) -> Value {
     let tree = empty_tree();
     let (_, out) = answer(state, Body::Read(&tree));
-    answer(&out.state, Body::Read(b"[]")).1.state
+    let (_, out) = answer(&out.state, Body::Read(b"[]"));
+    read_history(&out.state)
+}
+
+fn read_history(state: &Value) -> Value {
+    let (request, out) = answer(state, Body::Read(b"[]"));
+    assert!(request.path.ends_with("/commits"));
+    out.state
 }
 
 #[test]
@@ -56,16 +72,17 @@ fn src_007_an_oversize_tree_is_the_repository_s_problem_and_the_run_moves_on() {
             message: "the repository's file list is larger than the hub reads".to_owned(),
         }]
     );
-    assert_eq!(out.state["seen"]["2"], PUSHED, "read for its pushed_at");
-    let next = next_request(&out.state).unwrap();
+    let state = read_history(&out.state);
+    assert_eq!(state["seen"]["2"], PUSHED, "read for its pushed_at");
+    let next = next_request(&state).unwrap();
     assert_eq!(next.path, "/repos/me/c/git/trees/main");
 }
 
 #[test]
 fn src_007_an_oversize_tree_is_read_again_only_after_a_new_push() {
     let state = read_first(&listed(&json!({}), &three()));
-    let mut state = answer(&state, Body::TooLarge).1.state;
-    state = read_first(&state);
+    let state = answer(&state, Body::TooLarge).1.state;
+    let state = read_first(&read_history(&state));
     assert!(next_request(&state).is_none(), "the run ends");
 
     let again = listed(&state, &three());
@@ -99,8 +116,9 @@ fn src_007_an_oversize_deployments_reply_keeps_the_tree_and_moves_on() {
     );
     assert_eq!(out.problems[0].code, "deployments_too_large");
     assert_eq!(out.problems[0].subject, "me/a");
-    assert_eq!(out.state["seen"]["1"], PUSHED);
-    let next = next_request(&out.state).unwrap();
+    let state = read_history(&out.state);
+    assert_eq!(state["seen"]["1"], PUSHED);
+    let next = next_request(&state).unwrap();
     assert_eq!(next.path, "/repos/me/b/git/trees/main");
 }
 
@@ -124,6 +142,7 @@ fn src_007_an_oversize_reply_to_an_unexpected_status_is_still_that_status() {
     let state = listed(&json!({}), &three());
     let request = next_request(&state).unwrap();
     let response = Response {
+        link: None,
         status: 500,
         body: Body::TooLarge,
     };

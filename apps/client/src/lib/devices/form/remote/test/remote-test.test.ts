@@ -96,8 +96,8 @@ describe('DEV-013, SEC-007: remoteOutcome', () => {
 
   it('DEV-013: a reachable result shows the hub message when it has one, else the sign-in sentence', () => {
     expect(remoteOutcomeText(remoteOutcome('RDP', answer({ message: 'No TLS on this port.' })))).toBe('No TLS on this port.');
-    expect(remoteOutcomeText(remoteOutcome('RDP', answer({ message: null })))).toBe('The device answered. Anima signs in when a session starts.');
-    expect(remoteOutcomeText(remoteOutcome('VNC', answer({ message: '' })))).toBe('The device answered. Anima signs in when a session starts.');
+    expect(remoteOutcomeText(remoteOutcome('RDP', answer({ message: null })))).toBe('The device answered. Anima.ing signs in when a session starts.');
+    expect(remoteOutcomeText(remoteOutcome('VNC', answer({ message: '' })))).toBe('The device answered. Anima.ing signs in when a session starts.');
   });
 
   it('reports a new RDP certificate', () => {

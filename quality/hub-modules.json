@@ -22,6 +22,7 @@
     "lib",
     "schema",
     "upkeep",
+    "operator",
     "web_client"
   ],
   "domains": {
@@ -101,8 +102,10 @@
     "projects": [
       "sources",
       "extensions",
-      "events"
-    ]
+      "events",
+      "access"
+    ],
+    "link": []
   },
   "graphql": {
     "devices": [
@@ -152,6 +155,10 @@
     ],
     "projects": [
       "access"
+    ],
+    "link": [
+      "access",
+      "events"
     ]
   }
 }

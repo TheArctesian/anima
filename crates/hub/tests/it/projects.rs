@@ -3,6 +3,8 @@
 //! PRJ-016, SRC-012, EXT-002).
 
 mod accounts;
+mod browse;
+mod forge;
 mod github;
 mod guard;
 mod import;
@@ -118,6 +120,11 @@ impl Kit {
 
 /// A signed-in hub with Projects off; its sources reach a new stub.
 pub async fn kit(pool: &PgPool) -> Kit {
+    kit_at(pool, Arc::new(FixedClock(start()))).await
+}
+
+/// As [`kit`], with the hub reading `clock` (a sync the test runs still reads `start()`).
+pub async fn kit_at(pool: &PgPool, clock: Arc<dyn Clock>) -> Kit {
     let stub = Stub::start(pool).await;
     let transport = Transport::to_stub(
         stub.base.clone(),
@@ -127,7 +134,6 @@ pub async fn kit(pool: &PgPool) -> Kit {
     set_operator(pool).await;
     let registry = Registry::new(vec![provider_github::DECLARATION], vec![projects::intake()]);
     let reach = Reach::new(registry, transport);
-    let clock: Arc<dyn Clock> = Arc::new(FixedClock(start()));
     let parts = Dependencies {
         sources: reach.clone(),
         ..dependencies(pool, clock, Bus::new(16))

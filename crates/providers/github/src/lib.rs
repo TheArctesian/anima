@@ -4,10 +4,12 @@
 //! the transport. It calls [`begin`] to start a run, asks [`next_request`] what to fetch,
 //! fetches it, and hands the response to [`normalise`] with the same slice of state. A run
 //! lists the repositories the installation can see, then reads the signs of each one whose
-//! `pushed_at` changed: its recursive file tree and its deployment records.
+//! push time or default branch changed: its file tree, deployments and default branch history.
 
 mod app_token;
+mod changes;
 mod inspection;
+pub mod live;
 mod name;
 mod problem;
 mod record;
@@ -33,11 +35,19 @@ pub const DECLARATION: Declaration = Declaration {
     })),
     scopes: &[
         "Metadata: read",
-        "Contents: read (the file list of each repository)",
+        "Contents: read and write (the files of each repository; merging a pull request)",
         "Deployments: read",
+        "Issues: read and write (making, closing and commenting on issues and pull requests)",
+        "Pull requests: read",
+        "Actions: read and write (running a workflow again, cancelling it, starting it by hand)",
+        "Checks: read",
+        "Commit statuses: read and write (Anima's own anima/ statuses)",
     ],
     write_reason: Some(
-        "PRJ-017: the operator's own GitHub App has read and write permission; this version only reads.",
+        "PRJ-017, OD-E14: the operator's own GitHub App has read and write permission. Anima writes \
+         issues and comments (Issues: write), merges pull requests (Contents: write), runs \
+         workflows again, cancels and starts them (Actions: write) and sets commit statuses \
+         (Commit statuses: write), only when the operator asks.",
     ),
     gives: &[
         "Repositories",
@@ -46,6 +56,10 @@ pub const DECLARATION: Declaration = Declaration {
     ],
     poll_interval_seconds: 900,
     api_base: "https://api.github.com",
+    changes: Some(source_exchange::Changes {
+        render: changes::render,
+        settle: changes::settle,
+    }),
 };
 
 /// Starts a run. A finished or empty slice starts a new listing and keeps what was seen; a
@@ -81,7 +95,7 @@ pub fn next_request(state: &Value) -> Option<Request> {
 /// is not the answer to [`next_request`] of this slice, or a status with no rule, gives no
 /// records, the slice unchanged and a problem: the engine fails the run. A body larger than the
 /// hub reads fails the run only for the listing; for a tree or a deployments reply it is that
-/// repository's problem, and the repository counts as read for its `pushed_at`.
+/// repository's problem, and the run proceeds to its history.
 #[must_use]
 pub fn normalise(request: &Request, response: &Response<'_>, state: &Value) -> Normalised<Record> {
     let slice = Slice::read(state);
@@ -112,6 +126,7 @@ pub fn forget_repository(state: &Value, external_id: &str) -> Value {
     let mut slice = Slice::read(state);
     slice.pending.retain(|pending| pending.id != external_id);
     slice.seen.remove(external_id);
+    slice.branches.remove(external_id);
     slice.settle();
     slice.to_value()
 }

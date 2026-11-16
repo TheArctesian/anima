@@ -1,0 +1,8 @@
+{
+  "total_count": 3,
+  "workflows": [
+    { "id": 31, "name": "CI", "path": ".github/workflows/ci.yml", "state": "active", "html_url": "https://github.com/sample-org/sample-repo/blob/main/.github/workflows/ci.yml" },
+    { "id": 32, "name": "Nightly", "path": ".github/workflows/nightly.yml", "state": "disabled_manually", "html_url": "https://github.com/sample-org/sample-repo/blob/main/.github/workflows/nightly.yml" },
+    { "id": 33, "name": "Odd", "path": ".github/workflows/odd.yml", "state": "paused_by_aliens", "html_url": "https://github.com/sample-org/sample-repo/blob/main/.github/workflows/odd.yml" }
+  ]
+}

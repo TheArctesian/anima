@@ -52,7 +52,7 @@ pub fn question(
         _ => format!("The agent gives {values} argument values, one per line:"),
     };
     let mut text = format!(
-        "An agent asks to run the Anima tool {}: {}\n{listed}",
+        "An agent asks to run the Anima.ing tool {}: {}\n{listed}",
         definition.name,
         clean(definition.description)
     );

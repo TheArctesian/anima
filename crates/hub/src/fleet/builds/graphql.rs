@@ -19,13 +19,15 @@ use async_graphql::{
 use tokio::sync::broadcast::{Receiver, error::RecvError};
 
 pub use self::builder::BuilderMutation;
+use self::builder::NOT_PUBLISHING;
 use self::{
     error::{parse_id, to_graphql},
     trail::Trail,
     types::{EnrolmentPayload, PlatformFields, ReleaseConnection},
 };
 use super::{
-    BuildJob, Builder, BuilderInput, JobUpdate, LogLine, Release, ReleaseInput, Target, Updates,
+    Bucket, BuildJob, Builder, BuilderInput, Error, JobUpdate, LogLine, Release, ReleaseInput,
+    Target, Updates,
 };
 use crate::{
     api_errors::{self, begin, invalid, pool, schema_dependency},
@@ -48,6 +50,11 @@ const LOG_LINES_PER_FIELD: usize = 50;
 fn log_page_complexity(first: Option<i32>, child_complexity: usize) -> usize {
     let first = usize::try_from(first.unwrap_or(FIRST_LOG_LINES)).unwrap_or(0);
     first / LOG_LINES_PER_FIELD + child_complexity
+}
+
+/// Whether the hub opened its release bucket and updater key at start (BLD-045, PRO-037).
+fn publishing(ctx: &Context<'_>) -> Result<bool> {
+    Ok(schema_dependency::<Option<Arc<Bucket>>>(ctx)?.is_some())
 }
 
 #[derive(Default)]
@@ -76,6 +83,18 @@ impl Query {
     async fn next_release_version(&self, ctx: &Context<'_>) -> Result<Option<String>> {
         let next = super::next_version(pool(ctx)?).await.map_err(to_graphql)?;
         Ok(next.map(|version| version.to_string()))
+    }
+
+    /// Whether this hub holds the release bucket and the updater key, so a release it queues can
+    /// be published (PRO-037). The client shows the Builds view only when it can (PRO-038).
+    #[expect(
+        clippy::unused_async,
+        clippy::unused_async_trait_impl,
+        reason = "async-graphql requires a guarded resolver to be async; this one reads only the schema"
+    )]
+    #[graphql(guard = "Authenticated")]
+    async fn release_publishing(&self, ctx: &Context<'_>) -> Result<bool> {
+        publishing(ctx)
     }
 
     #[graphql(guard = "Authenticated")]
@@ -113,7 +132,8 @@ pub struct Mutation;
 
 #[Object(name = "BuildsMutation")]
 impl Mutation {
-    /// Queues one job for each target (BLD-001, BLD-002).
+    /// Queues one job for each target (BLD-001, BLD-002). A hub that cannot publish refuses, so
+    /// no builder runs a release that can never be published (PRO-037).
     #[graphql(guard = "Authenticated")]
     #[expect(
         clippy::too_many_arguments,
@@ -126,6 +146,9 @@ impl Mutation {
         commit: String,
         targets: Vec<Target>,
     ) -> Result<Release> {
+        if !publishing(ctx)? {
+            return Err(to_graphql(Error::Conflict(NOT_PUBLISHING.to_owned())));
+        }
         let trail = Trail::from_context(ctx)?;
         let input = ReleaseInput {
             version,

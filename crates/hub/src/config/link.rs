@@ -14,6 +14,7 @@ use ipnet::{IpNet, Ipv4Net, Ipv6Net};
 use super::{Error, PERMITTED_NETWORKS, optional_socket};
 
 pub(super) const LINK_SOCKET: &str = "ANIMA_LINK_SOCKET";
+pub(super) const LINK_CONTROL: &str = "ANIMA_LINK_CONTROL";
 
 /// Every link address: the name `anima-link` gives a permitted device key in place of a
 /// network address (`link/devices/address.go` holds the same range). No packet goes to one.
@@ -42,6 +43,19 @@ pub(super) fn socket(
     Ok(Some(socket))
 }
 
+/// The control socket of `anima-link hub`, or `None` when unset or empty. It is refused outside
+/// the link mode: a hub that no link reaches has no devices of a link to manage (FRN-009).
+pub(super) fn control(
+    env: &BTreeMap<String, String>,
+    link_mode: bool,
+) -> Result<Option<PathBuf>, Error> {
+    let control = optional_socket(env, LINK_CONTROL)?;
+    if control.is_some() && !link_mode {
+        return Err(Error::LinkControlAlone);
+    }
+    Ok(control)
+}
+
 /// The permitted networks of the link mode: this computer and the devices of the link.
 pub(super) fn permitted_networks() -> Vec<IpNet> {
     vec![
@@ -56,6 +70,8 @@ pub(super) const LISTEN_RULE: &str = "with ANIMA_LINK_SOCKET the hub listens on 
                                       the link only (NET-003)";
 pub(super) const NETWORKS_RULE: &str = "must not be set with ANIMA_LINK_SOCKET: the link \
                                         permits devices by key (NET-001)";
+pub(super) const CONTROL_RULE: &str = "must be set only with ANIMA_LINK_SOCKET: the control \
+                                       socket belongs to the link mode (FRN-009)";
 
 #[cfg(test)]
 mod tests {
@@ -123,6 +139,29 @@ mod tests {
         // Compose passes an unset variable as empty.
         let empty = env(&[(LINK_SOCKET, SOCKET), (PERMITTED_NETWORKS, "")]);
         assert!(from_env(&empty).is_ok());
+    }
+
+    #[test]
+    fn frn_009_the_control_socket_is_read_in_the_link_mode_only() {
+        const CONTROL: &str = "/run/anima/link/control.sock";
+        let both = from_env(&env(&[(LINK_SOCKET, SOCKET), (LINK_CONTROL, CONTROL)])).unwrap();
+        assert_eq!(both.link_control, Some(PathBuf::from(CONTROL)));
+        let socket_only = from_env(&env(&[(LINK_SOCKET, SOCKET), (LINK_CONTROL, "")])).unwrap();
+        assert_eq!(socket_only.link_control, None);
+        let alone = from_env(&env(&[(LINK_CONTROL, CONTROL)])).unwrap_err();
+        assert!(matches!(alone, Error::LinkControlAlone), "{alone}");
+        assert!(alone.to_string().contains("ANIMA_LINK_SOCKET"));
+        let relative = from_env(&env(&[
+            (LINK_SOCKET, SOCKET),
+            (LINK_CONTROL, "control.sock"),
+        ]));
+        assert!(matches!(
+            relative.unwrap_err(),
+            Error::NotAbsolute {
+                variable: LINK_CONTROL,
+                ..
+            }
+        ));
     }
 
     #[test]

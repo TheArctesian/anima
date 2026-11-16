@@ -9,6 +9,7 @@
   import PageHeader from '$lib/page/PageHeader.svelte';
   import SmallCaps from '$lib/page/SmallCaps.svelte';
   import ProjectTile from './ProjectTile.svelte';
+  import ProjectBrowse from './ProjectBrowse.svelte';
   import type { ProjectsStore } from './store.svelte';
   import { GROUP_ORDER, GROUP_TITLES, groupOf } from './tile';
 
@@ -17,7 +18,7 @@
   const projects = $derived(showing === 'main' ? store.main : store.leftOut);
   /** The main view in groups, problems first; the left-out view is one plain group. */
   const groups = $derived(
-    showing === 'leftOut'
+    showing === 'leftOut' || !store.byName
       ? [{ title: null, projects }]
       : GROUP_ORDER.map((group) => ({ title: GROUP_TITLES[group], projects: projects.filter((project) => groupOf(project) === group) })).filter(
           (group) => group.projects.length > 0,
@@ -37,6 +38,7 @@
       <Segmented label="Which projects" size="sm" options={VIEWS} bind:value={showing} />
     {/snippet}
   </PageHeader>
+  <ProjectBrowse {store} />
   {#if store.refusal !== null}
     <Notice tone="error" title="The hub refused" line={store.refusal.message} />
   {/if}
@@ -44,6 +46,8 @@
     <LoadingState label="Loading projects" />
   {:else if store.status === 'failed'}
     <ErrorState message={`Projects did not load. ${store.loadProblem}`} onRetry={() => void store.load()} />
+  {:else if projects.length === 0 && store.filtered}
+    <EmptyState title="No matching projects" line="Change the language or repository size filter." />
   {:else if projects.length === 0 && showing === 'main'}
     <EmptyState title="No projects yet" line="Connect GitHub in Settings > Integrations">
       {#snippet action()}
@@ -55,7 +59,7 @@
     <EmptyState title="Nothing left out" line="A repository you leave out appears here, and Restore brings it back." />
   {:else}
     {#each groups as group (group.title)}
-      <section class="group" aria-label={group.title ?? 'Left out'}>
+      <section class="group" aria-label={group.title ?? (showing === 'leftOut' ? 'Left out' : 'All projects')}>
         {#if group.title !== null}<h2><SmallCaps>{group.title}</SmallCaps><span class="count">{group.projects.length}</span></h2>{/if}
         <ul class="tiles">
           {#each group.projects as project (project.id)}

@@ -26,7 +26,7 @@ function openInBrowserTab(url: string): void {
 }
 
 /**
- * In a browser there are no web view tabs and no Anima tab (WEB-011): every interface opens in a new browser tab, straight
+ * In a browser there are no web view tabs and no Anima.ing tab (WEB-011): every interface opens in a new browser tab, straight
  * to the device. The call is made before any `await`, inside the click, so a popup blocker sees the gesture. An address
  * that is not `http`/`https` opens nothing and says nothing: the card has no place for a message.
  * Otherwise, as its setting says (WEB-003, WEB-011): `ANIMA_TAB` in a web tab; `SYSTEM_BROWSER` over `http` in

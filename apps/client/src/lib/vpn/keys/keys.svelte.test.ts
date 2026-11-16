@@ -35,10 +35,10 @@ it('VPN-010: each node row has its name, key words and the tone as a word beside
   expect(row?.querySelector('.dot')?.getAttribute('aria-hidden')).toBe('true');
 });
 
-it('VPN-011: the hub is first, then a node not in Anima, marked in text, then the others', () => {
+it('VPN-011: the hub is first, then a node not in Anima.ing, marked in text, then the others', () => {
   const rows = show([node({ name: 'aaa' }), STRANGER]);
   expect(rows.map((row) => row.getAttribute('aria-label'))).toEqual(['hub', 'stranger', 'aaa']);
-  expect(rows[1]?.textContent).toContain('Not in Anima');
-  expect(rows[0]?.textContent).not.toContain('Not in Anima');
-  expect(rows[2]?.textContent).not.toContain('Not in Anima');
+  expect(rows[1]?.textContent).toContain('Not in Anima.ing');
+  expect(rows[0]?.textContent).not.toContain('Not in Anima.ing');
+  expect(rows[2]?.textContent).not.toContain('Not in Anima.ing');
 });

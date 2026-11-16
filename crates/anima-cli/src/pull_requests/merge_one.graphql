@@ -1,0 +1,11 @@
+mutation PullRequestMergeOne($input: MergePullRequestInput!) {
+  mergePullRequest(input: $input) {
+    repository
+    number
+    title
+    state
+    headSha
+    mergedAt
+    url
+  }
+}

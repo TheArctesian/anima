@@ -218,7 +218,7 @@ impl Browser {
         self.send(request).await
     }
 
-    /// Signs this browser in to Anima from the public origin: it gets the `__Host-anima` cookie.
+    /// Signs this browser in to Anima.ing from the public origin: it gets the `__Host-anima` cookie.
     pub async fn sign_in(&mut self) {
         let body = json!({
             "query": "mutation($input: LoginInput!) { signInBrowser(input: $input) { expiresAt } }",

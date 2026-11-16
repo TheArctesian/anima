@@ -10,8 +10,8 @@ describe('describeUpdate', () => {
     expect(describeUpdate(snap({ kind: 'unchecked' }), time)).toBe('Not checked yet');
     expect(describeUpdate(snap({ kind: 'idle' }), time)).toBe('Up to date');
     expect(describeUpdate(snap({ kind: 'checking' }), time)).toBe('Checking…');
-    expect(describeUpdate(snap({ kind: 'downloading', version: '1.2.0' }), time)).toBe('Downloading Anima 1.2.0…');
-    expect(describeUpdate(snap({ kind: 'installed', version: '1.2.0' }), time)).toBe('Anima 1.2.0 is installed — restart to update');
+    expect(describeUpdate(snap({ kind: 'downloading', version: '1.2.0' }), time)).toBe('Downloading Anima.ing 1.2.0…');
+    expect(describeUpdate(snap({ kind: 'installed', version: '1.2.0' }), time)).toBe('Anima.ing 1.2.0 is installed — restart to update');
   });
 
   it('UPD-006: a failure names the time of the next check', () => {
@@ -26,7 +26,7 @@ describe('describeUpdate', () => {
 
   it('UPD-002: a refused signature says the update was refused and the version kept', () => {
     expect(describeUpdate(snap({ kind: 'failed', reason: 'signature' }, 5), time)).toBe(
-      'An update was refused because its signature did not verify. Anima kept the version it has. The next check is at 14:30.',
+      'An update was refused because its signature did not verify. Anima.ing kept the version it has. The next check is at 14:30.',
     );
   });
 });

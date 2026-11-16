@@ -59,7 +59,7 @@
     </span>
   </header>
   {#if failed}
-    <p class="problem" role="alert">Anima could not load this log.</p>
+    <p class="problem" role="alert">Anima.ing could not load this log.</p>
   {:else}
     <!-- Always present, so a screen reader announces each new line politely (BLD-081). -->
     <div class="body" role="log" aria-live="polite" aria-label="Build log">

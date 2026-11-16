@@ -1,4 +1,5 @@
-import type { Project, ProjectResource, ProjectsApi } from './api';
+import { SvelteSet } from 'svelte/reactivity';
+import type { Project, ProjectBrowse, ProjectResource, ProjectsApi } from './api';
 import { isLeftOut } from './words';
 
 export type ProjectsStatus = 'loading' | 'ready' | 'failed';
@@ -20,6 +21,8 @@ export class ProjectsStore {
   refusal = $state.raw<Refusal | null>(null);
   /** The one project the detail page asked for by slug: undefined while unread, null when the hub has none. */
   found = $state.raw<Project | null | undefined>(undefined);
+  #generation = 0;
+  #browse = $state.raw<ProjectBrowse>({});
   #known = $state.raw<readonly Project[]>([]);
   #next = $state.raw<Readonly<Record<View, string | null>>>({ main: null, leftOut: null });
   /** Repository IDs mid-change, with the leftOut they are heading to. */
@@ -27,12 +30,16 @@ export class ProjectsStore {
   /** Resource IDs mid-confirm. */
   #confirming = $state.raw<readonly string[]>([]);
 
-  /** What the hub said, with the changes on their way laid over it. */
-  readonly shown = $derived(
-    this.#known
-      .map((project) => this.#overlaid(project))
-      .toSorted((a, b) => a.name.localeCompare(b.name)),
-  );
+  languages = $state.raw<readonly string[]>([]);
+  readonly browse = $derived(this.#browse);
+  readonly byName = $derived(this.#browse.order == null || this.#browse.order === 'NAME');
+  readonly filtered = $derived(this.#browse.language != null || this.#browse.minSizeKib != null || this.#browse.maxSizeKib != null);
+
+  /** Keep the hub's order for metadata sorts, with local changes laid over it. */
+  readonly shown = $derived.by(() => {
+    const projects = this.#known.map((project) => this.#overlaid(project));
+    return this.byName ? projects.toSorted((a, b) => a.name.localeCompare(b.name)) : projects;
+  });
   readonly main = $derived(this.shown.filter((project) => !isLeftOut(project)));
   readonly leftOut = $derived(this.shown.filter((project) => isLeftOut(project)));
   /** The detail page's project, with the changes laid over it. */
@@ -44,9 +51,17 @@ export class ProjectsStore {
     return this.#next[view] !== null;
   }
 
+  async setBrowse(change: ProjectBrowse): Promise<void> {
+    this.#browse = { ...this.#browse, ...change };
+    await this.load();
+  }
+
   async load(): Promise<void> {
+    const generation = ++this.#generation;
+    const browse = this.#browse;
     this.status = 'loading';
-    const [main, left] = await Promise.all([this.api.list(false, null), this.api.list(true, null)]);
+    const [main, left] = await Promise.all([this.api.list(false, null, browse), this.api.list(true, null, browse)]);
+    if (generation !== this.#generation) return;
     if (!main.ok || !left.ok) {
       this.loadProblem = !main.ok ? main.error.message : left.ok ? '' : left.error.message;
       this.status = 'failed';
@@ -56,6 +71,7 @@ export class ProjectsStore {
     this.#merge(main.value.projects);
     this.#merge(left.value.projects);
     this.#next = { main: main.value.next, leftOut: left.value.next };
+    this.languages = [...new SvelteSet([...(main.value.languages ?? []), ...(left.value.languages ?? [])])].sort((a, b) => a.localeCompare(b));
     this.loadProblem = '';
     this.status = 'ready';
   }
@@ -64,7 +80,9 @@ export class ProjectsStore {
   async more(view: View): Promise<void> {
     const after = this.#next[view];
     if (after === null) return;
-    const result = await this.api.list(view === 'leftOut', after);
+    const generation = this.#generation;
+    const result = await this.api.list(view === 'leftOut', after, this.#browse);
+    if (generation !== this.#generation || after !== this.#next[view]) return;
     if (!result.ok) {
       this.refusal = { message: result.error.message };
       return;
@@ -111,8 +129,10 @@ export class ProjectsStore {
     this.refusal = null;
     this.#leaving = { ...this.#leaving, [repositoryId]: leftOut };
     const result = await (leftOut ? this.api.leaveOut(repositoryId) : this.api.restore(repositoryId));
-    if (result.ok) this.#merge([result.value]);
-    else this.refusal = { message: result.error.message };
+    if (result.ok) {
+      this.#merge([result.value]);
+      if (this.filtered || !this.byName) await this.load();
+    } else this.refusal = { message: result.error.message };
     this.#leaving = Object.fromEntries(Object.entries(this.#leaving).filter(([id]) => id !== repositoryId));
   }
 

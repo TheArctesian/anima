@@ -25,9 +25,20 @@ describe('describeStayAwake', () => {
 });
 
 describe('AWK-005: the hub on this computer', () => {
-  it('a hub at a loopback address is this computer; any other address is not', () => {
-    for (const origin of ['https://localhost:8443', 'http://127.0.0.1:8080', 'https://[::1]']) expect(hubIsThisComputer(origin)).toBe(true);
-    for (const origin of ['https://hub.anima.ing', 'https://localhost.example.com', 'https://10.0.0.5', 'not a url']) expect(hubIsThisComputer(origin)).toBe(false);
+  it('is this computer only when the hub is the one that runs here', () => {
+    expect(hubIsThisComputer('http://127.0.0.1:8443', 'http://127.0.0.1:8443')).toBe(true);
+    expect(hubIsThisComputer('http://127.0.0.1:8443/', 'http://127.0.0.1:8443')).toBe(true);
+  });
+
+  it('FRN-008: a loopback address of a joined device is not this computer when no hub runs here', () => {
+    expect(hubIsThisComputer('http://127.0.0.1:8443', null)).toBe(false);
+  });
+
+  it('is not this computer for another port, another host or an address that is no URL', () => {
+    expect(hubIsThisComputer('http://127.0.0.1:9000', 'http://127.0.0.1:8443')).toBe(false);
+    expect(hubIsThisComputer('https://hub.anima.ing', 'http://127.0.0.1:8443')).toBe(false);
+    expect(hubIsThisComputer('not a url', 'http://127.0.0.1:8443')).toBe(false);
+    expect(hubIsThisComputer('http://127.0.0.1:8443', 'not a url')).toBe(false);
   });
 
   it('tells the operator that checks stop only when this computer is the hub and nothing holds it awake', () => {

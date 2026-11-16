@@ -1,0 +1,17 @@
+mutation WorkflowRunCancel($repository: ID!, $runId: ID!, $expectedHeadSha: String!) {
+  cancelWorkflowRun(repository: $repository, runId: $runId, expectedHeadSha: $expectedHeadSha) {
+    repository
+    id
+    workflowId
+    name
+    runNumber
+    attempt
+    event
+    status
+    conclusion
+    branch
+    headSha
+    commitTitle
+    url
+  }
+}

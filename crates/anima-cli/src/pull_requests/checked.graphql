@@ -1,0 +1,50 @@
+query PullRequestListChecked($repository: ID!, $state: OpenOrClosed, $first: Int, $after: String, $fresh: Boolean) {
+  pullRequests(repository: $repository, state: $state, first: $first, after: $after, fresh: $fresh) {
+    edges {
+      cursor
+      node {
+        repository
+        number
+        title
+        state
+        draft
+        authorLogin
+        headBranch
+        headSha
+        baseBranch
+        fromFork
+        headRepository
+        labels
+        comments
+        createdAt
+        updatedAt
+        mergedAt
+        url
+        mergeability {
+          state
+          canMerge
+        }
+        checks {
+          sha
+          state
+          passed
+          failed
+          pending
+          other
+          failing
+          partial
+        }
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+    read {
+      at
+      stale
+      problem
+    }
+    mergeMethods
+  }
+}

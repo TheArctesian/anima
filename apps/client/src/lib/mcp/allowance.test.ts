@@ -25,6 +25,13 @@ describe('allowQuestion', () => {
     expect(releases.lines.join(' ')).not.toContain('With an API key');
   });
 
+  it('MCP-020, PRJ-028: the repositories set names the issue changes and no merge, run or workflow start', () => {
+    const repositories = allowQuestion({ type: 'bulk', toolset: 'repositories', state: 'allow' }, ['repositories']);
+    expect(repositories.title).toBe('Allow every Repositories tool?');
+    expect(repositories.lines[0]).toContain('make issues and comments on GitHub');
+    expect(repositories.lines.join(' ')).not.toMatch(/merge|run again|start a workflow|sign-in/);
+  });
+
   it('MCP-020: a set with no change tool lists nothing and says so', () => {
     const events = allowQuestion({ type: 'bulk', toolset: 'events', state: 'allow' }, ['events']);
     expect(events.lines).toEqual([]);

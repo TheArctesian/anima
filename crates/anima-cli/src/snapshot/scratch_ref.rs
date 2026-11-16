@@ -1,5 +1,5 @@
 //! Scratch refs: the git refs under `refs/anima/wip/` that hold a snapshot of a working tree
-//! (JOB-016). Pure: no git, no clock.
+//! (JOB-017). Pure: no git, no clock.
 
 use serde::Serialize;
 
@@ -82,7 +82,7 @@ mod tests {
     const COMMIT: &str = "0123456789abcdef0123456789abcdef01234567";
 
     #[test]
-    fn job_016_the_ref_is_the_first_16_hex_characters_of_the_commit() {
+    fn job_017_the_ref_is_the_first_16_hex_characters_of_the_commit() {
         let scratch = ScratchRef::for_commit(COMMIT).unwrap();
         assert_eq!(scratch.as_str(), "refs/anima/wip/0123456789abcdef");
         assert_eq!(ScratchRef::for_commit(COMMIT).unwrap(), scratch);
@@ -91,7 +91,7 @@ mod tests {
     }
 
     #[test]
-    fn job_017_a_ref_or_an_id_names_a_scratch_ref() {
+    fn job_018_a_ref_or_an_id_names_a_scratch_ref() {
         let full = ScratchRef::parse("refs/anima/wip/0123456789abcdef").unwrap();
         let short = ScratchRef::parse("0123456789abcdef").unwrap();
         assert_eq!(full, short);
@@ -99,7 +99,7 @@ mod tests {
     }
 
     #[test]
-    fn job_017_a_ref_outside_the_scratch_space_is_refused() {
+    fn job_018_a_ref_outside_the_scratch_space_is_refused() {
         for text in [
             "refs/heads/main",
             "refs/tags/v1",
@@ -128,7 +128,7 @@ mod tests {
     }
 
     #[test]
-    fn job_016_the_fetch_line_names_the_remote_and_the_ref() {
+    fn job_017_the_fetch_line_names_the_remote_and_the_ref() {
         let scratch = ScratchRef::for_commit(COMMIT).unwrap();
         assert_eq!(
             fetch_line("origin", &scratch),

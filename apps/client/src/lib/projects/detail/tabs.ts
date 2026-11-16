@@ -1,6 +1,6 @@
 import type { IconName } from '$lib/icons/icons';
 
-/** The project page's tabs, in order (PRJ-030, UR-7): HQ's GitHub work laid out as Anima's detail pages. */
+/** The project page's tabs, in order (PRJ-030, UR-7): HQ's GitHub work laid out as Anima.ing's detail pages. */
 export const PROJECT_TABS = [
   { id: 'overview', label: 'Overview', icon: 'carbon:dashboard' },
   { id: 'work', label: 'Work', icon: 'carbon:task-complete' },
@@ -10,11 +10,8 @@ export const PROJECT_TABS = [
 
 export type ProjectTab = (typeof PROJECT_TABS)[number]['id'];
 
-/**
- * The tabs whose function the hub serves today. A tab shows only once it is built (PRJ-030): Work, Code and History
- * join when the hub reads pull requests, issues, runs, commits and files.
- */
-export const BUILT_TABS: readonly ProjectTab[] = ['overview'];
+/** The tabs whose function the hub serves today; a tab shows only once it is built (PRJ-030). */
+export const BUILT_TABS: readonly ProjectTab[] = ['overview', 'work', 'code', 'history'];
 
 /** The tab a `?tab=` word names, when that tab is built; Overview otherwise. */
 export function readTab(word: string | null, built: readonly ProjectTab[] = BUILT_TABS): ProjectTab {
