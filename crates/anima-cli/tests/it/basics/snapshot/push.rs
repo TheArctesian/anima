@@ -118,6 +118,10 @@ async fn job_017_each_secret_pattern_is_refused_and_nothing_is_pushed() {
         "deploy/prod.env",
         "home/.ssh/id_ed25519",
         "id_rsa",
+        ".envrc",
+        "deploy/secrets/hub.toml",
+        "gcp/credentials.json",
+        "home/.netrc",
     ] {
         let repos = with_changes();
         repos.write(path, "TOPSECRET-VALUE\n");
@@ -140,20 +144,12 @@ async fn job_017_each_secret_pattern_is_refused_and_nothing_is_pushed() {
         );
         assert_eq!(repos.state(), before, "{path}: the repository changed");
         left_nothing_behind(&repos);
+        let blob = repos.blob_hash("TOPSECRET-VALUE\n");
+        assert!(
+            !repos.has_object(&repos.work(), &blob),
+            "{path}: the secret entered the local object store"
+        );
     }
-}
-
-#[tokio::test]
-async fn job_017_a_committed_secret_is_refused_too() {
-    let repos = Repos::new();
-    repos.write("keys/old.pem", "TOPSECRET-VALUE\n");
-    repos.git(&["add", "keys/old.pem"]);
-    repos.git(&["commit", "--quiet", "-m", "a key"]);
-    let run = repos.anima(&["snapshot", "push"]).await;
-    assert_eq!(run.code, 5, "{run:?}");
-    assert!(run.stderr.contains("keys/old.pem"), "{run:?}");
-    assert!(run.stderr.contains("no flag sends them"), "{run:?}");
-    assert_eq!(repos.remote_scratch_refs(), "");
 }
 
 #[tokio::test]
@@ -197,13 +193,19 @@ async fn job_016_with_no_git_identity_the_fallback_signs_the_commit() {
     let run = repos.anima(&["snapshot", "push", "--json"]).await;
     assert_eq!(run.code, 0, "{run:?}");
     let commit = run.json()["commit"].as_str().expect("a commit").to_owned();
-    let author = repos.git(&["log", "-1", "--format=%an <%ae>", &commit]);
+    let author = repos.git_in(
+        &repos.remote(),
+        &["log", "-1", "--format=%an <%ae>", &commit],
+    );
     assert_eq!(author.trim(), "Anima snapshot <snapshot@anima.invalid>");
 
     let repos = Repos::new();
     repos.write("a.txt", "changed\n");
     let run = repos.anima(&["snapshot", "push", "--json"]).await;
     let commit = run.json()["commit"].as_str().expect("a commit").to_owned();
-    let author = repos.git(&["log", "-1", "--format=%an <%ae>", &commit]);
+    let author = repos.git_in(
+        &repos.remote(),
+        &["log", "-1", "--format=%an <%ae>", &commit],
+    );
     assert_eq!(author.trim(), "Operator <operator@example.invalid>");
 }

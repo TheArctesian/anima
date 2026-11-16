@@ -99,6 +99,7 @@ impl Repos {
             .env("GIT_CONFIG_NOSYSTEM", "1")
             .env("GIT_CONFIG_GLOBAL", self.root.path().join("gitconfig"))
             .env("HOME", self.root.path().join("home"))
+            .env("GIT_OPTIONAL_LOCKS", "0")
             .stdin(Stdio::null());
         command
     }
@@ -150,11 +151,31 @@ impl Repos {
         }
     }
 
+    /// Whether the repository at `folder` has the object `hash`.
+    pub fn has_object(&self, folder: &Path, hash: &str) -> bool {
+        self.git_command(folder, &["cat-file", "-e", hash])
+            .output()
+            .expect("git starts")
+            .status
+            .success()
+    }
+
+    /// The blob hash of `text`, from a copy outside every repository.
+    pub fn blob_hash(&self, text: &str) -> String {
+        let copy = self.root.path().join("outside.txt");
+        std::fs::write(&copy, text).expect("a copy");
+        let hash = self.git_in(self.root.path(), &["hash-object", "outside.txt"]);
+        std::fs::remove_file(copy).expect("the copy removed");
+        hash.trim().to_owned()
+    }
+
     /// Everything about the working repository that `snapshot push` must leave as it was.
     pub fn state(&self) -> State {
         let git_dir = self.work().join(".git");
         State {
             index: std::fs::read(git_dir.join("index")).expect("an index"),
+            config: std::fs::read(git_dir.join("config")).expect("a config"),
+            objects: files_under(&git_dir.join("objects")),
             head: std::fs::read_to_string(git_dir.join("HEAD")).expect("HEAD"),
             refs: self.git(&["for-each-ref", "--format=%(objectname) %(refname)"]),
             status: self.git(&[
@@ -174,12 +195,30 @@ impl Repos {
 #[derive(Debug, PartialEq, Eq)]
 pub struct State {
     index: Vec<u8>,
+    config: Vec<u8>,
+    /// Every file of the object store, so a new object shows.
+    objects: Vec<PathBuf>,
     head: String,
     refs: String,
     status: String,
     staged: String,
     unstaged: String,
     stash: String,
+}
+
+/// Every file under `folder`, sorted.
+fn files_under(folder: &Path) -> Vec<PathBuf> {
+    let mut found = Vec::new();
+    for entry in std::fs::read_dir(folder).expect("a folder") {
+        let path = entry.expect("an entry").path();
+        if path.is_dir() {
+            found.extend(files_under(&path));
+        } else {
+            found.push(path);
+        }
+    }
+    found.sort();
+    found
 }
 
 fn path_text(path: &Path) -> String {

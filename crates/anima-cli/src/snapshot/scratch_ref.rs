@@ -1,5 +1,5 @@
 //! Scratch refs: the git refs under `refs/anima/wip/` that hold a snapshot of a working tree
-//! (JOB-016), and the remote names an operator may give. Pure: no git, no clock.
+//! (JOB-016). Pure: no git, no clock.
 
 use serde::Serialize;
 
@@ -18,17 +18,11 @@ pub struct ScratchRef(String);
 
 impl ScratchRef {
     /// The ref for `commit`: its first 16 hex characters, so the same commit always gets the
-    /// same ref.
-    ///
-    /// # Errors
-    /// [`SnapshotError::Git`] when `commit` is not a hex hash git could have printed.
-    pub fn for_commit(commit: &str) -> Result<Self, SnapshotError> {
-        let id = commit.get(..ID_LENGTH).filter(|_| is_hash(commit));
-        id.map(|id| Self(format!("{PREFIX}{id}")))
-            .ok_or_else(|| SnapshotError::Git {
-                step: "commit-tree".to_owned(),
-                reason: "it did not print a commit hash".to_owned(),
-            })
+    /// same ref. None when `commit` is not a hex hash.
+    #[must_use]
+    pub fn for_commit(commit: &str) -> Option<Self> {
+        let id = commit.get(..ID_LENGTH).filter(|_| is_hash(commit))?;
+        Some(Self(format!("{PREFIX}{id}")))
     }
 
     /// What the operator typed: a full ref under [`PREFIX`], or the name after it.
@@ -51,24 +45,6 @@ impl ScratchRef {
     #[must_use]
     pub fn as_str(&self) -> &str {
         &self.0
-    }
-}
-
-/// A remote name as the operator gave it; it must still be one `git remote` lists.
-///
-/// # Errors
-/// [`SnapshotError::BadRemote`] for an empty name, one that starts with `-` (git would read it
-/// as an option) or one with a space or control character.
-pub fn checked_remote(name: &str) -> Result<&str, SnapshotError> {
-    let plain = !name.is_empty()
-        && !name.starts_with('-')
-        && !name.chars().any(|c| c.is_whitespace() || c.is_control());
-    if plain {
-        Ok(name)
-    } else {
-        Err(SnapshotError::BadRemote {
-            name: name.to_owned(),
-        })
     }
 }
 
@@ -110,8 +86,8 @@ mod tests {
         let scratch = ScratchRef::for_commit(COMMIT).unwrap();
         assert_eq!(scratch.as_str(), "refs/anima/wip/0123456789abcdef");
         assert_eq!(ScratchRef::for_commit(COMMIT).unwrap(), scratch);
-        assert!(ScratchRef::for_commit("0123").is_err());
-        assert!(ScratchRef::for_commit("refs/heads/main/0123456789").is_err());
+        assert_eq!(ScratchRef::for_commit("0123"), None);
+        assert_eq!(ScratchRef::for_commit("refs/heads/main/0123456789"), None);
     }
 
     #[test]
@@ -148,14 +124,6 @@ mod tests {
                 ),
                 "{text}"
             );
-        }
-    }
-
-    #[test]
-    fn job_016_a_remote_that_reads_as_an_option_is_refused() {
-        assert_eq!(checked_remote("origin").unwrap(), "origin");
-        for name in ["", "-u", "--receive-pack=x", "a b", "a\nb"] {
-            assert!(checked_remote(name).is_err(), "{name:?}");
         }
     }
 

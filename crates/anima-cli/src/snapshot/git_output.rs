@@ -1,5 +1,5 @@
-//! What git prints, read without trusting it: the refs of `ls-remote`, the result lines of
-//! `push --porcelain`, the paths of `ls-tree -z`, and its error text made safe to show.
+//! What git prints about a remote, read without trusting it: the refs of `ls-remote`, the
+//! result lines of `push --porcelain`, and error text made safe to show.
 
 use serde::Serialize;
 
@@ -10,7 +10,7 @@ const REASON_CHARACTERS: usize = 400;
 
 /// One scratch ref on the remote and the commit it holds.
 #[derive(Debug, PartialEq, Eq, Serialize)]
-pub struct Listed {
+pub struct RemoteScratchRef {
     #[serde(rename = "ref")]
     pub scratch: ScratchRef,
     pub commit: String,
@@ -20,13 +20,13 @@ pub struct Listed {
 /// hash and a safe ref under [`PREFIX`] is left out: git matches its pattern against the end
 /// of a ref, so `refs/x/refs/anima/wip/y` would match too.
 #[must_use]
-pub fn listed(stdout: &str) -> Vec<Listed> {
+pub fn scratch_refs(stdout: &str) -> Vec<RemoteScratchRef> {
     stdout
         .lines()
         .filter_map(|line| {
             let (commit, name) = line.split_once('\t')?;
             let scratch = ScratchRef::parse(name.strip_prefix(PREFIX)?).ok()?;
-            is_hash(commit).then(|| Listed {
+            is_hash(commit).then(|| RemoteScratchRef {
                 scratch,
                 commit: commit.to_owned(),
             })
@@ -42,17 +42,6 @@ pub fn rejection(stdout: &str) -> Option<String> {
         let reason = rest.rsplit('\t').next().unwrap_or(rest).trim();
         Some(safe(reason))
     })
-}
-
-/// The paths of `git ls-tree -r -z --name-only`. A path that is not UTF-8 is kept with its
-/// bad bytes replaced, so it can still be matched and named.
-#[must_use]
-pub fn paths(stdout: &[u8]) -> Vec<String> {
-    stdout
-        .split(|byte| *byte == 0)
-        .filter(|path| !path.is_empty())
-        .map(|path| String::from_utf8_lossy(path).into_owned())
-        .collect()
 }
 
 /// git's error text, safe to show: the last lines, the user and password of every URL taken
@@ -124,7 +113,7 @@ mod tests {
              \n\
              {B}\trefs/anima/wip/fedcba9876543210"
         );
-        let found = listed(&stdout);
+        let found = scratch_refs(&stdout);
         let names: Vec<&str> = found.iter().map(|row| row.scratch.as_str()).collect();
         assert_eq!(
             names,
@@ -149,15 +138,6 @@ mod tests {
             rejection("To x\n*\tabc:refs/anima/wip/x\t[new reference]\nDone\n"),
             None
         );
-    }
-
-    #[test]
-    fn job_017_ls_tree_paths_split_on_nul_and_survive_odd_bytes() {
-        let found = paths(b"a.rs\0dir/with\nnewline.pem\0bad\xffname\0");
-        assert_eq!(found[0], "a.rs");
-        assert_eq!(found[1], "dir/with\nnewline.pem");
-        assert_eq!(found[2], "bad\u{fffd}name");
-        assert_eq!(paths(b""), Vec::<String>::new());
     }
 
     #[test]

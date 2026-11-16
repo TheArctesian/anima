@@ -5,6 +5,9 @@
 mod forge;
 mod git;
 mod git_output;
+mod object_paths;
+mod path_list;
+mod remote_name;
 mod scratch_ref;
 mod secret_paths;
 mod working_tree;
@@ -57,7 +60,7 @@ pub enum SnapshotError {
     GitMissing { reason: String },
     #[error("git {step} failed: {reason}")]
     Git { step: String, reason: String },
-    #[error("Could not make the temporary index: {reason}.")]
+    #[error("Could not make the temporary index and objects: {reason}.")]
     Temporary { reason: String },
     #[error("{name:?} is not a remote name.")]
     BadRemote { name: String },
@@ -67,9 +70,14 @@ pub enum SnapshotError {
     NotScratchRef { text: String },
     #[error(
         "Nothing was pushed: the working tree holds files that look like secrets: {}.",
-        secret_paths::listed(paths)
+        path_list::shown(paths)
     )]
     SecretPaths { paths: Vec<String> },
+    #[error(
+        "Nothing was pushed: commits that {remote} does not have hold files that look like secrets: {}.",
+        path_list::shown(paths)
+    )]
+    SecretHistory { remote: String, paths: Vec<String> },
     #[error("The remote {remote} has no scratch ref {scratch}.")]
     NoSuchRef { remote: String, scratch: String },
     #[error("The remote {remote} refused {scratch}: {reason}")]
@@ -109,8 +117,14 @@ impl From<SnapshotError> for Failure {
             SnapshotError::SecretPaths { .. } => Self::Forbidden {
                 message,
                 hint: Some(Hint::say(
-                    "Add them to .gitignore or move them out of the working tree; no flag sends them.",
+                    "Move an untracked file out of the working tree or add it to .gitignore; take a committed file out of git with `git rm --cached <path>` (the file stays on disk) and commit. No flag sends them.",
                 )),
+            },
+            SnapshotError::SecretHistory { remote, .. } => Self::Forbidden {
+                message,
+                hint: Some(Hint::say(format!(
+                    "They are not in the working tree: they are in a commit that {remote} does not have. Take them out of those commits (for example with `git rebase -i`), or run `git fetch {remote}` if {remote} already has the commits. No flag sends them."
+                ))),
             },
             SnapshotError::Rejected { .. } => Self::Conflict { message },
             SnapshotError::Unreachable { .. } => Self::Ended {
@@ -136,6 +150,7 @@ struct Pushed<'a> {
     remote: &'a str,
     fetch: String,
     changed: bool,
+    gitlinks: &'a [String],
 }
 
 /// A deleted scratch ref, as `snapshot delete --json` prints it.
@@ -186,19 +201,32 @@ impl SnapshotCommand {
 fn push(git: &Git, remote: &str, invocation: &Invocation) -> Result<(), Failure> {
     let remote = forge::remote(git, remote)?;
     let snapshot = working_tree::take(git)?;
-    let scratch = ScratchRef::for_commit(&snapshot.commit)?;
-    forge::push(git, remote, &snapshot.commit, &scratch)?;
+    // `take` checked that git printed a hash, so this always finds the ref.
+    let scratch = ScratchRef::for_commit(&snapshot.commit).ok_or_else(|| SnapshotError::Git {
+        step: "commit-tree".to_owned(),
+        reason: "it did not print a commit hash".to_owned(),
+    })?;
+    forge::push(&snapshot.git, remote, &snapshot.commit, &scratch)?;
     invocation.output.note(if snapshot.changed {
         "Pushed a snapshot of the working tree."
     } else {
         "The working tree has no changes: pushed HEAD's own commit."
     });
+    if !snapshot.gitlinks.is_empty() {
+        invocation.output.note(&format!(
+            "Only the recorded commit of each submodule or nested repository is in the snapshot: \
+             their uncommitted changes are not sent, and a nested repository's commit may not be \
+             on any remote: {}.",
+            path_list::shown(&snapshot.gitlinks)
+        ));
+    }
     let pushed = Pushed {
         scratch: &scratch,
         commit: &snapshot.commit,
         remote,
         fetch: fetch_line(remote, &scratch),
         changed: snapshot.changed,
+        gitlinks: &snapshot.gitlinks,
     };
     invocation.output.data(&pushed, |pushed| {
         let mut table = Table::record();

@@ -3,6 +3,7 @@
 //! use is `git push` and `git ls-remote`; no hub request is made.
 
 use std::ffi::OsString;
+use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
@@ -44,12 +45,6 @@ impl Git {
             top: PathBuf::from(top),
             variables: Vec::new(),
         })
-    }
-
-    /// The top folder of the working tree.
-    #[must_use]
-    pub fn top(&self) -> &Path {
-        &self.top
     }
 
     /// The same git with `name=value` set for each call.
@@ -113,4 +108,57 @@ impl Git {
 /// The git subcommand of `args`, for an error.
 fn step_of(args: &[&str]) -> String {
     args.first().copied().unwrap_or("git").to_owned()
+}
+
+/// `GIT_ALTERNATE_OBJECT_DIRECTORIES` with `objects` first, then what was set before. git
+/// splits the list on `:` and reads an entry that starts with `"` as a C string, so a path
+/// with `:`, `"`, `\` or a control character is written that way.
+#[must_use]
+pub fn alternates(objects: &str, before: Option<&str>) -> String {
+    let first = if objects.contains([':', '"', '\\']) || objects.chars().any(char::is_control) {
+        c_quoted(objects)
+    } else {
+        objects.to_owned()
+    };
+    match before.filter(|before| !before.is_empty()) {
+        Some(before) => format!("{first}:{before}"),
+        None => first,
+    }
+}
+
+fn c_quoted(text: &str) -> String {
+    let mut quoted = String::from("\"");
+    for c in text.chars() {
+        match c {
+            '"' | '\\' => {
+                quoted.push('\\');
+                quoted.push(c);
+            }
+            c if c.is_ascii_control() => {
+                let _ = write!(quoted, "\\{:03o}", u32::from(c));
+            }
+            c => quoted.push(c),
+        }
+    }
+    quoted.push('"');
+    quoted
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn job_016_the_alternate_list_puts_the_repository_first_and_quotes_odd_paths() {
+        assert_eq!(alternates("/r/.git/objects", None), "/r/.git/objects");
+        assert_eq!(
+            alternates("/r/.git/objects", Some("/x/objects")),
+            "/r/.git/objects:/x/objects"
+        );
+        assert_eq!(alternates("/a:b/objects", Some("")), r#""/a:b/objects""#);
+        assert_eq!(
+            alternates("/a\"b\\c\nd/objects", None),
+            r#""/a\"b\\c\012d/objects""#
+        );
+    }
 }
