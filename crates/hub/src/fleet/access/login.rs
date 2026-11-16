@@ -46,6 +46,9 @@ pub(super) struct Attempt {
     pub issue: Issue,
     /// Whether the request declared an AI agent (LOG-016).
     pub declared: Declaration,
+    /// Whether an operator with no TOTP secret is refused: the link mode, where the account
+    /// is made with its second factor (FRN-004, FRN-007, SEC-002).
+    pub totp_required: bool,
 }
 
 impl Attempt {
@@ -117,7 +120,7 @@ pub(super) struct SignedIn {
 /// records (D-4).
 ///
 /// Every attempt is recorded. A wrong password, an unknown username, a wrong, reused or
-/// missing TOTP code, a TOTP secret that does not open, an account changed during the check
+/// missing TOTP code, no TOTP secret when `attempt.totp_required`, a TOTP secret that does not open, an account changed during the check
 /// and a throttled attempt all give the answer of `Error::WrongCredentials`, and all but the
 /// throttled one count toward the throttle.
 pub(super) async fn login(
@@ -138,7 +141,10 @@ pub(super) async fn login(
     let verified = password_matches(attempt.password, account.as_ref()).await?;
     let factor = match &account {
         Some(account) if verified => {
-            totp::second_factor(vault, account, attempt.totp_code.as_deref(), attempt.at)
+            match totp::second_factor(vault, account, attempt.totp_code.as_deref(), attempt.at) {
+                SecondFactor::NotEnrolled if attempt.totp_required => SecondFactor::Refuse,
+                factor => factor,
+            }
         }
         _ => SecondFactor::Refuse,
     };

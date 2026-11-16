@@ -98,18 +98,29 @@ pub(super) async fn replace_operator(
     Ok((id, None))
 }
 
-/// Stores (`Some`) or removes (`None`) the operator's sealed TOTP secret and forgets the
-/// last used step.
+/// The one operator (OD-2): its username and whether it has a TOTP secret.
+pub(super) async fn the_operator(
+    db: impl PgExecutor<'_>,
+) -> Result<Option<(String, bool)>, sqlx::Error> {
+    sqlx::query_as("select username, totp_secret_enc is not null from access.operators")
+        .fetch_optional(db)
+        .await
+}
+
+/// Stores (`Some`) or removes (`None`) the operator's sealed TOTP secret and sets the last
+/// used step: `None` for a secret no code has used yet.
 pub(super) async fn set_totp(
     db: impl PgExecutor<'_>,
     operator: OperatorId,
     sealed: Option<&[u8]>,
+    last_step: Option<i64>,
 ) -> Result<(), sqlx::Error> {
     sqlx::query(
-        "update access.operators set totp_secret_enc = $2, totp_last_step = null where id = $1",
+        "update access.operators set totp_secret_enc = $2, totp_last_step = $3 where id = $1",
     )
     .bind(operator)
     .bind(sealed)
+    .bind(last_step)
     .execute(db)
     .await?;
     Ok(())

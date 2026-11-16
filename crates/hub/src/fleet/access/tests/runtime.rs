@@ -65,7 +65,7 @@ async fn log_006_r_016_runtime_role_runs_the_login_flow_on_access_tables(pool: P
         keys: now(),
     };
     store::prune(&mut conn, &cutoffs).await.unwrap();
-    store::set_totp(&mut conn, id, Some(b"sealed"))
+    store::set_totp(&mut conn, id, Some(b"sealed"), None)
         .await
         .unwrap();
     assert!(
@@ -73,5 +73,5 @@ async fn log_006_r_016_runtime_role_runs_the_login_flow_on_access_tables(pool: P
             .await
             .unwrap()
     );
-    store::set_totp(&mut conn, id, None).await.unwrap();
+    store::set_totp(&mut conn, id, None, None).await.unwrap();
 }

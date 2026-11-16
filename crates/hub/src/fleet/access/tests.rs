@@ -21,6 +21,7 @@ mod key_roots;
 mod kinds;
 mod networks;
 mod races;
+mod rebinding;
 mod rules;
 mod runtime;
 mod scope;

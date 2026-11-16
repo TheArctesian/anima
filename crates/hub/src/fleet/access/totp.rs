@@ -157,9 +157,37 @@ pub(super) fn otpauth_uri(secret: &[u8], username: &str) -> Zeroizing<String> {
     ))
 }
 
+/// The RFC 4648 base32 alphabet, upper case.
+const ALPHABET: &[u8; 32] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+
+/// Characters of a [`SECRET_LEN`] secret in base32: 160 bits are 32 characters, no padding.
+const SECRET_TEXT_LEN: usize = SECRET_LEN.div_ceil(5) * 8;
+
+/// The secret that `text` names, if it is exactly [`SECRET_TEXT_LEN`] characters of the
+/// base32 alphabet (either case), as [`base32`] writes a [`SECRET_LEN`] secret. The length is
+/// checked before any character is read, so long input costs nothing.
+pub(super) fn decode_secret(text: &str) -> Option<Zeroizing<Vec<u8>>> {
+    if text.len() != SECRET_TEXT_LEN {
+        return None;
+    }
+    let mut out = Zeroizing::new(Vec::with_capacity(SECRET_LEN));
+    let mut buffer: u16 = 0;
+    let mut bits = 0;
+    for byte in text.bytes() {
+        let upper = byte.to_ascii_uppercase();
+        let value = ALPHABET.iter().position(|&letter| letter == upper)?;
+        buffer = (buffer << 5) | u16::try_from(value).expect("a base32 value fits a u16");
+        bits += 5;
+        if bits >= 8 {
+            bits -= 8;
+            out.push(u8::try_from((buffer >> bits) & 0xff).expect("masked to a byte"));
+        }
+    }
+    Some(out)
+}
+
 /// RFC 4648 base32 without padding, as authenticator apps read secrets.
-fn base32(bytes: &[u8]) -> Zeroizing<String> {
-    const ALPHABET: &[u8; 32] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+pub(super) fn base32(bytes: &[u8]) -> Zeroizing<String> {
     let mut out = Zeroizing::new(String::with_capacity(bytes.len().div_ceil(5) * 8));
     let mut buffer: u16 = 0;
     let mut bits = 0;

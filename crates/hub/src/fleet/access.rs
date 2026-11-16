@@ -18,6 +18,7 @@ mod login;
 mod networks;
 mod origin;
 mod password;
+mod rebinding;
 mod store;
 #[cfg(test)]
 mod tests;
@@ -44,6 +45,7 @@ pub use identity::{Identity, client_addr, identify, identify_connection, operato
 pub use layer::{Edge, permitted_networks_layer};
 pub use origin::PublicOrigin;
 pub use password::Password;
+pub use rebinding::loopback_names_layer;
 pub use tokens::{Scope, TokenKind};
 
 use crate::{
@@ -78,18 +80,157 @@ pub async fn set_operator(
     now: DateTime<Utc>,
 ) -> Result<OperatorId, Error> {
     check_credentials(username, &password)?;
-    let salt = login::random::<{ password::SALT_LEN }>()?;
-    let hash = tokio::task::spawn_blocking(move || password::hash(&password, &salt)).await??;
+    let hash = hash_password(password).await?;
     let mut tx = db.begin().await?;
-    let (id, previous) = store::replace_operator(&mut tx, username, &hash, now).await?;
-    // Write the operator row before deleting tokens: a sign-in issues its token under that
-    // row's lock, so the delete then sees it (D-9).
-    store::delete_operator_tokens(&mut tx, id).await?;
-    let mut usernames = vec![username];
-    usernames.extend(previous.as_deref());
-    store::delete_attempts_of(&mut tx, &usernames).await?;
+    let id = replace_account(&mut tx, username, &hash, now).await?;
     tx.commit().await?;
     Ok(id)
+}
+
+/// What `operator create` read (FRN-004): the username, the password, the TOTP secret that
+/// `operator totp --new` showed and a code of it. No `Debug`: it holds secrets (LOG-007).
+/// The secret and the code are wiped from memory on drop.
+pub struct NewOperator {
+    pub username: String,
+    pub password: Password,
+    pub secret: Zeroizing<String>,
+    pub code: Zeroizing<String>,
+}
+
+/// Creates or replaces the one operator account with a password and a TOTP secret together,
+/// for `anima-hub operator create` (FRN-004, OD-2): the first run and the recovery on the hub
+/// computer. Nothing is saved unless the credentials pass [`check_credentials`], the secret is
+/// 32 base32 characters and the code is the secret's code at `now`, with the drift sign-in
+/// accepts. Then one transaction writes the account as [`set_operator`] does (tokens and
+/// login attempts deleted), seals the secret for the operator (R-010) and marks the code's
+/// step used, so `login` refuses the same code (SEC-002). So the account never exists without
+/// its second factor.
+///
+/// # Errors
+///
+/// `Error::Validation` for a refused username, password, secret or code;
+/// `Error::Random`, `Error::TotpSeal` or `Error::Database` if the account cannot be written.
+pub async fn create_operator(
+    db: &PgPool,
+    vault: &Vault,
+    new: NewOperator,
+    now: DateTime<Utc>,
+) -> Result<OperatorId, Error> {
+    let NewOperator {
+        username,
+        password,
+        secret,
+        code,
+    } = new;
+    check_credentials(&username, &password)?;
+    let secret = totp::decode_secret(&secret).ok_or(Error::Validation {
+        field: "secret",
+        message: "The TOTP secret must be the 32 base32 characters that --new printed.",
+    })?;
+    let step = totp::accepted_step(&secret, &code, now, None).ok_or(Error::Validation {
+        field: "code",
+        message: "The code does not match the secret now. Nothing was saved.",
+    })?;
+    let hash = hash_password(password).await?;
+    let mut tx = db.begin().await?;
+    let id = replace_account(&mut tx, &username, &hash, now).await?;
+    let sealed = seal_totp(vault, id, &Secret::new(secret.to_vec()))?;
+    store::set_totp(&mut *tx, id, Some(&sealed), Some(step)).await?;
+    tx.commit().await?;
+    Ok(id)
+}
+
+/// The PHC hash of `password` with a new salt, made off the async executor.
+async fn hash_password(password: Password) -> Result<String, Error> {
+    let salt = login::random::<{ password::SALT_LEN }>()?;
+    Ok(tokio::task::spawn_blocking(move || password::hash(&password, &salt)).await??)
+}
+
+/// Makes the one account have this username and hash, deletes all its tokens and clears the
+/// login attempts of the old and new username, in the caller's transaction. Returns its id.
+async fn replace_account(
+    tx: &mut sqlx::PgConnection,
+    username: &str,
+    hash: &str,
+    now: DateTime<Utc>,
+) -> Result<OperatorId, Error> {
+    let (id, previous) = store::replace_operator(tx, username, hash, now).await?;
+    // Write the operator row before deleting tokens: a sign-in issues its token under that
+    // row's lock, so the delete then sees it (D-9).
+    store::delete_operator_tokens(tx, id).await?;
+    let mut usernames = vec![username];
+    usernames.extend(previous.as_deref());
+    store::delete_attempts_of(tx, &usernames).await?;
+    Ok(id)
+}
+
+/// What `operator show` prints (FRN-003): the one operator's username and whether it has
+/// enrolled TOTP. It holds no secret.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct OperatorStatus {
+    pub name: String,
+    pub totp: bool,
+}
+
+/// The one operator's status for `anima-hub operator show`, or `None` before there is one.
+///
+/// # Errors
+///
+/// `Error::Database` if the account cannot be read.
+pub async fn operator_status(db: &PgPool) -> Result<Option<OperatorStatus>, Error> {
+    let found = store::the_operator(db).await?;
+    Ok(found.map(|(name, totp)| OperatorStatus { name, totp }))
+}
+
+/// A TOTP secret that `operator totp <username> --new` shows and does not save (FRN-004):
+/// the secret in base32 and its `otpauth://` URI. No `Debug`: both hold the secret
+/// (LOG-007). Wiped from memory on drop.
+pub struct NewTotp {
+    secret: Zeroizing<String>,
+    uri: Zeroizing<String>,
+}
+
+impl NewTotp {
+    /// The secret in base32, as `operator create` reads it back.
+    #[must_use]
+    pub fn secret(&self) -> &str {
+        &self.secret
+    }
+
+    /// The URI an authenticator app enrols from.
+    #[must_use]
+    pub fn uri(&self) -> &str {
+        &self.uri
+    }
+}
+
+/// Makes a TOTP secret with `username` as the label of its URI, and saves nothing (FRN-004):
+/// no operator needs to exist. [`create_operator`] saves it.
+///
+/// # Errors
+///
+/// `Error::Validation` for a username `operator set` would refuse; `Error::Random` if the
+/// secret cannot be made.
+pub fn new_totp(username: &str) -> Result<NewTotp, Error> {
+    if !login::possible_username(username) {
+        return Err(BAD_USERNAME);
+    }
+    let secret = Zeroizing::new(login::random::<{ totp::SECRET_LEN }>()?);
+    Ok(NewTotp {
+        secret: totp::base32(secret.as_slice()),
+        uri: totp::otpauth_uri(secret.as_slice(), username),
+    })
+}
+
+/// Seals a TOTP secret for the operator `id` (R-010): the id, which a rename keeps, binds it.
+fn seal_totp(vault: &Vault, id: OperatorId, secret: &Secret) -> Result<Vec<u8>, Error> {
+    let sealed = vault
+        .seal(secret, totp::context(id).as_bytes())
+        .map_err(|error| match error {
+            credentials::Error::Random(source) => Error::Random(source),
+            other => Error::TotpSeal(other),
+        })?;
+    Ok(sealed.to_bytes())
 }
 
 /// What `operator totp` shows once: the `otpauth://` URI an authenticator app enrols from.
@@ -119,13 +260,8 @@ pub async fn enrol_totp(db: &PgPool, vault: &Vault, username: &str) -> Result<En
     let account = store::account_by_username(&mut *tx, username)
         .await?
         .ok_or(UNKNOWN_OPERATOR)?;
-    let sealed = vault
-        .seal(&secret, totp::context(account.id).as_bytes())
-        .map_err(|error| match error {
-            credentials::Error::Random(source) => Error::Random(source),
-            other => Error::TotpSeal(other),
-        })?;
-    store::set_totp(&mut *tx, account.id, Some(&sealed.to_bytes())).await?;
+    let sealed = seal_totp(vault, account.id, &secret)?;
+    store::set_totp(&mut *tx, account.id, Some(&sealed), None).await?;
     // Row first, tokens second, as in `replace_operator` above (D-9).
     store::delete_operator_tokens(&mut tx, account.id).await?;
     tx.commit().await?;
@@ -145,7 +281,7 @@ pub async fn disable_totp(db: &PgPool, username: &str) -> Result<(), Error> {
     let account = store::account_by_username(db, username)
         .await?
         .ok_or(UNKNOWN_OPERATOR)?;
-    store::set_totp(db, account.id, None).await?;
+    store::set_totp(db, account.id, None, None).await?;
     Ok(())
 }
 
@@ -154,14 +290,16 @@ const UNKNOWN_OPERATOR: Error = Error::Validation {
     message: "No operator has this username.",
 };
 
+const BAD_USERNAME: Error = Error::Validation {
+    field: "username",
+    message: "Use 1 to 64 letters, digits, dots, dashes or underscores.",
+};
+
 /// The rules `operator set` applies: a username of 1 to 64 ASCII letters, digits, `.`, `_`
 /// or `-`; a password of at least 12 characters and at most 1024 bytes.
 fn check_credentials(username: &str, password: &Password) -> Result<(), Error> {
     if !login::possible_username(username) {
-        return Err(Error::Validation {
-            field: "username",
-            message: "Use 1 to 64 letters, digits, dots, dashes or underscores.",
-        });
+        return Err(BAD_USERNAME);
     }
     if password.chars() < password::MIN_PASSWORD_CHARS
         || password.as_bytes().len() > password::MAX_PASSWORD_LEN

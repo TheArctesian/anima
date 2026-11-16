@@ -26,6 +26,7 @@ fn attempt(username: &str) -> Attempt {
         at: now(),
         issue: Issue::LOGIN,
         declared: crate::fleet::access::Declaration::default(),
+        totp_required: false,
     }
 }
 

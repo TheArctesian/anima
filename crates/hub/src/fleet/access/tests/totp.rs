@@ -2,8 +2,11 @@
 //! (SEC-002).
 
 use chrono::{DateTime, TimeZone, Utc};
+use proptest::prelude::*;
 
-use crate::fleet::access::totp::{accepted_step, context, otpauth_uri, step_at};
+use crate::fleet::access::totp::{
+    SECRET_LEN, accepted_step, base32, context, decode_secret, otpauth_uri, step_at,
+};
 
 /// The SHA-1 secret of RFC 6238 Appendix B.
 const RFC_SECRET: &[u8] = b"12345678901234567890";
@@ -130,6 +133,42 @@ fn sec_002_times_at_and_before_the_epoch_do_not_panic() {
         accepted_step(RFC_SECRET, "000000", far, Some(i64::MAX)),
         None
     );
+}
+
+#[test]
+fn frn_004_a_secret_text_is_exactly_32_base32_characters() {
+    let text = "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ";
+    assert_eq!(decode_secret(text).unwrap().as_slice(), RFC_SECRET);
+    let lower = text.to_ascii_lowercase();
+    assert_eq!(decode_secret(&lower).unwrap().as_slice(), RFC_SECRET);
+    for refused in [
+        "",
+        &text[..31],
+        &format!("{text}A"),
+        &format!("{text}===="),
+        "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJ1",
+        "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJ=",
+        "GEZDGNBVGY3TQOJQ GEZDGNBVGY3TQOJ",
+        "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJé",
+    ] {
+        assert!(decode_secret(refused).is_none(), "{refused:?}");
+    }
+}
+
+proptest! {
+    /// Every secret reads back from its text; any other text is refused without a panic.
+    #[test]
+    fn frn_004_a_secret_reads_back_and_any_text_is_safe(
+        secret in prop::array::uniform20(any::<u8>()),
+        anything in any::<String>(),
+    ) {
+        let text = base32(&secret);
+        let decoded = decode_secret(&text).unwrap();
+        prop_assert_eq!(decoded.as_slice(), &secret[..]);
+        if let Some(decoded) = decode_secret(&anything) {
+            prop_assert_eq!(decoded.len(), SECRET_LEN);
+        }
+    }
 }
 
 #[test]
