@@ -108,10 +108,10 @@
   /* Fixed width and fixed item height: the banner and the font swap move nothing (MOT-007). */
   nav {
     position: sticky;
-    top: 0;
+    top: var(--safe-block-start);
     box-sizing: border-box;
     inline-size: var(--nav-inline-size);
-    block-size: 100vh;
+    block-size: var(--viewport-block-size);
     display: flex;
     flex-direction: column;
     gap: var(--border-focus);

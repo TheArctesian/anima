@@ -12,6 +12,35 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* A phone draws the page under its status bar and its home indicator (`viewport-fit=cover` in app.html). The page
+   colour fills those areas, and the content stays inside the safe area (MOB-011). On a computer each inset is zero. */
+:root {
+  --safe-block-start: env(safe-area-inset-top, 0px);
+  --safe-block-end: env(safe-area-inset-bottom, 0px);
+  --safe-inline-start: env(safe-area-inset-left, 0px);
+  --safe-inline-end: env(safe-area-inset-right, 0px);
+  /* The height that a full-height layout has: the window without the two block insets. */
+  --viewport-block-size: calc(100vh - var(--safe-block-start) - var(--safe-block-end));
+}
+
+html {
+  background: var(--surface-sunken);
+}
+
+body {
+  padding: var(--safe-block-start) var(--safe-inline-end) var(--safe-block-end) var(--safe-inline-start);
+}
+
+/* On a touch screen iOS zooms the page when a field with text below 16 px gets the focus, and the page stays zoomed
+   (MOB-012). `:root` and `:not()` put this rule above a component's own rule for its field. */
+@media (pointer: coarse) {
+  :root input:not([type="checkbox"], [type="radio"], [type="range"]),
+  :root textarea,
+  :root select {
+    font-size: var(--text-lg);
+  }
+}
+
 /* The navigation bar's width; the logs panel starts beside it. */
 :root {
   --nav-inline-size: calc(var(--space-16) * 3 + var(--space-10));

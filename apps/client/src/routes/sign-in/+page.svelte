@@ -234,7 +234,7 @@
     box-sizing: border-box;
     display: grid;
     place-items: center;
-    min-block-size: 100vh;
+    min-block-size: var(--viewport-block-size);
     padding: var(--space-6) var(--space-4);
     overflow: hidden;
   }

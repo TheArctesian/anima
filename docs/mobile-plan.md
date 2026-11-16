@@ -177,7 +177,7 @@ Each stage ends with a build that the operator can use. The state words are thos
 | M1-2 | M1 Shell | Phone answers in `$lib/platform`; no call to a missing command | MOB-004, MOB-005 | In progress | `327abdc6`: MOB-004 is built. Open for MOB-005: with a loopback hub address a phone still calls `hub_listener_check`. The call fails and the client then sends nothing, which is safe. Task M3-1 gives the phone its own check. |
 | M1-3 | M1 Shell | Mobile build procedure and the compile gate | MOB-040, MOB-041, MOB-042 | Not started | — |
 | M1-4 | M1 Shell | Test: build `link/devicelink` as a library for iOS and for Android; join a test hub; get an answer at the loopback address. Write the result in this plan. | MOB-031, MOB-032, MOB-039 | Not started | — |
-| M2-1 | M2 Layout | Safe area, status bar and no zoom on a field | MOB-011, MOB-012 | Not started | — |
+| M2-1 | M2 Layout | Safe area, status bar and no zoom on a field | MOB-011, MOB-012 | Done | The commit that changes this row, on the branch `mobile/m1-shell`. Checked on 2026-11-16: on the iPhone simulator the status bar area has the page colour and a field with the focus does not zoom the page; on the Android emulator the content starts below the status bar. Not checked on a real phone. |
 | M2-2 | M2 Layout | Bottom navigation bar | MOB-010, MOB-019 | Not started | — |
 | M2-3 | M2 Layout | Logs panel closed; names and tabs that fit | MOB-013, MOB-015 | Not started | — |
 | M2-4 | M2 Layout | Field behaviour, wording and the notice | MOB-014, MOB-016, MOB-018, MOB-037 | Not started | — |

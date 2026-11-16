@@ -217,13 +217,13 @@
   .refused {
     margin: 0;
     padding: var(--space-6);
-    min-height: 100vh;
+    min-height: var(--viewport-block-size);
     background: var(--surface-sunken);
     color: var(--text);
   }
 
   .bare {
-    min-height: 100vh;
+    min-height: var(--viewport-block-size);
     background: var(--surface-sunken);
     color: var(--text);
     font-family: var(--font-ui);
@@ -234,7 +234,7 @@
     /* The page column may shrink below its content's width, so a narrow window never scrolls sideways (UI-009). */
     grid-template-columns: auto minmax(0, 1fr);
     align-items: start;
-    min-height: 100vh;
+    min-height: var(--viewport-block-size);
     background: var(--surface-sunken);
     color: var(--text);
     font-family: var(--font-ui);
