@@ -122,7 +122,7 @@ These terms add to Section 2 of the design specification.
 
 #### Tool inventory
 
-Approved for build (operator, 2026-11-15: "lets build the two buildable ones now"; ruling number to be assigned). The first build leaves out the Apple SDKs, the simulator runtimes and the running state of the container runtime (CAP-023). The graphical client comes later (CMD-030). The operator said that an AI agent "will need to know what's installed so that it can either run commands or run agents". The placement of a job uses this inventory (JOB-011 to JOB-013 of [jobs.md](programme/proposals/jobs.md)). The tool inventory only reads. It needs no work route.
+Approved for build (operator, 2026-11-15: "lets build the two buildable ones now"; ruling number to be assigned). The first build leaves out the Apple SDKs, the simulator runtimes and the running state of the container runtime (CAP-023). The first build probes `claude` and `codex` only; a harness of AGN-009 gets a probe when the operator selects it. The graphical client comes later (CMD-030). An agent that runs as a system unit does not see the tools in the home folder of a user. On macOS, the agent does not run the placeholder programs of Apple in `/usr/bin` when the developer tools are absent. The operator said that an AI agent "will need to know what's installed so that it can either run commands or run agents". The placement of a job uses this inventory (JOB-011 to JOB-013 of [jobs.md](programme/proposals/jobs.md)). The tool inventory only reads. It needs no work route.
 
 - **CAP-020.** The agent must report a tool inventory of its machine to the hub: the tools, the build targets and the AI agent programs.
 - **CAP-021.** The tool inventory must come from a fixed list of probes in the agent. The hub must not be able to send a probe or a command line to the agent.
@@ -139,10 +139,10 @@ Approved for build (operator, 2026-11-15: "lets build the two buildable ones now
   | Nix | nix |
   | AI agent programs | claude, codex, and each harness of AGN-009 |
 
-- **CAP-024.** Each line must give the name, the version and a verdict, in the form of CAP-002.
-- **CAP-025.** For an AI agent program, the line must say only "installed" and the version. The agent must not read a credential file, an account name or a usage limit (LOG-007).
+- **CAP-024.** Each line must give the name and a verdict, in the form of CAP-002: usable with the version, or not usable with a reason. The reason is a fixed code (timed out, exited, no version), never text from the device. The command and the MCP tool give a fixed repair hint for each reason.
+- **CAP-025.** For an AI agent program, the line must say only "installed" and the version. The agent must not read a credential file, an account name or a usage limit (LOG-007). The probe of such a program must run with an empty temporary home folder, so that it cannot read or change the folders of the account.
 - **CAP-026.** The tool inventory must include the processor architecture and the operating system version.
-- **CAP-027.** The agent must send the tool inventory at start and when a probe result changes. It must check for changes each 15 minutes or less often.
+- **CAP-027.** The agent must send the tool inventory at start and when a probe result changes. It must check for changes each 15 minutes or less often. It must send an unchanged inventory again each 24 hours.
 - **CAP-028.** The probe list and the parse of each probe output must be in `agent-core`, with no I/O (CAG-007). The reader that runs each program is the I/O edge.
 - **CAP-029.** The tool inventory must be an optional member of the push batch of K8, as `gpus` and `drives` are. K8 permits an optional member without a new version (its Section 1). Thus the agent makes no new call and the agent token does not change (MET-013). K8 is frozen (CON-001), so the addition carries the mark of this ruling.
 - **CAP-030.** The hub must give the tool inventory of each device as `capabilities`. CAP-001 to CAP-004 join it when the model service is built. It must filter by tool name and by build target. The command is `anima capability list` and the MCP tool is `anima_capability_list` (CMD-030).
