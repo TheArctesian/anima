@@ -13,7 +13,7 @@ use crate::carried::{
 };
 
 const SOON: Duration = Duration::from_secs(20);
-const RELEASE: &DevFolders = &DevFolders {
+pub(super) const RELEASE: &DevFolders = &DevFolders {
     programs: None,
     tree: None,
 };
@@ -41,7 +41,7 @@ fn product_name() -> String {
 }
 
 /// A bundle as Tauri lays it out for this application, with a stand-in for the program.
-fn bundle(folder: &Path, macos: bool, script: &str) -> PathBuf {
+pub(super) fn bundle(folder: &Path, macos: bool, script: &str) -> PathBuf {
     let product = product_name();
     let (programs, tree) = if macos {
         (

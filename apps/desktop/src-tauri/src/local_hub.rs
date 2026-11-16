@@ -16,6 +16,7 @@ mod carried;
 mod error;
 mod key_copy;
 mod recovery;
+pub mod update;
 
 #[cfg(test)]
 mod tests;
