@@ -39,7 +39,7 @@ impl Outcome {
 /// writes the unit file with the address that `install` recorded. The database, the key, the
 /// link's state and the logs are not touched.
 ///
-/// A hub that is not installed runs no step. When the copy is the same, the unit is started
+/// A hub that is not installed runs no step. A same digest never rewrites the unit file. When the copy is the same, the unit is started
 /// if nothing runs, the operator did not stop the hub and the last start failed: a start that
 /// failed after a replacement is tried again.
 ///

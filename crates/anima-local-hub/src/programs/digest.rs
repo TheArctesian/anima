@@ -16,6 +16,9 @@ use std::path::{Path, PathBuf};
 
 use sha2::{Digest as _, Sha256};
 
+#[cfg(test)]
+mod tests;
+
 use super::{Budget, CopyError, MOST_BYTES, MOST_DEPTH, MOST_ENTRIES, io_error, link_target};
 use crate::Folders;
 use crate::members::{Carried, PROGRAMS};

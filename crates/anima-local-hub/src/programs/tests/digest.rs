@@ -187,3 +187,32 @@ fn the_digest_refuses_what_the_copy_refuses() {
         );
     }
 }
+
+#[test]
+fn the_name_of_an_entry_is_part_of_the_digest() {
+    let folder = tempfile::tempdir().unwrap();
+    let one = carried_in(&folder.path().join("one"), "m");
+    let two = carried_in(&folder.path().join("two"), "m");
+    fs::rename(
+        two.tree().join("share/timezone/UTC"),
+        two.tree().join("share/timezone/Zulu"),
+    )
+    .unwrap();
+
+    assert_ne!(of(&one), of(&two));
+}
+
+#[test]
+fn two_files_that_swap_their_contents_give_another_digest() {
+    let folder = tempfile::tempdir().unwrap();
+    let one = carried_in(&folder.path().join("one"), "m");
+    let two = carried_in(&folder.path().join("two"), "m");
+    for set in [&one, &two] {
+        fs::write(set.tree().join("share/a"), "first").unwrap();
+        fs::write(set.tree().join("share/b"), "second").unwrap();
+    }
+    fs::write(two.tree().join("share/a"), "second").unwrap();
+    fs::write(two.tree().join("share/b"), "first").unwrap();
+
+    assert_ne!(of(&one), of(&two));
+}
