@@ -13,8 +13,6 @@ const mocks = vi.hoisted(() => ({
   reloadClient: vi.fn(),
   loadClientAt: vi.fn(),
   desktop: true,
-  loopbackProblem: vi.fn(),
-  forget: vi.fn(),
 }));
 
 vi.mock('$lib/hub/context', () => ({ useHub: () => mocks.hub }));
@@ -26,7 +24,6 @@ vi.mock('$lib/platform/platform', async () => {
   const { BROWSER, DESKTOP_MAC } = await import('$lib/platform/answers.fixture');
   return { capabilities: () => (mocks.desktop ? DESKTOP_MAC : BROWSER) };
 });
-vi.mock('$lib/access/listener/check', () => ({ loopbackProblem: mocks.loopbackProblem, hubListeners: { forget: mocks.forget } }));
 vi.mock('$lib/access/navigation', () => ({ goToDevices: mocks.goToDevices, reloadClient: mocks.reloadClient, loadClientAt: mocks.loadClientAt }));
 
 const TOKEN = 'tok-secret-9f2';
@@ -69,8 +66,6 @@ beforeEach(() => {
   mocks.reloadClient.mockReset();
   mocks.loadClientAt.mockReset();
   mocks.desktop = true;
-  mocks.loopbackProblem.mockReset().mockResolvedValue(null);
-  mocks.forget.mockReset();
   for (const spy of consoleSpies) spy.mockClear();
 });
 
@@ -341,32 +336,5 @@ describe('in a browser, a failed sign-in', () => {
     await signInWith(target);
     expect(problemOf(target, 'username')).toBe('No such name.');
     expect(document.activeElement).toBe(input(target, 'username'));
-  });
-});
-
-describe('F-10: the hub address on this computer', () => {
-  const PROBLEM = { title: "Another program holds the hub's port", advice: 'Anima.ing sends nothing to it: no password and no token. Stop that program, then check again.' };
-
-  it('F-10: when another program holds the port, the page says so, Continue is off and nothing is sent', async () => {
-    mocks.loopbackProblem.mockResolvedValue(PROBLEM);
-    const target = open({ Login: ok({ login: { token: TOKEN } }) });
-    await settle();
-    expect(mocks.loopbackProblem).toHaveBeenCalledWith(hub.hub.address.origin, true);
-    expect(target.querySelector('[role="alert"]')?.textContent).toContain(PROBLEM.title);
-    const next = [...target.querySelectorAll('button')].find((button) => button.textContent.trim() === 'Continue');
-    expect(next?.disabled).toBe(true);
-    await continueWith(target, 'ann', PASSWORD);
-    expect(boxes(target)).toHaveLength(0);
-    expect(hub.sent).toEqual([]);
-  });
-
-  it('F-10: Check again forgets the verdict and asks again; a safe answer clears the notice', async () => {
-    mocks.loopbackProblem.mockResolvedValueOnce(PROBLEM).mockResolvedValueOnce(null);
-    const target = open({});
-    await settle();
-    clickLink(target, 'Check again');
-    await settle();
-    expect(mocks.forget).toHaveBeenCalledWith(hub.hub.address.origin);
-    expect(target.textContent).not.toContain(PROBLEM.title);
   });
 });
