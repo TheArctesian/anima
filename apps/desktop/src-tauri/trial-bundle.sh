@@ -1,8 +1,14 @@
 #!/bin/sh
 # Makes a trial bundle of the application with every program that "Create a hub on this
 # computer" needs (one-click plan S12): for a trial on the computer that built it. It runs the
-# commands of the release builder's bundle step (src/builder/) by hand, with an ad hoc
-# signature on macOS and no notary step.
+# build commands of the release builder's bundle step (src/builder/) by hand, in its order,
+# with an ad hoc signature on macOS. It is not that step:
+#   - it runs in your environment, with your cargo settings, and not in the scrubbed one;
+#   - it does not check that the tree is the commit's, and it builds what is in the folder;
+#   - it copies with cp and makes none of the builder's checks of the staged files and of the
+#     Mach-O files of the application;
+#   - it has no notary step, and on Linux it builds for this computer's architecture.
+# So a trial that passes does not prove that a release job passes.
 #
 # NEVER a release: a release starts only from the Builds view (BLD-001, UPD-007).
 #
@@ -16,7 +22,7 @@
 set -eu
 
 VERSION=${1:-0.1.0}
-echo "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' || { echo "trial-bundle: the version is not like 0.1.0" >&2; exit 1; }
+echo "$VERSION" | grep -Eq '^(0|[1-9][0-9]{0,8})\.(0|[1-9][0-9]{0,8})\.(0|[1-9][0-9]{0,8})$' || { echo "trial-bundle: the version is not like 0.1.0" >&2; exit 1; }
 HERE=$(cd "$(dirname "$0")" && pwd)
 ROOT=$(cd "$HERE/../../.." && pwd)
 TARGET_FOLDER=${CARGO_TARGET_DIR:-$ROOT/target}
@@ -39,6 +45,10 @@ tauri() {
     ( cd "$ROOT" && bun run --cwd apps/desktop tauri "$@" )
 }
 
+# As the bundle step: nothing of an earlier run is used. The tree is built anew.
+case "$TARGET_FOLDER" in /*) ;; *) echo "trial-bundle: CARGO_TARGET_DIR is not an absolute path" >&2; exit 1 ;; esac
+rm -rf "$STAGE" "$TARGET_FOLDER/database-tree" \
+    "$TARGET_FOLDER/universal-apple-darwin/release/bundle" "$TARGET_FOLDER/release/bundle"
 # The order of the bundle step: the tree, the link, then the Rust programs.
 mkdir -p "$STAGE"
 

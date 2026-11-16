@@ -46,26 +46,36 @@ pub(super) fn update(carried: &Carried) -> Result<Updated, LocalHubError> {
     parse_updated(&ask(carried, &args.each_ref(), INSTALL_LIMIT)?)
 }
 
-/// Updates the hub on this computer in the background, once, when this build carries the
-/// programs. It holds the one change, so no install, remove, start or stop runs meanwhile.
-pub fn at_start(changing: &Changing) {
-    let Ok(carried) = carried() else {
-        return;
-    };
-    let Ok(claim) = changing.claim() else {
-        return;
-    };
-    tauri::async_runtime::spawn_blocking(move || {
+/// The update as one piece of work that holds the one change until it ends, or `None` when
+/// another change runs: an install, remove, start or stop must not run beside it.
+pub(super) fn claimed(
+    changing: &Changing,
+    carried: Carried,
+) -> Option<impl FnOnce() -> Result<Updated, LocalHubError> + Send + 'static> {
+    let claim = changing.claim().ok()?;
+    Some(move || {
         let _claim = claim;
-        match update(&carried) {
-            Ok(Updated::Replaced) => {
-                log::info!("the hub on this computer got the programs of this version");
-            }
-            Ok(Updated::KeptNewer) => {
-                log::info!("the hub on this computer has programs of a higher version; they stay");
-            }
-            Ok(Updated::Unchanged) => {}
-            Err(error) => log::warn!("the hub's programs were not updated: {}", error.code()),
+        update(&carried)
+    })
+}
+
+/// Updates the hub on this computer in the background, once, when this build carries the
+/// programs.
+pub fn at_start(changing: &Changing) {
+    let Some(work) = carried()
+        .ok()
+        .and_then(|carried| claimed(changing, carried))
+    else {
+        return;
+    };
+    tauri::async_runtime::spawn_blocking(move || match work() {
+        Ok(Updated::Replaced) => {
+            log::info!("the hub on this computer got the programs of this version");
         }
+        Ok(Updated::KeptNewer) => {
+            log::info!("the hub on this computer has programs of a higher version; they stay");
+        }
+        Ok(Updated::Unchanged) => {}
+        Err(error) => log::warn!("the hub's programs were not updated: {}", error.code()),
     });
 }

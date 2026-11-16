@@ -1,8 +1,11 @@
+//! The update of the hub's programs at the app's start: the answer of the program, what it is
+//! asked, and that the update holds the one change. Stand-in programs; no unit is installed.
+
 use std::fs;
 
 use super::super::{
-    LocalHubError, carried,
-    update::{Updated, parse_updated, update, update_args},
+    Changing, LocalHubError, carried,
+    update::{Updated, claimed, parse_updated, update, update_args},
 };
 use super::programs::{RELEASE, bundle};
 
@@ -50,4 +53,25 @@ fn a_program_that_fails_updates_nothing_and_says_so() {
     let found = carried::beside(&executable, cfg!(target_os = "macos"), true, RELEASE).unwrap();
 
     assert_eq!(update(&found), Err(LocalHubError::Failed));
+}
+
+#[test]
+fn the_update_does_not_run_beside_another_change_and_holds_the_change_while_it_runs() {
+    let folder = tempfile::tempdir().unwrap();
+    let ran = folder.path().join("ran");
+    let script = format!("touch '{}'\necho '{{\"updated\":false}}'", ran.display());
+    let executable = bundle(folder.path(), cfg!(target_os = "macos"), &script);
+    let found = carried::beside(&executable, cfg!(target_os = "macos"), true, RELEASE).unwrap();
+    let changing = Changing::default();
+
+    let other = changing.claim().unwrap();
+    assert!(claimed(&changing, found.clone()).is_none());
+    assert!(!ran.exists());
+    drop(other);
+
+    let work = claimed(&changing, found).unwrap();
+    assert_eq!(changing.claim().err(), Some(LocalHubError::Busy));
+    assert_eq!(work(), Ok(Updated::Unchanged));
+    assert!(ran.exists());
+    assert!(changing.claim().is_ok());
 }

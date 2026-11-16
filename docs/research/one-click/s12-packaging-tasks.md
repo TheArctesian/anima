@@ -53,23 +53,31 @@ AppImage; the run with the operator's Developer ID (Section 6).
 
 ### 2.2 The order of the bundle step
 
-1. The clone is at the job's commit with a clean tree (as today).
-2. One `cargo build` for the five Rust programs, for each Rust target. Each is put in `binaries/`
-   and checked (universal on macOS, an x86-64 ELF file on Linux).
-3. `/bin/sh link/build.sh`. The two macOS programs are joined with `lipo`; the result has the same check.
-4. `/bin/sh apps/desktop/src-tauri/database-tree/build.sh` with `SIGN_IDENTITY` set to
-   `bundle.macOS.signingIdentity` of the clone's `tauri.conf.json` (macOS). The recipe signs each
-   Mach-O file of the tree with the hardened runtime and a secure timestamp. This is the innermost code.
-5. `tauri build --no-bundle`, then `tauri bundle`. Tauri signs each external binary, then the
-   application (nested code first).
-6. The checks of 2.3.
-7. Notarize the DMG, staple the DMG and the application, make the updater archive (as today).
+1. The clone is at the job's commit. The step rebuilds git's index from the commit before it
+   asks git for changes, so a build cannot hide a changed file (security review, M-1).
+2. The signing identity (macOS): the one that the builder application itself was built with.
+   The clone's `tauri.conf.json` must name the same one (D-5).
+3. The tree: `/bin/sh apps/desktop/src-tauri/database-tree/build.sh` with `SIGN_IDENTITY`. The
+   recipe signs each Mach-O file of the tree with the hardened runtime and a secure timestamp.
+   This is the innermost code.
+4. The link: `go mod verify`, then `/bin/sh link/build.sh`, with a fixed Go environment. The two
+   macOS programs are joined with `lipo`.
+5. One `cargo build` for the five Rust programs, for each Rust target. Each is put in `binaries/`
+   and checked (exactly `x86_64` and `arm64` on macOS, an x86-64 ELF program on Linux).
+6. `tauri build --no-bundle`, then `tauri bundle`, with the identity of step 2 in `--config`.
+   Tauri signs each external binary, then the application (nested code first).
+7. The checks of 2.3.
+8. Notarize the DMG, staple the DMG and the application, make the updater archive (as today).
+
+Directly before each use, the two scripts, `postgresql.pin`, `link/go.mod`, `link/go.sum` and
+`tauri.conf.json` must be the blobs of the commit. Steps 3 and 4 run before step 5, because
+`cargo build` runs the build scripts of the commit (security review, M-2).
 
 ### 2.3 The checks on macOS (UPD-011)
 
 For **every Mach-O file** in the application (found by its first bytes, not by its name or folder):
 
-- `lipo -archs` names `x86_64` and `arm64`.
+- `lipo -archs` names `x86_64` and `arm64` and no other architecture.
 - `codesign --verify --strict` passes with the requirement that the leaf certificate is a
   Developer ID Application certificate of the Team ID that the signing identity names.
 - `codesign -d --verbose=4` shows the `runtime` flag and a `Timestamp=` line.
@@ -119,8 +127,9 @@ step. It is never a release.
 | D-2 | The builder runs the two scripts with `/bin/sh`, never a `sh` found on `PATH`, and only from the clone at the job's commit. | S3 T11 condition (c). The scripts are part of the commit that the gates checked. |
 | D-3 | No program of the bundle has an entitlement, and the builder refuses a Mach-O file that has one. | The hardened runtime with library validation is the strongest setting. PostgreSQL loads only libraries of the tree, which have the same Team ID. The Go and Rust programs load no library of their own. |
 | D-4 | The checks of 2.3 apply to every Mach-O file of the application, found by its first bytes. | `codesign --verify --deep` does not check a file below `Contents/Resources` as code (S3 T11 condition b). A rule by content cannot miss a file that a later change adds. |
-| D-5 | The Team ID is read from the signing identity in the clone's `tauri.conf.json`. The builder reads no keychain item for it. | One source for the identity: the file that Tauri signs with (BLD-083). |
+| D-5 | The signing identity and its Team ID are those of the builder application's own build (the `tauri.conf.json` it was compiled from). The clone must name the same identity, or the bundle step fails. The builder gives this identity to Tauri in `--config` and to the tree recipe. | The commit must not choose the identity that signs it, or the team that the checks require (security review of T1, S-2). The tool check (BLD-083) tests the same identity. A change of the identity therefore needs a new builder application first. |
 | D-6 | A digest of the files decides whether the programs changed. A version number decides only one thing: `update` never replaces the hub's programs by those of a lower version. | The copy must be the carried programs, and a digest is true for a trial build also. An older copy of the application that is still on the computer must not put older hub programs on a database that a newer hub changed (security review of T4, S2). An explicit `install` still replaces. |
+| D-11 | `link/build.sh` fails when Tailcat's build tags are not found or do not leave out the port mapper. | With an empty Go module cache the script built `anima-link` with no tags (found in the Linux container trial). A link with the port mapper can open a port on the router (acceptance criterion 4). |
 | D-9 | `install`, `update`, `remove`, `start` and `stop` hold one lock in the hub root; a second one fails with "another change of the hub runs". | The application has no single-instance rule, so two copies can start an update at one time (security review of T4, S3). |
 | D-10 | When the programs are the same, the hub is not running and the operator did not stop it, `update` starts the unit. | A start that failed after the copy was in place must be tried again at the next start of the application (security review of T4, S1). |
 | D-7 | The shell starts the update; the client does not. | It is OS work (REPO-003), and it must run when no window loads. The client sees the hub's states through `local_hub_status` as today. |

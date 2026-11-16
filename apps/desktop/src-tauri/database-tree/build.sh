@@ -15,7 +15,7 @@
 #   ANIMA_POSTGRESQL_SOURCE    A source archive that is already here; it is still checked
 #                              against the pin. Unset: the archive is downloaded.
 #
-# Needs: a C compiler, make, bison, flex, perl; on Linux also patchelf and the zlib headers.
+# Needs: a C compiler, make, bison, flex, curl; on Linux also patchelf, readelf and the zlib headers.
 set -eu
 
 # The build sees a fixed environment and the system's own programs only. A variable of the
