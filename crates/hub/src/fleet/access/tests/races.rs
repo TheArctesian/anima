@@ -79,7 +79,7 @@ async fn sec_002_an_enrolment_during_a_sign_in_leaves_no_password_only_token(poo
     operator(&pool, PASSWORD).await;
     let vault = test_vault(7);
     for delay_ms in DELAYS_MS {
-        disable_totp(&pool, USERNAME).await.unwrap();
+        disable_totp(&pool, USERNAME, now()).await.unwrap();
         let left = race(&pool, delay_ms, async {
             enrol_totp(&pool, &vault, USERNAME).await.unwrap();
         })

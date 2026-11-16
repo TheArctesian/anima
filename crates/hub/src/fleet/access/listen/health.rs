@@ -34,7 +34,8 @@ const DEADLINE: Duration = Duration::from_secs(5);
 /// A longer answer is cut here; `ok` needs a few hundred bytes with headers.
 const MAX_ANSWER: u64 = 4096;
 
-const REQUEST: &[u8] = b"GET /health HTTP/1.1\r\nHost: hub\r\nConnection: close\r\n\r\n";
+/// The probe names a loopback host, which the link mode requires of every request (FRN-007).
+const REQUEST: &[u8] = b"GET /health HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n";
 
 /// Why the hub is not healthy, by kind.
 #[derive(Debug, thiserror::Error)]

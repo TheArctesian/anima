@@ -195,7 +195,7 @@ async fn sec_002_disabling_removes_the_secret_and_the_password_signs_in(pool: Pg
     operator(&pool).await;
     let vault = test_vault(7);
     enrol_totp(&pool, &vault, USERNAME).await.unwrap();
-    disable_totp(&pool, USERNAME).await.unwrap();
+    disable_totp(&pool, USERNAME, now()).await.unwrap();
 
     let stored: (Option<Vec<u8>>, Option<i64>) =
         sqlx::query_as("select totp_secret_enc, totp_last_step from access.operators")
@@ -213,7 +213,7 @@ async fn sec_002_enrolment_needs_an_existing_operator(pool: PgPool) {
     let vault = test_vault(7);
     for result in [
         enrol_totp(&pool, &vault, "nobody").await.err(),
-        disable_totp(&pool, "nobody").await.err(),
+        disable_totp(&pool, "nobody", now()).await.err(),
     ] {
         assert!(
             matches!(

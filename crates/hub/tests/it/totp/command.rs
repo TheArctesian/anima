@@ -4,6 +4,7 @@
 
 use std::{
     io::Write as _,
+    os::fd::OwnedFd,
     process::{Command, Stdio},
 };
 
@@ -14,7 +15,7 @@ use sqlx::PgPool;
 
 use super::{assert_refused_like_a_wrong_password, code, enrol, login, secret_of, signed_in};
 use crate::{
-    hub::{Hub, PASSWORD, USERNAME, set_operator},
+    hub::{Hub, PASSWORD, USERNAME, error, set_operator, unauthenticated},
     start::url_for,
 };
 
@@ -26,6 +27,12 @@ fn hub_command(pool: &PgPool, args: &[&str]) -> (bool, String, String) {
 
 /// [`hub_command`] with `input` on standard input.
 fn hub_command_with(pool: &PgPool, args: &[&str], input: &[u8]) -> (bool, String, String) {
+    run_hub(pool, args, Stdio::piped(), input)
+}
+
+/// Runs `anima-hub` with `stdin` as its standard input, and writes `input` to it when it is a
+/// pipe.
+fn run_hub(pool: &PgPool, args: &[&str], stdin: Stdio, input: &[u8]) -> (bool, String, String) {
     let database = pool.connect_options().get_database().unwrap().to_owned();
     let mut url_file = tempfile::NamedTempFile::new().unwrap();
     write!(url_file, "{}", url_for(&database)).unwrap();
@@ -38,13 +45,15 @@ fn hub_command_with(pool: &PgPool, args: &[&str], input: &[u8]) -> (bool, String
         .env("ANIMA_LOG", "error")
         .env("ANIMA_LISTEN", "127.0.0.1:0")
         .args(args)
-        .stdin(Stdio::piped())
+        .stdin(stdin)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
         .unwrap();
     // A command that reads nothing may end first; the write then fails, which is fine.
-    let _ = child.stdin.take().unwrap().write_all(input);
+    if let Some(mut pipe) = child.stdin.take() {
+        let _ = pipe.write_all(input);
+    }
     let output = child.wait_with_output().unwrap();
     let text = |bytes: Vec<u8>| String::from_utf8(bytes).unwrap();
     (
@@ -208,4 +217,47 @@ async fn sec_002_frn_004_operator_create_saves_both_factors_and_uses_the_code(po
     let later = Hub::new(&pool, next);
     let next_code = code(&secret_bytes, next);
     assert!(signed_in(&login(&later, PASSWORD, Some(&next_code)).await));
+}
+
+/// The two ends of a new pseudo-terminal: the controller, and the terminal side as a file.
+fn pseudo_terminal() -> (OwnedFd, std::fs::File) {
+    use rustix::pty::{OpenptFlags, grantpt, openpt, ptsname, unlockpt};
+    let controller = openpt(OpenptFlags::RDWR | OpenptFlags::NOCTTY).unwrap();
+    grantpt(&controller).unwrap();
+    unlockpt(&controller).unwrap();
+    let name = ptsname(&controller, Vec::new()).unwrap();
+    let terminal = std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(name.to_str().unwrap())
+        .unwrap();
+    (controller, terminal)
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn log_007_operator_create_refuses_a_terminal_that_would_echo_the_secrets(pool: PgPool) {
+    let (_controller, terminal) = pseudo_terminal();
+    let (ok, stdout, stderr) = run_hub(
+        &pool,
+        &["operator", "create", USERNAME],
+        Stdio::from(terminal),
+        b"",
+    );
+    assert!(!ok);
+    assert_eq!(stdout, "");
+    assert!(stderr.contains("pipe the three lines in"), "{stderr}");
+    assert_eq!(operators(&pool).await, 0);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn d_9_operator_totp_disable_signs_every_client_out(pool: PgPool) {
+    set_operator(&pool).await;
+    let hub = Hub::new(&pool, Utc::now());
+    let token = hub.token().await;
+    let (ok, _, stderr) = hub_command(&pool, &["operator", "totp", USERNAME, "--disable"]);
+    assert!(ok, "{stderr}");
+    let me = hub
+        .post(Some(&token), "{ me { username } }", json!({}))
+        .await;
+    assert_eq!(error(&me), unauthenticated());
 }
