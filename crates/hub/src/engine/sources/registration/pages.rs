@@ -61,7 +61,9 @@ impl Notice {
             }
             Self::StepPassed => "This step is done. Go back to Anima.ing to see what comes next.",
             Self::TryAgain => "Anima.ing could not finish this step. Try again in a moment.",
-            Self::Connected => "GitHub is connected. You can close this tab and go back to Anima.ing.",
+            Self::Connected => {
+                "GitHub is connected. You can close this tab and go back to Anima.ing."
+            }
             Self::Finishing => {
                 "The App is made. Anima.ing finishes the connection when GitHub \
                 shows it is installed. You can close this tab."
