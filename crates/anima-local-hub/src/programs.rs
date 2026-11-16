@@ -20,6 +20,7 @@ use crate::members::{Carried, LOCAL_HUB, PROGRAMS};
 pub mod digest;
 #[cfg(test)]
 pub(crate) mod tests;
+pub mod version;
 
 /// More entries or deeper folders than a PostgreSQL tree has by far (about 1 000 and 6).
 const MOST_ENTRIES: usize = 20_000;
@@ -107,6 +108,20 @@ pub fn put_in_place(folders: &Folders) -> Result<(), CopyError> {
         return Err(io_error("move", &next)(error));
     }
     remove_folder(&previous)
+}
+
+/// Puts `programs/previous` back as `programs/current` when a stop of the computer or a kill
+/// came between the two moves of [`put_in_place`] and left no `current`. The caller holds the
+/// lock of the change.
+///
+/// # Errors
+/// When the folder cannot be moved.
+pub fn recover(folders: &Folders) -> Result<(), CopyError> {
+    let (current, previous) = (folders.programs(), folders.programs_replaced());
+    if current.symlink_metadata().is_err() && previous.symlink_metadata().is_ok() {
+        fs::rename(&previous, &current).map_err(io_error("move", &previous))?;
+    }
+    Ok(())
 }
 
 /// Removes every copy of the programs. The database, the key and the logs are elsewhere.

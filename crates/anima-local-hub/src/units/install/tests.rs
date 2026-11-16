@@ -38,6 +38,7 @@ impl Rig {
             folders: &self.folders,
             listen: None,
             stop_limit: Duration::from_millis(300),
+            version: "1.0.0",
         }
     }
 

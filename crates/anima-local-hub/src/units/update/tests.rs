@@ -1,5 +1,6 @@
 //! `update` (D-6): the programs change only when the application carries others.
 
+use std::cell::Cell;
 use std::fs;
 use std::path::PathBuf;
 use std::time::Duration;
@@ -7,8 +8,9 @@ use std::time::Duration;
 use anima_database::Platform;
 use tempfile::TempDir;
 
-use super::update;
+use super::{Outcome, update};
 use crate::programs::tests::carried;
+use crate::units::install::InstallError;
 use crate::units::install::{self, Request, is_installed};
 use crate::{Carried, Folders};
 
@@ -16,6 +18,8 @@ struct Rig {
     folder: TempDir,
     folders: Folders,
     source: Carried,
+    /// The version of the programs that the application carries.
+    version: Cell<&'static str>,
 }
 
 fn rig() -> Rig {
@@ -26,25 +30,24 @@ fn rig() -> Rig {
         folder,
         folders,
         source,
-    }
-}
-
-fn recorded(ran: &mut Vec<String>) -> impl FnMut(&crate::units::Step) -> std::io::Result<bool> {
-    |step| {
-        ran.push(format!("{} {}", step.program, step.args.join(" ")));
-        Ok(true)
+        version: Cell::new("1.0.0"),
     }
 }
 
 impl Rig {
     fn request(&self) -> Request<'_> {
+        self.request_on(Platform::MacOs)
+    }
+
+    fn request_on(&self, platform: Platform) -> Request<'_> {
         Request {
-            platform: Platform::MacOs,
+            platform,
             uid: nix::unistd::Uid::effective().as_raw(),
             home: Box::leak(self.folder.path().join("home").into_boxed_path()),
             folders: &self.folders,
             listen: None,
             stop_limit: Duration::from_millis(300),
+            version: self.version.get(),
         }
     }
 
@@ -53,9 +56,22 @@ impl Rig {
     }
 
     fn update(&self) -> (bool, Vec<String>) {
+        let (outcome, ran) = self.outcome(Platform::MacOs, |_| true);
+        (outcome.unwrap().replaced(), ran)
+    }
+
+    /// Updates with each step answered by `answer`.
+    fn outcome(
+        &self,
+        platform: Platform,
+        answer: impl Fn(&crate::units::Step) -> bool,
+    ) -> (Result<Outcome, InstallError>, Vec<String>) {
         let mut ran = Vec::new();
-        let updated = update(&self.request(), &self.source, recorded(&mut ran)).unwrap();
-        (updated, ran)
+        let outcome = update(&self.request_on(platform), &self.source, |step| {
+            ran.push(format!("{} {}", step.program, step.args.join(" ")));
+            Ok(answer(step))
+        });
+        (outcome, ran)
     }
 
     fn installed_program(&self) -> String {
@@ -105,6 +121,9 @@ impl Rig {
 /// What a test does to a rig, with what it is.
 type Act = (&'static str, fn(&Rig));
 
+mod guards;
+mod listen;
+
 const STOP: &str = "/bin/launchctl bootout";
 
 fn is_stop_then_start(ran: &[String]) -> bool {
@@ -129,6 +148,8 @@ fn a_copy_that_is_the_same_runs_no_step_and_stays_as_it_is() {
     rig.install();
     let marker = rig.folders.programs().join("bin/kept");
     fs::write(&marker, "this file is not in the source").unwrap();
+    // A hub that runs: nothing is to be started.
+    let _runs = crate::run::lock(&rig.folders).unwrap();
 
     let (updated, ran) = rig.update();
 
@@ -168,9 +189,12 @@ fn a_changed_set_is_put_in_place_with_a_stop_and_a_start() {
         assert!(updated, "{what}");
         assert!(is_stop_then_start(&ran), "{what}: {ran:?}");
         let (again, ran) = rig.update();
+        let replaced = ran
+            .iter()
+            .any(|step| step.contains("bootout") || step.contains("bootstrap"));
         assert!(
-            !again && ran.is_empty(),
-            "{what}: the copy is the source now"
+            !again && !replaced,
+            "{what}: the copy is the source now: {ran:?}"
         );
     }
 }

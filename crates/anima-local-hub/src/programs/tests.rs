@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 use tempfile::TempDir;
 
 mod digest;
+mod version;
 
 use super::{CopyError, are_in_place, copy, put_in_place, remove};
 use crate::members::PROGRAMS;

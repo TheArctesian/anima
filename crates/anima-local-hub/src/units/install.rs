@@ -12,6 +12,8 @@ use std::time::{Duration, Instant};
 
 use anima_database::{Platform, owner_only};
 
+use super::change_lock;
+use super::listen;
 use super::steps::Step;
 use super::trust;
 use super::unit_file::{self, LABEL, Launch, RenderError, SYSTEMD_UNIT};
@@ -50,6 +52,8 @@ pub enum InstallError {
     StillRunning,
     #[error("the hub is not installed; install it first")]
     NotInstalled,
+    #[error("another change of the hub runs")]
+    Busy,
 }
 
 /// Whose unit, and for which hub.
@@ -63,6 +67,8 @@ pub struct Request<'a> {
     pub listen: Option<SocketAddr>,
     /// How long the running hub may take to stop after the unit was told to stop it.
     pub stop_limit: Duration,
+    /// The version of the programs that `source` holds; it is written beside the copy.
+    pub version: &'a str,
 }
 
 impl Request<'_> {
@@ -146,6 +152,8 @@ pub fn install(
     source: &Carried,
     run: impl FnMut(&Step) -> io::Result<bool>,
 ) -> Result<PathBuf, InstallError> {
+    let _change = change_lock::take(request.folders)?;
+    programs::recover(request.folders)?;
     replace(request, source, run, Then::Start)
 }
 
@@ -171,10 +179,13 @@ pub(super) fn replace(
     owner_only::folder(root).map_err(write_error(root))?;
     private(root, request.uid)?;
     programs::copy(source, request.folders)?;
+    programs::version::write(&request.folders.programs_being_copied(), request.version)?;
     run_steps(&[request.stop()], &mut run)?;
     wait_until_stopped(request)?;
     programs::put_in_place(request.folders)?;
     write_unit(&file, &text, request.uid)?;
+    listen::record(request.folders, request.listen)
+        .map_err(write_error(&request.folders.listen_file()))?;
     if then == Then::Start {
         clear_stop_mark(request)?;
         run_steps(&request.start(&file), &mut run)?;
@@ -194,6 +205,7 @@ pub fn remove(
     request: &Request<'_>,
     mut run: impl FnMut(&Step) -> io::Result<bool>,
 ) -> Result<(), InstallError> {
+    let _change = change_lock::take(request.folders)?;
     let file = request.unit_file();
     clear_stop_mark(request)?;
     run_steps(&[request.retire()], &mut run)?;
@@ -207,6 +219,7 @@ pub fn remove(
         run_steps(&[Step::systemctl(&["daemon-reload"]).may_fail()], &mut run)?;
     }
     programs::remove(request.folders)?;
+    listen::record(request.folders, None).map_err(write_error(&request.folders.listen_file()))?;
     Ok(())
 }
 
@@ -219,6 +232,7 @@ pub fn stop(
     request: &Request<'_>,
     mut run: impl FnMut(&Step) -> io::Result<bool>,
 ) -> Result<(), InstallError> {
+    let _change = change_lock::take(request.folders)?;
     // The mark first: a stop that fails half way is still the operator's.
     stop_marker::set(request.folders)
         .map_err(write_error(&request.folders.stopped_by_operator()))?;
@@ -232,6 +246,15 @@ pub fn stop(
 /// # Errors
 /// [`InstallError::NotInstalled`] when there is no unit to start, or when a command fails.
 pub fn start(
+    request: &Request<'_>,
+    run: impl FnMut(&Step) -> io::Result<bool>,
+) -> Result<(), InstallError> {
+    let _change = change_lock::take(request.folders)?;
+    start_unit(request, run)
+}
+
+/// [`start`] for a caller that holds the lock of the change.
+pub(super) fn start_unit(
     request: &Request<'_>,
     mut run: impl FnMut(&Step) -> io::Result<bool>,
 ) -> Result<(), InstallError> {
@@ -292,7 +315,7 @@ fn wait_until_stopped(request: &Request<'_>) -> Result<(), InstallError> {
     Ok(())
 }
 
-fn write_error(path: &Path) -> impl FnOnce(io::Error) -> InstallError + '_ {
+pub(super) fn write_error(path: &Path) -> impl FnOnce(io::Error) -> InstallError + '_ {
     move |error| InstallError::Write {
         path: path.to_path_buf(),
         kind: error.kind(),
