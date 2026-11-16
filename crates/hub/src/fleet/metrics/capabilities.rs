@@ -58,9 +58,8 @@ pub struct DeviceCapabilities {
 /// Each of `found` with its device, in device-name order (byte order, then ID). One whose
 /// device is not in `devices` (deleted meanwhile) is left out.
 #[must_use]
-pub fn with_devices(found: Vec<Capabilities>, devices: Vec<Device>) -> Vec<DeviceCapabilities> {
+pub fn with_devices(found: Vec<Capabilities>, mut devices: Vec<Device>) -> Vec<DeviceCapabilities> {
     let mut joined: Vec<DeviceCapabilities> = Vec::new();
-    let mut devices = devices;
     for capabilities in found {
         let Some(at) = devices
             .iter()
