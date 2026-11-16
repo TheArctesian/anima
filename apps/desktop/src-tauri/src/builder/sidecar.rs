@@ -8,6 +8,7 @@
 use std::path::{Path, PathBuf};
 
 use super::{
+    artifact,
     job::{Target, Version},
     plan::{Command, Program, command},
 };
@@ -32,8 +33,10 @@ fn triples(target: Target) -> &'static [&'static str] {
 /// so its output has no target folder.
 fn built(clone: &Path, target: Target, triple: &str) -> PathBuf {
     match target {
-        Target::LinuxX86_64 => clone.join("target/release/anima"),
-        Target::DarwinUniversal => clone.join(format!("target/{triple}/release/anima")),
+        Target::LinuxX86_64 => artifact::target_folder(clone).join("release/anima"),
+        Target::DarwinUniversal => {
+            artifact::target_folder(clone).join(format!("{triple}/release/anima"))
+        }
     }
 }
 

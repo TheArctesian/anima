@@ -1,12 +1,17 @@
-//! The hub's origin: HTTPS only, nothing after the host (MET-020, K8 Section 1).
+//! The hub's origin: HTTPS on port 443, or the local port of `anima-link` in the link mode;
+//! nothing after the host (MET-020, K8 Section 1).
 
 use reqwest::Url;
 
 /// The hub's public origin when the operator names none (K8 Section 1).
 pub const DEFAULT_HUB: &str = "https://hub.anima.ing";
 
-/// An `https` origin: scheme and host on port 443 (MET-020), with no user, path, query or
-/// fragment.
+/// The lowest port a link origin may name. It only refuses a port that `anima-link`, which runs
+/// as a plain user, does not listen on; it protects nothing.
+const LOWEST_LINK_PORT: u16 = 1024;
+
+/// An `https` origin, scheme and host on port 443, or a link origin, `http://127.0.0.1:<port>`
+/// (MET-020); with no user, path, query or fragment.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Origin(Url);
 
@@ -14,24 +19,32 @@ pub struct Origin(Url);
 pub enum OriginError {
     #[error("the hub origin is not a URL")]
     NotUrl,
-    #[error("the hub origin must start with https://")]
-    NotHttps,
+    #[error("the hub origin must start with https://, or be http://127.0.0.1:<port> of anima-link")]
+    Scheme,
     #[error("the hub origin must be only scheme and host, like https://hub.anima.ing")]
     NotOrigin,
     #[error("the hub origin must use port 443")]
     Port,
+    #[error(
+        "the link origin must name the port of anima-link, from 1024, like http://127.0.0.1:8443"
+    )]
+    LinkPort,
 }
 
 impl Origin {
-    /// The origin `text` spells; refuses `http` and anything beyond scheme, host and port.
+    /// The origin `text` spells; refuses `http` to any host but `127.0.0.1`, and anything beyond
+    /// scheme, host and port.
     ///
     /// # Errors
     /// [`OriginError`] naming what is wrong.
     pub fn parse(text: &str) -> Result<Self, OriginError> {
         let url = Url::parse(text).map_err(|_| OriginError::NotUrl)?;
-        if url.scheme() != "https" {
-            return Err(OriginError::NotHttps);
-        }
+        let link = match url.scheme() {
+            "https" => false,
+            // The URL parser spells every form of an IPv4 address as four decimal numbers.
+            "http" if url.host_str() == Some("127.0.0.1") => true,
+            _ => return Err(OriginError::Scheme),
+        };
         let bare = url.host_str().is_some()
             && !text.contains('@')
             && url.username().is_empty()
@@ -42,10 +55,12 @@ impl Origin {
         if !bare {
             return Err(OriginError::NotOrigin);
         }
-        if url.port().is_some() {
-            return Err(OriginError::Port);
+        match (link, url.port()) {
+            (false, None) => Ok(Self(url)),
+            (false, Some(_)) => Err(OriginError::Port),
+            (true, Some(port)) if port >= LOWEST_LINK_PORT => Ok(Self(url)),
+            (true, _) => Err(OriginError::LinkPort),
         }
-        Ok(Self(url))
     }
 
     /// [`DEFAULT_HUB`].
@@ -87,9 +102,59 @@ mod tests {
             "ws://hub.anima.ing",
             "ftp://hub.anima.ing",
         ] {
-            assert_eq!(Origin::parse(text), Err(OriginError::NotHttps), "{text}");
+            assert_eq!(Origin::parse(text), Err(OriginError::Scheme), "{text}");
         }
         assert_eq!(Origin::parse("hub.anima.ing"), Err(OriginError::NotUrl));
+    }
+
+    #[test]
+    fn met_020_the_local_port_of_the_link_is_an_origin() {
+        let link = Origin::parse("http://127.0.0.1:8443").expect("a link origin");
+        assert_eq!(link.as_text(), "http://127.0.0.1:8443");
+        assert_eq!(link.url().as_str(), "http://127.0.0.1:8443/");
+    }
+
+    #[test]
+    fn met_020_http_reaches_no_host_but_this_computer() {
+        for text in [
+            "http://localhost:8443",
+            "http://127.0.0.2:8443",
+            "http://[::1]:8443",
+            "http://0.0.0.0:8443",
+            "http://192.0.2.7:8443",
+            "http://127.0.0.1.example:8443",
+            "http://evil.example\\@127.0.0.1:8443",
+            "http://127.0.0.1:8443@evil.example",
+            "http://[::ffff:127.0.0.1]:8443",
+        ] {
+            assert_eq!(Origin::parse(text), Err(OriginError::Scheme), "{text}");
+        }
+    }
+
+    #[test]
+    fn met_020_a_link_origin_names_a_port_from_1024() {
+        for text in [
+            "http://127.0.0.1",
+            "http://127.0.0.1:80",
+            "http://127.0.0.1:0",
+            "http://127.0.0.1:1023",
+        ] {
+            assert_eq!(Origin::parse(text), Err(OriginError::LinkPort), "{text}");
+        }
+        assert!(Origin::parse("http://127.0.0.1:1024").is_ok());
+        assert!(Origin::parse("http://127.0.0.1:65535").is_ok());
+    }
+
+    #[test]
+    fn met_020_a_link_origin_with_more_than_scheme_host_and_port_is_refused() {
+        for text in [
+            "http://127.0.0.1:8443/agent",
+            "http://user@127.0.0.1:8443",
+            "http://127.0.0.1:8443/?x=1",
+            "http://127.0.0.1:8443/#top",
+        ] {
+            assert_eq!(Origin::parse(text), Err(OriginError::NotOrigin), "{text}");
+        }
     }
 
     #[test]

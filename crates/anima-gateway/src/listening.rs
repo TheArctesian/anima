@@ -23,6 +23,9 @@ const SERVER_BUSY: u16 = 0x0201;
 pub const WORKER: &str = "session";
 /// The option that names another gateway for the protocols this one does not serve.
 pub const OTHER_GATEWAY: &str = "--other-gateway";
+/// The option that names a protocol that goes to the other gateway though this one serves
+/// it.
+pub const PASS: &str = "--pass";
 
 /// How a worker is started.
 #[derive(Clone, Debug)]
@@ -30,6 +33,8 @@ pub struct Workers {
     /// The gateway program itself.
     pub program: PathBuf,
     pub other_gateway: Option<String>,
+    /// Protocols that go to the other gateway though this one serves them.
+    pub passed: Vec<String>,
     /// The most sessions at one time; [`MOST_SESSIONS`] for the program.
     pub most_sessions: usize,
 }
@@ -77,6 +82,9 @@ fn start(connection: TcpStream, workers: &Workers) -> io::Result<Child> {
     command.arg(WORKER);
     if let Some(other) = &workers.other_gateway {
         command.arg(OTHER_GATEWAY).arg(other);
+    }
+    for protocol in &workers.passed {
+        command.arg(PASS).arg(protocol);
     }
     command
         .env_clear()

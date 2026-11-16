@@ -86,7 +86,11 @@ where
         }
         bytes = &bytes[written..];
     }
-    Ok(())
+    // A TLS connection keeps what it could not send at once: it goes out here.
+    match timeout(wait, to.flush()).await {
+        Ok(flushed) => flushed,
+        Err(_) => Err(io::ErrorKind::TimedOut.into()),
+    }
 }
 
 /// Reads and decodes until the hub closes, sends bytes that do not decode, or the session

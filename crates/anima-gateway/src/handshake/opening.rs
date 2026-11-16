@@ -7,6 +7,7 @@ use std::net::{IpAddr, SocketAddr};
 use zeroize::Zeroizing;
 
 use super::Refused;
+use super::rdp::Rdp;
 use crate::frames::Formats;
 use crate::screen::MAX_SIDE;
 
@@ -34,6 +35,13 @@ impl fmt::Debug for Secret {
     }
 }
 
+/// Which kind of device the session shows, with what only that kind has.
+#[derive(Debug)]
+pub enum Desktop {
+    Vnc,
+    Rdp(Rdp),
+}
+
 /// One session, as the hub opened it.
 #[derive(Debug)]
 pub struct Opening {
@@ -49,6 +57,7 @@ pub struct Opening {
     /// The client's view, in pixels.
     pub view: (usize, usize),
     pub formats: Formats,
+    pub desktop: Desktop,
 }
 
 impl Opening {
@@ -56,6 +65,7 @@ impl Opening {
     /// in `args`, in that order.
     pub(super) fn from_connect(
         mut args: Vec<String>,
+        rdp: bool,
         view: (usize, usize),
         formats: Formats,
     ) -> Result<Self, Refused> {
@@ -63,9 +73,16 @@ impl Opening {
         // The values may hold a password: each is zeroed when this function ends, however
         // it ends.
         let values = Zeroizing::new(args.split_off(args.len().min(1)));
-        // One value for each name in `ARGUMENTS`, in its order.
-        let [hostname, port, username, password, no_copy, no_paste] = values.as_slice() else {
+        // One value for each name in `ARGUMENTS`, in its order, then those of RDP.
+        let Some(([hostname, port, username, password, no_copy, no_paste], more)) =
+            values.split_first_chunk()
+        else {
             return Err(bad("connect"));
+        };
+        let desktop = match (rdp, more) {
+            (true, more) => Desktop::Rdp(Rdp::from_values(more)?),
+            (false, []) => Desktop::Vnc,
+            (false, _) => return Err(bad("connect")),
         };
         let address: IpAddr = hostname.parse().map_err(|_| bad("hostname"))?;
         if !may_be_a_device(address) {
@@ -84,6 +101,7 @@ impl Opening {
             paste: no_paste != "true",
             view,
             formats,
+            desktop,
         })
     }
 }

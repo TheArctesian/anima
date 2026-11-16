@@ -46,12 +46,17 @@ pub(super) struct Opened {
 /// How the opening goes on after the first instruction.
 pub(super) enum First {
     Vnc(Opening),
-    /// `select` of a protocol the gateway does not serve: for another gateway, if any.
+    /// `select` of a protocol the gateway does not serve, or is told to pass on: for
+    /// another gateway, if any.
     Other(Instruction),
 }
 
 /// Reads the hub's handshake up to `connect` and answers it with `ready`.
-pub(super) async fn handshake<S>(hub: &mut Hub<S>, connection_id: &str) -> Result<First, Ended>
+pub(super) async fn handshake<S>(
+    hub: &mut Hub<S>,
+    connection_id: &str,
+    passed: &[String],
+) -> Result<First, Ended>
 where
     S: AsyncRead + AsyncWrite + Send + 'static,
 {
@@ -59,6 +64,14 @@ where
     for _ in 0..MOST_BEFORE_CONNECT {
         let instruction = hub.next().await.ok_or(Ended::ByHub)?;
         let select = instruction.opcode == "select";
+        if select
+            && instruction
+                .args
+                .first()
+                .is_some_and(|name| passed.contains(name))
+        {
+            return Ok(First::Other(instruction));
+        }
         let kept = select.then(|| instruction.clone());
         match handshake.on_instruction(instruction) {
             Ok(Step::Send(args)) => hub.send(&[args]).await.map_err(|_| Ended::ByHub)?,
@@ -153,7 +166,7 @@ where
 
 /// Asks the operator for each credential in `needs` that the hub did not send, and puts
 /// the answers into `opening`.
-async fn ask_for_missing<S>(
+pub(super) async fn ask_for_missing<S>(
     hub: &mut Hub<S>,
     opening: &mut Opening,
     needs: &[Credential],
