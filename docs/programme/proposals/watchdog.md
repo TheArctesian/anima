@@ -266,11 +266,11 @@ The tier of this proposal is decision OD-W22 of the work plan.
 
 ## Tasks
 
-No task is started. The states obey PLN-007.
+G1 is in progress. The other tasks are not started. The states obey PLN-007.
 
 | Task | Content | Needs | State | Commits |
 | --- | --- | --- | --- | --- |
-| G1 | A prototype on one Linux machine and one Mac: the signs of "stopped by a person" for each supervisor (WDG-025), the states to wait for (WDG-023), and the right of WDG-040. A record with measured results. | — | Not started | — |
+| G1 | A prototype on one Linux machine and one Mac: the signs of "stopped by a person" for each supervisor (WDG-025), the states to wait for (WDG-023), and the right of WDG-040. A record with measured results. | — | In progress. The Mac part (launchd, Docker) is measured: [g1-supervisors.md](../../research/watchdog/g1-supervisors.md). Open: systemd and WDG-040 on the operator's Linux machine. | — |
 | G2 | The contract: the report of WDG-031, the list of WDG-005, the check type `watch`. | A ruling for OD-W10 and for K8 | Not started | — |
 | G3 | The pure rules in `agent-core`: probe count, delays, limit, the states (WDG-010 to WDG-017). | G2 | Not started | — |
 | G4 | The agent: read the supervisors, restart through them, the second unit, `anima-agent watch`. | G1, G3 | Not started | — |

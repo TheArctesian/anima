@@ -1,0 +1,95 @@
+== L1 KeepAlive true, serve: the process is killed with SIGKILL (a crash)
+state = running;runs = 1;pid = 79862;immediate reason = speculative;last exit code = (never exited);state = active;state = active;spawn type = daemon (3);properties = keepalive | runatload | inferred program;
+t+00s state = spawn scheduled;runs = 1;last terminating signal = Killed: 9;state = active;state = active;spawn type = daemon (3);properties = keepalive | runatload | inferred program;
+t+01s state = spawn scheduled;runs = 1;last terminating signal = Killed: 9;state = active;state = active;spawn type = daemon (3);properties = keepalive | runatload | inferred program;
+t+02s state = spawn scheduled;runs = 1;last terminating signal = Killed: 9;state = active;state = active;spawn type = daemon (3);properties = keepalive | runatload | inferred program;
+t+03s state = spawn scheduled;runs = 1;last terminating signal = Killed: 9;state = active;state = active;spawn type = daemon (3);properties = keepalive | runatload | inferred program;
+t+04s state = spawn scheduled;runs = 1;last terminating signal = Killed: 9;state = active;state = active;spawn type = daemon (3);properties = keepalive | runatload | inferred program;
+t+05s state = spawn scheduled;runs = 1;last terminating signal = Killed: 9;state = active;state = active;spawn type = daemon (3);properties = keepalive | runatload | inferred program;
+t+06s state = spawn scheduled;runs = 1;last terminating signal = Killed: 9;state = active;state = active;spawn type = daemon (3);properties = keepalive | runatload | inferred program;
+t+07s state = spawn scheduled;runs = 1;last terminating signal = Killed: 9;state = active;state = active;spawn type = daemon (3);properties = keepalive | runatload | inferred program;
+t+08s state = running;runs = 2;pid = 80349;immediate reason = inefficient;last terminating signal = Killed: 9;state = active;state = active;spawn type = daemon (3);properties = keepalive | runatload | inferred program;
+t+09s state = running;runs = 2;pid = 80349;immediate reason = inefficient;last terminating signal = Killed: 9;state = active;state = active;spawn type = daemon (3);properties = keepalive | runatload | inferred program;
+t+10s state = running;runs = 2;pid = 80349;immediate reason = inefficient;last terminating signal = Killed: 9;state = active;state = active;spawn type = daemon (3);properties = keepalive | runatload | inferred program;
+t+11s state = running;runs = 2;pid = 80349;immediate reason = inefficient;last terminating signal = Killed: 9;state = active;state = active;spawn type = daemon (3);properties = keepalive | runatload | inferred program;
+== L2 KeepAlive true, serve: launchctl kill SIGTERM (a person)
+t+00s state = spawn scheduled;runs = 2;last exit code = 0;state = active;state = active;spawn type = daemon (3);properties = keepalive | runatload | inferred program;
+t+01s state = spawn scheduled;runs = 2;last exit code = 0;state = active;state = active;spawn type = daemon (3);properties = keepalive | runatload | inferred program;
+t+02s state = spawn scheduled;runs = 2;last exit code = 0;state = active;state = active;spawn type = daemon (3);properties = keepalive | runatload | inferred program;
+t+03s state = spawn scheduled;runs = 2;last exit code = 0;state = active;state = active;spawn type = daemon (3);properties = keepalive | runatload | inferred program;
+t+04s state = spawn scheduled;runs = 2;last exit code = 0;state = active;state = active;spawn type = daemon (3);properties = keepalive | runatload | inferred program;
+t+05s state = spawn scheduled;runs = 2;last exit code = 0;state = active;state = active;spawn type = daemon (3);properties = keepalive | runatload | inferred program;
+t+06s state = running;runs = 3;pid = 80849;immediate reason = inefficient;last exit code = 0;state = active;state = active;spawn type = daemon (3);properties = keepalive | runatload | inferred program;
+t+07s state = running;runs = 3;pid = 80849;immediate reason = inefficient;last exit code = 0;state = active;state = active;spawn type = daemon (3);properties = keepalive | runatload | inferred program;
+t+08s state = running;runs = 3;pid = 80849;immediate reason = inefficient;last exit code = 0;state = active;state = active;spawn type = daemon (3);properties = keepalive | runatload | inferred program;
+t+09s state = running;runs = 3;pid = 80849;immediate reason = inefficient;last exit code = 0;state = active;state = active;spawn type = daemon (3);properties = keepalive | runatload | inferred program;
+t+10s state = running;runs = 3;pid = 80849;immediate reason = inefficient;last exit code = 0;state = active;state = active;spawn type = daemon (3);properties = keepalive | runatload | inferred program;
+t+11s state = running;runs = 3;pid = 80849;immediate reason = inefficient;last exit code = 0;state = active;state = active;spawn type = daemon (3);properties = keepalive | runatload | inferred program;
+== L3 KeepAlive true, serve: launchctl disable, then launchctl bootout (a person)
+state = running;runs = 3;pid = 80849;immediate reason = inefficient;last exit code = 0;state = active;state = active;spawn type = daemon (3);properties = keepalive | runatload | inferred program;
+		"ing.anima.g1.watch" => disabled
+Could not find service "ing.anima.g1.watch" in domain for user gui: 501;
+		"ing.anima.g1.watch" => disabled
+== L4 KeepAlive SuccessfulExit=false, crash after 2 s with code 1: launchd throttles
+t+00s state = spawn scheduled;runs = 1;last exit code = 1;state = active;state = active;spawn type = daemon (3);properties = runatload | inferred program;
+t+01s state = spawn scheduled;runs = 1;last exit code = 1;state = active;state = active;spawn type = daemon (3);properties = runatload | inferred program;
+t+02s state = spawn scheduled;runs = 1;last exit code = 1;state = active;state = active;spawn type = daemon (3);properties = runatload | inferred program;
+t+03s state = spawn scheduled;runs = 1;last exit code = 1;state = active;state = active;spawn type = daemon (3);properties = runatload | inferred program;
+t+04s state = spawn scheduled;runs = 1;last exit code = 1;state = active;state = active;spawn type = daemon (3);properties = runatload | inferred program;
+t+05s state = spawn scheduled;runs = 1;last exit code = 1;state = active;state = active;spawn type = daemon (3);properties = runatload | inferred program;
+t+06s state = spawn scheduled;runs = 1;last exit code = 1;state = active;state = active;spawn type = daemon (3);properties = runatload | inferred program;
+t+07s state = spawn scheduled;runs = 1;last exit code = 1;state = active;state = active;spawn type = daemon (3);properties = runatload | inferred program;
+t+08s state = running;runs = 2;pid = 81688;immediate reason = semaphore;last exit code = 1;state = active;state = active;spawn type = daemon (3);properties = runatload | inferred program;
+t+09s state = running;runs = 2;pid = 81688;immediate reason = semaphore;last exit code = 1;state = active;state = active;spawn type = daemon (3);properties = runatload | inferred program;
+t+10s state = spawn scheduled;runs = 2;last exit code = 1;state = active;state = active;spawn type = daemon (3);properties = runatload | inferred program;
+t+11s state = spawn scheduled;runs = 2;last exit code = 1;state = active;state = active;spawn type = daemon (3);properties = runatload | inferred program;
+t+12s state = spawn scheduled;runs = 2;last exit code = 1;state = active;state = active;spawn type = daemon (3);properties = runatload | inferred program;
+t+13s state = spawn scheduled;runs = 2;last exit code = 1;state = active;state = active;spawn type = daemon (3);properties = runatload | inferred program;
+t+14s state = spawn scheduled;runs = 2;last exit code = 1;state = active;state = active;spawn type = daemon (3);properties = runatload | inferred program;
+t+15s state = spawn scheduled;runs = 2;last exit code = 1;state = active;state = active;spawn type = daemon (3);properties = runatload | inferred program;
+t+16s state = spawn scheduled;runs = 2;last exit code = 1;state = active;state = active;spawn type = daemon (3);properties = runatload | inferred program;
+t+17s state = spawn scheduled;runs = 2;last exit code = 1;state = active;state = active;spawn type = daemon (3);properties = runatload | inferred program;
+t+18s state = running;runs = 3;pid = 82178;immediate reason = semaphore;last exit code = 1;state = active;state = active;spawn type = daemon (3);properties = runatload | inferred program;
+t+19s state = running;runs = 3;pid = 82178;immediate reason = semaphore;last exit code = 1;state = active;state = active;spawn type = daemon (3);properties = runatload | inferred program;
+t+20s state = spawn scheduled;runs = 3;last exit code = 1;state = active;state = active;spawn type = daemon (3);properties = runatload | inferred program;
+t+21s state = spawn scheduled;runs = 3;last exit code = 1;state = active;state = active;spawn type = daemon (3);properties = runatload | inferred program;
+t+22s state = spawn scheduled;runs = 3;last exit code = 1;state = active;state = active;spawn type = daemon (3);properties = runatload | inferred program;
+t+23s state = spawn scheduled;runs = 3;last exit code = 1;state = active;state = active;spawn type = daemon (3);properties = runatload | inferred program;
+t+24s state = spawn scheduled;runs = 3;last exit code = 1;state = active;state = active;spawn type = daemon (3);properties = runatload | inferred program;
+== L5 KeepAlive SuccessfulExit=false, serve: launchctl kill SIGTERM (a person, exit 0)
+t+00s state = not running;runs = 1;last exit code = 0;state = active;state = active;spawn type = daemon (3);properties = runatload | inferred program;
+t+01s state = not running;runs = 1;last exit code = 0;state = active;state = active;spawn type = daemon (3);properties = runatload | inferred program;
+t+02s state = not running;runs = 1;last exit code = 0;state = active;state = active;spawn type = daemon (3);properties = runatload | inferred program;
+t+03s state = not running;runs = 1;last exit code = 0;state = active;state = active;spawn type = daemon (3);properties = runatload | inferred program;
+t+04s state = not running;runs = 1;last exit code = 0;state = active;state = active;spawn type = daemon (3);properties = runatload | inferred program;
+== L6 no KeepAlive, crash after 2 s with code 3
+t+00s state = running;runs = 1;pid = 82976;immediate reason = speculative;last exit code = (never exited);state = active;state = active;spawn type = daemon (3);properties = runatload | inferred program;
+t+01s state = not running;runs = 1;last exit code = 3;state = active;state = active;spawn type = daemon (3);properties = runatload | inferred program;
+t+02s state = not running;runs = 1;last exit code = 3;state = active;state = active;spawn type = daemon (3);properties = runatload | inferred program;
+t+03s state = not running;runs = 1;last exit code = 3;state = active;state = active;spawn type = daemon (3);properties = runatload | inferred program;
+t+04s state = not running;runs = 1;last exit code = 3;state = active;state = active;spawn type = daemon (3);properties = runatload | inferred program;
+== L7 no KeepAlive, serve: killed with SIGKILL (a crash)
+t+00s state = not running;runs = 1;last terminating signal = Killed: 9;state = active;state = active;spawn type = daemon (3);properties = runatload | inferred program;
+t+01s state = not running;runs = 1;last terminating signal = Killed: 9;state = active;state = active;spawn type = daemon (3);properties = runatload | inferred program;
+t+02s state = not running;runs = 1;last terminating signal = Killed: 9;state = active;state = active;spawn type = daemon (3);properties = runatload | inferred program;
+== L8 no KeepAlive, serve: launchctl kill SIGTERM (a person)
+t+00s state = not running;runs = 1;last exit code = 0;state = active;state = active;spawn type = daemon (3);properties = runatload | inferred program;
+t+01s state = not running;runs = 1;last exit code = 0;state = active;state = active;spawn type = daemon (3);properties = runatload | inferred program;
+t+02s state = not running;runs = 1;last exit code = 0;state = active;state = active;spawn type = daemon (3);properties = runatload | inferred program;
+== L9 no KeepAlive, serve: launchctl kickstart -k (the restart of WDG-021)
+state = not running;runs = 1;last exit code = 0;state = active;state = active;spawn type = daemon (3);properties = runatload | inferred program;
+t+00s state = xpcproxy;runs = 3;pid = 84521;immediate reason = non-ipc demand;last terminating signal = Terminated: 15;state = active;state = active;spawn type = daemon (3);properties = runatload | inferred program;
+t+01s state = running;runs = 3;pid = 84521;immediate reason = non-ipc demand;last terminating signal = Terminated: 15;state = active;state = active;spawn type = daemon (3);properties = runatload | inferred program;
+t+02s state = running;runs = 3;pid = 84521;immediate reason = non-ipc demand;last terminating signal = Terminated: 15;state = active;state = active;spawn type = daemon (3);properties = runatload | inferred program;
+== L10 no KeepAlive, serve: launchctl kill SIGTERM, then launchctl kickstart (no -k)
+state = not running;runs = 1;last exit code = 0;state = active;state = active;spawn type = daemon (3);properties = runatload | inferred program;
+t+00s state = running;runs = 2;pid = 85157;immediate reason = non-ipc demand;last exit code = 0;state = active;state = active;spawn type = daemon (3);properties = runatload | inferred program;
+t+01s state = running;runs = 2;pid = 85157;immediate reason = non-ipc demand;last exit code = 0;state = active;state = active;spawn type = daemon (3);properties = runatload | inferred program;
+t+02s state = running;runs = 2;pid = 85157;immediate reason = non-ipc demand;last exit code = 0;state = active;state = active;spawn type = daemon (3);properties = runatload | inferred program;
+== L11 no KeepAlive, serve, running: launchctl kickstart -k
+state = running;runs = 2;pid = 85157;immediate reason = non-ipc demand;last exit code = 0;state = active;state = active;spawn type = daemon (3);properties = runatload | inferred program;
+t+00s state = running;runs = 3;pid = 85620;immediate reason = non-ipc demand;last exit code = 0;state = active;state = active;spawn type = daemon (3);properties = runatload | inferred program;
+t+01s state = running;runs = 3;pid = 85620;immediate reason = non-ipc demand;last exit code = 0;state = active;state = active;spawn type = daemon (3);properties = runatload | inferred program;
+t+02s state = running;runs = 3;pid = 85620;immediate reason = non-ipc demand;last exit code = 0;state = active;state = active;spawn type = daemon (3);properties = runatload | inferred program;
+== end: bootout
+Could not find service "ing.anima.g1.watch" in domain for user gui: 501;
