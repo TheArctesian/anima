@@ -2,10 +2,11 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { posix } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { desktopCapabilities } from '$lib/desktop/capabilities';
-import { DESKTOP_MAC } from './answers.fixture';
+import { shellCapabilities } from '$lib/desktop/capabilities';
+import { DESKTOP_MAC, MOBILE } from './answers.fixture';
 import { browserCapabilities } from './browser';
 import { isMac } from './mac';
+import { isMobile } from './mobile';
 import { capabilities } from './platform';
 
 const shell = vi.hoisted(() => ({ isTauri: vi.fn(() => true) }));
@@ -13,28 +14,53 @@ vi.mock('@tauri-apps/api/core', () => ({ isTauri: shell.isTauri, invoke: vi.fn()
 
 const MAC = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15';
 const LINUX = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/605.1.15';
+const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 26_5 like Mac OS X) AppleWebKit/605.1.15';
+const ANDROID = 'Mozilla/5.0 (Linux; Android 16; Pixel 9) AppleWebKit/537.36 Mobile Safari/537.36';
+const computer = (userAgent: string) => ({ userAgent, maxTouchPoints: 0 });
+const touch = (userAgent: string) => ({ userAgent, maxTouchPoints: 5 });
 
 beforeEach(() => {
   shell.isTauri.mockReturnValue(true);
 });
 
-describe('desktopCapabilities (WP-42 D-4)', () => {
+describe('shellCapabilities (WP-42 D-4)', () => {
   it('CLI-001, CLI-003, UPD-001, LOG-008, R-059: the desktop app on a Mac has every desktop feature but pop-out', () => {
-    expect(desktopCapabilities(MAC)).toEqual(DESKTOP_MAC);
+    expect(shellCapabilities(computer(MAC))).toEqual(DESKTOP_MAC);
   });
 
   it('R-059, R-079, NAV-007: on Linux the desktop app has no Sharing settings to open and keeps its own title bar', () => {
-    expect(desktopCapabilities(LINUX)).toEqual({ ...DESKTOP_MAC, systemSettings: false, overlayTitleBar: false });
+    expect(shellCapabilities(computer(LINUX))).toEqual({ ...DESKTOP_MAC, systemSettings: false, overlayTitleBar: false });
   });
 
   it('RA-002: the shell has no pop-out window command, so pop-out is no on every desktop', () => {
-    expect(desktopCapabilities(MAC)?.popOut).toBe(false);
-    expect(desktopCapabilities(LINUX)?.popOut).toBe(false);
+    expect(shellCapabilities(computer(MAC))?.popOut).toBe(false);
+    expect(shellCapabilities(computer(LINUX))?.popOut).toBe(false);
   });
 
   it('CLI-001: outside the desktop shell there are no desktop answers', () => {
     shell.isTauri.mockReturnValue(false);
-    expect(desktopCapabilities(MAC)).toBeNull();
+    expect(shellCapabilities(computer(MAC))).toBeNull();
+  });
+
+  it('MOB-004: the mobile app keeps the access token and has no desktop-only feature, on an iPhone and on Android', () => {
+    expect(shellCapabilities(touch(IPHONE))).toEqual(MOBILE);
+    expect(shellCapabilities(touch(ANDROID))).toEqual(MOBILE);
+    expect(Object.entries(MOBILE).filter(([, answer]) => answer)).toEqual([['keyStore', true]]);
+  });
+
+  it('MOB-004: an iPad that asks for the desktop site still gets the mobile answers', () => {
+    expect(shellCapabilities(touch(MAC))).toEqual(MOBILE);
+  });
+});
+
+describe('isMobile (MOB-004)', () => {
+  it('MOB-004: an iPhone, an iPad and an Android phone are mobile; a Mac and a Linux computer are not', () => {
+    expect(isMobile(touch(IPHONE))).toBe(true);
+    expect(isMobile(touch(ANDROID))).toBe(true);
+    expect(isMobile(touch('Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X) AppleWebKit/605.1.15'))).toBe(true);
+    expect(isMobile(touch(MAC))).toBe(true);
+    expect(isMobile(computer(MAC))).toBe(false);
+    expect(isMobile(computer(LINUX))).toBe(false);
   });
 });
 
@@ -52,7 +78,7 @@ describe('isMac (BLD-068, R-059)', () => {
 
 describe('capabilities (WP-42 D-4)', () => {
   it('CLI-001: inside the desktop shell the client answers as the shell does', () => {
-    vi.stubGlobal('navigator', { userAgent: MAC });
+    vi.stubGlobal('navigator', computer(MAC));
     try {
       expect(capabilities()).toEqual(DESKTOP_MAC);
     } finally {
