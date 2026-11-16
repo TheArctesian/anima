@@ -1,7 +1,10 @@
 //! `capabilities` answers a signed-in caller only, even without the hub-wide sign-in check
 //! (API-003, CAP-030): the schema here holds the metrics queries alone.
 
+use std::sync::Arc;
+
 use anima_hub::{
+    clock::{Clock, FixedClock},
     fleet::{access::Identity, events::Operator, metrics::graphql::Query},
     ids::OperatorId,
 };
@@ -29,6 +32,7 @@ fn signed_in(query: &str) -> Request {
 async fn cap_030_capabilities_refuses_a_caller_who_is_not_signed_in(pool: PgPool) {
     let schema = Schema::build(Query, EmptyMutation, EmptySubscription)
         .data(pool)
+        .data(Arc::new(FixedClock(now())) as Arc<dyn Clock>)
         .finish();
     let refused = schema.execute(LIST).await;
     let [error] = refused.errors.as_slice() else {
