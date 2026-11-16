@@ -83,3 +83,27 @@ it('LNK-003, LOG-007: a used invite says why, saves nothing and never shows or l
   expect(document.body.innerHTML).not.toContain(INVITE);
   for (const spy of consoleSpies) expect(spy).not.toHaveBeenCalled();
 });
+
+it('FRN-005: a join refused before the hub saw the invite leaves it in the field', async () => {
+  mocks.join.mockResolvedValue({ ok: false, problem: 'busy', message: 'Another change to the link is running. Wait for it to finish.' });
+  const target = open();
+  await paste(target, INVITE);
+  expect(target.querySelector('textarea')?.value).toBe(INVITE);
+});
+
+it('FRN-005, S3: joined but the old token stays: the key shows, Retry finishes without the invite, then sign-in', async () => {
+  mocks.join.mockResolvedValue({ ok: true, value: { fingerprint: 'ab12-cd34', port: 41_000 } });
+  mocks.clear.mockRejectedValueOnce(new Error('denied'));
+  const target = open();
+  await paste(target, INVITE);
+  expect(target.querySelector('.fingerprint')?.textContent).toBe('ab12-cd34');
+  expect(target.querySelector('[role="alert"]')?.textContent).toContain('Retry.');
+  expect(localStorage.getItem('anima.hubAddress')).toBeNull();
+  const buttons = () => [...target.querySelectorAll('button')].map((button) => button.textContent.trim());
+  expect(buttons()).toEqual(['Retry']);
+  [...target.querySelectorAll('button')][0]?.click();
+  await settle();
+  expect(mocks.join).toHaveBeenCalledOnce();
+  expect(localStorage.getItem('anima.hubAddress')).toBe('http://127.0.0.1:41000');
+  expect(buttons()).toEqual(['Continue to sign in']);
+});
