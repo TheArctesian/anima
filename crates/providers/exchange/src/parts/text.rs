@@ -63,23 +63,43 @@ macro_rules! bounded_text {
 
 bounded_text!(
     /// An issue title: 1 to 256 characters on one line.
-    Title, 1, TITLE_LONGEST, Lines::One, PartError::Title
+    Title,
+    1,
+    TITLE_LONGEST,
+    Lines::One,
+    PartError::Title
 );
 bounded_text!(
     /// An issue or comment body: 1 to 65,536 characters; lines allowed.
-    Text, 1, TEXT_LONGEST, Lines::Many, PartError::Text
+    Text,
+    1,
+    TEXT_LONGEST,
+    Lines::Many,
+    PartError::Text
 );
 bounded_text!(
     /// A commit status description: at most 140 characters on one line.
-    StatusDescription, 0, DESCRIPTION_LONGEST, Lines::One, PartError::StatusDescription
+    StatusDescription,
+    0,
+    DESCRIPTION_LONGEST,
+    Lines::One,
+    PartError::StatusDescription
 );
 bounded_text!(
     /// One issue label: 1 to 50 characters on one line.
-    Label, 1, LABEL_LONGEST, Lines::One, PartError::Label
+    Label,
+    1,
+    LABEL_LONGEST,
+    Lines::One,
+    PartError::Label
 );
 bounded_text!(
     /// One workflow input value: at most 1,024 characters; lines allowed. Sent as a string.
-    InputValue, 0, INPUT_VALUE_LONGEST, Lines::Many, PartError::InputValue
+    InputValue,
+    0,
+    INPUT_VALUE_LONGEST,
+    Lines::Many,
+    PartError::InputValue
 );
 
 /// The labels of a new issue: at most 20.
