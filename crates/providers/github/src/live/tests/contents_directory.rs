@@ -109,6 +109,7 @@ fn prj_030_a_listing_that_is_not_readable_is_a_problem() {
         "reply_unreadable"
     );
     let too_large = Response {
+        link: None,
         status: 200,
         body: Body::TooLarge,
     };
@@ -117,6 +118,7 @@ fn prj_030_a_listing_that_is_not_readable_is_a_problem() {
         "reply_too_large"
     );
     let missing = Response {
+        link: None,
         status: 404,
         body: Body::Read(b"{}"),
     };

@@ -61,7 +61,8 @@ fn src_008_a_stored_slice_with_a_hostile_branch_makes_no_such_request() {
             .collect::<Vec<_>>(),
         [
             "/repos/arctesian/odd/git/trees/main",
-            "/repos/arctesian/odd/deployments"
+            "/repos/arctesian/odd/deployments",
+            "/repos/arctesian/odd/commits"
         ],
         "the hostile entry is dropped, the other is read"
     );

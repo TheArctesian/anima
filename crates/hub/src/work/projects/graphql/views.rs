@@ -93,6 +93,7 @@ pub(super) struct ProjectEdge {
 pub(super) struct ProjectConnection {
     edges: Vec<ProjectEdge>,
     page_info: PageEnd,
+    languages: Vec<String>,
 }
 
 /// The stored rows of a set of projects.
@@ -177,6 +178,7 @@ pub(super) fn projects(projects: Vec<ProjectRow>, rows: Rows) -> Vec<(After, Pro
             let after = After {
                 name: project.sort_name,
                 id: project.id,
+                rank: project.rank,
             };
             let view = ProjectView {
                 id: ID(project.id.to_string()),
@@ -201,6 +203,7 @@ pub(super) fn projects(projects: Vec<ProjectRow>, rows: Rows) -> Vec<(After, Pro
 pub(super) fn connection(
     page: Vec<(After, ProjectView)>,
     has_next_page: bool,
+    languages: Vec<String>,
 ) -> ProjectConnection {
     let edges: Vec<ProjectEdge> = page
         .into_iter()
@@ -212,6 +215,7 @@ pub(super) fn connection(
     let end_cursor = edges.last().map(|edge| edge.cursor.clone());
     ProjectConnection {
         edges,
+        languages,
         page_info: PageEnd {
             has_next_page,
             end_cursor,
