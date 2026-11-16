@@ -342,6 +342,6 @@ fn bld_044_every_step_is_told_to_build_inside_the_clone_whatever_the_builder_con
             .collect()
     };
     assert_eq!(named("CARGO_TARGET_DIR"), [origin.clone.join("target")]);
-    assert!(named("CARGO_BUILD_TARGET_DIR").is_empty());
+    assert_eq!(named("CARGO_BUILD_TARGET_DIR"), [] as [PathBuf; 0]);
     assert_eq!(named("BASE_REF"), [PathBuf::from(&origin.on_main)]);
 }
