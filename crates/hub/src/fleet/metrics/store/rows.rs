@@ -1,12 +1,15 @@
 //! Stored rows and their mapping to the output types.
 
-use agent_core::readings::{Drive, DriveKind};
+use agent_core::{
+    inventory::{Architecture, Inventory, Os, Tool, ToolName},
+    readings::{Drive, DriveKind},
+};
 use chrono::{DateTime, Utc};
 
 use crate::{
     fleet::metrics::{
-        Error, Gpu, GpuVendor, MetricKind, MetricPoint, MetricSeries, gpu_label::chart_label,
-        latest::Latest,
+        Error, Gpu, GpuVendor, MetricKind, MetricPoint, MetricSeries, capabilities::Capabilities,
+        gpu_label::chart_label, latest::Latest,
     },
     ids::{DeviceId, MetricSeriesId},
 };
@@ -137,6 +140,50 @@ impl TryFrom<DriveRow> for Drive {
             kind: DriveKind::parse(&row.kind).ok_or(Error::Unreadable)?,
             size_bytes: u64::try_from(row.size_bytes).map_err(|_| Error::Unreadable)?,
             mounts: row.mounts,
+        })
+    }
+}
+
+#[derive(sqlx::FromRow)]
+pub(super) struct InventoryRow {
+    device_id: DeviceId,
+    architecture: String,
+    os: String,
+    os_version: String,
+    found_at: DateTime<Utc>,
+    tool_names: Vec<String>,
+    tool_versions: Vec<Option<String>>,
+    build_targets: Vec<String>,
+}
+
+impl TryFrom<InventoryRow> for Capabilities {
+    type Error = Error;
+
+    /// The tools in name order; one of a name this version does not know is left out.
+    fn try_from(row: InventoryRow) -> Result<Self, Error> {
+        let mut tools: Vec<Tool> = row
+            .tool_names
+            .iter()
+            .zip(row.tool_versions)
+            .filter_map(|(name, version)| {
+                Some(Tool {
+                    name: ToolName::parse(name)?,
+                    version,
+                })
+            })
+            .collect();
+        tools.sort_by_key(|tool| tool.name);
+        let inventory = Inventory {
+            architecture: Architecture::parse(&row.architecture).ok_or(Error::Unreadable)?,
+            os: Os::parse(&row.os).ok_or(Error::Unreadable)?,
+            os_version: row.os_version,
+            tools,
+            build_targets: row.build_targets,
+        };
+        Ok(Self {
+            device: row.device_id,
+            inventory,
+            found_at: row.found_at,
         })
     }
 }

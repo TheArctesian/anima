@@ -501,6 +501,13 @@ pub fn agent_router(db: Db, feed: Feed, bus: events::Bus, clock: Clock) -> axum:
 pub fn spawn_stale_watch(db: Db, bus: events::Bus, clock: Clock) -> JoinHandle<()>;
 /// Of `devices`, those whose agent is not fresh: never pushed, revoked or stale (MET-018, CR-18).
 pub async fn stale_agents(db: &Db, devices: &[DeviceId]) -> Result<HashSet<DeviceId>, Error>;
+
+// (operator, 2026-11-15, CAP-020 to CAP-031; ruling number to be assigned)
+pub struct Capabilities { pub device: DeviceId, pub inventory: agent_core::inventory::Inventory, pub found_at: DateTime<Utc> }
+pub struct CapabilityFilter { pub tool: Option<String>, pub build_target: Option<String> }
+/// The tool inventory each agent sent, kept when `filter` admits it: `tool` usable, `build_target` installed (CAP-030).
+/// metrics::graphql owns Query.capabilities and joins each to its Device (devices::list), by device name.
+pub async fn capabilities(db: &Db, filter: &CapabilityFilter) -> Result<Vec<Capabilities>, Error>;
 ```
 
 ## web_interfaces (Phase 2, WP-30)

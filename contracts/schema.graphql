@@ -854,6 +854,34 @@ type Storage {
   drives: [Drive!]!
 }
 
+# Tool inventory (operator, 2026-11-15, CAP-020 to CAP-031; ruling number to be assigned).
+"A device's capabilities: today the tool inventory its agent last sent (CAP-020, CAP-026, CAP-030). Every text comes from the device."
+type DeviceCapabilities {
+  device: Device!
+  "aarch64 or x86_64."
+  architecture: String!
+  "macos or linux."
+  os: String!
+  "For example 27.0 (macOS) or 24.04 (the Linux distribution; the kernel release when it has none). 1 to 64 bytes of [0-9A-Za-z.+_-]."
+  osVersion: String!
+  "The tools the agent found, in the order of the probe list; a tool it did not find is not listed (CAP-023)."
+  tools: [Tool!]!
+  "The installed Rust targets (rustup), in byte order."
+  buildTargets: [String!]!
+  "When the hub stored this inventory."
+  foundAt: DateTime!
+}
+
+"One tool the agent found (CAP-024, CAP-025)."
+type Tool {
+  "git, rustc, cargo, cargo-nextest, sccache, bun, node, xcodebuild, docker, podman, nix, claude or codex."
+  name: String!
+  "1 to 64 bytes of [0-9A-Za-z.+_-]; null when the tool is not usable."
+  version: String
+  "False when the tool was found but its version probe failed, timed out or printed no version."
+  usable: Boolean!
+}
+
 type MetricSample {
   kind: MetricKind!
   label: String!
@@ -1928,6 +1956,10 @@ type Query {
   project(slug: String!): Project
   "The open attempt, or one that ended in the last 10 minutes; null otherwise. Open to a read key: it holds nothing secret."
   githubConnect: GithubConnectAttempt
+
+  # Tool inventory (operator, 2026-11-15, CAP-020 to CAP-031; ruling number to be assigned)
+  "Each device whose agent sent a tool inventory, by device name (byte order). tool: only the devices where that tool is usable. buildTarget: only the devices with that Rust target. A name the hub does not know matches no device (CAP-030). Open to a read key."
+  capabilities(tool: String, buildTarget: String): [DeviceCapabilities!]!
 }
 
 type Mutation {

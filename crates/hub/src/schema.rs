@@ -39,6 +39,7 @@ pub struct Query(
     events::graphql::Query,
     extensions::graphql::Query,
     maintenance::graphql::Query,
+    metrics::graphql::Query,
     notifications::graphql::Query,
     projects::graphql::Query,
     retention::graphql::Query,
