@@ -38,13 +38,21 @@ impl TokenKind {
 }
 
 const SCHEME: &str = "https://";
+/// Plain `http` is allowed only for this computer (CLI-002), as in `parseHubAddress`.
+const LOOPBACK_SCHEMES: [&str; 3] = ["http://localhost", "http://127.0.0.1", "http://[::1]"];
 
-/// Input check only, no URL resolution (REPO-003): `https://` then a lowercase host (letters,
+/// Input check only, no URL resolution (REPO-003): `https://` (or `http://` for a loopback host) then a lowercase host (letters,
 /// digits, `.`, `-`, `_`, IPv6 brackets) with an optional port, as `parseHubAddress` produces.
 /// Anything with a path, query, whitespace, uppercase or trailing slash is not the canonical
 /// origin the client sends.
 fn is_canonical_origin(origin: &str) -> bool {
-    origin.strip_prefix(SCHEME).is_some_and(|host| {
+    let after_scheme = origin.strip_prefix(SCHEME).or_else(|| {
+        LOOPBACK_SCHEMES.iter().find_map(|prefix| {
+            let rest = origin.strip_prefix(prefix)?;
+            (rest.is_empty() || rest.starts_with(':')).then_some(&origin["http://".len()..])
+        })
+    });
+    after_scheme.is_some_and(|host| {
         !host.is_empty()
             && host
                 .chars()
