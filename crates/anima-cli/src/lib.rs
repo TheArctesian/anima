@@ -5,6 +5,7 @@ pub mod agents;
 pub mod api;
 pub mod auth;
 pub mod builders;
+pub mod capabilities;
 pub mod checks;
 pub mod cli;
 pub mod contexts;
