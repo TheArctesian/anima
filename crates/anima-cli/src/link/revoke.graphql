@@ -1,0 +1,4 @@
+# `anima link revoke <key>` (LNK-004).
+mutation LinkRevoke($key: String!) {
+  revokeLinkDevice(key: $key)
+}

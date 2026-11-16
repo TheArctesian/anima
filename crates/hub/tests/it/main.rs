@@ -13,6 +13,7 @@ mod events;
 mod extensions;
 mod graphql;
 mod hub;
+mod link;
 mod listening;
 mod login;
 mod logs;

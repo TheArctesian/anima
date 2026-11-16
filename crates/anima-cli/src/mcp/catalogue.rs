@@ -17,6 +17,7 @@ pub enum ToolSet {
     Releases,
     Vpn,
     Retention,
+    Link,
     Extensions,
     Sources,
     Projects,
@@ -70,7 +71,7 @@ impl Kind {
 }
 
 impl ToolSet {
-    pub const ALL: [Self; 14] = [
+    pub const ALL: [Self; 15] = [
         Self::Devices,
         Self::Checks,
         Self::Maintenance,
@@ -81,6 +82,7 @@ impl ToolSet {
         Self::Releases,
         Self::Vpn,
         Self::Retention,
+        Self::Link,
         Self::Extensions,
         Self::Sources,
         Self::Projects,
@@ -101,6 +103,7 @@ impl ToolSet {
             Self::Releases => "releases",
             Self::Vpn => "vpn",
             Self::Retention => "retention",
+            Self::Link => "link",
             Self::Extensions => "extensions",
             Self::Sources => "sources",
             Self::Projects => "projects",

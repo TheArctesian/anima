@@ -238,7 +238,9 @@ fn refusal(identity: Option<&Identity>, document: &ExecutableDocument) -> Option
 /// secrets or stops it, and a commit status can satisfy a required check: login or browser
 /// token only (PRJ-034, PRJ-035, PRO-010, K-E1 Section 13.5).
 /// A pull request merge runs code with the repository's secrets: login or browser token only.
-pub(super) const API_KEY_REFUSED_ROOTS: [&str; 44] = [
+/// A link invite admits a device to the hub, and a revocation is a trust decision: login or
+/// browser token only (FRN-009, OR-S6-3).
+pub(super) const API_KEY_REFUSED_ROOTS: [&str; 46] = [
     "createApiKey",
     "revokeApiKey",
     "apiKeys",
@@ -283,6 +285,8 @@ pub(super) const API_KEY_REFUSED_ROOTS: [&str; 44] = [
     "setCommitStatus",
     "mergePullRequest",
     "mergePullRequests",
+    "createLinkInvite",
+    "revokeLinkDevice",
 ];
 
 /// The root selections a token of `kind` may make, in every operation type. A new kind of

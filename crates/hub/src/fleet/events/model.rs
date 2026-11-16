@@ -270,6 +270,9 @@ pub enum AuditTarget {
     /// The VPN: a key, a registration or a route made through the broker (VP-7). It has no
     /// id of its own; the change names the site or node.
     Vpn,
+    /// The device link: an invite or a revoked device (FRN-009). It has no id of its own; the
+    /// change names the device, never an invite (LOG-007).
+    Link,
     /// A connection to an outside source (SRC-003).
     SourceAccount(SourceAccountId),
     /// A project, its repositories or its resources (PRO-001).
@@ -300,6 +303,7 @@ impl AuditTarget {
             Self::Builder(_) => "builder",
             Self::ApiKey(_) => "api_key",
             Self::Vpn => "vpn",
+            Self::Link => "link",
             Self::SourceAccount(_) => "source_account",
             Self::Project(_) => "project",
             Self::Repository(_) => "repository",
@@ -325,6 +329,7 @@ impl AuditTarget {
             Self::Builder(id) => id.to_string(),
             Self::ApiKey(id) => id.to_string(),
             Self::Vpn => "vpn".to_owned(),
+            Self::Link => "link".to_owned(),
             Self::SourceAccount(id) => id.to_string(),
             Self::Project(id) => id.to_string(),
             Self::Repository(id) => id.to_string(),

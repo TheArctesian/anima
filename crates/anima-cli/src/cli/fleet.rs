@@ -2,7 +2,7 @@
 
 use crate::failure::Failure;
 use crate::invocation::Invocation;
-use crate::{agents, checks, devices, maintenance, sessions, sites, tags, web_interfaces};
+use crate::{agents, checks, devices, link, maintenance, sessions, sites, tags, web_interfaces};
 
 #[derive(Debug, clap::Subcommand)]
 pub enum FleetCommand {
@@ -41,6 +41,11 @@ pub enum FleetCommand {
         #[command(subcommand)]
         command: maintenance::MaintenanceCommand,
     },
+    /// Devices of the hub's link (devices, invite, revoke).
+    Link {
+        #[command(subcommand)]
+        command: link::LinkCommand,
+    },
     /// Remote sessions (list, end).
     Session {
         #[command(subcommand)]
@@ -65,6 +70,7 @@ impl FleetCommand {
             Self::Agent { command } => command.run(invocation).await,
             Self::Check { command } => command.run(invocation).await,
             Self::Maintenance { command } => command.run(invocation).await,
+            Self::Link { command } => command.run(invocation).await,
             Self::Session { command } => command.run(invocation).await,
             Self::Ssh(args) => args.run(invocation).await,
             Self::Files { command } => command.run(invocation).await,

@@ -20,6 +20,7 @@ pub mod input;
 pub mod invocation;
 pub mod issues;
 pub mod keys;
+pub mod link;
 pub mod maintenance;
 pub mod mcp;
 pub mod notifications;

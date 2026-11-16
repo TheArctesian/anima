@@ -1,0 +1,13 @@
+# `anima link devices` and the `anima_link_devices` tool (LNK-004).
+query LinkDevices {
+  linkDevices {
+    key
+    fingerprint
+    name
+    address
+    path
+    relay
+    expiresAt
+    streams
+  }
+}

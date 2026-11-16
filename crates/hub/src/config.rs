@@ -48,6 +48,9 @@ pub struct Config {
     /// The Unix socket `anima-link` reaches the hub through; set means the link mode (see
     /// `link`). `None` when unset or empty.
     pub link_socket: Option<PathBuf>,
+    /// The control socket of `anima-link hub`: the hub makes invites, lists the link's devices
+    /// and revokes one through it (FRN-009). Only in the link mode; `None` when unset or empty.
+    pub link_control: Option<PathBuf>,
     /// Networks checks must never probe: the hub's own Docker networks and public address
     /// (R-030). Empty when unset; `main.rs` warns at start.
     pub probe_deny: Vec<ipnet::IpNet>,
@@ -113,6 +116,8 @@ pub enum Error {
     LinkListen { listen: SocketAddr },
     #[error("{PERMITTED_NETWORKS} {}", link::NETWORKS_RULE)]
     LinkNetworks,
+    #[error("{} {}", link::LINK_CONTROL, link::CONTROL_RULE)]
+    LinkControlAlone,
     #[error("{present} is set but {missing} is not")]
     TlsIncomplete {
         present: &'static str,
@@ -199,6 +204,20 @@ fn absolute_path(variable: &'static str, text: &str) -> Result<PathBuf, Error> {
     }
 }
 
+/// The permitted networks: the link mode's own, or `ANIMA_PERMITTED_NETWORKS`.
+fn permitted_networks(
+    env: &BTreeMap<String, String>,
+    link_mode: bool,
+) -> Result<Vec<ipnet::IpNet>, Error> {
+    if link_mode {
+        return Ok(link::permitted_networks());
+    }
+    networks(
+        PERMITTED_NETWORKS,
+        value(env, PERMITTED_NETWORKS, "100.64.0.0/10")?,
+    )
+}
+
 /// Comma-separated CIDR networks from `variable`.
 fn networks(variable: &'static str, text: &str) -> Result<Vec<ipnet::IpNet>, Error> {
     text.split(',')
@@ -283,14 +302,8 @@ pub fn from_env(env: &BTreeMap<String, String>) -> Result<Config, Error> {
             Some(text) => Some(host_port(TAILSCALE_LOCALAPI, text)?),
         },
         vpn_broker: optional_socket(env, VPN_BROKER)?,
-        permitted_networks: if link_socket.is_some() {
-            link::permitted_networks()
-        } else {
-            networks(
-                PERMITTED_NETWORKS,
-                value(env, PERMITTED_NETWORKS, "100.64.0.0/10")?,
-            )?
-        },
+        permitted_networks: permitted_networks(env, link_socket.is_some())?,
+        link_control: link::control(env, link_socket.is_some())?,
         link_socket,
         probe_deny: match env.get(PROBE_DENY).map(String::as_str) {
             None | Some("") => Vec::new(),

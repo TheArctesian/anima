@@ -316,6 +316,7 @@ dependencies = [
  "rsa 0.9.10",
  "russh",
  "russh-sftp",
+ "rustix",
  "rustls",
  "rustls-pki-types",
  "serde",

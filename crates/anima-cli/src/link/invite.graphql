@@ -1,0 +1,7 @@
+# `anima link invite <name>`. The answer holds an invite, shown once (LNK-003).
+mutation LinkInvite($name: String!) {
+  createLinkInvite(name: $name) {
+    invite
+    expiresAt
+  }
+}
