@@ -316,6 +316,31 @@ The desktop application has an "MCP" section on the Settings page. It sets the s
   this computer, which a browser cannot read, and the hub does not hold them: they belong to the
   computer that runs `anima mcp`, not to the account.
 
+### Proposed change: fully automatic by default (operator direction, 2026-11-16)
+
+Not yet approved. If approved, it replaces the defaults of MCP-002 and of Settings "Reset",
+and the line under "Tools" below. The operator's words: "have destructive be gated by an are you
+sure that can be ignored in the MCP settings, off by default (essentially fully auto by default)".
+
+- **MCP-024 (proposed).** With nothing saved, every read tool and every change tool is `allow`.
+  The server is fully automatic: an agent can change and delete without a question. A new tool
+  takes this default too (MCP-012).
+- **MCP-025 (proposed).** Settings and `anima mcp permissions set` gain one switch, "Ask before
+  destructive actions", off by default. When it is on, every tool with `destructiveHint`
+  (MCP-009) is in state `ask` (MCP-013) unless the operator chose a state for that tool. The
+  operator's choices for single tools still win, and `off` still hides a tool.
+- **MCP-026 (proposed).** Every destructive call that runs without a question must be in the
+  hub's audit log with the tool, its arguments (cleaned, as in MCP-013) and the MCP client
+  name, so the operator can see what an agent deleted.
+- Unchanged: MCP-004 (no secrets), MCP-005 (no trust decisions), MCP-006 (no command on a
+  device), MCP-007 (a delete still names the thing in `confirm`) and MCP-008 (device text is
+  data). The command line keeps CMD-024: a delete asks at the terminal unless it gets `--yes`.
+- To rule on: MCP-014 says that widening access needs a terminal on standard input. With
+  MCP-024 the default is already wide, so that rule then applies only to a change away from a
+  saved `ask` or `off`. The main risk is an agent that obeys text from a device or a web page
+  (MCP-008) and then deletes without a question. The audit log (MCP-026) and the switch
+  (MCP-025) are the answer to that risk.
+
 ### Tools
 
 Read tools are `allow` and change tools are `off` by default (MCP-002). L: needs a login token.
