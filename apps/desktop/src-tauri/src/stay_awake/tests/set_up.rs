@@ -1,4 +1,6 @@
-use std::{fs, process::Command};
+#[cfg(target_os = "macos")]
+use std::fs;
+use std::process::Command;
 
 use super::rig::Rig;
 use crate::stay_awake::{
