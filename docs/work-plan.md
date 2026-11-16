@@ -118,6 +118,7 @@ One document owns each concern. Add a requirement to its owner, not to this docu
 | Hosted Solo hubs on a shared pool of hosts | [shared-pool-hosting.md](programme/proposals/shared-pool-hosting.md) | None yet |
 | The Anima.ing shell prompt and related shell commands | [shell-prompt.md](programme/proposals/shell-prompt.md) | CMD-032 to CMD-036 |
 | Rented cloud computers and GPU add-ons sold by Anima.ing | [cloud-machines.md](programme/proposals/cloud-machines.md) | CVM-001 to CVM-018 |
+| Machine profiles: copy a setup to a new computer | [machine-profiles.md](programme/proposals/machine-profiles.md) | REP-001 to REP-024 |
 | Rulings and the state of each package | [programme/programme.md](programme/programme.md), [programme/handoff.md](programme/handoff.md) | R, CR |
 
 The eight proposals are drafts. A proposal becomes a plan when the operator approves it with a ruling. Then its work gets an issue with the labels of Section 4.
@@ -240,6 +241,7 @@ This table is the only list of the plans of Anima. A document that is not in thi
 | [programme/proposals/shared-pool-hosting.md](programme/proposals/shared-pool-hosting.md) | Proposal | Draft | Not approved. The AX102 list price was corrected on 2026-11-16 to €259 a month plus €129 setup (about $286). |
 | [programme/proposals/shell-prompt.md](programme/proposals/shell-prompt.md) | Proposal | Draft | Not approved. CMD-032 to CMD-036. |
 | [programme/proposals/cloud-machines.md](programme/proposals/cloud-machines.md) | Proposal | Draft | Not approved. CVM-001 to CVM-018. |
+| [programme/proposals/machine-profiles.md](programme/proposals/machine-profiles.md) | Proposal | Draft | Not approved. REP-001 to REP-024. |
 
 These documents are records, not plans. They must not add a requirement (PLN-009).
 
