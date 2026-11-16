@@ -127,6 +127,14 @@ describe('toolCheckFrom (BLD-028)', () => {
     });
   });
 
+  it('S12 T3: a Linux builder without the tools of the PostgreSQL tree lists them as missing', () => {
+    expect(toolCheckFrom({ os: 'LINUX', arch: 'X86_64', missing: ['tree-tools'] })).toEqual({
+      os: 'LINUX',
+      arch: 'X86_64',
+      missing: ['tree-tools'],
+    });
+  });
+
   it.each([
     null,
     'LINUX',

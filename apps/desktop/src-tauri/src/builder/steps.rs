@@ -10,12 +10,12 @@ use std::{
 
 use super::{
     artifact,
+    carried::mach_o::Signer,
     child::Claim,
     environment::Environment,
     error::BuilderError,
     job::{Commit, Target, Version},
-    plan::{self, CLONE_CONFIG_KEYS, Command, Repository},
-    sidecar,
+    plan::{self, CLONE_CONFIG_KEYS, Command, Program, Repository},
 };
 
 /// The claim, the environment, the repository and the clone of one step.
@@ -45,15 +45,21 @@ pub fn config_is_clones(keys: &[String]) -> bool {
 }
 
 impl Workshop<'_> {
-    /// Runs one command; the program is found in the step's program folders.
-    async fn run(&self, command: &Command) -> Result<Vec<String>, BuilderError> {
-        let program = self
-            .env
-            .find(command.program.name(), Path::is_file)
-            .ok_or(BuilderError::ToolMissing)?;
+    /// Runs one command and returns the lines of its kept stream.
+    pub(super) async fn run(&self, command: &Command) -> Result<Vec<String>, BuilderError> {
+        let program = self.program(command.program)?;
         self.claim
             .run(command, &program, self.variables(command))
             .await
+    }
+
+    /// Where `program` is: its fixed path (`/bin/sh`), or the first in the step's program folders.
+    pub fn program(&self, program: Program) -> Result<PathBuf, BuilderError> {
+        match program.fixed_path() {
+            Some(path) => path.is_file().then(|| path.to_owned()),
+            None => self.env.find(program.name(), Path::is_file),
+        }
+        .ok_or(BuilderError::ToolMissing)
     }
 
     /// The environment of `command`: the step's own, and cargo's output folder inside the clone,
@@ -164,31 +170,10 @@ impl Workshop<'_> {
         self.run_all(&plan::staple(app)).await
     }
 
-    /// Builds `anima` for `target` with the release version and puts it where the bundle takes it
-    /// (INS-002, OD-17): the universal file on macOS, an x86-64 ELF file on Linux.
-    async fn command_line(&self, target: Target, version: &Version) -> Result<(), BuilderError> {
-        self.run(&sidecar::build(&self.clone, target, version))
-            .await?;
-        for (built, staged) in sidecar::copies(&self.clone, target) {
-            artifact::stage(&self.clone, &built, &staged)?;
-        }
-        let staged = sidecar::staged(&self.clone, target);
-        if let Some(lipo) = sidecar::universal(&self.clone, target) {
-            self.run(&lipo).await?;
-            if !artifact::universal(&self.run(&sidecar::archs(&staged)).await?) {
-                return Err(BuilderError::Bundle);
-            }
-        } else if !sidecar::is_x86_64_elf(&artifact::header(&self.clone, &staged, 20)?) {
-            return Err(BuilderError::Bundle);
-        }
-        Ok(())
-    }
-
-    /// Builds `anima`, compiles and bundles `target` at `version` with it, checks, notarizes and
-    /// staples a macOS bundle, and returns the updater file (INS-002, BLD-043, BLD-047, BLD-083 to
-    /// BLD-085). On macOS the bundled `anima` must pass `codesign --verify --strict` and be
-    /// universal; notarization then refuses it unless it has the Developer ID signature, the
-    /// hardened runtime and a secure timestamp (OD-16).
+    /// Builds what the release carries, compiles and bundles `target` at `version` with it,
+    /// checks, notarizes and staples a macOS bundle, and returns the updater file (INS-002,
+    /// BLD-043, BLD-047, BLD-083 to BLD-085, S12 2.2). The macOS signing identity is read before
+    /// anything is built, so a configuration that names none fails at once.
     pub async fn bundle(
         &self,
         commit: &Commit,
@@ -196,30 +181,40 @@ impl Workshop<'_> {
         version: &Version,
     ) -> Result<PathBuf, BuilderError> {
         self.at(commit).await?;
-        self.command_line(target, version).await?;
+        let signer = self.signer(target)?;
+        self.carried(target, version, signer.as_ref()).await?;
         artifact::clear_bundle(&self.clone, target)?;
         self.run_all(&plan::bundle(&self.clone, target, version))
             .await?;
         artifact::stabilize_names(&self.clone, target, version)?;
         let updater = artifact::updater_file(&self.clone, target, version);
-        if target == Target::DarwinUniversal {
-            let app = artifact::mac_app(&self.clone);
-            let binaries = artifact::mac_binaries(&self.clone, &app)?;
-            let [codesign, lipo] = plan::bundle_checks(&app, &binaries.app);
-            self.run(&codesign).await?;
-            self.run(&sidecar::signature(&binaries.command_line))
-                .await?;
-            for binary in [&lipo, &sidecar::archs(&binaries.command_line)] {
-                if !artifact::universal(&self.run(binary).await?) {
-                    return Err(BuilderError::Bundle);
-                }
-            }
-            let dmg =
-                artifact::dmg_file(&self.clone, target, version).ok_or(BuilderError::Bundle)?;
-            self.notarize(&artifact::own_file(&self.clone, &dmg)?, &app)
-                .await?;
-            self.run(&plan::app_archive(&app, &updater)).await?;
+        if let Some(signer) = &signer {
+            self.release_mac(version, signer, &updater).await?;
         }
         artifact::own_file(&self.clone, &updater)
+    }
+
+    /// Checks the signed app (UPD-011): exactly the expected programs, `codesign --verify --deep
+    /// --strict` of the app, its own executable universal, then every Mach-O file of it (S12
+    /// 2.3). Then notarizes and staples the DMG and the app and archives the app as `updater`.
+    async fn release_mac(
+        &self,
+        version: &Version,
+        signer: &Signer,
+        updater: &Path,
+    ) -> Result<(), BuilderError> {
+        let app = artifact::mac_app(&self.clone);
+        let executable = artifact::mac_executable(&self.clone, &app)?;
+        let [codesign, lipo] = plan::bundle_checks(&app, &executable);
+        self.run(&codesign).await?;
+        if !artifact::universal(&self.run(&lipo).await?) {
+            return Err(BuilderError::Bundle);
+        }
+        self.signed_mach_o(&app, &signer.team).await?;
+        let dmg = artifact::dmg_file(&self.clone, Target::DarwinUniversal, version)
+            .ok_or(BuilderError::Bundle)?;
+        self.notarize(&artifact::own_file(&self.clone, &dmg)?, &app)
+            .await?;
+        self.run(&plan::app_archive(&app, updater)).await.map(drop)
     }
 }

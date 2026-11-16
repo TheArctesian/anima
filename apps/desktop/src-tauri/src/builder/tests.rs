@@ -1,6 +1,7 @@
 //! Argument checks, plans, the environment allow-list and the tool check are pure; the
 //! process tests in `tests/child_process.rs` start real (harmless) programs.
 
+mod carried;
 mod checkout;
 mod child_process;
 mod files;
@@ -9,7 +10,6 @@ mod plans;
 // The reaper is Linux only: macOS has no subreaper.
 #[cfg(target_os = "linux")]
 mod reaping;
-mod sidecar;
 mod signing;
 mod target_folder;
 mod upload;
@@ -182,6 +182,7 @@ fn bld_028_each_missing_tool_is_named() {
             Tool::Go,
             Tool::Postgres,
             Tool::TauriPackages,
+            Tool::TreeTools,
         ]
     );
     let present = |path: &Path| {
@@ -199,6 +200,10 @@ fn bld_028_each_missing_tool_is_named() {
             || text == "/usr/bin/pkg-config"
             || text == "/usr/bin/cc"
             || text.starts_with("/usr/lib/x86_64-linux-gnu/pkgconfig/")
+            || text == "/usr/include/zlib.h"
+            || ["make", "bison", "flex", "patchelf", "readelf", "curl"]
+                .iter()
+                .any(|program| text == format!("/usr/bin/{program}"))
     };
     assert_eq!(tools::missing(Target::LinuxX86_64, &env, present), []);
     let no_rustc = |path: &Path| present(path) && path != Path::new("/usr/bin/rustc");

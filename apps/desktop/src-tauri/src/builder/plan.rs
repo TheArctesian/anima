@@ -8,8 +8,8 @@ use std::{
 };
 
 use super::{
+    carried,
     job::{Commit, Target, Version},
-    sidecar::EXTERNAL_BIN,
 };
 
 /// The only repository a builder builds (BLD-040). Its own name, not the name GitHub redirects from
@@ -73,7 +73,8 @@ pub const CLONE_CONFIG_KEYS: &[&str] = &[
     "branch.main.merge",
 ];
 
-/// The programs a step may start. Found in the step's program folders, never in the clone.
+/// The programs a step may start. Found in the step's program folders, never in the clone; `Sh`
+/// is always `/bin/sh` and never searched for (D-2 of the S12 packaging tasks).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Program {
     Git,
@@ -83,6 +84,7 @@ pub enum Program {
     Lipo,
     Xcrun,
     Cargo,
+    Sh,
 }
 
 impl Program {
@@ -95,8 +97,23 @@ impl Program {
             Self::Lipo => "lipo",
             Self::Xcrun => "xcrun",
             Self::Cargo => "cargo",
+            Self::Sh => "sh",
         }
     }
+
+    /// The one path of a program that is never searched for in the program folders.
+    pub fn fixed_path(self) -> Option<&'static Path> {
+        (self == Self::Sh).then(|| Path::new("/bin/sh"))
+    }
+}
+
+/// The output stream whose lines a run gives back to the caller. Both streams always go to the
+/// step's log; only this one is read for a decision.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Kept {
+    Output,
+    /// `codesign -d` prints what it displays on standard error.
+    Errors,
 }
 
 /// One process of a step.
@@ -107,6 +124,7 @@ pub struct Command {
     pub cwd: PathBuf,
     /// Variables the step adds to the scrubbed environment (BLD-044).
     pub env: Vec<(&'static str, String)>,
+    pub kept: Kept,
 }
 
 pub fn command(program: Program, cwd: &Path, args: &[&str]) -> Command {
@@ -115,6 +133,7 @@ pub fn command(program: Program, cwd: &Path, args: &[&str]) -> Command {
         args: args.iter().map(OsString::from).collect(),
         cwd: cwd.to_owned(),
         env: Vec::new(),
+        kept: Kept::Output,
     }
 }
 
@@ -239,16 +258,14 @@ fn tauri(clone: &Path, args: &[&str], config: &serde_json::Value) -> Command {
 /// Compile with `--no-bundle`, then bundle, with the version in `--config` and no updater
 /// artifact: the builder signs nothing, and the hub signs the updater file (BLD-043, R-117). On
 /// macOS Tauri signs the app with the identity `bundle.macOS.signingIdentity` names (BLD-083).
-/// Both carry the `anima` program the sidecar step put in place (INS-002).
+/// Both carry the six programs and the PostgreSQL tree the carried step put in place (INS-002,
+/// S12 2.1).
 pub fn bundle(clone: &Path, target: Target, version: &Version) -> Vec<Command> {
-    let compile_config = serde_json::json!({
-        "version": version.as_str(),
-        "bundle": { "externalBin": [EXTERNAL_BIN] }
-    });
-    let bundle_config = serde_json::json!({
-        "version": version.as_str(),
-        "bundle": { "createUpdaterArtifacts": false, "externalBin": [EXTERNAL_BIN] }
-    });
+    let carried = carried::bundle_settings();
+    let mut bundled = carried.clone();
+    bundled["createUpdaterArtifacts"] = false.into();
+    let compile_config = serde_json::json!({ "version": version.as_str(), "bundle": carried });
+    let bundle_config = serde_json::json!({ "version": version.as_str(), "bundle": bundled });
     match target {
         Target::LinuxX86_64 => {
             let mut bundle = tauri(

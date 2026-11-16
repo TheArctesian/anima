@@ -12,7 +12,7 @@ use crate::builder::{
     child::{Running, Sink},
     environment::Environment,
     error::BuilderError,
-    plan::{Command, Program},
+    plan::{Command, Kept, Program},
 };
 
 /// A command for `program` with `args`; the planned program is not used by `Claim::run`.
@@ -22,6 +22,7 @@ pub(super) fn command(args: &[&str]) -> Command {
         args: args.iter().map(OsString::from).collect(),
         cwd: std::env::temp_dir(),
         env: Vec::new(),
+        kept: Kept::Output,
     }
 }
 
@@ -78,6 +79,23 @@ async fn bld_042_a_non_zero_exit_fails_the_step_and_both_streams_reach_the_sink(
     let mut lines = seen.lock().unwrap().clone();
     lines.sort_unstable();
     assert_eq!(lines, ["err", "out"]);
+}
+
+#[tokio::test]
+async fn upd_011_a_command_that_keeps_its_errors_gives_back_only_its_error_lines() {
+    let running = Running::default();
+    let (sink, seen) = collecting();
+    let claim = running.claim(Arc::clone(&sink)).unwrap();
+    let mut script = command(&["-c", "echo out; echo err >&2"]);
+    script.kept = Kept::Errors;
+    let kept = claim.run(&script, Path::new("/bin/sh"), Vec::new()).await;
+    assert_eq!(kept, Ok(vec!["err".to_owned()]));
+    let mut lines = seen.lock().unwrap().clone();
+    lines.sort_unstable();
+    assert_eq!(lines, ["err", "out"], "both streams still reach the sink");
+    script.kept = Kept::Output;
+    let kept = claim.run(&script, Path::new("/bin/sh"), Vec::new()).await;
+    assert_eq!(kept, Ok(vec!["out".to_owned()]));
 }
 
 #[test]

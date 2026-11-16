@@ -8,6 +8,9 @@ use crate::builder::{
     plan::{self, Program, Repository},
 };
 
+/// The `bundle` settings that carry the six programs and the PostgreSQL tree (INS-002, S12 2.1).
+const CARRIED: &str = r#"{"externalBin":["binaries/anima","binaries/anima-local-hub","binaries/anima-hub","binaries/anima-database","binaries/anima-gateway","binaries/anima-link"],"resources":{"database":"database"}}"#;
+
 fn args(command: &plan::Command) -> Vec<&str> {
     command.args.iter().map(|a| a.to_str().unwrap()).collect()
 }
@@ -143,7 +146,7 @@ fn bld_043_linux_compiles_then_bundles_an_appimage_with_the_version_in_config() 
             "build",
             "--no-bundle",
             "--config",
-            r#"{"bundle":{"externalBin":["binaries/anima"]},"version":"0.1.12"}"#
+            &format!(r#"{{"bundle":{CARRIED},"version":"0.1.12"}}"#)
         ]
     );
     assert_eq!(
@@ -158,7 +161,10 @@ fn bld_043_linux_compiles_then_bundles_an_appimage_with_the_version_in_config() 
             "appimage",
             "--no-sign",
             "--config",
-            r#"{"bundle":{"createUpdaterArtifacts":false,"externalBin":["binaries/anima"]},"version":"0.1.12"}"#
+            &format!(
+                r#"{{"bundle":{{"createUpdaterArtifacts":false,{}}},"version":"0.1.12"}}"#,
+                &CARRIED[1..CARRIED.len() - 1]
+            )
         ]
     );
     assert_eq!(bundle.env, [("APPIMAGE_EXTRACT_AND_RUN", "1".to_owned())]);

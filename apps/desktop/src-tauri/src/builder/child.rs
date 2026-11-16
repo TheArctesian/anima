@@ -16,13 +16,18 @@ use std::{
 
 use tokio::io::{AsyncRead, AsyncReadExt};
 
-use super::{error::BuilderError, lines::Lines, plan::Command, reaper};
+use super::{
+    error::BuilderError,
+    lines::Lines,
+    plan::{Command, Kept},
+    reaper,
+};
 
 /// Receives each output line of a step.
 pub type Sink = Arc<dyn Fn(String) + Send + Sync>;
 
-/// At most this many standard-output lines are kept for the caller to read (`git status`,
-/// `lipo -archs`); every line still goes to the sink.
+/// At most this many lines of the command's kept stream are kept for the caller to read (`git
+/// status`, `lipo -archs`, `codesign -d`); every line still goes to the sink.
 const KEPT_LINES_MAX: usize = 2000;
 /// How long the output may take to close after the process group is gone.
 const DRAIN: Duration = Duration::from_secs(5);
@@ -142,8 +147,9 @@ async fn read_lines(stream: Option<impl AsyncRead + Unpin>, sink: Sink, keep: bo
 }
 
 impl Claim<'_> {
-    /// Runs `command` as `program` with exactly `env`, and returns its kept standard-output
-    /// lines. `Cancelled` once the step is cancelled; `StepFailed` for a non-zero exit.
+    /// Runs `command` as `program` with exactly `env`, and returns the lines of the stream
+    /// `command.kept` names. `Cancelled` once the step is cancelled; `StepFailed` for a non-zero
+    /// exit or a kept stream that did not close.
     pub async fn run(
         &self,
         command: &Command,
@@ -172,8 +178,9 @@ impl Claim<'_> {
             Ok((child.stdout.take(), child.stderr.take(), child))
         });
         let (stdout, stderr, mut child) = group?;
-        let out = tokio::spawn(read_lines(stdout, Arc::clone(&self.sink), true));
-        let err = tokio::spawn(read_lines(stderr, Arc::clone(&self.sink), false));
+        let keep_errors = command.kept == Kept::Errors;
+        let out = tokio::spawn(read_lines(stdout, Arc::clone(&self.sink), !keep_errors));
+        let err = tokio::spawn(read_lines(stderr, Arc::clone(&self.sink), keep_errors));
         let status = child.wait().await;
         // Anything the step left, in its group or out of it, would hold the output open.
         let group = self.running.with_slot(|slot| {
@@ -184,12 +191,20 @@ impl Claim<'_> {
         let marker = self.marker.clone();
         let _ = tokio::task::spawn_blocking(move || reaper::sweep(&marker, group)).await;
         let cancelled = self.running.with_slot(|slot| slot.cancelled);
-        let kept = tokio::time::timeout(DRAIN, out).await;
-        let _ = tokio::time::timeout(DRAIN, err).await;
-        outcome(cancelled, status.ok(), kept.ok().and_then(Result::ok))
+        let out = tokio::time::timeout(DRAIN, out)
+            .await
+            .ok()
+            .and_then(Result::ok);
+        let err = tokio::time::timeout(DRAIN, err)
+            .await
+            .ok()
+            .and_then(Result::ok);
+        outcome(cancelled, status.ok(), if keep_errors { err } else { out })
     }
 }
 
+/// The kept lines of a run that exited 0. A kept stream that did not close is never read as
+/// empty output: for `git status` or `codesign -d --entitlements` empty is the passing answer.
 fn outcome(
     cancelled: bool,
     status: Option<ExitStatus>,
@@ -198,8 +213,8 @@ fn outcome(
     if cancelled {
         return Err(BuilderError::Cancelled);
     }
-    match status {
-        Some(status) if status.success() => Ok(kept.unwrap_or_default()),
+    match (status, kept) {
+        (Some(status), Some(kept)) if status.success() => Ok(kept),
         _ => Err(BuilderError::StepFailed),
     }
 }
