@@ -12,7 +12,7 @@ Map: [work-plan.md](../../work-plan.md). The command line is not a category (Sec
 proposal extends the `anima` program (CMD) and touches installation (INS-009). If the operator
 approves it, the new command identifiers move into [cli-mcp-plan.md](../../cli-mcp-plan.md)
 (PLN-004).
-Identifiers: CMD-032 to CMD-036.
+Identifiers: CMD-032 to CMD-038.
 
 ## Problem
 
@@ -57,6 +57,14 @@ session on another machine, all in about 15 seconds.
 A wrapper REPL called `anima shell` is later work: autosuggestions for `anima` commands, and
 never the login shell.
 
+- **CMD-037.** Settings must have a CLI section with an installer. It installs the `anima`
+  command line, shows whether it is on `PATH`, and offers the prompt as a separate tick. It
+  shows each file it will change before it changes anything.
+- **CMD-038.** `anima shell setup` must print the one line that loads the prompt for the current
+  shell. With the operator's yes, it adds that line as one marked block to the startup file.
+  `anima shell setup --remove` takes out only that block. The Settings installer (CMD-037)
+  uses the same step.
+
 ## Default theme
 
 The default theme is a boxfish-style line of colour-coded boxes, in Graphite or Nord (Nord
@@ -80,14 +88,15 @@ Settings gets an opt-in switch, "Use the Anima.ing prompt". The switch must ask 
 one marked block to the startup file, and do nothing if the operator cancels. Remove must
 take out only that block.
 
-This needs a ruling on INS-009. INS-009 says that the installer never edits the shell
-profile: it only shows the `PATH` line for the operator to paste. Pasting the snippet from
-`anima init` works either way. The Settings switch is the part that writes the file.
+INS-009 stays: the installer never edits the shell profile. Writing the block is a separate,
+opt-in step (CMD-037, CMD-038), never part of installation. Pasting the snippet from
+`anima init` works either way.
 
 ## Constraints
 
-- **INS-009.** The app must not edit `.bashrc`, `.zshrc` or the fish startup file unless the
-  operator confirms a marked edit, and only after a ruling that allows that exception.
+- **INS-009.** The installer must not edit `.bashrc`, `.zshrc` or the fish startup file.
+  Ruled 2026-11-16: only the opt-in `anima shell setup` (CMD-038) and the Settings CLI
+  installer (CMD-037) may add the marked block, and only after the operator says yes.
 - **K4 exec.** Smart routing such as `@studio git status` is not possible yet. The hub's
   tunnel contract opens a login shell and sends no `exec` (`contracts/tunnel.md`). For now,
   routing means `anima ssh studio`.
@@ -95,6 +104,14 @@ profile: it only shows the `PATH` line for the operator to paste. Pasting the sn
   code. Until then, a theme is local data on the operator's machine.
 - **No new shell.** Do not write a full shell. Fish is GPL-2.0, so we must not build it into
   the AGPL command line.
+
+## Rulings (operator, 2026-11-16)
+
+- **General rule.** Each safety setting in this area is the user's choice. The default is the
+  equivalent of full auto, as in the MCP proposal (MCP-024). A step that hands over a secret
+  still asks first.
+- **INS-009.** The installer still never edits the shell profile. `anima shell setup` and the
+  Settings CLI installer add the line only when the operator says yes (CMD-037, CMD-038).
 
 ## Open questions
 
@@ -107,7 +124,7 @@ profile: it only shows the `PATH` line for the operator to paste. Pasting the sn
 
 ## Needs
 
-- A ruling on INS-009 for the Settings switch.
-- After approval: add CMD-032 to CMD-036 to [cli-mcp-plan.md](../../cli-mcp-plan.md), and a
+- INS-009: ruled (see Rulings).
+- After approval: add CMD-032 to CMD-038 to [cli-mcp-plan.md](../../cli-mcp-plan.md), and a
   test that `anima prompt` stays under the time limit and prints nothing in a non-interactive
   shell.
