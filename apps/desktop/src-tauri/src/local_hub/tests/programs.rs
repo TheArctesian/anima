@@ -32,16 +32,26 @@ fn run(
     })
 }
 
-/// A bundle as the builder makes it, with a stand-in for the program.
+/// `productName` of the application: Tauri names the macOS application folder and the Linux
+/// resource folder after it.
+fn product_name() -> String {
+    let config: serde_json::Value =
+        serde_json::from_str(include_str!("../../../tauri.conf.json")).unwrap();
+    config["productName"].as_str().unwrap().to_owned()
+}
+
+/// A bundle as Tauri lays it out for this application, with a stand-in for the program.
 fn bundle(folder: &Path, macos: bool, script: &str) -> PathBuf {
+    let product = product_name();
     let (programs, tree) = if macos {
         (
-            "Anima.app/Contents/MacOS",
-            "Anima.app/Contents/Resources/database",
+            format!("{product}.app/Contents/MacOS"),
+            format!("{product}.app/Contents/Resources/database"),
         )
     } else {
-        ("usr/bin", "usr/lib/Anima/database")
+        ("usr/bin".to_owned(), format!("usr/lib/{product}/database"))
     };
+    let (programs, tree) = (programs.as_str(), tree.as_str());
     fs::create_dir_all(folder.join(programs)).unwrap();
     fs::create_dir_all(folder.join(tree).join("bin")).unwrap();
     fs::write(folder.join(tree).join("bin/postgres"), "").unwrap();
@@ -130,7 +140,7 @@ fn without_an_absolute_home_nothing_runs() {
 #[test]
 fn install_names_the_tree_of_the_bundle_and_nothing_from_the_web_view() {
     let args = install_args(Path::new(
-        "/Applications/Anima.app/Contents/Resources/database",
+        "/Applications/Anima.ing.app/Contents/Resources/database",
     ));
 
     assert_eq!(
@@ -138,7 +148,7 @@ fn install_names_the_tree_of_the_bundle_and_nothing_from_the_web_view() {
         [
             "install",
             "--tree",
-            "/Applications/Anima.app/Contents/Resources/database"
+            "/Applications/Anima.ing.app/Contents/Resources/database"
         ]
     );
 }

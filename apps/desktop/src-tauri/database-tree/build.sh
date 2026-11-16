@@ -142,7 +142,10 @@ else
         fi
         ;;
     linux)
-        build linux
+        # Stack protector, checked libc calls, and a read-only relocation table with no lazy
+        # binding (S3 T11, condition d). The checks below prove the last two.
+        build linux CFLAGS="-O2 -fstack-protector-strong" CPPFLAGS="-D_FORTIFY_SOURCE=2" \
+            LDFLAGS="-Wl,-z,relro,-z,now"
         cp -R "$WORK/install-linux/share" "$TREE/share"
         for program in $PROGRAMS; do
             cp "$WORK/install-linux/bin/$program" "$TREE/bin/$program"
@@ -179,6 +182,8 @@ linux)
         outside=$(readelf -d "$file" | sed -n 's/.*(NEEDED).*\[\(.*\)\]/\1/p' |
             grep -v -e '^libc\.so\.6$' -e '^libm\.so\.6$' -e '^libz\.so\.1$' -e '^libpq\.so\.5$' -e '^ld-linux' || true)
         [ -z "$outside" ] || fail "$file needs a library outside the tree: $outside"
+        readelf -l "$file" | grep -q GNU_RELRO || fail "$file has no read-only relocation table"
+        readelf -d "$file" | grep -q BIND_NOW || fail "$file binds lazily"
     done
     ;;
 esac
