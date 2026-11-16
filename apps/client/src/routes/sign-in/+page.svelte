@@ -8,7 +8,7 @@
   import { storeHubAddress } from '$lib/desktop/address';
   import { writeAccessToken } from '$lib/desktop/token';
   import { useHub } from '$lib/hub/context';
-  import { createHub, parseHubAddress, type Hub, type HubAddress } from '$lib/hub/hub';
+  import { createRequestHub, parseHubAddress, type HubAddress, type RequestHub } from '$lib/hub/hub';
   import Icon from '$lib/icons/Icon.svelte';
   import { press } from '$lib/motion/roles/press';
   import { resolve as entrance } from '$lib/motion/roles/resolve';
@@ -88,9 +88,10 @@
    * The hub to sign in to: the current one, or one for the address typed into the open hub field, whose token reader is
    * behind the listener check too (F-10, M-A). Call it only after `checkLoopback` passed for that address.
    */
-  function chooseTarget(moved: HubAddress | undefined): { target: Hub; moved: HubAddress | undefined } {
+  function chooseTarget(moved: HubAddress | undefined): { target: RequestHub; moved: HubAddress | undefined } {
     if (moved === undefined) return { target: hub, moved };
-    return { target: createHub({ address: moved, token: tokenFor(moved, desktop) }), moved };
+    // Requests only: a sign-in needs no socket, so the candidate opens none.
+    return { target: createRequestHub({ address: moved, token: tokenFor(moved, desktop) }), moved };
   }
 
   /** Step 1's Continue: check the two fields here and move on; nothing goes to the hub. */
@@ -138,7 +139,6 @@
     // The secrets leave the page state as soon as they are read; only the user name stays (LOG-007).
     password = '';
     const outcome = await signIn({ api: accessApi(target), address: target.address, desktop, writeToken: writeAccessToken }, form);
-    if (target !== hub) closeCandidate(target);
     if (outcome.signedIn && (!desktop || moved !== undefined)) {
       // A new page, so the socket opens with the cookie the hub just set (E-4), or with the address just chosen (CLI-002);
       // the button stays off while it loads.
@@ -158,13 +158,6 @@
     step = 'credentials';
     await tick();
     inputs[firstInvalid(fields) === 'username' ? 'username' : 'password']?.focus();
-  }
-
-  function closeCandidate(candidate: Hub): void {
-    candidate.close().catch((reason: unknown) => {
-      // Fixed text and the error name only: the message is decided by the transport (LOG-007).
-      console.warn('Hub connection attempt failed while closing:', reason instanceof Error ? reason.name : 'unknown');
-    });
   }
 
   function edited(field: LoginField, event: Event & { currentTarget: HTMLInputElement }): void {

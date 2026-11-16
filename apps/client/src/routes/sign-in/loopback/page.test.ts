@@ -8,16 +8,48 @@ import { boxes, continueWith, settle, type } from '../page.fixture';
 
 // The sign-in page on this computer's hub address (F-10): nothing is sent until a program of this user listens there.
 
-const mocks = vi.hoisted(() => ({ hub: undefined as unknown, loopbackProblem: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  hub: undefined as unknown,
+  loopbackProblem: vi.fn(),
+  /** Each gated reader `tokenFor` made, by origin. */
+  readers: new Map<string, () => Promise<string | null>>(),
+  /** What the page gave each candidate hub, and what that hub was sent. */
+  candidates: [] as { origin: string; token: unknown; sent: string[] }[],
+}));
 
 vi.mock('$lib/hub/context', () => ({ useHub: () => mocks.hub }));
+vi.mock('$lib/hub/hub', async (importOriginal) => {
+  const real = await importOriginal<typeof import('$lib/hub/hub')>();
+  const { print } = await import('graphql');
+  return {
+    ...real,
+    createRequestHub: (options: { address: { origin: string }; token: unknown }) => {
+      const candidate = { origin: options.address.origin, token: options.token, sent: [] as string[] };
+      mocks.candidates.push(candidate);
+      return {
+        address: options.address,
+        request: (document: Parameters<typeof print>[0]) => {
+          candidate.sent.push(/(?:mutation|query) (\w+)/.exec(print(document))?.[1] ?? '');
+          return Promise.resolve({ ok: true, value: { login: { token: 'tok-moved' } } });
+        },
+      };
+    },
+  };
+});
 vi.mock('$lib/desktop/token', async (importOriginal) => ({ ...(await importOriginal<typeof import('$lib/desktop/token')>()), writeAccessToken: vi.fn() }));
 vi.mock('$lib/platform/platform', async () => {
   const { DESKTOP_MAC } = await import('$lib/platform/answers.fixture');
   return { capabilities: () => DESKTOP_MAC };
 });
 vi.mock('$lib/access/navigation', () => ({ goToDevices: vi.fn(), reloadClient: vi.fn(), loadClientAt: vi.fn() }));
-vi.mock('$lib/access/listener/check', () => ({ loopbackProblem: mocks.loopbackProblem, tokenFor: () => () => Promise.resolve(null) }));
+vi.mock('$lib/access/listener/check', () => ({
+  loopbackProblem: mocks.loopbackProblem,
+  tokenFor: (address: { origin: string }) => {
+    const reader = () => Promise.resolve(null);
+    mocks.readers.set(address.origin, reader);
+    return reader;
+  },
+}));
 
 const PROBLEM = { title: "Another program holds the hub's port", advice: 'Anima.ing sends nothing to it: no password and no token. Stop that program, then check again.' };
 let app: ReturnType<typeof mount> | undefined;
@@ -46,6 +78,8 @@ const sockets = vi.fn();
 
 beforeEach(() => {
   mocks.loopbackProblem.mockReset();
+  mocks.readers.clear();
+  mocks.candidates.length = 0;
   fetch.mockReset();
   sockets.mockReset();
   vi.stubGlobal('fetch', fetch);
@@ -83,6 +117,47 @@ it('F-10, M-A: a loopback address typed into the hub field is checked first; wit
   expect(target.querySelector('[role="alert"]')?.textContent).toContain(PROBLEM.title);
   expect(boxes(target)).toHaveLength(0);
   expect([fetch.mock.calls.length, sockets.mock.calls.length, hub.sent.length]).toEqual([0, 0, 0]);
+});
+
+/** Opens the page, types `typed` into the hub field and continues to the code step. */
+async function towardsTyped(typed: string): Promise<HTMLElement> {
+  const target = open();
+  await settle();
+  button(target, 'Change')?.click();
+  await settle();
+  type(target, 'hub-address', typed);
+  await continueWith(target, 'ann', 'hunter2-pw');
+  return target;
+}
+
+function pasteCode(target: HTMLElement): void {
+  const event = new Event('paste', { bubbles: true, cancelable: true });
+  Object.defineProperty(event, 'clipboardData', { value: { getData: () => '123456' } });
+  boxes(target)[0]?.dispatchEvent(event);
+}
+
+it("F-10, M-A: the typed address's hub reads its token through the gate made for that address", async () => {
+  mocks.loopbackProblem.mockResolvedValue(null);
+  const target = await towardsTyped('http://127.0.0.1:9000');
+  pasteCode(target);
+  await settle();
+  const [candidate] = mocks.candidates;
+  expect(candidate?.origin).toBe('http://127.0.0.1:9000');
+  expect(candidate?.token).toBe(mocks.readers.get('http://127.0.0.1:9000'));
+  expect(candidate?.sent).toEqual(['Login']);
+});
+
+it('F-10, M-A: right before the password goes, the typed address is checked again, not the current one', async () => {
+  let armed = false;
+  mocks.loopbackProblem.mockImplementation((origin: string) => Promise.resolve(armed && origin === 'http://127.0.0.1:9000' ? PROBLEM : null));
+  const target = await towardsTyped('http://127.0.0.1:9000');
+  armed = true;
+  pasteCode(target);
+  await settle();
+  expect(mocks.loopbackProblem).toHaveBeenLastCalledWith('http://127.0.0.1:9000', true);
+  expect(mocks.candidates.flatMap((candidate) => candidate.sent)).toEqual([]);
+  expect(hub.sent).toEqual([]);
+  expect(target.querySelector('[role="alert"]')?.textContent).toContain(PROBLEM.title);
 });
 
 it('F-10, M-B: while the first check is pending, Continue is off and nothing moves on', async () => {
