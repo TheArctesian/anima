@@ -190,7 +190,7 @@ and records `lsof -i` for each program.
 | T3 | Hub: `fleet/link` domain, `ANIMA_LINK_CONTROL`, K1 fields, audit | Tests against a fake control socket; `LINK_OFF` without the variable; API key refused for the mutations | reviewer, reviewer-security | Not started | — |
 | T4 | `anima link devices|invite|revoke`; MCP `link_devices`; CMD-031 | CLI tests against the fake hub | reviewer | Not started | — |
 | T5 | Local hub: the link member (F-6), hub link-mode environment, `account`, `start`, `stop` | Unit tests with stand-in programs; the existing real-program test | reviewer, reviewer-security | Not started | — |
-| T6 | Tauri shell: account, start/stop, carried `anima-link`, device link (join, run, status); CSP | Rust unit tests; caller check on each command | reviewer, reviewer-security | Not started | — |
+| T6 | Tauri shell: account, start/stop, carried `anima-link`, device link (join, run, status); CSP | Rust unit tests; caller check on each command | reviewer, reviewer-security | In progress (built, waits for review) | the T6 commit on `s6-t6-shell` |
 | T7 | Client: loopback address rule (F-1), QR code, AWK-005 seam (F-3) | Vitest | reviewer | Not started | — |
 | T8 | Client: first-run screens (choices, create, account, TOTP, invite, join, recover) and the two Settings sections | Vitest; `reviewer-interface` | reviewer, reviewer-interface, reviewer-security (account and invite) | Not started | — |
 | T9 | Guide `docs/setup/first-run.md`; this document's results | — | — | Not started | — |

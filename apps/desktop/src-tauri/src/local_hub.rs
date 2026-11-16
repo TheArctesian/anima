@@ -3,15 +3,19 @@
 //! the shell finds it, runs it with a small fixed environment and a time limit, and reads its
 //! answer. No rule of the hub is here (REPO-003).
 //!
-//! Only the main web view may ask (WEB-007). The commands take no argument: no path, no program
-//! and no address comes from the web view. Nothing here holds or logs a secret (LOG-007).
+//! Only the main web view may ask (WEB-007). No path, no program and no address comes from the
+//! web view. The account commands (`account`) pass secrets to the program on standard input and
+//! never log them (LOG-007).
 //!
-//! Only a release build that the builder gave the programs carries them. Any other build says
-//! it carries none.
+//! Only a release build that the builder gave the programs carries them. A debug build carries
+//! them only when `ANIMA_DEV_PROGRAMS` and `ANIMA_DEV_TREE` name them (`crate::carried`).
 
+pub mod account;
+mod account_form;
 mod carried;
 mod error;
-mod program;
+mod key_copy;
+mod recovery;
 
 #[cfg(test)]
 mod tests;
@@ -29,6 +33,8 @@ use std::{
 use tauri::{Runtime, State, Webview};
 use tauri_plugin_log::log;
 
+use crate::carried::run::{self as program, Invocation};
+pub use account::RecoveryPermit;
 use carried::Carried;
 pub use error::LocalHubError;
 
@@ -39,6 +45,8 @@ const INSTALL_LIMIT: Duration = Duration::from_mins(12);
 /// `remove`: the stop command, the wait and on Linux one more command, 120 s each.
 const REMOVE_LIMIT: Duration = Duration::from_mins(7);
 const STATUS_LIMIT: Duration = Duration::from_secs(10);
+/// `start` and `stop`: one `launchctl` or `systemctl --user` command and the wait for it.
+const START_STOP_LIMIT: Duration = Duration::from_mins(3);
 
 /// The variables the program gets from the app, when they are set: where the user's folders
 /// are, and the session bus that `systemctl --user` needs.
@@ -49,11 +57,12 @@ const PASSED_ON: [&str; 4] = [
     "DBUS_SESSION_BUS_ADDRESS",
 ];
 
-/// The one install or remove that may run at a time.
+/// The one change of the hub on this computer (install, remove, start, stop, account) that may
+/// run at a time.
 #[derive(Debug, Default)]
 pub struct Changing(Arc<AtomicBool>);
 
-/// Holds [`Changing`] for one install or remove; dropping it frees it.
+/// Holds [`Changing`] for one change; dropping it frees it.
 struct Claim(Arc<AtomicBool>);
 
 impl Changing {
@@ -95,13 +104,20 @@ fn carried() -> Result<Carried, LocalHubError> {
         &executable,
         cfg!(target_os = "macos"),
         !cfg!(debug_assertions),
+        &crate::carried::DevFolders::of_this_run(),
     )
 }
 
 /// Runs the carried program with `args`, and returns what it printed.
 fn ask(carried: &Carried, args: &[&OsString], limit: Duration) -> Result<Vec<u8>, LocalHubError> {
     let env = environment(|name| std::env::var_os(name))?;
-    program::run(&carried.program, args, &env, limit).map_err(|error| {
+    let invocation = Invocation {
+        program: &carried.program,
+        args,
+        env: &env,
+        limit,
+    };
+    program::run(&invocation).map_err(|error| {
         log::warn!("anima-local-hub: {error}");
         LocalHubError::from(&error)
     })
@@ -192,6 +208,39 @@ pub async fn local_hub_remove<R: Runtime>(
         Err(error) => log::warn!("the hub was not removed: {}", error.code()),
     }
     result
+}
+
+/// Runs `start` or `stop` of the installed hub as the one change.
+async fn start_or_stop(changing: &Changing, verb: &'static str) -> Result<(), LocalHubError> {
+    let result = change(changing, move |carried| {
+        ask(carried, &[&OsString::from(verb)], START_STOP_LIMIT)
+    })
+    .await;
+    match &result {
+        Ok(()) => log::info!("the hub on this computer was told to {verb}"),
+        Err(error) => log::warn!("the hub did not {verb}: {}", error.code()),
+    }
+    result
+}
+
+/// Starts the hub on this computer after a `stop`.
+#[tauri::command]
+pub async fn local_hub_start<R: Runtime>(
+    webview: Webview<R>,
+    changing: State<'_, Changing>,
+) -> Result<(), LocalHubError> {
+    from_main(webview.label())?;
+    start_or_stop(&changing, "start").await
+}
+
+/// Stops the hub on this computer until `start` or the next sign-in to the computer.
+#[tauri::command]
+pub async fn local_hub_stop<R: Runtime>(
+    webview: Webview<R>,
+    changing: State<'_, Changing>,
+) -> Result<(), LocalHubError> {
+    from_main(webview.label())?;
+    start_or_stop(&changing, "stop").await
 }
 
 /// Whether the hub is installed and runs, its state and where it listens.

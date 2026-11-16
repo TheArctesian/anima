@@ -3,7 +3,7 @@
 
 use serde::{Serialize, Serializer, ser::SerializeStruct};
 
-use super::program::ProgramError;
+use crate::carried::run::ProgramError;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
 pub enum LocalHubError {
@@ -13,7 +13,7 @@ pub enum LocalHubError {
     Unavailable,
     #[error("this build of the app does not carry the hub")]
     NotCarried,
-    #[error("an install or a remove is already running")]
+    #[error("another change of the hub on this computer is running")]
     Busy,
     #[error("the app could not find your home folder")]
     NoHome,
@@ -21,12 +21,22 @@ pub enum LocalHubError {
     TimedOut,
     #[error("the hub's program did not finish its work; the app's log has the cause")]
     Failed,
+    #[error("a value is empty, too long or not of its form")]
+    Argument,
+    #[error("the hub already has its operator account; recover it to replace it")]
+    Exists,
+    #[error("the hub refused the account; check the code and try again")]
+    Refused,
+    #[error("the hub on this computer has no key file")]
+    NoKey,
+    #[error("the key could not be saved at that place")]
+    Destination,
 }
 
 impl LocalHubError {
     /// Every error, for the tests that check each one.
     #[cfg(test)]
-    pub const ALL: [Self; 7] = [
+    pub const ALL: [Self; 12] = [
         Self::Caller,
         Self::Unavailable,
         Self::NotCarried,
@@ -34,6 +44,11 @@ impl LocalHubError {
         Self::NoHome,
         Self::TimedOut,
         Self::Failed,
+        Self::Argument,
+        Self::Exists,
+        Self::Refused,
+        Self::NoKey,
+        Self::Destination,
     ];
 
     /// Stable code the client switches on.
@@ -46,6 +61,11 @@ impl LocalHubError {
             Self::NoHome => "no-home",
             Self::TimedOut => "timed-out",
             Self::Failed => "failed",
+            Self::Argument => "argument",
+            Self::Exists => "exists",
+            Self::Refused => "refused",
+            Self::NoKey => "no-key",
+            Self::Destination => "destination",
         }
     }
 }
