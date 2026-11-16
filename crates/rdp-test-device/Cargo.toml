@@ -20,6 +20,6 @@ ironrdp-tokio = "0.12"
 rcgen.workspace = true
 rustls.workspace = true
 sha2.workspace = true
-tokio = { workspace = true, features = ["rt"] }
+tokio = { workspace = true, features = ["rt", "net", "sync", "time", "macros"] }
 tokio-rustls.workspace = true
 x509-parser.workspace = true

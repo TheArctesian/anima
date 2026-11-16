@@ -42,4 +42,6 @@ zeroize = { workspace = true }
 base64 = { workspace = true }
 jpeg-decoder = "0.3"
 proptest = "1.12"
+# For `tests/it` only. It depends on this crate, so a unit test inside `src` would see a
+# second copy of this crate's types.
 rdp-test-device = { path = "../rdp-test-device" }

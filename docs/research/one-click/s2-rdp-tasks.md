@@ -87,7 +87,7 @@ for R1, R3 and R4, and the full `BASE_REF=origin/main bun run gates` before the 
 | R3 RDP opening | Built, with tests against an RDP device in the test. `reviewer-security`: 2 medium, 1 low, 3 notes; all corrected but the two items in Section 6. Second review of the corrections: all closed, 1 new medium and 2 smaller points, corrected. | `a896283b`, `3bc6cb53` |
 | R4 RDP session | Built, with tests of a whole session through `serve`. `reviewer`: fix and re-review, no fault in the keys or the loop, 24 of 39 mutants not caught; its 6 should-fix points corrected. | `9ab323c8` and the commit after R5 |
 | R5 Program and documents | Built: `--pass`, the setup document. | `4554a90f` |
-| R6 Hub tunnel against the gateway | Built: 2 hub tests pass with a throwaway PostgreSQL. | see the log |
+| R6 Hub tunnel against the gateway | Built: 2 hub tests pass with a throwaway PostgreSQL. `reviewer` (by reading): fix and re-review; the password and the drawing are now asserted, and a wait with no meaning is gone. | `dd9d67c8` and the commit after it |
 | R7 Check against real servers | Done; results below. | — |
 
 Choices:
@@ -163,8 +163,8 @@ Choices:
   hub reads the device's certificate itself before the session, so the hub's tests need the
   whole RDP device. It moved from the gateway's tests to `crates/rdp-test-device`, a
   workspace member that only tests depend on, so there is one copy. The two hub tests are
-  in `tunnel/tests/wire/native/rdp.rs`: a session with the stored account that signs in,
-  draws and takes a key, and a device with another certificate, which ends
+  in `tunnel/tests/wire/native/rdp.rs`: a session that signs in with the stored user name, password and domain, draws what the
+  device paints and takes a key, and a device with another certificate, which ends
   `SERVER_CERTIFICATE_MISMATCH` and never gets the account. No hub source outside the
   tests changed.
 

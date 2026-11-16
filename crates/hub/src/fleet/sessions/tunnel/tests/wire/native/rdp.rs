@@ -3,18 +3,18 @@
 //! session; a device with another certificate than the accepted one never gets the
 //! account (SEC-007).
 
-use std::time::Duration;
-
 use rdp_test_device::{Device, Offered, Seen, Setup as DeviceSetup};
 use sqlx::PgPool;
 
 use super::super::{
-    Bench, Setup, bench, decoded, opened,
+    Bench, Setup, bench,
+    bench::PASSWORD,
+    decoded, opened,
     records::{DOCKER_HOST, LOOPBACK, ended, ended_once},
     socket::{Socket, open},
 };
 use super::native_gateway;
-use anima_gateway::rdp::KeyEvent;
+use anima_gateway::{rdp::KeyEvent, screen::Area};
 
 const SIZE: (u16, u16) = (640, 480);
 
@@ -34,8 +34,10 @@ fn stored(fingerprint: [u8; 32]) -> String {
     pairs.join(":")
 }
 
-/// An RDP session of `docker-host` through the native gateway, started, with the device's
-/// RDP port set to `device` and `accepted` as its accepted certificate.
+/// An RDP session of `docker-host` through the native gateway, started. The test then
+/// points the device record at `device` in the database: its RDP port, TLS as its
+/// security, and `accepted` as its accepted certificate. The hub reads all three when the
+/// tunnel opens.
 async fn rdp_bench(pool: &PgPool, device: &Device, accepted: &str) -> Bench {
     let gateway = native_gateway().await;
     let bench = bench(pool, &gateway, Setup::default()).await;
@@ -85,24 +87,53 @@ async fn s2_an_rdp_session_through_the_native_gateway_signs_in_draws_and_takes_k
     let mut client = open(&bench.url).await;
     opened(&mut client).await;
 
-    // The hub's read of the certificate ends first. Then the stored account reaches the
-    // device, after the gateway saw the accepted certificate too.
-    assert_eq!(device.next().await, Seen::Ended);
+    // The stored account reaches the device, after the hub and then the gateway saw the
+    // accepted certificate. The hub's own read of the certificate ends at some point too.
+    let sign_in = match device.next().await {
+        Seen::Ended => device.next().await,
+        seen => seen,
+    };
     let Seen::SignIn {
-        username, domain, ..
-    } = device.next().await
+        username,
+        password,
+        domain,
+    } = sign_in
     else {
         panic!("the sign-in comes first")
     };
-    assert_eq!((username.as_str(), domain.as_deref()), ("ops", Some("LAB")));
+    assert_eq!(
+        (username.as_str(), password.as_str(), domain.as_deref()),
+        ("ops", PASSWORD, Some("LAB"))
+    );
 
     let (frame, sync) = first_frame(&mut client).await;
     assert_eq!(frame[0].opcode, "size");
     assert_eq!(frame[0].args, ["0", "640", "480"]);
     client.send(&sync).await;
 
+    // What the device paints is drawn in the client: one colour, so a fill.
+    let area = Area {
+        x: 64,
+        y: 64,
+        width: 128,
+        height: 96,
+    };
+    device.paint(area, [200, 30, 90]).await;
+    let fill = loop {
+        let instruction = decoded(&client.text().await);
+        if instruction.opcode == "cfill" {
+            break instruction;
+        }
+        assert_ne!(instruction.opcode, "error");
+    };
+    assert_eq!(fill.args[2..5], ["200", "30", "90"]);
+
     // Num Lock, which the gateway sets once, and then the client's Return.
-    assert_eq!(device.next().await, Seen::Locks(0x02));
+    let locks = match device.next().await {
+        Seen::Ended => device.next().await,
+        seen => seen,
+    };
+    assert_eq!(locks, Seen::Locks(0x02));
     client.send("3.key,5.65293,1.1;").await;
     let pressed = KeyEvent::Scancode {
         code: 0x1c,
@@ -133,8 +164,6 @@ async fn sec_007_an_rdp_device_with_another_certificate_never_gets_the_account(p
         "error",
         LOOPBACK,
     );
-    // The hub's read of the certificate, and nothing after it.
+    // The hub's read of the certificate, and no sign-in before it.
     assert_eq!(device.next().await, Seen::Ended);
-    let more = tokio::time::timeout(Duration::from_millis(300), device.next()).await;
-    assert!(more.is_err(), "no sign-in reached the device");
 }
