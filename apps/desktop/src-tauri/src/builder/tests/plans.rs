@@ -184,7 +184,7 @@ fn bld_043_bld_083_macos_builds_universal_and_bundles_app_and_dmg_with_no_apple_
     );
     // Tauri signs with `bundle.macOS.signingIdentity`; no ad-hoc identity and no Apple secret.
     assert!(commands.iter().all(|command| command.env.is_empty()));
-    let app = Path::new("/c/bundle/macos/Anima.app");
+    let app = Path::new("/c/bundle/macos/Anima.ing.app");
     let [codesign, lipo] = plan::bundle_checks(app, &app.join("Contents/MacOS/Anima"));
     assert_eq!(
         args(&codesign),
@@ -192,12 +192,15 @@ fn bld_043_bld_083_macos_builds_universal_and_bundles_app_and_dmg_with_no_apple_
             "--verify",
             "--deep",
             "--strict",
-            "/c/bundle/macos/Anima.app"
+            "/c/bundle/macos/Anima.ing.app"
         ]
     );
     assert_eq!(
         args(&lipo),
-        ["-archs", "/c/bundle/macos/Anima.app/Contents/MacOS/Anima"]
+        [
+            "-archs",
+            "/c/bundle/macos/Anima.ing.app/Contents/MacOS/Anima"
+        ]
     );
     let tar = plan::app_archive(app, Path::new("/c/bundle/macos/Anima.app.tar.gz"));
     assert_eq!(
@@ -207,7 +210,7 @@ fn bld_043_bld_083_macos_builds_universal_and_bundles_app_and_dmg_with_no_apple_
             "/c/bundle/macos/Anima.app.tar.gz",
             "-C",
             "/c/bundle/macos",
-            "Anima.app"
+            "Anima.ing.app"
         ]
     );
 }
@@ -229,15 +232,15 @@ fn bld_084_the_dmg_is_notarized_with_the_keychain_profile_then_both_bundles_are_
         ]
     );
     assert!(notarize.env.is_empty(), "no Apple credential in a step");
-    let app = Path::new("/c/bundle/macos/Anima.app");
+    let app = Path::new("/c/bundle/macos/Anima.ing.app");
     let [staple, validate] = plan::staple(app);
     assert_eq!(
         args(&staple),
-        ["stapler", "staple", "/c/bundle/macos/Anima.app"]
+        ["stapler", "staple", "/c/bundle/macos/Anima.ing.app"]
     );
     assert_eq!(
         args(&validate),
-        ["stapler", "validate", "/c/bundle/macos/Anima.app"]
+        ["stapler", "validate", "/c/bundle/macos/Anima.ing.app"]
     );
     assert_eq!(staple.cwd, Path::new("/c/bundle/macos"));
 }

@@ -18,7 +18,7 @@ pub struct Carried {
 /// hold programs built from another commit, which are never offered. A debug build uses the
 /// folders of `dev`, when it has both.
 ///
-/// macOS: `Anima.app/Contents/MacOS/anima-local-hub` and `Contents/Resources/database/`.
+/// macOS: `Anima.ing.app/Contents/MacOS/anima-local-hub` and `Contents/Resources/database/`.
 /// Linux: `usr/bin/anima-local-hub` and `usr/lib/Anima/database/`.
 pub fn beside(
     executable: &Path,

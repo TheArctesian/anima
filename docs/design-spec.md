@@ -447,8 +447,10 @@ The operator's rule (operator, 2026-11-13): "Instalation is either dmg or app im
 
 | Platform | Artefact | Stable name (UPD-010) | Contains |
 | --- | --- | --- | --- |
-| macOS, universal | Disk image (`.dmg`) | `Anima.dmg` | The desktop application. The `anima` program, universal, in `Anima.app/Contents/MacOS/anima` (INS-002). |
+| macOS, universal | Disk image (`.dmg`) | `Anima.dmg` | The desktop application `Anima.ing.app`. The `anima` program, universal, in `Anima.ing.app/Contents/MacOS/anima` (INS-002). |
 | Linux, x86_64 | AppImage | `Anima-x86_64.AppImage` | The desktop application. The `anima` program in `usr/bin/anima` of the AppImage (INS-002). |
+
+The macOS application is `Anima.ing.app`: Tauri makes the name from `productName` (OD-W19, operator, 2026-11-16). The file names of a release stay `Anima*` (UPD-010); the macOS updater file stays `Anima.app.tar.gz` and contains `Anima.ing.app`.
 
 Built state: the two artefacts are built, signed and published (Sections 3.9 and 3.10). INS-002 to INS-007 are built (branch `fix/bundle-anima`, 2026-11-13). The builder puts the `anima` program in both artefacts, and Settings > Updates > Command line tool puts it on the `PATH`. No release with the `anima` program is published yet, so the signature, the notarization and the update of a real release are not verified (OD-16 to OD-18).
 

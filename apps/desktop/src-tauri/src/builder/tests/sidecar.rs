@@ -98,19 +98,23 @@ fn ins_002_each_half_is_put_under_the_name_tauri_reads_for_its_target() {
 
 #[test]
 fn od_016_the_bundled_anima_is_checked_for_both_architectures_and_its_signature() {
-    let program = Path::new("/c/Anima.app/Contents/MacOS/anima");
+    let program = Path::new("/c/Anima.ing.app/Contents/MacOS/anima");
     let codesign = sidecar::signature(program);
     assert_eq!(codesign.program, Program::Codesign);
     assert_eq!(
         args(&codesign),
-        ["--verify", "--strict", "/c/Anima.app/Contents/MacOS/anima"]
+        [
+            "--verify",
+            "--strict",
+            "/c/Anima.ing.app/Contents/MacOS/anima"
+        ]
     );
     let lipo = sidecar::archs(program);
     assert_eq!(
         (lipo.program, args(&lipo)),
         (
             Program::Lipo,
-            vec!["-archs", "/c/Anima.app/Contents/MacOS/anima"]
+            vec!["-archs", "/c/Anima.ing.app/Contents/MacOS/anima"]
         )
     );
 }
@@ -137,7 +141,7 @@ fn ins_002_only_a_64_bit_x86_64_elf_file_is_the_linux_anima() {
 fn ins_002_the_mac_app_holds_exactly_its_own_executable_and_anima() {
     let root = tempfile::tempdir().unwrap();
     let clone = fs::canonicalize(root.path()).unwrap();
-    let app = clone.join("Anima.app");
+    let app = clone.join("Anima.ing.app");
     let macos = app.join("Contents/MacOS");
     fs::create_dir_all(&macos).unwrap();
     fs::write(macos.join("anima-desktop"), b"app").unwrap();
