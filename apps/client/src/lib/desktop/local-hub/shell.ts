@@ -58,7 +58,6 @@ export type LocalHubProblem =
   | 'timed-out'
   | 'failed'
   | 'argument'
-  | 'exists'
   | 'refused'
   | 'no-key'
   | 'destination'
@@ -73,7 +72,6 @@ const MESSAGES: Readonly<Record<LocalHubProblem, string>> = {
   'timed-out': 'The hub did not answer in time. Try again.',
   failed: 'The hub programs did not finish. The application log has the cause.',
   argument: 'The hub refused the form of this request.',
-  exists: 'The hub already has an operator account.',
   refused: 'The hub refused the account. Check the password and the code.',
   'no-key': 'The hub has no key file yet.',
   destination: 'The key could not be written to that place. Choose another folder.',
@@ -181,7 +179,8 @@ export function newTotp(name: string): Promise<LocalHubResult<NewTotp>> {
 
 /**
  * Makes the account (FRN-003). When one exists the shell first asks the person at this computer in a native dialog,
- * which script cannot answer, and fails with `cancelled` when they decline (FRN-007, F-9).
+ * which script cannot answer, and fails with `cancelled` when they decline (FRN-007, F-9). For 60 s after that it shows
+ * no dialog and fails with `busy`. A name outside the rule fails with `argument`.
  */
 export function createLocalAccount(account: NewAccount): Promise<LocalHubResult<null>> {
   return call('local_hub_account_create', isNull, { account });

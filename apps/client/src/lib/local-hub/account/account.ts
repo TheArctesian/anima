@@ -49,7 +49,14 @@ export function secondsToNextCode(now: Date): number {
   return TOTP_STEP_S - (seconds % TOTP_STEP_S);
 }
 
+const ACCOUNT_TEXT: Partial<Record<LocalHubProblem, string>> = {
+  refused: 'The code did not match. Wait for a new code and try again.',
+  // For 60 s after the person cancels the replace dialog the shell shows no dialog and answers `busy` (F-9).
+  busy: 'Wait a minute before you try again.',
+  argument: 'The hub refused the name: use 1 to 64 letters, digits, dots, underscores or hyphens, starting with a letter or a digit.',
+};
+
 /** The fixed text for a refused account change (FRN-004, FRN-007). */
 export function accountFailure(problem: LocalHubProblem): string {
-  return problem === 'refused' ? 'The code did not match. Wait for a new code and try again.' : localHubMessage(problem);
+  return ACCOUNT_TEXT[problem] ?? localHubMessage(problem);
 }
