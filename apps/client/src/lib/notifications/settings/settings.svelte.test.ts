@@ -132,7 +132,7 @@ it('LOG-007: a refused save says so in a fixed sentence and keeps what was typed
   expect([outcome(), days().value]).toEqual(['The hub refused: Certificate expiry days.', '30, 7']);
 });
 
-it('F-3, MOT-007: while loading the fields wait, empty; a failed load offers Try again in the outcome\'s place', async () => {
+it('F-3, MOT-007: while loading the fields wait, empty; a failed load offers Retry in the outcome\'s place', async () => {
   const answers: Partial<Record<Operation, unknown>> = loaded({ NotificationSettings: failure('UNAVAILABLE') });
   await open(answers as Parameters<typeof fakeHub>[0]);
   expect([days().value, days().matches(':disabled'), form.getAttribute('aria-busy')]).toEqual(['', true, 'true']);
@@ -144,7 +144,7 @@ it('F-3, MOT-007: while loading the fields wait, empty; a failed load offers Try
   expect([days().value, days().matches(':disabled'), form.getAttribute('aria-busy')]).toEqual(['21, 14, 7', false, 'false']);
 });
 
-it('MOT-007, NAV-005: Try again stays mounted and keeps focus while it retries and when it fails again, then focus goes to the first field', async () => {
+it('MOT-007, NAV-005: Retry stays mounted and keeps focus while it retries and when it fails again, then focus goes to the first field', async () => {
   const answers: Partial<Record<Operation, unknown>> = loaded({ NotificationSettings: failure('UNAVAILABLE') });
   await open(answers as Parameters<typeof fakeHub>[0]);
   const again = button('Retry', form);

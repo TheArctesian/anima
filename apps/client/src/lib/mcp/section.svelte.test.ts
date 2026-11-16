@@ -302,7 +302,7 @@ it('MCP-021: when the file cannot be read, the section says so without a path an
   expect(target.textContent).not.toContain('config.json');
   expect(target.querySelectorAll('li')).toHaveLength(0);
   shell.readProblem = null;
-  await click(button('Try again'));
+  await click(button('Retry'));
   expect(target.querySelectorAll('li')).toHaveLength(6);
   expect(HUB).toBe(mocks.hub.address.origin);
 });

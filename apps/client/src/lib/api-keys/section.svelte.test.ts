@@ -130,7 +130,7 @@ it('MOT-007: a hidden key row keeps one key\'s space in the cell where the list,
   }
 });
 
-it('INT-003: a failed ApiKeys query shows only the section\'s fixed error, keeps Create, and Try again loads again', async () => {
+it('INT-003: a failed ApiKeys query shows only the section\'s fixed error, keeps Create, and Retry loads again', async () => {
   const target = await open({ ApiKeys: failure('INTERNAL', 'Unknown field "apiKeys"') });
   expect(target.querySelector('[role="alert"]')?.textContent).toBe('Could not load the API keys.');
   expect(target.textContent).not.toContain('Unknown field');
@@ -202,7 +202,7 @@ it('NAV-005: after revoking the only key, focus goes to "Create API key"', async
   expect(document.activeElement).toBe(button('Create API key'));
 });
 
-it('MOT-007, NAV-005: Try again stays mounted and keeps focus while it retries and when it fails again, then focus goes to Create', async () => {
+it('MOT-007, NAV-005: Retry stays mounted and keeps focus while it retries and when it fails again, then focus goes to Create', async () => {
   const answers: Parameters<typeof fakeHub>[0] = { ApiKeys: failure('INTERNAL') };
   await open(answers);
   const again = button('Retry');

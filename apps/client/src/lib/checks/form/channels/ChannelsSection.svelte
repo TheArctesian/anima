@@ -16,7 +16,7 @@
 
   let root = $state<HTMLElement>();
 
-  /** Reloads; focus stays on Try again while it works, and moves to the first control once the list is back. */
+  /** Reloads; focus stays on Retry while it works, and moves to the first control once the list is back. */
   async function retry(): Promise<void> {
     if (busy) return;
     const hadFocus = root?.contains(document.activeElement) === true;
@@ -68,7 +68,7 @@
     />
     <small id="{resendId}-hint">0 means never resend.</small>
   </div>
-  <!-- The message line is as tall as the Try again button, so every state looks alike. -->
+  <!-- The message line is as tall as the Retry button, so every state looks alike. -->
   <div class="message">
     <small id="{resendId}-message" role="status">{draft.message}</small>
     {#if draft.retryShown}

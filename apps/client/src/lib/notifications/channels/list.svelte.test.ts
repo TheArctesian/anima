@@ -230,7 +230,7 @@ it('MOT-007: after threshold-loading a one-line skeleton shows over the kept lin
   expect(names(target)).toHaveLength(4);
 });
 
-it('F-3, MOT-007: a failed load shows its own message and Try again in the kept space; the settings still load', async () => {
+it('F-3, MOT-007: a failed load shows its own message and Retry in the kept space; the settings still load', async () => {
   const answers: Partial<Record<Operation, unknown>> = loaded({ NotificationChannels: failure('UNAVAILABLE') });
   const target = await open(answers as Parameters<typeof fakeHub>[0]);
   const alert = target.querySelector('.stack [role="alert"]');
@@ -242,7 +242,7 @@ it('F-3, MOT-007: a failed load shows its own message and Try again in the kept 
   expect(target.querySelector('.stack p.quiet')?.textContent).toBe('No channels. Add one to get alerts.');
 });
 
-it('MOT-007, NAV-005: Try again stays mounted and keeps focus while it retries and when it fails again, then focus goes to Add channel', async () => {
+it('MOT-007, NAV-005: Retry stays mounted and keeps focus while it retries and when it fails again, then focus goes to Add channel', async () => {
   const answers = loaded({ NotificationChannels: failure('UNAVAILABLE') });
   await open(answers);
   const again = button('Retry');

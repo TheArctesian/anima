@@ -128,7 +128,7 @@ it('RA-036: a new device takes a typed limit to create', async () => {
   expect(calls.onSave.mock.calls[0]?.[0].policy).toEqual({ sessionLimit: '4' });
 });
 
-it('RA-036: a failed policy load keeps the rest of the form usable, sends no policy, and offers Try again', async () => {
+it('RA-036: a failed policy load keeps the rest of the form usable, sends no policy, and offers Retry', async () => {
   const { sent, calls } = await editing([down, ok({ device: POLICY })]);
   expect(message()).toBe(LOAD_SENTENCE);
   expect(message()).not.toContain('secret');
@@ -211,7 +211,7 @@ it('MOT-007: every policy sentence fits one short line, so the form does not mov
   expect(PARTIAL_SENTENCE.length).toBeLessThanOrEqual(36);
 });
 
-it('RA-036: Try again stays mounted and busy while it runs, and a successful load moves focus to the limit', async () => {
+it('RA-036: Retry stays mounted and busy while it runs, and a successful load moves focus to the limit', async () => {
   await editing([down, ok({ device: POLICY })]);
   const again = button('Retry');
   again.focus();

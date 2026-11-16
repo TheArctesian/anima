@@ -47,7 +47,7 @@
     } else loadFailed = true;
   }
 
-  /** Try again: the button stays mounted, and aria-disabled, while the hub answers; on success focus goes to Add channel (NAV-005). */
+  /** Retry: the button stays mounted, and aria-disabled, while the hub answers; on success focus goes to Add channel (NAV-005). */
   async function retry(): Promise<void> {
     if (retrying) return;
     retrying = true;

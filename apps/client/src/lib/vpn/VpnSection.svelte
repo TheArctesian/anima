@@ -46,7 +46,7 @@
     };
   });
 
-  /** Try again; the button stays mounted, and aria-disabled, while the hub answers. */
+  /** Retry; the button stays mounted, and aria-disabled, while the hub answers. */
   async function retry(): Promise<void> {
     if (retrying) return;
     retrying = true;

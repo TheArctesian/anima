@@ -22,12 +22,12 @@ it('UI-030 and DEV-005: the empty state has a short title, one line and one acti
   expect(document.querySelectorAll('button')).toHaveLength(1);
 });
 
-it('UI-030: the error state names what failed, offers "Try again" and keeps the cause in its slot', () => {
+it('UI-030: the error state names what failed, offers "Retry" and keeps the cause in its slot', () => {
   const onRetry = vi.fn();
   app = mount(ErrorState, { target: document.body, props: { message: 'Devices did not load.', onRetry, cause: text('<span class="cause">503</span>') } });
   flushSync();
   expect(document.querySelector('[role="alert"] p')?.textContent).toBe('Devices did not load.');
-  const retry = [...document.querySelectorAll('button')].find((button) => button.textContent.trim() === 'Try again');
+  const retry = [...document.querySelectorAll('button')].find((button) => button.textContent.trim() === 'Retry');
   retry?.click();
   expect(onRetry).toHaveBeenCalledOnce();
   expect(document.querySelector('.next .cause')?.textContent).toBe('503');

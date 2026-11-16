@@ -122,7 +122,7 @@ it('HUB-005: the note that changes apply at the next daily run is shown', async 
   expect(target.textContent).toContain('Applied at the next daily run.');
 });
 
-it('HUB-005: a failed load shows a fixed message and Try again loads the periods', async () => {
+it('HUB-005: a failed load shows a fixed message and Retry loads the periods', async () => {
   const target = await open({ Retention: failure('unreachable', 'secret hub text') });
   expect(target.querySelector('.note [role="alert"]')?.textContent).toBe('Could not load the periods.');
   expect(target.textContent).not.toContain('secret hub text');
@@ -253,11 +253,11 @@ it('MOT-007: the note block is present in the loaded and the failed state', asyn
   expect(failed.querySelectorAll('.note')).toHaveLength(1);
 });
 
-it('MOT-007, NAV-005: Try again stays mounted and keeps focus while it retries and when it fails again, then focus goes to the first period', async () => {
+it('MOT-007, NAV-005: Retry stays mounted and keeps focus while it retries and when it fails again, then focus goes to the first period', async () => {
   const answers: Parameters<typeof fakeHub>[0] = { Retention: failure('unreachable') };
   const target = await open(answers);
   const again = [...target.querySelectorAll('button')].find((each) => each.textContent === 'Retry');
-  if (again === undefined) throw new Error('no Try again');
+  if (again === undefined) throw new Error('no Retry');
   again.focus();
   again.click();
   flushSync();

@@ -13,7 +13,7 @@
     cause?: Snippet;
   }
 
-  const { message, retryLabel = 'Try again', onRetry, cause }: Props = $props();
+  const { message, retryLabel = 'Retry', onRetry, cause }: Props = $props();
 </script>
 
 <!-- It replaces the content that failed to load and nothing else (UI-030). The text stays the text colour: --status-down text is under 4.5:1 (MAT-005). -->

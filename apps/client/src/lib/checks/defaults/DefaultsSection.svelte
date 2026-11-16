@@ -41,7 +41,7 @@
     } else loadFailed = true;
   }
 
-  /** Try again: the button stays where it is, and aria-disabled, while the hub answers; on success focus goes to the first field. */
+  /** Retry: the button stays where it is, and aria-disabled, while the hub answers; on success focus goes to the first field. */
   async function retry(): Promise<void> {
     if (retrying) return;
     retrying = true;
@@ -110,7 +110,7 @@
       {/snippet}
     </SettingRow>
   {/each}
-  <!-- The footer holds the section's notice and Save on one line in every state. The notice's icon and Try again stay
+  <!-- The footer holds the section's notice and Save on one line in every state. The notice's icon and Retry stay
        mounted and are hidden unless needed, so the footer keeps its height and focus stays put (MOT-007, MV-005, UI-015). -->
   <div class="footer">
     <div class="note-block">

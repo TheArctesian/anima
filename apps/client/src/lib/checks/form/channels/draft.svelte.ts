@@ -27,7 +27,7 @@ export class ChannelsDraft {
   message = $state('');
   /** The sentence is about the resend input, which then takes focus. */
   resendInvalid = $state(false);
-  /** Try again stays mounted from the first failure until a load succeeds, so its focus survives the reload. */
+  /** Retry stays mounted from the first failure until a load succeeds, so its focus survives the reload. */
   retryShown = $state(false);
   readonly #checkId: string | null;
   readonly #calls: ChannelCalls | null;

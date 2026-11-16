@@ -53,8 +53,8 @@ export const LOAD_TIMEOUT_MS = 30_000;
 
 /** Fixed texts; the hub's and the shell's own messages are not shown (R-035, LOG-007). */
 export const PROBLEM = {
-  accept: 'The hub did not accept the certificate. Try again.',
-  unreachable: 'Not accepted: the hub did not answer. Try again.',
+  accept: 'The hub did not accept the certificate. Retry.',
+  unreachable: 'Not accepted: the hub did not answer. Retry.',
 } as const;
 
 function schemeOf(url: string): string | null {
