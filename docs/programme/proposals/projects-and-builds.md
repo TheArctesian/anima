@@ -7,7 +7,9 @@ From: a side chat with the operator on 2026-11-13, sent to the planning session.
 the rulings of 2026-11-16 (OD-W13) and the plan for the two build models.
 Status: In progress. The operator decided the six points in "Decision" (OD-W11), the points in
 "Decision on the proposals" (OD-W12) and the three points in "Decision of 2026-11-16" (OD-W13).
-PRO-029 to PRO-053 are proposals with no ruling. Connect GitHub and the Work, Code and History
+The operator decided OD-W14 to OD-W21 on 2026-11-16: PRO-029, PRO-030, PRO-032, PRO-037, PRO-038,
+PRO-044, the first mode of PRO-042 and the order of the tasks. The other requirements from
+PRO-031 to PRO-053 are proposals with no ruling. Connect GitHub and the Work, Code and History
 tabs are on `main`. No build function of this proposal is built.
 Map: [work-plan.md](../../work-plan.md), categories See and Use, decisions OD-W11 to OD-W21.
 Identifiers: PRO-001 to PRO-053. The prefix `PRJ` belongs to the extensions plan and is not
@@ -115,7 +117,7 @@ again: the text below is the text of OD-W13.
   forks run. Anima runs what it is sent. The operator's words: "if the user wants to build from
   fork thats their choice they can harden their git repo in any way we just run it". A build
   still runs the code of the repository on an owned machine: PRO-029 and PRO-030 are the
-  proposed limits.
+  limits.
 - **PRO-014. Read-only sources stay read-only.** The first text ("read first, write later") is
   replaced by PRJ-017: the GitHub App of the operator has read and write permission from the
   start, and each change is a named function (PRJ-027). This part stays: a sign-in to a source
@@ -148,19 +150,20 @@ PRO-010, PRO-013 and PRO-020 have the new text above. These requirements follow 
 A fact that limits PRO-028: the source of Anima is public (`TheArctesian/anima.ing`, licence
 AGPL-3.0-or-later). Each person can compile it. Anima can keep only two things from a different
 person: the function in the product, and the keys. The keys are the updater key, the token of
-the release bucket and the Developer ID identity (R-116, R-117). OD-W20 asks the operator to
-confirm this meaning.
+the release bucket and the Developer ID identity (R-116, R-117). The operator confirmed this
+meaning (OD-W20, 2026-11-16): the rule is PRO-037 and PRO-038, and the keys stay with the Anima
+project on the operator's hub.
 
-## Proposed limits, not ruled (OD-W14, OD-W15)
+## Limits for each job (OD-W14, OD-W15, operator, 2026-11-16)
 
-The session of 2026-11-16 proposed these two. The operator has not decided them.
+The session of 2026-11-16 proposed these two. The operator accepted them the same day.
 
-- **PRO-029. Each job is isolated, whoever wrote the code.** Proposed. A container job runs in a
+- **PRO-029. Each job is isolated, whoever wrote the code.** Decided (OD-W14). A container job runs in a
   new container that the machine deletes. A native job on a Mac runs as the build user, in a new
   checkout that the machine deletes (PRO-022 to PRO-024). This applies to model (a) and to
   model (b), to the operator's branches and to a fork. Reason: after OD-W13 the hub cannot know
   that the code is the operator's code.
-- **PRO-030. A job gets the least that it needs.** Proposed. In model (a), a job that a pull
+- **PRO-030. A job gets the least that it needs.** Decided (OD-W15). In model (a), a job that a pull
   request from a fork starts gets no secret of the project and no signing key, unless the
   operator sets that on for the project. This is the default of GitHub (fact F19). In model (b),
   Anima gives a runner only its registration (PRO-040). GitHub gives that job the secrets of
@@ -209,7 +212,8 @@ Defects, each verified in the code. No defect is corrected.
 
 ## Plan A: the general builder
 
-All requirements of this section are proposals with no ruling.
+PRO-032, PRO-037 and PRO-038 are decided (OD-W16, OD-W20; operator, 2026-11-16). The other
+requirements of this section are proposals with no ruling.
 
 - **PRO-031. A build belongs to a project.** A build is one item of work. It names the project,
   the repository, the commit, the recipe and the trigger. The trigger is the operator or a push.
@@ -217,7 +221,7 @@ All requirements of this section are proposals with no ruling.
   its own. The first recipe is the desktop release: the steps that the builder has today, with
   the project as a parameter. The second recipe makes the image of a job or of a hosted
   application (JOB-002, JOB-003, JOB-008). Build it when a job needs it. A repository that needs
-  other steps uses its workflows on owned machines (PRO-027). OD-W16 asks the operator.
+  other steps uses its workflows on owned machines (PRO-027). Decided (OD-W16).
 - **PRO-033. The agent does the build.** `anima-agent` gets a build through the work route
   (USE-005, USE-006). The builder in the desktop application (BLD-020 to BLD-029) stays only for
   the release of Anima, until the agent can do that release. Then the desktop builder goes.
@@ -234,10 +238,12 @@ All requirements of this section are proposals with no ruling.
   project of the Anima repository. Its keys are secrets of that project (PRO-012): the updater
   key, the token of the release bucket, the Developer ID identity and the notary credentials.
   Until the Secrets extension exists (SCR-001, SCR-009), the keys stay where R-116 and R-117 put
-  them. A release still starts by hand (BLD-001, OD-12 of the design specification).
-- **PRO-037. A hub with no keys has no release.** The hub must refuse a release when it cannot
+  them. A release still starts by hand (BLD-001, OD-12 of the design specification). Decided
+  (OD-W20): the keys stay with the Anima project on the operator's hub. The other sentences are
+  proposals.
+- **PRO-037. A hub with no keys has no release.** Decided (OD-W20). The hub must refuse a release when it cannot
   publish. The refusal must give a typed reason. The hub must tell the client if it can publish.
-- **PRO-038. What a different person sees.** When the hub cannot publish, the client must show
+- **PRO-038. What a different person sees.** Decided (OD-W20). When the hub cannot publish, the client must show
   no "Builds" entry and no "Build releases on this computer" row. The "Updates" row stays: that
   installation still gets the releases of Anima from the public feed. The builds of a project
   are on its project page (PRO-025). A project with no build must show the two ways to get one:
@@ -320,7 +326,8 @@ later, on and off are one press. Task B1 must prove the variable first.
 
 ### Requirements
 
-All requirements of this section are proposals with no ruling.
+PRO-044 and the first mode of PRO-042 are decided (OD-W17, OD-W18; operator, 2026-11-16). The
+other requirements of this section are proposals with no ruling.
 
 - **PRO-039. One runner for one job.** Anima must register only just-in-time runners (F1). A
   runner does one job. Then the machine deletes the runner, its work folder and its
@@ -335,8 +342,8 @@ All requirements of this section are proposals with no ruling.
 - **PRO-042. Two modes.** Warm: Anima keeps one idle runner for each repository that is set on.
   GitHub gives it the next job. This mode needs no webhook. On demand: the hub registers a
   runner when `workflow_job` says that a job waits (F10). This mode needs the webhook receiver
-  (WHK-001 to WHK-010) and the event. A slow poll repairs a lost delivery (F11, WHK-006). OD-W17
-  asks the operator which mode comes first.
+  (WHK-001 to WHK-010) and the event. A slow poll repairs a lost delivery (F11, WHK-006).
+  Decided (OD-W17): warm mode comes first. On-demand mode follows the receiver.
 - **PRO-043. The runner program.** The machine gets the version that the hub names, from the
   releases of `actions/runner`, and checks its SHA-256. The program must not run as root (F8).
   Each job starts from a clean copy of the program. The hub must keep the version inside the
@@ -345,7 +352,9 @@ All requirements of this section are proposals with no ruling.
 - **PRO-044. The set-up says what is true.** Before the press, the client must show: public or
   private, the fork setting that GitHub reports (F24), and the machines that will run the jobs.
   For a public repository it must show the recommendation of GitHub (F22) and ask for one more
-  confirmation. OD-W18 asks the operator.
+  confirmation. Decided (OD-W18). The operator also decided two conditions for
+  `TheArctesian/anima.ing`: no runner before tasks W2 and S are accepted, and its fork rule on
+  GitHub set to "all external contributors" first. The operator sets that rule.
 - **PRO-045. The change of `runs-on`.** Anima can open a pull request that changes `runs-on`.
   It changes only a line of the plain form `runs-on: <one label>`. It must not parse YAML
   (ruling on PRJ-035, 2026-11-14). For each other form it shows the line that the operator must
@@ -425,9 +434,11 @@ plan. The names are proposals: that plan owns them.
 ## Tasks
 
 Each task is "Not started". Change the state in the commit that does the work (PLN-008). The
-order is the order of the groups: R, then W, then B, then A. S is the last task of W, B and A.
+order is the order of the groups: R, then W, then B, then A (OD-W21, operator, 2026-11-16). S is
+the last task of W, B and A.
 
-Group R: correct the release of Anima. It needs no other group.
+Group R: correct the release of Anima. It needs no other group. It is tier 0 of the work plan
+(OD-W21).
 
 | Task | Content | Needs | Done when | State | Commits |
 | --- | --- | --- | --- | --- | --- |
@@ -435,7 +446,7 @@ Group R: correct the release of Anima. It needs no other group.
 | R2 | Delete the bundle folder before the bundle step (D1). | — | A test builds one version two times and uploads the file of the second attempt. | Not started | — |
 | R3 | Add Go to the tool check (D4, BLD-028). | — | A builder with no Go names Go and does not claim. | Not started | — |
 | R4 | The hub refuses a release when it cannot publish. The client hides the Builds entry and the builder row then (D8, PRO-037, PRO-038). | — | A hub with no updater key refuses `createRelease` with a typed reason. The command and the MCP tool give the reason. The client shows no Builds entry. | Not started | — |
-| R5 | One name for the macOS application (D2). | OD-W19 | The design specification, `carried.rs` and the builder say one name. | Not started | — |
+| R5 | One name for the macOS application: `Anima.ing.app` (D2; OD-W19, operator, 2026-11-16). | — | The design specification Section 3.11, `carried.rs` and the builder say `Anima.ing.app`. The file names of a release stay `Anima_*` (UPD-010). | Not started | — |
 | R6 | The release carries the local hub (D3). | T9 of the S4 tasks; S3 T11 | As T9 of [s4-local-hub-tasks.md](../../research/one-click/s4-local-hub-tasks.md) states. This row only points to it. | Not started | — |
 | R7 | The first release. | R1 to R5; the operator | Each feed answers 200. An installed application updates on macOS and on Linux (D6, OD-16 to OD-18). The operator does this. | Not started | — |
 
@@ -445,7 +456,7 @@ table has the order.
 | Task | Content | Needs | Done when | State | Commits |
 | --- | --- | --- | --- | --- | --- |
 | W1 | The contract of the work route: claim, report, log, stop, a secret for one job, the work types `build` and `runner`. | A ruling that changes R-115 ([jobs.md](jobs.md), "Needs") | The programme accepts the contract. | Not started | — |
-| W2 | The isolation design, with prototypes: the container runtime on Linux, a workflow that needs Docker, the build user on a Mac, a signing identity for one job. | OD-W14 | A record with measured results on one Linux machine and one Mac. The security reviewer and the operator accept it. | Not started | — |
+| W2 | The isolation design, with prototypes: the container runtime on Linux, a workflow that needs Docker, the build user on a Mac, a signing identity for one job (PRO-029). | — | A record with measured results on one Linux machine and one Mac. The security reviewer and the operator accept it. | Not started | — |
 | W3 | The hub: one queue for work, the placement function, the log store (PRO-050, PRO-051). Hub API, then `anima`, then MCP. | W1 | The gates pass. The release of Anima still works through the old path. | Not started | — |
 | W4 | The agent: do a container job and a native job on a Mac, and delete each thing at the end (PRO-029). | W1, W2 | A test proves that a job cannot read the agent token or the home folder, and that nothing stays after a stop. | Not started | — |
 | W5 | "Takes work" for each machine, and "native jobs" for each Mac (USE-004, USE-008, PRO-024). | W3 | A machine that is set off at the machine refuses work from the hub. | Not started | — |
@@ -459,7 +470,7 @@ Group B: runners.
 | B2 | The GitHub provider: make a JIT configuration, remove a runner, list runners, read queued jobs, read the fork settings (PRO-049). | A contract change for the new `Change` values (K-E1 Section 13) | Each function has a test with a recorded answer. The JIT configuration is not in a log or in `Debug` output. | Not started | — |
 | B3 | The agent, work type `runner`: get the program, check it, run it in isolation for one job, delete it (PRO-039, PRO-043). | W4, B1 | A workflow of the test repository runs on a Linux machine and on a Mac. Nothing stays on the machine. | Not started | — |
 | B4 | The hub: runners on and off for a project, warm mode, the next runner after each job, the audit entries (PRO-042, PRO-046). Hub API, `anima runner`, MCP tools (PRO-053). | W3, B2 | With runners on, two jobs in sequence each get a new runner. With runners off, GitHub lists no runner of Anima. | Not started | — |
-| B5 | The set-up in the client, and the pull request that changes `runs-on` (PRO-044, PRO-045). | B4 | From a project page, one press and one merge make a workflow run on an owned machine. | Not started | — |
+| B5 | The set-up in the client, and the pull request that changes `runs-on` (PRO-044, PRO-045). | B4 | From a project page, one press and one merge make a workflow run on an owned machine. Use a private test repository: `TheArctesian/anima.ing` gets no runner before W2 and S are accepted (OD-W18). | Not started | — |
 | B6 | On-demand mode (PRO-042). | The webhook receiver (WHK); B4 | With no idle runner, a queued job gets a runner. A lost delivery is repaired by the poll. | Not started | — |
 | B7 | Runners for an organisation (PRO-048). | A need of the operator; a new permission | Parked. | Not started | — |
 
@@ -493,7 +504,7 @@ Group A: builds of Anima's own.
 | R-005 | "GitHub Actions runs only deployment, never gates or tests." | Not changed. It is a rule for the Anima repository. The operator decides if a workflow on an owned machine can run the gates there. |
 | BLD-040 | The clone address `TheArctesian/anima.git` | The repository is `TheArctesian/anima.ing` (D5). The address becomes a parameter (PRO-034). |
 | BLD-028 | The tool list has no Go | The gates need Go (D4). |
-| Design specification Section 3.11 | `Anima.app` | The builder makes `Anima.ing.app` (D2, OD-W19). |
+| Design specification Section 3.11 | `Anima.app` | The builder makes `Anima.ing.app` (D2). Decided (OD-W19): `Anima.ing.app`. Task R5 changes the text. |
 | PRJ-019, `contracts/extensions/sources.md` | The App has no event and its webhook is off | Model (a) needs `push`. On-demand runners need `workflow_job` (PRO-042). The manifest of a new App can name them (F15). An App that exists needs a step by the operator (F16). |
 | `contracts/extensions/sources.md` Section 1 | "23 repository permissions: `metadata` read and 22 others write" | The manifest has 24: `metadata` read and 23 write (`manifest.rs`). The text is wrong by one. Not changed here. |
 | OD-E14 of the extensions plan | The first GitHub functions that make a change | PRO-049 adds: make a JIT configuration, remove a runner, open the pull request of PRO-045. Each needs the operator's word, as OD-E14 says. |
@@ -524,7 +535,7 @@ Group A: builds of Anima's own.
   the design. Task W2 makes this design.
 - A builder gets a project secret from the hub for one job (JOB-010; operator, 2026-11-13). The
   design of the release and of the deletion on the machine is not made. Task W1 makes it.
-- The operator's decisions for version 2 are OD-W14 to OD-W21 in Section 7 of the work plan.
+- The operator decided OD-W14 to OD-W21 on 2026-11-16. Section 7 of the work plan has each one.
 - A workflow that needs Docker (a `container:` job, a Docker action) needs a Docker service
   inside the isolation. The Docker socket of the machine must not go into a job. Task W2 decides
   the way.
@@ -546,10 +557,9 @@ Group A: builds of Anima's own.
 
 ## Needs
 
-- A ruling number in `programme.md` for OD-W11, for OD-W12 and for OD-W13.
-- The operator's decisions OD-W14 to OD-W21 (work plan Section 7).
-- A row in Section 4 of the work plan for the tasks of group R. They correct the device
-  manager, and no row names them.
+- A ruling number in `programme.md` for OD-W11, for OD-W12, for OD-W13 and for OD-W14 to OD-W21.
+- Rulings for the requirements that are still proposals: PRO-031, PRO-033 to PRO-035, PRO-039 to
+  PRO-041, PRO-043 and PRO-045 to PRO-053.
 - A change to PRJ-001 and to Section 4.2 of the extensions plan (with #13 and #26): the import
   takes each repository and the operator leaves some out.
 - A security review of builds before the design is final: they run repository code on owned
