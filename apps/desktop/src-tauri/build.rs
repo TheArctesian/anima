@@ -31,7 +31,6 @@ const APP_COMMANDS: &[&str] = &[
     "local_hub_account",
     "local_hub_totp_new",
     "local_hub_account_create",
-    "local_hub_recover",
     "local_hub_key_save",
     "link_join",
     "link_status",

@@ -9,7 +9,7 @@ use super::super::{
     LocalHubError,
     account_form::{self, Account},
     carried, from_main, key_copy,
-    recovery::{PERMIT_LIFE, Recovery, may_create},
+    recovery::{Cancellations, PAUSE_AFTER_CANCEL, may_create},
 };
 use crate::carried::DevFolders;
 
@@ -58,8 +58,19 @@ fn a_debug_build_carries_the_hub_only_from_both_dev_folders() {
 #[test]
 fn a_name_that_could_be_an_option_or_holds_a_control_character_is_refused() {
     assert_eq!(account_form::name("ada").unwrap(), "ada");
+    assert!(account_form::name("ada.lovelace_1-x").is_ok());
     assert!(account_form::name(&"a".repeat(64)).is_ok());
-    for bad in ["", "--root=/tmp", "-x", "a\nb", "a\u{7}", &"a".repeat(65)] {
+    for bad in [
+        "",
+        "--root=/tmp",
+        "-x",
+        ".hidden",
+        "a b",
+        "a\nb",
+        "a\u{7}",
+        "ädа",
+        &"a".repeat(65),
+    ] {
         assert_eq!(
             account_form::name(bad),
             Err(LocalHubError::Argument),
@@ -145,28 +156,65 @@ fn a_new_totp_is_a_secret_and_an_otpauth_uri_and_its_debug_shows_neither() {
 }
 
 #[test]
-fn create_runs_on_the_first_run_or_with_a_permit_only() {
-    assert_eq!(may_create(false, false), Ok(()));
-    assert_eq!(may_create(false, true), Ok(()));
-    assert_eq!(may_create(true, true), Ok(()));
-    assert_eq!(may_create(true, false), Err(LocalHubError::Exists));
+fn create_runs_at_once_on_the_first_run_and_a_replacement_only_when_confirmed() {
+    let asked = &std::cell::Cell::new(0);
+    let answer = |yes| {
+        move || {
+            asked.set(asked.get() + 1);
+            yes
+        }
+    };
+    let now = Instant::now();
+    let mut cancellations = Cancellations::default();
+
+    assert_eq!(
+        may_create(false, &mut cancellations, now, answer(false)),
+        Ok(())
+    );
+    assert_eq!(asked.get(), 0, "no dialog on the first run");
+    assert_eq!(
+        may_create(true, &mut cancellations, now, answer(true)),
+        Ok(())
+    );
+    assert_eq!(
+        may_create(true, &mut cancellations, now, answer(false)),
+        Err(LocalHubError::Cancelled)
+    );
+    assert_eq!(asked.get(), 2, "one dialog for each replacement");
 }
 
 #[test]
-fn a_recovery_permit_lasts_five_minutes_and_ends_when_used() {
-    let start = Instant::now();
-    let mut recovery = Recovery::default();
-    assert!(!recovery.is_held(start));
+fn after_a_cancel_no_dialog_is_shown_for_a_minute() {
+    let asked = &std::cell::Cell::new(0);
+    let answer = |yes| {
+        move || {
+            asked.set(asked.get() + 1);
+            yes
+        }
+    };
+    let cancelled_at = Instant::now();
+    let mut cancellations = Cancellations::default();
+    let _ = may_create(true, &mut cancellations, cancelled_at, answer(false));
 
-    recovery.grant(start);
-    assert!(recovery.is_held(start));
-    assert!(recovery.is_held(start + Duration::from_secs(299)));
-    assert!(!recovery.is_held(start + PERMIT_LIFE));
-    assert_eq!(PERMIT_LIFE, Duration::from_mins(5));
+    let soon = cancelled_at + Duration::from_secs(59);
+    assert_eq!(
+        may_create(true, &mut cancellations, soon, answer(true)),
+        Err(LocalHubError::Busy)
+    );
+    assert_eq!(asked.get(), 1, "no second dialog in the pause");
+    // The first run needs no dialog, so the pause does not stop it.
+    assert_eq!(
+        may_create(false, &mut cancellations, soon, answer(false)),
+        Ok(())
+    );
 
-    recovery.grant(start);
-    recovery.consume();
-    assert!(!recovery.is_held(start));
+    let later = cancelled_at + PAUSE_AFTER_CANCEL;
+    assert_eq!(
+        may_create(true, &mut cancellations, later, answer(true)),
+        Ok(())
+    );
+    assert_eq!(asked.get(), 2);
+    assert_eq!(PAUSE_AFTER_CANCEL, Duration::from_mins(1));
 }
 
 #[test]
@@ -215,7 +263,7 @@ fn the_key_copy_refuses_a_symbolic_link_and_a_missing_key() {
 fn the_new_error_codes_reach_the_client() {
     for (error, code) in [
         (LocalHubError::Argument, "argument"),
-        (LocalHubError::Exists, "exists"),
+        (LocalHubError::Cancelled, "cancelled"),
         (LocalHubError::Refused, "refused"),
         (LocalHubError::NoKey, "no-key"),
         (LocalHubError::Destination, "destination"),

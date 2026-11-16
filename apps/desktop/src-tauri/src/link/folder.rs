@@ -48,16 +48,49 @@ impl LinkFolders {
         remove_folder(&self.next)
     }
 
-    /// The new folder takes the place of the one before, which is removed.
+    /// The new folder takes the place of the one before, which waits at `device.old` for
+    /// [`Self::remove_old`]. When the swap fails, the folder before is back at `device`.
     pub fn take_next(&self) -> io::Result<()> {
+        self.take_next_with(|from, to| fs::rename(from, to))
+    }
+
+    /// [`Self::take_next`] with the rename as a parameter, so a test can make one fail.
+    pub fn take_next_with(
+        &self,
+        rename: impl Fn(&Path, &Path) -> io::Result<()>,
+    ) -> io::Result<()> {
+        self.recover()?;
         remove_folder(&self.old)?;
-        match fs::rename(&self.device, &self.old) {
-            Ok(()) => {}
-            Err(error) if error.kind() == ErrorKind::NotFound => {}
+        let moved_aside = match rename(&self.device, &self.old) {
+            Ok(()) => true,
+            Err(error) if error.kind() == ErrorKind::NotFound => false,
             Err(error) => return Err(error),
+        };
+        if let Err(error) = rename(&self.next, &self.device) {
+            if moved_aside {
+                rename(&self.old, &self.device)?;
+            }
+            return Err(error);
         }
-        fs::rename(&self.next, &self.device)?;
+        Ok(())
+    }
+
+    /// Removes the folder before the last join.
+    pub fn remove_old(&self) -> io::Result<()> {
         remove_folder(&self.old)
+    }
+
+    /// Puts the folder before a join back at `device` when a swap stopped half way: `device` is
+    /// missing and `device.old` is there.
+    pub fn recover(&self) -> io::Result<()> {
+        let missing = matches!(
+            fs::symlink_metadata(&self.device),
+            Err(error) if error.kind() == ErrorKind::NotFound
+        );
+        if missing && fs::symlink_metadata(&self.old).is_ok_and(|found| found.is_dir()) {
+            fs::rename(&self.old, &self.device)?;
+        }
+        Ok(())
     }
 
     /// Removes every folder of the device link.

@@ -74,7 +74,6 @@ fn commands() -> impl Fn(tauri::ipc::Invoke) -> bool + Send + Sync + 'static {
         local_hub::account::local_hub_account,
         local_hub::account::local_hub_totp_new,
         local_hub::account::local_hub_account_create,
-        local_hub::account::local_hub_recover,
         local_hub::account::local_hub_key_save,
         link::link_join,
         link::link_status,
@@ -108,7 +107,7 @@ fn with_state(app: tauri::Builder<tauri::Wry>) -> tauri::Builder<tauri::Wry> {
         .manage(builder::Bundled::default())
         .manage(agent::Installing::default())
         .manage(local_hub::Changing::default())
-        .manage(local_hub::RecoveryPermit::default())
+        .manage(local_hub::Replacements::default())
         .manage(link::Changing::default())
         .manage(Arc::new(link::DeviceLink::default()))
         .setup(|app| {

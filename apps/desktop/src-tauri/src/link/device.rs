@@ -24,7 +24,7 @@ use super::{
 
 const POLL: Duration = Duration::from_millis(50);
 /// How long a child that was asked to stop (its standard input closed) has before it is killed.
-const STOP_PATIENCE: Duration = Duration::from_secs(3);
+pub const STOP_PATIENCE: Duration = Duration::from_secs(3);
 /// The longest log line that is read whole; a longer one is cut.
 const MOST_LINE: u64 = 4096;
 

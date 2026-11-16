@@ -144,12 +144,12 @@ The Tauri shell has these commands, for the main window only.
 | `local_hub_status` | The JSON object of Section 2. |
 | `local_hub_account` | `{ "name", "totp" }` of the operator account, or `null`. |
 | `local_hub_totp_new { name }` | `{ "secret", "uri" }`: a new TOTP secret. Nothing is saved. |
-| `local_hub_account_create { account: { name, password, secret, code } }` | Makes the account. Permitted only while there is no account, or for 5 minutes after `local_hub_recover`. |
-| `local_hub_recover` | Shows a native confirmation. `true` when the person confirmed. |
+| `local_hub_account_create { account: { name, password, secret, code } }` | Makes the account. When an account exists, a native dialog first asks the person at this computer to confirm its replacement, for this request only; script cannot answer it. For 60 seconds after a cancel no dialog is shown and the answer is `busy`. |
 | `local_hub_key_save` | Shows a native save dialog and copies `vault.key` there (mode 0600). `false` when cancelled. |
 
 An error is `{ "code", "message" }` with the codes `caller`, `unavailable`, `not-carried`,
-`busy`, `no-home`, `timed-out`, `failed`, `argument`, `exists`, `refused`, `no-key` and
+`busy`, `no-home`, `timed-out`, `failed`, `argument`, `cancelled` (the replacement was not
+confirmed), `refused`, `no-key` and
 `destination`. The cause of a `failed` is in the application's log. The account commands log no
 output of the program, only a code and the exit code.
 

@@ -9,8 +9,12 @@ use super::LinkError;
 
 const INVITE_PREFIX: &str = "anima-invite.1.";
 const MOST_INVITE: usize = 4096;
-const JOINED: &str = "This device has joined the hub. Its key fingerprint is ";
-const READY: &str = "msg=\"the device link is ready\"";
+/// The first words of `join`'s answer before the fingerprint (`link/cmd/anima-link/join.go`).
+pub const JOINED: &str = "This device has joined the hub. Its key fingerprint is ";
+/// The `msg` of the device link's ready line, which `link/cmd/anima-link/device.go` logs with
+/// `local=<address>` and `key=<fingerprint>` through `slog`'s text handler. The parser, its
+/// tests and the stand-in programs of the tests take it from here.
+pub const READY: &str = "msg=\"the device link is ready\"";
 const NO_ANSWER: &str = "the hub did not answer";
 const REFUSED: &str = "the hub refused this device";
 const PORT_TAKEN: &str = "address already in use";
