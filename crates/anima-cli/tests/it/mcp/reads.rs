@@ -147,6 +147,26 @@ async fn mcp_009_retention_list_returns_every_period() {
     session.finish().await;
 }
 
+#[tokio::test]
+async fn frn_009_link_devices_returns_the_devices_with_their_names_cleaned() {
+    let hub = hub().await;
+    let mut device = crate::fleet::link_device();
+    device["name"] = json!("laptop\u{1b}[31m");
+    hub.answer("LinkDevices", data(json!({ "linkDevices": [device] })));
+    let desk = Desk::new();
+    let (mut session, _) = desk.start(&hub, API_KEY, &[]).await;
+    let answer = session.call("anima_link_devices", json!({})).await;
+    let devices = &structured(&answer)["devices"];
+    assert_eq!(devices[0]["fingerprint"], "1a2b3c4d");
+    assert_eq!(devices[0]["path"], "RELAYED");
+    let name = devices[0]["name"].as_str().unwrap();
+    assert!(
+        name.starts_with("laptop") && !name.contains('\u{1b}'),
+        "{name}"
+    );
+    session.finish().await;
+}
+
 /// One audit edge with `who` (its actor kind, token kind and key name).
 fn audit_edge(id: u32, who: &Value) -> Value {
     let mut node = json!({

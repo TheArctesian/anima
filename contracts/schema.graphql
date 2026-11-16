@@ -1392,6 +1392,44 @@ type RetentionPeriod {
   defaultDays: Int!
 }
 
+# ---------------------------------------------------------------- device link (S6)
+# FRN-009, LNK-003, LNK-004 (OR-S6-3). The hub asks anima-link through its control socket
+# (ANIMA_LINK_CONTROL). Without the socket, or when the link does not answer, each link field is
+# UNAVAILABLE.
+
+"""How a device of the link reaches the hub now (LNK-006)."""
+enum LinkPath {
+  DIRECT
+  RELAYED
+  "No packet has crossed yet."
+  NONE
+}
+
+"""A device the link permits (LNK-004)."""
+type LinkDevice {
+  "The device's public key, as revokeLinkDevice takes it."
+  key: String!
+  "The short form of key that anima-link join prints on the device."
+  fingerprint: String!
+  name: String!
+  "The device's link address: the client address the hub records for it."
+  address: IpAddr!
+  path: LinkPath!
+  "The relay's name when path is RELAYED."
+  relay: String
+  "When the device's key stops being permitted; null when the link gives no time."
+  expiresAt: DateTime
+  "The streams open now."
+  streams: Int!
+}
+
+"""An invite for a new device of the link: shown once, works once, expires (LNK-003, LOG-007)."""
+type LinkInvite {
+  "The invite text. The hub keeps no copy and writes it to no log or audit entry."
+  invite: String!
+  expiresAt: DateTime!
+}
+
 # ---------------------------------------------------------------- sessions (WP-10)
 
 enum Protocol {
@@ -2467,6 +2505,10 @@ type Query {
   codeDirectory(repository: ID!, ref: String, path: String = "", fresh: Boolean = false): CodeDirectory!
   "One file, never kept by the hub. VALIDATION when the path is a directory. No MCP tool returns it (operator, 2026-11-14; ruling number to be assigned). Login or browser token only (D-23, R-100)."
   codeFile(repository: ID!, ref: String, path: String!): CodeFile!
+
+  # S6: the device link (FRN-009, OR-S6-3)
+  "The devices the link permits, in the link's order (LNK-004)."
+  linkDevices: [LinkDevice!]!
 }
 
 type Mutation {
@@ -2627,6 +2669,12 @@ type Mutation {
   dispatchWorkflow(input: DispatchWorkflowInput!): WorkflowDispatch!
   "Writes a commit status under an anima/ context (PRO-010). Writes an audit entry (PRJ-028). Login or browser token only (D-23, R-100)."
   setCommitStatus(input: CommitStatusInput!): CommitStatus!
+
+  # S6: the device link (FRN-009, OR-S6-3)
+  "An invite for a new device named name (1 to 64 visible characters). Shown once; it works once and expires (LNK-003). The response is no-store. Writes an audit entry without the invite (LOG-005, LOG-007). Login or browser token only (D-23)."
+  createLinkInvite(name: String!): LinkInvite!
+  "Removes the device with this key from the link and closes its streams; returns how many it closed (LNK-004). NOT_FOUND when the link does not list the key. Writes an audit entry. Login or browser token only (D-23)."
+  revokeLinkDevice(key: String!): Int!
 }
 
 type Subscription {

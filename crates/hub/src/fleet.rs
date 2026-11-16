@@ -8,6 +8,7 @@ pub mod checks;
 pub mod credentials;
 pub mod devices;
 pub mod events;
+pub mod link;
 pub mod maintenance;
 pub mod metrics;
 pub mod notifications;

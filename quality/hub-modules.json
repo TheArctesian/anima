@@ -103,7 +103,8 @@
       "extensions",
       "events",
       "access"
-    ]
+    ],
+    "link": []
   },
   "graphql": {
     "devices": [
@@ -153,6 +154,10 @@
     ],
     "projects": [
       "access"
+    ],
+    "link": [
+      "access",
+      "events"
     ]
   }
 }

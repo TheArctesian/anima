@@ -111,7 +111,7 @@ relay and domain settings (S11), many hubs (S13), the metrics agent over the lin
 
 - New hub domain `fleet/link/`. It talks to the link's control socket (`ANIMA_LINK_CONTROL`) with
   the verbs `invites.make`, `devices.list`, `devices.revoke`, `status`. When the variable is not
-  set (the VPS mode) the fields answer with the error `LINK_OFF`.
+  set (the VPS mode) the fields answer `UNAVAILABLE` with a fixed message (K7 permits no new error code).
 - K1 fields (planned in `s5-access-tasks.md` Section 7.6):
   - `Query.linkDevices: [LinkDevice!]!` (name, fingerprint, address, path, relay, expiry, streams).
   - `Mutation.createLinkInvite(name: String!): LinkInvite!` (invite text, expiry). Returns a secret.
@@ -119,7 +119,7 @@ relay and domain settings (S11), many hubs (S13), the metrics agent over the lin
   - Both mutations need a login token, not an API key, and write an audit entry. The invite text
     is never logged or audited.
 - `anima link devices`, `anima link invite <name>`, `anima link revoke <key>`.
-- MCP: one tool, `link_devices` (read). No tool for the invite (MCP-004: it returns a secret) or for
+- MCP: one tool, `anima_link_devices` (read). No tool for the invite (MCP-004: it returns a secret) or for
   revocation (MCP-005: a trust decision).
 
 ### 2.6 Join a hub
@@ -187,8 +187,8 @@ and records `lsof -i` for each program.
 | --- | --- | --- | --- | --- | --- |
 | T1 | This document, the spec delta, the register row | — | — | Done | the commit of this row |
 | T2 | Hub: `operator show`, `operator totp --new`, `operator totp --confirm` | Tests: a wrong code saves nothing; a used code is refused at sign-in; tokens removed; no secret in logs | reviewer, reviewer-security | Not started | — |
-| T3 | Hub: `fleet/link` domain, `ANIMA_LINK_CONTROL`, K1 fields, audit | Tests against a fake control socket; `LINK_OFF` without the variable; API key refused for the mutations | reviewer, reviewer-security | Not started | — |
-| T4 | `anima link devices|invite|revoke`; MCP `link_devices`; CMD-031 | CLI tests against the fake hub | reviewer | Not started | — |
+| T3 | Hub: `fleet/link` domain, `ANIMA_LINK_CONTROL`, K1 fields, audit | Tests against a fake control socket; `LINK_OFF` without the variable; API key refused for the mutations | reviewer, reviewer-security | In progress (built, waits for review). `LINK_OFF` is `UNAVAILABLE` with a fixed message: K7 allows no new code | `4ad2d659` and the commit of this row |
+| T4 | `anima link devices|invite|revoke`; MCP `link_devices`; CMD-031 | CLI tests against the fake hub | reviewer | In progress (built, waits for review). The tool is `anima_link_devices` (MCP-011) | `88b6dea3` |
 | T5 | Local hub: the link member (F-6), hub link-mode environment, `account`, `start`, `stop` | Unit tests with stand-in programs; the existing real-program test | reviewer, reviewer-security | In progress (built, waits for review). `account` has `status`, `totp-new`, `create` (M3). | `a82f38e6`, and the commit of this row |
 | T6 | Tauri shell: account, start/stop, carried `anima-link`, device link (join, run, status); CSP | Rust unit tests; caller check on each command | reviewer, reviewer-security | Not started | — |
 | T7 | Client: loopback address rule (F-1), QR code, AWK-005 seam (F-3) | Vitest | reviewer | In progress (built, waits for review) | 3ffae7d5 |

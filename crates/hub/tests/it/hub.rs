@@ -107,6 +107,27 @@ impl Hub {
         text
     }
 
+    /// Posts a GraphQL request with `token`; returns the response headers and body.
+    pub async fn post_with_headers(
+        &self,
+        token: &str,
+        query: &str,
+        variables: Value,
+    ) -> (header::HeaderMap, Value) {
+        let body = json!({ "query": query, "variables": variables }).to_string();
+        let mut request = Request::post("/graphql")
+            .header(header::CONTENT_TYPE, "application/json")
+            .header(header::AUTHORIZATION, format!("Bearer {token}"))
+            .body(Body::from(body))
+            .unwrap();
+        let peer: SocketAddr = format!("{}:50000", self.client).parse().unwrap();
+        request.extensions_mut().insert(ConnectInfo(peer));
+        let response = self.router.clone().oneshot(request).await.unwrap();
+        let headers = response.headers().clone();
+        let bytes = response.into_body().collect().await.unwrap().to_bytes();
+        (headers, serde_json::from_slice(&bytes).unwrap())
+    }
+
     pub async fn post(&self, token: Option<&str>, query: &str, variables: Value) -> Value {
         serde_json::from_str(&self.post_text(token, query, variables).await).unwrap()
     }

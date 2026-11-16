@@ -7,6 +7,9 @@ mod device_paging;
 mod device_secrets;
 mod device_trust;
 pub mod devices;
+mod link;
+
+pub use link::device as link_device;
 mod maintenance;
 mod sessions;
 mod sites;
