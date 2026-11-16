@@ -25,12 +25,22 @@ describe('Install agent: an installed agent (MET-018, MET-013)', () => {
     const answer = await showPending('agentStatus', 'AGENT');
     const line = [...document.querySelectorAll('p')].find((each) => each.textContent.includes('Reading the agent state'));
     expect(line?.getAttribute('role')).toBeNull();
-    await answer({ ok: true, value: { metricsSource: 'AGENT', metricsStale: false } });
+    await answer({ ok: true, value: { metricsSource: 'AGENT', metricsStale: false, agentVersion: null } });
   });
 
   it('MET-018: a current agent reads as current', async () => {
     await show(status(false), { source: 'AGENT' });
     expect(text()).toContain('Metrics are current.');
+  });
+
+  it('R-118: shows the version the agent reported', async () => {
+    await show({ AgentStatus: { device: { id: 'd1', metricsSource: 'AGENT', metricsStale: false, agentVersion: '0.3.1' } } }, { source: 'AGENT' });
+    expect(text()).toContain('Agent version 0.3.1.');
+  });
+
+  it('R-118: says so when an agent older than R-118 reported no version', async () => {
+    await show(status(false), { source: 'AGENT' });
+    expect(text()).toContain('The agent has not reported its version.');
   });
 
   it('MET-018: when the state cannot be read the panel says so and still offers Revoke', async () => {

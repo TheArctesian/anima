@@ -156,6 +156,9 @@
       Metrics are current.
     {/if}
   </p>
+  {#if install.status !== null && !install.revoked}
+    <p class="state">{install.status.agentVersion === null ? 'The agent has not reported its version.' : `Agent version ${install.status.agentVersion}.`}</p>
+  {/if}
   <FormButton tone="danger" onclick={() => { opening += 1; confirming = true; }}>Revoke agent</FormButton>
   {@render starter('Install agent again')}
 {/snippet}

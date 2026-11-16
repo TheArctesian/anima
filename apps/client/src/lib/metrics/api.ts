@@ -95,6 +95,7 @@ const AgentStatus = graphql(`
       id
       metricsSource
       metricsStale
+      agentVersion
     }
   }
 `);
@@ -114,6 +115,7 @@ const RevokeAgentToken = graphql(`
       id
       metricsSource
       metricsStale
+      agentVersion
     }
   }
 `);
@@ -138,10 +140,12 @@ export interface DeviceMetricsView {
   /** The latest readings the hub holds, for the bars before the first live batch; `null` when it has none. */
   readonly readings: DeviceNode['readings'] | null;
 }
-/** The agent state of one device: its source, and whether an AGENT device has gone quiet (MET-018). */
+/** The agent state of one device: its source, whether an AGENT device has gone quiet (MET-018), and its agent version (R-118). */
 export interface AgentStatusView {
   readonly metricsSource: DeviceNode['metricsSource'];
   readonly metricsStale: boolean;
+  /** The version the agent's newest batch carried; `null` before a batch, or from an agent older than R-118. */
+  readonly agentVersion: string | null;
 }
 /** A one-use enrolment code and when it stops working (MET-012). Show it once; never log or store it (LOG-007). */
 export interface AgentEnrolment {
@@ -167,7 +171,9 @@ export function metricsApi(hub: Hub) {
       const result = await hub.request(AgentStatus, { id: deviceId });
       if (!result.ok) return result;
       const { device } = result.value;
-      return { ok: true, value: device ? { metricsSource: device.metricsSource, metricsStale: device.metricsStale } : null };
+      if (!device) return { ok: true, value: null };
+      const { metricsSource, metricsStale, agentVersion } = device;
+      return { ok: true, value: { metricsSource, metricsStale, agentVersion: agentVersion ?? null } };
     },
     /** Makes a fresh enrolment code for the device (MET-012); a new code voids the earlier unused ones (K8 Section 3) and each works once. */
     enrolAgent: async (deviceId: string): Promise<HubResult<AgentEnrolment>> => {
@@ -178,8 +184,8 @@ export function metricsApi(hub: Hub) {
     revokeAgentToken: async (deviceId: string): Promise<HubResult<AgentStatusView>> => {
       const result = await hub.request(RevokeAgentToken, { deviceId });
       if (!result.ok) return result;
-      const { metricsSource, metricsStale } = result.value.revokeAgentToken;
-      return { ok: true, value: { metricsSource, metricsStale } };
+      const { metricsSource, metricsStale, agentVersion } = result.value.revokeAgentToken;
+      return { ok: true, value: { metricsSource, metricsStale, agentVersion: agentVersion ?? null } };
     },
     /** Listen for new samples of one device; returns the function that stops listening. */
     watch: (deviceId: string, sink: Sink<NewMetrics>): (() => void) =>
