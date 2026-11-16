@@ -19,8 +19,8 @@ use super::{
 /// `Anima_{version}_amd64.AppImage`, `Anima.app.tar.gz`).
 const PRODUCT: &str = "Anima";
 /// `productName` in `tauri.conf.json`. Tauri names the `.app` folder and the first
-/// component of the DMG and AppImage after it. Official artefact file names stay
-/// `Anima` (UPD-010), so [`stabilize_names`] renames the DMG and AppImage after bundling.
+/// component of the DMG and `AppImage` after it. Official artefact file names stay
+/// `Anima` (UPD-010), so [`stabilize_names`] renames the DMG and `AppImage` after bundling.
 const DISPLAY: &str = "Anima.ing";
 /// The app's own executable in `Contents/MacOS`: the Cargo binary name.
 const MAC_EXECUTABLE: &str = "anima-desktop";
@@ -70,7 +70,7 @@ pub fn mac_app(clone: &Path) -> PathBuf {
     bundle_folder(clone, Target::DarwinUniversal).join(format!("macos/{DISPLAY}.app"))
 }
 
-/// Renames Tauri's `productName`-based DMG and AppImage to the stable `Anima_*` names
+/// Renames Tauri's `productName`-based DMG and `AppImage` to the stable `Anima_*` names
 /// the hub and the site expect (UPD-010). The `.app` folder keeps the display name;
 /// the updater archive is still written to `Anima.app.tar.gz`. No-op when the stable
 /// name is already present (for example a local build that still used `productName`
