@@ -1,5 +1,6 @@
 //! The Anima push agent: it reads this computer's metrics and pushes them to the hub over
-//! HTTPS (MET-011 to MET-020, `contracts/agent-push.md`).
+//! HTTPS, or over HTTP to the local port of `anima-link` (MET-011 to MET-020,
+//! `contracts/agent-push.md`).
 //!
 //! Pure core: [`cli`], [`config`] (origin, file contents), [`hub::answer`], [`push::pacing`],
 //! [`push::renewal`] and [`sampling`] decide and parse from their parameters. I/O sits at the

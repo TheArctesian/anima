@@ -9,7 +9,7 @@ use zeroize::Zeroizing;
 use crate::config::origin::{Origin, OriginError};
 use crate::units::plan::Target;
 
-pub const USAGE: &str = "usage: anima-agent enrol <code | -> [--hub <https origin>]\n       anima-agent run\n       anima-agent install [--system]";
+pub const USAGE: &str = "usage: anima-agent enrol <code | -> [--hub <origin>]\n       anima-agent run\n       anima-agent install [--system]";
 
 /// Printed when the code is on the command line, where `ps` and the shell history show it.
 pub const ARGV_WARNING: &str = "warning: a code on the command line shows in process lists and shell history; next time run `anima-agent enrol -` and paste the code at the hidden prompt";
@@ -200,8 +200,13 @@ mod tests {
         }
         assert!(matches!(
             parse(args("enrol - --hub http://hub.example")),
-            Err(CliError::Hub(OriginError::NotHttps))
+            Err(CliError::Hub(OriginError::Scheme))
         ));
+        let Ok(Command::Enrol { hub, .. }) = parse(args("enrol - --hub http://127.0.0.1:8443"))
+        else {
+            panic!("the local port of anima-link is a hub origin");
+        };
+        assert_eq!(hub.as_text(), "http://127.0.0.1:8443");
     }
 
     #[test]

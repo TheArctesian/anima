@@ -31,6 +31,16 @@ async fn met_020_a_redirect_is_a_failed_request_and_is_not_followed() {
 }
 
 #[tokio::test]
+async fn met_020_a_push_reaches_the_hub_at_the_local_port_of_the_link() {
+    let hub = FakeHub::start().await;
+    let link = anima_agent::config::origin::Origin::parse(hub.url.as_str().trim_end_matches('/'))
+        .expect("the local port of the link is a hub origin");
+    let client = HubClient::new(link.url().clone(), TIMEOUT).expect("a client");
+    assert_eq!(client.push(&token(), &batch()).await, Answer::Accepted(()));
+    assert_eq!(hub.seen("push").len(), 1);
+}
+
+#[tokio::test]
 async fn met_020_no_cookie_the_hub_sets_comes_back() {
     let hub = FakeHub::start().await;
     let client = HubClient::new(hub.url.clone(), TIMEOUT).expect("a client");
