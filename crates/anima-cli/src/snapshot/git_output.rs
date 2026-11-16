@@ -157,7 +157,7 @@ mod tests {
         assert_eq!(found[0], "a.rs");
         assert_eq!(found[1], "dir/with\nnewline.pem");
         assert_eq!(found[2], "bad\u{fffd}name");
-        assert!(paths(b"").is_empty());
+        assert_eq!(paths(b""), Vec::<String>::new());
     }
 
     #[test]

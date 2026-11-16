@@ -1,6 +1,8 @@
 //! The secret patterns of JOB-017: which paths of a tree look like secrets, judged on the file
 //! name alone. The files are never opened. A fixed list until a project has its own.
 
+use std::fmt::Write as _;
+
 /// How many paths a refusal names before it counts the rest.
 const SHOWN: usize = 20;
 
@@ -44,7 +46,7 @@ pub fn listed(paths: &[String]) -> String {
         .collect::<Vec<_>>()
         .join(", ");
     if paths.len() > SHOWN {
-        text.push_str(&format!(" and {} more", paths.len() - SHOWN));
+        let _ = write!(text, " and {} more", paths.len() - SHOWN);
     }
     text
 }

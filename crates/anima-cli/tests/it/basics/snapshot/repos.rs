@@ -115,7 +115,7 @@ impl Repos {
         )
     }
 
-    /// A clone of `origin` that fetched `scratch`; the files of the snapshot are at FETCH_HEAD.
+    /// A clone of `origin` that fetched `scratch`; the files of the snapshot are at `FETCH_HEAD`.
     pub fn second_machine(&self, scratch: &str) -> PathBuf {
         let second = self.root.path().join("second");
         let remote = path_text(&self.remote());

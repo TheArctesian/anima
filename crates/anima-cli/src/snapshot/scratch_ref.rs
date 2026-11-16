@@ -85,7 +85,7 @@ pub fn is_hash(text: &str) -> bool {
 }
 
 /// One ref part git accepts and no shell or option can misread: letters, digits, `.`, `_` and
-/// `-`; not starting with `.` or `-`; no `..`; not ending in `.lock`.
+/// `-`; not starting with `.` or `-`; no `..`; not ending in `.lock` in any case.
 fn is_safe_name(name: &str) -> bool {
     !name.is_empty()
         && name.len() <= 200
@@ -94,7 +94,9 @@ fn is_safe_name(name: &str) -> bool {
             .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'_' | b'-'))
         && !name.starts_with(['.', '-'])
         && !name.contains("..")
-        && !name.ends_with(".lock")
+        && !std::path::Path::new(name)
+            .extension()
+            .is_some_and(|extension| extension.eq_ignore_ascii_case("lock"))
 }
 
 #[cfg(test)]

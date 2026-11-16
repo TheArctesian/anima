@@ -45,17 +45,12 @@ pub fn take(git: &Git) -> Result<Snapshot, SnapshotError> {
     seed(git, &index)?;
     let staged = git.with("GIT_INDEX_FILE", index.as_os_str());
     // Before `add`, so the content of a secret file is not even copied into the object store.
-    refuse(would_add(&staged)?)?;
+    refuse(&would_add(&staged)?)?;
     staged.bytes(&["add", "--all"])?;
     let tree = staged.text(&["write-tree"])?.trim_end().to_owned();
     // The tree itself is what leaves, so it is judged too.
-    refuse(paths(&git.bytes(&[
-        "ls-tree",
-        "-r",
-        "-z",
-        "--name-only",
-        &tree,
-    ])?))?;
+    let sent = git.bytes(&["ls-tree", "-r", "-z", "--name-only", &tree])?;
+    refuse(&paths(&sent))?;
     let head = head(git)?;
     if let Some(head) = head.as_ref().filter(|head| head.tree == tree) {
         return Ok(Snapshot {
@@ -102,7 +97,7 @@ fn would_add(staged: &Git) -> Result<Vec<String>, SnapshotError> {
 }
 
 /// Refuses when a path matches a secret pattern. Only names are read, never the files.
-fn refuse(all: Vec<String>) -> Result<(), SnapshotError> {
+fn refuse(all: &[String]) -> Result<(), SnapshotError> {
     let found = secret_paths(all.iter().map(String::as_str));
     if found.is_empty() {
         Ok(())
