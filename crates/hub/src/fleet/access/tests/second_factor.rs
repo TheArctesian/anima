@@ -35,6 +35,7 @@ fn attempt(code: Option<&str>) -> Attempt {
         at: now(),
         issue: Issue::LOGIN,
         declared: crate::fleet::access::Declaration::default(),
+        totp_required: false,
     }
 }
 
@@ -167,6 +168,26 @@ async fn sec_002_a_missing_code_is_refused_before_the_secret_is_opened(pool: PgP
     enrol_totp(&pool, &test_vault(7), USERNAME).await.unwrap();
     let result = login::login(&pool, &Bus::new(4), &test_vault(8), attempt(None)).await;
     assert!(matches!(result, Err(Error::WrongCredentials)));
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn frn_007_sec_002_when_totp_is_required_a_password_alone_is_refused(pool: PgPool) {
+    operator(&pool).await;
+    let vault = test_vault(7);
+    let required = Attempt {
+        totp_required: true,
+        ..attempt(None)
+    };
+    let refused = login::login(&pool, &Bus::new(4), &vault, required).await;
+    assert!(matches!(refused, Err(Error::WrongCredentials)));
+    let required = Attempt {
+        totp_required: true,
+        ..attempt(Some("123456"))
+    };
+    let refused = login::login(&pool, &Bus::new(4), &vault, required).await;
+    assert!(matches!(refused, Err(Error::WrongCredentials)));
+    let allowed = login::login(&pool, &Bus::new(4), &vault, attempt(None)).await;
+    assert!(allowed.is_ok());
 }
 
 #[sqlx::test(migrations = "./migrations")]

@@ -1,20 +1,18 @@
 //! Hub binary: reads the environment, builds the dependencies and serves the router, or runs
 //! `anima-hub migrate` (R-016), `anima-hub operator set <username>`,
-//! `anima-hub operator totp <username> [--disable]` (D-9) or `anima-hub health` (the compose
-//! healthcheck).
+//! `anima-hub operator create <username>`, `anima-hub operator show`,
+//! `anima-hub operator totp <username> [--disable | --new]` (D-9, FRN-003, FRN-004) or
+//! `anima-hub health` (the compose healthcheck).
 
 mod core_dumps;
+mod operator;
 mod upkeep;
 
-use std::{
-    io::{BufRead as _, IsTerminal as _},
-    process::ExitCode,
-    sync::Arc,
-};
+use std::{process::ExitCode, sync::Arc};
 
 use anima_hub::{
     DRAIN_LIMIT, Shutdown, all_routes,
-    clock::{Clock as _, SystemClock},
+    clock::SystemClock,
     config::{self, Config},
     fleet::{
         access::{self, listen},
@@ -70,8 +68,8 @@ enum StartError {
     #[error("the hub is not healthy: {0}")]
     Health(#[from] listen::HealthError),
     #[error(
-        "usage: anima-hub [migrate | operator set <username> | operator totp <username> \
-         [--disable] | health]"
+        "usage: anima-hub [migrate | operator set <username> | operator create <username> | \
+         operator show | operator totp <username> [--disable | --new] | health]"
     )]
     Usage,
     /// The enrolment URI holds the secret, so it is shown only on a terminal (LOG-007).
@@ -79,6 +77,8 @@ enum StartError {
     NotATerminal,
     #[error("the password cannot be read from standard input")]
     Stdin,
+    #[error("the password, the TOTP secret and the code cannot be read from standard input")]
+    CreateInput,
     #[error("{0}")]
     Operator(#[from] access::Error),
     /// The cause is in the process log, by fault word and SQLSTATE (LOG-007).
@@ -117,12 +117,17 @@ async fn run() -> Result<(), StartError> {
     {
         [] => serve(config).await,
         ["migrate"] => migrate(&config).await,
-        ["operator", "set", username] => set_operator(&config, username).await,
+        ["operator", "set", username] => operator::set(&config, username).await,
+        ["operator", "create", username] => operator::create(&config, username).await,
+        ["operator", "show"] => operator::show(&config).await,
         ["health"] => Ok(listen::check_health(config.listen, tls_files(&config)).await?),
-        // `--disable` is a valid username, so it alone is refused rather than enrolled.
-        ["operator", "totp", "--disable"] => Err(StartError::Usage),
-        ["operator", "totp", username] => enrol_totp(&config, username).await,
-        ["operator", "totp", username, "--disable"] => disable_totp(&config, username).await,
+        // Each flag is a valid username, so a flag alone is refused rather than enrolled.
+        ["operator", "totp", "--disable" | "--new"] => Err(StartError::Usage),
+        ["operator", "totp", username] => operator::enrol_totp(&config, username).await,
+        ["operator", "totp", username, "--disable"] => {
+            operator::disable_totp(&config, username).await
+        }
+        ["operator", "totp", username, "--new"] => operator::new_totp(username),
         _ => Err(StartError::Usage),
     }
 }
@@ -272,45 +277,6 @@ async fn migrate(config: &Config) -> Result<(), StartError> {
     Ok(())
 }
 
-/// Reads the password (without echo on a terminal, one line when piped) and sets the operator.
-async fn set_operator(config: &Config, username: &str) -> Result<(), StartError> {
-    let typed = read_password().map_err(|_| StartError::Stdin)?;
-    let pool = connect(config).await?;
-    let now = SystemClock.now();
-    let before = builds::builders(&pool).await?;
-    access::set_operator(&pool, username, access::Password::new(typed), now).await?;
-    builds::audit_removed(&pool, &before, now, builds::Removal::CredentialsChanged).await?;
-    println!("Operator {username} is set.");
-    Ok(())
-}
-
-/// Enrols TOTP and writes the `otpauth://` URI once, to the terminal only: never to a pipe,
-/// a file or the process log (LOG-007).
-async fn enrol_totp(config: &Config, username: &str) -> Result<(), StartError> {
-    if !std::io::stdout().is_terminal() {
-        return Err(StartError::NotATerminal);
-    }
-    let vault = vault(config)?;
-    let pool = connect(config).await?;
-    let before = builds::builders(&pool).await?;
-    let enrolment = access::enrol_totp(&pool, &vault, username).await?;
-    let removal = builds::Removal::CredentialsChanged;
-    builds::audit_removed(&pool, &before, SystemClock.now(), removal).await?;
-    println!(
-        "Add this to an authenticator app, then sign in again with its code:\n{}",
-        enrolment.uri()
-    );
-    Ok(())
-}
-
-/// Turns TOTP off: the password alone signs in again.
-async fn disable_totp(config: &Config, username: &str) -> Result<(), StartError> {
-    let pool = connect(config).await?;
-    access::disable_totp(&pool, username).await?;
-    println!("TOTP is off for operator {username}.");
-    Ok(())
-}
-
 fn vault(config: &Config) -> Result<Vault, StartError> {
     Vault::from_key_file(&config.key_file).map_err(|source| StartError::Key {
         path: config.key_file.display().to_string(),
@@ -327,18 +293,6 @@ fn release_bucket(config: &Config) -> Result<Option<Arc<builds::Bucket>>, StartE
     let bucket = opened.transpose()?.flatten();
     tracing::info!(publishing = bucket.is_some(), "release bucket");
     Ok(bucket.map(Arc::new))
-}
-
-/// The password from standard input: prompted without echo on a terminal, else one line.
-fn read_password() -> std::io::Result<String> {
-    if std::io::stdin().is_terminal() {
-        return rpassword::prompt_password("Password: ");
-    }
-    let mut line = String::new();
-    std::io::stdin().lock().read_line(&mut line)?;
-    let typed = line.trim_end_matches(['\r', '\n']).to_owned();
-    zeroize::Zeroize::zeroize(&mut line);
-    Ok(typed)
 }
 
 /// Connects to the database named in `ANIMA_DATABASE_URL_FILE` (DB-002).

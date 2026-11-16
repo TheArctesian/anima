@@ -32,7 +32,12 @@ use tokio::{
     task::JoinHandle,
 };
 
-use crate::hub::{PASSWORD, USERNAME, dependencies, set_operator, start};
+use crate::{
+    hub::{PASSWORD, USERNAME, dependencies, start},
+    totp::{code, enrol},
+};
+
+mod rebinding;
 
 /// The header `anima-link` writes, from the link's own test data; its source address is
 /// replaced to name another device.
@@ -48,10 +53,12 @@ fn header_of(device: &str) -> Vec<u8> {
     header
 }
 
-/// A hub in the link mode on a free loopback port and a socket in a private folder.
+/// A hub in the link mode on a free loopback port and a socket in a private folder, and the
+/// TOTP secret of its operator: the link mode signs in no operator without one (FRN-007).
 struct Linked {
     addr: SocketAddr,
     socket: PathBuf,
+    secret: Vec<u8>,
     _folder: tempfile::TempDir,
     serving: JoinHandle<()>,
 }
@@ -63,6 +70,7 @@ impl Drop for Linked {
 }
 
 async fn serve_linked(pool: &PgPool) -> Linked {
+    let secret = enrol(pool).await;
     let folder = tempfile::tempdir().unwrap();
     std::fs::set_permissions(folder.path(), std::fs::Permissions::from_mode(0o700)).unwrap();
     let socket = folder.path().join("link.sock");
@@ -101,6 +109,7 @@ async fn serve_linked(pool: &PgPool) -> Linked {
     Linked {
         addr,
         socket,
+        secret,
         _folder: folder,
         serving,
     }
@@ -128,9 +137,14 @@ struct Post<'a> {
 /// Sends `request` from `from`; returns the whole response as text, empty when the hub closed
 /// the connection with no answer.
 async fn post(hub: &Linked, from: From<'_>, request: Post<'_>) -> String {
+    post_with(hub, from, request, "host: 127.0.0.1:8080\r\n").await
+}
+
+/// [`post`] with the header lines `headers` (each ending in CRLF) in place of the `Host` line.
+async fn post_with(hub: &Linked, from: From<'_>, request: Post<'_>, headers: &str) -> String {
     let Post { path, token, body } = request;
     let mut request = format!(
-        "POST {path} HTTP/1.1\r\nhost: hub\r\nconnection: close\r\n\
+        "POST {path} HTTP/1.1\r\n{headers}connection: close\r\n\
          content-type: application/json\r\ncontent-length: {}\r\n",
         body.len()
     );
@@ -179,16 +193,22 @@ async fn graphql(hub: &Linked, from: From<'_>, token: Option<&str>, request: Val
     serde_json::from_str(body).unwrap()
 }
 
-async fn login(hub: &Linked, from: From<'_>) -> String {
+/// The `login` request with the operator's password and `totp_code`.
+fn login_request(totp_code: Option<&str>) -> Value {
     let query = "mutation($input: LoginInput!) { login(input: $input) { token } }";
-    let input = json!({ "input": { "username": USERNAME, "password": PASSWORD } });
-    let response = graphql(
-        hub,
-        from,
-        None,
-        json!({ "query": query, "variables": input }),
-    )
-    .await;
+    let input = json!({ "username": USERNAME, "password": PASSWORD, "totpCode": totp_code });
+    json!({ "query": query, "variables": { "input": input } })
+}
+
+/// Signs in from `from` with the password and the current code. The clock is fixed, so the
+/// step is first marked unused: each sign-in here stands for one in a later step.
+async fn login(hub: &Linked, from: From<'_>, pool: &PgPool) -> String {
+    sqlx::query("update access.operators set totp_last_step = null")
+        .execute(pool)
+        .await
+        .unwrap();
+    let typed = code(&hub.secret, start());
+    let response = graphql(hub, from, None, login_request(Some(&typed))).await;
     response["data"]["login"]["token"]
         .as_str()
         .unwrap_or_else(|| panic!("login failed: {response}"))
@@ -216,12 +236,11 @@ async fn events(pool: &PgPool, expected: usize) -> Vec<String> {
 async fn net_002_the_links_devices_and_this_computer_sign_in_and_the_audit_names_each(
     pool: PgPool,
 ) {
-    set_operator(&pool).await;
     let hub = serve_linked(&pool).await;
 
-    login(&hub, From::Device(LAPTOP)).await;
-    login(&hub, From::Device(DESK)).await;
-    login(&hub, From::ThisComputer).await;
+    login(&hub, From::Device(LAPTOP), &pool).await;
+    login(&hub, From::Device(DESK), &pool).await;
+    login(&hub, From::ThisComputer, &pool).await;
 
     let clients: Vec<String> = sqlx::query_scalar(
         "select host(client_addr) from events.audit_log where action = 'login' order by at, id",
@@ -236,7 +255,6 @@ async fn net_002_the_links_devices_and_this_computer_sign_in_and_the_audit_names
 async fn net_002_a_socket_connection_that_names_no_device_gets_no_answer_and_is_logged(
     pool: PgPool,
 ) {
-    set_operator(&pool).await;
     let hub = serve_linked(&pool).await;
     let body = json!({ "query": "{ __typename }" }).to_string();
     let request = Post {
@@ -272,10 +290,9 @@ async fn claim(hub: &Linked, from: From<'_>, builder: &str) -> Value {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn bld_024_a_builder_token_works_only_from_the_device_that_enrolled_it(pool: PgPool) {
-    set_operator(&pool).await;
     let hub = serve_linked(&pool).await;
     let laptop = From::Device(LAPTOP);
-    let operator = login(&hub, laptop).await;
+    let operator = login(&hub, laptop, &pool).await;
     let create = "mutation { createRelease(version: \"0.1.12\", \
                   commit: \"0123456789abcdef0123456789abcdef01234567\", \
                   targets: [LINUX_X86_64]) { id } }";
@@ -304,7 +321,6 @@ async fn bld_024_a_builder_token_works_only_from_the_device_that_enrolled_it(poo
 
 #[sqlx::test(migrations = "./migrations")]
 async fn k8_an_agent_refusal_is_logged_for_each_device_of_the_link(pool: PgPool) {
-    set_operator(&pool).await;
     let hub = serve_linked(&pool).await;
     // The spelling of an agent token that no agent holds.
     let unknown = format!("anima_agent_{}", "A".repeat(43));
