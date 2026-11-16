@@ -90,6 +90,23 @@ CPU, which is about $3.10 each before disk, backups and spare capacity. Budget $
 - This replaces the per-device price steps suggested on 2026-11-16 ($2 per device from 11 to 50,
   $1 from 51 to 150). Do not publish both.
 
+## 5a. Enterprise sign-in, user provisioning and audit logs
+
+Anima.ing will use WorkOS for enterprise single sign-on (SSO), SCIM directory sync and audit logs
+rather than building them. WorkOS prices, from its pricing page on 2026-11-16:
+
+| Item | Price |
+| --- | --- |
+| AuthKit (user sign-in) | Free up to 1 million monthly active users, then $2,500 a month per extra million |
+| SSO | $125 a month per connection (one customer's identity provider), falling to $65 above 50 connections |
+| Directory sync (SCIM) | $125 a month per connection, same volume steps as SSO |
+| Audit logs | $125 a month per streaming connection, plus $99 a month per million events stored |
+| Custom domain | $99 a month |
+
+A first enterprise customer with both SSO and directory sync costs about $250 a month in WorkOS
+fees, before audit logs. These fees must be built into the enterprise price, not absorbed by
+the hosting margin.
+
 ## 6. Migration from one server per customer
 
 No hosted customers exist yet, so this is a sequencing choice, not a rescue.
