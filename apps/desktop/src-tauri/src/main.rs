@@ -26,16 +26,7 @@ fn main() {
     let app = app
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init());
-    app.manage(web_view::Tabs::default())
-        .manage(builder::Running::default())
-        .manage(builder::Bundled::default())
-        .manage(agent::Installing::default())
-        .manage(local_hub::Changing::default())
-        .setup(|app| {
-            tauri::async_runtime::spawn(keystore::forget_retired_updater_key());
-            stay_awake::start(app.handle());
-            Ok(())
-        })
+    with_state(app)
         .invoke_handler(tauri::generate_handler![
             keystore::access_token_read,
             keystore::access_token_write,
@@ -83,6 +74,20 @@ fn main() {
         .build(tauri::generate_context!())
         .expect("the Tauri application failed to start")
         .run(|app, event| on_run_event(app, &event));
+}
+
+/// Gives the application the state that its commands share, and what runs once at its start.
+fn with_state(app: tauri::Builder<tauri::Wry>) -> tauri::Builder<tauri::Wry> {
+    app.manage(web_view::Tabs::default())
+        .manage(builder::Running::default())
+        .manage(builder::Bundled::default())
+        .manage(agent::Installing::default())
+        .manage(local_hub::Changing::default())
+        .setup(|app| {
+            tauri::async_runtime::spawn(keystore::forget_retired_updater_key());
+            stay_awake::start(app.handle());
+            Ok(())
+        })
 }
 
 /// No build step, agent run or stay-awake hold outlives the app (BLD-026, MET-019, AWK-007).
