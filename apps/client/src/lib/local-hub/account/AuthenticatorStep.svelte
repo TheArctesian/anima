@@ -61,16 +61,20 @@
 <div class="step">
   <h2 tabindex="-1" bind:this={title}>{heading}</h2>
   <p>Scan the code with your authenticator app, or type the key into it. Then enter the code it shows.</p>
-  {#if uri !== ''}
-    <div class="pair">
-      <!-- The label never holds the secret; the URI is only drawn. -->
-      <QrCode text={uri} label="Authenticator code for Anima" />
-      <CopyText label="Key for the authenticator app" text={secret} shown={groupedSecret(secret)} />
-    </div>
-    {#key attempt}
-      <CodeBoxes disabled={busy} oncomplete={(code) => void create(code)} />
-    {/key}
-  {/if}
+  <!-- The code's area keeps its height while the key is made, so nothing below moves when it shows (MOT-007). -->
+  <div class="code">
+    {#if uri !== ''}
+      <div class="pair">
+        <!-- The label never holds the secret; the URI is only drawn. -->
+        <QrCode text={uri} label="Authenticator code for Anima" />
+        <CopyText label="Key for the authenticator app" text={secret} shown={groupedSecret(secret)} />
+      </div>
+      <!-- The heading has focus when the step shows; the boxes take it only after a refused code. -->
+      {#key attempt}
+        <CodeBoxes disabled={busy} autofocus={attempt > 0} oncomplete={(code) => void create(code)} />
+      {/key}
+    {/if}
+  </div>
   <p class="status" role="status">{busy ? (uri === '' ? 'Making a key' : 'Saving the account') : ''}</p>
   <p class="problem" role="alert">{problem ?? ''}</p>
   <div class="links">
@@ -100,6 +104,14 @@
   p {
     margin: 0;
     line-height: var(--leading-normal);
+  }
+
+  /* The QR code (three of space-16), the gap and the code boxes. */
+  .code {
+    display: grid;
+    gap: var(--space-4);
+    align-content: start;
+    min-block-size: calc(var(--space-16) * 3 + var(--space-4) + var(--control-lg));
   }
 
   .pair {

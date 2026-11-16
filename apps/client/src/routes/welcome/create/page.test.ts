@@ -122,6 +122,8 @@ it('FRN-002, FRN-004, F-10, AWK-005: install, account, authenticator, sign-in wi
   expect(mocks.shell.createLocalAccount).toHaveBeenCalledWith({ name: 'ann', password: PASSWORD, secret: 'JBSWY3DPEHPK3PXP', code: '111111' });
 
   expect(heading()).toBe('Sign in to your hub');
+  // The step heading keeps focus: the code boxes do not take it when they show (NAV-005).
+  expect(document.activeElement).toBe(document.querySelector('h2'));
   expect(mocks.check).toHaveBeenCalledWith('http://127.0.0.1:8443');
   expect(localStorage.getItem('anima.hubAddress')).toBe('http://127.0.0.1:8443');
   expect(target.textContent).toContain('Wait for the next code');
@@ -155,4 +157,22 @@ it('F-10: when another program holds the port nothing is saved and nothing is se
   expect(target.querySelector('[role="alert"]')?.textContent).toContain("Another program holds the hub's port");
   expect(localStorage.getItem('anima.hubAddress')).toBeNull();
   expect(mocks.sent).toEqual([]);
+});
+
+it('FRN-003: an account that already exists signs in here with its name, password and code, then goes on to the key', async () => {
+  mocks.shell.readLocalAccount.mockResolvedValue({ ok: true, value: { name: 'ann', totp: true } });
+  const target = document.createElement('div');
+  document.body.append(target);
+  app = mount(Page, { target });
+  await settle();
+  expect(heading()).toBe('Sign in to your hub');
+  const fields = document.querySelectorAll('form input');
+  typeInto(fields[0], 'ann');
+  typeInto(fields[1], PASSWORD);
+  click('Continue');
+  await settle();
+  await enterCode('333333');
+  expect(mocks.sent[0]).toEqual({ operation: 'Login', variables: { input: { username: 'ann', password: PASSWORD, totpCode: '333333' } } });
+  expect(heading()).toBe('Save a copy of the hub key');
+  expect(mocks.loadClientAt).not.toHaveBeenCalled();
 });

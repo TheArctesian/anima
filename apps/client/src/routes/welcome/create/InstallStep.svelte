@@ -50,7 +50,8 @@
   }
 </script>
 
-<p>Anima.ing installs the hub, its database, its gateway and its link on this computer, then starts them. The first start can take a few minutes.</p>
+<!-- The state line says "The first start can take a few minutes." while the hub starts, so this line does not. -->
+<p>Anima.ing installs the hub, its database, its gateway and its link on this computer, then starts them.</p>
 <div class="state" role="status" aria-live="polite">
   {#if status !== null}
     <p>{stateText(status, mac)}</p>
@@ -70,10 +71,16 @@
     line-height: var(--leading-normal);
   }
 
+  /* Room for the longest state (two lines) and the link's line, so the lines below do not move as it changes (MOT-007). */
   .state {
     display: grid;
     gap: var(--space-1);
-    min-block-size: calc(2 * var(--text-md) * var(--leading-normal));
+    align-content: start;
+    min-block-size: calc(3 * var(--text-md) * var(--leading-normal) + var(--space-1));
+  }
+
+  .problem {
+    min-block-size: calc(var(--text-md) * var(--leading-normal));
   }
 
   .link {

@@ -8,8 +8,9 @@ describe('the steps of "Create a hub on this computer" (FRN-002)', () => {
     expect(visited).toEqual(['install', 'account', 'authenticator', 'connect', 'key', 'invite']);
   });
 
-  it('FRN-003: when the account already exists the flow goes straight to the sign-in', () => {
+  it('FRN-003: when the account already exists the flow goes straight to the sign-in, then on to the key', () => {
     expect(nextStep('install', { kind: 'installed', accountExists: true })).toBe('existing');
+    expect(nextStep('existing', { kind: 'signed-in' })).toBe('key');
   });
 
   it('FRN-004: Back from the authenticator returns to the account; there is no skip', () => {

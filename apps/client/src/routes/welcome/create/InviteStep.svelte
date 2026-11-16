@@ -35,7 +35,8 @@
   <!-- The link loads a new page: the client starts again with the hub address just saved. -->
   <p class="notice" role="status">{notice} <a data-sveltekit-reload href={resolve('/settings')}>Change Stay awake in Settings</a>.</p>
 {/if}
-<FormButton tone="primary" onclick={() => loadClientAt('/devices')}>Done</FormButton>
+<!-- Secondary: "Make an invite" is the step's one main action (UI-029). -->
+<FormButton onclick={() => loadClientAt('/devices')}>Done</FormButton>
 
 <style>
   p {
