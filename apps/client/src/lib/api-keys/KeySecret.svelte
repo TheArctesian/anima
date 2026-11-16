@@ -15,7 +15,7 @@
   let field: HTMLTextAreaElement | undefined = $state();
 
   const COPIED = 'Copied.';
-  const COPY_FAILED = 'Anima could not copy the key. Select it in the field and copy it yourself.';
+  const COPY_FAILED = 'Anima.ing could not copy the key. Select it in the field and copy it yourself.';
 
   async function copyKey(): Promise<void> {
     try {

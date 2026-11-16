@@ -82,7 +82,7 @@ export class JobReporter {
 export type StepCode = BuilderShellCode | 'hub-refused';
 
 const REASONS: Partial<Record<StepCode, string>> = {
-  'not-on-main': 'The commit is not on main of the Anima repository.',
+  'not-on-main': 'The commit is not on main of the Anima.ing repository.',
   dirty: 'The working tree was not clean after the checkout.',
   'tool-missing': 'A build tool is missing on this computer.',
   cancelled: 'The build was cancelled on this computer.',

@@ -59,6 +59,8 @@ zeroize.workspace = true
 # test switches; never a dependency of the program.
 anima-hub = { path = "../hub", features = ["test-support"] }
 axum.workspace = true
+# The parser of `--input name=value` is property-tested: no refusal shows a value (LOG-007).
+proptest = "1.12"
 base64.workspace = true
 graphql-parser.workspace = true
 # The end-to-end suite's authenticator app (RFC 6238) and SSH device with its `sftp` subsystem.

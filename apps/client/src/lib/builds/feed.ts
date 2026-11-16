@@ -54,7 +54,7 @@ export function buildFeed(input: { version: string; baseUrl: string; date: Date;
   if (Object.keys(platforms).length === 0) throw new NoPlatformsError();
   return {
     version: input.version,
-    notes: `Anima ${input.version}`,
+    notes: `Anima.ing ${input.version}`,
     pub_date: input.date.toISOString().replace(/\.\d{3}Z$/, 'Z'),
     platforms,
   };

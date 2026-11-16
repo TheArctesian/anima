@@ -171,7 +171,7 @@ it('a failed change shows fixed text, and the rows stop listening when they go',
   shell.next = { ok: false, problem: 'unsaved' };
   await show(shell);
   await pick('stay-awake-level', 'awake');
-  expect(alert()).toBe('Anima could not save this choice, so nothing changed.');
+  expect(alert()).toBe('Anima.ing could not save this choice, so nothing changed.');
   expect(select('stay-awake-level').value).toBe('off');
   shell.next = null;
   await pick('stay-awake-level', 'awake');

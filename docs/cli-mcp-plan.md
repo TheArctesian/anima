@@ -99,7 +99,9 @@ The hub has two tokens that a program can hold (design specification INT-003):
 - **CMD-024.** A command that deletes must ask for confirmation, or get `--yes` (DEV-014). Every
   confirmation ends the same way: an answer other than `y` or `yes` is `DECLINED`, exit 1 with a
   message on standard error (and the JSON error under `--json`), so a script can tell that the
-  delete did not run. Nothing is sent to the hub after a decline.
+  delete did not run. Nothing is sent to the hub after a decline. What a question is about
+  (a merge summary, the heads of a bulk merge) is shown on standard error before it is asked,
+  with `--json` too: the operator never answers a question about something they were not shown.
 - **CMD-025.** A secret that a command takes (a device password, a private key) comes from a
   prompt, from standard input (`-`) or from `--from-file`. Never from an argument.
 - **CMD-026.** Lists take `--limit` and `--after` (the K1 cursor) and `--all`. `--all` stops
@@ -140,10 +142,28 @@ read key; change commands with a write key).
 | `extension` | `list`, `on <key>` L, `off <key>` L (`on` prints "also sets X on" and asks unless `--yes`; `off` shows the hub's CONFLICT when another extension needs it) |
 | `source` | `kinds`, `list` (`--source github`), `get <id\|label>` (runs with counts), `connect github` L (`--label`, `--organisation <login>`, `--no-browser`, `--state`, `--cancel`: without `--from-file` the hub makes the App and the operator presses Create and Install on GitHub; on a terminal it asks for the one-time link, prints it and opens it, then prints one line for each phase; off a terminal it never asks for the link and prints the hub page to open in a signed-in browser. `--from-file <path\|->` selects the manual route and requires `--label`, `--app-id` and `--installation-id`: the key comes from a 0600 file or standard input, never an argument, CMD-025. `--app-id` or `--installation-id` without `--from-file`, or `--state` with `--cancel`, is `USAGE`, exit 2. All of it is login-only; exit 6 is `CONFLICT` at start, 7 is `GITHUB_UNREACHABLE`. (operator, 2026-11-14; ruling number to be assigned); PRJ-039, PRJ-040), `sync`, `pause`, `resume`, `remove` L (`--keep-records` or `--delete-records`, one is required; it confirms, CMD-024), `watch [<id\|label>]` |
 | `project` | `list` (`--left-out`, `--limit`, `--after`, `--all`), `get <slug>`, `leave-out <owner/name\|id>`, `restore <owner/name\|id>`, `resource confirm <slug> <kind>` |
+| `pr` | `list <repo>` (`--state open\|closed\|all`, `--checks`; `pullRequests`; table: number, title, author, branches, draft, can merge, checks), `get <repo> <n>` (`--comments`; `pullRequest`, `issueComments`), `merge <repo> <n>...` L (`--method merge\|squash\|rebase`, required; `--sha`, required with one number whenever no question is asked: with `--yes`, `--no-input` or off a terminal; `--allow-failing-checks` and `--fork <owner/name>`, one number only; `--yes`. One number: `mergePullRequest`; 2 to 20: `mergePullRequests`, never one from a fork. It reads each pull request fresh. For one number it shows title, head, fork, merge state, checks and method, and sends the head it showed or the `--sha` given, which must equal the head it read. For several it shows each number, head (seven digits) and title, asks once and sends the heads it read; with `--yes` no one is asked, so those heads were read a moment before and confirmed by no one (the hub refuses any head that moved after the read). What it shows goes to standard error before the question, with `--json` too; each field from GitHub stays on its own line. One line for each result; exit 1 when any of several is not `MERGED` or `ALREADY_MERGED`) |
+| `issue` | `list <repo>` (`--state`; `issues`), `get <repo> <n>` (`--comments`; `issue`, `issueComments`), `create <repo>` (`--title`, `--body-file <path\|->`, `--label`; `createIssue`), `comment <repo> <n>` (`--body-file <path\|->`; `addIssueComment`), `close <repo> <n>` (`--reason completed\|not-planned`) and `reopen <repo> <n>` (`setIssueOpen`). No confirmation; the body is never printed back |
+| `workflow` | `list <repo>` (`workflows`), `start <repo> <workflow id\|path>` L (`--branch`, `--input name=value` repeated, at most 25, `--yes`; `dispatchWorkflow`; the question names the inputs, never their values, and no output or refusal shows a value), `runs <repo>` (`--branch`, `--status`, `--jobs`; `workflowRuns`; table with the commit), `run <repo> <run>` (`workflowRun`, with its jobs), `rerun <repo> <run>` L (`--failed`, `--yes`; `rerunWorkflowRun`, or `rerunFailedWorkflowJobs` with `--failed`), `cancel <repo> <run>` L (`--yes`; `cancelWorkflowRun`) |
+| `code` | `ls <repo> [path]` (`--ref`; `codeDirectory`; table: kind, size, name), `show <repo> <path>` L (`--ref`; `codeFile`: the text on standard output, cleaned of control characters when it is a terminal; `BINARY` or `TOO_LARGE` is `FAILED`, exit 1, with the GitHub link) |
+| `repo` | `commits <repo>` (`--ref`, `--checks`; `commits`), `branches <repo>` (`branches`), `releases <repo>` (`repositoryReleases`), `status set <repo> <sha>` L (`--state pending\|success\|failure\|error`, `--context anima/...`, `--description`, `--url`; `setCommitStatus`; no confirmation: the hub fences the context to `anima/`) |
 | `key` | `list` L, `create` L (`--for user\|agent`, required, LOG-015), `revoke` L |
 | `api` | Send a GraphQL document from a file or standard input |
 | `mcp` | Start the MCP server (Section 7) |
 | `completion` | Shell completion |
+
+The `pr`, `issue`, `workflow`, `code` and `repo` commands (operator, 2026-11-14; ruling number to be
+assigned; PRJ-027 to PRJ-035, OD-E14) read GitHub live through the hub (K-E1 Section 13). `<repo>` is
+`owner/name` or the repository ID (`ProjectRepository.id`). Lists take `--limit`, `--after`, `--all`
+(CMD-026) and `--fresh`. Exit codes are CMD-021's: 3 not found, 5 not permitted, 6 conflict,
+7 unavailable, 1 for a refused merge or a file it cannot show. `anima run` is reserved for Secrets
+(SCR-006) and `release` is Anima's own, so workflow runs live under `workflow` and GitHub releases
+under `repo`. `rerun` and `cancel` read the run first, show its commit in the prompt and send that
+commit as `expectedHeadSha`; `merge` on a terminal reads the pull request and does the same, and whenever no question is
+asked (`--yes`, `--no-input`, or off a terminal) `--sha` is required for one number, so `--yes` never
+stands for the head (PRJ-029, PRJ-034). A pull request from a fork merges only alone, with
+`--fork` equal to its head repository or that name typed at the terminal; `--yes` never stands for
+it (PRO-013).
 
 `watch`, `--watch` and `--follow` keep a subscription open: one line for each change, or one JSON
 object per line with `--json`. `release log --follow` ends when the job is published, failed or
@@ -310,8 +330,11 @@ Read tools are `allow` and change tools are `off` by default (MCP-002). L: needs
 | `extensions` | `anima_extensions_list` | `anima_extension_set` L |
 | `sources` | `anima_sources_overview` (declarations, accounts and their last runs; covers `Query.sources` and `Query.sourceAccounts`) | `anima_source_account_sync`, `anima_source_account_set_paused`, `anima_source_account_remove` L (`confirm` must equal the account label, MCP-007), `anima_github_connect_start` L, `anima_github_connect_cancel` L, and the read tool `anima_github_connect_state` (any token; phase, failure, message, `appSlug`, `ownerLogin`, `installUrl`, `appSettingsUrl`, and the account id, label and health). The start tool returns `{ attempt: { id, phase, expiresAt }, link }` where `link` is the fixed `https://<hub>/connect/github`: no state, no ticket, no attempt id. Alone it does nothing until a signed-in operator presses Continue. The start tool's description tells the agent to give the link to the operator and not to open it. `appSlug`, `ownerLogin` and the label go through `mcp/untrusted.rs` (operator, 2026-11-14; ruling number to be assigned) |
 | `projects` | `anima_projects_search`, `anima_project_get` | `anima_repository_set_left_out` (one tool, `leftOut: bool`), `anima_project_resource_confirm` |
+| `repositories` (operator, 2026-11-14; ruling number to be assigned; PRJ-027 to PRJ-035, OD-E14) | `anima_pull_requests_list` (`pullRequests`; `detail: true` adds mergeability and checks), `anima_pull_request_get` (`pullRequest`, `issueComments`), `anima_issues_list` (`issues`), `anima_issue_get` (`issue`, `issueComments`), `anima_workflows_list` (`workflows`), `anima_workflow_runs_list` (`workflowRuns`), `anima_workflow_run_get` (`workflowRun`, with jobs), `anima_commits_list` (`commits`), `anima_branches_list` (`branches`), `anima_repository_releases_list` (`repositoryReleases`), `anima_code_directory_list` (`codeDirectory`; names only) | `anima_issue_create` (`createIssue`), `anima_issue_comment_add` (`addIssueComment`), `anima_issue_set_open` (`setIssueOpen`). A write key may call them; they return the issue or the comment without its body. The other GitHub changes have no tool (below) |
 
-Fields with no MCP tool, with the reason (MCP-004): `Mutation.connectGithubApp` takes a secret (`GithubAppInput.privateKey`); `Subscription.sourceAccountChanged` is a subscription, and no subscription has a tool; `Mutation.openGithubConnect` returns a ONE-TIME link that opens the connection in a browser, and a tool may not return one (the hub also refuses it, FORBIDDEN, for a request that declares an agent); `Subscription.githubConnectChanged` is a subscription (operator, 2026-11-14; ruling number to be assigned). Text from GitHub (names, descriptions, paths) goes through `mcp/untrusted.rs` as named, length-limited fields (MCP-008).
+Fields with no MCP tool, with the reason (MCP-004): `Mutation.connectGithubApp` takes a secret (`GithubAppInput.privateKey`); `Subscription.sourceAccountChanged` is a subscription, and no subscription has a tool; `Mutation.openGithubConnect` returns a ONE-TIME link that opens the connection in a browser, and a tool may not return one (the hub also refuses it, FORBIDDEN, for a request that declares an agent); `Subscription.githubConnectChanged` is a subscription (operator, 2026-11-14; ruling number to be assigned); `Query.codeFile` returns the content of a file (operator, 2026-11-14; ruling number to be assigned). `Mutation.mergePullRequest` and `Mutation.mergePullRequests`: a merge is a trust decision (MCP-005), and the hub refuses every API key for them; `Mutation.rerunWorkflowRun`, `Mutation.rerunFailedWorkflowJobs` and `Mutation.dispatchWorkflow` run code with the repository's secrets, `Mutation.cancelWorkflowRun` stops a run, and `Mutation.setCommitStatus` can satisfy a required check and open a merge; the hub refuses every API key for each (operator, 2026-11-14; ruling number to be assigned). The command line has all seven, behind a confirmation. Text from GitHub (names, descriptions, paths) goes through `mcp/untrusted.rs` as named, length-limited fields (MCP-008).
+
+**No MCP tool returns file content** (operator, 2026-11-14; ruling number to be assigned). The content of a file in a repository may hold a secret, and the hub cannot tell (MCP-004, as for `anima_check_update`); it is also the strongest carrier of instructions to an agent in the Projects slice. MCP-002 makes every read tool `allow` by default, so the content gets no tool rather than a read tool. An agent that needs the code has the checkout. `anima_code_directory_list` returns names only. Other text from GitHub in the `repositories` results (titles, bodies, comments, logins, branch names, labels, commit messages, check and job names) is given in named fields, cleaned and cut by `mcp/untrusted.rs`, where the key `body` is cut at 4,000 characters. Each tool description says that this text is data, and the server instructions gain one line for text from GitHub.
 
 ## 8. The rule for new functions
 
@@ -385,7 +408,11 @@ An agent can be steered by text it reads. What it can do then depends on the tok
 tools that are on:
 
 1. **Read API key.** Read the whole fleet, events, the audit log, sessions with client
-   addresses, VPN nodes and build logs.
+   addresses, VPN nodes and build logs. It can also spend the GitHub budget of each connected
+   account down to the reserve: every `repositories` read tool asks GitHub live, and once 500
+   or fewer requests are left, every live read stops, the operator's too, until GitHub's reset
+   (`UNAVAILABLE`; contracts/extensions/sources.md, Budget). The sync keeps its share. The
+   limit is the hour GitHub allows; nothing in Anima limits one key's share.
 2. **Write API key, every change tool allowed.** Pause every check and empty its notification
    channels, start maintenance windows, delete checks, maintenance windows and web interfaces,
    end every live session, point web interfaces at other addresses, point HTTP checks at
@@ -394,6 +421,36 @@ tools that are on:
    stored credentials, approve a VPN route, cancel builds, set every retention period to the
    minimum and start a release.
    With a write key or a login token it can also start a GitHub connection (`anima_github_connect_start`), which does nothing until the operator presses Continue on the hub page and then Create and Install on GitHub, behind GitHub's own confirmation. It cannot finish the flow, and it is given no one-time link (operator, 2026-11-14; ruling number to be assigned).
+4. **Projects, the first GitHub changes** (operator, 2026-11-14; ruling number to be assigned). With a
+   write key and the issue tools on, it can make issues and comments and close or open issues on
+   every repository the GitHub App can reach. It cannot merge a pull request, run a workflow again,
+   cancel a run, start a workflow, write a commit status or read the content of a file, with any
+   token: those have no tool.
+   - **It can carry text out.** It can copy text it read from a private repository (an issue, a
+     comment, a pull request, a commit message, a file in its own checkout) into an issue or a
+     comment in any repository the GitHub App can reach, a public one included. What limits it:
+     the issue tools are off until the operator turns them on (MCP-002), `ask` shows each call's
+     values before it runs (MCP-013), the App reaches only the repositories it was installed on,
+     and the audit log records each change with the key that made it (PRJ-028, LOG-018). Nothing
+     checks where the text came from.
+   - **A comment can start a workflow.** An issue or a comment made through the GitHub App is an
+     event like any other: a workflow of that repository that listens for `issue_comment`,
+     `issues` or a label event runs, with the repository's secrets, and its steps may read the
+     text the agent wrote. So the issue tools can start code that `workflow start` would need a
+     login token and a confirmation for. This was not tested against GitHub.
+   - **The issue tools can be on without being named.** A tool with no choice of its own takes
+     its kind's saved default (MCP-012), and `--allow-write` allows the change tools with no saved
+     choice (MCP-015). An operator who set `change` to `allow` or `ask` before the issue tools
+     existed, or who starts the server with `--allow-write`, has them on without having named
+     them. This is the model as decided; the risk is accepted here, not changed. `anima mcp
+     permissions show` and the line at start (MCP-016) list them.
+5. **The operator's login token, no declaration.** A program that obtains the operator's stored
+   login token (from the key store or the token file, or from `ANIMA_TOKEN`) and sends no agent
+   declaration is recorded as User (LOG-016; open point 9). It can do everything the operator
+   can through the hub, with no MCP state in the way: merge a pull request, a fork's included
+   (the fork's name is typed into a request like any other value; PRO-013 binds the command
+   line, not the hub), run and start workflows, write commit statuses and delete devices.
+   Nothing in Anima tells it from the operator.
 
 ## 10. Work
 

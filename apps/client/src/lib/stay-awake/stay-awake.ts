@@ -12,7 +12,7 @@ export const FLOORS: readonly number[] = [10, 20, 30, 40, 50];
 
 const PROBLEMS: Readonly<Record<StayAwakeProblem, string>> = {
   caller: 'Only the main window can change this.',
-  unsaved: 'Anima could not save this choice, so nothing changed.',
+  unsaved: 'Anima.ing could not save this choice, so nothing changed.',
   unsupported: 'This computer has no set-up step.',
   refused: 'The administrator step was cancelled or did not finish. Nothing changed.',
   failed: 'The stay-awake control could not be changed.',

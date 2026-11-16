@@ -6,7 +6,7 @@ export type McpShellProblem = 'invalid_hub' | 'no_folder' | 'unreadable' | 'unwr
 
 const MESSAGES: Record<McpShellProblem, string> = {
   invalid_hub: 'The hub address is not valid.',
-  no_folder: 'This computer has no configuration folder for Anima.',
+  no_folder: 'This computer has no configuration folder for Anima.ing.',
   unreadable: 'The saved MCP permissions cannot be read. Fix or delete the configuration file, or run "anima mcp permissions reset".',
   unwritable: 'The permissions could not be saved to the configuration file.',
   invalid_change: 'The shell does not know that tool.',

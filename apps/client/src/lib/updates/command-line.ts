@@ -17,7 +17,7 @@ export function describeCommandLine(status: CommandLineStatus | null): string {
   }
 }
 
-/** The line to add to the shell profile when the proposed folder is not on the PATH; Anima never edits the profile. */
+/** The line to add to the shell profile when the proposed folder is not on the PATH; Anima.ing never edits the profile. */
 export function profileAdvice(status: CommandLineStatus | null): { readonly folder: string; readonly line: string } | null {
   if (status?.state !== 'not-installed' || status.profileLine === null) return null;
   return { folder: status.folder, line: status.profileLine };
@@ -29,7 +29,7 @@ export function installTarget(status: CommandLineStatus | null): { readonly fold
   return null;
 }
 
-/** Whether there is a link or launcher an Anima app made for Remove to delete. */
+/** Whether there is a link or launcher an Anima.ing app made for Remove to delete. */
 export function canRemove(status: CommandLineStatus | null): boolean {
   return status?.state === 'installed' || status?.state === 'elsewhere';
 }

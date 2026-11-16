@@ -50,10 +50,18 @@ export const REFUSED_ROOTS: readonly string[] = [
   "startGithubConnect",
   "openGithubConnect",
   "cancelGithubConnect",
+  "codeFile",
+  "rerunWorkflowRun",
+  "rerunFailedWorkflowJobs",
+  "cancelWorkflowRun",
+  "dispatchWorkflow",
+  "setCommitStatus",
+  "mergePullRequest",
+  "mergePullRequests",
 ];
 
 /** The refused roots that are query fields; every other one is a mutation field. */
-export const QUERY_ROOTS: readonly string[] = ["apiKeys"];
+export const QUERY_ROOTS: readonly string[] = ["apiKeys", "codeFile"];
 
 /**
  * An argument no field has: a document that selects it fails validation, so it can never reach a resolver, even if

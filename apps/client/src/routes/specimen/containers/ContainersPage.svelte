@@ -29,7 +29,7 @@
 <div class="stack">
   <h3>Page header, back link, tabs</h3>
   <BackLink to="/devices" label="Devices" />
-  <PageHeader title="Page header" detail="Document title is set to “Page header – Anima”.">
+  <PageHeader title="Page header" detail="Document title is set to “Page header – Anima.ing”.">
     {#snippet actions()}<FormButton>Edit</FormButton><FormButton tone="primary">Connect</FormButton>{/snippet}
   </PageHeader>
   <Tabs items={TABS} {selected} label="Specimen tabs" idPrefix="specimen" onSelect={(id) => (selected = id)} />

@@ -1,5 +1,5 @@
 //! The K1 shapes of a project, its repositories and its resources, built from the stored rows
-//! of a set of projects. Pure.
+//! of a set of projects and the standing of their accounts. Pure.
 
 use std::collections::HashMap;
 
@@ -7,9 +7,11 @@ use async_graphql::{ID, SimpleObject};
 use chrono::{DateTime, Utc};
 
 use crate::{
-    ids::ProjectId,
+    engine::sources::Standing,
+    ids::{ProjectId, SourceAccountId},
     paging::PageEnd,
     work::projects::{
+        forge::{RepositoryAccess, access},
         model::{ResourceKind, ResourceState, Sign},
         page::{After, encode_cursor},
         proposals::kind_of,
@@ -40,6 +42,8 @@ pub(super) struct RepositoryView {
     left_out: bool,
     /// True: the connection no longer lists it. The record is kept.
     gone: bool,
+    /// The client shows "not connected" from this and does not ask for the lists below unless it is READY (PRJ-032).
+    access: RepositoryAccess,
 }
 
 #[derive(SimpleObject)]
@@ -97,9 +101,17 @@ pub(super) struct Rows {
     pub repositories: Vec<RepositoryRow>,
     pub resources: Vec<ResourceRow>,
     pub evidence: Vec<EvidenceRow>,
+    /// The standing of each account the repositories name.
+    pub standings: Vec<(SourceAccountId, Standing)>,
 }
 
-fn repository(row: RepositoryRow) -> RepositoryView {
+fn repository(row: RepositoryRow, standings: &[(SourceAccountId, Standing)]) -> RepositoryView {
+    let standing = row.account_id.and_then(|account| {
+        standings
+            .iter()
+            .find(|(id, _)| *id == account)
+            .map(|(_, standing)| *standing)
+    });
     let url = if row.html_url.starts_with("https://") {
         row.html_url
     } else {
@@ -115,6 +127,7 @@ fn repository(row: RepositoryRow) -> RepositoryView {
         fork: row.fork,
         description: row.description,
         pushed_at: row.pushed_at,
+        access: access(row.left_out, row.gone, standing),
         left_out: row.left_out,
         gone: row.gone,
     }
@@ -173,7 +186,10 @@ pub(super) fn projects(projects: Vec<ProjectRow>, rows: Rows) -> Vec<(After, Pro
                 synced_at: held.iter().filter_map(|r| r.listed_at).max(),
                 slug: project.slug,
                 name: project.name,
-                repositories: held.into_iter().map(repository).collect(),
+                repositories: held
+                    .into_iter()
+                    .map(|row| repository(row, &rows.standings))
+                    .collect(),
                 resources: resources.remove(&project.id).unwrap_or_default(),
             };
             (after, view)

@@ -127,7 +127,7 @@
 </script>
 
 {#snippet starter(label: string)}
-  <p>{isAgent ? `Install the agent again on ${deviceName}, for example after a revoke.` : `Install the Anima agent on ${deviceName} to send its metrics.`}</p>
+  <p>{isAgent ? `Install the agent again on ${deviceName}, for example after a revoke.` : `Install the Anima.ing agent on ${deviceName} to send its metrics.`}</p>
   {#if install.expired}
     <p role="status">The code expired. Make a new one.</p>
   {/if}

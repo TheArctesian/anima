@@ -1,11 +1,12 @@
-//! What the API reads: pages of projects, and the repositories, resources and signs of a set
-//! of projects in one query each (R-014). I/O only.
+//! What the API reads: pages of projects, the repositories, resources and signs of a set of
+//! projects in one query each (R-014), and one repository with its account for a live read.
+//! I/O only.
 
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 
 use crate::{
-    ids::{ProjectId, RepositoryId, ResourceId},
+    ids::{ProjectId, RepositoryId, ResourceId, SourceAccountId},
     work::projects::page::After,
 };
 
@@ -26,6 +27,8 @@ pub(in crate::work::projects) struct ProjectRow {
 pub(in crate::work::projects) struct RepositoryRow {
     pub id: RepositoryId,
     pub project_id: ProjectId,
+    /// `None` when its source account was removed with its records kept (ITG-004).
+    pub account_id: Option<SourceAccountId>,
     pub full_name: String,
     pub html_url: String,
     pub default_branch: Option<String>,
@@ -110,7 +113,7 @@ pub(in crate::work::projects) async fn repositories(
     projects: &[ProjectId],
 ) -> Result<Vec<RepositoryRow>, sqlx::Error> {
     sqlx::query_as(
-        "SELECT id, project_id, full_name, html_url, default_branch, private, archived, fork, \
+        "SELECT id, project_id, account_id, full_name, html_url, default_branch, private, archived, fork, \
          description, pushed_at, left_out_at IS NOT NULL AS left_out, \
          gone_at IS NOT NULL AS gone, listed_at \
          FROM projects.repositories WHERE project_id = ANY($1) \
@@ -148,5 +151,32 @@ pub(in crate::work::projects) async fn evidence(
     )
     .bind(projects)
     .fetch_all(db)
+    .await
+}
+
+/// What a live read needs of one repository: its name, the account that reads it and the
+/// operator's choices.
+#[derive(Clone, Debug, sqlx::FromRow)]
+pub(in crate::work::projects) struct ReachRow {
+    pub full_name: String,
+    pub html_url: String,
+    pub default_branch: Option<String>,
+    pub account_id: Option<SourceAccountId>,
+    pub left_out: bool,
+    pub gone: bool,
+}
+
+/// The repository with this id, with its account.
+pub(in crate::work::projects) async fn reach(
+    db: &PgPool,
+    id: RepositoryId,
+) -> Result<Option<ReachRow>, sqlx::Error> {
+    sqlx::query_as(
+        "SELECT full_name, html_url, default_branch, account_id, \
+         left_out_at IS NOT NULL AS left_out, gone_at IS NOT NULL AS gone \
+         FROM projects.repositories WHERE id = $1",
+    )
+    .bind(id)
+    .fetch_optional(db)
     .await
 }

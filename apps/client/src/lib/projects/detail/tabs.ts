@@ -1,6 +1,6 @@
 import type { IconName } from '$lib/icons/icons';
 
-/** The project page's tabs, in order (PRJ-030, UR-7): HQ's GitHub work laid out as Anima's detail pages. */
+/** The project page's tabs, in order (PRJ-030, UR-7): HQ's GitHub work laid out as Anima.ing's detail pages. */
 export const PROJECT_TABS = [
   { id: 'overview', label: 'Overview', icon: 'carbon:dashboard' },
   { id: 'work', label: 'Work', icon: 'carbon:task-complete' },

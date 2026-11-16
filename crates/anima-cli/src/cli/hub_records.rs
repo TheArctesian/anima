@@ -3,7 +3,8 @@
 use crate::failure::Failure;
 use crate::invocation::Invocation;
 use crate::{
-    builders, events, extensions, keys, notifications, projects, releases, retention, sources, vpn,
+    builders, events, extensions, forge, keys, notifications, projects, releases, retention,
+    sources, vpn,
 };
 
 #[derive(Debug, clap::Subcommand)]
@@ -58,6 +59,8 @@ pub enum HubRecordCommand {
         #[command(subcommand)]
         command: projects::ProjectCommand,
     },
+    #[command(flatten)]
+    Forge(forge::ForgeCommand),
     /// The VPN (status, invite, router-key, register, renew, approve-route).
     Vpn {
         #[command(subcommand)]
@@ -78,6 +81,7 @@ impl HubRecordCommand {
             Self::Extension { command } => command.run(invocation).await,
             Self::Source { command } => command.run(invocation).await,
             Self::Project { command } => command.run(invocation).await,
+            Self::Forge(command) => command.run(invocation).await,
             Self::Vpn { command } => command.run(invocation).await,
         }
     }

@@ -7,7 +7,9 @@
 //! `pushed_at` changed: its recursive file tree and its deployment records.
 
 mod app_token;
+mod changes;
 mod inspection;
+pub mod live;
 mod name;
 mod problem;
 mod record;
@@ -33,11 +35,19 @@ pub const DECLARATION: Declaration = Declaration {
     })),
     scopes: &[
         "Metadata: read",
-        "Contents: read (the file list of each repository)",
+        "Contents: read and write (the files of each repository; merging a pull request)",
         "Deployments: read",
+        "Issues: read and write (making, closing and commenting on issues and pull requests)",
+        "Pull requests: read",
+        "Actions: read and write (running a workflow again, cancelling it, starting it by hand)",
+        "Checks: read",
+        "Commit statuses: read and write (Anima's own anima/ statuses)",
     ],
     write_reason: Some(
-        "PRJ-017: the operator's own GitHub App has read and write permission; this version only reads.",
+        "PRJ-017, OD-E14: the operator's own GitHub App has read and write permission. Anima writes \
+         issues and comments (Issues: write), merges pull requests (Contents: write), runs \
+         workflows again, cancels and starts them (Actions: write) and sets commit statuses \
+         (Commit statuses: write), only when the operator asks.",
     ),
     gives: &[
         "Repositories",
@@ -46,6 +56,10 @@ pub const DECLARATION: Declaration = Declaration {
     ],
     poll_interval_seconds: 900,
     api_base: "https://api.github.com",
+    changes: Some(source_exchange::Changes {
+        render: changes::render,
+        settle: changes::settle,
+    }),
 };
 
 /// Starts a run. A finished or empty slice starts a new listing and keeps what was seen; a

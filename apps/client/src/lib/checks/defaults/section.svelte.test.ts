@@ -120,7 +120,7 @@ it('D-26, LOG-007: a failed save shows a fixed message, never the hub text, and 
   typeInto(field(target, 'Interval (seconds)'), '240');
   save(target).click();
   await settled();
-  expect(target.textContent).toContain('Anima could not save the default check settings.');
+  expect(target.textContent).toContain('Anima.ing could not save the default check settings.');
   expect(target.textContent).not.toContain('secret hub text');
   expect(values(target)).toEqual(['240', '5', '45', '2500']);
   expect(save(target).getAttribute('aria-disabled')).toBe('false');
@@ -182,7 +182,7 @@ function retryButton(target: HTMLElement): HTMLButtonElement {
 it('D-26: a failed load shows a fixed message with Try again, and Try again loads the values', async () => {
   const answers: Parameters<typeof fakeHub>[0] = { CheckDefaults: failure('unreachable') };
   const target = await open(answers);
-  expect(target.querySelector('.message')?.textContent).toBe('Anima could not load the defaults.');
+  expect(target.querySelector('.message')?.textContent).toBe('Anima.ing could not load the defaults.');
   expect(target.textContent).not.toContain('secret hub text');
   expect(save(target).getAttribute('aria-disabled')).toBe('true');
   answers.CheckDefaults = ok({ checkDefaults: STORED });

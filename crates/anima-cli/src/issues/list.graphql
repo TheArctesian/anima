@@ -1,0 +1,31 @@
+query IssueList($repository: ID!, $state: OpenOrClosed, $first: Int, $after: String, $fresh: Boolean) {
+  issues(repository: $repository, state: $state, first: $first, after: $after, fresh: $fresh) {
+    edges {
+      cursor
+      node {
+        repository
+        number
+        title
+        open
+        closeReason
+        authorLogin
+        labels
+        assignees
+        comments
+        createdAt
+        updatedAt
+        closedAt
+        url
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+    read {
+      at
+      stale
+      problem
+    }
+  }
+}

@@ -68,7 +68,7 @@ it('UI-005: a storage that refuses to save still applies the theme and says it w
   expect(document.documentElement.dataset['theme']).toBe('light');
   expect(themeSelect(target).value).toBe('light');
   expect(target.querySelector('[role="alert"]')?.textContent).toBe(
-    'Anima could not save this choice on this device; it lasts until the app restarts.',
+    'Anima.ing could not save this choice on this device; it lasts until the app restarts.',
   );
 });
 

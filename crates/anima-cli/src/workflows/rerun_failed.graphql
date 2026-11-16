@@ -1,0 +1,17 @@
+mutation WorkflowRunRerunFailed($repository: ID!, $runId: ID!, $expectedHeadSha: String!) {
+  rerunFailedWorkflowJobs(repository: $repository, runId: $runId, expectedHeadSha: $expectedHeadSha) {
+    repository
+    id
+    workflowId
+    name
+    runNumber
+    attempt
+    event
+    status
+    conclusion
+    branch
+    headSha
+    commitTitle
+    url
+  }
+}

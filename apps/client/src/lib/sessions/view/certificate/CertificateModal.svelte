@@ -86,7 +86,7 @@
   <div class="content" bind:this={content}>
     <div id="certificate-why" class="why">
       <p>
-        {device.name} presented a different RDP server certificate from the one Anima accepted, so Anima did not
+        {device.name} presented a different RDP server certificate from the one Anima.ing accepted, so Anima.ing did not
         connect.
       </p>
       <p>

@@ -52,7 +52,7 @@
   <div class="content" bind:this={content}>
     <div id="host-key-why" class="why">
       <p>
-        {device.name} answered with a different SSH host key from the one Anima accepted, so Anima did not connect.
+        {device.name} answered with a different SSH host key from the one Anima.ing accepted, so Anima.ing did not connect.
       </p>
       <p>
         A new key is expected after the device is reinstalled or its SSH keys are made again. Otherwise it can mean
@@ -68,7 +68,7 @@
       </dl>
     {/if}
     {#if current.step === 'confirming'}
-      <p class="confirm">Accept this fingerprint as the host key of {device.name}? Anima will trust it from now on.</p>
+      <p class="confirm">Accept this fingerprint as the host key of {device.name}? Anima.ing will trust it from now on.</p>
     {:else if current.step === 'accepted'}
       <p role="status">The new key is accepted. Reconnect to open the session.</p>
     {/if}

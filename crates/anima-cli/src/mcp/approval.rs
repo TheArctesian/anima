@@ -145,7 +145,7 @@ mod tests {
         }
         let text = sentence(&Refusal::NoAsking, "anima_check_delete");
         assert!(text.contains("ask the operator"), "{text}");
-        assert!(text.contains("must not change Anima's settings"), "{text}");
+        assert!(text.contains("must not change Anima.ing's settings"), "{text}");
         assert!(text.contains("elicitation"), "{text}");
         assert!(sentence(&Refusal::NoAnswer, "x").contains("120 seconds"));
     }

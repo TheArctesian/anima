@@ -44,7 +44,7 @@ export function failureMessage(error: HubError, desktop: boolean): string {
   switch (error.code) {
     case 'UNAUTHENTICATED':
       // The request never left: the key store could not be read, which is not a wrong password.
-      if (error === TOKEN_UNREADABLE) return 'The key store could not be read, so Anima cannot sign you in.';
+      if (error === TOKEN_UNREADABLE) return 'The key store could not be read, so Anima.ing cannot sign you in.';
       return 'The user name, password or code is wrong.';
     case 'VALIDATION':
       return 'Check the marked fields.';

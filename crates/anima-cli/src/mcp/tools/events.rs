@@ -49,7 +49,7 @@ pub struct SearchInput {
     /// Only these severities.
     #[serde(default)]
     severity: Vec<SeverityInput>,
-    /// Only events from these parts of Anima.
+    /// Only events from these parts of Anima.ing.
     #[serde(default)]
     source: Vec<SourceInput>,
     /// Only events of this device: its id or exact name.
@@ -63,7 +63,7 @@ pub struct SearchInput {
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct AuditInput {
-    /// Only the entries of this actor: USER (a person), AGENT (an AI agent) or HUB (Anima
+    /// Only the entries of this actor: USER (a person), AGENT (an AI agent) or HUB (Anima.ing
     /// itself).
     actor: Option<ActorInput>,
     #[serde(flatten)]
@@ -104,7 +104,7 @@ impl EventTool {
                 Effect::Reads,
                 "Lists the audit trail, newest first: who changed what and when (operator, \
                  action, target, client address, changed fields with secrets redacted). Each \
-                 entry names its actor kind (USER a person, AGENT an AI agent, HUB Anima \
+                 entry names its actor kind (USER a person, AGENT an AI agent, HUB Anima.ing \
                  itself; \"Not recorded\" for an old entry), its token kind (LOGIN, BROWSER \
                  or API_KEY) and, for an API key, the key's name. Give `actor` to see only \
                  the work of one kind.",
