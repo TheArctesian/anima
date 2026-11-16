@@ -45,16 +45,13 @@ export function describeStayAwake(status: StayAwakeStatus): string {
   }
 }
 
-const LOOPBACK_HOSTS: readonly string[] = ['localhost', '127.0.0.1', '[::1]'];
-
 /**
- * Whether the hub this client talks to runs on this computer (AWK-005): its address is a loopback address, where the
- * in-app hub answers. The first-run flow of that hub must ask this function too. The rule cannot see a hub on this
- * computer that is reached by another address, and it takes a loopback port that forwards to another computer as this
- * one.
+ * Whether the hub this client talks to is the hub that runs on this computer (AWK-005, FRN-008): `localHub`, the
+ * origin the shell reports, or `null` when this computer runs no hub. A loopback address alone does not decide it: a
+ * joined device also reaches its hub at a loopback address, through the link.
  */
-export function hubIsThisComputer(origin: string): boolean {
-  return URL.canParse(origin) && LOOPBACK_HOSTS.includes(new URL(origin).hostname);
+export function hubIsThisComputer(origin: string, localHub: string | null): boolean {
+  return localHub !== null && URL.canParse(origin) && URL.canParse(localHub) && new URL(origin).origin === new URL(localHub).origin;
 }
 
 /** The line that tells the operator that checks stop during sleep, or `null` when it does not apply (AWK-005). */

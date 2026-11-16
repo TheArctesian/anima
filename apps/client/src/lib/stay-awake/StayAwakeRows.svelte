@@ -12,14 +12,17 @@
     shell?: StayAwakeShell;
     /** A Mac has the set-up step of the lid-closed level (AWK-003). */
     mac?: boolean;
+    /** The origin of the hub that runs on this computer, or `null` when there is none (AWK-005). */
+    localHub?: string | null;
   }
 
-  const { shell = desktopStayAwakeShell, mac = isMac(navigator.userAgent) }: Props = $props();
+  const { shell = desktopStayAwakeShell, mac = isMac(navigator.userAgent), localHub = null }: Props = $props();
 
   // Desktop only; the page decides (AWK-004). The rows keep the shell they were mounted with.
   // svelte-ignore state_referenced_locally
   const control = new StayAwakeControl(shell);
-  const thisComputerIsHub = hubIsThisComputer(useHub().address.origin);
+  const hub = useHub();
+  const thisComputerIsHub = $derived(hubIsThisComputer(hub.address.origin, localHub));
 
   // Once, not in an effect: `watch` reads and writes the control's own state.
   onMount(() => control.watch());
