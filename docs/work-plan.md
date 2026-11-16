@@ -243,7 +243,7 @@ This table is the only list of the plans of Anima. A document that is not in thi
 | [programme/proposals/shell-prompt.md](programme/proposals/shell-prompt.md) | Proposal | Draft | Not approved. CMD-032 to CMD-038. INS-009 ruled 2026-11-16. |
 | [programme/proposals/cloud-machines.md](programme/proposals/cloud-machines.md) | Proposal | Draft | Not approved. CVM-001 to CVM-024. |
 | [programme/proposals/machine-profiles.md](programme/proposals/machine-profiles.md) | Proposal | Draft | Not approved. REP-001 to REP-025. MET-002, USE-006, INS-009 and VLT-007 ruled 2026-11-16. |
-| [programme/proposals/cve-watch-and-network-awareness.md](programme/proposals/cve-watch-and-network-awareness.md) | Proposal | Draft | Not approved. VUL-001 to VUL-020, ADR-001 to ADR-014. No tier in Section 4 yet. |
+| [programme/proposals/cve-watch-and-network-awareness.md](programme/proposals/cve-watch-and-network-awareness.md) | Proposal | Draft | Not approved. VUL-001 to VUL-020, ADR-001 to ADR-014. No tier in Section 4 yet. Operator ruling 2026-11-16: the feeds and the match run once a day (VUL-006). |
 
 These documents are records, not plans. They must not add a requirement (PLN-009).
 
