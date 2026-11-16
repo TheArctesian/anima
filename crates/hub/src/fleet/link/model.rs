@@ -67,6 +67,15 @@ pub(super) struct MadeInvite {
     pub expires: DateTime<Utc>,
 }
 
+/// One open invite of the `invites.list` reply: no invite text, only the fingerprint of its
+/// temporary key, which `invites.cancel` takes.
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
+pub(super) struct ListedInvite {
+    pub id: String,
+    pub name: String,
+    pub expires: DateTime<Utc>,
+}
+
 /// The `devices.revoke` reply.
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -77,7 +86,7 @@ pub(super) struct Revoked {
 /// Why the link refused a request, by the code it sent. The link's own message is not kept:
 /// the hub says it in its own words.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Refusal {
+pub(crate) enum Refusal {
     /// `device_unknown`: no permitted device has this key.
     DeviceUnknown,
     /// `bad_name`: a device needs a name of 1 to 64 visible characters.

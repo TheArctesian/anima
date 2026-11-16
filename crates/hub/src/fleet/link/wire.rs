@@ -19,6 +19,8 @@ pub(super) enum Request<'a> {
     DevicesList,
     DevicesRevoke { key: &'a str },
     InvitesMake { name: &'a str },
+    InvitesList,
+    InvitesCancel { id: &'a str },
 }
 
 impl Request<'_> {
@@ -32,6 +34,10 @@ impl Request<'_> {
             }
             Self::InvitesMake { name } => {
                 json!({ "verb": "invites.make", "args": { "name": name } })
+            }
+            Self::InvitesList => json!({ "verb": "invites.list" }),
+            Self::InvitesCancel { id } => {
+                json!({ "verb": "invites.cancel", "args": { "id": id } })
             }
         };
         let mut line = request.to_string().into_bytes();
@@ -69,6 +75,8 @@ pub(super) fn parse_reply<T: DeserializeOwned>(line: &[u8]) -> Result<T, Error> 
     let reply: Reply<T> = serde_json::from_slice(line).map_err(|_| Error::Unreadable)?;
     match (reply.ok, reply.result, reply.error) {
         (true, Some(value), None) => Ok(value),
+        // A verb with no answer (`invites.cancel`) replies `"result":null`.
+        (true, None, None) => serde_json::from_value(Value::Null).map_err(|_| Error::Unreadable),
         (false, None, Some(refused)) => Err(Error::Refused(Refusal::of_code(&refused.code))),
         _ => Err(Error::Unreadable),
     }

@@ -84,3 +84,20 @@ async fn frn_009_a_control_socket_others_can_reach_gets_no_request(pool: PgPool)
     assert_eq!(link.changes(), Vec::<serde_json::Value>::new());
     fs::set_permissions(folder, fs::Permissions::from_mode(0o700)).unwrap();
 }
+
+#[sqlx::test(migrations = "./migrations")]
+async fn frn_009_a_key_over_256_characters_is_refused_before_the_link(pool: PgPool) {
+    let link = FakeLink::start(|_| one_device());
+    let (hub, token) = hub_over(&pool, &link).await;
+
+    let response = hub
+        .post(Some(&token), REVOKE, json!({ "k": "k".repeat(257) }))
+        .await;
+
+    assert_eq!(code(&response), "VALIDATION", "{response}");
+    assert_eq!(
+        response["errors"][0]["extensions"]["fields"][0]["field"],
+        "key"
+    );
+    assert_eq!(link.requests(), Vec::<Value>::new());
+}
