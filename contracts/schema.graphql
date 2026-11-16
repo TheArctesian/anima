@@ -2461,7 +2461,7 @@ type Query {
   releases(first: Int = 20, after: String): ReleaseConnection!
   "The highest version published or under way with the patch plus 1; null before the first."
   nextReleaseVersion: String
-  "Whether this hub holds the release bucket and the updater key, so it can publish a release. createRelease is refused with CONFLICT when false. (operator, 2026-11-16, PRO-037, PRO-038, OD-W20; ruling number to be assigned)"
+  "Whether this hub holds the release bucket and the updater key, so it can publish a release. createRelease is refused with CONFLICT when false. (R-118; PRO-037, PRO-038, OD-W20)"
   releasePublishing: Boolean!
   builders: [Builder!]!
   "Up to `first` (1 to 1000) stored lines after sequence `after`, oldest first (BLD-048)."
