@@ -105,7 +105,11 @@ relay and domain settings (S11), many hubs (S13), the metrics agent over the lin
   connection, because it connects again by itself after a hub stops. The client forgets the answer when
   the connection stops being live, and before and after Start and Stop (security re-review MF-1).
   Remaining risk: another program can take the port in the short time between the shell's check and the
-  send. Only a Unix socket or a pinned certificate removes this risk.
+  send. Only a Unix socket or a pinned certificate removes this risk. A second, smaller window
+  stays for HTTP requests: if the hub stops again less than 5 s after an "own" answer while the
+  socket waits for its next try, a request in those seconds uses the kept answer. That needs the
+  hub to stop twice in seconds and a local program to take the port in between (security
+  confirmation of MF-1, Low; the same later fix removes it).
 - **F-11 (S1).** In the link mode the hub refuses a request whose `Host` is not a loopback literal,
   and a request whose `Origin` is present and not a client origin of the application. A page in a
   browser (DNS rebinding) then cannot drive sign-in failures into the throttle of `127.0.0.1`.
