@@ -39,6 +39,10 @@ vi.mock('$lib/sources/SourcesSection.svelte', () => ({ default: () => undefined 
 vi.mock('$lib/mcp/McpSection.svelte', () => ({ default: () => undefined }));
 // The Stay awake rows read the shell and have their own tests in `$lib/stay-awake/` (AWK-004).
 vi.mock('$lib/stay-awake/StayAwakeRows.svelte', () => ({ default: () => undefined }));
+// The link and local hub parts read the shell and the hub and have their own tests in `$lib/link/` and `$lib/local-hub/` (FRN-006, FRN-009).
+vi.mock('$lib/link/LinkDevicesSection.svelte', () => ({ default: () => undefined }));
+vi.mock('$lib/link/HubLinkRow.svelte', () => ({ default: () => undefined }));
+vi.mock('$lib/local-hub/LocalHubSection.svelte', () => ({ default: () => undefined }));
 // The VPN section loads its own data and has its own tests in `$lib/vpn/` (SET-003).
 vi.mock('$lib/vpn/VpnSection.svelte', () => ({ default: () => undefined }));
 

@@ -2,6 +2,8 @@
   import { onMount, tick } from 'svelte';
   import { asset } from '$app/paths';
   import { accessApi } from '$lib/access/api';
+  import { hubListeners, loopbackProblem } from '$lib/access/listener/check';
+  import type { ListenerProblem } from '$lib/access/listener/listener';
   import { goToDevices, loadClientAt, reloadClient } from '$lib/access/navigation';
   import { storeHubAddress } from '$lib/desktop/address';
   import { readAccessToken, writeAccessToken } from '$lib/desktop/token';
@@ -42,12 +44,24 @@
   let addressText = $state(hub.address.origin);
   let addressProblem = $state<string | undefined>();
 
+  // F-10: on this computer's hub address nothing is sent until a program of this user is found listening there.
+  let loopback = $state<ListenerProblem | null>(null);
+  let checking = $state(false);
+
+  async function checkLoopback(again: boolean): Promise<void> {
+    checking = true;
+    if (again) hubListeners.forget(hub.address.origin);
+    loopback = await loopbackProblem(hub.address.origin, desktop);
+    checking = false;
+  }
+
   const unreachable = $derived(hubUnreachable(hub.status.current, hub.address.origin, clock.current));
   // When the hub did not answer and the notice above already says so, the attempt's own sentence would repeat it.
   const shownMessage = $derived(messageUnreachable && unreachable !== null ? null : message);
 
   onMount(() => {
     inputs.username?.focus();
+    void checkLoopback(false);
   });
 
   /** The address typed into the open hub field: `undefined` when the field is closed or unchanged, `null` (with the problem shown) when it is refused. */
@@ -71,6 +85,7 @@
   /** Step 1's Continue: check the two fields here and move on; nothing is sent. */
   function continueToCode(): void {
     message = null;
+    if (loopback !== null) return;
     // A bad hub address is told now, while the form is still open to fix it (CLI-002).
     if (typedAddress() === null) return;
     fields = checkLogin({ username, password, totpCode: '' });
@@ -95,7 +110,7 @@
 
   async function submit(totpCode: string): Promise<void> {
     // One attempt at a time: a second browser sign-in would leave a token on the hub that no cookie holds.
-    if (busy) return;
+    if (busy || loopback !== null) return;
     const typed = typedAddress();
     if (typed === null) return;
     const { target, moved } = chooseTarget(typed);
@@ -157,7 +172,15 @@
     <h1>Sign in to Anima.ing</h1>
 
     <form onsubmit={formSubmitted} novalidate>
-      {#if unreachable !== null}
+      {#if loopback !== null}
+        <div role="alert">
+          <Notice icon="carbon:locked">
+            <p><strong>{loopback.title}</strong></p>
+            <p>{loopback.advice}</p>
+            <p><button type="button" class="again" tabindex="0" disabled={checking} onclick={() => void checkLoopback(true)}>Check again</button></p>
+          </Notice>
+        </div>
+      {:else if unreachable !== null}
         <div role="status">
           <Notice icon="carbon:unlink">
             <p><strong>{unreachable.title}</strong></p>
@@ -184,7 +207,7 @@
 
       {#if step === 'credentials'}
         <!-- tabindex="0": WebKit skips plain buttons when Tab is pressed unless they are focusable, as for the nav links (NAV-005, WP-11 H-6). -->
-        <button type="submit" tabindex="0" {@attach press()}>Continue<Icon name="carbon:arrow-right" size="sm" /></button>
+        <button type="submit" tabindex="0" disabled={loopback !== null} {@attach press()}>Continue<Icon name="carbon:arrow-right" size="sm" /></button>
       {/if}
     </form>
 
@@ -287,6 +310,12 @@
   button:disabled {
     opacity: var(--opacity-disabled);
     cursor: default;
+  }
+
+  .again {
+    inline-size: auto;
+    block-size: var(--control-sm);
+    padding: 0 var(--space-3);
   }
 
   button:focus-visible {

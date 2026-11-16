@@ -12,6 +12,9 @@ export interface IndexShown {
 export const SECTIONS = {
   account: { id: 'settings-account', title: 'Account', icon: 'carbon:user-avatar', description: 'Who is signed in to this hub.' },
   hub: { id: 'settings-hub', title: 'Hub', icon: 'carbon:network-enterprise', description: 'The hub this app talks to.' },
+  // The next two show only when the shell or the hub says they apply, so the index leaves them out (FRN-006, FRN-009).
+  localHub: { id: 'settings-local-hub', title: "This computer's hub", icon: 'carbon:bare-metal-server', description: 'The hub that runs on this computer, with its database and its link.' },
+  linkDevices: { id: 'settings-link-devices', title: 'Devices on the link', icon: 'carbon:remote-connection', description: 'The devices that reach this hub over the link.' },
   stayAwake: { id: 'settings-stay-awake', title: 'Stay awake', icon: 'carbon:power', description: 'Keeps this computer on, so a hub or an agent on it keeps working.' },
   appearance: { id: 'settings-appearance', title: 'Appearance', icon: 'carbon:color-palette', description: 'How Anima.ing looks on this device.' },
   notifications: { id: 'settings-notifications', title: 'Notifications', icon: 'carbon:notification', description: 'Where the hub sends alerts.' },

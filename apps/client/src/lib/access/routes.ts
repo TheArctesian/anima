@@ -1,6 +1,9 @@
 /** The sign-in page path. */
 export const SIGN_IN_PATH = '/sign-in';
 
+/** The first-run choices of the desktop app (FRN-001, NAV-009). */
+export const WELCOME_PATH = '/welcome';
+
 /** Whether `route` is `parent` or below it by whole segment: `/sign-in/x` is below `/sign-in`, `/sign-inx` is not. */
 function within(route: string, parent: string): boolean {
   return route === parent || route.startsWith(`${parent}/`);
@@ -24,9 +27,9 @@ export function routePath(pathname: string, base: string): string {
 }
 
 /**
- * Whether the route path (see `routePath`) needs no sign-in: only the sign-in page and below it (API-003, E-3). Every
- * other route, `/shared` included, needs sign-in (R-111).
+ * Whether the route path (see `routePath`) needs no sign-in: only the sign-in page, the first-run pages and below them
+ * (API-003, E-3, FRN-001). Every other route, `/shared` included, needs sign-in (R-111).
  */
 export function isSignedOut(route: string): boolean {
-  return within(route, SIGN_IN_PATH);
+  return within(route, SIGN_IN_PATH) || within(route, WELCOME_PATH);
 }

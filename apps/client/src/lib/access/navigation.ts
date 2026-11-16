@@ -1,11 +1,12 @@
 import { goto } from '$app/navigation';
 import { resolve } from '$app/paths';
-import { readAccessToken } from '$lib/desktop/token';
+import { hasStoredHubAddress } from '$lib/desktop/address';
 import type { Hub } from '$lib/hub/hub';
 import { capabilities } from '$lib/platform/platform';
 import { accessApi } from './api';
 import { startGuard } from './guard';
-import { isSignedOut, routePath, SIGN_IN_PATH } from './routes';
+import { tokenFor } from './listener/check';
+import { isSignedOut, routePath, SIGN_IN_PATH, WELCOME_PATH } from './routes';
 import { clientStart, type ClientStart } from './start';
 
 // The browser side of access: the router, the page reload, the platform and the page origin. Logic stays in
@@ -18,6 +19,11 @@ function failed(): void {
 
 export function goToSignIn(): void {
   goto(resolve(SIGN_IN_PATH)).catch(failed);
+}
+
+/** The first-run choices of the desktop app (FRN-001). */
+export function goToWelcome(): void {
+  goto(resolve(WELCOME_PATH)).catch(failed);
 }
 
 export function goToDevices(): void {
@@ -58,9 +64,15 @@ export function startAt(url: URL): ClientStart {
   return clientStart({ desktop: capabilities().keyStore, storage: localStorage, origin: url.origin });
 }
 
-/** The start guard with the real router, key store and hub; the root layout calls this once, on a shell start. */
+/**
+ * The start guard with the real router, key store and hub; the root layout calls this once, on a shell start. On this
+ * computer's hub address the token is read only after the listener check (F-10), so a refusal leads to sign-in, which
+ * says why; with no address and no token the desktop app shows the first-run choices (FRN-001).
+ */
 export function guardStart(url: URL, hub: Hub): void {
   const { me } = accessApi(hub);
-  const check = { route: routeOf(url), address: hub.address, token: readAccessToken, desktop: capabilities().keyStore, me };
-  startGuard({ ...check, goToSignIn }).catch(failed);
+  const desktop = capabilities().keyStore;
+  const check = { route: routeOf(url), address: hub.address, token: tokenFor(hub.address, desktop), desktop, me };
+  const firstRun = { addressSaved: hasStoredHubAddress(localStorage), goToWelcome };
+  startGuard({ ...check, goToSignIn, firstRun }).catch(failed);
 }

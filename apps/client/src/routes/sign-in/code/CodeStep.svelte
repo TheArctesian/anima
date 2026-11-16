@@ -1,6 +1,6 @@
 <script lang="ts">
   import Icon from '$lib/icons/Icon.svelte';
-  import CodeBoxes from './CodeBoxes.svelte';
+  import CodeBoxes from '$lib/access/code/CodeBoxes.svelte';
 
   interface Props {
     busy: boolean;
