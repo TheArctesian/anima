@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { CardDevice } from '$lib/devices/api';
   import LogsPanel from '$lib/events/panel/LogsPanel.svelte';
+  import { phoneLayout } from '$lib/nav/phone/layout.svelte';
   import '$lib/events/resize/geometry.css';
   import { useHub } from '$lib/hub/context';
   import { press } from '$lib/motion/roles/press';
@@ -152,8 +153,11 @@
   {/if}
 </div>
 
-<div class="clearance" aria-hidden="true"></div>
-<LogsPanel devices={list?.devices ?? []} />
+<!-- In the phone layout the logs are a page of the bar, not a panel over the list (MOB-013). -->
+{#if !phoneLayout()}
+  <div class="clearance" aria-hidden="true"></div>
+  <LogsPanel devices={list?.devices ?? []} />
+{/if}
 
 <style>
   .head {

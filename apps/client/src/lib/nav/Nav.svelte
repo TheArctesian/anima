@@ -12,7 +12,9 @@
   import { capabilities } from '$lib/platform/platform';
   import { fade } from '$lib/motion/roles/transitions';
   import { watchHubBanner } from './banner-shift';
-  import { DEVICES, SETTINGS, isActive, optionalDestinations, unreachableBanner, type NavDestination } from './nav';
+  import { phoneLayout } from './phone/layout.svelte';
+  import './phone/bar.css';
+  import { DEVICES, LOGS, SETTINGS, isActive, optionalDestinations, unreachableBanner, type NavDestination } from './nav';
 
   interface Props {
     /** The current route, for the active item. */
@@ -98,6 +100,8 @@
   <hr />
   {#if running !== undefined}<Running>{@render running()}</Running>{/if}
   <HubStatus {iconOnly} />
+  <!-- In the phone layout the logs are a page of the bar, not a panel (MOB-013). -->
+  {#if phoneLayout()}{@render destination(LOGS)}{/if}
   {@render destination(SETTINGS)}
   {#if canCollapse && oncollapse}
     <ResizeEdge {collapsed} onsettle={oncollapse} />

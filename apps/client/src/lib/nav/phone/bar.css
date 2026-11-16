@@ -1,0 +1,82 @@
+/*
+ * The phone layout (MOB-010): the navigation bar is at the bottom of the screen, over the home indicator's safe area.
+ * It holds the destinations only, each an icon over its word. The brand, the collapse toggle, what is running and the
+ * hub status are not in it; the unreachable strip stays at the top of the window.
+ *
+ * The rules name the bar by its id, so they stand above the rules that each component has for the icons-only bar.
+ * The width is the compact breakpoint, as in `layout.svelte.ts`.
+ */
+@media (max-width: 767.98px) {
+  #main-nav {
+    position: fixed;
+    inset-block: auto 0;
+    inset-inline: 0;
+    inline-size: auto;
+    block-size: auto;
+    flex-direction: row;
+    align-items: stretch;
+    gap: var(--space-1);
+    padding: var(--space-1) calc(var(--space-2) + var(--safe-inline-end)) calc(var(--space-1) + var(--safe-block-end))
+      calc(var(--space-2) + var(--safe-inline-start));
+    border-right: 0;
+    border-block-start: var(--border-thin) solid var(--border-subtle);
+  }
+
+  #main-nav > * {
+    display: none;
+  }
+
+  #main-nav > .notice {
+    display: block;
+  }
+
+  #main-nav > .item,
+  #main-nav > .live {
+    display: flex;
+    flex: 1 1 0;
+    min-inline-size: 0;
+  }
+
+  #main-nav .item,
+  #main-nav .live .control {
+    justify-content: center;
+    gap: var(--space-1);
+    block-size: var(--phone-bar-item-size);
+    padding: 0;
+    color: var(--text-secondary);
+    font-size: var(--text-xs);
+  }
+
+  #main-nav .item {
+    flex-direction: column;
+  }
+
+  #main-nav .item[aria-current="page"] {
+    color: var(--text);
+  }
+
+  #main-nav .item[aria-current="page"]::before {
+    content: none;
+  }
+
+  /* The live sessions control: the icon and its count, over the word. */
+  #main-nav .live .control {
+    flex-flow: row wrap;
+    align-content: center;
+  }
+
+  #main-nav .item .words,
+  #main-nav .live .control .words {
+    position: static;
+    inline-size: auto;
+    block-size: auto;
+    overflow: visible;
+    clip-path: none;
+  }
+
+  #main-nav .live .control .words {
+    flex-basis: 100%;
+    order: 1;
+    text-align: center;
+  }
+}

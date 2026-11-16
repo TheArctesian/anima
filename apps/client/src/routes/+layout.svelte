@@ -258,10 +258,19 @@
     }
   }
 
+  /* The phone layout (MOB-010): one column, and the page ends above the bar at the bottom of the screen. */
   @media (max-width: 767.98px) {
+    .shell {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
     main {
       --page-gutter: var(--space-4);
       padding-block-start: var(--space-6);
+    }
+
+    .shell > main {
+      padding-block-end: calc(var(--space-8) + var(--phone-bar-block-size));
     }
   }
 

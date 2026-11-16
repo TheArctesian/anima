@@ -86,6 +86,17 @@ select {
   --nav-banner-block-size: calc(var(--text-sm) * var(--leading-tight) * 4 + var(--space-2) * 2 + var(--border-thin));
 }
 
+/* The phone layout (MOB-010): the bar is at the bottom of the screen, so nothing starts beside it. The page and a
+   pinned panel keep clear of its height, the safe area included. */
+@media (max-width: 767.98px) {
+  :root,
+  :root[data-nav="icons"] {
+    --nav-inline-size: 0px;
+    --phone-bar-item-size: calc(var(--target-min-touch) + var(--space-2));
+    --phone-bar-block-size: calc(var(--phone-bar-item-size) + var(--space-2) + var(--border-thin) + var(--safe-block-end));
+  }
+}
+
 /* On a Mac the window draws under its title bar (tauri.macos.conf.json). The three window buttons sit at the start of
    the bar's top row: 16 px in, 12 px each, 8 px apart, then a gap; the collapsed bar keeps room for them and the toggle. */
 :root[data-titlebar="overlay"] {

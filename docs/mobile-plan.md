@@ -5,10 +5,10 @@ Progress: the plan register in [work-plan.md](work-plan.md) Section 9 holds the 
 | Item | Value |
 | --- | --- |
 | Document | Mobile plan: the iOS client and the Android client |
-| Version | 0.2 |
+| Version | 0.3 |
 | Date | 2026-11-16 |
 | Language | ASD-STE100 Simplified Technical English (STE) |
-| Status | Approved. The operator decided OD-M1 to OD-M8 on 2026-11-16 (Section 3). Version 0.2 writes Section 4.4 again for the ruling on OD-M3. MOB-032 waits for the test of task M1-4. |
+| Status | Approved. The operator decided OD-M1 to OD-M8 on 2026-11-16 (Section 3). Version 0.2 writes Section 4.4 again for the ruling on OD-M3. MOB-032 waits for the test of task M1-4. Version 0.3: the operator approved the phone mockups on 2026-11-16 ("Mock are good enough now as well"); Section 4.2 follows them. |
 | Parent | [work-plan.md](work-plan.md) Section 4, tier 4, row "iOS client and Android client (Phase 5)" (PLN-003) |
 | Base | `main` at `fa4ac394`. The facts in Section 2 are from the branch `spike/mobile`, which is local and is not for merge. |
 | Related | [design-spec.md](design-spec.md) Sections 1.3, 1.4, 5.3, 5.7, 9 and 10; [vpn-plan.md](vpn-plan.md); [ui-redesign-direction.md](ui-redesign-direction.md) UI-013 |
@@ -120,12 +120,14 @@ The operator approved these requirements on 2026-11-16, with the limit that the 
 
 ### 4.2 Phone layout
 
-The phone layout applies when the window is narrower than 600 px.
+The phone layout applies below the compact breakpoint (768 px), which is an existing token. Version 0.1 said 600 px; no token has that value.
 
-- **MOB-010.** In the phone layout the navigation bar must be at the bottom of the screen (design specification Section 5.3, F10).
+The mockups that the operator approved on 2026-11-16 are in [mockup/mobile/index.html](mockup/mobile/index.html). Where a requirement below and a mockup differ, the mockup is correct. The mockups differ from the design specification in these points, which Section 7 lists: four destinations in the bar, with Logs as a page; no hub status in the bar; a connect button on each device row; controls of 44 px to 56 px.
+
+- **MOB-010.** In the phone layout the navigation bar must be at the bottom of the screen (design specification Section 5.3, F10). It has four destinations: Devices, Sessions, Logs and Settings (mockup 6).
 - **MOB-011.** The client must draw its background below the status bar and must keep its content inside the safe area (F16).
 - **MOB-012.** A text field must not make the page zoom. Text in a field must be 16 px or larger in the phone layout (F15).
-- **MOB-013.** In the phone layout the logs panel must start closed (F11).
+- **MOB-013.** In the phone layout the logs must be a page of the navigation bar. No logs panel shows over a page (F11, mockup 6).
 - **MOB-014.** The user name field must not change the case of the text. The hub address field must show the keyboard for an address, with no suggestions (F17).
 - **MOB-015.** A name that does not fit must end with an ellipsis. A row of tabs that does not fit must scroll (F12).
 - **MOB-016.** On a phone the client must say "this device", not "this computer" (F13).
@@ -179,8 +181,8 @@ Each stage ends with a build that the operator can use. The state words are thos
 | M1-3 | M1 Shell | Mobile build procedure and the compile gate | MOB-040, MOB-041, MOB-042 | Not started | — |
 | M1-4 | M1 Shell | Test: build `link/devicelink` as a library for iOS and for Android; join a test hub; get an answer at the loopback address. Write the result in this plan. | MOB-031, MOB-032, MOB-039 | In progress | The build part passes (F22); the wrapper was a throwaway and is not in the repository. Open: link the library into the shell, join a hub from the simulator and the emulator, and get an answer at the loopback address. The hub link needs a relay, so this part uses the network. |
 | M2-1 | M2 Layout | Safe area, status bar and no zoom on a field | MOB-011, MOB-012 | Done | The commit that changes this row, on the branch `mobile/m1-shell`. Checked on 2026-11-16: on the iPhone simulator the status bar area has the page colour and a field with the focus does not zoom the page; on the Android emulator the content starts below the status bar. Not checked on a real phone. |
-| M2-2 | M2 Layout | Bottom navigation bar | MOB-010, MOB-019 | Not started | — |
-| M2-3 | M2 Layout | Logs panel closed; names and tabs that fit | MOB-013, MOB-015 | Not started | — |
+| M2-2 | M2 Layout | Bottom navigation bar | MOB-010, MOB-019 | In progress | The commit that changes this row. Built: the bar at the bottom with Devices, Live sessions, Logs and Settings. Checked on the Android emulator on 2026-11-16; not checked on iOS. Open against mockup 6: the label "Sessions", the sizes of the controls, and the Android gesture bar, which the bar touches. |
+| M2-3 | M2 Layout | Logs as a page; names and tabs that fit | MOB-013, MOB-015 | In progress | The commit that changes this row. Built: the Logs page at `/logs`, and no logs panel in the phone layout. Checked on the Android emulator. Open: the device filter of the Logs page has no devices, and MOB-015 (names with an ellipsis, tabs that scroll). |
 | M2-4 | M2 Layout | Field behaviour, wording and the notice | MOB-014, MOB-016, MOB-018, MOB-037 | Not started | — |
 | M3-1 | M3 Link | The device link in the mobile shell, with its three commands | MOB-031, MOB-035, MOB-036 | Not started | — |
 | M3-2 | M3 Link | "Join a hub" on the first run of a phone: paste and QR scan | MOB-017, MOB-033, MOB-038 | Not started | — |
@@ -219,5 +221,7 @@ Version 0.2 of this plan made these changes in the same commit (operator, 2026-1
 | Design specification 9 | Phase 5 names the Android client | Made |
 | [work-plan.md](work-plan.md) Section 4 | The row for Phase 5 names Android, this plan and the start now | Made |
 | `AGENTS.md` | The first paragraph names Android | Made |
+| Design specification 5.3, NAV-001, NAV-003 | In the phone layout the bar has four destinations, Logs is a page, and the hub status is not in the bar (approved mockups, 2026-11-16). | Not made |
+| Design specification UI-013 and the `control-*` tokens | Controls of 44 px to 56 px in the phone layout; the tokens stop at 40 px. | Not made |
 | Design specification 10 | Its title and text name iOS only. A constraint of Android has no place there yet. | Not made. Do it when task M1-3 gives the Android constraints. |
 | `docs/programme/programme.md` | The rulings OD-M1 to OD-M8 have no ruling number (R-number). | Not made. The operator gives the numbers. |
