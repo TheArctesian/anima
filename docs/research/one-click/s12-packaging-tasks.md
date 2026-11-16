@@ -87,6 +87,8 @@ DMG; a refusal fails the job (BLD-085).
   of what the application carries is not the digest of the copy, it does what `install` does:
   the hub stops in order, the programs are replaced, the hub starts. It prints
   `{"updated":true}` or `{"updated":false}`. It never touches the database, the key or the link's state.
+- `update` does not replace programs by those of a lower version (D-6). A hub that the operator
+  stopped with `stop` gets the new programs and stays stopped.
 - The Tauri shell runs `update` once at each start, in the background, when the build carries the
   programs. So the hub gets the new programs at the first start after "Restart to update".
 
@@ -118,7 +120,9 @@ step. It is never a release.
 | D-3 | No program of the bundle has an entitlement, and the builder refuses a Mach-O file that has one. | The hardened runtime with library validation is the strongest setting. PostgreSQL loads only libraries of the tree, which have the same Team ID. The Go and Rust programs load no library of their own. |
 | D-4 | The checks of 2.3 apply to every Mach-O file of the application, found by its first bytes. | `codesign --verify --deep` does not check a file below `Contents/Resources` as code (S3 T11 condition b). A rule by content cannot miss a file that a later change adds. |
 | D-5 | The Team ID is read from the signing identity in the clone's `tauri.conf.json`. The builder reads no keychain item for it. | One source for the identity: the file that Tauri signs with (BLD-083). |
-| D-6 | The update is decided by a digest of the files, not by a version number. | The copy must be the carried programs. A digest is true for a trial build and for a step back to an older release also. |
+| D-6 | A digest of the files decides whether the programs changed. A version number decides only one thing: `update` never replaces the hub's programs by those of a lower version. | The copy must be the carried programs, and a digest is true for a trial build also. An older copy of the application that is still on the computer must not put older hub programs on a database that a newer hub changed (security review of T4, S2). An explicit `install` still replaces. |
+| D-9 | `install`, `update`, `remove`, `start` and `stop` hold one lock in the hub root; a second one fails with "another change of the hub runs". | The application has no single-instance rule, so two copies can start an update at one time (security review of T4, S3). |
+| D-10 | When the programs are the same, the hub is not running and the operator did not stop it, `update` starts the unit. | A start that failed after the copy was in place must be tried again at the next start of the application (security review of T4, S1). |
 | D-7 | The shell starts the update; the client does not. | It is OS work (REPO-003), and it must run when no window loads. The client sees the hub's states through `local_hub_status` as today. |
 | D-8 | On Linux the tree is found below `usr/lib/<productName>/`. The product name is `Anima.ing` (NAV-010); a test compares the shell's path with `tauri.conf.json`. | Tauri puts resources there. The path in `local_hub/carried.rs` still had the old name. |
 
@@ -127,7 +131,7 @@ step. It is never a release.
 | ID | Question | Recommendation |
 | --- | --- | --- |
 | OR-S12-1 | The hub stops for some seconds at the first start after an application update. Sessions of other devices through this hub end. | Accept. The operator selected "Restart to update" (UPD-003). S9 can add a prompt. |
-| OR-S12-2 | A step back to an older release (`allowDowngrades`) puts older hub programs on a newer database. The older hub can then refuse to start. | S9 owns it: a backup before each update, and a rule for the step back. Until then, do not publish an older feed for a release that changed the database. |
+| OR-S12-2 | A step back to an older release (`allowDowngrades`) gives an older application with a newer hub: `update` does not put older hub programs on the database (D-6). The older client then talks to the newer hub. | Accept until S9 gives a rule for the step back of the hub (a backup before each update, then a restore). |
 | OR-S12-3 | The tree's source archive is downloaded from `ftp.postgresql.org` at each release and checked against the pin. | Accept. A builder with no network can set `ANIMA_POSTGRESQL_SOURCE`; the builder does not pass it today. |
 
 ## 6. Results
@@ -151,4 +155,5 @@ Not written yet.
   new programs is not put back on the old ones.
 - The data folder keeps its PostgreSQL major version. A new major version in the tree gives the
   state `blocked` with `database-version` (S3, S4); the upgrade is S9's.
-- OR-S12-2: the step back to an older release.
+- OR-S12-2: the step back of the hub to an older release. S12 refuses it in `update`; only an
+  explicit `install` does it.

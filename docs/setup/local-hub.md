@@ -11,9 +11,9 @@ The Docker installation on a server does not use any of this.
 
 For the first start of the application, see [first-run.md](first-run.md).
 
-**State of the work:** the program is built and tested. A release of the application does not
-carry it yet. See `docs/research/one-click/s4-local-hub-tasks.md`, Section 7, and
-`docs/research/one-click/s6-first-run-tasks.md`.
+**State of the work:** the program is built and tested, and the release builder puts it and
+the other programs into the application (plan item S12,
+`docs/research/one-click/s12-packaging-tasks.md`). No release with them is published yet.
 
 ## 1. The folders
 
@@ -28,7 +28,8 @@ Everything is below the hub root, which only your user can open (mode 0700).
 | --- | --- |
 | `database/` | The database. See [bundled-database.md](bundled-database.md). |
 | `vault.key` | The hub's key (mode 0600). The hub seals the device credentials and the TOTP secrets with it. **Back it up with the database: a backup of the database is of no use without this file.** |
-| `programs/current/` | The programs that run: a copy from the application, made at install and at each update. |
+| `programs/current/` | The programs that run: a copy from the application, made at install and at each update. Its file `digest` is a SHA-256 over the copy; `update` compares it with what the application carries. |
+| `stopped-by-operator` | There after `stop`, until the hub starts again. An update then leaves the hub stopped. |
 | `link/` | The link's state: its key, its devices and invites, and its control socket `control.sock`. **Back it up with the database:** a new link key is a new hub address, and each device must join again. |
 | `log/` | `anima-hub.log`, `anima-gateway.log`, `anima-database.log`, `anima-link.log` and `local-hub.log`. Each has one older file (`.1`) and rotates at 8 MB. |
 | `state`, `lock` | What the program last reported, and the lock of the one copy that runs. |
@@ -54,6 +55,7 @@ The application runs these for you. Each command accepts `--root <folder>` toget
 | Command | What it does |
 | --- | --- |
 | `anima-local-hub install --tree <folder>` | Copies the programs beside it and the PostgreSQL tree at `<folder>` to `programs/`, writes the unit file and starts the hub. On a hub that runs, it is an update: the hub stops, the programs are replaced, the hub starts. |
+| `anima-local-hub update --tree <folder>` | What the application runs at each of its starts. When the hub is installed and the application carries other programs than the hub's copy, it does what `install` does and prints `{"updated":true}`. Otherwise it changes nothing and prints `{"updated":false}`. A hub that you stopped with `stop` gets the new programs and stays stopped. |
 | `anima-local-hub remove` | Stops the hub, removes the unit file and `programs/`. **It does not remove the database (with its URL files, which hold passwords), the key or the logs.** To remove those, delete the hub root yourself. On macOS also delete the socket folder `~/Library/Application Support/ing.anima.desktop/pg`, which keeps a stale `link.sock`. On Linux, run `remove` with the same `XDG_DATA_HOME` as `install`: it finds the hub root from it. |
 | `anima-local-hub status` | Prints one line of JSON. |
 | `anima-local-hub stop` | Stops the hub now and waits until it stopped. The hub stays installed: it starts again at the next login or with `start`. macOS: `launchctl bootout`; Linux: `systemctl --user stop`. |
@@ -84,6 +86,13 @@ Exit codes of `run`: 0 stopped on request, 1 a program of the group ended or did
 ## 3. Start, stop and a crash
 
 - **Login:** the unit starts `run`.
+- **An update of the application:** the application replaces itself, and the hub still runs
+  its copy of the old programs. At the first start of the new application, the shell runs
+  `update` in the background: the hub stops in order, the copy is replaced and the hub starts
+  again. This takes some seconds, and sessions through the hub end. The database, `vault.key`
+  and `link/` are not touched. The application's log has "the hub on this computer got the
+  programs of this version", or the reason why not. There is no backup before the update and
+  no step back to the programs before it (plan item S9).
 - **Sign-out, shutdown, `remove`, an update:** the unit sends SIGTERM. `run` stops the hub (it
   ends the open sessions and drains requests for 10 seconds), then the gateway, then the
   database. The unit waits 90 seconds before it kills what is left. A SIGTERM during a start
@@ -140,7 +149,7 @@ The Tauri shell has these commands, for the main window only.
 | Command | Result |
 | --- | --- |
 | `local_hub_carried` | `true` when this build carries the programs. |
-| `local_hub_install` | Runs `install`. Also the update: call it after the application updated itself. |
+| `local_hub_install` | Runs `install`. The client calls it in the Create flow only: the shell itself runs `update` at each start. |
 | `local_hub_remove` | Runs `remove`. |
 | `local_hub_start`, `local_hub_stop` | Run `start` or `stop`. |
 | `local_hub_status` | The JSON object of Section 2. |
