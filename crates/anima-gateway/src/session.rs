@@ -48,6 +48,9 @@ pub struct Settings {
     pub pace: Pace,
     /// Another gateway (guacd) that serves the protocols this one does not, as `host:port`.
     pub other_gateway: Option<String>,
+    /// Protocols that go to the other gateway though this one serves them, as `select`
+    /// names them: `rdp` for a hub that needs guacd's sound or shared drive.
+    pub passed: Vec<String>,
 }
 
 impl Default for Settings {
@@ -59,6 +62,7 @@ impl Default for Settings {
             write_wait: Duration::from_secs(15),
             pace: Pace::default(),
             other_gateway: None,
+            passed: Vec::new(),
         }
     }
 }
@@ -103,7 +107,7 @@ where
     let mut hub = Hub::new(stream, settings.write_wait);
     let first = timeout(
         settings.handshake_wait,
-        opening::handshake(&mut hub, connection_id),
+        opening::handshake(&mut hub, connection_id, &settings.passed),
     )
     .await;
     let opening = match first {
@@ -112,6 +116,10 @@ where
         Ok(Err(ended)) => return ended,
         Err(_) => return opening::refuse(&mut hub, status::CLIENT_TIMEOUT, Ended::Refused).await,
     };
+    if matches!(opening.desktop, crate::handshake::Desktop::Rdp(_)) {
+        let not_served = crate::handshake::Refused::NotServed.status();
+        return opening::refuse(&mut hub, not_served, Ended::Refused).await;
+    }
     match opening::sign_in(&mut hub, opening, settings).await {
         Ok(opened) => running::run(&mut hub, opened, settings).await,
         Err(ended) => ended,

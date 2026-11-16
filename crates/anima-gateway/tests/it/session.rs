@@ -229,8 +229,8 @@ async fn another_protocol_is_refused_or_passed_to_the_other_gateway() {
     let (mut hub, _served) = session(Settings::default());
     let refused = hub
         .open(
-            "rdp",
-            values("192.0.2.1:3389".parse().expect("an address"), &[]),
+            "ssh",
+            values("192.0.2.1:22".parse().expect("an address"), &[]),
         )
         .await;
     assert_eq!(refused.expect_err("refused").args[1], "256");
@@ -254,7 +254,7 @@ async fn another_protocol_is_refused_or_passed_to_the_other_gateway() {
         other_gateway: Some(address),
         ..Settings::default()
     });
-    hub.send(&Instruction::new("select", ["rdp"])).await;
+    hub.send(&Instruction::new("select", ["ssh"])).await;
     assert_eq!(hub.next_of("args").await.args, ["VERSION_1_5_0"]);
-    assert_eq!(&seen.await.expect("seen"), b"6.select,3.rdp;");
+    assert_eq!(&seen.await.expect("seen"), b"6.select,3.ssh;");
 }
