@@ -67,7 +67,7 @@ pub struct SearchInput {
 pub struct GetInput {
     /// The device's id or exact name.
     device: String,
-    /// Add the SSH, RDP and VNC settings, metrics source and dates.
+    /// Add the SSH, RDP and VNC settings, metrics source, agent version and dates.
     #[serde(default)]
     detail: bool,
 }

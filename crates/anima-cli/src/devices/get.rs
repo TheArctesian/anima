@@ -133,6 +133,9 @@ fn table(device: &device_get::DeviceGetDevice) -> Table {
         );
     }
     table.pair("Metrics", enum_name(&device.metrics_source));
+    if let Some(version) = &device.agent_version {
+        table.pair("Agent version", version.as_str());
+    }
     table.pair(
         "Uptime 24 h",
         device

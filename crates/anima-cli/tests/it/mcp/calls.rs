@@ -1,10 +1,10 @@
 //! Tool calls: structured results, hub errors as tool errors, and deletes that need the exact
-//! name (MCP-007, MCP-009, MCP-010).
+//! name (MCP-007, MCP-009, MCP-010). The agent's version is in a device's detail (R-118).
 
 use serde_json::json;
 
 use super::session::{Desk, LOGIN_TOKEN, assert_protocol_only, hub};
-use crate::fleet::devices::{fixture_devices, page};
+use crate::fleet::devices::{detail, fixture_devices, page};
 use crate::kit::fake_hub::{data, refusal};
 
 const MISSING: &str = "0190a000-0000-7000-8001-0000000000ff";
@@ -40,6 +40,42 @@ async fn mcp_009_devices_search_returns_names_and_ids_as_structured_content() {
     );
     let (printed, stderr) = session.finish().await;
     assert_protocol_only(&printed, &stderr, LOGIN_TOKEN);
+}
+
+#[tokio::test]
+async fn r_118_device_get_in_detail_gives_the_agent_version() {
+    let hub = hub().await;
+    let devices = fixture_devices();
+    let id = devices[0]["id"].as_str().expect("an id").to_owned();
+    let mut device = detail(&devices[0]);
+    device["data"]["device"]["metricsSource"] = json!("AGENT");
+    device["data"]["device"]["agentVersion"] = json!("0.3.1");
+    let web = data(json!({ "device": { "id": id, "name": devices[0]["name"],
+        "webInterfaces": [], "webInterfaceSuggestions": [] } }));
+    hub.answer("DeviceGet", device.clone())
+        .answer("WebList", web.clone())
+        .answer("DeviceGet", device)
+        .answer("WebList", web);
+    let desk = Desk::new();
+    let (mut session, _) = desk.start(&hub, LOGIN_TOKEN, &[]).await;
+    let answer = session
+        .call("anima_device_get", json!({ "device": id, "detail": true }))
+        .await;
+    assert_eq!(answer["isError"], false, "{answer}");
+    assert_eq!(
+        answer["structuredContent"]["device"]["agentVersion"],
+        "0.3.1"
+    );
+    let short = session
+        .call("anima_device_get", json!({ "device": id }))
+        .await;
+    assert!(
+        short["structuredContent"]["device"]
+            .get("agentVersion")
+            .is_none(),
+        "short by default: {short}"
+    );
+    session.finish().await;
 }
 
 #[tokio::test]
