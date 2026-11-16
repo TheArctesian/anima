@@ -2,6 +2,7 @@
 //! target (CAP-030). K1 has no pages for it.
 
 use super::documents::{CapabilityList, capability_list};
+use super::hint::hint;
 use crate::failure::Failure;
 use crate::hub::Hub;
 use crate::invocation::Invocation;
@@ -25,7 +26,11 @@ impl ListArgs {
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         let hub = invocation.hub()?;
         let found = fetch(&hub, self.tool, self.target).await?;
-        invocation.output.data(&found, table)
+        invocation.output.data(&found, table)?;
+        for note in hints(&found) {
+            invocation.output.note(&note);
+        }
+        Ok(())
     }
 }
 
@@ -56,16 +61,45 @@ fn table(found: &Vec<capability_list::CapabilityListCapabilities>) -> Table {
     table
 }
 
-/// `git 2.43.0, bun not usable`; `-` for none.
+/// `git 2.43.0, bun not usable (timed out)`; `-` for none.
 fn tools(tools: &[capability_list::CapabilityListCapabilitiesTools]) -> String {
     let shown: Vec<String> = tools
         .iter()
-        .map(|tool| match &tool.version {
-            Some(version) if tool.usable => format!("{} {version}", tool.name),
+        .map(|tool| match (&tool.version, &tool.reason) {
+            (Some(version), _) if tool.usable => format!("{} {version}", tool.name),
+            (_, Some(reason)) => format!("{} not usable ({})", tool.name, reason_text(reason)),
             _ => format!("{} not usable", tool.name),
         })
         .collect();
     or_dash(&shown.join(", "))
+}
+
+/// `pve-01: bun: <hint>` for each tool that is not usable, for standard error.
+fn hints(found: &[capability_list::CapabilityListCapabilities]) -> Vec<String> {
+    let mut notes = Vec::new();
+    for row in found {
+        for tool in &row.tools {
+            if let Some(reason) = &tool.reason {
+                notes.push(format!(
+                    "{}: {}: {}",
+                    row.device.name,
+                    tool.name,
+                    hint(&tool.name, reason)
+                ));
+            }
+        }
+    }
+    notes
+}
+
+fn reason_text(reason: &capability_list::NotUsableReason) -> &'static str {
+    use capability_list::NotUsableReason as Reason;
+    match reason {
+        Reason::TIMED_OUT => "timed out",
+        Reason::EXITED => "exited",
+        Reason::NO_VERSION => "no version",
+        Reason::FAILED | Reason::Other(_) => "failed",
+    }
 }
 
 fn targets(targets: &[String]) -> String {

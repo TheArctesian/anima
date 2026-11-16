@@ -5,7 +5,7 @@
 use proptest::prelude::*;
 
 use super::probe;
-use crate::inventory::{Os, Outcome, PROBES, Tool, ToolName, is_version};
+use crate::inventory::{Os, Outcome, PROBES, Reason, Tool, ToolName, Verdict, is_version};
 
 fn version_of(tool: ToolName, output: &str) -> Option<String> {
     probe(tool).version(output.as_bytes())
@@ -113,23 +113,27 @@ fn cap_031_a_version_keeps_only_its_own_bytes() {
 }
 
 #[test]
-fn cap_024_a_missing_tool_is_left_out_and_a_failed_one_is_listed_not_usable() {
+fn cap_024_a_missing_tool_is_left_out_and_a_failed_one_is_listed_with_its_reason() {
     let git = probe(ToolName::Git);
     assert_eq!(git.tool(&Outcome::Missing), None);
-    let failed = git.tool(&Outcome::Failed).expect("listed");
-    assert!(!failed.is_usable());
-    let garbage = git.tool(&Outcome::Printed(b"\x00\x01".to_vec()));
-    assert_eq!(
-        garbage,
-        Some(Tool {
-            name: ToolName::Git,
-            version: None
-        })
-    );
+    for (outcome, reason) in [
+        (Outcome::TimedOut, Reason::TimedOut),
+        (Outcome::Exited, Reason::Exited),
+        (Outcome::Printed(b"\x00\x01".to_vec()), Reason::NoVersion),
+    ] {
+        assert_eq!(
+            git.tool(&outcome),
+            Some(Tool {
+                name: ToolName::Git,
+                verdict: Verdict::NotUsable(reason)
+            })
+        );
+    }
     let found = git
         .tool(&Outcome::Printed(b"git version 2.43.0\n".to_vec()))
         .expect("listed");
     assert!(found.is_usable());
+    assert_eq!((found.version(), found.reason()), (Some("2.43.0"), None));
 }
 
 #[test]
@@ -145,6 +149,16 @@ fn cap_022_every_probe_only_asks_its_program_for_a_version() {
             "{asks:?}"
         );
     }
+}
+
+#[test]
+fn cap_025_only_claude_and_codex_get_a_home_folder_of_their_own() {
+    let own: Vec<ToolName> = PROBES
+        .iter()
+        .filter(|probe| probe.own_home)
+        .map(|probe| probe.tool)
+        .collect();
+    assert_eq!(own, [ToolName::Claude, ToolName::Codex]);
 }
 
 #[test]

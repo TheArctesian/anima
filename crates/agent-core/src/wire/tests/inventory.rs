@@ -6,8 +6,8 @@ use proptest::prelude::*;
 use serde_json::json;
 
 use super::*;
-use crate::inventory::{Architecture, Inventory, Os, Tool, ToolName};
-use crate::wire::{BatchInventory, BatchTool, ToolState};
+use crate::inventory::{Architecture, Inventory, Os, Reason, Tool, ToolName, Verdict};
+use crate::wire::{BatchInventory, BatchTool};
 
 fn found(name: &str, version: &str) -> BatchTool {
     BatchTool {
@@ -17,11 +17,11 @@ fn found(name: &str, version: &str) -> BatchTool {
     }
 }
 
-fn failed(name: &str) -> BatchTool {
+fn not_usable(name: &str, reason: Reason) -> BatchTool {
     BatchTool {
         name: name.to_owned(),
         version: None,
-        state: Some(ToolState::Failed),
+        state: Some(reason),
     }
 }
 
@@ -30,7 +30,10 @@ fn mac() -> BatchInventory {
         architecture: Architecture::Aarch64,
         os: Os::Macos,
         os_version: "27.0".to_owned(),
-        tools: vec![found("cargo", "1.91.0"), failed("bun")],
+        tools: vec![
+            found("cargo", "1.91.0"),
+            not_usable("bun", Reason::TimedOut),
+        ],
         build_targets: vec!["aarch64-apple-darwin".to_owned()],
     }
 }
@@ -62,11 +65,11 @@ fn cap_020_an_inventory_reaches_the_hub_with_its_tools_in_name_order() {
         tools: vec![
             Tool {
                 name: ToolName::Cargo,
-                version: Some("1.91.0".to_owned()),
+                verdict: Verdict::Usable("1.91.0".to_owned()),
             },
             Tool {
                 name: ToolName::Bun,
-                version: None,
+                verdict: Verdict::NotUsable(Reason::TimedOut),
             },
         ],
         build_targets: vec!["aarch64-apple-darwin".to_owned()],
@@ -77,14 +80,14 @@ fn cap_020_an_inventory_reaches_the_hub_with_its_tools_in_name_order() {
 #[test]
 fn cap_029_the_inventory_travels_as_the_k8_json() {
     let text = r#"{ "architecture": "aarch64", "os": "macos", "osVersion": "27.0",
-        "tools": [ { "name": "cargo", "version": "1.91.0" }, { "name": "bun", "state": "failed" } ],
+        "tools": [ { "name": "cargo", "version": "1.91.0" }, { "name": "bun", "state": "timed_out" } ],
         "buildTargets": ["aarch64-apple-darwin"] }"#;
     let parsed: BatchInventory = serde_json::from_str(text).unwrap();
     assert_eq!(parsed, mac());
     assert_eq!(
         serde_json::to_value(&parsed).unwrap(),
         json!({ "architecture": "aarch64", "os": "macos", "osVersion": "27.0",
-            "tools": [ { "name": "cargo", "version": "1.91.0" }, { "name": "bun", "state": "failed" } ],
+            "tools": [ { "name": "cargo", "version": "1.91.0" }, { "name": "bun", "state": "timed_out" } ],
             "buildTargets": ["aarch64-apple-darwin"] })
     );
 }
@@ -104,7 +107,31 @@ fn cap_029_a_newer_agent_s_tool_and_state_are_ignored_and_read_as_failed() {
         .collect();
     assert_eq!(names, [ToolName::Cargo, ToolName::Bun]);
     let newer: BatchTool = serde_json::from_str(r#"{ "name": "bun", "state": "denied" }"#).unwrap();
-    assert_eq!(newer.state, Some(ToolState::Failed));
+    assert_eq!(newer.state, Some(Reason::Failed));
+}
+
+#[test]
+fn cap_024_each_reason_travels_as_its_fixed_code_and_comes_back_whole() {
+    for (reason, code) in [
+        (Reason::TimedOut, "timed_out"),
+        (Reason::Exited, "exited"),
+        (Reason::NoVersion, "no_version"),
+        (Reason::Failed, "failed"),
+    ] {
+        let tool = not_usable("bun", reason);
+        assert_eq!(
+            serde_json::to_value(&tool).unwrap(),
+            json!({ "name": "bun", "state": code })
+        );
+        assert_eq!(Reason::parse(code), reason);
+        let accepted = checked(with(move |inventory| inventory.tools[1] = tool)).unwrap();
+        assert_eq!(
+            accepted.inventory.unwrap().tools[1].reason(),
+            Some(reason),
+            "{code}"
+        );
+    }
+    assert_eq!(Reason::parse("denied"), Reason::Failed);
 }
 
 #[test]
@@ -159,10 +186,10 @@ fn cap_029_versions_and_the_system_version_that_break_the_alphabet_are_malformed
 }
 
 #[test]
-fn cap_024_a_tool_needs_a_version_or_the_failed_state_but_not_both() {
+fn cap_024_a_tool_needs_a_version_or_a_state_but_not_both() {
     assert_malformed(
         "both",
-        with(|inventory| inventory.tools[0].state = Some(ToolState::Failed)),
+        with(|inventory| inventory.tools[0].state = Some(Reason::Exited)),
     );
     assert_malformed("neither", with(|inventory| inventory.tools[1].state = None));
 }
@@ -218,7 +245,12 @@ fn any_tool() -> impl Strategy<Value = BatchTool> {
     (
         "\\PC{0,8}",
         proptest::option::of("\\PC{0,8}"),
-        proptest::option::of(Just(ToolState::Failed)),
+        proptest::option::of(proptest::sample::select(vec![
+            Reason::TimedOut,
+            Reason::Exited,
+            Reason::NoVersion,
+            Reason::Failed,
+        ])),
     )
         .prop_map(|(name, version, state)| BatchTool {
             name,
@@ -246,8 +278,7 @@ proptest! {
         if let Some(taken) = sent.accepted() {
             prop_assert!(crate::inventory::is_version(&taken.os_version));
             prop_assert!(taken.tools.iter().all(|tool| tool
-                .version
-                .as_deref()
+                .version()
                 .is_none_or(crate::inventory::is_version)));
             prop_assert!(taken
                 .build_targets

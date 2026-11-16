@@ -1,7 +1,7 @@
 //! The tool inventory of each device: replaced whole when an agent batch brings one
 //! (CAP-020, CAP-029).
 
-use agent_core::inventory::Inventory;
+use agent_core::inventory::{Inventory, Reason, Tool};
 use chrono::{DateTime, Utc};
 use sqlx::{PgConnection, PgPool};
 
@@ -22,6 +22,8 @@ pub(in crate::fleet::metrics) async fn inventories(
                      FROM metrics.tools t WHERE t.device_id = i.device_id), '{}') AS tool_names, \
            COALESCE((SELECT array_agg(t.version ORDER BY t.name COLLATE \"C\") \
                      FROM metrics.tools t WHERE t.device_id = i.device_id), '{}') AS tool_versions, \
+           COALESCE((SELECT array_agg(t.reason ORDER BY t.name COLLATE \"C\") \
+                     FROM metrics.tools t WHERE t.device_id = i.device_id), '{}') AS tool_reasons, \
            COALESCE((SELECT array_agg(b.target ORDER BY b.target COLLATE \"C\") \
                      FROM metrics.build_targets b WHERE b.device_id = i.device_id), '{}') \
              AS build_targets \
@@ -61,18 +63,21 @@ pub(in crate::fleet::metrics) async fn write_inventory(
         .iter()
         .map(|tool| tool.name.as_str())
         .collect();
-    let versions: Vec<Option<&str>> = inventory
+    let versions: Vec<Option<&str>> = inventory.tools.iter().map(Tool::version).collect();
+    let reasons: Vec<Option<&str>> = inventory
         .tools
         .iter()
-        .map(|tool| tool.version.as_deref())
+        .map(|tool| tool.reason().map(Reason::as_str))
         .collect();
     sqlx::query(
-        "INSERT INTO metrics.tools (device_id, name, version) \
-         SELECT $1, name, version FROM UNNEST($2::text[], $3::text[]) AS t (name, version)",
+        "INSERT INTO metrics.tools (device_id, name, version, reason) \
+         SELECT $1, name, version, reason \
+         FROM UNNEST($2::text[], $3::text[], $4::text[]) AS t (name, version, reason)",
     )
     .bind(device)
     .bind(&names)
     .bind(&versions)
+    .bind(&reasons)
     .execute(&mut *conn)
     .await?;
     sqlx::query(

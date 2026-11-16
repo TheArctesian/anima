@@ -22,6 +22,6 @@ pub use bodies::{
     DEVICE_NAME_CHARS, EnrolRequest, Enrolled, RenewRequest, Renewed, is_device_name,
 };
 pub use check::Accepted;
-pub use inventory::{BatchInventory, BatchTool, ToolState};
+pub use inventory::{BatchInventory, BatchTool};
 pub use refusal::{Refusal, RefusalCode};
 pub use secrets::{AgentToken, CODE_BYTES, CodeHash, EnrolmentCode, TOKEN_BYTES, TokenHash};

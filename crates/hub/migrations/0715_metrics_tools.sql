@@ -4,8 +4,9 @@
 --
 -- `inventories` holds one row per device whose agent sent an inventory: the architecture, the
 -- operating system, its version and when the hub stored it. `tools` holds one row per tool the
--- agent found, with its version, or no version when the probe failed (the tool is then not
--- usable). `build_targets` holds one row per installed Rust target. An agent batch with an
+-- agent found, with its version, or, when the tool is not usable, no version and the reason: a
+-- fixed code (`timed_out`, `exited`, `no_version`, or `failed` for a reason the hub does not
+-- know), never text from the device (CAP-024). `build_targets` holds one row per installed Rust target. An agent batch with an
 -- `inventory` replaces a device's rows together (DELETE then INSERT in one transaction), so a
 -- reader sees the old inventory or the new one. The checks repeat the agent-core rules (K8
 -- Section 4): text of 1 to 64 bytes of a fixed alphabet. A tool's name is not limited to the
@@ -39,11 +40,16 @@ create table metrics.tools (
     device_id uuid not null,
     name text not null,
     version text,
+    reason text,
     constraint tools_pkey primary key (device_id, name),
     constraint tools_device_id_fkey foreign key (device_id)
         references metrics.inventories (device_id) on delete cascade,
     constraint tools_name_check check (name ~ '^[0-9a-z_.-]{1,64}$'),
-    constraint tools_version_check check (version ~ '^[0-9A-Za-z.+_-]{1,64}$')
+    constraint tools_version_check check (version ~ '^[0-9A-Za-z.+_-]{1,64}$'),
+    -- Fixed identifiers: never change the meaning of one; add a new one instead.
+    constraint tools_reason_check
+        check (reason in ('timed_out', 'exited', 'no_version', 'failed')),
+    constraint tools_version_or_reason_check check ((version is null) <> (reason is null))
 );
 
 create table metrics.build_targets (

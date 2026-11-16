@@ -1,7 +1,7 @@
 //! Stored rows and their mapping to the output types.
 
 use agent_core::{
-    inventory::{Architecture, Inventory, Os, Tool, ToolName},
+    inventory::{Architecture, Inventory, Os, Reason, Tool, ToolName, Verdict},
     readings::{Drive, DriveKind},
 };
 use chrono::{DateTime, Utc};
@@ -153,22 +153,29 @@ pub(super) struct InventoryRow {
     found_at: DateTime<Utc>,
     tool_names: Vec<String>,
     tool_versions: Vec<Option<String>>,
+    tool_reasons: Vec<Option<String>>,
     build_targets: Vec<String>,
 }
 
 impl TryFrom<InventoryRow> for Capabilities {
     type Error = Error;
 
-    /// The tools in name order; one of a name this version does not know is left out.
+    /// The tools in name order; one of a name this version does not know is left out, and a
+    /// reason it does not know reads as `failed`.
     fn try_from(row: InventoryRow) -> Result<Self, Error> {
         let mut tools: Vec<Tool> = row
             .tool_names
             .iter()
             .zip(row.tool_versions)
-            .filter_map(|(name, version)| {
+            .zip(row.tool_reasons)
+            .filter_map(|((name, version), reason)| {
+                let verdict = match version {
+                    Some(version) => Verdict::Usable(version),
+                    None => Verdict::NotUsable(Reason::parse(reason.as_deref().unwrap_or(""))),
+                };
                 Some(Tool {
                     name: ToolName::parse(name)?,
-                    version,
+                    verdict,
                 })
             })
             .collect();

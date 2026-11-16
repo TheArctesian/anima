@@ -1,26 +1,35 @@
-//! Runs the probes of the tool inventory (CAP-020 to CAP-028): finds each program in `PATH` and
-//! the fixed tool folders, runs it with its fixed arguments, and hands what it printed to
+//! Runs the probes of the tool inventory (CAP-020 to CAP-028): finds each program in the fixed
+//! tool folders and `PATH`, runs it with its fixed arguments, and hands what it printed to
 //! `agent_core::inventory`, which reads it. This is the I/O edge.
 //!
 //! A probe gets no input, 5 seconds, 64 KiB of output, the working folder `/` and an
 //! environment of only `PATH` (the folders searched), `LC_ALL=C` and `RUSTUP_AUTO_INSTALL=0`
-//! (a rustup proxy must not download a toolchain). No file of a tool is read (CAP-025), and
-//! nothing a probe prints is logged.
+//! (a rustup proxy must not download a toolchain). It has no home folder, except `claude` and
+//! `codex`, which write into theirs even to print a version: each gets an empty temporary
+//! folder as `HOME`, `CODEX_HOME` and `CLAUDE_CONFIG_DIR`, removed when it ends, so the
+//! operator's `~/.claude` and `~/.codex` are never read or changed (CAP-025). On macOS without
+//! the developer tools, Apple's placeholder `git` and `xcodebuild` are not run, since each
+//! would offer to install the tools. Nothing a probe prints is logged.
 
 use std::env;
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
+use std::os::unix::ffi::OsStrExt as _;
 use std::os::unix::fs::PermissionsExt as _;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use agent_core::inventory::{
     Architecture, Inventory, Os, Outcome, PROBES, Program, TARGETS, TOOL_FOLDERS, candidates,
-    kernel_release, macos_version, os_release_version,
+    kernel_release, macos_version, may_run, os_release_version,
 };
+use tempfile::TempDir;
 use tokio::process::Command;
 
 use super::Platform;
-use super::command::{Bounds, FixedCommand, capture};
+use super::command::{Bounds, CommandError, FixedCommand, capture};
+
+#[cfg(test)]
+mod tests;
 
 /// The bounds of one probe (CAP-022).
 const PROBE_BOUNDS: Bounds = Bounds {
@@ -39,10 +48,24 @@ const SW_VERS: FixedCommand = FixedCommand {
     keep_cut_output: false,
 };
 
-/// The folders searched and the `PATH` a probe gets.
+/// Prints the folder of the macOS developer tools, or fails without them; it never offers to
+/// install them.
+const XCODE_SELECT: FixedCommand = FixedCommand {
+    program: "/usr/bin/xcode-select",
+    args: &["-p"],
+    limit: Duration::from_secs(2),
+    keep_cut_output: false,
+};
+
+/// Where probes look and what they may run.
 struct Search {
+    /// The folders searched, in order.
     folders: Vec<PathBuf>,
+    /// The `PATH` a probe gets.
     path: OsString,
+    os: Os,
+    /// Whether the macOS developer tools are present, so Apple's placeholders may run.
+    developer_tools: bool,
 }
 
 /// The tool inventory of this computer; `None` when its architecture or operating system
@@ -54,24 +77,54 @@ pub async fn inventory(platform: Platform) -> Option<Inventory> {
         Platform::Macos => Os::Macos,
     };
     let os_version = os_version(os).await?;
-    let home = env::var_os("HOME").map(PathBuf::from);
-    let folders = candidates(
-        env::var_os("PATH").as_deref(),
-        home.as_deref(),
-        &TOOL_FOLDERS,
-    );
-    let path = env::join_paths(&folders).unwrap_or_default();
-    let search = Search { folders, path };
-    let mut outcomes = Vec::new();
-    for probe in PROBES.iter().filter(|probe| probe.runs_on(os)) {
-        outcomes.push((probe, run(probe.program, &search).await));
+    let search = Search::here(os).await;
+    Some(probe_all((architecture, os, os_version), &search).await)
+}
+
+impl Search {
+    /// The search of this agent: its `HOME` and `PATH`, and whether the developer tools are
+    /// present.
+    async fn here(os: Os) -> Self {
+        let home = env::var_os("HOME").map(PathBuf::from);
+        let folders = candidates(
+            env::var_os("PATH").as_deref(),
+            home.as_deref(),
+            &TOOL_FOLDERS,
+        );
+        let path = env::join_paths(&folders).unwrap_or_default();
+        let developer_tools = os == Os::Macos && developer_tools().await;
+        Self {
+            folders,
+            path,
+            os,
+            developer_tools,
+        }
     }
-    let targets = match run(TARGETS, &search).await {
-        Outcome::Printed(output) => Some(output),
-        Outcome::Missing | Outcome::Failed => None,
+}
+
+/// Whether the macOS developer tools are present: `xcode-select -p` prints a folder that is
+/// there.
+async fn developer_tools() -> bool {
+    let Ok(printed) = XCODE_SELECT.run().await else {
+        return false;
     };
-    let system = (architecture, os, os_version);
-    Some(Inventory::new(system, &outcomes, targets.as_deref()))
+    let folder = OsStr::from_bytes(printed.trim_ascii_end());
+    tokio::fs::metadata(folder)
+        .await
+        .is_ok_and(|found| found.is_dir())
+}
+
+/// Runs every probe of `system`'s operating system and reads the inventory they give.
+async fn probe_all(system: (Architecture, Os, String), search: &Search) -> Inventory {
+    let mut outcomes = Vec::new();
+    for probe in PROBES.iter().filter(|probe| probe.runs_on(system.1)) {
+        outcomes.push((probe, run(probe.program, probe.own_home, search).await));
+    }
+    let targets = match run(TARGETS, false, search).await {
+        Outcome::Printed(output) => Some(output),
+        Outcome::Missing | Outcome::TimedOut | Outcome::Exited => None,
+    };
+    Inventory::new(system, &outcomes, targets.as_deref())
 }
 
 /// The operating system version: `sw_vers` on macOS; on Linux the distribution's version, or
@@ -95,10 +148,11 @@ async fn read_capped(path: &Path) -> Option<Vec<u8>> {
     Some(bytes)
 }
 
-/// Finds `program` and runs it: `Missing` when no folder has it, `Failed` when it could not
-/// start, ran past 5 seconds or exited with a failure.
-async fn run(program: Program, search: &Search) -> Outcome {
-    let Some(path) = find(program.name, &search.folders).await else {
+/// Finds `program` and runs it, with an empty home folder of its own when `own_home`:
+/// `Missing` when no folder has it, `TimedOut` when it ran past 5 seconds, `Exited` when it
+/// could not start or exited with a failure.
+async fn run(program: Program, own_home: bool, search: &Search) -> Outcome {
+    let Some(path) = find(program.name, search).await else {
         return Outcome::Missing;
     };
     let mut command = Command::new(path);
@@ -109,117 +163,62 @@ async fn run(program: Program, search: &Search) -> Outcome {
         .env("LC_ALL", "C")
         .env("RUSTUP_AUTO_INSTALL", "0")
         .current_dir("/");
-    match capture(&mut command, program.name, PROBE_BOUNDS).await {
+    let home = match own_home.then(|| give_home(&mut command)) {
+        // Without a folder of its own the probe does not run: never with the operator's home.
+        Some(None) => return Outcome::Exited,
+        Some(home) => home,
+        None => None,
+    };
+    let outcome = outcome(capture(&mut command, program.name, PROBE_BOUNDS).await);
+    if let Some(home) = home {
+        remove(home);
+    }
+    outcome
+}
+
+/// Gives `command` a new empty folder as its home and the config folders of `claude` and
+/// `codex` (CAP-025); `None` when no folder could be made.
+fn give_home(command: &mut Command) -> Option<TempDir> {
+    let home = tempfile::tempdir()
+        .inspect_err(|error| tracing::debug!(%error, "no home folder for a tool probe"))
+        .ok()?;
+    for name in ["HOME", "CODEX_HOME", "CLAUDE_CONFIG_DIR"] {
+        command.env(name, home.path());
+    }
+    Some(home)
+}
+
+fn remove(home: TempDir) {
+    if let Err(error) = home.close() {
+        tracing::debug!(%error, "a tool probe's home folder was not removed");
+    }
+}
+
+fn outcome(captured: Result<Vec<u8>, CommandError>) -> Outcome {
+    match captured {
         Ok(output) => Outcome::Printed(output),
         Err(error) => {
             tracing::debug!(%error, "a tool probe gave no version");
-            Outcome::Failed
+            match error {
+                CommandError::Timeout { .. } => Outcome::TimedOut,
+                CommandError::Start { .. } | CommandError::Failed { .. } => Outcome::Exited,
+            }
         }
     }
 }
 
-/// The first `folders` entry that holds an executable file `name`, links followed.
-async fn find(name: &str, folders: &[PathBuf]) -> Option<PathBuf> {
-    for folder in folders {
+/// The first folder of `search` that holds an executable file `name`, links followed, that
+/// may run (see [`may_run`]).
+async fn find(name: &str, search: &Search) -> Option<PathBuf> {
+    for folder in &search.folders {
         let path = folder.join(name);
         if let Ok(found) = tokio::fs::metadata(&path).await
             && found.is_file()
             && found.permissions().mode() & 0o111 != 0
+            && may_run(&path, search.os, search.developer_tools)
         {
             return Some(path);
         }
     }
     None
-}
-
-#[cfg(test)]
-mod tests {
-    use std::fs;
-
-    use agent_core::inventory::is_version;
-
-    use super::*;
-
-    /// A folder with an executable `sh` script `name` that runs `body`.
-    fn script(folder: &Path, name: &str, body: &str) -> PathBuf {
-        let path = folder.join(name);
-        fs::write(&path, format!("#!/bin/sh\n{body}\n")).expect("written");
-        fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).expect("executable");
-        path
-    }
-
-    fn search(folders: &[&Path]) -> Search {
-        let mut folders: Vec<PathBuf> = folders.iter().map(|folder| folder.to_path_buf()).collect();
-        folders.push(PathBuf::from("/bin"));
-        folders.push(PathBuf::from("/usr/bin"));
-        let path = env::join_paths(&folders).expect("joined");
-        Search { folders, path }
-    }
-
-    const fn program(name: &'static str) -> Program {
-        Program {
-            name,
-            args: &["--version"],
-        }
-    }
-
-    #[tokio::test]
-    async fn cap_021_a_program_is_the_first_executable_file_of_that_name() {
-        let first = tempfile::tempdir().expect("a folder");
-        let second = tempfile::tempdir().expect("a folder");
-        fs::write(first.path().join("git"), "not executable").expect("written");
-        fs::create_dir(first.path().join("bun")).expect("a folder named bun");
-        let git = script(second.path(), "git", "echo git version 2.43.0");
-        let folders = search(&[first.path(), second.path()]).folders;
-        assert_eq!(find("git", &folders).await, Some(git));
-        assert_eq!(find("bun", &folders).await, None);
-        assert_eq!(
-            run(program("anima-no-such-tool"), &search(&[])).await,
-            Outcome::Missing
-        );
-    }
-
-    #[tokio::test]
-    async fn cap_022_a_probe_gets_no_home_no_input_and_only_the_search_path() {
-        let folder = tempfile::tempdir().expect("a folder");
-        script(
-            folder.path(),
-            "probe",
-            "echo \"home=$HOME pwd=$(pwd) args=$*\"; if read line; then echo input; fi",
-        );
-        let Outcome::Printed(output) = run(program("probe"), &search(&[folder.path()])).await
-        else {
-            panic!("it ran");
-        };
-        assert_eq!(
-            String::from_utf8_lossy(&output),
-            "home= pwd=/ args=--version\n"
-        );
-    }
-
-    #[tokio::test]
-    async fn cap_024_a_probe_that_fails_or_runs_past_5_seconds_is_failed() {
-        let folder = tempfile::tempdir().expect("a folder");
-        script(folder.path(), "broken", "echo 1.0; exit 3");
-        script(folder.path(), "stuck", "sleep 30");
-        let found = search(&[folder.path()]);
-        assert_eq!(run(program("broken"), &found).await, Outcome::Failed);
-        let started = std::time::Instant::now();
-        assert_eq!(run(program("stuck"), &found).await, Outcome::Failed);
-        assert!(started.elapsed() < Duration::from_secs(10));
-    }
-
-    #[tokio::test]
-    async fn cap_026_this_computer_s_inventory_names_its_architecture_and_clean_versions() {
-        let inventory = inventory(Platform::current()).await.expect("readable");
-        assert_eq!(inventory.architecture.as_str(), env::consts::ARCH);
-        assert!(
-            is_version(&inventory.os_version),
-            "{}",
-            inventory.os_version
-        );
-        for tool in &inventory.tools {
-            assert!(tool.version.as_deref().is_none_or(is_version), "{tool:?}");
-        }
-    }
 }

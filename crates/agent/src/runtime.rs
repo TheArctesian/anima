@@ -125,14 +125,16 @@ async fn sample(platform: Platform, events: mpsc::Sender<Event>) {
 }
 
 /// At start and every 15 minutes: probes the tools and hands the inventory over when it
-/// changed (CAP-027). A probe run waits for the one before; a slow one delays the next.
+/// changed or went 24 hours unannounced (CAP-027). A probe run waits for the one before; a slow
+/// one delays the next.
 async fn probe(platform: Platform, events: mpsc::Sender<Event>) {
     let mut watch = InventoryWatch::new();
     let mut ticks = interval(PROBE_EVERY);
     ticks.set_missed_tick_behavior(MissedTickBehavior::Delay);
     loop {
         ticks.tick().await;
-        if let Some(changed) = watch.changed(readers::inventory(platform).await)
+        let read = readers::inventory(platform).await;
+        if let Some(changed) = watch.changed(read, std::time::Instant::now())
             && events.send(Event::Inventory(changed)).await.is_err()
         {
             return;

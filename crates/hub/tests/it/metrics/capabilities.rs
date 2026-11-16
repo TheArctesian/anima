@@ -15,7 +15,7 @@ use crate::agent::{
 const CAPABILITIES: &str = "query($tool: String, $buildTarget: String) {
     capabilities(tool: $tool, buildTarget: $buildTarget) {
         device { id name } architecture os osVersion
-        tools { name version usable } buildTargets foundAt } }";
+        tools { name version usable reason } buildTargets foundAt } }";
 
 const CREATE_KEY: &str =
     "mutation($input: ApiKeyInput!) { createApiKey(input: $input) { secret } }";
@@ -84,7 +84,10 @@ async fn cap_029_a_pushed_inventory_replaces_the_stored_one_and_an_older_agent_k
     let tools = json!([
         { "name": "rustc", "version": "1.91.0" },
         { "name": "git", "version": "2.43.0" },
-        { "name": "bun", "state": "failed" },
+        { "name": "bun", "state": "timed_out" },
+        { "name": "cargo", "state": "exited" },
+        { "name": "node", "state": "no_version" },
+        { "name": "docker", "state": "denied" },
         { "name": "zig", "version": "0.15.1" }
     ]);
     let first = linux(
@@ -100,14 +103,17 @@ async fn cap_029_a_pushed_inventory_replaces_the_stored_one_and_an_older_agent_k
             "device": { "id": PVE_01, "name": "pve-01" },
             "architecture": "x86_64", "os": "linux", "osVersion": "24.04",
             "tools": [
-                { "name": "git", "version": "2.43.0", "usable": true },
-                { "name": "rustc", "version": "1.91.0", "usable": true },
-                { "name": "bun", "version": null, "usable": false }
+                { "name": "git", "version": "2.43.0", "usable": true, "reason": null },
+                { "name": "rustc", "version": "1.91.0", "usable": true, "reason": null },
+                { "name": "cargo", "version": null, "usable": false, "reason": "EXITED" },
+                { "name": "bun", "version": null, "usable": false, "reason": "TIMED_OUT" },
+                { "name": "node", "version": null, "usable": false, "reason": "NO_VERSION" },
+                { "name": "docker", "version": null, "usable": false, "reason": "FAILED" }
             ],
             "buildTargets": ["aarch64-unknown-linux-gnu", "x86_64-unknown-linux-gnu"],
             "foundAt": rows[0]["foundAt"],
         })],
-        "zig is a tool this hub does not know: dropped"
+        "zig is a tool this hub does not know: dropped; a reason it does not know is FAILED"
     );
 
     let unchanged = inventory_batch(PVE_01, at(2), None);

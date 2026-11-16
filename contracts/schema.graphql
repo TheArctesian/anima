@@ -878,8 +878,22 @@ type Tool {
   name: String!
   "1 to 64 bytes of [0-9A-Za-z.+_-]; null when the tool is not usable."
   version: String
-  "False when the tool was found but its version probe failed, timed out or printed no version."
+  "False when the tool was found but its version probe timed out, failed or printed no version."
   usable: Boolean!
+  "Why the tool is not usable; null when it is (CAP-024)."
+  reason: NotUsableReason
+}
+
+"Why a found tool is not usable: a fixed code, never text from the device (CAP-024)."
+enum NotUsableReason {
+  "Its version probe ran past its time limit."
+  TIMED_OUT
+  "It could not start, or exited with a failure."
+  EXITED
+  "It ran but printed no version the agent reads."
+  NO_VERSION
+  "A reason this hub does not know (a newer agent's)."
+  FAILED
 }
 
 type MetricSample {

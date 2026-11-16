@@ -2,6 +2,7 @@
 //! (CAP-030, CMD-030).
 
 pub mod documents;
+pub mod hint;
 pub mod list;
 
 use crate::failure::Failure;

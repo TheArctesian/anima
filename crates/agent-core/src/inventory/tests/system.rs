@@ -1,8 +1,8 @@
 //! The operating system version (CAP-026), and the inventory the outcomes make (CAP-020).
 
 use crate::inventory::{
-    Architecture, Inventory, Os, Outcome, Probe, Tool, ToolName, build_targets, kernel_release,
-    macos_version, os_release_version,
+    Architecture, Inventory, Os, Outcome, Probe, Reason, Tool, ToolName, Verdict, build_targets,
+    kernel_release, macos_version, os_release_version,
 };
 
 use super::probe;
@@ -61,7 +61,7 @@ fn cap_020_the_inventory_lists_the_tools_found_in_name_order() {
         (probe(ToolName::Codex), printed("codex-cli 0.169.0\n")),
         (probe(ToolName::Git), printed("git version 2.43.0\n")),
         (probe(ToolName::Docker), Outcome::Missing),
-        (probe(ToolName::Bun), Outcome::Failed),
+        (probe(ToolName::Bun), Outcome::Exited),
     ];
     let inventory = Inventory::new(
         (Architecture::X86_64, Os::Linux, "24.04".to_owned()),
@@ -73,15 +73,15 @@ fn cap_020_the_inventory_lists_the_tools_found_in_name_order() {
         [
             Tool {
                 name: ToolName::Git,
-                version: Some("2.43.0".to_owned())
+                verdict: Verdict::Usable("2.43.0".to_owned())
             },
             Tool {
                 name: ToolName::Bun,
-                version: None
+                verdict: Verdict::NotUsable(Reason::Exited)
             },
             Tool {
                 name: ToolName::Codex,
-                version: Some("0.169.0".to_owned())
+                verdict: Verdict::Usable("0.169.0".to_owned())
             },
         ]
     );

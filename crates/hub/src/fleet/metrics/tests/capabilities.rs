@@ -1,7 +1,7 @@
 //! Which tool inventories a `capabilities` filter keeps (CAP-030): a tool only where it is
 //! usable, a build target only where it is installed, both together.
 
-use agent_core::inventory::{Architecture, Inventory, Os, Tool, ToolName};
+use agent_core::inventory::{Architecture, Inventory, Os, Reason, Tool, ToolName, Verdict};
 
 use crate::fleet::metrics::CapabilityFilter;
 
@@ -13,11 +13,11 @@ fn mac() -> Inventory {
         tools: vec![
             Tool {
                 name: ToolName::Cargo,
-                version: Some("1.91.0".to_owned()),
+                verdict: Verdict::Usable("1.91.0".to_owned()),
             },
             Tool {
                 name: ToolName::Docker,
-                version: None,
+                verdict: Verdict::NotUsable(Reason::TimedOut),
             },
         ],
         build_targets: vec!["aarch64-apple-darwin".to_owned()],

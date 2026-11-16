@@ -2,9 +2,13 @@
 //! (CAP-020 to CAP-031). Pure: which inventories a filter keeps, and their join with the
 //! devices in device-name order. CAP-001 to CAP-004 join this when the model service is built
 //! (CAP-030).
+#![expect(
+    clippy::unused_async_trait_impl,
+    reason = "the async-graphql Enum derive generates async trait impls"
+)]
 
-use agent_core::inventory::{Inventory, Tool};
-use async_graphql::{Object, SimpleObject};
+use agent_core::inventory::{Inventory, Reason, Tool};
+use async_graphql::{Enum, Object, SimpleObject};
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
@@ -89,14 +93,41 @@ pub struct FoundTool {
     pub name: String,
     pub version: Option<String>,
     pub usable: bool,
+    /// Why the tool is not usable; `None` when it is.
+    pub reason: Option<NotUsableReason>,
+}
+
+/// `NotUsableReason`: why a found tool is not usable, a fixed code (CAP-024).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Enum)]
+pub enum NotUsableReason {
+    /// Its version probe ran past its time limit.
+    TimedOut,
+    /// It could not start, or exited with a failure.
+    Exited,
+    /// It ran but printed no version the agent reads.
+    NoVersion,
+    /// A reason this hub does not know.
+    Failed,
+}
+
+impl From<Reason> for NotUsableReason {
+    fn from(reason: Reason) -> Self {
+        match reason {
+            Reason::TimedOut => Self::TimedOut,
+            Reason::Exited => Self::Exited,
+            Reason::NoVersion => Self::NoVersion,
+            Reason::Failed => Self::Failed,
+        }
+    }
 }
 
 impl From<&Tool> for FoundTool {
     fn from(tool: &Tool) -> Self {
         Self {
             name: tool.name.as_str().to_owned(),
-            version: tool.version.clone(),
+            version: tool.version().map(str::to_owned),
             usable: tool.is_usable(),
+            reason: tool.reason().map(NotUsableReason::from),
         }
     }
 }

@@ -6,8 +6,8 @@ use std::collections::BTreeSet;
 use serde::{Deserialize, Serialize};
 
 use crate::inventory::{
-    Architecture, Inventory, MAX_BUILD_TARGETS, MAX_TOOLS, Os, Tool, ToolName, is_build_target,
-    is_tool_name, is_version,
+    Architecture, Inventory, MAX_BUILD_TARGETS, MAX_TOOLS, Os, Reason, Tool, ToolName, Verdict,
+    is_build_target, is_tool_name, is_version,
 };
 
 /// The device's tool inventory as a batch spells it. It replaces the stored one whole.
@@ -21,24 +21,15 @@ pub struct BatchInventory {
     pub build_targets: Vec<String>,
 }
 
-/// One tool found: a version, or the state `failed` and no version.
+/// One tool found: a version, or a [`Reason`] as its `state` and no version. A state a newer
+/// agent knows and this side does not reads as `failed`.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BatchTool {
     pub name: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub version: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub state: Option<ToolState>,
-}
-
-/// Why a found tool has no version: a fixed code, never text from the device. A state a newer
-/// agent knows and this hub does not reads as `failed`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum ToolState {
-    /// The probe failed, timed out or printed no version it could read.
-    #[serde(other)]
-    Failed,
+    pub state: Option<Reason>,
 }
 
 impl From<&Inventory> for BatchInventory {
@@ -57,8 +48,8 @@ impl From<&Tool> for BatchTool {
     fn from(tool: &Tool) -> Self {
         Self {
             name: tool.name.as_str().to_owned(),
-            version: tool.version.clone(),
-            state: tool.version.is_none().then_some(ToolState::Failed),
+            version: tool.version().map(str::to_owned),
+            state: tool.reason(),
         }
     }
 }
@@ -87,9 +78,13 @@ impl BatchInventory {
             .tools
             .into_iter()
             .filter_map(|tool| {
+                let verdict = match (tool.version, tool.state) {
+                    (Some(version), _) => Verdict::Usable(version),
+                    (None, state) => Verdict::NotUsable(state.unwrap_or(Reason::Failed)),
+                };
                 Some(Tool {
                     name: ToolName::parse(&tool.name)?,
-                    version: tool.version,
+                    verdict,
                 })
             })
             .collect();
@@ -110,7 +105,7 @@ impl BatchTool {
     fn fits(&self) -> bool {
         let told = match (&self.version, self.state) {
             (Some(version), None) => is_version(version),
-            (None, Some(ToolState::Failed)) => true,
+            (None, Some(_)) => true,
             _ => false,
         };
         told && is_tool_name(&self.name)

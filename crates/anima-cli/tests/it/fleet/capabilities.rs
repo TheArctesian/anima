@@ -7,13 +7,15 @@ use crate::kit::fake_hub::{FakeHub, data};
 
 const TOKEN: &str = "login-token-for-capability-tests";
 
-/// The K1 `capabilities` answer: a Mac with cargo and a failed bun, and a Linux PC with nothing.
+/// The K1 `capabilities` answer: a Mac with cargo and a bun that timed out, and a Linux PC with
+/// nothing.
 pub fn capabilities() -> Value {
     json!({ "capabilities": [
         { "device": { "id": "0190a000-0000-7000-8002-00000000000a", "name": "mac-office-1" },
           "architecture": "aarch64", "os": "macos", "osVersion": "27.0",
-          "tools": [ { "name": "cargo", "version": "1.91.0", "usable": true },
-                     { "name": "bun", "version": null, "usable": false } ],
+          "tools": [ { "name": "cargo", "version": "1.91.0", "usable": true, "reason": null },
+                     { "name": "bun", "version": null, "usable": false,
+                       "reason": "TIMED_OUT" } ],
           "buildTargets": ["aarch64-apple-darwin", "aarch64-apple-ios"],
           "foundAt": "2026-11-15T09:00:00+00:00" },
         { "device": { "id": "0190a000-0000-7000-8002-000000000009", "name": "linux-pc-home" },
@@ -36,7 +38,7 @@ async fn cap_030_capability_list_shows_each_device_s_system_tools_and_targets() 
     assert!(
         lines[1].contains("mac-office-1")
             && lines[1].contains("macos 27.0 aarch64")
-            && lines[1].contains("cargo 1.91.0, bun not usable")
+            && lines[1].contains("cargo 1.91.0, bun not usable (timed out)")
             && lines[1].contains("aarch64-apple-darwin, aarch64-apple-ios"),
         "{}",
         run.stdout
@@ -45,6 +47,12 @@ async fn cap_030_capability_list_shows_each_device_s_system_tools_and_targets() 
         lines[2].contains("linux-pc-home") && lines[2].contains("linux 24.04 x86_64"),
         "{}",
         run.stdout
+    );
+    assert_eq!(
+        run.stderr.trim_end(),
+        "mac-office-1: bun: Its version check ran past 5 seconds: run it with --version on the \
+         device to see what it waits for.",
+        "the repair hint goes to standard error"
     );
     let sent = hub.seen().pop().expect("a request");
     assert_eq!(sent.variables["tool"], Value::Null);
@@ -71,6 +79,10 @@ async fn cap_030_capability_list_filters_by_tool_and_target_and_prints_k1_json()
         .await;
     assert_eq!(run.code, 0, "{run:?}");
     assert_eq!(run.json(), capabilities()["capabilities"]);
+    assert_eq!(
+        run.stderr, "",
+        "no hint with --json: the reason is in the JSON"
+    );
     let sent = hub.seen().pop().expect("a request");
     assert_eq!(sent.variables["tool"], "cargo");
     assert_eq!(sent.variables["buildTarget"], "aarch64-apple-darwin");

@@ -14,8 +14,8 @@ mod tools;
 mod version;
 
 pub use probes::{PROBES, Probe, Program, TARGETS, build_targets};
-pub use search::{TOOL_FOLDERS, candidates};
-pub use tools::ToolName;
+pub use search::{TOOL_FOLDERS, candidates, may_run};
+pub use tools::{Reason, Tool, ToolName, Verdict};
 pub use version::{
     MAX_TEXT, is_build_target, is_tool_name, is_version, kernel_release, macos_version,
     os_release_version,
@@ -40,23 +40,6 @@ pub struct Inventory {
     pub tools: Vec<Tool>,
     /// The installed Rust targets, unique, in byte order.
     pub build_targets: Vec<String>,
-}
-
-/// One tool the agent found (CAP-024).
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Tool {
-    pub name: ToolName,
-    /// `None` when the tool was found but its probe failed, timed out or printed no version: it
-    /// is not usable.
-    pub version: Option<String>,
-}
-
-impl Tool {
-    /// Whether the tool can be used: its probe gave a version (CAP-024).
-    #[must_use]
-    pub const fn is_usable(&self) -> bool {
-        self.version.is_some()
-    }
 }
 
 /// The processor architecture, as Rust names it (CAP-026).
@@ -120,8 +103,10 @@ impl Os {
 pub enum Outcome {
     /// The program is in none of the folders.
     Missing,
-    /// The program was found; it failed, timed out or could not start.
-    Failed,
+    /// The program was found but ran past its time limit.
+    TimedOut,
+    /// The program was found but could not start, or exited with a failure.
+    Exited,
     /// The program ran and exited with success; what it printed (at most the runner's cap).
     Printed(Vec<u8>),
 }
@@ -129,7 +114,8 @@ pub enum Outcome {
 impl Inventory {
     /// The inventory of a device of `architecture` and `os` at `os_version`, from the outcome of
     /// each probe of [`PROBES`] and the output of [`TARGETS`] (CAP-020). A probe whose program is
-    /// missing leaves its tool out; one that failed or printed no version lists it as not usable.
+    /// missing leaves its tool out; one that failed or printed no version lists it as not usable,
+    /// with the [`Reason`].
     #[must_use]
     pub fn new(
         (architecture, os, os_version): (Architecture, Os, String),

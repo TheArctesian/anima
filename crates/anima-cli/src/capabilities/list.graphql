@@ -12,6 +12,7 @@ query CapabilityList($tool: String, $buildTarget: String) {
       name
       version
       usable
+      reason
     }
     buildTargets
     foundAt

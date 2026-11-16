@@ -101,7 +101,7 @@ Request:
   "drives": [ { "name": "nvme1n1", "kind": "nvme", "sizeBytes": 1000204886016, "mounts": ["/", "/boot/efi"] } ],
   "inventory": {
     "architecture": "aarch64", "os": "macos", "osVersion": "27.0",
-    "tools": [ { "name": "cargo", "version": "1.91.0" }, { "name": "bun", "state": "failed" } ],
+    "tools": [ { "name": "cargo", "version": "1.91.0" }, { "name": "bun", "state": "timed_out" } ],
     "buildTargets": ["aarch64-apple-darwin"]
   }
 }
@@ -138,20 +138,33 @@ Request:
   empty for a drive that is not mounted. macOS sends no `drives` (MET-031).
 - `inventory`: optional; the tool inventory (operator, 2026-11-15, CAP-020 to CAP-031; ruling number to be
   assigned). The agent probes its tools at start and every 15 minutes and sends the whole inventory in its
-  first batch after start and again whenever a probe result changes, and with each next batch until one is
-  accepted, except after `MALFORMED`: then it waits for the next change (CAP-027). Absent means "unchanged", so
+  first batch after start, again whenever a probe result changes, and again when 24 hours have passed since it
+  last handed one over even if nothing changed; and with each next batch until one is accepted, except after
+  `MALFORMED`: then it waits for the next change or the next 24-hour announcement, so an inventory the hub
+  refused once is sent again within a day (CAP-027). Absent means "unchanged", so
   an agent older than the inventory keeps working. `architecture` is `aarch64` or `x86_64`; `os` is `macos` or
   `linux`; `osVersion` (macOS: `sw_vers -productVersion`; Linux: `VERSION_ID` of `/etc/os-release`, or the
   kernel release when there is none) is 1 to 64 bytes of `[0-9A-Za-z.+_-]`. `tools` holds at most 64 tools with
   unique names, each a `name` of 1 to 64 bytes of `[0-9a-z_.-]` and either a `version` of 1 to 64 bytes of
-  `[0-9A-Za-z.+_-]` or `"state": "failed"` (found, but its version probe failed, timed out or printed no version:
-  not usable), never both. A tool the agent did not find is not listed. The names the hub knows are `git`,
+  `[0-9A-Za-z.+_-]` or a `state` that says why the tool, found, is not usable, never both (CAP-024). The
+  `state` is a fixed code, never text from the device: `timed_out` (the version probe ran past its 5 seconds),
+  `exited` (the program could not start or exited with a failure) or `no_version` (it ran but printed no
+  version the agent reads); `failed` stands for a reason the reader does not know. A tool the agent did not
+  find is not listed. The names the hub knows are `git`,
   `rustc`, `cargo`, `cargo-nextest`, `sccache`, `bun`, `node`, `xcodebuild`, `docker`, `podman`, `nix`, `claude`
   and `codex`; the hub drops a tool of any other name, and reads a `state` it does not know as `failed`, so a
-  newer agent can talk to an older hub. `buildTargets` holds at most 128 unique Rust targets
+  newer agent can talk to an older hub, and an older agent's `failed` is still taken. `buildTargets` holds at
+  most 128 unique Rust targets
   (`rustup target list --installed`), each 1 to 64 bytes of `[0-9a-z_.-]`. No text in it is free text from the
   device: the agent sends only values that pass these rules, and a batch whose inventory breaks one is
-  `MALFORMED`.
+  `MALFORMED`. The agent looks for each program first in its fixed tool folders (`~/.cargo/bin`,
+  `/opt/homebrew/opt/rustup/bin`, `/opt/homebrew/bin`, `/usr/local/bin`, `~/.bun/bin`, `~/.local/bin`,
+  `~/.docker/bin`, `~/.nix-profile/bin`, `/nix/var/nix/profiles/default/bin`), then in its `PATH`. On macOS it
+  does not run Apple's placeholder `/usr/bin/git` or `/usr/bin/xcodebuild` unless the developer tools are
+  present (`xcode-select -p` names a folder that exists), since a placeholder offers to install them. Each
+  probe runs in a process group of its own that is killed when it ends. `claude` and `codex` write into their
+  home folder even to print a version, so they run with `HOME`, `CODEX_HOME` and `CLAUDE_CONFIG_DIR` set to
+  an empty temporary folder that is removed afterwards; no other probe has a home folder (CAP-025).
 
 The hub:
 

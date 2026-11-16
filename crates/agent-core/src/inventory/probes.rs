@@ -1,11 +1,12 @@
 //! The fixed probes (CAP-021 to CAP-023, CAP-025): for each tool, the program, the fixed
 //! arguments that make it print its version and nothing else, and how to read that version.
-//! No probe starts a build, a model or a network request, and none reads a file of the tool's;
-//! for `claude` and `codex` only the version is kept (CAP-025).
+//! No probe starts a build, a model or a network request. `claude` and `codex` read and write
+//! files in their home folder even to print a version, so their probes get an empty home of
+//! their own, never the operator's; only the version is kept (CAP-025).
 
 use std::collections::BTreeSet;
 
-use super::{MAX_BUILD_TARGETS, Os, Outcome, Tool, ToolName, version};
+use super::{MAX_BUILD_TARGETS, Os, Outcome, Reason, Tool, ToolName, Verdict, version};
 
 /// A program and its fixed arguments.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -22,6 +23,9 @@ pub struct Probe {
     pub program: Program,
     /// `Some` for a probe that runs on that system only.
     pub only_on: Option<Os>,
+    /// Whether the probe runs with an empty home folder of its own instead of none, because
+    /// the program writes there (CAP-025).
+    pub own_home: bool,
     shape: Shape,
 }
 
@@ -42,6 +46,7 @@ const fn probe(tool: ToolName, args: &'static [&'static str], shape: Shape) -> P
             args,
         },
         only_on: None,
+        own_home: false,
         shape,
     }
 }
@@ -68,8 +73,14 @@ pub const PROBES: [Probe; 13] = [
     probe(ToolName::Docker, VERSION, Shape::After("Docker version ")),
     probe(ToolName::Podman, VERSION, Shape::After("podman version ")),
     probe(ToolName::Nix, VERSION, Shape::LastWord("nix ")),
-    probe(ToolName::Claude, VERSION, Shape::After("")),
-    probe(ToolName::Codex, VERSION, Shape::After("codex-cli ")),
+    Probe {
+        own_home: true,
+        ..probe(ToolName::Claude, VERSION, Shape::After(""))
+    },
+    Probe {
+        own_home: true,
+        ..probe(ToolName::Codex, VERSION, Shape::After("codex-cli "))
+    },
 ];
 
 /// The installed Rust targets, one to a line (CAP-023).
@@ -88,14 +99,17 @@ impl Probe {
     /// The tool as the inventory lists it after `outcome`; `None` when it was not found.
     #[must_use]
     pub fn tool(&self, outcome: &Outcome) -> Option<Tool> {
-        let version = match outcome {
+        let verdict = match outcome {
             Outcome::Missing => return None,
-            Outcome::Failed => None,
-            Outcome::Printed(output) => self.version(output),
+            Outcome::TimedOut => Verdict::NotUsable(Reason::TimedOut),
+            Outcome::Exited => Verdict::NotUsable(Reason::Exited),
+            Outcome::Printed(output) => self
+                .version(output)
+                .map_or(Verdict::NotUsable(Reason::NoVersion), Verdict::Usable),
         };
         Some(Tool {
             name: self.tool,
-            version,
+            verdict,
         })
     }
 

@@ -506,6 +506,7 @@ pub async fn stale_agents(db: &Db, devices: &[DeviceId]) -> Result<HashSet<Devic
 pub struct Capabilities { pub device: DeviceId, pub inventory: agent_core::inventory::Inventory, pub found_at: DateTime<Utc> }
 pub struct CapabilityFilter { pub tool: Option<String>, pub build_target: Option<String> }
 /// The tool inventory each agent sent, kept when `filter` admits it: `tool` usable, `build_target` installed (CAP-030).
+/// Each tool is usable with its version or not usable with a fixed `agent_core::inventory::Reason` (CAP-024).
 /// metrics::graphql owns Query.capabilities and joins each to its Device (devices::list), by device name.
 pub async fn capabilities(db: &Db, filter: &CapabilityFilter) -> Result<Vec<Capabilities>, Error>;
 ```

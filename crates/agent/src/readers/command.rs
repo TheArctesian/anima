@@ -1,12 +1,15 @@
 //! Runs one fixed read-only command (MET-002, CAP-022): fixed argv, no shell, no input, a time
 //! limit, a cap on the output kept, and a failure that is an error value rather than a crash.
+//! The command runs in a process group of its own, and the whole group is killed when it ends,
+//! so nothing it started outlives it.
 
 use std::io;
-use std::process::Stdio;
+use std::process::{ExitStatus, Stdio};
 use std::time::Duration;
 
-use tokio::io::AsyncReadExt as _;
-use tokio::process::Command;
+use rustix::process::{Pid, Signal, kill_process_group};
+use tokio::io::{AsyncRead, AsyncReadExt as _};
+use tokio::process::{Child, Command};
 use tokio::time::timeout;
 
 /// The most output kept from one command.
@@ -15,8 +18,12 @@ const OUTPUT_LIMIT: u64 = 1024 * 1024;
 /// The only search path a command gets: the agent's own environment is not passed on.
 const PATH: &str = "/usr/sbin:/usr/bin:/sbin:/bin";
 
-/// How long a finished command may take to report its exit status.
+/// How long a command that closed its output may take to report its exit status.
 const EXIT_GRACE: Duration = Duration::from_secs(1);
+
+/// How long output still buffered is read after the command exits. A program it started in
+/// the background may hold the output open; it is not waited for.
+const DRAIN: Duration = Duration::from_millis(200);
 
 /// A command the agent runs: the program and its arguments are fixed text.
 #[derive(Clone, Copy, Debug)]
@@ -79,7 +86,9 @@ pub struct Bounds {
 
 /// Runs `command`, set up by the caller with its arguments and environment, with no input and
 /// its error output thrown away, and returns what it printed within `bounds`. `program` names
-/// it in an error. The child is killed when the time runs out or the caller is dropped.
+/// it in an error. Reading stops when the command exits. The command and every process it
+/// started in its group are killed when it ends, when the time runs out or when the caller is
+/// dropped.
 ///
 /// # Errors
 /// [`CommandError`] when it cannot start, runs past its limit (unless
@@ -93,31 +102,85 @@ pub async fn capture(
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
+        .process_group(0)
         .kill_on_drop(true)
         .spawn()
         .map_err(|source| CommandError::Start { program, source })?;
+    // Declared after `child`, so it is dropped first: the group dies before the child is dropped.
+    let mut group = Group::of(&child);
     let Some(stdout) = child.stdout.take() else {
         return Err(CommandError::Failed { program });
     };
     let mut output = Vec::new();
     let mut reader = stdout.take(bounds.output_limit);
-    // `read_to_end` appends as it reads, so a cut leaves the output so far in `output`.
-    let finished = timeout(bounds.limit, reader.read_to_end(&mut output)).await;
-    if finished.is_err() {
-        // The child is killed here; if that fails, `kill_on_drop` ends it with `child`.
+    // A read appends as it goes, so a cut leaves the output so far in `output`.
+    let ended = timeout(
+        bounds.limit,
+        until_exit(&mut child, &mut reader, &mut output),
+    )
+    .await;
+    let Ok(exited) = ended else {
+        group.kill();
+        // Reaped here; if that fails, `kill_on_drop` ends it with `child`.
         child.kill().await.ok();
         return if bounds.keep_cut_output {
             Ok(output)
         } else {
             Err(CommandError::Timeout { program })
         };
-    }
-    if finished.is_ok_and(|read| read.is_err()) {
-        return Err(CommandError::Failed { program });
-    }
-    match timeout(EXIT_GRACE, child.wait()).await {
-        Ok(Ok(status)) if status.success() => Ok(output),
+    };
+    match exited {
+        Ok(status) if status.success() => Ok(output),
         _ => Err(CommandError::Failed { program }),
+    }
+}
+
+/// Reads `reader` into `output` until the command exits, then only what is already buffered.
+async fn until_exit(
+    child: &mut Child,
+    reader: &mut (impl AsyncRead + Unpin),
+    output: &mut Vec<u8>,
+) -> io::Result<ExitStatus> {
+    tokio::select! {
+        read = reader.read_to_end(output) => {
+            read?;
+            timeout(EXIT_GRACE, child.wait()).await?
+        }
+        status = child.wait() => {
+            let status = status?;
+            if let Ok(read) = timeout(DRAIN, reader.read_to_end(output)).await {
+                read?;
+            }
+            Ok(status)
+        }
+    }
+}
+
+/// The process group of a running command; dropping it kills every process in the group.
+struct Group(Option<Pid>);
+
+impl Group {
+    fn of(child: &Child) -> Self {
+        let leader = child
+            .id()
+            .and_then(|id| i32::try_from(id).ok())
+            .and_then(Pid::from_raw);
+        Self(leader)
+    }
+
+    /// Kills every process left in the group, once.
+    fn kill(&mut self) {
+        if let Some(group) = self.0.take() {
+            // The group is often empty by now: the kill then fails with "no such process",
+            // which is the outcome wanted, so the result is not needed.
+            kill_process_group(group, Signal::KILL).ok();
+        }
+    }
+}
+
+impl Drop for Group {
+    fn drop(&mut self) {
+        self.kill();
     }
 }
 
