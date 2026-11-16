@@ -171,6 +171,10 @@ with an empty environment except `ANIMA_DATABASE_URL_FILE=<hub root>/database/ur
 | `anima-local-hub account create <name>` | `anima-hub operator create <name>` | Three lines on standard input: the password, the secret, a code. It makes or replaces the operator in one step. |
 
 - A name has 1 to 64 letters, digits, `.`, `_` or `-`, and starts with a letter or a digit.
+- `account` runs the hub only when the hub root, each folder down to `programs/current/bin`
+  and `anima-hub` are your user's, are not symbolic links, and no other user can change them
+  (the folders: no access for group or others). Otherwise it ends with code 1 and names the
+  path, and nothing runs. It changes no mode.
 - The secrets pass on standard input and standard output only. They are never arguments, and
   `account` writes nothing of them to a log. The hub's own error text is not shown: a refusal
   prints a fixed message with the hub's exit code.

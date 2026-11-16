@@ -92,10 +92,17 @@ pub async fn run(plan: &Plan, mut stop: Stop, ready: impl FnOnce()) -> Result<En
     let mut notes = LogFile::open(&folders.logs().join("local-hub.log"), LOG_LIMIT)
         .map_err(io_error("open the log"))?;
     let mut ready = Some(ready);
+    let mut write_failure_told = false;
     let mut report = |state: State| {
         // The note is a help to read the log; the state file is what `status` tells.
         let _ = notes.line(&serde_json::to_string(&state).unwrap_or_default());
-        state::write(&folders.state_file(), &state).map_err(io_error("write the state"))?;
+        if let Err(error) = state::write(&folders.state_file(), &state) {
+            if !write_failure_told {
+                write_failure_told = true;
+                let _ = notes.line(&format!("the state cannot be written ({})", error.kind()));
+            }
+            return Err(io_error("write the state")(error));
+        }
         if matches!(state, State::Ready { .. })
             && let Some(ready) = ready.take()
         {
@@ -147,8 +154,11 @@ async fn keep(
                 match group.until_ended(stop).await {
                     Ending::Asked => return Ok(Kept::Asked),
                     Ending::MemberEnded(name) => return Ok(Kept::Failed(format!("{name} ended"))),
-                    // The group stays ready whatever the link does (F-6).
-                    Ending::LinkChanged(link) => report(ready(link))?,
+                    // The group stays ready whatever the link does (F-6), also when its new
+                    // state cannot be written: `report` put the fault in the log.
+                    Ending::LinkChanged(link) => {
+                        let _ = report(ready(link));
+                    }
                 }
             }
         }
