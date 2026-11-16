@@ -40,7 +40,6 @@ zeroize = { workspace = true }
 
 [dev-dependencies]
 base64 = { workspace = true }
-ironrdp-acceptor = "0.12"
 jpeg-decoder = "0.3"
 proptest = "1.12"
-rcgen.workspace = true
+rdp-test-device = { path = "../rdp-test-device" }

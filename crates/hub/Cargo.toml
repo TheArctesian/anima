@@ -86,6 +86,7 @@ anima-database = { path = "../anima-database" }
 agent-core = { path = "../agent-core", features = ["test-support"] }
 # The native gateway, for the tunnel tests that run the hub against it in place of guacd.
 anima-gateway = { path = "../anima-gateway" }
+rdp-test-device = { path = "../rdp-test-device" }
 anima-hub = { path = ".", features = ["test-support"] }
 http-body-util.workspace = true
 tower.workspace = true
