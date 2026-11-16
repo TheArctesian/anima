@@ -1,4 +1,4 @@
-// Test support: a VPN picture with one routed site, a router, a client and a node Anima does not know.
+// Test support: a VPN picture with one routed site, a router, a client and a node Anima.ing does not know.
 import { flushSync } from 'svelte';
 import type { VpnNode, VpnPicture } from './api';
 

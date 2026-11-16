@@ -1,0 +1,6 @@
+# The PostgreSQL source that the application's database tree is built from (one-click plan S3).
+# Change both lines together, from https://www.postgresql.org/ftp/source/ and its .sha256 file.
+# A minor version needs no other step. A new major version needs the upgrade step first
+# (docs/research/one-click/s3-database-tasks.md, decision D-6).
+version=17.12
+sha256=9cf136a703d8ee2f83465c43be4e9e8e7930c82b0bfba13be7e2537be769ac55

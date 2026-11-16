@@ -4,7 +4,7 @@ import type { FilesProblem } from './link/inflight';
 const REFUSALS: Readonly<Record<Refusal, string>> = {
   UPLOAD_OFF: 'Uploads are off for this device.',
   DOWNLOAD_OFF: 'Downloads are off for this device.',
-  EXISTS: 'A file with this name is already there; Anima never replaces a file.',
+  EXISTS: 'A file with this name is already there; Anima.ing never replaces a file.',
   NOT_FOUND: 'The device has no file or folder at that place.',
   DENIED: 'The device did not allow that.',
 };

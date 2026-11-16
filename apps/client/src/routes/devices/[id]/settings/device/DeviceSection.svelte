@@ -60,7 +60,7 @@
       onchange={() => void draft.commit('tags')}
     />
   </SettingRow>
-  <TextRow {draft} key="macAddress" label="MAC address" about="Optional. Lets Anima wake the device." placeholder="aa:bb:cc:dd:ee:ff" mono />
+  <TextRow {draft} key="macAddress" label="MAC address" about="Optional. Lets Anima.ing wake the device." placeholder="aa:bb:cc:dd:ee:ff" mono />
 </SettingsSection>
 
 <style>

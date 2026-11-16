@@ -1,7 +1,7 @@
 import type { AccessWarning } from '$lib/devices/api';
 
 const RDP_WARNINGS = {
-  ignoreCertificate: 'Ignoring the certificate means Anima cannot tell this device from an impostor.',
+  ignoreCertificate: 'Ignoring the certificate means Anima.ing cannot tell this device from an impostor.',
   weakSecurity: 'Standard RDP security is weak: the sign-in is not protected the way the other modes protect it.',
 } as const;
 

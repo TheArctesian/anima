@@ -119,7 +119,11 @@ async fn prj_041_open_needs_a_browser_session_from_anima(pool: PgPool) {
         .post("/connect/github/open", &[("origin", PUBLIC)])
         .await;
     assert_eq!(unsigned.status, StatusCode::UNAUTHORIZED);
-    assert!(unsigned.body.contains("Sign in to Anima in this browser"));
+    assert!(
+        unsigned
+            .body
+            .contains("Sign in to Anima.ing in this browser")
+    );
 
     browser.sign_in().await;
     for origin in [&[("origin", "https://evil.example")][..], &[]] {

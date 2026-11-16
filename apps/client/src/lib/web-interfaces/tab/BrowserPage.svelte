@@ -18,7 +18,7 @@
 
 <!-- D-6, D-9: where a web view cannot pin, the page opens in the system browser beside the pinned fingerprint. -->
 <section class="browser" tabindex="-1">
-  <p>{label} ({url}) opens in your system browser: Anima cannot pin its certificate in a web view on this computer.</p>
+  <p>{label} ({url}) opens in your system browser: Anima.ing cannot pin its certificate in a web view on this computer.</p>
   {#if pin === null}
     <p role="status">Reading the certificate…</p>
   {:else}
@@ -26,7 +26,7 @@
       <dt>Pinned certificate, SHA-256 fingerprint</dt>
       <dd class="fingerprint" data-fingerprint>{displayFingerprint(pin)}</dd>
     </dl>
-    <p>Anima checks that the device still presents this certificate before it opens the page. The browser may ask you to trust it too: compare its fingerprint with this one.</p>
+    <p>Anima.ing checks that the device still presents this certificate before it opens the page. The browser may ask you to trust it too: compare its fingerprint with this one.</p>
     <button type="button" disabled={opening} onclick={onopen} {@attach press()}>
       <Icon name="carbon:earth" />
       <span>{opening ? 'Checking the certificate…' : 'Open in system browser'}</span>

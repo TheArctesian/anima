@@ -8,7 +8,7 @@ export interface ThisMachine {
   /** The OS user name of the app; empty when the OS gives none. */
   readonly user: string;
   readonly os: Extract<OperatingSystem, 'MACOS' | 'LINUX'>;
-  /** Its IPv4 address on the Anima VPN, inside 100.64.0.0/10 (NET-001). */
+  /** Its IPv4 address on the Anima.ing VPN, inside 100.64.0.0/10 (NET-001). */
   readonly vpnAddress: string;
   /** Whether SSH (TCP 22) accepted a connection on `vpnAddress`. */
   readonly sshListening: boolean;
@@ -17,7 +17,7 @@ export interface ThisMachine {
 const OCTET = '(?:25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)';
 const IPV4 = new RegExp(`^${OCTET}(?:\\.${OCTET}){3}$`);
 
-/** Whether `text` is an IPv4 address inside 100.64.0.0/10, the Anima VPN's range (NET-001). */
+/** Whether `text` is an IPv4 address inside 100.64.0.0/10, the Anima.ing VPN's range (NET-001). */
 function isVpnAddress(text: string): boolean {
   if (!IPV4.test(text)) return false;
   const [first, second] = text.split('.').map(Number);

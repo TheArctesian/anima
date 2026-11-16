@@ -20,7 +20,7 @@
   });
 </script>
 
-<!-- Releases on GitHub, newest first; not releases of Anima. -->
+<!-- Releases on GitHub, newest first; not releases of Anima.ing. -->
 <ForgeSection title="Releases" icon="carbon:tag" {list} {now} empty="No releases">
   <ul class="rows" aria-label="Releases">
     {#each list.rows as release (release.id)}

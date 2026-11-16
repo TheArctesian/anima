@@ -13,7 +13,7 @@
         {#snippet children(link)}<Input {...link} placeholder="for example, nas" />{/snippet}
       </Field>
       <Field label="Host" constraint="A host name or an IP address.">
-        {#snippet help()}Anima connects to this address. Default port 22.{/snippet}
+        {#snippet help()}Anima.ing connects to this address. Default port 22.{/snippet}
         {#snippet children(link)}<Input {...link} mono value="nas.lan" />{/snippet}
       </Field>
       <Field label="Port" error="Use a number from 1 to 65535.">

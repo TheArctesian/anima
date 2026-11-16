@@ -27,12 +27,12 @@
     </p>
   {/if}
   {#if view.buildersFailed}
-    <p class="notice" role="status">Anima could not read the builders; the waiting notices may be out of date.</p>
+    <p class="notice" role="status">Anima.ing could not read the builders; the waiting notices may be out of date.</p>
   {/if}
   <div class="columns">
     <section class="list" aria-label="Releases" aria-busy={view.releases === null && !view.loadFailed}>
       {#if view.loadFailed && view.releases === null}
-        <p role="alert">Anima could not load the releases.</p>
+        <p role="alert">Anima.ing could not load the releases.</p>
         <FormButton tabindex={0} onclick={() => view.loadReleases()}>Try again</FormButton>
       {:else if view.releases !== null && view.releases.length === 0}
         <p class="quiet">No releases yet.</p>
