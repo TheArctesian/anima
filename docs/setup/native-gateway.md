@@ -1,8 +1,8 @@
 # Native gateway (`anima-gateway`)
 
-`anima-gateway` is a gateway that connects to VNC devices itself. It speaks to the hub as
+`anima-gateway` is a gateway that connects to VNC and RDP devices itself. It speaks to the hub as
 `guacd` does (spec Section 4.3, K4 Section 3), so the hub and the client need no change.
-It is plan item S2 of the one-click install plan. It serves VNC only; RDP follows.
+It is plan item S2 of the one-click install plan. It serves VNC and RDP. RDP has no sound and no shared drive yet; see below.
 
 Use it where there is no `guacd`: a hub that runs inside the application on a Mac. A hub in
 Docker can keep `guacd` for both protocols, as today.
@@ -34,15 +34,16 @@ session only. At most 64 sessions run at one time; a connection beyond that gets
 
 ## VNC here and RDP in `guacd`
 
-The gateway can pass each session of a protocol it does not serve to another gateway:
+RDP in the native gateway has no sound, no microphone and no shared drive. A hub that needs
+them keeps `guacd` for RDP and uses the native gateway for VNC:
 
 ```sh
-anima-gateway listen 127.0.0.1:4823 --other-gateway guacd:4822
+anima-gateway listen 127.0.0.1:4823 --other-gateway guacd:4822 --pass rdp
 ```
 
 With `ANIMA_GUACD` set to the `anima-gateway` address, VNC sessions run in the native
-gateway and RDP sessions go on to `guacd`. Without `--other-gateway`, an RDP session ends
-with a gateway error.
+gateway and RDP sessions go on to `guacd`. `--other-gateway` alone passes only the protocols
+the native gateway does not serve. `--pass vnc` passes VNC.
 
 ## Devices
 
@@ -54,6 +55,23 @@ with a gateway error.
 
 When the password (or, for a Mac, the user name) is not stored, the client asks for it when
 the session opens.
+
+### RDP devices
+
+| Setting of the device | In the native gateway |
+| --- | --- |
+| Security `NLA` or `NLA-EXT` | The sign-in is made inside TLS before the session, with NTLM. The user name and the password must be there; the client asks for what is not stored. Kerberos is not used. |
+| Security `TLS` | The account is sent after TLS; a device such as xrdp signs in with it or shows its own sign-in. |
+| Security `ANY` | TLS or NLA, as the device picks. |
+| Security `RDP` or `VMCONNECT` | Not served: the session ends with a gateway error. |
+| The accepted certificate, "ignore certificate" | The gateway checks the device's certificate again before it sends the account (SEC-007). The hub has made the same check before. |
+| Resize `display-update` | The device gets the size of the client's window. A device that does not change its screen is shown as a smaller picture. |
+| Resize `reconnect` | The picture is scaled to the window; the gateway does not reconnect. |
+| Audio out, microphone, shared drive, upload, download | Not there. The switches have no effect. |
+
+The key table is the US keyboard. Text is right for every layout of the client, because a
+character that the table cannot make goes as a Unicode key; shortcuts with Control, Alt or
+the logo key use the US positions. Set the device's keyboard to US.
 
 A screen larger than the client's window is sent as a smaller picture of it. A Mac with
 several displays is one screen.
@@ -69,6 +87,8 @@ several displays is one screen.
   device's host (R-032) before it sends the address.
 - No clipboard goes from the device to the client when copy is off for the device, and none
   goes to the device when paste is off (RA-033).
+- The RDP library (IronRDP) keeps the account in memory for the whole session and does not
+  clear it at the end. One worker process holds one session and ends with it.
 - Not built: the pointer image as a Guacamole cursor (the device draws the pointer),
   audio, file transfer, the Tight encoding, and the newer Apple sign-in types 33, 35 and 36.
 

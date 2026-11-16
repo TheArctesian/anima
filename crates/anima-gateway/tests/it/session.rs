@@ -5,6 +5,7 @@ mod device;
 mod flow;
 mod hub_side;
 mod program;
+mod rdp;
 
 use std::time::Duration;
 

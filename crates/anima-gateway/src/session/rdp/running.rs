@@ -99,6 +99,10 @@ where
     if let Err(ended) = running.follow(locks).await {
         return ended;
     }
+    // The client learns the size of the screen at once, before the device draws.
+    if let Err(ended) = running.picture.send_frame(running.hub).await {
+        return ended;
+    }
     loop {
         if let Err(ended) = running.turn(&mut reads).await {
             return ended;
