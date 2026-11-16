@@ -9,6 +9,8 @@ program is `anima-local-hub`. It starts the database (`anima-database`,
 
 The Docker installation on a server does not use any of this.
 
+For the first start of the application, see [first-run.md](first-run.md).
+
 **State of the work:** the program is built and tested. A release of the application does not
 carry it yet. See `docs/research/one-click/s4-local-hub-tasks.md`, Section 7, and
 `docs/research/one-click/s6-first-run-tasks.md`.
