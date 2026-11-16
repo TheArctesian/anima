@@ -172,8 +172,7 @@ Result: Open.
 
 ### HT-010: "This machine" with the Anima VPN and NetBird together
 
-Built: on the branch `claude/vpn-own-address` (bdb321f1, 71bfcbdb; ADR-005, R-060), not
-merged. The desktop app takes its own VPN address from the Tailscale client that is logged in
+Built: merged to `main` in bdb321f1 and 71bfcbdb (ADR-005, R-060). The desktop app takes its own VPN address from the Tailscale client that is logged in
 to the hub's login server (`vpnLoginServer`). It does not read the interfaces. Security finding:
 [SF-001](security-findings.md#sf-001-this-machine-can-show-and-probe-the-address-of-another-overlay-network).
 

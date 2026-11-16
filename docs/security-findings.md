@@ -56,7 +56,8 @@ connected to it. The device that the operator added then had a host on a differe
 on the same computer is sufficient. An administrator of that other network controls the node
 that receives the probe and, later, the sessions of the operator.
 
-Mitigation now: built on the branch `claude/vpn-own-address`, not merged.
+Mitigation now: built and merged to `main` (fast-forward of `claude/vpn-own-address`). No
+person tested it yet.
 
 - bdb321f1: the desktop shell asks the Tailscale client for its own address
   (`tailscale status --json`, `Self.TailscaleIPs`). It accepts the address only when the client
@@ -65,7 +66,7 @@ Mitigation now: built on the branch `claude/vpn-own-address`, not merged.
 - 71bfcbdb: the hub is the one source of the login server (`Query.vpnLoginServer`).
 
 State: Open, until the human test [HT-010](need-human-testing.md#ht-010-this-machine-with-the-anima-vpn-and-netbird-together)
-passes and the branch is merged.
+passes.
 
 ### SF-002: the web view chooses the login server that the desktop shell trusts
 
