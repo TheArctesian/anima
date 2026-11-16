@@ -2,7 +2,7 @@
 
 Progress: the plan register in [work-plan.md](../../work-plan.md) Section 9 holds the state of this plan (PLN-005).
 
-Version 1.0. Date: 2026-11-15. Status: **In progress.** The S1 to S8 planning session started this
+Version 1.0. Date: 2026-11-15. Status: **Built; waits for the operator.** The S1 to S8 planning session started this
 item. Each design choice below is the recommendation of the build session; the choices that need
 an operator ruling are in Section 5.
 
@@ -198,10 +198,10 @@ relay and domain settings (S11), many hubs (S13), the metrics agent over the lin
 
 ### 2.9 Acceptance criterion 4 (no open inbound port on a public interface)
 
-The hub, the gateway and PostgreSQL listen on loopback or on Unix sockets. `anima-link` holds one
-UDP socket for WireGuard on every interface; it answers only the keys in its list (LNK-002) and
-serves no TCP port. So the criterion holds as "no TCP listener off loopback, and one UDP socket that
-answers only permitted keys" (security review S5). The library's port mapper (UPnP, NAT-PMP, PCP)
+The hub, the gateway and PostgreSQL listen on loopback or on Unix sockets. `anima-link` holds two
+UDP sockets for WireGuard on every interface (IPv4 and IPv6, seen in T11); it answers only the keys in its list (LNK-002) and
+serves no TCP port. So the criterion holds as "no TCP listener off loopback, and UDP sockets that
+answer only permitted keys" (security review S5). The library's port mapper (UPnP, NAT-PMP, PCP)
 can ask the router to open a port; the run-through checks whether the Tailcat build turns it off,
 and records `lsof -i` for each program.
 
@@ -218,8 +218,8 @@ and records `lsof -i` for each program.
 | T7 | Client: loopback address rule (F-1), QR code, AWK-005 seam (F-3) | Vitest | reviewer | Done | 3ffae7d5, ed6f7490 |
 | T8 | Client: first-run screens (choices, create, account, TOTP, invite, join, recover) and the two Settings sections | Vitest; `reviewer-interface` | reviewer, reviewer-interface, reviewer-security | Done after two fix rounds: F-10 for a typed address, a pending check and each socket connection (MF-1); no secret in a live region; steps hold their height; join keeps the invite and offers Retry. The QR size comes from a space token, because K5 has no QR size and is frozen | 3f536a5c, a9a688b3 to ff67a2bf, 6a256238, 604295d3, bb9d80d7 |
 | T9 | Guide `docs/setup/first-run.md`; this document's results | — | — | Done (Section 6 is completed by T10 and T11) | f598e176 and the commit of this row |
-| T10 | `origin/main` merged, full gates on that commit | Gate record | — | Not started | — |
-| T11 | Run-through on this Mac from a clean state (create a hub, account, invite, a second device link on this Mac, second use of the invite, revocation, `lsof`); LaunchAgent and folders removed after | Section 6 | — | Not started | — |
+| T10 | `origin/main` merged, full gates on that commit | Gate record | — | Done (Section 6.1) | 3abe87d0 |
+| T11 | Run-through on this Mac from a clean state (create a hub, account, invite, a second device link on this Mac, second use of the invite, revocation, `lsof`); LaunchAgent and folders removed after | Section 6 | — | Done (Section 6.2) | 3abe87d0 |
 
 ## 4. Gates and reviews
 
@@ -241,7 +241,64 @@ Under load, re-run alone `ra_031_without_a_wake…`, `sources::controls::src_004
 
 ## 6. Results
 
-(Filled in by T9 and T11.)
+### 6.1 Gates (T10)
+
+`origin/main` (eef4e7b1) merged at 3abe87d0. `BASE_REF=origin/main bun run gates` with
+`DATABASE_URL` unset and a private Rust build folder: 20 of 20 gates pass. The Rust tests ran
+5587 tests: 5587 pass, 1 skipped. No known timing test failed. The gate must use the default
+`PATH` (Homebrew cargo first): rustfmt 1.11 of `~/.cargo/bin` formats
+`crates/providers/exchange/src/parts/text.rs` differently from rustfmt 1.10, and `origin/main`
+fails `cargo fmt --check` under 1.11.
+
+### 6.2 Run-through on this Mac (T11, 2026-11-16, 3abe87d0)
+
+The steps use the programs and arguments that the shell uses (debug build, `anima-link` from
+`link/build.sh`, PostgreSQL 17.12). The desktop window was not driven; Section 6.3 lists the
+screen checks.
+
+| Step | What was seen | Result |
+| --- | --- | --- |
+| Clean state | No `ing.anima.hub` LaunchAgent, no hub root, nothing on 8443. | Pass |
+| Create | `install` 27 s; `ready` at 50 s, link `up` 1 s later. Folder modes as in `local-hub.md` Section 1. | Pass |
+| Account | `account status` `null`. A wrong code: refused, nothing saved. The right code: `Operator … is set, with TOTP.`; status `totp: true`. | Pass |
+| Sign-in (F-5, F-11) | No code: `UNAUTHENTICATED`. `Host: localhost.evil` and a foreign `Origin`: 403. Password and code with `Origin: tauri://localhost`: token. | Pass |
+| Invite | `createLinkInvite`: `Cache-Control: no-store`, expiry 15 minutes; the audit entry holds no invite text. | Pass |
+| Join | `anima-link join` 0.9 s; the device link ready 0.07 s after its start. Through its port: `linkDevices` shows the device, path `DIRECT`; sign-in works; the audit records the link address. | Pass |
+| Second use | `the invite is used, expired or wrong, or the hub is off`, after 10 s. | Pass |
+| Revoke | `Streams closed 1`; the open connection is closed at once; `linkDevices` empty; audit `delete link`. | Pass |
+| Criterion 4 | TCP listeners: hub 127.0.0.1:8443, gateway 127.0.0.1, device link 127.0.0.1 only. PostgreSQL: Unix socket only. Each link: two UDP sockets on `*` (WireGuard), one outgoing TCP to its relay. No port-mapping lines; `ts_omit_portmapper` in the build tags. | Pass |
+| Stop, start, F-6 | `stop` 6 s, nothing left running; `start` ready in 2.4 s. The link killed alone: group stays `ready`, link back `up` in 14.7 s. | Pass |
+| Clean-up | `remove`, then the hub root, `pg/` and the device folder deleted; only `builds/` stays. | Pass |
+
+No secret was found in any hub, device or join log (search for the password, TOTP secret, invite
+and token: 0 matches).
+
+Seen and not yet handled (follow-ups, not S6 requirements):
+
+- A revoked device's link stays up and logs nothing; new requests through its port are reset
+  after about 15 s, so the client sees a slow failure, not "revoked".
+- The `login` answer carries a token and no `Cache-Control: no-store`.
+- `anima-link join` prints its next command with an unquoted path; under Application Support the
+  path has a space.
+- A second use of an invite fails only after 10 s.
+
+### 6.3 Deferred live checks (need the operator or another computer)
+
+1. **The desktop window, on this Mac.** Build with `bun run --cwd apps/desktop tauri build --debug`
+   and start it with `ANIMA_DEV_PROGRAMS=<folder with anima-local-hub, anima-hub, anima-database,
+   anima-gateway, anima-link>` and `ANIMA_DEV_TREE=/opt/homebrew/opt/postgresql@17`. Choose
+   "Create a hub on this computer"; scan the TOTP QR code with a phone; finish the steps; save the
+   key copy; make an invite and check that its QR code is hidden after 15 minutes. In Settings,
+   "Replace the account": the native dialog shows; "Cancel" gives a 60 s wait. With Stay awake off,
+   the AWK-005 notice shows. Remove the hub after (Section 6.2, clean-up).
+2. **Join from a second Mac.** Make an invite on the first Mac, paste it on the second Mac
+   ("Join a hub"), compare the key on the join screen with "Devices on the link" on the first Mac,
+   sign in, revoke from the first Mac, and check that the second Mac loses the hub.
+3. **Linux.** Repeat check 1 on Linux with the systemd user unit; check F-10 with a listener of
+   another user on the hub port (the client must send nothing).
+4. **A real router.** On the hub computer, check the router's UPnP or NAT-PMP table: no mapping
+   for the hub, and from outside the network no TCP port of the hub answers.
+5. **A relayed path.** Join from a network where UDP is blocked; the path must show `RELAYED`.
 
 ## 7. What S12 packaging needs
 

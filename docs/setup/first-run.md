@@ -128,8 +128,9 @@ computer sleeps." See Section 6.
   address only (F-1).
 
 **The hub opens no inbound port on a public interface.** The hub, the gateway and the database
-listen on loopback or on Unix sockets. The link holds one UDP socket for WireGuard. It answers only
-the keys of permitted devices (LNK-002). It serves no TCP port.
+listen on loopback or on Unix sockets. The link holds two UDP sockets for WireGuard (one IPv4, one IPv6) and one outgoing
+connection to its relay. The UDP sockets answer only the keys of permitted devices (LNK-002). The
+link serves no TCP port.
 
 The gateway has no sign-in. Any program of this computer can ask it to connect to a VNC host. Do
 not use a hub on a computer that other people use. See [local-hub.md](local-hub.md), Section 5.

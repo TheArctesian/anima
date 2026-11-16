@@ -54,7 +54,7 @@ The application runs these for you. Each command accepts `--root <folder>` toget
 | Command | What it does |
 | --- | --- |
 | `anima-local-hub install --tree <folder>` | Copies the programs beside it and the PostgreSQL tree at `<folder>` to `programs/`, writes the unit file and starts the hub. On a hub that runs, it is an update: the hub stops, the programs are replaced, the hub starts. |
-| `anima-local-hub remove` | Stops the hub, removes the unit file and `programs/`. **It does not remove the database (with its URL files, which hold passwords), the key or the logs.** To remove those, delete the hub root yourself. On Linux, run `remove` with the same `XDG_DATA_HOME` as `install`: it finds the hub root from it. |
+| `anima-local-hub remove` | Stops the hub, removes the unit file and `programs/`. **It does not remove the database (with its URL files, which hold passwords), the key or the logs.** To remove those, delete the hub root yourself. On macOS also delete the socket folder `~/Library/Application Support/ing.anima.desktop/pg`, which keeps a stale `link.sock`. On Linux, run `remove` with the same `XDG_DATA_HOME` as `install`: it finds the hub root from it. |
 | `anima-local-hub status` | Prints one line of JSON. |
 | `anima-local-hub stop` | Stops the hub now and waits until it stopped. The hub stays installed: it starts again at the next login or with `start`. macOS: `launchctl bootout`; Linux: `systemctl --user stop`. |
 | `anima-local-hub start` | Starts the installed hub. On macOS a hub that launchd has loaded already is left as it is. |
