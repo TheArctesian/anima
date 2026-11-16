@@ -288,7 +288,8 @@ describe('in a browser', () => {
   it('D-3: the boxes and links stay off while the new page loads, so a second submit sends nothing', async () => {
     const target = open({ SignInBrowser: SIGNED_IN });
     await signInWith(target);
-    expect(boxes(target).every((box) => box.disabled)).toBe(true);
+    // Off but focusable: the focused box keeps focus, so it does not drop to the page (NAV-005).
+    expect(boxes(target).every((box) => box.readOnly && box.getAttribute('aria-disabled') === 'true')).toBe(true);
     expect(target.querySelector('.links button:disabled')).not.toBeNull();
     await pasteInto(target, 0, '654321');
     expect(hub.sent).toHaveLength(1);

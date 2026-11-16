@@ -3,18 +3,21 @@
   import { arrow, backspace, codeOf, CODE_LENGTH, EMPTY_DIGITS, enter, isComplete, type Entry } from './code-entry';
 
   interface Props {
+    /** The code is being sent: the boxes take nothing, but keep focus, so it does not drop to the page (NAV-005). */
     disabled?: boolean;
+    /** The first box takes focus on mount; off where a step heading has just taken it. */
+    autofocus?: boolean;
     /** The sixth box was filled: the page sends the code. */
     oncomplete: (code: string) => void;
   }
 
-  const { disabled = false, oncomplete }: Props = $props();
+  const { disabled = false, autofocus = true, oncomplete }: Props = $props();
 
   let digits = $state(EMPTY_DIGITS);
   let boxes: HTMLInputElement[] = $state([]);
 
   onMount(() => {
-    boxes[0]?.focus();
+    if (autofocus) boxes[0]?.focus();
   });
 
   function focusBox(index: number): void {
@@ -28,6 +31,7 @@
   }
 
   function put(index: number, text: string): void {
+    if (disabled) return;
     const entry = enter(digits, index, text);
     apply(entry);
     if (!isComplete(entry.digits)) return;
@@ -40,7 +44,7 @@
     if (event.ctrlKey || event.metaKey || event.altKey) return;
     if (event.key === 'Backspace') {
       event.preventDefault();
-      apply(backspace(digits, index));
+      if (!disabled) apply(backspace(digits, index));
     } else if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
       event.preventDefault();
       focusBox(arrow(index, event.key === 'ArrowLeft' ? -1 : 1));
@@ -72,7 +76,8 @@
       autocomplete={index === 0 ? 'one-time-code' : 'off'}
       aria-label="Digit {index + 1} of {CODE_LENGTH}"
       value={digit}
-      {disabled}
+      readonly={disabled}
+      aria-disabled={disabled}
       bind:this={boxes[index]}
       onkeydown={(event) => { keyed(event, index); }}
       onpaste={(event) => { pasted(event, index); }}
@@ -110,7 +115,7 @@
     outline-offset: var(--border-focus);
   }
 
-  input:disabled {
+  input[aria-disabled='true'] {
     opacity: var(--opacity-disabled);
   }
 </style>
