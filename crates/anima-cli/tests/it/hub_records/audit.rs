@@ -92,3 +92,54 @@ async fn log_020_audit_list_actor_filters_on_the_hub_and_keeps_it_for_the_next_p
         .await;
     assert_eq!(wrong.code, 2, "{wrong:?}");
 }
+
+/// An audit node of a change the hub sent to GitHub, with `record` as its change record.
+fn sent(id: u32, operator: &str, record: &Value) -> Value {
+    let mut entry = node(id, operator, [json!("USER"), json!("LOGIN"), Value::Null]);
+    entry["node"]["targetType"] = json!("repository");
+    entry["node"]["change"] = record.clone();
+    entry
+}
+
+#[tokio::test]
+async fn prj_028_audit_list_names_what_a_change_sent_to_github_did_and_to_what() {
+    let hub = FakeHub::start().await;
+    hub.answer(
+        "AuditList",
+        page(&[
+            sent(
+                1,
+                "ada",
+                &json!({ "function": "add_issue_comment", "repository": "acme/shop",
+                    "target": "issue#60", "outcome": "done", "number": 60, "created": 7 }),
+            ),
+            sent(
+                2,
+                "bob",
+                &json!({ "function": "merge_pull_request", "repository": "acme/shop",
+                    "target": "pull#12", "outcome": "refused", "refusal": "conflict" }),
+            ),
+            node(3, "cy", [json!("USER"), json!("LOGIN"), Value::Null]),
+        ]),
+    );
+    let run = signed_in()
+        .run(&["audit", "list", "--hub", &hub.origin])
+        .await;
+    assert_eq!(run.code, 0, "{run:?}");
+    let done = row(&run.stdout, "ada ");
+    assert!(
+        done.contains("add_issue_comment") && done.contains("acme/shop issue#60"),
+        "{done}"
+    );
+    assert!(!done.contains("(done)"), "{done}");
+    let refused = row(&run.stdout, "bob ");
+    assert!(
+        refused.contains("merge_pull_request (refused)") && refused.contains("acme/shop pull#12"),
+        "{refused}"
+    );
+    let other = row(&run.stdout, "cy ");
+    assert!(
+        other.contains("create") && other.contains("site 0190a000-0000-7000-8011-000000000001"),
+        "{other}"
+    );
+}

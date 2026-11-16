@@ -75,6 +75,12 @@ fn table(entries: &audit_list::AuditListAudit) -> Table {
             .actor_kind
             .as_ref()
             .map_or_else(|| NOT_RECORDED.to_owned(), enum_name);
+        let (action, target) = sent_to_github(&entry.change).unwrap_or_else(|| {
+            (
+                entry.action.clone(),
+                format!("{} {}", entry.target_type, entry.target_id),
+            )
+        });
         table.row(vec![
             entry.at.as_str().into(),
             actor.into(),
@@ -85,12 +91,25 @@ fn table(entries: &audit_list::AuditListAudit) -> Table {
                 .map_or_else(|| "-".to_owned(), enum_name)
                 .into(),
             entry.api_key_name.as_deref().unwrap_or("-").into(),
-            entry.action.as_str().into(),
-            format!("{} {}", entry.target_type, entry.target_id).into(),
+            action.into(),
+            target.into(),
             entry.client_addr.as_str().into(),
         ]);
     }
     table
+}
+
+/// The action and the target of a change the hub sent to GitHub, from its record (K-E1
+/// Section 13.6): the function, with the outcome when it was not done, and the repository by
+/// name with the issue, pull request, run or commit. `None` for every other entry.
+fn sent_to_github(change: &serde_json::Value) -> Option<(String, String)> {
+    let word = |name: &str| change.get(name).and_then(serde_json::Value::as_str);
+    let (function, repository, target) = (word("function")?, word("repository")?, word("target")?);
+    let action = match word("outcome") {
+        Some("done") | None => function.to_owned(),
+        Some(outcome) => format!("{function} ({outcome})"),
+    };
+    Some((action, format!("{repository} {target}")))
 }
 
 impl ActorArg {
