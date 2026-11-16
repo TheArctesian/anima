@@ -234,6 +234,31 @@ pub async fn record(
     Ok(id)
 }
 
+/// Up to `limit` stored events for a reader outside the event list, newest first: those at
+/// or after `from` that come before `before` (an instant and an event ID) in that order, from
+/// `sources` when it is given. The timeline reads the log through this (TML-007).
+///
+/// # Errors
+///
+/// `Error::Database` if the read fails.
+pub async fn before(
+    db: &PgPool,
+    (from, before): (DateTime<Utc>, (DateTime<Utc>, uuid::Uuid)),
+    sources: Option<Vec<Source>>,
+    limit: i64,
+) -> Result<Vec<EventSummary>, Error> {
+    let filter = model::EventFilter {
+        sources,
+        since: Some(from),
+        ..model::EventFilter::default()
+    };
+    let position = page::Position {
+        at: before.0,
+        id: before.1,
+    };
+    Ok(store::list_events(db, &filter, Some(position), limit).await?)
+}
+
 /// `text` with the secrets the event-log redaction finds masked, as `record` stores a message:
 /// `"[redacted]"` for a private key, an `otpauth://` URI or an `Authorization:` header, else
 /// each URL password, secret `key=value`, scheme credential and JWT masked (LOG-007). For text

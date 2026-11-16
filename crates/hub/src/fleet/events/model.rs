@@ -14,7 +14,8 @@ use super::actor::{Actor, ActorKind, TokenKind};
 use crate::{
     ids::{
         ApiKeyId, BuildJobId, BuilderId, ChannelId, CheckId, DeviceId, EventId, OperatorId,
-        ProjectId, ReleaseId, RepositoryId, SessionId, SiteId, SourceAccountId, WindowId,
+        ProjectId, RecordLinkId, ReleaseId, RepositoryId, SessionId, SiteId, SourceAccountId,
+        WindowId,
     },
     status::Status,
 };
@@ -280,6 +281,8 @@ pub enum AuditTarget {
     /// A project repository on GitHub, for a change the hub sent there; the change names the
     /// issue, pull request, run or commit (PRJ-028, OD-E14).
     Repository(RepositoryId),
+    /// A link between two records (LNK-001).
+    RecordLink(RecordLinkId),
 }
 
 impl AuditTarget {
@@ -307,6 +310,7 @@ impl AuditTarget {
             Self::SourceAccount(_) => "source_account",
             Self::Project(_) => "project",
             Self::Repository(_) => "repository",
+            Self::RecordLink(_) => "record_link",
         }
     }
 
@@ -333,6 +337,7 @@ impl AuditTarget {
             Self::SourceAccount(id) => id.to_string(),
             Self::Project(id) => id.to_string(),
             Self::Repository(id) => id.to_string(),
+            Self::RecordLink(id) => id.to_string(),
         }
     }
 }

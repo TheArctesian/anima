@@ -12,7 +12,7 @@ use sqlx::PgPool;
 use crate::{
     clock::Clock,
     config::Config,
-    engine::{extensions, sources},
+    engine::{extensions, links, sources, timeline},
     fleet::{
         access, builds, checks,
         credentials::Vault,
@@ -39,6 +39,7 @@ pub struct Query(
     events::graphql::Query,
     extensions::graphql::Query,
     link::graphql::Query,
+    links::graphql::Query,
     maintenance::graphql::Query,
     notifications::graphql::Query,
     projects::graphql::Query,
@@ -46,6 +47,7 @@ pub struct Query(
     sessions::graphql::Query,
     sources::graphql::Query,
     sources::graphql::GithubConnectQuery,
+    timeline::graphql::Query,
     vpn::graphql::Query,
 );
 
@@ -58,6 +60,7 @@ pub struct Mutation(
     devices::graphql::Mutation,
     extensions::graphql::Mutation,
     link::graphql::Mutation,
+    links::graphql::Mutation,
     maintenance::graphql::Mutation,
     metrics::graphql::Mutation,
     notifications::graphql::Mutation,
@@ -193,6 +196,8 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
         .data(sources)
         // projects: the changes each API key made this minute (K-E1 Section 13.1)
         .data(projects::KeyChanges::default())
+        // timeline: one adapter for each domain that has records to show (K-E3)
+        .data(timeline::Adapters::new(vec![timeline::event_log()]))
         .finish()
 }
 
