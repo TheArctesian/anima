@@ -59,6 +59,7 @@ A test build ran on 2026-11-16 on the branch `spike/mobile`. It used a hub on th
 | F5 | Sign-in, the second-factor step and "Sign in without a code" work on both platforms. |
 | F6 | On Android the device list, the device page and Settings fit the width of a phone without a layout change. |
 | F7 | The hub accepts the origin of the Android web view, `http://tauri.localhost`. It is already in `CLIENT_ORIGINS`. |
+| F22 | The device link builds as a library for a phone (2026-11-16, Go 1.27.4, the build tags of `link/build.sh`). A wrapper with one exported function built as a static library for the iPhone simulator and for a real iPhone (19.2 MB each) and as a shared library for Android arm64 (16.4 MB). Only the test package `tunnel/testbed` does not build for a phone. |
 
 ### 2.3 What failed
 
@@ -85,7 +86,7 @@ A test build ran on 2026-11-16 on the branch `spike/mobile`. It used a hub on th
 - A real phone. All tests used a simulator or an emulator.
 - A hub on the VPN. The test hub was on the same computer.
 - The key store on a build with a signature.
-- The device link inside an application. No test has built `link/` for iOS or for Android.
+- The device link at run time inside an application. It builds (F22). No test has joined a hub from a phone or sent a request through it.
 
 ## 3. Decisions for the operator
 
@@ -176,7 +177,7 @@ Each stage ends with a build that the operator can use. The state words are thos
 | M1-1 | M1 Shell | Mobile entry point; desktop modules behind `cfg(desktop)`; identifier `ing.anima.mobile` | MOB-001, MOB-002, MOB-003, MOB-007 | Done | `327abdc6` on the branch `mobile/m1-shell`. The application started on the iPhone simulator and on the Android emulator on 2026-11-16; sign-in and the device list worked on Android. The link commands of MOB-002 come with task M3-1. |
 | M1-2 | M1 Shell | Phone answers in `$lib/platform`; no call to a missing command | MOB-004, MOB-005 | In progress | `327abdc6`: MOB-004 is built. Open for MOB-005: with a loopback hub address a phone still calls `hub_listener_check`. The call fails and the client then sends nothing, which is safe. Task M3-1 gives the phone its own check. |
 | M1-3 | M1 Shell | Mobile build procedure and the compile gate | MOB-040, MOB-041, MOB-042 | Not started | — |
-| M1-4 | M1 Shell | Test: build `link/devicelink` as a library for iOS and for Android; join a test hub; get an answer at the loopback address. Write the result in this plan. | MOB-031, MOB-032, MOB-039 | Not started | — |
+| M1-4 | M1 Shell | Test: build `link/devicelink` as a library for iOS and for Android; join a test hub; get an answer at the loopback address. Write the result in this plan. | MOB-031, MOB-032, MOB-039 | In progress | The build part passes (F22); the wrapper was a throwaway and is not in the repository. Open: link the library into the shell, join a hub from the simulator and the emulator, and get an answer at the loopback address. The hub link needs a relay, so this part uses the network. |
 | M2-1 | M2 Layout | Safe area, status bar and no zoom on a field | MOB-011, MOB-012 | Done | The commit that changes this row, on the branch `mobile/m1-shell`. Checked on 2026-11-16: on the iPhone simulator the status bar area has the page colour and a field with the focus does not zoom the page; on the Android emulator the content starts below the status bar. Not checked on a real phone. |
 | M2-2 | M2 Layout | Bottom navigation bar | MOB-010, MOB-019 | Not started | — |
 | M2-3 | M2 Layout | Logs panel closed; names and tabs that fit | MOB-013, MOB-015 | Not started | — |
