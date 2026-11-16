@@ -1,5 +1,6 @@
-//! Runs a fixed OS program (no shell) and waits for it for a limited time. The shell's four
-//! program runs share it: the URL, folder and settings openers, and the computer-name reader.
+//! Runs a fixed OS program (no shell) and waits for it for a limited time. The shell's
+//! program runs share it: the URL, folder and settings openers, the computer-name reader and
+//! the VPN client questions.
 //! It logs nothing; callers log at their own boundary (LOG-007).
 
 use std::{
