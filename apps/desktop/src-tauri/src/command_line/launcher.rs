@@ -48,11 +48,11 @@ pub fn script(appimage: &Path) -> Option<String> {
     Some(format!(
         "#!/bin/sh\n\
          {MARK}\n\
-         # It runs the anima program inside the AppImage below. Remove it in Anima:\n\
+         # It runs the anima program inside the AppImage below. Remove it in Anima.ing:\n\
          # Settings > Updates > Command line tool.\n\
          {FILE_LINE}{}\n\
          if [ ! -f \"$appimage\" ]; then\n  \
-         echo \"anima: the Anima AppImage is not at $appimage. It was moved or deleted. Open Anima and install the command line tool again (Settings > Updates).\" >&2\n  \
+         echo \"anima: the Anima.ing AppImage is not at $appimage. It was moved or deleted. Open Anima.ing and install the command line tool again (Settings > Updates).\" >&2\n  \
          exit 127\n\
          fi\n\
          exec \"$appimage\" {FLAG} \"$@\"\n",

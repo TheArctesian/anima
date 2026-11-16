@@ -79,7 +79,7 @@ describe('openWebInterface in a browser (WEB-011, E-5)', () => {
     ['https://nas.example.net/', 'ANIMA_TAB'],
     ['http://nas.example.net/', 'SYSTEM_BROWSER'],
     ['https://nas.example.net/', 'SYSTEM_BROWSER'],
-  ] as const)('WEB-011: %s with %s opens one new tab with noopener,noreferrer and no Anima tab', async (url, openIn) => {
+  ] as const)('WEB-011: %s with %s opens one new tab with noopener,noreferrer and no Anima.ing tab', async (url, openIn) => {
     const { sessions, shell } = ports();
     await openWebInterface(sessions, shell, opening(url, openIn));
     expect(opened).toHaveBeenCalledExactlyOnceWith(url, '_blank', 'noopener,noreferrer');

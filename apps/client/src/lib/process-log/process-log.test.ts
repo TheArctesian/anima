@@ -38,7 +38,7 @@ it('LOG-008: a failure shows a short inline message and no dialog', async () => 
   app = mount(LogFolderRow, { target: document.body });
   document.querySelector('button')?.click();
   await settle();
-  expect(document.querySelector('[role="alert"]')?.textContent).toBe('Anima could not open the log folder.');
+  expect(document.querySelector('[role="alert"]')?.textContent).toBe('Anima.ing could not open the log folder.');
   expect(document.querySelector('dialog, [role="alertdialog"]')).toBeNull();
 });
 

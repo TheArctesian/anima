@@ -28,7 +28,7 @@ export function outcomeWord(delivery: Pick<Delivery, 'ok'>): string {
 }
 
 /** Said for a reason this client does not know, for example one a newer hub added (CR-14.5). */
-export const UNKNOWN_REASON = 'Reason not known to Anima.';
+export const UNKNOWN_REASON = 'Unknown to Anima.ing.';
 
 // Each sentence fits one line of a row at 390 px (29 characters), so no reason moves the list (MOT-007).
 // The `Record` makes every K1 value need a sentence; lookups go through a map, so a value such as `constructor` finds nothing.

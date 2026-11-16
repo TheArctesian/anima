@@ -91,16 +91,16 @@ describe('an edited channel\'s headers, mode and template', () => {
   it('F-8: replacing the headers needs every value again; none left removes them all', () => {
     const replaced = saved('WEBHOOK', (draft) => {
       draft.webhook.replaceHeaders = true;
-      draft.webhook.headers = [{ name: 'X-Anima-Source', value: FAKE_SECRET }];
+      draft.webhook.headers = [{ name: 'X-Anima.ing-Source', value: FAKE_SECRET }];
     });
-    expect(settingsOf(replaced)).toMatchObject({ webhook: { headers: [{ name: 'X-Anima-Source', value: FAKE_SECRET }] } });
+    expect(settingsOf(replaced)).toMatchObject({ webhook: { headers: [{ name: 'X-Anima.ing-Source', value: FAKE_SECRET }] } });
     const emptied = saved('WEBHOOK', (draft) => {
       draft.webhook.replaceHeaders = true;
     });
     expect(settingsOf(emptied)).toMatchObject({ webhook: { headers: [] } });
     const missing = saved('WEBHOOK', (draft) => {
       draft.webhook.replaceHeaders = true;
-      draft.webhook.headers = [{ name: 'X-Anima-Source', value: '' }];
+      draft.webhook.headers = [{ name: 'X-Anima.ing-Source', value: '' }];
     });
     expect(missing.ok ? [] : missing.problems.map((problem) => problem.field)).toEqual(['webhook.headers']);
   });

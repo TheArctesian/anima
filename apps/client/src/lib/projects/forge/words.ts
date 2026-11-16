@@ -16,7 +16,7 @@ export function accessWords(access: RepositoryAccess): { title: string; line: st
     case 'PAUSED':
       return { title: 'The account is paused', line: 'Resume the account that holds this repository in Settings, Integrations.' };
     case 'LEFT_OUT':
-      return { title: 'Left out', line: 'This repository is left out of Anima. Restore it on the Overview tab to read it.' };
+      return { title: 'Left out', line: 'This repository is left out of Anima.ing. Restore it on the Overview tab to read it.' };
     case 'GONE':
       return { title: 'No longer on GitHub', line: 'The connection no longer lists this repository.' };
   }

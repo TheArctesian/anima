@@ -49,8 +49,8 @@
   const { webInterface, device, tabId, visible, overlayOpen, shell = webViewShell(), api = webTabApi(useHub()), now = Date.now }: Props = $props();
 
   const TEXT = {
-    scheme: 'Anima opens only http and https web interfaces.',
-    pin: 'The pinned fingerprint of this web interface cannot be read, so Anima does not open it.',
+    scheme: 'Anima.ing opens only http and https web interfaces.',
+    pin: 'The pinned fingerprint of this web interface cannot be read, so Anima.ing does not open it.',
     browser: 'The system browser could not be opened.',
   } as const;
 

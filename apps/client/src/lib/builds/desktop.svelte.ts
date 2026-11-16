@@ -34,7 +34,7 @@ export function builderIdStore(storage: Storage, address: HubAddress): BuilderId
 
 /** The name the hub records for this computer: its own name, or a fixed one when the shell cannot say. */
 async function computerName(): Promise<string> {
-  return (await readThisMachine())?.name ?? 'Anima builder';
+  return (await readThisMachine())?.name ?? 'Anima.ing builder';
 }
 
 /**

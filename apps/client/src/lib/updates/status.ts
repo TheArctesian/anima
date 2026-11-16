@@ -9,7 +9,7 @@ function describeFailure(reason: FailureReason): string {
     case 'no-feed':
       return 'No update is published for this computer yet.';
     case 'signature':
-      return 'An update was refused because its signature did not verify. Anima kept the version it has.';
+      return 'An update was refused because its signature did not verify. Anima.ing kept the version it has.';
     case 'other':
       return 'The last update attempt failed.';
   }
@@ -25,9 +25,9 @@ export function describeUpdate({ state, nextCheckAt }: UpdateSnapshot, time: (at
     case 'checking':
       return 'Checking…';
     case 'downloading':
-      return `Downloading Anima ${state.version}…`;
+      return `Downloading Anima.ing ${state.version}…`;
     case 'installed':
-      return `Anima ${state.version} is installed — restart to update`;
+      return `Anima.ing ${state.version} is installed — restart to update`;
     case 'failed':
       return describeFailure(state.reason) + NEXT(nextCheckAt, time);
   }

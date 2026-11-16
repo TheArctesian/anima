@@ -95,7 +95,7 @@
 <div class="keys" bind:this={root}>
   <SettingRow label="New key">
     {#snippet hint()}
-      <p class="hint">Anima shows a new key once, when it is made.</p>
+      <p class="hint">Anima.ing shows a new key once, when it is made.</p>
     {/snippet}
     <FormButton tabindex={0} data-create onclick={() => { creating = true; }}>Create API key</FormButton>
   </SettingRow>
@@ -109,7 +109,7 @@
     {#if loadFailed}
       <div class="failed">
         <span class="mark"><Icon name="carbon:warning" size="sm" /></span>
-        <p role="alert">Anima could not load the API keys.</p>
+        <p role="alert">Anima.ing could not load the API keys.</p>
         <FormButton tabindex={0} aria-disabled={retrying} aria-busy={retrying} onclick={retry}>Try again</FormButton>
       </div>
     {:else if keys !== null && keys.length === 0}

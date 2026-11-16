@@ -36,7 +36,7 @@ function show(): void {
 it('NAV-010, UR-7: the bar names the page in its h1 and the window title, and links back to its list', () => {
   show();
   expect(document.querySelector('h1')?.textContent).toBe('nas');
-  expect(document.title).toBe('nas – Anima');
+  expect(document.title).toBe('nas – Anima.ing');
   const back = document.querySelector('nav a');
   expect(back?.textContent).toBe('Devices');
   expect(back?.getAttribute('href')).toMatch(/\/devices$/);
@@ -61,5 +61,5 @@ it('D-13, MOT-007: with no title yet the bar holds only the back link and a hidd
   expect(document.querySelector('h1')).toBeNull();
   expect(document.querySelector('nav')?.textContent.trim()).toBe('Devices');
   expect(document.querySelector('.placeholder')?.getAttribute('aria-hidden')).toBe('true');
-  expect(document.title).toBe('Anima');
+  expect(document.title).toBe('Anima.ing');
 });

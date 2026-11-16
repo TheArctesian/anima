@@ -42,7 +42,7 @@
     } finally {
       busy = false;
     }
-    if (!result.ok) problem = `Anima could not save the ${label.toLowerCase()} period.`;
+    if (!result.ok) problem = `Anima.ing could not save the ${label.toLowerCase()} period.`;
   }
 </script>
 

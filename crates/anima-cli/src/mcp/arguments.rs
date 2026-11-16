@@ -71,7 +71,7 @@ pub fn confirmed(confirm: &str, name: &str, what: &str) -> Result<(), ToolError>
     if name.trim().is_empty() {
         return Err(ToolError::Refused(format!(
             "Nothing was deleted: the {what} has no name to confirm. The operator deletes it \
-             in the Anima client or with the command line."
+             in the Anima.ing client or with the command line."
         )));
     }
     if confirm == name {

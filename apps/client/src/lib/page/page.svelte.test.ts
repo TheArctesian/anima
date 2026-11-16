@@ -18,12 +18,12 @@ afterEach(async () => {
 
 const text = (html: string) => createRawSnippet(() => ({ render: () => html }));
 
-it('NAV-010: the page header draws the h1 and sets the document title to "<page> – Anima"', () => {
+it('NAV-010: the page header draws the h1 and sets the document title to "<page> – Anima.ing"', () => {
   app = mount(PageHeader, { target: document.body, props: { title: 'Devices', detail: '12 devices', actions: text('<button>Add device</button>') } });
   flushSync();
   expect(document.querySelector('h1')?.textContent).toBe('Devices');
-  expect(document.title).toBe('Devices – Anima');
-  expect(pageTitle('Settings')).toBe('Settings – Anima');
+  expect(document.title).toBe('Devices – Anima.ing');
+  expect(pageTitle('Settings')).toBe('Settings – Anima.ing');
   expect(document.querySelector('header p')?.textContent).toBe('12 devices');
   expect(document.querySelector('header button')?.textContent).toBe('Add device');
 });

@@ -132,7 +132,7 @@ it('MOT-007: a hidden key row keeps one key\'s space in the cell where the list,
 
 it('INT-003: a failed ApiKeys query shows only the section\'s fixed error, keeps Create, and Try again loads again', async () => {
   const target = await open({ ApiKeys: failure('INTERNAL', 'Unknown field "apiKeys"') });
-  expect(target.querySelector('[role="alert"]')?.textContent).toBe('Anima could not load the API keys.');
+  expect(target.querySelector('[role="alert"]')?.textContent).toBe('Anima.ing could not load the API keys.');
   expect(target.textContent).not.toContain('Unknown field');
   expect(button('Create API key').disabled).toBe(false);
   button('Try again').click();

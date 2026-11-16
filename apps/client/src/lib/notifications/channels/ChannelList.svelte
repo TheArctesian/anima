@@ -116,7 +116,7 @@
     {#if loadFailed}
       <SettingRow>
         {#snippet label()}
-          <p role="alert">Anima could not load the notification channels.</p>
+          <p role="alert">Anima.ing could not load the notification channels.</p>
         {/snippet}
         <FormButton tabindex={0} aria-disabled={retrying} aria-busy={retrying} onclick={retry}>Try again</FormButton>
       </SettingRow>

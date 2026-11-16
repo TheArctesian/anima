@@ -13,7 +13,7 @@
     /** The thing's kind or system, in the accent colour: a device type, a session's protocol. */
     icon: IconName;
     /**
-     * The thing's name: the visible `h1`, and the window title "<title> – Anima" (NAV-010). `null` while it loads, or
+     * The thing's name: the visible `h1`, and the window title "<title> – Anima.ing" (NAV-010). `null` while it loads, or
      * when there is no such thing: only the back link shows, and a placeholder keeps the row's height (D-13, MOT-007).
      */
     title: string | null;
@@ -46,7 +46,7 @@
   });
 </script>
 
-<svelte:head><title>{title === null ? 'Anima' : pageTitle(title)}</title></svelte:head>
+<svelte:head><title>{title === null ? 'Anima.ing' : pageTitle(title)}</title></svelte:head>
 
 <div class="sentinel" aria-hidden="true" bind:this={sentinel}></div>
 <!-- The detail bar (UR-7, D16): every detail page's header. The list it came from, the thing's icon and name, its

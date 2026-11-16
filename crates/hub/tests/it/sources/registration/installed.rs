@@ -93,7 +93,7 @@ async fn prj_041_an_attempt_that_does_not_end_within_the_bound_gets_the_finishin
     let took = asked.elapsed();
     assert_eq!(back.status, StatusCode::OK);
     assert!(
-        back.body.contains("Anima finishes the connection"),
+        back.body.contains("Anima.ing finishes the connection"),
         "{}",
         back.body
     );

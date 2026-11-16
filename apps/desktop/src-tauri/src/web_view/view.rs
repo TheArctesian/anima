@@ -32,7 +32,7 @@ const BLANK: &str = "about:blank";
 const GUARD_PATIENCE: std::time::Duration = std::time::Duration::from_secs(10);
 
 /// The title of a popped-out web view's window: fixed text, never the page's (LOG-007).
-const POP_OUT_TITLE: &str = "Anima";
+const POP_OUT_TITLE: &str = "Anima.ing";
 const POP_OUT_WIDTH: f64 = 1200.0;
 const POP_OUT_HEIGHT: f64 = 800.0;
 
