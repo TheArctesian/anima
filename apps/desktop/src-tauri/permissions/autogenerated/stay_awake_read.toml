@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-stay-awake-read"
+description = "Enables the stay_awake_read command without any pre-configured scope."
+commands.allow = ["stay_awake_read"]
+
+[[permission]]
+identifier = "deny-stay-awake-read"
+description = "Denies the stay_awake_read command without any pre-configured scope."
+commands.deny = ["stay_awake_read"]

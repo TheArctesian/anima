@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-stay-awake-lid-remove"
+description = "Enables the stay_awake_lid_remove command without any pre-configured scope."
+commands.allow = ["stay_awake_lid_remove"]
+
+[[permission]]
+identifier = "deny-stay-awake-lid-remove"
+description = "Denies the stay_awake_lid_remove command without any pre-configured scope."
+commands.deny = ["stay_awake_lid_remove"]
