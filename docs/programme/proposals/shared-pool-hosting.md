@@ -4,8 +4,9 @@ Proposal, 2026-11-16, not yet decided. Instead of one dedicated server per custo
 customer's hub as an isolated instance on a few large shared servers (the pool), meter each hub's
 CPU, memory and disk, show that to the customer as a live gauge, and sell more of the pool, or a
 dedicated box, when a hub runs short. That replaces per-device pricing with load-based upgrades.
-At pool prices a Solo hub costs roughly $3 to $5 a month in hardware instead of $9.30, so Solo at
-$19 keeps a healthy margin even if the hub needs more memory than hoped. The price is real
+At pool prices a Solo hub costs about $4.80 a month in hardware before setup, disk, backups and
+spare capacity, instead of $9.30. Solo at $19 still keeps a margin, but the margin is thinner
+than the earlier $3 to $5 estimate. The price is real
 operations work: isolation, shared networking and host upkeep become Anima.ing's problem.
 
 All capacity figures below are estimates. The device figures are the founder's working numbers,
@@ -17,7 +18,7 @@ and hub memory is still unmeasured (see the open task in the vault's Hosting Cos
 | --- | --- | --- |
 | Unit | One VPS per hub (UpCloud 2 GB, about $9.30) | One isolated instance per hub on a large host |
 | Host | Rented per customer | A few dedicated servers, for example Hetzner AX102 |
-| Hardware cost per Solo hub | $9.30 to $13.90 | About $3 to $5 (estimate, see section 5) |
+| Hardware cost per Solo hub | $9.30 to $13.90 | About $4.80 before extras (estimate, see section 5) |
 | Growing a hub | Resize or replace the VPS | Change the instance's limits, or move it to a bigger slice |
 | Who runs the isolation | The cloud provider | Anima.ing |
 
@@ -69,15 +70,20 @@ metrics store exhausts first.
 Working capacity numbers: a shared CPU slice handles about 10 devices, one dedicated core about
 100 to 200, and beyond that the hub needs a bigger instance (vertical scaling) at a higher cost.
 
-Rough pool cost from the vault's Hosting Costs note: an AX102 (16 cores, 128 GB) is about $184 a month, or
-about $11.50 per core. If a Solo slice is guaranteed a quarter of a core (it can burst higher
-when the host is idle) plus 1.5 GB of memory, one AX102 holds about 60 Solo hubs, limited by
-CPU, which is about $3.10 each before disk, backups and spare capacity. Budget $3 to $5.
+Rough pool cost: an AX102 (16 cores, 128 GB) lists at €259 a month plus a €129 setup fee,
+about $286 a month at 1.1052 USD/EUR (ECB reference rate of 13 November 2026), from
+https://www.hetzner.com/dedicated-rootserver/ax102/. That is about $17.90 per core, or about
+$4.80 per hub if one AX102 holds about 60 Solo hubs, limited by CPU, before setup, disk,
+backups and spare capacity. The setup fee is about $143, or about $2.40 per hub once, about
+$0.20 a month if spread over a year. The earlier figure of about $184 a month (about $3.10
+per hub, from the vault's Hosting Costs note) is out of date. If a Solo slice is guaranteed a
+quarter of a core (it can burst higher when the host is idle) plus 1.5 GB of memory, the
+60-hub packing still holds as a working estimate, limited by CPU.
 
 | Package | Slice | Devices it handles (estimate) | Price | Hardware cost (estimate) |
 | --- | --- | --- | --- | --- |
-| Solo | Shared, quarter core guaranteed, 1.5 GB, 20 GB disk | About 10 comfortably; the gauge decides beyond that | $19 a month or $199 a year | $3 to $5 |
-| Solo Plus (name to decide) | One dedicated core, 4 GB, 60 GB disk | 100 to 200 | To decide; about $39 to $49 would keep a margin similar to Solo's | About $13 to $16 |
+| Solo | Shared, quarter core guaranteed, 1.5 GB, 20 GB disk | About 10 comfortably; the gauge decides beyond that | $19 a month or $199 a year | About $4.80 before extras |
+| Solo Plus (name to decide) | One dedicated core, 4 GB, 60 GB disk | 100 to 200 | To decide; about $49 to $59 would keep a margin similar to Solo's | About $20 to $25 |
 | Dedicated | Own server or large instance, scaled up | 200 and more | Custom (enterprise) | Quoted per customer |
 
 - The Solo device cap stops being the gate. Keep 25 as a published guide ("built for about 10 to
