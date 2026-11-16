@@ -90,10 +90,10 @@ describe('the first run (FRN-001, NAV-009)', () => {
     expect(isFirstRun(false, false, null)).toBe(false);
   });
 
-  function firstStart(addressSaved: boolean, token: string | null) {
+  function firstStart(addressSaved: boolean, token: string | null | Error) {
     const goToSignIn = vi.fn();
     const goToWelcome = vi.fn();
-    const read = vi.fn(() => Promise.resolve(token));
+    const read = vi.fn(() => (token instanceof Error ? Promise.reject(token) : Promise.resolve(token)));
     const me = vi.fn();
     const run = () => startGuard({ route: '/devices', address: ADDRESS, token: read, desktop: true, me, goToSignIn, firstRun: { addressSaved, goToWelcome } });
     return { goToSignIn, goToWelcome, run };
@@ -108,6 +108,13 @@ describe('the first run (FRN-001, NAV-009)', () => {
 
   it('NAV-009: an install with a saved address goes to sign-in as before', async () => {
     const c = firstStart(true, null);
+    await c.run();
+    expect(c.goToSignIn).toHaveBeenCalledOnce();
+    expect(c.goToWelcome).not.toHaveBeenCalled();
+  });
+
+  it('FRN-001: a token read that rejects is not a first run: with no saved address it still goes to sign-in', async () => {
+    const c = firstStart(false, new AccessTokenError('denied'));
     await c.run();
     expect(c.goToSignIn).toHaveBeenCalledOnce();
     expect(c.goToWelcome).not.toHaveBeenCalled();

@@ -30,7 +30,7 @@
           <strong>{choice.title}</strong><Icon name="carbon:arrow-right" size="sm" />
         </a>
       {:else}
-        <strong aria-disabled="true">{choice.title}</strong>
+        <strong>{choice.title}</strong>
       {/if}
       <p id="{choice.id}-line">{choice.line}</p>
       {#if choice.off !== null}<p class="reason">{choice.off}</p>{/if}
@@ -75,6 +75,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
+    min-block-size: var(--target-min-desktop);
     color: var(--text);
     text-decoration: none;
   }
@@ -94,11 +95,10 @@
     line-height: var(--leading-normal);
   }
 
-  .reason {
-    color: var(--text-tertiary);
-  }
-
   .secondary {
+    display: inline-flex;
+    align-items: center;
+    min-block-size: var(--target-min-desktop);
     justify-self: start;
     color: var(--accent);
     font-size: var(--text-sm);

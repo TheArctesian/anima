@@ -63,6 +63,15 @@ describe('pollUntilSettled', () => {
     expect(seen).toHaveBeenCalledTimes(3);
   });
 
+  it('FRN-002, LHB-010: a failed hub starts again by itself, so the poll goes on through failed and stops at blocked', async () => {
+    const failed: LocalHubResult<LocalHubStatus> = { ok: true, value: { installed: true, running: false, state: 'failed', cause: 'anima-hub' } };
+    const blocked: LocalHubResult<LocalHubStatus> = { ok: true, value: { installed: true, running: false, state: 'blocked', reason: 'key-missing' } };
+    const seen = vi.fn();
+    const result = await pollUntilSettled({ read: answers(failed, starting, blocked), wait: () => Promise.resolve(), seen, stopped: () => false });
+    expect(result).toEqual(blocked);
+    expect(seen).toHaveBeenCalledTimes(3);
+  });
+
   it('FRN-002: a refusal of the shell ends the poll with it', async () => {
     const refused = { ok: false, problem: 'failed', message: 'x' } as const;
     expect(await pollUntilSettled({ read: answers(starting, refused), wait: () => Promise.resolve(), seen: vi.fn(), stopped: () => false })).toEqual(refused);

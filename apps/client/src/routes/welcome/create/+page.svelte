@@ -64,7 +64,7 @@
 <style>
   .place {
     margin: 0;
-    color: var(--text-tertiary);
+    color: var(--text-secondary);
     font-size: var(--text-sm);
   }
 

@@ -4,6 +4,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { installAnimations } from '$lib/forms/animations.fixture';
 import type { HubResult } from '$lib/hub/hub';
 import type { LinkApi, LinkDevice } from './api';
+import InviteCode from './InviteCode.svelte';
 import LinkDevicesSection from './LinkDevicesSection.svelte';
 
 vi.mock('$lib/hub/context', () => ({ useHub: () => ({ request: vi.fn() }) }));
@@ -91,9 +92,19 @@ it('FRN-009, LNK-003: Invite a device asks for a name, then shows the QR code, t
   expect(api.invite).toHaveBeenCalledWith('laptop');
   const dialog = document.querySelector('[role="dialog"]');
   expect(dialog?.querySelector('svg[role="img"]')?.getAttribute('aria-label')).toBe('Invite for laptop');
-  expect(dialog?.querySelector('output')?.textContent).toBe(INVITE);
+  expect(dialog?.querySelector('code.text')?.textContent).toBe(INVITE);
   expect(dialog?.querySelector('time')?.textContent).toBe('15:00');
   expect(dialog?.querySelector('[role="status"]')?.textContent.trim()).toBe('');
+});
+
+it('FRN-009, LNK-003: an expired invite shows neither its QR code nor its text', () => {
+  const target = document.createElement('div');
+  document.body.append(target);
+  app = mount(InviteCode, { target, props: { invite: { invite: INVITE, expiresAt: '2026-11-15T09:59:59Z' }, name: 'laptop', now: NOW } });
+  flushSync();
+  expect(target.querySelector('svg')).toBeNull();
+  expect(target.textContent).not.toContain(INVITE);
+  expect(target.textContent).toContain('This invite has expired. Make another.');
 });
 
 it('FRN-009, LNK-004: Revoke asks first, then revokes by key and loads the list again', async () => {

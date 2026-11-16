@@ -49,9 +49,13 @@ export async function startGuard(check: StartCheck): Promise<void> {
     if (!result.ok) signInNeeded(result.error, check.goToSignIn);
     return;
   }
-  const token = await check.token(check.address).catch(() => null);
-  if (token !== null && token !== '') return;
-  if (check.firstRun !== undefined && isFirstRun(true, check.firstRun.addressSaved, token)) check.firstRun.goToWelcome();
+  // A read that rejects (a refused key store, a refused listener check) is not a first run: it goes to sign-in.
+  const read = await check.token(check.address).then(
+    (token) => ({ ok: true as const, token }),
+    () => ({ ok: false as const }),
+  );
+  if (read.ok && read.token !== null && read.token !== '') return;
+  if (read.ok && check.firstRun !== undefined && isFirstRun(true, check.firstRun.addressSaved, read.token)) check.firstRun.goToWelcome();
   else check.goToSignIn();
 }
 

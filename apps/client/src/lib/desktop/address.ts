@@ -30,3 +30,8 @@ export function storeHubAddress(storage: Storage, text: string): ReturnType<type
   if (parsed.ok) storage.setItem(STORAGE_KEY, parsed.value.origin);
   return parsed;
 }
+
+/** Removes the saved hub address when it is `origin`, as when this device leaves the hub of its link (M-C). */
+export function forgetHubAddress(storage: Storage, origin: string): void {
+  if (readText(storage) === origin) storage.removeItem(STORAGE_KEY);
+}

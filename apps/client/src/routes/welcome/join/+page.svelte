@@ -3,19 +3,28 @@
   import { resolve } from '$app/paths';
   import { loadClientAt } from '$lib/access/navigation';
   import { storeHubAddress } from '$lib/desktop/address';
-  import { joinLink } from '$lib/desktop/link/shell';
+  import { joinLink, type Joined } from '$lib/desktop/link/shell';
   import { clearAccessToken } from '$lib/desktop/token';
   import FormButton from '$lib/forms/FormButton.svelte';
   import { crossFade } from '$lib/motion/roles/transitions';
-  import { joinHub } from './join';
+  import { finishJoin, joinHub, type Finished } from './join';
 
-  /** The invite as pasted: in this field only, never logged; dropped once it is sent (LOG-007). */
+  /** The invite as pasted: in this field only, never logged; dropped once the hub may have used it (LOG-007). */
   let invite = $state('');
   let busy = $state(false);
   let problem = $state<string | null>(null);
-  let fingerprint = $state<string | null>(null);
+  /** The joined device: its key and link port, which are not secrets. */
+  let device = $state<Joined | null>(null);
+  let finished = $state<Finished | null>(null);
   let title: HTMLElement | undefined = $state();
   let done: HTMLElement | undefined = $state();
+
+  const after = {
+    clearToken: clearAccessToken,
+    saveAddress: (origin: string) => {
+      storeHubAddress(localStorage, origin);
+    },
+  };
 
   onMount(() => {
     title?.focus();
@@ -28,27 +37,33 @@
     problem = null;
     const sent = invite;
     invite = '';
-    const outcome = await joinHub(sent, {
-      join: joinLink,
-      clearToken: clearAccessToken,
-      saveAddress: (origin) => {
-        storeHubAddress(localStorage, origin);
-      },
-    });
+    const outcome = await joinHub(sent, { join: joinLink, ...after });
     busy = false;
-    if (!outcome.ok) {
+    if (!outcome.joined) {
       problem = outcome.message;
+      // A refusal before the hub saw the invite leaves it usable: the field gets it back.
+      if (outcome.inviteKept) invite = sent;
       return;
     }
-    fingerprint = outcome.fingerprint;
+    ({ device, finished } = outcome);
     await tick();
     done?.focus();
+  }
+
+  /** The invite is spent: Retry repeats only the steps after the join. */
+  async function retry(): Promise<void> {
+    if (busy || device === null) return;
+    busy = true;
+    finished = await finishJoin(device, after);
+    busy = false;
   }
 </script>
 
 <h1 tabindex="-1" bind:this={title}>Join a hub</h1>
 
-{#if fingerprint === null}
+<!-- The form and the joined view share one cell, so they cross-fade in place, as the create steps do (MOT-008). -->
+<div class="stack">
+{#if device === null}
   <form onsubmit={join} novalidate transition:crossFade>
     <label for="invite">Invite</label>
     <p id="invite-about" class="about">Make an invite on the hub computer, under Settings, Devices on the link. It works once, for 15 minutes.</p>
@@ -73,17 +88,29 @@
   <div class="joined" transition:crossFade>
     <h2 tabindex="-1" bind:this={done}>This device joined the hub</h2>
     <p>This device's key is</p>
-    <p class="fingerprint">{fingerprint}</p>
+    <p class="fingerprint">{device.fingerprint}</p>
     <p>Compare it with the device list on the hub. If the hub does not list it, the invite was not from your hub.</p>
-    <FormButton tone="primary" onclick={() => loadClientAt('/sign-in')}>Continue to sign in</FormButton>
+    <p class="problem" role="alert">{finished?.ok === false ? finished.message : ''}</p>
+    {#if finished?.ok === true}
+      <FormButton tone="primary" onclick={() => loadClientAt('/sign-in')}>Continue to sign in</FormButton>
+    {:else}
+      <FormButton tone="primary" {busy} onclick={() => void retry()}>Retry</FormButton>
+    {/if}
   </div>
 {/if}
+</div>
 
 <style>
+  .stack {
+    display: grid;
+  }
+
   form,
   .joined {
+    grid-area: 1 / 1;
     display: grid;
     gap: var(--space-2);
+    align-content: start;
   }
 
   label {
@@ -137,7 +164,11 @@
   }
 
   .actions a {
-    color: var(--text-tertiary);
+    display: inline-flex;
+    align-items: center;
+    min-block-size: var(--target-min-desktop);
+    min-inline-size: var(--target-min-desktop);
+    color: var(--text-secondary);
     font-size: var(--text-sm);
   }
 

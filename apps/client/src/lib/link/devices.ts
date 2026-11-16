@@ -1,5 +1,5 @@
 import type { DeviceLinkStatus } from '$lib/desktop/link/shell';
-import type { HubError } from '$lib/hub/hub';
+import { parseHubAddress, type HubAddress, type HubError } from '$lib/hub/hub';
 import type { LinkDevice } from './api';
 
 /** How a device reaches the hub, in words (LNK-006). */
@@ -77,4 +77,10 @@ export function deviceLinkText(status: DeviceLinkStatus): string {
           ? 'Down: this build does not carry the link program.'
           : 'Down: the link ended. It starts again in 10 seconds.';
   }
+}
+
+/** The hub address of the device link at `port`: always `127.0.0.1`, never `localhost` (F-1, F-2). */
+export function deviceLinkAddress(port: number): HubAddress | null {
+  const parsed = parseHubAddress(`http://127.0.0.1:${String(port)}`);
+  return parsed.ok ? parsed.value : null;
 }

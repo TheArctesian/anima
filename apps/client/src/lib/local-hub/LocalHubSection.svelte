@@ -26,6 +26,7 @@
   let recovering = $state(false);
   const status = $derived(hubState.status);
   const running = $derived(status?.state === 'ready' || status?.state === 'starting');
+  const stopping = $derived(status?.state === 'stopping');
 
   async function saveKey(): Promise<void> {
     keyNote = null;
@@ -52,7 +53,8 @@
       {#if running}
         <FormButton size="sm" busy={hubState.busy} onclick={() => void hubState.stop()}>Stop</FormButton>
       {:else}
-        <FormButton size="sm" busy={hubState.busy} onclick={() => void hubState.start()}>Start</FormButton>
+        <!-- A hub that is still stopping cannot start yet: the button waits, and says so. -->
+        <FormButton size="sm" busy={hubState.busy} aria-disabled={stopping} onclick={() => void hubState.start()}>{stopping ? 'Stopping…' : 'Start'}</FormButton>
       {/if}
       {#snippet message()}<p role="alert">{hubState.problem ?? ''}</p>{/snippet}
     </SettingRow>

@@ -3,24 +3,44 @@ import { listenerProblem, verdictOf } from '$lib/access/listener/listener';
 import type { ListenerResult } from '$lib/desktop/hub-listener/shell';
 import type { LocalHubResult, LocalHubStatus } from '$lib/desktop/local-hub/shell';
 import { parseHubAddress, type HubAddress } from '$lib/hub/hub';
+import { POLL_MS } from '$lib/local-hub/state';
 
 /** What connecting to the hub on this computer needs; each part is injected (CQ-021). */
 export interface ConnectParts {
   readonly read: () => Promise<LocalHubResult<LocalHubStatus>>;
   readonly check: (origin: string) => Promise<ListenerResult>;
   readonly saveAddress: (origin: string) => void;
+  /** Waits between reads while the hub is not ready yet. */
+  readonly wait: (ms: number) => Promise<void>;
 }
 
 export type Connected = { readonly ok: true; readonly address: HubAddress } | { readonly ok: false; readonly message: string };
 
 const NOT_READY = 'The hub on this computer is not ready. Wait for it, then try again.';
 
-/** The hub address of the local hub: `http://127.0.0.1:<port>` only (F-1), or `null` for anything else. */
+/** How many times a hub that is not ready yet is read, one second apart, before the step says so. */
+export const READY_READS = 15;
+
+/** The local hub's address, read again each second while the hub is not ready, for up to `READY_READS` reads. */
+async function readyAddress(parts: ConnectParts): Promise<Connected> {
+  for (let read = 1; ; read += 1) {
+    const status = await parts.read();
+    if (!status.ok) return { ok: false, message: status.message };
+    const address = localHubAddress(status.value);
+    if (address !== null) return { ok: true, address };
+    if (read >= READY_READS) return { ok: false, message: NOT_READY };
+    await parts.wait(POLL_MS);
+  }
+}
+
+/**
+ * The hub address of the local hub: `http://127.0.0.1:<port>` only (F-1), or `null` for anything else. The address
+ * rules permit plain `http` for the host `127.0.0.1` alone, so any other host fails to parse.
+ */
 export function localHubAddress(status: LocalHubStatus): HubAddress | null {
   if (status.state !== 'ready' || status.hub === undefined) return null;
   const parsed = parseHubAddress(`http://${status.hub}`);
-  if (!parsed.ok || new URL(parsed.value.origin).hostname !== '127.0.0.1') return null;
-  return parsed.value;
+  return parsed.ok ? parsed.value : null;
 }
 
 /**
@@ -28,10 +48,9 @@ export function localHubAddress(status: LocalHubStatus): HubAddress | null {
  * the address. On "other" or "none" nothing is saved and nothing is sent.
  */
 export async function connectLocalHub(parts: ConnectParts): Promise<Connected> {
-  const status = await parts.read();
-  if (!status.ok) return { ok: false, message: status.message };
-  const address = localHubAddress(status.value);
-  if (address === null) return { ok: false, message: NOT_READY };
+  const found = await readyAddress(parts);
+  if (!found.ok) return found;
+  const { address } = found;
   const verdict = verdictOf(await parts.check(address.origin));
   const problem = listenerProblem(verdict, address.origin, null);
   if (problem !== null) return { ok: false, message: `${problem.title}. ${problem.advice}` };

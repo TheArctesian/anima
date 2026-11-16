@@ -17,11 +17,11 @@ const READY: LocalHubStatus = { installed: true, running: true, state: 'ready', 
 const STOPPED: LocalHubStatus = { installed: true, running: false, state: 'stopped' };
 let app: ReturnType<typeof mount> | undefined;
 
-function shell(...reads: LocalHubStatus[]): LocalHubShell & { start: ReturnType<typeof vi.fn>; stop: ReturnType<typeof vi.fn> } {
+function shell(...reads: LocalHubStatus[]): LocalHubShell & { start: ReturnType<typeof vi.fn>; stop: ReturnType<typeof vi.fn>; forget: ReturnType<typeof vi.fn> } {
   const read = vi.fn<() => Promise<LocalHubResult<LocalHubStatus>>>();
   for (const status of reads) read.mockResolvedValueOnce({ ok: true, value: status });
   read.mockResolvedValue({ ok: true, value: reads.at(-1) ?? READY });
-  return { read, start: vi.fn(() => Promise.resolve({ ok: true as const, value: null })), stop: vi.fn(() => Promise.resolve({ ok: true as const, value: null })), wait: () => Promise.resolve() };
+  return { read, start: vi.fn(() => Promise.resolve({ ok: true as const, value: null })), stop: vi.fn(() => Promise.resolve({ ok: true as const, value: null })), wait: () => Promise.resolve(), forget: vi.fn<(origin: string) => void>() };
 }
 
 async function settle(): Promise<void> {
@@ -75,11 +75,24 @@ it('FRN-006: Stop stops the hub and shows the stopped state; Start starts it and
   click('Stop');
   await settle();
   expect(hub.stop).toHaveBeenCalledOnce();
+  expect(hub.forget).toHaveBeenCalledWith('http://127.0.0.1:8443');
   expect(target.querySelector('.hint')?.textContent).toContain('Stopped.');
+  hub.forget.mockClear();
   click('Start');
   await settle();
   expect(hub.start).toHaveBeenCalledOnce();
+  expect(hub.forget).toHaveBeenCalledWith('http://127.0.0.1:8443');
   expect(target.querySelector('.hint')?.textContent).toContain('Ready.');
+});
+
+it('FRN-006: a hub that is still stopping offers no Start: the button says "Stopping…" and does nothing', async () => {
+  const hub = shell({ installed: true, running: true, state: 'stopping' });
+  const target = await open(new LocalHubWatch(hub));
+  const button = [...target.querySelectorAll('button')].find((found) => found.textContent.trim() === 'Stopping…');
+  expect(button?.getAttribute('aria-disabled')).toBe('true');
+  button?.click();
+  await settle();
+  expect(hub.start).not.toHaveBeenCalled();
 });
 
 it('2.8: "Save a copy of the hub key" opens the shell dialog and says where to keep it', async () => {

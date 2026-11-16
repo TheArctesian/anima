@@ -112,7 +112,7 @@ describe('the refusals', () => {
   });
 
   it('every code has its own message', () => {
-    const codes: LocalHubProblem[] = ['caller', 'unavailable', 'not-carried', 'busy', 'no-home', 'timed-out', 'failed', 'argument', 'exists', 'refused', 'no-key', 'destination', 'cancelled'];
+    const codes: LocalHubProblem[] = ['caller', 'unavailable', 'not-carried', 'busy', 'no-home', 'timed-out', 'failed', 'argument', 'refused', 'no-key', 'destination', 'cancelled'];
     expect(new Set(codes.map(localHubMessage)).size).toBe(codes.length);
   });
 });

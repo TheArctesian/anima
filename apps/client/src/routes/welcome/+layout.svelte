@@ -14,12 +14,13 @@
 </div>
 
 <style>
+  /* Pinned to the top, not centred: a step that grows or shrinks moves nothing above it (MOT-007). */
   .screen {
     box-sizing: border-box;
     display: grid;
-    place-items: center;
-    min-block-size: 100vh;
-    padding: var(--space-6) var(--space-4);
+    justify-items: center;
+    align-items: start;
+    padding: var(--space-16) var(--space-4) var(--space-6);
   }
 
   .panel {
@@ -34,7 +35,7 @@
     align-items: center;
     gap: var(--space-2);
     margin: 0;
-    color: var(--text-tertiary);
+    color: var(--text-secondary);
     font-size: var(--text-sm);
     line-height: var(--leading-tight);
   }
@@ -43,6 +44,11 @@
     inline-size: var(--space-8);
     block-size: var(--border-thin);
     background: var(--border-strong);
+  }
+
+  /* A field's error has its line before it shows, so the form below does not move when it does (MOT-007). */
+  .panel :global(.field [role='alert']) {
+    min-block-size: calc(var(--text-sm) * var(--leading-normal));
   }
 
   .panel :global(h1) {

@@ -44,6 +44,8 @@ describe('the authenticator (FRN-004)', () => {
   it('FRN-004, FRN-007: a wrong code and a cancelled recovery have their own fixed text', () => {
     expect(accountFailure('refused')).toBe('The code did not match. Wait for a new code and try again.');
     expect(accountFailure('cancelled')).toBe('Recovery was cancelled. Nothing changed.');
-    expect(accountFailure('busy')).toBe('Another change to the hub is running. Wait for it to finish.');
+    // F-9: for 60 s after a cancelled replace dialog the shell answers `busy` and shows no dialog.
+    expect(accountFailure('busy')).toBe('Wait a minute before you try again.');
+    expect(accountFailure('argument')).toContain('1 to 64 letters');
   });
 });

@@ -3,7 +3,8 @@ import { fakeHub, failure, ok } from '$lib/access/access.fixture';
 import { accessApi } from '$lib/access/api';
 import type { Listener } from '$lib/desktop/hub-listener/shell';
 import type { LocalHubStatus } from '$lib/desktop/local-hub/shell';
-import { connectLocalHub, localHubAddress, signInFirst } from './connect';
+import { POLL_MS } from '$lib/local-hub/state';
+import { connectLocalHub, localHubAddress, READY_READS, signInFirst } from './connect';
 
 const READY: LocalHubStatus = { installed: true, running: true, state: 'ready', hub: '127.0.0.1:8443' };
 
@@ -12,6 +13,7 @@ function parts(status: LocalHubStatus, listener: Listener) {
     read: vi.fn(() => Promise.resolve({ ok: true as const, value: status })),
     check: vi.fn(() => Promise.resolve({ ok: true as const, listener })),
     saveAddress: vi.fn(),
+    wait: vi.fn(() => Promise.resolve()),
   };
 }
 
@@ -20,6 +22,7 @@ describe('connecting to the hub on this computer', () => {
     expect(localHubAddress(READY)?.origin).toBe('http://127.0.0.1:8443');
     expect(localHubAddress({ ...READY, hub: 'localhost:8443' })).toBeNull();
     expect(localHubAddress({ ...READY, hub: '10.0.0.5:8443' })).toBeNull();
+    expect(localHubAddress({ ...READY, hub: '[::1]:8443' })).toBeNull();
     expect(localHubAddress({ ...READY, state: 'starting' })).toBeNull();
   });
 
@@ -37,10 +40,20 @@ describe('connecting to the hub on this computer', () => {
     expect(refused.saveAddress).not.toHaveBeenCalled();
   });
 
-  it('FRN-002: a hub that is not ready is not checked', async () => {
+  it('FRN-002: a hub that stays not ready is read once a second for a while, then not checked', async () => {
     const starting = parts({ ...READY, state: 'starting' }, 'own');
     expect(await connectLocalHub(starting)).toEqual({ ok: false, message: 'The hub on this computer is not ready. Wait for it, then try again.' });
+    expect(starting.read).toHaveBeenCalledTimes(READY_READS);
+    expect(starting.wait.mock.calls).toEqual(Array.from({ length: READY_READS - 1 }, () => [POLL_MS]));
     expect(starting.check).not.toHaveBeenCalled();
+  });
+
+  it('FRN-002: a hub that becomes ready while the step waits is checked and saved', async () => {
+    const later = parts(READY, 'own');
+    later.read.mockResolvedValueOnce({ ok: true, value: { ...READY, state: 'starting' } });
+    expect(await connectLocalHub(later)).toMatchObject({ ok: true });
+    expect(later.read).toHaveBeenCalledTimes(2);
+    expect(later.saveAddress).toHaveBeenCalledWith('http://127.0.0.1:8443');
   });
 });
 

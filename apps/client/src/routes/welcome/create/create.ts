@@ -1,7 +1,7 @@
 /**
  * The steps of "Create a hub on this computer" (FRN-002): install, then the account and its authenticator, then connect
  * and sign in, then the copy of the hub key, then the first invite. `existing` is the connect step for a hub whose
- * account already exists: it saves the address and opens the sign-in page.
+ * account already exists: it asks for that account's name and password, signs in, then goes on to the key.
  */
 export type CreateStep = 'install' | 'account' | 'authenticator' | 'connect' | 'existing' | 'key' | 'invite';
 
@@ -27,6 +27,7 @@ export function nextStep(step: CreateStep, event: CreateEvent): CreateStep {
     case 'authenticator:account-made':
       return 'connect';
     case 'connect:signed-in':
+    case 'existing:signed-in':
       return 'key';
     case 'key:key-done':
       return 'invite';

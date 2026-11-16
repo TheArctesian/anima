@@ -16,18 +16,21 @@
   const left = $derived(secondsLeft(invite.expiresAt, now));
 </script>
 
+<!-- An expired invite is not shown at all: neither its code nor its text (security review S-9). -->
 <div class="invite">
-  <div class="pair">
-    <QrCode text={invite.invite} label="Invite for {name}" />
-    <div class="side">
-      <p>On {name}, open Anima.ing, choose "Join a hub" and scan or paste this invite. It works once.</p>
-      <!-- Not a live region: a countdown read out every second would drown the page. -->
-      <p class="left">
-        {#if left > 0}Expires in <time datetime={invite.expiresAt}>{countdownText(left)}</time>{:else}This invite has expired. Make another.{/if}
-      </p>
+  {#if left > 0}
+    <div class="pair">
+      <QrCode text={invite.invite} label="Invite for {name}" />
+      <div class="side">
+        <p>On {name}, open Anima.ing, choose "Join a hub" and scan or paste this invite. It works once.</p>
+        <!-- Not a live region: a countdown read out every second would drown the page. -->
+        <p class="left">Expires in <time datetime={invite.expiresAt}>{countdownText(left)}</time></p>
+      </div>
     </div>
-  </div>
-  {#if left > 0}<CopyText label="Invite" text={invite.invite} />{/if}
+    <CopyText label="Invite" text={invite.invite} />
+  {:else}
+    <p class="left">This invite has expired. Make another.</p>
+  {/if}
 </div>
 
 <style>
