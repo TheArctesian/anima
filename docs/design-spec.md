@@ -1540,6 +1540,7 @@ anima/
 │   ├── agent-core/            Agent logic with no I/O: parsers (MET-016), points, batching, buffer, wire types
 │   ├── guac-protocol/         Guacamole protocol: parse and encode, no I/O
 │   └── theme/                 Generated Rust tokens (terminal colour scheme)
+├── link/                      The link program (anima-link, Go): one package for each operator noun (Section 4.1 delta, LNK)
 ├── apps/
 │   ├── client/                SvelteKit user interface, used by desktop and web
 │   │   └── src/

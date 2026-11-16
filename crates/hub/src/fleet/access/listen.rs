@@ -4,6 +4,7 @@
 mod bind;
 mod certificate;
 mod health;
+mod link;
 mod reload;
 mod serve;
 mod slots;
@@ -14,7 +15,7 @@ mod tls;
 
 use certificate::Current;
 
-use std::{io, net::IpAddr, net::SocketAddr, sync::Arc, time::Duration};
+use std::{io, net::IpAddr, net::SocketAddr, path::PathBuf, sync::Arc, time::Duration};
 
 use axum::Router;
 use tokio::net::TcpListener;
@@ -27,6 +28,7 @@ use serve::Serving;
 use bind::check_bind;
 pub use certificate::{Fault, TlsFiles};
 pub use health::{HealthError, check_health};
+pub use link::{LinkSocket, link_socket};
 pub use tls::TlsListener;
 
 /// Why the hub cannot listen. Names addresses and fault kinds, never file content.
@@ -52,6 +54,15 @@ pub enum Error {
     Certificate(#[from] Fault),
     #[error("the TLS library refused the hub's settings")]
     TlsSetup,
+    #[error(
+        "ANIMA_LINK_SOCKET={0}: its folder must be a folder of the hub's user that no other \
+         user can reach (mode 0700)"
+    )]
+    LinkFolder(PathBuf),
+    #[error("ANIMA_LINK_SOCKET={0} is a file that is not a socket; the hub does not replace it")]
+    LinkPath(PathBuf),
+    #[error("cannot make the link's socket {path} ({kind})")]
+    LinkSocket { path: PathBuf, kind: io::ErrorKind },
     #[error("cannot listen on {addr} ({kind})")]
     Bind {
         addr: SocketAddr,
@@ -123,6 +134,7 @@ impl Listening {
         Entrance {
             listening: self,
             edge,
+            link: None,
         }
     }
 }
@@ -131,9 +143,18 @@ impl Listening {
 pub struct Entrance {
     listening: Listening,
     edge: Edge,
+    link: Option<LinkSocket>,
 }
 
 impl Entrance {
+    /// This entrance with the link's socket as a second way in, in the link mode. Its
+    /// connections are served as the listener's are, each with the device the link names as
+    /// its peer.
+    #[must_use]
+    pub fn with_link(self, link: Option<LinkSocket>) -> Self {
+        Self { link, ..self }
+    }
+
     /// Serves `router` until `stop` resolves, with each request's TCP peer as
     /// `ConnectInfo<SocketAddr>` for the NET-002 layer. Then stops accepting, lets open
     /// requests finish for at most `drain_limit`, and drops the rest (R-040).
@@ -143,20 +164,20 @@ impl Entrance {
         stop: impl Future<Output = ()>,
         drain_limit: Duration,
     ) {
-        let Self { listening, edge } = self;
-        match listening {
-            Listening::Plain(tcp) => {
-                let serving = Serving::new(router, edge, None, serve::SERVED);
-                serve::run(tcp, serving, stop, drain_limit).await;
-            }
+        let Self {
+            listening,
+            edge,
+            link,
+        } = self;
+        let (tcp, acceptor, _reload) = match listening {
+            Listening::Plain(tcp) => (tcp, None, None),
             Listening::Tls(TlsListener {
                 tcp,
                 acceptor,
-                reload: _reload,
-            }) => {
-                let serving = Serving::new(router, edge, Some(acceptor), serve::SERVED);
-                serve::run(tcp, serving, stop, drain_limit).await;
-            }
-        }
+                reload,
+            }) => (tcp, Some(acceptor), Some(reload)),
+        };
+        let serving = Serving::new(router, edge, acceptor, serve::SERVED);
+        serve::run(serve::Ways { tcp, link }, serving, stop, drain_limit).await;
     }
 }

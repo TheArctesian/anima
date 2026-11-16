@@ -5,9 +5,11 @@ use std::ffi::OsString;
 use std::net::SocketAddr;
 use std::path::{Component, PathBuf};
 
+mod link;
 mod origin;
 mod releases;
 
+pub use link::LINK_DEVICES;
 pub use releases::Releases;
 
 const LISTEN: &str = "ANIMA_LISTEN";
@@ -41,7 +43,11 @@ pub struct Config {
     /// The VPN broker's Unix socket on the VPS (R-055, VP-7). `None` when unset or empty:
     /// enrolment is then off and the VPN picture says `NOT_SET`.
     pub vpn_broker: Option<PathBuf>,
+    /// In the link mode: this computer and the devices of the link.
     pub permitted_networks: Vec<ipnet::IpNet>,
+    /// The Unix socket `anima-link` reaches the hub through; set means the link mode (see
+    /// `link`). `None` when unset or empty.
+    pub link_socket: Option<PathBuf>,
     /// Networks checks must never probe: the hub's own Docker networks and public address
     /// (R-030). Empty when unset; `main.rs` warns at start.
     pub probe_deny: Vec<ipnet::IpNet>,
@@ -103,6 +109,10 @@ pub enum Error {
         variable: &'static str,
         value: String,
     },
+    #[error("{LISTEN}={listen} is not a loopback address; {}", link::LISTEN_RULE)]
+    LinkListen { listen: SocketAddr },
+    #[error("{PERMITTED_NETWORKS} {}", link::NETWORKS_RULE)]
+    LinkNetworks,
     #[error("{present} is set but {missing} is not")]
     TlsIncomplete {
         present: &'static str,
@@ -254,11 +264,13 @@ pub fn from_env(env: &BTreeMap<String, String>) -> Result<Config, Error> {
         }
         _ => {}
     }
+    let listen: SocketAddr = listen.parse().map_err(|source| Error::Listen {
+        value: listen.to_owned(),
+        source,
+    })?;
+    let link_socket = link::socket(env, listen)?;
     Ok(Config {
-        listen: listen.parse().map_err(|source| Error::Listen {
-            value: listen.to_owned(),
-            source,
-        })?,
+        listen,
         database_url_file: value(env, DATABASE_URL_FILE, "/run/secrets/database_url")?.into(),
         key_file: value(env, KEY_FILE, "/run/secrets/anima_key")?.into(),
         guacd: host_port(GUACD, value(env, GUACD, "guacd:4822")?)?,
@@ -271,10 +283,15 @@ pub fn from_env(env: &BTreeMap<String, String>) -> Result<Config, Error> {
             Some(text) => Some(host_port(TAILSCALE_LOCALAPI, text)?),
         },
         vpn_broker: optional_socket(env, VPN_BROKER)?,
-        permitted_networks: networks(
-            PERMITTED_NETWORKS,
-            value(env, PERMITTED_NETWORKS, "100.64.0.0/10")?,
-        )?,
+        permitted_networks: if link_socket.is_some() {
+            link::permitted_networks()
+        } else {
+            networks(
+                PERMITTED_NETWORKS,
+                value(env, PERMITTED_NETWORKS, "100.64.0.0/10")?,
+            )?
+        },
+        link_socket,
         probe_deny: match env.get(PROBE_DENY).map(String::as_str) {
             None | Some("") => Vec::new(),
             Some(text) => networks(PROBE_DENY, text)?,
