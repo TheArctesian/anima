@@ -160,12 +160,12 @@ pub fn open_own(clone: &Path, path: &Path) -> Result<File, BuilderError> {
 /// programs (INS-002, S12 2.3). Any other set of files fails, so nothing unchecked is notarized
 /// and shipped.
 pub fn mac_executable(clone: &Path, app: &Path) -> Result<PathBuf, BuilderError> {
-    let folder = app.join("Contents/MacOS");
+    let folder = own_folder(clone, &app.join("Contents/MacOS"))?;
     let entries = fs::read_dir(&folder).map_err(|_| BuilderError::Bundle)?;
-    let mut names: Vec<OsString> = entries
-        .filter_map(Result::ok)
-        .map(|entry| entry.file_name())
-        .collect();
+    let mut names = entries
+        .map(|entry| entry.map(|entry| entry.file_name()))
+        .collect::<Result<Vec<OsString>, _>>()
+        .map_err(|_| BuilderError::Bundle)?;
     names.sort();
     let mut expected: Vec<&str> = carried::PROGRAMS.to_vec();
     expected.push(MAC_EXECUTABLE);
@@ -174,6 +174,20 @@ pub fn mac_executable(clone: &Path, app: &Path) -> Result<PathBuf, BuilderError>
         return Err(BuilderError::Bundle);
     }
     own_file(clone, &folder.join(MAC_EXECUTABLE))
+}
+
+/// `folder` when it is a real folder inside `clone` with no link anywhere on the way from the
+/// clone to it, so a check of the files below it checks the build's own files.
+pub fn own_folder(clone: &Path, folder: &Path) -> Result<PathBuf, BuilderError> {
+    let kind = fs::symlink_metadata(folder).map_err(|_| BuilderError::Bundle)?;
+    let root = fs::canonicalize(clone).map_err(|_| BuilderError::Bundle)?;
+    let real = fs::canonicalize(folder).map_err(|_| BuilderError::Bundle)?;
+    let inside = folder
+        .strip_prefix(clone)
+        .map_err(|_| BuilderError::Bundle)?;
+    (kind.is_dir() && real == root.join(inside))
+        .then_some(real)
+        .ok_or(BuilderError::Bundle)
 }
 
 /// Opens cargo's output at `path` for reading: a regular file inside the clone, never through a
@@ -226,13 +240,15 @@ pub fn header(clone: &Path, path: &Path, count: u64) -> Result<Vec<u8>, BuilderE
     Ok(bytes)
 }
 
-/// Whether `lipo -archs` printed both `x86_64` and `arm64` (UPD-011).
+/// Whether `lipo -archs` printed exactly the two architectures `x86_64` and `arm64` (UPD-011). A
+/// third slice, as `x86_64h`, which an Intel Mac would prefer, is checked by nobody, so it fails.
 pub fn universal(archs: &[String]) -> bool {
-    let words: Vec<&str> = archs
+    let mut words: Vec<&str> = archs
         .iter()
         .flat_map(|line| line.split_whitespace())
         .collect();
-    words.contains(&"x86_64") && words.contains(&"arm64")
+    words.sort_unstable();
+    words == ["arm64", "x86_64"]
 }
 
 /// Whether `notarytool submit --wait` printed Apple's final answer as Accepted (BLD-085). Its

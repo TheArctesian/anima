@@ -5,6 +5,7 @@ mod carried;
 mod checkout;
 mod child_process;
 mod files;
+mod hidden_changes;
 mod output;
 mod plans;
 // The reaper is Linux only: macOS has no subreaper.

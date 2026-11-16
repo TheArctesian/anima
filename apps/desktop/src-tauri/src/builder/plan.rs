@@ -84,6 +84,7 @@ pub enum Program {
     Lipo,
     Xcrun,
     Cargo,
+    Go,
     Sh,
 }
 
@@ -97,6 +98,7 @@ impl Program {
             Self::Lipo => "lipo",
             Self::Xcrun => "xcrun",
             Self::Cargo => "cargo",
+            Self::Go => "go",
             Self::Sh => "sh",
         }
     }
@@ -141,7 +143,7 @@ pub fn command(program: Program, cwd: &Path, args: &[&str]) -> Command {
 /// the clone's own `.git/config` says: a build writes to the clone (BLD-044). `clone` and
 /// `fetch` allow the repository's own transport again. No automatic `gc` or maintenance, so git
 /// itself never writes the commit graph that makes a clone untrusted (D-21).
-fn git(cwd: &Path, args: &[&str]) -> Command {
+pub(super) fn git(cwd: &Path, args: &[&str]) -> Command {
     let mut all = vec![
         "-c",
         "gc.auto=0",
@@ -228,6 +230,12 @@ pub fn checkout(clone: &Path, commit: &Commit) -> Vec<Command> {
     ]
 }
 
+/// Fills the index anew from `commit`, which the caller removed first: an entry a build marked
+/// `--skip-worktree` or `--assume-unchanged` would hide a changed file from `status`.
+pub fn read_tree(clone: &Path, commit: &Commit) -> Command {
+    git(clone, &["read-tree", commit.as_str()])
+}
+
 /// Prints one line for each changed or untracked file; none means a clean tree.
 pub fn status(clone: &Path) -> Command {
     git(clone, &["status", "--porcelain", "--untracked-files=all"])
@@ -257,11 +265,19 @@ fn tauri(clone: &Path, args: &[&str], config: &serde_json::Value) -> Command {
 
 /// Compile with `--no-bundle`, then bundle, with the version in `--config` and no updater
 /// artifact: the builder signs nothing, and the hub signs the updater file (BLD-043, R-117). On
-/// macOS Tauri signs the app with the identity `bundle.macOS.signingIdentity` names (BLD-083).
-/// Both carry the six programs and the PostgreSQL tree the carried step put in place (INS-002,
-/// S12 2.1).
-pub fn bundle(clone: &Path, target: Target, version: &Version) -> Vec<Command> {
-    let carried = carried::bundle_settings();
+/// macOS Tauri signs the app with `identity`, the one this builder was built with, also in
+/// `--config` (BLD-083). Both carry the six programs and the PostgreSQL tree the carried steps
+/// put in place (INS-002, S12 2.1).
+pub fn bundle(
+    clone: &Path,
+    target: Target,
+    version: &Version,
+    identity: Option<&str>,
+) -> Vec<Command> {
+    let mut carried = carried::bundle_settings();
+    if let (Target::DarwinUniversal, Some(identity)) = (target, identity) {
+        carried["macOS"] = serde_json::json!({ "signingIdentity": identity });
+    }
     let mut bundled = carried.clone();
     bundled["createUpdaterArtifacts"] = false.into();
     let compile_config = serde_json::json!({ "version": version.as_str(), "bundle": carried });
@@ -293,7 +309,7 @@ pub fn bundle(clone: &Path, target: Target, version: &Version) -> Vec<Command> {
 }
 
 /// The macOS bundle checks of UPD-011 (BLD-047): the signature, then the architectures of the
-/// app's binary, whose output must name `x86_64` and `arm64`.
+/// app's binary, whose output must name exactly `x86_64` and `arm64`.
 pub fn bundle_checks(app: &Path, binary: &Path) -> [Command; 2] {
     let folder = app.parent().unwrap_or(app);
     let mut codesign = command(

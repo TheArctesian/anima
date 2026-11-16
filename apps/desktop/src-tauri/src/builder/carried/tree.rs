@@ -1,7 +1,7 @@
-//! The PostgreSQL tree a release carries (S3 T11, S12 2.2 step 4): the clone's
+//! The PostgreSQL tree a release carries (S3 T11, S12 2.2): the clone's
 //! `database-tree/build.sh`, run by `/bin/sh` (D-2) in a work folder the builder makes anew for
 //! each release (D-1), writes the tree to the folder `bundle.resources` names. On macOS the recipe
-//! signs each Mach-O file of the tree with the identity of the clone's `tauri.conf.json` (D-5).
+//! signs each Mach-O file of the tree with the identity this builder was built with.
 //! Pure.
 
 use std::path::{Path, PathBuf};
@@ -21,6 +21,11 @@ const OUT: &str = "apps/desktop/src-tauri/database";
 const WORK: &str = "database-tree";
 /// The Tauri configuration that names the signing identity, relative to the clone.
 pub const CONFIG: &str = "apps/desktop/src-tauri/tauri.conf.json";
+/// The files of the clone the recipe runs or reads, each checked against the commit before.
+pub const COMMITTED: [&str; 2] = [
+    RECIPE,
+    "apps/desktop/src-tauri/database-tree/postgresql.pin",
+];
 /// The variable the recipe reads the signing identity from.
 const IDENTITY_VARIABLE: &str = "SIGN_IDENTITY";
 

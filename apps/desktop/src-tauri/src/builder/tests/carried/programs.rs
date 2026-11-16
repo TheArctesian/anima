@@ -8,7 +8,7 @@ use std::{
     path::Path,
 };
 
-use super::args;
+use super::{STAGE, args};
 use crate::builder::{
     artifact, carried,
     carried::{link, rust_programs},
@@ -18,8 +18,6 @@ use crate::builder::{
     plan::Program,
     tools::{self, Tool},
 };
-
-const STAGE: &str = "/c/apps/desktop/src-tauri/binaries";
 
 #[test]
 fn ins_003_the_five_rust_programs_are_built_in_one_cargo_run_with_the_release_version() {
@@ -115,39 +113,6 @@ fn ins_002_each_half_is_put_under_the_name_tauri_reads_for_its_target() {
 }
 
 #[test]
-fn s12_d_2_anima_link_is_built_by_bin_sh_from_the_clone_and_staged_per_platform() {
-    let clone = Path::new("/c");
-    let build = link::build(clone);
-    assert_eq!(build.program, Program::Sh);
-    assert_eq!(Program::Sh.fixed_path(), Some(Path::new("/bin/sh")));
-    assert_eq!(
-        (args(&build), build.cwd.as_path()),
-        (vec!["link/build.sh"], clone)
-    );
-    assert_eq!(build.env, Vec::new());
-    assert_eq!(
-        link::copies(clone, Target::LinuxX86_64),
-        [(
-            clone.join("link/bin/anima-link-linux-amd64"),
-            Path::new(STAGE).join("anima-link-x86_64-unknown-linux-gnu")
-        )]
-    );
-    assert_eq!(
-        link::copies(clone, Target::DarwinUniversal),
-        [
-            (
-                clone.join("link/bin/anima-link-darwin-arm64"),
-                Path::new(STAGE).join("anima-link-aarch64-apple-darwin")
-            ),
-            (
-                clone.join("link/bin/anima-link-darwin-amd64"),
-                Path::new(STAGE).join("anima-link-x86_64-apple-darwin")
-            )
-        ]
-    );
-}
-
-#[test]
 fn ins_002_the_bundle_names_the_six_programs_and_the_tree() {
     let bins: Vec<&str> = rust_programs::PROGRAMS
         .iter()
@@ -164,9 +129,17 @@ fn ins_002_the_bundle_names_the_six_programs_and_the_tree() {
 #[test]
 fn ins_002_only_a_64_bit_x86_64_elf_file_is_a_linux_program() {
     let mut elf = vec![0x7f, b'E', b'L', b'F', 2, 1, 1, 0];
-    elf.extend([0; 10]);
-    elf.extend([62, 0]);
+    elf.extend([0; 8]);
+    elf.extend([2, 0, 62, 0]);
     assert!(carried::is_x86_64_elf(&elf));
+    let mut position_independent = elf.clone();
+    position_independent[16] = 3;
+    assert!(carried::is_x86_64_elf(&position_independent));
+    for other_type in [0, 1, 4] {
+        let mut object = elf.clone();
+        object[16] = other_type;
+        assert!(!carried::is_x86_64_elf(&object), "e_type {other_type}");
+    }
     let mut arm = elf.clone();
     arm[18] = 183;
     assert!(!carried::is_x86_64_elf(&arm));

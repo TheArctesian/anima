@@ -81,8 +81,9 @@ fn s12_d_2_bin_sh_is_never_searched_for_on_the_steps_path() {
 
 #[test]
 fn s12_d_1_the_work_folder_is_made_anew_with_mode_0700_and_a_planted_link_is_not_followed() {
-    let root = tempfile::tempdir().unwrap();
-    let work = root.path().join("database-tree");
+    let dir = tempfile::tempdir().unwrap();
+    let root = fs::canonicalize(dir.path()).unwrap();
+    let work = root.join("database-tree");
     fs::create_dir_all(work.join("tree")).unwrap();
     fs::write(work.join("tree/STAMP"), b"an old stamp").unwrap();
     on_disk::renew(&work).unwrap();
@@ -90,7 +91,7 @@ fn s12_d_1_the_work_folder_is_made_anew_with_mode_0700_and_a_planted_link_is_not
     let mode = fs::symlink_metadata(&work).unwrap().permissions().mode();
     assert_eq!(mode & 0o777, 0o700);
 
-    let outside = root.path().join("outside");
+    let outside = root.join("outside");
     fs::create_dir_all(&outside).unwrap();
     fs::write(outside.join("keep"), b"not the build's").unwrap();
     fs::remove_dir(&work).unwrap();
@@ -103,6 +104,68 @@ fn s12_d_1_the_work_folder_is_made_anew_with_mode_0700_and_a_planted_link_is_not
     fs::write(&work, b"a file").unwrap();
     on_disk::renew(&work).unwrap();
     assert!(work.is_dir());
+}
+
+#[test]
+fn s12_s_7_a_work_folder_reached_through_a_link_or_in_a_shared_folder_is_refused() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = fs::canonicalize(dir.path()).unwrap();
+    let real = root.join("elsewhere");
+    fs::create_dir_all(real.join("database-tree")).unwrap();
+    fs::write(real.join("database-tree/keep"), b"not the build's").unwrap();
+    let linked = root.join("builds");
+    symlink(&real, &linked).unwrap();
+    assert_eq!(
+        on_disk::renew(&linked.join("database-tree")),
+        Err(BuilderError::Bundle)
+    );
+    assert_eq!(
+        fs::read(real.join("database-tree/keep")).unwrap(),
+        b"not the build's"
+    );
+    let shared = root.join("shared");
+    fs::create_dir_all(&shared).unwrap();
+    for mode in [0o775, 0o757] {
+        fs::set_permissions(&shared, fs::Permissions::from_mode(mode)).unwrap();
+        assert_eq!(
+            on_disk::renew(&shared.join("database-tree")),
+            Err(BuilderError::Bundle),
+            "{mode:o}"
+        );
+    }
+    fs::set_permissions(&shared, fs::Permissions::from_mode(0o755)).unwrap();
+    assert_eq!(on_disk::renew(&shared.join("database-tree")), Ok(()));
+}
+
+#[test]
+fn s12_s_2_the_signer_is_the_builders_own_identity_when_the_clone_names_the_same() {
+    let signer = Signer::pinned(Some(IDENTITY), IDENTITY).unwrap();
+    assert_eq!(
+        (signer.identity.as_str(), signer.team.as_str()),
+        (IDENTITY, "7GDLG48PV6")
+    );
+    let other = "Developer ID Application: Other Ltd (24VZTF6M5V)";
+    for (own, clone) in [
+        (Some(IDENTITY), other),
+        (Some(other), IDENTITY),
+        (None, IDENTITY),
+        (Some(""), ""),
+        (
+            Some("Developer ID Application: X (bad)"),
+            "Developer ID Application: X (bad)",
+        ),
+    ] {
+        assert_eq!(
+            Signer::pinned(own, clone),
+            Err(BuilderError::Bundle),
+            "{own:?} {clone}"
+        );
+    }
+    assert_eq!(
+        crate::builder::tools::readings::signing_identity().as_deref(),
+        Some(IDENTITY),
+        "the builder's own identity comes from the config it was built with"
+    );
 }
 
 #[test]

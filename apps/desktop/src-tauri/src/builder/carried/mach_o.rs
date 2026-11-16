@@ -50,6 +50,16 @@ pub struct Signer {
 }
 
 impl Signer {
+    /// The signer of a release: `own`, the identity this builder was built with, when the clone's
+    /// `tauri.conf.json` names the same one. The identity never comes from the clone, which a
+    /// build can change (BLD-083).
+    pub fn pinned(own: Option<&str>, clone: &str) -> Result<Self, BuilderError> {
+        match own {
+            Some(own) if !own.is_empty() && own == clone => Self::from_identity(own),
+            _ => Err(BuilderError::Bundle),
+        }
+    }
+
     /// `identity` with the Team ID in its last parentheses, as `Developer ID Application: Name
     /// (7GDLG48PV6)`. The Team ID goes into a code requirement, so anything but ten characters
     /// of `A-Z0-9` at the end is refused.

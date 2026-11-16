@@ -5,6 +5,7 @@
 //! which `lipo` makes from the two halves, as Tauri makes the app's own universal binary. A missing
 //! file fails `tauri build`. Pure; the I/O is in `on_disk` and the steps in `steps`.
 
+pub mod committed;
 pub mod link;
 pub mod mach_o;
 pub mod on_disk;
@@ -81,7 +82,9 @@ pub fn joined(clone: &Path, target: Target, program: &str) -> Option<Command> {
 }
 
 /// Whether `header`, the first bytes of a file, starts a 64-bit little-endian x86-64 ELF
-/// executable: a Linux program (`e_machine` 62).
+/// program: `e_type` an executable (2) or a position-independent one (3), `e_machine` 62.
 pub fn is_x86_64_elf(header: &[u8]) -> bool {
-    matches!(header, [0x7f, b'E', b'L', b'F', 2, 1, ..] if header.get(18..20) == Some(&[62, 0][..]))
+    matches!(header, [0x7f, b'E', b'L', b'F', 2, 1, ..])
+        && matches!(header.get(16..18), Some([2 | 3, 0]))
+        && header.get(18..20) == Some(&[62, 0][..])
 }

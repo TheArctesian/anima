@@ -4,7 +4,35 @@
 
 use std::{fs, os::unix::fs::symlink};
 
-use crate::builder::{carried::on_disk, error::BuilderError};
+use crate::builder::{artifact, carried::on_disk, error::BuilderError};
+
+#[test]
+fn s12_s_8_an_app_or_programs_folder_reached_through_a_link_is_refused() {
+    let root = tempfile::tempdir().unwrap();
+    let base = fs::canonicalize(root.path()).unwrap();
+    let clone = base.join("clone");
+    let real = base.join("elsewhere/Anima.ing.app");
+    fs::create_dir_all(real.join("Contents/MacOS")).unwrap();
+    fs::create_dir_all(&clone).unwrap();
+    let app = clone.join("Anima.ing.app");
+    symlink(&real, &app).unwrap();
+    assert_eq!(
+        artifact::mac_executable(&clone, &app),
+        Err(BuilderError::Bundle)
+    );
+    assert_eq!(
+        on_disk::mach_o_files(&clone, &app),
+        Err(BuilderError::Bundle)
+    );
+    fs::remove_file(&app).unwrap();
+    fs::create_dir_all(app.join("Contents")).unwrap();
+    symlink(real.join("Contents/MacOS"), app.join("Contents/MacOS")).unwrap();
+    assert_eq!(
+        artifact::mac_executable(&clone, &app),
+        Err(BuilderError::Bundle)
+    );
+    assert_eq!(artifact::own_folder(&clone, &app), Ok(app.clone()));
+}
 
 #[test]
 fn s12_d_4_every_mach_o_file_below_the_app_is_found_and_no_link_is_followed() {

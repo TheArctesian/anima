@@ -4,13 +4,13 @@
 
 use std::{
     ffi::OsString,
-    fs,
+    fs, io,
     path::{Path, PathBuf},
 };
 
 use super::{
     artifact,
-    carried::mach_o::Signer,
+    carried::{mach_o::Signer, tree},
     child::Claim,
     environment::Environment,
     error::BuilderError,
@@ -27,9 +27,13 @@ pub struct Workshop<'a> {
 }
 
 /// The files in `.git` that make git read objects, parents or history from somewhere other than
-/// the clone's own objects. `git clone` writes none of them; a build may (D-15, D-21).
+/// the clone's own objects, or that hide a changed or untracked file from `git status`. The
+/// checkout removes `info/exclude`, which `git clone` writes; a build may write any (D-15, D-21).
 const UNTRUSTED_FILES: &[&str] = &[
     "info/grafts",
+    "info/exclude",
+    "info/attributes",
+    "info/sparse-checkout",
     "shallow",
     "commondir",
     "objects/info/alternates",
@@ -37,6 +41,11 @@ const UNTRUSTED_FILES: &[&str] = &[
     "objects/info/commit-graph",
     "objects/info/commit-graphs",
 ];
+
+/// The files in `.git` the checkout and each later step remove: the index, which a build can mark
+/// to hide a changed file (`--skip-worktree`, `--assume-unchanged`), and the exclude rules,
+/// which hide an untracked one. git builds the index anew from the commit.
+const FORGOTTEN_FILES: &[&str] = &["index", "info/exclude"];
 
 /// Whether every key `git config --local --name-only --list` printed is one `git clone` writes.
 pub fn config_is_clones(keys: &[String]) -> bool {
@@ -93,6 +102,21 @@ impl Workshop<'_> {
             .is_ok_and(|keys| config_is_clones(&keys))
     }
 
+    /// Removes `FORGOTTEN_FILES` from the clone's `.git`; a link there is removed as a link.
+    fn forget_index(&self) -> Result<(), BuilderError> {
+        for file in FORGOTTEN_FILES {
+            let path = self.clone.join(".git").join(file);
+            match fs::symlink_metadata(&path) {
+                Ok(kind) if kind.is_dir() => fs::remove_dir_all(&path),
+                Ok(_) => fs::remove_file(&path),
+                Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(()),
+                Err(error) => Err(error),
+            }
+            .map_err(|_| BuilderError::Failed)?;
+        }
+        Ok(())
+    }
+
     /// Deletes the clone, if there is one, and clones the repository anew.
     async fn clone_anew(&self) -> Result<(), BuilderError> {
         if self.clone.exists() {
@@ -133,6 +157,7 @@ impl Workshop<'_> {
             Err(BuilderError::StepFailed) => return Err(BuilderError::NotOnMain),
             other => other?,
         };
+        self.forget_index()?;
         self.run_all(&plan::checkout(&self.clone, commit)).await?;
         if self.run(&plan::status(&self.clone)).await?.is_empty() {
             Ok(())
@@ -141,14 +166,23 @@ impl Workshop<'_> {
         }
     }
 
-    /// Fails unless the clone is at `commit` with a clean tree, so a later step cannot build
-    /// another tree than the one checked out.
-    async fn at(&self, commit: &Commit) -> Result<(), BuilderError> {
+    /// Fails unless the clone is still one `git clone` made, at `commit`, with a clean tree, so a
+    /// later step cannot build another tree than the one checked out. The index is built anew
+    /// from the commit first, so no mark a build put on an entry hides a change.
+    pub(super) async fn at(&self, commit: &Commit) -> Result<(), BuilderError> {
+        if !self.trusted_clone().await {
+            return Err(BuilderError::Dirty);
+        }
         let head = self.run(&plan::head(&self.clone)).await?;
-        let clean = self.run(&plan::status(&self.clone)).await?.is_empty();
-        match head.as_slice() {
-            [line] if line == commit.as_str() && clean => Ok(()),
-            _ => Err(BuilderError::Dirty),
+        if !matches!(head.as_slice(), [line] if line == commit.as_str()) {
+            return Err(BuilderError::Dirty);
+        }
+        self.forget_index()?;
+        self.run(&plan::read_tree(&self.clone, commit)).await?;
+        if self.run(&plan::status(&self.clone)).await?.is_empty() {
+            Ok(())
+        } else {
+            Err(BuilderError::Dirty)
         }
     }
 
@@ -172,8 +206,9 @@ impl Workshop<'_> {
 
     /// Builds what the release carries, compiles and bundles `target` at `version` with it,
     /// checks, notarizes and staples a macOS bundle, and returns the updater file (INS-002,
-    /// BLD-043, BLD-047, BLD-083 to BLD-085, S12 2.2). The macOS signing identity is read before
-    /// anything is built, so a configuration that names none fails at once.
+    /// BLD-043, BLD-047, BLD-083 to BLD-085, S12 2.2). In this order: the clone at `commit`; the
+    /// signing identity; the PostgreSQL tree; `anima-link`; then `cargo build`, whose build
+    /// scripts run code from the commit; the committed `tauri.conf.json` again; then Tauri.
     pub async fn bundle(
         &self,
         commit: &Commit,
@@ -181,10 +216,14 @@ impl Workshop<'_> {
         version: &Version,
     ) -> Result<PathBuf, BuilderError> {
         self.at(commit).await?;
-        let signer = self.signer(target)?;
-        self.carried(target, version, signer.as_ref()).await?;
+        let signer = self.signer(commit, target).await?;
+        self.tree(commit, target, signer.as_ref()).await?;
+        self.link(commit, target).await?;
+        self.rust_programs(target, version).await?;
+        self.committed(commit, &[tree::CONFIG]).await?;
         artifact::clear_bundle(&self.clone, target)?;
-        self.run_all(&plan::bundle(&self.clone, target, version))
+        let identity = signer.as_ref().map(|signer| signer.identity.as_str());
+        self.run_all(&plan::bundle(&self.clone, target, version, identity))
             .await?;
         artifact::stabilize_names(&self.clone, target, version)?;
         let updater = artifact::updater_file(&self.clone, target, version);
@@ -203,7 +242,7 @@ impl Workshop<'_> {
         signer: &Signer,
         updater: &Path,
     ) -> Result<(), BuilderError> {
-        let app = artifact::mac_app(&self.clone);
+        let app = artifact::own_folder(&self.clone, &artifact::mac_app(&self.clone))?;
         let executable = artifact::mac_executable(&self.clone, &app)?;
         let [codesign, lipo] = plan::bundle_checks(&app, &executable);
         self.run(&codesign).await?;

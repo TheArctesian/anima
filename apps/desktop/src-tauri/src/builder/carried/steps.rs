@@ -1,40 +1,95 @@
-//! The steps that build, put in place and check what a release carries (S12 2.2 steps 2 to 4,
-//! 2.3). Each runs planned commands under the step's claim.
+//! The steps that build, put in place and check what a release carries (S12 2.2 and 2.3). Each
+//! runs planned commands under the step's claim. The two recipes run before `cargo build`, whose
+//! build scripts could rewrite them, and each file a recipe runs or reads is compared with the
+//! commit directly before.
 
 use std::path::{Path, PathBuf};
 
 use super::{
-    joined, link,
+    committed, joined, link,
     mach_o::{self, ARCHS, Signer, TeamId},
     on_disk, rust_programs, staged, tree,
 };
 use crate::builder::{
     artifact,
     error::BuilderError,
-    job::{Target, Version},
+    job::{Commit, Target, Version},
     steps::Workshop,
+    tools::readings,
 };
 
 impl Workshop<'_> {
-    /// The identity that signs a macOS release, read from the clone's `tauri.conf.json`, and its
-    /// Team ID (D-5); none on Linux, which signs nothing.
-    pub fn signer(&self, target: Target) -> Result<Option<Signer>, BuilderError> {
+    /// The identity that signs a macOS release and its Team ID: the one this builder was built
+    /// with, when the clone's committed `tauri.conf.json` names the same (BLD-083). None on
+    /// Linux, which signs nothing.
+    pub async fn signer(
+        &self,
+        commit: &Commit,
+        target: Target,
+    ) -> Result<Option<Signer>, BuilderError> {
         match target {
             Target::LinuxX86_64 => Ok(None),
             Target::DarwinUniversal => {
-                Signer::from_identity(&on_disk::signing_identity(&self.clone)?).map(Some)
+                self.committed(commit, &[tree::CONFIG]).await?;
+                let clone = on_disk::signing_identity(&self.clone)?;
+                Signer::pinned(readings::signing_identity().as_deref(), &clone).map(Some)
             }
         }
     }
 
-    /// Builds the six programs and the PostgreSQL tree for `target` from the clone, and puts each
-    /// where the bundle takes it (INS-002, S12 2.2): the programs universal on macOS and x86-64
-    /// ELF files on Linux; the tree signed by `signer` on macOS.
-    pub async fn carried(
+    /// Fails with `Dirty` unless each of `paths` is a regular file whose bytes are the blob of
+    /// `commit` at that path.
+    pub async fn committed(&self, commit: &Commit, paths: &[&str]) -> Result<(), BuilderError> {
+        for path in paths {
+            let kind = std::fs::symlink_metadata(self.clone.join(path))
+                .map_err(|_| BuilderError::Dirty)?;
+            let on_disk = self.run(&committed::on_disk(&self.clone, path)).await?;
+            let in_commit = self
+                .run(&committed::in_commit(&self.clone, commit, path))
+                .await?;
+            if !kind.is_file() || !committed::same_blob(&on_disk, &in_commit) {
+                return Err(BuilderError::Dirty);
+            }
+        }
+        Ok(())
+    }
+
+    /// Builds the PostgreSQL tree with the committed recipe in a work folder made anew, signed by
+    /// `signer` on macOS (S3 T11, D-1).
+    pub async fn tree(
+        &self,
+        commit: &Commit,
+        target: Target,
+        signer: Option<&Signer>,
+    ) -> Result<(), BuilderError> {
+        self.committed(commit, &tree::COMMITTED).await?;
+        let work = tree::work_folder(&self.clone)?;
+        on_disk::renew(&work)?;
+        let identity = signer.map(|signer| signer.identity.as_str());
+        self.run(&tree::build(&self.clone, target, &work, identity)?)
+            .await
+            .map(drop)
+    }
+
+    /// Builds `anima-link` with the committed recipe and modules, and puts the programs for
+    /// `target` where the bundle takes them.
+    pub async fn link(&self, commit: &Commit, target: Target) -> Result<(), BuilderError> {
+        self.committed(commit, &link::COMMITTED).await?;
+        for path in link::ABSENT {
+            on_disk::absent(&self.clone.join(path))?;
+        }
+        self.run(&link::verify(&self.clone)).await?;
+        self.run(&link::build(&self.clone)).await?;
+        self.stage_all(&link::copies(&self.clone, target))?;
+        self.join_and_check(target, link::PROGRAM).await
+    }
+
+    /// Builds the five Rust programs with the release version and puts them where the bundle
+    /// takes them (INS-002, OD-17).
+    pub async fn rust_programs(
         &self,
         target: Target,
         version: &Version,
-        signer: Option<&Signer>,
     ) -> Result<(), BuilderError> {
         self.run(&rust_programs::build(&self.clone, target, version))
             .await?;
@@ -42,14 +97,6 @@ impl Workshop<'_> {
         for (_, program) in rust_programs::PROGRAMS {
             self.join_and_check(target, program).await?;
         }
-        self.run(&link::build(&self.clone)).await?;
-        self.stage_all(&link::copies(&self.clone, target))?;
-        self.join_and_check(target, link::PROGRAM).await?;
-        let work = tree::work_folder(&self.clone)?;
-        on_disk::renew(&work)?;
-        let identity = signer.map(|signer| signer.identity.as_str());
-        self.run(&tree::build(&self.clone, target, &work, identity)?)
-            .await?;
         Ok(())
     }
 
