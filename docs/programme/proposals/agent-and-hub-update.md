@@ -283,11 +283,11 @@ The tier of this proposal is decision OD-W23 of the work plan.
 
 ## Tasks
 
-No task is started. The states obey PLN-007.
+U1 is done. The other tasks are not started. The states obey PLN-007.
 
 | Task | Content | Needs | State | Commits |
 | --- | --- | --- | --- | --- |
-| U1 | Stage A. The agent reports its version; the hub keeps it and gives it. Hub API, then `anima`, then MCP, then the Device page. | R-118 (operator, 2026-11-16): the optional member of K8 | In progress | — |
+| U1 | Stage A. The agent reports its version; the hub keeps it and gives it. Hub API, then `anima`, then MCP, then the Device page. | R-118 (operator, 2026-11-16): the optional member of K8 | Done | `e29e59db`, `553a6522`, `68b293fe`, `328f6ff4`, `d162234f`. Reviewed by an independent reviewer agent: accepted, no blocker. Open: the agent test `r_118_each_batch_carries_the_version_of_the_agent` runs only on Linux and has not run yet; the release builder does not build `anima-agent` with `ANIMA_VERSION` yet (task U2). |
 | U2 | The release record: its fields, its signature, its place on the release host. The recipe of the Anima release makes the agent files and the record. | Tasks R5 to R7; OD-ROL-2 | Not started | — |
 | U3 | A prototype on one Linux machine and one Mac: the second unit, the rename, the rollback of a version that stops at once and of one that does not answer, also after a restart of the machine (ROL-030). A record with measured results. | — | Not started | — |
 | U4 | The contract: how the hub tells a version, how an agent gets the record and the file, the states of a machine. | A ruling for OD-W10 and for K8; OD-ROL-1 | Not started | — |
