@@ -85,6 +85,7 @@ Notes:
 - Each extension needs the engine (PH-E-000). The extensions are independent workflows (XP-004).
 - The native VNC gateway (S2) has commits on `main` and no row in this table. The operator must give it a tier ([s2-vnc-tasks.md](research/one-click/s2-vnc-tasks.md)).
 - The link (S1) and the access rules by device key (S5) have commits on `main` and no row in this table. The operator must give them a tier ([s1-link-tasks.md](research/one-click/s1-link-tasks.md), [s5-access-tasks.md](research/one-click/s5-access-tasks.md)).
+- The bundled PostgreSQL (S3) and the hub as a background program (S4) are in the same state: built, and no row in this table. The operator must give the one-click work a tier ([s3-database-tasks.md](research/one-click/s3-database-tasks.md), [s4-local-hub-tasks.md](research/one-click/s4-local-hub-tasks.md)).
 - The stay-awake control (S8) is built on its branch and has no row in this table. The operator must give it a tier ([s8-stay-awake-tasks.md](research/one-click/s8-stay-awake-tasks.md)).
 - The states in this table were read on 2026-11-12, except where a row gives a later date.
 - Phase 4 (Proxmox VE) is withdrawn (R-109). Session recording is deferred (R-113). This plan does not include them.
@@ -197,6 +198,10 @@ This table is the only list of the plans of Anima. A document that is not in thi
 | [ui-redesign-plan.md](ui-redesign-plan.md) | Plan | Not checked | Version 0.2. |
 | [ui-site-language-plan.md](ui-site-language-plan.md) | Plan | Approved. Build state not checked | Approved for implementation on 2026-11-13. |
 | [research/one-click/s2-vnc-tasks.md](research/one-click/s2-vnc-tasks.md) | Task breakdown: native VNC gateway | In progress | Its Section 6: T1 to T8, T10 and T11 have commits on `main`. T9 waits for the operator. Its parent plan `docs/one-click-plan.md` is not on `main`. |
+| [research/one-click/s3-database-tasks.md](research/one-click/s3-database-tasks.md) | Task breakdown: bundled PostgreSQL | In progress | Approved by the operator on 2026-11-14. Its Section 7.5: T1 to T9 and T15 have commits; T10 is in progress; T11 to T14 wait for the operator or other hardware. Its parent plan `docs/one-click-plan.md` is not on `main`. |
+| [research/one-click/s4-local-hub-tasks.md](research/one-click/s4-local-hub-tasks.md) | Task breakdown: the hub as a background program | In progress | Its Section 2: T1 to T8 have commits; T9 and T10 are not started. No operator ruling on its design. Its parent plan `docs/one-click-plan.md` is not on `main`. |
+| [research/one-click/s3-spec-delta.md](research/one-click/s3-spec-delta.md) | Proposal: spec delta for the bundled PostgreSQL | Draft | Not approved. It changes no requirement until the operator approves it. |
+| [research/one-click/s4-spec-delta.md](research/one-click/s4-spec-delta.md) | Proposal: spec delta for the hub as a background program | Draft | Not approved. It changes no requirement until the operator approves it. |
 | [research/one-click/s8-stay-awake-tasks.md](research/one-click/s8-stay-awake-tasks.md) | Task breakdown: stay awake | In progress | Its Section 5: T1 to T6 have commits. The live checks of its Section 6 wait for the operator. Its parent plan `docs/one-click-plan.md` is not on `main`. |
 | [research/one-click/s1-link-tasks.md](research/one-click/s1-link-tasks.md) | Task breakdown: the link (`anima-link`) | In progress | T1 to T13 have commits on `main` (merge `f367f819`). T14, the live checks with a second Mac, waits for the operator. Its parent plan `docs/one-click-plan.md` is not on `main`. |
 | [research/one-click/s5-access-tasks.md](research/one-click/s5-access-tasks.md) | Task breakdown: access rules by device key | In progress | T1 to T9 have commits on `main` (merge `f367f819`); T10, the agent's link origin, has its commit. Open: the K7 row of its Section 6.3 and one test of agent, link and hub together. Its parent plan `docs/one-click-plan.md` is not on `main`. |
@@ -220,7 +225,7 @@ These documents are records, not plans. They must not add a requirement (PLN-009
 | [programme/programme.md](programme/programme.md), [programme/handoff.md](programme/handoff.md), [programme/operator-changes.md](programme/operator-changes.md) | Rulings and the state of the programme |
 | `programme/packages/` | Task breakdown and log of each work package of a phase plan |
 | `programme/phase-2-*.md` and `programme/phase-3-*.md`, but not the two plans | Contracts, acceptance records and optional items of a phase |
-| `research/`, but not `s2-vnc-tasks.md` and `s8-stay-awake-tasks.md` | Audits and reports |
+| `research/`, but not the task breakdowns and spec delta proposals in `research/one-click/` that the register lists | Audits and reports |
 | `setup/`, [releases.md](releases.md), [programme/linux-client-setup.md](programme/linux-client-setup.md) | Procedures |
 | [ui-critique-2026-11-11.md](ui-critique-2026-11-11.md), [ui-inventory-2026-11-11.md](ui-inventory-2026-11-11.md) | Reviews of the interface |
 
