@@ -143,6 +143,7 @@ fn prj_031_a_history_list_that_is_not_ok_or_not_a_list_is_a_problem() {
         "reply_unreadable"
     );
     let missing = source_exchange::Response {
+        link: None,
         status: 404,
         body: source_exchange::Body::Read(b"{}"),
     };

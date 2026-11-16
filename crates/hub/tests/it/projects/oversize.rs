@@ -82,7 +82,11 @@ async fn src_007_an_oversize_tree_is_skipped_until_its_next_push(pool: PgPool) {
         health(&kit).await,
         json!({ "health": "OK", "failureCount": 0 })
     );
-    assert_eq!(reads_of(&kit.stub, "me/b"), 1, "no deployments read for it");
+    assert_eq!(
+        reads_of(&kit.stub, "me/b"),
+        2,
+        "only the tree and history are read"
+    );
 
     assert_eq!(kit.run(id).await, Some(Outcome::Ok));
     assert_eq!(

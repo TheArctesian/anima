@@ -66,6 +66,7 @@ async fn take_repository(
         (Step::Return, Some(known)) => store::returned(conn, known.id, now).await?,
         _ => {}
     }
+    store::metadata::listed(conn, repository).await?;
     Ok(Some(step))
 }
 
@@ -128,6 +129,24 @@ async fn take_record(
         Record::Listed { external_ids } => {
             let gone = store::listed(conn, page.account, &external_ids, page.now).await?;
             counts.removed += u32::try_from(gone).unwrap_or(u32::MAX);
+        }
+        Record::History {
+            external_id,
+            branch,
+            last_commit_at,
+            commit_count,
+        } => {
+            if store::metadata::history(
+                conn,
+                (&external_id, &branch),
+                (last_commit_at, commit_count),
+            )
+            .await?
+            {
+                counts.changed += 1;
+            } else {
+                counts.unchanged += 1;
+            }
         }
         Record::Signs {
             external_id,

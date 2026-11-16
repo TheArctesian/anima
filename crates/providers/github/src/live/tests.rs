@@ -20,6 +20,7 @@ pub(super) fn fixture(name: &str) -> Vec<u8> {
 
 pub(super) fn ok(body: &[u8]) -> Response<'_> {
     Response {
+        link: None,
         status: 200,
         body: Body::Read(body),
     }

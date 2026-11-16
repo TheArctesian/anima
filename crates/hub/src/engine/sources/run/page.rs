@@ -64,6 +64,7 @@ async fn write(
         account: id,
         request: fetched.request,
         response: Response {
+            link: fetched.answer.link.as_deref(),
             status: fetched.answer.status,
             body: match &fetched.answer.content {
                 Content::Body(body) => Body::Read(body),

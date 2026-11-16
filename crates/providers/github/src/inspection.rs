@@ -1,5 +1,6 @@
-//! The signs phase: for each queued repository, its file tree and then its deployments.
+//! Reads the queued repository’s signs and default branch history.
 
+use chrono::{DateTime, Utc};
 use serde::Deserialize;
 use source_exchange::{Body, Normalised, Request, Response};
 
@@ -19,6 +20,10 @@ pub(crate) fn request(pending: &Pending) -> Option<Request> {
                 name::encode_branch(&pending.branch)
             ),
             &[("recursive", "1")],
+        ),
+        Step::History => Request::get(
+            &format!("/repos/{}/commits", pending.name),
+            &[("sha", &pending.branch), ("per_page", "1")],
         ),
         Step::Deployments => Request::get(
             &format!("/repos/{}/deployments", pending.name),
@@ -59,6 +64,7 @@ pub(crate) fn normalise(response: &Response<'_>, slice: &Slice) -> Normalised<Re
     match pending.step {
         Step::Tree => tree(response, slice, pending),
         Step::Deployments => deployments(response, slice, pending),
+        Step::History => history(response, slice, pending),
     }
 }
 
@@ -69,12 +75,13 @@ fn finished(slice: &Slice, pending: &Pending) -> Slice {
     next.pending.remove(0);
     next.seen
         .insert(pending.id.clone(), pending.pushed_at.clone());
+    next.branches
+        .insert(pending.id.clone(), pending.branch.clone());
     next.settle();
     next
 }
 
-/// A reply larger than the hub reads is that repository's problem, never the run's: no signs
-/// are read for it this time, it counts as read for its `pushed_at`, and the run moves on.
+/// A large sign reply skips the remaining signs. Default branch history still gets a turn.
 fn too_large(
     slice: &Slice,
     pending: &Pending,
@@ -83,7 +90,7 @@ fn too_large(
 ) -> Normalised<Record> {
     Normalised {
         records: Vec::new(),
-        state: finished(slice, pending).to_value(),
+        state: next_step(slice, Step::History),
         problems: vec![problem(
             code,
             &pending.name,
@@ -191,7 +198,85 @@ fn deployments(response: &Response<'_>, slice: &Slice, pending: &Pending) -> Nor
     };
     Normalised {
         records: vec![signs_record(pending, Origin::Deployments, found)],
-        state: finished(slice, pending).to_value(),
+        state: next_step(slice, Step::History),
         problems,
+    }
+}
+
+fn next_step(slice: &Slice, step: Step) -> serde_json::Value {
+    let mut next = slice.clone();
+    next.pending[0].step = step;
+    next.to_value()
+}
+
+#[derive(Deserialize)]
+struct CommitEntry {
+    commit: Commit,
+}
+
+#[derive(Deserialize)]
+struct Commit {
+    committer: Committer,
+}
+
+#[derive(Deserialize)]
+struct Committer {
+    date: DateTime<Utc>,
+}
+
+fn history_facts(response: &Response<'_>) -> Option<(Option<DateTime<Utc>>, Option<i32>)> {
+    if response.status == 409 {
+        return Some((None, Some(0)));
+    }
+    let Body::Read(body) = response.body else {
+        return None;
+    };
+    let commits: Vec<CommitEntry> = serde_json::from_slice(body).ok()?;
+    let Some(tip) = commits.first() else {
+        return Some((None, Some(0)));
+    };
+    let count = response.link.map_or(Some(1), |link| {
+        crate::live::paging::related_page(link, "last").and_then(|page| i32::try_from(page).ok())
+    });
+    Some((Some(tip.commit.committer.date), count))
+}
+
+fn history(response: &Response<'_>, slice: &Slice, pending: &Pending) -> Normalised<Record> {
+    let state = finished(slice, pending).to_value();
+    // The engine handles rate limits before it calls the provider.
+    if matches!(response.status, 403 | 404) {
+        return Normalised {
+            records: Vec::new(),
+            state,
+            problems: vec![problem(
+                "history_unavailable",
+                &pending.name,
+                "GitHub did not give the default branch history",
+            )],
+        };
+    }
+    if !matches!(response.status, 200 | 409) {
+        return unexpected_status(slice, response.status, &pending.name);
+    }
+    let Some((last_commit_at, commit_count)) = history_facts(response) else {
+        return Normalised {
+            records: Vec::new(),
+            state,
+            problems: vec![problem(
+                "history_unreadable",
+                &pending.name,
+                "GitHub's default branch history could not be read",
+            )],
+        };
+    };
+    Normalised {
+        records: vec![Record::History {
+            external_id: pending.id.clone(),
+            branch: pending.branch.clone(),
+            last_commit_at,
+            commit_count,
+        }],
+        state,
+        problems: Vec::new(),
     }
 }

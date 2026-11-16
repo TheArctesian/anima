@@ -134,7 +134,9 @@ pub(crate) fn normalise(response: &Response<'_>, slice: &Slice) -> Normalised<Re
     for repository in repositories {
         next.listed.push(repository.external_id.clone());
         let pushed_at = stamp(repository.pushed_at);
-        if next.seen.get(&repository.external_id) != Some(&pushed_at) {
+        if next.seen.get(&repository.external_id) != Some(&pushed_at)
+            || next.branches.get(&repository.external_id) != repository.default_branch.as_ref()
+        {
             match queue(&repository, pushed_at) {
                 Ok(Some(pending)) => next.pending.push(pending),
                 Ok(None) => {}
@@ -149,6 +151,7 @@ pub(crate) fn normalise(response: &Response<'_>, slice: &Slice) -> Normalised<Re
     if last {
         let listed = std::mem::take(&mut next.listed);
         next.seen.retain(|id, _| listed.contains(id));
+        next.branches.retain(|id, _| listed.contains(id));
         records.push(Record::Listed {
             external_ids: listed,
         });

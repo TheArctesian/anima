@@ -2,10 +2,10 @@
 import { flushSync, mount, unmount } from 'svelte';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { installAnimations } from '$lib/forms/animations.fixture';
-import { projectsApi } from './api';
+import { projectsApi, type ProjectsApi } from './api';
 import { forgeApi } from './forge/api';
 import { fakeForgeHub } from './forge/forge.fixture';
-import { fakeHub, type FakeHub } from './projects.fixture';
+import { FIXTURE_PROJECTS, fakeHub, type FakeHub } from './projects.fixture';
 import ProjectScreen from './detail/ProjectScreen.svelte';
 import ProjectsScreen from './ProjectsScreen.svelte';
 import { ProjectsStore } from './store.svelte';
@@ -175,4 +175,34 @@ it('PRJ-030: a tab word the page does not have opens Overview', async () => {
   await openTab('design');
   expect(selectedTab()).toBe('Overview');
   expect(text()).toContain('Where it runs');
+});
+
+it('PRJ-012: the project controls use the hub order and send server filters', async () => {
+  const available = [FIXTURE_PROJECTS[2], FIXTURE_PROJECTS[0]].filter((project) => project !== undefined);
+  const list = vi.fn<ProjectsApi['list']>(async (leftOut, _after, browse) => ({
+    ok: true,
+    value: {
+      projects: leftOut ? [] : browse?.language === 'Rust' ? available.slice(0, 1) : available,
+      languages: ['Rust'],
+      next: null,
+    },
+  }));
+  store = new ProjectsStore({ ...projectsApi(hub), list });
+  await openList();
+  const choose = async (label: string, value: string): Promise<void> => {
+    const control = [...document.querySelectorAll('label')].find((each) => each.textContent.trim().startsWith(label))?.control;
+    if (!(control instanceof HTMLSelectElement)) throw new Error(`No select for ${label}`);
+    control.value = value;
+    control.dispatchEvent(new Event('change', { bubbles: true }));
+    await settled();
+  };
+
+  await choose('Sort by', 'STARS');
+  expect(list).toHaveBeenCalledWith(false, null, { order: 'STARS' });
+  expect([...document.querySelectorAll('li.entry .name a')].map((link) => link.textContent.trim())).toEqual(['notes', 'acme-site']);
+  await choose('Language', 'Rust');
+  await choose('Repository size', '1');
+  expect(list).toHaveBeenCalledWith(false, null, { order: 'STARS', language: 'Rust', minSizeKib: null, maxSizeKib: 1023 });
+  expect(text()).toContain('acme/notes');
+  expect(text()).not.toContain('acme/acme-site');
 });
