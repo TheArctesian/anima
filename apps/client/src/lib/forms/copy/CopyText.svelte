@@ -25,11 +25,11 @@
   }
 </script>
 
-<div class="copy">
+<div class="copy" role="group" aria-labelledby="{id}-label">
   <span class="label" id="{id}-label">{label}</span>
   <div class="row">
-    <!-- Text, not a field: it wraps at any character and the operator can select it. -->
-    <output class="text" aria-labelledby="{id}-label">{shown}</output>
+    <!-- Plain text, not a live region: a screen reader reads it only when the operator moves to it (LOG-007). -->
+    <code class="text">{shown}</code>
     <FormButton tabindex={0} size="sm" onclick={copyText}>Copy</FormButton>
   </div>
   <!-- The live region holds only the outcome of Copy, never the text. -->

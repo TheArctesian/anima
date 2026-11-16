@@ -138,7 +138,7 @@ it('FRN-002, FRN-004, F-10, AWK-005: install, account, authenticator, sign-in wi
   await settle();
   expect(mocks.sent.at(-1)).toEqual({ operation: 'CreateLinkInvite', variables: { name: 'laptop' } });
   expect(document.querySelector('svg[role="img"]')?.getAttribute('aria-label')).toBe('Invite for laptop');
-  expect(target.querySelector('output')?.textContent).toBe(INVITE);
+  expect(target.querySelector('code.text')?.textContent).toBe(INVITE);
   expect(target.textContent).toContain('This computer is the hub. Its checks stop while the computer sleeps.');
   click('Done');
   expect(mocks.loadClientAt).toHaveBeenCalledWith('/devices');

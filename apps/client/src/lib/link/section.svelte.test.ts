@@ -91,7 +91,7 @@ it('FRN-009, LNK-003: Invite a device asks for a name, then shows the QR code, t
   expect(api.invite).toHaveBeenCalledWith('laptop');
   const dialog = document.querySelector('[role="dialog"]');
   expect(dialog?.querySelector('svg[role="img"]')?.getAttribute('aria-label')).toBe('Invite for laptop');
-  expect(dialog?.querySelector('output')?.textContent).toBe(INVITE);
+  expect(dialog?.querySelector('code.text')?.textContent).toBe(INVITE);
   expect(dialog?.querySelector('time')?.textContent).toBe('15:00');
   expect(dialog?.querySelector('[role="status"]')?.textContent.trim()).toBe('');
 });
