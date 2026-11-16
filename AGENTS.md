@@ -114,9 +114,25 @@ test (CMD-031) fails when a root field of `contracts/schema.graphql` has no comm
 Follow the `test-audit` rules: test behaviour, not structure. If moving code breaks a test,
 fix the test. Rust integration tests live in one crate per binary (`tests/it/main.rs`).
 
+## Human testing
+
+[docs/need-human-testing.md](docs/need-human-testing.md) lists each check that only a person can do.
+
+- When you build a function that the gates cannot prove, add an entry in the same commit. This
+  applies to work that needs a real account (GitHub, Apple), a real device, a real network, a
+  window of the operating system, or a time longer than a test can run.
+- An entry gives: what was built and where, what the tests did not cover, the steps, and the
+  expected result of each step. Write steps that the operator can do with no help.
+- Do not write "done" or "verified" for such a function in a plan, a report or a message. Say
+  that it is built and give the entry (`HT-nnn`). PLN-009 applies.
+- Only the operator sets an entry to Passed or Failed. If the operator tells you the result,
+  write it in the entry with the date.
+- When you correct a Failed entry, set it to Open again. Do not delete an entry.
+
 ## Gates
 
 Run `bun run gates` before you ask for review and before every merge. There is no CI; gates run on the machine that makes the change.
+`rust-toolchain.toml` pins the Rust version for every machine; rustup installs it on the first cargo run. `deploy/hub/Dockerfile` must name the same version (a test compares them). Change both in one commit.
 
 ```sh
 bun run gates

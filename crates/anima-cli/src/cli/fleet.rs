@@ -2,7 +2,9 @@
 
 use crate::failure::Failure;
 use crate::invocation::Invocation;
-use crate::{agents, checks, devices, link, maintenance, sessions, sites, tags, web_interfaces};
+use crate::{
+    agents, capabilities, checks, devices, link, maintenance, sessions, sites, tags, web_interfaces,
+};
 
 #[derive(Debug, clap::Subcommand)]
 pub enum FleetCommand {
@@ -30,6 +32,11 @@ pub enum FleetCommand {
     Agent {
         #[command(subcommand)]
         command: agents::AgentCommand,
+    },
+    /// What devices can run: their tools and build targets (list).
+    Capability {
+        #[command(subcommand)]
+        command: capabilities::CapabilityCommand,
     },
     /// Checks (list, get, create, update, delete, pause, resume, heartbeats, defaults, notifications).
     Check {
@@ -68,6 +75,7 @@ impl FleetCommand {
             Self::Tag { command } => command.run(invocation).await,
             Self::Web { command } => command.run(invocation).await,
             Self::Agent { command } => command.run(invocation).await,
+            Self::Capability { command } => command.run(invocation).await,
             Self::Check { command } => command.run(invocation).await,
             Self::Maintenance { command } => command.run(invocation).await,
             Self::Link { command } => command.run(invocation).await,

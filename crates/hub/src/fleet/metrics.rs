@@ -8,8 +8,9 @@
 //! commands every 30 seconds and publishes each collection on the [`Feed`]. A device may push
 //! its metrics from the Anima agent instead ([`agent_router`], K8); [`spawn_stale_watch`] marks
 //! an agent that stopped pushing (MET-018). [`storage`] shows a device's storage drive by drive
-//! (MET-026).
+//! (MET-026). [`capabilities`] gives the tool inventory each agent sent (CAP-020 to CAP-031).
 
+mod capabilities;
 mod collector;
 mod commands;
 mod feed;
@@ -34,6 +35,7 @@ pub use agent_core::{
     points::{MAX_LABELS, Sample, samples},
     readings::{Cpu, Disk, Interface, Load, Memory, Reading},
 };
+pub use capabilities::{Capabilities, CapabilityFilter, DeviceCapabilities};
 pub use collector::{Collecting, spawn_collector};
 pub use feed::Feed;
 pub use ingest::{agent_router, spawn_stale_watch};
@@ -136,6 +138,21 @@ pub async fn series(
 /// `Database` when the query fails; `Unreadable` for a stored vendor this version does not know.
 pub async fn gpus(db: &PgPool, devices: &[DeviceId]) -> Result<HashMap<DeviceId, Vec<Gpu>>, Error> {
     store::gpus(db, devices).await
+}
+
+/// The tool inventory of each device whose agent sent one and that `filter` admits, in no set
+/// order (CAP-030).
+///
+/// # Errors
+/// `Database` when the query fails; `Unreadable` for a stored architecture or system this
+/// version does not know.
+pub async fn capabilities(
+    db: &PgPool,
+    filter: &CapabilityFilter,
+) -> Result<Vec<Capabilities>, Error> {
+    let mut found = store::inventories(db).await?;
+    found.retain(|stored| filter.admits(&stored.inventory));
+    Ok(found)
 }
 
 /// Of `devices`, those whose agent's metrics are stale: its token was revoked, it has sent no

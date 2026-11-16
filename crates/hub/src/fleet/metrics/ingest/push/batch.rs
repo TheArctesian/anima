@@ -1,11 +1,12 @@
-//! One accepted batch written in one transaction: the agent's mark, the GPU set, the drives, the series,
-//! the samples and their aggregates, and the event of an agent that is fresh again (K8 Section
-//! 4; MET-006, MET-015, MET-018; R-098 a, b, e).
+//! One accepted batch written in one transaction: the agent's mark, the GPU set, the drives, the
+//! tool inventory, the series, the samples and their aggregates, and the event of an agent that
+//! is fresh again (K8 Section 4; MET-006, MET-015, MET-018, CAP-029; R-098 a, b, e).
 //!
 //! The device row is taken first, the order a device delete and a revoke take the rows in, so
 //! none of them deadlock, and two batches of one device are written one after the other.
 
 use agent_core::{
+    inventory::Inventory,
     readings::Drive,
     wire::{RefusalCode, TokenHash},
 };
@@ -36,7 +37,7 @@ const NEW_SERIES_SPAN: TimeDelta = TimeDelta::hours(1);
 /// the rest is room for disks, interfaces and drives that come and go within the hour.
 pub(super) const MAX_NEW_SERIES: i64 = 1024;
 
-/// The batch's device and credential, and its GPUs and drives when it listed them.
+/// The batch's device and credential, and its GPUs, drives and inventory when it listed them.
 pub(super) struct Push<'a> {
     pub(super) device: DeviceId,
     /// The device's name, for the event of an agent that is fresh again.
@@ -47,6 +48,8 @@ pub(super) struct Push<'a> {
     pub(super) gpus: Option<&'a [Gpu]>,
     /// `None`: the drives are unchanged; `Some(&[])`: the device has no drives now (MET-027).
     pub(super) drives: Option<&'a [Drive]>,
+    /// `None`: the tool inventory is unchanged; `Some`: it replaces the stored one (CAP-029).
+    pub(super) inventory: Option<&'a Inventory>,
 }
 
 /// What became of a batch that reached the store.
@@ -98,6 +101,9 @@ pub(super) async fn write(
     }
     if let Some(drives) = push.drives {
         metrics_store::write_drives(&mut tx, push.device, drives, now).await?;
+    }
+    if let Some(inventory) = push.inventory {
+        metrics_store::write_inventory(&mut tx, push.device, inventory, now).await?;
     }
     metrics_store::add_series(&mut tx, push.device, &rows.series, now).await?;
     let kept = metrics_store::add_points(&mut tx, push.device, &rows.values).await?;

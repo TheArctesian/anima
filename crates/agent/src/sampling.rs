@@ -3,6 +3,7 @@
 
 pub mod drives;
 pub mod gpu;
+pub mod inventory;
 
 use std::time::Duration;
 

@@ -7,8 +7,8 @@ item. Each design choice below is the recommendation of the build session; the c
 an operator ruling are in Section 5.
 
 Branch: `claude/s12-packaging-3433e4`, cut from `origin/main` at `5c5520c9`.
-Sources: `docs/one-click-plan.md` Section 4.9 (S12) and Section 8, criterion 1 (on branch
-`claude/power-health-plan`); `s3-database-tasks.md` Section 7.2 (T11, T12); `s4-local-hub-tasks.md`
+Sources: [one-click-plan.md](../../one-click-plan.md) Section 4.9 (S12) and Section 8, criterion 1;
+`s3-database-tasks.md` Section 7.2 (T11, T12); `s4-local-hub-tasks.md`
 Section 7.2 (T9); `s6-first-run-tasks.md` Section 7; `s1-link-tasks.md`; UPD-011, BLD-043 to
 BLD-047, BLD-083 to BLD-085, INS-002 and INS-007 of the design spec.
 
