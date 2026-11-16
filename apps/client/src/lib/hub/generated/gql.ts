@@ -27,6 +27,7 @@ type Documents = {
     "\n  mutation ClaimBuildJob($platform: BuilderPlatformInput!) {\n    claimBuildJob(platform: $platform) {\n      id\n      target\n      version\n      commit\n    }\n  }\n": typeof types.ClaimBuildJobDocument,
     "\n  mutation ReportBuildJob($id: ID!, $state: BuildJobState, $logLines: [String!]!, $failureReason: String) {\n    reportBuildJob(id: $id, state: $state, logLines: $logLines, failureReason: $failureReason) {\n      id\n      state\n    }\n  }\n": typeof types.ReportBuildJobDocument,
     "\n  mutation BuildUploadUrls($id: ID!, $files: [BuildFileInput!]!) {\n    buildUploadUrls(id: $id, files: $files) {\n      name\n      url\n      headers {\n        name\n        value\n      }\n      expiresAt\n    }\n  }\n": typeof types.BuildUploadUrlsDocument,
+    "\n  query ReleasePublishing {\n    releasePublishing\n  }\n": typeof types.ReleasePublishingDocument,
     "\n  mutation ReportBuildUploaded($id: ID!, $files: [BuildFileInput!]!, $feed: String!) {\n    reportBuildUploaded(id: $id, files: $files, feed: $feed) {\n      id\n      state\n    }\n  }\n": typeof types.ReportBuildUploadedDocument,
     "\n  query Releases($first: Int) {\n    releases(first: $first) {\n      edges {\n        node {\n          id\n          version\n          commit\n          createdAt\n          createdBy\n          jobs {\n            id\n            releaseId\n            target\n            state\n            failureReason\n            attempts\n            builderName\n            stateChangedAt\n          }\n        }\n      }\n    }\n  }\n": typeof types.ReleasesDocument,
     "\n  query NextReleaseVersion {\n    nextReleaseVersion\n  }\n": typeof types.NextReleaseVersionDocument,
@@ -154,6 +155,7 @@ const documents: Documents = {
     "\n  mutation ClaimBuildJob($platform: BuilderPlatformInput!) {\n    claimBuildJob(platform: $platform) {\n      id\n      target\n      version\n      commit\n    }\n  }\n": types.ClaimBuildJobDocument,
     "\n  mutation ReportBuildJob($id: ID!, $state: BuildJobState, $logLines: [String!]!, $failureReason: String) {\n    reportBuildJob(id: $id, state: $state, logLines: $logLines, failureReason: $failureReason) {\n      id\n      state\n    }\n  }\n": types.ReportBuildJobDocument,
     "\n  mutation BuildUploadUrls($id: ID!, $files: [BuildFileInput!]!) {\n    buildUploadUrls(id: $id, files: $files) {\n      name\n      url\n      headers {\n        name\n        value\n      }\n      expiresAt\n    }\n  }\n": types.BuildUploadUrlsDocument,
+    "\n  query ReleasePublishing {\n    releasePublishing\n  }\n": types.ReleasePublishingDocument,
     "\n  mutation ReportBuildUploaded($id: ID!, $files: [BuildFileInput!]!, $feed: String!) {\n    reportBuildUploaded(id: $id, files: $files, feed: $feed) {\n      id\n      state\n    }\n  }\n": types.ReportBuildUploadedDocument,
     "\n  query Releases($first: Int) {\n    releases(first: $first) {\n      edges {\n        node {\n          id\n          version\n          commit\n          createdAt\n          createdBy\n          jobs {\n            id\n            releaseId\n            target\n            state\n            failureReason\n            attempts\n            builderName\n            stateChangedAt\n          }\n        }\n      }\n    }\n  }\n": types.ReleasesDocument,
     "\n  query NextReleaseVersion {\n    nextReleaseVersion\n  }\n": types.NextReleaseVersionDocument,
@@ -334,6 +336,10 @@ export function graphql(source: "\n  mutation ReportBuildJob($id: ID!, $state: B
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "\n  mutation BuildUploadUrls($id: ID!, $files: [BuildFileInput!]!) {\n    buildUploadUrls(id: $id, files: $files) {\n      name\n      url\n      headers {\n        name\n        value\n      }\n      expiresAt\n    }\n  }\n"): (typeof documents)["\n  mutation BuildUploadUrls($id: ID!, $files: [BuildFileInput!]!) {\n    buildUploadUrls(id: $id, files: $files) {\n      name\n      url\n      headers {\n        name\n        value\n      }\n      expiresAt\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  query ReleasePublishing {\n    releasePublishing\n  }\n"): (typeof documents)["\n  query ReleasePublishing {\n    releasePublishing\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */

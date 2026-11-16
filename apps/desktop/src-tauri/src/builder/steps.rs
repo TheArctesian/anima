@@ -185,6 +185,7 @@ impl Workshop<'_> {
     ) -> Result<PathBuf, BuilderError> {
         self.at(commit).await?;
         self.command_line(target, version).await?;
+        artifact::clear_bundle(&self.clone, target)?;
         self.run_all(&plan::bundle(&self.clone, target, version))
             .await?;
         artifact::stabilize_names(&self.clone, target, version)?;

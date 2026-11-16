@@ -136,7 +136,7 @@ read key; change commands with a write key).
 | `notify channel` | `list`, `create`, `update`, `delete`, `test` |
 | `notify` | `settings get\|set`, `deliveries` |
 | `retention` | `list`, `set` L |
-| `release` | `list`, `next-version`, `create` L, `cancel` L, `log` (`--follow`) |
+| `release` | `list`, `next-version`, `publishing`, `create` L, `cancel` L, `log` (`--follow`) |
 | `builder` | `list`, `enrol` L, `revoke` L |
 | `vpn` | `status` (`--watch`), `invite` L, `router-key` L, `register` L, `renew` L, `approve-route` L |
 | `extension` | `list`, `on <key>` L, `off <key>` L (`on` prints "also sets X on" and asks unless `--yes`; `off` shows the hub's CONFLICT when another extension needs it) |
@@ -324,7 +324,7 @@ Read tools are `allow` and change tools are `off` by default (MCP-002). L: needs
 | `sessions` | `anima_sessions_list` | `anima_session_end` |
 | `notifications` | `anima_notifications_overview` (channels with no addresses, settings, deliveries) | `anima_notification_send_test`, `anima_check_set_notifications` |
 | `web` | (in `anima_device_get`) | `anima_web_interface_create`, `anima_web_interface_update`, `anima_web_interface_delete` |
-| `releases` | `anima_releases_list`, `anima_build_log` | `anima_release_create` L, `anima_build_cancel` L |
+| `releases` | `anima_releases_list`, `anima_release_publishing` (PRO-037), `anima_build_log` | `anima_release_create` L, `anima_build_cancel` L |
 | `vpn` | `anima_vpn_status` | `anima_vpn_approve_route` L |
 | `retention` | `anima_retention_list` | `anima_retention_set` L |
 | `extensions` | `anima_extensions_list` | `anima_extension_set` L |

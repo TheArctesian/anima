@@ -221,7 +221,8 @@ async fn bld_049_a_key_block_split_across_reports_keeps_none_of_its_body(pool: P
 }
 
 /// D-26: an `uploaded` report names the files of the job's upload URLs; with none given, as on a
-/// hub that does not publish, every report is refused and the job keeps its lease.
+/// hub whose publishing went off after the release was queued, every report is refused and the
+/// job keeps its lease.
 #[sqlx::test(migrations = "./migrations")]
 async fn d_26_an_uploaded_report_needs_the_files_of_its_upload_urls(pool: PgPool) {
     let operator = operator(&pool).await;
@@ -245,7 +246,9 @@ async fn d_26_an_uploaded_report_needs_the_files_of_its_upload_urls(pool: PgPool
     let urls = "mutation($id: ID!, $files: [BuildFileInput!]!) { \
                 buildUploadUrls(id: $id, files: $files) { url } }";
     let variables = json!({ "id": job, "files": files });
-    let off = hub.post(Some(&builder.token), urls, variables).await;
+    let off = Hub::not_publishing(&pool, start())
+        .post(Some(&builder.token), urls, variables)
+        .await;
     assert_eq!(
         error(&off),
         (

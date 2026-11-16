@@ -178,6 +178,7 @@ fn bld_028_each_missing_tool_is_named() {
             Tool::Bun,
             Tool::Rust,
             Tool::CargoNextest,
+            Tool::Go,
             Tool::Postgres,
             Tool::TauriPackages,
         ]
@@ -190,6 +191,7 @@ fn bld_028_each_missing_tool_is_named() {
             "/home/op/.cargo/bin/cargo",
             "/home/op/.cargo/bin/cargo-nextest",
             "/usr/bin/rustc",
+            "/usr/local/go/bin/go",
         ]
         .contains(&text)
             || text.starts_with("/usr/lib/postgresql/17/bin/")
@@ -213,11 +215,13 @@ fn bld_028_each_missing_tool_is_named() {
         tools::missing(Target::LinuxX86_64, &env, no_nextest),
         [Tool::CargoNextest]
     );
+    let no_go = |path: &Path| present(path) && !path.ends_with("go");
+    assert_eq!(tools::missing(Target::LinuxX86_64, &env, no_go), [Tool::Go]);
     // The gates never run `psql`, so the check does not ask for it.
     let no_psql = |path: &Path| present(path) && !path.ends_with("psql");
     assert_eq!(tools::missing(Target::LinuxX86_64, &env, no_psql), []);
-    let json = serde_json::to_string(&[Tool::TauriPackages, Tool::CargoNextest]).unwrap();
-    assert_eq!(json, r#"["tauri-packages","cargo-nextest"]"#);
+    let json = serde_json::to_string(&[Tool::TauriPackages, Tool::CargoNextest, Tool::Go]).unwrap();
+    assert_eq!(json, r#"["tauri-packages","cargo-nextest","go"]"#);
 }
 
 #[test]

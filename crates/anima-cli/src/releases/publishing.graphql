@@ -1,0 +1,4 @@
+# `anima release publishing`: whether this hub can publish a release (PRO-037).
+query ReleasePublishing {
+  releasePublishing
+}

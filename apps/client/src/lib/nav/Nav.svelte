@@ -23,6 +23,8 @@
     onnavigate?: () => void;
     /** The Projects extension is on: its entry shows, and only then (EXT-002). */
     projectsOn?: boolean;
+    /** The hub can publish a release: the Builds entry shows in the desktop app, and only then (PRO-038). */
+    buildsOn?: boolean;
     /** The bar shows icons only, so each item needs its words as a tooltip (UI-015). */
     iconOnly?: boolean;
     /** The operator collapsed the bar to icons. */
@@ -36,7 +38,7 @@
     running?: Snippet;
   }
 
-  const { pathname, now, onnavigate, projectsOn = false, iconOnly = false, collapsed = false, canCollapse = false, ontogglecollapse, oncollapse, running }: Props =
+  const { pathname, now, onnavigate, projectsOn = false, buildsOn = false, iconOnly = false, collapsed = false, canCollapse = false, ontogglecollapse, oncollapse, running }: Props =
     $props();
   const hub = useHub();
   const banner = $derived(unreachableBanner(hub.status.current, hub.address.origin, now));
@@ -78,7 +80,7 @@
   </div>
   {@render destination(DEVICES)}
   <LiveSessions {hub} {iconOnly} />
-  {#each optionalDestinations(projectsOn, capabilities().builds) as item (item.href)}
+  {#each optionalDestinations(projectsOn, capabilities().builds && buildsOn) as item (item.href)}
     {@render destination(item)}
   {/each}
   <!-- Always rendered, so a screen reader announces the text when it appears (NET-004). -->

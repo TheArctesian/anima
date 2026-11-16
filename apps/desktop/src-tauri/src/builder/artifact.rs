@@ -70,11 +70,41 @@ pub fn mac_app(clone: &Path) -> PathBuf {
     bundle_folder(clone, Target::DarwinUniversal).join(format!("macos/{DISPLAY}.app"))
 }
 
+/// Deletes the folder `tauri bundle` writes for `target`, so no file of an earlier attempt can be
+/// taken for this one's (D1 of the projects and builds proposal): the checkout keeps cargo's
+/// `target/`. The build wrote the folders above it, so a link among them is refused, never
+/// followed, and a link at the folder itself is removed as a link.
+pub fn clear_bundle(clone: &Path, target: Target) -> Result<(), BuilderError> {
+    let folder = bundle_folder(clone, target);
+    let kind = match fs::symlink_metadata(&folder) {
+        Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(()),
+        other => other.map_err(|_| BuilderError::Bundle)?,
+    };
+    let parent = folder.parent().ok_or(BuilderError::Bundle)?;
+    let root = fs::canonicalize(clone).map_err(|_| BuilderError::Bundle)?;
+    let real = fs::canonicalize(parent).map_err(|_| BuilderError::Bundle)?;
+    if real
+        != root.join(
+            parent
+                .strip_prefix(clone)
+                .map_err(|_| BuilderError::Bundle)?,
+        )
+    {
+        return Err(BuilderError::Bundle);
+    }
+    if kind.is_dir() {
+        fs::remove_dir_all(&folder)
+    } else {
+        fs::remove_file(&folder)
+    }
+    .map_err(|_| BuilderError::Bundle)
+}
+
 /// Renames Tauri's `productName`-based DMG and `AppImage` to the stable `Anima_*` names
 /// the hub and the site expect (UPD-010). The `.app` folder keeps the display name;
-/// the updater archive is still written to `Anima.app.tar.gz`. No-op when the stable
-/// name is already present (for example a local build that still used `productName`
-/// `Anima`).
+/// the updater archive is still written to `Anima.app.tar.gz`. When Tauri wrote no
+/// `productName` file, the stable name must be there already (a commit whose `productName`
+/// was still `Anima`).
 pub fn stabilize_names(
     clone: &Path,
     target: Target,
@@ -92,7 +122,7 @@ pub fn stabilize_names(
         Target::LinuxX86_64 => updater_file(clone, target, version),
         Target::DarwinUniversal => dmg_file(clone, target, version).ok_or(BuilderError::Bundle)?,
     };
-    if wanted == produced || wanted.is_file() {
+    if wanted == produced || (!produced.exists() && wanted.is_file()) {
         return Ok(());
     }
     fs::rename(&produced, &wanted).map_err(|_| BuilderError::Bundle)

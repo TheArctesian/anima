@@ -97,6 +97,22 @@ async fn release_next_version_prints_the_version_or_a_dash() {
 }
 
 #[tokio::test]
+async fn pro_037_release_publishing_says_on_or_off() {
+    for (value, word) in [(true, "on"), (false, "off")] {
+        let hub = FakeHub::start().await;
+        hub.answer(
+            "ReleasePublishing",
+            data(json!({ "releasePublishing": value })),
+        );
+        let run = signed_in()
+            .run(&["release", "publishing", "--hub", &hub.origin])
+            .await;
+        assert_eq!(run.code, 0, "{run:?}");
+        assert!(run.stdout.trim_end().ends_with(word), "{run:?}");
+    }
+}
+
+#[tokio::test]
 async fn bld_001_release_create_sends_one_target_for_each_flag() {
     let hub = FakeHub::start().await;
     hub.answer(

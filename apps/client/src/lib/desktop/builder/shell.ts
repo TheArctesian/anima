@@ -6,6 +6,7 @@ const TOOLS = [
   'bun',
   'rust',
   'cargo-nextest',
+  'go',
   'postgres',
   'tauri-packages',
   'updater-public-key',

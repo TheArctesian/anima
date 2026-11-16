@@ -80,6 +80,65 @@ fn upd_010_stabilize_names_renames_tauri_output_to_the_stable_anima_prefix() {
 }
 
 #[test]
+fn d1_a_second_attempt_at_one_version_takes_its_own_files() {
+    let root = tempfile::tempdir().unwrap();
+    let clone = root.path().join("clone");
+    let version = Version::parse("0.1.12").unwrap();
+    let produced = clone.join("target/release/bundle/appimage/Anima.ing_0.1.12_amd64.AppImage");
+    let attempt = |bytes: &[u8]| {
+        artifact::clear_bundle(&clone, Target::LinuxX86_64).unwrap();
+        fs::create_dir_all(produced.parent().unwrap()).unwrap();
+        fs::write(&produced, bytes).unwrap();
+        artifact::stabilize_names(&clone, Target::LinuxX86_64, &version).unwrap();
+        fs::read(artifact::updater_file(
+            &clone,
+            Target::LinuxX86_64,
+            &version,
+        ))
+        .unwrap()
+    };
+    assert_eq!(attempt(b"first"), b"first");
+    assert_eq!(attempt(b"second"), b"second");
+}
+
+#[test]
+fn d1_a_stable_file_left_beside_a_new_bundle_is_replaced() {
+    let root = tempfile::tempdir().unwrap();
+    let clone = root.path().join("clone");
+    let version = Version::parse("0.1.12").unwrap();
+    let folder = clone.join("target/release/bundle/appimage");
+    fs::create_dir_all(&folder).unwrap();
+    fs::write(folder.join("Anima_0.1.12_amd64.AppImage"), b"earlier").unwrap();
+    fs::write(folder.join("Anima.ing_0.1.12_amd64.AppImage"), b"this one").unwrap();
+    artifact::stabilize_names(&clone, Target::LinuxX86_64, &version).unwrap();
+    let wanted = artifact::updater_file(&clone, Target::LinuxX86_64, &version);
+    assert_eq!(fs::read(wanted).unwrap(), b"this one");
+}
+
+#[test]
+fn d1_clearing_the_bundle_never_follows_a_link_out_of_the_clone() {
+    let root = tempfile::tempdir().unwrap();
+    let clone = root.path().join("clone");
+    let outside = root.path().join("outside");
+    fs::create_dir_all(outside.join("bundle")).unwrap();
+    fs::write(outside.join("bundle/keep"), b"not the build's").unwrap();
+    fs::create_dir_all(clone.join("target")).unwrap();
+    symlink(&outside, clone.join("target/release")).unwrap();
+    assert_eq!(
+        artifact::clear_bundle(&clone, Target::LinuxX86_64),
+        Err(BuilderError::Bundle)
+    );
+    assert!(outside.join("bundle/keep").is_file());
+
+    let linked = clone.join("target/universal-apple-darwin/release");
+    fs::create_dir_all(&linked).unwrap();
+    symlink(&outside, linked.join("bundle")).unwrap();
+    artifact::clear_bundle(&clone, Target::DarwinUniversal).unwrap();
+    assert!(!linked.join("bundle").exists());
+    assert!(outside.join("bundle/keep").is_file());
+}
+
+#[test]
 fn stabilize_names_fails_when_neither_name_is_present() {
     let root = tempfile::tempdir().unwrap();
     let clone = root.path().join("clone");

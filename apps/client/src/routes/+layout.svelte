@@ -4,6 +4,7 @@
   import '../styles/global.css';
   import { guardStart, showsSignedOutPage, startAt } from '$lib/access/navigation';
   import { provideDesktopBuilder } from '$lib/builds/desktop.svelte';
+  import { providePublishing, ReleasePublishing } from '$lib/builds/publishing.svelte';
   import { extensionsApi } from '$lib/extensions/api';
   import { ExtensionsStore, provideExtensions } from '$lib/extensions/store.svelte';
   import { provideHub } from '$lib/hub/context';
@@ -87,6 +88,12 @@
     provideDesktopUpdates();
     // A computer enrolled as a builder builds while the app runs (BLD-026).
     provideDesktopBuilder(hub);
+    // Builds show only for a hub that can publish a release (PRO-038); read once signed in.
+    const publishing = new ReleasePublishing(hub);
+    providePublishing(publishing);
+    $effect(() => {
+      if (capabilities().builds && !showsSignedOutPage(page.url)) void publishing.load();
+    });
 
     // Each session view starts its own sessions, since only it knows its display (D-7); the store ends them (D-11).
     const api = sessionsApi(hub);
@@ -139,7 +146,7 @@
       });
     });
 
-    return { api, clock, sessions, navigate, extensions };
+    return { api, clock, sessions, navigate, extensions, publishing };
   }
 </script>
 
@@ -150,13 +157,14 @@
     <main>{@render children()}</main>
   </div>
 {:else if shell !== null}
-  {@const { api, clock, sessions, navigate, extensions } = shell}
+  {@const { api, clock, sessions, navigate, extensions, publishing } = shell}
   <div class="shell">
     <Nav
       pathname={page.url.pathname}
       now={clock.current}
       onnavigate={navigate}
       projectsOn={extensions.isOn('projects')}
+      buildsOn={publishing.on}
       iconOnly={nav.iconOnly}
       {collapsed}
       canCollapse={!nav.compact}
