@@ -8,6 +8,7 @@ mod keystore;
 mod mcp_permissions;
 mod os_program;
 mod process_log;
+mod stay_awake;
 mod system_browser;
 mod system_settings;
 mod this_machine;
@@ -28,8 +29,9 @@ fn main() {
         .manage(builder::Running::default())
         .manage(builder::Bundled::default())
         .manage(agent::Installing::default())
-        .setup(|_| {
+        .setup(|app| {
             tauri::async_runtime::spawn(keystore::forget_retired_updater_key());
+            stay_awake::start(app.handle());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -57,6 +59,11 @@ fn main() {
             command_line::command_line_install,
             command_line::command_line_remove,
             system_browser::system_browser_open,
+            stay_awake::stay_awake_read,
+            stay_awake::stay_awake_choose,
+            stay_awake::stay_awake_floor,
+            stay_awake::stay_awake_lid_set_up,
+            stay_awake::stay_awake_lid_remove,
             web_view::commands::web_view_pinning,
             web_view::commands::web_view_open,
             web_view::commands::web_view_place,
@@ -72,10 +79,13 @@ fn main() {
         .run(|app, event| on_run_event(app, &event));
 }
 
-/// No build step or agent run outlives the app (BLD-026, MET-019).
+/// No build step, agent run or stay-awake hold outlives the app (BLD-026, MET-019, AWK-007).
 fn on_run_event(app: &tauri::AppHandle, event: &tauri::RunEvent) {
     if matches!(event, tauri::RunEvent::Exit) {
         app.state::<builder::Running>().cancel();
         app.state::<agent::Installing>().stop();
+        if let Some(stay_awake) = app.try_state::<stay_awake::StayAwake>() {
+            stay_awake.release();
+        }
     }
 }

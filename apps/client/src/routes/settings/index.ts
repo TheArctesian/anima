@@ -1,8 +1,9 @@
 import type { IndexEntry } from '$lib/page/contents/PageIndex.svelte';
 
-/** What this platform can show: the Hub, Updates and MCP sections are desktop only (CLI-002, UPD-006, MCP-023). */
+/** What this platform can show: the Hub, Stay awake, Updates and MCP sections are desktop only (CLI-002, AWK-004, UPD-006, MCP-023). */
 export interface IndexShown {
   readonly keyStore: boolean;
+  readonly stayAwake: boolean;
   readonly desktopRows: boolean;
   readonly mcpPermissions: boolean;
 }
@@ -11,6 +12,7 @@ export interface IndexShown {
 export const SECTIONS = {
   account: { id: 'settings-account', title: 'Account', icon: 'carbon:user-avatar', description: 'Who is signed in to this hub.' },
   hub: { id: 'settings-hub', title: 'Hub', icon: 'carbon:network-enterprise', description: 'The hub this app talks to.' },
+  stayAwake: { id: 'settings-stay-awake', title: 'Stay awake', icon: 'carbon:power', description: 'Keeps this computer on, so a hub or an agent on it keeps working.' },
   appearance: { id: 'settings-appearance', title: 'Appearance', icon: 'carbon:color-palette', description: 'How Anima looks on this device.' },
   notifications: { id: 'settings-notifications', title: 'Notifications', icon: 'carbon:notification', description: 'Where the hub sends alerts.' },
   checkDefaults: { id: 'settings-check-defaults', title: 'Default check settings', icon: 'carbon:settings-adjust', description: 'New checks start with these settings.' },
@@ -25,10 +27,11 @@ export const SECTIONS = {
 
 /** The index of the sections the page shows, in the page's order (WP-50 F-10). */
 export function indexOf(shown: IndexShown): readonly IndexEntry[] {
-  const { account, hub, appearance, notifications, checkDefaults, retention, updates, apiKeys, extensions, integrations, mcp, vpn } = SECTIONS;
+  const { account, hub, stayAwake, appearance, notifications, checkDefaults, retention, updates, apiKeys, extensions, integrations, mcp, vpn } = SECTIONS;
   const entries: (IndexEntry | false)[] = [
     account,
     shown.keyStore && hub,
+    shown.stayAwake && stayAwake,
     appearance,
     notifications,
     checkDefaults,

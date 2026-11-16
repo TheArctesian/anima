@@ -18,7 +18,8 @@ tauri-build.workspace = true
 anima-cli = { path = "../../../crates/anima-cli" }
 # `unstable`: child web views in the main window and moving them to a window of their own
 # (`Window::add_child`, `Webview::reparent`) for device web views (WEB-004, D-3).
-tauri = { workspace = true, features = ["unstable"] }
+# `tray-icon`: the menu bar or tray item of the stay-awake control (AWK-004).
+tauri = { workspace = true, features = ["unstable", "tray-icon"] }
 keyring.workspace = true
 serde.workspace = true
 thiserror.workspace = true
@@ -76,7 +77,7 @@ objc2-web-kit = { version = "0.3.2", default-features = false, features = ["std"
 
 [dev-dependencies]
 # The mock runtime the updater proof runs the real updater plugin in (tests/updater).
-tauri = { workspace = true, features = ["unstable", "test"] }
+tauri = { workspace = true, features = ["unstable", "tray-icon", "test"] }
 rcgen.workspace = true
 # The reference minisign implementation signs the feed the updater proof serves (tests/updater).
 minisign = "0.10"
