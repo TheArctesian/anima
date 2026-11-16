@@ -871,7 +871,7 @@ for long tasks the jobs and agent-runs proposals.
   terms. Calling the vendor's own program (BOT-003) is the safe path. Check each vendor's terms before
   release.
 - "Always on" only holds while the device is on. A cloud computer add-on would cover users with one
-  laptop (the cloud VM proposal is being written).
+  laptop ([cloud-machines.md](programme/proposals/cloud-machines.md)).
 - A bot with shell access is an agent that runs code. It needs the same isolation ruling as
   community extensions (EXT-009) before it runs anything that is not the operator's own instructions.
 
