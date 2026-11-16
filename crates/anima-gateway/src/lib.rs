@@ -4,13 +4,14 @@
 //!
 //! So far: the gateway's copy of the remote screen (`screen`), the instructions that draw
 //! its changes in the client (`frames`), the opening of a session with the hub
-//! (`handshake`), the VNC client (`vnc`), the picture that fits the client's view (`view`),
+//! (`handshake`), the VNC client (`vnc`), the RDP client (`rdp`), the picture that fits the client's view (`view`),
 //! one session from end to end (`session`), and the
 //! listener that starts a worker process for each session (`listening`).
 
 pub mod frames;
 pub mod handshake;
 pub mod listening;
+pub mod rdp;
 pub mod screen;
 pub mod session;
 pub mod view;
