@@ -173,8 +173,8 @@ Each stage ends with a build that the operator can use. The state words are thos
 | --- | --- | --- | --- | --- | --- |
 | M0-1 | M0 Rulings | The operator decides OD-M1 to OD-M8 | — | Done | Ruling of the operator, 2026-11-16 (Section 3) |
 | M0-2 | M0 Rulings | Make the changes of Section 7 that the rulings need | — | Done | The commit that adds version 0.2 of this plan |
-| M1-1 | M1 Shell | Mobile entry point; desktop modules behind `cfg(desktop)`; identifier `ing.anima.mobile` | MOB-001, MOB-002, MOB-003, MOB-007 | Not started | — |
-| M1-2 | M1 Shell | Phone answers in `$lib/platform`; no call to a missing command | MOB-004, MOB-005 | Not started | — |
+| M1-1 | M1 Shell | Mobile entry point; desktop modules behind `cfg(desktop)`; identifier `ing.anima.mobile` | MOB-001, MOB-002, MOB-003, MOB-007 | Done | `327abdc6` on the branch `mobile/m1-shell`. The application started on the iPhone simulator and on the Android emulator on 2026-11-16; sign-in and the device list worked on Android. The link commands of MOB-002 come with task M3-1. |
+| M1-2 | M1 Shell | Phone answers in `$lib/platform`; no call to a missing command | MOB-004, MOB-005 | In progress | `327abdc6`: MOB-004 is built. Open for MOB-005: with a loopback hub address a phone still calls `hub_listener_check`. The call fails and the client then sends nothing, which is safe. Task M3-1 gives the phone its own check. |
 | M1-3 | M1 Shell | Mobile build procedure and the compile gate | MOB-040, MOB-041, MOB-042 | Not started | — |
 | M1-4 | M1 Shell | Test: build `link/devicelink` as a library for iOS and for Android; join a test hub; get an answer at the loopback address. Write the result in this plan. | MOB-031, MOB-032, MOB-039 | Not started | — |
 | M2-1 | M2 Layout | Safe area, status bar and no zoom on a field | MOB-011, MOB-012 | Not started | — |
