@@ -3,10 +3,10 @@
 | Item | Value |
 | --- | --- |
 | Document | Work plan: purpose, categories and priority order |
-| Version | 1.2 |
+| Version | 1.3 |
 | Date | 2026-11-16 |
 | Language | ASD-STE100 Simplified Technical English (STE) |
-| Status | Approved. The operator approved the principles and the priority order on 2026-11-13. The proposals stay drafts until each has a ruling (Section 5). Version 1.1 adds the plan register (Section 9) and the rules for plans (Section 10) on the operator's instruction of 2026-11-15. Version 1.2 records OD-W13 and OD-W14 to OD-W21 (operator, 2026-11-16). |
+| Status | Approved. The operator approved the principles and the priority order on 2026-11-13. The proposals stay drafts until each has a ruling (Section 5). Version 1.1 adds the plan register (Section 9) and the rules for plans (Section 10) on the operator's instruction of 2026-11-15. Version 1.2 records OD-W13 and OD-W14 to OD-W21 (operator, 2026-11-16). Version 1.3 adds two proposals on the operator's request of 2026-11-16: the watchdog, and the update of the agent and the hub. They are drafts; OD-W22 and OD-W23 are open. |
 | Related | [design-spec.md](design-spec.md), [extensions-plan.md](extensions-plan.md), [compute-plan.md](compute-plan.md), [vpn-plan.md](vpn-plan.md), [programme/handoff.md](programme/handoff.md), [programme/proposals/](programme/proposals/) |
 
 This document obeys the writing rules in Section 0 of the design specification.
@@ -49,8 +49,8 @@ The coordinator is the hub of the design specification. The interface, the speci
 
 | Category | Meaning | Content | Owner documents |
 | --- | --- | --- | --- |
-| Foundation | The parts that all other work uses | Coordinator, VPN between sites, `anima-agent` on each machine, the clients, the standby copies, bulk data on the operator's machines | Design specification Sections 3, 4, 5 and 10. [vpn-plan.md](vpn-plan.md). [coordinator-standby.md](programme/proposals/coordinator-standby.md), [bulk-data-placement.md](programme/proposals/bulk-data-placement.md) |
-| See | Know the state of all that is yours | Checks, metrics, notifications, Projects (the front door for rented accounts), the Integrations section | Design specification Section 6. Extensions plan Sections 4.2 and 4.5. [projects-and-builds.md](programme/proposals/projects-and-builds.md) |
+| Foundation | The parts that all other work uses | Coordinator, VPN between sites, `anima-agent` on each machine, the clients, the standby copies, bulk data on the operator's machines, the update of the agent and the hub | Design specification Sections 3, 4, 5 and 10. [vpn-plan.md](vpn-plan.md). [coordinator-standby.md](programme/proposals/coordinator-standby.md), [bulk-data-placement.md](programme/proposals/bulk-data-placement.md), [agent-and-hub-update.md](programme/proposals/agent-and-hub-update.md) |
+| See | Know the state of all that is yours | Checks, metrics, notifications, Projects (the front door for rented accounts), the Integrations section, the watchdog (it also restarts a program, which is Use) | Design specification Section 6. Extensions plan Sections 4.2 and 4.5. [projects-and-builds.md](programme/proposals/projects-and-builds.md), [watchdog.md](programme/proposals/watchdog.md) |
 | Reach | Go into a thing and act on it | SSH, RDP, VNC, web interfaces, Secrets | Design specification Section 6.3. Extensions plan Section 4.4 |
 | Remember | Keep a copy of the life of the operator | Health, Money, Map, People, History, Documents, Writing, Reminders, Library, Wardrobe, AI coding sessions | Extensions plan Sections 2 and 4. [new-sources.md](programme/proposals/new-sources.md) |
 | Use | Make the machines do work | Model service, builds, jobs, AI agent runs, hosted applications | [compute-plan.md](compute-plan.md). [jobs.md](programme/proposals/jobs.md), [projects-and-builds.md](programme/proposals/projects-and-builds.md), [agent-runs.md](programme/proposals/agent-runs.md), [hosted-applications.md](programme/proposals/hosted-applications.md) |
@@ -77,6 +77,8 @@ The tiers come from the issue labels `priority: foundation`, `priority: later` a
 | 4 | Use | Level 2: one model across machines (C4 to C6) | #37, #38, #39. Decisions #45, #46 | Parked. Start only after Level 1 is in daily use (CMP-004, PH-C-001). |
 | 4 | Foundation | A hash chain for the audit log, so that a change to an old entry shows | #2 | The operator made the issue smaller on 2026-11-12: only its phase L0 stays. Its phases L1 to L5 are withdrawn (OD-W9). |
 | 4 | Foundation, Reach | iOS client (Phase 5). Site operations and traffic data (Phase 6) | Design specification Section 9. #55 | Planned. #55 puts Phase 6 after the extension foundations and compute. |
+| Not set | Foundation | Update the agent and the hub on each machine with one press, and automatically: signed releases, a rollout in steps, a rollback, machines that are not connected (ROL-001 to ROL-052) | No issue yet | Proposal. Not approved. The operator must give it a tier (OD-W23). It needs the first release (task R7), new files from the builder and a change to K8. |
+| Not set | See, Use | The watchdog: `anima-agent` restarts the programs that the operator marked, and reports each restart (WDG-001 to WDG-041) | No issue yet | Proposal. Not approved. The operator must give it a tier (OD-W22). It needs the ruling for OD-W10 and a change to K8; its second stage needs the work route (group W). |
 | — | All | Deferred items and ideas from other products | #1 | Recorded, not planned |
 
 Notes:
@@ -107,6 +109,8 @@ One document owns each concern. Add a requirement to its owner, not to this docu
 | Rules for all work on machines, and jobs | [jobs.md](programme/proposals/jobs.md) | USE-001 to USE-009, JOB-001 to JOB-011 |
 | AI agent runs | [agent-runs.md](programme/proposals/agent-runs.md) | AGN-001 to AGN-008 |
 | Hosted applications | [hosted-applications.md](programme/proposals/hosted-applications.md) | HOST-001 to HOST-009 |
+| The watchdog: watched programs of a machine, their restarts and the reports | [watchdog.md](programme/proposals/watchdog.md) | WDG-001 to WDG-041 |
+| The update of the agent and the hub: the release record, the rollout, the rollback, the automatic update. The update of the desktop application stays in the design specification Section 3.9 (UPD). | [agent-and-hub-update.md](programme/proposals/agent-and-hub-update.md) | ROL-001 to ROL-052 |
 | Projects as the front door: import from a forge, resources that Anima finds, builds as jobs, owned machines as runners of GitHub Actions, sign-in with a forge | [projects-and-builds.md](programme/proposals/projects-and-builds.md) | PRO-001 to PRO-053 |
 | The `anima` command line and the MCP server | [cli-mcp-plan.md](cli-mcp-plan.md). The design specification Section 6.10 gives the summary. | CMD, MCP |
 | Who did an action: the actor kinds User, Agent and Hub in the audit log and the event log | [design-spec.md](design-spec.md) Section 3.8.1 | LOG-012 to LOG-020 |
@@ -160,6 +164,8 @@ Decisions of the other plans stay in their issues (Section 4, tier 1). These are
 | OD-W19 | The name of the macOS application: `Anima.app` (design specification) or `Anima.ing.app` (the builder) | **Decided (operator, 2026-11-16): `Anima.ing.app`**, the name that Tauri makes from `productName`. Task R5 changes the design specification Section 3.11 and `carried.rs` to agree. The file names of a release stay `Anima_*` (UPD-010). |
 | OD-W20 | The meaning of "must not be able to build or publish the Anima application" (PRO-028) | **Decided (operator, 2026-11-16).** The source is public under AGPL-3.0-or-later, so each person can compile it. The rule means two things. The product has no release function on a hub that has no keys (PRO-037, PRO-038). The keys stay with the Anima project on the operator's hub (PRO-036). |
 | OD-W21 | The order of the build work, and the tier of the correction of the release | **Decided (operator, 2026-11-16).** Tasks R1 to R7 at tier 0, now, because no release is published. Then the work route (W), then runners in warm mode (B), then Anima's own builds (A). Reason for B before A: B gives each project its builds from the workflows that it has. |
+| OD-W22 | The watchdog ([watchdog.md](programme/proposals/watchdog.md)): approve its direction, and give it a tier. Its own decisions are OD-WDG-1 to OD-WDG-13. | **Open.** Recommendation: approve it as a function of `anima-agent`, not as a container. Tier 3c, before hosted applications, which can then use its check (HOST-008). Its stage 1 (watches made at the machine) needs no work route and can start after stage B of the update, if the operator wants it earlier. It needs the ruling number for OD-W10, because it changes MET-002. |
+| OD-W23 | The update of the agent and the hub ([agent-and-hub-update.md](programme/proposals/agent-and-hub-update.md)): approve its direction, and give it a tier. Its own decisions are OD-ROL-1 to OD-ROL-14. | **Open.** Recommendation: tier 1, directly after the first release (task R7). The work route and the watchdog reach an installed machine only through an update (USE-008). Build it in three stages: the versions show, the machines update, then the hub, after the restore procedure (FND-006) is written. The operator must also accept that the updater key then signs a program that runs on each machine (R-117), or select a second key (OD-ROL-2). |
 
 ## 8. Changes that this plan needs in other documents
 
@@ -190,6 +196,9 @@ These changes are not made. The operator must approve each one (operator checkpo
 | `contracts/schema.graphql` (K1), `contracts/database.md` (K2), `contracts/conventions.md` (K7) | Not made: the additions for the actor kinds, in the table of design specification Section 3.8.1. They need a programme ruling (CON-001, design specification OD-15). |
 | Design specification 3.11 | Done as text (operator, 2026-11-13): installation from the disk image or the AppImage, with the `anima` program inside (INS-001 to INS-009). INS-002 to INS-007 are built (branch `fix/bundle-anima`); a real release must confirm OD-16 to OD-18. |
 | Design specification 3.12 and 11 | Done as text (operator, 2026-11-13): the marketing website (SITE-001 to SITE-012). Not built. The operator must decide OD-20, OD-21 and OD-22 of the design specification. |
+| Design specification MET-002 and ruling R-115 | Not made, and only after OD-W22 or OD-W23 is approved: the agent can restart a watched program (WDG-026) and can replace its own program files (ROL-015). R-115 lists the agent update as later work with no specification. |
+| `contracts/agent-push.md` (K8) | Not made, and it needs a programme ruling (CON-001): the agent reports its version (ROL-051) and its restarts (WDG-031); the hub tells an agent a version and gives it the files (ROL-008, ROL-009). |
+| Design specification Sections 3.9, 3.10, 6.4, 6.9 and 7 | Not made, and only after approval: a release has the agent, the hub and a release record (ROL-001 to ROL-005); the check type `watch` (WDG-035); the new calls in the list of INT-003 (OD-WDG-9, OD-ROL-9); the group "Hub and machines" in the Updates section (SET-006). |
 | [cli-mcp-plan.md](cli-mcp-plan.md) Sections 6 and 7 | Not made: `anima key create` takes "made for"; `anima audit list` gets the actor column and `--actor`; `anima mcp` sends the agent declaration (LOG-015, LOG-016, LOG-020). Make them with the build, after the ruling. |
 
 ## 9. Plan register
@@ -230,6 +239,8 @@ This table is the only list of the plans of Anima. A document that is not in thi
 | [programme/proposals/agent-runs.md](programme/proposals/agent-runs.md) | Proposal | Draft | Not approved. |
 | [programme/proposals/hosted-applications.md](programme/proposals/hosted-applications.md) | Proposal | Draft | Not approved. |
 | [programme/proposals/new-sources.md](programme/proposals/new-sources.md) | Proposal | Draft | No provider is verified. |
+| [programme/proposals/watchdog.md](programme/proposals/watchdog.md) | Proposal, with a task table | Draft | Version 1 (2026-11-16). Not approved (OD-W22). Each task of its "Tasks" is Not started. |
+| [programme/proposals/agent-and-hub-update.md](programme/proposals/agent-and-hub-update.md) | Proposal, with a task table | Draft | Version 1 (2026-11-16). Not approved (OD-W23). Each task of its "Tasks" is Not started. |
 | [programme/proposals/add-this-machine.md](programme/proposals/add-this-machine.md) | Proposal | Draft. Build state not checked | Its status line: a proposal for a ruling. |
 | [programme/proposals/first-run-setup.md](programme/proposals/first-run-setup.md) | Proposal | Draft. Build state not checked | Its status line: a proposal for a ruling. |
 | [programme/proposals/in-app-enrolment.md](programme/proposals/in-app-enrolment.md) | Proposal | Draft. Build state not checked | Its status line: a proposal for a ruling. |
