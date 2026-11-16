@@ -101,8 +101,8 @@ One document owns each concern. Add a requirement to its owner, not to this docu
 | Model service and pooled models | [compute-plan.md](compute-plan.md), as changed by #34 and #35 | CMP, CAG, CAP, RTR and the others there |
 | Copies of the coordinator database, and the move of the coordinator | [coordinator-standby.md](programme/proposals/coordinator-standby.md) | FND-001 to FND-012 |
 | Bulk data on the operator's machines | [bulk-data-placement.md](programme/proposals/bulk-data-placement.md) | STO-001 to STO-011 |
-| Rules for all work on machines, and jobs | [jobs.md](programme/proposals/jobs.md) | USE-001 to USE-009, JOB-001 to JOB-010 |
-| AI agent runs | [agent-runs.md](programme/proposals/agent-runs.md) | AGN-001 to AGN-008 |
+| Rules for all work on machines, and jobs | [jobs.md](programme/proposals/jobs.md) | USE-001 to USE-009, JOB-001 to JOB-026 |
+| AI agent runs | [agent-runs.md](programme/proposals/agent-runs.md) | AGN-001 to AGN-014 |
 | Hosted applications | [hosted-applications.md](programme/proposals/hosted-applications.md) | HOST-001 to HOST-009 |
 | Projects as the front door: import from a forge, resources that Anima finds, builds as jobs, sign-in with a forge | [projects-and-builds.md](programme/proposals/projects-and-builds.md) | PRO-001 to PRO-026 |
 | The `anima` command line and the MCP server | [cli-mcp-plan.md](cli-mcp-plan.md). The design specification Section 6.10 gives the summary. | CMD, MCP |

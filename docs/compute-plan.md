@@ -120,6 +120,34 @@ These terms add to Section 2 of the design specification.
 - **CAP-005.** On Apple silicon, the usable memory is the GPU working-set limit of macOS, not the total memory. The agent must report this limit.
 - **CAP-006.** The hub must keep the measured tokens per second of each loaded copy. The router uses it (RTR-034).
 
+#### Tool inventory
+
+Approved for build (operator, 2026-11-15: "lets build the two buildable ones now"; ruling number to be assigned). The first build leaves out the Apple SDKs, the simulator runtimes and the running state of the container runtime (CAP-023). The graphical client comes later (CMD-030). The operator said that an AI agent "will need to know what's installed so that it can either run commands or run agents". The placement of a job uses this inventory (JOB-011 to JOB-013 of [jobs.md](programme/proposals/jobs.md)). The tool inventory only reads. It needs no work route.
+
+- **CAP-020.** The agent must report a tool inventory of its machine to the hub: the tools, the build targets and the AI agent programs.
+- **CAP-021.** The tool inventory must come from a fixed list of probes in the agent. The hub must not be able to send a probe or a command line to the agent.
+- **CAP-022.** A probe must run a program only with fixed arguments that print a version or a list. A probe must not start a build, a model or a network request.
+- **CAP-023.** The first probes must cover these items:
+
+  | Group | Items |
+  | --- | --- |
+  | Source control | git |
+  | Rust | rustc, cargo, each installed target of rustup, cargo-nextest, sccache |
+  | JavaScript | bun, node |
+  | Apple | the Xcode version, each installed SDK and simulator runtime |
+  | Containers | the container runtime and whether it is running |
+  | Nix | nix |
+  | AI agent programs | claude, codex, and each harness of AGN-009 |
+
+- **CAP-024.** Each line must give the name, the version and a verdict, in the form of CAP-002.
+- **CAP-025.** For an AI agent program, the line must say only "installed" and the version. The agent must not read a credential file, an account name or a usage limit (LOG-007).
+- **CAP-026.** The tool inventory must include the processor architecture and the operating system version.
+- **CAP-027.** The agent must send the tool inventory at start and when a probe result changes. It must check for changes each 15 minutes or less often.
+- **CAP-028.** The probe list and the parse of each probe output must be in `agent-core`, with no I/O (CAG-007). The reader that runs each program is the I/O edge.
+- **CAP-029.** The tool inventory must be an optional member of the push batch of K8, as `gpus` and `drives` are. K8 permits an optional member without a new version (its Section 1). Thus the agent makes no new call and the agent token does not change (MET-013). K8 is frozen (CON-001), so the addition carries the mark of this ruling.
+- **CAP-030.** The hub must give the tool inventory of each device as `capabilities`. CAP-001 to CAP-004 join it when the model service is built. It must filter by tool name and by build target. The command is `anima capability list` and the MCP tool is `anima_capability_list` (CMD-030).
+- **CAP-031.** Text in a tool inventory comes from a device. The MCP result must give it in named fields with a length limit (MCP-008).
+
 ### 3.2 Device policy
 
 - **CAP-010.** The operator must set a policy for each compute node: on or off, a maximum memory share, a maximum disk share for models, and quiet hours.
