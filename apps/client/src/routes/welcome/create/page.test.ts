@@ -23,6 +23,9 @@ const mocks = vi.hoisted(() => ({
   writeAccessToken: vi.fn(),
   loadClientAt: vi.fn(),
   sent: [] as { operation: string; variables: unknown }[],
+  /** The readers `tokenFor` made, and the token each request hub was given (F-10). */
+  gated: [] as { origin: string; desktop: boolean; reader: unknown }[],
+  hubTokens: [] as unknown[],
   stayAwake: vi.fn(),
 }));
 
@@ -32,22 +35,31 @@ vi.mock('$lib/desktop/hub-listener/shell', () => ({ checkHubListener: mocks.chec
 vi.mock('$lib/desktop/token', () => ({ writeAccessToken: mocks.writeAccessToken, readAccessToken: () => Promise.resolve(null) }));
 vi.mock('$lib/desktop/stay-awake/shell', () => ({ readStayAwake: mocks.stayAwake }));
 vi.mock('$lib/access/navigation', () => ({ loadClientAt: mocks.loadClientAt }));
-vi.mock('$lib/access/listener/check', () => ({ tokenFor: () => () => Promise.resolve(null) }));
+vi.mock('$lib/access/listener/check', () => ({
+  tokenFor: (address: { origin: string }, desktop: boolean) => {
+    const reader = () => Promise.resolve(null);
+    mocks.gated.push({ origin: address.origin, desktop, reader });
+    return reader;
+  },
+}));
 // The hub the page signs in to answers Login and CreateLinkInvite and records what it was sent.
 vi.mock('$lib/hub/hub', async (importOriginal) => ({
   ...(await importOriginal<typeof import('$lib/hub/hub')>()),
-  createRequestHub: ({ address }: { address: unknown }) => ({
-    address,
-    request: (document: TypedDocumentNode, variables: unknown) => {
-      const operation = /(?:mutation|query) (\w+)/.exec(print(document))?.[1] ?? '';
-      mocks.sent.push({ operation, variables });
-      const answers: Record<string, unknown> = {
-        Login: { login: { token: 'tok-new' } },
-        CreateLinkInvite: { createLinkInvite: { invite: INVITE, expiresAt: '2099-01-01T00:15:00Z' } },
-      };
-      return Promise.resolve({ ok: true, value: answers[operation] });
-    },
-  }),
+  createRequestHub: ({ address, token }: { address: unknown; token: unknown }) => {
+    mocks.hubTokens.push(token);
+    return {
+      address,
+      request: (document: TypedDocumentNode, variables: unknown) => {
+        const operation = /(?:mutation|query) (\w+)/.exec(print(document))?.[1] ?? '';
+        mocks.sent.push({ operation, variables });
+        const answers: Record<string, unknown> = {
+          Login: { login: { token: 'tok-new' } },
+          CreateLinkInvite: { createLinkInvite: { invite: INVITE, expiresAt: '2099-01-01T00:15:00Z' } },
+        };
+        return Promise.resolve({ ok: true, value: answers[operation] });
+      },
+    };
+  },
 }));
 
 let app: ReturnType<typeof mount> | undefined;
@@ -94,6 +106,8 @@ beforeEach(() => {
   mocks.loadClientAt.mockReset();
   mocks.stayAwake.mockReset().mockResolvedValue({ ok: true, status: { level: 'off', batteryFloor: null, held: 'off', pause: null, lid: 'ready' } });
   mocks.sent.length = 0;
+  mocks.gated.length = 0;
+  mocks.hubTokens.length = 0;
 });
 
 afterEach(async () => {
@@ -129,6 +143,9 @@ it('FRN-002, FRN-004, F-10, AWK-005: install, account, authenticator, sign-in wi
   expect(target.textContent).toContain('Wait for the next code');
   await enterCode('222222');
   expect(mocks.sent[0]).toEqual({ operation: 'Login', variables: { input: { username: 'ann', password: PASSWORD, totpCode: '222222' } } });
+  // The sign-in hub reads its token through the listener gate made for this address (F-10).
+  expect(mocks.gated[0]).toMatchObject({ origin: 'http://127.0.0.1:8443', desktop: true });
+  expect(mocks.hubTokens[0]).toBe(mocks.gated[0]?.reader);
   expect(mocks.writeAccessToken.mock.calls[0]?.[1]).toBe('tok-new');
 
   expect(heading()).toBe('Save a copy of the hub key');

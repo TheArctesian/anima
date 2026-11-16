@@ -34,8 +34,17 @@ export interface ListenerGate {
   verdict(origin: string): Promise<ListenerVerdict>;
   /** Drops the verdict for `origin`, so that the next call asks again (Check again, Start, Stop, Leave, a lost hub). */
   forget(origin: string): void;
-  /** `token`, read only once the verdict for the address is safe; otherwise it rejects, so nothing is sent. */
-  token(token: TokenProvider): TokenProvider;
+  /**
+   * `token`, read only once the verdict for the address is safe; otherwise it rejects, so nothing is sent. A `fresh`
+   * reader asks the shell before every read and never takes a kept answer: for the socket, which reconnects by itself
+   * after a dead hub, before the page can see the loss (security re-review MF-1).
+   */
+  token(token: TokenProvider, read?: TokenRead): TokenProvider;
+}
+
+/** How a gated reader takes its verdict. */
+export interface TokenRead {
+  readonly fresh: boolean;
 }
 
 /** How long an answer stands: a program that takes the port later is seen within this time (security review M-C). */
@@ -57,15 +66,19 @@ export function listenerGate({ check, now }: GateParts): ListenerGate {
     verdicts.set(origin, { asked, at: now() });
     return asked;
   };
+  const forget = (origin: string): void => {
+    verdicts.delete(origin);
+  };
   return {
     verdict,
-    forget: (origin) => {
-      verdicts.delete(origin);
-    },
-    token: (token) => async (address) => {
-      if (!(await verdict(address.origin)).safe) throw new ListenerRefused();
-      return token(address);
-    },
+    forget,
+    token:
+      (token, read = { fresh: false }) =>
+      async (address) => {
+        if (read.fresh) forget(address.origin);
+        if (!(await verdict(address.origin)).safe) throw new ListenerRefused();
+        return token(address);
+      },
   };
 }
 

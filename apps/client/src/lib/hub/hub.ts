@@ -62,6 +62,11 @@ export interface Hub {
 export interface HubOptions {
   readonly address: HubAddress;
   readonly token: TokenProvider;
+  /**
+   * The socket's reader, for each `connection_init`; `token` when absent. The socket reconnects by itself, so a reader
+   * that must check the address each time (F-10) is given here.
+   */
+  readonly socketToken?: TokenProvider;
   readonly fetch?: typeof fetch;
   readonly WebSocket?: typeof WebSocket;
   readonly now?: () => Date;
@@ -86,7 +91,7 @@ export function createHub(options: HubOptions): Hub {
   const socket = createSocket({
     address,
     WebSocket: options.WebSocket ?? globalThis.WebSocket,
-    token,
+    token: options.socketToken ?? token,
     signal: connection.signal,
     timeoutMs,
   });
@@ -106,7 +111,7 @@ export type RequestHub = Pick<Hub, 'address' | 'request'>;
  * A hub at `address` for HTTP requests only, for a token that opens no socket: the builder token permits only the
  * builder operations (BLD-022, D-1). Its failures do not change the operator's connection status.
  */
-export function createRequestHub(options: Omit<HubOptions, 'WebSocket' | 'now'>): RequestHub {
+export function createRequestHub(options: Omit<HubOptions, 'WebSocket' | 'now' | 'socketToken'>): RequestHub {
   const address: HubAddress = Object.freeze({ ...options.address });
   const http = {
     address,
