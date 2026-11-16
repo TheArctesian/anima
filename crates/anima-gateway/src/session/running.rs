@@ -10,10 +10,8 @@ use tokio::time::{Instant, sleep_until};
 use super::hub::{Hub, write_unless_stalled};
 use super::input::{Clipboard, Input, copy_to_client};
 use super::opening::{Allowed, Opened, refuse};
+use super::picture::Picture;
 use super::{Ended, Settings, status};
-use crate::frames::{self, Next, Pacing};
-use crate::screen::Screen;
-use crate::view::View;
 use crate::vnc::{self, Event, requests};
 
 /// Bytes read from the device at a time.
@@ -30,11 +28,8 @@ struct Running<'a, S> {
     /// Reads the device; stopped when the session ends.
     reader: JoinHandle<()>,
     device: vnc::Device,
-    screen: Screen,
-    view: View,
-    pacing: Pacing,
+    picture: Picture,
     clipboard: Clipboard,
-    started: Instant,
     /// The device's screen has a new size: the next request asks for all of it.
     resized: bool,
 }
@@ -49,7 +44,7 @@ where
         device,
         size,
     } = opened;
-    let Ok(screen) = Screen::new(size.0, size.1) else {
+    let Ok(picture) = Picture::new(size, &allowed, settings.pace) else {
         return refuse(hub, status::UPSTREAM_ERROR, Ended::DeviceFault).await;
     };
     let (mut from_device, to_device) = device.into_split();
@@ -62,7 +57,6 @@ where
             }
         }
     });
-    let view = View::new(&screen, allowed.view);
     let mut running = Running {
         hub,
         to_device,
@@ -70,11 +64,8 @@ where
         write_wait: settings.write_wait,
         reader,
         device: vnc::Device::default(),
-        screen,
-        view,
-        pacing: Pacing::new(settings.pace),
+        picture,
         clipboard: Clipboard::default(),
-        started: Instant::now(),
         resized: false,
     };
     if running.ask_for_update(false).await.is_err() {
@@ -100,12 +91,7 @@ where
     /// Waits for the client, the device or the time of a held-back frame, handles it, and
     /// sends a frame when one is due.
     async fn turn(&mut self, reads: &mut mpsc::Receiver<Vec<u8>>) -> Result<(), Ended> {
-        // A frame held back by the frame rate goes out when its time comes. One held back
-        // by the client goes out after the client's next `sync`, which is an instruction.
-        let due = match self.pacing.next(self.started.elapsed()) {
-            Next::At(time) if self.view.has_changes(&self.screen) => Some(self.started + time),
-            _ => None,
-        };
+        let due = self.picture.due();
         tokio::select! {
             instruction = self.hub.next() => {
                 let instruction = instruction.ok_or(Ended::ByHub)?;
@@ -117,7 +103,7 @@ where
             },
             () = sleep_until(due.unwrap_or_else(Instant::now)), if due.is_some() => {}
         }
-        self.send_frame().await
+        self.picture.send_frame(self.hub).await
     }
 
     /// The device closed: the client is told, as guacd tells it.
@@ -137,13 +123,14 @@ where
 
     async fn ask_for_update(&mut self, incremental: bool) -> Result<(), Ended> {
         let side = |side: usize| u16::try_from(side).unwrap_or(u16::MAX);
-        let (width, height) = (side(self.screen.width()), side(self.screen.height()));
+        let screen = &self.picture.screen;
+        let (width, height) = (side(screen.width()), side(screen.height()));
         self.write(&requests::update(incremental, width, height))
             .await
     }
 
     async fn on_device(&mut self, bytes: &[u8]) -> Result<(), Ended> {
-        let Ok(events) = self.device.receive(bytes, &mut self.screen) else {
+        let Ok(events) = self.device.receive(bytes, &mut self.picture.screen) else {
             return Err(refuse(self.hub, status::UPSTREAM_ERROR, Ended::DeviceFault).await);
         };
         for event in events {
@@ -169,39 +156,22 @@ where
         match self.clipboard.read(instruction) {
             Input::Key { keysym, pressed } => self.write(&requests::key(keysym, pressed)).await,
             Input::Pointer { x, y, buttons } => {
-                let (x, y) = self.view.to_device((x, y), &self.screen);
-                let on_wire = |at: usize| u16::try_from(at).unwrap_or(u16::MAX);
-                self.write(&requests::pointer(buttons, on_wire(x), on_wire(y)))
-                    .await
+                let (x, y) = self.picture.to_device((x, y));
+                self.write(&requests::pointer(buttons, x, y)).await
             }
             Input::View(width, height) => {
-                self.view.set_client((width, height), &mut self.screen);
+                self.picture.set_view((width, height));
                 Ok(())
             }
             Input::Paste(text) if self.allowed.paste => {
                 self.write(&requests::cut_text(&text)).await
             }
             Input::Drawn(timestamp) => {
-                self.pacing.answered(&timestamp);
+                self.picture.drawn(&timestamp);
                 Ok(())
             }
             Input::Disconnect => Err(Ended::ByHub),
             Input::Paste(_) | Input::Nothing => Ok(()),
         }
-    }
-
-    /// Sends a frame when the screen changed and one may go.
-    async fn send_frame(&mut self) -> Result<(), Ended> {
-        if !self.view.has_changes(&self.screen) {
-            return Ok(());
-        }
-        let Some(timestamp) = self.pacing.send(self.started.elapsed()) else {
-            return Ok(());
-        };
-        let (shown, changes) = self.view.take_changes(&mut self.screen);
-        let Ok(frame) = frames::frame(shown, &changes, self.allowed.formats, timestamp) else {
-            return Err(refuse(self.hub, status::SERVER_ERROR, Ended::Fault).await);
-        };
-        self.hub.send(&frame).await.map_err(|_| Ended::ByHub)
     }
 }

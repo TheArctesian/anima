@@ -1,38 +1,74 @@
-//! `anima-gateway listen <address:port> [--other-gateway <host:port>]` runs the gateway.
-//! `anima-gateway session` is one worker; the listener starts it. Wiring only.
+//! `anima-gateway listen <address:port> [--other-gateway <host:port> [--pass <protocol>]]`
+//! runs the gateway. `anima-gateway session` is one worker; the listener starts it. Wiring
+//! only.
 
 use std::process::ExitCode;
 
-use anima_gateway::listening::{self, MOST_SESSIONS, OTHER_GATEWAY, WORKER, Workers};
+use anima_gateway::listening::{self, MOST_SESSIONS, OTHER_GATEWAY, PASS, WORKER, Workers};
 use anima_gateway::session::{self, Settings};
 use tokio::net::TcpListener;
 
-const USAGE: &str = "usage: anima-gateway listen <address:port> [--other-gateway <host:port>]";
+const USAGE: &str =
+    "usage: anima-gateway listen <address:port> [--other-gateway <host:port> [--pass rdp|vnc]]";
 
-/// `rest` as the options of a command: nothing, or `--other-gateway` and its value.
-fn other_gateway(rest: &[String]) -> std::io::Result<Option<String>> {
-    match rest {
-        [] => Ok(None),
-        [option, value] if option == OTHER_GATEWAY => Ok(Some(value.clone())),
-        _ => Err(std::io::Error::other(USAGE)),
+/// The options of a command: another gateway, and the protocols that go to it though this
+/// gateway serves them.
+struct Options {
+    other_gateway: Option<String>,
+    passed: Vec<String>,
+}
+
+impl Options {
+    /// Reads `rest`: nothing, or `--other-gateway` with its value and then any number of
+    /// `--pass` with a protocol.
+    fn read(rest: &[String]) -> std::io::Result<Self> {
+        let usage = || std::io::Error::other(USAGE);
+        let Some((other, pairs)) = rest.split_first_chunk::<2>() else {
+            return if rest.is_empty() {
+                Ok(Self {
+                    other_gateway: None,
+                    passed: Vec::new(),
+                })
+            } else {
+                Err(usage())
+            };
+        };
+        let [option, other_gateway] = other;
+        if option != OTHER_GATEWAY || pairs.len() % 2 != 0 {
+            return Err(usage());
+        }
+        let mut passed = Vec::new();
+        for pass in pairs.as_chunks::<2>().0 {
+            let served = ["rdp", "vnc"].contains(&pass[1].as_str());
+            if pass[0] != PASS || !served {
+                return Err(usage());
+            }
+            passed.push(pass[1].clone());
+        }
+        Ok(Self {
+            other_gateway: Some(other_gateway.clone()),
+            passed,
+        })
     }
 }
 
-async fn listen(address: &str, other_gateway: Option<String>) -> std::io::Result<()> {
+async fn listen(address: &str, options: Options) -> std::io::Result<()> {
     let listener = TcpListener::bind(address).await?;
     let workers = Workers {
         program: std::env::current_exe()?,
-        other_gateway,
+        other_gateway: options.other_gateway,
+        passed: options.passed,
         most_sessions: MOST_SESSIONS,
     };
     eprintln!("anima-gateway: listening on {}", listener.local_addr()?);
     listening::listen(listener, workers).await
 }
 
-async fn work(other_gateway: Option<String>) -> std::io::Result<()> {
+async fn work(options: Options) -> std::io::Result<()> {
     let hub = listening::hub_connection()?;
     let settings = Settings {
-        other_gateway,
+        other_gateway: options.other_gateway,
+        passed: options.passed,
         ..Settings::default()
     };
     let connection_id = format!("${}", uuid::Uuid::now_v7());
@@ -53,10 +89,10 @@ fn main() -> ExitCode {
     };
     let ran = match args.split_first() {
         Some((command, [address, rest @ ..])) if command == "listen" => {
-            other_gateway(rest).and_then(|other| runtime.block_on(listen(address, other)))
+            Options::read(rest).and_then(|options| runtime.block_on(listen(address, options)))
         }
         Some((command, rest)) if command == WORKER => {
-            other_gateway(rest).and_then(|other| runtime.block_on(work(other)))
+            Options::read(rest).and_then(|options| runtime.block_on(work(options)))
         }
         _ => Err(std::io::Error::other(USAGE)),
     };

@@ -8,6 +8,8 @@
 mod hub;
 mod input;
 mod opening;
+mod picture;
+mod rdp;
 mod running;
 
 use std::time::Duration;
@@ -19,6 +21,7 @@ use tokio::time::timeout;
 use zeroize::{Zeroize, Zeroizing};
 
 use crate::frames::Pace;
+use crate::handshake::Desktop;
 use hub::Hub;
 use opening::First;
 
@@ -48,6 +51,9 @@ pub struct Settings {
     pub pace: Pace,
     /// Another gateway (guacd) that serves the protocols this one does not, as `host:port`.
     pub other_gateway: Option<String>,
+    /// Protocols that go to the other gateway though this one serves them, as `select`
+    /// names them: `rdp` for a hub that needs guacd's sound or shared drive.
+    pub passed: Vec<String>,
 }
 
 impl Default for Settings {
@@ -59,6 +65,7 @@ impl Default for Settings {
             write_wait: Duration::from_secs(15),
             pace: Pace::default(),
             other_gateway: None,
+            passed: Vec::new(),
         }
     }
 }
@@ -76,6 +83,12 @@ pub enum Ended {
     DeviceUnreachable,
     #[error("the device did not answer as a VNC server")]
     NotVnc,
+    #[error("the device did not answer as an RDP server")]
+    NotRdp,
+    #[error("the device does not offer the security the session must use")]
+    SecurityNotOffered,
+    #[error("the device's certificate is not the accepted one")]
+    OtherCertificate,
     #[error("the device offers no sign-in method the gateway has")]
     NoSignInMethod,
     #[error("the operator did not answer the prompt in time")]
@@ -84,7 +97,7 @@ pub enum Ended {
     SignInRefused,
     #[error("the sign-in did not finish")]
     SignInFailed,
-    #[error("the device sent what a VNC server may not send")]
+    #[error("the device sent what its protocol does not allow")]
     DeviceFault,
     #[error("the system gave no random numbers")]
     NoRandomNumbers,
@@ -103,7 +116,7 @@ where
     let mut hub = Hub::new(stream, settings.write_wait);
     let first = timeout(
         settings.handshake_wait,
-        opening::handshake(&mut hub, connection_id),
+        opening::handshake(&mut hub, connection_id, &settings.passed),
     )
     .await;
     let opening = match first {
@@ -112,6 +125,10 @@ where
         Ok(Err(ended)) => return ended,
         Err(_) => return opening::refuse(&mut hub, status::CLIENT_TIMEOUT, Ended::Refused).await,
     };
+    if let Desktop::Rdp(rdp) = &opening.desktop {
+        let rdp = rdp.clone();
+        return rdp::serve(&mut hub, opening, &rdp, settings).await;
+    }
     match opening::sign_in(&mut hub, opening, settings).await {
         Ok(opened) => running::run(&mut hub, opened, settings).await,
         Err(ended) => ended,
