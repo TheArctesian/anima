@@ -1,0 +1,139 @@
+# Shared Pool Hosting
+
+Proposal, 2026-11-16, not yet decided. Instead of one dedicated server per customer, run each
+customer's hub as an isolated instance on a few large shared servers (the pool), meter each hub's
+CPU, memory and disk, show that to the customer as a live gauge, and sell more of the pool, or a
+dedicated box, when a hub runs short. That replaces per-device pricing with load-based upgrades.
+At pool prices a Solo hub costs roughly $3 to $5 a month in hardware instead of $9.30, so Solo at
+$19 keeps a healthy margin even if the hub needs more memory than hoped. The price is real
+operations work: isolation, shared networking and host upkeep become Anima.ing's problem.
+
+All capacity figures below are estimates. The device figures are the founder's working numbers,
+and hub memory is still unmeasured (see the open task in the vault's Hosting Costs note).
+
+## 1. What changes
+
+| | Today's plan: one server per customer | Shared pool |
+| --- | --- | --- |
+| Unit | One VPS per hub (UpCloud 2 GB, about $9.30) | One isolated instance per hub on a large host |
+| Host | Rented per customer | A few dedicated servers, for example Hetzner AX102 |
+| Hardware cost per Solo hub | $9.30 to $13.90 | About $3 to $5 (estimate, see section 5) |
+| Growing a hub | Resize or replace the VPS | Change the instance's limits, or move it to a bigger slice |
+| Who runs the isolation | The cloud provider | Anima.ing |
+
+Each hub keeps its own full stack (hub, Postgres, guacd, localapi, apprise, Headscale), so the
+product code does not need to become multi-tenant. Only the hosting layer is shared.
+
+## 2. Metering and the live gauge
+
+- A small agent on each pool host reads each instance's usage every 10 seconds: CPU time against
+  its allowance, memory in use against its limit, disk used against its quota, and relayed
+  traffic against the 500 GB monthly allowance in the vault's Pricing note.
+- The figures go to the control plane, which keeps a 30-day history for billing and support,
+  and to the customer's hub, which stores them as ordinary series in its existing metrics store.
+- The hub dashboard shows one "Your hub" card: CPU percent of slice, memory used and limit, disk
+  used and quota, and relayed traffic this month, with a 7-day trend line.
+- The figures are for the customer's own hub only; no customer sees another's numbers.
+
+## 3. Upgrade prompts instead of per-device pricing
+
+Prompts trigger on sustained load, not on device count:
+
+| Signal | Prompt at | Hard limit behaviour |
+| --- | --- | --- |
+| CPU | Above 80% of the slice on average for 3 days | CPU is slowed, never stopped |
+| Memory | Above 85% of the limit for 1 day | Soft limit first (slows the hub), hard limit only as a last resort |
+| Disk | Above 80% of quota | Oldest raw metrics are thinned before anything else; never silent data loss |
+| Relayed traffic | 80% of 500 GB | As in the vault's Pricing note: slowed, not cut off |
+
+Each prompt names the cause ("your 34 devices are using most of your hub's CPU") and offers the
+next step: a bigger slice, then a dedicated box. One prompt a week at most, and never a pop-up
+during a remote session.
+
+## 4. Isolation
+
+| Option | Boundary | Fits Anima.ing because | Against |
+| --- | --- | --- | --- |
+| Containers with cgroup limits (Docker or Incus system containers) | Shared kernel; CPU weight and cap, memory limit, disk I/O limit | Lightest; easy to meter | A kernel bug or escape exposes every customer; Headscale and the Tailscale client want kernel networking features |
+| Lightweight VMs (Firecracker, Cloud Hypervisor, Incus VMs) | Separate kernel per hub | Runs the existing Docker Compose stack unchanged; strong boundary; still metered through cgroups on the host | About 100 to 200 MB of memory overhead per hub (estimate); more tooling |
+| Full VMs (KVM or Proxmox) | Separate kernel | What the vault's Hosting Costs note already assumes for shared hosts | Heaviest; slowest to resize |
+
+Recommendation: one lightweight VM per hub, with cgroup limits on the host side as well, so a
+noisy hub can only slow itself down. Incus is the first candidate to test, because it manages
+both VMs and containers, sets CPU, memory and disk limits per instance and exposes per-instance
+metrics. Keep a per-hub disk quota and per-hub I/O limits, since disk is the resource a busy
+metrics store exhausts first.
+
+## 5. Packaging and device capacity
+
+Working capacity numbers: a shared CPU slice handles about 10 devices, one dedicated core about
+100 to 200, and beyond that the hub needs a bigger instance (vertical scaling) at a higher cost.
+
+Rough pool cost from the vault's Hosting Costs note: an AX102 (16 cores, 128 GB) is about $184 a month, or
+about $11.50 per core. If a Solo slice is guaranteed a quarter of a core (it can burst higher
+when the host is idle) plus 1.5 GB of memory, one AX102 holds about 60 Solo hubs, limited by
+CPU, which is about $3.10 each before disk, backups and spare capacity. Budget $3 to $5.
+
+| Package | Slice | Devices it handles (estimate) | Price | Hardware cost (estimate) |
+| --- | --- | --- | --- | --- |
+| Solo | Shared, quarter core guaranteed, 1.5 GB, 20 GB disk | About 10 comfortably; the gauge decides beyond that | $19 a month or $199 a year | $3 to $5 |
+| Solo Plus (name to decide) | One dedicated core, 4 GB, 60 GB disk | 100 to 200 | To decide; about $39 to $49 would keep a margin similar to Solo's | About $13 to $16 |
+| Dedicated | Own server or large instance, scaled up | 200 and more | Custom (enterprise) | Quoted per customer |
+
+- The Solo device cap stops being the gate. Keep 25 as a published guide ("built for about 10 to
+  25 devices"), and let the gauge and prompts handle hubs that outgrow it.
+- Enterprise starts where one dedicated core runs out (about 150 to 200 devices), or earlier for
+  anyone needing single sign-on, audit logs, a support contract or a dedicated box for
+  compliance.
+- Team in the vault's Pricing note is about users, not load. A team hub is a second instance in the pool, and
+  can be any slice size. Check the Team price against this before publishing it.
+- This replaces the per-device price steps suggested on 2026-11-16 ($2 per device from 11 to 50,
+  $1 from 51 to 150). Do not publish both.
+
+## 6. Migration from one server per customer
+
+No hosted customers exist yet, so this is a sequencing choice, not a rescue.
+
+1. **Launch as planned.** First customers on one UpCloud VPS each, as the vault's Hosting Costs note says.
+   Make every hub portable from day one: data in restic backups on R2, Headscale keys and the
+   server's identity in the backup, and each hub reached through its own subdomain.
+2. **Build one pool host.** Rent one dedicated server, set up the isolation layer, run 5 to 10
+   test hubs with simulated devices, and confirm the per-slice device numbers.
+3. **Move by backup and restore.** Stop the hub, take a final backup, restore it into a pool
+   instance, switch the subdomain, and check every agent reconnects. Target under 10 minutes of
+   downtime, inside a maintenance window the customer is told about.
+4. **New customers go to the pool** once 10 test hubs and 5 migrated hubs have run for two weeks
+   without a noisy-neighbour problem.
+5. **Keep one-server-per-customer** as the Dedicated package and as the fallback for regions with
+   no pool host (the US until a US host is priced).
+
+## 7. Risks and open questions
+
+- **Operations load.** Patching hosts, replacing failed disks, capacity planning and a host
+  outage taking down 60 customers at once all land on a one-person company. A VPS per customer
+  hands most of that to the provider.
+- **Shared networking.** Hubs on one host share IPv4 addresses. HTTPS can be routed by name, but
+  Headscale's built-in relay needs UDP port 3478, which only one hub per address can have. Either
+  run one shared relay per pool host or buy extra IPv4 addresses (about $2 each a month).
+- **Blast radius.** One host failure affects every hub on it. Needs a restore-elsewhere plan and
+  a stated recovery time in the vault's Support note.
+- **Noisy neighbours.** CPU throttling is safe; memory and disk I/O are not. Limits must be
+  tested under load, not assumed.
+- **Capacity numbers are unmeasured.** Hub memory, devices per slice and disk growth per device
+  all need a load test before any price goes on the site.
+- **Provider terms.** Check that Hetzner and any US host allow reselling capacity as a hosted
+  service (overlaps with the reselling task in the vault's Hosting Costs note).
+- **Region.** The pool prices are for Hetzner in the EU; no US dedicated host is priced yet.
+- **Security review.** A shared pool raises the stakes of an isolation escape; get a review
+  before taking paying customers onto it.
+
+## Open
+
+#todo/shared-pool
+- [ ] Decide between one server per customer and the shared pool for launch
+- [ ] Load test one hub to confirm devices per shared slice and per dedicated core
+- [ ] Test Incus VMs with per-hub CPU, memory, disk and I/O limits on one dedicated server
+- [ ] Decide how hubs on one host share Headscale's relay and IPv4 addresses
+- [ ] Spec the "Your hub" usage card and the upgrade prompt wording
+- [ ] Price and name the dedicated-core package, and check it against the Team price in the vault's Pricing note
+- [ ] Write the backup-and-restore move procedure and time it
