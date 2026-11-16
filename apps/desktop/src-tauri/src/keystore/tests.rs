@@ -120,6 +120,10 @@ fn cli_002_a_loopback_http_origin_keeps_a_token_and_no_other_http_origin_does() 
         "http://localhost.example.com",
         "http://127.0.0.1.evil.test",
         "http://10.0.0.5:8443",
+        "http://127.0.0.1:80.evil.com",
+        "http://localhost:abc",
+        "http://localhost:",
+        "http://localhost:123456",
     ] {
         assert_eq!(
             read_token(TokenKind::Access, origin),

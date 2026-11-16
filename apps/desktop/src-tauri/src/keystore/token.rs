@@ -49,7 +49,7 @@ fn is_canonical_origin(origin: &str) -> bool {
     let after_scheme = origin.strip_prefix(SCHEME).or_else(|| {
         LOOPBACK_SCHEMES.iter().find_map(|prefix| {
             let rest = origin.strip_prefix(prefix)?;
-            (rest.is_empty() || rest.starts_with(':')).then_some(&origin["http://".len()..])
+            is_port_or_nothing(rest).then_some(&origin["http://".len()..])
         })
     });
     after_scheme.is_some_and(|host| {
@@ -58,6 +58,14 @@ fn is_canonical_origin(origin: &str) -> bool {
                 .chars()
                 .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || ".-_:[]".contains(c))
     })
+}
+
+/// Empty, or `:` and a port of one to five digits: what follows a loopback host.
+fn is_port_or_nothing(rest: &str) -> bool {
+    rest.is_empty()
+        || rest.strip_prefix(':').is_some_and(|port| {
+            (1..=5).contains(&port.len()) && port.bytes().all(|b| b.is_ascii_digit())
+        })
 }
 
 /// The entry for one hub. The account is the hub origin, so a token is only ever read back for

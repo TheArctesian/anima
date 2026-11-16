@@ -16,6 +16,7 @@
 </script>
 
 <!-- Dark modules on a light tile in both themes, so a phone can read it. -->
+{#if drawing}
 <svg
   class="qr"
   style:inline-size={size}
@@ -28,6 +29,7 @@
   <rect width={drawing.side} height={drawing.side} class="tile" />
   <path d={drawing.path} class="modules" />
 </svg>
+{/if}
 
 <style>
   .qr {
