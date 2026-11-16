@@ -21,7 +21,7 @@ function shell(...reads: LocalHubStatus[]): LocalHubShell & { start: ReturnType<
   const read = vi.fn<() => Promise<LocalHubResult<LocalHubStatus>>>();
   for (const status of reads) read.mockResolvedValueOnce({ ok: true, value: status });
   read.mockResolvedValue({ ok: true, value: reads.at(-1) ?? READY });
-  return { read, start: vi.fn(() => Promise.resolve({ ok: true, value: null })), stop: vi.fn(() => Promise.resolve({ ok: true, value: null })), wait: () => Promise.resolve() };
+  return { read, start: vi.fn(() => Promise.resolve({ ok: true as const, value: null })), stop: vi.fn(() => Promise.resolve({ ok: true as const, value: null })), wait: () => Promise.resolve() };
 }
 
 async function settle(): Promise<void> {

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { LinkResult, Joined } from '$lib/desktop/link/shell';
+import type { HubAddress } from '$lib/hub/hub';
 import { deviceLinkAddress, joinHub } from './join';
 
 const INVITE = 'anima-invite.1.c2VjcmV0';
@@ -12,7 +13,7 @@ function parts(answer: LinkResult<Joined>, clear: () => Promise<void> = () => Pr
       order.push('join');
       return Promise.resolve(answer);
     }),
-    clearToken: vi.fn(() => {
+    clearToken: vi.fn<(address: HubAddress) => Promise<void>>(() => {
       order.push('clear');
       return clear();
     }),

@@ -22,10 +22,18 @@ async function settle(): Promise<void> {
   flushSync();
 }
 
-function show<P extends Record<string, unknown>>(component: Parameters<typeof mount>[0], props: P): HTMLElement {
+function account(onnext: (chosen: { name: string; password: string }) => void): HTMLElement {
   const target = document.createElement('div');
   document.body.append(target);
-  app = mount(component, { target, props });
+  app = mount(AccountStep, { target, props: { heading: 'Make your account', onnext } });
+  flushSync();
+  return target;
+}
+
+function authenticator(onmade: () => void = vi.fn()): HTMLElement {
+  const target = document.createElement('div');
+  document.body.append(target);
+  app = mount(AuthenticatorStep, { target, props: { heading: 'Add Anima.ing', name: 'ann', password: PASSWORD, onmade, onback: vi.fn() } });
   flushSync();
   return target;
 }
@@ -60,7 +68,7 @@ afterEach(async () => {
 
 it('FRN-003: the account step refuses a bad name and a short password, then hands on the name and password', async () => {
   const onnext = vi.fn();
-  const target = show(AccountStep, { heading: 'Make your account', onnext });
+  const target = account(onnext);
   expect(document.activeElement).toBe(target.querySelector('h2'));
   typeInto(target, 0, '.ann');
   typeInto(target, 1, 'short');
@@ -79,7 +87,7 @@ it('FRN-003: the account step refuses a bad name and a short password, then hand
 });
 
 it('FRN-004, LOG-007: the authenticator step draws the URI as a QR code labelled without the secret, and shows the key grouped', async () => {
-  const target = show(AuthenticatorStep, { heading: 'Add Anima.ing', name: 'ann', password: PASSWORD, onmade: vi.fn(), onback: vi.fn() });
+  const target = authenticator();
   await settle();
   expect(mocks.newTotp).toHaveBeenCalledWith('ann');
   const qr = target.querySelector('svg[role="img"]');
@@ -93,7 +101,7 @@ it('FRN-004, LOG-007: the authenticator step draws the URI as a QR code labelled
 it('FRN-004: a wrong code says to wait for a new one; a right code makes the account and drops the secret', async () => {
   const onmade = vi.fn();
   mocks.create.mockResolvedValueOnce({ ok: false, problem: 'refused', message: 'x' });
-  const target = show(AuthenticatorStep, { heading: 'Add Anima.ing', name: 'ann', password: PASSWORD, onmade, onback: vi.fn() });
+  const target = authenticator(onmade);
   await settle();
   await enterCode(target, '111111');
   expect(target.querySelector('[role="alert"]')?.textContent).toBe('The code did not match. Wait for a new code and try again.');
