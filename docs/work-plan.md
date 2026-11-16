@@ -85,6 +85,7 @@ Notes:
 - Each extension needs the engine (PH-E-000). The extensions are independent workflows (XP-004).
 - The native VNC gateway (S2) has commits on `main` and no row in this table. The operator must give it a tier ([s2-vnc-tasks.md](research/one-click/s2-vnc-tasks.md)).
 - The bundled PostgreSQL (S3) and the hub as a background program (S4) are in the same state: built, and no row in this table. The operator must give the one-click work a tier ([s3-database-tasks.md](research/one-click/s3-database-tasks.md), [s4-local-hub-tasks.md](research/one-click/s4-local-hub-tasks.md)).
+- The first run (S6) is in the same state: no row in this table. The operator must give it a tier ([s6-first-run-tasks.md](research/one-click/s6-first-run-tasks.md)).
 - The stay-awake control (S8) is built on its branch and has no row in this table. The operator must give it a tier ([s8-stay-awake-tasks.md](research/one-click/s8-stay-awake-tasks.md)).
 - The states in this table were read on 2026-11-12, except where a row gives a later date.
 - Phase 4 (Proxmox VE) is withdrawn (R-109). Session recording is deferred (R-113). This plan does not include them.
@@ -201,6 +202,8 @@ This table is the only list of the plans of Anima. A document that is not in thi
 | [research/one-click/s4-local-hub-tasks.md](research/one-click/s4-local-hub-tasks.md) | Task breakdown: the hub as a background program | In progress | Its Section 2: T1 to T8 have commits; T9 and T10 are not started. No operator ruling on its design. Its parent plan `docs/one-click-plan.md` is not on `main`. |
 | [research/one-click/s3-spec-delta.md](research/one-click/s3-spec-delta.md) | Proposal: spec delta for the bundled PostgreSQL | Draft | Not approved. It changes no requirement until the operator approves it. |
 | [research/one-click/s4-spec-delta.md](research/one-click/s4-spec-delta.md) | Proposal: spec delta for the hub as a background program | Draft | Not approved. It changes no requirement until the operator approves it. |
+| [research/one-click/s6-first-run-tasks.md](research/one-click/s6-first-run-tasks.md) | Task breakdown: the first run | In progress | Its Section 3 holds the state of each task. Its parent plan `docs/one-click-plan.md` is not on `main`. |
+| [research/one-click/s6-spec-delta.md](research/one-click/s6-spec-delta.md) | Proposal: spec delta for the first run | Draft | Not approved. It changes no requirement until the operator approves it. |
 | [research/one-click/s8-stay-awake-tasks.md](research/one-click/s8-stay-awake-tasks.md) | Task breakdown: stay awake | In progress | Its Section 5: T1 to T6 have commits. The live checks of its Section 6 wait for the operator. Its parent plan `docs/one-click-plan.md` is not on `main`. |
 | [programme/proposals/projects-and-builds.md](programme/proposals/projects-and-builds.md) | Proposal | In progress | Decided (OD-W11, OD-W12). Connect GitHub is on `main`. |
 | [programme/proposals/jobs.md](programme/proposals/jobs.md) | Proposal | Draft | Direction decided (OD-W10). No requirement is approved. |
