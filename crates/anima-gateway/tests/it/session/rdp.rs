@@ -229,3 +229,105 @@ async fn a_device_that_closes_ends_the_session_with_disconnect() {
     hub.next_of("disconnect").await;
     assert_eq!(served.await.expect("served"), Ended::ByDevice);
 }
+
+#[tokio::test]
+async fn every_kind_of_key_and_button_reaches_the_device_as_its_rdp_event() {
+    let mut device = device(Offered::Tls);
+    let (mut hub, _served) = session(Settings::default());
+    let account = [
+        ("username", "operator"),
+        ("security", "tls"),
+        ("ignore-cert", "true"),
+    ];
+    hub.open("rdp", values(device.address, &account))
+        .await
+        .expect("ready");
+    assert!(matches!(device.next().await, Seen::SignIn { .. }));
+    assert_eq!(device.next().await, Seen::Locks(0x02));
+
+    // Delete, an extended key, down and up; then a character with no US key.
+    for (keysym, pressed) in [("65535", "1"), ("65535", "0"), ("246", "1")] {
+        hub.send(&Instruction::new("key", [keysym, pressed])).await;
+    }
+    let delete = |pressed| KeyEvent::Scancode {
+        code: 0x53,
+        extended: true,
+        pressed,
+    };
+    assert_eq!(device.next().await, Seen::Key(delete(true)));
+    assert_eq!(device.next().await, Seen::Key(delete(false)));
+    let o_umlaut = KeyEvent::Unicode {
+        unit: 0xf6,
+        pressed: true,
+    };
+    assert_eq!(device.next().await, Seen::Key(o_umlaut));
+
+    // The right button, then the middle one in its place, then a step of the wheel.
+    for mask in ["4", "2", "10"] {
+        hub.send(&Instruction::new("mouse", ["7", "9", mask])).await;
+    }
+    let mut events = Vec::new();
+    while events.len() < 7 {
+        let Seen::Pointer { x: 7, y: 9, event } = device.next().await else {
+            panic!("a pointer event at 7, 9")
+        };
+        events.push(event);
+    }
+    let button = |button, pressed| PointerEvent::Button { button, pressed };
+    assert_eq!(
+        events,
+        [
+            PointerEvent::Move,
+            button(Button::Right, true),
+            PointerEvent::Move,
+            button(Button::Middle, true),
+            button(Button::Right, false),
+            PointerEvent::Move,
+            PointerEvent::Wheel(120),
+        ]
+    );
+}
+
+#[tokio::test]
+async fn keys_and_buttons_that_are_down_are_released_when_the_device_changes_its_screen() {
+    let mut device = device(Offered::Tls);
+    let (mut hub, _served) = session(Settings::default());
+    let account = [
+        ("username", "operator"),
+        ("security", "tls"),
+        ("ignore-cert", "true"),
+    ];
+    hub.open("rdp", values(device.address, &account))
+        .await
+        .expect("ready");
+    assert!(matches!(device.next().await, Seen::SignIn { .. }));
+    assert_eq!(device.next().await, Seen::Locks(0x02));
+    hub.send(&Instruction::new("key", ["65505", "1"])).await;
+    hub.send(&Instruction::new("mouse", ["20", "30", "1"]))
+        .await;
+    for _ in 0..3 {
+        device.next().await;
+    }
+
+    device.resize(500, 400).await;
+
+    // The device may have missed a release while it changed: nothing stays down.
+    let shift_up = KeyEvent::Scancode {
+        code: 0x2a,
+        extended: false,
+        pressed: false,
+    };
+    assert_eq!(device.next().await, Seen::Key(shift_up));
+    let left_up = PointerEvent::Button {
+        button: Button::Left,
+        pressed: false,
+    };
+    assert_eq!(
+        device.next().await,
+        Seen::Pointer {
+            x: 20,
+            y: 30,
+            event: left_up
+        }
+    );
+}

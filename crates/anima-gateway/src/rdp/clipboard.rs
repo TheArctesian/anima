@@ -16,12 +16,13 @@ const LONGEST_COPY: usize = 1 << 20;
 const MOST_NOTES: usize = 16;
 
 /// The format the gateway offers and asks for.
-pub const TEXT: ClipboardFormatId = ClipboardFormatId::CF_UNICODETEXT;
+pub(super) const TEXT: ClipboardFormatId = ClipboardFormatId::CF_UNICODETEXT;
 
 /// What the device said on the clipboard channel.
 #[derive(Debug, PartialEq, Eq)]
 pub enum Said {
-    /// It wants to know what the client's clipboard holds.
+    /// The channel is ready, or the device wants to know what the client's clipboard
+    /// holds.
     WhatIsThere,
     /// Something was copied on the device, and text is among its formats.
     CopiedText,
@@ -31,13 +32,14 @@ pub enum Said {
     Text(String),
 }
 
-/// The backend. The session takes the notes with [`Clipboard::take`].
+/// The backend: notes of what the device said. The session takes them with
+/// [`ClipboardNotes::take`].
 #[derive(Debug, Default)]
-pub struct Clipboard {
+pub struct ClipboardNotes {
     said: Vec<Said>,
 }
 
-impl Clipboard {
+impl ClipboardNotes {
     /// What the device said since the last call, in order.
     pub fn take(&mut self) -> Vec<Said> {
         std::mem::take(&mut self.said)
@@ -50,9 +52,9 @@ impl Clipboard {
     }
 }
 
-impl_as_any!(Clipboard);
+impl_as_any!(ClipboardNotes);
 
-impl CliprdrBackend for Clipboard {
+impl CliprdrBackend for ClipboardNotes {
     #[expect(
         clippy::unnecessary_literal_bound,
         reason = "the signature is the trait's"
@@ -105,4 +107,43 @@ impl CliprdrBackend for Clipboard {
     fn on_lock(&mut self, _: LockDataId) {}
 
     fn on_unlock(&mut self, _: LockDataId) {}
+}
+
+/// The switches of a device for the clipboard (RA-033).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Sharing {
+    /// The device's clipboard may go to the client.
+    pub copy: bool,
+    /// The client's clipboard may go to the device.
+    pub paste: bool,
+}
+
+/// What the session does about something the device said.
+#[derive(Debug, PartialEq, Eq)]
+pub enum Reply<'a> {
+    /// Tell the device whether the client's clipboard holds text.
+    Offer(bool),
+    /// Ask the device for the text that was copied on it.
+    AskForText,
+    /// Give the device the client's text; `None` when there is none for it.
+    GiveText(Option<&'a str>),
+    /// Send the device's text to the client.
+    ToClient(String),
+    Nothing,
+}
+
+/// The answer to `said` under the device's switches. `text` is the client's clipboard
+/// text. With paste off the device is told there is no text and gets none; with copy off
+/// its text is not asked for, and text it sends unasked is dropped. The hub's relay is
+/// the first guard, this the second.
+#[must_use]
+pub fn reply(said: Said, sharing: Sharing, text: Option<&str>) -> Reply<'_> {
+    let text = text.filter(|_| sharing.paste);
+    match said {
+        Said::WhatIsThere => Reply::Offer(text.is_some()),
+        Said::WantsText => Reply::GiveText(text),
+        Said::CopiedText if sharing.copy => Reply::AskForText,
+        Said::Text(copied) if sharing.copy => Reply::ToClient(copied),
+        Said::CopiedText | Said::Text(_) => Reply::Nothing,
+    }
 }

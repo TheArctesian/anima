@@ -72,6 +72,14 @@ impl Keyboard {
         events(sent, pressed)
     }
 
+    /// Releases every key that is down: for a device that may have missed a release.
+    pub fn release_all(&mut self) -> Vec<KeyEvent> {
+        let held = std::mem::take(&mut self.held);
+        held.into_iter()
+            .flat_map(|(_, sent)| events(sent, false))
+            .collect()
+    }
+
     fn is_down(&self, keysyms: &[u32]) -> bool {
         self.held.iter().any(|(held, _)| keysyms.contains(held))
     }

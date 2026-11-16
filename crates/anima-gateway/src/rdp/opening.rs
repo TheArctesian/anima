@@ -34,7 +34,7 @@ use tokio_rustls::TlsConnector;
 use tokio_rustls::client::TlsStream;
 
 use super::certificate::any_certificate;
-use super::clipboard::Clipboard;
+use super::clipboard::ClipboardNotes;
 use crate::handshake::{Certificate, Security};
 
 /// The US keyboard, the layout of the key table (`keys`).
@@ -96,7 +96,7 @@ impl NetworkClient for NoNetwork {
 pub async fn open(
     device: TcpStream,
     wanted: Wanted<'_>,
-    clipboard: Clipboard,
+    clipboard: ClipboardNotes,
 ) -> Result<Opened, OpenError> {
     let (Ok(local), Ok(peer)) = (device.local_addr(), device.peer_addr()) else {
         return Err(OpenError::Failed);

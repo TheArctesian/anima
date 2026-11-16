@@ -42,6 +42,15 @@ pub struct Pointer {
 }
 
 impl Pointer {
+    /// Releases every button that is down: for a device that may have missed a release.
+    pub fn release_all(&mut self) -> Vec<PointerEvent> {
+        let events = self.moved(0);
+        events
+            .into_iter()
+            .filter(|event| matches!(event, PointerEvent::Button { .. }))
+            .collect()
+    }
+
     /// The events for one `mouse` instruction with this button mask: the move, then each
     /// button that changed and each step of the wheel.
     pub fn moved(&mut self, mask: u8) -> Vec<PointerEvent> {

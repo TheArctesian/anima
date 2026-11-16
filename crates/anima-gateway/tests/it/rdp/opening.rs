@@ -2,7 +2,7 @@
 //! asks for, and sends the account only after the certificate is checked (SEC-007).
 
 use anima_gateway::handshake::{Certificate, Security};
-use anima_gateway::rdp::{Clipboard, OpenError, Opened, Wanted, open};
+use anima_gateway::rdp::{ClipboardNotes, OpenError, Opened, Wanted, open};
 use tokio::io::AsyncWriteExt as _;
 use tokio::net::{TcpListener, TcpStream};
 
@@ -45,7 +45,7 @@ pub(super) async fn opened(
     wanted: Wanted<'_>,
 ) -> Result<Opened, OpenError> {
     let device = TcpStream::connect(address).await.expect("connected");
-    tokio::time::timeout(WAIT, open(device, wanted, Clipboard::default()))
+    tokio::time::timeout(WAIT, open(device, wanted, ClipboardNotes::default()))
         .await
         .expect("the opening ends in time")
 }

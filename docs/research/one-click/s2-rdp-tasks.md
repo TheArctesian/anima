@@ -2,7 +2,7 @@
 
 Progress: the plan register in [work-plan.md](../../work-plan.md) Section 9 holds the state of this plan (PLN-005).
 
-Date: 2026-11-15. Status: **built; reviews and the hub test are open.** Section 5 holds the state of each task.
+Date: 2026-11-15. Status: **built and reviewed; the hub test (R6) is open.** Section 5 holds the state of each task.
 
 Branch: `claude/s2-native-rdp`, cut from `origin/main` at `581e1d13`.
 Sources: the spike report `docs/research/one-click/spike-display.md` Sections 5, 7 and 9
@@ -84,8 +84,8 @@ for R1, R3 and R4, and the full `BASE_REF=origin/main bun run gates` before the 
 | --- | --- | --- |
 | R1 Handshake for RDP | Built. | `43e106aa` |
 | R2 Keys and pointer | Built. | `d64a2b62` |
-| R3 RDP opening | Built, with tests against an RDP device in the test. | `a896283b`, `3bc6cb53` |
-| R4 RDP session | Built, with tests of a whole session through `serve`. | `9ab323c8` and the commit after R5 |
+| R3 RDP opening | Built, with tests against an RDP device in the test. `reviewer-security`: 2 medium, 1 low, 3 notes; all corrected but the two items in Section 6. | `a896283b`, `3bc6cb53` |
+| R4 RDP session | Built, with tests of a whole session through `serve`. `reviewer`: fix and re-review, no fault in the keys or the loop, 24 of 39 mutants not caught; its 6 should-fix points corrected. | `9ab323c8` and the commit after R5 |
 | R5 Program and documents | Built: `--pass`, the setup document. | `4554a90f` |
 | R6 Hub tunnel against the gateway | Not built; see Section 6. | — |
 | R7 Check against real servers | Done; results below. | — |
@@ -132,6 +132,26 @@ Choices:
   gateway did not serve it. Now the gateway serves RDP itself, and `--pass rdp` keeps the
   old way.
 
+- **After the security review.** The first message of an opening is not encrypted, and
+  IronRDP put the user name into it as a cookie: it now holds the client's name. The parts
+  of one virtual channel message are counted before IronRDP joins them (limit: 2 MiB and
+  4096 bytes), and packed channel data, which was never agreed, ends the session. The
+  device's first screen size is checked before a picture of that size is made. The settings
+  IronRDP keeps for a later capability exchange hold no account. A device that sends the
+  session to another host ends it.
+- **After the review.** The clipboard rule (`rdp::reply`) and the timing of the resize
+  request (`rdp::ViewRequests`, with the time as a parameter) are pure code with their own
+  tests. A view whose adjusted size is the screen's size asks nothing. After a capability
+  exchange every key and button that is down is released on the device, because it does
+  not listen during the exchange and a release could be lost. New tests: each kind of key
+  and button through a session, the statuses for a device that is not RDP and one that is
+  not there, and `--pass`. The clipboard backend is `ClipboardNotes`.
+- **Not corrected from the review.** A read error of the device ends the session as a
+  close (`disconnect`), not as an error. Every fault of the CredSSP step counts as a
+  refused sign-in. `offer_text`, `ask_for_text` and `give_text` take a fault of IronRDP's
+  clipboard channel as "no channel". Keys with no mapping: Pause, the keypad's `=`, the
+  old keysym ranges for Greek and Cyrillic; Print goes without its second prefix.
+
 ### R7. Check against real servers (2026-11-15)
 
 The spike's container on this Mac, with a password made for the run and kept in no file of
@@ -163,5 +183,8 @@ Not checked: a GNOME Remote Desktop host, and the certificate pin against a real
 | Spec Section 6.3.2 and the device settings | On a hub with the native gateway an RDP device has no sound, no microphone and no shared drive. The settings still show these switches. |
 | R6, a hub test with an RDP device | The hub reads the device's certificate itself before the session, so the test needs a whole RDP server inside the hub's tests. The gateway's tests have one (four files on `ironrdp-acceptor`); a second copy in the hub crate, or a shared test crate, is a choice for the operator. What is proved without it: the hub's own `Handshake` opens an RDP session against the gateway with the value names of K4 Section 3, and the hub's relay is proved against the gateway with VNC. |
 | A GNOME Remote Desktop host | The operator has one; R-076 excludes Windows. The NLA path worked against FreeRDP's server. |
-| The account in memory | IronRDP keeps the user name and the password for the whole session, for the capability exchange after a resize, and does not zero them. The gateway zeroes its own copies after the opening. A correction needs a change in IronRDP. |
+| The account in memory | IronRDP and `sspi` do not zero the user name and the password when they drop them after the opening. The gateway zeroes its own copies, and IronRDP holds none after the opening. A correction needs a change in IronRDP. |
 | The device's keyboard layout | US only. The hub has no setting for a layout (`server-layout` is never sent). |
+| The clipboard and the resize request on the wire | The test device has no clipboard channel and no display control channel. The rule and the timing are tested as pure code, and both worked against xrdp (R7). A test on the wire needs `ironrdp-cliprdr`'s server side in the test device. |
+| Dynamic channel data, and a memory limit for each worker | The count of channel parts covers a static channel message. Inside the dynamic channel a device can still declare a long message (up to 4 GiB, by reading IronRDP). A memory limit for the worker process covers every such path; it was already open from the VNC work, and macOS does not enforce one. |
+| Panic texts | A panic in IronRDP or `sspi` is printed by the worker to the gateway's log. The security review found none that prints a credential. A panic hook with a fixed line would make this certain. |

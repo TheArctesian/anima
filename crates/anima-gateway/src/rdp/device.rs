@@ -9,7 +9,6 @@ use ironrdp_cliprdr::pdu::{ClipboardFormat, FormatDataResponse};
 use ironrdp_connector::ConnectionResult;
 use ironrdp_connector::connection_activation::ConnectionActivationSequence;
 use ironrdp_core::IntoOwned as _;
-use ironrdp_displaycontrol::pdu::MonitorLayoutEntry;
 use ironrdp_dvc::DrdynvcClient;
 use ironrdp_graphics::image_processing::PixelFormat;
 use ironrdp_pdu::Action;
@@ -18,7 +17,7 @@ use ironrdp_session::image::DecodedImage;
 use ironrdp_session::{ActiveStage, ActiveStageBuilder, ActiveStageOutput};
 
 use super::channels::ChannelGuard;
-use super::clipboard::{Clipboard, Said, TEXT};
+use super::clipboard::{ClipboardNotes, Said, TEXT};
 use super::keys::Keyboard;
 use super::pointer::Pointer;
 use super::{drawing, input, resizing};
@@ -52,6 +51,8 @@ pub struct Device {
     pub(super) reactivating: Option<ConnectionActivationSequence>,
     keyboard: Keyboard,
     pointer: Pointer,
+    /// Where the pointer is on the device's screen.
+    pointer_at: (u16, u16),
     guard: ChannelGuard,
 }
 
@@ -86,6 +87,7 @@ impl Device {
             reactivating: None,
             keyboard: Keyboard::default(),
             pointer: Pointer::default(),
+            pointer_at: (0, 0),
             guard,
         }
     }
@@ -105,7 +107,11 @@ impl Device {
             self.guard.check(message)?;
         }
         if self.reactivating.is_some() {
-            return resizing::go_on(self, Some((action, message)), screen);
+            let mut events = resizing::go_on(self, Some((action, message)), screen)?;
+            if events.contains(&Event::Resized) {
+                events.extend(self.release_held(screen)?);
+            }
+            return Ok(events);
         }
         let outputs = self
             .stage
@@ -145,10 +151,23 @@ impl Device {
         Ok(events)
     }
 
-    fn clipboard(&mut self) -> Option<&mut Clipboard> {
+    /// Releases the keys and buttons that are down. The device does not listen while
+    /// it exchanges capabilities, so a release in that time is lost: after the exchange
+    /// nothing is left down on the device.
+    fn release_held(&mut self, screen: &mut Screen) -> Result<Vec<Event>, Malformed> {
+        let keys = self.keyboard.release_all().into_iter().map(input::key);
+        let at = self.pointer_at;
+        let buttons = self.pointer.release_all().into_iter();
+        let events: Vec<_> = keys
+            .chain(buttons.map(|event| input::pointer(event, at)))
+            .collect();
+        self.send_input(&events, screen)
+    }
+
+    fn clipboard(&mut self) -> Option<&mut ClipboardNotes> {
         self.stage
             .get_svc_processor_mut::<CliprdrClient>()?
-            .downcast_backend_mut::<Clipboard>()
+            .downcast_backend_mut::<ClipboardNotes>()
     }
 
     fn send_input(
@@ -205,6 +224,7 @@ impl Device {
         buttons: u8,
         screen: &mut Screen,
     ) -> Result<Vec<Event>, Malformed> {
+        self.pointer_at = at;
         let events: Vec<_> = self
             .pointer
             .moved(buttons)
@@ -214,15 +234,14 @@ impl Device {
         self.send_input(&events, screen)
     }
 
-    /// Asks the device for a screen of this size, the client's view. `None` when the
+    /// Asks the device for a screen of this size (see `screen_for`). `None` when the
     /// device cannot be asked now: it has no channel for it yet, or is changing its
     /// screen.
-    pub fn resize(&mut self, (width, height): (usize, usize)) -> Option<Vec<u8>> {
+    pub fn resize(&mut self, (width, height): (u16, u16)) -> Option<Vec<u8>> {
         if self.reactivating.is_some() {
             return None;
         }
-        let side = |side: usize| u32::try_from(side).unwrap_or(u32::MAX);
-        let (width, height) = MonitorLayoutEntry::adjust_display_size(side(width), side(height));
+        let (width, height) = (u32::from(width), u32::from(height));
         // xrdp 0.10 stops when a request has no physical size: always send one, in
         // millimetres at 96 pixels for an inch.
         let millimetres = |pixels: u32| pixels * 254 / 960;

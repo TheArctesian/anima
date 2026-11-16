@@ -6,6 +6,7 @@ mod flow;
 mod hub_side;
 mod program;
 mod rdp;
+mod rdp_faults;
 
 use std::time::Duration;
 

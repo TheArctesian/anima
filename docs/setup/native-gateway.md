@@ -87,8 +87,8 @@ several displays is one screen.
   device's host (R-032) before it sends the address.
 - No clipboard goes from the device to the client when copy is off for the device, and none
   goes to the device when paste is off (RA-033).
-- The RDP library (IronRDP) keeps the account in memory for the whole session and does not
-  clear it at the end. One worker process holds one session and ends with it.
+- The RDP library (IronRDP) does not clear the account from memory when it has signed in.
+  One worker process holds one session and ends with it.
 - Not built: the pointer image as a Guacamole cursor (the device draws the pointer),
   audio, file transfer, the Tight encoding, and the newer Apple sign-in types 33, 35 and 36.
 

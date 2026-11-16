@@ -20,26 +20,11 @@ use super::super::opening::{Allowed, refuse};
 use super::super::picture::Picture;
 use super::super::{Ended, Settings, status};
 use super::Terms;
-use crate::rdp::{Device, Event, Opened, Said};
+use crate::rdp::{Device, Event, Opened, Reply, Said, Sharing, ViewRequests, reply};
 
 /// Messages read from the device that wait for the session. Small, so a device that
 /// sends faster than the session draws is held back by TCP and not buffered.
 const WAITING_MESSAGES: usize = 16;
-/// How long the client's view must keep its size before the device is asked for it: a
-/// window that is dragged sends many sizes.
-const VIEW_SETTLES: Duration = Duration::from_millis(300);
-/// How long to wait before the device is asked again, when it could not be asked.
-const ASK_AGAIN: Duration = Duration::from_secs(1);
-/// How often the device is asked again for one size.
-const MOST_ASKS: u8 = 5;
-
-/// The client's view, while the device has not been asked for a screen of its size.
-struct NewView {
-    size: (usize, usize),
-    ask_at: Instant,
-    asks_left: u8,
-}
-
 struct Running<'a, S> {
     hub: &'a mut Hub<S>,
     to_device: WriteHalf<TlsStream<TcpStream>>,
@@ -54,7 +39,8 @@ struct Running<'a, S> {
     text: Option<String>,
     /// Whether the device is asked for a screen of the size of the client's view.
     resizes: bool,
-    new_view: Option<NewView>,
+    view_requests: ViewRequests,
+    started: Instant,
 }
 
 /// Runs the session until one side ends it.
@@ -96,7 +82,8 @@ where
         clipboard: Clipboard::default(),
         text: None,
         resizes,
-        new_view: None,
+        view_requests: ViewRequests::default(),
+        started: Instant::now(),
     };
     let locks = running.device.set_locks(&mut running.picture.screen);
     if let Err(ended) = running.follow(locks).await {
@@ -127,7 +114,7 @@ where
     /// for a new size, handles it, and sends a frame when one is due.
     async fn turn(&mut self, reads: &mut mpsc::Receiver<(Action, Vec<u8>)>) -> Result<(), Ended> {
         let frame_due = self.picture.due();
-        let ask_due = self.new_view.as_ref().map(|view| view.ask_at);
+        let ask_due = self.view_requests.ask_at().map(|at| self.started + at);
         let or_now = |due: Option<Instant>| due.unwrap_or_else(Instant::now);
         tokio::select! {
             instruction = self.hub.next() => {
@@ -182,21 +169,21 @@ where
         Ok(())
     }
 
-    /// The clipboard under the device's switches: the hub's relay is the first guard,
-    /// this the second (RA-033).
+    /// The clipboard under the device's switches (RA-033); `reply` holds the rule.
     async fn on_clipboard(&mut self, said: Said) -> Result<(), Ended> {
-        let Allowed { copy, paste, .. } = self.allowed;
-        let message = match said {
-            Said::WhatIsThere => self.device.offer_text(self.text.is_some()),
-            Said::CopiedText if copy => self.device.ask_for_text(),
-            Said::WantsText => self
-                .device
-                .give_text(self.text.as_deref().filter(|_| paste)),
-            Said::Text(text) if copy => {
+        let sharing = Sharing {
+            copy: self.allowed.copy,
+            paste: self.allowed.paste,
+        };
+        let message = match reply(said, sharing, self.text.as_deref()) {
+            Reply::Offer(has_text) => self.device.offer_text(has_text),
+            Reply::AskForText => self.device.ask_for_text(),
+            Reply::GiveText(text) => self.device.give_text(text),
+            Reply::ToClient(text) => {
                 let stream = copy_to_client(&text);
                 return self.hub.send(&stream).await.map_err(|_| Ended::ByHub);
             }
-            Said::CopiedText | Said::Text(_) => None,
+            Reply::Nothing => None,
         };
         match message {
             Some(message) => self.write(&message).await,
@@ -218,47 +205,38 @@ where
             }
             Input::View(width, height) => {
                 self.picture.set_view((width, height));
-                self.new_view = self.resizes.then(|| NewView {
-                    size: (width, height),
-                    ask_at: Instant::now() + VIEW_SETTLES,
-                    asks_left: MOST_ASKS,
-                });
+                if self.resizes {
+                    self.view_requests
+                        .view_changed((width, height), self.started.elapsed());
+                }
                 Ok(())
             }
-            Input::Paste(text) if self.allowed.paste => {
+            // The device learns that there is new text, when it may have it.
+            Input::Paste(text) => {
                 self.text = Some(text);
-                match self.device.offer_text(true) {
-                    Some(message) => self.write(&message).await,
-                    None => Ok(()),
-                }
+                self.on_clipboard(Said::WhatIsThere).await
             }
             Input::Drawn(timestamp) => {
                 self.picture.drawn(&timestamp);
                 Ok(())
             }
             Input::Disconnect => Err(Ended::ByHub),
-            Input::Paste(_) | Input::Nothing => Ok(()),
+            Input::Nothing => Ok(()),
         }
     }
 
-    /// Asks the device for a screen of the size of the client's view, or plans to ask
-    /// again when the device cannot be asked now.
+    /// Asks the device for a screen of the size of the client's view, when one is due.
     async fn ask_for_view(&mut self) -> Result<(), Ended> {
-        let Some(view) = self.new_view.take() else {
+        let screen = &self.picture.screen;
+        let (screen, now) = ((screen.width(), screen.height()), self.started.elapsed());
+        let Some(size) = self.view_requests.due(screen, now) else {
             return Ok(());
         };
-        let screen = &self.picture.screen;
-        if view.size == (screen.width(), screen.height()) {
-            return Ok(());
-        }
-        if let Some(message) = self.device.resize(view.size) {
+        if let Some(message) = self.device.resize(size) {
+            self.view_requests.asked();
             return self.write(&message).await;
         }
-        self.new_view = (view.asks_left > 0).then(|| NewView {
-            ask_at: Instant::now() + ASK_AGAIN,
-            asks_left: view.asks_left - 1,
-            ..view
-        });
+        self.view_requests.not_asked(now);
         Ok(())
     }
 }

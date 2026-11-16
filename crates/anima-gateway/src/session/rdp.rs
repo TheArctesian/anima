@@ -5,7 +5,6 @@
 
 mod running;
 
-use ironrdp_displaycontrol::pdu::MonitorLayoutEntry;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::TcpStream;
 use tokio::time::timeout;
@@ -14,7 +13,7 @@ use super::hub::Hub;
 use super::opening::{Allowed, ask_for_missing, refuse};
 use super::{Ended, Settings, status};
 use crate::handshake::{Credential, Opening, Rdp, Secret};
-use crate::rdp::{Clipboard, OpenError, Wanted, open};
+use crate::rdp::{ClipboardNotes, OpenError, Wanted, open, screen_for};
 
 /// What the hub set for an open session.
 struct Terms {
@@ -54,12 +53,12 @@ where
         domain: rdp.domain.as_deref(),
         security: rdp.security,
         certificate: rdp.certificate,
-        size: asked_size(opening.view),
+        size: screen_for(opening.view),
     };
     // The device's offer and its sign-in: each has the wait of a step.
     let opened = timeout(
         2 * settings.device_wait,
-        open(device, wanted, Clipboard::default()),
+        open(device, wanted, ClipboardNotes::default()),
     )
     .await;
     let terms = Terms {
@@ -89,12 +88,4 @@ where
 /// The text of a part of the account; empty when there is none.
 fn text(secret: Option<&Secret>) -> &str {
     secret.map_or("", Secret::expose)
-}
-
-/// The screen size to ask the device for: the client's view, within what RDP allows.
-fn asked_size((width, height): (usize, usize)) -> (u16, u16) {
-    let side = |side: usize| u32::try_from(side).unwrap_or(u32::MAX);
-    let (width, height) = MonitorLayoutEntry::adjust_display_size(side(width), side(height));
-    let side = |side: u32| u16::try_from(side).unwrap_or(u16::MAX);
-    (side(width), side(height))
 }

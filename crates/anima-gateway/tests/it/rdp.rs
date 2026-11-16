@@ -6,3 +6,4 @@ mod keys;
 mod limits;
 mod opening;
 mod pointer;
+mod sharing;

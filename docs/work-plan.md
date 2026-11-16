@@ -196,6 +196,7 @@ This table is the only list of the plans of Anima. A document that is not in thi
 | [ui-redesign-plan.md](ui-redesign-plan.md) | Plan | Not checked | Version 0.2. |
 | [ui-site-language-plan.md](ui-site-language-plan.md) | Plan | Approved. Build state not checked | Approved for implementation on 2026-11-13. |
 | [research/one-click/s2-vnc-tasks.md](research/one-click/s2-vnc-tasks.md) | Task breakdown: native VNC gateway | In progress | Its Section 6: T1 to T8, T10 and T11 have commits on `main`. T9 waits for the operator. Its parent plan `docs/one-click-plan.md` is not on `main`. |
+| [research/one-click/s2-rdp-tasks.md](research/one-click/s2-rdp-tasks.md) | Task breakdown: native RDP gateway | In progress | Its Section 5: R1 to R5 and R7 are built. R6 (a hub test with an RDP device) is open; see its Section 6. |
 | [research/one-click/s8-stay-awake-tasks.md](research/one-click/s8-stay-awake-tasks.md) | Task breakdown: stay awake | In progress | Its Section 5: T1 to T6 have commits. The live checks of its Section 6 wait for the operator. Its parent plan `docs/one-click-plan.md` is not on `main`. |
 | [programme/proposals/projects-and-builds.md](programme/proposals/projects-and-builds.md) | Proposal | In progress | Decided (OD-W11, OD-W12). Connect GitHub is on `main`. |
 | [programme/proposals/jobs.md](programme/proposals/jobs.md) | Proposal | Draft | Direction decided (OD-W10). No requirement is approved. |
@@ -217,7 +218,7 @@ These documents are records, not plans. They must not add a requirement (PLN-009
 | [programme/programme.md](programme/programme.md), [programme/handoff.md](programme/handoff.md), [programme/operator-changes.md](programme/operator-changes.md) | Rulings and the state of the programme |
 | `programme/packages/` | Task breakdown and log of each work package of a phase plan |
 | `programme/phase-2-*.md` and `programme/phase-3-*.md`, but not the two plans | Contracts, acceptance records and optional items of a phase |
-| `research/`, but not `s2-vnc-tasks.md` and `s8-stay-awake-tasks.md` | Audits and reports |
+| `research/`, but not `s2-vnc-tasks.md`, `s2-rdp-tasks.md` and `s8-stay-awake-tasks.md` | Audits and reports |
 | `setup/`, [releases.md](releases.md), [programme/linux-client-setup.md](programme/linux-client-setup.md) | Procedures |
 | [ui-critique-2026-11-11.md](ui-critique-2026-11-11.md), [ui-inventory-2026-11-11.md](ui-inventory-2026-11-11.md) | Reviews of the interface |
 
