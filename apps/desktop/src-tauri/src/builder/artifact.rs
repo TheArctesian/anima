@@ -85,10 +85,8 @@ pub fn stabilize_names(
             "appimage/{DISPLAY}_{}_amd64.AppImage",
             version.as_str()
         )),
-        Target::DarwinUniversal => bundle_folder(clone, target).join(format!(
-            "dmg/{DISPLAY}_{}_universal.dmg",
-            version.as_str()
-        )),
+        Target::DarwinUniversal => bundle_folder(clone, target)
+            .join(format!("dmg/{DISPLAY}_{}_universal.dmg", version.as_str())),
     };
     let wanted = match target {
         Target::LinuxX86_64 => updater_file(clone, target, version),
