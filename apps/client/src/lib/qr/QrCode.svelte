@@ -6,11 +6,9 @@
     text: string;
     /** What a screen reader says in place of the code; it must not repeat `text`. */
     label: string;
-    /** Edge length as a CSS length; the default is a token. */
-    size?: string;
   }
 
-  const { text, label, size = 'var(--qr-size)' }: Props = $props();
+  const { text, label }: Props = $props();
 
   const drawing = $derived(qrDrawing(text));
 </script>
@@ -19,8 +17,6 @@
 {#if drawing}
 <svg
   class="qr"
-  style:inline-size={size}
-  style:block-size={size}
   viewBox={`0 0 ${String(drawing.side)} ${String(drawing.side)}`}
   role="img"
   aria-label={label}
@@ -32,9 +28,11 @@
 {/if}
 
 <style>
+  /* 192 px: three of the largest space step. K5 has no size name for a code, so the length comes from a space token (TOK-003). */
   .qr {
-    --qr-size: 12rem;
     display: block;
+    inline-size: calc(var(--space-16) * 3);
+    block-size: calc(var(--space-16) * 3);
   }
 
   .tile {
