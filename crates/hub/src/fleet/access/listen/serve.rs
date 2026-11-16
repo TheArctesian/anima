@@ -28,6 +28,7 @@ use tokio_rustls::TlsAcceptor;
 use tower::ServiceExt as _;
 
 use super::{
+    link::{FromLink, LinkSocket},
     slots::{Slot, Slots},
     timed::{Holding, timed_body},
 };
@@ -78,6 +79,9 @@ pub(super) struct Serving {
     tls: Option<TlsAcceptor>,
     limits: Limits,
     connections: Arc<Slots>,
+    /// The places of the link's devices, apart from `connections`: clients of the listener
+    /// cannot take them.
+    link_connections: Arc<Slots>,
     handshakes: Arc<Slots>,
     /// Set once serving stops: open connections finish their request and close.
     stopping: watch::Sender<bool>,
@@ -96,6 +100,7 @@ impl Serving {
             tls,
             limits,
             connections: Slots::new(limits.connections, limits.connections_per_peer),
+            link_connections: Slots::new(limits.connections, limits.connections_per_peer),
             handshakes: Slots::new(limits.connections, limits.handshakes_per_peer),
             stopping: watch::Sender::new(false),
         })
@@ -114,17 +119,55 @@ impl Serving {
         Some(async move { serving.connection(stream, peer, slot).await })
     }
 
-    async fn connection(&self, stream: TcpStream, peer: SocketAddr, slot: Slot) {
-        if !from_here(&stream, peer) {
-            match self.edge.verdict(peer.ip(), CONNECTION).await {
-                Verdict::Permitted => {}
-                Verdict::Refused(written) => {
-                    drop(stream);
-                    return self.edge.write(written).await;
-                }
-                Verdict::Unavailable(error) => return self.edge.unavailable(&error),
+    /// The work of serving `stream` from the link's socket: its peer is the device the link
+    /// names in the header, which must arrive within the handshake time. A connection that
+    /// names no device of the link is closed and written to the event log (NET-002). Until it
+    /// is named it holds no place: only the hub's own user can open the socket, and the
+    /// handshake time bounds it. A device whose places are all taken is closed with no answer,
+    /// as a client of the listener is.
+    pub(super) fn admit_link(
+        self: &Arc<Self>,
+        incoming: FromLink,
+    ) -> impl Future<Output = ()> + Send + 'static {
+        let serving = Arc::clone(self);
+        async move {
+            let named = tokio::time::timeout(serving.limits.handshake_time, incoming.named());
+            // A connection that is not named is dropped, and so closed, by here.
+            let Ok(Some((stream, peer))) = named.await else {
+                return serving.edge.write(serving.edge.unnamed()).await;
+            };
+            let Some(slot) = serving.link_connections.take(peer.ip()) else {
+                return;
+            };
+            if let Some(stream) = serving.permitted(stream, peer).await {
+                let stall = serving.limits.write_stall;
+                serving.http(Holding::new(stream, slot, stall), peer).await;
             }
         }
+    }
+
+    /// `stream` when the edge lets `peer` connect. A refused connection is closed first and
+    /// then written to the event log, so a slow write never keeps it open.
+    async fn permitted<S>(&self, stream: S, peer: SocketAddr) -> Option<S> {
+        match self.edge.verdict(peer.ip(), CONNECTION).await {
+            Verdict::Permitted => return Some(stream),
+            Verdict::Refused(written) => {
+                drop(stream);
+                self.edge.write(written).await;
+            }
+            Verdict::Unavailable(error) => self.edge.unavailable(&error),
+        }
+        None
+    }
+
+    async fn connection(&self, stream: TcpStream, peer: SocketAddr, slot: Slot) {
+        let stream = if from_here(&stream, peer) {
+            stream
+        } else if let Some(stream) = self.permitted(stream, peer).await {
+            stream
+        } else {
+            return;
+        };
         let stall = self.limits.write_stall;
         let Some(acceptor) = &self.tls else {
             return self.http(Holding::new(stream, slot, stall), peer).await;
@@ -176,10 +219,24 @@ fn late() -> Response {
     StatusCode::SERVICE_UNAVAILABLE.into_response()
 }
 
-/// Serves every connection `tcp` accepts until `stop` resolves; then stops accepting and
+/// The ways in: the listener and, in the link mode, the link's socket.
+pub(super) struct Ways {
+    pub tcp: TcpListener,
+    pub link: Option<LinkSocket>,
+}
+
+/// The next connection from the link; never, when the hub is not in the link mode.
+async fn from_link(link: Option<&LinkSocket>) -> io::Result<FromLink> {
+    match link {
+        Some(link) => link.accept().await,
+        None => std::future::pending().await,
+    }
+}
+
+/// Serves every connection `ways` accept until `stop` resolves; then stops accepting and
 /// drains the open connections for at most `drain_limit` before aborting the rest (R-040).
 pub(super) async fn run(
-    tcp: TcpListener,
+    ways: Ways,
     serving: Arc<Serving>,
     stop: impl Future<Output = ()>,
     drain_limit: Duration,
@@ -190,13 +247,17 @@ pub(super) async fn run(
         tokio::select! {
             () = &mut stop => break,
             Some(_) = connections.join_next() => {}
-            incoming = tcp.accept() => match incoming {
+            incoming = ways.tcp.accept() => match incoming {
                 Ok((stream, peer)) => connections.extend(serving.admit(stream, peer)),
+                Err(error) => accept_failed(&error).await,
+            },
+            incoming = from_link(ways.link.as_ref()) => match incoming {
+                Ok(incoming) => connections.extend([serving.admit_link(incoming)]),
                 Err(error) => accept_failed(&error).await,
             },
         }
     }
-    drop(tcp);
+    drop(ways);
     serving.stopping.send_replace(true);
     drain(connections, drain_limit).await;
 }

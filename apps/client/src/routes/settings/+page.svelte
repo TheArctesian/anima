@@ -12,6 +12,7 @@
   import RetentionSection from '$lib/retention/RetentionSection.svelte';
   import SettingsSection from '$lib/settings/SettingsSection.svelte';
   import SourcesSection from '$lib/sources/SourcesSection.svelte';
+  import StayAwakeRows from '$lib/stay-awake/StayAwakeRows.svelte';
   import ThemeRow from '$lib/theme/ThemeRow.svelte';
   import TypefaceRows from '$lib/typeface/TypefaceRows.svelte';
   import DesktopRows from '$lib/updates/DesktopRows.svelte';
@@ -24,9 +25,9 @@
   // The desktop rows decide each row themselves; the page only leaves out the section when none can show (UPD-006, LOG-008,
   // BLD-020).
   // The Hub section is desktop only: a browser talks only to the hub that served it (CLI-002, D-5).
-  const { updates, commandLine, processLog, builds, keyStore, mcpPermissions } = capabilities();
+  const { updates, commandLine, processLog, builds, keyStore, mcpPermissions, stayAwake } = capabilities();
   const desktopRows = updates || commandLine || processLog || builds;
-  const index = indexOf({ keyStore, desktopRows, mcpPermissions });
+  const index = indexOf({ keyStore, stayAwake, desktopRows, mcpPermissions });
 </script>
 
 <div class="head" {@attach entrance()}>
@@ -47,6 +48,13 @@
   {#if keyStore}
     <SettingsSection {...SECTIONS.hub}>
       <HubRows />
+    </SettingsSection>
+  {/if}
+
+  <!-- Desktop only: the shell keeps this computer awake (AWK-004). -->
+  {#if stayAwake}
+    <SettingsSection {...SECTIONS.stayAwake}>
+      <StayAwakeRows />
     </SettingsSection>
   {/if}
 

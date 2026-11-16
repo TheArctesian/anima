@@ -148,6 +148,9 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
     let clock: Arc<dyn anima_hub::clock::Clock> = Arc::new(SystemClock);
     // Bind check and certificate first: a refused address needs no key or database (NET-003).
     let listening = listen::listen(config.listen, tls_files(&config), clock.clone()).await?;
+    // In the link mode `anima-link` reaches the hub through this socket (one-click plan S5).
+    let link = config.link_socket.as_deref();
+    let link = link.map(listen::link_socket).transpose()?;
     warn_without_probe_deny(&config);
     let vault = vault(&config)?;
     let bucket = release_bucket(&config)?;
@@ -190,7 +193,7 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
         drain_limit: DRAIN_LIMIT,
     };
     serve_until(
-        listening.admitting(edge),
+        listening.admitting(edge).with_link(link),
         app,
         shutdown,
         first_stop_signal(),
