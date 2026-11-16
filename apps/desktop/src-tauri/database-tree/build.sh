@@ -155,6 +155,8 @@ else
             patchelf --set-rpath '$ORIGIN/../lib' "$TREE/bin/$program"
         done
         cp "$WORK/install-linux/lib/libpq.so.5" "$TREE/lib/libpq.so.5"
+        # The build writes its own install folder into libpq as the place to search.
+        patchelf --remove-rpath "$TREE/lib/libpq.so.5"
         for module in "$WORK"/install-linux/lib/postgresql/*.so; do
             cp "$module" "$TREE/lib/postgresql/"
             patchelf --set-rpath '$ORIGIN/..' "$TREE/lib/postgresql/$(basename "$module")"
@@ -185,6 +187,9 @@ linux)
         outside=$(readelf -d "$file" | sed -n 's/.*(NEEDED).*\[\(.*\)\]/\1/p' |
             grep -v -e '^libc\.so\.6$' -e '^libm\.so\.6$' -e '^libz\.so\.1$' -e '^libpq\.so\.5$' -e '^ld-linux' || true)
         [ -z "$outside" ] || fail "$file needs a library outside the tree: $outside"
+        # A search path outside the tree would load a library that is not ours.
+        searched=$(readelf -d "$file" | sed -n 's/.*(R[UN]*PATH).*\[\(.*\)\]/\1/p' | tr ':' '\n' | grep -v '^\$ORIGIN' || true)
+        [ -z "$searched" ] || fail "$file searches libraries outside the tree: $searched"
         readelf -l "$file" | grep -q GNU_RELRO || fail "$file has no read-only relocation table"
         readelf -d "$file" | grep -q BIND_NOW || fail "$file binds lazily"
     done
