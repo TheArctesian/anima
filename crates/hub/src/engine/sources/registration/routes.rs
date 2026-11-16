@@ -2,7 +2,7 @@
 //! each logged by its template only, behind the permitted-networks layer.
 //!
 //! `GET /connect/github` (with a ticket, or the fixed confirm page), `POST /connect/github/open`
-//! (the browser session from Anima's own origin), `GET /connect/github/start`, `/created` and
+//! (the browser session from Anima.ing's own origin), `GET /connect/github/start`, `/created` and
 //! `/installed`. Every answer carries `no-store`, `no-referrer`, `nosniff`, HSTS, COOP and a
 //! policy of its own. The binding cookie is the only thing that ties a browser to the attempt.
 
@@ -19,12 +19,12 @@ use source_exchange::{ManifestFacts, Webhook};
 use zeroize::Zeroizing;
 
 use super::{
-    attempt::{Finished, Phase, Refusal},
+    attempt::{Phase, Refusal},
     attempts::Attempts,
     binding::{Minted, Step},
     exchange::{Created, created},
     github,
-    installation::verified,
+    installation::after_install,
     pages::{self, Notice},
     query::value,
     words::PAGE_PATH,
@@ -161,7 +161,7 @@ async fn page(State(flow): State<GithubFlow>, RawQuery(raw): RawQuery) -> Respon
     .unwrap_or_else(|_| notice(StatusCode::BAD_REQUEST, Notice::LinkEnded))
 }
 
-/// `POST /connect/github/open`: a browser signed in to Anima, from Anima's own page, binds itself.
+/// `POST /connect/github/open`: a browser signed in to Anima.ing, from Anima.ing's own page, binds itself.
 async fn open(State(flow): State<GithubFlow>, headers: HeaderMap) -> Response {
     let Some(from) = SameOrigin::of(&headers, &flow.origin) else {
         return notice(StatusCode::FORBIDDEN, Notice::NotFromAnima);
@@ -245,8 +245,9 @@ async fn back_from_create(
 }
 
 /// `GET /connect/github/installed?installation_id&setup_action&state`: the browser is back from
-/// Install. The ID is checked with GitHub before anything is stored. The bound browser with a
-/// state that does not match only wakes the poll; any other browser changes nothing.
+/// Install. The ID is checked with GitHub before anything is stored, and the bound browser's page
+/// waits a bounded time for the attempt to end. The bound browser with a state that does not
+/// match, or with none, only wakes the poll; any other browser changes nothing.
 async fn back_from_install(
     State(flow): State<GithubFlow>,
     headers: HeaderMap,
@@ -274,19 +275,16 @@ async fn back_from_install(
         }
         return notice(StatusCode::OK, Notice::MaybeInstalled);
     };
-    match (phase, waiting, id) {
-        (Phase::Connected, ..) => last(StatusCode::OK, Notice::Connected),
-        (Phase::Failed | Phase::Cancelled, ..) => last(StatusCode::OK, Notice::Failed),
-        (_, Some((app, key)), Some(id)) => {
-            let Some(found) = verified(&flow.scheduling, (&app, &key), id).await else {
-                return notice(StatusCode::OK, Notice::Finishing);
-            };
-            match super::finish::finish(&flow.scheduling, &flow.attempts, (attempt, found)).await {
-                Some(Finished::Connected { .. }) => last(StatusCode::OK, Notice::Connected),
-                Some(Finished::Failed(_)) => last(StatusCode::OK, Notice::Failed),
-                Some(Finished::Again) | None => notice(StatusCode::OK, Notice::Finishing),
-            }
+    let ended = match phase {
+        Phase::Connected | Phase::Failed | Phase::Cancelled => Some(phase),
+        Phase::AppCreated => {
+            after_install(&flow.scheduling, &flow.attempts, attempt, (waiting, id)).await
         }
+        Phase::WaitingForBrowser | Phase::AtGithub => None,
+    };
+    match ended {
+        Some(Phase::Connected) => last(StatusCode::OK, Notice::Connected),
+        Some(Phase::Failed | Phase::Cancelled) => last(StatusCode::OK, Notice::Failed),
         _ => notice(StatusCode::OK, Notice::Finishing),
     }
 }

@@ -1,14 +1,20 @@
 //! A hub router on a test database at a fixed time, and requests to its `/graphql` endpoint.
 
-use std::{collections::BTreeMap, io::Write as _, net::SocketAddr, sync::Arc};
+use std::{
+    collections::BTreeMap,
+    io::Write as _,
+    net::SocketAddr,
+    sync::{Arc, OnceLock},
+};
 
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 
 use anima_hub::{
     clock::{Clock, FixedClock},
-    config,
+    config::{self, Releases},
     fleet::{
         access::{self, Password},
+        builds::{self, Bucket},
         credentials::Vault,
         events::Bus,
         metrics::Feed,
@@ -72,6 +78,14 @@ impl Hub {
         }
     }
 
+    /// A hub at `now` that cannot publish: it opened no release bucket (BLD-045, PRO-037).
+    pub fn not_publishing(pool: &PgPool, now: DateTime<Utc>) -> Self {
+        let clock: Arc<dyn Clock> = Arc::new(FixedClock(now));
+        let mut parts = dependencies(pool, clock, Bus::new(16));
+        parts.bucket = None;
+        Self::serving(pool, parts)
+    }
+
     /// A hub over `dependencies`, at their clock, for a test that needs other parts than
     /// `dependencies` gives.
     pub fn serving(pool: &PgPool, dependencies: Dependencies) -> Self {
@@ -107,6 +121,27 @@ impl Hub {
         text
     }
 
+    /// Posts a GraphQL request with `token`; returns the response headers and body.
+    pub async fn post_with_headers(
+        &self,
+        token: &str,
+        query: &str,
+        variables: Value,
+    ) -> (header::HeaderMap, Value) {
+        let body = json!({ "query": query, "variables": variables }).to_string();
+        let mut request = Request::post("/graphql")
+            .header(header::CONTENT_TYPE, "application/json")
+            .header(header::AUTHORIZATION, format!("Bearer {token}"))
+            .body(Body::from(body))
+            .unwrap();
+        let peer: SocketAddr = format!("{}:50000", self.client).parse().unwrap();
+        request.extensions_mut().insert(ConnectInfo(peer));
+        let response = self.router.clone().oneshot(request).await.unwrap();
+        let headers = response.headers().clone();
+        let bytes = response.into_body().collect().await.unwrap().to_bytes();
+        (headers, serde_json::from_slice(&bytes).unwrap())
+    }
+
     pub async fn post(&self, token: Option<&str>, query: &str, variables: Value) -> Value {
         serde_json::from_str(&self.post_text(token, query, variables).await).unwrap()
     }
@@ -136,7 +171,40 @@ pub fn test_vault() -> Vault {
     Vault::from_key_file(key_file.path()).unwrap()
 }
 
-/// The schema dependencies `main.rs` builds, with default config and a throwaway vault.
+/// A release bucket on an address that answers nothing, with a throwaway token and updater key,
+/// so a test hub can queue a release (PRO-037). Made once: the key's password hashing is slow. A
+/// test of publishing itself uses the fake R2 of `builds::publishing`.
+pub fn test_bucket() -> Arc<Bucket> {
+    static BUCKET: OnceLock<Arc<Bucket>> = OnceLock::new();
+    BUCKET
+        .get_or_init(|| {
+            const PASSWORD: &str = "a throwaway key password";
+            let folder = tempfile::tempdir().unwrap();
+            let path = |name: &str| folder.path().join(name);
+            std::fs::write(path("id"), "AKIDTESTHUB\n").unwrap();
+            std::fs::write(path("secret"), "test-hub-secret-only").unwrap();
+            let pair =
+                minisign::KeyPair::generate_encrypted_keypair(Some(PASSWORD.to_owned())).unwrap();
+            let secret = STANDARD.encode(pair.sk.to_box(None).unwrap().into_string());
+            std::fs::write(path("updater_key"), secret).unwrap();
+            std::fs::write(path("updater_key_password"), PASSWORD).unwrap();
+            let releases = Releases {
+                endpoint: "http://127.0.0.1:9".to_owned(),
+                bucket: "anima-releases-test".to_owned(),
+                public_base: "http://127.0.0.1:9".to_owned(),
+                access_key_id_file: path("id"),
+                secret_access_key_file: path("secret"),
+                updater_public_key: Some(STANDARD.encode(pair.pk.to_box().unwrap().into_string())),
+                updater_key_file: path("updater_key"),
+                updater_key_password_file: path("updater_key_password"),
+            };
+            Arc::new(builds::open_bucket(&releases).unwrap().unwrap())
+        })
+        .clone()
+}
+
+/// The schema dependencies `main.rs` builds, with default config, a throwaway vault and the
+/// test release bucket.
 pub fn dependencies(pool: &PgPool, clock: Arc<dyn Clock>, bus: Bus) -> Dependencies {
     Dependencies {
         config: Arc::new(config::from_env(&BTreeMap::new()).unwrap()),
@@ -148,7 +216,7 @@ pub fn dependencies(pool: &PgPool, clock: Arc<dyn Clock>, bus: Bus) -> Dependenc
         policy: AddressPolicy::default(),
         metrics_feed: Feed::new(),
         build_updates: anima_hub::fleet::builds::Updates::new(),
-        bucket: None,
+        bucket: Some(test_bucket()),
         vpn_feed: anima_hub::fleet::vpn::Feed::new(),
         vpn_broker: None,
         sources: anima_hub::source_reach(Vec::new(), AddressPolicy::default()).unwrap(),

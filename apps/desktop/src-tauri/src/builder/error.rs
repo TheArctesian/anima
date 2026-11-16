@@ -10,11 +10,11 @@ pub enum BuilderError {
     Commit,
     #[error("the version is not three numbers with dots between")]
     Version,
-    #[error("the target is not one Anima builds")]
+    #[error("the target is not one Anima.ing builds")]
     Target,
     #[error("this computer cannot build that target")]
     Platform,
-    #[error("the commit is not on main of the Anima repository")]
+    #[error("the commit is not on main of the Anima.ing repository")]
     NotOnMain,
     #[error("the working tree is not clean after the checkout")]
     Dirty,

@@ -89,7 +89,7 @@ fn settle(attempts: &Attempts, id: Uuid, round: u32) -> Settle {
 
 #[tokio::test]
 async fn prj_039_a_store_that_is_dropped_or_panics_leaves_app_created_and_a_later_store_finishes() {
-    let attempts = Attempts::new(Duration::from_secs(5));
+    let attempts = Attempts::new(Duration::from_secs(5), Duration::from_secs(5));
     let id = attempts.start(app_created().attempt, t0()).unwrap().id;
 
     let round = storing(&attempts, id);

@@ -1,0 +1,35 @@
+query WorkflowRunGet($repository: ID!, $runId: ID!, $fresh: Boolean) {
+  workflowRun(repository: $repository, runId: $runId, fresh: $fresh) {
+    repository
+    id
+    workflowId
+    name
+    runNumber
+    attempt
+    event
+    status
+    conclusion
+    branch
+    headSha
+    commitTitle
+    actorLogin
+    fromFork
+    createdAt
+    updatedAt
+    startedAt
+    url
+    rerunnable
+    failedJobsRerunnable
+    cancellable
+    jobs {
+      total
+      succeeded
+      failed
+      running
+      queued
+      other
+      failing
+      partial
+    }
+  }
+}

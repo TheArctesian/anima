@@ -3,17 +3,17 @@
 | Item | Value |
 | --- | --- |
 | Document | Work plan: purpose, categories and priority order |
-| Version | 1.0 |
-| Date | 2026-11-13 |
+| Version | 1.2 |
+| Date | 2026-11-16 |
 | Language | ASD-STE100 Simplified Technical English (STE) |
-| Status | Approved. The operator approved the principles and the priority order on 2026-11-13. The proposals stay drafts until each has a ruling (Section 5). |
+| Status | Approved. The operator approved the principles and the priority order on 2026-11-13. The proposals stay drafts until each has a ruling (Section 5). Version 1.1 adds the plan register (Section 9) and the rules for plans (Section 10) on the operator's instruction of 2026-11-15. Version 1.2 records OD-W13 and OD-W14 to OD-W21 (operator, 2026-11-16). |
 | Related | [design-spec.md](design-spec.md), [extensions-plan.md](extensions-plan.md), [compute-plan.md](compute-plan.md), [vpn-plan.md](vpn-plan.md), [programme/handoff.md](programme/handoff.md), [programme/proposals/](programme/proposals/) |
 
 This document obeys the writing rules in Section 0 of the design specification.
 
-This document is a map. It gives the purpose of Anima, five categories for all planned work, and one priority order. It contains no build requirements. Each requirement is in the plan or the proposal that owns it (Section 5). This document does not replace a plan and does not change a requirement identifier.
+This document is a map and a register. It gives the purpose of Anima, five categories for all planned work, one priority order, and the state of each plan. It contains no build requirements. Each requirement is in the plan or the proposal that owns it (Section 5). This document does not replace a plan and does not change a requirement identifier.
 
-GitHub issues hold the state and the priority of each item of work. If this document and an issue do not agree, the issue is correct.
+This document holds the state of each plan and of each row of work (operator, 2026-11-15). A GitHub issue holds the discussion of one item of work. If this document and an issue do not agree, this document is correct. Section 10 gives the rules.
 
 ## 1. Purpose
 
@@ -63,13 +63,13 @@ The tiers come from the issue labels `priority: foundation`, `priority: later` a
 
 | Tier | Category | Work | Issues | State |
 | --- | --- | --- | --- | --- |
-| 0 | Foundation, See, Reach | Finish the device manager: the Phase 3 acceptance run (WP-53) and the operator steps before it. Three open defects. | [handoff.md](programme/handoff.md) Sections 3 and 4. #52, #53, #54 | Phases 1 to 3 are built. Acceptance waits for the operator. This tier removes `blocked: device-manager` (PH-E-000, PH-C-000). |
+| 0 | Foundation, See, Reach | Finish the device manager: the Phase 3 acceptance run (WP-53) and the operator steps before it. Three open defects. The correction of the release of Anima: tasks R1 to R7 in "Tasks" of [projects-and-builds.md](programme/proposals/projects-and-builds.md) (OD-W21). | [handoff.md](programme/handoff.md) Sections 3 and 4. #52, #53, #54. No issue for R1 to R7 | Phases 1 to 3 are built. Acceptance waits for the operator. This tier removes `blocked: device-manager` (PH-E-000, PH-C-000). R1 to R4 are done (branch `builds/release-corrections`). R5 to R7 are not started: no release is published. |
 | 1 | Foundation | The procedure to restore a backup on a new machine and to move the coordinator (FND-006) | No issue yet | Proposal. The operator put it here on 2026-11-12: directly after tier 0. |
 | 1 | All | Decisions and approvals that the foundation work needs | Extensions: #26, #27, #31. Compute: #41, #42, #43, #44, #47, #49, #50. This plan: Section 7 | Open |
 | 2a | See, Remember | The engine (E0), with Writing as its sample extension | #4, #5, #7, #8, #9, #10, #11, #14 | Planned. `priority: foundation` |
 | 2b | Use | Level 1 model service: C1 and C2 | #34, #35 | Planned. `priority: foundation`. The issues were given a new scope on 2026-11-07 and are newer than the compute plan. |
-| 3a | See | Projects: import each GitHub repository, find where it runs, propose resources (PRO-001 to PRO-008) | #13 | The direction is decided (OD-W11). It changes PRJ-001. It needs the engine (tier 2a). |
-| 3a | Use | Jobs, with the build as the first job type. Then AI agent runs. | #40 (C7), #36 (C3). No issue yet for the proposals | #40 is planned. The operator put jobs before the extensions (OD-W8) and the build as a job directly after Projects (PRO-009, OD-W12). A Mac build is a native job (PRO-011). |
+| 3a | See | Projects: import each GitHub repository, find where it runs, propose resources (PRO-001 to PRO-008) | #13 | In progress. Connect GitHub (PRJ-039 to PRJ-042) is on `main` (2026-11-14). The direction is decided (OD-W11). It changes PRJ-001. It needs the engine (tier 2a). |
+| 3a | Use | Jobs, with the build as the first job type. Then AI agent runs. Anima has two build models: its own builds, and owned machines as runners of GitHub Actions (PRO-010, PRO-027, OD-W13). | #40 (C7), #36 (C3). No issue yet for the proposals | #40 is planned. The operator put jobs before the extensions (OD-W8) and the build as a job directly after Projects (PRO-009, OD-W12). A Mac build is a native job (PRO-011). The tasks are planned and not started: groups W, B and A in "Tasks" of [projects-and-builds.md](programme/proposals/projects-and-builds.md) (2026-11-16). Their order is W, then B, then A (OD-W21). |
 | 3b | See, Remember, Reach | The other extensions, in the order of XP-005, one at a time | #12, #15 to #25, #6, #32. Decisions #28, #29, #30 | Planned. `priority: later` |
 | 3c | Use | Hosted applications | No issue yet | Proposal. Not approved. |
 | 3 | Foundation | Standby copies of the coordinator database (FND-001 to FND-005, FND-007 to FND-012) | No issue yet | Proposal. Its direction is decided (OD-W9). |
@@ -83,6 +83,12 @@ Notes:
 
 - Tiers 2a and 2b do not depend on each other. They can run at the same time.
 - Each extension needs the engine (PH-E-000). The extensions are independent workflows (XP-004).
+- The native VNC gateway (S2) has commits on `main` and no row in this table. The operator must give it a tier ([s2-vnc-tasks.md](research/one-click/s2-vnc-tasks.md)).
+- The link (S1) and the access rules by device key (S5) have commits on `main` and no row in this table. The operator must give them a tier ([s1-link-tasks.md](research/one-click/s1-link-tasks.md), [s5-access-tasks.md](research/one-click/s5-access-tasks.md)).
+- The bundled PostgreSQL (S3) and the hub as a background program (S4) are in the same state: built, and no row in this table. The operator must give the one-click work a tier ([s3-database-tasks.md](research/one-click/s3-database-tasks.md), [s4-local-hub-tasks.md](research/one-click/s4-local-hub-tasks.md)).
+- The first run (S6) is in the same state: no row in this table. The operator must give it a tier ([s6-first-run-tasks.md](research/one-click/s6-first-run-tasks.md)).
+- The stay-awake control (S8) is built on its branch and has no row in this table. The operator must give it a tier ([s8-stay-awake-tasks.md](research/one-click/s8-stay-awake-tasks.md)).
+- The states in this table were read on 2026-11-12, except where a row gives a later date.
 - Phase 4 (Proxmox VE) is withdrawn (R-109). Session recording is deferred (R-113). This plan does not include them.
 
 ## 5. Where each requirement lives
@@ -100,16 +106,21 @@ One document owns each concern. Add a requirement to its owner, not to this docu
 | Model service and pooled models | [compute-plan.md](compute-plan.md), as changed by #34 and #35 | CMP, CAG, CAP, RTR and the others there |
 | Copies of the coordinator database, and the move of the coordinator | [coordinator-standby.md](programme/proposals/coordinator-standby.md) | FND-001 to FND-012 |
 | Bulk data on the operator's machines | [bulk-data-placement.md](programme/proposals/bulk-data-placement.md) | STO-001 to STO-011 |
-| Rules for all work on machines, and jobs | [jobs.md](programme/proposals/jobs.md) | USE-001 to USE-009, JOB-001 to JOB-010 |
+| Rules for all work on machines, and jobs | [jobs.md](programme/proposals/jobs.md) | USE-001 to USE-009, JOB-001 to JOB-011 |
 | AI agent runs | [agent-runs.md](programme/proposals/agent-runs.md) | AGN-001 to AGN-008 |
 | Hosted applications | [hosted-applications.md](programme/proposals/hosted-applications.md) | HOST-001 to HOST-009 |
-| Projects as the front door: import from a forge, resources that Anima finds, builds as jobs, sign-in with a forge | [projects-and-builds.md](programme/proposals/projects-and-builds.md) | PRO-001 to PRO-026 |
+| Projects as the front door: import from a forge, resources that Anima finds, builds as jobs, owned machines as runners of GitHub Actions, sign-in with a forge | [projects-and-builds.md](programme/proposals/projects-and-builds.md) | PRO-001 to PRO-053 |
 | The `anima` command line and the MCP server | [cli-mcp-plan.md](cli-mcp-plan.md). The design specification Section 6.10 gives the summary. | CMD, MCP |
 | Who did an action: the actor kinds User, Agent and Hub in the audit log and the event log | [design-spec.md](design-spec.md) Section 3.8.1 | LOG-012 to LOG-020 |
 | Installation: the disk image and the AppImage, with the `anima` program inside | [design-spec.md](design-spec.md) Section 3.11 | INS-001 to INS-009 |
 | The marketing website with the install links | [design-spec.md](design-spec.md) Section 3.12 | SITE-001 to SITE-012 |
+| Stay awake: the desktop application keeps its computer on | [design-spec.md](design-spec.md) Section 3.13 | AWK-001 to AWK-008 |
 | Cloudflare source for Projects. A new Activity extension for Spotify and Screen Time | [new-sources.md](programme/proposals/new-sources.md) | None until each provider is verified |
 | Other persons: self-hosting and a hosted option | [other-operators.md](programme/proposals/other-operators.md) | None yet |
+| Hosted Solo hubs on a shared pool of hosts | [shared-pool-hosting.md](programme/proposals/shared-pool-hosting.md) | None yet |
+| The Anima.ing shell prompt and related shell commands | [shell-prompt.md](programme/proposals/shell-prompt.md) | CMD-032 to CMD-036 |
+| Rented cloud computers and GPU add-ons sold by Anima.ing | [cloud-machines.md](programme/proposals/cloud-machines.md) | CVM-001 to CVM-018 |
+| Machine profiles: copy a setup to a new computer | [machine-profiles.md](programme/proposals/machine-profiles.md) | REP-001 to REP-024 |
 | Rulings and the state of each package | [programme/programme.md](programme/programme.md), [programme/handoff.md](programme/handoff.md) | R, CR |
 
 The eight proposals are drafts. A proposal becomes a plan when the operator approves it with a ruling. Then its work gets an issue with the labels of Section 4.
@@ -145,7 +156,16 @@ Decisions of the other plans stay in their issues (Section 4, tier 1). These are
 | OD-W9 | One home with copies, or a copy on each node that syncs between nodes when the hub is down (issue #2) | **Decided (operator, 2026-11-12): one home, copies by policy.** The section "Decision" of [coordinator-standby.md](programme/proposals/coordinator-standby.md) has the operator's words. It needs a ruling number in `programme.md`. Issue #2 keeps only its phase L0. |
 | OD-W10 | Can the agent do work that the coordinator gives it? R-115 did not take a command channel to the agent. | **Decided (operator, 2026-11-12): yes, one agent, on by default ("it should be on by default").** The section "Decision" of [jobs.md](programme/proposals/jobs.md) has the limits. It needs a ruling number that changes R-115. It also changes CMP-002 and the recommendation of OD-C8 (#50). An agent that is already installed takes work after its update, with no confirmation. |
 | OD-W11 | Are projects the front door for rented accounts, and does the builder build each project? | **Decided (operator, 2026-11-13): yes.** Connect GitHub, import each repository, leave out the ones that the operator selects. Anima proposes resources from signs in the repository. The builder is no longer specific to Anima. The three resource types stay different. A different forge must be possible. [projects-and-builds.md](programme/proposals/projects-and-builds.md) has the six points. |
-| OD-W12 | The proposals that follow OD-W11 | **Decided (operator, 2026-11-13).** A build is the first job type and comes directly after Projects (PRO-009). Anima schedules builds from a webhook of the GitHub App, through the webhook receiver of the engine (WHK-001 to WHK-010), with a slow poll that repairs a lost webhook. Anima can also start a workflow of GitHub Actions; a machine is not a runner (PRO-010, PRO-020, PRO-021). The receiver runs on the VPS as a separate program (OD-E15); to open its port needs the confirmation of the operator (VPS-005). A Mac build is a native job that runs as a build user, in a new checkout that is deleted, on a Mac that the operator set on for it (PRO-011, PRO-022 to PRO-024). Keys belong to the project (PRO-012). No builds of pull requests from forks (PRO-013). Sign-in with a forge comes later, with the local sign-in as the root (PRO-015, PRO-016). PRJ-017 replaces "read access first" (PRO-014). The hub gives a project secret to one job (JOB-010). The first build is the path to Projects only: the hub folder regroup (E0-1), the sources framework (E0-2), the extension registry (E0-8), then Projects (operator, 2026-11-13). |
+| OD-W12 | The proposals that follow OD-W11 | **Decided (operator, 2026-11-13).** A build is the first job type and comes directly after Projects (PRO-009). Anima schedules builds from a webhook of the GitHub App, through the webhook receiver of the engine (WHK-001 to WHK-010), with a slow poll that repairs a lost webhook. Anima can also start a workflow of GitHub Actions (PRO-010, PRO-020, PRO-021). OD-W13 withdrew "a machine is not a runner". The receiver runs on the VPS as a separate program (OD-E15); to open its port needs the confirmation of the operator (VPS-005). A Mac build is a native job that runs as a build user, in a new checkout that is deleted, on a Mac that the operator set on for it (PRO-011, PRO-022 to PRO-024). Keys belong to the project (PRO-012). OD-W13 replaced "no builds of pull requests from forks" (PRO-013). Sign-in with a forge comes later, with the local sign-in as the root (PRO-015, PRO-016). PRJ-017 replaces "read access first" (PRO-014). The hub gives a project secret to one job (JOB-010). The first build is the path to Projects only: the hub folder regroup (E0-1), the sources framework (E0-2), the extension registry (E0-8), then Projects (operator, 2026-11-13). |
+| OD-W13 | The build models, and pull requests from forks | **Decided (operator, 2026-11-16).** (1) Anima has both build models: it schedules its own builds from a push, and it can register an owned machine as a self-hosted runner of GitHub Actions. "Anima must not register a machine as a self-hosted runner" is withdrawn. The goal for the runner is a set-up with one press (PRO-010, PRO-027). (2) Anima does not refuse a pull request from a fork. The owner of the repository sets that in GitHub: "if the user wants to build from fork thats their choice they can harden their git repo in any way we just run it" (PRO-013). (3) Stated again: the installation of a different person builds their projects on their machines and must not be able to build or publish the Anima application. A signing key belongs to a project and reaches a builder for one job only (PRO-008, PRO-012, PRO-028). It needs a ruling number in `programme.md`. |
+| OD-W14 | Is each job isolated, whoever wrote the code (PRO-029)? | **Decided (operator, 2026-11-16): yes.** After OD-W13 the hub cannot know that code is the operator's code. On a public repository the author of a fork selects the runner and the steps, and GitHub says that the owner must supply a clean machine for each job (facts F20, F22). |
+| OD-W15 | Does a job get the least that it needs (PRO-030)? | **Decided (operator, 2026-11-16): yes.** A job from a fork gets no project secret and no signing key unless the operator sets that on. Anima gives a runner job only its registration. This is the default of GitHub (fact F19). |
+| OD-W16 | What does Anima's own build run for a repository (PRO-032)? | **Decided (operator, 2026-11-16): a recipe from a fixed list only.** The desktop release now, the image of a job later. No build language of Anima. A repository that needs other steps uses its workflows on owned machines. |
+| OD-W17 | Which runner mode comes first (PRO-042)? | **Decided (operator, 2026-11-16): warm mode first**, one idle runner for each repository that is set on. It needs no webhook receiver. On-demand mode follows the receiver (WHK, OD-E15). |
+| OD-W18 | A public repository with runners (PRO-044) | **Decided (operator, 2026-11-16).** Anima permits it (OD-W13), shows the recommendation of GitHub and the fork setting of the repository, and asks for one more confirmation. Do not set runners on for `TheArctesian/anima.ing` before tasks W2 and S are accepted. The operator sets its fork rule on GitHub to "all external contributors" first. |
+| OD-W19 | The name of the macOS application: `Anima.app` (design specification) or `Anima.ing.app` (the builder) | **Decided (operator, 2026-11-16): `Anima.ing.app`**, the name that Tauri makes from `productName`. Task R5 changes the design specification Section 3.11 and `carried.rs` to agree. The file names of a release stay `Anima_*` (UPD-010). |
+| OD-W20 | The meaning of "must not be able to build or publish the Anima application" (PRO-028) | **Decided (operator, 2026-11-16).** The source is public under AGPL-3.0-or-later, so each person can compile it. The rule means two things. The product has no release function on a hub that has no keys (PRO-037, PRO-038). The keys stay with the Anima project on the operator's hub (PRO-036). |
+| OD-W21 | The order of the build work, and the tier of the correction of the release | **Decided (operator, 2026-11-16).** Tasks R1 to R7 at tier 0, now, because no release is published. Then the work route (W), then runners in warm mode (B), then Anima's own builds (A). Reason for B before A: B gives each project its builds from the workflows that it has. |
 
 ## 8. Changes that this plan needs in other documents
 
@@ -166,6 +186,10 @@ These changes are not made. The operator must approve each one (operator checkpo
 | Extensions plan PRJ-001 and Section 4.2 | Import each repository; the operator leaves some out (OD-W11). PRJ-001 says that the operator accepts each project. OD-W11 is the ruling; PRJ-001 takes the new wording. |
 | [jobs.md](programme/proposals/jobs.md) JOB-001, JOB-004, USE-001 | Changed on 2026-11-13 (OD-W12): a job is a container job or a native job on a Mac, and the build is the first job type. |
 | Design specification BLD-001 to BLD-082 | The builder takes a project as a parameter; the release of Anima becomes one project (OD-W11). |
+| Design specification Section 3.10 and BLD-029 | A machine can be a runner of GitHub Actions (OD-W13). The text "no GitHub runner" must change. |
+| Design specification BLD-028, BLD-040 and Section 3.11 | Add Go to the tool list. The clone address has the new repository name. One name for the macOS application (OD-W19). Tasks R1, R3 and R5 of [projects-and-builds.md](programme/proposals/projects-and-builds.md). |
+| Extensions plan PRJ-019, OD-E14 and `contracts/extensions/sources.md` | The App needs the events `push` and `workflow_job` (PRO-042). The runner functions join the GitHub functions (PRO-049). The contract says 22 write permissions and the manifest has 23. |
+| [cli-mcp-plan.md](cli-mcp-plan.md) Sections 6 and 7 | Not made: the `build` and `runner` commands and tools (PRO-053). Make them with the build. |
 | `AGENTS.md`, [cli-mcp-plan.md](cli-mcp-plan.md) | Done on the branch `claude/anima-cli`: the command-line-first rule (CMD-030). |
 | Design specification 6.10, 7, 9 and 13 | Done (operator, 2026-11-13): the command line and the MCP server are part of the specification. SET-004 names the "MCP" section. |
 | Design specification 3.8.1 | Done as text (operator, 2026-11-13): the actor kinds User, Agent and Hub (LOG-012 to LOG-020). Not built. |
@@ -173,3 +197,79 @@ These changes are not made. The operator must approve each one (operator checkpo
 | Design specification 3.11 | Done as text (operator, 2026-11-13): installation from the disk image or the AppImage, with the `anima` program inside (INS-001 to INS-009). INS-002 to INS-007 are built (branch `fix/bundle-anima`); a real release must confirm OD-16 to OD-18. |
 | Design specification 3.12 and 11 | Done as text (operator, 2026-11-13): the marketing website (SITE-001 to SITE-012). Not built. The operator must decide OD-20, OD-21 and OD-22 of the design specification. |
 | [cli-mcp-plan.md](cli-mcp-plan.md) Sections 6 and 7 | Not made: `anima key create` takes "made for"; `anima audit list` gets the actor column and `--actor`; `anima mcp` sends the agent declaration (LOG-015, LOG-016, LOG-020). Make them with the build, after the ruling. |
+
+## 9. Plan register
+
+This table is the only list of the plans of Anima. A document that is not in this table is not a plan (PLN-001). The states were checked on 2026-11-15 against the documents, the commits on `main` and the issues. "Not checked" means that no person or agent compared the plan with the code.
+
+| Document | Kind | State | Evidence |
+| --- | --- | --- | --- |
+| [design-spec.md](design-spec.md) | Specification | Approved | `AGENTS.md` names it the source of truth. |
+| [implementation-plan.md](implementation-plan.md) | Plan: Phase 1 | Done | Section 4, tier 0: Phases 1 to 3 are built. Its header still says "draft". |
+| [programme/phase-2-plan.md](programme/phase-2-plan.md) | Plan: Phase 2 | Done | Adopted (R-065). Section 4, tier 0. |
+| [programme/phase-3-plan.md](programme/phase-3-plan.md) | Plan: Phase 3 | In progress | Adopted (R-081). All packages are done. The acceptance run (WP-53) waits for the operator ([handoff.md](programme/handoff.md), 2026-11-12). |
+| [programme/phase-3-agent-delta.md](programme/phase-3-agent-delta.md) | Plan: change to Phase 3 | Done | Approved 2026-11-07. WP-54 is done ([handoff.md](programme/handoff.md)). |
+| [vpn-plan.md](vpn-plan.md) | Plan | Approved. Build state not checked | Accepted by the operator on 2026-11-10. |
+| [vpn-build.md](vpn-build.md) | Build specification of the VPN plan | Approved. Build state not checked | Version 0.2. |
+| [cli-mcp-plan.md](cli-mcp-plan.md) | Plan | In progress | Section 3: the command line and the MCP server are on `main`. The test against a real hub is open (#60). |
+| [extensions-plan.md](extensions-plan.md) | Plan | In progress | Its header says "For review". Connect GitHub (PRJ-039 to PRJ-042) is on `main` (2026-11-14). All other issues are open (#4 to #32). |
+| [compute-plan.md](compute-plan.md) | Plan | Draft | Its header says "For review". The issues #34 to #50 are open. |
+| [ui-redesign-direction.md](ui-redesign-direction.md) | Plan: direction of the redesign | Not checked | Its title says "draft for approval". |
+| [ui-redesign-plan.md](ui-redesign-plan.md) | Plan | Not checked | Version 0.2. |
+| [ui-site-language-plan.md](ui-site-language-plan.md) | Plan | Approved. Build state not checked | Approved for implementation on 2026-11-13. |
+| [research/one-click/s2-vnc-tasks.md](research/one-click/s2-vnc-tasks.md) | Task breakdown: native VNC gateway | In progress | Its Section 6: T1 to T8, T10 and T11 have commits on `main`. T9 waits for the operator. Its parent plan `docs/one-click-plan.md` is not on `main`. |
+| [research/one-click/s2-rdp-tasks.md](research/one-click/s2-rdp-tasks.md) | Task breakdown: native RDP gateway | In progress | Its Section 5: R1 to R7 are built. Its Section 6 lists what is open for the operator. |
+| [research/one-click/s3-database-tasks.md](research/one-click/s3-database-tasks.md) | Task breakdown: bundled PostgreSQL | In progress | Approved by the operator on 2026-11-14. Its Section 7.5: T1 to T9 and T15 have commits; T10 is in progress; T11 to T14 wait for the operator or other hardware. Its parent plan `docs/one-click-plan.md` is not on `main`. |
+| [research/one-click/s4-local-hub-tasks.md](research/one-click/s4-local-hub-tasks.md) | Task breakdown: the hub as a background program | In progress | Its Section 2: T1 to T8 have commits; T9 and T10 are not started. No operator ruling on its design. Its parent plan `docs/one-click-plan.md` is not on `main`. |
+| [research/one-click/s3-spec-delta.md](research/one-click/s3-spec-delta.md) | Proposal: spec delta for the bundled PostgreSQL | Draft | Not approved. It changes no requirement until the operator approves it. |
+| [research/one-click/s4-spec-delta.md](research/one-click/s4-spec-delta.md) | Proposal: spec delta for the hub as a background program | Draft | Not approved. It changes no requirement until the operator approves it. |
+| [research/one-click/s6-first-run-tasks.md](research/one-click/s6-first-run-tasks.md) | Task breakdown: the first run | In progress | Its Section 3 holds the state of each task. Its parent plan `docs/one-click-plan.md` is not on `main`. |
+| [research/one-click/s6-spec-delta.md](research/one-click/s6-spec-delta.md) | Proposal: spec delta for the first run | Draft | Not approved. It changes no requirement until the operator approves it. |
+| [research/one-click/s8-stay-awake-tasks.md](research/one-click/s8-stay-awake-tasks.md) | Task breakdown: stay awake | In progress | Its Section 5: T1 to T6 have commits. The live checks of its Section 6 wait for the operator. Its parent plan `docs/one-click-plan.md` is not on `main`. |
+| [research/one-click/s1-link-tasks.md](research/one-click/s1-link-tasks.md) | Task breakdown: the link (`anima-link`) | In progress | T1 to T13 have commits on `main` (merge `f367f819`). T14, the live checks with a second Mac, waits for the operator. Its parent plan `docs/one-click-plan.md` is not on `main`. |
+| [research/one-click/s5-access-tasks.md](research/one-click/s5-access-tasks.md) | Task breakdown: access rules by device key | In progress | T1 to T9 have commits on `main` (merge `f367f819`); T10, the agent's link origin, has its commit. Open: the K7 row of its Section 6.3 and one test of agent, link and hub together. Its parent plan `docs/one-click-plan.md` is not on `main`. |
+| [programme/proposals/projects-and-builds.md](programme/proposals/projects-and-builds.md) | Proposal, with the task table for builds and runners | In progress | Decided (OD-W11, OD-W12, OD-W13). Connect GitHub is on `main`. Version 2 (2026-11-16): OD-W14 to OD-W21 are decided; its status line names the requirements that still have no ruling. Each task of its "Tasks" is Not started. |
+| [programme/proposals/jobs.md](programme/proposals/jobs.md) | Proposal | Draft | Direction decided (OD-W10). No requirement is approved. Version 2 (2026-11-16) adds JOB-011. Its tasks W1 to W6 are in the task table of the row above. |
+| [programme/proposals/coordinator-standby.md](programme/proposals/coordinator-standby.md) | Proposal | Draft | Direction decided (OD-W9). No requirement is approved. |
+| [programme/proposals/bulk-data-placement.md](programme/proposals/bulk-data-placement.md) | Proposal | Draft | Direction decided (OD-W9). No requirement is approved. |
+| [programme/proposals/other-operators.md](programme/proposals/other-operators.md) | Proposal | Draft | Direction decided (OD-W2). It has no requirements. |
+| [programme/proposals/agent-runs.md](programme/proposals/agent-runs.md) | Proposal | Draft | Not approved. |
+| [programme/proposals/hosted-applications.md](programme/proposals/hosted-applications.md) | Proposal | Draft | Not approved. |
+| [programme/proposals/new-sources.md](programme/proposals/new-sources.md) | Proposal | Draft | No provider is verified. |
+| [programme/proposals/add-this-machine.md](programme/proposals/add-this-machine.md) | Proposal | Draft. Build state not checked | Its status line: a proposal for a ruling. |
+| [programme/proposals/first-run-setup.md](programme/proposals/first-run-setup.md) | Proposal | Draft. Build state not checked | Its status line: a proposal for a ruling. |
+| [programme/proposals/in-app-enrolment.md](programme/proposals/in-app-enrolment.md) | Proposal | Draft. Build state not checked | Its status line: a proposal for a ruling. |
+| [programme/proposals/ssh-terminal.md](programme/proposals/ssh-terminal.md) | Proposal | Draft. Build state not checked | Its status line: a proposal for a ruling (R-062). |
+| [programme/proposals/shared-pool-hosting.md](programme/proposals/shared-pool-hosting.md) | Proposal | Draft | Not approved. The AX102 list price was corrected on 2026-11-16 to €259 a month plus €129 setup (about $286). |
+| [programme/proposals/shell-prompt.md](programme/proposals/shell-prompt.md) | Proposal | Draft | Not approved. CMD-032 to CMD-036. |
+| [programme/proposals/cloud-machines.md](programme/proposals/cloud-machines.md) | Proposal | Draft | Not approved. CVM-001 to CVM-018. |
+| [programme/proposals/machine-profiles.md](programme/proposals/machine-profiles.md) | Proposal | Draft | Not approved. REP-001 to REP-024. |
+
+These documents are records, not plans. They must not add a requirement (PLN-009).
+
+| Documents | Kind |
+| --- | --- |
+| [programme/programme.md](programme/programme.md), [programme/handoff.md](programme/handoff.md), [programme/operator-changes.md](programme/operator-changes.md) | Rulings and the state of the programme |
+| `programme/packages/` | Task breakdown and log of each work package of a phase plan |
+| `programme/phase-2-*.md` and `programme/phase-3-*.md`, but not the two plans | Contracts, acceptance records and optional items of a phase |
+| `research/`, but not the task breakdowns and spec delta proposals in `research/one-click/` that the register lists | Audits and reports |
+| `setup/`, [releases.md](releases.md), [programme/linux-client-setup.md](programme/linux-client-setup.md) | Procedures |
+| [ui-critique-2026-11-11.md](ui-critique-2026-11-11.md), [ui-inventory-2026-11-11.md](ui-inventory-2026-11-11.md) | Reviews of the interface |
+
+## 10. Rules for plans and progress
+
+These rules apply to each person and each agent (operator, 2026-11-15).
+
+- **PLN-001. One register.** Section 9 is the only list of plans. Do not build from a document that is not in it.
+- **PLN-002. No plan without a row.** Do not make a new plan, proposal or task breakdown unless the same commit adds its row to Section 9.
+- **PLN-003. Each plan has a parent.** A new plan must name the row of Section 4 that it serves. If no row applies, ask the operator for one first.
+- **PLN-004. Change a plan before you make a new one.** If a plan in Section 9 owns the concern (Section 5), change that plan.
+- **PLN-005. One standard.** Each plan obeys the writing rules in Section 0 of the design specification. Each plan has a title, a version, a date and a status. The line below its title points to Section 9.
+- **PLN-006. Tasks hold their state.** A plan or a task breakdown that has tasks must have a table with one row for each task. The row gives the state and the commits.
+- **PLN-007. The words for a state.** A plan is Draft, Approved, In progress, Done, Parked or Withdrawn. A task is Not started, In progress, Done or Cancelled. "Not checked" is permitted only in Section 9.
+- **PLN-008. Progress moves with the work.** Change the state of a task in the commit that does the work, or in its merge. Change Section 9 when the state of a plan changes.
+- **PLN-009. A state needs evidence.** "Done" must name a commit, an acceptance record or a ruling of the operator. Do not write "Done" for work that waits for a live check.
+- **PLN-010. Records are not plans.** A report, a log, a procedure or a review must not add a requirement. Put the requirement in its owner (Section 5).
+- **PLN-011. A plan on a branch.** A plan that is only on a branch is not a plan. Merge it with its row before work on it starts.
+
+A task list that an agent keeps for one session is not a document. These rules do not apply to it.

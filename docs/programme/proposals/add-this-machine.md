@@ -1,5 +1,7 @@
 # Proposal: "Add this machine" after sign-in
 
+Progress: the plan register in [work-plan.md](../../work-plan.md) Section 9 holds the state of this plan (PLN-005).
+
 From: the orchestrator. The operator asked for this in chat on 2026-11-06 ("on sign in it should
 ask in a popup modal add this machine if the machine is not already added … identified across
 networks") and chose the machine ID over the MAC address.

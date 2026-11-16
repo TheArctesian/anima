@@ -30,9 +30,9 @@ afterEach(async () => {
   document.body.replaceChildren();
 });
 
-function links(platform: Capabilities): HTMLAnchorElement[] {
+function links(platform: Capabilities, buildsOn = true): HTMLAnchorElement[] {
   mocks.platform = platform;
-  app = mount(Nav, { target: document.body, props: { pathname: '/devices', now: new Date('2026-11-12T12:00:00Z') } });
+  app = mount(Nav, { target: document.body, props: { pathname: '/devices', now: new Date('2026-11-12T12:00:00Z'), buildsOn } });
   flushSync();
   return [...document.querySelectorAll('a')];
 }
@@ -41,6 +41,10 @@ it('BLD-080: the desktop app has a Builds item between Devices and Settings', ()
   const found = links(DESKTOP_MAC);
   expect(found.map((link) => link.getAttribute('href'))).toEqual(['/devices', '/builds', '/settings']);
   expect(found[1]?.querySelector('.words')?.textContent).toBe('Builds');
+});
+
+it('PRO-038: the desktop app shows no Builds item for a hub that cannot publish', () => {
+  expect(links(DESKTOP_MAC, false).map((link) => link.getAttribute('href'))).toEqual(['/devices', '/settings']);
 });
 
 it('BLD-080: a browser has no Builds item', () => {

@@ -1,0 +1,11 @@
+{
+  "total_count": 6,
+  "check_runs": [
+    { "name": "build", "status": "completed", "conclusion": "success" },
+    { "name": "lint", "status": "completed", "conclusion": "failure" },
+    { "name": "docs", "status": "completed", "conclusion": "skipped" },
+    { "name": "e2e", "status": "in_progress", "conclusion": null },
+    { "name": "slow", "status": "completed", "conclusion": "timed_out" },
+    { "name": "mystery", "status": "completed", "conclusion": "vanished" }
+  ]
+}

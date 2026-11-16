@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-link-leave"
+description = "Enables the link_leave command without any pre-configured scope."
+commands.allow = ["link_leave"]
+
+[[permission]]
+identifier = "deny-link-leave"
+description = "Denies the link_leave command without any pre-configured scope."
+commands.deny = ["link_leave"]

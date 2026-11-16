@@ -28,7 +28,7 @@
   }
 
   const { device, onConnect, onOpenWeb, wake, screenSharing, compact = false }: Props = $props();
-  const ICONS: Record<SessionProtocol, IconName> = { SSH: 'carbon:terminal', RDP: 'carbon:screen', VNC: 'carbon:screen' };
+  const ICONS: Record<SessionProtocol, IconName> = { SSH: 'carbon:terminal', RDP: 'carbon:remote-connection', VNC: 'carbon:screen' };
   const web = $derived(webInterfacesOf(device));
 </script>
 

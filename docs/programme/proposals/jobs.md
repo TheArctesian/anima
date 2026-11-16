@@ -1,11 +1,15 @@
 # Proposal: jobs (work that the coordinator gives to a machine)
 
+Progress: the plan register in [work-plan.md](../../work-plan.md) Section 9 holds the state of this plan (PLN-005).
+
 From: the planning session of 2026-11-12. The operator agreed the form in a side chat: a job is
 a container image, models run on the machine directly, jobs call the model service.
-Status: a proposal for a ruling. The operator decided OD-W10 on 2026-11-12 (see "Decision").
-The requirements are not yet approved one by one. The decision changes R-115.
-Map: [work-plan.md](../../work-plan.md), category Use, decisions OD-W5, OD-W6 and OD-W10.
-Identifiers: USE-001 to USE-009, JOB-001 to JOB-010.
+Version: 2. Date: 2026-11-16.
+Status: Draft. The operator decided OD-W10 on 2026-11-12 (see "Decision").
+The requirements are not yet approved one by one. The decision changes R-115. Version 2 adds
+JOB-011, a proposal that follows OD-W13.
+Map: [work-plan.md](../../work-plan.md), category Use, decisions OD-W5, OD-W6, OD-W10 and OD-W13.
+Identifiers: USE-001 to USE-009, JOB-001 to JOB-011.
 
 ## Problem
 
@@ -75,8 +79,18 @@ A job runs to its end on one machine. It is a container image, or it is a native
   ends. Thus a build that a push starts needs no client. (operator, 2026-11-13; the first text
   said that a client releases it.)
 
+- **JOB-011.** Proposed, no ruling. The fixed list of USE-006 starts with two work types:
+  `build` and `runner`. A `build` runs a recipe of Anima (PRO-032). A `runner` runs the runner
+  program of GitHub for one job of a workflow (PRO-027, PRO-039; OD-W13, operator, 2026-11-16).
+  The hub cannot name a command in a `runner` item. The workflow file of the repository names
+  the steps. Thus a `runner` item must have the isolation of PRO-029.
+
 The build of a project is the first job type (PRO-009, OD-W12). Fine-tuning (compute plan C7,
-#40) is the second. Its "done when" text in #40 stays.
+#40) is the second. Its "done when" text in #40 stays. A `runner` is a work type and not a job
+type: GitHub schedules it (PRO-047).
+
+The tasks for the work route are W1 to W6 in "Tasks" of
+[projects-and-builds.md](projects-and-builds.md). That table holds their state (PLN-006).
 
 ## Decision (OD-W10, operator, 2026-11-12)
 
@@ -106,7 +120,8 @@ that has the agent. R-084 selected the agent so that the hub needs no SSH login 
 from the operator:
 
 - The agent accepts only the work types in a fixed list (USE-006). There is no "run this
-  command" type.
+  command" type. After OD-W13 the type `runner` runs the steps that a workflow file names
+  (JOB-011). The hub still cannot name a command.
 - Jobs run in containers (USE-001), with no access to the agent token or the home folder. A
   native job on a Mac has the same two limits through its build user (PRO-022).
 - A machine that is set off at the machine cannot be set on from the hub (USE-004).

@@ -99,7 +99,7 @@ pub fn definition(tool: DeviceTool) -> Definition {
             Access::Write,
             Effect::Adds,
             "Adds a device to a site. It gets a ping check unless addDefaultCheck is false. \
-             Credentials and SSH, RDP or VNC access are set by the operator in the Anima \
+             Credentials and SSH, RDP or VNC access are set by the operator in the Anima.ing \
              client, never here. Returns the new device.",
         )
         .returns(&device),

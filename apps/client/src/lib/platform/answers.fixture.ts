@@ -16,6 +16,8 @@ export const DESKTOP_MAC: Capabilities = {
   builds: true,
   mcpPermissions: true,
   commandLine: true,
+  stayAwake: true,
+  localHub: true,
   overlayTitleBar: true,
 };
 

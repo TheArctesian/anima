@@ -44,7 +44,7 @@ pub fn run_if_asked() {
         .and_then(|executable| super::carrier::beside(&executable))
         .filter(|program| program.is_file());
     let Some(program) = program else {
-        eprintln!("anima: this copy of Anima carries no command line program.");
+        eprintln!("anima: this copy of Anima.ing carries no command line program.");
         std::process::exit(127);
     };
     let mut command = std::process::Command::new(program);

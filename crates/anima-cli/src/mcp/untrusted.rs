@@ -5,7 +5,7 @@
 
 use serde_json::{Map, Value};
 
-use crate::output::text::clean;
+use crate::output::text::{clean, clean_lines};
 
 /// The longest string in a result, in characters, except a log line.
 pub const TEXT_CAP: usize = 500;
@@ -13,13 +13,26 @@ pub const TEXT_CAP: usize = 500;
 /// The longest log line (`text` of a build log line), in characters.
 pub const LOG_LINE_CAP: usize = 2_000;
 
+/// The longest `body` (a pull request, an issue or a comment from GitHub), in characters. The hub
+/// keeps up to 20,000; an agent gets 4,000, with a mark where the rest was cut (MCP-008).
+pub const BODY_CAP: usize = 4_000;
+
 /// The largest result, in bytes of JSON: about 15,000 tokens.
 pub const RESULT_CAP: usize = 60_000;
 
 /// `text` without control characters, cut to `cap` characters with a visible marker.
 #[must_use]
 pub fn capped(text: &str, cap: usize) -> String {
-    let cleaned = clean(text);
+    cut(clean(text), cap)
+}
+
+/// As [`capped`], but the line breaks stay, so a body of Markdown keeps its shape.
+#[must_use]
+pub fn capped_lines(text: &str, cap: usize) -> String {
+    cut(clean_lines(text), cap)
+}
+
+fn cut(cleaned: String, cap: usize) -> String {
     let length = cleaned.chars().count();
     if length <= cap {
         return cleaned;
@@ -29,7 +42,8 @@ pub fn capped(text: &str, cap: usize) -> String {
 }
 
 /// `value` with every string cleaned and capped; the key `text` (a log line) gets the
-/// larger cap.
+/// larger cap, and the key `body` (Markdown from GitHub) keeps its line breaks and gets
+/// [`BODY_CAP`].
 #[must_use]
 pub fn cleaned(value: Value) -> Value {
     cleaned_under(value, TEXT_CAP)
@@ -48,12 +62,14 @@ fn cleaned_under(value: Value, cap: usize) -> Value {
             fields
                 .into_iter()
                 .map(|(key, value)| {
-                    let cap = if key == "text" {
-                        LOG_LINE_CAP
-                    } else {
-                        TEXT_CAP
+                    let value = match (key.as_str(), value) {
+                        ("text", value) => cleaned_under(value, LOG_LINE_CAP),
+                        ("body", Value::String(body)) => {
+                            Value::String(capped_lines(&body, BODY_CAP))
+                        }
+                        (_, value) => cleaned_under(value, TEXT_CAP),
                     };
-                    (capped(&key, TEXT_CAP), cleaned_under(value, cap))
+                    (capped(&key, TEXT_CAP), value)
                 })
                 .collect(),
         ),
@@ -126,6 +142,17 @@ mod tests {
         let cut = capped(&long, TEXT_CAP);
         assert!(cut.starts_with(&"a".repeat(TEXT_CAP)));
         assert!(cut.ends_with("…[cut: 9500 more characters]"), "{cut}");
+    }
+
+    #[test]
+    fn mcp_008_a_body_keeps_its_lines_and_is_cut_at_the_body_cap() {
+        let value = cleaned(json!({
+            "pullRequest": { "body": format!("a\u{1b}b\nc{}", "z".repeat(5_000)), "title": "t\nu" },
+        }));
+        let body = value["pullRequest"]["body"].as_str().unwrap_or_default();
+        assert!(body.starts_with("a b\nc"), "{body}");
+        assert!(body.ends_with("…[cut: 1005 more characters]"), "{body}");
+        assert_eq!(value["pullRequest"]["title"], "t u");
     }
 
     #[test]

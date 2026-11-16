@@ -60,6 +60,7 @@ async fn cmd_020_every_read_command_answers_from_the_real_hub(pool: PgPool) {
         "notify deliveries".to_owned(),
         "release list".to_owned(),
         "release next-version".to_owned(),
+        "release publishing".to_owned(),
         "builder list".to_owned(),
         "vpn status".to_owned(),
     ];

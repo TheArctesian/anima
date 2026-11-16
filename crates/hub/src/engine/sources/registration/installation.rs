@@ -6,7 +6,9 @@
 //! the App's owner, and it is not suspended. Anything else is ignored. While the App waits for
 //! Install, the watch also asks for the App's installations every few seconds, so a closed tab
 //! does not stop the flow. It backs off while GitHub does not answer, and a wake (the bound
-//! browser back on `/installed`) never makes it ask more often than its [`Pace`] allows.
+//! browser back on `/installed`) never makes it ask more often than its [`Pace`] allows. The
+//! bound browser's page then waits a bounded time for the attempt to end, so it shows how the
+//! attempt ended even when the watch, not that request, stored the connection.
 
 use std::time::Duration;
 
@@ -17,7 +19,12 @@ use tokio::task::JoinHandle;
 use uuid::Uuid;
 use zeroize::Zeroizing;
 
-use super::{GITHUB, attempt::App, attempts::Attempts, finish::finish};
+use super::{
+    GITHUB,
+    attempt::{App, Finished, Phase},
+    attempts::Attempts,
+    finish::finish,
+};
 use crate::{
     clock::Clock,
     engine::sources::{
@@ -41,7 +48,7 @@ fn signer(app: &App, key: &Zeroizing<String>) -> Option<AppSigner> {
 }
 
 /// The installation `id` from a redirect, when GitHub says it [`fits`] `app`.
-pub async fn verified(
+async fn verified(
     scheduling: &Scheduling,
     (app, key): (&App, &Zeroizing<String>),
     id: &str,
@@ -60,6 +67,38 @@ pub async fn verified(
     match asked {
         Lookup::Found(found) if fits(&found, app) && found.id.to_string() == id => Some(found.id),
         _ => None,
+    }
+}
+
+/// The phase attempt `id` ends in after the bound browser came back from Install with
+/// `installation`, while the App and its key were `waiting`: the installation is stored when
+/// GitHub verifies it. When this request does not end the attempt (GitHub does not show the
+/// installation yet, the watch holds the store, or the store must be tried again), it wakes the
+/// watch and waits for the attempt to end, up to the bound of [`Attempts::ended_within`]; `None`
+/// when it has not ended by then.
+pub async fn after_install(
+    scheduling: &Scheduling,
+    attempts: &Attempts,
+    id: Uuid,
+    (waiting, installation): (Option<(App, Zeroizing<String>)>, Option<&str>),
+) -> Option<Phase> {
+    let found = match (waiting, installation) {
+        (Some((app, key)), Some(installation)) => {
+            verified(scheduling, (&app, &key), installation).await
+        }
+        _ => None,
+    };
+    let stored = match found {
+        Some(found) => finish(scheduling, attempts, (id, found)).await,
+        None => None,
+    };
+    match stored {
+        Some(Finished::Connected { .. }) => Some(Phase::Connected),
+        Some(Finished::Failed(_)) => Some(Phase::Failed),
+        Some(Finished::Again) | None => {
+            attempts.wake();
+            attempts.ended_within(id, scheduling.clock.as_ref()).await
+        }
     }
 }
 

@@ -91,7 +91,7 @@ impl WebTool {
                 "anima_web_interface_create",
                 Access::Write,
                 Effect::Adds,
-                "Adds a web interface (an admin page the operator opens in Anima) to a device. \
+                "Adds a web interface (an admin page the operator opens in Anima.ing) to a device. \
                  The operator accepts its certificate in the client. Returns the interface.",
             )
             .returns(&INTERFACE),

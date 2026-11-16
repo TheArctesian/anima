@@ -37,6 +37,12 @@ vi.mock('$lib/extensions/ExtensionsSection.svelte', () => ({ default: () => unde
 vi.mock('$lib/sources/SourcesSection.svelte', () => ({ default: () => undefined }));
 // The MCP section reads the shell and has its own tests in `$lib/mcp/` (MCP-018, MCP-023).
 vi.mock('$lib/mcp/McpSection.svelte', () => ({ default: () => undefined }));
+// The Stay awake rows read the shell and have their own tests in `$lib/stay-awake/` (AWK-004).
+vi.mock('$lib/stay-awake/StayAwakeRows.svelte', () => ({ default: () => undefined }));
+// The link and local hub parts read the shell and the hub and have their own tests in `$lib/link/` and `$lib/local-hub/` (FRN-006, FRN-009).
+vi.mock('$lib/link/LinkDevicesSection.svelte', () => ({ default: () => undefined }));
+vi.mock('$lib/link/HubLinkRow.svelte', () => ({ default: () => undefined }));
+vi.mock('$lib/local-hub/LocalHubSection.svelte', () => ({ default: () => undefined }));
 // The VPN section loads its own data and has its own tests in `$lib/vpn/` (SET-003).
 vi.mock('$lib/vpn/VpnSection.svelte', () => ({ default: () => undefined }));
 
@@ -116,7 +122,7 @@ it('SET-001, UI-005, MOT-043: the page is the title, then Account, then Appearan
   expect(sectionTexts(target, 'Account')).toEqual(['Account', 'Who is signed in to this hub.', 'Signed in as ann', 'Sign out', '']);
   const fonts = ['OpenDyslexic'];
   expect(sectionTexts(target, 'Appearance')).toEqual([
-    'Appearance', 'How Anima looks on this device.', 'Theme', 'Dark', 'Light', 'System', 'Colours', 'Graphite', 'Nord', 'Reduce motion', 'System', 'On', 'Off',
+    'Appearance', 'How Anima.ing looks on this device.', 'Theme', 'Dark', 'Light', 'System', 'Colours', 'Graphite', 'Nord', 'Reduce motion', 'System', 'On', 'Off',
     'Interface font', 'IBM Plex Sans', ...fonts, 'Monospace font', 'IBM Plex Mono', ...fonts,
   ]);
   const controls = '[role="switch"], img, input, textarea, a, [tabindex]:not(button)';
@@ -126,10 +132,20 @@ it('SET-001, UI-005, MOT-043: the page is the title, then Account, then Appearan
 it('SET-001, UPD-006, BLD-020: the desktop app adds the Updates section before API keys, holding the update, log folder and Builds rows', async () => {
   mocks.platform = DESKTOP_MAC;
   const target = await open({ Me: ok({ me: { username: 'ann' } }) });
-  expect(sectionHeadings(target)).toEqual(['Account', 'Hub', 'Appearance', 'Notifications', 'Default check settings', 'Data retention', 'Updates', 'API keys', 'Extensions', 'Integrations', 'MCP', 'VPN']);
+  expect(sectionHeadings(target)).toEqual(['Account', 'Hub', 'Stay awake', 'Appearance', 'Notifications', 'Default check settings', 'Data retention', 'Updates', 'API keys', 'Extensions', 'Integrations', 'MCP', 'VPN']);
   const updates = target.querySelector('section[aria-labelledby="settings-updates"]');
   expect(updates?.querySelectorAll('[data-stub]')).toHaveLength(3);
   expect(target.querySelectorAll('[data-stub]')).toHaveLength(3);
+});
+
+it('AWK-004: the desktop app shows the Stay awake section after Hub, and the web client shows none', async () => {
+  const web = await open({ Me: ok({ me: { username: 'ann' } }) });
+  expect(web.querySelector('section[aria-labelledby="settings-stay-awake"]')).toBeNull();
+  if (app !== undefined) await unmount(app);
+  mocks.platform = DESKTOP_MAC;
+  const desktop = await open({ Me: ok({ me: { username: 'ann' } }) });
+  const headings = sectionHeadings(desktop);
+  expect(headings.indexOf('Stay awake')).toBe(headings.indexOf('Hub') + 1);
 });
 
 it('MCP-023: the web client shows no MCP section, because the permissions are a file on this computer', async () => {
@@ -171,7 +187,7 @@ it('API-003: an UNAUTHENTICATED me result goes to sign-in', async () => {
 it('NET-004: an unreachable hub does not go to sign-in, shows a fixed message and keeps Sign out', async () => {
   const target = await open({ Me: failure('unreachable', 'secret hub text') });
   expect(mocks.goToSignIn).not.toHaveBeenCalled();
-  expect(target.querySelector('[role="alert"]')?.textContent).toBe('Anima could not read who is signed in.');
+  expect(target.querySelector('[role="alert"]')?.textContent).toBe('Anima.ing could not read who is signed in.');
   expect(readable(signOutButton(target))).toBe('Sign out');
 });
 
@@ -243,7 +259,7 @@ it('CLI-002, F-10: desktop shows Hub after Account and before Appearance, with t
   mocks.platform = DESKTOP_MAC;
   const target = await open({ Me: ok({ me: { username: 'ann' } }) });
   const headings = sectionHeadings(target);
-  expect(headings.slice(0, 4)).toEqual(['Account', 'Hub', 'Appearance', 'Notifications']);
+  expect(headings.slice(0, 4)).toEqual(['Account', 'Hub', 'Stay awake', 'Appearance']);
   expect(sectionTexts(target, 'Hub')).toEqual(['Hub', 'The hub this app talks to.', `Hub address${hub.hub.address.origin}`, 'Test connection', 'Change hub', '']);
   expect(hubStatus(target)?.textContent).toBe('');
 });

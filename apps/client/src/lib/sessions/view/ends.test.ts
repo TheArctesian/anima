@@ -40,8 +40,8 @@ describe('each end of a session (K4 §8.6, RA-007)', () => {
     ['the hub loses its SSH connection (1011)', 'GATEWAY_ERROR', 1011, 'The hub lost the connection to the device.'],
     ['the device refuses the credential (1011)', 'AUTH_FAILED', 1011, 'The device refused the sign-in, or no credential is stored for it.'],
     ['a protocol error (1002)', 'PROTOCOL_ERROR', 1002, 'The app sent something the hub does not accept, so the hub closed the session.'],
-    ['client silence (4002)', 'TIMEOUT', 4002, 'The session timed out because the hub heard nothing from Anima.'],
-    ['a close of 4002 with no end message', undefined, 4002, 'The session timed out because the hub heard nothing from Anima.'],
+    ['client silence (4002)', 'TIMEOUT', 4002, 'The session timed out because the hub heard nothing from Anima.ing.'],
+    ['a close of 4002 with no end message', undefined, 4002, 'The session timed out because the hub heard nothing from Anima.ing.'],
     ['the hub shuts down (1001)', 'HUB_SHUTDOWN', 1001, 'The hub shut down.'],
   ])('RA-007: %s gives its ended panel', async (_name, end, code, expected) => {
     const { text, hostKeyModal } = await endedBy(end, code);
@@ -51,7 +51,7 @@ describe('each end of a session (K4 §8.6, RA-007)', () => {
 
   it('SEC-007: a host key mismatch (end message and 4001) opens the host key warning, not a plain ended panel only', async () => {
     const { text, hostKeyModal } = await endedBy('HOST_KEY_MISMATCH', 4001);
-    expect(text).toBe("The device's host key has changed, so Anima did not connect.");
+    expect(text).toBe("The device's host key has changed, so Anima.ing did not connect.");
     expect(hostKeyModal?.textContent).toContain('host key');
   });
 

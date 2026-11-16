@@ -3,6 +3,7 @@
 //! stops it.
 
 use std::{
+    ffi::OsString,
     fs,
     path::{Path, PathBuf},
 };
@@ -51,8 +52,19 @@ impl Workshop<'_> {
             .find(command.program.name(), Path::is_file)
             .ok_or(BuilderError::ToolMissing)?;
         self.claim
-            .run(command, &program, self.env.for_step(&command.env))
+            .run(command, &program, self.variables(command))
             .await
+    }
+
+    /// The environment of `command`: the step's own, and cargo's output folder inside the clone,
+    /// whatever the builder's cargo configuration names (BLD-044).
+    pub fn variables(&self, command: &Command) -> Vec<(OsString, OsString)> {
+        let mut variables = self.env.for_step(&command.env);
+        variables.push((
+            "CARGO_TARGET_DIR".into(),
+            artifact::target_folder(&self.clone).into(),
+        ));
+        variables
     }
 
     async fn run_all(&self, commands: &[Command]) -> Result<(), BuilderError> {
@@ -185,8 +197,10 @@ impl Workshop<'_> {
     ) -> Result<PathBuf, BuilderError> {
         self.at(commit).await?;
         self.command_line(target, version).await?;
+        artifact::clear_bundle(&self.clone, target)?;
         self.run_all(&plan::bundle(&self.clone, target, version))
             .await?;
+        artifact::stabilize_names(&self.clone, target, version)?;
         let updater = artifact::updater_file(&self.clone, target, version);
         if target == Target::DarwinUniversal {
             let app = artifact::mac_app(&self.clone);

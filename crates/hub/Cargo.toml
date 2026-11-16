@@ -69,6 +69,8 @@ updater-signature = { path = "../updater-signature" }
 source-exchange = { path = "../providers/exchange" }
 provider-github = { path = "../providers/github" }
 async-trait = "0.1"
+# The hub's own user id, which the link's control socket and its process must have (FRN-009).
+rustix = { version = "1.1", features = ["process"] }
 
 [features]
 # `access::Identity::for_tests`, for integration tests of guarded domains (D-6). Turned on
@@ -81,13 +83,20 @@ test-support = []
 nix = { version = "0.31", default-features = false, features = ["process"] }
 
 [dev-dependencies]
+# The bundled database of the application mode (one-click plan S3): a test runs the hub on it.
+anima-database = { path = "../anima-database" }
 agent-core = { path = "../agent-core", features = ["test-support"] }
+# The native gateway, for the tunnel tests that run the hub against it in place of guacd.
+anima-gateway = { path = "../anima-gateway" }
+rdp-test-device = { path = "../rdp-test-device" }
 anima-hub = { path = ".", features = ["test-support"] }
 http-body-util.workspace = true
 tower.workspace = true
 static_assertions.workspace = true
 tempfile.workspace = true
 proptest = "1.12"
+# A pseudo-terminal for the test that `operator create` refuses a terminal (LOG-007).
+rustix = { version = "1.1", features = ["process", "pty"] }
 # The reference minisign implementation makes the test updater keys and checks the hub's
 # signatures (BLD-045, BLD-064), so the hub is proved against it and not only against itself.
 minisign = "0.10"

@@ -196,8 +196,8 @@ fn prj_039_a_return_after_the_app_is_made_converts_nothing_and_changes_nothing()
         "S2 still works"
     );
     assert!(
-        attempt.back_from_install(Some(&cookie), None),
-        "GitHub may send no state"
+        !attempt.back_from_install(Some(&cookie), None),
+        "the install link carries S2, so a hit without it is not back from Install"
     );
     assert!(!attempt.back_from_install(Some(&cookie), Some(&s1)));
     assert!(!attempt.back_from_install(None, Some(s2.text())));

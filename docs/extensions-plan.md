@@ -1,5 +1,7 @@
 # Anima Extensions Plan
 
+Progress: the plan register in [work-plan.md](work-plan.md) Section 9 holds the state of this plan (PLN-005).
+
 | Item | Value |
 | --- | --- |
 | Document | Extensions plan |
@@ -363,7 +365,7 @@ All projects are on GitHub. They are hosted on Vercel, Neon or the Hostinger VPS
 - **PRJ-009.** Analytics: only PostHog and Vercel Web Analytics give analytics. The hub must read them once each hour and keep one row for each project, source and day. The page shows pageviews and unique users for 7, 30 and 90 days, and the top pages. Verify which Vercel Web Analytics data the Vercel REST API gives.
 - **PRJ-015.** A project with no PostHog project and no Vercel Web Analytics must not show an analytics section. It must not show zero values. Neon and Hostinger give status and usage only, not analytics.
 - **PRJ-010.** Each item must have an "Open in" link to the dashboard of its service: GitHub, Vercel, the Neon console, hPanel or PostHog. For Vercel, Neon, Hostinger and PostHog, changes happen there, not in Anima.
-- **PRJ-012.** The Projects page must show all projects as cards. Each card shows the production state, the last deployment time, the uptime and, if the project has analytics (PRJ-015), the users of the last 7 days.
+- **PRJ-012.** The Projects page must show all projects as cards. Each card shows the production state, the last deployment time, the uptime and, if the project has analytics (PRJ-015), the users of the last 7 days. The Projects page has a **Sort by** dropdown with **Grouped by status**, **Last commit**, **Date created**, **Commit count**, and **Stars**. The default groups by status and orders projects by name within each group. Last commit and commit count use the default branch. Date created uses the repository creation date. The page can filter by GitHub’s primary language and repository size. The hub applies sorting and filters before paging, using the first repository in the current view. Unknown sort values follow known values.
 - **PRJ-013.** A failed production deployment must make an event log entry and can trigger a reminder (Section 4.11).
 - **PRJ-014.** The project page must also show the AI coding sessions (Section 4.12), the drafts (Section 4.3), the secrets (Section 4.4) and the model use (Section 4.15) of the project. It must show a section only when its extension is on (EXT-007).
 - **PRJ-017.** Anima must connect to GitHub as a GitHub App that the operator makes in their own account (Section 9.2). The App has read and write permission on each repository permission that GitHub offers. This is an exception to SRC-010. Reason: the operator wants Anima to be their GitHub, not only a view of it. (operator, 2026-11-13)
@@ -371,25 +373,36 @@ All projects are on GitHub. They are hosted on Vercel, Neon or the Hostinger VPS
 - **PRJ-019.** The App must send its webhook events to the webhook receiver (Section 2.12). Until Section 2.12 is built, the webhook of an App that Anima makes stays off (PRJ-039); the receiver then sets its own address and secret with `PATCH /app/hook/config` (PRJ-042), and the operator may need to tick "Active" once on GitHub. (operator, 2026-11-14) The hub must also read GitHub on a slow interval, because a webhook delivery can be lost (WHK-006). No OAuth redirect is necessary for an installation token, so SRC-020 does not apply to GitHub. (operator, 2026-11-13)
 - **PRJ-027.** A full permission does not make a function. Each change that Anima can make on GitHub must be one named function with its hub API, its `anima` command and its MCP tool (CMD-030). The MCP tool of a change is off until the operator sets it on (MCP-002). OD-E14 gives the first functions.
 - **PRJ-028.** The hub must record each change that it makes on GitHub in the audit log: the function, the repository, the target and the actor kind (LOG-012).
-- **PRJ-029.** A change that cannot be undone (delete a branch, delete a repository, change a repository setting, force a push) must ask for a confirmation that names the target (CMD-024, MCP-007).
+- **PRJ-029.** A change that cannot be undone must ask for a confirmation that names the target (CMD-024, MCP-007). Of the functions of OD-E14 these are: merge a pull request (the confirmation names `owner/name#n`, the head commit and the method), run a workflow again, run its failed jobs again, cancel a run (each names the run, the workflow and the commit, PRJ-034), and start a workflow by hand (names the workflow file and the branch). An issue, a comment, closing or opening an issue and a commit status under `anima/` can be undone or corrected and ask nothing. Later functions such as delete a branch, delete a repository, change a repository setting or force a push are in this class too. The API binds each of them to what the operator saw: the merge and the run controls carry the head commit, and the hub refuses the change when it moved (K-E1 Section 13.4). (operator, 2026-11-14; ruling number to be assigned)
 - **PRJ-039.** A "Connect GitHub" flow that fills the form of the GitHub App for the operator, with the App manifest flow of GitHub. Anima sends the form with its values (a name that starts with `anima-`, 23 repository permissions, "Only on this account"): `metadata` read and the other 22 write, the set of the App the operator made by hand. The operator selects Create and then Install: three presses, nothing typed. The hub keeps the App ID, the installation ID and the private key; it does not keep the client secret or the webhook secret. The operator downloads no key file. The default label is the login of the owner of the App. The graphical client offers the personal account only; the API and the command line take an organisation. GitHub shows its "Confirm access" prompt when the hub sends the form; Anima cannot avoid it and the client says so. GitHub has no call to delete an App, so the hub cannot delete one that it made and does not use: it shows the link to the settings page of the App. (operator, 2026-11-14; ruling number to be assigned) Each operator still makes their own App (PRJ-017): one shared App would share its private key. (operator, 2026-11-13: "otherwise the user has to do many clicks")
 - **PRJ-040.** The manual route stays: `anima source connect github --from-file <path\|->` with the key from a file, for the command line and for a machine with no browser. `--from-file` selects the manual route; without it the command starts the flow of PRJ-039. (operator, 2026-11-14; ruling number to be assigned)
 - **PRJ-041.** An MCP tool can start the flow of PRJ-039 and a second tool can read its state. The tools are `anima_github_connect_start`, `anima_github_connect_state` (read) and `anima_github_connect_cancel`. The start tool returns the fixed link `https://<hub>/connect/github`. The link must hold no secret and no one-time value, and the hub must require a signed-in operator at that link: the page does nothing until the operator presses Continue in a browser signed in to Anima, or continues from the desktop client. No tool returns the one-time link, and the hub refuses `openGithubConnect` for a request that declares an agent. (operator, 2026-11-14) The operator, not the agent, selects Create and Install. The start tool is off until the operator sets it on (MCP-002), and each start is in the audit log. Confirm against Section 7 of the CLI and MCP plan before the build: the tool takes and returns no secret, and the person makes the trust decision.
-- **PRJ-042.** Verified with the documentation of GitHub on 2026-11-14 (operator, 2026-11-14; ruling number to be assigned): the manifest is sent only as a form POST (field `manifest`) to `https://github.com/settings/apps/new` or the organisation form; `state` is optional and the hub uses it; the code that GitHub returns lives one hour and is exchanged with `POST /app-manifests/{code}/conversions` with no authentication; there is no `DELETE /app` (the only delete is `DELETE /app/installations/{id}`); `PATCH /app/hook/config` with an App JWT sets the webhook `url` and `secret`, and the documentation has no way to activate a hook by API; creating an App triggers GitHub's "Confirm access" prompt; "All repositories" was preselected in a real install. Still not confirmed, for the live check with the operator's account: (1) the webhook fields: whether `hook_attributes` with `active: false` is accepted with the hub's address, else whether omitting it is, else a placeholder address; (2) `redirect_url` and `setup_url` on a host reachable only through the VPN; (3) that GitHub lists all 23 permission names as read and write; (4) that the code is single use (a second exchange fails); (5) whether `state` is in the query of `setup_url`; (6) whether one press of Install is enough with "All repositories" preselected; (7) whether a form POST from another site asks for sign-in or only "Confirm access"; (8) that `/settings/apps/<slug>/advanced` shows "Delete GitHub App"; (9) whether `webhook_secret` is null when the hook is off (informational); (10) that exactly three presses are needed when access was confirmed recently.
+- **PRJ-042.** Verified with the documentation of GitHub on 2026-11-14 (operator, 2026-11-14; ruling number to be assigned): the manifest is sent only as a form POST (field `manifest`) to `https://github.com/settings/apps/new` or the organisation form; `state` is optional and the hub uses it; the code that GitHub returns lives one hour and is exchanged with `POST /app-manifests/{code}/conversions` with no authentication; there is no `DELETE /app` (the only delete is `DELETE /app/installations/{id}`); `PATCH /app/hook/config` with an App JWT sets the webhook `url` and `secret`, and the documentation has no way to activate a hook by API; creating an App triggers GitHub's "Confirm access" prompt; "All repositories" was preselected in a real install. Still not confirmed, for the live check with the operator's account: (1) the webhook fields: whether `hook_attributes` with `active: false` is accepted with the hub's address, else whether omitting it is, else a placeholder address; (2) `redirect_url` and `setup_url` on a host reachable only through the VPN; (3) that GitHub lists all 23 permission names as read and write; (4) that the code is single use (a second exchange fails); (5) whether `state` is in the query of `setup_url`; (6) whether one press of Install is enough with "All repositories" preselected; (7) whether a form POST from another site asks for sign-in or only "Confirm access"; (8) that `/settings/apps/<slug>/advanced` shows "Delete GitHub App"; (9) whether `webhook_secret` is null when the hook is off (informational); (10) that exactly three presses are needed when access was confirmed recently. The first run with the operator's account, on 2026-11-14 against the hub at bc2f1cd7, showed (operator, 2026-11-14; ruling number to be assigned): (1) GitHub accepts the manifest as the hub sends it, with the webhook off; (2) both addresses work on a host reachable only through the VPN, because the browser makes the requests; (5) `state` is in the query of `setup_url`, since the hub served the page of the bound browser with a matching state; (7) GitHub asked for the authenticator code before it made the App; (10) the operator pressed Create, typed the authenticator code, selected "All repositories" and pressed Install, so the count is three presses and one code when access was not confirmed recently. The operator's report on (6) is not clear: "All repositories" was either preselected or one more press. The browser's last page was the waiting page and not the connected page, although the connection was stored; the fix makes that page wait for the end of the attempt. Not checked in that run: (3), (4), (8) and (9).
 - **PRJ-016.** The subject key of a project is the name of its GitHub repository (LNK-004). Other extensions keep the repository name with their records. Thus their records show under the project when Projects is set on later, with no change to the stored records.
 
 #### 4.2.2 Pages for GitHub work
 
 The ideas come from the Projects pages of HQ. HQ also has parts that Anima must not copy; PRJ-038 lists them.
 
-- **PRJ-030.** The project page must have three tabs only: Overview (PRJ-004 to PRJ-009), Work, and Design and map (Section 4.2.1, only when that extension is on). A tab must not show before its function is built.
+- **PRJ-030.** The project page has these tabs only: Overview (PRJ-004 to PRJ-009), Work (PRJ-031 to PRJ-035), Code (the files of a repository, read only), History (commits, branches and releases on GitHub), and Design and map (Section 4.2.1, only when that extension is on). A tab must not show before its function is built. (operator, 2026-11-14; ruling number to be assigned; replaces "three tabs only: Overview, Work, and Design and map")
 - **PRJ-031.** The Work tab must show, in this order: a banner when the default branch fails its checks; the workflow runs that run now; the open pull requests; the open issues. Each list is one data path from the hub. Do not build a second path for the same list.
-- **PRJ-032.** Each list must show when the hub last read GitHub, for example "Synced 2 min ago", and must show "Stale" when the last read failed. Loading, error, not connected and empty must be four different states with different text.
+- **PRJ-032.** Each list must show when the hub last read GitHub, for example "Read 20 s ago", and must show "Stale" when the last read failed. Loading, error, not connected and empty must be four different states with different text. (operator, 2026-11-14; ruling number to be assigned: the hub reads GitHub live for these lists, K-E1 Section 13, so the label says "Read", not "Synced".)
 - **PRJ-033.** The pull request list must show for each row if the pull request can merge (no conflict, checks passed). The operator can select rows and merge them in one action. The action must ask for a confirmation and must then show which merges succeeded and which failed.
 - **PRJ-034.** A workflow run must have these controls: run again, run only the failed jobs again, cancel. Each confirmation must show the commit.
 - **PRJ-035.** The operator must be able to start a workflow by hand, with a branch and the named inputs of that workflow.
-- **PRJ-036.** The Projects page can show one list of items that need the operator across all projects: failed default branches, pull requests that wait for the operator, and issues assigned to the operator. The operator can mark an item "Done" or "Snooze 1 day". The item must come back when it has new activity.
-- **PRJ-037.** A project card can show one small chart for each of these weekly counts: merged pull requests, issues opened and closed, failed workflow runs. Each chart has its own scale.
+- **PRJ-036.** The Projects page can show one list of items that need the operator across all projects: failed default branches, pull requests that wait for the operator, and issues assigned to the operator. The operator can mark an item "Done" or "Snooze 1 day". The item must come back when it has new activity. Deferred to the webhook slice: it needs tables, which come with the webhook receiver (Section 2.12). (operator, 2026-11-14; ruling number to be assigned)
+- **PRJ-037.** A project card can show one small chart for each of these weekly counts: merged pull requests, issues opened and closed, failed workflow runs. Each chart has its own scale. Deferred to the webhook slice, as PRJ-036. (operator, 2026-11-14; ruling number to be assigned)
+
+Rulings for the second Projects slice (Work, Code and History; the first changes of OD-E14). Each is a decided default of the slice design; the hub, command line and MCP plan follow them (K-E1 Section 13, CLI and MCP plan Sections 6 and 7):
+
+- **Login-only changes.** Merge one or many, run again, run the failed jobs again, cancel a run, start a workflow and write a commit status are closed to API keys: login or browser token only, as `createRelease` and `cancelBuildJob` are. Each makes code run with the repository's secrets, stops it, or can satisfy a required check. A write key may make an issue, add a comment and close or open an issue. (operator, 2026-11-14; ruling number to be assigned)
+- **Pull requests from forks (PRO-013).** A pull request from a fork merges one at a time, only after the operator types its head repository, never in bulk, and never by an AI agent: the hub refuses it for a request that declares an agent, and no MCP tool can merge one. A workflow run of a fork is not run again from Anima; it can be cancelled. (operator, 2026-11-14; ruling number to be assigned)
+- **Private code.** The content of a file (`codeFile`) is closed to every API key, and no MCP tool returns file content: the file may hold a secret that the hub cannot see, and it is the strongest carrier of instructions to an agent. A read key can list the names in a directory. An agent that needs the code has the checkout. (operator, 2026-11-14; ruling number to be assigned)
+- **Workflow inputs (PRJ-035).** The operator types the inputs as name and value pairs; GitHub checks them, and the client links to the workflow file. The hub parses no YAML: a parser would be a new dependency that reads untrusted text. (operator, 2026-11-14; ruling number to be assigned)
+- **Commit status as an operator command.** `setCommitStatus` exists for the builds of Anima (PRO-010); CMD-030 gives it a command and a tool now. Its context is fenced to `anima/`, so Anima cannot write the status of another system. (operator, 2026-11-14; ruling number to be assigned)
+- **PRJ-036 and PRJ-037** are deferred to the webhook slice. (operator, 2026-11-14; ruling number to be assigned)
+- **Project groups (an idea of the operator, not planned work; no requirement ID yet).** The operator selects two or more projects on the Projects page, groups them and names the group. Pressing the group opens a page laid out like the Projects page that shows only the group's members. A project may be in more than one group, and a group may hold groups. (operator, 2026-11-14, relayed by another session: "yes and yes") Read from the operator's words, not ruled: a group works like a folder, so a grouped project leaves the main Projects page and an ungrouped one stays there. Notes for the builder: a group is Anima's own record and nothing is written to GitHub; membership is many-to-many; a group must not hold itself through a chain of groups; CMD-030 applies, so the hub function, an `anima project group` command and an MCP tool come before the client page.
+- **Facts about GitHub's API** that these functions depend on are listed for verification in K-E1 Section 13 ("to verify"); none is asserted until checked against GitHub's documentation.
 - **PRJ-038.** Do not build these parts of HQ: a list of projects in code (projects come from GitHub, PRJ-001); a tab or a panel with placeholder text; marketing text for a project; a second route to the same list; settings for density or pane width; a note that explains what a count does not mean. The team, the cost and the agent sections of HQ are out of scope, because Anima has one operator.
 
 #### 4.2.1 Project design and map (later, XP-14)
@@ -676,6 +689,59 @@ Reminders deliver only to the devices of the operator.
 - **AIS-007.** Each session must be a timeline entry with the category "code".
 - **AIS-008.** The operator must be able to exclude a repository or a folder. The collector must not read sessions from an excluded folder.
 
+#### 4.12.1 Agent panes (Herdr-style, operator direction 2026-11-16)
+
+**Purpose.** Do everything [Herdr](https://herdr.dev) does for a herd of coding agents, inside this
+extension and free: background terminal panes that stay alive, one view of every agent on every
+device, and an alert when an agent needs the operator. The operator's words: "build hrdr into the
+agent extension so it can be a tmux like thing ... so they are free but we just do everything they
+do". Status: direction only. It has no work package yet and is not in the build order (Section 5).
+
+Herdr (`github.com/herdrdev/herdr`) is Apache 2.0, so its code can be reused in this AGPL project
+with its licence notice kept. Whether to embed it or write our own is open decision 1 below.
+
+- **AIS-009.** The agent on each device must run a session server that keeps terminal panes alive
+  when no client is attached, like tmux. A pane must survive a client disconnect and an agent
+  restart.
+- **AIS-010.** Each pane must show a state: working, waiting for the operator, done or idle. For
+  Claude Code and Codex the state must come from the session files the collector already reads
+  (AIS-001). For other programs it must come from terminal activity.
+- **AIS-011.** One page must list every pane on every device, those waiting for the operator first,
+  with the device, repository, branch and time in the current state. The operator must be able to
+  open any pane in the browser terminal from this page.
+- **AIS-012.** The hub must send an alert through the notification system that sends check alerts (the NOT requirements in the design spec) when a pane
+  changes to waiting or done. One alert per state change, and the operator can mute a pane or a
+  device.
+- **AIS-013.** The operator must be able to start a new pane on a chosen device, in a chosen
+  repository, from the page and from the CLI. When agent runs are approved
+  (`docs/programme/proposals/agent-runs.md`, AGN-001 to AGN-008), they must use these panes.
+- **AIS-014.** The CLI must offer `anima agents` (list panes and states, across devices) and
+  `anima attach <device>/<pane>`.
+- **AIS-015.** The operator can turn on a daily digest of finished sessions that wait for review,
+  so work can be checked in one sitting instead of watching panes live.
+- **AIS-016.** Agent panes must be free on every plan, including self-host. They must not be a
+  paid feature of the hosted Solo plan.
+
+- **AIS-017.** The page must warn the operator when more agents need attention than one
+  person can follow. It must count the panes that are working or waiting at the same time,
+  across devices, and compare the count with a limit the operator sets. The default limit is
+  16, the ceiling DHH reports. Over the limit, the page must suggest pausing or queueing
+  panes, or switching to the daily digest (AIS-015). It must also say how long the operator
+  has been switching between panes without a break. It must not block anything, and the
+  operator can turn it off.
+
+**Why.** The human, not the machines, is the limit: DHH reports a ceiling of about 16 agent threads
+across 4 to 5 machines, and fewer as agents get faster (Lex Fridman Podcast #501, 1:38:09). The
+answer is routing the operator's attention to the agent that needs it (AIS-010 to AIS-012, AIS-015),
+from one seat, without a KVM box per machine.
+
+**Open decisions.**
+
+1. Embed Herdr's core or write our own session server. Embedding is faster; our own keeps one
+   agent binary and one protocol.
+2. Whether the Herdr phone apps or terminal client can connect to Anima panes.
+3. How waiting-for-input is detected for agents that do not write session files.
+
 ### 4.13 Wardrobe
 
 **Purpose.** Keep a record of each item of clothing, with a photo and its place. **Class:** C.
@@ -758,6 +824,62 @@ A model that the operator tuned with Unsloth is a local model. A local model ser
 - **MGW-016.** The function must have its commands and its MCP tools (CMD-030): list the upstreams and their state, show the use, show and set the budgets. No tool takes or returns a key (MCP-004).
 - **MGW-017.** The page must show: each upstream with its state, the use by device, by model and by day, the cost for the month, and each budget with the amount that is used.
 - **MGW-018.** The model gateway needs the Secrets extension (EXT-010), because each upstream key is a global secret. Thus a key has one store and the operator rotates it in one place (SCR-014).
+
+### 4.16 Bots (proposed, operator direction 2026-11-16)
+
+**Purpose.** Always-on bots that work like employees, run on the operator's own computers, and use
+the operator's own models. The operator defines a bot by chatting with it: its job, its schedule,
+what it may touch. Each reply goes to a model that the router picks: the operator's subscription
+(Claude Code, Codex) or any upstream of the model gateway (Section 4.15). A bot that needs to code
+does so in an agent pane (Section 4.12.1). **Class:** B for the conversation text. C for the counts.
+Status: direction only. The proposed work package is XP-16. It is not in the tables of Section 5.
+
+**Data.** `bot` (name, job, instructions, device, model rule, schedule, permissions, state),
+`bot_message` (bot, role, sealed text, model used, time), `bot_task` (bot, title, state, pane, result).
+
+- **BOT-001.** The operator must be able to make a bot in a chat. The chat writes the bot definition:
+  name, job, instructions, schedule, allowed devices and allowed tools. The operator must see the
+  definition and confirm it before the bot starts.
+- **BOT-002.** A bot must run on a device that the operator chooses, under the Anima agent on that
+  device. The hub keeps the definition and the history. The bot keeps running when no client is open.
+- **BOT-003.** For each reply, the bot must choose a model by a rule: a fixed model, the cheapest
+  model that can do the task, or local first. It must send the request through the model gateway
+  (MGW-001, MGW-007). With no gateway upstream, it must use the operator's subscription through the
+  vendor's own program on that device, for example `claude -p` or `codex exec`. It must never take
+  or store the login of a subscription.
+- **BOT-004.** A bot can start a coding task in an agent pane (AIS-013) in an allowed repository. Its
+  state shows on the agent panes page with the other panes, and a task that waits for the operator
+  sends the same alert (AIS-012).
+- **BOT-005.** A bot can act on a schedule or an event: a time, a check that changes state, a new
+  issue or pull request (Integrations, Section 4.5). It uses the rule engine (ENG-001).
+- **BOT-006.** A bot must ask the operator before it sends a message to another person, spends money,
+  deletes data or pushes to a shared branch. The operator can give a standing permission for one kind
+  of action and can take it back.
+- **BOT-007.** Each bot must have a budget (MGW-011) and a log of its actions. The operator must be
+  able to pause or stop a bot in one action, from the client, the CLI (`anima bots`) and the phone.
+- **BOT-008.** Bots count toward the overload warning (AIS-017), and their finished work goes into the
+  daily digest (AIS-015).
+- **BOT-009.** The Bots extension must be free on every plan, as agent panes are (AIS-016). Its
+  conversation text is sealed like session text (AIS-004, AIS-005).
+
+**Depends on.** Model gateway (XP-15), agent panes (Section 4.12.1), the rule engine (ENG-001), and
+for long tasks the jobs and agent-runs proposals.
+
+**Risks.**
+
+- Subscription terms: driving a Claude or ChatGPT plan from our own code may break the vendor's
+  terms. Calling the vendor's own program (BOT-003) is the safe path. Check each vendor's terms before
+  release.
+- "Always on" only holds while the device is on. A cloud computer add-on would cover users with one
+  laptop ([cloud-machines.md](programme/proposals/cloud-machines.md)).
+- A bot with shell access is an agent that runs code. It needs the same isolation ruling as
+  community extensions (EXT-009) before it runs anything that is not the operator's own instructions.
+
+**Open decisions.**
+
+1. Whether a bot's chat lives in the Anima.ing client only, or also in Slack, iMessage or Telegram.
+2. Whether bots can talk to each other (a team of bots), or only to the operator in the first version.
+3. How the router judges "the cheapest model that can do the task".
 
 ## 5. Build order: engine first, then one workflow per extension
 
@@ -856,7 +978,7 @@ Each extension owns only its paths. It adds one line to each registry of the eng
 | ID | The extension is done when |
 | --- | --- |
 | XP-01 | An OwnTracks or Overland fix and a Google Timeline export show as trails and visits. A gap shows as a dashed line. No tile request leaves the network. |
-| XP-02 | With all other extensions off, each GitHub project shows its Vercel, Neon and Hostinger deployments with their state. A test proves that the clients of Vercel, Neon and Hostinger refuse a write request. The hub reads GitHub with an installation token of the App, and a test proves that the private key and the token are not in the database as plain text or in a log. Each GitHub change of OD-E14 works from the command line and is in the audit log. PostHog and Vercel analytics show where they exist. |
+| XP-02 | With all other extensions off, each GitHub project shows its Vercel, Neon and Hostinger deployments with their state. A test proves that the clients of Vercel, Neon and Hostinger refuse a write request. The hub reads GitHub with an installation token of the App, and a test proves that the private key and the token are not in the database as plain text or in a log. Each GitHub change of OD-E14 works from the command line and is in the audit log, with its outcome: a change that GitHub refused, or whose answer did not arrive, is recorded too (PRJ-028; operator, 2026-11-14; ruling number to be assigned). PostHog and Vercel analytics show where they exist. |
 | XP-03 | The operator writes, saves and restores a draft. A save from a second client with an old revision is refused. The Obsidian vault shows read-only. |
 | XP-04 | `anima run` gives secrets to a command and replaces a secret handle. `anima secrets read` writes a value to a pipe and refuses a terminal without `--reveal`. A project secret is used before a global secret with the same name. A test proves that the hub database has no plain text value. Each reveal, run and piped read is in the audit log. |
 | XP-05 | Contacts, iMessage, Instagram and X accounts of one person show as one person. A display name alone never joins two accounts. |
@@ -948,7 +1070,7 @@ Auracle and HQ serve many users and many sources. Anima serves one operator. Thi
 | HQ | Optimistic save with an expected revision, immutable history | WRT-003, WRT-004 |
 | HQ | Secret status values and rotation policies; compare with `.env.example` | SCR-003, SCR-005 |
 | HQ | `run` command that injects secrets into a command | SCR-006 |
-| HQ | A banner for a failed default branch, bulk merge with a result list, run controls, workflow start by hand, a list of items that need the operator, the "Synced" line | PRJ-031 to PRJ-036 |
+| HQ | A banner for a failed default branch, bulk merge with a result list, run controls, workflow start by hand, a list of items that need the operator, the "Synced" line (in Anima "Read … ago", PRJ-032) | PRJ-031 to PRJ-036 |
 | HQ | GitHub App for reads, with a mirror that is also polled | PRJ-017, PRJ-019 |
 | HQ | Coding session import keyed by git remote, with worktree mapping | AIS-002 |
 | HQ | A provider failure shows as a stale value, not an error page | MON-009 |

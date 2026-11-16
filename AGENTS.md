@@ -29,7 +29,9 @@ property it serves. Limits point at places to look; never change code only to sa
   as parameters; typed errors (`thiserror` per Rust domain, no `anyhow` in domains);
   logs and metrics only at I/O boundaries; never swallow an error.
 - **Idiomatic** — rustfmt + Clippy `pedantic` (deny warnings); typescript-eslint `strict`
-  + `stylistic`, eslint-plugin-svelte, Svelte 5 runes; one GraphQL client per domain.
+  + `stylistic`, eslint-plugin-svelte, Svelte 5 runes; one GraphQL client per domain. Go (`link/` only):
+  gofmt, `go vet`, staticcheck and revive; one error type or sentinel for each package, checked with
+  `errors.Is` or `errors.As`.
 - **Domain-based** — folders and types are operator nouns (`devices/`, `checks/`,
   `sessions/`, `DeviceId`, `Fingerprint`). Banned in names: `Manager`, `Service`,
   `Helper`, `Handler`, `Processor`, `Factory`, `Util`, `data`, `info`, `item`, `misc`,
@@ -57,6 +59,8 @@ with a reason: `#[expect(clippy::rule, reason = "...")]` or
 - Tauri shell (`apps/desktop/src-tauri`) holds only OS work: windows, key store, web views.
 - Command line (`crates/anima-cli`): one folder for each operator noun, with its GraphQL
   documents, its commands and its MCP tools. Only `hub/` talks to the network.
+- Link (`link/`, Go): one package for each operator noun. Only `tunnel/` imports the Tailcat library.
+  `cmd/anima-link/main.go` wires; it holds no rules.
 - Design values come from tokens (`design/tokens/`); motion uses the helpers in
   `$lib/motion/` (spec Sections 5.5 and 5.7).
 
@@ -91,6 +95,20 @@ A function is not complete until steps 2 and 3 are done or the plan gives the re
 not apply. Do not merge a change that adds a function only to the graphical client. The coverage
 test (CMD-031) fails when a root field of `contracts/schema.graphql` has no command.
 
+## Plans and progress
+
+[docs/work-plan.md](docs/work-plan.md) is the register of all plans and holds their state
+(PLN-001 to PLN-011, operator, 2026-11-15).
+
+- Do not build from a document that is not in Section 9 of the work plan.
+- Do not make a new plan, proposal or task breakdown unless the same commit adds its row to
+  Section 9 and names the row of Section 4 that it serves. If no row applies, ask the operator.
+- If a plan already owns the concern, change that plan. Do not write a second one.
+- Write each plan in STE (design spec Section 0), with a title, a version, a date and a status.
+- Change the state of a task in the commit that does the work. "Done" must name a commit, an
+  acceptance record or a ruling.
+- A report, a log or a procedure must not add a requirement.
+
 ## Tests
 
 Follow the `test-audit` rules: test behaviour, not structure. If moving code breaks a test,
@@ -107,7 +125,8 @@ BASE_REF=my-branch bun run gates   # baseline gate compares against this ref (de
 
 The gates run in this order and stop at the first failure: `cargo fmt --check`,
 `cargo clippy --all-targets -- -D warnings`, `cargo nextest run --workspace` (with a throwaway PostgreSQL 17, R-009),
-`cargo test --workspace --doc`, `cargo test --workspace --test pinning`, `bun install --frozen-lockfile`,
+`cargo test --workspace --doc`, `cargo test --workspace --test pinning`, the six Go gates of `link/`
+(`gofmt`, `go vet`, `staticcheck`, `revive`, `go test -race`, `go build`), `bun install --frozen-lockfile`,
 `bun run lint`, `bun run check`, `bun run test`, `bun run --cwd apps/client build`,
 `bun run quality:limits`, `bun run quality:names`, `bun run quality:imports`,
 `bun run quality:baseline -- --base $BASE_REF`. See [quality/README.md](quality/README.md).
@@ -119,5 +138,7 @@ outputs are shared, so a new worktree's first run reuses what any other worktree
 share one `CARGO_TARGET_DIR` between worktrees: cargo locks it, so parallel runs wait on each other.
 Set `RUSTC_WRAPPER=` (empty) to run without the cache. `sccache --show-stats` shows the hit rate.
 cargo-nextest must be on `PATH` (`cargo install cargo-nextest --locked`; put `~/.cargo/bin` on `PATH`).
+Go must be on `PATH` (`brew install go`); `link/go.mod` sets the lowest Go version and pins the two lint tools, so
+nothing else is installed for the Go gates.
 Leave `DATABASE_URL` unset so each run gets its own PostgreSQL server: sqlx names test databases
 by test path, so two worktrees that share one server destroy each other's databases (R-019).

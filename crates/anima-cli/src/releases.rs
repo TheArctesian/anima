@@ -7,6 +7,7 @@ pub mod follow;
 pub mod list;
 pub mod log;
 pub mod next_version;
+pub mod publishing;
 
 use crate::failure::Failure;
 use crate::invocation::Invocation;
@@ -17,6 +18,8 @@ pub enum ReleaseCommand {
     List(list::ListArgs),
     /// Show the version the next release should have.
     NextVersion(next_version::NextVersionArgs),
+    /// Show whether this hub can publish a release; `create` is refused when it cannot.
+    Publishing(publishing::PublishingArgs),
     /// Start a release: one build job for each target.
     Create(create::CreateArgs),
     /// Cancel a build job that has not finished.
@@ -34,6 +37,7 @@ impl ReleaseCommand {
         match self {
             Self::List(args) => args.run(invocation).await,
             Self::NextVersion(args) => args.run(invocation).await,
+            Self::Publishing(args) => args.run(invocation).await,
             Self::Create(args) => args.run(invocation).await,
             Self::Cancel(args) => args.run(invocation).await,
             Self::Log(args) => args.run(invocation).await,

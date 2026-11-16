@@ -64,6 +64,8 @@ impl Replies {
             (200, self.pages[page - 1].clone())
         } else if request.path.contains("/git/trees/") {
             self.tree.clone()
+        } else if request.path.ends_with("/commits") {
+            (200, b"[]".to_vec())
         } else {
             self.deployments.clone()
         }
@@ -100,6 +102,7 @@ pub(super) fn run(state: &Value, replies: &Replies) -> Run {
         let out = normalise(
             &request,
             &Response {
+                link: None,
                 status,
                 body: Body::Read(&body),
             },

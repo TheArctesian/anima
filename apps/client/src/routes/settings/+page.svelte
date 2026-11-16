@@ -4,6 +4,10 @@
   import DefaultsSection from '$lib/checks/defaults/DefaultsSection.svelte';
   import SignOutRow from '$lib/access/SignOutRow.svelte';
   import HubRows from '$lib/hub-address/HubRows.svelte';
+  import HubLinkRow from '$lib/link/HubLinkRow.svelte';
+  import LinkDevicesSection from '$lib/link/LinkDevicesSection.svelte';
+  import { desktopLocalHubShell, LocalHubWatch } from '$lib/local-hub/local-hub.svelte';
+  import LocalHubSection from '$lib/local-hub/LocalHubSection.svelte';
   import McpSection from '$lib/mcp/McpSection.svelte';
   import NotificationsSection from '$lib/notifications/NotificationsSection.svelte';
   import PaletteRow from '$lib/palette/PaletteRow.svelte';
@@ -12,6 +16,7 @@
   import RetentionSection from '$lib/retention/RetentionSection.svelte';
   import SettingsSection from '$lib/settings/SettingsSection.svelte';
   import SourcesSection from '$lib/sources/SourcesSection.svelte';
+  import StayAwakeRows from '$lib/stay-awake/StayAwakeRows.svelte';
   import ThemeRow from '$lib/theme/ThemeRow.svelte';
   import TypefaceRows from '$lib/typeface/TypefaceRows.svelte';
   import DesktopRows from '$lib/updates/DesktopRows.svelte';
@@ -24,9 +29,12 @@
   // The desktop rows decide each row themselves; the page only leaves out the section when none can show (UPD-006, LOG-008,
   // BLD-020).
   // The Hub section is desktop only: a browser talks only to the hub that served it (CLI-002, D-5).
-  const { updates, commandLine, processLog, builds, keyStore, mcpPermissions } = capabilities();
+  const { updates, commandLine, processLog, builds, keyStore, mcpPermissions, stayAwake, localHub } = capabilities();
+  // The hub on this computer: its section, and its origin for the Stay awake notice (FRN-006, AWK-005, FRN-008).
+  const hubState = localHub ? new LocalHubWatch(desktopLocalHubShell) : null;
+  $effect(() => hubState?.watch());
   const desktopRows = updates || commandLine || processLog || builds;
-  const index = indexOf({ keyStore, desktopRows, mcpPermissions });
+  const index = indexOf({ keyStore, stayAwake, desktopRows, mcpPermissions });
 </script>
 
 <div class="head" {@attach entrance()}>
@@ -47,6 +55,18 @@
   {#if keyStore}
     <SettingsSection {...SECTIONS.hub}>
       <HubRows />
+      {#if localHub}<HubLinkRow />{/if}
+    </SettingsSection>
+  {/if}
+
+  {#if hubState !== null}
+    <LocalHubSection section={SECTIONS.localHub} {hubState} />
+  {/if}
+
+  <!-- Desktop only: the shell keeps this computer awake (AWK-004). -->
+  {#if stayAwake}
+    <SettingsSection {...SECTIONS.stayAwake}>
+      <StayAwakeRows localHub={hubState?.origin ?? null} />
     </SettingsSection>
   {/if}
 
@@ -74,6 +94,8 @@
       <DesktopRows />
     </SettingsSection>
   {/if}
+
+  <LinkDevicesSection section={SECTIONS.linkDevices} />
 
   <SettingsSection {...SECTIONS.apiKeys}>
     <ApiKeysSection />

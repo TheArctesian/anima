@@ -73,6 +73,6 @@ it('UI-032: a storage that refuses to save still applies the palette and says it
   choose(colours(target), 'nord');
   expect(document.documentElement.dataset['palette']).toBe('nord');
   expect(target.querySelector('[role="alert"]')?.textContent).toBe(
-    'Anima could not save this choice on this device; it lasts until the app restarts.',
+    'Anima.ing could not save this choice on this device; it lasts until the app restarts.',
   );
 });

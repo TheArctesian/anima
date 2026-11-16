@@ -1,5 +1,7 @@
 //! The projects GraphQL part (K1; XP-02): the projects, one project, leave out and restore a
-//! repository, confirm a resource.
+//! repository, confirm a resource; and, merged in, the live reads of a repository's pull
+//! requests, issues, workflow runs, history and code (PRJ-027 to PRJ-035) and the changes made
+//! there (OD-E14).
 //!
 //! Every field is `CONFLICT` while Projects is off (EXT-002). Each mutation that changes
 //! something writes its change, one audit entry and one event in one transaction.
@@ -7,26 +9,40 @@
 mod trail;
 mod views;
 
-use async_graphql::{Context, Error as GraphQlError, ID, Object, Result};
+use async_graphql::{Context, Error as GraphQlError, ID, MergedObject, Object, Result};
 use sqlx::{PgConnection, PgPool};
 
 use self::views::{ProjectConnection, ProjectView, ResourceView, Rows};
 use super::{
     Error,
+    browse::ProjectBrowse,
+    code, history, issues,
     model::ResourceKind,
+    on,
     page::{After, decode_cursor, page_size},
-    restate,
+    pull_requests, restate,
     store::{choices, reads},
+    workflows,
 };
 use crate::{
-    api_errors::{FieldError, begin, commit, internal, invalid, pool},
-    engine::{
-        extensions::{self, PROJECTS},
-        sources,
-    },
+    api_errors::{FieldError, begin, commit, internal, invalid},
+    engine::sources,
     fleet::{access::Authenticated, events::Trail},
     ids::{ProjectId, RepositoryId, ResourceId, SourceAccountId},
 };
+
+/// The projects roots and the live reads of their repositories, under the one name the schema
+/// merges (K3).
+#[derive(MergedObject, Default)]
+#[graphql(name = "ProjectsQueries")]
+pub struct Query(
+    ProjectsQuery,
+    pull_requests::Query,
+    issues::Query,
+    workflows::Query,
+    history::Query,
+    code::Query,
+);
 
 /// K1's default for `first`.
 const DEFAULT_FIRST: i32 = 50;
@@ -37,15 +53,6 @@ fn failed(error: impl Into<Error>) -> GraphQlError {
     error.into().into_graphql()
 }
 
-/// The pool, once Projects is on; `CONFLICT` while it is off.
-async fn on<'a>(ctx: &Context<'a>) -> Result<&'a PgPool> {
-    let db = pool(ctx)?;
-    extensions::require_on(db, PROJECTS)
-        .await
-        .map_err(extensions::Error::into_graphql)?;
-    Ok(db)
-}
-
 fn parsed<T: std::str::FromStr>(id: &ID) -> Result<T> {
     id.parse()
         .map_err(|_| invalid(&[FieldError::new("id", "That id is not valid.")]))
@@ -54,10 +61,22 @@ fn parsed<T: std::str::FromStr>(id: &ID) -> Result<T> {
 /// The K1 views of `projects`, with their repositories and resources.
 async fn shown(db: &PgPool, projects: Vec<reads::ProjectRow>) -> Result<Vec<(After, ProjectView)>> {
     let ids: Vec<ProjectId> = projects.iter().map(|p| p.id).collect();
+    let repositories = reads::repositories(db, &ids).await.map_err(failed)?;
+    let mut accounts: Vec<SourceAccountId> = Vec::new();
+    for account in repositories.iter().filter_map(|r| r.account_id) {
+        if !accounts.contains(&account) {
+            accounts.push(account);
+        }
+    }
+    let mut conn = db.acquire().await.map_err(failed)?;
+    let standings = sources::standing(&mut conn, &accounts)
+        .await
+        .map_err(internal)?;
     let rows = Rows {
-        repositories: reads::repositories(db, &ids).await.map_err(failed)?,
+        repositories,
         resources: reads::resources(db, &ids).await.map_err(failed)?,
         evidence: reads::evidence(db, &ids).await.map_err(failed)?,
+        standings,
     };
     Ok(views::projects(projects, rows))
 }
@@ -132,10 +151,10 @@ async fn choose(ctx: &Context<'_>, id: &ID, left_out: bool) -> Result<ProjectVie
 }
 
 #[derive(Default)]
-pub struct Query;
+pub struct ProjectsQuery;
 
 #[Object(name = "ProjectsQuery")]
-impl Query {
+impl ProjectsQuery {
     /// By name. `leftOut` false: the projects with a repository that is not left out; true:
     /// the projects whose repositories are all left out.
     #[graphql(guard = "Authenticated")]
@@ -149,6 +168,7 @@ impl Query {
         #[graphql(default_with = "Some(false)")] left_out: Option<bool>,
         #[graphql(default_with = "Some(DEFAULT_FIRST)")] first: Option<i32>,
         after: Option<String>,
+        browse: Option<ProjectBrowse>,
     ) -> Result<ProjectConnection> {
         let db = on(ctx).await?;
         let size = page_size(first.unwrap_or(DEFAULT_FIRST));
@@ -160,13 +180,25 @@ impl Query {
                 return Err(invalid(&errors));
             }
         };
+        let browse = browse.unwrap_or_default();
+        browse.validate().map_err(|error| invalid(&[error]))?;
+        let left_out = left_out.unwrap_or(false);
         let limit = i64::try_from(size + 1).unwrap_or(i64::MAX);
-        let mut rows = reads::page(db, left_out.unwrap_or(false), after.as_ref(), limit)
+        let mut rows = reads::page(db, (left_out, &browse), after.as_ref(), limit)
             .await
             .map_err(failed)?;
         let has_next_page = rows.len() > size;
         rows.truncate(size);
-        Ok(views::connection(shown(db, rows).await?, has_next_page))
+        let languages = if ctx.look_ahead().field("languages").exists() {
+            reads::languages(db, left_out).await.map_err(failed)?
+        } else {
+            Vec::new()
+        };
+        Ok(views::connection(
+            shown(db, rows).await?,
+            has_next_page,
+            languages,
+        ))
     }
 
     #[graphql(guard = "Authenticated")]
@@ -181,11 +213,23 @@ impl Query {
     }
 }
 
+/// The projects mutations and the changes to their repositories on GitHub, under the one name
+/// the schema merges (K3; OD-E14).
+#[derive(MergedObject, Default)]
+#[graphql(name = "ProjectsMutations")]
+pub struct Mutation(
+    ProjectsMutation,
+    issues::Mutation,
+    pull_requests::Mutation,
+    workflows::Mutation,
+    history::Mutation,
+);
+
 #[derive(Default)]
-pub struct Mutation;
+pub struct ProjectsMutation;
 
 #[Object(name = "ProjectsMutation")]
-impl Mutation {
+impl ProjectsMutation {
     /// The hub does not import or read the repository again until it is restored (PRO-002).
     #[graphql(guard = "Authenticated")]
     async fn leave_out_repository(&self, ctx: &Context<'_>, id: ID) -> Result<ProjectView> {

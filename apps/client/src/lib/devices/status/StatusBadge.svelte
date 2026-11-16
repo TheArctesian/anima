@@ -31,10 +31,10 @@
 {#if reasons}<span class="reasons">{@render reasons()}</span>{/if}
 
 <style>
-  /* A fixed size: the longest label fits, so a new status moves nothing (MOT-007). */
+  /* Reserve space for the longest label unless the surrounding layout reserves it (MOT-007). */
   .slot {
     display: inline-grid;
-    inline-size: calc(var(--space-16) + var(--space-12));
+    inline-size: var(--status-slot-width, calc(var(--space-16) + var(--space-12)));
     block-size: calc(var(--text-sm) * var(--leading-tight) + var(--space-2));
   }
 
@@ -45,7 +45,7 @@
 
   .pill {
     grid-area: 1 / 1;
-    justify-self: end;
+    justify-self: var(--status-label-align, end);
     display: inline-flex;
     align-items: center;
     gap: var(--space-2);

@@ -18,7 +18,8 @@ tauri-build.workspace = true
 anima-cli = { path = "../../../crates/anima-cli" }
 # `unstable`: child web views in the main window and moving them to a window of their own
 # (`Window::add_child`, `Webview::reparent`) for device web views (WEB-004, D-3).
-tauri = { workspace = true, features = ["unstable"] }
+# `tray-icon`: the menu bar or tray item of the stay-awake control (AWK-004).
+tauri = { workspace = true, features = ["unstable", "tray-icon"] }
 keyring.workspace = true
 serde.workspace = true
 thiserror.workspace = true
@@ -50,6 +51,9 @@ getrandom = "0.3"
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-updater.workspace = true
 tauri-plugin-process.workspace = true
+# Native dialogs from Rust only (no JavaScript API is granted): the recovery confirmation that
+# script in the web view cannot answer (F-9), and the save dialog for a copy of the hub key (2.8).
+tauri-plugin-dialog = "2"
 
 # Cancelling a build step kills the step's whole process group (BLD-027); on Linux the shell is
 # the child subreaper of every step process and reaps what escaped the group (S-1). `user`: the
@@ -76,7 +80,7 @@ objc2-web-kit = { version = "0.3.2", default-features = false, features = ["std"
 
 [dev-dependencies]
 # The mock runtime the updater proof runs the real updater plugin in (tests/updater).
-tauri = { workspace = true, features = ["unstable", "test"] }
+tauri = { workspace = true, features = ["unstable", "tray-icon", "test"] }
 rcgen.workspace = true
 # The reference minisign implementation signs the feed the updater proof serves (tests/updater).
 minisign = "0.10"

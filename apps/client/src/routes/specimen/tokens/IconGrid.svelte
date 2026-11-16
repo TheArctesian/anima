@@ -5,10 +5,10 @@
   /** The icons the pages use, by what each one stands for (UR-7, UI-014). */
   const ICONS: readonly (readonly [IconName, string])[] = [
     ['carbon:bare-metal-server', 'Devices'],
-    ['carbon:screen', 'Live sessions'],
+    ['carbon:screen', 'VNC, Live sessions'],
     ['carbon:settings', 'Settings'],
     ['carbon:terminal', 'SSH'],
-    ['carbon:screen-map', 'RDP, VNC'],
+    ['carbon:remote-connection', 'RDP'],
     ['carbon:power', 'Wake'],
     ['carbon:activity', 'Checks'],
     ['carbon:catalog', 'Logs'],

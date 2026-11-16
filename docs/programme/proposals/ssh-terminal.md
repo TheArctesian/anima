@@ -1,5 +1,7 @@
 # Proposal: SSH in a real terminal (hub SSH client, xterm.js in the app)
 
+Progress: the plan register in [work-plan.md](../../work-plan.md) Section 9 holds the state of this plan (PLN-005).
+
 From: the orchestrator. The operator chose this in chat on 2026-11-06 ("I like option 2"), after
 the SSH tab showed `ile:/…;click_events=1` in front of the prompt.
 Status: a proposal for a ruling (R-062) and for issue #1 (R-007). Not Phase 1 scope: it changes

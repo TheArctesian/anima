@@ -12,8 +12,9 @@ use super::{
     sidecar::EXTERNAL_BIN,
 };
 
-/// The only repository a builder builds (BLD-040).
-pub const REPOSITORY: &str = "https://github.com/TheArctesian/anima.git";
+/// The only repository a builder builds (BLD-040). Its own name, not the name GitHub redirects from
+/// since the rename to `anima.ing`: a redirect ends when a repository takes the old name.
+pub const REPOSITORY: &str = "https://github.com/TheArctesian/anima.ing.git";
 /// Where `fetch` keeps `main` of the repository.
 const MAIN: &str = "refs/remotes/origin/main";
 

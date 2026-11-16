@@ -136,7 +136,7 @@ it('F-3, MOT-007: while loading the fields wait, empty; a failed load offers Try
   const answers: Partial<Record<Operation, unknown>> = loaded({ NotificationSettings: failure('UNAVAILABLE') });
   await open(answers as Parameters<typeof fakeHub>[0]);
   expect([days().value, days().matches(':disabled'), form.getAttribute('aria-busy')]).toEqual(['', true, 'true']);
-  expect(form.querySelector('.note [role="alert"]')?.textContent).toBe('Anima could not load the notification settings.');
+  expect(form.querySelector('.note [role="alert"]')?.textContent).toBe('Anima.ing could not load the notification settings.');
   expect(document.querySelectorAll('.list > li')).toHaveLength(4);
   answers.NotificationSettings = ok({ notificationSettings: FIXTURE_SETTINGS });
   button('Try again', form).click();

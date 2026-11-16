@@ -146,6 +146,13 @@ impl Identity {
         self.grant.token
     }
 
+    /// The token of an API key identity, which names the key, so a caller can pace one key's
+    /// work (K-E1 Section 13.1); `None` for any other token.
+    #[must_use]
+    pub fn api_key(&self) -> Option<TokenId> {
+        (self.grant.kind == TokenKind::ApiKey).then(|| TokenId::from(self.grant.token))
+    }
+
     /// The token of a builder identity, which names its builder record (BLD-024); `None` for
     /// an operator token.
     #[must_use]

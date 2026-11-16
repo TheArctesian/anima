@@ -8,7 +8,7 @@ type Action = 'save' | 'delete' | 'test' | 'settings';
 const OTHER: Record<Action, string> = {
   save: 'Channel not saved. Try again.',
   delete: 'The hub did not delete the channel. Try again.',
-  test: 'Anima could not send the test. Try again.',
+  test: 'Anima.ing could not send the test. Try again.',
   settings: 'The hub did not save the settings. Try again.',
 };
 

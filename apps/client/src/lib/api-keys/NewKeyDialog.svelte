@@ -135,7 +135,7 @@
       </div>
     </form>
   {:else}
-    <p id="{ids}-about">Anima shows this key only once. Copy it now and keep it where your program reads it; the hub keeps only a hash of it.</p>
+    <p id="{ids}-about">Anima.ing shows this key only once. Copy it now and keep it where your program reads it; the hub keeps only a hash of it.</p>
     {#if secret !== null}
       <KeySecret {secret} />
     {/if}

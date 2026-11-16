@@ -121,7 +121,7 @@ it('NOT-004: a delivered test says so; a refused call shows a fixed sentence, no
   expect(status()).toBe('Test delivered.');
   button('Send test through ops-webhook').click();
   await settled();
-  expect(status()).toBe('Anima could not send the test. Try again.');
+  expect(status()).toBe('Anima.ing could not send the test. Try again.');
   expect(document.body.textContent).not.toContain(FAKE_SECRET);
 });
 
@@ -234,7 +234,7 @@ it('F-3, MOT-007: a failed load shows its own message and Try again in the kept 
   const answers: Partial<Record<Operation, unknown>> = loaded({ NotificationChannels: failure('UNAVAILABLE') });
   const target = await open(answers as Parameters<typeof fakeHub>[0]);
   const alert = target.querySelector('.stack [role="alert"]');
-  expect(alert?.textContent).toBe('Anima could not load the notification channels.');
+  expect(alert?.textContent).toBe('Anima.ing could not load the notification channels.');
   expect(target.querySelector<HTMLInputElement>('input[type="text"]')?.value).toBe('21, 14, 7');
   answers.NotificationChannels = ok({ notificationChannels: [] });
   button('Try again').click();

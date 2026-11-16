@@ -1,5 +1,7 @@
 # Anima UI redesign: direction and spec delta (draft for approval)
 
+Progress: the plan register in [work-plan.md](work-plan.md) Section 9 holds the state of this plan (PLN-005).
+
 Phase 1 of `docs/ui-redesign-plan.md`. Three parts: the philosophy every later phase follows, the
 spec delta (UR-1) and the directions shown in `docs/mockup/redesign/index.html`. Nothing here is
 in `design-spec.md` until the operator approves it.

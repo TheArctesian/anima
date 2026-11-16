@@ -1,0 +1,25 @@
+query IssueComments($repository: ID!, $number: Int!, $first: Int, $after: String, $fresh: Boolean) {
+  issueComments(repository: $repository, number: $number, first: $first, after: $after, fresh: $fresh) {
+    edges {
+      cursor
+      node {
+        id
+        authorLogin
+        body
+        bodyCut
+        createdAt
+        updatedAt
+        url
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+    read {
+      at
+      stale
+      problem
+    }
+  }
+}

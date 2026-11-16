@@ -18,6 +18,7 @@ use crate::projects::documents::{
     ProjectGet, ProjectList, RepositoryLeaveOut, RepositoryRestore, project_get, project_list,
     repository_leave_out, repository_restore,
 };
+use crate::projects::list::{Browse, Order};
 use crate::projects::repository::resolve;
 use crate::projects::resource::confirm;
 
@@ -34,6 +35,14 @@ pub enum ProjectTool {
 pub struct SearchInput {
     /// True to list the projects that have repositories left out; default false.
     left_out: Option<bool>,
+    /// Order: `name`, `last_commit`, `created`, `commit_count` or `stars`.
+    order: Option<Order>,
+    /// GitHub's primary language.
+    language: Option<String>,
+    /// Minimum repository size in KiB.
+    min_size_kib: Option<i32>,
+    /// Maximum repository size in KiB.
+    max_size_kib: Option<i32>,
     #[serde(flatten)]
     page: Page,
 }
@@ -168,6 +177,13 @@ async fn search(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolE
         left_out: input.left_out,
         first: Some(input.page.size()),
         after: input.page.after,
+        browse: Browse {
+            order: input.order,
+            language: input.language,
+            min_size_kib: input.min_size_kib,
+            max_size_kib: input.max_size_kib,
+        }
+        .variables(),
     };
     let page = hub.run::<ProjectList>(variables).await?.projects;
     let next = page

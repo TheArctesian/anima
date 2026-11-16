@@ -6,6 +6,7 @@ mod calls;
 mod changes;
 mod engine;
 mod engine_projects;
+mod engine_repositories;
 mod engine_sources;
 mod listing;
 mod permissions;

@@ -3,6 +3,7 @@
 //! and the reads of the API in `store/reads.rs`.
 
 pub(super) mod choices;
+pub(super) mod metadata;
 pub(super) mod reads;
 pub(super) mod signs;
 
@@ -103,6 +104,8 @@ pub(super) async fn refresh(
     sqlx::query(
         "UPDATE projects.repositories SET full_name = $2, html_url = $3, default_branch = $4, \
          private = $5, archived = $6, fork = $7, description = $8, pushed_at = $9, \
+         last_commit_at = CASE WHEN default_branch = $4 THEN last_commit_at END, \
+         commit_count = CASE WHEN default_branch = $4 THEN commit_count END, \
          original = $10, gone_at = NULL, account_id = coalesce(account_id, $11), updated_at = $12 \
          WHERE id = $1",
     )

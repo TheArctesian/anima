@@ -19,7 +19,9 @@ use crate::hub::{
     wrong_credentials,
 };
 
+mod audit;
 mod command;
+mod create;
 
 /// Enrols TOTP for the fixture operator; returns the secret read back from the URI.
 pub async fn enrol(pool: &PgPool) -> Vec<u8> {
@@ -166,7 +168,9 @@ async fn sec_002_a_new_secret_starts_with_no_used_step(pool: PgPool) {
     assert!(signed_in(
         &login(&hub, PASSWORD, Some(&code(&renewed, start()))).await
     ));
-    access::disable_totp(&pool, USERNAME).await.unwrap();
+    access::disable_totp(&pool, USERNAME, start())
+        .await
+        .unwrap();
     assert!(signed_in(&login(&hub, PASSWORD, None).await));
 }
 

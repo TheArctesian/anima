@@ -14,6 +14,7 @@ mod feed;
 pub mod graphql;
 mod health;
 mod intake;
+mod live;
 mod model;
 mod registration;
 mod run;
@@ -46,6 +47,7 @@ pub use connect::{Connection, Established, establish};
 pub use feed::Feed;
 pub use health::{HealthFacts, health};
 pub use intake::{Counts, Intake, IntakeError, Page, Registry, Taken};
+pub use live::{Keep, LiveFailure, Reply, Reserve, Standing, ask, change, forget, standing};
 pub use model::{Account, ErrorKind, Health, Outcome, PauseReason, Trigger};
 pub use registration::{
     attempts::Attempts,
@@ -70,6 +72,10 @@ pub struct Reach {
 /// Section 10a).
 pub const INSTALLATION_POLL: Duration = Duration::from_secs(5);
 
+/// How long the bound browser's page on `/connect/github/installed` waits for the attempt to end
+/// before it shows the "finishing" page (K-E1 Section 10a).
+pub const INSTALLED_PAGE_WAIT: Duration = Duration::from_secs(20);
+
 impl Reach {
     #[must_use]
     pub fn new(registry: Registry, transport: Transport) -> Self {
@@ -77,7 +83,7 @@ impl Reach {
             registry,
             transport,
             feed: Feed::new(),
-            attempts: Attempts::new(INSTALLATION_POLL),
+            attempts: Attempts::new(INSTALLATION_POLL, INSTALLED_PAGE_WAIT),
         }
     }
 }

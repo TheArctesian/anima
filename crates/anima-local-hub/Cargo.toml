@@ -1,0 +1,40 @@
+[package]
+name = "anima-local-hub"
+description = "The hub on this computer: one program that keeps the database, the gateway and the hub up in order, and its LaunchAgent or systemd user unit (one-click plan S4)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "anima-local-hub"
+path = "src/main.rs"
+
+[[test]]
+name = "it"
+path = "tests/it/main.rs"
+
+[dependencies]
+# The database root, its socket folder and the files only the user may read are the ones of S3.
+anima-database = { path = "../anima-database" }
+base64.workspace = true
+# The time of the link's last change in the state, as RFC 3339.
+chrono.workspace = true
+clap.workspace = true
+getrandom.workspace = true
+# SIGTERM to a member of the group, and the user ID that names the launchd domain.
+nix = { version = "0.31", default-features = false, features = ["fs", "signal", "user"] }
+serde = { workspace = true, features = ["derive"] }
+# The state that `status` prints, and the hub's `hub started` log line.
+serde_json.workspace = true
+thiserror.workspace = true
+tokio = { workspace = true, features = ["process", "signal", "rt"] }
+zeroize.workspace = true
+
+[dev-dependencies]
+# The tests read the LaunchAgent file as launchd does.
+plist.workspace = true
+tempfile.workspace = true

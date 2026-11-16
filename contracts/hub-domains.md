@@ -206,6 +206,7 @@ policy, builder and agent tokens per LOG-019) uses `Operator::hub()` and `ActorK
 | `sources` (engine, new; same ruling; K-E1) | `extensions` (`Key`, `on_keys` only), `credentials` (`Vault`, `Secret`, `Error`, `store_source_secret`, `load_source_secret`, `clear_source_secret` only), `events` |
 | `sources` (Connect GitHub, replaces the row above; operator, 2026-11-14; ruling number to be assigned; K-E1 Section 7a) | the same, and `access` for `registration/routes.rs` only: `PublicOrigin`, `SameOrigin`, `identify`, and a cookie reader (K-E1 Section 12) |
 | `projects` (work, new; same ruling; XP-02) | `extensions` (`PROJECTS`, `require_on` only), `sources` (`Intake`, `Page`, `Taken`, `Counts`, `request_sync` only), `events` |
+| `projects` (second slice, adds; operator, 2026-11-14; ruling number to be assigned; PRJ-027 to PRJ-035, OD-E14; K-E1 Section 13) | `sources` (`Scheduling`, `ask`, `change`, `forget`, `standing`, `Keep`, `Reply`, `LiveFailure` too); `access` (`operator_only` only, and only in the files named `graphql.rs` of its sub-folders: the import gate reads `<domain>/graphql.rs` alone as the graphql module, so this edge is listed under `domains`); crates `provider-github` (already) and `source-exchange` (`Change`, its parts, `Settled`) |
 
 (Phase 3) No cycle: `notifications` imports neither `checks` nor `sessions`. `ssh` and `trust` import neither `sessions` nor `checks`.
 
@@ -223,7 +224,7 @@ GraphQL composition edges (R-011). Only the file `<domain>/graphql.rs` may also 
 | `devices` (Phase 3) | `trust` (replaces `sessions` for these fields) | `SshSettings.hostKey`, `RdpSettings.serverCertificate` |
 | `checks` (Phase 3) | `notifications` | `Check.notifications` |
 | `notifications`, `retention`, `trust` (Phase 3) | `access` (R-022) | the `Authenticated` guard |
-| `extensions`, `sources`, `projects` (operator, 2026-11-13; ruling number to be assigned) | `access` | the `Authenticated` guard and the login-only guard on `setExtension`, `connectGithubApp`, `removeSourceAccount`; and, from Connect GitHub, on `startGithubConnect`, `openGithubConnect`, `cancelGithubConnect` (they join `API_KEY_REFUSED_ROOTS`) |
+| `extensions`, `sources`, `projects` (operator, 2026-11-13; ruling number to be assigned) | `access` | the `Authenticated` guard and the login-only guard on `setExtension`, `connectGithubApp`, `removeSourceAccount`; and, from Connect GitHub, on `startGithubConnect`, `openGithubConnect`, `cancelGithubConnect` (they join `API_KEY_REFUSED_ROOTS`); and, from the second Projects slice (operator, 2026-11-14; ruling number to be assigned), on `codeFile`, `mergePullRequest`, `mergePullRequests`, `rerunWorkflowRun`, `rerunFailedWorkflowJobs`, `cancelWorkflowRun`, `dispatchWorkflow`, `setCommitStatus` (they join `API_KEY_REFUSED_ROOTS`) |
 
 `sessions` already depends on `access`. Through these edges a `graphql.rs` uses only `access::Authenticated`; `Operator` and `ClientAddr` come from `events` (R-019).
 
@@ -630,6 +631,22 @@ pub fn convert(transport: &Transport, declaration: &Declaration, code: &str, now
 ## projects (work, XP-02 first slice; operator, 2026-11-13; ruling number to be assigned)
 
 Folder `crates/hub/src/work/projects/` (group `work/`). Face `projects.rs` exposes `pub fn intake() -> Arc<dyn sources::Intake>` and `pub mod graphql`. No domain imports `projects`; `main.rs` and `schema.rs` wire its intake into the sources registry. Every root field calls `extensions::require_on(db, PROJECTS)` first.
+
+### projects: work, code and history (second slice; operator, 2026-11-14; ruling number to be assigned; PRJ-027 to PRJ-035, OD-E14)
+
+Live reads and named changes through the engine (K-E1 Section 13). No table and no migration: 2200 to 2299 is untouched.
+
+```rust
+// engine::sources (live.rs), used by projects
+pub async fn ask(s: &Scheduling, account: SourceAccountId, request: &Request, keep: Keep) -> Result<Reply, LiveFailure>;
+pub async fn change(s: &Scheduling, account: SourceAccountId, change: &Change) -> Result<Settled, LiveFailure>;
+pub fn forget(transport: &Transport, account: SourceAccountId, path_prefix: &str);
+pub async fn standing(conn: &mut PgConnection, accounts: &[SourceAccountId]) -> Vec<(SourceAccountId, Standing)>;
+// crate source-exchange: change.rs (Change, Verb, Rendered, Changes, Settled), parts.rs (checked newtypes);
+// Declaration.changes: Option<Changes>
+```
+
+Sub-folders of `projects/`, each with its face file: `forge/` (repository row to account and `RepositoryAccess`, `LiveFailure` and `Settled` to K7 codes and fixed words, cursors, the change entries of the audit), `pull_requests/`, `issues/`, `workflows/`, `history/` (commits, branches, releases, checks, commit status), `code/`. `projects/graphql.rs` merges the old and new roots and keeps the names `projects::graphql::Query` and `Mutation`, so `schema.rs` does not change. The fork rule reads the agent declaration from `events::Operator` (as `openGithubConnect` does). `fleet/events/model.rs` gains `AuditTarget::Repository` and `AuditAction::Merge`. The engine still imports no extension.
 
 ## guac-protocol crate (WP-08)
 

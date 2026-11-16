@@ -1,0 +1,81 @@
+[
+  {
+    "type": "file",
+    "size": 12,
+    "name": "zeta.txt",
+    "path": "zeta.txt",
+    "sha": "b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1",
+    "url": "https://api.github.com/repos/sample-org/sample-repo/contents/zeta.txt",
+    "git_url": null,
+    "html_url": "https://github.com/sample-org/sample-repo/blob/main/zeta.txt",
+    "download_url": "https://raw.githubusercontent.com/sample-org/sample-repo/main/zeta.txt"
+  },
+  {
+    "type": "dir",
+    "size": 0,
+    "name": "src",
+    "path": "src",
+    "sha": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+    "url": "https://api.github.com/repos/sample-org/sample-repo/contents/src",
+    "git_url": null,
+    "html_url": "https://github.com/sample-org/sample-repo/blob/main/src",
+    "download_url": null
+  },
+  {
+    "type": "file",
+    "size": 340,
+    "name": "Alpha.md",
+    "path": "Alpha.md",
+    "sha": "b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3b3",
+    "url": "https://api.github.com/repos/sample-org/sample-repo/contents/Alpha.md",
+    "git_url": null,
+    "html_url": "https://github.com/sample-org/sample-repo/blob/main/Alpha.md",
+    "download_url": "https://raw.githubusercontent.com/sample-org/sample-repo/main/Alpha.md"
+  },
+  {
+    "type": "file",
+    "size": 0,
+    "name": "vendor-lib",
+    "path": "vendor-lib",
+    "sha": "b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4",
+    "url": "https://api.github.com/repos/sample-org/sample-repo/contents/vendor-lib",
+    "git_url": null,
+    "html_url": "https://github.com/sample-org/sample-repo/blob/main/vendor-lib",
+    "download_url": null,
+    "submodule_git_url": "https://example.invalid/sample/vendor-lib.git"
+  },
+  {
+    "type": "symlink",
+    "size": 9,
+    "name": "latest",
+    "path": "latest",
+    "sha": "b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5",
+    "url": "https://api.github.com/repos/sample-org/sample-repo/contents/latest",
+    "git_url": null,
+    "html_url": "https://github.com/sample-org/sample-repo/blob/main/latest",
+    "download_url": null,
+    "target": "zeta.txt"
+  },
+  {
+    "type": "dir",
+    "size": 0,
+    "name": "assets",
+    "path": "assets",
+    "sha": "b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6",
+    "url": "https://api.github.com/repos/sample-org/sample-repo/contents/assets",
+    "git_url": null,
+    "html_url": "https://github.com/sample-org/sample-repo/blob/main/assets",
+    "download_url": null
+  },
+  {
+    "type": "file",
+    "size": 1,
+    "name": "alpha.md",
+    "path": "alpha.md",
+    "sha": "b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7",
+    "url": "https://api.github.com/repos/sample-org/sample-repo/contents/alpha.md",
+    "git_url": null,
+    "html_url": "https://github.com/sample-org/sample-repo/blob/main/alpha.md",
+    "download_url": "https://raw.githubusercontent.com/sample-org/sample-repo/main/alpha.md"
+  }
+]

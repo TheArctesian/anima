@@ -60,8 +60,16 @@ impl Drop for Served {
     }
 }
 
+/// How long the bound browser's page on `/installed` waits for the attempt to end, in tests.
+const PAGE_WAIT: Duration = Duration::from_millis(500);
+
 /// The served hub, with GitHub's conversion and installation replies on the stub.
 pub async fn served(pool: &PgPool, poll_every: Duration) -> Served {
+    served_waiting(pool, poll_every, PAGE_WAIT).await
+}
+
+/// As [`served`], with the page on `/installed` waiting up to `page_wait`.
+pub async fn served_waiting(pool: &PgPool, poll_every: Duration, page_wait: Duration) -> Served {
     let stub = Stub::start(pool).await;
     let transport = anima_hub::engine::sources::Transport::to_stub(
         stub.base.clone(),
@@ -78,7 +86,7 @@ pub async fn served(pool: &PgPool, poll_every: Duration) -> Served {
         vec![Arc::new(intake.clone())],
     );
     let reach = Reach {
-        attempts: Attempts::new(poll_every),
+        attempts: Attempts::new(poll_every, page_wait),
         ..Reach::new(registry, transport)
     };
     let clock: Arc<dyn Clock> = Arc::new(FixedClock(start()));
@@ -210,7 +218,7 @@ impl Browser {
         self.send(request).await
     }
 
-    /// Signs this browser in to Anima from the public origin: it gets the `__Host-anima` cookie.
+    /// Signs this browser in to Anima.ing from the public origin: it gets the `__Host-anima` cookie.
     pub async fn sign_in(&mut self) {
         let body = json!({
             "query": "mutation($input: LoginInput!) { signInBrowser(input: $input) { expiresAt } }",

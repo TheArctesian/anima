@@ -13,10 +13,10 @@ const table: readonly [string, TunnelClose, SessionEndReason | undefined, string
   ['1011 with 0x0300', opened(1011, 0x0300), 'GATEWAY_ERROR', 'The hub lost the connection to the device.'],
   ['1011 with 0x0308', opened(1011, 0x0308), 'GATEWAY_ERROR', 'The hub lost the connection to the device.'],
   ['1011 with no error', opened(1011), 'GATEWAY_ERROR', 'The hub lost the connection to the device.'],
-  ['4001 with 0x0303', opened(4001, 0x0303), 'HOST_KEY_MISMATCH', "The device's host key has changed, so Anima did not connect."],
-  ['4003', opened(4003), 'SERVER_CERTIFICATE_MISMATCH', "The device's RDP certificate has changed, so Anima did not connect."],
-  ['4003 with 0x0303', opened(4003, 0x0303), 'SERVER_CERTIFICATE_MISMATCH', "The device's RDP certificate has changed, so Anima did not connect."],
-  ['4002', opened(4002), 'TIMEOUT', 'The session timed out because the hub heard nothing from Anima.'],
+  ['4001 with 0x0303', opened(4001, 0x0303), 'HOST_KEY_MISMATCH', "The device's host key has changed, so Anima.ing did not connect."],
+  ['4003', opened(4003), 'SERVER_CERTIFICATE_MISMATCH', "The device's RDP certificate has changed, so Anima.ing did not connect."],
+  ['4003 with 0x0303', opened(4003, 0x0303), 'SERVER_CERTIFICATE_MISMATCH', "The device's RDP certificate has changed, so Anima.ing did not connect."],
+  ['4002', opened(4002), 'TIMEOUT', 'The session timed out because the hub heard nothing from Anima.ing.'],
   ['1000 after the client closed on 0x0301', opened(1000, 0x0301), 'AUTH_FAILED', 'The device refused the sign-in, or no credential is stored for it.'],
   ['1005 after the client closed on 0x0300', opened(1005, 0x0300), 'GATEWAY_ERROR', 'The hub lost the connection to the device.'],
   ['1006 after open', opened(1006), undefined, 'The connection to the hub was lost.'],
@@ -45,7 +45,7 @@ describe('ending (K4 §5, D-4, RA-007)', () => {
 
   it('K4 §5: a recorded SERVER_CERTIFICATE_MISMATCH wins over the guess from 0x0303, and is a known reason', () => {
     const final = recordedEnding(ending(opened(1000, 0x0303)), 'SERVER_CERTIFICATE_MISMATCH');
-    expect(final).toEqual({ reason: 'SERVER_CERTIFICATE_MISMATCH', opened: true, text: "The device's RDP certificate has changed, so Anima did not connect." });
+    expect(final).toEqual({ reason: 'SERVER_CERTIFICATE_MISMATCH', opened: true, text: "The device's RDP certificate has changed, so Anima.ing did not connect." });
     expect(isEndReason('SERVER_CERTIFICATE_MISMATCH')).toBe(true);
   });
 
@@ -57,12 +57,12 @@ describe('ending (K4 §5, D-4, RA-007)', () => {
 
   it('D-4: a recorded reason this client does not know gets fixed text, never its name', () => {
     const newer = 'GATEWAY_RESTARTED' as SessionEndReason;
-    expect(recordedEnding(ending(opened(1000)), newer).text).toBe('The session ended for a reason this version of Anima does not know.');
+    expect(recordedEnding(ending(opened(1000)), newer).text).toBe('The session ended for a reason this version of Anima.ing does not know.');
     expect(recordedEnding(ending({ closeCode: 1006, gatewayError: undefined, opened: false }), newer).text).toBe(
-      'Could not open the session. The session ended for a reason this version of Anima does not know.',
+      'Could not open the session. The session ended for a reason this version of Anima.ing does not know.',
     );
     expect(recordedEnding(ending(opened(1000)), 'toString' as SessionEndReason).text).toBe(
-      'The session ended for a reason this version of Anima does not know.',
+      'The session ended for a reason this version of Anima.ing does not know.',
     );
   });
 
@@ -81,7 +81,7 @@ describe('the terminal tunnel\'s end message (K4 §8.4, §8.6)', () => {
   it('K4 §8.6: the reason of the end message wins over the close code', () => {
     expect(ending({ closeCode: 1011, gatewayError: undefined, opened: true, endReason: 'AUTH_FAILED' }).reason).toBe('AUTH_FAILED');
     expect(ending({ closeCode: 1000, gatewayError: undefined, opened: true, endReason: 'HOST_KEY_MISMATCH' }).text).toBe(
-      "The device's host key has changed, so Anima did not connect.",
+      "The device's host key has changed, so Anima.ing did not connect.",
     );
   });
 

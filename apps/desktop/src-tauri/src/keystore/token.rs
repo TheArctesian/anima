@@ -38,18 +38,37 @@ impl TokenKind {
 }
 
 const SCHEME: &str = "https://";
+/// Plain `http` is allowed only for this computer (CLI-002), as in `parseHubAddress`.
+/// No `[::1]`: the CSP cannot name an IPv6 literal, so the client never saves one.
+/// Desktop loopback hubs are `127.0.0.1` only (S6 F-1, F-10): `localhost` can resolve to an
+/// address that the loopback owner check does not cover.
+const LOOPBACK_SCHEMES: [&str; 1] = ["http://127.0.0.1"];
 
-/// Input check only, no URL resolution (REPO-003): `https://` then a lowercase host (letters,
+/// Input check only, no URL resolution (REPO-003): `https://` (or `http://` for a loopback host) then a lowercase host (letters,
 /// digits, `.`, `-`, `_`, IPv6 brackets) with an optional port, as `parseHubAddress` produces.
 /// Anything with a path, query, whitespace, uppercase or trailing slash is not the canonical
 /// origin the client sends.
 fn is_canonical_origin(origin: &str) -> bool {
-    origin.strip_prefix(SCHEME).is_some_and(|host| {
+    let after_scheme = origin.strip_prefix(SCHEME).or_else(|| {
+        LOOPBACK_SCHEMES.iter().find_map(|prefix| {
+            let rest = origin.strip_prefix(prefix)?;
+            is_port_or_nothing(rest).then_some(&origin["http://".len()..])
+        })
+    });
+    after_scheme.is_some_and(|host| {
         !host.is_empty()
             && host
                 .chars()
                 .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || ".-_:[]".contains(c))
     })
+}
+
+/// Empty, or `:` and a port of one to five digits: what follows a loopback host.
+fn is_port_or_nothing(rest: &str) -> bool {
+    rest.is_empty()
+        || rest.strip_prefix(':').is_some_and(|port| {
+            (1..=5).contains(&port.len()) && port.bytes().all(|b| b.is_ascii_digit())
+        })
 }
 
 /// The entry for one hub. The account is the hub origin, so a token is only ever read back for

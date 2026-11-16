@@ -71,9 +71,9 @@ describe('a new ntfy or webhook target (CR-14.1)', () => {
     expect(refusals(away(() => undefined))).toEqual([['webhook.headers', HEADERS_AGAIN]]);
     const replaced = away((draft) => {
       draft.webhook.replaceHeaders = true;
-      draft.webhook.headers = [{ name: 'X-Anima-Source', value: FAKE_SECRET }];
+      draft.webhook.headers = [{ name: 'X-Anima.ing-Source', value: FAKE_SECRET }];
     });
-    expect(settingsOf(replaced)).toMatchObject({ webhook: { headers: [{ name: 'X-Anima-Source', value: FAKE_SECRET }] } });
+    expect(settingsOf(replaced)).toMatchObject({ webhook: { headers: [{ name: 'X-Anima.ing-Source', value: FAKE_SECRET }] } });
     const removed = away((draft) => {
       draft.webhook.replaceHeaders = true;
     });

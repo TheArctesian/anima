@@ -11,13 +11,14 @@ use crate::mcp::catalogue::Access;
 use crate::mcp::definition::{Definition, Effect};
 use crate::mcp::outcome::ToolError;
 use crate::releases::documents::{
-    BuildJobLog, ReleaseCancel, ReleaseCreate, ReleaseList, build_job_log, release_cancel,
-    release_create, release_list,
+    BuildJobLog, ReleaseCancel, ReleaseCreate, ReleaseList, ReleasePublishing, build_job_log,
+    release_cancel, release_create, release_list, release_publishing,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ReleaseTool {
     List,
+    Publishing,
     BuildLog,
     Create,
     BuildCancel,
@@ -29,6 +30,10 @@ pub struct ListInput {
     #[serde(flatten)]
     page: Page,
 }
+
+#[derive(Debug, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct PublishingInput {}
 
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -69,7 +74,13 @@ pub struct CancelInput {
 }
 
 impl ReleaseTool {
-    pub const ALL: [Self; 4] = [Self::List, Self::BuildLog, Self::Create, Self::BuildCancel];
+    pub const ALL: [Self; 5] = [
+        Self::List,
+        Self::Publishing,
+        Self::BuildLog,
+        Self::Create,
+        Self::BuildCancel,
+    ];
 
     #[must_use]
     pub fn definition(self) -> Definition {
@@ -78,7 +89,7 @@ impl ReleaseTool {
                 "anima_releases_list",
                 Access::Read,
                 Effect::Reads,
-                "Lists releases of the Anima desktop application, newest first, each with its \
+                "Lists releases of the Anima.ing desktop application, newest first, each with its \
                  build jobs (id, target, state, failure reason). Next: anima_build_log for a \
                  job that failed.",
             )
@@ -90,6 +101,18 @@ impl ReleaseTool {
                     "Give as `after` for older releases.",
                 ),
             ]),
+            Self::Publishing => Definition::new::<PublishingInput>(
+                "anima_release_publishing",
+                Access::Read,
+                Effect::Reads,
+                "Whether this hub can publish a release of the Anima.ing desktop application. \
+                 When false, anima_release_create is refused.",
+            )
+            .returns(&[(
+                "publishing",
+                "boolean",
+                "True when the hub holds the release bucket and the updater key.",
+            )]),
             Self::BuildLog => Definition::new::<LogInput>(
                 "anima_build_log",
                 Access::Read,
@@ -130,6 +153,7 @@ impl ReleaseTool {
     pub async fn call(self, hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
         match self {
             Self::List => list(hub, arguments).await,
+            Self::Publishing => publishing(hub, arguments).await,
             Self::BuildLog => log(hub, arguments).await,
             Self::Create => create(hub, arguments).await,
             Self::BuildCancel => cancel(hub, arguments).await,
@@ -153,6 +177,15 @@ async fn list(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolErr
         ("releases", Value::Array(releases)),
         ("nextCursor", json!(next)),
     ])))
+}
+
+async fn publishing(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {
+    let _: PublishingInput = parse(arguments)?;
+    let on = hub
+        .run::<ReleasePublishing>(release_publishing::Variables)
+        .await?
+        .release_publishing;
+    Ok(Value::Object(object([("publishing", json!(on))])))
 }
 
 async fn log(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, ToolError> {

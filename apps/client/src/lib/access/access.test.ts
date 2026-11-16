@@ -3,7 +3,7 @@ import { AccessTokenError } from '$lib/desktop/token';
 import type { HubResult } from '$lib/hub/hub';
 import { accessApi } from './api';
 import { fakeHub, failure, HUB_ADDRESS, ok } from './access.fixture';
-import { signInNeeded, startGuard } from './guard';
+import { isFirstRun, signInNeeded, startGuard } from './guard';
 import { isSignedOut, routePath } from './routes';
 import { COOKIE_KEPT, signOut, TOKEN_KEPT_AFTER_LOGOUT, TOKEN_KEPT_UNCONFIRMED } from './sign-out';
 
@@ -81,6 +81,52 @@ describe('startGuard on desktop', () => {
   });
 });
 
+describe('the first run (FRN-001, NAV-009)', () => {
+  it('FRN-001: only the desktop app with no saved hub address and no token for the default hub is at its first run', () => {
+    expect(isFirstRun(true, false, null)).toBe(true);
+    expect(isFirstRun(true, false, '')).toBe(true);
+    expect(isFirstRun(true, true, null)).toBe(false);
+    expect(isFirstRun(true, false, 'tok')).toBe(false);
+    expect(isFirstRun(false, false, null)).toBe(false);
+  });
+
+  function firstStart(addressSaved: boolean, token: string | null | Error) {
+    const goToSignIn = vi.fn();
+    const goToWelcome = vi.fn();
+    const read = vi.fn(() => (token instanceof Error ? Promise.reject(token) : Promise.resolve(token)));
+    const me = vi.fn();
+    const run = () => startGuard({ route: '/devices', address: ADDRESS, token: read, desktop: true, me, goToSignIn, firstRun: { addressSaved, goToWelcome } });
+    return { goToSignIn, goToWelcome, run };
+  }
+
+  it('FRN-001: with no saved address and no token the guard shows the first-run choices, not sign-in', async () => {
+    const c = firstStart(false, null);
+    await c.run();
+    expect(c.goToWelcome).toHaveBeenCalledOnce();
+    expect(c.goToSignIn).not.toHaveBeenCalled();
+  });
+
+  it('NAV-009: an install with a saved address goes to sign-in as before', async () => {
+    const c = firstStart(true, null);
+    await c.run();
+    expect(c.goToSignIn).toHaveBeenCalledOnce();
+    expect(c.goToWelcome).not.toHaveBeenCalled();
+  });
+
+  it('FRN-001: a token read that rejects is not a first run: with no saved address it still goes to sign-in', async () => {
+    const c = firstStart(false, new AccessTokenError('denied'));
+    await c.run();
+    expect(c.goToSignIn).toHaveBeenCalledOnce();
+    expect(c.goToWelcome).not.toHaveBeenCalled();
+  });
+
+  it('NAV-009: an install with a token for the default hub stays where it is', async () => {
+    const c = firstStart(false, 'tok');
+    await c.run();
+    expect([c.goToSignIn.mock.calls.length, c.goToWelcome.mock.calls.length]).toEqual([0, 0]);
+  });
+});
+
 describe('startGuard in a browser', () => {
   /** A browser start: no key store; the hub answers `me` with `answer`. */
   function browser(route: string, answer: HubResult<unknown>) {
@@ -127,6 +173,14 @@ describe('startGuard in a browser', () => {
 });
 
 describe('signed-out routes', () => {
+  it.each(['/welcome', '/welcome/create', '/welcome/join'])('FRN-001: the first-run page %s needs no sign-in', (route) => {
+    expect(isSignedOut(route)).toBe(true);
+  });
+
+  it.each(['/welcomex', '/devices/welcome'])('FRN-001: %s is not a first-run page', (route) => {
+    expect(isSignedOut(route)).toBe(false);
+  });
+
   it.each(['/sign-in', '/sign-in/', '/sign-in/x'])('E-3: %s needs no sign-in', (route) => {
     expect(isSignedOut(route)).toBe(true);
   });

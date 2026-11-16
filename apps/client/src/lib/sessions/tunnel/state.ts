@@ -30,7 +30,7 @@ export interface TunnelRefusal {
 }
 
 const REFUSALS: Readonly<Record<TunnelRefusal['problem'], string>> = {
-  'bad-address': 'The hub gave a tunnel address that Anima does not accept.',
+  'bad-address': 'The hub gave a tunnel address that Anima.ing does not accept.',
   'not-opened': 'The session tunnel could not be opened.',
 };
 

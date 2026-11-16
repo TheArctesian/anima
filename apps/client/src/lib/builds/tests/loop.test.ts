@@ -122,7 +122,7 @@ describe('uploading a built job', () => {
     await settle(buildJob(JOB, { ...ports, now: () => new Date('2026-11-09T12:00:00.000Z') }));
     const feed: unknown = JSON.parse(api.uploaded[0]?.feed ?? 'null');
     const entry = { url: `https://releases.anima.ing/linux-x86_64/0.1.12/${UPDATER.name}` };
-    expect(feed).toEqual({ version: '0.1.12', notes: 'Anima 0.1.12', pub_date: '2026-11-09T12:00:00Z', platforms: { 'linux-x86_64': entry } });
+    expect(feed).toEqual({ version: '0.1.12', notes: 'Anima.ing 0.1.12', pub_date: '2026-11-09T12:00:00Z', platforms: { 'linux-x86_64': entry } });
   });
 
   it('BLD-067: a macOS job proposes both Mac platform keys under its own folder', async () => {
@@ -201,7 +201,7 @@ describe('a job that does not finish', () => {
     shell.scripts.checkout = { fails: 'not-on-main' };
     await settle(buildJob(JOB, ports));
     expect(shell.calls).toEqual(['checkout']);
-    expect(api.reports.at(-1)).toMatchObject({ failureReason: 'The commit is not on main of the Anima repository.' });
+    expect(api.reports.at(-1)).toMatchObject({ failureReason: 'The commit is not on main of the Anima.ing repository.' });
   });
 
   it('BLD-010: when the hub refuses a report the job is no longer this builder’s: the step is cancelled and nothing more is sent', async () => {

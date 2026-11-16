@@ -67,6 +67,12 @@ const BUILD_UPLOAD_URLS = graphql(`
   }
 `);
 
+const RELEASE_PUBLISHING = graphql(`
+  query ReleasePublishing {
+    releasePublishing
+  }
+`);
+
 const REPORT_BUILD_UPLOADED = graphql(`
   mutation ReportBuildUploaded($id: ID!, $files: [BuildFileInput!]!, $feed: String!) {
     reportBuildUploaded(id: $id, files: $files, feed: $feed) {
@@ -174,4 +180,10 @@ export function buildsApi(hub: Requests): BuildsApi {
         (value) => value.reportBuildUploaded.state,
       ),
   };
+}
+
+/** Whether the hub can publish a release of Anima.ing (PRO-037); `false` when the hub cannot be asked. */
+export async function releasePublishing(hub: Requests): Promise<boolean> {
+  const result = await hub.request(RELEASE_PUBLISHING, {});
+  return result.ok && result.value.releasePublishing;
 }

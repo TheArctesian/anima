@@ -3,7 +3,7 @@
 
 use std::{
     convert::Infallible,
-    net::{IpAddr, SocketAddr},
+    net::{IpAddr, Ipv6Addr, SocketAddr},
     sync::{Arc, Mutex},
 };
 
@@ -130,6 +130,7 @@ pub(super) const CONNECTION: &str = "connection";
 
 /// Why a refusal event was written.
 const OUTSIDE: &str = "the address is not in a permitted network.";
+const UNNAMED: &str = "it did not start with the header that names a device of the link.";
 const UNTRUSTED: &str =
     "a container or proxy address (172.16.0.0/12) is never taken as a client address.";
 
@@ -157,6 +158,14 @@ impl Edge {
             }
             Err(error) => Verdict::Unavailable(error),
         }
+    }
+
+    /// The events for refusing a connection on the link's socket that names no device of the
+    /// link. All such refusals count as one client under the D-11 limit.
+    pub(super) fn unnamed(&self) -> RefusalEvents {
+        let message = format!("Refused a {CONNECTION} on the link's socket: {UNNAMED}");
+        let nobody = IpAddr::V6(Ipv6Addr::UNSPECIFIED);
+        self.refused(nobody, self.clock.now(), message)
     }
 
     /// Logs `error`, why the list could not be read, at most once a minute however many

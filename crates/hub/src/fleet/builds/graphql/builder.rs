@@ -46,7 +46,7 @@ async fn signed_builder(ctx: &Context<'_>) -> Result<Builder> {
 }
 
 /// The refusal of `buildUploadUrls` on a hub with no release bucket set up.
-const NOT_PUBLISHING: &str = "Publishing is not set up on this hub.";
+pub(super) const NOT_PUBLISHING: &str = "Publishing is not set up on this hub.";
 
 fn build_queue<'a>(ctx: &Context<'a>) -> Result<BuildQueue<'a>> {
     Ok(BuildQueue {

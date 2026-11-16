@@ -21,7 +21,7 @@ use crate::{
             self, Bus,
             process_log::{InternalErrors, RequestSpan},
         },
-        maintenance, metrics, notifications, retention,
+        link, maintenance, metrics, notifications, retention,
         sessions::{self, Live},
         targets::AddressPolicy,
         trust, vpn, web_interfaces,
@@ -38,6 +38,7 @@ pub struct Query(
     devices::graphql::Query,
     events::graphql::Query,
     extensions::graphql::Query,
+    link::graphql::Query,
     maintenance::graphql::Query,
     notifications::graphql::Query,
     projects::graphql::Query,
@@ -56,6 +57,7 @@ pub struct Mutation(
     checks::graphql::Mutation,
     devices::graphql::Mutation,
     extensions::graphql::Mutation,
+    link::graphql::Mutation,
     maintenance::graphql::Mutation,
     metrics::graphql::Mutation,
     notifications::graphql::Mutation,
@@ -154,6 +156,8 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
     )
     .disable_suggestions()
     .extension(access::SignInRequired)
+    // Each request's count of GitHub reads (K-E1 Section 13.1).
+    .extension(projects::RequestReads)
     // Shared dependencies (K3 wiring).
     .data(config)
     .data(clock.clone())
@@ -187,6 +191,8 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
         .data(vpn_broker)
         // sources
         .data(sources)
+        // projects: the changes each API key made this minute (K-E1 Section 13.1)
+        .data(projects::KeyChanges::default())
         .finish()
 }
 

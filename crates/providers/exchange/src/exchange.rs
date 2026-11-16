@@ -71,6 +71,7 @@ fn has_dot_segment(path: &str) -> bool {
 pub struct Response<'a> {
     pub status: u16,
     pub body: Body<'a>,
+    pub link: Option<&'a str>,
 }
 
 /// The body of a reply, as far as the engine read it.

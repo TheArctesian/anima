@@ -11,7 +11,7 @@ use crate::{
 proptest! {
     #[test]
     fn api_006_a_cursor_gives_back_its_place(name in ".{0,80}", id in any::<u128>()) {
-        let after = After { name, id: ProjectId::from(Uuid::from_u128(id)) };
+        let after = After { name, id: ProjectId::from(Uuid::from_u128(id)), rank: None };
         prop_assert_eq!(decode_cursor(&encode_cursor(&after)).unwrap(), after);
     }
 

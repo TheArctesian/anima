@@ -20,9 +20,9 @@ pub const PLAIN_POLICY: &str = "default-src 'none'; style-src 'unsafe-inline'; \
 pub enum Notice {
     /// A ticket that is wrong, used or old.
     LinkEnded,
-    /// `/open` from a browser with no Anima session.
+    /// `/open` from a browser with no Anima.ing session.
     SignIn,
-    /// `/open` from a page that is not Anima's.
+    /// `/open` from a page that is not Anima.ing's.
     NotFromAnima,
     /// `/open` with no attempt waiting for a browser.
     NothingWaiting,
@@ -46,32 +46,34 @@ impl Notice {
     const fn words(self) -> &'static str {
         match self {
             Self::LinkEnded => {
-                "This link was already used or has ended. Go back to Anima and \
+                "This link was already used or has ended. Go back to Anima.ing and \
                 press Connect GitHub again."
             }
-            Self::SignIn => "Sign in to Anima in this browser, then open the link again.",
+            Self::SignIn => "Sign in to Anima.ing in this browser, then open the link again.",
             Self::NotFromAnima => {
-                "This request did not come from Anima's page. Open the link \
-                from Anima again."
+                "This request did not come from Anima.ing's page. Open the link \
+                from Anima.ing again."
             }
-            Self::NothingWaiting => "No GitHub connection is waiting. Start one in Anima.",
+            Self::NothingWaiting => "No GitHub connection is waiting. Start one in Anima.ing.",
             Self::NotThisBrowser => {
                 "This page belongs to a GitHub connection in another \
-                browser, or the link is old. Go back to Anima."
+                browser, or the link is old. Go back to Anima.ing."
             }
-            Self::StepPassed => "This step is done. Go back to Anima to see what comes next.",
-            Self::TryAgain => "Anima could not finish this step. Try again in a moment.",
-            Self::Connected => "GitHub is connected. You can close this tab and go back to Anima.",
+            Self::StepPassed => "This step is done. Go back to Anima.ing to see what comes next.",
+            Self::TryAgain => "Anima.ing could not finish this step. Try again in a moment.",
+            Self::Connected => {
+                "GitHub is connected. You can close this tab and go back to Anima.ing."
+            }
             Self::Finishing => {
-                "The App is made. Anima finishes the connection when GitHub \
+                "The App is made. Anima.ing finishes the connection when GitHub \
                 shows it is installed. You can close this tab."
             }
             Self::MaybeInstalled => {
-                "If you installed the App, Anima finishes the connection. \
+                "If you installed the App, Anima.ing finishes the connection. \
                 You can close this tab."
             }
             Self::Failed => {
-                "Anima could not finish connecting GitHub. Go back to Anima to see \
+                "Anima.ing could not finish connecting GitHub. Go back to Anima.ing to see \
                 what to do next."
             }
         }
@@ -99,9 +101,9 @@ fn document(main: &str) -> String {
     format!(
         "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">\
          <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\
-         <title>Connect GitHub to Anima</title><style>body{{font-family:system-ui,sans-serif;\
+         <title>Connect GitHub to Anima.ing</title><style>body{{font-family:system-ui,sans-serif;\
          max-width:32rem;margin:4rem auto;padding:0 1rem;line-height:1.5}}</style></head>\
-         <body><h1>Connect GitHub to Anima</h1>{main}</body></html>"
+         <body><h1>Connect GitHub to Anima.ing</h1>{main}</body></html>"
     )
 }
 
@@ -116,8 +118,8 @@ pub fn notice(notice: Notice) -> String {
 #[must_use]
 pub fn confirm() -> String {
     document(
-        "<p>Anima makes a GitHub App in your account and keeps its key in the hub. Continue in \
-         a browser that is signed in to Anima.</p>\
+        "<p>Anima.ing makes a GitHub App in your account and keeps its key in the hub. Continue in \
+         a browser that is signed in to Anima.ing.</p>\
          <form method=\"post\" action=\"/connect/github/open\">\
          <button type=\"submit\">Continue to GitHub</button></form>",
     )

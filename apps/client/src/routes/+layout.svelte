@@ -2,12 +2,13 @@
   import { page } from '$app/state';
   import { tick, untrack, type Snippet } from 'svelte';
   import '../styles/global.css';
+  import { forgetListener, tokenFor } from '$lib/access/listener/check';
   import { guardStart, showsSignedOutPage, startAt } from '$lib/access/navigation';
   import { provideDesktopBuilder } from '$lib/builds/desktop.svelte';
+  import { providePublishing, ReleasePublishing } from '$lib/builds/publishing.svelte';
   import { extensionsApi } from '$lib/extensions/api';
   import { ExtensionsStore, provideExtensions } from '$lib/extensions/store.svelte';
   import { provideHub } from '$lib/hub/context';
-  import { readAccessToken } from '$lib/desktop/token';
   import { createHub, type HubAddress } from '$lib/hub/hub';
   import { crossFade } from '$lib/motion/roles/transitions';
   import { shiftShell } from '$lib/nav/banner-shift';
@@ -70,12 +71,26 @@
   const start = startAt(page.url);
   const shell = start.kind === 'shell' ? startShell(start.address) : null;
 
-  /** The operator shell's parts: the hub and its start guard, the clock, updates, the builder and the session strip. */
-  function startShell(address: HubAddress) {
+  /** The hub the shell talks to, provided to every page, with its token read behind the listener check (F-10). */
+  function startHub(address: HubAddress) {
     // The hub address is the stored setting on desktop and the serving origin in a browser (CLI-002, E-2); the token is
     // read from the desktop key store per call, and is none in a browser, where the cookie travels by itself (CLI-003).
-    const hub = createHub({ address, token: readAccessToken });
+    // On this computer's hub address the token is read only once a program of this user is found listening there (F-10).
+    // The socket reconnects by itself after a dead hub, so its reader asks the shell before every connection (MF-1).
+    const desktop = capabilities().keyStore;
+    const hub = createHub({ address, token: tokenFor(address, desktop), socketToken: tokenFor(address, desktop, { fresh: true }) });
     provideHub(hub);
+    // A hub that stops answering may come back as another program on the same port: once the connection is not live,
+    // the next request checks again (M-C, MF-1).
+    $effect(() => {
+      if (hub.status.current.connection !== 'connected') untrack(() => forgetListener(address.origin));
+    });
+    return hub;
+  }
+
+  /** The operator shell's parts: the hub and its start guard, the clock, updates, the builder and the session strip. */
+  function startShell(address: HubAddress) {
+    const hub = startHub(address);
     guardStart(page.url, hub);
     // Which extensions are on decides the bar's entries and Settings (EXT-002); read once signed in.
     const extensions = new ExtensionsStore(extensionsApi(hub));
@@ -87,6 +102,12 @@
     provideDesktopUpdates();
     // A computer enrolled as a builder builds while the app runs (BLD-026).
     provideDesktopBuilder(hub);
+    // Builds show only for a hub that can publish a release (PRO-038); read once signed in.
+    const publishing = new ReleasePublishing(hub);
+    providePublishing(publishing);
+    $effect(() => {
+      if (capabilities().builds && !showsSignedOutPage(page.url)) void publishing.load();
+    });
 
     // Each session view starts its own sessions, since only it knows its display (D-7); the store ends them (D-11).
     const api = sessionsApi(hub);
@@ -139,7 +160,7 @@
       });
     });
 
-    return { api, clock, sessions, navigate, extensions };
+    return { api, clock, sessions, navigate, extensions, publishing };
   }
 </script>
 
@@ -150,13 +171,14 @@
     <main>{@render children()}</main>
   </div>
 {:else if shell !== null}
-  {@const { api, clock, sessions, navigate, extensions } = shell}
+  {@const { api, clock, sessions, navigate, extensions, publishing } = shell}
   <div class="shell">
     <Nav
       pathname={page.url.pathname}
       now={clock.current}
       onnavigate={navigate}
       projectsOn={extensions.isOn('projects')}
+      buildsOn={publishing.on}
       iconOnly={nav.iconOnly}
       {collapsed}
       canCollapse={!nav.compact}

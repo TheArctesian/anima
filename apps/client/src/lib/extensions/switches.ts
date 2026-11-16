@@ -30,7 +30,7 @@ function hintOf(extension: Extension, kind: SwitchKind, all: readonly Extension[
     case 'unbuilt':
       return 'Not built yet';
     case 'fixed':
-      return 'Part of Anima. Always on.';
+      return 'Part of Anima.ing. Always on.';
     case 'needed': {
       const dependants = list(names(extension.neededBy, all));
       return `${dependants} is on and needs it. Set ${dependants} off first.`;
