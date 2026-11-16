@@ -70,15 +70,31 @@ relay and domain settings (S11), many hubs (S13), the metrics agent over the lin
   - `anima-hub operator show`: one JSON line, `{"name":…,"totp":true|false}` or `null`.
   - `anima-hub operator totp <name> --new`: makes a secret and prints one JSON line with the
     secret (base32) and the `otpauth://` URI. It saves nothing. No terminal is needed.
-  - `anima-hub operator totp <name> --confirm`: reads the secret and one code from standard input
-    (two lines). It saves the secret (sealed) only when the code is correct now, records the code's
-    step so that the code cannot be used again, and removes the operator's tokens, as
-    `operator totp` does.
+  - `anima-hub operator create <name>`: reads the password, the secret and one code from
+    standard input (three lines). Only when the code is correct now, it makes or replaces the
+    operator with the password and the sealed secret **in one transaction**, records the code's
+    step so that the code cannot be used again, and removes the operator's tokens. So there is
+    never an operator without TOTP (security review M3).
 - **F-5.** The first run requires TOTP (OD-2). There is no "skip". The client signs in after the
-  confirmation with the next code.
-- `anima-local-hub account status|set <name>|totp-new <name>|totp-confirm <name>` runs the
-  installed `anima-hub` with the database URL file and the key file of the hub root. The secrets
-  pass through standard input and standard output only (LOG-007).
+  creation with the next code. In the link mode the hub refuses sign-in for an operator with no
+  TOTP secret (M3), so `operator set` and `operator totp --disable` cannot open a hub on the link.
+- `anima-local-hub account status|totp-new <name>|create <name>` runs the installed `anima-hub`
+  with the database URL file and the key file of the hub root. The secrets pass through standard
+  input and standard output only (LOG-007).
+- **F-9 (M1).** Script in the main web view must not be able to take the account. The shell
+  permits `create` only while `account status` is `null` (the first run). Recovery (2.8) is one
+  shell command that first shows a native confirmation dialog from Rust, which script cannot
+  answer; only then it permits one `create` for 5 minutes. A user-presence check (macOS
+  LocalAuthentication) is a later addition (Section 5, OR-S6-6).
+- **F-10 (M2).** Before the client uses a loopback hub address, the shell checks that a process of
+  the same user listens on that loopback port (macOS: `lsof` as the user, which sees only the
+  user's own processes; Linux: the owner uid in `/proc/net/tcp`). For a joined device the port
+  must also be the one that the shell's own `anima-link device` child reported. Otherwise the
+  client sends nothing (no token, no password) and shows the error. Later: a Unix socket or a
+  pinned certificate (S4 Section 7.4 item 2).
+- **F-11 (S1).** In the link mode the hub refuses a request whose `Host` is not a loopback literal,
+  and a request whose `Origin` is present and not a client origin of the application. A page in a
+  browser (DNS rebinding) then cannot drive sign-in failures into the throttle of `127.0.0.1`.
 
 ### 2.4 The link is a member of the local hub
 
@@ -117,6 +133,10 @@ relay and domain settings (S11), many hubs (S13), the metrics agent over the lin
 - The shell then runs `anima-link device -state <link folder> -listen 127.0.0.1:<port>` while the
   application runs, reads the `local=` address from the ready line and starts it again after an
   end (10 s). The client saves `http://127.0.0.1:<port>` as the hub address and shows the sign-in.
+- **S3 of the review.** A successful join removes the saved token of that origin, so a token of
+  an earlier hub is never sent to a new one.
+- The join screen shows the hub's address fingerprint, so that a person who got a false invite
+  can see that it is another hub.
 - A second use of the invite gets no answer from the hub (LNK-003); the client says that the
   invite is used, expired or wrong, or that the hub is off.
 
@@ -140,16 +160,26 @@ relay and domain settings (S11), many hubs (S13), the metrics agent over the lin
 | The link key (`<hub root>/link`) | The link makes a new key and a new hub address at its next start. Each device joins again with a new invite (F-7). What the hub bound to the old link addresses stays unused (E-10). | Yes, by F-7. |
 | The hub computer | Restore from a backup (S9). | No |
 
-- **F-8.** Recovery is local only. A joined device, an API key or a login token cannot reset the
+- **F-8.** Recovery is local only, behind the native confirmation of F-9. A joined device, an API key or a login token cannot reset the
   password or TOTP. Reason: the person at the hub computer's user account can already read the
   database and the key; a remote reset would be a new path to take the hub.
-- The creation flow shows where `vault.key` is and that it must be backed up with the database.
+- The creation flow offers "Save a copy of the hub key": a native save dialog of the shell writes
+  `vault.key` to a file that the operator chooses (mode 0600). The web view never sees the key.
+- The recovery screen also lists the link devices with "Revoke", so a device that an attacker
+  joined with a stolen token can be removed.
+- The guide says: a Time Machine backup holds the database, `vault.key` and the link key together
+  (FileVault and an encrypted backup disk protect them); a stolen hub computer is protected only
+  by FileVault; an operator who loses the TOTP device away from the hub computer must wait until
+  they are at it (OR-S6-2).
 
 ### 2.9 Acceptance criterion 4 (no open inbound port on a public interface)
 
 The hub, the gateway and PostgreSQL listen on loopback or on Unix sockets. `anima-link` holds one
-UDP socket for WireGuard; it answers only the keys in its list (LNK-002) and serves no TCP port.
-The run-through records `lsof -i` for each program.
+UDP socket for WireGuard on every interface; it answers only the keys in its list (LNK-002) and
+serves no TCP port. So the criterion holds as "no TCP listener off loopback, and one UDP socket that
+answers only permitted keys" (security review S5). The library's port mapper (UPnP, NAT-PMP, PCP)
+can ask the router to open a port; the run-through checks whether the Tailcat build turns it off,
+and records `lsof -i` for each program.
 
 ## 3. Tasks
 
@@ -177,10 +207,12 @@ Under load, re-run alone `ra_031_without_a_wake…`, `sources::controls::src_004
 
 | ID | Question | Options | Recommendation |
 | --- | --- | --- | --- |
-| OR-S6-1 | `vault.key` is lost and the database is present, with no backup | (a) Only "put the key back"; else start a new hub. (b) A "reset sealed data" step: a new key, every sealed value (device credentials, TOTP secrets, other sealed columns) removed, devices, checks and history kept; the operator enters credentials again. (c) A copy of the key in the macOS Keychain or the Secret Service at creation. | (a) now, (b) as an S9 item. (c) is refused: the unit starts with no person there to permit a Keychain read (S4 Section 6). |
+| OR-S6-1 | `vault.key` is lost and the database is present, with no backup | (a) Only "put the key back"; else start a new hub. (b) A "reset sealed data" step: a new key, every sealed value (device credentials, TOTP secrets, other sealed columns) removed, devices, checks and history kept; the operator enters credentials again. (c) A copy of the key in the macOS Keychain or the Secret Service at creation. | (a) now, (b) as an S9 item. (c) only if it is never synchronized (no iCloud Keychain); the security review prefers the "save a copy" step of 2.8, which S6 builds. |
 | OR-S6-2 | Recovery codes, so that an operator away from the hub computer can sign in without the TOTP device | (a) None: recovery is on the hub computer only (F-8). (b) Ten single-use codes at creation; a K1 change to `login`. | (a). A hub on a laptop is near its operator. (b) adds a remote path past the second factor. |
 | OR-S6-3 | K1: `linkDevices`, `createLinkInvite`, `revokeLinkDevice` | Planned by S5 Section 7.6 and CMD-030. | Approve with the spec delta. |
 | OR-S6-4 | `ANIMA_LINK_CONTROL` (not in K7, as `ANIMA_LINK_SOCKET`) | Add both rows to K7 | Approve with the spec delta. |
+| OR-S6-6 | A user-presence check (macOS LocalAuthentication, Linux polkit) before recovery, in addition to the native dialog of F-9 | Now, or later | Later: the native dialog already stops script; the check adds a password prompt for a person at the unlocked computer. |
+| OR-S6-7 | `connect-src` permits every loopback port (the device link's port is chosen at the join) | Accept, or one fixed port range | Accept, with F-10; the gateway's missing sign-in (S4 Section 7.4 item 4) is the real fault and stays open. |
 | OR-S6-5 | Raw-sample retention of 3 days in the application mode (S3 D-9) | Set at the first run, or not | Not set by S6 until the DB-009 delta is approved. |
 
 ## 6. Results
