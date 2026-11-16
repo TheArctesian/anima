@@ -120,9 +120,9 @@ pub(super) struct SignedIn {
 /// records (D-4).
 ///
 /// Every attempt is recorded. A wrong password, an unknown username, a wrong, reused or
-/// missing TOTP code, no TOTP secret when `attempt.totp_required`, a TOTP secret that does not open, an account changed during the check
-/// and a throttled attempt all give the answer of `Error::WrongCredentials`, and all but the
-/// throttled one count toward the throttle.
+/// missing TOTP code, no TOTP secret when `attempt.totp_required`, a TOTP secret that does not
+/// open, an account changed during the check and a throttled attempt all give the answer of
+/// `Error::WrongCredentials`, and all but the throttled one count toward the throttle.
 pub(super) async fn login(
     db: &PgPool,
     bus: &Bus,
