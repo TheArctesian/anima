@@ -36,8 +36,8 @@ fn run(
 fn bundle(folder: &Path, macos: bool, script: &str) -> PathBuf {
     let (programs, tree) = if macos {
         (
-            "Anima.app/Contents/MacOS",
-            "Anima.app/Contents/Resources/database",
+            "Anima.ing.app/Contents/MacOS",
+            "Anima.ing.app/Contents/Resources/database",
         )
     } else {
         ("usr/bin", "usr/lib/Anima/database")
