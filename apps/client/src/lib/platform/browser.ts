@@ -13,6 +13,7 @@ export const browserCapabilities: Capabilities = {
   builds: false,
   mcpPermissions: false,
   commandLine: false,
+  stayAwake: false,
   overlayTitleBar: false,
 };
 

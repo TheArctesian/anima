@@ -85,6 +85,7 @@ Notes:
 - Each extension needs the engine (PH-E-000). The extensions are independent workflows (XP-004).
 - The native VNC gateway (S2) has commits on `main` and no row in this table. The operator must give it a tier ([s2-vnc-tasks.md](research/one-click/s2-vnc-tasks.md)).
 - The bundled PostgreSQL (S3) and the hub as a background program (S4) are in the same state: built, and no row in this table. The operator must give the one-click work a tier ([s3-database-tasks.md](research/one-click/s3-database-tasks.md), [s4-local-hub-tasks.md](research/one-click/s4-local-hub-tasks.md)).
+- The stay-awake control (S8) is built on its branch and has no row in this table. The operator must give it a tier ([s8-stay-awake-tasks.md](research/one-click/s8-stay-awake-tasks.md)).
 - The states in this table were read on 2026-11-12, except where a row gives a later date.
 - Phase 4 (Proxmox VE) is withdrawn (R-109). Session recording is deferred (R-113). This plan does not include them.
 
@@ -109,6 +110,7 @@ One document owns each concern. Add a requirement to its owner, not to this docu
 | Who did an action: the actor kinds User, Agent and Hub in the audit log and the event log | [design-spec.md](design-spec.md) Section 3.8.1 | LOG-012 to LOG-020 |
 | Installation: the disk image and the AppImage, with the `anima` program inside | [design-spec.md](design-spec.md) Section 3.11 | INS-001 to INS-009 |
 | The marketing website with the install links | [design-spec.md](design-spec.md) Section 3.12 | SITE-001 to SITE-012 |
+| Stay awake: the desktop application keeps its computer on | [design-spec.md](design-spec.md) Section 3.13 | AWK-001 to AWK-008 |
 | Cloudflare source for Projects. A new Activity extension for Spotify and Screen Time | [new-sources.md](programme/proposals/new-sources.md) | None until each provider is verified |
 | Other persons: self-hosting and a hosted option | [other-operators.md](programme/proposals/other-operators.md) | None yet |
 | Rulings and the state of each package | [programme/programme.md](programme/programme.md), [programme/handoff.md](programme/handoff.md) | R, CR |
@@ -199,6 +201,7 @@ This table is the only list of the plans of Anima. A document that is not in thi
 | [research/one-click/s4-local-hub-tasks.md](research/one-click/s4-local-hub-tasks.md) | Task breakdown: the hub as a background program | In progress | Its Section 2: T1 to T8 have commits; T9 and T10 are not started. No operator ruling on its design. Its parent plan `docs/one-click-plan.md` is not on `main`. |
 | [research/one-click/s3-spec-delta.md](research/one-click/s3-spec-delta.md) | Proposal: spec delta for the bundled PostgreSQL | Draft | Not approved. It changes no requirement until the operator approves it. |
 | [research/one-click/s4-spec-delta.md](research/one-click/s4-spec-delta.md) | Proposal: spec delta for the hub as a background program | Draft | Not approved. It changes no requirement until the operator approves it. |
+| [research/one-click/s8-stay-awake-tasks.md](research/one-click/s8-stay-awake-tasks.md) | Task breakdown: stay awake | In progress | Its Section 5: T1 to T6 have commits. The live checks of its Section 6 wait for the operator. Its parent plan `docs/one-click-plan.md` is not on `main`. |
 | [programme/proposals/projects-and-builds.md](programme/proposals/projects-and-builds.md) | Proposal | In progress | Decided (OD-W11, OD-W12). Connect GitHub is on `main`. |
 | [programme/proposals/jobs.md](programme/proposals/jobs.md) | Proposal | Draft | Direction decided (OD-W10). No requirement is approved. |
 | [programme/proposals/coordinator-standby.md](programme/proposals/coordinator-standby.md) | Proposal | Draft | Direction decided (OD-W9). No requirement is approved. |
