@@ -13,8 +13,8 @@ use super::{
     remote::{DeviceRdp, DeviceVnc},
     ssh::DeviceSsh,
     standing::{
-        ChecksOf, GpusOf, ReadingsOf, ResolvedIpOf, StaleOf, StatusOf, SuggestionsOf, UptimeOf,
-        WebInterfacesOf,
+        AgentVersionOf, ChecksOf, GpusOf, ReadingsOf, ResolvedIpOf, StaleOf, StatusOf,
+        SuggestionsOf, UptimeOf, WebInterfacesOf,
     },
 };
 use crate::{
@@ -211,6 +211,19 @@ impl Device {
             .await
             .map_err(internal)?;
         Ok(stale.unwrap_or(true))
+    }
+
+    /// The version of the device's agent from its last batch, when the source is AGENT; null
+    /// for an agent older than R-118, one that has not pushed since its token was made, and
+    /// any other source (R-118, ROL-051).
+    async fn agent_version(&self, ctx: &Context<'_>) -> Result<Option<String>> {
+        if self.metrics_source != MetricsSource::Agent {
+            return Ok(None);
+        }
+        schema_dependency::<DataLoader<AgentVersionOf>>(ctx)?
+            .load_one(self.id)
+            .await
+            .map_err(internal)
     }
 
     /// Most sessions open at once; null is no limit (RA-036).

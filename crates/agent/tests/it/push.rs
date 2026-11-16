@@ -313,3 +313,20 @@ async fn met_014_a_point_older_than_59_minutes_is_dropped_before_a_send() {
     let last = hub.seen("push").pop().expect("a push");
     assert_eq!(pushed_times(&last.body), [36_000]);
 }
+
+#[tokio::test]
+async fn r_118_each_batch_carries_the_version_of_the_agent() {
+    let hub = FakeHub::start().await;
+    let mut rig = rig(&hub, 1, year());
+    feed(&mut rig, 1, 2);
+    rig.pusher.push_due(at(30)).await;
+    feed(&mut rig, 3, 2);
+    rig.pusher.push_due(at(50)).await;
+    let versions: Vec<_> = hub
+        .seen("push")
+        .iter()
+        .map(|seen| seen.body.get("agentVersion").cloned())
+        .collect();
+    let version = serde_json::json!(env!("CARGO_PKG_VERSION"));
+    assert_eq!(versions, [Some(version.clone()), Some(version)]);
+}

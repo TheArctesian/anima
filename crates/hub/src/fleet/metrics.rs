@@ -148,6 +148,18 @@ pub async fn stale_agents(db: &PgPool, devices: &[DeviceId]) -> Result<HashSet<D
     Ok(ingest::without_fresh_agent(db, devices).await?)
 }
 
+/// The version of the agent of each of `devices`, from its last batch; a device whose agent
+/// sent none (older than R-118), or that has no agent, has no entry (R-118, ROL-051).
+///
+/// # Errors
+/// `Database` when the query fails.
+pub async fn agent_versions(
+    db: &PgPool,
+    devices: &[DeviceId],
+) -> Result<HashMap<DeviceId, String>, Error> {
+    Ok(ingest::agent_versions(db, devices).await?)
+}
+
 /// Creates the sample partitions of today (UTC) and the next 7 days (DB-004).
 ///
 /// # Errors

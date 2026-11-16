@@ -4,6 +4,7 @@ Status: **frozen for Phase 3** (CR-15, R-092; change only through a programme ru
 WP-54 T2. Spec: MET-011 to MET-020, LOG-007, NET-002, NET-003, P3-004. Rust types: `agent_core::wire`.
 The drive kinds and `drives` (MET-027, MET-028) were added by the operator's ruling of 2026-11-12 (PKG-001, CR-24).
 The link origin of Section 1 was added by the operator's ruling of 2026-11-15 (one-click plan, S5).
+The `agentVersion` member of Section 4 was added by R-118 (operator, 2026-11-16).
 
 This contract is the whole interface between `anima-agent` and the hub. The agent makes no other request.
 
@@ -139,6 +140,10 @@ Request:
   `hdd` or `disk`, and the hub reads a kind it does not know as `disk`; `sizeBytes` is at most 2^63 − 1;
   `mounts` holds at most 32 mount points, each 1 to 128 bytes starting with `/`, no control character, and is
   empty for a drive that is not mounted. macOS sends no `drives` (MET-031).
+- `agentVersion`: optional (R-118). The version of the `anima-agent` that sent the batch, in each batch. It
+  is 1 to 64 bytes of ASCII letters, digits, `.`, `-` and `+`, and starts with a digit; any other text is
+  `MALFORMED`. A release build carries the release version (`ANIMA_VERSION`, as `anima` does); any other build
+  carries the crate version. Absent means an agent older than R-118, and a hub older than R-118 ignores it.
 
 The hub:
 
@@ -156,6 +161,8 @@ The hub:
 - with `drives` present, replaces the device's drives with it in the same transaction; `[]` means the device
   has no drives now, and an absent `drives` leaves them as they are. A drive that leaves the list keeps its
   series and their history (MET-027);
+- keeps the `agentVersion` of the newest accepted batch, or no version when that batch had none, and
+  forgets it when it gives the device a new token (R-118). `Device.agentVersion` serves it;
 - records the time of the last accepted batch for MET-018 (R-098 a). Any accepted batch resets it, even one
   whose series the hub all ignores; a refused batch does not. 30 seconds after the last accepted batch the
   device's metrics are stale: the hub writes one event (source `metrics`, severity warning) and serves

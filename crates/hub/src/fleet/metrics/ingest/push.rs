@@ -85,6 +85,7 @@ async fn push(
         batch.check(device.into(), now).map_err(refused)?
     };
     let rows = samples::rows(&accepted.points);
+    let agent_version = accepted.agent_version;
     let gpus: Option<Vec<Gpu>> = accepted
         .gpus
         .map(|gpus| gpus.into_iter().map(Gpu::from).collect());
@@ -97,6 +98,7 @@ async fn push(
         token: token.hash(),
         gpus: gpus.as_deref(),
         drives: drives.as_deref(),
+        agent_version: agent_version.as_deref(),
     };
     drop(token);
     let _request = state.turns.request().await.ok_or(Stop::Busy)?;

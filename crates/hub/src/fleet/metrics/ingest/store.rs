@@ -1,7 +1,9 @@
-//! All SQL on `metrics.agents` and `metrics.enrolments` (K2 0710, 0712). Lookups are by hash
+//! All SQL on `metrics.agents` and `metrics.enrolments` (K2 0710, 0712, 0715). Lookups are by hash
 //! only; the time is a parameter, and a value is usable until, not at, its expiry.
 
 use agent_core::wire::{CodeHash, TokenHash};
+use std::collections::HashMap;
+
 use chrono::{DateTime, Utc};
 use sqlx::{PgConnection, PgPool};
 
@@ -55,7 +57,8 @@ pub(super) async fn use_code(
 }
 
 /// Makes `token` the device's only token, with no renewed one beside it. The stale timer
-/// starts again: the new agent has sent no batch yet (MET-018).
+/// starts again, and the version is forgotten: the new agent has sent no batch yet (MET-018,
+/// R-118).
 pub(super) async fn replace_token(
     conn: &mut PgConnection,
     device: DeviceId,
@@ -66,7 +69,7 @@ pub(super) async fn replace_token(
         "INSERT INTO metrics.agents (device_id, token_sha256, expires_at) VALUES ($1, $2, $3) \
          ON CONFLICT (device_id) DO UPDATE SET token_sha256 = excluded.token_sha256, \
              expires_at = excluded.expires_at, next_token_sha256 = NULL, next_expires_at = NULL, \
-             last_batch_at = NULL, stale_at = NULL",
+             last_batch_at = NULL, stale_at = NULL, agent_version = NULL",
     )
     .bind(device)
     .bind(token.to_bytes().as_slice())
@@ -179,6 +182,42 @@ pub(super) async fn take_batch(
     .bind(now)
     .fetch_optional(conn)
     .await
+}
+
+/// Records `version`, the agent version of the batch accepted at `at`, in the caller's
+/// transaction after [`take_batch`]; `None` is an agent older than R-118. A batch that started
+/// earlier and commits after a newer one leaves the newer one's version (R-118).
+pub(super) async fn record_version(
+    conn: &mut PgConnection,
+    device: DeviceId,
+    version: Option<&str>,
+    at: DateTime<Utc>,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        "UPDATE metrics.agents SET agent_version = $2 \
+         WHERE device_id = $1 AND last_batch_at = $3",
+    )
+    .bind(device)
+    .bind(version)
+    .bind(at)
+    .execute(conn)
+    .await?;
+    Ok(())
+}
+
+/// The agent version of each of `devices` whose last batch had one (R-118).
+pub(in crate::fleet::metrics) async fn agent_versions(
+    db: &PgPool,
+    devices: &[DeviceId],
+) -> Result<HashMap<DeviceId, String>, sqlx::Error> {
+    let rows: Vec<(DeviceId, String)> = sqlx::query_as(
+        "SELECT device_id, agent_version FROM metrics.agents \
+         WHERE device_id = ANY($1) AND agent_version IS NOT NULL",
+    )
+    .bind(devices)
+    .fetch_all(db)
+    .await?;
+    Ok(rows.into_iter().collect())
 }
 
 /// The devices whose agent has sent a batch, none since before `cutoff`, and is not marked

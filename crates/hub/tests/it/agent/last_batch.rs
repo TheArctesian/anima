@@ -1,7 +1,8 @@
-//! MET-018, R-098 a: the stale watch the hub spawns marks an agent stale once no batch came for
-//! more than 30 seconds, with one warning; the next batch clears it with one note.
-//! `Device.metricsStale` serves the mark, and a stale agent never makes the device Down. The
-//! time of the last batch never moves back.
+//! What the hub keeps of an agent's last batch. MET-018, R-098 a: the stale watch the hub
+//! spawns marks an agent stale once no batch came for more than 30 seconds, with one warning;
+//! the next batch clears it with one note. `Device.metricsStale` serves the mark, and a stale
+//! agent never makes the device Down. The time of the last batch never moves back. R-118: the
+//! version of the newest batch is kept and served as `Device.agentVersion`.
 
 use std::time::Duration;
 
@@ -16,7 +17,7 @@ use sqlx::PgPool;
 
 use super::{
     batches::cpu_batch,
-    harness::{Agents, PVE_01, metrics_events, pushing_now},
+    harness::{Agents, PVE_01, metrics_events, pushing_now, refusal},
 };
 
 const STALE: &str = "The agent on pve-01 sent no metrics for 30 seconds; they are stale.";
@@ -109,4 +110,92 @@ async fn met_018_the_time_of_the_last_batch_never_moves_back(pool: PgPool) {
             .await
             .unwrap();
     assert_eq!(last, now);
+}
+
+/// The device's `agentVersion` as the operator reads it.
+async fn agent_version(agents: &Agents) -> Value {
+    let query = "query($id: ID!) { device(id: $id) { agentVersion } }";
+    let answer: Value = agents.operate(query, json!({ "id": PVE_01 })).await;
+    assert!(answer["errors"].is_null(), "{answer}");
+    answer["data"]["device"]["agentVersion"].clone()
+}
+
+/// A CPU batch of PVE-01 at `at`, signed with `version` when there is one.
+fn signed(at: chrono::DateTime<chrono::Utc>, version: Option<&str>) -> Value {
+    let mut batch = cpu_batch(PVE_01, at, 5.0);
+    if let Some(version) = version {
+        batch["agentVersion"] = json!(version);
+    }
+    batch
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn r_118_the_version_of_the_newest_batch_is_served_and_an_older_agent_has_none(pool: PgPool) {
+    let now = pushing_now(&pool).await;
+    let agents = Agents::at(&pool, now).await;
+    let token = agents.token_for(PVE_01).await;
+    assert_eq!(agent_version(&agents).await, Value::Null, "no batch yet");
+
+    let pushed = agents.push(&token, &signed(now, Some("0.3.1"))).await;
+    assert_eq!(pushed.0, StatusCode::NO_CONTENT);
+    assert_eq!(agent_version(&agents).await, json!("0.3.1"));
+
+    agents.clock.advance(TimeDelta::seconds(10));
+    let later = now + TimeDelta::seconds(10);
+    let pushed = agents.push(&token, &signed(later, Some("0.4.0"))).await;
+    assert_eq!(pushed.0, StatusCode::NO_CONTENT);
+    assert_eq!(agent_version(&agents).await, json!("0.4.0"));
+
+    // A batch that started earlier and commits later leaves the newer version.
+    agents.clock.advance(TimeDelta::seconds(-20));
+    let pushed = agents.push(&token, &signed(now, Some("0.3.1"))).await;
+    assert_eq!(pushed.0, StatusCode::NO_CONTENT);
+    assert_eq!(agent_version(&agents).await, json!("0.4.0"));
+
+    // An agent older than R-118 sends no version: the hub no longer claims one.
+    agents.clock.advance(TimeDelta::seconds(30));
+    let pushed = agents
+        .push(&token, &signed(later + TimeDelta::seconds(10), None))
+        .await;
+    assert_eq!(pushed.0, StatusCode::NO_CONTENT);
+    assert_eq!(agent_version(&agents).await, Value::Null);
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn r_118_a_new_token_forgets_the_version_and_a_bad_one_stores_nothing(pool: PgPool) {
+    let now = pushing_now(&pool).await;
+    let agents = Agents::at(&pool, now).await;
+    let token = agents.token_for(PVE_01).await;
+    let pushed = agents.push(&token, &signed(now, Some("0.3.1"))).await;
+    assert_eq!(pushed.0, StatusCode::NO_CONTENT);
+
+    agents.clock.advance(TimeDelta::seconds(10));
+    let bad = signed(now + TimeDelta::seconds(10), Some("0.3.1 beta"));
+    assert_eq!(
+        agents.push(&token, &bad).await,
+        (StatusCode::BAD_REQUEST, refusal("MALFORMED"))
+    );
+    assert_eq!(
+        agent_version(&agents).await,
+        json!("0.3.1"),
+        "a refused batch changes nothing"
+    );
+
+    let again = agents.token_for(PVE_01).await;
+    assert_eq!(
+        agent_version(&agents).await,
+        Value::Null,
+        "a new agent has sent nothing yet"
+    );
+    let pushed = agents
+        .push(&again, &signed(now + TimeDelta::seconds(10), Some("0.4.0")))
+        .await;
+    assert_eq!(pushed.0, StatusCode::NO_CONTENT);
+    assert_eq!(agent_version(&agents).await, json!("0.4.0"));
 }

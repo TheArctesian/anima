@@ -21,13 +21,18 @@ const OLDEST: TimeDelta = TimeDelta::hours(1);
 /// The furthest ahead of the hub's clock a point may be (MET-017).
 const AHEAD: TimeDelta = TimeDelta::seconds(60);
 
+/// The longest agent version a batch may carry, in bytes (R-118).
+const MAX_VERSION_BYTES: usize = 64;
+
 /// What the hub takes from a batch: the points of the series whose kind it knows, each with
-/// its non-null values only, and the GPUs and drives when the batch has them (K8 Section 4).
+/// its non-null values only, the GPUs and drives when the batch has them, and the version of
+/// the agent when it sent one (K8 Section 4, R-118).
 #[derive(Clone, Debug, PartialEq)]
 pub struct Accepted {
     pub points: Vec<Point>,
     pub gpus: Option<Vec<BatchGpu>>,
     pub drives: Option<Vec<BatchDrive>>,
+    pub agent_version: Option<String>,
 }
 
 impl Batch {
@@ -46,7 +51,8 @@ impl Batch {
         let keys = series_keys(&self.series).ok_or(RefusalCode::Malformed)?;
         let shaped = points_fit(&self.points, &keys)
             && gpus_fit(self.gpus.as_deref())
-            && drives_fit(self.drives.as_deref());
+            && drives_fit(self.drives.as_deref())
+            && self.agent_version.as_deref().is_none_or(is_version);
         if !shaped {
             return Err(RefusalCode::Malformed);
         }
@@ -62,6 +68,7 @@ impl Batch {
             points,
             gpus: self.gpus,
             drives: self.drives,
+            agent_version: self.agent_version,
         })
     }
 }
@@ -163,6 +170,20 @@ fn drives_fit(drives: Option<&[BatchDrive]>) -> bool {
                     .iter()
                     .all(|mount| mount.starts_with('/') && is_label(mount))
         })
+}
+
+/// An agent version: 1 to 64 bytes of ASCII letters, digits, `.`, `-` and `+`, starting with a
+/// digit, so a version of Semantic Versioning fits and no control character or space does
+/// (R-118).
+fn is_version(text: &str) -> bool {
+    text.len() <= MAX_VERSION_BYTES
+        && text
+            .bytes()
+            .next()
+            .is_some_and(|first| first.is_ascii_digit())
+        && text
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'-' | b'+'))
 }
 
 /// The oldest point is at most 1 hour old and the newest at most 60 seconds ahead of `now`.

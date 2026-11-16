@@ -24,6 +24,14 @@ pub struct Batch {
     /// (MET-027). An agent older than drives never sends it.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub drives: Option<Vec<BatchDrive>>,
+    /// The version of the `anima-agent` that sent the batch (R-118, ROL-051). An agent older
+    /// than R-118 sends none, and a hub older than R-118 ignores it (K8 Section 1).
+    #[serde(
+        rename = "agentVersion",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub agent_version: Option<String>,
 }
 
 /// One column of a batch. `kind` is text, so a kind this hub does not know can be ignored.
@@ -149,6 +157,16 @@ impl Batch {
                 .collect(),
             gpus,
             drives,
+            agent_version: None,
+        }
+    }
+
+    /// This batch, signed with the version of the agent that sends it (R-118).
+    #[must_use]
+    pub fn from_agent(self, version: &str) -> Self {
+        Self {
+            agent_version: Some(version.to_owned()),
+            ..self
         }
     }
 }

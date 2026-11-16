@@ -20,6 +20,9 @@ use crate::report;
 use crate::token_store::{Credential, TokenStore};
 use pacing::{Action, Backoff, RHYTHM};
 
+/// The version of this agent, sent with each batch (R-118); `build.rs` sets it for a release.
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+
 /// What the sampling side hands the pusher.
 pub enum Event {
     Point(Point),
@@ -122,7 +125,7 @@ impl Pusher {
                 return Round::Sent;
             };
             let announced = (self.gpus.clone(), self.drives.clone());
-            let batch = Batch::new(self.device, outgoing.points(), announced);
+            let batch = Batch::new(self.device, outgoing.points(), announced).from_agent(VERSION);
             let answer = self.hub.push(&self.credential.token, &batch).await;
             match pacing::action(&answer) {
                 Action::Remove => {

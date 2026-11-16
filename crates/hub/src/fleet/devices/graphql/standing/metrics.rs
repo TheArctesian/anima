@@ -1,5 +1,5 @@
 //! Batched reads that join the metrics domain into `Device` (API-005, MET-004, MET-006,
-//! MET-018): one call to the metrics face per batch. `readings` is judged at the schema clock, read once
+//! MET-018, R-118): one call to the metrics face per batch. `readings` is judged at the schema clock, read once
 //! per batch.
 
 use std::{collections::HashMap, sync::Arc};
@@ -60,6 +60,21 @@ impl Loader<DeviceId> for StaleOf {
     }
 }
 
+/// The version of each agent device's agent, for `Device.agentVersion` (R-118). Load only
+/// devices whose metrics source is `agent`.
+pub struct AgentVersionOf(PgPool);
+
+impl Loader<DeviceId> for AgentVersionOf {
+    type Value = String;
+    type Error = Arc<Error>;
+
+    async fn load(&self, keys: &[DeviceId]) -> Result<HashMap<DeviceId, String>, Self::Error> {
+        metrics::agent_versions(&self.0, keys)
+            .await
+            .map_err(Arc::new)
+    }
+}
+
 /// The loader behind `Device.readings`: one `metrics::readings` call per batch, no cache.
 #[must_use]
 pub fn readings_loader(pool: PgPool, clock: Arc<dyn Clock>) -> DataLoader<ReadingsOf> {
@@ -76,4 +91,11 @@ pub fn gpus_loader(pool: PgPool) -> DataLoader<GpusOf> {
 #[must_use]
 pub fn stale_loader(pool: PgPool) -> DataLoader<StaleOf> {
     DataLoader::new(StaleOf(pool), tokio::spawn)
+}
+
+/// The loader behind `Device.agentVersion`: one `metrics::agent_versions` call per batch, no
+/// cache.
+#[must_use]
+pub fn agent_version_loader(pool: PgPool) -> DataLoader<AgentVersionOf> {
+    DataLoader::new(AgentVersionOf(pool), tokio::spawn)
 }

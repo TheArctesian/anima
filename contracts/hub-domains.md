@@ -502,6 +502,8 @@ pub fn agent_router(db: Db, feed: Feed, bus: events::Bus, clock: Clock) -> axum:
 pub fn spawn_stale_watch(db: Db, bus: events::Bus, clock: Clock) -> JoinHandle<()>;
 /// Of `devices`, those whose agent is not fresh: never pushed, revoked or stale (MET-018, CR-18).
 pub async fn stale_agents(db: &Db, devices: &[DeviceId]) -> Result<HashSet<DeviceId>, Error>;
+/// (R-118) The version of each device's agent from its last batch; no entry when it sent none.
+pub async fn agent_versions(db: &Db, devices: &[DeviceId]) -> Result<HashMap<DeviceId, String>, Error>;
 ```
 
 ## web_interfaces (Phase 2, WP-30)

@@ -1,6 +1,6 @@
-//! One accepted batch written in one transaction: the agent's mark, the GPU set, the drives, the series,
-//! the samples and their aggregates, and the event of an agent that is fresh again (K8 Section
-//! 4; MET-006, MET-015, MET-018; R-098 a, b, e).
+//! One accepted batch written in one transaction: the agent's mark and version, the GPU set,
+//! the drives, the series, the samples and their aggregates, and the event of an agent that is
+//! fresh again (K8 Section 4; MET-006, MET-015, MET-018; R-098 a, b, e; R-118).
 //!
 //! The device row is taken first, the order a device delete and a revoke take the rows in, so
 //! none of them deadlock, and two batches of one device are written one after the other.
@@ -47,6 +47,8 @@ pub(super) struct Push<'a> {
     pub(super) gpus: Option<&'a [Gpu]>,
     /// `None`: the drives are unchanged; `Some(&[])`: the device has no drives now (MET-027).
     pub(super) drives: Option<&'a [Drive]>,
+    /// The version of the agent that sent the batch; `None` from an agent older than R-118.
+    pub(super) agent_version: Option<&'a str>,
 }
 
 /// What became of a batch that reached the store.
@@ -81,6 +83,7 @@ pub(super) async fn write(
     let Some(was_stale) = store::take_batch(&mut tx, push.device, push.token, now).await? else {
         return Ok(Written::Refused(RefusalCode::TokenRefused));
     };
+    store::record_version(&mut tx, push.device, push.agent_version, now).await?;
     let since = now - NEW_SERIES_SPAN;
     let created = metrics_store::created_series(&mut tx, push.device, since, &rows.series).await?;
     if created > MAX_NEW_SERIES {
