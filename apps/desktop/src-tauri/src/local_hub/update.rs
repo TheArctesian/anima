@@ -15,19 +15,33 @@ pub(super) fn update_args(tree: &Path) -> [OsString; 3] {
     ["update".into(), "--tree".into(), tree.into()]
 }
 
-/// Whether the program replaced the hub's programs: it prints `{"updated":true}` or
-/// `{"updated":false}`.
-pub(super) fn parse_updated(printed: &[u8]) -> Result<bool, LocalHubError> {
-    let answer: serde_json::Value =
-        serde_json::from_slice(printed).map_err(|_| LocalHubError::Failed)?;
-    answer
-        .get("updated")
-        .and_then(serde_json::Value::as_bool)
-        .ok_or(LocalHubError::Failed)
+/// What the program did with the hub's programs.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum Updated {
+    /// The hub runs the programs of this application now.
+    Replaced,
+    /// Nothing to do: no hub is installed, or it has these programs.
+    Unchanged,
+    /// The hub has programs of a higher version, and they stay.
+    KeptNewer,
 }
 
-/// Asks the carried program to update the hub, and tells whether it replaced the programs.
-pub(super) fn update(carried: &Carried) -> Result<bool, LocalHubError> {
+/// What the program answered: `{"updated":true}`, `{"updated":false}` or
+/// `{"updated":false,"older":true}` when this application is older than the hub's programs.
+pub(super) fn parse_updated(printed: &[u8]) -> Result<Updated, LocalHubError> {
+    let answer: serde_json::Value =
+        serde_json::from_slice(printed).map_err(|_| LocalHubError::Failed)?;
+    let flag = |name| answer.get(name).and_then(serde_json::Value::as_bool);
+    match (flag("updated"), flag("older")) {
+        (Some(true), _) => Ok(Updated::Replaced),
+        (Some(false), Some(true)) => Ok(Updated::KeptNewer),
+        (Some(false), _) => Ok(Updated::Unchanged),
+        (None, _) => Err(LocalHubError::Failed),
+    }
+}
+
+/// Asks the carried program to update the hub, and tells what it did.
+pub(super) fn update(carried: &Carried) -> Result<Updated, LocalHubError> {
     let args = update_args(&carried.tree);
     parse_updated(&ask(carried, &args.each_ref(), INSTALL_LIMIT)?)
 }
@@ -44,8 +58,13 @@ pub fn at_start(changing: &Changing) {
     tauri::async_runtime::spawn_blocking(move || {
         let _claim = claim;
         match update(&carried) {
-            Ok(true) => log::info!("the hub on this computer got the programs of this version"),
-            Ok(false) => {}
+            Ok(Updated::Replaced) => {
+                log::info!("the hub on this computer got the programs of this version");
+            }
+            Ok(Updated::KeptNewer) => {
+                log::info!("the hub on this computer has programs of a higher version; they stay");
+            }
+            Ok(Updated::Unchanged) => {}
             Err(error) => log::warn!("the hub's programs were not updated: {}", error.code()),
         }
     });

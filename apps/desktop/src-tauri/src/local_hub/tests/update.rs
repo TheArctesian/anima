@@ -2,14 +2,21 @@ use std::fs;
 
 use super::super::{
     LocalHubError, carried,
-    update::{parse_updated, update, update_args},
+    update::{Updated, parse_updated, update, update_args},
 };
 use super::programs::{RELEASE, bundle};
 
 #[test]
 fn the_answer_says_whether_the_programs_were_replaced() {
-    assert_eq!(parse_updated(br#"{"updated":true}"#), Ok(true));
-    assert_eq!(parse_updated(b"{\"updated\":false}\n"), Ok(false));
+    assert_eq!(parse_updated(br#"{"updated":true}"#), Ok(Updated::Replaced));
+    assert_eq!(
+        parse_updated(b"{\"updated\":false}\n"),
+        Ok(Updated::Unchanged)
+    );
+    assert_eq!(
+        parse_updated(br#"{"updated":false,"older":true}"#),
+        Ok(Updated::KeptNewer)
+    );
 }
 
 #[test]
@@ -30,7 +37,7 @@ fn the_carried_program_is_asked_to_update_from_the_tree_of_the_bundle() {
     let executable = bundle(folder.path(), cfg!(target_os = "macos"), &script);
     let found = carried::beside(&executable, cfg!(target_os = "macos"), true, RELEASE).unwrap();
 
-    assert_eq!(update(&found), Ok(true));
+    assert_eq!(update(&found), Ok(Updated::Replaced));
 
     let args = update_args(&found.tree).map(|arg| arg.into_string().unwrap());
     assert_eq!(fs::read_to_string(asked).unwrap(), args.join("\n") + "\n");
