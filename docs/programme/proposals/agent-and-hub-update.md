@@ -40,8 +40,8 @@ proposal is that specification.
   and `darwin-universal`. The hub checks the files, signs the updater file with the updater key
   and writes the feed at `https://releases.anima.ing` (BLD-045, BLD-064 to BLD-066, R-117).
 - `crates/updater-signature` signs and verifies. It is pure and has no file access.
-- No release is published. Tasks R5 to R7 of [projects-and-builds.md](projects-and-builds.md)
-  are not started. The update of a real installed application is not verified (OD-16 to OD-18).
+- The macOS release 0.2.0 is published since 2026-11-17; no Linux release is checked. Task R5 of
+  [projects-and-builds.md](projects-and-builds.md) is done; R6 and R7 are not started. The update of a real installed application is not verified (OD-16 to OD-18).
 - A release build of the desktop application carries `anima-agent` for its own target, and
   installs it on its own computer (MET-019). No agent file is published alone.
 - The Linux system unit of the agent runs with no capability and `ProtectSystem=strict`. Thus the

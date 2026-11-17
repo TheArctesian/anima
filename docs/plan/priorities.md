@@ -36,7 +36,7 @@ The table gives the order. The section of each row below the table gives the wor
 | 4.18 | 1 | Update the agent and the hub | Foundation | Proposal. Task U1 is done. | Operator: approval of ROL-001 to ROL-052. Agent: task U3. The other tasks wait for the first release (R7) |
 | 4.2 | 1 | Restore a backup and move the coordinator | Foundation | Proposal. | Operator: approval of FND-006. No task breakdown yet |
 | 4.3 | 1 | Decisions and approvals for the foundation | All | Open | Operator: each decision and approval in the row |
-| 4.4 | 2a | The engine (E0) | See, Remember | In progress. | Agent: E0-4 (on its branch), then E0-5 to E0-7 and Writing. E0-5 waits for row 4.11 |
+| 4.4 | 2a | The engine (E0) | See, Remember | In progress. | Agent: E0-5 to E0-7 and Writing. E0-5 waits for row 4.11 |
 | 4.5 | 2b | Level 1 model service | Use | Planned. | Operator: approval of the compute plan, and the compute decisions of row 4.3 |
 | 4.6 | 3a | Projects | See | In progress. | Agent: compare PRO-005 to PRO-008 with the code |
 | 4.7 | 3a | Jobs, builds and AI agent runs | Use | [C7](../work-items/compute/C7.md) is planned. | Agent: tasks W, then B, then A. Operator: the requirements with no ruling (status line of the proposal) |
@@ -104,7 +104,7 @@ The table gives the order. The section of each row below the table gives the wor
 - Category: See, Remember
 - Work: The engine (E0), with Writing as its sample extension
 - Work items: [E0-1](../work-items/engine/E0-1.md), [E0-2](../work-items/engine/E0-2.md), [E0-4](../work-items/engine/E0-4.md), [E0-5](../work-items/engine/E0-5.md), [E0-6](../work-items/engine/E0-6.md), [E0-7](../work-items/engine/E0-7.md), [E0-8](../work-items/engine/E0-8.md), [XP-03](../work-items/extensions/XP-03.md)
-- State: In progress. On `main` (2026-11-13): E0-1, the hub folder regroup (merge `78df5bcb`); E0-2, the sources framework and Settings > Integrations (merges `c70a3e32`, `8c98653d`); E0-8, the extension registry and its switches (merges `3750eb87`, `efcf2fe5`). The launch briefs of E0-8 are not written (ENG-012). Not on `main`: E0-3 to E0-7 and Writing. E0-4 has commits on the branch `engine/e0-4-timeline-links`, which is not merged. The index of the work items holds the state of E0-1, E0-2 and E0-8 ([work-items/](../work-items/README.md)).
+- State: In progress. On `main` (2026-11-13): E0-1, the hub folder regroup (merge `78df5bcb`); E0-2, the sources framework and Settings > Integrations (merges `c70a3e32`, `8c98653d`); E0-8, the extension registry and its switches (merges `3750eb87`, `efcf2fe5`). The launch briefs of E0-8 are not written (ENG-012). Not on `main`: E0-3, E0-5 to E0-7 and Writing. E0-4 is on `main` since 2026-11-17 (merge of the branch `engine/e0-4-timeline-links`): the hub, the `anima timeline` and `anima record-link` commands and their MCP tools. Its task T7, the client component, is later work (extensions plan, "Tasks of E0-4"). The index of the work items holds the state of E0-1, E0-2 and E0-8 ([work-items/](../work-items/README.md)).
 
 ### 4.5 Level 1 model service
 
