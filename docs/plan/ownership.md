@@ -41,7 +41,7 @@ One document owns each concern. Add a requirement to its owner, not to this docu
 | The Anima.ing shell prompt and related shell commands | [shell-prompt.md](../programme/proposals/shell-prompt.md) | CMD-032 to CMD-038 |
 | Rented cloud computers and GPU add-ons sold by Anima.ing | [cloud-machines.md](../programme/proposals/cloud-machines.md) | CVM-001 to CVM-024 |
 | Machine profiles: copy a setup to a new computer | [machine-profiles.md](../programme/proposals/machine-profiles.md) | REP-001 to REP-025 |
-| CVE watch of the updates that wait on each machine, and network awareness (the address classes of a device, other overlay networks, address changes) | [cve-watch-and-network-awareness.md](../programme/proposals/cve-watch-and-network-awareness.md) | VUL-001 to VUL-020, ADR-001 to ADR-014 |
+| CVE watch of the updates that wait on each machine, and network awareness (the address classes of a device, other overlay networks, address changes) | [cve-watch-and-network-awareness.md](../programme/proposals/cve-watch-and-network-awareness.md) | VUL-001 to VUL-028, ADR-001 to ADR-014 |
 | Rulings and the state of each package | [programme/programme.md](../programme/programme.md), [programme/handoff.md](../programme/handoff.md) | R, CR |
 
 The proposals are drafts (Section 9 lists them). A proposal becomes a plan when the operator approves it with a ruling. Then its work gets a task table in the plan, or a work item in [work-items/](../work-items/README.md), and a row in Section 4 (PLN-012).
