@@ -30,7 +30,7 @@ The table gives the order. The section of each row below the table gives the wor
 
 | Row | Tier | Work | Category | State, in short | Waits for |
 | --- | --- | --- | --- | --- | --- |
-| 4.1 | 0 | Finish the device manager | Foundation, See, Reach | Phases 1 to 3 are built. | Operator: the acceptance run (WP-53). Agent: R5 to R7 |
+| 4.1 | 0 | Finish the device manager | Foundation, See, Reach | Phases 1 to 3 are built. | Operator: the acceptance run (WP-53), and the first release (R7). Agent: R6 |
 | 4.16 | 1 | One-click install | Foundation, Reach | In progress. Built; the live checks wait for the operator. | Operator: the live checks ([need-human-testing.md](../need-human-testing.md), "One-click") |
 | 4.17 | 1 | The hosted mode and the shared pool | Foundation | Proposal. The direction is decided. | Operator: approval of HMD-001 to HMD-036, and HM-D4 |
 | 4.18 | 1 | Update the agent and the hub | Foundation | Proposal. Task U1 is done. | Operator: approval of ROL-001 to ROL-052. Agent: task U3. The other tasks wait for the first release (R7) |
@@ -56,7 +56,7 @@ The table gives the order. The section of each row below the table gives the wor
 - Category: Foundation, See, Reach
 - Work: Finish the device manager: the Phase 3 acceptance run (WP-53) and the operator steps before it. Three open defects ([GH-52](../work-items/defects/GH-52.md), [GH-53](../work-items/defects/GH-53.md), [GH-54](../work-items/defects/GH-54.md)). The correction of the release of Anima: tasks R1 to R7 in "Tasks" of [projects-and-builds.md](../programme/proposals/projects-and-builds.md) (OD-W21).
 - Work items: [handoff.md](../programme/handoff.md) Sections 3 and 4. [GH-52](../work-items/defects/GH-52.md), [GH-53](../work-items/defects/GH-53.md), [GH-54](../work-items/defects/GH-54.md). R1 to R7 are in the task table of [projects-and-builds.md](../programme/proposals/projects-and-builds.md)
-- State: Phases 1 to 3 are built. Acceptance waits for the operator. This tier removes `blocked: device-manager` (PH-E-000, PH-C-000). R1 to R4 are done and are on `main` (commit `e3058276`, 2026-11-15). R5 to R7 are not started: no release is published.
+- State: Phases 1 to 3 are built. Acceptance waits for the operator. This tier removes `blocked: device-manager` (PH-E-000, PH-C-000). R1 to R4 are done and are on `main` (commit `e3058276`, 2026-11-15). R5 is done (commit `c1e6226e`, on `main` since 2026-11-17). R6 and R7 are not started. The macOS release 0.2.0 is published since 2026-11-17 ([s12-packaging-tasks.md](../research/one-click/s12-packaging-tasks.md) Section 6.4); the Linux feed is not checked.
 
 ### 4.16 One-click install
 
