@@ -124,7 +124,10 @@ Anima.ing must not start a GPU add-on on a provider that forbids resale.
   check) before the first GPU start.
 - **CVM-015.** Anima.ing's own control plane, not the customer's hub, creates, starts, stops
   and destroys rented machines (see ETH-007 below). The hub only sees the machine as a
-  device once it has joined.
+  device once it has joined. The control plane is the cloud service in the private repository
+  `anima-site` on Vercel, with its API at `cloud.anima.ing` (operator, 2026-11-16; see fact 5 of
+  [hosted-mode.md](hosted-mode.md)). Its design is the note "Hosted Architecture" of the business
+  vault (HCL-001 to HCL-036). It is not approved and it is not in this repository.
 - **CVM-016.** Enrolment of a rented machine must not depend on a 15-minute code alone
   (MET-012). Use a method that survives a slow start: a one-time join token with a longer
   limit that is bound to that machine, or a repeatable enrolment that the control plane
@@ -199,7 +202,11 @@ Risks of the flat subscription:
 
 ## Needs
 
-- A ruling on ETH-007, CMP-003 and MET-012 as they apply here.
+- A ruling on ETH-007, CMP-003 and MET-012 as they apply here. The business vault proposes an
+  answer to each: the cloud creates and deletes rented machines and the hub only reads
+  (ETH-007), a machine rented for one customer joins only that customer's network (CMP-003), and
+  the cloud triggers the enrolment code after the machine has booted (MET-012, HCL-011, HCL-012,
+  HCL-018). These answers are proposed, not ruled.
 - Written consent from a GPU provider before any GPU add-on is offered.
 - A published price list, after the suggested prices are ruled on.
 - A finance model for the flat subscription (price, fair-use limits, how many heavy users it can
