@@ -225,7 +225,7 @@ machine, and the command to add one.
 | Dependency | State today | Effect |
 | --- | --- | --- |
 | A ruling number for OD-W10, which changes R-115 | Decided, with no ruling number ([jobs.md](jobs.md), "Needs") | The watchdog changes a device. Without the ruling, MET-002 and R-115 forbid it. |
-| The work route (tasks W1, W4 and W5 of [projects-and-builds.md](projects-and-builds.md)) | Not started | Stage 2 needs it. Stage 1 does not. |
+| The work route (tasks W1, W4 and W5 of [projects-and-builds-plan.md](../../projects-and-builds-plan.md)) | Not started | Stage 2 needs it. Stage 1 does not. |
 | A change to K8, which is frozen (CON-001) | Not asked | The reports of WDG-031 need an optional member of the push, or `/agent/v2/`. |
 | The update of the agent ([agent-and-hub-update.md](agent-and-hub-update.md)) | Proposal | Without it, each machine gets the watchdog only when a person builds and installs the agent by hand. |
 | Signed releases: the first release (task R7), and an agent artefact for each target | No release is published. The builder makes only the desktop application. | A machine with no desktop application has no published agent to install. |

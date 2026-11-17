@@ -30,7 +30,7 @@ These changes are not made. The operator must approve each one (operator checkpo
 | [jobs.md](../programme/proposals/jobs.md) JOB-001, JOB-004, USE-001 | Changed on 2026-11-13 (OD-W12): a job is a container job or a native job on a Mac, and the build is the first job type. |
 | Design specification BLD-001 to BLD-082 | The builder takes a project as a parameter; the release of Anima becomes one project (OD-W11). |
 | Design specification Section 3.10 and BLD-029 | A machine can be a runner of GitHub Actions (OD-W13). The text "no GitHub runner" must change. |
-| Design specification BLD-028, BLD-040 and Section 3.11 | Add Go to the tool list. The clone address has the new repository name. One name for the macOS application (OD-W19). Tasks R1, R3 and R5 of [projects-and-builds.md](../programme/proposals/projects-and-builds.md). |
+| Design specification BLD-028, BLD-040 and Section 3.11 | Add Go to the tool list. The clone address has the new repository name. One name for the macOS application (OD-W19). Tasks R1, R3 and R5 of [projects-and-builds-plan.md](../projects-and-builds-plan.md). |
 | Extensions plan PRJ-019, OD-E14 and `contracts/extensions/sources.md` | The App needs the events `push` and `workflow_job` (PRO-042). The runner functions join the GitHub functions (PRO-049). The contract says 22 write permissions and the manifest has 23. |
 | [cli-mcp-plan.md](../cli-mcp-plan.md) Sections 6 and 7 | Not made: the `build` and `runner` commands and tools (PRO-053). Make them with the build. |
 | `AGENTS.md`, [cli-mcp-plan.md](../cli-mcp-plan.md) | Done on the branch `claude/anima-cli`: the command-line-first rule (CMD-030). |

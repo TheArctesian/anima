@@ -62,7 +62,7 @@ A job runs to its end on one machine. It is a container image, or it is a native
 - **JOB-004.** A native job runs on a Mac without a container. Use it only for work that needs
   macOS directly, for example a macOS or iOS build. It comes with the first job type, not in a
   later version, and it is not only a Nix recipe: Nix does not supply Xcode or the macOS SDK.
-  PRO-022 to PRO-024 of [projects-and-builds.md](projects-and-builds.md) give its limits: a
+  PRO-022 to PRO-024 of [projects-and-builds-plan.md](../../projects-and-builds-plan.md) give its limits: a
   build user, a new checkout that the machine deletes, and a setting on the Mac. (OD-W12,
   operator, 2026-11-13)
 - **JOB-005.** One machine builds an image. The other machines pull it.
@@ -91,7 +91,7 @@ The build of a project is the first job type (PRO-009, OD-W12). Fine-tuning (com
 type: GitHub schedules it (PRO-047).
 
 The tasks for the work route are W1 to W6 in "Tasks" of
-[projects-and-builds.md](projects-and-builds.md). That table holds their state (PLN-006).
+[projects-and-builds-plan.md](../../projects-and-builds-plan.md). That table holds their state (PLN-006).
 
 ## Jobs that an AI agent starts
 

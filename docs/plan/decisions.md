@@ -82,7 +82,7 @@ Not a decision of this plan. [SPEC-C](../work-items/compute/SPEC-C.md) and [OD-C
 
 ### OD-W11. Are projects the front door for rented accounts, and does the builder build each project?
 
-**Decided (operator, 2026-11-13): yes.** Connect GitHub, import each repository, leave out the ones that the operator selects. Anima proposes resources from signs in the repository. The builder is no longer specific to Anima. The three resource types stay different. A different forge must be possible. [projects-and-builds.md](../programme/proposals/projects-and-builds.md) has the six points.
+**Decided (operator, 2026-11-13): yes.** Connect GitHub, import each repository, leave out the ones that the operator selects. Anima proposes resources from signs in the repository. The builder is no longer specific to Anima. The three resource types stay different. A different forge must be possible. [projects-and-builds-plan.md](../projects-and-builds-plan.md) has the six points.
 
 ### OD-W12. The proposals that follow OD-W11
 

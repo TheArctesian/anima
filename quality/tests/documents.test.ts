@@ -98,6 +98,19 @@ describe("PLN-001 PLN-012 lists", () => {
   });
 });
 
+describe("PLN-019 mockups", () => {
+  test("a mockup that the index does not name fails", () => {
+    expect(
+      check([
+        { path: "docs/mockup/README.md", text: "[a](index.html) [screen](../../apps/client/src/routes/devices)" },
+        { path: "docs/mockup/index.html", text: "" },
+        { path: "docs/mockup/mobile/index.html", text: "" },
+        { path: "apps/client/src/routes/devices/+page.svelte", text: "" },
+      ]),
+    ).toEqual(["docs/mockup/mobile/index.html: mockup-not-in-index no link in docs/mockup/README.md"]);
+  });
+});
+
 describe("PLN-016 one owner for an identifier", () => {
   const first = { path: "docs/compute-plan.md", text: `${PLAN_TEXT}- **CMP-003.** The node must report.` };
   const second = { path: "docs/design-spec.md", text: `${PLAN_TEXT}**CMP-003.** A second text.\nSee CMP-003 and **CMP-004**.` };

@@ -173,7 +173,7 @@ Also read `docs/programme/phase-3-plan.md`, `phase-3-contracts.md` and the packa
 ## 8. Builds and the release of Anima (2026-11-16)
 
 This section adds to the file. Sections 1 to 7 are the state of 2026-11-12 and are not changed.
-The plan is [projects-and-builds.md](proposals/projects-and-builds.md), Version 2, "Tasks". That
+The plan is [projects-and-builds-plan.md](../projects-and-builds-plan.md), Version 2, "Tasks". That
 table holds the state of each task (PLN-006). This section adds no requirement.
 
 ### 8.1 Done
@@ -231,7 +231,7 @@ Paste this to start the next session:
 ```text
 Continue the release correction of Anima. Read AGENTS.md, then Section 8 of
 docs/programme/handoff.md, then "The builder today" and "Tasks" in
-docs/programme/proposals/projects-and-builds.md.
+docs/projects-and-builds-plan.md.
 
 Do task R5 (D2, OD-W19): one name for the macOS application, Anima.ing.app. Change the
 design specification Section 3.11, local_hub/carried.rs and the builder (artifact.rs and its tests).

@@ -7,7 +7,7 @@ export interface Document {
   text: string;
 }
 
-/** A list that must name each document of a kind (PLN-001, PLN-012). */
+/** A list that must name each document of a kind (PLN-001, PLN-012, PLN-019). */
 export interface Listing {
   index: string;
   member: RegExp;
@@ -18,6 +18,9 @@ export interface Listing {
 const PLAN =
   /^docs\/(?!work-plan\.md$)(?:[a-z-]+-plan|vpn-build|design-spec)\.md$|^docs\/programme\/phase-\d-(?:plan|agent-delta)\.md$|^docs\/programme\/proposals\/[^/]+\.md$|^docs\/research\/one-click\/[^/]+-(?:tasks|spec-delta)\.md$/;
 
+/** A mockup: a static HTML file of a layout (PLN-019). Its text is not read. */
+export const MOCKUP = /^docs\/mockup\/.+\.html$/;
+
 export const LISTINGS: Listing[] = [
   { index: "docs/plan/register.md", member: PLAN, signal: "plan-not-in-register", needsStatus: true },
   {
@@ -26,9 +29,10 @@ export const LISTINGS: Listing[] = [
     signal: "work-item-not-in-index",
     needsStatus: false,
   },
+  { index: "docs/mockup/README.md", member: MOCKUP, signal: "mockup-not-in-index", needsStatus: false },
 ];
 
-const CHECKED = /^(?:docs|contracts)\/.*\.md$|^[^/]+\.md$/;
+const CHECKED = /^(?:docs|contracts)\/.*\.md$|^[^/]+\.md$|^docs\/mockup\/.+\.html$/;
 const LINK = /\]\(([^)\s]+)\)/g;
 const DEFINITION = /^\s*(?:[-*]\s+)?\*\*([A-Z][A-Z0-9]*(?:-[A-Z])?-\d{1,3}[a-z]?)\.\*\*/;
 const HEADER_LINES = 20;
@@ -100,7 +104,7 @@ export function parseKnown(text: string): Set<string> {
 }
 
 /**
- * PLN-017: the links resolve, each plan and each work item is in its list, a plan
+ * PLN-017: the links resolve, each plan, each work item and each mockup is in its list, a plan
  * shows its status, and one document defines each requirement identifier.
  */
 export function checkDocuments(all: Document[], exists: (path: string) => boolean, known: ReadonlySet<string>): Violation[] {

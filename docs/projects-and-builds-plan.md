@@ -1,8 +1,8 @@
-# Proposal: projects first (import from GitHub, the builder as a job, sign-in)
+# Plan: projects first (import from GitHub, the builder as a job, sign-in)
 
-Progress: the plan register in [work-plan.md](../../work-plan.md) Section 9 holds the state of this plan (PLN-005).
+Progress: the plan register in [work-plan.md](work-plan.md) Section 9 holds the state of this plan (PLN-005).
 
-Version: 2. Date: 2026-11-16.
+Version: 2.1. Date: 2026-11-17. Version 2.1 only moved this document from `programme/proposals/projects-and-builds.md` (PLN-018, operator, 2026-11-17).
 From: a side chat with the operator on 2026-11-13, sent to the planning session. Version 2 adds
 the rulings of 2026-11-16 (OD-W13) and the plan for the two build models.
 Status: In progress. The operator decided the six points in "Decision" (OD-W11), the points in
@@ -11,13 +11,13 @@ The operator decided OD-W14 to OD-W21 on 2026-11-16: PRO-029, PRO-030, PRO-032, 
 PRO-044, the first mode of PRO-042 and the order of the tasks. The other requirements from
 PRO-031 to PRO-053 are proposals with no ruling. Connect GitHub and the Work, Code and History
 tabs are on `main`. No build function of this proposal is built.
-Map: [work-plan.md](../../work-plan.md), categories See and Use, decisions OD-W11 to OD-W21.
+Map: [work-plan.md](work-plan.md), categories See and Use, decisions OD-W11 to OD-W21.
 Identifiers: PRO-001 to PRO-053. The prefix `PRJ` belongs to the extensions plan and is not
 changed here.
 
 ## Problem
 
-Projects ([XP-02](../../work-items/extensions/XP-02.md)) is one extension in a list. But the rented accounts of the operator
+Projects ([XP-02](work-items/extensions/XP-02.md)) is one extension in a list. But the rented accounts of the operator
 (Cloudflare, Vercel, Hostinger, Neon) only have a meaning through the project that runs on them.
 And the release builder (design specification BLD-001 to BLD-082) builds only the Anima desktop
 application. The operator wants one front door: connect GitHub, get each repository as a project,
@@ -74,8 +74,8 @@ other identifiers keep their text. OD-W13 (2026-11-16) changed PRO-010, PRO-013 
 again: the text below is the text of OD-W13.
 
 - **PRO-009. A build is a job.** Decided. The builder becomes the first job type of
-  [jobs.md](jobs.md). The order is: Projects (See), then builds as jobs (Use), then the other
-  extensions. Fine-tuning ([C7](../../work-items/compute/C7.md)) is the second job type. This is the order of the work only:
+  [jobs.md](programme/proposals/jobs.md). The order is: Projects (See), then builds as jobs (Use), then the other
+  extensions. Fine-tuning ([C7](work-items/compute/C7.md)) is the second job type. This is the order of the work only:
   Projects stays an extension that is off in a new installation (EXT-005, OD-E13).
 - **PRO-010. Anima has two build models.** Decided (OD-W13, operator, 2026-11-16; it replaces
   the text of 2026-11-13).
@@ -126,7 +126,7 @@ again: the text below is the text of OD-W13.
   "Sign in with GitHub" is identity. They are separate.
 - **PRO-016. Forge sign-in is an extra method, later.** Decided. GitHub, GitLab and Bitbucket
   can become sign-in methods, mainly for the hosted option
-  ([other-operators.md](other-operators.md)). The local sign-in stays the root, so that a forge
+  ([other-operators.md](programme/proposals/other-operators.md)). The local sign-in stays the root, so that a forge
   that is down or an account that is locked never stops access to the owned machines.
 
 ## Decision of 2026-11-16 (OD-W13, operator)
@@ -203,10 +203,10 @@ Defects, each verified in the code. No defect is corrected.
 | --- | --- | --- |
 | D1. An old file can be uploaded | `stabilize_names` in `artifact.rs` stops when the stable `Anima_*` file exists. The checkout keeps `target/` (`git clean --exclude=/target/`). A second attempt at one version makes a new `Anima.ing_*` file and then uploads the file of the first attempt. | Reading. No test shows it. |
 | D2. Two names for the macOS application | Tauri writes `Anima.ing.app`, from `productName`. The design specification Section 3.11 and `local_hub/carried.rs` say `Anima.app`. The updater file `Anima.app.tar.gz` holds `Anima.ing.app`. | Reading. `tauri-plugin-updater` 2.14.1 drops the first folder of the archive and replaces the content of the installed application, so an installed `Anima.app` keeps its name. No real update has proved this. |
-| D3. The release does not carry the local hub | `local_hub/carried.rs` looks for `anima-local-hub` and a database folder in the application. The builder puts only `anima` there, and `mac_binaries` refuses a third program. | Reading. Task T9 of [s4-local-hub-tasks.md](../../research/one-click/s4-local-hub-tasks.md) owns the correction. |
+| D3. The release does not carry the local hub | `local_hub/carried.rs` looks for `anima-local-hub` and a database folder in the application. The builder puts only `anima` there, and `mac_binaries` refuses a third program. | Reading. Task T9 of [s4-local-hub-tasks.md](research/one-click/s4-local-hub-tasks.md) owns the correction. |
 | D4. The tool check has no Go | `builder/tools.rs` checks git, bun, Rust, cargo-nextest, PostgreSQL and the Tauri packages. The gates also run six Go gates for `link/`. A builder with no Go claims a job and fails at the gates. | Reading. |
 | D5. The clone address had the old name (corrected: task R1, commit `e3058276`) | On 2026-11-15, `plan.rs` and BLD-040 said `TheArctesian/anima.git`. The repository is `TheArctesian/anima.ing`. GitHub redirects the old name. The redirect stops if a repository takes the old name. `plan.rs` and BLD-040 now say `TheArctesian/anima.ing.git`. | `gh repo view` on 2026-11-15. |
-| D6. No release is published (changed: the macOS release 0.2.0 is published) | Each feed at `releases.anima.ing` answered 404 on 2026-11-15: `linux-x86_64`, `darwin-aarch64`, `darwin-x86_64`. The macOS feeds give 0.2.0 since 2026-11-17 ([s12-packaging-tasks.md](../../research/one-click/s12-packaging-tasks.md) Section 6.4); the `linux-x86_64` feed is not checked here. OD-16 to OD-18 of the design specification are not verified. | `curl`. |
+| D6. No release is published (changed: the macOS release 0.2.0 is published) | Each feed at `releases.anima.ing` answered 404 on 2026-11-15: `linux-x86_64`, `darwin-aarch64`, `darwin-x86_64`. The macOS feeds give 0.2.0 since 2026-11-17 ([s12-packaging-tasks.md](research/one-click/s12-packaging-tasks.md) Section 6.4); the `linux-x86_64` feed is not checked here. OD-16 to OD-18 of the design specification are not verified. | `curl`. |
 | D7. No pinned toolchain | `main` has no `rust-toolchain.toml` and no `flake.nix`. The tool check now names a missing Rust target for the universal macOS build, so that builder does not claim. | Reading. It replaces the fact of 2026-11-13 in this section. |
 | D8. A hub that cannot publish accepts a release | See the paragraph above the table. The hub fails the job only after the build, with the reason that publishing is off. | Reading `fleet/builds.rs` and `fleet/builds/publishing.rs`. |
 
@@ -447,15 +447,15 @@ Group R: correct the release of Anima. It needs no other group. It is tier 0 of 
 | R3 | Add Go to the tool check (D4, BLD-028). | — | A builder with no Go names Go and does not claim. | Done | Branch `builds/release-corrections`, merged to `main` |
 | R4 | The hub refuses a release when it cannot publish. The client hides the Builds entry and the builder row then (D8, PRO-037, PRO-038). | — | A hub with no updater key refuses `createRelease` with a typed reason. The command and the MCP tool give the reason. The client shows no Builds entry. | Done | Branch `builds/release-corrections`, merged to `main` |
 | R5 | One name for the macOS application: `Anima.ing.app` (D2; OD-W19, operator, 2026-11-16). | — | The design specification Section 3.11, `carried.rs` and the builder say `Anima.ing.app`. The file names of a release stay `Anima_*` (UPD-010). | Done. Section 3.11 and `carried.rs` say `Anima.ing.app`; the builder already made `Anima.ing.app` and its tests now use the name. | c1e6226e on branch `claude/watchdog-autoupdate-proposals` |
-| R6 | The release carries the local hub (D3). | T9 of the S4 tasks; S3 T11 | As T9 of [s4-local-hub-tasks.md](../../research/one-click/s4-local-hub-tasks.md) states. This row only points to it. | Not started | — |
+| R6 | The release carries the local hub (D3). | T9 of the S4 tasks; S3 T11 | As T9 of [s4-local-hub-tasks.md](research/one-click/s4-local-hub-tasks.md) states. This row only points to it. | Not started | — |
 | R7 | The first release. | R1 to R5; the operator | Each feed answers 200. An installed application updates on macOS and on Linux (D6, OD-16 to OD-18). The operator does this. | Not started | — |
 
-Group W: the work route. [jobs.md](jobs.md) owns its requirements; the tasks are here so that one
+Group W: the work route. [jobs.md](programme/proposals/jobs.md) owns its requirements; the tasks are here so that one
 table has the order.
 
 | Task | Content | Needs | Done when | State | Commits |
 | --- | --- | --- | --- | --- | --- |
-| W1 | The contract of the work route: claim, report, log, stop, a secret for one job, the work types `build` and `runner`. | A ruling that changes R-115 ([jobs.md](jobs.md), "Needs") | The programme accepts the contract. | Not started | — |
+| W1 | The contract of the work route: claim, report, log, stop, a secret for one job, the work types `build` and `runner`. | A ruling that changes R-115 ([jobs.md](programme/proposals/jobs.md), "Needs") | The programme accepts the contract. | Not started | — |
 | W2 | The isolation design, with prototypes: the container runtime on Linux, a workflow that needs Docker, the build user on a Mac, a signing identity for one job (PRO-029). | — | A record with measured results on one Linux machine and one Mac. The security reviewer and the operator accept it. | Not started | — |
 | W3 | The hub: one queue for work, the placement function, the log store (PRO-050, PRO-051). Hub API, then `anima`, then MCP. | W1 | The gates pass. The release of Anima still works through the old path. | Not started | — |
 | W4 | The agent: do a container job and a native job on a Mac, and delete each thing at the end (PRO-029). | W1, W2 | A test proves that a job cannot read the agent token or the home folder, and that nothing stays after a stop. | Not started | — |
@@ -494,8 +494,8 @@ Group A: builds of Anima's own.
 | Text | Says | This proposal |
 | --- | --- | --- |
 | PRJ-001 | "The operator must accept each project before Anima adds it." | The import takes each repository and the operator leaves some out (decision 2). PRJ-001 needs new wording. |
-| JOB-001, USE-001 | A job is a container image. Jobs run in containers. | Decided (PRO-011): a job is a container job or a native job on a Mac. JOB-004 comes early and is not only Nix: Nix does not supply Xcode or the macOS SDK. PRO-022 to PRO-024 give the limits of a native job. [jobs.md](jobs.md) has the new text. |
-| [jobs.md](jobs.md), "Fine-tuning becomes the first job type" | C7 is first | Decided: the build is first (PRO-009). |
+| JOB-001, USE-001 | A job is a container image. Jobs run in containers. | Decided (PRO-011): a job is a container job or a native job on a Mac. JOB-004 comes early and is not only Nix: Nix does not supply Xcode or the macOS SDK. PRO-022 to PRO-024 give the limits of a native job. [jobs.md](programme/proposals/jobs.md) has the new text. |
+| [jobs.md](programme/proposals/jobs.md), "Fine-tuning becomes the first job type" | C7 is first | Decided: the build is first (PRO-009). |
 | BLD-001 to BLD-082 | The builder builds the Anima desktop application, started from the Builds view | The same machinery, with a project as a parameter. The identifiers stay; the release of Anima becomes one project. |
 | BLD-080, BLD-001, UPD-007, design specification Section 5.3 | A "Builds" navigation entry; a release starts from the Builds view | PRO-025 and PRO-026 replace these when builds are jobs of a project. The design specification is not changed yet. |
 | Design specification, sign-in (SEC-002, NAV-009, the `access` domain) | One sign-in: user name, password, authenticator code | Not changed now. PRO-016 adds methods later and keeps this one as the root. |
@@ -508,12 +508,12 @@ Group A: builds of Anima's own.
 | PRJ-019, `contracts/extensions/sources.md` | The App has no event and its webhook is off | Model (a) needs `push`. On-demand runners need `workflow_job` (PRO-042). The manifest of a new App can name them (F15). An App that exists needs a step by the operator (F16). |
 | `contracts/extensions/sources.md` Section 1 | "23 repository permissions: `metadata` read and 22 others write" | The manifest has 24: `metadata` read and 23 write (`manifest.rs`). The text is wrong by one. Not changed here. |
 | OD-E14 of the extensions plan | The first GitHub functions that make a change | PRO-049 adds: make a JIT configuration, remove a runner, open the pull request of PRO-045. Each needs the operator's word, as OD-E14 says. |
-| [cli-mcp-plan.md](../../cli-mcp-plan.md) Sections 6 and 7 | `release` and `builder` commands | PRO-053 proposes `build` and `runner`. That plan owns the names. |
+| [cli-mcp-plan.md](cli-mcp-plan.md) Sections 6 and 7 | `release` and `builder` commands | PRO-053 proposes `build` and `runner`. That plan owns the names. |
 
 ## Rules that already apply
 
 - **PRO-017.** Each function is built in this order: the hub API, the `anima` command, the MCP
-  tool, the graphical client (CMD-030, [cli-mcp-plan.md](../../cli-mcp-plan.md) on the branch
+  tool, the graphical client (CMD-030, [cli-mcp-plan.md](cli-mcp-plan.md) on the branch
   `claude/anima-cli`). Projects and builds must obey it. An MCP tool must not take or return a
   signing key or a provider token (MCP-004).
 - **PRO-018.** The hub only reads a rented service (PRJ-003). An action uses the CLI tool of the
@@ -553,16 +553,16 @@ Group A: builds of Anima's own.
   verified.
 - The facts of GitHub in Plan B are verified against its documentation (2026-11-15). Nothing
   else here is verified against the documentation of a provider (as in
-  [new-sources.md](new-sources.md)).
+  [new-sources.md](programme/proposals/new-sources.md)).
 
 ## Needs
 
 - A ruling number in `programme.md` for OD-W11, for OD-W12, for OD-W13 and for OD-W14 to OD-W21.
 - Rulings for the requirements that are still proposals: PRO-031, PRO-033 to PRO-035, PRO-039 to
   PRO-041, PRO-043 and PRO-045 to PRO-053.
-- A change to PRJ-001 and to Section 4.2 of the extensions plan (with [XP-02](../../work-items/extensions/XP-02.md) and [SPEC](../../work-items/extensions/SPEC.md)): the import
+- A change to PRJ-001 and to Section 4.2 of the extensions plan (with [XP-02](work-items/extensions/XP-02.md) and [SPEC](work-items/extensions/SPEC.md)): the import
   takes each repository and the operator leaves some out.
 - A security review of builds before the design is final: they run repository code on owned
   machines and use signing keys. A native job (PRO-022 to PRO-024) is the primary subject.
-- A checklist on [XP-02](../../work-items/extensions/XP-02.md) for the import, and one work item for builds as jobs in
+- A checklist on [XP-02](work-items/extensions/XP-02.md) for the import, and one work item for builds as jobs in
   `docs/work-items/` (PLN-012), when the operator wants to start.

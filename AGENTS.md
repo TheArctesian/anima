@@ -101,12 +101,16 @@ test (CMD-031) fails when a root field of `contracts/schema.graphql` has no comm
 
 [docs/work-plan.md](docs/work-plan.md) is the entry point to all planning documents. Start there. Its
 parts are in `docs/plan/`: the priority order (`priorities.md`), the register of all plans with their
-state (`register.md`) and the rules (`rules.md`, PLN-001 to PLN-017, operator, 2026-11-15 and 2026-11-16).
+state (`register.md`) and the rules (`rules.md`, PLN-001 to PLN-019, operator, 2026-11-15 to 2026-11-17).
 
 - Plan first (PLN-013). Before you change code, find the plan that owns the work, read it, and build
   from it. If the plan does not include the work, change the plan first. If no plan owns the work,
   write a short proposal with its register row first. If the build must be different from the plan,
   change the plan in the same commit. A correction of a defect that adds no function needs no plan.
+- The path is idea, proposal, plan, contract, tasks, check (PLN-018). An idea is a folder in
+  [docs/ideas/](docs/ideas/README.md); do not build from it. An approved proposal moves to `docs/<name>-plan.md`.
+- A mockup agrees with the application (PLN-019). If you change the layout of a screen that
+  [docs/mockup/README.md](docs/mockup/README.md) lists, change its mockup in the same commit.
 - Do not build from a document that is not in Section 9 of the work plan.
 - Do not make a new plan, proposal or task breakdown unless the same commit adds its row to
   Section 9 and names the row of Section 4 that it serves. If no row applies, ask the operator.

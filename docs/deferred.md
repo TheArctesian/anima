@@ -22,7 +22,7 @@ Rules:
 
 | Area | Lists | Items with a box | Revisit |
 | --- | --- | --- | --- |
-| 1. Releases, signing and installation | 1 | 4 | Before the first public release (tasks R5 to R7 of projects-and-builds.md). |
+| 1. Releases, signing and installation | 1 | 4 | Before the first public release (tasks R5 to R7 of projects-and-builds-plan.md). |
 | 2. Later phases and proposals | 9 | 27 | When the proposal or the phase of the item gets a ruling. Each proposal has a row in the work plan Section 9. |
 | 3. Ideas from other products | 2 | 17 | When the plan that owns the subject is changed next. |
 | 4. Hub: access, logs and security | 7 | 24 | Before a hub is hosted for a different person, and at the next security review of access. |
@@ -37,7 +37,7 @@ Rules:
 
 ## 1. Releases, signing and installation
 
-Revisit: Before the first public release (tasks R5 to R7 of projects-and-builds.md).
+Revisit: Before the first public release (tasks R5 to R7 of projects-and-builds-plan.md).
 
 ### Releases and signing
 

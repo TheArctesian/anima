@@ -80,7 +80,7 @@ HelpTip (UI-028), button tones (UI-029) and the empty, loading and error states 
 
 Source: operator rulings of 2026-11-13 in the Coolify integration sessions, recorded on branch
 `claude/fixes-integration` (local) in `docs/extensions-plan.md` (Sections 2.8, 3.3, 4.2, 4.2.2, 4.15) and
-`docs/programme/proposals/projects-and-builds.md`. Planned, not built; listed so Phase B does not add
+`docs/projects-and-builds-plan.md`. Planned, not built; listed so Phase B does not add
 tokens that are about to be orphaned or miss ones that are about to be needed.
 
 | # | Change | Token consequence |
