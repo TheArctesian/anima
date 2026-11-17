@@ -253,6 +253,13 @@ None of these blocks the merge.
 4. **A real Linux desktop.** Run the AppImage of step 3, create a hub in the window, sign out
    and in (the systemd user unit starts the hub), run a newer AppImage and check the version
    file as in step 2.3. `kill -9` of `anima-local-hub run`: the unit starts it again (S4 T10).
+5. **A builder in the background keeps its job (BLD-005, b361eb5f).** On the Mac builder, with
+   an application of 0.2.1 or later:
+   1. Run `defaults delete ing.anima.desktop NSAppSleepDisabled`, then quit and open the
+      application.
+   2. Start a release, then minimise the window and leave it minimised.
+   3. Done when the job is published. A job that fails with "builder stopped 3 times" fails
+      this check.
 
 ### 6.4 The first release with S12: 0.2.0 (2026-11-17)
 
@@ -274,6 +281,14 @@ Checked on the published DMG (`https://releases.anima.ing/darwin-universal/0.2.0
 `Contents/Resources/database`; `codesign --verify --deep --strict` passes; the carried programs and
 the tree have Team ID 7GDLG48PV6, the hardened runtime and a secure timestamp. The feeds of
 `darwin-aarch64` and `darwin-x86_64` give 0.2.0. Steps 2 to 4 of 6.3 stay open.
+
+0.2.1 (b361eb5f, 2026-11-17): the first two releases failed with "builder stopped 3 times". The
+builder application was older than b361eb5f, and its window was behind other windows. The attempts
+stopped at different places (one at test 965 of 5777, two before the tests ran), so the cause
+was time and not a report the hub refused. WebKit slows the timers of a covered window as it
+does for a minimised one. The third release ran with the window in front and uncovered, and was
+published at 06:07Z. `stapler validate` passes on its DMG, `spctl` gives
+`Notarized Developer ID`, and both feeds give 0.2.1.
 
 ## 7. The seam to S9 (hub update and backup)
 
@@ -299,4 +314,4 @@ last two.
 | Ignored files in the clone | A file that the repository's `.gitignore` covers does not show in the clean check; the checkout removes it, but code of the gates step can write it again before the bundle. | The builder |
 | A copy of the application that was changed on disk | `update` compares the application with the digest that was written at the last copy. It does not read the hub's copy again, so it does not repair a copy that another program of the same user changed. | Accepted: that user can already change the unit. |
 | The window on a clean computer | 6.1: not driven on this Mac. | 6.3, step 2 |
-| A builder in the background loses its jobs | The builder reports from timers of the web view. With the window minimised, the hub saw no poll from the idle builder for 7 minutes (2026-11-17 04:32 to 04:39Z), and a job is taken back after 90 s with no report (6.4, try 2). | Corrected: the main window has `backgroundThrottling: "disabled"` (WebKit's inactive scheduling policy, macOS 14 and later). Proved by a release with the window minimised (6.4). Linux: WebKitGTK has no such setting; not seen on the Linux builder. |
+| A builder in the background loses its jobs | The builder reports from timers of the web view. With the window minimised, the hub saw no poll from the idle builder for 7 minutes (2026-11-17 04:32 to 04:39Z), and a job is taken back after 90 s with no report (6.4, try 2). | Corrected: the main window has `backgroundThrottling: "disabled"` (WebKit's inactive scheduling policy, macOS 14 and later). Built in b361eb5f; not proved yet: the check is step 5 of 6.3. Linux: WebKitGTK has no such setting; not seen on the Linux builder. |
