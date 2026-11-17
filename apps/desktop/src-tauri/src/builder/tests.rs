@@ -279,3 +279,25 @@ fn r_108_an_app_without_its_updater_public_key_claims_no_job() {
     let json = serde_json::to_string(&[Tool::UpdaterPublicKey]).unwrap();
     assert_eq!(json, r#"["updater-public-key"]"#);
 }
+
+/// BLD-005, BLD-026: the builder loop and its lease reports run on timers of the main web
+/// view. `WebKit` slows or stops the timers of a page whose window is hidden or minimised, and
+/// the hub then takes the job back after 90 s with no report. The main window turns that off
+/// (macOS 14 and later; the app's minimum is 14.2).
+#[test]
+fn bld_005_the_main_web_view_keeps_its_timers_in_the_background() {
+    let config: serde_json::Value =
+        serde_json::from_str(include_str!("../../tauri.conf.json")).unwrap();
+    let main = config["app"]["windows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|window| window["label"] == "main")
+        .expect("the main window");
+    assert_eq!(main["backgroundThrottling"], "disabled");
+    let minimum = config["bundle"]["macOS"]["minimumSystemVersion"]
+        .as_str()
+        .unwrap();
+    let major: u32 = minimum.split('.').next().unwrap().parse().unwrap();
+    assert!(major >= 14, "backgroundThrottling needs macOS 14");
+}
