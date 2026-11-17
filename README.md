@@ -8,7 +8,7 @@
 
 <p align="center">
   An open-source device manager for remote access, uptime and metrics.<br>
-  Self-hosted today. A hosted network is planned.
+  Self-hosted today. A hosted mode, where you sign in and Anima.ing runs the hub, is planned.
 </p>
 
 <p align="center">
@@ -33,7 +33,7 @@
 
 Anima.ing is a self-hosted device manager for the computers and servers you already have — including the ones AI agents run on. It combines a native macOS and Linux client, a Rust hub, and a gateway for remote sessions. A command-line tool and an MCP server let you and your coding agents use the same hub.
 
-The first public release of the client is coming soon. Until then, you can build from this repository.
+The first signed release of the macOS client, 0.2.0, is published at [releases.anima.ing](https://releases.anima.ing). A signed Linux build is still to come; until then, you can build from this repository.
 
 ## Features
 
@@ -68,20 +68,20 @@ The first public release of the client is coming soon. Until then, you can build
 
 Most people assemble this stack from three or four tools: a mesh VPN, a remote-desktop gateway, and an uptime checker. Anima.ing is one hub, one native client, and one API — including an MCP server so a coding agent can list machines, read checks, and (with your permission) change them.
 
-Self-hosting is free. A hosted plan called Solo is planned at $19 a month or $199 a year, for the case where Anima.ing runs the private network and relay for you. Solo is not for sale yet, and there is no public waitlist page at the time of writing. Paid plans are meant to sell hosting and support, not to withhold code: the same software stays in this repository.
+Self-hosting is free. The hosted mode is planned to be the default first run: you sign in and Anima.ing makes a hub for your account. A small hosted hub is planned to be free below a usage line, and it sleeps when none of your devices is connected. A hosted plan called Solo is planned at $19 a month or $199 a year, for an always-on hub, with Anima.ing running the private network and relay for you. None of this is for sale yet; the website has a waitlist only. Paid plans are meant to sell hosting and support, not to withhold code: the same software stays in this repository.
 
 ## Status
 
 | | Today | Planned |
 | --- | --- | --- |
-| Self-host the hub and client | Yes, build from source | Signed macOS and Linux downloads |
+| Self-host the hub and client | Yes, build from source | Signed Linux downloads |
 | Desktop client | macOS 14.2+ (Apple Silicon and Intel), Linux AppImage (x86-64). Linux ARM64 support. | Windows |
 | Web client | Served by the hub to browsers on the VPN ([guide](docs/setup/web-client.md)) | iOS |
 | Remote desktops | VNC and RDP through `guacd`; native VNC via `anima-gateway` | Native RDP |
 | Private network | Headscale / WireGuard; `anima-link` by hand | An Anima.ing-operated Tailcat relay; app-started `anima-link` |
-| Hosted Solo | — | $19 / month or $199 / year, waitlist only |
+| Hosted mode and Solo | — | Sign in to a hosted hub, free below a usage line; Solo at $19 / month or $199 / year; waitlist only |
 
-There is no public download yet: [releases.anima.ing](https://releases.anima.ing) is not serving builds, and this repository has no GitHub Releases. The first release is coming soon.
+The macOS DMG of release 0.2.0 is published at [releases.anima.ing](https://releases.anima.ing) (notarised; see [docs/research/one-click/s12-packaging-tasks.md](docs/research/one-click/s12-packaging-tasks.md) Section 6.4). A signed Linux build is not published yet, and this repository has no GitHub Releases.
 
 ## Quick start (build from source)
 
@@ -282,8 +282,8 @@ In development:
 
 Planned, not available today:
 
-- The first signed macOS and Linux releases
-- Solo hosting ($19 / month or $199 / year, waitlist only)
+- A signed Linux release
+- The hosted mode: sign in, and a hub is made for your account. Free below a usage line, with Solo hosting at $19 / month or $199 / year (waitlist only)
 - A native RDP gateway
 - A Windows client
 - An Anima.ing-operated Tailcat relay
