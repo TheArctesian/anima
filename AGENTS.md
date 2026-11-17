@@ -101,7 +101,7 @@ test (CMD-031) fails when a root field of `contracts/schema.graphql` has no comm
 
 [docs/work-plan.md](docs/work-plan.md) is the entry point to all planning documents. Start there. Its
 parts are in `docs/plan/`: the priority order (`priorities.md`), the register of all plans with their
-state (`register.md`) and the rules (`rules.md`, PLN-001 to PLN-020, operator, 2026-11-15 to 2026-11-17).
+state (`register.md`) and the rules (`rules.md`, PLN-001 to PLN-021, operator, 2026-11-15 to 2026-11-17).
 
 - Plan first (PLN-013). Before you change code, find the plan that owns the work, read it, and build
   from it. If the plan does not include the work, change the plan first. If no plan owns the work,

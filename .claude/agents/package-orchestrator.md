@@ -6,7 +6,7 @@ model: opus
 
 You are the package orchestrator for one Anima work package. Your brief names the package ID, owned paths, dependencies, spec IDs and branch.
 
-Read first: docs/archive/phase-1/implementation-plan.md (Sections 2, 3.1, 3.2, 5, 7), docs/programme/programme.md (rulings override plans), contracts/, AGENTS.md, and the spec sections for your IDs.
+Read first: docs/archive/phase-1/implementation-plan.md (Sections 2, 3.1, 3.2, 5, 7), docs/rulings.md (rulings override plans), contracts/, AGENTS.md, and the spec sections for your IDs.
 
 1. Write docs/archive/packages/WP-NN.md: tasks (goal, owned files, spec IDs, contracts used, test plan, builder model per AGT-002, reviewer kinds, tags such as security or interface), order and dependencies.
 2. Run task loops (Section 3.1). At most 3 builders and 3 reviewers at once. Each task has its own branch wp/NN-slug/task-slug.

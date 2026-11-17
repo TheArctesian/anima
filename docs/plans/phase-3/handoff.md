@@ -88,7 +88,7 @@ The issue #1 items not yet posted are listed in the orchestrator's scratchpad, `
 
 ## 5. Read first
 
-**Rulings** (`docs/programme/programme.md`):
+**Rulings** (`docs/rulings.md`):
 - R-066 (7 orchestrators)
 - R-067 (merge each accepted task at once)
 - R-068 (client-only gates)
@@ -104,7 +104,7 @@ Also read `docs/plans/phase-3/phase-3-plan.md`, `phase-3-contracts.md` and the p
 
 **Memory notes** for the new account to recreate from this list (they live in the Mac account's
 `~/.claude/projects/.../memory/`):
-- Deferred work goes in [deferred.md](../deferred.md) (R-119; it was GitHub issue #1 until 2026-11-16).
+- Deferred work goes in [deferred.md](../../deferred.md) (R-119; it was GitHub issue #1 until 2026-11-16).
 - No CI for gates or releases. Gates and builds run locally; releases go to R2.
 - Autonomous programme: merge into the integration branch and start packages without asking.
   Ask before pushing, before touching main, VPS, Cloudflare or secrets, and before destructive
@@ -173,7 +173,7 @@ Also read `docs/plans/phase-3/phase-3-plan.md`, `phase-3-contracts.md` and the p
 ## 8. Builds and the release of Anima (2026-11-16)
 
 This section adds to the file. Sections 1 to 7 are the state of 2026-11-12 and are not changed.
-The plan is [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md), Version 2, "Tasks". That
+The plan is [projects-and-builds-plan.md](../projects-and-builds-plan.md), Version 2, "Tasks". That
 table holds the state of each task (PLN-006). This section adds no requirement.
 
 ### 8.1 Done
@@ -197,12 +197,12 @@ All 20 gates passed before the push of `0846e3d5`.
    The file names of a release stay `Anima_*` (UPD-010). Decide whether the updater archive
    stays `Anima.app.tar.gz`: UPD-010 governs it. Write the reason in the commit.
 2. **R6: the release carries the local hub (D3).** Task T9 of
-   [s4-local-hub-tasks.md](../plans/one-click/s4-local-hub-tasks.md) owns it. Do not do it twice.
+   [s4-local-hub-tasks.md](../one-click/s4-local-hub-tasks.md) owns it. Do not do it twice.
 3. **R7: the first release.** The operator does it. It needs R1 to R5. Each feed at
    `releases.anima.ing` must answer 200 (D6). Agents do not publish, and do not touch R2 or the VPS
    (VPS-005, UPD-012).
 4. Then the groups W, B and A, in the order of the plan. W1 needs a ruling that changes R-115
-   ([jobs.md](../proposals/jobs.md), "Needs"). Ask the operator for it before you start W.
+   ([jobs.md](../../proposals/jobs.md), "Needs"). Ask the operator for it before you start W.
 
 D7 (no pinned toolchain) has no task yet. If a session adds one, its row goes in the plan's task
 table first.
@@ -230,7 +230,7 @@ Paste this to start the next session:
 
 ```text
 Continue the release correction of Anima. Read AGENTS.md, then Section 8 of
-docs/programme/handoff.md, then "The builder today" and "Tasks" in
+docs/plans/phase-3/handoff.md, then "The builder today" and "Tasks" in
 docs/plans/projects-and-builds-plan.md.
 
 Do task R5 (D2, OD-W19): one name for the macOS application, Anima.ing.app. Change the

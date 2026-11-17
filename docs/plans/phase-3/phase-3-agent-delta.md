@@ -1,7 +1,7 @@
 ---
 kind: Plan: change to Phase 3
 state: Done
-evidence: Approved 2026-11-07. WP-54 is done ([handoff.md](../../programme/handoff.md)).
+evidence: Approved 2026-11-07. WP-54 is done ([handoff.md](handoff.md)).
 ---
 
 # Phase 3 delta: metrics push agent (R-084)

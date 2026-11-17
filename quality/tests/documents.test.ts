@@ -126,6 +126,13 @@ describe("PLN-020 the register is generated", () => {
   });
 });
 
+describe("PLN-021 one number for each ruling", () => {
+  test("a number that two rulings have fails; a mention of a number does not", () => {
+    const log = "- **R-118 (operator).** First.\n- **CR-26 (orchestrator; R-118).** It names R-118.\n- **R-118 (operator).** Second.\n";
+    expect(check([{ path: "docs/rulings.md", text: log }])).toEqual(["docs/rulings.md: ruling-number-used-twice R-118"]);
+  });
+});
+
 describe("PLN-019 mockups", () => {
   test("a mockup that the index does not name fails", () => {
     expect(

@@ -17,7 +17,7 @@ rulings below.
 
 ## Operator rulings (2026-11-11)
 
-These are recorded in `docs/programme/operator-changes.md` by the lead in Phase 1.
+These are recorded in `docs/plans/phase-3/operator-changes.md` by the lead in Phase 1.
 
 | ID | Ruling |
 |---|---|
@@ -189,7 +189,7 @@ PHASE 1 — Direction (you, the lead; load apple-design and frontend-design).
    header with a form section; a Settings section), dark and light; plus low-fidelity wireframes
    of the shell, Devices, Device page and Settings.
 STOP: send me the page and the delta; I pick a direction and approve. Then log UR-1..UR-6 and the
-approved delta in docs/programme/operator-changes.md and apply the delta to design-spec.md.
+approved delta in docs/plans/phase-3/operator-changes.md and apply the delta to design-spec.md.
 
 PHASE 2 — Tokens (2 lanes).
  builder-light: design/tokens/*.json and reference.md — split palettes (nord.palette, neutral

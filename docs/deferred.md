@@ -824,7 +824,7 @@ Added 2026-11-08.
 
 **From Phase 3 (WP-43 to WP-54), reviews up to `phase-3` 595c624c, 2026-11-08**
 
-Spec references are to `docs/spec/design-spec.md`; rulings are in `docs/programme/programme.md`. Items come from accepted review rounds, not from a fresh audit.
+Spec references are to `docs/spec/design-spec.md`; rulings are in `docs/rulings.md`. Items come from accepted review rounds, not from a fresh audit.
 
 **Access and API keys (WP-43; R-100)**
 - [ ] Argument-level API-key rules: let a WRITE key rename or tag a device through `updateDevice` without changing its address or certificate rules (R-100 refuses `updateDevice` and `deleteDevice` for keys outright).

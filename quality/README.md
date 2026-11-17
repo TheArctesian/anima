@@ -8,7 +8,7 @@ Repository checks that Clippy and ESLint do not cover. Run with bun from `qualit
 | `bun run baseline -- --base <ref>` | CQ-011 | `baseline.json` has no new path, new signal or larger value than at `<ref>` (default `phase-2`) |
 | `bun run names` | CQ-030 | Banned words in file, folder and type names |
 | `bun run imports` | REPO-004 | No hub domain uses another domain's `store`; no domain cycle |
-| `bun run documents` | PLN-016, PLN-017, PLN-019 | Document links resolve; each plan is in the register, each work item in its index and each mockup in its index (PLN-019); each plan gives its kind and state in its header and the register agrees (PLN-020; `bun run register` writes it); one document defines each requirement identifier (`duplicate-identifiers.txt` is the shrink-only list of the known ones) |
+| `bun run documents` | PLN-016, PLN-017, PLN-019 | Document links resolve; each plan is in the register, each work item in its index and each mockup in its index (PLN-019); each plan gives its kind and state in its header and the register agrees (PLN-020; `bun run register` writes it); a number of the rulings log names one ruling (PLN-021); one document defines each requirement identifier (`duplicate-identifiers.txt` is the shrink-only list of the known ones) |
 
 ## Local gates
 

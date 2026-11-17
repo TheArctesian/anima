@@ -55,7 +55,7 @@ The table gives the order. The section of each row below the table gives the wor
 - Tier: 0
 - Category: Foundation, See, Reach
 - Work: Finish the device manager: the Phase 3 acceptance run (WP-53) and the operator steps before it. Three open defects ([GH-52](../work-items/defects/GH-52.md), [GH-53](../work-items/defects/GH-53.md), [GH-54](../work-items/defects/GH-54.md)). The correction of the release of Anima: tasks R1 to R7 in "Tasks" of [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md) (OD-W21).
-- Work items: [handoff.md](../programme/handoff.md) Sections 3 and 4. [GH-52](../work-items/defects/GH-52.md), [GH-53](../work-items/defects/GH-53.md), [GH-54](../work-items/defects/GH-54.md). R1 to R7 are in the task table of [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md)
+- Work items: [handoff.md](../plans/phase-3/handoff.md) Sections 3 and 4. [GH-52](../work-items/defects/GH-52.md), [GH-53](../work-items/defects/GH-53.md), [GH-54](../work-items/defects/GH-54.md). R1 to R7 are in the task table of [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md)
 - State: Phases 1 to 3 are built. Acceptance waits for the operator. This tier removes `blocked: device-manager` (PH-E-000, PH-C-000). R1 to R4 are done and are on `main` (commit `e3058276`, 2026-11-15). R5 is done (commit `c1e6226e`, on `main` since 2026-11-17). R6 and R7 are not started. The macOS release 0.2.0 is published since 2026-11-17 ([s12-packaging-tasks.md](../plans/one-click/s12-packaging-tasks.md) Section 6.4); the Linux feed is not checked.
 
 ### 4.16 One-click install

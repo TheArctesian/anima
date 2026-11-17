@@ -81,7 +81,7 @@ The plan has two tiers:
 | --- | --- | --- |
 | OD-10, vpn.md Section 11 | `docs/procedures/setup/vpn.md` | No Headscale API key. Admin only through `headscale` on the VPS unix socket. Tier A does not call Headscale. |
 | vpn.md Section 11, steps 3 and 5 | `docs/procedures/setup/vpn.md` | Pre-auth keys are single use, last one hour, and stay out of command lines and logs. Use `--auth-key=file:` (vpn.md lines 486, 916). |
-| R-055 | `docs/programme/programme.md` | The broker is deferred. The proposal has exactly three verbs. Tier B waits for decision (b). |
+| R-055 | `docs/rulings.md` | The broker is deferred. The proposal has exactly three verbs. Tier B waits for decision (b). |
 | R-061 | `programme.md`, `add-this-machine.md` | Device grants: one `/32`, from `tag:hub`, TCP only. Router test rows wait in `ROUTER_ROWS`. |
 | R-076 | `programme.md` | No grant on TCP 3389. This overrides the `3389` in `add-this-machine.md`. |
 | R-079 | `programme.md` | The app never changes VPN rules. Tier B item B5 needs a change to R-079. |
@@ -95,7 +95,7 @@ The plan has two tiers:
 | `quality/hub-modules.json` | imports gate | A new domain and each new import is a contract change. |
 | PKG-001, R-082 | `phase-3-plan.md` Section 1 | Only WP-54 hand-offs and WP-52 (for D-8, D-24) change `deploy/headscale/`. Tier A items A3 to A5 need a ruling. |
 | Limits, `quality/baseline.json` is `{}` | AGENTS.md | 300 code lines for each file, 12 files for each folder. See Section 6. |
-| Programme location | `docs/programme/handoff.md` | The Linux-machine session runs Phase 3. New packages go to [deferred.md](../deferred.md) (R-119) until the programme accepts them. |
+| Programme location | `docs/plans/phase-3/handoff.md` | The Linux-machine session runs Phase 3. New packages go to [deferred.md](../deferred.md) (R-119) until the programme accepts them. |
 
 ## 3. Facts from the code
 
@@ -514,7 +514,7 @@ The build session moved to a fresh session to keep turns short. State at this po
   VP-12, the tailnet-site fix and VP-13. Gates passed 12/12 at 129cfa87. Not pushed, not merged
   into phase-3: both need the operator's word.
 - **Live on the dev VPS.** Broker at 8dce3f80 (audit ok); hub image `anima-hub:5a8039de` with the
-  VPN work, calling the broker (`docs/programme/operator-changes.md`, 22:58Z and 23:11Z rows).
+  VPN work, calling the broker (`docs/plans/phase-3/operator-changes.md`, 22:58Z and 23:11Z rows).
   The desktop app was rebuilt and opened on the Mac.
 - **Built, not yet on the VPS.** VP-12 (new broker binary), the tailnet-site fix (new hub image),
   VP-13 (firewall, sshd, compose), and the VP-13 security review fixes (F1–F6, I1–I3; build note
@@ -528,7 +528,7 @@ The build session moved to a fresh session to keep turns short. State at this po
      firewall (`--dry-run firewall`, `firewall`, `confirm` within 180 s), sshd and the
      `anima-probe` account (README "The VPS as a device (VP-13)" step 3), then the hub (fresh
      backup, new image from HEAD, new compose; the `gateway` and `acme` networks are recreated).
-     Verify per the README and log each change in `docs/programme/operator-changes.md`.
+     Verify per the README and log each change in `docs/plans/phase-3/operator-changes.md`.
   3. Rebuild and reopen the desktop app; the operator adds the VPS device at 100.64.0.1 with
      ping and TCP 22 checks.
 - **Open, no action yet.** A dark-mode token for small accent text (m2); moving the broker off

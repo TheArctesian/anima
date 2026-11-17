@@ -80,7 +80,7 @@ vault.
 | BLD-024 | spec 3 | A builder is bound to its VPN address. In the new mode it must be bound to its device key. |
 | Spec 1.4 | design-spec.md | Anima has one operator. Shares (S14) and team hubs (S15) need members and a permission check on each operation. Needs a spec delta. |
 | LOG-005, INT-003 | spec 3, 6 | The audit log and API keys assume one operator. With members, each record and each key must name its member. |
-| R-062 | `docs/programme/programme.md` | The hub already runs SSH itself. Item S2 does the same for RDP and VNC. |
+| R-062 | `docs/rulings.md` | The hub already runs SSH itself. Item S2 does the same for RDP and VNC. |
 | R-076 | `programme.md` | No Windows work. RDP checks run against a second Mac. |
 | MET-012, MET-013, MET-019 | spec 6 | The pattern for invites (single use, short life) and for a background service (LaunchAgent, systemd unit). |
 | CON-001, K1, K2, K4 | `contracts/` | The schema, the database and the tunnel are frozen contracts. Each change needs a programme ruling. |

@@ -39,7 +39,7 @@ that owns the area.
 
 Requirements: ADR-005
 ([cve-watch-and-network-awareness.md](proposals/cve-watch-and-network-awareness.md)),
-R-060 ([programme/programme.md](programme/programme.md)).
+R-060 ([rulings.md](rulings.md)).
 
 What it is: the desktop app found its own address on the Anima VPN as the lowest IPv4 address
 of this computer in `100.64.0.0/10`. Headscale, Tailscale and NetBird all give addresses in

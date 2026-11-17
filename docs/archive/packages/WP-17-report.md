@@ -10,7 +10,7 @@ operator can do), **blocked** (needs an operator action first).
 
 | # | Criterion (short) | Status | Evidence |
 | --- | --- | --- | --- |
-| 1 | Hub stack starts from compose on the VPS | met | `deploy/test/compose.test.ts:139,149`; live first start recorded in `docs/programme/operator-changes.md` line 30 (2026-11-05 05:20Z). |
+| 1 | Hub stack starts from compose on the VPS | met | `deploy/test/compose.test.ts:139,149`; live first start recorded in `docs/plans/phase-3/operator-changes.md` line 30 (2026-11-05 05:20Z). |
 | 2 | VPN reaches devices at both sites; hub to device | met in part; **blocked** for site to site | Policy tests `deploy/headscale/tests/policy.test.ts` (ROUTER_ROWS at :28-42); hub to device SSH with a fake server `crates/hub/src/sessions/terminal/tests/wire/session.rs:43`; live TCP from the VPS to the Mac on port 22 (operator-changes line 33). Site to site needs a subnet router enrolled. |
 | 3 | Desktop app builds and opens on macOS and Linux | met, operator to confirm (Linux open) | macOS builds. Linux: Ubuntu 24.04 container with the release job's apt packages, Rust 1.99.1 aarch64: `cargo build -p anima-desktop` passes, `cargo test -p anima-desktop` 49 passed, `cargo clippy --all-targets -D warnings` clean (T6). Opening the window on a Linux desktop is not checkable here. |
 | 4 | Navigation shell | met | `apps/client/src/lib/nav/shell.test.ts:86,110`. |

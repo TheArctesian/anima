@@ -28,7 +28,7 @@ Rules:
 Draft, but do not apply, the change to `deploy/headscale/config/policy.hujson`:
 - under `hosts`, add `"device-pop-os": "<this computer's 100.64 address>/32"`;
 - a grant like the Mac's: `{"src": ["tag:hub"], "dst": ["device-pop-os"], "ip": ["tcp:22", "tcp:5900"]}`.
-Show me the diff. Once I say yes, I apply it on the VPS the same way as the WP-23 policy step, and you log the change in `docs/programme/operator-changes.md`.
+Show me the diff. Once I say yes, I apply it on the VPS the same way as the WP-23 policy step, and you log the change in `docs/plans/phase-3/operator-changes.md`.
 
 ## 3. Turn on SSH and screen sharing
 

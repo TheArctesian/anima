@@ -1,6 +1,7 @@
 import { posix } from "node:path";
 import type { Violation } from "../report.ts";
 import { checkRegister } from "./register.ts";
+import { repeatedRulings } from "./rulings.ts";
 
 /** One Markdown file of the repository. */
 export interface Document {
@@ -98,7 +99,8 @@ export function parseKnown(text: string): Set<string> {
 /**
  * PLN-017: the links resolve, each plan, each work item and each mockup is in its list, a plan
  * gives its kind and its state in its header, the register agrees with the headers (PLN-020),
- * and one document defines each requirement identifier.
+ * a number of the rulings log names one ruling (PLN-021), and one document defines each
+ * requirement identifier.
  */
 export function checkDocuments(all: Document[], exists: (path: string) => boolean, known: ReadonlySet<string>): Violation[] {
   const documents = all.filter((document) => CHECKED.test(document.path)).sort((a, b) => a.path.localeCompare(b.path));
@@ -106,6 +108,7 @@ export function checkDocuments(all: Document[], exists: (path: string) => boolea
     ...brokenLinks(documents, exists),
     ...LISTINGS.flatMap((listing) => unlisted(documents, listing)),
     ...checkRegister(documents, (path) => PLAN.test(path)),
+    ...repeatedRulings(documents),
     ...repeatedDefinitions(documents, known),
   ];
 }

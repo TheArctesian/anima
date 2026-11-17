@@ -101,7 +101,7 @@ The work packages are independent. They can run at the same time because:
 
 1. **Contracts.** The programme orchestrator writes and freezes the contracts (Section 4) with the skeleton package WP-01.
 2. **Waves.** It starts the packages of each wave when their dependencies are done (Section 6).
-3. **Rulings.** It answers escalations and records each answer as a numbered ruling in `docs/programme/programme.md`. A ruling overrides a package plan.
+3. **Rulings.** It answers escalations and records each answer as a numbered ruling in `docs/rulings.md`. A ruling overrides a package plan.
 4. **Integration.** It merges each finished package branch into `phase-1`, runs all gates and does a browser pass on the merged application.
 5. **Acceptance.** It runs package WP-17 (Section 5) to check the Phase 1 acceptance criteria.
 6. **Landing.** The merge of `phase-1` into `main` needs the confirmation of the operator.
@@ -192,7 +192,7 @@ Run all gates with `bun run gates`. Gates do not run in GitHub Actions (R-005).
 
 | File | Writer | Readers | Content |
 | --- | --- | --- | --- |
-| `docs/programme/programme.md` | Programme orchestrator | All agents | Package table, wave state, frozen contracts, numbered rulings |
+| `docs/rulings.md` | Programme orchestrator | All agents | Package table, wave state, frozen contracts, numbered rulings |
 | `docs/archive/packages/WP-NN.md` | Package orchestrator | Its builders and reviewers | Package plan, tasks, models, review log |
 | Package report (message to the programme orchestrator) | Package orchestrator | Programme orchestrator | Status, contract change requests, handoff notes, risks |
 | `contracts/` | Programme orchestrator | All agents | Section 4 |

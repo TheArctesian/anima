@@ -395,7 +395,7 @@ builder adds the entry.
 
 ## Checks that other documents hold
 
-These checks were open before this document. The document in the column "Steps", or the line above each table, holds the steps. This section holds the result of each check (PLN-014), so that one list shows all of them. The results in this version come from the text of those documents and of [programme/handoff.md](programme/handoff.md) (2026-11-12). No person or agent ran a check for this version.
+These checks were open before this document. The document in the column "Steps", or the line above each table, holds the steps. This section holds the result of each check (PLN-014), so that one list shows all of them. The results in this version come from the text of those documents and of [handoff.md](plans/phase-3/handoff.md) (2026-11-12). No person or agent ran a check for this version.
 
 - A task that waits for a check is not Done until the row of the check says Passed (PLN-009).
 - The words for a result are the states of this document: Open, Passed, Failed. Add "Blocked" with the reason when a check cannot start.

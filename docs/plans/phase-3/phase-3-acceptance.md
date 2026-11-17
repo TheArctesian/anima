@@ -62,7 +62,7 @@ WP-53 scripts and tests (merged):
 
 Results: [need-human-testing.md](../../need-human-testing.md), section "Checks that other documents hold", holds the result of each check below (PLN-014).
 
-One ordered checklist. Run order: P-1 to P-15, P-17, then P-16 (the log scan runs last so it covers every step). Do setup once, then each live part. Record results in [operator-changes.md](../../programme/operator-changes.md) or in the "Evidence" column of the matrix above.
+One ordered checklist. Run order: P-1 to P-15, P-17, then P-16 (the log scan runs last so it covers every step). Do setup once, then each live part. Record results in [operator-changes.md](operator-changes.md) or in the "Evidence" column of the matrix above.
 
 Rules for the whole list:
 - The operator types every real secret (SMTP password, ntfy token, webhook URL, Apprise URLs, API keys) into Settings personally. Agents never type, read or ask for a real secret.

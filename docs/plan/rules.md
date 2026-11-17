@@ -4,7 +4,7 @@ Part of the work plan: [work-plan.md](../work-plan.md) is the entry point, and i
 
 | Item | Value |
 | --- | --- |
-| Document | The rules PLN-001 to PLN-020 |
+| Document | The rules PLN-001 to PLN-021 |
 | Version | 2.0 |
 | Date | 2026-11-17 |
 | Language | ASD-STE100 Simplified Technical English (STE) |
@@ -48,5 +48,6 @@ These rules apply to each person and each agent (operator, 2026-11-15).
   6. Check. A function that the gates cannot prove gets its entry in [need-human-testing.md](../need-human-testing.md) (PLN-014). The task is Done after the operator sets the entry to Passed.
 - **PLN-019. A mockup agrees with the application.** Each mockup has a row in [mockup/README.md](../mockup/README.md) with its owner plan, the screens that it shows, its state and the date it was compared (operator, 2026-11-17). A commit that changes the layout of one of those screens changes the mockup in the same commit, or writes the difference in the row. A difference is a defect. A mockup takes its values from the design tokens. A mockup of an idea is in the folder of the idea until the idea is a proposal.
 - **PLN-020. The header holds the state; the register is generated.** Each plan, proposal and task breakdown starts with a header between two `---` lines: `kind:`, `state:` (it starts with a word of PLN-007) and `evidence:` (PLN-009), each on one line (operator, 2026-11-17). This header is the only place that holds the state of the document. `bun run quality:register` writes the table of Section 9 from the headers. To change a state, change the header and run the command, in the commit that does the work (PLN-008). Do not write the state of a plan in a second document; point to Section 9.
+- **PLN-021. One log of decisions, one series of numbers.** [rulings.md](../rulings.md) is the only log of decisions (operator, 2026-11-17). A decision of the operator that approves or changes a requirement, a contract or a plan gets the next free number `R-nnn` there, in the commit that records it. A table of open decisions in a plan (`OD-...`) holds the question and the recommendation; when the operator decides, its row gives the result and the number of the ruling. A branch takes its number when it merges: if `main` has the number, the branch takes the next one. The gate fails when two rulings have one number.
 
 A task list that an agent keeps for one session is not a document. These rules do not apply to it.

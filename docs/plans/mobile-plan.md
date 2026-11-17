@@ -230,4 +230,4 @@ Version 0.2 of this plan made these changes in the same commit (operator, 2026-1
 | Design specification 5.3, NAV-001, NAV-003 | In the phone layout the bar has four destinations, Logs is a page, and the hub status is not in the bar (approved mockups, 2026-11-16). | Not made |
 | Design specification UI-013 and the `control-*` tokens | Controls of 44 px to 56 px in the phone layout; the tokens stop at 40 px. | Not made |
 | Design specification 10 | Its title and text name iOS only. A constraint of Android has no place there yet. | Not made. Do it when task M1-3 gives the Android constraints. |
-| `docs/programme/programme.md` | The rulings OD-M1 to OD-M8 have no ruling number (R-number). | Not made. The operator gives the numbers. |
+| `docs/rulings.md` | The rulings OD-M1 to OD-M8 have no ruling number (R-number). | Not made. The operator gives the numbers. |

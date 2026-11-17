@@ -1,7 +1,7 @@
 ---
 kind: Plan: Phase 3
 state: In progress
-evidence: Adopted (R-081). All packages are done. The acceptance run (WP-53) waits for the operator ([handoff.md](../../programme/handoff.md), 2026-11-12).
+evidence: Adopted (R-081). All packages are done. The acceptance run (WP-53) waits for the operator ([handoff.md](handoff.md), 2026-11-12).
 ---
 
 # Anima Agent Implementation Plan — Phase 3
@@ -28,7 +28,7 @@ This plan uses these items without change:
   gates (Section 7), files and communication (Section 8);
 - the Phase 2 plan ([phase-2-plan.md](../../archive/phase-2/phase-2-plan.md)) rules P2-002 (`@pending`), P2-003 (one SSH path) and
   P2-004 (target rule and deny list on every hub connection to a device);
-- every ruling R-001 to R-080 and CR-1 to CR-4 in [programme.md](../../programme/programme.md). These apply in full:
+- every ruling R-001 to R-080 and CR-1 to CR-4 in [rulings.md](../../rulings.md). These apply in full:
   - R-066 (early start against the mock, two review rounds, scoped mutation testing, one motion audit, 7
     package orchestrators);
   - R-067 (merge each accepted task at once);
@@ -210,7 +210,7 @@ operator can do.
 
 Each change on the VPS, Headscale or Cloudflare needs the operator's confirmation in chat (VPS-005, DNS-008).
 WP-52 delivers the files and steps. The programme orchestrator asks before it applies them and logs each one in
-[operator-changes.md](../../programme/operator-changes.md).
+[operator-changes.md](operator-changes.md).
 
 | Item | Change | Why |
 | --- | --- | --- |

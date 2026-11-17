@@ -34,7 +34,7 @@ Status words (WP-34 D-8):
 Results: [need-human-testing.md](../../need-human-testing.md), section "Checks that other documents hold", holds the result of each check below (PLN-014).
 
 Run these on the operator's machines after the hub, with the WP-23 gateway steps applied, has been redeployed. Each
-step names what to look for. Record the result in `docs/programme/operator-changes.md`.
+step names what to look for. Record the result in `docs/plans/phase-3/operator-changes.md`.
 
 - **O-1 RDP (criterion 1). Hardware: a Windows machine with RDP and NLA on, reachable by the hub.** First add a Headscale
   grant `tag:hub` → `device-<name>` on tcp:3389, with policy tests (WP-23 could). Then:

@@ -418,7 +418,7 @@ user) or in Cloudflare. Nothing in this repository does them.
 
 Do these once, in order, on the VPS in `/opt/anima/deploy` (AlmaLinux 10, as the sudo admin user).
 Each change to the VPS needs the operator's confirmation in chat first (VPS-005). Nothing in this
-repository does them. Log each one in `docs/programme/operator-changes.md`.
+repository does them. Log each one in `docs/plans/phase-3/operator-changes.md`.
 
 Each feature works once its package is in the image. Browser sign-in needs WP-43 and WP-44. The
 Apprise channel and the test notification need WP-45 and WP-50. The retention settings need WP-46 (hub)

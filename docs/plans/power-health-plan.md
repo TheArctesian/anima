@@ -65,7 +65,7 @@ These limits are facts of the hardware. The interface must say them plainly.
 | DEV-026 | spec Section 6 | "Needs attention" is the place for a health warning. |
 | INT-003, CLI | spec Section 3, `docs/plans/cli-mcp-plan.md` | AI agents and scripts read through the GraphQL API. New values in K1 are then available to the CLI and to MCP with no extra path. |
 | K1, K2 | `contracts/schema.graphql`, `contracts/database.md` | Frozen contracts. New fields, tables and migration ranges need a programme ruling. |
-| R-076 | `docs/programme/programme.md` | No Windows work. |
+| R-076 | `docs/rulings.md` | No Windows work. |
 | one-click-plan.md Section 1.2 | this branch | The one-click install needs no administrator rights. Section 4 of this plan keeps that true. |
 | Limits | AGENTS.md | 300 code lines for each file, 12 files for each folder. |
 

@@ -27,7 +27,7 @@ This plan uses the Phase 1 plan ([implementation-plan.md](../phase-1/implementat
 - the contract rules (Section 4, CON-001 to CON-004) and the shared-file rules (PKG-001 to PKG-003);
 - the gates (Section 7). Run them with `env -u DATABASE_URL BASE_REF=<base> bun run gates`;
 - the files and communication rules (Section 8) and the operator checkpoints (Section 9);
-- every ruling R-001 to R-064 in [programme.md](../../programme/programme.md). R-024 and R-027 apply: the programme
+- every ruling R-001 to R-064 in [rulings.md](../../rulings.md). R-024 and R-027 apply: the programme
   orchestrator merges reviewed work that passes 12/12 into `phase-2`, and a package may start when the
   interfaces it uses are on `phase-2`.
 
