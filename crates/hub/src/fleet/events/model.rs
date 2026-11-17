@@ -132,6 +132,8 @@ pub(super) struct EventFilter {
     pub(super) device: Option<DeviceId>,
     /// Only events at or after this instant.
     pub(super) since: Option<DateTime<Utc>>,
+    /// Only events whose message or device name holds this text, with case ignored.
+    pub(super) text: Option<String>,
 }
 
 /// The operator a recorded action is made for (API-003), and who did it for them (LOG-012).

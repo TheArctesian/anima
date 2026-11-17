@@ -308,6 +308,8 @@ export type EventFilter = {
   severity?: Array<Severity> | null | undefined;
   since?: string | null | undefined;
   source?: Array<EventSource> | null | undefined;
+  /** Only events whose message or device name holds this text, with case ignored. 1 to 200 characters; blank matches every event (LOG-011). */
+  text?: string | null | undefined;
 };
 
 export type EventSource =

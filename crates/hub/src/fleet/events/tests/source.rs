@@ -22,10 +22,8 @@ async fn events_source_vpn_is_stored_and_read_back(pool: PgPool) {
     };
     record(&mut conn, &Bus::new(1), at, event).await.unwrap();
     let filter = EventFilter {
-        severities: None,
         sources: Some(vec![Source::Vpn]),
-        device: None,
-        since: None,
+        ..EventFilter::default()
     };
 
     let read = list_events(&pool, &filter, None, 10).await.unwrap();
