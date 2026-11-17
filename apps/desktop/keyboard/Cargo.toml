@@ -1,0 +1,18 @@
+[package]
+name = "tauri-plugin-keyboard"
+description = "Keeps the Android web view above the on-screen keyboard (MOB-011, mobile plan M4-1)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+# Tauri finds a plugin's Android library through this name: the app's build reads it from the plugin's build output.
+links = "tauri-plugin-keyboard"
+
+[build-dependencies]
+tauri-plugin = { version = "2.7", features = ["build"] }
+
+[dependencies]
+tauri.workspace = true
+
+[lints]
+workspace = true

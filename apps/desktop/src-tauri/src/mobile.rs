@@ -7,6 +7,7 @@ use crate::memory_tokens;
 #[tauri::mobile_entry_point]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_keyboard::init())
         .manage(memory_tokens::MemoryTokens::default())
         .invoke_handler(tauri::generate_handler![
             memory_tokens::access_token_read,

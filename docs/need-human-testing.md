@@ -397,8 +397,13 @@ on-screen keyboard. Ctrl and Alt latch for the next key.
 The tests cover the bytes of the latched keys and the time text. On 2026-11-17 a throwaway SSH
 server that ran only `cat -v` was used on the iPhone 17 Pro simulator and on the Android emulator:
 Ctrl then L gave `^L`, typing worked on iOS, and back kept the session open. No real phone and no
-real shell were used. On the Android emulator the keyboard covered the key row, and text typed
-through the keyboard came out in the wrong order.
+real shell were used.
+
+Later on 2026-11-17 the Android keyboard plugin (`apps/desktop/keyboard`) and the emptied input box
+(`sessions/screen/operator/typing.ts`) were added. On the Android emulator with Gboard the key row then
+sat directly above the keyboard, and keys tapped on Gboard after typing in the device search arrived in
+order ("hello wo" and Backspace gave "hello w"). Before, the keyboard covered the key row and that text
+came out as "elloh". The same typing was correct on the iPhone simulator. Only Gboard was tried.
 
 1. Install a build of this branch on an iPhone. Sign in to a hub that has a device with SSH set
    up, and open the device. Tap SSH. Expected: the session fills the screen, the bar shows the
@@ -410,8 +415,12 @@ through the keyboard came out in the wrong order.
 5. Tap "Hide keyboard". Expected: the keyboard closes and the key row moves to the bottom of the
    screen.
 6. Tap back. Expected: the device list with the navigation bar. The session is still open.
-7. Do steps 1 to 6 on an Android phone. Expected: the same results. Write down if the keyboard
-   covers the key row in step 2, and if typed text comes out in the wrong order.
+7. Do steps 1 to 6 on an Android phone. Expected: the same results. Before step 1, type a word in
+   the device search; then in step 3 type a full sentence. Expected: the text arrives in the order
+   typed. If the phone has a second keyboard app (for example SwiftKey or Samsung Keyboard), do step 3
+   with it too.
+8. On the Android phone, tap the device search. Expected: the navigation bar sits directly above the
+   keyboard, with no gap between them.
 
 Result: Open.
 

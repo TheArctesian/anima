@@ -28,6 +28,11 @@ body {
   --safe-block-end: max(env(safe-area-inset-bottom, 0px), var(--space-6));
 }
 
+/* The on-screen keyboard covers the gesture bar. The app's keyboard plugin sets `data-keyboard` (mobile plan M4-1). */
+:root[data-os="android"][data-keyboard] {
+  --safe-block-end: 0px;
+}
+
 html {
   background: var(--surface-sunken);
 }

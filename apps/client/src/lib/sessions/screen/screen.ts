@@ -12,6 +12,7 @@ import { guardEscapes, type EscapeHooks } from './remote/escapes';
 import { guardClipboard } from './operator/clipboard';
 import { safePaste } from './operator/paste';
 import { shortcutOf, type ShortcutAction } from './operator/shortcuts';
+import { clearAfterTyping } from './operator/typing';
 import { terminalFont, terminalOptions } from './options';
 
 /** What the screen tells the session view. */
@@ -142,6 +143,7 @@ export const openScreen: ScreenOpener = async (host, hooks) => {
   terminal.open(host);
   // The terminal's own box takes its background, so room inside it (the phone layout's margin) is the terminal's too.
   if (terminal.element !== undefined) terminal.element.style.backgroundColor = terminal.options.theme?.background ?? '';
+  if (terminal.textarea !== undefined) clearAfterTyping(terminal.textarea);
   guardClipboard(host, terminal, hooks.allows);
   enableWebgl(terminal);
   fit.fit();
