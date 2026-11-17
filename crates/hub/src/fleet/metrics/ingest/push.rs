@@ -1,8 +1,8 @@
-//! `POST /agent/v1/push` (K8 Sections 4 and 6; MET-015, MET-017, MET-018).
+//! `POST /daemon/v1/push` (K8 Sections 4 and 6; MET-015, MET-017, MET-018).
 //!
 //! The checks run in K8's order and stop at the first refusal: the bearer, before the body is
 //! read; the size; the JSON; the device; the shape; the times. The bearer check includes the
-//! device's metrics source: once the operator switches it away from `agent`, the agent's role
+//! device's metrics source: once the operator switches it away from `daemon`, the daemon's role
 //! is over and its pushes are `TOKEN_REFUSED` (package ruling, WP-54 T3b). The body is held in a
 //! buffer wiped on drop and never logged; a parse error is dropped unread, since its text may
 //! quote the body (LOG-007). The token is looked up by its hash only and never reaches an
@@ -13,10 +13,6 @@ mod samples;
 
 use std::net::IpAddr;
 
-use agent_core::{
-    readings::Drive,
-    wire::{Batch, RefusalCode},
-};
 use async_graphql::ID;
 use axum::{
     body::Body,
@@ -25,12 +21,16 @@ use axum::{
     response::{IntoResponse as _, Response},
 };
 use chrono::{DateTime, Utc};
+use daemon_core::{
+    readings::Drive,
+    wire::{Batch, RefusalCode},
+};
 
 use super::{
     admission::{Admitted, Stop, admit},
     credential,
     refusals::Route,
-    routes::{AgentState, busy, client_of, read_body, unmounted},
+    routes::{DaemonState, busy, client_of, read_body, unmounted},
     turns::Turn,
 };
 use crate::{
@@ -43,9 +43,9 @@ use samples::Rows;
 /// The push body limit (K8 Section 1, MET-017).
 const BODY_LIMIT: usize = 512 * 1024;
 
-/// Takes a batch from the agent of the bearer token: `204` once it is stored, or the first
+/// Takes a batch from the daemon of the bearer token: `204` once it is stored, or the first
 /// refusal of K8 Section 6, written to the event log without the token.
-pub(super) async fn serve_push(state: AgentState, request: Request) -> Response {
+pub(super) async fn serve_push(state: DaemonState, request: Request) -> Response {
     let Some(client) = client_of(&request) else {
         return unmounted();
     };
@@ -61,7 +61,7 @@ pub(super) async fn serve_push(state: AgentState, request: Request) -> Response 
 }
 
 async fn push(
-    state: &AgentState,
+    state: &DaemonState,
     (headers, body): (&HeaderMap, Body),
     address: Turn<IpAddr>,
     now: DateTime<Utc>,
@@ -85,7 +85,7 @@ async fn push(
         batch.check(device.into(), now).map_err(refused)?
     };
     let rows = samples::rows(&accepted.points);
-    let agent_version = accepted.agent_version;
+    let daemon_version = accepted.daemon_version;
     let gpus: Option<Vec<Gpu>> = accepted
         .gpus
         .map(|gpus| gpus.into_iter().map(Gpu::from).collect());
@@ -99,7 +99,7 @@ async fn push(
         gpus: gpus.as_deref(),
         drives: drives.as_deref(),
         inventory: accepted.inventory.as_ref(),
-        agent_version: agent_version.as_deref(),
+        daemon_version: daemon_version.as_deref(),
     };
     drop(token);
     let _request = state.turns.request().await.ok_or(Stop::Busy)?;
@@ -117,7 +117,7 @@ async fn push(
 
 /// Publishes the newest point of the batch on the live feed with the device's readings as
 /// stored (MET-005). A failed read is logged; the batch is stored and stays accepted.
-async fn publish(state: &AgentState, device: DeviceId, rows: &Rows) {
+async fn publish(state: &DaemonState, device: DeviceId, rows: &Rows) {
     let Some(at) = rows.values.iter().map(|value| value.at).max() else {
         return;
     };
@@ -126,7 +126,7 @@ async fn publish(state: &AgentState, device: DeviceId, rows: &Rows) {
         Err(error) => {
             tracing::error!(
                 fault = error.fault(),
-                "an agent batch could not be published"
+                "a daemon batch could not be published"
             );
             return;
         }

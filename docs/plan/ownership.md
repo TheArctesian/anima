@@ -20,7 +20,7 @@ One document owns each concern. Add a requirement to its owner, not to this docu
 | VPN and enrolment | [vpn-plan.md](../plans/vpn-plan.md) | As published there |
 | One-click install, many hubs, shares and teams | [one-click-plan.md](../plans/one-click/one-click-plan.md) | `LNK` (the link; LNK-009 is proposed), `MHB`, `SHR`, `MBR` (proposed; not in the spec yet). `AWK` moved to the design specification Section 3.13. Record links of the extensions plan are `RLK-001` to `RLK-006` (they were `LNK` until 2026-11-17, R-125) |
 | Power, hardware health and inventory | [power-health.md](../proposals/power-health.md) | `PWR`, `HWH`, `HWI` (proposed; not in the spec yet). `HLT` is the Health extension of the extensions plan |
-| Agent push | [design-spec.md](../spec/design-spec.md) defines MET-011 to MET-025. `contracts/agent-push.md` (K8) is the contract; [phase-3-agent-delta.md](../plans/phase-3/phase-3-agent-delta.md) is the record of the change | MET-011 to MET-025 |
+| Daemon push | [design-spec.md](../spec/design-spec.md) defines MET-011 to MET-025. `contracts/daemon-push.md` (K8) is the contract; [phase-3-daemon-delta.md](../plans/phase-3/phase-3-daemon-delta.md) is the record of the change | MET-011 to MET-025 |
 | Engine and extensions | [extensions-plan.md](../plans/extensions-plan.md) | ENG, SRC, COL, VLT, XP, PRJ and the others there |
 | Model service and pooled models | [compute-plan.md](../plans/compute-plan.md), as changed by [C1](../work-items/compute/C1.md) and [C2](../work-items/compute/C2.md) | CMP, CAG, CAP, RTR and the others there |
 | Copies of the coordinator database, and the move of the coordinator | [coordinator-standby.md](../proposals/coordinator-standby.md) | FND-001 to FND-012 |
@@ -48,7 +48,7 @@ One document owns each concern. Add a requirement to its owner, not to this docu
 | The bundled database, the local hub and the first run of the one-click install (proposed spec deltas) | [s3-spec-delta.md](../plans/one-click/s3-spec-delta.md), [s4-spec-delta.md](../plans/one-click/s4-spec-delta.md), [s6-spec-delta.md](../plans/one-click/s6-spec-delta.md) | `DBL`, `LHB`, `FRN` (proposed; in table rows, not approved) |
 | Bots: always-on bots on the operator's machines (proposed) | [bots.md](../proposals/bots.md) | BOT-001 to BOT-038 |
 | The watchdog: watched programs of a machine, their restarts and the reports | [watchdog.md](../proposals/watchdog.md) | WDG-001 to WDG-041 |
-| The update of the agent and the hub: the release record, the rollout, the rollback, the automatic update. The update of the desktop application stays in the design specification Section 3.9 (UPD). | [agent-and-hub-update.md](../proposals/agent-and-hub-update.md) | ROL-001 to ROL-052 |
+| The update of the daemon and the hub: the release record, the rollout, the rollback, the automatic update. The update of the desktop application stays in the design specification Section 3.9 (UPD). | [daemon-and-hub-update.md](../proposals/daemon-and-hub-update.md) | ROL-001 to ROL-052 |
 | Rulings and the state of each package | [rulings.md](../rulings.md), [handoff.md](../plans/phase-3/handoff.md) | R, CR |
 
 The proposals are drafts (Section 9 lists them). A proposal becomes a plan when the operator approves it with a ruling. Then its work gets a task table in the plan, or a work item in [work-items/](../work-items/README.md), and a row in Section 4 (PLN-012).

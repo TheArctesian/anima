@@ -37,7 +37,7 @@ product code does not need to become multi-tenant. Only the hosting layer is sha
 
 ## 2. Metering and the live gauge
 
-- A small agent on each pool host reads each instance's usage every 10 seconds: CPU time against
+- A small daemon on each pool host reads each instance's usage every 10 seconds: CPU time against
   its allowance, memory in use against its limit, disk used against its quota, and relayed
   traffic against the 500 GB monthly allowance in the vault's Pricing note.
 - The figures go to the control plane, which keeps a 30-day history for billing and support,
@@ -140,7 +140,7 @@ launch.
 4. **Keep one server for each customer** (for example a VPS at UpCloud) as the Dedicated package
    and as the fallback for regions with no pool host (the US until a US host is priced).
 5. **To move a hub between hosts, use a backup and a restore.** Stop the hub, take a final backup,
-   restore it into the new instance, switch the subdomain, and check that every agent connects
+   restore it into the new instance, switch the subdomain, and check that every daemon connects
    again. The target is less than 10 minutes without service, inside a maintenance window that the
    customer knows.
 

@@ -3,8 +3,8 @@
 
 use std::collections::HashMap;
 
-use agent_core::readings::Drive;
 use chrono::{DateTime, Utc};
+use daemon_core::readings::Drive;
 use sqlx::{PgConnection, PgPool};
 
 use super::{record::device_missing, rows::DriveRow};

@@ -3,8 +3,8 @@
 
 use std::net::{IpAddr, Ipv4Addr};
 
-use agent_core::wire::RefusalCode;
 use axum::http::{StatusCode, header};
+use daemon_core::wire::RefusalCode;
 use http_body_util::BodyExt as _;
 
 use crate::fleet::{
@@ -46,14 +46,14 @@ fn k8_a_refusal_event_names_the_route_the_address_and_the_code() {
     };
     assert_eq!(
         sentence(&refused(Route::Enrol, RefusalCode::EnrolmentRefused)),
-        "Refused an agent enrolment from 100.64.0.9: ENROLMENT_REFUSED."
+        "Refused a daemon enrolment from 100.64.0.9: ENROLMENT_REFUSED."
     );
     assert_eq!(
         sentence(&refused(Route::Renew, RefusalCode::TokenRefused)),
-        "Refused an agent token renewal from 100.64.0.9: TOKEN_REFUSED."
+        "Refused a daemon token renewal from 100.64.0.9: TOKEN_REFUSED."
     );
     assert_eq!(
         unrecorded_sentence(3),
-        "Left out 3 more agent refusals from other addresses in the last minute."
+        "Left out 3 more daemon refusals from other addresses in the last minute."
     );
 }

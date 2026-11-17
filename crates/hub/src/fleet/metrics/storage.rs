@@ -8,8 +8,8 @@
 
 use std::collections::{BTreeMap, HashSet};
 
-use agent_core::readings::{self, Drive};
 use async_graphql::{Enum, SimpleObject};
+use daemon_core::readings::{self, Drive};
 
 use super::{MetricKind, latest::Latest};
 

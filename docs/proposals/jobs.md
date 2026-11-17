@@ -23,7 +23,7 @@ Identifiers: USE-001 to USE-009, JOB-001 to JOB-027.
 The compute plan lets a machine answer model requests. It has one other type of work: C7,
 fine-tuning ([C7](../work-items/compute/C7.md)). The operator also wants to run other work on the machines: a script, a batch,
 an AI agent run. There is no common form for that work, so each type would get its own path to
-the agent.
+the daemon.
 
 [C1](../work-items/compute/C1.md) and [C2](../work-items/compute/C2.md) already say that some model work needs "asynchronous job, progress and
 artifact/result contracts". This proposal must use the same contracts, not a second set.
@@ -39,18 +39,18 @@ applications ([hosted-applications.md](hosted-applications.md)).
   use a model on a Mac.
 - **USE-003.** The coordinator decides where work runs. The placement must be a pure function, as
   in the compute plan (CMP-011).
-- **USE-004.** A machine with `anima-agent` takes work by default. The operator must be able to
+- **USE-004.** A machine with `anima-daemon` takes work by default. The operator must be able to
   set this off for each machine, at the machine and in the client. A machine that is set off at
   the machine must stay off; the hub must not be able to set it on.
-- **USE-008.** The install command and the Device page must say that the agent takes work from
-  the hub (MET-019, MET-024). An agent that was installed before this function exists takes work
+- **USE-008.** The install command and the Device page must say that the daemon takes work from
+  the hub (MET-019, MET-024). A daemon that was installed before this function exists takes work
   after its update, with no confirmation (operator, 2026-11-12: "On after update"). The hub must
   write one event for each machine when this starts.
 - **USE-009.** "Takes work" is the permission. When a machine takes work is the device policy of
   the compute plan (CAP-010 to CAP-013): mains power, quiet hours, an active operator.
-- **USE-005.** The agent must ask the coordinator for work. The agent must not listen on a port
+- **USE-005.** The daemon must ask the coordinator for work. The daemon must not listen on a port
   (MET-020).
-- **USE-006.** The agent must accept only the work types in a fixed list. It must refuse all
+- **USE-006.** The daemon must accept only the work types in a fixed list. It must refuse all
   other work.
 - **USE-007.** If a machine stops during a job, the coordinator gives the job to a different
   machine.
@@ -104,7 +104,7 @@ The tasks for the work route are W1 to W6 in "Tasks" of
 Proposed on 2026-11-15. JOB-017 and JOB-018 are approved for build as the command
 `anima snapshot` (operator, 2026-11-15: "lets build the two buildable ones now"; ruling number
 to be assigned). The other requirements of JOB-012 to JOB-027 are not approved. The operator said: "if
-the agent can't access or can't put extra resources on this machine it can branch out to other
+the daemon can't access or can't put extra resources on this machine it can branch out to other
 that is coding agent agnostic using all the resources it can get".
 
 The operator develops on one computer, and that computer often has no free memory or processor
@@ -161,7 +161,7 @@ A job builds a commit. The working tree of the operator has changes that are not
 - **JOB-023.** Artifacts are bulk data. They must use the store of
   [bulk-data-placement.md](bulk-data-placement.md). The hub must not keep them on its own disk.
 - **JOB-024.** Until that store exists, the machine that made an artifact keeps it. When a
-  request for it comes, the machine uploads the file through the hub. The agent must not listen
+  request for it comes, the machine uploads the file through the hub. The daemon must not listen
   on a port for this (MET-020).
 - **JOB-025.** `anima artifact fetch` writes a file to a path that the caller gives and verifies
   the SHA-256. The MCP tool returns the path, not the content.
@@ -180,35 +180,35 @@ A job builds a commit. The working tree of the operator has changes that are not
 
 ## Decision (OD-W10, operator, 2026-11-12)
 
-R-115 (operator, 2026-11-12) listed as **not taken**: "a command channel from the agent to the
-hub, because it would make the agent a remote-execution endpoint (MET-013, MET-020); anything
-that changes a device". K8 says that the agent makes no request other than enrol, push and renew.
+R-115 (operator, 2026-11-12) listed as **not taken**: "a command channel from the daemon to the
+hub, because it would make the daemon a remote-execution endpoint (MET-013, MET-020); anything
+that changes a device". K8 says that the daemon makes no request other than enrol, push and renew.
 A job is remote execution. So are CAG-003 of the compute plan (install a runtime, start a
 server), HOST-002 and the store machines of [bulk-data-placement.md](bulk-data-placement.md).
 
-The options were: one agent with work off by default (the recommendation), a second program
-for compute machines, or R-115 kept as it is. The operator selected one agent and changed the
+The options were: one daemon with work off by default (the recommendation), a second program
+for compute machines, or R-115 kept as it is. The operator selected one daemon and changed the
 default: **"it should be on by default"**.
 
 What this means:
 
 | Subject | Decided |
 | --- | --- |
-| Programs | One: `anima-agent` (as [OD-C2](../work-items/decisions/OD-C2.md) says). No second binary. |
-| Default | A machine with the agent takes work (USE-004). The operator can set a machine off. |
+| Programs | One: `anima-daemon` (as [OD-C2](../work-items/decisions/OD-C2.md) says). No second binary. |
+| Default | A machine with the daemon takes work (USE-004). The operator can set a machine off. |
 | R-115 | Its "not taken: a command channel" line is replaced. The other lines of R-115 stay. |
-| MET-020 | Not changed: the agent listens on no port and connects only to the hub (USE-005). |
+| MET-020 | Not changed: the daemon listens on no port and connects only to the hub (USE-005). |
 | Compute plan CMP-002, [OD-C8](../work-items/decisions/OD-C8.md) | They say "off by default". They must change to agree. |
 
 The cost that the operator accepts: a person who controls the hub can run work on each machine
-that has the agent. R-084 selected the agent so that the hub needs no SSH login on each device
+that has the daemon. R-084 selected the daemon so that the hub needs no SSH login on each device
 (OD-9); this decision gives the hub a second way in. These rules limit it, and none needs a step
 from the operator:
 
-- The agent accepts only the work types in a fixed list (USE-006). There is no "run this
+- The daemon accepts only the work types in a fixed list (USE-006). There is no "run this
   command" type. After OD-W13 the type `runner` runs the steps that a workflow file names
   (JOB-011). The hub still cannot name a command.
-- Jobs run in containers (USE-001), with no access to the agent token or the home folder. A
+- Jobs run in containers (USE-001), with no access to the daemon token or the home folder. A
   native job on a Mac has the same two limits through its build user (PRO-022).
 - A machine that is set off at the machine cannot be set on from the hub (USE-004).
 - Each item of work is in the audit log (LOG-005), and the machine keeps its own log of the work
@@ -221,7 +221,7 @@ This decision comes before [C1](../work-items/compute/C1.md), not only before jo
 - A ruling number in [rulings.md](../rulings.md) that changes R-115, then the transport decision in [C1](../work-items/compute/C1.md) and
   [SPEC-C](../work-items/compute/SPEC-C.md), and the new default in [OD-C8](../work-items/decisions/OD-C8.md).
 - A new contract for the work route. K8 is frozen for Phase 3 (CON-001), so this is a new
-  contract or `/agent/v2/`, not a change to K8.
+  contract or `/daemon/v2/`, not a change to K8.
 - A security review of the work route (a `security` task for the security reviewer).
 - One contract for job state, progress and results, shared with [C1](../work-items/compute/C1.md) and [C2](../work-items/compute/C2.md).
 - A test of Railpack on one project of the operator (JOB-002).

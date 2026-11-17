@@ -1,4 +1,4 @@
-//! An agent batch's write: its samples at their own times, and the minute, hour and day rows
+//! A daemon batch's write: its samples at their own times, and the minute, hour and day rows
 //! of each (MET-015, DB-008, K8 Section 4). Every statement runs in the caller's transaction.
 
 use std::collections::BTreeSet;

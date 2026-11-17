@@ -4,13 +4,13 @@
 
 use std::{sync::Arc, time::Duration};
 
-use agent_core::wire::EnrolmentCode;
 use axum::{
     Router,
     body::Body,
     http::{Request, StatusCode},
 };
 use chrono::{DateTime, Utc};
+use daemon_core::wire::EnrolmentCode;
 use http_body_util::BodyExt as _;
 use serde_json::json;
 use sqlx::PgPool;
@@ -22,7 +22,7 @@ use crate::{
         events::{Bus, ClientAddr},
         metrics::ingest::{
             make_code,
-            routes::{Deadlines, agent_router_within},
+            routes::{Deadlines, daemon_router_within},
         },
     },
 };
@@ -35,13 +35,13 @@ fn router(pool: &PgPool, now: DateTime<Utc>, answer_time: Duration) -> Router {
         answer: answer_time,
         ..Deadlines::HUB
     };
-    agent_router_within(pool.clone(), Bus::new(16), clock, deadlines)
+    daemon_router_within(pool.clone(), Bus::new(16), clock, deadlines)
 }
 
-/// Posts the code to `/agent/v1/enrol`, from a permitted address when `addressed`.
+/// Posts the code to `/daemon/v1/enrol`, from a permitted address when `addressed`.
 async fn enrol(router: &Router, code: &str, addressed: bool) -> (StatusCode, String) {
     let body = json!({ "code": code }).to_string();
-    let mut request = Request::post("/agent/v1/enrol")
+    let mut request = Request::post("/daemon/v1/enrol")
         .header("content-type", "application/json")
         .body(Body::from(body))
         .unwrap();
@@ -64,8 +64,8 @@ async fn code_for_pve(pool: &PgPool, now: DateTime<Utc>) -> String {
     text
 }
 
-async fn agents(pool: &PgPool) -> i64 {
-    sqlx::query_scalar("SELECT count(*) FROM metrics.agents")
+async fn daemons(pool: &PgPool) -> i64 {
+    sqlx::query_scalar("SELECT count(*) FROM metrics.daemons")
         .fetch_one(pool)
         .await
         .unwrap()
@@ -120,7 +120,7 @@ async fn met_012_a_code_stays_used_when_its_exchange_failed_after_the_mark(pool:
             r#"{"error":"ENROLMENT_REFUSED"}"#.to_owned()
         )
     );
-    assert_eq!(agents(&pool).await, 0);
+    assert_eq!(daemons(&pool).await, 0);
     let source: String =
         sqlx::query_scalar("SELECT metrics_source FROM devices.devices WHERE id = $1")
             .bind(pve())

@@ -110,7 +110,7 @@ Choices:
   spike's correction for it is not needed.
 - **The test device.** `ironrdp-server` has no release for these part crates. The tests have
   their own RDP device on `ironrdp-acceptor` 0.12 (test only), with a certificate made at
-  run time. A builder agent wrote it in its own worktree; its commit is `3bc6cb53`.
+  run time. A builder daemon wrote it in its own worktree; its commit is `3bc6cb53`.
 - **R1, the names offered.** `args` lists the six names of VNC and then `domain`, `security`,
   `ignore-cert`, `cert-fingerprints` and `resize-method`. The names for sound and the drive
   are not offered, so the hub sends no value for them.

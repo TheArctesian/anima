@@ -27,8 +27,8 @@
     { value: 'NONE', label: 'None' },
     { value: 'SSH', label: 'SSH' },
   ];
-  /** D-7: only enrolment sets AGENT, so it is shown as the saved state and never offered as a choice. */
-  const agentSet = $derived(values.metricsSource === 'AGENT');
+  /** D-7: only enrolment sets DAEMON, so it is shown as the saved state and never offered as a choice. */
+  const daemonSet = $derived(values.metricsSource === 'DAEMON');
   /** DEV-025: the hub reads the operating system of a device at Other whose metrics come over SSH. */
   const detectsOs = $derived(values.os === 'OTHER' && values.metricsSource === 'SSH');
   const KINDS = ['server', 'router', 'switch', 'workstation', 'laptop', 'printer'] as const;
@@ -100,10 +100,10 @@
         <input {...attributes} bind:value={values.macAddress} autocomplete="off" spellcheck="false" />
       {/snippet}
     </Field>
-    <Field label="Metrics source" field="metricsSource" {errors} hint={agentSet ? "Set by the agent. Revoke it, or pick None or SSH, to change." : undefined}>
+    <Field label="Metrics source" field="metricsSource" {errors} hint={daemonSet ? "Set by the daemon. Revoke it, or pick None or SSH, to change." : undefined}>
       {#snippet control(attributes)}
         <select {...attributes} bind:value={values.metricsSource}>
-          {#if agentSet}<option value="AGENT" disabled>Agent</option>{/if}
+          {#if daemonSet}<option value="DAEMON" disabled>Daemon</option>{/if}
           {#each METRICS as source (source.value)}
             <option value={source.value}>{source.label}</option>
           {/each}

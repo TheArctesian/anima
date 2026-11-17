@@ -104,7 +104,7 @@ fn table(device: &device_get::DeviceGetDevice) -> Table {
     table.pair("Maintenance", if device.maintenance { "on" } else { "off" });
     access_rows(&mut table, device);
     table.pair("Metrics", enum_name(&device.metrics_source));
-    if let Some(version) = &device.agent_version {
+    if let Some(version) = &device.daemon_version {
         table.pair("Agent version", version.as_str());
     }
     table.pair(

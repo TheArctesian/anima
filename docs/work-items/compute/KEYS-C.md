@@ -15,7 +15,7 @@ Progress: the index [README.md](../README.md) holds the state of this item (PLN-
 
 **Ownership / priority clarification (2026-11-07):**
 
-Provision per phase: C1 [C1](C1.md), later C5/C6 [C5](C5.md)/[C6](C6.md). The historical hub-to-agent listener ACL below must be reconciled with [R-084/MET-020](../../plans/phase-3/phase-3-agent-delta.md) before implementation; compute transport remains open. Do not treat a metrics-only agent token as compute-command permission. DNS/access decision: [OD-C7](../decisions/OD-C7.md). Each actual cloud/network write still needs operator confirmation (VPS-005).
+Provision per phase: C1 [C1](C1.md), later C5/C6 [C5](C5.md)/[C6](C6.md). The historical hub-to-agent listener ACL below must be reconciled with [R-084/MET-020](../../plans/phase-3/phase-3-daemon-delta.md) before implementation; compute transport remains open. Do not treat a metrics-only agent token as compute-command permission. DNS/access decision: [OD-C7](../decisions/OD-C7.md). Each actual cloud/network write still needs operator confirmation (VPS-005).
 
 ---
 

@@ -210,7 +210,7 @@ The test for the end of M3: the operator installs the application on a real iPho
 
 | Item | Reason |
 | --- | --- |
-| The phone as an agent, the screen broadcast, the offline copy and the backup store (IOS-001 to IOS-004) | They stay in the design specification Section 10.1. They come after the first version (OD-M6). |
+| The phone as a daemon, the screen broadcast, the offline copy and the backup store (IOS-001 to IOS-004) | They stay in the design specification Section 10.1. They come after the first version (OD-M6). |
 | Push notifications from Apple and from Google | They need a relay that Anima operates. ntfy gives notifications now. |
 | A tablet layout | The phone layout comes first. |
 | An application for a watch or a widget | Not asked for. |

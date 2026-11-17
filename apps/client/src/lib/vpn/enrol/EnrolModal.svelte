@@ -3,7 +3,7 @@
   import KeySecret from '$lib/api-keys/KeySecret.svelte';
   import FormButton from '$lib/forms/FormButton.svelte';
   import Modal from '$lib/forms/modal/Modal.svelte';
-  import { clockText } from '$lib/metrics/agent/countdown';
+  import { clockText } from '$lib/metrics/daemon/countdown';
   import { fade } from '$lib/motion/roles/transitions';
   import type { SitePath } from '../api';
   import ApproveRoute from '../sites/ApproveRoute.svelte';

@@ -1,8 +1,8 @@
 import { describe, expect, test } from 'bun:test';
 import { parsePrefix } from '../src/policy.ts';
-import { AGENT_ROWS, everyone, policyText, raw, ROUTER_ROWS, SITES, TAILNET_IPV4 } from './policy-fixture.ts';
+import { DAEMON_ROWS, everyone, policyText, raw, ROUTER_ROWS, SITES, TAILNET_IPV4 } from './policy-fixture.ts';
 
-describe('agent structure (MET-020, R-084)', () => {
+describe('daemon structure (MET-020, R-084)', () => {
   test('met_020 no host /32 is the address of a tagged node in the test inventory, so a device grant cannot reach it', () => {
     const taggedAddresses = everyone.filter((node) => 'tags' in node.identity).map((node) => parsePrefix(`${node.ip}/32`).base);
     const hostPrefixes = Object.values(raw.hosts as Record<string, string>).map((cidr) => parsePrefix(cidr));
@@ -10,15 +10,15 @@ describe('agent structure (MET-020, R-084)', () => {
     expect(hostAddresses.filter((address) => taggedAddresses.includes(address))).toEqual([]);
   });
 
-  test('met_020 exactly one grant names tag:agent, and only as a source to the hub on tcp 443', () => {
-    const named = (raw.grants as { src: string[]; dst: string[]; ip: string[] }[]).filter((entry) => [...entry.src, ...entry.dst].includes('tag:agent'));
-    expect(named).toEqual([{ src: ['tag:agent'], dst: ['tag:hub'], ip: ['tcp:443'] }]);
+  test('met_020 exactly one grant names tag:daemon, and only as a source to the hub on tcp 443', () => {
+    const named = (raw.grants as { src: string[]; dst: string[]; ip: string[] }[]).filter((entry) => [...entry.src, ...entry.dst].includes('tag:daemon'));
+    expect(named).toEqual([{ src: ['tag:daemon'], dst: ['tag:hub'], ip: ['tcp:443'] }]);
   });
 });
 
 describe('policy structure', () => {
   const grants = raw.grants as { src: string[]; dst: string[]; ip: string[] }[];
-  const rows = [...(raw.tests as unknown[]), ...ROUTER_ROWS, ...AGENT_ROWS] as { src: string; accept?: string[]; deny?: string[] }[];
+  const rows = [...(raw.tests as unknown[]), ...ROUTER_ROWS, ...DAEMON_ROWS] as { src: string; accept?: string[]; deny?: string[] }[];
   const tagOwners = raw.tagOwners as Record<string, string[]>;
   const hosts = raw.hosts as Record<string, string>;
   const selectors = [
@@ -37,7 +37,7 @@ describe('policy structure', () => {
 
   test('vpn_004 every tag used is in tagOwners', () => {
     expect(selectors.filter((selector) => selector.startsWith('tag:') && !(selector in tagOwners))).toEqual([]);
-    expect(Object.keys(tagOwners).sort()).toEqual(['tag:agent', 'tag:hub', 'tag:router', 'tag:site-home', 'tag:site-office1', 'tag:site-office2']);
+    expect(Object.keys(tagOwners).sort()).toEqual(['tag:daemon', 'tag:hub', 'tag:router', 'tag:site-home', 'tag:site-office1', 'tag:site-office2']);
   });
 
   test('vpn_003 every tag owner list is empty, so no node can claim a tag when it registers', () => {

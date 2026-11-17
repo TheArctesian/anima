@@ -1,4 +1,4 @@
-//! The capabilities of each device: today its tool inventory, as its agent last sent it
+//! The capabilities of each device: today its tool inventory, as its daemon last sent it
 //! (CAP-020 to CAP-031). Pure: which inventories a filter keeps, and their join with the
 //! devices in device-name order. CAP-001 to CAP-004 join this when the model service is built
 //! (CAP-030).
@@ -7,9 +7,9 @@
     reason = "the async-graphql Enum derive generates async trait impls"
 )]
 
-use agent_core::inventory::{Inventory, Reason, Tool};
 use async_graphql::{Enum, Object, SimpleObject};
 use chrono::{DateTime, Utc};
+use daemon_core::inventory::{Inventory, Reason, Tool};
 use uuid::Uuid;
 
 use crate::{fleet::devices::Device, ids::DeviceId};
@@ -86,7 +86,7 @@ fn order(row: &DeviceCapabilities) -> (&str, Uuid) {
     (row.device.name.as_str(), Uuid::from(row.device.id))
 }
 
-/// `Tool`: one tool the agent found (CAP-024).
+/// `Tool`: one tool the daemon found (CAP-024).
 #[derive(Clone, Debug, PartialEq, Eq, SimpleObject)]
 #[graphql(name = "Tool")]
 pub struct FoundTool {
@@ -104,7 +104,7 @@ pub enum NotUsableReason {
     TimedOut,
     /// It could not start, or exited with a failure.
     Exited,
-    /// It ran but printed no version the agent reads.
+    /// It ran but printed no version the daemon reads.
     NoVersion,
     /// A reason this hub does not know.
     Failed,

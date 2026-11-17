@@ -44,7 +44,7 @@ async fn cmd_020_every_read_command_answers_from_the_real_hub(pool: PgPool) {
         "tag list".to_owned(),
         "device uptime nas".to_owned(),
         "device metrics nas".to_owned(),
-        "agent status nas".to_owned(),
+        "daemon status nas".to_owned(),
         "web list nas".to_owned(),
         format!("check get {check}"),
         format!("check heartbeats {check}"),

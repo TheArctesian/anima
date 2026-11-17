@@ -1,17 +1,13 @@
-//! `POST /agent/v1/enrol`, `POST /agent/v1/push` and `POST /agent/v1/renew` (K8 Sections 1, 3
+//! `POST /daemon/v1/enrol`, `POST /daemon/v1/push` and `POST /daemon/v1/renew` (K8 Sections 1, 3
 //! to 6); the push itself is answered in `push`.
 //!
-//! Signed out of GraphQL: the enrolment code in the body or the agent token in the
+//! Signed out of GraphQL: the enrolment code in the body or the daemon token in the
 //! `Authorization` header is the only credential. A body is read only up to its limit, held in
 //! a buffer wiped on drop, and never logged; a parse error is dropped unread, since its text
 //! may quote the body (LOG-007). Every refusal is `{"error":"<CODE>"}`.
 
 use std::{future::Future, net::IpAddr, sync::Arc, time::Duration};
 
-use agent_core::wire::{
-    AgentToken, EnrolRequest, Enrolled, EnrolmentCode, RefusalCode, RenewRequest, Renewed,
-    TOKEN_BYTES,
-};
 use axum::{
     Router,
     body::{Body, to_bytes},
@@ -21,6 +17,10 @@ use axum::{
     routing::post,
 };
 use chrono::{DateTime, Utc};
+use daemon_core::wire::{
+    DaemonToken, EnrolRequest, Enrolled, EnrolmentCode, RefusalCode, RenewRequest, Renewed,
+    TOKEN_BYTES,
+};
 use sqlx::PgPool;
 use zeroize::Zeroizing;
 
@@ -30,7 +30,7 @@ use super::{
     credential, enrolment, push, random,
     refusals::{self, Recorder, Refused, Route},
     renewal,
-    turns::{AGENT_REQUESTS, Turn, Turns},
+    turns::{DAEMON_REQUESTS, Turn, Turns},
 };
 use crate::{
     clock::Clock,
@@ -43,11 +43,11 @@ use crate::{
 /// The enrol and renew bodies are small JSON objects (K8 Section 1).
 const BODY_LIMIT: usize = 4 * 1024;
 
-/// How long an agent request may take, in its parts.
+/// How long a daemon request may take, in its parts.
 #[derive(Clone, Copy)]
 pub(in crate::fleet::metrics) struct Deadlines {
     /// The whole answer. Each request is a few small writes, so a slower one is a stuck
-    /// database, and the agent is told to try again (as `/push`, NET-002).
+    /// database, and the daemon is told to try again (as `/push`, NET-002).
     pub(in crate::fleet::metrics) answer: Duration,
     /// The body's arrival. A slower body is answered `UNAVAILABLE`, so a body that never ends
     /// holds no turn but its device's past this (K8 Section 1).
@@ -66,7 +66,7 @@ impl Deadlines {
 }
 
 #[derive(Clone)]
-pub(super) struct AgentState {
+pub(super) struct DaemonState {
     pub(super) db: PgPool,
     pub(super) feed: Feed,
     pub(super) bus: Bus,
@@ -76,64 +76,64 @@ pub(super) struct AgentState {
     deadlines: Deadlines,
 }
 
-/// `POST /agent/v1/enrol`, `POST /agent/v1/push` and `POST /agent/v1/renew`, each answering
+/// `POST /daemon/v1/enrol`, `POST /daemon/v1/push` and `POST /daemon/v1/renew`, each answering
 /// within ten seconds (K8).
 /// The caller mounts it inside `crate::logged` and behind the permitted-networks layer, whose
 /// client address every refusal event names (NET-002); without that layer each request is
 /// refused as `UNAVAILABLE`.
-pub fn agent_router(db: PgPool, feed: Feed, bus: Bus, clock: Arc<dyn Clock>) -> Router {
+pub fn daemon_router(db: PgPool, feed: Feed, bus: Bus, clock: Arc<dyn Clock>) -> Router {
     let recorder = Recorder::new(db.clone(), bus.clone());
-    routes(AgentState {
+    routes(DaemonState {
         db,
         feed,
         bus,
         clock,
-        turns: Turns::new(AGENT_REQUESTS, Deadlines::HUB.request),
+        turns: Turns::new(DAEMON_REQUESTS, Deadlines::HUB.request),
         recorder,
         deadlines: Deadlines::HUB,
     })
 }
 
-/// The test seam of [`agent_router`]: the deadlines are a parameter, so a test of one need not
+/// The test seam of [`daemon_router`]: the deadlines are a parameter, so a test of one need not
 /// wait for the hub's.
 #[cfg(test)]
-pub(in crate::fleet::metrics) fn agent_router_within(
+pub(in crate::fleet::metrics) fn daemon_router_within(
     db: PgPool,
     bus: Bus,
     clock: Arc<dyn Clock>,
     deadlines: Deadlines,
 ) -> Router {
     let recorder = Recorder::new(db.clone(), bus.clone());
-    routes(AgentState {
+    routes(DaemonState {
         db,
         feed: Feed::new(),
         bus,
         clock,
-        turns: Turns::new(AGENT_REQUESTS, deadlines.request),
+        turns: Turns::new(DAEMON_REQUESTS, deadlines.request),
         recorder,
         deadlines,
     })
 }
 
-fn routes(state: AgentState) -> Router {
+fn routes(state: DaemonState) -> Router {
     Router::new()
-        .route("/agent/v1/enrol", post(enrol))
-        .route("/agent/v1/push", post(push))
-        .route("/agent/v1/renew", post(renew))
+        .route("/daemon/v1/enrol", post(enrol))
+        .route("/daemon/v1/push", post(push))
+        .route("/daemon/v1/renew", post(renew))
         .with_state(state)
 }
 
-async fn enrol(State(state): State<AgentState>, request: Request) -> Response {
+async fn enrol(State(state): State<DaemonState>, request: Request) -> Response {
     let limit = state.deadlines.answer;
     within(limit, serve_enrol(state, request)).await
 }
 
-async fn push(State(state): State<AgentState>, request: Request) -> Response {
+async fn push(State(state): State<DaemonState>, request: Request) -> Response {
     let limit = state.deadlines.answer;
     within(limit, push::serve_push(state, request)).await
 }
 
-async fn renew(State(state): State<AgentState>, request: Request) -> Response {
+async fn renew(State(state): State<DaemonState>, request: Request) -> Response {
     let limit = state.deadlines.answer;
     within(limit, serve_renew(state, request)).await
 }
@@ -144,15 +144,15 @@ async fn within(limit: Duration, answer: impl Future<Output = Response>) -> Resp
     tokio::time::timeout(limit, answer)
         .await
         .unwrap_or_else(|_| {
-            tracing::warn!("an agent request was not answered in time");
+            tracing::warn!("a daemon request was not answered in time");
             refusals::answer(RefusalCode::Unavailable)
         })
 }
 
-/// Swaps an enrolment code for an agent token (K8 Section 3). Every bad code, every malformed
+/// Swaps an enrolment code for a daemon token (K8 Section 3). Every bad code, every malformed
 /// body and a code whose device was revoked or deleted meanwhile gets the same
 /// `ENROLMENT_REFUSED`.
-async fn serve_enrol(state: AgentState, request: Request) -> Response {
+async fn serve_enrol(state: DaemonState, request: Request) -> Response {
     let Some(client) = client_of(&request) else {
         return unmounted();
     };
@@ -205,8 +205,8 @@ async fn serve_enrol(state: AgentState, request: Request) -> Response {
 /// The enrolment `code` gives at `now`, handing out `token`; `None` when the code is not usable
 /// or its device cannot take it.
 async fn redeem_and_enrol(
-    state: &AgentState,
-    (code, token): (&EnrolmentCode, AgentToken),
+    state: &DaemonState,
+    (code, token): (&EnrolmentCode, DaemonToken),
     now: DateTime<Utc>,
 ) -> Result<Option<Enrolled>, Error> {
     let Some(redeemed) = enrolment::redeem(&state.db, code, now).await? else {
@@ -217,7 +217,7 @@ async fn redeem_and_enrol(
 
 /// Stores a renewed token for the holder of the bearer token (K8 Section 5). The bearer is
 /// checked before the body is read.
-async fn serve_renew(state: AgentState, request: Request) -> Response {
+async fn serve_renew(state: DaemonState, request: Request) -> Response {
     let Some(client) = client_of(&request) else {
         return unmounted();
     };
@@ -233,14 +233,14 @@ async fn serve_renew(state: AgentState, request: Request) -> Response {
 }
 
 async fn renewed(
-    state: &AgentState,
+    state: &DaemonState,
     (headers, body): (&HeaderMap, Body),
     address: Turn<IpAddr>,
     now: DateTime<Utc>,
 ) -> Result<Renewed, Stop> {
     let current =
         credential::bearer(headers).ok_or(Stop::Refused(RefusalCode::TokenRefused, None))?;
-    // A device switched away from the agent renews nothing (CR-18), as it pushes nothing.
+    // A device switched away from the daemon renews nothing (CR-18), as it pushes nothing.
     let Admitted {
         device,
         turn: _turn,
@@ -262,7 +262,7 @@ async fn renewed(
     }
 }
 
-impl AgentState {
+impl DaemonState {
     /// The answer to a request that stopped short: a refusal is written to the event log
     /// first, `UNAVAILABLE` is not.
     pub(super) async fn stopped(
@@ -290,7 +290,7 @@ impl AgentState {
     /// stays the refusal.
     pub(super) async fn refuse(&self, refused: Refused, now: DateTime<Utc>) -> Response {
         if let Err(error) = self.recorder.record(&refused, now).await {
-            tracing::error!(%error, "an agent refusal could not be written to the event log");
+            tracing::error!(%error, "a daemon refusal could not be written to the event log");
         }
         refusals::answer(refused.code)
     }
@@ -304,33 +304,33 @@ pub(super) fn client_of(request: &Request) -> Option<ClientAddr> {
 /// Without the permitted-networks layer a request has no checked client address; it is refused
 /// rather than served (fail closed).
 pub(super) fn unmounted() -> Response {
-    tracing::error!("an agent route is mounted without the permitted-networks layer");
+    tracing::error!("a daemon route is mounted without the permitted-networks layer");
     refusals::answer(RefusalCode::Unavailable)
 }
 
 /// The hub cannot answer now; the error's text is fixed and holds no value (LOG-007).
 pub(super) fn unavailable(error: &Error) -> Response {
-    tracing::error!(%error, "an agent request could not be answered");
+    tracing::error!(%error, "a daemon request could not be answered");
     refusals::answer(RefusalCode::Unavailable)
 }
 
 /// Another request has the turn this one needs (`turns`). Not an error and not an event: the
-/// agent keeps its points and tries again (K8 Section 6).
+/// daemon keeps its points and tries again (K8 Section 6).
 pub(super) fn busy() -> Response {
     refusals::answer(RefusalCode::Unavailable)
 }
 
 /// A new token from the OS random source.
-fn new_token() -> Result<AgentToken, Error> {
+fn new_token() -> Result<DaemonToken, Error> {
     let bytes = random::<TOKEN_BYTES>()?;
-    Ok(AgentToken::from_random(*bytes))
+    Ok(DaemonToken::from_random(*bytes))
 }
 
 /// The body, read up to `limit` bytes into a buffer wiped on drop; `TOO_LARGE` past it, or at
 /// once when the declared length is past it, and `UNAVAILABLE` when it has not arrived within
 /// the state's body deadline (K8 Section 1).
 pub(super) async fn read_body(
-    state: &AgentState,
+    state: &DaemonState,
     headers: &HeaderMap,
     body: Body,
     limit: usize,

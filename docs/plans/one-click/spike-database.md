@@ -203,7 +203,7 @@ Other facts:
 | R7 | **Ordering differs from the VPS.** The VPS database uses the image's `en_US.utf8`; the bundled one uses `C.UTF-8`. Lists sorted by name in SQL can differ in order for accents and case. | Accepted for the spike: the gates already run with `C`. A move from a VPS hub to an application hub must use dump and restore, not a copy of the folder. |
 | R8 | **Memory grows with the pool.** 10 open sessions cost about 80 MB on macOS. | Give the application hub a small pool (for example 5) and an idle timeout. |
 | R9 | **Backup tools.** `pg_dump` is in the tree, so S9 can use it. A copy of the data folder while the server runs is not a backup. | S9 uses `pg_dump`. Exclude the data folder from Time Machine or tell the operator; a snapshot of a running folder restores as a crash recovery at best. |
-| R11 | **Disk space.** Raw samples for about 10 devices with an agent need about 4.9 GB in 30 days (Section 10.2). | Shorter raw retention in the application mode (Section 10.4). Show the data folder size in the hub status. |
+| R11 | **Disk space.** Raw samples for about 10 devices with a daemon need about 4.9 GB in 30 days (Section 10.2). | Shorter raw retention in the application mode (Section 10.4). Show the data folder size in the hub status. |
 | R10 | The Linux trials ran in a container, not on a desktop with systemd user units and an AppImage. | Repeat `trials.sh` on a real Linux desktop in S3. |
 
 ## 9. Changes for the plan
@@ -244,7 +244,7 @@ Proposed requirement prefix: `DBL` (database, local), if free on `main`.
 3. **Where the tree runs from.** The service must run a tree that an application update does
    not replace under it. Either the update stops the service first and starts it after, or
    the Tauri shell copies the hub and the tree to a versioned folder (as MET-019 copies the
-   agent). Decide this in S4; R1 depends on it, because a versioned folder can keep the old
+   daemon). Decide this in S4; R1 depends on it, because a versioned folder can keep the old
    tree for `pg_upgrade`.
 4. **One service for each user.** The lock of Section 3 makes a second copy end with a clear
    message. Two users on one computer have two roots and two sockets, which works.
@@ -267,7 +267,7 @@ settings, not in extensions.** `spikes/database/extensions.sh` made the numbers 
 - The charts read the `minute` and `hour` tables, never the raw samples
   (`fleet/metrics/store/chart.rs`).
 - The large data is raw metric samples and heartbeats, kept for 30 days (DB-009). The metrics
-  agent sends one point for each series each 10 seconds (MET-014).
+  daemon sends one point for each series each 10 seconds (MET-014).
 
 ### 10.2 Measured
 
@@ -275,7 +275,7 @@ settings, not in extensions.** `spikes/database/extensions.sh` made the numbers 
 | --- | --- |
 | One raw metric sample (`metrics.samples`, with its primary key) | **132 bytes** (table 74 MB + key 89 MB for 1 296 000 rows) |
 | One heartbeat (`checks.heartbeats`) | 130 bytes |
-| 150 series (about 10 devices with an agent) for one day | 163 MB |
+| 150 series (about 10 devices with a daemon) for one day | 163 MB |
 | The same for the 30 days of DB-009 | **about 4.9 GB** |
 | One commit, default settings on macOS (`open_datasync`) | 45 microseconds |
 | One commit with `wal_sync_method=fsync_writethrough` (risk R3) | **3.7 ms** (82 times slower; about 270 commits each second in one session) |

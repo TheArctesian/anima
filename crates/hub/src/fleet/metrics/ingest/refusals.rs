@@ -1,4 +1,4 @@
-//! How the agent routes answer a refusal and write it to the event log (K8 Section 6, CR-15,
+//! How the daemon routes answer a refusal and write it to the event log (K8 Section 6, CR-15,
 //! CR-21).
 //!
 //! The body is `{"error":"<CODE>"}` and nothing else; the event names the code, the client
@@ -7,12 +7,12 @@
 
 use std::sync::{Arc, Mutex, PoisonError};
 
-use agent_core::wire::{Refusal, RefusalCode};
 use axum::{
     http::{StatusCode, header},
     response::{IntoResponse as _, Response},
 };
 use chrono::{DateTime, Utc};
+use daemon_core::wire::{Refusal, RefusalCode};
 use serde::Serialize;
 use sqlx::PgPool;
 
@@ -36,9 +36,9 @@ pub(super) enum Route {
 impl Route {
     const fn noun(self) -> &'static str {
         match self {
-            Self::Enrol => "an agent enrolment",
-            Self::Push => "an agent push",
-            Self::Renew => "an agent token renewal",
+            Self::Enrol => "a daemon enrolment",
+            Self::Push => "a daemon push",
+            Self::Renew => "a daemon token renewal",
         }
     }
 }
@@ -83,10 +83,10 @@ pub(super) fn sentence(refused: &Refused) -> String {
 
 /// The sentence of the refusals the throttle left out.
 pub(super) fn unrecorded_sentence(count: usize) -> String {
-    format!("Left out {count} more agent refusals from other addresses in the last minute.")
+    format!("Left out {count} more daemon refusals from other addresses in the last minute.")
 }
 
-/// The refusal events of the agent routes, written at most once a minute per client address
+/// The refusal events of the daemon routes, written at most once a minute per client address
 /// when the request had no valid credential, and once a minute per device when it had one
 /// (CR-21).
 #[derive(Clone)]

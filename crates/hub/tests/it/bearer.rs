@@ -1,7 +1,7 @@
 //! `GET /metrics` behind the bearer layer as `main.rs` serves it, and the agent secrets the
 //! access guard refuses (WP-43 A-9, R-092, INT-001, INT-003, D-24, NET-002).
 
-mod agent;
+mod daemon;
 mod lookup;
 mod metrics;
 

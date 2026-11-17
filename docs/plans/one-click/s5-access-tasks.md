@@ -1,7 +1,7 @@
 ---
 kind: Task breakdown: access rules by device key
 state: In progress
-evidence: T1 to T9 have commits on `main` (merge `f367f819`); T10, the agent's link origin, has its commit. Open: the K7 row of its Section 6.3 and one test of agent, link and hub together. Its parent plan is [one-click-plan.md](one-click-plan.md).
+evidence: T1 to T9 have commits on `main` (merge `f367f819`); T10, the daemon's link origin, has its commit. Open: the K7 row of its Section 6.3 and one test of daemon, link and hub together. Its parent plan is [one-click-plan.md](one-click-plan.md).
 ---
 
 # S5. Access rules by device key: task list
@@ -9,7 +9,7 @@ evidence: T1 to T9 have commits on `main` (merge `f367f819`); T10, the agent's l
 Progress: the plan register in [work-plan.md](../../work-plan.md) Section 9 holds the state of this plan (PLN-005).
 
 Plan item S5 of `docs/plans/one-click/one-click-plan.md` (Section 4.5), built on S1 (`s1-link-tasks.md`).
-Security tag: each task gets the `reviewer` and the `reviewer-security` agent.
+Security tag: each task gets the `reviewer` and the `reviewer-security` daemon.
 
 ## 1. What the hub does today
 
@@ -20,13 +20,13 @@ Security tag: each task gets the `reviewer` and the `reviewer-security` agent.
   addresses.
 - **BLD-024:** `fleet/builds/builders.rs` keeps the `ClientAddr` of the enrolment and refuses a
   builder token from another address.
-- **Agent token path (K8).** `fleet/metrics/ingest` limits requests and refusal events for each
+- **Daemon token path (K8).** `fleet/metrics/ingest` limits requests and refusal events for each
   `ClientAddr`.
 - Sign-in limits, session tickets and the audit log also use `ClientAddr`.
 
 With the S1 link, every device reaches the hub from `127.0.0.1`. Thus each of these rules sees one
 client. A builder token would work from each device, and one device could use the request share
-of all agents.
+of all daemons.
 
 ## 2. Design
 
@@ -98,28 +98,28 @@ Thus the hub rules become key rules with no change to a frozen contract.
 | T4 | Hub configuration: `ANIMA_LINK_SOCKET` and the rules of Section 2.3 | Unit tests |
 | T5 | Hub: PROXY header reader (pure) | Unit tests with the header file of T2 |
 | T6 | Hub: the link socket and its accept path; refusal events; wiring in `main.rs` | Unit tests |
-| T7 | Hub, as a process: requests through the socket carry the device; refusals; BLD-024 and the agent limits for each device | Integration tests |
+| T7 | Hub, as a process: requests through the socket carry the device; refusals; BLD-024 and the daemon limits for each device | Integration tests |
 | T8 | Documents: `docs/procedures/setup/link.md`, this file's results, the list for S6 | — |
 | T9 | Full gates on the branch with `main` merged in | Gate record |
-| T10 | Agent: the link origin `http://127.0.0.1:<port>` (K8 Section 1, MET-020; operator's ruling of 2026-11-15) | Unit tests of the origin rule; one push through the client |
+| T10 | Daemon: the link origin `http://127.0.0.1:<port>` (K8 Section 1, MET-020; operator's ruling of 2026-11-15) | Unit tests of the origin rule; one push through the client |
 
 `main.rs` gets the wiring of the socket (T6). `schema.rs`, `contracts/` and `quality/` do not change.
 
 ## 5. Not in S5
 
-- **The agent's own transport: built after S5 (T10).** The operator ruled on 2026-11-15 that the
-  agent may use HTTP to a loopback port in the link mode. K8 Section 1 and MET-020 have the text.
-  `anima-agent enrol --hub http://127.0.0.1:<port>` now works: the origin rule accepts `http` only
-  for `127.0.0.1` with a port from 1024 (`crates/agent/src/config/origin.rs`). The token stays bound
+- **The daemon's own transport: built after S5 (T10).** The operator ruled on 2026-11-15 that the
+  daemon may use HTTP to a loopback port in the link mode. K8 Section 1 and MET-020 have the text.
+  `anima-daemon enrol --hub http://127.0.0.1:<port>` now works: the origin rule accepts `http` only
+  for `127.0.0.1` with a port from 1024 (`crates/daemon/src/config/origin.rs`). The token stays bound
   to that origin, port included, so `anima-link device` must use a fixed `-listen` port on a
-  computer that runs the agent. Known remainder: a program of any local user of that computer that takes
-  the port while the link is stopped receives the agent token with the next push, and nothing
-  detects it. The planned correction is a Unix socket between the agent and the link (the HTTP
+  computer that runs the daemon. Known remainder: a program of any local user of that computer that takes
+  the port while the link is stopped receives the daemon token with the next push, and nothing
+  detects it. The planned correction is a Unix socket between the daemon and the link (the HTTP
   client and the link can both do it); it needs a new origin form in K8 and a ruling. The security
   review (accept, nothing to correct before the merge) also found that MET-023 (`doctor`, not
   built) speaks of TLS on port 443 and needs a clause for the link mode before it is built. Not proved here:
-  one test with a real agent, a real link and a real hub together (Rust and Go in one test); the
-  agent half is proved against a local HTTP server, the hub half by the tests of T7.
+  one test with a real daemon, a real link and a real hub together (Rust and Go in one test); the
+  daemon half is proved against a local HTTP server, the hub half by the tests of T7.
 - The hub API, the command and the screen for invites and the device list (S6; needs K1).
 - Starting `anima-link` and the hub as services (S4).
 
@@ -144,7 +144,7 @@ Thus the hub rules become key rules with no change to a frozen contract.
 | NET-002 (link) | Hub: `net_002_a_socket_connection_that_names_no_device_gets_no_answer_and_is_logged`, `net_002_a_header_names_no_address_outside_the_link_range` |
 | NET-003 (link) | `config::link`: `net_003_in_the_link_mode_the_hub_listens_on_loopback_only`. Hub: `net_003_a_folder_other_users_can_reach_gets_no_socket` |
 | BLD-024 (link) | Hub: `bld_024_a_builder_token_works_only_from_the_device_that_enrolled_it` |
-| K8 (link) | Hub: `k8_an_agent_refusal_is_logged_for_each_device_of_the_link` |
+| K8 (link) | Hub: `k8_an_daemon_refusal_is_logged_for_each_device_of_the_link` |
 
 The link's test and the hub's tests read one file, `link/hublink/testdata/device-header.bin`, so
 the two programs agree on the header.
@@ -196,7 +196,7 @@ another user.
    client should show the device's name beside it, from `devices.list`.
 8. **A device that joins again.** A revoked device needs a new key before it can join again. The
    join flow of S6 must make a new key when the hub answers `key_retired`.
-9. **The agent.** The metrics agent can use the link only after the ruling on K8 (Section 5).
+9. **The daemon.** The metrics daemon can use the link only after the ruling on K8 (Section 5).
 10. **Recovery.** A lost hub key means a new hub address and new invites for each device; the
     hub's bindings to link addresses stay valid only if the link's state folder (`devices.json`,
     `retired.json`) is restored with the hub's database. The backup (S9) must hold both.

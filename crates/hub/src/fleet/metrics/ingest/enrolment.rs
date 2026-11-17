@@ -1,9 +1,9 @@
-//! An agent's enrolment: the operator makes a one-use code, the agent swaps it for a token, and
+//! A daemon's enrolment: the operator makes a one-use code, the daemon swaps it for a token, and
 //! the operator may revoke that token (K8 Section 3, MET-011, MET-012, MET-013).
 
-use agent_core::wire::{AgentToken, CodeHash, Enrolled, EnrolmentCode, is_device_name};
 use async_graphql::Object;
 use chrono::{DateTime, Utc};
+use daemon_core::wire::{CodeHash, DaemonToken, Enrolled, EnrolmentCode, is_device_name};
 use sqlx::{PgConnection, PgPool};
 
 use super::{CODE_LIFETIME, Error, TOKEN_LIFETIME, store};
@@ -15,15 +15,15 @@ use crate::{
     ids::DeviceId,
 };
 
-/// A new enrolment code, shown once (K1 `AgentEnrolment`). The code is wiped on drop and is
+/// A new enrolment code, shown once (K1 `DaemonEnrolment`). The code is wiped on drop and is
 /// read only by the `code` field (LOG-007).
-pub struct AgentEnrolment {
+pub struct DaemonEnrolment {
     code: EnrolmentCode,
     expires_at: DateTime<Utc>,
 }
 
 #[Object]
-impl AgentEnrolment {
+impl DaemonEnrolment {
     async fn code(&self) -> &str {
         self.code.expose()
     }
@@ -33,7 +33,7 @@ impl AgentEnrolment {
     }
 }
 
-impl AgentEnrolment {
+impl DaemonEnrolment {
     /// When the code stops working.
     pub(in crate::fleet::metrics) const fn expiry(&self) -> DateTime<Utc> {
         self.expires_at
@@ -51,14 +51,14 @@ pub(in crate::fleet::metrics) async fn make_code(
     device: DeviceId,
     code: EnrolmentCode,
     now: DateTime<Utc>,
-) -> Result<AgentEnrolment, Error> {
+) -> Result<DaemonEnrolment, Error> {
     let expires_at = now + CODE_LIFETIME;
     // The device row first, the order a device delete takes the rows in; a second code for
     // the device waits here, then voids this one.
     devices::lock(conn, device).await?;
     store::void_unused_codes(conn, device).await?;
     store::insert_code(conn, code.hash(), device, expires_at).await?;
-    Ok(AgentEnrolment { code, expires_at })
+    Ok(DaemonEnrolment { code, expires_at })
 }
 
 /// A code marked used, whose exchange for a token is still to come.
@@ -85,9 +85,9 @@ pub(super) async fn redeem(
 }
 
 /// Makes `token` the device's only token for 365 days from `now`, sets the device's metrics
-/// source to `agent` and writes one event naming the device, together (MET-011, MET-013);
-/// `None`, storing nothing, when the operator revoked the device's agent after the code was
-/// redeemed, or when the device's stored name is not one the agent keeps (K8 Section 3).
+/// source to `daemon` and writes one event naming the device, together (MET-011, MET-013);
+/// `None`, storing nothing, when the operator revoked the device's daemon after the code was
+/// redeemed, or when the device's stored name is not one the daemon keeps (K8 Section 3).
 ///
 /// # Errors
 /// `NoDevice` when the device was deleted after its code was redeemed; `Database` or `Events`
@@ -95,7 +95,7 @@ pub(super) async fn redeem(
 pub(super) async fn enrol(
     db: &PgPool,
     bus: &Bus,
-    (redeemed, token): (Redeemed, AgentToken),
+    (redeemed, token): (Redeemed, DaemonToken),
     now: DateTime<Utc>,
 ) -> Result<Option<Enrolled>, Error> {
     let Redeemed { device, code } = redeemed;
@@ -103,8 +103,8 @@ pub(super) async fn enrol(
     let mut tx = db.begin().await?;
     // The device row first, the order a device delete and a revoke take the rows in; a revoke
     // that committed before this lock deleted the code.
-    let name = devices::use_agent_metrics(&mut tx, device).await?;
-    // A name the agent would not keep (a row older than the device rule) changes nothing: the
+    let name = devices::use_daemon_metrics(&mut tx, device).await?;
+    // A name the daemon would not keep (a row older than the device rule) changes nothing: the
     // transaction rolls back with the source and token as they were (K8 Section 3).
     if !is_device_name(&name) || !store::code_kept(&mut tx, code, device).await? {
         return Ok(None);
@@ -114,7 +114,7 @@ pub(super) async fn enrol(
         severity: Severity::Info,
         source: Source::Metrics,
         device: Some((device, name.clone())),
-        message: format!("The agent on {name} enrolled; its metrics now come from the agent."),
+        message: format!("The daemon on {name} enrolled; its metrics now come from the daemon."),
         actor: ActorKind::Hub,
     };
     events::record(&mut tx, bus, now, event).await?;
@@ -130,7 +130,7 @@ pub(super) async fn enrol(
 /// Deletes the device's token and its codes in the caller's transaction; the next push or
 /// renewal with that token is refused, and so is an exchange whose code was already redeemed.
 /// The device row is locked first, so an exchange in flight either commits before the revoke,
-/// which then deletes its token, or finds its code gone. The metrics source stays `agent`
+/// which then deletes its token, or finds its code gone. The metrics source stays `daemon`
 /// until the operator changes it (MET-013, R-092 D-7). Whether the device had a token.
 ///
 /// # Errors

@@ -34,7 +34,7 @@ DB-003 needs no change: the application mode makes the same roles as `deploy/pos
 | --- | --- | --- |
 | DB-009 | The hub must keep raw heartbeats and metrics for 30 days. Keep minute aggregates for 7 days, hour aggregates for 90 days and day aggregates for 2 years. | Add: In the application mode the default for raw heartbeats and raw metrics is 3 days. The aggregates do not change. The operator can change the periods (HUB-005). |
 
-Reason: 10 devices with a metrics agent make about 163 MB of raw samples each day, 4.9 GB in
+Reason: 10 devices with a metrics daemon make about 163 MB of raw samples each day, 4.9 GB in
 30 days (spike report, Section 10.2). The charts read the minute and hour aggregates, not the
 raw samples. With 3 days the same devices need about 0.5 GB.
 

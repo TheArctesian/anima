@@ -14,7 +14,7 @@ evidence: Version 0.1 (2026-11-14). It was `power-health-plan.md` in `plans/` un
 | Language | ASD-STE100 Simplified Technical English (STE) |
 | Status | The header of this document holds the state (PLN-020). History: Draft. For operator review. Nothing in this plan is accepted. |
 | Base | Branch `main` at `baa7eeeb`. All paths and requirement IDs in this plan are on that branch. |
-| Related | [design-spec.md](../spec/design-spec.md) Section 6 (MET-*), [compute-plan.md](../plans/compute-plan.md) Section 3.1 (CAP-*), [extensions-plan.md](../plans/extensions-plan.md), [one-click-plan.md](../plans/one-click/one-click-plan.md), `contracts/agent-push.md` (K8) |
+| Related | [design-spec.md](../spec/design-spec.md) Section 6 (MET-*), [compute-plan.md](../plans/compute-plan.md) Section 3.1 (CAP-*), [extensions-plan.md](../plans/extensions-plan.md), [one-click-plan.md](../plans/one-click/one-click-plan.md), `contracts/daemon-push.md` (K8) |
 
 This document obeys the writing rules in Section 0 of the design specification.
 
@@ -55,13 +55,13 @@ These limits are facts of the hardware. The interface must say them plainly.
 
 | ID | Source | Effect on this plan |
 | --- | --- | --- |
-| MET-002 | spec Section 6 | The agent and the SSH collector must only read. All readers in this plan only read. |
-| MET-016 | spec Section 6 | A parser is a pure function in `agent-core`. The agent and the SSH collector both call it. |
-| MET-013, K8 | `contracts/agent-push.md` | The agent token permits only push and renew. New readings go in the push body. K8 is a frozen contract; a change needs a programme ruling. |
+| MET-002 | spec Section 6 | The daemon and the SSH collector must only read. All readers in this plan only read. |
+| MET-016 | spec Section 6 | A parser is a pure function in `daemon-core`. The daemon and the SSH collector both call it. |
+| MET-013, K8 | `contracts/daemon-push.md` | The daemon token permits only push and renew. New readings go in the push body. K8 is a frozen contract; a change needs a programme ruling. |
 | MET-014, MET-015 | spec Section 6 | Points are at 10 seconds. Health and inventory change slowly and must not use this rate. |
 | MET-026 to MET-029 | spec Section 6 | Storage is shown drive by drive. Drive health joins these rows. |
-| CAP-004 | compute-plan.md | The agent already reports mains or battery and the thermal state for compute nodes. This plan uses the same readers; it does not make a second set. |
-| CHK-012 | spec Section 6 | The hub and the agent must not start a command with operator text. Each command here is fixed text. |
+| CAP-004 | compute-plan.md | The daemon already reports mains or battery and the thermal state for compute nodes. This plan uses the same readers; it does not make a second set. |
+| CHK-012 | spec Section 6 | The hub and the daemon must not start a command with operator text. Each command here is fixed text. |
 | DEV-026 | spec Section 6 | "Needs attention" is the place for a health warning. |
 | INT-003, CLI | spec Section 3, `docs/plans/cli-mcp-plan.md` | AI agents and scripts read through the GraphQL API. New values in K1 are then available to the CLI and to MCP with no extra path. |
 | K1, K2 | `contracts/schema.graphql`, `contracts/database.md` | Frozen contracts. New fields, tables and migration ranges need a programme ruling. |
@@ -74,10 +74,10 @@ These limits are facts of the hardware. The interface must say them plainly.
 Items 1 to 4 are from `main`. Items 5 to 12 are general platform facts; each is marked "check"
 and must be proved in task P0 before a builder relies on it.
 
-1. The readers are in `crates/agent/src/readers/` (fetch) and `crates/agent-core/src/readings/`
+1. The readers are in `crates/daemon/src/readers/` (fetch) and `crates/daemon-core/src/readings/`
    (pure parsers: `linux.rs`, `macos.rs`, `drives.rs`, `df.rs`, `gpu/`). A command is fixed
    argv with no shell and a time limit (`readers/command.rs`).
-2. The agent runs as its own user `anima-agent` (system unit), as the signed-in user (user unit),
+2. The agent runs as its own user `anima-daemon` (system unit), as the signed-in user (user unit),
    or as a LaunchAgent on macOS. None of these is root.
 3. `nvidia-smi` and `amdgpu` sysfs output is already parsed for GPU load. Both also give GPU power.
 4. The client has `$lib/metrics/` with `storage/`, `bars/` and overview charts.
@@ -99,7 +99,7 @@ and must be proved in task P0 before a builder relies on it.
 
 ## 4. Access levels
 
-Many readers need root (facts 6, 7, 8 and 12). The agent must not need root to start.
+Many readers need root (facts 6, 7, 8 and 12). The daemon must not need root to start.
 
 | Level | Needs | Gives |
 | --- | --- | --- |
@@ -107,7 +107,7 @@ Many readers need root (facts 6, 7, 8 and 12). The agent must not need root to s
 | Full hardware readings | One set-up step with administrator rights, started by the operator | CPU power, the energy of each program on macOS, SMART detail, memory slots on Linux |
 
 Proposed design for the full level: a small root helper that runs only a fixed list of read
-commands and gives the output to the agent. The agent stays without root. The helper takes no
+commands and gives the output to the daemon. The daemon stays without root. The helper takes no
 text from the hub or the operator (CHK-012). This design has a security tag.
 
 ## 5. Work items
@@ -115,7 +115,7 @@ text from the hub or the operator (CHK-012). This design has a security tag.
 ### 5.1 P0. Prove the readers
 
 Capture real output of each command in Section 3 on the operator's Macs and Linux computers.
-Put the captures in the `agent-core` test fixtures with invented names and serial numbers. Mark
+Put the captures in the `daemon-core` test fixtures with invented names and serial numbers. Mark
 each fact proved or wrong. No product code.
 
 ### 5.2 P1. Power
@@ -145,7 +145,7 @@ Proposed requirements (prefix `HWH`, free on `main`):
 - **HWH-001.** For each drive (MET-027), the hub must store the health verdict and, at the full
   level: reallocated and pending sectors, media errors, the used life of an SSD, power-on hours
   and temperature.
-- **HWH-002.** The agent must read health values once each hour, not with each 10-second point.
+- **HWH-002.** The daemon must read health values once each hour, not with each 10-second point.
 - **HWH-003.** The Storage section (MET-029) must show the health of each drive in its row.
 - **HWH-004.** The hub must open a "Needs attention" problem (DEV-026) when: a drive verdict is
   failing; pending or reallocated sectors increase; the used life of an SSD is more than 90
@@ -166,7 +166,7 @@ Proposed requirements (prefix `HWI`, free on `main`):
 - **HWI-001.** The hub must store for each device: the model, the CPU, the memory modules (size,
   type, speed), the memory slots used and free, the maximum memory, the drives and their
   interface, and the GPUs.
-- **HWI-002.** The agent must read the inventory at start and once each 24 hours (as MET-006).
+- **HWI-002.** The daemon must read the inventory at start and once each 24 hours (as MET-006).
 - **HWI-003.** The device detail view must have a Hardware section with the inventory.
 - **HWI-004.** The Hardware section must show upgrade facts: free memory slots and the maximum
   memory, free drive interfaces where the device reports them, and "memory is fixed" for a
@@ -180,7 +180,7 @@ Proposed requirements (prefix `HWI`, free on `main`):
 ### 5.5 P4. Power meters (extension)
 
 A smart plug that measures power gives the wall power of any device, also a device with no
-agent. This is an extension source ([extensions-plan.md](../plans/extensions-plan.md)), not agent work.
+daemon. This is an extension source ([extensions-plan.md](../plans/extensions-plan.md)), not daemon work.
 The operator links one plug to one device. Its value is "measured" (PWR-002) and replaces a
 partial value. The choice of plug types needs a short research task.
 
@@ -194,7 +194,7 @@ answer. An AI agent can then answer "why is this computer slow?" or "what uses t
 
 | Contract | Change |
 | --- | --- |
-| K8 (`agent-push.md`) | Power joins the 10-second points. Health and inventory are new slow bodies in the same push call, so the token rule of MET-013 does not change. |
+| K8 (`daemon-push.md`) | Power joins the 10-second points. Health and inventory are new slow bodies in the same push call, so the token rule of MET-013 does not change. |
 | K1 (`schema.graphql`) | Power fields on metrics; `health` and `hardware` on a device; the Settings values of PWR-005. |
 | K2 (`database.md`) | Power columns in the metric tables and aggregates. New tables for health readings, inventory and its history. A migration range from the programme. |
 | Hub domains | Health and inventory are new concepts beside `metrics`. Whether they are one domain or two is a builder decision after P0 (`quality/hub-modules.json` is a contract). |
@@ -220,7 +220,7 @@ engine. They can start after a ruling.
 | The root helper | A fault gives root to an attacker | Fixed command list, no input text, security review. The basic level works without it. |
 | Readers differ between computers and versions | Missing values | P0 captures. A missing value shows a reason (PWR-008), not zero. |
 | Too many health warnings | The operator stops reading them | HWH-004 uses changes and firm limits only. |
-| The SSH collector cannot use the root helper | Devices with no agent get the basic level only | Accepted. Say it in the client. |
+| The SSH collector cannot use the root helper | Devices with no daemon get the basic level only | Accepted. Say it in the client. |
 
 ## 9. Acceptance criteria
 
@@ -237,7 +237,7 @@ engine. They can start after a ruling.
 | ID | Question | Recommendation |
 | --- | --- | --- |
 | Q1 | Is the root helper (Section 4) accepted as a design? | Yes, after a security review. Ship the basic level first. |
-| Q2 | Does the SSH collector also get these readers, or the agent only? | Agent first. Add the basic readers to the SSH collector later (MET-016 makes this cheap). |
+| Q2 | Does the SSH collector also get these readers, or the daemon only? | Daemon first. Add the basic readers to the SSH collector later (MET-016 makes this cheap). |
 | Q3 | Power meters: which plug types first? | Decide after the research task in P4. |
 | Q4 | Is this a part of Phase 3 metrics work or a new phase? | A new package set after the one-click spikes report, so the two do not compete for the same builders. |
 | Q5 | Does the hub keep the power use of each program over time, or only the latest list? | The latest list only at the start. History is large and its value is not proved. |

@@ -96,7 +96,7 @@ type ApiKeyCreated {
 }
 
 "Shown once. The hub keeps only its SHA-256; one use, 15 minutes (MET-012, K8)."
-type AgentEnrolment {
+type DaemonEnrolment {
   code: String!
   expiresAt: DateTime!
 }
@@ -201,7 +201,7 @@ enum VpnPath {
 enum VpnRole {
   HUB
   ROUTER
-  AGENT
+  DAEMON
   CLIENT
   OTHER
 }
@@ -275,7 +275,7 @@ enum MetricsSource {
   NONE
   SSH
   "Set only by enrolment (MET-011, R-092 D-7)."
-  AGENT
+  DAEMON
 }
 
 "RA-020. TELNET joins when Telnet exists."
@@ -353,10 +353,10 @@ type Device {
   "Lower-case aa:bb:cc:dd:ee:ff (RA-031)."
   macAddress: String
   metricsSource: MetricsSource!
-  "True when the source is AGENT and no batch came in the last 30 seconds (MET-018)."
+  "True when the source is DAEMON and no batch came in the last 30 seconds (MET-018)."
   metricsStale: Boolean!
-  "The version of the device's agent from its last batch; null unless the source is AGENT and the agent sent one (R-122, ROL-051)."
-  agentVersion: String
+  "The version of the device's daemon from its last batch; null unless the source is DAEMON and the daemon sent one (R-122, ROL-051)."
+  daemonVersion: String
   transfer: TransferPolicy!
   accessWarnings: [AccessWarning!]!
   "Most live sessions at once (RA-036); null: no limit. File tunnels do not count."
@@ -857,7 +857,7 @@ type Storage {
 }
 
 # Tool inventory (operator, 2026-11-15, CAP-020 to CAP-031; ruling number to be assigned).
-"A device's capabilities: today the tool inventory its agent last sent (CAP-020, CAP-026, CAP-030). Every text comes from the device."
+"A device's capabilities: today the tool inventory its daemon last sent (CAP-020, CAP-026, CAP-030). Every text comes from the device."
 type DeviceCapabilities {
   device: Device!
   "aarch64 or x86_64."
@@ -866,7 +866,7 @@ type DeviceCapabilities {
   os: String!
   "For example 27.0 (macOS) or 24.04 (the Linux distribution; the kernel release when it has none). 1 to 64 bytes of [0-9A-Za-z.+_-]."
   osVersion: String!
-  "The tools the agent found, in the order of the probe list; a tool it did not find is not listed (CAP-023)."
+  "The tools the daemon found, in the order of the probe list; a tool it did not find is not listed (CAP-023)."
   tools: [Tool!]!
   "The installed Rust targets (rustup), in byte order."
   buildTargets: [String!]!
@@ -874,7 +874,7 @@ type DeviceCapabilities {
   foundAt: DateTime!
 }
 
-"One tool the agent found (CAP-024, CAP-025)."
+"One tool the daemon found (CAP-024, CAP-025)."
 type Tool {
   "git, rustc, cargo, cargo-nextest, sccache, bun, node, xcodebuild, docker, podman, nix, claude or codex."
   name: String!
@@ -892,9 +892,9 @@ enum NotUsableReason {
   TIMED_OUT
   "It could not start, or exited with a failure."
   EXITED
-  "It ran but printed no version the agent reads."
+  "It ran but printed no version the daemon reads."
   NO_VERSION
-  "A reason this hub does not know (a newer agent's)."
+  "A reason this hub does not know (a newer daemon's)."
   FAILED
 }
 
@@ -2597,7 +2597,7 @@ type Query {
   githubConnect: GithubConnectAttempt
 
   # Tool inventory (operator, 2026-11-15, CAP-020 to CAP-031; ruling number to be assigned)
-  "Each device whose agent sent a tool inventory, by device name (byte order). tool: only the devices where that tool is usable. buildTarget: only the devices with that Rust target. A name the hub does not know matches no device (CAP-030). Open to a read key."
+  "Each device whose daemon sent a tool inventory, by device name (byte order). tool: only the devices where that tool is usable. buildTarget: only the devices with that Rust target. A name the hub does not know matches no device (CAP-030). Open to a read key."
   capabilities(tool: String, buildTarget: String): [DeviceCapabilities!]!
 
   # Timeline and record links (operator, 2026-11-16; ruling number to be assigned; K-E3, K-E4)
@@ -2709,9 +2709,9 @@ type Mutation {
   "Login or browser token only (D-23, R-100)."
   revokeApiKey(id: ID!): ID!
   "Login or browser token only (INT-003, D-23, R-100). A new code makes the device's earlier unused codes useless."
-  enrolAgent(deviceId: ID!): AgentEnrolment!
-  "Login or browser token only (D-23, R-100). The source stays AGENT, shown as stale, until the operator changes it (R-092 D-7)."
-  revokeAgentToken(deviceId: ID!): Device!
+  enrolDaemon(deviceId: ID!): DaemonEnrolment!
+  "Login or browser token only (D-23, R-100). The source stays DAEMON, shown as stale, until the operator changes it (R-092 D-7)."
+  revokeDaemonToken(deviceId: ID!): Device!
 
   setCheckDefaults(input: CheckDefaultsInput!): CheckDefaults!
 

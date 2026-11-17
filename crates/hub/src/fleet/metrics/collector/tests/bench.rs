@@ -28,7 +28,7 @@ use crate::{
     },
     ids::DeviceId,
 };
-use agent_core::readings::captures::{
+use daemon_core::readings::captures::{
     DF_LINUX, LSBLK_POP_OS, PROC_DISKSTATS, PROC_LOADAVG, PROC_MEMINFO, PROC_NET_DEV, PROC_STAT,
     PROC_UPTIME,
 };

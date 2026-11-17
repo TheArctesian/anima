@@ -24,7 +24,7 @@ the hub over the link and connects the client. "Sign in" (hosted) is shown as no
 The VPS mode (Docker, Headscale) does not change (acceptance criterion 6).
 
 Not in scope: the release bundle that carries the programs (S12, S4 T9), the backup (S9), the
-relay and domain settings (S11), many hubs (S13), the metrics agent over the link (K8 ruling).
+relay and domain settings (S11), many hubs (S13), the metrics daemon over the link (K8 ruling).
 
 ## 1. What exists
 

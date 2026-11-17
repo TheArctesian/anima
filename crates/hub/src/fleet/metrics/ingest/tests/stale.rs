@@ -1,7 +1,7 @@
-//! MET-018, R-098 a: an agent is stale after more than 30 seconds with no accepted batch, with
+//! MET-018, R-098 a: a daemon is stale after more than 30 seconds with no accepted batch, with
 //! one event when it goes stale and one when it sends again; a refused batch does not count, a
-//! batch of only unknown series does, an agent that never pushed is never marked, a device
-//! switched away from the agent is marked without an event, and one device that cannot be
+//! batch of only unknown series does, a daemon that never pushed is never marked, a device
+//! switched away from the daemon is marked without an event, and one device that cannot be
 //! marked does not keep the others from being marked.
 
 use axum::http::StatusCode;
@@ -26,7 +26,7 @@ fn batch(at: DateTime<Utc>, kind: &str) -> Value {
 async fn events(pool: &PgPool) -> Vec<String> {
     sqlx::query_scalar(
         "SELECT message FROM events.event_log WHERE source = 'metrics' AND device_id = $1 \
-         AND message LIKE 'The agent on pve-01 s%' ORDER BY at, id",
+         AND message LIKE 'The daemon on pve-01 s%' ORDER BY at, id",
     )
     .bind(pve())
     .fetch_all(pool)
@@ -34,8 +34,8 @@ async fn events(pool: &PgPool) -> Vec<String> {
     .unwrap()
 }
 
-const STALE: &str = "The agent on pve-01 sent no metrics for 30 seconds; they are stale.";
-const FRESH: &str = "The agent on pve-01 sends metrics again.";
+const STALE: &str = "The daemon on pve-01 sent no metrics for 30 seconds; they are stale.";
+const FRESH: &str = "The daemon on pve-01 sends metrics again.";
 
 #[sqlx::test(
     migrations = "./migrations",
@@ -135,7 +135,7 @@ async fn r_098_a_a_refused_batch_keeps_the_timer_and_an_unknown_kind_resets_it(p
     migrations = "./migrations",
     fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
 )]
-async fn met_018_an_agent_that_never_pushed_is_never_marked(pool: PgPool) {
+async fn met_018_a_daemon_that_never_pushed_is_never_marked(pool: PgPool) {
     let now = database_now(&pool).await;
     enrolled_pve(&pool, now, 1).await;
     let bus = Bus::new(16);
@@ -148,7 +148,7 @@ async fn met_018_an_agent_that_never_pushed_is_never_marked(pool: PgPool) {
     migrations = "./migrations",
     fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
 )]
-async fn met_018_a_device_switched_away_from_the_agent_is_marked_without_an_event(pool: PgPool) {
+async fn met_018_a_device_switched_away_from_the_daemon_is_marked_without_an_event(pool: PgPool) {
     let now = database_now(&pool).await;
     let token = enrolled_pve(&pool, now, 1).await;
     let bus = Bus::new(16);
@@ -179,13 +179,13 @@ async fn met_018_a_device_switched_away_from_the_agent_is_marked_without_an_even
 async fn met_018_one_device_that_cannot_be_marked_does_not_keep_the_others_fresh(pool: PgPool) {
     let now = database_now(&pool).await;
     let docker = "0190a000-0000-7000-8002-000000000002";
-    sqlx::query("UPDATE devices.devices SET metrics_source = 'agent' WHERE id = ANY($1::uuid[])")
+    sqlx::query("UPDATE devices.devices SET metrics_source = 'daemon' WHERE id = ANY($1::uuid[])")
         .bind([pve().to_string(), docker.to_owned()])
         .execute(&pool)
         .await
         .unwrap();
     sqlx::query(
-        "INSERT INTO metrics.agents (device_id, token_sha256, expires_at, last_batch_at) \
+        "INSERT INTO metrics.daemons (device_id, token_sha256, expires_at, last_batch_at) \
          SELECT d, sha256(d::text::bytea), $2, $3 FROM unnest($1::uuid[]) AS d",
     )
     .bind([pve().to_string(), docker.to_owned()])
@@ -198,7 +198,7 @@ async fn met_018_one_device_that_cannot_be_marked_does_not_keep_the_others_fresh
     sqlx::raw_sql(&format!(
         "CREATE FUNCTION metrics.refuse_mark() RETURNS trigger LANGUAGE plpgsql AS $$ \
          BEGIN RAISE EXCEPTION 'cannot mark'; END $$; \
-         CREATE TRIGGER refuse_mark BEFORE UPDATE ON metrics.agents FOR EACH ROW \
+         CREATE TRIGGER refuse_mark BEFORE UPDATE ON metrics.daemons FOR EACH ROW \
          WHEN (NEW.device_id = '{}') EXECUTE FUNCTION metrics.refuse_mark();",
         pve()
     ))
@@ -208,10 +208,11 @@ async fn met_018_one_device_that_cannot_be_marked_does_not_keep_the_others_fresh
 
     let later = now + TimeDelta::seconds(31);
     assert!(mark_stale(&pool, &Bus::new(16), later).await.is_err());
-    let stale: Vec<String> =
-        sqlx::query_scalar("SELECT device_id::text FROM metrics.agents WHERE stale_at IS NOT NULL")
-            .fetch_all(&pool)
-            .await
-            .unwrap();
+    let stale: Vec<String> = sqlx::query_scalar(
+        "SELECT device_id::text FROM metrics.daemons WHERE stale_at IS NOT NULL",
+    )
+    .fetch_all(&pool)
+    .await
+    .unwrap();
     assert_eq!(stale, [docker]);
 }

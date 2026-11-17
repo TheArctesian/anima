@@ -169,16 +169,16 @@ describe('settings tab (D-7, DEV-014)', () => {
 
 });
 
-describe('settings tab: the agent (MET-019, D-7)', () => {
-  it('MET-019: the Settings tab offers Install agent, and its code request names this device', async () => {
-    const enrolment = { enrolAgent: { code: 'anima_enrol_AbCdEfGhIjKlMnOpQrStUv', expiresAt: '2099-01-01T00:00:00Z' } };
-    const fake = await show(answers({ EnrolAgent: enrolment }), '?tab=settings');
-    button('Install agent').click();
+describe('settings tab: the daemon (MET-019, D-7)', () => {
+  it('MET-019: the Settings tab offers Install daemon, and its code request names this device', async () => {
+    const enrolment = { enrolDaemon: { code: 'anima_enrol_AbCdEfGhIjKlMnOpQrStUv', expiresAt: '2099-01-01T00:00:00Z' } };
+    const fake = await show(answers({ EnrolDaemon: enrolment }), '?tab=settings');
+    button('Install daemon').click();
     await settle();
-    expect(fake.requests.filter((request) => request.operation === 'EnrolAgent')).toEqual([
-      { operation: 'EnrolAgent', variables: { deviceId: ID } },
+    expect(fake.requests.filter((request) => request.operation === 'EnrolDaemon')).toEqual([
+      { operation: 'EnrolDaemon', variables: { deviceId: ID } },
     ]);
-    expect(document.querySelector('pre')?.textContent).toContain('anima-agent enrol --hub');
+    expect(document.querySelector('pre')?.textContent).toContain('anima-daemon enrol --hub');
   });
 });
 

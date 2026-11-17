@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-daemon-bundled"
+description = "Enables the daemon_bundled command without any pre-configured scope."
+commands.allow = ["daemon_bundled"]
+
+[[permission]]
+identifier = "deny-daemon-bundled"
+description = "Denies the daemon_bundled command without any pre-configured scope."
+commands.deny = ["daemon_bundled"]

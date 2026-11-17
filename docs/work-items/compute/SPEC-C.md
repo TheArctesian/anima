@@ -15,7 +15,7 @@ Progress: the index [README.md](../README.md) holds the state of this item (PLN-
 
 **Ownership / priority clarification (2026-11-07):**
 
-Before C1 [C1](C1.md), align the older checklist with [approved R-084](../../plans/phase-3/phase-3-agent-delta.md): metrics are now agent-first with SSH fallback, and compute reuses `agent`/`agent-core` from WP-51/WP-54. The “collector stays agentless” line below is historical. Compute command transport/authorization still needs alignment with MET-020. Include shared private vision in C1, consumed through [E0-5](../engine/E0-5.md) by separate Wardrobe/Library [XP-12](../extensions/XP-12.md)/[XP-13](../extensions/XP-13.md). Prioritize infrastructure approval; navigation/new-screen delivery stays later. Hosted permission [OD-E4](../decisions/OD-E4.md) remains optional; this organization pass grants no blanket spec approval.
+Before C1 [C1](C1.md), align the older checklist with [approved R-084](../../plans/phase-3/phase-3-daemon-delta.md): metrics are now agent-first with SSH fallback, and compute reuses `agent`/`agent-core` from WP-51/WP-54. The “collector stays agentless” line below is historical. Compute command transport/authorization still needs alignment with MET-020. Include shared private vision in C1, consumed through [E0-5](../engine/E0-5.md) by separate Wardrobe/Library [XP-12](../extensions/XP-12.md)/[XP-13](../extensions/XP-13.md). Prioritize infrastructure approval; navigation/new-screen delivery stays later. Hosted permission [OD-E4](../decisions/OD-E4.md) remains optional; this organization pass grants no blanket spec approval.
 
 ---
 

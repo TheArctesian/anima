@@ -11,7 +11,7 @@ use crate::fleet::{
     },
     ssh::CommandOutput,
 };
-use agent_core::{
+use daemon_core::{
     points::Kind,
     readings::captures::{
         DF_LINUX, DF_MACOS, NETSTAT, PROC_LOADAVG, PROC_MEMINFO, PROC_NET_DEV, PROC_STAT,

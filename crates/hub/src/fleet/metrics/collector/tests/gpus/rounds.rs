@@ -6,8 +6,8 @@
 
 use std::time::Duration;
 
-use agent_core::readings::captures::NVIDIA_SMI_TWO;
 use chrono::{DateTime, Utc};
+use daemon_core::readings::captures::NVIDIA_SMI_TWO;
 use sqlx::PgPool;
 
 use super::{

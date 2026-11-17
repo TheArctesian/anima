@@ -9,8 +9,8 @@
   import type { ConnectionTestInput } from '$lib/hub/generated/graphql';
   import type { HubResult } from '$lib/hub/hub';
   import Icon from '$lib/icons/Icon.svelte';
-  import type { AgentCalls } from '$lib/metrics/agent/install.svelte';
-  import type { ThisComputerShell } from '$lib/desktop/agent/shell';
+  import type { DaemonCalls } from '$lib/metrics/daemon/install.svelte';
+  import type { ThisComputerShell } from '$lib/desktop/daemon/shell';
   import PageIndex from '$lib/page/contents/PageIndex.svelte';
   import type { SettingsSection } from '../tabs/tabs';
   import type { SettingsCalls } from './calls';
@@ -26,8 +26,8 @@
     section: SettingsSection | null;
     /** The hub calls of the settings and the web interfaces (WEB-001, WEB-002, DEV-011, SEC-007). */
     calls: SettingsCalls;
-    /** The Install agent panel's hub calls and the hub origin the agent must reach (MET-019). */
-    agent: { calls: AgentCalls; origin: string; reveal: boolean; shell: ThisComputerShell | null };
+    /** The Install daemon panel's hub calls and the hub origin the daemon must reach (MET-019). */
+    daemon: { calls: DaemonCalls; origin: string; reveal: boolean; shell: ThisComputerShell | null };
     now: () => Date;
     onTest: (input: ConnectionTestInput) => Promise<HubResult<ConnectionTestResult>>;
     /** Opens the Checks tab. */
@@ -38,7 +38,7 @@
     later?: Later;
   }
 
-  const { device, section, calls, agent, now, onTest, onOpenChecks, onDelete, later }: Props = $props();
+  const { device, section, calls, daemon, now, onTest, onOpenChecks, onDelete, later }: Props = $props();
   /** The device as the hub last stored it, in the shape the settings edit (D-3). */
   const saved = $derived(formValues(device));
   // The draft lives as long as the tab; it reads the saved device afresh for each change.
@@ -67,7 +67,7 @@
     </p>
     <div class="groups">
     <DeviceSection {draft} />
-    <MonitoringSection {draft} {device} {agent} {now} {onOpenChecks} />
+    <MonitoringSection {draft} {device} {daemon} {now} {onOpenChecks} />
     <ConnectionsSection {draft} {device} {saved} {calls} {section} {onTest} />
     <SessionsSection {draft} deviceId={device.id} />
     <div class="web" id={SECTIONS.web.id} data-section={SECTIONS.web.id}>

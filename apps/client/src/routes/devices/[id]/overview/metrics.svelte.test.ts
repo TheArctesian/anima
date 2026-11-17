@@ -26,9 +26,9 @@ describe('DeviceMetrics (D-5, D-6, D-7)', () => {
     expect(metrics.view).toBeNull();
   });
 
-  it('MET-011: an AGENT device asks for its metrics and listens, like an SSH one', async () => {
+  it('MET-011: an DAEMON device asks for its metrics and listens, like an SSH one', async () => {
     const fake = fakeHub({ DeviceMetrics: answer() });
-    await metricsOf(fake).load('HOUR', 'AGENT');
+    await metricsOf(fake).load('HOUR', 'DAEMON');
     expect(fake.requests.map((request) => request.operation)).toEqual(['DeviceMetrics']);
     expect(fake.subscriptions.map((request) => request.operation)).toEqual(['MetricsAdded']);
   });

@@ -172,20 +172,20 @@ anima-link hub -state <HUB_STATE_DIR> -target <FOLDER>/link.sock
 - `anima-link` connects only to a socket that its own user owns, in a folder that no other
   user can reach or replace. It writes the cause to its log when it refuses.
 
-The metrics agent of a device uses the link too (K8 Section 1):
+The metrics daemon of a device uses the link too (K8 Section 1):
 
 ```sh
 # On the device. The port is the -listen port of `anima-link device`, 1024 or higher.
-anima-agent enrol - --hub http://127.0.0.1:<LOCAL_PORT>
+anima-daemon enrol - --hub http://127.0.0.1:<LOCAL_PORT>
 ```
 
-- Give `anima-link device` a fixed `-listen` port on a device that runs the agent. Without
-  `-listen` the link uses a different port at each start. The agent keeps its token for that
+- Give `anima-link device` a fixed `-listen` port on a device that runs the daemon. Without
+  `-listen` the link uses a different port at each start. The daemon keeps its token for that
   origin, port included, and refuses to send it to another.
 - Keep `anima-link device` in operation while the agent runs. While the link is stopped, a
   program of any local user of that device can listen on the port, and it then receives the
-  agent token. Nothing shows that this occurred. If you think that it did, revoke the token
-  (`revokeAgentToken`) or enrol the agent again: the new token replaces the old one.
+  daemon token. Nothing shows that this occurred. If you think that it did, revoke the token
+  (`revokeDaemonToken`) or enrol the daemon again: the new token replaces the old one.
 
 ## 8. Limits and known faults
 

@@ -1,9 +1,9 @@
 //! The `amdgpu` files of several cards as `grep -H . <files>` prints them, one card at a time
-//! through the agent's per-file readers (MET-016). Pure.
+//! through the daemon's per-file readers (MET-016). Pure.
 
 use std::collections::BTreeMap;
 
-use agent_core::readings::{
+use daemon_core::readings::{
     GpuReading,
     gpu::amd::{self, CardFiles},
 };

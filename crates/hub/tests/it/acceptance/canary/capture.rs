@@ -117,7 +117,7 @@ pub fn everywhere() -> Watch {
     WATCHING.store(true, Ordering::SeqCst);
     let writer = capture.clone();
     let subscriber = process_log::subscriber("trace", move || writer.clone()).unwrap();
-    // As in agent::secrecy: a second dispatcher keeps another test thread from caching this
+    // As in daemon::secrecy: a second dispatcher keeps another test thread from caching this
     // test's callsites as disabled.
     let second = Dispatch::new(tracing::subscriber::NoSubscriber::default());
     let thread = tracing::subscriber::set_default(subscriber);

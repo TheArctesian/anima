@@ -1,8 +1,8 @@
-//! The tool inventory of each device: replaced whole when an agent batch brings one
+//! The tool inventory of each device: replaced whole when a daemon batch brings one
 //! (CAP-020, CAP-029).
 
-use agent_core::inventory::{Inventory, Reason, Tool};
 use chrono::{DateTime, Utc};
+use daemon_core::inventory::{Inventory, Reason, Tool};
 use sqlx::{PgConnection, PgPool};
 
 use super::{record::device_missing, rows::InventoryRow};

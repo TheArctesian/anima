@@ -107,7 +107,7 @@ again: the text below is the text of OD-W13.
   directly, for example a macOS or iOS build.
 - **PRO-022.** A native job must run as a macOS user that is made for builds. This user must not
   be the login user of the operator, must not be an administrator, and must not be able to read
-  the home folder of the operator or the token of `anima-agent`.
+  the home folder of the operator or the token of `anima-daemon`.
 - **PRO-023.** A native job must run in a new checkout. The machine must delete the checkout,
   the keychain of the job and the secrets of the job when the job ends, also when it fails or is
   stopped.
@@ -228,9 +228,9 @@ requirements of this section are proposals with no ruling.
   the project as a parameter. The second recipe makes the image of a job or of a hosted
   application (JOB-002, JOB-003, JOB-008). Build it when a job needs it. A repository that needs
   other steps uses its workflows on owned machines (PRO-027). Decided (OD-W16).
-- **PRO-033. The agent does the build.** `anima-agent` gets a build through the work route
+- **PRO-033. The daemon does the build.** `anima-daemon` gets a build through the work route
   (USE-005, USE-006). The builder in the desktop application (BLD-020 to BLD-029) stays only for
-  the release of Anima, until the agent can do that release. Then the desktop builder goes.
+  the release of Anima, until the daemon can do that release. Then the desktop builder goes.
   Reason: the desktop builder runs as the operator, with the operator's keychain (PRO-022).
 - **PRO-034. The repository is a parameter.** The address and the branch come from the project.
   The code must hold no name and no address of the operator (ETH-002). For a private repository,
@@ -260,7 +260,7 @@ The release of Anima thus has three states, in this order:
 1. Today: the Builds view and the desktop builder. Group R of "Tasks" corrects the defects.
 2. Interim: the same builder, started from the Anima project page. The hub refuses when it has
    no keys (PRO-037, PRO-038). The "Builds" entry goes (PRO-025).
-3. End: a native job of `anima-agent` on a Mac, and a container job on Linux, with the keys as
+3. End: a native job of `anima-daemon` on a Mac, and a container job on Linux, with the keys as
    project secrets (PRO-033, PRO-036).
 
 ## Plan B: owned machines as runners of GitHub Actions
@@ -401,7 +401,7 @@ To open the port on the VPS needs the confirmation of the operator (VPS-005).
 | Signal | `push`, or the operator | `workflow_job`, or a warm runner | The webhook receiver and the slow poll (WHK-006, PRO-021) |
 | The item in the hub | A build (PRO-031) | A runner for one job (PRO-039) | One queue with a lease (PRO-050) |
 | The machine | Placement by the hub | Placement by the hub | One pure function (USE-003, PRO-051) |
-| The program on the machine | `anima-agent`, work type `build` | `anima-agent`, work type `runner` | The work route (USE-005, USE-006) |
+| The program on the machine | `anima-daemon`, work type `build` | `anima-daemon`, work type `runner` | The work route (USE-005, USE-006) |
 | Isolation | Container, or the build user on a Mac | The same | PRO-029, PRO-022 to PRO-024 |
 | The code | The machine makes the checkout (PRO-034) | The workflow makes the checkout | Not shared |
 | A secret for one job | A project secret, a repository token (JOB-010) | The JIT configuration (PRO-040) | One delivery and one deletion (JOB-010) |
@@ -464,7 +464,7 @@ table has the order.
 | W1 | The contract of the work route: claim, report, log, stop, a secret for one job, the work types `build` and `runner`. | A ruling that changes R-115 ([jobs.md](../proposals/jobs.md), "Needs") | The programme accepts the contract. | Not started | — |
 | W2 | The isolation design, with prototypes: the container runtime on Linux, a workflow that needs Docker, the build user on a Mac, a signing identity for one job (PRO-029). | — | A record with measured results on one Linux machine and one Mac. The security reviewer and the operator accept it. | Not started | — |
 | W3 | The hub: one queue for work, the placement function, the log store (PRO-050, PRO-051). Hub API, then `anima`, then MCP. | W1 | The gates pass. The release of Anima still works through the old path. | Not started | — |
-| W4 | The agent: do a container job and a native job on a Mac, and delete each thing at the end (PRO-029). | W1, W2 | A test proves that a job cannot read the agent token or the home folder, and that nothing stays after a stop. | Not started | — |
+| W4 | The daemon: do a container job and a native job on a Mac, and delete each thing at the end (PRO-029). | W1, W2 | A test proves that a job cannot read the daemon token or the home folder, and that nothing stays after a stop. | Not started | — |
 | W5 | "Takes work" for each machine, and "native jobs" for each Mac (USE-004, USE-008, PRO-024). | W3 | A machine that is set off at the machine refuses work from the hub. | Not started | — |
 | W6 | The list of what runs, in the hub and in the client (PRO-026, PRO-052). | W3 | The area shows a build and a session, and shows nothing when nothing runs. | Not started | — |
 
@@ -474,7 +474,7 @@ Group B: runners.
 | --- | --- | --- | --- | --- | --- |
 | B1 | Prove the facts that the documentation does not state, on a test repository of the operator: the labels of a JIT runner (F12), the life of an unused JIT configuration (F6), `vars` in `runs-on` for a branch and for a fork (F13), the memory of one idle runner. | The operator's account | Each result is in the table "Facts of GitHub". | Not started | — |
 | B2 | The GitHub provider: make a JIT configuration, remove a runner, list runners, read queued jobs, read the fork settings (PRO-049). | A contract change for the new `Change` values (K-E1 Section 13) | Each function has a test with a recorded answer. The JIT configuration is not in a log or in `Debug` output. | Not started | — |
-| B3 | The agent, work type `runner`: get the program, check it, run it in isolation for one job, delete it (PRO-039, PRO-043). | W4, B1 | A workflow of the test repository runs on a Linux machine and on a Mac. Nothing stays on the machine. | Not started | — |
+| B3 | The daemon, work type `runner`: get the program, check it, run it in isolation for one job, delete it (PRO-039, PRO-043). | W4, B1 | A workflow of the test repository runs on a Linux machine and on a Mac. Nothing stays on the machine. | Not started | — |
 | B4 | The hub: runners on and off for a project, warm mode, the next runner after each job, the audit entries (PRO-042, PRO-046). Hub API, `anima runner`, MCP tools (PRO-053). | W3, B2 | With runners on, two jobs in sequence each get a new runner. With runners off, GitHub lists no runner of Anima. | Not started | — |
 | B5 | The set-up in the client, and the pull request that changes `runs-on` (PRO-044, PRO-045). | B4 | From a project page, one press and one merge make a workflow run on an owned machine. Use a private test repository: `TheArctesian/anima.ing` gets no runner before W2 and S are accepted (OD-W18). | Not started | — |
 | B6 | On-demand mode (PRO-042). | The webhook receiver (WHK); B4 | With no idle runner, a queued job gets a runner. A lost delivery is repaired by the poll. | Not started | — |
@@ -485,7 +485,7 @@ Group A: builds of Anima's own.
 | Task | Content | Needs | Done when | State | Commits |
 | --- | --- | --- | --- | --- | --- |
 | A1 | The interim state of the release: start it from the Anima project page; remove the Builds entry (PRO-025, PRO-038). | R4; the Projects extension is on | A release starts from the project page and from `anima release create`. | Not started | — |
-| A2 | A build as an item of work of a project, with the desktop release as its first recipe (PRO-031, PRO-032, PRO-034, PRO-035). Hub API, `anima build`, MCP, then the project page. | W3, W4 | The Anima release runs as work of `anima-agent`, from a new checkout, on Linux and on a Mac. | Not started | — |
+| A2 | A build as an item of work of a project, with the desktop release as its first recipe (PRO-031, PRO-032, PRO-034, PRO-035). Hub API, `anima build`, MCP, then the project page. | W3, W4 | The Anima release runs as work of `anima-daemon`, from a new checkout, on Linux and on a Mac. | Not started | — |
 | A3 | The keys of the release as project secrets (PRO-036). | The Secrets extension (XP-04); A2 | The hub opens the key of the project for one release. No key is in the configuration of the hub. | Not started | — |
 | A4 | Remove the desktop builder and the Builds view. Change BLD-020 to BLD-029 and BLD-080 in the design specification (PRO-033). | A2, R7 | One release is published through A2 and installs. Then the old path is deleted. | Not started | — |
 | A5 | A build from a push, with a commit status (PRO-010 model (a), PRO-021). | A2; the webhook receiver for the fast path | A push to a project with a recipe makes one build and one status. A second delivery makes no second build. | Not started | — |
@@ -525,7 +525,7 @@ Group A: builds of Anima's own.
 - **PRO-018.** The hub only reads a rented service (PRJ-003). An action uses the CLI tool of the
   service (OD-W1). GitHub is the exception: the hub makes changes there through the GitHub App
   (PRJ-017; operator, 2026-11-13). A different service gets the same only with its own ruling.
-- **PRO-019.** A machine with `anima-agent` takes work by default, and the operator can set a
+- **PRO-019.** A machine with `anima-daemon` takes work by default, and the operator can set a
   machine off (OD-W10, USE-004). A build is such work.
 
 ## Open points
@@ -535,7 +535,7 @@ Group A: builds of Anima's own.
   the bottom above Settings.
 - The Builds view is in a redesign on the branch `claude/stoic-blackburn-a88d9b`. The operator
   decides if that work moves to the build section of the project page.
-- The design of the build user on a Mac (PRO-022): how the agent starts a process as that user,
+- The design of the build user on a Mac (PRO-022): how the daemon starts a process as that user,
   and how Xcode gets a signing identity for one job from a keychain that is deleted after it
   (PRO-023). The Developer ID and the updater key have rulings (R-116, R-117); read them before
   the design. Task W2 makes this design.

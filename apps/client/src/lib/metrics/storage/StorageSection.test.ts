@@ -17,7 +17,7 @@ afterEach(async () => {
   document.body.innerHTML = '';
 });
 
-async function section(drives: readonly StorageDrive[] | null, source: MetricsSource = 'AGENT', error: HubError | null = null): Promise<void> {
+async function section(drives: readonly StorageDrive[] | null, source: MetricsSource = 'DAEMON', error: HubError | null = null): Promise<void> {
   if (app) await unmount(app);
   app = mount(StorageSection, { target: document.body, props: { source, drives, error } });
   flushSync();
@@ -60,7 +60,7 @@ it('MET-029: a drive not mounted is greyed and says "Not mounted", with no bar',
 });
 
 it('MET-031: a macOS mount shows its path as the title, with no kind and no activity', async () => {
-  await section([drive(null, { kind: null, sizeBytes: null, mounts: [mountOf('/', 40, 4e11, 1e12)] })], 'AGENT');
+  await section([drive(null, { kind: null, sizeBytes: null, mounts: [mountOf('/', 40, 4e11, 1e12)] })], 'DAEMON');
   const [lone] = rows();
   expect(lone?.querySelector('.name')?.textContent).toBe('/');
   expect(lone?.querySelector('.kind')).toBeNull();

@@ -49,7 +49,7 @@ The first signed release of the macOS client, 0.2.0, is published at [releases.a
 
 - Uptime checks: HTTP, ICMP, TCP, TLS, DNS, Docker, systemd, SNMP, push, groups, Tailscale ping, and domain expiry
 - Resource metrics: CPU, memory, disk (usage and I/O), network, load, uptime, and GPU (NVIDIA, AMD, Intel, and Apple)
-- Metrics from a small agent (`anima-agent`) or, without an agent, over SSH
+- Metrics from a small daemon (`anima-daemon`) or, without a daemon, over SSH
 - Alerts on webhook, ntfy, email, or [Apprise](deploy/README.md)
 - A Prometheus scrape endpoint at `/metrics` ([setup](docs/procedures/setup/prometheus.md))
 
@@ -173,17 +173,17 @@ anima-gateway listen 127.0.0.1:4823 --other-gateway 127.0.0.1:4822
 
 ### Metrics agent
 
-`anima-agent` runs on a device, samples every two seconds, and pushes points to the hub every ten seconds. The desktop app can install it on the computer it runs on. You can also enrol it by hand:
+`anima-daemon` runs on a device, samples every two seconds, and pushes points to the hub every ten seconds. The desktop app can install it on the computer it runs on. You can also enrol it by hand:
 
 ```sh
-cargo build --release --locked --bin anima-agent
-anima-agent enrol <code> --hub <https origin>
-anima-agent install          # user unit / LaunchAgent
-# anima-agent install --system
-anima-agent run
+cargo build --release --locked --bin anima-daemon
+anima-daemon enrol <code> --hub <https origin>
+anima-daemon install          # user unit / LaunchAgent
+# anima-daemon install --system
+anima-daemon run
 ```
 
-The enrolment code comes from the Device page in the client (`anima agent enrol` on the command line). The agent does not listen on a port.
+The enrolment code comes from the Device page in the client (`anima daemon enrol` on the command line). The daemon does not listen on a port.
 
 ### Link (run by hand)
 
@@ -209,7 +209,7 @@ link/build.sh    # writes link/bin/anima-link-<os>-<arch>
            +-- RDP: guacd
            +-- Device web interfaces
            +-- Checks, notifications, /metrics
-           +-- Metrics ingest from anima-agent (or SSH collection)
+           +-- Metrics ingest from anima-daemon (or SSH collection)
            |
            +-- Headscale / WireGuard mesh
            +-- anima-link (optional, started by hand)
@@ -223,7 +223,7 @@ link/build.sh    # writes link/bin/anima-link-<os>-<arch>
 | Hub | `crates/hub` | API, checks, sessions, notifications |
 | Native VNC gateway | `crates/anima-gateway` | VNC sessions without `guacd` |
 | Command line and MCP | `crates/anima-cli` | The `anima` and `anima mcp` programs |
-| Metrics agent | `crates/agent` | `anima-agent` |
+| Metrics daemon | `crates/daemon` | `anima-daemon` |
 | Link | `link/` | `anima-link` (Go) |
 | Deployment | `deploy/` | Compose, Headscale, backups |
 

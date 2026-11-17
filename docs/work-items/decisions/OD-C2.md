@@ -15,7 +15,7 @@ Progress: the index [README.md](../README.md) holds the state of this item (PLN-
 
 **Ownership / priority clarification (2026-11-07):**
 
-[R-084](../../plans/phase-3/phase-3-agent-delta.md) already establishes one metrics agent (`agent`, `agent-core`) that C1 [C1](../compute/C1.md) later extends for compute. Do not create another metrics/compute binary. The retained boundary is separation from personal-source `anima-collector` [E0-3](../engine/E0-3.md) and any justified shared enrolment library. Align compute command transport/privileges in [C1](../compute/C1.md)/[SPEC-C](../compute/SPEC-C.md); that decision remains open.
+[R-084](../../plans/phase-3/phase-3-daemon-delta.md) already establishes one metrics agent (`agent`, `agent-core`) that C1 [C1](../compute/C1.md) later extends for compute. Do not create another metrics/compute binary. The retained boundary is separation from personal-source `anima-collector` [E0-3](../engine/E0-3.md) and any justified shared enrolment library. Align compute command transport/privileges in [C1](../compute/C1.md)/[SPEC-C](../compute/SPEC-C.md); that decision remains open.
 
 ---
 

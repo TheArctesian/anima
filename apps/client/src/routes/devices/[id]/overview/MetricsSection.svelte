@@ -54,7 +54,7 @@
     <!-- D-7: an empty state with its icon, the sentence and the way to turn metrics on. -->
     <div class="metrics-off">
       <span class="off-icon"><Icon name="carbon:chart-line" size="lg" /></span>
-      <p>Metrics are off. Install the agent or turn on SSH metrics in Settings.</p>
+      <p>Metrics are off. Install the daemon or turn on SSH metrics in Settings.</p>
       <button type="button" class="settings" onclick={onSettings} {@attach press()}><Icon name="carbon:settings-adjust" size="sm" />Open Settings</button>
     </div>
   {:else}

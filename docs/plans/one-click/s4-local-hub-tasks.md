@@ -17,14 +17,14 @@ Branch: `claude/s4-local-hub`, cut from `claude/s3-database` at `ec0ba639` (whic
 `origin/main` at `4c27cceb`).
 Sources: `docs/plans/one-click/one-click-plan.md` Section 4.4 (on branch `claude/one-click-plan`),
 `s3-database-tasks.md` Section 1.6, `docs/procedures/setup/bundled-database.md` Section 7,
-`docs/procedures/setup/native-gateway.md`, and the agent's unit code `crates/agent/src/units/` (MET-019).
+`docs/procedures/setup/native-gateway.md`, and the daemon's unit code `crates/daemon/src/units/` (MET-019).
 
 Scope: on macOS and Linux the hub runs when the application window is closed and starts at
 login. The Tauri shell installs and removes it. The VPS mode (Docker, Headscale) does not change.
 
 Not in scope, owned by other items:
 
-- **S5:** the hub's access rules (NET-001, NET-002, BLD-024, the agent token path) and the hub's
+- **S5:** the hub's access rules (NET-001, NET-002, BLD-024, the daemon token path) and the hub's
   listen addresses. S4 sets no access rule. See Section 1.4.
 - **S6:** the first-run screens, the operator account, the invite, starting `anima-link`. S4
   leaves one place for the link (Section 1.3) and gives S6 the commands of Section 1.6.
@@ -169,7 +169,7 @@ again after an update (S6 decides when).
 
 The unit: start at login, start again after a failure with 10 s between, 90 s to stop, no core
 file. On Linux no `loginctl enable-linger`: the hub runs while the user is signed in, as the
-agent's user unit does. A hub that must run with nobody signed in is a later item.
+daemon's user unit does. A hub that must run with nobody signed in is a later item.
 
 `remove`: stop the unit, wait for the lock, remove the unit file and `programs/`.
 
@@ -179,7 +179,7 @@ agent's user unit does. A hub that must run with nobody signed in is a later ite
 application's own program and the tree in the bundle's resources, and run it with a cleared
 environment and a time limit. Commands: `local_hub_carried`, `local_hub_install`,
 `local_hub_remove`, `local_hub_status`. They take no path and no program from the web view
-(as `agent_install`, D-10 d). The screens that call them are S6.
+(as `daemon_install`, D-10 d). The screens that call them are S6.
 
 ### 1.8 Command line and MCP (CMD-030)
 
@@ -216,7 +216,7 @@ texts in the spec delta (T8), and the choices marked "S4 recommendation" in Sect
 ## 6. Choices taken while building
 
 - **Name.** `anima-local-hub`, the "local hub". The repository bans `service` in names; the systemd
-  file is still `anima-hub.service`, as the agent's is `anima-agent.service`.
+  file is still `anima-hub.service`, as the daemon's is `anima-daemon.service`.
 - **Children, not a library.** `run` starts `anima-database serve` as a program. One seam for every
   member, and the seam is the one that `bundled-database.md` Section 7 gives.
 - **Members stay in the program's process group.** launchd kills what is left of a job's process
@@ -234,7 +234,7 @@ texts in the spec delta (T8), and the choices marked "S4 recommendation" in Sect
 - **The gateway's port** is picked by the operating system and read from the gateway's ready line.
   No fixed port can be taken by another program first.
 - **Install checks every folder above the hub root and the unit file** (owner, no write for group or
-  others without the sticky bit), as the agent's install does. ACLs are not read.
+  others without the sticky bit), as the daemon's install does. ACLs are not read.
 - **`anima-database`:** `owner_only` is now public and `startup::RECOVERED_NOTICE` is a constant, so
   that the two programs share them. No behaviour changed.
 - **Shared file:** `.config/nextest.toml`: this crate's `it` test joins the group `bundled-postgres`.
@@ -297,7 +297,7 @@ Results: [need-human-testing.md](../../need-human-testing.md), section "Checks t
   - A second `install` (update): stop in order, programs replaced, `ready` again, 4 s in all. The
     key was kept.
   - `remove`: 1 s. No process, no unit file, no listener. The database, key and logs stayed.
-  - The trial folder and the agent file were removed after it.
+  - The trial folder and the daemon file were removed after it.
 - Linux, arm64 container (Debian 12, a user without root, the tree of the S3 recipe): build,
   Clippy and 65 of 65 tests, the three with the real programs included. Nothing left running.
   systemd itself was not run.

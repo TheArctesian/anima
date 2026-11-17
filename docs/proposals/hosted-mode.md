@@ -193,7 +193,7 @@ is built in the private repository (fact 5); this repository holds the client an
 - **HMD-025.** When a person opens the application or signs in, the cloud must start the hub of the account. The start is a job (the job table of the cloud). The application must show "Your hub is starting" until the link connects.
 - **HMD-026.** A free hub must start in less than 30 seconds. This number is a target; it is not measured.
 - **HMD-027.** The cloud, not the hub, must decide to stop a hub, from the heartbeat of the hub and the state of the link. A hub that sends no heartbeat must be stopped by the pool.
-- **HMD-028.** While a free hub sleeps, an agent on a device must wait and try again without an error to the person. The application must say in plain words that checks, notifications and history need a hub that is always on.
+- **HMD-028.** While a free hub sleeps, a daemon on a device must wait and try again without an error to the person. The application must say in plain words that checks, notifications and history need a hub that is always on.
 - **HMD-029.** A paid hub must never sleep. When a person pays, the hub must stay on from that moment without a move of data.
 
 ### 6.6 Sign-in with WorkOS AuthKit (HM-R9)

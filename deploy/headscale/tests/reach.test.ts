@@ -1,7 +1,7 @@
 // The reachability table and its VPN-004 properties (VPN-012).
 import { describe, expect, it } from 'bun:test';
 import {
-  agentOverreachRows,
+  daemonOverreachRows,
   crossSiteRows,
   deviceOverreachRows,
   lanToClientRows,
@@ -25,9 +25,9 @@ describe('reachTable', () => {
     expect(lanToClientRows(table)).toEqual([]);
   });
 
-  it('VPN-012: an agent reaches only the hub on tcp 443', () => {
-    expect(agentOverreachRows(table)).toEqual([]);
-    expect(table.some((row) => row.from.kind === 'agent' && row.allowed)).toBe(true);
+  it('VPN-012: a daemon reaches only the hub on tcp 443', () => {
+    expect(daemonOverreachRows(table)).toEqual([]);
+    expect(table.some((row) => row.from.kind === 'daemon' && row.allowed)).toBe(true);
   });
 
   it('VPN-012: a device /32 is reached only from the hub on tcp', () => {

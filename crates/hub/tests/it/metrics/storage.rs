@@ -1,5 +1,5 @@
 //! MET-026 to MET-031 through the hub's routes: a pushed batch's `drives` replaces the device's
-//! drives and its absence (an older agent) leaves them; `Device.storage` shows them drive by
+//! drives and its absence (an older daemon) leaves them; `Device.storage` shows them drive by
 //! drive with their latest use and activity; the card's readings name the fullest mount and
 //! count the other drives.
 
@@ -8,9 +8,9 @@ use chrono::{DateTime, TimeDelta, Utc};
 use serde_json::{Value, json};
 use sqlx::PgPool;
 
-use crate::agent::{
+use crate::daemon::{
     batches::{batch, point},
-    harness::{Agents, PVE_01, pushing_now},
+    harness::{Daemons, PVE_01, pushing_now},
 };
 
 const STORAGE: &str = "query($id: ID!) { device(id: $id) {
@@ -18,7 +18,7 @@ const STORAGE: &str = "query($id: ID!) { device(id: $id) {
     storage { drives { name kind sizeBytes mounted readBps writeBps busyPercent
         mounts { path usedBytes sizeBytes percent } } } } }";
 
-/// The pop-os drives as an agent sends them: `/` on nvme1n1, three drives not mounted.
+/// The pop-os drives as a daemon sends them: `/` on nvme1n1, three drives not mounted.
 fn pop_os_drives() -> Value {
     json!([
         { "name": "nvme0n1", "kind": "nvme", "sizeBytes": 1_000_204_886_016_u64, "mounts": [] },
@@ -69,19 +69,19 @@ async fn met_027_pushed_drives_replace_the_stored_ones_and_a_batch_without_them_
     pool: PgPool,
 ) {
     let now = pushing_now(&pool).await;
-    let agents = Agents::at(&pool, now).await;
-    let token = agents.token_for(PVE_01).await;
+    let daemons = Daemons::at(&pool, now).await;
+    let token = daemons.token_for(PVE_01).await;
     let at = |step: i64| now - TimeDelta::seconds(40 - 10 * step);
 
-    let older_agent = storage_batch(at(0), None);
+    let older_daemon = storage_batch(at(0), None);
     assert_eq!(
-        agents.push(&token, &older_agent).await.0,
+        daemons.push(&token, &older_daemon).await.0,
         StatusCode::NO_CONTENT
     );
     assert_eq!(drive_names(&pool).await, Vec::<String>::new());
 
     let first = storage_batch(at(1), Some(pop_os_drives()));
-    assert_eq!(agents.push(&token, &first).await.0, StatusCode::NO_CONTENT);
+    assert_eq!(daemons.push(&token, &first).await.0, StatusCode::NO_CONTENT);
     assert_eq!(
         drive_names(&pool).await,
         ["nvme0n1", "nvme1n1", "sda", "sdb"]
@@ -89,7 +89,7 @@ async fn met_027_pushed_drives_replace_the_stored_ones_and_a_batch_without_them_
 
     let unchanged = storage_batch(at(2), None);
     assert_eq!(
-        agents.push(&token, &unchanged).await.0,
+        daemons.push(&token, &unchanged).await.0,
         StatusCode::NO_CONTENT
     );
     assert_eq!(drive_names(&pool).await.len(), 4, "absent means unchanged");
@@ -97,7 +97,7 @@ async fn met_027_pushed_drives_replace_the_stored_ones_and_a_batch_without_them_
     let fewer = json!([{ "name": "nvme1n1", "kind": "nvme", "sizeBytes": 1, "mounts": ["/"] }]);
     let replaced = storage_batch(at(3), Some(fewer));
     assert_eq!(
-        agents.push(&token, &replaced).await.0,
+        daemons.push(&token, &replaced).await.0,
         StatusCode::NO_CONTENT
     );
     assert_eq!(drive_names(&pool).await, ["nvme1n1"]);
@@ -109,10 +109,10 @@ async fn met_027_pushed_drives_replace_the_stored_ones_and_a_batch_without_them_
 )]
 async fn met_027_a_drive_list_that_breaks_k8_is_malformed_and_stores_nothing(pool: PgPool) {
     let now = pushing_now(&pool).await;
-    let agents = Agents::at(&pool, now).await;
-    let token = agents.token_for(PVE_01).await;
+    let daemons = Daemons::at(&pool, now).await;
+    let token = daemons.token_for(PVE_01).await;
     let hostile = json!([{ "name": "sda", "kind": "hdd", "sizeBytes": 1, "mounts": ["relative"] }]);
-    let (status, _) = agents
+    let (status, _) = daemons
         .push(
             &token,
             &storage_batch(now - TimeDelta::seconds(10), Some(hostile)),
@@ -130,12 +130,15 @@ async fn met_029_storage_lists_each_drive_with_its_mounts_and_activity_and_the_c
     pool: PgPool,
 ) {
     let now = pushing_now(&pool).await;
-    let agents = Agents::at(&pool, now).await;
-    let token = agents.token_for(PVE_01).await;
+    let daemons = Daemons::at(&pool, now).await;
+    let token = daemons.token_for(PVE_01).await;
     let pushed = storage_batch(now - TimeDelta::seconds(10), Some(pop_os_drives()));
-    assert_eq!(agents.push(&token, &pushed).await.0, StatusCode::NO_CONTENT);
+    assert_eq!(
+        daemons.push(&token, &pushed).await.0,
+        StatusCode::NO_CONTENT
+    );
 
-    let answer = agents.operate(STORAGE, json!({ "id": PVE_01 })).await;
+    let answer = daemons.operate(STORAGE, json!({ "id": PVE_01 })).await;
     let device = &answer["data"]["device"];
     assert_eq!(
         device["readings"],

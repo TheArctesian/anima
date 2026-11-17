@@ -14,7 +14,7 @@ Part of the work plan: [work-plan.md](../work-plan.md) is the entry point, and i
 
 | Category | Meaning | Content | Owner documents |
 | --- | --- | --- | --- |
-| Foundation | The parts that all other work uses | Coordinator, VPN between sites, `anima-agent` on each machine, the clients, the standby copies, bulk data on the operator's machines, the update of the agent and the hub | Design specification Sections 3, 4, 5 and 10. [vpn-plan.md](../plans/vpn-plan.md). [coordinator-standby.md](../proposals/coordinator-standby.md), [bulk-data-placement.md](../proposals/bulk-data-placement.md), [agent-and-hub-update.md](../proposals/agent-and-hub-update.md) |
+| Foundation | The parts that all other work uses | Coordinator, VPN between sites, `anima-daemon` on each machine, the clients, the standby copies, bulk data on the operator's machines, the update of the daemon and the hub | Design specification Sections 3, 4, 5 and 10. [vpn-plan.md](../plans/vpn-plan.md). [coordinator-standby.md](../proposals/coordinator-standby.md), [bulk-data-placement.md](../proposals/bulk-data-placement.md), [daemon-and-hub-update.md](../proposals/daemon-and-hub-update.md) |
 | See | Know the state of all that is yours | Checks, metrics, notifications, Projects (the front door for rented accounts), the Integrations section, the watchdog (it also restarts a program, which is Use) | Design specification Section 6. Extensions plan Sections 4.2 and 4.5. [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md), [watchdog.md](../proposals/watchdog.md) |
 | Reach | Go into a thing and act on it | SSH, RDP, VNC, web interfaces, Secrets | Design specification Section 6.3. Extensions plan Section 4.4 |
 | Remember | Keep a copy of the life of the operator | Health, Money, Map, People, History, Documents, Writing, Reminders, Library, Wardrobe, AI coding sessions | Extensions plan Sections 2 and 4. [new-sources.md](../proposals/new-sources.md) |
@@ -33,7 +33,7 @@ The table gives the order. The section of each row below the table gives the wor
 | 4.1 | 0 | Finish the device manager | Foundation, See, Reach | Phases 1 to 3 are built. | Operator: the acceptance run (WP-53); the Linux release and the check that an installed application updates (R7). Agent: [DMN-1](../work-items/device-manager/DMN-1.md), which is claimed |
 | 4.16 | 1 | One-click install | Foundation, Reach | In progress. Built; the live checks wait for the operator. | Operator: the live checks ([need-human-testing.md](../need-human-testing.md), "One-click") |
 | 4.17 | 1 | The hosted mode and the shared pool | Foundation | Proposal. The direction is decided. | Operator: approval of HMD-001 to HMD-036, and HM-D4 |
-| 4.18 | 1 | Update the agent and the hub | Foundation | Proposal. Task U1 is done. | Operator: approval of ROL-001 to ROL-052 (only R-122 is approved), and a Linux release for the tasks that need one. Agent: nothing until a ruling names a task |
+| 4.18 | 1 | Update the daemon and the hub | Foundation | Proposal. Task U1 is done. | Operator: approval of ROL-001 to ROL-052 (only R-122 is approved), and a Linux release for the tasks that need one. Agent: nothing until a ruling names a task |
 | 4.2 | 1 | Restore a backup and move the coordinator | Foundation | Proposal. | Operator: approval of FND-006. No task breakdown yet |
 | 4.3 | 1 | Decisions and approvals for the foundation | All | Open | Operator: each decision and approval in the row |
 | 4.4 | 2a | The engine (E0) | See, Remember | In progress. | Agent: E0-4 T9 ([extensions-plan.md](../plans/extensions-plan.md) Section 5.1). Operator: E0-5 T0, E0-6 T0, the contract ruling for E0-7, and OD-E18 |
@@ -74,13 +74,13 @@ The table gives the order. The section of each row below the table gives the wor
 - Work items: No work item yet
 - State: Proposal. The operator put it here on 2026-11-16: directly after tier 0, before the engine. The direction is decided (HM-R1 to HM-R9). The requirements HMD-001 to HMD-036 are not approved. The second sign-in factor (HM-D4) is not ruled. The operator selected WorkOS AuthKit for the sign-in on 2026-11-16 (HM-R9); its requirements are HMD-032 to HMD-036.
 
-### 4.18 Update the agent and the hub
+### 4.18 Update the daemon and the hub
 
 - Tier: 1
 - Category: Foundation
-- Work: Update the agent and the hub on each machine with one press, and automatically: signed releases, a rollout in steps, a rollback, machines that are not connected (ROL-001 to ROL-052)
-- Work items: No work item yet. The tasks are in "Tasks" of [agent-and-hub-update.md](../proposals/agent-and-hub-update.md)
-- State: Proposal. The operator put it here on 2026-11-16: directly after the first release (OD-W23). Its requirements are not approved, except R-122. Task U1 (the agent reports its version, R-122) is done. Task U3 needs no release. The other tasks need a release for their target (the release record in [releases.md](../procedures/releases.md)), new files from the builder and a change to K8.
+- Work: Update the daemon and the hub on each machine with one press, and automatically: signed releases, a rollout in steps, a rollback, machines that are not connected (ROL-001 to ROL-052)
+- Work items: No work item yet. The tasks are in "Tasks" of [daemon-and-hub-update.md](../proposals/daemon-and-hub-update.md)
+- State: Proposal. The operator put it here on 2026-11-16: directly after the first release (OD-W23). Its requirements are not approved, except R-122. Task U1 (the daemon reports its version, R-122) is done. Task U3 needs no release. The other tasks need a release for their target (the release record in [releases.md](../procedures/releases.md)), new files from the builder and a change to K8.
 
 ### 4.2 Restore a backup and move the coordinator
 
@@ -198,7 +198,7 @@ The table gives the order. The section of each row below the table gives the wor
 
 - Tier: Not set
 - Category: See, Use
-- Work: The watchdog: `anima-agent` restarts the programs that the operator marked, and reports each restart (WDG-001 to WDG-041)
+- Work: The watchdog: `anima-daemon` restarts the programs that the operator marked, and reports each restart (WDG-001 to WDG-041)
 - Work items: No work item yet. The tasks are in "Tasks" of [watchdog.md](../proposals/watchdog.md)
 - State: Proposal. Not approved. The operator must give it a tier (OD-W22). It needs the ruling for OD-W10 and a change to K8; its second stage needs the work route (group W).
 

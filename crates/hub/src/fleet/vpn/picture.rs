@@ -219,8 +219,8 @@ pub(super) fn role(tags: &[String]) -> Role {
         Role::Hub
     } else if has("tag:router") {
         Role::Router
-    } else if has("tag:agent") {
-        Role::Agent
+    } else if has("tag:daemon") {
+        Role::Daemon
     } else if tags.is_empty() {
         Role::Client
     } else {

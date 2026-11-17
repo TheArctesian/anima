@@ -19,13 +19,13 @@ Decisions of the other plans are in the "Open decisions" section of each plan, a
 | OD-W1 | Can Anima change a rented resource (redeploy, purge a cache, restart the VPS)? | Decided (operator, 2026-11-12) |
 | OD-W2 | How do other persons use Anima? | Decided (operator, 2026-11-12) |
 | OD-W3 | The name of the hub in the interface | Decided (operator, 2026-11-12) |
-| OD-W4 | How do commands get to the agent? | Not a decision of this plan. |
+| OD-W4 | How do commands get to the daemon? | Not a decision of this plan. |
 | OD-W5 | The runtime for functions that answer a request | Decided (operator, 2026-11-12) |
 | OD-W6 | The builder for a job image | Decided (operator, 2026-11-12) |
-| OD-W7 | The compute plan says that the agent is optional and that metrics use SSH | Not a decision of this plan. |
+| OD-W7 | The compute plan says that the daemon is optional and that metrics use SSH | Not a decision of this plan. |
 | OD-W8 | The position of Use against the extensions in tier 3 | Decided (operator, 2026-11-12) |
 | OD-W9 | One home with copies, or a copy on each node that syncs between nodes when the hub is down ([GH-2](../work-items/device-manager/GH-2.md)) | Decided (operator, 2026-11-12) |
-| OD-W10 | Can the agent do work that the coordinator gives it? R-115 did not take a command channel to the agent. | Decided (operator, 2026-11-12) |
+| OD-W10 | Can the daemon do work that the coordinator gives it? R-115 did not take a command channel to the daemon. | Decided (operator, 2026-11-12) |
 | OD-W11 | Are projects the front door for rented accounts, and does the builder build each project? | Decided (operator, 2026-11-13) |
 | OD-W12 | The proposals that follow OD-W11 | Decided (operator, 2026-11-13) |
 | OD-W13 | The build models, and pull requests from forks | Decided (operator, 2026-11-16) |
@@ -38,7 +38,7 @@ Decisions of the other plans are in the "Open decisions" section of each plan, a
 | OD-W20 | The meaning of "must not be able to build or publish the Anima application" (PRO-028) | Decided (operator, 2026-11-16) |
 | OD-W21 | The order of the build work, and the tier of the correction of the release | Decided (operator, 2026-11-16) |
 | OD-W22 | The watchdog ([watchdog.md](../proposals/watchdog.md)): approve its direction, and give it a tier. Its own decisions are OD-WDG-1 to OD-WDG-13. | Open |
-| OD-W23 | The update of the agent and the hub ([agent-and-hub-update.md](../proposals/agent-and-hub-update.md)): its tier. Its own decisions are OD-ROL-1 to OD-ROL-14. | Decided (operator, 2026-11-16) |
+| OD-W23 | The update of the daemon and the hub ([daemon-and-hub-update.md](../proposals/daemon-and-hub-update.md)): its tier. Its own decisions are OD-ROL-1 to OD-ROL-14. | Decided (operator, 2026-11-16) |
 
 ### OD-W1. Can Anima change a rented resource (redeploy, purge a cache, restart the VPS)?
 
@@ -52,9 +52,9 @@ Decisions of the other plans are in the "Open decisions" section of each plan, a
 
 **Decided (operator, 2026-11-12): keep "hub".**
 
-### OD-W4. How do commands get to the agent?
+### OD-W4. How do commands get to the daemon?
 
-Not a decision of this plan. It is open in [C1](../work-items/compute/C1.md), [SPEC-C](../work-items/compute/SPEC-C.md) and [OD-C2](../work-items/decisions/OD-C2.md). OD-W10 gives its direction: the agent asks the hub for work and listens on no port (USE-005, MET-020).
+Not a decision of this plan. It is open in [C1](../work-items/compute/C1.md), [SPEC-C](../work-items/compute/SPEC-C.md) and [OD-C2](../work-items/decisions/OD-C2.md). OD-W10 gives its direction: the daemon asks the hub for work and listens on no port (USE-005, MET-020).
 
 ### OD-W5. The runtime for functions that answer a request
 
@@ -64,7 +64,7 @@ Not a decision of this plan. It is open in [C1](../work-items/compute/C1.md), [S
 
 **Decided (operator, 2026-11-12): keep more than one way.** A job image can come from Railpack, from a Dockerfile or from a Nix flake (JOB-002, JOB-003, JOB-008). Test Railpack later.
 
-### OD-W7. The compute plan says that the agent is optional and that metrics use SSH
+### OD-W7. The compute plan says that the daemon is optional and that metrics use SSH
 
 Not a decision of this plan. [SPEC-C](../work-items/compute/SPEC-C.md) and [OD-C2](../work-items/decisions/OD-C2.md) record that R-084 replaces that text.
 
@@ -76,9 +76,9 @@ Not a decision of this plan. [SPEC-C](../work-items/compute/SPEC-C.md) and [OD-C
 
 **Decided (operator, 2026-11-12): one home, copies by policy.** The section "Decision" of [coordinator-standby.md](../proposals/coordinator-standby.md) has the operator's words. It needs a ruling number in [rulings.md](../rulings.md). [GH-2](../work-items/device-manager/GH-2.md) keeps only its phase L0.
 
-### OD-W10. Can the agent do work that the coordinator gives it? R-115 did not take a command channel to the agent.
+### OD-W10. Can the daemon do work that the coordinator gives it? R-115 did not take a command channel to the daemon.
 
-**Decided (operator, 2026-11-12): yes, one agent, on by default ("it should be on by default").** The section "Decision" of [jobs.md](../proposals/jobs.md) has the limits. It needs a ruling number that changes R-115. It also changes CMP-002 and the recommendation of [OD-C8](../work-items/decisions/OD-C8.md). An agent that is already installed takes work after its update, with no confirmation.
+**Decided (operator, 2026-11-12): yes, one daemon, on by default ("it should be on by default").** The section "Decision" of [jobs.md](../proposals/jobs.md) has the limits. It needs a ruling number that changes R-115. It also changes CMP-002 and the recommendation of [OD-C8](../work-items/decisions/OD-C8.md). A daemon that is already installed takes work after its update, with no confirmation.
 
 ### OD-W11. Are projects the front door for rented accounts, and does the builder build each project?
 
@@ -126,8 +126,8 @@ Not a decision of this plan. [SPEC-C](../work-items/compute/SPEC-C.md) and [OD-C
 
 ### OD-W22. The watchdog ([watchdog.md](../proposals/watchdog.md)): approve its direction, and give it a tier. Its own decisions are OD-WDG-1 to OD-WDG-13.
 
-**Open.** Recommendation: approve it as a function of `anima-agent`, not as a container. Tier 3c, before hosted applications, which can then use its check (HOST-008). Its stage 1 (watches made at the machine) needs no work route and can start after stage B of the update, if the operator wants it earlier. It needs the ruling number for OD-W10, because it changes MET-002.
+**Open.** Recommendation: approve it as a function of `anima-daemon`, not as a container. Tier 3c, before hosted applications, which can then use its check (HOST-008). Its stage 1 (watches made at the machine) needs no work route and can start after stage B of the update, if the operator wants it earlier. It needs the ruling number for OD-W10, because it changes MET-002.
 
-### OD-W23. The update of the agent and the hub ([agent-and-hub-update.md](../proposals/agent-and-hub-update.md)): its tier. Its own decisions are OD-ROL-1 to OD-ROL-14.
+### OD-W23. The update of the daemon and the hub ([daemon-and-hub-update.md](../proposals/daemon-and-hub-update.md)): its tier. Its own decisions are OD-ROL-1 to OD-ROL-14.
 
 **Decided (operator, 2026-11-16): tier 1, directly after the first release.** The operator's words: "thats fine were still pre release". Reason: the work route and the watchdog reach an installed machine only through an update (USE-008). The stages stay a recommendation: the versions show, the machines update, then the hub, after the restore procedure (FND-006) is written. OD-ROL-8 is decided: no Linux machine on ARM is in use. Open: the other OD-ROL decisions, and the operator's answer on the larger risk of the updater key (R-117, OD-ROL-2).

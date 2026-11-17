@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/hub", "crates/guac-protocol", "crates/anima-gateway", "crates/rdp-test-device", "crates/agent-core", "crates/agent", "crates/theme", "crates/providers/*", "crates/updater-signature", "crates/anima-cli", "crates/anima-database", "crates/anima-local-hub", "apps/desktop/src-tauri"]
+members = ["crates/hub", "crates/guac-protocol", "crates/anima-gateway", "crates/rdp-test-device", "crates/daemon-core", "crates/daemon", "crates/theme", "crates/providers/*", "crates/updater-signature", "crates/anima-cli", "crates/anima-database", "crates/anima-local-hub", "apps/desktop/src-tauri"]
 
 [workspace.package]
 version = "0.1.0"
@@ -80,7 +80,7 @@ tauri-plugin-log = { version = "2.10", default-features = false }
 # "Add this machine" (R-058, R-060): the interface addresses, to find this computer's VPN
 # address, and the OS user name of the process.
 whoami = { version = "2.1", default-features = false, features = ["std"] }
-# Reads the agent's launchd property list in its tests (WP-54 T4, MET-019).
+# Reads the daemon's launchd property list in its tests (WP-54 T4, MET-019).
 plist = "1"
 # The `anima` command line (CMD-001): typed GraphQL documents checked against K1 at build time (CMD-004).
 graphql_client = { version = "0.16", default-features = false, features = ["graphql_query_derive"] }

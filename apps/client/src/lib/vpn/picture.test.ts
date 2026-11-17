@@ -61,6 +61,6 @@ it('BD-17: only an untagged operator computer with an expiring or expired key ca
   expect(renewable(node({ keyState: 'EXPIRING' }))).toBe(true);
   expect(renewable(node({ keyState: 'EXPIRED' }))).toBe(true);
   expect(renewable(node({ keyState: 'VALID' }))).toBe(false);
-  expect(renewable(node({ keyState: 'EXPIRED', tags: ['tag:agent'], role: 'AGENT' }))).toBe(false);
+  expect(renewable(node({ keyState: 'EXPIRED', tags: ['tag:daemon'], role: 'DAEMON' }))).toBe(false);
   expect(renewable(node({ keyState: 'EXPIRED', role: 'ROUTER' }))).toBe(false);
 });

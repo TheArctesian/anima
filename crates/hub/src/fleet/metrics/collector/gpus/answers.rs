@@ -1,7 +1,7 @@
-//! What each GPU vendor's output says, read by the agent's readers (MET-016, MET-007, D-30).
+//! What each GPU vendor's output says, read by the daemon's readers (MET-016, MET-007, D-30).
 //! Pure.
 
-use agent_core::readings::{
+use daemon_core::readings::{
     GpuReading,
     gpu::{apple, intel, nvidia},
 };

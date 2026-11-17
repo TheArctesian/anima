@@ -14,7 +14,7 @@ Status: the header of this document holds the state (PLN-020). History: a propos
 Map: [work-plan.md](../work-plan.md), category Use.
 
 In this document, "AI agent" is a program that uses a model and tools to do a task. It is not
-`anima-agent`, the program that sends metrics.
+`anima-daemon`, the program that sends metrics.
 
 ## Problem
 

@@ -5,7 +5,7 @@ use sha2::{Digest as _, Sha256};
 
 use crate::fleet::access::tokens::{
     Scope, Spelling, TokenHash, TokenKind, Transport, admitted, consistent, hash_of,
-    is_agent_secret, read_presented,
+    is_daemon_secret, read_presented,
 };
 
 #[test]
@@ -97,36 +97,38 @@ fn bld_022_the_builder_scope_belongs_to_the_builder_kind_alone() {
 }
 
 #[test]
-fn r_092_agent_secrets_are_spelled_by_exact_prefix_length_and_alphabet() {
+fn r_092_daemon_secrets_are_spelled_by_exact_prefix_length_and_alphabet() {
     let token = URL_SAFE_NO_PAD.encode([9_u8; 32]);
     let code = URL_SAFE_NO_PAD.encode([9_u8; 16]);
     for secret in [
-        format!("anima_agent_{token}"),
+        format!("anima_daemon_{token}"),
         format!("anima_enrol_{code}"),
-        format!("anima_agent_{}x", "-_aZ09".repeat(7)),
+        format!("anima_daemon_{}x", "-_aZ09".repeat(7)),
+        // R-126: a token of the program's old name is still refused by its spelling.
+        format!("anima_agent_{token}"),
     ] {
-        assert!(is_agent_secret(&secret), "{secret}");
+        assert!(is_daemon_secret(&secret), "{secret}");
         assert!(read_presented(&secret).is_none(), "{secret}");
     }
     for other in [
-        // API keys (`anima_` + 43) whose text begins like an agent secret, and a key.
-        format!("anima_agent_{}", &token[..37]),
+        // API keys (`anima_` + 43) whose text begins like a daemon secret, and a key.
+        format!("anima_daemon_{}", &token[..36]),
         format!("anima_enrol_{}", &token[..37]),
         format!("anima_{token}"),
         token.clone(),
         // One character short or long, outside the alphabet, or another prefix.
-        format!("anima_agent_{}", &token[..42]),
-        format!("anima_agent_{token}A"),
+        format!("anima_daemon_{}", &token[..42]),
+        format!("anima_daemon_{token}A"),
         format!("anima_enrol_{}", &code[..21]),
         format!("anima_enrol_{code}A"),
-        format!("anima_agent_{}+", &token[..42]),
+        format!("anima_daemon_{}+", &token[..42]),
         format!("anima_enrol_{}=", &code[..21]),
-        format!("anima_agent_{}\u{e9}", &token[..41]),
-        format!("Anima_agent_{token}"),
-        format!("xanima_agent_{}", &token[..42]),
-        "anima_agent_".to_owned(),
+        format!("anima_daemon_{}\u{e9}", &token[..41]),
+        format!("Anima_daemon_{token}"),
+        format!("xanima_daemon_{}", &token[..42]),
+        "anima_daemon_".to_owned(),
         String::new(),
     ] {
-        assert!(!is_agent_secret(&other), "{other}");
+        assert!(!is_daemon_secret(&other), "{other}");
     }
 }

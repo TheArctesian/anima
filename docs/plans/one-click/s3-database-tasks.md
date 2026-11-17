@@ -129,7 +129,7 @@ built-in `C.UTF-8` locale provider, data checksums on, `scram-sha-256`.
 - **Where it runs from:** not from the bundle. An AppImage is mounted only while the
   application window runs, and a macOS update replaces the bundle under a running server.
   When the hub service is installed or updated (S4), the tree is copied to
-  `<trees>/<postgresql version>/`. This is what MET-019 does with the agent program. A minor
+  `<trees>/<postgresql version>/`. This is what MET-019 does with the daemon program. A minor
   version gets a new folder; the old one is removed after the new one has started. The tree
   of the last major version stays, for the upgrade.
 
@@ -163,8 +163,8 @@ S4 (the hub as a background service) is not designed yet. S3 needs these from it
 6. **A place for the unclean-stop and refusal messages** in the hub status that the
    operator sees (S6).
 
-`crates/agent/src/units/` already plans, renders and installs LaunchAgent and systemd user
-units for the agent. S4 can use the same pattern.
+`crates/daemon/src/units/` already plans, renders and installs LaunchAgent and systemd user
+units for the daemon. S4 can use the same pattern.
 
 ### 1.7 Decisions for the operator
 
@@ -178,7 +178,7 @@ units for the agent. S4 can use the same pattern.
 | D-6 | The major-version upgrade (1.5). Build the full `pg_upgrade` driver now, or only the parts that protect data? | Now: the version check, the refusal of a newer cluster, the versioned tree folders and `backup`. Later, in the release that brings PostgreSQL 18: the `pg_upgrade` driver, with both trees in that release. The gates have only PostgreSQL 17, so a driver built now has no second version to test against. Nothing is lost by waiting: the release that needs the driver carries it. |
 | D-7 | Backup. S3 gives the `backup`, `restore` and `verify` commands. The schedule, the place, how many are kept and the command in the client and CLI are S9. Agree? | Yes. S3 also takes one backup itself before a major upgrade. |
 | D-8 | Time Machine copies the cluster while the server runs. Such a copy restores, at best, as a crash recovery. Exclude `<root>/cluster` from Time Machine (`tmutil addexclusion`, no administrator rights) and tell the operator that the backups folder is the thing to keep? | Yes. |
-| D-9 | Raw sample retention in the application mode: 30 days needs about 4.9 GB for 10 devices with an agent (spike 10.2). The charts do not read raw samples. | 3 days in the application mode. This is a hub setting (`retention.periods`) and a DB-009 delta, not S3 code. It waits from the last report. |
+| D-9 | Raw sample retention in the application mode: 30 days needs about 4.9 GB for 10 devices with a daemon (spike 10.2). The charts do not read raw samples. | 3 days in the application mode. This is a hub setting (`retention.periods`) and a DB-009 delta, not S3 code. It waits from the last report. |
 | D-10 | The oldest Linux that the application supports. The tree is built on the release builder, so it follows the application. | State the builder's distribution in the release notes; no extra build container for the first version. |
 
 ## 2. Tasks

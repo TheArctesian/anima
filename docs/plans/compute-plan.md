@@ -61,13 +61,13 @@ Operator checkpoint 3 of the implementation plan applies. The operator must appr
 | Spec part | Change |
 | --- | --- |
 | 1.1 Purpose | Add a function: a private model service on the devices of the operator. |
-| 3.1 Overview | Add the compute agent on compute nodes (Section 3) and the router on the hub (Section 6). |
+| 3.1 Overview | Add the compute daemon on compute nodes (Section 3) and the router on the hub (Section 6). |
 | 4.1 NET-005 | Add the DNS name `ai.anima.ing` for the router. It resolves only on the VPN (Section 6.1). |
 | 4.2 VPN-004 | Add ACL rules for compute traffic (SEC-C-004). A compute node can be a client computer. |
 | 5.3 Navigation bar | Add the Models, Chat and Compute pages (Section 11). |
-| 6.6 Metrics | The metrics collector stays agentless. The compute agent is a separate, optional program. |
+| 6.6 Metrics | The metrics collector stays daemonless. The compute daemon is a separate, optional program. |
 | 9 Delivery phases | Add the compute phases (Section 12). |
-| 13 Repository structure | Add the compute domain, the agent crates and the block adapters (Section 13). |
+| 13 Repository structure | Add the compute domain, the daemon crates and the block adapters (Section 13). |
 
 ### 1.5 Terms
 
@@ -76,7 +76,7 @@ These terms add to Section 2 of the design specification.
 | Term | Meaning |
 | --- | --- |
 | Compute node | A device on which the operator set compute on. |
-| Compute agent | The Anima program on a compute node (`anima-agent`). It reports the hardware and controls the runtimes. |
+| Compute daemon | The Anima program on a compute node (`anima-daemon`). It reports the hardware and controls the runtimes. |
 | Runtime | An inference program, for example llama.cpp, MLX-LM or vLLM. |
 | Backend | The hardware interface of a runtime: CUDA, ROCm, Metal, Vulkan, SYCL or CPU. |
 | Model server | One runtime process that serves models through an OpenAI-compatible API. |
@@ -100,10 +100,10 @@ These terms add to Section 2 of the design specification.
 |  fleet/compute/                                                        |
 |    library   capabilities   placement (pure)   servers   router (HTTP) |
 +------+--------------------------------------------+-------------------+
-       | agent protocol (VPN)                        | model requests (VPN)
+       | daemon protocol (VPN)                        | model requests (VPN)
        v                                             v
 +----------------+     +----------------+     +----------------+
-| anima-agent    |     | anima-agent    |     | anima-agent    |
+| anima-daemon    |     | anima-daemon    |     | anima-daemon    |
 | Mac (Metal)    |     | PC (CUDA)      |     | PC (ROCm)      |
 | mlx-lm server  |     | vLLM           |     | llama-server   |
 | llama-server   |     | llama-server   |     |                |
@@ -120,10 +120,10 @@ These terms add to Section 2 of the design specification.
 ### 3.1 Capability inventory
 
 - **CAP-001.** For each compute node, the hub must keep these values: the backends, the accelerator name, the dedicated memory, the unified memory, the system memory, the free disk space, the CPU features and the site.
-- **CAP-002.** For each backend, the agent must give a verdict: usable, or not usable with a reason and a repair hint. Example: "ROCm: not usable, the user is not in the `render` group".
-- **CAP-003.** The agent must report the installed runtimes and their versions.
-- **CAP-004.** The agent must report the power state (mains or battery), the thermal state and whether the operator is active on the device.
-- **CAP-005.** On Apple silicon, the usable memory is the GPU working-set limit of macOS, not the total memory. The agent must report this limit.
+- **CAP-002.** For each backend, the daemon must give a verdict: usable, or not usable with a reason and a repair hint. Example: "ROCm: not usable, the user is not in the `render` group".
+- **CAP-003.** The daemon must report the installed runtimes and their versions.
+- **CAP-004.** The daemon must report the power state (mains or battery), the thermal state and whether the operator is active on the device.
+- **CAP-005.** On Apple silicon, the usable memory is the GPU working-set limit of macOS, not the total memory. The daemon must report this limit.
 - **CAP-006.** The hub must keep the measured tokens per second of each loaded copy. The router uses it (RTR-034).
 
 #### Tool inventory
@@ -131,7 +131,7 @@ These terms add to Section 2 of the design specification.
 Approved for build (operator, 2026-11-15: "lets build the two buildable ones now"; ruling number to be assigned). The first build leaves out the Apple SDKs, the simulator runtimes and the running state of the container runtime (CAP-023). The first build probes `claude` and `codex` only; a harness of AGN-009 gets a probe when the operator selects it. The graphical client is Section 11.1 (CUI-010 to CUI-019); it is not built. An agent that runs as a system unit does not see the tools in the home folder of a user. On macOS, the agent does not run the placeholder programs of Apple in `/usr/bin` when the developer tools are absent. The operator said that an AI agent "will need to know what's installed so that it can either run commands or run agents". The placement of a job uses this inventory (JOB-012 to JOB-014 of [jobs.md](../proposals/jobs.md)). The tool inventory only reads. It needs no work route.
 
 - **CAP-020.** The agent must report a tool inventory of its machine to the hub: the tools, the build targets and the AI agent programs.
-- **CAP-021.** The tool inventory must come from a fixed list of probes in the agent. The hub must not be able to send a probe or a command line to the agent.
+- **CAP-021.** The tool inventory must come from a fixed list of probes in the daemon. The hub must not be able to send a probe or a command line to the daemon.
 - **CAP-022.** A probe must run a program only with fixed arguments that print a version or a list. A probe must not start a build, a model or a network request.
 - **CAP-023.** The first probes must cover these items:
 
@@ -148,9 +148,9 @@ Approved for build (operator, 2026-11-15: "lets build the two buildable ones now
 - **CAP-024.** Each line must give the name and a verdict, in the form of CAP-002: usable with the version, or not usable with a reason. The reason is a fixed code (timed out, exited, no version), never text from the device. The command and the MCP tool give a fixed repair hint for each reason.
 - **CAP-025.** For an AI agent program, the line must say only "installed" and the version. The agent must not read a credential file, an account name or a usage limit (LOG-007). The probe of such a program must run with an empty temporary home folder, so that it cannot read or change the folders of the account.
 - **CAP-026.** The tool inventory must include the processor architecture and the operating system version.
-- **CAP-027.** The agent must send the tool inventory at start and when a probe result changes. It must check for changes each 15 minutes or less often. It must send an unchanged inventory again each 24 hours.
-- **CAP-028.** The probe list and the parse of each probe output must be in `agent-core`, with no I/O (CAG-007). The reader that runs each program is the I/O edge.
-- **CAP-029.** The tool inventory must be an optional member of the push batch of K8, as `gpus` and `drives` are. K8 permits an optional member without a new version (its Section 1). Thus the agent makes no new call and the agent token does not change (MET-013). K8 is frozen (CON-001), so the addition carries the mark of this ruling.
+- **CAP-027.** The daemon must send the tool inventory at start and when a probe result changes. It must check for changes each 15 minutes or less often. It must send an unchanged inventory again each 24 hours.
+- **CAP-028.** The probe list and the parse of each probe output must be in `daemon-core`, with no I/O (CAG-007). The reader that runs each program is the I/O edge.
+- **CAP-029.** The tool inventory must be an optional member of the push batch of K8, as `gpus` and `drives` are. K8 permits an optional member without a new version (its Section 1). Thus the daemon makes no new call and the daemon token does not change (MET-013). K8 is frozen (CON-001), so the addition carries the mark of this ruling.
 - **CAP-030.** The hub must give the tool inventory of each device as `capabilities`. CAP-001 to CAP-004 join it when the model service is built. It must filter by tool name and by build target. The command is `anima capability list` and the MCP tool is `anima_capability_list` (CMD-030).
 - **CAP-031.** Text in a tool inventory comes from a device. The MCP result must give it in named fields with a length limit (MCP-008).
 
@@ -158,25 +158,25 @@ Approved for build (operator, 2026-11-15: "lets build the two buildable ones now
 
 - **CAP-010.** The operator must set a policy for each compute node: on or off, a maximum memory share, a maximum disk share for models, and quiet hours.
 - **CAP-011.** A portable computer must take compute work only on mains power. This is the default, and the operator can change it.
-- **CAP-012.** If the operator is active on a client computer, the agent can refuse new work. The operator sets this for each device.
+- **CAP-012.** If the operator is active on a client computer, the daemon can refuse new work. The operator sets this for each device.
 - **CAP-013.** When a policy stops a node, the hub must drain it. The node gets no new requests. Current requests continue for 60 seconds or fewer.
 
-### 3.3 Compute agent
+### 3.3 Compute daemon
 
-The design specification uses SSH for metrics and needs no agent. A model service needs a process on the device that installs and starts runtimes, so it needs an agent. The agent is optional.
+The design specification uses SSH for metrics and needs no daemon. A model service needs a process on the device that installs and starts runtimes, so it needs a daemon. The daemon is optional.
 
-- **CAG-001.** The compute agent must be a separate Rust binary (`anima-agent`). It must start with launchd on macOS and systemd on Linux.
-- **CAG-002.** The agent must enrol with the hub with a single-use enrolment code. The hub then gives it a node token. Node tokens must follow VPN-003 for expiry.
-- **CAG-003.** The agent must accept commands only from the hub. The commands are: report, install runtime, pull variant, delete copy, start server, stop server, load, unload, measure and drain.
-- **CAG-004.** The agent must reject a command that is not in CAG-003. It must reject runtime flags that the hub owns (SEC-C-007).
-- **CAG-005.** The agent must supervise each runtime process. If a process stops, the agent restarts it with exponential backoff and reports the event to the hub.
-- **CAG-006.** The agent must send the health and metrics of each runtime to the hub every 15 seconds. These are: state, loaded copies, requests in progress, queue depth, tokens per second and memory used.
-- **CAG-007.** The agent logic (command validation, flag policy, backoff, cache choice) must be in a library with no I/O, so that tests can run it.
-- **CAG-008.** The agent can install a runtime only from the release sources in its configuration. It must verify each download.
+- **CAG-001.** The compute daemon must be a separate Rust binary (`anima-daemon`). It must start with launchd on macOS and systemd on Linux.
+- **CAG-002.** The daemon must enrol with the hub with a single-use enrolment code. The hub then gives it a node token. Node tokens must follow VPN-003 for expiry.
+- **CAG-003.** The daemon must accept commands only from the hub. The commands are: report, install runtime, pull variant, delete copy, start server, stop server, load, unload, measure and drain.
+- **CAG-004.** The daemon must reject a command that is not in CAG-003. It must reject runtime flags that the hub owns (SEC-C-007).
+- **CAG-005.** The daemon must supervise each runtime process. If a process stops, the daemon restarts it with exponential backoff and reports the event to the hub.
+- **CAG-006.** The daemon must send the health and metrics of each runtime to the hub every 15 seconds. These are: state, loaded copies, requests in progress, queue depth, tokens per second and memory used.
+- **CAG-007.** The daemon logic (command validation, flag policy, backoff, cache choice) must be in a library with no I/O, so that tests can run it.
+- **CAG-008.** The daemon can install a runtime only from the release sources in its configuration. It must verify each download.
 
 ### 3.4 Runtime choice
 
-The agent installs the runtime that suits the hardware best. The research in Section 14 gives this table.
+The daemon installs the runtime that suits the hardware best. The research in Section 14 gives this table.
 
 | Hardware | Default runtime | Variant format | Also |
 | --- | --- | --- | --- |
@@ -190,9 +190,9 @@ The agent installs the runtime that suits the hardware best. The research in Sec
 
 - **RTC-001.** The runtime choice must be a pure function of the capabilities (Section 3.1) and the variant format. The operator can override it for each node.
 - **RTC-002.** A node can run more than one model server, for example MLX-LM and llama-server on one Mac.
-- **RTC-003.** vLLM reserves a fixed share of GPU memory. The agent must run one vLLM process for each GPU and set the share from the device policy.
-- **RTC-004.** For a runtime that cannot unload a model (vLLM, KTransformers), the agent must stop and start the process to change the model.
-- **RTC-005.** llama-server must run in router mode, so that the agent can load and unload GGUF models without a restart.
+- **RTC-003.** vLLM reserves a fixed share of GPU memory. The daemon must run one vLLM process for each GPU and set the share from the device policy.
+- **RTC-004.** For a runtime that cannot unload a model (vLLM, KTransformers), the daemon must stop and start the process to change the model.
+- **RTC-005.** llama-server must run in router mode, so that the daemon can load and unload GGUF models without a restart.
 - **RTC-006.** Each model server must listen on the loopback interface only (SEC-C-001).
 
 ## 4. Model library and pulls
@@ -214,13 +214,13 @@ The library is the list of models that the operator uses. A pull puts a variant 
 - **PULL-001.** The operator can pull a model to a node from three places: the Models page, the Ollama pull API (Section 6.4) and the hub GraphQL API.
 - **PULL-002.** If the operator does not select a variant, the hub must select one. The variant must match the format of the runtime choice (RTC-001), and the fit estimate must pass (Section 5.1). The hub prefers the highest quality that fits.
 - **PULL-003.** If no variant fits a node, the hub must show the reason: the memory or the disk space that is missing.
-- **PULL-004.** The agent must download the files directly from the source repository to its model cache. The files do not go through the hub.
-- **PULL-005.** The agent must verify each file against the SHA-256 value in the library before it uses the file.
+- **PULL-004.** The daemon must download the files directly from the source repository to its model cache. The files do not go through the hub.
+- **PULL-005.** The daemon must verify each file against the SHA-256 value in the library before it uses the file.
 - **PULL-006.** A pull must continue after an interruption from the last complete file part.
 - **PULL-007.** The client must show the progress of each pull: bytes, speed and the time to completion.
-- **PULL-008.** The agent must keep the model cache within the disk share of the device policy. It must ask the hub before it removes a copy to make space.
+- **PULL-008.** The daemon must keep the model cache within the disk share of the device policy. It must ask the hub before it removes a copy to make space.
 - **PULL-009.** The operator can delete a copy from a node.
-- **PULL-010.** A gated repository needs a Hugging Face token. The hub must keep the token with the credentials domain (SEC-003) and give it to the agent only for that pull.
+- **PULL-010.** A gated repository needs a Hugging Face token. The hub must keep the token with the credentials domain (SEC-003) and give it to the daemon only for that pull.
 
 ## 5. Placement
 
@@ -308,18 +308,18 @@ The operator selects the model for each job. The hub gives the facts that the op
 
 Most runtimes have no authentication by default. Some listen on all interfaces. Thus Anima must put each runtime behind its own controls.
 
-- **SEC-C-001.** Each runtime and model server must listen on the loopback interface only. The agent must check this after each start.
-- **SEC-C-002.** The agent must listen only on the VPN address of the node. It must accept only requests that carry a valid hub-issued token.
+- **SEC-C-001.** Each runtime and model server must listen on the loopback interface only. The daemon must check this after each start.
+- **SEC-C-002.** The daemon must listen only on the VPN address of the node. It must accept only requests that carry a valid hub-issued token.
 - **SEC-C-003.** The hub must keep the router API keys, the node tokens and the Hugging Face token with the credentials domain (SEC-003).
-- **SEC-C-004.** The VPN ACLs must permit only: the hub to each agent port, the compute nodes to the Hugging Face hosts, and, in Level 2, each stage to the next stage of its ring. Tag compute nodes `tag:compute`. Each ACL change needs the operator's confirmation (VPS-005).
-- **SEC-C-005.** In Level 2, `rpc-server` must listen only on the VPN or site address of the node. The ACL must permit only the host of its pool. The agent must refuse a llama.cpp build that a published advisory covers, for example CVE-2026-34159 (builds up to b7991).
+- **SEC-C-004.** The VPN ACLs must permit only: the hub to each daemon port, the compute nodes to the Hugging Face hosts, and, in Level 2, each stage to the next stage of its ring. Tag compute nodes `tag:compute`. Each ACL change needs the operator's confirmation (VPS-005).
+- **SEC-C-005.** In Level 2, `rpc-server` must listen only on the VPN or site address of the node. The ACL must permit only the host of its pool. The daemon must refuse a llama.cpp build that a published advisory covers, for example CVE-2026-34159 (builds up to b7991).
 - **SEC-C-006.** In Level 2, the wire of each ring must use a key that the hub makes when it forms the ring.
-- **SEC-C-007.** The hub owns these runtime flags: model path, host, port, API key, parallel slots and remote code. The agent must refuse them from any other source. This follows GW-012 and GW-013.
+- **SEC-C-007.** The hub owns these runtime flags: model path, host, port, API key, parallel slots and remote code. The daemon must refuse them from any other source. This follows GW-012 and GW-013.
 - **SEC-C-008.** No runtime must load remote code from a model repository (`trust_remote_code` or the same in a different runtime).
 - **SEC-C-009.** Model files come only from the approved repositories (LIBM-003), with SHA-256 verification (PULL-005). The GGUF parsers have known faults, so do not load a model file from another source.
 - **SEC-C-010.** No log, metric or event must contain a prompt, an output or a hidden state (LOG-007).
 - **SEC-C-011.** Do not use a remote access function of a runtime, for example LM Studio LM Link or a Cloudflare tunnel. SEC-008 applies.
-- **SEC-C-012.** Work on the agent, the ACLs, the router keys, the DNS token and the ring keys has the security tag. The security reviewer must accept it (AGT-004).
+- **SEC-C-012.** Work on the daemon, the ACLs, the router keys, the DNS token and the ring keys has the security tag. The security reviewer must accept it (AGT-004).
 
 ## 10. Level 2: pooled models
 
@@ -406,9 +406,9 @@ Approved for build (operator, 2026-11-16: "we should build this as a UI piece"; 
 - **CUI-012.** Then the section must show one row for each tool, in the groups of CAP-023 and in their order. A row gives the name of the tool and its version in the monospace font.
 - **CUI-013.** A tool that is not usable must show "Not usable", the reason as text and the repair hint (CAP-024). The client must not show this state with colour alone. The hint text must be the same as the text of `anima capability list`.
 - **CUI-014.** After the tools, the section must show the build targets as a list in the monospace font. A device with no build target shows no list.
-- **CUI-015.** The section must show when the agent found the inventory, as a relative time with the full time in a tooltip.
+- **CUI-015.** The section must show when the daemon found the inventory, as a relative time with the full time in a tooltip.
 - **CUI-016.** The loading and failed states must follow the Metrics section. The placeholder must be as tall as the loaded section of a typical device, so that nothing below moves (MOT-007).
-- **CUI-017.** The section must give the reason when it has no inventory. For a device with no agent: "The agent of this device reports its tools", with the Install agent action of MET-019. For a device whose agent sent no inventory: "This agent does not report tools. Update the agent."
+- **CUI-017.** The section must give the reason when it has no inventory. For a device with no daemon: "The daemon of this device reports its tools", with the Install daemon action of MET-019. For a device whose daemon sent no inventory: "This daemon does not report tools. Update the daemon."
 - **CUI-018.** The device list must have a Tools filter in its toolbar (DEV-008), after the tag filter. The operator selects one tool or types one build target. The list then shows only the devices that have it usable (`capabilities(tool, buildTarget)`). The filter must be in the address of the page, as the other filters are.
 - **CUI-019.** Text in a tool inventory comes from a device (CAP-031). The client must show it as text only, never as markup, and must cut a value that is longer than its column with the full value in a tooltip.
 
@@ -416,7 +416,7 @@ Rules for the build:
 
 - The logic is in `$lib/metrics/tools/`, beside `$lib/metrics/storage/`: the GraphQL document in the client of the metrics domain, a pure function from the query result to the rows and the summary line, and the section component. The route only composes.
 - The values come from the design tokens and the motion helpers (design specification Sections 5.5 and 5.7). No new token is necessary.
-- The fixture for the mock hub (CON-003) must hold: a Mac with all tools, a Linux device with one tool that is not usable for each reason, a device with an agent and no inventory, and a device with no agent.
+- The fixture for the mock hub (CON-003) must hold: a Mac with all tools, a Linux device with one tool that is not usable for each reason, a device with a daemon and no inventory, and a device with no daemon.
 - The tests must test what the operator sees: the summary line, the groups, each reason with its hint, each empty state, and the filter in the address.
 - The interface reviewer must measure the section in WebKit and Chromium: tokens, layout shift, reduced motion and the accessible names.
 - The builder must add an entry to [need-human-testing.md](../need-human-testing.md) for the section on a real hub, in the same commit as the section.
@@ -432,12 +432,12 @@ Rules for the build:
 
 ### 12.1 Phases
 
-- **PH-C-000.** Compute work must not start before Phase 1 of the spec is accepted. The agent gives its own hardware values, so Level 1 does not need the Phase 2 metrics.
+- **PH-C-000.** Compute work must not start before Phase 1 of the spec is accepted. The daemon gives its own hardware values, so Level 1 does not need the Phase 2 metrics.
 - **PH-C-001.** Level 2 (C4 and later) must not start before C2 is accepted and the operator uses the model service.
 
 | Phase | Level | Content | Depends on |
 | --- | --- | --- | --- |
-| C1 | 1 | Compute agent, capability inventory, runtime choice, model servers, library, pull, router at `ai.anima.ing` with the OpenAI API and API keys, Compute page | Spec Phase 1, OD-C1, OD-C7 |
+| C1 | 1 | Compute daemon, capability inventory, runtime choice, model servers, library, pull, router at `ai.anima.ing` with the OpenAI API and API keys, Compute page | Spec Phase 1, OD-C1, OD-C7 |
 | C2 | 1 | Models page with search and aliases, Chat page, Ollama API, load on demand and idle unload | C1 |
 | C3 | 1 | Single-node offload (Section 5.2). KTransformers on a large-memory node, if the operator has one. | C1 |
 | C4 | 2 | Spikes and a decision record (Section 12.2) | C2 |
@@ -476,10 +476,10 @@ crates/
 │   ├── servers/        Model servers, copies, loads and pulls
 │   ├── router/         The ai.anima.ing endpoint: OpenAI and Ollama APIs (I/O edge)
 │   └── rings/          Level 2: rings and conformance results
-├── compute-agent/      anima-agent binary: enrolment, supervision, pulls, proxy
-└── compute-agent-core/ Agent logic with no I/O (CAG-007)
+├── compute-daemon/      anima-daemon binary: enrolment, supervision, pulls, proxy
+└── compute-daemon-core/ Daemon logic with no I/O (CAG-007)
 contracts/compute/
-├── agent-protocol.md   Hub to agent commands and reports
+├── daemon-protocol.md   Hub to daemon commands and reports
 ├── router-api.md       The Anima fields of /v1/models and the Anima-Node header
 └── block-contract.md   Level 2: block operations and the hidden-state byte layout
 blocks/                 Level 2: MlxBlock and TransformersBlock (Python)
@@ -506,7 +506,7 @@ Research date: 2026-11-06. Each runtime was checked against its repository and d
 | SGLang | Apache 2.0 | CUDA, ROCm, XPU, CPU; MLX (immature) | Yes, same runtime, fast link | Hard (fork) | Router design reference |
 | LMDeploy | Apache 2.0 | CUDA, ROCm | Tensor split over Ray | Not practical | Router design reference |
 | LocalAI | MIT | All, through other runtimes | Wraps llama.cpp RPC; own P2P overlay | Not possible | SmartRouter design reference |
-| Jan | Apache 2.0 | Through llama.cpp and MLX | No | Not possible | Agent supervision reference |
+| Jan | Apache 2.0 | Through llama.cpp and MLX | No | Not possible | Daemon supervision reference |
 | TensorRT-LLM | Apache 2.0 | CUDA (GeForce best-effort) | Yes, data-centre links | Not practical | Not used |
 | LM Studio | Closed | Through llama.cpp and MLX | No | Not possible | Not used (terms forbid change and service use) |
 
@@ -522,7 +522,7 @@ Findings:
 | Number | Decision | Recommendation |
 | --- | --- | --- |
 | OD-C1 | Hardware of each compute node | The operator gives the list: each Mac, each GPU, memory and site. |
-| OD-C2 | One agent binary or two | Keep `anima-agent` separate from `anima-collector`. They run on different devices. Share the enrolment code in a library crate. |
+| OD-C2 | One daemon binary or two | Keep `anima-daemon` separate from `anima-collector`. They run on different devices. Share the enrolment code in a library crate. |
 | OD-C3 | Conformance tolerances | Set from the C4 measurements (RNG-032). |
 | OD-C4 | Where the block adapters live | Offer them to the Shard project first. Keep them in `blocks/` only if Shard does not accept them. |
 | OD-C5 | Router location | The router runs in the hub on the VPS (OD-9). Each request then goes caller to VPS to node. Measure the added delay in C1. If it is too high, run a second router at the home site. |

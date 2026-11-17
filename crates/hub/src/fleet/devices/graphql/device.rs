@@ -13,7 +13,7 @@ use super::{
     remote::{DeviceRdp, DeviceVnc},
     ssh::DeviceSsh,
     standing::{
-        AgentVersionOf, ChecksOf, GpusOf, ReadingsOf, ResolvedIpOf, StaleOf, StatusOf,
+        ChecksOf, DaemonVersionOf, GpusOf, ReadingsOf, ResolvedIpOf, StaleOf, StatusOf,
         SuggestionsOf, UptimeOf, WebInterfacesOf,
     },
 };
@@ -200,10 +200,10 @@ impl Device {
         self.metrics_source
     }
 
-    /// True when the source is AGENT and the agent is stale: no batch in the last 30 seconds,
+    /// True when the source is DAEMON and the daemon is stale: no batch in the last 30 seconds,
     /// none yet, or its token revoked (MET-018, R-092 D-7).
     async fn metrics_stale(&self, ctx: &Context<'_>) -> Result<bool> {
-        if self.metrics_source != MetricsSource::Agent {
+        if self.metrics_source != MetricsSource::Daemon {
             return Ok(false);
         }
         let stale = schema_dependency::<DataLoader<StaleOf>>(ctx)?
@@ -213,14 +213,14 @@ impl Device {
         Ok(stale.unwrap_or(true))
     }
 
-    /// The version of the device's agent from its last batch, when the source is AGENT; null
-    /// for an agent older than R-122, one that has not pushed since its token was made, and
+    /// The version of the device's daemon from its last batch, when the source is DAEMON; null
+    /// for a daemon older than R-122, one that has not pushed since its token was made, and
     /// any other source (R-122, ROL-051).
-    async fn agent_version(&self, ctx: &Context<'_>) -> Result<Option<String>> {
-        if self.metrics_source != MetricsSource::Agent {
+    async fn daemon_version(&self, ctx: &Context<'_>) -> Result<Option<String>> {
+        if self.metrics_source != MetricsSource::Daemon {
             return Ok(None);
         }
-        schema_dependency::<DataLoader<AgentVersionOf>>(ctx)?
+        schema_dependency::<DataLoader<DaemonVersionOf>>(ctx)?
             .load_one(self.id)
             .await
             .map_err(internal)

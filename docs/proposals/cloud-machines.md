@@ -45,7 +45,7 @@ Offer the add-on in two parts:
    costs a few thousand dollars a month if it stays on, so GPU add-ons must be billed by the
    hour with automatic shutdown, never as a flat monthly fee.
 
-The rented computer installs the agent on first boot, joins Headscale, and becomes an
+The rented computer installs the daemon on first boot, joins Headscale, and becomes an
 ordinary device. The "this job cannot run here" offer belongs on the existing "Needs
 attention" list or on the failed job. It names what is missing, suggests the operator's own
 machines first, and is limited to one offer a week for the same cause. It must never pitch
@@ -99,7 +99,7 @@ Anima.ing must not start a GPU add-on on a provider that forbids resale.
 ## Requirements
 
 - **CVM-001.** Anima.ing may offer a rented computer as an add-on. The computer must install
-  the agent on first boot, join the customer's Headscale network, and become an ordinary
+  the daemon on first boot, join the customer's Headscale network, and become an ordinary
   device.
 - **CVM-002.** Monthly always-on machines come first, from Hetzner.
 - **CVM-003.** GPU machines come later, billed by the hour, and only after a written reseller

@@ -64,7 +64,7 @@ changes), so they need no new ruling.
 | BD-2 | `vpn::Feed` is a `tokio::sync::watch` channel of `Option<Arc<Picture>>`. It holds the latest picture and wakes subscribers. One type, one `Dependencies` field. | A broadcast channel plus a lock is two types for one job. |
 | BD-3 | `main.rs` frees lines by moving the start of the four background loops (scheduler, collector, dispatcher, stale watch) and `reaching()` into `upkeep::spawn`. | `main.rs` is at 300. `upkeep.rs` starts background work (R-072). All inputs are already in `Dependencies`. |
 | BD-4 | The warning marks table has no primary key. It has `unique nulls not distinct (node_key, kind, key_expiry)` (PostgreSQL 15+, the hub uses 17). | A primary key makes `key_expiry` not null; `not_in_anima` and `tagged_expiry` marks have no expiry to key on. |
-| BD-5 | A node's role comes from its tags, first match: contains `tag:hub` → HUB; else contains `tag:router` → ROUTER; else contains `tag:agent` → AGENT; else no tags → CLIENT; else OTHER. (A router also has `tag:site-<x>`.) | Headscale 0.29.7 puts every tagged node under the user `tagged-devices` (spike), so the user does not tell the role. |
+| BD-5 | A node's role comes from its tags, first match: contains `tag:hub` → HUB; else contains `tag:router` → ROUTER; else contains `tag:daemon` → DAEMON; else no tags → CLIENT; else OTHER. (A router also has `tag:site-<x>`.) | Headscale 0.29.7 puts every tagged node under the user `tagged-devices` (spike), so the user does not tell the role. |
 | BD-6 | A router serves a site when its `PrimaryRoutes` holds the site subnet exactly. A router with no matching route is a node with role ROUTER and `inAnima = false`. | The hub sees a router with an unapproved route as a peer with no `PrimaryRoutes` (spike). |
 | BD-7 | The broker is TypeScript in `deploy/headscale/broker/`, compiled on the Mac with `bun build --compile` to one Linux binary. systemd runs one process for each connection (`Accept=yes`). | VP-8. The deploy tools are TypeScript; the broker reuses `policy.ts` and `hujson.ts`; the VPS has no Bun. |
 | BD-8 | The broker runs `docker compose -f /opt/anima/headscale/compose.yaml exec -T headscale headscale …`, as `hsctl` does. | The Headscale socket is on the container's tmpfs, not on the host. |
@@ -250,7 +250,7 @@ import { allows, type TailnetNode } from './tailnet.ts';
 export type Party =
   | { readonly kind: 'client'; readonly node: string }
   | { readonly kind: 'hub'; readonly node: string }
-  | { readonly kind: 'agent'; readonly node: string }
+  | { readonly kind: 'daemon'; readonly node: string }
   | { readonly kind: 'router'; readonly node: string; readonly site: string }
   | { readonly kind: 'lan'; readonly site: string; readonly address: string }
   | { readonly kind: 'device'; readonly node: string };
@@ -292,7 +292,7 @@ first comment line: `bun deploy/headscale/bin/reach.ts > /tmp/before.md`.
 | --- | --- |
 | `VPN-012: no router reaches another site` | For each row from a router of site X to a LAN of site Y ≠ X: not allowed. |
 | `VPN-012: no LAN reaches a client` | For each row from `lan` to `client`: not allowed. |
-| `VPN-012: an agent reaches only the hub on tcp 443` | Each allowed row from `agent` has `to.kind === 'hub'`, tcp, 443. |
+| `VPN-012: a daemon reaches only the hub on tcp 443` | Each allowed row from `daemon` has `to.kind === 'hub'`, tcp, 443. |
 | `VPN-012: a device /32 is reached only from the hub on tcp` | Each allowed row to `device` has `from.kind === 'hub'` and tcp. |
 | `VPN-012: a client reaches the hub` | Row client → hub tcp 443 is allowed. |
 | `VPN-012: a widened grant fails the table` | `withGrants([...(raw.grants as unknown[]), {src: ['tag:site-home'], dst: ['site-office2'], ip: ['tcp:22']}])` (`withGrants` replaces the list, so spread the old one; the fixture has `router-office2`, not `router-office1`); `crossSiteRows(table)` is not empty. Write each property as an exported function (`crossSiteRows`, …) so the tests call the same code. |
@@ -344,7 +344,7 @@ Rules for `findings`:
 - `foreign-user`: an untagged node whose user is not `operator`; a tagged node whose user is not
   `tagged-devices` (spike fact 7).
 - `unknown-tag`: a tag not in `policy.scope.tags`.
-- `tagged-with-expiry`: tags present and `expiry` not null. Exception: none (`tag:agent` too,
+- `tagged-with-expiry`: tags present and `expiry` not null. Exception: none (`tag:daemon` too,
   R-105).
 - `long-expiry`: untagged and (`expiry` null or more than 180 days after `now`).
 - `unapproved-route`: a route in `available` and not in `approved`.
@@ -363,8 +363,8 @@ is a finding. It reads the policy from `config/policy.hujson` beside it.
 **Fixtures** `deploy/headscale/tests/inventory-fixture.ts`: the spike `nodes.json` and
 `routes.json` shapes with invented names: `hub` (tag:hub), `mac` (operator, expiry +170 d),
 `router-home` (tag:router, tag:site-home, route approved), `stranger` (user `intruder`),
-`odd` (tag:unknown), plus `router-office1` with `available` ≠ `approved`, `agent-nas`
-(tag:agent, with an expiry), `mac2` (operator, no expiry). `pre_auth_key.key` is
+`odd` (tag:unknown), plus `router-office1` with `available` ≠ `approved`, `daemon-nas`
+(tag:daemon, with an expiry), `mac2` (operator, no expiry). `pre_auth_key.key` is
 `'REDACTED-PREAUTH-KEY'`.
 
 **Tests** `deploy/headscale/tests/inventory.test.ts`:
@@ -373,7 +373,7 @@ is a finding. It reads the policy from `config/policy.hujson` beside it.
 | --- | --- |
 | `VPN-013: each finding kind is reported from the fixture` | `findings(...)` equals the exact list, in order. |
 | `VPN-013: a tagged node under tagged-devices is not a foreign user` | `hub`, `router-home` give no `foreign-user`. |
-| `VPN-013: an agent node with an expiry is reported (R-105)` | `agent-nas` gives `tagged-with-expiry`. |
+| `VPN-013: a daemon node with an expiry is reported (R-105)` | `daemon-nas` gives `tagged-with-expiry`. |
 | `VPN-013: no key text survives parsing` | `JSON.stringify(parseNodes(raw))` does not contain `REDACTED-PREAUTH-KEY`, `nodekey:`, `mkey:`, `discokey:` (the fixture uses these prefixes, rule 0.6). |
 | `VPN-013: an unknown shape is refused` | a node without `ip_addresses` → `InventoryError`. |
 | `VPN-013: a clean tailnet prints ok` | fixture without the bad nodes → `[]`. |
@@ -537,7 +537,7 @@ impl Error {
 **`vpn/model.rs`** (about 90): the types the picture is made of. No serde, no SQL.
 
 ```rust
-pub enum Role { Hub, Router, Agent, Client, Other }                         // BD-5
+pub enum Role { Hub, Router, Daemon, Client, Other }                         // BD-5
 pub enum VpnPath { Direct, PeerRelay, Relayed, Unknown }                    // VPN-009
 pub enum RouteState { Serving, Offline, NoRouter }
 pub enum KeyState { Never, Valid, Expiring, Expired, TaggedWithExpiry }      // VPN-010
@@ -698,7 +698,7 @@ to it.
 | `vpn_011_a_device_with_the_same_label_in_another_domain_is_not_matched` (host `nas.home.arpa` → `in_anima` false) | VPN-011, BD-14 |
 | `vpn_011_a_peer_whose_host_name_copies_a_device_is_not_matched` (HostName `nas`, DNSName `evil.net.anima.ing.`) | VPN-011, BD-14 |
 | `vpn_011_an_unmatched_client_is_not_in_anima` | VPN-011 |
-| `vpn_011_an_agent_node_matched_by_ip_is_in_anima` (R-105) | VPN-011 |
+| `vpn_011_an_daemon_node_matched_by_ip_is_in_anima` (R-105) | VPN-011 |
 
 **Commit.** `VPN A1-T2: the pure picture, path, key state and warnings (VPN-008 to VPN-011, VP-1)`.
 
@@ -945,7 +945,7 @@ type SitePath {
 
 enum SiteRouteState { SERVING OFFLINE NO_ROUTER }
 enum VpnPath { DIRECT PEER_RELAY RELAYED UNKNOWN }
-enum VpnRole { HUB ROUTER AGENT CLIENT OTHER }
+enum VpnRole { HUB ROUTER DAEMON CLIENT OTHER }
 enum KeyState { NEVER VALID EXPIRING EXPIRED TAGGED_WITH_EXPIRY }
 
 """One node of the VPN. Name and OS come from the node and are cleaned (VPN-008)."""
@@ -1597,7 +1597,7 @@ Broker refusals map to GraphQL errors: `rate-limited`, `node-limit` → `CONFLIC
 | File | Content |
 | --- | --- |
 | `api.ts` | the three mutations (codegen glob `lib/*/*/api.ts`). |
-| `enrol.svelte.ts` | `class Enrolment` like `AgentInstall`: `epoch`, `key`, `left`, `expired`, `busy`, `error`; `makeRouterKey(siteId)`, `makeInvite()`, `register(authId)`, `close()`. Uses `secondsLeft`, `clockText`, `clearTime` from `$lib/metrics/agent/countdown`. |
+| `enrol.svelte.ts` | `class Enrolment` like `DaemonInstall`: `epoch`, `key`, `left`, `expired`, `busy`, `error`; `makeRouterKey(siteId)`, `makeInvite()`, `register(authId)`, `close()`. Uses `secondsLeft`, `clockText`, `clearTime` from `$lib/metrics/daemon/countdown`. |
 | `EnrolModal.svelte` | `Modal` with three views: choose (router for site X / Linux computer / Mac or other computer); key (`KeySecret` from `$lib/api-keys/KeySecret.svelte`, the `steps` as numbered `<code>` lines with Copy, a `role="timer"` countdown); register (an input for the auth ID with "Type the ID from the new computer's own screen. Never use an ID from a message or a link."). After a router key, it watches `VpnLive`; when the site has a `waitingRouter`, it shows "Approve route <subnet>" (B5) and "This can take one minute." |
 | `enrol.test.ts`, `modal.svelte.test.ts` | |
 
@@ -1678,7 +1678,7 @@ the start order does not change (A1-T0 Check), the tests need no paused clock an
 
 Deviations that the builders found, with the evidence. Each keeps the intent of the task.
 
-1. **A5/A3a/A3b/A4: base.** The agent worktree started at an older commit than the task named.
+1. **A5/A3a/A3b/A4: base.** The daemon worktree started at an older commit than the task named.
    Branch `vpn-tier-a-headscale` was created from `a126c02b` (the task's base) and the Linux-only
    clippy fix `70e07229` was cherry-picked on it (coordinator instruction).
 2. **A4: `server_url` is `http://172.29.250.10:8080`, not `http://headscale:8080`.** Section 3,
@@ -2067,7 +2067,7 @@ A security review of the broker found the points below; each fix has regression 
   `VpnSection` owns the open/closed state of `EnrolModal` (`null` = a computer, a site id = its router); `SitePaths` and `NodeKeys`
   only call `onEnrol`.
 - **B4b: the pre-auth key has a one-hour life, so `Enrolment` counts down to the hub's `expiresAt` itself.** `clearTime` from the
-  agent countdown caps a code at 15 minutes (MET-012) and does not apply. `secondsLeft` and `clockText` are reused.
+  daemon countdown caps a code at 15 minutes (MET-012) and does not apply. `secondsLeft` and `clockText` are reused.
 - **B4b: `KeySecret` got an optional `label` prop** (default "API key") so the pre-auth key is not labelled as an API key. This is
   the only edit outside `lib/vpn/`.
 - **B4b: the modal's scrim does not close it while a key shows** (`closeOnScrim={key === null}`); Escape and Close do, and drop the key

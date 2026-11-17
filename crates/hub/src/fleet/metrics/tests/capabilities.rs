@@ -1,7 +1,7 @@
 //! Which tool inventories a `capabilities` filter keeps (CAP-030): a tool only where it is
 //! usable, a build target only where it is installed, both together.
 
-use agent_core::inventory::{Architecture, Inventory, Os, Reason, Tool, ToolName, Verdict};
+use daemon_core::inventory::{Architecture, Inventory, Os, Reason, Tool, ToolName, Verdict};
 
 use crate::fleet::metrics::CapabilityFilter;
 

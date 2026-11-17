@@ -59,7 +59,7 @@ Status: **frozen for Phase 3** (change only through a programme ruling, CON-001)
 
 (operator, 2026-11-13, LOG-012 to LOG-020; ruling number to be assigned) **Agent declaration** (LOG-016, LOG-017):
   - HTTP `POST /graphql`: the header `Anima-Actor: agent`. WebSocket: the field `"actor": "agent"` in the
-    `connection_init` payload, beside `authorization`. `agent` (any case) is the only value; the hub ignores
+    `connection_init` payload, beside `authorization`. `daemon` (any case) is the only value; the hub ignores
     each other value, a repeated header and a non-text value, and never answers with an error for one.
   - The declaration can only raise the actor kind of a request to `AGENT`; nothing makes a request `USER`
     or `HUB`. An API key made for `AGENT` is `AGENT` with or without it. `anima mcp` sends it on every request.
@@ -73,7 +73,7 @@ Status: **frozen for Phase 3** (change only through a programme ruling, CON-001)
   | `/terminal`, `/tunnel`, `/files` | Single-use ticket (K4 §1) | `sessions` |
   | `GET\|POST /push/{token}` | Push token | `checks` |
   | `GET /metrics` | Bearer token, READ or higher | `checks`, behind `access::bearer_layer` |
-  | `POST /agent/v1/enrol`, `POST /agent/v1/push`, `POST /agent/v1/renew` | Enrolment code in the body, or agent token (K8) | `metrics` |
+  | `POST /daemon/v1/enrol`, `POST /daemon/v1/push`, `POST /daemon/v1/renew` | Enrolment code in the body, or daemon token (K8) | `metrics` |
   | `GET /health` | None; body `ok` | wiring |
   | `GET /connect/github`, `POST /connect/github/open`, `GET /connect/github/start`, `/created`, `/installed` (operator, 2026-11-14; ruling number to be assigned) | The one-time ticket, or the `__Host-anima` browser session with a same Origin, then the `__Host-anima-connect` cookie and a state value (K-E1 Section 7a); fixed paths, no path parameters | `sources` (`registration/routes.rs`) |
   | Any other `GET` (the web client) | None; static files only, `index.html` for unknown paths | `web_client.rs` |
@@ -95,7 +95,7 @@ Status: **frozen for Phase 3** (change only through a programme ruling, CON-001)
 - `tracing` with JSON output (LOG-001). Standard fields: `request_id`, `operator_id`, `device_id`, `session_id`, `domain`, and `actor_kind` (`user`, `agent` or `hub`) (operator, 2026-11-13, LOG-012 to LOG-020; ruling number to be assigned). Never the token or the value of the `Anima-Actor` header as sent.
 - Spans at I/O boundaries only (CQ-026): GraphQL request, SQL call, probe, gateway connection, tunnel.
 - Never log: passwords, private keys, passphrases, tokens, tunnel tokens, session content (LOG-007). (Phase 2) Also never log: RDP and VNC passwords, SNMP communities and v3 passwords, file content, and file paths in the process log (paths go only to the audit log). Secret types implement neither `Debug` nor `Display` (see `hub-domains.md`).
-- (Phase 3) Never log API key secrets, browser tokens and cookie values, notification secrets (whole webhook URLs, webhook header values, ntfy topics and tokens, SMTP passwords, Apprise URLs and keys), email recipient addresses in the process log, a notification target's reply body, agent tokens and agent enrolment codes (K8).
+- (Phase 3) Never log API key secrets, browser tokens and cookie values, notification secrets (whole webhook URLs, webhook header values, ntfy topics and tokens, SMTP passwords, Apprise URLs and keys), email recipient addresses in the process log, a notification target's reply body, daemon tokens and daemon enrolment codes (K8).
 
 ## Configuration
 

@@ -17,7 +17,7 @@ function fake(length: number, seed = "qR7_vK2-mZ9xT4"): string {
 }
 
 const apiKey = `anima_${fake(43)}`;
-const agentToken = `anima_agent_${fake(43, "Lp3Wq8_zN5-yHc")}`;
+const daemonToken = `anima_daemon_${fake(43, "Lp3Wq8_zN5-yHc")}`;
 const enrolmentCode = `anima_enrol_${fake(22, "Ue6-Ji1_Ok4")}`;
 const bearer = fake(43, "Gh5sD2-Fj8_kQw");
 const ntfyToken = `tk_${fake(29, "a9B8c7D6e5F4")}`;
@@ -26,7 +26,7 @@ const ntfyToken = `tk_${fake(29, "a9B8c7D6e5F4")}`;
 const CASES: [LeakKind, string[], string[]][] = [
   ["api-key", [`{"level":"INFO","fields":{"key":"${apiKey}"}}`, `Bearer ${apiKey}.`],
     [`anima_${fake(42)}`, `anima_${fake(44)}`, "anima_check_up 1", `anima_${fake(6)} (display prefix)`]],
-  ["agent-token", [`token=${agentToken}`], [`anima_agent_${fake(42)}`, `anima_agent_${fake(44)}`, "anima_agent_ prefix"]],
+  ["daemon-token", [`token=${daemonToken}`], [`anima_daemon_${fake(42)}`, `anima_daemon_${fake(44)}`, "anima_daemon_ prefix"]],
   ["enrolment-code", [`{"code":"${enrolmentCode}"}`], [`anima_enrol_${fake(21)}`, `anima_enrol_${fake(23)}`]],
   ["browser-cookie", [`set-cookie: __Host-anima=${fake(12)}; Secure; HttpOnly`, `cookie: theme=dark; __Host-anima=x1`],
     ["set-cookie: __Host-anima=; Max-Age=0; Path=/", 'cookie: __Host-anima=""', "__Host-anima="]],
@@ -78,7 +78,7 @@ describe("each kind", () => {
   }
 
   test("a prefixed token is reported by its own kind only", () => {
-    expect(leakKinds(agentToken, [])).toEqual(["agent-token"]);
+    expect(leakKinds(daemonToken, [])).toEqual(["daemon-token"]);
     expect(leakKinds(enrolmentCode, [])).toEqual(["enrolment-code"]);
     expect(leakKinds(apiKey, [])).toEqual(["api-key"]);
   });
@@ -206,7 +206,7 @@ describe("hostile lines", () => {
 
 let dir = "";
 const needle = "my-own-ntfy-topic-q9";
-const secrets = [apiKey, agentToken, enrolmentCode, bearer, ntfyToken, needle, "hunter2x"];
+const secrets = [apiKey, daemonToken, enrolmentCode, bearer, ntfyToken, needle, "hunter2x"];
 
 function writeFixtures() {
   dir = mkdtempSync(join(tmpdir(), "log-scan-"));
@@ -214,7 +214,7 @@ function writeFixtures() {
   const leaking = [
     "start",
     `{"key":"${apiKey}"}`,
-    `agent ${agentToken}`,
+    `daemon ${daemonToken}`,
     `${ESC}[33mcode ${enrolmentCode}${ESC}[0m\r`,
     `push /push/${bearer}`,
     `ntfy ${ntfyToken} topic ${needle}`,
@@ -255,7 +255,7 @@ describe("spawned scan", () => {
     expect(result.out).toBe(
       [
         "line 2: api-key",
-        "line 3: agent-token",
+        "line 3: daemon-token",
         "line 4: enrolment-code",
         "line 5: bearer-value",
         "line 6: ntfy-token",

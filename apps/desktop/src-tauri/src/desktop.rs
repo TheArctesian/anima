@@ -6,7 +6,7 @@ use std::sync::Arc;
 use tauri::Manager;
 
 use crate::{
-    agent, builder, command_line, hub_listener, keystore, link, local_hub, mcp_permissions,
+    builder, command_line, daemon, hub_listener, keystore, link, local_hub, mcp_permissions,
     process_log, stay_awake, system_browser, system_settings, this_machine, web_view,
 };
 
@@ -51,8 +51,8 @@ fn commands() -> impl Fn(tauri::ipc::Invoke) -> bool + Send + Sync + 'static {
         process_log::process_log_folder_open,
         system_settings::sharing_settings_open,
         this_machine::this_machine_read,
-        agent::agent_bundled,
-        agent::agent_install,
+        daemon::daemon_bundled,
+        daemon::daemon_install,
         local_hub::local_hub_carried,
         local_hub::local_hub_install,
         local_hub::local_hub_remove,
@@ -93,7 +93,7 @@ fn with_state(app: tauri::Builder<tauri::Wry>) -> tauri::Builder<tauri::Wry> {
     app.manage(web_view::Tabs::default())
         .manage(builder::Running::default())
         .manage(builder::Bundled::default())
-        .manage(agent::Installing::default())
+        .manage(daemon::Installing::default())
         .manage(local_hub::Changing::default())
         .manage(local_hub::Replacements::default())
         .manage(link::Changing::default())
@@ -112,7 +112,7 @@ fn with_state(app: tauri::Builder<tauri::Wry>) -> tauri::Builder<tauri::Wry> {
 fn on_run_event(app: &tauri::AppHandle, event: &tauri::RunEvent) {
     if matches!(event, tauri::RunEvent::Exit) {
         app.state::<builder::Running>().cancel();
-        app.state::<agent::Installing>().stop();
+        app.state::<daemon::Installing>().stop();
         app.state::<Arc<link::DeviceLink>>().stop();
         if let Some(stay_awake) = app.try_state::<stay_awake::StayAwake>() {
             stay_awake.release();

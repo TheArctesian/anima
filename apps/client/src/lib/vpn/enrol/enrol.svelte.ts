@@ -1,5 +1,5 @@
 import type { HubError } from '$lib/hub/hub';
-import { secondsLeft } from '$lib/metrics/agent/countdown';
+import { secondsLeft } from '$lib/metrics/daemon/countdown';
 import type { EnrolApi, VpnKey, VpnRegistration } from './api';
 
 /** The hub calls the modal makes; it passes `enrolApi` of its hub. */

@@ -177,7 +177,7 @@ pub struct NewEvent { pub severity: Severity, pub source: Source, pub device: Op
 ```
 
 `NewAudit` takes its actor from `operator.actor`. A writer that no request drives (scheduler, retention, prune,
-policy, builder and agent tokens per LOG-019) uses `Operator::hub()` and `ActorKind::Hub`.
+policy, builder and daemon tokens per LOG-019) uses `Operator::hub()` and `ActorKind::Hub`.
 `access` adds `pub struct Declaration` (the agent declaration, `of_headers`, `of_payload`), `pub enum MadeFor
 { User, Agent }` and `pub const ACTOR_HEADER`; the decision itself is private to `access` (LOG-014).
 
@@ -196,7 +196,7 @@ policy, builder and agent tokens per LOG-019) uses `Operator::hub()` and `ActorK
 | `checks` (Phase 2, adds) | `sessions` (`link`, `SshLink`, `FixedCommand` only; no cycle: `sessions` does not import `checks`) |
 | `checks` (Phase 3, replaces the Phase 2 row above) | `ssh` (`link`, `SshLink`, `FixedCommand`, `CommandOutput`, `LinkError` only; replaces `sessions`; CR-11), `notifications` (`observe`, `adopt_defaults`, `Observation`, `for_checks` only) |
 | `metrics` (Phase 2, new) | `devices`, `sessions` (link only), `credentials` (`Vault` only), `events` |
-| `metrics` (Phase 3, replaces the row above) | `devices`, `ssh` (`link`, `CommandOutput`, `LinkError` only; replaces `sessions`; CR-11), `credentials` (`Vault` only), `events`, `access` (`Authenticated`, `Operator`, `ClientAddr` only; agent tokens live in `metrics`, R-092 D-1); crate `agent-core` (CR-8) |
+| `metrics` (Phase 3, replaces the row above) | `devices`, `ssh` (`link`, `CommandOutput`, `LinkError` only; replaces `sessions`; CR-11), `credentials` (`Vault` only), `events`, `access` (`Authenticated`, `Operator`, `ClientAddr` only; daemon tokens live in `metrics`, R-092 D-1); crate `daemon-core` (CR-8) |
 | `web_interfaces` (Phase 2, new) | `checks` (`http_urls` only), `devices` (CR-5), `events` |
 | `trust` (Phase 3, new) | `devices`, `events` |
 | `ssh` (Phase 3, new) | `devices`, `credentials`, `trust`, `events` |
@@ -261,7 +261,7 @@ pub struct RdpSettings { pub enabled: bool, pub port: u16, pub username: String,
 pub struct VncSettings { pub enabled: bool, pub port: u16, pub username: Option<String> }
 pub struct TransferPolicy { pub upload: bool, pub download: bool, pub copy: bool, pub paste: bool }
 pub struct MacAddress([u8; 6]);            // parsed at the API edge; Display renders aa:bb:cc:dd:ee:ff
-pub enum MetricsSource { None, Ssh, Agent }   // Agent (Phase 3, CR-15): set only by metrics enrolment
+pub enum MetricsSource { None, Ssh, Daemon }   // Daemon (Phase 3, CR-15): set only by metrics enrolment
 pub async fn wake_relay(db: &Db, site: SiteId) -> Result<Option<Device>, Error>;
 ```
 
@@ -279,7 +279,7 @@ pub async fn record_distribution(db: &Db, id: DeviceId, distribution: &Distribut
 pub async fn record_detected_os(db: &Db, id: DeviceId, os: OperatingSystem) -> Result<bool, Error>;   // metrics collector; DEV-025, writes only while os = 'other'
 pub async fn lock(conn: &mut PgConnection, id: DeviceId) -> Result<(), Error>;                                  // FOR UPDATE; metrics enrolment
 pub async fn lock_metrics_source(conn: &mut PgConnection, id: DeviceId) -> Result<MetricsSource, Error>;       // FOR UPDATE; MET-011, MET-018
-pub async fn use_agent_metrics(conn: &mut PgConnection, id: DeviceId) -> Result<String, Error>;                // agent enrolment only; R-092 D-7
+pub async fn use_daemon_metrics(conn: &mut PgConnection, id: DeviceId) -> Result<String, Error>;                // daemon enrolment only; R-092 D-7
 pub async fn session_limit<'e>(db: impl PgExecutor<'e>, id: DeviceId) -> Result<Option<NonZeroU8>, Error>;   // RA-036
 ```
 
@@ -500,23 +500,23 @@ pub async fn storage(db: &Db, device: DeviceId, now: DateTime<Utc>) -> Result<St
 // Wiring only: create_partitions_ahead, drop_expired_partitions (as events and checks).
 
 // (Phase 3, WP-54; K8, R-092)
-/// POST /agent/v1/{enrol,push,renew} (K8). main.rs merges it behind the NET-002 layer.
-pub fn agent_router(db: Db, feed: Feed, bus: events::Bus, clock: Clock) -> axum::Router;
-/// Marks AGENT devices stale after 30 s with no batch, with one event each way (MET-018);
+/// POST /daemon/v1/{enrol,push,renew} (K8). main.rs merges it behind the NET-002 layer.
+pub fn daemon_router(db: Db, feed: Feed, bus: events::Bus, clock: Clock) -> axum::Router;
+/// Marks DAEMON devices stale after 30 s with no batch, with one event each way (MET-018);
 /// spawned from spawns.rs (P3-007). Takes the event bus, not the feed (CR-18).
 pub fn spawn_stale_watch(db: Db, bus: events::Bus, clock: Clock) -> JoinHandle<()>;
-/// Of `devices`, those whose agent is not fresh: never pushed, revoked or stale (MET-018, CR-18).
-pub async fn stale_agents(db: &Db, devices: &[DeviceId]) -> Result<HashSet<DeviceId>, Error>;
+/// Of `devices`, those whose daemon is not fresh: never pushed, revoked or stale (MET-018, CR-18).
+pub async fn stale_daemons(db: &Db, devices: &[DeviceId]) -> Result<HashSet<DeviceId>, Error>;
 
 // (operator, 2026-11-15, CAP-020 to CAP-031; ruling number to be assigned)
-pub struct Capabilities { pub device: DeviceId, pub inventory: agent_core::inventory::Inventory, pub found_at: DateTime<Utc> }
+pub struct Capabilities { pub device: DeviceId, pub inventory: daemon_core::inventory::Inventory, pub found_at: DateTime<Utc> }
 pub struct CapabilityFilter { pub tool: Option<String>, pub build_target: Option<String> }
-/// The tool inventory each agent sent, kept when `filter` admits it: `tool` usable, `build_target` installed (CAP-030).
-/// Each tool is usable with its version or not usable with a fixed `agent_core::inventory::Reason` (CAP-024).
+/// The tool inventory each daemon sent, kept when `filter` admits it: `tool` usable, `build_target` installed (CAP-030).
+/// Each tool is usable with its version or not usable with a fixed `daemon_core::inventory::Reason` (CAP-024).
 /// metrics::graphql owns Query.capabilities and joins each to its Device (devices::list), by device name.
 pub async fn capabilities(db: &Db, filter: &CapabilityFilter) -> Result<Vec<Capabilities>, Error>;
-/// (R-122) The version of each device's agent from its last batch; no entry when it sent none.
-pub async fn agent_versions(db: &Db, devices: &[DeviceId]) -> Result<HashMap<DeviceId, String>, Error>;
+/// (R-122) The version of each device's daemon from its last batch; no entry when it sent none.
+pub async fn daemon_versions(db: &Db, devices: &[DeviceId]) -> Result<HashMap<DeviceId, String>, Error>;
 ```
 
 ## web_interfaces (Phase 2, WP-30)

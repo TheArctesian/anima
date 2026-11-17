@@ -7,7 +7,7 @@
 
 use std::collections::BTreeMap;
 
-use agent_core::points::{Point, SeriesKey};
+use daemon_core::points::{Point, SeriesKey};
 
 use crate::fleet::metrics::{Sample, store::PointValue};
 

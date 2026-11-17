@@ -134,7 +134,7 @@ pub fn web_fallback(root: Option<&Path>, origin: &fleet::access::PublicOrigin) -
 }
 
 /// The routes devices push to, logged by their templates only, never their tokens (LOG-007,
-/// R-028): `/push/{token}` for push checks, and the agent's enrolment and metrics batches (K8).
+/// R-028): `/push/{token}` for push checks, and the daemon's enrolment and metrics batches (K8).
 pub fn pushes(dependencies: &schema::Dependencies) -> Router {
     let schema::Dependencies {
         clock,
@@ -143,13 +143,13 @@ pub fn pushes(dependencies: &schema::Dependencies) -> Router {
         metrics_feed,
         ..
     } = dependencies;
-    let agent = fleet::metrics::agent_router(
+    let daemon = fleet::metrics::daemon_router(
         pool.clone(),
         metrics_feed.clone(),
         bus.clone(),
         clock.clone(),
     );
-    logged(fleet::checks::push_router(pool.clone(), bus.clone(), clock.clone()).merge(agent))
+    logged(fleet::checks::push_router(pool.clone(), bus.clone(), clock.clone()).merge(daemon))
 }
 
 /// Every route the hub serves, as `main.rs` serves it: `/graphql` and `/health` at the public

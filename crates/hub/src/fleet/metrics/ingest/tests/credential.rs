@@ -1,10 +1,10 @@
-//! K8 Sections 2 and 5: the agent token is read from one `Authorization: Bearer` header, and
+//! K8 Sections 2 and 5: the daemon token is read from one `Authorization: Bearer` header, and
 //! only its canonical spelling; anything else is no credential. A token works until, not at,
 //! its expiry, and a renewed token is promoted only while it works (MET-013).
 
-use agent_core::wire::{AgentToken, EnrolmentCode};
 use axum::http::{HeaderMap, HeaderValue, header::AUTHORIZATION};
 use chrono::TimeDelta;
+use daemon_core::wire::{DaemonToken, EnrolmentCode};
 use sqlx::PgPool;
 
 use super::{database_now, enrolled_pve, pve, token_hashes};
@@ -14,8 +14,8 @@ use crate::fleet::metrics::ingest::{
     renewal::renew,
 };
 
-fn token() -> AgentToken {
-    AgentToken::from_random([7; 32])
+fn token() -> DaemonToken {
+    DaemonToken::from_random([7; 32])
 }
 
 fn headers(values: &[&str]) -> HeaderMap {
@@ -41,11 +41,11 @@ fn met_013_one_bearer_header_with_the_token_is_read_in_any_scheme_case() {
 }
 
 #[test]
-fn met_013_anything_but_one_bearer_agent_token_is_no_credential() {
+fn met_013_anything_but_one_bearer_daemon_token_is_no_credential() {
     let token = token();
     let text = token.expose();
     let code = EnrolmentCode::from_random([7; 16]);
-    let api_key = format!("anima_{}", &text["anima_agent_".len()..]);
+    let api_key = format!("anima_{}", &text["anima_daemon_".len()..]);
     for values in [
         vec![],
         vec![text.to_owned()],
@@ -84,8 +84,8 @@ async fn met_013_an_unused_renewed_token_at_its_expiry_is_refused_and_never_prom
     let now = database_now(&pool).await;
     let current = enrolled_pve(&pool, now, 7).await;
     let renewed_at = now + TimeDelta::days(30);
-    let next = AgentToken::from_random([8; 32]);
-    let presented = AgentToken::parse(next.expose()).unwrap();
+    let next = DaemonToken::from_random([8; 32]);
+    let presented = DaemonToken::parse(next.expose()).unwrap();
     renew(&pool, &current, next, renewed_at)
         .await
         .unwrap()

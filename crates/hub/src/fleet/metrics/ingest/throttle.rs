@@ -1,4 +1,4 @@
-//! Which agent refusals reach the event log: at most one a minute per client address for a
+//! Which daemon refusals reach the event log: at most one a minute per client address for a
 //! refusal with no valid credential, so a flood of guesses cannot fill the log (K8 Sections 3
 //! and 6, CR-15), and at most one a minute per device for a refusal with a valid one (CR-21).
 //!

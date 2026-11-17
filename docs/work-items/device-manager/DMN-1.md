@@ -6,7 +6,7 @@ Progress: the index [README.md](../README.md) holds the state of this item (PLN-
 | --- | --- |
 | Identifier | DMN-1 |
 | Kind | Work item |
-| Owner | [design-spec.md](../../spec/design-spec.md) Section 6.9 (MET-011 to MET-025) and `contracts/agent-push.md` (K8) |
+| Owner | [design-spec.md](../../spec/design-spec.md) Section 6.9 (MET-011 to MET-025) and `contracts/daemon-push.md` (K8) |
 | Serves | Work plan Section 4, tier 0 (finish the device manager) |
 | Version | 1.0 |
 | Date | 2026-11-17 |
@@ -37,9 +37,9 @@ These names are not the program and keep the word "agent":
 
 | Task | Content | State | Commits |
 | --- | --- | --- | --- |
-| T1 | The crates `anima-agent` and `agent-core` become `anima-daemon` and `daemon-core`, with their folders | Not started | |
-| T2 | K8 (`contracts/daemon-push.md`), K1, K2 and K3: the paths, the member, the GraphQL names, the table and the column, with a new migration | Not started | |
-| T3 | The hub, the command `anima daemon`, the MCP tools and the client | Not started | |
-| T4 | The installer: the new unit and label, the new paths, and removal of the old unit | Not started | |
-| T5 | The VPN role in `deploy/headscale/` | Not started | |
-| T6 | The documents, and the entry in [need-human-testing.md](../../need-human-testing.md) for the machines that have the old program | Not started | |
+| T1 | The crates `anima-agent` and `agent-core` become `anima-daemon` and `daemon-core`, with their folders | Done. `crates/daemon` and `crates/daemon-core`. | The merge of the branch `rename/anima-daemon` |
+| T2 | K8 (`contracts/daemon-push.md`), K1, K2 and K3: the paths, the member, the GraphQL names, the table and the column, with a new migration | Done. `contracts/daemon-push.md`; K1 `enrolDaemon`, `revokeDaemonToken`, `DaemonEnrolment`, `Device.daemonVersion`, `MetricsSource.DAEMON`, `VpnRole.DAEMON`; migration `0717_metrics_daemon_rename.sql`. | The merge of the branch `rename/anima-daemon` |
+| T3 | The hub, the command `anima daemon`, the MCP tools and the client | Done. `anima daemon status`, `enrol`, `revoke`; the client panel "Install daemon". | The merge of the branch `rename/anima-daemon` |
+| T4 | The installer: the new unit and label, the new paths, and removal of the old unit | Done for the unit: `anima-daemon install` stops and deletes the old unit. The old program file and its folder stay until the operator deletes them ([need-human-testing.md](../../need-human-testing.md), HT-018). | The merge of the branch `rename/anima-daemon` |
+| T5 | The VPN role in `deploy/headscale/` | Done in the repository. The live policy waits for the operator (HT-019, VPS-005). | The merge of the branch `rename/anima-daemon` |
+| T6 | The documents, and the entry in [need-human-testing.md](../../need-human-testing.md) for the machines that have the old program | Done. The records in `docs/plans/phase-3/`, `docs/deferred.md`, the work items and `docs/archive/` keep the old name, because they are history. | The merge of the branch `rename/anima-daemon` |

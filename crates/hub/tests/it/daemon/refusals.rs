@@ -1,0 +1,200 @@
+//! K8 Sections 3 and 6, CR-15, CR-21, NET-002: every enrol refusal and every token refusal on
+//! renew reaches the event log as a warning with its code and address, never the code or token;
+//! one with no valid credential at most once a minute per address, one with a valid credential
+//! at most once a minute per device. An address outside the permitted networks reaches neither
+//! route.
+
+use axum::http::StatusCode;
+use chrono::TimeDelta;
+use serde_json::json;
+use sqlx::PgPool;
+
+use super::{
+    batches::cpu_batch,
+    harness::{
+        DOCKER_HOST, Daemons, NEIGHBOUR, OUTSIDE, PERMITTED, PVE_01, metrics_events, pushing_now,
+        refusal,
+    },
+};
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn cr_15_refusals_without_a_credential_are_written_once_a_minute_per_address(pool: PgPool) {
+    let daemons = Daemons::new(&pool).await;
+    let guess = json!({ "code": format!("anima_enrol_{}", "A".repeat(22)) }).to_string();
+    let junk = "Bearer anima_daemon_nothing";
+    for _ in 0..3 {
+        daemons.enrol_body(guess.clone(), PERMITTED).await;
+        daemons.renew_raw(Some(junk), "{}", PERMITTED).await;
+    }
+    daemons.enrol_body("{}", NEIGHBOUR).await;
+    assert_eq!(
+        metrics_events(&pool, "warning").await,
+        [
+            "Refused a daemon enrolment from 100.64.0.7: ENROLMENT_REFUSED.",
+            "Refused a daemon enrolment from 100.64.0.8: ENROLMENT_REFUSED.",
+        ]
+    );
+
+    daemons.clock.advance(TimeDelta::minutes(1));
+    daemons.renew_raw(Some(junk), "{}", PERMITTED).await;
+    let written = metrics_events(&pool, "warning").await;
+    assert_eq!(
+        written.last().unwrap(),
+        "Refused a daemon token renewal from 100.64.0.7: TOKEN_REFUSED."
+    );
+    assert_eq!(written.len(), 3);
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn cr_21_refusals_with_a_valid_token_are_written_once_a_minute_per_device(pool: PgPool) {
+    let now = pushing_now(&pool).await;
+    let daemons = Daemons::at(&pool, now).await;
+    let token = daemons.token_for(PVE_01).await;
+    let bearer = format!("Bearer {token}");
+    // From any address and on either route: the device decides, and every answer stays.
+    for from in [PERMITTED, NEIGHBOUR, PERMITTED] {
+        let answer = daemons.renew_raw(Some(&bearer), "[]", from).await;
+        assert_eq!(answer, (StatusCode::BAD_REQUEST, refusal("MALFORMED")));
+        let answer = daemons.push_raw(Some(&bearer), "[]", from).await;
+        assert_eq!(answer, (StatusCode::BAD_REQUEST, refusal("MALFORMED")));
+    }
+    let first = (
+        Some("pve-01".to_owned()),
+        "Refused a daemon token renewal from 100.64.0.7: MALFORMED.".to_owned(),
+    );
+    assert_eq!(device_warnings(&pool).await, std::slice::from_ref(&first));
+
+    daemons.clock.advance(TimeDelta::minutes(1));
+    daemons.push_raw(Some(&bearer), "[]", NEIGHBOUR).await;
+    daemons.push_raw(Some(&bearer), "[]", NEIGHBOUR).await;
+    let next = (
+        Some("pve-01".to_owned()),
+        "Refused a daemon push from 100.64.0.8: MALFORMED.".to_owned(),
+    );
+    assert_eq!(device_warnings(&pool).await, [first, next]);
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn cr_18_cr_21_a_token_of_a_device_switched_away_cannot_flood_the_event_log(pool: PgPool) {
+    let now = pushing_now(&pool).await;
+    let daemons = Daemons::at(&pool, now).await;
+    let token = daemons.token_for(PVE_01).await;
+    let switch =
+        "mutation($id: ID!) { updateDevice(id: $id, input: { metricsSource: SSH }) { id } }";
+    daemons.operate(switch, json!({ "id": PVE_01 })).await;
+    for _ in 0..100 {
+        let answer = daemons.push(&token, &cpu_batch(PVE_01, now, 5.0)).await;
+        assert_eq!(answer, (StatusCode::UNAUTHORIZED, refusal("TOKEN_REFUSED")));
+    }
+    assert_eq!(device_warnings(&pool).await.len(), 1);
+    daemons.clock.advance(TimeDelta::minutes(1));
+    daemons.push(&token, &cpu_batch(PVE_01, now, 5.0)).await;
+    assert_eq!(device_warnings(&pool).await.len(), 2);
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn cr_21_one_devices_refusals_do_not_hold_back_anothers(pool: PgPool) {
+    let now = pushing_now(&pool).await;
+    let daemons = Daemons::at(&pool, now).await;
+    let pve = format!("Bearer {}", daemons.token_for(PVE_01).await);
+    let docker = format!("Bearer {}", daemons.token_for(DOCKER_HOST).await);
+    for _ in 0..20 {
+        daemons.push_raw(Some(&pve), "[]", PERMITTED).await;
+    }
+    daemons.push_raw(Some(&docker), "[]", PERMITTED).await;
+    daemons.renew_raw(Some(&docker), "[]", PERMITTED).await;
+    let names: Vec<Option<String>> = device_warnings(&pool)
+        .await
+        .into_iter()
+        .map(|(name, _)| name)
+        .collect();
+    assert_eq!(
+        names,
+        [Some("pve-01".to_owned()), Some("docker-host".to_owned())]
+    );
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn cr_18_a_token_of_a_device_switched_away_cannot_renew(pool: PgPool) {
+    let now = pushing_now(&pool).await;
+    let daemons = Daemons::at(&pool, now).await;
+    let token = daemons.token_for(PVE_01).await;
+    let switch =
+        "mutation($id: ID!) { updateDevice(id: $id, input: { metricsSource: SSH }) { id } }";
+    daemons.operate(switch, json!({ "id": PVE_01 })).await;
+    let renewed = daemons.renew(&token).await;
+    assert_eq!(
+        renewed,
+        (StatusCode::UNAUTHORIZED, refusal("TOKEN_REFUSED"))
+    );
+    let next: Option<Vec<u8>> = sqlx::query_scalar(
+        "SELECT next_token_sha256 FROM metrics.daemons WHERE device_id = $1::uuid",
+    )
+    .bind(PVE_01)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(next, None, "no renewed token was made");
+    let refused = (
+        Some("pve-01".to_owned()),
+        "Refused a daemon token renewal from 100.64.0.7: TOKEN_REFUSED.".to_owned(),
+    );
+    assert_eq!(device_warnings(&pool).await, [refused]);
+}
+
+/// The device name and message of each metrics warning that names a device, oldest first.
+async fn device_warnings(pool: &PgPool) -> Vec<(Option<String>, String)> {
+    sqlx::query_as(
+        "SELECT device_name, message FROM events.event_log \
+         WHERE source = 'metrics' AND severity = 'warning' AND device_id IS NOT NULL \
+         ORDER BY at, id",
+    )
+    .fetch_all(pool)
+    .await
+    .unwrap()
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn net_002_an_address_outside_the_permitted_networks_reaches_no_daemon_route(pool: PgPool) {
+    let daemons = Daemons::new(&pool).await;
+    let token = daemons.token_for(PVE_01).await;
+    let code = daemons.code_for(DOCKER_HOST).await;
+    let body = json!({ "code": code }).to_string();
+    assert_eq!(
+        daemons.enrol_body(body, OUTSIDE).await.0,
+        StatusCode::FORBIDDEN
+    );
+    let bearer = format!("Bearer {token}");
+    let renewal = daemons.renew_raw(Some(&bearer), "{}", OUTSIDE).await;
+    assert_eq!(renewal.0, StatusCode::FORBIDDEN);
+    // Neither request reached the route: the code and the token are untouched.
+    assert_eq!(daemons.enrol(&code).await.0, StatusCode::OK);
+    assert_eq!(daemons.renew(&token).await.0, StatusCode::OK);
+    let refusals: Vec<String> =
+        sqlx::query_scalar("SELECT message FROM events.event_log WHERE source = 'access'")
+            .fetch_all(&pool)
+            .await
+            .unwrap();
+    assert!(
+        refusals.iter().any(|message| message.contains(OUTSIDE)),
+        "{refusals:?}"
+    );
+}

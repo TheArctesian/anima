@@ -201,9 +201,9 @@ pub(super) fn hash_of(presented: &str) -> Option<TokenHash> {
 /// The hash and the spelling of a presented token, or `None` if the text can be neither a
 /// token nor an API key. A key is exactly `anima_` and 43 characters, so a plain token that
 /// happens to start with `anima_` is still read as plain; both hash the 32 decoded bytes. An
-/// agent token or an enrolment code is neither (R-092 D-1).
+/// daemon token or an enrolment code is neither (R-092 D-1).
 pub(super) fn read_presented(presented: &str) -> Option<(TokenHash, Spelling)> {
-    if is_agent_secret(presented) {
+    if is_daemon_secret(presented) {
         return None;
     }
     match presented.strip_prefix(KEY_PREFIX) {
@@ -212,24 +212,30 @@ pub(super) fn read_presented(presented: &str) -> Option<(TokenHash, Spelling)> {
     }
 }
 
-/// An agent token: this prefix and 43 base64url characters (32 bytes, K8, MET-013).
-const AGENT_TOKEN_PREFIX: &str = "anima_agent_";
-const AGENT_TOKEN_CHARS: usize = 43;
+/// A daemon token: this prefix and 43 base64url characters (32 bytes, K8, MET-013).
+const DAEMON_TOKEN_PREFIX: &str = "anima_daemon_";
+const DAEMON_TOKEN_CHARS: usize = 43;
+
+/// The prefix of a token of the program before R-126. Such a token is not a credential now,
+/// but it is still a secret of a machine: the guard refuses it by spelling and it never
+/// reaches a lookup or a log as an API key.
+const OLD_TOKEN_PREFIX: &str = "anima_agent_";
 
 /// An enrolment code: this prefix and 22 base64url characters (16 bytes, K8, MET-012).
 const ENROLMENT_CODE_PREFIX: &str = "anima_enrol_";
 const ENROLMENT_CODE_CHARS: usize = 22;
 
-/// Whether `presented` is spelled exactly as one of the metrics agent's secrets: an agent token
+/// Whether `presented` is spelled exactly as one of the metrics daemon's secrets: a daemon token
 /// or an enrolment code, its prefix and then exactly its K8 number of base64url characters.
 /// These live in `metrics`, never in `access.api_tokens`, so the guard refuses them by spelling
 /// on every transport before any lookup (R-092 D-1). An API key is `anima_` and 43 characters,
-/// so one whose text begins `agent_` or `enrol_` is still a key.
+/// so one whose text begins `daemon_` or `enrol_` is still a key.
 ///
-/// The length rule of [`read_presented`] also refuses both shapes today (55 and 34 characters
+/// The length rule of [`read_presented`] also refuses both shapes today (56 and 34 characters
 /// are neither a token nor a key); this rule keeps holding if token lengths change.
-pub(super) fn is_agent_secret(presented: &str) -> bool {
-    spelled(presented, AGENT_TOKEN_PREFIX, AGENT_TOKEN_CHARS)
+pub(super) fn is_daemon_secret(presented: &str) -> bool {
+    spelled(presented, DAEMON_TOKEN_PREFIX, DAEMON_TOKEN_CHARS)
+        || spelled(presented, OLD_TOKEN_PREFIX, DAEMON_TOKEN_CHARS)
         || spelled(presented, ENROLMENT_CODE_PREFIX, ENROLMENT_CODE_CHARS)
 }
 

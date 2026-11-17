@@ -186,7 +186,7 @@ One attempt exists at a time, in hub memory only (`Attempts`: one `Arc<Mutex<Opt
 **What each attacker can do.**
 
 - Learns the attempt id or `pageUrl`: nothing. No route takes the id; GraphQL needs a token.
-- Learns the ticket before the operator's browser uses it, and is on the VPN: can bind their own browser and connect the hub to an App in their own GitHub account. This is the one real exposure. Bounds: 5 minutes, one use, a URL passed only from the client process to the browser and never to an agent or a log. The operator's browser then gets the "already used" page, and the client shows an owner login that is not theirs.
+- Learns the ticket before the operator's browser uses it, and is on the VPN: can bind their own browser and connect the hub to an App in their own GitHub account. This is the one real exposure. Bounds: 5 minutes, one use, a URL passed only from the client process to the browser and never to a daemon or a log. The operator's browser then gets the "already used" page, and the client shows an owner login that is not theirs.
 - Learns S1 or S2: nothing without the cookie.
 - Cross-site, makes the operator's browser hit `/start`: the Lax cookie is sent, and the page holds the same S1 as before; the attempt is unchanged and the operator's return still exchanges.
 - Cross-site, makes the operator's browser hit `/created`: the Lax cookie is sent, the state is unknown, the request is refused (in `AT_GITHUB`) or shown the "finishing" page (once the App is made), and the attempt is unchanged (no lockout).

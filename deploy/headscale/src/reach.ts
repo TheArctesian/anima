@@ -11,7 +11,7 @@ import { allows, type Connection, type TailnetNode } from './tailnet.ts';
 export type Party =
   | { readonly kind: 'client'; readonly node: string }
   | { readonly kind: 'hub'; readonly node: string }
-  | { readonly kind: 'agent'; readonly node: string }
+  | { readonly kind: 'daemon'; readonly node: string }
   | { readonly kind: 'router'; readonly node: string; readonly site: string }
   | { readonly kind: 'lan'; readonly site: string; readonly address: string }
   | { readonly kind: 'device'; readonly node: string };
@@ -58,7 +58,7 @@ function roleOf(node: TailnetNode): Party | undefined {
     const site = tags.find((tag) => tag.startsWith('tag:site-'))?.slice('tag:site-'.length);
     return site === undefined ? undefined : { kind: 'router', node: node.name, site };
   }
-  return tags.includes('tag:agent') ? { kind: 'agent', node: node.name } : undefined;
+  return tags.includes('tag:daemon') ? { kind: 'daemon', node: node.name } : undefined;
 }
 
 /** The full table: each pair of different parties, each probed port, tcp and udp. */
@@ -113,9 +113,9 @@ export function lanToClientRows(table: readonly Reach[]): readonly Reach[] {
   return allowedRows(table).filter((row) => row.from.kind === 'lan' && row.to.kind === 'client');
 }
 
-/** Allowed rows from an agent to anything but the hub on tcp 443 (VPN-012, MET-020). */
-export function agentOverreachRows(table: readonly Reach[]): readonly Reach[] {
-  return allowedRows(table).filter((row) => row.from.kind === 'agent' && !(row.to.kind === 'hub' && row.proto === 'tcp' && row.port === 443));
+/** Allowed rows from a daemon to anything but the hub on tcp 443 (VPN-012, MET-020). */
+export function daemonOverreachRows(table: readonly Reach[]): readonly Reach[] {
+  return allowedRows(table).filter((row) => row.from.kind === 'daemon' && !(row.to.kind === 'hub' && row.proto === 'tcp' && row.port === 443));
 }
 
 /** Allowed rows to a device /32 from anything but the hub, or on a protocol but tcp (VPN-012, R-061). */

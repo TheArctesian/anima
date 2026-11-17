@@ -52,7 +52,7 @@ The plan has two tiers:
 
 | Idea | Source | Tier |
 | --- | --- | --- |
-| A status node that opens no port and reads its peers | Headplane agent | A |
+| A status node that opens no port and reads its peers | Headplane daemon | A |
 | Each subnet route is advertised, approved or serving | unraid-headscale-admin, Ouroboros, headscale-admin | A (serving), B (advertised) |
 | Key expiry: tagged nodes never expire, client countdown | headscale-admin, HeadControl | A |
 | Compare the tailnet with the expected list of nodes | Headscale Manager, vpn.md Section 11 | A (tooling, not the hub) |
@@ -430,7 +430,7 @@ The broker returns a pre-auth key once and never logs it. The hub redaction alre
 | Enrolment | `apps/client/src/lib/vpn/enrol/` | A modal on `$lib/forms/modal/Modal.svelte`. For a Linux router it shows the key once, with the vpn.md Section 5 steps: put the key in a file that only root can read, then `tailscale up --login-server https://hs.anima.ing --auth-key=file:/run/anima-preauth --advertise-routes=<subnet> …`, then delete the file. The key is never in a command line. Then the modal waits on `vpnChanged` for the node and asks "Approve route <subnet>?". |
 | Client computers | same modal | A Mac uses the interactive login (vpn.md Section 6B): the operator types the auth ID from the new machine's screen into the app, and the hub calls `registerVpnNode`. Then Add device opens with the address filled in (add-this-machine). |
 | Renewal | `$lib/vpn/keys/` | "Renew" on a client key. A client with a key that has expired is off the VPN, so it cannot approve itself: the operator uses the app on another client (vpn.md Section 7, the expiries are staggered). The app says this. |
-| Agent | WP-54 | After the node joins, the same modal can show the `anima-agent` enrolment code (MET-012). |
+| Daemon | WP-54 | After the node joins, the same modal can show the `anima-daemon` enrolment code (MET-012). |
 
 ### 5.4 Tier B tasks
 

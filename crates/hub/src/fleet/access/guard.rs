@@ -221,7 +221,7 @@ fn refusal(identity: Option<&Identity>, document: &ExecutableDocument) -> Option
 
 /// The root fields an API key may never select, in any operation (D-23, WP-43 A-6): managing
 /// keys, signing a browser in or out, sessions, files and device credentials. `logout` would
-/// delete the key, which is managing it. `enrolAgent` and `revokeAgentToken` are refused by
+/// delete the key, which is managing it. `enrolDaemon` and `revokeDaemonToken` are refused by
 /// name before their resolvers exist (R-084, CR-8). A key may not pin a device identity, or
 /// move or delete a device: moving a device and accepting the new host key would send its
 /// stored password to another host (R-100). Enrolling or revoking a builder, and publishing or
@@ -254,8 +254,8 @@ pub(super) const API_KEY_REFUSED_ROOTS: [&str; 46] = [
     "clearRdpCredential",
     "setVncCredential",
     "clearVncCredential",
-    "enrolAgent",
-    "revokeAgentToken",
+    "enrolDaemon",
+    "revokeDaemonToken",
     "acceptHostKey",
     "acceptServerCertificate",
     "acceptWebCertificate",

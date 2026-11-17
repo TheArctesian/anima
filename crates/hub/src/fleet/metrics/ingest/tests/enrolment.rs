@@ -1,12 +1,12 @@
 //! MET-012, MET-013, K8 Section 3: the device row orders an enrolment against a revoke and
 //! against a second code. A revoke that commits after the code was redeemed stops the enrolment;
 //! one that starts while the enrolment is storing its token waits, then deletes the token; a
-//! second code made while the first is being stored waits, then voids it. A stored name the agent
+//! second code made while the first is being stored waits, then voids it. A stored name the daemon
 //! would not keep enrols nothing.
 
 use std::time::Duration;
 
-use agent_core::wire::{AgentToken, EnrolmentCode};
+use daemon_core::wire::{DaemonToken, EnrolmentCode};
 use sqlx::PgPool;
 use tokio::task::JoinHandle;
 
@@ -43,8 +43,8 @@ pub(super) async fn waits_for_locks<T>(pool: &PgPool, task: &JoinHandle<T>, coun
     panic!("the task neither finished nor waited for a lock");
 }
 
-async fn agents(pool: &PgPool) -> i64 {
-    sqlx::query_scalar("SELECT count(*) FROM metrics.agents")
+async fn daemons(pool: &PgPool) -> i64 {
+    sqlx::query_scalar("SELECT count(*) FROM metrics.daemons")
         .fetch_one(pool)
         .await
         .unwrap()
@@ -67,11 +67,11 @@ async fn met_013_a_revoke_after_the_code_was_redeemed_stops_the_enrolment(pool: 
     assert!(!revoke(&mut revoking, pve()).await.unwrap());
     revoking.commit().await.unwrap();
 
-    let token = AgentToken::from_random([7; 32]);
-    let agent = AgentToken::parse(token.expose()).unwrap();
+    let token = DaemonToken::from_random([7; 32]);
+    let daemon = DaemonToken::parse(token.expose()).unwrap();
     let enrolled = enrol(&pool, &Bus::new(4), (redeemed, token), now).await;
     assert!(enrolled.unwrap().is_none());
-    assert_eq!(authenticate(&pool, &agent, now).await.unwrap(), None);
+    assert_eq!(authenticate(&pool, &daemon, now).await.unwrap(), None);
     let source: String =
         sqlx::query_scalar("SELECT metrics_source FROM devices.devices WHERE id = $1")
             .bind(pve())
@@ -94,16 +94,16 @@ async fn met_013_a_revoke_waits_for_an_enrolment_in_flight_then_deletes_its_toke
     make_code(&mut conn, pve(), code, now).await.unwrap();
     drop(conn);
     let redeemed = redeem(&pool, &presented, now).await.unwrap().unwrap();
-    // Holds the agent row, so the enrolment stops after it took the device row.
+    // Holds the daemon row, so the enrolment stops after it took the device row.
     let mut holding = pool.begin().await.unwrap();
-    sqlx::query("SELECT 1 FROM metrics.agents WHERE device_id = $1 FOR UPDATE")
+    sqlx::query("SELECT 1 FROM metrics.daemons WHERE device_id = $1 FOR UPDATE")
         .bind(pve())
         .execute(&mut *holding)
         .await
         .unwrap();
 
-    let token = AgentToken::from_random([7; 32]);
-    let agent = AgentToken::parse(token.expose()).unwrap();
+    let token = DaemonToken::from_random([7; 32]);
+    let daemon = DaemonToken::parse(token.expose()).unwrap();
     let enrolling = tokio::spawn({
         let pool = pool.clone();
         async move {
@@ -114,7 +114,7 @@ async fn met_013_a_revoke_waits_for_an_enrolment_in_flight_then_deletes_its_toke
     });
     assert!(
         waits_for_locks(&pool, &enrolling, 1).await,
-        "the enrolment did not reach the agent row"
+        "the enrolment did not reach the daemon row"
     );
     let revoking = tokio::spawn({
         let pool = pool.clone();
@@ -135,8 +135,8 @@ async fn met_013_a_revoke_waits_for_an_enrolment_in_flight_then_deletes_its_toke
         revoking.await.unwrap(),
         "the revoke missed the enrolled token"
     );
-    assert_eq!(agents(&pool).await, 0);
-    assert_eq!(authenticate(&pool, &agent, now).await.unwrap(), None);
+    assert_eq!(daemons(&pool).await, 0);
+    assert_eq!(authenticate(&pool, &daemon, now).await.unwrap(), None);
 }
 
 #[sqlx::test(
@@ -171,13 +171,13 @@ async fn met_012_a_second_code_made_while_the_first_is_stored_waits_then_voids_i
     assert!(redeem(&pool, &second_text, now).await.unwrap().is_some());
 }
 
-/// T8a N2: a stored name older than the device rule, which the agent would throw away, stores
+/// T8a N2: a stored name older than the device rule, which the daemon would throw away, stores
 /// no token and leaves the metrics source as it was.
 #[sqlx::test(
     migrations = "./migrations",
     fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
 )]
-async fn met_012_a_stored_name_the_agent_would_not_keep_enrols_nothing(pool: PgPool) {
+async fn met_012_a_stored_name_the_daemon_would_not_keep_enrols_nothing(pool: PgPool) {
     let now = database_now(&pool).await;
     for (seed, name) in [(5, "x".repeat(65)), (6, "pve\u{1b}[2K-01".to_owned())] {
         sqlx::query("UPDATE devices.devices SET name = $2 WHERE id = $1")
@@ -192,10 +192,10 @@ async fn met_012_a_stored_name_the_agent_would_not_keep_enrols_nothing(pool: PgP
         make_code(&mut conn, pve(), code, now).await.unwrap();
         drop(conn);
         let redeemed = redeem(&pool, &presented, now).await.unwrap().unwrap();
-        let token = AgentToken::from_random([seed; 32]);
+        let token = DaemonToken::from_random([seed; 32]);
         let enrolled = enrol(&pool, &Bus::new(4), (redeemed, token), now).await;
         assert!(enrolled.unwrap().is_none(), "{name:?}");
-        assert_eq!(agents(&pool).await, 0, "{name:?}");
+        assert_eq!(daemons(&pool).await, 0, "{name:?}");
         let source: String =
             sqlx::query_scalar("SELECT metrics_source FROM devices.devices WHERE id = $1")
                 .bind(pve())

@@ -43,13 +43,13 @@ async fn mcp_009_devices_search_returns_names_and_ids_as_structured_content() {
 }
 
 #[tokio::test]
-async fn r_122_device_get_in_detail_gives_the_agent_version() {
+async fn r_122_device_get_in_detail_gives_the_daemon_version() {
     let hub = hub().await;
     let devices = fixture_devices();
     let id = devices[0]["id"].as_str().expect("an id").to_owned();
     let mut device = detail(&devices[0]);
     device["data"]["device"]["metricsSource"] = json!("AGENT");
-    device["data"]["device"]["agentVersion"] = json!("0.3.1");
+    device["data"]["device"]["daemonVersion"] = json!("0.3.1");
     let web = data(json!({ "device": { "id": id, "name": devices[0]["name"],
         "webInterfaces": [], "webInterfaceSuggestions": [] } }));
     hub.answer("DeviceGet", device.clone())
@@ -63,7 +63,7 @@ async fn r_122_device_get_in_detail_gives_the_agent_version() {
         .await;
     assert_eq!(answer["isError"], false, "{answer}");
     assert_eq!(
-        answer["structuredContent"]["device"]["agentVersion"],
+        answer["structuredContent"]["device"]["daemonVersion"],
         "0.3.1"
     );
     let short = session
@@ -71,7 +71,7 @@ async fn r_122_device_get_in_detail_gives_the_agent_version() {
         .await;
     assert!(
         short["structuredContent"]["device"]
-            .get("agentVersion")
+            .get("daemonVersion")
             .is_none(),
         "short by default: {short}"
     );

@@ -23,7 +23,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.1 | Finish the device manager | Operator: the acceptance run (WP-53); the Linux release and the check that an installed application updates (R7). Agent: DMN-1, which is claimed |
 | 4.16 | One-click install | Operator: the live checks (need-human-testing.md, "One-click") |
 | 4.17 | The hosted mode and the shared pool | Operator: approval of HMD-001 to HMD-036, and HM-D4 |
-| 4.18 | Update the agent and the hub | Operator: approval of ROL-001 to ROL-052 (only R-122 is approved), and a Linux release for the tasks that need one. Agent: nothing until a ruling names a task |
+| 4.18 | Update the daemon and the hub | Operator: approval of ROL-001 to ROL-052 (only R-122 is approved), and a Linux release for the tasks that need one. Agent: nothing until a ruling names a task |
 | 4.2 | Restore a backup and move the coordinator | Operator: approval of FND-006. No task breakdown yet |
 | 4.3 | Decisions and approvals for the foundation | Operator: each decision and approval in the row |
 | 4.4 | The engine (E0) | Agent: E0-4 T9 (extensions-plan.md Section 5.1). Operator: E0-5 T0, E0-6 T0, the contract ruling for E0-7, and OD-E18 |
@@ -40,7 +40,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | --- | --- | --- |
 | OD-W22 | The watchdog (watchdog.md): approve its direction, and give it a tier. Its own decisions are OD-WDG-1 to OD-WDG-13. | [plan/decisions.md](plan/decisions.md) |
 | OD-C1 | Hardware of each compute node | [plans/compute-plan.md](plans/compute-plan.md) |
-| OD-C2 | One agent binary or two | [plans/compute-plan.md](plans/compute-plan.md) |
+| OD-C2 | One daemon binary or two | [plans/compute-plan.md](plans/compute-plan.md) |
 | OD-C3 | Conformance tolerances | [plans/compute-plan.md](plans/compute-plan.md) |
 | OD-C4 | Where the block adapters live | [plans/compute-plan.md](plans/compute-plan.md) |
 | OD-C5 | Router location | [plans/compute-plan.md](plans/compute-plan.md) |
@@ -55,19 +55,19 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-E7 | Garmin access | [plans/extensions-plan.md](plans/extensions-plan.md) |
 | OD-E8 | Obsidian two-way sync | [plans/extensions-plan.md](plans/extensions-plan.md) |
 | OD-E11 | Path for a request to a local upstream (MGW-010). A program such as Claude Code has one base address, so it cannot select the path itself. | [plans/extensions-plan.md](plans/extensions-plan.md) |
-| OD-ROL-1 | Where an agent gets its files: from its hub, or from the release host | [proposals/agent-and-hub-update.md](proposals/agent-and-hub-update.md) |
-| OD-ROL-2 | The signing key: the updater key of UPD-012 for each program, or a second key for the agent and the hub | [proposals/agent-and-hub-update.md](proposals/agent-and-hub-update.md) |
-| OD-ROL-3 | The form of the published hub: an image file on the release host, an image in a registry, or a build from source on the machine of the hub | [proposals/agent-and-hub-update.md](proposals/agent-and-hub-update.md) |
-| OD-ROL-4 | The order of the build | [proposals/agent-and-hub-update.md](proposals/agent-and-hub-update.md) |
-| OD-ROL-5 | The values and the default of the automatic update | [proposals/agent-and-hub-update.md](proposals/agent-and-hub-update.md) |
-| OD-ROL-6 | The numbers: a quarter for each step, 10 minutes between steps, 1 hour after the first machine of an automatic rollout, 3 minutes and 5 minutes for the checks | [proposals/agent-and-hub-update.md](proposals/agent-and-hub-update.md) |
-| OD-ROL-7 | Who selects the first machine | [proposals/agent-and-hub-update.md](proposals/agent-and-hub-update.md) |
-| OD-ROL-9 | Can an API key or an AI agent start, stop or roll back a rollout? | [proposals/agent-and-hub-update.md](proposals/agent-and-hub-update.md) |
-| OD-ROL-10 | Does a machine that has "Takes work" off (USE-004) get updates? | [proposals/agent-and-hub-update.md](proposals/agent-and-hub-update.md) |
-| OD-ROL-11 | What a rollout does when it stops: only stop, or also roll back each updated machine | [proposals/agent-and-hub-update.md](proposals/agent-and-hub-update.md) |
-| OD-ROL-12 | A release whose database change the previous hub cannot read | [proposals/agent-and-hub-update.md](proposals/agent-and-hub-update.md) |
-| OD-ROL-13 | On a computer that has the desktop application, who updates the agent: the rollout, or the application when it updates itself | [proposals/agent-and-hub-update.md](proposals/agent-and-hub-update.md) |
-| OD-ROL-14 | Is the desktop application part of a rollout? | [proposals/agent-and-hub-update.md](proposals/agent-and-hub-update.md) |
+| OD-ROL-1 | Where a daemon gets its files: from its hub, or from the release host | [proposals/daemon-and-hub-update.md](proposals/daemon-and-hub-update.md) |
+| OD-ROL-2 | The signing key: the updater key of UPD-012 for each program, or a second key for the daemon and the hub | [proposals/daemon-and-hub-update.md](proposals/daemon-and-hub-update.md) |
+| OD-ROL-3 | The form of the published hub: an image file on the release host, an image in a registry, or a build from source on the machine of the hub | [proposals/daemon-and-hub-update.md](proposals/daemon-and-hub-update.md) |
+| OD-ROL-4 | The order of the build | [proposals/daemon-and-hub-update.md](proposals/daemon-and-hub-update.md) |
+| OD-ROL-5 | The values and the default of the automatic update | [proposals/daemon-and-hub-update.md](proposals/daemon-and-hub-update.md) |
+| OD-ROL-6 | The numbers: a quarter for each step, 10 minutes between steps, 1 hour after the first machine of an automatic rollout, 3 minutes and 5 minutes for the checks | [proposals/daemon-and-hub-update.md](proposals/daemon-and-hub-update.md) |
+| OD-ROL-7 | Who selects the first machine | [proposals/daemon-and-hub-update.md](proposals/daemon-and-hub-update.md) |
+| OD-ROL-9 | Can an API key or an AI agent start, stop or roll back a rollout? | [proposals/daemon-and-hub-update.md](proposals/daemon-and-hub-update.md) |
+| OD-ROL-10 | Does a machine that has "Takes work" off (USE-004) get updates? | [proposals/daemon-and-hub-update.md](proposals/daemon-and-hub-update.md) |
+| OD-ROL-11 | What a rollout does when it stops: only stop, or also roll back each updated machine | [proposals/daemon-and-hub-update.md](proposals/daemon-and-hub-update.md) |
+| OD-ROL-12 | A release whose database change the previous hub cannot read | [proposals/daemon-and-hub-update.md](proposals/daemon-and-hub-update.md) |
+| OD-ROL-13 | On a computer that has the desktop application, who updates the daemon: the rollout, or the application when it updates itself | [proposals/daemon-and-hub-update.md](proposals/daemon-and-hub-update.md) |
+| OD-ROL-14 | Is the desktop application part of a rollout? | [proposals/daemon-and-hub-update.md](proposals/daemon-and-hub-update.md) |
 | HM-D8 | What does a hub that sleeps cost, and how fast does it start? | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
 | HM-D2 | Where does the usage line sit? | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
 | HM-D9 | Which sign-in methods does AuthKit show? | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
@@ -75,7 +75,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | HM-D4 | Is the second factor (HMD-006) required for each account? | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
 | HM-D5 | In which region is the first pool host? | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
 | HM-D7 | Who reviews the security of the pool and of the grant path before the launch? | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
-| OD-WDG-1 | The form of the watchdog: a function of `anima-agent`, a container, or a second program | [proposals/watchdog.md](proposals/watchdog.md) |
+| OD-WDG-1 | The form of the watchdog: a function of `anima-daemon`, a container, or a second program | [proposals/watchdog.md](proposals/watchdog.md) |
 | OD-WDG-2 | How the second unit of WDG-040 gets the right to restart on a Linux system installation: it runs as root with a strict sandbox, or it runs as its own user with… | [proposals/watchdog.md](proposals/watchdog.md) |
 | OD-WDG-3 | A process with no supervisor | [proposals/watchdog.md](proposals/watchdog.md) |
 | OD-WDG-4 | Stage 1 first (watches made at the machine), or wait for the work route and build stage 2 only | [proposals/watchdog.md](proposals/watchdog.md) |
@@ -114,13 +114,13 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [plans/ui-redesign-direction.md](plans/ui-redesign-direction.md) | Plan: direction of the redesign | Not checked |
 | [plans/ui-redesign-plan.md](plans/ui-redesign-plan.md) | Plan | Not checked |
 | [proposals/add-this-machine.md](proposals/add-this-machine.md) | Proposal | Draft. Build state not checked |
-| [proposals/agent-and-hub-update.md](proposals/agent-and-hub-update.md) | Proposal, with a task table | Direction decided |
 | [proposals/agent-runs.md](proposals/agent-runs.md) | Proposal | Draft |
 | [proposals/bots.md](proposals/bots.md) | Proposal | Draft |
 | [proposals/bulk-data-placement.md](proposals/bulk-data-placement.md) | Proposal | Direction decided |
 | [proposals/cloud-machines.md](proposals/cloud-machines.md) | Proposal | Draft |
 | [proposals/coordinator-standby.md](proposals/coordinator-standby.md) | Proposal | Direction decided |
 | [proposals/cve-watch-and-network-awareness.md](proposals/cve-watch-and-network-awareness.md) | Proposal | Draft |
+| [proposals/daemon-and-hub-update.md](proposals/daemon-and-hub-update.md) | Proposal, with a task table | Direction decided |
 | [proposals/first-run-setup.md](proposals/first-run-setup.md) | Proposal | Draft. Build state not checked |
 | [proposals/hosted-applications.md](proposals/hosted-applications.md) | Proposal | Draft |
 | [proposals/hosted-mode.md](proposals/hosted-mode.md) | Proposal | Direction decided |
@@ -135,15 +135,15 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/ssh-terminal.md](proposals/ssh-terminal.md) | Proposal | Draft. Build state not checked |
 | [proposals/watchdog.md](proposals/watchdog.md) | Proposal, with a task table | Draft |
 
-## 4. Checks that only the operator can do (17)
+## 4. Checks that only the operator can do (19)
 
 | Check | What |
 | --- | --- |
 | HT-001 | `anima snapshot` against GitHub |
-| HT-002 | the tool inventory from an agent to the command line |
+| HT-002 | the tool inventory from a daemon to the command line |
 | HT-003 | the tool inventory in an MCP client |
 | HT-004 | no window of Apple on a Mac without the developer tools |
-| HT-005 | the tool inventory of an agent that runs as a system unit |
+| HT-005 | the tool inventory of a daemon that runs as a system unit |
 | HT-006 | the probes of `claude` and `codex` leave the account alone |
 | HT-007 | the pinned Rust version on the Linux computer |
 | HT-008 | a macOS release build with the pinned Rust version |
@@ -156,5 +156,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | HT-015 | the Work, Code and History tabs of a project in the client |
 | HT-016 | a release build on the Linux builder puts the bundle in its own clone |
 | HT-017 | "This machine" with the Anima VPN and NetBird together |
+| HT-018 | each machine with the old program gets `anima-daemon` and enrols again |
+| HT-019 | the VPN role `daemon` on the VPS |
 
 <!-- end of the generated queue -->

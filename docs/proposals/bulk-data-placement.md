@@ -70,8 +70,8 @@ have free space, but different amounts, and some are not always on.
 
 ## Open points
 
-- A store machine must receive and send pieces. That is new work for `anima-agent`. OD-W10 is
-  decided ([jobs.md](jobs.md)): a machine with the agent takes work by default, so it is a store
+- A store machine must receive and send pieces. That is new work for `anima-daemon`. OD-W10 is
+  decided ([jobs.md](jobs.md)): a machine with the daemon takes work by default, so it is a store
   machine by default, inside its storage limit (STO-005). "Store a piece" and "send a piece" must
   be in the fixed list of work types (USE-006).
 - A copy outside all sites of the operator (object storage, for example R2) is optional. It is a

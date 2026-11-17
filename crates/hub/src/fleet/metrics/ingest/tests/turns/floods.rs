@@ -1,26 +1,26 @@
 //! MET-017, K8 Section 6: many requests at once. One node's requests beyond two wait for no
-//! lookup, so its junk keeps no agent out; a request waits in order for a database turn; and a
+//! lookup, so its junk keeps no daemon out; a request waits in order for a database turn; and a
 //! body that never ends holds no database turn.
 
 use std::time::Duration;
 
-use agent_core::wire::{AgentToken, EnrolmentCode};
 use axum::{
     body::{Body, Bytes},
     http::StatusCode,
 };
 use chrono::TimeDelta;
+use daemon_core::wire::{DaemonToken, EnrolmentCode};
 use serde_json::json;
 use sqlx::PgPool;
 
 use super::{
-    AGENT_ROW, PATIENT, SHORT, address, at_once, batch, device, hold_row, hub_pool, post,
+    DAEMON_ROW, PATIENT, SHORT, address, at_once, batch, device, hold_row, hub_pool, post,
     renewed_pve, router, router_within, send, spawn_push, unavailable, within,
 };
 use crate::fleet::metrics::ingest::{
     routes::Deadlines,
     tests::{database_now, enrolled, enrolled_pve, enrolment::waits_for_locks, pve},
-    turns::{ADDRESS_REQUESTS, AGENT_REQUESTS},
+    turns::{ADDRESS_REQUESTS, DAEMON_REQUESTS},
 };
 
 /// T8a review probe P1, held still: while two requests of node 66 wait for the database, its
@@ -37,24 +37,24 @@ async fn met_017_a_node_whose_two_turns_are_taken_is_refused_at_once_and_others_
     let presented = renewed_pve(&pool, now).await;
     let neighbour = enrolled(&pool, device(2), now, 2).await;
     let router = router(&hub_pool(&pool).await, now);
-    let holder = hold_row(&pool, AGENT_ROW, pve()).await;
+    let holder = hold_row(&pool, DAEMON_ROW, pve()).await;
     let waiting: Vec<_> = (0..ADDRESS_REQUESTS)
         .map(|_| spawn_push(&router, address(66), &presented, batch(pve(), now)))
         .collect();
     let last = waiting.last().unwrap();
     assert!(
         waits_for_locks(&pool, last, 2).await,
-        "both wait for the agent row"
+        "both wait for the daemon row"
     );
 
-    let junk = AgentToken::from_random([100; 32]);
+    let junk = DaemonToken::from_random([100; 32]);
     let bearer = Some(junk.expose().to_owned());
-    let pushing = ("/agent/v1/push", address(66));
+    let pushing = ("/daemon/v1/push", address(66));
     let junk_push = post(router.clone(), pushing, bearer, Body::from("{}"));
     assert_eq!(at_once(junk_push).await, unavailable());
     let code = EnrolmentCode::from_random([7; 16]);
     let body = Body::from(json!({ "code": code.expose() }).to_string());
-    let enrolling = ("/agent/v1/enrol", address(66));
+    let enrolling = ("/daemon/v1/enrol", address(66));
     let junk_enrol = post(router.clone(), enrolling, None, body);
     assert_eq!(at_once(junk_enrol).await, unavailable());
     let third = send(
@@ -89,8 +89,8 @@ async fn met_017_a_request_waits_for_a_turn_while_all_are_taken(pool: PgPool) {
     let presented = renewed_pve(&pool, now).await;
     let neighbour = enrolled(&pool, device(2), now, 2).await;
     let router = router(&hub_pool(&pool).await, now);
-    let holder = hold_row(&pool, AGENT_ROW, pve()).await;
-    let held: Vec<_> = (0..AGENT_REQUESTS)
+    let holder = hold_row(&pool, DAEMON_ROW, pve()).await;
+    let held: Vec<_> = (0..DAEMON_REQUESTS)
         .map(|n| {
             spawn_push(
                 &router,
@@ -100,7 +100,7 @@ async fn met_017_a_request_waits_for_a_turn_while_all_are_taken(pool: PgPool) {
             )
         })
         .collect();
-    let count = i64::try_from(AGENT_REQUESTS).unwrap();
+    let count = i64::try_from(DAEMON_REQUESTS).unwrap();
     assert!(waits_for_locks(&pool, held.last().unwrap(), count).await);
 
     let queued = spawn_push(&router, address(7), &neighbour, batch(device(2), now));
@@ -117,13 +117,13 @@ async fn met_017_a_request_waits_for_a_turn_while_all_are_taken(pool: PgPool) {
 /// Pushes from devices 1 to 4 at addresses 30 to 33 whose bodies never end.
 fn endless_pushes(
     router: &axum::Router,
-    tokens: &[AgentToken],
+    tokens: &[DaemonToken],
 ) -> Vec<tokio::task::JoinHandle<(StatusCode, String)>> {
     tokens
         .iter()
         .enumerate()
         .map(|(n, token)| {
-            let route = ("/agent/v1/push", address(30 + u8::try_from(n).unwrap()));
+            let route = ("/daemon/v1/push", address(30 + u8::try_from(n).unwrap()));
             let bearer = Some(token.expose().to_owned());
             let never = futures_util::stream::pending::<Result<Bytes, std::io::Error>>();
             tokio::spawn(post(
@@ -136,7 +136,7 @@ fn endless_pushes(
         .collect()
 }
 
-/// T8a review probe P2: four agents whose bodies never end hold only their own device's turn,
+/// T8a review probe P2: four daemons whose bodies never end hold only their own device's turn,
 /// so a fifth is served at once, long before their body deadline.
 #[sqlx::test(
     migrations = "./migrations",
@@ -208,20 +208,20 @@ async fn met_017_refusal_events_that_wait_hold_no_request_turn(pool: PgPool) {
         .await
         .unwrap();
 
-    let junk: Vec<_> = (0..AGENT_REQUESTS)
+    let junk: Vec<_> = (0..DAEMON_REQUESTS)
         .map(|n| {
             let n = u8::try_from(n).unwrap();
             let code = EnrolmentCode::from_random([200 + n; 16]);
             let body = Body::from(json!({ "code": code.expose() }).to_string());
             tokio::spawn(post(
                 router.clone(),
-                ("/agent/v1/enrol", address(40 + n)),
+                ("/daemon/v1/enrol", address(40 + n)),
                 None,
                 body,
             ))
         })
         .collect();
-    let count = i64::try_from(AGENT_REQUESTS).unwrap();
+    let count = i64::try_from(DAEMON_REQUESTS).unwrap();
     assert!(
         waits_for_locks(&pool, junk.last().unwrap(), count).await,
         "each refusal waits to write its event"

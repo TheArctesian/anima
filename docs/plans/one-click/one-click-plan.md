@@ -75,7 +75,7 @@ vault.
 | NET-003 | spec 4.1 | The hub must not bind to a public interface. In the new mode the hub binds to loopback and the link only. |
 | DNS-001, DNS-002 | spec 4.2.1 | `hub.anima.ing` and its certificate are not used in the new mode. The link authenticates the hub by its key. |
 | VPN-003 to VPN-014, CHK-009 | spec 4.2 | They need Headscale and the LocalAPI proxy. They do not apply in the new mode. |
-| VPN-006 | spec 4.2 | A site agent is already planned for Wake-on-LAN. Item S7 extends it. |
+| VPN-006 | spec 4.2 | A site daemon is already planned for Wake-on-LAN. Item S7 extends it. |
 | VPS-005 | spec 4.2 | A relay on the VPS is a VPS change. It needs operator confirmation in chat. |
 | BLD-024 | spec 3 | A builder is bound to its VPN address. In the new mode it must be bound to its device key. |
 | Spec 1.4 | design-spec.md | Anima has one operator. Shares (S14) and team hubs (S15) need members and a permission check on each operation. Needs a spec delta. |
@@ -173,12 +173,12 @@ hub service (S4), an upgrade of the data folder between PostgreSQL versions, and
 ### 4.4 S4. The hub as a background service
 
 The hub must run when the application window is closed and must start at login. Use the
-LaunchAgent and systemd user unit pattern of the metrics agent (MET-019). The Tauri shell
+LaunchAgent and systemd user unit pattern of the metrics daemon (MET-019). The Tauri shell
 installs and removes the service.
 
 ### 4.5 S5. Access rules by device key
 
-Replace address rules with key rules in the new mode: NET-001, NET-002, BLD-024 and the agent
+Replace address rules with key rules in the new mode: NET-001, NET-002, BLD-024 and the daemon
 token path. The hub listens on loopback and the link only. This item has a security tag.
 
 ### 4.6 S6. First run
@@ -187,7 +187,7 @@ The first start shows three choices: "Sign in" (hosted), "Join a hub" and "Creat
 computer". It then makes the operator account and shows the invite. It must also give recovery
 for a lost hub key and a lost TOTP device. One DMG holds all three choices.
 
-### 4.7 S7. Site agent
+### 4.7 S7. Site daemon
 
 A hub at one site cannot reach the LAN of a different site without a subnet router. The Anima CLI
 in site mode is a link server that permits only its site subnet. It runs ping checks and
@@ -301,14 +301,14 @@ K-A, K-B, K-C (parallel)
        S3 db  ──┴─> S4 hub service ──────────────────┼─> Free mode, one site
        S2 remote display (Linux hub can ship with guacd first)
        S8 stay awake (no dependency; can ship at any time)
-   Free mode, one site ─> S7 site agent ─> S9 to S12 ─> Self-host package ─> Hosted mode
+   Free mode, one site ─> S7 site daemon ─> S9 to S12 ─> Self-host package ─> Hosted mode
    S1 link ─> S13 many hubs ─> S14 shares (permission model) ─> S15 team hub ─> Hosted team plan
 ```
 
 S13 needs only the link. It changes the client and no hub rule. S14 is the first item that ends
 the one-operator rule of spec 1.4.
 
-S8 has no dependency on the link. It is useful today for a computer that runs the metrics agent
+S8 has no dependency on the link. It is useful today for a computer that runs the metrics daemon
 or a builder.
 
 ## 7. Risks

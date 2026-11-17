@@ -184,7 +184,7 @@ fn s12_2_3_the_mac_app_holds_exactly_its_own_executable_and_the_six_programs() {
         artifact::mac_executable(&clone, &app),
         Ok(macos.join("anima-desktop"))
     );
-    fs::write(macos.join("anima-agent"), b"other").unwrap();
+    fs::write(macos.join("anima-daemon"), b"other").unwrap();
     assert_eq!(
         artifact::mac_executable(&clone, &app),
         Err(BuilderError::Bundle)

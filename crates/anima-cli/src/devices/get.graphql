@@ -14,7 +14,7 @@ query DeviceGet($id: ID!) {
     macAddress
     metricsSource
     metricsStale
-    agentVersion
+    daemonVersion
     sessionLimit
     accessWarnings
     site {

@@ -41,7 +41,7 @@ fn failing_pool() -> PgPool {
 }
 
 fn agent_token() -> String {
-    format!("anima_agent_{}", URL_SAFE_NO_PAD.encode([9_u8; 32]))
+    format!("anima_daemon_{}", URL_SAFE_NO_PAD.encode([9_u8; 32]))
 }
 
 fn enrolment_code() -> String {

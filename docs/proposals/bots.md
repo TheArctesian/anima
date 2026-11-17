@@ -34,7 +34,7 @@ Status: direction only. The proposed work package is XP-16. It is not in the tab
 - **BOT-001.** The operator must be able to make a bot in a chat. The chat writes the bot definition:
   name, job, instructions, schedule, allowed devices and allowed tools. The operator must see the
   definition and confirm it before the bot starts.
-- **BOT-002.** A bot must run on a device that the operator chooses, under the Anima agent on that
+- **BOT-002.** A bot must run on a device that the operator chooses, under the Anima daemon on that
   device. The hub keeps the definition and the history. The bot keeps running when no client is open.
 - **BOT-003.** For each reply, the bot must choose a model by a rule: a fixed model, the cheapest
   model that can do the task, or local first. It must send the request through the model gateway

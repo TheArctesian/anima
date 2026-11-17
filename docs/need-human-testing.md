@@ -26,10 +26,10 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | Entry | Subject | Needs | State |
 | --- | --- | --- | --- |
 | HT-001 | `anima snapshot` against GitHub | A GitHub repository and a second computer | Open |
-| HT-002 | The tool inventory from an agent to the command line | A hub and an agent of this build | Open |
+| HT-002 | The tool inventory from a daemon to the command line | A hub and a daemon of this build | Open |
 | HT-003 | The tool inventory in an MCP client | HT-002 | Open |
 | HT-004 | No window of Apple on a Mac without the developer tools | A Mac with no Xcode and no Command Line Tools | Open |
-| HT-005 | The tool inventory of an agent that runs as a system unit | A Linux computer | Open |
+| HT-005 | The tool inventory of a daemon that runs as a system unit | A Linux computer | Open |
 | HT-006 | The probes of `claude` and `codex` leave the account alone | A computer with the two programs | Open |
 | HT-007 | The pinned Rust version on the Linux computer | The Linux development computer | Open |
 | HT-008 | A macOS release build with the pinned Rust version | A Mac builder | Open |
@@ -42,6 +42,8 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-015 | The Work, Code and History tabs of a project in the client | A hub that has the tabs (VPS-005) | Open |
 | HT-016 | A release build on the Linux builder puts the bundle in its own clone | The Linux builder | Open |
 | HT-017 | "This machine" with the Anima VPN and NetBird together | A Mac with Tailscale and NetBird, and a second tailnet account | Open |
+| HT-018 | Each machine with the old program `anima-agent` gets `anima-daemon` and enrols again | Each machine that reports metrics, and the hub of this build | Open |
+| HT-019 | The VPN role `daemon` on the VPS | A shell on the VPS (VPS-005) | Open |
 
 ### HT-001: `anima snapshot` against GitHub
 
@@ -65,18 +67,18 @@ Also write down: whether a ruleset or push protection of GitHub refused the push
 
 Result: Open.
 
-### HT-002: the tool inventory from an agent to the command line
+### HT-002: the tool inventory from a daemon to the command line
 
-Built: `crates/agent-core/src/inventory/`, `crates/agent/src/readers/inventory.rs`, the hub
+Built: `crates/daemon-core/src/inventory/`, `crates/daemon/src/readers/inventory.rs`, the hub
 migration `0715_metrics_tools.sql`, `anima capability list` (CAP-020 to CAP-031). The tests use
 scripts in place of the real tools, and a scripted hub.
 
-The hub and the agent must be of this build. A change to the hub on the VPS needs the
+The hub and the daemon must be of this build. A change to the hub on the VPS needs the
 confirmation of the operator (VPS-005). A local hub is sufficient for this check
 ([setup/local-hub.md](procedures/setup/local-hub.md)).
 
 1. Start a hub of this build. Sign in with `anima auth login`.
-2. Enrol the agent of one device and start the `anima-agent` of this build on it.
+2. Enrol the daemon of one device and start the `anima-daemon` of this build on it.
 3. Wait 1 minute. Run `anima capability list`. Expected: one row for the device, with its
    architecture, its operating system version and its tools.
 4. On the device, run `cargo --version`, `git --version` and `bun --version`. Expected: the same
@@ -85,7 +87,7 @@ confirmation of the operator (VPS-005). A local hub is sufficient for this check
 6. Run `anima capability list --target <a target that the device has>` and then with a target
    that it does not have. Expected: the device is in the first list and not in the second.
 7. Install or remove one tool on the device. Wait 16 minutes. Expected: the list shows the change.
-8. Read the log of the agent. Expected: no version text and no output of a tool (LOG-007).
+8. Read the log of the daemon. Expected: no version text and no output of a tool (LOG-007).
 
 Result: Open.
 
@@ -102,11 +104,11 @@ Result: Open.
 
 ### HT-004: no window of Apple on a Mac without the developer tools
 
-Built: the agent does not run the placeholder programs `/usr/bin/git` and `/usr/bin/xcodebuild`
+Built: the daemon does not run the placeholder programs `/usr/bin/git` and `/usr/bin/xcodebuild`
 when `xcode-select -p` fails. The review could not do this check, because its Mac has Xcode.
 
 1. Use a Mac where `xcode-select -p` prints an error.
-2. Install and start the `anima-agent` of this build.
+2. Install and start the `anima-daemon` of this build.
 3. Use the Mac for 20 minutes. Expected: the window "install the command line developer tools"
    does not show.
 4. Run `anima capability list`. Expected: the device has no `git` row and no `xcodebuild` row,
@@ -114,12 +116,12 @@ when `xcode-select -p` fails. The review could not do this check, because its Ma
 
 Result: Open.
 
-### HT-005: the tool inventory of an agent that runs as a system unit
+### HT-005: the tool inventory of a daemon that runs as a system unit
 
 The systemd system unit hides the home folders and denies memory that is writable and
-executable. No person looked at what such an agent reports.
+executable. No person looked at what such a daemon reports.
 
-1. On a Linux computer, install the agent as a system unit and start it.
+1. On a Linux computer, install the daemon as a system unit and start it.
 2. Run `anima capability list`. Write down the tools that it shows.
 3. Compare with the tools of the user in a shell. Expected: tools in `/usr/bin` and
    `/usr/local/bin` show. Tools in the home folder of a user do not show.
@@ -136,10 +138,10 @@ check ran for more than one probe.
 
 1. On a computer with `claude` and `codex`, write down the output of
    `ls -laR ~/.codex | shasum` with the two programs closed.
-2. Run the agent of this build for 1 hour with the two programs closed.
+2. Run the daemon of this build for 1 hour with the two programs closed.
 3. Do step 1 again. Expected: the same value.
 4. During step 2, look at the network connections of the processes `claude` and `codex` that the
-   agent starts (for example with `nettop` or Little Snitch). Write down each connection.
+   daemon starts (for example with `nettop` or Little Snitch). Write down each connection.
 
 Result: Open.
 
@@ -387,6 +389,57 @@ VPN gave the Anima address (`100.64.0.2`) and SSH on.
 
 Result: Open.
 
+### HT-018: each machine with the old program gets `anima-daemon` and enrols again
+
+Built: the program `anima-agent` is `anima-daemon` ([DMN-1](work-items/device-manager/DMN-1.md), R-126). The hub
+accepts only `/daemon/v1/...` and a token that starts with `anima_daemon_`. `anima-daemon install`
+stops and deletes the unit of the old program (`anima-agent.service`, or `ing.anima.agent` on macOS).
+Migration 0717 renames the table and the metrics source.
+
+The tests use a fake hub and a planned list of commands. No test ran on a machine that has the old
+program, and no test ran the migration on the database of the real hub.
+
+1. Deploy the hub of this build (VPS-005). Expected: the hub starts, and migration 0717 is in its
+   log with no error.
+2. Open the client. Expected: each device that had the source "Agent" shows the source "Daemon"
+   and is stale. No device shows new metrics from the old program.
+3. On one machine, install the new program: download or build `anima-daemon`, then run
+   `anima-daemon install` (or `sudo anima-daemon install --system` for a system unit).
+   Expected: the command ends with no error.
+4. On Linux, run `systemctl --user status anima-agent.service` (or without `--user` for a system
+   unit). On macOS, run `launchctl print gui/$(id -u)/ing.anima.agent`. Expected: the old unit
+   is not found.
+5. In the client, open the device, Settings, "Install daemon", and make a code. On the machine,
+   run `anima-daemon enrol <code>`. Expected: "Enrolled", and the device shows new metrics in
+   less than 30 seconds.
+6. Run `anima daemon status <device>`. Expected: the source is DAEMON, not stale, with the
+   version of the new program.
+7. Do steps 3 to 6 on each other machine. Then delete the old files by hand where they stay:
+   `/usr/local/bin/anima-agent`, `~/.local/bin/anima-agent`, and the folders `anima-agent` in
+   `~/.config`, `/var/lib` and `~/Library/Application Support`. They hold the old token, which
+   is no longer valid.
+
+Result: Open.
+
+### HT-019: the VPN role `daemon` on the VPS
+
+Built: in the repository, the Headscale policy and its tests name the role `daemon` and the tag
+`tag:daemon` (`deploy/headscale/`, [DMN-1](work-items/device-manager/DMN-1.md), R-126). The live
+policy on the VPS still names `tag:agent`. Nothing on the VPS was changed (VPS-005).
+
+The tests check the policy file of the repository. No test reads the live Headscale.
+
+1. On the VPS, run `headscale nodes list`. Write down each node that has `tag:agent`.
+   Expected today: none, or the nodes that you tagged by hand.
+2. If no node has the tag, nothing more is necessary: the next policy that you apply from the
+   repository names `tag:daemon`. Stop here.
+3. If a node has the tag, give it the new tag first:
+   `headscale nodes tag -i <id> -t tag:daemon`. Then apply the policy of the repository as
+   `deploy/headscale/README.md` says. Expected: `headscale policy check` gives no error, and the
+   node reaches the hub on TCP 443 and nothing else.
+
+Result: Open.
+
 ## Not built yet
 
 The Tools section of the Device page and the Tools filter of the device list
@@ -423,11 +476,11 @@ Steps: [phase-2-acceptance.md](archive/phase-2/phase-2-acceptance.md), "Operator
 | O-6 | The web view on macOS: fingerprint, a changed certificate, the Down page | A device web interface with an untrusted certificate | 9 | Open |
 | O-7 | OD-7 on Linux: the trust hook spike. Also the frame time of the Devices page | A Linux desktop | 9 | Open |
 | O-8 | SSH metrics: a new point each 30 s, the bars on the card | One Linux device and one macOS device with SSH | 11 | Open |
-| O-9 | Docker, SNMP, Tailscale ping and systemd checks | An SSH device with Docker and systemd. An SNMP v3 agent. The LocalAPI proxy on the VPS | 15 | Open |
+| O-9 | Docker, SNMP, Tailscale ping and systemd checks | An SSH device with Docker and systemd. An SNMP v3 daemon. The LocalAPI proxy on the VPS | 15 | Open |
 
 ### Phase 3
 
-Steps: [phase-3-acceptance.md](plans/phase-3/phase-3-acceptance.md), "Operator steps". Run order: P-1 to P-15, P-17, then P-16. Blocks: the acceptance run of Phase 3 (WP-53). The handoff of 2026-11-12 names what must come first: O-4 to O-9, the wording of the design specification Section 5.7.3, the Headscale agent policy (R-105), the R2 set-up and the agent binaries.
+Steps: [phase-3-acceptance.md](plans/phase-3/phase-3-acceptance.md), "Operator steps". Run order: P-1 to P-15, P-17, then P-16. Blocks: the acceptance run of Phase 3 (WP-53). The handoff of 2026-11-12 names what must come first: O-4 to O-9, the wording of the design specification Section 5.7.3, the Headscale daemon policy (R-105), the R2 set-up and the daemon binaries.
 
 | Check | What it proves | Needs | Result |
 | --- | --- | --- | --- |
@@ -443,7 +496,7 @@ Steps: [phase-3-acceptance.md](plans/phase-3/phase-3-acceptance.md), "Operator s
 | P-10 | A Down and Up cycle sends the messages | The check of P-8, and a way to stop its service | Open |
 | P-11 | Maintenance sends no message | The check of P-8 | Open |
 | P-12 | A live RDAP check | A signed-in client | Open |
-| P-13 | GPU metrics on the Apple silicon Mac | The Mac with the push agent in operation | Open |
+| P-13 | GPU metrics on the Apple silicon Mac | The Mac with the push daemon in operation | Open |
 | P-14 | Optional: a real Prometheus scrape | A Prometheus server on the VPN. A Headscale grant (ask first) | Open |
 | P-15 | Optional: the API key checks in Settings | A signed-in client | Open |
 | P-17 | The desktop application: the update banner | A build with an older version installed, and a newer release | Open |
@@ -495,7 +548,7 @@ One visit to a machine can close many rows.
 | The `x86_64` Linux build computer | S3-T10 |
 | This Mac only | S2-T9, S6-1, S8-1 to S8-8, P-3, P-13, CLI-2, CLI-4 |
 | A shell on the VPS | P-1, P-16, O-9 |
-| Special set-up | O-5 (a relay and a device that sleeps), O-9 (SNMP v3 agent), S3-T13 (a Mac that can lose power), S6-4 (the router), S6-5 (no UDP), P-14 (Prometheus) |
+| Special set-up | O-5 (a relay and a device that sleeps), O-9 (SNMP v3 daemon), S3-T13 (a Mac that can lose power), S6-4 (the router), S6-5 (no UDP), P-14 (Prometheus) |
 
 ### A real release
 

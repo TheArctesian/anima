@@ -4,9 +4,9 @@
   import FormButton from '$lib/forms/FormButton.svelte';
   import Segmented from '$lib/forms/segmented/Segmented.svelte';
   import type { MetricsSource } from '$lib/hub/generated/graphql';
-  import AgentPanel from '$lib/metrics/agent/AgentPanel.svelte';
-  import type { AgentCalls } from '$lib/metrics/agent/install.svelte';
-  import type { ThisComputerShell } from '$lib/desktop/agent/shell';
+  import DaemonPanel from '$lib/metrics/daemon/DaemonPanel.svelte';
+  import type { DaemonCalls } from '$lib/metrics/daemon/install.svelte';
+  import type { ThisComputerShell } from '$lib/desktop/daemon/shell';
   import SettingRow from '$lib/settings/SettingRow.svelte';
   import SettingsSection from '$lib/settings/SettingsSection.svelte';
   import type { SettingsDraft } from '../draft.svelte';
@@ -15,28 +15,28 @@
   interface Props {
     draft: SettingsDraft;
     device: DeviceDetail;
-    /** The Install agent panel's hub calls and the hub origin the agent must reach (MET-019). */
-    agent: { calls: AgentCalls; origin: string; reveal: boolean; shell: ThisComputerShell | null };
+    /** The Install daemon panel's hub calls and the hub origin the daemon must reach (MET-019). */
+    daemon: { calls: DaemonCalls; origin: string; reveal: boolean; shell: ThisComputerShell | null };
     now: () => Date;
     /** Opens the Checks tab, where the device's checks are changed. */
     onOpenChecks: () => void;
   }
 
-  const { draft, device, agent, now, onOpenChecks }: Props = $props();
+  const { draft, device, daemon, now, onOpenChecks }: Props = $props();
 
-  /** D-7: only enrolment sets AGENT, so it is offered only as the saved state; picking it back sends nothing. */
-  const agentSet = $derived(device.metricsSource === 'AGENT');
+  /** D-7: only enrolment sets DAEMON, so it is offered only as the saved state; picking it back sends nothing. */
+  const daemonSet = $derived(device.metricsSource === 'DAEMON');
   const sources = $derived<readonly { value: MetricsSource; label: string }[]>([
     { value: 'NONE', label: 'None' },
     { value: 'SSH', label: 'SSH' },
-    ...(agentSet ? [{ value: 'AGENT' as const, label: 'Agent' }] : []),
+    ...(daemonSet ? [{ value: 'DAEMON' as const, label: 'Daemon' }] : []),
   ]);
 </script>
 
 {#snippet sourceMark()}<SaveMark mark={draft.marks['metricsSource']} />{/snippet}
 {#snippet sourceHint()}
   <p class="hint">
-    {agentSet ? 'Set by the agent. Revoke it, or pick None or SSH, to change.' : 'Source of CPU, memory, disk and network figures.'}
+    {daemonSet ? 'Set by the daemon. Revoke it, or pick None or SSH, to change.' : 'Source of CPU, memory, disk and network figures.'}
   </p>
 {/snippet}
 {#snippet checksHint()}
@@ -57,14 +57,14 @@
     <FormButton tone="ghost" icon="carbon:arrow-right" onclick={onOpenChecks}>Open Checks</FormButton>
   </SettingRow>
 </SettingsSection>
-<AgentPanel
+<DaemonPanel
   deviceId={device.id}
   deviceName={device.name}
   host={device.host}
   source={device.metricsSource}
-  calls={agent.calls}
-  origin={agent.origin}
-  reveal={agent.reveal}
-  shell={agent.shell}
+  calls={daemon.calls}
+  origin={daemon.origin}
+  reveal={daemon.reveal}
+  shell={daemon.shell}
   {now}
 />

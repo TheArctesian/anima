@@ -47,7 +47,7 @@ futures-util = { version = "0.3", default-features = false, features = ["sink"] 
 # The WebSocket errors axum wraps, to tell an oversize or non-UTF-8 message from a lost
 # client (R-039). Same semver range as axum's own, so the lockfile keeps one copy.
 tungstenite = { version = "0.29", default-features = false }
-agent-core = { path = "../agent-core" }
+daemon-core = { path = "../daemon-core" }
 guac-protocol = { path = "../guac-protocol" }
 russh.workspace = true
 russh-sftp.workspace = true
@@ -85,7 +85,7 @@ nix = { version = "0.31", default-features = false, features = ["process"] }
 [dev-dependencies]
 # The bundled database of the application mode (one-click plan S3): a test runs the hub on it.
 anima-database = { path = "../anima-database" }
-agent-core = { path = "../agent-core", features = ["test-support"] }
+daemon-core = { path = "../daemon-core", features = ["test-support"] }
 # The native gateway, for the tunnel tests that run the hub against it in place of guacd.
 anima-gateway = { path = "../anima-gateway" }
 rdp-test-device = { path = "../rdp-test-device" }

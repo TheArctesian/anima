@@ -73,21 +73,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "agent-core"
-version = "0.1.0"
-dependencies = [
- "base64 0.23.1",
- "chrono",
- "proptest",
- "serde",
- "serde_json",
- "sha2 0.11.1",
- "static_assertions",
- "uuid",
- "zeroize",
-]
-
-[[package]]
 name = "aho-corasick"
 version = "1.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -144,31 +129,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "anima-agent"
-version = "0.1.0"
-dependencies = [
- "agent-core",
- "axum",
- "bytes",
- "chrono",
- "getrandom 0.4.3",
- "keyring",
- "plist",
- "reqwest 0.12.28",
- "rpassword",
- "rustix",
- "serde",
- "serde_json",
- "tempfile",
- "thiserror 2.0.21",
- "tokio",
- "tracing",
- "tracing-subscriber",
- "uuid",
- "zeroize",
-]
-
-[[package]]
 name = "anima-cli"
 version = "0.1.0"
 dependencies = [
@@ -204,6 +164,31 @@ dependencies = [
  "tokio-tungstenite",
  "uuid",
  "webpki-roots",
+ "zeroize",
+]
+
+[[package]]
+name = "anima-daemon"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "bytes",
+ "chrono",
+ "daemon-core",
+ "getrandom 0.4.3",
+ "keyring",
+ "plist",
+ "reqwest 0.12.28",
+ "rpassword",
+ "rustix",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.21",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "uuid",
  "zeroize",
 ]
 
@@ -306,7 +291,6 @@ name = "anima-hub"
 version = "0.1.0"
 dependencies = [
  "aes 0.9.4",
- "agent-core",
  "anima-database",
  "anima-gateway",
  "anima-hub",
@@ -319,6 +303,7 @@ dependencies = [
  "chacha20poly1305",
  "chrono",
  "chrono-tz",
+ "daemon-core",
  "futures-util",
  "getrandom 0.4.3",
  "guac-protocol",
@@ -1801,6 +1786,21 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.119",
+]
+
+[[package]]
+name = "daemon-core"
+version = "0.1.0"
+dependencies = [
+ "base64 0.23.1",
+ "chrono",
+ "proptest",
+ "serde",
+ "serde_json",
+ "sha2 0.11.1",
+ "static_assertions",
+ "uuid",
+ "zeroize",
 ]
 
 [[package]]

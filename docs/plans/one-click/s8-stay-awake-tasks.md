@@ -52,7 +52,7 @@ Answer to OI-4: yes. On macOS the lid-closed level needs administrator rights on
 | D-6 | Battery floor: on battery below the floor the control is held off ("paused") and the choice is kept. It starts again on mains power, not when the charge passes the floor. The floor is off by default; the choices are 10 to 50 percent. | A hub must start its checks again when power returns, with no action by the operator. Waiting for mains power stops on-off changes near the floor. |
 | D-7 | When the lid-closed level is chosen and cannot be held (no set-up, or the OS refused), the computer is held at "Keep awake" and the row says why. | The lower level is still useful, and the state is never hidden. |
 | D-8 | The choice and the floor are saved in the app's configuration folder (`stay-awake.json`) and applied at the start of the app. | A hub computer that restarts must not need the operator. |
-| D-9 | The tray or menu bar item exists on every desktop install. It has the three levels and "Open Anima". | AWK-004. It is the item of the later in-app hub; the control is useful before that for a computer with the metrics agent. |
+| D-9 | The tray or menu bar item exists on every desktop install. It has the three levels and "Open Anima". | AWK-004. It is the item of the later in-app hub; the control is useful before that for a computer with the metrics daemon. |
 | D-10 | AWK-005 seam: the client's `hubIsThisComputer(origin)` is true when the hub address is a loopback address. The in-app hub answers on loopback, and a development hub on this computer also counts. | A real input today, and one function to change for S6. |
 | D-11 | The power state is read with `pmset -g batt` (macOS) and `/sys/class/power_supply` (Linux), once a minute, only while a level and a floor are set. A state that cannot be read counts as mains power. | No new dependency. A read failure must not turn the control off. |
 | D-12 | Settings gets a section "Stay awake" after "Hub", in the desktop application only. | SET-004; the control is about this computer. |
@@ -115,7 +115,7 @@ Choices made while building, after the reviews:
 
 Results: [need-human-testing.md](../../need-human-testing.md), section "Checks that other documents hold", holds the result of each check below (PLN-014).
 
-The operator does these on a real computer. No agent ran `sudo`, changed a power setting or
+The operator does these on a real computer. No daemon ran `sudo`, changed a power setting or
 closed a lid. This Mac had `SleepDisabled 1` from a different tool during the build (F-6): turn
 that tool off first, or check 3 shows only that Anima leaves the setting alone.
 
@@ -138,7 +138,7 @@ macOS (a laptop, a release or debug build of the application):
    minute the row says "Off for now" and the holds are gone. Plug the power in: within one
    minute the level is back.
 7. **Remove.** Click "Remove": the rule file is gone and the lid state cannot be chosen.
-8. **Eight hours.** Leave "Keep awake" on overnight with the hub or the metrics agent on this
+8. **Eight hours.** Leave "Keep awake" on overnight with the hub or the metrics daemon on this
    computer: the checks or metrics have no gap, and `pmset -g log | grep -c "Entering Sleep"`
    does not grow.
 

@@ -225,7 +225,7 @@ fn with_devices_loaders(builder: Builder, pool: &PgPool, clock: &Arc<dyn Clock>)
         .data(devices::graphql::readings_loader(pool.clone(), clock.clone()).delay(BATCH_WINDOW))
         .data(devices::graphql::gpus_loader(pool.clone()).delay(BATCH_WINDOW))
         .data(devices::graphql::stale_loader(pool.clone()).delay(BATCH_WINDOW))
-        .data(devices::graphql::agent_version_loader(pool.clone()).delay(BATCH_WINDOW))
+        .data(devices::graphql::daemon_version_loader(pool.clone()).delay(BATCH_WINDOW))
 }
 
 /// API-007: release builds are production builds; debug builds keep introspection for tooling.

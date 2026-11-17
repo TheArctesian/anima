@@ -101,9 +101,9 @@ A step that fails does not stop the rest.
   equivalent.
 - **REP-021.** Cross-OS copy and Windows come later and are not in the first version.
 - **REP-022.** Applying a profile is a work type on the fixed list of USE-006, proposed name
-  `apply_profile`. The hub cannot name an arbitrary command. The agent applies only the
+  `apply_profile`. The hub cannot name an arbitrary command. The daemon applies only the
   ticked items of a stored profile.
-- **REP-023.** The agent may install and copy when it applies a profile. This is an exception
+- **REP-023.** The daemon may install and copy when it applies a profile. This is an exception
   to MET-002, granted 2026-11-16. Whether each apply asks first is the user's setting; by
   default only steps that hand over a secret ask.
 - **REP-024.** The Settings switch that writes the prompt snippet, if approved, uses the same
@@ -130,7 +130,7 @@ A step that fails does not stop the rest.
 - **General rule.** Each safety setting here is the user's choice. The default is the
   equivalent of full auto, as in MCP-024 (R-120). A step that hands over a secret, such as copying a
   private key (REP-009), still asks first.
-- **MET-002:** Exception granted: the agent may install apps and copy files when it applies a
+- **MET-002:** Exception granted: the daemon may install apps and copy files when it applies a
   profile (REP-023). By the general rule, the per-apply confirmation is on by default only for
   steps that hand over a secret; the user can turn it on for every step.
 - **USE-006:** `apply_profile` joins the fixed list of work types (REP-022). The hub still
@@ -153,7 +153,7 @@ A step that fails does not stop the rest.
 - Copying a private key, even opt-in, is easy to get wrong. The key must not be logged
   (LOG-007), must not sit on the hub, and must be removed from any temporary path when the
   copy ends.
-- Homebrew and `mas` can ask for a password or for App Store sign-in. The agent must not
+- Homebrew and `mas` can ask for a password or for App Store sign-in. The daemon must not
   collect those. The operating system, or the operator in a session, supplies them.
 - App Store licences and macOS privacy permissions cannot be copied. If the preview does not
   say this clearly, the operator will think the new Mac is finished when it is not.

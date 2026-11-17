@@ -38,7 +38,7 @@ SEC-006). The friction is joining the VPN:
    <subnet>?" in place of the `approve-routes` command.
 4. **Something must still run at each new site.** In order of preference: a router or NAS with
    Tailscale in its own UI (OPNsense, pfSense, Synology, some GL.iNet; it must support a custom login
-   server); an Anima site-agent installer (spec Phase 6, VPN-006) that takes the invite code; or the
+   server); an Anima site-daemon installer (spec Phase 6, VPN-006) that takes the invite code; or the
    app itself acting as a subnet router on a machine that is always on.
 
 ## The trade-off that needs a ruling
