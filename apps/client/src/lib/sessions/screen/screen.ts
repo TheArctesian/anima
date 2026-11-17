@@ -140,6 +140,8 @@ export const openScreen: ScreenOpener = async (host, hooks) => {
   guardEscapes(terminal, hooks);
   wireEvents(terminal, hooks);
   terminal.open(host);
+  // The terminal's own box takes its background, so room inside it (the phone layout's margin) is the terminal's too.
+  if (terminal.element !== undefined) terminal.element.style.backgroundColor = terminal.options.theme?.background ?? '';
   guardClipboard(host, terminal, hooks.allows);
   enableWebgl(terminal);
   fit.fit();

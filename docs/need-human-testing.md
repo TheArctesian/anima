@@ -387,6 +387,34 @@ VPN gave the Anima address (`100.64.0.2`) and SSH on.
 
 Result: Open.
 
+### HT-018: an SSH session on a phone, with the key row
+
+Built: on the branch `mobile/m1-shell` (mobile plan M4-1, MOB-020, RA-050; mockup 8). In the phone
+layout an SSH session fills the screen. A bar holds back, the device and the time, "Hide keyboard"
+and the session menu. A row of keys (Esc, Tab, Ctrl, Alt, the arrows, `| ~ / -`) sits over the
+on-screen keyboard. Ctrl and Alt latch for the next key.
+
+The tests cover the bytes of the latched keys and the time text. On 2026-11-17 a throwaway SSH
+server that ran only `cat -v` was used on the iPhone 17 Pro simulator and on the Android emulator:
+Ctrl then L gave `^L`, typing worked on iOS, and back kept the session open. No real phone and no
+real shell were used. On the Android emulator the keyboard covered the key row, and text typed
+through the keyboard came out in the wrong order.
+
+1. Install a build of this branch on an iPhone. Sign in to a hub that has a device with SSH set
+   up, and open the device. Tap SSH. Expected: the session fills the screen, the bar shows the
+   device name and "SSH" with a time that counts up, and the navigation bar is hidden.
+2. Tap the terminal. Expected: the keyboard opens, and the key row is directly above it.
+3. Type `ls` and Return. Expected: the list of files. Tap Ctrl, then type `c` while a command
+   runs (for example `sleep 30`). Expected: the command stops, and Ctrl is no longer highlighted.
+4. Tap the up arrow of the row. Expected: the shell shows the last command again.
+5. Tap "Hide keyboard". Expected: the keyboard closes and the key row moves to the bottom of the
+   screen.
+6. Tap back. Expected: the device list with the navigation bar. The session is still open.
+7. Do steps 1 to 6 on an Android phone. Expected: the same results. Write down if the keyboard
+   covers the key row in step 2, and if typed text comes out in the wrong order.
+
+Result: Open.
+
 ## Not built yet
 
 The Tools section of the Device page and the Tools filter of the device list
