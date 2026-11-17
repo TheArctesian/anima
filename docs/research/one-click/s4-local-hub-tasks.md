@@ -271,8 +271,8 @@ Results: [need-human-testing.md](../../need-human-testing.md), section "Checks t
 - **T10.** A real Linux desktop: `install`, sign out and in, `kill -9` of `run`, `remove`. A Mac:
   the Local Network prompt when the hub that launchd started first connects to a LAN device.
 - **The spec delta** [s4-spec-delta.md](s4-spec-delta.md) (LHB-001 to LHB-011) waits for the operator.
-- **The work plan** has no tier for the one-click work (its Section 4, note). The operator must
-  give one (PLN-003).
+- **The work plan** has the one-click work in row 4.16 of [priorities.md](../../plan/priorities.md):
+  tier 1 (operator, 2026-11-16).
 - **PLN-011:** the rule came to `main` on 2026-11-15 while this was built. This document and the
   S3 one are on a branch until the operator approves the merge.
 

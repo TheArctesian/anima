@@ -31,6 +31,8 @@ The table gives the order. The section of each row below the table gives the wor
 | Row | Tier | Work | Category | State, in short |
 | --- | --- | --- | --- | --- |
 | 4.1 | 0 | Finish the device manager | Foundation, See, Reach | Phases 1 to 3 are built. |
+| 4.16 | 1 | One-click install | Foundation, Reach | In progress. Built; the live checks wait for the operator. |
+| 4.17 | 1 | The hosted mode and the shared pool | Foundation | Proposal. The direction is decided. |
 | 4.2 | 1 | Restore a backup and move the coordinator | Foundation | Proposal. |
 | 4.3 | 1 | Decisions and approvals for the foundation | All | Open |
 | 4.4 | 2a | The engine (E0) | See, Remember | In progress. |
@@ -166,19 +168,29 @@ The table gives the order. The section of each row below the table gives the wor
 - Work items: [deferred.md](../deferred.md)
 - State: Recorded, not planned
 
+### 4.16 One-click install
+
+- Tier: 1
+- Category: Foundation, Reach
+- Work: A person installs the application and installs nothing else ([one-click-plan.md](../one-click-plan.md)). The link (S1), the native VNC and RDP gateway (S2), the bundled PostgreSQL (S3), the hub as a background program (S4), the access rules by device key (S5), the first run (S6), the stay-awake control (S8) and packaging (S12).
+- Work items: The task breakdowns hold the tasks: [s1-link-tasks.md](../research/one-click/s1-link-tasks.md), [s2-vnc-tasks.md](../research/one-click/s2-vnc-tasks.md), [s2-rdp-tasks.md](../research/one-click/s2-rdp-tasks.md), [s3-database-tasks.md](../research/one-click/s3-database-tasks.md), [s4-local-hub-tasks.md](../research/one-click/s4-local-hub-tasks.md), [s5-access-tasks.md](../research/one-click/s5-access-tasks.md), [s6-first-run-tasks.md](../research/one-click/s6-first-run-tasks.md), [s8-stay-awake-tasks.md](../research/one-click/s8-stay-awake-tasks.md), [s12-packaging-tasks.md](../research/one-click/s12-packaging-tasks.md)
+- State: In progress. The operator put it here on 2026-11-16: directly after tier 0, before the engine. Most tasks have commits on `main`. The live checks of each breakdown wait for the operator. [register.md](register.md) holds the state of each breakdown.
+
+### 4.17 The hosted mode and the shared pool
+
+- Tier: 1
+- Category: Foundation
+- Work: Sign-in is the default first run and makes a hosted hub for the account. The self-host mode is the second choice (HM-R1; the operator confirmed it on 2026-11-16). The link on the server stack, the sleep of a free hub, the shared pool with its isolation and its security review ([hosted-mode.md](../programme/proposals/hosted-mode.md), [shared-pool-hosting.md](../programme/proposals/shared-pool-hosting.md)).
+- Work items: No work item yet
+- State: Proposal. The operator put it here on 2026-11-16: directly after tier 0, before the engine. The direction is decided (HM-R1 to HM-R8). The requirements HMD-001 to HMD-031 are not approved. The second sign-in factor (HM-D4) is not ruled. The operator selected WorkOS for the sign-in on 2026-11-16; it has no requirement yet.
+
 ### Notes on the order
 
 Notes:
 
 - Tiers 2a and 2b do not depend on each other. They can run at the same time.
 - Each extension needs the engine (PH-E-000). The extensions are independent workflows (XP-004).
-- The native VNC gateway (S2) has commits on `main` and no row in this table. The operator must give it a tier ([s2-vnc-tasks.md](../research/one-click/s2-vnc-tasks.md)).
-- The link (S1) and the access rules by device key (S5) have commits on `main` and no row in this table. The operator must give them a tier ([s1-link-tasks.md](../research/one-click/s1-link-tasks.md), [s5-access-tasks.md](../research/one-click/s5-access-tasks.md)).
-- The bundled PostgreSQL (S3) and the hub as a background program (S4) are in the same state: built, and no row in this table. The operator must give the one-click work a tier ([s3-database-tasks.md](../research/one-click/s3-database-tasks.md), [s4-local-hub-tasks.md](../research/one-click/s4-local-hub-tasks.md)).
-- The first run (S6) is in the same state: no row in this table. The operator must give it a tier ([s6-first-run-tasks.md](../research/one-click/s6-first-run-tasks.md)).
-- The stay-awake control (S8) is on `main` (merge `581e1d13`, 2026-11-15) and has no row in this table. The operator must give it a tier ([s8-stay-awake-tasks.md](../research/one-click/s8-stay-awake-tasks.md)).
-- The hosted mode ([hosted-mode.md](../programme/proposals/hosted-mode.md)) and the shared pool ([shared-pool-hosting.md](../programme/proposals/shared-pool-hosting.md)) have no row in this table. The operator ruled the direction on 2026-11-16 (HM-R1 to HM-R8) and must give the work a tier. It serves the same one-click work as S6.
-- Packaging (S12) is in the same state: no row in this table. It serves the same one-click work as S3, S4 and S6, and the operator must give that work a tier ([s12-packaging-tasks.md](../research/one-click/s12-packaging-tasks.md)).
+- The rows 4.16 and 4.17 are tier 1 (operator, 2026-11-16). They come before the engine, the model service and the extensions. Their numbers follow 4.15 because a published number does not change.
 - The states in this table were read on 2026-11-12, except where a row gives a later date. The rows of tier 0, tier 2a and Projects in tier 3a were compared with the commits on `main` on 2026-11-16.
 - Phase 4 (Proxmox VE) is withdrawn (R-109). Session recording is deferred (R-113). This plan does not include them.
 
