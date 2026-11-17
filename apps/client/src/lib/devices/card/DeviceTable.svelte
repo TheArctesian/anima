@@ -48,7 +48,7 @@
       <th scope="col" class="c-name">Name</th>
       <th scope="col" class="c-uptime">24 h</th>
       <th scope="col" class="c-beats">Last 50 checks</th>
-      <th scope="col" class="c-detail">Usage or problem</th>
+      <th scope="col" class="c-detail">Usage</th>
       <th scope="col" class="c-connect">Connect</th>
     </tr>
   </thead>
