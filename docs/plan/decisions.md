@@ -1,6 +1,6 @@
 # Decisions of the work plan
 
-Part of the work plan: [work-plan.md](../work-plan.md) is the entry point, and its Section 7 is is this document. A reference to "work plan Section 7 is" in a different document means this document.
+Part of the work plan: [work-plan.md](../work-plan.md) is the entry point, and its Section 7 is this document. A reference to "work plan Section 7" in a different document means this document.
 
 | Item | Value |
 | --- | --- |

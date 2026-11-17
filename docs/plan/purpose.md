@@ -1,6 +1,6 @@
 # Purpose and principles
 
-Part of the work plan: [work-plan.md](../work-plan.md) is the entry point, and its Sections 1 and 2 are is this document. A reference to "work plan Sections 1 and 2 are" in a different document means this document.
+Part of the work plan: [work-plan.md](../work-plan.md) is the entry point, and its Sections 1 and 2 are this document. A reference to "work plan Sections 1 and 2" in a different document means this document.
 
 | Item | Value |
 | --- | --- |

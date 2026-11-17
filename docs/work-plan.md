@@ -3,10 +3,10 @@
 | Item | Value |
 | --- | --- |
 | Document | Work plan: the entry point to all planning documents |
-| Version | 2.0 |
-| Date | 2026-11-16 |
+| Version | 2.1 |
+| Date | 2026-11-17 |
 | Language | ASD-STE100 Simplified Technical English (STE) |
-| Status | Approved. The operator approved the principles and the priority order on 2026-11-13. Version 1.1 added the plan register and the rules for plans (operator, 2026-11-15). Version 1.2 recorded OD-W13 to OD-W21 (operator, 2026-11-16). Version 1.3 corrected the states in Sections 4 and 9 to agree with the commits on `main`, moved each GitHub issue into the planning documents and added PLN-012 to PLN-017 (operator, 2026-11-16, R-119). Version 2.0 gives each section its own document in [plan/](plan/), with no change to the text (operator, 2026-11-16). |
+| Status | Approved. The operator approved the principles and the priority order on 2026-11-13. Version 1.1 added the plan register and the rules for plans (operator, 2026-11-15). Version 1.2 recorded OD-W13 to OD-W21 (operator, 2026-11-16). Version 1.3 corrected the states in Sections 4 and 9 to agree with the commits on `main`, moved each GitHub issue into the planning documents and added PLN-012 to PLN-017 (operator, 2026-11-16, R-119). Version 2.0 gives each section its own document in [plan/](plan/), with no change to the text (operator, 2026-11-16). Version 2.1 corrected the state of row 4.17, put the rows of tier 1 in order, added the column "Waits for" to Section 4 and added the one-click plan to Section 9 (audit that the operator asked for, 2026-11-17). |
 | Related | [design-spec.md](design-spec.md), [extensions-plan.md](extensions-plan.md), [compute-plan.md](compute-plan.md), [vpn-plan.md](vpn-plan.md), [programme/handoff.md](programme/handoff.md), [programme/proposals/](programme/proposals/) |
 
 This document obeys the writing rules in Section 0 of the design specification.

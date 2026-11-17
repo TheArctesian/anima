@@ -1,6 +1,6 @@
 # Changes that the work plan needs in other documents
 
-Part of the work plan: [work-plan.md](../work-plan.md) is the entry point, and its Section 8 is is this document. A reference to "work plan Section 8 is" in a different document means this document.
+Part of the work plan: [work-plan.md](../work-plan.md) is the entry point, and its Section 8 is this document. A reference to "work plan Section 8" in a different document means this document.
 
 | Item | Value |
 | --- | --- |

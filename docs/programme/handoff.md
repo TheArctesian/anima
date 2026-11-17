@@ -104,7 +104,7 @@ Also read `docs/programme/phase-3-plan.md`, `phase-3-contracts.md` and the packa
 
 **Memory notes** for the new account to recreate from this list (they live in the Mac account's
 `~/.claude/projects/.../memory/`):
-- Deferred work goes on GitHub issue #1.
+- Deferred work goes in [deferred.md](../deferred.md) (R-119; it was GitHub issue #1 until 2026-11-16).
 - No CI for gates or releases. Gates and builds run locally; releases go to R2.
 - Autonomous programme: merge into the integration branch and start packages without asking.
   Ask before pushing, before touching main, VPS, Cloudflare or secrets, and before destructive

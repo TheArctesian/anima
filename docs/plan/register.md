@@ -1,12 +1,12 @@
 # Plan register
 
-Part of the work plan: [work-plan.md](../work-plan.md) is the entry point, and its Section 9 is is this document. A reference to "work plan Section 9 is" in a different document means this document.
+Part of the work plan: [work-plan.md](../work-plan.md) is the entry point, and its Section 9 is this document. A reference to "work plan Section 9" in a different document means this document.
 
 | Item | Value |
 | --- | --- |
 | Document | The only list of the plans of Anima, with the state of each (PLN-001) |
 | Version | 2.0 |
-| Date | 2026-11-16 |
+| Date | 2026-11-17 |
 | Language | ASD-STE100 Simplified Technical English (STE) |
 | Status | Approved text of the work plan, version 1.3. Version 2.0 only moved the text to this document (operator, 2026-11-16). |
 
@@ -31,6 +31,7 @@ This table is the only list of the plans of Anima. A document that is not in thi
 | [ui-redesign-direction.md](../ui-redesign-direction.md) | Plan: direction of the redesign | Not checked | Its title says "draft for approval". |
 | [ui-redesign-plan.md](../ui-redesign-plan.md) | Plan | Not checked | Version 0.2. |
 | [ui-site-language-plan.md](../ui-site-language-plan.md) | Plan | Approved. Build state not checked | Approved for implementation on 2026-11-13. |
+| [one-click-plan.md](../one-click-plan.md) | Plan | In progress | Its status: the operator accepted the direction and the spikes on 2026-11-14 (its Section 9). It serves Section 4, row 4.16. It is the parent plan of the task breakdowns and the spec delta proposals in `research/one-click/` below. |
 | [research/one-click/s2-vnc-tasks.md](../research/one-click/s2-vnc-tasks.md) | Task breakdown: native VNC gateway | In progress | Its Section 6: T1 to T8, T10 and T11 have commits on `main`. T9 waits for the operator. Its parent plan is [one-click-plan.md](../one-click-plan.md). |
 | [research/one-click/s2-rdp-tasks.md](../research/one-click/s2-rdp-tasks.md) | Task breakdown: native RDP gateway | In progress | Its Section 5: R1 to R7 are built. Its Section 6 lists what is open for the operator. |
 | [research/one-click/s3-database-tasks.md](../research/one-click/s3-database-tasks.md) | Task breakdown: bundled PostgreSQL | In progress | Approved by the operator on 2026-11-14. Its Section 7.5: T1 to T9 and T15 have commits; T10 is in progress; T11 to T14 wait for the operator or other hardware. Its parent plan is [one-click-plan.md](../one-click-plan.md). |

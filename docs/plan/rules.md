@@ -1,6 +1,6 @@
 # Rules for plans and progress
 
-Part of the work plan: [work-plan.md](../work-plan.md) is the entry point, and its Section 10 is is this document. A reference to "work plan Section 10 is" in a different document means this document.
+Part of the work plan: [work-plan.md](../work-plan.md) is the entry point, and its Section 10 is this document. A reference to "work plan Section 10" in a different document means this document.
 
 | Item | Value |
 | --- | --- |

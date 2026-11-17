@@ -1,12 +1,12 @@
 # Categories, priority order and what is not planned
 
-Part of the work plan: [work-plan.md](../work-plan.md) is the entry point, and its Sections 3, 4 and 6 are is this document. A reference to "work plan Sections 3, 4 and 6 are" in a different document means this document.
+Part of the work plan: [work-plan.md](../work-plan.md) is the entry point, and its Sections 3, 4 and 6 are this document. A reference to "work plan Sections 3, 4 and 6" in a different document means this document.
 
 | Item | Value |
 | --- | --- |
 | Document | The five categories, the one priority order, and the work that must not be built |
 | Version | 2.0 |
-| Date | 2026-11-16 |
+| Date | 2026-11-17 |
 | Language | ASD-STE100 Simplified Technical English (STE) |
 | Status | Approved text of the work plan, version 1.3. Version 2.0 only moved the text to this document (operator, 2026-11-16). |
 
@@ -26,27 +26,27 @@ The command line and the MCP server are not a category. They are a second and a 
 
 The tiers first came from the labels of the GitHub issues, read on 2026-11-12. The labels are no longer in use; this table holds the order (R-119). Do the work in this order. A lower row can start earlier only when it does not delay a higher row.
 
-The table gives the order. The section of each row below the table gives the work, the work items and the full state.
+The table gives the order. The section of each row below the table gives the work, the work items and the full state. The column "Waits for" names who must act next: the operator (a decision, an approval or a check) or an agent (a build). It was read from the state of each row on 2026-11-17 and it is not a ruling. Change it in the commit that changes the state (PLN-008).
 
-| Row | Tier | Work | Category | State, in short |
-| --- | --- | --- | --- | --- |
-| 4.1 | 0 | Finish the device manager | Foundation, See, Reach | Phases 1 to 3 are built. |
-| 4.16 | 1 | One-click install | Foundation, Reach | In progress. Built; the live checks wait for the operator. |
-| 4.17 | 1 | The hosted mode and the shared pool | Foundation | Proposal. The direction is decided. |
-| 4.2 | 1 | Restore a backup and move the coordinator | Foundation | Proposal. |
-| 4.3 | 1 | Decisions and approvals for the foundation | All | Open |
-| 4.4 | 2a | The engine (E0) | See, Remember | In progress. |
-| 4.5 | 2b | Level 1 model service | Use | Planned. |
-| 4.6 | 3a | Projects | See | In progress. |
-| 4.7 | 3a | Jobs, builds and AI agent runs | Use | [C7](../work-items/compute/C7.md) is planned. |
-| 4.8 | 3b | The other extensions | See, Remember, Reach | Planned. |
-| 4.9 | 3c | Hosted applications | Use | Proposal. |
-| 4.10 | 3 | Standby copies of the coordinator database | Foundation | Proposal. |
-| 4.11 | 3 | Bulk data on the operator's machines | Foundation | Proposal. |
-| 4.12 | 4 | Level 2: one model across machines | Use | Parked. |
-| 4.13 | 4 | A hash chain for the audit log | Foundation | The operator made the work item smaller on 2026-11-12 |
-| 4.14 | 4 | Mobile clients (Phase 5) and site operations (Phase 6) | Foundation, Reach | Planned. |
-| 4.15 | — | Deferred items and ideas | All | Recorded, not planned |
+| Row | Tier | Work | Category | State, in short | Waits for |
+| --- | --- | --- | --- | --- | --- |
+| 4.1 | 0 | Finish the device manager | Foundation, See, Reach | Phases 1 to 3 are built. | Operator: the acceptance run (WP-53). Agent: R5 to R7 |
+| 4.16 | 1 | One-click install | Foundation, Reach | In progress. Built; the live checks wait for the operator. | Operator: the live checks ([need-human-testing.md](../need-human-testing.md), "One-click") |
+| 4.17 | 1 | The hosted mode and the shared pool | Foundation | Proposal. The direction is decided. | Operator: approval of HMD-001 to HMD-036, and HM-D4 |
+| 4.2 | 1 | Restore a backup and move the coordinator | Foundation | Proposal. | Operator: approval of FND-006. No task breakdown yet |
+| 4.3 | 1 | Decisions and approvals for the foundation | All | Open | Operator: each decision and approval in the row |
+| 4.4 | 2a | The engine (E0) | See, Remember | In progress. | Agent: E0-4 (on its branch), then E0-5 to E0-7 and Writing. E0-5 waits for row 4.11 |
+| 4.5 | 2b | Level 1 model service | Use | Planned. | Operator: approval of the compute plan, and the compute decisions of row 4.3 |
+| 4.6 | 3a | Projects | See | In progress. | Agent: compare PRO-005 to PRO-008 with the code |
+| 4.7 | 3a | Jobs, builds and AI agent runs | Use | [C7](../work-items/compute/C7.md) is planned. | Agent: tasks W, then B, then A. Operator: the requirements with no ruling (status line of the proposal) |
+| 4.8 | 3b | The other extensions | See, Remember, Reach | Planned. | Row 4.4 |
+| 4.9 | 3c | Hosted applications | Use | Proposal. | Operator: approval of the proposal |
+| 4.10 | 3 | Standby copies of the coordinator database | Foundation | Proposal. | Operator: approval of the requirements |
+| 4.11 | 3 | Bulk data on the operator's machines | Foundation | Proposal. | Operator: approval of the requirements, before E0-5 starts |
+| 4.12 | 4 | Level 2: one model across machines | Use | Parked. | Row 4.5 in daily use |
+| 4.13 | 4 | A hash chain for the audit log | Foundation | The operator made the work item smaller on 2026-11-12 | Agent: phase L0 of GH-2 |
+| 4.14 | 4 | Mobile clients (Phase 5) and site operations (Phase 6) | Foundation, Reach | Planned. | Agent: the tasks of the mobile plan. Phase 6 waits for rows 4.4 to 4.8 |
+| 4.15 | — | Deferred items and ideas | All | Recorded, not planned | Nothing |
 
 ### 4.1 Finish the device manager
 
@@ -56,12 +56,28 @@ The table gives the order. The section of each row below the table gives the wor
 - Work items: [handoff.md](../programme/handoff.md) Sections 3 and 4. [GH-52](../work-items/defects/GH-52.md), [GH-53](../work-items/defects/GH-53.md), [GH-54](../work-items/defects/GH-54.md). R1 to R7 are in the task table of [projects-and-builds.md](../programme/proposals/projects-and-builds.md)
 - State: Phases 1 to 3 are built. Acceptance waits for the operator. This tier removes `blocked: device-manager` (PH-E-000, PH-C-000). R1 to R4 are done and are on `main` (commit `e3058276`, 2026-11-15). R5 to R7 are not started: no release is published.
 
+### 4.16 One-click install
+
+- Tier: 1
+- Category: Foundation, Reach
+- Work: A person installs the application and installs nothing else ([one-click-plan.md](../one-click-plan.md)). The link (S1), the native VNC and RDP gateway (S2), the bundled PostgreSQL (S3), the hub as a background program (S4), the access rules by device key (S5), the first run (S6), the stay-awake control (S8) and packaging (S12).
+- Work items: The task breakdowns hold the tasks: [s1-link-tasks.md](../research/one-click/s1-link-tasks.md), [s2-vnc-tasks.md](../research/one-click/s2-vnc-tasks.md), [s2-rdp-tasks.md](../research/one-click/s2-rdp-tasks.md), [s3-database-tasks.md](../research/one-click/s3-database-tasks.md), [s4-local-hub-tasks.md](../research/one-click/s4-local-hub-tasks.md), [s5-access-tasks.md](../research/one-click/s5-access-tasks.md), [s6-first-run-tasks.md](../research/one-click/s6-first-run-tasks.md), [s8-stay-awake-tasks.md](../research/one-click/s8-stay-awake-tasks.md), [s12-packaging-tasks.md](../research/one-click/s12-packaging-tasks.md)
+- State: In progress. The operator put it here on 2026-11-16: directly after tier 0, before the engine. Most tasks have commits on `main`. The live checks of each breakdown wait for the operator. [register.md](register.md) holds the state of each breakdown.
+
+### 4.17 The hosted mode and the shared pool
+
+- Tier: 1
+- Category: Foundation
+- Work: Sign-in is the default first run and makes a hosted hub for the account. The self-host mode is the second choice (HM-R1; the operator confirmed it on 2026-11-16). The link on the server stack, the sleep of a free hub, the shared pool with its isolation and its security review ([hosted-mode.md](../programme/proposals/hosted-mode.md), [shared-pool-hosting.md](../programme/proposals/shared-pool-hosting.md)).
+- Work items: No work item yet
+- State: Proposal. The operator put it here on 2026-11-16: directly after tier 0, before the engine. The direction is decided (HM-R1 to HM-R9). The requirements HMD-001 to HMD-036 are not approved. The second sign-in factor (HM-D4) is not ruled. The operator selected WorkOS AuthKit for the sign-in on 2026-11-16 (HM-R9); its requirements are HMD-032 to HMD-036.
+
 ### 4.2 Restore a backup and move the coordinator
 
 - Tier: 1
 - Category: Foundation
 - Work: The procedure to restore a backup on a new machine and to move the coordinator (FND-006)
-- Work items: No work item yet
+- Work items: No work item yet. The requirement is in [coordinator-standby.md](../programme/proposals/coordinator-standby.md), which is a draft
 - State: Proposal. The operator put it here on 2026-11-12: directly after tier 0.
 
 ### 4.3 Decisions and approvals for the foundation
@@ -69,7 +85,7 @@ The table gives the order. The section of each row below the table gives the wor
 - Tier: 1
 - Category: All
 - Work: Decisions and approvals that the foundation work needs
-- Work items: Extensions: [SPEC](../work-items/extensions/SPEC.md), [OD-E1](../work-items/decisions/OD-E1.md), [KEYS](../work-items/extensions/KEYS.md). Compute: [SPEC-C](../work-items/compute/SPEC-C.md), [KEYS-C](../work-items/compute/KEYS-C.md), [OD-C1](../work-items/decisions/OD-C1.md), [OD-C2](../work-items/decisions/OD-C2.md), [OD-C5](../work-items/decisions/OD-C5.md), [OD-C7](../work-items/decisions/OD-C7.md), [OD-C8](../work-items/decisions/OD-C8.md). This plan: Section 7
+- Work items: Extensions: [SPEC](../work-items/extensions/SPEC.md), [OD-E1](../work-items/decisions/OD-E1.md), [KEYS](../work-items/extensions/KEYS.md). Compute: [SPEC-C](../work-items/compute/SPEC-C.md), [KEYS-C](../work-items/compute/KEYS-C.md), [OD-C1](../work-items/decisions/OD-C1.md), [OD-C2](../work-items/decisions/OD-C2.md), [OD-C5](../work-items/decisions/OD-C5.md), [OD-C7](../work-items/decisions/OD-C7.md), [OD-C8](../work-items/decisions/OD-C8.md). This plan: Section 7, where each decision is decided (2026-11-17)
 - State: Open
 
 ### 4.4 The engine (E0)
@@ -167,22 +183,6 @@ The table gives the order. The section of each row below the table gives the wor
 - Work: Deferred items and ideas from other products
 - Work items: [deferred.md](../deferred.md)
 - State: Recorded, not planned
-
-### 4.16 One-click install
-
-- Tier: 1
-- Category: Foundation, Reach
-- Work: A person installs the application and installs nothing else ([one-click-plan.md](../one-click-plan.md)). The link (S1), the native VNC and RDP gateway (S2), the bundled PostgreSQL (S3), the hub as a background program (S4), the access rules by device key (S5), the first run (S6), the stay-awake control (S8) and packaging (S12).
-- Work items: The task breakdowns hold the tasks: [s1-link-tasks.md](../research/one-click/s1-link-tasks.md), [s2-vnc-tasks.md](../research/one-click/s2-vnc-tasks.md), [s2-rdp-tasks.md](../research/one-click/s2-rdp-tasks.md), [s3-database-tasks.md](../research/one-click/s3-database-tasks.md), [s4-local-hub-tasks.md](../research/one-click/s4-local-hub-tasks.md), [s5-access-tasks.md](../research/one-click/s5-access-tasks.md), [s6-first-run-tasks.md](../research/one-click/s6-first-run-tasks.md), [s8-stay-awake-tasks.md](../research/one-click/s8-stay-awake-tasks.md), [s12-packaging-tasks.md](../research/one-click/s12-packaging-tasks.md)
-- State: In progress. The operator put it here on 2026-11-16: directly after tier 0, before the engine. Most tasks have commits on `main`. The live checks of each breakdown wait for the operator. [register.md](register.md) holds the state of each breakdown.
-
-### 4.17 The hosted mode and the shared pool
-
-- Tier: 1
-- Category: Foundation
-- Work: Sign-in is the default first run and makes a hosted hub for the account. The self-host mode is the second choice (HM-R1; the operator confirmed it on 2026-11-16). The link on the server stack, the sleep of a free hub, the shared pool with its isolation and its security review ([hosted-mode.md](../programme/proposals/hosted-mode.md), [shared-pool-hosting.md](../programme/proposals/shared-pool-hosting.md)).
-- Work items: No work item yet
-- State: Proposal. The operator put it here on 2026-11-16: directly after tier 0, before the engine. The direction is decided (HM-R1 to HM-R8). The requirements HMD-001 to HMD-031 are not approved. The second sign-in factor (HM-D4) is not ruled. The operator selected WorkOS for the sign-in on 2026-11-16; it has no requirement yet.
 
 ### Notes on the order
 

@@ -1,6 +1,6 @@
 # Where each requirement lives
 
-Part of the work plan: [work-plan.md](../work-plan.md) is the entry point, and its Section 5 is is this document. A reference to "work plan Section 5 is" in a different document means this document.
+Part of the work plan: [work-plan.md](../work-plan.md) is the entry point, and its Section 5 is this document. A reference to "work plan Section 5" in a different document means this document.
 
 | Item | Value |
 | --- | --- |
