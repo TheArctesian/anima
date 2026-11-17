@@ -26,7 +26,7 @@
 {#if row.kind === 'empty'}
   <span class="none">{row.text}</span>
 {:else}
-  <span class="meters" style:--meters={row.bars.length}>
+  <span class="meters">
     {#each row.bars as bar (bar.key)}
       <span
         class="meter"
@@ -55,8 +55,8 @@
 
   .meters {
     display: grid;
-    grid-template-columns: repeat(var(--meters), minmax(0, 1fr));
-    gap: var(--space-3);
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--space-16)), 1fr));
+    gap: var(--space-2);
     inline-size: 100%;
   }
 
