@@ -36,7 +36,7 @@ fn script_arguments(command: &[&str]) -> Vec<String> {
         "-q".to_owned(),
         "-e".to_owned(),
         "-c".to_owned(),
-        quoted.join(" "),
+        format!("exec {}", quoted.join(" ")),
         "/dev/null".to_owned(),
     ]
 }
