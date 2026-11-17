@@ -37,7 +37,7 @@ One document owns each concern. Add a requirement to its owner, not to this docu
 | Cloudflare source for Projects. A new Activity extension for Spotify and Screen Time | [new-sources.md](../programme/proposals/new-sources.md) | None until each provider is verified |
 | Other persons: self-hosting and a hosted option | [other-operators.md](../programme/proposals/other-operators.md) | None yet |
 | Hosted Solo hubs on a shared pool of hosts | [shared-pool-hosting.md](../programme/proposals/shared-pool-hosting.md) | None yet |
-| The hosted mode as the default first run: sign-in, the account directory, a hub made for each account, a free hub that sleeps | [hosted-mode.md](../programme/proposals/hosted-mode.md) | HM-R1 to HM-R6, HMD-001 to HMD-029 |
+| The hosted mode as the default first run: sign-in, the account directory, a hub made for each account, a free hub that sleeps | [hosted-mode.md](../programme/proposals/hosted-mode.md) | HM-R1 to HM-R8, HMD-001 to HMD-031 |
 | The Anima.ing shell prompt and related shell commands | [shell-prompt.md](../programme/proposals/shell-prompt.md) | CMD-032 to CMD-038 |
 | Rented cloud computers and GPU add-ons sold by Anima.ing | [cloud-machines.md](../programme/proposals/cloud-machines.md) | CVM-001 to CVM-024 |
 | Machine profiles: copy a setup to a new computer | [machine-profiles.md](../programme/proposals/machine-profiles.md) | REP-001 to REP-025 |

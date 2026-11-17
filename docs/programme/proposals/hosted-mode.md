@@ -4,8 +4,9 @@ Progress: the plan register in [work-plan.md](../../work-plan.md) Section 9 hold
 
 From: the business planning session of 2026-11-16, after the operator tried release 0.2.0 on a
 second Mac (report of the S12 packaging session).
-Version: 2. Date: 2026-11-16. Version 2 adds HM-R6 (a free hub sleeps) and the cloud design of the
-business vault (Section 3, fact 5).
+Version: 3. Date: 2026-11-16. Version 2 added HM-R6 (a free hub sleeps) and the cloud design of the
+business vault (Section 3, fact 5). Version 3 adds HM-R7 (Apple Pay and Google Pay), HM-R8 (no
+staff access to hubs), HMD-030 and HMD-031, and states that HM-D3 and HM-D4 are not ruled.
 Status: Draft. The direction is decided by the operator (Section 2). The requirements are not
 approved.
 Map: [work-plan.md](../../work-plan.md). Parent plans: [one-click-plan.md](../../one-click-plan.md)
@@ -43,6 +44,8 @@ the facts that the build needs.
 | HM-R4 | What does a hosted hub run on at the launch? | The shared pool ([shared-pool-hosting.md](shared-pool-hosting.md)). | The pool must be built and reviewed before the launch. This replaces "one VPS for each customer" in Section 1.3 of the one-click plan. |
 | HM-R5 | Does the launch wait for split custody (OI-3 of the one-click plan)? | No. Launch, then build split custody. | The sign-up page must say what a hosted hub can read (HMD-015). |
 | HM-R6 | How does a free hub cost less than the paid hubs earn (HM-D1)? | A free hosted hub sleeps when no device of the account is connected. A hub that is always on is the paid step. | Section 6.5. The checks, the notifications and the metrics history stop while a free hub sleeps. |
+| HM-R7 | Which payment methods does the checkout take? | Apple Pay and Google Pay on mobile devices, as well as cards (operator, 2026-11-16). Stripe charges a wallet payment the standard card rate. | HMD-030. The business vault note "Hosted Architecture" (HCL-032 to HCL-036) has the facts. |
+| HM-R8 | May Anima.ing staff log into a customer's hub for support? | No. Hub access is offered only on a plan with a support tier that includes it, for example Enterprise, after the customer opts in (operator, 2026-11-16). | HMD-031. |
 
 ## 3. Facts (2026-11-16)
 
@@ -145,9 +148,11 @@ is built in the private repository (fact 5); this repository holds the client an
 
 - **HMD-017.** Each hosted hub must show its use against its limits (the "Your hub" card of [shared-pool-hosting.md](shared-pool-hosting.md) Section 2).
 - **HMD-018.** Above the usage line, the hub must ask the person to pay. It must slow down; it must not delete data.
-- **HMD-019.** Payment is on the site, through Stripe. The application must show the plan and open the site for a change.
+- **HMD-019.** Payment is on the site, through Stripe. The application must show the plan and open the site for a change. The checkout takes Apple Pay and Google Pay (HMD-030).
 - **HMD-020.** An account must have no more than one free hub.
 - **HMD-021.** A free hub with no sign-in for 60 days must be paused. The directory must warn the person by email before it deletes a paused hub.
+- **HMD-030.** On a mobile device, the checkout must offer Apple Pay and Google Pay first, and a normal card form when no wallet is available (HM-R7). The page of the checkout must be on `cloud.anima.ing`. Card and wallet details must never reach the directory or its logs. Only Stripe identifiers may.
+- **HMD-031.** The staff tools of the directory must show account, billing and job data only. Staff must not open a session on a customer's hub or read its content (HM-R8). Access to a hub is allowed only on a plan with a support tier that includes it, after the customer opts in, and the hub must write each access to its audit log.
 
 ### 6.4 First run
 
@@ -171,7 +176,7 @@ is built in the private repository (fact 5); this repository holds the client an
 | HM-D8 | What does a hub that sleeps cost, and how fast does it start? | Not measured. The cost is the disk of the hub and its share of memory while it is on. | Measure on one pool host in step 5. Change the 15 minutes of HMD-024 and the 30 seconds of HMD-026 from the result. |
 | HM-D2 | Where does the usage line sit? | Hub memory is not measured. | Set it after the load test of [shared-pool-hosting.md](shared-pool-hosting.md). |
 | HM-D3 | Which identity service does the site use? | The operator planned single sign-on on the Vercel site. | The operator names it. HMD-006 must be possible with it. |
-| HM-D4 | Is the second factor (HMD-006) required for each account? | Without it, one stolen sign-on session opens each device of a hub. | Required. |
+| HM-D4 | Is the second factor (HMD-006) required for each account? | Without it, one stolen sign-on session opens each device of a hub. | Proposed: required. Not ruled. |
 | HM-D5 | In which region is the first pool host? | The priced hosts are in the EU. No US host is priced. | Price a US host before the launch. |
 | HM-D6 | Is the directory and billing code open source? | OR-5: not open source. The operator decided the same for the cloud on 2026-11-16 (fact 5). | Decided. No change. |
 | HM-D7 | Who reviews the security of the pool and of the grant path before the launch? | The pool proposal asks for a review before paying customers. HM-R2 adds the grant path. | A review by a person from outside, before the first account of a different person. |
