@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { thisComputerShell, type ThisComputerShell } from '$lib/desktop/agent/shell';
 import type { AgentCalls } from '../install.svelte';
 import { ThisComputerInstall } from '../this-computer.svelte';
+import { fakeHub } from '$lib/devices/hub.fixture';
 import { CODE, ENROLMENT, button, click, setUp, show, tearDown, text } from './panel.fixture';
 
 vi.mock('motion', async (importOriginal) => ({
@@ -14,6 +15,9 @@ vi.mock('motion', async (importOriginal) => ({
 /** The desktop shell, faked at the IPC edge: every shell command the panel reaches goes through this `invoke`. */
 const tauri = vi.hoisted(() => ({ invoke: vi.fn(), isTauri: vi.fn(() => true) }));
 vi.mock('@tauri-apps/api/core', () => ({ invoke: tauri.invoke, isTauri: tauri.isTauri }));
+
+/** The shell's calls, through a hub that names its VPN login server (ADR-005). */
+const desktopShell = () => thisComputerShell(fakeHub({ VpnLoginServer: { vpnLoginServer: 'https://hs.anima.ing' } }).hub);
 
 const HERE = '100.64.0.9';
 const MACHINE = { name: 'nas', user: 'ada', os: 'LINUX', vpnAddress: HERE, sshListening: true };
@@ -42,7 +46,7 @@ afterEach(tearDown);
 describe('Install agent on this computer, in the desktop app (MET-019, D-10 d)', () => {
   it('MET-019: the code goes from the hub to the shell with the origin, and is never shown or copied', async () => {
     shellAnswers(() => Promise.resolve(null));
-    const { fake, copied } = await show({ ...ENROLMENT, ...INSTALLED }, { host: HERE, shell: thisComputerShell() });
+    const { fake, copied } = await show({ ...ENROLMENT, ...INSTALLED }, { host: HERE, shell: desktopShell() });
     expect(offered()).toBe(true);
     await click('Install on this computer');
     expect(installCalls()).toEqual([['agent_install', { code: CODE, origin: 'https://hub.test' }]]);
@@ -56,7 +60,7 @@ describe('Install agent on this computer, in the desktop app (MET-019, D-10 d)',
 
   it('LOG-007: a shell error shows fixed text, never the shell message or the code, and the command stays as the way round', async () => {
     shellAnswers(() => Promise.reject({ code: 'untrusted', message: `raw ${CODE}` }));
-    await show(ENROLMENT, { host: HERE, shell: thisComputerShell() });
+    await show(ENROLMENT, { host: HERE, shell: desktopShell() });
     await click('Install on this computer');
     const alert = document.querySelector('[role="alert"]')?.textContent ?? '';
     expect(alert).toContain('Run `chmod g-w,o-w` on it, and `setfacl -b` for an ACL');
@@ -68,7 +72,7 @@ describe('Install agent on this computer, in the desktop app (MET-019, D-10 d)',
   it('MET-019: a second press while the shell works does not make a second code', async () => {
     let finish: (value: unknown) => void = () => undefined;
     shellAnswers(() => new Promise((resolve) => { finish = resolve; }));
-    const { fake } = await show({ ...ENROLMENT, ...INSTALLED }, { host: HERE, shell: thisComputerShell() });
+    const { fake } = await show({ ...ENROLMENT, ...INSTALLED }, { host: HERE, shell: desktopShell() });
     await click('Install on this computer');
     await click('Installing…');
     expect(fake.requests.filter((each) => each.operation === 'EnrolAgent')).toHaveLength(1);
@@ -77,7 +81,7 @@ describe('Install agent on this computer, in the desktop app (MET-019, D-10 d)',
 
   it('MET-019: a hub refusal of the code stops before the shell is asked', async () => {
     shellAnswers(() => Promise.resolve(null));
-    await show({ EnrolAgent: { code: 'FORBIDDEN', message: 'Not allowed.' } }, { host: HERE, shell: thisComputerShell() });
+    await show({ EnrolAgent: { code: 'FORBIDDEN', message: 'Not allowed.' } }, { host: HERE, shell: desktopShell() });
     await click('Install on this computer');
     expect(installCalls()).toEqual([]);
     expect(document.querySelector('[role="alert"]')?.textContent).toContain('Not allowed.');
@@ -87,7 +91,7 @@ describe('Install agent on this computer, in the desktop app (MET-019, D-10 d)',
 describe('Install agent: the command panel where the app cannot install (MET-019, D-10 b)', () => {
   it('R-060: another device gets only the command', async () => {
     shellAnswers(() => Promise.resolve(null));
-    await show(ENROLMENT, { host: '100.64.0.10', shell: thisComputerShell() });
+    await show(ENROLMENT, { host: '100.64.0.10', shell: desktopShell() });
     expect(offered()).toBe(false);
     expect(button('Install agent')).toBeDefined();
     expect(tauri.invoke.mock.calls.map(([command]) => command)).not.toContain('agent_bundled');
@@ -95,7 +99,7 @@ describe('Install agent: the command panel where the app cannot install (MET-019
 
   it('D-10 d: an app that carries no agent gets only the command', async () => {
     shellAnswers(() => Promise.resolve(null), false);
-    await show(ENROLMENT, { host: HERE, shell: thisComputerShell() });
+    await show(ENROLMENT, { host: HERE, shell: desktopShell() });
     expect(offered()).toBe(false);
     await click('Install agent');
     expect(document.querySelector('pre')?.textContent).toContain('anima-agent');
@@ -104,7 +108,7 @@ describe('Install agent: the command panel where the app cannot install (MET-019
 
   it('CLI-001: in a browser the shell is never asked', async () => {
     tauri.isTauri.mockReturnValue(false);
-    await show(ENROLMENT, { host: HERE, shell: thisComputerShell() });
+    await show(ENROLMENT, { host: HERE, shell: desktopShell() });
     expect(offered()).toBe(false);
     expect(tauri.invoke).not.toHaveBeenCalled();
   });
@@ -189,7 +193,7 @@ describe('Install agent on this computer: nothing changes after the panel closes
   it('MET-019: the panel closed during an install does not read the agent state afterwards', async () => {
     let finish: (value: unknown) => void = () => undefined;
     shellAnswers(() => new Promise((resolve) => { finish = resolve; }));
-    const { fake } = await show({ ...ENROLMENT, ...INSTALLED }, { host: HERE, shell: thisComputerShell() });
+    const { fake } = await show({ ...ENROLMENT, ...INSTALLED }, { host: HERE, shell: desktopShell() });
     await click('Install on this computer');
     await tearDown();
     finish(null);

@@ -854,6 +854,48 @@ type Storage {
   drives: [Drive!]!
 }
 
+# Tool inventory (operator, 2026-11-15, CAP-020 to CAP-031; ruling number to be assigned).
+"A device's capabilities: today the tool inventory its agent last sent (CAP-020, CAP-026, CAP-030). Every text comes from the device."
+type DeviceCapabilities {
+  device: Device!
+  "aarch64 or x86_64."
+  architecture: String!
+  "macos or linux."
+  os: String!
+  "For example 27.0 (macOS) or 24.04 (the Linux distribution; the kernel release when it has none). 1 to 64 bytes of [0-9A-Za-z.+_-]."
+  osVersion: String!
+  "The tools the agent found, in the order of the probe list; a tool it did not find is not listed (CAP-023)."
+  tools: [Tool!]!
+  "The installed Rust targets (rustup), in byte order."
+  buildTargets: [String!]!
+  "When the hub stored this inventory."
+  foundAt: DateTime!
+}
+
+"One tool the agent found (CAP-024, CAP-025)."
+type Tool {
+  "git, rustc, cargo, cargo-nextest, sccache, bun, node, xcodebuild, docker, podman, nix, claude or codex."
+  name: String!
+  "1 to 64 bytes of [0-9A-Za-z.+_-]; null when the tool is not usable."
+  version: String
+  "False when the tool was found but its version probe timed out, failed or printed no version."
+  usable: Boolean!
+  "Why the tool is not usable; null when it is (CAP-024)."
+  reason: NotUsableReason
+}
+
+"Why a found tool is not usable: a fixed code, never text from the device (CAP-024)."
+enum NotUsableReason {
+  "Its version probe ran past its time limit."
+  TIMED_OUT
+  "It could not start, or exited with a failure."
+  EXITED
+  "It ran but printed no version the agent reads."
+  NO_VERSION
+  "A reason this hub does not know (a newer agent's)."
+  FAILED
+}
+
 type MetricSample {
   kind: MetricKind!
   label: String!
@@ -2461,7 +2503,7 @@ type Query {
   releases(first: Int = 20, after: String): ReleaseConnection!
   "The highest version published or under way with the patch plus 1; null before the first."
   nextReleaseVersion: String
-  "Whether this hub holds the release bucket and the updater key, so it can publish a release. createRelease is refused with CONFLICT when false. (operator, 2026-11-16, PRO-037, PRO-038, OD-W20; ruling number to be assigned)"
+  "Whether this hub holds the release bucket and the updater key, so it can publish a release. createRelease is refused with CONFLICT when false. (R-118; PRO-037, PRO-038, OD-W20)"
   releasePublishing: Boolean!
   builders: [Builder!]!
   "Up to `first` (1 to 1000) stored lines after sequence `after`, oldest first (BLD-048)."
@@ -2470,6 +2512,8 @@ type Query {
   # Phase 3: VPN (VP-5)
   "The VPN picture; null when the hub has no LocalAPI proxy or has not read it yet (VPN-005)."
   vpn: VpnPicture
+  "The Headscale server every Anima node logs in to; the desktop app takes its own VPN address only from a client logged in to it (ADR-005)."
+  vpnLoginServer: String!
 
   # Engine and Projects (operator, 2026-11-13; ruling number to be assigned; K-E7, K-E1, XP-02)
   "All 15, in the order of the plan."
@@ -2482,6 +2526,10 @@ type Query {
   project(slug: String!): Project
   "The open attempt, or one that ended in the last 10 minutes; null otherwise. Open to a read key: it holds nothing secret."
   githubConnect: GithubConnectAttempt
+
+  # Tool inventory (operator, 2026-11-15, CAP-020 to CAP-031; ruling number to be assigned)
+  "Each device whose agent sent a tool inventory, by device name (byte order). tool: only the devices where that tool is usable. buildTarget: only the devices with that Rust target. A name the hub does not know matches no device (CAP-030). Open to a read key."
+  capabilities(tool: String, buildTarget: String): [DeviceCapabilities!]!
 
   # Projects: work, code and history (operator, 2026-11-13; ruling number to be assigned; PRJ-027 to PRJ-035, OD-E14)
   # Every field below: CONFLICT while Projects is off or while ProjectRepository.access is not READY; NOT_FOUND for an

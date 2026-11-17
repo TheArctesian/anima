@@ -118,9 +118,6 @@ state (`register.md`) and the rules (`rules.md`, PLN-001 to PLN-017, operator, 2
 - Do not use GitHub issues, labels or project boards as a store (PLN-012, R-119). A work item or a defect
   is a document in [docs/work-items/](docs/work-items/README.md). Deferred work is a line in
   [docs/deferred.md](docs/deferred.md). An open decision is a row in its plan.
-- A check that only the operator can do gets a row in
-  [docs/operator-checks.md](docs/operator-checks.md) in the commit that defers it (PLN-014). Do not
-  write "Pass" for a check that you did not see. A task that waits for a check is not done.
 - One entry, one job, one owner (PLN-016). Each planning document is reachable from the work plan, has
   one job, and points to the owner of a fact; it does not copy the fact. One document defines each
   requirement identifier. `bun run quality:documents` checks this (PLN-017).
@@ -130,9 +127,26 @@ state (`register.md`) and the rules (`rules.md`, PLN-001 to PLN-017, operator, 2
 Follow the `test-audit` rules: test behaviour, not structure. If moving code breaks a test,
 fix the test. Rust integration tests live in one crate per binary (`tests/it/main.rs`).
 
+## Human testing
+
+[docs/need-human-testing.md](docs/need-human-testing.md) lists each check that only a person can do. It is the
+one list of such checks (PLN-014): a task that waits for a check is not done until its entry says Passed.
+
+- When you build a function that the gates cannot prove, add an entry in the same commit. This
+  applies to work that needs a real account (GitHub, Apple), a real device, a real network, a
+  window of the operating system, or a time longer than a test can run.
+- An entry gives: what was built and where, what the tests did not cover, the steps, and the
+  expected result of each step. Write steps that the operator can do with no help.
+- Do not write "done" or "verified" for such a function in a plan, a report or a message. Say
+  that it is built and give the entry (`HT-nnn`). PLN-009 applies.
+- Only the operator sets an entry to Passed or Failed. If the operator tells you the result,
+  write it in the entry with the date.
+- When you correct a Failed entry, set it to Open again. Do not delete an entry.
+
 ## Gates
 
 Run `bun run gates` before you ask for review and before every merge. There is no CI; gates run on the machine that makes the change.
+`rust-toolchain.toml` pins the Rust version for every machine; rustup installs it on the first cargo run. `deploy/hub/Dockerfile` must name the same version (a test compares them). Change both in one commit.
 
 ```sh
 bun run gates

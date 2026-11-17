@@ -12,7 +12,7 @@ Map: [work-plan.md](../../work-plan.md), category Use, and the rented-resource r
 ETH-007). It also serves jobs and the "Needs attention" list. A rented computer can take a
 machine profile ([machine-profiles.md](machine-profiles.md)) and can keep a bot running when
 the operator's own computer is off.
-Identifiers: CVM-001 to CVM-018.
+Identifiers: CVM-001 to CVM-024.
 
 ## Problem
 
@@ -136,6 +136,55 @@ Anima.ing must not start a GPU add-on on a provider that forbids resale.
   that customer's network, is not a "public compute network" under CMP-003. The wording of
   CMP-003 should say so. The machine must not join any other customer's network.
 
+## Two ways to pay for cloud computers (operator direction, 2026-11-16)
+
+The operator wants two options, like a model provider's flat plan next to its pay-per-use API:
+
+1. **Pay per use.** The customer pays for each computer by the hour while it exists, from a
+   prepaid balance, with the same cap and idle stop as GPUs. Hetzner's cloud servers are billed
+   by the hour up to a monthly cap (to check against current Hetzner terms), so the cost
+   follows use.
+2. **A flat subscription.** One monthly price. The customer can start as many cloud computers as
+   they want, within fair-use limits, and Anima.ing carries the risk that some customers use
+   more than the price covers.
+
+- **CVM-019.** Cloud computers (not GPUs) can be paid per use: billed by the hour from a prepaid
+  balance, under the spending cap of CVM-010 and an idle stop that the customer sets.
+- **CVM-020.** A flat cloud subscription may be offered. It allows any number of cloud computers
+  of the sizes it names, within the fair-use limits of CVM-021. The price is to be set from the
+  finance model (see Needs).
+- **CVM-021.** The flat subscription must publish its fair-use limits in plain words before
+  purchase: for example the most computers running at once, the largest size, and the total
+  computer-hours a month (figures to decide). Past a limit, new computers start on pay per use
+  only if the customer has turned that on; otherwise they wait. A running computer is never
+  stopped mid-task for passing a limit; the next start waits instead.
+- **CVM-022.** GPUs are never part of the flat subscription. They stay prepaid and hourly
+  (CVM-003, CVM-004, CVM-009), because one H100 left on costs about $2,100 a month.
+- **CVM-023.** The client must show the customer their use against the subscription's limits,
+  in the same gauge style as hosted hubs ([shared-pool-hosting.md](shared-pool-hosting.md)), and
+  suggest pay per use when they use little, or the subscription when pay per use would cost more.
+  This suggestion follows the one-a-week rule of CVM-007.
+- **CVM-024.** When a customer reaches their monthly pay-per-use spending cap (CVM-010,
+  CVM-019), Anima.ing must not cut service off silently. Machines that are already running keep
+  running to the end of their current task or until the customer stops them. Only new starts are
+  held. The client must show a clear notice, framed as a security control and not as a billing
+  error. It must say that a safety limit stopped further machine starts, and that the limit
+  exists to protect the customer from surprise bills and from abuse of their account, for
+  example a leaked key starting machines. The notice must give an explicit way forward: raise
+  the cap, remove it, or contact support for help. Raising or removing the cap must need the
+  same sign-in check as other account security changes. The same notice must also go by email or
+  push to anyone who has turned on alerts, so a bot or job that was waiting on a start does not
+  fail without anyone knowing.
+
+Risks of the flat subscription:
+
+- A few heavy users can cost more than the price. The fair-use limits and the start limit for
+  new accounts are the control; Accounting must model how many heavy users the price can carry.
+- "As many as you want" invites crypto mining and resale. CVM-013 still applies, and the
+  subscription must forbid resale of the machines.
+- The concurrency limit needs a hard check in the control plane (CVM-015), not only in the
+  client.
+
 ## Conflicts that need a ruling
 
 - **ETH-007.** For a rented resource, the hub only reads. An action uses the CLI tool of the
@@ -153,5 +202,7 @@ Anima.ing must not start a GPU add-on on a provider that forbids resale.
 - A ruling on ETH-007, CMP-003 and MET-012 as they apply here.
 - Written consent from a GPU provider before any GPU add-on is offered.
 - A published price list, after the suggested prices are ruled on.
+- A finance model for the flat subscription (price, fair-use limits, how many heavy users it can
+  carry), from Accounting.
 - After approval: a work item in `docs/work-items/` (PLN-012) in the Use category, and a security review of
   enrolment, wipe and spending caps.

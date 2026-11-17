@@ -433,7 +433,7 @@ plan. The names are proposals: that plan owns them.
 
 ## Tasks
 
-Each task is "Not started". Change the state in the commit that does the work (PLN-008). The
+R1 to R4 are done. Each other task is "Not started". Change the state in the commit that does the work (PLN-008). The
 order is the order of the groups: R, then W, then B, then A (OD-W21, operator, 2026-11-16). S is
 the last task of W, B and A.
 

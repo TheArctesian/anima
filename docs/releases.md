@@ -68,6 +68,48 @@ updater files; they come only from the hub in the Builds flow. If the hub cannot
 it is not the key of `ANIMA_UPDATER_PUBLIC_KEY`, the hub starts with publishing off and its log
 says why.
 
+## What a release carries
+
+The bundle step of a builder builds, from the job's commit, every program that "Create a hub
+on this computer" needs, and puts them into the application (plan item S12,
+[s12-packaging-tasks.md](research/one-click/s12-packaging-tasks.md)):
+
+| File | macOS | Linux AppImage |
+| --- | --- | --- |
+| `anima`, `anima-local-hub`, `anima-hub`, `anima-database`, `anima-gateway`, `anima-link` | `Anima.ing.app/Contents/MacOS/` | `usr/bin/` |
+| The PostgreSQL tree | `Anima.ing.app/Contents/Resources/database/` | `usr/lib/Anima.ing/database/` |
+
+- The Rust programs come from one `cargo build`. `anima-link` comes from `link/build.sh`, the
+  tree from `apps/desktop/src-tauri/database-tree/build.sh`. The builder runs the two scripts
+  with `/bin/sh` from its clone. The tree is built from the pinned source at each release; the
+  source archive is downloaded from `ftp.postgresql.org` and checked against
+  `database-tree/postgresql.pin`.
+- A builder needs Go (the gates need it also). A Linux builder also needs `patchelf`, `bison`,
+  `flex`, `readelf`, `make` and the zlib headers; the tool check in Settings names them when
+  one is missing.
+- The order is: the tree, then `anima-link` (after `go mod verify`, with a fixed Go
+  environment), then the Rust programs, then Tauri. The two scripts, the pin, the Go module
+  files and `tauri.conf.json` must be the files of the commit directly before their use.
+- macOS signing: the builder signs with the identity that the builder application itself was
+  built with, and the commit must name the same identity in `bundle.macOS.signingIdentity`.
+  So a new identity needs a new builder application first. The recipe signs each file of the
+  tree with the hardened runtime and a secure timestamp. Then Tauri signs each program in
+  `Contents/MacOS`, then the application. No program has an entitlement.
+- Before the builder sends the DMG to the notary service, it checks **each Mach-O file** of the
+  application: exactly the two architectures, a Developer ID Application signature of the team that the
+  identity names, the hardened runtime, a secure timestamp, no entitlement (UPD-011). A file
+  that fails stops the job.
+- The updater file holds all of this, so an update replaces the programs in the application.
+  The hub runs a copy of them; the new application replaces that copy at its first start
+  ([setup/local-hub.md](setup/local-hub.md), Section 3).
+
+### A trial bundle (never a release)
+
+`apps/desktop/src-tauri/trial-bundle.sh [version]` makes the same application on the computer
+that runs it, with an ad hoc signature on macOS and no notary step. Use it to try the hub from
+a built application. It uses no signing identity and uploads nothing. Gatekeeper refuses such
+an application on another Mac.
+
 ## How an installed app updates
 
 1. The app reads `https://releases.anima.ing/{{target}}-{{arch}}/latest.json` at start and every 4

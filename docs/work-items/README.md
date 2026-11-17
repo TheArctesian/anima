@@ -17,19 +17,20 @@ Rules:
 - An item must not add a requirement that its owner plan does not have. Where an item has newer text than its plan, the Note says so, and the plan must change.
 - An older document that names an issue number (`#N`) means the item in the column "Was issue". `#1` is [deferred.md](../deferred.md).
 - "Open at import" means: the issue was open, and no person or agent compared the item with the code.
+- The issues were read again on 2026-11-16 before the merge into `main`: only the text of E0-4 had changed, and its document has the new text.
 
 ## Engine (E0)
 
 | Identifier | Title | Kind | State | Tier (work plan Section 4) | Owner | Was issue |
 | --- | --- | --- | --- | --- | --- | --- |
-| [E0-1](engine/E0-1.md) | Regroup hub folders into fleet/engine/vault/life/work | Work item | Open at import | 2a (the engine) | [extensions-plan.md](../extensions-plan.md) Section 5.1 | #4 |
-| [E0-2](engine/E0-2.md) | Shared source connections and retry-safe imports (Integrations UI later) | Work item | Open at import | 2a (the engine) | [extensions-plan.md](../extensions-plan.md) Section 5.1 | #5 |
+| [E0-1](engine/E0-1.md) | Regroup hub folders into fleet/engine/vault/life/work | Work item | On `main` (merge `78df5bcb`, 2026-11-13). Not compared with the text of the item | 2a (the engine) | [extensions-plan.md](../extensions-plan.md) Section 5.1 | #4 |
+| [E0-2](engine/E0-2.md) | Shared source connections and retry-safe imports (Integrations UI later) | Work item | On `main`: the sources framework and Settings > Integrations (merges `c70a3e32`, `8c98653d`, 2026-11-13). Not compared with the text of the item | 2a (the engine) | [extensions-plan.md](../extensions-plan.md) Section 5.1 | #5 |
 | [E0-3](engine/E0-3.md) | Reuse SSH/SFTP for demand-driven imports and redaction (later) | Work item | Open at import | 3b (the other extensions) | [extensions-plan.md](../extensions-plan.md) Section 5.1 | #6 |
-| [E0-4](engine/E0-4.md) | Unix event time, clock synchronization and persistent record references | Work item | Open at import | 2a (the engine) | [extensions-plan.md](../extensions-plan.md) Section 5.1 | #7 |
+| [E0-4](engine/E0-4.md) | Timeline and record links | Work item | In progress. Commits on the branch `engine/e0-4-timeline-links`, which is not merged | 2a (the engine) | [extensions-plan.md](../extensions-plan.md) Section 5.1 | #7 |
 | [E0-5](engine/E0-5.md) | Places, location ingestion and event-time context; attachment/extraction contracts | Work item | Open at import | 2a (the engine) | [extensions-plan.md](../extensions-plan.md) Section 5.1 | #8 |
 | [E0-6](engine/E0-6.md) | Operational key vault, cache lifecycle and personal-record security review | Work item | Open at import | 2a (the engine) | [extensions-plan.md](../extensions-plan.md) Section 5.1 | #9 |
 | [E0-7](engine/E0-7.md) | Reminder engine and ntfy delivery | Work item | Open at import | 2a (the engine) | [extensions-plan.md](../extensions-plan.md) Section 5.1 | #10 |
-| [E0-8](engine/E0-8.md) | Extension registry, nav groups and launch briefs | Work item | Open at import | 2a (the engine) | [extensions-plan.md](../extensions-plan.md) Section 5.1 | #11 |
+| [E0-8](engine/E0-8.md) | Extension registry, nav groups and launch briefs | Work item | In progress. On `main`: the extension registry and its switches (merges `3750eb87`, `efcf2fe5`). The launch briefs are not written (ENG-012) | 2a (the engine) | [extensions-plan.md](../extensions-plan.md) Section 5.1 | #11 |
 
 ## Extensions
 

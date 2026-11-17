@@ -237,7 +237,7 @@ second Mac to see the prompt for a new program.
 
 Open items for the operator:
 
-Results: [operator-checks.md](../../operator-checks.md) holds the result of each check below (PLN-014).
+Results: [need-human-testing.md](../../need-human-testing.md), section "Checks that other documents hold", holds the result of each check below (PLN-014).
 
 1. **T14**: the second-Mac steps (spike report, Section 7). They set the keepalive numbers of
    LNK-009 and show if the slow first connection occurs between two machines.

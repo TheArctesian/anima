@@ -194,7 +194,7 @@ Not checked: a GNOME Remote Desktop host, and the certificate pin against a real
 
 ## 6. Open for the operator
 
-Results: [operator-checks.md](../../operator-checks.md) holds the result of each check below (PLN-014).
+Results: [need-human-testing.md](../../need-human-testing.md), section "Checks that other documents hold", holds the result of each check below (PLN-014).
 
 | Item | Why it is open |
 | --- | --- |

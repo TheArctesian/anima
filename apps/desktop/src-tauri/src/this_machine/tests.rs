@@ -1,14 +1,17 @@
 //! The tests use fixed addresses, a loopback listener and harmless programs (`echo`, `false`,
-//! `sleep`); none reads this computer's real interfaces or opens an app.
+//! `sleep`); none reads this computer's real interfaces or VPN client, or opens an app.
+//! `tests/vpn_client.rs` holds how the VPN address is asked of the Anima VPN client.
+
+mod vpn_client;
 
 use std::{
-    net::{IpAddr, Ipv4Addr, Ipv6Addr, TcpListener},
+    net::{Ipv4Addr, TcpListener},
     time::{Duration, Instant},
 };
 
 use super::{
     OperatingSystem, SSH_PATIENCE, SSH_PORT, ThisMachine, ThisMachineError,
-    address::{accepts_connection, is_vpn_address, ssh_answers, vpn_address_among},
+    address::{accepts_connection, is_vpn_address, ssh_answers},
     name::{first_line, output_of, short_host_name},
 };
 
@@ -41,31 +44,6 @@ fn the_vpn_range_matches_the_prefix_for_every_sampled_address() {
         let ip = Ipv4Addr::from(raw);
         assert_eq!(is_vpn_address(ip), raw & mask == prefix, "{ip}");
     }
-}
-
-#[test]
-fn the_vpn_address_is_the_lowest_one_in_the_range_whatever_the_order() {
-    let ips = [
-        IpAddr::V4(Ipv4Addr::LOCALHOST),
-        IpAddr::V4(Ipv4Addr::new(100, 101, 0, 9)),
-        IpAddr::V6(Ipv6Addr::LOCALHOST),
-        IpAddr::V4(Ipv4Addr::new(192, 168, 1, 20)),
-        IpAddr::V4(Ipv4Addr::new(100, 64, 0, 7)),
-    ];
-    let expected = Some(Ipv4Addr::new(100, 64, 0, 7));
-    assert_eq!(vpn_address_among(ips), expected);
-    assert_eq!(vpn_address_among(ips.into_iter().rev()), expected);
-}
-
-#[test]
-fn a_computer_off_the_vpn_has_no_vpn_address() {
-    let ips = [
-        IpAddr::V4(Ipv4Addr::new(192, 168, 1, 20)),
-        IpAddr::V4(Ipv4Addr::new(100, 128, 0, 1)),
-        IpAddr::V6("fd7a:115c:a1e0::1".parse().unwrap()),
-    ];
-    assert_eq!(vpn_address_among(ips), None);
-    assert_eq!(vpn_address_among([]), None);
 }
 
 #[test]

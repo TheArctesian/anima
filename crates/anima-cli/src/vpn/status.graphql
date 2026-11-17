@@ -1,4 +1,5 @@
-# `anima vpn status` (VPN-005, VPN-008). Null when the hub has not read the VPN yet.
+# `anima vpn status` (VPN-005, VPN-008, ADR-005). `vpn` is null when the hub has not read the VPN yet;
+# `vpnLoginServer` is always known.
 fragment VpnNodeRow on VpnNode {
   name
   address
@@ -17,6 +18,7 @@ fragment VpnNodeRow on VpnNode {
 }
 
 query VpnStatus {
+  vpnLoginServer
   vpn {
     readAt
     fresh

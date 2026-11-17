@@ -194,7 +194,7 @@ out of tools.
 | T6 | Trial with a real LaunchAgent on this Mac, in a trial folder; removed after | Done. Section 7.3 has the result. | — |
 | T7 | Build and tests on Linux in a container | Done: arm64, Debian 12, a user without root; 65 of 65 tests at `2e7486b1`. | — |
 | T8 | Documents: `docs/setup/local-hub.md`, the spec delta, what S6 needs | Done | `5b954d7a`, `4521241f`, and the commit of this table |
-| T9 | The release builder carries the four programs and the tree (with S3 T11) | Not started. Section 7.2 has the steps. | — |
+| T9 | The release builder carries the programs and the tree (with S3 T11) | Done in plan item S12: [s12-packaging-tasks.md](s12-packaging-tasks.md), tasks T1 to T3. | `f24f4c54`, `aec3c400` |
 | T10 | The systemd user unit on a real Linux desktop; the macOS Local Network prompt for a hub that launchd started | Not started: needs the operator and a Linux desktop. | — |
 
 ## 3. Where a ruling is necessary
@@ -256,7 +256,7 @@ documents are built, reviewed and tested on macOS and in a Linux container.
 
 ### 7.2 Open
 
-Results: [operator-checks.md](../../operator-checks.md) holds the result of each check below (PLN-014).
+Results: [need-human-testing.md](../../need-human-testing.md), section "Checks that other documents hold", holds the result of each check below (PLN-014).
 
 - **T9, the bundle.** A release does not carry the programs, so `local_hub_carried` answers
   `false` in every build today. Steps, with S3 T11 (its Section 7.2 has the security conditions):

@@ -23,3 +23,24 @@ VPN-012
 VPN-013
 VPN-014
 VPS-004
+# Added at the merge of main on 2026-11-16: 18 identifiers.
+# AWK and LNK: docs/one-click-plan.md states requirements that the design specification or a task list also states.
+# HLT: docs/power-health-plan.md and the Health extension of docs/extensions-plan.md use one identifier for two different requirements.
+AWK-001
+AWK-002
+AWK-003
+AWK-004
+AWK-005
+AWK-006
+AWK-007
+HLT-001
+HLT-002
+HLT-003
+HLT-004
+HLT-005
+HLT-006
+HLT-007
+LNK-005
+LNK-006
+LNK-007
+LNK-008

@@ -107,7 +107,7 @@ Choices made while building, after the reviews:
 
 ## 6. Deferred live checks
 
-Results: [operator-checks.md](../../operator-checks.md) holds the result of each check below (PLN-014).
+Results: [need-human-testing.md](../../need-human-testing.md), section "Checks that other documents hold", holds the result of each check below (PLN-014).
 
 The operator does these on a real computer. No agent ran `sudo`, changed a power setting or
 closed a lid. This Mac had `SleepDisabled 1` from a different tool during the build (F-6): turn

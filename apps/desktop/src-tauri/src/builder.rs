@@ -9,6 +9,7 @@
 
 mod artifact;
 mod bundled;
+mod carried;
 mod child;
 mod environment;
 mod error;
@@ -16,7 +17,6 @@ mod job;
 mod lines;
 mod plan;
 mod reaper;
-mod sidecar;
 mod steps;
 mod tools;
 pub mod upload;

@@ -4,13 +4,20 @@ use std::path::{Path, PathBuf};
 
 use tempfile::TempDir;
 
+mod digest;
+mod version;
+
 use super::{CopyError, are_in_place, copy, put_in_place, remove};
 use crate::members::PROGRAMS;
 use crate::{Carried, Folders};
 
 /// What the application carries: the programs in one folder and a PostgreSQL tree.
 pub(crate) fn carried(folder: &Path, mark: &str) -> Carried {
-    let bundle = folder.join(format!("bundle {mark}"));
+    carried_in(&folder.join(format!("bundle {mark}")), mark)
+}
+
+/// The same, in the folder `bundle`.
+pub(crate) fn carried_in(bundle: &Path, mark: &str) -> Carried {
     let (programs, tree) = (bundle.join("MacOS"), bundle.join("database"));
     fs::create_dir_all(&programs).unwrap();
     for name in PROGRAMS {

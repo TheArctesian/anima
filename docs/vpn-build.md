@@ -1066,7 +1066,7 @@ Folder `lib/devices/toolbar` 6 → 7.
 **Codegen.** Already done in A1-T3 and A1-T5 (rule 0.8).
 
 **`lib/events/panel/view.ts`**: add `{ value: 'VPN', label: 'VPN' }` after `HUB`. (METRICS and
-NOTIFICATION are missing too; that is a separate fix, issue #1.)
+NOTIFICATION are missing too; that is a separate fix, [deferred.md](deferred.md).)
 
 **New folder `apps/client/src/lib/vpn/`** (7 counted files at the end of A2-T3; sub-folders
 are counted on their own):

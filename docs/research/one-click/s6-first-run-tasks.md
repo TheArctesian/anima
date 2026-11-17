@@ -284,7 +284,7 @@ Seen and not yet handled (follow-ups, not S6 requirements):
 
 ### 6.3 Deferred live checks (need the operator or another computer)
 
-Results: [operator-checks.md](../../operator-checks.md) holds the result of each check below (PLN-014).
+Results: [need-human-testing.md](../../need-human-testing.md), section "Checks that other documents hold", holds the result of each check below (PLN-014).
 
 1. **The desktop window, on this Mac.** Build with `bun run --cwd apps/desktop tauri build --debug`
    and start it with `ANIMA_DEV_PROGRAMS=<folder with anima-local-hub, anima-hub, anima-database,

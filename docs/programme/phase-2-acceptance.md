@@ -31,7 +31,7 @@ Status words (WP-34 D-8):
 
 ## Operator steps
 
-Results: [operator-checks.md](../operator-checks.md) holds the result of each check below (PLN-014).
+Results: [need-human-testing.md](../need-human-testing.md), section "Checks that other documents hold", holds the result of each check below (PLN-014).
 
 Run these on the operator's machines after the hub, with the WP-23 gateway steps applied, has been redeployed. Each
 step names what to look for. Record the result in `docs/programme/operator-changes.md`.

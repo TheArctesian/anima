@@ -194,6 +194,7 @@ async fn mcp_009_every_read_tool_answers_from_the_real_hub(pool: PgPool) {
             json!({ "device": "nas", "detail": true }),
         ),
         ("anima_device_metrics", metrics),
+        ("anima_capability_list", json!({ "tool": "cargo" })),
         ("anima_check_get", json!({ "check": check, "detail": true })),
         ("anima_maintenance_list", json!({})),
         ("anima_events_search", json!({})),

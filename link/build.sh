@@ -8,7 +8,13 @@
 set -eu
 cd "$(dirname "$0")"
 LIMIT_BYTES=20000000
-tags=$(tr '\n' ',' <"$(go list -m -f '{{.Dir}}' github.com/tailscale/tailcat)/build-tags.txt" | sed 's/,$//')
+# With an empty module cache `go list -m` prints no folder. The tags leave out the port
+# mapper (UPnP, NAT-PMP, PCP), so a build without them must never come out of this script.
+go mod download github.com/tailscale/tailcat
+tags_file="$(go list -m -f '{{.Dir}}' github.com/tailscale/tailcat)/build-tags.txt"
+[ -s "$tags_file" ] || { echo "link/build.sh: the build tags of Tailcat are not at $tags_file" >&2; exit 1; }
+tags=$(tr '\n' ',' <"$tags_file" | sed 's/,$//')
+case ",$tags," in *,ts_omit_portmapper,*) ;; *) echo "link/build.sh: the build tags do not leave out the port mapper" >&2; exit 1 ;; esac
 mkdir -p bin
 for target in darwin/arm64 darwin/amd64 linux/amd64 linux/arm64; do
   os=${target%/*} arch=${target#*/}

@@ -114,6 +114,7 @@ fn with_state(app: tauri::Builder<tauri::Wry>) -> tauri::Builder<tauri::Wry> {
             tauri::async_runtime::spawn(keystore::forget_retired_updater_key());
             stay_awake::start(app.handle());
             link::start(&app.state::<Arc<link::DeviceLink>>());
+            local_hub::update::at_start(&app.state::<local_hub::Changing>());
             Ok(())
         })
 }

@@ -186,6 +186,14 @@ fn bld_047_lipo_must_name_both_architectures() {
     assert!(artifact::universal(&lines("arm64 x86_64")));
     assert!(!artifact::universal(&lines("arm64")));
     assert!(!artifact::universal(&lines("x86_64h arm64e")));
+    // A third slice is checked by nobody, and an Intel Mac would prefer `x86_64h`.
+    assert!(!artifact::universal(&lines("x86_64 x86_64h arm64")));
+    assert!(!artifact::universal(&lines("x86_64 arm64 arm64")));
+    assert!(!artifact::universal(&lines("x86_64 arm64 arm64e")));
+    assert!(artifact::universal(&[
+        "x86_64".to_owned(),
+        "arm64".to_owned()
+    ]));
     assert!(!artifact::universal(&[]));
 }
 

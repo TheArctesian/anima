@@ -4,12 +4,13 @@ Progress: the plan register in [work-plan.md](../../work-plan.md) Section 9 hold
 
 From: the planning session of 2026-11-12. The operator agreed the form in a side chat: a job is
 a container image, models run on the machine directly, jobs call the model service.
-Version: 2. Date: 2026-11-16.
+Version: 3. Date: 2026-11-16.
 Status: Draft. The operator decided OD-W10 on 2026-11-12 (see "Decision").
 The requirements are not yet approved one by one. The decision changes R-115. Version 2 adds
-JOB-011, a proposal that follows OD-W13.
+JOB-011, a proposal that follows OD-W13. Version 3 adds
+JOB-012 to JOB-027, jobs that an AI agent starts.
 Map: [work-plan.md](../../work-plan.md), category Use, decisions OD-W5, OD-W6, OD-W10 and OD-W13.
-Identifiers: USE-001 to USE-009, JOB-001 to JOB-011.
+Identifiers: USE-001 to USE-009, JOB-001 to JOB-027.
 
 ## Problem
 
@@ -92,6 +93,85 @@ type: GitHub schedules it (PRO-047).
 The tasks for the work route are W1 to W6 in "Tasks" of
 [projects-and-builds.md](projects-and-builds.md). That table holds their state (PLN-006).
 
+## Jobs that an AI agent starts
+
+Proposed on 2026-11-15. JOB-017 and JOB-018 are approved for build as the command
+`anima snapshot` (operator, 2026-11-15: "lets build the two buildable ones now"; ruling number
+to be assigned). The other requirements of JOB-012 to JOB-027 are not approved. The operator said: "if
+the agent can't access or can't put extra resources on this machine it can branch out to other
+that is coding agent agnostic using all the resources it can get".
+
+The operator develops on one computer, and that computer often has no free memory or processor
+time. An AI agent on that computer, for example Claude Code or Codex, must be able to give a
+build or a test to a different machine. It uses the `anima` command or the MCP server, so the
+function does not depend on one AI agent program. The compute plan uses "offload" for the layers
+of a model (its Section 5.2); this proposal does not use that word for jobs.
+
+| Term | Meaning |
+| --- | --- |
+| Requirement set | The tools, the build target and the resources that a job needs |
+| Scratch ref | A git ref under `refs/anima/wip/` that holds a snapshot of a working tree |
+| Artifact | A file that a job makes and keeps, for example a binary or an application bundle |
+
+### Placement from the tool inventory
+
+- **JOB-012.** A job must state a requirement set: the tools with a minimum version, the build
+  target, the minimum free memory and the minimum free disk.
+- **JOB-013.** The placement must be a pure function of the requirement set, the capabilities
+  (compute plan CAP-001 to CAP-031), the measurements and the device policy (USE-003, USE-009).
+- **JOB-014.** When no machine fits, the hub must refuse the job at once. The refusal must name
+  each requirement that no machine meets. Example: "No machine has the target
+  `aarch64-unknown-linux-gnu`".
+- **JOB-015.** No command and no MCP tool takes a command line for a machine (USE-006, MCP-006).
+  A caller names a job type from the fixed list and gives the parameters of that type.
+- **JOB-016.** The build of a project and the test of a project are the first two job types
+  that a caller can start. The steps come from the configuration of the project (PRO-009), not
+  from the caller.
+
+### The working tree
+
+A job builds a commit. The working tree of the operator has changes that are not committed.
+
+- **JOB-017.** `anima job start` must be able to send a snapshot of the working tree. It must
+  make a commit of the tree with no change to the index, the branch or the stash. It must push
+  that commit to a scratch ref on the forge of the project.
+- **JOB-018.** The snapshot must obey the ignore rules of the repository. It must refuse a tree
+  that contains a file that matches the secret patterns of the project (`.env*`, key files).
+  Until jobs exist, the command is `anima snapshot push`. `anima snapshot list` and
+  `anima snapshot delete` let the operator remove a scratch ref, because no hub job does it
+  (JOB-019). The secret patterns are a fixed list in the command until a project has its own.
+- **JOB-019.** The machine must build the scratch ref in a new checkout and delete the checkout
+  when the job ends (PRO-023). The hub must delete each scratch ref when its job ends, and each
+  scratch ref that is older than 7 days.
+- **JOB-020.** A job from a scratch ref must not get a project secret (JOB-010) and must not
+  publish a release. BLD-041 stays for releases.
+
+### Artifacts
+
+- **JOB-021.** A job type can name the files that it keeps. Each of them is an artifact. The
+  artifact record is part of the one contract for job results (see "Needs").
+- **JOB-022.** The hub must record each artifact with its job, its project, its commit, its
+  build target, its size and its SHA-256.
+- **JOB-023.** Artifacts are bulk data. They must use the store of
+  [bulk-data-placement.md](bulk-data-placement.md). The hub must not keep them on its own disk.
+- **JOB-024.** Until that store exists, the machine that made an artifact keeps it. When a
+  request for it comes, the machine uploads the file through the hub. The agent must not listen
+  on a port for this (MET-020).
+- **JOB-025.** `anima artifact fetch` writes a file to a path that the caller gives and verifies
+  the SHA-256. The MCP tool returns the path, not the content.
+- **JOB-026.** An artifact from a scratch ref must carry the mark "not a release". The updater
+  and the Releases page must never offer it.
+- **JOB-027.** The Data retention section of the Settings page (SET-004) must get one period for
+  artifacts. The default is 14 days.
+
+### Decisions for the operator
+
+| Question | Recommendation |
+| --- | --- |
+| How does the working tree get to the other machine? | A scratch ref on the forge (JOB-017). A file sync is a second transport. |
+| Does MCP-006 stay? | Yes (JOB-015). Open point 1 of [cli-mcp-plan.md](../../cli-mcp-plan.md) stays open. |
+| Which token can start a job? | A write API key, with the MCP tool `off` until the operator allows it (MCP-002). |
+
 ## Decision (OD-W10, operator, 2026-11-12)
 
 R-115 (operator, 2026-11-12) listed as **not taken**: "a command channel from the agent to the
@@ -141,5 +221,8 @@ This decision comes before [C1](../../work-items/compute/C1.md), not only before
 - A test of Railpack on one project of the operator (JOB-002).
 - A design for how the hub gives a secret to one job run and how the machine deletes it
   (JOB-010), with the security review of the work route.
+- A security review of JOB-017 to JOB-020: a scratch ref lets a caller select the code that a
+  machine builds. Build scripts are code.
+- The tool inventory of the compute plan (CAP-020 to CAP-031) before JOB-012 to JOB-014.
 - After approval: change the title of [C7](../../work-items/compute/C7.md) or add one work item for jobs in
   `docs/work-items/` (PLN-012).

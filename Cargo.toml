@@ -79,7 +79,6 @@ tauri-plugin-process = "2.4"
 tauri-plugin-log = { version = "2.10", default-features = false }
 # "Add this machine" (R-058, R-060): the interface addresses, to find this computer's VPN
 # address, and the OS user name of the process.
-if-addrs = "0.15"
 whoami = { version = "2.1", default-features = false, features = ["std"] }
 # Reads the agent's launchd property list in its tests (WP-54 T4, MET-019).
 plist = "1"

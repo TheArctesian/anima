@@ -33,7 +33,7 @@ The table gives the order. The section of each row below the table gives the wor
 | 4.1 | 0 | Finish the device manager | Foundation, See, Reach | Phases 1 to 3 are built. |
 | 4.2 | 1 | Restore a backup and move the coordinator | Foundation | Proposal. |
 | 4.3 | 1 | Decisions and approvals for the foundation | All | Open |
-| 4.4 | 2a | The engine (E0) | See, Remember | Planned. |
+| 4.4 | 2a | The engine (E0) | See, Remember | In progress. |
 | 4.5 | 2b | Level 1 model service | Use | Planned. |
 | 4.6 | 3a | Projects | See | In progress. |
 | 4.7 | 3a | Jobs, builds and AI agent runs | Use | [C7](../work-items/compute/C7.md) is planned. |
@@ -52,7 +52,7 @@ The table gives the order. The section of each row below the table gives the wor
 - Category: Foundation, See, Reach
 - Work: Finish the device manager: the Phase 3 acceptance run (WP-53) and the operator steps before it. Three open defects ([GH-52](../work-items/defects/GH-52.md), [GH-53](../work-items/defects/GH-53.md), [GH-54](../work-items/defects/GH-54.md)). The correction of the release of Anima: tasks R1 to R7 in "Tasks" of [projects-and-builds.md](../programme/proposals/projects-and-builds.md) (OD-W21).
 - Work items: [handoff.md](../programme/handoff.md) Sections 3 and 4. [GH-52](../work-items/defects/GH-52.md), [GH-53](../work-items/defects/GH-53.md), [GH-54](../work-items/defects/GH-54.md). R1 to R7 are in the task table of [projects-and-builds.md](../programme/proposals/projects-and-builds.md)
-- State: Phases 1 to 3 are built. Acceptance waits for the operator. This tier removes `blocked: device-manager` (PH-E-000, PH-C-000). R1 to R4 are done (branch `builds/release-corrections`). R5 to R7 are not started: no release is published.
+- State: Phases 1 to 3 are built. Acceptance waits for the operator. This tier removes `blocked: device-manager` (PH-E-000, PH-C-000). R1 to R4 are done and are on `main` (commit `e3058276`, 2026-11-15). R5 to R7 are not started: no release is published.
 
 ### 4.2 Restore a backup and move the coordinator
 
@@ -76,7 +76,7 @@ The table gives the order. The section of each row below the table gives the wor
 - Category: See, Remember
 - Work: The engine (E0), with Writing as its sample extension
 - Work items: [E0-1](../work-items/engine/E0-1.md), [E0-2](../work-items/engine/E0-2.md), [E0-4](../work-items/engine/E0-4.md), [E0-5](../work-items/engine/E0-5.md), [E0-6](../work-items/engine/E0-6.md), [E0-7](../work-items/engine/E0-7.md), [E0-8](../work-items/engine/E0-8.md), [XP-03](../work-items/extensions/XP-03.md)
-- State: Planned.
+- State: In progress. On `main` (2026-11-13): E0-1, the hub folder regroup (merge `78df5bcb`); E0-2, the sources framework and Settings > Integrations (merges `c70a3e32`, `8c98653d`); E0-8, the extension registry and its switches (merges `3750eb87`, `efcf2fe5`). The launch briefs of E0-8 are not written (ENG-012). Not on `main`: E0-3 to E0-7 and Writing. E0-4 has commits on the branch `engine/e0-4-timeline-links`, which is not merged. The index of the work items holds the state of E0-1, E0-2 and E0-8 ([work-items/](../work-items/README.md)).
 
 ### 4.5 Level 1 model service
 
@@ -92,7 +92,7 @@ The table gives the order. The section of each row below the table gives the wor
 - Category: See
 - Work: Projects: import each GitHub repository, find where it runs, propose resources (PRO-001 to PRO-008)
 - Work items: [XP-02](../work-items/extensions/XP-02.md)
-- State: In progress. Connect GitHub (PRJ-039 to PRJ-042) is on `main` (2026-11-14). The direction is decided (OD-W11). It changes PRJ-001. It needs the engine (tier 2a).
+- State: In progress. On `main` (2026-11-13): the Projects domain in the hub, the `anima project` commands, the MCP tools, and the list and detail pages of the client (PRO-001 to PRO-004; merges `566238d2`, `3f9e9536`, `cf6d59bb`, `cc0490bf`). Connect GitHub (PRJ-039 to PRJ-042) is on `main` (2026-11-14). The state of PRO-005 to PRO-008 was not compared with the code. The direction is decided (OD-W11). It changes PRJ-001. The parts of the engine that it needs are on `main` (tier 2a).
 
 ### 4.7 Jobs, builds and AI agent runs
 
@@ -176,8 +176,9 @@ Notes:
 - The link (S1) and the access rules by device key (S5) have commits on `main` and no row in this table. The operator must give them a tier ([s1-link-tasks.md](../research/one-click/s1-link-tasks.md), [s5-access-tasks.md](../research/one-click/s5-access-tasks.md)).
 - The bundled PostgreSQL (S3) and the hub as a background program (S4) are in the same state: built, and no row in this table. The operator must give the one-click work a tier ([s3-database-tasks.md](../research/one-click/s3-database-tasks.md), [s4-local-hub-tasks.md](../research/one-click/s4-local-hub-tasks.md)).
 - The first run (S6) is in the same state: no row in this table. The operator must give it a tier ([s6-first-run-tasks.md](../research/one-click/s6-first-run-tasks.md)).
-- The stay-awake control (S8) is built on its branch and has no row in this table. The operator must give it a tier ([s8-stay-awake-tasks.md](../research/one-click/s8-stay-awake-tasks.md)).
-- The states in this table were read on 2026-11-12, except where a row gives a later date.
+- The stay-awake control (S8) is on `main` (merge `581e1d13`, 2026-11-15) and has no row in this table. The operator must give it a tier ([s8-stay-awake-tasks.md](../research/one-click/s8-stay-awake-tasks.md)).
+- Packaging (S12) is in the same state: no row in this table. It serves the same one-click work as S3, S4 and S6, and the operator must give that work a tier ([s12-packaging-tasks.md](../research/one-click/s12-packaging-tasks.md)).
+- The states in this table were read on 2026-11-12, except where a row gives a later date. The rows of tier 0, tier 2a and Projects in tier 3a were compared with the commits on `main` on 2026-11-16.
 - Phase 4 (Proxmox VE) is withdrawn (R-109). Session recording is deferred (R-113). This plan does not include them.
 
 ## 6. Not planned

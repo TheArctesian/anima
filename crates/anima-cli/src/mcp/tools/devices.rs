@@ -1,5 +1,7 @@
-//! The `devices` tool set: the fleet, devices, their metrics, sites, wake, and the changes.
+//! The `devices` tool set: the fleet, devices, their metrics and capabilities, sites, wake, and
+//! the changes.
 
+mod capabilities;
 mod change;
 mod metrics;
 mod read;
@@ -17,6 +19,7 @@ pub enum DeviceTool {
     Search,
     Get,
     Metrics,
+    CapabilityList,
     Create,
     SiteCreate,
     Wake,
@@ -25,11 +28,12 @@ pub enum DeviceTool {
 }
 
 impl DeviceTool {
-    pub const ALL: [Self; 9] = [
+    pub const ALL: [Self; 10] = [
         Self::FleetOverview,
         Self::Search,
         Self::Get,
         Self::Metrics,
+        Self::CapabilityList,
         Self::Create,
         Self::SiteCreate,
         Self::Wake,
@@ -41,6 +45,7 @@ impl DeviceTool {
     pub fn definition(self) -> Definition {
         match self {
             Self::Metrics => metrics::definition(),
+            Self::CapabilityList => capabilities::definition(),
             Self::FleetOverview | Self::Search | Self::Get => read::definition(self),
             other => change::definition(other),
         }
@@ -56,6 +61,7 @@ impl DeviceTool {
             Self::Search => read::search(hub, arguments).await,
             Self::Get => read::get(hub, arguments).await,
             Self::Metrics => metrics::metrics(hub, arguments).await,
+            Self::CapabilityList => capabilities::list(hub, arguments).await,
             Self::Create => change::create(hub, arguments).await,
             Self::SiteCreate => change::site_create(hub, arguments).await,
             Self::Wake => change::wake(hub, arguments).await,

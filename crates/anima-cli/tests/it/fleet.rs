@@ -1,6 +1,7 @@
 //! The fleet nouns: devices and how they are reached.
 
 mod agents;
+pub mod capabilities;
 mod checks;
 mod device_changes;
 mod device_paging;

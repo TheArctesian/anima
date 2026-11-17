@@ -11,6 +11,7 @@ export const TOOL_NAMES: Readonly<Record<BuilderTool, string>> = {
   go: 'Go (for the gates of link/)',
   postgres: 'PostgreSQL 17',
   'tauri-packages': 'the Tauri system packages',
+  'tree-tools': 'the tools that build the PostgreSQL tree (make, bison, flex, patchelf, readelf, curl and the zlib headers in /usr)',
   'updater-public-key': "this app's updater public key (an app built with the placeholder cannot build releases)",
   'signing-identity': 'the Developer ID certificate in the login keychain',
   'rust-target-aarch64-apple-darwin':

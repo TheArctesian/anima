@@ -6,6 +6,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use super::BatchInventory;
 use crate::points::{Point, SeriesKey};
 use crate::readings::{self, Drive};
 
@@ -24,6 +25,18 @@ pub struct Batch {
     /// (MET-027). An agent older than drives never sends it.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub drives: Option<Vec<BatchDrive>>,
+    /// The device's tool inventory, sent after start and when a probe result changes; absent
+    /// means unchanged (CAP-027, CAP-029). An agent older than the inventory never sends it.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub inventory: Option<BatchInventory>,
+}
+
+/// The lists a batch announces besides its points, each `None` when unchanged (K8 Section 4).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Announcements {
+    pub gpus: Option<Vec<BatchGpu>>,
+    pub drives: Option<Vec<BatchDrive>>,
+    pub inventory: Option<BatchInventory>,
 }
 
 /// One column of a batch. `kind` is text, so a kind this hub does not know can be ignored.
@@ -128,12 +141,12 @@ impl Batch {
     /// The batch of `points` for `device`: its series are every series of the points, in
     /// [`SeriesKey`] order, and a point holds `null` for a series it has no value of (K8
     /// Section 4). Give it the points of an [`Outgoing`](crate::points::Outgoing), and the
-    /// GPUs and drives to announce, if any.
+    /// GPUs, drives and inventory to announce, if any.
     #[must_use]
     pub fn new<'a>(
         device: Uuid,
         points: impl IntoIterator<Item = &'a Point>,
-        (gpus, drives): (Option<Vec<BatchGpu>>, Option<Vec<BatchDrive>>),
+        announced: Announcements,
     ) -> Self {
         let points: Vec<&Point> = points.into_iter().collect();
         let keys: BTreeSet<&SeriesKey> = points
@@ -147,8 +160,9 @@ impl Batch {
                 .iter()
                 .map(|point| BatchPoint::of(point, &keys))
                 .collect(),
-            gpus,
-            drives,
+            gpus: announced.gpus,
+            drives: announced.drives,
+            inventory: announced.inventory,
         }
     }
 }

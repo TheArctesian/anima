@@ -169,3 +169,77 @@ Also read `docs/programme/phase-3-plan.md`, `phase-3-contracts.md` and the packa
   - `phase-3`
   - `.claude/worktrees/wp-47-t1b-evidence/` (local synthetic captures and scripts)
   - every branch in section 3, until it merges or the Linux machine has it from the push
+
+## 8. Builds and the release of Anima (2026-11-16)
+
+This section adds to the file. Sections 1 to 7 are the state of 2026-11-12 and are not changed.
+The plan is [projects-and-builds.md](proposals/projects-and-builds.md), Version 2, "Tasks". That
+table holds the state of each task (PLN-006). This section adds no requirement.
+
+### 8.1 Done
+
+| What | Commit on `main` | Notes |
+| --- | --- | --- |
+| R1 to R4 (D1, D4, D5, D8) | `e3058276` | The builder clones `TheArctesian/anima.ing.git` (BLD-040), deletes the bundle folder before it bundles, and checks for Go (BLD-028). The hub refuses `createRelease` with `CONFLICT` when it cannot publish. |
+| R-118 | `21bc862d` | The ruling for the K1 query `releasePublishing: Boolean!`, with `anima release publishing` and the MCP tool `anima_release_publishing` (CMD-030). The client shows no Builds item and no builder row when it is false. |
+| Toolchain fixes | `9b64ac5f`, `24ebc4ce` | rustfmt and Clippy of rustc 1.100.0. Formatter output and Clippy's own suggestions only. |
+
+All 20 gates passed before the push of `0846e3d5`.
+
+### 8.2 Next, in this order (OD-W21)
+
+1. **R5: one name for the macOS application, `Anima.ing.app` (D2, OD-W19).** Change these places:
+   - the design specification Section 3.11;
+   - `apps/desktop/src-tauri/src/local_hub/carried.rs` (the doc comment says `Anima.app`);
+   - the builder: `builder/artifact.rs` and its tests in `builder/tests/upload.rs` and
+     `builder/tests/sidecar.rs`.
+
+   The file names of a release stay `Anima_*` (UPD-010). Decide whether the updater archive
+   stays `Anima.app.tar.gz`: UPD-010 governs it. Write the reason in the commit.
+2. **R6: the release carries the local hub (D3).** Task T9 of
+   [s4-local-hub-tasks.md](../research/one-click/s4-local-hub-tasks.md) owns it. Do not do it twice.
+3. **R7: the first release.** The operator does it. It needs R1 to R5. Each feed at
+   `releases.anima.ing` must answer 200 (D6). Agents do not publish, and do not touch R2 or the VPS
+   (VPS-005, UPD-012).
+4. Then the groups W, B and A, in the order of the plan. W1 needs a ruling that changes R-115
+   ([jobs.md](proposals/jobs.md), "Needs"). Ask the operator for it before you start W.
+
+D7 (no pinned toolchain) has no task yet. If a session adds one, its row goes in the plan's task
+table first.
+
+### 8.3 Facts about this machine
+
+- **Toolchain.** Homebrew Rust was removed on 2026-11-16. The gates now use rustup `stable`, which is
+  rustc 1.100.0. A branch made before then can fail `fmt` or `clippy` on code that it did not change.
+  Apply the tool's own fix in a separate commit.
+- **Shared build folder.** `/Users/stephenokita/Scripts/Personal/anima/.cargo/config.toml` is local
+  (not in Git). Every worktree reads it, and it sets `build-dir` to
+  `~/.cache/cargo-build/anima`. When two toolchains write to that folder, a build fails with
+  `E0514 ... compiled by an incompatible version of rustc`. The operator owns the file. Do not
+  change it. For your own runs, set `CARGO_BUILD_BUILD_DIR=$PWD/target`.
+- **Old `anima` program.** A gates run can use an `anima` program that was built before your
+  change. An end-to-end test then says `unrecognized subcommand`. Run the test again by itself
+  before you change code.
+- **`main` moves often.** Other sessions push many times each hour. Before you push, fetch and
+  merge again. If the merge changes code, run the gates again. If it changes only `docs/`, the
+  results stay valid.
+
+### 8.4 Prompt for the next session
+
+Paste this to start the next session:
+
+```text
+Continue the release correction of Anima. Read AGENTS.md, then Section 8 of
+docs/programme/handoff.md, then "The builder today" and "Tasks" in
+docs/programme/proposals/projects-and-builds.md.
+
+Do task R5 (D2, OD-W19): one name for the macOS application, Anima.ing.app. Change the
+design specification Section 3.11, local_hub/carried.rs and the builder (artifact.rs and its tests).
+The release file names stay Anima_* (UPD-010).
+
+Work in a new worktree from origin/main. Set CARGO_BUILD_BUILD_DIR=$PWD/target for cargo.
+Change the state of R5 in the task table in the same commit. Cite the requirement IDs.
+Run `BASE_REF=origin/main bun run gates`, then merge and push to main as a fast-forward.
+Do not do R6 (T9 of s4-local-hub-tasks.md owns it) or R7 (the operator does it).
+Never read .env*, secrets or key files. No VPS, R2 or Cloudflare change.
+```
