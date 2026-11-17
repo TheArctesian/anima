@@ -2,7 +2,9 @@
 
 Progress: the plan register in [work-plan.md](../../work-plan.md) Section 9 holds the state of this plan (PLN-005).
 
-Proposal, 2026-11-16, not yet decided. Instead of one dedicated server per customer, run each
+Proposal, 2026-11-16. The operator decided one point: hosted hubs launch on this pool, not on
+one VPS for each customer (HM-R4 in [hosted-mode.md](hosted-mode.md), 2026-11-16). The design below
+is not approved, and its figures are estimates. Instead of one dedicated server per customer, run each
 customer's hub as an isolated instance on a few large shared servers (the pool), meter each hub's
 CPU, memory and disk, show that to the customer as a live gauge, and sell more of the pool, or a
 dedicated box, when a hub runs short. That replaces per-device pricing with load-based upgrades.
@@ -12,7 +14,7 @@ than the earlier $3 to $5 estimate. The price is real
 operations work: isolation, shared networking and host upkeep become Anima.ing's problem.
 
 All capacity figures below are estimates. The device figures are the founder's working numbers,
-and hub memory is still unmeasured (see the open task in the vault's Hosting Costs note).
+and hub memory is still unmeasured (see the open task in the vault's Hosting Costs note). The free hosted hub that sleeps (HM-R3, HM-R6) is in [hosted-mode.md](hosted-mode.md) and not repeated here.
 
 ## 1. What changes
 
@@ -96,7 +98,8 @@ quarter of a core (it can burst higher when the host is idle) plus 1.5 GB of mem
 - Team in the vault's Pricing note is about users, not load. A team hub is a second instance in the pool, and
   can be any slice size. Check the Team price against this before publishing it.
 - This replaces the per-device price steps suggested on 2026-11-16 ($2 per device from 11 to 50,
-  $1 from 51 to 150). Do not publish both.
+  $1 from 51 to 150). The operator chose load-based upgrades on 2026-11-16, so the per-device steps
+  are dropped.
 
 ## 5a. Enterprise sign-in, user provisioning and audit logs
 
@@ -115,28 +118,31 @@ A first enterprise customer with both SSO and directory sync costs about $250 a 
 fees, before audit logs. These fees must be built into the enterprise price, not absorbed by
 the hosting margin.
 
-## 6. Migration from one server per customer
+## 6. Launch on the pool, and the fallback of one server for each customer
 
-No hosted customers exist yet, so this is a sequencing choice, not a rescue.
+The operator decided on 2026-11-16 that hosted hubs launch on the pool (HM-R4). No hosted customer
+exists, so no hub must move. The pool, its isolation and a security review must exist before the
+launch.
 
-1. **Launch as planned.** First customers on one UpCloud VPS each, as the vault's Hosting Costs note says.
-   Make every hub portable from day one: data in restic backups on R2, Headscale keys and the
-   server's identity in the backup, and each hub reached through its own subdomain.
+1. **Make every hub portable from the first day.** Keep the data in restic backups on R2, keep
+   the Headscale keys and the identity of the server in the backup, and reach each hub through its
+   own subdomain.
 2. **Build one pool host.** Rent one dedicated server, set up the isolation layer, run 5 to 10
-   test hubs with simulated devices, and confirm the per-slice device numbers.
-3. **Move by backup and restore.** Stop the hub, take a final backup, restore it into a pool
-   instance, switch the subdomain, and check every agent reconnects. Target under 10 minutes of
-   downtime, inside a maintenance window the customer is told about.
-4. **New customers go to the pool** once 10 test hubs and 5 migrated hubs have run for two weeks
-   without a noisy-neighbour problem.
-5. **Keep one-server-per-customer** as the Dedicated package and as the fallback for regions with
-   no pool host (the US until a US host is priced).
+   test hubs with simulated devices, and confirm the device numbers of each slice.
+3. **Launch customers on the pool** when 10 test hubs have run for two weeks without a
+   noisy-neighbour problem and the security review is done.
+4. **Keep one server for each customer** (for example a VPS at UpCloud) as the Dedicated package
+   and as the fallback for regions with no pool host (the US until a US host is priced).
+5. **To move a hub between hosts, use a backup and a restore.** Stop the hub, take a final backup,
+   restore it into the new instance, switch the subdomain, and check that every agent connects
+   again. The target is less than 10 minutes without service, inside a maintenance window that the
+   customer knows.
 
 ## 7. Risks and open questions
 
 - **Operations load.** Patching hosts, replacing failed disks, capacity planning and a host
-  outage taking down 60 customers at once all land on a one-person company. A VPS per customer
-  hands most of that to the provider.
+  outage taking down 60 customers at once all land on a one-person company. A VPS for each customer
+  (the fallback) hands most of that to the provider.
 - **Shared networking.** Hubs on one host share IPv4 addresses. HTTPS can be routed by name, but
   Headscale's built-in relay needs UDP port 3478, which only one hub per address can have. Either
   run one shared relay per pool host or buy extra IPv4 addresses (about $2 each a month).
@@ -155,7 +161,9 @@ No hosted customers exist yet, so this is a sequencing choice, not a rescue.
 ## Open
 
 #todo/shared-pool
-- [ ] Decide between one server per customer and the shared pool for launch
+- [x] Decide between one server per customer and the shared pool for launch (the shared pool, HM-R4, operator, 2026-11-16)
+- [ ] Measure what a sleeping free hub costs and how long it takes to start (HM-D8 in [hosted-mode.md](hosted-mode.md))
+- [ ] Get a security review of the pool's isolation and of the grant path before the first paying customer (HM-D7)
 - [ ] Load test one hub to confirm devices per shared slice and per dedicated core
 - [ ] Test Incus VMs with per-hub CPU, memory, disk and I/O limits on one dedicated server
 - [ ] Decide how hubs on one host share Headscale's relay and IPv4 addresses

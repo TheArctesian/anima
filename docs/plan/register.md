@@ -57,7 +57,7 @@ This table is the only list of the plans of Anima. A document that is not in thi
 | [programme/proposals/first-run-setup.md](../programme/proposals/first-run-setup.md) | Proposal | Draft. Build state not checked | Its status line: a proposal for a ruling. |
 | [programme/proposals/in-app-enrolment.md](../programme/proposals/in-app-enrolment.md) | Proposal | Draft. Build state not checked | Its status line: a proposal for a ruling. |
 | [programme/proposals/ssh-terminal.md](../programme/proposals/ssh-terminal.md) | Proposal | Draft. Build state not checked | Its status line: a proposal for a ruling (R-062). |
-| [programme/proposals/shared-pool-hosting.md](../programme/proposals/shared-pool-hosting.md) | Proposal | Draft | Not approved. The AX102 list price was corrected on 2026-11-16 to €259 a month plus €129 setup (about $286). |
+| [programme/proposals/shared-pool-hosting.md](../programme/proposals/shared-pool-hosting.md) | Proposal | Draft | Not approved. Launch on the pool is decided (HM-R4, operator, 2026-11-16); the design is not. The AX102 list price was corrected on 2026-11-16 to €259 a month plus €129 setup (about $286). |
 | [programme/proposals/shell-prompt.md](../programme/proposals/shell-prompt.md) | Proposal | Draft | Not approved. CMD-032 to CMD-038. INS-009 ruled 2026-11-16. |
 | [programme/proposals/hosted-mode.md](../programme/proposals/hosted-mode.md) | Proposal | Draft | Direction decided (HM-R1 to HM-R6, operator, 2026-11-16). HMD-001 to HMD-029 are not approved. HM-R6: a free hub sleeps. |
 | [programme/proposals/cloud-machines.md](../programme/proposals/cloud-machines.md) | Proposal | Draft | Not approved. CVM-001 to CVM-024. |
