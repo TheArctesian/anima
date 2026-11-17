@@ -48,6 +48,10 @@ RECIPE=$(shasum -a 256 "$0" 2>/dev/null || sha256sum "$0")
 STAMP="postgresql $VERSION $SHA256 $TARGET signed-by:${SIGN_IDENTITY:-ad-hoc} recipe:${RECIPE%% *}"
 
 fail() { echo "database-tree: $1" >&2; exit 1; }
+# The libraries a Mach-O file links, one install name a line. A name may hold spaces (a work
+# folder under "Application Support"), so the name is all that comes before otool's
+# " (compatibility version" and not the first word.
+linked() { otool "$@" | sed -n 's/^[[:space:]][[:space:]]*\(.*\) (compatibility version .*$/\1/p'; }
 
 case "$TARGET" in darwin-universal | linux) ;; *) fail "unknown target $TARGET" ;; esac
 
@@ -119,7 +123,7 @@ else
         for file in "$TREE"/bin/* "$TREE"/lib/postgresql/*.dylib; do
             case "$file" in */lib/postgresql/*) place="@loader_path/../libpq.5.dylib" ;; *) place="@loader_path/../lib/libpq.5.dylib" ;; esac
             for arch in arm64 x86_64; do
-                old=$(otool -arch "$arch" -L "$file" | awk '/libpq\.5/ && !/@loader_path/ {print $1}' | head -1)
+                old=$(linked -arch "$arch" -L "$file" | grep 'libpq\.5' | grep -v '^@loader_path/' | head -1 || true)
                 [ -z "$old" ] || install_name_tool -change "$old" "$place" "$file"
             done
         done
@@ -175,7 +179,7 @@ case "$TARGET" in
 darwin-universal)
     for file in "$TREE"/bin/* "$TREE"/lib/*.dylib "$TREE"/lib/postgresql/*.dylib; do
         [ "$(lipo -archs "$file")" = "x86_64 arm64" ] || fail "$file is not universal"
-        outside=$(otool -L "$file" | awk 'NR > 1 && /^\t/ {print $1}' | grep -v -e '^@loader_path/' -e '^/usr/lib/' || true)
+        outside=$(linked -L "$file" | grep -v -e '^@loader_path/' -e '^/usr/lib/' || true)
         [ -z "$outside" ] || fail "$file links outside the tree: $outside"
         newest=$(vtool -show-build "$file" | awk '/minos/ {print $2}' | sort -t. -k1,1n -k2,2n | tail -1)
         [ "$newest" = "$MACOS_MINIMUM" ] || fail "$file needs macOS $newest, not $MACOS_MINIMUM"
