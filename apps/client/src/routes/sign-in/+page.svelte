@@ -14,11 +14,14 @@
   import { resolve as entrance } from '$lib/motion/roles/resolve';
   import { createClock } from '$lib/nav/clock.svelte';
   import { DATA_AGE_REFRESH_MS } from '$lib/nav/nav';
+  import { phoneLayout } from '$lib/nav/phone/layout.svelte';
   import { capabilities } from '$lib/platform/platform';
   import CodeStep from './code/CodeStep.svelte';
   import Doors from './doors/Doors.svelte';
   import { afterEdit, checkLogin, firstInvalid, type FieldMessages, type LoginField } from './form';
   import HubLine from './HubLine.svelte';
+  import HubSlot from './phone/HubSlot.svelte';
+  import './phone/sign-in.css';
   import Notice from './Notice.svelte';
   import { hubHost, hubUnreachable } from './reachability';
   import { saveHubAddress, signIn } from './sign-in';
@@ -28,6 +31,8 @@
   const clock = createClock(DATA_AGE_REFRESH_MS);
   // Read once: the platform never changes in a page, so the hub line below never comes or goes (CLI-002).
   const desktop = capabilities().keyStore;
+  // The phone layout has no doors, and its hub slot under the button holds the unreachable notice (mockup 3).
+  const phone = $derived(phoneLayout());
 
   let username = $state('');
   let password = $state('');
@@ -177,11 +182,11 @@
 
 <!-- Sign-in in the website's language (UR-7, D13): the form stands in the doorway of the particle doors, on the bare
      ground; only its fields and button are filled. -->
-<div class="screen">
+<div class="screen" data-sign-in>
   <Doors {doorway} />
   <div class="panel" bind:this={doorway} {@attach entrance()}>
     <p class="label"><img src={asset('/logo.png')} alt="" width="22" height="22" /><span class="rule" aria-hidden="true"></span>Anima.ing</p>
-    <h1>Sign in</h1>
+    <h1>{phone && step === 'code' ? 'Enter code' : 'Sign in'}</h1>
 
     <form onsubmit={formSubmitted} novalidate>
       {#if loopback !== null}
@@ -192,7 +197,7 @@
             <p><button type="button" class="again" tabindex="0" disabled={checking} onclick={() => void checkLoopback(checkedOrigin)}>Check again</button></p>
           </Notice>
         </div>
-      {:else if unreachable !== null}
+      {:else if unreachable !== null && !phone}
         <div role="status">
           <Notice icon="carbon:unlink">
             <p><strong>{unreachable.title}</strong></p>
@@ -223,8 +228,12 @@
       {/if}
     </form>
 
-    <HubLine host={hubHost(hub.address.origin)} fixed={!desktop} bind:editing={editingAddress} bind:text={addressText} problem={addressProblem}
-      onsave={saveAddress} oncancel={cancelAddress} />
+    {#if phone && desktop && !editingAddress}
+      <HubSlot host={hubHost(hub.address.origin)} unreachable={unreachable !== null} onchange={() => { editingAddress = true; }} onretry={reloadClient} />
+    {:else}
+      <HubLine host={hubHost(hub.address.origin)} fixed={!desktop} bind:editing={editingAddress} bind:text={addressText} problem={addressProblem}
+        onsave={saveAddress} oncancel={cancelAddress} />
+    {/if}
   </div>
 </div>
 

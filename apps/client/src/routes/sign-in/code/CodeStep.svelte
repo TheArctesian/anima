@@ -1,6 +1,7 @@
 <script lang="ts">
   import Icon from '$lib/icons/Icon.svelte';
   import CodeBoxes from '$lib/access/code/CodeBoxes.svelte';
+  import { phoneLayout } from '$lib/nav/phone/layout.svelte';
 
   interface Props {
     busy: boolean;
@@ -15,12 +16,13 @@
 </script>
 
 <div class="step">
-  <h2>Enter code</h2>
+  <!-- In the phone layout the page's title says "Enter code" (mockup 3). -->
+  <h2>{phoneLayout() ? 'From your authenticator app.' : 'Enter code'}</h2>
   <CodeBoxes disabled={busy} {oncomplete} />
   <p class="busy" role="status">{#if busy}<Icon name="carbon:renew" />Signing in{/if}</p>
   <div class="links">
     <button type="button" tabindex="0" disabled={busy} onclick={onback}><Icon name="carbon:arrow-left" size="sm" />Back</button>
-    <button type="button" tabindex="0" disabled={busy} onclick={onskip}>Sign in without a code</button>
+    <button type="button" tabindex="0" disabled={busy} onclick={onskip}>{phoneLayout() ? 'No code' : 'Sign in without a code'}</button>
   </div>
 </div>
 
