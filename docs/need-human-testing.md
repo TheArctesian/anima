@@ -454,6 +454,10 @@ The Tools section of the Device page and the Tools filter of the device list
 ([compute-plan.md](plans/compute-plan.md) Section 11.1, CUI-010 to CUI-019) are not built. Their
 builder adds the entry.
 
+The cloud of "Sign in" in the first run ([hosted-mode.md](proposals/hosted-mode.md) task HM-T1)
+is a stub. The screens are tested with a stand-in. The builder of the cloud API, the AuthKit device
+flow and the grant check adds the entry for a sign-in with a real account.
+
 ## Checks that other documents hold
 
 These checks were open before this document. The document in the column "Steps", or the line above each table, holds the steps. This section holds the result of each check (PLN-014), so that one list shows all of them. The results in this version come from the text of those documents and of [handoff.md](plans/phase-3/handoff.md) (2026-11-12). No person or agent ran a check for this version.

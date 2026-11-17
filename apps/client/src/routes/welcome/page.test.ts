@@ -44,16 +44,17 @@ afterEach(async () => {
   document.body.innerHTML = '';
 });
 
-it('FRN-001, NAV-009: the desktop app shows three choices; Join and Create lead on, hosted sign-in is not yet available', async () => {
+it('FRN-001, NAV-009, HMD-022: the desktop app shows three choices, each on; Sign in is the primary one', async () => {
   const target = await open();
   expect(target.querySelector('h1')?.textContent).toBe('Welcome to Anima.ing');
   expect(document.activeElement).toBe(target.querySelector('h1'));
   expect(choices(target)).toEqual([
-    { title: 'Sign in', href: null, reason: 'Not yet available.' },
+    { title: 'Sign in', href: '/welcome/hosted', reason: null },
     { title: 'Join a hub', href: '/welcome/join', reason: null },
     { title: 'Create a hub on this computer', href: '/welcome/create', reason: null },
   ]);
   expect(target.querySelector('a.secondary')?.getAttribute('href')).toBe('/sign-in');
+  expect([...target.querySelectorAll('li')].map((item) => item.classList.contains('primary'))).toEqual([true, false, false]);
 });
 
 it('FRN-001: a build that carries no hub programs keeps Create off with the reason', async () => {

@@ -1,7 +1,7 @@
 ---
 kind: Proposal
 state: Direction decided
-evidence: Direction decided (HM-R1 to HM-R9, operator, 2026-11-16). HMD-001 to HMD-036 are not approved. HM-R6: a free hub sleeps. HM-R7: Apple Pay and Google Pay. HM-R8: no staff access to hubs. HM-R9: WorkOS AuthKit (decides HM-D3). HM-D4 (second factor) is proposed, not ruled.
+evidence: Direction decided (HM-R1 to HM-R9, operator, 2026-11-16). R-127 names task HM-T1 (the first-run screens of Sign in, with a stand-in cloud): built on branch hosted-sign-in-screens, not merged; the cloud API and the grant check of the hub are not built, and the real cloud of the client is a stub. HMD-001 to HMD-036 are not approved. HM-R6: a free hub sleeps. HM-R7: Apple Pay and Google Pay. HM-R8: no staff access to hubs. HM-R9: WorkOS AuthKit (decides HM-D3). HM-D4 (second factor) is proposed, not ruled.
 ---
 
 # Proposal: the hosted mode as the default first run
@@ -10,10 +10,11 @@ Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds t
 
 From: the business planning session of 2026-11-16, after the operator tried release 0.2.0 on a
 second Mac (report of the S12 packaging session).
-Version: 4. Date: 2026-11-16. Version 2 added HM-R6 (a free hub sleeps) and the cloud design of the
+Version: 5. Date: 2026-11-17. Version 2 added HM-R6 (a free hub sleeps) and the cloud design of the
 business vault (Section 3, fact 5). Version 3 added HM-R7 (Apple Pay and Google Pay), HM-R8 (no
 staff access to hubs), HMD-030 and HMD-031. Version 4 adds HM-R9 (WorkOS AuthKit, which decides
 HM-D3), the device-code sign-in of Section 4.1 and HMD-032 to HMD-036. HM-D4 is not ruled.
+Version 5 adds the task table of Section 8 and task HM-T1 (R-127).
 Status: the header of this document holds the state (PLN-020). History: Draft. The direction is decided by the operator (Section 2). The requirements are not
 approved.
 Map: [work-plan.md](../work-plan.md). Parent plans: [one-click-plan.md](../plans/one-click/one-click-plan.md)
@@ -60,8 +61,10 @@ the facts that the build needs.
 1. The desktop application holds the hub, its PostgreSQL, the gateway and `anima-link`. On
    2026-11-16 the operator saw the update in the application work on a second Mac. The release
    record in [releases.md](../procedures/releases.md) holds what is released.
-2. The first run shows "Sign in" as not yet available, then "Join a hub" and "Create a hub on
-   this computer".
+2. The first run shows "Sign in" as the primary choice, then "Join a hub" and "Create a hub on
+   this computer" (task HM-T1). The screens of "Sign in" work only with a stand-in cloud
+   (`VITE_ANIMA_HOSTED=stand-in`). Without it, the client calls a stub that refuses each call, so
+   the first run says "Sign-in refused".
 3. The server stack cannot use the link. `deploy/compose.yaml` runs no `anima-link` service and
    the link mode of the hub is off. A hub on a server is thus available only through Headscale
    and the Tailscale client. A hosted hub needs this correction. The self-host mode needs the same
@@ -222,8 +225,8 @@ is built in the private repository (fact 5); this repository holds the client an
 
 ## 8. Work, in order
 
-No task is started. A task breakdown comes after the operator approves the requirements and
-decides HM-D4 (PLN-002).
+A task breakdown comes after the operator approves the requirements and decides HM-D4 (PLN-002).
+Before that, only a task that a ruling names is built (PLN-007).
 
 | Step | Work | Depends on |
 | --- | --- | --- |
@@ -237,6 +240,12 @@ decides HM-D4 (PLN-002).
 | 8 | The security review (HM-D7), the terms and the text of HMD-015 | Steps 3 to 5 |
 | 9 | Split custody (OI-3 of the one-click plan) | After the launch (HM-R5) |
 
+Tasks that a ruling names:
+
+| Task | Work | Ruling | State |
+| --- | --- | --- | --- |
+| HM-T1 | Step 6 without the cloud: the first-run screens of "Sign in" in the client (HMD-022, HMD-023). One state for each step of Section 4.1 and an error with a retry for cancelled, expired, no network and refused. The cloud is behind the interface `HostedAccount` in `apps/client/src/lib/hosted/`: a stand-in for the tests and for `VITE_ANIMA_HOSTED=stand-in` (`?fail=step:problem` makes it fail once), and the real cloud, which is a stub that refuses each call. Not built: the cloud API (step 3), the check of a grant by the hub (step 4), the device key, the AuthKit device flow, the key store for the refresh token (HMD-034), and the opening of the system browser. Mockup: [first-run/index.html](../mockup/first-run/index.html). | R-127 | In progress: built on branch `hosted-sign-in-screens`, not merged. The merge sets Done with its commit. |
+
 ## 9. Changes that this proposal needs in other documents
 
 | Document | Change |
@@ -245,4 +254,4 @@ decides HM-D4 (PLN-002).
 | [one-click-plan.md](../plans/one-click/one-click-plan.md) OR-5 | The directory gives access to a hosted hub (HM-R2). Done in the same commit. |
 | [shared-pool-hosting.md](shared-pool-hosting.md) | Remove Headscale from the instance stack; one relay for each pool host (Section 3, fact 4). Not done. |
 | Design specification | A delta for the account login of a hosted hub, NET-001 and the first run. Not written. |
-| S6 task breakdown | "Sign in" as the primary choice. Not done; S6 owns it. |
+| S6 task breakdown | "Sign in" as the primary choice. The client does it (HM-T1); the S6 task breakdown does not yet name it. |
