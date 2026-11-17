@@ -39,10 +39,11 @@ The three modes use the same hub and the same link. Only the location of the hub
 | --- | --- | --- | --- |
 | Free | In the application, on the operator's computer | Tailscale public relays (rate limit) | Nothing |
 | Self-host | Docker Compose on the operator's server or home lab | Public relays, or the operator's relay | Their own server |
-| Hosted | One VPS for each customer, made by Anima | Anima relay, no rate limit | A subscription |
+| Hosted | One isolated hub for each account, on the shared pool of Anima (HM-R4, 2026-11-16; before that: one VPS for each customer) | Anima relay, no rate limit | Nothing below a usage line, then a subscription (HM-R3) |
 
-The business plan for the hosted mode is not in this document. It is in the session
-"Anima business planning".
+The hosted mode is the default of the first run (HM-R1). Its plan is
+[hosted-mode.md](programme/proposals/hosted-mode.md). The prices and the costs are in the business
+vault.
 
 ### 1.4 What "one click" cannot remove
 
@@ -339,7 +340,7 @@ or a builder.
 | OR-2 | Is this a new phase in spec Section 9? | Yes. |
 | OR-3 | May the three spikes start? | Yes. |
 | OR-4 | Is S13 (many hubs) in the first free version? | Yes. |
-| OR-5 | Does Anima get an account directory at `anima.ing` for "Sign in"? | Yes, for the hosted mode. It must only find hubs (Section 3.1). The directory and billing code are not open source. |
+| OR-5 | Does Anima get an account directory at `anima.ing` for "Sign in"? | Yes, for the hosted mode. It must only find hubs (Section 3.1). Changed on 2026-11-16 (HM-R2 of [hosted-mode.md](programme/proposals/hosted-mode.md)): for a hosted hub, a sign-in to the account is sufficient for a device to join. The free mode and the self-host mode keep this ruling. The directory and billing code are not open source. |
 | OR-6 | Database: bundled PostgreSQL or SQLite? | Bundled PostgreSQL. |
 | OR-7 | Does the Mac hub ship without RDP and VNC first? | No. It ships with remote display: RDP or VNC, the one that works best first. |
 | OR-8 | Is "Keep awake with the lid closed" in the first version? | Yes, both levels, with an easy set-up step. |
