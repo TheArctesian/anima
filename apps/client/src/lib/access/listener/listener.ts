@@ -98,12 +98,12 @@ function portOf(origin: string): number | null {
 /** The device link's own account of why it does not serve the hub address, or `null` when it is not about the link. */
 function linkProblem(origin: string, link: DeviceLinkStatus | null): ListenerProblem | null {
   if (link === null || !link.joined || link.port !== portOf(origin)) return null;
-  const title = 'The link to the hub is not up';
-  if (link.reason === 'port-taken') return { title, advice: `Another program holds the link's port ${String(link.port)}. Close it, then check again.` };
+  const title = 'Link to the hub is down';
+  if (link.reason === 'port-taken') return { title, advice: `Another program holds the link's port ${String(link.port)}. Close it.` };
   if (link.reason === 'not-carried') return { title, advice: 'This build does not carry the link program.' };
-  if (link.state === 'starting') return { title: 'The link to the hub is starting', advice: 'Check again in a moment.' };
+  if (link.state === 'starting') return { title: 'Link to the hub is starting', advice: 'Check again in a moment.' };
   if (link.state === 'up') return null;
-  return { title, advice: 'The link ended. Check the network of this computer, then check again.' };
+  return { title, advice: "Check this computer's network." };
 }
 
 /** The fixed text for a refused verdict; for a joined device the link's state comes first (F-10). */
@@ -113,10 +113,10 @@ export function listenerProblem(verdict: ListenerVerdict, origin: string, link: 
   if (fromLink !== null) return fromLink;
   switch (verdict.listener) {
     case 'other':
-      return { title: "Another program holds the hub's port", advice: 'Anima.ing sends nothing to it: no password and no token. Stop that program, then check again.' };
+      return { title: "Another program holds the hub's port", advice: 'Anima.ing sends it nothing. Stop that program.' };
     case 'none':
-      return { title: 'Nothing answers at the hub address', advice: "Start this computer's hub, or the link to your hub, then check again." };
+      return { title: 'Nothing answers at the hub address', advice: "Start this computer's hub, or the link to your hub." };
     case 'unknown':
-      return { title: 'The hub address could not be checked', advice: 'Anima.ing sends nothing to an address it cannot check. Check again.' };
+      return { title: "Can't check the hub address", advice: 'Nothing is sent to an unchecked address.' };
   }
 }

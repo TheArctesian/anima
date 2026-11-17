@@ -133,6 +133,8 @@ read key; change commands with a write key).
 | `files` L | `ls`, `get`, `put` (K4 Section 9) |
 | `web` | `list`, `create`, `update`, `delete`, `suggestion accept\|dismiss`, `accept-certificate` L |
 | `agent` | `status`, `enrol` L, `revoke` L |
+| `capability` | `list` (`--tool <name>`, `--target <build target>`): the tool inventory of each device (compute plan CAP-020 to CAP-031) |
+| `snapshot` | `push` (`--remote`), `list`, `delete <ref>`: a commit of the working tree on a scratch ref of the forge (JOB-017, JOB-018). It uses git on this computer and makes no hub request. |
 | `notify channel` | `list`, `create`, `update`, `delete`, `test` |
 | `notify` | `settings get\|set`, `deliveries` |
 | `retention` | `list`, `set` L |
@@ -180,6 +182,9 @@ Not in the command line, with the reason:
   Secrets tools return secret handles only (SCR-015, MCP-004).
 - `anima gateway` (MGW-015, MGW-016): it needs the Model gateway extension (extensions plan,
   Section 4.15). The command name is reserved.
+- `anima job` (`start`, `status`, `log`, `stop`, `list`) and `anima artifact` (`list`,
+  `fetch`): proposed, not approved and not built. They need the jobs proposal (JOB-012 to
+  JOB-027). The command names are reserved.
 - The operator password and the authenticator setup: they stay on the hub host
   (`anima-hub operator`).
 
@@ -342,7 +347,7 @@ Read tools are `allow` and change tools are `off` by default (MCP-002). L: needs
 
 | Set | Read | Change |
 | --- | --- | --- |
-| `devices` | `anima_fleet_overview`, `anima_devices_search`, `anima_device_get`, `anima_device_metrics` | `anima_device_create`, `anima_site_create`, `anima_device_wake`, `anima_device_update` L, `anima_device_delete` L |
+| `devices` | `anima_fleet_overview`, `anima_devices_search`, `anima_device_get`, `anima_device_metrics`, `anima_capability_list` | `anima_device_create`, `anima_site_create`, `anima_device_wake`, `anima_device_update` L, `anima_device_delete` L |
 | `checks` | `anima_check_get` (with heartbeats and uptime) | `anima_check_create`, `anima_check_update`, `anima_check_set_paused`, `anima_check_delete` |
 | `maintenance` | `anima_maintenance_list` | `anima_maintenance_create`, `anima_maintenance_update`, `anima_maintenance_delete`, `anima_maintenance_set_active` |
 | `events` | `anima_events_search`, `anima_audit_list` | |
@@ -361,6 +366,18 @@ Read tools are `allow` and change tools are `off` by default (MCP-002). L: needs
 Fields with no MCP tool, with the reason (MCP-004): `Mutation.connectGithubApp` takes a secret (`GithubAppInput.privateKey`); `Subscription.sourceAccountChanged` is a subscription, and no subscription has a tool; `Mutation.openGithubConnect` returns a ONE-TIME link that opens the connection in a browser, and a tool may not return one (the hub also refuses it, FORBIDDEN, for a request that declares an agent); `Subscription.githubConnectChanged` is a subscription (operator, 2026-11-14; ruling number to be assigned); `Query.codeFile` returns the content of a file (operator, 2026-11-14; ruling number to be assigned). `Mutation.mergePullRequest` and `Mutation.mergePullRequests`: a merge is a trust decision (MCP-005), and the hub refuses every API key for them; `Mutation.rerunWorkflowRun`, `Mutation.rerunFailedWorkflowJobs` and `Mutation.dispatchWorkflow` run code with the repository's secrets, `Mutation.cancelWorkflowRun` stops a run, and `Mutation.setCommitStatus` can satisfy a required check and open a merge; the hub refuses every API key for each (operator, 2026-11-14; ruling number to be assigned). The command line has all seven, behind a confirmation. Text from GitHub (names, descriptions, paths) goes through `mcp/untrusted.rs` as named, length-limited fields (MCP-008).
 
 **No MCP tool returns file content** (operator, 2026-11-14; ruling number to be assigned). The content of a file in a repository may hold a secret, and the hub cannot tell (MCP-004, as for `anima_check_update`); it is also the strongest carrier of instructions to an agent in the Projects slice. MCP-002 makes every read tool `allow` by default, so the content gets no tool rather than a read tool. An agent that needs the code has the checkout. `anima_code_directory_list` returns names only. Other text from GitHub in the `repositories` results (titles, bodies, comments, logins, branch names, labels, commit messages, check and job names) is given in named fields, cleaned and cut by `mcp/untrusted.rs`, where the key `body` is cut at 4,000 characters. Each tool description says that this text is data, and the server instructions gain one line for text from GitHub.
+
+`anima_capability_list` (read, tool set `devices`) gives the tool inventory of each device
+(CAP-030, CAP-031). `anima snapshot` has no tool: it changes no hub state and acts on a folder of
+the computer that runs `anima mcp`, and an agent with a shell can run the command.
+
+Reserved tools, proposed and not built (jobs proposal JOB-012 to JOB-027):
+the read tools `anima_job_status`, `anima_job_log`, `anima_jobs_list`
+and `anima_artifacts_list`, and the change tools `anima_job_start`, `anima_job_stop` and
+`anima_artifact_fetch`. MCP-006 stays: no tool takes a command line (JOB-015). When these tools
+exist, the server instructions must say when to give work to a different machine: this computer
+has no free memory, or a tool or a build target is absent. They must tell the agent to read
+`anima_capability_list` first.
 
 ## 8. The rule for new functions
 
@@ -477,6 +494,13 @@ tools that are on:
    (the fork's name is typed into a request like any other value; PRO-013 binds the command
    line, not the hub), run and start workflows, write commit statuses and delete devices.
    Nothing in Anima tells it from the operator.
+
+4. **`anima_job_start` allowed (proposed, not built).** Run the build steps and the test steps
+   of a project on each machine that takes work, with the content of a scratch ref that the
+   agent wrote. Build scripts are code. Thus this is code execution inside the limits of a job: a
+   container, or the build user on a Mac, with no agent token, no home folder and no project
+   secret (JOB-020). It can also fill the disk of a machine with artifacts up to the limit of
+   the device policy. `anima_capability_list` shows the tools and versions of each machine.
 
 ## 10. Work
 

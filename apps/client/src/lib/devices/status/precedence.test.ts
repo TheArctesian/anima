@@ -52,7 +52,7 @@ describe('DEV-006 combined status precedence', () => {
     const paused = [{ name: 'web', status: 'UP', paused: true }] as const;
     const result = combinedStatus(facts({ checks: paused }));
     expect(result.status).toBe('UNKNOWN');
-    expect(result.reasons[0]?.text).toBe('Every check is paused');
+    expect(result.reasons[0]?.text).toBe('All checks paused');
   });
 
   it('DEV-006: a paused Down check is not enabled and does not make the device Down', () => {
@@ -73,7 +73,7 @@ describe('DEV-006 combined status precedence', () => {
     const far = { expiries: [{ kind: 'DOMAIN', name: 'example.org', daysLeft: 7 }] } as const;
     expect(combinedStatus(facts(near)).status).toBe('WARNING');
     expect(combinedStatus(facts(far)).status).toBe('UNKNOWN');
-    expect(combinedStatus(facts(near)).reasons[0]?.text).toBe('The certificate nas.lan expires in 6 days');
+    expect(combinedStatus(facts(near)).reasons[0]?.text).toBe('Certificate nas.lan expires in 6 days');
   });
 
   it('DEV-006: every reason of one rule is kept, after the rules above it', () => {
@@ -82,9 +82,9 @@ describe('DEV-006 combined status precedence', () => {
     );
     expect(result.reasons.map((reason) => `${reason.status}:${reason.text}`)).toEqual([
       'DOWN:ping is down',
-      'WARNING:The SSH host key has changed',
-      'WARNING:The certificate has changed',
-      'DEGRADED:Disk is over its threshold',
+      'WARNING:SSH host key changed',
+      'WARNING:Certificate changed',
+      'DEGRADED:Disk over threshold',
     ]);
   });
 });

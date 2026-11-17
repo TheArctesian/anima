@@ -39,7 +39,7 @@
     <Icon name="carbon:search" size="sm" />
     <input
       type="search"
-      placeholder="Search by name"
+      placeholder="Search"
       value={text}
       oninput={(event) => {
         text = event.currentTarget.value;

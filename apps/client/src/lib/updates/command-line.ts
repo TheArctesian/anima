@@ -8,12 +8,12 @@ export function describeCommandLine(status: CommandLineStatus | null): string {
       return problemText(status.reason);
     case 'not-installed':
       return status.create
-        ? `Not installed. Install makes the folder ${status.folder} and puts anima at ${status.path}.`
+        ? `Not installed. Install creates ${status.folder} and puts anima at ${status.path}.`
         : `Not installed. Install puts anima at ${status.path}.`;
     case 'installed':
       return `Installed at ${status.path}.`;
     case 'elsewhere':
-      return `${status.path} points at ${status.pointsAt}, not this app. Install points it at this app.`;
+      return `${status.path} points at ${status.pointsAt}, not this app. Install repoints it.`;
   }
 }
 
@@ -45,5 +45,5 @@ const OCCUPANTS: Readonly<Record<Occupant['kind'], string>> = {
 export function refusalText(problem: CommandLineProblem, occupant: Occupant | null, path: string | null): string {
   if (problem !== 'occupied' || occupant === null || path === null) return problemText(problem);
   const to = occupant.linkTarget === null ? '' : ` to ${occupant.linkTarget}`;
-  return `${problemText(problem)} There is ${OCCUPANTS[occupant.kind]} at ${path}${to}. Move or delete it yourself, then install.`;
+  return `${problemText(problem)} There is ${OCCUPANTS[occupant.kind]} at ${path}${to}. Move or delete it, then install.`;
 }

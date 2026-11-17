@@ -44,7 +44,7 @@
   <h3 id="web-interfaces-heading">Web interfaces</h3>
   <Suggestions suggestions={suggestions} onAccept={calls.onAcceptSuggestion} onDismiss={calls.onDismissSuggestion} />
   {#if interfaces.length === 0 && !adding}
-    <p class="empty">This device has no web interface.</p>
+    <p class="empty">No web interfaces.</p>
   {/if}
   <ul>
     {#each interfaces as web (web.id)}
@@ -66,7 +66,7 @@
   {#if adding}
     <WebInterfaceRow rowKey="web-new" onSave={create} onCancel={() => { adding = false; }} />
   {:else}
-    <div><FormButton onclick={() => { adding = true; }}>Add a web interface</FormButton></div>
+    <div><FormButton onclick={() => { adding = true; }}>Add web interface</FormButton></div>
   {/if}
 </section>
 

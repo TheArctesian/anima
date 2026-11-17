@@ -58,7 +58,7 @@
   {/if}
   {#if credentialStored}
     <p class="stored">
-      Credential stored. Leave the fields empty to keep it.
+      Credential stored. Leave empty to keep it.
       <FormButton onclick={onClearCredential} aria-disabled={clearing}>Remove credential</FormButton>
     </p>
   {/if}

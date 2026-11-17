@@ -6,6 +6,8 @@ use super::LocalHubError;
 use crate::carried::{DevFolders, programs_folder};
 
 const PROGRAM: &str = "anima-local-hub";
+/// The tree below `usr/` of the Linux bundle: Tauri puts resources in `lib/<productName>/`.
+pub(super) const LINUX_TREE: &str = "lib/Anima.ing/database";
 
 /// The program that does the work, and the PostgreSQL tree it copies at `install`.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -18,8 +20,8 @@ pub struct Carried {
 /// hold programs built from another commit, which are never offered. A debug build uses the
 /// folders of `dev`, when it has both.
 ///
-/// macOS: `Anima.app/Contents/MacOS/anima-local-hub` and `Contents/Resources/database/`.
-/// Linux: `usr/bin/anima-local-hub` and `usr/lib/Anima/database/`.
+/// macOS: `Anima.ing.app/Contents/MacOS/anima-local-hub` and `Contents/Resources/database/`.
+/// Linux: `usr/bin/anima-local-hub` and `usr/lib/Anima.ing/database/`.
 pub fn beside(
     executable: &Path,
     macos: bool,
@@ -32,7 +34,7 @@ pub fn beside(
         if macos {
             above.join("Resources/database")
         } else {
-            above.join("lib/Anima/database")
+            above.join(LINUX_TREE)
         }
     } else {
         dev.tree

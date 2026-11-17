@@ -48,7 +48,7 @@
     { value: 'TLS', label: 'TLS certificate' },
     { value: 'HTTP', label: 'HTTP or HTTPS' },
     { value: 'DNS', label: 'DNS lookup' },
-    { value: 'PUSH', label: 'Push (the device calls the hub)' },
+    { value: 'PUSH', label: 'Push (device calls the hub)' },
     { value: 'GROUP', label: 'Group of checks' },
     { value: 'DOCKER', label: 'Docker container' },
     { value: 'SYSTEMD', label: 'systemd service' },

@@ -67,14 +67,14 @@ const MESSAGES: Readonly<Record<LocalHubProblem, string>> = {
   caller: 'Only the main window can do this.',
   unavailable: 'This computer cannot run the hub from the app.',
   'not-carried': 'This build does not carry the hub programs.',
-  busy: 'Another change to the hub is running. Wait for it to finish.',
+  busy: 'Another hub change is running. Wait for it.',
   'no-home': 'The app could not find your home folder.',
-  'timed-out': 'The hub did not answer in time. Try again.',
-  failed: 'The hub programs did not finish. The application log has the cause.',
+  'timed-out': 'The hub did not answer in time. Retry.',
+  failed: 'The hub programs did not finish. See the application log.',
   argument: 'The hub refused the form of this request.',
   refused: 'The hub refused the account. Check the password and the code.',
   'no-key': 'The hub has no key file yet.',
-  destination: 'The key could not be written to that place. Choose another folder.',
+  destination: "Can't write the key there. Choose another folder.",
   cancelled: 'Recovery was cancelled. Nothing changed.',
 };
 

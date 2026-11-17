@@ -11,12 +11,13 @@ export const TOOL_NAMES: Readonly<Record<BuilderTool, string>> = {
   go: 'Go (for the gates of link/)',
   postgres: 'PostgreSQL 17',
   'tauri-packages': 'the Tauri system packages',
+  'tree-tools': 'the tools that build the PostgreSQL tree (make, bison, flex, patchelf, readelf, curl and the zlib headers in /usr)',
   'updater-public-key': "this app's updater public key (an app built with the placeholder cannot build releases)",
   'signing-identity': 'the Developer ID certificate in the login keychain',
   'rust-target-aarch64-apple-darwin':
-    'the Rust standard library for aarch64-apple-darwin (with rustup: rustup target add aarch64-apple-darwin)',
+    'the Rust target aarch64-apple-darwin (rustup target add aarch64-apple-darwin)',
   'rust-target-x86_64-apple-darwin':
-    'the Rust standard library for x86_64-apple-darwin (with rustup: rustup target add x86_64-apple-darwin)',
+    'the Rust target x86_64-apple-darwin (rustup target add x86_64-apple-darwin)',
 };
 
 const OS_NAMES: Readonly<Record<BuilderPlatform['os'], string>> = { LINUX: 'Linux', MACOS: 'macOS' };
@@ -30,7 +31,7 @@ export function platformText(platform: BuilderPlatform): string {
 /** This computer's platform line of the row; `null` until the shell has answered. */
 export function thisPlatformText(check: ToolCheck | null, failed: boolean): string {
   if (check !== null) return platformText(check);
-  return failed ? 'This computer could not say which platform it is.' : '';
+  return failed ? 'Platform not detected.' : '';
 }
 
 const STEP_NAMES: Readonly<Record<StepName, string>> = {
@@ -43,10 +44,10 @@ const STEP_NAMES: Readonly<Record<StepName, string>> = {
 const STATUS_TEXT: Readonly<Record<Exclude<BuilderStatus['kind'], 'building' | 'missing'>, string>> = {
   starting: 'Starting.',
   unsupported: 'This computer cannot build releases.',
-  'tools-unknown': 'The tool check failed. The builder tries again shortly.',
-  waiting: 'Waiting for a release to build.',
-  unreachable: 'The hub cannot be reached. The builder tries again shortly.',
-  refused: 'The hub refused this builder. Turn building off, then on again.',
+  'tools-unknown': 'Tool check failed. Retrying shortly.',
+  waiting: 'Waiting for a release.',
+  unreachable: 'Hub unreachable. Retrying shortly.',
+  refused: 'The hub refused this builder. Turn building off, then on.',
   stopped: 'Off.',
 };
 
@@ -56,7 +57,7 @@ export function statusText(status: BuilderStatus): string {
     case 'building':
       return `Building ${status.job.version}: ${STEP_NAMES[status.step]}.`;
     case 'missing':
-      return 'A tool is missing, so this computer claims no build.';
+      return 'A tool is missing. No builds claimed.';
     default:
       return STATUS_TEXT[status.kind];
   }

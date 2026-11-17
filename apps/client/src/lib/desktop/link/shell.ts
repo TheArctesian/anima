@@ -27,13 +27,13 @@ export type LinkProblem = 'caller' | 'not-carried' | 'busy' | 'no-home' | 'bad-i
 const MESSAGES: Readonly<Record<LinkProblem, string>> = {
   caller: 'Only the main window can do this.',
   'not-carried': 'This build does not carry the link program.',
-  busy: 'Another change to the link is running. Wait for it to finish.',
+  busy: 'Another link change is running. Wait for it.',
   'no-home': 'The app could not find your home folder.',
-  'bad-invite': 'This is not an invite. Paste the whole invite text, which starts with anima-invite.1.',
+  'bad-invite': 'Not an invite. Paste the whole text, starting with anima-invite.1.',
   'no-answer': 'The hub did not answer: the invite is used, expired or wrong, or the hub is off.',
   refused: 'The hub refused this device. Ask for a new invite.',
   folder: 'The app could not write the link folder.',
-  failed: 'The link did not finish. The application log has the cause.',
+  failed: 'The link did not finish. See the application log.',
   unavailable: 'Only the desktop app can join a hub.',
 };
 

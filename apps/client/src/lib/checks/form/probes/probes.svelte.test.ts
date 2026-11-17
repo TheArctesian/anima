@@ -69,7 +69,7 @@ it('SEC-005: editing an SNMP check leaves the secrets empty and says that empty 
     }),
   });
   expect((input('Community') as HTMLInputElement).value).toBe('');
-  expect(messageOfHint('Community')).toContain('keep the stored value');
+  expect(messageOfHint('Community')).toContain('keeps the stored value');
 });
 
 it('SEC-005: switching the version of a saved SNMP check asks for the new secrets', () => {

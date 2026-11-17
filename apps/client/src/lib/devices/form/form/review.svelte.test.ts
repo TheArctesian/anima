@@ -54,7 +54,7 @@ it('DEV-013: Test connection works with an empty name, since only the host and S
 it('DEV-013: the result is dropped when the tested host or SSH settings change, and so is an error', async () => {
   const { onTest } = show(SAVED);
   await test();
-  expect(status()).toContain('accepted the credential');
+  expect(status()).toContain('Credential accepted');
 
   type('host', 'other.home.arpa');
   expect(status()).toBe('');
@@ -72,7 +72,7 @@ it('DEV-013: a change to the name keeps the result of the test', async () => {
 
   type('name', 'nas2');
 
-  expect(status()).toContain('accepted the credential');
+  expect(status()).toContain('Credential accepted');
 });
 
 it('SEC-007: a changed key whose fingerprint is unknown is styled as a warning; a good result is not', async () => {
@@ -190,7 +190,7 @@ it('D-4: Remove credential clicked twice while the first call is pending calls o
 it('D-4: a test result does not outlive a successful save', async () => {
   show(SAVED);
   await test();
-  expect(status()).toContain('accepted the credential');
+  expect(status()).toContain('Credential accepted');
 
   await save();
 

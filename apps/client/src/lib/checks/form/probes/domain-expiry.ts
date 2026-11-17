@@ -57,7 +57,7 @@ export function takesRetries(type: CheckType): boolean {
 /** D-29: refuses an interval under one hour; a malformed interval is left to the general settings check. */
 export function intervalErrors(intervalSeconds: string): FieldError[] {
   if (!isIntegerIn(intervalSeconds, 0) || toNumber(intervalSeconds) >= MIN_INTERVAL_SECONDS) return [];
-  return [{ field: 'intervalSeconds', message: 'A domain expiry check runs at most once an hour: enter 3600 seconds or more.' }];
+  return [{ field: 'intervalSeconds', message: 'Domain expiry runs at most hourly: enter 3600 seconds or more.' }];
 }
 
 function domainError(name: string): FieldError[] {

@@ -15,15 +15,17 @@
 #   ANIMA_POSTGRESQL_SOURCE    A source archive that is already here; it is still checked
 #                              against the pin. Unset: the archive is downloaded.
 #
-# Needs: a C compiler, make, bison, flex, perl; on Linux also patchelf and the zlib headers.
+# Needs: a C compiler, make, bison, flex, curl; on Linux also patchelf, readelf and the zlib headers.
 set -eu
 
 # The build sees a fixed environment and the system's own programs only. A variable of the
 # caller (CONFIG_SITE, LDFLAGS, CC, a PATH with a folder the user can write) would change what
-# is built or which program checks the pin.
+# is built or which program checks the pin. ANIMA_BUILD_STEP is the mark by which the release
+# builder finds and stops every process of a step (D-20); it must reach the build's processes.
 if [ "${DATABASE_TREE_ENVIRONMENT:-}" != fixed ]; then
     exec /usr/bin/env -i DATABASE_TREE_ENVIRONMENT=fixed PATH=/usr/bin:/bin HOME="${HOME:-/}" \
         SIGN_IDENTITY="${SIGN_IDENTITY:-}" ANIMA_POSTGRESQL_SOURCE="${ANIMA_POSTGRESQL_SOURCE:-}" \
+        ANIMA_BUILD_STEP="${ANIMA_BUILD_STEP:-}" \
         /bin/sh "$0" "$@"
 fi
 umask 077
@@ -46,6 +48,10 @@ RECIPE=$(shasum -a 256 "$0" 2>/dev/null || sha256sum "$0")
 STAMP="postgresql $VERSION $SHA256 $TARGET signed-by:${SIGN_IDENTITY:-ad-hoc} recipe:${RECIPE%% *}"
 
 fail() { echo "database-tree: $1" >&2; exit 1; }
+# The libraries a Mach-O file links, one install name a line. A name may hold spaces (a work
+# folder under "Application Support"), so the name is all that comes before otool's
+# " (compatibility version" and not the first word.
+linked() { otool "$@" | sed -n 's/^[[:space:]][[:space:]]*\(.*\) (compatibility version .*$/\1/p'; }
 
 case "$TARGET" in darwin-universal | linux) ;; *) fail "unknown target $TARGET" ;; esac
 
@@ -61,7 +67,8 @@ else
     if [ -n "${ANIMA_POSTGRESQL_SOURCE:-}" ]; then
         cp "$ANIMA_POSTGRESQL_SOURCE" "$ARCHIVE"
     else
-        curl --fail --silent --show-error --location --output "$ARCHIVE" \
+        # -q first: no .curlrc of the user changes the download.
+        curl -q --fail --silent --show-error --location --output "$ARCHIVE" \
             "https://ftp.postgresql.org/pub/source/v$VERSION/postgresql-$VERSION.tar.bz2"
     fi
     if command -v sha256sum >/dev/null 2>&1; then
@@ -116,7 +123,7 @@ else
         for file in "$TREE"/bin/* "$TREE"/lib/postgresql/*.dylib; do
             case "$file" in */lib/postgresql/*) place="@loader_path/../libpq.5.dylib" ;; *) place="@loader_path/../lib/libpq.5.dylib" ;; esac
             for arch in arm64 x86_64; do
-                old=$(otool -arch "$arch" -L "$file" | awk '/libpq\.5/ && !/@loader_path/ {print $1}' | head -1)
+                old=$(linked -arch "$arch" -L "$file" | grep 'libpq\.5' | grep -v '^@loader_path/' | head -1 || true)
                 [ -z "$old" ] || install_name_tool -change "$old" "$place" "$file"
             done
         done
@@ -142,13 +149,18 @@ else
         fi
         ;;
     linux)
-        build linux
+        # Stack protector, checked libc calls, and a read-only relocation table with no lazy
+        # binding (S3 T11, condition d). The checks below prove the last two.
+        build linux CFLAGS="-O2 -fstack-protector-strong" CPPFLAGS="-D_FORTIFY_SOURCE=2" \
+            LDFLAGS="-Wl,-z,relro,-z,now"
         cp -R "$WORK/install-linux/share" "$TREE/share"
         for program in $PROGRAMS; do
             cp "$WORK/install-linux/bin/$program" "$TREE/bin/$program"
             patchelf --set-rpath '$ORIGIN/../lib' "$TREE/bin/$program"
         done
         cp "$WORK/install-linux/lib/libpq.so.5" "$TREE/lib/libpq.so.5"
+        # The build writes its own install folder into libpq as the place to search.
+        patchelf --remove-rpath "$TREE/lib/libpq.so.5"
         for module in "$WORK"/install-linux/lib/postgresql/*.so; do
             cp "$module" "$TREE/lib/postgresql/"
             patchelf --set-rpath '$ORIGIN/..' "$TREE/lib/postgresql/$(basename "$module")"
@@ -167,7 +179,7 @@ case "$TARGET" in
 darwin-universal)
     for file in "$TREE"/bin/* "$TREE"/lib/*.dylib "$TREE"/lib/postgresql/*.dylib; do
         [ "$(lipo -archs "$file")" = "x86_64 arm64" ] || fail "$file is not universal"
-        outside=$(otool -L "$file" | awk 'NR > 1 && /^\t/ {print $1}' | grep -v -e '^@loader_path/' -e '^/usr/lib/' || true)
+        outside=$(linked -L "$file" | grep -v -e '^@loader_path/' -e '^/usr/lib/' || true)
         [ -z "$outside" ] || fail "$file links outside the tree: $outside"
         newest=$(vtool -show-build "$file" | awk '/minos/ {print $2}' | sort -t. -k1,1n -k2,2n | tail -1)
         [ "$newest" = "$MACOS_MINIMUM" ] || fail "$file needs macOS $newest, not $MACOS_MINIMUM"
@@ -175,10 +187,15 @@ darwin-universal)
     done
     ;;
 linux)
-    for file in "$TREE"/bin/* "$TREE"/lib/postgresql/*.so; do
+    for file in "$TREE"/lib/libpq.so.5 "$TREE"/bin/* "$TREE"/lib/postgresql/*.so; do
         outside=$(readelf -d "$file" | sed -n 's/.*(NEEDED).*\[\(.*\)\]/\1/p' |
             grep -v -e '^libc\.so\.6$' -e '^libm\.so\.6$' -e '^libz\.so\.1$' -e '^libpq\.so\.5$' -e '^ld-linux' || true)
         [ -z "$outside" ] || fail "$file needs a library outside the tree: $outside"
+        # A search path outside the tree would load a library that is not ours.
+        searched=$(readelf -d "$file" | sed -n 's/.*(R[UN]*PATH).*\[\(.*\)\]/\1/p' | tr ':' '\n' | grep -v '^\$ORIGIN' || true)
+        [ -z "$searched" ] || fail "$file searches libraries outside the tree: $searched"
+        readelf -l "$file" | grep -q GNU_RELRO || fail "$file has no read-only relocation table"
+        readelf -d "$file" | grep -q BIND_NOW || fail "$file binds lazily"
     done
     ;;
 esac
@@ -191,4 +208,7 @@ fi
 rm -rf "$OUT"
 mkdir -p "$(dirname "$OUT")"
 cp -R "$TREE" "$OUT"
+# The work folder is private (umask 077). The tree in the application must be readable by
+# every user of the computer, as the application's other files are.
+chmod -R u=rwX,go=rX "$OUT"
 echo "database-tree: PostgreSQL $VERSION for $TARGET is in $OUT ($(du -sh "$OUT" | cut -f1))"

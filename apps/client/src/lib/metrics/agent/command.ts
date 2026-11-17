@@ -68,6 +68,6 @@ export function installCommand({ release, target, code, origin }: CommandInput):
 /** The sentence that says why there is no command. */
 export function refusalMessage(refusal: CommandRefusal): string {
   return refusal === 'origin'
-    ? 'The hub address is not a plain https origin, so no install command is shown.'
-    : 'The hub made a code in a form the agent does not accept, so no install command is shown.';
+    ? 'No install command: the hub address is not a plain https origin.'
+    : 'No install command: the agent does not accept the form of the hub\'s code.';
 }

@@ -97,17 +97,17 @@ describe('listenerProblem', () => {
 
   it('F-10: another program, nothing and no answer each have their own fixed text that never names the address', () => {
     const texts = (['other', 'none', 'unknown'] as const).map((listener) => listenerProblem({ safe: false, listener }, LOCAL, null));
-    expect(texts.map((text) => text?.title)).toEqual(["Another program holds the hub's port", 'Nothing answers at the hub address', 'The hub address could not be checked']);
+    expect(texts.map((text) => text?.title)).toEqual(["Another program holds the hub's port", 'Nothing answers at the hub address', "Can't check the hub address"]);
     for (const text of texts) expect(JSON.stringify(text)).not.toContain('127.0.0.1');
   });
 
   it('F-2, F-10: on a joined device the link says why: its port is taken, it is starting or it ended', () => {
     const refused = { safe: false, listener: 'none' } as const;
     expect(listenerProblem(refused, JOINED, { joined: true, state: 'down', port: 41_000, reason: 'port-taken' })?.advice).toBe(
-      "Another program holds the link's port 41000. Close it, then check again.",
+      "Another program holds the link's port 41000. Close it.",
     );
-    expect(listenerProblem(refused, JOINED, { joined: true, state: 'starting', port: 41_000 })?.title).toBe('The link to the hub is starting');
-    expect(listenerProblem(refused, JOINED, { joined: true, state: 'down', port: 41_000, reason: 'ended' })?.advice).toContain('The link ended.');
+    expect(listenerProblem(refused, JOINED, { joined: true, state: 'starting', port: 41_000 })?.title).toBe('Link to the hub is starting');
+    expect(listenerProblem(refused, JOINED, { joined: true, state: 'down', port: 41_000, reason: 'ended' })?.advice).toBe("Check this computer's network.");
   });
 
   it("F-10: a link on another port, or no link, leaves the listener's own text", () => {

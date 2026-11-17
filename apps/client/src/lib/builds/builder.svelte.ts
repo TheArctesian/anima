@@ -35,13 +35,13 @@ export interface ThisBuilderPorts {
 }
 
 const PROBLEMS = {
-  enrol: 'The hub did not enrol this computer as a builder.',
-  store: 'The builder token could not be kept in the key store.',
-  revoke: 'The hub could not revoke this builder. Revoke it in the list below.',
-  unknownId: "This computer's builder could not be revoked here; revoke it in the list below.",
-  clear: 'The builder token could not be deleted from the key store. Turn building off again.',
-  read: 'The builder token could not be read from the key store.',
-  tools: 'This computer could not say which platform it is.',
+  enrol: 'The hub did not enrol this computer.',
+  store: 'Builder token not saved to the key store.',
+  revoke: 'Not revoked. Revoke it in the list below.',
+  unknownId: 'Not revoked here. Revoke it in the list below.',
+  clear: 'Builder token not deleted from the key store. Turn building off again.',
+  read: 'Builder token not read from the key store.',
+  tools: 'Platform not detected.',
 } as const;
 
 /** This computer as a builder: whether it is one, and its loop (BLD-020 to BLD-029). */

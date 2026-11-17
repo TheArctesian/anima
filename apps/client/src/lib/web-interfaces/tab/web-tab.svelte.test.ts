@@ -151,7 +151,7 @@ describe('web tab certificates (WEB-008, SEC-007)', () => {
     expect(names().filter((name) => name === 'open')).toHaveLength(1);
     expect(names()).not.toContain('pin');
     expect(names()).not.toContain('browser');
-    expect(button('Yes, accept this certificate')).toBeDefined();
+    expect(button('Yes, accept')).toBeDefined();
   });
 });
 
@@ -305,7 +305,7 @@ describe('web tab load timeout (WEB-010, CQ-021)', () => {
     await vi.advanceTimersByTimeAsync(1);
     flushSync();
     expect(field('code')).toBe('timeout');
-    expect(field('reason')).toContain('did not load in time');
+    expect(field('reason')).toContain('timed out');
     expect(lastShow(fake.calls)).toBe(false);
     button('Reload')?.click();
     await turn();

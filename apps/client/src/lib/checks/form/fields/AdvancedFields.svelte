@@ -51,5 +51,5 @@
 <ToggleField
   label="Invert"
   bind:checked={values.invert}
-  hint="A failed test gives the status Up. Use it for a port that must be closed."
+  hint="A failed test is Up. For a port that must stay closed."
 />

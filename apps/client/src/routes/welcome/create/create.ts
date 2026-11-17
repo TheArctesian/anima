@@ -39,10 +39,10 @@ export function nextStep(step: CreateStep, event: CreateEvent): CreateStep {
 const TITLES: Readonly<Record<CreateStep, string>> = {
   install: 'Install the hub',
   account: 'Make your account',
-  authenticator: 'Add Anima.ing to your authenticator app',
+  authenticator: 'Set up your authenticator app',
   connect: 'Sign in to your hub',
   existing: 'Sign in to your hub',
-  key: 'Save a copy of the hub key',
+  key: 'Back up the hub key',
   invite: 'Invite your next device',
 };
 

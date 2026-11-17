@@ -31,18 +31,18 @@ const REASON_TEXT: Readonly<Record<SessionEndReason, string>> = {
   OPERATOR: 'You ended the session.',
   REMOTE_CLOSED: 'The device closed the session.',
   GATEWAY_ERROR: 'The hub lost the connection to the device.',
-  AUTH_FAILED: 'The device refused the sign-in, or no credential is stored for it.',
-  HOST_KEY_MISMATCH: "The device's host key has changed, so Anima.ing did not connect.",
-  SERVER_CERTIFICATE_MISMATCH: "The device's RDP certificate has changed, so Anima.ing did not connect.",
-  PROTOCOL_ERROR: 'The app sent something the hub does not accept, so the hub closed the session.',
-  TIMEOUT: 'The session timed out because the hub heard nothing from Anima.ing.',
+  AUTH_FAILED: 'The device refused the sign-in, or no credential is stored.',
+  HOST_KEY_MISMATCH: "The device's host key changed. Not connected.",
+  SERVER_CERTIFICATE_MISMATCH: "The device's RDP certificate changed. Not connected.",
+  PROTOCOL_ERROR: 'The hub closed the session: the app sent something it does not accept.',
+  TIMEOUT: 'Timed out: the hub heard nothing from Anima.ing.',
   HUB_SHUTDOWN: 'The hub shut down.',
 };
 
 const NOT_OPENED = 'Could not open the session.';
-const LOST = 'The connection to the hub was lost.';
+const LOST = 'Connection to the hub lost.';
 /** For a reason this client does not know yet (a newer hub); never the reason's own name or text. */
-const UNKNOWN_REASON = 'The session ended for a reason this version of Anima.ing does not know.';
+const UNKNOWN_REASON = 'The session ended for a reason this version does not know.';
 
 /** The reason a close code gives by itself, before any gateway error is considered. */
 const BY_CODE: ReadonlyMap<number, SessionEndReason> = new Map([

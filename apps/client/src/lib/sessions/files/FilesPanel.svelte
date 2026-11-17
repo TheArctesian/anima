@@ -92,10 +92,10 @@
       <Icon name="carbon:arrow-up" size="sm" />
     </button>
     <span class="where" title={files.listing?.path ?? ''}>{files.listing?.path ?? ''}</span>
-    <button type="button" class="control" aria-label="Refresh the list" aria-disabled={!idle || files.listing === undefined} onclick={() => files.refresh()} {@attach press()}>
+    <button type="button" class="control" aria-label="Refresh list" aria-disabled={!idle || files.listing === undefined} onclick={() => files.refresh()} {@attach press()}>
       <Icon name="carbon:renew" size="sm" />
     </button>
-    <button type="button" class="control labelled" aria-label="Upload a file" aria-disabled={!idle || files.listing === undefined} onclick={() => idle && picker?.click()} {@attach press()}>
+    <button type="button" class="control labelled" aria-label="Upload file" aria-disabled={!idle || files.listing === undefined} onclick={() => idle && picker?.click()} {@attach press()}>
       <Icon name="carbon:upload" size="sm" />
       <span>Upload</span>
     </button>

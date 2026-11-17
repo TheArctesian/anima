@@ -106,7 +106,7 @@ it('LOG-007: after a submit the password and code fields are empty and nothing s
 it('LOG-007: a wrong password shows a fixed message, not the hub text, and clears the password', async () => {
   const target = open({ Login: failure('UNAUTHENTICATED', `echo ${PASSWORD}`) });
   await signInWith(target);
-  expect(target.querySelector('[role="alert"]')?.textContent).toBe('The user name, password or code is wrong.');
+  expect(target.querySelector('[role="alert"]')?.textContent).toBe('Wrong user name, password or code.');
   expect(document.body.innerHTML).not.toContain(PASSWORD);
   expect(input(target, 'password').value).toBe('');
   expect(mocks.writeAccessToken).not.toHaveBeenCalled();
@@ -143,7 +143,7 @@ it('NAV-009: Continue sends nothing and shows step 2: a named group of six boxes
   const target = open({});
   await continueWith(target, 'ann', PASSWORD);
   expect(hub.sent).toEqual([]);
-  expect(target.querySelector('h2')?.textContent).toBe('Enter the code from your authenticator app');
+  expect(target.querySelector('h2')?.textContent).toBe('Enter code');
   expect(target.querySelector('[role="group"]')?.getAttribute('aria-label')).toBe('Authenticator code');
   const six = boxes(target);
   expect(six.map((box) => box.getAttribute('aria-label'))).toEqual([1, 2, 3, 4, 5, 6].map((n) => `Digit ${n.toString()} of 6`));
@@ -212,7 +212,7 @@ it('NAV-009, SEC-002: a refusal returns to step 1 with the message, the user nam
   expect(input(target, 'username').value).toBe('ann');
   expect(input(target, 'password').value).toBe('');
   expect(document.activeElement).toBe(input(target, 'password'));
-  expect(target.querySelector('[role="alert"]')?.textContent).toBe('The user name, password or code is wrong.');
+  expect(target.querySelector('[role="alert"]')?.textContent).toBe('Wrong user name, password or code.');
   await continueWith(target, 'ann', PASSWORD);
   expect(boxes(target).map((box) => box.value).join('')).toBe('');
 });
@@ -310,9 +310,9 @@ describe('in a browser, a failed sign-in', () => {
   });
 
   it.each([
-    ['UNAUTHENTICATED', 'The user name, password or code is wrong.'],
-    ['FORBIDDEN', 'The hub refused sign-in from here. Check the VPN client and the page address.'],
-    ['malformed', 'The hub refused the request. Check the VPN client.'],
+    ['UNAUTHENTICATED', 'Wrong user name, password or code.'],
+    ['FORBIDDEN', 'The hub refused sign-in from here. Check the VPN client and page address.'],
+    ['malformed', 'The hub refused. Check the VPN client.'],
     ['unreachable', 'The hub did not answer. Check the VPN client.'],
   ] as const)('LOG-007: %s shows its fixed browser message, never the hub text, and loads no page', async (code, message) => {
     const target = open({ SignInBrowser: failure(code, `echo ${PASSWORD}`) });

@@ -1,13 +1,16 @@
-//! Reads this computer (MET-002): the `/proc` files and fixed commands, nothing written.
-//! Parsing is `agent_core::readings`; this module only fetches the bytes (MET-016).
+//! Reads this computer (MET-002): the `/proc` files and fixed commands, nothing written, and
+//! the probes of the tool inventory (CAP-028). Parsing is `agent_core::readings` and
+//! `agent_core::inventory`; this module only fetches the bytes (MET-016).
 
 pub mod command;
 pub mod gpu;
+mod inventory;
 mod linux;
 mod macos;
 
 use agent_core::readings::Reading;
 use chrono::{DateTime, Utc};
+pub use inventory::inventory;
 
 /// What this computer is, which decides the commands.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

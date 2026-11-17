@@ -81,12 +81,12 @@
 
 {#if address === null}
   <p role="status">{busy ? 'Checking the hub address on this computer.' : ''}</p>
-  {#if !busy}<FormButton tone="primary" onclick={() => void connect()}>Try again</FormButton>{/if}
+  {#if !busy}<FormButton tone="primary" onclick={() => void connect()}>Retry</FormButton>{/if}
 {:else if signer === null}
   <ExistingAccount onnext={(chosen) => (signer = chosen)} />
 {:else}
-  <p>{made ? 'Wait for the next code in your authenticator app: the code that made the account cannot sign in.' : 'Enter the code your authenticator app shows for Anima.'}</p>
-  <p class="next" aria-live="off">The next code comes in {secondsToNextCode(clock.current)} s.</p>
+  <p>{made ? 'Wait for the next code: the one that made the account cannot sign in.' : 'Enter your authenticator code.'}</p>
+  <p class="next" aria-live="off">Next code in {secondsToNextCode(clock.current)} s.</p>
   <!-- The step heading has focus when the step shows; the boxes take it only after a refused code. -->
   <div class="code">
     {#key attempt}

@@ -50,11 +50,11 @@ export function inviteFailure(error: Pick<HubError, 'code'>): string {
       return 'Use 1 to 64 visible characters for the name.';
     case 'FORBIDDEN':
     case 'UNAUTHENTICATED':
-      return 'Only a signed-in operator can invite a device. Sign in again.';
+      return 'Sign in again to invite a device.';
     case 'unreachable':
-      return 'The hub did not answer. Try again.';
+      return 'The hub did not answer. Retry.';
     default:
-      return 'The hub could not make an invite. Try again.';
+      return "Can't make an invite. Retry.";
   }
 }
 
@@ -75,7 +75,7 @@ export function deviceLinkText(status: DeviceLinkStatus): string {
         ? `Down: another program holds port ${String(status.port ?? '')}.`
         : status.reason === 'not-carried'
           ? 'Down: this build does not carry the link program.'
-          : 'Down: the link ended. It starts again in 10 seconds.';
+          : 'Down: the link ended. Restarting in 10 seconds.';
   }
 }
 

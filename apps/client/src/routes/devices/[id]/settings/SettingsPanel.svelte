@@ -63,7 +63,7 @@
 <div class="settings" bind:this={root}>
   <div class="column">
     <p class="how">
-      <span class="quiet"><Icon name="carbon:cloud-upload" size="sm" /></span>Changes save as you make them. Text saves when you leave the field or press Return.
+      <span class="quiet"><Icon name="carbon:cloud-upload" size="sm" /></span>Changes save at once. Text saves when you leave the field or press Return.
     </p>
     <div class="groups">
     <DeviceSection {draft} />
@@ -86,7 +86,7 @@
 <ConfirmModal
   open={confirming}
   title="Delete {device.name}?"
-  body="Anima.ing deletes {device.name} with its credentials, checks, heartbeats and metrics. This cannot be undone."
+  body="Deletes {device.name} with its credentials, checks, heartbeats and metrics. Cannot be undone."
   confirmLabel="Delete {device.name}"
   onConfirm={onDelete}
   onCancel={() => {

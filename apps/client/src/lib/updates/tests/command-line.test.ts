@@ -22,12 +22,12 @@ const ELSEWHERE: CommandLineStatus = {
 describe('the row words (INS-006)', () => {
   it('INS-006: each state is said in words with its path', () => {
     expect(describeCommandLine(NOT_INSTALLED)).toBe('Not installed. Install puts anima at /Users/ann/.local/bin/anima.');
-    expect(describeCommandLine({ ...NOT_INSTALLED, create: true })).toContain('makes the folder /Users/ann/.local/bin');
+    expect(describeCommandLine({ ...NOT_INSTALLED, create: true })).toContain('creates /Users/ann/.local/bin');
     expect(describeCommandLine(INSTALLED)).toBe('Installed at /Users/ann/.local/bin/anima.');
     expect(describeCommandLine(ELSEWHERE)).toBe(
-      '/Users/ann/bin/anima points at /Users/ann/Downloads/Anima.app/Contents/MacOS/anima, not this app. Install points it at this app.',
+      '/Users/ann/bin/anima points at /Users/ann/Downloads/Anima.app/Contents/MacOS/anima, not this app. Install repoints it.',
     );
-    expect(describeCommandLine({ state: 'unavailable', reason: 'disk-image' })).toContain('Move Anima.ing to Applications');
+    expect(describeCommandLine({ state: 'unavailable', reason: 'disk-image' })).toContain('Move it to Applications');
   });
 
   it('INS-009: the profile line is shown only when the folder is not on the PATH', () => {

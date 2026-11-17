@@ -257,7 +257,7 @@ describe('settings tab: web interfaces (WEB-001)', () => {
   it('WEB-001: Settings shows the Web interfaces section; Add stores the interface and the list shows it', async () => {
     const fake = await show(answers({ CreateWebInterface: { createWebInterface: PVE } }), '?tab=settings');
     expect(document.getElementById('web-interfaces-heading')?.textContent).toBe('Web interfaces');
-    button('Add a web interface').click();
+    button('Add web interface').click();
     await settle();
     const url = document.getElementById('web-new-url');
     if (!(url instanceof HTMLInputElement)) throw new Error('no URL input');

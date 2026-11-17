@@ -66,7 +66,7 @@
 {#if device === null}
   <form onsubmit={join} novalidate transition:crossFade>
     <label for="invite">Invite</label>
-    <p id="invite-about" class="about">Make an invite on the hub computer, under Settings, Devices on the link. It works once, for 15 minutes.</p>
+    <p id="invite-about" class="about">Make one on the hub: Settings, Devices on the link. Works once, for 15 minutes.</p>
     <textarea
       id="invite"
       rows="4"
@@ -86,13 +86,13 @@
   </form>
 {:else}
   <div class="joined" transition:crossFade>
-    <h2 tabindex="-1" bind:this={done}>This device joined the hub</h2>
-    <p>This device's key is</p>
+    <h2 tabindex="-1" bind:this={done}>Joined the hub</h2>
+    <p>This device's key</p>
     <p class="fingerprint">{device.fingerprint}</p>
-    <p>Compare it with the device list on the hub. If the hub does not list it, the invite was not from your hub.</p>
+    <p>Compare it with the hub's device list. If it is missing, the invite was not from your hub.</p>
     <p class="problem" role="alert">{finished?.ok === false ? finished.message : ''}</p>
     {#if finished?.ok === true}
-      <FormButton tone="primary" onclick={() => loadClientAt('/sign-in')}>Continue to sign in</FormButton>
+      <FormButton tone="primary" onclick={() => loadClientAt('/sign-in')}>Sign in</FormButton>
     {:else}
       <FormButton tone="primary" {busy} onclick={() => void retry()}>Retry</FormButton>
     {/if}

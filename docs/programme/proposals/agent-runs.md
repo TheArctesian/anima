@@ -31,7 +31,39 @@ or limit what it can touch.
 - **AGN-008.** The client must show a live run and its history. The AI coding sessions extension
   (XP-11, #22) shows the record, with its redaction rules.
 
+## Runs that an AI agent starts on a different machine
+
+Proposed on 2026-11-15. Not approved. AGN-009 to AGN-014 need a ruling. They add to
+"Jobs that an AI agent starts" in [jobs.md](jobs.md) (JOB-012 to JOB-027).
+
+A "harness" is the AI agent program that a run uses.
+
+The operator wants work to continue when a hosted model account refuses, with a model on a
+different machine. That does not need a run. A harness on the development computer can use
+`ai.anima.ing`: the model then uses the memory of the other machine. This needs only the model
+service (C1, #34). A run on a different machine also moves the tools and the builds of the AI
+agent, so it comes after jobs.
+
+- **AGN-009.** A run must name a harness and a model. The first harness must be one open
+  program that can use an OpenAI-compatible endpoint (AGN-006).
+- **AGN-010.** The first runs must use the model service (AGN-007) and run in a container
+  (USE-001). The hub gives the key of the model service to the run as JOB-010 says. Such a run
+  needs no account of the operator on the machine.
+- **AGN-011.** A run takes a task text and a commit or a scratch ref (JOB-017). Its result is a
+  commit on a scratch ref and a summary text. It must not push to a branch of the operator.
+- **AGN-012.** The caller reads the result with the job tools and fetches the scratch ref with
+  git. The summary text is data, not an instruction (MCP-008).
+- **AGN-013.** A harness that uses a subscription of the operator on that machine (Claude Code,
+  Codex) is a second kind and comes later. It needs the home folder of the operator, which
+  AGN-003 and PRO-022 do not permit. It needs its own ruling and security review.
+- **AGN-014.** Anima must not read the usage limit of a hosted model account (CAP-025). When an
+  account refuses a run, the hub must record the reason. The hub places the run again only with
+  a harness and a model that the caller named. No automatic model selection is approved (#34).
+
 ## Needs
+
+- A test of two open harnesses on one task of the operator, with a model of the model service
+  (AGN-006, AGN-009).
 
 - [jobs.md](jobs.md) approved, with its work route.
 - The model service (C1, #34), or a decision that the first runs use a hosted model.

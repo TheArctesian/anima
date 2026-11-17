@@ -60,14 +60,14 @@
 
 <div class="step">
   <h2 tabindex="-1" bind:this={title}>{heading}</h2>
-  <p>Scan the code with your authenticator app, or type the key into it. Then enter the code it shows.</p>
+  <p>Scan this with your authenticator app, or type the key. Then enter its code.</p>
   <!-- The code's area keeps its height while the key is made, so nothing below moves when it shows (MOT-007). -->
   <div class="code">
     {#if uri !== ''}
       <div class="pair">
         <!-- The label never holds the secret; the URI is only drawn. -->
         <QrCode text={uri} label="Authenticator code for Anima" />
-        <CopyText label="Key for the authenticator app" text={secret} shown={groupedSecret(secret)} />
+        <CopyText label="Authenticator key" text={secret} shown={groupedSecret(secret)} />
       </div>
       <!-- The heading has focus when the step shows; the boxes take it only after a refused code. -->
       {#key attempt}
@@ -79,7 +79,7 @@
   <p class="problem" role="alert">{problem ?? ''}</p>
   <div class="links">
     <FormButton tone="ghost" size="sm" icon="carbon:arrow-left" aria-disabled={busy} onclick={onback}>Back</FormButton>
-    {#if uri === '' && problem !== null}<FormButton size="sm" onclick={() => void makeSecret()}>Try again</FormButton>{/if}
+    {#if uri === '' && problem !== null}<FormButton size="sm" onclick={() => void makeSecret()}>Retry</FormButton>{/if}
   </div>
 </div>
 

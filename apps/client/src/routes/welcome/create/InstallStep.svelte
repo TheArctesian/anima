@@ -51,7 +51,7 @@
 </script>
 
 <!-- The state line says "The first start can take a few minutes." while the hub starts, so this line does not. -->
-<p>Anima.ing installs the hub, its database, its gateway and its link on this computer, then starts them.</p>
+<p>Installs and starts the hub, its database, gateway and link on this computer.</p>
 <div class="state" role="status" aria-live="polite">
   {#if status !== null}
     <p>{stateText(status, mac)}</p>
@@ -62,7 +62,7 @@
 </div>
 <p class="problem" role="alert">{problem ?? ''}</p>
 {#if !working}
-  <FormButton tone="primary" onclick={() => void install()}>Try again</FormButton>
+  <FormButton tone="primary" onclick={() => void install()}>Retry</FormButton>
 {/if}
 
 <style>

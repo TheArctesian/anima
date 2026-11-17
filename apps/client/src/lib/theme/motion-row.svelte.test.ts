@@ -85,7 +85,7 @@ it('MOT-043: a storage that refuses to save still applies the choice and says it
   expect(document.documentElement.dataset['motion']).toBe('reduce');
   expect(motionSelect(target).value).toBe('reduce');
   expect(target.querySelector('[role="alert"]')?.textContent).toBe(
-    'Anima.ing could not save this choice on this device; it lasts until the app restarts.',
+    'Not saved on this device. Lasts until restart.',
   );
 });
 

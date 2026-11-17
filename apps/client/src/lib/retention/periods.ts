@@ -16,7 +16,7 @@ export function checkDays(text: string, period: Pick<RetentionPeriod, 'minDays' 
   if (!/^-?\d+$/.test(trimmed)) return { ok: false, message: 'Enter a whole number of days.' };
   const days = Number(trimmed);
   if (days < period.minDays || days > period.maxDays) {
-    return { ok: false, message: `Enter a number of days from ${String(period.minDays)} to ${String(period.maxDays)}.` };
+    return { ok: false, message: `Enter ${String(period.minDays)} to ${String(period.maxDays)} days.` };
   }
   return { ok: true, days };
 }

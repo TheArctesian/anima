@@ -39,8 +39,8 @@
 <!-- Starts a workflow by hand on a branch (PRJ-035). GitHub runs it with the repository's secrets, so it asks first. -->
 <ChangeDialog
   open
-  title="Run a workflow"
-  body="GitHub runs the workflow on the branch, with the repository’s secrets. It shows in the runs a moment later."
+  title="Run workflow"
+  body="GitHub runs it on the branch with the repository’s secrets."
   confirmLabel="Run workflow"
   ready={workflowId !== '' && branch.trim() !== ''}
   onConfirm={() => api.dispatch(repository, workflowId, branch.trim())}
@@ -50,9 +50,9 @@
   {#if failure !== null}
     <p class="failure" role="alert">{failure.message}</p>
   {:else if workflows === null}
-    <p class="quiet">Loading the workflows…</p>
+    <p class="quiet">Loading workflows…</p>
   {:else if active.length === 0}
-    <p class="quiet">This repository has no workflow that can run.</p>
+    <p class="quiet">No runnable workflows.</p>
   {:else}
     <Field label="Workflow">
       {#snippet children(link)}

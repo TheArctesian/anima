@@ -91,7 +91,7 @@ describe('certificate modal (SEC-007, K4 §3)', () => {
     expect(dialog()?.textContent).toContain(PROBLEM.read);
     expect(dialog()?.textContent).not.toContain('HUBMESSAGE');
     expect(button('Accept new certificate')).toBeUndefined();
-    expect(button('Read again')).toBeDefined();
+    expect(button('Retry')).toBeDefined();
   });
 
 });
@@ -190,7 +190,7 @@ describe('MOT-007, MV-004: the modal keeps its layout while it reads', () => {
     await showModal({ testConnection: () => new Promise((resolve) => (answer = resolve)) });
     expect(accept()?.disabled).toBe(true);
     expect(accept()?.getAttribute('aria-busy')).toBe('true');
-    expect(dialog()?.querySelector('.pending')?.textContent).toBe('Reading the certificate…');
+    expect(dialog()?.querySelector('.pending')?.textContent).toBe('Reading…');
     const reading = layout();
     const reserves = reservesOf();
     expect(reserves.map((reserve) => reserve.hidden)).toEqual([true, true, true]);
@@ -245,7 +245,7 @@ describe('certificate modal outcomes (CR-3, SEC-007)', () => {
     expect(dialog()?.textContent).not.toContain(PROBLEM.unchanged);
     expect(button('Reconnect')).toBeUndefined();
     expect(button('Accept new certificate')).toBeUndefined();
-    expect(button('Read again')).toBeDefined();
+    expect(button('Retry')).toBeDefined();
   });
 
   it('CR-3: an unreachable device fails with the hub message', async () => {

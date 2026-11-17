@@ -19,7 +19,7 @@
 
 <Modal open title="Disconnect {label}" describedBy="{ids}-about" preset="sm" onClose={onCancel}>
   <p id="{ids}-about">
-    Disconnect the {sourceName} account {label}. The hub deletes the key it holds and stops reading. Choose what happens to the records it already read.
+    The hub deletes its {sourceName} key and stops reading. Choose what happens to the records already read.
   </p>
   <fieldset>
     <legend>Records from {label}</legend>

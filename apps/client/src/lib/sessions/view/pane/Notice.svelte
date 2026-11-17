@@ -12,7 +12,7 @@
 </script>
 
 <span class="notice" role="status" title={text}>{text}</span>
-<button type="button" class="dismiss" aria-label="Dismiss the message" onclick={ondismiss} {@attach press()}>
+<button type="button" class="dismiss" aria-label="Dismiss message" onclick={ondismiss} {@attach press()}>
   <Icon name="carbon:close" size="sm" />
 </button>
 

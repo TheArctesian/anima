@@ -131,7 +131,7 @@ it('FRN-002, FRN-004, F-10, AWK-005: install, account, authenticator, sign-in wi
   typeInto(fields[2], PASSWORD);
   click('Continue');
   await settle();
-  expect(heading()).toBe('Add Anima.ing to your authenticator app');
+  expect(heading()).toBe('Set up your authenticator app');
   await enterCode('111111');
   expect(mocks.shell.createLocalAccount).toHaveBeenCalledWith({ name: 'ann', password: PASSWORD, secret: 'JBSWY3DPEHPK3PXP', code: '111111' });
 
@@ -148,17 +148,17 @@ it('FRN-002, FRN-004, F-10, AWK-005: install, account, authenticator, sign-in wi
   expect(mocks.hubTokens[0]).toBe(mocks.gated[0]?.reader);
   expect(mocks.writeAccessToken.mock.calls[0]?.[1]).toBe('tok-new');
 
-  expect(heading()).toBe('Save a copy of the hub key');
-  click('Save a copy of the hub key');
+  expect(heading()).toBe('Back up the hub key');
+  click('Save a copy');
   await settle();
   expect(heading()).toBe('Invite your next device');
   typeInto(document.querySelector('form input'), 'laptop');
-  click('Make an invite');
+  click('Make invite');
   await settle();
   expect(mocks.sent.at(-1)).toEqual({ operation: 'CreateLinkInvite', variables: { name: 'laptop' } });
   expect(document.querySelector('svg[role="img"]')?.getAttribute('aria-label')).toBe('Invite for laptop');
   expect(target.querySelector('code.text')?.textContent).toBe(INVITE);
-  expect(target.textContent).toContain('This computer is the hub. Its checks stop while the computer sleeps.');
+  expect(target.textContent).toContain('This computer is the hub: checks stop while it sleeps.');
   click('Done');
   expect(mocks.loadClientAt).toHaveBeenCalledWith('/devices');
 });
@@ -190,6 +190,6 @@ it('FRN-003: an account that already exists signs in here with its name, passwor
   await settle();
   await enterCode('333333');
   expect(mocks.sent[0]).toEqual({ operation: 'Login', variables: { input: { username: 'ann', password: PASSWORD, totpCode: '333333' } } });
-  expect(heading()).toBe('Save a copy of the hub key');
+  expect(heading()).toBe('Back up the hub key');
   expect(mocks.loadClientAt).not.toHaveBeenCalled();
 });

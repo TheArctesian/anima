@@ -5,7 +5,7 @@ describe('allowQuestion', () => {
   it('MCP-020: for everything, the title says so and the lines cover an API key and the own sign-in', () => {
     const question = allowQuestion({ type: 'bulk', state: 'allow' }, ['devices', 'checks', 'sessions', 'web', 'releases', 'retention']);
     expect(question.title).toBe('Allow every tool on this hub?');
-    expect(question.body).toContain('the read tools too');
+    expect(question.body).toContain('read tools too');
     expect(question.lines).toHaveLength(3);
     expect(question.lines[0]).toContain('end live sessions');
     expect(question.lines[0]).toContain('repoint web interfaces');
@@ -29,6 +29,8 @@ describe('allowQuestion', () => {
     const repositories = allowQuestion({ type: 'bulk', toolset: 'repositories', state: 'allow' }, ['repositories']);
     expect(repositories.title).toBe('Allow every Repositories tool?');
     expect(repositories.lines[0]).toContain('make issues and comments on GitHub');
+    expect(repositories.lines[0]).toContain('copy text it read in a private repository into an issue or a comment in a public one');
+    expect(repositories.lines[0]).toContain('set off a workflow of a repository that listens for issues or comments');
     expect(repositories.lines.join(' ')).not.toMatch(/merge|run again|start a workflow|sign-in/);
   });
 

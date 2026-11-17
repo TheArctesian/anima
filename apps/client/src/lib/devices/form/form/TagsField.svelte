@@ -48,7 +48,7 @@
     {/each}
     <input id="device-tags" bind:value={draft} onkeydown={keydown} onblur={commit} autocomplete="off" />
   </div>
-  <small>Press Enter or comma to add a tag.</small>
+  <small>Enter or comma adds a tag.</small>
   <span class="announcement" role="status" aria-live="polite">{announcement}</span>
 </div>
 

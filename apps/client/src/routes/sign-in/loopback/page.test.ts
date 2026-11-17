@@ -51,7 +51,7 @@ vi.mock('$lib/access/listener/check', () => ({
   },
 }));
 
-const PROBLEM = { title: "Another program holds the hub's port", advice: 'Anima.ing sends nothing to it: no password and no token. Stop that program, then check again.' };
+const PROBLEM = { title: "Another program holds the hub's port", advice: 'Anima.ing sends it nothing. Stop that program.' };
 let app: ReturnType<typeof mount> | undefined;
 let hub: ReturnType<typeof fakeHub>;
 

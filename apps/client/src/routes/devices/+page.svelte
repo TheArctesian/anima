@@ -44,7 +44,7 @@
 
   /** This computer, where the client can read it; elsewhere nothing to offer (R-060). */
   function readHere(): Promise<ThisMachine | null> {
-    return capabilities().thisMachine ? readThisMachine() : Promise.resolve(null);
+    return capabilities().thisMachine ? readThisMachine(hub) : Promise.resolve(null);
   }
 
   const query = $derived(parseListQuery(page.url.searchParams));

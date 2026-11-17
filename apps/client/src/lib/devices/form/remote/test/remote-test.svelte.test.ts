@@ -93,7 +93,7 @@ it('DEV-013: for an unsaved device a new certificate shows the save note and no 
   type('rdp-username', 'admin');
   rdpTest().click();
   await settle();
-  expect(document.body.textContent).toContain('Save the device, then test again to accept this certificate.');
+  expect(document.body.textContent).toContain('Save, then test again to accept this certificate.');
   expect([...document.querySelectorAll('button')].some((found) => found.textContent.includes('Accept certificate'))).toBe(false);
 });
 

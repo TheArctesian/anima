@@ -41,7 +41,7 @@
   const screenSharing = { calls: screenSharingCalls(hub), onEnabled: (next: DeviceDetail) => { detail.setDevice(next); } };
   const now = () => new Date();
   const agentCalls = metricsApi(hub);
-  const agentShell = thisComputerShell();
+  const agentShell = thisComputerShell(hub);
   const agent = $derived({ calls: agentCalls, origin: hub.address.origin, reveal: page.url.hash === '#agent', shell: agentShell });
   // The layout mounts a new page for each path, so the ID never changes under this one.
   // svelte-ignore state_referenced_locally
@@ -134,7 +134,7 @@
   <DeviceBar {device} checks={detail.checks} onConnect={connect} onOpenWeb={openWeb} {screenSharing} onSettings={settings} tabs={device !== null || loading ? deviceTabs : undefined} />
   {#if page.state.credentialError !== undefined}
     <p class="notice" role="alert">
-      The device was added, but its credential was not stored: {page.state.credentialError} Enter it again in Settings.
+      Device added, credential not stored: {page.state.credentialError} Enter it again in Settings.
     </p>
   {/if}
   {#if detail.missing}

@@ -17,8 +17,7 @@
   <BulkActions scope="{group.label} tools" toolset={group.toolset} {onrequest} />
   {#if group.tools.some((tool) => tool.needsSignIn)}
     <p class="note">
-      A tool marked "Needs sign-in" works only when <code>anima mcp</code> runs with your own sign-in. With an API key the agent never gets it, whatever
-      is set here.
+      "Needs sign-in" tools work only when <code>anima mcp</code> runs with your own sign-in, never with an API key.
     </p>
   {/if}
   <ul>

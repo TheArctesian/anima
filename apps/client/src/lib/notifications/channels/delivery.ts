@@ -16,7 +16,7 @@ const KIND_LABELS: Record<NotificationKind, string> = {
 /** Said for a failed delivery that carries no sentence. */
 export const NO_REASON = 'The hub gave no reason.';
 export const NEVER_SENT = 'Nothing sent yet.';
-export const SENDING = 'Sending a test…';
+export const SENDING = 'Sending test…';
 
 export function notificationLabel(kind: NotificationKind): string {
   return KIND_LABELS[kind];

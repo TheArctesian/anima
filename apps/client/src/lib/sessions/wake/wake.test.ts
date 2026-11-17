@@ -10,7 +10,7 @@ function failed(code: HubCode | 'unreachable' | 'malformed', message = 'relay 10
 describe('wakeText (RA-031)', () => {
   it('RA-031: success names the relay', () => {
     const sent: HubResult<WakeSent> = { ok: true, value: { sentAt: '2026-11-06T10:00:00Z', relayName: 'Pi at home' } };
-    expect(wakeText(sent)).toBe('Wake packet sent through Pi at home.');
+    expect(wakeText(sent)).toBe('Wake sent via Pi at home.');
   });
 
   it.each(['NOT_FOUND', 'VALIDATION', 'CONFLICT', 'UNAVAILABLE', 'INTERNAL', 'unreachable', 'malformed', 'FORBIDDEN'] as const)(
@@ -26,7 +26,7 @@ describe('wakeText (RA-031)', () => {
     expect(wakeText(failed('NOT_FOUND'))).toContain('no longer exists');
     expect(wakeText(failed('CONFLICT'))).toContain('MAC address');
     expect(wakeText(failed('CONFLICT'))).toContain('wake relay');
-    expect(wakeText(failed('UNAVAILABLE'))).toContain('could not be reached');
-    expect(wakeText(failed('unreachable'))).toContain('hub could not be reached');
+    expect(wakeText(failed('UNAVAILABLE'))).toContain('unreachable');
+    expect(wakeText(failed('unreachable'))).toContain('hub did not answer');
   });
 });

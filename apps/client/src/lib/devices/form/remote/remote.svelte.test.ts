@@ -88,7 +88,7 @@ it('RA-020: ignoring the certificate or choosing standard RDP security shows a w
   show(WITH_K1, { section: 'rdp' });
   expect(document.querySelector('[data-section="rdp"] .warning')).toBeNull();
 
-  const ignore = checkbox('Ignore the server certificate');
+  const ignore = checkbox('Ignore server certificate');
   ignore.click();
   flushSync();
   expect(document.body.textContent).toContain('Ignoring the certificate');
@@ -105,7 +105,7 @@ it('RA-020: the hub UNENCRYPTED_VNC warning is shown, and the recorded RDP certi
   show(WITH_K1, { section: 'rdp' });
   disclosure('VNC').click();
   flushSync();
-  expect(document.body.textContent).toContain('This VNC connection is not encrypted');
+  expect(document.body.textContent).toContain('VNC is not encrypted');
   const certificate = document.querySelector('[aria-label="Server certificate"]');
   expect(certificate?.textContent).toContain('AA:BB');
   expect(certificate?.textContent).toContain('CN=desk');

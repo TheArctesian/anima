@@ -101,6 +101,6 @@ describe('WebTab default shell (WP-42 D-4)', () => {
     platform.answers = BROWSER;
     const today = await shownBy(desktopWebView);
     expect(await shownBy()).toBe(today);
-    expect(today).toContain('could not be loaded');
+    expect(today).toContain('did not load');
   });
 });

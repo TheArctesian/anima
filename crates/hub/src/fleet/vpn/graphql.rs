@@ -47,6 +47,13 @@ impl Query {
     async fn vpn(&self, ctx: &Context<'_>) -> Result<Option<PictureView>> {
         Ok(schema_dependency::<Feed>(ctx)?.latest().map(PictureView))
     }
+
+    /// The Headscale server every Anima node logs in to (ADR-005). Answered with or without a
+    /// picture.
+    #[graphql(guard = "Authenticated")]
+    async fn vpn_login_server(&self) -> &'static str {
+        super::LOGIN_SERVER
+    }
 }
 
 #[derive(Default)]

@@ -15,7 +15,7 @@ describe('the account rules (FRN-003)', () => {
   it('FRN-003: the password has at least 12 characters, and the repeat must match', () => {
     expect(checkAccount(GOOD)).toEqual({});
     expect(checkAccount({ ...GOOD, password: 'x'.repeat(PASSWORD_MIN - 1), repeat: 'x'.repeat(PASSWORD_MIN - 1) }).password).toBe('Use at least 12 characters.');
-    expect(checkAccount({ ...GOOD, repeat: 'correct horsf' })).toEqual({ repeat: 'The two passwords are not the same.' });
+    expect(checkAccount({ ...GOOD, repeat: 'correct horsf' })).toEqual({ repeat: 'The passwords differ.' });
   });
 
   it('LOG-007: no problem text repeats the password', () => {
@@ -42,10 +42,10 @@ describe('the authenticator (FRN-004)', () => {
   });
 
   it('FRN-004, FRN-007: a wrong code and a cancelled recovery have their own fixed text', () => {
-    expect(accountFailure('refused')).toBe('The code did not match. Wait for a new code and try again.');
+    expect(accountFailure('refused')).toBe('Wrong code. Wait for a new one.');
     expect(accountFailure('cancelled')).toBe('Recovery was cancelled. Nothing changed.');
     // F-9: for 60 s after a cancelled replace dialog the shell answers `busy` and shows no dialog.
-    expect(accountFailure('busy')).toBe('Wait a minute before you try again.');
+    expect(accountFailure('busy')).toBe('Wait a minute, then retry.');
     expect(accountFailure('argument')).toContain('1 to 64 letters');
   });
 });

@@ -26,11 +26,11 @@
 {#if available}
   <div class="remote-login" class:off={sshOff}>
     {#if sshOff}
-      <p class="why" role="status">SSH is off: it did not answer on this Mac. Turn on Remote Login to use it.</p>
+      <p class="why" role="status">SSH is off: it did not answer on this Mac. Turn on Remote Login.</p>
     {:else}
-      <p>Adding this Mac? SSH to it needs Remote Login turned on.</p>
+      <p>Adding this Mac? SSH needs Remote Login on.</p>
     {/if}
-    <button type="button" onclick={open} {@attach press()}>Open Remote Login settings</button>
+    <button type="button" onclick={open} {@attach press()}>Remote Login settings</button>
     {#if problem !== null}
       <p class="problem" role="alert">{problem}</p>
     {/if}

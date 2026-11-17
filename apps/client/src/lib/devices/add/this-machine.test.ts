@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { readThisMachine, type ThisMachine } from '$lib/desktop/this-machine';
+import { fakeHub } from '../hub.fixture';
 import { validateDevice } from '../form/validate';
 import { defaultRemoteValues } from '../form/remote/values';
 import { thisMachineValues } from '../form/values';
@@ -9,6 +10,12 @@ const shell = vi.hoisted(() => ({ invoke: vi.fn(), isTauri: vi.fn(() => true) })
 vi.mock('@tauri-apps/api/core', () => ({ invoke: shell.invoke, isTauri: shell.isTauri }));
 
 const MAC: ThisMachine = { name: 'Studio', user: 'stephen', os: 'MACOS', vpnAddress: '100.64.0.7', sshListening: true };
+const LOGIN_SERVER = 'https://hs.anima.ing';
+
+/** A hub that names its VPN login server (ADR-005). */
+function hub() {
+  return fakeHub({ VpnLoginServer: { vpnLoginServer: LOGIN_SERVER } }).hub;
+}
 
 beforeEach(() => {
   shell.invoke.mockReset();
@@ -44,23 +51,29 @@ function memoryStorage(refuse = false): Storage {
 }
 
 describe('readThisMachine', () => {
-  it('R-060: asks the shell with no arguments and keeps only the machine fields', async () => {
+  it("R-060, ADR-005: asks the shell with the hub's login server and keeps only the machine fields", async () => {
     shell.invoke.mockResolvedValue({ ...MAC, extra: 'dropped' });
-    expect(await readThisMachine()).toEqual(MAC);
-    expect(shell.invoke).toHaveBeenCalledWith('this_machine_read');
+    expect(await readThisMachine(hub())).toEqual(MAC);
+    expect(shell.invoke).toHaveBeenCalledWith('this_machine_read', { loginServer: LOGIN_SERVER });
+  });
+
+  it('ADR-005: is null without asking the shell when the hub does not name its login server', async () => {
+    shell.invoke.mockResolvedValue(MAC);
+    expect(await readThisMachine(fakeHub().hub)).toBeNull();
+    expect(shell.invoke).not.toHaveBeenCalled();
   });
 
   it('R-060: is null outside the desktop app, without asking the shell', async () => {
     shell.isTauri.mockReturnValue(false);
-    expect(await readThisMachine()).toBeNull();
+    expect(await readThisMachine(hub())).toBeNull();
     expect(shell.invoke).not.toHaveBeenCalled();
   });
 
   it('R-060: is null when the shell fails or the computer is not on the VPN', async () => {
     shell.invoke.mockRejectedValue({ code: 'failed', message: 'this computer could not be read' });
-    expect(await readThisMachine()).toBeNull();
+    expect(await readThisMachine(hub())).toBeNull();
     shell.invoke.mockResolvedValue({ ...MAC, vpnAddress: null, sshListening: false });
-    expect(await readThisMachine()).toBeNull();
+    expect(await readThisMachine(hub())).toBeNull();
   });
 
   it.each([
@@ -77,7 +90,7 @@ describe('readThisMachine', () => {
     ['an IPv4 address with trailing text', { ...MAC, vpnAddress: '100.64.0.7; rm -rf /' }],
   ])('R-060: refuses a shell answer with %s', async (_shape, answer) => {
     shell.invoke.mockResolvedValue(answer);
-    expect(await readThisMachine()).toBeNull();
+    expect(await readThisMachine(hub())).toBeNull();
   });
 });
 

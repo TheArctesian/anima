@@ -135,7 +135,7 @@ it('R-079: a failure to open System Settings shows its fixed message and offers 
   press(button(/screen sharing/i));
   await flow();
   expect(document.querySelector('[role="alert"]')?.textContent).toBe('System Settings did not open.');
-  press(button('Open System Settings again'));
+  press(button('Reopen System Settings'));
   await flow();
   expect(t.calls.openSharing).toHaveBeenCalledTimes(2);
 });

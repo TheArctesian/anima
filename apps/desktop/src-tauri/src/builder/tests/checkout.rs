@@ -27,7 +27,7 @@ struct Origin {
     off_main: String,
 }
 
-fn git(cwd: &Path, args: &[&str]) -> String {
+pub(super) fn git(cwd: &Path, args: &[&str]) -> String {
     let output = Process::new("git")
         .args(["-c", "user.name=test", "-c", "user.email=test@example.org"])
         .args([

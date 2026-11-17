@@ -88,6 +88,7 @@ Notes:
 - The bundled PostgreSQL (S3) and the hub as a background program (S4) are in the same state: built, and no row in this table. The operator must give the one-click work a tier ([s3-database-tasks.md](research/one-click/s3-database-tasks.md), [s4-local-hub-tasks.md](research/one-click/s4-local-hub-tasks.md)).
 - The first run (S6) is in the same state: no row in this table. The operator must give it a tier ([s6-first-run-tasks.md](research/one-click/s6-first-run-tasks.md)).
 - The stay-awake control (S8) is built on its branch and has no row in this table. The operator must give it a tier ([s8-stay-awake-tasks.md](research/one-click/s8-stay-awake-tasks.md)).
+- Packaging (S12) is in the same state: no row in this table. It serves the same one-click work as S3, S4 and S6, and the operator must give that work a tier ([s12-packaging-tasks.md](research/one-click/s12-packaging-tasks.md)).
 - The states in this table were read on 2026-11-12, except where a row gives a later date.
 - Phase 4 (Proxmox VE) is withdrawn (R-109). Session recording is deferred (R-113). This plan does not include them.
 
@@ -99,13 +100,15 @@ One document owns each concern. Add a requirement to its owner, not to this docu
 | --- | --- | --- |
 | Device manager: hub, clients, sessions, checks, metrics, notifications | [design-spec.md](design-spec.md) | As published there |
 | VPN and enrolment | [vpn-plan.md](vpn-plan.md) | As published there |
+| One-click install, many hubs, shares and teams | [one-click-plan.md](one-click-plan.md) | `LNK`, `AWK`, `MHB`, `SHR`, `MBR` (proposed; not in the spec yet) |
+| Power, hardware health and inventory | [power-health-plan.md](power-health-plan.md) | `PWR`, `HLT`, `HWI` (proposed; not in the spec yet) |
 | Agent push | `contracts/agent-push.md` (K8), [phase-3-agent-delta.md](programme/phase-3-agent-delta.md) | MET-011 to MET-025 |
 | Engine and extensions | [extensions-plan.md](extensions-plan.md) | ENG, SRC, COL, VLT, XP, PRJ and the others there |
 | Model service and pooled models | [compute-plan.md](compute-plan.md), as changed by #34 and #35 | CMP, CAG, CAP, RTR and the others there |
 | Copies of the coordinator database, and the move of the coordinator | [coordinator-standby.md](programme/proposals/coordinator-standby.md) | FND-001 to FND-012 |
 | Bulk data on the operator's machines | [bulk-data-placement.md](programme/proposals/bulk-data-placement.md) | STO-001 to STO-011 |
-| Rules for all work on machines, and jobs | [jobs.md](programme/proposals/jobs.md) | USE-001 to USE-009, JOB-001 to JOB-011 |
-| AI agent runs | [agent-runs.md](programme/proposals/agent-runs.md) | AGN-001 to AGN-008 |
+| Rules for all work on machines, and jobs | [jobs.md](programme/proposals/jobs.md) | USE-001 to USE-009, JOB-001 to JOB-027 |
+| AI agent runs | [agent-runs.md](programme/proposals/agent-runs.md) | AGN-001 to AGN-014 |
 | Hosted applications | [hosted-applications.md](programme/proposals/hosted-applications.md) | HOST-001 to HOST-009 |
 | Projects as the front door: import from a forge, resources that Anima finds, builds as jobs, owned machines as runners of GitHub Actions, sign-in with a forge | [projects-and-builds.md](programme/proposals/projects-and-builds.md) | PRO-001 to PRO-053 |
 | The `anima` command line and the MCP server | [cli-mcp-plan.md](cli-mcp-plan.md). The design specification Section 6.10 gives the summary. | CMD, MCP |
@@ -116,9 +119,9 @@ One document owns each concern. Add a requirement to its owner, not to this docu
 | Cloudflare source for Projects. A new Activity extension for Spotify and Screen Time | [new-sources.md](programme/proposals/new-sources.md) | None until each provider is verified |
 | Other persons: self-hosting and a hosted option | [other-operators.md](programme/proposals/other-operators.md) | None yet |
 | Hosted Solo hubs on a shared pool of hosts | [shared-pool-hosting.md](programme/proposals/shared-pool-hosting.md) | None yet |
-| The Anima.ing shell prompt and related shell commands | [shell-prompt.md](programme/proposals/shell-prompt.md) | CMD-032 to CMD-036 |
-| Rented cloud computers and GPU add-ons sold by Anima.ing | [cloud-machines.md](programme/proposals/cloud-machines.md) | CVM-001 to CVM-018 |
-| Machine profiles: copy a setup to a new computer | [machine-profiles.md](programme/proposals/machine-profiles.md) | REP-001 to REP-024 |
+| The Anima.ing shell prompt and related shell commands | [shell-prompt.md](programme/proposals/shell-prompt.md) | CMD-032 to CMD-038 |
+| Rented cloud computers and GPU add-ons sold by Anima.ing | [cloud-machines.md](programme/proposals/cloud-machines.md) | CVM-001 to CVM-024 |
+| Machine profiles: copy a setup to a new computer | [machine-profiles.md](programme/proposals/machine-profiles.md) | REP-001 to REP-025 |
 | CVE watch of the updates that wait on each machine, and network awareness (the address classes of a device, other overlay networks, address changes) | [cve-watch-and-network-awareness.md](programme/proposals/cve-watch-and-network-awareness.md) | VUL-001 to VUL-020, ADR-001 to ADR-014 |
 | Rulings and the state of each package | [programme/programme.md](programme/programme.md), [programme/handoff.md](programme/handoff.md) | R, CR |
 
@@ -212,22 +215,24 @@ This table is the only list of the plans of Anima. A document that is not in thi
 | [vpn-build.md](vpn-build.md) | Build specification of the VPN plan | Approved. Build state not checked | Version 0.2. |
 | [cli-mcp-plan.md](cli-mcp-plan.md) | Plan | In progress | Section 3: the command line and the MCP server are on `main`. The test against a real hub is open (#60). |
 | [extensions-plan.md](extensions-plan.md) | Plan | In progress | Its header says "For review". Connect GitHub (PRJ-039 to PRJ-042) is on `main` (2026-11-14). All other issues are open (#4 to #32). |
-| [compute-plan.md](compute-plan.md) | Plan | Draft | Its header says "For review". The issues #34 to #50 are open. |
-| [mobile-plan.md](mobile-plan.md) | Plan | In progress | Version 0.2 (2026-11-16). The operator decided OD-M1 to OD-M8 on 2026-11-16. It serves Section 4, tier 4, "iOS client and Android client (Phase 5)", and starts now (OD-M2). MOB-001 to MOB-042. Task M1-1 is done and M1-2 is in progress on the branch `mobile/m1-shell` (2026-11-16). Its facts are from a test build on the local branch `spike/mobile`, which is not for merge. |
+| [compute-plan.md](compute-plan.md) | Plan | In progress | Its header says "For review". The issues #34 to #50 are open. The tool inventory (CAP-020 to CAP-031) is built: the agent, the hub, `anima capability list` and the MCP tool (commits 1cb43b06 to a0cf53e5). Its live checks are open ([need-human-testing.md](need-human-testing.md), HT-002 to HT-006). Its client section is approved and not started (Section 11.1, CUI-010 to CUI-019). No other part is approved. |
+| [mobile-plan.md](mobile-plan.md) | Plan | In progress | Version 0.3 (2026-11-16). The operator decided OD-M1 to OD-M8 and approved the phone mockups on 2026-11-16. It serves Section 4, tier 4, "iOS client and Android client (Phase 5)", and starts now (OD-M2). MOB-001 to MOB-042. On the branch `mobile/m1-shell`: tasks M1-1 and M2-1 are done; M1-2, M1-4, M2-2 and M2-3 are in progress. Its facts are from a test build on the local branch `spike/mobile`, which is not for merge. |
 | [ui-redesign-direction.md](ui-redesign-direction.md) | Plan: direction of the redesign | Not checked | Its title says "draft for approval". |
 | [ui-redesign-plan.md](ui-redesign-plan.md) | Plan | Not checked | Version 0.2. |
 | [ui-site-language-plan.md](ui-site-language-plan.md) | Plan | Approved. Build state not checked | Approved for implementation on 2026-11-13. |
-| [research/one-click/s2-vnc-tasks.md](research/one-click/s2-vnc-tasks.md) | Task breakdown: native VNC gateway | In progress | Its Section 6: T1 to T8, T10 and T11 have commits on `main`. T9 waits for the operator. Its parent plan `docs/one-click-plan.md` is not on `main`. |
+| [research/one-click/s2-vnc-tasks.md](research/one-click/s2-vnc-tasks.md) | Task breakdown: native VNC gateway | In progress | Its Section 6: T1 to T8, T10 and T11 have commits on `main`. T9 waits for the operator. Its parent plan is [one-click-plan.md](one-click-plan.md). |
 | [research/one-click/s2-rdp-tasks.md](research/one-click/s2-rdp-tasks.md) | Task breakdown: native RDP gateway | In progress | Its Section 5: R1 to R7 are built. Its Section 6 lists what is open for the operator. |
-| [research/one-click/s3-database-tasks.md](research/one-click/s3-database-tasks.md) | Task breakdown: bundled PostgreSQL | In progress | Approved by the operator on 2026-11-14. Its Section 7.5: T1 to T9 and T15 have commits; T10 is in progress; T11 to T14 wait for the operator or other hardware. Its parent plan `docs/one-click-plan.md` is not on `main`. |
-| [research/one-click/s4-local-hub-tasks.md](research/one-click/s4-local-hub-tasks.md) | Task breakdown: the hub as a background program | In progress | Its Section 2: T1 to T8 have commits; T9 and T10 are not started. No operator ruling on its design. Its parent plan `docs/one-click-plan.md` is not on `main`. |
+| [research/one-click/s3-database-tasks.md](research/one-click/s3-database-tasks.md) | Task breakdown: bundled PostgreSQL | In progress | Approved by the operator on 2026-11-14. Its Section 7.5: T1 to T9 and T15 have commits; T10 is in progress; T11 to T14 wait for the operator or other hardware. Its parent plan is [one-click-plan.md](one-click-plan.md). |
+| [research/one-click/s4-local-hub-tasks.md](research/one-click/s4-local-hub-tasks.md) | Task breakdown: the hub as a background program | In progress | Its Section 2: T1 to T8 have commits; T9 and T10 are not started. No operator ruling on its design. Its parent plan is [one-click-plan.md](one-click-plan.md). |
 | [research/one-click/s3-spec-delta.md](research/one-click/s3-spec-delta.md) | Proposal: spec delta for the bundled PostgreSQL | Draft | Not approved. It changes no requirement until the operator approves it. |
 | [research/one-click/s4-spec-delta.md](research/one-click/s4-spec-delta.md) | Proposal: spec delta for the hub as a background program | Draft | Not approved. It changes no requirement until the operator approves it. |
-| [research/one-click/s6-first-run-tasks.md](research/one-click/s6-first-run-tasks.md) | Task breakdown: the first run | In progress | Its Section 3 holds the state of each task. Its parent plan `docs/one-click-plan.md` is not on `main`. |
+| [research/one-click/s6-first-run-tasks.md](research/one-click/s6-first-run-tasks.md) | Task breakdown: the first run | In progress | Its Section 3 holds the state of each task. Its parent plan is [one-click-plan.md](one-click-plan.md). |
 | [research/one-click/s6-spec-delta.md](research/one-click/s6-spec-delta.md) | Proposal: spec delta for the first run | Draft | Not approved. It changes no requirement until the operator approves it. |
-| [research/one-click/s8-stay-awake-tasks.md](research/one-click/s8-stay-awake-tasks.md) | Task breakdown: stay awake | In progress | Its Section 5: T1 to T6 have commits. The live checks of its Section 6 wait for the operator. Its parent plan `docs/one-click-plan.md` is not on `main`. |
-| [research/one-click/s1-link-tasks.md](research/one-click/s1-link-tasks.md) | Task breakdown: the link (`anima-link`) | In progress | T1 to T13 have commits on `main` (merge `f367f819`). T14, the live checks with a second Mac, waits for the operator. Its parent plan `docs/one-click-plan.md` is not on `main`. |
-| [research/one-click/s5-access-tasks.md](research/one-click/s5-access-tasks.md) | Task breakdown: access rules by device key | In progress | T1 to T9 have commits on `main` (merge `f367f819`); T10, the agent's link origin, has its commit. Open: the K7 row of its Section 6.3 and one test of agent, link and hub together. Its parent plan `docs/one-click-plan.md` is not on `main`. |
+| [research/one-click/s8-stay-awake-tasks.md](research/one-click/s8-stay-awake-tasks.md) | Task breakdown: stay awake | In progress | Its Section 5: T1 to T6 have commits. The live checks of its Section 6 wait for the operator. Its parent plan is [one-click-plan.md](one-click-plan.md). |
+| [research/one-click/s1-link-tasks.md](research/one-click/s1-link-tasks.md) | Task breakdown: the link (`anima-link`) | In progress | T1 to T13 have commits on `main` (merge `f367f819`). T14, the live checks with a second Mac, waits for the operator. Its parent plan is [one-click-plan.md](one-click-plan.md). |
+| [research/one-click/s5-access-tasks.md](research/one-click/s5-access-tasks.md) | Task breakdown: access rules by device key | In progress | T1 to T9 have commits on `main` (merge `f367f819`); T10, the agent's link origin, has its commit. Open: the K7 row of its Section 6.3 and one test of agent, link and hub together. Its parent plan is [one-click-plan.md](one-click-plan.md). |
+| [research/one-click/s12-packaging-tasks.md](research/one-click/s12-packaging-tasks.md) | Task breakdown: packaging | In progress | Its Section 3: T1 to T8 have commits. The checks of its Section 6.3 wait for the operator or other hardware. Its parent plan is [one-click-plan.md](one-click-plan.md). |
+| [research/one-click/s12-spec-delta.md](research/one-click/s12-spec-delta.md) | Proposal: spec delta for packaging | Draft | Not approved. It changes no requirement until the operator approves it. |
 | [programme/proposals/projects-and-builds.md](programme/proposals/projects-and-builds.md) | Proposal, with the task table for builds and runners | In progress | Decided (OD-W11, OD-W12, OD-W13). Connect GitHub is on `main`. Version 2 (2026-11-16): OD-W14 to OD-W21 are decided; its status line names the requirements that still have no ruling. Each task of its "Tasks" is Not started. |
 | [programme/proposals/jobs.md](programme/proposals/jobs.md) | Proposal | Draft | Direction decided (OD-W10). No requirement is approved. Version 2 (2026-11-16) adds JOB-011. Its tasks W1 to W6 are in the task table of the row above. |
 | [programme/proposals/coordinator-standby.md](programme/proposals/coordinator-standby.md) | Proposal | Draft | Direction decided (OD-W9). No requirement is approved. |
@@ -241,10 +246,10 @@ This table is the only list of the plans of Anima. A document that is not in thi
 | [programme/proposals/in-app-enrolment.md](programme/proposals/in-app-enrolment.md) | Proposal | Draft. Build state not checked | Its status line: a proposal for a ruling. |
 | [programme/proposals/ssh-terminal.md](programme/proposals/ssh-terminal.md) | Proposal | Draft. Build state not checked | Its status line: a proposal for a ruling (R-062). |
 | [programme/proposals/shared-pool-hosting.md](programme/proposals/shared-pool-hosting.md) | Proposal | Draft | Not approved. The AX102 list price was corrected on 2026-11-16 to €259 a month plus €129 setup (about $286). |
-| [programme/proposals/shell-prompt.md](programme/proposals/shell-prompt.md) | Proposal | Draft | Not approved. CMD-032 to CMD-036. |
-| [programme/proposals/cloud-machines.md](programme/proposals/cloud-machines.md) | Proposal | Draft | Not approved. CVM-001 to CVM-018. |
-| [programme/proposals/machine-profiles.md](programme/proposals/machine-profiles.md) | Proposal | Draft | Not approved. REP-001 to REP-024. |
-| [programme/proposals/cve-watch-and-network-awareness.md](programme/proposals/cve-watch-and-network-awareness.md) | Proposal | Draft | Not approved. VUL-001 to VUL-020, ADR-001 to ADR-014. No tier in Section 4 yet. |
+| [programme/proposals/shell-prompt.md](programme/proposals/shell-prompt.md) | Proposal | Draft | Not approved. CMD-032 to CMD-038. INS-009 ruled 2026-11-16. |
+| [programme/proposals/cloud-machines.md](programme/proposals/cloud-machines.md) | Proposal | Draft | Not approved. CVM-001 to CVM-024. |
+| [programme/proposals/machine-profiles.md](programme/proposals/machine-profiles.md) | Proposal | Draft | Not approved. REP-001 to REP-025. MET-002, USE-006, INS-009 and VLT-007 ruled 2026-11-16. |
+| [programme/proposals/cve-watch-and-network-awareness.md](programme/proposals/cve-watch-and-network-awareness.md) | Proposal | Draft | Not approved. VUL-001 to VUL-020, ADR-001 to ADR-014. No tier in Section 4 yet. Operator ruling 2026-11-16: the feeds and the match run once a day (VUL-006). |
 
 These documents are records, not plans. They must not add a requirement (PLN-009).
 
@@ -255,6 +260,8 @@ These documents are records, not plans. They must not add a requirement (PLN-009
 | `programme/phase-2-*.md` and `programme/phase-3-*.md`, but not the two plans | Contracts, acceptance records and optional items of a phase |
 | `research/`, but not the task breakdowns and spec delta proposals in `research/one-click/` that the register lists | Audits and reports |
 | `setup/`, [releases.md](releases.md), [programme/linux-client-setup.md](programme/linux-client-setup.md) | Procedures |
+| [need-human-testing.md](need-human-testing.md) | The list of checks that only a person can do, with the state of each |
+| [security-findings.md](security-findings.md) | The list of security findings, with the state of each |
 | [ui-critique-2026-11-11.md](ui-critique-2026-11-11.md), [ui-inventory-2026-11-11.md](ui-inventory-2026-11-11.md) | Reviews of the interface |
 
 ## 10. Rules for plans and progress

@@ -80,7 +80,7 @@
       </li>
     {:else}
       <!-- Until the list is read, an empty line holds its place rather than saying no computer builds (MOT-007). -->
-      <li class="note">{panel.buildersLoaded ? 'No computer builds releases.' : ''}</li>
+      <li class="note">{panel.buildersLoaded ? 'No builders.' : ''}</li>
     {/each}
   </ul>
   {#if panel.listProblem !== null}

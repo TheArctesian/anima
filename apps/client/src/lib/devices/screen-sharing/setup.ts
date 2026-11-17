@@ -11,7 +11,7 @@ export const SCREEN_SHARING_PORT = 5900;
 /** How often the flow asks again while the operator turns Screen Sharing on, in milliseconds (R-079). */
 export const RETEST_INTERVAL_MS = 3000;
 
-export const NO_ANSWER_TEXT = `The device did not answer on port ${String(SCREEN_SHARING_PORT)}. Either Screen Sharing (or the VNC server) is off on it, or the VPN rule does not allow port ${String(SCREEN_SHARING_PORT)}.`;
+export const NO_ANSWER_TEXT = `No answer on port ${String(SCREEN_SHARING_PORT)}. Screen Sharing (or the VNC server) is off, or the VPN rule blocks the port.`;
 
 export const SHARING_PROMPT = 'Turn on Screen Sharing';
 

@@ -21,10 +21,10 @@ export function webValuesFrom(saved?: WebInterface): WebValues {
 /** WEB-001: the URL must be http or https and name a host; the label is optional. */
 export function validateWeb(values: WebValues): FieldError[] {
   const text = values.url.trim();
-  if (text === '') return [{ field: 'url', message: 'Enter the URL of the web interface.' }];
+  if (text === '') return [{ field: 'url', message: 'Enter a URL.' }];
   const url = URL.canParse(text) ? new URL(text) : null;
   if (url === null || (url.protocol !== 'http:' && url.protocol !== 'https:') || url.hostname === '') {
-    return [{ field: 'url', message: 'Enter an http or https URL with a host, for example https://pve.lan:8006.' }];
+    return [{ field: 'url', message: 'Enter an http or https URL, such as https://pve.lan:8006.' }];
   }
   return [];
 }

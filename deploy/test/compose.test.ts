@@ -235,6 +235,13 @@ describe("hardening and images (SEC-001)", () => {
     expect(dockerfile).toMatch(/^FROM rust:\d+\.\d+(\.\d+)?-bookworm AS build$/m);
   });
 
+  test("the hub image is built with the Rust version that rust-toolchain.toml pins", () => {
+    const dockerfile = readFileSync(join(ROOT, "deploy", "hub", "Dockerfile"), "utf8");
+    const pinned = /^channel = "(\d+\.\d+\.\d+)"$/m.exec(readFileSync(join(ROOT, "rust-toolchain.toml"), "utf8"))?.[1];
+    expect(pinned).toBeDefined();
+    expect(dockerfile).toContain(`FROM rust:${pinned}-bookworm AS build`);
+  });
+
   test("GW-001 RA-011 the gateway adds only the font and its licence to guacd", () => {
     const dockerfile = readFileSync(join(ROOT, "deploy", "gateway", "Dockerfile"), "utf8");
     const copies = dockerfile.split("\n").filter((line) => line.startsWith("COPY"));

@@ -26,7 +26,7 @@ test.describe('signed out', () => {
   }) => {
     await openSignIn(page);
     await signInWith(page, OPERATOR.password, WRONG_CODE);
-    await expect(page.getByRole('alert')).toHaveText('The user name, password or code is wrong.');
+    await expect(page.getByRole('alert')).toHaveText('Wrong user name, password or code.');
     expect(await sessionCookie(context)).toBeUndefined();
 
     await signInWith(page, OPERATOR.password);

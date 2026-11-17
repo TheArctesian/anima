@@ -11,7 +11,7 @@ export function screenSharingCalls(hub: Hub): ScreenSharingCalls {
   return {
     test: sessionsApi(hub).testConnection,
     update: devicesApi(hub).update,
-    thisMachine: () => (capabilities().thisMachine ? readThisMachine() : Promise.resolve(null)),
+    thisMachine: () => (capabilities().thisMachine ? readThisMachine(hub) : Promise.resolve(null)),
     sharingAvailable: () => capabilities().systemSettings,
     openSharing: openSharingSettings,
     after: (ms, run) => {

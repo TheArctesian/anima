@@ -23,19 +23,19 @@
     snmp.storedVersion === null
       ? undefined
       : snmp.storedVersion === snmp.version
-        ? 'Leave empty to keep the stored value.'
+        ? 'Empty keeps the stored value.'
         : 'Enter the secrets for the new version.',
   );
 </script>
 
 <TextField label="Port" kind="numeric" bind:value={snmp.port} error={error('port')} />
 <SelectField label="Version" bind:value={snmp.version} options={versions} />
-<TextField label="OID" bind:value={snmp.oid} error={error('oid')} hint="Dotted numbers, such as 1.3.6.1.2.1.1.3.0." />
+<TextField label="OID" bind:value={snmp.oid} error={error('oid')} hint="For example 1.3.6.1.2.1.1.3.0." />
 <TextField
   label="Expected value"
   bind:value={snmp.expected}
   error={error('expected')}
-  hint="Leave empty to be Up when the OID answers."
+  hint="Empty: Up when the OID answers."
 />
 {#if snmp.version === 'V2C'}
   <TextField label="Community" kind="password" bind:value={snmp.community} error={error('community')} hint={keepHint} />

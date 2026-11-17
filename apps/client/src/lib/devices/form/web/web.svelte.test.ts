@@ -91,7 +91,7 @@ it('WEB-001: each interface is a row with its label, URL and Open in, under a "W
 
 it('WEB-001: a device with none says so', () => {
   show([]);
-  expect(document.body.textContent).toContain('no web interface');
+  expect(document.body.textContent).toContain('No web interfaces');
 });
 
 it('D-6: an unchanged row does not save; a changed row saves at once with its own input', async () => {
@@ -110,7 +110,7 @@ it('D-6: an unchanged row does not save; a changed row saves at once with its ow
 
 it('WEB-001: Add opens an empty row; saving it calls onCreate with the input', async () => {
   const calls = show([]);
-  button('Add a web interface').click();
+  button('Add web interface').click();
   flushSync();
   expect(field(document, 'Open in').value).toBe('ANIMA_TAB');
 

@@ -82,12 +82,12 @@ it('FRN-009: a hub with no link (UNAVAILABLE) shows no section at all', async ()
 it('FRN-009, LNK-003: Invite a device asks for a name, then shows the QR code, the text and a 15-minute countdown', async () => {
   const api = fakeApi([{ ok: true, value: [] }]);
   await open(api);
-  click('Invite a device');
+  click('Invite device');
   const name = document.querySelector<HTMLInputElement>('[role="dialog"] input');
   if (name === null) throw new Error('no name field');
   name.value = 'laptop';
   name.dispatchEvent(new Event('input', { bubbles: true }));
-  click('Make an invite');
+  click('Make invite');
   await settle();
   expect(api.invite).toHaveBeenCalledWith('laptop');
   const dialog = document.querySelector('[role="dialog"]');
@@ -104,7 +104,7 @@ it('FRN-009, LNK-003: an expired invite shows neither its QR code nor its text',
   flushSync();
   expect(target.querySelector('svg')).toBeNull();
   expect(target.textContent).not.toContain(INVITE);
-  expect(target.textContent).toContain('This invite has expired. Make another.');
+  expect(target.textContent).toContain('Expired. Make another.');
 });
 
 it('FRN-009, LNK-004: Revoke asks first, then revokes by key and loads the list again', async () => {

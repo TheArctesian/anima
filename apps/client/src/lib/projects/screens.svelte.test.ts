@@ -103,7 +103,7 @@ it('PRO-002: a refused Leave out returns the entry and shows the hub words', asy
 it('PRO-001: with no projects the empty state links to the Integrations section', async () => {
   store = new ProjectsStore(projectsApi(fakeHub([])));
   await openList();
-  expect(text()).toContain('Connect GitHub in Settings > Integrations');
+  expect(text()).toContain('Connect GitHub.');
   expect(document.querySelector('a')?.getAttribute('href')).toBe('/settings#settings-integrations');
 });
 
@@ -151,7 +151,7 @@ it('UR-7, PRO-004: the list puts projects that need a look first, each with why'
     ['Needs a look', ['acme-site', 'old-tool']],
     ['Not deployed', ['notes']],
   ]);
-  expect(text()).toContain('Cloudflare was found in the repository (wrangler.toml) and is not confirmed.');
+  expect(text()).toContain('Cloudflare found in the repository (wrangler.toml), not confirmed.');
   expect(text()).toContain('A repository is no longer on GitHub.');
 });
 
@@ -197,11 +197,11 @@ it('PRJ-012: the project controls use the hub order and send server filters', as
     await settled();
   };
 
-  await choose('Sort by', 'STARS');
+  await choose('Sort', 'STARS');
   expect(list).toHaveBeenCalledWith(false, null, { order: 'STARS' });
   expect([...document.querySelectorAll('li.entry .name a')].map((link) => link.textContent.trim())).toEqual(['notes', 'acme-site']);
   await choose('Language', 'Rust');
-  await choose('Repository size', '1');
+  await choose('Size', '1');
   expect(list).toHaveBeenCalledWith(false, null, { order: 'STARS', language: 'Rust', minSizeKib: null, maxSizeKib: 1023 });
   expect(text()).toContain('acme/notes');
   expect(text()).not.toContain('acme/acme-site');

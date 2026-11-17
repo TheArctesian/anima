@@ -120,7 +120,7 @@ it('D-26, LOG-007: a failed save shows a fixed message, never the hub text, and 
   typeInto(field(target, 'Interval (seconds)'), '240');
   save(target).click();
   await settled();
-  expect(target.textContent).toContain('Anima.ing could not save the default check settings.');
+  expect(target.textContent).toContain('Could not save the defaults.');
   expect(target.textContent).not.toContain('secret hub text');
   expect(values(target)).toEqual(['240', '5', '45', '2500']);
   expect(save(target).getAttribute('aria-disabled')).toBe('false');
@@ -175,14 +175,14 @@ it('MOT-007: the loading placeholder has the same rows, hints and message lines 
 
 function retryButton(target: HTMLElement): HTMLButtonElement {
   const found = target.querySelector<HTMLButtonElement>('[data-retry]');
-  if (found === null) throw new Error('no Try again');
+  if (found === null) throw new Error('no Retry');
   return found;
 }
 
-it('D-26: a failed load shows a fixed message with Try again, and Try again loads the values', async () => {
+it('D-26: a failed load shows a fixed message with Retry, and Retry loads the values', async () => {
   const answers: Parameters<typeof fakeHub>[0] = { CheckDefaults: failure('unreachable') };
   const target = await open(answers);
-  expect(target.querySelector('.message')?.textContent).toBe('Anima.ing could not load the defaults.');
+  expect(target.querySelector('.message')?.textContent).toBe('Could not load the defaults.');
   expect(target.textContent).not.toContain('secret hub text');
   expect(save(target).getAttribute('aria-disabled')).toBe('true');
   answers.CheckDefaults = ok({ checkDefaults: STORED });
@@ -213,7 +213,7 @@ it('MOT-007, MV-005: the note block has the same rows when idle, failed, retryin
   expect(shape()).toEqual(failed);
 });
 
-it('UI-015: Try again stays mounted and aria-disabled while it retries, and keeps focus', async () => {
+it('UI-015: Retry stays mounted and aria-disabled while it retries, and keeps focus', async () => {
   let release: (result: ReturnType<typeof failure>) => void = () => undefined;
   const answers: Parameters<typeof fakeHub>[0] = { CheckDefaults: failure('unreachable') };
   const target = await open(answers);
@@ -238,7 +238,7 @@ it('UI-015: Try again stays mounted and aria-disabled while it retries, and keep
   expect(button.getAttribute('aria-disabled')).toBe('false');
 });
 
-it('UI-015: when Try again succeeds focus moves to the first field, never to the page', async () => {
+it('UI-015: when Retry succeeds focus moves to the first field, never to the page', async () => {
   const answers: Parameters<typeof fakeHub>[0] = { CheckDefaults: failure('unreachable') };
   const target = await open(answers);
   answers.CheckDefaults = ok({ checkDefaults: STORED });

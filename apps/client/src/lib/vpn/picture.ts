@@ -52,7 +52,7 @@ export function keyText(node: Pick<VpnNode, 'keyState' | 'keyExpiry'>, now: Date
       return ago < 1 ? 'Expired today' : `Expired ${plural(ago, 'day')} ago`;
     }
     case 'TAGGED_WITH_EXPIRY':
-      return `Tagged, but expires on ${dateText(keyExpiry, locale)}: renew it as a tagged node`;
+      return `Tagged but expires on ${dateText(keyExpiry, locale)}: renew as a tagged node`;
   }
 }
 
@@ -105,6 +105,6 @@ export function brokerReason(state: BrokerState): string | null {
     case 'NOT_INSTALLED':
       return 'The broker is not installed on the VPS (vpn.md Section 11).';
     case 'FAILED':
-      return 'The hub could not reach the broker on its last call. Try again in a minute.';
+      return 'The hub could not reach the broker. Retry in a minute.';
   }
 }

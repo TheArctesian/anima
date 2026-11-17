@@ -74,7 +74,7 @@ describe('D18: why a device needs a look', () => {
   it.each([
     ['maintenance', look('a', 'MAINTENANCE', [check('UP')]), 'In maintenance'],
     ['no checks', look('a', 'UNKNOWN'), 'No checks yet'],
-    ['every check paused', look('a', 'UNKNOWN', [check('UNKNOWN', null, true)]), 'Every check is paused'],
+    ['every check paused', look('a', 'UNKNOWN', [check('UNKNOWN', null, true)]), 'All checks paused'],
   ] as const)('UR-7: %s says so', (_, device, text) => {
     expect(reasonOf(device, undefined, NOW)?.text).toBe(text);
   });

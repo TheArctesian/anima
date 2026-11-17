@@ -103,7 +103,7 @@ describe('notices (MOT-007, UI-009)', () => {
     expect(target.querySelector('.stage')?.contains(notice ?? null)).toBe(false);
     expect(notice?.getAttribute('title')).toBe(notice?.textContent);
     expect(target.querySelector('.toolbar')).toBe(row);
-    target.querySelector<HTMLButtonElement>('button[aria-label="Dismiss the message"]')?.click();
+    target.querySelector<HTMLButtonElement>('button[aria-label="Dismiss message"]')?.click();
     await settle();
     expect(target.querySelector('.notice')).toBeNull();
   });

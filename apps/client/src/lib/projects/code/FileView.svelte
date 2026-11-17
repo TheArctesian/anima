@@ -29,7 +29,7 @@
   {:else}
     <EmptyState
       title={file.content === 'BINARY' ? 'Not a text file' : 'Too large to show'}
-      line={file.content === 'BINARY' ? 'Anima.ing shows text files only. Open it in GitHub.' : 'Anima.ing shows files up to 1 MB. Open it in GitHub.'}
+      line={file.content === 'BINARY' ? 'Open it in GitHub.' : 'Over 1 MB. Open it in GitHub.'}
     />
   {/if}
 </div>

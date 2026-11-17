@@ -121,7 +121,7 @@ export class FilesPanelState {
     const result = await this.#transfer('download', entry.name, undefined, (progress) => link.download(path, progress));
     if (result?.ok === true) {
       (this.#deps.save ?? saveBlob)(saveName(entry.name), result.value);
-      this.status = 'Download finished.';
+      this.status = 'Downloaded.';
     }
   }
 
@@ -135,7 +135,7 @@ export class FilesPanelState {
     }
     const link = this.#link;
     const result = await this.#transfer('upload', file.name, file.size, (progress) => link.upload(path, file, progress));
-    if (result?.ok === true) this.status = 'Upload finished.';
+    if (result?.ok === true) this.status = 'Uploaded.';
     if (result !== undefined && this.phase === 'ready') await this.#list(directory, true);
   }
 

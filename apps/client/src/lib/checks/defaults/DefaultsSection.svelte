@@ -25,7 +25,7 @@
   const saved = useActionFeedback();
   let retrying = $state(false);
   let form: HTMLFormElement | undefined = $state();
-  const notice = $derived(loadFailed ? 'Anima.ing could not load the defaults.' : saveFailed ? 'Anima.ing could not save the default check settings.' : '');
+  const notice = $derived(loadFailed ? 'Could not load the defaults.' : saveFailed ? 'Could not save the defaults.' : '');
 
   /** Shows `defaults` as the hub holds them, in the fields and as the saved state. */
   function show(defaults: CheckDefaults): void {
@@ -41,7 +41,7 @@
     } else loadFailed = true;
   }
 
-  /** Try again: the button stays where it is, and aria-disabled, while the hub answers; on success focus goes to the first field. */
+  /** Retry: the button stays where it is, and aria-disabled, while the hub answers; on success focus goes to the first field. */
   async function retry(): Promise<void> {
     if (retrying) return;
     retrying = true;
@@ -110,14 +110,14 @@
       {/snippet}
     </SettingRow>
   {/each}
-  <!-- The footer holds the section's notice and Save on one line in every state. The notice's icon and Try again stay
+  <!-- The footer holds the section's notice and Save on one line in every state. The notice's icon and Retry stay
        mounted and are hidden unless needed, so the footer keeps its height and focus stays put (MOT-007, MV-005, UI-015). -->
   <div class="footer">
     <div class="note-block">
       <span class="mark" class:hidden={notice === ''}><Icon name="carbon:warning" size="sm" /></span>
       <p class="message" role="alert">{notice}</p>
       <div class="retry" class:hidden={!loadFailed}>
-        <FormButton tabindex={0} data-retry aria-disabled={retrying} onclick={retry}>Try again</FormButton>
+        <FormButton tabindex={0} data-retry aria-disabled={retrying} onclick={retry}>Retry</FormButton>
       </div>
     </div>
     <FormButton tabindex={0} type="submit" tone="primary" aria-label="Save default check settings" aria-disabled={loaded === null || busy} feedback={saved.state}>Save</FormButton>

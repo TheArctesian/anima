@@ -9,7 +9,9 @@ pub mod renewal;
 use std::time::Duration;
 
 use agent_core::points::{BATCH_POINTS, Backlog, Point};
-use agent_core::wire::{Batch, BatchDrive, BatchGpu, RefusalCode, Renewed};
+use agent_core::wire::{
+    Announcements, Batch, BatchDrive, BatchGpu, BatchInventory, RefusalCode, Renewed,
+};
 use chrono::{DateTime, TimeDelta, Utc};
 use uuid::Uuid;
 
@@ -27,6 +29,8 @@ pub enum Event {
     Gpus(Vec<BatchGpu>),
     /// The drives read at start or after a change; sent in the next batch (MET-027).
     Drives(Vec<BatchDrive>),
+    /// The tool inventory probed at start or after a change; sent in the next batch (CAP-027).
+    Inventory(BatchInventory),
 }
 
 /// Everything the pusher keeps between pushes.
@@ -36,8 +40,8 @@ pub struct Pusher {
     credential: Credential,
     store: TokenStore,
     backlog: Backlog,
-    gpus: Option<Vec<BatchGpu>>,
-    drives: Option<Vec<BatchDrive>>,
+    /// The GPUs, drives and inventory waiting to ride along with the next batch.
+    announced: Announcements,
     backoff: Backoff,
     /// The largest batch to try; smaller after `TOO_LARGE`.
     limit: usize,
@@ -57,8 +61,7 @@ impl Pusher {
             credential,
             store,
             backlog: Backlog::new(),
-            gpus: None,
-            drives: None,
+            announced: Announcements::default(),
             backoff: Backoff::default(),
             limit: BATCH_POINTS,
             stopped_until: None,
@@ -77,8 +80,9 @@ impl Pusher {
     pub fn accept(&mut self, event: Event) {
         match event {
             Event::Point(point) => self.backlog.push(point),
-            Event::Gpus(gpus) => self.gpus = Some(gpus),
-            Event::Drives(drives) => self.drives = Some(drives),
+            Event::Gpus(gpus) => self.announced.gpus = Some(gpus),
+            Event::Drives(drives) => self.announced.drives = Some(drives),
+            Event::Inventory(inventory) => self.announced.inventory = Some(inventory),
         }
     }
 
@@ -121,14 +125,12 @@ impl Pusher {
             let Some(receipt) = outgoing.receipt() else {
                 return Round::Sent;
             };
-            let announced = (self.gpus.clone(), self.drives.clone());
-            let batch = Batch::new(self.device, outgoing.points(), announced);
+            let batch = Batch::new(self.device, outgoing.points(), self.announced.clone());
             let answer = self.hub.push(&self.credential.token, &batch).await;
             match pacing::action(&answer) {
                 Action::Remove => {
                     self.backlog.remove_through(receipt);
-                    self.gpus = None;
-                    self.drives = None;
+                    self.announced = Announcements::default();
                     self.limit = pacing::grown(count);
                     self.recovered();
                     return Round::Sent;
@@ -138,11 +140,10 @@ impl Pusher {
                     self.backlog.remove_through(receipt);
                     // A refused list would ride along again and sink every later batch until
                     // the next discovery; the hub keeps the GPUs it has (K8 Section 4). Any
-                    // MALFORMED clears it, so a correct list in a batch refused for its points
-                    // also waits for the next discovery.
+                    // MALFORMED clears the lists, so a correct one in a batch refused for its
+                    // points also waits for the next discovery or change.
                     if code == RefusalCode::Malformed {
-                        self.gpus = None;
-                        self.drives = None;
+                        self.announced = Announcements::default();
                     }
                     return Round::Sent;
                 }

@@ -142,7 +142,7 @@ describe('GW-015: a sign-in that ends the session', () => {
     expect(argvOf(socket)).toEqual([]);
     expect(socket.closedByClient).toBeDefined();
     expect(calls.endSession).toEqual(['session-1']);
-    expect(reasonOf(target)).toBe('You cancelled the sign-in, so the session ended.');
+    expect(reasonOf(target)).toBe('Sign-in cancelled. Session ended.');
     expect(prompt()).toBeNull();
   });
 
@@ -167,7 +167,7 @@ describe('GW-015: a sign-in that ends the session', () => {
     await settle();
     expect(prompt()).toBeNull();
     expect(socket.closedByClient).toBeDefined();
-    expect(reasonOf(target)).toBe('The device asked for a sign-in Anima.ing cannot give, so the session ended.');
+    expect(reasonOf(target)).toBe('The device asked for a sign-in Anima.ing cannot give. Session ended.');
     expect(target.textContent).not.toContain('hostname');
   });
 });
@@ -250,7 +250,7 @@ describe('D-7: the RDP certificate changed', () => {
     expect(document.querySelector('[role="alertdialog"]')).toBeNull();
     expect(calls.acceptServerCertificate).toEqual([]);
     expect(calls.startSession).toHaveLength(1);
-    expect(reasonOf(target)).toBe("The device's RDP certificate has changed, so Anima.ing did not connect.");
+    expect(reasonOf(target)).toBe("The device's RDP certificate changed. Not connected.");
   });
 });
 

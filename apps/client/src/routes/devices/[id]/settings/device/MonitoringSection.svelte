@@ -36,11 +36,11 @@
 {#snippet sourceMark()}<SaveMark mark={draft.marks['metricsSource']} />{/snippet}
 {#snippet sourceHint()}
   <p class="hint">
-    {agentSet ? 'Set by the agent. Revoke it, or pick None or SSH, to change.' : 'Where CPU, memory, disk and network figures come from.'}
+    {agentSet ? 'Set by the agent. Revoke it, or pick None or SSH, to change.' : 'Source of CPU, memory, disk and network figures.'}
   </p>
 {/snippet}
 {#snippet checksHint()}
-  <p class="hint">New devices get one ping check: every 60 seconds, 3 retries 20 seconds apart, Degraded above 1000 ms.</p>
+  <p class="hint">New devices get one ping check: every 60 s, 3 retries 20 s apart, Degraded above 1000 ms.</p>
 {/snippet}
 {#snippet sourceMessage()}<p role="alert">{draft.errorOf('metricsSource')?.message}</p>{/snippet}
 

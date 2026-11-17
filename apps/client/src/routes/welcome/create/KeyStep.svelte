@@ -17,11 +17,11 @@
   }
 </script>
 
-<p>The hub key seals the device credentials and the authenticator keys. Without it the hub cannot open its data. Keep the copy with your backups, away from this computer.</p>
+<p>Without the hub key the hub cannot open its data. Keep a copy with your backups, away from this computer.</p>
 <p class="problem" role="alert">{problem ?? ''}</p>
 <div class="actions">
   <FormButton tone="ghost" onclick={ondone}>Skip</FormButton>
-  <FormButton tone="primary" {busy} onclick={() => void save()}>Save a copy of the hub key</FormButton>
+  <FormButton tone="primary" {busy} onclick={() => void save()}>Save a copy</FormButton>
 </div>
 
 <style>

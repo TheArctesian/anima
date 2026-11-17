@@ -33,7 +33,6 @@ thiserror.workspace = true
 tauri-plugin-log.workspace = true
 # `generate_context!` parses the `plugins` config in tauri.conf.json with serde_json.
 serde_json.workspace = true
-if-addrs.workspace = true
 whoami.workspace = true
 # Certificate pins and the leaf-certificate probe for device web views (WEB-008, D-9).
 sha2.workspace = true

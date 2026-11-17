@@ -44,7 +44,7 @@ it('D-29: an interval under 1 hour is refused with a fixed sentence and nothing 
   type('Interval (seconds)', '3599');
   await submit(form);
   expect(onSave).not.toHaveBeenCalled();
-  expect(document.body.textContent).toContain('A domain expiry check runs at most once an hour: enter 3600 seconds or more.');
+  expect(document.body.textContent).toContain('Domain expiry runs at most hourly: enter 3600 seconds or more.');
 });
 
 it('CHK-009: saving sends the domain, warn days and timeout', async () => {

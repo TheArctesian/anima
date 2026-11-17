@@ -4,8 +4,8 @@
 
 use ipnet::IpNet;
 
-/// The Headscale server the computers log in to.
-const LOGIN_SERVER: &str = "https://hs.anima.ing";
+use super::LOGIN_SERVER;
+
 /// Step 1: the key, read without echo into a root-only file.
 const READ_KEY: &str = r#"sudo bash -c 'umask 077; read -rsp "Pre-auth key: " K; echo; printf "%s" "$K" > /run/anima-preauth'"#;
 /// Step 3: the key file goes as soon as the computer is on the VPN.

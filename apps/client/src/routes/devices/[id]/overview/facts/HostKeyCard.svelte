@@ -32,7 +32,7 @@
     <span class="algorithm">{key.algorithm}</span>
     <p class="overview-key">{key.fingerprintSha256}</p>
     <div class="copy">
-      <FormButton aria-label="Copy the host key fingerprint" feedback={copied.state} doneLabel="Copied" onclick={() => void copyFingerprint(key.fingerprintSha256)}>
+      <FormButton aria-label="Copy host key fingerprint" feedback={copied.state} doneLabel="Copied" onclick={() => void copyFingerprint(key.fingerprintSha256)}>
         <span class="label"><Icon name="carbon:copy" size="sm" />Copy</span>
       </FormButton>
       <!-- The live region holds only the outcome of Copy; it has its line before it speaks, so nothing moves (MOT-007).

@@ -15,7 +15,7 @@
   const retryShown = $derived(policy.phase === 'failed' || policy.retrying);
   let limitField = $state<HTMLInputElement>();
 
-  /** Try again keeps focus while it runs; a successful load moves it to the limit field. */
+  /** Retry keeps focus while it runs; a successful load moves it to the limit field. */
   async function retry(): Promise<void> {
     if (policy.phase !== 'failed') return;
     if (!(await policy.load())) return;
@@ -40,13 +40,13 @@
           aria-describedby="device-policy-sessionLimit-hint device-policy-message"
           bind:value={policy.values.sessionLimit}
         />
-        <small id="device-policy-sessionLimit-hint">The most live sessions at once, from 1 to 100. File tunnels do not count.</small>
+        <small id="device-policy-sessionLimit-hint">Live sessions at once, 1 to 100. File tunnels do not count.</small>
       </div>
-      <!-- The message line is always as tall as the Try again button, so loading, loaded and failed look alike. -->
+      <!-- The message line is always as tall as the Retry button, so loading, loaded and failed look alike. -->
       <div class="message">
         <small id="device-policy-message" role="status">{policy.message}</small>
         {#if retryShown}
-          <FormButton aria-disabled={policy.phase !== 'failed'} aria-busy={policy.phase === 'loading'} onclick={() => void retry()}>Try again</FormButton>
+          <FormButton aria-disabled={policy.phase !== 'failed'} aria-busy={policy.phase === 'loading'} onclick={() => void retry()}>Retry</FormButton>
         {/if}
       </div>
     </Disclosure>

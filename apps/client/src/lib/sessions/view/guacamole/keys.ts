@@ -46,7 +46,7 @@ export const KEY_COMBINATIONS: readonly KeyCombination[] = [
     keysyms: [KEYSYM.controlLeft, KEYSYM.altLeft, KEYSYM.delete],
   },
   { id: 'alt-tab', label: 'Alt+Tab', hint: 'Switch windows', keysyms: [KEYSYM.altLeft, KEYSYM.tab] },
-  { id: 'alt-f4', label: 'Alt+F4', hint: 'Close the window', keysyms: [KEYSYM.altLeft, KEYSYM.f4] },
+  { id: 'alt-f4', label: 'Alt+F4', hint: 'Close window', keysyms: [KEYSYM.altLeft, KEYSYM.f4] },
   { id: 'super', label: 'Windows key', hint: 'Start menu', keysyms: [KEYSYM.superLeft] },
   { id: 'print', label: 'Print Screen', hint: 'Screenshot', keysyms: [KEYSYM.print] },
   { id: 'esc', label: 'Esc', hint: 'Escape', keysyms: [KEYSYM.escape] },
@@ -67,7 +67,7 @@ export function keyStrokes(combination: KeyCombination): readonly KeyStroke[] {
  */
 export function pasteStrokes(held: ReadonlySet<number>): readonly KeyStroke[] {
   const holdsControl = [...CONTROL].some((key) => held.has(key));
-  return keyStrokes({ id: 'paste', label: 'Paste', hint: 'Send the clipboard', keysyms: [...(holdsControl ? [] : [KEYSYM.controlLeft]), KEYSYM.v] });
+  return keyStrokes({ id: 'paste', label: 'Paste', hint: 'Send clipboard', keysyms: [...(holdsControl ? [] : [KEYSYM.controlLeft]), KEYSYM.v] });
 }
 
 /** The paste shortcut when the device holds no key. */

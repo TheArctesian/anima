@@ -7,16 +7,16 @@ export interface HealthWords {
 }
 
 const PAUSE_MEANING: Record<PauseReason, string> = {
-  OPERATOR: 'You paused it. Nothing is read until you resume.',
-  EXTENSION_OFF: 'The extension that uses it is off. It reads again when that extension is on.',
+  OPERATOR: 'You paused it. Resume to read again.',
+  EXTENSION_OFF: 'Its extension is off. Set it on to read again.',
 };
 
 const MEANING: Record<Exclude<SourceHealth, 'PAUSED'>, HealthWords> = {
-  OK: { name: 'OK', meaning: 'It reads on schedule.' },
+  OK: { name: 'OK', meaning: 'Reads on schedule.' },
   STARTING: { name: 'Starting', meaning: 'The first sync is running.' },
-  STALLED: { name: 'Stalled', meaning: 'Syncs keep failing or have stopped. The hub tries again.' },
+  STALLED: { name: 'Stalled', meaning: 'Syncs keep failing or stopped. The hub retries.' },
   NEVER_SYNCED: { name: 'Never synced', meaning: 'No sync has finished yet.' },
-  NEEDS_RECONNECT: { name: 'Needs reconnect', meaning: 'The source refused the key. Disconnect, then connect again with a working key.' },
+  NEEDS_RECONNECT: { name: 'Needs reconnect', meaning: 'The source refused the key. Disconnect, then reconnect with a working key.' },
 };
 
 /** The words for the account's health; a paused account also says who paused it. */

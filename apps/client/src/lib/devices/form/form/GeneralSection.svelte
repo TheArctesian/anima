@@ -42,7 +42,7 @@
         <input {...attributes} bind:value={values.name} autocomplete="off" />
       {/snippet}
     </Field>
-    <Field label="Host" field="host" {errors} hint="A host name or an IP address.">
+    <Field label="Host" field="host" {errors} hint="Host name or IP address.">
       {#snippet control(attributes)}
         <input {...attributes} bind:value={values.host} onblur={onHostBlur} autocomplete="off" spellcheck="false" />
       {/snippet}
@@ -61,7 +61,7 @@
       </div>
     {/if}
     {#if newSite !== null}
-      <Field label="Site" field="site.name" {errors} hint="No site exists yet, so Anima.ing creates this one with the device.">
+      <Field label="Site" field="site.name" {errors} hint="Created with the device.">
         {#snippet control(attributes)}
           <input {...attributes} bind:value={newSite.name} autocomplete="off" />
         {/snippet}
@@ -95,7 +95,7 @@
         </span>
       {/snippet}
     </Field>
-    <Field label="MAC address" field="macAddress" {errors} hint="Optional. Lets Anima.ing wake the device. For example aa:bb:cc:dd:ee:ff.">
+    <Field label="MAC address" field="macAddress" {errors} hint="Optional, to wake the device: aa:bb:cc:dd:ee:ff.">
       {#snippet control(attributes)}
         <input {...attributes} bind:value={values.macAddress} autocomplete="off" spellcheck="false" />
       {/snippet}

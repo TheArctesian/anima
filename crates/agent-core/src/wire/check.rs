@@ -10,6 +10,7 @@ use chrono::{DateTime, TimeDelta, Utc};
 use uuid::Uuid;
 
 use super::{Batch, BatchDrive, BatchGpu, BatchPoint, BatchSeries, GpuVendor, RefusalCode};
+use crate::inventory::Inventory;
 use crate::points::{
     Kind, MAX_GPU_INDEX, MAX_LABELS, MAX_POINTS, MAX_SERIES, Point, SeriesKey, Summary, ceiling,
     is_label, is_window_end,
@@ -22,12 +23,14 @@ const OLDEST: TimeDelta = TimeDelta::hours(1);
 const AHEAD: TimeDelta = TimeDelta::seconds(60);
 
 /// What the hub takes from a batch: the points of the series whose kind it knows, each with
-/// its non-null values only, and the GPUs and drives when the batch has them (K8 Section 4).
+/// its non-null values only, and the GPUs, drives and inventory when the batch has them (K8
+/// Section 4). The inventory holds only the tools this hub knows by name.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Accepted {
     pub points: Vec<Point>,
     pub gpus: Option<Vec<BatchGpu>>,
     pub drives: Option<Vec<BatchDrive>>,
+    pub inventory: Option<Inventory>,
 }
 
 impl Batch {
@@ -50,6 +53,10 @@ impl Batch {
         if !shaped {
             return Err(RefusalCode::Malformed);
         }
+        let inventory = match self.inventory {
+            Some(sent) => Some(sent.accepted().ok_or(RefusalCode::Malformed)?),
+            None => None,
+        };
         if !in_range(&self.points, now) {
             return Err(RefusalCode::OutOfRange);
         }
@@ -62,6 +69,7 @@ impl Batch {
             points,
             gpus: self.gpus,
             drives: self.drives,
+            inventory,
         })
     }
 }

@@ -8,6 +8,9 @@ use crate::builder::{
     plan::{self, Program, Repository},
 };
 
+/// The `bundle` settings that carry the six programs and the PostgreSQL tree (INS-002, S12 2.1).
+const CARRIED: &str = r#"{"externalBin":["binaries/anima","binaries/anima-local-hub","binaries/anima-hub","binaries/anima-database","binaries/anima-gateway","binaries/anima-link"],"resources":{"database":"database"}}"#;
+
 fn args(command: &plan::Command) -> Vec<&str> {
     command.args.iter().map(|a| a.to_str().unwrap()).collect()
 }
@@ -129,7 +132,7 @@ fn bld_042_gates_run_with_base_ref_set_to_the_commit() {
 #[test]
 fn bld_043_linux_compiles_then_bundles_an_appimage_with_the_version_in_config() {
     let version = Version::parse("0.1.12").unwrap();
-    let [compile, bundle] = &plan::bundle(Path::new("/c"), Target::LinuxX86_64, &version)[..]
+    let [compile, bundle] = &plan::bundle(Path::new("/c"), Target::LinuxX86_64, &version, None)[..]
     else {
         panic!("two commands")
     };
@@ -143,7 +146,7 @@ fn bld_043_linux_compiles_then_bundles_an_appimage_with_the_version_in_config() 
             "build",
             "--no-bundle",
             "--config",
-            r#"{"bundle":{"externalBin":["binaries/anima"]},"version":"0.1.12"}"#
+            &format!(r#"{{"bundle":{CARRIED},"version":"0.1.12"}}"#)
         ]
     );
     assert_eq!(
@@ -158,7 +161,10 @@ fn bld_043_linux_compiles_then_bundles_an_appimage_with_the_version_in_config() 
             "appimage",
             "--no-sign",
             "--config",
-            r#"{"bundle":{"createUpdaterArtifacts":false,"externalBin":["binaries/anima"]},"version":"0.1.12"}"#
+            &format!(
+                r#"{{"bundle":{{"createUpdaterArtifacts":false,{}}},"version":"0.1.12"}}"#,
+                &CARRIED[1..CARRIED.len() - 1]
+            )
         ]
     );
     assert_eq!(bundle.env, [("APPIMAGE_EXTRACT_AND_RUN", "1".to_owned())]);
@@ -167,7 +173,13 @@ fn bld_043_linux_compiles_then_bundles_an_appimage_with_the_version_in_config() 
 #[test]
 fn bld_043_bld_083_macos_builds_universal_and_bundles_app_and_dmg_with_no_apple_variable() {
     let version = Version::parse("0.1.12").unwrap();
-    let commands = plan::bundle(Path::new("/c"), Target::DarwinUniversal, &version);
+    let identity = "Developer ID Application: Stephen Okita (7GDLG48PV6)";
+    let commands = plan::bundle(
+        Path::new("/c"),
+        Target::DarwinUniversal,
+        &version,
+        Some(identity),
+    );
     assert_eq!(
         args(&commands[0])[4..8],
         ["build", "--no-bundle", "--target", "universal-apple-darwin"]
@@ -182,7 +194,7 @@ fn bld_043_bld_083_macos_builds_universal_and_bundles_app_and_dmg_with_no_apple_
             "app,dmg"
         ]
     );
-    // Tauri signs with `bundle.macOS.signingIdentity`; no ad-hoc identity and no Apple secret.
+    // No ad-hoc identity and no Apple secret in a step.
     assert!(commands.iter().all(|command| command.env.is_empty()));
     let app = Path::new("/c/bundle/macos/Anima.app");
     let [codesign, lipo] = plan::bundle_checks(app, &app.join("Contents/MacOS/Anima"));
@@ -210,6 +222,32 @@ fn bld_043_bld_083_macos_builds_universal_and_bundles_app_and_dmg_with_no_apple_
             "Anima.app"
         ]
     );
+}
+
+#[test]
+fn s12_s_2_both_tauri_steps_sign_with_the_builders_own_identity_on_macos_only() {
+    let version = Version::parse("0.1.12").unwrap();
+    let identity = "Developer ID Application: Stephen Okita (7GDLG48PV6)";
+    let commands = plan::bundle(
+        Path::new("/c"),
+        Target::DarwinUniversal,
+        &version,
+        Some(identity),
+    );
+    for command in &commands {
+        let config: serde_json::Value =
+            serde_json::from_str(args(command).last().unwrap()).unwrap();
+        assert_eq!(config["bundle"]["macOS"]["signingIdentity"], identity);
+        assert_eq!(config["bundle"]["resources"]["database"], "database");
+    }
+    // Linux names no identity, also when one is given.
+    let linux = plan::bundle(
+        Path::new("/c"),
+        Target::LinuxX86_64,
+        &version,
+        Some(identity),
+    );
+    assert!(!args(&linux[1]).last().unwrap().contains("macOS"));
 }
 
 #[test]

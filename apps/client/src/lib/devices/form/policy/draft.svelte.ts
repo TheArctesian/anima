@@ -21,7 +21,7 @@ export class PolicyDraft {
   notice = $state('');
   /** True from a policy change the hub took until the device itself is saved. */
   #savedPolicy = false;
-  /** True from a Try again until the load succeeds, so the button stays mounted and keeps focus meanwhile. */
+  /** True from a Retry until the load succeeds, so the button stays mounted and keeps focus meanwhile. */
   retrying = $state(false);
   readonly #deviceId: string | null;
   readonly #calls: PolicyCalls | null;

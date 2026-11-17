@@ -41,9 +41,9 @@ it('NAV-009, NET-004, UI-030: an unreachable hub shows a notice at the top of th
   const target = open({}, { connection: 'unreachable', lastContactAt: null });
   const notice = target.querySelector('form [role="status"]');
   expect(notice?.textContent).toContain("Can't reach hub.example.org");
-  expect(notice?.textContent).toContain('Check the VPN client, then try again.');
+  expect(notice?.textContent).toContain('Check the VPN client.');
   expect(notice?.textContent).toContain('https://hub.example.org');
-  expect(notice?.textContent).toContain('No data received yet');
+  expect(notice?.textContent).toContain('No data yet');
   expect(target.querySelector('form')?.firstElementChild).toBe(notice);
 });
 
@@ -61,7 +61,7 @@ it('UI-030: the form-level message is a notice inside the card, above the Contin
   await submit(target, 0);
   await pasteInto(target, 0, '123456');
   const alert = target.querySelector('form [role="alert"]');
-  expect(alert?.textContent).toBe('The user name, password or code is wrong.');
+  expect(alert?.textContent).toBe('Wrong user name, password or code.');
   const button = target.querySelector('form button[type="submit"]');
   expect(alert?.closest('.notice')?.compareDocumentPosition(button as Node)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
 });

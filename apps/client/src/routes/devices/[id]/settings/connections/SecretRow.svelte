@@ -80,7 +80,7 @@
     <div class="edit">
       {#if kind === 'key'}
         <textarea {id} rows="5" spellcheck="false" autocomplete="new-password" placeholder="-----BEGIN OPENSSH PRIVATE KEY-----" bind:value={typed.privateKey}></textarea>
-        <input id="{id}-passphrase" type="password" autocomplete="new-password" placeholder="Key passphrase, if it has one" aria-label="Key passphrase" bind:value={typed.passphrase} />
+        <input id="{id}-passphrase" type="password" autocomplete="new-password" placeholder="Key passphrase (optional)" aria-label="Key passphrase" bind:value={typed.passphrase} />
       {:else}
         <input
           {id}

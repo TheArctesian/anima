@@ -22,7 +22,7 @@
   const { device, protocol, fields, client, api, onsent, oncancel }: Props = $props();
 
   /** Fixed text; the hub's own message is never shown (R-035, LOG-007). */
-  const UNSAVED = 'The hub did not save the password. It was used for this session only, so Anima.ing will ask again next time.';
+  const UNSAVED = 'The hub did not save the password. It was used for this session only.';
   const EMPTY: Record<CredentialName, string> = { username: '', domain: '', password: '' };
 
   let values: Record<CredentialName, string> = $state({ ...EMPTY });
@@ -68,8 +68,7 @@
 <Modal open solid title="Sign in to {device.name}" describedBy="credential-why" closeOnScrim={false} width={7} lowered onClose={escape}>
   <div class="content">
     <p id="credential-why">
-      {device.name} asks for its {protocol} sign-in. Anima.ing sends what you type to this session only; the hub keeps the
-      password only when you choose "Save password".
+      Sent to this {protocol} session only. The hub keeps the password only with "Save password".
     </p>
 
     {#if step !== 'unsaved'}
@@ -109,7 +108,7 @@
       </form>
       {#if step !== 'asking'}
         <p class="status" role="status" tabindex="-1" bind:this={statusLine}>
-          {step === 'saving' ? 'Saving the password…' : 'Signing in…'}
+          {step === 'saving' ? 'Saving password…' : 'Signing in…'}
         </p>
       {/if}
     {:else}

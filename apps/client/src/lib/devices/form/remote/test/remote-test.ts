@@ -92,7 +92,7 @@ export function remoteOutcomeText(outcome: RemoteOutcome): string {
     case 'unreachable':
       return outcome.message;
     case 'certificateNew':
-      return 'The device has a new server certificate. Check the fingerprint before you trust it.';
+      return 'New server certificate. Check the fingerprint before you trust it.';
     case 'certificateChanged':
       return CHANGED_CERTIFICATE_WARNING;
   }

@@ -57,9 +57,9 @@ describe('JobReporter (BLD-005, BLD-048)', () => {
 
 describe('failureReason (BLD-010)', () => {
   it('BLD-010, LOG-007: is fixed text for each code and never process output', () => {
-    expect(failureReason('The gates', 'step-failed')).toBe('The gates failed. The job log says why.');
-    expect(failureReason('The bundle', 'bundle')).toBe('The bundle is not where the build puts it.');
-    expect(failureReason('The bundle', 'not-desktop')).toBe('The bundle could not run on this computer.');
+    expect(failureReason('The gates', 'step-failed')).toBe('The gates failed. See the job log.');
+    expect(failureReason('The bundle', 'bundle')).toBe('The bundle is missing after the build.');
+    expect(failureReason('The bundle', 'not-desktop')).toBe('The bundle could not run.');
   });
 
   it('BLD-010: every reason fits the hub limit of 200 characters', () => {

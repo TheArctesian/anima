@@ -45,7 +45,7 @@ export interface UnreachableBanner {
 /** The banner for `status`, or `null` when the hub is not unreachable. `now` dates the data age. */
 export function unreachableBanner(status: HubStatus, origin: string, now: Date): UnreachableBanner | null {
   if (status.connection !== 'unreachable') return null;
-  const age = status.lastContactAt === null ? 'No data received yet' : `Data from ${dataAge(status.lastContactAt, now)}`;
+  const age = status.lastContactAt === null ? 'No data yet' : `Data from ${dataAge(status.lastContactAt, now)}`;
   return { title: 'Not on the network', origin, advice: 'Check the VPN client', age };
 }
 

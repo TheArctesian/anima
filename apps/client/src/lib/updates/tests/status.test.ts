@@ -15,18 +15,18 @@ describe('describeUpdate', () => {
   });
 
   it('UPD-006: a failure names the time of the next check', () => {
-    expect(describeUpdate(snap({ kind: 'failed', reason: 'other' }, 5), time)).toBe('The last update attempt failed. The next check is at 14:30.');
-    expect(describeUpdate(snap({ kind: 'failed', reason: 'other' }), time)).toBe('The last update attempt failed.');
+    expect(describeUpdate(snap({ kind: 'failed', reason: 'other' }, 5), time)).toBe('Last update failed. Next check at 14:30.');
+    expect(describeUpdate(snap({ kind: 'failed', reason: 'other' }), time)).toBe('Last update failed.');
   });
 
   it('UPD-006, BLD-068: a missing feed for the target says so, the same on a Mac as on Linux', () => {
     const failed = snap({ kind: 'failed', reason: 'no-feed' });
-    expect(describeUpdate(failed, time)).toBe('No update is published for this computer yet.');
+    expect(describeUpdate(failed, time)).toBe('No update published for this computer yet.');
   });
 
   it('UPD-002: a refused signature says the update was refused and the version kept', () => {
     expect(describeUpdate(snap({ kind: 'failed', reason: 'signature' }, 5), time)).toBe(
-      'An update was refused because its signature did not verify. Anima.ing kept the version it has. The next check is at 14:30.',
+      'Update refused: its signature did not verify. Current version kept. Next check at 14:30.',
     );
   });
 });

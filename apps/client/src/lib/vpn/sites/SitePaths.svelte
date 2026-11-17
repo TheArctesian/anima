@@ -35,7 +35,7 @@
       <span class="path">{pathLabel(entry.path, entry.relayRegion)}</span>
       {#if entry.state === 'SERVING' && !entry.hasPingCheck}
         {#if entry.router?.device}
-          <a class="hint" href="{resolve('/devices')}/{encodeURIComponent(entry.router.device.id)}?tab=checks" tabindex="0" {@attach press()}>Add a ping check</a>
+          <a class="hint" href="{resolve('/devices')}/{encodeURIComponent(entry.router.device.id)}?tab=checks" tabindex="0" {@attach press()}>Add ping check</a>
         {:else}
           <span class="hint">The router is not a device in Anima.ing</span>
         {/if}
@@ -46,7 +46,7 @@
         </div>
       {:else if entry.state === 'NO_ROUTER'}
         <span class="action">
-          <FormButton tabindex={0} aria-disabled={reason !== null} aria-describedby={reason === null ? undefined : reasonId} onclick={() => { if (reason === null) onEnrol(entry.site.id); }}>Add a router</FormButton>
+          <FormButton tabindex={0} aria-disabled={reason !== null} aria-describedby={reason === null ? undefined : reasonId} onclick={() => { if (reason === null) onEnrol(entry.site.id); }}>Add router</FormButton>
         </span>
       {/if}
     </li>

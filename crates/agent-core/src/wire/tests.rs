@@ -7,6 +7,7 @@ use super::{Accepted, Batch, RefusalCode};
 
 mod bodies;
 mod drives;
+mod inventory;
 mod range;
 mod secrets;
 mod series;

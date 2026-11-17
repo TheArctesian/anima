@@ -40,7 +40,7 @@
     <p class="line">
       {TAB_BLOCKED}
       <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- the hub's own page, not a route of this app -->
-      <a href={pageUrl} target="_blank" rel="noopener noreferrer">Open the Anima.ing connect page</a>
+      <a href={pageUrl} target="_blank" rel="noopener noreferrer">Open connect page</a>
     </p>
   {/if}
   {#if store.refusal !== ''}
@@ -59,7 +59,7 @@
     {/if}
     {#if view.appSettingsUrl !== null}
       {@const url = view.appSettingsUrl}
-      <FormButton onclick={() => { openOnGithub(url); }}>Delete the App on GitHub</FormButton>
+      <FormButton onclick={() => { openOnGithub(url); }}>Delete App on GitHub</FormButton>
     {/if}
     {#if view.cancel}
       <FormButton tone="ghost" onclick={() => void store.cancel()}>Cancel</FormButton>

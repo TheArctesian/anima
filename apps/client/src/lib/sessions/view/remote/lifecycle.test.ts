@@ -166,7 +166,7 @@ describe('ended panel and Reconnect (RA-007)', () => {
     socket.gatewayError(0x0301);
     socket.closeWith(1000);
     await settle();
-    expect(reasonOf(target)).toBe('The device refused the sign-in, or no credential is stored for it.');
+    expect(reasonOf(target)).toBe('The device refused the sign-in, or no credential is stored.');
   });
 
   it('RA-007: Reconnect asks for one new ticket and opens a new tunnel with a new token in the same pane', async () => {
@@ -202,7 +202,7 @@ describe('certificate changes and refusals (K4 §1, §3, §5)', () => {
     socket.gatewayError(0x0303);
     socket.closeWith(recorded === null ? 4003 : 1011);
     await settle();
-    expect(reasonOf(target)).toBe("The device's RDP certificate has changed, so Anima.ing did not connect.");
+    expect(reasonOf(target)).toBe("The device's RDP certificate changed. Not connected.");
     expect(certificateModals()).toBe(1);
   });
 
@@ -220,7 +220,7 @@ describe('certificate changes and refusals (K4 §1, §3, §5)', () => {
     answers.refuse = 'CONFLICT';
     FakeResizeObserver.resize(800, 600);
     await settle();
-    expect(reasonOf(target)).toBe("Could not open the session. The device's RDP certificate is not accepted yet: run the connection test first.");
+    expect(reasonOf(target)).toBe("Could not open the session. RDP certificate not accepted yet: run the connection test first.");
     expect(target.textContent).not.toContain('HUB-TEXT-MARKER');
     expect(certificateModals()).toBe(0);
     expect(FakeTunnelSocket.made).toEqual([]);
@@ -232,7 +232,7 @@ describe('certificate changes and refusals (K4 §1, §3, §5)', () => {
     FakeResizeObserver.resize(800, 600);
     await settle();
     const text = reasonOf(target) ?? '';
-    expect(text).toBe('Could not open the session. The hub refused it for this device: check its VNC settings, then run the connection test.');
+    expect(text).toBe('Could not open the session. The hub refused it: check the VNC settings, then run the connection test.');
     expect(text).not.toMatch(/host key|certificate|HUB-TEXT-MARKER/);
   });
 

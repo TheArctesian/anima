@@ -32,7 +32,7 @@ export function fieldMessages(fields: readonly FieldError[]): FieldMessages {
   return messages;
 }
 
-const REFUSED_DESKTOP = 'The hub refused the request. Check the VPN client and the hub address.';
+const REFUSED_DESKTOP = 'The hub refused. Check the VPN client and hub address.';
 
 /**
  * A fixed sentence for each way a sign-in can fail. The hub's own text is never shown here: it is the hub's
@@ -44,20 +44,20 @@ export function failureMessage(error: HubError, desktop: boolean): string {
   switch (error.code) {
     case 'UNAUTHENTICATED':
       // The request never left: the key store could not be read, which is not a wrong password.
-      if (error === TOKEN_UNREADABLE) return 'The key store could not be read, so Anima.ing cannot sign you in.';
-      return 'The user name, password or code is wrong.';
+      if (error === TOKEN_UNREADABLE) return "Can't sign in: can't read the key store.";
+      return 'Wrong user name, password or code.';
     case 'VALIDATION':
       return 'Check the marked fields.';
     case 'unreachable':
       return 'The hub did not answer. Check the VPN client.';
     case 'FORBIDDEN':
-      return desktop ? REFUSED_DESKTOP : 'The hub refused sign-in from here. Check the VPN client and the page address.';
+      return desktop ? REFUSED_DESKTOP : 'The hub refused sign-in from here. Check the VPN client and page address.';
     case 'malformed':
-      return desktop ? REFUSED_DESKTOP : 'The hub refused the request. Check the VPN client.';
+      return desktop ? REFUSED_DESKTOP : 'The hub refused. Check the VPN client.';
     case 'UNAVAILABLE':
-      return 'The hub cannot reach its database. Try again shortly.';
+      return 'The hub cannot reach its database. Retry shortly.';
     default:
-      return 'The hub could not sign you in. Try again.';
+      return 'Sign-in failed. Retry.';
   }
 }
 

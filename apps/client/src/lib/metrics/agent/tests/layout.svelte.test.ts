@@ -55,7 +55,7 @@ describe('Install agent: what lies below moves with every height change (MOT-002
     expect(await flipsDuring(() => click('Revoke agent', '[role="dialog"]'))).toBe(1);
   });
 
-  it('MOT-002: "The code expired." going while the next code is made moves what lies below once', async () => {
+  it('MOT-002: "Code expired." going while the next code is made moves what lies below once', async () => {
     const enrolAgent = vi
       .fn<AgentCalls['enrolAgent']>()
       .mockResolvedValueOnce({ ok: true, value: { code: CODE, expiresAt: '2026-11-09T10:15:00Z' } })
@@ -63,15 +63,15 @@ describe('Install agent: what lies below moves with every height change (MOT-002
     await show({ AgentStatus: { device: null } }, { enrolAgent });
     await click('Install agent');
     await pass(15 * 60);
-    expect(document.body.textContent).toContain('The code expired.');
+    expect(document.body.textContent).toContain('Code expired.');
     expect(await flipsDuring(() => click('Install agent'))).toBe(1);
-    expect(document.body.textContent).not.toContain('The code expired.');
+    expect(document.body.textContent).not.toContain('Code expired.');
   });
 
   it('MOT-002: a failed agent state read moves what lies below once', async () => {
     const answer = await showPending('agentStatus', 'AGENT');
     expect(await flipsDuring(() => answer({ ok: false, error: { code: 'INTERNAL', message: 'down' } }))).toBe(1);
-    expect(document.body.textContent).toContain('The agent state could not be read.');
+    expect(document.body.textContent).toContain('Could not read agent state.');
   });
 
   it('MOT-002: choosing another computer, which changes the command, moves what lies below once', async () => {

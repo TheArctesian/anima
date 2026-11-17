@@ -77,7 +77,7 @@
   {#if failure !== null}
     <ErrorState message={failure.message} onRetry={() => void load()} />
   {:else if loading}
-    <LoadingState label="Loading {kind === 'file' ? 'the file' : 'the folder'}" rows={4} />
+    <LoadingState label="Loading {kind === 'file' ? 'file' : 'folder'}" rows={4} />
   {:else if kind === 'file' && file !== null}
     <FileView {file} />
   {:else if directory !== null}
@@ -93,10 +93,10 @@
           <span class="size">{entry.kind === 'FILE' ? sizeWords(entry.size) : entry.kind === 'SUBMODULE' ? 'Submodule' : entry.kind === 'SYMLINK' ? 'Link' : ''}</span>
         </li>
       {:else}
-        <li class="none">This folder is empty.</li>
+        <li class="none">Empty folder.</li>
       {/each}
     </ul>
-    {#if directory.partial}<p class="partial">GitHub lists the first 1,000 entries of a folder; this one may have more.</p>{/if}
+    {#if directory.partial}<p class="partial">GitHub lists only the first 1,000 entries.</p>{/if}
   {/if}
 </section>
 

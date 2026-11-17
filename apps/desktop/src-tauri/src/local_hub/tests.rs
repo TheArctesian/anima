@@ -1,6 +1,8 @@
 //! `tests/programs.rs` runs stand-in programs where the bundle puts them; `tests/account.rs`
-//! holds the account's forms, the recovery rule, the key copy and the caller check. No test
+//! holds the account's forms, the recovery rule, the key copy and the caller check; `tests/update.rs`
+//! holds the update at the app's start. No test
 //! opens a dialog or installs a unit.
 
 mod account;
 mod programs;
+mod update;

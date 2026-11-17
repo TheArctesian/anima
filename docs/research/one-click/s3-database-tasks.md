@@ -351,7 +351,7 @@ Each is the option I recommend, with its reason. None changes a contract.
 | T8 Version guard | Done | `abe19803` |
 | T9 The tree recipe, macOS | Done for the recipe. The Developer ID signature is T12. | `60aaf146`, `6b68c27d` |
 | T10 The tree recipe, Linux | In progress: proven in an arm64 container; the x86_64 run on the Linux builder is open. | `60aaf146` |
-| T11 In the bundle | Not started. It goes with task T9 of [s4-local-hub-tasks.md](s4-local-hub-tasks.md). | — |
+| T11 In the bundle | Done in plan item S12: [s12-packaging-tasks.md](s12-packaging-tasks.md), tasks T1 to T3, with the conditions (a) to (d) of Section 7.2. T12, the run with the Developer ID, is its Section 6.3. | `f24f4c54`, `aec3c400`, `bae8d42e` |
 | T12 Signature and notary check | Not started: needs the operator's signing identity. | — |
 | T13 Power cut | Not started: needs a spare Mac. | — |
 | T14 Linux desktop check | Not started: needs a Linux desktop. | — |

@@ -24,13 +24,13 @@ export const KIND_ICONS: Readonly<Record<ResourceKind, IconName>> = {
 /** Why a project needs a look, or `null` when it does not: a repository gone from GitHub, then a place not confirmed (PRO-004). */
 export function lookReason(project: Pick<Project, 'repositories' | 'resources'>): string | null {
   if (project.repositories.some((repository) => repository.gone && !repository.leftOut)) {
-    return 'A repository is no longer on GitHub. Leave it out to put the project away.';
+    return 'A repository is no longer on GitHub. Leave it out.';
   }
   const proposed = project.resources.filter((resource) => resource.state === 'FOUND_IN_REPOSITORY');
   const [only] = proposed;
   if (only === undefined) return null;
-  if (proposed.length > 1) return `${String(proposed.length)} places were found in the repository and are not confirmed.`;
-  return `${resourceKindWords(only.kind)} was found in the repository (${only.evidence.map(evidenceWords).join(', ')}) and is not confirmed.`;
+  if (proposed.length > 1) return `${String(proposed.length)} places found in the repository, not confirmed.`;
+  return `${resourceKindWords(only.kind)} found in the repository (${only.evidence.map(evidenceWords).join(', ')}), not confirmed.`;
 }
 
 export function groupOf(project: Pick<Project, 'repositories' | 'resources'>): TileGroup {

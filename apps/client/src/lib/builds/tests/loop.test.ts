@@ -151,7 +151,7 @@ describe('an upload that does not finish', () => {
     api.urlsAnswer = () => refused('VALIDATION');
     await settle(buildJob(JOB, ports));
     expect(shell.uploads).toEqual([]);
-    expect(api.reports.at(-1)).toMatchObject({ state: 'FAILED', failureReason: 'The hub did not take the upload.' });
+    expect(api.reports.at(-1)).toMatchObject({ state: 'FAILED', failureReason: 'The hub refused the upload.' });
   });
 
   it('BLD-060: a grant that leaves a file out, or names another, uploads nothing', async () => {
@@ -166,7 +166,7 @@ describe('an upload that does not finish', () => {
     shell.scripts.upload = { fails: 'upload' };
     await settle(buildJob(JOB, ports));
     expect(api.uploaded).toEqual([]);
-    expect(api.reports.at(-1)).toMatchObject({ state: 'FAILED', failureReason: 'A file could not be sent to the release bucket.' });
+    expect(api.reports.at(-1)).toMatchObject({ state: 'FAILED', failureReason: 'A file did not reach the release bucket.' });
   });
 
   it('BLD-026: once the builder is stopping no further file is sent, and the job ends as cancelled', async () => {
@@ -178,13 +178,13 @@ describe('an upload that does not finish', () => {
     await settle(work);
     expect(shell.uploads).toHaveLength(1);
     expect(api.uploaded).toEqual([]);
-    expect(api.reports.at(-1)).toMatchObject({ state: 'FAILED', failureReason: 'The build was cancelled on this computer.' });
+    expect(api.reports.at(-1)).toMatchObject({ state: 'FAILED', failureReason: 'Build cancelled on the builder.' });
   });
 
   it('BLD-063: a refused uploaded report ends the job as failed', async () => {
     api.uploadedAnswer = refused('VALIDATION');
     await settle(buildJob(JOB, ports));
-    expect(api.reports.at(-1)).toMatchObject({ state: 'FAILED', failureReason: 'The hub did not take the upload.' });
+    expect(api.reports.at(-1)).toMatchObject({ state: 'FAILED', failureReason: 'The hub refused the upload.' });
   });
 });
 
@@ -193,7 +193,7 @@ describe('a job that does not finish', () => {
     shell.scripts.gates = { lines: ['clippy: error'], fails: 'step-failed' };
     await settle(buildJob(JOB, ports));
     expect(shell.calls).toEqual(['checkout', 'gates']);
-    expect(api.reports.at(-1)).toMatchObject({ state: 'FAILED', failureReason: 'The gates failed. The job log says why.' });
+    expect(api.reports.at(-1)).toMatchObject({ state: 'FAILED', failureReason: 'The gates failed. See the job log.' });
     expect(api.lines()).toContain('clippy: error');
   });
 
@@ -201,7 +201,7 @@ describe('a job that does not finish', () => {
     shell.scripts.checkout = { fails: 'not-on-main' };
     await settle(buildJob(JOB, ports));
     expect(shell.calls).toEqual(['checkout']);
-    expect(api.reports.at(-1)).toMatchObject({ failureReason: 'The commit is not on main of the Anima.ing repository.' });
+    expect(api.reports.at(-1)).toMatchObject({ failureReason: 'The commit is not on Anima.ing main.' });
   });
 
   it('BLD-010: when the hub refuses a report the job is no longer this builder’s: the step is cancelled and nothing more is sent', async () => {
@@ -229,7 +229,7 @@ describe('a job that does not finish', () => {
     stopping = true;
     await settle(work);
     expect(shell.calls).toEqual(['checkout']);
-    expect(api.reports.at(-1)).toMatchObject({ state: 'FAILED', failureReason: 'The build was cancelled on this computer.' });
+    expect(api.reports.at(-1)).toMatchObject({ state: 'FAILED', failureReason: 'Build cancelled on the builder.' });
   });
 
   it('BLD-010: a job whose BUILDING report is refused runs no step', async () => {
@@ -248,7 +248,7 @@ describe('startBuilderLoop', () => {
     expect(shell.calls).toEqual(['checkout', 'gates']);
     await settle(stop());
     expect(shell.cancels).toBeGreaterThanOrEqual(1);
-    expect(api.reports.at(-1)).toMatchObject({ state: 'FAILED', failureReason: 'The build was cancelled on this computer.' });
+    expect(api.reports.at(-1)).toMatchObject({ state: 'FAILED', failureReason: 'Build cancelled on the builder.' });
     expect(statuses.at(-1)).toEqual({ kind: 'stopped' });
   });
 

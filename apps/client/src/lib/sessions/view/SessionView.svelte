@@ -38,9 +38,9 @@
   }
 
   const { device, start, api, openScreen, visible, focused, onended, onretitle }: Props = $props();
-  const COPY_FAILED = 'Could not copy the text to your clipboard.';
-  const PASTE_FAILED = 'Could not read your clipboard. Allow clipboard access, or paste with the keyboard.';
-  const OVERFLOW = 'Press Ctrl+L to redraw: output arrived faster than it could be drawn, so some was skipped.';
+  const COPY_FAILED = 'Could not copy to your clipboard.';
+  const PASTE_FAILED = 'Could not read your clipboard. Allow access, or paste with the keyboard.';
+  const OVERFLOW = 'Some output was skipped. Press Ctrl+L to redraw.';
   /** The size of the first `resize` when the pane could not be fitted yet (a hidden pane); a fit corrects it. */
   const UNFITTED: CellSize = { cols: 80, rows: 24 };
 
@@ -186,7 +186,7 @@
       class="find"
       aria-expanded={finding}
       disabled={!ready}
-      title="Find in the terminal (Cmd+F, Ctrl+Shift+F)"
+      title="Find (Cmd+F, Ctrl+Shift+F)"
       onclick={() => (finding ? closeFind() : (finding = true))}
       {@attach press()}
     >

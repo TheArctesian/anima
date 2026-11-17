@@ -82,9 +82,9 @@ const logged = () => consoleSpies.flatMap((spy) => spy.mock.calls.flat().map(Str
 
 it('PRJ-039: the GitHub row says the hub keeps the key and offers the key-file way as the second action', async () => {
   await show();
-  expect(text()).toContain('Anima.ing makes a GitHub App in your own account and keeps its key in the hub. You press Create and Install on GitHub.');
+  expect(text()).toContain('Makes a GitHub App in your account; the hub keeps its key.');
   expect(button('Connect GitHub')).toBeDefined();
-  await click('Connect with a key file instead');
+  await click('Use key file');
   expect(document.querySelector('[role="dialog"]')).not.toBeNull();
 });
 
@@ -116,7 +116,7 @@ it('PRJ-041: a blocked tab shows a link to the attempt page, which holds no one-
   await click('Connect GitHub');
   const link = document.querySelector<HTMLAnchorElement>('a[href="https://hub.example/connect/github"]');
   expect(link).not.toBeNull();
-  expect(text()).toContain('Your browser did not open the tab.');
+  expect(text()).toContain('The tab did not open.');
   expect(document.body.innerHTML).not.toContain(TICKET);
 });
 
@@ -156,7 +156,7 @@ it('PRJ-039: a failed attempt with an App offers to delete it on GitHub, and an 
   const settings = 'https://github.com/settings/apps/anima-k3f9/advanced';
   await show(attempt({ phase: 'FAILED', failure: 'KEY_REFUSED', startedBy: 'AGENT', appSlug: 'anima-k3f9', appSettingsUrl: settings }));
   expect(text()).toContain("An AI agent started this. GitHub refused the new App's key. Delete the App anima-k3f9 on GitHub, then start again.");
-  await click('Delete the App on GitHub');
+  await click('Delete App on GitHub');
   expect(opened).toEqual([settings]);
 });
 

@@ -33,10 +33,10 @@
 <fieldset class="headers">
   <legend>Headers</legend>
   {#if stored !== null}
-    <p class="stored">{storedNames.length === 0 ? 'No headers stored.' : `Stored: ${storedNames.join(', ')}. Their values are kept sealed.`}</p>
+    <p class="stored">{storedNames.length === 0 ? 'No headers stored.' : `Stored: ${storedNames.join(', ')}. Values stay sealed.`}</p>
     <label class="check">
       <input type="checkbox" bind:checked={webhook.replaceHeaders} onchange={replaceChanged} />
-      Replace the headers
+      Replace headers
     </label>
   {/if}
   {#if webhook.replaceHeaders}

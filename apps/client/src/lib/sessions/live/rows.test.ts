@@ -110,10 +110,10 @@ it('MOT-007, RA-034: a refused Stop reserves its line in every row first, so the
   const before = [...facts().children].map((child) => child.className);
   const reserved = facts().querySelector('.slot .sizer');
   expect(reserved?.getAttribute('aria-hidden')).toBe('true');
-  expect(reserved?.textContent).toContain('The session could not be stopped.');
+  expect(reserved?.textContent).toContain('Could not stop the session.');
   stopButton('desk').click();
   await vi.waitFor(() => {
-    expect(document.querySelector('[role="alert"]')?.textContent).toContain('The session could not be stopped.');
+    expect(document.querySelector('[role="alert"]')?.textContent).toContain('Could not stop the session.');
   });
   expect([...facts().children].map((child) => child.className)).toEqual(before);
   expect(document.querySelector('[role="alert"]')?.parentElement).toBe(reserved?.parentElement);
