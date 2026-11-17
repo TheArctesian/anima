@@ -134,7 +134,7 @@ fn signed(at: chrono::DateTime<chrono::Utc>, version: Option<&str>) -> Value {
     migrations = "./migrations",
     fixtures(path = "../../fixtures", scripts("devices"))
 )]
-async fn r_118_the_version_of_the_newest_batch_is_served_and_an_older_agent_has_none(pool: PgPool) {
+async fn r_122_the_version_of_the_newest_batch_is_served_and_an_older_agent_has_none(pool: PgPool) {
     let now = pushing_now(&pool).await;
     let agents = Agents::at(&pool, now).await;
     let token = agents.token_for(PVE_01).await;
@@ -169,7 +169,7 @@ async fn r_118_the_version_of_the_newest_batch_is_served_and_an_older_agent_has_
     migrations = "./migrations",
     fixtures(path = "../../fixtures", scripts("devices"))
 )]
-async fn r_118_a_new_token_forgets_the_version_and_a_bad_one_stores_nothing(pool: PgPool) {
+async fn r_122_a_new_token_forgets_the_version_and_a_bad_one_stores_nothing(pool: PgPool) {
     let now = pushing_now(&pool).await;
     let agents = Agents::at(&pool, now).await;
     let token = agents.token_for(PVE_01).await;
@@ -205,7 +205,7 @@ async fn r_118_a_new_token_forgets_the_version_and_a_bad_one_stores_nothing(pool
     migrations = "./migrations",
     fixtures(path = "../../fixtures", scripts("devices"))
 )]
-async fn r_118_a_device_that_leaves_the_agent_or_is_revoked_shows_no_version(pool: PgPool) {
+async fn r_122_a_device_that_leaves_the_agent_or_is_revoked_shows_no_version(pool: PgPool) {
     let now = pushing_now(&pool).await;
     let agents = Agents::at(&pool, now).await;
     let token = agents.token_for(PVE_01).await;

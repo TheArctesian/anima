@@ -3,7 +3,7 @@
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
-use super::{Accepted, Batch, RefusalCode};
+use super::{Accepted, Announcements, Batch, RefusalCode};
 
 mod bodies;
 mod drives;

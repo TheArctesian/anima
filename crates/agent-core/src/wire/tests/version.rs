@@ -9,7 +9,7 @@ fn with_version(version: &str) -> impl FnOnce(&mut Batch) {
 }
 
 #[test]
-fn r_118_a_batch_without_a_version_is_taken_with_none() {
+fn r_122_a_batch_without_a_version_is_taken_with_none() {
     assert!(
         !BATCH.contains("agentVersion"),
         "the K8 example is an older agent's"
@@ -18,7 +18,7 @@ fn r_118_a_batch_without_a_version_is_taken_with_none() {
 }
 
 #[test]
-fn r_118_the_version_of_a_batch_reaches_the_hub_as_sent() {
+fn r_122_the_version_of_a_batch_reaches_the_hub_as_sent() {
     for version in ["0.1.0", "12.0.3", "1.2.3-rc.1+build.5"] {
         let accepted = checked(with_version(version)).unwrap();
         assert_eq!(accepted.agent_version.as_deref(), Some(version));
@@ -29,7 +29,7 @@ fn r_118_the_version_of_a_batch_reaches_the_hub_as_sent() {
 }
 
 #[test]
-fn r_118_a_version_that_breaks_the_rule_is_malformed() {
+fn r_122_a_version_that_breaks_the_rule_is_malformed() {
     let too_long = format!("1{}", "0".repeat(64));
     let cases = [
         ("empty", ""),
@@ -46,11 +46,11 @@ fn r_118_a_version_that_breaks_the_rule_is_malformed() {
 }
 
 #[test]
-fn r_118_the_agent_signs_its_batch_with_its_version_in_camel_case() {
-    let batch = Batch::new(device(), [], (None, None)).from_agent("0.3.1");
+fn r_122_the_agent_signs_its_batch_with_its_version_in_camel_case() {
+    let batch = Batch::new(device(), [], Announcements::default()).from_agent("0.3.1");
     let written = serde_json::to_value(&batch).unwrap();
     assert_eq!(written["agentVersion"], "0.3.1");
-    let unsigned = serde_json::to_value(Batch::new(device(), [], (None, None))).unwrap();
+    let unsigned = serde_json::to_value(Batch::new(device(), [], Announcements::default())).unwrap();
     assert!(
         unsigned.get("agentVersion").is_none(),
         "no member when unsigned"

@@ -43,7 +43,7 @@ async fn mcp_009_devices_search_returns_names_and_ids_as_structured_content() {
 }
 
 #[tokio::test]
-async fn r_118_device_get_in_detail_gives_the_agent_version() {
+async fn r_122_device_get_in_detail_gives_the_agent_version() {
     let hub = hub().await;
     let devices = fixture_devices();
     let id = devices[0]["id"].as_str().expect("an id").to_owned();

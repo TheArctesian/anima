@@ -5,7 +5,7 @@ use crate::fake_hub::FakeHub;
 use crate::kit::{at, rig, year};
 
 #[tokio::test]
-async fn r_118_each_batch_carries_the_version_of_the_agent() {
+async fn r_122_each_batch_carries_the_version_of_the_agent() {
     let hub = FakeHub::start().await;
     let mut rig = rig(&hub, 1, year());
     feed(&mut rig, 1, 2);

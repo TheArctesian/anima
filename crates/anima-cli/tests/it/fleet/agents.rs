@@ -54,7 +54,7 @@ async fn cmd_020_agent_status_says_whether_the_agent_is_reporting() {
 }
 
 #[tokio::test]
-async fn r_118_agent_status_gives_the_version_the_agent_reported() {
+async fn r_122_agent_status_gives_the_version_the_agent_reported() {
     let hub = FakeHub::start().await;
     let device = |version: Value| {
         data(
