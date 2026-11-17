@@ -1,0 +1,78 @@
+:root {
+  color-scheme: light dark;
+  background: var(--surface-sunken);
+  color: var(--text);
+  font-family: var(--font-ui);
+  line-height: var(--leading-normal);
+}
+
+body {
+  margin: 0;
+  box-sizing: border-box;
+  min-block-size: 100vh;
+  display: grid;
+  place-items: center;
+  padding: var(--space-8) var(--space-6);
+}
+
+main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(var(--space-6), 5vw, var(--space-16));
+  inline-size: min(100%, calc(var(--space-16) * 14));
+}
+
+.doors {
+  display: block;
+  inline-size: 100%;
+  color: var(--accent);
+}
+
+.doors path:first-child {
+  color: color-mix(in srgb, var(--accent) 75%, var(--text-secondary));
+}
+
+.result {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.github {
+  inline-size: var(--space-8);
+  block-size: auto;
+  color: CanvasText;
+}
+
+h1, p {
+  margin: 0;
+}
+
+h1 {
+  font-size: var(--text-display);
+  font-weight: var(--weight-light);
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-tight);
+}
+
+p {
+  color: var(--text-secondary);
+  font-size: var(--text-md);
+}
+
+@media (max-width: 40rem) {
+  main {
+    grid-template-columns: minmax(0, 1fr);
+    max-inline-size: calc(var(--space-16) * 6);
+    gap: var(--space-8);
+  }
+
+  .doors {
+    justify-self: center;
+    max-inline-size: calc(var(--space-12) * 4);
+  }
+
+  h1 {
+    font-size: var(--text-2xl);
+  }
+}

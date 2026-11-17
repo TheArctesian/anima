@@ -16,14 +16,15 @@
     status?: Snippet;
     /** A control column wide enough for a name or an address, whose fields fill it (D17); the default fits a number. */
     wide?: boolean;
+    /** Put a group of controls and its guidance below the name and hint. */
+    stacked?: boolean;
   }
 
-  const { label, for: control, hint, children, message, status, wide = false }: Props = $props();
+  const { label, for: control, hint, children, message, status, wide = false, stacked = false }: Props = $props();
 </script>
 
-<!-- One setting, a hairline row (UR-7, D9): its name and hint at the start of the line, its control at the end; stacked
-     only in a narrow column. -->
-<div class="row" class:wide>
+<!-- One setting, a hairline row (UR-7, D9). Controls sit at the end of the line or below the name. -->
+<div class="row" class:wide class:stacked>
   <div class="line">
     <div class="text">
       <span class="head">
@@ -116,6 +117,14 @@
   .wide .control :global(:is(input, select)) {
     inline-size: 100%;
     text-align: start;
+  }
+
+  .stacked .line {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .stacked .control {
+    display: block;
   }
 
   .head {
