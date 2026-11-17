@@ -191,15 +191,15 @@ the device list and the path report can.
 
 These are the plan's texts with the spike's changes. They are proposals until the spec delta.
 
-- **LNK-001.** As the plan. Added: the hub must save its key, its pre-shared key and its relay region.
-- **LNK-002.** As the plan. Added: a refused device gets no answer.
-- **LNK-003.** As the plan. Added: the hub must keep no invite code.
-- **LNK-004.** As the plan. Added: the open session of the device must end in 1 second.
-- **LNK-005.** As the plan. Added: renewal is in the last 30 days and needs no user action.
-- **LNK-006.** As the plan. Added: the hub also shows the relay name.
-- **LNK-007.** As the plan. Added: the hub link must fail at start if the relay refuses it; a
+- **LNK-001:** As the plan. Added: the hub must save its key, its pre-shared key and its relay region.
+- **LNK-002:** As the plan. Added: a refused device gets no answer.
+- **LNK-003:** As the plan. Added: the hub must keep no invite code.
+- **LNK-004:** As the plan. Added: the open session of the device must end in 1 second.
+- **LNK-005:** As the plan. Added: renewal is in the last 30 days and needs no user action.
+- **LNK-006:** As the plan. Added: the hub also shows the relay name.
+- **LNK-007:** As the plan. Added: the hub link must fail at start if the relay refuses it; a
   relay change must not need a new invite for a connected device; a domain name is off by default.
-- **LNK-008.** As the plan.
+- **LNK-008:** As the plan.
 - **LNK-009 (new).** The device link must keep the link in use and must connect again by itself
   after a hub restart. The times are set after T14.
 

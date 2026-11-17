@@ -130,15 +130,15 @@ A step that fails does not stop the rest.
 - **General rule.** Each safety setting here is the user's choice. The default is the
   equivalent of full auto, as in MCP-024 (R-120). A step that hands over a secret, such as copying a
   private key (REP-009), still asks first.
-- **MET-002.** Exception granted: the agent may install apps and copy files when it applies a
+- **MET-002:** Exception granted: the agent may install apps and copy files when it applies a
   profile (REP-023). By the general rule, the per-apply confirmation is on by default only for
   steps that hand over a secret; the user can turn it on for every step.
-- **USE-006.** `apply_profile` joins the fixed list of work types (REP-022). The hub still
+- **USE-006:** `apply_profile` joins the fixed list of work types (REP-022). The hub still
   cannot name an arbitrary command.
-- **INS-009.** The installer never edits the shell profile. `anima shell setup` and the Settings
+- **INS-009:** The installer never edits the shell profile. `anima shell setup` and the Settings
   CLI installer add the line only when the operator says yes (shell-prompt CMD-037, CMD-038;
   REP-024).
-- **VLT-007.** The default is no key copy: devices are reached through Anima.ing (REP-008,
+- **VLT-007:** The default is no key copy: devices are reached through Anima.ing (REP-008,
   REP-025). A copied key, for tools outside Anima.ing, goes machine to machine and never
   through the hub (REP-009).
 

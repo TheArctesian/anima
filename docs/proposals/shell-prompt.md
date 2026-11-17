@@ -100,13 +100,13 @@ opt-in step (CMD-037, CMD-038), never part of installation. Pasting the snippet 
 
 ## Constraints
 
-- **INS-009.** The installer must not edit `.bashrc`, `.zshrc` or the fish startup file.
+- **INS-009:** The installer must not edit `.bashrc`, `.zshrc` or the fish startup file.
   Ruled 2026-11-16: only the opt-in `anima shell setup` (CMD-038) and the Settings CLI
   installer (CMD-037) may add the marked block, and only after the operator says yes.
 - **K4 exec.** Smart routing such as `@studio git status` is not possible yet. The hub's
   tunnel contract opens a login shell and sends no `exec` (`contracts/tunnel.md`). For now,
   routing means `anima ssh studio`.
-- **EXT-009.** Shared community themes wait until the hub is allowed to run other people's
+- **EXT-009:** Shared community themes wait until the hub is allowed to run other people's
   code. Until then, a theme is local data on the operator's machine.
 - **No new shell.** Do not write a full shell. Fish is GPL-2.0, so we must not build it into
   the AGPL command line.
@@ -116,7 +116,7 @@ opt-in step (CMD-037, CMD-038), never part of installation. Pasting the snippet 
 - **General rule.** Each safety setting in this area is the user's choice. The default is the
   equivalent of full auto, as in the MCP ruling R-120 (MCP-024). A step that hands over a secret
   still asks first.
-- **INS-009.** The installer still never edits the shell profile. `anima shell setup` and the
+- **INS-009:** The installer still never edits the shell profile. `anima shell setup` and the
   Settings CLI installer add the line only when the operator says yes (CMD-037, CMD-038).
 
 ## Open questions

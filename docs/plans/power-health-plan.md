@@ -1,7 +1,7 @@
 ---
 kind: Plan
 state: Draft
-evidence: Version 0.1 (2026-11-14). Its header says: for operator review, nothing in this plan is accepted. `PWR`, `HLT`, `HWI` are proposed. Its `HLT-001` to `HLT-007` have the same identifiers as requirements of the Health extension in the extensions plan (PLN-016): one of the two must get new identifiers. No tier in Section 4 yet.
+evidence: Version 0.1 (2026-11-14). Its header says: for operator review, nothing in this plan is accepted. `PWR`, `HWH`, `HWI` are proposed. `HWH-001` to `HWH-007` had the prefix `HLT` until 2026-11-17; the Health extension of the extensions plan owns `HLT` (PLN-016). No tier in Section 4 yet.
 ---
 
 # Anima Power and Hardware Health Plan
@@ -140,24 +140,24 @@ Proposed requirements (prefix `PWR`, free on `main`):
 
 ### 5.3 P2. Health
 
-Proposed requirements (prefix `HLT`, free on `main`):
+Proposed requirements (prefix `HWH`, free on `main`):
 
-- **HLT-001.** For each drive (MET-027), the hub must store the health verdict and, at the full
+- **HWH-001.** For each drive (MET-027), the hub must store the health verdict and, at the full
   level: reallocated and pending sectors, media errors, the used life of an SSD, power-on hours
   and temperature.
-- **HLT-002.** The agent must read health values once each hour, not with each 10-second point.
-- **HLT-003.** The Storage section (MET-029) must show the health of each drive in its row.
-- **HLT-004.** The hub must open a "Needs attention" problem (DEV-026) when: a drive verdict is
+- **HWH-002.** The agent must read health values once each hour, not with each 10-second point.
+- **HWH-003.** The Storage section (MET-029) must show the health of each drive in its row.
+- **HWH-004.** The hub must open a "Needs attention" problem (DEV-026) when: a drive verdict is
   failing; pending or reallocated sectors increase; the used life of an SSD is more than 90
   percent; uncorrected memory errors are more than zero.
-- **HLT-005.** For a battery, the hub must store the cycle count and the full capacity as a
+- **HWH-005.** For a battery, the hub must store the cycle count and the full capacity as a
   percentage of the design capacity. The client must show both.
-- **HLT-006.** The hub must store temperatures and fan speeds where the device gives them, and
+- **HWH-006.** The hub must store temperatures and fan speeds where the device gives them, and
   must show when a device limits its speed because of heat.
-- **HLT-007.** For memory with ECC, the hub must store the corrected and uncorrected error
+- **HWH-007.** For memory with ECC, the hub must store the corrected and uncorrected error
   counts. For memory without ECC, the client must show "This memory cannot report errors". Do
   not show "Healthy".
-- **HLT-008.** A health event must go to notifications as a check event does.
+- **HWH-008.** A health event must go to notifications as a check event does.
 
 ### 5.4 P3. Inventory
 
@@ -219,7 +219,7 @@ engine. They can start after a ruling.
 | A value looks exact but is an estimate | The operator trusts a wrong number | PWR-002, PWR-006. The source is always shown. |
 | The root helper | A fault gives root to an attacker | Fixed command list, no input text, security review. The basic level works without it. |
 | Readers differ between computers and versions | Missing values | P0 captures. A missing value shows a reason (PWR-008), not zero. |
-| Too many health warnings | The operator stops reading them | HLT-004 uses changes and firm limits only. |
+| Too many health warnings | The operator stops reading them | HWH-004 uses changes and firm limits only. |
 | The SSH collector cannot use the root helper | Devices with no agent get the basic level only | Accepted. Say it in the client. |
 
 ## 9. Acceptance criteria

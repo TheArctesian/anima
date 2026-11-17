@@ -201,16 +201,16 @@ with two levels.
 
 Proposed requirements (prefix `AWK`, free on `main`):
 
-- **AWK-001.** The control must have three states: off, "Keep awake" and "Keep awake with the lid closed".
-- **AWK-002.** "Keep awake" must stop idle sleep of the computer. The display can sleep.
-- **AWK-003.** "Keep awake with the lid closed" must keep the computer on when the operator
+- **AWK-001:** The control must have three states: off, "Keep awake" and "Keep awake with the lid closed".
+- **AWK-002:** "Keep awake" must stop idle sleep of the computer. The display can sleep.
+- **AWK-003:** "Keep awake with the lid closed" must keep the computer on when the operator
   closes the lid.
-- **AWK-004.** The control must be in Settings and in the menu bar or tray item of the hub.
-- **AWK-005.** When the computer is the hub and the control is off, the application must tell the
+- **AWK-004:** The control must be in Settings and in the menu bar or tray item of the hub.
+- **AWK-005:** When the computer is the hub and the control is off, the application must tell the
   operator that checks stop during sleep.
-- **AWK-006.** On battery power, the application must be able to turn the control off below a
+- **AWK-006:** On battery power, the application must be able to turn the control off below a
   battery level that the operator sets.
-- **AWK-007.** When the application or the hub service stops, the computer must return to its
+- **AWK-007:** When the application or the hub service stops, the computer must return to its
   normal sleep behaviour.
 
 Platform notes (not checked; check in the S8 task):

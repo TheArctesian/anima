@@ -365,9 +365,11 @@ The navigation bar has groups. Each group shows only the extensions that are on.
 
 Integrations is not a navigation item. It is a section of the Settings page (Section 4.5).
 
-- **NAV-010.** The operator must be able to select the start page. The default stays Devices (NAV-004).
-- **NAV-011.** A group with no active items must not show.
+- **NAV-013.** The operator must be able to select the start page. The default stays Devices (NAV-004).
+- **NAV-014.** A group with no active items must not show.
 - **NAV-012.** The client must have a command palette (Cmd+K) that opens each page and each record type.
+
+NAV-013 and NAV-014 had the numbers NAV-010 and NAV-011 until 2026-11-17. The design specification owns those two numbers (PLN-016).
 
 ### 3.4 Community UI extensions
 

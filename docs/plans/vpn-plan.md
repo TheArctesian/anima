@@ -274,7 +274,7 @@ The migration only adds a schema and a CHECK value.
 A new client domain `$lib/vpn/`. Tier A adds no navigation destination, because spec 5.3 has
 only Devices and Settings. The new Settings section needs a SET delta:
 
-- **SET-003.** The Settings page must show a "VPN" section: the path of each site, the nodes
+- **SET-003:** The Settings page must show a "VPN" section: the path of each site, the nodes
   that are not in Anima, and the key expiry of each node. When the hub has no LocalAPI proxy,
   the section must say that VPN status is off.
 
@@ -313,10 +313,10 @@ Settings section, after A1-T4 and the SET-003 ruling. A2-T3 device Overview fact
 These are deploy tools that run on the operator's computer. They need a ruling under PKG-001 and
 R-082, because only WP-54 and WP-52 change `deploy/headscale/` in Phase 3.
 
-- **VPN-012.** The policy tests must check the full reachability table, not only pairs. For each
+- **VPN-012:** The policy tests must check the full reachability table, not only pairs. For each
   pair of identity classes (client, hub, router of site X, device at site X, a device `/32`) and
   each protocol, the table must agree with the four rules of VPN-004.
-- **VPN-013.** A script must compare a live node list with the expected inventory, and run the
+- **VPN-013:** A script must compare a live node list with the expected inventory, and run the
   policy tests against the live nodes. It must report: a node of a user other than `operator`, a
   tag that is not in `tagOwners`, a tagged node with an expiry, a client key that expires after
   more than 180 days, a router with an advertised route that is not approved, and a node that is
@@ -350,7 +350,7 @@ deploy/headscale/
 
 ### 4.4 A4. Headscale contract harness
 
-- **VPN-014.** At each Headscale upgrade, a harness must start the pinned Headscale image with
+- **VPN-014:** At each Headscale upgrade, a harness must start the pinned Headscale image with
   the repository configuration and policy, and check: `headscale policy check` accepts the
   policy, and the node and route output of the pinned version parses with `inventory.ts`.
 

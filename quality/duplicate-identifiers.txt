@@ -1,46 +1,12 @@
 # Requirement identifiers that more than one document defines (PLN-016).
 # This list can only get shorter. Do not add an identifier: give the requirement one owner.
-# Read on 2026-11-16: 22 identifiers.
-BLD-024
-CMP-003
-EXT-009
-INS-009
+# Read on 2026-11-17: 6 identifiers (40 on 2026-11-16).
+# LNK-001 to LNK-006: docs/plans/extensions-plan.md (record links) and docs/plans/one-click/one-click-plan.md
+# (the link) use one identifier for two different requirements, and the code cites both. The operator must
+# give one of the two a new prefix.
 LNK-001
 LNK-002
 LNK-003
 LNK-004
-MET-002
-MET-011
-MET-012
-MET-017
-NAV-010
-NAV-011
-NET-003
-SET-003
-USE-006
-VLT-007
-VPN-012
-VPN-013
-VPN-014
-VPS-004
-# Added at the merge of main on 2026-11-16: 18 identifiers.
-# AWK and LNK: docs/plans/one-click/one-click-plan.md states requirements that the design specification or a task list also states.
-# HLT: docs/plans/power-health-plan.md and the Health extension of docs/plans/extensions-plan.md use one identifier for two different requirements.
-AWK-001
-AWK-002
-AWK-003
-AWK-004
-AWK-005
-AWK-006
-AWK-007
-HLT-001
-HLT-002
-HLT-003
-HLT-004
-HLT-005
-HLT-006
-HLT-007
 LNK-005
 LNK-006
-LNK-007
-LNK-008

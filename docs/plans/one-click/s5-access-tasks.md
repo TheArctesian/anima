@@ -16,9 +16,9 @@ Security tag: each task gets the `reviewer` and the `reviewer-security` agent.
 - **NET-001, NET-002.** `fleet/access/layer.rs` (`Edge`) refuses a TCP peer whose address is not in
   `access.permitted_networks`, at accept and again for each request. A request that passes carries
   its `ClientAddr`.
-- **NET-003.** `fleet/access/listen/bind.rs` lets the hub listen only on loopback, private and VPN
+- **NET-003:** `fleet/access/listen/bind.rs` lets the hub listen only on loopback, private and VPN
   addresses.
-- **BLD-024.** `fleet/builds/builders.rs` keeps the `ClientAddr` of the enrolment and refuses a
+- **BLD-024:** `fleet/builds/builders.rs` keeps the `ClientAddr` of the enrolment and refuses a
   builder token from another address.
 - **Agent token path (K8).** `fleet/metrics/ingest` limits requests and refusal events for each
   `ClientAddr`.

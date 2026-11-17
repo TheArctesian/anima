@@ -200,10 +200,10 @@ Risks of the flat subscription:
   service, on the operator's computer or in a job. Anima.ing's own systems would have to
   create and destroy these machines (CVM-015), not the customer's hub. That is a new kind of
   rented resource: Anima.ing is the service, not AWS in the customer's own account.
-- **CMP-003.** Compute work must stay on the private network. Anima must not join a public
+- **CMP-003:** Compute work must stay on the private network. Anima must not join a public
   compute network, for example c0mpute. A private rented machine on the customer's own
   network should not count (CVM-018), but the wording should say so.
-- **MET-012.** Enrolment codes expire after 15 minutes and work only once. A slow GPU start
+- **MET-012:** Enrolment codes expire after 15 minutes and work only once. A slow GPU start
   can miss that window (CVM-016).
 
 ## Needs

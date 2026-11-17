@@ -53,7 +53,7 @@ MET-003 to MET-010 stay as written. They apply to readings from every source.
 
 ### 1.4 New requirements
 
-- **MET-011.** A device's metrics source must be one of `agent`, `ssh`, `proxmox` or `none`.
+- **MET-011:** A device's metrics source must be one of `agent`, `ssh`, `proxmox` or `none`.
   When a device has a working agent, the hub must stop SSH metric collection for it. If the
   agent is removed or its token is revoked, the operator can switch the device back to `ssh`.
 - **MET-012. Enrolment.** The operator makes an enrolment code for one device on the Device
