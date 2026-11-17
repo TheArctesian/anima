@@ -78,7 +78,7 @@ These documents are records, not plans. They must not add a requirement (PLN-009
 | [plans/one-click/](../plans/one-click/): the files `spike-*.md` and [tailcat-upstream-issues.md](../plans/one-click/tailcat-upstream-issues.md) | Reports of the one-click work |
 | [research/](../research/) | Audits and reports |
 | [procedures/](../procedures/) | Procedures: how to install, set up and release |
-| [archive/](../archive/) | Finished work: the Phase 1 plan, Phase 2, the logs of the work packages, and old reviews of the interface. Do not build from it and do not change it. It has no row in the table above. |
+| [archive/](../archive/) | Finished work: the Phase 1 plan, Phase 2, the logs of the work packages, and old reviews of the interface. Do not build from it and do not change it. It has no row in the table above. One exception: a test of `deploy/` reads the environment table of `archive/phase-2/phase-2-contracts.md` until `contracts/conventions.md` holds those variables. |
 | [need-human-testing.md](../need-human-testing.md) | The list of checks that only a person can do, with the state of each (PLN-014) |
 | [security-findings.md](../security-findings.md) | The list of security findings, with the state of each |
 | [deferred.md](../deferred.md) | The list of deferred work (R-119; it replaces GitHub issue #1 and R-007) |

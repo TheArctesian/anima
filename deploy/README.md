@@ -209,8 +209,8 @@ The gateway image holds the font family `OpenDyslexicM Nerd Font Mono`. Set guac
 
 ## Web client
 
-The hub serves the web client at its own origin. See [../docs/setup/web-client.md](../docs/procedures/setup/web-client.md).
-To read metrics with Prometheus, see [../docs/setup/prometheus.md](../docs/procedures/setup/prometheus.md).
+The hub serves the web client at its own origin. See [web-client.md](../docs/procedures/setup/web-client.md).
+To read metrics with Prometheus, see [prometheus.md](../docs/procedures/setup/prometheus.md).
 
 ## No recordings volume
 
@@ -751,7 +751,7 @@ Undo: `sudo docker compose --profile apprise rm -sf apprise`.
 `hub.anima.ing` stays an unproxied record to the VPN address. The web client is same-origin, so
 `CLIENT_ORIGINS` stays as it is. `operator@` already reaches `tag:hub` on tcp:443. Only a Prometheus
 scraper that is not an `operator@` machine needs a grant; see
-[../docs/setup/prometheus.md](../docs/procedures/setup/prometheus.md).
+[prometheus.md](../docs/procedures/setup/prometheus.md).
 
 ## The VPS as a device (VP-13)
 

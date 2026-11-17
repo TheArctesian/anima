@@ -491,7 +491,7 @@ The operator's rule (operator, 2026-11-13): "we also need to make a marketing we
 
 ### 3.13 Stay awake
 
-A hub on the operator's computer does no checks while that computer sleeps. The desktop application has a "Stay awake" control for this. The work record is [research/one-click/s8-stay-awake-tasks.md](../plans/one-click/s8-stay-awake-tasks.md) (one-click plan S8; operator ruling OR-8, 2026-11-14).
+A hub on the operator's computer does no checks while that computer sleeps. The desktop application has a "Stay awake" control for this. The work record is [s8-stay-awake-tasks.md](../plans/one-click/s8-stay-awake-tasks.md) (one-click plan S8; operator ruling OR-8, 2026-11-14).
 
 Built state: AWK-001 to AWK-007 are built in `apps/desktop/src-tauri/src/stay_awake/` and `apps/client/src/lib/stay-awake/`. The lid-closed level, a run of 8 hours and each Linux function are not verified on a real computer; the work record lists these checks.
 

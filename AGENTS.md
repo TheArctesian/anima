@@ -5,6 +5,44 @@ a Rust hub (axum, async-graphql, PostgreSQL) and a Guacamole gateway (`guacd`).
 The design spec is [docs/spec/design-spec.md](docs/spec/design-spec.md). It is the source of truth;
 cite requirement IDs (for example `CHK-011`) in commits and pull requests.
 
+## Start of a session
+
+Do these steps in this order in each session, before you change code. The planning documents are
+the one source of truth; [docs/work-plan.md](docs/work-plan.md) is the entry point.
+
+1. **Get `main`.** Run `git fetch` and read the documents of `origin/main`. A plan that is only on
+   a branch is not a plan (PLN-011).
+2. **Find the work.** If the operator named the work, find the plan that owns it in
+   [docs/plan/ownership.md](docs/plan/ownership.md) and [docs/plan/register.md](docs/plan/register.md).
+   If the operator named no work, open [docs/plan/priorities.md](docs/plan/priorities.md) and take the
+   first row, from the top, whose column "Waits for" names an agent. A row that waits for the
+   operator is not yours: tell the operator what it waits for, then go to the next row.
+3. **Find the task.** Open the plan of that row. Its task table, or its work item in
+   [docs/work-items/](docs/work-items/README.md), holds the tasks. Take the first task that is
+   "Not started" and that no open decision blocks. If the plan has no task row for the work, add
+   the row first (PLN-013). If no plan owns the work, write a short proposal first. If the operator
+   gave an idea and did not ask for a build, record the idea and stop
+   ([docs/ideas/README.md](docs/ideas/README.md)).
+4. **Read the claims.** Look at [docs/claims/](docs/claims/README.md) on `origin/main`. If a claim
+   holds the task, a different session builds it. Take the next task or ask the operator.
+5. **Claim the task.** Write `docs/claims/<task>.md` with the task, the plan, the name of this
+   machine in Anima, your coding agent, the branch and the day. Run `bun run quality:documents`,
+   commit that file only, and push it to `main`. If the push is refused, get `main`, read the
+   claims again, and continue only if the task is free (PLN-022).
+6. **Build** on a branch, in its own worktree, from the task and the requirements that it names.
+   Build in the order hub API, `anima` command, MCP tool, client (CMD-030). If you change the
+   layout of a screen that has a mockup, change the mockup in the same commit (PLN-019). If the
+   gates cannot prove the function, add its entry to
+   [docs/need-human-testing.md](docs/need-human-testing.md) (PLN-014).
+7. **Finish.** Run `bun run gates`. In the commit that merges the work: set the state of the task
+   with its commit (PLN-008), delete your claim, and run `bun run quality:register` if the state of
+   the plan changed (PLN-020).
+8. **If you stop before the end,** delete your claim and write in the task row what is built, unless
+   you will continue on the same machine.
+
+A question that only the operator can answer does not stop the session. Write it as a row in the
+open decisions of the plan, tell the operator, and take a different task.
+
 ## Before you change code
 
 - Read the spec sections for the area you touch. Section 12 (code quality) and
@@ -101,7 +139,7 @@ test (CMD-031) fails when a root field of `contracts/schema.graphql` has no comm
 
 [docs/work-plan.md](docs/work-plan.md) is the entry point to all planning documents. Start there. Its
 parts are in `docs/plan/`: the priority order (`priorities.md`), the register of all plans with their
-state (`register.md`) and the rules (`rules.md`, PLN-001 to PLN-021, operator, 2026-11-15 to 2026-11-17).
+state (`register.md`) and the rules (`rules.md`, PLN-001 to PLN-022, operator, 2026-11-15 to 2026-11-17).
 
 - Plan first (PLN-013). Before you change code, find the plan that owns the work, read it, and build
   from it. If the plan does not include the work, change the plan first. If no plan owns the work,
@@ -109,6 +147,8 @@ state (`register.md`) and the rules (`rules.md`, PLN-001 to PLN-021, operator, 2
   change the plan in the same commit. A correction of a defect that adds no function needs no plan.
 - The path is idea, proposal, plan, contract, tasks, check (PLN-018). An idea is a folder in
   [docs/ideas/](docs/ideas/README.md); do not build from it. A proposal is in `docs/proposals/`; an approved one moves to `docs/plans/<name>-plan.md`.
+- A session claims its task (PLN-022). One file in [docs/claims/](docs/claims/README.md) for each task that
+  a session builds now. Read them before you take a task; delete yours in the merge.
 - A mockup agrees with the application (PLN-019). If you change the layout of a screen that
   [docs/mockup/README.md](docs/mockup/README.md) lists, change its mockup in the same commit.
 - Do not build from a document that is not in Section 9 of the work plan.
@@ -151,7 +191,8 @@ one list of such checks (PLN-014): a task that waits for a check is not done unt
 
 ## Gates
 
-Run `bun run gates` before you ask for review and before every merge. There is no CI; gates run on the machine that makes the change.
+Run `bun run gates` before you ask for review and before every merge. A commit that changes only
+`docs/claims/` or `docs/ideas/` needs only `bun run quality:documents`. There is no CI; gates run on the machine that makes the change.
 `rust-toolchain.toml` pins the Rust version for every machine; rustup installs it on the first cargo run. `deploy/hub/Dockerfile` must name the same version (a test compares them). Change both in one commit.
 
 ```sh

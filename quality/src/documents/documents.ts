@@ -1,5 +1,7 @@
 import { posix } from "node:path";
 import type { Violation } from "../report.ts";
+import { checkClaims } from "./claims.ts";
+import { checkMockups } from "./mockups.ts";
 import { checkRegister } from "./register.ts";
 import { repeatedRulings } from "./rulings.ts";
 
@@ -99,16 +101,24 @@ export function parseKnown(text: string): Set<string> {
 /**
  * PLN-017: the links resolve, each plan, each work item and each mockup is in its list, a plan
  * gives its kind and its state in its header, the register agrees with the headers (PLN-020),
- * a number of the rulings log names one ruling (PLN-021), and one document defines each
- * requirement identifier.
+ * a number of the rulings log names one ruling (PLN-021), a claim is complete and one claim
+ * holds a task (PLN-022), no screen changed after its mockup was compared (PLN-019), and one
+ * document defines each requirement identifier.
  */
-export function checkDocuments(all: Document[], exists: (path: string) => boolean, known: ReadonlySet<string>): Violation[] {
+export function checkDocuments(
+  all: Document[],
+  exists: (path: string) => boolean,
+  known: ReadonlySet<string>,
+  changed: (screen: string) => string | undefined = () => undefined,
+): Violation[] {
   const documents = all.filter((document) => CHECKED.test(document.path)).sort((a, b) => a.path.localeCompare(b.path));
   return [
     ...brokenLinks(documents, exists),
     ...LISTINGS.flatMap((listing) => unlisted(documents, listing)),
     ...checkRegister(documents, (path) => PLAN.test(path)),
     ...repeatedRulings(documents),
+    ...checkClaims(documents, exists),
+    ...checkMockups(documents, changed),
     ...repeatedDefinitions(documents, known),
   ];
 }

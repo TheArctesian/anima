@@ -172,3 +172,59 @@ describe("PLN-016 one owner for an identifier", () => {
     expect([...parseKnown("# reason\nMET-011\n\nVPN-012 # restated\n")]).toEqual(["MET-011", "VPN-012"]);
   });
 });
+
+describe("PLN-022 claims", () => {
+  const plan = { path: "docs/plans/compute-plan.md", text: "---\nkind: Plan\nstate: Draft\nevidence: none\n---\n" };
+  const claim = (name: string, task: string, extra = "") => ({
+    path: `docs/claims/${name}.md`,
+    text: `---\ntask: ${task}\nplan: docs/plans/compute-plan.md\nmachine: studio\nagent: Claude Code\nbranch: compute/c1\nstarted: 2026-11-17\n${extra}---\n`,
+  });
+  const only = (documents: Document[]) => check(documents).filter((line) => line.includes("claim"));
+
+  test("a complete claim passes, and the README of the folder is not a claim", () => {
+    expect(only([plan, claim("c1", "C1"), { path: "docs/claims/README.md", text: "" }])).toEqual([]);
+  });
+
+  test("a claim with no machine, or with a plan that does not exist, fails", () => {
+    const text = "---\ntask: C1\nplan: docs/plans/gone-plan.md\nagent: Codex\nbranch: b\nstarted: today\n---\n";
+    expect(only([{ path: "docs/claims/c1.md", text }])).toEqual([
+      "docs/claims/c1.md: claim-not-complete no machine",
+      "docs/claims/c1.md: claim-not-complete the plan docs/plans/gone-plan.md does not exist",
+      "docs/claims/c1.md: claim-not-complete started is not a date: today",
+    ]);
+  });
+
+  test("a second claim of the same task fails and names the first", () => {
+    expect(only([plan, claim("a", "C1"), claim("b", "C1"), claim("c", "C2")])).toEqual([
+      "docs/claims/b.md: task-claimed-twice docs/claims/a.md holds the same task",
+    ]);
+  });
+});
+
+describe("PLN-019 a mockup agrees with the application", () => {
+  const index = (state: string, compared: string) => ({
+    path: "docs/mockup/README.md",
+    text: `# Mockups\n\n## Index\n\n| Mockup | Owner | Screens | State | Compared | Differences |\n| --- | --- | --- | --- | --- | --- |\n| [a.html](a.html) | owner | [devices](../../apps/client/src/routes/devices) | ${state} | ${compared} | None |\n`,
+  });
+  const files = [
+    { path: "docs/mockup/a.html", text: "" },
+    { path: "apps/client/src/routes/devices/+page.svelte", text: "" },
+  ];
+  const run = (state: string, compared: string, day: string | undefined) =>
+    checkDocuments([index(state, compared), ...files], () => true, new Set(), () => day).map((v) => `${v.signal} ${v.detail}`);
+
+  test("a screen that did not change after the comparison passes", () => {
+    expect(run("Built", "2026-11-17", "2026-11-17")).toEqual([]);
+  });
+
+  test("a screen that changed after the comparison fails and gives the two days", () => {
+    expect(run("Built", "2026-11-10", "2026-11-17")).toEqual([
+      "screen-changed-after-mockup apps/client/src/routes/devices changed on 2026-11-17; [a.html](a.html) was compared on 2026-11-10",
+    ]);
+  });
+
+  test("a mockup that is not built can wait for its first comparison; a built one cannot", () => {
+    expect(run("Approved", "Not compared", "2026-11-17")).toEqual([]);
+    expect(run("Built", "Not compared", "2026-11-17")).toEqual(["mockup-not-compared [a.html](a.html)"]);
+  });
+});

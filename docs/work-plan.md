@@ -19,7 +19,9 @@ The work plan contains no build requirements. Each requirement is in the plan or
 
 | You want to | Read |
 | --- | --- |
-| Know what to do next | Section 4, [plan/priorities.md](plan/priorities.md) |
+| Start a session | `AGENTS.md`, "Start of a session": get `main`, find the work, find the task, read the claims, claim the task, build, finish |
+| Know what to do next | Section 4, [plan/priorities.md](plan/priorities.md): the first row whose column "Waits for" names an agent |
+| Know what a different session builds now | [claims/README.md](claims/README.md), PLN-022: one file for each task that is taken |
 | Know the state of a plan | Section 9, [plan/register.md](plan/register.md) |
 | Find the document that owns a requirement or an identifier | Section 5, [plan/ownership.md](plan/ownership.md) |
 | Build something | Section 10, [plan/rules.md](plan/rules.md), PLN-013: read the plan, or change it, or write a proposal. Then build. |
@@ -42,6 +44,7 @@ Where the documents are:
 | `../contracts/` | Stage 4: contracts | The frozen interfaces that the parts share (K1 to K8). Only a ruling changes one |
 | [work-items/](work-items/README.md) | Stage 5: work items | Engine, extensions, compute, decisions, device manager, defects |
 | [need-human-testing.md](need-human-testing.md), [security-findings.md](security-findings.md), [deferred.md](deferred.md) | Lists | Checks that only a person can do. Security findings. Work that was left for later |
+| [claims/](claims/README.md) | Claims | One file for each task that a session builds now, with its machine and its coding agent (PLN-022) |
 | [rulings.md](rulings.md) | Rulings | The one log of decisions, with one series of numbers (R, CR; PLN-021) |
 | [mockup/](mockup/README.md) | Mockups | Static HTML of a layout, with an index that holds the state of each. A mockup agrees with the application (PLN-019) |
 | [procedures/](procedures/) | Procedures | How to install, set up and release |
@@ -86,4 +89,4 @@ The only list of the plans of Anima, with the state of each: [plan/register.md](
 
 ## 10. Rules for plans and progress
 
-PLN-001 to PLN-021: [plan/rules.md](plan/rules.md).
+PLN-001 to PLN-022: [plan/rules.md](plan/rules.md).
