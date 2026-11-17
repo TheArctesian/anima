@@ -261,6 +261,11 @@ None of these blocks the merge.
    3. Done when the job is published. A job that fails with "builder stopped 3 times" fails
       this check.
 
+   Seen so far (2026-11-17, application 0.2.1, App Nap on, window minimised, no job): from
+   06:09 to 06:20Z the hub saw a poll from the idle builder at least each 21 s. With 0.2.0 in
+   the same state it saw none for 7 minutes. This shows the timers run, but not that a job
+   survives.
+
 ### 6.4 The first release with S12: 0.2.0 (2026-11-17)
 
 Step 1 of 6.3 was run. The operator's builder application was replaced by one built from `main` at
