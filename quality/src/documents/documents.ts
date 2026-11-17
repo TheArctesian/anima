@@ -1,5 +1,6 @@
 import { posix } from "node:path";
 import type { Violation } from "../report.ts";
+import { checkRegister } from "./register.ts";
 
 /** One Markdown file of the repository. */
 export interface Document {
@@ -12,7 +13,6 @@ export interface Listing {
   index: string;
   member: RegExp;
   signal: string;
-  needsStatus: boolean;
 }
 
 const PLAN =
@@ -22,22 +22,18 @@ const PLAN =
 export const MOCKUP = /^docs\/mockup\/.+\.html$/;
 
 export const LISTINGS: Listing[] = [
-  { index: "docs/plan/register.md", member: PLAN, signal: "plan-not-in-register", needsStatus: true },
+  { index: "docs/plan/register.md", member: PLAN, signal: "plan-not-in-register" },
   {
     index: "docs/work-items/README.md",
     member: /^docs\/work-items\/[^/]+\/[^/]+\.md$/,
     signal: "work-item-not-in-index",
-    needsStatus: false,
   },
-  { index: "docs/mockup/README.md", member: MOCKUP, signal: "mockup-not-in-index", needsStatus: false },
+  { index: "docs/mockup/README.md", member: MOCKUP, signal: "mockup-not-in-index" },
 ];
 
 const CHECKED = /^(?:docs|contracts)\/.*\.md$|^[^/]+\.md$|^docs\/mockup\/.+\.html$/;
 const LINK = /\]\(([^)\s]+)\)/g;
 const DEFINITION = /^\s*(?:[-*]\s+)?\*\*([A-Z][A-Z0-9]*(?:-[A-Z])?-\d{1,3}[a-z]?)\.\*\*/;
-const HEADER_LINES = 20;
-/** A plan gives its status, or points to the register that holds it (PLN-005). */
-const STATUS = /status|plan register/i;
 
 /** The repository paths that the relative links of a document point to. */
 export function linkTargets(document: Document): string[] {
@@ -72,14 +68,9 @@ function brokenLinks(documents: Document[], exists: (path: string) => boolean): 
 function unlisted(documents: Document[], listing: Listing): Violation[] {
   const index = documents.find((document) => document.path === listing.index);
   const named = new Set(index === undefined ? [] : linkTargets(index));
-  const members = documents.filter((document) => listing.member.test(document.path));
-  const missing = members
-    .filter((document) => !named.has(document.path))
+  return documents
+    .filter((document) => listing.member.test(document.path) && !named.has(document.path))
     .map((document) => ({ path: document.path, signal: listing.signal, detail: `no link in ${listing.index}` }));
-  const silent = members
-    .filter((document) => listing.needsStatus && !STATUS.test(document.text.split("\n", HEADER_LINES).join("\n")))
-    .map((document) => ({ path: document.path, signal: "plan-without-status", detail: `no status and no pointer to the plan register in its first ${HEADER_LINES} lines` }));
-  return [...missing, ...silent];
 }
 
 function repeatedDefinitions(documents: Document[], known: ReadonlySet<string>): Violation[] {
@@ -105,13 +96,15 @@ export function parseKnown(text: string): Set<string> {
 
 /**
  * PLN-017: the links resolve, each plan, each work item and each mockup is in its list, a plan
- * shows its status, and one document defines each requirement identifier.
+ * gives its kind and its state in its header, the register agrees with the headers (PLN-020),
+ * and one document defines each requirement identifier.
  */
 export function checkDocuments(all: Document[], exists: (path: string) => boolean, known: ReadonlySet<string>): Violation[] {
   const documents = all.filter((document) => CHECKED.test(document.path)).sort((a, b) => a.path.localeCompare(b.path));
   return [
     ...brokenLinks(documents, exists),
     ...LISTINGS.flatMap((listing) => unlisted(documents, listing)),
+    ...checkRegister(documents, (path) => PLAN.test(path)),
     ...repeatedDefinitions(documents, known),
   ];
 }

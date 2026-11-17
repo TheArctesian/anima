@@ -1,3 +1,9 @@
+---
+kind: Task breakdown: the work items that came from the GitHub issues, with the state of each
+state: In progress
+evidence: R-119 (operator, 2026-11-16). 57 items: engine, extensions, compute, decisions, device manager and defects. Each item names the row of Section 4 that it serves. The states are the states of the issues at the import and are not checked against the code.
+---
+
 # Work items
 
 Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds the row of this index (PLN-005).

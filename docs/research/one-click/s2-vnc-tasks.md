@@ -1,3 +1,9 @@
+---
+kind: Task breakdown: native VNC gateway
+state: In progress
+evidence: Its Section 6: T1 to T8, T10 and T11 have commits on `main`. T9 waits for the operator. Its parent plan is [one-click-plan.md](../../one-click-plan.md).
+---
+
 # S2 task breakdown: native VNC
 
 Progress: the plan register in [work-plan.md](../../work-plan.md) Section 9 holds the state of this plan (PLN-005).

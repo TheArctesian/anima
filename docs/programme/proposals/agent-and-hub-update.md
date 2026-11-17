@@ -1,3 +1,9 @@
+---
+kind: Proposal, with a task table
+state: In progress
+evidence: Version 1 (2026-11-16). Tier decided (OD-W23; Section 4, row 4.18). Only R-122 is approved. Task U1 is Done; the other tasks of its "Tasks" are Not started.
+---
+
 # Proposal: update the agent and the hub on each machine (one press, and automatic)
 
 Progress: the plan register in [work-plan.md](../../work-plan.md) Section 9 holds the state of this plan (PLN-005).

@@ -1,3 +1,9 @@
+---
+kind: Task breakdown: packaging
+state: In progress
+evidence: Its Section 3: T1 to T8 have commits. The checks of its Section 6.3 wait for the operator or other hardware. Its parent plan is [one-click-plan.md](../../one-click-plan.md).
+---
+
 # S12 task breakdown: packaging
 
 Progress: the plan register in [work-plan.md](../../work-plan.md) Section 9 holds the state of this plan (PLN-005).

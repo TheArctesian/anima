@@ -1,3 +1,9 @@
+---
+kind: Plan
+state: In progress
+evidence: Its header says "For review". Its work items were open at the import of 2026-11-16 ([work-items/](work-items/README.md), "Compute" and "Decisions"). The tool inventory (CAP-020 to CAP-031) is built: the agent, the hub, `anima capability list` and the MCP tool (commits 1cb43b06 to a0cf53e5). Its live checks are open ([need-human-testing.md](need-human-testing.md), HT-002 to HT-006). Its client section is approved and not started (Section 11.1, CUI-010 to CUI-019). No other part is approved.
+---
+
 # Anima Compute Plan
 
 Progress: the plan register in [work-plan.md](work-plan.md) Section 9 holds the state of this plan (PLN-005).

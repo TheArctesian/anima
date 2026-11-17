@@ -1,3 +1,9 @@
+---
+kind: Plan: Phase 1
+state: Done
+evidence: Section 4, tier 0: Phases 1 to 3 are built. Its header still says "draft".
+---
+
 # Anima Agent Implementation Plan — Phase 1
 
 Progress: the plan register in [work-plan.md](work-plan.md) Section 9 holds the state of this plan (PLN-005).

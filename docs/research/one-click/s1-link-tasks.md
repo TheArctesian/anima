@@ -1,3 +1,9 @@
+---
+kind: Task breakdown: the link (`anima-link`)
+state: In progress
+evidence: T1 to T13 have commits on `main` (merge `f367f819`). T14, the live checks with a second Mac, waits for the operator. Its parent plan is [one-click-plan.md](../../one-click-plan.md).
+---
+
 # S1 task breakdown: the link (`anima-link`)
 
 Date: 2026-11-14. Status: **approved by the operator on 2026-11-14 with every recommended

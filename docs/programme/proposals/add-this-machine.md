@@ -1,3 +1,9 @@
+---
+kind: Proposal
+state: Draft. Build state not checked
+evidence: Its status line: a proposal for a ruling.
+---
+
 # Proposal: "Add this machine" after sign-in
 
 Progress: the plan register in [work-plan.md](../../work-plan.md) Section 9 holds the state of this plan (PLN-005).

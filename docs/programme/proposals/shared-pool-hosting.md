@@ -1,3 +1,9 @@
+---
+kind: Proposal
+state: Draft
+evidence: Not approved. Launch on the pool is decided (HM-R4, operator, 2026-11-16); the design is not. The AX102 list price was corrected on 2026-11-16 to €259 a month plus €129 setup (about $286).
+---
+
 # Shared Pool Hosting
 
 Progress: the plan register in [work-plan.md](../../work-plan.md) Section 9 holds the state of this plan (PLN-005).

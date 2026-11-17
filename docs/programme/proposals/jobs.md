@@ -1,3 +1,9 @@
+---
+kind: Proposal
+state: Draft
+evidence: Direction decided (OD-W10). No requirement is approved. Version 2 (2026-11-16) adds JOB-011. Its tasks W1 to W6 are in the task table of the row above.
+---
+
 # Proposal: jobs (work that the coordinator gives to a machine)
 
 Progress: the plan register in [work-plan.md](../../work-plan.md) Section 9 holds the state of this plan (PLN-005).

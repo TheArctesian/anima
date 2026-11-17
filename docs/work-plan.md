@@ -87,4 +87,4 @@ The only list of the plans of Anima, with the state of each: [plan/register.md](
 
 ## 10. Rules for plans and progress
 
-PLN-001 to PLN-019: [plan/rules.md](plan/rules.md).
+PLN-001 to PLN-020: [plan/rules.md](plan/rules.md).

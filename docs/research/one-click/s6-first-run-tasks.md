@@ -1,3 +1,9 @@
+---
+kind: Task breakdown: the first run
+state: In progress
+evidence: Its Section 3 holds the state of each task. Its parent plan is [one-click-plan.md](../../one-click-plan.md).
+---
+
 # S6 task breakdown: the first run
 
 Progress: the plan register in [work-plan.md](../../work-plan.md) Section 9 holds the state of this plan (PLN-005).

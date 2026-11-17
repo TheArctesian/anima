@@ -1,3 +1,9 @@
+---
+kind: Proposal
+state: Draft
+evidence: Direction decided (OD-W2). It has no requirements.
+---
+
 # Proposal: Anima for other persons (self-hosting and a hosted option)
 
 Progress: the plan register in [work-plan.md](../../work-plan.md) Section 9 holds the state of this plan (PLN-005).

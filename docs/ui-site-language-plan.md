@@ -1,3 +1,9 @@
+---
+kind: Plan
+state: Approved. Build state not checked
+evidence: Approved for implementation on 2026-11-13.
+---
+
 # Anima UI: the website's design language (draft for review)
 
 Progress: the plan register in [work-plan.md](work-plan.md) Section 9 holds the state of this plan (PLN-005).

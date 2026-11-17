@@ -1,3 +1,9 @@
+---
+kind: Plan: change to Phase 3
+state: Done
+evidence: Approved 2026-11-07. WP-54 is done ([handoff.md](handoff.md)).
+---
+
 # Phase 3 delta: metrics push agent (R-084)
 
 Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds the state of this plan (PLN-005).

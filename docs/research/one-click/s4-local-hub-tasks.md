@@ -1,3 +1,9 @@
+---
+kind: Task breakdown: the hub as a background program
+state: In progress
+evidence: Its Section 2: T1 to T8 have commits; T9 and T10 are not started. No operator ruling on its design. Its parent plan is [one-click-plan.md](../../one-click-plan.md).
+---
+
 # S4 task breakdown: the hub as a background program
 
 Progress: the plan register in [work-plan.md](../../work-plan.md) Section 9 holds the state of this plan (PLN-005).

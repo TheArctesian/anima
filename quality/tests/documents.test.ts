@@ -1,9 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import { checkDocuments, definedIdentifiers, linkTargets, parseKnown, type Document } from "../src/documents/documents.ts";
+import { registerRows, withRows } from "../src/documents/register.ts";
 
 const REGISTER = "docs/plan/register.md";
 const INDEX = "docs/work-items/README.md";
-const PLAN_TEXT = "# Plan\n\n| Status | Draft |\n";
+const PLAN_TEXT = "---\nkind: Plan\nstate: Draft\n---\n\n# Plan\n";
 
 function check(documents: Document[], known: string[] = []) {
   const paths = new Set(documents.map((document) => document.path));
@@ -59,22 +60,22 @@ describe("PLN-001 PLN-012 lists", () => {
     ).toEqual(["docs/programme/proposals/new-idea.md: plan-not-in-register no link in docs/plan/register.md"]);
   });
 
-  test("a plan with no status in its header fails", () => {
+  test("a plan with no kind and state in its header fails", () => {
     expect(
       check([
         { path: REGISTER, text: "[a](../compute-plan.md)" },
-        { path: "docs/compute-plan.md", text: "# Plan\n" },
+        { path: "docs/compute-plan.md", text: "# Plan\n\n| Status | Draft |\n" },
       ]),
-    ).toEqual(["docs/compute-plan.md: plan-without-status no status and no pointer to the plan register in its first 20 lines"]);
+    ).toEqual(["docs/compute-plan.md: plan-without-state its header needs `kind:` and a `state:` that starts with a word of PLN-007"]);
   });
 
-  test("a plan that points to the plan register passes", () => {
+  test("a state that is not a word of PLN-007 fails", () => {
     expect(
       check([
         { path: REGISTER, text: "[a](../compute-plan.md)" },
-        { path: "docs/compute-plan.md", text: "# Plan\n\nProgress: the plan register holds the state of this plan.\n" },
-      ]),
-    ).toEqual([]);
+        { path: "docs/compute-plan.md", text: "---\nkind: Plan\nstate: Nearly there\n---\n" },
+      ]).map((line) => line.split(" ").slice(0, 2).join(" ")),
+    ).toEqual(["docs/compute-plan.md: plan-without-state"]);
   });
 
   test("the work plan and a report are not plans", () => {
@@ -95,6 +96,33 @@ describe("PLN-001 PLN-012 lists", () => {
         { path: "docs/work-items/compute/C2.md", text: "" },
       ]),
     ).toEqual(["docs/work-items/compute/C2.md: work-item-not-in-index no link in docs/work-items/README.md"]);
+  });
+});
+
+describe("PLN-020 the register is generated", () => {
+  const plan = {
+    path: "docs/programme/proposals/jobs.md",
+    text: "---\nkind: Proposal\nstate: Draft\nevidence: See [the spec](../../design-spec.md).\n---\n",
+  };
+  const spec = { path: "docs/design-spec.md", text: "---\nkind: Specification\nstate: Approved\n---\n" };
+  const rows = registerRows([plan, spec]);
+
+  test("a row comes from the header, in the order of the kinds, with links from the register", () => {
+    expect(rows.split("\n").filter((line) => line.startsWith("| ["))).toEqual([
+      "| [design-spec.md](../design-spec.md) | Specification | Approved |  |",
+      "| [programme/proposals/jobs.md](../programme/proposals/jobs.md) | Proposal | Draft | See [the spec](../design-spec.md). |",
+    ]);
+  });
+
+  test("a register that agrees with the headers passes, and one that does not fails", () => {
+    const current = { path: REGISTER, text: `intro\n${rows}\nend` };
+    expect(check([current, plan, spec])).toEqual([]);
+    const stale = { path: REGISTER, text: current.text.replace("| Draft |", "| Done |") };
+    expect(check([stale, plan, spec])).toEqual(["docs/plan/register.md: register-out-of-date run `bun run quality:register`"]);
+  });
+
+  test("a register with no generated list is left alone", () => {
+    expect(withRows("no markers", rows)).toBeUndefined();
   });
 });
 

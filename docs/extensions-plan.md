@@ -1,3 +1,9 @@
+---
+kind: Plan
+state: In progress
+evidence: Its header says "For review". On `main`: E0-1, E0-2, E0-8 without its launch briefs, the Projects extension (PRO-001 to PRO-004) and Connect GitHub (PRJ-039 to PRJ-042) (Section 4, tiers 2a and 3a). E0-4 is on `main` since 2026-11-17, without its client component. E0-3, E0-5 to E0-7 and the other extensions are not on `main`. The index of the work items holds the state of each item ([work-items/](work-items/README.md), "Engine", "Extensions" and "Decisions").
+---
+
 # Anima Extensions Plan
 
 Progress: the plan register in [work-plan.md](work-plan.md) Section 9 holds the state of this plan (PLN-005).

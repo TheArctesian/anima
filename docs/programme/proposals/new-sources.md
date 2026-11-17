@@ -1,3 +1,9 @@
+---
+kind: Proposal
+state: Draft
+evidence: No provider is verified.
+---
+
 # Proposal: three new sources (Cloudflare, Spotify, Screen Time)
 
 Progress: the plan register in [work-plan.md](../../work-plan.md) Section 9 holds the state of this plan (PLN-005).

@@ -1,3 +1,9 @@
+---
+kind: Plan
+state: In progress
+evidence: Section 3: the command line and the MCP server are on `main`. The test against a real hub is open ([GH-60](work-items/device-manager/GH-60.md)). R-120 (operator, 2026-11-16): the MCP server is fully automatic by default (MCP-024 to MCP-026); ruled and not built.
+---
+
 # Anima command line and MCP plan
 
 Progress: the plan register in [work-plan.md](work-plan.md) Section 9 holds the state of this plan (PLN-005).

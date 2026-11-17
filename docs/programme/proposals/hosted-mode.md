@@ -1,3 +1,9 @@
+---
+kind: Proposal
+state: Draft
+evidence: Direction decided (HM-R1 to HM-R9, operator, 2026-11-16). HMD-001 to HMD-036 are not approved. HM-R6: a free hub sleeps. HM-R7: Apple Pay and Google Pay. HM-R8: no staff access to hubs. HM-R9: WorkOS AuthKit (decides HM-D3). HM-D4 (second factor) is proposed, not ruled.
+---
+
 # Proposal: the hosted mode as the default first run
 
 Progress: the plan register in [work-plan.md](../../work-plan.md) Section 9 holds the state of this plan (PLN-005).

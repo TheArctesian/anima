@@ -1,3 +1,9 @@
+---
+kind: Proposal
+state: Draft
+evidence: Not approved. CMD-032 to CMD-038. INS-009 ruled 2026-11-16.
+---
+
 # Proposal: Anima.ing shell prompt
 
 Progress: the plan register in [work-plan.md](../../work-plan.md) Section 9 holds the state of this plan (PLN-005).

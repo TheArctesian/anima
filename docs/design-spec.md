@@ -1,3 +1,9 @@
+---
+kind: Specification
+state: Approved
+evidence: `AGENTS.md` names it the source of truth.
+---
+
 # Anima Design Specification
 
 | Item | Value |

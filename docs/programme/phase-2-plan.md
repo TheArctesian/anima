@@ -1,3 +1,9 @@
+---
+kind: Plan: Phase 2
+state: Done
+evidence: Adopted (R-065). Section 4, tier 0.
+---
+
 # Anima Agent Implementation Plan — Phase 2
 
 Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds the state of this plan (PLN-005).

@@ -1,3 +1,9 @@
+---
+kind: Plan
+state: Draft
+evidence: Version 0.1 (2026-11-14). Its header says: for operator review, nothing in this plan is accepted. `PWR`, `HLT`, `HWI` are proposed. Its `HLT-001` to `HLT-007` have the same identifiers as requirements of the Health extension in the extensions plan (PLN-016): one of the two must get new identifiers. No tier in Section 4 yet.
+---
+
 # Anima Power and Hardware Health Plan
 
 | Item | Value |

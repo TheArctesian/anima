@@ -1,3 +1,9 @@
+---
+kind: Proposal
+state: Draft
+evidence: Direction decided (OD-W9). No requirement is approved.
+---
+
 # Proposal: copies of the coordinator database, and how to move the coordinator
 
 Progress: the plan register in [work-plan.md](../../work-plan.md) Section 9 holds the state of this plan (PLN-005).

@@ -1,3 +1,9 @@
+---
+kind: Task breakdown: stay awake
+state: In progress
+evidence: Its Section 5: T1 to T6 have commits. The live checks of its Section 6 wait for the operator. Its parent plan is [one-click-plan.md](../../one-click-plan.md).
+---
+
 # S8 task breakdown: Stay awake
 
 Progress: the plan register in [work-plan.md](../../work-plan.md) Section 9 holds the state of this plan (PLN-005).

@@ -1,3 +1,9 @@
+---
+kind: Proposal
+state: Draft. Build state not checked
+evidence: Its status line: a proposal for a ruling (R-062).
+---
+
 # Proposal: SSH in a real terminal (hub SSH client, xterm.js in the app)
 
 Progress: the plan register in [work-plan.md](../../work-plan.md) Section 9 holds the state of this plan (PLN-005).

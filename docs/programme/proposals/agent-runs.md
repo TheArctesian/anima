@@ -1,3 +1,9 @@
+---
+kind: Proposal
+state: Draft
+evidence: Not approved.
+---
+
 # Proposal: AI agent runs as a job type
 
 Progress: the plan register in [work-plan.md](../../work-plan.md) Section 9 holds the state of this plan (PLN-005).

@@ -1,3 +1,9 @@
+---
+kind: Task breakdown: access rules by device key
+state: In progress
+evidence: T1 to T9 have commits on `main` (merge `f367f819`); T10, the agent's link origin, has its commit. Open: the K7 row of its Section 6.3 and one test of agent, link and hub together. Its parent plan is [one-click-plan.md](../../one-click-plan.md).
+---
+
 # S5. Access rules by device key: task list
 
 Progress: the plan register in [work-plan.md](../../work-plan.md) Section 9 holds the state of this plan (PLN-005).

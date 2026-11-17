@@ -101,7 +101,7 @@ test (CMD-031) fails when a root field of `contracts/schema.graphql` has no comm
 
 [docs/work-plan.md](docs/work-plan.md) is the entry point to all planning documents. Start there. Its
 parts are in `docs/plan/`: the priority order (`priorities.md`), the register of all plans with their
-state (`register.md`) and the rules (`rules.md`, PLN-001 to PLN-019, operator, 2026-11-15 to 2026-11-17).
+state (`register.md`) and the rules (`rules.md`, PLN-001 to PLN-020, operator, 2026-11-15 to 2026-11-17).
 
 - Plan first (PLN-013). Before you change code, find the plan that owns the work, read it, and build
   from it. If the plan does not include the work, change the plan first. If no plan owns the work,
@@ -118,6 +118,8 @@ state (`register.md`) and the rules (`rules.md`, PLN-001 to PLN-019, operator, 2
 - Write each plan in STE (design spec Section 0), with a title, a version, a date and a status.
 - Change the state of a task in the commit that does the work. "Done" must name a commit, an
   acceptance record or a ruling.
+- The state of a plan is in the header of the plan (`kind:`, `state:`, `evidence:`). Change it there, then
+  run `bun run quality:register`: it writes the register. Do not change the register table by hand (PLN-020).
 - A report, a log or a procedure must not add a requirement.
 - Do not use GitHub issues, labels or project boards as a store (PLN-012, R-119). A work item or a defect
   is a document in [docs/work-items/](docs/work-items/README.md). Deferred work is a line in

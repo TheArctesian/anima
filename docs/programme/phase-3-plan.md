@@ -1,3 +1,9 @@
+---
+kind: Plan: Phase 3
+state: In progress
+evidence: Adopted (R-081). All packages are done. The acceptance run (WP-53) waits for the operator ([handoff.md](handoff.md), 2026-11-12).
+---
+
 # Anima Agent Implementation Plan — Phase 3
 
 Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds the state of this plan (PLN-005).

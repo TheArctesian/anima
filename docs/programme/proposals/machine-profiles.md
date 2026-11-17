@@ -1,3 +1,9 @@
+---
+kind: Proposal
+state: Draft
+evidence: Not approved. REP-001 to REP-025. MET-002, USE-006, INS-009 and VLT-007 ruled 2026-11-16.
+---
+
 # Proposal: machine profiles
 
 Progress: the plan register in [work-plan.md](../../work-plan.md) Section 9 holds the state of this plan (PLN-005).

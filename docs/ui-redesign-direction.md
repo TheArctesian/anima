@@ -1,3 +1,9 @@
+---
+kind: Plan: direction of the redesign
+state: Not checked
+evidence: Its title says "draft for approval".
+---
+
 # Anima UI redesign: direction and spec delta (draft for approval)
 
 Progress: the plan register in [work-plan.md](work-plan.md) Section 9 holds the state of this plan (PLN-005).

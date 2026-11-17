@@ -1,3 +1,9 @@
+---
+kind: Plan
+state: In progress
+evidence: Its status: the operator accepted the direction and the spikes on 2026-11-14 (its Section 9). It serves Section 4, row 4.16. It is the parent plan of the task breakdowns and the spec delta proposals in `research/one-click/` below.
+---
+
 # Anima One-Click Install Plan
 
 | Item | Value |

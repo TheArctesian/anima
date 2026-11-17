@@ -1,3 +1,9 @@
+---
+kind: Task breakdown: bundled PostgreSQL
+state: In progress
+evidence: Approved by the operator on 2026-11-14. Its Section 7.5: T1 to T9 and T15 have commits; T10 is in progress; T11 to T14 wait for the operator or other hardware. Its parent plan is [one-click-plan.md](../../one-click-plan.md).
+---
+
 # S3 task breakdown: the bundled PostgreSQL
 
 Progress: the plan register in [work-plan.md](../../work-plan.md) Section 9 holds the state of this plan (PLN-005).

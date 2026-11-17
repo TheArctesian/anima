@@ -1,3 +1,9 @@
+---
+kind: Proposal, with a task table
+state: Draft
+evidence: Version 1 (2026-11-16). Not approved (OD-W22). No tier yet (Section 4, row 4.19). Task G1, a prototype, is In progress: launchd, Docker and systemd are measured; the right of WDG-040 is open ([research/watchdog/g1-supervisors.md](../../research/watchdog/g1-supervisors.md)). The other tasks of its "Tasks" are Not started.
+---
+
 # Proposal: the watchdog (keep the important programs of a machine running)
 
 Progress: the plan register in [work-plan.md](../../work-plan.md) Section 9 holds the state of this plan (PLN-005).

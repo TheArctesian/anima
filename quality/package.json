@@ -8,6 +8,7 @@
     "names": "bun bin/names.ts",
     "imports": "bun bin/imports.ts",
     "documents": "bun bin/documents.ts",
+    "register": "bun bin/register.ts",
     "test": "bun test",
     "check": "tsc --noEmit",
     "lint": "eslint ."

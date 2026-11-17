@@ -1,3 +1,9 @@
+---
+kind: Proposal: spec delta for packaging
+state: Draft
+evidence: Not approved. It changes no requirement until the operator approves it.
+---
+
 # S12 spec delta: proposal
 
 Progress: the plan register in [work-plan.md](../../work-plan.md) Section 9 holds the state of this plan (PLN-005).

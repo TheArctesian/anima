@@ -1,3 +1,9 @@
+---
+kind: Proposal
+state: Draft
+evidence: Not approved. CVM-001 to CVM-024.
+---
+
 # Proposal: cloud computers and GPU add-ons
 
 Progress: the plan register in [work-plan.md](../../work-plan.md) Section 9 holds the state of this plan (PLN-005).

@@ -1,3 +1,9 @@
+---
+kind: Plan, with the task table for builds and runners
+state: In progress
+evidence: It was a proposal until 2026-11-17 (PLN-018). PRO-031 to PRO-053 have no ruling, except the requirements that OD-W14 to OD-W21 name. Decided (OD-W11, OD-W12, OD-W13). Connect GitHub is on `main`. Version 2 (2026-11-16): OD-W14 to OD-W21 are decided; its status line names the requirements that still have no ruling. In its "Tasks", R1 to R4 are Done (commit `e3058276` on `main`). Each other task is Not started.
+---
+
 # Plan: projects first (import from GitHub, the builder as a job, sign-in)
 
 Progress: the plan register in [work-plan.md](work-plan.md) Section 9 holds the state of this plan (PLN-005).
