@@ -271,7 +271,10 @@
       padding-block-start: var(--space-6);
     }
 
+    /* The gutter of 20 px and the 6 px over the title are those of the approved mockups. */
     .shell > main {
+      --page-gutter: var(--space-5);
+      padding-block-start: calc(var(--space-1) + var(--border-focus));
       padding-block-end: calc(var(--space-8) + var(--phone-bar-block-size));
     }
   }
