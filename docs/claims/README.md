@@ -15,8 +15,8 @@ A claim is not a state. The task table of the plan holds the state of the task (
 ## Rules (PLN-022)
 
 - Before a session takes a task, it reads this folder on `origin/main`. If a claim holds the task, the session does not take it.
-- To take a task, the session writes one file `docs/claims/<name>.md`, runs `bun run quality:documents`, commits that file only, and pushes the commit to `main`. Then it starts the work. This commit needs no other gate, because it changes no code.
-- If `main` moved and the push is refused, the session gets `main` again, reads the claims again, and tries again only if the task is free.
+- To take a task, the session does these steps in its worktree: `git fetch origin`; `git switch --detach origin/main`; write one file `docs/claims/<name>.md`; `bun run quality:documents`; commit that file only; `git push origin HEAD:main`; then `git switch -c <branch>`. The branch starts at the claim commit, so it holds the claim, and the merge of the work can delete it. This commit needs no other gate, because it changes no code.
+- If `main` moved and the push is refused, the session starts the steps again (`git fetch origin`, `git switch --detach origin/main`), reads the claims again, and continues only if the task is free. Do not rebase a claim on a `main` that has a claim of the same task.
 - The machine is not planned. The session that starts the work writes the name of the machine that it runs on.
 - The commit that merges the work into `main` deletes the claim and sets the state of the task (PLN-008).
 - A session that stops and will not continue deletes its claim and writes in the task row what is built.
@@ -38,7 +38,7 @@ started: 2026-11-17
 ---
 ```
 
-- `task` is the identifier in the task table or in the index of the work items.
+- `task` is the identifier in the task table or in the index of the work items. The gate compares it without case, and the plan must name it. For a correction of a defect that has no task row, `task` is the identifier of the defect or of the requirement, and `plan` is the document that names it.
 - `plan` is the path of the plan from the root of the repository.
 - `branch` is the branch that will hold the work. Push it early, so that a different session can see that the claim is not old.
 

@@ -1,5 +1,6 @@
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { QUEUE, queueRows, withQueue } from "../src/documents/queue.ts";
 import { REGISTER, registerRows, withRows } from "../src/documents/register.ts";
 import { listMeasurableFiles, readRepoFile, REPO_ROOT } from "../src/repository.ts";
 
@@ -15,3 +16,12 @@ if (written === undefined) {
 }
 writeFileSync(join(REPO_ROOT, REGISTER), written);
 console.log(`register: wrote ${REGISTER}`);
+
+// The queue reads the register's sources and the state of each header, so write it second.
+const queue = withQueue(readRepoFile(REPO_ROOT, QUEUE), queueRows(documents));
+if (queue === undefined) {
+  console.error(`register: ${QUEUE} has no generated part`);
+  process.exit(1);
+}
+writeFileSync(join(REPO_ROOT, QUEUE), queue);
+console.log(`register: wrote ${QUEUE}`);

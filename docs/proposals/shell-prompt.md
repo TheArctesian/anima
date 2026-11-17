@@ -13,7 +13,7 @@ said that Starship is a perfect example, and pointed at the fish configuration i
 DotFiles and `.config` repositories (oh-my-fish theme boxfish, Zellij, and a few helper
 functions).
 Version: 1. Date: 2026-11-16.
-Status: Draft. The requirements are not yet approved. No ruling.
+Status: the header of this document holds the state (PLN-020). History: Draft. The requirements are not yet approved. No ruling.
 Map: [work-plan.md](../work-plan.md). The command line is not a category (Section 3). This
 proposal extends the `anima` program (CMD) and touches installation (INS-009). If the operator
 approves it, the new command identifiers move into [cli-mcp-plan.md](../plans/cli-mcp-plan.md)

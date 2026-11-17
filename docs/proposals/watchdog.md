@@ -11,7 +11,7 @@ Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds t
 Version: 1. Date: 2026-11-16.
 From: the operator's request of 2026-11-16 for two proposals: a watchdog, and the update of the
 agent and the hub ([agent-and-hub-update.md](agent-and-hub-update.md)).
-Status: Draft. A proposal for a ruling. No requirement is approved. Nothing is built.
+Status: the header of this document holds the state (PLN-020). History: Draft. A proposal for a ruling. No requirement is approved. Nothing is built.
 Map: [work-plan.md](../work-plan.md), categories See and Use, decision OD-W22.
 Identifiers: WDG-001 to WDG-041.
 
@@ -234,7 +234,7 @@ machine, and the command to add one.
 | The work route (tasks W1, W4 and W5 of [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md)) | Not started | Stage 2 needs it. Stage 1 does not. |
 | A change to K8, which is frozen (CON-001) | Not asked | The reports of WDG-031 need an optional member of the push, or `/agent/v2/`. |
 | The update of the agent ([agent-and-hub-update.md](agent-and-hub-update.md)) | Proposal | Without it, each machine gets the watchdog only when a person builds and installs the agent by hand. |
-| Signed releases: the first release (task R7), and an agent artefact for each target | No release is published. The builder makes only the desktop application. | A machine with no desktop application has no published agent to install. |
+| Signed releases: the first release (task R7), and an agent artefact for each target | See the release record in [releases.md](../procedures/releases.md). The builder makes only the desktop application. | A machine with no desktop application has no published agent to install. |
 | The isolation design and the security review of the work route (tasks W2 and S) | Not started | The right of WDG-040 is a security subject. It needs the security reviewer. |
 | Read-only discovery (R-115 "later", HOST-001) | Not built, no requirement | WDG-005 is that function. Build it one time, for this proposal and for hosted applications. |
 | The client's audit list and the actor kinds in the client (LOG-020) | Built in the hub, the command line and the MCP server; not in the client | The Logs tab can show the restarts without it. |

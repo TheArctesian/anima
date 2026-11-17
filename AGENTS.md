@@ -17,18 +17,22 @@ the one source of truth; [docs/work-plan.md](docs/work-plan.md) is the entry poi
    If the operator named no work, open [docs/plan/priorities.md](docs/plan/priorities.md) and take the
    first row, from the top, whose column "Waits for" names an agent. A row that waits for the
    operator is not yours: tell the operator what it waits for, then go to the next row.
-3. **Find the task.** Open the plan of that row. Its task table, or its work item in
-   [docs/work-items/](docs/work-items/README.md), holds the tasks. Take the first task that is
-   "Not started" and that no open decision blocks. If the plan has no task row for the work, add
-   the row first (PLN-013). If no plan owns the work, write a short proposal first. If the operator
-   gave an idea and did not ask for a build, record the idea and stop
-   ([docs/ideas/README.md](docs/ideas/README.md)).
+3. **Find the task.** A row has work for you only if its "Waits for" says "Agent:" with a link. Open
+   that plan or work item. Take the named task if its state is "Not started" and no open decision
+   blocks it. Do not take a task that is "In progress" with no claim: its session may be alive; find
+   its branch or ask the operator. Do not build from a proposal, or from a plan whose state is Draft,
+   Direction decided or Not checked, unless a ruling names the task (PLN-007). If the plan has no
+   task row for the work, add the row first (PLN-013). If the operator gave an idea: first look in
+   [docs/plan/ownership.md](docs/plan/ownership.md); if a plan owns the subject, say which
+   requirement has it or change that plan; if none does, record the idea and stop
+   ([docs/ideas/README.md](docs/ideas/README.md)). "Build" means that the operator asked for code.
 4. **Read the claims.** Look at [docs/claims/](docs/claims/README.md) on `origin/main`. If a claim
    holds the task, a different session builds it. Take the next task or ask the operator.
-5. **Claim the task.** Write `docs/claims/<task>.md` with the task, the plan, the name of this
-   machine in Anima, your coding agent, the branch and the day. Run `bun run quality:documents`,
-   commit that file only, and push it to `main`. If the push is refused, get `main`, read the
-   claims again, and continue only if the task is free (PLN-022).
+5. **Claim the task.** In your worktree: `git fetch origin`, then `git switch --detach origin/main`.
+   Write `docs/claims/<task>.md` with the task, the plan, the name of this machine in Anima, your
+   coding agent, the branch and the day. Run `bun run quality:documents`, commit that file only, and
+   run `git push origin HEAD:main`. If the push is refused, start this step again and continue only
+   if the task is free. Then `git switch -c <branch>`: the branch starts at the claim commit (PLN-022).
 6. **Build** on a branch, in its own worktree, from the task and the requirements that it names.
    Build in the order hub API, `anima` command, MCP tool, client (CMD-030). If you change the
    layout of a screen that has a mockup, change the mockup in the same commit (PLN-019). If the
@@ -41,7 +45,8 @@ the one source of truth; [docs/work-plan.md](docs/work-plan.md) is the entry poi
    you will continue on the same machine.
 
 A question that only the operator can answer does not stop the session. Write it as a row in the
-open decisions of the plan, tell the operator, and take a different task.
+open decisions of the plan, run `bun run quality:register` so that it is in
+[docs/operator-queue.md](docs/operator-queue.md) (PLN-023), tell the operator, and take a different task.
 
 ## Before you change code
 
@@ -139,7 +144,7 @@ test (CMD-031) fails when a root field of `contracts/schema.graphql` has no comm
 
 [docs/work-plan.md](docs/work-plan.md) is the entry point to all planning documents. Start there. Its
 parts are in `docs/plan/`: the priority order (`priorities.md`), the register of all plans with their
-state (`register.md`) and the rules (`rules.md`, PLN-001 to PLN-022, operator, 2026-11-15 to 2026-11-17).
+state (`register.md`) and the rules (`rules.md`, PLN-001 to PLN-023, operator, 2026-11-15 to 2026-11-17).
 
 - Plan first (PLN-013). Before you change code, find the plan that owns the work, read it, and build
   from it. If the plan does not include the work, change the plan first. If no plan owns the work,

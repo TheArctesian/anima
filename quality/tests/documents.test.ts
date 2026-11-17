@@ -1,10 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import { checkDocuments, definedIdentifiers, linkTargets, parseKnown, type Document } from "../src/documents/documents.ts";
-import { registerRows, withRows } from "../src/documents/register.ts";
+import { queueRows } from "../src/documents/queue.ts";
+import { hasList, registerRows, withRows } from "../src/documents/register.ts";
 
 const REGISTER = "docs/plan/register.md";
 const INDEX = "docs/work-items/README.md";
-const PLAN_TEXT = "---\nkind: Plan\nstate: Draft\n---\n\n# Plan\n";
+const PLAN_TEXT = "---\nkind: Plan\nstate: Draft\nevidence: none\n---\n\n# Plan\n";
 
 function check(documents: Document[], known: string[] = []) {
   const paths = new Set(documents.map((document) => document.path));
@@ -104,12 +105,12 @@ describe("PLN-020 the register is generated", () => {
     path: "docs/proposals/jobs.md",
     text: "---\nkind: Proposal\nstate: Draft\nevidence: See [the spec](../spec/design-spec.md).\n---\n",
   };
-  const spec = { path: "docs/spec/design-spec.md", text: "---\nkind: Specification\nstate: Approved\n---\n" };
+  const spec = { path: "docs/spec/design-spec.md", text: "---\nkind: Specification\nstate: Approved\nevidence: none\n---\n" };
   const rows = registerRows([plan, spec]);
 
   test("a row comes from the header, in the order of the kinds, with links from the register", () => {
     expect(rows.split("\n").filter((line) => line.startsWith("| ["))).toEqual([
-      "| [spec/design-spec.md](../spec/design-spec.md) | Specification | Approved |  |",
+      "| [spec/design-spec.md](../spec/design-spec.md) | Specification | Approved | none |",
       "| [proposals/jobs.md](../proposals/jobs.md) | Proposal | Draft | See [the spec](../spec/design-spec.md). |",
     ]);
   });
@@ -121,8 +122,16 @@ describe("PLN-020 the register is generated", () => {
     expect(check([stale, plan, spec])).toEqual(["docs/plan/register.md: register-out-of-date run `bun run quality:register`"]);
   });
 
-  test("a register with no generated list is left alone", () => {
+  test("a register with no markers has no generated list", () => {
     expect(withRows("no markers", rows)).toBeUndefined();
+    expect(hasList("no markers")).toBe(false);
+    expect(hasList(rows)).toBe(true);
+  });
+
+  test("a plan with a state and no evidence fails", () => {
+    expect(check([{ path: "docs/plans/compute-plan.md", text: "---\nkind: Plan\nstate: Done\n---\n" }]).filter((line) => line.includes("evidence"))).toEqual([
+      "docs/plans/compute-plan.md: plan-without-evidence its header needs `evidence:` (PLN-009)",
+    ]);
   });
 });
 
@@ -151,14 +160,23 @@ describe("PLN-016 one owner for an identifier", () => {
   const second = { path: "docs/spec/design-spec.md", text: `${PLAN_TEXT}**CMP-003.** A second text.\nSee CMP-003 and **CMP-004**.` };
   const register = { path: REGISTER, text: "[a](../plans/compute-plan.md) [b](../spec/design-spec.md)" };
 
+  const alone = { path: REGISTER, text: "[a](../plans/compute-plan.md)" };
+
   test("an identifier that two documents define fails at the second document", () => {
     expect(check([register, first, second])).toEqual([
       "docs/spec/design-spec.md: identifier-defined-twice CMP-003 is also in docs/plans/compute-plan.md",
     ]);
   });
 
-  test("a known duplicate passes", () => {
+  test("a known duplicate passes, and a known identifier with one owner must leave the list", () => {
     expect(check([register, first, second], ["CMP-003"])).toEqual([]);
+    expect(check([alone, first], ["CMP-003"])).toEqual(["quality/duplicate-identifiers.txt: known-duplicate-has-one-owner CMP-003"]);
+  });
+
+  test("a definition with a title, and one in a numbered list, are definitions; the archive is not read", () => {
+    expect(definedIdentifiers("- **PLN-001. One register.** a\n1. **ROL-002.** b\n- **PLN-002:** a note\n1. **D-1.** a local number")).toEqual(["PLN-001", "ROL-002"]);
+    const old = { path: "docs/archive/phase-1/implementation-plan.md", text: "**CMP-003.** old" };
+    expect(check([alone, first, old])).toEqual([]);
   });
 
   test("a definition is a bold identifier with a full stop at the start of a line", () => {
@@ -174,7 +192,7 @@ describe("PLN-016 one owner for an identifier", () => {
 });
 
 describe("PLN-022 claims", () => {
-  const plan = { path: "docs/plans/compute-plan.md", text: "---\nkind: Plan\nstate: Draft\nevidence: none\n---\n" };
+  const plan = { path: "docs/plans/compute-plan.md", text: "---\nkind: Plan\nstate: Draft\nevidence: none\n---\n| C1 | Not started |\n| C2 | Not started |\n" };
   const claim = (name: string, task: string, extra = "") => ({
     path: `docs/claims/${name}.md`,
     text: `---\ntask: ${task}\nplan: docs/plans/compute-plan.md\nmachine: studio\nagent: Claude Code\nbranch: compute/c1\nstarted: 2026-11-17\n${extra}---\n`,
@@ -204,27 +222,66 @@ describe("PLN-022 claims", () => {
 describe("PLN-019 a mockup agrees with the application", () => {
   const index = (state: string, compared: string) => ({
     path: "docs/mockup/README.md",
-    text: `# Mockups\n\n## Index\n\n| Mockup | Owner | Screens | State | Compared | Differences |\n| --- | --- | --- | --- | --- | --- |\n| [a.html](a.html) | owner | [devices](../../apps/client/src/routes/devices) | ${state} | ${compared} | None |\n`,
+    text: `# Mockups\n\n## Index\n\n| Mockup | Owner | Screens | State | Compared | Differences |\n| --- | --- | --- | --- | --- | --- |\n| [a.html](a.html) | owner | [devices](../../apps/client/src/routes/devices) | ${state} | ${compared} |  |\n`,
   });
   const files = [
     { path: "docs/mockup/a.html", text: "" },
     { path: "apps/client/src/routes/devices/+page.svelte", text: "" },
   ];
-  const run = (state: string, compared: string, day: string | undefined) =>
-    checkDocuments([index(state, compared), ...files], () => true, new Set(), () => day).map((v) => `${v.signal} ${v.detail}`);
+  const run = (state: string, compared: string, later: number | undefined) =>
+    checkDocuments([index(state, compared), ...files], () => true, new Set(), () => later).map((v) => `${v.signal} ${v.detail}`);
 
-  test("a screen that did not change after the comparison passes", () => {
-    expect(run("Built", "2026-11-17", "2026-11-17")).toEqual([]);
+  test("a screen with no commit after the comparison passes, with an empty last cell", () => {
+    expect(run("Built", "`abc1234` (2026-11-17)", 0)).toEqual([]);
   });
 
-  test("a screen that changed after the comparison fails and gives the two days", () => {
-    expect(run("Built", "2026-11-10", "2026-11-17")).toEqual([
-      "screen-changed-after-mockup apps/client/src/routes/devices changed on 2026-11-17; [a.html](a.html) was compared on 2026-11-10",
+  test("a screen with a later commit fails and names the commit of the comparison", () => {
+    expect(run("**Built**", "`abc1234`", 2)).toEqual([
+      "screen-changed-after-mockup apps/client/src/routes/devices has 2 later commit(s) than abc1234; compare [a.html](a.html) again",
     ]);
   });
 
-  test("a mockup that is not built can wait for its first comparison; a built one cannot", () => {
-    expect(run("Approved", "Not compared", "2026-11-17")).toEqual([]);
-    expect(run("Built", "Not compared", "2026-11-17")).toEqual(["mockup-not-compared [a.html](a.html)"]);
+  test("a commit that the repository does not have fails", () => {
+    expect(run("Approved", "`abc1234`", undefined)).toEqual(["mockup-commit-not-found abc1234 of [a.html](a.html)"]);
+  });
+
+  test("a mockup that is not built can wait for its first comparison; a built one cannot, and a day is not a commit", () => {
+    expect(run("Approved", "Not compared", 5)).toEqual([]);
+    expect(run("built", "2026-11-17", 0)).toEqual(["mockup-not-compared [a.html](a.html)"]);
+  });
+});
+
+describe("PLN-023 the operator queue and the tasks for an agent", () => {
+  const priorities = (waits: string) => ({
+    path: "docs/plan/priorities.md",
+    text: `| Row | Tier | Work | Category | State | Waits for |\n| --- | --- | --- | --- | --- | --- |\n| 4.1 | 0 | The engine | See | In progress | ${waits} |\n`,
+  });
+  const plan = { path: "docs/plans/compute-plan.md", text: "---\nkind: Plan\nstate: Draft\nevidence: none\n---\n\n| Number | Decision |\n| --- | --- |\n| OD-C1 | Which store? |\n| OD-C2 | Which port? Decided: 80. |\n" };
+  const only = (documents: Document[]) => check(documents).filter((line) => line.includes("agent-task") || line.includes("queue"));
+
+  test("a task for an agent needs a link, and the link is not to a proposal", () => {
+    expect(only([priorities("Agent: C1 of [the plan](../plans/compute-plan.md). Operator: OD-C1"), plan])).toEqual([]);
+    expect(only([priorities("Operator: approval. Agent: nothing before it")])).toEqual([]);
+    expect(only([priorities("Agent: build the model service")])).toEqual(["docs/plan/priorities.md: agent-task-without-link row 4.1"]);
+    expect(only([priorities("Agent: U3 of [the update](../proposals/update.md)"), { path: "docs/proposals/update.md", text: "" }])).toEqual([
+      "docs/plan/priorities.md: agent-task-in-proposal row 4.1: docs/proposals/update.md",
+    ]);
+  });
+
+  test("the queue has the rows that wait for the operator, the open decisions and the drafts", () => {
+    const rows = queueRows([priorities("Operator: OD-C1"), plan]);
+    expect(rows).toContain("| 4.1 | The engine | Operator: OD-C1 |");
+    expect(rows).toContain("| OD-C1 | Which store? | [plans/compute-plan.md](plans/compute-plan.md) |");
+    expect(rows).not.toContain("OD-C2");
+    expect(rows).toContain("| [plans/compute-plan.md](plans/compute-plan.md) | Plan | Draft |");
+  });
+
+  test("a queue that does not agree with the documents fails", () => {
+    const documents = [priorities("Operator: OD-C1"), plan];
+    const queue = { path: "docs/operator-queue.md", text: queueRows(documents) };
+    expect(only([queue, ...documents])).toEqual([]);
+    expect(only([{ ...queue, text: queue.text.replace("Which store?", "Which shop?") }, ...documents])).toEqual([
+      "docs/operator-queue.md: queue-out-of-date run `bun run quality:register`",
+    ]);
   });
 });

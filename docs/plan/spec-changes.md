@@ -12,7 +12,7 @@ Part of the work plan: [work-plan.md](../work-plan.md) is the entry point, and i
 
 ## 8. Changes that this plan needs in other documents
 
-These changes are not made. The operator must approve each one (operator checkpoint 3).
+Each row gives the state of one change. A row that says "Not made" needs the approval of the operator (operator checkpoint 3).
 
 | Document | Change |
 | --- | --- |
@@ -35,11 +35,11 @@ These changes are not made. The operator must approve each one (operator checkpo
 | [cli-mcp-plan.md](../plans/cli-mcp-plan.md) Sections 6 and 7 | Not made: the `build` and `runner` commands and tools (PRO-053). Make them with the build. |
 | `AGENTS.md`, [cli-mcp-plan.md](../plans/cli-mcp-plan.md) | Done on the branch `claude/anima-cli`: the command-line-first rule (CMD-030). |
 | Design specification 6.10, 7, 9 and 13 | Done (operator, 2026-11-13): the command line and the MCP server are part of the specification. SET-004 names the "MCP" section. |
-| Design specification 3.8.1 | Done as text (operator, 2026-11-13): the actor kinds User, Agent and Hub (LOG-012 to LOG-020). Not built. |
-| `contracts/schema.graphql` (K1), `contracts/database.md` (K2), `contracts/conventions.md` (K7) | Not made: the additions for the actor kinds, in the table of design specification Section 3.8.1. They need a programme ruling (CON-001, design specification OD-15). |
-| Design specification 3.11 | Done as text (operator, 2026-11-13): installation from the disk image or the AppImage, with the `anima` program inside (INS-001 to INS-009). INS-002 to INS-007 are built (branch `fix/bundle-anima`); a real release must confirm OD-16 to OD-18. |
+| Design specification 3.8.1 | Done as text (operator, 2026-11-13): the actor kinds User, Agent and Hub (LOG-012 to LOG-020). Built, except the audit list of the client (commit `17357ccd`; [cli-mcp-plan.md](../plans/cli-mcp-plan.md) holds the state). |
+| `contracts/schema.graphql` (K1), `contracts/database.md` (K2), `contracts/conventions.md` (K7) | Made: the additions for the actor kinds are in K1 (`enum ActorKind`), K2 and K7 (commit `17357ccd`). The ruling number that OD-15 of the design specification asks for is not recorded. |
+| Design specification 3.11 | Done as text (operator, 2026-11-13): installation from the disk image or the AppImage, with the `anima` program inside (INS-001 to INS-009). INS-002 to INS-007 are built (merge `a6ba6b19`); the check of OD-16 to OD-18 on a real release is open (the release record in [releases.md](../procedures/releases.md)). |
 | Design specification 3.12 and 11 | Done as text (operator, 2026-11-13): the marketing website (SITE-001 to SITE-012). Not built. The operator must decide OD-20, OD-21 and OD-22 of the design specification. |
-| [cli-mcp-plan.md](../plans/cli-mcp-plan.md) Sections 6 and 7 | Not made: `anima key create` takes "made for"; `anima audit list` gets the actor column and `--actor`; `anima mcp` sends the agent declaration (LOG-015, LOG-016, LOG-020). Make them with the build, after the ruling. |
+| [cli-mcp-plan.md](../plans/cli-mcp-plan.md) Sections 6 and 7 | Made (commit `17357ccd`): `anima key create` takes "made for"; `anima audit list` has the actor column and `--actor`; `anima mcp` sends the agent declaration (LOG-015, LOG-016, LOG-020). [cli-mcp-plan.md](../plans/cli-mcp-plan.md) holds the state. |
 | Design specification MET-002 and ruling R-115 | Not made, and only after OD-W22 or OD-W23 is approved: the agent can restart a watched program (WDG-026) and can replace its own program files (ROL-015). R-115 lists the agent update as later work with no specification. |
 | `contracts/agent-push.md` (K8) | Not made, and it needs a programme ruling (CON-001): the agent reports its restarts (WDG-031); the hub tells an agent a version and gives it the files (ROL-008, ROL-009). Made: the agent reports its version (ROL-051, R-122). |
 | Design specification Sections 3.9, 3.10, 6.4, 6.9 and 7 | Not made, and only after approval: a release has the agent, the hub and a release record (ROL-001 to ROL-005); the check type `watch` (WDG-035); the new calls in the list of INT-003 (OD-WDG-9, OD-ROL-9); the group "Hub and machines" in the Updates section (SET-006). |

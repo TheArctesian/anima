@@ -10,7 +10,7 @@ Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds t
 
 From: the planning session of 2026-11-12. The operator said in a side chat: "I do want to embed
 agents quickly".
-Status: a proposal for a ruling. Not approved. It needs [jobs.md](jobs.md) first.
+Status: the header of this document holds the state (PLN-020). History: a proposal for a ruling. Not approved. It needs [jobs.md](jobs.md) first.
 Map: [work-plan.md](../work-plan.md), category Use.
 
 In this document, "AI agent" is a program that uses a model and tools to do a task. It is not

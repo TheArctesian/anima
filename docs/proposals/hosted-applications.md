@@ -11,7 +11,7 @@ Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds t
 From: the planning session of 2026-11-12. The operator wants easy self-hosting of published
 applications on the owned machines: the container management part of Portainer, not the build
 pipeline of Coolify.
-Status: a proposal for a ruling. Not approved. It needs the work route of [jobs.md](jobs.md),
+Status: the header of this document holds the state (PLN-020). History: a proposal for a ruling. Not approved. It needs the work route of [jobs.md](jobs.md),
 whose direction is decided (OD-W10).
 Map: [work-plan.md](../work-plan.md), category Use.
 

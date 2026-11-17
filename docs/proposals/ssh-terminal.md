@@ -10,7 +10,7 @@ Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds t
 
 From: the orchestrator. The operator chose this in chat on 2026-11-06 ("I like option 2"), after
 the SSH tab showed `ile:/…;click_events=1` in front of the prompt.
-Status: a proposal for a ruling (R-062) and for [deferred.md](../deferred.md) (R-119). Not Phase 1 scope: it changes
+Status: the header of this document holds the state (PLN-020). History: a proposal for a ruling (R-062) and for [deferred.md](../deferred.md) (R-119). Not Phase 1 scope: it changes
 the frozen K4 tunnel contract (CON-001) and spec rules RA-011, RA-040 and RA-041.
 
 ## Problem

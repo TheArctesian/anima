@@ -2,6 +2,7 @@ import { posix } from "node:path";
 import type { Violation } from "../report.ts";
 import { checkClaims } from "./claims.ts";
 import { checkMockups } from "./mockups.ts";
+import { checkQueue } from "./queue.ts";
 import { checkRegister } from "./register.ts";
 import { repeatedRulings } from "./rulings.ts";
 
@@ -37,7 +38,8 @@ export const LISTINGS: Listing[] = [
 
 const CHECKED = /^(?:docs|contracts)\/.*\.md$|^[^/]+\.md$|^docs\/mockup\/.+\.html$/;
 const LINK = /\]\(([^)\s]+)\)/g;
-const DEFINITION = /^\s*(?:[-*]\s+)?\*\*([A-Z][A-Z0-9]*(?:-[A-Z])?-\d{1,3}[a-z]?)\.\*\*/;
+/** `**DEV-001.**` or `**DEV-001. A title.**`, at the start of a line, a list item or a numbered item. */
+const DEFINITION = /^\s*(?:[-*]\s+|\d+\.\s+)?\*\*([A-Z][A-Z0-9]+(?:-[A-Z])?-\d{1,3}[a-z]?)\.(?:\*\*|\s)/;
 
 /** The repository paths that the relative links of a document point to. */
 export function linkTargets(document: Document): string[] {
@@ -77,19 +79,26 @@ function unlisted(documents: Document[], listing: Listing): Violation[] {
     .map((document) => ({ path: document.path, signal: listing.signal, detail: `no link in ${listing.index}` }));
 }
 
+const KNOWN = "quality/duplicate-identifiers.txt";
+
 function repeatedDefinitions(documents: Document[], known: ReadonlySet<string>): Violation[] {
   const owner = new Map<string, string>();
+  const repeated = new Set<string>();
   const violations: Violation[] = [];
-  for (const document of documents) {
+  // The archive is a record: a number of a finished package is not a requirement of today.
+  for (const document of documents.filter((each) => !each.path.startsWith("docs/archive/"))) {
     for (const identifier of new Set(definedIdentifiers(document.text))) {
       const first = owner.get(identifier);
       if (first === undefined) owner.set(identifier, document.path);
-      else if (!known.has(identifier)) {
-        violations.push({ path: document.path, signal: "identifier-defined-twice", detail: `${identifier} is also in ${first}` });
+      else {
+        repeated.add(identifier);
+        if (!known.has(identifier)) violations.push({ path: document.path, signal: "identifier-defined-twice", detail: `${identifier} is also in ${first}` });
       }
     }
   }
-  return violations;
+  // The list can only get shorter: an identifier that has one owner now must leave it.
+  const single = [...known].filter((identifier) => !repeated.has(identifier));
+  return [...violations, ...single.map((identifier) => ({ path: KNOWN, signal: "known-duplicate-has-one-owner", detail: identifier }))];
 }
 
 /** The identifiers of the known-duplicates file: one for each line, `#` starts a comment. */
@@ -109,7 +118,7 @@ export function checkDocuments(
   all: Document[],
   exists: (path: string) => boolean,
   known: ReadonlySet<string>,
-  changed: (screen: string) => string | undefined = () => undefined,
+  changed: (screen: string, commit: string) => number | undefined = () => 0,
 ): Violation[] {
   const documents = all.filter((document) => CHECKED.test(document.path)).sort((a, b) => a.path.localeCompare(b.path));
   return [
@@ -119,6 +128,7 @@ export function checkDocuments(
     ...repeatedRulings(documents),
     ...checkClaims(documents, exists),
     ...checkMockups(documents, changed),
+    ...checkQueue(documents),
     ...repeatedDefinitions(documents, known),
   ];
 }

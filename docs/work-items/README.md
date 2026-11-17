@@ -13,7 +13,7 @@ Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds t
 | Document | Work items: the index and the state of each item |
 | Version | 1.0 |
 | Date | 2026-11-16 |
-| Status | In progress. The items came from GitHub on 2026-11-16 (R-119). The state of each item is the state of its issue at the import, not a check against the code. |
+| Status | The header of this document holds the state (PLN-020). History: In progress. The items came from GitHub on 2026-11-16 (R-119). The state of each item is the state of its issue at the import, not a check against the code. |
 
 The operator decided on 2026-11-16 that GitHub issues are not a store (R-119). The planning documents are the one source of truth. This folder holds each issue that was a work item, a decision, an approval, a checklist or a defect. The deferred list of issue #1 is [deferred.md](../deferred.md).
 

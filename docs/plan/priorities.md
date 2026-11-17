@@ -26,27 +26,27 @@ The command line and the MCP server are not a category. They are a second and a 
 
 The tiers first came from the labels of the GitHub issues, read on 2026-11-12. The labels are no longer in use; this table holds the order (R-119). Do the work in this order. A lower row can start earlier only when it does not delay a higher row.
 
-The table gives the order. The section of each row below the table gives the work, the work items and the full state. The column "Waits for" names who must act next: the operator (a decision, an approval or a check) or an agent (a build). It was read from the state of each row on 2026-11-17 and it is not a ruling. Change it in the commit that changes the state (PLN-008).
+The table gives the order. The section of each row below the table gives the work, the work items and the full state. The column "Waits for" names who must act next. "Operator:" names a decision, an approval or a check. "Agent:" names one task with a link to the document that holds it; that document must be a plan or a work item, not a proposal (the gate checks this). A row with no "Agent:" task has no work for an agent: do not take a task from it. The column is not a ruling: before you build, read the task row and its plan, and stop if the task is not "Not started" or a decision blocks it. Change the column in the commit that changes the state (PLN-008). [operator-queue.md](../operator-queue.md) lists what waits for the operator.
 
 | Row | Tier | Work | Category | State, in short | Waits for |
 | --- | --- | --- | --- | --- | --- |
-| 4.1 | 0 | Finish the device manager | Foundation, See, Reach | Phases 1 to 3 are built. | Operator: the acceptance run (WP-53), and the first release (R7). Agent: R6 |
+| 4.1 | 0 | Finish the device manager | Foundation, See, Reach | Phases 1 to 3 are built. | Operator: the acceptance run (WP-53); the Linux release and the check that an installed application updates (R7). Agent: nothing |
 | 4.16 | 1 | One-click install | Foundation, Reach | In progress. Built; the live checks wait for the operator. | Operator: the live checks ([need-human-testing.md](../need-human-testing.md), "One-click") |
 | 4.17 | 1 | The hosted mode and the shared pool | Foundation | Proposal. The direction is decided. | Operator: approval of HMD-001 to HMD-036, and HM-D4 |
-| 4.18 | 1 | Update the agent and the hub | Foundation | Proposal. Task U1 is done. | Operator: approval of ROL-001 to ROL-052. Agent: task U3. The other tasks wait for the first release (R7) |
+| 4.18 | 1 | Update the agent and the hub | Foundation | Proposal. Task U1 is done. | Operator: approval of ROL-001 to ROL-052 (only R-122 is approved), and a Linux release for the tasks that need one. Agent: nothing until a ruling names a task |
 | 4.2 | 1 | Restore a backup and move the coordinator | Foundation | Proposal. | Operator: approval of FND-006. No task breakdown yet |
 | 4.3 | 1 | Decisions and approvals for the foundation | All | Open | Operator: each decision and approval in the row |
-| 4.4 | 2a | The engine (E0) | See, Remember | In progress. | Agent: E0-5 to E0-7 and Writing. E0-5 waits for row 4.11 |
-| 4.5 | 2b | Level 1 model service | Use | Planned. | Operator: approval of the compute plan, and the compute decisions of row 4.3 |
-| 4.6 | 3a | Projects | See | In progress. | Agent: compare PRO-005 to PRO-008 with the code |
-| 4.7 | 3a | Jobs, builds and AI agent runs | Use | [C7](../work-items/compute/C7.md) is planned. | Agent: tasks W, then B, then A. Operator: the requirements with no ruling (status line of the proposal) |
+| 4.4 | 2a | The engine (E0) | See, Remember | In progress. | Agent: E0-4 T9 ([extensions-plan.md](../plans/extensions-plan.md) Section 5.1). Operator: E0-5 T0, E0-6 T0, the contract ruling for E0-7, and OD-E18 |
+| 4.5 | 2b | Level 1 model service | Use | Planned. The tool inventory is built. | Operator: approval of the compute plan, and the compute decisions of row 4.3 |
+| 4.6 | 3a | Projects | See | In progress. | Agent: compare PRO-005 to PRO-007 with the code and write the result in [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md). No build |
+| 4.7 | 3a | Jobs, builds and AI agent runs | Use | [C7](../work-items/compute/C7.md) is planned. | Operator: a ruling that changes R-115 (task W1) and the acceptance of the design (task W2). Agent: nothing before them |
 | 4.8 | 3b | The other extensions | See, Remember, Reach | Planned. | Row 4.4 |
 | 4.9 | 3c | Hosted applications | Use | Proposal. | Operator: approval of the proposal |
 | 4.10 | 3 | Standby copies of the coordinator database | Foundation | Proposal. | Operator: approval of the requirements |
 | 4.11 | 3 | Bulk data on the operator's machines | Foundation | Proposal. | Operator: approval of the requirements, before E0-5 starts |
 | 4.12 | 4 | Level 2: one model across machines | Use | Parked. | Row 4.5 in daily use |
-| 4.13 | 4 | A hash chain for the audit log | Foundation | The operator made the work item smaller on 2026-11-12 | Agent: phase L0 of GH-2 |
-| 4.14 | 4 | Mobile clients (Phase 5) and site operations (Phase 6) | Foundation, Reach | Planned. | Agent: the tasks of the mobile plan. Phase 6 waits for rows 4.4 to 4.8 |
+| 4.13 | 4 | A hash chain for the audit log | Foundation | The operator made the work item smaller on 2026-11-12 | Agent: phase L0 of [GH-2](../work-items/device-manager/GH-2.md). Its state was not compared with the code |
+| 4.14 | 4 | Mobile clients (Phase 5) and site operations (Phase 6) | Foundation, Reach | In progress (mobile). Planned (Phase 6). | Agent: M1-3 of [mobile-plan.md](../plans/mobile-plan.md) Section 6. Its tasks in progress belong to the session on the branch `mobile/m1-shell`. Phase 6 waits for rows 4.4 to 4.8 |
 | 4.19 | Not set | The watchdog | See, Use | Proposal. Not approved. | Operator: a tier and approval of the direction (OD-W22) |
 | 4.15 | — | Deferred items and ideas | All | Recorded, not planned | Nothing |
 
@@ -56,7 +56,7 @@ The table gives the order. The section of each row below the table gives the wor
 - Category: Foundation, See, Reach
 - Work: Finish the device manager: the Phase 3 acceptance run (WP-53) and the operator steps before it. Three open defects ([GH-52](../work-items/defects/GH-52.md), [GH-53](../work-items/defects/GH-53.md), [GH-54](../work-items/defects/GH-54.md)). The correction of the release of Anima: tasks R1 to R7 in "Tasks" of [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md) (OD-W21).
 - Work items: [handoff.md](../plans/phase-3/handoff.md) Sections 3 and 4. [GH-52](../work-items/defects/GH-52.md), [GH-53](../work-items/defects/GH-53.md), [GH-54](../work-items/defects/GH-54.md). R1 to R7 are in the task table of [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md)
-- State: Phases 1 to 3 are built. Acceptance waits for the operator. This tier removes `blocked: device-manager` (PH-E-000, PH-C-000). R1 to R4 are done and are on `main` (commit `e3058276`, 2026-11-15). R5 is done (commit `c1e6226e`, on `main` since 2026-11-17). R6 and R7 are not started. The macOS release 0.2.0 is published since 2026-11-17 ([s12-packaging-tasks.md](../plans/one-click/s12-packaging-tasks.md) Section 6.4); the Linux feed is not checked.
+- State: Phases 1 to 3 are built. Acceptance waits for the operator. This tier removes `blocked: device-manager` (PH-E-000, PH-C-000). R1 to R4 are done and are on `main` (commit `e3058276`, 2026-11-15). R5 and R6 are done. R7, the first release, is in progress: the release record in [releases.md](../procedures/releases.md) holds what is published.
 
 ### 4.16 One-click install
 
@@ -80,7 +80,7 @@ The table gives the order. The section of each row below the table gives the wor
 - Category: Foundation
 - Work: Update the agent and the hub on each machine with one press, and automatically: signed releases, a rollout in steps, a rollback, machines that are not connected (ROL-001 to ROL-052)
 - Work items: No work item yet. The tasks are in "Tasks" of [agent-and-hub-update.md](../proposals/agent-and-hub-update.md)
-- State: Proposal. The operator put it here on 2026-11-16: directly after the first release (OD-W23). Its requirements are not approved, except R-122. Task U1 (the agent reports its version, R-122) is done. Task U3 needs no release. The other tasks need the first release (task R7), new files from the builder and a change to K8.
+- State: Proposal. The operator put it here on 2026-11-16: directly after the first release (OD-W23). Its requirements are not approved, except R-122. Task U1 (the agent reports its version, R-122) is done. Task U3 needs no release. The other tasks need a release for their target (the release record in [releases.md](../procedures/releases.md)), new files from the builder and a change to K8.
 
 ### 4.2 Restore a backup and move the coordinator
 
@@ -95,7 +95,7 @@ The table gives the order. The section of each row below the table gives the wor
 - Tier: 1
 - Category: All
 - Work: Decisions and approvals that the foundation work needs
-- Work items: Extensions: [SPEC](../work-items/extensions/SPEC.md), [OD-E1](../work-items/decisions/OD-E1.md), [KEYS](../work-items/extensions/KEYS.md). Compute: [SPEC-C](../work-items/compute/SPEC-C.md), [KEYS-C](../work-items/compute/KEYS-C.md), [OD-C1](../work-items/decisions/OD-C1.md), [OD-C2](../work-items/decisions/OD-C2.md), [OD-C5](../work-items/decisions/OD-C5.md), [OD-C7](../work-items/decisions/OD-C7.md), [OD-C8](../work-items/decisions/OD-C8.md). This plan: Section 7, where each decision is decided (2026-11-17)
+- Work items: Extensions: [SPEC](../work-items/extensions/SPEC.md), [OD-E1](../work-items/decisions/OD-E1.md), [KEYS](../work-items/extensions/KEYS.md). Compute: [SPEC-C](../work-items/compute/SPEC-C.md), [KEYS-C](../work-items/compute/KEYS-C.md), [OD-C1](../work-items/decisions/OD-C1.md), [OD-C2](../work-items/decisions/OD-C2.md), [OD-C5](../work-items/decisions/OD-C5.md), [OD-C7](../work-items/decisions/OD-C7.md), [OD-C8](../work-items/decisions/OD-C8.md). This plan: Section 7, where OD-W22 is open
 - State: Open
 
 ### 4.4 The engine (E0)

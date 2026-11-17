@@ -196,7 +196,7 @@ Findings:
 These are not requirements. They are inputs for the operator's decisions and for the next version
 of [watchdog.md](../../proposals/watchdog.md).
 
-1. **WDG-023.** The states to wait for are `spawn scheduled` for launchd (F-L1), `restarting`
+1. **WDG-023:** The states to wait for are `spawn scheduled` for launchd (F-L1), `restarting`
    for Docker (F-D1), and `activating`/`auto-restart` for systemd (F-S1).
 2. **WDG-025, launchd.** launchd does not show who stopped a job (F-L3). A SIGKILL from a shell
    can be a person or a failure (L1, L7). The findings mean that, for launchd, only a nonzero exit
@@ -216,15 +216,15 @@ of [watchdog.md](../../proposals/watchdog.md).
    `kickstart -k` restarts a running job, but its result can look like a person's stop (F-L6).
    `kickstart` returned only after 7 to 15 s in the cases measured (F-L5). This wait is not a
    failure of the command.
-6. **WDG-024.** For Docker, "the supervisor stopped its own attempts" is `exited` with
+6. **WDG-024:** For Docker, "the supervisor stopped its own attempts" is `exited` with
    `RestartCount` equal to `MaximumRetryCount` under `on-failure:N` (F-D3). For systemd, it is a
    `failed` unit with a restart rule other than `no` (F-S2). For launchd, the attempts did not
    stop in 28 s (F-L2).
-7. **WDG-029.** A restart by the watchdog through `docker restart` is not in `RestartCount`
+7. **WDG-029:** A restart by the watchdog through `docker restart` is not in `RestartCount`
    (F-D10), and one through `systemctl restart` is not in `NRestarts` (F-S6). A check that counts
    restarts from these counters does not count the watchdog's restarts. This record does not
    check how CHK-014 counts.
-8. **WDG-007.** Docker reports `unhealthy` and does nothing more (F-D8). The probe kind "Docker
+8. **WDG-007:** Docker reports `unhealthy` and does nothing more (F-D8). The probe kind "Docker
    health" does not conflict with the supervisor.
 9. **WDG-018 and WDG-025, Docker.** `paused` is a stop by a person that the status shows (F-D9).
 

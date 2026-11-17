@@ -12,14 +12,14 @@ A mockup is a static HTML file that shows a layout before or beside the applicat
 
 ## Rules (PLN-019)
 
-- A mockup and its screens must agree. A commit that changes the layout of a screen in the column "Screens" changes the mockup in the same commit and sets "Compared" to the date.
+- A mockup and its screens must agree. A commit that changes the layout of a screen in the column "Screens" changes the mockup in the same commit and writes the commit of the comparison in "Compared".
 - If the commit cannot change the mockup, it writes the difference in the column "Differences". A difference is a defect: correct the mockup or the screen.
 - Before a screen is built, the approved mockup is correct. After the screen is built, the two must agree, and the plan in the column "Owner" says which one a change starts in.
 - A mockup takes its colours, sizes and motion from the design tokens (`design/tokens/`). It does not hold a second set of values.
 - The states are: Proposed (the operator did not approve it), Approved (approved, and the screens are not all built), Built (the screens are built and were compared), Superseded (a newer mockup replaces it; delete the file in the next commit that touches it).
 - A mockup of an idea is in the folder of the idea (`docs/ideas/`), not here (PLN-018).
-- To compare: open the mockup and the screen of the application at the same size, in the light and the dark appearance, and look at the layout, the order of the parts, the text and the sizes. Then write the day in "Compared" and each difference in "Differences" ("None" if there is none).
-- The gate reads this table. A mockup in the state Built must have a day in "Compared". When a row has a day, the gate fails if a Svelte or CSS file of one of its screens has a commit after that day. Then compare again and write the new day, in the commit that changed the screen.
+- To compare: open the mockup and the screen of the application at the same size, in the light and the dark appearance, and look at the layout, the order of the parts, the text and the sizes. Then write the short hash of the commit that you compared, in backticks, with the day (for example `` `1a2b3c4` (2026-11-17) ``), in "Compared" and each difference in "Differences" ("None" if there is none).
+- The gate reads this table. A mockup in the state Built must name a commit in "Compared". When a row names a commit, the gate fails if a Svelte or CSS file of one of its screens has a later commit. Then compare again and write the new commit. The gate reads commits, so it fails in the first gate run after the commit that changed the screen, which is the run before the merge.
 - The first comparison of each row is open. Until it is made the row says "Not compared", and the gate cannot find a difference for that row.
 
 ## Index

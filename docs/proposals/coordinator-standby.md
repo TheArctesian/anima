@@ -1,6 +1,6 @@
 ---
 kind: Proposal
-state: Draft
+state: Direction decided
 evidence: Direction decided (OD-W9). No requirement is approved.
 ---
 
@@ -9,7 +9,7 @@ evidence: Direction decided (OD-W9). No requirement is approved.
 Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds the state of this plan (PLN-005).
 
 From: the planning session of 2026-11-12.
-Status: a proposal for a ruling. The operator decided its direction on 2026-11-12 (OD-W9, see
+Status: the header of this document holds the state (PLN-020). History: a proposal for a ruling. The operator decided its direction on 2026-11-12 (OD-W9, see
 "Decision"). The requirements below are not yet approved one by one.
 Map: [work-plan.md](../work-plan.md), principles ETH-001 to ETH-005.
 Related: [bulk-data-placement.md](bulk-data-placement.md) for large files and backups.

@@ -8,7 +8,7 @@ evidence: Approved 2026-11-07. WP-54 is done ([handoff.md](handoff.md)).
 
 Progress: the plan register in [work-plan.md](../../work-plan.md) Section 9 holds the state of this plan (PLN-005).
 
-Status: **Approved by the operator on 2026-11-07.** The text is in `docs/spec/design-spec.md` (R-084).
+Status: the header of this document holds the state (PLN-020). History: **Approved by the operator on 2026-11-07.** The text is in `docs/spec/design-spec.md` (R-084).
 
 Operator decision: 2026-11-07. Ruling: R-084. Contract change: CR-8. New package: WP-54.
 
@@ -56,7 +56,7 @@ MET-003 to MET-010 stay as written. They apply to readings from every source.
 - **MET-011:** A device's metrics source must be one of `agent`, `ssh`, `proxmox` or `none`.
   When a device has a working agent, the hub must stop SSH metric collection for it. If the
   agent is removed or its token is revoked, the operator can switch the device back to `ssh`.
-- **MET-012. Enrolment.** The operator makes an enrolment code for one device on the Device
+- **MET-012: Enrolment.** The operator makes an enrolment code for one device on the Device
   page ("Install agent"). The code must:
   - be 128 random bits;
   - expire after 15 minutes;
@@ -67,7 +67,7 @@ MET-003 to MET-010 stay as written. They apply to readings from every source.
   `anima-agent enrol <code>` swaps the code for the device's agent token. Only a signed-in
   operator can make a code. An API key must not make one (add `enrolAgent` to the list in
   INT-003).
-- **MET-013. Agent token.**
+- **MET-013: Agent token.**
   - The format is `anima_agent_` followed by 43 base64url characters. The hub keeps only its
     SHA-256.
   - A token is bound to one device. It allows only two calls: push readings for that device,
@@ -79,19 +79,19 @@ MET-003 to MET-010 stay as written. They apply to readings from every source.
     `0600`, owned by the user that runs the agent.
   - No log, event, metric or error message must contain a token or an enrolment code
     (LOG-007).
-- **MET-014. Sampling and push.**
+- **MET-014: Sampling and push.**
   - The agent samples every 2 seconds.
   - Each 10 seconds, it makes one point from the samples: the mean, plus the maximum for CPU
     and GPU usage.
   - It pushes the new points every 10 seconds, in one batch.
   - While the hub cannot be reached, it keeps up to 1 hour of points in memory, oldest
     dropped first. It sends them when the hub comes back.
-- **MET-015. Stored resolution.** The hub must store agent points at 10-second resolution.
+- **MET-015: Stored resolution.** The hub must store agent points at 10-second resolution.
   The existing aggregates and retention (D-25, CR-6) apply to every source.
-- **MET-016. One parser.** The parsers for `/proc`, `vm_stat`, `sysctl`, `df`, `nvidia-smi`,
+- **MET-016: One parser.** The parsers for `/proc`, `vm_stat`, `sysctl`, `df`, `nvidia-smi`,
   `amdgpu` sysfs, `intel_gpu_top -J` and `ioreg` must be pure functions in `agent-core`. The
   hub's SSH collector and the agent must both call them.
-- **MET-017. Ingest checks.** The hub must refuse a batch, and write the refusal to the event
+- **MET-017: Ingest checks.** The hub must refuse a batch, and write the refusal to the event
   log without the token, if any of these is true:
   - the token is unknown, expired or revoked;
   - the batch names a device other than the token's device;
@@ -100,19 +100,19 @@ MET-003 to MET-010 stay as written. They apply to readings from every source.
 
   The ingest endpoint must follow NET-002 and NET-003. It must not be reachable from outside
   the VPN.
-- **MET-018. Stale readings.** If the hub gets no batch from an agent for 3 push intervals
+- **MET-018: Stale readings.** If the hub gets no batch from an agent for 3 push intervals
   (30 seconds), the hub must mark the device "metrics stale". The device card and the detail
   view must show the last values in the muted colour with the label "Stale". The hub must
   write one event when a device becomes stale and one when it recovers. A stale agent is not
   a Down check.
-- **MET-019. Agent install.**
+- **MET-019: Agent install.**
   - The Device page shows "Install agent" with the install command and a fresh enrolment code.
   - The desktop app can install the agent on the computer it runs on. The Tauri shell does the
     OS work: it copies the binary and writes the LaunchAgent or systemd unit. The client's
     `lib/metrics/` holds the logic.
   - On Linux, the agent runs as a systemd user or system unit. On macOS, it runs as a
     LaunchAgent.
-- **MET-020. Agent network.**
+- **MET-020: Agent network.**
   - The agent must connect only to the hub, with HTTPS to `hub.anima.ing` on tcp 443 at the
     hub's VPN address.
   - The agent must not listen on any port in Phase 3.

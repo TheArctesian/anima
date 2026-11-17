@@ -1,7 +1,7 @@
 ---
 kind: Plan
 state: In progress
-evidence: Section 3: the command line and the MCP server are on `main`. The test against a real hub is open ([GH-60](../work-items/device-manager/GH-60.md)). R-120 (operator, 2026-11-16): the MCP server is fully automatic by default (MCP-024 to MCP-026); ruled and not built.
+evidence: The command line and the MCP server are on `main`. The test against a real hub is open ([GH-60](../work-items/device-manager/GH-60.md)). R-120 (operator, 2026-11-16): the MCP server is fully automatic by default (MCP-024 to MCP-026); ruled and not built.
 ---
 
 # Anima command line and MCP plan
@@ -18,7 +18,7 @@ the UI".
 
 Identifiers: `CMD-nnn` for the command line, `MCP-nnn` for the MCP server. The prefix `CLI-` is
 already used for the graphical client (design specification Section 3.1), so this plan does not
-use it. The decisions in this plan need a ruling number in `programme.md`.
+use it. The decisions in this plan need a ruling number in [rulings.md](../rulings.md).
 
 ## 1. Purpose
 

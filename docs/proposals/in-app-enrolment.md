@@ -10,7 +10,7 @@ Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds t
 
 From: the explainer session. The operator asked for this in chat on 2026-11-05 ("I don't want the
 user to have to install anything else or use the terminal") and then said "Yes, send it".
-Status: a proposal for a ruling and for [deferred.md](../deferred.md) (R-119). Not Phase 1 scope (contracts frozen, CON-001).
+Status: the header of this document holds the state (PLN-020). History: a proposal for a ruling and for [deferred.md](../deferred.md) (R-119). Not Phase 1 scope (contracts frozen, CON-001).
 
 ## Problem
 

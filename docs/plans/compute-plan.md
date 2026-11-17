@@ -14,7 +14,7 @@ Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds t
 | Version | 0.2 (draft) |
 | Date | 2026-11-06 |
 | Language | ASD-STE100 Simplified Technical English (STE) |
-| Status | For review |
+| Status | The header of this document holds the state (PLN-020). History: For review |
 | Related | [design-spec.md](../spec/design-spec.md), [extensions-plan.md](extensions-plan.md), [implementation-plan.md](../archive/phase-1/implementation-plan.md) |
 
 This document obeys the writing rules in Section 0 of the design specification.

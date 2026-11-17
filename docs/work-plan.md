@@ -3,10 +3,10 @@
 | Item | Value |
 | --- | --- |
 | Document | Work plan: the entry point to all planning documents |
-| Version | 3.1 |
+| Version | 3.2 |
 | Date | 2026-11-17 |
 | Language | ASD-STE100 Simplified Technical English (STE) |
-| Status | Approved. The operator approved the principles and the priority order on 2026-11-13. Version 1.1 added the plan register and the rules for plans (operator, 2026-11-15). Version 1.2 recorded OD-W13 to OD-W21 (operator, 2026-11-16). Version 1.3 corrected the states in Sections 4 and 9 to agree with the commits on `main`, moved each GitHub issue into the planning documents and added PLN-012 to PLN-017 (operator, 2026-11-16, R-119). Version 2.0 gives each section its own document in [plan/](plan/), with no change to the text (operator, 2026-11-16). Version 2.1 corrected the state of row 4.17, put the rows of tier 1 in order, added the column "Waits for" to Section 4 and added the one-click plan to Section 9 (audit that the operator asked for, 2026-11-17). It also took in the two proposals of the branch `claude/watchdog-autoupdate-proposals`: the watchdog (row 4.19, OD-W22, open) and the update of the agent and the hub (row 4.18, OD-W23). Version 2.2 adds PLN-018 (the path of an idea) and PLN-019 (mockups), the folder `ideas/`, the index of the mockups, and moves the approved builds proposal to [projects-and-builds-plan.md](plans/projects-and-builds-plan.md) (operator, 2026-11-17). Version 3.0 puts each document in the folder of its stage, archives the finished phases, and generates Section 9 from the header of each plan (PLN-020, operator, 2026-11-17: "lets do all five in that order"). Version 3.1 adds the start of a session and the claims (PLN-022), the mockup check, the idea intake, and version 0.2 of the extensions plan with the Bots proposal in its own document (operator, 2026-11-17). |
+| Status | Approved. The operator approved the principles and the priority order on 2026-11-13. Version 1.1 added the plan register and the rules for plans (operator, 2026-11-15). Version 1.2 recorded OD-W13 to OD-W21 (operator, 2026-11-16). Version 1.3 corrected the states in Sections 4 and 9 to agree with the commits on `main`, moved each GitHub issue into the planning documents and added PLN-012 to PLN-017 (operator, 2026-11-16, R-119). Version 2.0 gives each section its own document in [plan/](plan/), with no change to the text (operator, 2026-11-16). Version 2.1 corrected the state of row 4.17, put the rows of tier 1 in order, added the column "Waits for" to Section 4 and added the one-click plan to Section 9 (audit that the operator asked for, 2026-11-17). It also took in the two proposals of the branch `claude/watchdog-autoupdate-proposals`: the watchdog (row 4.19, OD-W22, open) and the update of the agent and the hub (row 4.18, OD-W23). Version 2.2 adds PLN-018 (the path of an idea) and PLN-019 (mockups), the folder `ideas/`, the index of the mockups, and moves the approved builds proposal to [projects-and-builds-plan.md](plans/projects-and-builds-plan.md) (operator, 2026-11-17). Version 3.0 puts each document in the folder of its stage, archives the finished phases, and generates Section 9 from the header of each plan (PLN-020, operator, 2026-11-17: "lets do all five in that order"). Version 3.1 adds the start of a session and the claims (PLN-022), the mockup check, the idea intake, and version 0.2 of the extensions plan with the Bots proposal in its own document (operator, 2026-11-17). Version 3.2 corrects what a council of four reviewers found: the release record is the one place for the state of a release, the column "Waits for" names exact tasks, PLN-007 says what each state permits, and the operator queue is generated (PLN-023, R-123). |
 | Related | [design-spec.md](spec/design-spec.md), [extensions-plan.md](plans/extensions-plan.md), [compute-plan.md](plans/compute-plan.md), [vpn-plan.md](plans/vpn-plan.md), [handoff.md](plans/phase-3/handoff.md), [programme/proposals/](proposals/) |
 
 This document obeys the writing rules in Section 0 of the design specification.
@@ -29,6 +29,8 @@ The work plan contains no build requirements. Each requirement is in the plan or
 | Record an idea | [ideas/README.md](ideas/README.md), PLN-018: one folder for each idea. The path is idea, proposal, plan, contract, tasks, check. |
 | Change a screen that has a mockup | [mockup/README.md](mockup/README.md), PLN-019: change the mockup in the same commit. |
 | Find a work item or a defect | [work-items/README.md](work-items/README.md) |
+| See what waits for the operator | [operator-queue.md](operator-queue.md): one generated list, in the order of the priorities (PLN-023) |
+| Know what is released | [procedures/releases.md](procedures/releases.md), "Release record" |
 | Find what only a person can test | [need-human-testing.md](need-human-testing.md) |
 | Find work that was left for later | [deferred.md](deferred.md) |
 
@@ -89,4 +91,4 @@ The only list of the plans of Anima, with the state of each: [plan/register.md](
 
 ## 10. Rules for plans and progress
 
-PLN-001 to PLN-022: [plan/rules.md](plan/rules.md).
+PLN-001 to PLN-023: [plan/rules.md](plan/rules.md).

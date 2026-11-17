@@ -14,7 +14,7 @@ Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds t
 | Version | 0.2 |
 | Date | 2026-11-17 |
 | Language | ASD-STE100 Simplified Technical English (STE) |
-| Status | In progress. The operator did not approve the plan as one document: version 0.1 of 2026-11-03 was "For review". The operator approved the engine items and Projects one at a time, and they are built (Section 0). Version 0.2 adds Section 0 and the tasks of E0-5 to E0-7, moves the Bots proposal to its own document, and records OD-E18. It changes no requirement, except the folder name in ENG-012. |
+| Status | The header of this document holds the state (PLN-020). History: In progress. The operator did not approve the plan as one document: version 0.1 of 2026-11-03 was "For review". The operator approved the engine items and Projects one at a time, and they are built (Section 0). Version 0.2 adds Section 0 and the tasks of E0-5 to E0-7, moves the Bots proposal to its own document, and records OD-E18. It changes no requirement, except the folder name in ENG-012. |
 | Related | [design-spec.md](../spec/design-spec.md), [implementation-plan.md](../archive/phase-1/implementation-plan.md) (Phase 1, done and in the archive; XP-002 uses its task loop) |
 
 This document obeys the writing rules in Section 0 of the design specification.
@@ -34,10 +34,10 @@ Read this section first. It says where the state is and what is next. It holds n
 | --- | --- | --- |
 | E0-1, E0-2 | Nothing. Compare each with the text of its work item, then set its state in the index. | — |
 | E0-3 | Later: it is tier 3b. | Row 4.8 |
-| E0-4 | T9 (the rules of time and references), then T8 (the live check). T7 is later work. | OD-E16 and OD-E17 for the parts that they name |
+| E0-4 | An agent: T9 (compare the hub and the tests with each rule of time and references, then set its state). Then T8, the live check, which the operator does. T7 is later work. | OD-E16 and OD-E17 for the parts that they name |
 | E0-5 | T0 of its table: the operator decides the provider and the rules. | The decision on bulk data (work plan row 4.11) and OD-E1 |
 | E0-6 | T0 of its table: the operator decides the store and the lifecycle. | OD-E1 |
-| E0-7 | T1 of its table. | Nothing known |
+| E0-7 | The operator: a ruling for the contract K-E6 (CON-001), and OD-E18. Then T1 of its table. | OD-E18; the work item still names the gate PH-E-000 |
 | E0-8 | The launch briefs (ENG-012). | The engine items that a brief names |
 | Writing (XP-03) | It is the sample extension of the engine (ENG-010). | E0-4 to E0-7 |
 
@@ -1067,7 +1067,7 @@ The engine and the grouped items are work items in [work-items/](../work-items/R
 
 #### Tasks of E0-4, timeline and record links (PLN-006)
 
-The operator ruled on 2026-11-16: issue #7 governs E0-4. The rules of issue #7 are TML-008 to TML-012 and LNK-005 to LNK-006. The wire unit of an event instant is Unix microseconds. A record reference is `kind:id` with an opaque `id`. The clock policy (OD-E16) and the portable reference and deleted targets (OD-E17) stay open. The work that was built before that ruling stays. The branch is `engine/e0-4-timeline-links`. It is not merged into `main`. No task has a live check on a real hub; task T8 is that check.
+The operator ruled on 2026-11-16: issue #7 governs E0-4. The rules of issue #7 are TML-008 to TML-012 and LNK-005 to LNK-006. The wire unit of an event instant is Unix microseconds. A record reference is `kind:id` with an opaque `id`. The clock policy (OD-E16) and the portable reference and deleted targets (OD-E17) stay open. The work that was built before that ruling stays. The branch `engine/e0-4-timeline-links` was merged into `main` on 2026-11-17. No task has a live check on a real hub; task T8 is that check.
 
 | Task | Content | State | Commits |
 | --- | --- | --- | --- |
@@ -1079,7 +1079,7 @@ The operator ruled on 2026-11-16: issue #7 governs E0-4. The rules of issue #7 a
 | T6 | MCP tools `anima_timeline_list`, `anima_record_links_list`, `anima_record_link_add`, `anima_record_link_remove` (CMD-030) | Done | `611f68cf` |
 | T7 | Client: the one shared component that shows the links of a record (LNK-003). Issue #7 makes it later work for the pages that use links (#18, #13, #22, #24, #16), not a part of E0-4. | Not started | |
 | T8 | Live check on a real hub: the event log shows in `anima timeline list`, and a link is made and read | Not started | |
-| T9 | The rules of issue #7: the instant unit (TML-008), the received time (TML-009), dates (TML-010), no exact order across clocks (TML-011), replays (TML-012), references and missing targets (LNK-005, LNK-006), in K-E3, K-E4, the hub and the tests | In progress | |
+| T9 | The rules of issue #7: the instant unit (TML-008), the received time (TML-009), dates (TML-010), no exact order across clocks (TML-011), replays (TML-012), references and missing targets (LNK-005, LNK-006), in K-E3, K-E4, the hub and the tests | In progress | `766310f5`, `50e7fb1f`. Not compared with each rule yet |
 
 #### Tasks of E0-5, E0-6 and E0-7 (PLN-006)
 

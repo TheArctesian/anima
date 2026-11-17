@@ -10,7 +10,7 @@ const START = "<!-- generated from the header of each document: bun run quality:
 const END = "<!-- end of the generated list -->";
 const LINK = /\]\(([^)\s]+)\)/g;
 /** The first word or words of a state (PLN-007). */
-const STATE = /^(?:Draft|Approved|In progress|Done|Parked|Withdrawn|Not checked)\b/;
+const STATE = /^(?:Draft|Direction decided|Approved|In progress|Done|Parked|Withdrawn|Not checked)\b/;
 const KINDS = ["Specification", "Plan", "Build specification", "Task breakdown", "Proposal"];
 
 /** The `key: value` lines between the two `---` lines that start a document. */
@@ -44,7 +44,7 @@ function rank(kind: string): number {
 export function registerRows(documents: Document[]): string {
   const rows = documents
     .map((document) => ({ path: document.path, fields: header(document.text) }))
-    .filter(({ path, fields }) => !path.startsWith(ARCHIVE) && fields.has("kind") && fields.has("state"))
+    .filter(({ path, fields }) => path.startsWith("docs/") && !path.startsWith(ARCHIVE) && fields.has("kind") && fields.has("state"))
     .sort((a, b) => rank(a.fields.get("kind") ?? "") - rank(b.fields.get("kind") ?? "") || a.path.localeCompare(b.path))
     .map(({ path, fields }) => {
       const link = posix.relative(posix.dirname(REGISTER), path);
@@ -52,6 +52,11 @@ export function registerRows(documents: Document[]): string {
       return `| [${link.replace(/^\.\.\//, "")}](${link}) | ${fields.get("kind") ?? ""} | ${fields.get("state") ?? ""} | ${evidence} |`;
     });
   return [START, "", "| Document | Kind | State | Evidence |", "| --- | --- | --- | --- |", ...rows, "", END].join("\n");
+}
+
+/** If `register` has the two markers of its generated list. Without them nothing is checked. */
+export function hasList(register: string): boolean {
+  return register.includes(START) && register.includes(END);
 }
 
 /** `register` with its generated list replaced by `rows`; undefined when it has no markers. */
@@ -69,6 +74,8 @@ export function checkRegister(documents: Document[], isPlan: (path: string) => b
     const fields = header(document.text);
     if (!fields.has("kind") || !STATE.test(fields.get("state") ?? "")) {
       violations.push({ path: document.path, signal: "plan-without-state", detail: "its header needs `kind:` and a `state:` that starts with a word of PLN-007" });
+    } else if ((fields.get("evidence") ?? "") === "") {
+      violations.push({ path: document.path, signal: "plan-without-evidence", detail: "its header needs `evidence:` (PLN-009)" });
     }
   }
   const register = documents.find((document) => document.path === REGISTER);

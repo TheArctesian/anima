@@ -74,7 +74,7 @@ Not a decision of this plan. [SPEC-C](../work-items/compute/SPEC-C.md) and [OD-C
 
 ### OD-W9. One home with copies, or a copy on each node that syncs between nodes when the hub is down ([GH-2](../work-items/device-manager/GH-2.md))
 
-**Decided (operator, 2026-11-12): one home, copies by policy.** The section "Decision" of [coordinator-standby.md](../proposals/coordinator-standby.md) has the operator's words. It needs a ruling number in `programme.md`. [GH-2](../work-items/device-manager/GH-2.md) keeps only its phase L0.
+**Decided (operator, 2026-11-12): one home, copies by policy.** The section "Decision" of [coordinator-standby.md](../proposals/coordinator-standby.md) has the operator's words. It needs a ruling number in [rulings.md](../rulings.md). [GH-2](../work-items/device-manager/GH-2.md) keeps only its phase L0.
 
 ### OD-W10. Can the agent do work that the coordinator gives it? R-115 did not take a command channel to the agent.
 
@@ -90,7 +90,7 @@ Not a decision of this plan. [SPEC-C](../work-items/compute/SPEC-C.md) and [OD-C
 
 ### OD-W13. The build models, and pull requests from forks
 
-**Decided (operator, 2026-11-16).** (1) Anima has both build models: it schedules its own builds from a push, and it can register an owned machine as a self-hosted runner of GitHub Actions. "Anima must not register a machine as a self-hosted runner" is withdrawn. The goal for the runner is a set-up with one press (PRO-010, PRO-027). (2) Anima does not refuse a pull request from a fork. The owner of the repository sets that in GitHub: "if the user wants to build from fork thats their choice they can harden their git repo in any way we just run it" (PRO-013). (3) Stated again: the installation of a different person builds their projects on their machines and must not be able to build or publish the Anima application. A signing key belongs to a project and reaches a builder for one job only (PRO-008, PRO-012, PRO-028). It needs a ruling number in `programme.md`.
+**Decided (operator, 2026-11-16).** (1) Anima has both build models: it schedules its own builds from a push, and it can register an owned machine as a self-hosted runner of GitHub Actions. "Anima must not register a machine as a self-hosted runner" is withdrawn. The goal for the runner is a set-up with one press (PRO-010, PRO-027). (2) Anima does not refuse a pull request from a fork. The owner of the repository sets that in GitHub: "if the user wants to build from fork thats their choice they can harden their git repo in any way we just run it" (PRO-013). (3) Stated again: the installation of a different person builds their projects on their machines and must not be able to build or publish the Anima application. A signing key belongs to a project and reaches a builder for one job only (PRO-008, PRO-012, PRO-028). It needs a ruling number in [rulings.md](../rulings.md).
 
 ### OD-W14. Is each job isolated, whoever wrote the code (PRO-029)?
 
@@ -122,7 +122,7 @@ Not a decision of this plan. [SPEC-C](../work-items/compute/SPEC-C.md) and [OD-C
 
 ### OD-W21. The order of the build work, and the tier of the correction of the release
 
-**Decided (operator, 2026-11-16).** Tasks R1 to R7 at tier 0, now, because no release is published. Then the work route (W), then runners in warm mode (B), then Anima's own builds (A). Reason for B before A: B gives each project its builds from the workflows that it has.
+**Decided (operator, 2026-11-16).** Tasks R1 to R7 at tier 0, now, because no release was published on that day (the release record in [releases.md](../procedures/releases.md) holds the state now). Then the work route (W), then runners in warm mode (B), then Anima's own builds (A). Reason for B before A: B gives each project its builds from the workflows that it has.
 
 ### OD-W22. The watchdog ([watchdog.md](../proposals/watchdog.md)): approve its direction, and give it a tier. Its own decisions are OD-WDG-1 to OD-WDG-13.
 

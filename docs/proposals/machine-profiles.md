@@ -13,7 +13,7 @@ a setup across Macs and other computers: the same apps, the same configuration, 
 files, after the person has signed into iCloud and finished the operating system's first
 setup. The operator thought a "whatdog" plan in the Marketing Bot might already cover this.
 Version: 1. Date: 2026-11-16.
-Status: Draft. The requirements are not yet approved. No ruling.
+Status: the header of this document holds the state (PLN-020). History: Draft. The requirements are not yet approved. No ruling.
 Map: [work-plan.md](../work-plan.md), category Foundation, next to "Add this machine"
 ([add-this-machine.md](add-this-machine.md)) and first-run setup. A rented cloud computer
 ([cloud-machines.md](cloud-machines.md)) can take a profile in one confirmation. A profile

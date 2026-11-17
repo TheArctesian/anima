@@ -1,3 +1,4 @@
+import { posix } from "node:path";
 import type { Violation } from "../report.ts";
 import type { Document } from "./documents.ts";
 
@@ -23,7 +24,7 @@ function fieldViolations(claim: Document, fields: Map<string, string>, exists: (
   const missing = KEYS.filter((key) => (fields.get(key) ?? "") === "");
   const details = missing.map((key) => `no ${key}`);
   const plan = fields.get("plan") ?? "";
-  if (plan !== "" && !exists(plan)) details.push(`the plan ${plan} does not exist`);
+  if (plan !== "" && (!plan.endsWith(".md") || !exists(plan))) details.push(`the plan ${plan} does not exist`);
   const started = fields.get("started") ?? "";
   if (started !== "" && !DAY.test(started)) details.push(`started is not a date: ${started}`);
   return details.map((detail) => ({ path: claim.path, signal: "claim-not-complete", detail }));
@@ -36,7 +37,11 @@ export function checkClaims(documents: Document[], exists: (path: string) => boo
   for (const claim of documents.filter((document) => CLAIM.test(document.path))) {
     const fields = claimFields(claim.text);
     violations.push(...fieldViolations(claim, fields, exists));
-    const task = `${fields.get("plan") ?? ""} ${fields.get("task") ?? ""}`;
+    const task = `${posix.normalize(fields.get("plan") ?? "")} ${(fields.get("task") ?? "").toLowerCase()}`;
+    const plan = documents.find((document) => document.path === posix.normalize(fields.get("plan") ?? ""));
+    if (plan !== undefined && !plan.text.toLowerCase().includes((fields.get("task") ?? "").toLowerCase())) {
+      violations.push({ path: claim.path, signal: "claim-not-complete", detail: `the plan does not name the task ${fields.get("task") ?? ""}` });
+    }
     const first = holder.get(task);
     if (first === undefined) holder.set(task, claim.path);
     else violations.push({ path: claim.path, signal: "task-claimed-twice", detail: `${first} holds the same task` });

@@ -1,7 +1,7 @@
 ---
 kind: Proposal
-state: Draft
-evidence: Direction decided (OD-W10). No requirement is approved. Version 2 (2026-11-16) adds JOB-011. Its tasks W1 to W6 are in the task table of the row above.
+state: Direction decided
+evidence: Direction decided (OD-W10). No requirement is approved. Version 2 (2026-11-16) adds JOB-011. Its tasks W1 to W6 are in the task table of [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md).
 ---
 
 # Proposal: jobs (work that the coordinator gives to a machine)
@@ -11,7 +11,7 @@ Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds t
 From: the planning session of 2026-11-12. The operator agreed the form in a side chat: a job is
 a container image, models run on the machine directly, jobs call the model service.
 Version: 3. Date: 2026-11-16.
-Status: Draft. The operator decided OD-W10 on 2026-11-12 (see "Decision").
+Status: the header of this document holds the state (PLN-020). History: Draft. The operator decided OD-W10 on 2026-11-12 (see "Decision").
 The requirements are not yet approved one by one. The decision changes R-115. Version 2 adds
 JOB-011, a proposal that follows OD-W13. Version 3 adds
 JOB-012 to JOB-027, jobs that an AI agent starts.
@@ -218,7 +218,7 @@ This decision comes before [C1](../work-items/compute/C1.md), not only before jo
 
 ## Needs
 
-- A ruling number in `programme.md` that changes R-115, then the transport decision in [C1](../work-items/compute/C1.md) and
+- A ruling number in [rulings.md](../rulings.md) that changes R-115, then the transport decision in [C1](../work-items/compute/C1.md) and
   [SPEC-C](../work-items/compute/SPEC-C.md), and the new default in [OD-C8](../work-items/decisions/OD-C8.md).
 - A new contract for the work route. K8 is frozen for Phase 3 (CON-001), so this is a new
   contract or `/agent/v2/`, not a change to K8.

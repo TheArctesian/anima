@@ -18,9 +18,9 @@ One document owns each concern. Add a requirement to its owner, not to this docu
 | --- | --- | --- |
 | Device manager: hub, clients, sessions, checks, metrics, notifications | [design-spec.md](../spec/design-spec.md) | As published there |
 | VPN and enrolment | [vpn-plan.md](../plans/vpn-plan.md) | As published there |
-| One-click install, many hubs, shares and teams | [one-click-plan.md](../plans/one-click/one-click-plan.md) | `LNK`, `AWK`, `MHB`, `SHR`, `MBR` (proposed; not in the spec yet) |
-| Power, hardware health and inventory | [power-health-plan.md](../plans/power-health-plan.md) | `PWR`, `HLT`, `HWI` (proposed; not in the spec yet) |
-| Agent push | `contracts/agent-push.md` (K8), [phase-3-agent-delta.md](../plans/phase-3/phase-3-agent-delta.md) | MET-011 to MET-025 |
+| One-click install, many hubs, shares and teams | [one-click-plan.md](../plans/one-click/one-click-plan.md) | `LNK` (the link; LNK-009 is proposed), `MHB`, `SHR`, `MBR` (proposed; not in the spec yet). `AWK` moved to the design specification Section 3.13. The extensions plan also uses `LNK-001` to `LNK-006`, for record links: the operator must give one of the two a new prefix (PLN-016) |
+| Power, hardware health and inventory | [power-health.md](../proposals/power-health.md) | `PWR`, `HWH`, `HWI` (proposed; not in the spec yet). `HLT` is the Health extension of the extensions plan |
+| Agent push | [design-spec.md](../spec/design-spec.md) defines MET-011 to MET-025. `contracts/agent-push.md` (K8) is the contract; [phase-3-agent-delta.md](../plans/phase-3/phase-3-agent-delta.md) is the record of the change | MET-011 to MET-025 |
 | Engine and extensions | [extensions-plan.md](../plans/extensions-plan.md) | ENG, SRC, COL, VLT, XP, PRJ and the others there |
 | Model service and pooled models | [compute-plan.md](../plans/compute-plan.md), as changed by [C1](../work-items/compute/C1.md) and [C2](../work-items/compute/C2.md) | CMP, CAG, CAP, RTR and the others there |
 | Copies of the coordinator database, and the move of the coordinator | [coordinator-standby.md](../proposals/coordinator-standby.md) | FND-001 to FND-012 |
@@ -37,11 +37,15 @@ One document owns each concern. Add a requirement to its owner, not to this docu
 | Cloudflare source for Projects. A new Activity extension for Spotify and Screen Time | [new-sources.md](../proposals/new-sources.md) | None until each provider is verified |
 | Other persons: self-hosting and a hosted option | [other-operators.md](../proposals/other-operators.md) | None yet |
 | Hosted Solo hubs on a shared pool of hosts | [shared-pool-hosting.md](../proposals/shared-pool-hosting.md) | None yet |
-| The hosted mode as the default first run: sign-in, the account directory, a hub made for each account, a free hub that sleeps | [hosted-mode.md](../proposals/hosted-mode.md) | HM-R1 to HM-R8, HMD-001 to HMD-031 |
+| The hosted mode as the default first run: sign-in, the account directory, a hub made for each account, a free hub that sleeps | [hosted-mode.md](../proposals/hosted-mode.md) | HM-R1 to HM-R9, HMD-001 to HMD-036 |
 | The Anima.ing shell prompt and related shell commands | [shell-prompt.md](../proposals/shell-prompt.md) | CMD-032 to CMD-038 |
 | Rented cloud computers and GPU add-ons sold by Anima.ing | [cloud-machines.md](../proposals/cloud-machines.md) | CVM-001 to CVM-024 |
 | Machine profiles: copy a setup to a new computer | [machine-profiles.md](../proposals/machine-profiles.md) | REP-001 to REP-025 |
 | CVE watch of the updates that wait on each machine, and network awareness (the address classes of a device, other overlay networks, address changes) | [cve-watch-and-network-awareness.md](../proposals/cve-watch-and-network-awareness.md) | VUL-001 to VUL-028, ADR-001 to ADR-014 |
+| The mobile clients (iOS and Android) | [mobile-plan.md](../plans/mobile-plan.md) | MOB-001 to MOB-042 |
+| The work plan: principles and the rules for plans | [plan/purpose.md](purpose.md), [plan/rules.md](rules.md) | ETH-001 to ETH-009, PLN-001 to PLN-022 |
+| Contract freeze: only a ruling changes a contract | [implementation-plan.md](../archive/phase-1/implementation-plan.md) Section 4 defines CON-001. It is in the archive and is still in force | CON-001 |
+| The bundled database, the local hub and the first run of the one-click install (proposed spec deltas) | [s3-spec-delta.md](../plans/one-click/s3-spec-delta.md), [s4-spec-delta.md](../plans/one-click/s4-spec-delta.md), [s6-spec-delta.md](../plans/one-click/s6-spec-delta.md) | `DBL`, `LHB`, `FRN` (proposed; in table rows, not approved) |
 | Bots: always-on bots on the operator's machines (proposed) | [bots.md](../proposals/bots.md) | BOT-001 to BOT-038 |
 | The watchdog: watched programs of a machine, their restarts and the reports | [watchdog.md](../proposals/watchdog.md) | WDG-001 to WDG-041 |
 | The update of the agent and the hub: the release record, the rollout, the rollback, the automatic update. The update of the desktop application stays in the design specification Section 3.9 (UPD). | [agent-and-hub-update.md](../proposals/agent-and-hub-update.md) | ROL-001 to ROL-052 |

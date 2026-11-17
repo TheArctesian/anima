@@ -9,7 +9,7 @@ evidence: No provider is verified.
 Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds the state of this plan (PLN-005).
 
 From: the planning session of 2026-11-12. The operator named these services in a side chat.
-Status: a proposal. Nothing here is verified against the documentation of a provider. Do not
+Status: the header of this document holds the state (PLN-020). History: a proposal. Nothing here is verified against the documentation of a provider. Do not
 write requirements from this file until each "Not verified" line is checked.
 Map: [work-plan.md](../work-plan.md), categories See and Remember.
 

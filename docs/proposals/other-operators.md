@@ -1,6 +1,6 @@
 ---
 kind: Proposal
-state: Draft
+state: Direction decided
 evidence: Direction decided (OD-W2). It has no requirements.
 ---
 
@@ -9,7 +9,7 @@ evidence: Direction decided (OD-W2). It has no requirements.
 Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds the state of this plan (PLN-005).
 
 From: the planning session of 2026-11-12.
-Status: a direction that the operator decided (OD-W2). It has no requirements yet and no work is
+Status: the header of this document holds the state (PLN-020). History: a direction that the operator decided (OD-W2). It has no requirements yet and no work is
 planned. It changes text in two plans that say Anima is for one person only.
 Map: [work-plan.md](../work-plan.md), Section 1 and principles ETH-001, ETH-002 and ETH-009.
 

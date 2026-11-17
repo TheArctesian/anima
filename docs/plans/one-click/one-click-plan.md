@@ -1,7 +1,7 @@
 ---
 kind: Plan
 state: In progress
-evidence: Its status: the operator accepted the direction and the spikes on 2026-11-14 (its Section 9). It serves Section 4, row 4.16. It is the parent plan of the task breakdowns and the spec delta proposals in `research/one-click/` below.
+evidence: Its status: the operator accepted the direction and the spikes on 2026-11-14 (its Section 9). It serves Section 4, row 4.16. It is the parent plan of the task breakdowns and the spec delta proposals in this folder.
 ---
 
 # Anima One-Click Install Plan
@@ -12,7 +12,7 @@ evidence: Its status: the operator accepted the direction and the spikes on 2026
 | Version | 0.3 (operator rulings of 2026-11-14 folded in, Section 9) |
 | Date | 2026-11-14 |
 | Language | ASD-STE100 Simplified Technical English (STE) |
-| Status | Direction and spikes accepted by the operator, 2026-11-14 (Section 9). The work items wait for the spike reports. |
+| Status | The header of this document holds the state (PLN-020). History: Direction and spikes accepted by the operator, 2026-11-14 (Section 9). The work items wait for the spike reports. |
 | Base | Branch `main` at `baa7eeeb`. All paths and requirement IDs in this plan are on that branch. |
 | Related | [design-spec.md](../../spec/design-spec.md) Sections 3, 4.1, 4.2, 7, 13; [vpn-plan.md](../vpn-plan.md); `docs/procedures/setup/vpn.md`; <https://github.com/tailscale/tailcat>; <https://github.com/No-Instructions/Relay> |
 

@@ -1,6 +1,6 @@
 ---
 kind: Proposal
-state: Draft
+state: Direction decided
 evidence: Direction decided (HM-R1 to HM-R9, operator, 2026-11-16). HMD-001 to HMD-036 are not approved. HM-R6: a free hub sleeps. HM-R7: Apple Pay and Google Pay. HM-R8: no staff access to hubs. HM-R9: WorkOS AuthKit (decides HM-D3). HM-D4 (second factor) is proposed, not ruled.
 ---
 
@@ -14,7 +14,7 @@ Version: 4. Date: 2026-11-16. Version 2 added HM-R6 (a free hub sleeps) and the 
 business vault (Section 3, fact 5). Version 3 added HM-R7 (Apple Pay and Google Pay), HM-R8 (no
 staff access to hubs), HMD-030 and HMD-031. Version 4 adds HM-R9 (WorkOS AuthKit, which decides
 HM-D3), the device-code sign-in of Section 4.1 and HMD-032 to HMD-036. HM-D4 is not ruled.
-Status: Draft. The direction is decided by the operator (Section 2). The requirements are not
+Status: the header of this document holds the state (PLN-020). History: Draft. The direction is decided by the operator (Section 2). The requirements are not
 approved.
 Map: [work-plan.md](../work-plan.md). Parent plans: [one-click-plan.md](../plans/one-click/one-click-plan.md)
 Section 1.3 (the hosted mode) and item S6 (first run), and [other-operators.md](other-operators.md)

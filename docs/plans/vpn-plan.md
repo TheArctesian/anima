@@ -14,7 +14,7 @@ Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds t
 | Version | 0.4 (build decisions BD-1 to BD-17 folded in; [vpn-build.md](vpn-build.md) wins where they differ) |
 | Date | 2026-11-10 |
 | Language | ASD-STE100 Simplified Technical English (STE) |
-| Status | Accepted by the operator, 2026-11-10 (Section 9) |
+| Status | The header of this document holds the state (PLN-020). History: Accepted by the operator, 2026-11-10 (Section 9) |
 | Base | Branch `phase-3` at `b4f7051d`. All paths in this plan are on that branch. |
 | Related | [design-spec.md](../spec/design-spec.md) Sections 4.1, 4.2, 6.7, 7, 13; `docs/procedures/setup/vpn.md` Sections 5, 6, 7, 8, 11, 13; `docs/proposals/in-app-enrolment.md`, `add-this-machine.md` |
 

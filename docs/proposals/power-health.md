@@ -1,7 +1,7 @@
 ---
-kind: Plan
+kind: Proposal
 state: Draft
-evidence: Version 0.1 (2026-11-14). Its header says: for operator review, nothing in this plan is accepted. `PWR`, `HWH`, `HWI` are proposed. `HWH-001` to `HWH-007` had the prefix `HLT` until 2026-11-17; the Health extension of the extensions plan owns `HLT` (PLN-016). No tier in Section 4 yet.
+evidence: Version 0.1 (2026-11-14). It was `power-health-plan.md` in `plans/` until 2026-11-17: nothing in it is approved, so it is a proposal (PLN-018). Its header says: for operator review, nothing in this plan is accepted. `PWR`, `HWH`, `HWI` are proposed. `HWH-001` to `HWH-007` had the prefix `HLT` until 2026-11-17; the Health extension of the extensions plan owns `HLT` (PLN-016). No tier in Section 4 yet.
 ---
 
 # Anima Power and Hardware Health Plan
@@ -12,9 +12,9 @@ evidence: Version 0.1 (2026-11-14). Its header says: for operator review, nothin
 | Version | 0.1 (draft from an ideation session; no ruling yet) |
 | Date | 2026-11-14 |
 | Language | ASD-STE100 Simplified Technical English (STE) |
-| Status | Draft. For operator review. Nothing in this plan is accepted. |
+| Status | The header of this document holds the state (PLN-020). History: Draft. For operator review. Nothing in this plan is accepted. |
 | Base | Branch `main` at `baa7eeeb`. All paths and requirement IDs in this plan are on that branch. |
-| Related | [design-spec.md](../spec/design-spec.md) Section 6 (MET-*), [compute-plan.md](compute-plan.md) Section 3.1 (CAP-*), [extensions-plan.md](extensions-plan.md), [one-click-plan.md](one-click/one-click-plan.md), `contracts/agent-push.md` (K8) |
+| Related | [design-spec.md](../spec/design-spec.md) Section 6 (MET-*), [compute-plan.md](../plans/compute-plan.md) Section 3.1 (CAP-*), [extensions-plan.md](../plans/extensions-plan.md), [one-click-plan.md](../plans/one-click/one-click-plan.md), `contracts/agent-push.md` (K8) |
 
 This document obeys the writing rules in Section 0 of the design specification.
 
@@ -180,7 +180,7 @@ Proposed requirements (prefix `HWI`, free on `main`):
 ### 5.5 P4. Power meters (extension)
 
 A smart plug that measures power gives the wall power of any device, also a device with no
-agent. This is an extension source ([extensions-plan.md](extensions-plan.md)), not agent work.
+agent. This is an extension source ([extensions-plan.md](../plans/extensions-plan.md)), not agent work.
 The operator links one plug to one device. Its value is "measured" (PWR-002) and replaces a
 partial value. The choice of plug types needs a short research task.
 

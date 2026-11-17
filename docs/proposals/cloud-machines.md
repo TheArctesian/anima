@@ -13,7 +13,7 @@ a person without several devices can add a computer for a monthly fee, including
 with a good GPU (even an H100), as a wrapper around existing GPU rental, with a one-click
 offer when a job can no longer run where it is.
 Version: 1. Date: 2026-11-16.
-Status: Draft. The requirements are not yet approved. No ruling.
+Status: the header of this document holds the state (PLN-020). History: Draft. The requirements are not yet approved. No ruling.
 Map: [work-plan.md](../work-plan.md), category Use, and the rented-resource rules (ETH-006,
 ETH-007). It also serves jobs and the "Needs attention" list. A rented computer can take a
 machine profile ([machine-profiles.md](machine-profiles.md)) and can keep a bot running when
@@ -196,7 +196,7 @@ Risks of the flat subscription:
 
 ## Conflicts that need a ruling
 
-- **ETH-007.** For a rented resource, the hub only reads. An action uses the CLI tool of the
+- **ETH-007:** For a rented resource, the hub only reads. An action uses the CLI tool of the
   service, on the operator's computer or in a job. Anima.ing's own systems would have to
   create and destroy these machines (CVM-015), not the customer's hub. That is a new kind of
   rented resource: Anima.ing is the service, not AWS in the customer's own account.

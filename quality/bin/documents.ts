@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { checkDocuments, MOCKUP, parseKnown } from "../src/documents/documents.ts";
+import { hasList, REGISTER } from "../src/documents/register.ts";
 import { listMeasurableFiles, readRepoFile, REPO_ROOT } from "../src/repository.ts";
 import { report } from "../src/report.ts";
 
@@ -11,13 +12,15 @@ const documents = [...new Set(listMeasurableFiles(REPO_ROOT))]
   .map((path) => ({ path, text: path.endsWith(".md") ? readRepoFile(REPO_ROOT, path) : "" }));
 const known = parseKnown(readRepoFile(REPO_ROOT, "quality/duplicate-identifiers.txt"));
 
-/** The day of the last commit that changed a layout file (Svelte or CSS) of a screen folder. */
-function layoutChanged(screen: string): string | undefined {
+/** The number of commits after `commit` that changed a layout file (Svelte or CSS) of a screen folder. */
+function layoutChangedSince(screen: string, commit: string): number | undefined {
   const pathspecs = ["svelte", "css"].map((kind) => `:(glob)${screen}/**/*.${kind}`);
-  const shown = spawnSync("git", ["log", "-1", "--format=%cs", "--", ...pathspecs], { cwd: REPO_ROOT, encoding: "utf8" });
-  const day = shown.status === 0 ? shown.stdout.trim() : "";
-  return day === "" ? undefined : day;
+  const counted = spawnSync("git", ["rev-list", "--count", `${commit}..HEAD`, "--", ...pathspecs], { cwd: REPO_ROOT, encoding: "utf8" });
+  return counted.status === 0 ? Number(counted.stdout.trim()) : undefined;
 }
 
 const exists = (path: string): boolean => existsSync(join(REPO_ROOT, path));
-process.exit(report("documents", checkDocuments(documents, exists, known, layoutChanged)));
+const violations = checkDocuments(documents, exists, known, layoutChangedSince);
+// A register with no markers has no generated list, so nothing would compare it with the headers.
+if (!hasList(readRepoFile(REPO_ROOT, REGISTER))) violations.push({ path: REGISTER, signal: "register-without-list", detail: "the two marker comments of the generated list are missing" });
+process.exit(report("documents", violations));

@@ -1,6 +1,6 @@
 ---
 kind: Proposal
-state: Draft
+state: Direction decided
 evidence: Direction decided (OD-W9). No requirement is approved.
 ---
 
@@ -12,7 +12,7 @@ From: the planning session of 2026-11-12. The operator asked that data be spread
 machines by their capacity, and that the VPS not carry the storage: "it also means a lot of
 storage burden on the hub no which is a VPS which is expensive". The operator agreed this form:
 "okay yeah lets do that".
-Status: a proposal for a ruling. Its direction is decided (OD-W9). The requirements are not yet
+Status: the header of this document holds the state (PLN-020). History: a proposal for a ruling. Its direction is decided (OD-W9). The requirements are not yet
 approved one by one. It changes FIL-001 of the extensions plan.
 Map: [work-plan.md](../work-plan.md), principles ETH-003 and ETH-005.
 Related: [coordinator-standby.md](coordinator-standby.md) for the live database.

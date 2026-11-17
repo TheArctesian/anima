@@ -1,7 +1,7 @@
 ---
 kind: Task breakdown: the hub as a background program
 state: In progress
-evidence: Its Section 2: T1 to T8 have commits; T9 and T10 are not started. No operator ruling on its design. Its parent plan is [one-click-plan.md](one-click-plan.md).
+evidence: Its Section 2: T1 to T9 have commits (T9 is done in S12); T10 is not started. No operator ruling on its design. Its parent plan is [one-click-plan.md](one-click-plan.md).
 ---
 
 # S4 task breakdown: the hub as a background program
@@ -264,8 +264,8 @@ documents are built, reviewed and tested on macOS and in a Linux container.
 
 Results: [need-human-testing.md](../../need-human-testing.md), section "Checks that other documents hold", holds the result of each check below (PLN-014).
 
-- **T9, the bundle.** A release does not carry the programs, so `local_hub_carried` answers
-  `false` in every build today. Steps, with S3 T11 (its Section 7.2 has the security conditions):
+- **T9, the bundle.** Done in S12 (Section 2, row T9): the release 0.2.0 carries the programs. The text below is the record of what was open. A release did not carry the programs, so `local_hub_carried` answered
+  `false` in every build. Steps, with S3 T11 (its Section 7.2 has the security conditions):
   1. `builder/sidecar.rs`: build `anima-local-hub`, `anima-hub`, `anima-database` and
      `anima-gateway` for each triple as it builds `anima`, and `lipo` them on macOS.
   2. `plan::bundle`: add the four to `externalBin`, and `"resources": {"database": "database"}`

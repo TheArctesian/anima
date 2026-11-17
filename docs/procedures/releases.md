@@ -1,5 +1,16 @@
 # Desktop releases
 
+## Release record
+
+This table is the only record of what is released (PLN-016). A different document that needs the state of a release points to this table; it does not copy it. Change the table in the commit that records a release or a check.
+
+| Target | Feed | Newest version | State | Evidence |
+| --- | --- | --- | --- | --- |
+| macOS (`darwin-aarch64`, `darwin-x86_64`; one universal bundle) | `https://releases.anima.ing/darwin-aarch64/latest.json`, `https://releases.anima.ing/darwin-x86_64/latest.json` | 0.2.1 (2026-11-17, commit `b361eb5f`). 0.2.0 was the first release (2026-11-17, commit `43291afc`) | Published, signed with the Developer ID and notarized | [s12-packaging-tasks.md](../plans/one-click/s12-packaging-tasks.md) Section 6.4. Both feeds answered 200 with 0.2.1 on 2026-11-17 (`curl`) |
+| Linux (`linux-x86_64`) | `https://releases.anima.ing/linux-x86_64/latest.json` | None | Not published | The feed answered 404 on 2026-11-17 (`curl`) |
+
+Not verified for any target: an installed application updates itself from the feed (OD-16 to OD-18 of the design specification). The check is the operator's ([need-human-testing.md](../need-human-testing.md), "A real release").
+
 Spec: Sections 3.9 (UPD-001 to UPD-012) and 3.10 (Builds), DNS-007.
 
 A release starts only from the Builds view (BLD-001, UPD-007). The operator's builders build each

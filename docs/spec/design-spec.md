@@ -12,7 +12,7 @@ evidence: `AGENTS.md` names it the source of truth.
 | Version | 0.1 (draft) |
 | Date | 2026-11-03 |
 | Language | ASD-STE100 Simplified Technical English (STE) |
-| Status | For review |
+| Status | The header of this document holds the state (PLN-020). History: For review |
 
 ## 0. Writing rules for this document
 

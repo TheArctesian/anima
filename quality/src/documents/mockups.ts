@@ -2,16 +2,16 @@ import { posix } from "node:path";
 import type { Violation } from "../report.ts";
 import type { Document } from "./documents.ts";
 
-/** The index of the mockups: one row for each mockup, with its screens and the day they were compared (PLN-019). */
+/** The index of the mockups: one row for each mockup, with its screens and the commit they were compared at (PLN-019). */
 export const MOCKUPS = "docs/mockup/README.md";
 const LINK = /\]\(([^)\s#]+)\)/g;
-const DAY = /\b(\d{4}-\d{2}-\d{2})\b/;
+const COMMIT = /`([0-9a-f]{7,40})`/;
 
-/** One row of the index: the screens of the application, the state and the day of the last comparison. */
+/** One row of the index: the screens of the application, the state and the commit of the last comparison. */
 export interface MockupRow {
   name: string;
   screens: string[];
-  state: string;
+  built: boolean;
   compared: string | undefined;
 }
 
@@ -23,42 +23,37 @@ function targets(cell: string): string[] {
 export function mockupRows(text: string): MockupRow[] {
   const start = text.indexOf("\n## Index");
   if (start < 0) return [];
-  const rows = text
-    .slice(start)
-    .split("\n")
-    .filter((line) => line.startsWith("|"))
-    .slice(2);
+  const rows = text.slice(start).split("\n").filter((line) => line.startsWith("|")).slice(2);
   return rows.map((row) => {
-    const cells = row.slice(1, -1).split(" | ").map((cell) => cell.trim());
+    const cells = row.split("|").slice(1, -1).map((cell) => cell.trim());
     return {
       name: cells[0] ?? "",
       screens: targets(cells[2] ?? ""),
-      state: (cells[3] ?? "").split(/[ (]/)[0] ?? "",
-      compared: DAY.exec(cells[4] ?? "")?.[1],
+      built: /^\W*built\b/i.test(cells[3] ?? ""),
+      compared: COMMIT.exec(cells[4] ?? "")?.[1],
     };
   });
 }
 
 /**
- * PLN-019: a mockup that is Built gives the day it was compared, and no layout file of its
- * screens changed after that day. `changed` gives the day of the last change of a screen.
+ * PLN-019: a mockup that is Built names the commit it was compared at, and no layout file of
+ * its screens has a commit after that one. `changedSince` gives the number of those commits,
+ * or undefined when the repository does not have the commit.
  */
-export function checkMockups(documents: Document[], changed: (screen: string) => string | undefined): Violation[] {
+export function checkMockups(documents: Document[], changedSince: (screen: string, commit: string) => number | undefined): Violation[] {
   const index = documents.find((document) => document.path === MOCKUPS);
   const violations: Violation[] = [];
   for (const row of mockupRows(index?.text ?? "")) {
-    if (row.compared === undefined) {
-      if (row.state === "Built") violations.push({ path: MOCKUPS, signal: "mockup-not-compared", detail: row.name });
+    const commit = row.compared;
+    if (commit === undefined) {
+      if (row.built) violations.push({ path: MOCKUPS, signal: "mockup-not-compared", detail: row.name });
       continue;
     }
     for (const screen of row.screens) {
-      const day = changed(screen);
-      if (day !== undefined && day > row.compared) {
-        violations.push({
-          path: MOCKUPS,
-          signal: "screen-changed-after-mockup",
-          detail: `${screen} changed on ${day}; ${row.name} was compared on ${row.compared}`,
-        });
+      const count = changedSince(screen, commit);
+      if (count === undefined) violations.push({ path: MOCKUPS, signal: "mockup-commit-not-found", detail: `${commit} of ${row.name}` });
+      else if (count > 0) {
+        violations.push({ path: MOCKUPS, signal: "screen-changed-after-mockup", detail: `${screen} has ${count} later commit(s) than ${commit}; compare ${row.name} again` });
       }
     }
   }

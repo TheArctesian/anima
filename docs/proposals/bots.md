@@ -14,7 +14,7 @@ Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds t
 | Version | 1 |
 | Date | 2026-11-17 |
 | Language | ASD-STE100 Simplified Technical English (STE) |
-| Status | Draft. Direction of the operator of 2026-11-16. No requirement is approved. |
+| Status | The header of this document holds the state (PLN-020). History: Draft. Direction of the operator of 2026-11-16. No requirement is approved. |
 | Related | [extensions-plan.md](../plans/extensions-plan.md) Sections 4.12.1 (agent panes) and 4.15 (model gateway) |
 
 Version 1 only moved this text from Section 4.16 of the extensions plan, because a proposal is not a part of a plan (PLN-016, PLN-018). The text did not change. A section number in this document (for example "Section 4.15") is a section of the extensions plan. When the operator approves this proposal, its requirements go back into the extensions plan as Section 4.16, with a ruling.

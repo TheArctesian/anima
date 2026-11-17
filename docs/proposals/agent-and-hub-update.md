@@ -1,7 +1,7 @@
 ---
 kind: Proposal, with a task table
-state: In progress
-evidence: Version 1 (2026-11-16). Tier decided (OD-W23; Section 4, row 4.18). Only R-122 is approved. Task U1 is Done; the other tasks of its "Tasks" are Not started.
+state: Direction decided
+evidence: The state was "In progress" until 2026-11-17: only task U1 has a ruling (R-122) and it is done. Version 1 (2026-11-16). Tier decided (OD-W23; Section 4, row 4.18). Only R-122 is approved. Task U1 is Done; the other tasks of its "Tasks" are Not started.
 ---
 
 # Proposal: update the agent and the hub on each machine (one press, and automatic)
@@ -11,7 +11,7 @@ Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds t
 Version: 1. Date: 2026-11-16.
 From: the operator's request of 2026-11-16 for two proposals: a watchdog
 ([watchdog.md](watchdog.md)), and the update of the agent and the hub.
-Status: Draft. A proposal for a ruling. No requirement is approved. Nothing is built. The
+Status: the header of this document holds the state (PLN-020). History: Draft. A proposal for a ruling. No requirement is approved. Nothing is built. The
 operator decided its tier (OD-W23) and OD-ROL-8 on 2026-11-16. The other decisions are open.
 Map: [work-plan.md](../work-plan.md), category Foundation, decision OD-W23.
 Identifiers: ROL-001 to ROL-052. The prefix `UPD` belongs to the desktop application (design
@@ -46,8 +46,9 @@ proposal is that specification.
   and `darwin-universal`. The hub checks the files, signs the updater file with the updater key
   and writes the feed at `https://releases.anima.ing` (BLD-045, BLD-064 to BLD-066, R-117).
 - `crates/updater-signature` signs and verifies. It is pure and has no file access.
-- The macOS release 0.2.0 is published since 2026-11-17; no Linux release is checked. Task R5 of
-  [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md) is done; R6 and R7 are not started. The update of a real installed application is not verified (OD-16 to OD-18).
+- The release record in [releases.md](../procedures/releases.md) holds what is published: macOS since
+  2026-11-17, no Linux release. Tasks R5 and R6 of [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md)
+  are done; R7 is in progress. The update of a real installed application is not verified (OD-16 to OD-18).
 - A release build of the desktop application carries `anima-agent` for its own target, and
   installs it on its own computer (MET-019). No agent file is published alone.
 - The Linux system unit of the agent runs with no capability and `ProtectSystem=strict`. Thus the
@@ -234,7 +235,7 @@ The build order is CMD-030: the hub API, the `anima` command, the MCP tool, then
 
 | Dependency | State today | Effect |
 | --- | --- | --- |
-| Signed releases: the first release (tasks R5 to R7 of [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md)) | Not started. No release is published. OD-16 to OD-18 are open. | Nothing can be fetched or verified until one release exists. The signature path is proved only in tests. |
+| Signed releases: the first release (tasks R5 to R7 of [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md)) | In progress: see the release record in [releases.md](../procedures/releases.md). OD-16 to OD-18 are open. | Nothing can be fetched or verified until one release exists. The signature path is proved only in tests. |
 | The builder | It builds the desktop application only, from a fixed recipe (OD-W16), for two targets. The general builder (group A) is not started. | The release needs new files: the agent alone for each target, the image of the hub, and the release record. This is a change to the recipe of the Anima release, or a task of group A. |
 | A builder for each target (BLD-003) | `linux-x86_64` and `darwin-universal` only | A machine of a different target, for example Linux on ARM, gets no agent file (OD-ROL-8). |
 | The local hub in the release (task R6; S4 T9) | Not started | ROL-020 needs it. |
@@ -305,7 +306,7 @@ U1 is done. The other tasks are not started. The states obey PLN-007.
 | U10 | Stage C: the image of the hub in the release, the replacement of the hub with the backup and the check (ROL-019, ROL-033, ROL-035). | U6, U9; FND-006; the operator for the first installation on the VPS (VPS-005) | Not started | — |
 | U11 | The security review of the update. | U6; then U10 | Not started | — |
 
-No release is published (operator, 2026-11-16: "were still pre release"). Thus no machine has a
+No release was published on 2026-11-16 (operator: "were still pre release"). The release record in [releases.md](../procedures/releases.md) holds the state now; the macOS releases of 2026-11-17 carry an agent that reports its version only if they were built after U1. Thus no machine has a
 released agent, and ROL-044 applies only to the agents that the operator built by hand. If U1 is
 done before the first release (task R7), each released agent reports its version from the start.
 U1 and U3 need no release. U2 and each later task wait for task R7.
