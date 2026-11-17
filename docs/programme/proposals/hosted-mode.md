@@ -4,9 +4,10 @@ Progress: the plan register in [work-plan.md](../../work-plan.md) Section 9 hold
 
 From: the business planning session of 2026-11-16, after the operator tried release 0.2.0 on a
 second Mac (report of the S12 packaging session).
-Version: 1. Date: 2026-11-16.
+Version: 2. Date: 2026-11-16. Version 2 adds HM-R6 (a free hub sleeps) and the cloud design of the
+business vault (Section 3, fact 5).
 Status: Draft. The direction is decided by the operator (Section 2). The requirements are not
-approved. One decision blocks the build (HM-D1, Section 7).
+approved.
 Map: [work-plan.md](../../work-plan.md). Parent plans: [one-click-plan.md](../../one-click-plan.md)
 Section 1.3 (the hosted mode) and item S6 (first run), and [other-operators.md](other-operators.md)
 (OD-W2). The one-click work has no tier in Section 4 of the work plan; the operator must give it
@@ -41,6 +42,7 @@ the facts that the build needs.
 | HM-R3 | When does a person pay? | A small hosted hub is free below a usage line. A person pays above it. | Each account is a cost from its first minute. See HM-D1. |
 | HM-R4 | What does a hosted hub run on at the launch? | The shared pool ([shared-pool-hosting.md](shared-pool-hosting.md)). | The pool must be built and reviewed before the launch. This replaces "one VPS for each customer" in Section 1.3 of the one-click plan. |
 | HM-R5 | Does the launch wait for split custody (OI-3 of the one-click plan)? | No. Launch, then build split custody. | The sign-up page must say what a hosted hub can read (HMD-015). |
+| HM-R6 | How does a free hub cost less than the paid hubs earn (HM-D1)? | A free hosted hub sleeps when no device of the account is connected. A hub that is always on is the paid step. | Section 6.5. The checks, the notifications and the metrics history stop while a free hub sleeps. |
 
 ## 3. Facts (2026-11-16)
 
@@ -55,7 +57,15 @@ the facts that the build needs.
 4. A hosted hub that uses only the link needs no Headscale. The pool proposal has Headscale in
    each instance, and one relay port for each address is one of its open problems. With the link,
    one relay for each pool host is sufficient.
-5. No account directory, no billing and no pool exist. The Vercel site has no sign-up.
+5. No account directory, no billing and no pool exist. The site has only a waiting list. The
+   design of the cloud is in the note "Hosted Architecture" of the business vault (HCL-001 to
+   HCL-036, not approved, not in this repository). The operator decided three points of it: the
+   cloud is the private repository `anima-site` on Vercel; its API and its sign-in pages are on
+   `cloud.anima.ing`; the open-source client holds only the calls to it, with an override for a
+   self-host person. That note has a table of jobs for long operations, one token for each hub,
+   a heartbeat from the hub each 60 seconds and an idle stop for rented computers. It has no
+   sign-in from the application, no device grant, no call that makes a hub, and no sleep. This
+   proposal adds them. "The directory" in this file is that cloud.
 6. The memory that one hub uses is not measured. All costs of a hosted hub are estimates.
 
 ## 4. The flow
@@ -106,7 +116,8 @@ The free mode and the self-host mode keep OR-5: no directory can give access to 
 
 ## 6. Proposed requirements
 
-The prefix `HMD` is free on `main`. No requirement is approved.
+The prefix `HMD` is free on `main`. No requirement is approved. The cloud side of each requirement
+is built in the private repository (fact 5); this repository holds the client and the hub side.
 
 ### 6.1 Account directory and site
 
@@ -143,22 +154,32 @@ The prefix `HMD` is free on `main`. No requirement is approved.
 - **HMD-022.** "Sign in" must be the primary choice of the first run. The other choices must stay available.
 - **HMD-023.** The application must show one state for each step of Section 4.1, and a clear error with a retry for each failure.
 
+### 6.5 Sleep and wake of a free hub (HM-R6)
+
+- **HMD-024.** The pool must stop a free hub when no device of the account was connected for 15 minutes. A stopped hub must use disk only.
+- **HMD-025.** When a person opens the application or signs in, the cloud must start the hub of the account. The start is a job (the job table of the cloud). The application must show "Your hub is starting" until the link connects.
+- **HMD-026.** A free hub must start in less than 30 seconds. This number is a target; it is not measured.
+- **HMD-027.** The cloud, not the hub, must decide to stop a hub, from the heartbeat of the hub and the state of the link. A hub that sends no heartbeat must be stopped by the pool.
+- **HMD-028.** While a free hub sleeps, an agent on a device must wait and try again without an error to the person. The application must say in plain words that checks, notifications and history need a hub that is always on.
+- **HMD-029.** A paid hub must never sleep. When a person pays, the hub must stay on from that moment without a move of data.
+
 ## 7. Open decisions
 
 | ID | Decision | Facts | Proposal |
 | --- | --- | --- | --- |
-| HM-D1 | How can each free hub cost less than the paid hubs earn? | Estimates: a paid Solo hub earns about $13 a month after its hardware and the payment fee. A free always-on slice costs about $2 to $3. At a conversion of 1% to 3%, one paid hub carries 33 to 99 free hubs, so a free hub must cost less than about $0.13 to $0.40 a month. | (a) A free hub sleeps when no device of the account is connected, and "always on" (checks and notifications with all devices off) is what a person pays for. (b) The free hub of a signed-in account runs on the person's computer, and the directory only finds it; a hosted hub is the paid step. (c) The free hosted hub has a time limit. The business session recommends (b) or (a). |
+| HM-D1 | How can each free hub cost less than the paid hubs earn? | Estimates: a paid Solo hub earns about $13 a month after its hardware and the payment fee. A free always-on slice costs about $2 to $3. At a conversion of 1% to 3%, one paid hub carries 33 to 99 free hubs, so a free hub must cost less than about $0.13 to $0.40 a month. | Decided: HM-R6. The free hub sleeps. |
+| HM-D8 | What does a hub that sleeps cost, and how fast does it start? | Not measured. The cost is the disk of the hub and its share of memory while it is on. | Measure on one pool host in step 5. Change the 15 minutes of HMD-024 and the 30 seconds of HMD-026 from the result. |
 | HM-D2 | Where does the usage line sit? | Hub memory is not measured. | Set it after the load test of [shared-pool-hosting.md](shared-pool-hosting.md). |
 | HM-D3 | Which identity service does the site use? | The operator planned single sign-on on the Vercel site. | The operator names it. HMD-006 must be possible with it. |
 | HM-D4 | Is the second factor (HMD-006) required for each account? | Without it, one stolen sign-on session opens each device of a hub. | Required. |
 | HM-D5 | In which region is the first pool host? | The priced hosts are in the EU. No US host is priced. | Price a US host before the launch. |
-| HM-D6 | Is the directory and billing code open source? | OR-5: not open source. | No change. |
+| HM-D6 | Is the directory and billing code open source? | OR-5: not open source. The operator decided the same for the cloud on 2026-11-16 (fact 5). | Decided. No change. |
 | HM-D7 | Who reviews the security of the pool and of the grant path before the launch? | The pool proposal asks for a review before paying customers. HM-R2 adds the grant path. | A review by a person from outside, before the first account of a different person. |
 
 ## 8. Work, in order
 
 No task is started. A task breakdown comes after the operator approves the requirements and
-decides HM-D1 (PLN-002).
+decides HM-D3 and HM-D4 (PLN-002).
 
 | Step | Work | Depends on |
 | --- | --- | --- |
@@ -166,7 +187,7 @@ decides HM-D1 (PLN-002).
 | 2 | The load test of one hub: memory, devices for each slice | Step 1 |
 | 3 | The account directory: accounts, hubs, grants (HMD-001 to HMD-010) | HM-D3, HM-D4 |
 | 4 | The hub accepts grants; the hosted hub has no separate operator password (HMD-005). A spec delta: the login requirements and NET-001. | Step 3 |
-| 5 | One pool host: isolation, limits, backup, the make-a-hub call (HMD-013, HMD-014) | Step 2, HM-D5 |
+| 5 | One pool host: isolation, limits, backup, the make-a-hub job, sleep and wake (HMD-013, HMD-014, HMD-024 to HMD-029, HM-D8) | Step 2, HM-D5 |
 | 6 | The first run: "Sign in" (HMD-022, HMD-023) | Steps 3 and 4 |
 | 7 | The usage card, the line, Stripe (HMD-017 to HMD-021) | HM-D1, HM-D2 |
 | 8 | The security review (HM-D7), the terms and the text of HMD-015 | Steps 3 to 5 |
