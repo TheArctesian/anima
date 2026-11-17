@@ -1,7 +1,7 @@
 ---
 kind: Proposal
 state: Direction decided
-evidence: Direction decided (HM-R1 to HM-R9, operator, 2026-11-16). R-127 names task HM-T1 (the first-run screens of Sign in, with a stand-in cloud): built on branch hosted-sign-in-screens, not merged; the cloud API and the grant check of the hub are not built, and the real cloud of the client is a stub. HMD-001 to HMD-036 are not approved. HM-R6: a free hub sleeps. HM-R7: Apple Pay and Google Pay. HM-R8: no staff access to hubs. HM-R9: WorkOS AuthKit (decides HM-D3). HM-D4 (second factor) is proposed, not ruled.
+evidence: Direction decided (HM-R1 to HM-R9, operator, 2026-11-16). R-127 names task HM-T1 (the first-run screens of Sign in, with a stand-in cloud). R-128 approves HMD-037 (the first run is only the sign-in). HM-T1 is built on branch hosted-sign-in-screens, not merged; the cloud API and the grant check of the hub are not built, and the real cloud of the client is a stub. HMD-001 to HMD-036 are not approved. HM-R6: a free hub sleeps. HM-R7: Apple Pay and Google Pay. HM-R8: no staff access to hubs. HM-R9: WorkOS AuthKit (decides HM-D3). HM-D4 (second factor) is proposed, not ruled.
 ---
 
 # Proposal: the hosted mode as the default first run
@@ -14,7 +14,7 @@ Version: 5. Date: 2026-11-17. Version 2 added HM-R6 (a free hub sleeps) and the 
 business vault (Section 3, fact 5). Version 3 added HM-R7 (Apple Pay and Google Pay), HM-R8 (no
 staff access to hubs), HMD-030 and HMD-031. Version 4 adds HM-R9 (WorkOS AuthKit, which decides
 HM-D3), the device-code sign-in of Section 4.1 and HMD-032 to HMD-036. HM-D4 is not ruled.
-Version 5 adds the task table of Section 8 and task HM-T1 (R-127).
+Version 5 adds the task table of Section 8, task HM-T1 (R-127) and HMD-037 (R-128).
 Status: the header of this document holds the state (PLN-020). History: Draft. The direction is decided by the operator (Section 2). The requirements are not
 approved.
 Map: [work-plan.md](../work-plan.md). Parent plans: [one-click-plan.md](../plans/one-click/one-click-plan.md)
@@ -131,6 +131,11 @@ Steps 1 to 3 and 5 to 8 of Section 4.1. The hub is there already, so there is no
 - Type an invite, a server address or a relay address.
 - Make a second password for the hub. The account is the operator account of a hosted hub.
 
+R-128 (operator, 2026-11-17: "It should just be signing into your account") makes this section a
+requirement:
+
+- **HMD-037.** On a device of a hosted hub, the first run must be only the sign-in to the account. After "Sign in", the application must not show or ask for an invite, a hub address, a relay address, or a hub password or TOTP code, and must not send the person to "Join a hub" or to the hub sign-in page. After the sign-in, one answer of the cloud must give all that the application needs to join the hub and to use it as a signed-in device. The application must join with it and must not show it. Approved (R-128).
+
 ## 5. The account as the key (HM-R2)
 
 HM-R2 makes one sign-in sufficient. Thus a person who gets into the account gets into the hub,
@@ -240,11 +245,26 @@ Before that, only a task that a ruling names is built (PLN-007).
 | 8 | The security review (HM-D7), the terms and the text of HMD-015 | Steps 3 to 5 |
 | 9 | Split custody (OI-3 of the one-click plan) | After the launch (HM-R5) |
 
+What the code of 2026-11-17 still needs before HMD-037 is true with a real hub (steps 3 and 4).
+Each item is a place where a device that joined through the link still needs an invite or the hub
+password:
+
+| Place | What it does today | What must change, and on which side |
+| --- | --- | --- |
+| `apps/desktop/src-tauri/src/link/printed.rs` (`invite`), called by `link_join` in `apps/desktop/src-tauri/src/link.rs` | Accepts only text that starts with `anima-invite.1.`. Anything else is `bad-invite`. | If the cloud gives a device grant, the shell must accept its form too. If the cloud gives an invite, no change. |
+| `link/invites/` and `link/cmd/anima-link/join.go` | The hub admits a new device key only with a one-time invite code that the hub made (LNK-003, 15 minutes). | Hub side: accept a grant of the cloud (HMD-005), or let the cloud make the invite through the hub (next row). |
+| `createLinkInvite` in `contracts/schema.graphql` (`crates/hub/src/fleet/link/graphql.rs`) | Makes the invite. Needs an operator token. | Cloud and hub side: the cloud needs a credential of the hub that may make an invite or a device for the account, without the operator password. |
+| `login` and `signInBrowser` in `contracts/schema.graphql`; `crates/hub/src/fleet/access/login.rs` and `guard.rs` | The only way to get an access token: the operator name, password and TOTP code. Each other call needs the token. | Hub side: a hosted hub gives the token of a device that the account admitted (step 4: "no separate operator password"). The cloud returns it in the `HubAccess`. |
+| `crates/hub/src/operator.rs` (`operator set`, `operator totp`) and `apps/client/src/lib/local-hub/account/` | The hub has an operator account only after a person sets a password and a TOTP secret. | Hub side: a hosted hub has no such account; the account of Anima.ing is its operator (Section 4.3). |
+| `apps/client/src/lib/access/guard.ts` (`startGuard`, `signInNeeded`) and `apps/client/src/routes/sign-in/` | When the stored token is missing or the hub answers UNAUTHENTICATED, the client goes to the hub password page. | Client and cloud side: for a hosted hub, go to "Sign in" (the account) again, not to the password page. Not built. |
+| `apps/client/src/lib/desktop/this-machine.ts` (`readThisMachine`) and `apps/client/src/lib/devices/add/this-machine.ts` | The device list offers "Add this computer" only for a computer with an address of the Anima.ing VPN (100.64.0.0/10). A computer that joined only through the link has none. | Client and hub side: offer this computer from its link key, so step 8 of Section 4.1 works. |
+| `apps/client/src/routes/welcome/join/+page.svelte` | "Join a hub" ends at the hub password page. | No change: it is the self-host path, not a step of "Sign in". |
+
 Tasks that a ruling names:
 
 | Task | Work | Ruling | State |
 | --- | --- | --- | --- |
-| HM-T1 | Step 6 without the cloud: the first-run screens of "Sign in" in the client (HMD-022, HMD-023). One state for each step of Section 4.1 and an error with a retry for cancelled, expired, no network and refused. The cloud is behind the interface `HostedAccount` in `apps/client/src/lib/hosted/`: a stand-in for the tests and for `VITE_ANIMA_HOSTED=stand-in` (`?fail=step:problem` makes it fail once), and the real cloud, which is a stub that refuses each call. Not built: the cloud API (step 3), the check of a grant by the hub (step 4), the device key, the AuthKit device flow, the key store for the refresh token (HMD-034), and the opening of the system browser. Mockup: [first-run/index.html](../mockup/first-run/index.html). | R-127 | In progress: built on branch `hosted-sign-in-screens`, not merged. The merge sets Done with its commit. |
+| HM-T1 | Step 6 without the cloud: the first-run screens of "Sign in" in the client (HMD-022, HMD-023, HMD-037). One state for each step of Section 4.1, then the device list, and an error with a retry for cancelled, expired, no network and refused. The cloud is behind the interface `HostedAccount` in `apps/client/src/lib/hosted/`. After the sign-in, its call `access` gives one opaque `HubAccess` (what `link_join` takes, and the hub access token of this device). The app joins with it silently (`join.ts`: the link join, the token in the key store, the address). Two implementations: a stand-in for the tests and for `VITE_ANIMA_HOSTED=stand-in` (`?fail=step:problem` makes it fail once), and the real cloud, which is a stub that refuses each call. Not built: the cloud API (step 3), the hub side (step 4), the device key, the AuthKit device flow, the key store for the refresh token (HMD-034), and the opening of the system browser. Mockup: [first-run/index.html](../mockup/first-run/index.html). | R-127, R-128 | In progress: built on branch `hosted-sign-in-screens`, not merged. The merge sets Done with its commit. |
 
 ## 9. Changes that this proposal needs in other documents
 

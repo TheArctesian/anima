@@ -1,4 +1,5 @@
 import type { Answer, HostedAccount, SignInCode } from '$lib/hosted/account';
+import type { HostedParts } from '$lib/hosted/choose';
 import type { HostedEvent, HostedStep } from './hosted';
 
 /** Seconds between two asks for a hub that is starting. */
@@ -34,7 +35,8 @@ async function hubChange(step: HostedStep & { kind: 'hub' }, account: HostedAcco
  * Does the work of `step` with the cloud until something changes, and gives the event. A step that waits for
  * nothing gives `null`. `wait` takes milliseconds; a page that has gone passes a wait that never ends.
  */
-export async function runStep(step: HostedStep, account: HostedAccount, wait: Wait): Promise<HostedEvent | null> {
+export async function runStep(step: HostedStep, parts: HostedParts, wait: Wait): Promise<HostedEvent | null> {
+  const { account } = parts;
   switch (step.kind) {
     case 'start': {
       const started = await account.start();
@@ -47,8 +49,11 @@ export async function runStep(step: HostedStep, account: HostedAccount, wait: Wa
     case 'hub':
       return hubChange(step, account, wait);
     case 'connecting': {
-      const connected = await account.connect();
-      return connected.ok ? { kind: 'connected' } : failed(connected);
+      // The access goes from the cloud straight to the join: no step holds it and no screen shows it (Section 4.3).
+      const access = await account.access();
+      if (!access.ok) return failed(access);
+      const joined = await parts.join(access.value);
+      return joined.ok ? { kind: 'connected' } : failed(joined);
     }
     case 'done':
     case 'failed':

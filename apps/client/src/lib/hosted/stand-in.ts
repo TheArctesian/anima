@@ -1,7 +1,8 @@
-import { answer, refusal, type HostedAccount, type HubState, type Problem } from './account';
+import { sealAccess } from './access';
+import { answer, refusal, type Answer, type HostedAccount, type HubState, type Problem } from './account';
 
-/** A step of the stand-in that can be told to fail once. */
-export type StandInStep = 'start' | 'open' | 'poll' | 'hub' | 'connect';
+/** A step of the stand-in that can be told to fail once. `access` is the cloud's answer with the hub access; `join` is the link join of this computer. */
+export type StandInStep = 'start' | 'open' | 'poll' | 'hub' | 'access' | 'join';
 
 export interface StandInFailure {
   readonly at: StandInStep;
@@ -22,7 +23,7 @@ export interface StandInPlan {
   readonly wait?: (ms: number) => Promise<void>;
 }
 
-const STEPS: readonly StandInStep[] = ['start', 'open', 'poll', 'hub', 'connect'];
+const STEPS: readonly StandInStep[] = ['start', 'open', 'poll', 'hub', 'access', 'join'];
 const PROBLEMS: readonly Problem[] = ['cancelled', 'expired', 'offline', 'refused'];
 
 /** Reads a failure written as `step:problem`, for example `poll:expired`; anything else is no failure. */
@@ -34,10 +35,10 @@ export function parseFailure(text: string | null): StandInFailure | null {
 }
 
 /**
- * A cloud that is not there: it walks through the steps of the sign-in with delays like the real ones, and fails
- * where the plan says. It holds no token and talks to no network. It is for tests and for `VITE_ANIMA_HOSTED=stand-in`.
+ * A cloud and a link join that are not there: it walks through the steps of the sign-in with delays like the real
+ * ones, and fails where the plan says. It holds no token and talks to no network. It is for tests and for `VITE_ANIMA_HOSTED=stand-in`.
  */
-export function standInAccount(plan: StandInPlan = {}): HostedAccount {
+export function standInAccount(plan: StandInPlan = {}): HostedAccount & { readonly join: () => Promise<Answer<void>> } {
   const { hub = 'making', polls = 3, starts = 3, delay = 600, wait = (ms) => new Promise((done) => setTimeout(done, ms)) } = plan;
   let failure = plan.fail ?? null;
   let pollsLeft = polls;
@@ -76,8 +77,14 @@ export function standInAccount(plan: StandInPlan = {}): HostedAccount {
       startsLeft -= 1;
       return answer(hub);
     },
-    connect: async () => {
-      const problem = await call('connect');
+    // A sealed access with no secret in it: the stand-in join never opens it.
+    access: async () => {
+      const problem = await call('access');
+      return problem === null ? answer(sealAccess({ link: 'stand-in', token: 'stand-in' })) : refusal(problem);
+    },
+    /** The link join of the stand-in: it joins nothing and keeps nothing. */
+    join: async () => {
+      const problem = await call('join');
       return problem === null ? answer(undefined) : refusal(problem);
     },
   };

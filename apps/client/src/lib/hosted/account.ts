@@ -1,7 +1,9 @@
+import type { HubAccess } from './access';
+
 /**
  * The Anima.ing cloud as the first run sees it (hosted-mode.md Section 4.1, HMD-022, HMD-023). The page calls only
- * this interface; `hostedAccount()` in `choose.ts` picks the implementation. No call returns a token: the
- * implementation keeps the WorkOS tokens and the device grant itself (HMD-034, LOG-007).
+ * this interface; `hostedParts()` in `choose.ts` picks the implementation. The implementation keeps the WorkOS tokens
+ * itself (HMD-034, LOG-007); what the hub needs comes back sealed in a `HubAccess`.
  */
 export interface HostedAccount {
   /** Starts the device sign-in: a short code to show and the page where the person signs in. */
@@ -12,8 +14,11 @@ export interface HostedAccount {
   readonly poll: (code: SignInCode) => Promise<Answer<SignInPoll>>;
   /** Asks the cloud for the hub of the account; the cloud starts the make or wake job when it is not ready. */
   readonly hub: () => Promise<Answer<HubState>>;
-  /** Gets a device grant for the ready hub and connects to it through the link; the hub checks the grant. */
-  readonly connect: () => Promise<Answer<void>>;
+  /**
+   * One call for everything this computer needs to reach and use the ready hub: what the link join takes and the
+   * credential of this device. The app joins with it silently (`join.ts`); the person never sees it (Section 4.3).
+   */
+  readonly access: () => Promise<Answer<HubAccess>>;
 }
 
 /** The code of one device sign-in. */

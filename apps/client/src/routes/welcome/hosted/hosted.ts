@@ -2,7 +2,8 @@ import type { HubState, Problem, SignInCode } from '$lib/hosted/account';
 
 /**
  * The steps of "Sign in" (hosted-mode.md Section 4.1, HMD-023): get a code, wait for the sign-in in the browser,
- * the hub starts (make or wake), connect to it, done. A step that stops shows why and offers a retry.
+ * the hub starts (make or wake), connect to it, then the device list. The person never types an invite, an address or
+ * a hub password: the app joins by itself (Section 4.3). A step that stops shows why and offers a retry.
  */
 export type HostedStep =
   | { readonly kind: 'start' }
@@ -97,7 +98,7 @@ export function stepText(step: HostedStep): StepText {
     case 'connecting':
       return { title: 'Connecting', line: 'Connecting this computer to your hub.', action: null };
     case 'done':
-      return { title: 'Your hub is ready', line: 'Add this computer to start.', action: 'Add this computer' };
+      return { title: 'Your hub is ready', line: 'Opening your devices.', action: null };
     case 'failed':
       if (step.problem === 'refused' && step.from.kind === 'connecting') return { ...PROBLEM_TEXT.refused, line: 'Your hub refused this computer.' };
       return PROBLEM_TEXT[step.problem];

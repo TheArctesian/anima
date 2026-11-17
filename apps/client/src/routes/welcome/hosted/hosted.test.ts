@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import type { HostedAccount, Problem, SignInCode } from '$lib/hosted/account';
+import type { Problem, SignInCode } from '$lib/hosted/account';
 import { parseFailure, standInAccount, type StandInPlan } from '$lib/hosted/stand-in';
 import { cloudAccount } from '$lib/hosted/cloud';
-import { hostedAccount } from '$lib/hosted/choose';
+import { hostedParts, type HostedParts } from '$lib/hosted/choose';
 import { FIRST, nextStep, stepText, type HostedEvent, type HostedStep } from './hosted';
 import { runStep } from './run';
 
@@ -10,12 +10,13 @@ const CODE: SignInCode = { code: 'WDJB-MJHT', page: 'https://cloud.anima.ing/act
 const WAITING: HostedStep = { kind: 'waiting', code: CODE, opened: true };
 const noWait = () => Promise.resolve();
 
-function account(plan: StandInPlan = {}): HostedAccount {
-  return standInAccount({ delay: 0, wait: noWait, ...plan });
+function account(plan: StandInPlan = {}): HostedParts {
+  const standIn = standInAccount({ delay: 0, wait: noWait, ...plan });
+  return { account: standIn, join: standIn.join };
 }
 
 /** Runs from the first step until a step waits for the person, and gives each step it passed. */
-async function walk(cloud: HostedAccount, from: HostedStep = FIRST): Promise<HostedStep[]> {
+async function walk(cloud: HostedParts, from: HostedStep = FIRST): Promise<HostedStep[]> {
   const steps = [from];
   let step = from;
   for (let event = await runStep(step, cloud, noWait); event !== null; event = await runStep(step, cloud, noWait)) {
@@ -113,7 +114,8 @@ describe('runStep with the stand-in', () => {
     [{ at: 'poll', problem: 'cancelled' }, 'waiting'],
     [{ at: 'poll', problem: 'expired' }, 'waiting'],
     [{ at: 'hub', problem: 'refused' }, 'hub'],
-    [{ at: 'connect', problem: 'refused' }, 'connecting'],
+    [{ at: 'access', problem: 'refused' }, 'connecting'],
+    [{ at: 'join', problem: 'offline' }, 'connecting'],
   ];
   it.each(stops)('HMD-023: a failure at %o stops in %s, and one retry finishes', async (fail, at) => {
     const cloud = account({ fail });
@@ -133,12 +135,12 @@ describe('the cloud of the first run', () => {
   });
 
   it('HMD-032: the real cloud is a stub until the cloud API exists; it refuses the start', async () => {
-    expect(await walk(cloudAccount())).toEqual([FIRST, { kind: 'failed', problem: 'refused', from: FIRST }]);
+    expect(await walk({ account: cloudAccount(), join: () => Promise.reject(new Error('not reached')) })).toEqual([FIRST, { kind: 'failed', problem: 'refused', from: FIRST }]);
   });
 
   it('only VITE_ANIMA_HOSTED=stand-in picks the stand-in, and ?fail tells it where to fail', async () => {
     const query = new URLSearchParams('fail=start:offline');
-    expect(await hostedAccount('stand-in', query).start()).toEqual({ ok: false, problem: 'offline' });
-    expect(await hostedAccount(undefined, query).start()).toEqual({ ok: false, problem: 'refused' });
+    expect(await hostedParts('stand-in', query).account.start()).toEqual({ ok: false, problem: 'offline' });
+    expect(await hostedParts(undefined, query).account.start()).toEqual({ ok: false, problem: 'refused' });
   });
 });

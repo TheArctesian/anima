@@ -2,11 +2,10 @@
 import { flushSync, mount, unmount } from 'svelte';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { installAnimations } from '$lib/forms/animations.fixture';
-import type { HostedAccount } from '$lib/hosted/account';
 import { standInAccount, type StandInPlan } from '$lib/hosted/stand-in';
 import HostedSignIn from './HostedSignIn.svelte';
 
-const mocks = vi.hoisted(() => ({ loadClientAt: vi.fn() }));
+const mocks = vi.hoisted(() => ({ loadClientAt: vi.fn(), done: vi.fn() }));
 
 vi.mock('$app/paths', () => ({ resolve: (path: string) => path, asset: (path: string) => path }));
 vi.mock('$lib/access/navigation', () => ({ loadClientAt: mocks.loadClientAt }));
@@ -22,12 +21,12 @@ async function settle(): Promise<void> {
   }
 }
 
-async function open(plan: StandInPlan = {}): Promise<{ target: HTMLElement; account: HostedAccount }> {
+async function open(plan: StandInPlan = {}): Promise<{ target: HTMLElement; account: ReturnType<typeof standInAccount> }> {
   const account = standInAccount({ delay: 0, wait: () => Promise.resolve(), polls: 1, starts: 1, ...plan });
   const target = document.createElement('div');
   document.body.append(target);
   const wait = () => new Promise<void>((resolve) => held.push(resolve));
-  app = mount(HostedSignIn, { target, props: { account, wait } });
+  app = mount(HostedSignIn, { target, props: { parts: { account, join: account.join }, wait, ondone: mocks.done } });
   await settle();
   return { target, account };
 }
@@ -58,6 +57,7 @@ function press(target: HTMLElement, label: string): void {
 beforeEach(() => {
   installAnimations();
   mocks.loadClientAt.mockReset();
+  mocks.done.mockReset();
   held = [];
 });
 
@@ -79,13 +79,23 @@ it('HMD-023: shows the code to compare while it waits for the sign-in in the bro
   expect(document.activeElement?.textContent).toBe('Continue in your browser');
 });
 
-it('HMD-023, HMD-025: after the sign-in the hub starts, then connects, then offers "Add this computer"', async () => {
+it('HMD-023, HMD-025, Section 4.3: after the sign-in the hub starts, the app joins by itself, then the device list opens', async () => {
   const { target } = await open();
   await release();
   expect(view(target)).toMatchObject({ title: 'Your hub is starting', line: 'Making your hub. This can take a minute.', buttons: [], back: null });
+  expect(mocks.done).not.toHaveBeenCalled();
   await release();
-  expect(view(target)).toMatchObject({ title: 'Your hub is ready', buttons: ['Add this computer'] });
-  press(target, 'Add this computer');
+  expect(view(target)).toMatchObject({ title: 'Your hub is ready', line: 'Opening your devices.', buttons: [] });
+  expect(mocks.done).toHaveBeenCalledOnce();
+  expect(target.querySelector('input, textarea')).toBeNull();
+});
+
+it('without ondone the end of the flow loads the device list', async () => {
+  const account = standInAccount({ delay: 0, wait: () => Promise.resolve(), polls: 0, hub: 'ready' });
+  const target = document.createElement('div');
+  document.body.append(target);
+  app = mount(HostedSignIn, { target, props: { parts: { account, join: account.join }, wait: () => Promise.resolve() } });
+  await settle();
   expect(mocks.loadClientAt).toHaveBeenCalledWith('/devices');
 });
 
@@ -99,7 +109,7 @@ it('the start step says that it gets a code', async () => {
   const account = standInAccount({ delay: 0, wait: () => new Promise(() => undefined) });
   const target = document.createElement('div');
   document.body.append(target);
-  app = mount(HostedSignIn, { target, props: { account } });
+  app = mount(HostedSignIn, { target, props: { parts: { account, join: account.join } } });
   flushSync();
   expect(view(target)).toMatchObject({ title: 'Starting', line: 'Getting a code.', buttons: [], back: '/welcome' });
 });
@@ -119,7 +129,8 @@ const failures: [StandInPlan['fail'] & object, string, string, string][] = [
   [{ at: 'poll', problem: 'expired' }, 'The code expired', 'Sign in before the code runs out.', 'Get a new code'],
   [{ at: 'start', problem: 'offline' }, 'No network', 'Anima.ing did not answer. Check the network.', 'Retry'],
   [{ at: 'start', problem: 'refused' }, 'Sign-in refused', 'Anima.ing refused the sign-in.', 'Retry'],
-  [{ at: 'connect', problem: 'refused' }, 'Sign-in refused', 'Your hub refused this computer.', 'Retry'],
+  [{ at: 'join', problem: 'refused' }, 'Sign-in refused', 'Your hub refused this computer.', 'Retry'],
+  [{ at: 'join', problem: 'offline' }, 'No network', 'Anima.ing did not answer. Check the network.', 'Retry'],
 ];
 
 it.each(failures)('HMD-023: a failure %o says why with an alert, and its button finishes the sign-in', async (fail, title, line, action) => {
@@ -132,4 +143,5 @@ it.each(failures)('HMD-023: a failure %o says why with an alert, and its button 
   await release();
   await release();
   expect(view(target).title).toBe('Your hub is ready');
+  expect(mocks.done).toHaveBeenCalledOnce();
 });

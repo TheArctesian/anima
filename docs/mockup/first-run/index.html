@@ -77,7 +77,7 @@ figcaption { margin-top: 6px; font-size: 12px; color: var(--pg-muted); max-width
 <body>
 <h1 class="board">First run: Sign in</h1>
 <p class="about">The first-run choices and each step of "Sign in" (hosted-mode.md Section 4.1, HMD-022, HMD-023).
-Each step has one heading, one line and at most one button. Back goes to the choices. The values are the design tokens.</p>
+Each step has one heading, one line and at most one button. Back goes to the choices. After "Sign in" no step asks for an invite, an address or a hub password (HMD-037, R-128). The values are the design tokens.</p>
 
 <h2 class="row">1. Choices</h2>
 <div class="frames">
@@ -121,11 +121,11 @@ Each step has one heading, one line and at most one button. Back goes to the cho
   <figure><div class="frame gd">
     <p class="label"><span class="logo"></span><span class="rule"></span>Anima.ing</p><h1>Sign in</h1>
     <div class="step"><h2>Connecting</h2><p class="line">Connecting this computer to your hub.</p><div class="actions"></div></div>
-  </div><figcaption>The grant and the link.</figcaption></figure>
+  </div><figcaption>The app joins the hub by itself with what the cloud gave; nothing of it is shown.</figcaption></figure>
   <figure><div class="frame gl">
     <p class="label"><span class="logo"></span><span class="rule"></span>Anima.ing</p><h1>Sign in</h1>
-    <div class="step"><h2>Your hub is ready</h2><p class="line">Add this computer to start.</p><div class="actions"><button class="button primary">Add this computer</button></div></div>
-  </div><figcaption>Done: the button opens the device list, which offers this computer.</figcaption></figure>
+    <div class="step"><h2>Your hub is ready</h2><p class="line">Opening your devices.</p><div class="actions"></div></div>
+  </div><figcaption>Done: the device list opens by itself and offers this computer. No step asks for an invite, an address or a hub password (HMD-037).</figcaption></figure>
 </div>
 
 <h2 class="row">3. Failures, each with a retry</h2>

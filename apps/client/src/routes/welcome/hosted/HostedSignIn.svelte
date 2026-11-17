@@ -3,19 +3,21 @@
   import { resolve } from '$app/paths';
   import { loadClientAt } from '$lib/access/navigation';
   import FormButton from '$lib/forms/FormButton.svelte';
-  import type { HostedAccount } from '$lib/hosted/account';
+  import type { HostedParts } from '$lib/hosted/choose';
   import { crossFade } from '$lib/motion/roles/transitions';
   import { FIRST, nextStep, stepText, type HostedEvent, type HostedStep } from './hosted';
   import { runStep } from './run';
 
   interface Props {
-    /** The cloud: the stub, or the stand-in for tests and `VITE_ANIMA_HOSTED=stand-in`. */
-    account: HostedAccount;
+    /** The cloud and the join: the stub, or the stand-in for tests and `VITE_ANIMA_HOSTED=stand-in`. */
+    parts: HostedParts;
+    /** Opens the device list once the hub is joined; it offers "Add this computer" itself (R-060). */
+    ondone?: () => void;
     /** Waits between polls; tests pass their own (CQ-021). */
     wait?: (ms: number) => Promise<void>;
   }
 
-  const { account, wait = (ms) => new Promise((done) => setTimeout(done, ms)) }: Props = $props();
+  const { parts, ondone = () => loadClientAt('/devices'), wait = (ms) => new Promise((done) => setTimeout(done, ms)) }: Props = $props();
 
   let step = $state<HostedStep>(FIRST);
   let gone = false;
@@ -33,27 +35,27 @@
 
   function go(event: HostedEvent): void {
     step = nextStep(step, event);
-    void run(step);
+    if (step.kind === 'done') ondone();
+    else void run(step);
   }
 
   async function run(current: HostedStep): Promise<void> {
     turn += 1;
     const mine = turn;
     // A page that has gone stops polling: its wait never ends.
-    const event = await runStep(current, account, (ms) => (gone ? new Promise<void>(() => undefined) : wait(ms)));
+    const event = await runStep(current, parts, (ms) => (gone ? new Promise<void>(() => undefined) : wait(ms)));
     if (event !== null && mine === turn && !gone) go(event);
   }
 
   async function reopen(): Promise<void> {
     if (step.kind !== 'waiting') return;
-    const opened = await account.openPage(step.code.page);
+    const opened = await parts.account.openPage(step.code.page);
     step = nextStep(step, { kind: 'opened', opened: opened.ok });
   }
 
   function act(): void {
     if (step.kind === 'waiting') void reopen();
     else if (step.kind === 'failed') go({ kind: 'retry' });
-    else if (step.kind === 'done') loadClientAt('/devices');
   }
 
   /** Each step's heading takes focus when the step shows (NAV-005). */
