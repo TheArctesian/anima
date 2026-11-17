@@ -4,9 +4,10 @@ Progress: the plan register in [work-plan.md](../../work-plan.md) Section 9 hold
 
 From: the business planning session of 2026-11-16, after the operator tried release 0.2.0 on a
 second Mac (report of the S12 packaging session).
-Version: 3. Date: 2026-11-16. Version 2 added HM-R6 (a free hub sleeps) and the cloud design of the
-business vault (Section 3, fact 5). Version 3 adds HM-R7 (Apple Pay and Google Pay), HM-R8 (no
-staff access to hubs), HMD-030 and HMD-031, and states that HM-D3 and HM-D4 are not ruled.
+Version: 4. Date: 2026-11-16. Version 2 added HM-R6 (a free hub sleeps) and the cloud design of the
+business vault (Section 3, fact 5). Version 3 added HM-R7 (Apple Pay and Google Pay), HM-R8 (no
+staff access to hubs), HMD-030 and HMD-031. Version 4 adds HM-R9 (WorkOS AuthKit, which decides
+HM-D3), the device-code sign-in of Section 4.1 and HMD-032 to HMD-036. HM-D4 is not ruled.
 Status: Draft. The direction is decided by the operator (Section 2). The requirements are not
 approved.
 Map: [work-plan.md](../../work-plan.md). Parent plans: [one-click-plan.md](../../one-click-plan.md)
@@ -46,6 +47,7 @@ the facts that the build needs.
 | HM-R6 | How does a free hub cost less than the paid hubs earn (HM-D1)? | A free hosted hub sleeps when no device of the account is connected. A hub that is always on is the paid step. | Section 6.5. The checks, the notifications and the metrics history stop while a free hub sleeps. |
 | HM-R7 | Which payment methods does the checkout take? | Apple Pay and Google Pay on mobile devices, as well as cards (operator, 2026-11-16). Stripe charges a wallet payment the standard card rate. | HMD-030. The business vault note "Hosted Architecture" (HCL-032 to HCL-036) has the facts. |
 | HM-R8 | May Anima.ing staff log into a customer's hub for support? | No. Hub access is offered only on a plan with a support tier that includes it, for example Enterprise, after the customer opts in (operator, 2026-11-16). | HMD-031. |
+| HM-R9 | Which identity service does the sign-in use (HM-D3)? | WorkOS AuthKit (operator, 2026-11-16: "lets get the single sign on with workos"). Sign-in is the default; self-host stays the other choice. | Section 4.1 and Section 6.6. The application signs in with the device authorization flow of AuthKit. |
 
 ## 3. Facts (2026-11-16)
 
@@ -70,6 +72,20 @@ the facts that the build needs.
    sign-in from the application, no device grant, no call that makes a hub, and no sleep. This
    proposal adds them. "The directory" in this file is that cloud.
 6. The memory that one hub uses is not measured. All costs of a hosted hub are estimates.
+7. WorkOS AuthKit, read on 2026-11-16 from <https://workos.com/pricing> and
+   <https://workos.com/docs/authkit/cli-auth>:
+   - It is free for the first 1,000,000 monthly active users, then $2,500 for each further
+     1,000,000. Enterprise single sign-on and directory sync are $125 for each connection a month
+     (1 to 15 connections). A staging environment is free.
+   - It includes email and password, social sign-in, passkeys, multi-factor authentication, magic
+     auth and enterprise single sign-on. The list of social providers, TOTP and how to require
+     multi-factor authentication for each user are not checked.
+   - For an application that cannot get a browser redirect, AuthKit gives the device
+     authorization flow (RFC 8628): the application sends only its client ID, shows a code,
+     and polls until the person signs in. The response holds an access token and a refresh token.
+     The application must replace the stored refresh token after each exchange. The lives of the
+     tokens and how to end the sessions of a user are not checked.
+   - A custom domain for the sign-in pages is $99 a month. What it covers is not checked.
 
 ## 4. The flow
 
@@ -77,14 +93,20 @@ the facts that the build needs.
 
 1. The person starts Anima. The first run shows "Sign in" as the primary button. "Join a hub"
    and "Create a hub on this computer" stay as secondary choices (S6 owns the layout).
-2. The application makes a device key. It opens the system browser at the site with the public
-   key and a one-time challenge. No secret is in the address.
-3. The person signs up or signs in on the site (single sign-on).
-4. If the account has no hub, the directory tells the pool to make one. The site shows the
-   progress.
-5. The site sends the person back to the application with a one-time code (a deep link).
-6. The application changes the code for a device grant and the link address of the hub. The
-   directory signs the grant. The grant names the account, the hub and the device key.
+2. The application makes a device key. It starts the device authorization flow of AuthKit
+   (HM-R9) and opens the system browser at the sign-in page. It shows the same short code, so the
+   person can check that the browser page belongs to this sign-in.
+3. The person signs up or signs in with AuthKit: email, Google, GitHub or a passkey (the
+   providers are not decided), with the second factor of HMD-006.
+4. The application polls AuthKit until the sign-in is complete, and receives a WorkOS access
+   token and refresh token. It keeps the refresh token in the key store of the system (HMD-034).
+5. The application sends the access token and the public device key to the cloud
+   (`cloud.anima.ing`). The cloud checks the token with WorkOS. If the account has no hub, the
+   cloud starts the make-a-hub job; if the free hub sleeps, it starts the wake job. The
+   application shows the progress (HMD-023).
+6. The cloud signs a device grant and returns it with the link address of the hub. The grant
+   names the account, the hub and the device key. No deep link and no custom address scheme are
+   necessary.
 7. The application connects to the hub through the link. The hub checks the grant and adds the
    device key to its list.
 8. The application shows the device list. The first step that it offers is "Add this computer".
@@ -168,6 +190,14 @@ is built in the private repository (fact 5); this repository holds the client an
 - **HMD-028.** While a free hub sleeps, an agent on a device must wait and try again without an error to the person. The application must say in plain words that checks, notifications and history need a hub that is always on.
 - **HMD-029.** A paid hub must never sleep. When a person pays, the hub must stay on from that moment without a move of data.
 
+### 6.6 Sign-in with WorkOS AuthKit (HM-R9)
+
+- **HMD-032.** The application must sign in with the device authorization flow of WorkOS AuthKit, as a public client. The application must hold only the client ID: no WorkOS API key and no client secret.
+- **HMD-033.** The cloud must accept a WorkOS access token only after it checks the signature, the issuer, the audience and the expiry. The cloud must find the account by the WorkOS user ID, not by the email address.
+- **HMD-034.** The application must keep the WorkOS refresh token in the key store of the system, never in a file or a log (LOG-007). It must replace the stored token after each exchange, and it must delete the tokens when WorkOS refuses one.
+- **HMD-035.** The WorkOS API key must be only in the private cloud (HCL-014). The open-source repository must hold only the client ID and the `ANIMA_CLOUD_URL` setting (HCL-002).
+- **HMD-036.** When the owner removes a device (HMD-008) or signs out on the site, the cloud must end the WorkOS sessions of that device and refuse its refresh token. How WorkOS ends one session is not checked.
+
 ## 7. Open decisions
 
 | ID | Decision | Facts | Proposal |
@@ -175,8 +205,10 @@ is built in the private repository (fact 5); this repository holds the client an
 | HM-D1 | How can each free hub cost less than the paid hubs earn? | Estimates: a paid Solo hub earns about $13 a month after its hardware and the payment fee. A free always-on slice costs about $2 to $3. At a conversion of 1% to 3%, one paid hub carries 33 to 99 free hubs, so a free hub must cost less than about $0.13 to $0.40 a month. | Decided: HM-R6. The free hub sleeps. |
 | HM-D8 | What does a hub that sleeps cost, and how fast does it start? | Not measured. The cost is the disk of the hub and its share of memory while it is on. | Measure on one pool host in step 5. Change the 15 minutes of HMD-024 and the 30 seconds of HMD-026 from the result. |
 | HM-D2 | Where does the usage line sit? | Hub memory is not measured. | Set it after the load test of [shared-pool-hosting.md](shared-pool-hosting.md). |
-| HM-D3 | Which identity service does the site use? | The operator planned single sign-on on the Vercel site. | The operator names it. HMD-006 must be possible with it. |
-| HM-D4 | Is the second factor (HMD-006) required for each account? | Without it, one stolen sign-on session opens each device of a hub. | Proposed: required. Not ruled. |
+| HM-D3 | Which identity service does the site use? | The operator planned single sign-on on the Vercel site. | Decided: HM-R9, WorkOS AuthKit. |
+| HM-D9 | Which sign-in methods does AuthKit show? | AuthKit includes email and password, social sign-in, passkeys and magic auth (fact 7). The beachhead is agentic coders. | GitHub, Google and email with a code; passkeys offered after the first sign-in. |
+| HM-D10 | Do the sign-in pages use a domain of Anima.ing, for example `auth.anima.ing`? | A custom domain is $99 a month (fact 7). Without it the browser shows a WorkOS address during sign-in. | Not at the launch. Add it when the cost is small against revenue. |
+| HM-D4 | Is the second factor (HMD-006) required for each account? | Without it, one stolen sign-on session opens each device of a hub. AuthKit includes multi-factor authentication at no extra price (fact 7). | Proposed: required. Not ruled. |
 | HM-D5 | In which region is the first pool host? | The priced hosts are in the EU. No US host is priced. | Price a US host before the launch. |
 | HM-D6 | Is the directory and billing code open source? | OR-5: not open source. The operator decided the same for the cloud on 2026-11-16 (fact 5). | Decided. No change. |
 | HM-D7 | Who reviews the security of the pool and of the grant path before the launch? | The pool proposal asks for a review before paying customers. HM-R2 adds the grant path. | A review by a person from outside, before the first account of a different person. |
@@ -184,13 +216,13 @@ is built in the private repository (fact 5); this repository holds the client an
 ## 8. Work, in order
 
 No task is started. A task breakdown comes after the operator approves the requirements and
-decides HM-D3 and HM-D4 (PLN-002).
+decides HM-D4 (PLN-002).
 
 | Step | Work | Depends on |
 | --- | --- | --- |
 | 1 | The link in the server stack (HMD-011, HMD-012). Also the base of the self-host mode. | Nothing |
 | 2 | The load test of one hub: memory, devices for each slice | Step 1 |
-| 3 | The account directory: accounts, hubs, grants (HMD-001 to HMD-010) | HM-D3, HM-D4 |
+| 3 | The account directory: accounts, hubs, grants, and the WorkOS sign-in (HMD-001 to HMD-010, HMD-032 to HMD-036). Start in the WorkOS staging environment. | HM-D4, HM-D9 |
 | 4 | The hub accepts grants; the hosted hub has no separate operator password (HMD-005). A spec delta: the login requirements and NET-001. | Step 3 |
 | 5 | One pool host: isolation, limits, backup, the make-a-hub job, sleep and wake (HMD-013, HMD-014, HMD-024 to HMD-029, HM-D8) | Step 2, HM-D5 |
 | 6 | The first run: "Sign in" (HMD-022, HMD-023) | Steps 3 and 4 |
