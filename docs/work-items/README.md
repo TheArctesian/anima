@@ -102,6 +102,7 @@ Rules:
 | [GH-57](device-manager/GH-57.md) | Put the anima command line in the .dmg and the AppImage | Work item | Closed 2026-11-13 (see its comments) | — | [design-spec.md](../spec/design-spec.md) Section 3.11 (INS-001 to INS-009) | #57 |
 | [GH-58](device-manager/GH-58.md) | Marketing website with the install links | Work item | Closed 2026-11-13 (see its comments) | — | [design-spec.md](../spec/design-spec.md) Section 3.12 (SITE-001 to SITE-012) | #58 |
 | [GH-60](device-manager/GH-60.md) | Try the anima command line and the MCP server against a real hub and a real client | Checklist | Open at import | — (register row of the command line plan) | [cli-mcp-plan.md](../plans/cli-mcp-plan.md) Section 3 | #60 |
+| [DMN-1](device-manager/DMN-1.md) | Rename the program `anima-agent` to `anima-daemon` | Work item | In progress (claimed 2026-11-17). Its table holds the state of each task | 0 (finish the device manager) | [design-spec.md](../spec/design-spec.md) Section 6.9 and `contracts/agent-push.md` (K8) | — (R-126) |
 
 ## Defects
 
