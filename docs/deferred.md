@@ -68,13 +68,13 @@ Added 2026-11-04 to 2026-11-13, top of the issue.
 
 - [ ] OD-10: Headscale has no Tailnet Lock. Re-check before the VPN goes live (WP-03).
 
-### Extensions (docs/extensions-plan.md)
+### Extensions (docs/plans/extensions-plan.md)
 
 Added 2026-11-04 to 2026-11-13, top of the issue.
 
-- [ ] **Extensions** are tracked as work items (they were issues with the `extensions` label before R-119): engine [E0-1](work-items/engine/E0-1.md)–[E0-8](work-items/engine/E0-8.md), extensions [XP-01](work-items/extensions/XP-01.md)–[XP-14](work-items/extensions/XP-14.md), decisions [SPEC](work-items/extensions/SPEC.md)–[OD-E3](work-items/decisions/OD-E3.md), accounts and keys [KEYS](work-items/extensions/KEYS.md), seams [SEAMS](work-items/extensions/SEAMS.md). Plan: `docs/extensions-plan.md`. Start only after the device manager build is finished (PH-E-000).
+- [ ] **Extensions** are tracked as work items (they were issues with the `extensions` label before R-119): engine [E0-1](work-items/engine/E0-1.md)–[E0-8](work-items/engine/E0-8.md), extensions [XP-01](work-items/extensions/XP-01.md)–[XP-14](work-items/extensions/XP-14.md), decisions [SPEC](work-items/extensions/SPEC.md)–[OD-E3](work-items/decisions/OD-E3.md), accounts and keys [KEYS](work-items/extensions/KEYS.md), seams [SEAMS](work-items/extensions/SEAMS.md). Plan: `docs/plans/extensions-plan.md`. Start only after the device manager build is finished (PH-E-000).
 
-### Proposals after Phase 1 (docs/programme/proposals)
+### Proposals after Phase 1 (docs/proposals)
 
 Added 2026-11-04 to 2026-11-13, top of the issue.
 
@@ -90,7 +90,7 @@ Added 2026-11-04 to 2026-11-13, top of the issue.
 Added 2026-11-05.
 
 **R-055: in-app VPN enrolment (operator request, after Phase 1)**
-The operator wants joining the VPN to need no separate install and no terminal. The proposal is `docs/programme/proposals/in-app-enrolment.md`.
+The operator wants joining the VPN to need no separate install and no terminal. The proposal is `docs/proposals/in-app-enrolment.md`.
 - [ ] Spec change: a setup screen; invite and enrolment requirements; Settings "Add a computer" and "Add a site"
 - [ ] Decision (a): embed tsnet/libtailscale in the Tauri shell (userspace VPN, app traffic only; check iOS)
 - [ ] Decision (b): a root-owned VPS broker with three verbs (personal key, site router key, approve a site's own route), called by the hub with TOTP and an audit entry. This relaxes vpn.md §11 "no Headscale API keys"
@@ -102,7 +102,7 @@ The operator wants joining the VPN to need no separate install and no terminal. 
 Added 2026-11-06.
 
 **R-057: first-run setup in the app (operator request, after Phase 1)**
-No sign-up page; the single operator (OD-2) stays. A first-run "Set up Anima" screen replaces the SSH `anima-hub operator set` / `operator totp` steps, unlocked by a one-time, 1-hour setup code from the hub. The proposal is `docs/programme/proposals/first-run-setup.md`. It pairs with R-055.
+No sign-up page; the single operator (OD-2) stays. A first-run "Set up Anima" screen replaces the SSH `anima-hub operator set` / `operator totp` steps, unlocked by a one-time, 1-hour setup code from the hub. The proposal is `docs/proposals/first-run-setup.md`. It pairs with R-055.
 - [ ] Spec change: a setup-screen requirement; a SEC-002 exception for `setupRequired` and the setup mutation; setup-code handling under LOG-007.
 - [ ] Ruling: where the setup code appears (stdout once, or a root-only file in the secrets folder).
 - [ ] K3 change: `setupRequired` query and the setup mutation (access surface).
@@ -119,7 +119,7 @@ R-057 update: the operator ruled that the setup code is written only to a root-o
 Added 2026-11-06.
 
 **R-058: "Add this machine" after sign-in (operator request, after Phase 1)**
-After sign-in the desktop app offers to add the computer it runs on, unless a device already has its machine ID. The ID is the OS hardware ID (macOS IOPlatformUUID, Linux /etc/machine-id, Windows MachineGuid) sent only as HMAC-SHA256 with a fixed Anima key, so it is stable across networks. MAC addresses were rejected because of per-network private addresses. Proposal: `docs/programme/proposals/add-this-machine.md`.
+After sign-in the desktop app offers to add the computer it runs on, unless a device already has its machine ID. The ID is the OS hardware ID (macOS IOPlatformUUID, Linux /etc/machine-id, Windows MachineGuid) sent only as HMAC-SHA256 with a fixed Anima key, so it is stable across networks. MAC addresses were rejected because of per-network private addresses. Proposal: `docs/proposals/add-this-machine.md`.
 - [ ] Spec change: desktop prompt requirement, device `machineId` field and `deviceByMachineId` query, hashing rule.
 - [ ] Contract change: devices model and API.
 - [ ] Build: Tauri shell reads and hashes the ID; modal pre-fills the Add device form (name, VPN address, services that answer); "Not now" and "Don't ask on this machine".
@@ -824,7 +824,7 @@ Added 2026-11-08.
 
 **From Phase 3 (WP-43 to WP-54), reviews up to `phase-3` 595c624c, 2026-11-08**
 
-Spec references are to `docs/design-spec.md`; rulings are in `docs/programme/programme.md`. Items come from accepted review rounds, not from a fresh audit.
+Spec references are to `docs/spec/design-spec.md`; rulings are in `docs/programme/programme.md`. Items come from accepted review rounds, not from a fresh audit.
 
 **Access and API keys (WP-43; R-100)**
 - [ ] Argument-level API-key rules: let a WRITE key rename or tag a device through `updateDevice` without changing its address or certificate rules (R-100 refuses `updateDevice` and `deleteDevice` for keys outright).
@@ -934,7 +934,7 @@ Added 2026-11-10.
 
 Revisit: These lines came with the lists. They hold no item.
 
-Work that is decided but deliberately left for later. Agents add new deferred items here (programme ruling R-007) instead of leaving them only in chat or in a package plan. Spec references are to `docs/design-spec.md`.
+Work that is decided but deliberately left for later. Agents add new deferred items here (programme ruling R-007) instead of leaving them only in chat or in a package plan. Spec references are to `docs/spec/design-spec.md`.
 
 ### Phase 2 coulds for issue #1
 
@@ -952,4 +952,4 @@ Items found during Phase 3 reviews that are not fixed in Phase 3. Tagged by pack
 
 Added 2026-11-12.
 
-Deferred items from these packages. Full detail is in `docs/programme/packages/WP-53.md`, `WP-55.md` and `phase-3-acceptance.md`.
+Deferred items from these packages. Full detail is in `docs/plans/phase-3/WP-53.md`, `WP-55.md` and `phase-3-acceptance.md`.

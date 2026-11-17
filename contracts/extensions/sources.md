@@ -1,6 +1,6 @@
 # K-E1 — Sources (engine)
 
-Status: new (operator, 2026-11-13; ruling number to be assigned). Proposed for the path to Projects; it is not part of the Phase 3 freeze. Change it only through a programme ruling (CON-001). Requirement IDs: SRC-*, ITG-*, KEY-*, PRJ-017, PRJ-018 of `docs/extensions-plan.md`; EXT-000 to EXT-012 for the extension switch.
+Status: new (operator, 2026-11-13; ruling number to be assigned). Proposed for the path to Projects; it is not part of the Phase 3 freeze. Change it only through a programme ruling (CON-001). Requirement IDs: SRC-*, ITG-*, KEY-*, PRJ-017, PRJ-018 of `docs/plans/extensions-plan.md`; EXT-000 to EXT-012 for the extension switch.
 
 A source is a place the hub reads records from (GitHub first). A source has one provider crate with pure code, and one or more intakes in the extensions that use it. The engine domain `crates/hub/src/engine/sources/` owns accounts, credentials by reference, schedule, runs and health. Owner: engine (`crates/hub/src/engine/**`, `crates/providers/exchange/**`, `$lib/sources/**`).
 

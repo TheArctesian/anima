@@ -6,7 +6,7 @@ Progress: the index [README.md](../README.md) holds the state of this item (PLN-
 | --- | --- |
 | Identifier | OD-C2 |
 | Kind | Decision |
-| Owner | [compute-plan.md](../../compute-plan.md) Section 15 |
+| Owner | [compute-plan.md](../../plans/compute-plan.md) Section 15 |
 | Serves | Work plan Section 4, tier 1 (decisions and approvals) |
 | Version | 1.0 |
 | Date | 2026-11-16 |
@@ -15,11 +15,11 @@ Progress: the index [README.md](../README.md) holds the state of this item (PLN-
 
 **Ownership / priority clarification (2026-11-07):**
 
-[R-084](../../programme/phase-3-agent-delta.md) already establishes one metrics agent (`agent`, `agent-core`) that C1 [C1](../compute/C1.md) later extends for compute. Do not create another metrics/compute binary. The retained boundary is separation from personal-source `anima-collector` [E0-3](../engine/E0-3.md) and any justified shared enrolment library. Align compute command transport/privileges in [C1](../compute/C1.md)/[SPEC-C](../compute/SPEC-C.md); that decision remains open.
+[R-084](../../plans/phase-3/phase-3-agent-delta.md) already establishes one metrics agent (`agent`, `agent-core`) that C1 [C1](../compute/C1.md) later extends for compute. Do not create another metrics/compute binary. The retained boundary is separation from personal-source `anima-collector` [E0-3](../engine/E0-3.md) and any justified shared enrolment library. Align compute command transport/privileges in [C1](../compute/C1.md)/[SPEC-C](../compute/SPEC-C.md); that decision remains open.
 
 ---
 
 Recommendation: keep `anima-agent` separate from `anima-collector`; share enrolment code in a library crate.
 
-**Plan:** [Section 15](../../compute-plan.md)
+**Plan:** [Section 15](../../plans/compute-plan.md)
 **Requirements:** OD-C2

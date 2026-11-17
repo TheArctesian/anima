@@ -2,7 +2,7 @@
 
 Anima is a self-hosted device manager: a Tauri client (macOS, Linux; later web, iOS and Android),
 a Rust hub (axum, async-graphql, PostgreSQL) and a Guacamole gateway (`guacd`).
-The design spec is [docs/design-spec.md](docs/design-spec.md). It is the source of truth;
+The design spec is [docs/spec/design-spec.md](docs/spec/design-spec.md). It is the source of truth;
 cite requirement IDs (for example `CHK-011`) in commits and pull requests.
 
 ## Before you change code
@@ -84,7 +84,7 @@ domain, run the gates, then lower the baseline.
 
 ## Command line first
 
-The plan is [docs/cli-mcp-plan.md](docs/cli-mcp-plan.md). Build each new function in this order
+The plan is [docs/plans/cli-mcp-plan.md](docs/plans/cli-mcp-plan.md). Build each new function in this order
 (CMD-030, operator, 2026-11-12):
 
 1. The hub API (and its contract).
@@ -108,7 +108,7 @@ state (`register.md`) and the rules (`rules.md`, PLN-001 to PLN-020, operator, 2
   write a short proposal with its register row first. If the build must be different from the plan,
   change the plan in the same commit. A correction of a defect that adds no function needs no plan.
 - The path is idea, proposal, plan, contract, tasks, check (PLN-018). An idea is a folder in
-  [docs/ideas/](docs/ideas/README.md); do not build from it. An approved proposal moves to `docs/<name>-plan.md`.
+  [docs/ideas/](docs/ideas/README.md); do not build from it. A proposal is in `docs/proposals/`; an approved one moves to `docs/plans/<name>-plan.md`.
 - A mockup agrees with the application (PLN-019). If you change the layout of a screen that
   [docs/mockup/README.md](docs/mockup/README.md) lists, change its mockup in the same commit.
 - Do not build from a document that is not in Section 9 of the work plan.

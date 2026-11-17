@@ -15,7 +15,7 @@ export function progressOf(status: LocalHubStatus): Progress {
   }
 }
 
-/** Where the hub root is: what the operator needs to put `vault.key` back (`docs/setup/local-hub.md` Section 1). */
+/** Where the hub root is: what the operator needs to put `vault.key` back (`docs/procedures/setup/local-hub.md` Section 1). */
 export function hubRoot(mac: boolean): string {
   return mac ? '~/Library/Application Support/ing.anima.desktop/hub' : '~/.local/share/anima/hub';
 }

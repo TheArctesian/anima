@@ -38,7 +38,7 @@ that owns the area.
 ### SF-001: "This machine" can show and probe the address of another overlay network
 
 Requirements: ADR-005
-([cve-watch-and-network-awareness.md](programme/proposals/cve-watch-and-network-awareness.md)),
+([cve-watch-and-network-awareness.md](proposals/cve-watch-and-network-awareness.md)),
 R-060 ([programme/programme.md](programme/programme.md)).
 
 What it is: the desktop app found its own address on the Anima VPN as the lowest IPv4 address

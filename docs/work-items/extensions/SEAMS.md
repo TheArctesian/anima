@@ -6,7 +6,7 @@ Progress: the index [README.md](../README.md) holds the state of this item (PLN-
 | --- | --- |
 | Identifier | SEAMS |
 | Kind | Work item |
-| Owner | [extensions-plan.md](../../extensions-plan.md) Section 5.4 |
+| Owner | [extensions-plan.md](../../plans/extensions-plan.md) Section 5.4 |
 | Serves | Work plan Section 4, tier 3b (the other extensions) |
 | Version | 1.0 |
 | Date | 2026-11-16 |
@@ -22,7 +22,7 @@ Small follow-up tasks after both sides are merged. Neither extension waits for t
 - [ ] Day trail in History: History with Map (HIS-007)
 - [ ] Photo location as a visit: People with Map (PPL-012)
 
-**Plan:** [Section 5.4](../../extensions-plan.md)
+**Plan:** [Section 5.4](../../plans/extensions-plan.md)
 **Requirements:** —
 
 > Do not start before the device manager build is finished: Phase 1 accepted, `phase-1` merged into `main`, desktop apps built (PH-E-000).

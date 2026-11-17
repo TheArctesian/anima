@@ -1,6 +1,6 @@
 # K-E3 — Timeline adapter interface and the category list (engine)
 
-Status: new (operator, 2026-11-16; ruling number to be assigned). Proposed for engine task E0-4; it is not part of the Phase 3 freeze. Change it only through a programme ruling (CON-001). Requirement IDs: TML-001 to TML-012 of `docs/extensions-plan.md` (TML-008 to TML-012 from issue #7, operator, 2026-11-16). Owner: engine (`crates/hub/src/engine/timeline*`). Section 8 lists the questions that are open; a consumer must not rely on an answer to them.
+Status: new (operator, 2026-11-16; ruling number to be assigned). Proposed for engine task E0-4; it is not part of the Phase 3 freeze. Change it only through a programme ruling (CON-001). Requirement IDs: TML-001 to TML-012 of `docs/plans/extensions-plan.md` (TML-008 to TML-012 from issue #7, operator, 2026-11-16). Owner: engine (`crates/hub/src/engine/timeline*`). Section 8 lists the questions that are open; a consumer must not rely on an answer to them.
 
 ## 1. What the timeline is
 
@@ -57,7 +57,7 @@ pub struct Evidence {
 
 ## 3. Categories (TML-004)
 
-The list is closed: `sleep`, `workout`, `visit`, `travel`, `code`, `message`, `post`, `media`, `reading`, `spending`, `document`, `device`, `session`, `note`. K1 `EvidenceCategory` has the same 14 values in upper case. To add a category, change Section 2.3 of `docs/extensions-plan.md` first, then this contract and K1.
+The list is closed: `sleep`, `workout`, `visit`, `travel`, `code`, `message`, `post`, `media`, `reading`, `spending`, `document`, `device`, `session`, `note`. K1 `EvidenceCategory` has the same 14 values in upper case. To add a category, change Section 2.3 of `docs/plans/extensions-plan.md` first, then this contract and K1.
 
 ## 4. Basis (TML-003)
 

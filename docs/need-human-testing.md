@@ -73,7 +73,7 @@ scripts in place of the real tools, and a scripted hub.
 
 The hub and the agent must be of this build. A change to the hub on the VPS needs the
 confirmation of the operator (VPS-005). A local hub is sufficient for this check
-([setup/local-hub.md](setup/local-hub.md)).
+([setup/local-hub.md](procedures/setup/local-hub.md)).
 
 1. Start a hub of this build. Sign in with `anima auth login`.
 2. Enrol the agent of one device and start the `anima-agent` of this build on it.
@@ -281,7 +281,7 @@ Result: Open.
 
 Built: the MCP tools `anima_issue_create`, `anima_issue_comment_add` and `anima_issue_set_open`,
 and the read tools of the `repositories` set (MCP-002, MCP-012, MCP-013). The tests use a
-scripted hub. Section "What a compromised agent can do" of [cli-mcp-plan.md](cli-mcp-plan.md)
+scripted hub. Section "What a compromised agent can do" of [cli-mcp-plan.md](plans/cli-mcp-plan.md)
 says that a comment can start a workflow; that was not tried on GitHub.
 
 Use the repository of HT-011. Add to it one workflow that runs on `issue_comment` and prints the
@@ -390,7 +390,7 @@ Result: Open.
 ## Not built yet
 
 The Tools section of the Device page and the Tools filter of the device list
-([compute-plan.md](compute-plan.md) Section 11.1, CUI-010 to CUI-019) are not built. Their
+([compute-plan.md](plans/compute-plan.md) Section 11.1, CUI-010 to CUI-019) are not built. Their
 builder adds the entry.
 
 ## Checks that other documents hold
@@ -406,12 +406,12 @@ These checks were open before this document. The document in the column "Steps",
 | Phase 2 (O-1 to O-9) | 9 | 1 | The Phase 2 live criteria, and the Phase 3 acceptance run (work plan Section 4, tier 0) |
 | Phase 3 (P-1 to P-17) | 17 | 0 | The Phase 3 acceptance run, WP-53 (tier 0) |
 | One-click (S1 to S8) | 26 | 0 | The task of each row |
-| Command line and MCP | 6 | 0 | The register row of [cli-mcp-plan.md](cli-mcp-plan.md) |
+| Command line and MCP | 6 | 0 | The register row of [cli-mcp-plan.md](plans/cli-mcp-plan.md) |
 | A real release | 1 | 0 | OD-16 to OD-18 of the design specification |
 
 ### Phase 2
 
-Steps: [programme/phase-2-acceptance.md](programme/phase-2-acceptance.md), "Operator steps". Blocks: the criterion in the column "Criterion" of that document.
+Steps: [phase-2-acceptance.md](archive/phase-2/phase-2-acceptance.md), "Operator steps". Blocks: the criterion in the column "Criterion" of that document.
 
 | Check | What it proves | Needs | Criterion | Result |
 | --- | --- | --- | --- | --- |
@@ -427,7 +427,7 @@ Steps: [programme/phase-2-acceptance.md](programme/phase-2-acceptance.md), "Oper
 
 ### Phase 3
 
-Steps: [programme/phase-3-acceptance.md](programme/phase-3-acceptance.md), "Operator steps". Run order: P-1 to P-15, P-17, then P-16. Blocks: the acceptance run of Phase 3 (WP-53). The handoff of 2026-11-12 names what must come first: O-4 to O-9, the wording of the design specification Section 5.7.3, the Headscale agent policy (R-105), the R2 set-up and the agent binaries.
+Steps: [phase-3-acceptance.md](plans/phase-3/phase-3-acceptance.md), "Operator steps". Run order: P-1 to P-15, P-17, then P-16. Blocks: the acceptance run of Phase 3 (WP-53). The handoff of 2026-11-12 names what must come first: O-4 to O-9, the wording of the design specification Section 5.7.3, the Headscale agent policy (R-105), the R2 set-up and the agent binaries.
 
 | Check | What it proves | Needs | Result |
 | --- | --- | --- | --- |
@@ -455,25 +455,25 @@ Each row gives the document that has the steps and the task that the check block
 
 | Check | What it proves | Needs | Steps and task | Result |
 | --- | --- | --- | --- | --- |
-| S1-T14 | The link between two machines: the direct rate, the first-connection time, relayed Screen Sharing, the firewall prompt. It sets the keepalive numbers (LNK-009) | A second Mac | [s1-link-tasks.md](research/one-click/s1-link-tasks.md), T14 | Open |
-| S2-T9 | The native VNC gateway against macOS Screen Sharing and TigerVNC, with the figures | This Mac; the operator types the password | [s2-vnc-tasks.md](research/one-click/s2-vnc-tasks.md), T9 | Open |
-| S2-RDP | The native RDP gateway against a GNOME Remote Desktop host | The operator's GNOME Remote Desktop host | [s2-rdp-tasks.md](research/one-click/s2-rdp-tasks.md), Section 6 | Open |
-| S3-T10 | The database tree recipe on the Linux builder | The `x86_64` Linux build computer | [s3-database-tasks.md](research/one-click/s3-database-tasks.md), Section 7.2 | Open |
-| S3-T12 | Signature and notary check of the database tree | The Developer ID of the operator. A second Mac or a new user account | [s3-database-tasks.md](research/one-click/s3-database-tasks.md), Section 7.2 | Open |
-| S3-T13 | No data loss after a power cut | A Mac that can lose power | [s3-database-tasks.md](research/one-click/s3-database-tasks.md), Section 7.2 | Open |
-| S3-T14 | The database on a real Linux desktop | A Linux desktop with PostgreSQL 17 | [s3-database-tasks.md](research/one-click/s3-database-tasks.md), Section 7.2 | Open |
-| S4-T10 | The systemd user unit on Linux. The Local Network prompt on a Mac | A Linux desktop. A Mac with a LAN device | [s4-local-hub-tasks.md](research/one-click/s4-local-hub-tasks.md), Section 7.2 | Open |
-| S6-1 | The first run in the desktop window: create a hub, TOTP, the key copy, an invite | This Mac and a phone | [s6-first-run-tasks.md](research/one-click/s6-first-run-tasks.md), Section 6.3, check 1 | Open |
+| S1-T14 | The link between two machines: the direct rate, the first-connection time, relayed Screen Sharing, the firewall prompt. It sets the keepalive numbers (LNK-009) | A second Mac | [s1-link-tasks.md](plans/one-click/s1-link-tasks.md), T14 | Open |
+| S2-T9 | The native VNC gateway against macOS Screen Sharing and TigerVNC, with the figures | This Mac; the operator types the password | [s2-vnc-tasks.md](plans/one-click/s2-vnc-tasks.md), T9 | Open |
+| S2-RDP | The native RDP gateway against a GNOME Remote Desktop host | The operator's GNOME Remote Desktop host | [s2-rdp-tasks.md](plans/one-click/s2-rdp-tasks.md), Section 6 | Open |
+| S3-T10 | The database tree recipe on the Linux builder | The `x86_64` Linux build computer | [s3-database-tasks.md](plans/one-click/s3-database-tasks.md), Section 7.2 | Open |
+| S3-T12 | Signature and notary check of the database tree | The Developer ID of the operator. A second Mac or a new user account | [s3-database-tasks.md](plans/one-click/s3-database-tasks.md), Section 7.2 | Open |
+| S3-T13 | No data loss after a power cut | A Mac that can lose power | [s3-database-tasks.md](plans/one-click/s3-database-tasks.md), Section 7.2 | Open |
+| S3-T14 | The database on a real Linux desktop | A Linux desktop with PostgreSQL 17 | [s3-database-tasks.md](plans/one-click/s3-database-tasks.md), Section 7.2 | Open |
+| S4-T10 | The systemd user unit on Linux. The Local Network prompt on a Mac | A Linux desktop. A Mac with a LAN device | [s4-local-hub-tasks.md](plans/one-click/s4-local-hub-tasks.md), Section 7.2 | Open |
+| S6-1 | The first run in the desktop window: create a hub, TOTP, the key copy, an invite | This Mac and a phone | [s6-first-run-tasks.md](plans/one-click/s6-first-run-tasks.md), Section 6.3, check 1 | Open |
 | S6-2 | Join from a second Mac, then revoke | A second Mac | Section 6.3, check 2 | Open |
 | S6-3 | The first run on Linux with the systemd user unit; finding F-10 | A Linux desktop | Section 6.3, check 3 | Open |
 | S6-4 | No port mapping on a real router; no TCP port answers from outside | The router of the hub computer, and a machine outside the network | Section 6.3, check 4 | Open |
 | S6-5 | A relayed path shows `RELAYED` | A network where UDP is blocked | Section 6.3, check 5 | Open |
-| S8-1 to S8-8 | Stay awake on macOS: the tray, keep awake, the set-up, the lid, quit and failure, the battery floor, remove, eight hours (8 checks) | A Mac laptop. A second computer for the `ping` of check 4 | [s8-stay-awake-tasks.md](research/one-click/s8-stay-awake-tasks.md), Section 6, checks 1 to 8 | Open |
+| S8-1 to S8-8 | Stay awake on macOS: the tray, keep awake, the set-up, the lid, quit and failure, the battery floor, remove, eight hours (8 checks) | A Mac laptop. A second computer for the `ping` of check 4 | [s8-stay-awake-tasks.md](plans/one-click/s8-stay-awake-tasks.md), Section 6, checks 1 to 8 | Open |
 | S8-9 to S8-13 | Stay awake on Linux: the tray, keep awake, the lid on GNOME, quit, the battery (5 checks) | A Linux laptop | Section 6, checks 9 to 13 | Open |
 
 ### Command line and MCP
 
-Steps and comments: [GH-60](work-items/device-manager/GH-60.md). A suite on loopback covers the other items of that list (its comment of 2026-11-13). Blocks: the register row of [cli-mcp-plan.md](cli-mcp-plan.md).
+Steps and comments: [GH-60](work-items/device-manager/GH-60.md). A suite on loopback covers the other items of that list (its comment of 2026-11-13). Blocks: the register row of [cli-mcp-plan.md](plans/cli-mcp-plan.md).
 
 | Check | What it proves | Needs | Result |
 | --- | --- | --- | --- |
@@ -501,7 +501,7 @@ One visit to a machine can close many rows.
 
 | Check | What it proves | Steps | Result |
 | --- | --- | --- | --- |
-| REL-1 | A real release confirms the signature, the notarization and the AppImage launcher (OD-16 to OD-18) | [design-spec.md](design-spec.md), Section 11 | Open |
+| REL-1 | A real release confirms the signature, the notarization and the AppImage launcher (OD-16 to OD-18) | [design-spec.md](spec/design-spec.md), Section 11 | Open |
 
 ## Passed
 

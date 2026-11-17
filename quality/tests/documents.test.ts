@@ -33,7 +33,7 @@ describe("PLN-017 links", () => {
   });
 
   test("a target is a repository path", () => {
-    expect(linkTargets({ path: "docs/programme/proposals/jobs.md", text: "[k](../../../contracts/tunnel.md)" })).toEqual([
+    expect(linkTargets({ path: "docs/proposals/jobs.md", text: "[k](../../contracts/tunnel.md)" })).toEqual([
       "contracts/tunnel.md",
     ]);
   });
@@ -43,10 +43,10 @@ describe("PLN-001 PLN-012 lists", () => {
   test("a plan, a proposal and a task breakdown that the register names pass", () => {
     expect(
       check([
-        { path: REGISTER, text: "[a](../compute-plan.md) [b](../programme/proposals/jobs.md) [c](../research/one-click/s1-link-tasks.md)" },
-        { path: "docs/compute-plan.md", text: PLAN_TEXT },
-        { path: "docs/programme/proposals/jobs.md", text: PLAN_TEXT },
-        { path: "docs/research/one-click/s1-link-tasks.md", text: PLAN_TEXT },
+        { path: REGISTER, text: "[a](../plans/compute-plan.md) [b](../proposals/jobs.md) [c](../plans/one-click/s1-link-tasks.md)" },
+        { path: "docs/plans/compute-plan.md", text: PLAN_TEXT },
+        { path: "docs/proposals/jobs.md", text: PLAN_TEXT },
+        { path: "docs/plans/one-click/s1-link-tasks.md", text: PLAN_TEXT },
       ]),
     ).toEqual([]);
   });
@@ -55,27 +55,27 @@ describe("PLN-001 PLN-012 lists", () => {
     expect(
       check([
         { path: REGISTER, text: "" },
-        { path: "docs/programme/proposals/new-idea.md", text: PLAN_TEXT },
+        { path: "docs/proposals/new-idea.md", text: PLAN_TEXT },
       ]),
-    ).toEqual(["docs/programme/proposals/new-idea.md: plan-not-in-register no link in docs/plan/register.md"]);
+    ).toEqual(["docs/proposals/new-idea.md: plan-not-in-register no link in docs/plan/register.md"]);
   });
 
   test("a plan with no kind and state in its header fails", () => {
     expect(
       check([
-        { path: REGISTER, text: "[a](../compute-plan.md)" },
-        { path: "docs/compute-plan.md", text: "# Plan\n\n| Status | Draft |\n" },
+        { path: REGISTER, text: "[a](../plans/compute-plan.md)" },
+        { path: "docs/plans/compute-plan.md", text: "# Plan\n\n| Status | Draft |\n" },
       ]),
-    ).toEqual(["docs/compute-plan.md: plan-without-state its header needs `kind:` and a `state:` that starts with a word of PLN-007"]);
+    ).toEqual(["docs/plans/compute-plan.md: plan-without-state its header needs `kind:` and a `state:` that starts with a word of PLN-007"]);
   });
 
   test("a state that is not a word of PLN-007 fails", () => {
     expect(
       check([
-        { path: REGISTER, text: "[a](../compute-plan.md)" },
-        { path: "docs/compute-plan.md", text: "---\nkind: Plan\nstate: Nearly there\n---\n" },
+        { path: REGISTER, text: "[a](../plans/compute-plan.md)" },
+        { path: "docs/plans/compute-plan.md", text: "---\nkind: Plan\nstate: Nearly there\n---\n" },
       ]).map((line) => line.split(" ").slice(0, 2).join(" ")),
-    ).toEqual(["docs/compute-plan.md: plan-without-state"]);
+    ).toEqual(["docs/plans/compute-plan.md: plan-without-state"]);
   });
 
   test("the work plan and a report are not plans", () => {
@@ -101,16 +101,16 @@ describe("PLN-001 PLN-012 lists", () => {
 
 describe("PLN-020 the register is generated", () => {
   const plan = {
-    path: "docs/programme/proposals/jobs.md",
-    text: "---\nkind: Proposal\nstate: Draft\nevidence: See [the spec](../../design-spec.md).\n---\n",
+    path: "docs/proposals/jobs.md",
+    text: "---\nkind: Proposal\nstate: Draft\nevidence: See [the spec](../spec/design-spec.md).\n---\n",
   };
-  const spec = { path: "docs/design-spec.md", text: "---\nkind: Specification\nstate: Approved\n---\n" };
+  const spec = { path: "docs/spec/design-spec.md", text: "---\nkind: Specification\nstate: Approved\n---\n" };
   const rows = registerRows([plan, spec]);
 
   test("a row comes from the header, in the order of the kinds, with links from the register", () => {
     expect(rows.split("\n").filter((line) => line.startsWith("| ["))).toEqual([
-      "| [design-spec.md](../design-spec.md) | Specification | Approved |  |",
-      "| [programme/proposals/jobs.md](../programme/proposals/jobs.md) | Proposal | Draft | See [the spec](../design-spec.md). |",
+      "| [spec/design-spec.md](../spec/design-spec.md) | Specification | Approved |  |",
+      "| [proposals/jobs.md](../proposals/jobs.md) | Proposal | Draft | See [the spec](../spec/design-spec.md). |",
     ]);
   });
 
@@ -140,13 +140,13 @@ describe("PLN-019 mockups", () => {
 });
 
 describe("PLN-016 one owner for an identifier", () => {
-  const first = { path: "docs/compute-plan.md", text: `${PLAN_TEXT}- **CMP-003.** The node must report.` };
-  const second = { path: "docs/design-spec.md", text: `${PLAN_TEXT}**CMP-003.** A second text.\nSee CMP-003 and **CMP-004**.` };
-  const register = { path: REGISTER, text: "[a](../compute-plan.md) [b](../design-spec.md)" };
+  const first = { path: "docs/plans/compute-plan.md", text: `${PLAN_TEXT}- **CMP-003.** The node must report.` };
+  const second = { path: "docs/spec/design-spec.md", text: `${PLAN_TEXT}**CMP-003.** A second text.\nSee CMP-003 and **CMP-004**.` };
+  const register = { path: REGISTER, text: "[a](../plans/compute-plan.md) [b](../spec/design-spec.md)" };
 
   test("an identifier that two documents define fails at the second document", () => {
     expect(check([register, first, second])).toEqual([
-      "docs/design-spec.md: identifier-defined-twice CMP-003 is also in docs/compute-plan.md",
+      "docs/spec/design-spec.md: identifier-defined-twice CMP-003 is also in docs/plans/compute-plan.md",
     ]);
   });
 

@@ -6,7 +6,7 @@ Progress: the index [README.md](../README.md) holds the state of this item (PLN-
 | --- | --- |
 | Identifier | OD-C5 |
 | Kind | Decision |
-| Owner | [compute-plan.md](../../compute-plan.md) Section 15 |
+| Owner | [compute-plan.md](../../plans/compute-plan.md) Section 15 |
 | Serves | Work plan Section 4, tier 1 (decisions and approvals) |
 | Version | 1.0 |
 | Date | 2026-11-16 |
@@ -15,5 +15,5 @@ Progress: the index [README.md](../README.md) holds the state of this item (PLN-
 
 The router runs in the hub on the VPS (OD-9), so each request goes caller → VPS → node. Recommendation: measure the added delay in C1; if too high, run a second router at the home site.
 
-**Plan:** [Section 15](../../compute-plan.md)
+**Plan:** [Section 15](../../plans/compute-plan.md)
 **Requirements:** OD-C5

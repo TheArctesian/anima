@@ -3,11 +3,11 @@
 | Item | Value |
 | --- | --- |
 | Document | Work plan: the entry point to all planning documents |
-| Version | 2.2 |
+| Version | 3.0 |
 | Date | 2026-11-17 |
 | Language | ASD-STE100 Simplified Technical English (STE) |
-| Status | Approved. The operator approved the principles and the priority order on 2026-11-13. Version 1.1 added the plan register and the rules for plans (operator, 2026-11-15). Version 1.2 recorded OD-W13 to OD-W21 (operator, 2026-11-16). Version 1.3 corrected the states in Sections 4 and 9 to agree with the commits on `main`, moved each GitHub issue into the planning documents and added PLN-012 to PLN-017 (operator, 2026-11-16, R-119). Version 2.0 gives each section its own document in [plan/](plan/), with no change to the text (operator, 2026-11-16). Version 2.1 corrected the state of row 4.17, put the rows of tier 1 in order, added the column "Waits for" to Section 4 and added the one-click plan to Section 9 (audit that the operator asked for, 2026-11-17). It also took in the two proposals of the branch `claude/watchdog-autoupdate-proposals`: the watchdog (row 4.19, OD-W22, open) and the update of the agent and the hub (row 4.18, OD-W23). Version 2.2 adds PLN-018 (the path of an idea) and PLN-019 (mockups), the folder `ideas/`, the index of the mockups, and moves the approved builds proposal to [projects-and-builds-plan.md](projects-and-builds-plan.md) (operator, 2026-11-17). |
-| Related | [design-spec.md](design-spec.md), [extensions-plan.md](extensions-plan.md), [compute-plan.md](compute-plan.md), [vpn-plan.md](vpn-plan.md), [programme/handoff.md](programme/handoff.md), [programme/proposals/](programme/proposals/) |
+| Status | Approved. The operator approved the principles and the priority order on 2026-11-13. Version 1.1 added the plan register and the rules for plans (operator, 2026-11-15). Version 1.2 recorded OD-W13 to OD-W21 (operator, 2026-11-16). Version 1.3 corrected the states in Sections 4 and 9 to agree with the commits on `main`, moved each GitHub issue into the planning documents and added PLN-012 to PLN-017 (operator, 2026-11-16, R-119). Version 2.0 gives each section its own document in [plan/](plan/), with no change to the text (operator, 2026-11-16). Version 2.1 corrected the state of row 4.17, put the rows of tier 1 in order, added the column "Waits for" to Section 4 and added the one-click plan to Section 9 (audit that the operator asked for, 2026-11-17). It also took in the two proposals of the branch `claude/watchdog-autoupdate-proposals`: the watchdog (row 4.19, OD-W22, open) and the update of the agent and the hub (row 4.18, OD-W23). Version 2.2 adds PLN-018 (the path of an idea) and PLN-019 (mockups), the folder `ideas/`, the index of the mockups, and moves the approved builds proposal to [projects-and-builds-plan.md](plans/projects-and-builds-plan.md) (operator, 2026-11-17). Version 3.0 puts each document in the folder of its stage, archives the finished phases, and generates Section 9 from the header of each plan (PLN-020, operator, 2026-11-17: "lets do all five in that order"). |
+| Related | [design-spec.md](spec/design-spec.md), [extensions-plan.md](plans/extensions-plan.md), [compute-plan.md](plans/compute-plan.md), [vpn-plan.md](plans/vpn-plan.md), [programme/handoff.md](programme/handoff.md), [programme/proposals/](proposals/) |
 
 This document obeys the writing rules in Section 0 of the design specification.
 
@@ -35,19 +35,18 @@ Where the documents are:
 | Place | Kind | Content |
 | --- | --- | --- |
 | [work-plan.md](work-plan.md) and [plan/](plan/) | Map | Purpose, priority order, owners, decisions, register, rules |
-| [design-spec.md](design-spec.md) | Specification | The device manager. The source of truth for its requirements |
-| `*-plan.md` in this folder, [vpn-build.md](vpn-build.md) | Plans | One plan for each subject: extensions, compute, VPN, command line and MCP, mobile, interface |
-| [ideas/](ideas/README.md) | Ideas | One folder for each idea. No requirement. Deleted when the idea becomes a proposal or is dropped |
-| [programme/proposals/](programme/proposals/) | Proposals | A draft of a plan. When the operator approves it with a ruling, it moves to this folder as `<name>-plan.md` (PLN-018) |
-| [mockup/](mockup/README.md) | Mockups | Static HTML of a layout, with an index that holds the state of each. A mockup agrees with the application (PLN-019) |
-| `../contracts/` | Contracts | The frozen interfaces that the parts share (K1 to K8). Only a ruling changes one |
-| [programme/programme.md](programme/programme.md) | Rulings | Each decision that was made, with a number (R, CR) |
-| [programme/](programme/) phase files and [programme/packages/](programme/packages/) | Phase plans and logs | Phases 1 to 3: plans, contract changes, acceptance records, one log for each work package |
-| [research/one-click/](research/one-click/) | Task breakdowns | The one-click work, S1 to S8 |
-| [work-items/](work-items/README.md) | Work items | Engine, extensions, compute, decisions, device manager, defects |
+| [ideas/](ideas/README.md) | Stage 1: ideas | One folder for each idea. No requirement. Deleted when the idea becomes a proposal or is dropped |
+| [proposals/](proposals/) | Stage 2: proposals | A draft of a plan. When the operator approves it with a ruling, it moves to `plans/` as `<name>-plan.md` (PLN-018) |
+| [spec/design-spec.md](spec/design-spec.md) | Stage 3: specification | The device manager. The source of truth for its requirements |
+| [plans/](plans/) | Stage 3: plans | One plan for each subject. A subject with task breakdowns has a folder: [plans/one-click/](plans/one-click/), [plans/phase-3/](plans/phase-3/) |
+| `../contracts/` | Stage 4: contracts | The frozen interfaces that the parts share (K1 to K8). Only a ruling changes one |
+| [work-items/](work-items/README.md) | Stage 5: work items | Engine, extensions, compute, decisions, device manager, defects |
 | [need-human-testing.md](need-human-testing.md), [security-findings.md](security-findings.md), [deferred.md](deferred.md) | Lists | Checks that only a person can do. Security findings. Work that was left for later |
-| [setup/](setup/), [releases.md](releases.md) | Procedures | How to install, set up and release |
-| [research/](research/), `ui-critique-*`, `ui-inventory-*` | Reports | Audits and reviews. They add no requirement |
+| [programme/programme.md](programme/programme.md) | Rulings | Each decision that was made, with a number (R, CR) |
+| [mockup/](mockup/README.md) | Mockups | Static HTML of a layout, with an index that holds the state of each. A mockup agrees with the application (PLN-019) |
+| [procedures/](procedures/) | Procedures | How to install, set up and release |
+| [research/](research/) | Reports | Audits and measurements. They add no requirement |
+| [archive/](archive/) | Finished work | Phase 1, Phase 2, the logs of the work packages, old reviews. Do not build from it |
 
 ## 1. Purpose
 

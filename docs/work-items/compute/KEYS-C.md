@@ -6,7 +6,7 @@ Progress: the index [README.md](../README.md) holds the state of this item (PLN-
 | --- | --- |
 | Identifier | KEYS-C |
 | Kind | Checklist |
-| Owner | [compute-plan.md](../../compute-plan.md) Section 9 |
+| Owner | [compute-plan.md](../../plans/compute-plan.md) Section 9 |
 | Serves | Work plan Section 4, tier 1 (decisions and approvals) |
 | Version | 1.0 |
 | Date | 2026-11-16 |
@@ -15,7 +15,7 @@ Progress: the index [README.md](../README.md) holds the state of this item (PLN-
 
 **Ownership / priority clarification (2026-11-07):**
 
-Provision per phase: C1 [C1](C1.md), later C5/C6 [C5](C5.md)/[C6](C6.md). The historical hub-to-agent listener ACL below must be reconciled with [R-084/MET-020](../../programme/phase-3-agent-delta.md) before implementation; compute transport remains open. Do not treat a metrics-only agent token as compute-command permission. DNS/access decision: [OD-C7](../decisions/OD-C7.md). Each actual cloud/network write still needs operator confirmation (VPS-005).
+Provision per phase: C1 [C1](C1.md), later C5/C6 [C5](C5.md)/[C6](C6.md). The historical hub-to-agent listener ACL below must be reconciled with [R-084/MET-020](../../plans/phase-3/phase-3-agent-delta.md) before implementation; compute transport remains open. Do not treat a metrics-only agent token as compute-command permission. DNS/access decision: [OD-C7](../decisions/OD-C7.md). Each actual cloud/network write still needs operator confirmation (VPS-005).
 
 ---
 
@@ -34,5 +34,5 @@ Create each item when its phase starts. Never paste a value in this issue. Each 
 - [ ] The operator controls the DNS zone of `anima.ing` (OD-C7)
 - [ ] Added delay of caller → VPS → node routing is acceptable (OD-C5)
 
-**Plan:** [Section 6.1, 9](../../compute-plan.md)
+**Plan:** [Section 6.1, 9](../../plans/compute-plan.md)
 **Requirements:** RTR-001–005, SEC-C-003, SEC-C-004

@@ -6,7 +6,7 @@ Progress: the index [README.md](../README.md) holds the state of this item (PLN-
 | --- | --- |
 | Identifier | OD-E10 |
 | Kind | Decision |
-| Owner | [extensions-plan.md](../../extensions-plan.md) Section 7 |
+| Owner | [extensions-plan.md](../../plans/extensions-plan.md) Section 7 |
 | Serves | Work plan Section 4, tier 3b (the other extensions) |
 | Version | 1.0 |
 | Date | 2026-11-16 |
@@ -15,5 +15,5 @@ Progress: the index [README.md](../README.md) holds the state of this item (PLN-
 
 IBKR, Coinbase and Gemini give their own prices. MetaMask tokens and the SimpleFIN holdings (Robinhood, Acorns) need one free price API.
 
-**Plan:** [Section 7](../../extensions-plan.md)
+**Plan:** [Section 7](../../plans/extensions-plan.md)
 **Requirements:** OD-E10

@@ -1,6 +1,6 @@
 # anima-cli
 
-The `anima` command line (docs/cli-mcp-plan.md). `hub/` is the only network code (CMD-003);
+The `anima` command line (docs/plans/cli-mcp-plan.md). `hub/` is the only network code (CMD-003);
 `devices/` is the worked example of a noun. Copy it.
 
 ## Install
@@ -90,7 +90,7 @@ Tests keep tokens in the 0600 file (`ANIMA_TOKEN_STORE=file`), never the key sto
 
 ## Add an MCP tool
 
-`anima mcp` lives in `src/mcp/` (docs/cli-mcp-plan.md Section 7). `tools/<set>.rs` holds one tool
+`anima mcp` lives in `src/mcp/` (docs/plans/cli-mcp-plan.md Section 7). `tools/<set>.rs` holds one tool
 set: an enum with one variant per tool, its `ALL` list, `definition` and `call`.
 
 1. Add the variant, and its arm in `definition` and `call`. A new set also needs a `ToolSet`

@@ -6,7 +6,7 @@ Progress: the index [README.md](../README.md) holds the state of this item (PLN-
 | --- | --- |
 | Identifier | OD-C7 |
 | Kind | Decision |
-| Owner | [compute-plan.md](../../compute-plan.md) Section 15 |
+| Owner | [compute-plan.md](../../plans/compute-plan.md) Section 15 |
 | Serves | Work plan Section 4, tier 1 (decisions and approvals) |
 | Version | 1.0 |
 | Date | 2026-11-16 |
@@ -15,5 +15,5 @@ Progress: the index [README.md](../README.md) holds the state of this item (PLN-
 
 Recommendation: VPN only, with Headscale DNS and a DNS-01 certificate. Confirm that the operator controls the DNS zone of `anima.ing`. Public access is out of scope (SEC-008). Blocks C1.
 
-**Plan:** [Section 15](../../compute-plan.md)
+**Plan:** [Section 15](../../plans/compute-plan.md)
 **Requirements:** OD-C7

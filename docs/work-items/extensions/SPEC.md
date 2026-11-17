@@ -6,7 +6,7 @@ Progress: the index [README.md](../README.md) holds the state of this item (PLN-
 | --- | --- |
 | Identifier | SPEC |
 | Kind | Approval |
-| Owner | [extensions-plan.md](../../extensions-plan.md) Section 1.2 |
+| Owner | [extensions-plan.md](../../plans/extensions-plan.md) Section 1.2 |
 | Serves | Work plan Section 4, tier 1 (decisions and approvals) |
 | Version | 1.0 |
 | Date | 2026-11-16 |
@@ -15,11 +15,11 @@ Progress: the index [README.md](../README.md) holds the state of this item (PLN-
 
 **Ownership / priority clarification (2026-11-07):**
 
-Prioritize approval of infrastructure contracts, data boundaries and repository ownership needed by E0; this tag does not bring navigation/new-screen delivery forward. Reconcile owned paths with the [adopted Phase 3 plan](../../programme/phase-3-plan.md). The existing PH-E-000 operator gate remains.
+Prioritize approval of infrastructure contracts, data boundaries and repository ownership needed by E0; this tag does not bring navigation/new-screen delivery forward. Reconcile owned paths with the [adopted Phase 3 plan](../../plans/phase-3/phase-3-plan.md). The existing PH-E-000 operator gate remains.
 
 ---
 
-The extensions change parts of `docs/design-spec.md`. Approve each change before E0 starts (operator checkpoint 3).
+The extensions change parts of `docs/spec/design-spec.md`. Approve each change before E0 starts (operator checkpoint 3).
 
 - [ ] 1.1 Purpose: add a fourth function, a private record of life and work
 - [ ] 5.3 Navigation bar: extension groups
@@ -28,5 +28,5 @@ The extensions change parts of `docs/design-spec.md`. Approve each change before
 - [ ] 7 Settings page: add the Integrations section
 - [ ] 13 Repository structure: new domains, collector, folder groups
 
-**Plan:** [Section 1.2](../../extensions-plan.md)
+**Plan:** [Section 1.2](../../plans/extensions-plan.md)
 **Requirements:** —

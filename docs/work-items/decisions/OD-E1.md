@@ -6,7 +6,7 @@ Progress: the index [README.md](../README.md) holds the state of this item (PLN-
 | --- | --- |
 | Identifier | OD-E1 |
 | Kind | Decision |
-| Owner | [extensions-plan.md](../../extensions-plan.md) Section 7 |
+| Owner | [extensions-plan.md](../../plans/extensions-plan.md) Section 7 |
 | Serves | Work plan Section 4, tier 1 (decisions and approvals) |
 | Version | 1.0 |
 | Date | 2026-11-16 |
@@ -15,5 +15,5 @@ Progress: the index [README.md](../README.md) holds the state of this item (PLN-
 
 The hub is on the Hostinger VPS (OD-9). Recommendation: seal Class B with separate data keys (VLT-003); before XP-05, XP-06 and XP-08, decide if a home hub keeps Class B data and the VPS hub only the device manager.
 
-**Plan:** [Section 7](../../extensions-plan.md)
+**Plan:** [Section 7](../../plans/extensions-plan.md)
 **Requirements:** OD-E1

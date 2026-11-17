@@ -24,7 +24,7 @@ Anima joins three types of resource:
 
 The three types stay different. A project can run on owned compute and on rented compute. A service that holds data about the operator is a source only: nothing runs there, and a project never lists it as its hosting (OD-W11, PRO-006).
 
-Anima is for the operator first. Later, other persons can run their own Anima on a service of their choice, or pay for a hosted one. Each person has their own coordinator and their own data (OD-W2, [other-operators.md](../programme/proposals/other-operators.md)).
+Anima is for the operator first. Later, other persons can run their own Anima on a service of their choice, or pay for a hosted one. Each person has their own coordinator and their own data (OD-W2, [other-operators.md](../proposals/other-operators.md)).
 
 ## 2. Principles
 

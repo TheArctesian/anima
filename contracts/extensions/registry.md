@@ -1,6 +1,6 @@
 # K-E7 — Extension registry and switch (engine)
 
-Status: new (operator, 2026-11-13; ruling number to be assigned). Proposed for the path to Projects; it is not part of the Phase 3 freeze. Change it only through a programme ruling (CON-001). Requirement IDs: EXT-000 to EXT-012, NAV-* of `docs/extensions-plan.md`. Owner: engine (`crates/hub/src/engine/extensions*`, `$lib/extensions/**`).
+Status: new (operator, 2026-11-13; ruling number to be assigned). Proposed for the path to Projects; it is not part of the Phase 3 freeze. Change it only through a programme ruling (CON-001). Requirement IDs: EXT-000 to EXT-012, NAV-* of `docs/plans/extensions-plan.md`. Owner: engine (`crates/hub/src/engine/extensions*`, `$lib/extensions/**`).
 
 ## 1. Entry (`crates/hub/src/engine/extensions/registry.rs`, data only)
 
@@ -20,7 +20,7 @@ pub struct Entry {
 
 ## 2. The fifteen entries
 
-The list is the fifteen extensions of Section 1.1 of `docs/extensions-plan.md`, in that order. `integrations` is engine (ENG-002): it is listed with `fixed` true and cannot be switched. `project_design` is not an entry yet; it is added (needs `projects`, migrations 3400–3499) when XP-14 starts.
+The list is the fifteen extensions of Section 1.1 of `docs/plans/extensions-plan.md`, in that order. `integrations` is engine (ENG-002): it is listed with `fixed` true and cannot be switched. `project_design` is not an entry yet; it is added (needs `projects`, migrations 3400–3499) when XP-14 starts.
 
 | key | name | class | needs | works with | nav (group, route) | migrations | built |
 | --- | --- | --- | --- | --- | --- | --- | --- |

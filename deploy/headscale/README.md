@@ -1,6 +1,6 @@
 # deploy/headscale: file map
 
-What each file is, where it ends up, and which step of the [VPN guide](../../docs/setup/vpn.md)
+What each file is, where it ends up, and which step of the [VPN guide](../../docs/procedures/setup/vpn.md)
 uses it. The procedures are in the guide, not here. Public DNS records are in
 [`../dns/`](../dns/README.md).
 

@@ -6,7 +6,7 @@ Progress: the index [README.md](../README.md) holds the state of this item (PLN-
 | --- | --- |
 | Identifier | GH-2 |
 | Kind | Work item |
-| Owner | [design-spec.md](../../design-spec.md) Section 3.8 (LOG-005, LOG-006) |
+| Owner | [design-spec.md](../../spec/design-spec.md) Section 3.8 (LOG-005, LOG-006) |
 | Serves | Work plan Section 4, tier 4 (hash chain for the audit log) |
 | Version | 1.0 |
 | Date | 2026-11-16 |
@@ -22,7 +22,7 @@ The operator decided on 2026-11-12 that Anima keeps **one home with copies that 
 
 **Withdrawn: phases L1 to L5.** Node identities and signed per-writer chains, the sync engine, direct sync between nodes when the hub is down, authorisation policy on the ledger, quorum checkpoints, and the Headscale watcher. The "Related direction" of 2026-11-05 at the end of this issue is replaced by the decision above.
 
-What replaces them is in the draft proposals on the branch `claude/work-plan-integration` (not yet merged): `docs/programme/proposals/coordinator-standby.md` (standby copies of the database, a new home only after the operator confirms, a read-only recent copy on each client) and `docs/programme/proposals/bulk-data-placement.md` (files and backups as encrypted pieces on the operator's machines).
+What replaces them is in the draft proposals on the branch `claude/work-plan-integration` (not yet merged): `docs/proposals/coordinator-standby.md` (standby copies of the database, a new home only after the operator confirms, a read-only recent copy on each client) and `docs/proposals/bulk-data-placement.md` (files and backups as encrypted pieces on the operator's machines).
 
 ---
 

@@ -2474,7 +2474,7 @@ input CommitStatusInput {
 # ---------------------------------------------------------------- timeline and record links (E0-4, K-E3, K-E4)
 # Operator, 2026-11-16; ruling number to be assigned. Requirement IDs: TML-001 to TML-007, LNK-001, LNK-002, LNK-004.
 
-"The closed list of TML-004. A new value needs a change to docs/extensions-plan.md."
+"The closed list of TML-004. A new value needs a change to docs/plans/extensions-plan.md."
 enum EvidenceCategory { SLEEP WORKOUT VISIT TRAVEL CODE MESSAGE POST MEDIA READING SPENDING DOCUMENT DEVICE SESSION NOTE }
 
 "How the source knows what an entry says (TML-003)."

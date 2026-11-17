@@ -14,13 +14,13 @@ Part of the work plan: [work-plan.md](../work-plan.md) is the entry point, and i
 
 | Category | Meaning | Content | Owner documents |
 | --- | --- | --- | --- |
-| Foundation | The parts that all other work uses | Coordinator, VPN between sites, `anima-agent` on each machine, the clients, the standby copies, bulk data on the operator's machines, the update of the agent and the hub | Design specification Sections 3, 4, 5 and 10. [vpn-plan.md](../vpn-plan.md). [coordinator-standby.md](../programme/proposals/coordinator-standby.md), [bulk-data-placement.md](../programme/proposals/bulk-data-placement.md), [agent-and-hub-update.md](../programme/proposals/agent-and-hub-update.md) |
-| See | Know the state of all that is yours | Checks, metrics, notifications, Projects (the front door for rented accounts), the Integrations section, the watchdog (it also restarts a program, which is Use) | Design specification Section 6. Extensions plan Sections 4.2 and 4.5. [projects-and-builds-plan.md](../projects-and-builds-plan.md), [watchdog.md](../programme/proposals/watchdog.md) |
+| Foundation | The parts that all other work uses | Coordinator, VPN between sites, `anima-agent` on each machine, the clients, the standby copies, bulk data on the operator's machines, the update of the agent and the hub | Design specification Sections 3, 4, 5 and 10. [vpn-plan.md](../plans/vpn-plan.md). [coordinator-standby.md](../proposals/coordinator-standby.md), [bulk-data-placement.md](../proposals/bulk-data-placement.md), [agent-and-hub-update.md](../proposals/agent-and-hub-update.md) |
+| See | Know the state of all that is yours | Checks, metrics, notifications, Projects (the front door for rented accounts), the Integrations section, the watchdog (it also restarts a program, which is Use) | Design specification Section 6. Extensions plan Sections 4.2 and 4.5. [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md), [watchdog.md](../proposals/watchdog.md) |
 | Reach | Go into a thing and act on it | SSH, RDP, VNC, web interfaces, Secrets | Design specification Section 6.3. Extensions plan Section 4.4 |
-| Remember | Keep a copy of the life of the operator | Health, Money, Map, People, History, Documents, Writing, Reminders, Library, Wardrobe, AI coding sessions | Extensions plan Sections 2 and 4. [new-sources.md](../programme/proposals/new-sources.md) |
-| Use | Make the machines do work | Model service, builds, jobs, AI agent runs, hosted applications | [compute-plan.md](../compute-plan.md). [jobs.md](../programme/proposals/jobs.md), [projects-and-builds-plan.md](../projects-and-builds-plan.md), [agent-runs.md](../programme/proposals/agent-runs.md), [hosted-applications.md](../programme/proposals/hosted-applications.md) |
+| Remember | Keep a copy of the life of the operator | Health, Money, Map, People, History, Documents, Writing, Reminders, Library, Wardrobe, AI coding sessions | Extensions plan Sections 2 and 4. [new-sources.md](../proposals/new-sources.md) |
+| Use | Make the machines do work | Model service, builds, jobs, AI agent runs, hosted applications | [compute-plan.md](../plans/compute-plan.md). [jobs.md](../proposals/jobs.md), [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md), [agent-runs.md](../proposals/agent-runs.md), [hosted-applications.md](../proposals/hosted-applications.md) |
 
-The command line and the MCP server are not a category. They are a second and a third way to use each function of each category ([cli-mcp-plan.md](../cli-mcp-plan.md); design specification Section 6.10). They are built and are on `main`. A new function is built in this order: the hub API, the `anima` command, the MCP tool, the graphical client (CMD-030).
+The command line and the MCP server are not a category. They are a second and a third way to use each function of each category ([cli-mcp-plan.md](../plans/cli-mcp-plan.md); design specification Section 6.10). They are built and are on `main`. A new function is built in this order: the hub API, the `anima` command, the MCP tool, the graphical client (CMD-030).
 
 ## 4. Priority order
 
@@ -54,23 +54,23 @@ The table gives the order. The section of each row below the table gives the wor
 
 - Tier: 0
 - Category: Foundation, See, Reach
-- Work: Finish the device manager: the Phase 3 acceptance run (WP-53) and the operator steps before it. Three open defects ([GH-52](../work-items/defects/GH-52.md), [GH-53](../work-items/defects/GH-53.md), [GH-54](../work-items/defects/GH-54.md)). The correction of the release of Anima: tasks R1 to R7 in "Tasks" of [projects-and-builds-plan.md](../projects-and-builds-plan.md) (OD-W21).
-- Work items: [handoff.md](../programme/handoff.md) Sections 3 and 4. [GH-52](../work-items/defects/GH-52.md), [GH-53](../work-items/defects/GH-53.md), [GH-54](../work-items/defects/GH-54.md). R1 to R7 are in the task table of [projects-and-builds-plan.md](../projects-and-builds-plan.md)
-- State: Phases 1 to 3 are built. Acceptance waits for the operator. This tier removes `blocked: device-manager` (PH-E-000, PH-C-000). R1 to R4 are done and are on `main` (commit `e3058276`, 2026-11-15). R5 is done (commit `c1e6226e`, on `main` since 2026-11-17). R6 and R7 are not started. The macOS release 0.2.0 is published since 2026-11-17 ([s12-packaging-tasks.md](../research/one-click/s12-packaging-tasks.md) Section 6.4); the Linux feed is not checked.
+- Work: Finish the device manager: the Phase 3 acceptance run (WP-53) and the operator steps before it. Three open defects ([GH-52](../work-items/defects/GH-52.md), [GH-53](../work-items/defects/GH-53.md), [GH-54](../work-items/defects/GH-54.md)). The correction of the release of Anima: tasks R1 to R7 in "Tasks" of [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md) (OD-W21).
+- Work items: [handoff.md](../programme/handoff.md) Sections 3 and 4. [GH-52](../work-items/defects/GH-52.md), [GH-53](../work-items/defects/GH-53.md), [GH-54](../work-items/defects/GH-54.md). R1 to R7 are in the task table of [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md)
+- State: Phases 1 to 3 are built. Acceptance waits for the operator. This tier removes `blocked: device-manager` (PH-E-000, PH-C-000). R1 to R4 are done and are on `main` (commit `e3058276`, 2026-11-15). R5 is done (commit `c1e6226e`, on `main` since 2026-11-17). R6 and R7 are not started. The macOS release 0.2.0 is published since 2026-11-17 ([s12-packaging-tasks.md](../plans/one-click/s12-packaging-tasks.md) Section 6.4); the Linux feed is not checked.
 
 ### 4.16 One-click install
 
 - Tier: 1
 - Category: Foundation, Reach
-- Work: A person installs the application and installs nothing else ([one-click-plan.md](../one-click-plan.md)). The link (S1), the native VNC and RDP gateway (S2), the bundled PostgreSQL (S3), the hub as a background program (S4), the access rules by device key (S5), the first run (S6), the stay-awake control (S8) and packaging (S12).
-- Work items: The task breakdowns hold the tasks: [s1-link-tasks.md](../research/one-click/s1-link-tasks.md), [s2-vnc-tasks.md](../research/one-click/s2-vnc-tasks.md), [s2-rdp-tasks.md](../research/one-click/s2-rdp-tasks.md), [s3-database-tasks.md](../research/one-click/s3-database-tasks.md), [s4-local-hub-tasks.md](../research/one-click/s4-local-hub-tasks.md), [s5-access-tasks.md](../research/one-click/s5-access-tasks.md), [s6-first-run-tasks.md](../research/one-click/s6-first-run-tasks.md), [s8-stay-awake-tasks.md](../research/one-click/s8-stay-awake-tasks.md), [s12-packaging-tasks.md](../research/one-click/s12-packaging-tasks.md)
+- Work: A person installs the application and installs nothing else ([one-click-plan.md](../plans/one-click/one-click-plan.md)). The link (S1), the native VNC and RDP gateway (S2), the bundled PostgreSQL (S3), the hub as a background program (S4), the access rules by device key (S5), the first run (S6), the stay-awake control (S8) and packaging (S12).
+- Work items: The task breakdowns hold the tasks: [s1-link-tasks.md](../plans/one-click/s1-link-tasks.md), [s2-vnc-tasks.md](../plans/one-click/s2-vnc-tasks.md), [s2-rdp-tasks.md](../plans/one-click/s2-rdp-tasks.md), [s3-database-tasks.md](../plans/one-click/s3-database-tasks.md), [s4-local-hub-tasks.md](../plans/one-click/s4-local-hub-tasks.md), [s5-access-tasks.md](../plans/one-click/s5-access-tasks.md), [s6-first-run-tasks.md](../plans/one-click/s6-first-run-tasks.md), [s8-stay-awake-tasks.md](../plans/one-click/s8-stay-awake-tasks.md), [s12-packaging-tasks.md](../plans/one-click/s12-packaging-tasks.md)
 - State: In progress. The operator put it here on 2026-11-16: directly after tier 0, before the engine. Most tasks have commits on `main`. The live checks of each breakdown wait for the operator. [register.md](register.md) holds the state of each breakdown.
 
 ### 4.17 The hosted mode and the shared pool
 
 - Tier: 1
 - Category: Foundation
-- Work: Sign-in is the default first run and makes a hosted hub for the account. The self-host mode is the second choice (HM-R1; the operator confirmed it on 2026-11-16). The link on the server stack, the sleep of a free hub, the shared pool with its isolation and its security review ([hosted-mode.md](../programme/proposals/hosted-mode.md), [shared-pool-hosting.md](../programme/proposals/shared-pool-hosting.md)).
+- Work: Sign-in is the default first run and makes a hosted hub for the account. The self-host mode is the second choice (HM-R1; the operator confirmed it on 2026-11-16). The link on the server stack, the sleep of a free hub, the shared pool with its isolation and its security review ([hosted-mode.md](../proposals/hosted-mode.md), [shared-pool-hosting.md](../proposals/shared-pool-hosting.md)).
 - Work items: No work item yet
 - State: Proposal. The operator put it here on 2026-11-16: directly after tier 0, before the engine. The direction is decided (HM-R1 to HM-R9). The requirements HMD-001 to HMD-036 are not approved. The second sign-in factor (HM-D4) is not ruled. The operator selected WorkOS AuthKit for the sign-in on 2026-11-16 (HM-R9); its requirements are HMD-032 to HMD-036.
 
@@ -79,7 +79,7 @@ The table gives the order. The section of each row below the table gives the wor
 - Tier: 1
 - Category: Foundation
 - Work: Update the agent and the hub on each machine with one press, and automatically: signed releases, a rollout in steps, a rollback, machines that are not connected (ROL-001 to ROL-052)
-- Work items: No work item yet. The tasks are in "Tasks" of [agent-and-hub-update.md](../programme/proposals/agent-and-hub-update.md)
+- Work items: No work item yet. The tasks are in "Tasks" of [agent-and-hub-update.md](../proposals/agent-and-hub-update.md)
 - State: Proposal. The operator put it here on 2026-11-16: directly after the first release (OD-W23). Its requirements are not approved, except R-122. Task U1 (the agent reports its version, R-122) is done. Task U3 needs no release. The other tasks need the first release (task R7), new files from the builder and a change to K8.
 
 ### 4.2 Restore a backup and move the coordinator
@@ -87,7 +87,7 @@ The table gives the order. The section of each row below the table gives the wor
 - Tier: 1
 - Category: Foundation
 - Work: The procedure to restore a backup on a new machine and to move the coordinator (FND-006)
-- Work items: No work item yet. The requirement is in [coordinator-standby.md](../programme/proposals/coordinator-standby.md), which is a draft
+- Work items: No work item yet. The requirement is in [coordinator-standby.md](../proposals/coordinator-standby.md), which is a draft
 - State: Proposal. The operator put it here on 2026-11-12: directly after tier 0.
 
 ### 4.3 Decisions and approvals for the foundation
@@ -128,7 +128,7 @@ The table gives the order. The section of each row below the table gives the wor
 - Category: Use
 - Work: Jobs, with the build as the first job type. Then AI agent runs. Anima has two build models: its own builds, and owned machines as runners of GitHub Actions (PRO-010, PRO-027, OD-W13).
 - Work items: [C7](../work-items/compute/C7.md), [C3](../work-items/compute/C3.md). No work item yet for the proposals
-- State: [C7](../work-items/compute/C7.md) is planned. The operator put jobs before the extensions (OD-W8) and the build as a job directly after Projects (PRO-009, OD-W12). A Mac build is a native job (PRO-011). The tasks are planned and not started: groups W, B and A in "Tasks" of [projects-and-builds-plan.md](../projects-and-builds-plan.md) (2026-11-16). Their order is W, then B, then A (OD-W21).
+- State: [C7](../work-items/compute/C7.md) is planned. The operator put jobs before the extensions (OD-W8) and the build as a job directly after Projects (PRO-009, OD-W12). A Mac build is a native job (PRO-011). The tasks are planned and not started: groups W, B and A in "Tasks" of [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md) (2026-11-16). Their order is W, then B, then A (OD-W21).
 
 ### 4.8 The other extensions
 
@@ -183,7 +183,7 @@ The table gives the order. The section of each row below the table gives the wor
 - Tier: 4
 - Category: Foundation, Reach
 - Work: iOS client and Android client (Phase 5). Site operations and traffic data (Phase 6)
-- Work items: Design specification Section 9. [GH-55](../work-items/device-manager/GH-55.md). [mobile-plan.md](../mobile-plan.md)
+- Work items: Design specification Section 9. [GH-55](../work-items/device-manager/GH-55.md). [mobile-plan.md](../plans/mobile-plan.md)
 - State: Planned. [GH-55](../work-items/device-manager/GH-55.md) puts Phase 6 after the extension foundations and compute. The mobile clients start now, beside tier 0 (operator, 2026-11-16, OD-M2 of the mobile plan).
 
 ### 4.15 Deferred items and ideas
@@ -199,7 +199,7 @@ The table gives the order. The section of each row below the table gives the wor
 - Tier: Not set
 - Category: See, Use
 - Work: The watchdog: `anima-agent` restarts the programs that the operator marked, and reports each restart (WDG-001 to WDG-041)
-- Work items: No work item yet. The tasks are in "Tasks" of [watchdog.md](../programme/proposals/watchdog.md)
+- Work items: No work item yet. The tasks are in "Tasks" of [watchdog.md](../proposals/watchdog.md)
 - State: Proposal. Not approved. The operator must give it a tier (OD-W22). It needs the ruling for OD-W10 and a change to K8; its second stage needs the work route (group W).
 
 ### Notes on the order

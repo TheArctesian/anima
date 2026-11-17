@@ -16,7 +16,7 @@
   ·
   <a href="LICENSE">AGPL-3.0-or-later</a>
   ·
-  <a href="docs/setup/anima-mcp.md">MCP</a>
+  <a href="docs/procedures/setup/anima-mcp.md">MCP</a>
 </p>
 
 <p align="center">
@@ -51,18 +51,18 @@ The first signed release of the macOS client, 0.2.0, is published at [releases.a
 - Resource metrics: CPU, memory, disk (usage and I/O), network, load, uptime, and GPU (NVIDIA, AMD, Intel, and Apple)
 - Metrics from a small agent (`anima-agent`) or, without an agent, over SSH
 - Alerts on webhook, ntfy, email, or [Apprise](deploy/README.md)
-- A Prometheus scrape endpoint at `/metrics` ([setup](docs/setup/prometheus.md))
+- A Prometheus scrape endpoint at `/metrics` ([setup](docs/procedures/setup/prometheus.md))
 
 **Keep the network private**
 
-- A WireGuard mesh around your own hub, run with Headscale, with no open ports required on devices ([VPN guide](docs/setup/vpn.md))
+- A WireGuard mesh around your own hub, run with Headscale, with no open ports required on devices ([VPN guide](docs/procedures/setup/vpn.md))
 - Sign-in with a password and a TOTP code
-- `anima-link`: an encrypted device-to-hub path that needs no VPN client and no administrator rights. You can run it by hand today; the desktop app does not start it yet ([setup](docs/setup/link.md))
+- `anima-link`: an encrypted device-to-hub path that needs no VPN client and no administrator rights. You can run it by hand today; the desktop app does not start it yet ([setup](docs/procedures/setup/link.md))
 
 **Use it from a terminal or an agent**
 
 - The `anima` command line, which talks to the same GraphQL API as the client
-- `anima mcp`, an MCP server on standard input and output ([setup](docs/setup/anima-mcp.md))
+- `anima mcp`, an MCP server on standard input and output ([setup](docs/procedures/setup/anima-mcp.md))
 
 ## Why Anima.ing
 
@@ -76,12 +76,12 @@ Self-hosting is free. The hosted mode is planned to be the default first run: yo
 | --- | --- | --- |
 | Self-host the hub and client | Yes, build from source | Signed Linux downloads |
 | Desktop client | macOS 14.2+ (Apple Silicon and Intel), Linux AppImage (x86-64). Linux ARM64 support. | Windows |
-| Web client | Served by the hub to browsers on the VPN ([guide](docs/setup/web-client.md)) | iOS |
+| Web client | Served by the hub to browsers on the VPN ([guide](docs/procedures/setup/web-client.md)) | iOS |
 | Remote desktops | VNC and RDP through `guacd`; native VNC via `anima-gateway` | Native RDP |
 | Private network | Headscale / WireGuard; `anima-link` by hand | An Anima.ing-operated Tailcat relay; app-started `anima-link` |
 | Hosted mode and Solo | — | Sign in to a hosted hub, free below a usage line; Solo at $19 / month or $199 / year; waitlist only |
 
-The macOS DMG of release 0.2.0 is published at [releases.anima.ing](https://releases.anima.ing) (notarised; see [docs/research/one-click/s12-packaging-tasks.md](docs/research/one-click/s12-packaging-tasks.md) Section 6.4). A signed Linux build is not published yet, and this repository has no GitHub Releases.
+The macOS DMG of release 0.2.0 is published at [releases.anima.ing](https://releases.anima.ing) (notarised; see [docs/plans/one-click/s12-packaging-tasks.md](docs/plans/one-click/s12-packaging-tasks.md) Section 6.4). A signed Linux build is not published yet, and this repository has no GitHub Releases.
 
 ## Quick start (build from source)
 
@@ -139,7 +139,7 @@ anima ssh <device>
 
 ### Hub
 
-The supported way to run the hub is Docker Compose, which starts PostgreSQL 17, the migration job, TLS, `guacd`, and the hub. It expects a Linux host with Docker Engine 28 or later and a WireGuard address for the hub. The full steps, including secrets and the Headscale VPN, are in [deploy/README.md](deploy/README.md) and [docs/setup/vpn.md](docs/setup/vpn.md).
+The supported way to run the hub is Docker Compose, which starts PostgreSQL 17, the migration job, TLS, `guacd`, and the hub. It expects a Linux host with Docker Engine 28 or later and a WireGuard address for the hub. The full steps, including secrets and the Headscale VPN, are in [deploy/README.md](deploy/README.md) and [docs/procedures/setup/vpn.md](docs/procedures/setup/vpn.md).
 
 To build the hub image from this tree:
 
@@ -157,7 +157,7 @@ The program understands `anima-hub migrate`, `anima-hub operator set <username>`
 
 ### Native VNC gateway
 
-`anima-gateway` speaks to the hub as `guacd` does, and handles VNC itself. Use it where there is no `guacd`, for example a hub running on a Mac. RDP is still passed to `guacd`. Details: [docs/setup/native-gateway.md](docs/setup/native-gateway.md).
+`anima-gateway` speaks to the hub as `guacd` does, and handles VNC itself. Use it where there is no `guacd`, for example a hub running on a Mac. RDP is still passed to `guacd`. Details: [docs/procedures/setup/native-gateway.md](docs/procedures/setup/native-gateway.md).
 
 ```sh
 cargo build --release --locked --bin anima-gateway
@@ -187,7 +187,7 @@ The enrolment code comes from the Device page in the client (`anima agent enrol`
 
 ### Link (run by hand)
 
-`anima-link` is a separate Go program that makes an encrypted connection from a device to a hub without a VPN client. Nothing in the desktop app or the hub starts the two sides together yet. To build and run it by hand, follow [docs/setup/link.md](docs/setup/link.md).
+`anima-link` is a separate Go program that makes an encrypted connection from a device to a hub without a VPN client. Nothing in the desktop app or the hub starts the two sides together yet. To build and run it by hand, follow [docs/procedures/setup/link.md](docs/procedures/setup/link.md).
 
 ```sh
 link/build.sh    # writes link/bin/anima-link-<os>-<arch>
@@ -227,11 +227,11 @@ link/build.sh    # writes link/bin/anima-link-<os>-<arch>
 | Link | `link/` | `anima-link` (Go) |
 | Deployment | `deploy/` | Compose, Headscale, backups |
 
-The design specification is [docs/design-spec.md](docs/design-spec.md). It is the source of truth for behaviour.
+The design specification is [docs/spec/design-spec.md](docs/spec/design-spec.md). It is the source of truth for behaviour.
 
 ## Agents
 
-`anima mcp` is an MCP server on standard input and output. A coding agent starts it and calls its tools. It uses the same hub and token as the `anima` command line. Full steps: [docs/setup/anima-mcp.md](docs/setup/anima-mcp.md).
+`anima mcp` is an MCP server on standard input and output. A coding agent starts it and calls its tools. It uses the same hub and token as the `anima` command line. Full steps: [docs/procedures/setup/anima-mcp.md](docs/procedures/setup/anima-mcp.md).
 
 Make an API key for the agent, not your login. A read key is a good start:
 
@@ -299,14 +299,14 @@ The work plan is [docs/work-plan.md](docs/work-plan.md).
 
 | Document | Contents |
 | --- | --- |
-| [docs/setup/anima-mcp.md](docs/setup/anima-mcp.md) | `anima mcp` for coding agents |
-| [docs/setup/native-gateway.md](docs/setup/native-gateway.md) | `anima-gateway` for VNC |
-| [docs/setup/link.md](docs/setup/link.md) | `anima-link`, by hand |
-| [docs/setup/vpn.md](docs/setup/vpn.md) | Headscale / WireGuard mesh |
-| [docs/setup/prometheus.md](docs/setup/prometheus.md) | Scraping `/metrics` |
-| [docs/setup/web-client.md](docs/setup/web-client.md) | Browser UI on the VPN |
+| [docs/procedures/setup/anima-mcp.md](docs/procedures/setup/anima-mcp.md) | `anima mcp` for coding agents |
+| [docs/procedures/setup/native-gateway.md](docs/procedures/setup/native-gateway.md) | `anima-gateway` for VNC |
+| [docs/procedures/setup/link.md](docs/procedures/setup/link.md) | `anima-link`, by hand |
+| [docs/procedures/setup/vpn.md](docs/procedures/setup/vpn.md) | Headscale / WireGuard mesh |
+| [docs/procedures/setup/prometheus.md](docs/procedures/setup/prometheus.md) | Scraping `/metrics` |
+| [docs/procedures/setup/web-client.md](docs/procedures/setup/web-client.md) | Browser UI on the VPN |
 | [deploy/README.md](deploy/README.md) | Running the hub with Compose |
-| [docs/design-spec.md](docs/design-spec.md) | Behaviour and requirement IDs |
+| [docs/spec/design-spec.md](docs/spec/design-spec.md) | Behaviour and requirement IDs |
 | [docs/work-plan.md](docs/work-plan.md) | Purpose, priority, plan register |
 | [quality/README.md](quality/README.md) | Local gates |
 | [AGENTS.md](AGENTS.md) | Contributor and agent rules |

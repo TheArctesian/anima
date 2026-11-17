@@ -52,7 +52,7 @@ Status: **frozen for Phase 3** (change only through a programme ruling, CON-001)
 | 2020–2029 (operator, 2026-11-13; ruling number to be assigned; K-E7, K-E8) | engine/extensions | `extensions` | `switches` (`key text pk`, `is_on boolean`, `changed_at`, `changed_by`); no seed rows (EXT-001) |
 | 2030–2039 (operator, 2026-11-16; ruling number to be assigned; K-E4, K-E8) | engine/links | `links` | `record_link` (`id uuid pk`, `source text`, `target text`, `kind text`, `label text`, `created_at timestamptz`, `created_by text`; unique on `source, target, kind`; index on `target`); no foreign key (LNK-002). The timeline has no table (TML-001) |
 | 2040–2099 (operator, 2026-11-13; ruling number to be assigned; K-E8) | reserved | — | other engine domains; not assigned now |
-| 2100–3599 (operator, 2026-11-13; ruling number to be assigned; K-E8) | the extensions | one schema each | as Section 5.2 of `docs/extensions-plan.md` (Projects 2200–2299, `projects`); a foreign key points only into a lower range |
+| 2100–3599 (operator, 2026-11-13; ruling number to be assigned; K-E8) | the extensions | one schema each | as Section 5.2 of `docs/plans/extensions-plan.md` (Projects 2200–2299, `projects`); a foreign key points only into a lower range |
 
 ## Roles (R-016, LOG-006)
 

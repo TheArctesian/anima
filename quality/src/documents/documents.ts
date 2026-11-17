@@ -15,8 +15,9 @@ export interface Listing {
   signal: string;
 }
 
+/** A specification, a proposal, a plan or a task breakdown: the folder gives the stage (PLN-018). */
 const PLAN =
-  /^docs\/(?!work-plan\.md$)(?:[a-z-]+-plan|vpn-build|design-spec)\.md$|^docs\/programme\/phase-\d-(?:plan|agent-delta)\.md$|^docs\/programme\/proposals\/[^/]+\.md$|^docs\/research\/one-click\/[^/]+-(?:tasks|spec-delta)\.md$/;
+  /^docs\/spec\/[^/]+\.md$|^docs\/proposals\/[^/]+\.md$|^docs\/plans\/(?:[^/]+\/)?(?:[^/]*-(?:plan|tasks|spec-delta|agent-delta|direction)|vpn-build)\.md$/;
 
 /** A mockup: a static HTML file of a layout (PLN-019). Its text is not read. */
 export const MOCKUP = /^docs\/mockup\/.+\.html$/;

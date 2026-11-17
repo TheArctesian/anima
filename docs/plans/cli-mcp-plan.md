@@ -1,0 +1,542 @@
+---
+kind: Plan
+state: In progress
+evidence: Section 3: the command line and the MCP server are on `main`. The test against a real hub is open ([GH-60](../work-items/device-manager/GH-60.md)). R-120 (operator, 2026-11-16): the MCP server is fully automatic by default (MCP-024 to MCP-026); ruled and not built.
+---
+
+# Anima command line and MCP plan
+
+Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds the state of this plan (PLN-005).
+
+Version 0.2 (2026-11-16): the MCP server is fully automatic by default (R-120, MCP-024 to
+MCP-026). The change is ruled and is not built: the code still starts with every change tool `off`.
+
+Version 0.1 (draft, 2026-11-12). Operator instruction, 2026-11-12: "plan out a CLI first and then
+a MCP such that coding agents like yourself can use it. The CLI should mirror all the app
+functionality and so show the MCP". And: "all new features first get built into CLI then MCP then
+the UI".
+
+Identifiers: `CMD-nnn` for the command line, `MCP-nnn` for the MCP server. The prefix `CLI-` is
+already used for the graphical client (design specification Section 3.1), so this plan does not
+use it. The decisions in this plan need a ruling number in `programme.md`.
+
+## 1. Purpose
+
+The hub has one API (GraphQL, contract K1). The graphical client is one user of it. This plan adds
+two more users of the same API, with one change to the hub: the actor kind of each audit log entry
+(design specification Section 3.8.1, LOG-012 to LOG-020):
+
+1. `anima`, a command line program for the operator and for scripts.
+2. `anima mcp`, an MCP server in the same program, for coding agents.
+
+## 2. What other tools do, and what Anima takes
+
+| Tool | What Anima takes | What Anima does not take |
+| --- | --- | --- |
+| Tailscale CLI | `--json` on each read command. Secrets from a file or standard input, never as an argument. | An output format that can change. Anima's JSON is the K1 field names, which are frozen. |
+| Coolify CLI | Noun then verb (`server list`). Named contexts for more than one instance. | A token in a plain configuration file. |
+| GitHub CLI (`gh`) | `auth login`, `auth status`, a token from standard input, a token from an environment variable, exit code 4 for "sign in". The `api` command for a raw request. | |
+| clig.dev | Data on standard output, messages on standard error. Ask only when a person is at a terminal. A flag for each question. `NO_COLOR`. | |
+| GitHub MCP server | Read-only by default. Tool sets that the operator selects. | |
+| Sentry MCP server | The MCP server is a command of the CLI and uses its sign-in. | |
+| Kubernetes MCP server | The server calls the API directly. It does not start the CLI. | |
+| Coolify MCP server | Sensitive fields are never in a tool result. | |
+| Anthropic tool guidance | A small number of tools, one for each task of an agent, not one for each API call. Names, not only IDs, in results. Short results by default. An error says what to do next. | |
+
+Sources: the research notes of 2026-11-12 (tailscale.com/kb/1080/cli, github.com/coollabsio/coolify-cli,
+cli.github.com/manual, clig.dev, modelcontextprotocol.io/specification/2026-07-28,
+anthropic.com/engineering/writing-tools-for-agents, github.com/github/github-mcp-server).
+
+## 3. Structure
+
+- **CMD-001.** One crate, `crates/anima-cli/` (the folder that the extensions plan reserves for
+  `anima run`), one binary, `anima`.
+- **CMD-002.** One folder for each operator noun, with the names of the hub domains: `devices/`,
+  `checks/`, `sessions/`, and so on. Each folder holds the GraphQL documents of that noun, its
+  commands and its table output. The MCP tools live in `src/mcp/` (`src/mcp/tools/<set>.rs`, one
+  file or folder for each tool set) and call the documents of the noun folders.
+- **CMD-003.** `hub/` is the only code that talks to the network: the GraphQL request, the
+  subscription socket, the error codes. The commands and the MCP tools both call the same typed
+  operations. The MCP server must not start the `anima` program.
+- **CMD-004.** Each GraphQL document is a `.graphql` file that is checked against
+  `contracts/schema.graphql` when the crate is built or tested. A document that does not agree
+  with K1 must fail the gates.
+- **CMD-005.** The crate must not change the hub, K1 or any other contract.
+
+## 4. Sign-in and tokens
+
+The hub has two tokens that a program can hold (design specification INT-003):
+
+| Token | Gets | Use |
+| --- | --- | --- |
+| Login token (user name, password, authenticator code; 30 days) | All operations | The operator at a terminal |
+| API key (`anima_…`, read or write, expiry at most one year) | Not: sessions, files, credentials, trust decisions, device change or delete, retention, builds, VPN keys, API keys | Scripts and coding agents |
+
+- **CMD-010.** `anima auth login` asks for the user name, the password and the authenticator code
+  at the terminal. It must not accept the password as an argument.
+- **CMD-011.** `anima auth login --with-token` reads an API key from standard input.
+- **CMD-012.** The token is kept in the operating system key store (service `ing.anima.cli`,
+  account: the hub origin). On Linux with no key store it is a file with mode `0600`, as the agent
+  does (MET-013).
+- **CMD-013.** `ANIMA_TOKEN` in the environment is used before the stored token. `ANIMA_HUB` and
+  `--hub` select the hub. The default is `https://hub.anima.ing` (DNS-001).
+- **CMD-014.** No command prints a stored token. No token goes into a URL, an argument, a log or
+  an error message (LOG-007, SEC-009).
+- **CMD-015.** A context is a name for one hub origin. `anima context add|use|list|remove`. The
+  configuration file (`$XDG_CONFIG_HOME/anima/config.json`) holds contexts and no secret.
+
+## 5. Output and behaviour
+
+- **CMD-020.** Each command prints a table for a person. With `--json` it prints JSON with the
+  field names of K1: the bare value of the command's root field, with no envelope (a delete or
+  revoke prints the bare ID string, an approval the bare boolean). Data goes to standard output;
+  messages and errors go to standard error. A secret the hub shows once goes alone on standard
+  output as one line (under its field with `--json`), with the "shown one time" note on standard
+  error.
+- **CMD-021.** Exit codes: 0 success, 1 failure, 2 wrong usage, 3 not found, 4 sign-in needed,
+  5 not permitted, 6 conflict, 7 the hub or a dependency is not available.
+- **CMD-022.** With `--json`, an error is `{"error":{"code","message","hint"}}` on standard error.
+  `code` is a K7 code, or one of the local codes the hub has no code for: `USAGE` (wrong usage,
+  exit 2), `FAILED` (a local failure such as an unreadable file, a failed write, a notification
+  that did not arrive, or paging that stopped, exit 1) and `DECLINED` (the operator answered no
+  to a confirmation, exit 1). `hint` is a command to run (the text shows it as ``run `...` ``) or
+  a sentence (shown as it is). A usage error from the command line parser names the missing
+  flags and points at the command's `--help`. Every string from the hub is cleaned of control
+  characters before it reaches a terminal.
+- **CMD-023.** A command asks a question only when standard input is a terminal. `--no-input`
+  never asks and fails with the flag that is missing.
+- **CMD-024.** A command that deletes must ask for confirmation, or get `--yes` (DEV-014). Every
+  confirmation ends the same way: an answer other than `y` or `yes` is `DECLINED`, exit 1 with a
+  message on standard error (and the JSON error under `--json`), so a script can tell that the
+  delete did not run. Nothing is sent to the hub after a decline. What a question is about
+  (a merge summary, the heads of a bulk merge) is shown on standard error before it is asked,
+  with `--json` too: the operator never answers a question about something they were not shown.
+- **CMD-025.** A secret that a command takes (a device password, a private key) comes from a
+  prompt, from standard input (`-`) or from `--from-file`. Never from an argument.
+- **CMD-026.** Lists take `--limit` and `--after` (the K1 cursor) and `--all`. `--all` stops
+  with a failure when the hub repeats a cursor, and after 100,000 rows. The next-page hint keeps
+  the filters and the `--limit` of the command that printed it.
+- **CMD-027.** Colour is off when the output is not a terminal or `NO_COLOR` is set.
+- **CMD-028.** `anima completion <shell>` prints shell completion.
+
+## 6. Commands
+
+"L" = needs the login token. All other commands also work with an API key (read commands with a
+read key; change commands with a write key).
+
+| Noun | Commands |
+| --- | --- |
+| `auth` | `login`, `logout`, `status` |
+| `context` | `list`, `add`, `use`, `remove` |
+| `device` | `list`, `get`, `create`, `update` L, `delete` L, `wake`, `test`, `metrics` (`--watch`), `uptime`, `watch` |
+| `device credential` | `set ssh\|rdp\|vnc` L, `clear ssh\|rdp\|vnc` L |
+| `device trust` | `accept-host-key` L, `accept-certificate` L |
+| `site` | `list`, `create`, `set-wake-relay` |
+| `tag` | `list` |
+| `check` | `list`, `get`, `create`, `update`, `delete`, `pause`, `resume`, `heartbeats`, `defaults get\|set`, `notifications set`, `watch` |
+| `maintenance` | `list`, `create`, `update`, `delete`, `start`, `stop` |
+| `event` | `list`, `watch` |
+| `audit` | `list` (`--actor user\|agent\|hub`, LOG-020) |
+| `session` | `list`, `end`, `watch` |
+| `ssh <device>` L | A terminal on the device through the hub (K4 Section 8). The credential stays on the hub. |
+| `files` L | `ls`, `get`, `put` (K4 Section 9) |
+| `web` | `list`, `create`, `update`, `delete`, `suggestion accept\|dismiss`, `accept-certificate` L |
+| `agent` | `status`, `enrol` L, `revoke` L |
+| `capability` | `list` (`--tool <name>`, `--target <build target>`): the tool inventory of each device (compute plan CAP-020 to CAP-031) |
+| `snapshot` | `push` (`--remote`), `list`, `delete <ref>`: a commit of the working tree on a scratch ref of the forge (JOB-017, JOB-018). It uses git on this computer and makes no hub request. |
+| `notify channel` | `list`, `create`, `update`, `delete`, `test` |
+| `notify` | `settings get\|set`, `deliveries` |
+| `retention` | `list`, `set` L |
+| `release` | `list`, `next-version`, `publishing`, `create` L, `cancel` L, `log` (`--follow`) |
+| `builder` | `list`, `enrol` L, `revoke` L |
+| `vpn` | `status` (`--watch`), `invite` L, `router-key` L, `register` L, `renew` L, `approve-route` L |
+| `timeline` | `list` (`--from`, `--to`, `--category`, `--limit`, `--after`, `--all`; the last 24 hours when no time is given) (K-E3; TML-007) |
+| `record-link` | `list <record>`, `add <source> <target> --kind <kind>` (`--label`), `remove <id>`; a record is `kind:id` (K-E4; LNK-001, LNK-002, LNK-004). The noun `link` is the device link of S6 |
+| `extension` | `list`, `on <key>` L, `off <key>` L (`on` prints "also sets X on" and asks unless `--yes`; `off` shows the hub's CONFLICT when another extension needs it) |
+| `source` | `kinds`, `list` (`--source github`), `get <id\|label>` (runs with counts), `connect github` L (`--label`, `--organisation <login>`, `--no-browser`, `--state`, `--cancel`: without `--from-file` the hub makes the App and the operator presses Create and Install on GitHub; on a terminal it asks for the one-time link, prints it and opens it, then prints one line for each phase; off a terminal it never asks for the link and prints the hub page to open in a signed-in browser. `--from-file <path\|->` selects the manual route and requires `--label`, `--app-id` and `--installation-id`: the key comes from a 0600 file or standard input, never an argument, CMD-025. `--app-id` or `--installation-id` without `--from-file`, or `--state` with `--cancel`, is `USAGE`, exit 2. All of it is login-only; exit 6 is `CONFLICT` at start, 7 is `GITHUB_UNREACHABLE`. (operator, 2026-11-14; ruling number to be assigned); PRJ-039, PRJ-040), `sync`, `pause`, `resume`, `remove` L (`--keep-records` or `--delete-records`, one is required; it confirms, CMD-024), `watch [<id\|label>]` |
+| `project` | `list` (`--left-out`, `--limit`, `--after`, `--all`), `get <slug>`, `leave-out <owner/name\|id>`, `restore <owner/name\|id>`, `resource confirm <slug> <kind>` |
+| `pr` | `list <repo>` (`--state open\|closed\|all`, `--checks`; `pullRequests`; table: number, title, author, branches, draft, can merge, checks), `get <repo> <n>` (`--comments`; `pullRequest`, `issueComments`), `merge <repo> <n>...` L (`--method merge\|squash\|rebase`, required; `--sha`, required with one number whenever no question is asked: with `--yes`, `--no-input` or off a terminal; `--allow-failing-checks` and `--fork <owner/name>`, one number only; `--yes`. One number: `mergePullRequest`; 2 to 20: `mergePullRequests`, never one from a fork. It reads each pull request fresh. For one number it shows title, head, fork, merge state, checks and method, and sends the head it showed or the `--sha` given, which must equal the head it read. For several it shows each number, head (seven digits) and title, asks once and sends the heads it read; with `--yes` no one is asked, so those heads were read a moment before and confirmed by no one (the hub refuses any head that moved after the read). What it shows goes to standard error before the question, with `--json` too; each field from GitHub stays on its own line. One line for each result; exit 1 when any of several is not `MERGED` or `ALREADY_MERGED`) |
+| `issue` | `list <repo>` (`--state`; `issues`), `get <repo> <n>` (`--comments`; `issue`, `issueComments`), `create <repo>` (`--title`, `--body-file <path\|->`, `--label`; `createIssue`), `comment <repo> <n>` (`--body-file <path\|->`; `addIssueComment`), `close <repo> <n>` (`--reason completed\|not-planned`) and `reopen <repo> <n>` (`setIssueOpen`). No confirmation; the body is never printed back |
+| `workflow` | `list <repo>` (`workflows`), `start <repo> <workflow id\|path>` L (`--branch`, `--input name=value` repeated, at most 25, `--yes`; `dispatchWorkflow`; the question names the inputs, never their values, and no output or refusal shows a value), `runs <repo>` (`--branch`, `--status`, `--jobs`; `workflowRuns`; table with the commit), `run <repo> <run>` (`workflowRun`, with its jobs), `rerun <repo> <run>` L (`--failed`, `--yes`; `rerunWorkflowRun`, or `rerunFailedWorkflowJobs` with `--failed`), `cancel <repo> <run>` L (`--yes`; `cancelWorkflowRun`) |
+| `code` | `ls <repo> [path]` (`--ref`; `codeDirectory`; table: kind, size, name), `show <repo> <path>` L (`--ref`; `codeFile`: the text on standard output, cleaned of control characters when it is a terminal; `BINARY` or `TOO_LARGE` is `FAILED`, exit 1, with the GitHub link) |
+| `repo` | `commits <repo>` (`--ref`, `--checks`; `commits`), `branches <repo>` (`branches`), `releases <repo>` (`repositoryReleases`), `status set <repo> <sha>` L (`--state pending\|success\|failure\|error`, `--context anima/...`, `--description`, `--url`; `setCommitStatus`; no confirmation: the hub fences the context to `anima/`) |
+| `key` | `list` L, `create` L (`--for user\|agent`, required, LOG-015), `revoke` L |
+| `api` | Send a GraphQL document from a file or standard input |
+| `mcp` | Start the MCP server (Section 7) |
+| `completion` | Shell completion |
+
+The `pr`, `issue`, `workflow`, `code` and `repo` commands (operator, 2026-11-14; ruling number to be
+assigned; PRJ-027 to PRJ-035, OD-E14) read GitHub live through the hub (K-E1 Section 13). `<repo>` is
+`owner/name` or the repository ID (`ProjectRepository.id`). Lists take `--limit`, `--after`, `--all`
+(CMD-026) and `--fresh`. Exit codes are CMD-021's: 3 not found, 5 not permitted, 6 conflict,
+7 unavailable, 1 for a refused merge or a file it cannot show. `anima run` is reserved for Secrets
+(SCR-006) and `release` is Anima's own, so workflow runs live under `workflow` and GitHub releases
+under `repo`. `rerun` and `cancel` read the run first, show its commit in the prompt and send that
+commit as `expectedHeadSha`; `merge` on a terminal reads the pull request and does the same, and whenever no question is
+asked (`--yes`, `--no-input`, or off a terminal) `--sha` is required for one number, so `--yes` never
+stands for the head (PRJ-029, PRJ-034). A pull request from a fork merges only alone, with
+`--fork` equal to its head repository or that name typed at the terminal; `--yes` never stands for
+it (PRO-013).
+
+`watch`, `--watch` and `--follow` keep a subscription open: one line for each change, or one JSON
+object per line with `--json`. `release log --follow` ends when the job is published, failed or
+cancelled; the others end when you stop them.
+
+Not in the command line, with the reason:
+
+- RDP and VNC displays, and web interface tabs: they draw pixels. `anima session list|end` and
+  `anima device wake` still apply.
+- The appearance settings, the updater and the builder pipeline of the desktop application: they
+  are functions of that application, not of the hub.
+- `anima run` (SCR-006) and `anima secrets` (SCR-013): they need the Secrets extension ([XP-04](../work-items/extensions/XP-04.md)). The
+  command names are reserved. `anima secrets read` prints a value, so it has no MCP tool; the
+  Secrets tools return secret handles only (SCR-015, MCP-004).
+- `anima gateway` (MGW-015, MGW-016): it needs the Model gateway extension (extensions plan,
+  Section 4.15). The command name is reserved.
+- `anima job` (`start`, `status`, `log`, `stop`, `list`) and `anima artifact` (`list`,
+  `fetch`): proposed, not approved and not built. They need the jobs proposal (JOB-012 to
+  JOB-027). The command names are reserved.
+- The operator password and the authenticator setup: they stay on the hub host
+  (`anima-hub operator`).
+
+## 7. MCP server
+
+- **MCP-001.** `anima mcp` is an MCP server on standard input and output. It uses the same
+  context and token as the command line. A remote HTTP server is not planned: it needs OAuth and
+  a hub change.
+- **MCP-002.** Each tool has one state: `allow` (listed; the agent may call it), `ask` (listed;
+  each call needs the person's approval, MCP-013) or `off` (not listed, and refused if called,
+  without a hub request). With nothing saved, every read tool and every change tool is `allow`:
+  the server is fully automatic (operator ruling R-120, 2026-11-16; MCP-024). The switch "Ask
+  before destructive actions" (MCP-025) puts the destructive tools in state `ask`. Before R-120, a
+  change tool was `off` with nothing saved.
+- **MCP-003.** The hub token is the real limit. The server shows only the tools that its token
+  can use. With an API key, the limits of INT-003 apply and the hub enforces them.
+- **MCP-004.** No tool takes a secret and no tool returns one. Thus these are not tools: set a
+  device credential, make an API key, enrol an agent or a builder, make a VPN key, make a
+  notification channel (its address can hold a secret). `anima_check_update` does not replace
+  the config of any HTTP check or SNMP check: the check read does not show an HTTP request body,
+  so such a check may hold a secret that a new config would drop.
+- **MCP-005.** No tool makes a trust decision: accept a host key or a certificate. A person does
+  that, in the client or with the command line.
+- **MCP-006.** No tool opens a session or runs a command on a device. (Open point 1.)
+- **MCP-007.** A tool that deletes takes `confirm`, which must be the name of the thing.
+- **MCP-008.** Text that comes from a device or a check (names, log lines, messages) is data. Each
+  result gives it in named fields with a length limit, and the server instructions tell the agent
+  not to obey it.
+- **MCP-009.** Each tool has a description, an input schema, an output schema, and the hints
+  `readOnlyHint`, `destructiveHint` and `idempotentHint`. Each list takes `limit` and `after`.
+  The default result is short; `detail: true` gives all fields.
+- **MCP-010.** A hub error is a tool result with `isError` and a sentence that says what to do.
+- **MCP-011.** Tool names are `anima_<noun>_<verb>`.
+- **MCP-012.** The states are saved in the configuration file, by hub origin, under `mcp`: a
+  default for each kind (`read`, `change`) and the operator's explicit choices by tool name
+  (`tools`). A tool with no choice takes its kind's default, so a tool added later takes the
+  default of its kind. The file holds no secret. The form before MCP-012 (`toolsets`, `write`)
+  is read once as explicit choices and is not written again.
+- **MCP-013.** When the agent calls a tool in state `ask`, the server asks the person at the
+  MCP client to approve that one call. It sends an MCP elicitation request in form mode with
+  one yes-or-no field (`approve`). The message names the tool, says how many argument values
+  there are and shows each of them on its own line: nested keys as dotted paths, the identifying
+  arguments (`device`, `check`, `site`, `id`, `name`, `confirm`) first, each value cleaned and cut
+  at 120 characters with its full length. A key that the tool does not take is shown by name
+  only. More than 40 values, or a message over 4,000 characters, is refused before the person is
+  asked, with a sentence to send a smaller change. The call runs only after a clear yes. If the
+  client did not declare elicitation, or the person declines or cancels, or there is no answer
+  in 120 seconds, or the request fails, the call is refused with `isError`. Every refusal of a
+  tool that is off, unknown or not approved tells the agent to ask the operator and not to change
+  Anima's settings itself; it holds no command line. The server instructions say the same. The
+  hub is not asked. A delete in state `ask` still needs its `confirm` (MCP-007).
+- **MCP-014.** `anima mcp permissions show` prints one row for each tool: tool set, tool, kind
+  (`read` or `change`), needs sign-in (`yes` or `no`) and state. `--json` gives
+  `{ hub, summary, tools: [{ toolset, tool, kind, needsSignIn, state, description }] }`; the
+  Settings panel reads this form. `permissions set` takes `--allow`, `--ask` and `--off` with
+  comma lists of tool or tool set names; the bulk forms `--allow-all`, `--ask-all`, `--off-all`,
+  narrowed by `--toolset <set>` and `--kind read|change`; and `--read-only` (every change tool
+  `off`). Bulk forms apply first, then `--allow`, `--ask`, `--off`. `--ask-destructive` and
+  `--no-ask-destructive` turn on and off the switch of MCP-025; `show` prints its state. An unknown
+  name exits 2 and lists the valid names. `--allow-all` that covers change tools needs `--yes` or a
+  yes at the terminal. `permissions reset` deletes the saved states of the hub and turns the
+  switch off. A `set` or `reset` that widens access from a saved choice (a saved `ask` or `off`
+  of a tool or of a kind's default moves toward `allow`, or the switch moves from on to off) needs
+  a terminal on standard input; without one it exits 2, whatever `--yes` says, and names the
+  terminal and the desktop app's Settings. A change toward `off` or `ask`, and turning the switch
+  on, works anywhere. With R-120 the default is already `allow`, so nothing widens from the
+  default.
+- **MCP-015.** The flags of `anima mcp` apply to one run and only narrow: `--toolsets a,b` turns
+  off every tool outside those sets; `--read-only` turns off every change tool. The one
+  exception is `--allow-write [sets]`: it allows the change tools (of every set, or of the sets
+  named) that have no saved choice and no saved `change` default. With R-120 those tools are
+  already `allow`, so the flag changes nothing unless a saved default or choice says `ask` or
+  `off`; it stays for old configuration files and old start lines. A saved `off` or `ask` is
+  never weakened by a flag. The token comes last: an API key never gets a tool that needs a
+  login token, whatever is saved (MCP-003).
+- **MCP-016.** The server instructions, the line on standard error at start, and
+  `permissions show` state the current picture in plain words: the tool sets that are on, the
+  change tools that are allowed, the tools that ask, and the tools that are off.
+- **MCP-017.** Each tool has at least one integration test that calls it over JSON-RPC against
+  the scripted hub (`tests/it/mcp/`).
+
+### Settings panel
+
+The desktop application has an "MCP" section on the Settings page. It sets the same states as
+`anima mcp permissions` (CMD-030: the command line comes first; this is the graphical client).
+
+- **MCP-018.** The section reads and saves the states through two shell commands that call the
+  library of `anima-cli`: the same functions and the same configuration file as
+  `permissions show`, `set` and `reset` (MCP-014), with the same atomic replace of the file. The
+  shell does not start the `anima` program, does not parse its output, and does not read a token.
+  The hub address is checked with the command line's own origin parser. An error that the
+  shell returns is a code with fixed text; it holds no path and no file content (LOG-007).
+  At the top the section says in plain words what the MCP server is, that the states apply to
+  coding agents on this computer for this hub, that the hub token still limits everything, and
+  that `anima mcp` starts it. It also says that Allow lets an agent use a tool without asking
+  and that text an agent reads can steer it, what Ask does (the agent's app shows each call; if
+  it cannot ask, the call is refused), and what MCP stands for.
+- **MCP-019.** The section shows one group for each tool set, in the order of Section 7, closed
+  by default. The group's name carries the number of tools in each state, in words ("3 allow,
+  1 ask, 2 off"). A group opens to one row for each tool: its name in plain words, the tool ID
+  in a secondary style, a "Read" or "Change" mark, a "Needs sign-in" mark with a hint where
+  `needsSignIn` is true (the tool works only when `anima mcp` runs with the operator's own
+  sign-in, never an API key; MCP-003), its description on request, and a choice of Allow, Ask
+  or Off. A group header also says how many tools differ from the default ("2 changed from
+  default"), when any do. A group with a tool that needs sign-in says in view what that means.
+  A change tool that is on Allow shows a mark, in words, that it can change the hub without
+  asking.
+- **MCP-020.** Bulk actions are "Allow all", "Ask for all", "Read-only (turn off all changes)"
+  (every change tool `off`) and "Reset" (MCP-014: `permissions reset`) for all tools. Each group has
+  "Allow all", "Ask for all" and "Turn off changes" for its own set. "Allow all" asks for a
+  confirmation first, because it turns on change tools without a question for each call, as
+  `--allow-all` does (MCP-014). The question names its scope in the title ("Allow every tool on
+  this hub?" or "Allow every Checks tool?"), says that the read tools of that scope are turned
+  on too, and lists in at most three lines what an agent steered by text it reads could then do
+  without asking: with an API key that can write, and with the operator's own sign-in. Only the
+  consequences of the tools in the scope are listed; they come from data keyed by tool set,
+  taken from "What a compromised agent can do" below. A single tool set to Allow from its row
+  needs no question. Every other action is saved at once. A group has no "Reset":
+  it would forget the states of every set.
+- **MCP-021.** The choice for one tool is a radio group named after the tool. The arrow keys only
+  move the focus and do not wrap from the last option to the first; Space or Enter chooses, so a
+  key press never passes through Allow. A change shows at once and is saved after the changes
+  before it, one at a time. If the shell refuses it, the control goes back to its earlier state
+  and the section says: "Not saved", the tool or action that failed, the reason in fixed words,
+  and that the control went back. The message stays until the operator dismisses it
+  or the same control is saved. From the first paint the section holds a placeholder of
+  thirteen closed groups, one for each tool set, as tall as the list, so that loading, a failed read and the loaded list take the same
+  height and nothing below moves (SET-004, MOT-007); there is no delay before it shows. If the file
+  cannot be read, the section shows an error without a path and a "Try again" button in that
+  place.
+- **MCP-022.** Every control can be reached with the keyboard and shows a focus ring. The state
+  of a tool is a word, never a colour alone. After a change the section shows one quiet line
+  ("Saved. Devices: every tool set to ask (7 tools).") in a polite live region, also for a bulk
+  action; a failure is in an alert region. There is one message for a bulk action, not one for
+  each tool.
+- **MCP-023.** The section is shown in the desktop application only. The states are a file on
+  this computer, which a browser cannot read, and the hub does not hold them: they belong to the
+  computer that runs `anima mcp`, not to the account.
+
+### Fully automatic by default (operator ruling R-120, 2026-11-16)
+
+Ruled by the operator on 2026-11-16, and not built. It replaces the earlier defaults of MCP-002 and
+of Settings "Reset", and the line under "Tools" below. The operator's words: "have destructive be
+gated by an are you sure that can be ignored in the MCP settings, off by default (essentially fully
+auto by default)".
+
+- **MCP-024.** With nothing saved, every read tool and every change tool is `allow`. The server is
+  fully automatic: an agent can change and delete without a question. A new tool takes this default
+  too (MCP-012).
+- **MCP-025.** Settings and `anima mcp permissions set` have one switch, "Ask before destructive
+  actions". It is off for a new user. When it is on, every tool with `destructiveHint` (MCP-009) is
+  in state `ask` (MCP-013) unless the operator chose a state for that tool. The operator's choices
+  for single tools still win, and `off` still hides a tool.
+- **MCP-026.** Every destructive call that runs without a question must be in the hub's audit log
+  with the tool, its arguments (cleaned, as in MCP-013) and the MCP client name, so the operator
+  can see what an agent deleted.
+- Unchanged: MCP-004 (no secrets), MCP-005 (no trust decisions), MCP-006 (no command on a
+  device), MCP-007 (a delete still names the thing in `confirm`) and MCP-008 (device text is
+  data). The command line keeps CMD-024: a delete asks at the terminal unless it gets `--yes`.
+- **How MCP-014 applies.** The default is already wide, so the rule that widening needs a terminal
+  applies only to a change away from a saved `ask` or `off`, and to turning the switch of MCP-025
+  off after it was on. The main risk is an agent that obeys text from a device or a web page
+  (MCP-008) and then deletes without a question. The audit log (MCP-026) and the switch (MCP-025)
+  are the answer to that risk.
+
+### Tools
+
+Every tool is `allow` by default (MCP-002, MCP-024, R-120). The switch of MCP-025 puts the destructive tools in state `ask`. L: needs a login token.
+
+| Set | Read | Change |
+| --- | --- | --- |
+| `devices` | `anima_fleet_overview`, `anima_devices_search`, `anima_device_get`, `anima_device_metrics`, `anima_capability_list` | `anima_device_create`, `anima_site_create`, `anima_device_wake`, `anima_device_update` L, `anima_device_delete` L |
+| `checks` | `anima_check_get` (with heartbeats and uptime) | `anima_check_create`, `anima_check_update`, `anima_check_set_paused`, `anima_check_delete` |
+| `maintenance` | `anima_maintenance_list` | `anima_maintenance_create`, `anima_maintenance_update`, `anima_maintenance_delete`, `anima_maintenance_set_active` |
+| `events` | `anima_events_search`, `anima_audit_list` | |
+| `sessions` | `anima_sessions_list` | `anima_session_end` |
+| `notifications` | `anima_notifications_overview` (channels with no addresses, settings, deliveries) | `anima_notification_send_test`, `anima_check_set_notifications` |
+| `web` | (in `anima_device_get`) | `anima_web_interface_create`, `anima_web_interface_update`, `anima_web_interface_delete` |
+| `releases` | `anima_releases_list`, `anima_release_publishing` (PRO-037), `anima_build_log` | `anima_release_create` L, `anima_build_cancel` L |
+| `vpn` | `anima_vpn_status` | `anima_vpn_approve_route` L |
+| `retention` | `anima_retention_list` | `anima_retention_set` L |
+| `link` (FRN-009) | `anima_link_devices` | None: `createLinkInvite` returns a secret (MCP-004) and `revokeLinkDevice` is a trust decision (MCP-005). The command line has both (`anima link invite`, `anima link revoke`) |
+| `extensions` | `anima_extensions_list` | `anima_extension_set` L |
+| `timeline` | `anima_timeline_list` | |
+| `records` | `anima_record_links_list` | `anima_record_link_add`, `anima_record_link_remove` |
+| `sources` | `anima_sources_overview` (declarations, accounts and their last runs; covers `Query.sources` and `Query.sourceAccounts`) | `anima_source_account_sync`, `anima_source_account_set_paused`, `anima_source_account_remove` L (`confirm` must equal the account label, MCP-007), `anima_github_connect_start` L, `anima_github_connect_cancel` L, and the read tool `anima_github_connect_state` (any token; phase, failure, message, `appSlug`, `ownerLogin`, `installUrl`, `appSettingsUrl`, and the account id, label and health). The start tool returns `{ attempt: { id, phase, expiresAt }, link }` where `link` is the fixed `https://<hub>/connect/github`: no state, no ticket, no attempt id. Alone it does nothing until a signed-in operator presses Continue. The start tool's description tells the agent to give the link to the operator and not to open it. `appSlug`, `ownerLogin` and the label go through `mcp/untrusted.rs` (operator, 2026-11-14; ruling number to be assigned) |
+| `projects` | `anima_projects_search`, `anima_project_get` | `anima_repository_set_left_out` (one tool, `leftOut: bool`), `anima_project_resource_confirm` |
+| `repositories` (operator, 2026-11-14; ruling number to be assigned; PRJ-027 to PRJ-035, OD-E14) | `anima_pull_requests_list` (`pullRequests`; `detail: true` adds mergeability and checks), `anima_pull_request_get` (`pullRequest`, `issueComments`), `anima_issues_list` (`issues`), `anima_issue_get` (`issue`, `issueComments`), `anima_workflows_list` (`workflows`), `anima_workflow_runs_list` (`workflowRuns`), `anima_workflow_run_get` (`workflowRun`, with jobs), `anima_commits_list` (`commits`), `anima_branches_list` (`branches`), `anima_repository_releases_list` (`repositoryReleases`), `anima_code_directory_list` (`codeDirectory`; names only) | `anima_issue_create` (`createIssue`), `anima_issue_comment_add` (`addIssueComment`), `anima_issue_set_open` (`setIssueOpen`). A write key may call them; they return the issue or the comment without its body. The other GitHub changes have no tool (below) |
+
+Fields with no MCP tool, with the reason (MCP-004): `Mutation.connectGithubApp` takes a secret (`GithubAppInput.privateKey`); `Subscription.sourceAccountChanged` is a subscription, and no subscription has a tool; `Mutation.openGithubConnect` returns a ONE-TIME link that opens the connection in a browser, and a tool may not return one (the hub also refuses it, FORBIDDEN, for a request that declares an agent); `Subscription.githubConnectChanged` is a subscription (operator, 2026-11-14; ruling number to be assigned); `Query.codeFile` returns the content of a file (operator, 2026-11-14; ruling number to be assigned). `Mutation.mergePullRequest` and `Mutation.mergePullRequests`: a merge is a trust decision (MCP-005), and the hub refuses every API key for them; `Mutation.rerunWorkflowRun`, `Mutation.rerunFailedWorkflowJobs` and `Mutation.dispatchWorkflow` run code with the repository's secrets, `Mutation.cancelWorkflowRun` stops a run, and `Mutation.setCommitStatus` can satisfy a required check and open a merge; the hub refuses every API key for each (operator, 2026-11-14; ruling number to be assigned). The command line has all seven, behind a confirmation. Text from GitHub (names, descriptions, paths) goes through `mcp/untrusted.rs` as named, length-limited fields (MCP-008).
+
+**No MCP tool returns file content** (operator, 2026-11-14; ruling number to be assigned). The content of a file in a repository may hold a secret, and the hub cannot tell (MCP-004, as for `anima_check_update`); it is also the strongest carrier of instructions to an agent in the Projects slice. MCP-002 makes every read tool `allow` by default, so the content gets no tool rather than a read tool. An agent that needs the code has the checkout. `anima_code_directory_list` returns names only. Other text from GitHub in the `repositories` results (titles, bodies, comments, logins, branch names, labels, commit messages, check and job names) is given in named fields, cleaned and cut by `mcp/untrusted.rs`, where the key `body` is cut at 4,000 characters. Each tool description says that this text is data, and the server instructions gain one line for text from GitHub.
+
+`anima_capability_list` (read, tool set `devices`) gives the tool inventory of each device
+(CAP-030, CAP-031). `anima snapshot` has no tool: it changes no hub state and acts on a folder of
+the computer that runs `anima mcp`, and an agent with a shell can run the command.
+
+Reserved tools, proposed and not built (jobs proposal JOB-012 to JOB-027):
+the read tools `anima_job_status`, `anima_job_log`, `anima_jobs_list`
+and `anima_artifacts_list`, and the change tools `anima_job_start`, `anima_job_stop` and
+`anima_artifact_fetch`. MCP-006 stays: no tool takes a command line (JOB-015). When these tools
+exist, the server instructions must say when to give work to a different machine: this computer
+has no free memory, or a tool or a build target is absent. They must tell the agent to read
+`anima_capability_list` first.
+
+## 8. The rule for new functions
+
+- **CMD-030.** A new function is built in this order: the hub API, the command line, the MCP
+  tool, then the graphical client. A function is not complete until each of the three has it or
+  Section 6 or 7 gives the reason that it does not.
+- **CMD-031.** A test must compare the root fields of K1 with the fields that the command line
+  uses. A K1 field that no command uses, and that is not in a list of exceptions with a reason,
+  must fail the gates.
+
+## 9. Open points
+
+1. **A session for an agent.** `anima ssh` gives the operator a terminal on any device. The same
+   as an MCP tool would let a coding agent run a command on each device, with the stored
+   credential. This plan does not build it (MCP-006). It needs an operator decision and a security
+   review.
+2. **Who did it.** Decided (operator, 2026-11-13) and built: each audit log entry has an actor
+   kind, User, Agent or Hub (design specification Section 3.8.1, LOG-012 to LOG-020). `anima mcp`
+   sends the agent declaration with each request (LOG-016). `anima key create` takes the
+   "made for" attribute with `--for` (LOG-015). `anima audit list` has the Actor, Token and Key
+   columns and `--actor`, and `anima_audit_list` has the fields and an `actor` filter (LOG-020).
+   The contract change still needs a programme ruling number (design specification OD-15).
+3. **Login token for the MCP server.** The "L" tools work only when the operator starts
+   `anima mcp` with a login token. That gives the agent more than INT-003 permits an API key.
+   With R-120 they are `allow` by default like every tool (MCP-002, MCP-024), and the operator
+   can set them to `ask` or `off`, or decide to remove them.
+4. **Distribution.** Decided (operator, 2026-11-13) and built (branch `fix/bundle-anima`):
+   `anima` is inside the disk image and the AppImage of the desktop application, at the same
+   version, and Settings > Updates > Command line tool puts it on the `PATH` (design
+   specification Section 3.11, INS-001 to INS-009). There is no package manager channel
+   (INS-008). The mechanisms are decided by the implementation and need a real release to
+   confirm the signature, the notarization and the AppImage launcher (design specification
+   OD-16, OD-17, OD-18).
+5. **MCP protocol version.** The current revision is 2026-07-28. The Rust SDK (`rmcp`) can speak
+   it and the earlier revisions. Which revision each coding agent uses was not verified.
+6. **SNMP secrets after a host change.** Fixed (design specification SEC-010, security review
+   2026-11-13). Before the fix, the hub kept a check's SNMP community and v3 passwords when the
+   device's host changed, so an agent with `anima_device_update` could set the host to an
+   address it chose, and the next SNMP check sent the community there. Now the hub binds the
+   SNMP secrets to the device host for which they were entered, inside the encrypted value. At
+   each probe it compares that host with the host it sends to. If they are different, it sends
+   nothing, removes the secrets, records a failed attempt and writes a Warning event that tells
+   the operator to enter the secrets again. The check is made at the point of use, so it
+   protects against every way a host can change. Secrets stored before the fix are bound to the
+   host that their device had when migration 0324 ran. The stored SSH, RDP and VNC credentials
+   of a device are fixed the same way (design specification SEC-011): after a host change the
+   hub sends none of them until the operator enters it again or changes the host back.
+7. **`ask` trusts the MCP client.** The server cannot see who answers the approval request.
+   Whatever answers it (the person, the client's own rule, or a client that the agent controls)
+   decides.
+8. **Who writes the start.** The flags of `anima mcp` (`--allow-write`, `--toolsets`) and the
+   configuration location (`XDG_CONFIG_HOME`, `--context`) come from whoever writes the MCP
+   client's configuration. That includes a project `.mcp.json` in a repository.
+9. **The audit log cannot tell who acted.** Decided (operator, 2026-11-13) and built: the actor
+   kind tells an agent from the operator (LOG-012, LOG-014), and the token kind with the key name
+   tells an API key from a login token (LOG-018). See point 2. One limit stays: a program that
+   holds the operator's login token and sends no declaration is recorded as User.
+10. **Accepted risk: the operator's own account.** `anima mcp permissions set` and `reset` widen
+    access only with a terminal on standard input (MCP-014). A program that runs commands as the
+    operator can still edit the configuration file by hand, start the server with
+    `--allow-write`, or run the command inside a pseudo-terminal. With R-120 the default is already wide, so the check
+    protects only a saved `ask` or `off`. The check stops an agent from
+    widening its access by accident or because a refusal told it how; it does not stop an agent
+    that sets out to do it. The hub token stays the real limit (MCP-003).
+11. **SET-004 lists the sections.** Closed (operator, 2026-11-13): `docs/spec/design-spec.md` SET-004
+    now names the "MCP" section (MCP-018..023). The design specification also records that the
+    section list and the jump menu of SET-004 are not built.
+
+### What a compromised agent can do
+
+An agent can be steered by text it reads. What it can do then depends on the token and the
+tools that are on:
+
+1. **Read API key.** Read the whole fleet, events, the audit log, sessions with client
+   addresses, VPN nodes and build logs. It can also spend the GitHub budget of each connected
+   account down to the reserve: every `repositories` read tool asks GitHub live, and once 500
+   or fewer requests are left, every live read stops, the operator's too, until GitHub's reset
+   (`UNAVAILABLE`; contracts/extensions/sources.md, Budget). The sync keeps its share. The
+   limit is the hour GitHub allows; nothing in Anima limits one key's share.
+2. **Write API key, every change tool allowed.** Pause every check and empty its notification
+   channels, start maintenance windows, delete checks, maintenance windows and web interfaces,
+   end every live session, point web interfaces at other addresses, point HTTP checks at
+   internal URLs, send wake packets and test notifications.
+3. **Login token, everything allowed.** All of the above, and also delete every device with its
+   stored credentials, approve a VPN route, cancel builds, set every retention period to the
+   minimum and start a release.
+   With a write key or a login token it can also start a GitHub connection (`anima_github_connect_start`), which does nothing until the operator presses Continue on the hub page and then Create and Install on GitHub, behind GitHub's own confirmation. It cannot finish the flow, and it is given no one-time link (operator, 2026-11-14; ruling number to be assigned).
+4. **Projects, the first GitHub changes** (operator, 2026-11-14; ruling number to be assigned). With a
+   write key and the issue tools on, it can make issues and comments and close or open issues on
+   every repository the GitHub App can reach. It cannot merge a pull request, run a workflow again,
+   cancel a run, start a workflow, write a commit status or read the content of a file, with any
+   token: those have no tool.
+   - **It can carry text out.** It can copy text it read from a private repository (an issue, a
+     comment, a pull request, a commit message, a file in its own checkout) into an issue or a
+     comment in any repository the GitHub App can reach, a public one included. What limits it:
+     the issue tools are `allow` by default (MCP-024, R-120) and the operator can set them to `ask`
+     or `off`; `ask` shows each call's values before it runs (MCP-013), the App reaches only the repositories it was installed on,
+     and the audit log records each change with the key that made it (PRJ-028, LOG-018). Nothing
+     checks where the text came from.
+   - **A comment can start a workflow.** An issue or a comment made through the GitHub App is an
+     event like any other: a workflow of that repository that listens for `issue_comment`,
+     `issues` or a label event runs, with the repository's secrets, and its steps may read the
+     text the agent wrote. So the issue tools can start code that `workflow start` would need a
+     login token and a confirmation for. This was not tested against GitHub.
+   - **The issue tools are on without being named.** A tool with no choice of its own takes its
+     kind's default (MCP-012), which is `allow` (MCP-024, R-120). An operator who did not name
+     them has them on. This is the model as decided; the risk is accepted here, not changed. `anima mcp
+     permissions show` and the line at start (MCP-016) list them.
+5. **The operator's login token, no declaration.** A program that obtains the operator's stored
+   login token (from the key store or the token file, or from `ANIMA_TOKEN`) and sends no agent
+   declaration is recorded as User (LOG-016; open point 9). It can do everything the operator
+   can through the hub, with no MCP state in the way: merge a pull request, a fork's included
+   (the fork's name is typed into a request like any other value; PRO-013 binds the command
+   line, not the hub), run and start workflows, write commit statuses and delete devices.
+   Nothing in Anima tells it from the operator.
+
+4. **`anima_job_start` allowed (proposed, not built).** Run the build steps and the test steps
+   of a project on each machine that takes work, with the content of a scratch ref that the
+   agent wrote. Build scripts are code. Thus this is code execution inside the limits of a job: a
+   container, or the build user on a Mac, with no agent token, no home folder and no project
+   secret (JOB-020). It can also fill the disk of a machine with artifacts up to the limit of
+   the device policy. `anima_capability_list` shows the tools and versions of each machine.
+
+## 10. Work
+
+| Task | Content | Builder | Tag |
+| --- | --- | --- | --- |
+| T1 | Crate, `hub/`, contexts, sign-in, token store, output, exit codes, `api`, `device list\|get`, the K1 coverage test | Opus | security |
+| T2 | `device` (the rest), `site`, `tag`, `web`, `agent` | Sonnet | security (credentials) |
+| T3 | `check`, `maintenance` | Sonnet | |
+| T4 | `event`, `audit`, `notify`, `retention`, `key`, and the `watch` commands (subscriptions) | Sonnet | |
+| T5 | `release`, `builder`, `vpn` | Sonnet | security (keys shown once) |
+| T6 | `session`, `ssh`, `files` | Opus | security |
+| T7 | `anima mcp`: server, tool sets, read tools, change tools | Opus | security |
+| T8 | Review (CUPID, tests), security review, gates | Sonnet, Opus | |
+| T9 | Per-tool states `allow`, `ask`, `off`; `permissions show\|set\|reset`; `ask` by elicitation; the `sessions` tool set (MCP-012..017) | Opus | security |
+| T10 | The MCP permissions panel in the desktop Settings page, on the library behind `permissions show\|set\|reset` (MCP-018..023) | Sonnet | security (file write) |
+
+Done when: `bun run gates` passes; each row of Section 6 works against a test hub; the coverage
+test of CMD-031 passes; an MCP client lists the tools and reads the device list.

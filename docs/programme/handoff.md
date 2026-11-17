@@ -61,7 +61,7 @@ The issue #1 items not yet posted are listed in the orchestrator's scratchpad, `
 
 ## 4. Waiting on the operator
 
-- **Live checks O-4 to O-9** (`docs/programme/phase-2-acceptance.md`):
+- **Live checks O-4 to O-9** (`docs/archive/phase-2/phase-2-acceptance.md`):
   - O-4 SFTP
   - O-5 Wake-on-LAN
   - O-6 web view on macOS
@@ -80,7 +80,7 @@ The issue #1 items not yet posted are listed in the orchestrator's scratchpad, `
   operator's OK (R-101).
 - **Spec 5.7.3 wording:** still open.
 - **Updater key:** make the key pair and import it on each builder (Settings, Updates, "Import
-  updater key"); see `docs/releases.md`. There is no GitHub release workflow or GitHub secret (R-114).
+  updater key"); see `docs/procedures/releases.md`. There is no GitHub release workflow or GitHub secret (R-114).
 - **R2 setup:** releases go to Cloudflare R2 (`releases.anima.ing`). No CI does this
   (`anima-no-ci-gates`).
 - **Phase 3 VPS changes:** each needs an OK in chat and a row in `operator-changes.md` (VPS-005).
@@ -99,8 +99,8 @@ The issue #1 items not yet posted are listed in the orchestrator's scratchpad, `
 - CR-5, CR-6 and CR-7
 - R-084 and CR-8 (metrics push agent)
 
-Also read `docs/programme/phase-3-plan.md`, `phase-3-contracts.md` and the package files in
-`docs/programme/packages/`.
+Also read `docs/plans/phase-3/phase-3-plan.md`, `phase-3-contracts.md` and the package files in
+`docs/archive/packages/`.
 
 **Memory notes** for the new account to recreate from this list (they live in the Mac account's
 `~/.claude/projects/.../memory/`):
@@ -173,7 +173,7 @@ Also read `docs/programme/phase-3-plan.md`, `phase-3-contracts.md` and the packa
 ## 8. Builds and the release of Anima (2026-11-16)
 
 This section adds to the file. Sections 1 to 7 are the state of 2026-11-12 and are not changed.
-The plan is [projects-and-builds-plan.md](../projects-and-builds-plan.md), Version 2, "Tasks". That
+The plan is [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md), Version 2, "Tasks". That
 table holds the state of each task (PLN-006). This section adds no requirement.
 
 ### 8.1 Done
@@ -197,12 +197,12 @@ All 20 gates passed before the push of `0846e3d5`.
    The file names of a release stay `Anima_*` (UPD-010). Decide whether the updater archive
    stays `Anima.app.tar.gz`: UPD-010 governs it. Write the reason in the commit.
 2. **R6: the release carries the local hub (D3).** Task T9 of
-   [s4-local-hub-tasks.md](../research/one-click/s4-local-hub-tasks.md) owns it. Do not do it twice.
+   [s4-local-hub-tasks.md](../plans/one-click/s4-local-hub-tasks.md) owns it. Do not do it twice.
 3. **R7: the first release.** The operator does it. It needs R1 to R5. Each feed at
    `releases.anima.ing` must answer 200 (D6). Agents do not publish, and do not touch R2 or the VPS
    (VPS-005, UPD-012).
 4. Then the groups W, B and A, in the order of the plan. W1 needs a ruling that changes R-115
-   ([jobs.md](proposals/jobs.md), "Needs"). Ask the operator for it before you start W.
+   ([jobs.md](../proposals/jobs.md), "Needs"). Ask the operator for it before you start W.
 
 D7 (no pinned toolchain) has no task yet. If a session adds one, its row goes in the plan's task
 table first.
@@ -231,7 +231,7 @@ Paste this to start the next session:
 ```text
 Continue the release correction of Anima. Read AGENTS.md, then Section 8 of
 docs/programme/handoff.md, then "The builder today" and "Tasks" in
-docs/projects-and-builds-plan.md.
+docs/plans/projects-and-builds-plan.md.
 
 Do task R5 (D2, OD-W19): one name for the macOS application, Anima.ing.app. Change the
 design specification Section 3.11, local_hub/carried.rs and the builder (artifact.rs and its tests).

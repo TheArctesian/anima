@@ -1,6 +1,6 @@
 # K-E8 — Migration ranges and owned paths for the engine and extensions
 
-Status: new (operator, 2026-11-13; ruling number to be assigned). Proposed for the path to Projects; it is not part of the Phase 3 freeze. Change it only through a programme ruling (CON-001). The same rows are in K2 (`contracts/database.md`). Requirement IDs: REPO-E-001, REPO-E-002, ENG-002, EXT-005 of `docs/extensions-plan.md`.
+Status: new (operator, 2026-11-13; ruling number to be assigned). Proposed for the path to Projects; it is not part of the Phase 3 freeze. Change it only through a programme ruling (CON-001). The same rows are in K2 (`contracts/database.md`). Requirement IDs: REPO-E-001, REPO-E-002, ENG-002, EXT-005 of `docs/plans/extensions-plan.md`.
 
 ## 1. Ranges
 
@@ -11,7 +11,7 @@ Status: new (operator, 2026-11-13; ruling number to be assigned). Proposed for t
 | 2020–2029 | engine/extensions | `extensions` | `switches` |
 | 2030–2039 (operator, 2026-11-16; ruling number to be assigned; K-E4) | engine/links | `links` | `record_link` |
 | 2040–2099 | reserved for the other engine domains | — | not assigned now |
-| 2100–3599 | the extensions, as Section 5.2 of `docs/extensions-plan.md` (Projects 2200–2299) | — | — |
+| 2100–3599 | the extensions, as Section 5.2 of `docs/plans/extensions-plan.md` (Projects 2200–2299) | — | — |
 
 ## 2. Rules
 

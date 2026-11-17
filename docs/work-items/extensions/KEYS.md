@@ -6,7 +6,7 @@ Progress: the index [README.md](../README.md) holds the state of this item (PLN-
 | --- | --- |
 | Identifier | KEYS |
 | Kind | Checklist |
-| Owner | [extensions-plan.md](../../extensions-plan.md) Section 9 |
+| Owner | [extensions-plan.md](../../plans/extensions-plan.md) Section 9 |
 | Serves | Work plan Section 4, tier 1 (decisions and approvals) |
 | Version | 1.0 |
 | Date | 2026-11-16 |
@@ -49,5 +49,5 @@ Create each account or key from plan Section 9 when its extension starts, and ch
 - [ ] Neon: whether a project-scoped API key exists
 - [ ] Garmin: `python-garminconnect` can load and save tokens without a file (GAR-002)
 
-**Plan:** [Section 9](../../extensions-plan.md)
+**Plan:** [Section 9](../../plans/extensions-plan.md)
 **Requirements:** KEY-001–003

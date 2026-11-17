@@ -6,7 +6,7 @@ Progress: the index [README.md](../README.md) holds the state of this item (PLN-
 | --- | --- |
 | Identifier | OD-C4 |
 | Kind | Decision |
-| Owner | [compute-plan.md](../../compute-plan.md) Section 15 |
+| Owner | [compute-plan.md](../../plans/compute-plan.md) Section 15 |
 | Serves | Work plan Section 4, tier 4 (Level 2) |
 | Version | 1.0 |
 | Date | 2026-11-16 |
@@ -15,5 +15,5 @@ Progress: the index [README.md](../README.md) holds the state of this item (PLN-
 
 Recommendation: offer them to the Shard project first; keep them in `blocks/` only if Shard does not accept them.
 
-**Plan:** [Section 15](../../compute-plan.md)
+**Plan:** [Section 15](../../plans/compute-plan.md)
 **Requirements:** OD-C4

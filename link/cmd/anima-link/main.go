@@ -1,5 +1,5 @@
 // Command anima-link carries the hub's traffic over an encrypted link
-// (docs/one-click-plan.md, Section 4.1). The files of this package wire the
+// (docs/plans/one-click/one-click-plan.md, Section 4.1). The files of this package wire the
 // roles and hold no rules.
 package main
 

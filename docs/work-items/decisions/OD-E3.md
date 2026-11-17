@@ -6,7 +6,7 @@ Progress: the index [README.md](../README.md) holds the state of this item (PLN-
 | --- | --- |
 | Identifier | OD-E3 |
 | Kind | Decision |
-| Owner | [extensions-plan.md](../../extensions-plan.md) Section 7 |
+| Owner | [extensions-plan.md](../../plans/extensions-plan.md) Section 7 |
 | Serves | Work plan Section 4, tier 3b (the other extensions) |
 | Version | 1.0 |
 | Date | 2026-11-16 |
@@ -15,5 +15,5 @@ Progress: the index [README.md](../README.md) holds the state of this item (PLN-
 
 Before paying (about 15 USD/year), check bridge.simplefin.org for Bank of America, Chase, Robinhood and Acorns. Any that are not covered fall back to statement upload.
 
-**Plan:** [Section 7](../../extensions-plan.md)
+**Plan:** [Section 7](../../plans/extensions-plan.md)
 **Requirements:** OD-E3

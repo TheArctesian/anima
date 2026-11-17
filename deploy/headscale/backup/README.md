@@ -10,7 +10,7 @@ snapshot lists, so appended snapshots cannot evict real ones (see [Risks](#risks
 does not verify pack data before pruning (deferred, issue #1). Retention and pruning run
 only on the home PC.
 
-The full setup and the restore drill are in the VPN guide (`docs/setup/vpn.md`). This
+The full setup and the restore drill are in the VPN guide (`docs/procedures/setup/vpn.md`). This
 file lists what goes where. The hub reaches `10.10.0.0/24` only if the VPS runs
 `tailscale up --accept-routes` (also in the guide).
 

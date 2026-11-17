@@ -9,11 +9,11 @@ machine (operator, 2026-11-16: "you can run it on my linux machine with the anim
 
 This document is a record (work plan, Section 9; PLN-010). It adds no requirement. Its Section 7
 lists inputs for the owner of the requirements,
-[watchdog.md](../../programme/proposals/watchdog.md).
+[watchdog.md](../../proposals/watchdog.md).
 
 ## 1. Purpose
 
-Task G1 of [watchdog.md](../../programme/proposals/watchdog.md) asks for measured answers to three
+Task G1 of [watchdog.md](../../proposals/watchdog.md) asks for measured answers to three
 questions:
 
 1. Which signs tell a stop by a person from a failure, for each supervisor (WDG-025)?
@@ -194,7 +194,7 @@ Findings:
 ## 7. Inputs for the owner (watchdog.md)
 
 These are not requirements. They are inputs for the operator's decisions and for the next version
-of [watchdog.md](../../programme/proposals/watchdog.md).
+of [watchdog.md](../../proposals/watchdog.md).
 
 1. **WDG-023.** The states to wait for are `spawn scheduled` for launchd (F-L1), `restarting`
    for Docker (F-D1), and `activating`/`auto-restart` for systemd (F-S1).

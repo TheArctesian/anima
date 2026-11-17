@@ -14,7 +14,7 @@ Progress: the index [README.md](../README.md) holds the state of this item (PLN-
 | Text | Copied from the issue on 2026-11-16 (R-119). Only the links were changed. Not written in STE yet. "This issue" in the text means this document. |
 | Note | The work plan Section 7 holds the ruling. OD-W13 later changed PRO-010 and PRO-013. |
 
-The operator decided OD-W11 on 2026-11-13: projects are the front door for rented accounts, and the builder builds each project. `docs/projects-and-builds-plan.md` has the six points.
+The operator decided OD-W11 on 2026-11-13: projects are the front door for rented accounts, and the builder builds each project. `docs/plans/projects-and-builds-plan.md` has the six points.
 
 These proposals follow from it. The operator heard them and did not refuse. They are not approved.
 

@@ -4,6 +4,8 @@ import type { Document } from "./documents.ts";
 
 /** The register: the file that holds the generated list of the plans (PLN-001, PLN-020). */
 export const REGISTER = "docs/plan/register.md";
+/** Finished work. It is a record: it has no row in the register. */
+const ARCHIVE = "docs/archive/";
 const START = "<!-- generated from the header of each document: bun run quality:register -->";
 const END = "<!-- end of the generated list -->";
 const LINK = /\]\(([^)\s]+)\)/g;
@@ -42,7 +44,7 @@ function rank(kind: string): number {
 export function registerRows(documents: Document[]): string {
   const rows = documents
     .map((document) => ({ path: document.path, fields: header(document.text) }))
-    .filter(({ fields }) => fields.has("kind") && fields.has("state"))
+    .filter(({ path, fields }) => !path.startsWith(ARCHIVE) && fields.has("kind") && fields.has("state"))
     .sort((a, b) => rank(a.fields.get("kind") ?? "") - rank(b.fields.get("kind") ?? "") || a.path.localeCompare(b.path))
     .map(({ path, fields }) => {
       const link = posix.relative(posix.dirname(REGISTER), path);

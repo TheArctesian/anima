@@ -1,6 +1,6 @@
 # K-E4 — Record links and the shared subject keys (engine)
 
-Status: new (operator, 2026-11-16; ruling number to be assigned). Proposed for engine task E0-4; it is not part of the Phase 3 freeze. Change it only through a programme ruling (CON-001). Requirement IDs: LNK-001, LNK-002, LNK-004, LNK-005 and LNK-006 of `docs/extensions-plan.md` (LNK-005 and LNK-006 from issue #7, operator, 2026-11-16). Owner: engine (`crates/hub/src/engine/links*`, `crates/hub/src/engine/records.rs`).
+Status: new (operator, 2026-11-16; ruling number to be assigned). Proposed for engine task E0-4; it is not part of the Phase 3 freeze. Change it only through a programme ruling (CON-001). Requirement IDs: LNK-001, LNK-002, LNK-004, LNK-005 and LNK-006 of `docs/plans/extensions-plan.md` (LNK-005 and LNK-006 from issue #7, operator, 2026-11-16). Owner: engine (`crates/hub/src/engine/links*`, `crates/hub/src/engine/records.rs`).
 
 **Gap:** the places part and the files part of K-E4 (Sections 2.6 and 2.7 of the plan, PLC-* and FIL-*) are not written. Engine task E0-5 (#8) adds them to this file. LNK-003, the one shared client component, is not built: issue #7 makes it later work for the pages that use links.
 
