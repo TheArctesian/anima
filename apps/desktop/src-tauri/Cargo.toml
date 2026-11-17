@@ -1,10 +1,17 @@
 [package]
 name = "anima-desktop"
-description = "Anima desktop shell: window, key store and bundle (REPO-003)"
+description = "Anima shell for desktop and mobile: window, key store and bundle (REPO-003, MOB-001)"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 publish.workspace = true
+
+# The shell is a library so that iOS and Android can load it (MOB-001). The desktop program
+# below starts it.
+[lib]
+name = "anima_desktop_lib"
+path = "src/lib.rs"
+crate-type = ["staticlib", "cdylib", "rlib"]
 
 [[bin]]
 name = "anima-desktop"
@@ -14,18 +21,22 @@ path = "src/main.rs"
 tauri-build.workspace = true
 
 [dependencies]
-# The Settings panel for `anima mcp` reads and saves permissions through the command line's own library (MCP-018).
-anima-cli = { path = "../../../crates/anima-cli" }
 # `unstable`: child web views in the main window and moving them to a window of their own
 # (`Window::add_child`, `Webview::reparent`) for device web views (WEB-004, D-3).
 # `tray-icon`: the menu bar or tray item of the stay-awake control (AWK-004).
 tauri = { workspace = true, features = ["unstable", "tray-icon"] }
+# `generate_context!` parses the `plugins` config in tauri.conf.json with serde_json.
+serde_json.workspace = true
+
+# The dependencies of the desktop application. A phone has the window and the access token only, so it
+# builds none of them (MOB-002, MOB-003).
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+# The Settings panel for `anima mcp` reads and saves permissions through the command line's own library (MCP-018).
+anima-cli = { path = "../../../crates/anima-cli" }
 keyring.workspace = true
 serde.workspace = true
 thiserror.workspace = true
 tauri-plugin-log.workspace = true
-# `generate_context!` parses the `plugins` config in tauri.conf.json with serde_json.
-serde_json.workspace = true
 whoami.workspace = true
 # Certificate pins and the leaf-certificate probe for device web views (WEB-008, D-9).
 sha2.workspace = true
@@ -45,9 +56,7 @@ base64.workspace = true
 reqwest.workspace = true
 # A name for the agent file while it is placed (MET-019).
 getrandom = "0.3"
-
 # Self-update and relaunch: desktop only, registered only in release builds (UPD-001).
-[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-updater.workspace = true
 tauri-plugin-process.workspace = true
 # Native dialogs from Rust only (no JavaScript API is granted): the recovery confirmation that
@@ -58,7 +67,7 @@ tauri-plugin-dialog = "2"
 # the child subreaper of every step process and reaps what escaped the group (S-1). `user`: the
 # user ID the agent's install folder must belong to (MET-019). `fs`: whether this user may write a
 # folder for the command line tool (INS-009).
-[target.'cfg(unix)'.dependencies]
+[target.'cfg(all(unix, not(any(target_os = "android", target_os = "ios"))))'.dependencies]
 nix = { version = "0.31", default-features = false, features = ["signal", "process", "user", "fs"] }
 
 # pidfd_open and pidfd_send_signal for the reaper (D-20): nix 0.31 has neither. `fs`: the POSIX

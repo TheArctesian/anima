@@ -12,6 +12,40 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* A phone draws the page under its status bar and its home indicator (`viewport-fit=cover` in app.html). The page
+   colour fills those areas, and the content stays inside the safe area (MOB-011). On a computer each inset is zero. */
+:root {
+  --safe-block-start: env(safe-area-inset-top, 0px);
+  --safe-block-end: env(safe-area-inset-bottom, 0px);
+  --safe-inline-start: env(safe-area-inset-left, 0px);
+  --safe-inline-end: env(safe-area-inset-right, 0px);
+  /* The height that a full-height layout has: the window without the two block insets. */
+  --viewport-block-size: calc(100vh - var(--safe-block-start) - var(--safe-block-end));
+}
+
+/* The Android web view gives no inset for the gesture bar at the bottom of the screen; the approved mockup keeps 24 px. */
+:root[data-os="android"] {
+  --safe-block-end: max(env(safe-area-inset-bottom, 0px), var(--space-6));
+}
+
+html {
+  background: var(--surface-sunken);
+}
+
+body {
+  padding: var(--safe-block-start) var(--safe-inline-end) var(--safe-block-end) var(--safe-inline-start);
+}
+
+/* On a touch screen iOS zooms the page when a field with text below 16 px gets the focus, and the page stays zoomed
+   (MOB-012). `:root` and `:not()` put this rule above a component's own rule for its field. */
+@media (pointer: coarse) {
+  :root input:not([type="checkbox"], [type="radio"], [type="range"]),
+  :root textarea,
+  :root select {
+    font-size: var(--text-lg);
+  }
+}
+
 /* The navigation bar's width; the logs panel starts beside it. */
 :root {
   --nav-inline-size: calc(var(--space-16) * 3 + var(--space-10));
@@ -55,6 +89,18 @@ select {
   --nav-inline-size: calc(var(--target-min-touch) + var(--space-3) * 2);
   /* The strip that tells the operator the hub is unreachable: four lines of small text and its padding. */
   --nav-banner-block-size: calc(var(--text-sm) * var(--leading-tight) * 4 + var(--space-2) * 2 + var(--border-thin));
+}
+
+/* The phone layout (MOB-010): the bar is at the bottom of the screen, so nothing starts beside it. The page and a
+   pinned panel keep clear of its height, the safe area included. */
+@media (max-width: 767.98px) {
+  :root,
+  :root[data-nav="icons"] {
+    --nav-inline-size: 0px;
+    /* 56 px, the bar of the approved mockup (docs/mockup/mobile, frame 6). */
+    --phone-bar-size: calc(var(--space-12) + var(--space-2));
+    --phone-bar-block-size: calc(var(--phone-bar-size) + var(--border-thin) + var(--safe-block-end));
+  }
 }
 
 /* On a Mac the window draws under its title bar (tauri.macos.conf.json). The three window buttons sit at the start of

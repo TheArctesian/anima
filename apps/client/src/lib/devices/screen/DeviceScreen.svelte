@@ -1,12 +1,15 @@
 <script lang="ts">
   import type { CardDevice } from '$lib/devices/api';
   import LogsPanel from '$lib/events/panel/LogsPanel.svelte';
+  import { phoneLayout } from '$lib/nav/phone/layout.svelte';
   import '$lib/events/resize/geometry.css';
   import { useHub } from '$lib/hub/context';
   import { press } from '$lib/motion/roles/press';
   import { crossFade } from '$lib/motion/roles/transitions';
   import DeviceGrid from '../card/DeviceGrid.svelte';
   import DeviceTable from '../card/DeviceTable.svelte';
+  import PhoneHead from '../phone/PhoneHead.svelte';
+  import PhoneRows from '../phone/PhoneRows.svelte';
   import type { ListQuery } from '../query';
   import Toolbar from '../toolbar/Toolbar.svelte';
   import { Sites } from '../toolbar/sites.svelte';
@@ -83,6 +86,10 @@
   });
 </script>
 
+<!-- The phone layout has its own head and rows (mockup 4): one add button, the counts, the search, and no menus. -->
+{#if phoneLayout()}
+  <PhoneHead {tally} {query} {onQueryChange} {onAddDevice} />
+{:else}
 <div class="head" {@attach entrance()}>
   <PageHeader title="Devices">
     {#snippet actions()}<FormButton tone="primary" icon="carbon:add" onclick={onAddDevice}>Add device</FormButton>{/snippet}
@@ -90,6 +97,7 @@
   <Tally {tally} {query} {onQueryChange} />
   <Toolbar {query} tags={tags.names} tagsNote={tags.note} sites={sites.options} sitesNote={sites.note} {onQueryChange} />
 </div>
+{/if}
 
 <LiveNotice message={listing.liveError?.message ?? null} />
 
@@ -129,6 +137,8 @@
             <button type="button" tabindex="0" onclick={onAddDevice} {@attach press()}>Add device</button>
           {/if}
         </div>
+      {:else if phoneLayout()}
+        <PhoneRows devices={list.devices} beats={listing.beats} {query} {onConnect} />
       {:else if query.view === 'table'}
         <DeviceTable devices={list.devices} beats={listing.beats} {query} {onConnect} {onOpenWeb} {wake} screenSharing={sharing} />
       {:else}
@@ -152,8 +162,11 @@
   {/if}
 </div>
 
-<div class="clearance" aria-hidden="true"></div>
-<LogsPanel devices={list?.devices ?? []} />
+<!-- In the phone layout the logs are a page of the bar, not a panel over the list (MOB-013). -->
+{#if !phoneLayout()}
+  <div class="clearance" aria-hidden="true"></div>
+  <LogsPanel devices={list?.devices ?? []} />
+{/if}
 
 <style>
   .head {

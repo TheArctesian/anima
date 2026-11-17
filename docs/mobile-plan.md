@@ -5,10 +5,10 @@ Progress: the plan register in [work-plan.md](work-plan.md) Section 9 holds the 
 | Item | Value |
 | --- | --- |
 | Document | Mobile plan: the iOS client and the Android client |
-| Version | 0.2 |
+| Version | 0.3 |
 | Date | 2026-11-16 |
 | Language | ASD-STE100 Simplified Technical English (STE) |
-| Status | Approved. The operator decided OD-M1 to OD-M8 on 2026-11-16 (Section 3). Version 0.2 writes Section 4.4 again for the ruling on OD-M3. MOB-032 waits for the test of task M1-4. |
+| Status | Approved. The operator decided OD-M1 to OD-M8 on 2026-11-16 (Section 3). Version 0.2 writes Section 4.4 again for the ruling on OD-M3. MOB-032 waits for the test of task M1-4. Version 0.3: the operator approved the phone mockups on 2026-11-16 ("Mock are good enough now as well"); Section 4.2 follows them. |
 | Parent | [work-plan.md](work-plan.md) Section 4, tier 4, row "iOS client and Android client (Phase 5)" (PLN-003) |
 | Base | `main` at `fa4ac394`. The facts in Section 2 are from the branch `spike/mobile`, which is local and is not for merge. |
 | Related | [design-spec.md](design-spec.md) Sections 1.3, 1.4, 5.3, 5.7, 9 and 10; [vpn-plan.md](vpn-plan.md); [ui-redesign-direction.md](ui-redesign-direction.md) UI-013 |
@@ -59,6 +59,7 @@ A test build ran on 2026-11-16 on the branch `spike/mobile`. It used a hub on th
 | F5 | Sign-in, the second-factor step and "Sign in without a code" work on both platforms. |
 | F6 | On Android the device list, the device page and Settings fit the width of a phone without a layout change. |
 | F7 | The hub accepts the origin of the Android web view, `http://tauri.localhost`. It is already in `CLIENT_ORIGINS`. |
+| F22 | The device link builds as a library for a phone (2026-11-16, Go 1.27.4, the build tags of `link/build.sh`). A wrapper with one exported function built as a static library for the iPhone simulator and for a real iPhone (19.2 MB each) and as a shared library for Android arm64 (16.4 MB). Only the test package `tunnel/testbed` does not build for a phone. |
 
 ### 2.3 What failed
 
@@ -85,7 +86,7 @@ A test build ran on 2026-11-16 on the branch `spike/mobile`. It used a hub on th
 - A real phone. All tests used a simulator or an emulator.
 - A hub on the VPN. The test hub was on the same computer.
 - The key store on a build with a signature.
-- The device link inside an application. No test has built `link/` for iOS or for Android.
+- The device link at run time inside an application. It builds (F22). No test has joined a hub from a phone or sent a request through it.
 
 ## 3. Decisions for the operator
 
@@ -95,7 +96,7 @@ The operator decided each row on 2026-11-16.
 | --- | --- | --- |
 | OD-M1 | Is the Android client in scope? The design specification Section 1.4 put the Android package out of scope. | **Decided: yes.** One shell and one client serve both platforms (F1, F3, F6). Section 7 lists the changes to the specification. |
 | OD-M2 | When does this work start? The work plan put the iOS client at tier 4. | **Decided: start now.** The operator gave the order: "lets worry about just getting the app to work first". |
-| OD-M3 | How does a phone get to the hub? | **Decided: with no second application.** The operator's words: "I don't want the user to have to install tailscale ontop of the app remember one click install princible it should be as easy as possible". The device link (`anima-link`) is thus inside the client (Section 4.4). Version 0.1 recommended the Tailscale application; that recommendation is withdrawn. |
+| OD-M3 | How does a phone get to the hub? | **Decided: with no second application.** The operator's words: "I don't want the user to have to install tailscale ontop of the app remember one click install princible it should be as easy as possible". The device link (`anima-link`) is thus inside the client (Section 4.4). Version 0.1 recommended the Tailscale application; that recommendation is withdrawn. **Order of the work (operator, 2026-11-16): "for the tailscale thing we should just use the hub an my actual account for now".** The device link inside the client stays the decision; stage M3 waits. Until then a phone uses a hub address and the operator signs in to the real hub. |
 | OD-M4 | One shell crate, or a second crate for mobile? | **Decided: the existing crate,** `apps/desktop/src-tauri`. |
 | OD-M5 | The identifier of the two applications | **Decided: `ing.anima.mobile`** for iOS and for Android. An identifier cannot change after a release. |
 | OD-M6 | The content of the first version | **Decided: Section 1.2.** IOS-001 to IOS-004 come later (Section 6). |
@@ -119,12 +120,14 @@ The operator approved these requirements on 2026-11-16, with the limit that the 
 
 ### 4.2 Phone layout
 
-The phone layout applies when the window is narrower than 600 px.
+The phone layout applies below the compact breakpoint (768 px), which is an existing token. Version 0.1 said 600 px; no token has that value.
 
-- **MOB-010.** In the phone layout the navigation bar must be at the bottom of the screen (design specification Section 5.3, F10).
+The mockups that the operator approved on 2026-11-16 are in [mockup/mobile/index.html](mockup/mobile/index.html). Where a requirement below and a mockup differ, the mockup is correct. The mockups differ from the design specification in these points, which Section 7 lists: four destinations in the bar, with Logs as a page; no hub status in the bar; a connect button on each device row; controls of 44 px to 56 px.
+
+- **MOB-010.** In the phone layout the navigation bar must be at the bottom of the screen (design specification Section 5.3, F10). It has four destinations: Devices, Sessions, Logs and Settings (mockup 6).
 - **MOB-011.** The client must draw its background below the status bar and must keep its content inside the safe area (F16).
 - **MOB-012.** A text field must not make the page zoom. Text in a field must be 16 px or larger in the phone layout (F15).
-- **MOB-013.** In the phone layout the logs panel must start closed (F11).
+- **MOB-013.** In the phone layout the logs must be a page of the navigation bar. No logs panel shows over a page (F11, mockup 6).
 - **MOB-014.** The user name field must not change the case of the text. The hub address field must show the keyboard for an address, with no suggestions (F17).
 - **MOB-015.** A name that does not fit must end with an ellipsis. A row of tabs that does not fit must scroll (F12).
 - **MOB-016.** On a phone the client must say "this device", not "this computer" (F13).
@@ -173,14 +176,14 @@ Each stage ends with a build that the operator can use. The state words are thos
 | --- | --- | --- | --- | --- | --- |
 | M0-1 | M0 Rulings | The operator decides OD-M1 to OD-M8 | — | Done | Ruling of the operator, 2026-11-16 (Section 3) |
 | M0-2 | M0 Rulings | Make the changes of Section 7 that the rulings need | — | Done | The commit that adds version 0.2 of this plan |
-| M1-1 | M1 Shell | Mobile entry point; desktop modules behind `cfg(desktop)`; identifier `ing.anima.mobile` | MOB-001, MOB-002, MOB-003, MOB-007 | Not started | — |
-| M1-2 | M1 Shell | Phone answers in `$lib/platform`; no call to a missing command | MOB-004, MOB-005 | Not started | — |
+| M1-1 | M1 Shell | Mobile entry point; desktop modules behind `cfg(desktop)`; identifier `ing.anima.mobile` | MOB-001, MOB-002, MOB-003, MOB-007 | Done | `327abdc6` on the branch `mobile/m1-shell`. The application started on the iPhone simulator and on the Android emulator on 2026-11-16; sign-in and the device list worked on Android. The link commands of MOB-002 come with task M3-1. |
+| M1-2 | M1 Shell | Phone answers in `$lib/platform`; no call to a missing command | MOB-004, MOB-005 | In progress | `327abdc6`: MOB-004 is built. Open for MOB-005: with a loopback hub address a phone still calls `hub_listener_check`. The call fails and the client then sends nothing, which is safe. Task M3-1 gives the phone its own check. |
 | M1-3 | M1 Shell | Mobile build procedure and the compile gate | MOB-040, MOB-041, MOB-042 | Not started | — |
-| M1-4 | M1 Shell | Test: build `link/devicelink` as a library for iOS and for Android; join a test hub; get an answer at the loopback address. Write the result in this plan. | MOB-031, MOB-032, MOB-039 | Not started | — |
-| M2-1 | M2 Layout | Safe area, status bar and no zoom on a field | MOB-011, MOB-012 | Not started | — |
-| M2-2 | M2 Layout | Bottom navigation bar | MOB-010, MOB-019 | Not started | — |
-| M2-3 | M2 Layout | Logs panel closed; names and tabs that fit | MOB-013, MOB-015 | Not started | — |
-| M2-4 | M2 Layout | Field behaviour, wording and the notice | MOB-014, MOB-016, MOB-018, MOB-037 | Not started | — |
+| M1-4 | M1 Shell | Test: build `link/devicelink` as a library for iOS and for Android; join a test hub; get an answer at the loopback address. Write the result in this plan. | MOB-031, MOB-032, MOB-039 | In progress | The build part passes (F22); the wrapper was a throwaway and is not in the repository. Open: link the library into the shell, join a hub from the simulator and the emulator, and get an answer at the loopback address. The hub link needs a relay, so this part uses the network. |
+| M2-1 | M2 Layout | Safe area, status bar and no zoom on a field | MOB-011, MOB-012 | Done | The commit that changes this row, on the branch `mobile/m1-shell`. Checked on 2026-11-16: on the iPhone simulator the status bar area has the page colour and a field with the focus does not zoom the page; on the Android emulator the content starts below the status bar. Not checked on a real phone. |
+| M2-2 | M2 Layout | Bottom navigation bar | MOB-010, MOB-019 | In progress | `cbabf3d2`, `147d3a93` on the branch `mobile/m1-shell`. The bar has the sizes of mockup 6: 56 px, the mark over the current destination, "Sessions" with a count only when a session is live, and 24 px for the Android gesture bar. Checked on the Android emulator on 2026-11-16 after the merge of `main`. Open: the check on iOS. |
+| M2-3 | M2 Layout | Logs as a page; names and tabs that fit | MOB-013, MOB-015 | In progress | `cbabf3d2`, and the commit that changes this row. Built: the Logs page at `/logs`, no logs panel in the phone layout, and the device list of mockup 4 (the title with the add button, the counts, the search, rows with the status, the address, the reason and a connect button; a long name ends with an ellipsis). Checked on the Android emulator on 2026-11-16; no test device had a protocol, so no connect button was seen there. Open: the tint on a row that needs a look (the style rules forbid `color-mix` outside the tokens), the device filter of the Logs page, the tabs of the device page, and the check on iOS. |
+| M2-4 | M2 Layout | Field behaviour, wording and the notice | MOB-014, MOB-016, MOB-018, MOB-037 | In progress | The commit that changes this row. Built to mockup 3: sign-in with no doors, fields and a button of 48 px, the hub slot of a fixed height that holds the unreachable notice (MOB-018, MOB-037), and the code step with "Enter code", "Back" and "No code". Checked on the Android emulator on 2026-11-16; not checked on iOS, and the unreachable state of the slot was not seen. Open: MOB-014 and MOB-016. |
 | M3-1 | M3 Link | The device link in the mobile shell, with its three commands | MOB-031, MOB-035, MOB-036 | Not started | — |
 | M3-2 | M3 Link | "Join a hub" on the first run of a phone: paste and QR scan | MOB-017, MOB-033, MOB-038 | Not started | — |
 | M3-3 | M3 Link | The invite as a QR code in the desktop client | MOB-034 | Not started | — |
@@ -189,7 +192,7 @@ Each stage ends with a build that the operator can use. The state words are thos
 | M5-1 | M5 Release | Key store on iOS and on Android | MOB-006 | Not started | — |
 | M5-2 | M5 Release | Signatures and the first builds for the operator | OD-M5, OD-M8 | Not started | — |
 
-Order: M1, then M2. Task M1-4 can run at the same time as M2. M3 starts after M1-4 passes. M4 and M5 can run at the same time after M3.
+Order: M1, then M2. Stage M3 and the open part of task M1-4 wait (OD-M3, order of the work). Each screen of M2 must match its mockup exactly (operator, 2026-11-16: "It has to match the mock ups perfectly"). M4 and M5 can run at the same time after M3.
 
 If M1-4 fails, stop and ask the operator. Do not add a second application as a replacement (MOB-030).
 
@@ -218,5 +221,7 @@ Version 0.2 of this plan made these changes in the same commit (operator, 2026-1
 | Design specification 9 | Phase 5 names the Android client | Made |
 | [work-plan.md](work-plan.md) Section 4 | The row for Phase 5 names Android, this plan and the start now | Made |
 | `AGENTS.md` | The first paragraph names Android | Made |
+| Design specification 5.3, NAV-001, NAV-003 | In the phone layout the bar has four destinations, Logs is a page, and the hub status is not in the bar (approved mockups, 2026-11-16). | Not made |
+| Design specification UI-013 and the `control-*` tokens | Controls of 44 px to 56 px in the phone layout; the tokens stop at 40 px. | Not made |
 | Design specification 10 | Its title and text name iOS only. A constraint of Android has no place there yet. | Not made. Do it when task M1-3 gives the Android constraints. |
 | `docs/programme/programme.md` | The rulings OD-M1 to OD-M8 have no ruling number (R-number). | Not made. The operator gives the numbers. |

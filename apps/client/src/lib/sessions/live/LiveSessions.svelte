@@ -5,6 +5,7 @@
   import { press } from '$lib/motion/roles/press';
   import { listRow, popover } from '$lib/motion/roles/transitions';
   import { reorderMotion } from '$lib/motion/roles/reorder.svelte';
+  import { phoneLayout } from '$lib/nav/phone/layout.svelte';
   import { coverWhile } from '$lib/overlay/overlay.svelte';
   import { liveLabel, nextTabStop, startedTime } from './live';
   import { watchLiveSessions } from './live.svelte';
@@ -138,8 +139,8 @@
     {@attach press()}
   >
     <Icon name="carbon:connection-signal" />
-    <span class="words" aria-hidden="true">Live sessions</span>
-    <span class="count" aria-hidden="true">{live.sessions.length}</span>
+    <span class="words" aria-hidden="true">{phoneLayout() ? 'Sessions' : 'Live sessions'}</span>
+    <span class={['count', live.sessions.length === 0 && 'none']} aria-hidden="true">{live.sessions.length}</span>
   </button>
   {#if open}
     <div class="panel" id="{id}-panel" role="group"

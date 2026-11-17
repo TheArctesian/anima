@@ -1,0 +1,127 @@
+/*
+ * The phone layout (MOB-010): the navigation bar is at the bottom of the screen, over the home indicator's safe area.
+ * It holds four destinations, each an icon over its word. The brand, the collapse toggle, what is running and the hub
+ * status are not in it; the unreachable strip stays at the top of the window.
+ *
+ * The sizes are those of the approved mockup, frame 6 (docs/mockup/mobile/index.html): a bar of 56 px, 22 px icons,
+ * 12 px words, a 28 px by 3 px mark over the current destination, and a 16 px count. The tokens have no such values.
+ *
+ * The rules name the bar by its id, so they stand above the rules that each component has for the icons-only bar.
+ * The width is the compact breakpoint, as in `layout.svelte.ts`.
+ */
+@media (max-width: 767.98px) {
+  #main-nav {
+    position: fixed;
+    inset-block: auto 0;
+    inset-inline: 0;
+    inline-size: auto;
+    block-size: calc(var(--phone-bar-size) + var(--safe-block-end));
+    flex-direction: row;
+    align-items: stretch;
+    gap: 0;
+    padding: 0 calc(6px + var(--safe-inline-end)) var(--safe-block-end) calc(6px + var(--safe-inline-start));
+    border-right: 0;
+    border-block-start: var(--border-thin) solid var(--border-subtle);
+    /* The chrome material (5.6): the tokens give the mockup's blur and its translucent colour (76 %, the mockup has 78 %). */
+    background: var(--material-chrome-bg);
+    -webkit-backdrop-filter: blur(var(--material-chrome-blur)) saturate(var(--material-chrome-saturate));
+    backdrop-filter: blur(var(--material-chrome-blur)) saturate(var(--material-chrome-saturate));
+  }
+
+  #main-nav > * {
+    display: none;
+  }
+
+  /* The strip is fixed to the top of the window; it must not take its place from the blurred bar. */
+  #main-nav > .notice {
+    display: block;
+    position: fixed;
+    inset-block-start: 0;
+    inset-inline: 0;
+  }
+
+  #main-nav > .item,
+  #main-nav > .live {
+    display: flex;
+    flex: 1 1 0;
+    min-inline-size: 0;
+  }
+
+  #main-nav .item,
+  #main-nav .live .control {
+    position: relative;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    inline-size: 100%;
+    block-size: auto;
+    padding: 0;
+    border-radius: 0;
+    background: none;
+    color: var(--text-tertiary);
+    font-size: var(--text-xs);
+    line-height: var(--leading-tight);
+    white-space: nowrap;
+  }
+
+  #main-nav .item .icon,
+  #main-nav .live .control .icon {
+    inline-size: 22px;
+    block-size: 22px;
+    color: inherit;
+  }
+
+  #main-nav .item[aria-current="page"],
+  #main-nav .live .control[aria-expanded="true"] {
+    color: var(--text);
+  }
+
+  #main-nav .item[aria-current="page"] .icon,
+  #main-nav .live .control[aria-expanded="true"] .icon {
+    color: var(--accent);
+  }
+
+  /* The mark over the current destination: a shape as well as a colour (UI-003). */
+  #main-nav .item[aria-current="page"]::before,
+  #main-nav .live .control[aria-expanded="true"]::before {
+    content: "";
+    position: absolute;
+    inset: calc(var(--border-thin) * -1) auto auto;
+    inline-size: 28px;
+    block-size: 3px;
+    border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+    background: var(--accent);
+  }
+
+  #main-nav .item .words,
+  #main-nav .live .control .words {
+    position: static;
+    inline-size: auto;
+    block-size: auto;
+    overflow: visible;
+    clip-path: none;
+  }
+
+  /* The number of live sessions, beside the icon. No sessions, no count. */
+  #main-nav .live .control .count {
+    position: absolute;
+    inset: 6px auto auto calc(50% + 6px);
+    box-sizing: border-box;
+    min-inline-size: var(--space-4);
+    block-size: var(--space-4);
+    margin: 0;
+    padding: 0 var(--space-1);
+    border-radius: var(--space-2);
+    background: var(--accent);
+    color: var(--on-accent);
+    font-size: 11px;
+    font-weight: var(--weight-medium);
+    line-height: var(--space-4);
+    text-align: center;
+  }
+
+  #main-nav .live .control .count.none {
+    display: none;
+  }
+}

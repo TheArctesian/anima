@@ -1,0 +1,102 @@
+/*
+ * Sign-in in the phone layout (MOB-012, MOB-018), with the sizes of mockup 3 (docs/mockup/mobile/index.html): no doors,
+ * the form at the top with 24 px at each side, fields and a button of 48 px, a title of 36 px, and code boxes of 48 px
+ * by 58 px. The tokens have some of these values and not others.
+ *
+ * The rules start at `[data-sign-in]`, the page's root, so they stand above each component's own rules. The width is
+ * the compact breakpoint, as in `lib/nav/phone/layout.svelte.ts`.
+ */
+@media (max-width: 767.98px) {
+  :root [data-sign-in].screen {
+    place-items: start stretch;
+    padding: 0 var(--space-6) var(--space-6);
+  }
+
+  /* The doors are the desktop's; a phone has the form alone. */
+  :root [data-sign-in] > :not(.panel) {
+    display: none;
+  }
+
+  :root [data-sign-in] .panel {
+    inline-size: 100%;
+    gap: var(--space-4);
+  }
+
+  :root [data-sign-in] .label {
+    margin: calc(var(--space-6) + var(--border-focus)) 0 calc(var(--border-focus) * -1);
+  }
+
+  :root [data-sign-in] h1 {
+    margin: 0 0 calc(var(--space-1) + var(--border-focus));
+    font-size: var(--text-display);
+    font-weight: var(--weight-light);
+    line-height: var(--leading-tight);
+    letter-spacing: var(--tracking-tight);
+  }
+
+  :root [data-sign-in] .group {
+    gap: var(--space-4);
+  }
+
+  :root [data-sign-in] .field {
+    gap: calc(var(--space-1) + var(--border-focus));
+  }
+
+  :root [data-sign-in] .field .box {
+    gap: calc(var(--space-2) + var(--border-focus));
+    block-size: var(--space-12);
+    padding: 0 calc(var(--space-3) + var(--border-focus));
+  }
+
+  :root [data-sign-in] .field .box .icon {
+    inline-size: var(--icon-lg);
+    block-size: var(--icon-lg);
+  }
+
+  :root [data-sign-in] form > button[type="submit"] {
+    gap: calc(var(--space-2) + var(--border-focus));
+    block-size: var(--space-12);
+    font-size: var(--text-lg);
+  }
+
+  /* The code step: the title says "Enter code", so the line below it is plain text. */
+  :root [data-sign-in] .step h2 {
+    font-size: var(--text-md);
+    line-height: 1.45;
+  }
+
+  :root [data-sign-in] .boxes {
+    justify-content: space-between;
+    gap: 0;
+  }
+
+  :root [data-sign-in] .boxes input {
+    inline-size: var(--space-12);
+    block-size: calc(var(--space-12) + var(--space-2) + var(--border-focus));
+    font-size: var(--text-2xl);
+  }
+
+  /* "Signing in" keeps its room below the links, so the links stay directly below the boxes and nothing moves. */
+  :root [data-sign-in] .step .busy {
+    order: 1;
+  }
+
+  :root [data-sign-in] .links {
+    flex-wrap: nowrap;
+    margin-inline: calc(var(--space-2) * -1);
+  }
+
+  :root [data-sign-in] .links button {
+    min-block-size: var(--target-min-touch);
+    padding: 0 var(--space-2);
+    color: var(--text-secondary);
+    font-size: 15px;
+    text-decoration: underline;
+    text-decoration-color: var(--border-strong);
+    text-underline-offset: 3px;
+  }
+
+  :root [data-sign-in] .links button .icon {
+    display: none;
+  }
+}

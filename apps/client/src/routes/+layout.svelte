@@ -19,6 +19,7 @@
   import { fadeInWords } from '$lib/nav/collapse/words';
   import { createClock } from '$lib/nav/clock.svelte';
   import Nav from '$lib/nav/Nav.svelte';
+  import { isAndroid } from '$lib/platform/mobile';
   import { capabilities } from '$lib/platform/platform';
   import { sessionsApi } from '$lib/sessions/api';
   import { restoredScroll, type CoveredScroll } from '$lib/sessions/covered';
@@ -42,6 +43,7 @@
   applyMotion(document.documentElement, storedMotion(localStorage));
   // On a Mac the window draws under its title bar; the bar keeps room for the window buttons.
   if (capabilities().overlayTitleBar) document.documentElement.dataset['titlebar'] = 'overlay';
+  if (isAndroid(navigator)) document.documentElement.dataset['os'] = 'android';
   // The bar shows icons only below the compact breakpoint or when the operator collapses it; set before the first
   // render so the width never changes after load.
   let nav = $state({ iconOnly: false, compact: false });
@@ -217,13 +219,13 @@
   .refused {
     margin: 0;
     padding: var(--space-6);
-    min-height: 100vh;
+    min-height: var(--viewport-block-size);
     background: var(--surface-sunken);
     color: var(--text);
   }
 
   .bare {
-    min-height: 100vh;
+    min-height: var(--viewport-block-size);
     background: var(--surface-sunken);
     color: var(--text);
     font-family: var(--font-ui);
@@ -234,7 +236,7 @@
     /* The page column may shrink below its content's width, so a narrow window never scrolls sideways (UI-009). */
     grid-template-columns: auto minmax(0, 1fr);
     align-items: start;
-    min-height: 100vh;
+    min-height: var(--viewport-block-size);
     background: var(--surface-sunken);
     color: var(--text);
     font-family: var(--font-ui);
@@ -258,10 +260,22 @@
     }
   }
 
+  /* The phone layout (MOB-010): one column, and the page ends above the bar at the bottom of the screen. */
   @media (max-width: 767.98px) {
+    .shell {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
     main {
       --page-gutter: var(--space-4);
       padding-block-start: var(--space-6);
+    }
+
+    /* The gutter of 20 px and the 6 px over the title are those of the approved mockups. */
+    .shell > main {
+      --page-gutter: var(--space-5);
+      padding-block-start: calc(var(--space-1) + var(--border-focus));
+      padding-block-end: calc(var(--space-8) + var(--phone-bar-block-size));
     }
   }
 

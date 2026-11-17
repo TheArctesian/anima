@@ -135,7 +135,7 @@ it('UI-015: each item keeps its words as its name; the tooltip is set only when 
   ]);
 });
 
-it('UI-015: below bp-compact each item has its words as a tooltip, and the status too', () => {
+it('UI-015, MOB-010: below bp-compact each item has its words as a tooltip, the status too, and Logs is a destination', () => {
   Object.defineProperty(window, 'matchMedia', {
     configurable: true,
     value: (query: string) => ({ matches: query.includes('max-width'), addEventListener: () => undefined, removeEventListener: () => undefined }),
@@ -147,6 +147,7 @@ it('UI-015: below bp-compact each item has its words as a tooltip, and the statu
   const nav = show();
   expect([...nav.querySelectorAll('a')].map((link) => [link.querySelector('.words')?.textContent, link.getAttribute('title')])).toEqual([
     ['Devices', 'Devices'],
+    ['Logs', 'Logs'],
     ['Settings', 'Settings'],
   ]);
   expect(nav.querySelector('.status')?.getAttribute('title')).toBe('Connected');
