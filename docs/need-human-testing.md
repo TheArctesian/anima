@@ -394,7 +394,8 @@ Result: Open.
 Built: the program `anima-agent` is `anima-daemon` ([DMN-1](work-items/device-manager/DMN-1.md), R-126). The hub
 accepts only `/daemon/v1/...` and a token that starts with `anima_daemon_`. `anima-daemon install`
 stops and deletes the unit of the old program (`anima-agent.service`, or `ing.anima.agent` on macOS).
-Migration 0717 renames the table and the metrics source.
+Migration 0717 renames the table and the metrics source and deletes each old token and each
+enrolment code, so no old token is valid under a new spelling.
 
 The tests use a fake hub and a planned list of commands. No test ran on a machine that has the old
 program, and no test ran the migration on the database of the real hub.
@@ -405,7 +406,12 @@ program, and no test ran the migration on the database of the real hub.
    and is stale. No device shows new metrics from the old program.
 3. On one machine, install the new program: download or build `anima-daemon`, then run
    `anima-daemon install` (or `sudo anima-daemon install --system` for a system unit).
-   Expected: the command ends with no error.
+   Expected: the command ends with no error. For a system unit, the first run stops and prints a
+   `useradd` command, because the account is now `anima-daemon` (it was `anima-agent`): run that
+   command, then run the install again.
+   The install takes out only the old unit of its own kind. If the machine had the old program
+   as a system unit and you now install a user unit (the desktop application does this), stop the
+   old one by hand: `sudo systemctl disable --now anima-agent.service`. Do the same the other way.
 4. On Linux, run `systemctl --user status anima-agent.service` (or without `--user` for a system
    unit). On macOS, run `launchctl print gui/$(id -u)/ing.anima.agent`. Expected: the old unit
    is not found.
@@ -554,7 +560,7 @@ One visit to a machine can close many rows.
 
 | Check | What it proves | Steps | Result |
 | --- | --- | --- | --- |
-| REL-1 | A real release confirms the signature, the notarization and the AppImage launcher (OD-16 to OD-18) | [design-spec.md](spec/design-spec.md), Section 11 | Open |
+| REL-1 | A real release confirms the signature, the notarization and the AppImage launcher (OD-16 to OD-18) | [design-spec.md](spec/design-spec.md), Section 11 | Open. For macOS 0.2.0 and 0.2.1, the signature and the notarization are checked ([releases.md](procedures/releases.md), "Release record"). Not recorded here: the update of an installed application, and the AppImage launcher on Linux |
 
 ## Passed
 

@@ -9,7 +9,9 @@ This table is the only record of what is released (PLN-016). A different documen
 | macOS (`darwin-aarch64`, `darwin-x86_64`; one universal bundle) | `https://releases.anima.ing/darwin-aarch64/latest.json`, `https://releases.anima.ing/darwin-x86_64/latest.json` | 0.2.1 (2026-11-17, commit `b361eb5f`). 0.2.0 was the first release (2026-11-17, commit `43291afc`) | Published, signed with the Developer ID and notarized | [s12-packaging-tasks.md](../plans/one-click/s12-packaging-tasks.md) Section 6.4. Both feeds answered 200 with 0.2.1 on 2026-11-17 (`curl`) |
 | Linux (`linux-x86_64`) | `https://releases.anima.ing/linux-x86_64/latest.json` | None | Not published | The feed answered 404 on 2026-11-17 (`curl`) |
 
-Not verified for any target: an installed application updates itself from the feed (OD-16 to OD-18 of the design specification). The check is the operator's ([need-human-testing.md](../need-human-testing.md), "A real release").
+The update of an installed application from the feed (OD-16 to OD-18 of the design specification): [hosted-mode.md](../proposals/hosted-mode.md), Section 3, says that the operator saw the update work on a second Mac with 0.2.0 on 2026-11-16. No entry of [need-human-testing.md](../need-human-testing.md) holds that result yet: its row REL-1 ("A real release") is open, and the operator sets it. Linux has no release, so nothing is verified there.
+
+The releases 0.2.0 and 0.2.1 carry the program under its old name, `anima-agent`, and without its version report: the commits of R-122 and R-126 are not in them.
 
 Spec: Sections 3.9 (UPD-001 to UPD-012) and 3.10 (Builds), DNS-007.
 

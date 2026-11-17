@@ -82,7 +82,7 @@ have free space, but different amounts, and some are not always on.
 
 ## Needs
 
-- A ruling number in `programme.md`.
+- A ruling number in `docs/rulings.md`.
 - The work route of [jobs.md](jobs.md).
 - A change to FIL-001 before the engine builds the file store ([E0-5](../work-items/engine/E0-5.md)). The engine is
   `priority: foundation`, so this proposal must be decided before E0-5 starts.

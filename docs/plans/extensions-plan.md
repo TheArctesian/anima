@@ -874,7 +874,7 @@ do". Status: direction only. It has no work package yet and is not in the build 
 Herdr (`github.com/herdrdev/herdr`) is Apache 2.0, so its code can be reused in this AGPL project
 with its licence notice kept. Whether to embed it or write our own is open decision 1 below.
 
-- **AIS-009.** The agent on each device must run a session server that keeps terminal panes alive
+- **AIS-009.** The daemon (`anima-daemon`) on each device must run a session server that keeps terminal panes alive
   when no client is attached, like tmux. A pane must survive a client disconnect and an agent
   restart.
 - **AIS-010.** Each pane must show a state: working, waiting for the operator, done or idle. For
@@ -912,7 +912,7 @@ from one seat, without a KVM box per machine.
 **Open decisions.**
 
 1. Embed Herdr's core or write our own session server. Embedding is faster; our own keeps one
-   agent binary and one protocol.
+   daemon binary and one protocol.
 2. Whether the Herdr phone apps or terminal client can connect to Anima panes.
 3. How waiting-for-input is detected for agents that do not write session files.
 
@@ -1081,7 +1081,7 @@ The operator ruled on 2026-11-16: issue #7 governs E0-4. The rules of issue #7 a
 | T6 | MCP tools `anima_timeline_list`, `anima_record_links_list`, `anima_record_link_add`, `anima_record_link_remove` (CMD-030) | Done | `611f68cf` |
 | T7 | Client: the one shared component that shows the links of a record (RLK-003). Issue #7 makes it later work for the pages that use links (#18, #13, #22, #24, #16), not a part of E0-4. | Not started | |
 | T8 | Live check on a real hub: the event log shows in `anima timeline list`, and a link is made and read | Not started | |
-| T9 | The rules of issue #7: the instant unit (TML-008), the received time (TML-009), dates (TML-010), no exact order across clocks (TML-011), replays (TML-012), references and missing targets (RLK-005, RLK-006), in K-E3, K-E4, the hub and the tests | In progress | `766310f5`, `50e7fb1f`. Not compared with each rule yet |
+| T9 | The rules of issue #7: the instant unit (TML-008), the received time (TML-009), dates (TML-010), no exact order across clocks (TML-011), replays (TML-012), references and missing targets (RLK-005, RLK-006), in K-E3, K-E4, the hub and the tests | Not started for the comparison: the commits `766310f5` and `50e7fb1f` built the rules, and their branch is merged. No session holds the task (2026-11-17). Compare the hub and the tests with each rule, write the result here, then set the state. The parts of OD-E16 and OD-E17 stay open. | `766310f5`, `50e7fb1f` |
 
 #### Tasks of E0-5, E0-6 and E0-7 (PLN-006)
 

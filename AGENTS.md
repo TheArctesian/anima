@@ -10,7 +10,9 @@ cite requirement IDs (for example `CHK-011`) in commits and pull requests.
 Do these steps in this order in each session, before you change code. The planning documents are
 the one source of truth; [docs/work-plan.md](docs/work-plan.md) is the entry point.
 
-1. **Get `main`.** Run `git fetch` and read the documents of `origin/main`. A plan that is only on
+1. **Get `main`, in a worktree of your own.** Run `git fetch origin`. Do not work in the
+   operator's main checkout and do not change its branch: make a worktree,
+   `git worktree add ../<name> origin/main`, and read the documents there. A plan that is only on
    a branch is not a plan (PLN-011).
 2. **Find the work.** If the operator named the work, find the plan that owns it in
    [docs/plan/ownership.md](docs/plan/ownership.md) and [docs/plan/register.md](docs/plan/register.md).
@@ -28,11 +30,16 @@ the one source of truth; [docs/work-plan.md](docs/work-plan.md) is the entry poi
    ([docs/ideas/README.md](docs/ideas/README.md)). "Build" means that the operator asked for code.
 4. **Read the claims.** Look at [docs/claims/](docs/claims/README.md) on `origin/main`. If a claim
    holds the task, a different session builds it. Take the next task or ask the operator.
-5. **Claim the task.** In your worktree: `git fetch origin`, then `git switch --detach origin/main`.
-   Write `docs/claims/<task>.md` with the task, the plan, the name of this machine in Anima, your
-   coding agent, the branch and the day. Run `bun run quality:documents`, commit that file only, and
-   run `git push origin HEAD:main`. If the push is refused, start this step again and continue only
-   if the task is free. Then `git switch -c <branch>`: the branch starts at the claim commit (PLN-022).
+5. **Claim the task.** Make the claim in a small worktree of its own, so that it never carries
+   your other changes: `git worktree add --detach ../claim origin/main`. In it, write
+   `docs/claims/<task>.md` with the task, the plan, the name of this machine in Anima, your
+   coding agent, the branch and the day. If the task is new, add its row to the plan in the same
+   commit and run `bun run quality:register`. Run `bun run quality:documents`, commit, run
+   `git push origin HEAD:main`, then `git worktree remove ../claim`. If the push is refused, run
+   `git fetch origin`, `git reset --hard origin/main` in that worktree, read the claims again and
+   try again only if the task is free. Then start or update your branch from `origin/main`
+   (`git switch -c <branch> origin/main`, or `git merge origin/main` on a branch that exists), so
+   that it holds the claim (PLN-022).
 6. **Build** on a branch, in its own worktree, from the task and the requirements that it names.
    Build in the order hub API, `anima` command, MCP tool, client (CMD-030). If you change the
    layout of a screen that has a mockup, change the mockup in the same commit (PLN-019). If the
@@ -41,8 +48,10 @@ the one source of truth; [docs/work-plan.md](docs/work-plan.md) is the entry poi
 7. **Finish.** Run `bun run gates`. In the commit that merges the work: set the state of the task
    with its commit (PLN-008), delete your claim, and run `bun run quality:register` if the state of
    the plan changed (PLN-020).
-8. **If you stop before the end,** delete your claim and write in the task row what is built, unless
-   you will continue on the same machine.
+8. **If you stop before the end,** delete your claim on `main` with the same steps as step 5 (a
+   small worktree, a commit that deletes the file, a push), and write in the task row what is
+   built, unless you will continue on the same machine. Push your branch, so that a different
+   session can find the work.
 
 A question that only the operator can answer does not stop the session. Write it as a row in the
 open decisions of the plan, run `bun run quality:register` so that it is in
@@ -197,7 +206,7 @@ one list of such checks (PLN-014): a task that waits for a check is not done unt
 ## Gates
 
 Run `bun run gates` before you ask for review and before every merge. A commit that changes only
-`docs/claims/` or `docs/ideas/` needs only `bun run quality:documents`. There is no CI; gates run on the machine that makes the change.
+`docs/claims/` or `docs/ideas/`, or a claim with the row of its new task, needs only `bun run quality:documents`. There is no CI; gates run on the machine that makes the change.
 `rust-toolchain.toml` pins the Rust version for every machine; rustup installs it on the first cargo run. `deploy/hub/Dockerfile` must name the same version (a test compares them). Change both in one commit.
 
 ```sh

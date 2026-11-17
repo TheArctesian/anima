@@ -90,7 +90,8 @@ function isUrlCredential(match: RegExpExecArray): boolean {
 }
 
 const SHAPES: readonly Shape[] = [
-  { kind: "daemon-token", pattern: new RegExp(`anima_daemon_[${B64URL}]{43}(?![${B64URL}])`, "g") },
+  // R-126: the program was `anima-agent`; a token with that prefix is still a secret of a machine.
+  { kind: "daemon-token", pattern: new RegExp(`anima_(?:daemon|agent)_[${B64URL}]{43}(?![${B64URL}])`, "g") },
   { kind: "enrolment-code", pattern: new RegExp(`anima_enrol_[${B64URL}]{22}(?![${B64URL}])`, "g") },
   { kind: "api-key", pattern: new RegExp(`anima_[${B64URL}]{43}(?![${B64URL}])`, "g") },
   { kind: "browser-cookie", pattern: /__Host-anima=[^;\s"',]/g },

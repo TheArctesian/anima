@@ -44,8 +44,9 @@ use trust::User;
 
 /// The hub answers an enrolment within its own 10 s timeout; a macOS Keychain write adds a little.
 const ENROL_DEADLINE: Duration = Duration::from_secs(60);
-/// `install` runs up to three `systemctl` or `launchctl` steps of 30 s each, one retried.
-const INSTALL_DEADLINE: Duration = Duration::from_secs(150);
+/// `install` runs up to five steps of 30 s each (two take the unit of the old program out,
+/// R-126), one retried after a pause; the rest is margin.
+const INSTALL_DEADLINE: Duration = Duration::from_secs(240);
 
 /// Where accounts and groups are read, to find the user's private group.
 const PASSWD: &str = "/etc/passwd";

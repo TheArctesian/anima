@@ -1,7 +1,7 @@
 ---
 kind: Proposal
 state: Draft
-evidence: Version 0.1 (2026-11-14). It was `power-health-plan.md` in `plans/` until 2026-11-17: nothing in it is approved, so it is a proposal (PLN-018). Its header says: for operator review, nothing in this plan is accepted. `PWR`, `HWH`, `HWI` are proposed. `HWH-001` to `HWH-007` had the prefix `HLT` until 2026-11-17; the Health extension of the extensions plan owns `HLT` (PLN-016). No tier in Section 4 yet.
+evidence: Version 0.1 (2026-11-14). It was `power-health-plan.md` in `plans/` until 2026-11-17: nothing in it is approved, so it is a proposal (PLN-018). Its header says: for operator review, nothing in this plan is accepted. `PWR`, `HWH`, `HWI` are proposed. `HWH-001` to `HWH-008` are its requirements; `HWH-001` to `HWH-007` had the prefix `HLT` until 2026-11-17; the Health extension of the extensions plan owns `HLT` (PLN-016). No tier in Section 4 yet.
 ---
 
 # Anima Power and Hardware Health Plan

@@ -33,7 +33,7 @@
 
 Anima.ing is a self-hosted device manager for the computers and servers you already have — including the ones AI agents run on. It combines a native macOS and Linux client, a Rust hub, and a gateway for remote sessions. A command-line tool and an MCP server let you and your coding agents use the same hub.
 
-The first signed release of the macOS client, 0.2.0, is published at [releases.anima.ing](https://releases.anima.ing). A signed Linux build is still to come; until then, you can build from this repository.
+A signed, notarised release of the macOS client is published at [releases.anima.ing](https://releases.anima.ing); [docs/procedures/releases.md](docs/procedures/releases.md) gives the newest version. A signed Linux build is still to come; until then, you can build from this repository.
 
 ## Features
 
@@ -81,7 +81,7 @@ Self-hosting is free. The hosted mode is planned to be the default first run: yo
 | Private network | Headscale / WireGuard; `anima-link` by hand | An Anima.ing-operated Tailcat relay; app-started `anima-link` |
 | Hosted mode and Solo | — | Sign in to a hosted hub, free below a usage line; Solo at $19 / month or $199 / year; waitlist only |
 
-The macOS DMG of release 0.2.0 is published at [releases.anima.ing](https://releases.anima.ing) (notarised; see [docs/plans/one-click/s12-packaging-tasks.md](docs/plans/one-click/s12-packaging-tasks.md) Section 6.4). A signed Linux build is not published yet, and this repository has no GitHub Releases.
+The macOS DMG is published at [releases.anima.ing](https://releases.anima.ing) (notarised; the release record in [docs/procedures/releases.md](docs/procedures/releases.md) gives the version and the evidence). A signed Linux build is not published yet, and this repository has no GitHub Releases.
 
 ## Quick start (build from source)
 
@@ -171,7 +171,7 @@ To keep RDP on `guacd` while VNC uses the native gateway:
 anima-gateway listen 127.0.0.1:4823 --other-gateway 127.0.0.1:4822
 ```
 
-### Metrics agent
+### Metrics daemon
 
 `anima-daemon` runs on a device, samples every two seconds, and pushes points to the hub every ten seconds. The desktop app can install it on the computer it runs on. You can also enrol it by hand:
 

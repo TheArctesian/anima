@@ -51,8 +51,9 @@ pub enum PlanError {
 const OLD_UNIT: &str = "anima-agent.service";
 const OLD_LABEL: &str = "ing.anima.agent";
 
-/// Stops and disables the unit of the old program and deletes its file. Each step fails,
-/// harmlessly, on a machine that never had it.
+/// Stops and disables the unit of the old program and deletes its file. Each step may fail:
+/// on a machine that never had it, and when the old unit is slow to stop. Only the unit of
+/// the scope of this install is taken out: a user install cannot stop a system unit.
 fn retire_old(stop: Step, file: &std::path::Path) -> Vec<Step> {
     let mut stop = stop;
     stop.may_fail = true;

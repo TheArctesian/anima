@@ -20,6 +20,10 @@ export function claimFields(text: string): Map<string, string> {
   return fields;
 }
 
+function escaped(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 function fieldViolations(claim: Document, fields: Map<string, string>, exists: (path: string) => boolean): Violation[] {
   const missing = KEYS.filter((key) => (fields.get(key) ?? "") === "");
   const details = missing.map((key) => `no ${key}`);
@@ -39,7 +43,9 @@ export function checkClaims(documents: Document[], exists: (path: string) => boo
     violations.push(...fieldViolations(claim, fields, exists));
     const task = `${posix.normalize(fields.get("plan") ?? "")} ${(fields.get("task") ?? "").toLowerCase()}`;
     const plan = documents.find((document) => document.path === posix.normalize(fields.get("plan") ?? ""));
-    if (plan !== undefined && !plan.text.toLowerCase().includes((fields.get("task") ?? "").toLowerCase())) {
+    // The plan names the task as a word of its own: `T1` is not in a plan that has only `T10`.
+    const named = new RegExp(`(?<![A-Za-z0-9-])${escaped(fields.get("task") ?? "")}(?![A-Za-z0-9-])`, "i");
+    if (plan !== undefined && !named.test(plan.text)) {
       violations.push({ path: claim.path, signal: "claim-not-complete", detail: `the plan does not name the task ${fields.get("task") ?? ""}` });
     }
     const first = holder.get(task);

@@ -17,11 +17,11 @@ One document owns each concern. Add a requirement to its owner, not to this docu
 | Concern | Owner | Identifiers |
 | --- | --- | --- |
 | Device manager: hub, clients, sessions, checks, metrics, notifications | [design-spec.md](../spec/design-spec.md) | As published there |
-| VPN and enrolment | [vpn-plan.md](../plans/vpn-plan.md) | As published there |
+| VPN: status, key expiry, policy checks, and the enrolment of a machine in the VPN | [design-spec.md](../spec/design-spec.md) defines VPN-001 to VPN-014. [vpn-plan.md](../plans/vpn-plan.md) is the plan of the work; its copies are notes. The enrolment of the daemon is K8 (`contracts/daemon-push.md`), not this row | VPN-001 to VPN-014 |
 | One-click install, many hubs, shares and teams | [one-click-plan.md](../plans/one-click/one-click-plan.md) | `LNK` (the link; LNK-009 is proposed), `MHB`, `SHR`, `MBR` (proposed; not in the spec yet). `AWK` moved to the design specification Section 3.13. Record links of the extensions plan are `RLK-001` to `RLK-006` (they were `LNK` until 2026-11-17, R-125) |
 | Power, hardware health and inventory | [power-health.md](../proposals/power-health.md) | `PWR`, `HWH`, `HWI` (proposed; not in the spec yet). `HLT` is the Health extension of the extensions plan |
 | Daemon push | [design-spec.md](../spec/design-spec.md) defines MET-011 to MET-025. `contracts/daemon-push.md` (K8) is the contract; [phase-3-daemon-delta.md](../plans/phase-3/phase-3-daemon-delta.md) is the record of the change | MET-011 to MET-025 |
-| Engine and extensions | [extensions-plan.md](../plans/extensions-plan.md) | ENG, SRC, COL, VLT, XP, PRJ and the others there |
+| Engine and extensions | [extensions-plan.md](../plans/extensions-plan.md) | ENG, SRC, COL, VLT, XP, PRJ and the others there. NAV-012 to NAV-014 are in this plan; NAV-001 to NAV-011 are in the design specification |
 | Model service and pooled models | [compute-plan.md](../plans/compute-plan.md), as changed by [C1](../work-items/compute/C1.md) and [C2](../work-items/compute/C2.md) | CMP, CAG, CAP, RTR and the others there |
 | Copies of the coordinator database, and the move of the coordinator | [coordinator-standby.md](../proposals/coordinator-standby.md) | FND-001 to FND-012 |
 | Bulk data on the operator's machines | [bulk-data-placement.md](../proposals/bulk-data-placement.md) | STO-001 to STO-011 |
@@ -43,7 +43,7 @@ One document owns each concern. Add a requirement to its owner, not to this docu
 | Machine profiles: copy a setup to a new computer | [machine-profiles.md](../proposals/machine-profiles.md) | REP-001 to REP-025 |
 | CVE watch of the updates that wait on each machine, and network awareness (the address classes of a device, other overlay networks, address changes) | [cve-watch-and-network-awareness.md](../proposals/cve-watch-and-network-awareness.md) | VUL-001 to VUL-028, ADR-001 to ADR-014 |
 | The mobile clients (iOS and Android) | [mobile-plan.md](../plans/mobile-plan.md) | MOB-001 to MOB-042 |
-| The work plan: principles and the rules for plans | [plan/purpose.md](purpose.md), [plan/rules.md](rules.md) | ETH-001 to ETH-009, PLN-001 to PLN-022 |
+| The work plan: principles and the rules for plans | [plan/purpose.md](purpose.md), [plan/rules.md](rules.md) | ETH-001 to ETH-009, PLN-001 to PLN-023 |
 | Contract freeze: only a ruling changes a contract | [implementation-plan.md](../archive/phase-1/implementation-plan.md) Section 4 defines CON-001. It is in the archive and is still in force | CON-001 |
 | The bundled database, the local hub and the first run of the one-click install (proposed spec deltas) | [s3-spec-delta.md](../plans/one-click/s3-spec-delta.md), [s4-spec-delta.md](../plans/one-click/s4-spec-delta.md), [s6-spec-delta.md](../plans/one-click/s6-spec-delta.md) | `DBL`, `LHB`, `FRN` (proposed; in table rows, not approved) |
 | Bots: always-on bots on the operator's machines (proposed) | [bots.md](../proposals/bots.md) | BOT-001 to BOT-038 |

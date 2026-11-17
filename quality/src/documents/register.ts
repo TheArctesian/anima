@@ -45,7 +45,7 @@ export function registerRows(documents: Document[]): string {
   const rows = documents
     .map((document) => ({ path: document.path, fields: header(document.text) }))
     .filter(({ path, fields }) => path.startsWith("docs/") && !path.startsWith(ARCHIVE) && fields.has("kind") && fields.has("state"))
-    .sort((a, b) => rank(a.fields.get("kind") ?? "") - rank(b.fields.get("kind") ?? "") || a.path.localeCompare(b.path))
+    .sort((a, b) => rank(a.fields.get("kind") ?? "") - rank(b.fields.get("kind") ?? "") || (a.path < b.path ? -1 : 1))
     .map(({ path, fields }) => {
       const link = posix.relative(posix.dirname(REGISTER), path);
       const evidence = rebased(fields.get("evidence") ?? "", path);

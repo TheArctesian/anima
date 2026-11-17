@@ -57,8 +57,9 @@ the facts that the build needs.
 
 ## 3. Facts (2026-11-16)
 
-1. The desktop application holds the hub, its PostgreSQL, the gateway and `anima-link`. Release
-   0.2.0 is notarised, and the update in the application works on a second Mac.
+1. The desktop application holds the hub, its PostgreSQL, the gateway and `anima-link`. On
+   2026-11-16 the operator saw the update in the application work on a second Mac. The release
+   record in [releases.md](../procedures/releases.md) holds what is released.
 2. The first run shows "Sign in" as not yet available, then "Join a hub" and "Create a hub on
    this computer".
 3. The server stack cannot use the link. `deploy/compose.yaml` runs no `anima-link` service and

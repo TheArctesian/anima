@@ -288,7 +288,7 @@ G1 is in progress. The other tasks are not started. The states obey PLN-007.
 ## Needs
 
 - A decision on OD-W22 (the tier) and on OD-WDG-1 to OD-WDG-13.
-- A ruling number in `programme.md` for OD-W10, with the change to MET-002 and to R-115.
+- A ruling number in `docs/rulings.md` for OD-W10, with the change to MET-002 and to R-115.
 - A ruling for the change to K8, or for a new contract (CON-001).
 - The security reviewer for WDG-040 and WDG-041 (a `security` task).
 - After approval: one issue with the labels of Section 4 of the work plan.

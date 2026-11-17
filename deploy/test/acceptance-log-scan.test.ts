@@ -26,7 +26,8 @@ const ntfyToken = `tk_${fake(29, "a9B8c7D6e5F4")}`;
 const CASES: [LeakKind, string[], string[]][] = [
   ["api-key", [`{"level":"INFO","fields":{"key":"${apiKey}"}}`, `Bearer ${apiKey}.`],
     [`anima_${fake(42)}`, `anima_${fake(44)}`, "anima_check_up 1", `anima_${fake(6)} (display prefix)`]],
-  ["daemon-token", [`token=${daemonToken}`], [`anima_daemon_${fake(42)}`, `anima_daemon_${fake(44)}`, "anima_daemon_ prefix"]],
+  ["daemon-token", [`token=${daemonToken}`, `token=anima_agent_${fake(43, "Lp3Wq8_zN5-yHc")}`],
+    [`anima_daemon_${fake(42)}`, `anima_daemon_${fake(44)}`, "anima_daemon_ prefix", `anima_agent_${fake(42)}`]],
   ["enrolment-code", [`{"code":"${enrolmentCode}"}`], [`anima_enrol_${fake(21)}`, `anima_enrol_${fake(23)}`]],
   ["browser-cookie", [`set-cookie: __Host-anima=${fake(12)}; Secure; HttpOnly`, `cookie: theme=dark; __Host-anima=x1`],
     ["set-cookie: __Host-anima=; Max-Age=0; Path=/", 'cookie: __Host-anima=""', "__Host-anima="]],

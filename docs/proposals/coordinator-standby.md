@@ -110,7 +110,7 @@ manager is accepted. The standbys come later, with the extensions.
 
 ## Needs
 
-- A ruling number in `programme.md` for the decision above.
+- A ruling number in `docs/rulings.md` for the decision above.
 - A security review: the standby holds the key, and the switch moves the VPN name.
 - VPS and Headscale changes need the operator's confirmation in chat (VPS-005).
 - After approval: one work item for FND-006 (restore and move), and one for the standbys, in

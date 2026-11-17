@@ -36,7 +36,7 @@ export const LISTINGS: Listing[] = [
   { index: "docs/mockup/README.md", member: MOCKUP, signal: "mockup-not-in-index" },
 ];
 
-const CHECKED = /^(?:docs|contracts)\/.*\.md$|^[^/]+\.md$|^docs\/mockup\/.+\.html$/;
+const CHECKED = /^(?:docs|contracts|deploy)\/.*\.md$|^[^/]+\.md$|^docs\/mockup\/.+\.html$/;
 const LINK = /\]\(([^)\s]+)\)/g;
 /** `**DEV-001.**` or `**DEV-001. A title.**`, at the start of a line, a list item or a numbered item. */
 const DEFINITION = /^\s*(?:[-*]\s+|\d+\.\s+)?\*\*([A-Z][A-Z0-9]+(?:-[A-Z])?-\d{1,3}[a-z]?)\.(?:\*\*|\s)/;
@@ -120,7 +120,7 @@ export function checkDocuments(
   known: ReadonlySet<string>,
   changed: (screen: string, commit: string) => number | undefined = () => 0,
 ): Violation[] {
-  const documents = all.filter((document) => CHECKED.test(document.path)).sort((a, b) => a.path.localeCompare(b.path));
+  const documents = all.filter((document) => CHECKED.test(document.path)).sort((a, b) => (a.path < b.path ? -1 : 1));
   return [
     ...brokenLinks(documents, exists),
     ...LISTINGS.flatMap((listing) => unlisted(documents, listing)),

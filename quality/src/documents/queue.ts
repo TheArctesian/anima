@@ -10,17 +10,27 @@ const CHECKS = "docs/need-human-testing.md";
 const START = "<!-- generated from the planning documents: bun run quality:register -->";
 const END = "<!-- end of the generated queue -->";
 const LINK = /\[([^\]]*)\]\(([^)\s]+)\)/g;
-const DECISION = /^(?:OD-(?:[A-Z]+-?)?\d+|HM-D\d+)$/;
-const SETTLED = /\bdecided\b|not a decision|withdrawn|closed|superseded/i;
+const DECISION = /^(?:OD-(?:[A-Z]+-?)?\d+|HM-D\d+|D-\d+|Q\d+)$/;
+/** A number that is one decision in the whole project; `D-1` and `Q1` are numbers of one document. */
+const GLOBAL = /^(?:OD-|HM-D)/;
+/** The result of a decision row is its last cell. It is settled only when that cell starts with one of these words. */
+const SETTLED = /^\W*(?:decided|not a decision|withdrawn|closed|superseded)\b/i;
+/** Finished phases and the index of the work items repeat decisions; they are not the owner of one. */
+const NOT_OWNER = /^docs\/(?:plans\/phase-3\/|work-items\/README\.md$)/;
 const WAITS = /^(?:Draft|Direction decided|Not checked)\b/;
 const LIMIT = 160;
+const OLDER = "Checks that other documents hold";
 
 function cells(row: string): string[] {
   return row.split("|").slice(1, -1).map((cell) => cell.trim());
 }
 
 function plain(text: string): string {
-  const stripped = text.replace(LINK, "$1").replace(/\*\*/g, "");
+  return text.replace(LINK, "$1").replace(/\*\*/g, "");
+}
+
+function short(text: string): string {
+  const stripped = plain(text);
   return stripped.length > LIMIT ? `${stripped.slice(0, LIMIT).trimEnd()}…` : stripped;
 }
 
@@ -41,16 +51,19 @@ function ordered(documents: Document[]): string[] {
     .map((row) => `| ${row[0] ?? ""} | ${row[2] ?? ""} | ${plain(row.at(-1) ?? "")} |`);
 }
 
+/** The rows of a decision table whose result does not say that it is settled, with the recommendation. */
 function decisions(documents: Document[]): string[] {
   const seen = new Set<string>();
   const rows: string[] = [];
-  for (const document of documents) {
+  for (const document of documents.filter((each) => !NOT_OWNER.test(each.path))) {
     for (const line of document.text.split("\n").filter((each) => each.startsWith("|"))) {
       const row = cells(line);
       const id = plain(row[0] ?? "");
-      if (!DECISION.test(id) || seen.has(id) || SETTLED.test(line)) continue;
-      seen.add(id);
-      rows.push(`| ${id} | ${plain(row[1] ?? "")} | ${linked(document.path)} |`);
+      const key = GLOBAL.test(id) ? id : `${document.path} ${id}`;
+      // A row with two cells is a list of names, not a decision with its result.
+      if (!DECISION.test(id) || row.length < 3 || seen.has(key) || SETTLED.test(row.at(-1) ?? "")) continue;
+      seen.add(key);
+      rows.push(`| ${id} | ${short(row[1] ?? "")} | ${short(row.at(-1) ?? "")} | ${linked(document.path)} |`);
     }
   }
   return rows;
@@ -63,10 +76,19 @@ function approvals(documents: Document[]): string[] {
     .map(({ path, fields }) => `| ${linked(path)} | ${fields.get("kind") ?? ""} | ${fields.get("state") ?? ""} |`);
 }
 
+/** The open entries (`### HT-nnn`), then the open rows of the tables of older checks. */
 function humanChecks(documents: Document[]): string[] {
   const text = documents.find((document) => document.path === CHECKS)?.text ?? "";
-  const open = text.slice(text.indexOf("\n## Open"), text.indexOf("\n## Not built yet"));
-  return [...open.matchAll(/^### (HT-\d+): (.+)$/gm)].map((match) => `| ${match[1] ?? ""} | ${plain(match[2] ?? "")} |`);
+  const rows: string[] = [];
+  let section = "";
+  for (const line of text.split("\n")) {
+    if (line.startsWith("## ")) section = line.slice(3).trim();
+    const entry = /^### (HT-\d+)[:.] (.+)$/.exec(line);
+    if (entry !== null && section === "Open") rows.push(`| ${entry[1] ?? ""} | ${short(entry[2] ?? "")} |`);
+    const row = line.startsWith("|") ? cells(line) : [];
+    if (section === OLDER && row.some((cell) => /^Open\b/.test(cell))) rows.push(`| ${plain(row[0] ?? "")} | ${short(row[1] ?? "")} |`);
+  }
+  return rows;
 }
 
 function table(title: string, head: string, rows: string[]): string[] {
@@ -80,16 +102,21 @@ export function queueRows(all: Document[]): string {
   // The queue is not a source of itself, and the archive is finished.
   const documents = all
     .filter((each) => each.path.startsWith("docs/") && !each.path.startsWith("docs/archive/") && each.path !== QUEUE)
-    .sort((a, b) => a.path.localeCompare(b.path));
+    .sort((a, b) => (a.path < b.path ? -1 : 1));
   return [
     START,
     "",
     ...table("1. In the order of the priorities", "Row | Work | Waits for", ordered(documents)),
-    ...table("2. Open decisions", "Decision | Question | Document", decisions(documents)),
+    ...table("2. Open decisions", "Decision | Question | Recommendation or state | Document", decisions(documents)),
     ...table("3. Documents that wait for an approval", "Document | Kind | State", approvals(documents)),
     ...table("4. Checks that only the operator can do", "Check | What", humanChecks(documents)),
     END,
   ].join("\n");
+}
+
+/** If `queue` has the two markers of its generated part. Without them nothing is checked. */
+export function hasQueue(queue: string): boolean {
+  return queue.includes(START) && queue.includes(END);
 }
 
 /** `queue` with its generated part replaced; undefined when it has no markers. */
@@ -100,15 +127,25 @@ export function withQueue(queue: string, rows: string): string | undefined {
   return queue.slice(0, start) + rows + queue.slice(end + END.length);
 }
 
+/** A state that permits a build (PLN-007). A document with no header, such as a work item, has no state to refuse. */
+const BUILDABLE = /^(?:Approved|In progress|Direction decided)\b/;
+
+/**
+ * The tasks for an agent in the priority order: each has a link, and each linked document that
+ * has a state has a state that permits a build (PLN-007).
+ */
 function agentTasks(documents: Document[]): Violation[] {
   const violations: Violation[] = [];
   for (const row of priorityRows(documents)) {
-    const clause = /Agent: (?!nothing)([^]*?)(?=Operator:|$)/.exec(row.at(-1) ?? "")?.[1];
+    const clause = /Agent: (?!(?:nothing|none)\b)([^]*?)(?=Operator:|$)/i.exec(row.at(-1) ?? "")?.[1];
     if (clause === undefined) continue;
-    const targets = [...clause.matchAll(LINK)].map((match) => posix.normalize(posix.join(posix.dirname(PRIORITIES), match[2] ?? "")));
+    const targets = [...clause.matchAll(LINK)].map((match) => posix.normalize(posix.join(posix.dirname(PRIORITIES), (match[2] ?? "").split("#")[0] ?? "")));
     if (targets.length === 0) violations.push({ path: PRIORITIES, signal: "agent-task-without-link", detail: `row ${row[0] ?? ""}` });
-    for (const target of targets.filter((each) => each.startsWith("docs/proposals/"))) {
-      violations.push({ path: PRIORITIES, signal: "agent-task-in-proposal", detail: `row ${row[0] ?? ""}: ${target}` });
+    for (const target of targets) {
+      const state = header(documents.find((document) => document.path === target)?.text ?? "").get("state");
+      if (state !== undefined && !BUILDABLE.test(state)) {
+        violations.push({ path: PRIORITIES, signal: "agent-task-in-unapproved-document", detail: `row ${row[0] ?? ""}: ${target} is ${state}` });
+      }
     }
   }
   return violations;

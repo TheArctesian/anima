@@ -20,7 +20,7 @@ Part of the work plan: [work-plan.md](../work-plan.md) is the entry point, and i
 | Remember | Keep a copy of the life of the operator | Health, Money, Map, People, History, Documents, Writing, Reminders, Library, Wardrobe, AI coding sessions | Extensions plan Sections 2 and 4. [new-sources.md](../proposals/new-sources.md) |
 | Use | Make the machines do work | Model service, builds, jobs, AI agent runs, hosted applications | [compute-plan.md](../plans/compute-plan.md). [jobs.md](../proposals/jobs.md), [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md), [agent-runs.md](../proposals/agent-runs.md), [hosted-applications.md](../proposals/hosted-applications.md) |
 
-The command line and the MCP server are not a category. They are a second and a third way to use each function of each category ([cli-mcp-plan.md](../plans/cli-mcp-plan.md); design specification Section 6.10). They are built and are on `main`. A new function is built in this order: the hub API, the `anima` command, the MCP tool, the graphical client (CMD-030).
+The command line and the MCP server are not a category. They are a second and a third way to use each function of each category ([cli-mcp-plan.md](../plans/cli-mcp-plan.md); design specification Section 6.10). They are built and are on `main`, except the rulings that the header of [cli-mcp-plan.md](../plans/cli-mcp-plan.md) names as not built (R-120). A new function is built in this order: the hub API, the `anima` command, the MCP tool, the graphical client (CMD-030).
 
 ## 4. Priority order
 
@@ -30,23 +30,23 @@ The table gives the order. The section of each row below the table gives the wor
 
 | Row | Tier | Work | Category | State, in short | Waits for |
 | --- | --- | --- | --- | --- | --- |
-| 4.1 | 0 | Finish the device manager | Foundation, See, Reach | Phases 1 to 3 are built. | Operator: the acceptance run (WP-53); the Linux release and the check that an installed application updates (R7). the checks of the rename to `anima-daemon` (HT-018, HT-019). Agent: nothing |
+| 4.1 | 0 | Finish the device manager | Foundation, See, Reach | Phases 1 to 3 are built. | Operator: the acceptance run (WP-53); the Linux release and the check that an installed application updates (R7); the checks of the rename to `anima-daemon` (HT-018, HT-019). Agent: the defects GH-52, GH-53 and GH-54 in [work-items/README.md](../work-items/README.md), "Defects". Their state is "Open at import": compare each with the code first |
 | 4.16 | 1 | One-click install | Foundation, Reach | In progress. Built; the live checks wait for the operator. | Operator: the live checks ([need-human-testing.md](../need-human-testing.md), "One-click") |
 | 4.17 | 1 | The hosted mode and the shared pool | Foundation | Proposal. The direction is decided. | Operator: approval of HMD-001 to HMD-036, and HM-D4 |
 | 4.18 | 1 | Update the daemon and the hub | Foundation | Proposal. Task U1 is done. | Operator: approval of ROL-001 to ROL-052 (only R-122 is approved), and a Linux release for the tasks that need one. Agent: nothing until a ruling names a task |
 | 4.2 | 1 | Restore a backup and move the coordinator | Foundation | Proposal. | Operator: approval of FND-006. No task breakdown yet |
 | 4.3 | 1 | Decisions and approvals for the foundation | All | Open | Operator: each decision and approval in the row |
-| 4.4 | 2a | The engine (E0) | See, Remember | In progress. | Agent: E0-4 T9 ([extensions-plan.md](../plans/extensions-plan.md) Section 5.1). Operator: E0-5 T0, E0-6 T0, the contract ruling for E0-7, and OD-E18 |
+| 4.4 | 2a | The engine (E0) | See, Remember | In progress. | Agent: E0-4 T9 ([extensions-plan.md](../plans/extensions-plan.md) Section 5.1), but not the parts that OD-E16 and OD-E17 name. Operator: E0-5 T0, E0-6 T0, the contract ruling for E0-7, OD-E16, OD-E17 and OD-E18 |
 | 4.5 | 2b | Level 1 model service | Use | Planned. The tool inventory is built. | Operator: approval of the compute plan, and the compute decisions of row 4.3 |
-| 4.6 | 3a | Projects | See | In progress. | Agent: compare PRO-005 to PRO-007 with the code and write the result in [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md). No build |
+| 4.6 | 3a | Projects | See | In progress. | Agent: task P0 of [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md), "Tasks": compare PRO-005 to PRO-007 with the code. No build |
 | 4.7 | 3a | Jobs, builds and AI agent runs | Use | [C7](../work-items/compute/C7.md) is planned. | Operator: a ruling that changes R-115 (task W1) and the acceptance of the design (task W2). Agent: nothing before them |
 | 4.8 | 3b | The other extensions | See, Remember, Reach | Planned. | Row 4.4 |
 | 4.9 | 3c | Hosted applications | Use | Proposal. | Operator: approval of the proposal |
 | 4.10 | 3 | Standby copies of the coordinator database | Foundation | Proposal. | Operator: approval of the requirements |
 | 4.11 | 3 | Bulk data on the operator's machines | Foundation | Proposal. | Operator: approval of the requirements, before E0-5 starts |
 | 4.12 | 4 | Level 2: one model across machines | Use | Parked. | Row 4.5 in daily use |
-| 4.13 | 4 | A hash chain for the audit log | Foundation | The operator made the work item smaller on 2026-11-12 | Agent: phase L0 of [GH-2](../work-items/device-manager/GH-2.md). Its state was not compared with the code |
-| 4.14 | 4 | Mobile clients (Phase 5) and site operations (Phase 6) | Foundation, Reach | In progress (mobile). Planned (Phase 6). | Agent: M1-3 of [mobile-plan.md](../plans/mobile-plan.md) Section 6. Its tasks in progress belong to the session on the branch `mobile/m1-shell`. Phase 6 waits for rows 4.4 to 4.8 |
+| 4.13 | 4 | A hash chain for the audit log | Foundation | The operator made the work item smaller on 2026-11-12 | Operator: a requirement for the hash chain. No requirement of the design specification has it; [GH-2](../work-items/device-manager/GH-2.md) holds the proposal. Agent: nothing |
+| 4.14 | 4 | Mobile clients (Phase 5) and site operations (Phase 6) | Foundation, Reach | In progress (mobile). Planned (Phase 6). | Agent: M1-3 of [mobile-plan.md](../plans/mobile-plan.md) Section 5. Its tasks in progress belong to the session on the branch `mobile/m1-shell`. Phase 6 waits for rows 4.4 to 4.8 |
 | 4.19 | Not set | The watchdog | See, Use | Proposal. Not approved. | Operator: a tier and approval of the direction (OD-W22) |
 | 4.15 | — | Deferred items and ideas | All | Recorded, not planned | Nothing |
 
@@ -184,7 +184,7 @@ The table gives the order. The section of each row below the table gives the wor
 - Category: Foundation, Reach
 - Work: iOS client and Android client (Phase 5). Site operations and traffic data (Phase 6)
 - Work items: Design specification Section 9. [GH-55](../work-items/device-manager/GH-55.md). [mobile-plan.md](../plans/mobile-plan.md)
-- State: Planned. [GH-55](../work-items/device-manager/GH-55.md) puts Phase 6 after the extension foundations and compute. The mobile clients start now, beside tier 0 (operator, 2026-11-16, OD-M2 of the mobile plan).
+- State: In progress for the mobile clients ([mobile-plan.md](../plans/mobile-plan.md) Section 5 holds each task). Planned for Phase 6. [GH-55](../work-items/device-manager/GH-55.md) puts Phase 6 after the extension foundations and compute. The mobile clients start now, beside tier 0 (operator, 2026-11-16, OD-M2 of the mobile plan).
 
 ### 4.15 Deferred items and ideas
 

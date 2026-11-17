@@ -1,7 +1,7 @@
 ---
 kind: Plan
 state: In progress
-evidence: Version 0.3 (2026-11-16). The operator decided OD-M1 to OD-M8 and approved the phone mockups on 2026-11-16. It serves Section 4, tier 4, "iOS client and Android client (Phase 5)", and starts now (OD-M2). MOB-001 to MOB-042. Its Section 6 holds the state of each task. The branch `mobile/m1-shell` was merged into `main` on 2026-11-17; a later commit of that branch is not on `main`. Its facts are from a test build on the local branch `spike/mobile`, which is not for merge.
+evidence: Version 0.3 (2026-11-16). The operator decided OD-M1 to OD-M8 and approved the phone mockups on 2026-11-16. It serves Section 4, tier 4, "iOS client and Android client (Phase 5)", and starts now (OD-M2). MOB-001 to MOB-042. Its Section 5 holds the state of each task. The branch `mobile/m1-shell` was merged into `main` on 2026-11-17; a later commit of that branch is not on `main`. Its facts are from a test build on the local branch `spike/mobile`, which is not for merge.
 ---
 
 # Anima Mobile Plan

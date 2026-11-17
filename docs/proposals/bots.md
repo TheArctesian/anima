@@ -121,7 +121,7 @@ takes no T3 Code code (the T3 Code server is TypeScript and Effect, and the hub 
   program, or pass a token that it did not get from the operator's own shell. It must not call the
   vendor's private endpoints. It must not use an SDK of a vendor for a subscription login (the Claude
   Agent SDK, `@cursor/sdk`, `codex app-server` account methods).
-- **BOT-022.** The agent on each device must find the installed vendor programs without reading a login
+- **BOT-022.** The daemon (`anima-daemon`) on each device must find the installed vendor programs without reading a login
   file. It must do these steps in order, for each program. First, look for the program in the PATH and in the
   folders of its installer by the name of the file. Second, run `<program> --version`. Third, ask the
   program for its own sign-in state with its status command: `claude auth status`,
@@ -130,7 +130,7 @@ takes no T3 Code code (the T3 Code server is TypeScript and Effect, and the hub 
   account. For a program without a verified status command (Grok Build and Antigravity), report "installed,
   sign-in not checked". Do not guess. T3 Code does the same kind of check in `ProviderInstallationGate.ts`,
   `ClaudeProvider.ts` and `CodexProvider.ts`.
-- **BOT-023.** The agent must not open, read, list the size of, or copy these files and stores, and must
+- **BOT-023.** The daemon must not open, read, list the size of, or copy these files and stores, and must
   not read the keychain of the operating system for them: `~/.claude*`, `~/.codex/auth.json`,
   `~/.grok/auth.json`, the login store of the Cursor CLI (place not verified), and the matching items of
   the Keychain, the Secret Service and the Windows Credential Manager. A test must start a probe against a sandbox and fail when the

@@ -74,5 +74,5 @@ These are not new work. They are checks on work that is done for other reasons.
 
 ## Needs
 
-- A ruling number in `programme.md`.
+- A ruling number in `docs/rulings.md`.
 - No work item yet. Make one in `docs/work-items/` (PLN-012) when the operator wants to start.

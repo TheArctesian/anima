@@ -439,7 +439,7 @@ plan. The names are proposals: that plan owns them.
 
 ## Tasks
 
-R1 to R4 are done. Each other task is "Not started". Change the state in the commit that does the work (PLN-008). The
+The column "State" of each table holds the state of each task. Change the state in the commit that does the work (PLN-008). The
 order is the order of the groups: R, then W, then B, then A (OD-W21, operator, 2026-11-16). S is
 the last task of W, B and A.
 
@@ -448,13 +448,14 @@ Group R: correct the release of Anima. It needs no other group. It is tier 0 of 
 
 | Task | Content | Needs | Done when | State | Commits |
 | --- | --- | --- | --- | --- | --- |
+| P0 | Compare PRO-005, PRO-006 and PRO-007 with the code on `main`. Write below this table, for each requirement, if it is built, with the file and the test that show it. Build nothing. | — | The three results are in this plan, and row 4.6 of the work plan agrees with them. | Not started | — |
 | R1 | The clone address comes from one configuration value with the new name (D5). Change BLD-040. | — | A test proves that the builder clones the configured address. | Done | Branch `builds/release-corrections`, merged to `main` |
 | R2 | Delete the bundle folder before the bundle step (D1). | — | A test builds one version two times and uploads the file of the second attempt. | Done | Branch `builds/release-corrections`, merged to `main` |
 | R3 | Add Go to the tool check (D4, BLD-028). | — | A builder with no Go names Go and does not claim. | Done | Branch `builds/release-corrections`, merged to `main` |
 | R4 | The hub refuses a release when it cannot publish. The client hides the Builds entry and the builder row then (D8, PRO-037, PRO-038). | — | A hub with no updater key refuses `createRelease` with a typed reason. The command and the MCP tool give the reason. The client shows no Builds entry. | Done | Branch `builds/release-corrections`, merged to `main` |
 | R5 | One name for the macOS application: `Anima.ing.app` (D2; OD-W19, operator, 2026-11-16). | — | The design specification Section 3.11, `carried.rs` and the builder say `Anima.ing.app`. The file names of a release stay `Anima_*` (UPD-010). | Done. Section 3.11 and `carried.rs` say `Anima.ing.app`; the builder already made `Anima.ing.app` and its tests now use the name. | c1e6226e on branch `claude/watchdog-autoupdate-proposals` |
 | R6 | The release carries the local hub (D3). | T9 of the S4 tasks; S3 T11 | As T9 of [s4-local-hub-tasks.md](one-click/s4-local-hub-tasks.md) states. This row only points to it. | Done, as T9 of the S4 tasks: the release 0.2.0 carries the programs and the tree. | `f24f4c54`, `aec3c400` |
-| R7 | The first release. | R1 to R5; the operator | Each feed answers 200. An installed application updates on macOS and on Linux (D6, OD-16 to OD-18). The operator does this. | In progress. macOS is published; Linux is not; the update of an installed application is not verified. The release record holds the state: [releases.md](../procedures/releases.md). | `43291afc`, `b361eb5f` |
+| R7 | The first release. | R1 to R5; the operator | Each feed answers 200. An installed application updates on macOS and on Linux (D6, OD-16 to OD-18). The operator does this. | In progress. The release record holds what is published and what is verified: [releases.md](../procedures/releases.md). | `43291afc`, `b361eb5f` |
 
 Group W: the work route. [jobs.md](../proposals/jobs.md) owns its requirements; the tasks are here so that one
 table has the order.
@@ -563,7 +564,7 @@ Group A: builds of Anima's own.
 
 ## Needs
 
-- A ruling number in `programme.md` for OD-W11, for OD-W12, for OD-W13 and for OD-W14 to OD-W21.
+- A ruling number in `docs/rulings.md` for OD-W11, for OD-W12, for OD-W13 and for OD-W14 to OD-W21.
 - Rulings for the requirements that are still proposals: PRO-031, PRO-033 to PRO-035, PRO-039 to
   PRO-041, PRO-043 and PRO-045 to PRO-053.
 - A change to PRJ-001 and to Section 4.2 of the extensions plan (with [XP-02](../work-items/extensions/XP-02.md) and [SPEC](../work-items/extensions/SPEC.md)): the import

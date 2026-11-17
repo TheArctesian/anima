@@ -13,7 +13,7 @@ For the first start of the application, see [first-run.md](first-run.md).
 
 **State of the work:** the program is built and tested, and the release builder puts it and
 the other programs into the application (plan item S12,
-`docs/plans/one-click/s12-packaging-tasks.md`). No release with them is published yet.
+`docs/plans/one-click/s12-packaging-tasks.md`). The release record in [releases.md](../releases.md) holds what is published.
 
 ## 1. The folders
 

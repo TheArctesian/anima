@@ -82,13 +82,13 @@ The plan has two tiers:
 | OD-10, vpn.md Section 11 | `docs/procedures/setup/vpn.md` | No Headscale API key. Admin only through `headscale` on the VPS unix socket. Tier A does not call Headscale. |
 | vpn.md Section 11, steps 3 and 5 | `docs/procedures/setup/vpn.md` | Pre-auth keys are single use, last one hour, and stay out of command lines and logs. Use `--auth-key=file:` (vpn.md lines 486, 916). |
 | R-055 | `docs/rulings.md` | The broker is deferred. The proposal has exactly three verbs. Tier B waits for decision (b). |
-| R-061 | `programme.md`, `add-this-machine.md` | Device grants: one `/32`, from `tag:hub`, TCP only. Router test rows wait in `ROUTER_ROWS`. |
-| R-076 | `programme.md` | No grant on TCP 3389. This overrides the `3389` in `add-this-machine.md`. |
-| R-079 | `programme.md` | The app never changes VPN rules. Tier B item B5 needs a change to R-079. |
+| R-061 | `docs/rulings.md`, `add-this-machine.md` | Device grants: one `/32`, from `tag:hub`, TCP only. Router test rows wait in `ROUTER_ROWS`. |
+| R-076 | `docs/rulings.md` | No grant on TCP 3389. This overrides the `3389` in `add-this-machine.md`. |
+| R-079 | `docs/rulings.md` | The app never changes VPN rules. Tier B item B5 needs a change to R-079. |
 | VPS-005, R-024 | spec 4.2, `operator-changes.md` | Each live VPS or Headscale change needs operator confirmation in chat and a row in `operator-changes.md`. Key renewal is already "Operator change 14, recurring (confirm in chat first: VPS-005)" (vpn.md Section 7). |
 | D-4 (Phase 2), R-065 | `phase-2-plan.md` | The LocalAPI proxy allows only `GET /localapi/v0/status[?peers=]` and `POST /localapi/v0/ping`. WP-42 owns `deploy/localapi/allow.ts` (Q2-15). Tier A needs no change to it. |
 | WP-23 H-5, LOG-007 | WP-23 report | The hub must not log raw status output. It contains peer names and logins. |
-| R-072 | `programme.md` | `main.rs` is at its limit. Periodic jobs go in `upkeep.rs` (a `wiring` module), not in `main.rs`. |
+| R-072 | `docs/rulings.md` | `main.rs` is at its limit. Periodic jobs go in `upkeep.rs` (a `wiring` module), not in `main.rs`. |
 | R-082 | `phase-3-plan.md` | Changes to `main.rs` and `schema.rs` are hand-off lines to the programme orchestrator. |
 | SET-002 | spec Section 7 | The Settings page shows only the listed rows. A VPN section needs a SET delta. |
 | K1, K2 | `contracts/schema.graphql`, `contracts/database.md` | Frozen for Phase 3 (CON-001). New fields, event sources and migration ranges need a programme ruling. `0940`–`0999` is reserved for Phase 4. |

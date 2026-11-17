@@ -15,11 +15,11 @@ A claim is not a state. The task table of the plan holds the state of the task (
 ## Rules (PLN-022)
 
 - Before a session takes a task, it reads this folder on `origin/main`. If a claim holds the task, the session does not take it.
-- To take a task, the session does these steps in its worktree: `git fetch origin`; `git switch --detach origin/main`; write one file `docs/claims/<name>.md`; `bun run quality:documents`; commit that file only; `git push origin HEAD:main`; then `git switch -c <branch>`. The branch starts at the claim commit, so it holds the claim, and the merge of the work can delete it. This commit needs no other gate, because it changes no code.
-- If `main` moved and the push is refused, the session starts the steps again (`git fetch origin`, `git switch --detach origin/main`), reads the claims again, and continues only if the task is free. Do not rebase a claim on a `main` that has a claim of the same task.
+- To take a task, the session makes the claim in a small worktree of its own, so that the commit never carries other changes: `git fetch origin`; `git worktree add --detach ../claim origin/main`; in it, write one file `docs/claims/<name>.md`; `bun run quality:documents`; commit; `git push origin HEAD:main`; `git worktree remove ../claim`. Then the session starts its branch from `origin/main` (`git switch -c <branch> origin/main`), or merges `origin/main` into a branch that exists, so that the branch holds the claim and the merge of the work can delete it. The claim commit holds the claim file. If the task is new, it also holds the row of the task in its plan, with the register and the queue that `bun run quality:register` writes. It needs no other gate, because it changes no code.
+- If `main` moved and the push is refused, the session runs `git fetch origin` and `git reset --hard origin/main` in the small worktree, reads the claims again, and makes the claim again only if the task is free.
 - The machine is not planned. The session that starts the work writes the name of the machine that it runs on.
 - The commit that merges the work into `main` deletes the claim and sets the state of the task (PLN-008).
-- A session that stops and will not continue deletes its claim and writes in the task row what is built.
+- A session that stops and will not continue deletes its claim on `main` with the same steps (a small worktree, a commit that deletes the file, a push), writes in the task row what is built, and pushes its branch.
 - A claim is old when its branch has no new commit for 3 days. Do not take the task of an old claim without a check: look at the branch, ask Anima if the machine is connected (`anima device list`), or ask the operator. Then delete the old claim in the commit that makes the new one.
 - The gate fails when a claim does not give each field, when its plan does not exist, or when two claims hold the same task.
 
@@ -44,4 +44,4 @@ started: 2026-11-17
 
 ## Claims now
 
-The files in this folder, other than this one. None on 2026-11-17.
+The files in this folder, other than this one. This document keeps no list of them.

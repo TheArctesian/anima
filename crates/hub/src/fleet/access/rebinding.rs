@@ -2,7 +2,7 @@
 //! attacker points at 127.0.0.1 can reach the hub's loopback port, and its failed sign-ins
 //! would fill the throttle of this computer's address (D-8). A browser always sends the name
 //! it used in `Host`, so the hub answers only a loopback literal there, and an `Origin` only
-//! from the desktop app's web view. No `Origin` is allowed: the command line and the agent
+//! from the desktop app's web view. No `Origin` is allowed: the command line and the daemon
 //! send none, and a browser sends one with every cross-origin request.
 
 use axum::{

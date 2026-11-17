@@ -197,16 +197,24 @@ fn replace_file(file: &Path, dir: &Path, text: &str) -> Result<(), InstallError>
     File::open(dir).and_then(|d| d.sync_all()).map_err(write)
 }
 
-/// Runs each step in order; a failure stops the rest unless the step may fail.
+/// Runs each step in order; a failure stops the rest unless the step may fail. For a step that
+/// may fail, a program that cannot start or that runs past its deadline is a failure too, so
+/// the unit of the old program (R-126) never stops the install of the new one.
 pub(super) fn run_steps(
     steps: &[Step],
     mut run: impl FnMut(&Step) -> io::Result<bool>,
 ) -> Result<(), InstallError> {
     for step in steps {
-        let ok = run(step).map_err(|source| InstallError::Run {
-            program: step.program,
-            source,
-        })?;
+        let ok = match run(step) {
+            Ok(ok) => ok,
+            Err(_) if step.may_fail => false,
+            Err(source) => {
+                return Err(InstallError::Run {
+                    program: step.program,
+                    source,
+                });
+            }
+        };
         if !ok && !step.may_fail {
             return Err(InstallError::Step {
                 program: step.program,
@@ -248,6 +256,21 @@ mod tests {
     fn met_019_a_first_macos_install_whose_bootout_fails_still_bootstraps() {
         let (result, ran) = run_macos(false, true);
         result.expect("bootout may fail");
+        assert_eq!(ran, ["bootout", "-f", "bootout", "bootstrap"]);
+    }
+
+    #[test]
+    fn r_126_a_step_that_may_fail_can_also_time_out_or_not_start() {
+        let mut ran = Vec::new();
+        let result = run_steps(&macos(), |step| {
+            ran.push(step.args[0].clone());
+            if step.may_fail {
+                Err(io::Error::from(io::ErrorKind::TimedOut))
+            } else {
+                Ok(true)
+            }
+        });
+        result.expect("only the last step must succeed");
         assert_eq!(ran, ["bootout", "-f", "bootout", "bootstrap"]);
     }
 

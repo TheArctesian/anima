@@ -1,8 +1,8 @@
 # The first run of the desktop app
 
 Version 1.0. Date: 2026-11-15. Status: **Draft. The steps follow the code of plan item S6. The
-release builder puts the hub programs into the application (plan item S12); no release with
-them is published yet. The run-through of a bundle on this Mac is in
+release builder puts the hub programs into the application (plan item S12); the release
+record in [releases.md](../releases.md) holds what is published. The run-through of a bundle on this Mac is in
 `docs/plans/one-click/s12-packaging-tasks.md`, Section 6.** This guide is a procedure. It adds no requirement.
 
 Write: Simplified Technical English (design spec Section 0). Plan:

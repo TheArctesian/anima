@@ -519,7 +519,7 @@ tools that are on:
 4. **`anima_job_start` allowed (proposed, not built).** Run the build steps and the test steps
    of a project on each machine that takes work, with the content of a scratch ref that the
    agent wrote. Build scripts are code. Thus this is code execution inside the limits of a job: a
-   container, or the build user on a Mac, with no agent token, no home folder and no project
+   container, or the build user on a Mac, with no daemon token, no home folder and no project
    secret (JOB-020). It can also fill the disk of a machine with artifacts up to the limit of
    the device policy. `anima_capability_list` shows the tools and versions of each machine.
 

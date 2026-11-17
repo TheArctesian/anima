@@ -37,7 +37,7 @@ export function mockupRows(text: string): MockupRow[] {
 
 /**
  * PLN-019: a mockup that is Built names the commit it was compared at, and no layout file of
- * its screens has a commit after that one. `changedSince` gives the number of those commits,
+ * its screens changed after that one. `changedSince` gives the number of those files,
  * or undefined when the repository does not have the commit.
  */
 export function checkMockups(documents: Document[], changedSince: (screen: string, commit: string) => number | undefined): Violation[] {
@@ -49,11 +49,12 @@ export function checkMockups(documents: Document[], changedSince: (screen: strin
       if (row.built) violations.push({ path: MOCKUPS, signal: "mockup-not-compared", detail: row.name });
       continue;
     }
+    if (row.built && row.screens.length === 0) violations.push({ path: MOCKUPS, signal: "mockup-without-screens", detail: row.name });
     for (const screen of row.screens) {
       const count = changedSince(screen, commit);
       if (count === undefined) violations.push({ path: MOCKUPS, signal: "mockup-commit-not-found", detail: `${commit} of ${row.name}` });
       else if (count > 0) {
-        violations.push({ path: MOCKUPS, signal: "screen-changed-after-mockup", detail: `${screen} has ${count} later commit(s) than ${commit}; compare ${row.name} again` });
+        violations.push({ path: MOCKUPS, signal: "screen-changed-after-mockup", detail: `${screen} has ${count} layout file(s) that changed after ${commit}; compare ${row.name} again` });
       }
     }
   }

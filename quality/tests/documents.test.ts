@@ -212,6 +212,11 @@ describe("PLN-022 claims", () => {
     ]);
   });
 
+  test("the plan names the task as a word of its own", () => {
+    const only10 = { ...plan, text: plan.text.replace("| C1 |", "| C10 |") };
+    expect(only([only10, claim("c1", "C1")])).toEqual(["docs/claims/c1.md: claim-not-complete the plan does not name the task C1"]);
+  });
+
   test("a second claim of the same task fails and names the first", () => {
     expect(only([plan, claim("a", "C1"), claim("b", "C1"), claim("c", "C2")])).toEqual([
       "docs/claims/b.md: task-claimed-twice docs/claims/a.md holds the same task",
@@ -237,7 +242,7 @@ describe("PLN-019 a mockup agrees with the application", () => {
 
   test("a screen with a later commit fails and names the commit of the comparison", () => {
     expect(run("**Built**", "`abc1234`", 2)).toEqual([
-      "screen-changed-after-mockup apps/client/src/routes/devices has 2 later commit(s) than abc1234; compare [a.html](a.html) again",
+      "screen-changed-after-mockup apps/client/src/routes/devices has 2 layout file(s) that changed after abc1234; compare [a.html](a.html) again",
     ]);
   });
 
@@ -256,22 +261,31 @@ describe("PLN-023 the operator queue and the tasks for an agent", () => {
     path: "docs/plan/priorities.md",
     text: `| Row | Tier | Work | Category | State | Waits for |\n| --- | --- | --- | --- | --- | --- |\n| 4.1 | 0 | The engine | See | In progress | ${waits} |\n`,
   });
-  const plan = { path: "docs/plans/compute-plan.md", text: "---\nkind: Plan\nstate: Draft\nevidence: none\n---\n\n| Number | Decision |\n| --- | --- |\n| OD-C1 | Which store? |\n| OD-C2 | Which port? Decided: 80. |\n" };
+  const plan = { path: "docs/plans/compute-plan.md", text: "---\nkind: Plan\nstate: Draft\nevidence: none\n---\n\n| Number | Decision | Result |\n| --- | --- | --- |\n| OD-C1 | Which store? | Postgres. |\n| OD-C2 | Which port? | **Decided: 80.** |\n| OD-C3 | Is the port closed when the client is closed? | Not decided. Yes is better. |\n| D-1 | Which name? | Anima. |\n" };
   const only = (documents: Document[]) => check(documents).filter((line) => line.includes("agent-task") || line.includes("queue"));
 
-  test("a task for an agent needs a link, and the link is not to a proposal", () => {
-    expect(only([priorities("Agent: C1 of [the plan](../plans/compute-plan.md). Operator: OD-C1"), plan])).toEqual([]);
+  test("a task for an agent needs a link, and its document has a state that permits a build", () => {
+    const approved = { ...plan, text: plan.text.replace("state: Draft", "state: Approved") };
+    expect(only([priorities("Agent: C1 of [the plan](../plans/compute-plan.md). Operator: OD-C1"), approved])).toEqual([]);
     expect(only([priorities("Operator: approval. Agent: nothing before it")])).toEqual([]);
     expect(only([priorities("Agent: build the model service")])).toEqual(["docs/plan/priorities.md: agent-task-without-link row 4.1"]);
-    expect(only([priorities("Agent: U3 of [the update](../proposals/update.md)"), { path: "docs/proposals/update.md", text: "" }])).toEqual([
-      "docs/plan/priorities.md: agent-task-in-proposal row 4.1: docs/proposals/update.md",
+    const proposal = (state: string) => ({ path: "docs/proposals/update.md", text: `---\nkind: Proposal\nstate: ${state}\nevidence: none\n---\n` });
+    const inProposal = priorities("Agent: U3 of [the update](../proposals/update.md#tasks)");
+    expect(only([inProposal, proposal("Draft")])).toEqual([
+      "docs/plan/priorities.md: agent-task-in-unapproved-document row 4.1: docs/proposals/update.md is Draft",
     ]);
+    // PLN-007: a ruling can name a task of a proposal whose direction is decided.
+    expect(only([inProposal, proposal("Direction decided")])).toEqual([]);
+    expect(only([priorities("Agent: None. Operator: approval")])).toEqual([]);
   });
 
   test("the queue has the rows that wait for the operator, the open decisions and the drafts", () => {
     const rows = queueRows([priorities("Operator: OD-C1"), plan]);
     expect(rows).toContain("| 4.1 | The engine | Operator: OD-C1 |");
-    expect(rows).toContain("| OD-C1 | Which store? | [plans/compute-plan.md](plans/compute-plan.md) |");
+    expect(rows).toContain("| OD-C1 | Which store? | Postgres. | [plans/compute-plan.md](plans/compute-plan.md) |");
+    // A question with the word closed, and a result that says Not decided, are open.
+    expect(rows).toContain("| OD-C3 | Is the port closed when the client is closed? | Not decided. Yes is better. |");
+    expect(rows).toContain("| D-1 | Which name? | Anima. |");
     expect(rows).not.toContain("OD-C2");
     expect(rows).toContain("| [plans/compute-plan.md](plans/compute-plan.md) | Plan | Draft |");
   });

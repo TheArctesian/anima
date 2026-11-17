@@ -46,12 +46,11 @@ proposal is that specification.
   and `darwin-universal`. The hub checks the files, signs the updater file with the updater key
   and writes the feed at `https://releases.anima.ing` (BLD-045, BLD-064 to BLD-066, R-117).
 - `crates/updater-signature` signs and verifies. It is pure and has no file access.
-- The release record in [releases.md](../procedures/releases.md) holds what is published: macOS since
-  2026-11-17, no Linux release. Tasks R5 and R6 of [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md)
+- The release record in [releases.md](../procedures/releases.md) holds what is published. Tasks R5 and R6 of [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md)
   are done; R7 is in progress. The update of a real installed application is not verified (OD-16 to OD-18).
 - A release build of the desktop application carries `anima-daemon` for its own target, and
   installs it on its own computer (MET-019). No daemon file is published alone.
-- The Linux system unit of the agent runs with no capability and `ProtectSystem=strict`. Thus the
+- The Linux system unit of the daemon runs with no capability and `ProtectSystem=strict`. Thus the
   daemon cannot replace its own program file. The rule MET-002 says the same.
 - The daemon connects only to the hub (MET-020). It makes three requests: enrol, push and renew
   (K8). The push answer is empty. The hub cannot tell a daemon which version to get.
@@ -294,29 +293,27 @@ U1 is done. The other tasks are not started. The states obey PLN-007.
 
 | Task | Content | Needs | State | Commits |
 | --- | --- | --- | --- | --- |
-| U1 | Stage A. The agent reports its version; the hub keeps it and gives it. Hub API, then `anima`, then MCP, then the Device page. | R-122 (operator, 2026-11-16): the optional member of K8 | Done | `e29e59db`, `553a6522`, `68b293fe`, `328f6ff4`, `d162234f`. Reviewed by an independent reviewer agent: accepted, no blocker. Open: the agent test `r_122_each_batch_carries_the_version_of_the_agent` runs only on Linux and has not run yet; the release builder does not build `anima-daemon` with `ANIMA_VERSION` yet (task U2). |
+| U1 | Stage A. The daemon reports its version; the hub keeps it and gives it. Hub API, then `anima`, then MCP, then the Device page. | R-122 (operator, 2026-11-16): the optional member of K8 | Done | `e29e59db`, `553a6522`, `68b293fe`, `328f6ff4`, `d162234f`. Reviewed by an independent reviewer agent: accepted, no blocker. Open: the daemon test `r_122_each_batch_carries_the_version_of_the_daemon` runs only on Linux and has not run yet; the release builder does not build `anima-daemon` with `ANIMA_VERSION` yet (task U2). |
 | U2 | The release record: its fields, its signature, its place on the release host. The recipe of the Anima release makes the daemon files and the record. | Tasks R5 to R7; OD-ROL-2 | Not started | — |
 | U3 | A prototype on one Linux machine and one Mac: the second unit, the rename, the rollback of a version that stops at once and of one that does not answer, also after a restart of the machine (ROL-030). A record with measured results. | — | Not started | — |
 | U4 | The contract: how the hub tells a version, how a daemon gets the record and the file, the states of a machine. | A ruling for OD-W10 and for K8; OD-ROL-1 | Not started | — |
 | U5 | The pure rules: the order of a rollout, the steps, the first machine, the states (ROL-023 to ROL-028, ROL-039 to ROL-041). | U4 | Not started | — |
-| U6 | Stage B in the hub and the agent: fetch, verify, serve, replace, check, roll back. Hub API, then `anima`, then MCP. | U2, U3, U5 | Not started | — |
+| U6 | Stage B in the hub and the daemon: fetch, verify, serve, replace, check, roll back. Hub API, then `anima`, then MCP. | U2, U3, U5 | Not started | — |
 | U7 | Stage B in the client: the Updates group, the confirmation, the rollout, the list of machines. | U6 | Not started | — |
 | U8 | The automatic update of machines (ROL-046 to ROL-050). | U6 | Not started | — |
 | U9 | The gates of ROL-034 and ROL-037. | The first release (task R7): before it, no earlier release exists to test against | Not started | — |
 | U10 | Stage C: the image of the hub in the release, the replacement of the hub with the backup and the check (ROL-019, ROL-033, ROL-035). | U6, U9; FND-006; the operator for the first installation on the VPS (VPS-005) | Not started | — |
 | U11 | The security review of the update. | U6; then U10 | Not started | — |
 
-No release was published on 2026-11-16 (operator: "were still pre release"). The release record in [releases.md](../procedures/releases.md) holds the state now; the macOS releases of 2026-11-17 carry a daemon that reports its version only if they were built after U1. Thus no machine has a
-released daemon, and ROL-044 applies only to the daemons that the operator built by hand. If U1 is
-done before the first release (task R7), each released daemon reports its version from the start.
-U1 and U3 need no release. U2 and each later task wait for task R7.
+The release record in [releases.md](../procedures/releases.md) holds what is released. The macOS releases 0.2.0 and 0.2.1 do not have U1: its commits are not in them. Thus no machine has a released daemon that reports its version, and ROL-044 applies only to the daemons that the operator built by hand. The next release carries U1.
+U1 and U3 need no release. U2 and each later task need a release for their target.
 
 ## Needs
 
 - A decision on OD-W23 (the tier) and on OD-ROL-1 to OD-ROL-14.
 - The operator accepts the larger risk of the key again, or selects a second key (OD-ROL-2).
-- A ruling number in `programme.md` for OD-W10, with the change to MET-002.
+- A ruling number in `docs/rulings.md` for OD-W10, with the change to MET-002.
 - A ruling for the change to K8, or for a new contract (CON-001).
 - The first release (task R7), which only the operator can do.
 - The security reviewer for ROL-010, ROL-015, ROL-019 and ROL-030 (a `security` task).
-- After approval: one issue for each stage, with the labels of Section 4 of the work plan.
+- After approval: one work item for each stage in [work-items/](../work-items/README.md), with the row of Section 4 of the work plan that it serves (R-119).
