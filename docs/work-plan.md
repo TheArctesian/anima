@@ -20,7 +20,7 @@ The work plan contains no build requirements. Each requirement is in the plan or
 | You want to | Read |
 | --- | --- |
 | Start a session | `AGENTS.md`, "Start of a session": get `main`, find the work, find the task, read the claims, claim the task, build, finish |
-| Know what to do next | Section 4, [plan/priorities.md](plan/priorities.md): the first row whose column "Waits for" names a daemon |
+| Know what to do next | Section 4, [plan/priorities.md](plan/priorities.md): the first row whose column "Waits for" names an agent |
 | Know what a different session builds now | [claims/README.md](claims/README.md), PLN-022: one file for each task that is taken |
 | Know the state of a plan | Section 9, [plan/register.md](plan/register.md) |
 | Find the document that owns a requirement or an identifier | Section 5, [plan/ownership.md](plan/ownership.md) |

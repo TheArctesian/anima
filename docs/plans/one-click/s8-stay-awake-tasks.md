@@ -115,7 +115,7 @@ Choices made while building, after the reviews:
 
 Results: [need-human-testing.md](../../need-human-testing.md), section "Checks that other documents hold", holds the result of each check below (PLN-014).
 
-The operator does these on a real computer. No daemon ran `sudo`, changed a power setting or
+The operator does these on a real computer. No agent ran `sudo`, changed a power setting or
 closed a lid. This Mac had `SleepDisabled 1` from a different tool during the build (F-6): turn
 that tool off first, or check 3 shows only that Anima leaves the setting alone.
 

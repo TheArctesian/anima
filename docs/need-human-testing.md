@@ -476,7 +476,7 @@ Steps: [phase-2-acceptance.md](archive/phase-2/phase-2-acceptance.md), "Operator
 | O-6 | The web view on macOS: fingerprint, a changed certificate, the Down page | A device web interface with an untrusted certificate | 9 | Open |
 | O-7 | OD-7 on Linux: the trust hook spike. Also the frame time of the Devices page | A Linux desktop | 9 | Open |
 | O-8 | SSH metrics: a new point each 30 s, the bars on the card | One Linux device and one macOS device with SSH | 11 | Open |
-| O-9 | Docker, SNMP, Tailscale ping and systemd checks | An SSH device with Docker and systemd. An SNMP v3 daemon. The LocalAPI proxy on the VPS | 15 | Open |
+| O-9 | Docker, SNMP, Tailscale ping and systemd checks | An SSH device with Docker and systemd. An SNMP v3 agent. The LocalAPI proxy on the VPS | 15 | Open |
 
 ### Phase 3
 
@@ -548,7 +548,7 @@ One visit to a machine can close many rows.
 | The `x86_64` Linux build computer | S3-T10 |
 | This Mac only | S2-T9, S6-1, S8-1 to S8-8, P-3, P-13, CLI-2, CLI-4 |
 | A shell on the VPS | P-1, P-16, O-9 |
-| Special set-up | O-5 (a relay and a device that sleeps), O-9 (SNMP v3 daemon), S3-T13 (a Mac that can lose power), S6-4 (the router), S6-5 (no UDP), P-14 (Prometheus) |
+| Special set-up | O-5 (a relay and a device that sleeps), O-9 (SNMP v3 agent), S3-T13 (a Mac that can lose power), S6-4 (the router), S6-5 (no UDP), P-14 (Prometheus) |
 
 ### A real release
 

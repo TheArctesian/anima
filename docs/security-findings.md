@@ -22,8 +22,8 @@ that owns the area.
   - Open: the weakness is present, or a correction is built but a person did not test it.
   - Accepted: the operator accepts the weakness as it is. The entry gives the reason.
   - Corrected: the correction is merged and its tests and its human test passed.
-- Only the operator sets an entry to Accepted or Corrected. If the operator tells a daemon the
-  decision, the daemon writes it in the entry with the date.
+- Only the operator sets an entry to Accepted or Corrected. If the operator tells an agent the
+  decision, the agent writes it in the entry with the date.
 - When a correction is built, write "built" and the commit. Do not write "corrected" until the
   operator closes the entry (`AGENTS.md`, section "Human testing").
 - Do not delete an entry. Move a closed entry to "Closed" at the end of this document.

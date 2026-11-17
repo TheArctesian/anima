@@ -28,7 +28,7 @@ The operator selected one home with copies, not a copy on each node that syncs b
 
 - "lets go with the one in the side chat as the every machine has alocal copy doesn't really
   make sense as different computer have different capacities"
-- "i don't want to choose it it should be as hands off as possible and policy not daemon makes a
+- "i don't want to choose it it should be as hands off as possible and policy not agent makes a
   decison, maybe at least 2 copies"
 - On a switch that needs one confirmation, a per-machine key switch, and encrypted pieces of
   bulk data on other machines: "ya i don't mind that", then "okay yeah lets do that".

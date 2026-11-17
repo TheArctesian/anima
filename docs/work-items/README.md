@@ -83,7 +83,7 @@ Rules:
 | [OD-E10](decisions/OD-E10.md) | Decide: Price source for holdings the source does not price | Decision | Open at import | 3b (the other extensions) | [extensions-plan.md](../plans/extensions-plan.md) Section 7 | #29 |
 | [OD-E3](decisions/OD-E3.md) | Decide: Check SimpleFIN Bridge coverage for the US accounts | Decision | Open at import | 3b (the other extensions) | [extensions-plan.md](../plans/extensions-plan.md) Section 7 | #30 |
 | [OD-C1](decisions/OD-C1.md) | Decide: Hardware of each compute node | Decision | Open at import | 1 (decisions and approvals) | [compute-plan.md](../plans/compute-plan.md) Section 15 | #43 |
-| [OD-C2](decisions/OD-C2.md) | Align shared metrics/compute daemon with separate personal collector | Decision | Open at import | 1 (decisions and approvals) | [compute-plan.md](../plans/compute-plan.md) Section 15 | #44 |
+| [OD-C2](decisions/OD-C2.md) | Align shared metrics/compute agent with separate personal collector | Decision | Open at import | 1 (decisions and approvals) | [compute-plan.md](../plans/compute-plan.md) Section 15 | #44 |
 | [OD-C3](decisions/OD-C3.md) | Decide: Conformance tolerances | Decision | Open at import | 4 (Level 2) | [compute-plan.md](../plans/compute-plan.md) Section 15 | #45 |
 | [OD-C4](decisions/OD-C4.md) | Decide: Where the block adapters live | Decision | Open at import | 4 (Level 2) | [compute-plan.md](../plans/compute-plan.md) Section 15 | #46 |
 | [OD-C5](decisions/OD-C5.md) | Decide: Router location | Decision | Open at import | 1 (decisions and approvals) | [compute-plan.md](../plans/compute-plan.md) Section 15 | #47 |
@@ -102,7 +102,7 @@ Rules:
 | [GH-57](device-manager/GH-57.md) | Put the anima command line in the .dmg and the AppImage | Work item | Closed 2026-11-13 (see its comments) | — | [design-spec.md](../spec/design-spec.md) Section 3.11 (INS-001 to INS-009) | #57 |
 | [GH-58](device-manager/GH-58.md) | Marketing website with the install links | Work item | Closed 2026-11-13 (see its comments) | — | [design-spec.md](../spec/design-spec.md) Section 3.12 (SITE-001 to SITE-012) | #58 |
 | [GH-60](device-manager/GH-60.md) | Try the anima command line and the MCP server against a real hub and a real client | Checklist | Open at import | — (register row of the command line plan) | [cli-mcp-plan.md](../plans/cli-mcp-plan.md) Section 3 | #60 |
-| [DMN-1](device-manager/DMN-1.md) | Rename the program `anima-daemon` to `anima-daemon` | Work item | Built (2026-11-17, the merge of the branch `rename/anima-daemon`). Not Done: the checks HT-018 and HT-019 wait for the operator | 0 (finish the device manager) | [design-spec.md](../spec/design-spec.md) Section 6.9 and `contracts/daemon-push.md` (K8) | — (R-126) |
+| [DMN-1](device-manager/DMN-1.md) | Rename the program `anima-agent` to `anima-daemon` | Work item | Built (2026-11-17, the merge of the branch `rename/anima-daemon`). Not Done: the checks HT-018 and HT-019 wait for the operator | 0 (finish the device manager) | [design-spec.md](../spec/design-spec.md) Section 6.9 and `contracts/daemon-push.md` (K8) | — (R-126) |
 
 ## Defects
 

@@ -9,7 +9,7 @@ evidence: T1 to T9 have commits on `main` (merge `f367f819`); T10, the daemon's 
 Progress: the plan register in [work-plan.md](../../work-plan.md) Section 9 holds the state of this plan (PLN-005).
 
 Plan item S5 of `docs/plans/one-click/one-click-plan.md` (Section 4.5), built on S1 (`s1-link-tasks.md`).
-Security tag: each task gets the `reviewer` and the `reviewer-security` daemon.
+Security tag: each task gets the `reviewer` and the `reviewer-security` agent.
 
 ## 1. What the hub does today
 
