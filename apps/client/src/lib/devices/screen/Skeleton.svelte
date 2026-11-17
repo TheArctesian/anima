@@ -69,12 +69,16 @@
   .table th,
   .table td {
     box-sizing: border-box;
-    block-size: var(--device-row-block-size);
     padding: 0;
     border-bottom: var(--border-thin) solid var(--border-strong);
   }
 
+  .table th {
+    block-size: var(--control-lg);
+  }
+
   .table td {
+    block-size: var(--device-row-block-size);
     background: var(--surface-raised);
   }
 </style>

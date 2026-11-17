@@ -8,6 +8,7 @@
      from public CDNs so it opens straight from the repository. -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400&family=IBM+Plex+Sans:wght@200;400;500&display=swap" rel="stylesheet">
+<link href="../../../apps/client/src/styles/tokens.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/iconify-icon@2.1.0/dist/iconify-icon.min.js"></script>
 <style>
 /* ---------- Tokens: Graphite, with the proposed additions (D1, D5, D7, D8, D10) ---------- */
@@ -577,25 +578,30 @@ a.row:hover .go, .row.link:hover .go { color:var(--accent); transform:translateX
 .dl-search:focus-within { border-color:var(--accent); background:var(--surface-base); }
 .menu [role="menuitemradio"][aria-checked="true"] { color:var(--text); background:var(--surface-hover); }
 
-.dl { list-style:none; }
-.dl-head, .dl-row { display:grid; grid-template-columns:6rem minmax(11rem,.8fr) 3.5rem 8rem minmax(16rem,1.3fr) 6.5rem; align-items:center; gap:0 20px; padding:0 8px; }
-.dl-head { height:34px; }
+.dl { list-style:none; container-type:inline-size; }
+.dl-head, .dl-row { display:grid; grid-template-columns:calc(var(--space-16) * 3 + var(--space-4)) minmax(0,20%) var(--space-16) clamp(var(--space-16),calc(80cqi - var(--space-16) * 11),calc(var(--space-16) * 2)) minmax(0,1fr) calc(var(--control-md) * 3 + var(--space-8)); align-items:center; }
+.dl-head { min-height:var(--control-lg); }
 .dl-head .c-uptime { text-align:right; }
+.dl-head .c-beats { line-height:var(--leading-tight); letter-spacing:var(--tracking-small); }
+.dl-head > span, .dl-row > span { min-width:0; padding-inline:var(--space-2); }
 .dl-group { display:flex; align-items:center; gap:8px; height:34px; margin-top:14px; padding:0 8px; border-bottom:1px solid var(--border-subtle); }
 .dl-group .n { color:var(--text-quiet); letter-spacing:0; }
-.dl-row { min-height:52px; border-bottom:1px solid var(--border-subtle); cursor:pointer; transition:background .15s var(--ease-enter); }
+.dl-row { min-height:calc(var(--control-lg) + var(--space-5)); padding-block:var(--space-2); border-bottom:1px solid var(--border-subtle); cursor:pointer; transition:background .15s var(--ease-enter); }
 .dl-row:hover { background:linear-gradient(90deg, var(--surface-hover), transparent 85%); }
-.c-name { display:flex; align-items:center; gap:10px; min-width:0; }
-.c-name iconify-icon { color:var(--text-tertiary); font-size:15px; flex:none; }
-.c-name a { font-weight:var(--weight-medium); color:var(--text); white-space:nowrap; }
+.c-name .name-line { display:flex; align-items:center; gap:var(--space-2); }
+.c-name iconify-icon { color:var(--text-tertiary); font-size:var(--icon-md); flex:none; }
+.c-name a { font-weight:var(--weight-medium); color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .c-name a:hover { text-decoration:underline; text-underline-offset:3px; }
-.c-name .host { color:var(--text-tertiary); font-size:var(--text-sm); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.c-name .host { display:block; margin-inline-start:calc(var(--icon-md) + var(--space-2)); color:var(--text-tertiary); font-size:var(--text-sm); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .c-uptime { text-align:right; color:var(--text-secondary); font-size:var(--text-sm); }
-.c-beats .beats { width:100%; }
+.c-beats .beats { width:100%; justify-content:flex-end; overflow:hidden; }
+.c-beats .beats i { flex:none; }
 .c-connect { display:flex; justify-content:flex-end; gap:2px; }
+.dl-row .c-connect { flex-wrap:wrap; }
 .c-meta { display:none; }
 .meters { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; width:100%; }
 .meters.n4 { grid-template-columns:repeat(4,minmax(0,1fr)); }
+.dl-row .meters { grid-template-columns:repeat(auto-fit,minmax(min(100%,var(--space-16)),1fr)); gap:var(--space-2); }
 .meters .m { display:flex; flex-direction:column; gap:3px; font-size:var(--text-sm); color:var(--text-secondary); min-width:0; }
 .meters .k { display:flex; align-items:center; gap:4px; font-size:11px; color:var(--text-tertiary); white-space:nowrap; overflow:hidden; }
 .meters .k iconify-icon { font-size:12px; color:var(--text-quiet); flex:none; }
@@ -636,6 +642,7 @@ p.dl-group { margin-top:18px; }
   /* two lines per device: name, then status · host · uptime; meters or the reason on the right */
   .dl-head { display:none; }
   .dl-row { grid-template-columns:minmax(9rem,.8fr) minmax(0,1.4fr) 6.5rem; grid-template-areas:"name detail connect" "meta detail connect"; padding:8px 8px 8px 12px; gap:2px 20px; }
+  .dl-row > span { padding-inline:0; }
   .dl-row .c-status, .dl-row .c-uptime, .dl-row .c-beats { display:none; }
   .dl-row .c-name { grid-area:name; }
   .dl-row .c-name .host { display:none; }
@@ -1594,7 +1601,7 @@ function groups(list) {
 function row(d) {
   return `<li class="dl-row s-row-${d.status}" onclick="if(!event.target.closest('button,a'))location.hash='device'">
       <span class="c-status">${statusWord(d)}</span>
-      <span class="c-name"><iconify-icon icon="${d.os}"></iconify-icon><a href="#device">${d.name}</a><span class="mono host">${d.host}</span></span>
+      <span class="c-name"><span class="name-line"><iconify-icon icon="${d.os}"></iconify-icon><a href="#device">${d.name}</a></span><span class="mono host">${d.host}</span></span>
       <span class="c-uptime num">${pct(d.up)}</span>
       <span class="c-beats"><span class="beats">${beats(d.status)}</span></span>
       <span class="c-detail">${d.status === "up" ? meters(d.m, d) : why(d)}</span>
@@ -1604,7 +1611,7 @@ function row(d) {
 }
 function rows(list) {
   if (!list.length) return empty();
-  return `<ul class="dl"><li class="dl-head caps"><span class="c-status">Status</span><span class="c-name">Name</span><span class="c-uptime">24 h</span><span class="c-beats">Last 50 checks</span><span class="c-detail">Usage, or what is wrong</span><span class="c-connect">Connect</span></li>
+  return `<ul class="dl"><li class="dl-head caps"><span class="c-status">Status</span><span class="c-name">Name</span><span class="c-uptime">24 h</span><span class="c-beats">Last 50 checks</span><span class="c-detail">Usage</span><span class="c-connect">Connect</span></li>
     ${groups(list).map(([title, l]) => (title ? `<li class="dl-group caps">${title}<span class="n num">${l.length}</span></li>` : "") + l.map(row).join("")).join("")}</ul>`;
 }
 function tiles(list) {

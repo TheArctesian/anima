@@ -5,5 +5,5 @@
   /* Header, host, uptime and footer, then the metric row and the grid gap above it (--space-2, the card's gap). */
   --device-card-block-size: calc(var(--space-16) * 2 + var(--space-8) + var(--metric-bars-block-size) + var(--space-2));
   --device-card-min-inline-size: calc(var(--space-16) * 6);
-  --device-row-block-size: var(--target-min-touch);
+  --device-row-block-size: calc(var(--control-lg) + var(--space-5));
 }
