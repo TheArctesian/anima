@@ -108,7 +108,7 @@ opt-in step (CMD-037, CMD-038), never part of installation. Pasting the snippet 
 ## Rulings (operator, 2026-11-16)
 
 - **General rule.** Each safety setting in this area is the user's choice. The default is the
-  equivalent of full auto, as in the MCP proposal (MCP-024). A step that hands over a secret
+  equivalent of full auto, as in the MCP ruling R-120 (MCP-024). A step that hands over a secret
   still asks first.
 - **INS-009.** The installer still never edits the shell profile. `anima shell setup` and the
   Settings CLI installer add the line only when the operator says yes (CMD-037, CMD-038).

@@ -122,7 +122,7 @@ A step that fails does not stop the rest.
 ## Conflicts: ruled (operator, 2026-11-16)
 
 - **General rule.** Each safety setting here is the user's choice. The default is the
-  equivalent of full auto, as in MCP-024. A step that hands over a secret, such as copying a
+  equivalent of full auto, as in MCP-024 (R-120). A step that hands over a secret, such as copying a
   private key (REP-009), still asks first.
 - **MET-002.** Exception granted: the agent may install apps and copy files when it applies a
   profile (REP-023). By the general rule, the per-apply confirmation is on by default only for

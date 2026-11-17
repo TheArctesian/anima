@@ -2,6 +2,9 @@
 
 Progress: the plan register in [work-plan.md](work-plan.md) Section 9 holds the state of this plan (PLN-005).
 
+Version 0.2 (2026-11-16): the MCP server is fully automatic by default (R-120, MCP-024 to
+MCP-026). The change is ruled and is not built: the code still starts with every change tool `off`.
+
 Version 0.1 (draft, 2026-11-12). Operator instruction, 2026-11-12: "plan out a CLI first and then
 a MCP such that coding agents like yourself can use it. The CLI should mirror all the app
 functionality and so show the MCP". And: "all new features first get built into CLI then MCP then
@@ -195,8 +198,10 @@ Not in the command line, with the reason:
   a hub change.
 - **MCP-002.** Each tool has one state: `allow` (listed; the agent may call it), `ask` (listed;
   each call needs the person's approval, MCP-013) or `off` (not listed, and refused if called,
-  without a hub request). With nothing saved, every read tool is `allow` and every change tool is
-  `off`: the server is read-only.
+  without a hub request). With nothing saved, every read tool and every change tool is `allow`:
+  the server is fully automatic (operator ruling R-120, 2026-11-16; MCP-024). The switch "Ask
+  before destructive actions" (MCP-025) puts the destructive tools in state `ask`. Before R-120, a
+  change tool was `off` with nothing saved.
 - **MCP-003.** The hub token is the real limit. The server shows only the tools that its token
   can use. With an API key, the limits of INT-003 apply and the hub enforces them.
 - **MCP-004.** No tool takes a secret and no tool returns one. Thus these are not tools: set a
@@ -240,16 +245,22 @@ Not in the command line, with the reason:
   Settings panel reads this form. `permissions set` takes `--allow`, `--ask` and `--off` with
   comma lists of tool or tool set names; the bulk forms `--allow-all`, `--ask-all`, `--off-all`,
   narrowed by `--toolset <set>` and `--kind read|change`; and `--read-only` (every change tool
-  `off`). Bulk forms apply first, then `--allow`, `--ask`, `--off`. An unknown name exits 2 and
-  lists the valid names. `--allow-all` that covers change tools needs `--yes` or a yes at the
-  terminal. `permissions reset` deletes the saved states of the hub. A `set` or `reset` that
-  widens access (a tool or a kind's default moves toward `allow`) needs a terminal on standard
-  input; without one it exits 2, whatever `--yes` says, and names the terminal and the desktop
-  app's Settings. A change toward `off` works anywhere.
+  `off`). Bulk forms apply first, then `--allow`, `--ask`, `--off`. `--ask-destructive` and
+  `--no-ask-destructive` turn on and off the switch of MCP-025; `show` prints its state. An unknown
+  name exits 2 and lists the valid names. `--allow-all` that covers change tools needs `--yes` or a
+  yes at the terminal. `permissions reset` deletes the saved states of the hub and turns the
+  switch off. A `set` or `reset` that widens access from a saved choice (a saved `ask` or `off`
+  of a tool or of a kind's default moves toward `allow`, or the switch moves from on to off) needs
+  a terminal on standard input; without one it exits 2, whatever `--yes` says, and names the
+  terminal and the desktop app's Settings. A change toward `off` or `ask`, and turning the switch
+  on, works anywhere. With R-120 the default is already `allow`, so nothing widens from the
+  default.
 - **MCP-015.** The flags of `anima mcp` apply to one run and only narrow: `--toolsets a,b` turns
   off every tool outside those sets; `--read-only` turns off every change tool. The one
   exception is `--allow-write [sets]`: it allows the change tools (of every set, or of the sets
-  named) that have no saved choice and no saved `change` default. A saved `off` or `ask` is
+  named) that have no saved choice and no saved `change` default. With R-120 those tools are
+  already `allow`, so the flag changes nothing unless a saved default or choice says `ask` or
+  `off`; it stays for old configuration files and old start lines. A saved `off` or `ask` is
   never weakened by a flag. The token comes last: an API key never gets a tool that needs a
   login token, whatever is saved (MCP-003).
 - **MCP-016.** The server instructions, the line on standard error at start, and
@@ -316,34 +327,35 @@ The desktop application has an "MCP" section on the Settings page. It sets the s
   this computer, which a browser cannot read, and the hub does not hold them: they belong to the
   computer that runs `anima mcp`, not to the account.
 
-### Proposed change: fully automatic by default (operator direction, 2026-11-16)
+### Fully automatic by default (operator ruling R-120, 2026-11-16)
 
-Not yet approved. If approved, it replaces the defaults of MCP-002 and of Settings "Reset",
-and the line under "Tools" below. The operator's words: "have destructive be gated by an are you
-sure that can be ignored in the MCP settings, off by default (essentially fully auto by default)".
+Ruled by the operator on 2026-11-16, and not built. It replaces the earlier defaults of MCP-002 and
+of Settings "Reset", and the line under "Tools" below. The operator's words: "have destructive be
+gated by an are you sure that can be ignored in the MCP settings, off by default (essentially fully
+auto by default)".
 
-- **MCP-024 (proposed).** With nothing saved, every read tool and every change tool is `allow`.
-  The server is fully automatic: an agent can change and delete without a question. A new tool
-  takes this default too (MCP-012).
-- **MCP-025 (proposed).** Settings and `anima mcp permissions set` gain one switch, "Ask before
-  destructive actions", off by default. When it is on, every tool with `destructiveHint`
-  (MCP-009) is in state `ask` (MCP-013) unless the operator chose a state for that tool. The
-  operator's choices for single tools still win, and `off` still hides a tool.
-- **MCP-026 (proposed).** Every destructive call that runs without a question must be in the
-  hub's audit log with the tool, its arguments (cleaned, as in MCP-013) and the MCP client
-  name, so the operator can see what an agent deleted.
+- **MCP-024.** With nothing saved, every read tool and every change tool is `allow`. The server is
+  fully automatic: an agent can change and delete without a question. A new tool takes this default
+  too (MCP-012).
+- **MCP-025.** Settings and `anima mcp permissions set` have one switch, "Ask before destructive
+  actions". It is off for a new user. When it is on, every tool with `destructiveHint` (MCP-009) is
+  in state `ask` (MCP-013) unless the operator chose a state for that tool. The operator's choices
+  for single tools still win, and `off` still hides a tool.
+- **MCP-026.** Every destructive call that runs without a question must be in the hub's audit log
+  with the tool, its arguments (cleaned, as in MCP-013) and the MCP client name, so the operator
+  can see what an agent deleted.
 - Unchanged: MCP-004 (no secrets), MCP-005 (no trust decisions), MCP-006 (no command on a
   device), MCP-007 (a delete still names the thing in `confirm`) and MCP-008 (device text is
   data). The command line keeps CMD-024: a delete asks at the terminal unless it gets `--yes`.
-- To rule on: MCP-014 says that widening access needs a terminal on standard input. With
-  MCP-024 the default is already wide, so that rule then applies only to a change away from a
-  saved `ask` or `off`. The main risk is an agent that obeys text from a device or a web page
-  (MCP-008) and then deletes without a question. The audit log (MCP-026) and the switch
-  (MCP-025) are the answer to that risk.
+- **How MCP-014 applies.** The default is already wide, so the rule that widening needs a terminal
+  applies only to a change away from a saved `ask` or `off`, and to turning the switch of MCP-025
+  off after it was on. The main risk is an agent that obeys text from a device or a web page
+  (MCP-008) and then deletes without a question. The audit log (MCP-026) and the switch (MCP-025)
+  are the answer to that risk.
 
 ### Tools
 
-Read tools are `allow` and change tools are `off` by default (MCP-002). L: needs a login token.
+Every tool is `allow` by default (MCP-002, MCP-024, R-120). The switch of MCP-025 puts the destructive tools in state `ask`. L: needs a login token.
 
 | Set | Read | Change |
 | --- | --- | --- |
@@ -402,8 +414,8 @@ has no free memory, or a tool or a build target is absent. They must tell the ag
    The contract change still needs a programme ruling number (design specification OD-15).
 3. **Login token for the MCP server.** The "L" tools work only when the operator starts
    `anima mcp` with a login token. That gives the agent more than INT-003 permits an API key.
-   They are `off` until the operator sets them to `allow` or `ask` (MCP-002); the operator can
-   decide to remove them.
+   With R-120 they are `allow` by default like every tool (MCP-002, MCP-024), and the operator
+   can set them to `ask` or `off`, or decide to remove them.
 4. **Distribution.** Decided (operator, 2026-11-13) and built (branch `fix/bundle-anima`):
    `anima` is inside the disk image and the AppImage of the desktop application, at the same
    version, and Settings > Updates > Command line tool puts it on the `PATH` (design
@@ -438,7 +450,8 @@ has no free memory, or a tool or a build target is absent. They must tell the ag
 10. **Accepted risk: the operator's own account.** `anima mcp permissions set` and `reset` widen
     access only with a terminal on standard input (MCP-014). A program that runs commands as the
     operator can still edit the configuration file by hand, start the server with
-    `--allow-write`, or run the command inside a pseudo-terminal. The check stops an agent from
+    `--allow-write`, or run the command inside a pseudo-terminal. With R-120 the default is already wide, so the check
+    protects only a saved `ask` or `off`. The check stops an agent from
     widening its access by accident or because a refusal told it how; it does not stop an agent
     that sets out to do it. The hub token stays the real limit (MCP-003).
 11. **SET-004 lists the sections.** Closed (operator, 2026-11-13): `docs/design-spec.md` SET-004
@@ -472,8 +485,8 @@ tools that are on:
    - **It can carry text out.** It can copy text it read from a private repository (an issue, a
      comment, a pull request, a commit message, a file in its own checkout) into an issue or a
      comment in any repository the GitHub App can reach, a public one included. What limits it:
-     the issue tools are off until the operator turns them on (MCP-002), `ask` shows each call's
-     values before it runs (MCP-013), the App reaches only the repositories it was installed on,
+     the issue tools are `allow` by default (MCP-024, R-120) and the operator can set them to `ask`
+     or `off`; `ask` shows each call's values before it runs (MCP-013), the App reaches only the repositories it was installed on,
      and the audit log records each change with the key that made it (PRJ-028, LOG-018). Nothing
      checks where the text came from.
    - **A comment can start a workflow.** An issue or a comment made through the GitHub App is an
@@ -481,11 +494,9 @@ tools that are on:
      `issues` or a label event runs, with the repository's secrets, and its steps may read the
      text the agent wrote. So the issue tools can start code that `workflow start` would need a
      login token and a confirmation for. This was not tested against GitHub.
-   - **The issue tools can be on without being named.** A tool with no choice of its own takes
-     its kind's saved default (MCP-012), and `--allow-write` allows the change tools with no saved
-     choice (MCP-015). An operator who set `change` to `allow` or `ask` before the issue tools
-     existed, or who starts the server with `--allow-write`, has them on without having named
-     them. This is the model as decided; the risk is accepted here, not changed. `anima mcp
+   - **The issue tools are on without being named.** A tool with no choice of its own takes its
+     kind's default (MCP-012), which is `allow` (MCP-024, R-120). An operator who did not name
+     them has them on. This is the model as decided; the risk is accepted here, not changed. `anima mcp
      permissions show` and the line at start (MCP-016) list them.
 5. **The operator's login token, no declaration.** A program that obtains the operator's stored
    login token (from the key store or the token file, or from `ANIMA_TOKEN`) and sends no agent
