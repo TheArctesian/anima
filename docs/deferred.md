@@ -72,7 +72,7 @@ Added 2026-11-04 to 2026-11-13, top of the issue.
 
 Added 2026-11-04 to 2026-11-13, top of the issue.
 
-- [ ] **Extensions** are tracked as separate issues with the [`extensions` label](https://github.com/TheArctesian/anima/issues?q=is%3Aissue+label%3Aextensions): engine [E0-1](work-items/engine/E0-1.md)–[E0-8](work-items/engine/E0-8.md), extensions [XP-01](work-items/extensions/XP-01.md)–[XP-14](work-items/extensions/XP-14.md), decisions [SPEC](work-items/extensions/SPEC.md)–[OD-E3](work-items/decisions/OD-E3.md), accounts and keys [KEYS](work-items/extensions/KEYS.md), seams [SEAMS](work-items/extensions/SEAMS.md). Plan: `docs/extensions-plan.md`. Start only after the device manager build is finished (PH-E-000).
+- [ ] **Extensions** are tracked as work items (they were issues with the `extensions` label before R-119): engine [E0-1](work-items/engine/E0-1.md)–[E0-8](work-items/engine/E0-8.md), extensions [XP-01](work-items/extensions/XP-01.md)–[XP-14](work-items/extensions/XP-14.md), decisions [SPEC](work-items/extensions/SPEC.md)–[OD-E3](work-items/decisions/OD-E3.md), accounts and keys [KEYS](work-items/extensions/KEYS.md), seams [SEAMS](work-items/extensions/SEAMS.md). Plan: `docs/extensions-plan.md`. Start only after the device manager build is finished (PH-E-000).
 
 ### Proposals after Phase 1 (docs/programme/proposals)
 
