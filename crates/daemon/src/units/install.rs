@@ -198,8 +198,9 @@ fn replace_file(file: &Path, dir: &Path, text: &str) -> Result<(), InstallError>
 }
 
 /// Runs each step in order; a failure stops the rest unless the step may fail. For a step that
-/// may fail, a program that cannot start or that runs past its deadline is a failure too, so
-/// the unit of the old program (R-126) never stops the install of the new one.
+/// may not run (the two that retire the unit of the old program, R-126), a program that cannot
+/// start or that runs past its deadline is a failure too, so it never stops the install of the
+/// new one. Any other step that cannot run is [`InstallError::Run`].
 pub(super) fn run_steps(
     steps: &[Step],
     mut run: impl FnMut(&Step) -> io::Result<bool>,
@@ -207,13 +208,10 @@ pub(super) fn run_steps(
     for step in steps {
         let ok = match run(step) {
             Ok(ok) => ok,
-            Err(_) if step.may_fail => false,
-            Err(source) => {
-                return Err(InstallError::Run {
-                    program: step.program,
-                    source,
-                });
-            }
+            Err(source) => match tolerate(step, source) {
+                Ok(()) => false,
+                Err(error) => return Err(error),
+            },
         };
         if !ok && !step.may_fail {
             return Err(InstallError::Step {
@@ -223,6 +221,21 @@ pub(super) fn run_steps(
         }
     }
     Ok(())
+}
+
+/// The one place where an I/O error of a step is dropped: a step that may not run (the unit of
+/// the old program) says nothing to the operator when it does not run, because the old unit is
+/// most often not there, and the steps that follow install the new unit whatever became of it.
+/// This crate has no log; any other step's error is returned.
+fn tolerate(step: &Step, source: io::Error) -> Result<(), InstallError> {
+    if step.may_not_run {
+        Ok(())
+    } else {
+        Err(InstallError::Run {
+            program: step.program,
+            source,
+        })
+    }
 }
 
 #[cfg(test)]
@@ -260,11 +273,11 @@ mod tests {
     }
 
     #[test]
-    fn r_126_a_step_that_may_fail_can_also_time_out_or_not_start() {
+    fn r_126_a_retire_step_that_times_out_or_does_not_start_does_not_stop_the_install() {
         let mut ran = Vec::new();
         let result = run_steps(&macos(), |step| {
             ran.push(step.args[0].clone());
-            if step.may_fail {
+            if step.may_not_run {
                 Err(io::Error::from(io::ErrorKind::TimedOut))
             } else {
                 Ok(true)
@@ -272,6 +285,31 @@ mod tests {
         });
         result.expect("only the last step must succeed");
         assert_eq!(ran, ["bootout", "-f", "bootout", "bootstrap"]);
+    }
+
+    #[test]
+    fn r_126_a_bootout_of_the_current_label_that_times_out_or_does_not_start_is_an_error() {
+        for kind in [io::ErrorKind::TimedOut, io::ErrorKind::NotFound] {
+            let mut ran = Vec::new();
+            let result = run_steps(&macos(), |step| {
+                ran.push(step.args[0].clone());
+                let current = step
+                    .args
+                    .last()
+                    .is_some_and(|a| a.ends_with("ing.anima.daemon"));
+                if current {
+                    Err(io::Error::from(kind))
+                } else {
+                    Ok(true)
+                }
+            });
+            let error = result.expect_err("the bootout must run");
+            assert!(
+                matches!(&error, InstallError::Run { program: "/bin/launchctl", source } if source.kind() == kind),
+                "{error}"
+            );
+            assert_eq!(ran, ["bootout", "-f", "bootout"]);
+        }
     }
 
     #[test]

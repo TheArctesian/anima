@@ -57,9 +57,11 @@ const OLD_LABEL: &str = "ing.anima.agent";
 fn retire_old(stop: Step, file: &std::path::Path) -> Vec<Step> {
     let mut stop = stop;
     stop.may_fail = true;
+    stop.may_not_run = true;
     let mut delete = Step::new("/bin/rm", &["-f"]);
     delete.args.push(file.display().to_string());
     delete.may_fail = true;
+    delete.may_not_run = true;
     vec![stop, delete]
 }
 
@@ -273,7 +275,11 @@ mod tests {
             plan.steps[1].args,
             ["-f", "/home/ada/Library/LaunchAgents/ing.anima.agent.plist"]
         );
-        assert!(plan.steps[..2].iter().all(|step| step.may_fail));
+        assert!(
+            plan.steps[..2]
+                .iter()
+                .all(|step| step.may_fail && step.may_not_run)
+        );
         let plan = Plan {
             steps: plan.steps.into_iter().skip(2).collect(),
             ..plan
@@ -284,6 +290,10 @@ mod tests {
             PathBuf::from("/home/ada/Library/Application Support/anima-daemon")
         );
         assert!(plan.steps[0].may_fail);
+        assert!(
+            !plan.steps[0].may_not_run,
+            "the current label's bootout must run"
+        );
         assert_eq!(plan.steps[0].retry_after, None);
         assert_eq!(plan.steps[1].retry_after, Some(BOOTSTRAP_RETRY));
         assert_eq!(plan.steps[0].args, ["bootout", "gui/501/ing.anima.daemon"]);

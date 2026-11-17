@@ -23,6 +23,9 @@ pub struct Step {
     pub args: Vec<String>,
     /// A failure is expected and fine (`launchctl bootout` of a daemon that is not loaded).
     pub may_fail: bool,
+    /// The program may also not start, or run past its deadline, without an error for the
+    /// install. Only the two steps that retire the unit of the old program (R-126) set it.
+    pub may_not_run: bool,
     /// Variables the command gets besides `PATH`: the session bus for `systemctl --user`.
     pub env: Vec<(&'static str, String)>,
     /// When the first run fails, wait this long and run it once more (`launchctl bootstrap`
@@ -36,6 +39,7 @@ impl Step {
             program,
             args: args.iter().map(|arg| (*arg).to_owned()).collect(),
             may_fail: false,
+            may_not_run: false,
             env: Vec::new(),
             retry_after: None,
         }

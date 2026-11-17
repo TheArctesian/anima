@@ -54,7 +54,7 @@ The hub reads at most the limit and answers 413 without reading further. A body 
   otherwise. Either way it is looked up only among API tokens and keys, so a daemon token never reaches
   GraphQL, a session or a read (MET-013).
 - (R-126) The program was `anima-agent` and its token was `anima_agent_` + 43 base64url characters. Such a
-  token is not a credential: migration 0717 deleted each token and each enrolment code, so each device enrols
+  token is not a credential: migration 0718 deleted each token and each enrolment code, so each device enrols
   again. The access guard still refuses that spelling before any lookup, and a scanner still finds it.
 - No log, event, metric, error message or response other than `Enrolled` and `Renewed` holds a code or a token
   (LOG-007, MET-013). The Rust types that hold them implement neither `Debug`, `Display` nor `Clone`, and wipe

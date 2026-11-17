@@ -31,13 +31,17 @@ the one source of truth; [docs/work-plan.md](docs/work-plan.md) is the entry poi
 4. **Read the claims.** Look at [docs/claims/](docs/claims/README.md) on `origin/main`. If a claim
    holds the task, a different session builds it. Take the next task or ask the operator.
 5. **Claim the task.** Make the claim in a small worktree of its own, so that it never carries
-   your other changes: `git worktree add --detach ../claim origin/main`. In it, write
-   `docs/claims/<task>.md` with the task, the plan, the name of this machine in Anima, your
+   your other changes: `git worktree add --detach ../claim-<task> origin/main` (for example
+   `../claim-e0-5`). If that folder already exists, a session of this computer has or had this
+   claim in progress. Do not use the folder. Look at it and ask the operator. In the worktree,
+   write `docs/claims/<task>.md` with the task, the plan, the name of this machine in Anima, your
    coding agent, the branch and the day. If the task is new, add its row to the plan in the same
-   commit and run `bun run quality:register`. Run `bun run quality:documents`, commit, run
-   `git push origin HEAD:main`, then `git worktree remove ../claim`. If the push is refused, run
-   `git fetch origin`, `git reset --hard origin/main` in that worktree, read the claims again and
-   try again only if the task is free. Then start or update your branch from `origin/main`
+   commit and run `bun run quality:register`. Run `bun run quality:documents`, commit, and run
+   `git push origin HEAD:main`. If the push is refused, run `git fetch origin` and
+   `git reset --hard origin/main` in the same worktree, and read the claims again. The reset
+   removes your claim commit. If the task is free, write the claim file again, commit, and push
+   again. When the push has succeeded, or you give the task up, run
+   `git worktree remove ../claim-<task>`. Then start or update your branch from `origin/main`
    (`git switch -c <branch> origin/main`, or `git merge origin/main` on a branch that exists), so
    that it holds the claim (PLN-022).
 6. **Build** on a branch, in its own worktree, from the task and the requirements that it names.
@@ -49,7 +53,7 @@ the one source of truth; [docs/work-plan.md](docs/work-plan.md) is the entry poi
    with its commit (PLN-008), delete your claim, and run `bun run quality:register` if the state of
    the plan changed (PLN-020).
 8. **If you stop before the end,** delete your claim on `main` with the same steps as step 5 (a
-   small worktree, a commit that deletes the file, a push), and write in the task row what is
+   small worktree `../claim-<task>`, a commit that deletes the file, a push), and write in the task row what is
    built, unless you will continue on the same machine. Push your branch, so that a different
    session can find the work.
 

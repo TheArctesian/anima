@@ -2,8 +2,8 @@ import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { checkDocuments, MOCKUP, parseKnown } from "../src/documents/documents.ts";
-import { hasQueue, QUEUE } from "../src/documents/queue.ts";
-import { hasList, REGISTER } from "../src/documents/register.ts";
+import { QUEUE } from "../src/documents/queue.ts";
+import { REGISTER } from "../src/documents/register.ts";
 import { listMeasurableFiles, readRepoFile, REPO_ROOT } from "../src/repository.ts";
 import { report } from "../src/report.ts";
 
@@ -25,7 +25,8 @@ function layoutChangedSince(screen: string, commit: string): number | undefined 
 
 const exists = (path: string): boolean => existsSync(join(REPO_ROOT, path));
 const violations = checkDocuments(documents, exists, known, layoutChangedSince);
-// A register with no markers has no generated list, so nothing would compare it with the headers.
-if (!hasList(readRepoFile(REPO_ROOT, REGISTER))) violations.push({ path: REGISTER, signal: "register-without-list", detail: "the two marker comments of the generated list are missing" });
-if (!existsSync(join(REPO_ROOT, QUEUE)) || !hasQueue(readRepoFile(REPO_ROOT, QUEUE))) violations.push({ path: QUEUE, signal: "queue-without-list", detail: "the file or its two marker comments are missing" });
+// The generated parts are checked inside `checkDocuments`; a file that does not exist is not in its list.
+for (const [path, signal] of [[REGISTER, "register-without-list"], [QUEUE, "queue-without-list"]] as const) {
+  if (!exists(path)) violations.push({ path, signal, detail: "the file is missing" });
+}
 process.exit(report("documents", violations));

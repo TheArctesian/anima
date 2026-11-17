@@ -1,11 +1,16 @@
 import { describe, expect, test } from "bun:test";
 import { checkDocuments, definedIdentifiers, linkTargets, parseKnown, type Document } from "../src/documents/documents.ts";
 import { queueRows } from "../src/documents/queue.ts";
-import { hasList, registerRows, withRows } from "../src/documents/register.ts";
+import { registerRows, withRows } from "../src/documents/register.ts";
 
 const REGISTER = "docs/plan/register.md";
 const INDEX = "docs/work-items/README.md";
 const PLAN_TEXT = "---\nkind: Plan\nstate: Draft\nevidence: none\n---\n\n# Plan\n";
+
+/** The register with the given text outside its generated list, and the list that agrees with `documents`. */
+function registered(text: string, documents: Document[]): Document {
+  return { path: REGISTER, text: `${text}\n${registerRows(documents)}` };
+}
 
 function check(documents: Document[], known: string[] = []) {
   const paths = new Set(documents.map((document) => document.path));
@@ -42,51 +47,41 @@ describe("PLN-017 links", () => {
 
 describe("PLN-001 PLN-012 lists", () => {
   test("a plan, a proposal and a task breakdown that the register names pass", () => {
-    expect(
-      check([
-        { path: REGISTER, text: "[a](../plans/compute-plan.md) [b](../proposals/jobs.md) [c](../plans/one-click/s1-link-tasks.md)" },
-        { path: "docs/plans/compute-plan.md", text: PLAN_TEXT },
-        { path: "docs/proposals/jobs.md", text: PLAN_TEXT },
-        { path: "docs/plans/one-click/s1-link-tasks.md", text: PLAN_TEXT },
-      ]),
-    ).toEqual([]);
+    const plans = [
+      { path: "docs/plans/compute-plan.md", text: PLAN_TEXT },
+      { path: "docs/proposals/jobs.md", text: PLAN_TEXT },
+      { path: "docs/plans/one-click/s1-link-tasks.md", text: PLAN_TEXT },
+    ];
+    const links = "[a](../plans/compute-plan.md) [b](../proposals/jobs.md) [c](../plans/one-click/s1-link-tasks.md)";
+    expect(check([registered(links, plans), ...plans])).toEqual([]);
   });
 
   test("a proposal that the register does not name fails", () => {
-    expect(
-      check([
-        { path: REGISTER, text: "" },
-        { path: "docs/proposals/new-idea.md", text: PLAN_TEXT },
-      ]),
-    ).toEqual(["docs/proposals/new-idea.md: plan-not-in-register no link in docs/plan/register.md"]);
+    const idea = { path: "docs/proposals/new-idea.md", text: PLAN_TEXT };
+    expect(check([{ path: REGISTER, text: registerRows([]) }, idea])).toEqual([
+      "docs/proposals/new-idea.md: plan-not-in-register no link in docs/plan/register.md",
+      "docs/plan/register.md: register-out-of-date run `bun run quality:register`",
+    ]);
   });
 
   test("a plan with no kind and state in its header fails", () => {
-    expect(
-      check([
-        { path: REGISTER, text: "[a](../plans/compute-plan.md)" },
-        { path: "docs/plans/compute-plan.md", text: "# Plan\n\n| Status | Draft |\n" },
-      ]),
-    ).toEqual(["docs/plans/compute-plan.md: plan-without-state its header needs `kind:` and a `state:` that starts with a word of PLN-007"]);
+    const plan = { path: "docs/plans/compute-plan.md", text: "# Plan\n\n| Status | Draft |\n" };
+    expect(check([registered("[a](../plans/compute-plan.md)", [plan]), plan])).toEqual(["docs/plans/compute-plan.md: plan-without-state its header needs `kind:` and a `state:` that starts with a word of PLN-007"]);
   });
 
   test("a state that is not a word of PLN-007 fails", () => {
+    const plan = { path: "docs/plans/compute-plan.md", text: "---\nkind: Plan\nstate: Nearly there\n---\n" };
     expect(
-      check([
-        { path: REGISTER, text: "[a](../plans/compute-plan.md)" },
-        { path: "docs/plans/compute-plan.md", text: "---\nkind: Plan\nstate: Nearly there\n---\n" },
-      ]).map((line) => line.split(" ").slice(0, 2).join(" ")),
+      check([registered("[a](../plans/compute-plan.md)", [plan]), plan]).map((line) => line.split(" ").slice(0, 2).join(" ")),
     ).toEqual(["docs/plans/compute-plan.md: plan-without-state"]);
   });
 
   test("the work plan and a report are not plans", () => {
-    expect(
-      check([
-        { path: REGISTER, text: "" },
-        { path: "docs/work-plan.md", text: "" },
-        { path: "docs/research/motion/phase-1.md", text: "" },
-      ]),
-    ).toEqual([]);
+    const others = [
+      { path: "docs/work-plan.md", text: "" },
+      { path: "docs/research/motion/phase-1.md", text: "" },
+    ];
+    expect(check([registered("", others), ...others])).toEqual([]);
   });
 
   test("a work item that the index does not name fails", () => {
@@ -122,10 +117,11 @@ describe("PLN-020 the register is generated", () => {
     expect(check([stale, plan, spec])).toEqual(["docs/plan/register.md: register-out-of-date run `bun run quality:register`"]);
   });
 
-  test("a register with no markers has no generated list", () => {
+  test("a register with no markers has no generated list, and the check says so", () => {
     expect(withRows("no markers", rows)).toBeUndefined();
-    expect(hasList("no markers")).toBe(false);
-    expect(hasList(rows)).toBe(true);
+    expect(check([{ path: REGISTER, text: "[a](../proposals/jobs.md) [b](../spec/design-spec.md)" }, plan, spec])).toEqual([
+      "docs/plan/register.md: register-without-list the two marker comments of the generated list are missing",
+    ]);
   });
 
   test("a plan with a state and no evidence fails", () => {
@@ -158,9 +154,8 @@ describe("PLN-019 mockups", () => {
 describe("PLN-016 one owner for an identifier", () => {
   const first = { path: "docs/plans/compute-plan.md", text: `${PLAN_TEXT}- **CMP-003.** The node must report.` };
   const second = { path: "docs/spec/design-spec.md", text: `${PLAN_TEXT}**CMP-003.** A second text.\nSee CMP-003 and **CMP-004**.` };
-  const register = { path: REGISTER, text: "[a](../plans/compute-plan.md) [b](../spec/design-spec.md)" };
-
-  const alone = { path: REGISTER, text: "[a](../plans/compute-plan.md)" };
+  const register = registered("[a](../plans/compute-plan.md) [b](../spec/design-spec.md)", [first, second]);
+  const alone = registered("[a](../plans/compute-plan.md)", [first]);
 
   test("an identifier that two documents define fails at the second document", () => {
     expect(check([register, first, second])).toEqual([
@@ -176,7 +171,7 @@ describe("PLN-016 one owner for an identifier", () => {
   test("a definition with a title, and one in a numbered list, are definitions; the archive is not read", () => {
     expect(definedIdentifiers("- **PLN-001. One register.** a\n1. **ROL-002.** b\n- **PLN-002:** a note\n1. **D-1.** a local number")).toEqual(["PLN-001", "ROL-002"]);
     const old = { path: "docs/archive/phase-1/implementation-plan.md", text: "**CMP-003.** old" };
-    expect(check([alone, first, old])).toEqual([]);
+    expect(check([registered("[a](../plans/compute-plan.md)", [first, old]), first, old])).toEqual([]);
   });
 
   test("a definition is a bold identifier with a full stop at the start of a line", () => {
@@ -224,6 +219,20 @@ describe("PLN-022 claims", () => {
   });
 });
 
+describe("PLN-022 one task, whichever plan", () => {
+  test("the same task claimed through two plans fails", () => {
+    const text = (plan: string) => `---\ntask: C1\nplan: ${plan}\nmachine: studio\nagent: Codex\nbranch: b\nstarted: 2026-11-17\n---\n`;
+    const plans = ["docs/plans/a-plan.md", "docs/plans/b-plan.md"].map((path) => ({ path, text: "| C1 |" }));
+    const claims = [
+      { path: "docs/claims/a.md", text: text(plans[0]?.path ?? "") },
+      { path: "docs/claims/b.md", text: text(plans[1]?.path ?? "") },
+    ];
+    expect(check([...plans, ...claims]).filter((line) => line.includes("task-claimed-twice"))).toEqual([
+      "docs/claims/b.md: task-claimed-twice docs/claims/a.md holds the same task",
+    ]);
+  });
+});
+
 describe("PLN-019 a mockup agrees with the application", () => {
   const index = (state: string, compared: string) => ({
     path: "docs/mockup/README.md",
@@ -248,6 +257,11 @@ describe("PLN-019 a mockup agrees with the application", () => {
 
   test("a commit that the repository does not have fails", () => {
     expect(run("Approved", "`abc1234`", undefined)).toEqual(["mockup-commit-not-found abc1234 of [a.html](a.html)"]);
+  });
+
+  test("a built mockup that names a commit and no screen fails", () => {
+    const bare = { path: "docs/mockup/README.md", text: index("Built", "`abc1234`").text.replace("[devices](../../apps/client/src/routes/devices)", "none") };
+    expect(checkDocuments([bare, files[0] ?? bare], () => true, new Set()).map((v) => v.signal)).toEqual(["mockup-without-screens"]);
   });
 
   test("a mockup that is not built can wait for its first comparison; a built one cannot, and a day is not a commit", () => {
@@ -285,7 +299,6 @@ describe("PLN-023 the operator queue and the tasks for an agent", () => {
     expect(rows).toContain("| OD-C1 | Which store? | Postgres. | [plans/compute-plan.md](plans/compute-plan.md) |");
     // A question with the word closed, and a result that says Not decided, are open.
     expect(rows).toContain("| OD-C3 | Is the port closed when the client is closed? | Not decided. Yes is better. |");
-    expect(rows).toContain("| D-1 | Which name? | Anima. |");
     expect(rows).not.toContain("OD-C2");
     expect(rows).toContain("| [plans/compute-plan.md](plans/compute-plan.md) | Plan | Draft |");
   });
@@ -296,6 +309,52 @@ describe("PLN-023 the operator queue and the tasks for an agent", () => {
     expect(only([queue, ...documents])).toEqual([]);
     expect(only([{ ...queue, text: queue.text.replace("Which store?", "Which shop?") }, ...documents])).toEqual([
       "docs/operator-queue.md: queue-out-of-date run `bun run quality:register`",
+    ]);
+  });
+
+});
+
+describe("PLN-023 what the queue lists", () => {
+  const asking = (id = "D-1") => ({ path: "docs/plans/one-click/s1-link-tasks.md", text: `| ID | Question | Recommendation |\n| --- | --- | --- |\n| ${id} | Which name? | Anima. |\n` });
+  const plan = { path: "docs/plans/compute-plan.md", text: "| ID | Decision | Reason |\n| --- | --- | --- |\n| D-1 | Which name? | Anima. |\n" };
+  const priorities = (waits: string) => ({
+    path: "docs/plan/priorities.md",
+    text: `| Row | Tier | Work | Category | State | Waits for |\n| --- | --- | --- | --- | --- | --- |\n| 4.1 | 0 | The engine | See | In progress | ${waits} |\n`,
+  });
+  const only = (documents: Document[]) => check(documents).filter((line) => line.includes("agent-task") || line.includes("queue"));
+
+  test("a recorded decision is not in the queue, and a question that waits for the operator is", () => {
+    expect(queueRows([plan])).not.toContain("D-1");
+    expect(queueRows([asking()])).toContain("| D-1 | Which name? | Anima. | [plans/one-click/s1-link-tasks.md](plans/one-click/s1-link-tasks.md) |");
+    const questions = { path: "docs/proposals/power-health.md", text: "| ID | Question | Recommendation |\n| --- | --- | --- |\n| Q1 | Which limit? | Ten. |\n" };
+    expect(queueRows([questions])).toContain("| Q1 | Which limit? | Ten. |");
+  });
+
+  test("the same number in two documents gives two rows", () => {
+    const other = { ...asking(), path: "docs/plans/one-click/s2-vnc-tasks.md" };
+    const rows = queueRows([asking(), other]).split("\n").filter((line) => line.startsWith("| D-1 |"));
+    expect(rows).toHaveLength(2);
+  });
+
+  test("an older check is open only when its last cell is", () => {
+    const checks = (state: string) => ({
+      path: "docs/need-human-testing.md",
+      text: `## Checks that other documents hold\n\n| Check | State |\n| --- | --- |\n| Open the door | ${state} |\n`,
+    });
+    expect(queueRows([checks("Passed")])).not.toContain("Open the door");
+    expect(queueRows([checks("Open. It waits for a device.")])).toContain("| Open the door | Open. It waits for a device. |");
+  });
+
+  test("every Agent clause of a row needs a link, and a lower-case word is prose", () => {
+    expect(only([priorities("Agent: A1 of [the plan](../plans/compute-plan.md). Agent: build the service")])).toEqual([
+      "docs/plan/priorities.md: agent-task-without-link row 4.1",
+    ]);
+    expect(only([priorities("Operator: approval; the agent: builds it")])).toEqual([]);
+  });
+
+  test("a queue or a register without markers fails with its signal", () => {
+    expect(only([{ path: "docs/operator-queue.md", text: "no markers" }])).toEqual([
+      "docs/operator-queue.md: queue-without-list the two marker comments of the generated part are missing",
     ]);
   });
 });

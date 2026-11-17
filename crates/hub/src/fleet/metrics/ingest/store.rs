@@ -1,4 +1,4 @@
-//! All SQL on `metrics.daemons` and `metrics.enrolments` (K2 0710, 0712, 0716). Lookups are by hash
+//! All SQL on `metrics.daemons` and `metrics.enrolments` (K2 0710, 0712, 0716, 0717, 0718). Lookups are by hash
 //! only; the time is a parameter, and a value is usable until, not at, its expiry.
 
 use daemon_core::wire::{CodeHash, TokenHash};

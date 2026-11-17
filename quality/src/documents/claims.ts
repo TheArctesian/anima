@@ -1,24 +1,12 @@
 import { posix } from "node:path";
 import type { Violation } from "../report.ts";
 import type { Document } from "./documents.ts";
+import { header } from "./register.ts";
 
 /** A claim: one file that says which machine and which coding agent builds a task now (PLN-022). */
 export const CLAIM = /^docs\/claims\/(?!README\.md$)[^/]+\.md$/;
 const KEYS = ["task", "plan", "machine", "agent", "branch", "started"] as const;
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
-
-/** The `key: value` lines between the two `---` lines that start a claim. */
-export function claimFields(text: string): Map<string, string> {
-  const fields = new Map<string, string>();
-  const lines = text.split("\n");
-  if (lines[0]?.trim() !== "---") return fields;
-  for (const line of lines.slice(1)) {
-    if (line.trim() === "---") break;
-    const colon = line.indexOf(":");
-    if (colon > 0) fields.set(line.slice(0, colon).trim(), line.slice(colon + 1).trim());
-  }
-  return fields;
-}
 
 function escaped(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -34,14 +22,14 @@ function fieldViolations(claim: Document, fields: Map<string, string>, exists: (
   return details.map((detail) => ({ path: claim.path, signal: "claim-not-complete", detail }));
 }
 
-/** PLN-022: each claim names its task, plan, machine, agent, branch and day, and one claim holds a task. */
+/** PLN-022: each claim names its task, plan, machine, agent, branch and day, and one claim holds a task, whichever plan it names. */
 export function checkClaims(documents: Document[], exists: (path: string) => boolean): Violation[] {
   const holder = new Map<string, string>();
   const violations: Violation[] = [];
   for (const claim of documents.filter((document) => CLAIM.test(document.path))) {
-    const fields = claimFields(claim.text);
+    const fields = header(claim.text);
     violations.push(...fieldViolations(claim, fields, exists));
-    const task = `${posix.normalize(fields.get("plan") ?? "")} ${(fields.get("task") ?? "").toLowerCase()}`;
+    const task = (fields.get("task") ?? "").trim().toLowerCase();
     const plan = documents.find((document) => document.path === posix.normalize(fields.get("plan") ?? ""));
     // The plan names the task as a word of its own: `T1` is not in a plan that has only `T10`.
     const named = new RegExp(`(?<![A-Za-z0-9-])${escaped(fields.get("task") ?? "")}(?![A-Za-z0-9-])`, "i");

@@ -394,16 +394,18 @@ Result: Open.
 Built: the program `anima-agent` is `anima-daemon` ([DMN-1](work-items/device-manager/DMN-1.md), R-126). The hub
 accepts only `/daemon/v1/...` and a token that starts with `anima_daemon_`. `anima-daemon install`
 stops and deletes the unit of the old program (`anima-agent.service`, or `ing.anima.agent` on macOS).
-Migration 0717 renames the table and the metrics source and deletes each old token and each
-enrolment code, so no old token is valid under a new spelling.
+Migration 0717 renames the table and the metrics source. Migration 0718 deletes each old token
+and each enrolment code, so no old token is valid under a new spelling.
 
 The tests use a fake hub and a planned list of commands. No test ran on a machine that has the old
 program, and no test ran the migration on the database of the real hub.
 
-1. Deploy the hub of this build (VPS-005). Expected: the hub starts, and migration 0717 is in its
+1. Deploy the hub of this build (VPS-005). Expected: the hub starts, and migrations 0717 and 0718 are in its
    log with no error.
 2. Open the client. Expected: each device that had the source "Agent" shows the source "Daemon"
    and is stale. No device shows new metrics from the old program.
+   The hub writes no event and sends no notification when the devices go stale after this
+   migration, so look at the device list.
 3. On one machine, install the new program: download or build `anima-daemon`, then run
    `anima-daemon install` (or `sudo anima-daemon install --system` for a system unit).
    Expected: the command ends with no error. For a system unit, the first run stops and prints a

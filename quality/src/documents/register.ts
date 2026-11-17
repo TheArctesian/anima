@@ -1,6 +1,7 @@
 import { posix } from "node:path";
 import type { Violation } from "../report.ts";
 import type { Document } from "./documents.ts";
+import { replaceBlock } from "./generated.ts";
 
 /** The register: the file that holds the generated list of the plans (PLN-001, PLN-020). */
 export const REGISTER = "docs/plan/register.md";
@@ -54,17 +55,9 @@ export function registerRows(documents: Document[]): string {
   return [START, "", "| Document | Kind | State | Evidence |", "| --- | --- | --- | --- |", ...rows, "", END].join("\n");
 }
 
-/** If `register` has the two markers of its generated list. Without them nothing is checked. */
-export function hasList(register: string): boolean {
-  return register.includes(START) && register.includes(END);
-}
-
 /** `register` with its generated list replaced by `rows`; undefined when it has no markers. */
 export function withRows(register: string, rows: string): string | undefined {
-  const start = register.indexOf(START);
-  const end = register.indexOf(END);
-  if (start === -1 || end === -1) return undefined;
-  return register.slice(0, start) + rows + register.slice(end + END.length);
+  return replaceBlock(register, START, END, rows);
 }
 
 /** PLN-020: a plan gives its kind and its state in its header, and the register agrees. */
@@ -80,7 +73,9 @@ export function checkRegister(documents: Document[], isPlan: (path: string) => b
   }
   const register = documents.find((document) => document.path === REGISTER);
   const current = register === undefined ? undefined : withRows(register.text, registerRows(documents));
-  if (register !== undefined && current !== undefined && current !== register.text) {
+  if (register !== undefined && current === undefined) {
+    violations.push({ path: REGISTER, signal: "register-without-list", detail: "the two marker comments of the generated list are missing" });
+  } else if (register !== undefined && current !== register.text) {
     violations.push({ path: REGISTER, signal: "register-out-of-date", detail: "run `bun run quality:register`" });
   }
   return violations;
