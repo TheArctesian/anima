@@ -1,0 +1,12 @@
+query RecordLinkList($record: String!) {
+  recordLinks(record: $record) {
+    id
+    source
+    target
+    kind
+    label
+    sourceTitle
+    targetTitle
+    createdAt
+  }
+}

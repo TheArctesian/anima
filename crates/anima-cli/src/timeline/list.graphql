@@ -1,0 +1,23 @@
+query TimelineList($from: DateTime!, $to: DateTime!, $categories: [EvidenceCategory!], $first: Int, $after: String) {
+  timeline(from: $from, to: $to, categories: $categories, first: $first, after: $after) {
+    edges {
+      cursor
+      node {
+        reference
+        source
+        category
+        title
+        start
+        end
+        receivedAt
+        basis
+        uncertainty
+        supersededBy
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+  }
+}

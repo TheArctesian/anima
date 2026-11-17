@@ -10,6 +10,7 @@ mod notifications;
 mod projects;
 mod releases;
 mod retention;
+mod shared_records;
 mod source_secrets;
 mod sources;
 mod vpn;

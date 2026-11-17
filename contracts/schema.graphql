@@ -2469,6 +2469,73 @@ input CommitStatusInput {
   targetUrl: String
 }
 
+# ---------------------------------------------------------------- timeline and record links (E0-4, K-E3, K-E4)
+# Operator, 2026-11-16; ruling number to be assigned. Requirement IDs: TML-001 to TML-007, LNK-001, LNK-002, LNK-004.
+
+"The closed list of TML-004. A new value needs a change to docs/extensions-plan.md."
+enum EvidenceCategory { SLEEP WORKOUT VISIT TRAVEL CODE MESSAGE POST MEDIA READING SPENDING DOCUMENT DEVICE SESSION NOTE }
+
+"How the source knows what an entry says (TML-003)."
+enum EvidenceBasis { OBSERVED PLANNED OPERATOR_REPORTED INFERRED }
+
+"One entry of the timeline. The hub makes it from a record of the owning domain when the timeline is read; it is not stored (TML-001)."
+type Evidence {
+  "The record this entry is made from, as kind:id (K-E4), for example event:0192f5a0-7c3e-7a52-9d1b-3f4e5a6b7c8d."
+  reference: String!
+  "The key of the source that recorded it, for example event_log."
+  source: String!
+  category: EvidenceCategory!
+  "One line for a list."
+  title: String!
+  start: DateTime!
+  "Null: the source gives no end time. Then uncertainty says so (TML-006)."
+  end: DateTime
+  "When the hub received the record, when that is later than the event, such as a delayed import (TML-009). It never replaces start. Null: the hub saw the event when it happened, as for the event log."
+  receivedAt: DateTime
+  basis: EvidenceBasis!
+  "What the source does not say about this entry, one sentence each (TML-006)."
+  uncertainty: [String!]!
+  "The reference of the entry of a higher-ranked source for the same event (TML-005). The entry that has it is kept, not deleted. It is set only when both entries are among those read for this page."
+  supersededBy: String
+}
+
+type EvidenceEdge {
+  cursor: String!
+  node: Evidence!
+}
+
+type EvidenceConnection {
+  edges: [EvidenceEdge!]!
+  pageInfo: PageInfo!
+}
+
+"A link from one record to another (LNK-001). Neither record has to exist (LNK-002)."
+type RecordLink {
+  id: ID!
+  "The record the link starts at, as kind:id."
+  source: String!
+  "The record the link points to, as kind:id."
+  target: String!
+  "What the link means, in lower snake case, for example lent_to."
+  kind: String!
+  "The text to show for the target while it has no record (LNK-002). It is kept after the target has one."
+  label: String
+  "The name of the source record. Null: no domain gives one. A date or a repository key is its own name."
+  sourceTitle: String
+  "The name of the target record. Null: no domain gives one; show label."
+  targetTitle: String
+  createdAt: DateTime!
+}
+
+input RecordLinkInput {
+  source: String!
+  target: String!
+  "Lower snake case, 1 to 40 characters, starts with a letter."
+  kind: String!
+  "One line of at most 200 characters."
+  label: String
+}
+
 # ---------------------------------------------------------------- root types
 
 type Query {
@@ -2530,6 +2597,12 @@ type Query {
   # Tool inventory (operator, 2026-11-15, CAP-020 to CAP-031; ruling number to be assigned)
   "Each device whose agent sent a tool inventory, by device name (byte order). tool: only the devices where that tool is usable. buildTarget: only the devices with that Rust target. A name the hub does not know matches no device (CAP-030). Open to a read key."
   capabilities(tool: String, buildTarget: String): [DeviceCapabilities!]!
+
+  # Timeline and record links (operator, 2026-11-16; ruling number to be assigned; K-E3, K-E4)
+  "What happened from `from` up to, not including, `to`, newest first: by start, then by reference, both descending. categories null: all; empty: none. first is 1 to 200. VALIDATION when to is not after from."
+  timeline(from: DateTime!, to: DateTime!, categories: [EvidenceCategory!], first: Int = 100, after: String): EvidenceConnection!
+  "The links that start or end at record (kind:id), newest first, at most 200. VALIDATION when record is not kind:id."
+  recordLinks(record: String!): [RecordLink!]!
 
   # Projects: work, code and history (operator, 2026-11-13; ruling number to be assigned; PRJ-027 to PRJ-035, OD-E14)
   # Every field below: CONFLICT while Projects is off or while ProjectRepository.access is not READY; NOT_FOUND for an
@@ -2735,6 +2808,12 @@ type Mutation {
   createLinkInvite(name: String!): LinkInvite!
   "Removes the device with this key from the link and closes its streams; returns how many it closed (LNK-004). NOT_FOUND when the link does not list the key. Writes an audit entry. Login or browser token only (D-23)."
   revokeLinkDevice(key: String!): Int!
+
+  # Timeline and record links (operator, 2026-11-16; ruling number to be assigned; K-E4)
+  "Links two records. A second call with the same source, target and kind returns the stored link and writes nothing; with a new label it replaces the label. VALIDATION for text that is not kind:id, for a record linked to itself, and for a repository, place, person or date key that is not in its one form (LNK-004)."
+  linkRecords(input: RecordLinkInput!): RecordLink!
+  "Removes one link and returns its ID. The two records are not changed. NOT_FOUND when no link has this ID."
+  unlinkRecords(id: ID!): ID!
 }
 
 type Subscription {

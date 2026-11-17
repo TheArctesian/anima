@@ -15,7 +15,9 @@
     "api_errors",
     "text",
     "fingerprint",
-    "core_dumps"
+    "core_dumps",
+    "records",
+    "instants"
   ],
   "wiring": [
     "main",
@@ -105,6 +107,12 @@
       "events",
       "access"
     ],
+    "timeline": [
+      "events"
+    ],
+    "links": [
+      "events"
+    ],
     "link": []
   },
   "graphql": {
@@ -154,6 +162,12 @@
       "access"
     ],
     "projects": [
+      "access"
+    ],
+    "timeline": [
+      "access"
+    ],
+    "links": [
       "access"
     ],
     "link": [

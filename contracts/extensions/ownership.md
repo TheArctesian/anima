@@ -9,14 +9,16 @@ Status: new (operator, 2026-11-13; ruling number to be assigned). Proposed for t
 | 0221 | credentials (engine addition) | `credentials` | `source_secrets` |
 | 2000–2019 | engine/sources | `sources` | `accounts`, `sync_runs` |
 | 2020–2029 | engine/extensions | `extensions` | `switches` |
-| 2030–2099 | reserved for the other engine domains | — | not assigned now |
+| 2030–2039 (operator, 2026-11-16; ruling number to be assigned; K-E4) | engine/links | `links` | `record_link` |
+| 2040–2099 | reserved for the other engine domains | — | not assigned now |
 | 2100–3599 | the extensions, as Section 5.2 of `docs/extensions-plan.md` (Projects 2200–2299) | — | — |
 
 ## 2. Rules
 
 - A foreign key points only into a lower range: `projects -> sources -> credentials`.
 - The K2 rule "the string `"<schema>.` may appear only under the domain folder" reads, after the hub regroup, as: only under `crates/hub/src/<group>/<domain>/` (`fleet/`, `engine/`, `work/`).
-- Hub paths: the engine is `crates/hub/src/engine/` (`sources`, `extensions`); Projects is `crates/hub/src/work/projects/`. The credentials addition stays in `crates/hub/src/fleet/credentials/` (file `source.rs`).
+- Hub paths: the engine is `crates/hub/src/engine/` (`sources`, `extensions`; from E0-4 also `timeline`, `links` and the leaf `records.rs`). The timeline has no schema and no range (TML-001).
+- Projects is `crates/hub/src/work/projects/`. The credentials addition stays in `crates/hub/src/fleet/credentials/` (file `source.rs`).
 
 ## 3. Owned paths
 
