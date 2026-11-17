@@ -96,7 +96,7 @@ The operator decided each row on 2026-11-16.
 | --- | --- | --- |
 | OD-M1 | Is the Android client in scope? The design specification Section 1.4 put the Android package out of scope. | **Decided: yes.** One shell and one client serve both platforms (F1, F3, F6). Section 7 lists the changes to the specification. |
 | OD-M2 | When does this work start? The work plan put the iOS client at tier 4. | **Decided: start now.** The operator gave the order: "lets worry about just getting the app to work first". |
-| OD-M3 | How does a phone get to the hub? | **Decided: with no second application.** The operator's words: "I don't want the user to have to install tailscale ontop of the app remember one click install princible it should be as easy as possible". The device link (`anima-link`) is thus inside the client (Section 4.4). Version 0.1 recommended the Tailscale application; that recommendation is withdrawn. |
+| OD-M3 | How does a phone get to the hub? | **Decided: with no second application.** The operator's words: "I don't want the user to have to install tailscale ontop of the app remember one click install princible it should be as easy as possible". The device link (`anima-link`) is thus inside the client (Section 4.4). Version 0.1 recommended the Tailscale application; that recommendation is withdrawn. **Order of the work (operator, 2026-11-16): "for the tailscale thing we should just use the hub an my actual account for now".** The device link inside the client stays the decision; stage M3 waits. Until then a phone uses a hub address and the operator signs in to the real hub. |
 | OD-M4 | One shell crate, or a second crate for mobile? | **Decided: the existing crate,** `apps/desktop/src-tauri`. |
 | OD-M5 | The identifier of the two applications | **Decided: `ing.anima.mobile`** for iOS and for Android. An identifier cannot change after a release. |
 | OD-M6 | The content of the first version | **Decided: Section 1.2.** IOS-001 to IOS-004 come later (Section 6). |
@@ -181,7 +181,7 @@ Each stage ends with a build that the operator can use. The state words are thos
 | M1-3 | M1 Shell | Mobile build procedure and the compile gate | MOB-040, MOB-041, MOB-042 | Not started | — |
 | M1-4 | M1 Shell | Test: build `link/devicelink` as a library for iOS and for Android; join a test hub; get an answer at the loopback address. Write the result in this plan. | MOB-031, MOB-032, MOB-039 | In progress | The build part passes (F22); the wrapper was a throwaway and is not in the repository. Open: link the library into the shell, join a hub from the simulator and the emulator, and get an answer at the loopback address. The hub link needs a relay, so this part uses the network. |
 | M2-1 | M2 Layout | Safe area, status bar and no zoom on a field | MOB-011, MOB-012 | Done | The commit that changes this row, on the branch `mobile/m1-shell`. Checked on 2026-11-16: on the iPhone simulator the status bar area has the page colour and a field with the focus does not zoom the page; on the Android emulator the content starts below the status bar. Not checked on a real phone. |
-| M2-2 | M2 Layout | Bottom navigation bar | MOB-010, MOB-019 | In progress | The commit that changes this row. Built: the bar at the bottom with Devices, Live sessions, Logs and Settings. Checked on the Android emulator on 2026-11-16; not checked on iOS. Open against mockup 6: the label "Sessions", the sizes of the controls, and the Android gesture bar, which the bar touches. |
+| M2-2 | M2 Layout | Bottom navigation bar | MOB-010, MOB-019 | In progress | `cbabf3d2`, `147d3a93` on the branch `mobile/m1-shell`. The bar has the sizes of mockup 6: 56 px, the mark over the current destination, "Sessions" with a count only when a session is live, and 24 px for the Android gesture bar. Checked on the Android emulator on 2026-11-16 after the merge of `main`. Open: the check on iOS. |
 | M2-3 | M2 Layout | Logs as a page; names and tabs that fit | MOB-013, MOB-015 | In progress | The commit that changes this row. Built: the Logs page at `/logs`, and no logs panel in the phone layout. Checked on the Android emulator. Open: the device filter of the Logs page has no devices, and MOB-015 (names with an ellipsis, tabs that scroll). |
 | M2-4 | M2 Layout | Field behaviour, wording and the notice | MOB-014, MOB-016, MOB-018, MOB-037 | Not started | — |
 | M3-1 | M3 Link | The device link in the mobile shell, with its three commands | MOB-031, MOB-035, MOB-036 | Not started | — |
@@ -192,7 +192,7 @@ Each stage ends with a build that the operator can use. The state words are thos
 | M5-1 | M5 Release | Key store on iOS and on Android | MOB-006 | Not started | — |
 | M5-2 | M5 Release | Signatures and the first builds for the operator | OD-M5, OD-M8 | Not started | — |
 
-Order: M1, then M2. Task M1-4 can run at the same time as M2. M3 starts after M1-4 passes. M4 and M5 can run at the same time after M3.
+Order: M1, then M2. Stage M3 and the open part of task M1-4 wait (OD-M3, order of the work). Each screen of M2 must match its mockup exactly (operator, 2026-11-16: "It has to match the mock ups perfectly"). M4 and M5 can run at the same time after M3.
 
 If M1-4 fails, stop and ask the operator. Do not add a second application as a replacement (MOB-030).
 
