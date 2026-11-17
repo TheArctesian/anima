@@ -10,7 +10,7 @@ A record reference names one record of one domain. It is the text `kind:id`.
 
 - `kind` is lower snake case, 1 to 40 characters, and starts with a letter (`^[a-z][a-z0-9_]{0,39}$`). It says which sort of record it is, for example `event`, `book`, `person`. The domain that owns the record chooses it.
 - `id` is the text after the first colon: 1 to 200 characters, no control character, no space at its start or end. It is opaque. Only the owner reads a meaning into it.
-- The plan writes `table:id` (TML-002, LNK-001). The reference is not the address of a database row: `kind` is not a table name, and no code other than the owner uses `id` to read a table (operator, 2026-11-16).
+- The reference is not the address of a database row: `kind` is not a table name, and no code other than the owner uses `id` to read a table (LNK-005, operator, 2026-11-16).
 - A reference does not prove that the record exists.
 - Identity (LNK-005): the owner gives each record one reference, and it does not change when the record is imported again, so a second import resolves to the same record and makes no second one. A link to the same source, target and kind is one row, also when it is made again. How a second machine or a replica names the same record is not decided (OD-E17).
 

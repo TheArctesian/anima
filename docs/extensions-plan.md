@@ -148,7 +148,7 @@ Many sources exist only on an operator computer: AI session files, an Obsidian v
 The timeline joins the records of all sources. History, Map and Reminders read it. Auracle calls this "Evidence".
 
 - **TML-001.** The timeline must not copy data. Each domain gives an adapter that maps its table rows to Evidence.
-- **TML-002.** Each Evidence entry must have: a reference (`table:id`), the source, the category, the start time, an optional end time, the basis and a list of uncertainty notes.
+- **TML-002.** Each Evidence entry must have: a record reference (`kind:id`, LNK-005), the source, the category, the start time, an optional end time, the basis and a list of uncertainty notes.
 - **TML-003.** The basis must be one of: observed, planned, reported by the operator, or inferred.
 - **TML-004.** The categories are a closed list: sleep, workout, visit, travel, code, message, post, media, reading, spending, document, device, session and note. Add a category only with a change to this plan.
 - **TML-005.** When two sources record the same event, the timeline must keep both. The lower-ranked entry must point to the higher-ranked entry with `superseded_by`. Do not delete it.
@@ -259,7 +259,7 @@ Wardrobe, Library, Documents, Health and Money extract fields from photos and PD
 
 Extensions refer to each other only through record links. Thus no extension waits for a different extension.
 
-- **LNK-001.** The engine must keep one `record_link` table: a source reference, a target reference (`table:id`, as TML-002) and a link kind.
+- **LNK-001.** The engine must keep one `record_link` table: a source reference, a target reference (`kind:id`, LNK-005) and a link kind.
 - **LNK-002.** An extension can link to a record of an extension that does not exist yet. Until the target exists, the link keeps a text label, for example the name of a person.
 - **LNK-003.** Each record page must show its links with one shared component. An extension does not write code for the links of a different extension.
 - **LNK-004.** The engine must give shared subject keys that every extension can use without an import: a GitHub repository name, a `PlaceId`, a `PersonId` and a date.
