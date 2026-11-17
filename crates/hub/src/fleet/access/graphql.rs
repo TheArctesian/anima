@@ -49,7 +49,7 @@ impl From<&Account> for OperatorProfile {
 }
 
 /// K1 `AuthPayload`. No `Debug`: it holds the token.
-pub struct AuthPayload(SignedIn);
+pub struct AuthPayload(pub(super) SignedIn);
 
 #[Object]
 impl AuthPayload {
@@ -171,12 +171,16 @@ impl Mutation {
     }
 }
 
-/// Runs one sign-in attempt from `input` for the token `issue` names.
+/// Runs one sign-in attempt from `input` for the token `issue` names. A hosted hub refuses it
+/// before anything is recorded: its devices sign in with the account (R-129, HMD-037).
 async fn sign_in(
     ctx: &Context<'_>,
     input: LoginInput,
     issue: Issue,
 ) -> async_graphql::Result<SignedIn> {
+    if need::<Arc<Config>>(ctx)?.hosted_cloud_key_file.is_some() {
+        return Err(Error::Hosted.into_graphql());
+    }
     let attempt = Attempt {
         username: input.username,
         password: Password::new(input.password),

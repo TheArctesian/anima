@@ -10,6 +10,7 @@ mod connection;
 mod error;
 pub mod graphql;
 mod guard;
+mod hosted;
 mod identity;
 mod keys;
 mod layer;
@@ -43,7 +44,9 @@ pub use browser::{SameOrigin, cookie_value};
 pub use builder_tokens::{IssuedToken, issue_builder_token, revoke_builder_token};
 pub use connection::{MESSAGE_LIMIT, SUBPROTOCOL, SocketAccess, accept_socket};
 pub use error::Error;
+pub use graphql::AuthPayload;
 pub use guard::{Authenticated, BUILDER_FIELDS, BuilderSignedIn, SignInRequired, operator_only};
+pub use hosted::{HostedDevice, sign_in_hosted};
 pub use identity::{Identity, client_addr, identify, identify_connection, operator_for_token};
 pub use layer::{Edge, permitted_networks_layer};
 pub use origin::PublicOrigin;
@@ -58,6 +61,16 @@ use crate::{
     },
     ids::OperatorId,
 };
+
+/// Random bytes from the operating system, for a secret of another domain (a claim of a hosted
+/// hub, R-129).
+///
+/// # Errors
+///
+/// `Error::Random` when the operating system gives none.
+pub fn random_bytes<const N: usize>() -> Result<[u8; N], Error> {
+    login::random()
+}
 
 /// Login attempts are kept this long (K2 retention).
 const ATTEMPTS_KEPT: TimeDelta = TimeDelta::days(90);

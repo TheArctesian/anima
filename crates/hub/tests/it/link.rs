@@ -4,6 +4,7 @@
 
 mod control;
 mod devices;
+mod hosted;
 mod invites;
 mod refusals;
 mod unaudited;

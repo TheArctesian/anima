@@ -1,10 +1,13 @@
-import { joinLink } from '$lib/desktop/link/shell';
-import { clearAccessToken, writeAccessToken } from '$lib/desktop/token';
+import { accessApi } from '$lib/access/api';
 import { storeHubAddress } from '$lib/desktop/address';
+import { joinLink, readLink } from '$lib/desktop/link/shell';
+import { clearAccessToken, writeAccessToken } from '$lib/desktop/token';
+import { createRequestHub } from '$lib/hub/hub';
 import type { HubAccess } from './access';
 import type { Answer, HostedAccount } from './account';
 import { cloudAccount } from './cloud';
 import { joinHostedHub } from './join';
+import { markHosted } from './mark';
 import { parseFailure, standInAccount } from './stand-in';
 
 /** The cloud of the first run and the silent join of this computer to the hub. */
@@ -28,10 +31,14 @@ export function hostedParts(mode: string | undefined, query: URLSearchParams): H
     join: (access) =>
       joinHostedHub(access, {
         join: joinLink,
+        link: readLink,
+        // The claim is the credential of this request: it carries no token.
+        claim: (address, claim) => accessApi(createRequestHub({ address, token: () => Promise.resolve(null) })).claimDeviceToken(claim),
         clearToken: clearAccessToken,
         writeToken: writeAccessToken,
         saveAddress: (origin) => {
           storeHubAddress(localStorage, origin);
+          markHosted(localStorage, origin);
         },
       }),
   };

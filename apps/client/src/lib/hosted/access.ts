@@ -1,8 +1,8 @@
 /**
  * What the cloud gives after the sign-in, so that this computer reaches and uses the hub with no step of the person
- * (hosted-mode.md Section 4.3): what the link join takes, and the credential that makes this device a signed-in device
- * of the hub. It is opaque: a screen, a step or a log sees an object with no fields. Only `openAccess` reads it, for
- * the join. Whether the link part is a device grant or an invite used under the hood is the cloud's choice.
+ * (hosted-mode.md Section 4.3, R-129): the invite of the link, and the one-time claim that this device trades with the
+ * hub for its own token. The cloud never sees that token. It is opaque: a screen, a step or a log sees an object with no
+ * fields. Only `openAccess` reads it, for the join.
  */
 export interface HubAccess {
   readonly kind: 'hub-access';
@@ -10,10 +10,10 @@ export interface HubAccess {
 
 /** The parts of a `HubAccess`. Secrets: never shown, logged or kept after the join (LOG-007). */
 export interface AccessParts {
-  /** What `link_join` takes. Today that is an invite (`anima-invite.1.`). */
-  readonly link: string;
-  /** The access token of the hub for this device, kept in the key store. */
-  readonly token: string;
+  /** What `link_join` takes (`anima-invite.1.`), or `null` when this device is already on the hub's link. */
+  readonly invite: string | null;
+  /** The claim of `claimDeviceToken`: it works once, for the device that joined with `invite`. */
+  readonly claim: string;
 }
 
 const sealed = new WeakMap<HubAccess, AccessParts>();

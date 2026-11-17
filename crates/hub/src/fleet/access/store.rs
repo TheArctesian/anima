@@ -98,6 +98,32 @@ pub(super) async fn replace_operator(
     Ok((id, None))
 }
 
+/// The one operator of a hosted hub (R-129): the account that exists, or a new one named
+/// `owner` with `password_hash`, which the caller makes so that no password matches it.
+pub(super) async fn hosted_operator(
+    conn: &mut PgConnection,
+    password_hash: &str,
+    now: DateTime<Utc>,
+) -> Result<Account, sqlx::Error> {
+    let found: Option<Account> = sqlx::query_as(&format!(
+        "select {ACCOUNT_COLUMNS} from access.operators for update"
+    ))
+    .fetch_optional(&mut *conn)
+    .await?;
+    if let Some(account) = found {
+        return Ok(account);
+    }
+    sqlx::query_as(&format!(
+        "insert into access.operators (id, username, password_hash, created_at) \
+         values ($1, 'owner', $2, $3) returning {ACCOUNT_COLUMNS}"
+    ))
+    .bind(Uuid::now_v7())
+    .bind(password_hash)
+    .bind(now)
+    .fetch_one(&mut *conn)
+    .await
+}
+
 /// The one operator (OD-2): its username and whether it has a TOTP secret.
 pub(super) async fn the_operator(
     db: impl PgExecutor<'_>,

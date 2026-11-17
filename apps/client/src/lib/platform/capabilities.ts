@@ -27,6 +27,12 @@ export interface Capabilities {
   readonly stayAwake: boolean;
   /** The shell installs, starts and stops the hub on this computer and joins this device to a hub over the link (FRN-002, FRN-005). */
   readonly localHub: boolean;
+  /**
+   * The shell joins this device to a hub over the link with `link_join`, `link_status` and `link_leave` (FRN-005,
+   * MOB-002): the hosted sign-in needs it (R-129). The desktop shell runs `anima-link`; the mobile shell turns it on when
+   * the link library is in the app (MOB-031, mobile plan M3-1).
+   */
+  readonly deviceLink: boolean;
   /** The window draws its content under the OS title bar, with the window buttons over the navigation bar (macOS). */
   readonly overlayTitleBar: boolean;
 }

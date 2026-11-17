@@ -6,7 +6,7 @@
 # An addition marked @pending is ignored until the hub declares it; then the
 # programme orchestrator removes @pending (P2-002, P3-002, K7 / WP-17 E-2).
 # Conventions: contracts/conventions.md.
-# Every operation needs a valid token, except `login` and `signInBrowser` (API-003, D-4, R-111).
+# Every operation needs a valid token, except `login`, `signInBrowser`, `hostedDeviceInvite` and `claimDeviceToken` (API-003, D-4, R-111, R-129).
 
 scalar DateTime # RFC 3339, UTC
 scalar IpAddr # "10.10.0.12" or an IPv6 address
@@ -1474,6 +1474,15 @@ type LinkInvite {
   expiresAt: DateTime!
 }
 
+"""What a hosted hub gives the Anima.ing cloud for a new device (hosted-mode.md HMD-037, R-129): shown once, never logged (LOG-007)."""
+type HostedDeviceInvite {
+  "The link invite: works once and expires (LNK-003). Null when a device with this name is already on the link: the claim then gives that device a new token."
+  invite: String
+  "The one-time claim that the device that joined with invite trades for its token (claimDeviceToken)."
+  claim: String!
+  expiresAt: DateTime!
+}
+
 # ---------------------------------------------------------------- sessions (WP-10)
 
 enum Protocol {
@@ -2810,6 +2819,11 @@ type Mutation {
   createLinkInvite(name: String!): LinkInvite!
   "Removes the device with this key from the link and closes its streams; returns how many it closed (LNK-004). NOT_FOUND when the link does not list the key. Writes an audit entry. Login or browser token only (D-23)."
   revokeLinkDevice(key: String!): Int!
+  # The hosted mode: the Anima.ing account is the only way in (hosted-mode.md HMD-037, R-129)
+  "An invite and a one-time claim for the device named name, for the Anima.ing cloud only: cloudKey is the key of ANIMA_HOSTED_CLOUD_KEY_FILE. A device already on the link gets a claim and no invite. A new claim for a name ends the open claim of that name. Needs no token. FORBIDDEN on a hub that is not hosted, UNAUTHENTICATED for a wrong key. The response is no-store."
+  hostedDeviceInvite(cloudKey: String!, name: String!): HostedDeviceInvite!
+  "A login token for the device that sends this through the link, when it joined with the invite of claim. The claim works once, until its invite expires. Needs no token. FORBIDDEN on a hub that is not hosted, UNAUTHENTICATED for any other refusal. The response is no-store."
+  claimDeviceToken(claim: String!): AuthPayload!
 
   # Timeline and record links (operator, 2026-11-16; ruling number to be assigned; K-E4)
   "Links two records. A second call with the same source, target and kind returns the stored link and writes nothing; with a new label it replaces the label. VALIDATION for text that is not kind:id, for a record linked to itself, and for a repository, place, person or date key that is not in its one form (RLK-004)."

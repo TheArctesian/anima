@@ -80,7 +80,7 @@ export function standInAccount(plan: StandInPlan = {}): HostedAccount & { readon
     // A sealed access with no secret in it: the stand-in join never opens it.
     access: async () => {
       const problem = await call('access');
-      return problem === null ? answer(sealAccess({ link: 'stand-in', token: 'stand-in' })) : refusal(problem);
+      return problem === null ? answer(sealAccess({ invite: null, claim: 'stand-in' })) : refusal(problem);
     },
     /** The link join of the stand-in: it joins nothing and keeps nothing. */
     join: async () => {

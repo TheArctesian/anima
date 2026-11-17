@@ -1,7 +1,7 @@
 ---
 kind: Proposal
 state: Direction decided
-evidence: Direction decided (HM-R1 to HM-R9, operator, 2026-11-16). R-127 names task HM-T1 (the first-run screens of Sign in, with a stand-in cloud). R-128 approves HMD-037 (the first run is only the sign-in). HM-T1 is built on branch hosted-sign-in-screens, not merged; the cloud API and the grant check of the hub are not built, and the real cloud of the client is a stub. HMD-001 to HMD-036 are not approved. HM-R6: a free hub sleeps. HM-R7: Apple Pay and Google Pay. HM-R8: no staff access to hubs. HM-R9: WorkOS AuthKit (decides HM-D3). HM-D4 (second factor) is proposed, not ruled.
+evidence: Direction decided (HM-R1 to HM-R9, operator, 2026-11-16). R-127 names task HM-T1 (the first-run screens of Sign in, with a stand-in cloud). R-128 approves HMD-037 (the first run is only the sign-in). R-129 makes the account the only way into a hosted hub and approves HMD-038 to HMD-041; HM-T2 to HM-T4 build the hub and client side. HM-T1 to HM-T3 are built on branch hosted-sign-in-screens, not merged and not run against a real hub. HM-T4, the cloud API, is not built, so the real cloud of the client is a stub. HMD-001 to HMD-036 are not approved. HM-R6: a free hub sleeps. HM-R7: Apple Pay and Google Pay. HM-R8: no staff access to hubs. HM-R9: WorkOS AuthKit (decides HM-D3). HM-D4 (second factor) is proposed, not ruled.
 ---
 
 # Proposal: the hosted mode as the default first run
@@ -14,7 +14,7 @@ Version: 5. Date: 2026-11-17. Version 2 added HM-R6 (a free hub sleeps) and the 
 business vault (Section 3, fact 5). Version 3 added HM-R7 (Apple Pay and Google Pay), HM-R8 (no
 staff access to hubs), HMD-030 and HMD-031. Version 4 adds HM-R9 (WorkOS AuthKit, which decides
 HM-D3), the device-code sign-in of Section 4.1 and HMD-032 to HMD-036. HM-D4 is not ruled.
-Version 5 adds the task table of Section 8, task HM-T1 (R-127) and HMD-037 (R-128).
+Version 5 adds the task table of Section 8, task HM-T1 (R-127), HMD-037 (R-128), and HMD-038 to HMD-041 with tasks HM-T2 to HM-T4 (R-129).
 Status: the header of this document holds the state (PLN-020). History: Draft. The direction is decided by the operator (Section 2). The requirements are not
 approved.
 Map: [work-plan.md](../work-plan.md). Parent plans: [one-click-plan.md](../plans/one-click/one-click-plan.md)
@@ -134,6 +134,13 @@ Steps 1 to 3 and 5 to 8 of Section 4.1. The hub is there already, so there is no
 R-128 (operator, 2026-11-17: "It should just be signing into your account") makes this section a
 requirement:
 
+R-129 (operator, 2026-11-17: "SSO will be the only way", for hosted hubs only) gives the method:
+
+- **HMD-038.** A hosted hub must have no way in other than the Anima.ing account. It must refuse `login` and `signInBrowser`. Its one operator account must have a password that no person knows. Approved (R-129).
+- **HMD-039.** A hosted hub must make a link invite and a one-time claim only for a caller that sends the key of `ANIMA_HOSTED_CLOUD_KEY_FILE`. The hub must keep only the hash of a claim. A claim must work once, until its invite expires, and a new claim for a device must end its open claim. Approved (R-129).
+- **HMD-040.** A hosted hub must give a login token for a claim only to the device of its link that has the name of the claim, through the link. The cloud must never receive the token of a device. Approved (R-129).
+- **HMD-041.** When a device of a hosted hub must sign in again, the application must go to the first-run choices, not to the hub password page. A device that is already on the link must get a new claim and no second invite. Approved (R-129).
+
 - **HMD-037.** On a device of a hosted hub, the first run must be only the sign-in to the account. After "Sign in", the application must not show or ask for an invite, a hub address, a relay address, or a hub password or TOTP code, and must not send the person to "Join a hub" or to the hub sign-in page. After the sign-in, one answer of the cloud must give all that the application needs to join the hub and to use it as a signed-in device. The application must join with it and must not show it. Approved (R-128).
 
 ## 5. The account as the key (HM-R2)
@@ -226,6 +233,8 @@ is built in the private repository (fact 5); this repository holds the client an
 | HM-D4 | Is the second factor (HMD-006) required for each account? | Without it, one stolen sign-on session opens each device of a hub. AuthKit includes multi-factor authentication at no extra price (fact 7). | Proposed: required. Not ruled. |
 | HM-D5 | In which region is the first pool host? | The priced hosts are in the EU. No US host is priced. | Price a US host before the launch. |
 | HM-D6 | Is the directory and billing code open source? | OR-5: not open source. The operator decided the same for the cloud on 2026-11-16 (fact 5). | Decided. No change. |
+| HM-D11 | How does the device list offer "Add this computer" for a computer that reaches its hosted hub only through the link (step 8 of Section 4.1)? | The offer needs a VPN address (`apps/client/src/lib/desktop/this-machine.ts`). The link carries streams from the device to the hub only. | Add a path from the hub to the device through the link, then offer the computer by its link key. Not ruled. |
+| HM-D12 | When does a phone get the hosted sign-in? | The client gates "Sign in" on the capability `deviceLink`, which the mobile shell sets when the link library is in the app (MOB-031, MOB-002, mobile plan M3-1, deferred on 2026-11-16). The join keeps the link state and the hub token, so a restart or an iOS resume (MOB-036) reconnects with no new claim. The mobile shell keeps the token in memory only, so after a restart a phone signs in again: the cloud then gives a claim and no invite (HMD-041). The relay path from a phone is not tested. | Build the key store of the mobile shell (Keychain, Keystore) with M3-1. Not ruled. |
 | HM-D7 | Who reviews the security of the pool and of the grant path before the launch? | The pool proposal asks for a review before paying customers. HM-R2 adds the grant path. | A review by a person from outside, before the first account of a different person. |
 
 ## 8. Work, in order
@@ -245,25 +254,27 @@ Before that, only a task that a ruling names is built (PLN-007).
 | 8 | The security review (HM-D7), the terms and the text of HMD-015 | Steps 3 to 5 |
 | 9 | Split custody (OI-3 of the one-click plan) | After the launch (HM-R5) |
 
-What the code of 2026-11-17 still needs before HMD-037 is true with a real hub (steps 3 and 4).
-Each item is a place where a device that joined through the link still needs an invite or the hub
-password:
+Each place where a device that joined through the link needed an invite or the hub password, and
+what R-129 (HM-T2, HM-T3) did with it:
 
-| Place | What it does today | What must change, and on which side |
+| Place | What it did | What changed |
 | --- | --- | --- |
-| `apps/desktop/src-tauri/src/link/printed.rs` (`invite`), called by `link_join` in `apps/desktop/src-tauri/src/link.rs` | Accepts only text that starts with `anima-invite.1.`. Anything else is `bad-invite`. | If the cloud gives a device grant, the shell must accept its form too. If the cloud gives an invite, no change. |
-| `link/invites/` and `link/cmd/anima-link/join.go` | The hub admits a new device key only with a one-time invite code that the hub made (LNK-003, 15 minutes). | Hub side: accept a grant of the cloud (HMD-005), or let the cloud make the invite through the hub (next row). |
-| `createLinkInvite` in `contracts/schema.graphql` (`crates/hub/src/fleet/link/graphql.rs`) | Makes the invite. Needs an operator token. | Cloud and hub side: the cloud needs a credential of the hub that may make an invite or a device for the account, without the operator password. |
-| `login` and `signInBrowser` in `contracts/schema.graphql`; `crates/hub/src/fleet/access/login.rs` and `guard.rs` | The only way to get an access token: the operator name, password and TOTP code. Each other call needs the token. | Hub side: a hosted hub gives the token of a device that the account admitted (step 4: "no separate operator password"). The cloud returns it in the `HubAccess`. |
-| `crates/hub/src/operator.rs` (`operator set`, `operator totp`) and `apps/client/src/lib/local-hub/account/` | The hub has an operator account only after a person sets a password and a TOTP secret. | Hub side: a hosted hub has no such account; the account of Anima.ing is its operator (Section 4.3). |
-| `apps/client/src/lib/access/guard.ts` (`startGuard`, `signInNeeded`) and `apps/client/src/routes/sign-in/` | When the stored token is missing or the hub answers UNAUTHENTICATED, the client goes to the hub password page. | Client and cloud side: for a hosted hub, go to "Sign in" (the account) again, not to the password page. Not built. |
-| `apps/client/src/lib/desktop/this-machine.ts` (`readThisMachine`) and `apps/client/src/lib/devices/add/this-machine.ts` | The device list offers "Add this computer" only for a computer with an address of the Anima.ing VPN (100.64.0.0/10). A computer that joined only through the link has none. | Client and hub side: offer this computer from its link key, so step 8 of Section 4.1 works. |
+| `apps/desktop/src-tauri/src/link/printed.rs` (`invite`), called by `link_join` in `apps/desktop/src-tauri/src/link.rs` | Accepts only text that starts with `anima-invite.1.`. Anything else is `bad-invite`. | No change: the cloud gives a link invite, which the app uses under the hood. |
+| `link/invites/` and `link/cmd/anima-link/join.go` | The hub admits a new device key only with a one-time invite code that the hub made (LNK-003, 15 minutes). | No change: the hub makes the invite for the cloud (next row). |
+| `createLinkInvite` in `contracts/schema.graphql` (`crates/hub/src/fleet/link/graphql.rs`) | Makes the invite. Needs an operator token. | `hostedDeviceInvite` makes the invite and a claim for the cloud key (HMD-039). `createLinkInvite` does not change. |
+| `login` and `signInBrowser` in `contracts/schema.graphql`; `crates/hub/src/fleet/access/login.rs` and `guard.rs` | The only way to get an access token: the operator name, password and TOTP code. Each other call needs the token. | A hosted hub refuses both (HMD-038). `claimDeviceToken` gives the token to the device of the claim, through the link; the cloud never sees it (HMD-040). |
+| `crates/hub/src/operator.rs` (`operator set`, `operator totp`) and `apps/client/src/lib/local-hub/account/` | The hub has an operator account only after a person sets a password and a TOTP secret. | A hosted hub makes the operator `owner` at the first claim, with a password that no one knows (HMD-038). The commands of the hub computer stay, but a hosted hub refuses each password sign-in. |
+| `apps/client/src/lib/access/guard.ts` (`startGuard`, `signInNeeded`) and `apps/client/src/routes/sign-in/` | When the stored token is missing or the hub answers UNAUTHENTICATED, the client goes to the hub password page. | For an address that the hosted join marked, `goToSignIn` goes to the first-run choices (HMD-041). A device already on the link gets a claim and no second invite. |
+| `apps/client/src/lib/desktop/this-machine.ts` (`readThisMachine`) and `apps/client/src/lib/devices/add/this-machine.ts` | The device list offers "Add this computer" only for a computer with an address of the Anima.ing VPN (100.64.0.0/10). A computer that joined only through the link has none. | Not changed: it is not a sign-in. The hub reaches a device to manage it over SSH or the VPN, and a computer of the link has neither path from the hub. Open decision HM-D11. |
 | `apps/client/src/routes/welcome/join/+page.svelte` | "Join a hub" ends at the hub password page. | No change: it is the self-host path, not a step of "Sign in". |
 
 Tasks that a ruling names:
 
 | Task | Work | Ruling | State |
 | --- | --- | --- | --- |
+| HM-T2 | The hub side of HMD-038 to HMD-040: the hosted mode (`ANIMA_HOSTED_CLOUD_KEY_FILE`, which needs `ANIMA_LINK_CONTROL`), `hostedDeviceInvite` and `claimDeviceToken` (K1), the claim book in memory (`crates/hub/src/fleet/link/claims.rs`), the token of the operator `owner` (`crates/hub/src/fleet/access/hosted.rs`), and the refusal of the password sign-in. Tests: `crates/hub/tests/it/link/hosted.rs`. | R-129 | In progress: built on branch `hosted-sign-in-screens`, not merged. The merge sets Done with its commit. |
+| HM-T3 | The client side of HMD-040 and HMD-041: the `HubAccess` holds the invite (or none) and the claim; `apps/client/src/lib/hosted/join.ts` joins the link, trades the claim for the token through the link, keeps it, saves and marks the address; a hosted hub signs in again through the first-run choices (`signInPathFor`). | R-129 | In progress: built on branch `hosted-sign-in-screens`, not merged. |
+| HM-T4 | The cloud side, in the private repository: keep the cloud key of each hosted hub, call `hostedDeviceInvite` after the WorkOS sign-in, return the invite and the claim to the application. Then the real `cloudAccount` in the client replaces the stub. | R-129 | Not started. |
 | HM-T1 | Step 6 without the cloud: the first-run screens of "Sign in" in the client (HMD-022, HMD-023, HMD-037). One state for each step of Section 4.1, then the device list, and an error with a retry for cancelled, expired, no network and refused. The cloud is behind the interface `HostedAccount` in `apps/client/src/lib/hosted/`. After the sign-in, its call `access` gives one opaque `HubAccess` (what `link_join` takes, and the hub access token of this device). The app joins with it silently (`join.ts`: the link join, the token in the key store, the address). Two implementations: a stand-in for the tests and for `VITE_ANIMA_HOSTED=stand-in` (`?fail=step:problem` makes it fail once), and the real cloud, which is a stub that refuses each call. Not built: the cloud API (step 3), the hub side (step 4), the device key, the AuthKit device flow, the key store for the refresh token (HMD-034), and the opening of the system browser. Mockup: [first-run/index.html](../mockup/first-run/index.html). | R-127, R-128 | In progress: built on branch `hosted-sign-in-screens`, not merged. The merge sets Done with its commit. |
 
 ## 9. Changes that this proposal needs in other documents

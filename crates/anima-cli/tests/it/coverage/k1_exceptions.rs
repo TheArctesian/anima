@@ -4,6 +4,14 @@
 
 pub const EXCEPTIONS: &[(&str, &str)] = &[
     (
+        "Mutation.hostedDeviceInvite",
+        "the Anima.ing cloud only: takes the cloud key, a secret (R-129)",
+    ),
+    (
+        "Mutation.claimDeviceToken",
+        "the desktop app's silent join through the link only: returns a token (R-129, HMD-037)",
+    ),
+    (
         "Mutation.signInBrowser",
         "browser only: sets the __Host-anima cookie (K7)",
     ),

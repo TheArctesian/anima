@@ -61,6 +61,7 @@ pub struct Mutation(
     devices::graphql::Mutation,
     extensions::graphql::Mutation,
     link::graphql::Mutation,
+    link::graphql::HostedMutation,
     links::graphql::Mutation,
     maintenance::graphql::Mutation,
     metrics::graphql::Mutation,
@@ -167,7 +168,9 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
     .data(clock.clone())
     .data(pool.clone())
     .data(bus)
-    .data(vault);
+    .data(vault)
+    // The open claims of a hosted hub (R-129).
+    .data(link::Claims::default());
     // One block per domain: its loaders (R-014) and its state.
     with_devices_loaders(builder, &pool, &clock)
         // checks

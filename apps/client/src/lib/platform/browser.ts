@@ -15,6 +15,7 @@ export const browserCapabilities: Capabilities = {
   commandLine: false,
   stayAwake: false,
   localHub: false,
+  deviceLink: false,
   overlayTitleBar: false,
 };
 

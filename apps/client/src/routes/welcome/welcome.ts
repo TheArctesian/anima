@@ -10,15 +10,19 @@ export interface Choice {
   readonly off: string | null;
 }
 
-/** What decides the choices: the desktop app's local hub support, and whether this build carries the hub programs. */
+/**
+ * What decides the choices: whether the shell joins this device over the link (the hosted sign-in), the desktop app's
+ * local hub support, and whether this build carries the hub programs.
+ */
 export interface ChoicePlace {
+  readonly deviceLink: boolean;
   readonly localHub: boolean;
   readonly carried: boolean;
 }
 
 /**
- * The three choices of the first run, in order (FRN-001). "Sign in" is the primary choice (HMD-022); it needs the
- * link of the desktop app, as "Join" does.
+ * The three choices of the first run, in order (FRN-001). "Sign in" is the primary choice (HMD-022); it needs a shell
+ * that joins over the link, the desktop app's or a phone's (R-129).
  */
 export function welcomeChoices(place: ChoicePlace): readonly Choice[] {
   return [
@@ -28,7 +32,7 @@ export function welcomeChoices(place: ChoicePlace): readonly Choice[] {
       line: 'Use a hub hosted by Anima.ing.',
       href: '/welcome/hosted',
       primary: true,
-      off: place.localHub ? null : 'Desktop app only.',
+      off: place.deviceLink ? null : 'Needs the Anima.ing app.',
     },
     {
       id: 'join',

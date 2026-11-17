@@ -454,9 +454,10 @@ The Tools section of the Device page and the Tools filter of the device list
 ([compute-plan.md](plans/compute-plan.md) Section 11.1, CUI-010 to CUI-019) are not built. Their
 builder adds the entry.
 
-The cloud of "Sign in" in the first run ([hosted-mode.md](proposals/hosted-mode.md) task HM-T1)
-is a stub. The screens are tested with a stand-in. The builder of the cloud API, the AuthKit device
-flow and the grant check adds the entry for a sign-in with a real account.
+The cloud of "Sign in" in the first run ([hosted-mode.md](proposals/hosted-mode.md) tasks HM-T1 to
+HM-T4) is a stub. The screens are tested with a stand-in, and the hosted mode of the hub with a fake
+link. No test runs a real `anima-link`, a real pool hub and the desktop shell together. The builder of
+the cloud API (HM-T4) adds the entry for a sign-in with a real account on a real hosted hub.
 
 ## Checks that other documents hold
 

@@ -7,11 +7,11 @@
   import { capabilities } from '$lib/platform/platform';
   import { welcomeChoices } from './welcome';
 
-  const { localHub } = capabilities();
+  const { localHub, deviceLink } = capabilities();
   /** Unknown until the shell answers; "Create" stays off until then. */
   let carried = $state(false);
   let title: HTMLElement | undefined = $state();
-  const choices = $derived(welcomeChoices({ localHub, carried }));
+  const choices = $derived(welcomeChoices({ deviceLink, localHub, carried }));
 
   onMount(() => {
     title?.focus();
