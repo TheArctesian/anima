@@ -20,7 +20,7 @@ The leaf modules other than `targets` and the wiring stay at `crates/hub/src/`. 
 | --- | --- |
 | `crates/hub/src/ids.rs` | All entity ID newtypes (see `conventions.md`): `OperatorId`, `SiteId`, `DeviceId`, `CheckId`, `WindowId`, `SessionId`, `EventId`, and (Phase 2) `WebInterfaceId`, `MetricSeriesId`, and (Phase 3) `ApiKeyId`, `ChannelId`, `DeliveryId`, and (Phase 3, WP-36, R-107) `TokenId`, `ReleaseId`, `BuildJobId`, `BuilderId` |
 | `crates/hub/src/engine/instants.rs` (engine, new; operator, 2026-11-16; ruling number to be assigned; K-E3, TML-008) | `micros` and `from_micros`: an event instant as microseconds since the Unix epoch in UTC. It imports no module of the hub |
-| `crates/hub/src/engine/records.rs` (engine, new; operator, 2026-11-16; ruling number to be assigned; K-E4) | `Reference` (`kind:id`) and `Subject` (the shared subject keys, LNK-004). It imports only `ids`, which gains `RecordLinkId`, `PlaceId` and `PersonId` |
+| `crates/hub/src/engine/records.rs` (engine, new; operator, 2026-11-16; ruling number to be assigned; K-E4) | `Reference` (`kind:id`) and `Subject` (the shared subject keys, RLK-004). It imports only `ids`, which gains `RecordLinkId`, `PlaceId` and `PersonId` |
 | `crates/hub/src/status.rs` | `pub enum Status { Up, Down, Degraded, Maintenance, Unknown }` with `fn worst(a, b)` (CHK-004) |
 | `crates/hub/src/clock.rs` | `pub trait Clock: Send + Sync { fn now(&self) -> DateTime<Utc>; }`, `SystemClock`, and `FixedClock` for tests. The only clock read in the hub (CQ-021). |
 | `crates/hub/src/config.rs` | `pub struct Config` from the environment (see `conventions.md`) |

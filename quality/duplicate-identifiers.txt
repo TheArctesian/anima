@@ -1,12 +1,4 @@
 # Requirement identifiers that more than one document defines (PLN-016).
 # This list can only get shorter. Do not add an identifier: give the requirement one owner.
-# Read on 2026-11-17: 6 identifiers (40 on 2026-11-16).
-# LNK-001 to LNK-006: docs/plans/extensions-plan.md (record links) and docs/plans/one-click/one-click-plan.md
-# (the link) use one identifier for two different requirements, and the code cites both. The operator must
-# give one of the two a new prefix.
-LNK-001
-LNK-002
-LNK-003
-LNK-004
-LNK-005
-LNK-006
+# Read on 2026-11-17: none (40 on 2026-11-16). The last six, LNK-001 to LNK-006, ended with R-125:
+# the record links of the extensions plan are RLK-001 to RLK-006.

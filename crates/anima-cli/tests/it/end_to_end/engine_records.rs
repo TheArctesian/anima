@@ -1,6 +1,6 @@
 //! The timeline and the record links from the command line against the real hub: the event
 //! log shows in `anima timeline list` (TML-007), and a link to a record that does not exist
-//! keeps its label (LNK-002).
+//! keeps its label (RLK-002).
 
 use serde_json::Value;
 use sqlx::PgPool;
@@ -51,7 +51,7 @@ async fn tml_007_an_event_of_the_hub_shows_in_anima_timeline_list(pool: PgPool) 
 }
 
 #[sqlx::test(migrations = "../hub/migrations")]
-async fn lnk_002_a_link_made_from_the_command_line_keeps_its_label_until_it_is_removed(
+async fn rlk_002_a_link_made_from_the_command_line_keeps_its_label_until_it_is_removed(
     pool: PgPool,
 ) {
     let hub = RealHub::start(pool).await;

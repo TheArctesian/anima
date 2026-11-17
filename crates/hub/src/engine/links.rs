@@ -1,5 +1,5 @@
 //! Record links: how a record of one extension points at a record of another, so that no
-//! extension imports another or waits for it (LNK-001, LNK-002, LNK-004). One table holds
+//! extension imports another or waits for it (RLK-001, RLK-002, RLK-004). One table holds
 //! every link; a link to a record that does not exist yet keeps a text label.
 
 pub mod graphql;
@@ -28,7 +28,7 @@ pub enum Error {
     /// The source and the target are the same record.
     #[error("a record cannot link to itself")]
     SelfLink,
-    /// A side has a subject kind and is not the text of that subject (LNK-004).
+    /// A side has a subject kind and is not the text of that subject (RLK-004).
     #[error("{0} is not a valid subject key")]
     BadSubject(&'static str),
 }
@@ -45,7 +45,7 @@ fn checked(reference: &Reference, side: &'static str) -> Result<(), Error> {
 
 /// Makes the link in the caller's transaction, or finds the one that has the same source,
 /// target and kind: a second call with the same link writes nothing, and one with a new label
-/// writes the label. Neither record has to exist (LNK-002).
+/// writes the label. Neither record has to exist (RLK-002).
 ///
 /// # Errors
 /// `SelfLink`, `BadSubject`; `Database` when a statement fails. The caller rolls back.
@@ -102,7 +102,7 @@ pub async fn touching(db: &PgPool, record: &Reference) -> Result<Vec<Link>, Erro
 
 /// What to call `record` when it names itself: a date or a repository is its own title. Any
 /// other record gets its title from the domain that owns it; until that domain exists a link
-/// shows its label (LNK-002).
+/// shows its label (RLK-002).
 #[must_use]
 pub fn own_title(record: &Reference) -> Option<String> {
     match Subject::of(record)? {

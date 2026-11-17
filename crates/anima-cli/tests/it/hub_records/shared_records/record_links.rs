@@ -1,4 +1,4 @@
-//! `anima record-link list`, `add` and `remove` against the scripted hub (LNK-001, LNK-002).
+//! `anima record-link list`, `add` and `remove` against the scripted hub (RLK-001, RLK-002).
 
 use serde_json::{Value, json};
 
@@ -20,7 +20,7 @@ fn link(label: Option<&str>) -> Value {
 }
 
 #[tokio::test]
-async fn lnk_002_record_link_list_shows_the_label_of_a_target_with_no_record() {
+async fn rlk_002_record_link_list_shows_the_label_of_a_target_with_no_record() {
     let hub = FakeHub::start().await;
     hub.answer(
         "RecordLinkList",
@@ -53,7 +53,7 @@ async fn lnk_002_record_link_list_shows_the_label_of_a_target_with_no_record() {
 }
 
 #[tokio::test]
-async fn lnk_001_record_link_add_sends_the_link_and_prints_it() {
+async fn rlk_001_record_link_add_sends_the_link_and_prints_it() {
     let hub = FakeHub::start().await;
     hub.answer(
         "RecordLinkAdd",
@@ -109,7 +109,7 @@ async fn lnk_001_record_link_add_sends_the_link_and_prints_it() {
 }
 
 #[tokio::test]
-async fn lnk_001_record_link_remove_says_what_it_removed_and_an_unknown_id_fails() {
+async fn rlk_001_record_link_remove_says_what_it_removed_and_an_unknown_id_fails() {
     let hub = FakeHub::start().await;
     hub.answer("RecordLinkRemove", data(json!({ "unlinkRecords": ID })));
     let run = signed_in()

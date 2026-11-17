@@ -73,7 +73,7 @@ pub(super) struct ProjectView {
     slug: String,
     name: String,
     /// The full name of its first repository; other extensions keep this text (PRJ-016,
-    /// LNK-004).
+    /// RLK-004).
     subject_key: String,
     repositories: Vec<RepositoryView>,
     resources: Vec<ResourceView>,

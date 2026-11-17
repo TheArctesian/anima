@@ -1,5 +1,5 @@
 //! How one record names another without an import: the record reference and the shared
-//! subject keys (K-E4; LNK-001, LNK-004, TML-002).
+//! subject keys (K-E4; RLK-001, RLK-004, TML-002).
 
 use std::fmt;
 
@@ -84,7 +84,7 @@ impl fmt::Display for Reference {
     }
 }
 
-/// A subject two extensions can both name, so their records meet at it (LNK-004).
+/// A subject two extensions can both name, so their records meet at it (RLK-004).
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Subject {
     /// A GitHub repository, by `owner/name` in lower case.
@@ -161,7 +161,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn lnk_001_a_reference_is_a_kind_and_an_opaque_identifier() {
+    fn rlk_001_a_reference_is_a_kind_and_an_opaque_identifier() {
         let reference = Reference::parse("book:isbn:978-0-00").unwrap();
         assert_eq!(
             (reference.kind(), reference.id()),
@@ -172,7 +172,7 @@ mod tests {
     }
 
     #[test]
-    fn lnk_001_text_that_is_not_a_reference_is_refused() {
+    fn rlk_001_text_that_is_not_a_reference_is_refused() {
         let long_kind = format!("{}:1", "k".repeat(41));
         let long_id = format!("k:{}", "i".repeat(201));
         for bad in [
@@ -194,7 +194,7 @@ mod tests {
     }
 
     #[test]
-    fn lnk_004_each_subject_has_one_reference_that_reads_back() {
+    fn rlk_004_each_subject_has_one_reference_that_reads_back() {
         let person: PersonId = "0192f5a0-7c3e-7a52-9d1b-3f4e5a6b7c8d".parse().unwrap();
         let place: PlaceId = "0192f5a0-7c3e-7a52-9d1b-3f4e5a6b7c8e".parse().unwrap();
         let subjects = [
@@ -223,7 +223,7 @@ mod tests {
     }
 
     #[test]
-    fn lnk_004_a_second_spelling_of_a_subject_is_not_that_subject() {
+    fn rlk_004_a_second_spelling_of_a_subject_is_not_that_subject() {
         for other in [
             "repository:Okita/Anima",
             "repository:okita",

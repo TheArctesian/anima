@@ -1,5 +1,5 @@
 //! The `timeline` and `records` tool sets against the scripted hub (MCP-002, MCP-017;
-//! TML-007, LNK-001, LNK-002).
+//! TML-007, RLK-001, RLK-002).
 
 use serde_json::{Value, json};
 

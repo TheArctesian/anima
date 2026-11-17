@@ -18,7 +18,7 @@ One document owns each concern. Add a requirement to its owner, not to this docu
 | --- | --- | --- |
 | Device manager: hub, clients, sessions, checks, metrics, notifications | [design-spec.md](../spec/design-spec.md) | As published there |
 | VPN and enrolment | [vpn-plan.md](../plans/vpn-plan.md) | As published there |
-| One-click install, many hubs, shares and teams | [one-click-plan.md](../plans/one-click/one-click-plan.md) | `LNK` (the link; LNK-009 is proposed), `MHB`, `SHR`, `MBR` (proposed; not in the spec yet). `AWK` moved to the design specification Section 3.13. The extensions plan also uses `LNK-001` to `LNK-006`, for record links: the operator must give one of the two a new prefix (PLN-016) |
+| One-click install, many hubs, shares and teams | [one-click-plan.md](../plans/one-click/one-click-plan.md) | `LNK` (the link; LNK-009 is proposed), `MHB`, `SHR`, `MBR` (proposed; not in the spec yet). `AWK` moved to the design specification Section 3.13. Record links of the extensions plan are `RLK-001` to `RLK-006` (they were `LNK` until 2026-11-17, R-125) |
 | Power, hardware health and inventory | [power-health.md](../proposals/power-health.md) | `PWR`, `HWH`, `HWI` (proposed; not in the spec yet). `HLT` is the Health extension of the extensions plan |
 | Agent push | [design-spec.md](../spec/design-spec.md) defines MET-011 to MET-025. `contracts/agent-push.md` (K8) is the contract; [phase-3-agent-delta.md](../plans/phase-3/phase-3-agent-delta.md) is the record of the change | MET-011 to MET-025 |
 | Engine and extensions | [extensions-plan.md](../plans/extensions-plan.md) | ENG, SRC, COL, VLT, XP, PRJ and the others there |

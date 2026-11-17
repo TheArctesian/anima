@@ -281,7 +281,7 @@ pub enum AuditTarget {
     /// A project repository on GitHub, for a change the hub sent there; the change names the
     /// issue, pull request, run or commit (PRJ-028, OD-E14).
     Repository(RepositoryId),
-    /// A link between two records (LNK-001).
+    /// A link between two records (RLK-001).
     RecordLink(RecordLinkId),
 }
 

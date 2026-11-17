@@ -1,4 +1,4 @@
-//! Record links through the hub API (K-E4; LNK-001, LNK-002, LNK-004).
+//! Record links through the hub API (K-E4; RLK-001, RLK-002, RLK-004).
 
 mod label;
 mod subjects;

@@ -1,5 +1,5 @@
-//! A link to a record that does not exist keeps its label (LNK-002), and one table holds
-//! every link (LNK-001).
+//! A link to a record that does not exist keeps its label (RLK-002), and one table holds
+//! every link (RLK-001).
 
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -11,7 +11,7 @@ const BOOK: &str = "book:isbn-9780141439518";
 const PERSON: &str = "person:0192f5a0-7c3e-7a52-9d1b-3f4e5a6b7c8d";
 
 #[sqlx::test(migrations = "./migrations")]
-async fn lnk_002_a_link_to_a_target_that_does_not_exist_keeps_its_label(pool: PgPool) {
+async fn rlk_002_a_link_to_a_target_that_does_not_exist_keeps_its_label(pool: PgPool) {
     let (hub, token) = signed_in(&pool).await;
     let made = link(
         &hub,
@@ -47,7 +47,7 @@ async fn lnk_002_a_link_to_a_target_that_does_not_exist_keeps_its_label(pool: Pg
 }
 
 #[sqlx::test(migrations = "./migrations")]
-async fn lnk_001_the_same_link_again_is_one_row_and_a_new_label_replaces_the_old(pool: PgPool) {
+async fn rlk_001_the_same_link_again_is_one_row_and_a_new_label_replaces_the_old(pool: PgPool) {
     let (hub, token) = signed_in(&pool).await;
     let first = link(&hub, &token, (BOOK, "lent_to", PERSON), json!("Ada")).await;
     let again = link(&hub, &token, (BOOK, "lent_to", PERSON), Value::Null).await;
@@ -72,7 +72,7 @@ async fn lnk_001_the_same_link_again_is_one_row_and_a_new_label_replaces_the_old
 }
 
 #[sqlx::test(migrations = "./migrations")]
-async fn lnk_001_unlink_removes_the_link_once(pool: PgPool) {
+async fn rlk_001_unlink_removes_the_link_once(pool: PgPool) {
     let (hub, token) = signed_in(&pool).await;
     let made = link(&hub, &token, (BOOK, "lent_to", PERSON), Value::Null).await;
     let id = &made["data"]["linkRecords"]["id"];
@@ -86,7 +86,7 @@ async fn lnk_001_unlink_removes_the_link_once(pool: PgPool) {
 }
 
 #[sqlx::test(migrations = "./migrations")]
-async fn lnk_001_input_that_is_not_a_link_is_a_validation_error_and_stores_nothing(pool: PgPool) {
+async fn rlk_001_input_that_is_not_a_link_is_a_validation_error_and_stores_nothing(pool: PgPool) {
     let (hub, token) = signed_in(&pool).await;
     let long = "x".repeat(201);
     for (ends, label, field) in [

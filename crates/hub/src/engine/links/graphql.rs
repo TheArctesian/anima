@@ -1,5 +1,5 @@
 //! The links GraphQL part: `Query.recordLinks`, `Mutation.linkRecords` and
-//! `Mutation.unlinkRecords` (K1; LNK-001, LNK-002, LNK-004).
+//! `Mutation.unlinkRecords` (K1; RLK-001, RLK-002, RLK-004).
 //!
 //! Each change writes the link, its audit entry and its event in one transaction.
 
@@ -27,11 +27,11 @@ struct LinkView {
     id: ID,
     /// The record the link starts at, as `kind:id`.
     source: String,
-    /// The record the link points to, as `kind:id`. It does not have to exist (LNK-002).
+    /// The record the link points to, as `kind:id`. It does not have to exist (RLK-002).
     target: String,
     /// What the link means, in lower snake case.
     kind: String,
-    /// The text to show for the target while it has no record (LNK-002).
+    /// The text to show for the target while it has no record (RLK-002).
     label: Option<String>,
     /// The name of the source record. Null: no domain gives one yet.
     source_title: Option<String>,
@@ -135,7 +135,7 @@ pub struct Mutation;
 
 #[Object(name = "LinksMutation")]
 impl Mutation {
-    /// Links two records. Neither has to exist (LNK-002). A second call with the same source,
+    /// Links two records. Neither has to exist (RLK-002). A second call with the same source,
     /// target and kind returns the stored link; a new label replaces the old one.
     #[graphql(guard = "Authenticated")]
     async fn link_records(&self, ctx: &Context<'_>, input: LinkInput) -> Result<LinkView> {

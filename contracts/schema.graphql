@@ -1941,7 +1941,7 @@ type Project {
   id: ID!
   slug: String!
   name: String!
-  "The full name of its first repository; other extensions keep this text (PRJ-016, LNK-004)."
+  "The full name of its first repository; other extensions keep this text (PRJ-016, RLK-004)."
   subjectKey: String!
   repositories: [ProjectRepository!]!
   resources: [ProjectResource!]!
@@ -2472,7 +2472,7 @@ input CommitStatusInput {
 }
 
 # ---------------------------------------------------------------- timeline and record links (E0-4, K-E3, K-E4)
-# Operator, 2026-11-16; ruling number to be assigned. Requirement IDs: TML-001 to TML-007, LNK-001, LNK-002, LNK-004.
+# Operator, 2026-11-16; ruling number to be assigned. Requirement IDs: TML-001 to TML-007, RLK-001, RLK-002, RLK-004.
 
 "The closed list of TML-004. A new value needs a change to docs/plans/extensions-plan.md."
 enum EvidenceCategory { SLEEP WORKOUT VISIT TRAVEL CODE MESSAGE POST MEDIA READING SPENDING DOCUMENT DEVICE SESSION NOTE }
@@ -2511,7 +2511,7 @@ type EvidenceConnection {
   pageInfo: PageInfo!
 }
 
-"A link from one record to another (LNK-001). Neither record has to exist (LNK-002)."
+"A link from one record to another (RLK-001). Neither record has to exist (RLK-002)."
 type RecordLink {
   id: ID!
   "The record the link starts at, as kind:id."
@@ -2520,7 +2520,7 @@ type RecordLink {
   target: String!
   "What the link means, in lower snake case, for example lent_to."
   kind: String!
-  "The text to show for the target while it has no record (LNK-002). It is kept after the target has one."
+  "The text to show for the target while it has no record (RLK-002). It is kept after the target has one."
   label: String
   "The name of the source record. Null: no domain gives one. A date or a repository key is its own name."
   sourceTitle: String
@@ -2812,7 +2812,7 @@ type Mutation {
   revokeLinkDevice(key: String!): Int!
 
   # Timeline and record links (operator, 2026-11-16; ruling number to be assigned; K-E4)
-  "Links two records. A second call with the same source, target and kind returns the stored link and writes nothing; with a new label it replaces the label. VALIDATION for text that is not kind:id, for a record linked to itself, and for a repository, place, person or date key that is not in its one form (LNK-004)."
+  "Links two records. A second call with the same source, target and kind returns the stored link and writes nothing; with a new label it replaces the label. VALIDATION for text that is not kind:id, for a record linked to itself, and for a repository, place, person or date key that is not in its one form (RLK-004)."
   linkRecords(input: RecordLinkInput!): RecordLink!
   "Removes one link and returns its ID. The two records are not changed. NOT_FOUND when no link has this ID."
   unlinkRecords(id: ID!): ID!

@@ -12,7 +12,7 @@ pub struct ListArgs {
 }
 
 /// What to show for one side of a link: the record's name when the hub has one, else the
-/// link's label (LNK-002), else the reference alone.
+/// link's label (RLK-002), else the reference alone.
 #[must_use]
 pub fn shown(reference: &str, title: Option<&str>, label: Option<&str>) -> String {
     match title.or(label) {
@@ -63,7 +63,7 @@ mod tests {
     use super::shown;
 
     #[test]
-    fn lnk_002_a_target_with_no_record_shows_its_label() {
+    fn rlk_002_a_target_with_no_record_shows_its_label() {
         assert_eq!(
             shown("person:1", None, Some("Ada Lovelace")),
             "Ada Lovelace (person:1)"

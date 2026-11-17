@@ -1,4 +1,4 @@
-//! A link between two records and its parts (K-E4; LNK-001, LNK-002).
+//! A link between two records and its parts (K-E4; RLK-001, RLK-002).
 
 use chrono::{DateTime, Utc};
 
@@ -36,7 +36,7 @@ impl Relation {
 #[error("a label is one line of at most 200 characters")]
 pub struct BadLabel;
 
-/// The text a link shows while its target has no record (LNK-002): trimmed, one line, at most
+/// The text a link shows while its target has no record (RLK-002): trimmed, one line, at most
 /// 200 characters.
 ///
 /// # Errors

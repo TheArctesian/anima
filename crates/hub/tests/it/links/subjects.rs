@@ -1,4 +1,4 @@
-//! Two extensions meet at a shared subject key without an import (LNK-004).
+//! Two extensions meet at a shared subject key without an import (RLK-004).
 
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -7,7 +7,7 @@ use super::{link, links_of, signed_in, stored};
 use crate::hub::error;
 
 #[sqlx::test(migrations = "./migrations")]
-async fn lnk_004_two_records_that_name_one_repository_meet_at_its_key(pool: PgPool) {
+async fn rlk_004_two_records_that_name_one_repository_meet_at_its_key(pool: PgPool) {
     let (hub, token) = signed_in(&pool).await;
     let repository = "repository:okita/anima.ing";
     link(
@@ -37,7 +37,7 @@ async fn lnk_004_two_records_that_name_one_repository_meet_at_its_key(pool: PgPo
 }
 
 #[sqlx::test(migrations = "./migrations")]
-async fn lnk_004_a_date_key_is_a_date_and_names_itself(pool: PgPool) {
+async fn rlk_004_a_date_key_is_a_date_and_names_itself(pool: PgPool) {
     let (hub, token) = signed_in(&pool).await;
     let made = link(
         &hub,
@@ -53,7 +53,7 @@ async fn lnk_004_a_date_key_is_a_date_and_names_itself(pool: PgPool) {
 }
 
 #[sqlx::test(migrations = "./migrations")]
-async fn lnk_004_a_subject_key_in_a_second_form_is_refused(pool: PgPool) {
+async fn rlk_004_a_subject_key_in_a_second_form_is_refused(pool: PgPool) {
     let (hub, token) = signed_in(&pool).await;
     for (target, source) in [
         ("repository:Okita/Anima.ing", "note:7"),

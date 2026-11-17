@@ -176,14 +176,14 @@ Many sources exist only on an operator computer: AI session files, an Obsidian v
 The timeline joins the records of all sources. History, Map and Reminders read it. Auracle calls this "Evidence".
 
 - **TML-001.** The timeline must not copy data. Each domain gives an adapter that maps its table rows to Evidence.
-- **TML-002.** Each Evidence entry must have: a record reference (`kind:id`, LNK-005), the source, the category, the start time, an optional end time, the basis and a list of uncertainty notes.
+- **TML-002.** Each Evidence entry must have: a record reference (`kind:id`, RLK-005), the source, the category, the start time, an optional end time, the basis and a list of uncertainty notes.
 - **TML-003.** The basis must be one of: observed, planned, reported by the operator, or inferred.
 - **TML-004.** The categories are a closed list: sleep, workout, visit, travel, code, message, post, media, reading, spending, document, device, session and note. Add a category only with a change to this plan.
 - **TML-005.** When two sources record the same event, the timeline must keep both. The lower-ranked entry must point to the higher-ranked entry with `superseded_by`. Do not delete it.
 - **TML-006.** An adapter must write an uncertainty note when it does not know a value, for example "end time not given by the source".
 - **TML-007.** The event log of the device manager (Section 3.8 of the spec) must also be a timeline source.
 
-The rules TML-008 to TML-012 and LNK-005 to LNK-006 come from issue #7 (operator, 2026-11-16).
+The rules TML-008 to TML-012 and RLK-005 to RLK-006 come from issue #7 (operator, 2026-11-16).
 
 - **TML-008.** An event instant that Anima machines exchange or store must be one count: microseconds since 1970-01-01T00:00:00Z (UTC), as a signed 64-bit integer. A text form, such as RFC 3339 in the API, must give the same count when it is read again. A time zone changes only how an instant is shown. It must not change the instant or an old source time.
 - **TML-009.** Evidence must keep the event time that the source gives as its start time. When the hub receives a record later than the event, the received time is a separate value. Do not put a received time in place of an event time. When the event time is not known or is approximate, the adapter must write an uncertainty note.
@@ -287,12 +287,14 @@ Wardrobe, Library, Documents, Health and Money extract fields from photos and PD
 
 Extensions refer to each other only through record links. Thus no extension waits for a different extension.
 
-- **LNK-001.** The engine must keep one `record_link` table: a source reference, a target reference (`kind:id`, LNK-005) and a link kind.
-- **LNK-002.** An extension can link to a record of an extension that does not exist yet. Until the target exists, the link keeps a text label, for example the name of a person.
-- **LNK-003.** Each record page must show its links with one shared component. An extension does not write code for the links of a different extension.
-- **LNK-004.** The engine must give shared subject keys that every extension can use without an import: a GitHub repository name, a `PlaceId`, a `PersonId` and a date.
-- **LNK-005.** A record reference is `kind:id`. Only the domain that owns the record reads the `id`. A reference is not the address of a row on one machine. A reference to the same record must not change when the record is imported again. How a second machine names the same record is not decided (OD-E17).
-- **LNK-006.** A link whose target does not exist keeps its target reference and its label. It must not stop the work of its source extension, and it must not copy the record of a different domain. What a link does when its target is deleted is not decided (OD-E17).
+`RLK-001` to `RLK-006` had the prefix `LNK` until 2026-11-17 (R-125). `LNK` is the link of the one-click plan. The migration `2030_links_record_link.sql` still says `LNK` in a comment, because a migration that ran does not change.
+
+- **RLK-001.** The engine must keep one `record_link` table: a source reference, a target reference (`kind:id`, RLK-005) and a link kind.
+- **RLK-002.** An extension can link to a record of an extension that does not exist yet. Until the target exists, the link keeps a text label, for example the name of a person.
+- **RLK-003.** Each record page must show its links with one shared component. An extension does not write code for the links of a different extension.
+- **RLK-004.** The engine must give shared subject keys that every extension can use without an import: a GitHub repository name, a `PlaceId`, a `PersonId` and a date.
+- **RLK-005.** A record reference is `kind:id`. Only the domain that owns the record reads the `id`. A reference is not the address of a row on one machine. A reference to the same record must not change when the record is imported again. How a second machine names the same record is not decided (OD-E17).
+- **RLK-006.** A link whose target does not exist keeps its target reference and its label. It must not stop the work of its source extension, and it must not copy the record of a different domain. What a link does when its target is deleted is not decided (OD-E17).
 
 ### 2.11 Reminder engine and Integrations section
 
@@ -550,7 +552,7 @@ All projects are on GitHub. They are hosted on Vercel, Neon or the Hostinger VPS
 - **PRJ-040.** The manual route stays: `anima source connect github --from-file <path\|->` with the key from a file, for the command line and for a machine with no browser. `--from-file` selects the manual route; without it the command starts the flow of PRJ-039. (operator, 2026-11-14; ruling number to be assigned)
 - **PRJ-041.** An MCP tool can start the flow of PRJ-039 and a second tool can read its state. The tools are `anima_github_connect_start`, `anima_github_connect_state` (read) and `anima_github_connect_cancel`. The start tool returns the fixed link `https://<hub>/connect/github`. The link must hold no secret and no one-time value, and the hub must require a signed-in operator at that link: the page does nothing until the operator presses Continue in a browser signed in to Anima, or continues from the desktop client. No tool returns the one-time link, and the hub refuses `openGithubConnect` for a request that declares an agent. (operator, 2026-11-14) The operator, not the agent, selects Create and Install. The start tool is off until the operator sets it on (MCP-002), and each start is in the audit log. Confirm against Section 7 of the CLI and MCP plan before the build: the tool takes and returns no secret, and the person makes the trust decision.
 - **PRJ-042.** Verified with the documentation of GitHub on 2026-11-14 (operator, 2026-11-14; ruling number to be assigned): the manifest is sent only as a form POST (field `manifest`) to `https://github.com/settings/apps/new` or the organisation form; `state` is optional and the hub uses it; the code that GitHub returns lives one hour and is exchanged with `POST /app-manifests/{code}/conversions` with no authentication; there is no `DELETE /app` (the only delete is `DELETE /app/installations/{id}`); `PATCH /app/hook/config` with an App JWT sets the webhook `url` and `secret`, and the documentation has no way to activate a hook by API; creating an App triggers GitHub's "Confirm access" prompt; "All repositories" was preselected in a real install. Still not confirmed, for the live check with the operator's account: (1) the webhook fields: whether `hook_attributes` with `active: false` is accepted with the hub's address, else whether omitting it is, else a placeholder address; (2) `redirect_url` and `setup_url` on a host reachable only through the VPN; (3) that GitHub lists all 23 permission names as read and write; (4) that the code is single use (a second exchange fails); (5) whether `state` is in the query of `setup_url`; (6) whether one press of Install is enough with "All repositories" preselected; (7) whether a form POST from another site asks for sign-in or only "Confirm access"; (8) that `/settings/apps/<slug>/advanced` shows "Delete GitHub App"; (9) whether `webhook_secret` is null when the hook is off (informational); (10) that exactly three presses are needed when access was confirmed recently. The first run with the operator's account, on 2026-11-14 against the hub at bc2f1cd7, showed (operator, 2026-11-14; ruling number to be assigned): (1) GitHub accepts the manifest as the hub sends it, with the webhook off; (2) both addresses work on a host reachable only through the VPN, because the browser makes the requests; (5) `state` is in the query of `setup_url`, since the hub served the page of the bound browser with a matching state; (7) GitHub asked for the authenticator code before it made the App; (10) the operator pressed Create, typed the authenticator code, selected "All repositories" and pressed Install, so the count is three presses and one code when access was not confirmed recently. The operator's report on (6) is not clear: "All repositories" was either preselected or one more press. The browser's last page was the waiting page and not the connected page, although the connection was stored; the fix makes that page wait for the end of the attempt. Not checked in that run: (3), (4), (8) and (9).
-- **PRJ-016.** The subject key of a project is the name of its GitHub repository (LNK-004). Other extensions keep the repository name with their records. Thus their records show under the project when Projects is set on later, with no change to the stored records.
+- **PRJ-016.** The subject key of a project is the name of its GitHub repository (RLK-004). Other extensions keep the repository name with their records. Thus their records show under the project when Projects is set on later, with no change to the stored records.
 
 #### 4.2.2 Pages for GitHub work
 
@@ -853,7 +855,7 @@ Reminders deliver only to the devices of the operator.
 **Data.** `assistant_session` (source, external ID, project, repository, branch, worktree, title, model, start, end, counts of prompts, tool calls and tokens), `assistant_turn` (role, kind, sealed text, truncated flag).
 
 - **AIS-001.** The collector must read each session file from its last read position (COL-004). A session that changes must update the stored session. It must not add a copy.
-- **AIS-002.** The collector must link a session to a repository by the git remote of its working folder. The repository name is the subject key (LNK-004). When Projects is on, the session shows under the project that has this repository (PRJ-016). It must map worktree paths (`.claude/worktrees/*`, `.codex/worktrees/*`) to the main repository.
+- **AIS-002.** The collector must link a session to a repository by the git remote of its working folder. The repository name is the subject key (RLK-004). When Projects is on, the session shows under the project that has this repository (PRJ-016). It must map worktree paths (`.claude/worktrees/*`, `.codex/worktrees/*`) to the main repository.
 - **AIS-003.** The collector must keep sub-agent sessions as child sessions of their parent session.
 - **AIS-004.** The collector must redact the text (Section 2.5). It must not send tool output. It can send the tool name and the tool input, clipped to 2000 characters.
 - **AIS-005.** The hub must keep a maximum of 64 000 characters for each turn and mark a clipped turn.
@@ -1034,7 +1036,7 @@ The engine freezes these contracts. An extension workflow uses them and does not
 | K-E1 | Source registry: the declaration of a source, the normaliser signature, the sync state slice | `contracts/extensions/sources.md` |
 | K-E2 | Collector parser interface and the ingest protocol with ingest tokens | `contracts/extensions/collector.md` |
 | K-E3 | Timeline adapter interface and the category list | `contracts/extensions/timeline.md` |
-| K-E4 | Places, files, record links and the shared subject keys (LNK-004) | `contracts/extensions/shared-records.md` |
+| K-E4 | Places, files, record links and the shared subject keys (RLK-004) | `contracts/extensions/shared-records.md` |
 | K-E5 | Vault: data classes, sealing, client-sealed records, reveal | `contracts/extensions/vault.md` |
 | K-E6 | Reminder trigger interface: how an extension gives an event, an expiry date or a threshold | `contracts/extensions/reminders.md` |
 | K-E7 | Extension registry: switch, navigation entry, data class, migration range | `contracts/extensions/registry.md` |
@@ -1067,19 +1069,19 @@ The engine and the grouped items are work items in [work-items/](../work-items/R
 
 #### Tasks of E0-4, timeline and record links (PLN-006)
 
-The operator ruled on 2026-11-16: issue #7 governs E0-4. The rules of issue #7 are TML-008 to TML-012 and LNK-005 to LNK-006. The wire unit of an event instant is Unix microseconds. A record reference is `kind:id` with an opaque `id`. The clock policy (OD-E16) and the portable reference and deleted targets (OD-E17) stay open. The work that was built before that ruling stays. The branch `engine/e0-4-timeline-links` was merged into `main` on 2026-11-17. No task has a live check on a real hub; task T8 is that check.
+The operator ruled on 2026-11-16: issue #7 governs E0-4. The rules of issue #7 are TML-008 to TML-012 and RLK-005 to RLK-006. The wire unit of an event instant is Unix microseconds. A record reference is `kind:id` with an opaque `id`. The clock policy (OD-E16) and the portable reference and deleted targets (OD-E17) stay open. The work that was built before that ruling stays. The branch `engine/e0-4-timeline-links` was merged into `main` on 2026-11-17. No task has a live check on a real hub; task T8 is that check.
 
 | Task | Content | State | Commits |
 | --- | --- | --- | --- |
 | T1 | Contracts K-E3 (`contracts/extensions/timeline.md`) and the record-link and subject-key parts of K-E4 (`contracts/extensions/shared-records.md`), with the K1, K2, K3 and K-E8 rows. The places and files parts of K-E4 are a gap for E0-5. | Done | `f4de06f9` |
 | T2 | Hub: the timeline domain with no table, the adapter interface, `superseded_by`, and the event log as its first adapter (TML-001 to TML-007) | Done | `f4de06f9` |
-| T3 | Hub: the record-link domain with the table `links.record_link`, the label of a target that does not exist, and the shared subject keys (LNK-001, LNK-002, LNK-004) | Done | `f4de06f9` |
+| T3 | Hub: the record-link domain with the table `links.record_link`, the label of a target that does not exist, and the shared subject keys (RLK-001, RLK-002, RLK-004) | Done | `f4de06f9` |
 | T4 | Hub API: `Query.timeline`, `Query.recordLinks`, `Mutation.linkRecords`, `Mutation.unlinkRecords` | Done | `f4de06f9` |
 | T5 | `anima timeline list` and `anima record-link list`, `add`, `remove` (CMD-030). The noun `link` is the device link, so the record links have the noun `record-link`. | Done | `611f68cf` |
 | T6 | MCP tools `anima_timeline_list`, `anima_record_links_list`, `anima_record_link_add`, `anima_record_link_remove` (CMD-030) | Done | `611f68cf` |
-| T7 | Client: the one shared component that shows the links of a record (LNK-003). Issue #7 makes it later work for the pages that use links (#18, #13, #22, #24, #16), not a part of E0-4. | Not started | |
+| T7 | Client: the one shared component that shows the links of a record (RLK-003). Issue #7 makes it later work for the pages that use links (#18, #13, #22, #24, #16), not a part of E0-4. | Not started | |
 | T8 | Live check on a real hub: the event log shows in `anima timeline list`, and a link is made and read | Not started | |
-| T9 | The rules of issue #7: the instant unit (TML-008), the received time (TML-009), dates (TML-010), no exact order across clocks (TML-011), replays (TML-012), references and missing targets (LNK-005, LNK-006), in K-E3, K-E4, the hub and the tests | In progress | `766310f5`, `50e7fb1f`. Not compared with each rule yet |
+| T9 | The rules of issue #7: the instant unit (TML-008), the received time (TML-009), dates (TML-010), no exact order across clocks (TML-011), replays (TML-012), references and missing targets (RLK-005, RLK-006), in K-E3, K-E4, the hub and the tests | In progress | `766310f5`, `50e7fb1f`. Not compared with each rule yet |
 
 #### Tasks of E0-5, E0-6 and E0-7 (PLN-006)
 
@@ -1211,7 +1213,7 @@ crates/
 | OD-E14 | The first GitHub functions that make a change (PRJ-027) | Decided: make an issue, add a comment, close or open an issue, merge a pull request (also many in one action, PRJ-033), run a workflow again, run its failed jobs again, cancel a run, start a workflow by hand (PRJ-034, PRJ-035), write a commit status for a build of Anima (PRO-010, PRO-020 of the projects proposal). Add others one at a time when the operator needs them. (operator, 2026-11-13) |
 | OD-E15 | Where the webhook receiver runs (Section 2.12) | Decided: on the VPS, as a small separate program that is not the hub (WHK-009). It works where the hub runs and needs no other service. This changes SITE-006 ("the website is the only public part of Anima"). To open the port on the VPS needs the operator's confirmation at that time (VPS-005). (operator, 2026-11-13) |
 | OD-E16 | Clock synchronization between Anima machines (TML-011, issue #7): how skew is found and reported, the permitted skew, and what an unreliable clock does | Not decided. E0-4 builds no clock check. Decide before a timeline source that uses the clocks of more than one machine. |
-| OD-E17 | The portable form of a record reference across machines and replicas, and what a link does when its target is deleted (LNK-005, LNK-006, issue #7) | Not decided. E0-4 uses `kind:id` with an opaque `id` and keeps a link and its label when the target is missing. |
+| OD-E17 | The portable form of a record reference across machines and replicas, and what a link does when its target is deleted (RLK-005, RLK-006, issue #7) | Not decided. E0-4 uses `kind:id` with an opaque `id` and keeps a link and its label when the target is missing. |
 | OD-E18 | PH-E-000 says that no extension work starts before the device manager build is finished. E0-1, E0-2, E0-4, E0-8 and Projects are built and are on `main`, and Phase 3 is not accepted. Is PH-E-000 released, changed or still in force? | Not decided. The operator directed each of those builds (work plan row 4.4 and row 4.6). Recommendation: record that PH-E-000 is released for the engine and Projects, and keep it for the other extensions until the Phase 3 acceptance run (WP-53). The work items E0-5, E0-6 and E0-7 still name the gate. |
 
 ## 8. Ideas taken from Auracle and HQ
