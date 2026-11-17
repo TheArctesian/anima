@@ -515,6 +515,8 @@ pub struct CapabilityFilter { pub tool: Option<String>, pub build_target: Option
 /// Each tool is usable with its version or not usable with a fixed `agent_core::inventory::Reason` (CAP-024).
 /// metrics::graphql owns Query.capabilities and joins each to its Device (devices::list), by device name.
 pub async fn capabilities(db: &Db, filter: &CapabilityFilter) -> Result<Vec<Capabilities>, Error>;
+/// (R-122) The version of each device's agent from its last batch; no entry when it sent none.
+pub async fn agent_versions(db: &Db, devices: &[DeviceId]) -> Result<HashMap<DeviceId, String>, Error>;
 ```
 
 ## web_interfaces (Phase 2, WP-30)

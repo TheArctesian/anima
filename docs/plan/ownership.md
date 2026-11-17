@@ -42,6 +42,8 @@ One document owns each concern. Add a requirement to its owner, not to this docu
 | Rented cloud computers and GPU add-ons sold by Anima.ing | [cloud-machines.md](../programme/proposals/cloud-machines.md) | CVM-001 to CVM-024 |
 | Machine profiles: copy a setup to a new computer | [machine-profiles.md](../programme/proposals/machine-profiles.md) | REP-001 to REP-025 |
 | CVE watch of the updates that wait on each machine, and network awareness (the address classes of a device, other overlay networks, address changes) | [cve-watch-and-network-awareness.md](../programme/proposals/cve-watch-and-network-awareness.md) | VUL-001 to VUL-028, ADR-001 to ADR-014 |
+| The watchdog: watched programs of a machine, their restarts and the reports | [watchdog.md](../programme/proposals/watchdog.md) | WDG-001 to WDG-041 |
+| The update of the agent and the hub: the release record, the rollout, the rollback, the automatic update. The update of the desktop application stays in the design specification Section 3.9 (UPD). | [agent-and-hub-update.md](../programme/proposals/agent-and-hub-update.md) | ROL-001 to ROL-052 |
 | Rulings and the state of each package | [programme/programme.md](../programme/programme.md), [programme/handoff.md](../programme/handoff.md) | R, CR |
 
 The proposals are drafts (Section 9 lists them). A proposal becomes a plan when the operator approves it with a ruling. Then its work gets a task table in the plan, or a work item in [work-items/](../work-items/README.md), and a row in Section 4 (PLN-012).

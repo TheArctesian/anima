@@ -1,4 +1,4 @@
-//! `anima agent` against the scripted hub (CMD-020, CMD-021, CMD-024).
+//! `anima agent` against the scripted hub (CMD-020, CMD-021, CMD-024, R-122).
 
 use serde_json::{Value, json};
 
@@ -51,6 +51,49 @@ async fn cmd_020_agent_status_says_whether_the_agent_is_reporting() {
         .run(&["agent", "status", DEVICE, "--json", "--hub", &hub.origin])
         .await;
     assert_eq!(run.json()["metricsSource"], "AGENT");
+}
+
+#[tokio::test]
+async fn r_118_agent_status_gives_the_version_the_agent_reported() {
+    let hub = FakeHub::start().await;
+    let device = |version: Value| {
+        data(
+            json!({ "device": { "id": DEVICE, "name": "nas", "metricsSource": "AGENT",
+            "metricsStale": false, "agentVersion": version, "readings": null } }),
+        )
+    };
+    hub.answer("AgentStatus", device(json!("0.3.1")))
+        .answer("AgentStatus", device(Value::Null))
+        .answer("AgentStatus", device(json!("0.3.1")));
+    let line = |stdout: &str| {
+        stdout
+            .lines()
+            .find(|line| line.starts_with("Agent version"))
+            .map(str::to_owned)
+    };
+    let run = signed_in()
+        .run(&["agent", "status", DEVICE, "--hub", &hub.origin])
+        .await;
+    assert_eq!(run.code, 0, "{run:?}");
+    assert!(
+        line(&run.stdout).is_some_and(|line| line.ends_with("0.3.1")),
+        "{}",
+        run.stdout
+    );
+
+    let run = signed_in()
+        .run(&["agent", "status", DEVICE, "--hub", &hub.origin])
+        .await;
+    assert!(
+        line(&run.stdout).is_some_and(|line| line.ends_with("not reported")),
+        "an agent older than R-122: {}",
+        run.stdout
+    );
+
+    let run = signed_in()
+        .run(&["agent", "status", DEVICE, "--json", "--hub", &hub.origin])
+        .await;
+    assert_eq!(run.json()["agentVersion"], "0.3.1");
 }
 
 #[tokio::test]

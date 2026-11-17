@@ -29,6 +29,14 @@ pub struct Batch {
     /// means unchanged (CAP-027, CAP-029). An agent older than the inventory never sends it.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub inventory: Option<BatchInventory>,
+    /// The version of the `anima-agent` that sent the batch (R-122, ROL-051). An agent older
+    /// than R-122 sends none, and a hub older than R-122 ignores it (K8 Section 1).
+    #[serde(
+        rename = "agentVersion",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub agent_version: Option<String>,
 }
 
 /// The lists a batch announces besides its points, each `None` when unchanged (K8 Section 4).
@@ -163,6 +171,16 @@ impl Batch {
             gpus: announced.gpus,
             drives: announced.drives,
             inventory: announced.inventory,
+            agent_version: None,
+        }
+    }
+
+    /// This batch, signed with the version of the agent that sends it (R-122).
+    #[must_use]
+    pub fn from_agent(self, version: &str) -> Self {
+        Self {
+            agent_version: Some(version.to_owned()),
+            ..self
         }
     }
 }

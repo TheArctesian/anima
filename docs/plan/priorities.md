@@ -14,8 +14,8 @@ Part of the work plan: [work-plan.md](../work-plan.md) is the entry point, and i
 
 | Category | Meaning | Content | Owner documents |
 | --- | --- | --- | --- |
-| Foundation | The parts that all other work uses | Coordinator, VPN between sites, `anima-agent` on each machine, the clients, the standby copies, bulk data on the operator's machines | Design specification Sections 3, 4, 5 and 10. [vpn-plan.md](../vpn-plan.md). [coordinator-standby.md](../programme/proposals/coordinator-standby.md), [bulk-data-placement.md](../programme/proposals/bulk-data-placement.md) |
-| See | Know the state of all that is yours | Checks, metrics, notifications, Projects (the front door for rented accounts), the Integrations section | Design specification Section 6. Extensions plan Sections 4.2 and 4.5. [projects-and-builds.md](../programme/proposals/projects-and-builds.md) |
+| Foundation | The parts that all other work uses | Coordinator, VPN between sites, `anima-agent` on each machine, the clients, the standby copies, bulk data on the operator's machines, the update of the agent and the hub | Design specification Sections 3, 4, 5 and 10. [vpn-plan.md](../vpn-plan.md). [coordinator-standby.md](../programme/proposals/coordinator-standby.md), [bulk-data-placement.md](../programme/proposals/bulk-data-placement.md), [agent-and-hub-update.md](../programme/proposals/agent-and-hub-update.md) |
+| See | Know the state of all that is yours | Checks, metrics, notifications, Projects (the front door for rented accounts), the Integrations section, the watchdog (it also restarts a program, which is Use) | Design specification Section 6. Extensions plan Sections 4.2 and 4.5. [projects-and-builds.md](../programme/proposals/projects-and-builds.md), [watchdog.md](../programme/proposals/watchdog.md) |
 | Reach | Go into a thing and act on it | SSH, RDP, VNC, web interfaces, Secrets | Design specification Section 6.3. Extensions plan Section 4.4 |
 | Remember | Keep a copy of the life of the operator | Health, Money, Map, People, History, Documents, Writing, Reminders, Library, Wardrobe, AI coding sessions | Extensions plan Sections 2 and 4. [new-sources.md](../programme/proposals/new-sources.md) |
 | Use | Make the machines do work | Model service, builds, jobs, AI agent runs, hosted applications | [compute-plan.md](../compute-plan.md). [jobs.md](../programme/proposals/jobs.md), [projects-and-builds.md](../programme/proposals/projects-and-builds.md), [agent-runs.md](../programme/proposals/agent-runs.md), [hosted-applications.md](../programme/proposals/hosted-applications.md) |
@@ -33,6 +33,7 @@ The table gives the order. The section of each row below the table gives the wor
 | 4.1 | 0 | Finish the device manager | Foundation, See, Reach | Phases 1 to 3 are built. | Operator: the acceptance run (WP-53). Agent: R5 to R7 |
 | 4.16 | 1 | One-click install | Foundation, Reach | In progress. Built; the live checks wait for the operator. | Operator: the live checks ([need-human-testing.md](../need-human-testing.md), "One-click") |
 | 4.17 | 1 | The hosted mode and the shared pool | Foundation | Proposal. The direction is decided. | Operator: approval of HMD-001 to HMD-036, and HM-D4 |
+| 4.18 | 1 | Update the agent and the hub | Foundation | Proposal. Task U1 is done. | Operator: approval of ROL-001 to ROL-052. Agent: task U3. The other tasks wait for the first release (R7) |
 | 4.2 | 1 | Restore a backup and move the coordinator | Foundation | Proposal. | Operator: approval of FND-006. No task breakdown yet |
 | 4.3 | 1 | Decisions and approvals for the foundation | All | Open | Operator: each decision and approval in the row |
 | 4.4 | 2a | The engine (E0) | See, Remember | In progress. | Agent: E0-4 (on its branch), then E0-5 to E0-7 and Writing. E0-5 waits for row 4.11 |
@@ -46,6 +47,7 @@ The table gives the order. The section of each row below the table gives the wor
 | 4.12 | 4 | Level 2: one model across machines | Use | Parked. | Row 4.5 in daily use |
 | 4.13 | 4 | A hash chain for the audit log | Foundation | The operator made the work item smaller on 2026-11-12 | Agent: phase L0 of GH-2 |
 | 4.14 | 4 | Mobile clients (Phase 5) and site operations (Phase 6) | Foundation, Reach | Planned. | Agent: the tasks of the mobile plan. Phase 6 waits for rows 4.4 to 4.8 |
+| 4.19 | Not set | The watchdog | See, Use | Proposal. Not approved. | Operator: a tier and approval of the direction (OD-W22) |
 | 4.15 | — | Deferred items and ideas | All | Recorded, not planned | Nothing |
 
 ### 4.1 Finish the device manager
@@ -71,6 +73,14 @@ The table gives the order. The section of each row below the table gives the wor
 - Work: Sign-in is the default first run and makes a hosted hub for the account. The self-host mode is the second choice (HM-R1; the operator confirmed it on 2026-11-16). The link on the server stack, the sleep of a free hub, the shared pool with its isolation and its security review ([hosted-mode.md](../programme/proposals/hosted-mode.md), [shared-pool-hosting.md](../programme/proposals/shared-pool-hosting.md)).
 - Work items: No work item yet
 - State: Proposal. The operator put it here on 2026-11-16: directly after tier 0, before the engine. The direction is decided (HM-R1 to HM-R9). The requirements HMD-001 to HMD-036 are not approved. The second sign-in factor (HM-D4) is not ruled. The operator selected WorkOS AuthKit for the sign-in on 2026-11-16 (HM-R9); its requirements are HMD-032 to HMD-036.
+
+### 4.18 Update the agent and the hub
+
+- Tier: 1
+- Category: Foundation
+- Work: Update the agent and the hub on each machine with one press, and automatically: signed releases, a rollout in steps, a rollback, machines that are not connected (ROL-001 to ROL-052)
+- Work items: No work item yet. The tasks are in "Tasks" of [agent-and-hub-update.md](../programme/proposals/agent-and-hub-update.md)
+- State: Proposal. The operator put it here on 2026-11-16: directly after the first release (OD-W23). Its requirements are not approved, except R-122. Task U1 (the agent reports its version, R-122) is done. Task U3 needs no release. The other tasks need the first release (task R7), new files from the builder and a change to K8.
 
 ### 4.2 Restore a backup and move the coordinator
 
@@ -184,13 +194,21 @@ The table gives the order. The section of each row below the table gives the wor
 - Work items: [deferred.md](../deferred.md)
 - State: Recorded, not planned
 
+### 4.19 The watchdog
+
+- Tier: Not set
+- Category: See, Use
+- Work: The watchdog: `anima-agent` restarts the programs that the operator marked, and reports each restart (WDG-001 to WDG-041)
+- Work items: No work item yet. The tasks are in "Tasks" of [watchdog.md](../programme/proposals/watchdog.md)
+- State: Proposal. Not approved. The operator must give it a tier (OD-W22). It needs the ruling for OD-W10 and a change to K8; its second stage needs the work route (group W).
+
 ### Notes on the order
 
 Notes:
 
 - Tiers 2a and 2b do not depend on each other. They can run at the same time.
 - Each extension needs the engine (PH-E-000). The extensions are independent workflows (XP-004).
-- The rows 4.16 and 4.17 are tier 1 (operator, 2026-11-16). They come before the engine, the model service and the extensions. Their numbers follow 4.15 because a published number does not change.
+- The rows 4.16, 4.17 and 4.18 are tier 1 (operator, 2026-11-16). They come before the engine, the model service and the extensions. Their numbers follow 4.15 because a published number does not change.
 - The states in this table were read on 2026-11-12, except where a row gives a later date. The rows of tier 0, tier 2a and Projects in tier 3a were compared with the commits on `main` on 2026-11-16.
 - Phase 4 (Proxmox VE) is withdrawn (R-109). Session recording is deferred (R-113). This plan does not include them.
 

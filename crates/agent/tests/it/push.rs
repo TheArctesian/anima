@@ -11,6 +11,8 @@ use tokio::net::TcpSocket;
 use crate::fake_hub::{FakeHub, Reply};
 use crate::kit::{at, device, origin, points, pushed_times, rig, token, year};
 
+mod version;
+
 fn feed(rig: &mut crate::kit::Rig, first: i64, count: i64) {
     for point in points(first, count) {
         rig.pusher.accept(Event::Point(point));

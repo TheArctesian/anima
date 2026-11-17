@@ -29,13 +29,13 @@ describe('AgentInstall (MET-012)', () => {
 
   it('MET-018: a failed read leaves no earlier state standing behind the error', async () => {
     const answers: HubResult<AgentStatusView | null>[] = [
-      { ok: true, value: { metricsSource: 'AGENT', metricsStale: false } },
+      { ok: true, value: { metricsSource: 'AGENT', metricsStale: false, agentVersion: null } },
       { ok: false, error: { code: 'INTERNAL', message: 'down' } },
     ];
     const calls: AgentCalls = { enrolAgent: NEVER, agentStatus: () => Promise.resolve(answers.shift() ?? answers[0]), revokeAgentToken: NEVER };
     const install = new AgentInstall(calls, 'd1', ENV);
     await install.loadStatus();
-    expect(install.status).toEqual({ metricsSource: 'AGENT', metricsStale: false });
+    expect(install.status).toEqual({ metricsSource: 'AGENT', metricsStale: false, agentVersion: null });
     await install.loadStatus();
     expect(install.status).toBeNull();
     expect(install.statusError?.message).toBe('down');
@@ -51,8 +51,8 @@ describe('AgentInstall (MET-012)', () => {
     const install = new AgentInstall(calls, 'd1', ENV);
     const first = install.loadStatus();
     const second = install.loadStatus();
-    waiting[1]?.({ ok: true, value: { metricsSource: 'AGENT', metricsStale: true } });
-    waiting[0]?.({ ok: true, value: { metricsSource: 'AGENT', metricsStale: false } });
+    waiting[1]?.({ ok: true, value: { metricsSource: 'AGENT', metricsStale: true, agentVersion: null } });
+    waiting[0]?.({ ok: true, value: { metricsSource: 'AGENT', metricsStale: false, agentVersion: null } });
     await Promise.all([first, second]);
     expect(install.status?.metricsStale).toBe(true);
   });
@@ -62,12 +62,12 @@ describe('AgentInstall (MET-012)', () => {
     const calls: AgentCalls = {
       enrolAgent: NEVER,
       agentStatus: () => new Promise((resolve) => { oldStatus = resolve; }),
-      revokeAgentToken: () => Promise.resolve({ ok: true, value: { metricsSource: 'AGENT', metricsStale: true } }),
+      revokeAgentToken: () => Promise.resolve({ ok: true, value: { metricsSource: 'AGENT', metricsStale: true, agentVersion: null } }),
     };
     const install = new AgentInstall(calls, 'd1', ENV);
     const loading = install.loadStatus();
     await install.revoke();
-    oldStatus({ ok: true, value: { metricsSource: 'AGENT', metricsStale: false } });
+    oldStatus({ ok: true, value: { metricsSource: 'AGENT', metricsStale: false, agentVersion: null } });
     await loading;
     expect(install.revoked).toBe(true);
     expect(install.status?.metricsStale).toBe(true);

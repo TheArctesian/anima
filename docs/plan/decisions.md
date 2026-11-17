@@ -4,7 +4,7 @@ Part of the work plan: [work-plan.md](../work-plan.md) is the entry point, and i
 
 | Item | Value |
 | --- | --- |
-| Document | The decisions OD-W1 to OD-W21, each with the words of the operator |
+| Document | The decisions OD-W1 to OD-W23, each with the words of the operator |
 | Version | 2.0 |
 | Date | 2026-11-16 |
 | Language | ASD-STE100 Simplified Technical English (STE) |
@@ -37,6 +37,8 @@ Decisions of the other plans are in the "Open decisions" section of each plan, a
 | OD-W19 | The name of the macOS application: `Anima.app` (design specification) or `Anima.ing.app` (the builder) | Decided (operator, 2026-11-16) |
 | OD-W20 | The meaning of "must not be able to build or publish the Anima application" (PRO-028) | Decided (operator, 2026-11-16) |
 | OD-W21 | The order of the build work, and the tier of the correction of the release | Decided (operator, 2026-11-16) |
+| OD-W22 | The watchdog ([watchdog.md](../programme/proposals/watchdog.md)): approve its direction, and give it a tier. Its own decisions are OD-WDG-1 to OD-WDG-13. | Open |
+| OD-W23 | The update of the agent and the hub ([agent-and-hub-update.md](../programme/proposals/agent-and-hub-update.md)): its tier. Its own decisions are OD-ROL-1 to OD-ROL-14. | Decided (operator, 2026-11-16) |
 
 ### OD-W1. Can Anima change a rented resource (redeploy, purge a cache, restart the VPS)?
 
@@ -112,7 +114,7 @@ Not a decision of this plan. [SPEC-C](../work-items/compute/SPEC-C.md) and [OD-C
 
 ### OD-W19. The name of the macOS application: `Anima.app` (design specification) or `Anima.ing.app` (the builder)
 
-**Decided (operator, 2026-11-16): `Anima.ing.app`**, the name that Tauri makes from `productName`. Task R5 changes the design specification Section 3.11 and `carried.rs` to agree. The file names of a release stay `Anima_*` (UPD-010).
+**Decided (operator, 2026-11-16): `Anima.ing.app`**, the name that Tauri makes from `productName`. Task R5 changed the design specification Section 3.11 and `carried.rs` to agree (Done, c1e6226e). The file names of a release stay `Anima_*` (UPD-010).
 
 ### OD-W20. The meaning of "must not be able to build or publish the Anima application" (PRO-028)
 
@@ -121,3 +123,11 @@ Not a decision of this plan. [SPEC-C](../work-items/compute/SPEC-C.md) and [OD-C
 ### OD-W21. The order of the build work, and the tier of the correction of the release
 
 **Decided (operator, 2026-11-16).** Tasks R1 to R7 at tier 0, now, because no release is published. Then the work route (W), then runners in warm mode (B), then Anima's own builds (A). Reason for B before A: B gives each project its builds from the workflows that it has.
+
+### OD-W22. The watchdog ([watchdog.md](../programme/proposals/watchdog.md)): approve its direction, and give it a tier. Its own decisions are OD-WDG-1 to OD-WDG-13.
+
+**Open.** Recommendation: approve it as a function of `anima-agent`, not as a container. Tier 3c, before hosted applications, which can then use its check (HOST-008). Its stage 1 (watches made at the machine) needs no work route and can start after stage B of the update, if the operator wants it earlier. It needs the ruling number for OD-W10, because it changes MET-002.
+
+### OD-W23. The update of the agent and the hub ([agent-and-hub-update.md](../programme/proposals/agent-and-hub-update.md)): its tier. Its own decisions are OD-ROL-1 to OD-ROL-14.
+
+**Decided (operator, 2026-11-16): tier 1, directly after the first release.** The operator's words: "thats fine were still pre release". Reason: the work route and the watchdog reach an installed machine only through an update (USE-008). The stages stay a recommendation: the versions show, the machines update, then the hub, after the restore procedure (FND-006) is written. OD-ROL-8 is decided: no Linux machine on ARM is in use. Open: the other OD-ROL decisions, and the operator's answer on the larger risk of the updater key (R-117, OD-ROL-2).

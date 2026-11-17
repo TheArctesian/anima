@@ -355,6 +355,8 @@ type Device {
   metricsSource: MetricsSource!
   "True when the source is AGENT and no batch came in the last 30 seconds (MET-018)."
   metricsStale: Boolean!
+  "The version of the device's agent from its last batch; null unless the source is AGENT and the agent sent one (R-122, ROL-051)."
+  agentVersion: String
   transfer: TransferPolicy!
   accessWarnings: [AccessWarning!]!
   "Most live sessions at once (RA-036); null: no limit. File tunnels do not count."

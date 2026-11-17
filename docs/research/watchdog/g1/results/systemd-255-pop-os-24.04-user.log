@@ -1,0 +1,98 @@
+== S1 Restart=no, crash after 2 s with code 3
+t+  1.3s Restart=no Result=success NRestarts=0 ExecMainCode=0 ExecMainStatus=0 LoadState=loaded ActiveState=active SubState=running 
+t+  1.9s Restart=no Result=success NRestarts=0 ExecMainCode=0 ExecMainStatus=0 LoadState=loaded ActiveState=active SubState=running 
+t+  2.4s Restart=no Result=exit-code NRestarts=0 ExecMainCode=1 ExecMainStatus=3 LoadState=loaded ActiveState=failed SubState=failed 
+t+  2.9s Restart=no Result=exit-code NRestarts=0 ExecMainCode=1 ExecMainStatus=3 LoadState=loaded ActiveState=failed SubState=failed 
+t+  3.4s Restart=no Result=exit-code NRestarts=0 ExecMainCode=1 ExecMainStatus=3 LoadState=loaded ActiveState=failed SubState=failed 
+t+  3.9s Restart=no Result=exit-code NRestarts=0 ExecMainCode=1 ExecMainStatus=3 LoadState=loaded ActiveState=failed SubState=failed 
+t+  4.5s Restart=no Result=exit-code NRestarts=0 ExecMainCode=1 ExecMainStatus=3 LoadState=loaded ActiveState=failed SubState=failed 
+t+  5.0s Restart=no Result=exit-code NRestarts=0 ExecMainCode=1 ExecMainStatus=3 LoadState=loaded ActiveState=failed SubState=failed 
+== S2 Restart=on-failure, crash after 1 s with code 1: systemd restarts, then reaches the start limit
+t+  1.4s Restart=on-failure Result=exit-code NRestarts=0 ExecMainCode=1 ExecMainStatus=1 LoadState=loaded ActiveState=activating SubState=auto-restart 
+t+  1.9s Restart=on-failure Result=exit-code NRestarts=0 ExecMainCode=1 ExecMainStatus=1 LoadState=loaded ActiveState=activating SubState=auto-restart 
+t+  2.5s Restart=on-failure Result=exit-code NRestarts=0 ExecMainCode=1 ExecMainStatus=1 LoadState=loaded ActiveState=activating SubState=auto-restart 
+t+  3.0s Restart=on-failure Result=exit-code NRestarts=0 ExecMainCode=1 ExecMainStatus=1 LoadState=loaded ActiveState=activating SubState=auto-restart 
+t+  3.5s Restart=on-failure Result=success NRestarts=1 ExecMainCode=0 ExecMainStatus=0 LoadState=loaded ActiveState=active SubState=running 
+t+  4.0s Restart=on-failure Result=success NRestarts=1 ExecMainCode=0 ExecMainStatus=0 LoadState=loaded ActiveState=active SubState=running 
+t+  4.6s Restart=on-failure Result=exit-code NRestarts=1 ExecMainCode=1 ExecMainStatus=1 LoadState=loaded ActiveState=activating SubState=auto-restart 
+t+  5.1s Restart=on-failure Result=exit-code NRestarts=1 ExecMainCode=1 ExecMainStatus=1 LoadState=loaded ActiveState=activating SubState=auto-restart 
+t+  5.6s Restart=on-failure Result=exit-code NRestarts=1 ExecMainCode=1 ExecMainStatus=1 LoadState=loaded ActiveState=activating SubState=auto-restart 
+t+  6.1s Restart=on-failure Result=exit-code NRestarts=1 ExecMainCode=1 ExecMainStatus=1 LoadState=loaded ActiveState=activating SubState=auto-restart 
+t+  6.6s Restart=on-failure Result=success NRestarts=2 ExecMainCode=0 ExecMainStatus=0 LoadState=loaded ActiveState=active SubState=running 
+t+  7.2s Restart=on-failure Result=success NRestarts=2 ExecMainCode=0 ExecMainStatus=0 LoadState=loaded ActiveState=active SubState=running 
+t+  7.7s Restart=on-failure Result=exit-code NRestarts=2 ExecMainCode=1 ExecMainStatus=1 LoadState=loaded ActiveState=activating SubState=auto-restart 
+t+  8.2s Restart=on-failure Result=exit-code NRestarts=2 ExecMainCode=1 ExecMainStatus=1 LoadState=loaded ActiveState=activating SubState=auto-restart 
+t+  8.7s Restart=on-failure Result=exit-code NRestarts=2 ExecMainCode=1 ExecMainStatus=1 LoadState=loaded ActiveState=activating SubState=auto-restart 
+t+  9.2s Restart=on-failure Result=exit-code NRestarts=2 ExecMainCode=1 ExecMainStatus=1 LoadState=loaded ActiveState=activating SubState=auto-restart 
+t+  9.8s Restart=on-failure Result=exit-code NRestarts=3 ExecMainCode=1 ExecMainStatus=1 LoadState=loaded ActiveState=failed SubState=failed 
+t+ 10.3s Restart=on-failure Result=exit-code NRestarts=3 ExecMainCode=1 ExecMainStatus=1 LoadState=loaded ActiveState=failed SubState=failed 
+t+ 10.8s Restart=on-failure Result=exit-code NRestarts=3 ExecMainCode=1 ExecMainStatus=1 LoadState=loaded ActiveState=failed SubState=failed 
+t+ 11.3s Restart=on-failure Result=exit-code NRestarts=3 ExecMainCode=1 ExecMainStatus=1 LoadState=loaded ActiveState=failed SubState=failed 
+t+ 11.8s Restart=on-failure Result=exit-code NRestarts=3 ExecMainCode=1 ExecMainStatus=1 LoadState=loaded ActiveState=failed SubState=failed 
+t+ 12.4s Restart=on-failure Result=exit-code NRestarts=3 ExecMainCode=1 ExecMainStatus=1 LoadState=loaded ActiveState=failed SubState=failed 
+t+ 12.9s Restart=on-failure Result=exit-code NRestarts=3 ExecMainCode=1 ExecMainStatus=1 LoadState=loaded ActiveState=failed SubState=failed 
+t+ 13.4s Restart=on-failure Result=exit-code NRestarts=3 ExecMainCode=1 ExecMainStatus=1 LoadState=loaded ActiveState=failed SubState=failed 
+t+ 13.9s Restart=on-failure Result=exit-code NRestarts=3 ExecMainCode=1 ExecMainStatus=1 LoadState=loaded ActiveState=failed SubState=failed 
+t+ 14.5s Restart=on-failure Result=exit-code NRestarts=3 ExecMainCode=1 ExecMainStatus=1 LoadState=loaded ActiveState=failed SubState=failed 
+t+ 15.0s Restart=on-failure Result=exit-code NRestarts=3 ExecMainCode=1 ExecMainStatus=1 LoadState=loaded ActiveState=failed SubState=failed 
+t+ 15.5s Restart=on-failure Result=exit-code NRestarts=3 ExecMainCode=1 ExecMainStatus=1 LoadState=loaded ActiveState=failed SubState=failed 
+== S3 Restart=always, serve: systemctl stop (a person)
+Restart=always Result=success NRestarts=0 ExecMainCode=0 ExecMainStatus=0 LoadState=loaded ActiveState=active SubState=running 
+t+  0.0s Restart=always Result=success NRestarts=0 ExecMainCode=0 ExecMainStatus=0 LoadState=loaded ActiveState=inactive SubState=dead 
+t+  0.5s Restart=always Result=success NRestarts=0 ExecMainCode=0 ExecMainStatus=0 LoadState=loaded ActiveState=inactive SubState=dead 
+t+  1.1s Restart=always Result=success NRestarts=0 ExecMainCode=0 ExecMainStatus=0 LoadState=loaded ActiveState=inactive SubState=dead 
+t+  1.6s Restart=always Result=success NRestarts=0 ExecMainCode=0 ExecMainStatus=0 LoadState=loaded ActiveState=inactive SubState=dead 
+t+  2.1s Restart=always Result=success NRestarts=0 ExecMainCode=0 ExecMainStatus=0 LoadState=loaded ActiveState=inactive SubState=dead 
+t+  2.7s Restart=always Result=success NRestarts=0 ExecMainCode=0 ExecMainStatus=0 LoadState=loaded ActiveState=inactive SubState=dead 
+  "MESSAGE":"Started g1-watch-s3.service - G1 prototype of the Anima watchdog." "JOB_TYPE":"start" "JOB_RESULT":"done" "MESSAGE_ID":"39f53479d3a045ac8e11786248231fbf" 
+  "MESSAGE":"stopped by terminated" 
+  "MESSAGE":"Stopping g1-watch-s3.service - G1 prototype of the Anima watchdog..." "JOB_TYPE":"stop" "MESSAGE_ID":"de5b426a63be47a7b6ac3eaac82e2f6f" 
+  "MESSAGE":"Stopped g1-watch-s3.service - G1 prototype of the Anima watchdog." "JOB_TYPE":"stop" "JOB_RESULT":"done" "MESSAGE_ID":"9d1aaa27d60140bd96365438aad20286" 
+== S4 Restart=always, serve: systemctl kill --signal=TERM (a person, the program exits 0)
+t+  0.0s Restart=always Result=success NRestarts=0 ExecMainCode=1 ExecMainStatus=0 LoadState=loaded ActiveState=activating SubState=auto-restart 
+t+  0.5s Restart=always Result=success NRestarts=0 ExecMainCode=1 ExecMainStatus=0 LoadState=loaded ActiveState=activating SubState=auto-restart 
+t+  1.1s Restart=always Result=success NRestarts=0 ExecMainCode=1 ExecMainStatus=0 LoadState=loaded ActiveState=activating SubState=auto-restart 
+t+  1.6s Restart=always Result=success NRestarts=0 ExecMainCode=1 ExecMainStatus=0 LoadState=loaded ActiveState=activating SubState=auto-restart 
+t+  2.1s Restart=always Result=success NRestarts=1 ExecMainCode=0 ExecMainStatus=0 LoadState=loaded ActiveState=active SubState=running 
+t+  2.6s Restart=always Result=success NRestarts=1 ExecMainCode=0 ExecMainStatus=0 LoadState=loaded ActiveState=active SubState=running 
+t+  3.2s Restart=always Result=success NRestarts=1 ExecMainCode=0 ExecMainStatus=0 LoadState=loaded ActiveState=active SubState=running 
+t+  3.7s Restart=always Result=success NRestarts=1 ExecMainCode=0 ExecMainStatus=0 LoadState=loaded ActiveState=active SubState=running 
+  "MESSAGE":"Started g1-watch-s4.service - G1 prototype of the Anima watchdog." "JOB_TYPE":"start" "JOB_RESULT":"done" "MESSAGE_ID":"39f53479d3a045ac8e11786248231fbf" 
+  "MESSAGE":"g1-watch-s4.service: Sent signal SIGTERM to main process 674751 (g1prog) on client request." 
+  "MESSAGE":"stopped by terminated" 
+  "MESSAGE":"g1-watch-s4.service: Scheduled restart job, restart counter is at 1." "MESSAGE_ID":"5eb03494b6584870a536b337290809b3" 
+  "MESSAGE":"Started g1-watch-s4.service - G1 prototype of the Anima watchdog." "JOB_TYPE":"start" "JOB_RESULT":"done" "MESSAGE_ID":"39f53479d3a045ac8e11786248231fbf" 
+== S5 Restart=always, serve: kill -KILL of the main process from a shell
+t+  0.0s Restart=always Result=signal NRestarts=0 ExecMainCode=2 ExecMainStatus=9 LoadState=loaded ActiveState=activating SubState=auto-restart 
+t+  0.5s Restart=always Result=signal NRestarts=0 ExecMainCode=2 ExecMainStatus=9 LoadState=loaded ActiveState=activating SubState=auto-restart 
+t+  1.1s Restart=always Result=signal NRestarts=0 ExecMainCode=2 ExecMainStatus=9 LoadState=loaded ActiveState=activating SubState=auto-restart 
+t+  1.6s Restart=always Result=signal NRestarts=0 ExecMainCode=2 ExecMainStatus=9 LoadState=loaded ActiveState=activating SubState=auto-restart 
+t+  2.1s Restart=always Result=success NRestarts=1 ExecMainCode=0 ExecMainStatus=0 LoadState=loaded ActiveState=active SubState=running 
+t+  2.6s Restart=always Result=success NRestarts=1 ExecMainCode=0 ExecMainStatus=0 LoadState=loaded ActiveState=active SubState=running 
+t+  3.2s Restart=always Result=success NRestarts=1 ExecMainCode=0 ExecMainStatus=0 LoadState=loaded ActiveState=active SubState=running 
+t+  3.7s Restart=always Result=success NRestarts=1 ExecMainCode=0 ExecMainStatus=0 LoadState=loaded ActiveState=active SubState=running 
+== S6 Restart=always, plain (catches no signal): systemctl kill --signal=TERM (a person)
+t+  0.0s Restart=always Result=success NRestarts=0 ExecMainCode=2 ExecMainStatus=15 LoadState=loaded ActiveState=activating SubState=auto-restart 
+t+  0.5s Restart=always Result=success NRestarts=0 ExecMainCode=2 ExecMainStatus=15 LoadState=loaded ActiveState=activating SubState=auto-restart 
+t+  1.1s Restart=always Result=success NRestarts=0 ExecMainCode=2 ExecMainStatus=15 LoadState=loaded ActiveState=activating SubState=auto-restart 
+t+  1.6s Restart=always Result=success NRestarts=0 ExecMainCode=2 ExecMainStatus=15 LoadState=loaded ActiveState=activating SubState=auto-restart 
+t+  2.1s Restart=always Result=success NRestarts=1 ExecMainCode=0 ExecMainStatus=0 LoadState=loaded ActiveState=active SubState=running 
+t+  2.6s Restart=always Result=success NRestarts=1 ExecMainCode=0 ExecMainStatus=0 LoadState=loaded ActiveState=active SubState=running 
+t+  3.2s Restart=always Result=success NRestarts=1 ExecMainCode=0 ExecMainStatus=0 LoadState=loaded ActiveState=active SubState=running 
+t+  3.7s Restart=always Result=success NRestarts=1 ExecMainCode=0 ExecMainStatus=0 LoadState=loaded ActiveState=active SubState=running 
+  "MESSAGE":"Started g1-watch-s6.service - G1 prototype of the Anima watchdog." "JOB_TYPE":"start" "JOB_RESULT":"done" "MESSAGE_ID":"39f53479d3a045ac8e11786248231fbf" 
+  "MESSAGE":"g1-watch-s6.service: Sent signal SIGTERM to main process 674985 (g1prog) on client request." 
+  "MESSAGE":"g1-watch-s6.service: Scheduled restart job, restart counter is at 1." "MESSAGE_ID":"5eb03494b6584870a536b337290809b3" 
+  "MESSAGE":"Started g1-watch-s6.service - G1 prototype of the Anima watchdog." "JOB_TYPE":"start" "JOB_RESULT":"done" "MESSAGE_ID":"39f53479d3a045ac8e11786248231fbf" 
+== S7 Restart=no, serve: systemctl restart (the restart of WDG-021)
+Restart=no Result=success NRestarts=0 ExecMainCode=0 ExecMainStatus=0 LoadState=loaded ActiveState=active SubState=running 
+t+  0.0s Restart=no Result=success NRestarts=0 ExecMainCode=0 ExecMainStatus=0 LoadState=loaded ActiveState=active SubState=running 
+t+  0.6s Restart=no Result=success NRestarts=0 ExecMainCode=0 ExecMainStatus=0 LoadState=loaded ActiveState=active SubState=running 
+t+  1.1s Restart=no Result=success NRestarts=0 ExecMainCode=0 ExecMainStatus=0 LoadState=loaded ActiveState=active SubState=running 
+t+  1.6s Restart=no Result=success NRestarts=0 ExecMainCode=0 ExecMainStatus=0 LoadState=loaded ActiveState=active SubState=running 
+  "MESSAGE":"Started g1-watch-s7.service - G1 prototype of the Anima watchdog." "JOB_TYPE":"start" "JOB_RESULT":"done" "MESSAGE_ID":"39f53479d3a045ac8e11786248231fbf" 
+  "MESSAGE":"stopped by terminated" 
+  "MESSAGE":"Stopping g1-watch-s7.service - G1 prototype of the Anima watchdog..." "JOB_TYPE":"stop" "MESSAGE_ID":"de5b426a63be47a7b6ac3eaac82e2f6f" 
+  "MESSAGE":"Stopped g1-watch-s7.service - G1 prototype of the Anima watchdog." "JOB_TYPE":"restart" "JOB_RESULT":"done" "MESSAGE_ID":"9d1aaa27d60140bd96365438aad20286" 
+  "MESSAGE":"Started g1-watch-s7.service - G1 prototype of the Anima watchdog." "JOB_TYPE":"start" "JOB_RESULT":"done" "MESSAGE_ID":"39f53479d3a045ac8e11786248231fbf" 
+== end: 0 units left

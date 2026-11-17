@@ -28,6 +28,7 @@ pub(super) use enrolment::{make_code, revoke};
 pub use routes::agent_router;
 pub use stale::spawn_stale_watch;
 pub(super) use stale::without_fresh_agent;
+pub(super) use store::agent_versions;
 
 use crate::fleet::{devices, events};
 

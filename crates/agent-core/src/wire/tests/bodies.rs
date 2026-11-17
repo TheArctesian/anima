@@ -78,7 +78,7 @@ fn k8_1_unknown_members_are_ignored() {
         "expiresAt": "2027-11-08T10:00:00Z", "newer": { "member": [1] } }"#;
     assert!(serde_json::from_str::<Renewed>(body).is_ok());
     assert!(serde_json::from_str::<RenewRequest>(r#"{ "later": true }"#).is_ok());
-    let batch = BATCH.replacen("\"device\"", "\"agentVersion\": \"0.2.0\", \"device\"", 1);
+    let batch = BATCH.replacen("\"device\"", "\"newerMember\": [1], \"device\"", 1);
     assert_eq!(serde_json::from_str::<Batch>(&batch).unwrap(), example());
 }
 

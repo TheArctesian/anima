@@ -102,6 +102,32 @@ fn table(device: &device_get::DeviceGetDevice) -> Table {
     table.pair("OS", system(device));
     table.pair("Tags", device.tags.join(", "));
     table.pair("Maintenance", if device.maintenance { "on" } else { "off" });
+    access_rows(&mut table, device);
+    table.pair("Metrics", enum_name(&device.metrics_source));
+    if let Some(version) = &device.agent_version {
+        table.pair("Agent version", version.as_str());
+    }
+    table.pair(
+        "Uptime 24 h",
+        device
+            .uptime
+            .map_or_else(|| "-".to_owned(), |ratio| format!("{:.2} %", ratio * 100.0)),
+    );
+    for check in &device.checks {
+        let label = format!("Check {} ({})", check.name, enum_name(&check.type_));
+        let status = if check.paused {
+            "PAUSED".to_owned()
+        } else {
+            enum_name(&check.status)
+        };
+        table.pair(&label, Cell::status(&status));
+    }
+    table.pair("Updated", device.updated_at.as_str());
+    table
+}
+
+/// The SSH, RDP and VNC rows, and the SSH host key when the hub has one.
+fn access_rows(table: &mut Table, device: &device_get::DeviceGetDevice) {
     table.pair(
         "SSH",
         access(
@@ -132,24 +158,6 @@ fn table(device: &device_get::DeviceGetDevice) -> Table {
             format!("{} {}", key.algorithm, key.fingerprint_sha256),
         );
     }
-    table.pair("Metrics", enum_name(&device.metrics_source));
-    table.pair(
-        "Uptime 24 h",
-        device
-            .uptime
-            .map_or_else(|| "-".to_owned(), |ratio| format!("{:.2} %", ratio * 100.0)),
-    );
-    for check in &device.checks {
-        let label = format!("Check {} ({})", check.name, enum_name(&check.type_));
-        let status = if check.paused {
-            "PAUSED".to_owned()
-        } else {
-            enum_name(&check.status)
-        };
-        table.pair(&label, Cell::status(&status));
-    }
-    table.pair("Updated", device.updated_at.as_str());
-    table
 }
 
 fn system(device: &device_get::DeviceGetDevice) -> String {

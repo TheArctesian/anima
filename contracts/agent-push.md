@@ -4,6 +4,7 @@ Status: **frozen for Phase 3** (CR-15, R-092; change only through a programme ru
 WP-54 T2. Spec: MET-011 to MET-020, LOG-007, NET-002, NET-003, P3-004. Rust types: `agent_core::wire`.
 The drive kinds and `drives` (MET-027, MET-028) were added by the operator's ruling of 2026-11-12 (PKG-001, CR-24).
 The link origin of Section 1 was added by the operator's ruling of 2026-11-15 (one-click plan, S5).
+The `agentVersion` member of Section 4 was added by R-122 (operator, 2026-11-16).
 
 This contract is the whole interface between `anima-agent` and the hub. The agent makes no other request.
 
@@ -173,6 +174,10 @@ Request:
   probe runs in a process group of its own that is killed when it ends. `claude` and `codex` write into their
   home folder even to print a version, so they run with `HOME`, `CODEX_HOME` and `CLAUDE_CONFIG_DIR` set to
   an empty temporary folder that is removed afterwards; no other probe has a home folder (CAP-025).
+- `agentVersion`: optional (R-122). The version of the `anima-agent` that sent the batch, in each batch. It
+  is 1 to 64 bytes of ASCII letters, digits, `.`, `-` and `+`, and starts with a digit; any other text is
+  `MALFORMED`. A release build carries the release version (`ANIMA_VERSION`, as `anima` does); any other build
+  carries the crate version. Absent means an agent older than R-122, and a hub older than R-122 ignores it.
 
 The hub:
 
@@ -193,6 +198,8 @@ The hub:
 - with `inventory` present, replaces the device's tool inventory with it in the same transaction, the tools
   and the build targets included; an empty `tools` or `buildTargets` means the device has none now, and an
   absent `inventory` leaves it as it is (CAP-029). Deleting the device deletes its inventory;
+- keeps the `agentVersion` of the newest accepted batch, or no version when that batch had none, and
+  forgets it when it gives the device a new token (R-122). `Device.agentVersion` serves it;
 - records the time of the last accepted batch for MET-018 (R-098 a). Any accepted batch resets it, even one
   whose series the hub all ignores; a refused batch does not. 30 seconds after the last accepted batch the
   device's metrics are stale: the hub writes one event (source `metrics`, severity warning) and serves

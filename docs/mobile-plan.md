@@ -122,7 +122,7 @@ The operator approved these requirements on 2026-11-16, with the limit that the 
 
 The phone layout applies below the compact breakpoint (768 px), which is an existing token. Version 0.1 said 600 px; no token has that value.
 
-The mockups that the operator approved on 2026-11-16 are in [mockup/mobile/index.html](mockup/mobile/index.html). Where a requirement below and a mockup differ, the mockup is correct. The mockups differ from the design specification in these points, which Section 7 lists: four destinations in the bar, with Logs as a page; no hub status in the bar; a connect button on each device row; controls of 44 px to 56 px.
+The mockups that the operator approved on 2026-11-16 are in `docs/mockup/mobile/index.html`. That file is not in the repository (2026-11-17): the branch `mobile/m1-shell` did not commit it. Where a requirement below and a mockup differ, the mockup is correct. The mockups differ from the design specification in these points, which Section 7 lists: four destinations in the bar, with Logs as a page; no hub status in the bar; a connect button on each device row; controls of 44 px to 56 px.
 
 - **MOB-010.** In the phone layout the navigation bar must be at the bottom of the screen (design specification Section 5.3, F10). It has four destinations: Devices, Sessions, Logs and Settings (mockup 6).
 - **MOB-011.** The client must draw its background below the status bar and must keep its content inside the safe area (F16).

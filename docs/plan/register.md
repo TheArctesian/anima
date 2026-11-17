@@ -64,6 +64,8 @@ This table is the only list of the plans of Anima. A document that is not in thi
 | [programme/proposals/cloud-machines.md](../programme/proposals/cloud-machines.md) | Proposal | Draft | Not approved. CVM-001 to CVM-024. |
 | [programme/proposals/machine-profiles.md](../programme/proposals/machine-profiles.md) | Proposal | Draft | Not approved. REP-001 to REP-025. MET-002, USE-006, INS-009 and VLT-007 ruled 2026-11-16. |
 | [programme/proposals/cve-watch-and-network-awareness.md](../programme/proposals/cve-watch-and-network-awareness.md) | Proposal | Draft | Not approved. VUL-001 to VUL-028, ADR-001 to ADR-014. No tier in Section 4 yet. Operator rulings 2026-11-16 (R-121): the feeds and the match run once a day (VUL-006); Arch Linux and Fedora are in the first version (VUL-021 to VUL-024); an agentless SSH scan is an option (VUL-025 to VUL-028). macOS stays "Not covered". |
+| [programme/proposals/watchdog.md](../programme/proposals/watchdog.md) | Proposal, with a task table | Draft | Version 1 (2026-11-16). Not approved (OD-W22). No tier yet (Section 4, row 4.19). Task G1, a prototype, is In progress: launchd, Docker and systemd are measured; the right of WDG-040 is open ([research/watchdog/g1-supervisors.md](../research/watchdog/g1-supervisors.md)). The other tasks of its "Tasks" are Not started. |
+| [programme/proposals/agent-and-hub-update.md](../programme/proposals/agent-and-hub-update.md) | Proposal, with a task table | In progress | Version 1 (2026-11-16). Tier decided (OD-W23; Section 4, row 4.18). Only R-122 is approved. Task U1 is Done; the other tasks of its "Tasks" are Not started. |
 
 These documents are records, not plans. They must not add a requirement (PLN-009).
 

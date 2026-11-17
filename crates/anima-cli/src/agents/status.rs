@@ -1,4 +1,5 @@
-//! `anima agent status`: whether the metrics agent of a device is reporting (MET-018).
+//! `anima agent status`: whether the metrics agent of a device is reporting, and its version
+//! (MET-018, R-122).
 
 use super::documents::{AgentStatus, agent_status};
 use crate::devices::get::resolve;
@@ -14,7 +15,8 @@ pub struct StatusArgs {
 }
 
 impl StatusArgs {
-    /// Prints the metrics source, whether it is stale and when the last reading came in.
+    /// Prints the metrics source, whether it is stale, the agent's version and when the last
+    /// reading came in.
     ///
     /// # Errors
     /// [`Failure::NotFound`] for an unknown device; the hub's refusal.
@@ -45,6 +47,10 @@ fn table(device: &agent_status::AgentStatusDevice) -> Table {
     table.pair("Metrics source", source.as_str());
     table.pair("Agent", state);
     table.pair(
+        "Agent version",
+        version(source.as_str(), device.agent_version.as_deref()),
+    );
+    table.pair(
         "Last reading",
         device
             .readings
@@ -52,4 +58,13 @@ fn table(device: &agent_status::AgentStatusDevice) -> Table {
             .map_or("-", |readings| readings.at.as_str()),
     );
     table
+}
+
+/// The agent's version as its last batch gave it; an agent older than R-122 gives none.
+fn version(source: &str, version: Option<&str>) -> Cell {
+    match (source, version) {
+        ("AGENT", Some(version)) => Cell::from(version),
+        ("AGENT", None) => Cell::toned("not reported", Tone::Muted),
+        _ => Cell::from("-"),
+    }
 }

@@ -5,6 +5,7 @@ query AgentStatus($id: ID!) {
     name
     metricsSource
     metricsStale
+    agentVersion
     readings {
       at
     }

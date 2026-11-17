@@ -12,6 +12,7 @@ mod range;
 mod secrets;
 mod series;
 mod shape;
+mod version;
 
 /// The K8 Section 4 example batch.
 const BATCH: &str = include_str!("tests/k8/batch.json");

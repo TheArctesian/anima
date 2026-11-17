@@ -43,7 +43,9 @@ describe('metricsApi', () => {
     expect(heard).toEqual([batch, DENIED]);
     expect(fake.listeners('MetricsAdded')).toBe(0);
   });
+});
 
+describe('metricsApi: the agent', () => {
   it('enrolAgent asks for the device and returns the code and its expiry', async () => {
     const enrolment = { code: 'anima_enrol_AbCdEfGhIjKlMnOpQrStUv', expiresAt: '2026-11-09T10:15:00Z' };
     const fake = fakeHub({ EnrolAgent: { enrolAgent: enrolment }, });
@@ -58,13 +60,25 @@ describe('metricsApi', () => {
   });
 
   it('revokeAgentToken returns the source and stale flag the hub answers', async () => {
-    const fake = fakeHub({ RevokeAgentToken: { revokeAgentToken: { id: 'd1', metricsSource: 'AGENT', metricsStale: true } } });
-    expect(await metricsApi(fake.hub).revokeAgentToken('d1')).toEqual({ ok: true, value: { metricsSource: 'AGENT', metricsStale: true } });
+    const fake = fakeHub({ RevokeAgentToken: { revokeAgentToken: { id: 'd1', metricsSource: 'AGENT', metricsStale: true, agentVersion: null } } });
+    expect(await metricsApi(fake.hub).revokeAgentToken('d1')).toEqual({
+      ok: true,
+      value: { metricsSource: 'AGENT', metricsStale: true, agentVersion: null },
+    });
   });
 
   it('agentStatus returns the state, or null for an unknown device', async () => {
-    const known = fakeHub({ AgentStatus: { device: { id: 'd1', metricsSource: 'AGENT', metricsStale: false } } });
-    expect(await metricsApi(known.hub).agentStatus('d1')).toEqual({ ok: true, value: { metricsSource: 'AGENT', metricsStale: false } });
+    const known = fakeHub({ AgentStatus: { device: { id: 'd1', metricsSource: 'AGENT', metricsStale: false, agentVersion: null } } });
+    expect(await metricsApi(known.hub).agentStatus('d1')).toEqual({
+      ok: true,
+      value: { metricsSource: 'AGENT', metricsStale: false, agentVersion: null },
+    });
     expect(await metricsApi(fakeHub({ AgentStatus: { device: null } }).hub).agentStatus('x')).toEqual({ ok: true, value: null });
+  });
+
+  it('R-122: agentStatus gives the version the agent reported', async () => {
+    const known = fakeHub({ AgentStatus: { device: { id: 'd1', metricsSource: 'AGENT', metricsStale: false, agentVersion: '0.3.1' } } });
+    const result = await metricsApi(known.hub).agentStatus('d1');
+    expect(result.ok && result.value?.agentVersion).toBe('0.3.1');
   });
 });
