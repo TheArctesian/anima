@@ -68,6 +68,7 @@ type Documents = {
     "\n  mutation ClearSshCredential($deviceId: ID!) {\n    clearSshCredential(deviceId: $deviceId) {\n      credentialStored\n    }\n  }\n": typeof types.ClearSshCredentialDocument,
     "\n  mutation ClearRdpCredential($deviceId: ID!) {\n    clearRdpCredential(deviceId: $deviceId) {\n      credentialStored\n    }\n  }\n": typeof types.ClearRdpCredentialDocument,
     "\n  mutation ClearVncCredential($deviceId: ID!) {\n    clearVncCredential(deviceId: $deviceId) {\n      credentialStored\n    }\n  }\n": typeof types.ClearVncCredentialDocument,
+    "\n  query DeviceBeats($deviceId: ID!) {\n    device(id: $deviceId) {\n      id\n      checks {\n        id\n        heartbeats(first: 50) {\n          edges {\n            node {\n              at\n              status\n              responseTimeMs\n            }\n          }\n        }\n      }\n    }\n  }\n": typeof types.DeviceBeatsDocument,
     "\n  query DevicePolicy($id: ID!) {\n    device(id: $id) {\n      sessionLimit\n    }\n  }\n": typeof types.DevicePolicyDocument,
     "\n  mutation SetDevicePolicy($id: ID!, $input: UpdateDeviceInput!) {\n    updateDevice(id: $id, input: $input) {\n      sessionLimit\n    }\n  }\n": typeof types.SetDevicePolicyDocument,
     "\n  query Events($filter: EventFilter, $first: Int, $after: String) {\n    events(filter: $filter, first: $first, after: $after) {\n      pageInfo {\n        hasNextPage\n        endCursor\n      }\n      edges {\n        node {\n          id\n          at\n          severity\n          source\n          deviceId\n          deviceName\n          message\n        }\n      }\n    }\n  }\n": typeof types.EventsDocument,
@@ -228,6 +229,7 @@ const documents: Documents = {
     "\n  mutation ClearSshCredential($deviceId: ID!) {\n    clearSshCredential(deviceId: $deviceId) {\n      credentialStored\n    }\n  }\n": types.ClearSshCredentialDocument,
     "\n  mutation ClearRdpCredential($deviceId: ID!) {\n    clearRdpCredential(deviceId: $deviceId) {\n      credentialStored\n    }\n  }\n": types.ClearRdpCredentialDocument,
     "\n  mutation ClearVncCredential($deviceId: ID!) {\n    clearVncCredential(deviceId: $deviceId) {\n      credentialStored\n    }\n  }\n": types.ClearVncCredentialDocument,
+    "\n  query DeviceBeats($deviceId: ID!) {\n    device(id: $deviceId) {\n      id\n      checks {\n        id\n        heartbeats(first: 50) {\n          edges {\n            node {\n              at\n              status\n              responseTimeMs\n            }\n          }\n        }\n      }\n    }\n  }\n": types.DeviceBeatsDocument,
     "\n  query DevicePolicy($id: ID!) {\n    device(id: $id) {\n      sessionLimit\n    }\n  }\n": types.DevicePolicyDocument,
     "\n  mutation SetDevicePolicy($id: ID!, $input: UpdateDeviceInput!) {\n    updateDevice(id: $id, input: $input) {\n      sessionLimit\n    }\n  }\n": types.SetDevicePolicyDocument,
     "\n  query Events($filter: EventFilter, $first: Int, $after: String) {\n    events(filter: $filter, first: $first, after: $after) {\n      pageInfo {\n        hasNextPage\n        endCursor\n      }\n      edges {\n        node {\n          id\n          at\n          severity\n          source\n          deviceId\n          deviceName\n          message\n        }\n      }\n    }\n  }\n": types.EventsDocument,
@@ -564,6 +566,10 @@ export function graphql(source: "\n  mutation ClearRdpCredential($deviceId: ID!)
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "\n  mutation ClearVncCredential($deviceId: ID!) {\n    clearVncCredential(deviceId: $deviceId) {\n      credentialStored\n    }\n  }\n"): (typeof documents)["\n  mutation ClearVncCredential($deviceId: ID!) {\n    clearVncCredential(deviceId: $deviceId) {\n      credentialStored\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  query DeviceBeats($deviceId: ID!) {\n    device(id: $deviceId) {\n      id\n      checks {\n        id\n        heartbeats(first: 50) {\n          edges {\n            node {\n              at\n              status\n              responseTimeMs\n            }\n          }\n        }\n      }\n    }\n  }\n"): (typeof documents)["\n  query DeviceBeats($deviceId: ID!) {\n    device(id: $deviceId) {\n      id\n      checks {\n        id\n        heartbeats(first: 50) {\n          edges {\n            node {\n              at\n              status\n              responseTimeMs\n            }\n          }\n        }\n      }\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */

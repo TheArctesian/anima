@@ -1,0 +1,299 @@
+/*
+ * The device page in the phone layout, with the sizes of mockup 5 (docs/mockup/mobile/index.html): a back row of
+ * 44 px, a name of 24 px on two lines at most, figures of 20 px, a bar of 22 px, tabs of 46 px that scroll, check rows
+ * of 46 px, and connect buttons of 48 px docked above the navigation bar. The selectors start at `:root` so they win
+ * over the scoped rules of the shared components they restyle.
+ */
+:root .phone-device-head {
+  display: grid;
+}
+
+:root .phone-device-head .navrow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  block-size: var(--target-min-touch);
+  margin-inline: calc(var(--space-2) * -1 - var(--border-focus));
+}
+
+:root .phone-device-head .back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--border-focus);
+  block-size: var(--target-min-touch);
+  padding: 0 var(--space-2) 0 var(--space-1);
+  color: var(--text-secondary);
+  font-size: var(--text-lg);
+  text-decoration: none;
+}
+
+:root .phone-device-head .iconbtn {
+  display: grid;
+  place-items: center;
+  inline-size: var(--target-min-touch);
+  block-size: var(--target-min-touch);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+:root .phone-device-head .name {
+  display: -webkit-box;
+  margin: var(--border-focus) 0 var(--space-2);
+  overflow: hidden;
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-regular);
+  line-height: 1.25;
+  letter-spacing: var(--tracking-small);
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+:root .phone-device-head .status,
+:root .phone-device-head .host {
+  display: flex;
+  align-items: center;
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-md);
+}
+
+:root .phone-device-head .status {
+  gap: calc(var(--space-2) + var(--border-focus));
+  min-inline-size: 0;
+}
+
+:root .phone-device-head .why {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:root .phone-device-head .host {
+  gap: var(--space-1);
+  margin-block-start: var(--border-focus);
+}
+
+:root .phone-device-head .host .iconbtn {
+  margin-block: calc(var(--space-2) * -1 + var(--border-focus) * -1);
+}
+
+:root .phone-device-head .mono {
+  font-family: var(--font-mono);
+}
+
+:root .phone-device-head .figs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin: var(--space-2) 0 0;
+  border-block: var(--border-thin) solid var(--border-subtle);
+}
+
+:root .phone-device-head .figs div {
+  padding: calc(var(--space-2) + var(--border-focus)) 0 calc(var(--space-2) + var(--border-focus)) var(--space-3);
+  border-inline-start: var(--border-thin) solid var(--border-subtle);
+}
+
+:root .phone-device-head .figs div:first-child {
+  padding-inline-start: 0;
+  border-inline-start: 0;
+}
+
+:root .phone-device-head .figs dt {
+  color: var(--text-tertiary);
+  font-size: var(--text-xs);
+}
+
+:root .phone-device-head .figs dd {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--tracking-small);
+}
+
+:root .phone-device-head .beatcap {
+  display: flex;
+  justify-content: space-between;
+  margin: calc(var(--space-2) + var(--border-focus)) 0 0;
+  color: var(--text-tertiary);
+  font-size: var(--text-xs);
+}
+
+/* The bar spans the page and its cells share the width (mockup 5). */
+:root .phone-device-head .bar {
+  inline-size: 100%;
+  block-size: calc(var(--space-5) + var(--border-focus));
+  margin-block-start: calc(var(--space-1) + var(--border-focus));
+}
+
+:root .phone-device-head .bar .row {
+  flex: 1;
+  gap: var(--border-focus);
+}
+
+:root .phone-device-head .bar .cell {
+  flex: 1;
+  inline-size: auto;
+  border-radius: var(--border-thin);
+}
+
+:root .phone-device-head .dot,
+:root .phone-device-checks .dot {
+  flex: none;
+  inline-size: var(--space-2);
+  block-size: var(--space-2);
+  border-radius: 50%;
+  background: var(--status-unknown);
+}
+
+:root .phone-device-head .dot.up,
+:root .phone-device-checks .dot.up {
+  background: var(--status-up);
+}
+
+:root .phone-device-checks .dot.down {
+  background: var(--status-down);
+}
+
+:root .phone-device-checks .dot.degraded {
+  background: var(--status-degraded);
+}
+
+:root .phone-device-checks .dot.maintenance {
+  background: var(--status-maintenance);
+}
+
+:root .phone-device-head .badge {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  block-size: calc(var(--space-5) + var(--border-focus));
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+}
+
+:root .phone-device-head .badge.down {
+  background: var(--status-down-tint);
+  color: var(--status-down-text);
+}
+
+:root .phone-device-head .badge.degraded {
+  background: var(--status-degraded-tint);
+  color: var(--status-degraded-text);
+}
+
+/* The tabs run to the screen's edges and scroll; the selected one has the accent rule (mockup 5). */
+:root .phone-device-tabs {
+  margin: calc(var(--space-2) + var(--border-focus)) calc(var(--page-gutter) * -1) 0;
+}
+
+:root .phone-device-tabs .tabs {
+  gap: var(--space-1);
+  margin-block-end: 0;
+  padding-inline-start: var(--space-3);
+}
+
+:root .phone-device-tabs .tabs button {
+  min-block-size: calc(var(--space-12) - var(--border-focus));
+  padding: 0 var(--space-3);
+  font-size: var(--text-phone-row);
+}
+
+:root .phone-device-tabs .tabs button :is(svg, .count) {
+  display: none;
+}
+
+:root .phone-device-checks {
+  margin: 0 0 var(--space-4);
+  padding: 0;
+  list-style: none;
+}
+
+:root .phone-device-checks li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  block-size: calc(var(--space-12) - var(--border-focus));
+  border-block-end: var(--border-thin) solid var(--border-subtle);
+  font-size: var(--text-phone-row);
+}
+
+:root .phone-device-checks .name {
+  flex: 1;
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:root .phone-device-checks .value {
+  color: var(--text-secondary);
+  font-size: var(--text-md);
+  font-variant-numeric: tabular-nums;
+}
+
+:root .phone-device-checks .value.warn {
+  color: var(--status-degraded-text);
+}
+
+:root .phone-device-checks .value.bad {
+  color: var(--status-down-text);
+}
+
+/* Docked under the thumb, above the navigation bar; the page keeps room for it at its end. */
+:root .phone-device-connect {
+  position: fixed;
+  inset: auto 0 var(--phone-bar-block-size);
+  z-index: var(--layer-sticky);
+  display: flex;
+  gap: var(--space-2);
+  padding: calc(var(--space-2) + var(--border-focus)) var(--space-5);
+  border-block-start: var(--border-thin) solid var(--border-subtle);
+  background: var(--material-chrome-bg);
+  -webkit-backdrop-filter: blur(var(--material-chrome-blur));
+  backdrop-filter: blur(var(--material-chrome-blur));
+}
+
+:root .phone-device-connect button {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--space-2) + var(--border-focus));
+  min-block-size: var(--space-12);
+  padding: 0 var(--space-2);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-medium);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+:root .phone-device-connect button.primary {
+  flex: 1.5;
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+:root .phone-device-page {
+  padding-block-end: calc(var(--space-12) + var(--space-5) + var(--border-focus));
+}
+
+/* The head already gives the status and the uptime, so the Overview's cards of facts are left out (mockup 5). */
+:root .phone-device-page .overview-facts-fit {
+  display: none;
+}

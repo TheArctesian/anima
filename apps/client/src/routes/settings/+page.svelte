@@ -25,6 +25,7 @@
   import { resolve as entrance } from '$lib/motion/roles/resolve';
   import PageIndex from '$lib/page/contents/PageIndex.svelte';
   import { SECTIONS, indexOf } from './index';
+  import './phone/settings.css';
 
   // The desktop rows decide each row themselves; the page only leaves out the section when none can show (UPD-006, LOG-008,
   // BLD-020).
@@ -37,6 +38,7 @@
   const index = indexOf({ keyStore, stayAwake, desktopRows, mcpPermissions });
 </script>
 
+<div data-settings-page>
 <div class="head" {@attach entrance()}>
   <PageHeader title="Settings" eyebrow={{ text: 'This computer and the hub', icon: 'carbon:settings' }} />
 </div>
@@ -120,6 +122,7 @@
   <SettingsSection {...SECTIONS.vpn}>
     <VpnSection />
   </SettingsSection>
+</div>
 </div>
 </div>
 

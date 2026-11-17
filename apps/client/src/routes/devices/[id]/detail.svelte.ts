@@ -6,11 +6,13 @@ import { DEFAULT_LOG_FILTER } from '$lib/events/log';
 import { LogFeed } from '$lib/events/panel/feed.svelte';
 import type { Hub, HubError, HubResult } from '$lib/hub/hub';
 import type { CheckFormValues } from '$lib/checks/form/model/values';
+import { addBeat, beatOf, type Beat } from '$lib/checks/heartbeats';
 import type { MetricRange } from '$lib/metrics/api';
 import { sessionsApi } from '$lib/sessions/api';
 import type { DeviceId } from './device-id';
 import { DeviceMetrics } from './overview/metrics.svelte';
 import { Pages } from './pages.svelte';
+import { deviceBeats } from '$lib/devices/phone/api';
 import { saveCheck } from './save';
 import type { DeviceSession } from './sessions/sessions';
 import type { TabName } from './tabs/tabs';
@@ -54,6 +56,8 @@ export class Detail {
   checksError = $state.raw<HubError | null>(null);
   liveError = $state.raw<HubError | null>(null);
   history = $state.raw<OpenHistory | null>(null);
+  /** The device's last heartbeats for its bar in the phone layout (mockup 5); `null` until `loadBeats` has them. */
+  beats = $state.raw<readonly Beat[] | null>(null);
 
   readonly id: DeviceId;
   readonly metrics: DeviceMetrics;
@@ -150,6 +154,14 @@ export class Detail {
     if (result.ok) this.checks = result.value ?? [];
   }
 
+  /** Loads the device's last heartbeats once; live beats join them (D-6). A failure leaves the bar empty: the checks below show the hub's error. */
+  async loadBeats(): Promise<void> {
+    if (this.beats !== null) return;
+    const result = await deviceBeats(this.#hub, this.id);
+    if (this.#stopped || !result.ok) return;
+    this.beats = result.value;
+  }
+
   setDevice(next: DeviceDetail): void {
     this.device = next;
   }
@@ -217,6 +229,7 @@ export class Detail {
   /** A new heartbeat updates its check's row and the open history (D-11, New heartbeat role). */
   #onBeat(added: NewHeartbeat): void {
     if (added.deviceId !== this.id) return;
+    if (this.beats !== null) this.beats = addBeat(this.beats, beatOf(added));
     const beat: HistoryBeat = { ...added.heartbeat, message: null };
     if (this.checks !== null) {
       this.checks = this.checks.map((check) =>

@@ -100,6 +100,8 @@ select {
     /* 56 px, the bar of the approved mockup (docs/mockup/mobile, frame 6). */
     --phone-bar-size: calc(var(--space-12) + var(--space-2));
     --phone-bar-block-size: calc(var(--phone-bar-size) + var(--border-thin) + var(--safe-block-end));
+    /* 15 px, the mockups' size for tabs, chips and rows that a thumb taps. */
+    --text-phone-row: calc((var(--text-md) + var(--text-lg)) / 2);
   }
 }
 
