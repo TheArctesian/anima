@@ -1006,6 +1006,29 @@ Status: direction only. The proposed work package is XP-16. It is not in the tab
 - **BOT-013.** A read-only bot must not be able to ask for more access itself. Only the operator can
   change a bot from read-only, and that change goes in the audit log.
 
+The bot configurator (operator direction, 2026-11-16: the customer picks both the coding agent or
+subscription, for example Claude Code or Codex, and the machine or machines that the bot runs on,
+that is cloud machines, local machines such as a MacBook, or both):
+
+- **BOT-014.** When the operator makes a bot (BOT-001), the client must show a configurator with
+  two choices that the operator must make before the bot starts: the coding agent or subscription,
+  and the machine or machines that the bot runs on. The configurator must write both choices into
+  the bot definition (BOT-001).
+- **BOT-015.** The list of coding agents must come from what is installed on the machines that the
+  operator chose, for example `claude` and `codex`, and it must show a subscription only as the
+  vendor's own program on that machine (BOT-003). The configurator must never read, ask for or
+  store the login of a subscription.
+- **BOT-016.** The list of machines must show the operator's own devices, for example a laptop,
+  and the rented machines of the account (CVM-001), in one list. The operator can pick local
+  machines, cloud machines or both. The hub must refuse a machine that the operator cannot use and
+  a machine that another bot owns (BOT-011).
+- **BOT-017.** Before the operator confirms, the configurator must show for each machine whether
+  the chosen agent is installed on it, whether the bot is read-only (BOT-012), and, for a rented
+  machine, its cost for each day if it stays on (CVM-004).
+- **BOT-018.** A bot with more than one machine must have a rule that says which machine runs each
+  task. The first rule is the operator's order of machines, with the next machine as the fallback.
+  The audit log records which machine ran each task (BOT-007).
+
 **Depends on.** Model gateway (XP-15), agent panes (Section 4.12.1), the rule engine (ENG-001), and
 for long tasks the jobs and agent-runs proposals. Rented bot computers (BOT-010) depend on the
 cloud machines proposal and are billed like any rented machine (CVM-009, CVM-010).
@@ -1030,6 +1053,8 @@ cloud machines proposal and are billed like any rented machine (CVM-009, CVM-010
 2. Whether bots can talk to each other (a team of bots), or only to the operator in the first version.
 3. How the router judges "the cheapest model that can do the task".
 4. Whether a bot's computer is kept or wiped between tasks, and whether read-only bots get one at all.
+5. Whether the terms of a coding-agent subscription allow its use on a cloud machine, and how a task
+   moves to another machine when the first is off (BOT-014 to BOT-018). Proposed, not ruled.
 
 ## 5. Build order: engine first, then one workflow per extension
 
