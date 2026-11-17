@@ -38,7 +38,7 @@ describe('RA-032, MOT-009: download', () => {
     flushSync();
     expect(saved.map((each) => each.name)).toEqual(['report.txt']);
     expect([...new Uint8Array(await saved[0]?.blob.arrayBuffer())]).toEqual([9, 9, 9, 9]);
-    expect(status(target)).toBe('Download finished.');
+    expect(status(target)).toBe('Downloaded.');
     expect(bar(target)?.getAttribute('aria-valuenow')).toBe('0');
   });
 
@@ -54,12 +54,12 @@ describe('RA-032, MOT-009: download', () => {
     await settle();
     flushSync();
     expect(saved).toEqual([]);
-    expect(status(target)).toBe('The transfer was cancelled.');
+    expect(status(target)).toBe('Transfer cancelled.');
   });
 
   it.each([
     ['DOWNLOAD_OFF', 'Downloads are off for this device.'],
-    ['NOT_FOUND', 'The device has no file or folder at that place.'],
+    ['NOT_FOUND', 'The device has no file or folder there.'],
     ['DENIED', 'The device did not allow that.'],
   ] as const)('RA-032: a download refused with %s shows its fixed text', async (reason, text) => {
     const { target, socket, saved } = await listed([entry('f', 'file')]);
@@ -89,7 +89,7 @@ describe('RA-032: upload', () => {
     socket.text({ type: 'done' });
     await settle();
     flushSync();
-    expect(status(target)).toBe('Upload finished.');
+    expect(status(target)).toBe('Uploaded.');
     expect(socket.messages().at(-1)).toEqual({ type: 'list', path: HOME });
   });
 
@@ -109,7 +109,7 @@ describe('RA-032: upload', () => {
       flushSync();
     }
     expect(socket.frames).toHaveLength(before);
-    expect(status(target)).toBe('That name cannot be used as a file name on the device.');
+    expect(status(target)).toBe('The device cannot use that file name.');
   });
 
 });
@@ -126,9 +126,9 @@ describe('RA-032, MOT-009: upload progress and refusals', () => {
 
   it.each([
     ['UPLOAD_OFF', 'Uploads are off for this device.'],
-    ['EXISTS', 'A file with this name is already there; Anima.ing never replaces a file.'],
+    ['EXISTS', 'A file with this name exists. Anima.ing never replaces a file.'],
     ['DENIED', 'The device did not allow that.'],
-    ['NOT_FOUND', 'The device has no file or folder at that place.'],
+    ['NOT_FOUND', 'The device has no file or folder there.'],
   ] as const)('RA-032: an upload refused with %s shows its fixed text and the folder is listed again', async (reason, text) => {
     const { target, socket } = await listed([]);
     pick(target, file('x.txt'));
@@ -149,8 +149,8 @@ describe('D-5: one transfer at a time', () => {
     expect(off(button(target, 'Download b'))).toBe(true);
     expect(off(button(target, 'docs'))).toBe(true);
     expect(off(button(target, 'Up one folder'))).toBe(true);
-    expect(off(button(target, 'Refresh the list'))).toBe(true);
-    expect(off(button(target, 'Upload a file'))).toBe(true);
+    expect(off(button(target, 'Refresh list'))).toBe(true);
+    expect(off(button(target, 'Upload file'))).toBe(true);
     expect(off(button(target, 'Cancel'))).toBe(false);
     expect(target.querySelectorAll('button:disabled')).toHaveLength(0);
     await click(button(target, 'Download b'));

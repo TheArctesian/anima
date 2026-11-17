@@ -24,7 +24,7 @@ export function checkAccount(form: AccountForm): AccountProblems {
     problems.name = 'Use 1 to 64 letters, digits, dots, underscores or hyphens, starting with a letter or a digit.';
   }
   if (form.password.length < PASSWORD_MIN) problems.password = `Use at least ${String(PASSWORD_MIN)} characters.`;
-  else if (form.repeat !== form.password) problems.repeat = 'The two passwords are not the same.';
+  else if (form.repeat !== form.password) problems.repeat = 'The passwords differ.';
   return problems;
 }
 
@@ -50,9 +50,9 @@ export function secondsToNextCode(now: Date): number {
 }
 
 const ACCOUNT_TEXT: Partial<Record<LocalHubProblem, string>> = {
-  refused: 'The code did not match. Wait for a new code and try again.',
+  refused: 'Wrong code. Wait for a new one.',
   // For 60 s after the person cancels the replace dialog the shell shows no dialog and answers `busy` (F-9).
-  busy: 'Wait a minute before you try again.',
+  busy: 'Wait a minute, then retry.',
   argument: 'The hub refused the name: use 1 to 64 letters, digits, dots, underscores or hyphens, starting with a letter or a digit.',
 };
 

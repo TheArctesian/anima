@@ -86,7 +86,7 @@ it('AWK-001: shows the three states with the saved one chosen, and says what the
   await show(fake({ ...READY, level: 'awake', held: 'awake' }));
   expect([...select('stay-awake-level').options].map((option) => option.textContent)).toEqual(['Off', 'Keep awake', 'Keep awake with the lid closed']);
   expect(select('stay-awake-level').value).toBe('awake');
-  expect(state()).toBe('This computer does not sleep while it is idle. The display can sleep.');
+  expect(state()).toBe('No idle sleep. The display can sleep.');
 });
 
 it('AWK-001: a choice goes to the shell at once and the row shows the new state', async () => {
@@ -94,7 +94,7 @@ it('AWK-001: a choice goes to the shell at once and the row shows the new state'
   await show(shell);
   await pick('stay-awake-level', 'lid-closed');
   expect(shell.calls).toEqual(['choose lid-closed']);
-  expect(state()).toContain('stays on with the lid closed');
+  expect(state()).toContain('Stays on with the lid closed');
 });
 
 it('AWK-003: on a Mac the lid-closed state cannot be chosen before the set-up step, which the operator starts', async () => {
@@ -119,7 +119,7 @@ it('AWK-003: a cancelled administrator step says so and changes nothing', async 
   await show(shell);
   button('Set up')?.click();
   await settle();
-  expect(alert()).toBe('The administrator step was cancelled or did not finish. Nothing changed.');
+  expect(alert()).toBe('Administrator step cancelled or unfinished. Nothing changed.');
   expect(button('Set up')).toBeDefined();
 });
 
@@ -128,7 +128,7 @@ it('AWK-003: Linux has no set-up row, and a desktop that decides the lid itself 
   expect(button('Set up')).toBeUndefined();
   expect(button('Remove')).toBeUndefined();
   expect((select('stay-awake-level').options[2] as HTMLOptionElement).disabled).toBe(true);
-  expect(state()).toContain('This desktop decides what a closed lid does.');
+  expect(state()).toContain('This desktop controls the closed lid.');
 });
 
 it('AWK-006: the operator sets and removes the battery floor', async () => {
@@ -145,7 +145,7 @@ it('AWK-004, AWK-006: a change from the tray item or the battery shows without a
   await show(shell);
   shell.announce({ ...READY, level: 'awake', held: 'off', batteryFloor: 20, pause: 'low-battery' });
   flushSync();
-  expect(state()).toBe('Off for now: the battery is below 20%. It starts again on mains power.');
+  expect(state()).toBe('Paused: battery below 20%. Resumes on mains power.');
   shell.announce({ ...READY, level: 'lid-closed', held: 'lid-closed', batteryFloor: 20 });
   flushSync();
   expect(select('stay-awake-level').value).toBe('lid-closed');
@@ -156,7 +156,7 @@ it('AWK-005: when the hub is this computer and nothing keeps it awake, the row s
   const shell = fake(READY);
   await show(shell, true, 'http://127.0.0.1:8443');
   const notice = () => document.querySelector('[role="status"]')?.textContent;
-  expect(notice()).toBe('This computer is the hub. Its checks stop while the computer sleeps.');
+  expect(notice()).toBe('This computer is the hub: checks stop while it sleeps.');
   await pick('stay-awake-level', 'awake');
   expect(notice()).toBe('');
 });
@@ -177,7 +177,7 @@ it('a failed change shows fixed text, and the rows stop listening when they go',
   shell.next = { ok: false, problem: 'unsaved' };
   await show(shell);
   await pick('stay-awake-level', 'awake');
-  expect(alert()).toBe('Anima.ing could not save this choice, so nothing changed.');
+  expect(alert()).toBe('Not saved. Nothing changed.');
   expect(select('stay-awake-level').value).toBe('off');
   shell.next = null;
   await pick('stay-awake-level', 'awake');

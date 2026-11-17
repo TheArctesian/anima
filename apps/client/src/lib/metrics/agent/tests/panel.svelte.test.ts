@@ -56,7 +56,7 @@ describe('Install agent: the command and copying (MET-019)', () => {
     await show(ENROLMENT, { copyFails: true });
     await click('Install agent');
     await click('Copy command');
-    expect(text()).toContain('could not be copied');
+    expect(text()).toContain('Copy failed');
     expect(command()).toContain(CODE);
   });
 
@@ -72,7 +72,7 @@ describe('Install agent: the command and copying (MET-019)', () => {
     await show(enrolment("x'; id; '"));
     await click('Install agent');
     expect(command()).toBe('');
-    expect(document.querySelector('[role="alert"]')?.textContent).toContain('no install command');
+    expect(document.querySelector('[role="alert"]')?.textContent).toContain('No install command');
   });
 
   it('MET-012: a hub refusal is shown and the button stays', async () => {
@@ -93,7 +93,7 @@ describe('Install agent: the code does not outlive its use (MET-012, LOG-007)', 
     await pass(1);
     expect(text()).not.toContain(CODE);
     expect(command()).toBe('');
-    expect(text()).toContain('The code expired');
+    expect(text()).toContain('Code expired');
     expect(text()).toContain('Install agent');
   });
 

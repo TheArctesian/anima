@@ -23,15 +23,15 @@ export function hubRoot(mac: boolean): string {
 const BLOCKED: Readonly<Record<BlockedReason, (mac: boolean) => string>> = {
   // Never a new key: it cannot open what the old key sealed (2.8, OR-S6-1).
   'key-missing': (mac) =>
-    `Blocked: the hub key vault.key is missing. Put your copy of vault.key back in ${hubRoot(mac)}, then start the hub. Without it the hub cannot open its data.`,
-  'database-version': () => 'Blocked: the database is of another PostgreSQL version than this Anima.ing carries.',
+    `Blocked: the hub key vault.key is missing. Put your copy back in ${hubRoot(mac)}, then start the hub.`,
+  'database-version': () => 'Blocked: the database is from another PostgreSQL version.',
   'database-in-use': () => 'Blocked: another program runs the hub database. Stop it, then start the hub.',
 };
 
 const LINK: Readonly<Record<NonNullable<LocalHubStatus['link']>['state'], string>> = {
-  starting: 'The link is starting.',
-  up: 'The link is up: devices can join.',
-  down: 'The link is down; it tries again. This computer still reaches the hub.',
+  starting: 'Link starting.',
+  up: 'Link up: devices can join.',
+  down: 'Link down, retrying. This computer still reaches the hub.',
 };
 
 /** One true sentence for the hub's state (FRN-006, LHB-010). */
@@ -42,15 +42,15 @@ export function stateText(status: LocalHubStatus, mac: boolean): string {
     case 'starting':
       return 'Starting. The first start can take a few minutes.';
     case 'ready':
-      return status.recovered === true ? 'Ready. The database recovered after an unclean stop; nothing saved was lost.' : 'Ready.';
+      return status.recovered === true ? 'Ready. Recovered after an unclean stop; nothing was lost.' : 'Ready.';
     case 'blocked':
       return status.reason === undefined ? 'Blocked.' : BLOCKED[status.reason](mac);
     case 'stopping':
       return 'Stopping.';
     case 'stopped':
-      return 'Stopped. It starts again with Start or at the next sign-in to this computer.';
+      return 'Stopped. Starts at the next sign-in to this computer.';
     case 'failed':
-      return `Failed: ${status.cause ?? 'a program'} ended. The hub starts again in 10 seconds.`;
+      return `Failed: ${status.cause ?? 'a program'} ended. Restarting in 10 seconds.`;
   }
 }
 

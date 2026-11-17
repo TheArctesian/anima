@@ -11,7 +11,7 @@ it('HUB-005: whole numbers inside the bounds pass, bounds included', () => {
 
 it('HUB-005: a number outside the bounds is refused with the bounds in the message', () => {
   for (const text of ['29', '366', '-1', '0']) {
-    expect(checkDays(text, events)).toEqual({ ok: false, message: 'Enter a number of days from 30 to 365.' });
+    expect(checkDays(text, events)).toEqual({ ok: false, message: 'Enter 30 to 365 days.' });
   }
 });
 

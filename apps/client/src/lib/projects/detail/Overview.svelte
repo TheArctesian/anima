@@ -31,9 +31,9 @@
 <!-- The Overview tab (PRJ-030, UR-7): where the project runs and its repositories, with the facts beside them. -->
 <div class="overview">
   <div class="main">
-    <Section title="Where it runs" icon="carbon:cloud-upload" lede="A sign in the repository proposes a place; it counts once you confirm it.">
+    <Section title="Where it runs" icon="carbon:cloud-upload" lede="Places found in the repository count once confirmed.">
       {#if project.resources.length === 0}
-        <p class="none">Not running anywhere. Anima.ing looks for a wrangler.toml, vercel.json, Dockerfile, Compose file or tauri.conf.json.</p>
+        <p class="none">Not running anywhere. No wrangler.toml, vercel.json, Dockerfile, Compose file or tauri.conf.json found.</p>
       {:else}
         <ul>
           {#each project.resources as resource (resource.id)}

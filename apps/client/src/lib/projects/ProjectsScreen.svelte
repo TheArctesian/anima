@@ -47,16 +47,16 @@
   {:else if store.status === 'failed'}
     <ErrorState message={`Projects did not load. ${store.loadProblem}`} onRetry={() => void store.load()} />
   {:else if projects.length === 0 && store.filtered}
-    <EmptyState title="No matching projects" line="Change the language or repository size filter." />
+    <EmptyState title="No matching projects" line="Change the language or size filter." />
   {:else if projects.length === 0 && showing === 'main'}
-    <EmptyState title="No projects yet" line="Connect GitHub in Settings > Integrations">
+    <EmptyState title="No projects yet" line="Connect GitHub.">
       {#snippet action()}
         <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- the path comes from resolve(); only the section anchor is added -->
         <a href={`${resolve('/settings')}#settings-integrations`}>Settings > Integrations</a>
       {/snippet}
     </EmptyState>
   {:else if projects.length === 0}
-    <EmptyState title="Nothing left out" line="A repository you leave out appears here, and Restore brings it back." />
+    <EmptyState title="Nothing left out" line="Repositories you leave out appear here." />
   {:else}
     {#each groups as group (group.title)}
       <section class="group" aria-label={group.title ?? (showing === 'leftOut' ? 'Left out' : 'All projects')}>

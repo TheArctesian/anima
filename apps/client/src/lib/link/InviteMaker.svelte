@@ -49,10 +49,10 @@
 
 {#if made === null}
   <form onsubmit={make} novalidate>
-    <Field label="Name of the next device" constraint="For example the laptop's name. The hub lists the device by it." error={problem ?? undefined}>
+    <Field label="Device name" constraint="The hub lists the device by it." error={problem ?? undefined}>
       {#snippet children(link)}<Input {...link} autocomplete="off" spellcheck="false" maxlength={64} bind:value={name} />{/snippet}
     </Field>
-    <FormButton type="submit" tone="primary" busy={busy}>Make an invite</FormButton>
+    <FormButton type="submit" tone="primary" busy={busy}>Make invite</FormButton>
   </form>
 {:else}
   <div class="made">

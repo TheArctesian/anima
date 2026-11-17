@@ -91,7 +91,7 @@ export function reasonOf(device: LookDevice, beats: readonly Beat[] | undefined,
   if (device.status === 'MAINTENANCE') return { text: 'In maintenance', since: null };
   if (device.checks.length === 0) return { text: 'No checks yet', since: null };
   const running = device.checks.filter((check) => !check.paused);
-  if (running.length === 0) return { text: 'Every check is paused', since: null };
+  if (running.length === 0) return { text: 'All checks paused', since: null };
   const worst = running.find((check) => check.status === device.status) ?? running.find((check) => check.status !== 'UP');
   if (worst === undefined) return { text: `Status is ${WORDS[device.status]}`, since: null };
   const last = worst.heartbeats.edges.at(0)?.node;

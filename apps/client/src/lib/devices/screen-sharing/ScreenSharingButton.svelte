@@ -112,7 +112,7 @@
         {#if stage.kind === 'waiting' && stage.problem !== null}
           <p role="alert">{stage.problem}</p>
           <button type="button" class="device-action" tabindex="0" onclick={() => void flow.reopenSharing()} {@attach press()}>
-            Open System Settings again
+            Reopen System Settings
           </button>
         {/if}
         {#if stage.kind === 'waiting'}

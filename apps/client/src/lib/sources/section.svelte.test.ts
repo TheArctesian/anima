@@ -68,7 +68,7 @@ function type(selector: string, value: string): void {
 }
 
 async function fillAndSend(privateKey: string): Promise<void> {
-  await click('Connect with a key file instead');
+  await click('Use key file');
   type('input[id$="-label"]', 'Personal');
   type('input[id$="-appId"]', '12345');
   type('input[id$="-installationId"]', '678');
@@ -96,7 +96,7 @@ it('SRC-009: every health state shows its own words', async () => {
     account('5', 'five', { health: 'PAUSED', pausedBy: 'OPERATOR' }),
     account('6', 'six', { health: 'NEEDS_RECONNECT' }),
   );
-  for (const words of ['OK. It reads on schedule.', 'Starting. The first sync is running.', 'Stalled. Syncs keep failing', 'Never synced. No sync has finished yet.', 'Paused. You paused it.', 'Needs reconnect. The source refused the key.']) {
+  for (const words of ['OK. Reads on schedule.', 'Starting. The first sync is running.', 'Stalled. Syncs keep failing', 'Never synced. No sync has finished yet.', 'Paused. You paused it.', 'Needs reconnect. The source refused the key.']) {
     expect(text()).toContain(words);
   }
 });
@@ -117,7 +117,7 @@ it('SRC-005: a change the hub sends updates its row with no reload', async () =>
   await settled();
   expect(text()).toContain('Needs reconnect. The source refused the key.');
   expect(text()).toContain('Last error: GitHub refused the key.');
-  expect(text()).toContain('OK. It reads on schedule.');
+  expect(text()).toContain('OK. Reads on schedule.');
   expect(hub.sent).toEqual([]);
 });
 
@@ -173,8 +173,8 @@ it('SRC-003: choosing Delete the records sends deleteRecords true', async () => 
 
 it('PRJ-018: the key-file dialog says the operator makes the App, and sends the label, both IDs and the key', async () => {
   await open();
-  await click('Connect with a key file instead');
-  expect(text()).toContain('You make the GitHub App in your own account');
+  await click('Use key file');
+  expect(text()).toContain('Make and install a GitHub App yourself');
   await fillAndSend(KEY);
   const sent = hub.sent[0];
   expect(sent?.operation).toBe('ConnectGithubApp');
@@ -186,7 +186,7 @@ it('PRJ-018: the key-file dialog says the operator makes the App, and sends the 
 it('PRJ-018: after a send the key is nowhere: not in the page, a reopened dialog is empty, no storage, no log', async () => {
   await open();
   await fillAndSend(KEY);
-  await click('Connect with a key file instead');
+  await click('Use key file');
   expect(keyField()?.value).toBe('');
   expect(document.body.innerHTML).not.toContain(KEY_BODY);
   expect(JSON.stringify({ ...localStorage })).not.toContain(KEY_BODY);
@@ -196,7 +196,7 @@ it('PRJ-018: after a send the key is nowhere: not in the page, a reopened dialog
 
 it('PRJ-018: after a refused connect the key field is empty, the other fields stay, and the hub words show', async () => {
   await open();
-  await click('Connect with a key file instead');
+  await click('Use key file');
   hub.refuse = { code: 'CONFLICT', message: 'GitHub refused this App ID.' };
   type('input[id$="-label"]', 'Personal');
   type('input[id$="-appId"]', '12345');
@@ -208,14 +208,14 @@ it('PRJ-018: after a refused connect the key field is empty, the other fields st
   expect(document.querySelector('[role="alert"]')?.textContent).toBe('GitHub refused this App ID.');
   expect(document.body.innerHTML).not.toContain(KEY_BODY);
   await click('Cancel');
-  await click('Connect with a key file instead');
+  await click('Use key file');
   expect(keyField()?.value).toBe('');
   expect(document.querySelector<HTMLInputElement>('input[id$="-appId"]')?.value).toBe('');
 });
 
 it('PRJ-018: the key field hides what is typed, is not named for the browser, and a form with no key sends nothing', async () => {
   await open();
-  await click('Connect with a key file instead');
+  await click('Use key file');
   expect(keyField()?.type).toBe('password');
   expect(keyField()?.hasAttribute('name')).toBe(false);
   await click('Connect');

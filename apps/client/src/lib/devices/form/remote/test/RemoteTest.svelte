@@ -84,7 +84,7 @@
     {#if shown !== null}
       <p class:warning={isRemoteWarning(shown)}>{remoteOutcomeText(shown)}</p>
     {:else if accepted}
-      <p>Certificate accepted. Test again to check the sign-in.</p>
+      <p>Certificate accepted. Test again.</p>
     {/if}
   </div>
   {#if certificate !== null}
@@ -105,7 +105,7 @@
         Accept certificate
       </FormButton>
     {:else if onAcceptServerCertificate !== undefined && tested?.saved !== true}
-      <p class="note">Save the device, then test again to accept this certificate.</p>
+      <p class="note">Save, then test again to accept this certificate.</p>
     {/if}
   {/if}
   {#if shownFailure !== null}

@@ -54,7 +54,7 @@
     />
   {/if}
   {#if repository === undefined}
-    <EmptyState title="No repository" line="Every repository of this project is left out or gone." />
+    <EmptyState title="No repository" line="All repositories are left out or gone." />
   {:else if failure !== null}
     <ErrorState message={failure.message} onRetry={() => void load()} />
   {:else if access === null}

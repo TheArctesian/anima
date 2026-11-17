@@ -31,10 +31,10 @@ export const WARNED: HostKeyStep = { step: 'warned' };
 
 /** Fixed texts; the hub's own messages are not shown (R-035). */
 export const PROBLEM = {
-  review: 'The connection test failed, so no new key could be read. Try the review again.',
-  unreachable: 'The device could not be reached, so no new key could be read. Try the review again.',
-  noKey: 'The connection test did not report a new host key. Close this warning and reconnect.',
-  accept: 'The hub did not accept the key. It may have changed again since the review: review it again.',
+  review: 'Connection test failed. No key read. Review again.',
+  unreachable: 'Device unreachable. No key read. Review again.',
+  noKey: 'No new host key reported. Close and reconnect.',
+  accept: 'The hub did not accept the key. It may have changed again: review it again.',
 } as const;
 
 function reviewed(result: HubResult<ConnectionTest>): HostKeyStep {

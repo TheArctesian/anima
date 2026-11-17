@@ -23,7 +23,7 @@
     } else loadFailed = true;
   }
 
-  /** Try again: the button stays mounted, and aria-disabled, while the hub answers; on success focus goes to the first period (NAV-005). */
+  /** Retry: the button stays mounted, and aria-disabled, while the hub answers; on success focus goes to the first period (NAV-005). */
   async function retry(): Promise<void> {
     if (retrying) return;
     retrying = true;
@@ -65,12 +65,12 @@
     {/each}
   {/if}
 </div>
-<!-- The card's footer holds the note or, when the load failed, its notice and Try again, at one height (MOT-007). -->
+<!-- The card's footer holds the note or, when the load failed, its notice and Retry, at one height (MOT-007). -->
 <div class="note">
   {#if loadFailed}
     <span class="mark"><Icon name="carbon:warning" size="sm" /></span>
     <p role="alert">Could not load the periods.</p>
-    <FormButton tabindex={0} aria-disabled={retrying} aria-busy={retrying} onclick={retry}>Try again</FormButton>
+    <FormButton tabindex={0} aria-disabled={retrying} aria-busy={retrying} onclick={retry}>Retry</FormButton>
   {:else}
     <p>Applied at the next daily run.</p>
   {/if}
@@ -81,7 +81,7 @@
     display: flex;
     align-items: center;
     gap: var(--space-2);
-    /* The note and the notice beside Try again fill the same block, the height of a button (MOT-007). */
+    /* The note and the notice beside Retry fill the same block, the height of a button (MOT-007). */
     min-block-size: var(--space-8);
     padding: var(--space-3) var(--space-4);
     border-block-start: var(--border-thin) solid var(--border-strong);

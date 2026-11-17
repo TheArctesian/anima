@@ -50,7 +50,7 @@
 
   const TEXT = {
     scheme: 'Anima.ing opens only http and https web interfaces.',
-    pin: 'The pinned fingerprint of this web interface cannot be read, so Anima.ing does not open it.',
+    pin: 'Not opened: the pinned fingerprint cannot be read.',
     browser: 'The system browser could not be opened.',
   } as const;
 
@@ -296,7 +296,7 @@
               onback={() => apply({ event: 'back' })}
             />
           {:else if current.step === 'down'}
-            <DownPage reason="{device.name} is Down, so its web interface cannot be reached. Reload when the device is back up." onreload={reload} />
+            <DownPage reason="{device.name} is Down. Reload when it is back up." onreload={reload} />
           {:else if current.step === 'failed'}
             <DownPage reason={failureText(current.reason)} code={current.reason} onreload={reload} />
           {:else if current.step === 'refused'}

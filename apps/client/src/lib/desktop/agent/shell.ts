@@ -22,7 +22,7 @@ export type AgentShellProblem =
 const MESSAGES: Record<AgentShellProblem, string> = {
   caller: 'Only the main window can install the agent.',
   unavailable: 'The agent cannot be installed on this system from the app.',
-  'not-bundled': 'This build of the app carries no agent. Use the install command instead.',
+  'not-bundled': 'This build carries no agent. Use the install command.',
   busy: 'An install is already running.',
   code: 'The hub made a code in a form the agent does not accept.',
   origin: 'The hub address is not a plain https origin on port 443.',
@@ -30,7 +30,7 @@ const MESSAGES: Record<AgentShellProblem, string> = {
   untrusted:
     '~/.local/bin, or a folder above it, can be changed by other users (through its group, an ACL or as others). Run `chmod g-w,o-w` on it, and `setfacl -b` for an ACL, then try again.',
   copy: 'The agent could not be copied to ~/.local/bin.',
-  enrol: 'The agent could not enrol with the hub. Try again to make a new code.',
+  enrol: 'The agent could not enrol. Retry to make a new code.',
   install: 'The agent enrolled but did not start. Run `anima-agent install` in a terminal to see why.',
   'timed-out': 'The agent did not finish in time.',
   failed: 'The install did not finish.',

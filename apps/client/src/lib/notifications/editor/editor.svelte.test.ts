@@ -81,8 +81,8 @@ it('F-8: an edited channel shows no stored secret: each secret field is empty an
   flushSync();
   expect([field('Topic').value, field('Access token').value]).toEqual(['', '']);
   expect(field('Access token').type).toBe('password');
-  expect(dialog()?.textContent).toContain('Stored. Leave empty to keep it.');
-  expect(choice('Remove the stored access token').checked).toBe(false);
+  expect(dialog()?.textContent).toContain('Stored. Empty keeps it.');
+  expect(choice('Remove stored access token').checked).toBe(false);
 });
 
 it('F-8: secret fields carry no name (never in a URL), no spell check and no autofill', async () => {
@@ -109,14 +109,14 @@ it('F-8: a removed optional secret is sent as "" (ntfy token, SMTP password)', a
   await open(loaded({ UpdateNotificationChannel: ok({ updateNotificationChannel: fixtureChannel('NTFY') }) }));
   button('Edit phone-ntfy').click();
   flushSync();
-  pick(choice('Remove the stored access token'));
+  pick(choice('Remove stored access token'));
   expect(field('Access token').disabled).toBe(true);
   inDialog('Save').click();
   await settled();
   expect(sentInput()).toMatchObject({ settings: { ntfy: { token: '', topic: null } } });
   button('Edit ops-email').click();
   flushSync();
-  pick(choice('Remove the stored password'));
+  pick(choice('Remove stored password'));
   inDialog('Save').click();
   await settled();
   expect(sentInput()).toMatchObject({ settings: { email: { password: '', host: 'mail.example.net', to: ['ops@example.net'] } } });
@@ -164,7 +164,7 @@ it('LOG-007: a refused save shows a fixed sentence, keeps the typed values for a
   await typeNewWebhook({ CreateNotificationChannel: failure('INTERNAL', `target said ${FAKE_SECRET}`) });
   inDialog('Save').click();
   await settled();
-  expect(dialog()?.querySelector('.failure')?.textContent).toBe('Channel not saved. Try again.');
+  expect(dialog()?.querySelector('.failure')?.textContent).toBe('Channel not saved. Retry.');
   expect(places(FAKE_SECRET)).toMatchObject({ markup: 0, values: 2, storage: 0, url: 0 });
   expectSilentConsole();
 });

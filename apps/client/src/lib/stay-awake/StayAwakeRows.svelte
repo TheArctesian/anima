@@ -54,7 +54,7 @@
       {#if status !== null}
         {describeStayAwake(status)}
         {#if status.lid === 'unsupported'}
-          This desktop decides what a closed lid does. Change that in its power settings.
+          This desktop controls the closed lid. Change it in power settings.
         {/if}
       {/if}
     </p>
@@ -79,10 +79,10 @@
     {#snippet hint()}
       <p class="hint state">
         {#if status?.lid === 'ready'}
-          Set up. Programs of this user can change one sleep setting of this Mac with no password, and nothing else.
+          Set up. This user's programs can change one sleep setting of this Mac without a password, nothing else.
         {:else}
-          macOS asks for an administrator one time. After that, programs of this user can change one sleep setting of
-          this Mac with no password, and nothing else.
+          macOS asks for an administrator once. Then this user's programs can change one sleep setting of this Mac
+          without a password, nothing else.
         {/if}
       </p>
     {/snippet}
@@ -97,10 +97,10 @@
 <!-- The battery floor (AWK-006). -->
 <SettingRow label="On battery" for="stay-awake-floor">
   {#snippet hint()}
-    <p class="hint">Below this charge, stay awake is off until mains power returns.</p>
+    <p class="hint">Below this charge, off until mains power returns.</p>
   {/snippet}
   <select id="stay-awake-floor" value={status?.batteryFloor ?? NO_FLOOR} disabled={status === null || control.busy} onchange={(event) => void setFloor(event)}>
-    <option value={NO_FLOOR}>Stay awake at any charge</option>
+    <option value={NO_FLOOR}>Any charge</option>
     {#each floorChoices(status?.batteryFloor ?? null) as floor (floor)}
       <option value={floor}>Off below {floor}%</option>
     {/each}

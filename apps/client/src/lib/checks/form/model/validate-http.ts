@@ -19,14 +19,14 @@ function urlErrors(text: string): FieldError[] {
     return [{ field: 'url', message: 'Enter a URL that starts with http:// or https://.' }];
   }
   if (parsed.username !== '' || parsed.password !== '') {
-    return [{ field: 'url', message: 'Leave the user name and password out of the URL; use the authentication setting.' }];
+    return [{ field: 'url', message: 'No user name or password in the URL; use Authentication.' }];
   }
   return lengthError('url', trimmed, LIMITS.urlBytes, 'The URL');
 }
 
 function headerNameError(name: string): string | undefined {
   if (!HEADER_TOKEN.test(name)) return 'Enter a header name: letters, digits and !#$%&\'*+-.^_`|~ only.';
-  if (byteLength(name) > LIMITS.headerNameBytes) return `A header name can be at most ${String(LIMITS.headerNameBytes)} bytes long.`;
+  if (byteLength(name) > LIMITS.headerNameBytes) return `A header name is at most ${String(LIMITS.headerNameBytes)} bytes.`;
   if (DESTINATION_HEADERS.includes(name.toLowerCase())) return 'The URL sets the destination; this header is not allowed.';
   return undefined;
 }
@@ -71,7 +71,7 @@ function authErrors(http: HttpValues): FieldError[] {
     if (username === '') {
       errors.push({ field: 'username', message: 'Enter the user name. The hub keeps the stored password only for the same user name.' });
     } else if (username.includes(':') || byteLength(username) > LIMITS.usernameBytes) {
-      errors.push({ field: 'username', message: `A user name has no ":" and is at most ${String(LIMITS.usernameBytes)} bytes long.` });
+      errors.push({ field: 'username', message: `A user name has no ":" and is at most ${String(LIMITS.usernameBytes)} bytes.` });
     }
     if (http.password === '' && http.storedAuth !== 'BASIC') errors.push({ field: 'password', message: 'Enter the password.' });
   }

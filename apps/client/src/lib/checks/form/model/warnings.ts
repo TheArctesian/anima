@@ -49,7 +49,7 @@ export function secretWarnings(initial: CheckFormValues, values: CheckFormValues
     if (!kept.has(name)) warnings.push(`Saving removes the stored value of the ${name} header.`);
   }
   if (keepsStoredSecret(http) && destinationChanged(initial.http, http)) {
-    warnings.push('The address, the authentication or the secret headers changed, so the hub will not reuse the stored secrets. Enter every secret again.');
+    warnings.push('The address, authentication or secret headers changed, so the hub will not reuse the stored secrets. Enter every secret again.');
   }
   return warnings;
 }

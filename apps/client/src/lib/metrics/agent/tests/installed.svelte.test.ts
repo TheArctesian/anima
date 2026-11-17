@@ -16,14 +16,14 @@ describe('Install agent: an installed agent (MET-018, MET-013)', () => {
   it('MET-018: shows the source as set by the agent and stale as a plain status, not an alert', async () => {
     const { fake } = await show(status(true), { source: 'AGENT' });
     expect(fake.requests).toEqual([{ operation: 'AgentStatus', variables: { id: 'd1' } }]);
-    expect(text()).toContain('The source is set by the agent.');
+    expect(text()).toContain('Metrics come from the agent on');
     expect(document.querySelector('[role="status"]')?.textContent).toContain('Metrics are stale');
     expect(document.querySelector('[role="alert"]')).toBeNull();
   });
 
-  it('MET-018: the "Reading the agent state." line is plain text, not a live region', async () => {
+  it('MET-018: the "Reading agent state." line is plain text, not a live region', async () => {
     const answer = await showPending('agentStatus', 'AGENT');
-    const line = [...document.querySelectorAll('p')].find((each) => each.textContent.includes('Reading the agent state'));
+    const line = [...document.querySelectorAll('p')].find((each) => each.textContent.includes('Reading agent state'));
     expect(line?.getAttribute('role')).toBeNull();
     await answer({ ok: true, value: { metricsSource: 'AGENT', metricsStale: false } });
   });
@@ -35,7 +35,7 @@ describe('Install agent: an installed agent (MET-018, MET-013)', () => {
 
   it('MET-018: when the state cannot be read the panel says so and still offers Revoke', async () => {
     await show({ AgentStatus: { code: 'INTERNAL', message: 'down' } }, { source: 'AGENT' });
-    expect(text()).toContain('The agent state could not be read.');
+    expect(text()).toContain('Could not read agent state.');
     expect(text()).toContain('Revoke agent');
   });
 
@@ -58,7 +58,7 @@ describe('Install agent: revoke and install again (MET-013, MET-019, D-7)', () =
     await show(status(false), { source: 'AGENT' });
     await click('Revoke agent');
     const dialog = document.querySelector('[role="dialog"]')?.textContent ?? '';
-    expect(dialog).toContain('Revoking does not remove VPN access');
+    expect(dialog).toContain('VPN access stays');
     expect(dialog).toContain('also delete its node in Headscale');
   });
 
@@ -72,7 +72,7 @@ describe('Install agent: revoke and install again (MET-013, MET-019, D-7)', () =
 
   it('MET-019, D-7: an AGENT device can get a new install code, and Close returns to its state', async () => {
     const { fake } = await show({ ...status(true), ...ENROLMENT }, { source: 'AGENT' });
-    await click('Install agent again');
+    await click('Reinstall agent');
     expect(fake.requests.at(-1)).toEqual({ operation: 'EnrolAgent', variables: { deviceId: 'd1' } });
     expect(command()).toContain(CODE);
     expect(text()).not.toContain('Revoke agent');
@@ -92,7 +92,7 @@ describe('Install agent: revoked and used codes (MET-013, MET-012)', () => {
     await click('Revoke agent');
     await click('Revoke agent', '[role="dialog"]');
     expect(document.body.textContent).toContain('Agent revoked.');
-    await click('Install agent again');
+    await click('Reinstall agent');
     await click('Close');
     expect(document.body.textContent).not.toContain('Agent revoked.');
     expect(fake.requests.filter((request) => request.operation === 'AgentStatus')).toHaveLength(2);
@@ -100,7 +100,7 @@ describe('Install agent: revoked and used codes (MET-013, MET-012)', () => {
 
   it('MET-012: when the code expires the state is read again', async () => {
     const { fake } = await show({ ...status(false), ...ENROLMENT }, { source: 'AGENT' });
-    await click('Install agent again');
+    await click('Reinstall agent');
     await pass(15 * 60);
     expect(fake.requests.filter((request) => request.operation === 'AgentStatus')).toHaveLength(2);
   });

@@ -73,7 +73,7 @@
   {/if}
   <label class="reply">
     <span>Comment</span>
-    <textarea rows="3" bind:value={reply} placeholder="Plain text or Markdown; GitHub shows it."></textarea>
+    <textarea rows="3" bind:value={reply} placeholder="Plain text or Markdown"></textarea>
   </label>
   {#if failure !== null}<p class="failure" role="alert">{failure.message}</p>{/if}
   <div class="actions">

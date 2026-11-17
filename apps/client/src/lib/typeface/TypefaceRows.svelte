@@ -13,7 +13,7 @@
       storeTypeface(localStorage, role, typeface);
       problem = null;
     } catch {
-      problem = 'Anima.ing could not save this choice on this device; it lasts until the app restarts.';
+      problem = 'Not saved on this device. Lasts until restart.';
     }
   }
 </script>

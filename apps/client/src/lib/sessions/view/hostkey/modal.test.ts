@@ -86,7 +86,7 @@ describe('host key review and accept (SEC-007, D-6)', () => {
     expect(calls.acceptHostKey).toEqual([]);
     expect(button('Reconnect')).toBeUndefined();
     // A double click: the second click lands while the first accept is under way.
-    const confirm = button('Yes, accept this key');
+    const confirm = button('Yes, accept');
     confirm?.click();
     confirm?.click();
     await settle();
@@ -98,7 +98,7 @@ describe('host key review and accept (SEC-007, D-6)', () => {
     const { calls } = await hostKeyChanged();
     await click('Review new key');
     await click('Accept new key');
-    await click('Yes, accept this key');
+    await click('Yes, accept');
     await click('Reconnect');
     expect(dialog()).toBeNull();
     expect(calls.startSession).toHaveLength(2);
@@ -110,7 +110,7 @@ describe('host key review and accept (SEC-007, D-6)', () => {
     answers.accept = () => ({ ok: false, error: { code: 'CONFLICT', message: 'hub detail' } });
     await click('Review new key');
     await click('Accept new key');
-    await click('Yes, accept this key');
+    await click('Yes, accept');
     expect(dialog()?.textContent).not.toContain('hub detail');
     expect(button('Reconnect')).toBeUndefined();
     expect(button('Review new key')).toBeDefined();

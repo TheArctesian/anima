@@ -40,6 +40,6 @@ describe('failureText', () => {
 
   it('NOT-004: a name conflict on save asks for another name; elsewhere the action\'s own sentence', () => {
     expect(failureText(errorOf(failure('CONFLICT')), 'save')).toBe('Name in use. Choose another.');
-    expect(failureText(errorOf(failure('INTERNAL')), 'test')).toBe('Anima.ing could not send the test. Try again.');
+    expect(failureText(errorOf(failure('INTERNAL')), 'test')).toBe('Test not sent. Retry.');
   });
 });

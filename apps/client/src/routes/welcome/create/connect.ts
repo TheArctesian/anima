@@ -16,7 +16,7 @@ export interface ConnectParts {
 
 export type Connected = { readonly ok: true; readonly address: HubAddress } | { readonly ok: false; readonly message: string };
 
-const NOT_READY = 'The hub on this computer is not ready. Wait for it, then try again.';
+const NOT_READY = 'The hub on this computer is not ready. Retry shortly.';
 
 /** How many times a hub that is not ready yet is read, one second apart, before the step says so. */
 export const READY_READS = 15;
@@ -67,7 +67,7 @@ export interface FirstSignIn {
 
 export type SignedIn = { readonly ok: true } | { readonly ok: false; readonly message: string };
 
-const KEPT_NOT = 'Signed in, but the access token could not be kept in the key store.';
+const KEPT_NOT = 'Signed in, but the key store could not keep the token.';
 
 /** Signs in to the new hub with the next code and keeps the token in the key store (FRN-004, CLI-003). */
 export async function signInFirst(
@@ -79,11 +79,11 @@ export async function signInFirst(
   if (!result.ok) {
     switch (result.error.code) {
       case 'UNAUTHENTICATED':
-        return { ok: false, message: 'The hub refused the code. Wait for the next code: the code that made the account cannot sign in.' };
+        return { ok: false, message: 'The hub refused the code. Wait for the next one.' };
       case 'unreachable':
-        return { ok: false, message: 'The hub did not answer. Wait a moment, then try again.' };
+        return { ok: false, message: 'The hub did not answer. Retry shortly.' };
       default:
-        return { ok: false, message: 'The hub could not sign you in. Try again.' };
+        return { ok: false, message: 'Sign-in failed. Retry.' };
     }
   }
   try {

@@ -10,8 +10,8 @@
 
 <label class="check"><input type="checkbox" bind:checked={values.transfer.upload} />Allow upload</label>
 <label class="check"><input type="checkbox" bind:checked={values.transfer.download} />Allow download</label>
-<label class="check"><input type="checkbox" bind:checked={values.transfer.copy} />Allow copy from the device</label>
-<label class="check"><input type="checkbox" bind:checked={values.transfer.paste} />Allow paste to the device</label>
+<label class="check"><input type="checkbox" bind:checked={values.transfer.copy} />Allow copy from device</label>
+<label class="check"><input type="checkbox" bind:checked={values.transfer.paste} />Allow paste to device</label>
 
 <style>
   .check {

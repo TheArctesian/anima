@@ -60,16 +60,16 @@
     </SettingRow>
     <SettingRow label="Hub key">
       {#snippet hint()}
-        <p class="hint">The key seals the device credentials and the authenticator keys. Without it the hub cannot open its data.</p>
+        <p class="hint">Without it the hub cannot open its data.</p>
       {/snippet}
-      <FormButton size="sm" onclick={() => void saveKey()}>Save a copy of the hub key</FormButton>
+      <FormButton size="sm" onclick={() => void saveKey()}>Save a copy</FormButton>
       {#snippet message()}<p role="alert">{keyNote ?? ''}</p>{/snippet}
     </SettingRow>
     <SettingRow label="Account">
       {#snippet hint()}
-        <p class="hint">A new password and authenticator key, when you lost either. Every sign-in of the account ends.</p>
+        <p class="hint">New password and authenticator key. Ends every sign-in.</p>
       {/snippet}
-      <FormButton size="sm" aria-disabled={status.state !== 'ready'} onclick={() => (recovering = status.state === 'ready')}>Recover the account</FormButton>
+      <FormButton size="sm" aria-disabled={status.state !== 'ready'} onclick={() => (recovering = status.state === 'ready')}>Recover account</FormButton>
     </SettingRow>
   </SettingsSection>
 {/if}

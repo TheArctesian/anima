@@ -101,7 +101,7 @@
     aria-haspopup="menu"
     aria-expanded={open}
     aria-controls={menuId}
-    title="Send a key combination"
+    title="Send keys"
     onclick={() => (open ? hide(false) : show('first'))}
     onkeydown={triggerKey}
     {@attach press()}
@@ -135,7 +135,7 @@
       {#if pasteOff === undefined}
         <button type="button" role="menuitem" tabindex="-1" onclick={() => choose(onpaste)}>
           <span class="label">Paste</span>
-          <span class="hint">Send the clipboard</span>
+          <span class="hint">Send clipboard</span>
         </button>
       {:else}
         <!-- Focusable but inert, so the reason is read with the item (WAI-ARIA menu pattern). -->

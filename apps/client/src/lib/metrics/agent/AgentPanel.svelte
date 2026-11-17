@@ -127,9 +127,9 @@
 </script>
 
 {#snippet starter(label: string)}
-  <p>{isAgent ? `Install the agent again on ${deviceName}, for example after a revoke.` : `Install the Anima.ing agent on ${deviceName} to send its metrics.`}</p>
+  <p>{isAgent ? `Install the agent again on ${deviceName}.` : `Install the agent on ${deviceName} to send metrics.`}</p>
   {#if install.expired}
-    <p role="status">The code expired. Make a new one.</p>
+    <p role="status">Code expired. Make a new one.</p>
   {/if}
   {#if install.error !== null}
     <p role="alert">{install.error.message}</p>
@@ -139,25 +139,25 @@
   {/if}
   <!-- On this computer the command stays as the way round a failed install, and for an install by hand. -->
   <FormButton data-agent-start onclick={() => void install.makeCode()} aria-disabled={install.busy} aria-busy={install.busy}>
-    {install.busy ? 'Making a code…' : here.offered ? 'Show install command' : label}
+    {install.busy ? 'Making code…' : here.offered ? 'Show install command' : label}
   </FormButton>
 {/snippet}
 
 {#snippet agentState()}
-  <p>Metrics come from the agent on {deviceName}. The source is set by the agent.</p>
+  <p>Metrics come from the agent on {deviceName}.</p>
   <p class="state" role={install.status === null ? undefined : 'status'}>
     {#if install.status === null}
-      {install.statusError === null ? 'Reading the agent state.' : 'The agent state could not be read.'}
+      {install.statusError === null ? 'Reading agent state.' : 'Could not read agent state.'}
     {:else if install.revoked}
       Agent revoked. Metrics stay stale until it enrols again or you change the source.
     {:else if install.status.metricsStale}
-      Metrics are stale: no readings arrived in the last 30 seconds.
+      Metrics are stale: no readings for 30 seconds.
     {:else}
       Metrics are current.
     {/if}
   </p>
   <FormButton tone="danger" onclick={() => { opening += 1; confirming = true; }}>Revoke agent</FormButton>
-  {@render starter('Install agent again')}
+  {@render starter('Reinstall agent')}
 {/snippet}
 
 {#snippet code(shown: string)}
@@ -184,7 +184,7 @@
     <FormButton onclick={() => void install.copy(result.command.text)}>Copy command</FormButton>
     {#if copyShown !== null}
       {#key copyShown.count}
-        <p role="status">{copyShown.ok ? 'Copied.' : 'The command could not be copied. Select it and copy it.'}</p>
+        <p role="status">{copyShown.ok ? 'Copied.' : 'Copy failed. Select the command and copy it.'}</p>
       {/key}
     {/if}
   {:else if result?.ok === false}
@@ -213,7 +213,7 @@
   <ConfirmModal
     open={confirming}
     title="Revoke the agent on {deviceName}?"
-    body="The agent stops sending metrics on its next push. The device keeps the Agent source, shown as stale, until you change it. Revoking does not remove VPN access: for a device on the VPN only for the agent, also delete its node in Headscale."
+    body="The agent stops sending metrics. The device keeps the Agent source, shown as stale, until you change it. VPN access stays: for a device on the VPN only for the agent, also delete its node in Headscale."
     confirmLabel="Revoke agent"
     onConfirm={async () => {
       const done = await install.revoke();

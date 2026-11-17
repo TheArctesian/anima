@@ -72,9 +72,9 @@ it('MET-029: says when it waits, when nothing is reported and when metrics faile
   await section(null);
   expect(document.body.textContent).toContain('Loading storage');
   await section([]);
-  expect(document.body.textContent).toContain('No drives reported yet');
+  expect(document.body.textContent).toContain('No drives yet');
   await section(POP_OS, 'SSH', UNREACHABLE);
-  expect(document.body.textContent).toContain('not available');
+  expect(document.body.textContent).toContain('Not available');
   expect(rows()).toHaveLength(0);
 });
 

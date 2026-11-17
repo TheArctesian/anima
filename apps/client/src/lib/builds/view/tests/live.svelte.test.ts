@@ -72,7 +72,7 @@ it('BLD-081: a subscription the hub ends is shown the same way, and Resume start
   hub.finish();
   await settled();
   expect(target.textContent).toContain('Live updates stopped');
-  const resume = [...target.querySelectorAll('button')].find((button) => button.textContent.trim() === 'Resume live updates');
+  const resume = [...target.querySelectorAll('button')].find((button) => button.textContent.trim() === 'Resume');
   resume?.click();
   await settled();
   expect(hub.live.subscribed).toBe(2);
@@ -104,5 +104,5 @@ it('BLD-007: nothing is said about waiting until the builders have loaded; a fai
   const unreachable = { ok: false, error: { code: 'unreachable', message: 'x' } } as const;
   const target = await open({ Builders: unreachable });
   expect(target.textContent).not.toContain('Waiting for a');
-  expect(target.textContent).toContain('could not read the builders');
+  expect(target.textContent).toContain('Builders did not load');
 });

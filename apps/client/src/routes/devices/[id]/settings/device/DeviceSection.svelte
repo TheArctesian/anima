@@ -29,7 +29,7 @@
 
 <SettingsSection {...SECTIONS.device}>
   <TextRow {draft} key="name" label="Name" />
-  <TextRow {draft} key="host" label="Address" about="A host name or an IP address." mono />
+  <TextRow {draft} key="host" label="Address" about="Host name or IP address." mono />
   <TextRow {draft} key="kind" label="Kind" list="device-kind-options" />
   <datalist id="device-kind-options">
     {#each KINDS as kind (kind)}<option value={kind}></option>{/each}
@@ -60,7 +60,7 @@
       onchange={() => void draft.commit('tags')}
     />
   </SettingRow>
-  <TextRow {draft} key="macAddress" label="MAC address" about="Optional. Lets Anima.ing wake the device." placeholder="aa:bb:cc:dd:ee:ff" mono />
+  <TextRow {draft} key="macAddress" label="MAC address" about="Optional. Used to wake the device." placeholder="aa:bb:cc:dd:ee:ff" mono />
 </SettingsSection>
 
 <style>

@@ -16,7 +16,7 @@
 </script>
 
 {#if install.installed}
-  <p role="status">The agent is installed and runs on this computer.</p>
+  <p role="status">Agent installed and running.</p>
 {/if}
 {#if install.error !== null}
   <p role="alert">{install.error}</p>

@@ -10,13 +10,13 @@ export function accessWords(access: RepositoryAccess): { title: string; line: st
     case 'READY':
       return null;
     case 'NOT_CONNECTED':
-      return { title: 'Not connected', line: 'No GitHub account holds this repository. Connect GitHub in Settings, Integrations.' };
+      return { title: 'Not connected', line: 'Connect GitHub in Settings, Integrations.' };
     case 'NEEDS_RECONNECT':
-      return { title: 'GitHub refused the key', line: 'Reconnect the account that holds this repository in Settings, Integrations.' };
+      return { title: 'GitHub refused the key', line: 'Reconnect its account in Settings, Integrations.' };
     case 'PAUSED':
-      return { title: 'The account is paused', line: 'Resume the account that holds this repository in Settings, Integrations.' };
+      return { title: 'Account paused', line: 'Resume its account in Settings, Integrations.' };
     case 'LEFT_OUT':
-      return { title: 'Left out', line: 'This repository is left out of Anima.ing. Restore it on the Overview tab to read it.' };
+      return { title: 'Left out', line: 'Restore it on the Overview tab.' };
     case 'GONE':
       return { title: 'No longer on GitHub', line: 'The connection no longer lists this repository.' };
   }
@@ -39,12 +39,12 @@ export function checksMark(checks: CommitChecks | null | undefined): { icon: Ico
 
 export const MERGE_STATE_WORDS: Readonly<Record<MergeState, string>> = {
   CLEAN: 'Ready to merge',
-  UNSTABLE: 'A check that is not required failed',
+  UNSTABLE: 'An optional check failed',
   CONFLICT: 'Has conflicts',
   BLOCKED: 'A required check or review is missing',
-  BEHIND: 'Behind its base branch',
+  BEHIND: 'Behind base branch',
   DRAFT: 'Draft',
-  UNKNOWN: 'GitHub is still working it out',
+  UNKNOWN: 'GitHub is still checking',
 };
 
 /** A run's state in words and the tone of its mark. */

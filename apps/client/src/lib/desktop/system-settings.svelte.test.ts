@@ -52,7 +52,7 @@ describe('RemoteLoginButton', () => {
   it('R-059: the button opens the Remote Login settings', async () => {
     shell.invoke.mockResolvedValue(null);
     const button = show(true);
-    expect(button?.textContent).toBe('Open Remote Login settings');
+    expect(button?.textContent).toBe('Remote Login settings');
     button?.click();
     await tick();
     expect(shell.invoke).toHaveBeenCalledWith('sharing_settings_open');

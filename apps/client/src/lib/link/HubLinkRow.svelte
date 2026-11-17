@@ -16,7 +16,7 @@
   let leaving = $state(false);
   /** The link's address once this device has left: a retry only forgets what was kept for it. */
   let left = $state<{ address: HubAddress | null } | null>(null);
-  const NOT_CLEARED = 'This device left the hub, but the key store kept the access token for the link address. Retry.';
+  const NOT_CLEARED = 'Left the hub, but the key store kept the access token. Retry.';
 
   async function read(): Promise<void> {
     const result = await readLink();
@@ -65,7 +65,7 @@
 <ConfirmModal
   open={leaving}
   title="Leave this hub?"
-  body="This device stops its link and removes its device key. To come back it needs a new invite."
+  body="This device stops its link and removes its key. Rejoining needs a new invite."
   confirmLabel={left === null ? 'Leave this hub' : 'Retry'}
   onConfirm={leave}
   onCancel={() => (leaving = false)}

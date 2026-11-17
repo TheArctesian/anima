@@ -59,7 +59,7 @@ describe('RA-005, RA-033: device to system (copy)', () => {
     socket.clipboard('secret');
     await settle();
     expect(write).not.toHaveBeenCalled();
-    expect(policyText(target)).toBe('Copy from the device is off for this device.');
+    expect(policyText(target)).toBe('Copy from the device is off.');
   });
 
   it('D-8: a hidden session never writes the system clipboard', async () => {
@@ -76,7 +76,7 @@ describe('RA-005, RA-033: device to system (copy)', () => {
     systemClipboard.refuse = true;
     socket.clipboard('CLIP-MARKER');
     await settle();
-    expect(target.textContent).toContain('Could not copy the text to your clipboard.');
+    expect(target.textContent).toContain('Could not copy to your clipboard.');
     expect(target.textContent).not.toContain('CLIP-MARKER');
   });
 });
@@ -123,8 +123,8 @@ describe('RA-033: paste off (system to device)', () => {
     expect(event.defaultPrevented).toBe(true);
     expect(read).not.toHaveBeenCalled();
     expect(sentOf(socket, 'clipboard')).toEqual([]);
-    expect(target.textContent).toContain('Paste to the device is off, so nothing was sent.');
-    expect(policyText(target)).toBe('Paste to the device is off for this device.');
+    expect(target.textContent).toContain('Paste to the device is off. Nothing sent.');
+    expect(policyText(target)).toBe('Paste to the device is off.');
   });
 
   it('RA-033: with paste off, Ctrl+V reaches the device, which pastes its own clipboard', async () => {
@@ -191,7 +191,7 @@ describe('D-3: a policy that was not read', () => {
     expect(systemClipboard.written).toEqual([]);
     expect(sentOf(socket, 'clipboard')).toEqual([]);
     expect(target.querySelectorAll('[data-policy]')).toHaveLength(1);
-    expect(policyText(target)).toBe('Copy and paste are off: the hub did not say whether this device allows them.');
+    expect(policyText(target)).toBe('Copy and paste are off: the hub did not answer.');
   });
 
   it('with both on, no policy notice is shown', async () => {

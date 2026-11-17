@@ -61,7 +61,7 @@ function subnetProblem(subnet: string): string | undefined {
   const prefix = Number(length);
   if (prefix > 32) return 'Enter a prefix length up to 32.';
   const value = toNumber(parts);
-  return network(value, prefix) === value ? undefined : 'The address must be the first one of the subnet.';
+  return network(value, prefix) === value ? undefined : 'Use the first address of the subnet.';
 }
 
 /** The site fields' errors, as `site.name` and `site.subnet`. */

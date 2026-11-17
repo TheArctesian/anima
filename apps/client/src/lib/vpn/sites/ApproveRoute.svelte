@@ -24,7 +24,7 @@
 
 <!-- A router waits for its route to be approved (R-055); the hub shows the result through `vpnChanged` (BD-16). -->
 <div class="approve">
-  <p class="waits">{router.name} offers {site.subnet} and waits for approval.</p>
+  <p class="waits">{router.name} offers {site.subnet}, awaiting approval.</p>
   <FormButton
     tabindex={0}
     aria-disabled={reason !== null || approved}
@@ -45,7 +45,7 @@
   <ConfirmModal
     open={confirming}
     title="Approve {site.subnet}?"
-    body="Approve {site.subnet} for {router.name}? The hub and the operator's computers can then reach every address in {site.subnet}."
+    body="For {router.name}. The hub and the operator's computers can then reach every address in {site.subnet}."
     confirmLabel="Approve route"
     onConfirm={async () => {
       const done = await approve(site.id);

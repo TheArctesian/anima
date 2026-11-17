@@ -19,7 +19,7 @@
       <span>{candidate.name}</span>
     </label>
   {:else}
-    <p>This device has no other checks to group.</p>
+    <p>No other checks on this device.</p>
   {/each}
   {#if error !== undefined}<p class="error" role="alert">{error}</p>{/if}
 </fieldset>

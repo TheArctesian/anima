@@ -41,7 +41,7 @@ function systemdErrors({ unit, timeoutMs }: ProbeValues['systemd']): FieldError[
 function tailscaleErrors({ target, timeoutMs }: ProbeValues['tailscalePing']): FieldError[] {
   const text = target.trim();
   const found: FieldError[] =
-    text !== '' && !isValidHost(text) ? [{ field: 'target', message: 'Enter a host name or IP address, or leave it empty to use the device host.' }] : [];
+    text !== '' && !isValidHost(text) ? [{ field: 'target', message: 'Enter a host name or IP address, or leave empty for the device host.' }] : [];
   return [...found, ...timeoutError(timeoutMs)];
 }
 

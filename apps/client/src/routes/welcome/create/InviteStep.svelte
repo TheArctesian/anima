@@ -29,7 +29,7 @@
   });
 </script>
 
-<p>The next device joins with an invite. Make one for each device; the hub lists them in Settings.</p>
+<p>Each device joins with its own invite. Settings lists them.</p>
 <InviteMaker {api} now={clock.current} />
 {#if notice !== null}
   <!-- The link loads a new page: the client starts again with the hub address just saved. -->

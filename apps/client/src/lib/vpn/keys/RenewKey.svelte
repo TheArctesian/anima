@@ -44,7 +44,7 @@
   <FormButton tabindex={0} aria-disabled={busy || reason !== null} aria-busy={busy} aria-describedby={reason === null ? undefined : reasonId} onclick={run}>Renew key</FormButton>
   <p class="outcome" role={failure === null ? 'status' : 'alert'}>{line}</p>
   {#if node.keyState === 'EXPIRED'}
-    <p class="expired">A computer whose key has expired is off the VPN, so renew it from another computer.</p>
+    <p class="expired">An expired key takes the computer off the VPN. Renew from another computer.</p>
   {/if}
 </div>
 

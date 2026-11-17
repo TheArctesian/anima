@@ -162,7 +162,7 @@ describe('SetupFlow failures (R-079)', () => {
     expect(t.last()).toEqual({ kind: 'failed', message: NO_ANSWER_TEXT });
     expect(NO_ANSWER_TEXT).toMatch(/port 5900/);
     expect(NO_ANSWER_TEXT).toMatch(/Screen Sharing \(or the VNC server\) is off/);
-    expect(NO_ANSWER_TEXT).toMatch(/VPN rule does not allow port 5900/);
+    expect(NO_ANSWER_TEXT).toMatch(/VPN rule blocks the port/);
     expect(t.calls.update).not.toHaveBeenCalled();
     expect(t.calls.openSharing).not.toHaveBeenCalled();
   });

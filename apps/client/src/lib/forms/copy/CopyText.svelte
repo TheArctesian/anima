@@ -33,7 +33,7 @@
     <FormButton tabindex={0} size="sm" onclick={copyText}>Copy</FormButton>
   </div>
   <!-- The live region holds only the outcome of Copy, never the text. -->
-  <p class="outcome" role="status">{copy === 'copied' ? 'Copied.' : copy === 'failed' ? 'Anima.ing could not copy it. Select the text and copy it yourself.' : ''}</p>
+  <p class="outcome" role="status">{copy === 'copied' ? 'Copied.' : copy === 'failed' ? 'Could not copy. Select the text and copy it.' : ''}</p>
 </div>
 
 <style>

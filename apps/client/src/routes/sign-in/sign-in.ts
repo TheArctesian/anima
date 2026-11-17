@@ -26,7 +26,7 @@ export type SignInOutcome =
       readonly unreachable: boolean;
     };
 
-const NOT_KEPT_MESSAGE = 'Signed in, but the access token could not be kept in the key store.';
+const NOT_KEPT_MESSAGE = 'Signed in, but the key store could not keep the token.';
 
 function refused(message: string, fields: FieldMessages = {}, unreachable = false): SignInOutcome {
   return { signedIn: false, message, fields, unreachable };

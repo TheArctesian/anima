@@ -55,6 +55,6 @@ describe('the link of a joined device (LNK-006, F-2)', () => {
 
   it('F-2: a taken port is told, not changed in silence', () => {
     expect(deviceLinkText({ joined: true, state: 'down', reason: 'port-taken', port: 41_000 })).toBe('Down: another program holds port 41000.');
-    expect(deviceLinkText({ joined: true, state: 'down', reason: 'ended' })).toContain('starts again');
+    expect(deviceLinkText({ joined: true, state: 'down', reason: 'ended' })).toContain('Restarting');
   });
 });

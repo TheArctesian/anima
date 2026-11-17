@@ -187,7 +187,7 @@ it('API-003: an UNAUTHENTICATED me result goes to sign-in', async () => {
 it('NET-004: an unreachable hub does not go to sign-in, shows a fixed message and keeps Sign out', async () => {
   const target = await open({ Me: failure('unreachable', 'secret hub text') });
   expect(mocks.goToSignIn).not.toHaveBeenCalled();
-  expect(target.querySelector('[role="alert"]')?.textContent).toBe('Anima.ing could not read who is signed in.');
+  expect(target.querySelector('[role="alert"]')?.textContent).toBe("Can't read who is signed in.");
   expect(readable(signOutButton(target))).toBe('Sign out');
 });
 

@@ -16,8 +16,8 @@
   const SIZES = [
     { label: 'Any size', min: null, max: null },
     { label: 'Under 1 MiB', min: null, max: 1023 },
-    { label: '1 to under 10 MiB', min: 1024, max: 10_239 },
-    { label: '10 to under 100 MiB', min: 10_240, max: 102_399 },
+    { label: '1 to 10 MiB', min: 1024, max: 10_239 },
+    { label: '10 to 100 MiB', min: 10_240, max: 102_399 },
     { label: '100 MiB or more', min: 102_400, max: null },
   ] as const;
 
@@ -36,7 +36,7 @@
 
 <div class="browse">
   <label>
-    Sort by
+    Sort
     <Select value={store.browse.order ?? 'NAME'} onchange={(event) => order(event.currentTarget.value)}>
       {#each Object.entries(ORDERS) as [value, label] (value)}
         <option {value}>{label}</option>
@@ -53,7 +53,7 @@
     </Select>
   </label>
   <label>
-    Repository size
+    Size
     <Select value={size} onchange={(event) => chooseSize(event.currentTarget.value)}>
       {#each SIZES as range, index (range.label)}
         <option value={index}>{range.label}</option>

@@ -41,7 +41,7 @@
     class:off={!connected}
     tabindex="0"
     aria-pressed={live}
-    title={live ? 'New events join the list as they come' : 'New events wait until you go back to Live'}
+    title={live ? 'New events join the list' : 'New events wait until Live'}
     onclick={() => {
       onLive(!live);
     }}

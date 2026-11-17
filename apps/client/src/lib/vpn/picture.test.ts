@@ -24,7 +24,7 @@ it('VPN-010: each key state reads in words with its date or days', () => {
   expect(keyText({ keyState: 'EXPIRED', keyExpiry: at(-3.2) }, NOW)).toBe('Expired 3 days ago');
   expect(keyText({ keyState: 'EXPIRED', keyExpiry: at(-0.2) }, NOW)).toBe('Expired today');
   expect(keyText({ keyState: 'TAGGED_WITH_EXPIRY', keyExpiry: '2027-05-12T12:00:00Z' }, NOW, 'en-GB')).toBe(
-    'Tagged, but expires on 12 May 2027: renew it as a tagged node',
+    'Tagged but expires on 12 May 2027: renew as a tagged node',
   );
   expect(keyText({ keyState: 'VALID', keyExpiry: null }, NOW)).toBe('Expiry not known');
 });

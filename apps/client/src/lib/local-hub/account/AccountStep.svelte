@@ -43,7 +43,7 @@
 
 <div class="step">
   <h2 tabindex="-1" bind:this={title}>{heading}</h2>
-  <p>You sign in to the hub with this name, this password and a code from your authenticator app.</p>
+  <p>You sign in with this name, password and an authenticator code.</p>
   <form bind:this={form} onsubmit={submit} novalidate>
     <Field label="User name" constraint="Letters, digits, dots, underscores or hyphens." error={problems.name}>
       {#snippet children(link)}<Input {...link} autocomplete="username" spellcheck="false" autocapitalize="off" bind:value={name} />{/snippet}
@@ -51,7 +51,7 @@
     <Field label="Password" constraint="At least {PASSWORD_MIN} characters." error={problems.password}>
       {#snippet children(link)}<Input {...link} type="password" autocomplete="new-password" bind:value={password} />{/snippet}
     </Field>
-    <Field label="Repeat the password" error={problems.repeat}>
+    <Field label="Repeat password" error={problems.repeat}>
       {#snippet children(link)}<Input {...link} type="password" autocomplete="new-password" bind:value={repeat} />{/snippet}
     </Field>
     <FormButton type="submit" tone="primary" size="lg">Continue</FormButton>

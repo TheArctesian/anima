@@ -23,7 +23,7 @@
   $effect(() => {
     void api.me().then((result) => {
       if (result.ok) username = result.value.username;
-      else if (!signInNeeded(result.error, goToSignIn)) problem = 'Anima.ing could not read who is signed in.';
+      else if (!signInNeeded(result.error, goToSignIn)) problem = "Can't read who is signed in.";
     });
   });
 

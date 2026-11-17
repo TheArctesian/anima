@@ -177,7 +177,7 @@ describe('device settings: marks and secrets (D17, DEV-012)', () => {
       credential: { password: '', privateKey: 'not a key', passphrase: '' },
       remoteSecrets: { rdpPassword: '', vncPassword: '' },
     });
-    expect(problem).toContain('This is not a private key.');
+    expect(problem).toContain('Not a private key');
     expect(hub.sent).toEqual([]);
   });
 });

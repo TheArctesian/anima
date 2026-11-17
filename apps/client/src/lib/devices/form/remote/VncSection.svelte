@@ -41,7 +41,7 @@
   </Field>
   {#if credentialStored}
     <p class="stored">
-      Credential stored. Leave the password empty to keep it.
+      Credential stored. Leave empty to keep it.
       {#if onClearCredential !== undefined}
         <FormButton onclick={onClearCredential} aria-disabled={clearing}>Remove credential</FormButton>
       {/if}

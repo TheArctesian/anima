@@ -90,7 +90,7 @@ it('CHK-009: edit mode validates against the saved values: a rename of a basic-a
 
 it('R-048: a stored basic-auth check says the password must be typed again when the user name changes', () => {
   show({ check: HTTP_SAVED });
-  expect(messageOfHint('User name')).toContain('type the password again');
+  expect(messageOfHint('User name')).toContain('needs the password again');
 });
 
 it('R-048: a new basic-auth check shows no such hint', () => {

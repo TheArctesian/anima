@@ -22,14 +22,14 @@
     <div class="pair">
       <QrCode text={invite.invite} label="Invite for {name}" />
       <div class="side">
-        <p>On {name}, open Anima.ing, choose "Join a hub" and scan or paste this invite. It works once.</p>
+        <p>On {name}, open Anima.ing, choose "Join a hub", then scan or paste this. Works once.</p>
         <!-- Not a live region: a countdown read out every second would drown the page. -->
         <p class="left">Expires in <time datetime={invite.expiresAt}>{countdownText(left)}</time></p>
       </div>
     </div>
     <CopyText label="Invite" text={invite.invite} />
   {:else}
-    <p class="left">This invite has expired. Make another.</p>
+    <p class="left">Expired. Make another.</p>
   {/if}
 </div>
 

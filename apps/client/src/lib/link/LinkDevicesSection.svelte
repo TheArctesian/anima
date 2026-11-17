@@ -53,15 +53,15 @@
 {#if shown === 'listed' || shown === 'failed'}
   <SettingsSection {...section}>
     <SettingRow label="New device">
-      {#snippet hint()}<p class="hint">An invite works once and expires after 15 minutes.</p>{/snippet}
-      <FormButton tabindex={0} onclick={() => (inviting = true)}>Invite a device</FormButton>
+      {#snippet hint()}<p class="hint">Works once. Expires after 15 minutes.</p>{/snippet}
+      <FormButton tabindex={0} onclick={() => (inviting = true)}>Invite device</FormButton>
     </SettingRow>
     <div class="list">
       {#if shown === 'failed'}
-        <p role="alert">Anima.ing could not load the devices of the link.</p>
-        <FormButton size="sm" onclick={() => void load()}>Try again</FormButton>
+        <p role="alert">Can't load the link's devices.</p>
+        <FormButton size="sm" onclick={() => void load()}>Retry</FormButton>
       {:else if devices.length === 0}
-        <p class="quiet">No device has joined yet.</p>
+        <p class="quiet">No devices yet.</p>
       {:else}
         <ul>
           {#each devices as device (device.key)}
@@ -74,7 +74,7 @@
 {/if}
 
 {#if inviting}
-  <Modal open title="Invite a device" preset="md" closeOnScrim={false} dismissible onClose={() => { inviting = false; void load(); }}>
+  <Modal open title="Invite device" preset="md" closeOnScrim={false} dismissible onClose={() => { inviting = false; void load(); }}>
     <InviteMaker {api} now={clock.current} />
   </Modal>
 {/if}
@@ -83,7 +83,7 @@
   <ConfirmModal
     open={revoking !== null}
     title="Revoke {revoking?.name ?? ''}?"
-    body="The device leaves the link at once and its open sessions end. It can join again only with a new invite."
+    body="Its link and open sessions end now. Rejoining needs a new invite."
     confirmLabel="Revoke {revoking?.name ?? ''}"
     onConfirm={revoke}
     onCancel={() => (revoking = null)}

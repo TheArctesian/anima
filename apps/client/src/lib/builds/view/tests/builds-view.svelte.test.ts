@@ -171,6 +171,6 @@ it('BLD-081: selecting a job shows its log in a polite live region, and lines pu
 
 it('BLD-080: when the releases cannot be loaded the view says so and offers to try again', async () => {
   const target = await open({ Releases: { ok: false, error: { code: 'unreachable', message: 'The hub did not answer.' } } });
-  expect(target.textContent).toContain('Anima.ing could not load the releases.');
-  expect([...target.querySelectorAll('button')].map((button) => button.textContent.trim())).toContain('Try again');
+  expect(target.textContent).toContain('Releases did not load.');
+  expect([...target.querySelectorAll('button')].map((button) => button.textContent.trim())).toContain('Retry');
 });

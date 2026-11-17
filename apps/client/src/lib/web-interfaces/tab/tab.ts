@@ -53,8 +53,8 @@ export const LOAD_TIMEOUT_MS = 30_000;
 
 /** Fixed texts; the hub's and the shell's own messages are not shown (R-035, LOG-007). */
 export const PROBLEM = {
-  accept: 'The hub did not accept the certificate. Try again.',
-  unreachable: 'The hub did not answer, so the certificate is not accepted. Try again.',
+  accept: 'The hub did not accept the certificate. Retry.',
+  unreachable: 'Not accepted: the hub did not answer. Retry.',
 } as const;
 
 function schemeOf(url: string): string | null {
@@ -259,10 +259,10 @@ export function changeOf(target: WebTabTarget, url: string, pinned: string | nul
 export function failureText(reason: string): string {
   switch (reason) {
     case 'timeout':
-      return 'The page did not load in time. Check that the web interface is running, then reload.';
+      return 'The page timed out. Check the web interface is running, then reload.';
     case 'unknown_tab':
-      return 'The window of this page was closed. Reload to open it here again.';
+      return 'The page window was closed. Reload to open it here.';
     default:
-      return 'The page could not be loaded. Check that the web interface is running, then reload.';
+      return 'The page did not load. Check the web interface is running, then reload.';
   }
 }

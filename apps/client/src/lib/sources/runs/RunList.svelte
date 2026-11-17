@@ -12,7 +12,7 @@
 </script>
 
 {#if lines.length === 0}
-  <p class="none">No sync has run yet.</p>
+  <p class="none">No syncs yet.</p>
 {:else}
   <ul class="runs" aria-label="Recent syncs">
     {#each lines as line (line.id)}

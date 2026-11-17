@@ -78,7 +78,7 @@ it('RA-031: the status line names the relay after a success', async () => {
   button.click();
   answer({ ok: true, value: { sentAt: '2026-11-06T10:00:00Z', relayName: 'Pi at home' } });
   await settle();
-  expect(status()).toBe('Wake packet sent through Pi at home.');
+  expect(status()).toBe('Wake sent via Pi at home.');
 });
 
 it('RA-031: the status line shows the fixed text of a refusal', async () => {

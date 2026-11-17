@@ -66,11 +66,11 @@ export function allowQuestion(change: Extract<McpChange, { type: 'bulk' }>, tool
     risky ? 'The hub token still limits what an agent may do.' : '',
   ].filter((line) => line !== '');
   const effect = risky
-    ? 'Text that an agent reads can steer it, so it could then do this without asking you:'
+    ? 'Text an agent reads can steer it, so it could then, without asking:'
     : 'This scope has no tool that changes the hub.';
   return {
     title: `Allow ${scope}?`,
-    body: `This turns on ${scope}, the read tools too, with no question for each call. ${effect}`,
+    body: `Turns on ${scope}, read tools too, without asking per call. ${effect}`,
     lines,
     confirmLabel: change.toolset === undefined ? 'Allow every tool' : `Allow every ${toolsetLabel(change.toolset)} tool`,
   };

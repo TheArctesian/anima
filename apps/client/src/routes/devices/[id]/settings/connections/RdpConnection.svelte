@@ -78,7 +78,7 @@
         onRemove={calls.onClearRdpCredential}
       />
       <div class="cell">
-        <span class="label"><label for={inputId('rdp.resizeMethod')}>When the window is resized</label><SaveMark mark={draft.marks['rdp.resizeMethod']} /></span>
+        <span class="label"><label for={inputId('rdp.resizeMethod')}>On window resize</label><SaveMark mark={draft.marks['rdp.resizeMethod']} /></span>
         <Select id={inputId('rdp.resizeMethod')} bind:value={draft.values.rdp.resizeMethod} onblur={() => void draft.commit('rdp.resizeMethod')} onkeydown={(event) => { onSelectKey(event, 'rdp.resizeMethod'); }}>
           {#each RDP_RESIZE as option (option.value)}<option value={option.value}>{option.label}</option>{/each}
         </Select>

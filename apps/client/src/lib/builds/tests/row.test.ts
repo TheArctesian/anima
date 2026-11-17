@@ -162,19 +162,19 @@ it('I-3, I-4: while enrolling the toggle ignores clicks and the row says "Enroll
 it('S-5, I-2: a builder problem is tied to the toggle', async () => {
   await show();
   const builder = current.builder as ThisBuilder;
-  builder.problem = 'The hub did not enrol this computer as a builder.';
+  builder.problem = 'The hub did not enrol this computer.';
   flushSync();
   expect(document.getElementById(toggle()?.getAttribute('aria-describedby') ?? '')?.textContent).toBe(builder.problem);
 });
 
-it('I-5: until the list is read, no "No computer builds releases." line shows', async () => {
+it('I-5: until the list is read, no "No builders." line shows', async () => {
   let answer = (): void => undefined;
   const builders = new Promise((resolve) => (answer = () => resolve(ok({ builders: [] }))));
   current.hub = fakeHub({ Builders: builders } as never).hub;
   await show();
-  expect(text()).not.toContain('No computer builds releases.');
+  expect(text()).not.toContain('No builders.');
   expect(document.querySelectorAll('.builders li')).toHaveLength(1);
   answer();
   await settle();
-  expect(text()).toContain('No computer builds releases.');
+  expect(text()).toContain('No builders.');
 });

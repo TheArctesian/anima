@@ -194,7 +194,7 @@ it('F-3: "saved; check was not" shows only when the channels were really saved',
   expect(status()).toBe(PARTIAL_SENTENCE);
 });
 
-it('F-3, R-085: a channel list that fails disables only this part; Try again keeps focus and the check still saves', async () => {
+it('F-3, R-085: a channel list that fails disables only this part; Retry keeps focus and the check still saves', async () => {
   const answers: Record<string, HubResult<unknown>[]> = { NotificationChannels: [down, CHANNELS] };
   const onSave = vi.fn(() => Promise.resolve(ok({})));
   const sent = hubWith(answers);
@@ -208,11 +208,11 @@ it('F-3, R-085: a channel list that fails disables only this part; Try again kee
   expect(onSave).toHaveBeenCalledOnce();
   expect(sent.some((request) => request.operation === 'SetCheckNotifications')).toBe(false);
 
-  const retry = button('Try again');
+  const retry = button('Retry');
   retry.focus();
   retry.click();
   flushSync();
-  expect(button('Try again')).toBe(retry);
+  expect(button('Retry')).toBe(retry);
   expect(document.contains(retry)).toBe(true);
   expect(retry.getAttribute('aria-disabled')).toBe('true');
   expect(document.activeElement).toBe(retry);

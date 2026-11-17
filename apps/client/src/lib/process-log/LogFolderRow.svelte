@@ -12,15 +12,15 @@
     } catch (reason) {
       problem =
         reason instanceof LogFolderError && reason.problem === 'unavailable'
-          ? 'Opening the log folder is not available on this system.'
-          : 'Anima.ing could not open the log folder.';
+          ? 'Not available on this system.'
+          : 'Could not open the log folder.';
     }
   }
 </script>
 
 <SettingRow label="Logs">
   {#snippet hint()}
-    <p class="hint">The desktop app's process log, for a bug report.</p>
+    <p class="hint">Process log, for bug reports.</p>
   {/snippet}
   <button type="button" tabindex="0" onclick={open} {@attach press()}>
     Open log folder

@@ -26,7 +26,7 @@ export const KEY_SEQUENCES: readonly KeySequence[] = [
   sequence('ctrl-c', 'Ctrl+C', 'Interrupt', control('c')),
   sequence('ctrl-d', 'Ctrl+D', 'End of input', control('d')),
   sequence('ctrl-z', 'Ctrl+Z', 'Suspend', control('z')),
-  sequence('ctrl-l', 'Ctrl+L', 'Clear the screen', control('l')),
+  sequence('ctrl-l', 'Ctrl+L', 'Clear screen', control('l')),
   sequence('esc', 'Esc', 'Escape', ESCAPE),
   sequence('tab', 'Tab', 'Complete', TAB),
 ];

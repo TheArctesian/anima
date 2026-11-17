@@ -108,7 +108,7 @@ it('D-4: the secret inputs are empty after a successful save, and kept after a f
 
 it('DEV-013: Test sends the unsaved shape (no device ID) once the host changed, and says the stored credential is not used', async () => {
   const { onTest } = show(SAVED);
-  expect(document.body.textContent).not.toContain('does not use the stored credential');
+  expect(document.body.textContent).not.toContain('the stored credential is not used');
   type('host', 'nas2.home.arpa');
 
   button('Test connection').click();
@@ -118,7 +118,7 @@ it('DEV-013: Test sends the unsaved shape (no device ID) once the host changed, 
     host: 'nas2.home.arpa',
     ssh: { enabled: true, port: 22, username: 'root', auth: 'PASSWORD' },
   });
-  expect(document.body.textContent).toContain('does not use the stored credential');
+  expect(document.body.textContent).toContain('the stored credential is not used');
 });
 
 it('DEV-013: Test of an unchanged saved device sends its ID', async () => {
@@ -128,7 +128,7 @@ it('DEV-013: Test of an unchanged saved device sends its ID', async () => {
   await settle();
 
   expect(onTest).toHaveBeenCalledExactlyOnceWith({ deviceId: 'd1' });
-  expect(document.body.textContent).toContain('accepted the credential');
+  expect(document.body.textContent).toContain('Credential accepted');
 });
 
 it('DEV-013: a refused test is not run on an invalid host', async () => {
@@ -323,7 +323,7 @@ it('D-7, WCAG 1.3.1: the "Set by the agent" hint describes the source select, an
   const select = document.querySelector('#device-metricsSource');
   if (select === null) throw new Error('no source select');
   expect(describedBy(select)).toEqual(['Set by the agent. Revoke it, or pick None or SSH, to change.']);
-  expect(describedBy(input('host'))).toEqual(['A host name or an IP address.']);
+  expect(describedBy(input('host'))).toEqual(['Host name or IP address.']);
   expect(input('name').hasAttribute('aria-describedby')).toBe(false);
 });
 

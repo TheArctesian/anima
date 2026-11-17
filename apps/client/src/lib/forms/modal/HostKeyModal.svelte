@@ -34,7 +34,7 @@
   {#if changed}
     <p class="warning" role="alert">The host key changed. Do not trust this device until you check it.</p>
   {:else}
-    <p>This device has no recorded host key yet. Check that the fingerprint is the one you expect.</p>
+    <p>No host key recorded yet. Check the fingerprint is the one you expect.</p>
   {/if}
   <dl>
     <dt>Algorithm</dt>

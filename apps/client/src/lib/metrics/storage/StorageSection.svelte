@@ -23,11 +23,11 @@
   <section class="overview-card storage" aria-labelledby="overview-storage">
     <h2 id="overview-storage" class="overview-card-title"><Icon name="carbon:vmdk-disk" />Storage</h2>
     {#if error !== null}
-      <p class="quiet">Storage is not available while metrics cannot load.</p>
+      <p class="quiet">Not available until metrics load.</p>
     {:else if drives === null}
       <p class="quiet">Loading storage</p>
     {:else if summary === null}
-      <p class="quiet">No drives reported yet</p>
+      <p class="quiet">No drives yet</p>
     {:else}
       <p class="summary">{summary}</p>
       <ul class="rows">

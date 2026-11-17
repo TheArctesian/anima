@@ -109,7 +109,7 @@ it('EXT-012: a needed extension has a disabled switch that names the extension t
   await flip('model_gateway');
   await confirm('Set on');
   expect(isDisabled('secrets')).toBe(true);
-  expect(document.querySelector('#extension-secrets-hint')?.textContent).toContain('Model gateway is on and needs it');
+  expect(document.querySelector('#extension-secrets-hint')?.textContent).toContain('Model gateway needs it');
   expect(isDisabled('model_gateway')).toBe(false);
 });
 

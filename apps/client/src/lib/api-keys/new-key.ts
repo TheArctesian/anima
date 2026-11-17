@@ -59,7 +59,7 @@ export function emptyForm(): NewKeyForm {
 
 export const NAME_MISSING = 'Enter a name.';
 export const NAME_TOO_LONG = `Use at most ${String(NAME_MAX)} characters.`;
-export const MADE_FOR_MISSING = 'Choose who will use the key.';
+export const MADE_FOR_MISSING = 'Choose who uses the key.';
 export const DATE_MISSING = 'Choose an expiry date.';
 export const DATE_PAST = 'Choose a date after today.';
 export const DATE_TOO_FAR = 'Choose a date at most one year away.';

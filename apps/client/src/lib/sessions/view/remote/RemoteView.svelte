@@ -39,13 +39,13 @@
 
   const { device, protocol, start, api, visible, focused, onended, onclient }: Props = $props();
   /** Fixed texts of the clipboard notices; never the clipboard's content (LOG-007). */
-  const COPY_FAILED = 'Could not copy the text to your clipboard.';
-  const PASTE_FAILED = 'Could not read your clipboard. Allow clipboard access, or use Paste in the Keys menu.';
-  const PASTE_REFUSED = 'Paste to the device is off, so nothing was sent.';
+  const COPY_FAILED = 'Could not copy to your clipboard.';
+  const PASTE_FAILED = 'Could not read your clipboard. Allow access, or use Paste in the Keys menu.';
+  const PASTE_REFUSED = 'Paste to the device is off. Nothing sent.';
   /** Fixed text for a `CONFLICT` refusal of the start (K4 §1); never the hub's own message (LOG-007). */
   const CONFLICT_TEXT: Readonly<Record<RemoteProtocol, string | undefined>> = {
-    RDP: "Could not open the session. The device's RDP certificate is not accepted yet: run the connection test first.",
-    VNC: 'Could not open the session. The hub refused it for this device: check its VNC settings, then run the connection test.',
+    RDP: "Could not open the session. RDP certificate not accepted yet: run the connection test first.",
+    VNC: 'Could not open the session. The hub refused it: check the VNC settings, then run the connection test.',
   };
 
   const connection = new SessionConnection<SessionTunnel, GuacamoleState>(

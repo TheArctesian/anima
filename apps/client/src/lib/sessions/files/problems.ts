@@ -4,21 +4,21 @@ import type { FilesProblem } from './link/inflight';
 const REFUSALS: Readonly<Record<Refusal, string>> = {
   UPLOAD_OFF: 'Uploads are off for this device.',
   DOWNLOAD_OFF: 'Downloads are off for this device.',
-  EXISTS: 'A file with this name is already there; Anima.ing never replaces a file.',
-  NOT_FOUND: 'The device has no file or folder at that place.',
+  EXISTS: 'A file with this name exists. Anima.ing never replaces a file.',
+  NOT_FOUND: 'The device has no file or folder there.',
   DENIED: 'The device did not allow that.',
 };
 
 /** Shown when the single-use ticket could not be had (the hub's own words are never shown, LOG-007). */
-export const TICKET_FAILED = 'Could not open the file connection. Check that the session is still running.';
+export const TICKET_FAILED = 'Could not open the file connection. Check the session is still running.';
 /** Shown when the name cannot be made into a path on the device. */
-export const NAME_REFUSED = 'That name cannot be used as a file name on the device.';
+export const NAME_REFUSED = 'The device cannot use that file name.';
 
 const OTHERS: Readonly<Record<Exclude<FilesProblem['kind'], 'refused'>, string>> = {
-  busy: 'Wait for the transfer in progress to finish.',
+  busy: 'Wait for the current transfer to finish.',
   offline: 'The file connection is not open.',
   'bad-request': NAME_REFUSED,
-  cancelled: 'The transfer was cancelled.',
+  cancelled: 'Transfer cancelled.',
   unreadable: 'That file could not be read.',
   ended: 'The file connection ended.',
 };

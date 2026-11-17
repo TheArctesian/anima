@@ -37,13 +37,13 @@ describe('job stages', () => {
   });
 
   it('BLD-080: a failure reason that names a build step fails the build stage at that step', () => {
-    const stages = jobStages(job({ state: 'FAILED', failureReason: 'The gates failed. The job log says why.' }));
+    const stages = jobStages(job({ state: 'FAILED', failureReason: 'The gates failed. See the job log.' }));
     expect(stages.map((stage) => stage.mark)).toEqual(['done', 'failed', 'skipped', 'skipped']);
     expect(stages[1]?.detail).toBe('the gates failed');
   });
 
   it('BLD-080: a failed upload leaves the build done', () => {
-    expect(marks({ state: 'FAILED', failureReason: 'The upload could not run on this computer.' })).toEqual([
+    expect(marks({ state: 'FAILED', failureReason: 'The upload could not run.' })).toEqual([
       'claim:done',
       'build:done',
       'upload:failed',

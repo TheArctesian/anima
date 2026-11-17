@@ -59,7 +59,7 @@
     </span>
   </header>
   {#if failed}
-    <p class="problem" role="alert">Anima.ing could not load this log.</p>
+    <p class="problem" role="alert">Log did not load.</p>
   {:else}
     <!-- Always present, so a screen reader announces each new line politely (BLD-081). -->
     <div class="body" role="log" aria-live="polite" aria-label="Build log">
@@ -73,7 +73,7 @@
     </div>
     {#if !following && text.length > 0}
       <div class="jump">
-        <FormButton tabindex={0} size="sm" onclick={() => { following = true; void toEnd(); }}>Jump to the newest line</FormButton>
+        <FormButton tabindex={0} size="sm" onclick={() => { following = true; void toEnd(); }}>Jump to newest</FormButton>
       </div>
     {/if}
   {/if}

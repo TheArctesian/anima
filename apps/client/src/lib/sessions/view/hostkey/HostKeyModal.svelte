@@ -48,16 +48,15 @@
   });
 </script>
 
-<Modal open solid title="The host key of {device.name} has changed" warning describedBy="host-key-why" closeOnScrim={false} width={9} lowered onClose={onclose}>
+<Modal open solid title="Host key of {device.name} changed" warning describedBy="host-key-why" closeOnScrim={false} width={9} lowered onClose={onclose}>
   <div class="content" bind:this={content}>
     <div id="host-key-why" class="why">
       <p>
-        {device.name} answered with a different SSH host key from the one Anima.ing accepted, so Anima.ing did not connect.
+        {device.name} sent a different SSH host key from the accepted one. Not connected.
       </p>
       <p>
-        A new key is expected after the device is reinstalled or its SSH keys are made again. Otherwise it can mean
-        that another machine is answering in its place, to read what you type, passwords included. Accept the new key
-        only if you know why it changed. Until then, the old key stays.
+        Expected after a reinstall or new SSH keys. Otherwise another machine may be answering in its place and could
+        read what you type, passwords included. Accept only if you know why it changed. Until then, the old key stays.
       </p>
     </div>
 
@@ -68,9 +67,9 @@
       </dl>
     {/if}
     {#if current.step === 'confirming'}
-      <p class="confirm">Accept this fingerprint as the host key of {device.name}? Anima.ing will trust it from now on.</p>
+      <p class="confirm">Trust this fingerprint as the host key of {device.name} from now on?</p>
     {:else if current.step === 'accepted'}
-      <p role="status">The new key is accepted. Reconnect to open the session.</p>
+      <p role="status">New key accepted. Reconnect to open the session.</p>
     {/if}
     {#if problem !== undefined}
       <p class="problem" role="status">{problem}</p>
@@ -81,14 +80,14 @@
       {#if current.step === 'warned'}
         <button type="button" onclick={review} {@attach press()}>Review new key</button>
       {:else if current.step === 'reviewing'}
-        <button type="button" disabled>Reading the key…</button>
+        <button type="button" disabled>Reading key…</button>
       {:else if current.step === 'reviewed'}
         <button type="button" class="warning" onclick={() => apply({ event: 'confirm' })} {@attach press()}>
           Accept new key
         </button>
       {:else if current.step === 'confirming'}
         <button type="button" onclick={() => apply({ event: 'back' })} {@attach press()}>Back</button>
-        <button type="button" class="warning" onclick={accept} {@attach press()}>Yes, accept this key</button>
+        <button type="button" class="warning" onclick={accept} {@attach press()}>Yes, accept</button>
       {:else if current.step === 'accepting'}
         <button type="button" disabled>Accepting…</button>
       {:else}

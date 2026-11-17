@@ -17,8 +17,8 @@ export interface ConnectProblem {
 }
 
 /** Fixed words: a key never appears in a message (PRJ-018, LOG-007). */
-export const KEY_FILE_UNREADABLE = 'Anima.ing could not read that file. Paste the key instead.';
-export const KEY_FILE_TOO_LARGE = 'That file is too large for a private key. Choose the .pem file GitHub gave you.';
+export const KEY_FILE_UNREADABLE = 'Could not read that file. Paste the key instead.';
+export const KEY_FILE_TOO_LARGE = 'Too large for a private key. Choose the .pem file from GitHub.';
 const MAX_KEY_BYTES = 16 * 1024;
 
 const DIGITS = /^\d+$/;
@@ -48,7 +48,7 @@ export function checkConnect(form: Readonly<ConnectForm>): { ok: true; input: Gi
   const label = form.label.trim();
   const appId = form.appId.trim();
   const installationId = form.installationId.trim();
-  if (label === '' || label.length > 64) problems.push({ field: 'label', message: 'Give the account a name of 1 to 64 characters.' });
+  if (label === '' || label.length > 64) problems.push({ field: 'label', message: 'Name: 1 to 64 characters.' });
   if (!DIGITS.test(appId)) problems.push({ field: 'appId', message: 'The App ID is digits only.' });
   if (!DIGITS.test(installationId)) problems.push({ field: 'installationId', message: 'The installation ID is digits only.' });
   if (form.privateKey.trim() === '') problems.push({ field: 'privateKey', message: 'Paste the private key or choose its .pem file.' });

@@ -121,7 +121,7 @@ it.each([
 it('F-8: a token typed and then removed is sent as "", and what was typed goes nowhere', async () => {
   await edit('phone-ntfy');
   typeInto(field('Access token') as HTMLInputElement, FAKE_SECRET);
-  pick(choice('Remove the stored access token'));
+  pick(choice('Remove stored access token'));
   expect(field('Access token').value).toBe('');
   inDialog('Save').click();
   await settled();
@@ -131,9 +131,9 @@ it('F-8: a token typed and then removed is sent as "", and what was typed goes n
 
 it('F-8: header values typed and then given up with Replace unticked are dropped, and the stored headers kept', async () => {
   await edit('ops-webhook');
-  pick(choice('Replace the headers'));
+  pick(choice('Replace headers'));
   typeInto(field('Header 1 value') as HTMLInputElement, FAKE_SECRET);
-  pick(choice('Replace the headers'));
+  pick(choice('Replace headers'));
   expect(places(FAKE_SECRET)).toEqual(NOWHERE);
   inDialog('Save').click();
   await settled();

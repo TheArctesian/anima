@@ -13,7 +13,7 @@
   let { apprise = $bindable(), stored, problemOf }: Props = $props();
 </script>
 
-<Field label="Apprise server" hint="The Apprise API: https:// and the host only, for example https://apprise.example.com." problem={problemOf('apprise.server')}>
+<Field label="Apprise server" hint="https:// and host only, e.g. https://apprise.example.com." problem={problemOf('apprise.server')}>
   {#snippet control(attributes)}
     <input {...attributes} type="url" bind:value={apprise.server} autocomplete="off" autocapitalize="off" spellcheck="false" />
   {/snippet}
@@ -22,7 +22,7 @@
   {#snippet control(attributes)}
     <select {...attributes} bind:value={apprise.mode}>
       <option value="STATELESS_URLS">Apprise URLs</option>
-      <option value="CONFIG_KEY">A configuration key on the server</option>
+      <option value="CONFIG_KEY">Server configuration key</option>
     </select>
   {/snippet}
 </Field>
@@ -38,7 +38,7 @@
 {:else}
   <SecretField label="Configuration key" shape="hidden" bind:value={apprise.key} problem={problemOf('apprise.key')} stored={stored?.appriseMode === 'CONFIG_KEY'} />
 {/if}
-<Field label="Tags" hint="Optional. Separate tags with commas." problem="">
+<Field label="Tags" hint="Optional, comma-separated." problem="">
   {#snippet control(attributes)}
     <input {...attributes} type="text" bind:value={apprise.tags} autocomplete="off" spellcheck="false" />
   {/snippet}
