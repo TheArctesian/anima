@@ -64,6 +64,12 @@ const Vpn = graphql(`
   }
 `);
 
+const VpnLoginServer = graphql(`
+  query VpnLoginServer {
+    vpnLoginServer
+  }
+`);
+
 const VpnChanged = graphql(`
   subscription VpnChanged {
     vpnChanged {
@@ -85,6 +91,11 @@ export function vpnApi(hub: Hub) {
     picture: async (): Promise<HubResult<VpnPicture | null>> => {
       const result = await hub.request(Vpn, {});
       return result.ok ? { ok: true, value: result.value.vpn ?? null } : result;
+    },
+    /** The Headscale server every Anima node logs in to (ADR-005); known with or without a picture. */
+    loginServer: async (): Promise<HubResult<string>> => {
+      const result = await hub.request(VpnLoginServer, {});
+      return result.ok ? { ok: true, value: result.value.vpnLoginServer } : result;
     },
     /** Listen for each new picture; returns the function that stops listening. */
     watch: (sink: Sink<VpnPicture>): (() => void) =>

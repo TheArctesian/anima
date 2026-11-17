@@ -160,8 +160,8 @@ async fn vpn_005_vpn_is_null_without_a_proxy(pool: PgPool) {
     assert!(spawn_reader(None, reading(&pool, &feed)).is_none());
 
     assert_eq!(
-        data(&hub, &token, "{ vpn { fresh } }", json!({})).await,
-        json!({ "vpn": null })
+        data(&hub, &token, "{ vpn { fresh } vpnLoginServer }", json!({})).await,
+        json!({ "vpn": null, "vpnLoginServer": "https://hs.anima.ing" })
     );
 }
 

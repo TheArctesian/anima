@@ -106,7 +106,12 @@ Request:
     { "at": "2026-11-08T10:00:20Z", "mean": [11.0, 40.1, null] }
   ],
   "gpus": [ { "index": 0, "name": "Apple M3 Pro", "vendor": "apple", "hasVram": false } ],
-  "drives": [ { "name": "nvme1n1", "kind": "nvme", "sizeBytes": 1000204886016, "mounts": ["/", "/boot/efi"] } ]
+  "drives": [ { "name": "nvme1n1", "kind": "nvme", "sizeBytes": 1000204886016, "mounts": ["/", "/boot/efi"] } ],
+  "inventory": {
+    "architecture": "aarch64", "os": "macos", "osVersion": "27.0",
+    "tools": [ { "name": "cargo", "version": "1.91.0" }, { "name": "bun", "state": "timed_out" } ],
+    "buildTargets": ["aarch64-apple-darwin"]
+  }
 }
 ```
 
@@ -139,6 +144,35 @@ Request:
   `hdd` or `disk`, and the hub reads a kind it does not know as `disk`; `sizeBytes` is at most 2^63 − 1;
   `mounts` holds at most 32 mount points, each 1 to 128 bytes starting with `/`, no control character, and is
   empty for a drive that is not mounted. macOS sends no `drives` (MET-031).
+- `inventory`: optional; the tool inventory (operator, 2026-11-15, CAP-020 to CAP-031; ruling number to be
+  assigned). The agent probes its tools at start and every 15 minutes and sends the whole inventory in its
+  first batch after start, again whenever a probe result changes, and again when 24 hours have passed since it
+  last handed one over even if nothing changed; and with each next batch until one is accepted, except after
+  `MALFORMED`: then it waits for the next change or the next 24-hour announcement, so an inventory the hub
+  refused once is sent again within a day (CAP-027). Absent means "unchanged", so
+  an agent older than the inventory keeps working. `architecture` is `aarch64` or `x86_64`; `os` is `macos` or
+  `linux`; `osVersion` (macOS: `sw_vers -productVersion`; Linux: `VERSION_ID` of `/etc/os-release`, or the
+  kernel release when there is none) is 1 to 64 bytes of `[0-9A-Za-z.+_-]`. `tools` holds at most 64 tools with
+  unique names, each a `name` of 1 to 64 bytes of `[0-9a-z_.-]` and either a `version` of 1 to 64 bytes of
+  `[0-9A-Za-z.+_-]` or a `state` that says why the tool, found, is not usable, never both (CAP-024). The
+  `state` is a fixed code, never text from the device: `timed_out` (the version probe ran past its 5 seconds),
+  `exited` (the program could not start or exited with a failure) or `no_version` (it ran but printed no
+  version the agent reads); `failed` stands for a reason the reader does not know. A tool the agent did not
+  find is not listed. The names the hub knows are `git`,
+  `rustc`, `cargo`, `cargo-nextest`, `sccache`, `bun`, `node`, `xcodebuild`, `docker`, `podman`, `nix`, `claude`
+  and `codex`; the hub drops a tool of any other name, and reads a `state` it does not know as `failed`, so a
+  newer agent can talk to an older hub, and an older agent's `failed` is still taken. `buildTargets` holds at
+  most 128 unique Rust targets
+  (`rustup target list --installed`), each 1 to 64 bytes of `[0-9a-z_.-]`. No text in it is free text from the
+  device: the agent sends only values that pass these rules, and a batch whose inventory breaks one is
+  `MALFORMED`. The agent looks for each program first in its fixed tool folders (`~/.cargo/bin`,
+  `/opt/homebrew/opt/rustup/bin`, `/opt/homebrew/bin`, `/usr/local/bin`, `~/.bun/bin`, `~/.local/bin`,
+  `~/.docker/bin`, `~/.nix-profile/bin`, `/nix/var/nix/profiles/default/bin`), then in its `PATH`. On macOS it
+  does not run Apple's placeholder `/usr/bin/git` or `/usr/bin/xcodebuild` unless the developer tools are
+  present (`xcode-select -p` names a folder that exists), since a placeholder offers to install them. Each
+  probe runs in a process group of its own that is killed when it ends. `claude` and `codex` write into their
+  home folder even to print a version, so they run with `HOME`, `CODEX_HOME` and `CLAUDE_CONFIG_DIR` set to
+  an empty temporary folder that is removed afterwards; no other probe has a home folder (CAP-025).
 
 The hub:
 
@@ -156,6 +190,9 @@ The hub:
 - with `drives` present, replaces the device's drives with it in the same transaction; `[]` means the device
   has no drives now, and an absent `drives` leaves them as they are. A drive that leaves the list keeps its
   series and their history (MET-027);
+- with `inventory` present, replaces the device's tool inventory with it in the same transaction, the tools
+  and the build targets included; an empty `tools` or `buildTargets` means the device has none now, and an
+  absent `inventory` leaves it as it is (CAP-029). Deleting the device deletes its inventory;
 - records the time of the last accepted batch for MET-018 (R-098 a). Any accepted batch resets it, even one
   whose series the hub all ignores; a refused batch does not. 30 seconds after the last accepted batch the
   device's metrics are stale: the hub writes one event (source `metrics`, severity warning) and serves

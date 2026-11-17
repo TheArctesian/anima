@@ -3,6 +3,7 @@
 use crate::fleet::metrics::MetricKind;
 
 mod aggregates;
+mod capabilities;
 mod database;
 mod faces;
 mod gpu_labels;

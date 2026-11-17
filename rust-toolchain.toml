@@ -1,0 +1,6 @@
+# One Rust version for every machine and for the hub image (deploy/hub/Dockerfile).
+# rustup installs it on the first cargo run. To change it, change both files in one commit.
+[toolchain]
+channel = "1.100.0"
+profile = "minimal"
+components = ["rustfmt", "clippy"]

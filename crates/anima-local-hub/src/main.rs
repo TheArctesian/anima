@@ -1,7 +1,8 @@
 //! `anima-local-hub`: wires the command line to the library and sets the exit code. No rules here.
 //!
 //!   anima-local-hub run     [--root <folder> --socket-folder <folder>] [--listen <address:port>]
-//!   anima-local-hub install --tree <folder> [--root ... --socket-folder ...] [--listen ...]
+//!   anima-local-hub install --tree <folder> [--root ... --socket-folder ...] [--listen ...] [--step-back]
+//!   anima-local-hub update  --tree <folder> [--root ... --socket-folder ...]
 //!   anima-local-hub remove  [--root <folder> --socket-folder <folder>]
 //!   anima-local-hub status  [--root <folder> --socket-folder <folder>]
 //!   anima-local-hub start | stop  [--root <folder> --socket-folder <folder>]
@@ -9,6 +10,12 @@
 //!
 //! `install` runs from the application bundle: it copies the programs beside it and the
 //! PostgreSQL tree to the hub's folder and makes the unit that runs `run` at login.
+//! `install` refuses programs of a lower version than the installed ones unless `--step-back`
+//! is given; the application never gives it. `--listen` is a loopback address with a port.
+//! `update` does the same only when the installed hub exists and its programs differ from the
+//! ones that the application carries, and are not older; it prints `{"updated":true}` or
+//! `{"updated":false}` (`{"updated":false,"older":true}` and a line on standard error when the programs are older). It keeps the `--listen`
+//! that `install` was given.
 //!
 //! `run` prints `ready` on standard output when the hub serves, and stops the group in order
 //! on SIGTERM or SIGINT. Nothing it prints holds a secret (LOG-007).
@@ -22,9 +29,12 @@ use std::time::SystemTime;
 use anima_database::{LayoutError, Platform, UserFolders};
 use anima_local_hub::account::{self, AccountError, Action, Name};
 use anima_local_hub::group::{LIMITS, Plan};
+use anima_local_hub::programs;
 use anima_local_hub::run::{self, Ended, RunError};
 use anima_local_hub::state::{self, Status};
 use anima_local_hub::units::install::{self, Request};
+use anima_local_hub::units::listen::require_allowed;
+use anima_local_hub::units::update;
 use anima_local_hub::units::{STEP_LIMIT, run_step};
 use anima_local_hub::{Carried, Folders, Stop};
 use clap::{Args, Parser, Subcommand};
@@ -66,6 +76,17 @@ enum Command {
         /// Where the hub listens, when it is not the default
         #[arg(long)]
         listen: Option<SocketAddr>,
+        /// Put the programs of this application over installed ones of a higher version
+        #[arg(long)]
+        step_back: bool,
+    },
+    /// Replace the programs of the installed hub when the application carries other ones
+    Update {
+        #[command(flatten)]
+        place: Place,
+        /// The PostgreSQL tree that the application carries
+        #[arg(long)]
+        tree: PathBuf,
     },
     /// Stop the hub and remove its unit and programs; the database and the key stay
     Remove(Place),
@@ -114,9 +135,7 @@ impl Place {
             _ => Folders::for_user(
                 Platform::HOST,
                 &UserFolders {
-                    home: std::env::var_os("HOME")
-                        .map(PathBuf::from)
-                        .unwrap_or_default(),
+                    home: std::env::var_os("HOME").map_or_else(PathBuf::new, PathBuf::from),
                     xdg_data_home: std::env::var_os("XDG_DATA_HOME").map(PathBuf::from),
                     xdg_runtime_dir: std::env::var_os("XDG_RUNTIME_DIR").map(PathBuf::from),
                 },
@@ -159,7 +178,9 @@ fn main() -> ExitCode {
             place,
             tree,
             listen,
-        } => install(&place, tree, listen),
+            step_back,
+        } => install(&place, tree, listen, step_back),
+        Command::Update { place, tree } => update(&place, tree),
         Command::Remove(place) => remove(&place),
         Command::Status(place) => status(&place),
         Command::Start(place) => start_or_stop(&place, true),
@@ -251,22 +272,51 @@ impl User {
             folders,
             listen,
             stop_limit: STEP_LIMIT,
+            version: programs::version::THIS,
+            step_back: false,
         }
     }
 }
 
-fn install(place: &Place, tree: PathBuf, listen: Option<SocketAddr>) -> Result<ExitCode, Failure> {
-    let (folders, user) = (place.folders()?, User::current()?);
-    let listen = listen.map(loopback).transpose()?;
+/// What the application carries: the programs beside this one, and `tree`.
+fn carried_by_application(tree: PathBuf) -> Result<Carried, Failure> {
     let program = std::env::current_exe()?;
-    let source = Carried::new(
+    Ok(Carried::new(
         program.parent().unwrap_or(Path::new("/")).to_path_buf(),
         tree,
-    );
-    let file = install::install(&user.request(&folders, listen), &source, |step| {
+    ))
+}
+
+fn install(
+    place: &Place,
+    tree: PathBuf,
+    listen: Option<SocketAddr>,
+    step_back: bool,
+) -> Result<ExitCode, Failure> {
+    let (folders, user) = (place.folders()?, User::current()?);
+    let listen = listen.map(require_allowed).transpose()?;
+    let source = carried_by_application(tree)?;
+    let request = Request {
+        step_back,
+        ..user.request(&folders, listen)
+    };
+    let file = install::install(&request, &source, |step| {
         run_step(step, &user.session, STEP_LIMIT)
     })?;
     println!("installed: {}", file.display());
+    Ok(ExitCode::SUCCESS)
+}
+
+fn update(place: &Place, tree: PathBuf) -> Result<ExitCode, Failure> {
+    let (folders, user) = (place.folders()?, User::current()?);
+    let source = carried_by_application(tree)?;
+    let outcome = update::update(&user.request(&folders, None), &source, |step| {
+        run_step(step, &user.session, STEP_LIMIT)
+    })?;
+    if let Some(reason) = outcome.refusal() {
+        eprintln!("anima-local-hub: not updated: {reason}");
+    }
+    println!("{}", outcome.json_line());
     Ok(ExitCode::SUCCESS)
 }
 

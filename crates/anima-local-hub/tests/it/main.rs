@@ -315,3 +315,25 @@ fn a_second_run_of_the_same_folder_ends_with_code_10() {
     assert_eq!(rig.status()["state"], "ready");
     assert!(stop(running).success());
 }
+
+/// No unit tool runs: a hub that is not installed has nothing to update, so the test needs
+/// neither `launchctl` nor `systemctl`.
+#[test]
+fn update_of_a_hub_that_is_not_installed_prints_one_json_line_and_changes_nothing() {
+    let rig = Rig::new();
+
+    let output = rig
+        .command("update")
+        .arg("--tree")
+        .arg(rig.folder.path().join("no tree"))
+        .output()
+        .unwrap();
+
+    assert!(output.status.success(), "{output:?}");
+    assert_eq!(
+        String::from_utf8_lossy(&output.stdout),
+        "{\"updated\":false}\n"
+    );
+    assert!(output.stderr.is_empty(), "{output:?}");
+    assert!(!rig.root().exists(), "the hub root was made");
+}

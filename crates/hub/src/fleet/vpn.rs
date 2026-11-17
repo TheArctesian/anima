@@ -21,6 +21,10 @@ pub use feed::Feed;
 pub use model::{BrokerState, KeyState, Picture, Role, RouteState, SitePath, VpnNode, VpnPath};
 pub use reader::{Reading, spawn_reader};
 
+/// The Headscale server every Anima node logs in to: the join steps name it, and the desktop app
+/// accepts its own VPN address only from a client logged in to it (ADR-005).
+const LOGIN_SERVER: &str = "https://hs.anima.ing";
+
 /// Why a read of the VPN status or a broker call failed. The text never holds a reply
 /// (LOG-007).
 #[derive(Debug, thiserror::Error)]

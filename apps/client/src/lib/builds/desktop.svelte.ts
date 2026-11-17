@@ -33,9 +33,9 @@ export function builderIdStore(storage: Storage, address: HubAddress): BuilderId
   };
 }
 
-/** The name the hub records for this computer: its own name, or a fixed one when the shell cannot say. */
-async function computerName(): Promise<string> {
-  return (await readThisMachine())?.name ?? 'Anima.ing builder';
+/** The name `hub` records for this computer: its own name, or a fixed one when the shell cannot say. */
+async function computerName(hub: Hub): Promise<string> {
+  return (await readThisMachine(hub))?.name ?? 'Anima.ing builder';
 }
 
 /**
@@ -62,7 +62,7 @@ export function provideDesktopBuilder(hub: Hub): void {
     },
     ids: builderIdStore(localStorage, address),
     operatorToken: () => readAccessToken(address),
-    computerName,
+    computerName: () => computerName(hub),
     sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
     // eslint-disable-next-line svelte/prefer-svelte-reactivity -- a value for the feed's date, never held or rendered
     now: () => new Date(),

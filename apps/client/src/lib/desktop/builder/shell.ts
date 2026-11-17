@@ -9,6 +9,7 @@ const TOOLS = [
   'go',
   'postgres',
   'tauri-packages',
+  'tree-tools',
   'updater-public-key',
   'signing-identity',
   'rust-target-aarch64-apple-darwin',

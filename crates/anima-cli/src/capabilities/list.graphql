@@ -1,0 +1,20 @@
+# `anima capability list` and the MCP tool `anima_capability_list`.
+query CapabilityList($tool: String, $buildTarget: String) {
+  capabilities(tool: $tool, buildTarget: $buildTarget) {
+    device {
+      id
+      name
+    }
+    architecture
+    os
+    osVersion
+    tools {
+      name
+      version
+      usable
+      reason
+    }
+    buildTargets
+    foundAt
+  }
+}

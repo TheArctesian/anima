@@ -97,6 +97,7 @@ async fn push(
         token: token.hash(),
         gpus: gpus.as_deref(),
         drives: drives.as_deref(),
+        inventory: accepted.inventory.as_ref(),
     };
     drop(token);
     let _request = state.turns.request().await.ok_or(Stop::Busy)?;

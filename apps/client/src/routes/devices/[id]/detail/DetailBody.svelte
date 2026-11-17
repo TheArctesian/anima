@@ -41,7 +41,7 @@
   const screenSharing = { calls: screenSharingCalls(hub), onEnabled: (next: DeviceDetail) => { detail.setDevice(next); } };
   const now = () => new Date();
   const agentCalls = metricsApi(hub);
-  const agentShell = thisComputerShell();
+  const agentShell = thisComputerShell(hub);
   const agent = $derived({ calls: agentCalls, origin: hub.address.origin, reveal: page.url.hash === '#agent', shell: agentShell });
   // The layout mounts a new page for each path, so the ID never changes under this one.
   // svelte-ignore state_referenced_locally

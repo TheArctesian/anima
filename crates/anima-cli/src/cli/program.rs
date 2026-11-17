@@ -1,11 +1,12 @@
-//! The program's own nouns: who is signed in, which hub, raw access and completion.
+//! The program's own nouns: who is signed in, which hub, raw access, completion, and snapshots
+//! of the working tree that use git on this computer rather than the hub.
 
 use clap::CommandFactory as _;
 
 use super::Cli;
 use crate::failure::Failure;
 use crate::invocation::Invocation;
-use crate::{api, auth, contexts, mcp};
+use crate::{api, auth, contexts, mcp, snapshot};
 
 #[derive(Debug, clap::Subcommand)]
 pub enum ProgramCommand {
@@ -25,6 +26,11 @@ pub enum ProgramCommand {
     Mcp(mcp::McpArgs),
     /// Print shell completion.
     Completion { shell: clap_complete::Shell },
+    /// Scratch refs of the working tree on the forge (push, list, delete); git only, no hub.
+    Snapshot {
+        #[command(subcommand)]
+        command: snapshot::SnapshotCommand,
+    },
 }
 
 impl ProgramCommand {
@@ -39,6 +45,7 @@ impl ProgramCommand {
                 clap_complete::generate(shell, &mut command, "anima", &mut std::io::stdout());
                 Ok(())
             }
+            Self::Snapshot { command } => command.run(invocation),
         }
     }
 }

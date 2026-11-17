@@ -1,5 +1,6 @@
 //! A stop request while the group starts, and a migration that is given up.
 
+use std::fs;
 use std::time::Duration;
 
 use super::{Rig, never_asked, rig};
@@ -82,4 +83,15 @@ async fn a_migration_that_runs_past_its_limit_is_stopped_and_the_run_fails() {
         rig.events()[1..],
         ["migrate as owner.url", "migrate stop", "database stop"]
     );
+}
+
+#[tokio::test]
+async fn a_starting_run_takes_the_operators_stop_mark_away() {
+    let rig = rig();
+    fs::create_dir_all(rig.plan.folders.root()).unwrap();
+    fs::write(rig.plan.folders.stopped_by_operator(), "").unwrap();
+
+    rig.run_until_ready().await.unwrap();
+
+    assert!(!rig.plan.folders.stopped_by_operator().exists());
 }

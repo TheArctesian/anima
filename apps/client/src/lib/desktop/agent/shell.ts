@@ -1,4 +1,5 @@
 import { invoke, isTauri } from '@tauri-apps/api/core';
+import type { Hub } from '$lib/hub/hub';
 import { capabilities } from '$lib/platform/platform';
 import { readThisMachine, type ThisMachine } from '../this-machine';
 
@@ -77,8 +78,8 @@ export interface ThisComputerShell {
   readonly install: (code: string, origin: string) => Promise<AgentShellResult>;
 }
 
-/** The desktop shell's calls, or `null` outside the desktop app (WP-42 D-4). */
-export function thisComputerShell(): ThisComputerShell | null {
+/** The desktop shell's calls for the computer `hub` sees, or `null` outside the desktop app (WP-42 D-4). */
+export function thisComputerShell(hub: Hub): ThisComputerShell | null {
   if (!capabilities().thisMachine) return null;
-  return { thisMachine: readThisMachine, bundled: agentBundled, install: installAgent };
+  return { thisMachine: () => readThisMachine(hub), bundled: agentBundled, install: installAgent };
 }

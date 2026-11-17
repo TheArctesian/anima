@@ -152,12 +152,15 @@ async fn vp_7_create_router_key_returns_the_key_once_and_writes_an_audit_entry_w
 }
 
 #[sqlx::test(migrations = "./migrations")]
-async fn vpn_003_an_invite_gives_the_three_computer_steps_without_the_key(pool: PgPool) {
+async fn vpn_003_adr_005_an_invite_gives_the_steps_on_the_named_login_server(pool: PgPool) {
     let fake = answering(|_| new_key());
     let (hub, token, _, reader) = hub_over(&pool, &fake).await;
 
     let made = data(&hub, &token, INVITE, json!({})).await;
+    let named = data(&hub, &token, "{ vpnLoginServer }", json!({})).await;
     reader.abort();
+
+    assert_eq!(named["vpnLoginServer"], "https://hs.anima.ing");
 
     assert_eq!(made["createVpnInvite"]["key"], KEY);
     assert_eq!(
