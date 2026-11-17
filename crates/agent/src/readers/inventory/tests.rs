@@ -44,16 +44,34 @@ async fn printed(name: &'static str, own_home: bool, search: &Search) -> String 
     }
 }
 
-/// Whether the process whose id is in `pid_file` is gone within 3 seconds.
-async fn gone(pid_file: &Path) -> bool {
+/// Whether the process whose id is in `pid_file` stops running within 3 seconds.
+async fn stopped(pid_file: &Path) -> bool {
     let text = fs::read_to_string(pid_file).expect("the script wrote its pid");
     let pid = Pid::from_raw(text.trim().parse().expect("a pid")).expect("not 0");
     for _ in 0..30 {
-        if test_kill_process(pid).is_err() {
+        if test_kill_process(pid) == Err(rustix::io::Errno::SRCH) || exited_child(pid) {
             return true;
         }
         tokio::time::sleep(Duration::from_millis(100)).await;
     }
+    false
+}
+
+/// The Linux desktop builder adopts orphaned children. An exited child may keep its PID
+/// until that builder reaps it, so also read the kernel's process state.
+#[cfg(target_os = "linux")]
+fn exited_child(pid: Pid) -> bool {
+    fs::read_to_string(format!("/proc/{}/stat", pid.as_raw_pid())).is_ok_and(|stat| {
+        matches!(
+            stat.rsplit_once(") ")
+                .and_then(|(_, fields)| fields.as_bytes().first()),
+            Some(b'Z' | b'X')
+        )
+    })
+}
+
+#[cfg(not(target_os = "linux"))]
+const fn exited_child(_pid: Pid) -> bool {
     false
 }
 
@@ -159,8 +177,8 @@ async fn cap_024_a_stuck_probe_times_out_and_it_and_its_background_child_are_kil
     let outcome = run(program("stuck"), false, &search(&[folder.path()])).await;
     assert_eq!(outcome, Outcome::TimedOut);
     assert!(started.elapsed() < Duration::from_secs(8));
-    assert!(gone(&probe_pid).await, "the probe is gone");
-    assert!(gone(&child_pid).await, "its background child is gone");
+    assert!(stopped(&probe_pid).await, "the probe stopped");
+    assert!(stopped(&child_pid).await, "its background child stopped");
 }
 
 #[tokio::test]
@@ -176,7 +194,7 @@ async fn cap_022_a_probe_ends_when_it_exits_even_if_its_background_child_holds_i
     let output = printed("quick", false, &search(&[folder.path()])).await;
     assert_eq!(output, "1.2.3\n");
     assert!(started.elapsed() < Duration::from_secs(3));
-    assert!(gone(&child_pid).await, "its background child is gone");
+    assert!(stopped(&child_pid).await, "its background child stopped");
 }
 
 #[tokio::test]
