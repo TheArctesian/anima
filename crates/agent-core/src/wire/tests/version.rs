@@ -50,7 +50,8 @@ fn r_122_the_agent_signs_its_batch_with_its_version_in_camel_case() {
     let batch = Batch::new(device(), [], Announcements::default()).from_agent("0.3.1");
     let written = serde_json::to_value(&batch).unwrap();
     assert_eq!(written["agentVersion"], "0.3.1");
-    let unsigned = serde_json::to_value(Batch::new(device(), [], Announcements::default())).unwrap();
+    let unsigned =
+        serde_json::to_value(Batch::new(device(), [], Announcements::default())).unwrap();
     assert!(
         unsigned.get("agentVersion").is_none(),
         "no member when unsigned"
