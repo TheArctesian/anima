@@ -254,6 +254,27 @@ None of these blocks the merge.
    and in (the systemd user unit starts the hub), run a newer AppImage and check the version
    file as in step 2.3. `kill -9` of `anima-local-hub run`: the unit starts it again (S4 T10).
 
+### 6.4 The first release with S12: 0.2.0 (2026-11-17)
+
+Step 1 of 6.3 was run. The operator's builder application was replaced by one built from `main` at
+408bbbab (ad hoc, then signed by the operator with the Developer ID). The hub was deployed at
+408bbbab first, because the hub before it had no `releasePublishing` (operator-changes.md,
+2026-11-17 00:27Z).
+
+| Try | Commit | Result |
+| --- | --- | --- |
+| 1 | 11f62068 | Gates failed: one hub test that counts SQL statements (`api_005_status_uptime_checks_and_ip_cost_a_constant_few_statements…`), with other sessions' builds on the Mac. |
+| 2 | 11f62068 | "builder stopped 3 times" during the Rust tests. The builder's reports run on web view timers; the window was in the background. App Nap was then turned off for the application (`NSAppSleepDisabled`) and the window kept visible. |
+| 3 | 11f62068 | Gates 20/20. The bundle step failed: the tree recipe took the first word of each `otool -L` line, and the builder's folder is under `Application Support`. Corrected in 43291afc and proved with a work folder whose path has spaces. |
+| 4 | 43291afc | Published. Notary answer `Accepted`, stapled. |
+
+Checked on the published DMG (`https://releases.anima.ing/darwin-universal/0.2.0/Anima_0.2.0_universal.dmg`,
+114.4 MiB): `stapler validate` passes; `spctl` accepts the DMG and the application as
+`Notarized Developer ID`; the application has the seven programs in `Contents/MacOS` and the tree in
+`Contents/Resources/database`; `codesign --verify --deep --strict` passes; the carried programs and
+the tree have Team ID 7GDLG48PV6, the hardened runtime and a secure timestamp. The feeds of
+`darwin-aarch64` and `darwin-x86_64` give 0.2.0. Steps 2 to 4 of 6.3 stay open.
+
 ## 7. The seam to S9 (hub update and backup)
 
 - S12 replaces the programs and starts the hub again. It makes no backup first.
@@ -278,3 +299,4 @@ last two.
 | Ignored files in the clone | A file that the repository's `.gitignore` covers does not show in the clean check; the checkout removes it, but code of the gates step can write it again before the bundle. | The builder |
 | A copy of the application that was changed on disk | `update` compares the application with the digest that was written at the last copy. It does not read the hub's copy again, so it does not repair a copy that another program of the same user changed. | Accepted: that user can already change the unit. |
 | The window on a clean computer | 6.1: not driven on this Mac. | 6.3, step 2 |
+| A builder in the background loses its jobs | The builder reports from timers of the web view. When the window is in the background, App Nap and WebKit slow them, the hub sees no report for 90 s and takes the job back (6.4, try 2). | The builder: report from the Rust side, or hold a macOS activity while a job runs |

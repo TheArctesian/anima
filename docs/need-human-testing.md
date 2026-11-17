@@ -405,6 +405,7 @@ are here so that one list shows all of them.
 | Live checks of the stay-awake control (S8) | [research/one-click/s8-stay-awake-tasks.md](research/one-click/s8-stay-awake-tasks.md), Section 6 |
 | The command line and the MCP server against a real hub (#60) | [cli-mcp-plan.md](cli-mcp-plan.md) |
 | A real release that confirms the signature, the notarization and the AppImage launcher (OD-16 to OD-18) | [design-spec.md](design-spec.md), Section 11 |
+| The packaged hub on a clean Mac, its update, and the Linux packages (S12) | [research/one-click/s12-packaging-tasks.md](research/one-click/s12-packaging-tasks.md), Section 6.3 |
 
 ## Passed
 
