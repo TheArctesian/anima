@@ -12,8 +12,8 @@ Status: Draft. The direction is decided by the operator (Section 2). The require
 approved.
 Map: [work-plan.md](../../work-plan.md). Parent plans: [one-click-plan.md](../../one-click-plan.md)
 Section 1.3 (the hosted mode) and item S6 (first run), and [other-operators.md](other-operators.md)
-(OD-W2). The one-click work has no tier in Section 4 of the work plan; the operator must give it
-one (see the notes below that table).
+(OD-W2). This proposal serves row 4.17 of [priorities.md](../../plan/priorities.md): tier 1
+(operator, 2026-11-16).
 
 ## 1. Purpose
 
