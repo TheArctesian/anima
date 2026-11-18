@@ -44,7 +44,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-017 | "This machine" with the Anima VPN and NetBird together | A Mac with Tailscale and NetBird, and a second tailnet account | Open |
 | HT-018 | Each machine with the old program `anima-agent` gets `anima-daemon` and enrols again | Each machine that reports metrics, and the hub of this build | Open |
 | HT-019 | The VPN role `daemon` on the VPS | A shell on the VPS (VPS-005) | Open |
-| HT-022 | The first real sign-in with the Anima.ing account: a hosted hub made, joined and opened | This computer, the WorkOS account, the live site and a pool hub | Open |
+| HT-022 | The first real sign-in with the Anima.ing account: a hosted hub made, joined and opened | This computer, the WorkOS account, the live site and a pool hub | Passed (2026-11-17) |
 
 ### HT-001: `anima snapshot` against GitHub
 
@@ -528,13 +528,14 @@ replaces the device folder); this computer is on none.
    address or a password.
 4. Quit the app and start it again. Expected: the device list opens with no sign-in.
 
-Result: Open. First try on 2026-11-17 (operator: "worked till up to here", with the screen "No network"), with
+Result: Passed (operator, 2026-11-17: "Passed"), with the built app of step 1 from `main` (`cb0d9bac`), an account
+made with an email address, and the hub `h6opknk7w29jw56jqd0kc` of the pool. First try on 2026-11-17 (operator: "worked till up to here", with the screen "No network"), with
 `bun run --cwd apps/desktop dev`: the sign-in, the account, the hub and the join of the link worked (the log of the
 pool and of the shell); the trade of the claim failed for the origin of the debug pages (step 1). The wrong
 message is not corrected: a refusal of the hub by origin and no network give the same answer to the page.
 Second try on 2026-11-17 with the built app of step 1 (operator, with a picture of the empty device list of the
 hosted hub: "got to here the first time, reopend to the same screen"): steps 3 and 4 gave the expected result.
-The operator has not yet said Passed or Failed. In the same message the operator asked for more than this check
+In the same message the operator asked for more than this check
 covers (HM-D11): "the device doesn't auto add it should and the hub is not there as the default device".
 
 ## Not built yet
