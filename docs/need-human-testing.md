@@ -514,8 +514,11 @@ refused. A computer that is on the link of a different hub leaves that link when
 replaces the device folder); this computer is on none.
 
 1. On this computer, in the checkout of `main`: run `link/build.sh`, copy `link/bin/anima-link-darwin-arm64`
-   to an empty folder with the name `anima-link`, and run
-   `ANIMA_DEV_PROGRAMS=<that folder, absolute> bun run --cwd apps/desktop dev`. On the first-run screen, click
+   to an empty folder with the name `anima-link`, run `bun run --cwd apps/desktop tauri build --debug --no-bundle`,
+   and start `ANIMA_DEV_PROGRAMS=<that folder, absolute> target/debug/anima-desktop`. Do not use
+   `bun run --cwd apps/desktop dev` for this check: its pages come from `http://localhost:5173`, and a hosted hub
+   refuses that origin (403), so the trade of the claim fails and the app says "No network" (seen on
+   2026-11-17). A built app has the origin `tauri://localhost`, which the hub accepts. On the first-run screen, click
    "Sign in". Expected: the browser opens a WorkOS page, and the app shows the same short code.
 2. In the browser, type your email address and make the Anima.ing account (a password, or the code that
    WorkOS sends by email). Expected: the app shows "Your hub is
@@ -525,7 +528,10 @@ replaces the device folder); this computer is on none.
    address or a password.
 4. Quit the app and start it again. Expected: the device list opens with no sign-in.
 
-Result: Open.
+Result: Open. First try on 2026-11-17 (operator: "worked till up to here", with the screen "No network"), with
+`bun run --cwd apps/desktop dev`: the sign-in, the account, the hub and the join of the link worked (the log of the
+pool and of the shell); the trade of the claim failed for the origin of the debug pages (step 1). The wrong
+message is not corrected: a refusal of the hub by origin and no network give the same answer to the page.
 
 ## Not built yet
 
