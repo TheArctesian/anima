@@ -2601,7 +2601,7 @@ type Query {
   capabilities(tool: String, buildTarget: String): [DeviceCapabilities!]!
 
   # Timeline and record links (operator, 2026-11-16; ruling number to be assigned; K-E3, K-E4)
-  "What happened from `from` up to, not including, `to`, newest first: by start, then by reference, both descending. categories null: all; empty: none. first is 1 to 200. VALIDATION when to is not after from."
+  "What happened from `from` up to, not including, `to`, newest first: by start, then by reference, both descending. Entries from the clocks of different machines are in that order only by their recorded instants, not in an exact order (TML-011). categories null: all; empty: none. first is 1 to 200. VALIDATION when to is not after from."
   timeline(from: DateTime!, to: DateTime!, categories: [EvidenceCategory!], first: Int = 100, after: String): EvidenceConnection!
   "The links that start or end at record (kind:id), newest first, at most 200. VALIDATION when record is not kind:id."
   recordLinks(record: String!): [RecordLink!]!

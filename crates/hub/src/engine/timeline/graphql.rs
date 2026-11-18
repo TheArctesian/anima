@@ -127,7 +127,8 @@ pub struct Query;
 #[Object(name = "TimelineQuery")]
 impl Query {
     /// What happened from `from` up to, not including, `to`, newest first. Each entry is read
-    /// from its own domain's records; the timeline stores nothing (TML-001).
+    /// from its own domain's records; the timeline stores nothing (TML-001). Entries from the
+    /// clocks of different machines are in order only by their recorded instants (TML-011).
     #[graphql(guard = "Authenticated")]
     #[expect(
         clippy::too_many_arguments,

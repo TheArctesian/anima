@@ -26,7 +26,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.18 | Update the daemon and the hub | Operator: approval of ROL-001 to ROL-052 (only R-122 is approved), and a Linux release for the tasks that need one. Agent: nothing until a ruling names a task |
 | 4.2 | Restore a backup and move the coordinator | Operator: approval of FND-006. No task breakdown yet |
 | 4.3 | Decisions and approvals for the foundation | Operator: each decision and approval in the row |
-| 4.4 | The engine (E0) | Agent: E0-4 T9 (extensions-plan.md Section 5.1), but not the parts that OD-E16 and OD-E17 name. Operator: E0-5 T0, E0-6 T0, the contract ruling for E0-7, OD-E16, OD-E17 and OD-E18 |
+| 4.4 | The engine (E0) | Operator: E0-5 T0, E0-6 T0, the contract ruling for E0-7, OD-E16, OD-E17 and OD-E18 |
 | 4.5 | Level 1 model service | Operator: approval of the compute plan, and the compute decisions of row 4.3 |
 | 4.7 | Jobs, builds and AI agent runs | Operator: a ruling that changes R-115 (task W1) and the acceptance of the design (task W2). Agent: nothing before them |
 | 4.9 | Hosted applications | Operator: approval of the proposal |
