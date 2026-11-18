@@ -5,6 +5,7 @@
 //! or answer is logged (LOG-007).
 
 mod api;
+mod device;
 mod error;
 mod name;
 mod session;
@@ -21,7 +22,10 @@ use serde::Serialize;
 use tauri::{State, Webview};
 use zeroize::Zeroizing;
 
+use crate::this_machine::OperatingSystem;
+
 pub use api::{HubAccess, HubState};
+pub use device::CloudDevice;
 pub use error::CloudError;
 
 /// The public client ID of the app in `WorkOS`: the production client, which the site checks
@@ -249,4 +253,17 @@ pub async fn cloud_hub_access(
             })
             .await;
     }
+}
+
+/// This computer as the hosted hub lists it (HMD-044): the device name that `cloud_hub_access`
+/// sends, the computer name and the OS. It calls no network and reads no secret.
+#[tauri::command]
+pub async fn cloud_device(webview: Webview) -> Result<CloudDevice, CloudError> {
+    from_main(&webview)?;
+    // The sign-in is only on macOS and Linux (`capabilities/cloud.json`).
+    let os = OperatingSystem::current().ok_or(CloudError::Unconfigured)?;
+    Ok(device::cloud_device(
+        &crate::this_machine::computer_name(),
+        os,
+    ))
 }

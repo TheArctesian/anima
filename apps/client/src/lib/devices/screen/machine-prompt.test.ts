@@ -10,6 +10,7 @@ import { button, input } from '../form/form/form.fixture';
 import { fakeHub } from '../hub.fixture';
 import { endTransitionsAtOnce } from '../transitions.fixture';
 import { device, devicesAnswer } from './screen.fixture.svelte';
+import { markHosted } from '$lib/hosted/mark';
 
 vi.mock('motion', async (importOriginal) => ({
   ...(await importOriginal<typeof import('motion')>()),
@@ -36,6 +37,7 @@ vi.mock('$app/state', () => ({ page: { url: new URL('/devices', 'http://localhos
 vi.mock('@tauri-apps/api/core', () => ({
   isTauri: () => current.desktop,
   invoke: (command: string) => {
+    if (command === 'cloud_device') return Promise.resolve({ name: 'studio', computer: 'Studio', os: 'MACOS' });
     if (command !== 'this_machine_read') return Promise.reject(new Error(`unexpected ${command}`));
     current.reads += 1;
     return Promise.resolve(current.machine);
@@ -248,4 +250,29 @@ it('R-060: once this Mac is found to be a device, later visits in the run do not
   newStart();
   await visit(['100.64.0.7']);
   expect(current.reads).toBe(2);
+});
+
+const ON_LINK = { LinkDevices: { linkDevices: [{ name: 'studio', address: 'fd41:4e49:4d41::7' }] }, CreateSite: { createSite: { id: 's2' } }, CreateDevice: { createDevice: { id: 'd9' } } };
+
+it('HMD-044: a hosted hub gets this Mac as a device at its link address with no question, and the list is read again', async () => {
+  markHosted(localStorage, 'https://hub.test');
+  const fake = await visit(['nas.lan'], ON_LINK);
+  await settle();
+  expect(dialog()).toBeNull();
+  expect(current.reads).toBe(0);
+  expect(fake.requests.find((request) => request.operation === 'CreateSite')?.variables).toEqual({ name: 'Link', subnet: 'fd41:4e49:4d41::/48' });
+  expect(fake.requests.find((request) => request.operation === 'CreateDevice')?.variables).toEqual({
+    input: { siteId: 's2', name: 'Studio', host: 'fd41:4e49:4d41::7', kind: 'workstation', os: 'MACOS', tags: [], addDefaultCheck: false },
+  });
+  expect(fake.requests.filter((request) => request.operation === 'Devices')).toHaveLength(2);
+});
+
+it('HMD-044: a hosted hub that has this Mac at its link address adds nothing and asks nothing', async () => {
+  markHosted(localStorage, 'https://hub.test');
+  const fake = await visit(['FD41:4E49:4D41:0:0:0:0:7'], ON_LINK);
+  await settle();
+  expect(dialog()).toBeNull();
+  const operations = fake.requests.map((request) => request.operation);
+  expect(operations).not.toContain('CreateDevice');
+  expect(operations.filter((operation) => operation === 'Devices')).toHaveLength(1);
 });

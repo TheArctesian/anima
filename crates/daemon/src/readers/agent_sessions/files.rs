@@ -138,8 +138,7 @@ fn folders(folder: &Path) -> Vec<PathBuf> {
 
 fn entries(folder: &Path) -> Vec<DirEntry> {
     fs::read_dir(folder)
-        .map(|read| read.filter_map(Result::ok).take(MAX_FILES).collect())
-        .unwrap_or_default()
+        .map_or_default(|read| read.filter_map(Result::ok).take(MAX_FILES).collect())
 }
 
 fn is_folder(entry: &DirEntry) -> bool {

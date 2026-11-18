@@ -39,6 +39,11 @@ type listedDevice struct {
 	Path string `json:"path"`
 	// Relay is the relay's name when the path is relayed.
 	Relay string `json:"relay,omitempty"`
+	// Seen is the time of the last line "here" that the device wrote on the
+	// reverse port (HMD-047). It is absent for a device that wrote none
+	// since the hub link started: the device is off, or its link program is
+	// older than the reverse port.
+	Seen *time.Time `json:"seen,omitempty"`
 }
 
 // revokeRequest is the arguments of "devices.revoke".
@@ -75,9 +80,14 @@ func hubVerbs(link *hublink.Link, permitted *devices.Store) map[string]control.V
 				if !device.NextKey.IsZero() {
 					next = device.NextKey.Fingerprint()
 				}
+				var seen *time.Time
+				if at, known := link.Seen(device.Address); known {
+					at = at.UTC()
+					seen = &at
+				}
 				listed = append(listed, listedDevice{
-					NextFingerprint: next,
-					Key:             device.Key, Fingerprint: device.Key.Fingerprint(), Name: device.Name, Address: device.Address, Permitted: device.Permitted, Expires: device.Expires,
+					NextFingerprint: next, Seen: seen,
+					Key: device.Key, Fingerprint: device.Key.Fingerprint(), Name: device.Name, Address: device.Address, Permitted: device.Permitted, Expires: device.Expires,
 					Streams: link.Streams(device.Key), Path: string(path.Kind), Relay: path.Relay,
 				})
 			}

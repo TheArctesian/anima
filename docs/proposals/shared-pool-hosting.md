@@ -176,3 +176,11 @@ launch.
 - [ ] Spec the "Your hub" usage card and the upgrade prompt wording
 - [ ] Price and name the dedicated-core package, and check it against the Team price in the vault's Pricing note
 - [ ] Write the backup-and-restore move procedure and time it
+
+## Council follow-up: recovery evidence (2026-11-18)
+
+R-152 names the preparation below. It changes no approved requirement or contract. Read current `main` and the claims before taking a task. A source review is not a Passed human check. The task owner records the tested build and the result; unknown results stay unknown.
+
+| Task | Work and acceptance | Depends on | State |
+| --- | --- | --- | --- |
+| SP-C1 | Add a customer-side outcome to the proposed hosted recovery rehearsal: an already enrolled client reconnects, sees the expected records and opens a session to the same test target. Record backup cutoff, recovery time and operator intervention. Finding a restored database alone does not pass this outcome. Produce the rehearsal packet; do not run a recovery or allocate capacity. | Approved hosted restore design; working hosted session route; private pool owner and operator | Not started. Preparation only; the live rehearsal is blocked |

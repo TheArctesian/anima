@@ -140,6 +140,9 @@ pub enum Failure {
     CertificateNotYetValid,
     #[error("the certificate cannot be read")]
     CertificateUnreadable,
+    /// The device is a computer of the link, and the check needs ICMP or UDP (HMD-048).
+    #[error("a computer of the link is reached with TCP only; this check needs ICMP or UDP")]
+    TcpOnly,
     #[error("no ICMP reply")]
     NoReply,
     #[error("the ICMP socket is unavailable: {0}")]

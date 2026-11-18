@@ -236,3 +236,11 @@ Version 0.2 of this plan made these changes in the same commit (operator, 2026-1
 | Design specification UI-013 and the `control-*` tokens | Controls of 44 px to 56 px in the phone layout; the tokens stop at 40 px. | Not made |
 | Design specification 10 | Its title and text name iOS only. A constraint of Android has no place there yet. | Not made. Do it when task M1-3 gives the Android constraints. |
 | `docs/rulings.md` | The rulings OD-M1 to OD-M8 have no ruling number (R-number). | Not made. The operator gives the numbers. |
+
+## Council follow-up: returning to the same phone account (2026-11-18)
+
+R-152 names the preparation below. It changes no approved requirement or contract. Read current `main` and the claims before taking a task. A source review is not a Passed human check. The task owner records the tested build and the result; unknown results stay unknown.
+
+| Task | Work and acceptance | Depends on | State |
+| --- | --- | --- | --- |
+| M-C1 | Prepare the restart and resume evidence for the mobile owner's existing check. Use a uniquely named link device; compare name, key fingerprint and row count before and after restart. Distinguish link identity, loopback port and per-origin login token. A configured address is not an observed running port. Keep manual self-host join and hosted account tests separate: a hosted hub refuses password login. Record a fresh authenticated read, not only a saved row. | Existing mobile claim owner; baseline join on each OS; HM-D12 and M5-1 for a hosted-account release; operator devices | Not started. Preparation only; hardware execution and hosted account integration are blocked |

@@ -5,25 +5,24 @@ use std::{
     time::{Duration, Instant},
 };
 
-use tokio::net::TcpStream;
-
 use super::{
     ProbeEnv,
     outcome::{Failure, ProbeResult},
     resolve::allowed_addresses,
 };
+use crate::fleet::targets::{self, Reached};
 
 /// Connects to the first allowed address that accepts; returns the stream, the address and
-/// the connect time.
+/// the connect time. A computer of the link is reached through the link (HMD-048).
 pub(super) async fn connect(
     host: &str,
     port: u16,
     env: &ProbeEnv,
-) -> Result<(TcpStream, IpAddr, Duration), Failure> {
+) -> Result<(Reached, IpAddr, Duration), Failure> {
     let mut last = Failure::Unresolved;
     for ip in allowed_addresses(host, None, env).await? {
         let started = Instant::now();
-        match TcpStream::connect(SocketAddr::new(ip, port)).await {
+        match targets::connect(&env.policy, SocketAddr::new(ip, port)).await {
             Ok(stream) => return Ok((stream, ip, started.elapsed())),
             Err(error) => last = error.into(),
         }

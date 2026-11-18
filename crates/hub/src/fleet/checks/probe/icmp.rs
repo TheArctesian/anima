@@ -8,7 +8,7 @@ use surge_ping::{Client, Config, ICMP, PingIdentifier, PingSequence, SurgeError}
 use super::{
     ProbeEnv,
     outcome::{Failure, ProbeResult},
-    resolve::allowed_addresses,
+    resolve::{allowed_addresses, off_link},
 };
 use crate::fleet::checks::config::IpVersion;
 
@@ -26,6 +26,8 @@ pub(super) async fn probe(
 ) -> ProbeResult {
     match echo(host, version, limit, env).await {
         Ok((ip, elapsed)) => ProbeResult::up(elapsed).via(ip),
+        // The hub cannot test the computer this way: Unknown, not Down.
+        Err(failure @ Failure::TcpOnly) => ProbeResult::unjudged(&failure),
         Err(failure) => ProbeResult::failed(&failure),
     }
 }
@@ -40,6 +42,7 @@ async fn echo(
         .await?
         .first()
         .ok_or(Failure::NotPermitted)?;
+    let ip = off_link(ip)?;
     let kind = match version {
         IpVersion::V4 => ICMP::V4,
         IpVersion::V6 => ICMP::V6,
