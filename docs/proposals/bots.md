@@ -17,7 +17,7 @@ Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds t
 | Status | The header of this document holds the state (PLN-020). History: Draft. Direction of the operator of 2026-11-16. Version 2 adds BOT-039 to BOT-046, proposed. No requirement is approved. |
 | Related | [extensions-plan.md](../plans/extensions-plan.md) Sections 4.12.1 (agent panes) and 4.15 (model gateway) |
 
-Version 2 (2026-11-17) adds the section "Agent coverage" (BOT-039 to BOT-046, with open decisions OD-BOT1 to OD-BOT7). It changes no earlier requirement. Version 1 only moved this text from Section 4.16 of the extensions plan, because a proposal is not a part of a plan (PLN-016, PLN-018). The text did not change. A section number in this document (for example "Section 4.15") is a section of the extensions plan. When the operator approves this proposal, its requirements go back into the extensions plan as Section 4.16, with a ruling.
+Version 2 (2026-11-17) adds the section "Agent coverage" (BOT-039 to BOT-046, with open decisions OD-BOT1 to OD-BOT7). It changes no earlier requirement. A later edit of 2026-11-17 adds to BOT-034 and BOT-040 that detection accepts both program names of Cursor. Version 1 only moved this text from Section 4.16 of the extensions plan, because a proposal is not a part of a plan (PLN-016, PLN-018). The text did not change. A section number in this document (for example "Section 4.15") is a section of the extensions plan. When the operator approves this proposal, its requirements go back into the extensions plan as Section 4.16, with a ruling.
 
 ## Bots
 
@@ -184,7 +184,7 @@ takes no T3 Code code (the T3 Code server is TypeScript and Effect, and the hub 
   Codex run from an event that a stranger can create, for example an issue or a pull request in a public
   repository. The configurator must offer an API key as the other choice, set by the operator in the Codex
   configuration of the machine and not seen by Anima.ing.
-- **BOT-034.** Cursor: the adapter must run only `agent -p` of the Cursor CLI. It must treat the error
+- **BOT-034.** Cursor: the adapter must run only `agent -p` of the Cursor CLI. `agent` is the main name of the program. The installer of Cursor also makes the older name `cursor-agent` as a second link to the same program (checked 2026-11-17: `https://cursor.com/install`). The detection (BOT-022, BOT-040) must accept both names and must run the one that it found. It must treat the error
   of a team that disabled headless mode as a stop, tell the operator, and not try another way. It must not use the
   private endpoints of the Cursor client or a proxy for the Cursor models.
 - **BOT-035.** Grok Build: the adapter must run only `grok -p` or `grok agent stdio` (ACP). Anima.ing
@@ -256,7 +256,7 @@ BOT-038.
   structured chat. It does not work until the agent panes are approved and built: AIS-009 to AIS-013 are
   direction only. The terms gate (BOT-041) applies to each entry.
 - **BOT-040.** The daemon must read one catalog of known agents, with one entry for each: the program
-  name, the version command, the sign-in status command (or "not verified", BOT-022), how the first
+  name (or names: Cursor has `agent` and `cursor-agent`, BOT-034), the version command, the sign-in status command (or "not verified", BOT-022), how the first
   prompt goes in, and the row of the vendor terms table (BOT-038) or "terms not checked". A new entry
   for an agent must need no code when the agent runs in a pane (BOT-039). The daemon must find these
   programs with the steps of BOT-022 and must not read a login file (BOT-023). The state of each agent
