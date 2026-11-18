@@ -23,7 +23,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.1 | Finish the device manager | Operator: the acceptance run (WP-53); the Linux release and the check that an installed application updates (R7); the checks of the rename to `anima-daemon` (HT-018, HT-019); the Linux checks of the defects GH-52 and GH-54 (HT-020, HT-021). Agent: nothing; GH-53 is corrected |
 | 4.16 | One-click install | Operator: the live checks (need-human-testing.md, "One-click") |
 | 4.17 | The hosted mode and the shared pool | Operator: HT-027, HT-028, HT-029 and HT-031 in need-human-testing.md, which need a hub of the pool from a new hub image and an application with the new link program; approval of the revision of HMD-001 to HMD-036 (Section 6.7 of hosted-mode.md); HM-D11, HM-D13, HM-D14 and HM-D15. Agent: the tasks HM-T10 and HM-T13 to HM-T15 in Section 8 of hosted-mode.md |
-| 4.18 | Update the daemon and the hub | Agent: task U5 in daemon-and-hub-update-plan.md. Operator: one Linux machine and one Mac for task U3, decision OD-ROL-15, and a release for each target for the tasks that need one |
+| 4.18 | Update the daemon and the hub | Agent: task U5 in daemon-and-hub-update-plan.md. Operator: one Linux machine and one Mac for task U3, the release server of OD-ROL-15 (R-158, task U12), and a release for each target for the tasks that need one |
 | 4.2 | Restore a backup and move the coordinator | Operator: the check HT-024 in need-human-testing.md, or a ruling that it is not necessary |
 | 4.3 | Decisions and approvals for the foundation | Operator: each decision and approval in the row. Agent: PE-C1, then PE-C2 of planning-evidence-plan.md, read-only preparation (R-152) |
 | 4.5 | Level 1 model service | Operator: approval of the compute plan, and the compute decisions of row 4.3 |
@@ -32,7 +32,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.19 | The watchdog | Operator: approval of the requirements WDG-001 to WDG-041. Agent: nothing; no ruling names a task |
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 
-## 2. Open decisions (110)
+## 2. Open decisions (109)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -43,7 +43,6 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-C6 | Where conversations are kept | On the client device until the vault exists (extensions plan, Section 2.4). Then keep them sealed on the hub, so that all clients see them. | [plans/compute-plan.md](plans/compute-plan.md) |
 | OD-C7 | Access to `ai.anima.ing` | VPN only, with Headscale DNS and a DNS-01 certificate (Section 6.1). Confirm that the operator controls the DNS zone of `anima.ing`. Public access is out of sco… | [plans/compute-plan.md](plans/compute-plan.md) |
 | OD-C8 | Device policy default for client computers | Off by default. The operator sets each client computer on. | [plans/compute-plan.md](plans/compute-plan.md) |
-| OD-ROL-15 | The operator's hub on the VPS holds the updater key and signs each release (R-117). When the operator uses only a hosted hub (R-130), does that VPS hub stay as… | Open | [plans/daemon-and-hub-update-plan.md](plans/daemon-and-hub-update-plan.md) |
 | OD-E2 | Collector form: separate binary or part of the desktop client | Separate binary (COL-001). It runs when the client is closed and on computers without the client. | [plans/extensions-plan.md](plans/extensions-plan.md) |
 | OD-E3 | Aggregator for the US accounts (BofA, Chase, Robinhood, Acorns) | SimpleFIN Bridge. It is for private persons and costs about 15 USD each year (its pages give different prices). Check each institution on bridge.simplefin.org b… | [plans/extensions-plan.md](plans/extensions-plan.md) |
 | OD-E4 | Hosted vision model for Class B and C extraction | Permit a hosted model for Wardrobe and Library photos, with the operator switch (VIS-003). Use only on-device extraction for Documents. | [plans/extensions-plan.md](plans/extensions-plan.md) |
@@ -147,7 +146,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-25 | How the command line alone signs in to a hosted hub (INS-013; HMD-032, HMD-038, R-129) | Proposed, not ruled. `anima auth login` asks for a user name, a password and an authenticator code (CMD-010), and the hosted hub has no such account. The hosted… | [spec/design-spec.md](spec/design-spec.md) |
 | OD-26 | Does the formula go in the operator's own tap before Homebrew's own repository (INS-010) | Proposed, not ruled. The tap is the Marketing Bot's word, not the operator's. A tap needs no review and the operator controls it. Homebrew's own repository need… | [spec/design-spec.md](spec/design-spec.md) |
 
-## 3. Documents that wait for an approval (25)
+## 3. Documents that wait for an approval (26)
 
 | Document | Kind | State |
 | --- | --- | --- |
@@ -173,6 +172,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/new-sources.md](proposals/new-sources.md) | Proposal | Draft |
 | [proposals/other-operators.md](proposals/other-operators.md) | Proposal | Direction decided |
 | [proposals/power-health.md](proposals/power-health.md) | Proposal | Draft |
+| [proposals/release-four-platforms.md](proposals/release-four-platforms.md) | Proposal, with a task table | Direction decided |
 | [proposals/shared-pool-hosting.md](proposals/shared-pool-hosting.md) | Proposal | Draft |
 | [proposals/shell-prompt.md](proposals/shell-prompt.md) | Proposal | Draft |
 | [proposals/watchdog.md](proposals/watchdog.md) | Proposal, with a task table | Direction decided |
