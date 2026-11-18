@@ -34,7 +34,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 | 4.19 | The watchdog | Operator: a tier and approval of the direction (OD-W22) |
 
-## 2. Open decisions (131)
+## 2. Open decisions (123)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -46,7 +46,6 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-C6 | Where conversations are kept | On the client device until the vault exists (extensions plan, Section 2.4). Then keep them sealed on the hub, so that all clients see them. | [plans/compute-plan.md](plans/compute-plan.md) |
 | OD-C7 | Access to `ai.anima.ing` | VPN only, with Headscale DNS and a DNS-01 certificate (Section 6.1). Confirm that the operator controls the DNS zone of `anima.ing`. Public access is out of sco… | [plans/compute-plan.md](plans/compute-plan.md) |
 | OD-C8 | Device policy default for client computers | Off by default. The operator sets each client computer on. | [plans/compute-plan.md](plans/compute-plan.md) |
-| OD-ROL-15 | The operator's hub on the VPS holds the updater key and signs each release (R-117). When the operator uses only a hosted hub (R-130), which place holds the key… | Open. Recommendation of 2026-11-18: option B, and option A until one release is published from the new place. Never option C. The operator said on 2026-11-18: "… | [plans/daemon-and-hub-update-plan.md](plans/daemon-and-hub-update-plan.md) |
 | OD-E2 | Collector form: separate binary or part of the desktop client | Separate binary (COL-001). It runs when the client is closed and on computers without the client. | [plans/extensions-plan.md](plans/extensions-plan.md) |
 | OD-E3 | Aggregator for the US accounts (BofA, Chase, Robinhood, Acorns) | SimpleFIN Bridge. It is for private persons and costs about 15 USD each year (its pages give different prices). Check each institution on bridge.simplefin.org b… | [plans/extensions-plan.md](plans/extensions-plan.md) |
 | OD-E4 | Hosted vision model for Class B and C extraction | Permit a hosted model for Wardrobe and Library photos, with the operator switch (VIS-003). Use only on-device extraction for Documents. | [plans/extensions-plan.md](plans/extensions-plan.md) |
@@ -128,13 +127,6 @@ This document is generated: `bun run quality:register` writes it from the docume
 | Q3 | Power meters: which plug types first? | Decide after the research task in P4. | [proposals/power-health.md](proposals/power-health.md) |
 | Q4 | Is this a part of Phase 3 metrics work or a new phase? | A new package set after the one-click spikes report, so the two do not compete for the same builders. | [proposals/power-health.md](proposals/power-health.md) |
 | Q5 | Does the hub keep the power use of each program over time, or only the latest list? | The latest list only at the start. History is large and its value is not proved. | [proposals/power-health.md](proposals/power-health.md) |
-| OD-REL-1 | Do you approve the direction: one release has one version and one commit on macOS, Linux, iOS and Android, and a target that did not build keeps its older versi… | Open. Recommendation: yes. One number makes each report of a person clear, and a store review cannot delay the desktop release. | [proposals/release-four-platforms.md](proposals/release-four-platforms.md) |
-| OD-REL-2 | Where does the first signed build of each phone application run: by a script on the Mac of the operator, or as a new target of the Builds flow? | Open. Recommendation: by a script on the Mac first (M5-4, M5-5). The Builds flow has a fixed recipe that group A replaces (OD-W16, task A4); a new target there… | [proposals/release-four-platforms.md](proposals/release-four-platforms.md) |
-| OD-REL-3 | How do other persons get the iOS application first: as testers in TestFlight, or from the App Store? | Open. Recommendation: testers in TestFlight first, the App Store later. OD-M8 already selects TestFlight for the operator. Read the rules of Apple for testers o… | [proposals/release-four-platforms.md](proposals/release-four-platforms.md) |
-| OD-REL-4 | Is the Android APK a target of the release that the hub checks and writes to the bucket (RLS-006, RLS-012, task R10), or does the operator put the file there by… | Open. Recommendation: a target of the release. The hub gives no person a write to a stable name (BLD-061), and the same checks then protect each target. | [proposals/release-four-platforms.md](proposals/release-four-platforms.md) |
-| OD-REL-5 | How does an installed Android application learn of a new version, before a store? | Open. Recommendation: the application reads the feed of its target and shows a notice with a link to the APK. It installs nothing by itself; Android checks that… | [proposals/release-four-platforms.md](proposals/release-four-platforms.md) |
-| OD-REL-6 | Under which name do the phone applications go to a store: the Apple team that exists (R-116; `tauri.conf.json` names a person), or an account of a company? | Open. Recommendation: use the team that exists for TestFlight now. Decide the name before the first store listing, and read the rules of each store for a change… | [proposals/release-four-platforms.md](proposals/release-four-platforms.md) |
-| OD-REL-7 | Does the first release for other persons on a phone wait for the link in the application (stage M3, HT-025) and for the sign-in on a phone (task M3-4)? | Open. Recommendation: yes. Without them, a person must be on the VPN of a hub and must type its address (MOB-038), which is not the one click principle (OD-M3). | [proposals/release-four-platforms.md](proposals/release-four-platforms.md) |
 | OD-WDG-1 | The form of the watchdog: a function of `anima-daemon`, a container, or a second program | A function of `anima-daemon` (WDG-039). "Why not a container" has the reasons. | [proposals/watchdog.md](proposals/watchdog.md) |
 | OD-WDG-2 | How the second unit of WDG-040 gets the right to restart on a Linux system installation: it runs as root with a strict sandbox, or it runs as its own user with… | Its own user with a polkit rule, and the group `docker` only when a container is watched. State in the client that the Docker socket is equal to root on that ma… | [proposals/watchdog.md](proposals/watchdog.md) |
 | OD-WDG-3 | A process with no supervisor | Not in the first version (WDG-002). Later, Anima can offer to write a unit for it at the machine. | [proposals/watchdog.md](proposals/watchdog.md) |
@@ -197,7 +189,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/new-sources.md](proposals/new-sources.md) | Proposal | Draft |
 | [proposals/other-operators.md](proposals/other-operators.md) | Proposal | Direction decided |
 | [proposals/power-health.md](proposals/power-health.md) | Proposal | Draft |
-| [proposals/release-four-platforms.md](proposals/release-four-platforms.md) | Proposal, with a task table | Draft |
+| [proposals/release-four-platforms.md](proposals/release-four-platforms.md) | Proposal, with a task table | Direction decided |
 | [proposals/shared-pool-hosting.md](proposals/shared-pool-hosting.md) | Proposal | Draft |
 | [proposals/shell-prompt.md](proposals/shell-prompt.md) | Proposal | Draft |
 | [proposals/watchdog.md](proposals/watchdog.md) | Proposal, with a task table | Draft |
