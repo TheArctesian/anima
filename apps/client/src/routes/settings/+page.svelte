@@ -25,6 +25,10 @@
   import { resolve as entrance } from '$lib/motion/roles/resolve';
   import PageIndex from '$lib/page/contents/PageIndex.svelte';
   import { SECTIONS, indexOf } from './index';
+  import { phoneLayout } from '$lib/nav/phone/layout.svelte';
+  import PhoneAccount from './phone/PhoneAccount.svelte';
+  import PhoneHub from './phone/PhoneHub.svelte';
+  import PhoneLeave from './phone/PhoneLeave.svelte';
   import './phone/settings.css';
 
   // The desktop rows decide each row themselves; the page only leaves out the section when none can show (UPD-006, LOG-008,
@@ -36,6 +40,8 @@
   $effect(() => hubState?.watch());
   const desktopRows = updates || commandLine || processLog || builds;
   const index = indexOf({ keyStore, stayAwake, desktopRows, mcpPermissions });
+  // The phone layout has the rows of mockup 7 for Account and Hub, and Leave hub at the end.
+  const phone = $derived(phoneLayout());
 </script>
 
 <div data-settings-page>
@@ -51,10 +57,14 @@
 
   <!-- One section per subject, in the order of WP-50 F-10; each later section adds one element here. -->
   <SettingsSection {...SECTIONS.account}>
-    <SignOutRow />
+    {#if phone}<PhoneAccount />{:else}<SignOutRow />{/if}
   </SettingsSection>
 
-  {#if keyStore}
+  {#if phone}
+    <SettingsSection {...SECTIONS.hub}>
+      <PhoneHub />
+    </SettingsSection>
+  {:else if keyStore}
     <SettingsSection {...SECTIONS.hub}>
       <HubRows />
       {#if localHub}<HubLinkRow />{/if}
@@ -122,6 +132,12 @@
   <SettingsSection {...SECTIONS.vpn}>
     <VpnSection />
   </SettingsSection>
+
+  {#if phone && keyStore}
+    <SettingsSection {...SECTIONS.leave}>
+      <PhoneLeave />
+    </SettingsSection>
+  {/if}
 </div>
 </div>
 </div>

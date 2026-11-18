@@ -17,7 +17,7 @@ type Documents = {
     "\n  mutation Login($input: LoginInput!) {\n    login(input: $input) {\n      token\n    }\n  }\n": typeof types.LoginDocument,
     "\n  mutation SignInBrowser($input: LoginInput!) {\n    signInBrowser(input: $input) {\n      expiresAt\n    }\n  }\n": typeof types.SignInBrowserDocument,
     "\n  mutation Logout {\n    logout\n  }\n": typeof types.LogoutDocument,
-    "\n  query Me {\n    me {\n      username\n    }\n  }\n": typeof types.MeDocument,
+    "\n  query Me {\n    me {\n      username\n      totpEnabled\n    }\n  }\n": typeof types.MeDocument,
     "\n  query ApiKeys {\n    apiKeys {\n      id\n      name\n      scope\n      madeFor\n      prefix\n      expiresAt\n      createdAt\n      lastUsedAt\n    }\n  }\n": typeof types.ApiKeysDocument,
     "\n  mutation CreateApiKey($input: ApiKeyInput!) {\n    createApiKey(input: $input) {\n      key {\n        id\n        name\n        scope\n        madeFor\n        prefix\n        expiresAt\n        createdAt\n        lastUsedAt\n      }\n      secret\n    }\n  }\n": typeof types.CreateApiKeyDocument,
     "\n  mutation RevokeApiKey($id: ID!) {\n    revokeApiKey(id: $id)\n  }\n": typeof types.RevokeApiKeyDocument,
@@ -178,7 +178,7 @@ const documents: Documents = {
     "\n  mutation Login($input: LoginInput!) {\n    login(input: $input) {\n      token\n    }\n  }\n": types.LoginDocument,
     "\n  mutation SignInBrowser($input: LoginInput!) {\n    signInBrowser(input: $input) {\n      expiresAt\n    }\n  }\n": types.SignInBrowserDocument,
     "\n  mutation Logout {\n    logout\n  }\n": types.LogoutDocument,
-    "\n  query Me {\n    me {\n      username\n    }\n  }\n": types.MeDocument,
+    "\n  query Me {\n    me {\n      username\n      totpEnabled\n    }\n  }\n": types.MeDocument,
     "\n  query ApiKeys {\n    apiKeys {\n      id\n      name\n      scope\n      madeFor\n      prefix\n      expiresAt\n      createdAt\n      lastUsedAt\n    }\n  }\n": types.ApiKeysDocument,
     "\n  mutation CreateApiKey($input: ApiKeyInput!) {\n    createApiKey(input: $input) {\n      key {\n        id\n        name\n        scope\n        madeFor\n        prefix\n        expiresAt\n        createdAt\n        lastUsedAt\n      }\n      secret\n    }\n  }\n": types.CreateApiKeyDocument,
     "\n  mutation RevokeApiKey($id: ID!) {\n    revokeApiKey(id: $id)\n  }\n": types.RevokeApiKeyDocument,
@@ -365,7 +365,7 @@ export function graphql(source: "\n  mutation Logout {\n    logout\n  }\n"): (ty
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function graphql(source: "\n  query Me {\n    me {\n      username\n    }\n  }\n"): (typeof documents)["\n  query Me {\n    me {\n      username\n    }\n  }\n"];
+export function graphql(source: "\n  query Me {\n    me {\n      username\n      totpEnabled\n    }\n  }\n"): (typeof documents)["\n  query Me {\n    me {\n      username\n      totpEnabled\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
