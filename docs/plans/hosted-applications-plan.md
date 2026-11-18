@@ -111,6 +111,23 @@ No ruling names these requirements. They are not built (PLN-007).
 - [deferred.md](../deferred.md), "Ideas from Coolify Sentinel": how to calculate container metrics.
 - Spec Section 6.4: the Docker container check, and CHK-014 for restart loops.
 
+## Reference: Arcane
+
+The operator named Arcane (`https://github.com/getarcaneapp/arcane`) on 2026-11-18 as a product to
+learn from for this plan. It is a reference. It adds no requirement and changes no task.
+
+- Licence: BSD 3-Clause. Code can be copied if its copyright notice stays with the copied part.
+- Its client is Svelte 5 with SvelteKit, as `apps/client` is. Its styles are Tailwind and
+  shadcn-svelte, and its folders are named `components/`. A copied part must use the design tokens
+  and the names of this repository (`AGENTS.md`).
+- Its server is Go and uses the Docker socket. Stage 1 here is the hub with fixed commands through
+  its SSH link. Read its server to learn the behaviour; do not copy it.
+- For task H3: the container table and its helpers (`frontend/src/routes/(app)/containers/`), with
+  the state of each container, the group of a Compose project, and the log panel.
+- For tasks H6 and H7: the screens for a Compose project and for templates
+  (`frontend/src/routes/(app)/projects/`).
+- Not used: Podman, Swarm, GitOps, image builds and the vulnerability scan (HOST-009, HOST-010).
+
 ## Decisions
 
 | Decision | Question | Result |
