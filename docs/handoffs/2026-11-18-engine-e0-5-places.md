@@ -32,3 +32,12 @@ git switch -c resume/engine-e0-5-places
 ```
 
 Read this file and the owning plan there. On the same machine, the existing worktree can be reopened after switching Claude accounts; account sign-in does not require moving or deleting it. Before later merging, update from current main, resolve conflicts in the plan/schema/CLI/claims explicitly, run the required gates, and obtain any approval required for deployment or human acceptance.
+
+## Continuation of 2026-11-18 (a second session)
+
+This part is a record of state under PLN-008. It adds no requirement and no acceptance.
+
+- The three builder branches are merged into `engine/e0-5-places`, each after a review against its contract and the CUPID checklist, with corrections in the merge commit: `engine/e0-5-wip-files` (`6c799d22`), `engine/e0-5-wip-places` (`1aeda484`), `engine/e0-6-wip-keys` (`4d8e1dfe`). `7d814a50` makes the branch pass the limits and names gates; in the code a data key is `engine/sealing_keys` (`SealingKeys`). Their handoff notes stay on their own branches.
+- The task rows of E0-5 and E0-6 in `docs/plans/extensions-plan.md` say what is built and what is not. Not started: E0-5 T3 (location samples, the context of a transfer) and its commands, E0-6 T3 (it waits for OD-E21), the client-sealed records of K-E5 Section 3, E0-6 T4 (the security review), E0-7 T2 to T5.
+- Checks that only a person can do: HT-027 (the file store with a real photo) and HT-029 (a server and its operational key). HT-028 is not used.
+- Not merged to `main`. The claims `e0-5`, `e0-6` and `e0-7` stay, because the work continues on this branch.

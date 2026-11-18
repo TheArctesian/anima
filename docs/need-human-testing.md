@@ -820,8 +820,9 @@ GraphQL through the client's developer tools or `curl` with a login token.
    `test-value-2` and `heldVersion` is 2.
 5. `revokeOperationalKey`. Expected: within one push interval, `key read` says the machine holds no such key.
 6. Do steps 1 and 2 on a Mac. Expected: the same; Keychain Access shows the item `ing.anima.daemon` /
-   `key-cache`. Then delete the device on the hub. Expected: the daemon logs that its token is refused, and the
-   Keychain item is gone.
+   `key-cache`. Then delete the device on the hub. Expected: the daemon logs that its token is refused, the
+   Keychain item is gone, and the audit log of the hub has one entry for the key that names the removed device
+   and the version that it had, with no value.
 7. Grant a key to a server, stop the hub for more than 7 days (or set the server's clock 8 days ahead), and run
    `key read`. Expected: no value, and the cache record is gone.
 

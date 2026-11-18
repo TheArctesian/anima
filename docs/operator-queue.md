@@ -34,7 +34,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 | 4.19 | The watchdog | Operator: a tier and approval of the direction (OD-W22) |
 
-## 2. Open decisions (118)
+## 2. Open decisions (119)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -59,6 +59,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-E17 | The portable form of a record reference across machines and replicas, and what a link does when its target is deleted (RLK-005, RLK-006, issue #7) | Not decided. E0-4 uses `kind:id` with an opaque `id` and keeps a link and its label when the target is missing. | [plans/extensions-plan.md](plans/extensions-plan.md) |
 | OD-E19 | More ways to deliver a reminder or a notification: the desktop and iOS applications subscribe to the channel, and message channels as plug-ins, such as those of… | Not decided. E0-7 builds the delivery to an open application and to ntfy (REM-008). Recommendation: record the channels and the licences of those projects first… | [plans/extensions-plan.md](plans/extensions-plan.md) |
 | OD-E20 | A reveal of a Class A record asks for the TOTP code again (VLT-005). On a hosted hub the operator signs in with the Anima.ing account and has no TOTP on the hub… | Not decided. `recordReveal` is unavailable on a hosted hub (K-E5 Section 3). Recommendation: the check of the operating system on the client (Touch ID, or the p… | [plans/extensions-plan.md](plans/extensions-plan.md) |
+| OD-E21 | The commands of the operational keys (E0-6 T3). K-E5 Section 2.2 names them `anima key list\ | Not decided. Recommendation: `anima secret` for the operational keys, with the MCP tools `anima_secrets_list` and `anima_secret_show`, and K-E5 Section 2.2 chan… | [plans/extensions-plan.md](plans/extensions-plan.md) |
 | OD-HOST-3 | Are HOST-015 to HOST-024 approved, and in which stage is each one? | Approved in three groups: with stage 1, HOST-015, HOST-017, HOST-019, HOST-020 and HOST-021; with stage 2, HOST-016, HOST-018, HOST-022 and HOST-023; after a se… | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
 | OD-HOST-4 | Does the catalogue read the form of the template registry of Arcane (HOST-025)? | Yes, for reading. A list of a different person is off until the operator adds its address (R-150). | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |
 | OD-HOST-1 | How is the data copy of HOST-005 made: a backup of the volume, or replication that the application supplies? | A backup of the volume, kept by bulk-data-placement.md. It is asked when HOST-004 to HOST-008 come to approval; it blocks no task of this plan. | [plans/hosted-applications-plan.md](plans/hosted-applications-plan.md) |

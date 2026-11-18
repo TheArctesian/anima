@@ -126,7 +126,7 @@ pub(super) fn reference(field: &'static str, text: &str) -> Result<Reference> {
 #[derive(Default)]
 pub struct Query;
 
-#[Object(name = "FilesQuery")]
+#[Object(name = "AttachmentsQuery")]
 impl Query {
     /// The files of `owner` (`kind:id`), newest first, at most 200.
     #[graphql(guard = "Authenticated")]
@@ -140,7 +140,7 @@ impl Query {
 #[derive(Default)]
 pub struct Mutation;
 
-#[Object(name = "FilesMutation")]
+#[Object(name = "AttachmentsMutation")]
 impl Mutation {
     /// Removes one file and returns its ID; its piece goes when no other file has the same
     /// bytes and key. `NOT_FOUND` when no file has this ID.

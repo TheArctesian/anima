@@ -1,13 +1,14 @@
 //! What the command and the MCP tools ask of the hub about places. Both call these, so the two
 //! make the same requests (CMD-030). Each answer is the K1 `Place` as JSON.
 
-use graphql_client::QueryBody;
+use graphql_client::{GraphQLQuery, QueryBody};
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use serde_json::Value;
 
 use super::documents::{
-    PlaceAdd, PlaceList, PlaceMerge, PlaceRemove, PlaceShow, PlaceSite, PlaceSplit, place_add,
-    place_list, place_merge, place_remove, place_set, place_show, place_site, place_split,
+    PlaceAdd, PlaceList, PlaceMerge, PlaceRemove, PlaceSet, PlaceShow, PlaceSite, PlaceSplit,
+    place_add, place_list, place_merge, place_remove, place_set, place_show, place_site,
+    place_split,
 };
 use crate::failure::Failure;
 use crate::hub::Hub;
@@ -136,7 +137,7 @@ pub async fn set(hub: &Hub, id: String, change: Change) -> Result<Value, Failure
         query: place_set::QUERY,
         operation_name: place_set::OPERATION_NAME,
     };
-    let answer: place_set::ResponseData = hub.send(&body).await?;
+    let answer: <PlaceSet as GraphQLQuery>::ResponseData = hub.send(&body).await?;
     Ok(json(&answer.update_place))
 }
 
