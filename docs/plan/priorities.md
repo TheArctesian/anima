@@ -95,7 +95,7 @@ The table gives the order. The section of each row below the table gives the wor
 - Tier: 1
 - Category: All
 - Work: Decisions and approvals that the foundation work needs
-- Work items: Extensions: [SPEC](../work-items/extensions/SPEC.md), [OD-E1](../work-items/decisions/OD-E1.md), [KEYS](../work-items/extensions/KEYS.md). Compute: [SPEC-C](../work-items/compute/SPEC-C.md), [KEYS-C](../work-items/compute/KEYS-C.md), [OD-C1](../work-items/decisions/OD-C1.md), [OD-C2](../work-items/decisions/OD-C2.md), [OD-C5](../work-items/decisions/OD-C5.md), [OD-C7](../work-items/decisions/OD-C7.md), [OD-C8](../work-items/decisions/OD-C8.md). This plan: Section 7, where OD-W22 is open
+- Work items: Extensions: [SPEC](../work-items/extensions/SPEC.md), [KEYS](../work-items/extensions/KEYS.md). Compute: [SPEC-C](../work-items/compute/SPEC-C.md), [KEYS-C](../work-items/compute/KEYS-C.md), [OD-C1](../work-items/decisions/OD-C1.md), [OD-C2](../work-items/decisions/OD-C2.md), [OD-C5](../work-items/decisions/OD-C5.md), [OD-C7](../work-items/decisions/OD-C7.md), [OD-C8](../work-items/decisions/OD-C8.md). This plan: Section 7, where OD-W22 is open
 - State: Open
 
 ### 4.4 The engine (E0)

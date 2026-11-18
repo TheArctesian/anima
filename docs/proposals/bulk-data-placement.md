@@ -65,7 +65,7 @@ have free space, but different amounts, and some are not always on.
 | Item | Change |
 | --- | --- |
 | Extensions plan FIL-001 | The file store is on the store machines, not in a volume on the hub. [E0-5](../work-items/engine/E0-5.md) owns the file store. |
-| [OD-E1](../work-items/decisions/OD-E1.md) (where Class B data lives) | A recommendation: sealed files live on the operator's machines; the VPS holds the database rows and the index. The rows of Class B data stay on the hub, so [OD-E1](../work-items/decisions/OD-E1.md) is not closed by this. |
+| [OD-E1](../work-items/decisions/OD-E1.md) (where Class B data lives) | A recommendation: sealed files live on the operator's machines; the VPS holds the database rows and the index. The rows of Class B data stay on the hub. [OD-E1](../work-items/decisions/OD-E1.md) is closed by R-146 (operator, 2026-11-18): Class B records are on the hosted hub, each extension with its own data key, and there is no home hub. This recommendation does not change that. |
 | Design specification VPS-006 | The backup goes to more than one site. |
 
 ## Open points
