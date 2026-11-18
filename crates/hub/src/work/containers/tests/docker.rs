@@ -6,9 +6,7 @@ use chrono::{TimeZone, Utc};
 use super::{ID, LISTED};
 use crate::{
     fleet::ssh::CommandOutput,
-    work::containers::{
-        Container, ContainerId, ContainerState, Error, Health, LineCount, Tail, docker,
-    },
+    work::containers::{Container, ContainerId, ContainerState, Error, Health, LineCount, docker},
 };
 
 fn output(stdout: &str, exit_status: Option<u32>) -> CommandOutput {
@@ -175,6 +173,12 @@ fn host_001_a_log_of_no_such_container_is_told_apart_from_a_docker_that_fails() 
         docker::log(&output("permission denied\n", Some(1))),
         Err(Error::DockerFailed)
     ));
+    // A line of the container that holds the words does not make the answer "not found".
+    let quoted = "2026-11-18T18:00:00Z app: No such container: x\nError: the log driver failed\n";
+    assert!(matches!(
+        docker::log(&output(quoted, Some(1))),
+        Err(Error::DockerFailed)
+    ));
     assert!(matches!(
         docker::log(&output("sh: docker: not found\n", Some(127))),
         Err(Error::NoDocker)
@@ -222,8 +226,4 @@ fn log_007_the_debug_form_of_a_log_holds_no_line() {
     let log = docker::log(&output("2026-11-18T18:00:00Z API_TOKEN=hunter2\n", Some(0))).unwrap();
     let shown = format!("{log:?}");
     assert!(!shown.contains("hunter2"), "{shown}");
-    let _tail = Tail {
-        container: ContainerId::parse(ID).unwrap(),
-        lines: LineCount::new(None).unwrap(),
-    };
 }

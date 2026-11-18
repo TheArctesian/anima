@@ -79,6 +79,10 @@ pub enum FleetCommand {
 }
 
 impl FleetCommand {
+    #[expect(
+        clippy::cognitive_complexity,
+        reason = "a flat dispatch with one arm for each noun"
+    )]
     pub async fn run(self, invocation: &Invocation) -> Result<(), Failure> {
         match self {
             Self::Device { command } => command.run(invocation).await,

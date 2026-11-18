@@ -24,8 +24,11 @@ const LIST_FORMAT: &str = concat!(
 
 /// The exit status of a shell that found no such program.
 const NOT_FOUND_STATUS: u32 = 127;
-/// What Docker writes when it knows no container by the identifier.
-const NO_SUCH_CONTAINER: &str = "No such container";
+/// How the line starts that Docker writes when it knows no container by the identifier.
+const NO_SUCH_CONTAINER: [&str; 2] = [
+    "Error response from daemon: No such container",
+    "Error: No such container",
+];
 
 /// `docker ps` for every container, from static text only.
 pub(super) fn list_command() -> FixedCommand {
@@ -171,7 +174,7 @@ fn created(text: &str) -> Option<DateTime<Utc>> {
 pub(super) fn log(output: &CommandOutput) -> Result<ContainerLog, Error> {
     let text = String::from_utf8_lossy(&output.stdout);
     if !output.cut && output.exit_status != Some(0) {
-        return Err(if text.contains(NO_SUCH_CONTAINER) {
+        return Err(if says_no_container(&text) {
             Error::NoContainer
         } else {
             failure(output)
@@ -185,6 +188,19 @@ pub(super) fn log(output: &CommandOutput) -> Result<ContainerLog, Error> {
         lines,
         cut: output.cut,
     })
+}
+
+/// Whether the last line is Docker's own error for an unknown container. Only that line is
+/// read, and only from its start, so a line that the container wrote cannot make this answer.
+fn says_no_container(text: &str) -> bool {
+    text.lines()
+        .rev()
+        .find(|line| !line.trim().is_empty())
+        .is_some_and(|line| {
+            NO_SUCH_CONTAINER
+                .iter()
+                .any(|start| line.starts_with(start))
+        })
 }
 
 /// A line that `--timestamps` wrote: its time, one space, the container's text.

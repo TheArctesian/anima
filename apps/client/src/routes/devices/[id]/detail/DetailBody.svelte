@@ -89,8 +89,9 @@
   // HOST-013: the hub reads the device's containers when the tab opens, and again only when the operator asks.
   // svelte-ignore state_referenced_locally
   const containers = new ContainersStore(containersApi(hub, id));
+  const onContainers = $derived(place.tab === 'containers');
   $effect(() => {
-    if (place.tab === 'containers') untrack(() => void containers.load());
+    if (onContainers) untrack(() => void containers.load());
   });
 
   // The bar says why a device is not up from its checks (D16), so they load on every tab while it is not.

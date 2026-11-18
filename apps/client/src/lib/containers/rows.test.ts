@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import { CONTAINERS, container } from './containers.fixture';
-import { NO_PROJECT, logText, projectGroups } from './rows';
+import { NO_PROJECT, lineTime, logText, projectGroups } from './rows';
 
 it('HOST-013: the containers are in groups by Compose project, by name, and those with no project are last', () => {
   const groups = projectGroups(CONTAINERS);
@@ -29,4 +29,10 @@ it('HOST-001: a state that is not healthy running never reads as up', () => {
 
 it('HOST-001: the text of a log is its lines, oldest first, with no time', () => {
   expect(logText([{ at: '2026-11-18T18:00:00+00:00', text: 'one' }, { at: null, text: 'two' }])).toBe('one\ntwo');
+});
+
+it('HOST-001: the time of a line is the time of the clock of the operator, and a line with no time has none', () => {
+  expect(lineTime('2026-11-18T18:00:04+00:00')).toBe(new Date('2026-11-18T18:00:04Z').toLocaleTimeString([], { hour12: false }));
+  expect(lineTime(null)).toBe('');
+  expect(lineTime('not a time')).toBe('');
 });

@@ -93,3 +93,10 @@ export function projectGroups(containers: readonly Container[]): readonly Projec
 export function logText(lines: readonly LogLine[]): string {
   return lines.map((line) => line.text).join('\n');
 }
+
+/** The time of a log line as the operator's clock shows it, `18:00:04`; empty when the line has no time. */
+export function lineTime(at: string | null | undefined): string {
+  if (at == null) return '';
+  const time = new Date(at);
+  return Number.isNaN(time.getTime()) ? '' : time.toLocaleTimeString([], { hour12: false });
+}

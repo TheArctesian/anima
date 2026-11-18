@@ -34,11 +34,16 @@ async fn host_001_the_list_runs_one_fixed_read_only_docker_command(pool: PgPool)
     assert_eq!(containers[0].name, "dawarich_app");
     let heard = execs(&bench);
     assert_eq!(heard.len(), 1);
-    assert!(
-        heard[0].starts_with("docker ps -a --no-trunc --format '{\"id\":{{json .ID}},"),
-        "{heard:?}"
+    assert_eq!(
+        heard[0],
+        concat!(
+            r#"docker ps -a --no-trunc --format '{"id":{{json .ID}},"names":{{json .Names}},"#,
+            r#""image":{{json .Image}},"state":{{json .State}},"status":{{json .Status}},"#,
+            r#""ports":{{json .Ports}},"created":{{json .CreatedAt}},"#,
+            r#""project":{{json (.Label "com.docker.compose.project")}},"#,
+            r#""service":{{json (.Label "com.docker.compose.service")}}}'"#,
+        )
     );
-    // No label but the two of Compose is asked for: other labels can hold a secret.
     assert!(!heard[0].contains(".Labels"), "{heard:?}");
 }
 

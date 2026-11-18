@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { ContainerLog } from './api';
+  import { lineTime } from './rows';
 
   /** HOST-001: the last lines of one container, oldest first, as text. The lines are the container's own: never drawn as markup. */
   const { log }: { log: ContainerLog } = $props();
@@ -15,7 +16,7 @@
   <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
   <ol class="lines" tabindex="0" aria-label="Log lines, oldest first">
     {#each log.lines as line, index (index)}
-      <li><time datetime={line.at ?? undefined}>{line.at?.slice(11, 19) ?? ''}</time><span>{line.text}</span></li>
+      <li><time datetime={line.at ?? undefined}>{lineTime(line.at)}</time><span>{line.text}</span></li>
     {/each}
   </ol>
 {/if}
