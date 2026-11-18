@@ -2,8 +2,8 @@
 
 - From: the operator, 2026-11-18 (14:51, Pacific time)
 - Source: the vault note "Terminal UI"
-- Status: Framed
-- Serves: No row names it (gap). The CLI and the MCP server are not a category (priorities.md Section 3). Most likely row: 4.1 Finish the device manager (See, Reach). Not confirmed.
+- Status: Ready for Planner
+- Serves: a new row of its own in priorities.md, which the Planner adds and places (operator ruling, 2026-11-18). No existing row names it. It starts after the publishing tasks R8a to R8d of R-151.
 - Owner if it becomes work: `cli-mcp-plan.md` (CMD), as a new section, or a new proposal. Not decided.
 - Effort: M for a read-only dashboard; L if a remote terminal is embedded (estimates). Recommendation: should (read-only first)
 
@@ -39,15 +39,18 @@ Files: [plan/ownership.md](../../plan/ownership.md), [plan/register.md](../../pl
 - Narrowest version: `anima tui` opens a read-only screen on the signed-in hub: a device list with live status, and the events of the selected device, using the existing subscription client. Quit restores the terminal. A key on a device suspends the screen and runs `anima ssh` for it, then returns. No change tool, no new network code.
 - Stop if: the live screen cannot be built on the existing `hub/` client without new network code, or if the extra dependencies make the standalone `anima` file too large to ship by Homebrew (size not measured).
 
-## Open questions
+## Answered questions
 
-- Should the terminal interface be a subcommand of the `anima` binary (`anima tui`), not a separate program? (yes/no)
-- Is the first version a read-only dashboard that hands the terminal to `anima ssh`, with an embedded remote terminal pane left for later? (yes/no)
-- When should it start? (one choice: after the publishing tasks R8a to R8d of R-151, now in parallel, or park it)
+The operator answered on 2026-11-18:
+
+- Should the terminal interface be a subcommand of the `anima` binary (`anima tui`), not a separate program? Yes.
+- Is the first version a read-only dashboard that hands the terminal to `anima ssh`, with an embedded remote terminal pane left for later? Yes.
+- When should it start? After the publishing tasks R8a to R8d of R-151.
 
 ## Reviews
 
 - 2026-11-18: round 1. The bot framed the operator's raw idea. The Serves row is not confirmed. The operator has not picked this idea.
+- 2026-11-18: round 2. The operator answered the three questions and ruled that the idea gets its own new priorities row. Ready for Planner.
 
 ## Source text
 
