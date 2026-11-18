@@ -134,14 +134,19 @@ async fn mcp_017_the_file_tools_list_and_remove_a_file() {
         "archiveId": null, "latitude": null, "longitude": null,
         "createdAt": "2026-11-18T10:00:00+00:00" });
     hub.answer("AttachmentList", data(json!({ "attachments": [file] })));
-    hub.answer("AttachmentRemove", data(json!({ "deleteAttachment": FILE_ID })));
+    hub.answer(
+        "AttachmentRemove",
+        data(json!({ "deleteAttachment": FILE_ID })),
+    );
     let desk = Desk::new();
     let mut session = writing(&hub, &desk).await;
 
     let listed = session
         .call("anima_files_list", json!({ "owner": "book:1" }))
         .await;
-    let removed = session.call("anima_file_remove", json!({ "id": FILE_ID })).await;
+    let removed = session
+        .call("anima_file_remove", json!({ "id": FILE_ID }))
+        .await;
 
     assert_eq!(structured(&listed)["files"][0]["name"], "cover.jpg");
     assert_eq!(structured(&removed)["removed"], FILE_ID);
