@@ -127,7 +127,7 @@ The operator will use only the hosted version (R-130). This changes FND-006:
 
 | Task | Content | Needs | State | Commits |
 | --- | --- | --- | --- | --- |
-| F1 | FND-006 for a hub on a server: the procedure `docs/procedures/restore-and-move.md`, proved by a restore on a new, empty setup in Docker. | R-141 names it | In progress | Built, not checked on a real server: [restore-and-move.md](../procedures/restore-and-move.md), with its proof in Docker, commit `1b135102`. The full gates passed on 2026-11-17 (21 of 21). It waits for HT-024 (PLN-014). |
+| F1 | FND-006 for a hub on a server: the procedure `docs/procedures/restore-and-move.md`, proved by a restore on a new, empty setup in Docker. | R-141 names it | In progress | Built, not checked on a real server: [restore-and-move.md](../procedures/restore-and-move.md), with its proof in Docker, commit `1b135102`. The full gates passed on 2026-11-17 (21 of 21). It waits for HT-024 (PLN-014). R-169 (2026-11-18) defers HT-024 for the self-host path; this task stays In progress and is not Done. |
 | F2 | FND-007 for the desktop application: a read-only copy of the data that the application showed recently, with its age and with no credential. The phone applications are not in this task (IOS-003, mobile plan). | The operator named it on 2026-11-18 ("Yes, as listed"); the ruling gets its number at the merge | In progress | |
 
 ## Open points
