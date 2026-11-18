@@ -448,6 +448,43 @@ The tests check the policy file of the repository. No test reads the live Headsc
 
 Result: Open.
 
+### HT-020: the desktop application builds on Linux with no lint error (GH-52)
+
+Checked, not built: [GH-52](work-items/defects/GH-52.md) reported that the Linux build stops at an
+unfulfilled `dead_code` expectation in `apps/desktop/src-tauri/src/web_view/event.rs`. A simulated
+build on a Mac gave no error with Rust 1.99.1 and Rust 1.100.0. No code was changed.
+
+No gate runs on Linux, and the Mac has no Linux target.
+
+1. On the Linux machine, get `main` and run `rustc --version` in the repository.
+   Expected: `rustc 1.100.0` (`rust-toolchain.toml`).
+2. Run `cargo clippy -p anima-desktop --all-targets -- -D warnings`.
+   Expected: no error.
+3. Run `bun run --cwd apps/desktop tauri build` with `RUSTFLAGS` not set.
+   Expected: the bundles are built. If the error of GH-52 comes again, copy it into GH-52 with the
+   output of step 1.
+
+Result: Open.
+
+### HT-021: the delay of the session picture in the Linux application (GH-54)
+
+Checked, not built: [GH-54](work-items/defects/GH-54.md) reported that the picture of a VNC session
+in the Linux application is late. Nothing was measured, and the gateway changed after the report.
+No code was changed.
+
+No test can see a real screen.
+
+1. On the Linux machine, start the application from a terminal and open a VNC session to the Mac.
+   On the Mac, show a clock with seconds and tenths. Take one photograph that shows the two screens.
+   Expected: the two clocks differ by less than 0.3 s.
+2. Open the same session from the Mac application to the Linux machine and do the same.
+   Expected: a delay near that of step 1. Write the two values in GH-54.
+3. If step 1 is slow: close the application, start it with `WEBKIT_DISABLE_DMABUF_RENDERER=1`, and
+   do step 1 again. Then the same with `WEBKIT_DISABLE_COMPOSITING_MODE=1`.
+   Expected: write in GH-54 which setting, if any, removes the delay.
+
+Result: Open.
+
 ## Not built yet
 
 The Tools section of the Device page and the Tools filter of the device list

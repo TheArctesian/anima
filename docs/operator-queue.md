@@ -20,13 +20,13 @@ This document is generated: `bun run quality:register` writes it from the docume
 
 | Row | Work | Waits for |
 | --- | --- | --- |
-| 4.1 | Finish the device manager | Operator: the acceptance run (WP-53); the Linux release and the check that an installed application updates (R7); the checks of the rename to `anima-daemon` (HT-018, HT-019). Agent: the defects GH-52, GH-53 and GH-54 in work-items/README.md, "Defects". Their state is "Open at import": compare each with the code first |
+| 4.1 | Finish the device manager | Operator: the acceptance run (WP-53); the Linux release and the check that an installed application updates (R7); the checks of the rename to `anima-daemon` (HT-018, HT-019); the Linux checks of the defects GH-52 and GH-54 (HT-020, HT-021). Agent: nothing; GH-53 is corrected |
 | 4.16 | One-click install | Operator: the live checks (need-human-testing.md, "One-click") |
 | 4.17 | The hosted mode and the shared pool | Operator: approval of HMD-001 to HMD-036, and HM-D4 |
 | 4.18 | Update the daemon and the hub | Operator: approval of ROL-001 to ROL-052 (only R-122 is approved), and a Linux release for the tasks that need one. Agent: nothing until a ruling names a task |
 | 4.2 | Restore a backup and move the coordinator | Operator: approval of FND-006. No task breakdown yet |
 | 4.3 | Decisions and approvals for the foundation | Operator: each decision and approval in the row |
-| 4.4 | The engine (E0) | Agent: E0-4 T9 (extensions-plan.md Section 5.1), but not the parts that OD-E16 and OD-E17 name. Operator: E0-5 T0, E0-6 T0, the contract ruling for E0-7, OD-E16, OD-E17 and OD-E18 |
+| 4.4 | The engine (E0) | Operator: E0-5 T0, E0-6 T0, the contract ruling for E0-7, OD-E16, OD-E17 and OD-E18 |
 | 4.5 | Level 1 model service | Operator: approval of the compute plan, and the compute decisions of row 4.3 |
 | 4.7 | Jobs, builds and AI agent runs | Operator: a ruling that changes R-115 (task W1) and the acceptance of the design (task W2). Agent: nothing before them |
 | 4.9 | Hosted applications | Operator: approval of the proposal |
@@ -174,7 +174,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/ssh-terminal.md](proposals/ssh-terminal.md) | Proposal | Draft. Build state not checked |
 | [proposals/watchdog.md](proposals/watchdog.md) | Proposal, with a task table | Draft |
 
-## 4. Checks that only the operator can do (66)
+## 4. Checks that only the operator can do (68)
 
 | Check | What |
 | --- | --- |
@@ -197,6 +197,8 @@ This document is generated: `bun run quality:register` writes it from the docume
 | HT-017 | "This machine" with the Anima VPN and NetBird together |
 | HT-018 | each machine with the old program gets `anima-daemon` and enrols again |
 | HT-019 | the VPN role `daemon` on the VPS |
+| HT-020 | the desktop application builds on Linux with no lint error (GH-52) |
+| HT-021 | the delay of the session picture in the Linux application (GH-54) |
 | O-1 | RDP: the certificate, the picture, resize, copy and paste, Ctrl+Alt+Delete |
 | O-2 | RDP: a changed certificate stops the session; the Warning badge |
 | O-4 | SFTP: list, upload, download, the refusals, the audit entries |

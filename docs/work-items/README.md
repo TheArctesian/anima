@@ -108,7 +108,7 @@ Rules:
 
 | Identifier | Title | Kind | State | Tier (work plan Section 4) | Owner | Was issue |
 | --- | --- | --- | --- | --- | --- | --- |
-| [GH-52](defects/GH-52.md) | Linux desktop build fails: unfulfilled dead_code expectation in web_view/event.rs | Defect | Open at import | 0 (finish the device manager) | [design-spec.md](../spec/design-spec.md) OD-7 | #52 |
-| [GH-53](defects/GH-53.md) | VNC login failure shows only 'The gateway reported an error' (user name mismatch with wayvnc) | Defect | Open at import | 0 (finish the device manager) | [design-spec.md](../spec/design-spec.md) GW-015 | #53 |
-| [GH-54](defects/GH-54.md) | Linux desktop app: VNC session picture lags behind the remote screen | Defect | Open at import | 0 (finish the device manager) | [design-spec.md](../spec/design-spec.md) RA-030 | #54 |
+| [GH-52](defects/GH-52.md) | Linux desktop build fails: unfulfilled dead_code expectation in web_view/event.rs | Defect | Not reproduced with Rust 1.100.0 (2026-11-17); the Linux check is HT-020 | 0 (finish the device manager) | [design-spec.md](../spec/design-spec.md) OD-7 | #52 |
+| [GH-53](defects/GH-53.md) | VNC login failure shows only 'The gateway reported an error' (user name mismatch with wayvnc) | Defect | Corrected 2026-11-17 (see its check) | 0 (finish the device manager) | [design-spec.md](../spec/design-spec.md) GW-015 | #53 |
+| [GH-54](defects/GH-54.md) | Linux desktop app: VNC session picture lags behind the remote screen | Defect | Open, not measured (checked 2026-11-17); the measurement is HT-021 | 0 (finish the device manager) | [design-spec.md](../spec/design-spec.md) RA-030 | #54 |
 | [GH-59](defects/GH-59.md) | Hub keeps SNMP secrets when the host of a device changes | Defect | Closed 2026-11-13 (see its comments) | — | [design-spec.md](../spec/design-spec.md) SEC-005, SEC-010, SEC-011 | #59 |
