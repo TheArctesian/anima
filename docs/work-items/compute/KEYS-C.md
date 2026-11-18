@@ -13,6 +13,8 @@ Progress: the index [README.md](../README.md) holds the state of this item (PLN-
 | Origin | GitHub issue #42: made 2026-11-07, last changed 2026-11-08, open at import. Labels: security, compute, infrastructure, priority: foundation. |
 | Text | Copied from the issue on 2026-11-16 (R-119). Only the links were changed. Not written in STE yet. "This issue" in the text means this document. |
 
+**State (compute plan version 0.3, 2026-11-18).** Open. In version 0.3 of the compute plan the model address is on the loopback address of each computer (RTR-001), so the DNS token, the Headscale DNS record and the check of the delay through the VPS are necessary only if OD-C7 keeps a name. The ACL lines are necessary only for a hub on the VPN (OD-C11, SEC-C-004). The Hugging Face token and the model key are kept by the key vault of E0-6 (SEC-C-003). The checklist below is the text of the import.
+
 **Ownership / priority clarification (2026-11-07):**
 
 Provision per phase: C1 [C1](C1.md), later C5/C6 [C5](C5.md)/[C6](C6.md). The historical hub-to-agent listener ACL below must be reconciled with [R-084/MET-020](../../plans/phase-3/phase-3-daemon-delta.md) before implementation; compute transport remains open. Do not treat a metrics-only agent token as compute-command permission. DNS/access decision: [OD-C7](../decisions/OD-C7.md). Each actual cloud/network write still needs operator confirmation (VPS-005).
