@@ -1,9 +1,12 @@
-//! The command line (CHK-012, D-3): static words and a MAC rendered by the hub, joined by
-//! single spaces.
+//! The command line (CHK-012, D-3, HOST-001): static words, and a MAC, hex digits and numbers
+//! rendered by the hub, joined by single spaces.
 
 use proptest::prelude::*;
 
-use crate::fleet::{devices::MacAddress, ssh::link::FixedCommand};
+use crate::fleet::{
+    devices::MacAddress,
+    ssh::link::{FixedCommand, HexDigits},
+};
 
 fn mac(text: &str) -> MacAddress {
     text.parse().unwrap()
@@ -44,7 +47,62 @@ fn d_3_static_words_and_a_mac_keep_their_order() {
     assert_eq!(command.line(), "etherwake -i eth0 aa:bb:cc:dd:ee:f0");
 }
 
+#[test]
+fn host_001_hex_digits_and_a_number_render_in_order_after_static_words() {
+    let id = HexDigits::parse("0123456789abcdef").unwrap();
+    let command = FixedCommand::new("docker")
+        .arg("logs")
+        .arg("--tail")
+        .number(200)
+        .hex(&id)
+        .arg("2>&1");
+    assert_eq!(
+        command.line(),
+        "docker logs --tail 200 0123456789abcdef 2>&1"
+    );
+}
+
+#[test]
+fn host_001_hex_digits_take_only_one_to_sixty_four_lower_case_hex_digits() {
+    for refused in [
+        "",
+        "ABCDEF",
+        "abc def",
+        "abc;rm",
+        "$(id)",
+        "0x12",
+        "abcdefg",
+        "é",
+        &"a".repeat(65),
+    ] {
+        assert_eq!(HexDigits::parse(refused), None, "{refused:?}");
+    }
+    for taken in ["0", "f", &"a".repeat(64)] {
+        assert!(HexDigits::parse(taken).is_some(), "{taken:?}");
+    }
+}
+
 proptest! {
+    /// HOST-001: whatever text is offered, a word made of hex digits is that text exactly, and
+    /// it is only `0-9a-f`.
+    #[test]
+    fn host_001_hex_digits_render_as_the_text_they_were_read_from(text in "[0-9a-f]{0,66}|.{0,70}") {
+        let parsed = HexDigits::parse(&text);
+        let all_hex = text.bytes().all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f'));
+        prop_assert_eq!(parsed.is_some(), all_hex && (1..=64).contains(&text.len()));
+        if let Some(digits) = parsed {
+            let line = FixedCommand::new("docker").hex(&digits).line();
+            prop_assert_eq!(line, format!("docker {text}"));
+        }
+    }
+
+    /// HOST-001: a number renders as its decimal digits only.
+    #[test]
+    fn host_001_a_number_renders_in_decimal(number in any::<u32>()) {
+        let line = FixedCommand::new("docker").number(number).line();
+        prop_assert_eq!(line, format!("docker {number}"));
+    }
+
     /// D-3: the MAC word is the six parsed bytes as two hex digits each, so it is always 17
     /// characters of `0-9a-f:` and nothing a shell reads specially.
     #[test]
