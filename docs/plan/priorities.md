@@ -45,7 +45,7 @@ The table gives the order. The section of each row below the table gives the wor
 | 4.10 | 3 | Standby copies of the coordinator database | Foundation | Proposal. | Operator: approval of the requirements |
 | 4.11 | 3 | Bulk data on the operator's machines | Foundation | Proposal. | Operator: approval of the requirements, before E0-5 starts |
 | 4.12 | 4 | Level 2: one model across machines | Use | Parked. | Row 4.5 in daily use |
-| 4.13 | 4 | A hash chain for the audit log | Foundation | The operator made the work item smaller on 2026-11-12 | Operator: the approval of LOG-021 to LOG-028 (R-136), in the build session. Agent: [GH-2](../work-items/device-manager/GH-2.md) L0-T1, claimed |
+| 4.13 | 4 | A hash chain for the audit log | Foundation | The operator made the work item smaller on 2026-11-12 | Operator: nothing. Agent: [GH-2](../work-items/device-manager/GH-2.md) L0-T2 to L0-T4, claimed |
 | 4.14 | 4 | Mobile clients (Phase 5) and site operations (Phase 6) | Foundation, Reach | In progress (mobile). Planned (Phase 6). | Agent: M1-3 of [mobile-plan.md](../plans/mobile-plan.md) Section 5. Its tasks in progress belong to the session on the branch `mobile/m1-shell`. Phase 6 waits for rows 4.4 to 4.8 |
 | 4.19 | Not set | The watchdog | See, Use | Proposal. Not approved. | Operator: a tier and approval of the direction (OD-W22) |
 | 4.15 | — | Deferred items and ideas | All | Recorded, not planned | Nothing |
@@ -176,7 +176,7 @@ The table gives the order. The section of each row below the table gives the wor
 - Category: Foundation
 - Work: A hash chain for the audit log, so that a change to an old entry shows
 - Work items: [GH-2](../work-items/device-manager/GH-2.md)
-- State: The operator made the work item smaller on 2026-11-12: only its phase L0 stays. Its phases L1 to L5 are withdrawn (OD-W9). The operator asked for the build of L0 on 2026-11-17 (R-136). The requirements LOG-021 to LOG-028 (design specification Section 3.8.2) wait for the approval of the operator.
+- State: The operator made the work item smaller on 2026-11-12: only its phase L0 stays. Its phases L1 to L5 are withdrawn (OD-W9). The operator asked for the build of L0 on 2026-11-17 (R-136). The operator approved the requirements LOG-021 to LOG-028 (design specification Section 3.8.2) the same day.
 
 ### 4.14 Mobile clients (Phase 5) and site operations (Phase 6)
 

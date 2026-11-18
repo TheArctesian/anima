@@ -303,7 +303,7 @@ These requirements change the frozen contracts K1, K2 and K7 (CON-001). The oper
 
 #### 3.8.2 Hash chain of the audit log
 
-State: proposed, waits for the approval of the operator (R-136). The operator said on 2026-11-17: "Lets build out the Tamper-evident audit log". Only phase L0 of [GH-2](../work-items/device-manager/GH-2.md) is in scope (OD-W9).
+State: approved (operator, 2026-11-17, R-136). The operator said on 2026-11-17: "Lets build out the Tamper-evident audit log". Only phase L0 of [GH-2](../work-items/device-manager/GH-2.md) is in scope (OD-W9).
 
 Purpose: a change to an old audit log entry, or the removal of an entry, shows. The chain does not stop a change. It does not protect against a person who can write to the database and writes a new chain (see "Limits" below).
 
@@ -335,7 +335,7 @@ Purpose: a change to an old audit log entry, or the removal of an entry, shows. 
   - Not linked: an entry has no link. This shows an entry that the hub did not write.
 
   The check must also report the number of links, the number of entries that the retention dropped, and the hash and sequence number of the newest link (the head). The check changes nothing.
-- **LOG-028.** The check runs when the operator asks for it (the API, `anima audit verify`, the MCP tool `anima_audit_verify`) and once each day in the hub. When the daily check finds a fault, the hub must write an event log entry with the severity Error, the source Hub and the actor kind Hub. The hub must continue to work and to write entries. It must not repair the chain.
+- **LOG-028.** The check runs when the operator asks for it (the API, `anima audit verify`, the MCP tool `anima_audit_verify`) and once each day in the hub. When the daily check finds a fault, the hub must write an event log entry with the severity Error, the source Hub and the actor kind Hub. The client shows this event in the Logs panel (LOG-009); it has no other place for the check. The hub must continue to work and to write entries. It must not repair the chain.
 
 Limits (what L0 does not protect against):
 

@@ -32,7 +32,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.9 | Hosted applications | Operator: approval of the proposal |
 | 4.10 | Standby copies of the coordinator database | Operator: approval of the requirements |
 | 4.11 | Bulk data on the operator's machines | Operator: approval of the requirements, before E0-5 starts |
-| 4.13 | A hash chain for the audit log | Operator: the approval of LOG-021 to LOG-028 (R-136), in the build session. Agent: GH-2 L0-T1, claimed |
+| 4.13 | A hash chain for the audit log | Operator: nothing. Agent: GH-2 L0-T2 to L0-T4, claimed |
 | 4.19 | The watchdog | Operator: a tier and approval of the direction (OD-W22) |
 
 ## 2. Open decisions (106)
