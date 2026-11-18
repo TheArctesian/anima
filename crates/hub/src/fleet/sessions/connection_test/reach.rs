@@ -4,9 +4,10 @@
 
 use std::{future::Future, time::Duration};
 
-use tokio::net::TcpStream;
-
-use crate::fleet::ssh::{self, SshError, Target};
+use crate::fleet::{
+    ssh::{self, SshError, Target},
+    targets::Reached,
+};
 
 /// Why a desktop protocol read gave nothing. Holds no host name or remote text (LOG-007).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
@@ -30,7 +31,7 @@ pub(in crate::fleet::sessions) enum ReadError {
 /// # Errors
 /// [`ReadError::Unresolved`], [`ReadError::RefusedTarget`] before any connection, or
 /// [`ReadError::Unreachable`].
-pub(in crate::fleet::sessions) async fn reach(target: Target<'_>) -> Result<TcpStream, ReadError> {
+pub(in crate::fleet::sessions) async fn reach(target: Target<'_>) -> Result<Reached, ReadError> {
     ssh::connect(target).await.map_err(|error| match error {
         SshError::Unresolved => ReadError::Unresolved,
         SshError::RefusedTarget => ReadError::RefusedTarget,

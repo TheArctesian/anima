@@ -4,10 +4,13 @@ use std::time::Duration;
 
 use tokio::net::TcpListener;
 
-use super::support::{LOOPBACK, env, target};
-use crate::fleet::checks::{
-    config::CheckConfig,
-    probe::{Failure, probe},
+use super::support::{LOOPBACK, env, now, target};
+use crate::fleet::{
+    checks::{
+        config::CheckConfig,
+        probe::{Failure, ProbeEnv, probe},
+    },
+    targets::tests::link_path::{COMPUTER, Link, link},
 };
 
 #[tokio::test]
@@ -129,5 +132,52 @@ fn chk_012_no_check_source_starts_a_process() {
                 file.display()
             );
         }
+    }
+}
+
+/// A TCP check on a computer of the link goes through the link: the hub has no route to a
+/// link address, and loopback is not permitted here, so only the link can answer.
+#[tokio::test]
+async fn hmd_048_a_tcp_check_reaches_an_open_port_of_a_computer_on_the_link() {
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let (_folder, policy) = link(Link::Carries);
+    let config = CheckConfig::Tcp {
+        port,
+        timeout_ms: 2000,
+    };
+    let result = probe(
+        &target(COMPUTER),
+        &config,
+        None,
+        &ProbeEnv::new(policy, now()),
+    )
+    .await;
+    assert!(result.ok, "{:?}", result.message);
+    assert_eq!(result.resolved_ip, Some(COMPUTER.parse().unwrap()));
+    assert!(result.response_time.is_some());
+}
+
+#[tokio::test]
+async fn hmd_049_a_tcp_check_of_a_port_that_is_not_turned_on_fails_and_says_so() {
+    for (word, message) in [
+        ("refused", "the connection failed: permission denied"),
+        ("closed", "the connection failed: connection refused"),
+        ("not_connected", "the connection failed: not connected"),
+    ] {
+        let (_folder, policy) = link(Link::Says(word));
+        let config = CheckConfig::Tcp {
+            port: 22,
+            timeout_ms: 2000,
+        };
+        let result = probe(
+            &target(COMPUTER),
+            &config,
+            None,
+            &ProbeEnv::new(policy, now()),
+        )
+        .await;
+        assert!(!result.ok, "{word}");
+        assert_eq!(result.message.as_deref(), Some(message), "{word}");
     }
 }

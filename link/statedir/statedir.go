@@ -71,8 +71,28 @@ func Open(path string) (*Dir, error) {
 	return &Dir{path: path, lock: lock}, nil
 }
 
+// Beside opens the directory of an anima-link that may run now, without
+// taking it: for a file that a second process changes, such as the open
+// ports of a device. A file that Write replaces is read whole, the old or
+// the new one. The directory must exist and pass the same test as in Open.
+func Beside(path string) (*Dir, error) {
+	path, err := filepath.Abs(path)
+	if err != nil {
+		return nil, err
+	}
+	if err := private(path); err != nil {
+		return nil, err
+	}
+	return &Dir{path: path}, nil
+}
+
 // Close gives the directory back.
-func (d *Dir) Close() error { return d.lock.Close() }
+func (d *Dir) Close() error {
+	if d.lock == nil {
+		return nil
+	}
+	return d.lock.Close()
+}
 
 // Read fills value from the JSON file name. It returns ErrAbsent when the
 // file was never written.

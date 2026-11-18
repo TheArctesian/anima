@@ -1,6 +1,7 @@
 //! Device inventory: sites, devices, tags and the SSH, RDP and VNC settings.
 
 pub mod graphql;
+mod hub_device;
 mod loaders;
 mod mac;
 mod model;
@@ -19,8 +20,10 @@ use std::num::NonZeroU8;
 use sqlx::{PgConnection, PgExecutor, PgPool};
 
 use crate::api_errors::field_names;
+use crate::fleet::events;
 use crate::ids::{DeviceId, SiteId};
 
+pub use hub_device::ensure_hub_device;
 pub use loaders::{DevicesById, DevicesBySite, SitesById};
 pub use mac::{MacAddress, MacAddressError};
 pub use model::{Device, Distribution, OperatingSystem, Site, SshAuth, SshSettings};
@@ -54,6 +57,9 @@ pub enum Error {
     Validation(Vec<FieldError>),
     #[error("database error")]
     Database(#[from] sqlx::Error),
+    /// The audit entry or the event of the hub's own device.
+    #[error("the audit entry cannot be written")]
+    Trail(#[source] events::Error),
 }
 
 /// The device with this id, with its tags and SSH settings.

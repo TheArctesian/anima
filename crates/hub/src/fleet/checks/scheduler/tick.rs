@@ -78,6 +78,12 @@ impl Scheduler {
         }
     }
 
+    /// The hub did not run until `now`: the scheduler counts from `now` as from a start, so
+    /// a check that became due meanwhile gets a new due time and is not late.
+    pub(super) fn woke(&mut self, now: DateTime<Utc>) {
+        self.started_at = Some(now);
+    }
+
     /// One pass at `now`. A failed read of the statuses or the due checks skips the rest.
     pub(super) async fn tick(&mut self, now: DateTime<Utc>, rng: &mut impl Rng) {
         let started = *self.started_at.get_or_insert(now);

@@ -15,7 +15,10 @@ use tokio::{io::AsyncWriteExt, net::TcpListener};
 
 use crate::fleet::{
     ssh::{SshError, Target, probe::read_host_key},
-    targets::{AddressPolicy, TargetError},
+    targets::{
+        AddressPolicy, TargetError,
+        tests::link_path::{COMPUTER, Link, link},
+    },
     trust::PublicKey,
 };
 
@@ -47,6 +50,51 @@ async fn r_034_the_probe_returns_the_key_the_host_presents() {
 
     assert_eq!(read, Ok(PublicKey::from_blob(blob).unwrap()));
     serve.abort();
+}
+
+/// SSH to a computer of the link: the key exchange runs through the link's dial socket to the
+/// SSH port of the computer, here a server on loopback that only the fake link reaches.
+#[tokio::test]
+async fn hmd_048_the_probe_reads_the_key_of_a_computer_on_the_link() {
+    let host_key = PrivateKey::from(Ed25519Keypair::from_seed(&[5; 32]));
+    let blob = host_key.public_key().to_bytes().unwrap();
+    let config = Arc::new(server::Config {
+        keys: vec![host_key],
+        ..server::Config::default()
+    });
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let serve = tokio::spawn(async move {
+        let (stream, _) = listener.accept().await.unwrap();
+        if let Ok(session) = server::run_stream(config, stream, KeyOnly).await {
+            let _ended = session.await;
+        }
+    });
+    let (_folder, policy) = link(Link::Carries);
+    let computer = Target {
+        host: COMPUTER,
+        port,
+        policy: &policy,
+    };
+
+    let read = read_host_key(computer, Duration::from_secs(5)).await;
+
+    assert_eq!(read, Ok(PublicKey::from_blob(blob).unwrap()));
+    serve.abort();
+}
+
+#[tokio::test]
+async fn hmd_049_ssh_to_a_port_that_the_computer_did_not_turn_on_is_unreachable() {
+    let (_folder, policy) = link(Link::Says("refused"));
+    let computer = Target {
+        host: COMPUTER,
+        port: 22,
+        policy: &policy,
+    };
+    assert_eq!(
+        read_host_key(computer, Duration::from_secs(5)).await,
+        Err(SshError::Unreachable)
+    );
 }
 
 const SHORT: Duration = Duration::from_millis(300);

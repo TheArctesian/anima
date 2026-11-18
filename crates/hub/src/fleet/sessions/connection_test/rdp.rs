@@ -15,17 +15,16 @@ use rustls::{
     crypto::{CryptoProvider, ring, verify_tls12_signature, verify_tls13_signature},
     pki_types::{CertificateDer, ServerName, UnixTime},
 };
-use tokio::{
-    io::{AsyncReadExt as _, AsyncWriteExt as _},
-    net::TcpStream,
-};
+use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
 use tokio_rustls::TlsConnector;
 
 use super::{
     reach::{ReadError, reach, within},
     x224::{self, Negotiated, PROTOCOL_HYBRID, PROTOCOL_HYBRID_EX, TPKT_HEADER},
 };
-use crate::fleet::{devices::RdpSecurity, ssh::Target, trust::PresentedCertificate};
+use crate::fleet::{
+    devices::RdpSecurity, ssh::Target, targets::Reached, trust::PresentedCertificate,
+};
 
 /// What the server answered.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -79,7 +78,7 @@ const fn chosen_security(chosen: u32) -> RdpSecurity {
 
 /// Sends the Connection Request and reads the Connection Confirm, at most
 /// [`x224::MAX_CONFIRM`] bytes.
-async fn confirm(stream: &mut TcpStream, requested: u32) -> Result<Negotiated, ReadError> {
+async fn confirm(stream: &mut Reached, requested: u32) -> Result<Negotiated, ReadError> {
     let unexpected = |_| ReadError::Unexpected;
     stream
         .write_all(&x224::connection_request(requested))
@@ -94,8 +93,9 @@ async fn confirm(stream: &mut TcpStream, requested: u32) -> Result<Negotiated, R
 
 /// The TLS handshake on `stream` and the leaf certificate it presented. The connection is
 /// dropped right after, so the server receives nothing beyond the handshake.
-async fn leaf(stream: TcpStream) -> Result<PresentedCertificate, ReadError> {
-    let peer = stream.peer_addr().map_err(|_| ReadError::Unreachable)?.ip();
+async fn leaf(stream: Reached) -> Result<PresentedCertificate, ReadError> {
+    // A computer of the link has no network address to name: RDP through the link is HM-T14.
+    let peer = stream.network_peer().ok_or(ReadError::Unreachable)?;
     let tls = connector()?
         .connect(server_name(peer), stream)
         .await

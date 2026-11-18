@@ -5,6 +5,8 @@
 mod control;
 mod devices;
 mod hosted;
+mod hub_device;
 mod invites;
+mod presence;
 mod refusals;
 mod unaudited;

@@ -1,6 +1,8 @@
 //! The daily retention run reads the operator's periods once and gives each domain its own
 //! (HUB-005, D-25), also a period the operator set through `setRetention`.
 
+mod link_presence;
+
 use std::sync::Arc;
 
 use anima_hub::{
@@ -178,4 +180,16 @@ async fn hub_005_a_period_set_through_set_retention_applies_at_the_next_daily_ru
     keep(&db, now).await.unwrap();
 
     assert_eq!(event_messages(&db, "row of%").await, ["row of 20 days"]);
+}
+
+#[test]
+fn hmd_045_the_hub_reports_its_check_twice_in_each_interval() {
+    use std::time::Duration;
+
+    use super::hub_device::next_report;
+
+    let minute = Duration::from_secs(60);
+    assert_eq!(next_report(Some(minute)), Duration::from_secs(30));
+    // The check is gone: the hub asks again later, and a new start adds it.
+    assert_eq!(next_report(None), Duration::from_secs(30));
 }

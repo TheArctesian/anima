@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-cloud-device"
+description = "Enables the cloud_device command without any pre-configured scope."
+commands.allow = ["cloud_device"]
+
+[[permission]]
+identifier = "deny-cloud-device"
+description = "Denies the cloud_device command without any pre-configured scope."
+commands.deny = ["cloud_device"]
