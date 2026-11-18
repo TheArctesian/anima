@@ -234,10 +234,11 @@ Request:
   - A batch whose `agentUsage` breaks one of these rules is `MALFORMED`. The daemon sends only values that
     pass them.
   - The daemon reads only the session files `~/.claude/projects/*/*.jsonl` (with the sub-agent files
-    `~/.claude/projects/*/<id>/subagents/**/*.jsonl`) and `~/.codex/sessions/**/rollout-*.jsonl`, and of
-    each working folder only its `.git` link, the `commondir` file of a worktree and the git `config`
-    file (AIS-022). It never opens a credential or settings file of the programs. It does not follow a
-    symbolic link. On macOS it reads no git file under `~/Documents`, `~/Desktop`, `~/Downloads` or
+    `~/.claude/projects/*/<id>/subagents/**/agent-*.jsonl`, at most 3 folders down) and
+    `~/.codex/sessions/**/rollout-*.jsonl` (at most 4 folders down), and of the nearest folder at or
+    above each working folder that has a `.git`, and is below the home folder, only its `.git` link, the
+    `commondir` file of a worktree and the git `config` file (AIS-022). It never opens a credential or
+    settings file of the programs. It does not follow a symbolic link. On macOS it reads no git file under `~/Documents`, `~/Desktop`, `~/Downloads` or
     `~/Library/Mobile Documents`, so the system asks the operator for no access; such a session has no
     `repository`.
   - Only a daemon that runs as the user of the operator reads the files: the launchd agent and the systemd
@@ -246,9 +247,11 @@ Request:
   - The operator's settings are the file `agent-usage.json` in the daemon's folder (MET-002):
     `{ "off": true, "excludedFolders": ["/Users/me/private"], "excludedRepositories": ["github.com/me/secret"] }`,
     each member optional, at most 64 KiB and at most 256 entries in each list. A session whose working
-    folder, or the main folder of its repository, is under an excluded folder, or whose repository is
-    excluded, is not counted and not sent (AIS-008, AIS-023). A settings file that cannot be read or
-    parsed turns the function off (`turned_off`) and is logged once at start.
+    folder, or the main folder of its repository, is under an excluded folder (by whole folder names), or
+    whose repository is excluded (letter case ignored), is not counted and not sent (AIS-008, AIS-023):
+    the daemon stops reading its file at the first line that names the folder. A settings file that
+    cannot be read or parsed, or that has a member not named here, turns the function off
+    (`turned_off`) and is logged once at start.
   - The daemon reads the files at start and every 15 minutes; it reads each file from where it stopped
     and skips a file whose size and modification time did not change. It sends `agentUsage` in its first batch
     after start (with its `state`, even with no session days), and each session day whose counts changed;
