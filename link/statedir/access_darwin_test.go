@@ -4,6 +4,7 @@ package statedir_test
 
 import (
 	"errors"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -40,6 +41,57 @@ func TestLNK008AnInheritedAccessEntryDoesNotReachTheStateFiles(t *testing.T) {
 	listing = append(listing, inside...)
 	if strings.Contains(string(listing), "allow") {
 		t.Errorf("an access-control entry is on the state directory or a file in it:\n%s", listing)
+	}
+}
+
+func TestLNK008AnAccessEntryOnASocketLeftBehindIsRemoved(t *testing.T) {
+	path := shortDir(t)
+	first := open(t, path)
+	listener, err := first.Listen("c.sock")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// A killed process leaves its socket file. Keep the file when the listener closes.
+	listener.(*net.UnixListener).SetUnlinkOnClose(false)
+	listener.Close()
+	first.Close()
+	socket := filepath.Join(path, "c.sock")
+	if out, err := exec.Command("/bin/chmod", "+a", "everyone allow read,write", socket).CombinedOutput(); err != nil {
+		t.Skipf("this file system has no access-control entries: %v %s", err, out)
+	}
+
+	open(t, path)
+	listing, err := exec.Command("/bin/ls", "-le", socket).CombinedOutput()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(listing), "allow") {
+		t.Errorf("an access-control entry is on the socket:\n%s", listing)
+	}
+}
+
+func TestLNK008ASymbolicLinkInTheStateDirectoryKeepsTheAccessOfItsTarget(t *testing.T) {
+	base := t.TempDir()
+	target := filepath.Join(base, "outside")
+	if err := os.WriteFile(target, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if out, err := exec.Command("/bin/chmod", "+a", "everyone allow read", target).CombinedOutput(); err != nil {
+		t.Skipf("this file system has no access-control entries: %v %s", err, out)
+	}
+	path := filepath.Join(base, "state")
+	open(t, path).Close()
+	if err := os.Symlink(target, filepath.Join(path, "link")); err != nil {
+		t.Fatal(err)
+	}
+
+	open(t, path)
+	listing, err := exec.Command("/bin/ls", "-le", target).CombinedOutput()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(listing), "allow") {
+		t.Errorf("Open changed a file outside the state directory:\n%s", listing)
 	}
 }
 
