@@ -24,6 +24,9 @@ pub struct ListArgs {
     /// Only events at or after this time (RFC 3339, such as 2026-11-01T00:00:00Z).
     #[arg(long)]
     since: Option<String>,
+    /// Only events whose message or device name holds this text, with case ignored (LOG-011).
+    #[arg(long, value_name = "TEXT")]
+    search: Option<String>,
     /// Events per page, 1 to 200.
     #[arg(long, default_value_t = 100, value_parser = clap::value_parser!(i64).range(1..=MAX_PAGE))]
     limit: i64,
@@ -62,6 +65,7 @@ impl ListArgs {
             .choices("--source", &self.source)
             .flag("--device", self.device.as_deref())
             .flag("--since", self.since.as_deref())
+            .flag("--search", self.search.as_deref())
     }
 
     /// Prints the events as a table or, with `--json`, as the K1 `EventConnection`.
@@ -82,6 +86,7 @@ impl ListArgs {
                 .filter(|sources: &Vec<_>| !sources.is_empty()),
             device_id,
             since: self.since,
+            text: self.search,
         };
         let first = Some(page_size(self.limit, self.all, MAX_PAGE));
         let (hub, filter) = (&hub, &filter);

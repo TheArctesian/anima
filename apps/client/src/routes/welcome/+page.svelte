@@ -1,46 +1,46 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { resolve } from '$app/paths';
-  import { localHubCarried } from '$lib/desktop/local-hub/shell';
-  import Icon from '$lib/icons/Icon.svelte';
   import { resolve as entrance } from '$lib/motion/roles/resolve';
+  import { press } from '$lib/motion/roles/press';
   import { capabilities } from '$lib/platform/platform';
-  import { welcomeChoices } from './welcome';
+  import Doors from '../sign-in/doors/Doors.svelte';
+  import { signInChoice } from './welcome';
 
-  const { localHub, deviceLink } = capabilities();
-  /** Unknown until the shell answers; "Create" stays off until then. */
-  let carried = $state(false);
+  const { localHub, deviceLink, cloudAccount, keyStore } = capabilities();
+  // Only the hosted sign-in decides this screen; the build's hub programs matter on the page behind "Join a hub".
+  const signIn = $derived(signInChoice({ deviceLink, cloudAccount, localHub, carried: false }, keyStore));
   let title: HTMLElement | undefined = $state();
-  const choices = $derived(welcomeChoices({ deviceLink, localHub, carried }));
 
   onMount(() => {
     title?.focus();
-    if (localHub) void localHubCarried().then((answer) => (carried = answer));
   });
 </script>
 
-<h1 tabindex="-1" bind:this={title}>Welcome to Anima.ing</h1>
-<p class="lead">Choose how this computer reaches its hub.</p>
+<!-- The first screen of the first run (FRN-001, HMD-022), as frame 1 of docs/mockup/mobile/index.html: the doors, the
+     title, Sign in with the Anima.ing account, then Sign up and Join a hub side by side (operator, 2026-11-17). Sign up
+     opens the same account page as Sign in, where a new account is made. -->
+<div class="art" aria-hidden="true"><Doors /></div>
 
-<ul class="choices" {@attach entrance()}>
-  {#each choices as choice (choice.id)}
-    <li class:off={choice.off !== null} class:primary={choice.primary}>
-      {#if choice.href !== null && choice.off === null}
-        <a href={resolve(choice.href)} aria-describedby="{choice.id}-line">
-          <strong>{choice.title}</strong><Icon name="carbon:arrow-right" size="sm" />
-        </a>
+<div class="foot">
+  <h1 tabindex="-1" bind:this={title}>Welcome to Anima.ing</h1>
+  <div class="actions" {@attach entrance()}>
+    {#if signIn.off !== null}<p class="reason" id="sign-in-off">{signIn.off}</p>{/if}
+    {#if signIn.off === null}
+      <a class="button primary" href={resolve(signIn.href)} {@attach press()}>Sign in</a>
+    {:else}
+      <span class="button primary off" aria-disabled="true" aria-describedby="sign-in-off">Sign in</span>
+    {/if}
+    <div class="pair">
+      {#if signIn.off === null}
+        <a class="button" href={resolve(signIn.href)} {@attach press()}>Sign up</a>
       {:else}
-        <strong>{choice.title}</strong>
+        <span class="button off" aria-disabled="true" aria-describedby="sign-in-off">Sign up</span>
       {/if}
-      <p id="{choice.id}-line">{choice.line}</p>
-      {#if choice.off !== null}<p class="reason">{choice.off}</p>{/if}
-      {#if choice.id === 'sign-in'}
-        <!-- For an operator with a hub of their own on a server (VPS mode). -->
-        <a class="secondary" href={resolve('/sign-in')}>Use a hub address</a>
-      {/if}
-    </li>
-  {/each}
-</ul>
+      <a class="button" href={resolve('/welcome/hub')} {@attach press()}>Join a hub</a>
+    </div>
+  </div>
+</div>
 
 <style>
   h1:focus-visible,
@@ -49,63 +49,77 @@
     outline-offset: var(--border-focus);
   }
 
-  .lead {
-    margin: 0;
-    color: var(--text-secondary);
+  /* The doors stand above the title, as tall as the mockup draws them. */
+  .art {
+    position: relative;
+    block-size: calc(var(--space-16) * 5);
+    margin-inline: calc(var(--space-4) * -1);
   }
 
-  .choices {
+  .actions {
     display: grid;
-    gap: var(--space-3);
-    margin: 0;
-    padding: 0;
-    list-style: none;
+    gap: calc(var(--space-2) + var(--border-focus));
+    margin-block-start: var(--space-6);
   }
 
-  li {
+  .pair {
     display: grid;
-    gap: var(--space-1);
-    padding: var(--space-4);
-    border: var(--border-thin) solid var(--border-strong);
+    grid-template-columns: 1fr 1fr;
+    gap: calc(var(--space-2) + var(--border-focus));
+  }
+
+  .button {
+    display: grid;
+    place-items: center;
+    min-block-size: var(--space-12);
     border-radius: var(--radius-md);
     background: var(--surface-raised);
-  }
-
-  li a:first-child {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    min-block-size: var(--target-min-desktop);
     color: var(--text);
+    font-size: var(--text-lg);
+    font-weight: var(--weight-medium);
     text-decoration: none;
   }
 
-  li a:first-child:hover {
-    color: var(--accent-hover);
+  .button.primary {
+    min-block-size: calc(var(--space-12) + var(--space-2));
+    background: var(--accent);
+    color: var(--on-accent);
   }
 
-  /* The primary choice (HMD-022) carries the accent edge; the others stay plain. */
-  .primary:not(.off) {
-    border-color: var(--accent);
-  }
-
-  .off strong {
+  .button.off {
     opacity: var(--opacity-disabled);
   }
 
-  p {
-    margin: 0;
-    color: var(--text-secondary);
-    font-size: var(--text-sm);
-    line-height: var(--leading-normal);
+  /* Only a pointer that hovers: on a touch screen iOS takes the first tap as a hover. */
+  @media (hover: hover) {
+    a.button:hover {
+      background: var(--surface-hover);
+    }
+
+    a.button.primary:hover {
+      background: var(--accent-hover);
+    }
   }
 
-  .secondary {
-    display: inline-flex;
-    align-items: center;
-    min-block-size: var(--target-min-desktop);
-    justify-self: start;
-    color: var(--accent);
-    font-size: var(--text-sm);
+  .reason {
+    margin: 0;
+    padding-block: var(--space-3) var(--space-1);
+    border-block-start: var(--border-thin) solid var(--border-subtle);
+    color: var(--text-secondary);
+    font-size: var(--text-md);
+  }
+
+  /* On a phone the title and the actions sit low, under the thumb, and the doors fill the room above them (frame 1 of
+     the mobile mockup). */
+  @media (max-width: 767.98px) {
+    .art {
+      block-size: max(calc(var(--space-16) * 3), calc(100dvh - var(--safe-block-start) - var(--safe-block-end) - var(--space-16) * 6.5));
+    }
+
+    .foot {
+      position: fixed;
+      inset-inline: var(--space-6);
+      inset-block-end: calc(var(--safe-block-end) + var(--space-3));
+    }
   }
 </style>

@@ -28,6 +28,11 @@ body {
   --safe-block-end: max(env(safe-area-inset-bottom, 0px), var(--space-6));
 }
 
+/* The on-screen keyboard covers the gesture bar. The app's keyboard plugin sets `data-keyboard` (mobile plan M4-1). */
+:root[data-os="android"][data-keyboard] {
+  --safe-block-end: 0px;
+}
+
 html {
   background: var(--surface-sunken);
 }
@@ -40,8 +45,8 @@ body {
    (MOB-012). `:root` and `:not()` put this rule above a component's own rule for its field. */
 @media (pointer: coarse) {
   :root input:not([type="checkbox"], [type="radio"], [type="range"]),
-  :root textarea,
-  :root select {
+  :root textarea:not([hidden]),
+  :root select:not([hidden]) {
     font-size: var(--text-lg);
   }
 }
@@ -100,6 +105,8 @@ select {
     /* 56 px, the bar of the approved mockup (docs/mockup/mobile, frame 6). */
     --phone-bar-size: calc(var(--space-12) + var(--space-2));
     --phone-bar-block-size: calc(var(--phone-bar-size) + var(--border-thin) + var(--safe-block-end));
+    /* 15 px, the mockups' size for tabs, chips and rows that a thumb taps. */
+    --text-phone-row: calc((var(--text-md) + var(--text-lg)) / 2);
   }
 }
 

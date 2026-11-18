@@ -53,6 +53,9 @@ struct EventFilterInput {
     device_id: Option<ID>,
     /// Only events at or after this instant.
     since: Option<DateTime<Utc>>,
+    /// Only events whose message or device name holds this text, with case ignored. 1 to 200
+    /// characters; blank matches every event.
+    text: Option<String>,
 }
 
 /// Merged into the root `Query`; the name only keeps it apart from the other parts.
@@ -196,6 +199,9 @@ fn paging(log: Log, first: Option<i32>, after: Option<&str>) -> Result<Paging, F
 const PAGE_SIZE_MESSAGE: &str = "Ask for between 1 and 200 entries per page.";
 const CURSOR_MESSAGE: &str = "That page cursor is not valid. Start again from the first page.";
 const DEVICE_MESSAGE: &str = "That device id is not valid.";
+const TEXT_MESSAGE: &str = "Search for at most 200 characters.";
+/// The longest search text, in characters.
+const MAX_TEXT: usize = 200;
 
 const _: () = assert!(MAX_PAGE_SIZE == 200, "PAGE_SIZE_MESSAGE names the maximum");
 
@@ -213,7 +219,19 @@ fn event_filter(input: EventFilterInput) -> Result<EventFilter, FieldError> {
         sources: input.source,
         device,
         since: input.since,
+        text: search_text(input.text)?,
     })
+}
+
+/// The search text without the spaces around it; `None` when it is blank.
+fn search_text(text: Option<String>) -> Result<Option<String>, FieldError> {
+    let Some(text) = text.map(|text| text.trim().to_owned()) else {
+        return Ok(None);
+    };
+    if text.chars().count() > MAX_TEXT {
+        return Err(FieldError::new("filter.text", TEXT_MESSAGE));
+    }
+    Ok((!text.is_empty()).then_some(text))
 }
 
 #[cfg(test)]

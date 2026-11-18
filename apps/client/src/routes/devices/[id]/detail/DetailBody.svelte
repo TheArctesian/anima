@@ -29,6 +29,11 @@
   import TabPanel from '../tabs/TabPanel.svelte';
   import Tabs from '$lib/tabs/Tabs.svelte';
   import { TAB_ITEMS, isTab, placeSearch, readPlace, type SettingsSection, type TabPlace } from '../tabs/tabs';
+  import { phoneLayout } from '$lib/nav/phone/layout.svelte';
+  import PhoneChecks from '../phone/PhoneChecks.svelte';
+  import PhoneConnect from '../phone/PhoneConnect.svelte';
+  import PhoneHead from '../phone/PhoneHead.svelte';
+  import '../phone/device.css';
   import { detailCalls } from './calls';
   import DeviceMissing from './DeviceMissing.svelte';
 
@@ -54,6 +59,7 @@
   const loading = $derived(device === null && detail.error === null && !detail.missing);
   const checksLoading = $derived(detail.checks === null && detail.checksError === null);
   const metricsSource = $derived(device?.metricsSource ?? null);
+  const phone = $derived(phoneLayout());
 
   // One VPN subscription for the page; the Overview card reads this device's node from it (VPN-005).
   const vpnLive = new VpnLive(vpnApi(hub));
@@ -84,6 +90,11 @@
 
   $effect(() => {
     detail.showMetrics(place.tab, place.range);
+  });
+
+  // The phone layout's head shows the last 50 heartbeats and the checks' reason on every tab (mockup 5).
+  $effect(() => {
+    if (phone && device !== null) untrack(() => void Promise.all([detail.loadBeats(), detail.loadChecks()]));
   });
 
   /** D-9: the tab and section go to the URL, so Back and a reload restore them. */
@@ -130,8 +141,13 @@
   <OverviewSkeleton range={place.range} source={metricsSource ?? 'NONE'} ssh={device?.ssh ?? null} {now} />
 {/snippet}
 
-<section class="detail">
-  <DeviceBar {device} checks={detail.checks} onConnect={connect} onOpenWeb={openWeb} {screenSharing} onSettings={settings} tabs={device !== null || loading ? deviceTabs : undefined} />
+<section class="detail" class:phone-device-page={phone && device !== null}>
+  {#if phone && device !== null}
+    <PhoneHead {device} checks={detail.checks} beats={detail.beats} onSettings={() => { settings(null); }} />
+    <div class="phone-device-tabs">{@render deviceTabs()}</div>
+  {:else}
+    <DeviceBar {device} checks={detail.checks} onConnect={connect} onOpenWeb={openWeb} {screenSharing} onSettings={settings} tabs={device !== null || loading ? deviceTabs : undefined} />
+  {/if}
   {#if page.state.credentialError !== undefined}
     <p class="notice" role="alert">
       Device added, credential not stored: {page.state.credentialError} Enter it again in Settings.
@@ -151,6 +167,7 @@
         {#if detail.checksError !== null}
           {@render checksFailure(detail.checksError.message)}
         {:else}
+          {#if phone}<PhoneChecks checks={detail.checks ?? []} />{/if}
           <OverviewPanel
             {device}
             checks={detail.checks ?? []}
@@ -211,6 +228,7 @@
         />
       </TabPanel>
     {/if}
+    {#if phone}<PhoneConnect {device} onConnect={connect} onSettings={settings} />{/if}
   {/if}
 </section>
 

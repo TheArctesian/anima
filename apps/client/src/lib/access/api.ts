@@ -35,6 +35,7 @@ const ME = graphql(`
   query Me {
     me {
       username
+      totpEnabled
     }
   }
 `);
@@ -64,7 +65,7 @@ export interface AccessApi {
   /** Ends the token on the hub; for a browser the hub also clears the cookie (K7). */
   logout(): Promise<HubResult<boolean>>;
   /** Who the stored token belongs to; `UNAUTHENTICATED` when there is none or it is no longer valid. */
-  me(): Promise<HubResult<{ readonly username: string }>>;
+  me(): Promise<HubResult<{ readonly username: string; readonly totpEnabled: boolean }>>;
 }
 
 function mapValue<T, U>(result: HubResult<T>, pick: (value: T) => U): HubResult<U> {

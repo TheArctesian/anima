@@ -214,6 +214,8 @@ pub(super) async fn list_events(
            and ($3::uuid is null or device_id = $3) \
            and ($4::timestamptz is null or at >= $4) \
            and ($5::timestamptz is null or (at, id) < ($5, $6)) \
+           and ($8::text is null \
+                or strpos(lower(message || ' ' || coalesce(device_name, '')), lower($8)) > 0) \
          order by at desc, id desc limit $7",
     )
     .bind(severities)
@@ -223,6 +225,7 @@ pub(super) async fn list_events(
     .bind(after.map(|position| position.at))
     .bind(after.map(|position| position.id))
     .bind(limit)
+    .bind(filter.text.as_deref())
     .fetch_all(db)
     .await?;
     rows.into_iter().map(EventSummary::try_from).collect()

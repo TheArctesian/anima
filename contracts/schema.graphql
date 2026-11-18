@@ -1181,6 +1181,8 @@ input EventFilter {
   source: [EventSource!]
   deviceId: ID
   since: DateTime
+  "Only events whose message or device name holds this text, with case ignored. 1 to 200 characters; blank matches every event (LOG-011)."
+  text: String
 }
 
 type AuditEntry {

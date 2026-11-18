@@ -13,9 +13,11 @@
     onpaste: () => void;
     /** Why "Paste" is off (RA-033); the item then shows it and sends nothing. */
     pasteOff?: string | undefined;
+    /** The phone layout: the trigger is the session bar's menu button, an icon with no words (mockup 8). */
+    phone?: boolean;
   }
 
-  const { disabled, entries, onkeys, onpaste, pasteOff }: Props = $props();
+  const { disabled, entries, onkeys, onpaste, pasteOff, phone = false }: Props = $props();
   const menuId = $props.id();
   let open = $state(false);
   let trigger: HTMLButtonElement | undefined = $state();
@@ -101,13 +103,19 @@
     aria-haspopup="menu"
     aria-expanded={open}
     aria-controls={menuId}
-    title="Send keys"
+    class:phone
+    title={phone ? undefined : 'Send keys'}
+    aria-label={phone ? 'Session menu' : undefined}
     onclick={() => (open ? hide(false) : show('first'))}
     onkeydown={triggerKey}
     {@attach press()}
   >
-    <Icon name="carbon:password" />
-    <span>Keys</span>
+    {#if phone}
+      <Icon name="carbon:overflow-menu-vertical" />
+    {:else}
+      <Icon name="carbon:password" />
+      <span>Keys</span>
+    {/if}
   </button>
   {#if open}
     <!-- Solid, not a translucent material: the menu lies over the live display (MAT-008). -->

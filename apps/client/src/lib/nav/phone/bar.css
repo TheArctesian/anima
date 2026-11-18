@@ -124,4 +124,20 @@
   #main-nav .live .control .count.none {
     display: none;
   }
+
+  /* iOS draws the page under its status bar, so the page scrolls under the clock. A band of the same material as the
+     bar covers the top inset; where there is no inset (Android, a browser) the band has no height. When the keyboard
+     opens, iOS moves the visible area down the page and the band follows it (`visual-top.ts`). */
+  body::before {
+    content: "";
+    position: fixed;
+    inset-block-start: var(--visual-block-start, 0);
+    inset-inline: 0;
+    z-index: var(--layer-nav);
+    block-size: var(--safe-block-start);
+    background: var(--material-chrome-bg);
+    -webkit-backdrop-filter: blur(var(--material-chrome-blur)) saturate(var(--material-chrome-saturate));
+    backdrop-filter: blur(var(--material-chrome-blur)) saturate(var(--material-chrome-saturate));
+    pointer-events: none;
+  }
 }

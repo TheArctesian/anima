@@ -345,6 +345,24 @@
             }
           }
         },
+        "status-down-wash": {
+          "$type": "color",
+          "$value": {
+            "color": "{color.role.nord.status-down}",
+            "percent": 7,
+            "over": "transparent"
+          },
+          "$description": "A row that needs a look: the status colour at 7 % over the row, fading to nothing (mockup 4, MOB-015)."
+        },
+        "status-degraded-wash": {
+          "$type": "color",
+          "$value": {
+            "color": "{color.role.nord.status-degraded}",
+            "percent": 6,
+            "over": "transparent"
+          },
+          "$description": "A row that needs a look: the status colour at 6 % over the row, fading to nothing (mockup 4, MOB-015)."
+        },
         "status-degraded-text": {
           "$type": "color",
           "$value": "{color.nord.13-text}",
@@ -958,6 +976,24 @@
               }
             }
           }
+        },
+        "status-down-wash": {
+          "$type": "color",
+          "$value": {
+            "color": "{color.role.graphite.status-down}",
+            "percent": 7,
+            "over": "transparent"
+          },
+          "$description": "A row that needs a look: the status colour at 7 % over the row, fading to nothing (mockup 4, MOB-015)."
+        },
+        "status-degraded-wash": {
+          "$type": "color",
+          "$value": {
+            "color": "{color.role.graphite.status-degraded}",
+            "percent": 6,
+            "over": "transparent"
+          },
+          "$description": "A row that needs a look: the status colour at 6 % over the row, fading to nothing (mockup 4, MOB-015)."
         },
         "status-degraded-text": {
           "$type": "color",

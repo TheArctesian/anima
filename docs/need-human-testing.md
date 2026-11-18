@@ -460,7 +460,7 @@ No gate runs on Linux, and the Mac has no Linux target.
 
 1. On the Linux machine, get `main` and run `rustc --version` in the repository.
    Expected: `rustc 1.100.0` (`rust-toolchain.toml`).
-2. Run `cargo clippy -p anima-desktop --all-targets -- -D warnings`.
+2. Run `cargo clippy -p anima-app --all-targets -- -D warnings`.
    Expected: no error.
 3. Run `bun run --cwd apps/desktop tauri build` with `RUSTFLAGS` not set.
    Expected: the bundles are built. If the error of GH-52 comes again, copy it into GH-52 with the
@@ -528,6 +528,64 @@ on the real hub, with its year of entries, and no test ran the daily check there
    Expected: "Chain whole", with one more link than in step 2.
 4. The next day, open the Logs panel and filter for Error.
    Expected: no event that says "The audit log chain is broken".
+
+Result: Open.
+
+### HT-024: an SSH session on a phone, with the key row
+
+Built: on the branch `mobile/m1-shell` (mobile plan M4-1, MOB-020, RA-050; mockup 8). In the phone
+layout an SSH session fills the screen. A bar holds back, the device and the time, "Hide keyboard"
+and the session menu. A row of keys (Esc, Tab, Ctrl, Alt, the arrows, `| ~ / -`) sits over the
+on-screen keyboard. Ctrl and Alt latch for the next key.
+
+The tests cover the bytes of the latched keys and the time text. On 2026-11-17 a throwaway SSH
+server that ran only `cat -v` was used on the iPhone 17 Pro simulator and on the Android emulator:
+Ctrl then L gave `^L`, typing worked on iOS, and back kept the session open. No real phone and no
+real shell were used.
+
+Later on 2026-11-17 the Android keyboard plugin (`apps/desktop/keyboard`) and the emptied input box
+(`sessions/screen/operator/typing.ts`) were added. On the Android emulator with Gboard the key row then
+sat directly above the keyboard, and keys tapped on Gboard after typing in the device search arrived in
+order ("hello wo" and Backspace gave "hello w"). Before, the keyboard covered the key row and that text
+came out as "elloh". The same typing was correct on the iPhone simulator. Only Gboard was tried.
+
+1. Install a build of this branch on an iPhone. Sign in to a hub that has a device with SSH set
+   up, and open the device. Tap SSH. Expected: the session fills the screen, the bar shows the
+   device name and "SSH" with a time that counts up, and the navigation bar is hidden.
+2. Tap the terminal. Expected: the keyboard opens, and the key row is directly above it.
+3. Type `ls` and Return. Expected: the list of files. Tap Ctrl, then type `c` while a command
+   runs (for example `sleep 30`). Expected: the command stops, and Ctrl is no longer highlighted.
+4. Tap the up arrow of the row. Expected: the shell shows the last command again.
+5. Tap "Hide keyboard". Expected: the keyboard closes and the key row moves to the bottom of the
+   screen.
+6. Tap back. Expected: the device list with the navigation bar. The session is still open.
+7. Do steps 1 to 6 on an Android phone. Expected: the same results. Before step 1, type a word in
+   the device search; then in step 3 type a full sentence. Expected: the text arrives in the order
+   typed. If the phone has a second keyboard app (for example SwiftKey or Samsung Keyboard), do step 3
+   with it too.
+8. On the Android phone, tap the device search. Expected: the navigation bar sits directly above the
+   keyboard, with no gap between them.
+
+Result: Open.
+
+### HT-025: a phone joins a hub with an invite, through the link in the app
+
+Built: on the branch `mobile/m1-shell` (mobile plan M1-4 and M3-1, MOB-031, MOB-032, MOB-035, MOB-036). The Go link
+runs inside the phone app as a library (`link/cmd/phonelink`, built by `link/build-phone.sh`). "Join a hub", then
+"Join with an invite", joins the phone to a hub over the link, and the app reaches the hub at a loopback address.
+
+The tests cover the error codes of the library, a join with text that is not an invite, and a start with no hub. On
+2026-11-17 the Android emulator reached the link and wrote its folder, but the emulator had no route to the internet,
+so the relay never answered. The iPhone simulator stopped answering before the join. No phone joined a hub.
+
+1. Build this branch for an iPhone and an Android phone (`link/build-phone.sh`, then the Tauri build). On the hub, in
+   Settings, make an invite for a new device.
+2. On the phone, open the app, tap "Join a hub", then "Join with an invite". Paste the invite and tap Join. Expected:
+   the sign-in page of the hub opens.
+3. Sign in. Expected: the device list.
+4. Put the app in the background for one minute, then open it again. Expected: the device list loads again, with no
+   new invite.
+5. Settings, Leave hub. Expected: the welcome screen. On the hub, the phone is no longer on the link.
 
 Result: Open.
 

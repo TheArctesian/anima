@@ -19,6 +19,7 @@ export const DESKTOP_MAC: Capabilities = {
   stayAwake: true,
   localHub: true,
   deviceLink: true,
+  cloudAccount: true,
   overlayTitleBar: true,
 };
 
@@ -26,4 +27,4 @@ export const DESKTOP_MAC: Capabilities = {
 export const BROWSER: Capabilities = browserCapabilities;
 
 /** The mobile app: the key store and no desktop-only feature (MOB-004). */
-export const MOBILE: Capabilities = { ...browserCapabilities, keyStore: true };
+export const MOBILE: Capabilities = { ...browserCapabilities, keyStore: true, deviceLink: true };

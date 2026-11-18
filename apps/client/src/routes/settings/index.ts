@@ -11,6 +11,7 @@ export interface IndexShown {
 /** Each section of the page: its anchor, heading, icon and the line under the heading (SET-001). */
 export const SECTIONS = {
   account: { id: 'settings-account', title: 'Account', icon: 'carbon:user-avatar', description: 'Who is signed in to this hub.' },
+  leave: { id: 'settings-leave', title: 'Leave', icon: 'carbon:logout', description: 'Sign out and forget this hub.' },
   hub: { id: 'settings-hub', title: 'Hub', icon: 'carbon:network-enterprise', description: 'The hub this app talks to.' },
   // The next two show only when the shell or the hub says they apply, so the index leaves them out (FRN-006, FRN-009).
   localHub: { id: 'settings-local-hub', title: "This computer's hub", icon: 'carbon:bare-metal-server', description: 'The hub on this computer, its database and link.' },
