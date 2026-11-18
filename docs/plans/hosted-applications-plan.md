@@ -1,17 +1,18 @@
 ---
 kind: Plan
 state: In progress
-evidence: Approved by R-149 (operator, 2026-11-18): stage 1 (the containers of a machine, read-only, with a screen in the client) and stage 2 (start, stop, install, update, remove, the catalogue). Stage 2 waits for the work route (task W1). HOST-004 to HOST-009 are marked "Not approved". Version 2 (2026-11-18). Version 3 (2026-11-18) adds HOST-015 to HOST-025 from a comparison with Arcane; they are proposed and marked "Not approved" (OD-HOST-3, OD-HOST-4). All tasks after H0 are Not started. OD-HOST-1 to OD-HOST-4 are open.
+evidence: Approved by R-149 (operator, 2026-11-18): stage 1 (the containers of a machine, read-only, with a screen in the client) and stage 2 (start, stop, install, update, remove, the catalogue). Stage 2 waits for the work route (task W1). HOST-004 to HOST-009 are marked "Not approved". Version 2 (2026-11-18). Version 4 (2026-11-18): R-150 approves HOST-015 to HOST-025, which came from a comparison with Arcane, in three groups (with stage 1, with stage 2, and HOST-024 after a security review); the tasks are H8 to H12. All tasks after H0 are Not started. OD-HOST-1 and OD-HOST-2 are open.
 ---
 
 # Plan: hosted applications (containers that run all the time)
 
 Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds the state of this plan (PLN-005).
 
-Version: 3. Date: 2026-11-18. Version 1 (2026-11-12) was the proposal. Version 2 is the plan: R-149
+Version: 4. Date: 2026-11-18. Version 1 (2026-11-12) was the proposal. Version 2 is the plan: R-149
 approves it in two stages and decides the open decisions of version 1. Version 3 adds the comparison
 with Arcane and the proposed requirements HOST-015 to HOST-025 (operator, 2026-11-18: "find more of
-their features and styling components that we could use, and expand our plan"). It approves nothing.
+their features and styling components that we could use, and expand our plan"). Version 4 records
+the approval of those requirements (R-150) and adds the tasks H8 to H12.
 From: the planning session of 2026-11-12. The operator wants easy self-hosting of published
 applications on the owned machines: the container management part of Portainer, not the build
 pipeline of Coolify. On 2026-11-18 the operator said: "a portainer clone also does need to be built
@@ -90,6 +91,56 @@ rules apply:
 HOST-002, HOST-003 and HOST-014 change a device. They use the work route of
 [jobs.md](../proposals/jobs.md) with fixed work types (USE-006); the hub cannot name a command.
 
+### From the comparison with Arcane (approved, R-150)
+
+The operator asked for these on 2026-11-18 as an expansion of the plan and approved them the same
+day (R-150). Each one says how it reads or changes a machine, because Arcane uses the Docker socket
+and Anima does not. With stage 1: HOST-015, HOST-017, HOST-019, HOST-020 and HOST-021. With stage 2:
+HOST-016, HOST-018, HOST-022 and HOST-023. After a security review of the session: HOST-024. With
+the catalogue: HOST-025.
+
+- **HOST-015.** The log of a container has a search, a filter by level, a switch for
+  line wrap, a switch for timestamps and a download of the lines that are shown. The client does this
+  work on the lines that HOST-001 gives. No new hub function.
+- **HOST-016.** The log of a container can follow new lines. It needs a stream from
+  the machine, so it waits for the daemon path of stage 2. No MCP tool returns it (MCP-004).
+- **HOST-017.** The operator can see the details of one container, read-only: the
+  command, the restart policy, the health check and its last result, the mounts, the networks with
+  the addresses, the labels and the processes. The values of environment variables can hold a
+  secret: the hub gives the names only (LOG-007), and no MCP tool returns them.
+- **HOST-018.** Each row of the container table can show the processor use and the
+  memory use of the container. The daemon measures them and pushes them with its readings; the hub
+  starts no command for them. [deferred.md](../deferred.md), "Ideas from Coolify Sentinel", has the
+  calculation.
+- **HOST-019.** A Compose project has one state that the hub makes from the states of
+  its containers, for example "Partly running" when one container of three has stopped. One rule
+  gives the same state in the client, the `anima` command and the MCP tool.
+  [deferred.md](../deferred.md), "Container status rules", has the order of the states.
+- **HOST-020.** The operator can see the images, the volumes and the networks of a
+  machine, read-only, with the size of each image and volume, the containers that use it, and the
+  space that a clean-up can free.
+- **HOST-021.** Anima shows when a newer image exists for a container: the hub
+  compares the digest of the image on the machine with the digest of the same tag in its registry.
+  It reads public registries only in the first version. It updates nothing by itself (ETH-004); the
+  update is HOST-002.
+- **HOST-022.** The install of HOST-003 has an editor for the Compose file and for
+  its environment file, with a check of the syntax before the install, and a function that changes
+  a `docker run` command into a Compose file. The values of the environment file are a secret of
+  the operator: the hub keeps them sealed and writes none of them to a log (LOG-007).
+- **HOST-023.** The operator can remove stopped containers, unused images, unused
+  networks and unused volumes of a machine. Anima shows what each choice removes and how much
+  space it frees, and asks before it removes a volume (HOST-014). It is a fixed work type of the
+  work route (USE-006).
+- **HOST-024.** The operator can open a terminal in a running container. It is a
+  session of the hub (design specification Section 6.3), with the same access rules and the same
+  record as an SSH session. No MCP tool opens it (cli-mcp-plan.md, Section 7).
+- **HOST-025.** The catalogue of HOST-012 reads a list of recipes from an address
+  that the operator adds. Each entry has an identifier, a name, a description, a version, an
+  author, tags, and the addresses of the Compose file, the environment file, the documentation and
+  the icon. This is the form of the template registry of Arcane, so a list that is made for Arcane
+  also works in Anima (OD-HOST-4). Anima shows the Compose file before the install and installs
+  nothing by itself.
+
 ### Not approved
 
 No ruling names these requirements. They are not built (PLN-007).
@@ -105,54 +156,6 @@ No ruling names these requirements. They are not built (PLN-007).
   interface entry (WEB-001).
 - **HOST-009.** Not approved. Anima does not build source code, supply a reverse proxy, or make
   preview deployments. Use Vercel or Coolify for these.
-
-### Proposed from Arcane (not approved)
-
-The operator asked for these on 2026-11-18 as an expansion of the plan. No ruling names them, so they
-are not built (PLN-007). OD-HOST-3 asks for the approval. Each one says how it reads or changes a
-machine, because Arcane uses the Docker socket and Anima does not.
-
-- **HOST-015.** Not approved. The log of a container has a search, a filter by level, a switch for
-  line wrap, a switch for timestamps and a download of the lines that are shown. The client does this
-  work on the lines that HOST-001 gives. No new hub function.
-- **HOST-016.** Not approved. The log of a container can follow new lines. It needs a stream from
-  the machine, so it waits for the daemon path of stage 2. No MCP tool returns it (MCP-004).
-- **HOST-017.** Not approved. The operator can see the details of one container, read-only: the
-  command, the restart policy, the health check and its last result, the mounts, the networks with
-  the addresses, the labels and the processes. The values of environment variables can hold a
-  secret: the hub gives the names only (LOG-007), and no MCP tool returns them.
-- **HOST-018.** Not approved. Each row of the container table can show the processor use and the
-  memory use of the container. The daemon measures them and pushes them with its readings; the hub
-  starts no command for them. [deferred.md](../deferred.md), "Ideas from Coolify Sentinel", has the
-  calculation.
-- **HOST-019.** Not approved. A Compose project has one state that the hub makes from the states of
-  its containers, for example "Partly running" when one container of three has stopped. One rule
-  gives the same state in the client, the `anima` command and the MCP tool.
-  [deferred.md](../deferred.md), "Container status rules", has the order of the states.
-- **HOST-020.** Not approved. The operator can see the images, the volumes and the networks of a
-  machine, read-only, with the size of each image and volume, the containers that use it, and the
-  space that a clean-up can free.
-- **HOST-021.** Not approved. Anima shows when a newer image exists for a container: the hub
-  compares the digest of the image on the machine with the digest of the same tag in its registry.
-  It reads public registries only in the first version. It updates nothing by itself (ETH-004); the
-  update is HOST-002.
-- **HOST-022.** Not approved. The install of HOST-003 has an editor for the Compose file and for
-  its environment file, with a check of the syntax before the install, and a function that changes
-  a `docker run` command into a Compose file. The values of the environment file are a secret of
-  the operator: the hub keeps them sealed and writes none of them to a log (LOG-007).
-- **HOST-023.** Not approved. The operator can remove stopped containers, unused images, unused
-  networks and unused volumes of a machine. Anima shows what each choice removes and how much
-  space it frees, and asks before it removes a volume (HOST-014). It is a fixed work type of the
-  work route (USE-006).
-- **HOST-024.** Not approved. The operator can open a terminal in a running container. It is a
-  session of the hub (design specification Section 6.3), with the same access rules and the same
-  record as an SSH session. No MCP tool opens it (cli-mcp-plan.md, Section 7).
-- **HOST-025.** Not approved. The catalogue of HOST-012 reads a list of recipes from an address
-  that the operator adds. Each entry has an identifier, a name, a description, a version, an
-  author, tags, and the addresses of the Compose file, the environment file, the documentation and
-  the icon. This is the form of the template registry of Arcane, so a list that is made for Arcane
-  also works in Anima (OD-HOST-4). Anima shows the Compose file before the install and installs
-  nothing by itself.
 
 ## Work that already exists
 
@@ -227,6 +230,8 @@ Paths are from `frontend/src/lib/components/` of Arcane. "Anima has" names the p
 | OD-HOST-C | What does the first version manage? | Two stages. Stage 1: the list with state and logs. Stage 2: start, stop, install from a Compose file, update and remove (R-149). |
 | OD-HOST-D | Docker only, or Docker and Podman? | Docker only (R-149, HOST-010). |
 | OD-HOST-E | Which applications are first in the catalogue? | OwnTracks Recorder, then Dawarich (R-149, HOST-012). |
+| OD-HOST-3 | Are HOST-015 to HOST-024 approved, and in which stage is each one? | Approved in three groups: with stage 1, HOST-015, HOST-017, HOST-019, HOST-020 and HOST-021; with stage 2, HOST-016, HOST-018, HOST-022 and HOST-023; after a security review of the session, HOST-024 (R-150). |
+| OD-HOST-4 | Does the catalogue read the form of the template registry of Arcane (HOST-025)? | Yes, for reading. A list of a different person is off until the operator adds its address (R-150). |
 | OD-HOST-F | Does row 4.9 move to a higher tier? | No move. Stage 1 is built now because it needs nothing of a higher row; stage 2 waits for task W1 of row 4.7 (R-149). |
 
 ## Open decisions
@@ -235,8 +240,6 @@ Paths are from `frontend/src/lib/components/` of Arcane. "Anima has" names the p
 | --- | --- | --- |
 | OD-HOST-1 | How is the data copy of HOST-005 made: a backup of the volume, or replication that the application supplies? | A backup of the volume, kept by [bulk-data-placement.md](../proposals/bulk-data-placement.md). It is asked when HOST-004 to HOST-008 come to approval; it blocks no task of this plan. |
 | OD-HOST-2 | Do you approve HOST-004 to HOST-009 (the home machine, the data copy, the move, a check and a web interface for each application, and no build platform)? | Yes, after stage 2 is in use. It blocks no task of this plan. |
-| OD-HOST-3 | Do you approve HOST-015 to HOST-024 (the functions that the comparison with Arcane found), and in which stage is each one? | Yes, in three groups. With stage 1, because they only read through the SSH link: HOST-015, HOST-017, HOST-019, HOST-020 and HOST-021. With stage 2, because they need the daemon or change a machine: HOST-016, HOST-018, HOST-022 and HOST-023. Later, after a security review of the session: HOST-024. It blocks no task of this plan; H1 to H4 are built without them. |
-| OD-HOST-4 | Does the catalogue read the form of the template registry of Arcane (HOST-025), so that the lists of other persons work in Anima? | Yes, for reading. Anima makes its own list for OwnTracks Recorder and Dawarich in the same form. A list of a different person is off until the operator adds its address. It blocks no task before H7. |
 
 ## Tasks
 
@@ -252,7 +255,12 @@ The order is hub API, `anima` command, MCP tool, client (CMD-030). A task is bui
 | H4 | The check of stage 1 on a real machine that runs Docker. An entry in [need-human-testing.md](../need-human-testing.md) (PLN-014). It changes no server of the operator: it only reads (VPS-005, R-050). | H1 to H3 | Not started | |
 | H5 | Stage 2: start, stop and restart a container (HOST-002), with the controls in the screen of H3. | Task W1 of [projects-and-builds-plan.md](projects-and-builds-plan.md) (the work route); H3 | Not started | |
 | H6 | Stage 2: install from a Compose file, update and remove (HOST-002, HOST-003, HOST-014). | H5 | Not started | |
-| H7 | The catalogue, with OwnTracks Recorder and then Dawarich (HOST-012). Task T6 of E0-5 in [extensions-plan.md](extensions-plan.md) (R-145) is a quick way to deploy an OwnTracks server; the session that builds H7 and the engine session agree which recipe is the one recipe, so that there are not two. | H6; K-E4 of the engine | Not started | |
+| H7 | The catalogue, with OwnTracks Recorder and then Dawarich (HOST-012). The catalogue reads a list of recipes in the form of HOST-025 (R-150). Task T6 of E0-5 in [extensions-plan.md](extensions-plan.md) (R-145) is a quick way to deploy an OwnTracks server; the session that builds H7 and the engine session agree which recipe is the one recipe, so that there are not two. | H6; K-E4 of the engine | Not started | |
+| H8 | Stage 1, more to read, in the hub, the `anima` command and the MCP tool (CMD-030), with the additions to K1 (CON-001): the details of one container, with the names of the environment variables and no values (HOST-017); the one state of a Compose project (HOST-019); the images, the volumes and the networks of a machine (HOST-020); a newer image for a container (HOST-021). Fixed read-only commands through the SSH link, as H1. No MCP tool returns the details of the environment. | H1, H2 | Not started | |
+| H9 | Stage 1, the client for H8: the detail of a container, the state of a project in the table, the lists of images, volumes and networks, and the mark for a newer image; and the log functions of HOST-015, which need no hub function. The mockup in the same commit (PLN-019). An entry in [need-human-testing.md](../need-human-testing.md) for a real machine (PLN-014). | H3, H8 | Not started | |
+| H10 | Stage 2, through the daemon: the log that follows new lines (HOST-016) and the processor and memory use of each container (HOST-018), with the change to the daemon contract that they need (K8, CON-001). | H5 | Not started | |
+| H11 | Stage 2: the editor for the Compose file and its environment file, the syntax check and the `docker run` function (HOST-022); the clean-up of a machine (HOST-023). | H6 | Not started | |
+| H12 | The terminal in a running container (HOST-024). First a security review of the session, with its findings in [security-findings.md](../security-findings.md); the build starts only when the review has no open finding of this task. | H5 | Not started | |
 
 ## Needs
 
