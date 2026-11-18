@@ -22,7 +22,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | --- | --- | --- |
 | 4.1 | Finish the device manager | Operator: the acceptance run (WP-53); the Linux release and the check that an installed application updates (R7); the checks of the rename to `anima-daemon` (HT-018, HT-019); the Linux checks of the defects GH-52 and GH-54 (HT-020, HT-021). Agent: nothing; GH-53 is corrected |
 | 4.16 | One-click install | Operator: the live checks (need-human-testing.md, "One-click") |
-| 4.17 | The hosted mode and the shared pool | Operator: approval of HMD-001 to HMD-036, and HM-D4 |
+| 4.17 | The hosted mode and the shared pool | Operator: the first real sign-in (HT-022 in need-human-testing.md); approval of HMD-001 to HMD-036; HM-D4, HM-D7, HM-D11 and HM-D13. Agent: nothing until HT-022 has a result |
 | 4.18 | Update the daemon and the hub | Operator: approval of ROL-001 to ROL-052 (only R-122 is approved), and a Linux release for the tasks that need one. Agent: nothing until a ruling names a task |
 | 4.2 | Restore a backup and move the coordinator | Operator: approval of FND-006. No task breakdown yet |
 | 4.3 | Decisions and approvals for the foundation | Operator: each decision and approval in the row |
@@ -35,7 +35,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.13 | A hash chain for the audit log | Operator: a requirement for the hash chain. No requirement of the design specification has it; GH-2 holds the proposal. Agent: nothing |
 | 4.19 | The watchdog | Operator: a tier and approval of the direction (OD-W22) |
 
-## 2. Open decisions (102)
+## 2. Open decisions (106)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -44,7 +44,6 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-C2 | One daemon binary or two | Keep `anima-daemon` separate from `anima-collector`. They run on different devices. Share the enrolment code in a library crate. | [plans/compute-plan.md](plans/compute-plan.md) |
 | OD-C3 | Conformance tolerances | Set from the C4 measurements (RNG-032). | [plans/compute-plan.md](plans/compute-plan.md) |
 | OD-C4 | Where the block adapters live | Offer them to the Shard project first. Keep them in `blocks/` only if Shard does not accept them. | [plans/compute-plan.md](plans/compute-plan.md) |
-| OD-C5 | Router location | The router runs in the hub on the VPS (OD-9). Each request then goes caller to VPS to node. Measure the added delay in C1. If it is too high, run a second route… | [plans/compute-plan.md](plans/compute-plan.md) |
 | OD-C6 | Where conversations are kept | On the client device until the vault exists (extensions plan, Section 2.4). Then keep them sealed on the hub, so that all clients see them. | [plans/compute-plan.md](plans/compute-plan.md) |
 | OD-C7 | Access to `ai.anima.ing` | VPN only, with Headscale DNS and a DNS-01 certificate (Section 6.1). Confirm that the operator controls the DNS zone of `anima.ing`. Public access is out of sco… | [plans/compute-plan.md](plans/compute-plan.md) |
 | OD-C8 | Device policy default for client computers | Off by default. The operator sets each client computer on. | [plans/compute-plan.md](plans/compute-plan.md) |
@@ -83,6 +82,11 @@ This document is generated: `bun run quality:register` writes it from the docume
 | D-8 | Time Machine copies the cluster while the server runs. Such a copy restores, at best, as a crash recovery. Exclude `<root>/cluster` from Time Machine (`tmutil a… | Yes. | [plans/one-click/s3-database-tasks.md](plans/one-click/s3-database-tasks.md) |
 | D-9 | Raw sample retention in the application mode: 30 days needs about 4.9 GB for 10 devices with a daemon (spike 10.2). The charts do not read raw samples. | 3 days in the application mode. This is a hub setting (`retention.periods`) and a DB-009 delta, not S3 code. It waits from the last report. | [plans/one-click/s3-database-tasks.md](plans/one-click/s3-database-tasks.md) |
 | D-10 | The oldest Linux that the application supports. The tree is built on the release builder, so it follows the application. | State the builder's distribution in the release notes; no extra build container for the first version. | [plans/one-click/s3-database-tasks.md](plans/one-click/s3-database-tasks.md) |
+| OD-AI1 | Does one document own the model address, the list of models and the record of use? | Yes. The model gateway owns the address on each computer, the list and the record. The compute plan owns the machines: runtimes, pulls, placement. The router of… | [proposals/ai-direction.md](proposals/ai-direction.md) |
+| OD-AI4 | Is a pane that runs the vendor program as the user of the operator the first way to run an AI agent? | Yes. It is the way that works with a subscription. A run in a container stays in agent-runs.md and comes later. The daemon gets one new function, the session se… | [proposals/ai-direction.md](proposals/ai-direction.md) |
+| OD-AI5 | Does Anima write its own session server, or embed Herdr? | Open decision 1 of Section 4.12.1 of the extensions plan holds this. Recommendation there: not ruled. | [proposals/ai-direction.md](proposals/ai-direction.md) |
+| OD-AI6 | Does the automatic choice of a model wait? | Yes. The operator or the caller names the model. The rule "cheapest model" of a bot waits for its own decision. | [proposals/ai-direction.md](proposals/ai-direction.md) |
+| OD-AI7 | Does job 1 get its own row in Section 4 of the work plan, before row 4.5? | Yes: one row "AI agents: usage and panes", tier 2b, before the model service. Row 4.5 keeps its number. | [proposals/ai-direction.md](proposals/ai-direction.md) |
 | OD-ROL-1 | Where a daemon gets its files: from its hub, or from the release host | From its hub (ROL-008). MET-020 and the VPN rules stay, and a machine with no internet access can update. | [proposals/daemon-and-hub-update.md](proposals/daemon-and-hub-update.md) |
 | OD-ROL-2 | The signing key: the updater key of UPD-012 for each program, or a second key for the daemon and the hub | One key in the first version, with the program name in the signed record (ROL-013). It is one key to keep safe and to back up. A second key is correct if the op… | [proposals/daemon-and-hub-update.md](proposals/daemon-and-hub-update.md) |
 | OD-ROL-3 | The form of the published hub: an image file on the release host, an image in a registry, or a build from source on the machine of the hub | An image file on the release host, with its digest in the signed record. GitHub is not in the release path (R-107), and a build from source is slow and needs th… | [proposals/daemon-and-hub-update.md](proposals/daemon-and-hub-update.md) |
@@ -142,7 +146,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-20 | Domain name and host of the website (SITE-011) | Host decided: Vercel (operator, 2026-11-13). Domain open: the operator decides. The site is built and not deployed. | [spec/design-spec.md](spec/design-spec.md) |
 | OD-22 | What the website can say about the paid hosted option (SITE-012; work-plan.md OD-W2, other-operators.md) | Nothing now. The proposal has no requirements. Add text only after the operator approves the words. | [spec/design-spec.md](spec/design-spec.md) |
 
-## 3. Documents that wait for an approval (27)
+## 3. Documents that wait for an approval (28)
 
 | Document | Kind | State |
 | --- | --- | --- |
@@ -154,6 +158,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [plans/ui-redesign-plan.md](plans/ui-redesign-plan.md) | Plan | Not checked |
 | [proposals/add-this-machine.md](proposals/add-this-machine.md) | Proposal | Draft. Build state not checked |
 | [proposals/agent-runs.md](proposals/agent-runs.md) | Proposal | Draft |
+| [proposals/ai-direction.md](proposals/ai-direction.md) | Proposal | Draft |
 | [proposals/bots.md](proposals/bots.md) | Proposal | Draft |
 | [proposals/bulk-data-placement.md](proposals/bulk-data-placement.md) | Proposal | Direction decided |
 | [proposals/cloud-machines.md](proposals/cloud-machines.md) | Proposal | Draft |

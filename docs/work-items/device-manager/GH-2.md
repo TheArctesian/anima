@@ -14,6 +14,17 @@ Progress: the index [README.md](../README.md) holds the state of this item (PLN-
 | Text | Copied from the issue on 2026-11-16 (R-119). Only the links were changed. Not written in STE yet. "This issue" in the text means this document. |
 | Note | Only phase L0 stays (OD-W9). |
 
+## Tasks of phase L0
+
+The requirements come first (PLN-013). The build follows CMD-030.
+
+| Task | Content | State | Commits |
+| --- | --- | --- | --- |
+| L0-T1 | The requirements of the hash chain in the design specification Section 3.8, and the ruling | In progress (branch `claude/audit-hash-chain-f3d8ea`) | |
+| L0-T2 | The hub: the migration, the chain on each audit write, the check of the chain, the GraphQL field (K1, K2, K3) | Not started. Waits for L0-T1 | |
+| L0-T3 | The `anima audit` command and the MCP tool for the check | Not started. Waits for L0-T2 | |
+| L0-T4 | The client: show if the chain is whole | Not started. Waits for L0-T3 | |
+
 ## Scope made smaller — 2026-11-12
 
 The operator decided on 2026-11-12 that Anima keeps **one home with copies that a policy places**, not a copy of the data on each node that syncs between nodes ("lets go with the one in the side chat as the every machine has alocal copy doesn't really make sense as different computer have different capacities"). The operator then selected "Narrow it" for this issue.

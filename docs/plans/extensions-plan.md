@@ -863,6 +863,49 @@ Reminders deliver only to the devices of the operator.
 - **AIS-007.** Each session must be a timeline entry with the category "code".
 - **AIS-008.** The operator must be able to exclude a repository or a folder. The collector must not read sessions from an excluded folder.
 
+#### 4.12.0 Usage counts first (operator direction 2026-11-17)
+
+Status: approved for build (R-135, operator, 2026-11-17: "Approve and build"). The requirements
+AIS-018 to AIS-024 are approved. R-133 and R-134 decided their direction. The map is
+[ai-direction.md](../proposals/ai-direction.md), step 1. The tasks are below.
+
+**Purpose.** Show the use of each AI agent program on each machine before the vault and the
+collector exist. Counts have no text, so they are Class C and need no vault.
+
+- **AIS-018.** `anima-daemon` must read the session files of Claude Code and Codex (the table of
+  sources above) on its machine. For each session it must send only: the source, the external ID,
+  the model, the start, the end, the name of the repository (AIS-002; R-134), and the counts of
+  prompts, tool calls and tokens. It must not send text, a title or the path of a folder.
+- **AIS-019.** The counts must be an optional member of the push batch of K8, as the tool
+  inventory is (CAP-029). The daemon makes no new call.
+- **AIS-020.** The hub must keep the counts and give them by device, by source, by model and by
+  day. The function must have its command and its MCP tool (CMD-030), then its page. The command
+  is `anima agents usage` and the MCP tool is `anima_agents_usage`. The hub domain is
+  `fleet/agent_usage/`.
+- **AIS-021.** The hub must show an estimate of the cost: the tokens times the public price of
+  the model (MGW-014 holds the prices). The text must say that it is an estimate and not the bill
+  of the subscription.
+- **AIS-022.** The daemon must not read a login, the name of an account or a usage limit
+  (CAP-025). The function must not show the quota that is left on an account.
+- **AIS-023.** The exclusions of AIS-008 apply to the counts. When the collector reads the same
+  session (AIS-001), the hub must keep one session, not two.
+
+- **AIS-024.** Only a daemon that runs as the user of the operator reads the session files: the
+  launchd agent on macOS and the systemd user unit on Linux. The systemd system unit keeps its
+  sandbox and sends no counts (HT-005). For such a device the page and the command must give the
+  reason: "This daemon runs as a system unit and cannot see the sessions of a user."
+
+The build order is CMD-030. Each task has its tests. The counts come from a device, so the MCP
+result gives them in named fields with a length limit (MCP-008).
+
+| Task | Content | State | Commits |
+| --- | --- | --- | --- |
+| AU-1 | The contract: the optional member `agentUsage` of the push batch (K8), the query in K1, the table (K2). The daemon: the pure parse of the session files of Claude Code and Codex in `daemon-core`, the reader, the exclusions (AIS-018, AIS-019, AIS-022 to AIS-024) | Not started | — |
+| AU-2 | The hub: `fleet/agent_usage/` keeps the counts of each session and gives them by device, source, model, repository and day, with the estimate of the cost (AIS-020, AIS-021, AIS-023) | Not started | — |
+| AU-3 | `anima agents usage` and the MCP tool `anima_agents_usage` (AIS-020, CMD-030, CMD-031) | Not started | — |
+| AU-4 | The page in the client, with its fixture for the mock hub and its mockup (AIS-020, AIS-021, AIS-024; PLN-019) | Not started | — |
+| AU-5 | The security review (the daemon reads files of the home folder), the entry in the human testing list for real machines | Not started | — |
+
 #### 4.12.1 Agent panes (Herdr-style, operator direction 2026-11-16)
 
 **Purpose.** Do everything [Herdr](https://herdr.dev) does for a herd of coding agents, inside this
