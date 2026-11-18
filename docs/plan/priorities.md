@@ -45,6 +45,7 @@ The table gives the order. The section of each row below the table gives the wor
 | 4.10 | 3 | Standby copies of the coordinator database | Foundation | Parked until after the hosted launch (R-161). | The hosted launch. Nothing for an agent |
 | 4.11 | 3 | Bulk data on the operator's machines | Foundation | Parked until after the hosted launch (R-161). | The hosted launch. Nothing for an agent. E0-5 does not wait for it (R-145) |
 | 4.19 | 3 | The watchdog | See, Use | Proposal, direction decided (R-162). After jobs (row 4.7). | Operator: approval of the requirements WDG-001 to WDG-041. Agent: nothing; no ruling names a task |
+| 4.20 | 3 | The terminal screen (`anima tui`) | See, Reach | Draft, not approved. Operator direction relayed by Anima Product Ideas (2026-11-18), needs first-hand confirmation. Starts after R8a to R8d (row 4.6). | Operator: OD-TUI1 to OD-TUI8 in [cli-mcp-plan.md](../plans/cli-mcp-plan.md) Section 11.7. Agent: None. TU1 to TU10 wait for OD-TUI1 and R8d |
 | 4.12 | 4 | Level 2: one model across machines | Use | Parked. | Row 4.5 in daily use |
 | 4.13 | 4 | A hash chain for the audit log | Foundation | The operator made the work item smaller on 2026-11-12 | Operator: HT-023 on the real hub. Agent: nothing |
 | 4.14 | 4 | Mobile clients (Phase 5) and site operations (Phase 6) | Foundation, Reach | In progress (mobile). Planned (Phase 6). | Agent: M1-3 of [mobile-plan.md](../plans/mobile-plan.md) Section 5. Its tasks in progress belong to the session on the branch `mobile/m1-shell`. Phase 6 waits for rows 4.4 to 4.8 |
@@ -202,6 +203,14 @@ The table gives the order. The section of each row below the table gives the wor
 - Work items: No work item yet. The tasks are in "Tasks" of [watchdog.md](../proposals/watchdog.md)
 - State: Proposal, direction decided (R-162, operator, 2026-11-18: "A: approve, tier 3"). The decisions OD-WDG-1 to OD-WDG-13 take the recommendations of the proposal. The requirements WDG-001 to WDG-041 are not approved one by one, and no ruling names a task. R-160 is the ruling for OD-W10. It needs a change to K8; its second stage needs the work route (group W).
 
+### 4.20 The terminal screen
+
+- Tier: 3, after R8a to R8d of row 4.6 (R-151). This is the direction that Anima Product Ideas relayed on 2026-11-18. It is not first-hand and it is not a ruling.
+- Category: See, Reach
+- Work: `anima tui`, a read-only full-screen view of the hub in a terminal (devices with live status, events, sessions) that hands the terminal to `anima ssh` (TUI-001 to TUI-083)
+- Work items: No work item yet. The tasks TU1 to TU10 are in [cli-mcp-plan.md](../plans/cli-mcp-plan.md) Section 11.8
+- State: Draft. No requirement is approved and no task is built. OD-TUI1 asks the operator to confirm the relayed direction in one step. Windows is out of scope. A change to the design specification Section 2 is proposed and not made.
+
 ### Notes on the order
 
 Notes:
@@ -210,6 +219,7 @@ Notes:
 - Each extension needs the engine (PH-E-000). The extensions are independent workflows (XP-004).
 - The rows 4.16, 4.17 and 4.18 are tier 1 (operator, 2026-11-16). They come before the engine, the model service and the extensions. Their numbers follow 4.15 because a published number does not change.
 - Row 4.19 is tier 3, after jobs (R-162). It keeps its number.
+- Row 4.20 is tier 3, after R8a to R8d of row 4.6. It is a new row, so it follows 4.19. The operator chose a row of its own for the terminal screen (relayed, 2026-11-18). It is not a category: the command line and the MCP server stay a way to use each category.
 - The states in this table were read on 2026-11-12, except where a row gives a later date. The rows of tier 0, tier 2a and Projects in tier 3a were compared with the commits on `main` on 2026-11-16.
 - Phase 4 (Proxmox VE) is withdrawn (R-109). Session recording is deferred (R-113). This plan does not include them.
 
