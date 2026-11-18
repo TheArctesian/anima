@@ -16,11 +16,14 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 - Each entry has an identifier `HT-nnn`. Do not use an identifier again.
 - The operator does the steps and writes the result in the entry: the state, the date and one
   line about what occurred.
-- The states are Open, Passed and Failed. Only the operator, or an agent that the operator told
+- The states are Open, Passed, Failed and Deferred. Only the operator, or an agent that the operator told
   the result, can set Passed or Failed.
+- Deferred means that the check is put aside because it cannot run now (PLN-014, R-168). Only a
+  ruling of the operator sets it. The entry gives the reason and the ruling. It is not deleted, and
+  a ruling or the operator sets it to Open again.
 - A Failed entry stays in the list until a correction is built. Then its state goes back to Open.
 - Move a Passed entry to "Passed" at the end of this document. Do not delete it.
-- A proposal of 2026-11-18 sorts the open checks for the hosted hub and gives one order for them: [sort-2026-11-18.md](research/human-checks/sort-2026-11-18.md). It changes no entry (OD-W24 of [decisions.md](plan/decisions.md) is open).
+- A proposal of 2026-11-18 sorts the open checks for the hosted hub and gives one order for them: [sort-2026-11-18.md](research/human-checks/sort-2026-11-18.md). The operator approved it on 2026-11-18 (R-168). The entries below do not show it yet: a later commit sets the fifteen deferred entries and writes the new steps.
 
 ## Open
 
