@@ -31,18 +31,19 @@ afterEach(async () => {
   document.body.innerHTML = '';
 });
 
-it('FRN-001, NAV-009, HMD-022: the first screen has Sign in and one link, Join a hub', () => {
+it('FRN-001, NAV-009, HMD-022: the first screen has Sign in, then Sign up and Join a hub', () => {
   const target = open();
   expect(target.querySelector('h1')?.textContent).toBe('Welcome to Anima.ing');
   expect(document.activeElement).toBe(target.querySelector('h1'));
   const links = [...target.querySelectorAll('a')].map((link) => [link.textContent, link.getAttribute('href')]);
   expect(links).toEqual([
     ['Sign in', '/welcome/hosted'],
+    ['Sign up', '/welcome/hosted'],
     ['Join a hub', '/welcome/hub'],
   ]);
 });
 
-it('CLI-001: in a browser Sign in is off and says why; Join a hub stays', () => {
+it('CLI-001: in a browser Sign in and Sign up are off and say why; Join a hub stays', () => {
   mocks.desktop = false;
   const target = open();
   expect(target.querySelector('.primary')?.getAttribute('aria-disabled')).toBe('true');

@@ -204,7 +204,7 @@ is built in the private repository (fact 5); this repository holds the client an
 
 ### 6.4 First run
 
-- **HMD-022.** "Sign in" must be the primary choice of the first run. The other choices must stay available. The first screen shows only "Sign in" and one link, "Join a hub", under it; the other ways (an invite, a hub address, a hub on this computer) are on the page behind that link (operator, 2026-11-17: "it should be sign in with SSO and then one link at the bottom to join a hub").
+- **HMD-022.** "Sign in" must be the primary choice of the first run. The other choices must stay available. The first screen follows frame 1 of the mobile mockup: the doors, the title, "Sign in", then "Sign up" and "Join a hub" side by side under it. The other ways (an invite, a hub address, a hub on this computer) are on the page behind "Join a hub" (operator, 2026-11-17: "1st option is sign in ... the paste invite ... should be split into two buttons, sign up or join a hub"; the line under the title is removed).
 - **HMD-023.** The application must show one state for each step of Section 4.1, and a clear error with a retry for each failure.
 
 ### 6.5 Sleep and wake of a free hub (HM-R6)

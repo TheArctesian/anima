@@ -66,7 +66,8 @@ figcaption { margin-top: 6px; font-size: 12px; color: var(--pg-muted); max-width
 /* The first screen (routes/welcome/+page.svelte): one primary action and one link. */
 .welcome-actions { display: grid; gap: var(--space-2); margin-block-start: var(--space-4); }
 .welcome-actions .go { display: grid; place-items: center; min-block-size: var(--target-min-touch); border-radius: var(--radius-md); background: var(--accent); color: var(--on-accent); font-weight: var(--weight-medium); }
-.welcome-actions .other { display: grid; place-items: center; min-block-size: var(--target-min-touch); color: var(--accent); font-size: var(--text-sm); }
+.welcome-actions .pair { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); }
+.welcome-actions .other { display: grid; place-items: center; min-block-size: var(--target-min-touch); border-radius: var(--radius-md); background: var(--surface-raised); color: var(--text); font-weight: var(--weight-medium); }
 .choices .back { color: var(--text-secondary); font-size: var(--text-sm); }
 
 /* A step of "Sign in" (routes/welcome/hosted/HostedSignIn.svelte). */
@@ -89,14 +90,12 @@ Each step has one heading, one line and at most one button. Back goes to the fir
   <figure><div class="frame tall gd">
     <p class="label"><span class="logo"></span><span class="rule"></span>Anima.ing</p>
     <h1>Welcome to Anima.ing</h1>
-    <p class="lead">With your Anima.ing account.</p>
-    <div class="welcome-actions"><span class="go">Sign in</span><span class="other">Join a hub</span></div>
-  </div><figcaption>The first screen: Sign in with the Anima.ing account, and one link (operator, 2026-11-17: "sign in with SSO and then one link at the bottom to join a hub"). On a phone the two sit low, under the thumb.</figcaption></figure>
+    <div class="welcome-actions"><span class="go">Sign in</span><span class="pair"><span class="other">Sign up</span><span class="other">Join a hub</span></span></div>
+  </div><figcaption>The first screen, as frame 1 of the mobile mockup: Sign in with the Anima.ing account, then Sign up and Join a hub side by side (operator, 2026-11-17). Sign up opens the same account page. On a phone the doors stand above the title and the buttons sit low, under the thumb.</figcaption></figure>
   <figure><div class="frame tall gl">
     <p class="label"><span class="logo"></span><span class="rule"></span>Anima.ing</p>
     <h1>Welcome to Anima.ing</h1>
-    <p class="lead">With your Anima.ing account.</p>
-    <div class="welcome-actions"><span class="go">Sign in</span><span class="other">Join a hub</span></div>
+    <div class="welcome-actions"><span class="go">Sign in</span><span class="pair"><span class="other">Sign up</span><span class="other">Join a hub</span></span></div>
   </div><figcaption>Light.</figcaption></figure>
   <figure><div class="frame tall gd">
     <p class="label"><span class="logo"></span><span class="rule"></span>Anima.ing</p>

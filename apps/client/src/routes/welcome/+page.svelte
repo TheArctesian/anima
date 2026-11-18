@@ -4,6 +4,7 @@
   import { resolve as entrance } from '$lib/motion/roles/resolve';
   import { press } from '$lib/motion/roles/press';
   import { capabilities } from '$lib/platform/platform';
+  import Doors from '../sign-in/doors/Doors.svelte';
   import { signInChoice } from './welcome';
 
   const { localHub, deviceLink, cloudAccount, keyStore } = capabilities();
@@ -16,19 +17,29 @@
   });
 </script>
 
-<!-- The first screen of the first run (FRN-001, HMD-022): sign in with the Anima.ing account, and one link to the other
-     ways to reach a hub (operator, 2026-11-17). Mockup: docs/mockup/first-run/index.html, row 1. -->
-<h1 tabindex="-1" bind:this={title}>Welcome to Anima.ing</h1>
-<p class="lead" id="sign-in-line">{signIn.line}</p>
+<!-- The first screen of the first run (FRN-001, HMD-022), as frame 1 of docs/mockup/mobile/index.html: the doors, the
+     title, Sign in with the Anima.ing account, then Sign up and Join a hub side by side (operator, 2026-11-17). Sign up
+     opens the same account page as Sign in, where a new account is made. -->
+<div class="art" aria-hidden="true"><Doors /></div>
 
-<div class="actions" {@attach entrance()}>
-  {#if signIn.off === null}
-    <a class="primary" href={resolve(signIn.href)} aria-describedby="sign-in-line" {@attach press()}>{signIn.title}</a>
-  {:else}
-    <span class="primary off" aria-disabled="true" aria-describedby="sign-in-off">{signIn.title}</span>
-    <p class="reason" id="sign-in-off">{signIn.off}</p>
-  {/if}
-  <a class="other" href={resolve('/welcome/hub')}>Join a hub</a>
+<div class="foot">
+  <h1 tabindex="-1" bind:this={title}>Welcome to Anima.ing</h1>
+  <div class="actions" {@attach entrance()}>
+    {#if signIn.off !== null}<p class="reason" id="sign-in-off">{signIn.off}</p>{/if}
+    {#if signIn.off === null}
+      <a class="button primary" href={resolve(signIn.href)} {@attach press()}>Sign in</a>
+    {:else}
+      <span class="button primary off" aria-disabled="true" aria-describedby="sign-in-off">Sign in</span>
+    {/if}
+    <div class="pair">
+      {#if signIn.off === null}
+        <a class="button" href={resolve(signIn.href)} {@attach press()}>Sign up</a>
+      {:else}
+        <span class="button off" aria-disabled="true" aria-describedby="sign-in-off">Sign up</span>
+      {/if}
+      <a class="button" href={resolve('/welcome/hub')} {@attach press()}>Join a hub</a>
+    </div>
+  </div>
 </div>
 
 <style>
@@ -38,61 +49,77 @@
     outline-offset: var(--border-focus);
   }
 
-  .lead {
-    margin: 0;
-    color: var(--text-secondary);
+  /* The doors stand above the title, as tall as the mockup draws them. */
+  .art {
+    position: relative;
+    block-size: calc(var(--space-16) * 5);
+    margin-inline: calc(var(--space-4) * -1);
   }
 
   .actions {
     display: grid;
-    gap: var(--space-2);
-    margin-block-start: var(--space-4);
+    gap: calc(var(--space-2) + var(--border-focus));
+    margin-block-start: var(--space-6);
   }
 
-  .primary {
+  .pair {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: calc(var(--space-2) + var(--border-focus));
+  }
+
+  .button {
     display: grid;
     place-items: center;
-    min-block-size: var(--target-min-touch);
+    min-block-size: var(--space-12);
     border-radius: var(--radius-md);
-    background: var(--accent);
-    color: var(--on-accent);
+    background: var(--surface-raised);
+    color: var(--text);
+    font-size: var(--text-lg);
     font-weight: var(--weight-medium);
     text-decoration: none;
   }
 
+  .button.primary {
+    min-block-size: calc(var(--space-12) + var(--space-2));
+    background: var(--accent);
+    color: var(--on-accent);
+  }
+
+  .button.off {
+    opacity: var(--opacity-disabled);
+  }
+
   /* Only a pointer that hovers: on a touch screen iOS takes the first tap as a hover. */
   @media (hover: hover) {
-    .primary:hover {
+    a.button:hover {
+      background: var(--surface-hover);
+    }
+
+    a.button.primary:hover {
       background: var(--accent-hover);
     }
   }
 
-  .primary.off {
-    opacity: var(--opacity-disabled);
-  }
-
   .reason {
     margin: 0;
+    padding-block: var(--space-3) var(--space-1);
+    border-block-start: var(--border-thin) solid var(--border-subtle);
     color: var(--text-secondary);
-    font-size: var(--text-sm);
-    text-align: center;
+    font-size: var(--text-md);
   }
 
-  .other {
-    display: grid;
-    place-items: center;
-    min-block-size: var(--target-min-touch);
-    color: var(--accent);
-    font-size: var(--text-sm);
-  }
-
-  /* On a phone the action sits low, under the thumb (mockup 1 of mobile/index.html); the text stays at the top. */
+  /* On a phone the title and the actions sit low, under the thumb, and the doors fill the room above them (frame 1 of
+     the mobile mockup). */
   @media (max-width: 767.98px) {
-    .actions {
+    .art {
+      block-size: max(calc(var(--space-16) * 3), calc(100dvh - var(--safe-block-start) - var(--safe-block-end) - var(--space-16) * 6.5));
+    }
+
+    .foot {
       position: fixed;
-      inset-inline: var(--space-4);
-      inset-block-end: calc(var(--safe-block-end) + var(--space-4));
-      margin: 0;
+      inset-inline: var(--space-6);
+      inset-block-end: calc(var(--safe-block-end) + var(--space-3));
     }
   }
 </style>

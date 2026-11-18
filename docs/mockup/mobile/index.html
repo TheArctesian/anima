@@ -162,12 +162,13 @@ code { font-family: var(--font-mono); font-size: .92em; }
 /* 1 first run */
 .first { padding-inline: 24px; }
 .first .brand { margin-top: 14px; position: relative; z-index: 1; }
-.first .say { display: grid; gap: 12px; margin-top: 318px; position: relative; z-index: 1; }
-.first .acts { display: grid; gap: 10px; margin-top: auto; padding-bottom: 10px; position: relative; z-index: 1; }
+.first .say { display: grid; gap: 12px; margin-top: auto; position: relative; z-index: 1; }
+.first .acts { display: grid; gap: 10px; margin-top: 24px; padding-bottom: 10px; position: relative; z-index: 1; }
 .first .how { display: flex; gap: 12px; align-items: flex-start; padding: 14px 0 6px; border-top: 1px solid var(--border-subtle); color: var(--text-secondary); font-size: 14px; }
 .first .how .i { margin-top: 2px; color: var(--text-tertiary); }
+.first .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 /* The doors mark in points, as on the sign-in page and the website (UR-7 D13): same geometry, shades, strength and drift. */
-.doorfield { position: absolute; inset: calc(var(--sat) + 40px) 0 auto; inline-size: 100%; block-size: 316px; pointer-events: none; }
+.doorfield { position: absolute; inset: calc(var(--sat) + 40px) 0 auto; inline-size: 100%; block-size: 470px; pointer-events: none; }
 
 /* 2 scan */
 .cam { background: radial-gradient(120% 70% at 30% 20%, var(--cam-1), var(--cam-2) 70%); color: #fff; }
@@ -355,14 +356,11 @@ a:focus-visible, input:focus-visible, button:focus-visible { outline: 2px solid 
   <div class="body first">
     <p class="brand"><span class="logo"></span><i></i>Anima.ing</p>
     <div class="say">
-      <h3 class="display">Join your hub</h3>
-      <p class="lede">Scan the invite from Anima on your computer.</p>
+      <h3 class="display">Welcome to Anima.ing</h3>
     </div>
     <div class="acts">
-      <div class="how"><svg class="i"><use href="#i-laptop"/></svg><span>No invite? Add this device in Anima on your computer.</span></div>
-      <button class="btn pri big"><svg class="i lg"><use href="#i-qr"/></svg>Scan invite</button>
-      <button class="btn"><svg class="i"><use href="#i-paste"/></svg>Paste invite</button>
-      <button class="btn ghost">Use hub address</button>
+      <button class="btn pri big">Sign in</button>
+      <div class="pair"><button class="btn">Sign up</button><button class="btn">Join a hub</button></div>
     </div>
   </div>
 </template>
@@ -397,9 +395,9 @@ a:focus-visible, input:focus-visible, button:focus-visible { outline: 2px solid 
     <header><span class="n">1</span><h2>First run</h2><p>MOB-017, MOB-033, MOB-038</p></header>
     <div class="row">
       <figure class="shot"><div class="phone gd ios"><div class="screen" data-tpl="t-first"></div></div>
-        <figcaption><b>Join your hub</b><span class="tag">dark, iOS</span><p>One primary action, low, under the thumb. Nothing a phone cannot do.</p></figcaption></figure>
+        <figcaption><b>Welcome</b><span class="tag">dark, iOS</span><p>Sign in with the Anima.ing account, low, under the thumb. Sign up and Join a hub side by side under it (operator, 2026-11-17).</p></figcaption></figure>
       <figure class="shot"><div class="phone gl ios"><div class="screen" data-tpl="t-first"></div></div>
-        <figcaption><b>Join your hub</b><span class="tag">light, iOS</span><p>Light appearance.</p></figcaption></figure>
+        <figcaption><b>Welcome</b><span class="tag">light, iOS</span><p>Light appearance.</p></figcaption></figure>
     </div>
   </section>
 
