@@ -25,16 +25,16 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.17 | The hosted mode and the shared pool | Operator: the first real sign-in (HT-022 in need-human-testing.md); approval of HMD-001 to HMD-036; HM-D4, HM-D7, HM-D11 and HM-D13. Agent: nothing until HT-022 has a result |
 | 4.18 | Update the daemon and the hub | Agent: task U5 in daemon-and-hub-update-plan.md. Operator: one Linux machine and one Mac for task U3, decision OD-ROL-15, and a release for each target for the tasks that need one |
 | 4.2 | Restore a backup and move the coordinator | Operator: the check HT-024 in need-human-testing.md, or a ruling that it is not necessary |
-| 4.3 | Decisions and approvals for the foundation | Operator: each decision and approval in the row |
+| 4.3 | Decisions and approvals for the foundation | Operator: each decision and approval in the row. Agent: PE-C1, then PE-C2 of planning-evidence-plan.md, read-only preparation (R-152) |
 | 4.5 | Level 1 model service | Operator: approval of the compute plan, and the compute decisions of row 4.3 |
 | 4.7 | Jobs, builds and AI agent runs | Operator: a ruling that changes R-115 (task W1) and the acceptance of the design (task W2). Agent: nothing before them |
-| 4.9 | Hosted applications | Agent: task H1 in hosted-applications-plan.md. Operator: nothing now |
+| 4.9 | Hosted applications | Agent: None. H1 to H4 are claimed (docs/claims/h1.md, branch `claude/awesome-kepler-3fcd9e`, started 2026-11-18). Operator: nothing now |
 | 4.10 | Standby copies of the coordinator database | Operator: the check HT-030 in need-human-testing.md |
 | 4.11 | Bulk data on the operator's machines | Operator: approval of the requirements. E0-5 does not wait for it (R-145) |
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 | 4.19 | The watchdog | Operator: a tier and approval of the direction (OD-W22) |
 
-## 2. Open decisions (117)
+## 2. Open decisions (124)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -104,6 +104,9 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-BOT12 | Does the fallback keep the standing permissions of the stopped session (BOT-006, BOT-051)? | Proposed, not ruled: no. It starts with fewer rights (no push to a shared branch, no delete), and the operator adds them. | [proposals/bots.md](proposals/bots.md) |
 | OD-BOT13 | Is the server on the same device in the first version (BOT-049), or on any device of the operator? | Proposed, not ruled: the same device. A server on another device waits for the spike of the path from one device to another. | [proposals/bots.md](proposals/bots.md) |
 | OD-BOT14 | Does the fallback also cover Codex when it stops on its limit? | Proposed, not ruled: later. Claude Code first. The terms of Codex are unclear (BOT-033). | [proposals/bots.md](proposals/bots.md) |
+| OD-BOT21 | Does MCP-006 (no tool runs a command on a device) get a narrow exception, so that an MCP tool can ask the daemon to run a recipe of the catalog (BOT-075)? (yes/… | Open | [proposals/bots.md](proposals/bots.md) |
+| OD-BOT22 | May an AI agent start a recipe before the operator confirmed its terms row on that machine (BOT-041, BOT-065)? (yes/no) | Open | [proposals/bots.md](proposals/bots.md) |
+| OD-BOT23 | May the operator type a key that lasts (Gemini CLI, Aider, OpenCode) in the secret-entry pane, when R-153 covers a one-time code only (BOT-078)? (yes/no) | Open | [proposals/bots.md](proposals/bots.md) |
 | OD-PNL1 | Are Agents and Projects a part of the foundation, or extensions that are on by default? OD-E13 (operator, 2026-11-13) ruled that Projects is not a part of the f… | Proposed, not ruled: extensions that are on by default (PNL-006). It keeps EXT-005 and OD-E13, and the operator can still turn them off. Only EXT-001 and EXT-00… | [proposals/default-panels.md](proposals/default-panels.md) |
 | OD-PNL2 | What does "runner" mean in "add runners on easily": an agent runner (BOT-039), a build runner of GitHub Actions (PRO-027), or both? | Proposed, not ruled: both, in one choice on "Add runner" (PNL-005). The two flows stay separate. | [proposals/default-panels.md](proposals/default-panels.md) |
 | OD-PNL3 | Which features move out of the foundation as extensions? | Proposed, not ruled: none. Bookshelf (Library, Section 4.14), Maps (Map, Section 4.1) and the others are extensions already. The map canvas component stays shar… | [proposals/default-panels.md](proposals/default-panels.md) |
@@ -155,8 +158,12 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-19 | How the website reads the feed (SITE-003) | Two options: a build step of the website at each release, or a script in the page. A script in the page needs cross-origin read access to the release host, whic… | [spec/design-spec.md](spec/design-spec.md) |
 | OD-20 | Domain name and host of the website (SITE-011) | Host decided: Vercel (operator, 2026-11-13). Domain open: the operator decides. The site is built and not deployed. | [spec/design-spec.md](spec/design-spec.md) |
 | OD-22 | What the website can say about the paid hosted option (SITE-012; work-plan.md OD-W2, other-operators.md) | Nothing now. The proposal has no requirements. Add text only after the operator approves the words. | [spec/design-spec.md](spec/design-spec.md) |
+| OD-23 | Does `anima-daemon` also ship by Homebrew or Cargo (INS-008, INS-010, INS-011; R-151) | Proposed, not ruled. The operator ruled for the command line because it "can operate alone" (R-151). The daemon is a separate program with its own install path… | [spec/design-spec.md](spec/design-spec.md) |
+| OD-24 | Which file does the Homebrew formula install, and does the release publish it with its SHA-256 (INS-010, INS-012) | Proposed, not ruled. The release would publish a standalone `anima` file for each target, with its SHA-256 in the release record (ROL-003). The formula would in… | [spec/design-spec.md](spec/design-spec.md) |
+| OD-25 | How the command line alone signs in to a hosted hub (INS-013; HMD-032, HMD-038, R-129) | Proposed, not ruled. `anima auth login` asks for a user name, a password and an authenticator code (CMD-010), and the hosted hub has no such account. The hosted… | [spec/design-spec.md](spec/design-spec.md) |
+| OD-26 | Does the formula go in the operator's own tap before Homebrew's own repository (INS-010) | Proposed, not ruled. The tap is the Marketing Bot's word, not the operator's. A tap needs no review and the operator controls it. Homebrew's own repository need… | [spec/design-spec.md](spec/design-spec.md) |
 
-## 3. Documents that wait for an approval (27)
+## 3. Documents that wait for an approval (26)
 
 | Document | Kind | State |
 | --- | --- | --- |
@@ -166,18 +173,18 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [plans/one-click/s6-spec-delta.md](plans/one-click/s6-spec-delta.md) | Proposal: spec delta for the first run | Draft |
 | [plans/ui-redesign-direction.md](plans/ui-redesign-direction.md) | Plan: direction of the redesign | Not checked |
 | [plans/ui-redesign-plan.md](plans/ui-redesign-plan.md) | Plan | Not checked |
-| [proposals/add-this-machine.md](proposals/add-this-machine.md) | Proposal | Draft. Build state not checked |
+| [proposals/add-this-machine.md](proposals/add-this-machine.md) | Proposal | Draft. Deferred; partly built |
 | [proposals/agent-runs.md](proposals/agent-runs.md) | Proposal | Draft |
 | [proposals/ai-direction.md](proposals/ai-direction.md) | Proposal | Draft |
-| [proposals/bots.md](proposals/bots.md) | Proposal | Draft |
+| [proposals/bots.md](proposals/bots.md) | Proposal, with a task table | Draft |
 | [proposals/bulk-data-placement.md](proposals/bulk-data-placement.md) | Proposal | Direction decided |
 | [proposals/cloud-machines.md](proposals/cloud-machines.md) | Proposal | Draft |
 | [proposals/coordinator-standby.md](proposals/coordinator-standby.md) | Proposal | Direction decided |
 | [proposals/cve-watch-and-network-awareness.md](proposals/cve-watch-and-network-awareness.md) | Proposal | Draft |
 | [proposals/default-panels.md](proposals/default-panels.md) | Proposal | Draft |
-| [proposals/first-run-setup.md](proposals/first-run-setup.md) | Proposal | Draft. Build state not checked |
+| [proposals/first-run-setup.md](proposals/first-run-setup.md) | Proposal | Draft. Deferred; not built |
 | [proposals/hosted-mode.md](proposals/hosted-mode.md) | Proposal | Direction decided |
-| [proposals/in-app-enrolment.md](proposals/in-app-enrolment.md) | Proposal | Draft. Build state not checked |
+| [proposals/in-app-enrolment.md](proposals/in-app-enrolment.md) | Proposal | Draft. Deferred; partly built |
 | [proposals/jobs.md](proposals/jobs.md) | Proposal | Direction decided |
 | [proposals/machine-profiles.md](proposals/machine-profiles.md) | Proposal | Draft |
 | [proposals/new-sources.md](proposals/new-sources.md) | Proposal | Draft |
@@ -185,7 +192,6 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/power-health.md](proposals/power-health.md) | Proposal | Draft |
 | [proposals/shared-pool-hosting.md](proposals/shared-pool-hosting.md) | Proposal | Draft |
 | [proposals/shell-prompt.md](proposals/shell-prompt.md) | Proposal | Draft |
-| [proposals/ssh-terminal.md](proposals/ssh-terminal.md) | Proposal | Draft. Build state not checked |
 | [proposals/watchdog.md](proposals/watchdog.md) | Proposal, with a task table | Draft |
 
 ## 4. Checks that only the operator can do (72)
