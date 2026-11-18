@@ -12,7 +12,7 @@
 use chacha20poly1305::{XNonce, aead::AeadInOut};
 use zeroize::Zeroizing;
 
-use crate::engine::data_keys::DataKey;
+use crate::engine::sealing_keys::SealingKey;
 
 /// Plain bytes in one part.
 pub const PART: usize = 64 * 1024;
@@ -35,7 +35,7 @@ pub enum StreamError {
 /// What a part is sealed for: one key and one piece.
 #[derive(Clone, Copy)]
 pub struct Binding<'a> {
-    pub key: &'a DataKey,
+    pub key: &'a SealingKey,
     /// The hash of the plain bytes in lower-case hexadecimal, or the text of a staging copy.
     pub piece: &'a str,
 }

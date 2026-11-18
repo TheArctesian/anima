@@ -18,7 +18,7 @@
     "core_dumps",
     "records",
     "instants",
-    "data_keys"
+    "sealing_keys"
   ],
   "wiring": [
     "main",

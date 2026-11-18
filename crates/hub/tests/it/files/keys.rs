@@ -1,6 +1,6 @@
 //! A data key is never the credential key (VLT-003, SEC-004).
 
-use anima_hub::engine::data_keys::{DataKeyError, DataKeys};
+use anima_hub::engine::sealing_keys::{SealingKeyError, SealingKeys};
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 
 use crate::hub::test_vault;
@@ -16,10 +16,10 @@ fn vlt_003_start_refuses_a_data_key_file_that_holds_the_credential_key() {
     )
     .unwrap();
 
-    let refused = DataKeys::open(Some(folder.path()), vault.key_id().as_bytes());
+    let refused = SealingKeys::open(Some(folder.path()), vault.key_id().as_bytes());
 
     assert!(
-        matches!(&refused, Err(DataKeyError::CredentialKey { name }) if name == "engine"),
+        matches!(&refused, Err(SealingKeyError::CredentialKey { name }) if name == "engine"),
         "{refused:?}"
     );
     let shown = format!("{:?}", refused.unwrap_err());
@@ -30,10 +30,10 @@ fn vlt_003_start_refuses_a_data_key_file_that_holds_the_credential_key() {
 fn vlt_003_a_data_key_made_at_first_use_is_not_the_credential_key() {
     let vault = test_vault();
     let folder = tempfile::tempdir().unwrap();
-    let keys = DataKeys::open(Some(folder.path()), vault.key_id().as_bytes()).unwrap();
+    let keys = SealingKeys::open(Some(folder.path()), vault.key_id().as_bytes()).unwrap();
 
     let key = keys.key("library").unwrap();
 
     assert_ne!(key.id(), vault.key_id());
-    assert!(DataKeys::open(Some(folder.path()), vault.key_id().as_bytes()).is_ok());
+    assert!(SealingKeys::open(Some(folder.path()), vault.key_id().as_bytes()).is_ok());
 }

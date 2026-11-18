@@ -103,7 +103,7 @@ pub struct NewProposal {
 
 /// Whether `text` can name a form or a field: lower snake case, 1 to 40 characters.
 fn is_form(text: &str) -> bool {
-    crate::engine::data_keys::is_name(text)
+    crate::engine::sealing_keys::is_name(text)
 }
 
 /// Whether `value` has the form of `kind`.

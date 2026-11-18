@@ -20,7 +20,7 @@ The leaf modules other than `targets` and the wiring stay at `crates/hub/src/`. 
 | --- | --- |
 | `crates/hub/src/ids.rs` | All entity ID newtypes (see `conventions.md`): `OperatorId`, `SiteId`, `DeviceId`, `CheckId`, `WindowId`, `SessionId`, `EventId`, and (Phase 2) `WebInterfaceId`, `MetricSeriesId`, and (Phase 3) `ApiKeyId`, `ChannelId`, `DeliveryId`, and (Phase 3, WP-36, R-107) `TokenId`, `ReleaseId`, `BuildJobId`, `BuilderId` |
 | `crates/hub/src/engine/instants.rs` (engine, new; operator, 2026-11-16; ruling number to be assigned; K-E3, TML-008) | `micros` and `from_micros`: an event instant as microseconds since the Unix epoch in UTC. It imports no module of the hub |
-| `crates/hub/src/engine/data_keys.rs` (engine, new; R-148; K-E5 Section 1) | `DataKeys` and `DataKey`: the data keys of `ANIMA_DATA_KEY_DIR` (VLT-003). It imports no module of the hub |
+| `crates/hub/src/engine/sealing_keys.rs` (engine, new; R-148; K-E5 Section 1) | `SealingKeys` and `SealingKey`: the data keys of `ANIMA_DATA_KEY_DIR` (VLT-003). It imports no module of the hub |
 | `crates/hub/src/engine/records.rs` (engine, new; operator, 2026-11-16; ruling number to be assigned; K-E4) | `Reference` (`kind:id`) and `Subject` (the shared subject keys, RLK-004). It imports only `ids`, which gains `RecordLinkId`, `PlaceId` and `PersonId` |
 | `crates/hub/src/status.rs` | `pub enum Status { Up, Down, Degraded, Maintenance, Unknown }` with `fn worst(a, b)` (CHK-004) |
 | `crates/hub/src/clock.rs` | `pub trait Clock: Send + Sync { fn now(&self) -> DateTime<Utc>; }`, `SystemClock`, and `FixedClock` for tests. The only clock read in the hub (CQ-021). |
@@ -227,7 +227,7 @@ are private to `events`.
 | `links` (engine, new; same ruling; K-E4) | `events` (the trail types) |
 | `agent_usage` (R-135, operator, 2026-11-17; AIS-020; AU-2) | `devices` (`Device`, `list` only) |
 | `metrics` (R-135, adds) | `agent_usage` (`record` only, in the push transaction) |
-| `files` (engine, new; R-148; K-E4 Sections 9, 10) | `events` (the trail types, `audit`, `NewAudit`), `extensions` (`Key`, `Sensitivity` only: the data class of the extension of a form, VIS-002), `access` (`identify`, `client_addr`, `Identity`, `Scope` only, and only in `files/routes.rs`: the bearer of `/files/v1`); the leaves `data_keys` and `records` |
+| `files` (engine, new; R-148; K-E4 Sections 9, 10) | `events` (the trail types, `audit`, `NewAudit`), `extensions` (`Key`, `Sensitivity` only: the data class of the extension of a form, VIS-002), `access` (`identify`, `client_addr`, `Identity`, `Scope` only, and only in `files/routes.rs`: the bearer of `/files/v1`); the leaves `sealing_keys` and `records` |
 | `places` (engine, new; R-148; K-E4 Section 8) | `links` (`retarget`, `retarget_named`, `count`, `Titles`, `Unavailable` only), `events` (the trail types), `records` (leaf) |
 | `credentials` (operational keys, adds; R-147, R-148; K-E5 Section 2) | `events` (the trail types, `audit`, `NewAudit`, `ClientAddr`, `Operator`); `access` (`Authenticated`, `operator_only`) only in `credentials/graphql.rs`, a graphql edge. A device is a `DeviceId` value only: the consumer rows reference `devices.devices` with a cascading foreign key, so `credentials` imports no `devices` code. `metrics` (its daemon ingest) calls `credentials::operational::{fetch, current_for, record_held}` |
 
@@ -729,16 +729,16 @@ pub async fn before(db: &Db, (from, before): (DateTime<Utc>, (DateTime<Utc>, Uui
 
 `schema.rs` builds `timeline::Adapters` with `timeline::event_log()`. `fleet/events/model.rs` gains `AuditTarget::RecordLink`. `ids.rs` gains `RecordLinkId`, `PlaceId` and `PersonId`. No domain imports `timeline` or `links`.
 
-## engine: files and the leaf `data_keys` (R-148; K-E4 Sections 9, 10; K-E5 Section 1)
+## engine: files and the leaf `sealing_keys` (R-148; K-E4 Sections 9, 10; K-E5 Section 1)
 
-Folder `crates/hub/src/engine/files/` and the leaf file `crates/hub/src/engine/data_keys.rs`. `data_keys` is a leaf inside the group `engine/`: it imports no domain, and every domain that seals a record or a file may import it (VLT-003). `files` has migration 2050.
+Folder `crates/hub/src/engine/files/` and the leaf file `crates/hub/src/engine/sealing_keys.rs`. `sealing_keys` is a leaf inside the group `engine/`: it imports no domain, and every domain that seals a record or a file may import it (VLT-003). `files` has migration 2050.
 
 ```rust
-// engine::data_keys (leaf; K-E5 Section 1)
-pub struct DataKeys { /* the folder */ }
-pub struct DataKey { /* 32 bytes, zeroed on drop */ }
-impl DataKeys { pub fn open(folder: Option<&Path>, credential_key_id: &[u8]) -> Result<Self, DataKeyError>; pub const fn none() -> Self; pub fn key(&self, name: &str) -> Result<DataKey, DataKeyError>; }
-impl DataKey { pub fn name(&self) -> &str; pub fn id(&self) -> &str; pub fn cipher(&self) -> XChaCha20Poly1305; pub fn seal(&self, context: &str, plain: &[u8]) -> Vec<u8>; pub fn open(&self, context: &str, sealed: &[u8]) -> Result<Vec<u8>, DataKeyError>; }
+// engine::sealing_keys (leaf; K-E5 Section 1)
+pub struct SealingKeys { /* the folder */ }
+pub struct SealingKey { /* 32 bytes, zeroed on drop */ }
+impl SealingKeys { pub fn open(folder: Option<&Path>, credential_key_id: &[u8]) -> Result<Self, SealingKeyError>; pub const fn none() -> Self; pub fn key(&self, name: &str) -> Result<SealingKey, SealingKeyError>; }
+impl SealingKey { pub fn name(&self) -> &str; pub fn id(&self) -> &str; pub fn cipher(&self) -> XChaCha20Poly1305; pub fn seal(&self, context: &str, plain: &[u8]) -> Vec<u8>; pub fn open(&self, context: &str, sealed: &[u8]) -> Result<Vec<u8>, SealingKeyError>; }
 
 // engine::files
 pub trait Pieces { /* K-E4 Section 9 */ }

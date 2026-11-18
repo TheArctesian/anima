@@ -9,12 +9,12 @@ use super::{
     proposals::{Field, FieldType, checked_fields},
     stream::{Binding, PART, RECORD, StreamError, open_all, seal_all},
 };
-use crate::engine::data_keys::{DataKey, DataKeys};
+use crate::engine::sealing_keys::{SealingKey, SealingKeys};
 
 const HASH: &str = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
 const OTHER_HASH: &str = "60303ae22b998861bce3b28f33eec1be758a213c86c93c076dbe9f558c11c752";
 
-fn keys() -> (tempfile::TempDir, DataKey, DataKey) {
+fn keys() -> (tempfile::TempDir, SealingKey, SealingKey) {
     let folder = tempfile::tempdir().unwrap();
     for (name, byte) in [("engine", 1_u8), ("wardrobe", 2)] {
         std::fs::write(
@@ -23,7 +23,7 @@ fn keys() -> (tempfile::TempDir, DataKey, DataKey) {
         )
         .unwrap();
     }
-    let keys = DataKeys::open(Some(folder.path()), b"none").unwrap();
+    let keys = SealingKeys::open(Some(folder.path()), b"none").unwrap();
     let (engine, wardrobe) = (keys.key("engine").unwrap(), keys.key("wardrobe").unwrap());
     (folder, engine, wardrobe)
 }

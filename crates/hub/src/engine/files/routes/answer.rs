@@ -59,13 +59,12 @@ pub(super) fn refused(error: &Error) -> Response {
             "NOT_FOUND",
             "No attachment has this ID.",
         ),
-        Error::Unavailable | Error::Key(crate::engine::data_keys::DataKeyError::Unavailable) => {
-            coded(
-                StatusCode::SERVICE_UNAVAILABLE,
-                "UNAVAILABLE",
-                "This hub has no file store: set ANIMA_FILES_DIR and ANIMA_DATA_KEY_DIR.",
-            )
-        }
+        Error::Unavailable
+        | Error::Key(crate::engine::sealing_keys::SealingKeyError::Unavailable) => coded(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "UNAVAILABLE",
+            "This hub has no file store: set ANIMA_FILES_DIR and ANIMA_DATA_KEY_DIR.",
+        ),
         _ => {
             tracing::error!(error = %error, "a file request failed");
             coded(

@@ -59,7 +59,7 @@ use crate::{
     fleet::{
         access::Authenticated,
         checks,
-        credentials::{PasswordKind, clear_ssh, operational},
+        credentials::{PasswordKind, clear_ssh},
         events::Trail,
     },
     ids::{DeviceId, SiteId},
@@ -282,11 +282,8 @@ impl Mutation {
         clear_ssh(&mut tx, id)
             .await
             .map_err(|error| credential::credential_error(error, id))?;
-        // The grants of operational keys end with the device; the hub says which keys its
-        // server had, because it cannot take them back (K-E5 Section 2.1).
-        let had_keys = operational::forget_device(&mut tx, id)
-            .await
-            .map_err(internal)?;
+        // The grants of operational keys end with the device (K-E5 Section 2.1).
+        credential::end_key_grants(ctx, &mut tx, id).await?;
         let device = store::delete_device(&mut tx, id)
             .await
             .map_err(to_graphql)?;
@@ -294,12 +291,6 @@ impl Mutation {
             .write(&mut tx, trail::device_deleted(&device))
             .await
             .map_err(internal)?;
-        for entry in had_keys {
-            Trail::from_context(ctx)?
-                .write(&mut tx, entry)
-                .await
-                .map_err(internal)?;
-        }
         commit(tx).await?;
         Ok(ID(device.id.to_string()))
     }

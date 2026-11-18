@@ -33,11 +33,11 @@ pub use removal::{delete_archive, discard, remove_attachment};
 pub use routes::router;
 pub use stream::StreamError;
 
-pub(crate) use crate::engine::data_keys::hex;
+pub(crate) use crate::engine::sealing_keys::hex;
 use crate::{
     engine::{
-        data_keys::{DataKeyError, DataKeys},
         records::Reference,
+        sealing_keys::{SealingKeyError, SealingKeys},
     },
     ids::ArchiveId,
 };
@@ -77,7 +77,7 @@ pub enum Error {
     #[error("the hub has no file store")]
     Unavailable,
     #[error("the data key cannot be used: {0}")]
-    Key(#[from] DataKeyError),
+    Key(#[from] SealingKeyError),
     #[error("the file store failed: {0}")]
     Store(#[from] StoreError),
     #[error("the staging copy failed ({0})")]
@@ -125,7 +125,7 @@ impl Bad {
 pub struct Store {
     pieces: Option<Arc<dyn Pieces>>,
     staging: Option<std::path::PathBuf>,
-    keys: DataKeys,
+    keys: SealingKeys,
     derived: Arc<[Arc<dyn Derived>]>,
 }
 
@@ -136,7 +136,7 @@ impl Store {
         Self {
             pieces: None,
             staging: None,
-            keys: DataKeys::none(),
+            keys: SealingKeys::none(),
             derived: Arc::new([]),
         }
     }
@@ -144,7 +144,7 @@ impl Store {
     /// The pieces in `folder` (`ANIMA_FILES_DIR`), sealed with `keys`; staging copies go to
     /// `<folder>/.staging`, which no key name can be.
     #[must_use]
-    pub fn in_folder(folder: Option<&Path>, keys: DataKeys) -> Self {
+    pub fn in_folder(folder: Option<&Path>, keys: SealingKeys) -> Self {
         let Some(folder) = folder else {
             return Self {
                 keys,

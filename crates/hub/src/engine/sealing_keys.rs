@@ -1,7 +1,7 @@
 //! The data keys: one key for each extension and engine part, which seals its records and its
 //! files on the hub (K-E5 Section 1; VLT-003, R-146). A leaf: it imports no domain.
 //!
-//! A data key is never the credential key: at start [`DataKeys::open`] compares the identifier
+//! A data key is never the credential key: at start [`SealingKeys::open`] compares the identifier
 //! of each key with the identifier of the credential key and with each other, and refuses two
 //! that are equal. No error text and no `Debug` output holds a key or a plain value (LOG-007).
 
@@ -36,7 +36,7 @@ const KEY_SUFFIX: &str = ".key";
 
 /// Why a data key cannot be used. No variant holds a key or a plain value (LOG-007).
 #[derive(Debug, thiserror::Error)]
-pub enum DataKeyError {
+pub enum SealingKeyError {
     /// The hub has no `ANIMA_DATA_KEY_DIR`: a domain that seals answers `UNAVAILABLE`.
     #[error("the hub has no folder of data keys (ANIMA_DATA_KEY_DIR)")]
     Unavailable,
@@ -60,11 +60,11 @@ pub enum DataKeyError {
 
 /// The folder of data keys; `None` when the hub has none.
 #[derive(Clone, Debug)]
-pub struct DataKeys {
+pub struct SealingKeys {
     folder: Option<PathBuf>,
 }
 
-impl DataKeys {
+impl SealingKeys {
     /// No data keys: a hub with no `ANIMA_DATA_KEY_DIR`.
     #[must_use]
     pub const fn none() -> Self {
@@ -78,7 +78,7 @@ impl DataKeys {
     ///
     /// # Errors
     /// `Folder`, `KeyFile`, `KeyFormat`, `CredentialKey`, `SameKey`.
-    pub fn open(folder: Option<&Path>, credential_key_id: &[u8]) -> Result<Self, DataKeyError> {
+    pub fn open(folder: Option<&Path>, credential_key_id: &[u8]) -> Result<Self, SealingKeyError> {
         let Some(folder) = folder else {
             return Ok(Self { folder: None });
         };
@@ -86,15 +86,15 @@ impl DataKeys {
             .recursive(true)
             .mode(0o700)
             .create(folder)
-            .map_err(|error| DataKeyError::Folder(error.kind()))?;
+            .map_err(|error| SealingKeyError::Folder(error.kind()))?;
         let mut seen: Vec<(String, String)> = Vec::new();
         for name in key_names(folder)? {
             let key = read_key(folder, &name)?;
             if key.id.as_bytes() == credential_key_id {
-                return Err(DataKeyError::CredentialKey { name });
+                return Err(SealingKeyError::CredentialKey { name });
             }
             if let Some((first, _)) = seen.iter().find(|(_, id)| *id == key.id) {
-                return Err(DataKeyError::SameKey {
+                return Err(SealingKeyError::SameKey {
                     first: first.clone(),
                     second: name,
                 });
@@ -118,13 +118,13 @@ impl DataKeys {
     /// # Errors
     /// `Unavailable` with no folder; `BadName`; `KeyFile`, `KeyFormat` for a file that cannot
     /// be read or made.
-    pub fn key(&self, name: &str) -> Result<DataKey, DataKeyError> {
-        let folder = self.folder.as_deref().ok_or(DataKeyError::Unavailable)?;
+    pub fn key(&self, name: &str) -> Result<SealingKey, SealingKeyError> {
+        let folder = self.folder.as_deref().ok_or(SealingKeyError::Unavailable)?;
         if !is_name(name) {
-            return Err(DataKeyError::BadName);
+            return Err(SealingKeyError::BadName);
         }
         match read_key(folder, name) {
-            Err(DataKeyError::KeyFile {
+            Err(SealingKeyError::KeyFile {
                 kind: io::ErrorKind::NotFound,
                 ..
             }) => {
@@ -137,13 +137,13 @@ impl DataKeys {
 }
 
 /// One data key: 32 bytes, zeroed on drop. `Debug` shows the name and the identifier only.
-pub struct DataKey {
+pub struct SealingKey {
     name: String,
     key: Zeroizing<[u8; KEY_LEN]>,
     id: String,
 }
 
-impl DataKey {
+impl SealingKey {
     #[must_use]
     pub fn name(&self) -> &str {
         &self.name
@@ -185,32 +185,32 @@ impl DataKey {
         sealed
     }
 
-    /// Opens a value that [`DataKey::seal`] sealed for the same `context`. Lengths are checked,
+    /// Opens a value that [`SealingKey::seal`] sealed for the same `context`. Lengths are checked,
     /// never trusted.
     ///
     /// # Errors
     /// `WrongKey` when a different key sealed it; `Damaged` for a value that is cut, changed or
     /// of a different context.
-    pub fn open(&self, context: &str, sealed: &[u8]) -> Result<Vec<u8>, DataKeyError> {
-        let (&version, rest) = sealed.split_first().ok_or(DataKeyError::Damaged)?;
-        let (&id_len, rest) = rest.split_first().ok_or(DataKeyError::Damaged)?;
+    pub fn open(&self, context: &str, sealed: &[u8]) -> Result<Vec<u8>, SealingKeyError> {
+        let (&version, rest) = sealed.split_first().ok_or(SealingKeyError::Damaged)?;
+        let (&id_len, rest) = rest.split_first().ok_or(SealingKeyError::Damaged)?;
         if version != LAYOUT_V1 {
-            return Err(DataKeyError::Damaged);
+            return Err(SealingKeyError::Damaged);
         }
         let (id, rest) = rest
             .split_at_checked(usize::from(id_len))
-            .ok_or(DataKeyError::Damaged)?;
+            .ok_or(SealingKeyError::Damaged)?;
         if id != self.id.as_bytes() {
-            return Err(DataKeyError::WrongKey);
+            return Err(SealingKeyError::WrongKey);
         }
         let (nonce, ciphertext) = rest
             .split_at_checked(NONCE_LEN)
-            .ok_or(DataKeyError::Damaged)?;
-        let nonce = <[u8; NONCE_LEN]>::try_from(nonce).map_err(|_| DataKeyError::Damaged)?;
+            .ok_or(SealingKeyError::Damaged)?;
+        let nonce = <[u8; NONCE_LEN]>::try_from(nonce).map_err(|_| SealingKeyError::Damaged)?;
         let mut buffer = ciphertext.to_vec();
         self.cipher()
             .decrypt_in_place(&XNonce::from(nonce), &self.associated(context), &mut buffer)
-            .map_err(|_| DataKeyError::Damaged)?;
+            .map_err(|_| SealingKeyError::Damaged)?;
         Ok(buffer)
     }
 
@@ -231,9 +231,9 @@ impl DataKey {
     }
 }
 
-impl fmt::Debug for DataKey {
+impl fmt::Debug for SealingKey {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("DataKey")
+        f.debug_struct("SealingKey")
             .field("name", &self.name)
             .field("id", &self.id)
             .finish_non_exhaustive()
@@ -250,11 +250,12 @@ pub fn is_name(name: &str) -> bool {
 }
 
 /// The names of the key files in `folder`, sorted. Other files are not keys and are left.
-fn key_names(folder: &Path) -> Result<Vec<String>, DataKeyError> {
-    let entries = std::fs::read_dir(folder).map_err(|error| DataKeyError::Folder(error.kind()))?;
+fn key_names(folder: &Path) -> Result<Vec<String>, SealingKeyError> {
+    let entries =
+        std::fs::read_dir(folder).map_err(|error| SealingKeyError::Folder(error.kind()))?;
     let mut names = Vec::new();
     for entry in entries {
-        let entry = entry.map_err(|error| DataKeyError::Folder(error.kind()))?;
+        let entry = entry.map_err(|error| SealingKeyError::Folder(error.kind()))?;
         let file = entry.file_name();
         let name = file.to_str().and_then(|file| file.strip_suffix(KEY_SUFFIX));
         if let Some(name) = name.filter(|name| is_name(name)) {
@@ -269,8 +270,8 @@ fn key_path(folder: &Path, name: &str) -> PathBuf {
     folder.join(format!("{name}{KEY_SUFFIX}"))
 }
 
-fn read_key(folder: &Path, name: &str) -> Result<DataKey, DataKeyError> {
-    let unreadable = |error: io::Error| DataKeyError::KeyFile {
+fn read_key(folder: &Path, name: &str) -> Result<SealingKey, SealingKeyError> {
+    let unreadable = |error: io::Error| SealingKeyError::KeyFile {
         name: name.to_owned(),
         kind: error.kind(),
     };
@@ -279,12 +280,12 @@ fn read_key(folder: &Path, name: &str) -> Result<DataKey, DataKeyError> {
     // The decode error is dropped unread: it can quote a byte of the key.
     let decoded = STANDARD.decode_slice(text.trim_ascii(), key.as_mut_slice());
     if decoded.ok() != Some(KEY_LEN) {
-        return Err(DataKeyError::KeyFormat {
+        return Err(SealingKeyError::KeyFormat {
             name: name.to_owned(),
         });
     }
     let id = key_id(&key);
-    Ok(DataKey {
+    Ok(SealingKey {
         name: name.to_owned(),
         key,
         id,
@@ -294,13 +295,13 @@ fn read_key(folder: &Path, name: &str) -> Result<DataKey, DataKeyError> {
 /// Writes a new key file that only the hub user can read: first under a temporary name, then
 /// linked to its name, so that no reader sees a file that is half written. A file that another
 /// request made first is kept: the caller reads it.
-fn make_key(folder: &Path, name: &str) -> Result<(), DataKeyError> {
-    let failed = |error: io::Error| DataKeyError::KeyFile {
+fn make_key(folder: &Path, name: &str) -> Result<(), SealingKeyError> {
+    let failed = |error: io::Error| SealingKeyError::KeyFile {
         name: name.to_owned(),
         kind: error.kind(),
     };
     let mut random = Zeroizing::new([0_u8; KEY_LEN + 8]);
-    getrandom::fill(random.as_mut_slice()).map_err(|_| DataKeyError::KeyFile {
+    getrandom::fill(random.as_mut_slice()).map_err(|_| SealingKeyError::KeyFile {
         name: name.to_owned(),
         kind: io::ErrorKind::Other,
     })?;

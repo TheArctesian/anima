@@ -22,14 +22,14 @@ use super::{
     store,
     stream::Binding,
 };
-use crate::{engine::data_keys::DataKey, ids::ArchiveId};
+use crate::{engine::sealing_keys::SealingKey, ids::ArchiveId};
 
 /// A body sealed into a staging copy, with what was learnt while it streamed. The copy is
 /// removed when this drops.
 pub(super) struct Staged {
     path: PathBuf,
     binding: String,
-    key: Arc<DataKey>,
+    key: Arc<SealingKey>,
     pub(super) hash: String,
     pub(super) size: u64,
     pub(super) position: Option<Position>,
@@ -80,7 +80,7 @@ impl Reading {
 /// removed (FIL-005).
 pub(super) async fn stage<S, E>(
     store: &Store,
-    key: DataKey,
+    key: SealingKey,
     body: S,
     keep_location: bool,
 ) -> Result<Staged, Error>
@@ -159,7 +159,7 @@ where
 /// Where the second pass is in the staging copy.
 struct Resealing {
     records: Records,
-    key: Arc<DataKey>,
+    key: Arc<SealingKey>,
     staging: String,
     hash: String,
     number: u64,

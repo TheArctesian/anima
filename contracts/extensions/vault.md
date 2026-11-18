@@ -2,7 +2,9 @@
 
 Status: approved for the engine build (R-148 of 2026-11-18). Section 1 is written with engine task E0-5, because the file store and the location samples seal with a data key. Sections 2 to 5 (operational keys, client-sealed records, reveal) are of E0-6 T1. Change it only through a programme ruling (CON-001). Requirement IDs: VLT-001 to VLT-007 of `docs/plans/extensions-plan.md`; R-146, R-147.
 
-## 1. Data keys (VLT-003, R-146; `crates/hub/src/engine/data_keys.rs`, leaf)
+## 1. Data keys (VLT-003, R-146; `crates/hub/src/engine/sealing_keys.rs`, leaf)
+
+In the code a data key is a `SealingKey` and the folder of them is `SealingKeys`: the names gate (CQ-030) does not permit the word `data` in the name of a file or a type. The setting `ANIMA_DATA_KEY_DIR` and the folder `data-keys/` keep their names.
 
 A data key seals the records and the files of one extension on the hub. It is not the credential key (`ANIMA_KEY_FILE`, SEC-004), and no code seals a record or a file with the credential key.
 
@@ -14,16 +16,16 @@ A data key seals the records and the files of one extension on the hub. It is no
 - A data key has no version now. To change a data key is later work with the operational keys (Section 5).
 
 ```rust
-pub struct DataKeys { /* the folder */ }
-pub struct DataKey { /* 32 bytes, zeroed on drop; no Debug of the bytes */ }
-impl DataKeys {
-    pub fn open(folder: Option<&Path>, credential_key_id: &[u8]) -> Result<Self, DataKeyError>;
-    pub fn key(&self, name: &str) -> Result<DataKey, DataKeyError>;      // Unavailable with no folder
+pub struct SealingKeys { /* the folder */ }
+pub struct SealingKey { /* 32 bytes, zeroed on drop; no Debug of the bytes */ }
+impl SealingKeys {
+    pub fn open(folder: Option<&Path>, credential_key_id: &[u8]) -> Result<Self, SealingKeyError>;
+    pub fn key(&self, name: &str) -> Result<SealingKey, SealingKeyError>;      // Unavailable with no folder
 }
-impl DataKey {
+impl SealingKey {
     pub fn name(&self) -> &str;
     pub fn seal(&self, context: &str, plain: &[u8]) -> Vec<u8>;
-    pub fn open(&self, context: &str, sealed: &[u8]) -> Result<Vec<u8>, DataKeyError>;   // WrongKey, Damaged
+    pub fn open(&self, context: &str, sealed: &[u8]) -> Result<Vec<u8>, SealingKeyError>;   // WrongKey, Damaged
 }
 ```
 

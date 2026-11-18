@@ -14,7 +14,7 @@ use anima_hub::{
     DRAIN_LIMIT, Shutdown, all_routes,
     clock::SystemClock,
     config::{self, Config},
-    engine::{data_keys::DataKeys, files},
+    engine::{files, sealing_keys::SealingKeys},
     fleet::{
         access::{self, listen},
         builds,
@@ -101,7 +101,7 @@ enum StartError {
     CoreDumps(std::io::Error),
     /// Names a key, never its bytes (VLT-003, LOG-007).
     #[error("the data keys cannot be used: {0}")]
-    DataKeys(#[from] anima_hub::engine::data_keys::DataKeyError),
+    SealingKeys(#[from] anima_hub::engine::sealing_keys::SealingKeyError),
 }
 
 /// Prints the plain error (`Display`, never `Debug`) and exits with a failure code.
@@ -304,7 +304,7 @@ fn vault(config: &Config) -> Result<Vault, StartError> {
 /// data key that is the credential key or another data key stops the start (VLT-003); without
 /// either folder the hub starts and an upload answers UNAVAILABLE.
 fn file_store(config: &Config, vault: &Vault) -> Result<files::Store, StartError> {
-    let keys = DataKeys::open(config.data_key_dir.as_deref(), vault.key_id().as_bytes())?;
+    let keys = SealingKeys::open(config.data_key_dir.as_deref(), vault.key_id().as_bytes())?;
     let store = files::Store::in_folder(config.files_dir.as_deref(), keys);
     tracing::info!(files = store.available(), "file store");
     Ok(store)

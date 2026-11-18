@@ -16,7 +16,7 @@ use tokio::{
 };
 
 use super::parts::SealedStream;
-use crate::engine::data_keys::is_name;
+use crate::engine::sealing_keys::is_name;
 
 /// Bytes read from a stored piece at a time.
 const READ_SIZE: usize = 64 * 1024;

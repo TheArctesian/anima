@@ -8,7 +8,7 @@ use futures_util::{Stream, StreamExt as _, stream};
 use zeroize::Zeroizing;
 
 use super::stream::{Binding, PART, RECORD, StreamError};
-use crate::engine::data_keys::DataKey;
+use crate::engine::sealing_keys::SealingKey;
 
 /// The bytes of a sealed piece, as the store gives and takes them.
 pub type SealedStream = Pin<Box<dyn Stream<Item = io::Result<Bytes>> + Send>>;
@@ -71,10 +71,10 @@ pub(super) fn damaged(error: StreamError) -> io::Error {
 /// The plain bytes of `sealed`, opened part by part with `key` for the piece `piece`. A part
 /// that does not open ends the stream with an error, and a stream with no last part ends with
 /// one too, so that a cut piece is never taken for a whole one.
-pub(super) fn opened(sealed: SealedStream, key: Arc<DataKey>, piece: String) -> PlainStream {
+pub(super) fn opened(sealed: SealedStream, key: Arc<SealingKey>, piece: String) -> PlainStream {
     struct State {
         records: Records,
-        key: Arc<DataKey>,
+        key: Arc<SealingKey>,
         piece: String,
         number: u64,
         started: bool,

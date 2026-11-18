@@ -16,8 +16,8 @@ use std::{
 use anima_hub::{
     clock::{Clock, FixedClock},
     engine::{
-        data_keys::DataKeys,
         files::{Derived, Store},
+        sealing_keys::SealingKeys,
     },
     fleet::events::Bus,
     router,
@@ -56,7 +56,7 @@ impl FileHub {
 
     async fn deriving(pool: &PgPool, derived: Vec<Arc<dyn Derived>>) -> Self {
         let (files, keys) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
-        let data_keys = DataKeys::open(Some(keys.path()), b"credential").unwrap();
+        let data_keys = SealingKeys::open(Some(keys.path()), b"credential").unwrap();
         let store = Store::in_folder(Some(files.path()), data_keys).deriving(derived);
         Self::with_store(pool, store, (files, keys)).await
     }
@@ -173,7 +173,7 @@ fn files_below(folder: &Path) -> Vec<PathBuf> {
 }
 
 fn sha256(bytes: &[u8]) -> String {
-    anima_hub::engine::data_keys::hex(&Sha256::digest(bytes))
+    anima_hub::engine::sealing_keys::hex(&Sha256::digest(bytes))
 }
 
 async fn count(pool: &PgPool, table: &str) -> i64 {
