@@ -497,9 +497,28 @@ The tests use a stand-in cloud, fake answers of WorkOS and the site, and a fake 
 in with WorkOS, calls the live site, or trades a claim through a real link. Open decision HM-D13 (the
 form of the WorkOS requests) is decided by step 2.
 
-1. On this computer, run `bun run --cwd apps/desktop dev`. On the first-run screen, click "Sign in".
-   Expected: the browser opens a WorkOS page, and the app shows the same short code.
-2. Sign in with the Anima.ing account in the browser. Expected: the app shows "Your hub is
+Checked without an account on 2026-11-18 (UTC), on the pool server, with a test hub that is deleted and the
+program `anima-link` of `main` on this computer: the join with the invite of a hub's access (0.7 s), the trade
+of the claim through the link for a token of the operator `owner`, the refusal of a second trade of that
+claim, a second access for the same device name (no invite, a new claim, which trades), the refusal of
+`login`, and the same link and token after a sleep and a wake of the hub (answers again in about 12 s).
+`WorkOS` Production gives a device code for a form with the client ID only, and answers a refresh with no
+secret by "Invalid refresh token". The site answers 401 with no token and with a wrong one. Not checked: the
+sign-in of a person, a call of the site with a real token (it makes the Stripe Customer and the hub), the
+join by the application, and the refresh of a real token.
+
+`WorkOS` Production offers email only (a password, or a code by email): Google, GitHub, Microsoft, Apple and
+passkeys are off, and no account exists, so step 2 makes the account. A debug build carries no `anima-link`
+(`apps/desktop/src-tauri/src/carried.rs`), so step 1 gives it one; without it the join after the sign-in is
+refused. A computer that is on the link of a different hub leaves that link when it joins (`link_join`
+replaces the device folder); this computer is on none.
+
+1. On this computer, in the checkout of `main`: run `link/build.sh`, copy `link/bin/anima-link-darwin-arm64`
+   to an empty folder with the name `anima-link`, and run
+   `ANIMA_DEV_PROGRAMS=<that folder, absolute> bun run --cwd apps/desktop dev`. On the first-run screen, click
+   "Sign in". Expected: the browser opens a WorkOS page, and the app shows the same short code.
+2. In the browser, type your email address and make the Anima.ing account (a password, or the code that
+   WorkOS sends by email). Expected: the app shows "Your hub is
    starting", then "Connecting". If it shows "Sign-in refused" at once, WorkOS refused the request
    form: write it in HM-D13.
 3. Wait. Expected: the device list of the hosted hub opens. No screen asked for an invite, an
