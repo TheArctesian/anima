@@ -26,7 +26,7 @@ use self::{
 use super::{
     ProbeEnv, ProbeTarget,
     outcome::{Failure, ProbeResult},
-    resolve::allowed_addresses,
+    resolve::{allowed_addresses, off_link},
 };
 use crate::fleet::checks::config::{SnmpConfig, SnmpSecrets, oid_arcs};
 
@@ -89,6 +89,8 @@ pub(in crate::fleet::checks) async fn observe(
     let attempt = async {
         match get(target, (config, secrets), env, draws).await {
             Ok((ip, elapsed)) => ProbeResult::up(elapsed).via(ip.ip()),
+            // The hub cannot test the computer this way: Unknown, not Down.
+            Err(failure @ Failure::TcpOnly) => ProbeResult::unjudged(&failure),
             Err(failure) => ProbeResult::failed(&failure),
         }
     };
@@ -112,7 +114,7 @@ async fn get(
         .await?
         .first()
         .ok_or(Failure::NotPermitted)?;
-    let peer = SocketAddr::new(ip, config.port);
+    let peer = SocketAddr::new(off_link(ip)?, config.port);
     let mut link = Link::open(peer).await?;
     let (pdu, elapsed) = match secrets {
         SnmpSecrets::Community(community) => {

@@ -24,6 +24,17 @@ fn interval(seconds: u32) -> TimeDelta {
     TimeDelta::seconds(i64::from(seconds.max(1)))
 }
 
+/// The longest wait between two ticks in which the hub still ran. The ticks are a second
+/// apart, and a tick that is slow does not count: the wait starts when it ends.
+const AWAKE_WAIT: TimeDelta = TimeDelta::seconds(30);
+
+/// Whether the hub did not run for a time before `now`: the scheduler waited for this tick
+/// since `idle_since`, longer than a hub that runs waits. A hub that was suspended goes on
+/// with its old state, so only the clock shows it.
+pub(super) fn slept(idle_since: Option<DateTime<Utc>>, now: DateTime<Utc>) -> bool {
+    idle_since.is_some_and(|since| now - since > AWAKE_WAIT)
+}
+
 /// The earliest a check may be probed again, when its type has such a floor (R-102,
 /// CHK-009): a domain expiry check asks its RDAP server at most once an interval, so it waits
 /// its whole interval after `queried_at`, its last query. A check never queried, or of

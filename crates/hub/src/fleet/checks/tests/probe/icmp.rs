@@ -6,7 +6,7 @@ use std::time::Duration;
 use super::support::{LOOPBACK, env, strict_env, target};
 use crate::fleet::checks::{
     config::{CheckConfig, IpVersion},
-    probe::{Failure, ProbeResult, probe, within},
+    probe::{Failure, Judgement, ProbeResult, probe, within},
 };
 
 fn icmp(version: IpVersion) -> CheckConfig {
@@ -97,4 +97,17 @@ async fn chk_001_other_checks_still_time_out_at_their_limit() {
     };
     let result = within(&tcp, std::future::pending()).await;
     assert_eq!(result.message.as_deref(), Some("the check timed out"));
+}
+
+/// The link carries TCP only: the hub says so and does not report the computer as Down.
+#[tokio::test]
+async fn hmd_048_an_icmp_check_on_a_computer_of_the_link_is_unknown_and_says_why() {
+    let computer = target("fd41:4e49:4d41::7");
+    let result = probe(&computer, &icmp(IpVersion::V6), None, &strict_env()).await;
+    assert!(!result.ok);
+    assert_eq!(result.judgement, Judgement::Unjudged);
+    assert_eq!(
+        result.message.as_deref(),
+        Some("a computer of the link is reached with TCP only; this check needs ICMP or UDP")
+    );
 }

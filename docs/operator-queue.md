@@ -22,7 +22,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | --- | --- | --- |
 | 4.1 | Finish the device manager | Operator: the acceptance run (WP-53); the Linux release and the check that an installed application updates (R7); the checks of the rename to `anima-daemon` (HT-018, HT-019); the Linux checks of the defects GH-52 and GH-54 (HT-020, HT-021). Agent: nothing; GH-53 is corrected |
 | 4.16 | One-click install | Operator: the live checks (need-human-testing.md, "One-click") |
-| 4.17 | The hosted mode and the shared pool | Operator: the first real sign-in (HT-022 in need-human-testing.md); approval of HMD-001 to HMD-036; HM-D4, HM-D7, HM-D11 and HM-D13. Agent: nothing until HT-022 has a result |
+| 4.17 | The hosted mode and the shared pool | Operator: HT-027, HT-028, HT-029 and HT-031 in need-human-testing.md, which need a hub of the pool from a new hub image and an application with the new link program; approval of HMD-001 to HMD-036; HM-D4, HM-D7, HM-D11 and HM-D13. Agent: the tasks HM-T10 and HM-T13 to HM-T15 in Section 8 of hosted-mode.md |
 | 4.18 | Update the daemon and the hub | Agent: task U5 in daemon-and-hub-update-plan.md. Operator: one Linux machine and one Mac for task U3, decision OD-ROL-15, and a release for each target for the tasks that need one |
 | 4.2 | Restore a backup and move the coordinator | Operator: the check HT-024 in need-human-testing.md, or a ruling that it is not necessary |
 | 4.3 | Decisions and approvals for the foundation | Operator: each decision and approval in the row. Agent: PE-C1, then PE-C2 of planning-evidence-plan.md, read-only preparation (R-152) |
@@ -119,8 +119,8 @@ This document is generated: `bun run quality:register` writes it from the docume
 | HM-D10 | Do the sign-in pages use a domain of Anima.ing, for example `auth.anima.ing`? | Not at the launch. Add it when the cost is small against revenue. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
 | HM-D4 | Is the second factor (HMD-006) required for each account? | Proposed: required. Not ruled. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
 | HM-D5 | In which region is the first pool host? | Price a US host before the launch. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
-| HM-D13 | Does a public client need `client_secret` to refresh a WorkOS token, and does the device request take JSON or a form? | Check against the real WorkOS before the first release. Not ruled. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
-| HM-D11 | How does the device list offer "Add this computer" for a computer that reaches its hosted hub only through the link (step 8 of Section 4.1)? | Add a path from the hub to the device through the link, then offer the computer by its link key. Not ruled. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
+| HM-D13 | Does a public client need `client_secret` to refresh a WorkOS token, and does the device request take JSON or a form? | The forms of the shell stay. The refresh of a real token is step 4 of HT-022. Not ruled. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
+| HM-D11 | How does the device list offer "Add this computer" for a computer that reaches its hosted hub only through the link (step 8 of Section 4.1)? | Add a path from the hub to the device through the link, then offer the computer by its link key. Not ruled. The operator saw the empty device list after the fir… | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
 | HM-D12 | What must the phone app have before a phone can use "Sign in"? | Build M5-1 with M3-1. Not ruled. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
 | HM-D7 | Who reviews the security of the pool and of the grant path before the launch? | A review by a person from outside, before the first account of a different person. | [proposals/hosted-mode.md](proposals/hosted-mode.md) |
 | Q1 | Is the root helper (Section 4) accepted as a design? | Yes, after a security review. Ship the basic level first. | [proposals/power-health.md](proposals/power-health.md) |
@@ -194,7 +194,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | [proposals/shell-prompt.md](proposals/shell-prompt.md) | Proposal | Draft |
 | [proposals/watchdog.md](proposals/watchdog.md) | Proposal, with a task table | Draft |
 
-## 4. Checks that only the operator can do (72)
+## 4. Checks that only the operator can do (76)
 
 | Check | What |
 | --- | --- |
@@ -220,6 +220,10 @@ This document is generated: `bun run quality:register` writes it from the docume
 | HT-020 | the desktop application builds on Linux with no lint error (GH-52) |
 | HT-021 | the delay of the session picture in the Linux application (GH-54) |
 | HT-022 | the first real sign-in with the Anima.ing account (HM-T1 to HM-T7) |
+| HT-027 | the computer that signs in is a device of the hosted hub (HM-T8) |
+| HT-028 | the hosted hub is a device of its own device list (HM-T9) |
+| HT-029 | the computer is Up while it is connected to the link (HM-T11) |
+| HT-031 | a hosted hub reaches SSH of a computer on its link (HM-T12) |
 | HT-023 | the hash chain of the audit log on the real hub (GH-2 L0, LOG-021 to LOG-028) |
 | HT-024 | an SSH session on a phone, with the key row |
 | HT-025 | a phone joins a hub with an invite, through the link in the app |

@@ -3,12 +3,15 @@ package hublink_test
 import (
 	"context"
 	"errors"
+	"io"
+	"net"
 	"testing"
 	"time"
 
 	"github.com/coder/websocket"
 
 	"github.com/TheArctesian/anima/link/devices"
+	"github.com/TheArctesian/anima/link/presence"
 	"github.com/TheArctesian/anima/link/tunnel"
 )
 
@@ -140,5 +143,85 @@ func TestLNK004ADeviceThatLeftTheListGetsNoNewStreamAndIsSweptOut(t *testing.T) 
 	case <-sessionEnded:
 	case <-time.After(10 * time.Second):
 		t.Fatal("the open session of a device that left the list was not swept out in 10 s (sweep: 200 ms)")
+	}
+}
+
+// reverse opens a stream to the reverse port as a device does, writes one
+// line "here" and waits until the hub link has recorded it.
+func (r rig) reverse(t *testing.T, device *tunnel.Device, key tunnel.PrivateKey) net.Conn {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	stream, err := device.Dial(ctx, tunnel.ReversePort)
+	if err != nil {
+		t.Fatalf("a stream to the reverse port: %v", err)
+	}
+	t.Cleanup(func() { stream.Close() })
+	address, _ := r.store.AddressOf(key.Public())
+	before, _ := r.link.Seen(address)
+	io.WriteString(stream, presence.Here)
+	deadline := time.Now().Add(10 * time.Second)
+	for {
+		if at, seen := r.link.Seen(address); seen && at.After(before) {
+			return stream
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("the hub link did not record the line of the device in 10 s")
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+}
+
+// endedByTheHub reports whether the hub link ends a stream within 10 s.
+func endedByTheHub(stream net.Conn) bool {
+	_ = stream.SetReadDeadline(time.Now().Add(10 * time.Second))
+	_, err := stream.Read(make([]byte, 1))
+	var timeout net.Error
+	return err != nil && !(errors.As(err, &timeout) && timeout.Timeout())
+}
+
+func TestHMD047TheHubLinkSeesAPermittedDeviceOnOneStreamOfTheReversePort(t *testing.T) {
+	r := start(t)
+	key, other := tunnel.NewPrivateKey(), tunnel.NewPrivateKey()
+	r.permit(t, key)
+	r.permit(t, other)
+	device, _ := r.device(t, key)
+	address, _ := r.store.AddressOf(key.Public())
+	if at, seen := r.link.Seen(address); seen {
+		t.Fatalf("a device that wrote no line was seen at %v", at)
+	}
+
+	first := r.reverse(t, device, key)
+	second := r.reverse(t, device, key)
+
+	if !endedByTheHub(first) {
+		t.Error("the first stream is still open 10 s after the second one took its place")
+	}
+	if got := r.link.Streams(key.Public()); got != 1 {
+		t.Errorf("open streams of the device = %d, want its one stream to the reverse port", got)
+	}
+	silent, _ := r.store.AddressOf(other.Public())
+	if at, seen := r.link.Seen(silent); seen {
+		t.Errorf("another device, which wrote no line, was seen at %v", at)
+	}
+	io.WriteString(second, "open 22\n")
+	if !endedByTheHub(second) {
+		t.Error("the stream is still open 10 s after a line that is not \"here\"")
+	}
+}
+
+func TestHMD047ARevocationClosesTheStreamToTheReversePort(t *testing.T) {
+	r := start(t)
+	key := tunnel.NewPrivateKey()
+	r.permit(t, key)
+	device, _ := r.device(t, key)
+	stream := r.reverse(t, device, key)
+
+	closed, err := r.link.Revoke(key.Public())
+	if err != nil || closed != 1 {
+		t.Fatalf("Revoke = %d, %v; want the one stream closed", closed, err)
+	}
+	if !endedByTheHub(stream) {
+		t.Error("the stream is still open 10 s after the revocation")
 	}
 }

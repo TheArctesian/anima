@@ -356,6 +356,7 @@ async fn awake(
             SshError::RefusedTarget => NotOpened::RefusedTarget,
             _ => NotOpened::Unresolved,
         })?;
-    let answered = stream.peer_addr().map_err(|_| NotOpened::NotAwake)?;
-    Ok(answered.ip().to_canonical())
+    // The gateway does not reach a computer of the link yet (HM-T14).
+    let answered = stream.network_peer().ok_or(NotOpened::NotAwake)?;
+    Ok(answered.to_canonical())
 }
