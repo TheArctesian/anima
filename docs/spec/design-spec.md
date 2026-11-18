@@ -86,7 +86,7 @@ The desktop package also carries the command line (Section 6.10). Section 3.11 g
 | Heartbeat | The result of one check at one time. |
 | Metric | One measured value of resource usage, for example CPU usage. |
 | Credential | A user name with a password, or a user name with an SSH private key. |
-| Command line | The `anima` program. The operator and scripts use it in a terminal (Section 6.10). It is not the client. |
+| Command line | The `anima` program. The operator and scripts use it in a terminal (Section 6.10). Its full-screen view, `anima tui`, is part of it. Neither is the client. |
 | MCP server | The `anima mcp` command of the command line. It gives the hub functions to an AI agent as tools (Section 6.10). |
 | AI agent | A program that an AI model controls, for example a coding agent. It is not `anima-daemon`, the metrics program of Section 6.6. |
 | Actor kind | The type of actor that did a recorded action: User, Agent or Hub (LOG-012). Agent means an AI agent. |
@@ -1349,7 +1349,9 @@ The view has these tabs:
 
 `anima mcp` is the MCP server. It is a command of the same program. It gives the hub functions to an AI agent as tools, on standard input and standard output (MCP-001). It uses the same sign-in as the command line.
 
-[cli-mcp-plan.md](../plans/cli-mcp-plan.md) owns the requirements `CMD-nnn` (command line) and `MCP-nnn` (MCP server). This section gives only the rules that the other sections of this document depend on. The prefix `CLI-` in this document is for the client (Section 3.3), not for the command line.
+`anima tui` is a read-only full-screen view of the hub in a terminal. It shows functions that the command line already has (TUI-003, R-168). It is part of the command line and is not the client.
+
+[cli-mcp-plan.md](../plans/cli-mcp-plan.md) owns the requirements `CMD-nnn` (command line), `MCP-nnn` (MCP server) and `TUI-nnn` (the full-screen view). This section gives only the rules that the other sections of this document depend on. The prefix `CLI-` in this document is for the client (Section 3.3), not for the command line.
 
 Built state: the command line and the MCP server are built and are on `main`, in `crates/anima-cli/` (Section 13). The builder puts them in the installation artefacts (INS-002, branch `fix/bundle-anima`).
 

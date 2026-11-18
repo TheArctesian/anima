@@ -7,7 +7,7 @@
   import { clearAccessToken } from '$lib/desktop/token';
   import FormButton from '$lib/forms/FormButton.svelte';
   import ConfirmModal from '$lib/forms/modal/ConfirmModal.svelte';
-  import type { HubAddress, HubResult } from '$lib/hub/hub';
+  import { forgetRecentCopy, type HubAddress, type HubResult } from '$lib/hub/hub';
   import SettingRow from '$lib/settings/SettingRow.svelte';
   import { deviceLinkAddress, deviceLinkText } from './devices';
 
@@ -17,6 +17,7 @@
   /** The link's address once this device has left: a retry only forgets what was kept for it. */
   let left = $state<{ address: HubAddress | null } | null>(null);
   const NOT_CLEARED = 'Left the hub, but the key store kept the access token. Retry.';
+  const COPY_KEPT = 'Left the hub, but the copy of its recent data stayed on this computer. Retry.';
 
   async function read(): Promise<void> {
     const result = await readLink();
@@ -41,6 +42,12 @@
     const { address } = left;
     if (address !== null) {
       forgetListener(address.origin);
+      try {
+        // The data of a hub that this computer left must not stay here (FND-007).
+        await forgetRecentCopy();
+      } catch {
+        return { ok: false, error: { code: 'INTERNAL', message: COPY_KEPT } };
+      }
       try {
         await clearAccessToken(address);
       } catch {

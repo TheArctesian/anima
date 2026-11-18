@@ -4,6 +4,8 @@ import type { HubResult } from './error';
 import { sendRequest, type TokenProvider } from './request';
 import { createConnection, type LiveStatus } from './status/connection';
 import { createSocket, type Sink } from './socket/socket';
+import type { CopyPlace } from './recent/copy';
+import { createRecentCopy } from './recent/recent';
 
 export type { HubAddress } from './address';
 export { DEFAULT_HUB_ADDRESS, parseHubAddress } from './address';
@@ -14,6 +16,7 @@ export type { LiveStatus } from './status/connection';
 export type { Connection, HubStatus } from './status/status';
 export { dataAge } from './status/age';
 export type { Sink } from './socket/socket';
+export { desktopRecentCopy, forgetRecentCopy } from './recent/desktop';
 
 /** GraphQL variables: an object, or an empty one for a document without variables. */
 export type Variables = Record<string, unknown>;
@@ -72,6 +75,11 @@ export interface HubOptions {
   readonly now?: () => Date;
   /** How long to wait for an answer or `connection_ack`; defaults to 10 s (NET-004). */
   readonly timeoutMs?: number;
+  /**
+   * Where the client keeps its read-only copy of recent answers, and how large it may be (FND-007). When given, a
+   * copied query that the hub does not answer gives its last answer, and the status holds the age of that copy.
+   */
+  readonly recent?: CopyPlace;
 }
 
 /** A hub at `address`; its socket connects at once, so the status is true before any request (NAV-003, NET-004). */
@@ -80,7 +88,8 @@ export function createHub(options: HubOptions): Hub {
   const address: HubAddress = Object.freeze({ ...options.address });
   const { token } = options;
   const timeoutMs = options.timeoutMs ?? HUB_TIMEOUT_MS;
-  const connection = createConnection(options.now ?? (() => new Date()));
+  const now = options.now ?? (() => new Date());
+  const connection = createConnection(now);
   const http = {
     address,
     fetch: options.fetch ?? globalThis.fetch.bind(globalThis),
@@ -95,9 +104,13 @@ export function createHub(options: HubOptions): Hub {
     signal: connection.signal,
     timeoutMs,
   });
+  const recent = options.recent === undefined ? undefined : createRecentCopy({ ...options.recent, address, now, served: connection.copyShown });
   return {
     address,
-    request: (document, variables) => sendRequest(http, document, variables),
+    request: (document, variables) => {
+      const send = () => sendRequest(http, document, variables);
+      return recent === undefined ? send() : recent.answer(document, variables, send);
+    },
     subscribe: (document, variables, sink) => socket.subscribe(document, variables, sink),
     status: connection.status,
     close: () => socket.close(),

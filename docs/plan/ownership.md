@@ -22,14 +22,14 @@ One document owns each concern. Add a requirement to its owner, not to this docu
 | Power, hardware health and inventory | [power-health.md](../proposals/power-health.md) | `PWR`, `HWH`, `HWI` (proposed; not in the spec yet). `HLT` is the Health extension of the extensions plan |
 | Daemon push | [design-spec.md](../spec/design-spec.md) defines MET-011 to MET-025. `contracts/daemon-push.md` (K8) is the contract; [phase-3-daemon-delta.md](../plans/phase-3/phase-3-daemon-delta.md) is the record of the change | MET-011 to MET-025 |
 | Engine and extensions | [extensions-plan.md](../plans/extensions-plan.md) | ENG, SRC, COL, VLT, XP, PRJ and the others there. NAV-012 to NAV-014 are in this plan; NAV-001 to NAV-011 are in the design specification |
-| Model service and pooled models | [compute-plan.md](../plans/compute-plan.md), as changed by [C1](../work-items/compute/C1.md) and [C2](../work-items/compute/C2.md) | CMP, CAG, CAP, RTR and the others there |
+| Model service and pooled models | [compute-plan.md](../plans/compute-plan.md). Since its version 0.3 (2026-11-18) it holds the scope of [C1](../work-items/compute/C1.md) and [C2](../work-items/compute/C2.md), and the two work items point to it. OD-AI1 of [ai-direction.md](../proposals/ai-direction.md) is open: it asks if the model gateway owns the model address | CMP, CAG, CAP, RTR and the others there |
 | Copies of the coordinator database, and the move of the coordinator | [coordinator-standby.md](../proposals/coordinator-standby.md) | FND-001 to FND-012 |
 | Bulk data on the operator's machines | [bulk-data-placement.md](../proposals/bulk-data-placement.md) | STO-001 to STO-011 |
 | Rules for all work on machines, and jobs | [jobs.md](../proposals/jobs.md) | USE-001 to USE-009, JOB-001 to JOB-027 |
 | AI agent runs | [agent-runs.md](../proposals/agent-runs.md) | AGN-001 to AGN-014 |
 | Hosted applications | [hosted-applications-plan.md](../plans/hosted-applications-plan.md) | HOST-001 to HOST-025 |
 | Projects as the front door: import from a forge, resources that Anima finds, builds as jobs, owned machines as runners of GitHub Actions, sign-in with a forge | [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md) | PRO-001 to PRO-053 |
-| The `anima` command line and the MCP server | [cli-mcp-plan.md](../plans/cli-mcp-plan.md). The design specification Section 6.10 gives the summary. | CMD, MCP |
+| The `anima` command line and the MCP server | [cli-mcp-plan.md](../plans/cli-mcp-plan.md). The design specification Section 6.10 gives the summary. | CMD, MCP, TUI |
 | Who did an action: the actor kinds User, Agent and Hub in the audit log and the event log | [design-spec.md](../spec/design-spec.md) Section 3.8.1 | LOG-012 to LOG-020 |
 | The hash chain of the audit log, so that a change to an old entry shows | [design-spec.md](../spec/design-spec.md) Section 3.8.2 | LOG-021 to LOG-028 |
 | Installation: the disk image and the AppImage, with the `anima` program inside; the command line alone also by Homebrew and Cargo | [design-spec.md](../spec/design-spec.md) Section 3.11 | INS-001 to INS-013 |

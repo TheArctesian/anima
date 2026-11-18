@@ -16,10 +16,14 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 - Each entry has an identifier `HT-nnn`. Do not use an identifier again.
 - The operator does the steps and writes the result in the entry: the state, the date and one
   line about what occurred.
-- The states are Open, Passed and Failed. Only the operator, or an agent that the operator told
+- The states are Open, Passed, Failed and Deferred. Only the operator, or an agent that the operator told
   the result, can set Passed or Failed.
+- Deferred means that the check is put aside because it cannot run now (PLN-014, R-169). Only a
+  ruling of the operator sets it. The entry gives the reason and the ruling. It is not deleted, and
+  a ruling or the operator sets it to Open again.
 - A Failed entry stays in the list until a correction is built. Then its state goes back to Open.
 - Move a Passed entry to "Passed" at the end of this document. Do not delete it.
+- A proposal of 2026-11-18 sorts the open checks for the hosted hub and gives one order for them: [sort-2026-11-18.md](research/human-checks/sort-2026-11-18.md). The operator approved it on 2026-11-18 (R-169). The entries below do not show it yet: a later commit sets the fifteen deferred entries and writes the new steps.
 
 ## Open
 
@@ -46,12 +50,15 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-019 | The VPN role `daemon` on the VPS | A shell on the VPS (VPS-005) | Open |
 | HT-022 | The first real sign-in with the Anima.ing account: a hosted hub made, joined and opened | This computer, the WorkOS account, the live site and a pool hub | Passed (2026-11-17) |
 | HT-024 | A hub restored on a second server from its backup | A second Linux server, the backup of a hub and its `anima_key` | Open |
+| HT-025 | A phone joins a hub with an invite, through the link in the app; the Paste invite and Joining screens | An iPhone and an Android phone with a build of `mobile/m1-shell`, the simulator and the emulator, a hub with an invite | Open |
 | HT-026 | The use of AI agent programs from real session files, on a Mac and on a Linux system unit | A hub and a daemon of this build, a Mac with Claude Code or Codex sessions, a Linux computer | Open |
 | HT-027 | The computer that signs in is a device of the hosted hub with no question | This computer, the Anima.ing account of HT-022 and its hosted hub | Open |
 | HT-028 | The hosted hub is a device of its own device list, and it is Up | This computer, the Anima.ing account of HT-022, and a hub of the pool from a new hub image | Open |
 | HT-029 | The computer is Up while it is connected to the link of its hosted hub, and Down after the application quits | This computer, the Anima.ing account of HT-022, a hub of the pool from a new hub image, and an application with the new link program | Open |
+| HT-030 | The application on a computer shows its copy of recent data when the hub does not answer | A computer with the installed application, signed in to a hub | Open |
 | HT-031 | A hosted hub reaches SSH of a computer on its link, only after the person turned port 22 on | This computer with Remote Login, the Anima.ing account of HT-022, a hub of the pool from a new hub image, and an application with the new link program | Open |
 | HT-032 | The containers of a real device: the list and the log (hosted applications, stage 1) | A hub of this build and a device with Docker and an SSH credential in Anima | Open |
+| HT-033 | An SSH session on a phone, with the key row | An iPhone and an Android phone with a build of `mobile/m1-shell`, and a hub that has a device with SSH | Open |
 
 ### HT-001: `anima snapshot` against GitHub
 
@@ -724,7 +731,7 @@ on the real hub, with its year of entries, and no test ran the daily check there
 
 Result: Open.
 
-### HT-024: an SSH session on a phone, with the key row
+### HT-033: an SSH session on a phone, with the key row
 
 Built: on the branch `mobile/m1-shell` (mobile plan M4-1, MOB-020, RA-050; mockup 8). In the phone
 layout an SSH session fills the screen. A bar holds back, the device and the time, "Hide keyboard"
@@ -763,7 +770,7 @@ Result: Open.
 
 ### HT-025: a phone joins a hub with an invite, through the link in the app
 
-Built: on the branch `mobile/m1-shell` (mobile plan M1-4 and M3-1, MOB-031, MOB-032, MOB-035, MOB-036). The Go link
+Built: on the branch `mobile/m1-shell` (mobile plan M1-4, M3-1 and M3-2, MOB-031 to MOB-033, MOB-035, MOB-036). The Go link
 runs inside the phone app as a library (`link/cmd/phonelink`, built by `link/build-phone.sh`). "Join a hub", then
 "Join with an invite", joins the phone to a hub over the link, and the app reaches the hub at a loopback address.
 
@@ -771,14 +778,35 @@ The tests cover the error codes of the library, a join with text that is not an 
 2026-11-17 the Android emulator reached the link and wrote its folder, but the emulator had no route to the internet,
 so the relay never answered. The iPhone simulator stopped answering before the join. No phone joined a hub.
 
+The "Paste invite" and "Joining the hub" screens (M3-2, `31378b0d`, `6ae435e3`) follow frame 2 of
+`docs/mockup/mobile/index.html`. On 2026-11-18 they were measured in a desktop browser at 390 by 844 px, dark; the
+joining view had a stand-in for the commands of the shell. They were not seen on the iPhone simulator, on the Android
+emulator or on a phone: the keyboard, the safe areas, the paste permission of iOS and the wait for a real hub are not
+covered. Steps 6 to 8 are for the simulator and the emulator and need no hub; steps 1 to 5 need real phones.
+
 1. Build this branch for an iPhone and an Android phone (`link/build-phone.sh`, then the Tauri build). On the hub, in
    Settings, make an invite for a new device.
-2. On the phone, open the app, tap "Join a hub", then "Join with an invite". Paste the invite and tap Join. Expected:
-   the sign-in page of the hub opens.
+2. On the phone, copy the invite, open the app, tap "Join a hub", then "Join with an invite". Tap Paste, then
+   "Join hub". Expected: Paste puts the invite in the field (iOS may ask to allow the paste first); "Joining the hub"
+   shows four steps, and "Invite read", "Link started" (with the device key under it) and "Waiting for hub" get a
+   check one after the other, within a minute. Tap "Sign in". Expected: the sign-in page of the hub opens.
 3. Sign in. Expected: the device list.
 4. Put the app in the background for one minute, then open it again. Expected: the device list loads again, with no
    new invite.
 5. Settings, Leave hub. Expected: the welcome screen. On the hub, the phone is no longer on the link.
+6. On the iPhone simulator and on the Android emulator, open a build of this branch, tap "Join a hub", then "Join
+   with an invite". Open `docs/mockup/mobile/index.html` beside it. Expected: the screen looks as the "Paste invite"
+   frame of row 2: Back, the title, the field, Paste with a line around it, "Join hub" and "Works once. Not kept.",
+   with the same space at each side.
+7. Tap the field. Expected: the keyboard opens, the page does not zoom, and "Join hub" stays above the keyboard. Type
+   `abc` and tap "Join hub". Expected: a line under the field says that the text is not an invite, and `abc` stays in
+   the field.
+8. Copy some text in a different app, come back and tap Paste. Expected: the text is in the field (iOS asks to allow
+   the paste first). Tap Back. Expected: the screen before it.
+9. On each real phone, during step 2, look at "Joining the hub" beside the "Joining" frame of row 2. Expected: four
+   rows with a mark each, the device key in machine text under "Link started", and Cancel low on the screen, above the
+   home bar. Turn the hub off before a join with a new invite. Expected: after a minute "Waiting for hub" has a red
+   mark, a line says that the hub did not answer, and Retry replaces Cancel.
 
 Result: Open.
 
@@ -1005,5 +1033,32 @@ The hub and the daemon must be of this build. A local hub is sufficient
     and the page say "This daemon runs as a system unit and cannot see the sessions of a user."
 11. Stop and start the daemon of the Mac. Wait 2 minutes. Expected: the numbers of step 2 do not
     change, apart from new use.
+
+Result: Open.
+
+### HT-030: the application on a computer shows its copy of recent data when the hub does not answer (FND-007, task F2)
+
+Built: in 53af82a1 and 3b46dfef (R-157). The application keeps the last answer of the hub for the device list,
+one device, its metrics and the event log (`apps/client/src/lib/hub/recent/`). It does not keep the checks of a
+device, because their settings can hold a credential. When the hub does not answer, it shows that copy, and the
+banner "Not on the network" gives its age. Sign-out deletes the copy.
+
+The tests cover the rules with a store in memory. The real store (IndexedDB) was run in Chromium on 2026-11-18. It
+was not run in the web view of the installed application (WebKit on macOS, WebKitGTK on Linux), and no screen was
+looked at with the network off.
+
+1. Open the application while the hub answers. Open Devices, then one device, then Logs. Expected: the usual screens.
+2. Turn the network off (Wi-Fi off, or stop the VPN client). Quit the application and open it again. Expected: the
+   banner "Not on the network" with "Data from" and an age of some minutes, and the device list with the devices of
+   step 1.
+3. Open the device and the Logs of step 1. Expected: the same content as in step 1, and the charts of the device
+   show their lines. The checks of the device, and a screen that was not opened in step 1, show that the hub did
+   not answer.
+4. Try a change, for example rename the device. Expected: the application says that the hub did not answer, and the
+   name does not change.
+5. Turn the network on. Expected: in less than one minute the banner goes away, the page loads again by itself and
+   shows live data.
+6. Turn the network off again. In Settings, sign out. Quit the application, open it, and sign in is asked. Expected:
+   no device of step 1 is shown anywhere before the sign-in.
 
 Result: Open.

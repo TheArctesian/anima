@@ -39,6 +39,13 @@ describe('navigation view logic', () => {
     });
   });
 
+  it('FND-007: while a copy is on the screen the banner gives the age of the copy, also after a start with no hub', () => {
+    const copyFrom = new Date(NOW.getTime() - 3 * 24 * 3_600_000);
+    const lastContactAt = new Date(NOW.getTime() - 3_600_000);
+    expect(unreachableBanner({ connection: 'unreachable', lastContactAt, copyFrom }, 'https://h', NOW)?.age).toBe('Data from 3 days ago');
+    expect(unreachableBanner({ connection: 'unreachable', lastContactAt: null, copyFrom }, 'https://h', NOW)?.age).toBe('Data from 3 days ago');
+  });
+
   it('NET-004: with no contact yet the banner says no data was received', () => {
     expect(unreachableBanner(status('unreachable'), 'https://h', NOW)?.age).toBe('No data yet');
   });

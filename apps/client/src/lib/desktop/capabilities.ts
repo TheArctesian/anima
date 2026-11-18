@@ -7,7 +7,7 @@ import { isMobile, type Agent } from '$lib/platform/mobile';
 /**
  * What the mobile shell can do (MOB-002, MOB-004): it keeps the access token and runs the device link inside the app
  * (MOB-031, mobile plan M3-1), and it has no desktop-only feature. A phone has no updater (UPD-001), runs no hub and no
- * build, reads no computer and has no cloud commands yet.
+ * build, reads no computer and has no cloud commands yet. Its copy of recent data is the mobile plan's (IOS-003), so it keeps none here.
  */
 const MOBILE_SHELL: Capabilities = { ...browserCapabilities, keyStore: true, deviceLink: true };
 
@@ -17,7 +17,7 @@ const MOBILE_SHELL: Capabilities = { ...browserCapabilities, keyStore: true, dev
  * updater, the process log, the builder (BLD-026), the command line tool's link or launcher (INS-004) and the
  * stay-awake control (AWK-004), the local hub and the device link (FRN-002, FRN-005; the app runs on macOS and Linux), and reads
  * this computer; System Settings at Sharing exists on a Mac only (R-059, R-079), and only the Mac window draws under
- * its title bar. It has no pop-out window command yet, so `popOut` is no (RA-002, WP-14 H-2).
+ * its title bar. It keeps the copy of recent hub answers (FND-007). It has no pop-out window command yet, so `popOut` is no (RA-002, WP-14 H-2).
  */
 export function shellCapabilities(agent: Agent = navigator): Capabilities | null {
   if (!isTauri()) return null;
@@ -39,5 +39,6 @@ export function shellCapabilities(agent: Agent = navigator): Capabilities | null
     deviceLink: true,
     cloudAccount: true,
     overlayTitleBar: isMac(userAgent),
+    recentCopy: true,
   };
 }

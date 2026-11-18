@@ -5,7 +5,7 @@ import { accessApi } from './api';
 import { fakeHub, failure, HUB_ADDRESS, ok } from './access.fixture';
 import { isFirstRun, signInNeeded, startGuard } from './guard';
 import { isSignedOut, routePath } from './routes';
-import { COOKIE_KEPT, signOut, TOKEN_KEPT_AFTER_LOGOUT, TOKEN_KEPT_UNCONFIRMED } from './sign-out';
+import { COOKIE_KEPT, COPY_KEPT, signOut, TOKEN_KEPT_AFTER_LOGOUT, TOKEN_KEPT_UNCONFIRMED } from './sign-out';
 
 const ADDRESS = HUB_ADDRESS;
 
@@ -265,6 +265,20 @@ describe('signOut', () => {
     const { hub } = fakeHub({ Logout: failure('unreachable') });
     const clearToken = () => Promise.reject(new AccessTokenError('denied'));
     expect(await signOut({ api: accessApi(hub), address: ADDRESS, desktop: true, clearToken })).toBe(TOKEN_KEPT_UNCONFIRMED);
+  });
+
+  it('FND-007: sign-out removes the copy of recent data, also when the token stays, and says so when the copy stayed', async () => {
+    const { hub } = fakeHub({ Logout: failure('unreachable') });
+    const order: string[] = [];
+    const clearToken = () => Promise.resolve(void order.push('token'));
+    const parts = { api: accessApi(hub), address: ADDRESS, desktop: true, clearToken };
+    expect(await signOut({ ...parts, forgetCopy: () => Promise.resolve(void order.push('copy')) })).toBeNull();
+    expect(order).toEqual(['copy', 'token']);
+    expect(await signOut({ ...parts, forgetCopy: () => Promise.reject(new Error('refused')) })).toBe(COPY_KEPT);
+    const forgetCopy = vi.fn(() => Promise.resolve());
+    const kept = await signOut({ ...parts, clearToken: () => Promise.reject(new Error('denied')), forgetCopy });
+    expect(kept).toBe(TOKEN_KEPT_UNCONFIRMED);
+    expect(forgetCopy).toHaveBeenCalledOnce();
   });
 
   it('CLI-003: a plain Error from the key store gives the token-kept text', async () => {
