@@ -26,7 +26,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.18 | Update the daemon and the hub | Agent: task U5 in daemon-and-hub-update-plan.md. Operator: one Linux machine and one Mac for task U3, decision OD-ROL-15, and a release for each target for the tasks that need one |
 | 4.2 | Restore a backup and move the coordinator | Operator: the check HT-024 in need-human-testing.md, or a ruling that it is not necessary |
 | 4.3 | Decisions and approvals for the foundation | Operator: each decision and approval in the row. Agent: PE-C1, then PE-C2 of planning-evidence-plan.md, read-only preparation (R-152) |
-| 4.5 | Level 1 model service | Operator: approval of the compute plan, and the compute decisions of row 4.3 |
+| 4.5 | Level 1 model service | Operator: approval of Level 1 of the compute plan, version 0.3 (its Section 12.4 has the tasks L1-1 to L1-21), and its open decisions OD-C1 and OD-C7 to OD-C11 (its Section 15) |
 | 4.7 | Jobs, builds and AI agent runs | Operator: a ruling that changes R-115 (task W1) and the acceptance of the design (task W2). Agent: nothing before them |
 | 4.9 | Hosted applications | Agent: None. H1 to H4 are claimed (docs/claims/h1.md, branch `claude/awesome-kepler-3fcd9e`, started 2026-11-18). Operator: nothing now |
 | 4.10 | Standby copies of the coordinator database | Operator: approval of the requirements |
@@ -34,18 +34,20 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 | 4.19 | The watchdog | Operator: a tier and approval of the direction (OD-W22) |
 
-## 2. Open decisions (124)
+## 2. Open decisions (126)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
 | OD-W22 | The watchdog (watchdog.md): approve its direction, and give it a tier. Its own decisions are OD-WDG-1 to OD-WDG-13. | Open | [plan/decisions.md](plan/decisions.md) |
-| OD-C1 | Hardware of each compute node | The operator gives the list: each Mac, each GPU, memory and site. | [plans/compute-plan.md](plans/compute-plan.md) |
-| OD-C2 | One daemon binary or two | Keep `anima-daemon` separate from `anima-collector`. They run on different devices. Share the enrolment code in a library crate. | [plans/compute-plan.md](plans/compute-plan.md) |
-| OD-C3 | Conformance tolerances | Set from the C4 measurements (RNG-032). | [plans/compute-plan.md](plans/compute-plan.md) |
-| OD-C4 | Where the block adapters live | Offer them to the Shard project first. Keep them in `blocks/` only if Shard does not accept them. | [plans/compute-plan.md](plans/compute-plan.md) |
-| OD-C6 | Where conversations are kept | On the client device until the vault exists (extensions plan, Section 2.4). Then keep them sealed on the hub, so that all clients see them. | [plans/compute-plan.md](plans/compute-plan.md) |
-| OD-C7 | Access to `ai.anima.ing` | VPN only, with Headscale DNS and a DNS-01 certificate (Section 6.1). Confirm that the operator controls the DNS zone of `anima.ing`. Public access is out of sco… | [plans/compute-plan.md](plans/compute-plan.md) |
-| OD-C8 | Device policy default for client computers | Off by default. The operator sets each client computer on. | [plans/compute-plan.md](plans/compute-plan.md) |
+| OD-C1 | What is the hardware of each compute node? | Build L1-1 first, then confirm the table from what the daemon reports. Until then, fill in only the site and "always on" columns, which no reader can give. | [plans/compute-plan.md](plans/compute-plan.md) |
+| OD-C3 | Level 2, parked: which tolerances does the conformance test use? | Set them from the C4 measurements (RNG-032). | [plans/compute-plan.md](plans/compute-plan.md) |
+| OD-C4 | Level 2, parked: are the block adapters offered to the Shard project first? | Yes: offer them to the Shard project first. Keep them in `blocks/` only if Shard does not accept them. | [plans/compute-plan.md](plans/compute-plan.md) |
+| OD-C6 | Until the vault exists, are the conversations of the Chat page kept only on the client device? | Yes: on the client device until the vault exists (extensions plan, Section 2.4). Then keep them sealed on the hub, so that all clients see them. | [plans/compute-plan.md](plans/compute-plan.md) |
+| OD-C7 | Is the model address only `http://127.0.0.1:<port>` on each computer, with no name `ai.anima.ing`, no DNS record and no certificate? | Yes, (a): the loopback address only. R-131 put the listener on each computer, so the name has no server to point at, and RTR-003 and the DNS token of KEYS-C are… | [plans/compute-plan.md](plans/compute-plan.md) |
+| OD-C8 | Does a machine serve models by the one switch "takes work" (USE-004), with no second switch for compute? | Yes, (a): one switch. The work plan records OD-W10 (operator, 2026-11-12: "it should be on by default") and says that it changes CMP-002 and this row; it has no… | [plans/compute-plan.md](plans/compute-plan.md) |
+| OD-C9 | Can `anima-daemon` do model work on its machine (install a runtime, pull a model, start and stop a model server) as a fixed list of work types that it asks the… | Yes, (a): now, as narrow work types. It changes MET-002 ("the daemon must only read") and it is the command channel that R-115 did not take, so it needs a rulin… | [plans/compute-plan.md](plans/compute-plan.md) |
+| OD-C10 | When a request names no machine, or a pull names no variant, can Anima select one by a fixed rule that it shows? | Yes, (a): a fixed rule that Anima shows. A program in the OpenAI form cannot name a machine, so with (b) each such program needs the header `Anima-Node`. Anima… | [plans/compute-plan.md](plans/compute-plan.md) |
+| OD-C11 | Does Level 1 build the path between devices for the link only (the hosted hub), and not for a hub on the VPN? | Yes, (a): the link only. The operator said that he will use only the hosted hub (R-130; no code follows from that sentence, so this row asks). A hub on the VPN… | [plans/compute-plan.md](plans/compute-plan.md) |
 | OD-ROL-15 | The operator's hub on the VPS holds the updater key and signs each release (R-117). When the operator uses only a hosted hub (R-130), does that VPS hub stay as… | Open | [plans/daemon-and-hub-update-plan.md](plans/daemon-and-hub-update-plan.md) |
 | OD-E2 | Collector form: separate binary or part of the desktop client | Separate binary (COL-001). It runs when the client is closed and on computers without the client. | [plans/extensions-plan.md](plans/extensions-plan.md) |
 | OD-E3 | Aggregator for the US accounts (BofA, Chase, Robinhood, Acorns) | SimpleFIN Bridge. It is for private persons and costs about 15 USD each year (its pages give different prices). Check each institution on bridge.simplefin.org b… | [plans/extensions-plan.md](plans/extensions-plan.md) |

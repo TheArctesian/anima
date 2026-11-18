@@ -37,7 +37,7 @@ The table gives the order. The section of each row below the table gives the wor
 | 4.2 | 1 | Restore a backup and move the coordinator | Foundation | Proposal. FND-006 is approved for a hub on a server (R-141); task F1 is built. The operator starts fresh on the hosted hub (R-140). | Operator: the check HT-024 in [need-human-testing.md](../need-human-testing.md), or a ruling that it is not necessary |
 | 4.3 | 1 | Decisions and approvals for the foundation | All | Open | Operator: each decision and approval in the row. Agent: PE-C1, then PE-C2 of [planning-evidence-plan.md](../plans/planning-evidence-plan.md), read-only preparation (R-152) |
 | 4.4 | 2a | The engine (E0) | See, Remember | In progress. | Agent: None. E0-5 T1 to E0-7 are claimed (docs/claims/e0-5.md, e0-6.md and e0-7.md, branch `engine/e0-5-places`, started 2026-11-18). OD-E16 and OD-E17 stay open and block no task of E0-5 to E0-7. The launch briefs of XP-01 to XP-14 wait for E0-7 (R-156) |
-| 4.5 | 2b | Level 1 model service | Use | Planned. The tool inventory is built. | Operator: approval of the compute plan, and the compute decisions of row 4.3 |
+| 4.5 | 2b | Level 1 model service | Use | Planned. The tool inventory is built. Version 0.3 of the compute plan (2026-11-18) is reconciled for Level 1 and is not approved. | Operator: approval of Level 1 of the compute plan, version 0.3 (its Section 12.4 has the tasks L1-1 to L1-21), and its open decisions OD-C1 and OD-C7 to OD-C11 (its Section 15) |
 | 4.6 | 3a | Projects | See | In progress. | Nothing now. The parts that are not built wait for later plans: a hosting provider as a source (PRO-005, Q1), the Operations area of the project page (PRO-006, Q2), task W1 (PRO-006, Q3) and a second forge (PRO-007, Q4); see [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md), "Results of task P0" |
 | 4.7 | 3a | Jobs, builds and AI agent runs | Use | [C7](../work-items/compute/C7.md) is planned. | Operator: a ruling that changes R-115 (task W1) and the acceptance of the design (task W2). Agent: nothing before them |
 | 4.8 | 3b | The other extensions | See, Remember, Reach | Planned. | Row 4.4 |
@@ -112,7 +112,7 @@ The table gives the order. The section of each row below the table gives the wor
 - Category: Use
 - Work: Level 1 model service: C1 and C2
 - Work items: [C1](../work-items/compute/C1.md), [C2](../work-items/compute/C2.md)
-- State: Planned. The two work items have a new scope of 2026-11-07 and are newer than the compute plan.
+- State: Planned. Version 0.3 of the compute plan (2026-11-18) took in the scope of 2026-11-07 of the two work items, R-131 and the link; the plan owns the requirements and the tasks (its Section 12.4). It is not approved. The record of the comparison is [plan-reconcile-2026-11-18.md](../research/compute/plan-reconcile-2026-11-18.md).
 
 ### 4.6 Projects
 
