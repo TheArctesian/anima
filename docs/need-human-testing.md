@@ -559,7 +559,11 @@ The tests use a fake shell and a fake hub. No test reads the link devices of a r
    and it has no check.
 3. Quit the app and start it again. Expected: the device list shows one row for this Mac, not two.
 
-Result: Open.
+Result: Open. First try on 2026-11-18, after the hub of the account was made again from the new image
+(operator, with a picture of the device list: "the hub is an ubuntu server but otherwise it looks good"): the
+list showed one row for this Mac, Unknown, "No checks yet", with a host that starts with `fd41:4e49:4d41:`, and
+the log showed "Device ... added" with no question. The app made the new hub and joined its link with no step,
+although it held the link and the token of the deleted hub. Not seen in the picture: steps 2 and 3.
 
 ### HT-026: the hosted hub is a device of its own device list (HM-T9)
 
@@ -588,7 +592,11 @@ Do these steps after the hub of the account was made again from the new hub imag
 2. Open the device `Hub`. Expected: it has one check, `Hub running`, and the check is Up.
 3. Wait 5 minutes and look at the device again. Expected: the device and the check are Up.
 
-Result: Open.
+Result: Open. First try on 2026-11-18 (operator, with a picture of the device list: "the hub is an ubuntu
+server but otherwise it looks good"): the row `Hub` was Up, 100.00 %, with the host `localhost` and "No
+metrics". Two differences. The row shows the mark of Linux with no distribution: the hub reads a distribution
+over SSH only, and it has no SSH to itself (the image is Debian 13). The row shows the button "+ VNC", which
+adds a protocol; step 1 expected no button. Not seen in the picture: steps 2 and 3.
 
 ## Not built yet
 
