@@ -227,7 +227,12 @@ async fn mcp_005_merging_the_run_controls_starting_a_workflow_and_statuses_have_
             "workflow_start",
             "commit_status",
         ];
-        assert!(!named.iter().any(|word| name.contains(word)), "{name}");
+        // A merge of two places (PLC-004) is not a merge of a pull request.
+        let place = name.starts_with("anima_place_");
+        assert!(
+            place || !named.iter().any(|word| name.contains(word)),
+            "{name}"
+        );
         let run_change =
             name.starts_with("anima_workflow_run_") && name != "anima_workflow_run_get";
         assert!(!run_change, "{name}");

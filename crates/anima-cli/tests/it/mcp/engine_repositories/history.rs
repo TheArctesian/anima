@@ -18,6 +18,12 @@ const TOOLS: [&str; 4] = [
     "anima_code_directory_list",
 ];
 
+/// The tools of the file store name files and carry no bytes of one (CMD-030; the test
+/// `cmd_030_no_tool_uploads_or_downloads_the_bytes_of_a_file` holds that).
+fn of_file_store(name: &str) -> bool {
+    name == "anima_files_list" || name.starts_with("anima_file_")
+}
+
 #[tokio::test]
 async fn mcp_002_the_history_tools_are_read_tools_on_by_default_and_none_returns_file_content() {
     let hub = hub().await;
@@ -41,7 +47,7 @@ async fn mcp_002_the_history_tools_are_read_tools_on_by_default_and_none_returns
             .as_str()
             .unwrap_or_default()
             .to_lowercase();
-        assert!(!name.contains("file"), "{name}");
+        assert!(of_file_store(name) || !name.contains("file"), "{name}");
         assert!(!schema.contains("file content"), "{name}: {schema}");
         assert!(
             !description.contains("returns the content of a file")
