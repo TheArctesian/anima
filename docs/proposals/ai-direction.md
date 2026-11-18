@@ -1,7 +1,7 @@
 ---
 kind: Proposal
 state: Draft
-evidence: Version 1 (2026-11-17). R-131 to R-134 decide four points of the direction. No requirement is approved. It defines no requirement; its open decisions are OD-AI1 to OD-AI7.
+evidence: Version 1 (2026-11-17). R-131 to R-134 decide four points of the direction. R-135 approves step 1 (AIS-018 to AIS-024, in the extensions plan) for build. No other step is approved. It defines no requirement; its open decisions are OD-AI1 to OD-AI7.
 ---
 
 # Proposal: the direction of the AI functions
@@ -57,6 +57,7 @@ for an AI agent to each function. They are built.
 - **R-132 (2026-11-17).** Job 1 is built first. Job 2 follows it.
 - **R-133 (2026-11-17).** The first usage function sends counts only, with no text of a session.
 - **R-134 (2026-11-17).** The counts include the name of the repository of each session.
+- **R-135 (2026-11-17).** Step 1 of Section 5 is approved for build: AIS-018 to AIS-024, tasks AU-1 to AU-5 of the extensions plan.
 - The models on the machines of the operator stay near the top (operator, 2026-11-17: "the local
   models like unsloth coudl really help people get into the market"). A person with no paid
   subscription can start with them. Thus step 4 of Section 5 follows job 1 directly and is not
@@ -99,8 +100,8 @@ Each step gives a function that the operator can use. No step is approved.
 | Number | Question | Recommendation |
 | --- | --- | --- |
 | OD-AI1 | Does one document own the model address, the list of models and the record of use? | Yes. The model gateway owns the address on each computer, the list and the record. The compute plan owns the machines: runtimes, pulls, placement. The router of the compute plan and the hub routes of the model gateway are removed. |
-| OD-AI2 | Does the first usage function send counts only, read by `anima-daemon`, before the vault exists? | Decided (R-133, operator, 2026-11-17: "Yes, counts only"). The proposed requirements are AIS-018 to AIS-024 in Section 4.12.0 of the extensions plan. The text of sessions (AIS-004, AIS-005) waits for the vault and the collector. |
-| OD-AI3 | Does the usage page show the quota that is left on an account? | No. It shows tokens and an estimate of the cost at the public price of the model. To read a limit, Anima must read the account, which is not permitted. |
+| OD-AI2 | Does the first usage function send counts only, read by `anima-daemon`, before the vault exists? | Decided (R-133, operator, 2026-11-17: "Yes, counts only"). The requirements are AIS-018 to AIS-024 in Section 4.12.0 of the extensions plan. The text of sessions (AIS-004, AIS-005) waits for the vault and the collector. |
+| OD-AI3 | Does the usage page show the quota that is left on an account? | Decided: no (R-135 approves AIS-022). It shows tokens and an estimate of the cost at the public price of the model. |
 | OD-AI4 | Is a pane that runs the vendor program as the user of the operator the first way to run an AI agent? | Yes. It is the way that works with a subscription. A run in a container stays in [agent-runs.md](agent-runs.md) and comes later. The daemon gets one new function, the session server, with its own ruling. |
 | OD-AI5 | Does Anima write its own session server, or embed Herdr? | Open decision 1 of Section 4.12.1 of the extensions plan holds this. Recommendation there: not ruled. |
 | OD-AI6 | Does the automatic choice of a model wait? | Yes. The operator or the caller names the model. The rule "cheapest model" of a bot waits for its own decision. |

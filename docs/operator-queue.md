@@ -35,7 +35,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.13 | A hash chain for the audit log | Operator: a requirement for the hash chain. No requirement of the design specification has it; GH-2 holds the proposal. Agent: nothing |
 | 4.19 | The watchdog | Operator: a tier and approval of the direction (OD-W22) |
 
-## 2. Open decisions (107)
+## 2. Open decisions (106)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -83,7 +83,6 @@ This document is generated: `bun run quality:register` writes it from the docume
 | D-9 | Raw sample retention in the application mode: 30 days needs about 4.9 GB for 10 devices with a daemon (spike 10.2). The charts do not read raw samples. | 3 days in the application mode. This is a hub setting (`retention.periods`) and a DB-009 delta, not S3 code. It waits from the last report. | [plans/one-click/s3-database-tasks.md](plans/one-click/s3-database-tasks.md) |
 | D-10 | The oldest Linux that the application supports. The tree is built on the release builder, so it follows the application. | State the builder's distribution in the release notes; no extra build container for the first version. | [plans/one-click/s3-database-tasks.md](plans/one-click/s3-database-tasks.md) |
 | OD-AI1 | Does one document own the model address, the list of models and the record of use? | Yes. The model gateway owns the address on each computer, the list and the record. The compute plan owns the machines: runtimes, pulls, placement. The router of… | [proposals/ai-direction.md](proposals/ai-direction.md) |
-| OD-AI3 | Does the usage page show the quota that is left on an account? | No. It shows tokens and an estimate of the cost at the public price of the model. To read a limit, Anima must read the account, which is not permitted. | [proposals/ai-direction.md](proposals/ai-direction.md) |
 | OD-AI4 | Is a pane that runs the vendor program as the user of the operator the first way to run an AI agent? | Yes. It is the way that works with a subscription. A run in a container stays in agent-runs.md and comes later. The daemon gets one new function, the session se… | [proposals/ai-direction.md](proposals/ai-direction.md) |
 | OD-AI5 | Does Anima write its own session server, or embed Herdr? | Open decision 1 of Section 4.12.1 of the extensions plan holds this. Recommendation there: not ruled. | [proposals/ai-direction.md](proposals/ai-direction.md) |
 | OD-AI6 | Does the automatic choice of a model wait? | Yes. The operator or the caller names the model. The rule "cheapest model" of a bot waits for its own decision. | [proposals/ai-direction.md](proposals/ai-direction.md) |
