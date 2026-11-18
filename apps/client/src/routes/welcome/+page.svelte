@@ -1,46 +1,35 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { resolve } from '$app/paths';
-  import { localHubCarried } from '$lib/desktop/local-hub/shell';
-  import Icon from '$lib/icons/Icon.svelte';
   import { resolve as entrance } from '$lib/motion/roles/resolve';
+  import { press } from '$lib/motion/roles/press';
   import { capabilities } from '$lib/platform/platform';
-  import { welcomeChoices } from './welcome';
+  import { signInChoice } from './welcome';
 
-  const { localHub, deviceLink } = capabilities();
-  /** Unknown until the shell answers; "Create" stays off until then. */
-  let carried = $state(false);
+  const { localHub, deviceLink, keyStore } = capabilities();
+  // Only the hosted sign-in decides this screen; the build's hub programs matter on the page behind "Join a hub".
+  const signIn = $derived(signInChoice({ deviceLink, localHub, carried: false }, keyStore));
   let title: HTMLElement | undefined = $state();
-  const choices = $derived(welcomeChoices({ deviceLink, localHub, carried }));
 
   onMount(() => {
     title?.focus();
-    if (localHub) void localHubCarried().then((answer) => (carried = answer));
   });
 </script>
 
+<!-- The first screen of the first run (FRN-001, HMD-022): sign in with the Anima.ing account, and one link to the other
+     ways to reach a hub (operator, 2026-11-17). Mockup: docs/mockup/first-run/index.html, row 1. -->
 <h1 tabindex="-1" bind:this={title}>Welcome to Anima.ing</h1>
-<p class="lead">Choose how this computer reaches its hub.</p>
+<p class="lead" id="sign-in-line">{signIn.line}</p>
 
-<ul class="choices" {@attach entrance()}>
-  {#each choices as choice (choice.id)}
-    <li class:off={choice.off !== null} class:primary={choice.primary}>
-      {#if choice.href !== null && choice.off === null}
-        <a href={resolve(choice.href)} aria-describedby="{choice.id}-line">
-          <strong>{choice.title}</strong><Icon name="carbon:arrow-right" size="sm" />
-        </a>
-      {:else}
-        <strong>{choice.title}</strong>
-      {/if}
-      <p id="{choice.id}-line">{choice.line}</p>
-      {#if choice.off !== null}<p class="reason">{choice.off}</p>{/if}
-      {#if choice.id === 'sign-in'}
-        <!-- For an operator with a hub of their own on a server (VPS mode). -->
-        <a class="secondary" href={resolve('/sign-in')}>Use a hub address</a>
-      {/if}
-    </li>
-  {/each}
-</ul>
+<div class="actions" {@attach entrance()}>
+  {#if signIn.off === null}
+    <a class="primary" href={resolve(signIn.href)} aria-describedby="sign-in-line" {@attach press()}>{signIn.title}</a>
+  {:else}
+    <span class="primary off" aria-disabled="true" aria-describedby="sign-in-off">{signIn.title}</span>
+    <p class="reason" id="sign-in-off">{signIn.off}</p>
+  {/if}
+  <a class="other" href={resolve('/welcome/hub')}>Join a hub</a>
+</div>
 
 <style>
   h1:focus-visible,
@@ -54,58 +43,53 @@
     color: var(--text-secondary);
   }
 
-  .choices {
+  .actions {
     display: grid;
-    gap: var(--space-3);
-    margin: 0;
-    padding: 0;
-    list-style: none;
+    gap: var(--space-2);
+    margin-block-start: var(--space-4);
   }
 
-  li {
+  .primary {
     display: grid;
-    gap: var(--space-1);
-    padding: var(--space-4);
-    border: var(--border-thin) solid var(--border-strong);
+    place-items: center;
+    min-block-size: var(--target-min-touch);
     border-radius: var(--radius-md);
-    background: var(--surface-raised);
-  }
-
-  li a:first-child {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    min-block-size: var(--target-min-desktop);
-    color: var(--text);
+    background: var(--accent);
+    color: var(--on-accent);
+    font-weight: var(--weight-medium);
     text-decoration: none;
   }
 
-  li a:first-child:hover {
-    color: var(--accent-hover);
+  .primary:hover {
+    background: var(--accent-hover);
   }
 
-  /* The primary choice (HMD-022) carries the accent edge; the others stay plain. */
-  .primary:not(.off) {
-    border-color: var(--accent);
-  }
-
-  .off strong {
+  .primary.off {
     opacity: var(--opacity-disabled);
   }
 
-  p {
+  .reason {
     margin: 0;
     color: var(--text-secondary);
     font-size: var(--text-sm);
-    line-height: var(--leading-normal);
+    text-align: center;
   }
 
-  .secondary {
-    display: inline-flex;
-    align-items: center;
-    min-block-size: var(--target-min-desktop);
-    justify-self: start;
+  .other {
+    display: grid;
+    place-items: center;
+    min-block-size: var(--target-min-touch);
     color: var(--accent);
     font-size: var(--text-sm);
+  }
+
+  /* On a phone the action sits low, under the thumb (mockup 1 of mobile/index.html); the text stays at the top. */
+  @media (max-width: 767.98px) {
+    .actions {
+      position: fixed;
+      inset-inline: var(--space-4);
+      inset-block-end: calc(var(--safe-block-end) + var(--space-4));
+      margin: 0;
+    }
   }
 </style>
