@@ -47,6 +47,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-022 | The first real sign-in with the Anima.ing account: a hosted hub made, joined and opened | This computer, the WorkOS account, the live site and a pool hub | Open |
 | HT-024 | A hub restored on a second server from its backup | A second Linux server, the backup of a hub and its `anima_key` | Open |
 | HT-026 | The use of AI agent programs from real session files, on a Mac and on a Linux system unit | A hub and a daemon of this build, a Mac with Claude Code or Codex sessions, a Linux computer | Open |
+| HT-031 | The containers of a real device: the list and the log (hosted applications, stage 1) | A hub of this build and a device with Docker and an SSH credential in Anima | Open |
 
 ### HT-001: `anima snapshot` against GitHub
 
@@ -587,6 +588,53 @@ so the relay never answered. The iPhone simulator stopped answering before the j
 4. Put the app in the background for one minute, then open it again. Expected: the device list loads again, with no
    new invite.
 5. Settings, Leave hub. Expected: the welcome screen. On the hub, the phone is no longer on the link.
+
+Result: Open.
+
+### HT-031: the containers of a real device, and the log of one (HOST-001, HOST-013; tasks H1 to H4)
+
+Built: the hub domain `crates/hub/src/work/containers/` (`Query.containers`, `Query.containerLog`),
+`anima containers list` and `anima containers logs`, the MCP tool `anima_container_list`, and the tab
+"Containers" of the device page (`apps/client/src/lib/containers/`). The tests use a test SSH server
+that answers with fixed text, a scripted hub and a fake of the hub calls. No test ran the `docker`
+commands on a device: the form of the list (`docker ps --format`) ran only against a Docker with no
+container, and `docker logs` did not run. No person saw the tab or compared it with its mockup
+(`docs/mockup/containers/index.html`).
+
+The check only reads. It starts, stops and changes no container and no server (VPS-005, R-050). The
+hub must be of this build; a local hub is sufficient
+([setup/local-hub.md](procedures/setup/local-hub.md)). Use a device that runs Docker with at least one
+Compose project, with SSH on, its host key accepted and its SSH credential stored in Anima. The SSH
+user must be able to run `docker ps`.
+
+1. Run `anima containers list <device>`. Expected: one row for each container that `docker ps -a`
+   shows on the device, with the same name, state, status text, image and ports, and the name of
+   the Compose project in the last column.
+2. Run `anima containers list <device> --json`. Expected: `createdAt` of each container is the time
+   that `docker ps` shows, in UTC, and is not null.
+3. Run `anima containers logs <device> <name of a container> --lines 20`. Expected: the last 20
+   lines of `docker logs --tail 20 <name>`, lines of standard error included, oldest first.
+4. Run the same command with `--timestamps`. Expected: each line starts with its time.
+5. Run `anima containers logs <device> nosuchname`. Expected: "The device has no container named
+   nosuchname." and no log.
+6. Run `anima containers logs` with an API key in `ANIMA_TOKEN`. Expected: the hub refuses with
+   FORBIDDEN. Run `anima containers list` with the same key. Expected: the list.
+7. In an MCP client, call `anima_container_list` for the device. Expected: the same containers. No
+   tool gives a log.
+8. Open the device in the client and select the tab "Containers". Expected: the containers in
+   groups by Compose project, with the running count of each group, and the containers with no
+   project last.
+9. Select "Log" in one row. Expected: the last 200 lines below the table. Select 1000 lines.
+   Expected: more lines, if the container has them. A line with colour codes of a terminal shows
+   as text and changes nothing of the page.
+10. Compare the tab with its mockup at 1040 px, in the light and the dark appearance. Write down each
+    difference.
+11. Open the tab for a device with no SSH credential in Anima, and for a device with no Docker.
+    Expected: a sentence that says so, and "Retry".
+12. Read the log of the hub for the time of the steps. Expected: no name of a container, no image
+    and no line of a container log (LOG-007).
+13. On the device, run `docker ps -a` again. Expected: no container changed its state because of the
+    steps.
 
 Result: Open.
 

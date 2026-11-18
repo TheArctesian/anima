@@ -1,7 +1,7 @@
 ---
 kind: Plan
 state: In progress
-evidence: Approved by R-149 (operator, 2026-11-18): stage 1 (the containers of a machine, read-only, with a screen in the client) and stage 2 (start, stop, install, update, remove, the catalogue). Stage 2 waits for the work route (task W1). HOST-004 to HOST-009 are marked "Not approved". Version 2 (2026-11-18). Version 4 (2026-11-18): R-150 approves HOST-015 to HOST-025, which came from a comparison with Arcane, in three groups (with stage 1, with stage 2, and HOST-024 after a security review); the tasks are H8 to H12. All tasks after H0 are Not started. OD-HOST-1 and OD-HOST-2 are open.
+evidence: Approved by R-149 (operator, 2026-11-18): stage 1 (the containers of a machine, read-only, with a screen in the client) and stage 2 (start, stop, install, update, remove, the catalogue). Stage 2 waits for the work route (task W1). HOST-004 to HOST-009 are marked "Not approved". Version 2 (2026-11-18). Version 4 (2026-11-18): R-150 approves HOST-015 to HOST-025, which came from a comparison with Arcane, in three groups (with stage 1, with stage 2, and HOST-024 after a security review); the tasks are H8 to H12. Tasks H1 to H3 (stage 1) are built on 2026-11-18 (commits `9fb61504`, `9b5fa08b`, `1bb37a55`) and wait for the check HT-031 of task H4 on a real machine; tasks H5 to H12 are Not started. OD-HOST-1 and OD-HOST-2 are open.
 ---
 
 # Plan: hosted applications (containers that run all the time)
@@ -72,6 +72,8 @@ rules apply:
   of a container can hold a secret, so no MCP tool returns it (MCP-004); the list has an MCP tool.
 - A machine with no SSH credential in Anima has no list in stage 1. The answer says so. Stage 2 can
   read such a machine through the daemon.
+- The log query is closed to every API key, as the file content of a repository is (D-23): a login
+  or the browser session reads it. The list is open to any token.
 
 ### Stage 2: control (approved, R-149; it waits for task W1)
 
@@ -249,10 +251,10 @@ The order is hub API, `anima` command, MCP tool, client (CMD-030). A task is bui
 | Task | Content | Needs | State | Commits |
 | --- | --- | --- | --- | --- |
 | H0 | The decisions of the operator: the approval, the stages, Docker only, where applications run, the catalogue, the tier. | Nothing | Done (R-149, 2026-11-18) | The commit that adds this row |
-| H1 | Stage 1, the hub: the containers of a device and the last lines of the log of one container, through the SSH link with fixed commands (HOST-001, HOST-010). The additions to K1 and K3 (R-149, CON-001). | H0 | Not started | |
-| H2 | Stage 1, the `anima` command (`anima containers list`, `anima containers logs`) and the MCP tool for the list. No MCP tool returns a log (MCP-004). | H1 | Not started | |
-| H3 | Stage 1, the client: the container screen of a machine (HOST-013), and its mockup in the same commit (PLN-019). | H1 | Not started | |
-| H4 | The check of stage 1 on a real machine that runs Docker. An entry in [need-human-testing.md](../need-human-testing.md) (PLN-014). It changes no server of the operator: it only reads (VPS-005, R-050). | H1 to H3 | Not started | |
+| H1 | Stage 1, the hub: the containers of a device and the last lines of the log of one container, through the SSH link with fixed commands (HOST-001, HOST-010). The additions to K1 and K3 (R-149, CON-001). | H0 | Built (2026-11-18). Hub domain `crates/hub/src/work/containers/`; `Query.containers`, `Query.containerLog`. `containerLog` is closed to every API key, as `codeFile` is (D-23). The log has the time of each line, for HOST-015. The check on a real machine is HT-031. | `9fb61504` |
+| H2 | Stage 1, the `anima` command (`anima containers list`, `anima containers logs`) and the MCP tool for the list. No MCP tool returns a log (MCP-004). | H1 | Built (2026-11-18). `anima containers logs` takes the name of a container or its identifier. MCP tool `anima_container_list` (tool set `devices`). The check is HT-031. | `9b5fa08b` |
+| H3 | Stage 1, the client: the container screen of a machine (HOST-013), and its mockup in the same commit (PLN-019). | H1 | Built (2026-11-18). The screen is the tab "Containers" of the device page (design specification Section 6.7); mockup `docs/mockup/containers/index.html`, not compared by a person. The phone layout has no special form. The check is HT-031. | `1bb37a55` |
+| H4 | The check of stage 1 on a real machine that runs Docker. An entry in [need-human-testing.md](../need-human-testing.md) (PLN-014). It changes no server of the operator: it only reads (VPS-005, R-050). | H1 to H3 | The entry is written: [HT-031](../need-human-testing.md), Open. The task is done when the operator sets the entry to Passed (PLN-014). | The commit that adds this text |
 | H5 | Stage 2: start, stop and restart a container (HOST-002), with the controls in the screen of H3. | Task W1 of [projects-and-builds-plan.md](projects-and-builds-plan.md) (the work route); H3 | Not started | |
 | H6 | Stage 2: install from a Compose file, update and remove (HOST-002, HOST-003, HOST-014). | H5 | Not started | |
 | H7 | The catalogue, with OwnTracks Recorder and then Dawarich (HOST-012). The catalogue reads a list of recipes in the form of HOST-025 (R-150). Task T6 of E0-5 in [extensions-plan.md](extensions-plan.md) (R-145) is a quick way to deploy an OwnTracks server; the session that builds H7 and the engine session agree which recipe is the one recipe, so that there are not two. | H6; K-E4 of the engine | Not started | |
