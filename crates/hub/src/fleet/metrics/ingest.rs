@@ -30,7 +30,7 @@ pub use stale::spawn_stale_watch;
 pub(super) use stale::without_fresh_daemon;
 pub(super) use store::daemon_versions;
 
-use crate::fleet::{devices, events};
+use crate::fleet::{agent_usage, devices, events};
 
 /// How long an enrolment code works (MET-012).
 const CODE_LIFETIME: TimeDelta = TimeDelta::minutes(15);
@@ -55,6 +55,8 @@ pub(super) enum Error {
     Devices(#[source] devices::Error),
     #[error("the metrics cannot be stored")]
     Metrics(#[from] super::Error),
+    #[error("the agent usage cannot be stored")]
+    AgentUsage(#[from] agent_usage::Error),
 }
 
 impl From<devices::Error> for Error {

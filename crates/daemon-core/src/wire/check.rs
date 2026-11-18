@@ -10,6 +10,7 @@ use chrono::{DateTime, TimeDelta, Utc};
 use uuid::Uuid;
 
 use super::{Batch, BatchDrive, BatchGpu, BatchPoint, BatchSeries, GpuVendor, RefusalCode};
+use crate::agent_usage::AgentUsage;
 use crate::inventory::Inventory;
 use crate::points::{
     Kind, MAX_GPU_INDEX, MAX_LABELS, MAX_POINTS, MAX_SERIES, Point, SeriesKey, Summary, ceiling,
@@ -36,6 +37,9 @@ pub struct Accepted {
     pub drives: Option<Vec<BatchDrive>>,
     pub inventory: Option<Inventory>,
     pub daemon_version: Option<String>,
+    /// The agent usage, when the batch has it, with the session days of known sources only
+    /// (R-135).
+    pub agent_usage: Option<AgentUsage>,
 }
 
 impl Batch {
@@ -63,6 +67,10 @@ impl Batch {
             Some(sent) => Some(sent.accepted().ok_or(RefusalCode::Malformed)?),
             None => None,
         };
+        let agent_usage = match self.agent_usage {
+            Some(sent) => Some(sent.accepted().ok_or(RefusalCode::Malformed)?),
+            None => None,
+        };
         if !in_range(&self.points, now) {
             return Err(RefusalCode::OutOfRange);
         }
@@ -77,6 +85,7 @@ impl Batch {
             drives: self.drives,
             inventory,
             daemon_version: self.daemon_version,
+            agent_usage,
         })
     }
 }

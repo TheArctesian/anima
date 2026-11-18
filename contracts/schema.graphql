@@ -898,6 +898,93 @@ enum NotUsableReason {
   FAILED
 }
 
+# The use of the AI agent programs (R-135; AIS-018 to AIS-024; K8 Section 4 agentUsage).
+"The AI agent program a session comes from (AIS-018)."
+enum AgentSource {
+  CLAUDE_CODE
+  CODEX
+}
+
+"What a device's daemon can read of the sessions of the AI agent programs, as it sent last (AIS-024)."
+enum AgentUsageState {
+  "It reads the session files of its user."
+  READING
+  "It runs as the systemd system unit: This daemon runs as a system unit and cannot see the sessions of a user."
+  SYSTEM_UNIT
+  "The operator turned the function off on the device, or its settings file cannot be read."
+  TURNED_OFF
+}
+
+"A dimension that agentUsage sums by."
+enum AgentUsageDimension {
+  DEVICE
+  SOURCE
+  "The model of each token count. Sessions, prompts and tool calls count under the model of their session: the model with the most output tokens in it, the first by name on a tie; none for a session with no tokens."
+  MODEL
+  REPOSITORY
+  "The UTC day. A session with use on two days counts on each."
+  DAY
+}
+
+"Which use agentUsage sums. Each part narrows the rows; null parts admit all."
+input AgentUsageFilter {
+  deviceId: ID
+  source: AgentSource
+  "host/owner/name, exactly as the daemon sends it (K8 Section 4)."
+  repository: String
+  "The first UTC day, YYYY-MM-DD. Default: 29 days before lastDay."
+  firstDay: String
+  "The last UTC day, YYYY-MM-DD, included. Default: today (UTC, by the hub's clock)."
+  lastDay: String
+}
+
+"The answer of agentUsage (AIS-020, AIS-021, AIS-024)."
+type AgentUsage {
+  "The days summed, YYYY-MM-DD, both included."
+  firstDay: String!
+  lastDay: String!
+  "One row for each group, newest day first, then by device name (byte order), source, model and repository, a missing model or repository last. At most 1000."
+  rows: [AgentUsageRow!]!
+  "How many groups are not in rows because of the limit of 1000."
+  rowsLeftOut: Int!
+  "Everything the filter admits, in one row with no dimension."
+  total: AgentUsageRow!
+  "Each device whose daemon sent a usage state, by device name; only the device of filter.deviceId when it is given."
+  devices: [AgentUsageDevice!]!
+  "The day of the public list prices of estimatedCostUsd, YYYY-MM-DD."
+  pricesAsOf: String!
+}
+
+"The sums of one group. A dimension that by does not name is null; MODEL and REPOSITORY are also null for use with no model or no repository. Every text comes from a device. Counts are whole numbers; a Float holds a count above 2^31 exactly up to 2^53."
+type AgentUsageRow {
+  device: Device
+  source: AgentSource
+  model: String
+  repository: String
+  "YYYY-MM-DD."
+  day: String
+  "The sessions with use in the group."
+  sessions: Int!
+  prompts: Float!
+  toolCalls: Float!
+  "Input tokens not read from or written to the cache."
+  inputTokens: Float!
+  "Output tokens, reasoning included."
+  outputTokens: Float!
+  cacheReadTokens: Float!
+  cacheWriteTokens: Float!
+  "An estimate in US dollars: the tokens of each model times its public list price of pricesAsOf (AIS-021). It is not the bill of a subscription. Null when no token of the group has a known price; never a guess for a model with no known price."
+  estimatedCostUsd: Float
+  "The tokens of models with no known price, which estimatedCostUsd leaves out."
+  unpricedTokens: Float!
+}
+
+"A device's usage state (AIS-024)."
+type AgentUsageDevice {
+  device: Device!
+  state: AgentUsageState!
+}
+
 type MetricSample {
   kind: MetricKind!
   label: String!
@@ -2649,6 +2736,10 @@ type Query {
   # Tool inventory (operator, 2026-11-15, CAP-020 to CAP-031; ruling number to be assigned)
   "Each device whose daemon sent a tool inventory, by device name (byte order). tool: only the devices where that tool is usable. buildTarget: only the devices with that Rust target. A name the hub does not know matches no device (CAP-030). Open to a read key."
   capabilities(tool: String, buildTarget: String): [DeviceCapabilities!]!
+
+  # The use of the AI agent programs (R-135; AIS-020, AIS-021, AIS-024)
+  "The use of the AI agent programs (Claude Code, Codex) on the devices whose daemon sends it, summed by the dimensions of by over the UTC days of filter (default: the 30 days that end today), with an estimate of the cost from public list prices and each daemon's usage state. by empty: one row of everything. VALIDATION for a bad deviceId, repository or day, a first day after the last, more than 366 days, or more than 20000 groups before the rows are cut to 1000. Open to a read key."
+  agentUsage(filter: AgentUsageFilter, by: [AgentUsageDimension!]! = []): AgentUsage!
 
   # Timeline and record links (operator, 2026-11-16; ruling number to be assigned; K-E3, K-E4)
   "What happened from `from` up to, not including, `to`, newest first: by start, then by reference, both descending. Entries from the clocks of different machines are in that order only by their recorded instants, not in an exact order (TML-011). categories null: all; empty: none. first is 1 to 200. VALIDATION when to is not after from."

@@ -28,7 +28,7 @@ Read this section first. It says where the state is and what is next. It holds n
 - The tasks of an engine item are in a table in Section 5.1. Take the first task that is "Not started" and that no open decision blocks. Claim it first (PLN-022).
 - An extension (XP-01 to XP-14) has no task table until its launch brief is written (ENG-012). Write the brief and its task table first, in this plan, then build.
 - A requirement is in Section 2 (engine), Section 3 (client) or Section 4 (one section for each extension). The open decisions are in Section 7. A decision that is open blocks the tasks that name it.
-- These parts are drafts and are not for a build: community extensions (Sections 2.8.1, 2.12.1 and 3.4), the project map (Section 4.2.1, XP-14) and Bots ([bots.md](../proposals/bots.md)).
+- These parts are drafts and are not for a build: community extensions (Sections 2.8.1, 2.12.1 and 3.4), the project map (Section 4.2.1, XP-14), Bots ([bots.md](../proposals/bots.md)) and the default panels ([default-panels.md](../proposals/default-panels.md), which proposes a change to EXT-001, EXT-005 and EXT-008).
 
 | Item | What is next | Blocked by |
 | --- | --- | --- |
@@ -866,7 +866,8 @@ Reminders deliver only to the devices of the operator.
 #### 4.12.0 Usage counts first (operator direction 2026-11-17)
 
 Status: approved for build (R-135, operator, 2026-11-17: "Approve and build"). The requirements
-AIS-018 to AIS-024 are approved. R-133 and R-134 decided their direction. The map is
+AIS-018 to AIS-024 are approved. They are built and wait for HT-026 of
+[need-human-testing.md](../need-human-testing.md). R-133 and R-134 decided their direction. The map is
 [ai-direction.md](../proposals/ai-direction.md), step 1. The tasks are below.
 
 **Purpose.** Show the use of each AI agent program on each machine before the vault and the
@@ -900,11 +901,11 @@ result gives them in named fields with a length limit (MCP-008).
 
 | Task | Content | State | Commits |
 | --- | --- | --- | --- |
-| AU-1 | The contract: the optional member `agentUsage` of the push batch (K8), the query in K1, the table (K2). The daemon: the pure parse of the session files of Claude Code and Codex in `daemon-core`, the reader, the exclusions (AIS-018, AIS-019, AIS-022 to AIS-024) | Not started | — |
-| AU-2 | The hub: `fleet/agent_usage/` keeps the counts of each session and gives them by device, source, model, repository and day, with the estimate of the cost (AIS-020, AIS-021, AIS-023) | Not started | — |
-| AU-3 | `anima agents usage` and the MCP tool `anima_agents_usage` (AIS-020, CMD-030, CMD-031) | Not started | — |
-| AU-4 | The page in the client, with its fixture for the mock hub and its mockup (AIS-020, AIS-021, AIS-024; PLN-019) | Not started | — |
-| AU-5 | The security review (the daemon reads files of the home folder), the entry in the human testing list for real machines | Not started | — |
+| AU-1 | The contract: the optional member `agentUsage` of the push batch (K8), the query in K1, the table (K2). The daemon: the pure parse of the session files of Claude Code and Codex in `daemon-core`, the reader, the exclusions (AIS-018, AIS-019, AIS-022 to AIS-024) | In progress: built in 7b066fb2, 36739f06, b605aad1. Waits for HT-026. | See the state |
+| AU-2 | The hub: `fleet/agent_usage/` keeps the counts of each session and gives them by device, source, model, repository and day, with the estimate of the cost (AIS-020, AIS-021, AIS-023) | In progress: built in 934b0288, ee2a726c. Waits for HT-026. | See the state |
+| AU-3 | `anima agents usage` and the MCP tool `anima_agents_usage` (AIS-020, CMD-030, CMD-031) | In progress: built in 2a001a34. Waits for HT-026. | See the state |
+| AU-4 | The page in the client, with its fixture for the mock hub and its mockup (AIS-020, AIS-021, AIS-024; PLN-019) | In progress: built in 4b3823cd, 8bd2579e, 51f77f8f. The browser specs did not run and the mockup is not compared. Waits for HT-026. | See the state |
+| AU-5 | The security review (the daemon reads files of the home folder), the entry in the human testing list for real machines | In progress: the review found six faults of the daemon, corrected in cbbc1122. The entry is HT-026, which is open. | See the state |
 
 #### 4.12.1 Agent panes (Herdr-style, operator direction 2026-11-16)
 
@@ -1044,7 +1045,7 @@ A model that the operator tuned with Unsloth is a local model. A local model ser
 
 ### 4.16 Bots (proposed, operator direction 2026-11-16)
 
-This section is a proposal and is in its own document: [bots.md](../proposals/bots.md) (BOT-001 to BOT-046). It is not approved. Its proposed work package is XP-16, which is not in the tables of Section 5. Do not build from it (PLN-018).
+This section is a proposal and is in its own document: [bots.md](../proposals/bots.md) (BOT-001 to BOT-057). It is not approved. Its proposed work package is XP-16, which is not in the tables of Section 5. Do not build from it (PLN-018).
 
 ## 5. Build order: engine first, then one workflow per extension
 

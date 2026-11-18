@@ -1,7 +1,7 @@
 ---
 kind: Proposal
 state: Draft
-evidence: Version 2 (2026-11-17). Direction of the operator of 2026-11-16; not approved. BOT-001 to BOT-046 (BOT-039 to BOT-046, agent coverage against Orca, are proposed with OD-BOT1 to OD-BOT7). It was Section 4.16 of [extensions-plan.md](../plans/extensions-plan.md) until 2026-11-17 (PLN-018). Its work package XP-16 is proposed and is not in the tables of Section 5 of that plan. No tier in Section 4 of the work plan yet.
+evidence: Version 3 (2026-11-18). Direction of the operator of 2026-11-16; not approved. BOT-001 to BOT-057 (BOT-039 to BOT-046, agent coverage against Orca, and BOT-047 to BOT-057, the fallback to a local model, are proposed with OD-BOT1 to OD-BOT14). It was Section 4.16 of [extensions-plan.md](../plans/extensions-plan.md) until 2026-11-17 (PLN-018). Its work package XP-16 is proposed and is not in the tables of Section 5 of that plan. No tier in Section 4 of the work plan yet.
 ---
 
 # Proposal: Bots
@@ -11,13 +11,13 @@ Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds t
 | Item | Value |
 | --- | --- |
 | Document | Proposal: the Bots extension (XP-16, proposed) |
-| Version | 2 |
+| Version | 3 |
 | Date | 2026-11-17 |
 | Language | ASD-STE100 Simplified Technical English (STE) |
-| Status | The header of this document holds the state (PLN-020). History: Draft. Direction of the operator of 2026-11-16. Version 2 adds BOT-039 to BOT-046, proposed. No requirement is approved. |
+| Status | The header of this document holds the state (PLN-020). History: Draft. Direction of the operator of 2026-11-16. Version 2 adds BOT-039 to BOT-046 and version 3 adds BOT-047 to BOT-057, proposed. No requirement is approved. |
 | Related | [extensions-plan.md](../plans/extensions-plan.md) Sections 4.12.1 (agent panes) and 4.15 (model gateway) |
 
-Version 2 (2026-11-17) adds the section "Agent coverage" (BOT-039 to BOT-046, with open decisions OD-BOT1 to OD-BOT7). It changes no earlier requirement. Version 1 only moved this text from Section 4.16 of the extensions plan, because a proposal is not a part of a plan (PLN-016, PLN-018). The text did not change. A section number in this document (for example "Section 4.15") is a section of the extensions plan. When the operator approves this proposal, its requirements go back into the extensions plan as Section 4.16, with a ruling.
+Version 2 (2026-11-17) adds the section "Agent coverage" (BOT-039 to BOT-046, with open decisions OD-BOT1 to OD-BOT7). It changes no earlier requirement. Version 3 (2026-11-18) adds the section "Fallback to a local model" (BOT-047 to BOT-057, OD-BOT8 to OD-BOT14). A later edit of 2026-11-17 adds to BOT-034 and BOT-040 that detection accepts both program names of Cursor. Version 1 only moved this text from Section 4.16 of the extensions plan, because a proposal is not a part of a plan (PLN-016, PLN-018). The text did not change. A section number in this document (for example "Section 4.15") is a section of the extensions plan. When the operator approves this proposal, its requirements go back into the extensions plan as Section 4.16, with a ruling.
 
 ## Bots
 
@@ -184,7 +184,7 @@ takes no T3 Code code (the T3 Code server is TypeScript and Effect, and the hub 
   Codex run from an event that a stranger can create, for example an issue or a pull request in a public
   repository. The configurator must offer an API key as the other choice, set by the operator in the Codex
   configuration of the machine and not seen by Anima.ing.
-- **BOT-034.** Cursor: the adapter must run only `agent -p` of the Cursor CLI. It must treat the error
+- **BOT-034.** Cursor: the adapter must run only `agent -p` of the Cursor CLI. `agent` is the main name of the program. The installer of Cursor also makes the older name `cursor-agent` as a second link to the same program (checked 2026-11-17: `https://cursor.com/install`). The detection (BOT-022, BOT-040) must accept both names and must run the one that it found. It must treat the error
   of a team that disabled headless mode as a stop, tell the operator, and not try another way. It must not use the
   private endpoints of the Cursor client or a proxy for the Cursor models.
 - **BOT-035.** Grok Build: the adapter must run only `grok -p` or `grok agent stdio` (ACP). Anima.ing
@@ -256,7 +256,7 @@ BOT-038.
   structured chat. It does not work until the agent panes are approved and built: AIS-009 to AIS-013 are
   direction only. The terms gate (BOT-041) applies to each entry.
 - **BOT-040.** The daemon must read one catalog of known agents, with one entry for each: the program
-  name, the version command, the sign-in status command (or "not verified", BOT-022), how the first
+  name (or names: Cursor has `agent` and `cursor-agent`, BOT-034), the version command, the sign-in status command (or "not verified", BOT-022), how the first
   prompt goes in, and the row of the vendor terms table (BOT-038) or "terms not checked". A new entry
   for an agent must need no code when the agent runs in a pane (BOT-039). The daemon must find these
   programs with the steps of BOT-022 and must not read a login file (BOT-023). The state of each agent
@@ -311,6 +311,132 @@ rows of the table below yet. They stay in the note until a person adds a dated r
 | OD-BOT5 | May an operator run `agy` or Gemini CLI on a consumer Google login in a pane that he drives by hand (BOT-045)? A reply on the Google tracker of 2026-11-12 says an interactive ACP session by a person is allowed, and a background worker is not. The reply is not a term. | Proposed, not ruled: a bot never uses that login (BOT-036). A person's own terminal pane is his own use, and Anima.ing offers no entry for it. |
 | OD-BOT6 | Do the agents that speak ACP only through a program that their vendor did not publish (Pi with `pi-acp`, Muse with an unofficial adapter) run through the ACP adapter (BOT-021)? | Proposed, not ruled: no. They stay terminal entries (BOT-039) until the operator rules. |
 | OD-BOT7 | Do the 14 agents with no checked terms row show as "terms not checked" in the first release (BOT-041, BOT-043), or does a person read their terms first? | Proposed, not ruled: show them only as custom entries with "terms not checked" (Tier 3); read the rows of Tier 2 before the release (BOT-043). |
+
+**Fallback to a local model when a usage limit stops a session (proposed 2026-11-18, version 3; not ruled).**
+Founder direction of 2026-11-18, in his words: "Include something for spawning another claude code session
+using Qwen 3.8 when usage limits expire can be down with finish work in claude code and can slop to the
+local unsloth model". I read it as: when a Claude Code session stops on the usage limit of the operator's
+subscription, Anima.ing can start a second session in the same project and the same pane, which runs a
+local model on a machine of the operator, so that the work goes on. This is not a ruling (PLN-021). It
+needs the panes (AIS-009 to AIS-013, direction only) and the model service of the compute plan (not
+approved), so nothing here can be built yet (PLN-007).
+
+What the documents already say. [agent-runs.md](agent-runs.md) has the same wish: "work continues when
+a hosted model account refuses, with a model on a different machine", and AGN-014 says that the hub must
+not read the usage limit of an account (CAP-025). The compute plan already has the parts of the local
+model: the model library with pulls from the `unsloth` organisation of Hugging Face (LIBM-003, LIBM-006
+gives `qwen3.8-27b:q4_k_m` as its example), the runtimes (RTC-001 to RTC-005, llama-server by default),
+and a router that can forward the Anthropic Messages API (RTR-015). The usage counts (AIS-018 to
+AIS-024) read the session files of Claude Code. They hold tokens, not limits, and AIS-022 forbids a read of
+a usage limit. Thus the counts cannot tell that a limit was reached. This section adds the fallback and
+does not copy those parts (PLN-016).
+
+- **BOT-047.** The operator must be able to start a fallback session from a pane or a bot task of Claude
+  Code (BOT-032), in the same repository folder (and the same worktree) and the same pane. The fallback
+  session must run a model that a model server on a device of the operator serves. It must not use the
+  subscription. It must show as a fallback in the pane, with the name of the model and the device.
+- **BOT-048.** The local model is a capability of a device. The device page must show, for each device,
+  one state for the fallback: no model server, model not pulled, memory below the need of the model, or
+  ready. The model comes from the model library (LIBM-001 to LIBM-006), and the fit verdict comes from the
+  compute plan. Unsloth gives the need of Qwen3.8-27B as 16 GB to 19 GB of memory for a 4-bit file
+  (checked 2026-11-18; the source is in the note below). The hub must not pick the model for the operator
+  (OD-BOT11). The probe of a device must run with an empty home folder (CAP-025).
+- **BOT-049.** The fallback session must talk to the model server directly, from the device to the
+  server. The hub must not carry the request (R-131). In the first version the server must be on the
+  same device, on the loopback address. A server on a different device needs the path from one device
+  to a different device, which is a spike (ai-direction.md, step 2; OD-BOT13).
+- **BOT-050.** The operator must always be able to start a fallback by hand ("Continue on a local
+  model"). Anima.ing can also offer it when the program stops on its limit. The detection must not use the
+  token counts of AIS-018. It must not read a quota, a reset time, a login or an account (AIS-022,
+  CAP-025). It can use only what the program itself prints in a pane that Anima.ing started (AIS-010) or
+  the exit result and the message of a `claude -p` task of a bot (BOT-003). The patterns of the messages
+  of each version of the program go in the catalog (BOT-040). A message that does not match a pattern
+  gives no offer, and the manual start stays. Not verified: the exact text and the exit code of
+  `claude` at its limit. Whether the daemon may notice that message at all is OD-BOT10.
+- **BOT-051.** Anima.ing must not start a fallback unless the operator set a mode for the pane, the bot or
+  the project: off, ask each time, or start by itself. The default is open (OD-BOT9). In each mode, the
+  start must go in the audit log (BOT-007) and send the alert of AIS-012, and the pane must show the
+  fallback (BOT-047). The session must not have more rights than the session that stopped. The standing
+  permissions of BOT-006 carry over only when the operator says so (OD-BOT12).
+- **BOT-052.** The fallback of Claude Code must run the unmodified `claude` program as the operator's own
+  user (BOT-021), with these values set for that process only, and not written into a settings file of the
+  operator: `ANTHROPIC_BASE_URL` with the address of the local server, and a credential variable
+  (`ANTHROPIC_API_KEY` or `ANTHROPIC_AUTH_TOKEN`) with a value that is not a secret. The reason is in the
+  Anthropic text below: with the base address only, the saved claude.ai login stays the active credential,
+  and its token goes to the address. The adapter must never read, pass, copy or keep a login or a token
+  (BOT-020, BOT-023, BOT-032), and must not set `CLAUDE_CODE_OAUTH_TOKEN`. A test must start the program
+  against a sandbox server with a saved login and fail when the server gets an `Authorization` header
+  from that login. The adapter can set `CLAUDE_CODE_ATTRIBUTION_HEADER=0`, because Unsloth reports that
+  the header makes a local model about 90 % slower by a cache miss on each request. This requirement waits
+  for OD-BOT8.
+- **BOT-053.** The safe alternative must exist before BOT-052 is on: a fallback with an open harness that
+  speaks to the local server in the same pane, for example OpenCode, Hermes Agent or Pi, which Unsloth also
+  starts against a local model (`unsloth start opencode`). It is an entry of the catalog (BOT-040) and runs as
+  a runner (BOT-039). The operator picks the harness for the fallback in the same setting as the mode
+  (BOT-051). With "Claude Code" not allowed (OD-BOT8), this is the only fallback.
+- **BOT-054.** The handoff must stay on the device. The daemon must write one file in its own state
+  folder, with the rights of the user only and outside the repository, and the first request must name its
+  path. The file holds: the request that the operator wants finished, as one line that the operator
+  confirms (for a bot task, the title of the task, and the bounded handoff of BOT-026 and BOT-027 with
+  the context window of the local model); the branch, the head commit, the list of the changed files
+  with the counts of `git diff --stat`, and the last five commit subjects. It must not hold diff text, the
+  environment, a file that matches a secret pattern (`.env*`, key files), or a login. The hub gets only
+  the event that a fallback started and ended (BOT-056). Resuming the stopped session with `claude -r` on
+  the local model (BOT-028) is not verified: the stored thinking of a different model can fail. It is
+  an option only after a test.
+- **BOT-055.** Switch back. The daemon does not know when a limit resets and must not read it
+  (AIS-022). The pane must always offer "Return to Claude Code". The operator can set a reminder time
+  (the alert of AIS-012). Two sessions must not write in one worktree: the fallback must end or pause
+  before the Claude session starts. The return gives the Claude session a handoff of what changed since
+  the fallback began (BOT-054, BOT-028). Return is never automatic, because a failed return would lose
+  the work (OD-BOT9).
+- **BOT-056.** The audit log (BOT-007) must record each start, stop and return of a fallback, who gave it
+  (the operator or a rule), the device and the model name. The usage page (AIS-020) must show the tokens
+  of a fallback session as local use and give no cost estimate for them: the public prices (MGW-014) have
+  no row for a local model, and AIS-021 must not apply a Claude price to them. A session file of a fallback
+  also shows as `claude` in the usage counts; the model name tells them apart.
+- **BOT-057.** The fallback is a kind of runner. It is a harness (BOT-040) and a model server of a device,
+  and the operator adds it from the Agents page and from "Add runner" (PNL-002, PNL-003, PNL-005). The
+  menu of each pane has "Continue on a local model" (BOT-050). The local model appears in the model
+  address of the compute plan when that is built (RTR-015; ai-direction.md step 4), but the first version
+  needs only the server on the device (BOT-049).
+
+Sources, read on 2026-11-18. Not legal advice.
+
+- Qwen: "Qwen 3.8" exists. Qwen3.8-Max was announced on 2026-08-02 (`https://qwen.ai/blog?id=qwen3.8`).
+  Open weights: Qwen3.8-2.4T-A95B, 2.4 trillion parameters and about 95 billion active, on 2026-08-12, and
+  Qwen3.8-27B, a dense model with vision under the Apache 2.0 licence, on 2026-08-14
+  (`https://github.com/QwenLM/Qwen3.8`, `https://www.alibabacloud.com/blog/alibaba-unveils-qwen3-8-27b-and-releases-weights-of-qwen3-8-flagship-model_603463`).
+  Alibaba Cloud lists later hosted versions (Qwen3.8-Max-0902 of 2026-09-02, Qwen3.8-Flash of 2026-08-26):
+  `https://docs.modelstudio.console.alibabacloud.com/en/model-studio/newly-released-models`. Only the 27B
+  runs on one ordinary machine.
+- Unsloth: Qwen3.8-27B GGUF files (Dynamic v3.1 of 2026-11-11): `https://huggingface.co/unsloth/Qwen3.8-27B-GGUF`.
+  Its guide gives 16 GB to 19 GB for 4 bits, 23 GB to 26 GB for 6 bits, and a 256 000-token window:
+  `https://unsloth.ai/docs/models/qwen3.8`. Claude Code with a local model through `ANTHROPIC_BASE_URL`
+  and llama-server, and the attribution header fix: `https://unsloth.ai/docs/basics/claude-code`.
+  `unsloth start claude` and the other agents: `https://unsloth.ai/docs/integrations/unsloth-start`. The
+  guides name Qwen3.5 and Qwen3.6 in their Claude Code examples; the Qwen3.8 page gives the run command.
+- Anthropic: a gateway on `ANTHROPIC_BASE_URL` is a documented setup. "Anthropic doesn't endorse, maintain,
+  or audit third-party gateway products, and doesn't support routing Claude Code to non-Claude models
+  through any gateway." While a gateway credential variable is active, the subscription login is not sent;
+  with the base address only, "a saved claude.ai login remains the active credential"
+  (`https://code.claude.com/docs/en/llm-gateway`). The legal page asks for an unmodified program with its
+  sign-in methods kept, and bans collecting, storing or intermediating Claude.ai credentials
+  (`https://code.claude.com/docs/en/legal-and-compliance`). Finding: the texts do not ban an unmodified
+  `claude` that has a different base address and no subscription login, and they say that this use is not
+  supported. This is **unclear**, not allowed. It is OD-BOT8.
+
+**Open decisions: fallback to a local model.** Each row is proposed, not ruled. Only the operator can rule it.
+
+| Decision | Question | Recommendation |
+| --- | --- | --- |
+| OD-BOT8 | May Anima.ing start the unmodified `claude` program against a local server that is not Anthropic's (BOT-052)? Anthropic does not support it and has no text that bans it. | Proposed, not ruled: yes, as an option, with the safe values of BOT-052 and a note in the pane that Anthropic does not support it. The traffic never goes to Anthropic and no Anthropic login is used. Ask Anthropic in writing before the release (as in open decision 7). The open harness (BOT-053) is the alternative, and it is built first. |
+| OD-BOT9 | What is the default mode of a fallback (BOT-051): off, ask each time, or start by itself? The operator ruled full auto for the security choices (R-120). Return (BOT-055) is never automatic in this text. | Proposed, not ruled: ask each time. A model with less skill has the same rights, so a start by itself is a choice for each project. |
+| OD-BOT10 | Does AIS-022 ("must not read ... a usage limit"), which R-135 approved, forbid that the daemon notices the limit message that the program prints in a pane (BOT-050)? | Proposed, not ruled: no, because it reads no quota or account. The text of AIS-022 then needs one sentence. If the operator says yes, only the manual start stays. |
+| OD-BOT11 | Which local model does the fallback use? Stephen named Qwen 3.8. The open Qwen3.8 weights are the 27B and the 2.4T. | Proposed, not ruled: Anima.ing sets no default model. It offers the variants that the fit verdict of the device allows (BOT-048), with Qwen3.8-27B first for a device with 16 GB or more. |
+| OD-BOT12 | Does the fallback keep the standing permissions of the stopped session (BOT-006, BOT-051)? | Proposed, not ruled: no. It starts with fewer rights (no push to a shared branch, no delete), and the operator adds them. |
+| OD-BOT13 | Is the server on the same device in the first version (BOT-049), or on any device of the operator? | Proposed, not ruled: the same device. A server on another device waits for the spike of the path from one device to another. |
+| OD-BOT14 | Does the fallback also cover Codex when it stops on its limit? | Proposed, not ruled: later. Claude Code first. The terms of Codex are unclear (BOT-033). |
 
 **Depends on.** Model gateway (XP-15), agent panes (Section 4.12.1; BOT-039 needs AIS-009 to AIS-013, which are direction only), the rule engine (ENG-001), and
 for long tasks the jobs and agent-runs proposals. Rented bot computers (BOT-010) depend on the

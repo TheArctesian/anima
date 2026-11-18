@@ -1,6 +1,7 @@
-//! The `devices` tool set: the fleet, devices, their metrics and capabilities, sites, wake, and
-//! the changes.
+//! The `devices` tool set: the fleet, devices, their metrics and capabilities, the use of their
+//! AI agent programs, sites, wake, and the changes.
 
+mod agent_usage;
 mod capabilities;
 mod change;
 mod metrics;
@@ -20,6 +21,7 @@ pub enum DeviceTool {
     Get,
     Metrics,
     CapabilityList,
+    AgentUsage,
     Create,
     SiteCreate,
     Wake,
@@ -28,12 +30,13 @@ pub enum DeviceTool {
 }
 
 impl DeviceTool {
-    pub const ALL: [Self; 10] = [
+    pub const ALL: [Self; 11] = [
         Self::FleetOverview,
         Self::Search,
         Self::Get,
         Self::Metrics,
         Self::CapabilityList,
+        Self::AgentUsage,
         Self::Create,
         Self::SiteCreate,
         Self::Wake,
@@ -46,6 +49,7 @@ impl DeviceTool {
         match self {
             Self::Metrics => metrics::definition(),
             Self::CapabilityList => capabilities::definition(),
+            Self::AgentUsage => agent_usage::definition(),
             Self::FleetOverview | Self::Search | Self::Get => read::definition(self),
             other => change::definition(other),
         }
@@ -62,6 +66,7 @@ impl DeviceTool {
             Self::Get => read::get(hub, arguments).await,
             Self::Metrics => metrics::metrics(hub, arguments).await,
             Self::CapabilityList => capabilities::list(hub, arguments).await,
+            Self::AgentUsage => agent_usage::usage(hub, arguments).await,
             Self::Create => change::create(hub, arguments).await,
             Self::SiteCreate => change::site_create(hub, arguments).await,
             Self::Wake => change::wake(hub, arguments).await,

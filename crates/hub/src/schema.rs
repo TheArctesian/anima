@@ -14,7 +14,7 @@ use crate::{
     config::Config,
     engine::{extensions, links, sources, timeline},
     fleet::{
-        access, builds, checks,
+        access, agent_usage, builds, checks,
         credentials::Vault,
         devices,
         events::{
@@ -33,6 +33,7 @@ use crate::{
 #[derive(MergedObject, Default)]
 pub struct Query(
     access::graphql::Query,
+    agent_usage::graphql::Query,
     builds::graphql::Query,
     checks::graphql::Query,
     devices::graphql::Query,
