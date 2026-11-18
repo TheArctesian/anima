@@ -5,7 +5,7 @@ This document is a record, not a plan (PLN-010, work plan Section 9). It holds w
 | Item | Value |
 | --- | --- |
 | Document | Deferred work: the list |
-| Version | 1.1 |
+| Version | 1.2 |
 | Date | 2026-11-16 |
 | Status | In use. Add a deferred item here, in the commit that defers it. |
 | Origin | GitHub issue #1: made 2026-11-04, last changed 2026-11-13, with 27 comments. Copied on 2026-11-16. Only the links were changed. Not written in STE yet. |
@@ -73,6 +73,7 @@ Added 2026-11-04 to 2026-11-13, top of the issue.
 Added 2026-11-04 to 2026-11-13, top of the issue.
 
 - [ ] **Extensions** are tracked as work items (they were issues with the `extensions` label before R-119): engine [E0-1](work-items/engine/E0-1.md)–[E0-8](work-items/engine/E0-8.md), extensions [XP-01](work-items/extensions/XP-01.md)–[XP-14](work-items/extensions/XP-14.md), decisions [SPEC](work-items/extensions/SPEC.md)–[OD-E3](work-items/decisions/OD-E3.md), accounts and keys [KEYS](work-items/extensions/KEYS.md), seams [SEAMS](work-items/extensions/SEAMS.md). Plan: `docs/plans/extensions-plan.md`. Start only after the device manager build is finished (PH-E-000).
+- [ ] **Launch briefs of XP-01 to XP-14** (ENG-012, [extensions-plan.md](plans/extensions-plan.md)): written after E0-7 is done, not before (operator, 2026-11-18, R-156). Then each extension gets its task table.
 
 ### Proposals after Phase 1 (docs/proposals)
 
@@ -92,8 +93,8 @@ Added 2026-11-05.
 **R-055: in-app VPN enrolment (operator request, after Phase 1)**
 The operator wants joining the VPN to need no separate install and no terminal. The proposal is `docs/proposals/in-app-enrolment.md`.
 - [ ] Spec change: a setup screen; invite and enrolment requirements; Settings "Add a computer" and "Add a site"
-- [ ] Decision (a): embed tsnet/libtailscale in the Tauri shell (userspace VPN, app traffic only; check iOS)
-- [ ] Decision (b): a root-owned VPS broker with three verbs (personal key, site router key, approve a site's own route), called by the hub with TOTP and an audit entry. This relaxes vpn.md §11 "no Headscale API keys"
+- [ ] Decision (a): embed tsnet/libtailscale in the Tauri shell (userspace VPN, app traffic only; check iOS). Still open; R-154 does not decide it.
+- [x] Decision (b): a root-owned VPS broker with three verbs (personal key, site router key, approve a site's own route), called by the hub with TOTP and an audit entry. This relaxes vpn.md §11 "no Headscale API keys" Accepted by the operator on 2026-11-18 (R-154). The broker is built and installed on the VPS (VP-3, VP-4, VP-7 of [vpn-plan.md](plans/vpn-plan.md) hold the same decision for Tier B).
 - [ ] Re-enrolment before the 180-day expiry (VPN-003)
 - [ ] Site options: a router or NAS with Tailscale, the Phase 6 site agent, or the app acting as router
 
@@ -933,7 +934,7 @@ Added 2026-11-10.
 - [ ] C2: three GPU vendor enums (`readings`, `wire`, the hub); keep one in agent-core.
 - [ ] C3: `readings::Vram` and `GpuReading.shared_memory_bytes` have no consumer until the agent lands.
 - [ ] C4: a GPU `label` allows bidi and format characters such as U+202E, so a name can spoof its chart label (the client escapes it; not an injection). Refuse `Cf` characters.
-- [ ] C6: `crates/hub/src/metrics/` and `metrics/collector/tests/` are at the 12-file limit.
+- [ ] C6: `crates/hub/src/fleet/metrics/` and `metrics/collector/tests/` are at the 12-file limit.
 - [ ] C7: every AMD card is named "AMD GPU"; read `product_name`.
 
 ## 12. Notes on the sources

@@ -1,7 +1,7 @@
 ---
 kind: Proposal
-state: Draft. Build state not checked
-evidence: Its status line: a proposal for a ruling.
+state: Draft. Deferred; not built
+evidence: Deferred by R-057 (operator, 2026-11-05; [deferred.md](../deferred.md)). Checked on `main` at `ec965cdb` (2026-11-18): no `setupRequired` field in `contracts/schema.graphql` and none in `crates/hub/src`.
 ---
 
 # Proposal: first-run setup in the app (no SSH to create the account)
