@@ -1,7 +1,7 @@
 ---
 kind: Plan
 state: In progress
-evidence: Its header says "For review". Its work items were open at the import of 2026-11-16 ([work-items/](../work-items/README.md), "Compute" and "Decisions"). The tool inventory (CAP-020 to CAP-031) is built: the daemon, the hub, `anima capability list` and the MCP tool (commits 1cb43b06 to a0cf53e5). Its live checks are open ([need-human-testing.md](../need-human-testing.md), HT-002 to HT-006). Its client section is approved and not started (Section 11.1, CUI-010 to CUI-019). No other part is approved.
+evidence: Its header says "For review". Its work items were open at the import of 2026-11-16 ([work-items/](../work-items/README.md), "Compute" and "Decisions"). The tool inventory (CAP-020 to CAP-031) is built: the daemon, the hub, `anima capability list` and the MCP tool (commits 1cb43b06 to a0cf53e5). Its live checks are open ([need-human-testing.md](../need-human-testing.md), HT-002 to HT-006). Its client section is approved and not started (Section 11.1, CUI-010 to CUI-019). No other part is approved. OD-C5 is decided (R-131): a model request goes directly from device to device.
 ---
 
 # Anima Compute Plan
@@ -525,7 +525,7 @@ Findings:
 | OD-C2 | One daemon binary or two | Keep `anima-daemon` separate from `anima-collector`. They run on different devices. Share the enrolment code in a library crate. |
 | OD-C3 | Conformance tolerances | Set from the C4 measurements (RNG-032). |
 | OD-C4 | Where the block adapters live | Offer them to the Shard project first. Keep them in `blocks/` only if Shard does not accept them. |
-| OD-C5 | Router location | The router runs in the hub on the VPS (OD-9). Each request then goes caller to VPS to node. Measure the added delay in C1. If it is too high, run a second router at the home site. |
+| OD-C5 | Router location | Decided (R-131, operator, 2026-11-17: "I like B"). A model request goes directly from the computer of the caller to the compute node. The Anima program on the computer of the caller listens on the loopback address and asks the hub which node has the model. The hub keeps the list of models and the record of use. It does not carry the request or the answer. This is the path of OD-E11 of the extensions plan. It needs a path from one device to a different device through the link. That path is not built and not verified: a spike must prove it before the plan depends on it. Sections 2, 6 and 9 still show the old design (the router in the hub on the VPS) until version 0.3 changes them. The recommendation before the ruling was: the router in the hub on the VPS (OD-9), with a second router at the home site if the delay is too high. |
 | OD-C6 | Where conversations are kept | On the client device until the vault exists (extensions plan, Section 2.4). Then keep them sealed on the hub, so that all clients see them. |
 | OD-C7 | Access to `ai.anima.ing` | VPN only, with Headscale DNS and a DNS-01 certificate (Section 6.1). Confirm that the operator controls the DNS zone of `anima.ing`. Public access is out of scope (SEC-008). |
 | OD-C8 | Device policy default for client computers | Off by default. The operator sets each client computer on. |
