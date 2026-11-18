@@ -82,7 +82,8 @@
   </div>
   {@render destination(DEVICES)}
   <LiveSessions {hub} {iconOnly} />
-  {@render destination(AGENT_USAGE)}
+  <!-- The phone bar has four destinations (MOB-010), so the page is not in it. -->
+  {#if !phoneLayout()}{@render destination(AGENT_USAGE)}{/if}
   {#each optionalDestinations(projectsOn, capabilities().builds && buildsOn) as item (item.href)}
     {@render destination(item)}
   {/each}
