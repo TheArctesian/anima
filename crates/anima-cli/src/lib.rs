@@ -31,6 +31,7 @@ pub mod notifications;
 pub mod one_time_secret;
 pub mod output;
 pub mod paging;
+pub mod places;
 pub mod private_file;
 pub mod projects;
 pub mod prompt;

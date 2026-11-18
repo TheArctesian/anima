@@ -5,6 +5,7 @@ pub mod extensions;
 pub mod files;
 pub mod instants;
 pub mod links;
+pub mod places;
 pub mod records;
 pub mod sources;
 pub mod timeline;

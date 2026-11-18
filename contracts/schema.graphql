@@ -2768,6 +2768,70 @@ input ProposeExtractionInput {
   fields: [ExtractedFieldInput!]!
 }
 
+"A place (K-E4 Section 8; PLC-001 to PLC-006). Its reference is place:<id>."
+type Place {
+  id: ID!
+  "The place this one is inside. Null for a top-level place."
+  parentId: ID
+  "The name the operator gave."
+  name: String!
+  "What to call the place: the operator's name, never the geocoder's (PLC-003)."
+  title: String!
+  "Top-level places only (PLC-002)."
+  latitude: Float
+  longitude: Float
+  radiusM: Int
+  category: String!
+  icon: String!
+  aliases: [String!]!
+  geocoderName: String
+  "The sites placed here (PLC-006)."
+  siteIds: [ID!]!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+input PlaceInput {
+  "One line of 1 to 120 characters."
+  name: String!
+  parentId: ID
+  "Latitude, longitude and radius go together, and only on a top-level place."
+  latitude: Float
+  longitude: Float
+  radiusM: Int
+  "home, work, site, shop, leisure, travel, storage or other."
+  category: String!
+  icon: String!
+  aliases: [String!]
+  geocoderName: String
+}
+
+"A field that is left out keeps its value."
+input PlaceChangeInput {
+  name: String
+  "Null makes the place a top-level place."
+  parentId: ID
+  latitude: Float
+  longitude: Float
+  radiusM: Int
+  category: String
+  icon: String
+  aliases: [String!]
+  "Null removes the geocoder name."
+  geocoderName: String
+}
+
+input PlaceSplitInput {
+  "The new top-level place."
+  new: PlaceInput!
+  "Child places of the place that move into the new place."
+  children: [ID!]
+  "Sites that move to the new place."
+  sites: [ID!]
+  "Record links that move to the new place."
+  links: [ID!]
+}
+
 # ---------------------------------------------------------------- root types
 
 type Query {
@@ -2846,6 +2910,12 @@ type Query {
   attachments(owner: String!): [Attachment!]!
   "The proposals of owner (or of every record) in state (or any), newest first, at most 200."
   extractionProposals(owner: String, state: ProposalState): [ExtractionProposal!]!
+
+  # Places (operator, 2026-11-18; R-148; K-E4 Section 8)
+  "The places that are not merged, by name."
+  places: [Place!]!
+  "One place. A place that was merged gives the place it was merged into (PLC-004)."
+  place(id: ID!): Place
 
   # Projects: work, code and history (operator, 2026-11-13; ruling number to be assigned; PRJ-027 to PRJ-035, OD-E14)
   # Every field below: CONFLICT while Projects is off or while ProjectRepository.access is not READY; NOT_FOUND for an
@@ -3076,6 +3146,20 @@ type Mutation {
   confirmExtraction(id: ID!, fields: [ExtractedFieldInput!]!): ExtractionProposal!
   "Rejects a proposal. NOT_FOUND; CONFLICT when it is decided."
   rejectExtraction(id: ID!): ExtractionProposal!
+
+  # Places (operator, 2026-11-18; R-148; K-E4 Section 8)
+  "Makes a place (PLC-001, PLC-002). VALIDATION with extensions.fields."
+  createPlace(input: PlaceInput!): Place!
+  "Changes a place. A name from a geocoder never replaces name (PLC-003). CONFLICT for a merged place."
+  updatePlace(id: ID!, input: PlaceChangeInput!): Place!
+  "Moves every reference of from to into and returns the remaining place (PLC-004)."
+  mergePlaces(from: ID!, into: ID!): Place!
+  "Makes a new top-level place from input.new and moves the named children, sites and links of the place to it. Returns the new place (PLC-004)."
+  splitPlace(id: ID!, input: PlaceSplitInput!): Place!
+  "Deletes a place that has no reference. A place with references is merged into replacement; with none given the answer is CONFLICT with extensions.references, the count of each sort of reference (PLC-005). Returns the ID of the place."
+  deletePlace(id: ID!, replacement: ID): ID!
+  "Links a site to a place, or with a null place removes the link. Returns the place, or null when the link was removed (PLC-006). NOT_FOUND when the site or the place does not exist."
+  setSitePlace(site: ID!, place: ID): Place
 }
 
 type Subscription {

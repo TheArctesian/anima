@@ -1,0 +1,3 @@
+mutation PlaceRemove($id: ID!, $replacement: ID) {
+  deletePlace(id: $id, replacement: $replacement)
+}

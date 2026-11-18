@@ -1,0 +1,18 @@
+mutation PlaceAdd($input: PlaceInput!) {
+  createPlace(input: $input) {
+    id
+    parentId
+    name
+    title
+    latitude
+    longitude
+    radiusM
+    category
+    icon
+    aliases
+    geocoderName
+    siteIds
+    createdAt
+    updatedAt
+  }
+}

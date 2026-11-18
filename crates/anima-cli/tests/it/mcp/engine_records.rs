@@ -1,6 +1,6 @@
 //! The `timeline` and `records` tool sets against the scripted hub (MCP-002, MCP-017;
 //! TML-007, RLK-001, RLK-002), with the file and extraction tools of `records` (FIL-001,
-//! FIL-004, VIS-001, VIS-004). No tool carries the bytes of a file (CMD-030).
+//! FIL-004, VIS-001, VIS-004). No tool carries the bytes of a file (CMD-030). The place tools (PLC-001, PLC-004 to PLC-006).
 
 use serde_json::{Value, json};
 
@@ -194,6 +194,80 @@ async fn vis_004_a_proposal_without_a_confidence_is_sent_and_read_as_null() {
     assert_eq!(
         sent(&hub, "ExtractionConfirm")[0]["fields"][0]["type"],
         "TEXT"
+    );
+    session.finish().await;
+}
+
+const PLACE_ID: &str = "0190a000-0000-7000-9200-000000000001";
+
+fn place() -> Value {
+    json!({ "id": PLACE_ID, "parentId": null, "name": "Home", "title": "Home", "latitude": 52.0,
+            "longitude": 4.0, "radiusM": 100, "category": "home", "icon": "house",
+            "aliases": [], "geocoderName": null, "siteIds": [],
+            "createdAt": "2026-11-18T10:00:00+00:00", "updatedAt": "2026-11-18T10:00:00+00:00" })
+}
+
+#[tokio::test]
+async fn mcp_002_the_place_tools_that_change_are_off_until_writing_is_allowed() {
+    let hub = hub().await;
+    let mut reading = Desk::new().start(&hub, LOGIN_TOKEN, &[]).await.0;
+    let names = reading.tool_names().await;
+    assert!(names.iter().any(|name| name == "anima_places_list"));
+    assert!(names.iter().any(|name| name == "anima_place_get"));
+    for changing in [
+        "anima_place_add",
+        "anima_place_set",
+        "anima_place_merge",
+        "anima_place_split",
+        "anima_place_remove",
+        "anima_place_site",
+    ] {
+        assert!(!names.iter().any(|name| name == changing), "{changing}");
+    }
+    reading.finish().await;
+}
+
+#[tokio::test]
+async fn mcp_017_the_place_tools_list_add_merge_and_remove() {
+    let hub = hub().await;
+    hub.answer("PlaceList", data(json!({ "places": [place()] })));
+    hub.answer("PlaceAdd", data(json!({ "createPlace": place() })));
+    hub.answer("PlaceMerge", data(json!({ "mergePlaces": place() })));
+    hub.answer("PlaceRemove", data(json!({ "deletePlace": PLACE_ID })));
+    let desk = Desk::new();
+    let mut session = writing(&hub, &desk).await;
+
+    let listed = session.call("anima_places_list", json!({})).await;
+    assert_eq!(structured(&listed)["places"][0]["name"], "Home");
+
+    let arguments = json!({ "name": "Home", "category": "home", "icon": "house",
+                            "latitude": 52.0, "longitude": 4.0, "radiusM": 100 });
+    let added = session.call("anima_place_add", arguments.clone()).await;
+    assert_eq!(structured(&added)["place"]["id"], PLACE_ID);
+    assert_eq!(sent(&hub, "PlaceAdd")[0]["input"], arguments);
+
+    let merged = session
+        .call(
+            "anima_place_merge",
+            json!({ "from": "a", "into": PLACE_ID }),
+        )
+        .await;
+    assert_eq!(structured(&merged)["place"]["id"], PLACE_ID);
+    assert_eq!(
+        sent(&hub, "PlaceMerge")[0],
+        json!({ "from": "a", "into": PLACE_ID })
+    );
+
+    let removed = session
+        .call(
+            "anima_place_remove",
+            json!({ "id": "a", "replacement": PLACE_ID }),
+        )
+        .await;
+    assert_eq!(structured(&removed)["removed"], PLACE_ID);
+    assert_eq!(
+        sent(&hub, "PlaceRemove")[0],
+        json!({ "id": "a", "replacement": PLACE_ID })
     );
     session.finish().await;
 }

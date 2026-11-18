@@ -14,7 +14,7 @@ use super::actor::{Actor, ActorKind, TokenKind};
 use crate::{
     ids::{
         ApiKeyId, ArchiveId, AttachmentId, BuildJobId, BuilderId, ChannelId, CheckId, DeviceId,
-        EventId, OperatorId, ProjectId, ProposalId, RecordLinkId, ReleaseId, RepositoryId,
+        EventId, OperatorId, PlaceId, ProjectId, ProposalId, RecordLinkId, ReleaseId, RepositoryId,
         SessionId, SiteId, SourceAccountId, WindowId,
     },
     status::Status,
@@ -291,6 +291,8 @@ pub enum AuditTarget {
     Archive(ArchiveId),
     /// An extraction proposal (VIS-001).
     ExtractionProposal(ProposalId),
+    /// A place, or the site rows that point at it (PLC-001, PLC-006).
+    Place(PlaceId),
 }
 
 impl AuditTarget {
@@ -322,6 +324,7 @@ impl AuditTarget {
             Self::Attachment(_) => "attachment",
             Self::Archive(_) => "archive",
             Self::ExtractionProposal(_) => "extraction_proposal",
+            Self::Place(_) => "place",
         }
     }
 
@@ -352,6 +355,7 @@ impl AuditTarget {
             Self::Attachment(id) => id.to_string(),
             Self::Archive(id) => id.to_string(),
             Self::ExtractionProposal(id) => id.to_string(),
+            Self::Place(id) => id.to_string(),
         }
     }
 }

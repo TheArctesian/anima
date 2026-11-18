@@ -75,12 +75,12 @@ impl Subject {
 - `PlaceId` and `PersonId` are leaf IDs (`crates/hub/src/ids.rs`). E0-5 and the People extension give them records. Until then a `place` or a `person` reference names a record that does not exist.
 - A repository key and a date key name themselves: `own_title` gives `<owner>/<name>` or the date. A link to one of them needs no label.
 
-## 4. Titles of the other records (not built)
+## 4. Titles of the other records (built with places, E0-5)
 
-For a record that is not a repository or a date, the domain that owns it must give its title. This slice has no such domain, so `sourceTitle` and `targetTitle` are null for these records and a reader shows `label`. The interface comes with the first domain that has records to link (ENG-010, the sample extension):
+For a record that is not a repository or a date, the domain that owns it must give its title. `places` is the first such domain (Section 8). For a kind that no domain gives titles for, `sourceTitle` and `targetTitle` are null and a reader shows `label`:
 
 ```rust
-// planned, not built
+// engine::links; places is the first user (`place`); a domain gives its `Titles` at wiring in `schema.rs`
 #[async_trait]
 pub trait Titles: Send + Sync {
     fn kind(&self) -> &'static str;
@@ -144,7 +144,7 @@ pub trait Holder: Send + Sync {
 - **Delete (PLC-005).** A place with no reference is deleted. A place with references is deleted only with a replacement: the call is then a merge into the replacement. With references and no replacement the answer is `CONFLICT` with the count of each sort of reference.
 - **Sites (PLC-006).** One site links to at most one place; one place can have many sites. The place of a device is the place of its site. This is configured evidence: it says where the operator placed the site, not where the device is (Section 12).
 
-`links` gains `pub async fn retarget(conn, from: &Reference, to: &Reference) -> Result<u64, Error>` for the merge. K3: `places -> links` (`retarget`, `touching` only), `places -> events` (the trail), `places -> records`.
+`links` gains `pub async fn retarget(conn, from: &Reference, to: &Reference) -> Result<u64, Error>` for the merge, `retarget_named(conn, ids, (from, to))` for the split and `count(conn, record)` for the references of a delete (the count of all links, where `touching` stops at 200). K3: `places -> links` (`retarget`, `retarget_named`, `count`, `Titles` and `Unavailable` only), `places -> events` (the trail), `places -> records`; the GraphQL part of `places` reads `devices::sites` to check that a site exists.
 
 ## 9. Files (FIL-001 to FIL-005; `crates/hub/src/engine/files/`, schema `files`, migrations 2050–2059)
 
@@ -254,4 +254,4 @@ pub struct MatchRule { pub at_the_time: Duration, pub nearest: Duration, pub wor
 - Each change writes its row, one audit entry and, apart from downloads and sample reads, one event, in one transaction. An event and an audit entry of a location sample hold no position.
 - Commands: `anima place list|show|add|set|merge|split|remove|site`, `anima file list|upload|download|remove`, `anima file archive add|remove`, `anima extraction list|propose|confirm|reject`, `anima location list|import|token add|token list|token revoke`, `anima location context <event>`. `anima location import <file>` reads a file of samples in the Anima form or OwnTracks JSON lines and calls `recordLocationSamples`.
 - MCP tools: one for each command, apart from `file upload` and `file download` (bytes), and the three `location token` commands (a token is a secret).
-- K2: ranges 2040–2049 `places`, 2050–2059 `files`, 2060–2069 `locations`. K3: `places -> links, events, records`; `files -> vault (DataKeys), events, records`; `locations -> places, sources, vault (DataKeys), events, records, instants`; `sessions` calls `locations::record_transfer` at the transfer boundary, in the transaction of its trail.
+- K2: ranges 2040–2049 `places`, 2050–2059 `files`, 2060–2069 `locations`. K3: `places -> links, events, records` (and `devices` from its GraphQL part); `files -> vault (DataKeys), events, records`; `locations -> places, sources, vault (DataKeys), events, records, instants`; `sessions` calls `locations::record_transfer` at the transfer boundary, in the transaction of its trail.

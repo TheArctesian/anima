@@ -1,0 +1,18 @@
+mutation PlaceSite($site: ID!, $place: ID) {
+  setSitePlace(site: $site, place: $place) {
+    id
+    parentId
+    name
+    title
+    latitude
+    longitude
+    radiusM
+    category
+    icon
+    aliases
+    geocoderName
+    siteIds
+    createdAt
+    updatedAt
+  }
+}

@@ -243,7 +243,7 @@ async fn fil_002_a_file_of_each_part_boundary_comes_back_as_it_was_sent(pool: Pg
     let hub = FileHub::new(&pool).await;
 
     for size in [0, 1, PART - 1, PART, PART + 1, 3 * PART, 3 * PART + 17] {
-        let original: Vec<u8> = (0..size).map(|n| (n % 251) as u8).collect();
+        let original: Vec<u8> = (0..=250_u8).cycle().take(size).collect();
         let (status, made) = hub
             .upload_as(&hub.token.clone(), QUERY_BIN, Body::from(original.clone()))
             .await;
@@ -261,7 +261,7 @@ async fn fil_002_a_file_of_each_part_boundary_comes_back_as_it_was_sent(pool: Pg
 async fn fil_002_a_stored_piece_that_is_cut_short_or_reordered_is_not_sent(pool: PgPool) {
     const PART: usize = 64 * 1024;
     let hub = FileHub::new(&pool).await;
-    let original: Vec<u8> = (0..3 * PART).map(|n| (n % 251) as u8).collect();
+    let original: Vec<u8> = (0..=250_u8).cycle().take(3 * PART).collect();
     let made = hub.upload(QUERY_BIN, &original).await;
     let piece = hub.stored_files().pop().unwrap();
     let sealed = std::fs::read(&piece).unwrap();
@@ -298,5 +298,5 @@ async fn vlt_001_the_hub_does_not_seal_a_file_with_the_key_of_a_class_a_extensio
 
     assert_eq!(status, StatusCode::BAD_REQUEST);
     assert_eq!(answer["fields"][0]["field"], "key");
-    assert!(hub.stored_files().is_empty());
+    assert_eq!(hub.stored_files().len(), 0);
 }
