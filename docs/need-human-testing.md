@@ -44,9 +44,13 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-017 | "This machine" with the Anima VPN and NetBird together | A Mac with Tailscale and NetBird, and a second tailnet account | Open |
 | HT-018 | Each machine with the old program `anima-agent` gets `anima-daemon` and enrols again | Each machine that reports metrics, and the hub of this build | Open |
 | HT-019 | The VPN role `daemon` on the VPS | A shell on the VPS (VPS-005) | Open |
-| HT-022 | The first real sign-in with the Anima.ing account: a hosted hub made, joined and opened | This computer, the WorkOS account, the live site and a pool hub | Open |
+| HT-022 | The first real sign-in with the Anima.ing account: a hosted hub made, joined and opened | This computer, the WorkOS account, the live site and a pool hub | Passed (2026-11-17) |
 | HT-024 | A hub restored on a second server from its backup | A second Linux server, the backup of a hub and its `anima_key` | Open |
 | HT-026 | The use of AI agent programs from real session files, on a Mac and on a Linux system unit | A hub and a daemon of this build, a Mac with Claude Code or Codex sessions, a Linux computer | Open |
+| HT-027 | The computer that signs in is a device of the hosted hub with no question | This computer, the Anima.ing account of HT-022 and its hosted hub | Open |
+| HT-028 | The hosted hub is a device of its own device list, and it is Up | This computer, the Anima.ing account of HT-022, and a hub of the pool from a new hub image | Open |
+| HT-029 | The computer is Up while it is connected to the link of its hosted hub, and Down after the application quits | This computer, the Anima.ing account of HT-022, a hub of the pool from a new hub image, and an application with the new link program | Open |
+| HT-031 | A hosted hub reaches SSH of a computer on its link, only after the person turned port 22 on | This computer with Remote Login, the Anima.ing account of HT-022, a hub of the pool from a new hub image, and an application with the new link program | Open |
 
 ### HT-001: `anima snapshot` against GitHub
 
@@ -499,14 +503,201 @@ The tests use a stand-in cloud, fake answers of WorkOS and the site, and a fake 
 in with WorkOS, calls the live site, or trades a claim through a real link. Open decision HM-D13 (the
 form of the WorkOS requests) is decided by step 2.
 
-1. On this computer, run `bun run --cwd apps/desktop dev`. On the first-run screen, click "Sign in".
-   Expected: the browser opens a WorkOS page, and the app shows the same short code.
-2. Sign in with the Anima.ing account in the browser. Expected: the app shows "Your hub is
+Checked without an account on 2026-11-18 (UTC), on the pool server, with a test hub that is deleted and the
+program `anima-link` of `main` on this computer: the join with the invite of a hub's access (0.7 s), the trade
+of the claim through the link for a token of the operator `owner`, the refusal of a second trade of that
+claim, a second access for the same device name (no invite, a new claim, which trades), the refusal of
+`login`, and the same link and token after a sleep and a wake of the hub (answers again in about 12 s).
+`WorkOS` Production gives a device code for a form with the client ID only, and answers a refresh with no
+secret by "Invalid refresh token". The site answers 401 with no token and with a wrong one. Not checked: the
+sign-in of a person, a call of the site with a real token (it makes the Stripe Customer and the hub), the
+join by the application, and the refresh of a real token.
+
+`WorkOS` Production offers email only (a password, or a code by email): Google, GitHub, Microsoft, Apple and
+passkeys are off, and no account exists, so step 2 makes the account. A debug build carries no `anima-link`
+(`apps/desktop/src-tauri/src/carried.rs`), so step 1 gives it one; without it the join after the sign-in is
+refused. A computer that is on the link of a different hub leaves that link when it joins (`link_join`
+replaces the device folder); this computer is on none.
+
+1. On this computer, in the checkout of `main`: run `link/build.sh`, copy `link/bin/anima-link-darwin-arm64`
+   to an empty folder with the name `anima-link`, run `bun run --cwd apps/desktop tauri build --debug --no-bundle`,
+   and start `ANIMA_DEV_PROGRAMS=<that folder, absolute> target/debug/anima-desktop`. Do not use
+   `bun run --cwd apps/desktop dev` for this check: its pages come from `http://localhost:5173`, and a hosted hub
+   refuses that origin (403), so the trade of the claim fails and the app says "No network" (seen on
+   2026-11-17). A built app has the origin `tauri://localhost`, which the hub accepts. On the first-run screen, click
+   "Sign in". Expected: the browser opens a WorkOS page, and the app shows the same short code.
+2. In the browser, type your email address and make the Anima.ing account (a password, or the code that
+   WorkOS sends by email). Expected: the app shows "Your hub is
    starting", then "Connecting". If it shows "Sign-in refused" at once, WorkOS refused the request
    form: write it in HM-D13.
 3. Wait. Expected: the device list of the hosted hub opens. No screen asked for an invite, an
    address or a password.
 4. Quit the app and start it again. Expected: the device list opens with no sign-in.
+
+Result: Passed (operator, 2026-11-17: "Passed"), with the built app of step 1 from `main` (`cb0d9bac`), an account
+made with an email address, and the hub `h6opknk7w29jw56jqd0kc` of the pool. First try on 2026-11-17 (operator: "worked till up to here", with the screen "No network"), with
+`bun run --cwd apps/desktop dev`: the sign-in, the account, the hub and the join of the link worked (the log of the
+pool and of the shell); the trade of the claim failed for the origin of the debug pages (step 1). The wrong
+message is not corrected: a refusal of the hub by origin and no network give the same answer to the page.
+Second try on 2026-11-17 with the built app of step 1 (operator, with a picture of the empty device list of the
+hosted hub: "got to here the first time, reopend to the same screen"): steps 3 and 4 gave the expected result.
+In the same message the operator asked for more than this check
+covers (HM-D11): "the device doesn't auto add it should and the hub is not there as the default device".
+
+### HT-027: the computer that signs in is a device of the hosted hub (HM-T8)
+
+Built: when the app opens the device list of a hosted hub, it adds the computer it runs on as a device with
+no question ([hosted-mode.md](proposals/hosted-mode.md) HMD-044, R-136). The shell command `cloud_device`
+(`apps/desktop/src-tauri/src/cloud.rs`) gives the device name that the sign-in sent, the computer name and
+the OS. The client (`apps/client/src/lib/hosted/this-computer.ts`) finds the link device of the hub with that
+name, and adds a device with the link address as its host, in the site `Link`, when no device has that host.
+The device has the kind `workstation`, no SSH and no check. A hosted hub does not ask "Add this Mac?".
+
+The tests use a fake shell and a fake hub. No test reads the link devices of a real hosted hub, makes the site
+`Link` with the range `fd41:4e49:4d41::/48` on a real hub, or adds a device through a real link.
+
+1. Start the built app as in step 1 of HT-022, from a checkout that has this change, and sign in if the app
+   asks. Expected: the device list of the hosted hub opens and shows one row with the name of this Mac. No
+   window asked "Add this Mac?".
+2. Open that device. Expected: its host is an address that starts with `fd41:4e49:4d41:`, its site is `Link`,
+   and it has no check.
+3. Quit the app and start it again. Expected: the device list shows one row for this Mac, not two.
+
+Result: Open. First try on 2026-11-18, after the hub of the account was made again from the new image
+(operator, with a picture of the device list: "the hub is an ubuntu server but otherwise it looks good"): the
+list showed one row for this Mac, Unknown, "No checks yet", with a host that starts with `fd41:4e49:4d41:`, and
+the log showed "Device ... added" with no question. The app made the new hub and joined its link with no step,
+although it held the link and the token of the deleted hub. Not seen in the picture: steps 2 and 3.
+
+### HT-028: the hosted hub is a device of its own device list (HM-T9)
+
+Built: a hosted hub adds itself to its devices at each start, when no device has the host `localhost`
+([hosted-mode.md](proposals/hosted-mode.md) HMD-045, R-137). The device has the name `Hub` (`Hub (hosted)` when
+a different device has that name), the kind `hub`, the operating system Linux and the site `Link`. It has no
+SSH, RDP or VNC. It has one PUSH check, `Hub running`. The hub reports that check as Up at the start, and then
+two times in each interval of the check. The parts are `crates/hub/src/fleet/devices/hub_device.rs` (the
+device), `crates/hub/src/fleet/checks/push/own.rs` (the check and its report) and
+`crates/hub/src/upkeep/hub_device.rs` (the start and the timer). A hub that is not hosted adds nothing.
+
+The tests start the hub program in the hosted mode on a test database. No test uses a hub of the pool that was
+made from a new hub image, and no test looks at the row in the application. No test waits for the timer: the
+tests see the report of the start only.
+
+Checked on the pool on 2026-11-18 (operator: "Yes, test it"), with a hub image built from `eb2c7461` and a test
+hub that is deleted: a device joined the link and traded its claim, and the device list held one device `Hub`
+(host `localhost`, kind `hub`, Linux, site `Link`) that was Up, with the check `Hub running` reported at the
+start and again 60 s later. Not checked: the row in the application, and the hub of the account, which still
+runs the programs of the old image.
+
+Do these steps after the hub of the account was made again from the new hub image.
+
+1. Start the built app as in step 1 of HT-022, and sign in if the app asks. Expected: the device list shows a
+   row `Hub`, and the row is Up. The row has no button to connect. Nothing asked for a step.
+2. Open the device `Hub`. Expected: it has one check, `Hub running`, and the check is Up.
+3. Wait 5 minutes and look at the device again. Expected: the device and the check are Up.
+
+Result: Open. First try on 2026-11-18 (operator, with a picture of the device list: "the hub is an ubuntu
+server but otherwise it looks good"): the row `Hub` was Up, 100.00 %, with the host `localhost` and "No
+metrics". Two differences. The row shows the mark of Linux with no distribution: the hub reads a distribution
+over SSH only, and it has no SSH to itself (the image is Debian 13). The row shows the button "+ VNC", which
+adds a protocol; step 1 expected no button. Not seen in the picture: steps 2 and 3.
+
+### HT-029: the computer is Up while it is connected to the link (HM-T11)
+
+Built: a hosted hub keeps the check `Connected` for each device whose host is the link address of a computer
+on its link ([hosted-mode.md](proposals/hosted-mode.md) HMD-047, R-143). The link program of the computer
+(`anima-link device`, `link/devicelink/presence.go`) keeps one stream open to port 446 of the hub link and
+writes the line `here` on it each 15 seconds. The hub link (`link/presence/presence.go`, `link/hublink/hublink.go`) records the time of
+the last line, and `devices.list` gives it as `seen`. Each 15 seconds the hub
+(`crates/hub/src/upkeep/link_presence.rs`) reads that list. For a computer that was seen in the last
+45 seconds it adds the PUSH check `Connected` to the device, if the device does not have it, and reports the
+check as Up. For a computer that was seen before and is not seen any more it reports the check as Down one
+time, with the message "Not connected"; after that the check gets no report, and the retries of the check
+apply. The check opens no port of the computer.
+
+The application starts `anima-link device` and stops it when the application stops
+(`apps/desktop/src-tauri/src/link/device.rs`). Thus the computer is Down while the application is closed.
+
+After a start, and after a sleep, the hub does not count the time in which it did not run: each check
+`Connected` waits one whole interval again, and no computer is reported Down in the first 45 seconds.
+
+The tests use a hub link and a device link in one process, and the hub program beside a fake control socket.
+No test uses a hub of the pool that was made from a new hub image, the real application with the new link
+program, or a hub that sleeps and wakes. No test looks at the row in the application. A hub or an application
+with the old link program is not tested on a real link: the tests show only that the device link stays in
+operation when the hub link refuses port 446.
+
+Do these steps after the hub of the account was made again from the new hub image, with an application that
+was built from a checkout that has this change (`link/build.sh` makes the link program).
+
+1. Start the built app as in step 1 of HT-022, and sign in if the app asks. Wait 1 minute. Expected: the row
+   of this Mac is Up. It does not show "No checks yet".
+2. Open the device of this Mac. Expected: it has one check, `Connected`, and the check is Up.
+3. Wait 5 minutes with the app open. Expected: the device and the check are Up, and the history of the check
+   shows no Down.
+4. Quit the app. Wait 3 minutes. Look at the device list of the hub from a different computer or a phone, or
+   run `anima devices list` against the hub. Expected: the row of this Mac is Down. The history of the check
+   shows "Not connected". If no second client is available, do step 5 and look at the history of the check
+   there.
+5. Start the app again. Expected: the row of this Mac is Up again in 1 minute.
+6. Only for a free hub that sleeps: quit each client of the account, wait until the cloud says that the hub
+   sleeps, wait 10 minutes more, and start the app. Expected: the hub wakes and the row of this Mac is Up. The
+   history of the check `Connected` shows no Down for the time in which the hub slept. The history of the
+   check `Hub running` shows none for that time.
+
+Result: Open.
+
+### HT-031: a hosted hub reaches SSH of a computer on its link (HM-T12)
+
+Built: the path from a hub to a local TCP port of a computer on its link
+([hosted-mode.md](proposals/hosted-mode.md) HMD-048, HMD-049, R-143).
+
+- The hub link asks for a port on the stream that the computer keeps open to port 446, and the computer gives
+  the connection on a new stream to port 447 of the hub link (`link/dial/`, `link/hublink/hublink.go`,
+  `link/devicelink/presence.go`). The computer connects to the port on its own loopback address only, and only
+  when the port is in its list of open ports (`link/ports/ports.go`). The list is the file `open-ports` in the
+  state directory of the link program of the computer. It is empty at first, and the hub cannot change it.
+- `anima-link ports -state <DIR>` shows the list. `anima-link ports -state <DIR> on 22` and `off 22` change
+  it, also while the link program runs (`link/cmd/anima-link/device.go`). The ports can be 22 and 5900, and
+  3389 on Windows only. The switches in the application are task HM-T13: until then, this command is the only
+  way to turn a port on.
+- The hub link makes the socket `dial.sock` beside its control socket. The hub connects through it with its
+  one connect function (`crates/hub/src/fleet/targets/reached.rs`) when the address is a link address. The TCP
+  checks, the TLS checks and each SSH connection of the hub (terminal, files, metrics, the checks over SSH, the
+  connection test) use that function. A check that needs ICMP or UDP (Ping, SNMP) on a computer of the link is
+  Unknown, with a message that says that the link carries TCP only.
+- Not built: VNC and RDP sessions through the path (HM-T14), the switches (HM-T13), Windows (HM-T15).
+  Wake-on-LAN is not possible for a computer of the link.
+
+The tests use a hub link and a device link in one process with a relay on loopback, the two programs with the
+command `ports`, and the hub beside a fake dial socket that connects to a port on loopback. No test uses a hub
+of the pool from a new hub image, the real relay, the SSH server of macOS (Remote Login), or the terminal of
+the application. No test uses the hub program and the link program together.
+
+Do these steps after the hub of the account was made again from the new hub image, with an application that
+was built from a checkout that has this change (`link/build.sh` makes the link program). HT-029 must show the
+row of this Mac as Up first. `<LINK>` is the link program that the application carries, and `<DIR>` is the
+state directory that the application gives it: read the two from the output of
+`ps ax | grep "anima-link device"` while the application runs.
+
+1. On this Mac, turn on System Settings, General, Sharing, Remote Login. Run `<LINK> ports -state <DIR>`.
+   Expected: the answer is `{"open":[]}`.
+2. In the application, open the device of this Mac and add a TCP check of port 22. Wait 1 minute. Expected:
+   the check is Down, and its message is "the connection failed: permission denied".
+3. Run `<LINK> ports -state <DIR> on 22`. Expected: the answer is `{"open":[22]}`. Do not start the
+   application again. Wait 1 minute. Expected: the TCP check is Up.
+4. On the device of this Mac, add SSH with the user of this Mac and its password or key, and run the
+   connection test. Expected: the test shows the host key of this Mac (compare with
+   `ssh-keyscan -t ed25519 localhost | ssh-keygen -lf -`). Accept the key.
+5. Open a terminal session on the device. Run `hostname`. Expected: the name of this Mac. Open the files of the
+   device. Expected: the home folder of the user.
+6. Wait 5 minutes with the terminal open, and type in it now and then. Expected: the session does not end.
+7. Add a Ping check to the device. Wait 1 minute. Expected: the check is Unknown, not Down, and its message
+   says that a computer of the link is reached with TCP only.
+8. Run `<LINK> ports -state <DIR> off 22`. Expected: the answer is `{"open":[]}`. Open a new terminal
+   session. Expected: it does not open. In 1 minute the TCP check is Down again. The check `Connected` stays Up.
+9. Run `<LINK> ports -state <DIR> on 80`. Expected: the command refuses, and the list stays empty.
+10. Turn Remote Login off again if it was off before step 1, and remove the checks of steps 2 and 7.
 
 Result: Open.
 

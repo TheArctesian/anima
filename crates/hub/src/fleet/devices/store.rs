@@ -47,12 +47,14 @@ macro_rules! device_filter {
 mod detected_os;
 mod distribution;
 mod holds;
+mod hub_device;
 pub(super) mod remote;
 mod sites;
 
 pub(super) use detected_os::set_detected_os;
 pub(super) use distribution::set_distribution;
 pub(super) use holds::{lock_device, lock_metrics_source};
+pub(super) use hub_device::{device_at_host, lock_hub_device, names_in_use, site_for};
 pub(super) use remote::{
     devices_by_ids, lock_site, set_daemon_source, set_wake_relay, share_device, wake_relay,
 };

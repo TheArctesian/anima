@@ -1,10 +1,14 @@
 //! Starts the hub's background work: periodic jobs and the check, metrics and notification
 //! loops (R-072). Each only calls its domains (D-4, DB-004, DB-005, D-25; WP-36 D-2).
 
+mod hub_device;
+mod link_presence;
+
 use std::{sync::Arc, time::Duration};
 
 use anima_hub::{
     clock::Clock,
+    config::Config,
     engine::sources,
     fleet::{
         access, builds, checks,
@@ -21,12 +25,37 @@ use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 use tokio::time::MissedTickBehavior;
 
+/// The checks that a hosted hub reports itself: `Hub running` on its own device (HMD-045) and
+/// `Connected` on each computer of its link (HMD-047).
+pub struct Hosted {
+    alive: Option<hub_device::Alive>,
+    watch: Option<link_presence::Watch>,
+}
+
+/// Makes the hub's own checks ready, before the scheduler can find one due. Both parts are
+/// `None` for a hub that is not hosted.
+pub async fn hosted(config: &Config, db: &PgPool, bus: &Bus, clock: &Arc<dyn Clock>) -> Hosted {
+    Hosted {
+        alive: hub_device::start(config, db, bus, clock).await,
+        watch: link_presence::start(config, db, bus, clock).await,
+    }
+}
+
+impl Hosted {
+    /// Starts the reports, which run for as long as the hub runs.
+    fn spawn(self) -> Vec<tokio::task::JoinHandle<()>> {
+        let alive = self.alive.map(|alive| tokio::spawn(alive.keep_reporting()));
+        let watch = self.watch.map(|watch| tokio::spawn(watch.keep()));
+        alive.into_iter().chain(watch).collect()
+    }
+}
+
 /// Starts the scheduled jobs: the daily ones, each run now and then daily (`retention` makes the
 /// day partitions ahead and drops the expired ones, `access_prune` deletes old login attempts
 /// and expired tokens, and audits each builder that went with its token, and `audit_chain`
 /// checks the hash chain of the audit log; D-4, DB-004, DB-005, D-25, BLD-025, LOG-028), every 30 seconds the end of build leases that ran out (WP-36 D-2), and, when
 /// the hub has a release bucket, every 10 seconds the publisher (WP-36 D-25).
-pub fn spawn(dependencies: &Dependencies) -> Vec<tokio::task::JoinHandle<()>> {
+pub fn spawn(dependencies: &Dependencies, hosted: Hosted) -> Vec<tokio::task::JoinHandle<()>> {
     let (pool, clock) = (&dependencies.pool, &dependencies.clock);
     let retention = {
         let db = pool.clone();
@@ -80,6 +109,7 @@ pub fn spawn(dependencies: &Dependencies) -> Vec<tokio::task::JoinHandle<()>> {
     )));
     jobs.push(tokio::spawn(build_leases(builds)));
     jobs.extend(loops(dependencies));
+    jobs.extend(hosted.spawn());
     jobs
 }
 

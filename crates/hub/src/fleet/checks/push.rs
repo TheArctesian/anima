@@ -3,6 +3,11 @@
 //! The token in the path is the only authentication, so a request never needs a sign-in and
 //! the route answers 404 with an empty body for every token that is not a live PUSH check's.
 //! Neither the path nor the token reaches a log or an error message (LOG-007).
+//!
+//! The hub reports its own checks through the same path, with no request ([`own`], HMD-045,
+//! HMD-047).
+
+pub mod own;
 
 use std::{sync::Arc, time::Duration};
 
@@ -51,6 +56,8 @@ struct PushState {
     clock: Arc<dyn Clock>,
     answer_time: Duration,
 }
+
+pub use own::{OwnCheck, OwnReport};
 
 /// `GET|POST /push/{token}`, answering within ten seconds. The caller mounts it behind the
 /// permitted-networks layer (NET-002) and inside `crate::logged`, which logs the path as
@@ -217,12 +224,23 @@ async fn record(
         return Ok(Outcome::Refused);
     };
     let now = state.clock.now();
-    let Some(beat) = store_beat(&state.db, &check, &report.into_probe(), now).await? else {
-        // Skipped: a push at the instant of the last beat has nothing new to record. The
-        // device did report in, so it is answered as a success, and nothing is published.
-        return Ok(Outcome::Recorded);
+    report_in((&state.db, &state.bus), &check, report, now).await?;
+    Ok(Outcome::Recorded)
+}
+
+/// Records what the check's device reported at `now` and tells the live views. A report at
+/// the instant of the last beat has nothing new to record: the device did report in, so it is
+/// not an error, and nothing is published.
+async fn report_in(
+    (db, bus): (&PgPool, &Bus),
+    check: &Check,
+    report: Report,
+    now: DateTime<Utc>,
+) -> Result<(), Error> {
+    let Some(beat) = store_beat(db, check, &report.into_probe(), now).await? else {
+        return Ok(());
     };
-    state.bus.publish(Signal::Heartbeat {
+    bus.publish(Signal::Heartbeat {
         check: check.id,
         device: check.device,
         beat: HeartbeatSummary {
@@ -232,7 +250,7 @@ async fn record(
             message: beat.message.as_deref().map(clean_message),
         },
     });
-    Ok(Outcome::Recorded)
+    Ok(())
 }
 
 async fn answer(

@@ -15,6 +15,7 @@ mod distribution;
 mod graphql_error;
 mod holds;
 mod host;
+mod hub_device;
 mod input_limits;
 mod mac;
 mod page;

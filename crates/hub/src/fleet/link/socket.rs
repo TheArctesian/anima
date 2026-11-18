@@ -36,6 +36,11 @@ impl Control {
         Self { path, uid }
     }
 
+    /// The control socket at `path`, which the hub's own user must own and serve.
+    pub fn of_hub(path: PathBuf) -> Self {
+        Self::new(path, rustix::process::geteuid().as_raw())
+    }
+
     /// Sends `request` and reads its reply.
     ///
     /// # Errors
