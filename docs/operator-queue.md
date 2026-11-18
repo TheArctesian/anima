@@ -34,7 +34,7 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 | 4.19 | The watchdog | Operator: a tier and approval of the direction (OD-W22) |
 
-## 2. Open decisions (117)
+## 2. Open decisions (121)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
@@ -155,6 +155,10 @@ This document is generated: `bun run quality:register` writes it from the docume
 | OD-19 | How the website reads the feed (SITE-003) | Two options: a build step of the website at each release, or a script in the page. A script in the page needs cross-origin read access to the release host, whic… | [spec/design-spec.md](spec/design-spec.md) |
 | OD-20 | Domain name and host of the website (SITE-011) | Host decided: Vercel (operator, 2026-11-13). Domain open: the operator decides. The site is built and not deployed. | [spec/design-spec.md](spec/design-spec.md) |
 | OD-22 | What the website can say about the paid hosted option (SITE-012; work-plan.md OD-W2, other-operators.md) | Nothing now. The proposal has no requirements. Add text only after the operator approves the words. | [spec/design-spec.md](spec/design-spec.md) |
+| OD-23 | Does `anima-daemon` also ship by Homebrew or Cargo (INS-008, INS-010, INS-011; R-151) | Proposed, not ruled. The operator ruled for the command line because it "can operate alone" (R-151). The daemon is a separate program with its own install path… | [spec/design-spec.md](spec/design-spec.md) |
+| OD-24 | Which file does the Homebrew formula install, and does the release publish it with its SHA-256 (INS-010, INS-012) | Proposed, not ruled. The release would publish a standalone `anima` file for each target, with its SHA-256 in the release record (ROL-003). The formula would in… | [spec/design-spec.md](spec/design-spec.md) |
+| OD-25 | How the command line alone signs in to a hosted hub (INS-013; HMD-032, HMD-038, R-129) | Proposed, not ruled. `anima auth login` asks for a user name, a password and an authenticator code (CMD-010), and the hosted hub has no such account. The hosted… | [spec/design-spec.md](spec/design-spec.md) |
+| OD-26 | Does the formula go in the operator's own tap before Homebrew's own repository (INS-010) | Proposed, not ruled. The tap is the Marketing Bot's word, not the operator's. A tap needs no review and the operator controls it. Homebrew's own repository need… | [spec/design-spec.md](spec/design-spec.md) |
 
 ## 3. Documents that wait for an approval (27)
 

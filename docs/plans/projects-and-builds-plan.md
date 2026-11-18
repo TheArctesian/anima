@@ -456,7 +456,63 @@ Group R: correct the release of Anima. It needs no other group. It is tier 0 of 
 | R5 | One name for the macOS application: `Anima.ing.app` (D2; OD-W19, operator, 2026-11-16). | — | The design specification Section 3.11, `carried.rs` and the builder say `Anima.ing.app`. The file names of a release stay `Anima_*` (UPD-010). | Done. Section 3.11 and `carried.rs` say `Anima.ing.app`; the builder already made `Anima.ing.app` and its tests now use the name. | c1e6226e on branch `claude/watchdog-autoupdate-proposals` |
 | R6 | The release carries the local hub (D3). | T9 of the S4 tasks; S3 T11 | As T9 of [s4-local-hub-tasks.md](one-click/s4-local-hub-tasks.md) states. This row only points to it. | Done, as T9 of the S4 tasks: the release 0.2.0 carries the programs and the tree. | `f24f4c54`, `aec3c400` |
 | R7 | The first release. | R1 to R5; the operator | Each feed answers 200. An installed application updates on macOS and on Linux (D6, OD-16 to OD-18). The operator does this. | In progress. The release record holds what is published and what is verified: [releases.md](../procedures/releases.md). | `43291afc`, `b361eb5f` |
-| R8 | The command line alone by Homebrew and Cargo (INS-010 to INS-013, R-151). The release publishes a standalone `anima` file for each target with its SHA-256 in the release record. A tap holds the formula. `anima-cli` is made publishable and gets the release version. The operator publishes the formula and the crate. | R7; the operator (OD-24, OD-25) | The formula installs `anima` on a clean macOS and a clean Linux computer and `anima --version` prints the release version. `cargo install anima-cli` builds the same version. Neither installs the desktop application. Nothing is published before the operator says so. | Not started. Planned only. The crate name check and the finding that the command line needs only a hub are in R-151. | — |
+| R8a | The crate `anima-cli` is publishable (INS-011, INS-012; R-151). One PR. Details: [Tasks R8a to R8d](#tasks-r8a-to-r8d-the-command-line-alone-by-homebrew-and-cargo). | — | `cargo package --list -p anima-cli` lists the schema and no test file. A check fails when the crate version is not the release version. Nothing is published. | Not started. Planned only. | — |
+| R8b | The release publishes a standalone `anima` file for each target, with its SHA-256 in the release record (INS-010; OD-24). One PR. | R7; R8a; the operator (OD-24) | macOS universal has the file and its SHA-256 in the record. The Linux x86_64 file waits for the Linux release of R7. Linux aarch64 is not planned. | Not started. Planned only. Blocked until OD-24 is ruled. | — |
+| R8c | The Homebrew formula and its tap (INS-010; OD-24, OD-26). One PR, in the tap repository and one line in this repository. | R8b; the operator (OD-24, OD-26) | `brew install` of the formula installs `anima` on a clean Mac, and `anima --version` prints the release version. The Linux check waits for R8b. | Not started. Planned only. Blocked until OD-24 and OD-26 are ruled. | — |
+| R8d | The operator publishes the first formula and the first crate version (INS-012; OD-24, OD-26). A human task, with an entry in [need-human-testing.md](../need-human-testing.md). | R8a; R8b; R8c | `cargo install anima-cli --locked` and `brew install` print the release version. The operator sets the entry to Passed. | Not started. Planned only. The agent publishes nothing. | — |
+
+## Tasks R8a to R8d: the command line alone by Homebrew and Cargo
+
+Owner: INS-010 to INS-013 in [design-spec.md](../spec/design-spec.md) Section 3.11, and R-151. The operator ruled "ya homebrew and cargo are good cuz the cli can operate alone" (relayed, to be confirmed first-hand). The standalone file, the checksum, the publishing step and the tap are not ruled (OD-24, OD-26). Each task is one pull request. A coding agent builds R8a, R8b and R8c only after the operator rules the open decisions that the row names. Nothing is published before R8d.
+
+Current state, checked on `cd0bbf58`: `crates/anima-cli/Cargo.toml` has no `description`, `repository`, `readme`, `rust-version` or `include`. It gets `publish = false` and the version `0.1.0` from the workspace (`Cargo.toml`, `[workspace.package]`). About 150 `graphql_client` derives in `crates/anima-cli/src/` name `../../contracts/schema.graphql`, a file outside the package. The `build.rs` sets the printed version only when `ANIMA_VERSION` is set. The releases 0.2.0 and 0.2.1 are for macOS only and carry the program as `anima-agent` ([releases.md](../procedures/releases.md)). The Linux feed is not published.
+
+### R8a: make the crate publishable
+
+- **Why.** `cargo install anima-cli` fails today: the schema is outside the package, and the metadata is missing (INS-011).
+- **Needs.** Nothing. It changes no contract: K1 to K7 stay as they are.
+- **Change.** (1) Add `description`, `repository`, `readme`, `rust-version`, `keywords` and `include` to `crates/anima-cli/Cargo.toml`, with `publish = true` for this package only. `include` lists `src/`, `build.rs`, `release_version.rs`, the schema copy and the readme, and no test. (2) Put one copy of `contracts/schema.graphql` in the package and point every derive at it. The copy is made by one script, and a gate fails when it differs from K1. K1 stays the only source (PLN-016). A symlink is an alternative only if `cargo package --list` then holds the file content. (3) Add a check that the version of `anima-cli` is the release version. (4) Change the "Install" section of `crates/anima-cli/README.md` to name Cargo and Homebrew. (5) On a clean Linux computer, find out if the build needs libdbus and pkg-config for `keyring`. Write the result in the README.
+- **Acceptance (pass or fail).** (a) `cargo package --list -p anima-cli --locked` lists the schema copy, `build.rs` and `release_version.rs`, and lists no file of `tests/`. Pass or fail. (b) `cargo package -p anima-cli --locked` builds the unpacked crate. Pass or fail. (c) The copy of the schema equals `contracts/schema.graphql`, and a changed copy fails the gate. (d) The version check fails when the crate version and the release version differ. (e) `cargo publish --dry-run -p anima-cli --locked` ends without error. (f) The CMD-031 coverage test still passes.
+- **Check commands.** `cargo fmt --check`; `cargo clippy -p anima-cli --all-targets -- -D warnings`; `cargo nextest run -p anima-cli`; `cargo package --list -p anima-cli --locked`; `cargo publish --dry-run -p anima-cli --locked`; `bun run gates`.
+- **Out of scope.** The real publish. A new command. A change to K1 to K7. The daemon (OD-23). The sign-in of a hosted hub (OD-25).
+- **Always / Ask / Never.** Always: keep one source for the schema. Ask: before any change under `contracts/`. Never: run `cargo publish` without `--dry-run`.
+- **Done.** One commit on `main` that sets the state of R8a with the commit (PLN-008, PLN-009).
+- **Claude Code prompt.** Follow AGENTS.md "Start of a session". Claim and build task R8a of docs/plans/projects-and-builds-plan.md: make the crate `anima-cli` publishable. Read INS-011, INS-012, R-151 and the section "Tasks R8a to R8d". Change only what R8a lists. Run the check commands of R8a, then `bun run gates`. Publish nothing.
+
+### R8b: a standalone `anima` file for each target
+
+- **Why.** The formula needs a file that holds only `anima`. Today `anima` is inside the disk image and the AppImage (INS-010).
+- **Needs.** R7 for the Linux file; R8a; the ruling of OD-24.
+- **Change.** The builder builds `anima` for each target with `ANIMA_VERSION` set, and uploads it as a file with a stable name. The hub checks the file and writes its SHA-256 in the release record (ROL-003). The desktop bundle does not change (INS-002).
+- **Acceptance (pass or fail).** (a) A macOS release holds one universal `anima` file, and the record holds its SHA-256. (b) `anima --version` of that file prints the release version. (c) The SHA-256 of the downloaded file equals the record. (d) The Linux x86_64 file has the same checks. It is accepted only after R7 publishes the Linux feed. (e) No Linux aarch64 file is made: that target is out of scope. (f) The disk image and the AppImage are unchanged.
+- **Check commands.** `cargo nextest run -p anima-hub`; `cargo nextest run --manifest-path apps/desktop/src-tauri/Cargo.toml builder`; `shasum -a 256 anima` against the record; `./anima --version`; `bun run gates`.
+- **Out of scope.** The formula. The crate. A Windows file. The daemon and the hub programs.
+- **Always / Ask / Never.** Always: build from the commit of the release. Ask: before any change to the signing of the updater file. Never: sign or upload from an agent session (UPD-012).
+- **Done.** One commit on `main` with the state of R8b. The Linux part stays "Not verified" until R7 publishes Linux.
+- **Claude Code prompt.** Follow AGENTS.md "Start of a session". Claim and build task R8b of docs/plans/projects-and-builds-plan.md: the standalone `anima` file for each target with its SHA-256. Read INS-010, ROL-003, R-151 and OD-24. Change only what R8b lists. Run the check commands of R8b, then `bun run gates`.
+
+### R8c: the formula and the tap
+
+- **Why.** `brew install` is the first channel of the ruling (INS-010).
+- **Needs.** R8b; the rulings of OD-24 and OD-26.
+- **Change.** The tap repository `homebrew-anima` holds one formula `anima`. The formula installs the standalone file of R8b for the platform and checks its SHA-256. Its test runs `anima --version`. This repository gets one line that names the tap in [releases.md](../procedures/releases.md).
+- **Acceptance (pass or fail).** (a) `brew audit --strict --online anima` passes in the tap. (b) The formula has a `url` of the standalone file and a `sha256` line equal to the record, and no `depends_on "rust"`. (c) `brew test anima` prints the release version. (d) The formula installs no desktop application and no daemon. (e) The Linux check waits for R8b.
+- **Check commands.** `brew audit --strict --online anima`; `brew install thearctesian/anima/anima`; `brew test anima`; `anima --version`; `bun run quality:documents`.
+- **Out of scope.** A request to Homebrew's own repository. A cask. Publishing the tap (R8d).
+- **Always / Ask / Never.** Always: keep the SHA-256 in the formula equal to the record. Ask: before any change to the name of the formula. Never: push the tap; the operator does it (R8d).
+- **Done.** One commit in the tap, and one on `main` with the state of R8c.
+- **Claude Code prompt.** Follow AGENTS.md "Start of a session". Claim and build task R8c of docs/plans/projects-and-builds-plan.md: the Homebrew formula and the tap, locally. Read INS-010, OD-24, OD-26 and R-151. Push nothing.
+
+### R8d: the operator publishes the first version
+
+- **Why.** A published crate version cannot be deleted, so the operator does the first publish (INS-011).
+- **Needs.** R8a, R8b, R8c; the release record of the signed release.
+- **Change.** None in code. The operator runs the steps of the entry in [need-human-testing.md](../need-human-testing.md). The commit that builds R8a adds that entry, with the next free number `HT-nnn` (PLN-014).
+- **Acceptance (pass or fail).** (a) `cargo install anima-cli --locked` installs `anima`, and `anima --version` prints the release version. (b) `brew install thearctesian/anima/anima` installs the same version. (c) `anima --version` of both equals the version of the disk image (INS-012). (d) The operator sets the entry to Passed.
+- **Check commands.** `cargo publish -p anima-cli --locked` (the operator); `cargo install anima-cli --locked`; `brew install thearctesian/anima/anima`; `anima --version`.
+- **Out of scope.** Any agent action that publishes.
+- **Always / Ask / Never.** Always: publish after the signed release exists. Ask: the operator, for each step. Never: an agent runs `cargo publish` or pushes the tap.
+- **Done.** The entry is Passed, and the state of R8d names its date.
 
 ## Results of task P0 (2026-11-17)
 

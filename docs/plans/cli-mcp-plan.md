@@ -435,7 +435,7 @@ has no free memory, or a tool or a build target is absent. They must tell the ag
    version, and Settings > Updates > Command line tool puts it on the `PATH` (design
    specification Section 3.11, INS-001 to INS-009). There is no package manager channel
    for the desktop application, the daemon or the hub (INS-008). The command line alone also has a
-   Homebrew formula and a crates.io crate (operator, 2026-11-18, R-151; INS-010 to INS-013; task R8 of
+   Homebrew formula and a crates.io crate (operator, 2026-11-18, R-151; INS-010 to INS-013; tasks R8a to R8d of
    [projects-and-builds-plan.md](projects-and-builds-plan.md); not built). The mechanisms are decided by the implementation and need a real release to
    confirm the signature, the notarization and the AppImage launcher (design specification
    OD-16, OD-17, OD-18).
