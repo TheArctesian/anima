@@ -11,10 +11,10 @@ Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds t
 | Item | Value |
 | --- | --- |
 | Document | Proposal: the one release path for the four targets, and the order of the work |
-| Version | 1 |
+| Version | 2 |
 | Date | 2026-11-18 |
 | Language | ASD-STE100 Simplified Technical English (STE) |
-| Status | The header of this document holds the state (PLN-020). History: Draft. A request of the operator, not a ruling. No requirement is approved. |
+| Status | The header of this document holds the state (PLN-020). History: version 1 was a Draft. Version 2 (2026-11-18): the operator decided OD-REL-1 to OD-REL-7 and OD-ROL-15 (R-158). RLS-001, RLS-002, RLS-006 and RLS-012 are approved. Each other requirement is not approved and is not built (PLN-007). It stays a proposal: the operator approved the direction and four requirements, not the document (PLN-018). |
 | Serves | Work plan Section 4, row 4.1 (the release of Anima, tasks R1 to R7), row 4.14 (the mobile clients) and row 4.18 (the update of the daemon and the hub, which holds the release record and decision OD-ROL-15) |
 | Related | [releases.md](../procedures/releases.md), [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md), [daemon-and-hub-update-plan.md](../plans/daemon-and-hub-update-plan.md), [mobile-plan.md](../plans/mobile-plan.md), [s12-packaging-tasks.md](../plans/one-click/s12-packaging-tasks.md), the design specification Sections 3.9 to 3.12 |
 | Identifiers | RLS-001 to RLS-014, OD-REL-1 to OD-REL-7, tasks RF1 to RF4 |
@@ -121,7 +121,7 @@ The goal of each row: a first release that a person who is not the operator can 
 
 ## 4. What must be the same on the four targets
 
-These requirements are proposed. None is approved.
+R-158 approves RLS-001, RLS-002, RLS-006 and RLS-012. Each other requirement below is proposed and not approved.
 
 - **RLS-001.** A release must have one version and one commit for each target: macOS, Linux, iOS and Android. ROL-001 says this for the programs of the desktop release; this requirement adds the two mobile applications.
 - **RLS-002.** A target that did not build keeps its older version (as UPD-009). A release must not wait for a store review. The release record shows the version of each target.
@@ -160,7 +160,7 @@ The operator's sentence about the provider (Section 1) agrees with option B and 
 
 ### 5.3 Recommendation
 
-This is a recommendation. It is not a decision.
+This was the recommendation of version 1. The operator selected option B on 2026-11-18 (R-158): the row OD-ROL-15 of [daemon-and-hub-update-plan.md](../plans/daemon-and-hub-update-plan.md) holds the result, and task U12 there is the move.
 
 - Select option B: a small server that only makes releases, apart from each server of the pool. It can be at the provider of the pool, as the operator's sentence proposes. It must not be a pool host.
 - Until that server exists and one release was published from it, keep option A. Do not remove the VPS hub before then.
@@ -183,23 +183,23 @@ The Tauri updater key signs the desktop update and, later, the release record of
 
 ## 6. The order of the work
 
-Each row is one task that one session can take. A task that has an owner is in the task table of that owner, and this table only points to it. The state of such a task is in its owner (PLN-016). The tasks RF1 to RF4 have no other owner; their state is here. No task of this proposal can start before a ruling names it (PLN-007), except a task that is already approved in its plan.
+Each row is one task that one session can take. A task that has an owner is in the task table of that owner, and this table only points to it. The state of such a task is in its owner (PLN-016). The tasks RF1 to RF4 have no other owner; their state is here. No task of this proposal can start before a ruling names it (PLN-007), except a task that is already approved in its plan. R-158 names U2, U12, M5-3 to M5-6 and R10. No ruling names RF1 to RF4.
 
 | Order | Task | Owner | Content, in short | Needs | Check | State |
 | --- | --- | --- | --- | --- | --- | --- |
 | 1 | R9 | [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md) | Bring the branch `builds/keep-three-versions` to `main` (BLD-086) | — | See the owner | See the owner |
 | 2 | R7 | The same plan | The Linux release, and the update check on macOS and Linux | The operator | See the owner | See the owner |
 | 3 | RF1 | This proposal | The release record gets its four rows (RLS-005). Add "iOS" and "Android" with "None" and the channel of OD-M8. Change the title of [releases.md](../procedures/releases.md) from desktop releases to releases. | A ruling that approves RLS-005 | `bun run quality:documents` passes. Each target has one row. | Not started |
-| 4 | U2 | [daemon-and-hub-update-plan.md](../plans/daemon-and-hub-update-plan.md) | The release record as a signed list; the daemon files with their version (RLS-004) | OD-ROL-15; R7 | See the owner | See the owner |
-| 5 | U12 | The same plan | The place that signs moves as OD-ROL-15 decides | OD-ROL-15; the operator | See the owner | See the owner |
+| 4 | U2 | [daemon-and-hub-update-plan.md](../plans/daemon-and-hub-update-plan.md) | The release record as a signed list; the daemon files with their version (RLS-004) | R7 | See the owner | See the owner |
+| 5 | U12 | The same plan | The place that signs moves to the release server (OD-ROL-15, R-158) | The operator: the server and the key | See the owner | See the owner |
 | 6 | M5-1 | [mobile-plan.md](../plans/mobile-plan.md) | The key store on iOS and on Android | — | See the owner | See the owner |
 | 7 | M3-4 | The same plan | The sign-in with the Anima.ing account on a phone | HT-022 | See the owner | See the owner |
-| 8 | M5-3 | The same plan | The rule for the build number and the version code (RLS-003) | A ruling for RLS-003 | See the owner | See the owner |
-| 9 | M5-4 | The same plan | The script that makes the signed iOS archive for TestFlight | M5-1, M5-3; OD-REL-2; the operator's certificate | See the owner | See the owner |
-| 10 | M5-5 | The same plan | The script that makes the signed Android APK | M5-1, M5-3; OD-REL-2; the operator's key | See the owner | See the owner |
+| 8 | M5-3 | The same plan | The rule for the build number and the version code (RLS-003) | — | See the owner | See the owner |
+| 9 | M5-4 | The same plan | The script that makes the signed iOS archive for TestFlight | M5-1, M5-3; the operator's certificate | See the owner | See the owner |
+| 10 | M5-5 | The same plan | The script that makes the signed Android APK | M5-1, M5-3; the operator's key | See the owner | See the owner |
 | 11 | M5-2 | The same plan | Signatures and the first builds for the operator | M5-4, M5-5 | See the owner | See the owner |
-| 12 | R10 | [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md) | The release publishes the Android APK to the bucket, with the checks of RLS-012 | OD-REL-4; M5-5 | See the owner | See the owner |
-| 13 | M5-6 | [mobile-plan.md](../plans/mobile-plan.md) | The update notice of the Android application | OD-REL-5; R10 | See the owner | See the owner |
+| 12 | R10 | [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md) | The release publishes the Android APK to the bucket, with the checks of RLS-012 | M5-5 for the check of a real APK | See the owner | See the owner |
+| 13 | M5-6 | [mobile-plan.md](../plans/mobile-plan.md) | The update notice of the Android application | R10 | See the owner | See the owner |
 | 14 | RF2 | This proposal | The check of RLS-009: a test runs the phone client of this release against the hub API of the release before it, from the recorded contract K1. | A ruling for RLS-009; one release that has the mobile shell | The test fails when a query of the phone client is not in the older schema. | Not started |
 | 15 | RF3 | This proposal | The entries in [need-human-testing.md](../need-human-testing.md) for the first installation by a person who is not the operator, one for each target: the steps from the download to an open device. | A ruling for RLS-013; for each target, its first release | The operator sets each entry. | Not started |
 | 16 | RF4 | This proposal | The first release with one version on the four targets (RLS-001). A human task. | Each row above; the operator | The release record shows one version on four rows. | Not started |
@@ -210,7 +210,7 @@ The tasks of group A of [projects-and-builds-plan.md](../plans/projects-and-buil
 
 ## 7. Open decisions
 
-Decision OD-ROL-15 (who signs) is in [daemon-and-hub-update-plan.md](../plans/daemon-and-hub-update-plan.md); Section 5 gives its options. It blocks the most: tasks U2 and U12, and with U2 each later task of the update of machines.
+Decision OD-ROL-15 (who signs) is in [daemon-and-hub-update-plan.md](../plans/daemon-and-hub-update-plan.md); Section 5 gives its options. The operator decided it and each row below on 2026-11-18 (R-158). The orchestrating session put each question to him with its options; the words in each row are the text of the button that he selected.
 
 | Number | Question | Result |
 | --- | --- | --- |
@@ -222,7 +222,7 @@ Decision OD-ROL-15 (who signs) is in [daemon-and-hub-update-plan.md](../plans/da
 | OD-REL-6 | Under which name do the phone applications go to a store: the Apple team that exists (R-116; `tauri.conf.json` names a person), or an account of a company? | Decided (R-158, operator, 2026-11-18: "A: TestFlight first"): the Apple team that exists, for TestFlight. The account of the company is decided before a store listing; that later decision has no number yet. The recommendation was: use the team that exists for TestFlight now. Decide the name before the first store listing, and read the rules of each store for a change of the account at the source. This decision does not block a TestFlight build. |
 | OD-REL-7 | Does the first release for other persons on a phone wait for the link in the application (stage M3, HT-025) and for the sign-in on a phone (task M3-4)? | Decided (R-158, operator, 2026-11-18: "A: wait"): yes, it waits for stage M3 with HT-025 and for task M3-4. The installations of the operator from TestFlight do not wait. The recommendation was: yes. Without them, a person must be on the VPN of a hub and must type its address (MOB-038), which is not the one click principle (OD-M3). |
 
-Order by what they block: OD-ROL-15; then OD-REL-1 (each requirement of Section 4); then OD-REL-2 (M5-4, M5-5); then OD-REL-4 (R10); then OD-REL-5 (M5-6); then OD-REL-3 and OD-REL-7 (the first build for other persons); then OD-REL-6 (a store listing only).
+The order by what they blocked, before R-158: OD-ROL-15; then OD-REL-1 (each requirement of Section 4); then OD-REL-2 (M5-4, M5-5); then OD-REL-4 (R10); then OD-REL-5 (M5-6); then OD-REL-3 and OD-REL-7 (the first build for other persons); then OD-REL-6 (a store listing only).
 
 ## 8. Not in this proposal
 
