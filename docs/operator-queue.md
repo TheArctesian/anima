@@ -26,23 +26,19 @@ This document is generated: `bun run quality:register` writes it from the docume
 | 4.18 | Update the daemon and the hub | Agent: task U5 in daemon-and-hub-update-plan.md. Operator: one Linux machine and one Mac for task U3, the release server of OD-ROL-15 (R-158, task U12), and a release for each target for the tasks that need one |
 | 4.2 | Restore a backup and move the coordinator | Operator: the check HT-024 in need-human-testing.md, or a ruling that it is not necessary |
 | 4.3 | Decisions and approvals for the foundation | Operator: each decision and approval in the row. Agent: PE-C1, then PE-C2 of planning-evidence-plan.md, read-only preparation (R-152) |
-| 4.5 | Level 1 model service | Operator: approval of the compute plan, and the compute decisions of row 4.3 |
+| 4.5 | Level 1 model service | Operator: no Level 1 task starts until the macOS application 0.2.2 is published and the hosted live checks HT-027, HT-028, HT-029 and HT-031 in need-human-testing.md have a result (the condition of R-165); then the missing values of OD-C1 after task L1-1, and OD-AI1 of ai-direction.md. Agent: nothing before the condition is met |
 | 4.7 | Jobs, builds and AI agent runs | Agent: task W1, the contract of the work route, in projects-and-builds-plan.md (R-160 is the ruling that changes R-115). Operator: the acceptance of the contract (W1) and of the design (W2); the security review of the work route comes before code |
 | 4.9 | Hosted applications | Agent: None. H1 to H4 are claimed (docs/claims/h1.md, branch `claude/awesome-kepler-3fcd9e`, started 2026-11-18). Operator: nothing now |
 | 4.19 | The watchdog | Operator: approval of the requirements WDG-001 to WDG-041. Agent: nothing; no ruling names a task |
 | 4.13 | A hash chain for the audit log | Operator: HT-023 on the real hub. Agent: nothing |
 
-## 2. Open decisions (106)
+## 2. Open decisions (102)
 
 | Decision | Question | Recommendation or state | Document |
 | --- | --- | --- | --- |
-| OD-C1 | Hardware of each compute node | The operator gives the list: each Mac, each GPU, memory and site. | [plans/compute-plan.md](plans/compute-plan.md) |
-| OD-C2 | One daemon binary or two | Keep `anima-daemon` separate from `anima-collector`. They run on different devices. Share the enrolment code in a library crate. | [plans/compute-plan.md](plans/compute-plan.md) |
-| OD-C3 | Conformance tolerances | Set from the C4 measurements (RNG-032). | [plans/compute-plan.md](plans/compute-plan.md) |
-| OD-C4 | Where the block adapters live | Offer them to the Shard project first. Keep them in `blocks/` only if Shard does not accept them. | [plans/compute-plan.md](plans/compute-plan.md) |
-| OD-C6 | Where conversations are kept | On the client device until the vault exists (extensions plan, Section 2.4). Then keep them sealed on the hub, so that all clients see them. | [plans/compute-plan.md](plans/compute-plan.md) |
-| OD-C7 | Access to `ai.anima.ing` | VPN only, with Headscale DNS and a DNS-01 certificate (Section 6.1). Confirm that the operator controls the DNS zone of `anima.ing`. Public access is out of sco… | [plans/compute-plan.md](plans/compute-plan.md) |
-| OD-C8 | Device policy default for client computers | Off by default. The operator sets each client computer on. | [plans/compute-plan.md](plans/compute-plan.md) |
+| OD-C1 | What is the hardware of each compute node? | Open for the values that are missing. The operator said (2026-11-18, through the orchestrating session): "I have a couple other machiens but that is good for no… | [plans/compute-plan.md](plans/compute-plan.md) |
+| OD-C3 | Level 2, parked: which tolerances does the conformance test use? | Set them from the C4 measurements (RNG-032). | [plans/compute-plan.md](plans/compute-plan.md) |
+| OD-C4 | Level 2, parked: are the block adapters offered to the Shard project first? | Yes: offer them to the Shard project first. Keep them in `blocks/` only if Shard does not accept them. | [plans/compute-plan.md](plans/compute-plan.md) |
 | OD-E3 | Aggregator for the US accounts (BofA, Chase, Robinhood, Acorns) | SimpleFIN Bridge. It is for private persons and costs about 15 USD each year (its pages give different prices). Check each institution on bridge.simplefin.org b… | [plans/extensions-plan.md](plans/extensions-plan.md) |
 | OD-E4 | Hosted vision model for Class B and C extraction | Permit a hosted model for Wardrobe and Library photos, with the operator switch (VIS-003). Use only on-device extraction for Documents. | [plans/extensions-plan.md](plans/extensions-plan.md) |
 | OD-E5 | Hub folder grouping (REPO-E-001) | Group by parent nouns as the first task of E0 (`fleet/`, `engine/`, `vault/`, `life/`, `work/`), in a separate change. | [plans/extensions-plan.md](plans/extensions-plan.md) |

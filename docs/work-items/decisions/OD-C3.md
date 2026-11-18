@@ -13,6 +13,8 @@ Progress: the index [README.md](../README.md) holds the state of this item (PLN-
 | Origin | GitHub issue #45: made 2026-11-07, last changed 2026-11-08, open at import. Labels: decision, compute, design, priority: later. |
 | Text | Copied from the issue on 2026-11-16 (R-119). Only the links were changed. Not written in STE yet. "This issue" in the text means this document. |
 
+**State (compute plan version 0.3, 2026-11-18).** Open and parked with Level 2. The compute plan, Section 15, holds the question. The text below is the text of the import.
+
 Recommendation: set from the C4 measurements (RNG-032).
 
 **Plan:** [Section 15](../../plans/compute-plan.md)
