@@ -1,7 +1,7 @@
 ---
 kind: Proposal
 state: Direction decided
-evidence: Direction decided (OD-W10). No requirement is approved. Version 2 (2026-11-16) adds JOB-011. Its tasks W1 to W6 are in the task table of [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md).
+evidence: Direction decided (OD-W10; R-160, 2026-11-18, confirms it also for a hosted hub and replaces the "command channel" item of R-115). No requirement is approved. Version 2 (2026-11-16) adds JOB-011. Its tasks W1 to W6 are in the task table of [projects-and-builds-plan.md](../plans/projects-and-builds-plan.md).
 ---
 
 # Proposal: jobs (work that the coordinator gives to a machine)
@@ -196,7 +196,7 @@ What this means:
 | --- | --- |
 | Programs | One: `anima-daemon` (as [OD-C2](../work-items/decisions/OD-C2.md) says). No second binary. |
 | Default | A machine with the daemon takes work (USE-004). The operator can set a machine off. |
-| R-115 | Its "not taken: a command channel" line is replaced. The other lines of R-115 stay. |
+| R-115 | Its "not taken: a command channel" line is replaced. The other lines of R-115 stay. R-160 (2026-11-18) is the ruling that does this. |
 | MET-020 | Not changed: the daemon listens on no port and connects only to the hub (USE-005). |
 | Compute plan CMP-002, [OD-C8](../work-items/decisions/OD-C8.md) | They say "off by default". They must change to agree. |
 
@@ -216,9 +216,11 @@ from the operator:
 
 This decision comes before [C1](../work-items/compute/C1.md), not only before jobs.
 
+R-160 (operator, 2026-11-18: "A: on everywhere") confirms this decision also for a hosted hub on the pool: the default is on for each hub. The limits above stay.
+
 ## Needs
 
-- A ruling number in [rulings.md](../rulings.md) that changes R-115, then the transport decision in [C1](../work-items/compute/C1.md) and
+- Done: the ruling that changes R-115 is R-160 (2026-11-18). Still open: the transport decision in [C1](../work-items/compute/C1.md) and
   [SPEC-C](../work-items/compute/SPEC-C.md), and the new default in [OD-C8](../work-items/decisions/OD-C8.md).
 - A new contract for the work route. K8 is frozen for Phase 3 (CON-001), so this is a new
   contract or `/daemon/v2/`, not a change to K8.

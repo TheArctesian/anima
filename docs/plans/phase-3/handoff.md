@@ -201,7 +201,7 @@ All 20 gates passed before the push of `0846e3d5`.
 3. **R7: the first release.** The operator does it. It needs R1 to R5. Each feed at
    `releases.anima.ing` must answer 200 (D6). Agents do not publish, and do not touch R2 or the VPS
    (VPS-005, UPD-012).
-4. Then the groups W, B and A, in the order of the plan. W1 needs a ruling that changes R-115
+4. Then the groups W, B and A, in the order of the plan. W1 needed a ruling that changes R-115 (it is R-160, 2026-11-18)
    ([jobs.md](../../proposals/jobs.md), "Needs"). Ask the operator for it before you start W.
 
 D7 (no pinned toolchain) has no task yet. If a session adds one, its row goes in the plan's task

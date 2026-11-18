@@ -1,7 +1,7 @@
 ---
 kind: Proposal
 state: Direction decided
-evidence: Direction decided (OD-W9). No requirement is approved. R-140 (2026-11-17): the operator starts fresh on the hosted hub, so FND-006 moves no data to the pool. R-141 names task F1 (FND-006 for a hub on a server), which is In progress. R-157 (2026-11-18): the standbys are deferred, and FND-007 is approved for the application on a computer (task F2, built, waits for HT-030).
+evidence: Direction decided (OD-W9). R-161 (operator, 2026-11-18: "B: park both") parks FND-001 to FND-005 and FND-008 to FND-012 until after the hosted launch: build nothing of them. No requirement is approved, except FND-006 for a hub on a server (R-141) and FND-007 for the application on a computer (R-157). R-140 (2026-11-17): the operator starts fresh on the hosted hub, so FND-006 moves no data to the pool. R-141 names task F1 (FND-006 for a hub on a server), which is In progress. R-157 (2026-11-18) names task F2 (FND-007 for the application on a computer), which is built and waits for HT-030.
 ---
 
 # Proposal: copies of the coordinator database, and how to move the coordinator
@@ -11,6 +11,7 @@ Progress: the plan register in [work-plan.md](../work-plan.md) Section 9 holds t
 From: the planning session of 2026-11-12.
 Status: the header of this document holds the state (PLN-020). History: a proposal for a ruling. The operator decided its direction on 2026-11-12 (OD-W9, see
 "Decision"). The requirements below are not yet approved one by one.
+Parked (R-161, operator, 2026-11-18: "B: park both"): FND-001 to FND-005 and FND-008 to FND-012 are parked until after the hosted launch. FND-006 (R-141, task F1) and FND-007 are not part of the parking. The header keeps the state "Direction decided", because tasks F1 and F2 are not parked.
 Map: [work-plan.md](../work-plan.md), principles ETH-001 to ETH-005.
 Related: [bulk-data-placement.md](bulk-data-placement.md) for large files and backups.
 
